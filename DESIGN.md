@@ -30,7 +30,10 @@ We use TypeStates to ensure everything with the probe is in a proper state to pe
     struct DP;
     struct AP;
 
-    struct Connected<MODE>(PhantomData<MODE>);
+    struct Connected<PROTOCOL, MODE> {
+        _marker1: PhantomData<MODE>,
+        _marker2: PhantomData<MODE>
+    };
     struct Disconnected;
 
     trait DAPInterface {
@@ -46,6 +49,10 @@ We use TypeStates to ensure everything with the probe is in a proper state to pe
     trait APInterface {
         fn read_ap_register(&mut self) -> Result<(), Error>;
         fn write_ap_register(&mut self) -> Result<(), Error>;
+    }
+
+    trait ConnectedProbe<PROBE> {
+        fn disconnect(&mut self) -> Result<PROBE, Error>;
     }
 
     trait ConnectedProbe<PROBE> {
