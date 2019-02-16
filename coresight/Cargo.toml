@@ -1,0 +1,7 @@
+[package]
+name = "coresight"
+version = "0.1.0"
+authors = ["Noah Hüsser <yatekii@yatekii.ch>"]
+edition = "2018"
+
+[dependencies]

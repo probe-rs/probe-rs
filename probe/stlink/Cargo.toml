@@ -1,0 +1,12 @@
+[package]
+name = "stlink"
+version = "0.1.0"
+authors = ["Noah Hüsser <yatekii@yatekii.ch>"]
+edition = "2018"
+
+[dependencies]
+libusb = "0.3.0"
+lazy_static = "1.2.0"
+ssmarshal = "1.0.0"
+probe = { path = "../" }
+coresight = { path = "../../coresight" }

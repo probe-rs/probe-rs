@@ -1,0 +1,12 @@
+[package]
+name = "cli"
+version = "0.1.0"
+authors = ["Noah Hüsser <yatekii@yatekii.ch>"]
+edition = "2018"
+
+[dependencies]
+libusb = "0.3.0"
+structopt = "0.2.14"
+probe = { path = "../probe" }
+stlink = { path = "../probe/stlink" }
+coresight = { path = "../coresight" }
