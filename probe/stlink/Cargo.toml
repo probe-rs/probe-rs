@@ -7,6 +7,6 @@ edition = "2018"
 [dependencies]
 libusb = "0.3.0"
 lazy_static = "1.2.0"
-ssmarshal = "1.0.0"
 probe = { path = "../" }
 coresight = { path = "../../coresight" }
+scroll = "*"

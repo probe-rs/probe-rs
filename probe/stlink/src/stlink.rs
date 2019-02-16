@@ -1,4 +1,4 @@
-use ssmarshal::deserialize;
+use scroll::{Pread, BE};
 
 use coresight::dap_access::DAPAccess;
 use probe::debug_probe::DebugProbe;
@@ -85,7 +85,7 @@ impl<'a> DebugProbe for STLink<'a> {
             .write(vec![commands::GET_VERSION], &[], &mut buf, TIMEOUT)
         {
             Ok(_) => {
-                let version: u16 = deserialize(&[buf[1], buf[0]]).unwrap().0;
+                let version: u16 = (&[buf[1], buf[0]]).pread_with(0, BE).unwrap();
                 self.hw_version = (version >> HW_VERSION_SHIFT) as u8 & HW_VERSION_MASK;
                 self.jtag_version = (version >> JTAG_VERSION_SHIFT) as u8 & JTAG_VERSION_MASK;
             }
@@ -109,7 +109,7 @@ impl<'a> DebugProbe for STLink<'a> {
                 .write(vec![commands::GET_VERSION_EXT], &[], &mut buf, TIMEOUT)
             {
                 Ok(_) => {
-                    let version: u8 = deserialize(&buf[3..4]).unwrap().0;
+                    let version: u8 = (&buf[3..4]).pread(0).unwrap();
                     self.jtag_version = version;
                 }
                 Err(e) => return Err(e),
@@ -187,7 +187,7 @@ impl<'a> DAPAccess for STLink<'a> {
             self.device.write(cmd, &[], &mut buf, TIMEOUT)?;
             Self::check_status(&buf)?;
             // Unwrap is ok!
-            Ok(deserialize(&buf[4..8]).unwrap().0)
+            Ok((&buf[4..8]).pread(0).unwrap())
         } else {
             Err(STLinkError::BlanksNotAllowedOnDPRegister)
         }
@@ -255,8 +255,8 @@ impl<'a> STLink<'a> {
         {
             Ok(_) => {
                 // The next two unwraps are safe!
-                let a0 = deserialize::<u32>(&buf[0..4]).unwrap().0 as f32;
-                let a1 = deserialize::<u32>(&buf[4..8]).unwrap().0 as f32;
+                let a0 = (&buf[0..4]).pread::<u32>(0).unwrap() as f32;
+                let a1 = (&buf[4..8]).pread::<u32>(0).unwrap() as f32;
                 if a0 != 0.0 {
                     Ok((2.0 * a1 * 1.2 / a0) as f32)
                 } else {
@@ -455,8 +455,8 @@ impl<'a> STLink<'a> {
                 &mut buf,
                 TIMEOUT,
             )?;
-            let status: u16 = deserialize(&buf[0..2]).unwrap().0;
-            let fault_address = deserialize(&buf[4..8]).unwrap().0;
+            let status: u16 = (&buf[0..2]).pread(0).unwrap();
+            let fault_address: u32 = (&buf[4..8]).pread(0).unwrap();
             if if status == Status::JtagUnknownError as u16 {
                 true
             } else if status == Status::SwdApFault as u16 {
@@ -514,8 +514,8 @@ impl<'a> STLink<'a> {
                 &mut buf,
                 TIMEOUT,
             )?;
-            let status: u16 = deserialize(&buf[0..2]).unwrap().0;
-            let fault_address = deserialize(&buf[4..8]).unwrap().0;
+            let status: u16 = (&buf[0..2]).pread(0).unwrap();
+            let fault_address: u32 = (&buf[4..8]).pread(0).unwrap();
             if if status == Status::JtagUnknownError as u16 {
                 true
             } else if status == Status::SwdApFault as u16 {
