@@ -295,43 +295,121 @@ fn trace_u32_on_target(n: u8, loc: u32) -> Result<(), Error> {
     use std::thread::sleep;
     use std::time::Duration;
     use scroll::{Pwrite};
+    use pyo3::prelude::{ObjectProtocol, PyResult, Python};
+    use pyo3::types::{PyDict, PyObjectRef};
+    use numpy::{PyArray1, get_array_module};
+    use numpy::convert::ToPyArray;
+    use pyo3::typeob::PyTypeCreate;
+
+    let path = std::env::current_dir().unwrap();
+    println!("The current directory is {}", path.display());
+
+    // let mut process = match Command::new("/usr/bin/python3")
+    //                             .arg("cli/plot.py")
+    //                             .stdin(Stdio::piped())
+    //                             .stdout(Stdio::piped())
+    //                             .spawn() {
+    //     Err(why) => panic!("Couldn't spawn the plot: {}", {
+    //         use std::error::Error;
+    //         why.description()
+    //     }),
+    //     Ok(process) => process,
+    // };
+
+    // Fire up python.
+    let gil = Python::acquire_gil();
+    let py = gil.python();
+
+    // Set up modules.
+    let globals = PyDict::new(py);
+    let plt = py.import("matplotlib.pyplot")
+                .or(Err(Error::Python("matplotlib could not be imported.")))?;
+    let animation = py.import("matplotlib.animation")
+                      .or(Err(Error::Python("matplotlib could not be imported.")))?;
+
+    globals.set_item("plt", plt)
+        .or(Err(Error::Python("matplotlib could not be imported.")))?;
+    globals.set_item("animation", animation)
+        .or(Err(Error::Python("matplotlib could not be imported.")))?;
+    globals.set_item("sys", animation)
+        .or(Err(Error::Python("sys could not be imported.")))?;
 
     let mut xs = vec![];
     let mut ys = vec![];
+    let mut ax1 = PyObjectRef::create(py)
+          .or(Err(Error::Python("Could not assemble xs.")))?;
 
-    let start = Instant::now();
-    let mem = MemoryInterface::new(0x0);
+    let locals = PyDict::new(py);
+    locals.set_item("xs", xs.to_pyarray(py))
+          .or(Err(Error::Python("Could not assemble xs.")))?;
+    locals.set_item("ys", ys.to_pyarray(py))
+          .or(Err(Error::Python("Could not assemble xs.")))?;
+    globals.set_item("ax1", ax1.type_object())
+          .or(Err(Error::Python("Could not assemble xs.")))?;
 
-    with_device(n, |st_link| {
-        loop {
-            // Prepare read.
-            let elapsed = start.elapsed();
-            let instant = elapsed.as_secs() * 1000 + elapsed.subsec_millis() as u64;
+    crossbeam::scope(|scope| {
+        println!("KEK");
+        scope.spawn(|_| {
+            println!("KEK");
+            println!("KEK");
+            let start = Instant::now();
+            println!("KEK");
+            let mem = MemoryInterface::new(0x0);
+            println!("KEK");
+            with_device(n, |st_link| {
+                println!("KEK");
+                loop {
+                    // Prepare read.
+                    println!("KEK");
+                    let elapsed = start.elapsed();
+                    println!("KEK");
+                    let instant = elapsed.as_secs() + elapsed.subsec_millis() as u64 / 1000;
 
-            // Read data.
-            let value: u32 = mem.read(st_link, loc).or_else(|e| Err(Error::AccessPortError(e)))?;
+                    // Read data.
+                    println!("KEK");
+                    let value: u32 = mem.read(st_link, loc).or_else(|e| Err(Error::AccessPortError(e)))?;
+                    println!("KEK");
+                    xs.push(instant);
+                    ys.push(value);
+                    println!("{:?}", xs);
 
-            xs.push(instant);
-            ys.push(value);
+                    // Send value to plot.py.
+                    // Unwrap is safe as there is always an stdin in our case!
+                    // let v: u32 = 1337;
+                    // let mut buf = [0 as u8; 8];
+                    // // Unwrap is safe!
+                    // buf.pwrite(instant, 0).unwrap();
+                    // buf.pwrite(value, 4).unwrap();
+                    // match process.stdin.as_mut().unwrap().write_all(&buf) {
+                    //     Err(why) => panic!("Couldn't write to plot stdin: {}", {
+                    //         use std::error::Error;
+                    //         why.description()
+                    //     }),
+                    //     Ok(_) => println!("Sent new value to plot."),
+                    // }
 
-            // Send value to plot.py.
-            // Unwrap is safe as there is always an stdin in our case!
-            let v: u32 = 1337;
-            let mut buf = [0 as u8; 8];
-            // Unwrap is safe!
-            buf.pwrite(instant, 0).unwrap();
-            buf.pwrite(value, 4).unwrap();
-            std::io::stdout().write(&buf);
-            std::io::stdout().flush();
-
-            // Schedule next read.
-            let elapsed = start.elapsed();
-            let instant = elapsed.as_secs() * 1000 + elapsed.subsec_millis() as u64;
-            let poll_every_ms = 50;
-            let time_to_wait = poll_every_ms - instant % poll_every_ms;
-            sleep(Duration::from_millis(time_to_wait));
-        }
+                    // Schedule next read.
+                    let elapsed = start.elapsed();
+                    let instant = elapsed.as_secs() * 1000 + elapsed.subsec_millis() as u64;
+                    let time_to_wait = 500 - instant % 500;
+                    sleep(Duration::from_millis(time_to_wait));
+                }
+            })
+        });
+        scope.spawn(|_| {
+            
+        });
+        println!("KEKEKEKEKE");
     });
+
+    py.run(include_str!("setup_plot.py"), Some(&globals), Some(&locals))
+      .or_else(|e| {
+          e.print_and_set_sys_last_vars(gil.python());
+          Err(Error::Python("Plot setup failed."))
+      })?;
+      println!("{:?}", locals);
+    //   .extract()
+    //   .or(Err(Error::Python("Plot setup failed.")))?;
 
     Ok(())
 }
@@ -343,26 +421,36 @@ fn with_device<F>(n: u8, mut f: F) -> Result<(), Error>
 where
     F: FnMut(&mut stlink::STLink<'_>) -> Result<(), Error>
 {
+    println!("KEK1");
     let mut context = libusb::Context::new().or_else(|e| {
         println!("Failed to open an USB context.");
         Err(Error::USB(e))
     })?;
+    println!("KEK2");
     let mut connected_devices = stlink::get_all_plugged_devices(&mut context).or_else(|e| {
         println!("Failed to fetch plugged USB devices.");
         Err(Error::USB(e))
     })?;
+    println!("KEK3");
     if connected_devices.len() <= n as usize {
         println!("The device with the given number was not found.");
         Err(Error::DeviceNotFound)
     } else {
         Ok(())
     }?;
+    println!("KEK4");
     let usb_device = connected_devices.remove(n as usize);
+    println!("KEK5");
     let mut st_link = stlink::STLink::new(usb_device);
+    println!("KEK6");
     st_link.open().or_else(|e| Err(Error::STLinkError(e)))?;
+
+    println!("KEK");
     st_link
         .attach(probe::protocol::WireProtocol::Swd)
         .or_else(|e| Err(Error::STLinkError(e)))?;
+
+    println!("KEK");
     
     f(&mut st_link)
         .or_else(|_| st_link.close().or_else(|e| Err(Error::STLinkError(e))))

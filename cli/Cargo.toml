@@ -11,3 +11,7 @@ probe = { path = "../probe" }
 stlink = { path = "../probe/stlink" }
 coresight = { path = "../coresight" }
 gnuplot = "0.0.29"
+scroll = "*"
+pyo3 = "0.5.2"
+numpy = "*"
+crossbeam = "*"
