@@ -140,7 +140,7 @@ impl MemoryInterface {
             // Calculate how many words a 32 bit value consists of.
             let f = 4 / bytes_per_word;
             // The words of size S we have to read until we can do 32 bit aligned reads.
-            let num_words_at_start = (4 - addr & 0x3) / f;
+            let num_words_at_start = (4 - (addr & 0x3)) / bytes_per_word;
             // The words of size S we have to read until we can do 32 bit aligned reads.
             let num_words_at_end = (data.len() as u32 - num_words_at_start) % f;
             // The number of 32 bit reads that are required in the second phase.
@@ -215,7 +215,7 @@ impl MemoryInterface {
             // Calculate how many words a 32 bit value consists of.
             let f = 4 / bytes_per_word;
             // The words of size S we have to write until we can do 32 bit aligned writes.
-            let num_words_at_start = (4 - addr & 0x3) / f;
+            let num_words_at_start = (4 - (addr & 0x3)) / bytes_per_word;
             // The words of size S we have to write until we can do 32 bit aligned writes.
             let num_words_at_end = (data.len() as u32 - num_words_at_start) % f;
             // The number of 32 bit writes that are required in the second phase.
@@ -381,6 +381,20 @@ mod tests {
     }
 
     #[test]
+    fn read_block_u32_only_1_word() {
+        let mut mock = MockDAP::new();
+        mock.data[0] = 0xEF;
+        mock.data[1] = 0xBE;
+        mock.data[2] = 0xAD;
+        mock.data[3] = 0xDE;
+        let mi = MemoryInterface::new(0x0);
+        let mut data = [0 as u32; 1];
+        let read = mi.read_block(&mut mock, 0, &mut data);
+        debug_assert!(read.is_ok());
+        debug_assert_eq!(data, [0xDEADBEEF]);
+    }
+
+    #[test]
     fn read_block_u32_unaligned_should_error() {
         let mut mock = MockDAP::new();
         let mi = MemoryInterface::new(0x0);
@@ -496,6 +510,14 @@ mod tests {
         let mi = MemoryInterface::new(0x0);
         debug_assert!(mi.write_block(&mut mock, 0, &([0xDEADBEEF, 0xABBABABE] as [u32; 2])).is_ok());
         debug_assert_eq!(mock.data[0..8], [0xEF, 0xBE, 0xAD, 0xDE, 0xBE, 0xBA, 0xBA ,0xAB]);
+    }
+
+    #[test]
+    fn write_block_u32_only_1_word() {
+        let mut mock = MockDAP::new();
+        let mi = MemoryInterface::new(0x0);
+        debug_assert!(mi.write_block(&mut mock, 0, &([0xDEADBEEF] as [u32; 1])).is_ok());
+        debug_assert_eq!(mock.data[0..4], [0xEF, 0xBE, 0xAD, 0xDE]);
     }
 
     #[test]

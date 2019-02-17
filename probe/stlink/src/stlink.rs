@@ -85,7 +85,7 @@ impl<'a> DebugProbe for STLink<'a> {
             .write(vec![commands::GET_VERSION], &[], &mut buf, TIMEOUT)
         {
             Ok(_) => {
-                let version: u16 = (&[buf[1], buf[0]]).pread_with(0, BE).unwrap();
+                let version: u16 = (&buf[0..2]).pread_with(0, BE).unwrap();
                 self.hw_version = (version >> HW_VERSION_SHIFT) as u8 & HW_VERSION_MASK;
                 self.jtag_version = (version >> JTAG_VERSION_SHIFT) as u8 & JTAG_VERSION_MASK;
             }
