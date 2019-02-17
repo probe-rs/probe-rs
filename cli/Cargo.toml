@@ -10,3 +10,4 @@ structopt = "0.2.14"
 probe = { path = "../probe" }
 stlink = { path = "../probe/stlink" }
 coresight = { path = "../coresight" }
+gnuplot = "0.0.29"
