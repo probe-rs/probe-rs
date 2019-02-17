@@ -1,0 +1,11 @@
+[package]
+name = "counter"
+version = "0.1.0"
+authors = ["Noah Huesser <yatekii@yatekii.ch>"]
+edition = "2018"
+
+[dependencies]
+cortex-m = "*"
+cortex-m-rt = "*"
+panic-halt = "*"
+stm32f429i-disc = "*"
