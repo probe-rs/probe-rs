@@ -10,6 +10,7 @@ matrix:
 addons:
   apt:
     packages:
+    - libusb-1.0
     - libusb-dev
 script:
   - cargo build
