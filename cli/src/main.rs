@@ -46,6 +46,18 @@ enum CLI {
         /// The amount of memory (in words) to dump
         words: u32,
     },
+    /// Download memory to attached target
+    #[structopt(name = "download")]
+    Download {
+        /// The number associated with the ST-Link to use
+        n: u8,
+        /// The address of the memory to download to the target (in hexadecimal without 0x prefix)
+        #[structopt(parse(try_from_str = "parse_hex"))]
+        loc: u32,
+        /// The the word to write to memory
+        #[structopt(parse(try_from_str = "parse_hex"))]
+        word: u32,
+    },
 }
 
 fn main() {
@@ -56,6 +68,7 @@ fn main() {
         CLI::Info { n } => show_info_of_device(n).unwrap(),
         CLI::Reset { n, assert } => reset_target_of_device(n, assert).unwrap(),
         CLI::Dump { n, loc, words } => dump_memory(n, loc, words).unwrap(),
+        CLI::Download { n, loc, word } => download(n, loc, word).unwrap(),
     }
 }
 
@@ -207,9 +220,9 @@ fn dump_memory(n: u8, loc: u32, words: u32) -> Result<(), Error> {
         .attach(probe::protocol::WireProtocol::Swd)
         .or_else(|e| Err(Error::STLinkError(e)))?;
 
-    st_link
-        .write_register(0x0, 0x0, CSW_VALUE | CSW_SIZE32)
-        .ok();
+    // st_link
+    //     .write_register(0x0, 0x0, CSW_VALUE | CSW_SIZE32)
+    //     .ok();
 
     let mem = MemoryInterface::new(0x0);
 
@@ -226,6 +239,65 @@ fn dump_memory(n: u8, loc: u32, words: u32) -> Result<(), Error> {
     }
 
     println!("Read {:?} words in {:?}", words, elapsed);
+
+    st_link.close().or_else(|e| Err(Error::STLinkError(e)))?;
+
+    Ok(())
+}
+
+fn download(n: u8, loc: u32, word: u32) -> Result<(), Error> {
+    const CSW_SIZE32: u32 = 0x00000002;
+    const CSW_SADDRINC: u32 = 0x00000010;
+    const CSW_DBGSTAT: u32 = 0x00000040;
+    const CSW_HPROT: u32 = 0x02000000;
+    const CSW_MSTRDBG: u32 = 0x20000000;
+    const CSW_RESERVED: u32 = 0x01000000;
+
+    const CSW_VALUE: u32 = (CSW_RESERVED | CSW_MSTRDBG | CSW_HPROT | CSW_DBGSTAT | CSW_SADDRINC);
+
+    let mut context = libusb::Context::new().or_else(|e| {
+        println!("Failed to open an USB context.");
+        Err(Error::USB(e))
+    })?;
+    let mut connected_devices = stlink::get_all_plugged_devices(&mut context).or_else(|e| {
+        println!("Failed to fetch plugged USB devices.");
+        Err(Error::USB(e))
+    })?;
+    if connected_devices.len() <= n as usize {
+        println!("The device with the given number was not found.");
+        Err(Error::DeviceNotFound)
+    } else {
+        Ok(())
+    }?;
+    let usb_device = connected_devices.remove(n as usize);
+    let mut st_link = stlink::STLink::new(usb_device);
+    st_link.open().or_else(|e| Err(Error::STLinkError(e)))?;
+
+    st_link
+        .attach(probe::protocol::WireProtocol::Swd)
+        .or_else(|e| Err(Error::STLinkError(e)))?;
+
+    st_link
+        .write_register(0x0, 0x0, CSW_VALUE | CSW_SIZE32)
+        .ok();
+
+    let mut mem = MemoryInterface::new(0x0);
+
+    // let mut f = File::open(file)?;
+    let data: Vec<u32> = vec![];
+    // for line in BufReader::new(file).lines() {
+    //     data.push(u32::from_str_radix(line?, 16)?);
+    // }
+
+    let instant = Instant::now();
+
+    mem.write(&mut st_link, loc, word).or_else(|e| Err(Error::AccessPortError(e)))?;
+
+    let elapsed = instant.elapsed();
+
+    println!("Addr 0x{:08x?}: 0x{:08x}", loc, word);
+
+    println!("Wrote 1 word in {:?}", elapsed);
 
     st_link.close().or_else(|e| Err(Error::STLinkError(e)))?;
 

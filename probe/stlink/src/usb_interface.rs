@@ -185,7 +185,6 @@ impl<'a> STLinkUSBDevice<'a> {
         if written_bytes != CMD_LEN {
             return Err(STLinkError::NotEnoughBytesRead);
         }
-
         // Optional data out phase.
         if write_data.len() > 0 {
             let written_bytes = self
@@ -198,7 +197,7 @@ impl<'a> STLinkUSBDevice<'a> {
                 return Err(STLinkError::NotEnoughBytesRead);
             }
         }
-
+        println!("lmsadas32142342134mdlas");
         // Optional data in phase.
         if read_data.len() > 0 {
             let read_bytes = self
@@ -207,6 +206,7 @@ impl<'a> STLinkUSBDevice<'a> {
                 .map(|dh| dh.read_bulk(ep_in, read_data, timeout))
                 .unwrap()
                 .or_usb_err()?;
+                println!("lmsadasmdlas");
             if read_bytes != read_data.len() {
                 return Err(crate::stlink::STLinkError::NotEnoughBytesRead);
             }
