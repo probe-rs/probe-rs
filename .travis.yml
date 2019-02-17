@@ -7,6 +7,10 @@ cache: cargo
 matrix:
   allow_failures:
     - rust: nightly
+addons:
+  apt:
+    packages:
+    - libusb-dev
 script:
   - cargo build
   - cargo test
