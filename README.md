@@ -16,7 +16,7 @@ They all implement the GDB protocol and their own protocol on top of it to enabl
 This is not standardized and also little bit unstable sometimes. For every tool the commands are different and so on.
 
 This project leaves away the GDB layer and provides a direct interface to the debug probe,
-which then enables other software, for example [https://code.visualstudio.com/blogs/2018/08/07/debug-adapter-protocol-website](VisualStudio) to use it's debug functionality.
+which then enables other software, for example [VisualStudio](https://code.visualstudio.com/blogs/2018/08/07/debug-adapter-protocol-website) to use it's debug functionality.
 
 What's more is that we can use CoreSight to its full extent. We can trace and modify memory as well as registers in real time.
 
@@ -24,7 +24,7 @@ What's more is that we can use CoreSight to its full extent. We can trace and mo
 
 ## Functionality
 
-As of writing this, the lib can connect to an [https://www.st.com/en/development-tools/st-link-v2.html](ST-Link), attach to an STM32F429 (it should be able to connect to any target; this one was just used for testing) and read DAP registers.
+As of writing this, the lib can connect to an [ST-Link](https://www.st.com/en/development-tools/st-link-v2.html), attach to an STM32F429 (it should be able to connect to any target; this one was just used for testing) and read DAP registers.
 It can read all memory regions and can write to non ROM regions.
 
 ### CLI
