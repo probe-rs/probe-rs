@@ -22,6 +22,36 @@ What's more is that we can use CoreSight to its full extent. We can trace and mo
 
 *The end goal is a complete library toolset to enable other tools to use the functionality of CoreSight.*
 
+## Functionality
+
+As of writing this, the lib can connect to an [https://www.st.com/en/development-tools/st-link-v2.html](ST-Link), attach to an STM32F429 (it should be able to connect to any target; this one was just used for testing) and read DAP registers.
+It can read all memory regions and can write to non ROM regions.
+
+### CLI
+
+To demonstrate the functionality a small cli was written.
+Fire it up with
+
+```
+cargo run -p cli -- help
+```
+
+The help dialog should then tell you how to use the CLI.
+
+For using the tracer fire
+
+```
+cargo run -p cli -- trace <n> <address> | python3 cli/update_plot.py
+```
+
+The pipe interface is binary for now.
+
+Here is how it looks if you do everything correct and you trace a memory location with a changing value:
+
+<p align="center">
+    <img src="https://github.com/Yatekii/probe-rs/blob/master/doc/img/counter.png" alt="counter plot">
+</p>
+
 ## FAQ
 
 ### I need help!
