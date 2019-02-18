@@ -1,6 +1,6 @@
 # probe-rs
-<a href="https://travis-ci.org/Yatekii/probe-rs">
-    <img src="https://img.shields.io/travis/Yatekii/probe-rs/master.svg" alt="Travis Build Status">
+<a href="https://travis-ci.com/Yatekii/probe-rs">
+    <img src="https://travis-ci.com/Yatekii/probe-rs.svg?branch=master" alt="build:passed">
 </a>
 
 A debugging toolset and library for debugging ARM cores on a separate host
@@ -18,9 +18,9 @@ This is not standardized and also little bit unstable sometimes. For every tool 
 This project leaves away the GDB layer and provides a direct interface to the debug probe,
 which then enables other software, for example [https://code.visualstudio.com/blogs/2018/08/07/debug-adapter-protocol-website](VisualStudio) to use it's debug functionality.
 
-What's more is that we can use CoreSight to its full extent. We can trace and modify memory as wella s registers in real time.
+What's more is that we can use CoreSight to its full extent. We can trace and modify memory as well as registers in real time.
 
-*The end goal is a complete commandline toolset REPL that can use the full functionality of CoreSight.*
+*The end goal is a complete library toolset to enable other tools to use the functionality of CoreSight.*
 
 ## FAQ
 
