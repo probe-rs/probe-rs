@@ -17,14 +17,20 @@ pub enum MemoryAPRegister {
     Mock = 0xBABE
 }
 
-impl APRegister for MemoryAPRegister {
-    fn to_u32(&self) -> u32 {
-        *self as u32
+impl APRegister<MemoryAPValue> for MemoryAPRegister {
+    fn to_u16(&self) -> u16 {
+        *self as u16
     }
 
-    fn to_value<MemoryAPValue>(&self) -> MemoryAPValue {
+    fn get_value(&self, value: u32) -> MemoryAPValue {
         match self {
-            MemoryAPRegister::Mock => MemoryAPValue::Mock(Mock { x: 0, y: 0 })
+            MemoryAPRegister::Mock => MemoryAPValue::Mock(Mock { x: 0, y: 0 }).from_u32(value)
+        }
+    }
+
+    fn get_apbanksel(&self) -> u8 {
+        match self {
+            MemoryAPRegister::Mock => 0
         }
     }
 }
@@ -50,7 +56,7 @@ impl APValue for MemoryAPValue {
 
     fn to_u32(&self) -> u32 {
         match self {
-            MemoryAPValue::Mock(v) => (v.x << 16) as u32 | v.y as u32,
+            MemoryAPValue::Mock(v) => ((v.x as u32) << 16) | v.y as u32,
         }
     }
 }

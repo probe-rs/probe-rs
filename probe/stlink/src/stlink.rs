@@ -18,6 +18,8 @@ pub struct STLink<'a> {
     hw_version: u8,
     jtag_version: u8,
     protocol: WireProtocol,
+    current_apsel: u8,
+    current_apbanksel: u8,
 }
 
 #[derive(Debug)]
@@ -177,7 +179,7 @@ impl<'a> DAPAccess for STLink<'a> {
     type Error = STLinkError;
 
     /// Reads the DAP register on the specified port and address.
-    fn read_register(&mut self, port: u16, addr: u32) -> Result<u32, Self::Error> {
+    fn read_register(&mut self, port: u16, addr: u16) -> Result<u32, Self::Error> {
         if (addr & 0xf0) == 0 || port != Self::DP_PORT {
             let cmd = vec![
                 commands::JTAG_COMMAND,
@@ -198,7 +200,7 @@ impl<'a> DAPAccess for STLink<'a> {
     }
 
     /// Writes a value to the DAP register on the specified port and address.
-    fn write_register(&mut self, port: u16, addr: u32, value: u32) -> Result<(), Self::Error> {
+    fn write_register(&mut self, port: u16, addr: u16, value: u32) -> Result<(), Self::Error> {
         if (addr & 0xf0) == 0 || port != Self::DP_PORT {
             let cmd = vec![
                 commands::JTAG_COMMAND,
@@ -223,12 +225,49 @@ impl<'a> DAPAccess for STLink<'a> {
 }
 
 impl<'a> APAccess<MemoryAP, MemoryAPRegister, MemoryAPValue> for STLink<'a> {
-    fn read_register(port: MemoryAP, register: MemoryAPRegister) -> MemoryAPValue {
-        MemoryAPValue
+    type Error = STLinkError;
+
+    fn read_register_ap(&mut self, port: MemoryAP, register: MemoryAPRegister) -> Result<MemoryAPValue, Self::Error> {
+        use coresight::access_ports::APType;
+        use coresight::access_ports::APRegister;
+        // TODO: Make those next lines use the future typed DP interface.
+        let mut cache_changed = false;
+        if self.current_apsel != port.get_port_number() {
+            self.current_apsel = port.get_port_number();
+            cache_changed = true;
+        }
+        if self.current_apbanksel != register.get_apbanksel() {
+            self.current_apbanksel = register.get_apbanksel();
+            cache_changed = true;
+        }
+        if cache_changed {
+            let select = ((self.current_apsel as u32) << 24) | ((self.current_apbanksel as u32) << 4);
+            self.write_register(0xFFFF, 0x008, select)?;
+        }
+        let result = self.read_register(self.current_apsel as u16, register.to_u16())?;
+        Ok(register.get_value(result))
     }
     
-    fn write_register(port: MemoryAP, register: MemoryAPRegister, value: MemoryAPValue) {
-
+    fn write_register_ap(&mut self, port: MemoryAP, register: MemoryAPRegister, value: MemoryAPValue) -> Result<(), Self::Error> {
+        use coresight::access_ports::APType;
+        use coresight::access_ports::APRegister;
+        use coresight::access_ports::APValue;
+        // TODO: Make those next lines use the future typed DP interface.
+        let mut cache_changed = false;
+        if self.current_apsel != port.get_port_number() {
+            self.current_apsel = port.get_port_number();
+            cache_changed = true;
+        }
+        if self.current_apbanksel != register.get_apbanksel() {
+            self.current_apbanksel = register.get_apbanksel();
+            cache_changed = true;
+        }
+        if cache_changed {
+            let select = ((self.current_apsel as u32) << 24) | ((self.current_apbanksel as u32) << 4);
+            self.write_register(0xFFFF, 0x008, select)?;
+        }
+        self.write_register(self.current_apsel as u16, register.to_u16(), value.to_u32())?;
+        Ok(())
     }
 }
 
@@ -256,6 +295,8 @@ impl<'a> STLink<'a> {
             hw_version: 0,
             jtag_version: 0,
             protocol: WireProtocol::Swd,
+            current_apsel: 0x0000,
+            current_apbanksel: 0x00
         }
     }
 

@@ -1,8 +1,8 @@
 pub mod consts {
     // MEM-AP register addresses
-    pub const MEM_AP_CSW: u32 = 0x00;
-    pub const MEM_AP_TAR: u32 = 0x04;
-    pub const MEM_AP_DRW: u32 = 0x0C;
+    pub const MEM_AP_CSW: u16 = 0x00;
+    pub const MEM_AP_TAR: u16 = 0x04;
+    pub const MEM_AP_DRW: u16 = 0x0C;
 
     // Common AP register addresses
     pub const AP_BASE: u32 = 0xF8;

@@ -75,12 +75,12 @@ impl MemoryInterface {
     }
 
     /// Read a 32 bit register on the DAP.
-    fn read_reg(&self, debug_port: &mut impl DAPAccess, addr: u32) -> Result<u32, AccessPortError> {
+    fn read_reg(&self, debug_port: &mut impl DAPAccess, addr: u16) -> Result<u32, AccessPortError> {
         debug_port.read_register(self.access_port, addr).or_else(|e| { println!("{:?}", e); Err(e) }).or_else(|_| Err(AccessPortError::ProbeError))
     }
 
     /// Write a 32 bit register on the DAP.
-    fn write_reg(&self, debug_port: &mut impl DAPAccess, addr: u32, data: u32) -> Result<(), AccessPortError> {
+    fn write_reg(&self, debug_port: &mut impl DAPAccess, addr: u16, data: u32) -> Result<(), AccessPortError> {
         debug_port.write_register(self.access_port, addr, data).or_else(|_| Err(AccessPortError::ProbeError))
     }
 

@@ -4,10 +4,10 @@ pub trait DAPAccess {
     type Error: std::fmt::Debug;
 
     /// Reads the DAP register on the specified port and address
-    fn read_register(&mut self, port: u16, addr: u32) -> Result<u32, Self::Error>;
+    fn read_register(&mut self, port: u16, addr: u16) -> Result<u32, Self::Error>;
 
     /// Writes a value to the DAP register on the specified port and address
-    fn write_register(&mut self, port: u16, addr: u32, value: u32) -> Result<(), Self::Error>;
+    fn write_register(&mut self, port: u16, addr: u16, value: u32) -> Result<(), Self::Error>;
 }
 
 pub struct MockDAP {
@@ -38,7 +38,7 @@ impl DAPAccess for MockDAP {
     /// Mocks the read_register method of a DAP.
     /// 
     /// Returns an Error if any bad instructions or values are chosen.
-    fn read_register(&mut self, _port: u16, addr: u32) -> Result<u32, Self::Error> {
+    fn read_register(&mut self, _port: u16, addr: u16) -> Result<u32, Self::Error> {
         if addr == MEM_AP_CSW {
             Ok(if self.width == 0 {
                 0
@@ -73,7 +73,7 @@ impl DAPAccess for MockDAP {
     /// Mocks the write_register method of a DAP.
     /// 
     /// Returns an Error if any bad instructions or values are chosen.
-    fn write_register(&mut self, _port: u16, addr: u32, value: u32) -> Result<(), Self::Error> {
+    fn write_register(&mut self, _port: u16, addr: u16, value: u32) -> Result<(), Self::Error> {
         if addr == MEM_AP_CSW {
             if value & 0x3 == 0 {
                 self.width = 1;
