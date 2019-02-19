@@ -1,3 +1,7 @@
+use coresight::access_ports::memory_ap::MemoryAPValue;
+use coresight::access_ports::memory_ap::MemoryAPRegister;
+use coresight::access_ports::memory_ap::MemoryAP;
+use coresight::ap_access::APAccess;
 use scroll::{Pread, BE};
 
 use coresight::dap_access::DAPAccess;
@@ -215,6 +219,16 @@ impl<'a> DAPAccess for STLink<'a> {
         } else {
             Err(STLinkError::BlanksNotAllowedOnDPRegister)
         }
+    }
+}
+
+impl<'a> APAccess<MemoryAP, MemoryAPRegister, MemoryAPValue> for STLink<'a> {
+    fn read_register(port: MemoryAP, register: MemoryAPRegister) -> MemoryAPValue {
+        MemoryAPValue
+    }
+    
+    fn write_register(port: MemoryAP, register: MemoryAPRegister, value: MemoryAPValue) {
+
     }
 }
 
