@@ -114,6 +114,7 @@ impl STLinkUSBDevice {
             Box::new(context),
             |context| Ok(Box::new(device_selector(get_all_plugged_devices(context)?).or_usb_err()?)),
             |device, _context| {
+                
                 let mut device_handle = Box::new(device.open().or_usb_err()?);
 
                 let config = device.active_config_descriptor().or_usb_err()?;
@@ -140,15 +141,15 @@ impl STLinkUSBDevice {
                     }
                 }
 
-                if endpoint_out {
+                if !endpoint_out {
                     return Err(STLinkError::EndpointNotFound);
                 }
 
-                if endpoint_in {
+                if !endpoint_in {
                     return Err(STLinkError::EndpointNotFound);
                 }
 
-                if endpoint_swv {
+                if !endpoint_swv {
                     return Err(STLinkError::EndpointNotFound);
                 }
 
@@ -160,9 +161,6 @@ impl STLinkUSBDevice {
             renter,
             info,
         };
-
-        //self.flush_rx();
-        usb_stlink.read(1000, Duration::from_millis(10))?;
 
         Ok(usb_stlink)
     }

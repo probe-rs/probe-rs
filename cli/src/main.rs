@@ -112,12 +112,15 @@ enum Error {
 
 fn show_info_of_device(n: u8) -> Result<(), Error> {
     with_device(n, |st_link| {
+                println!("EKKEKEEK");
         let version = st_link
             .get_version()
             .or_else(|e| Err(Error::STLinkError(e)))?;
+                println!("EKKEKEEK");
         let vtg = st_link
             .get_target_voltage()
             .or_else(|e| Err(Error::STLinkError(e)))?;
+                println!("EKKEKEEK");
 
         println!("Device information:");
         println!("\nHardware Version: {:?}", version.0);
