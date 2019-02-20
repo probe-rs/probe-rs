@@ -1,3 +1,5 @@
+#[macro_use] extern crate rental;
+
 mod usb_interface;
 pub mod constants;
 mod stlink;

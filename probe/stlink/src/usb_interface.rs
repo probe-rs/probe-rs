@@ -30,7 +30,7 @@ lazy_static! {
 }
 
 /// A helper struct to match STLink deviceinfo.
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct STLinkInfo {
     pub version_name: String,
     pub usb_pid: u16,
@@ -57,11 +57,24 @@ impl STLinkInfo {
     }
 }
 
-/// Provides low-level USB enumeration and transfers for STLinkV2/3 devices.
-pub struct STLinkUSBDevice<'a> {
-    device: Device<'a>,
-    device_handle: Option<DeviceHandle<'a>>,
-    pub info: STLinkInfo,
+rental! {
+    pub mod rent {
+        use super::*;
+        /// Provides low-level USB enumeration and transfers for STLinkV2/3 devices.
+        #[rental]
+        pub struct STLinkUSBDeviceRenter {
+            context: Box<Context>,
+            device: Box<Device<'context>>,
+            device_handle: Box<DeviceHandle<'context>>,
+        }
+    }
+}
+
+pub use rent::STLinkUSBDeviceRenter;
+
+pub struct STLinkUSBDevice {
+    renter: STLinkUSBDeviceRenter,
+    info: STLinkInfo,
 }
 
 fn usb_match<'a>(device: &Device<'a>) -> bool {
@@ -76,90 +89,96 @@ fn usb_match<'a>(device: &Device<'a>) -> bool {
 
 pub fn get_all_plugged_devices<'a>(
     context: &'a Context,
-) -> Result<Vec<STLinkUSBDevice<'a>>, Error> {
-    let devices = context.devices()?;
-    devices
-        .iter()
-        .filter(usb_match)
-        .map(|device| STLinkUSBDevice::new(device))
-        .collect::<Result<Vec<_>, Error>>()
+) -> Result<Vec<(Device<'a>, STLinkInfo)>, STLinkError> {
+    let devices = context.devices().or_usb_err()?;
+    devices.iter()
+            .filter(usb_match)
+            .map(|d| {
+                let descriptor = d.device_descriptor().or_usb_err()?;
+                let info = USB_PID_EP_MAP[&descriptor.product_id()].clone();
+                Ok((d, info))
+            })
+            .collect::<Result<Vec<_>, STLinkError>>()
 }
 
-impl<'a> STLinkUSBDevice<'a> {
-    pub fn new(device: Device<'a>) -> Result<Self, Error> {
-        let descriptor = device.device_descriptor()?;
-        let info = USB_PID_EP_MAP[&descriptor.product_id()].clone();
-        Ok(Self {
-            device,
-            device_handle: None,
-            info,
-        })
-    }
+impl STLinkUSBDevice {
+    /// Creates and initializes a new USB device.
+    pub fn new<F>(mut device_selector: F) -> Result<Self, STLinkError>
+    where F: for<'a> FnMut(Vec<(Device<'a>, STLinkInfo)>) -> Result<Device<'a>, Error>
+    {
+        let context = Context::new().or_usb_err()?;
 
-    pub fn open(&mut self) -> Result<(), STLinkError> {
-        self.device_handle = Some(self.device.open().or_usb_err()?);
-        // The next statement will never fail.
-        self.device_handle
-            .as_mut()
-            .map(|ref mut dh| dh.claim_interface(0));
+        let mut info = Default::default();
 
-        let config = self.device.active_config_descriptor().or_usb_err()?;
-        let descriptor = self.device.device_descriptor().or_usb_err()?;
-        let info = &USB_PID_EP_MAP[&descriptor.product_id()];
+        let renter = STLinkUSBDeviceRenter::try_new(
+            Box::new(context),
+            |context| Ok(Box::new(device_selector(get_all_plugged_devices(context)?).or_usb_err()?)),
+            |device, _context| {
+                let mut device_handle = Box::new(device.open().or_usb_err()?);
 
-        let mut endpoint_out = None;
-        let mut endpoint_in = None;
-        let mut endpoint_swv = None;
+                let config = device.active_config_descriptor().or_usb_err()?;
+                let descriptor = device.device_descriptor().or_usb_err()?;
+                info = USB_PID_EP_MAP[&descriptor.product_id()].clone();
 
-        if let Some(interface) = config.interfaces().next() {
-            if let Some(descriptor) = interface.descriptors().next() {
-                for endpoint in descriptor.endpoint_descriptors() {
-                    if endpoint.address() == info.ep_out {
-                        endpoint_out = Some(info.ep_out);
-                    } else if endpoint.address() == info.ep_in {
-                        endpoint_in = Some(info.ep_in);
-                    } else if endpoint.address() == info.ep_swv {
-                        endpoint_swv = Some(info.ep_swv);
+                device_handle.claim_interface(0).or_usb_err()?;
+
+                let mut endpoint_out = false;
+                let mut endpoint_in = false;
+                let mut endpoint_swv = false;
+
+                if let Some(interface) = config.interfaces().next() {
+                    if let Some(descriptor) = interface.descriptors().next() {
+                        for endpoint in descriptor.endpoint_descriptors() {
+                            if endpoint.address() == info.ep_out {
+                                endpoint_out = true;
+                            } else if endpoint.address() == info.ep_in {
+                                endpoint_in = true;
+                            } else if endpoint.address() == info.ep_swv {
+                                endpoint_swv = true;
+                            }
+                        }
                     }
                 }
-            }
-        }
 
-        if endpoint_out.is_none() {
-            return Err(STLinkError::EndpointNotFound);
-        }
+                if endpoint_out {
+                    return Err(STLinkError::EndpointNotFound);
+                }
 
-        if endpoint_in.is_none() {
-            return Err(STLinkError::EndpointNotFound);
-        }
+                if endpoint_in {
+                    return Err(STLinkError::EndpointNotFound);
+                }
 
-        if endpoint_swv.is_none() {
-            return Err(STLinkError::EndpointNotFound);
-        }
+                if endpoint_swv {
+                    return Err(STLinkError::EndpointNotFound);
+                }
+
+                Ok(device_handle)
+            },
+        ).or_else(|_| Err(STLinkError::RentalInitError))?;
+
+        let mut usb_stlink = Self {
+            renter,
+            info,
+        };
 
         //self.flush_rx();
-        self.read(1000, Duration::from_millis(10))?;
+        usb_stlink.read(1000, Duration::from_millis(10))?;
 
-        Ok(())
+        Ok(usb_stlink)
     }
 
-    pub fn close(&mut self) -> Result<(), Error> {
-        self.device_handle
-            .as_mut()
-            .map_or(Err(Error::NotFound), |dh| dh.release_interface(0))?;
-        self.device_handle = None;
-        Ok(())
-    }
-
+    /// Writes to the out EP.
     pub fn read(&mut self, size: u16, timeout: Duration) -> Result<Vec<u8>, STLinkError> {
         let mut buf = vec![0; size as usize];
         let ep_in = self.info.ep_in;
-        self.device_handle
-            .as_mut()
-            .map(|dh| dh.read_bulk(ep_in, buf.as_mut_slice(), timeout));
+        self.renter.rent(|dh| dh.read_bulk(ep_in, buf.as_mut_slice(), timeout)).or_usb_err()?;
         Ok(buf)
     }
 
+    /// Writes to the out EP and reads back data if needed.
+    /// First the `cmd` is sent.
+    /// In a second step `write_data` is transmitted.
+    /// And lastly, data will be read back until `read_data` is filled.
     pub fn write(
         &mut self,
         mut cmd: Vec<u8>,
@@ -175,36 +194,21 @@ impl<'a> STLinkUSBDevice<'a> {
         let ep_out = self.info.ep_out;
         let ep_in = self.info.ep_in;
 
-        let written_bytes = self
-            .device_handle
-            .as_mut()
-            .map(|dh| dh.write_bulk(ep_out, &cmd, timeout))
-            .unwrap()
-            .or_usb_err()?;
+        let written_bytes = self.renter.rent(|dh| dh.write_bulk(ep_out, &cmd, timeout)).or_usb_err()?;
 
         if written_bytes != CMD_LEN {
             return Err(STLinkError::NotEnoughBytesRead);
         }
         // Optional data out phase.
         if write_data.len() > 0 {
-            let written_bytes = self
-                .device_handle
-                .as_mut()
-                .map(|dh| dh.write_bulk(ep_out, write_data, timeout))
-                .unwrap()
-                .or_usb_err()?;
+            let written_bytes = self.renter.rent(|dh| dh.write_bulk(ep_out, write_data, timeout)).or_usb_err()?;
             if written_bytes != write_data.len() {
                 return Err(STLinkError::NotEnoughBytesRead);
             }
         }
         // Optional data in phase.
         if read_data.len() > 0 {
-            let read_bytes = self
-                .device_handle
-                .as_mut()
-                .map(|dh| dh.read_bulk(ep_in, read_data, timeout))
-                .unwrap()
-                .or_usb_err()?;
+            let read_bytes = self.renter.rent(|dh| dh.read_bulk(ep_in, read_data, timeout)).or_usb_err()?;
             if read_bytes != read_data.len() {
                 return Err(crate::stlink::STLinkError::NotEnoughBytesRead);
             }
@@ -212,25 +216,28 @@ impl<'a> STLinkUSBDevice<'a> {
         Ok(())
     }
 
+    /// Special read, TODO: for later.
     pub fn read_swv(&mut self, size: usize, timeout: Duration) -> Result<Vec<u8>, STLinkError> {
         let ep_swv = self.info.ep_swv;
         let mut buf = Vec::with_capacity(size as usize);
-        let read_bytes = self
-            .device_handle
-            .as_mut()
-            .map(|dh| dh.read_bulk(ep_swv, buf.as_mut_slice(), timeout))
-            .unwrap()
-            .or_usb_err()?;
+        let read_bytes = self.renter.rent(|dh| dh.read_bulk(ep_swv, buf.as_mut_slice(), timeout)).or_usb_err()?;
         if read_bytes != size {
             return Err(crate::stlink::STLinkError::NotEnoughBytesRead);
         } else {
             Ok(buf)
         }
     }
+
+    /// Closes the USB interface gracefully.
+    /// Internal helper.
+    fn close(&mut self) -> Result<(), Error> {
+        self.renter.rent_mut(|dh| dh.release_interface(0))
+    }
 }
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn list_devices() {}
+impl Drop for STLinkUSBDevice {
+    fn drop(&mut self) {
+        // We ignore the error case as we can't do much about it anyways.
+        let _ = self.close();
+    }
 }

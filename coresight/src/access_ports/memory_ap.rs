@@ -163,3 +163,9 @@ impl APValue for MemoryAPValue {
         }
     }
 }
+
+// pub trait Register<V> {
+//     const ADDRESS: u16;
+//     const APSEL: u8;
+//     const AP: u8;
+// }

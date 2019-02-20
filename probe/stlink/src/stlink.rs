@@ -1,6 +1,11 @@
-use coresight::access_ports::memory_ap::MemoryAPValue;
-use coresight::access_ports::memory_ap::MemoryAPRegister;
-use coresight::access_ports::memory_ap::MemoryAP;
+use crate::usb_interface::STLinkInfo;
+use libusb::Error;
+use libusb::Device;
+use coresight::access_ports::memory_ap::{
+    MemoryAPValue,
+    MemoryAPRegister,
+    MemoryAP,
+};
 use coresight::ap_access::APAccess;
 use scroll::{Pread, BE};
 
@@ -13,8 +18,8 @@ use crate::usb_interface::{STLinkUSBDevice, TIMEOUT};
 
 type AccessPort = u8;
 
-pub struct STLink<'a> {
-    device: STLinkUSBDevice<'a>,
+pub struct STLink {
+    device: STLinkUSBDevice,
     hw_version: u8,
     jtag_version: u8,
     protocol: WireProtocol,
@@ -38,6 +43,7 @@ pub enum STLinkError {
     RegisterAddressMustBe16Bit,
     NotEnoughBytesRead,
     EndpointNotFound,
+    RentalInitError,
 }
 
 pub trait ToSTLinkErr<T> {
@@ -53,22 +59,8 @@ impl<T> ToSTLinkErr<T> for libusb::Result<T> {
     }
 }
 
-impl<'a> DebugProbe for STLink<'a> {
+impl DebugProbe for STLink {
     type Error = STLinkError;
-
-    /// Opens the ST-Link USB device and tries to identify the ST-Links version and it's target voltage.
-    fn open(&mut self) -> Result<(), Self::Error> {
-        self.device.open()?;
-        self.enter_idle()?;
-        self.get_version()?;
-        self.get_target_voltage().map(|_| ())
-    }
-
-    /// Closes the ST-Link USB device.
-    fn close(&mut self) -> Result<(), Self::Error> {
-        self.enter_idle()?;
-        self.device.close().or_else(|e| Err(STLinkError::USB(e)))
-    }
 
     /// Reads the ST-Links version.
     /// Returns a tuple (hardware version, firmware version).
@@ -175,7 +167,7 @@ impl<'a> DebugProbe for STLink<'a> {
     }
 }
 
-impl<'a> DAPAccess for STLink<'a> {
+impl DAPAccess for STLink {
     type Error = STLinkError;
 
     /// Reads the DAP register on the specified port and address.
@@ -224,7 +216,7 @@ impl<'a> DAPAccess for STLink<'a> {
     }
 }
 
-impl<'a> APAccess<MemoryAP, MemoryAPRegister, MemoryAPValue> for STLink<'a> {
+impl APAccess<MemoryAP, MemoryAPRegister, MemoryAPValue> for STLink {
     type Error = STLinkError;
 
     fn read_register_ap(&mut self, port: MemoryAP, register: MemoryAPRegister) -> Result<MemoryAPValue, Self::Error> {
@@ -271,7 +263,14 @@ impl<'a> APAccess<MemoryAP, MemoryAPRegister, MemoryAPValue> for STLink<'a> {
     }
 }
 
-impl<'a> STLink<'a> {
+impl Drop for STLink {
+    fn drop(&mut self) {
+        // We ignore the error case as we can't do much about it anyways.
+        let _ = self.enter_idle();
+    }
+}
+
+impl STLink {
     /// Maximum number of bytes to send or receive for 32- and 16- bit transfers.
     ///
     /// 8-bit transfers have a maximum size of the maximum USB packet size (64 bytes for full speed).
@@ -289,15 +288,20 @@ impl<'a> STLink<'a> {
     /// Port number to use to indicate DP registers.
     const DP_PORT: u16 = 0xffff;
 
-    pub fn new(device: STLinkUSBDevice<'a>) -> Self {
-        Self {
-            device,
+    pub fn new<F>(mut device_selector: F) -> Result<Self, STLinkError>
+    where F: for<'a> FnMut(Vec<(Device<'a>, STLinkInfo)>) -> Result<Device<'a>, Error> {
+        let mut stlink = Self {
+            device: STLinkUSBDevice::new(device_selector)?,
             hw_version: 0,
             jtag_version: 0,
             protocol: WireProtocol::Swd,
             current_apsel: 0x0000,
             current_apbanksel: 0x00
-        }
+        };
+
+        stlink.init();
+
+        Ok(stlink)
     }
 
     /// Reads the target voltage.
@@ -324,6 +328,7 @@ impl<'a> STLink<'a> {
     }
 
     /// Commands the ST-Link to enter idle mode.
+    /// Internal helper.
     fn enter_idle(&mut self) -> Result<(), STLinkError> {
         let mut buf = [0; 2];
         match self
@@ -360,6 +365,14 @@ impl<'a> STLink<'a> {
             }
             Err(e) => Err(e),
         }
+    }
+
+    /// Opens the ST-Link USB device and tries to identify the ST-Links version and it's target voltage.
+    /// Internal helper.
+    fn init(&mut self) -> Result<(), STLinkError> {
+        self.enter_idle()?;
+        self.get_version()?;
+        self.get_target_voltage().map(|_| ())
     }
 
     /// sets the SWD frequency.

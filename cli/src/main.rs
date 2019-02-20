@@ -47,17 +47,17 @@ enum CLI {
         words: u32,
     },
     /// Download memory to attached target
-    #[structopt(name = "download")]
-    Download {
-        /// The number associated with the ST-Link to use
-        n: u8,
-        /// The address of the memory to download to the target (in hexadecimal without 0x prefix)
-        #[structopt(parse(try_from_str = "parse_hex"))]
-        loc: u32,
-        /// The the word to write to memory
-        #[structopt(parse(try_from_str = "parse_hex"))]
-        word: u32,
-    },
+    // #[structopt(name = "download")]
+    // Download {
+    //     /// The number associated with the ST-Link to use
+    //     n: u8,
+    //     /// The address of the memory to download to the target (in hexadecimal without 0x prefix)
+    //     #[structopt(parse(try_from_str = "parse_hex"))]
+    //     loc: u32,
+    //     /// The the word to write to memory
+    //     #[structopt(parse(try_from_str = "parse_hex"))]
+    //     word: u32,
+    // },
     #[structopt(name = "trace")]
     Trace {
         /// The number associated with the ST-Link to use
@@ -76,7 +76,7 @@ fn main() {
         CLI::Info { n } => show_info_of_device(n).unwrap(),
         CLI::Reset { n, assert } => reset_target_of_device(n, assert).unwrap(),
         CLI::Dump { n, loc, words } => dump_memory(n, loc, words).unwrap(),
-        CLI::Download { n, loc, word } => download(n, loc, word).unwrap(),
+        //CLI::Download { n, loc, word } => download(n, loc, word).unwrap(),
         CLI::Trace { n, loc } => trace_u32_on_target(n, loc).unwrap(),
     }
 }
@@ -92,12 +92,12 @@ fn list_connected_devices() {
                 .for_each(|(num, link)| {
                     println!(
                         "[{}]: PID = {}, version = {}",
-                        num, link.info.usb_pid, link.info.version_name
+                        num, link.1.usb_pid, link.1.version_name
                     );
                 });
         }
         Err(e) => {
-            println!("{}", e);
+            println!("{:?}", e);
         }
     };
 }
@@ -205,58 +205,59 @@ fn dump_memory(n: u8, loc: u32, words: u32) -> Result<(), Error> {
     })
 }
 
-fn download(n: u8, loc: u32, word: u32) -> Result<(), Error> {
-    const CSW_SIZE32: u32 = 0x00000002;
-    const CSW_SADDRINC: u32 = 0x00000010;
-    const CSW_DBGSTAT: u32 = 0x00000040;
-    const CSW_HPROT: u32 = 0x02000000;
-    const CSW_MSTRDBG: u32 = 0x20000000;
-    const CSW_RESERVED: u32 = 0x01000000;
+// TODO: highly unfinished.
+// fn download(n: u8, loc: u32, word: u32) -> Result<(), Error> {
+//     const CSW_SIZE32: u32 = 0x00000002;
+//     const CSW_SADDRINC: u32 = 0x00000010;
+//     const CSW_DBGSTAT: u32 = 0x00000040;
+//     const CSW_HPROT: u32 = 0x02000000;
+//     const CSW_MSTRDBG: u32 = 0x20000000;
+//     const CSW_RESERVED: u32 = 0x01000000;
 
-    const CSW_VALUE: u32 = (CSW_RESERVED | CSW_MSTRDBG | CSW_HPROT | CSW_DBGSTAT | CSW_SADDRINC);
+//     const CSW_VALUE: u32 = (CSW_RESERVED | CSW_MSTRDBG | CSW_HPROT | CSW_DBGSTAT | CSW_SADDRINC);
 
-    let mut context = libusb::Context::new().or_else(|e| {
-        println!("Failed to open an USB context.");
-        Err(Error::USB(e))
-    })?;
-    let mut connected_devices = stlink::get_all_plugged_devices(&mut context).or_else(|e| {
-        println!("Failed to fetch plugged USB devices.");
-        Err(Error::USB(e))
-    })?;
-    if connected_devices.len() <= n as usize {
-        println!("The device with the given number was not found.");
-        Err(Error::DeviceNotFound)
-    } else {
-        Ok(())
-    }?;
-    let usb_device = connected_devices.remove(n as usize);
-    let mut st_link = stlink::STLink::new(usb_device);
-    st_link.open().or_else(|e| Err(Error::STLinkError(e)))?;
+//     let mut context = libusb::Context::new().or_else(|e| {
+//         println!("Failed to open an USB context.");
+//         Err(Error::USB(e))
+//     })?;
+//     let mut connected_devices = stlink::get_all_plugged_devices(&mut context).or_else(|e| {
+//         println!("Failed to fetch plugged USB devices.");
+//         Err(Error::USB(e))
+//     })?;
+//     if connected_devices.len() <= n as usize {
+//         println!("The device with the given number was not found.");
+//         Err(Error::DeviceNotFound)
+//     } else {
+//         Ok(())
+//     }?;
+//     let usb_device = STLinkUSBDevice::new(|device| device.remove(n as usize));
+//     let mut st_link = stlink::STLink::new(usb_device);
+//     st_link.open().or_else(|e| Err(Error::STLinkError(e)))?;
 
-    st_link
-        .attach(probe::protocol::WireProtocol::Swd)
-        .or_else(|e| Err(Error::STLinkError(e)))?;
+//     st_link
+//         .attach(probe::protocol::WireProtocol::Swd)
+//         .or_else(|e| Err(Error::STLinkError(e)))?;
 
-    st_link
-        .write_register(0x0, 0x0, CSW_VALUE | CSW_SIZE32)
-        .ok();
+//     st_link
+//         .write_register(0x0, 0x0, CSW_VALUE | CSW_SIZE32)
+//         .ok();
 
-    let mem = MemoryInterface::new(0x0);
+//     let mem = MemoryInterface::new(0x0);
 
-    let instant = Instant::now();
+//     let instant = Instant::now();
 
-    mem.write(&mut st_link, loc, word).or_else(|e| Err(Error::AccessPortError(e)))?;
+//     mem.write(&mut st_link, loc, word).or_else(|e| Err(Error::AccessPortError(e)))?;
 
-    let elapsed = instant.elapsed();
+//     let elapsed = instant.elapsed();
 
-    println!("Addr 0x{:08x?}: 0x{:08x}", loc, word);
+//     println!("Addr 0x{:08x?}: 0x{:08x}", loc, word);
 
-    println!("Wrote 1 word in {:?}", elapsed);
+//     println!("Wrote 1 word in {:?}", elapsed);
 
-    st_link.close().or_else(|e| Err(Error::STLinkError(e)))?;
+//     st_link.close().or_else(|e| Err(Error::STLinkError(e)))?;
 
-    Ok(())
-}
+//     Ok(())
+// }
 
 fn reset_target_of_device(n: u8, assert: Option<bool>) -> Result<(), Error> {
     with_device(n, |st_link| {
@@ -333,29 +334,20 @@ fn trace_u32_on_target(n: u8, loc: u32) -> Result<(), Error> {
 /// even in an error case inside the closure!
 fn with_device<F>(n: u8, mut f: F) -> Result<(), Error>
 where
-    F: FnMut(&mut stlink::STLink<'_>) -> Result<(), Error>
+    F: FnMut(&mut stlink::STLink) -> Result<(), Error>
 {
-    let mut context = libusb::Context::new().or_else(|e| {
-        println!("Failed to open an USB context.");
-        Err(Error::USB(e))
-    })?;
-    let mut connected_devices = stlink::get_all_plugged_devices(&mut context).or_else(|e| {
-        println!("Failed to fetch plugged USB devices.");
-        Err(Error::USB(e))
-    })?;
-    if connected_devices.len() <= n as usize {
-        println!("The device with the given number was not found.");
-        Err(Error::DeviceNotFound)
-    } else {
-        Ok(())
-    }?;
-    let usb_device = connected_devices.remove(n as usize);
-    let mut st_link = stlink::STLink::new(usb_device);
-    st_link.open().or_else(|e| Err(Error::STLinkError(e)))?;
+    let mut st_link = stlink::STLink::new(|mut devices| {
+        if devices.len() <= n as usize {
+            println!("The device with the given number was not found.");
+            Err(libusb::Error::NotFound)
+        } else {
+            Ok(devices.remove(n as usize).0)
+        }
+    }).or_else(|e| Err(Error::STLinkError(e)))?;
+    
     st_link
         .attach(probe::protocol::WireProtocol::Swd)
         .or_else(|e| Err(Error::STLinkError(e)))?;
     
     f(&mut st_link)
-        .or_else(|_| st_link.close().or_else(|e| Err(Error::STLinkError(e))))
 }

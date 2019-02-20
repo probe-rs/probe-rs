@@ -1,9 +1,3 @@
-pub trait APAccess<PORT, REGISTER, VALUE> {
-    type Error;
-    fn read_register_ap(&mut self, port: PORT, register: REGISTER) -> Result<VALUE, Self::Error>;
-    fn write_register_ap(&mut self, port: PORT, register: REGISTER, value: VALUE) -> Result<(), Self::Error>;
-}
-
 use crate::access_ports::memory_ap::TAR;
 use crate::access_ports::memory_ap::CSW;
 use crate::access_ports::memory_ap::MemoryAPValue;
@@ -14,14 +8,10 @@ use super::access_port::consts::*;
 use crate::access_ports::APRegister;
 use crate::access_ports::APValue;
 
-pub trait DAPAccess {
-    type Error: std::fmt::Debug;
-
-    /// Reads the DAP register on the specified port and address
-    fn read_register(&mut self, port: u16, addr: u16) -> Result<u32, Self::Error>;
-
-    /// Writes a value to the DAP register on the specified port and address
-    fn write_register(&mut self, port: u16, addr: u16, value: u32) -> Result<(), Self::Error>;
+pub trait APAccess<PORT, REGISTER, VALUE> {
+    type Error;
+    fn read_register_ap(&mut self, port: PORT, register: REGISTER) -> Result<VALUE, Self::Error>;
+    fn write_register_ap(&mut self, port: PORT, register: REGISTER, value: VALUE) -> Result<(), Self::Error>;
 }
 
 pub struct MockMemoryAP {
