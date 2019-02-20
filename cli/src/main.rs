@@ -108,8 +108,8 @@ enum Error {
     DeviceNotFound,
     STLinkError(stlink::STLinkError),
     AccessPortError(AccessPortError),
-    Python(&'static str),
     Custom(&'static str),
+    StdIOError(std::io::Error),
 }
 
 fn show_info_of_device(n: u8) -> Result<(), Error> {
@@ -241,13 +241,7 @@ fn download(n: u8, loc: u32, word: u32) -> Result<(), Error> {
         .write_register(0x0, 0x0, CSW_VALUE | CSW_SIZE32)
         .ok();
 
-    let mut mem = MemoryInterface::new(0x0);
-
-    // let mut f = File::open(file)?;
-    let data: Vec<u32> = vec![];
-    // for line in BufReader::new(file).lines() {
-    //     data.push(u32::from_str_radix(line?, 16)?);
-    // }
+    let mem = MemoryInterface::new(0x0);
 
     let instant = Instant::now();
 
@@ -291,7 +285,6 @@ fn reset_target_of_device(n: u8, assert: Option<bool>) -> Result<(), Error> {
 
 fn trace_u32_on_target(n: u8, loc: u32) -> Result<(), Error> {
     use std::io::prelude::*;
-    use std::process::{Command, Stdio};
     use std::thread::sleep;
     use std::time::Duration;
     use scroll::{Pwrite};
@@ -316,13 +309,12 @@ fn trace_u32_on_target(n: u8, loc: u32) -> Result<(), Error> {
 
             // Send value to plot.py.
             // Unwrap is safe as there is always an stdin in our case!
-            let v: u32 = 1337;
             let mut buf = [0 as u8; 8];
             // Unwrap is safe!
             buf.pwrite(instant, 0).unwrap();
             buf.pwrite(value, 4).unwrap();
-            std::io::stdout().write(&buf);
-            std::io::stdout().flush();
+            std::io::stdout().write(&buf).or_else(|e| Err(Error::StdIOError(e)))?;
+            std::io::stdout().flush().or_else(|e| Err(Error::StdIOError(e)))?;
 
             // Schedule next read.
             let elapsed = start.elapsed();
@@ -331,7 +323,7 @@ fn trace_u32_on_target(n: u8, loc: u32) -> Result<(), Error> {
             let time_to_wait = poll_every_ms - instant % poll_every_ms;
             sleep(Duration::from_millis(time_to_wait));
         }
-    });
+    })?;
 
     Ok(())
 }

@@ -1,6 +1,16 @@
+use crate::access_ports::memory_ap::TAR;
+use crate::access_ports::memory_ap::{
+    MemoryAP,
+    MemoryAPRegister,
+    MemoryAPValue,
+    DataSize,
+    CSW,
+};
+use crate::access_ports::APValue;
+use crate::ap_access::APAccess;
 use super::access_port::{
     AccessPortNumber,
-    AccessPortError
+    AccessPortError,
 };
 use super::access_port::consts::*;
 use super::dap_access::DAPAccess;
@@ -88,12 +98,15 @@ impl MemoryInterface {
     /// 
     /// The address where the read should be performed at has to be word aligned.
     /// Returns `AccessPortError::MemoryNotAligned` if this does not hold true.
-    pub fn read<S: ToMemoryReadSize>(&self, debug_port: &mut impl DAPAccess, addr: u32) -> Result<S, AccessPortError> {
+    pub fn read<S: ToMemoryReadSize>( &self, debug_port: &mut impl APAccess<MemoryAP, MemoryAPRegister, MemoryAPValue>, addr: u32) -> Result<S, AccessPortError> {
         if (addr & S::ALIGNMENT_MASK) == 0 {
-            self.write_reg(debug_port, MEM_AP_CSW, CSW_VALUE | S::MEMORY_TRANSFER_SIZE as u32)?;
-            self.write_reg(debug_port, MEM_AP_TAR, addr)?;
-            let result = self.read_reg(debug_port, MEM_AP_DRW)?;
-            Ok(S::to_result(result))
+            let mut csw: CSW = CSW { AddrInc: 1, ..Default::default() };
+            let value = MemoryAPValue::CSW(csw);
+            debug_port.write_register_ap(MemoryAP::new(0), MemoryAPRegister::CSW, value).or_else(|_| Err(AccessPortError::ProbeError))?;
+            debug_port.write_register_ap(MemoryAP::new(0), MemoryAPRegister::TAR0, MemoryAPValue::TAR0(TAR { address: addr })).or_else(|_| Err(AccessPortError::ProbeError))?;
+            let result = debug_port.read_register_ap(MemoryAP::new(0), MemoryAPRegister::DRW).or_else(|_| Err(AccessPortError::ProbeError))?;
+
+            Ok(S::to_result(result.to_u32()))
         } else {
             Err(AccessPortError::MemoryNotAligned)
         }
