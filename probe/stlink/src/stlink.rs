@@ -288,7 +288,10 @@ impl STLink {
     /// Port number to use to indicate DP registers.
     const DP_PORT: u16 = 0xffff;
 
-    pub fn new<F>(mut device_selector: F) -> Result<Self, STLinkError>
+    /// Creates a new STLink device instance.
+    /// This function takes care of all the initialization routines and expects a selector closure.
+    /// The selector closure is served with a list of connected, eligible ST-Links and should return one of them.
+    pub fn new_from_connected<F>(device_selector: F) -> Result<Self, STLinkError>
     where F: for<'a> FnMut(Vec<(Device<'a>, STLinkInfo)>) -> Result<Device<'a>, Error> {
         let mut stlink = Self {
             device: STLinkUSBDevice::new(device_selector)?,
@@ -299,7 +302,7 @@ impl STLink {
             current_apbanksel: 0x00
         };
 
-        stlink.init();
+        stlink.init()?;
 
         Ok(stlink)
     }

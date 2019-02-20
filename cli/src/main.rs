@@ -104,8 +104,6 @@ fn list_connected_devices() {
 
 #[derive(Debug)]
 enum Error {
-    USB(libusb::Error),
-    DeviceNotFound,
     STLinkError(stlink::STLinkError),
     AccessPortError(AccessPortError),
     Custom(&'static str),
@@ -336,7 +334,7 @@ fn with_device<F>(n: u8, mut f: F) -> Result<(), Error>
 where
     F: FnMut(&mut stlink::STLink) -> Result<(), Error>
 {
-    let mut st_link = stlink::STLink::new(|mut devices| {
+    let mut st_link = stlink::STLink::new_from_connected(|mut devices| {
         if devices.len() <= n as usize {
             println!("The device with the given number was not found.");
             Err(libusb::Error::NotFound)
@@ -344,7 +342,7 @@ where
             Ok(devices.remove(n as usize).0)
         }
     }).or_else(|e| Err(Error::STLinkError(e)))?;
-    
+
     st_link
         .attach(probe::protocol::WireProtocol::Swd)
         .or_else(|e| Err(Error::STLinkError(e)))?;
