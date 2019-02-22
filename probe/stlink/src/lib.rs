@@ -6,7 +6,6 @@ mod stlink;
 
 pub use crate::stlink::{
     STLink,
-    STLinkError,
 };
 pub use crate::usb_interface::{
     STLinkUSBDevice,

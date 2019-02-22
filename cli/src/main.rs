@@ -3,7 +3,7 @@ use std::time::Instant;
 use coresight::dap_access::DAPAccess;
 use coresight::access_port::AccessPortError;
 use coresight::memory_interface::MemoryInterface;
-use probe::debug_probe::DebugProbe;
+use probe::debug_probe::{DebugProbe, DebugProbeError};
 
 use structopt::StructOpt;
 
@@ -104,7 +104,7 @@ fn list_connected_devices() {
 
 #[derive(Debug)]
 enum Error {
-    STLinkError(stlink::STLinkError),
+    DebugProbeError(DebugProbeError),
     AccessPortError(AccessPortError),
     Custom(&'static str),
     StdIOError(std::io::Error),
@@ -115,11 +115,11 @@ fn show_info_of_device(n: u8) -> Result<(), Error> {
                 println!("EKKEKEEK");
         let version = st_link
             .get_version()
-            .or_else(|e| Err(Error::STLinkError(e)))?;
+            .or_else(|e| Err(Error::DebugProbeError(e)))?;
                 println!("EKKEKEEK");
         let vtg = st_link
             .get_target_voltage()
-            .or_else(|e| Err(Error::STLinkError(e)))?;
+            .or_else(|e| Err(Error::DebugProbeError(e)))?;
                 println!("EKKEKEEK");
 
         println!("Device information:");
@@ -129,11 +129,11 @@ fn show_info_of_device(n: u8) -> Result<(), Error> {
 
         st_link
             .write_register(0xFFFF, 0x2, 0x2)
-            .or_else(|e| Err(Error::STLinkError(e)))?;
+            .or_else(|e| Err(Error::DebugProbeError(e)))?;
 
         let target_info = st_link
             .read_register(0xFFFF, 0x4)
-            .or_else(|e| Err(Error::STLinkError(e)))?;
+            .or_else(|e| Err(Error::DebugProbeError(e)))?;
         let target_info = parse_target_id(target_info);
         println!("\nTarget Identification Register (TARGETID):");
         println!(
@@ -143,7 +143,7 @@ fn show_info_of_device(n: u8) -> Result<(), Error> {
 
         let target_info = st_link
             .read_register(0xFFFF, 0x0)
-            .or_else(|e| Err(Error::STLinkError(e)))?;
+            .or_else(|e| Err(Error::DebugProbeError(e)))?;
         let target_info = parse_target_id(target_info);
         println!("\nIdentification Code Register (IDCODE):");
         println!(
@@ -233,11 +233,11 @@ fn dump_memory(n: u8, loc: u32, words: u32) -> Result<(), Error> {
 //     }?;
 //     let usb_device = STLinkUSBDevice::new(|device| device.remove(n as usize));
 //     let mut st_link = stlink::STLink::new(usb_device);
-//     st_link.open().or_else(|e| Err(Error::STLinkError(e)))?;
+//     st_link.open().or_else(|e| Err(Error::DebugProbeError(e)))?;
 
 //     st_link
 //         .attach(probe::protocol::WireProtocol::Swd)
-//         .or_else(|e| Err(Error::STLinkError(e)))?;
+//         .or_else(|e| Err(Error::DebugProbeError(e)))?;
 
 //     st_link
 //         .write_register(0x0, 0x0, CSW_VALUE | CSW_SIZE32)
@@ -255,7 +255,7 @@ fn dump_memory(n: u8, loc: u32, words: u32) -> Result<(), Error> {
 
 //     println!("Wrote 1 word in {:?}", elapsed);
 
-//     st_link.close().or_else(|e| Err(Error::STLinkError(e)))?;
+//     st_link.close().or_else(|e| Err(Error::DebugProbeError(e)))?;
 
 //     Ok(())
 // }
@@ -269,7 +269,7 @@ fn reset_target_of_device(n: u8, assert: Option<bool>) -> Result<(), Error> {
             );
             st_link
                 .drive_nreset(assert)
-                .or_else(|e| Err(Error::STLinkError(e)))?;
+                .or_else(|e| Err(Error::DebugProbeError(e)))?;
             println!(
                 "Target reset has been {}.",
                 if assert { "asserted" } else { "deasserted" }
@@ -278,7 +278,7 @@ fn reset_target_of_device(n: u8, assert: Option<bool>) -> Result<(), Error> {
             println!("Triggering target reset.");
             st_link
                 .target_reset()
-                .or_else(|e| Err(Error::STLinkError(e)))?;
+                .or_else(|e| Err(Error::DebugProbeError(e)))?;
             println!("Target reset has been triggered.");
         }
         Ok(())
@@ -344,11 +344,11 @@ where
         } else {
             Ok(devices.remove(n as usize).0)
         }
-    }).or_else(|e| Err(Error::STLinkError(e)))?;
+    }).or_else(|e| Err(Error::DebugProbeError(e)))?;
 
     st_link
         .attach(probe::protocol::WireProtocol::Swd)
-        .or_else(|e| Err(Error::STLinkError(e)))?;
+        .or_else(|e| Err(Error::DebugProbeError(e)))?;
     
     f(&mut st_link)
 }

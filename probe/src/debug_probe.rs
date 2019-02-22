@@ -1,5 +1,25 @@
 use crate::protocol::WireProtocol;
 
+#[derive(Debug)]
+pub enum DebugProbeError {
+    USBError,
+    JTAGNotSupportedOnProbe,
+    ProbeFirmwareOutdated,
+    VoltageDivisionByZero,
+    UnknownMode,
+    JTagDoesNotSupportMultipleAP,
+    UnknownError,
+    TransferFault(u32, u16),
+    DataAlignmentError,
+    Access16BitNotSupported,
+    BlanksNotAllowedOnDPRegister,
+    RegisterAddressMustBe16Bit,
+    NotEnoughBytesRead,
+    EndpointNotFound,
+    RentalInitError,
+}
+
+
 pub trait DebugProbe {
     type Error;
 

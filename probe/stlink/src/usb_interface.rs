@@ -4,7 +4,8 @@ use std::time::Duration;
 
 use std::collections::HashMap;
 
-use crate::stlink::{STLinkError, ToSTLinkErr};
+use crate::stlink::ToSTLinkErr;
+use probe::debug_probe::DebugProbeError;
 
 /// The USB Command packet size.
 const CMD_LEN: usize = 16;
@@ -89,7 +90,7 @@ fn usb_match<'a>(device: &Device<'a>) -> bool {
 
 pub fn get_all_plugged_devices<'a>(
     context: &'a Context,
-) -> Result<Vec<(Device<'a>, STLinkInfo)>, STLinkError> {
+) -> Result<Vec<(Device<'a>, STLinkInfo)>, DebugProbeError> {
     let devices = context.devices().or_usb_err()?;
     devices.iter()
             .filter(usb_match)
@@ -98,12 +99,12 @@ pub fn get_all_plugged_devices<'a>(
                 let info = USB_PID_EP_MAP[&descriptor.product_id()].clone();
                 Ok((d, info))
             })
-            .collect::<Result<Vec<_>, STLinkError>>()
+            .collect::<Result<Vec<_>, DebugProbeError>>()
 }
 
 impl STLinkUSBDevice {
     /// Creates and initializes a new USB device.
-    pub fn new<F>(mut device_selector: F) -> Result<Self, STLinkError>
+    pub fn new<F>(mut device_selector: F) -> Result<Self, DebugProbeError>
     where F: for<'a> FnMut(Vec<(Device<'a>, STLinkInfo)>) -> Result<Device<'a>, Error>
     {
         let context = Context::new().or_usb_err()?;
@@ -142,20 +143,20 @@ impl STLinkUSBDevice {
                 }
 
                 if !endpoint_out {
-                    return Err(STLinkError::EndpointNotFound);
+                    return Err(DebugProbeError::EndpointNotFound);
                 }
 
                 if !endpoint_in {
-                    return Err(STLinkError::EndpointNotFound);
+                    return Err(DebugProbeError::EndpointNotFound);
                 }
 
                 if !endpoint_swv {
-                    return Err(STLinkError::EndpointNotFound);
+                    return Err(DebugProbeError::EndpointNotFound);
                 }
 
                 Ok(device_handle)
             },
-        ).or_else(|_| Err(STLinkError::RentalInitError))?;
+        ).or_else(|_| Err(DebugProbeError::RentalInitError))?;
 
         let mut usb_stlink = Self {
             renter,
@@ -166,7 +167,7 @@ impl STLinkUSBDevice {
     }
 
     /// Writes to the out EP.
-    pub fn read(&mut self, size: u16, timeout: Duration) -> Result<Vec<u8>, STLinkError> {
+    pub fn read(&mut self, size: u16, timeout: Duration) -> Result<Vec<u8>, DebugProbeError> {
         let mut buf = vec![0; size as usize];
         let ep_in = self.info.ep_in;
         self.renter.rent(|dh| dh.read_bulk(ep_in, buf.as_mut_slice(), timeout)).or_usb_err()?;
@@ -183,7 +184,7 @@ impl STLinkUSBDevice {
         write_data: &[u8],
         read_data: &mut [u8],
         timeout: Duration,
-    ) -> Result<(), STLinkError> {
+    ) -> Result<(), DebugProbeError> {
         // Command phase.
         for _ in 0..(CMD_LEN - cmd.len()) {
             cmd.push(0);
@@ -195,32 +196,32 @@ impl STLinkUSBDevice {
         let written_bytes = self.renter.rent(|dh| dh.write_bulk(ep_out, &cmd, timeout)).or_usb_err()?;
 
         if written_bytes != CMD_LEN {
-            return Err(STLinkError::NotEnoughBytesRead);
+            return Err(DebugProbeError::NotEnoughBytesRead);
         }
         // Optional data out phase.
         if write_data.len() > 0 {
             let written_bytes = self.renter.rent(|dh| dh.write_bulk(ep_out, write_data, timeout)).or_usb_err()?;
             if written_bytes != write_data.len() {
-                return Err(STLinkError::NotEnoughBytesRead);
+                return Err(DebugProbeError::NotEnoughBytesRead);
             }
         }
         // Optional data in phase.
         if read_data.len() > 0 {
             let read_bytes = self.renter.rent(|dh| dh.read_bulk(ep_in, read_data, timeout)).or_usb_err()?;
             if read_bytes != read_data.len() {
-                return Err(crate::stlink::STLinkError::NotEnoughBytesRead);
+                return Err(DebugProbeError::NotEnoughBytesRead);
             }
         }
         Ok(())
     }
 
     /// Special read, TODO: for later.
-    pub fn read_swv(&mut self, size: usize, timeout: Duration) -> Result<Vec<u8>, STLinkError> {
+    pub fn read_swv(&mut self, size: usize, timeout: Duration) -> Result<Vec<u8>, DebugProbeError> {
         let ep_swv = self.info.ep_swv;
         let mut buf = Vec::with_capacity(size as usize);
         let read_bytes = self.renter.rent(|dh| dh.read_bulk(ep_swv, buf.as_mut_slice(), timeout)).or_usb_err()?;
         if read_bytes != size {
-            return Err(crate::stlink::STLinkError::NotEnoughBytesRead);
+            return Err(DebugProbeError::NotEnoughBytesRead);
         } else {
             Ok(buf)
         }
