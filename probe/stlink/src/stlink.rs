@@ -1,12 +1,8 @@
 use crate::usb_interface::STLinkInfo;
-use libusb::Error;
-use libusb::Device;
-use coresight::access_ports::memory_ap::{
-    MemoryAPValue,
-    MemoryAPRegister,
-    MemoryAP,
-};
+use coresight::access_ports::memory_ap::{MemoryAP, MemoryAPRegister, MemoryAPValue};
 use coresight::ap_access::APAccess;
+use libusb::Device;
+use libusb::Error;
 use scroll::{Pread, BE};
 
 use coresight::dap_access::DAPAccess;
@@ -125,6 +121,10 @@ impl DebugProbe for STLink {
         Ok((self.hw_version, self.jtag_version))
     }
 
+    fn get_name(&self) -> &str {
+        "ST-Link"
+    }
+
     /// Enters debug mode.
     fn attach(&mut self, protocol: WireProtocol) -> Result<(), Self::Error> {
         self.enter_idle()?;
@@ -219,9 +219,13 @@ impl DAPAccess for STLink {
 impl APAccess<MemoryAP, MemoryAPRegister, MemoryAPValue> for STLink {
     type Error = STLinkError;
 
-    fn read_register_ap(&mut self, port: MemoryAP, register: MemoryAPRegister) -> Result<MemoryAPValue, Self::Error> {
-        use coresight::access_ports::APType;
+    fn read_register_ap(
+        &mut self,
+        port: MemoryAP,
+        register: MemoryAPRegister,
+    ) -> Result<MemoryAPValue, Self::Error> {
         use coresight::access_ports::APRegister;
+        use coresight::access_ports::APType;
         // TODO: Make those next lines use the future typed DP interface.
         let mut cache_changed = false;
         if self.current_apsel != port.get_port_number() {
@@ -233,16 +237,22 @@ impl APAccess<MemoryAP, MemoryAPRegister, MemoryAPValue> for STLink {
             cache_changed = true;
         }
         if cache_changed {
-            let select = ((self.current_apsel as u32) << 24) | ((self.current_apbanksel as u32) << 4);
+            let select =
+                ((self.current_apsel as u32) << 24) | ((self.current_apbanksel as u32) << 4);
             self.write_register(0xFFFF, 0x008, select)?;
         }
         let result = self.read_register(self.current_apsel as u16, register.to_u16())?;
         Ok(register.get_value(result))
     }
-    
-    fn write_register_ap(&mut self, port: MemoryAP, register: MemoryAPRegister, value: MemoryAPValue) -> Result<(), Self::Error> {
-        use coresight::access_ports::APType;
+
+    fn write_register_ap(
+        &mut self,
+        port: MemoryAP,
+        register: MemoryAPRegister,
+        value: MemoryAPValue,
+    ) -> Result<(), Self::Error> {
         use coresight::access_ports::APRegister;
+        use coresight::access_ports::APType;
         use coresight::access_ports::APValue;
         // TODO: Make those next lines use the future typed DP interface.
         let mut cache_changed = false;
@@ -255,7 +265,8 @@ impl APAccess<MemoryAP, MemoryAPRegister, MemoryAPValue> for STLink {
             cache_changed = true;
         }
         if cache_changed {
-            let select = ((self.current_apsel as u32) << 24) | ((self.current_apbanksel as u32) << 4);
+            let select =
+                ((self.current_apsel as u32) << 24) | ((self.current_apbanksel as u32) << 4);
             self.write_register(0xFFFF, 0x008, select)?;
         }
         self.write_register(self.current_apsel as u16, register.to_u16(), value.to_u32())?;
@@ -292,14 +303,16 @@ impl STLink {
     /// This function takes care of all the initialization routines and expects a selector closure.
     /// The selector closure is served with a list of connected, eligible ST-Links and should return one of them.
     pub fn new_from_connected<F>(device_selector: F) -> Result<Self, STLinkError>
-    where F: for<'a> FnMut(Vec<(Device<'a>, STLinkInfo)>) -> Result<Device<'a>, Error> {
+    where
+        F: for<'a> FnMut(Vec<(Device<'a>, STLinkInfo)>) -> Result<Device<'a>, Error>,
+    {
         let mut stlink = Self {
             device: STLinkUSBDevice::new(device_selector)?,
             hw_version: 0,
             jtag_version: 0,
             protocol: WireProtocol::Swd,
             current_apsel: 0x0000,
-            current_apbanksel: 0x00
+            current_apbanksel: 0x00,
         };
 
         stlink.init()?;
