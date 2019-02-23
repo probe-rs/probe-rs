@@ -124,7 +124,7 @@ impl DebugProbe for STLink {
             TIMEOUT,
         )?;
         self.protocol = protocol;
-        return Self::check_status(&buf);
+        Self::check_status(&buf)
     }
 
     /// Leave debug mode.
@@ -145,7 +145,7 @@ impl DebugProbe for STLink {
             &mut buf,
             TIMEOUT,
         )?;
-        return Self::check_status(&buf);
+        Self::check_status(&buf)
     }
 }
 
@@ -207,42 +207,41 @@ where
     fn read_register_ap(&mut self, port: MemoryAP, _register: REGISTER) -> Result<REGISTER, Self::Error> {
         use coresight::access_ports::APType;
         // TODO: Make those next lines use the future typed DP interface.
-        let mut cache_changed = false;
-        if self.current_apsel != port.get_port_number() {
+        let cache_changed = if self.current_apsel != port.get_port_number() {
             self.current_apsel = port.get_port_number();
-            cache_changed = true;
-        }
-        if self.current_apbanksel != REGISTER::APBANKSEL {
+            true
+        } else if self.current_apbanksel != REGISTER::APBANKSEL {
             self.current_apbanksel = REGISTER::APBANKSEL;
-            cache_changed = true;
-        }
+            true
+        } else {
+            false
+        };
         if cache_changed {
-            let select =
-                ((self.current_apsel as u32) << 24) | ((self.current_apbanksel as u32) << 4);
+            let select = (u32::from(self.current_apsel) << 24) | (u32::from(self.current_apbanksel) << 4);
             self.write_register(0xFFFF, 0x008, select)?;
         }
-        let result = self.read_register(self.current_apsel as u16, REGISTER::ADDRESS)?;
+        let result = self.read_register(u16::from(self.current_apsel), REGISTER::ADDRESS)?;
         Ok(REGISTER::from(result))
     }
     
     fn write_register_ap(&mut self, port: MemoryAP, register: REGISTER) -> Result<(), Self::Error> {
         use coresight::access_ports::APType;
         // TODO: Make those next lines use the future typed DP interface.
-        let mut cache_changed = false;
-        if self.current_apsel != port.get_port_number() {
+        let cache_changed = if self.current_apsel != port.get_port_number() {
             self.current_apsel = port.get_port_number();
-            cache_changed = true;
-        }
-        if self.current_apbanksel != REGISTER::APBANKSEL {
+            true
+        } else if self.current_apbanksel != REGISTER::APBANKSEL {
             self.current_apbanksel = REGISTER::APBANKSEL;
-            cache_changed = true;
-        }
+            true
+        } else {
+            false
+        };
         if cache_changed {
             let select =
-                ((self.current_apsel as u32) << 24) | ((self.current_apbanksel as u32) << 4);
+                (u32::from(self.current_apsel) << 24) | (u32::from(self.current_apbanksel) << 4);
             self.write_register(0xFFFF, 0x008, select)?;
         }
-        self.write_register(self.current_apsel as u16, REGISTER::ADDRESS, register.into())?;
+        self.write_register(u16::from(self.current_apsel), REGISTER::ADDRESS, register.into())?;
         Ok(())
     }
 }
@@ -258,13 +257,13 @@ impl STLink {
     /// Maximum number of bytes to send or receive for 32- and 16- bit transfers.
     ///
     /// 8-bit transfers have a maximum size of the maximum USB packet size (64 bytes for full speed).
-    const MAXIMUM_TRANSFER_SIZE: u32 = 1024;
+    const _MAXIMUM_TRANSFER_SIZE: u32 = 1024;
 
     /// Minimum required STLink firmware version.
     const MIN_JTAG_VERSION: u8 = 24;
 
     /// Firmware version that adds 16-bit transfers.
-    const MIN_JTAG_VERSION_16BIT_XFER: u8 = 26;
+    const _MIN_JTAG_VERSION_16BIT_XFER: u8 = 26;
 
     /// Firmware version that adds multiple AP support.
     const MIN_JTAG_VERSION_MULTI_AP: u8 = 28;
@@ -404,35 +403,37 @@ impl STLink {
 
     pub fn open_ap(&mut self, apsel: AccessPort) -> Result<(), DebugProbeError> {
         if self.jtag_version < Self::MIN_JTAG_VERSION_MULTI_AP {
-            return Err(DebugProbeError::JTagDoesNotSupportMultipleAP);
+            Err(DebugProbeError::JTagDoesNotSupportMultipleAP)
+        } else {
+            let mut buf = [0; 2];
+            self.device.write(
+                vec![
+                    commands::JTAG_COMMAND,
+                    commands::JTAG_INIT_AP,
+                    apsel,
+                    commands::JTAG_AP_NO_CORE,
+                ],
+                &[],
+                &mut buf,
+                TIMEOUT,
+            )?;
+            Self::check_status(&buf)
         }
-        let mut buf = [0; 2];
-        self.device.write(
-            vec![
-                commands::JTAG_COMMAND,
-                commands::JTAG_INIT_AP,
-                apsel,
-                commands::JTAG_AP_NO_CORE,
-            ],
-            &[],
-            &mut buf,
-            TIMEOUT,
-        )?;
-        return Self::check_status(&buf);
     }
 
     pub fn close_ap(&mut self, apsel: AccessPort) -> Result<(), DebugProbeError> {
         if self.jtag_version < Self::MIN_JTAG_VERSION_MULTI_AP {
-            return Err(DebugProbeError::JTagDoesNotSupportMultipleAP);
+            Err(DebugProbeError::JTagDoesNotSupportMultipleAP)
+        } else {
+            let mut buf = [0; 2];
+            self.device.write(
+                vec![commands::JTAG_COMMAND, commands::JTAG_CLOSE_AP_DBG, apsel],
+                &[],
+                &mut buf,
+                TIMEOUT,
+            )?;
+            Self::check_status(&buf)
         }
-        let mut buf = [0; 2];
-        self.device.write(
-            vec![commands::JTAG_COMMAND, commands::JTAG_CLOSE_AP_DBG, apsel],
-            &[],
-            &mut buf,
-            TIMEOUT,
-        )?;
-        return Self::check_status(&buf);
     }
 
     /// Drives the nRESET pin.
@@ -450,7 +451,7 @@ impl STLink {
             &mut buf,
             TIMEOUT,
         )?;
-        return Self::check_status(&buf);
+        Self::check_status(&buf)
     }
 
     /// Validates the status given.
@@ -463,242 +464,5 @@ impl STLink {
         } else {
             Ok(())
         }
-    }
-
-    pub fn clear_sticky_error(&mut self) -> Result<(), DebugProbeError> {
-        // TODO: Implement this as soon as CoreSight is implemented
-        // match self.protocol {
-        //     WireProtocol::Jtag => self.write_dap_register(Self::DP_PORT, dap.DP_CTRL_STAT, dap.CTRLSTAT_STICKYERR),
-        //     WireProtocol::Swd => self.write_dap_register(Self::DP_PORT, dap.DP_ABORT, dap.ABORT_STKERRCLR)
-        // }
-        Ok(())
-    }
-
-    pub fn read_mem(
-        &mut self,
-        mut addr: u32,
-        mut size: u32,
-        memcmd: u8,
-        max: u32,
-        apsel: AccessPort,
-    ) -> Result<Vec<u8>, DebugProbeError> {
-        let mut result = vec![];
-        while size > 0 {
-            let transfer_size = u32::min(size, max);
-
-            let cmd = vec![
-                commands::JTAG_COMMAND,
-                memcmd,
-                addr as u8,
-                (addr >> 8) as u8,
-                (addr >> 16) as u8,
-                (addr >> 24) as u8,
-                (transfer_size >> 0) as u8,
-                (transfer_size >> 8) as u8,
-                apsel,
-            ];
-            let mut buf = Vec::with_capacity(transfer_size as usize);
-            self.device.write(cmd, &[], buf.as_mut_slice(), TIMEOUT)?;
-            result.extend(buf.into_iter());
-
-            addr += transfer_size as u32;
-            size -= transfer_size;
-
-            // Check status of this read.
-            let mut buf = [0; 12];
-            self.device.write(
-                vec![commands::JTAG_COMMAND, commands::JTAG_GETLASTRWSTATUS2],
-                &[],
-                &mut buf,
-                TIMEOUT,
-            )?;
-            let status: u16 = (&buf[0..2]).pread(0).unwrap();
-            let fault_address: u32 = (&buf[4..8]).pread(0).unwrap();
-            if if status == Status::JtagUnknownError as u16 {
-                true
-            } else if status == Status::SwdApFault as u16 {
-                true
-            } else if status == Status::SwdDpFault as u16 {
-                true
-            } else if status == Status::JtagOk as u16 {
-                return Err(DebugProbeError::UnknownError);
-            } else {
-                false
-            } {
-                self.clear_sticky_error().ok();
-                return Err(DebugProbeError::TransferFault(
-                    fault_address,
-                    (transfer_size - (fault_address - addr)) as u16,
-                ));
-            }
-        }
-        Ok(result)
-    }
-
-    pub fn write_mem(
-        &mut self,
-        mut addr: u32,
-        mut data: Vec<u8>,
-        memcmd: u8,
-        max: u32,
-        apsel: AccessPort,
-    ) -> Result<(), DebugProbeError> {
-        while data.len() > 0 {
-            let transfer_size = u32::min(data.len() as u32, max);
-            let transfer_data = &data[0..transfer_size as usize];
-
-            let cmd = vec![
-                commands::JTAG_COMMAND,
-                memcmd,
-                addr as u8,
-                (addr >> 8) as u8,
-                (addr >> 16) as u8,
-                (addr >> 24) as u8,
-                (transfer_size >> 0) as u8,
-                (transfer_size >> 8) as u8,
-                apsel,
-            ];
-            self.device.write(cmd, transfer_data, &mut [], TIMEOUT)?;
-
-            addr += transfer_size as u32;
-            data.drain(..transfer_size as usize);
-
-            // Check status of this read.
-            let mut buf = [0; 12];
-            self.device.write(
-                vec![commands::JTAG_COMMAND, commands::JTAG_GETLASTRWSTATUS2],
-                &[],
-                &mut buf,
-                TIMEOUT,
-            )?;
-            let status: u16 = (&buf[0..2]).pread(0).unwrap();
-            let fault_address: u32 = (&buf[4..8]).pread(0).unwrap();
-            if if status == Status::JtagUnknownError as u16 {
-                true
-            } else if status == Status::SwdApFault as u16 {
-                true
-            } else if status == Status::SwdDpFault as u16 {
-                true
-            } else if status == Status::JtagOk as u16 {
-                return Err(DebugProbeError::UnknownError);
-            } else {
-                false
-            } {
-                self.clear_sticky_error().ok();
-                return Err(DebugProbeError::TransferFault(
-                    fault_address,
-                    (transfer_size - (fault_address - addr)) as u16,
-                ));
-            }
-        }
-        Ok(())
-    }
-
-    pub fn read_mem32(
-        &mut self,
-        addr: u32,
-        size: u32,
-        apsel: AccessPort,
-    ) -> Result<Vec<u8>, DebugProbeError> {
-        if (addr & 0x3) == 0 && (size & 0x3) == 0 {
-            return self.read_mem(
-                addr,
-                size,
-                commands::JTAG_READMEM_32BIT,
-                Self::MAXIMUM_TRANSFER_SIZE,
-                apsel,
-            );
-        }
-        Err(DebugProbeError::DataAlignmentError)
-    }
-
-    pub fn write_mem32(
-        &mut self,
-        addr: u32,
-        data: Vec<u8>,
-        apsel: AccessPort,
-    ) -> Result<(), DebugProbeError> {
-        if (addr & 0x3) == 0 && (data.len() & 0x3) == 0 {
-            return self.write_mem(
-                addr,
-                data,
-                commands::JTAG_WRITEMEM_32BIT,
-                Self::MAXIMUM_TRANSFER_SIZE,
-                apsel,
-            );
-        }
-        Err(DebugProbeError::DataAlignmentError)
-    }
-
-    pub fn read_mem16(
-        &mut self,
-        addr: u32,
-        size: u32,
-        apsel: AccessPort,
-    ) -> Result<Vec<u8>, DebugProbeError> {
-        if (addr & 0x1) == 0 && (size & 0x1) == 0 {
-            if self.jtag_version < Self::MIN_JTAG_VERSION_16BIT_XFER {
-                return Err(DebugProbeError::Access16BitNotSupported);
-            }
-            return self.read_mem(
-                addr,
-                size,
-                commands::JTAG_READMEM_16BIT,
-                Self::MAXIMUM_TRANSFER_SIZE,
-                apsel,
-            );
-        }
-        Err(DebugProbeError::DataAlignmentError)
-    }
-
-    pub fn write_mem16(
-        &mut self,
-        addr: u32,
-        data: Vec<u8>,
-        apsel: AccessPort,
-    ) -> Result<(), DebugProbeError> {
-        if (addr & 0x1) == 0 && (data.len() & 0x1) == 0 {
-            if self.jtag_version < Self::MIN_JTAG_VERSION_16BIT_XFER {
-                return Err(DebugProbeError::Access16BitNotSupported);
-            }
-            return self.write_mem(
-                addr,
-                data,
-                commands::JTAG_WRITEMEM_16BIT,
-                Self::MAXIMUM_TRANSFER_SIZE,
-                apsel,
-            );
-        }
-        Err(DebugProbeError::DataAlignmentError)
-    }
-
-    pub fn read_mem8(
-        &mut self,
-        addr: u32,
-        size: u32,
-        apsel: AccessPort,
-    ) -> Result<Vec<u8>, DebugProbeError> {
-        self.read_mem(
-            addr,
-            size,
-            commands::JTAG_READMEM_8BIT,
-            Self::MAXIMUM_TRANSFER_SIZE,
-            apsel,
-        )
-    }
-
-    pub fn write_mem8(
-        &mut self,
-        addr: u32,
-        data: Vec<u8>,
-        apsel: AccessPort,
-    ) -> Result<(), DebugProbeError> {
-        self.write_mem(
-            addr,
-            data,
-            commands::JTAG_WRITEMEM_8BIT,
-            Self::MAXIMUM_TRANSFER_SIZE,
-            apsel,
-        )
     }
 }

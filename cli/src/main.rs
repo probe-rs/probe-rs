@@ -82,8 +82,8 @@ fn main() {
 }
 
 fn list_connected_devices() {
-    let mut context = libusb::Context::new().unwrap();
-    match stlink::get_all_plugged_devices(&mut context) {
+    let context = libusb::Context::new().unwrap();
+    match stlink::get_all_plugged_devices(&context) {
         Ok(connected_stlinks) => {
             println!("The following devices were found:");
             connected_stlinks
@@ -104,10 +104,32 @@ fn list_connected_devices() {
 
 #[derive(Debug)]
 enum Error {
-    DebugProbeError(DebugProbeError),
-    AccessPortError(AccessPortError),
+    DebugProbe(DebugProbeError),
+    AccessPort(AccessPortError),
     Custom(&'static str),
-    StdIOError(std::io::Error),
+    StdIO(std::io::Error),
+}
+
+trait ToError<T> {
+    fn or_local_err(self) -> Result<T, Error>;
+}
+
+impl<T> ToError<T> for Result<T, DebugProbeError> {
+    fn or_local_err(self) -> Result<T, Error> {
+        match self {
+            Ok(t) => Ok(t),
+            Err(e) => Err(Error::DebugProbe(e)),
+        }
+    }
+}
+
+impl<T> ToError<T> for Result<T, AccessPortError> {
+    fn or_local_err(self) -> Result<T, Error> {
+        match self {
+            Ok(t) => Ok(t),
+            Err(e) => Err(Error::AccessPort(e)),
+        }
+    }
 }
 
 fn show_info_of_device(n: u8) -> Result<(), Error> {
@@ -115,11 +137,11 @@ fn show_info_of_device(n: u8) -> Result<(), Error> {
                 println!("EKKEKEEK");
         let version = st_link
             .get_version()
-            .or_else(|e| Err(Error::DebugProbeError(e)))?;
+            .or_local_err()?;
                 println!("EKKEKEEK");
         let vtg = st_link
             .get_target_voltage()
-            .or_else(|e| Err(Error::DebugProbeError(e)))?;
+            .or_local_err()?;
                 println!("EKKEKEEK");
 
         println!("Device information:");
@@ -129,11 +151,11 @@ fn show_info_of_device(n: u8) -> Result<(), Error> {
 
         st_link
             .write_register(0xFFFF, 0x2, 0x2)
-            .or_else(|e| Err(Error::DebugProbeError(e)))?;
+            .or_local_err()?;
 
         let target_info = st_link
             .read_register(0xFFFF, 0x4)
-            .or_else(|e| Err(Error::DebugProbeError(e)))?;
+            .or_local_err()?;
         let target_info = parse_target_id(target_info);
         println!("\nTarget Identification Register (TARGETID):");
         println!(
@@ -143,7 +165,7 @@ fn show_info_of_device(n: u8) -> Result<(), Error> {
 
         let target_info = st_link
             .read_register(0xFFFF, 0x0)
-            .or_else(|e| Err(Error::DebugProbeError(e)))?;
+            .or_local_err()?;
         let target_info = parse_target_id(target_info);
         println!("\nIdentification Code Register (IDCODE):");
         println!(
@@ -190,7 +212,7 @@ fn dump_memory(n: u8, loc: u32, words: u32) -> Result<(), Error> {
         // Start timer.
         let instant = Instant::now();
 
-        mem.read_block(st_link, loc, &mut data.as_mut_slice()).or_else(|e| Err(Error::AccessPortError(e)))?;
+        mem.read_block(st_link, loc, &mut data.as_mut_slice()).or_else(|e| Err(Error::AccessPort(e)))?;
         // Stop timer.
         let elapsed = instant.elapsed();
 
@@ -268,7 +290,7 @@ fn reset_target_of_device(n: u8, assert: Option<bool>) -> Result<(), Error> {
             );
             st_link
                 .drive_nreset(assert)
-                .or_else(|e| Err(Error::DebugProbeError(e)))?;
+                .or_local_err()?;
             println!(
                 "Target reset has been {}.",
                 if assert { "asserted" } else { "deasserted" }
@@ -277,7 +299,7 @@ fn reset_target_of_device(n: u8, assert: Option<bool>) -> Result<(), Error> {
             println!("Triggering target reset.");
             st_link
                 .target_reset()
-                .or_else(|e| Err(Error::DebugProbeError(e)))?;
+                .or_local_err()?;
             println!("Target reset has been triggered.");
         }
         Ok(())
@@ -300,10 +322,11 @@ fn trace_u32_on_target(n: u8, loc: u32) -> Result<(), Error> {
         loop {
             // Prepare read.
             let elapsed = start.elapsed();
-            let instant = elapsed.as_secs() * 1000 + elapsed.subsec_millis() as u64;
+            let instant = elapsed.as_secs() * 1000 + u64::from(elapsed.subsec_millis());
 
             // Read data.
-            let value: u32 = mem.read(st_link, loc).or_else(|e| Err(Error::AccessPortError(e)))?;
+            let value: u32 = mem.read(st_link, loc)
+                                .or_local_err()?;
 
             xs.push(instant);
             ys.push(value);
@@ -314,12 +337,16 @@ fn trace_u32_on_target(n: u8, loc: u32) -> Result<(), Error> {
             // Unwrap is safe!
             buf.pwrite(instant, 0).unwrap();
             buf.pwrite(value, 4).unwrap();
-            std::io::stdout().write(&buf).or_else(|e| Err(Error::StdIOError(e)))?;
-            std::io::stdout().flush().or_else(|e| Err(Error::StdIOError(e)))?;
+            std::io::stdout()
+                    .write(&buf)
+                    .or_else(|e| Err(Error::StdIO(e)))?;
+            std::io::stdout()
+                    .flush()
+                    .or_else(|e| Err(Error::StdIO(e)))?;
 
             // Schedule next read.
             let elapsed = start.elapsed();
-            let instant = elapsed.as_secs() * 1000 + elapsed.subsec_millis() as u64;
+            let instant = elapsed.as_secs() * 1000 + u64::from(elapsed.subsec_millis());
             let poll_every_ms = 50;
             let time_to_wait = poll_every_ms - instant % poll_every_ms;
             sleep(Duration::from_millis(time_to_wait));
@@ -343,11 +370,11 @@ where
         } else {
             Ok(devices.remove(n as usize).0)
         }
-    }).or_else(|e| Err(Error::DebugProbeError(e)))?;
+    }).or_local_err()?;
 
     st_link
         .attach(probe::protocol::WireProtocol::Swd)
-        .or_else(|e| Err(Error::DebugProbeError(e)))?;
+        .or_local_err()?;
     
     f(&mut st_link)
 }

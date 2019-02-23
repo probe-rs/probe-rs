@@ -199,14 +199,14 @@ impl STLinkUSBDevice {
             return Err(DebugProbeError::NotEnoughBytesRead);
         }
         // Optional data out phase.
-        if write_data.len() > 0 {
+        if !write_data.is_empty() {
             let written_bytes = self.renter.rent(|dh| dh.write_bulk(ep_out, write_data, timeout)).or_usb_err()?;
             if written_bytes != write_data.len() {
                 return Err(DebugProbeError::NotEnoughBytesRead);
             }
         }
         // Optional data in phase.
-        if read_data.len() > 0 {
+        if !read_data.is_empty() {
             let read_bytes = self.renter.rent(|dh| dh.read_bulk(ep_in, read_data, timeout)).or_usb_err()?;
             if read_bytes != read_data.len() {
                 return Err(DebugProbeError::NotEnoughBytesRead);
@@ -221,7 +221,7 @@ impl STLinkUSBDevice {
         let mut buf = Vec::with_capacity(size as usize);
         let read_bytes = self.renter.rent(|dh| dh.read_bulk(ep_swv, buf.as_mut_slice(), timeout)).or_usb_err()?;
         if read_bytes != size {
-            return Err(DebugProbeError::NotEnoughBytesRead);
+            Err(DebugProbeError::NotEnoughBytesRead)
         } else {
             Ok(buf)
         }
