@@ -1,119 +1,107 @@
-use crate::access_ports::memory_ap::TAR;
-use crate::access_ports::memory_ap::CSW;
-use crate::access_ports::memory_ap::MemoryAPValue;
-use crate::access_ports::memory_ap::MemoryAPRegister;
-use crate::access_ports::memory_ap::MemoryAP;
-use crate::access_ports::memory_ap::DataSize;
-use super::access_port::consts::*;
-use crate::access_ports::APRegister;
-use crate::access_ports::APValue;
+use std::collections::HashMap;
+use crate::access_ports::memory_ap::{
+    TAR,
+    CSW,
+    DRW,
+    MemoryAP,
+    DataSize,
+};
+use crate::common::Register;
+use crate::access_ports::{
+    APType,
+    APRegister,
+};
 
-pub trait APAccess<PORT, REGISTER, VALUE> {
+pub trait APAccess<PORT, REGISTER>
+where
+    PORT: APType,
+    REGISTER: APRegister<PORT>,
+{
     type Error;
-    fn read_register_ap(&mut self, port: PORT, register: REGISTER) -> Result<VALUE, Self::Error>;
-    fn write_register_ap(&mut self, port: PORT, register: REGISTER, value: VALUE) -> Result<(), Self::Error>;
+    fn read_register_ap(&mut self, port: PORT, register: REGISTER) -> Result<REGISTER, Self::Error>;
+    fn write_register_ap(&mut self, port: PORT, register: REGISTER) -> Result<(), Self::Error>;
 }
 
 pub struct MockMemoryAP {
     pub data: Vec<u8>,
-    csw: CSW,
-    tar: TAR,
-    address: u32,
+    store: HashMap<(u16, u8), u32>,
 }
 
 #[derive(Debug)]
 pub enum MockMemoryError {
-    BadWidth,
-    BadInstruction,
+    UnknownWidth,
+    UnknownRegister,
 }
 
 impl MockMemoryAP {
     pub fn new() -> Self {
         Self {
             data: vec![0; 256],
-            csw: Default::default(),
-            tar: Default::default(),
-            address: 0,
+            store: HashMap::new(),
         }
     }
 }
 
-impl APAccess<MemoryAP, MemoryAPRegister, MemoryAPValue> for MockMemoryAP {
+impl<REGISTER> APAccess<MemoryAP, REGISTER> for MockMemoryAP
+where
+    REGISTER: APRegister<MemoryAP>
+{
     type Error = MockMemoryError;
 
     /// Mocks the read_register method of a AP.
     /// 
     /// Returns an Error if any bad instructions or values are chosen.
-    fn read_register_ap(&mut self, _port: MemoryAP, addr: MemoryAPRegister) -> Result<MemoryAPValue, Self::Error> {
-        use MemoryAPRegister as R;
-        use MemoryAPValue as V;
-        match addr {
-            R::CSW =>
-                Ok(V::CSW(self.csw)),
-            R::TAR0 => Ok(V::TAR0(self.tar)),
-            R::DRW => match self.csw.SIZE {
-                DataSize::U32 => Ok(V::TAR0(TAR { address:
-                    self.data[self.tar.address as usize + 0] as u32 |
-                    ((self.data[self.address as usize + 1] as u32) << 08) |
-                    ((self.data[self.address as usize + 2] as u32) << 16) |
-                    ((self.data[self.address as usize + 3] as u32) << 24)
-                })),
-                DataSize::U16 => Ok(V::TAR0(TAR { address:
-                    self.data[self.address as usize + 0] as u32 |
-                    ((self.data[self.address as usize + 1] as u32) << 08)
-                })),
-                DataSize::U8 => Ok(V::TAR0(TAR { address:self.data[self.address as usize + 0] as u32 })),
-                _ => Err(MockMemoryError::BadWidth)
-            }
+    fn read_register_ap(&mut self, _port: MemoryAP, _register: REGISTER) -> Result<REGISTER, Self::Error> {
+        let value = *self.store.get(&(REGISTER::ADDRESS, REGISTER::APBANKSEL)).unwrap();
+        let address = *self.store.get(&(TAR::ADDRESS, TAR::APBANKSEL)).unwrap();
+        match (REGISTER::ADDRESS, REGISTER::APBANKSEL) {
+            (CSW::ADDRESS, CSW::APBANKSEL) => match CSW::from(value).SIZE {
+                DataSize::U32 => Ok(REGISTER::from(
+                      self.data[address as usize + 0] as u32 |
+                    ((self.data[address as usize + 1] as u32) << 08) |
+                    ((self.data[address as usize + 2] as u32) << 16) |
+                    ((self.data[address as usize + 3] as u32) << 24)
+                )),
+                DataSize::U16 => Ok(REGISTER::from(
+                      self.data[address as usize + 0] as u32 |
+                    ((self.data[address as usize + 1] as u32) << 08)
+                )),
+                DataSize::U8 => Ok(REGISTER::from(self.data[address as usize + 0] as u32 )),
+                _ => Err(MockMemoryError::UnknownWidth)
+            },
+            _ => Err(MockMemoryError::UnknownRegister)
         }
     }
 
     /// Mocks the write_register method of a AP.
     /// 
     /// Returns an Error if any bad instructions or values are chosen.
-    fn write_register_ap(&mut self, _port: MemoryAP, addr: MemoryAPRegister, value: MemoryAPValue) -> Result<(), Self::Error> {
-        use MemoryAPRegister as R;
-        use MemoryAPValue as V;
-        match addr {
-            R::CSW => match value {
-                V::CSW(v) => { self.csw = v; Ok(()) },
-                _ => Err(MockMemoryError::BadWidth)
-            },
-            R::TAR0 => match value {
-                V::TAR0(v) => { self.tar = v; Ok(()) },
-                _ => Err(MockMemoryError::BadWidth)
-            },
-            R::DRW => match self.csw.SIZE {
+    fn write_register_ap(&mut self, _port: MemoryAP, register: REGISTER) -> Result<(), Self::Error> {
+        let value = register.into();
+        self.store.insert((REGISTER::ADDRESS, REGISTER::APBANKSEL), value);
+        let csw = *self.store.get(&(CSW::ADDRESS, CSW::APBANKSEL)).unwrap();
+        let address = *self.store.get(&(TAR::ADDRESS, TAR::APBANKSEL)).unwrap();
+        match (REGISTER::ADDRESS, REGISTER::APBANKSEL) {
+            (DRW::ADDRESS, DRW::APBANKSEL) => match CSW::from(csw).SIZE {
                 DataSize::U32 => {
-                    let v = match value {
-                        V::DRW(v) => { v },
-                        _ => return Err(MockMemoryError::BadWidth)
-                    };
-                    self.data[self.address as usize + 0] = (v.data >> 00) as u8;
-                    self.data[self.address as usize + 1] = (v.data >> 08) as u8;
-                    self.data[self.address as usize + 2] = (v.data >> 16) as u8;
-                    self.data[self.address as usize + 3] = (v.data >> 24) as u8;
+                    self.data[address as usize + 0] = (value >> 00) as u8;
+                    self.data[address as usize + 1] = (value >> 08) as u8;
+                    self.data[address as usize + 2] = (value >> 16) as u8;
+                    self.data[address as usize + 3] = (value >> 24) as u8;
                     Ok(())
                 },
                 DataSize::U16 => {
-                    let v = match value {
-                        V::DRW(v) => { v },
-                        _ => return Err(MockMemoryError::BadWidth)
-                    };
-                    self.data[self.address as usize + 0] = (v.data >> 00) as u8;
-                    self.data[self.address as usize + 1] = (v.data >> 08) as u8;
+                    self.data[address as usize + 0] = (value >> 00) as u8;
+                    self.data[address as usize + 1] = (value >> 08) as u8;
                     Ok(())
                 },
                 DataSize::U8 => {
-                    let v = match value {
-                        V::DRW(v) => { v },
-                        _ => return Err(MockMemoryError::BadWidth)
-                    };
-                    self.data[self.address as usize + 0] = (v.data >> 00) as u8;
+                    self.data[address as usize + 0] = (value >> 00) as u8;
                     Ok(())
                 },
-                _ => Err(MockMemoryError::BadWidth)
-            }
+                _ => Err(MockMemoryError::UnknownWidth)
+            },
+            _ => Err(MockMemoryError::UnknownRegister)
         }
     }
 }

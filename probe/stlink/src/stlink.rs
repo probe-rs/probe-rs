@@ -1,9 +1,8 @@
+use coresight::access_ports::APRegister;
 use crate::usb_interface::STLinkInfo;
 use libusb::Error;
 use libusb::Device;
 use coresight::access_ports::memory_ap::{
-    MemoryAPValue,
-    MemoryAPRegister,
     MemoryAP,
 };
 use coresight::ap_access::APAccess;
@@ -216,49 +215,49 @@ impl DAPAccess for STLink {
     }
 }
 
-impl APAccess<MemoryAP, MemoryAPRegister, MemoryAPValue> for STLink {
+impl<REGISTER> APAccess<MemoryAP, REGISTER> for STLink
+where
+    REGISTER: APRegister<MemoryAP>
+{
     type Error = STLinkError;
 
-    fn read_register_ap(&mut self, port: MemoryAP, register: MemoryAPRegister) -> Result<MemoryAPValue, Self::Error> {
+    fn read_register_ap(&mut self, port: MemoryAP, register: REGISTER) -> Result<REGISTER, Self::Error> {
         use coresight::access_ports::APType;
-        use coresight::access_ports::APRegister;
         // TODO: Make those next lines use the future typed DP interface.
         let mut cache_changed = false;
         if self.current_apsel != port.get_port_number() {
             self.current_apsel = port.get_port_number();
             cache_changed = true;
         }
-        if self.current_apbanksel != register.get_apbanksel() {
-            self.current_apbanksel = register.get_apbanksel();
+        if self.current_apbanksel != REGISTER::APBANKSEL {
+            self.current_apbanksel = REGISTER::APBANKSEL;
             cache_changed = true;
         }
         if cache_changed {
             let select = ((self.current_apsel as u32) << 24) | ((self.current_apbanksel as u32) << 4);
             self.write_register(0xFFFF, 0x008, select)?;
         }
-        let result = self.read_register(self.current_apsel as u16, register.to_u16())?;
-        Ok(register.get_value(result))
+        let result = self.read_register(self.current_apsel as u16, REGISTER::ADDRESS)?;
+        Ok(REGISTER::from(result))
     }
     
-    fn write_register_ap(&mut self, port: MemoryAP, register: MemoryAPRegister, value: MemoryAPValue) -> Result<(), Self::Error> {
+    fn write_register_ap(&mut self, port: MemoryAP, register: REGISTER) -> Result<(), Self::Error> {
         use coresight::access_ports::APType;
-        use coresight::access_ports::APRegister;
-        use coresight::access_ports::APValue;
         // TODO: Make those next lines use the future typed DP interface.
         let mut cache_changed = false;
         if self.current_apsel != port.get_port_number() {
             self.current_apsel = port.get_port_number();
             cache_changed = true;
         }
-        if self.current_apbanksel != register.get_apbanksel() {
-            self.current_apbanksel = register.get_apbanksel();
+        if self.current_apbanksel != REGISTER::APBANKSEL {
+            self.current_apbanksel = REGISTER::APBANKSEL;
             cache_changed = true;
         }
         if cache_changed {
             let select = ((self.current_apsel as u32) << 24) | ((self.current_apbanksel as u32) << 4);
             self.write_register(0xFFFF, 0x008, select)?;
         }
-        self.write_register(self.current_apsel as u16, register.to_u16(), value.to_u32())?;
+        self.write_register(self.current_apsel as u16, REGISTER::ADDRESS, register.into())?;
         Ok(())
     }
 }

@@ -157,7 +157,7 @@ impl STLinkUSBDevice {
             },
         ).or_else(|_| Err(STLinkError::RentalInitError))?;
 
-        let mut usb_stlink = Self {
+        let usb_stlink = Self {
             renter,
             info,
         };
