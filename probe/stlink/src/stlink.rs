@@ -1,15 +1,13 @@
 use coresight::access_ports::APRegister;
 use crate::usb_interface::STLinkInfo;
-use libusb::Error;
-use libusb::Device;
-use coresight::access_ports::memory_ap::{
-    MemoryAP,
-};
+use coresight::access_ports::memory_ap::{MemoryAP};
 use coresight::ap_access::APAccess;
+use libusb::Device;
+use libusb::Error;
 use scroll::{Pread, BE};
 
 use coresight::dap_access::DAPAccess;
-use probe::debug_probe::DebugProbe;
+use probe::debug_probe::{DebugProbe, DebugProbeError};
 use probe::protocol::WireProtocol;
 
 use crate::constants::{commands, JTagFrequencyToDivider, Status, SwdFrequencyToDelayCount};
@@ -26,40 +24,21 @@ pub struct STLink {
     current_apbanksel: u8,
 }
 
-#[derive(Debug)]
-pub enum STLinkError {
-    USB(libusb::Error),
-    JTAGNotSupportedOnProbe,
-    ProbeFirmwareOutdated,
-    VoltageDivisionByZero,
-    UnknownMode,
-    JTagDoesNotSupportMultipleAP,
-    UnknownError,
-    TransferFault(u32, u16),
-    DataAlignmentError,
-    Access16BitNotSupported,
-    BlanksNotAllowedOnDPRegister,
-    RegisterAddressMustBe16Bit,
-    NotEnoughBytesRead,
-    EndpointNotFound,
-    RentalInitError,
-}
-
 pub trait ToSTLinkErr<T> {
-    fn or_usb_err(self) -> Result<T, STLinkError>;
+    fn or_usb_err(self) -> Result<T, DebugProbeError>;
 }
 
 impl<T> ToSTLinkErr<T> for libusb::Result<T> {
-    fn or_usb_err(self) -> Result<T, STLinkError> {
+    fn or_usb_err(self) -> Result<T, DebugProbeError> {
         match self {
             Ok(t) => Ok(t),
-            Err(e) => Err(STLinkError::USB(e)),
+            Err(e) => Err(DebugProbeError::USBError),
         }
     }
 }
 
 impl DebugProbe for STLink {
-    type Error = STLinkError;
+    type Error = DebugProbeError;
 
     /// Reads the ST-Links version.
     /// Returns a tuple (hardware version, firmware version).
@@ -115,13 +94,17 @@ impl DebugProbe for STLink {
 
         // Make sure everything is okay with the firmware we use.
         if self.jtag_version == 0 {
-            return Err(STLinkError::JTAGNotSupportedOnProbe);
+            return Err(DebugProbeError::JTAGNotSupportedOnProbe);
         }
         if self.jtag_version < Self::MIN_JTAG_VERSION {
-            return Err(STLinkError::ProbeFirmwareOutdated);
+            return Err(DebugProbeError::ProbeFirmwareOutdated);
         }
 
         Ok((self.hw_version, self.jtag_version))
+    }
+
+    fn get_name(&self) -> &str {
+        "ST-Link"
     }
 
     /// Enters debug mode.
@@ -167,7 +150,7 @@ impl DebugProbe for STLink {
 }
 
 impl DAPAccess for STLink {
-    type Error = STLinkError;
+    type Error = DebugProbeError;
 
     /// Reads the DAP register on the specified port and address.
     fn read_register(&mut self, port: u16, addr: u16) -> Result<u32, Self::Error> {
@@ -186,7 +169,7 @@ impl DAPAccess for STLink {
             // Unwrap is ok!
             Ok((&buf[4..8]).pread(0).unwrap())
         } else {
-            Err(STLinkError::BlanksNotAllowedOnDPRegister)
+            Err(DebugProbeError::BlanksNotAllowedOnDPRegister)
         }
     }
 
@@ -210,7 +193,7 @@ impl DAPAccess for STLink {
             Self::check_status(&buf)?;
             Ok(())
         } else {
-            Err(STLinkError::BlanksNotAllowedOnDPRegister)
+            Err(DebugProbeError::BlanksNotAllowedOnDPRegister)
         }
     }
 }
@@ -219,7 +202,7 @@ impl<REGISTER> APAccess<MemoryAP, REGISTER> for STLink
 where
     REGISTER: APRegister<MemoryAP>
 {
-    type Error = STLinkError;
+    type Error = DebugProbeError;
 
     fn read_register_ap(&mut self, port: MemoryAP, register: REGISTER) -> Result<REGISTER, Self::Error> {
         use coresight::access_ports::APType;
@@ -234,7 +217,8 @@ where
             cache_changed = true;
         }
         if cache_changed {
-            let select = ((self.current_apsel as u32) << 24) | ((self.current_apbanksel as u32) << 4);
+            let select =
+                ((self.current_apsel as u32) << 24) | ((self.current_apbanksel as u32) << 4);
             self.write_register(0xFFFF, 0x008, select)?;
         }
         let result = self.read_register(self.current_apsel as u16, REGISTER::ADDRESS)?;
@@ -254,7 +238,8 @@ where
             cache_changed = true;
         }
         if cache_changed {
-            let select = ((self.current_apsel as u32) << 24) | ((self.current_apbanksel as u32) << 4);
+            let select =
+                ((self.current_apsel as u32) << 24) | ((self.current_apbanksel as u32) << 4);
             self.write_register(0xFFFF, 0x008, select)?;
         }
         self.write_register(self.current_apsel as u16, REGISTER::ADDRESS, register.into())?;
@@ -290,15 +275,17 @@ impl STLink {
     /// Creates a new STLink device instance.
     /// This function takes care of all the initialization routines and expects a selector closure.
     /// The selector closure is served with a list of connected, eligible ST-Links and should return one of them.
-    pub fn new_from_connected<F>(device_selector: F) -> Result<Self, STLinkError>
-    where F: for<'a> FnMut(Vec<(Device<'a>, STLinkInfo)>) -> Result<Device<'a>, Error> {
+    pub fn new_from_connected<F>(device_selector: F) -> Result<Self, DebugProbeError>
+    where
+        F: for<'a> FnMut(Vec<(Device<'a>, STLinkInfo)>) -> Result<Device<'a>, Error>,
+    {
         let mut stlink = Self {
             device: STLinkUSBDevice::new(device_selector)?,
             hw_version: 0,
             jtag_version: 0,
             protocol: WireProtocol::Swd,
             current_apsel: 0x0000,
-            current_apbanksel: 0x00
+            current_apbanksel: 0x00,
         };
 
         stlink.init()?;
@@ -308,7 +295,7 @@ impl STLink {
 
     /// Reads the target voltage.
     /// For the china fake variants this will always read a nonzero value!
-    pub fn get_target_voltage(&mut self) -> Result<f32, STLinkError> {
+    pub fn get_target_voltage(&mut self) -> Result<f32, DebugProbeError> {
         let mut buf = [0; 8];
         match self
             .device
@@ -322,7 +309,7 @@ impl STLink {
                     Ok((2.0 * a1 * 1.2 / a0) as f32)
                 } else {
                     // Should never happen
-                    Err(STLinkError::VoltageDivisionByZero)
+                    Err(DebugProbeError::VoltageDivisionByZero)
                 }
             }
             Err(e) => Err(e),
@@ -331,7 +318,7 @@ impl STLink {
 
     /// Commands the ST-Link to enter idle mode.
     /// Internal helper.
-    fn enter_idle(&mut self) -> Result<(), STLinkError> {
+    fn enter_idle(&mut self) -> Result<(), DebugProbeError> {
         let mut buf = [0; 2];
         match self
             .device
@@ -362,7 +349,7 @@ impl STLink {
                 } else {
                     Ok(())
                     // TODO: Look this up
-                    // Err(STLinkError::UnknownMode)
+                    // Err(DebugProbeError::UnknownMode)
                 }
             }
             Err(e) => Err(e),
@@ -371,7 +358,7 @@ impl STLink {
 
     /// Opens the ST-Link USB device and tries to identify the ST-Links version and it's target voltage.
     /// Internal helper.
-    fn init(&mut self) -> Result<(), STLinkError> {
+    fn init(&mut self) -> Result<(), DebugProbeError> {
         self.enter_idle()?;
         self.get_version()?;
         self.get_target_voltage().map(|_| ())
@@ -381,7 +368,7 @@ impl STLink {
     pub fn set_swd_frequency(
         &mut self,
         frequency: SwdFrequencyToDelayCount,
-    ) -> Result<(), STLinkError> {
+    ) -> Result<(), DebugProbeError> {
         let mut buf = [0; 2];
         self.device.write(
             vec![
@@ -400,7 +387,7 @@ impl STLink {
     pub fn set_jtag_frequency(
         &mut self,
         frequency: JTagFrequencyToDivider,
-    ) -> Result<(), STLinkError> {
+    ) -> Result<(), DebugProbeError> {
         let mut buf = [0; 2];
         self.device.write(
             vec![
@@ -415,9 +402,9 @@ impl STLink {
         Self::check_status(&buf)
     }
 
-    pub fn open_ap(&mut self, apsel: AccessPort) -> Result<(), STLinkError> {
+    pub fn open_ap(&mut self, apsel: AccessPort) -> Result<(), DebugProbeError> {
         if self.jtag_version < Self::MIN_JTAG_VERSION_MULTI_AP {
-            return Err(STLinkError::JTagDoesNotSupportMultipleAP);
+            return Err(DebugProbeError::JTagDoesNotSupportMultipleAP);
         }
         let mut buf = [0; 2];
         self.device.write(
@@ -434,9 +421,9 @@ impl STLink {
         return Self::check_status(&buf);
     }
 
-    pub fn close_ap(&mut self, apsel: AccessPort) -> Result<(), STLinkError> {
+    pub fn close_ap(&mut self, apsel: AccessPort) -> Result<(), DebugProbeError> {
         if self.jtag_version < Self::MIN_JTAG_VERSION_MULTI_AP {
-            return Err(STLinkError::JTagDoesNotSupportMultipleAP);
+            return Err(DebugProbeError::JTagDoesNotSupportMultipleAP);
         }
         let mut buf = [0; 2];
         self.device.write(
@@ -450,7 +437,7 @@ impl STLink {
 
     /// Drives the nRESET pin.
     /// `is_asserted` tells wheter the reset should be asserted or deasserted.
-    pub fn drive_nreset(&mut self, is_asserted: bool) -> Result<(), STLinkError> {
+    pub fn drive_nreset(&mut self, is_asserted: bool) -> Result<(), DebugProbeError> {
         let state = if is_asserted {
             commands::JTAG_DRIVE_NRST_LOW
         } else {
@@ -467,18 +454,18 @@ impl STLink {
     }
 
     /// Validates the status given.
-    /// Returns an `Err(STLinkError::UnknownError)` if the status is not `Status::JtagOk`.
+    /// Returns an `Err(DebugProbeError::UnknownError)` if the status is not `Status::JtagOk`.
     /// Returns Ok(()) otherwise.
     /// This can be called on any status returned from the attached target.
-    fn check_status(status: &[u8]) -> Result<(), STLinkError> {
+    fn check_status(status: &[u8]) -> Result<(), DebugProbeError> {
         if status[0] != Status::JtagOk as u8 {
-            Err(STLinkError::UnknownError)
+            Err(DebugProbeError::UnknownError)
         } else {
             Ok(())
         }
     }
 
-    pub fn clear_sticky_error(&mut self) -> Result<(), STLinkError> {
+    pub fn clear_sticky_error(&mut self) -> Result<(), DebugProbeError> {
         // TODO: Implement this as soon as CoreSight is implemented
         // match self.protocol {
         //     WireProtocol::Jtag => self.write_dap_register(Self::DP_PORT, dap.DP_CTRL_STAT, dap.CTRLSTAT_STICKYERR),
@@ -494,7 +481,7 @@ impl STLink {
         memcmd: u8,
         max: u32,
         apsel: AccessPort,
-    ) -> Result<Vec<u8>, STLinkError> {
+    ) -> Result<Vec<u8>, DebugProbeError> {
         let mut result = vec![];
         while size > 0 {
             let transfer_size = u32::min(size, max);
@@ -534,12 +521,12 @@ impl STLink {
             } else if status == Status::SwdDpFault as u16 {
                 true
             } else if status == Status::JtagOk as u16 {
-                return Err(STLinkError::UnknownError);
+                return Err(DebugProbeError::UnknownError);
             } else {
                 false
             } {
                 self.clear_sticky_error().ok();
-                return Err(STLinkError::TransferFault(
+                return Err(DebugProbeError::TransferFault(
                     fault_address,
                     (transfer_size - (fault_address - addr)) as u16,
                 ));
@@ -555,7 +542,7 @@ impl STLink {
         memcmd: u8,
         max: u32,
         apsel: AccessPort,
-    ) -> Result<(), STLinkError> {
+    ) -> Result<(), DebugProbeError> {
         while data.len() > 0 {
             let transfer_size = u32::min(data.len() as u32, max);
             let transfer_data = &data[0..transfer_size as usize];
@@ -593,12 +580,12 @@ impl STLink {
             } else if status == Status::SwdDpFault as u16 {
                 true
             } else if status == Status::JtagOk as u16 {
-                return Err(STLinkError::UnknownError);
+                return Err(DebugProbeError::UnknownError);
             } else {
                 false
             } {
                 self.clear_sticky_error().ok();
-                return Err(STLinkError::TransferFault(
+                return Err(DebugProbeError::TransferFault(
                     fault_address,
                     (transfer_size - (fault_address - addr)) as u16,
                 ));
@@ -612,7 +599,7 @@ impl STLink {
         addr: u32,
         size: u32,
         apsel: AccessPort,
-    ) -> Result<Vec<u8>, STLinkError> {
+    ) -> Result<Vec<u8>, DebugProbeError> {
         if (addr & 0x3) == 0 && (size & 0x3) == 0 {
             return self.read_mem(
                 addr,
@@ -622,7 +609,7 @@ impl STLink {
                 apsel,
             );
         }
-        Err(STLinkError::DataAlignmentError)
+        Err(DebugProbeError::DataAlignmentError)
     }
 
     pub fn write_mem32(
@@ -630,7 +617,7 @@ impl STLink {
         addr: u32,
         data: Vec<u8>,
         apsel: AccessPort,
-    ) -> Result<(), STLinkError> {
+    ) -> Result<(), DebugProbeError> {
         if (addr & 0x3) == 0 && (data.len() & 0x3) == 0 {
             return self.write_mem(
                 addr,
@@ -640,7 +627,7 @@ impl STLink {
                 apsel,
             );
         }
-        Err(STLinkError::DataAlignmentError)
+        Err(DebugProbeError::DataAlignmentError)
     }
 
     pub fn read_mem16(
@@ -648,10 +635,10 @@ impl STLink {
         addr: u32,
         size: u32,
         apsel: AccessPort,
-    ) -> Result<Vec<u8>, STLinkError> {
+    ) -> Result<Vec<u8>, DebugProbeError> {
         if (addr & 0x1) == 0 && (size & 0x1) == 0 {
             if self.jtag_version < Self::MIN_JTAG_VERSION_16BIT_XFER {
-                return Err(STLinkError::Access16BitNotSupported);
+                return Err(DebugProbeError::Access16BitNotSupported);
             }
             return self.read_mem(
                 addr,
@@ -661,7 +648,7 @@ impl STLink {
                 apsel,
             );
         }
-        Err(STLinkError::DataAlignmentError)
+        Err(DebugProbeError::DataAlignmentError)
     }
 
     pub fn write_mem16(
@@ -669,10 +656,10 @@ impl STLink {
         addr: u32,
         data: Vec<u8>,
         apsel: AccessPort,
-    ) -> Result<(), STLinkError> {
+    ) -> Result<(), DebugProbeError> {
         if (addr & 0x1) == 0 && (data.len() & 0x1) == 0 {
             if self.jtag_version < Self::MIN_JTAG_VERSION_16BIT_XFER {
-                return Err(STLinkError::Access16BitNotSupported);
+                return Err(DebugProbeError::Access16BitNotSupported);
             }
             return self.write_mem(
                 addr,
@@ -682,7 +669,7 @@ impl STLink {
                 apsel,
             );
         }
-        Err(STLinkError::DataAlignmentError)
+        Err(DebugProbeError::DataAlignmentError)
     }
 
     pub fn read_mem8(
@@ -690,7 +677,7 @@ impl STLink {
         addr: u32,
         size: u32,
         apsel: AccessPort,
-    ) -> Result<Vec<u8>, STLinkError> {
+    ) -> Result<Vec<u8>, DebugProbeError> {
         self.read_mem(
             addr,
             size,
@@ -705,7 +692,7 @@ impl STLink {
         addr: u32,
         data: Vec<u8>,
         apsel: AccessPort,
-    ) -> Result<(), STLinkError> {
+    ) -> Result<(), DebugProbeError> {
         self.write_mem(
             addr,
             data,
