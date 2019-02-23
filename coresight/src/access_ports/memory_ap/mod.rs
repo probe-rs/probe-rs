@@ -43,123 +43,98 @@ impl Default for DataSize {
     fn default() -> Self { DataSize::U32 }
 }
 
-/// ADIv5.2 Section 2.6.4
-#[allow(non_snake_case)]
-#[derive(Debug, Default, Clone, Copy)]
-pub struct CSW {
-    pub(crate) DbgSwEnable:    u8, // 1 bit
-    pub(crate) PROT:           u8, // 3 bits
-    pub(crate) CACHE:          u8, // 4 bits
-    pub(crate) SPIDEN:         u8, // 1 bit
-    pub(crate) _RES0:          u8, // 7 bits
-    pub(crate) Type:           u8, // 4 bits
-    pub(crate) Mode:           u8, // 4 bits
-    pub(crate) TrinProg:       u8, // 1 bit
-    pub(crate) DeviceEn:       u8, // 1 bit
-    pub(crate) AddrInc:        u8, // 2 bits
-    pub(crate) _RES1:          u8, // 1 bit
-    pub(crate) SIZE:     DataSize, // 3 bits
-}
+macro_rules! define_ap_register {
+    ($port_type:ident, $name:ident, $address:expr, $apbanksel:expr, [$(($field:ident: $type:ty)$(,)?)*], $param:ident, $from:expr, $to:expr) => {
+        #[allow(non_snake_case)]
+        #[derive(Debug, Default, Clone, Copy)]
+        pub struct $name {
+            $(pub(crate) $field: $type,)*
+        }
 
-impl Register for CSW {
-    const ADDRESS: u16 = 0x000;
-}
+        impl Register for $name {
+            const ADDRESS: u16 = $address;
+        }
 
-impl From<u32> for CSW {
-    fn from(value: u32) -> CSW {
-        CSW {
-            DbgSwEnable:((value >> 31) & 0x01) as u8,
-            PROT:       ((value >> 28) & 0x03) as u8,
-            CACHE:      ((value >> 24) & 0x04) as u8,
-            SPIDEN:     ((value >> 23) & 0x01) as u8,
-            _RES0:       0,
-            Type:       ((value >> 12) & 0x04) as u8,
-            Mode:       ((value >>  8) & 0x04) as u8,
-            TrinProg:   ((value >>  7) & 0x01) as u8,
-            DeviceEn:   ((value >>  6) & 0x01) as u8,
-            AddrInc:    ((value >>  4) & 0x02) as u8,
-            _RES1:       0,
-                    // unwrap() is safe as the chip will only return valid values.
-                    // If not it's good to crash for now.
-            SIZE:   DataSize::from_u8((value & 0x03) as u8).unwrap(),
+        impl From<u32> for $name {
+            fn from($param: u32) -> $name {
+                $from
+            }
+        }
+
+        impl From<$name> for u32 {
+            fn from($param: $name) -> u32 {
+                $to
+            }
+        }
+
+        impl APRegister<$port_type> for $name {
+            const APBANKSEL: u8 = $apbanksel;
         }
     }
 }
 
-impl From<CSW> for u32 {
-    fn from(value: CSW) -> u32 {
-          (u32::from(value.DbgSwEnable) << 31)
-        | (u32::from(value.PROT       ) << 28)
-        | (u32::from(value.CACHE      ) << 24)
-        | (u32::from(value.SPIDEN     ) << 23)
-        //  value._RES0
-        | (u32::from(value.Type       ) << 12)
-        | (u32::from(value.Mode       ) <<  8)
-        | (u32::from(value.TrinProg   ) <<  7)
-        | (u32::from(value.DeviceEn   ) <<  6)
-        | (u32::from(value.AddrInc    ) <<  4)
-        //  value._RES1
-        // unwrap() is safe!
-        | value.SIZE.to_u32().unwrap()
-    }
-}
+define_ap_register!(MemoryAP, CSW, 0x000, 0, [
+        (DbgSwEnable:    u8), // 1 bit
+        (PROT:           u8), // 3 bits
+        (CACHE:          u8), // 4 bits
+        (SPIDEN:         u8), // 1 bit
+        (_RES0:          u8), // 7 bits
+        (Type:           u8), // 4 bits
+        (Mode:           u8), // 4 bits
+        (TrinProg:       u8), // 1 bit
+        (DeviceEn:       u8), // 1 bit
+        (AddrInc:        u8), // 2 bits
+        (_RES1:          u8), // 1 bit
+        (SIZE:     DataSize), // 3 bits
+    ],
+    value,
+    CSW {
+        DbgSwEnable:((value >> 31) & 0x01) as u8,
+        PROT:       ((value >> 28) & 0x03) as u8,
+        CACHE:      ((value >> 24) & 0x04) as u8,
+        SPIDEN:     ((value >> 23) & 0x01) as u8,
+        _RES0:       0,
+        Type:       ((value >> 12) & 0x04) as u8,
+        Mode:       ((value >>  8) & 0x04) as u8,
+        TrinProg:   ((value >>  7) & 0x01) as u8,
+        DeviceEn:   ((value >>  6) & 0x01) as u8,
+        AddrInc:    ((value >>  4) & 0x02) as u8,
+        _RES1:       0,
+                // unwrap() is safe as the chip will only return valid values.
+                // If not it's good to crash for now.
+        SIZE:   DataSize::from_u8((value & 0x03) as u8).unwrap(),
+    },
+      (u32::from(value.DbgSwEnable) << 31)
+    | (u32::from(value.PROT       ) << 28)
+    | (u32::from(value.CACHE      ) << 24)
+    | (u32::from(value.SPIDEN     ) << 23)
+    //  value._RES0
+    | (u32::from(value.Type       ) << 12)
+    | (u32::from(value.Mode       ) <<  8)
+    | (u32::from(value.TrinProg   ) <<  7)
+    | (u32::from(value.DeviceEn   ) <<  6)
+    | (u32::from(value.AddrInc    ) <<  4)
+    //  value._RES1
+    // unwrap() is safe!
+    | value.SIZE.to_u32().unwrap()
+);
 
-impl APRegister<MemoryAP> for CSW {
-    const APBANKSEL: u8 = 0;
-}
+define_ap_register!(MemoryAP, TAR, 0x00C, 0, [
+        (address: u32),
+    ],
+    value,
+    TAR {
+        address: value
+    },
+    value.address
+);
 
-/// ADIv5.2 Section 2.6.7
-#[derive(Debug, Default, Clone, Copy)]
-pub struct TAR {
-    pub(crate) address: u32, // 32 bits
-}
-
-impl Register for TAR {
-    const ADDRESS: u16 = 0x004;
-}
-
-impl From<u32> for TAR {
-    fn from(value: u32) -> TAR {
-        TAR {
-            address: value,
-        }
-    }
-}
-
-impl From<TAR> for u32 {
-    fn from(value: TAR) -> u32 {
-        value.address
-    }
-}
-
-impl APRegister<MemoryAP> for TAR {
-    const APBANKSEL: u8 = 0;
-}
-
-/// ADIv5.2 Section 2.6.5
-#[derive(Debug, Default, Clone, Copy)]
-pub struct DRW {
-    pub(crate) data: u32, // 32 bits
-}
-
-impl Register for DRW {
-    const ADDRESS: u16 = 0x00C;
-}
-
-impl From<u32> for DRW {
-    fn from(value: u32) -> DRW {
-        DRW {
-            data: value,
-        }
-    }
-}
-
-impl From<DRW> for u32 {
-    fn from(value: DRW) -> u32 {
-        value.data
-    }
-}
-
-impl APRegister<MemoryAP> for DRW {
-    const APBANKSEL: u8 = 0;
-}
+define_ap_register!(MemoryAP, DRW, 0x004, 0, [
+        (data: u32),
+    ],
+    value,
+    DRW {
+        data: value
+    },
+    value.data
+);
