@@ -12,6 +12,8 @@ addons:
     packages:
     - libusb-1.0
     - libusb-dev
+before_script:
+  - rustup component add clippy
 script:
-  - cargo build
+  - cargo clippy --all-targets --all-features -- -D warnings
   - cargo test
