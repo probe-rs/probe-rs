@@ -222,7 +222,6 @@ where
             self.write_register(0xFFFF, 0x008, select)?;
         }
         let result = self.read_register(self.current_apsel as u16, REGISTER::ADDRESS)?;
-        println!("{:?}", result);
         Ok(REGISTER::from(result))
     }
     
@@ -243,7 +242,6 @@ where
                 ((self.current_apsel as u32) << 24) | ((self.current_apbanksel as u32) << 4);
             self.write_register(0xFFFF, 0x008, select)?;
         }
-        println!("{}, {}", REGISTER::ADDRESS, register.clone().into());
         self.write_register(self.current_apsel as u16, REGISTER::ADDRESS, register.into())?;
         Ok(())
     }

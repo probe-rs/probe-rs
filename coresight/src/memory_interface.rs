@@ -95,10 +95,6 @@ impl MemoryInterface {
             self.write_register_ap(debug_port, tar)?;
             let result = self.read_register_ap(debug_port, DRW::default())?;
 
-            println!("{:?}", csw);
-            println!("{:?}", tar);
-            println!("{:?}", result);
-
             Ok(S::to_result(result.into()))
         } else {
             Err(AccessPortError::MemoryNotAligned)

@@ -296,8 +296,6 @@ fn trace_u32_on_target(n: u8, loc: u32) -> Result<(), Error> {
     let start = Instant::now();
     let mem = MemoryInterface::new(0x0);
 
-    let mut f = std::fs::File::create("/tmp/foo").expect("Fug");
-
     with_device(n, |st_link| {
         loop {
             // Prepare read.
@@ -306,7 +304,6 @@ fn trace_u32_on_target(n: u8, loc: u32) -> Result<(), Error> {
 
             // Read data.
             let value: u32 = mem.read(st_link, loc).or_else(|e| Err(Error::AccessPortError(e)))?;
-            f.write(format!("{}, {}\n", instant, value).as_bytes());
 
             xs.push(instant);
             ys.push(value);

@@ -90,8 +90,6 @@ impl From<u32> for CSW {
 
 impl From<CSW> for u32 {
     fn from(value: CSW) -> u32 {
-
-        println!("value: {}", value.SIZE.to_u32().unwrap() as u32);
           ((value.DbgSwEnable  as u32) << 31)
         | ((value.PROT         as u32) << 28)
         | ((value.CACHE        as u32) << 24)

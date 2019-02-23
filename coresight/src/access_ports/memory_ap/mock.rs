@@ -44,10 +44,8 @@ where
     /// 
     /// Returns an Error if any bad instructions or values are chosen.
     fn read_register_ap(&mut self, _port: MemoryAP, _register: REGISTER) -> Result<REGISTER, Self::Error> {
-        println!("read");
         let csw = *self.store.get(&(CSW::ADDRESS, CSW::APBANKSEL)).unwrap();
         let address = *self.store.get(&(TAR::ADDRESS, TAR::APBANKSEL)).unwrap();
-        println!("csw: {:08x}", csw);
         match (REGISTER::ADDRESS, REGISTER::APBANKSEL) {
             (DRW::ADDRESS, DRW::APBANKSEL) => match CSW::from(csw).SIZE {
                 DataSize::U32 => Ok(REGISTER::from(
@@ -57,7 +55,6 @@ where
                     ((self.data[address as usize + 3] as u32) << 24)
                 )),
                 DataSize::U16 => {
-                    println!("{:?}", self.data);
                     Ok(REGISTER::from(
                       self.data[address as usize + 0] as u32 |
                     ((self.data[address as usize + 1] as u32) << 08)
@@ -76,15 +73,10 @@ where
     /// 
     /// Returns an Error if any bad instructions or values are chosen.
     fn write_register_ap(&mut self, _port: MemoryAP, register: REGISTER) -> Result<(), Self::Error> {
-        println!("write");
         let value = register.into();
-        println!("{:?}", (REGISTER::ADDRESS, REGISTER::APBANKSEL));
         self.store.insert((REGISTER::ADDRESS, REGISTER::APBANKSEL), value);
         let csw = *self.store.get(&(CSW::ADDRESS, CSW::APBANKSEL)).unwrap();
-        println!("csw: {:08x}", csw);
         let address = *self.store.get(&(TAR::ADDRESS, TAR::APBANKSEL)).unwrap();
-        println!("address: {:08x}", address);
-        println!("{:?}", CSW::from(csw));
         match (REGISTER::ADDRESS, REGISTER::APBANKSEL) {
             (DRW::ADDRESS, DRW::APBANKSEL) => match CSW::from(csw).SIZE {
                 DataSize::U32 => {
