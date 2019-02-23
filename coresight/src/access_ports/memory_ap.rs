@@ -26,7 +26,7 @@ impl APType for MemoryAP {
     }
 }
 
-#[derive(Primitive, Clone, Copy)]
+#[derive(Debug, Primitive, Clone, Copy)]
 pub enum DataSize {
     U8 = 0b000,
     U16 = 0b001,
@@ -42,7 +42,7 @@ impl Default for DataSize {
 
 /// ADIv5.2 Section 2.6.4
 #[allow(non_snake_case)]
-#[derive(Default, Clone, Copy)]
+#[derive(Debug, Default, Clone, Copy)]
 pub struct CSW {
     pub(crate) DbgSwEnable:    u8, // 1 bit
     pub(crate) PROT:           u8, // 3 bits
@@ -108,7 +108,7 @@ impl APRegister<MemoryAP> for CSW {
 }
 
 /// ADIv5.2 Section 2.6.7
-#[derive(Default, Clone, Copy)]
+#[derive(Debug, Default, Clone, Copy)]
 pub struct TAR {
     pub(crate) address: u32, // 32 bits
 }
@@ -136,7 +136,7 @@ impl APRegister<MemoryAP> for TAR {
 }
 
 /// ADIv5.2 Section 2.6.5
-#[derive(Default, Clone, Copy)]
+#[derive(Debug, Default, Clone, Copy)]
 pub struct DRW {
     pub(crate) data: u32, // 32 bits
 }

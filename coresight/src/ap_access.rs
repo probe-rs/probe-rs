@@ -35,9 +35,13 @@ pub enum MockMemoryError {
 
 impl MockMemoryAP {
     pub fn new() -> Self {
+        let mut store = HashMap::new();
+        store.insert((CSW::ADDRESS, CSW::APBANKSEL), 0);
+        store.insert((TAR::ADDRESS, TAR::APBANKSEL), 0);
+        store.insert((DRW::ADDRESS, DRW::APBANKSEL), 0);
         Self {
             data: vec![0; 256],
-            store: HashMap::new(),
+            store,
         }
     }
 }
@@ -52,23 +56,31 @@ where
     /// 
     /// Returns an Error if any bad instructions or values are chosen.
     fn read_register_ap(&mut self, _port: MemoryAP, _register: REGISTER) -> Result<REGISTER, Self::Error> {
+        println!("read");
         let value = *self.store.get(&(REGISTER::ADDRESS, REGISTER::APBANKSEL)).unwrap();
+        let csw = *self.store.get(&(CSW::ADDRESS, CSW::APBANKSEL)).unwrap();
         let address = *self.store.get(&(TAR::ADDRESS, TAR::APBANKSEL)).unwrap();
+        println!("csw: {:08x}", csw);
         match (REGISTER::ADDRESS, REGISTER::APBANKSEL) {
-            (CSW::ADDRESS, CSW::APBANKSEL) => match CSW::from(value).SIZE {
+            (DRW::ADDRESS, DRW::APBANKSEL) => match CSW::from(csw).SIZE {
                 DataSize::U32 => Ok(REGISTER::from(
                       self.data[address as usize + 0] as u32 |
                     ((self.data[address as usize + 1] as u32) << 08) |
                     ((self.data[address as usize + 2] as u32) << 16) |
                     ((self.data[address as usize + 3] as u32) << 24)
                 )),
-                DataSize::U16 => Ok(REGISTER::from(
+                DataSize::U16 => {
+                    println!("{:?}", self.data);
+                    Ok(REGISTER::from(
                       self.data[address as usize + 0] as u32 |
                     ((self.data[address as usize + 1] as u32) << 08)
-                )),
+                ))
+                },
                 DataSize::U8 => Ok(REGISTER::from(self.data[address as usize + 0] as u32 )),
                 _ => Err(MockMemoryError::UnknownWidth)
             },
+            (CSW::ADDRESS, CSW::APBANKSEL) => Ok(REGISTER::from(*self.store.get(&(REGISTER::ADDRESS, REGISTER::APBANKSEL)).unwrap())),
+            (TAR::ADDRESS, TAR::APBANKSEL) => Ok(REGISTER::from(*self.store.get(&(REGISTER::ADDRESS, REGISTER::APBANKSEL)).unwrap())),
             _ => Err(MockMemoryError::UnknownRegister)
         }
     }
@@ -77,10 +89,15 @@ where
     /// 
     /// Returns an Error if any bad instructions or values are chosen.
     fn write_register_ap(&mut self, _port: MemoryAP, register: REGISTER) -> Result<(), Self::Error> {
+        println!("write");
         let value = register.into();
+        println!("{:?}", (REGISTER::ADDRESS, REGISTER::APBANKSEL));
         self.store.insert((REGISTER::ADDRESS, REGISTER::APBANKSEL), value);
         let csw = *self.store.get(&(CSW::ADDRESS, CSW::APBANKSEL)).unwrap();
+        println!("csw: {:08x}", csw);
         let address = *self.store.get(&(TAR::ADDRESS, TAR::APBANKSEL)).unwrap();
+        println!("address: {:08x}", address);
+        println!("{:?}", CSW::from(csw));
         match (REGISTER::ADDRESS, REGISTER::APBANKSEL) {
             (DRW::ADDRESS, DRW::APBANKSEL) => match CSW::from(csw).SIZE {
                 DataSize::U32 => {
@@ -101,6 +118,8 @@ where
                 },
                 _ => Err(MockMemoryError::UnknownWidth)
             },
+            (CSW::ADDRESS, CSW::APBANKSEL) => Ok(()),
+            (TAR::ADDRESS, TAR::APBANKSEL) => Ok(()),
             _ => Err(MockMemoryError::UnknownRegister)
         }
     }
