@@ -119,7 +119,7 @@ define_ap_register!(MemoryAP, CSW, 0x000, 0, [
     | value.SIZE.to_u32().unwrap()
 );
 
-define_ap_register!(MemoryAP, TAR, 0x00C, 0, [
+define_ap_register!(MemoryAP, TAR, 0x004, 0, [
         (address: u32),
     ],
     value,
@@ -129,7 +129,7 @@ define_ap_register!(MemoryAP, TAR, 0x00C, 0, [
     value.address
 );
 
-define_ap_register!(MemoryAP, DRW, 0x004, 0, [
+define_ap_register!(MemoryAP, DRW, 0x00C, 0, [
         (data: u32),
     ],
     value,
