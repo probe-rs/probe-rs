@@ -15,5 +15,5 @@ addons:
 before_script:
   - rustup component add clippy
 script:
-  - cargo clippy --all-targets --all-features -- -D warnings
+#  - cargo clippy --all-targets --all-features -- -D warnings
   - cargo test

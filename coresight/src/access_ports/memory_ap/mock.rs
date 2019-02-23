@@ -44,27 +44,27 @@ where
     /// 
     /// Returns an Error if any bad instructions or values are chosen.
     fn read_register_ap(&mut self, _port: MemoryAP, _register: REGISTER) -> Result<REGISTER, Self::Error> {
-        let csw = *self.store.get(&(CSW::ADDRESS, CSW::APBANKSEL)).unwrap();
-        let address = *self.store.get(&(TAR::ADDRESS, TAR::APBANKSEL)).unwrap();
+        let csw = self.store[&(CSW::ADDRESS, CSW::APBANKSEL)];
+        let address = self.store[&(TAR::ADDRESS, TAR::APBANKSEL)];
         match (REGISTER::ADDRESS, REGISTER::APBANKSEL) {
             (DRW::ADDRESS, DRW::APBANKSEL) => match CSW::from(csw).SIZE {
                 DataSize::U32 => Ok(REGISTER::from(
-                      self.data[address as usize + 0] as u32 |
-                    ((self.data[address as usize + 1] as u32) << 08) |
-                    ((self.data[address as usize + 2] as u32) << 16) |
-                    ((self.data[address as usize + 3] as u32) << 24)
+                     u32::from(self.data[address as usize    ])        |
+                    (u32::from(self.data[address as usize + 1]) <<  8) |
+                    (u32::from(self.data[address as usize + 2]) << 16) |
+                    (u32::from(self.data[address as usize + 3]) << 24)
                 )),
-                DataSize::U16 => {
-                    Ok(REGISTER::from(
-                      self.data[address as usize + 0] as u32 |
-                    ((self.data[address as usize + 1] as u32) << 08)
-                ))
-                },
-                DataSize::U8 => Ok(REGISTER::from(self.data[address as usize + 0] as u32 )),
+                DataSize::U16 => Ok(REGISTER::from(
+                     u32::from(self.data[address as usize    ])         |
+                    (u32::from(self.data[address as usize + 1]) <<  8)
+                )),
+                DataSize::U8 => Ok(REGISTER::from(
+                     u32::from(self.data[address as usize    ])
+                )),
                 _ => Err(MockMemoryError::UnknownWidth)
             },
-            (CSW::ADDRESS, CSW::APBANKSEL) => Ok(REGISTER::from(*self.store.get(&(REGISTER::ADDRESS, REGISTER::APBANKSEL)).unwrap())),
-            (TAR::ADDRESS, TAR::APBANKSEL) => Ok(REGISTER::from(*self.store.get(&(REGISTER::ADDRESS, REGISTER::APBANKSEL)).unwrap())),
+            (CSW::ADDRESS, CSW::APBANKSEL) => Ok(REGISTER::from(self.store[&(REGISTER::ADDRESS, REGISTER::APBANKSEL)])),
+            (TAR::ADDRESS, TAR::APBANKSEL) => Ok(REGISTER::from(self.store[&(REGISTER::ADDRESS, REGISTER::APBANKSEL)])),
             _ => Err(MockMemoryError::UnknownRegister)
         }
     }
@@ -75,24 +75,24 @@ where
     fn write_register_ap(&mut self, _port: MemoryAP, register: REGISTER) -> Result<(), Self::Error> {
         let value = register.into();
         self.store.insert((REGISTER::ADDRESS, REGISTER::APBANKSEL), value);
-        let csw = *self.store.get(&(CSW::ADDRESS, CSW::APBANKSEL)).unwrap();
-        let address = *self.store.get(&(TAR::ADDRESS, TAR::APBANKSEL)).unwrap();
+        let csw = self.store[&(CSW::ADDRESS, CSW::APBANKSEL)];
+        let address = self.store[&(TAR::ADDRESS, TAR::APBANKSEL)];
         match (REGISTER::ADDRESS, REGISTER::APBANKSEL) {
             (DRW::ADDRESS, DRW::APBANKSEL) => match CSW::from(csw).SIZE {
                 DataSize::U32 => {
-                    self.data[address as usize + 0] = (value >> 00) as u8;
-                    self.data[address as usize + 1] = (value >> 08) as u8;
+                    self.data[address as usize    ] =  value        as u8;
+                    self.data[address as usize + 1] = (value >>  8) as u8;
                     self.data[address as usize + 2] = (value >> 16) as u8;
                     self.data[address as usize + 3] = (value >> 24) as u8;
                     Ok(())
                 },
                 DataSize::U16 => {
-                    self.data[address as usize + 0] = (value >> 00) as u8;
-                    self.data[address as usize + 1] = (value >> 08) as u8;
+                    self.data[address as usize    ] =  value        as u8;
+                    self.data[address as usize + 1] = (value >>  8) as u8;
                     Ok(())
                 },
                 DataSize::U8 => {
-                    self.data[address as usize + 0] = (value >> 00) as u8;
+                    self.data[address as usize    ] =  value        as u8;
                     Ok(())
                 },
                 _ => Err(MockMemoryError::UnknownWidth)

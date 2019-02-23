@@ -79,30 +79,28 @@ impl From<u32> for CSW {
             DeviceEn:   ((value >>  6) & 0x01) as u8,
             AddrInc:    ((value >>  4) & 0x02) as u8,
             _RES1:       0,
-            SIZE:   DataSize::from_u8(
-                        (value & 0x03) as u8
                     // unwrap() is safe as the chip will only return valid values.
                     // If not it's good to crash for now.
-                    ).unwrap(),
+            SIZE:   DataSize::from_u8((value & 0x03) as u8).unwrap(),
         }
     }
 }
 
 impl From<CSW> for u32 {
     fn from(value: CSW) -> u32 {
-          ((value.DbgSwEnable  as u32) << 31)
-        | ((value.PROT         as u32) << 28)
-        | ((value.CACHE        as u32) << 24)
-        | ((value.SPIDEN       as u32) << 23)
+          (u32::from(value.DbgSwEnable) << 31)
+        | (u32::from(value.PROT       ) << 28)
+        | (u32::from(value.CACHE      ) << 24)
+        | (u32::from(value.SPIDEN     ) << 23)
         //  value._RES0
-        | ((value.Type         as u32) << 12)
-        | ((value.Mode         as u32) << 8)
-        | ((value.TrinProg     as u32) << 7)
-        | ((value.DeviceEn     as u32) << 6)
-        | ((value.AddrInc      as u32) << 4)
+        | (u32::from(value.Type       ) << 12)
+        | (u32::from(value.Mode       ) <<  8)
+        | (u32::from(value.TrinProg   ) <<  7)
+        | (u32::from(value.DeviceEn   ) <<  6)
+        | (u32::from(value.AddrInc    ) <<  4)
         //  value._RES1
         // unwrap() is safe!
-        | ((value.SIZE.to_u32().unwrap() as u32))
+        | value.SIZE.to_u32().unwrap()
     }
 }
 
