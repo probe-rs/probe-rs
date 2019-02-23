@@ -1,24 +1,15 @@
-use crate::access_ports::APRegister;
-use crate::access_ports::memory_ap::DRW;
-use crate::access_ports::memory_ap::TAR;
-use crate::access_ports::memory_ap::{
-    MemoryAP,
-    DataSize,
-    CSW,
-};
-use crate::ap_access::APAccess;
-use super::access_port::{
-    AccessPortNumber,
+use crate::access_ports::{
+    APRegister,
+    memory_ap::{
+        MemoryAP,
+        DataSize,
+        CSW,
+        TAR,
+        DRW,
+    },
     AccessPortError,
 };
-use super::access_port::consts::*;
-use super::dap_access::DAPAccess;
-
-pub enum MemoryReadSize {
-    U8 = CSW_SIZE8 as isize,
-    U16 = CSW_SIZE16 as isize,
-    U32 = CSW_SIZE32 as isize,
-}
+use crate::ap_access::APAccess;
 
 pub trait ToMemoryReadSize: Into<u32> + Copy {
     /// The alignment mask that is required to test for properly aligned memory.
@@ -27,8 +18,6 @@ pub trait ToMemoryReadSize: Into<u32> + Copy {
     const MEMORY_TRANSFER_SIZE: DataSize;
     /// Transform a generic 32 bit sized value to a transfer size sized one.
     fn to_result(value: u32) -> Self;
-    /// Transform a generic transfer size sized value to a 32 bit sized one.
-    fn to_input(value: &Self) -> u32;
 }
 
 impl ToMemoryReadSize for u32 {
@@ -37,10 +26,6 @@ impl ToMemoryReadSize for u32 {
 
     fn to_result(value: u32) -> Self {
         value
-    }
-
-    fn to_input(value: &Self) -> u32 {
-        *value
     }
 }
 
@@ -51,10 +36,6 @@ impl ToMemoryReadSize for u16 {
     fn to_result(value: u32) -> Self {
         value as u16
     }
-
-    fn to_input(value: &Self) -> u32 {
-        *value as u32
-    }
 }
 
 impl ToMemoryReadSize for u8 {
@@ -64,41 +45,38 @@ impl ToMemoryReadSize for u8 {
     fn to_result(value: u32) -> Self {
         value as u8
     }
-
-    fn to_input(value: &Self) -> u32 {
-        *value as u32
-    }
 }
 
 /// A struct to give access to a targets memory using a certain DAP.
 pub struct MemoryInterface {
-    access_port: AccessPortNumber,
+    access_port: MemoryAP,
 }
 
 impl MemoryInterface {
     /// Creates a new MemoryInterface for given AccessPort.
-    pub fn new(access_port: AccessPortNumber) -> Self {
+    pub fn new(access_port_number: u8) -> Self {
         Self {
-            access_port
+            access_port: MemoryAP::new(access_port_number)
         }
     }
 
     /// Read a 32 bit register on the given AP.
-    fn read_register_ap<REGISTER, AP>(&self, debug_port: &mut AP, port: MemoryAP, register: REGISTER) -> Result<REGISTER, AccessPortError>
+    fn read_register_ap<REGISTER, AP>(&self, debug_port: &mut AP, register: REGISTER) -> Result<REGISTER, AccessPortError>
     where
         REGISTER: APRegister<MemoryAP>,
         AP: APAccess<MemoryAP, REGISTER>
     {
-        debug_port.read_register_ap(port, register).or_else(|_| Err(AccessPortError::ProbeError))
+        debug_port.read_register_ap(self.access_port, register)
+                  .or_else(|_| Err(AccessPortError::ProbeError))
     }
 
     /// Write a 32 bit register on the given AP.
-    fn write_register_ap<REGISTER, AP>(&self, debug_port: &mut AP, port: MemoryAP, register: REGISTER) -> Result<(), AccessPortError>
+    fn write_register_ap<REGISTER, AP>(&self, debug_port: &mut AP, register: REGISTER) -> Result<(), AccessPortError>
     where
         REGISTER: APRegister<MemoryAP>,
         AP: APAccess<MemoryAP, REGISTER>
     {
-        debug_port.write_register_ap(port, register).or_else(|_| Err(AccessPortError::ProbeError))
+        debug_port.write_register_ap(self.access_port, register).or_else(|_| Err(AccessPortError::ProbeError))
     }
 
     /// Read a word of the size defined by S at `addr`.
@@ -113,9 +91,13 @@ impl MemoryInterface {
         if (address & S::ALIGNMENT_MASK) == 0 {
             let csw: CSW = CSW { AddrInc: 1, SIZE: S::MEMORY_TRANSFER_SIZE, ..Default::default() };
             let tar = TAR { address };
-            self.write_register_ap(debug_port, MemoryAP::new(0), csw)?;
-            self.write_register_ap(debug_port, MemoryAP::new(0), tar)?;
-            let result = self.read_register_ap(debug_port, MemoryAP::new(0), DRW::default())?;
+            self.write_register_ap(debug_port, csw)?;
+            self.write_register_ap(debug_port, tar)?;
+            let result = self.read_register_ap(debug_port, DRW::default())?;
+
+            println!("{:?}", csw);
+            println!("{:?}", tar);
+            println!("{:?}", result);
 
             Ok(S::to_result(result.into()))
         } else {
@@ -140,13 +122,13 @@ impl MemoryInterface {
 
             let unit_size = std::mem::size_of::<S>() as u32;
             let len = data.len() as u32;
-            self.write_register_ap(debug_port, MemoryAP::new(0), csw)?;
+            self.write_register_ap(debug_port, csw)?;
             for offset in 0..len {
                 let addr = addr + offset * unit_size;
 
                 let tar = TAR { address: addr };
-                self.write_register_ap(debug_port, MemoryAP::new(0), tar)?;
-                data[offset as usize] = S::to_result(self.read_register_ap(debug_port, MemoryAP::new(0), drw)?.data);
+                self.write_register_ap(debug_port, tar)?;
+                data[offset as usize] = S::to_result(self.read_register_ap(debug_port, drw)?.data);
             }
             Ok(())
         } else {
@@ -186,20 +168,20 @@ impl MemoryInterface {
             // First we read data until we can do aligned 32 bit reads.
             // This will at a maximum be 24 bits for 8 bit transfer size and 16 bits for 16 bit transfers.
             let csw: CSW = CSW { AddrInc: 1, SIZE: S::MEMORY_TRANSFER_SIZE, ..Default::default() };
-            self.write_register_ap(debug_port, MemoryAP::new(0), csw)?;
+            self.write_register_ap(debug_port, csw)?;
             for offset in 0..num_words_at_start {
                 let tar = TAR { address: address + offset * bytes_per_word };
-                self.write_register_ap(debug_port, MemoryAP::new(0), tar)?;
-                data[offset as usize] = S::to_result(self.read_register_ap(debug_port, MemoryAP::new(0), DRW::default())?.data);
+                self.write_register_ap(debug_port, tar)?;
+                data[offset as usize] = S::to_result(self.read_register_ap(debug_port, DRW::default())?.data);
             }
 
             // Second we read in 32 bit reads until we have less than 32 bits left to read.
             let csw: CSW = CSW { AddrInc: 1, SIZE: DataSize::U32, ..Default::default() };
-            self.write_register_ap(debug_port, MemoryAP::new(0), csw)?;
+            self.write_register_ap(debug_port, csw)?;
             for offset in 0..num_32_bit_reads {
                 let tar = TAR { address: address + num_words_at_start * bytes_per_word + offset * 4 };
-                self.write_register_ap(debug_port, MemoryAP::new(0), tar)?;
-                let value = self.read_register_ap(debug_port, MemoryAP::new(0), DRW::default())?.data;
+                self.write_register_ap(debug_port, tar)?;
+                let value = self.read_register_ap(debug_port, DRW::default())?.data;
                 for i in 0..f {
                     data[(num_words_at_start + offset * f + i) as usize] = S::to_result(value >> (i * bytes_per_word * 8));
                 }
@@ -208,12 +190,12 @@ impl MemoryInterface {
             // Lastly we read data until we can have read all the remaining data that was requested.
             // This will at a maximum be 24 bits for 8 bit transfer size and 16 bits for 16 bit transfers.
             let csw: CSW = CSW { AddrInc: 1, SIZE: S::MEMORY_TRANSFER_SIZE, ..Default::default() };
-            self.write_register_ap(debug_port, MemoryAP::new(0), csw)?;
+            self.write_register_ap(debug_port, csw)?;
             for offset in 0..num_words_at_end {
                 let tar = TAR { address: address + num_words_at_start * bytes_per_word + num_32_bit_reads * 4 + offset * bytes_per_word };
-                self.write_register_ap(debug_port, MemoryAP::new(0), tar)?;
+                self.write_register_ap(debug_port, tar)?;
                 data[(num_words_at_start + num_32_bit_reads * f + offset) as usize]
-                    = S::to_result(self.read_register_ap(debug_port, MemoryAP::new(0), DRW::default())?.data);
+                    = S::to_result(self.read_register_ap(debug_port, DRW::default())?.data);
             }
             Ok(())
         } else {
@@ -237,11 +219,11 @@ impl MemoryInterface {
     {
         if (addr & S::ALIGNMENT_MASK) == 0 {
             let csw: CSW = CSW { AddrInc: 1, SIZE: S::MEMORY_TRANSFER_SIZE, ..Default::default() };
-            let drw: DRW = S::to_input(&data).into();
+            let drw = DRW { data: data.into() };
             let tar = TAR { address: addr };
-            self.write_register_ap(debug_port, MemoryAP::new(0), csw)?;
-            self.write_register_ap(debug_port, MemoryAP::new(0), tar)?;
-            self.write_register_ap(debug_port, MemoryAP::new(0), drw)?;
+            self.write_register_ap(debug_port, csw)?;
+            self.write_register_ap(debug_port, tar)?;
+            self.write_register_ap(debug_port, drw)?;
             Ok(())
         } else {
             Err(AccessPortError::MemoryNotAligned)
@@ -276,36 +258,36 @@ impl MemoryInterface {
             // First we write data until we can do aligned 32 bit writes.
             // This will at a maximum be 24 bits for 8 bit transfer size and 16 bits for 16 bit transfers.
             let csw: CSW = CSW { AddrInc: 1, SIZE: S::MEMORY_TRANSFER_SIZE, ..Default::default() };
-            self.write_register_ap(debug_port, MemoryAP::new(0), csw)?;
+            self.write_register_ap(debug_port, csw)?;
             for offset in 0..num_words_at_start {
                 let tar = TAR { address: addr + offset * bytes_per_word };
-                self.write_register_ap(debug_port, MemoryAP::new(0), tar)?;
+                self.write_register_ap(debug_port, tar)?;
                 let drw = DRW { data: data[offset as usize].into() };
-                self.write_register_ap(debug_port, MemoryAP::new(0), drw)?;
+                self.write_register_ap(debug_port, drw)?;
             }
 
             // Second we write in 32 bit reads until we have less than 32 bits left to write.
             let csw: CSW = CSW { AddrInc: 1, SIZE: DataSize::U32, ..Default::default() };
-            self.write_register_ap(debug_port, MemoryAP::new(0), csw)?;
+            self.write_register_ap(debug_port, csw)?;
             for offset in 0..num_32_bit_writes {
                 let address = addr + num_words_at_start * bytes_per_word + offset * 4;
                 for i in 0..f {
                     let tar = TAR { address: address + i * bytes_per_word };
-                    self.write_register_ap(debug_port, MemoryAP::new(0), tar)?;
+                    self.write_register_ap(debug_port, tar)?;
                     let drw = DRW { data: data[(num_words_at_start + offset * f + i) as usize].into() };
-                    self.write_register_ap(debug_port, MemoryAP::new(0), drw)?;
+                    self.write_register_ap(debug_port, drw)?;
                 }
             }
 
             // Lastly we write data until we can have written all the remaining data that was requested.
             // This will at a maximum be 24 bits for 8 bit transfer size and 16 bits for 16 bit transfers.
             let csw: CSW = CSW { AddrInc: 1, SIZE: S::MEMORY_TRANSFER_SIZE, ..Default::default() };
-            self.write_register_ap(debug_port, MemoryAP::new(0), csw)?;
+            self.write_register_ap(debug_port, csw)?;
             for offset in 0..num_words_at_end {
                 let tar = TAR { address: addr + num_words_at_start * bytes_per_word + num_32_bit_writes * 4 + offset * bytes_per_word };
-                self.write_register_ap(debug_port, MemoryAP::new(0), tar)?;
+                self.write_register_ap(debug_port, tar)?;
                 let drw = DRW { data: data[(num_words_at_start + num_32_bit_writes * f + offset) as usize].into() };
-                self.write_register_ap(debug_port, MemoryAP::new(0), drw)?;
+                self.write_register_ap(debug_port, drw)?;
             }
             Ok(())
         } else {
@@ -332,12 +314,12 @@ impl MemoryInterface {
             let len = data.len() as u32;
             let unit_size = std::mem::size_of::<S>() as u32;
             let csw: CSW = CSW { AddrInc: 1, SIZE: S::MEMORY_TRANSFER_SIZE, ..Default::default() };
-            self.write_register_ap(debug_port, MemoryAP::new(0), csw)?;
+            self.write_register_ap(debug_port, csw)?;
             for offset in 0..len {
                 let tar = TAR { address: addr + offset * unit_size };
-                self.write_register_ap(debug_port, MemoryAP::new(0), tar)?;
+                self.write_register_ap(debug_port, tar)?;
                 let drw = DRW { data: data[offset as usize].into() };
-                self.write_register_ap(debug_port, MemoryAP::new(0), drw)?;
+                self.write_register_ap(debug_port, drw)?;
             }
             Ok(())
         } else {
@@ -349,7 +331,7 @@ impl MemoryInterface {
 #[cfg(test)]
 mod tests {
     use super::MemoryInterface;
-    use super::super::ap_access::MockMemoryAP;
+    use crate::access_ports::memory_ap::mock::MockMemoryAP;
 
     #[test]
     fn read_u32() {

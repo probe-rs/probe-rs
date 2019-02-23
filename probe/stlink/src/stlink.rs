@@ -32,7 +32,7 @@ impl<T> ToSTLinkErr<T> for libusb::Result<T> {
     fn or_usb_err(self) -> Result<T, DebugProbeError> {
         match self {
             Ok(t) => Ok(t),
-            Err(e) => Err(DebugProbeError::USBError),
+            Err(_) => Err(DebugProbeError::USBError),
         }
     }
 }
@@ -204,7 +204,7 @@ where
 {
     type Error = DebugProbeError;
 
-    fn read_register_ap(&mut self, port: MemoryAP, register: REGISTER) -> Result<REGISTER, Self::Error> {
+    fn read_register_ap(&mut self, port: MemoryAP, _register: REGISTER) -> Result<REGISTER, Self::Error> {
         use coresight::access_ports::APType;
         // TODO: Make those next lines use the future typed DP interface.
         let mut cache_changed = false;
@@ -222,6 +222,7 @@ where
             self.write_register(0xFFFF, 0x008, select)?;
         }
         let result = self.read_register(self.current_apsel as u16, REGISTER::ADDRESS)?;
+        println!("{:?}", result);
         Ok(REGISTER::from(result))
     }
     
@@ -242,7 +243,8 @@ where
                 ((self.current_apsel as u32) << 24) | ((self.current_apbanksel as u32) << 4);
             self.write_register(0xFFFF, 0x008, select)?;
         }
-        self.write_register(self.current_apsel as u16, REGISTER::ADDRESS, register.into())?;
+        println!("{}, {}", REGISTER::ADDRESS, register.clone().into());
+        self.write_register(self.current_apsel as u16, REGISTER::ADDRESS, 24)?;
         Ok(())
     }
 }

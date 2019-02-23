@@ -1,3 +1,5 @@
+pub mod mock;
+
 use crate::common::Register;
 use num_traits::{
     FromPrimitive,
@@ -8,6 +10,7 @@ use enum_primitive_derive::Primitive;
 use crate::access_ports::APRegister;
 use crate::access_ports::APType;
 
+#[derive(Clone, Copy)]
 pub struct MemoryAP {
     port_number: u8,
 }

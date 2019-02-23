@@ -1,7 +1,7 @@
+use coresight::access_ports::AccessPortError;
 use std::time::Instant;
 
 use coresight::dap_access::DAPAccess;
-use coresight::access_port::AccessPortError;
 use coresight::memory_interface::MemoryInterface;
 use probe::debug_probe::{DebugProbe, DebugProbeError};
 
@@ -191,7 +191,8 @@ fn dump_memory(n: u8, loc: u32, words: u32) -> Result<(), Error> {
         let instant = Instant::now();
 
         mem.read_block(st_link, loc, &mut data.as_mut_slice()).or_else(|e| Err(Error::AccessPortError(e)))?;
-
+        let value = mem.read::<u16, _>(st_link, loc).or_else(|e| Err(Error::AccessPortError(e)))?;
+        println!("{:08x}", value);
         // Stop timer.
         let elapsed = instant.elapsed();
 
