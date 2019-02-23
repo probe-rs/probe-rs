@@ -191,8 +191,6 @@ fn dump_memory(n: u8, loc: u32, words: u32) -> Result<(), Error> {
         let instant = Instant::now();
 
         mem.read_block(st_link, loc, &mut data.as_mut_slice()).or_else(|e| Err(Error::AccessPortError(e)))?;
-        let value = mem.read::<u16, _>(st_link, loc).or_else(|e| Err(Error::AccessPortError(e)))?;
-        println!("{:08x}", value);
         // Stop timer.
         let elapsed = instant.elapsed();
 
@@ -298,6 +296,8 @@ fn trace_u32_on_target(n: u8, loc: u32) -> Result<(), Error> {
     let start = Instant::now();
     let mem = MemoryInterface::new(0x0);
 
+    let mut f = std::fs::File::create("/tmp/foo").expect("Fug");
+
     with_device(n, |st_link| {
         loop {
             // Prepare read.
@@ -306,6 +306,7 @@ fn trace_u32_on_target(n: u8, loc: u32) -> Result<(), Error> {
 
             // Read data.
             let value: u32 = mem.read(st_link, loc).or_else(|e| Err(Error::AccessPortError(e)))?;
+            f.write(format!("{}, {}\n", instant, value).as_bytes());
 
             xs.push(instant);
             ys.push(value);

@@ -45,6 +45,7 @@ def data_gen():
         line = fd.read(8)
         if len(line) == 8:
             value = struct.unpack('<II', line)
+            print(value)
             yield value
 
 if __name__ == '__main__':

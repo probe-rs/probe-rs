@@ -244,7 +244,7 @@ where
             self.write_register(0xFFFF, 0x008, select)?;
         }
         println!("{}, {}", REGISTER::ADDRESS, register.clone().into());
-        self.write_register(self.current_apsel as u16, REGISTER::ADDRESS, 24)?;
+        self.write_register(self.current_apsel as u16, REGISTER::ADDRESS, register.into())?;
         Ok(())
     }
 }
