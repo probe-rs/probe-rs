@@ -51,9 +51,9 @@ impl Default for APType {
 
 define_ap!(GenericAP);
 
-define_ap_register!(GenericAP, IDR, 0x0FC, 0, [
+define_ap_register!(GenericAP, IDR, 0xFC, [
         (REVISION: u8),
-        (DESIGNER: u8),
+        (DESIGNER: u16),
         (CLASS: APClass),
         (_RES0: u8),
         (VARIANT: u8),
@@ -61,12 +61,12 @@ define_ap_register!(GenericAP, IDR, 0x0FC, 0, [
     ],
     value,
     IDR {
-        REVISION: ((value >> 28) & 0x03) as u8,
-        DESIGNER: ((value >> 17) & 0x04) as u8,
-        CLASS:    APClass::from_u8(((value >> 13) & 0x01) as u8).unwrap(),
+        REVISION: ((value >> 28) & 0x0F) as u8,
+        DESIGNER: ((value >> 17) & 0x7FF) as u16,
+        CLASS:    {println!("{:32b}", value); APClass::from_u8(((value >> 13) & 0x0F) as u8).unwrap()},
         _RES0:     0,
-        VARIANT:  ((value >> 4) & 0x04) as u8,
-        TYPE:     APType::from_u8((value & 0x04) as u8).unwrap()
+        VARIANT:  ((value >> 4) & 0x0F) as u8,
+        TYPE:     APType::from_u8((value & 0x0F) as u8).unwrap()
     },
       (u32::from(value.REVISION       ) << 28)
     | (u32::from(value.DESIGNER       ) << 17)

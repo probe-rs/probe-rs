@@ -9,6 +9,7 @@ use coresight::memory_interface::MemoryInterface;
 use probe::debug_probe::{DebugProbe, DebugProbeError};
 
 use structopt::StructOpt;
+use coresight::memory_interface::MI;
 
 fn parse_hex(src: &str) -> Result<u32, std::num::ParseIntError> {
     u32::from_str_radix(src, 16)
@@ -192,7 +193,7 @@ fn show_info_of_device(n: u8) -> Result<(), Error> {
             if access_port_is_valid(st_link, access_port) {
                 let idr = st_link.read_register_ap(access_port, IDR::default())
                                 .or_local_err()?;
-                println!("\tAP: [{}] {:32b}", port, u32::from(idr));
+                //println!("\tAP: [{}] {:32b}", port, u32::from(idr));
                 println!("{:#?}", idr);
             }
         }

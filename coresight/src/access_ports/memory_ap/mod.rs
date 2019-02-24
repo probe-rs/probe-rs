@@ -26,7 +26,7 @@ impl Default for DataSize {
     fn default() -> Self { DataSize::U32 }
 }
 
-define_ap_register!(MemoryAP, CSW, 0x000, 0, [
+define_ap_register!(MemoryAP, CSW, 0x00, [
         (DbgSwEnable:    u8), // 1 bit
         (PROT:           u8), // 3 bits
         (CACHE:          u8), // 4 bits
@@ -43,19 +43,19 @@ define_ap_register!(MemoryAP, CSW, 0x000, 0, [
     value,
     CSW {
         DbgSwEnable:((value >> 31) & 0x01) as u8,
-        PROT:       ((value >> 28) & 0x03) as u8,
-        CACHE:      ((value >> 24) & 0x04) as u8,
+        PROT:       ((value >> 28) & 0x07) as u8,
+        CACHE:      ((value >> 24) & 0x0F) as u8,
         SPIDEN:     ((value >> 23) & 0x01) as u8,
         _RES0:       0,
-        Type:       ((value >> 12) & 0x04) as u8,
-        Mode:       ((value >>  8) & 0x04) as u8,
+        Type:       ((value >> 12) & 0x0F) as u8,
+        Mode:       ((value >>  8) & 0x0F) as u8,
         TrinProg:   ((value >>  7) & 0x01) as u8,
         DeviceEn:   ((value >>  6) & 0x01) as u8,
-        AddrInc:    ((value >>  4) & 0x02) as u8,
+        AddrInc:    ((value >>  4) & 0x03) as u8,
         _RES1:       0,
                 // unwrap() is safe as the chip will only return valid values.
                 // If not it's good to crash for now.
-        SIZE:   DataSize::from_u8((value & 0x03) as u8).unwrap(),
+        SIZE:   DataSize::from_u8((value & 0x07) as u8).unwrap(),
     },
       (u32::from(value.DbgSwEnable) << 31)
     | (u32::from(value.PROT       ) << 28)
@@ -72,7 +72,7 @@ define_ap_register!(MemoryAP, CSW, 0x000, 0, [
     | value.SIZE.to_u32().unwrap()
 );
 
-define_ap_register!(MemoryAP, TAR, 0x004, 0, [
+define_ap_register!(MemoryAP, TAR, 0x04, [
         (address: u32),
     ],
     value,
@@ -82,7 +82,7 @@ define_ap_register!(MemoryAP, TAR, 0x004, 0, [
     value.address
 );
 
-define_ap_register!(MemoryAP, DRW, 0x00C, 0, [
+define_ap_register!(MemoryAP, DRW, 0x0C, [
         (data: u32),
     ],
     value,

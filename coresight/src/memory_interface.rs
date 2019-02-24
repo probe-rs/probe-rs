@@ -47,18 +47,8 @@ impl ToMemoryReadSize for u8 {
     }
 }
 
-/// A struct to give access to a targets memory using a certain DAP.
-pub struct MemoryInterface {
-    access_port: MemoryAP,
-}
-
-impl MemoryInterface {
-    /// Creates a new MemoryInterface for given AccessPort.
-    pub fn new(access_port_number: u8) -> Self {
-        Self {
-            access_port: MemoryAP::new(access_port_number)
-        }
-    }
+pub trait MI {
+    fn get_access_port(&self) -> u8;
 
     /// Read a 32 bit register on the given AP.
     fn read_register_ap<REGISTER, AP>(&self, debug_port: &mut AP, register: REGISTER) -> Result<REGISTER, AccessPortError>
@@ -66,7 +56,7 @@ impl MemoryInterface {
         REGISTER: APRegister<MemoryAP>,
         AP: APAccess<MemoryAP, REGISTER>
     {
-        debug_port.read_register_ap(self.access_port, register)
+        debug_port.read_register_ap(MemoryAP::new(self.get_access_port()), register)
                   .or_else(|_| Err(AccessPortError::ProbeError))
     }
 
@@ -76,7 +66,7 @@ impl MemoryInterface {
         REGISTER: APRegister<MemoryAP>,
         AP: APAccess<MemoryAP, REGISTER>
     {
-        debug_port.write_register_ap(self.access_port, register)
+        debug_port.write_register_ap(MemoryAP::new(self.get_access_port()), register)
                   .or_else(|_| Err(AccessPortError::ProbeError))
     }
 
@@ -84,7 +74,7 @@ impl MemoryInterface {
     /// 
     /// The address where the read should be performed at has to be word aligned.
     /// Returns `AccessPortError::MemoryNotAligned` if this does not hold true.
-    pub fn read<S, AP>( &self, debug_port: &mut AP, address: u32) -> Result<S, AccessPortError>
+    fn read<S, AP>( &self, debug_port: &mut AP, address: u32) -> Result<S, AccessPortError>
     where
         S: ToMemoryReadSize,
         AP: APAccess<MemoryAP, CSW> + APAccess<MemoryAP, TAR> + APAccess<MemoryAP, DRW>
@@ -103,7 +93,7 @@ impl MemoryInterface {
     }
 
     /// Like `read_block` but with much simpler stucture but way lower performance for u8 and u16.
-    pub fn read_block_simple<S, AP>(
+    fn read_block_simple<S, AP>(
         &self,
         debug_port: &mut AP,
         addr: u32,
@@ -138,7 +128,7 @@ impl MemoryInterface {
     /// The number of words read is `data.len()`.
     /// The address where the read should be performed at has to be word aligned.
     /// Returns `AccessPortError::MemoryNotAligned` if this does not hold true.
-    pub fn read_block<S, AP>(
+    fn read_block<S, AP>(
         &self,
         debug_port: &mut AP,
         address: u32,
@@ -204,7 +194,7 @@ impl MemoryInterface {
     /// 
     /// The address where the write should be performed at has to be word aligned.
     /// Returns `AccessPortError::MemoryNotAligned` if this does not hold true.
-    pub fn write<S, AP>(
+    fn write<S, AP>(
         &self,
         debug_port: &mut AP,
         addr: u32,
@@ -228,7 +218,7 @@ impl MemoryInterface {
     }
 
     /// Like `write_block` but with much simpler stucture but way lower performance for u8 and u16.
-    pub fn write_block<S, AP>(
+    fn write_block<S, AP>(
         &self,
         debug_port: &mut AP,
         addr: u32,
@@ -297,7 +287,7 @@ impl MemoryInterface {
     /// The number of words written is `data.len()`.
     /// The address where the write should be performed at has to be word aligned.
     /// Returns `AccessPortError::MemoryNotAligned` if this does not hold true.
-    pub fn write_block_simple<S, AP>(
+    fn write_block_simple<S, AP>(
         &self,
         debug_port: &mut AP,
         addr: u32,
@@ -325,10 +315,31 @@ impl MemoryInterface {
     }
 }
 
+/// A struct to give access to a targets memory using a certain DAP.
+pub struct MemoryInterface {
+    access_port: u8,
+}
+
+impl MemoryInterface {
+    /// Creates a new MemoryInterface for given AccessPort.
+    pub fn new(access_port_number: u8) -> Self {
+        Self {
+            access_port: access_port_number
+        }
+    }
+}
+
+impl MI for MemoryInterface {
+    fn get_access_port(&self) -> u8 {
+        self.access_port
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::MemoryInterface;
     use crate::access_ports::memory_ap::mock::MockMemoryAP;
+    use crate::memory_interface::MI;
 
     #[test]
     fn read_u32() {

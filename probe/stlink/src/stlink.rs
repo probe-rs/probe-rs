@@ -218,7 +218,8 @@ where
         let select = (u32::from(link.current_apsel) << 24) | (u32::from(link.current_apbanksel) << 4);
         link.write_register(0xFFFF, 0x008, select)?;
     }
-    let result = link.read_register(u16::from(link.current_apsel), REGISTER::ADDRESS)?;
+    //println!("{:?}, {:08X}", link.current_apsel, REGISTER::ADDRESS);
+    let result = link.read_register(u16::from(link.current_apsel), u16::from(REGISTER::ADDRESS))?;
     Ok(REGISTER::from(result))
 }
 
@@ -239,11 +240,10 @@ where
         false
     };
     if cache_changed {
-        let select =
-            (u32::from(link.current_apsel) << 24) | (u32::from(link.current_apbanksel) << 4);
+        let select = (u32::from(link.current_apsel) << 24) | (u32::from(link.current_apbanksel) << 4);
         link.write_register(0xFFFF, 0x008, select)?;
     }
-    link.write_register(u16::from(link.current_apsel), REGISTER::ADDRESS, register.into())?;
+    link.write_register(u16::from(link.current_apsel), u16::from(REGISTER::ADDRESS), register.into())?;
     Ok(())
 }
 
