@@ -1,3 +1,4 @@
+use memory::ToMemoryReadSize;
 use crate::access_ports::{
     APRegister,
     memory_ap::{
@@ -11,44 +12,36 @@ use crate::access_ports::{
 };
 use crate::ap_access::APAccess;
 
-pub trait ToMemoryReadSize: Into<u32> + Copy {
-    /// The alignment mask that is required to test for properly aligned memory.
-    const ALIGNMENT_MASK: u32;
-    /// The transfer size expressed as command bits for a CoreSight command.
-    const MEMORY_TRANSFER_SIZE: DataSize;
-    /// Transform a generic 32 bit sized value to a transfer size sized one.
-    fn to_result(value: u32) -> Self;
+/// A struct to give access to a targets memory using a certain DAP.
+pub struct ADIMemoryInterface {
+    access_port: MemoryAP,
 }
 
-impl ToMemoryReadSize for u32 {
-    const ALIGNMENT_MASK: u32 = 0x3;
-    const MEMORY_TRANSFER_SIZE: DataSize = DataSize::U32;
-
-    fn to_result(value: u32) -> Self {
-        value
+pub fn bytes_to_transfer_size(bytes: u8) -> DataSize {
+    if bytes == 1 {
+        DataSize::U8
+    } else if bytes == 2 {
+        DataSize::U16
+    } else if bytes == 4 {
+        DataSize::U32
+    } else if bytes == 8 {
+        DataSize::U64
+    } else if bytes == 16 {
+        DataSize::U128
+    } else if bytes == 32 {
+        DataSize::U256
+    } else {
+        DataSize::U32
     }
 }
 
-impl ToMemoryReadSize for u16 {
-    const ALIGNMENT_MASK: u32 = 0x1;
-    const MEMORY_TRANSFER_SIZE: DataSize = DataSize::U16;
-
-    fn to_result(value: u32) -> Self {
-        value as u16
+impl ADIMemoryInterface {
+    /// Creates a new MemoryInterface for given AccessPort.
+    pub fn new(access_port_number: u8) -> Self {
+        Self {
+            access_port: MemoryAP::new(access_port_number)
+        }
     }
-}
-
-impl ToMemoryReadSize for u8 {
-    const ALIGNMENT_MASK: u32 = 0x0;
-    const MEMORY_TRANSFER_SIZE: DataSize = DataSize::U8;
-
-    fn to_result(value: u32) -> Self {
-        value as u8
-    }
-}
-
-pub trait MI {
-    fn get_access_port(&self) -> u8;
 
     /// Read a 32 bit register on the given AP.
     fn read_register_ap<REGISTER, AP>(&self, debug_port: &mut AP, register: REGISTER) -> Result<REGISTER, AccessPortError>
@@ -56,7 +49,7 @@ pub trait MI {
         REGISTER: APRegister<MemoryAP>,
         AP: APAccess<MemoryAP, REGISTER>
     {
-        debug_port.read_register_ap(MemoryAP::new(self.get_access_port()), register)
+        debug_port.read_register_ap(self.access_port, register)
                   .or_else(|_| Err(AccessPortError::ProbeError))
     }
 
@@ -66,7 +59,7 @@ pub trait MI {
         REGISTER: APRegister<MemoryAP>,
         AP: APAccess<MemoryAP, REGISTER>
     {
-        debug_port.write_register_ap(MemoryAP::new(self.get_access_port()), register)
+        debug_port.write_register_ap(self.access_port, register)
                   .or_else(|_| Err(AccessPortError::ProbeError))
     }
 
@@ -74,13 +67,13 @@ pub trait MI {
     /// 
     /// The address where the read should be performed at has to be word aligned.
     /// Returns `AccessPortError::MemoryNotAligned` if this does not hold true.
-    fn read<S, AP>( &self, debug_port: &mut AP, address: u32) -> Result<S, AccessPortError>
+    pub fn read<S, AP>(&self, debug_port: &mut AP, address: u32) -> Result<S, AccessPortError>
     where
         S: ToMemoryReadSize,
         AP: APAccess<MemoryAP, CSW> + APAccess<MemoryAP, TAR> + APAccess<MemoryAP, DRW>
     {
         if (address & S::ALIGNMENT_MASK) == 0 {
-            let csw: CSW = CSW { AddrInc: 1, SIZE: S::MEMORY_TRANSFER_SIZE, ..Default::default() };
+            let csw: CSW = CSW { AddrInc: 1, SIZE: bytes_to_transfer_size(S::MEMORY_TRANSFER_SIZE), ..Default::default() };
             let tar = TAR { address };
             self.write_register_ap(debug_port, csw)?;
             self.write_register_ap(debug_port, tar)?;
@@ -93,7 +86,7 @@ pub trait MI {
     }
 
     /// Like `read_block` but with much simpler stucture but way lower performance for u8 and u16.
-    fn read_block_simple<S, AP>(
+    pub fn read_block_simple<S, AP>(
         &self,
         debug_port: &mut AP,
         addr: u32,
@@ -104,7 +97,7 @@ pub trait MI {
         AP: APAccess<MemoryAP, CSW> + APAccess<MemoryAP, TAR> + APAccess<MemoryAP, DRW>
     {
         if (addr & S::ALIGNMENT_MASK) == 0 {
-            let csw: CSW = CSW { AddrInc: 1, SIZE: S::MEMORY_TRANSFER_SIZE, ..Default::default() };
+            let csw: CSW = CSW { AddrInc: 1, SIZE: bytes_to_transfer_size(S::MEMORY_TRANSFER_SIZE), ..Default::default() };
             let drw: DRW = Default::default();
 
             let unit_size = std::mem::size_of::<S>() as u32;
@@ -128,7 +121,7 @@ pub trait MI {
     /// The number of words read is `data.len()`.
     /// The address where the read should be performed at has to be word aligned.
     /// Returns `AccessPortError::MemoryNotAligned` if this does not hold true.
-    fn read_block<S, AP>(
+    pub fn read_block<S, AP>(
         &self,
         debug_port: &mut AP,
         address: u32,
@@ -154,7 +147,7 @@ pub trait MI {
 
             // First we read data until we can do aligned 32 bit reads.
             // This will at a maximum be 24 bits for 8 bit transfer size and 16 bits for 16 bit transfers.
-            let csw: CSW = CSW { AddrInc: 1, SIZE: S::MEMORY_TRANSFER_SIZE, ..Default::default() };
+            let csw: CSW = CSW { AddrInc: 1, SIZE: bytes_to_transfer_size(S::MEMORY_TRANSFER_SIZE), ..Default::default() };
             self.write_register_ap(debug_port, csw)?;
             for offset in 0..num_words_at_start {
                 let tar = TAR { address: address + offset * bytes_per_word };
@@ -176,7 +169,7 @@ pub trait MI {
 
             // Lastly we read data until we can have read all the remaining data that was requested.
             // This will at a maximum be 24 bits for 8 bit transfer size and 16 bits for 16 bit transfers.
-            let csw: CSW = CSW { AddrInc: 1, SIZE: S::MEMORY_TRANSFER_SIZE, ..Default::default() };
+            let csw: CSW = CSW { AddrInc: 1, SIZE: bytes_to_transfer_size(S::MEMORY_TRANSFER_SIZE), ..Default::default() };
             self.write_register_ap(debug_port, csw)?;
             for offset in 0..num_words_at_end {
                 let tar = TAR { address: address + num_words_at_start * bytes_per_word + num_32_bit_reads * 4 + offset * bytes_per_word };
@@ -194,7 +187,7 @@ pub trait MI {
     /// 
     /// The address where the write should be performed at has to be word aligned.
     /// Returns `AccessPortError::MemoryNotAligned` if this does not hold true.
-    fn write<S, AP>(
+    pub fn write<S, AP>(
         &self,
         debug_port: &mut AP,
         addr: u32,
@@ -205,7 +198,7 @@ pub trait MI {
         AP: APAccess<MemoryAP, CSW> + APAccess<MemoryAP, TAR> + APAccess<MemoryAP, DRW>
     {
         if (addr & S::ALIGNMENT_MASK) == 0 {
-            let csw: CSW = CSW { AddrInc: 1, SIZE: S::MEMORY_TRANSFER_SIZE, ..Default::default() };
+            let csw: CSW = CSW { AddrInc: 1, SIZE: bytes_to_transfer_size(S::MEMORY_TRANSFER_SIZE), ..Default::default() };
             let drw = DRW { data: data.into() };
             let tar = TAR { address: addr };
             self.write_register_ap(debug_port, csw)?;
@@ -218,7 +211,7 @@ pub trait MI {
     }
 
     /// Like `write_block` but with much simpler stucture but way lower performance for u8 and u16.
-    fn write_block<S, AP>(
+    pub fn write_block<S, AP>(
         &self,
         debug_port: &mut AP,
         addr: u32,
@@ -244,7 +237,7 @@ pub trait MI {
 
             // First we write data until we can do aligned 32 bit writes.
             // This will at a maximum be 24 bits for 8 bit transfer size and 16 bits for 16 bit transfers.
-            let csw: CSW = CSW { AddrInc: 1, SIZE: S::MEMORY_TRANSFER_SIZE, ..Default::default() };
+            let csw: CSW = CSW { AddrInc: 1, SIZE: bytes_to_transfer_size(S::MEMORY_TRANSFER_SIZE), ..Default::default() };
             self.write_register_ap(debug_port, csw)?;
             for offset in 0..num_words_at_start {
                 let tar = TAR { address: addr + offset * bytes_per_word };
@@ -268,7 +261,7 @@ pub trait MI {
 
             // Lastly we write data until we can have written all the remaining data that was requested.
             // This will at a maximum be 24 bits for 8 bit transfer size and 16 bits for 16 bit transfers.
-            let csw: CSW = CSW { AddrInc: 1, SIZE: S::MEMORY_TRANSFER_SIZE, ..Default::default() };
+            let csw: CSW = CSW { AddrInc: 1, SIZE: bytes_to_transfer_size(S::MEMORY_TRANSFER_SIZE), ..Default::default() };
             self.write_register_ap(debug_port, csw)?;
             for offset in 0..num_words_at_end {
                 let tar = TAR { address: addr + num_words_at_start * bytes_per_word + num_32_bit_writes * 4 + offset * bytes_per_word };
@@ -287,7 +280,7 @@ pub trait MI {
     /// The number of words written is `data.len()`.
     /// The address where the write should be performed at has to be word aligned.
     /// Returns `AccessPortError::MemoryNotAligned` if this does not hold true.
-    fn write_block_simple<S, AP>(
+    pub fn write_block_simple<S, AP>(
         &self,
         debug_port: &mut AP,
         addr: u32,
@@ -300,7 +293,7 @@ pub trait MI {
         if (addr & S::ALIGNMENT_MASK) == 0 {
             let len = data.len() as u32;
             let unit_size = std::mem::size_of::<S>() as u32;
-            let csw: CSW = CSW { AddrInc: 1, SIZE: S::MEMORY_TRANSFER_SIZE, ..Default::default() };
+            let csw: CSW = CSW { AddrInc: 1, SIZE: bytes_to_transfer_size(S::MEMORY_TRANSFER_SIZE), ..Default::default() };
             self.write_register_ap(debug_port, csw)?;
             for offset in 0..len {
                 let tar = TAR { address: addr + offset * unit_size };
@@ -315,31 +308,10 @@ pub trait MI {
     }
 }
 
-/// A struct to give access to a targets memory using a certain DAP.
-pub struct MemoryInterface {
-    access_port: u8,
-}
-
-impl MemoryInterface {
-    /// Creates a new MemoryInterface for given AccessPort.
-    pub fn new(access_port_number: u8) -> Self {
-        Self {
-            access_port: access_port_number
-        }
-    }
-}
-
-impl MI for MemoryInterface {
-    fn get_access_port(&self) -> u8 {
-        self.access_port
-    }
-}
-
 #[cfg(test)]
 mod tests {
-    use super::MemoryInterface;
+    use super::ADIMemoryInterface;
     use crate::access_ports::memory_ap::mock::MockMemoryAP;
-    use crate::memory_interface::MI;
 
     #[test]
     fn read_u32() {
@@ -348,7 +320,7 @@ mod tests {
         mock.data[1] = 0xBE;
         mock.data[2] = 0xAD;
         mock.data[3] = 0xDE;
-        let mi = MemoryInterface::new(0x0);
+        let mi = ADIMemoryInterface::new(0x0);
         let read: Result<u32, _> = mi.read(&mut mock, 0);
         debug_assert!(read.is_ok());
         debug_assert_eq!(read.unwrap(), 0xDEADBEEF);
@@ -361,7 +333,7 @@ mod tests {
         mock.data[1] = 0xBE;
         mock.data[2] = 0xAD;
         mock.data[3] = 0xDE;
-        let mi = MemoryInterface::new(0x0);
+        let mi = ADIMemoryInterface::new(0x0);
         let read: Result<u16, _> = mi.read(&mut mock, 0);
         let read2: Result<u16, _> = mi.read(&mut mock, 2);
         debug_assert!(read.is_ok());
@@ -376,7 +348,7 @@ mod tests {
         mock.data[1] = 0xBE;
         mock.data[2] = 0xAD;
         mock.data[3] = 0xDE;
-        let mi = MemoryInterface::new(0x0);
+        let mi = ADIMemoryInterface::new(0x0);
         let read: Result<u8, _> = mi.read(&mut mock, 0);
         let read2: Result<u8, _> = mi.read(&mut mock, 1);
         let read3: Result<u8, _> = mi.read(&mut mock, 2);
@@ -391,7 +363,7 @@ mod tests {
     #[test]
     fn write_u32() {
         let mut mock = MockMemoryAP::new();
-        let mi = MemoryInterface::new(0x0);
+        let mi = ADIMemoryInterface::new(0x0);
         debug_assert!(mi.write(&mut mock, 0, 0xDEADBEEF as u32).is_ok());
         debug_assert_eq!(mock.data[0..4], [0xEF, 0xBE, 0xAD, 0xDE]);
     }
@@ -399,7 +371,7 @@ mod tests {
     #[test]
     fn write_u16() {
         let mut mock = MockMemoryAP::new();
-        let mi = MemoryInterface::new(0x0);
+        let mi = ADIMemoryInterface::new(0x0);
         debug_assert!(mi.write(&mut mock, 0, 0xBEEF as u16).is_ok());
         debug_assert!(mi.write(&mut mock, 2, 0xDEAD as u16).is_ok());
         debug_assert_eq!(mock.data[0..4], [0xEF, 0xBE, 0xAD, 0xDE]);
@@ -408,7 +380,7 @@ mod tests {
     #[test]
     fn write_u8() {
         let mut mock = MockMemoryAP::new();
-        let mi = MemoryInterface::new(0x0);
+        let mi = ADIMemoryInterface::new(0x0);
         debug_assert!(mi.write(&mut mock, 0, 0xEF as u8).is_ok());
         debug_assert!(mi.write(&mut mock, 1, 0xBE as u8).is_ok());
         debug_assert!(mi.write(&mut mock, 2, 0xAD as u8).is_ok());
@@ -427,7 +399,7 @@ mod tests {
         mock.data[5] = 0xBA;
         mock.data[6] = 0xBA;
         mock.data[7] = 0xAB;
-        let mi = MemoryInterface::new(0x0);
+        let mi = ADIMemoryInterface::new(0x0);
         let mut data = [0 as u32; 2];
         let read = mi.read_block(&mut mock, 0, &mut data);
         debug_assert!(read.is_ok());
@@ -441,7 +413,7 @@ mod tests {
         mock.data[1] = 0xBE;
         mock.data[2] = 0xAD;
         mock.data[3] = 0xDE;
-        let mi = MemoryInterface::new(0x0);
+        let mi = ADIMemoryInterface::new(0x0);
         let mut data = [0 as u32; 1];
         let read = mi.read_block(&mut mock, 0, &mut data);
         debug_assert!(read.is_ok());
@@ -451,7 +423,7 @@ mod tests {
     #[test]
     fn read_block_u32_unaligned_should_error() {
         let mut mock = MockMemoryAP::new();
-        let mi = MemoryInterface::new(0x0);
+        let mi = ADIMemoryInterface::new(0x0);
         let mut data = [0 as u32; 4];
         debug_assert!(mi.read_block(&mut mock, 1, &mut data).is_err());
         debug_assert!(mi.read_block(&mut mock, 127, &mut data).is_err());
@@ -469,7 +441,7 @@ mod tests {
         mock.data[5] = 0xBA;
         mock.data[6] = 0xBA;
         mock.data[7] = 0xAB;
-        let mi = MemoryInterface::new(0x0);
+        let mi = ADIMemoryInterface::new(0x0);
         let mut data = [0 as u16; 4];
         let read = mi.read_block(&mut mock, 0, &mut data);
         debug_assert!(read.is_ok());
@@ -487,7 +459,7 @@ mod tests {
         mock.data[7] = 0xBA;
         mock.data[8] = 0xBA;
         mock.data[9] = 0xAB;
-        let mi = MemoryInterface::new(0x0);
+        let mi = ADIMemoryInterface::new(0x0);
         let mut data = [0 as u16; 4];
         let read = mi.read_block(&mut mock, 2, &mut data);
         debug_assert!(read.is_ok());
@@ -497,7 +469,7 @@ mod tests {
     #[test]
     fn read_block_u16_unaligned_should_error() {
         let mut mock = MockMemoryAP::new();
-        let mi = MemoryInterface::new(0x0);
+        let mi = ADIMemoryInterface::new(0x0);
         let mut data = [0 as u16; 4];
         debug_assert!(mi.read_block(&mut mock, 1, &mut data).is_err());
         debug_assert!(mi.read_block(&mut mock, 127, &mut data).is_err());
@@ -515,7 +487,7 @@ mod tests {
         mock.data[5] = 0xBA;
         mock.data[6] = 0xBA;
         mock.data[7] = 0xAB;
-        let mi = MemoryInterface::new(0x0);
+        let mi = ADIMemoryInterface::new(0x0);
         let mut data = [0 as u8; 8];
         let read = mi.read_block(&mut mock, 0, &mut data);
         debug_assert!(read.is_ok());
@@ -533,7 +505,7 @@ mod tests {
         mock.data[6] = 0xBA;
         mock.data[7] = 0xBA;
         mock.data[8] = 0xAB;
-        let mi = MemoryInterface::new(0x0);
+        let mi = ADIMemoryInterface::new(0x0);
         let mut data = [0 as u8; 8];
         let read = mi.read_block(&mut mock, 1, &mut data);
         debug_assert!(read.is_ok());
@@ -551,7 +523,7 @@ mod tests {
         mock.data[8] = 0xBA;
         mock.data[9] = 0xBA;
         mock.data[10] = 0xAB;
-        let mi = MemoryInterface::new(0x0);
+        let mi = ADIMemoryInterface::new(0x0);
         let mut data = [0 as u8; 8];
         let read = mi.read_block(&mut mock, 3, &mut data);
         debug_assert!(read.is_ok());
@@ -561,7 +533,7 @@ mod tests {
     #[test]
     fn write_block_u32() {
         let mut mock = MockMemoryAP::new();
-        let mi = MemoryInterface::new(0x0);
+        let mi = ADIMemoryInterface::new(0x0);
         debug_assert!(mi.write_block(&mut mock, 0, &([0xDEADBEEF, 0xABBABABE] as [u32; 2])).is_ok());
         debug_assert_eq!(mock.data[0..8], [0xEF, 0xBE, 0xAD, 0xDE, 0xBE, 0xBA, 0xBA ,0xAB]);
     }
@@ -569,7 +541,7 @@ mod tests {
     #[test]
     fn write_block_u32_only_1_word() {
         let mut mock = MockMemoryAP::new();
-        let mi = MemoryInterface::new(0x0);
+        let mi = ADIMemoryInterface::new(0x0);
         debug_assert!(mi.write_block(&mut mock, 0, &([0xDEADBEEF] as [u32; 1])).is_ok());
         debug_assert_eq!(mock.data[0..4], [0xEF, 0xBE, 0xAD, 0xDE]);
     }
@@ -577,7 +549,7 @@ mod tests {
     #[test]
     fn write_block_u32_unaligned_should_error() {
         let mut mock = MockMemoryAP::new();
-        let mi = MemoryInterface::new(0x0);
+        let mi = ADIMemoryInterface::new(0x0);
         debug_assert!(mi.write_block(&mut mock, 1, &([0xDEADBEEF, 0xABBABABE] as [u32; 2])).is_err());
         debug_assert!(mi.write_block(&mut mock, 127, &([0xDEADBEEF, 0xABBABABE] as [u32; 2])).is_err());
         debug_assert!(mi.write_block(&mut mock, 3, &([0xDEADBEEF, 0xABBABABE] as [u32; 2])).is_err());
@@ -586,7 +558,7 @@ mod tests {
     #[test]
     fn write_block_u16() {
         let mut mock = MockMemoryAP::new();
-        let mi = MemoryInterface::new(0x0);
+        let mi = ADIMemoryInterface::new(0x0);
         debug_assert!(mi.write_block(&mut mock, 0, &([0xBEEF, 0xDEAD, 0xBABE, 0xABBA] as [u16; 4])).is_ok());
         debug_assert_eq!(mock.data[0..8], [0xEF, 0xBE, 0xAD, 0xDE, 0xBE, 0xBA, 0xBA ,0xAB]);
     }
@@ -594,7 +566,7 @@ mod tests {
     #[test]
     fn write_block_u16_unaligned2() {
         let mut mock = MockMemoryAP::new();
-        let mi = MemoryInterface::new(0x0);
+        let mi = ADIMemoryInterface::new(0x0);
         debug_assert!(mi.write_block(&mut mock, 2, &([0xBEEF, 0xDEAD, 0xBABE, 0xABBA] as [u16; 4])).is_ok());
         debug_assert_eq!(mock.data[0..10], [0x00, 0x00, 0xEF, 0xBE, 0xAD, 0xDE, 0xBE, 0xBA, 0xBA ,0xAB]);
     }
@@ -602,7 +574,7 @@ mod tests {
     #[test]
     fn write_block_u16_unaligned_should_error() {
         let mut mock = MockMemoryAP::new();
-        let mi = MemoryInterface::new(0x0);
+        let mi = ADIMemoryInterface::new(0x0);
         debug_assert!(mi.write_block(&mut mock, 1, &([0xBEEF, 0xDEAD, 0xBABE, 0xABBA] as [u16; 4])).is_err());
         debug_assert!(mi.write_block(&mut mock, 127, &([0xBEEF, 0xDEAD, 0xBABE, 0xABBA] as [u16; 4])).is_err());
         debug_assert!(mi.write_block(&mut mock, 3, &([0xBEEF, 0xDEAD, 0xBABE, 0xABBA] as [u16; 4])).is_err());
@@ -611,7 +583,7 @@ mod tests {
     #[test]
     fn write_block_u8() {
         let mut mock = MockMemoryAP::new();
-        let mi = MemoryInterface::new(0x0);
+        let mi = ADIMemoryInterface::new(0x0);
         debug_assert!(mi.write_block(&mut mock, 0, &([0xEF, 0xBE, 0xAD, 0xDE, 0xBE, 0xBA, 0xBA ,0xAB] as [u8; 8])).is_ok());
         debug_assert_eq!(mock.data[0..8], [0xEF, 0xBE, 0xAD, 0xDE, 0xBE, 0xBA, 0xBA ,0xAB]);
     }
@@ -619,7 +591,7 @@ mod tests {
     #[test]
     fn write_block_u8_unaligned() {
         let mut mock = MockMemoryAP::new();
-        let mi = MemoryInterface::new(0x0);
+        let mi = ADIMemoryInterface::new(0x0);
         debug_assert!(mi.write_block(&mut mock, 3, &([0xEF, 0xBE, 0xAD, 0xDE, 0xBE, 0xBA, 0xBA ,0xAB] as [u8; 8])).is_ok());
         debug_assert_eq!(mock.data[0..11], [0x00, 0x00, 0x00, 0xEF, 0xBE, 0xAD, 0xDE, 0xBE, 0xBA, 0xBA ,0xAB]);
     }
@@ -627,7 +599,7 @@ mod tests {
     #[test]
     fn write_block_u8_unaligned2() {
         let mut mock = MockMemoryAP::new();
-        let mi = MemoryInterface::new(0x0);
+        let mi = ADIMemoryInterface::new(0x0);
         debug_assert!(mi.write_block(&mut mock, 1, &([0xEF, 0xBE, 0xAD, 0xDE, 0xBE, 0xBA, 0xBA ,0xAB] as [u8; 8])).is_ok());
         debug_assert_eq!(mock.data[0..9], [0x00, 0xEF, 0xBE, 0xAD, 0xDE, 0xBE, 0xBA, 0xBA ,0xAB]);
     }

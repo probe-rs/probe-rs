@@ -3,6 +3,7 @@
 mod usb_interface;
 pub mod constants;
 mod stlink;
+pub mod memory_interface;
 
 pub use crate::stlink::{
     STLink,

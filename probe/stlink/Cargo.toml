@@ -8,6 +8,7 @@ edition = "2018"
 libusb = "0.3.0"
 lazy_static = "1.2.0"
 probe = { path = "../" }
+memory = { path = "../../memory" }
 coresight = { path = "../../coresight" }
 scroll = "*"
 rental = "*"

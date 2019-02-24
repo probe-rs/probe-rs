@@ -1,7 +1,11 @@
+use coresight::access_ports::AccessPortError;
+use memory::ToMemoryReadSize;
+use memory::MI;
 use coresight::access_ports::GenericAP;
 use coresight::ap_access::AccessPort;
 use coresight::access_ports::APRegister;
 use crate::usb_interface::STLinkInfo;
+use coresight::memory_interface::ADIMemoryInterface;
 use coresight::access_ports::memory_ap::{MemoryAP};
 use coresight::ap_access::APAccess;
 use libusb::Device;
@@ -281,6 +285,39 @@ impl Drop for STLink {
     fn drop(&mut self) {
         // We ignore the error case as we can't do much about it anyways.
         let _ = self.enter_idle();
+    }
+}
+
+impl MI for STLink
+{
+    type Error = AccessPortError;
+
+    fn read<S: ToMemoryReadSize>(&mut self, address: u32) -> Result<S, Self::Error> {
+        ADIMemoryInterface::new(0).read(self, address)
+    }
+
+    fn read_block<S: ToMemoryReadSize>(
+        &mut self,
+        address: u32,
+        data: &mut [S]
+    ) -> Result<(), Self::Error> {
+        ADIMemoryInterface::new(0).read_block(self, address, data)
+    }
+
+    fn write<S: ToMemoryReadSize>(
+        &mut self,
+        addr: u32,
+        data: S
+    ) -> Result<(), Self::Error> {
+        ADIMemoryInterface::new(0).write(self, addr, data)
+    }
+
+    fn write_block<S: ToMemoryReadSize>(
+        &mut self,
+        addr: u32,
+        data: &[S]
+    ) -> Result<(), Self::Error> {
+        ADIMemoryInterface::new(0).write_block(self, addr, data)
     }
 }
 

@@ -1,4 +1,5 @@
 use crate::protocol::WireProtocol;
+use memory::MI;
 
 #[derive(Debug)]
 pub enum DebugProbeError {

@@ -3,5 +3,6 @@ members = [
     "coresight",
     "probe",
     "probe/stlink",
-    "cli"
+    "cli",
+    "memory"
 ]
