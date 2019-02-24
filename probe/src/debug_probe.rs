@@ -21,7 +21,7 @@ pub enum DebugProbeError {
 }
 
 
-pub trait DebugProbe {
+pub trait DebugProbe: Mi {
     type Error;
 
     /// Reads back the version of the Probe.
