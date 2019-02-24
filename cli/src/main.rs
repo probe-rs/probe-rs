@@ -1,3 +1,6 @@
+use coresight::ap_access::APAccess;
+use coresight::access_ports::GenericAP;
+use coresight::ap_access::access_port_is_valid;
 use coresight::access_ports::AccessPortError;
 use std::time::Instant;
 
@@ -181,14 +184,28 @@ fn show_info_of_device(n: u8) -> Result<(), Error> {
             target_info.2
         );
 
-        if target_info.3 != 1
-            || !(target_info.0 == 0x3 || target_info.0 == 0x4)
-            || !(target_info.1 == 0xBA00 || target_info.1 == 0xBA02)
-        {
-            return Err(Error::Custom(
-                "The IDCODE register has not-expected contents.",
-            ));
+        println!("\nAvailable Ports");
+
+        for port in 0..255 {
+            use coresight::access_ports::IDR;
+            let access_port = GenericAP::new(port);
+            if access_port_is_valid(st_link, access_port) {
+                let idr = st_link.read_register_ap(access_port, IDR::default())
+                                .or_local_err()?;
+                println!("\tAP: [{}] {:32b}", port, u32::from(idr));
+                println!("{:#?}", idr);
+            }
         }
+
+        // TODO: seems broken
+        // if target_info.3 != 1
+        //     || !(target_info.0 == 0x3 || target_info.0 == 0x4)
+        //     || !(target_info.1 == 0xBA00 || target_info.1 == 0xBA02)
+        // {
+        //     return Err(Error::Custom(
+        //         "The IDCODE register has not-expected contents.",
+        //     ));
+        // }
         Ok(())
     })
 }

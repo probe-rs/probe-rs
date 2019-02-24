@@ -1,11 +1,16 @@
 use crate::access_ports::{
-    APType,
     APRegister,
+    GenericAP,
+    IDR,
 };
+
+pub trait AccessPort {
+    fn get_port_number(&self) -> u8;
+}
 
 pub trait APAccess<PORT, REGISTER>
 where
-    PORT: APType,
+    PORT: AccessPort,
     REGISTER: APRegister<PORT>,
 {
     type Error;
@@ -13,8 +18,14 @@ where
     fn write_register_ap(&mut self, port: PORT, register: REGISTER) -> Result<(), Self::Error>;
 }
 
-// /// Determine if an AP exists with the given AP number.
-// pub fn access_port_is_valid(debug_port: &mut DebugPort, access_port: AccessPortNumber) -> Result<bool, DebugPortError> {
-//     let idr = debug_port.read_ap(((access_port as u32) << consts::APSEL_SHIFT) | consts::AP_IDR as u32)?;
-//     Ok(idr != 0)
-// }
+/// Determine if an AP exists with the given AP number.
+pub fn access_port_is_valid<AP>(debug_port: &mut AP, access_port: GenericAP) -> bool
+where
+    AP: APAccess<GenericAP, IDR>
+{
+    if let Ok(idr) = debug_port.read_register_ap(access_port, IDR::default()) {
+        u32::from(idr) != 0
+    } else {
+        false
+    }
+}

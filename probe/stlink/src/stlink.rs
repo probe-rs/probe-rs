@@ -1,3 +1,5 @@
+use coresight::access_ports::GenericAP;
+use coresight::ap_access::AccessPort;
 use coresight::access_ports::APRegister;
 use crate::usb_interface::STLinkInfo;
 use coresight::access_ports::memory_ap::{MemoryAP};
@@ -12,8 +14,6 @@ use probe::protocol::WireProtocol;
 
 use crate::constants::{commands, JTagFrequencyToDivider, Status, SwdFrequencyToDelayCount};
 use crate::usb_interface::{STLinkUSBDevice, TIMEOUT};
-
-type AccessPort = u8;
 
 pub struct STLink {
     device: STLinkUSBDevice,
@@ -198,51 +198,82 @@ impl DAPAccess for STLink {
     }
 }
 
+fn read_register_ap<AP, REGISTER>(link: &mut STLink, port: AP, _register: REGISTER) -> Result<REGISTER, DebugProbeError>
+where
+    AP: AccessPort,
+    REGISTER: APRegister<AP>
+{
+    use coresight::ap_access::AccessPort;
+    // TODO: Make those next lines use the future typed DP interface.
+    let cache_changed = if link.current_apsel != port.get_port_number() {
+        link.current_apsel = port.get_port_number();
+        true
+    } else if link.current_apbanksel != REGISTER::APBANKSEL {
+        link.current_apbanksel = REGISTER::APBANKSEL;
+        true
+    } else {
+        false
+    };
+    if cache_changed {
+        let select = (u32::from(link.current_apsel) << 24) | (u32::from(link.current_apbanksel) << 4);
+        link.write_register(0xFFFF, 0x008, select)?;
+    }
+    let result = link.read_register(u16::from(link.current_apsel), REGISTER::ADDRESS)?;
+    Ok(REGISTER::from(result))
+}
+
+fn write_register_ap<AP, REGISTER>(link: &mut STLink, port: AP, register: REGISTER) -> Result<(), DebugProbeError>
+where
+    AP: AccessPort,
+    REGISTER: APRegister<AP>
+{
+    use coresight::ap_access::AccessPort;
+    // TODO: Make those next lines use the future typed DP interface.
+    let cache_changed = if link.current_apsel != port.get_port_number() {
+        link.current_apsel = port.get_port_number();
+        true
+    } else if link.current_apbanksel != REGISTER::APBANKSEL {
+        link.current_apbanksel = REGISTER::APBANKSEL;
+        true
+    } else {
+        false
+    };
+    if cache_changed {
+        let select =
+            (u32::from(link.current_apsel) << 24) | (u32::from(link.current_apbanksel) << 4);
+        link.write_register(0xFFFF, 0x008, select)?;
+    }
+    link.write_register(u16::from(link.current_apsel), REGISTER::ADDRESS, register.into())?;
+    Ok(())
+}
+
 impl<REGISTER> APAccess<MemoryAP, REGISTER> for STLink
 where
     REGISTER: APRegister<MemoryAP>
 {
     type Error = DebugProbeError;
 
-    fn read_register_ap(&mut self, port: MemoryAP, _register: REGISTER) -> Result<REGISTER, Self::Error> {
-        use coresight::access_ports::APType;
-        // TODO: Make those next lines use the future typed DP interface.
-        let cache_changed = if self.current_apsel != port.get_port_number() {
-            self.current_apsel = port.get_port_number();
-            true
-        } else if self.current_apbanksel != REGISTER::APBANKSEL {
-            self.current_apbanksel = REGISTER::APBANKSEL;
-            true
-        } else {
-            false
-        };
-        if cache_changed {
-            let select = (u32::from(self.current_apsel) << 24) | (u32::from(self.current_apbanksel) << 4);
-            self.write_register(0xFFFF, 0x008, select)?;
-        }
-        let result = self.read_register(u16::from(self.current_apsel), REGISTER::ADDRESS)?;
-        Ok(REGISTER::from(result))
+    fn read_register_ap(&mut self, port: MemoryAP, register: REGISTER) -> Result<REGISTER, Self::Error> {
+        read_register_ap(self, port, register)
     }
     
     fn write_register_ap(&mut self, port: MemoryAP, register: REGISTER) -> Result<(), Self::Error> {
-        use coresight::access_ports::APType;
-        // TODO: Make those next lines use the future typed DP interface.
-        let cache_changed = if self.current_apsel != port.get_port_number() {
-            self.current_apsel = port.get_port_number();
-            true
-        } else if self.current_apbanksel != REGISTER::APBANKSEL {
-            self.current_apbanksel = REGISTER::APBANKSEL;
-            true
-        } else {
-            false
-        };
-        if cache_changed {
-            let select =
-                (u32::from(self.current_apsel) << 24) | (u32::from(self.current_apbanksel) << 4);
-            self.write_register(0xFFFF, 0x008, select)?;
-        }
-        self.write_register(u16::from(self.current_apsel), REGISTER::ADDRESS, register.into())?;
-        Ok(())
+        write_register_ap(self, port, register)
+    }
+}
+
+impl<REGISTER> APAccess<GenericAP, REGISTER> for STLink
+where
+    REGISTER: APRegister<GenericAP>
+{
+    type Error = DebugProbeError;
+
+    fn read_register_ap(&mut self, port: GenericAP, register: REGISTER) -> Result<REGISTER, Self::Error> {
+        read_register_ap(self, port, register)
+    }
+    
+    fn write_register_ap(&mut self, port: GenericAP, register: REGISTER) -> Result<(), Self::Error> {
+        write_register_ap(self, port, register)
     }
 }
 
@@ -401,7 +432,7 @@ impl STLink {
         Self::check_status(&buf)
     }
 
-    pub fn open_ap(&mut self, apsel: AccessPort) -> Result<(), DebugProbeError> {
+    pub fn open_ap(&mut self, apsel: impl AccessPort) -> Result<(), DebugProbeError> {
         if self.jtag_version < Self::MIN_JTAG_VERSION_MULTI_AP {
             Err(DebugProbeError::JTagDoesNotSupportMultipleAP)
         } else {
@@ -410,7 +441,7 @@ impl STLink {
                 vec![
                     commands::JTAG_COMMAND,
                     commands::JTAG_INIT_AP,
-                    apsel,
+                    apsel.get_port_number(),
                     commands::JTAG_AP_NO_CORE,
                 ],
                 &[],
@@ -421,13 +452,17 @@ impl STLink {
         }
     }
 
-    pub fn close_ap(&mut self, apsel: AccessPort) -> Result<(), DebugProbeError> {
+    pub fn close_ap(&mut self, apsel: impl AccessPort) -> Result<(), DebugProbeError> {
         if self.jtag_version < Self::MIN_JTAG_VERSION_MULTI_AP {
             Err(DebugProbeError::JTagDoesNotSupportMultipleAP)
         } else {
             let mut buf = [0; 2];
             self.device.write(
-                vec![commands::JTAG_COMMAND, commands::JTAG_CLOSE_AP_DBG, apsel],
+                vec![
+                    commands::JTAG_COMMAND,
+                    commands::JTAG_CLOSE_AP_DBG,
+                    apsel.get_port_number()
+                ],
                 &[],
                 &mut buf,
                 TIMEOUT,

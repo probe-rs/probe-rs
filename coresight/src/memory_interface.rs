@@ -76,7 +76,8 @@ impl MemoryInterface {
         REGISTER: APRegister<MemoryAP>,
         AP: APAccess<MemoryAP, REGISTER>
     {
-        debug_port.write_register_ap(self.access_port, register).or_else(|_| Err(AccessPortError::ProbeError))
+        debug_port.write_register_ap(self.access_port, register)
+                  .or_else(|_| Err(AccessPortError::ProbeError))
     }
 
     /// Read a word of the size defined by S at `addr`.
