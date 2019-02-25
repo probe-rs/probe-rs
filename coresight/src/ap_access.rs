@@ -1,7 +1,9 @@
 use crate::access_ports::{
     APRegister,
-    GenericAP,
-    IDR,
+    generic_ap::{
+        GenericAP,
+        IDR,
+    }
 };
 
 pub trait AccessPort {

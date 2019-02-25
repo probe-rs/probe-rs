@@ -1,5 +1,5 @@
 use coresight::ap_access::APAccess;
-use coresight::access_ports::GenericAP;
+use coresight::access_ports::generic_ap::GenericAP;
 use coresight::ap_access::access_port_is_valid;
 use coresight::access_ports::AccessPortError;
 use std::time::Instant;
@@ -187,7 +187,7 @@ fn show_info_of_device(n: u8) -> Result<(), Error> {
         println!("\nAvailable Ports");
 
         for port in 0..255 {
-            use coresight::access_ports::IDR;
+            use coresight::access_ports::generic_ap::IDR;
             let access_port = GenericAP::new(port);
             if access_port_is_valid(st_link, access_port) {
                 let idr = st_link.read_register_ap(access_port, IDR::default())

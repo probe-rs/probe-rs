@@ -8,7 +8,7 @@ use num_traits::{
 use enum_primitive_derive::Primitive;
 
 use crate::access_ports::APRegister;
-use crate::access_ports::AccessPort;
+use crate::ap_access::AccessPort;
 
 define_ap!(MemoryAP);
 

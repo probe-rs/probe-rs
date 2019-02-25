@@ -1,4 +1,4 @@
-use coresight::access_ports::GenericAP;
+use coresight::access_ports::generic_ap::GenericAP;
 use coresight::ap_access::AccessPort;
 use coresight::access_ports::APRegister;
 use crate::usb_interface::STLinkInfo;
