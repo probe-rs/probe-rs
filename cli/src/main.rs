@@ -1,3 +1,4 @@
+use std::io::Write;
 use coresight::ap_access::APAccess;
 use coresight::access_ports::generic_ap::GenericAP;
 use coresight::ap_access::access_port_is_valid;
@@ -187,13 +188,50 @@ fn show_info_of_device(n: u8) -> Result<(), Error> {
         println!("\nAvailable Ports");
 
         for port in 0..255 {
-            use coresight::access_ports::generic_ap::IDR;
+            use coresight::access_ports::generic_ap::{
+                IDR,
+                BASE,
+            };
             let access_port = GenericAP::new(port);
             if access_port_is_valid(st_link, access_port) {
                 let idr = st_link.read_register_ap(access_port, IDR::default())
                                 .or_local_err()?;
-                println!("\tAP: [{}] {:32b}", port, u32::from(idr));
                 println!("{:#?}", idr);
+
+                let base = st_link.read_register_ap(access_port, BASE::default())
+                                  .or_local_err()?;
+                println!("{:#?}", base);
+
+                let mem = MemoryInterface::new(0x0);
+                let mut data = vec![0 as u8; 4096];
+                mem.read_block(st_link, base.BASEADDR, &mut data.as_mut_slice()).or_else(|e| Err(Error::AccessPort(e)))?;
+
+                let mut file = std::fs::File::create("ROMtbl.bin").unwrap();
+                file.write_all(data.as_slice());
+
+                // CoreSight identification register offsets.
+                const DEVARCH: u32 = 0xfbc;
+                const DEVID: u32 = 0xfc8;
+                const DEVTYPE: u32 = 0xfcc;
+                const PIDR4: u32 = 0xfd0;
+                const PIDR0: u32 = 0xfe0;
+                const CIDR0: u32 = 0xff0;
+                const IDR_END: u32 = 0x1000;
+
+                // Range of identification registers to read at once and offsets in results.
+                //
+                // To improve component identification performance, we read all of a components
+                // CoreSight ID registers in a single read. Reading starts at the DEVARCH register.
+                const IDR_READ_START: u32 = DEVARCH;
+                const IDR_READ_COUNT: u32 = (IDR_END - IDR_READ_START) / 4;
+                const DEVARCH_OFFSET: u32 = (DEVARCH - IDR_READ_START) / 4;
+                const DEVTYPE_OFFSET: u32 = (DEVTYPE - IDR_READ_START) / 4;
+                const PIDR4_OFFSET: u32 = (PIDR4 - IDR_READ_START) / 4;
+                const PIDR0_OFFSET: u32 = (PIDR0 - IDR_READ_START) / 4;
+                const CIDR0_OFFSET: u32 = (CIDR0 - IDR_READ_START) / 4;
+
+                let cidr = extract_id_register_value(data.as_slice(), CIDR0_OFFSET);
+                println!("{:08X?}", cidr);
             }
         }
 
@@ -208,6 +246,15 @@ fn show_info_of_device(n: u8) -> Result<(), Error> {
         // }
         Ok(())
     })
+}
+
+fn extract_id_register_value(regs: &[u8], offset: u32) -> u32 {
+    let mut result = 0 as u32;
+    for i in 0..4 {
+        let value = regs[offset as usize + i] as u32;
+        result |= (value & 0xff) << (i * 8);
+    }
+    return result
 }
 
 // revision | partno | designer | reserved
