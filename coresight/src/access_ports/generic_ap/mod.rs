@@ -36,7 +36,7 @@ impl Default for APType {
 
 define_ap!(GenericAP);
 
-define_ap_register!(GenericAP, IDR, 0x0FC, 0, [
+define_ap_register!(GenericAP, IDR, 0x0FC, [
         (REVISION: u8),
         (DESIGNER: u8),
         (CLASS: APClass),
@@ -60,7 +60,7 @@ define_ap_register!(GenericAP, IDR, 0x0FC, 0, [
     | (value.TYPE.to_u32().unwrap()          )
 );
 
-define_ap_register!(GenericAP, BASE, 0x0F8, 0, [
+define_ap_register!(GenericAP, BASE, 0x0F8, [
         (BASEADDR: u32),
         (_RES0: u8),
         (Format: u8),

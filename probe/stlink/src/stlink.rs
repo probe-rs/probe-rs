@@ -1,7 +1,11 @@
 use coresight::access_ports::generic_ap::GenericAP;
+use coresight::access_ports::AccessPortError;
+use memory::ToMemoryReadSize;
+use memory::MI;
 use coresight::ap_access::AccessPort;
 use coresight::access_ports::APRegister;
 use crate::usb_interface::STLinkInfo;
+use coresight::memory_interface::ADIMemoryInterface;
 use coresight::access_ports::memory_ap::{MemoryAP};
 use coresight::ap_access::APAccess;
 use libusb::Device;
@@ -43,7 +47,7 @@ impl DebugProbe for STLink {
     /// Reads the ST-Links version.
     /// Returns a tuple (hardware version, firmware version).
     /// This method stores the version data on the struct to make later use of it.
-    fn get_version(&mut self) -> Result<(u8, u8), Self::Error> {
+    fn get_version(&mut self) -> Result<(u8, u8), <Self as DebugProbe>::Error> {
         const HW_VERSION_SHIFT: u8 = 12;
         const HW_VERSION_MASK: u8 = 0x0F;
         const JTAG_VERSION_SHIFT: u8 = 6;
@@ -108,7 +112,7 @@ impl DebugProbe for STLink {
     }
 
     /// Enters debug mode.
-    fn attach(&mut self, protocol: WireProtocol) -> Result<(), Self::Error> {
+    fn attach(&mut self, protocol: WireProtocol) -> Result<(), <Self as DebugProbe>::Error> {
         self.enter_idle()?;
 
         let param = match protocol {
@@ -128,12 +132,12 @@ impl DebugProbe for STLink {
     }
 
     /// Leave debug mode.
-    fn detach(&mut self) -> Result<(), Self::Error> {
+    fn detach(&mut self) -> Result<(), <Self as DebugProbe>::Error> {
         self.enter_idle()
     }
 
     /// Asserts the nRESET pin.
-    fn target_reset(&mut self) -> Result<(), Self::Error> {
+    fn target_reset(&mut self) -> Result<(), <Self as DebugProbe>::Error> {
         let mut buf = [0; 2];
         self.device.write(
             vec![
@@ -218,7 +222,8 @@ where
         let select = (u32::from(link.current_apsel) << 24) | (u32::from(link.current_apbanksel) << 4);
         link.write_register(0xFFFF, 0x008, select)?;
     }
-    let result = link.read_register(u16::from(link.current_apsel), REGISTER::ADDRESS)?;
+    //println!("{:?}, {:08X}", link.current_apsel, REGISTER::ADDRESS);
+    let result = link.read_register(u16::from(link.current_apsel), u16::from(REGISTER::ADDRESS))?;
     Ok(REGISTER::from(result))
 }
 
@@ -239,11 +244,10 @@ where
         false
     };
     if cache_changed {
-        let select =
-            (u32::from(link.current_apsel) << 24) | (u32::from(link.current_apbanksel) << 4);
+        let select = (u32::from(link.current_apsel) << 24) | (u32::from(link.current_apbanksel) << 4);
         link.write_register(0xFFFF, 0x008, select)?;
     }
-    link.write_register(u16::from(link.current_apsel), REGISTER::ADDRESS, register.into())?;
+    link.write_register(u16::from(link.current_apsel), u16::from(REGISTER::ADDRESS), register.into())?;
     Ok(())
 }
 
@@ -281,6 +285,39 @@ impl Drop for STLink {
     fn drop(&mut self) {
         // We ignore the error case as we can't do much about it anyways.
         let _ = self.enter_idle();
+    }
+}
+
+impl MI for STLink
+{
+    type Error = AccessPortError;
+
+    fn read<S: ToMemoryReadSize>(&mut self, address: u32) -> Result<S, Self::Error> {
+        ADIMemoryInterface::new(0).read(self, address)
+    }
+
+    fn read_block<S: ToMemoryReadSize>(
+        &mut self,
+        address: u32,
+        data: &mut [S]
+    ) -> Result<(), Self::Error> {
+        ADIMemoryInterface::new(0).read_block(self, address, data)
+    }
+
+    fn write<S: ToMemoryReadSize>(
+        &mut self,
+        addr: u32,
+        data: S
+    ) -> Result<(), Self::Error> {
+        ADIMemoryInterface::new(0).write(self, addr, data)
+    }
+
+    fn write_block<S: ToMemoryReadSize>(
+        &mut self,
+        addr: u32,
+        data: &[S]
+    ) -> Result<(), Self::Error> {
+        ADIMemoryInterface::new(0).write_block(self, addr, data)
     }
 }
 

@@ -12,7 +12,7 @@ use crate::common::Register;
 
 pub struct MockMemoryAP {
     pub data: Vec<u8>,
-    store: HashMap<(u16, u8), u32>,
+    store: HashMap<(u8, u8), u32>,
 }
 
 #[derive(Debug)]

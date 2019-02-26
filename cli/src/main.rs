@@ -1,4 +1,5 @@
 use std::io::Write;
+use memory::MI;
 use coresight::ap_access::APAccess;
 use coresight::access_ports::generic_ap::GenericAP;
 use coresight::ap_access::access_port_is_valid;
@@ -6,7 +7,6 @@ use coresight::access_ports::AccessPortError;
 use std::time::Instant;
 
 use coresight::dap_access::DAPAccess;
-use coresight::memory_interface::MemoryInterface;
 use probe::debug_probe::{DebugProbe, DebugProbeError};
 
 use structopt::StructOpt;
@@ -202,9 +202,8 @@ fn show_info_of_device(n: u8) -> Result<(), Error> {
                                   .or_local_err()?;
                 println!("{:#?}", base);
 
-                let mem = MemoryInterface::new(0x0);
                 let mut data = vec![0 as u8; 4096];
-                mem.read_block(st_link, base.BASEADDR, &mut data.as_mut_slice()).or_else(|e| Err(Error::AccessPort(e)))?;
+                st_link.read_block(base.BASEADDR, &mut data.as_mut_slice()).or_else(|e| Err(Error::AccessPort(e)))?;
 
                 let mut file = std::fs::File::create("ROMtbl.bin").unwrap();
                 file.write_all(data.as_slice());
@@ -270,13 +269,12 @@ fn parse_target_id(value: u32) -> (u8, u16, u16, u8) {
 
 fn dump_memory(n: u8, loc: u32, words: u32) -> Result<(), Error> {
     with_device(n, |st_link| {
-        let mem = MemoryInterface::new(0x0);
         let mut data = vec![0 as u32; words as usize];
 
         // Start timer.
         let instant = Instant::now();
 
-        mem.read_block(st_link, loc, &mut data.as_mut_slice()).or_else(|e| Err(Error::AccessPort(e)))?;
+        st_link.read_block(loc, &mut data.as_mut_slice()).or_else(|e| Err(Error::AccessPort(e)))?;
         // Stop timer.
         let elapsed = instant.elapsed();
 
@@ -380,7 +378,6 @@ fn trace_u32_on_target(n: u8, loc: u32) -> Result<(), Error> {
     let mut ys = vec![];
 
     let start = Instant::now();
-    let mem = MemoryInterface::new(0x0);
 
     with_device(n, |st_link| {
         loop {
@@ -389,8 +386,8 @@ fn trace_u32_on_target(n: u8, loc: u32) -> Result<(), Error> {
             let instant = elapsed.as_secs() * 1000 + u64::from(elapsed.subsec_millis());
 
             // Read data.
-            let value: u32 = mem.read(st_link, loc)
-                                .or_local_err()?;
+            let value: u32 = st_link.read(loc)
+                                    .or_local_err()?;
 
             xs.push(instant);
             ys.push(value);

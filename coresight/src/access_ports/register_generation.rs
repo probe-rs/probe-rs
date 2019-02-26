@@ -1,6 +1,6 @@
 #[macro_export]
 macro_rules! define_ap_register {
-    ($port_type:ident, $name:ident, $address:expr, $apbanksel:expr, [$(($field:ident: $type:ty)$(,)?)*], $param:ident, $from:expr, $to:expr) => {
+    ($port_type:ident, $name:ident, $address:expr, [$(($field:ident: $type:ty)$(,)?)*], $param:ident, $from:expr, $to:expr) => {
         #[allow(non_snake_case)]
         #[derive(Debug, Default, Clone, Copy)]
         pub struct $name {
@@ -8,7 +8,8 @@ macro_rules! define_ap_register {
         }
 
         impl Register for $name {
-            const ADDRESS: u16 = $address;
+            // ADDRESS is always the lower 4 bits of the register address
+            const ADDRESS: u8 = $address;
         }
 
         impl From<u32> for $name {
@@ -24,7 +25,8 @@ macro_rules! define_ap_register {
         }
 
         impl APRegister<$port_type> for $name {
-            const APBANKSEL: u8 = $apbanksel;
+            // APBANKSEL is always the upper 4 bits of the register address
+            const APBANKSEL: u8 = $address >> 4;
         }
     }
 }
