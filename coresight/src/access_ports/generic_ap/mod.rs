@@ -46,12 +46,12 @@ define_ap_register!(GenericAP, IDR, 0x0FC, [
     ],
     value,
     IDR {
-        REVISION: ((value >> 28) & 0x03) as u8,
-        DESIGNER: ((value >> 17) & 0x04) as u8,
-        CLASS:    APClass::from_u8(((value >> 13) & 0x01) as u8).unwrap(),
+        REVISION: ((value >> 28) & 0x0F) as u8,
+        DESIGNER: ((value >> 17) & 0x7FF) as u8,
+        CLASS:    APClass::from_u8(((value >> 13) & 0x0F) as u8).unwrap(),
         _RES0:     0,
-        VARIANT:  ((value >> 4) & 0x04) as u8,
-        TYPE:     APType::from_u8((value & 0x04) as u8).unwrap()
+        VARIANT:  ((value >> 4) & 0x0F) as u8,
+        TYPE:     APType::from_u8((value & 0x0F) as u8).unwrap()
     },
       (u32::from(value.REVISION       ) << 28)
     | (u32::from(value.DESIGNER       ) << 17)
