@@ -68,7 +68,7 @@ define_ap_register!(GenericAP, BASE, 0x0F8, [
     ],
     value,
     BASE {
-        BASEADDR: ((value >> 12) & 0xFFFFF) as u32,
+        BASEADDR: value & 0xFFFFF000,
         _RES0:    0,
         Format:   ((value >> 1) & 0x01) as u8,
         P:        (value & 0x01) as u8

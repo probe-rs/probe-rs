@@ -202,9 +202,9 @@ fn show_info_of_device(n: u8) -> Result<(), Error> {
                                   .or_local_err()?;
                 println!("{:#?}", base);
 
-                let mut data = vec![0 as u8; 4096];
+                let mut data = vec![0 as u8; 1024];
                 st_link.read_block(base.BASEADDR, &mut data.as_mut_slice()).or_else(|e| Err(Error::AccessPort(e)))?;
-
+                println!("READ STUFF");
                 let mut file = std::fs::File::create("ROMtbl.bin").unwrap();
                 file.write_all(data.as_slice());
 
@@ -249,6 +249,7 @@ fn show_info_of_device(n: u8) -> Result<(), Error> {
 
 fn extract_id_register_value(regs: &[u8], offset: u32) -> u32 {
     let mut result = 0 as u32;
+    println!("{}", result);
     for i in 0..4 {
         let value = regs[offset as usize + i] as u32;
         result |= (value & 0xff) << (i * 8);
