@@ -42,12 +42,10 @@ impl<T> ToSTLinkErr<T> for libusb::Result<T> {
 }
 
 impl DebugProbe for STLink {
-    type Error = DebugProbeError;
-
     /// Reads the ST-Links version.
     /// Returns a tuple (hardware version, firmware version).
     /// This method stores the version data on the struct to make later use of it.
-    fn get_version(&mut self) -> Result<(u8, u8), <Self as DebugProbe>::Error> {
+    fn get_version(&mut self) -> Result<(u8, u8), DebugProbeError> {
         const HW_VERSION_SHIFT: u8 = 12;
         const HW_VERSION_MASK: u8 = 0x0F;
         const JTAG_VERSION_SHIFT: u8 = 6;
@@ -112,7 +110,7 @@ impl DebugProbe for STLink {
     }
 
     /// Enters debug mode.
-    fn attach(&mut self, protocol: WireProtocol) -> Result<(), <Self as DebugProbe>::Error> {
+    fn attach(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError> {
         self.enter_idle()?;
 
         let param = match protocol {
@@ -132,12 +130,12 @@ impl DebugProbe for STLink {
     }
 
     /// Leave debug mode.
-    fn detach(&mut self) -> Result<(), <Self as DebugProbe>::Error> {
+    fn detach(&mut self) -> Result<(), DebugProbeError> {
         self.enter_idle()
     }
 
     /// Asserts the nRESET pin.
-    fn target_reset(&mut self) -> Result<(), <Self as DebugProbe>::Error> {
+    fn target_reset(&mut self) -> Result<(), DebugProbeError> {
         let mut buf = [0; 2];
         self.device.write(
             vec![
