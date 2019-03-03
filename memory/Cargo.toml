@@ -5,3 +5,4 @@ authors = ["Noah Hüsser <yatekii@yatekii.ch>"]
 edition = "2018"
 
 [dependencies]
+coresight = { path = "../coresight" }
