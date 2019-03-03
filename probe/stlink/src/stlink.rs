@@ -288,9 +288,7 @@ impl Drop for STLink {
 
 impl MI for STLink
 {
-    type Error = AccessPortError;
-
-    fn read<S: ToMemoryReadSize>(&mut self, address: u32) -> Result<S, Self::Error> {
+    fn read<S: ToMemoryReadSize>(&mut self, address: u32) -> Result<S, AccessPortError> {
         ADIMemoryInterface::new(0).read(self, address)
     }
 
@@ -298,7 +296,7 @@ impl MI for STLink
         &mut self,
         address: u32,
         data: &mut [S]
-    ) -> Result<(), Self::Error> {
+    ) -> Result<(), AccessPortError> {
         ADIMemoryInterface::new(0).read_block(self, address, data)
     }
 
@@ -306,7 +304,7 @@ impl MI for STLink
         &mut self,
         addr: u32,
         data: S
-    ) -> Result<(), Self::Error> {
+    ) -> Result<(), AccessPortError> {
         ADIMemoryInterface::new(0).write(self, addr, data)
     }
 
@@ -314,7 +312,7 @@ impl MI for STLink
         &mut self,
         addr: u32,
         data: &[S]
-    ) -> Result<(), Self::Error> {
+    ) -> Result<(), AccessPortError> {
         ADIMemoryInterface::new(0).write_block(self, addr, data)
     }
 }

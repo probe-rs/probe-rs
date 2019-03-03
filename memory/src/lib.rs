@@ -1,5 +1,7 @@
 pub mod memory_interface;
 
+use coresight::access_ports::AccessPortError;
+
 pub trait ToMemoryReadSize: Into<u32> + Copy {
     /// The alignment mask that is required to test for properly aligned memory.
     const ALIGNMENT_MASK: u32;
@@ -37,13 +39,11 @@ impl ToMemoryReadSize for u8 {
 }
 
 pub trait MI {
-    type Error;
-
     /// Read a word of the size defined by S at `addr`.
     /// 
     /// The address where the read should be performed at has to be word aligned.
     /// Returns `AccessPortError::MemoryNotAligned` if this does not hold true.
-    fn read<S: ToMemoryReadSize>(&mut self, address: u32) -> Result<S, Self::Error>;
+    fn read<S: ToMemoryReadSize>(&mut self, address: u32) -> Result<S, AccessPortError>;
 
     /// Read a block of words of the size defined by S at `addr`.
     /// 
@@ -54,7 +54,7 @@ pub trait MI {
         &mut self,
         address: u32,
         data: &mut [S]
-    ) -> Result<(), Self::Error>;
+    ) -> Result<(), AccessPortError>;
 
     /// Write a word of the size defined by S at `addr`.
     /// 
@@ -64,12 +64,12 @@ pub trait MI {
         &mut self,
         addr: u32,
         data: S
-    ) -> Result<(), Self::Error>;
+    ) -> Result<(), AccessPortError>;
 
     /// Like `write_block` but with much simpler stucture but way lower performance for u8 and u16.
     fn write_block<S: ToMemoryReadSize>(
         &mut self,
         addr: u32,
         data: &[S]
-    ) -> Result<(), Self::Error>;
+    ) -> Result<(), AccessPortError>;
 }
