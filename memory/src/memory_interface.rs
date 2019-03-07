@@ -312,7 +312,7 @@ impl ADIMemoryInterface {
 #[cfg(test)]
 mod tests {
     use super::ADIMemoryInterface;
-    use crate::access_ports::memory_ap::mock::MockMemoryAP;
+    use coresight::access_ports::memory_ap::mock::MockMemoryAP;
 
     #[test]
     fn read_u32() {
