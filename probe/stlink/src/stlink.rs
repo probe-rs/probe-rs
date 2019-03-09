@@ -28,19 +28,6 @@ pub struct STLink {
     current_apbanksel: u8,
 }
 
-pub trait ToSTLinkErr<T> {
-    fn or_usb_err(self) -> Result<T, DebugProbeError>;
-}
-
-impl<T> ToSTLinkErr<T> for libusb::Result<T> {
-    fn or_usb_err(self) -> Result<T, DebugProbeError> {
-        match self {
-            Ok(t) => Ok(t),
-            Err(_) => Err(DebugProbeError::USBError),
-        }
-    }
-}
-
 impl DebugProbe for STLink {
     /// Reads the ST-Links version.
     /// Returns a tuple (hardware version, firmware version).
