@@ -3,6 +3,7 @@ members = [
     "coresight",
     "probe",
     "probe/stlink",
+    "probe/daplink",
     "cli",
     "memory"
 ]
