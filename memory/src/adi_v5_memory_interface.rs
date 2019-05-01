@@ -1,5 +1,5 @@
-use memory::ToMemoryReadSize;
-use crate::access_ports::{
+use crate::ToMemoryReadSize;
+use coresight::access_ports::{
     APRegister,
     memory_ap::{
         MemoryAP,
@@ -10,7 +10,7 @@ use crate::access_ports::{
     },
     AccessPortError,
 };
-use crate::ap_access::APAccess;
+use coresight::ap_access::APAccess;
 
 /// A struct to give access to a targets memory using a certain DAP.
 pub struct ADIMemoryInterface {
@@ -311,7 +311,7 @@ impl ADIMemoryInterface {
 #[cfg(test)]
 mod tests {
     use super::ADIMemoryInterface;
-    use crate::access_ports::memory_ap::mock::MockMemoryAP;
+    use coresight::access_ports::memory_ap::mock::MockMemoryAP;
 
     #[test]
     fn read_u32() {

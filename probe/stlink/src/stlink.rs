@@ -5,7 +5,7 @@ use coresight::access_ports::GenericAP;
 use coresight::ap_access::AccessPort;
 use coresight::access_ports::APRegister;
 use crate::usb_interface::STLinkInfo;
-use coresight::memory_interface::ADIMemoryInterface;
+use memory::adi_v5_memory_interface::ADIMemoryInterface;
 use coresight::access_ports::memory_ap::{MemoryAP};
 use coresight::ap_access::APAccess;
 use libusb::Device;

@@ -4,7 +4,7 @@ macro_rules! define_ap_register {
         #[allow(non_snake_case)]
         #[derive(Debug, Default, Clone, Copy)]
         pub struct $name {
-            $(pub(crate) $field: $type,)*
+            $(pub $field: $type,)*
         }
 
         impl Register for $name {

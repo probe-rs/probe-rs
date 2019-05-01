@@ -5,6 +5,5 @@ authors = ["Noah Hüsser <yatekii@yatekii.ch>"]
 edition = "2018"
 
 [dependencies]
-memory = { path = "../memory" }
 num-traits = "*"
 enum-primitive-derive = "*"
