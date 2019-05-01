@@ -2,7 +2,7 @@ use coresight::access_ports::generic_ap::GenericAP;
 use coresight::access_ports::AccessPortError;
 use memory::ToMemoryReadSize;
 use memory::MI;
-use memory::memory_interface::ADIMemoryInterface;
+use memory::adi_v5_memory_interface::ADIMemoryInterface;
 use coresight::ap_access::AccessPort;
 use coresight::access_ports::APRegister;
 use crate::usb_interface::STLinkInfo;

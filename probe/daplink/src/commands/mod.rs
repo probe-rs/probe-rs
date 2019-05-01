@@ -1,29 +1,67 @@
 pub mod general;
 
-use scroll;
+use core::ops::Deref;
 
-trait Command: scroll::ctx::TryIntoCtx {
-    type Request: Request;
-    type Response: Response;
+type Result<T> = std::result::Result<T, Error>;
+
+enum Status {
+    DAPOk = 0x00,
+    DAPError = 0xFF,
 }
 
-trait Request: scroll::ctx::TryIntoCtx {
+impl Status {
+    pub fn from_byte(value: u8) -> Result<Self> {
+        match value {
+            0x00 => Ok(Status::DAPOk),
+            0xFF => Ok(Status::DAPError),
+            _ => Err(Error::UnexpectedAnswer),
+        }
+    }
+}
 
-};
+struct Category(u8);
 
-trait Response: scroll::ctx::TryFromCtx {
+impl Deref for Category {
+    type Target = u8;
 
-};
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
 
-pub fn send_command<C: Command>(command: C, request: C::Request) -> C::Response {
-    let mut buffer = [0u8; 1024];
+trait Request {
+    const CATEGORY: Category;
+
+    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize>;
+}
+
+trait Response: Sized {
+    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self>;
+}
+
+enum Error {
+    NotEnoughSpace,
+    USB,
+    UnexpectedAnswer,
+    DAPError,
+}
+
+fn send_command<Req: Request, Res: Response>(request: Req) -> Result<Res> {
+    let buffer = &mut [0u8; 1024];
 
     // Write the command & request to the buffer.
     // TODO: Error handling & real USB writing.
-    let size = buffer.pwrite(command, 0)?;
-    buffer.pwrite(command, size);
+    buffer[0] = *Req::CATEGORY;
+    let size = request.to_bytes(buffer, 1)?;
+    let size = request.to_bytes(buffer, size + 2)?;
 
     // Read back resonse.
     // TODO: Error handling & real USB reading.
-    buffer.pread(0)
+
+    // TODO: fix deref trait to avoid ugly .0
+    if buffer[0] == *Req::CATEGORY {
+        Res::from_bytes(buffer, 1)
+    } else {
+        Err(Error::UnexpectedAnswer)
+    }
 }
