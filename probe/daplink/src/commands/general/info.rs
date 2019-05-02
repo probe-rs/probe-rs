@@ -33,6 +33,7 @@ impl Request for Command {
     }
 }
 
+#[derive(Clone, Default)]
 pub struct VendorID(String);
 
 impl Response for VendorID {
@@ -41,6 +42,7 @@ impl Response for VendorID {
     }
 }
 
+#[derive(Clone, Default)]
 pub struct ProductID(String);
 
 impl Response for ProductID {
@@ -49,6 +51,7 @@ impl Response for ProductID {
     }
 }
 
+#[derive(Clone, Default)]
 pub struct SerialNumber(String);
 
 impl Response for SerialNumber {
@@ -57,6 +60,7 @@ impl Response for SerialNumber {
     }
 }
 
+#[derive(Clone, Default)]
 pub struct FirmwareVersion(String);
 
 impl Response for FirmwareVersion {

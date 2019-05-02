@@ -1,68 +1,19 @@
-use lazy_static::lazy_static;
+use crate::commands::general::info::FirmwareVersion;
+use crate::commands::general::info::ProductID;
+use crate::commands::general::info::VendorID;
 use libusb::{Context, Device, DeviceHandle, Error};
 use std::time::Duration;
 
-use std::collections::HashMap;
-
 use probe::debug_probe::DebugProbeError;
 
-/// The USB Command packet size.
-const CMD_LEN: usize = 16;
-
-/// The USB VendorID.
-const USB_VID: u16 = 0x0483;
-
 pub const TIMEOUT: Duration = Duration::from_millis(1000);
-
-lazy_static! {
-    /// Map of USB PID to firmware version name and device endpoints.
-    static ref USB_PID_EP_MAP: HashMap<u16, STLinkInfo> = {
-        let mut m = HashMap::new();
-        m.insert(0x3748, STLinkInfo::new("V2",    0x3748, 0x02,   0x81,   0x83));
-        m.insert(0x374b, STLinkInfo::new("V2-1",  0x374b, 0x01,   0x81,   0x82));
-        m.insert(0x374a, STLinkInfo::new("V2-1",  0x374a, 0x01,   0x81,   0x82));  // Audio
-        m.insert(0x3742, STLinkInfo::new("V2-1",  0x3742, 0x01,   0x81,   0x82));  // No MSD
-        m.insert(0x374e, STLinkInfo::new("V3",    0x374e, 0x01,   0x81,   0x82));
-        m.insert(0x374f, STLinkInfo::new("V3",    0x374f, 0x01,   0x81,   0x82));  // Bridge
-        m.insert(0x3753, STLinkInfo::new("V3",    0x3753, 0x01,   0x81,   0x82));  // 2VCP
-        m
-    };
-}
-
-/// A helper struct to match STLink deviceinfo.
-#[derive(Clone, Default)]
-pub struct STLinkInfo {
-    pub version_name: String,
-    pub usb_pid: u16,
-    ep_out: u8,
-    ep_in: u8,
-    ep_swv: u8,
-}
-
-impl STLinkInfo {
-    pub fn new<V: Into<String>>(
-        version_name: V,
-        usb_pid: u16,
-        ep_out: u8,
-        ep_in: u8,
-        ep_swv: u8,
-    ) -> Self {
-        Self {
-            version_name: version_name.into(),
-            usb_pid,
-            ep_out,
-            ep_in,
-            ep_swv,
-        }
-    }
-}
 
 rental! {
     pub mod rent {
         use super::*;
         /// Provides low-level USB enumeration and transfers for STLinkV2/3 devices.
         #[rental]
-        pub struct STLinkUSBDeviceRenter {
+        pub struct DAPLinkUSBDeviceRenter {
             context: Box<Context>,
             device: Box<Device<'context>>,
             device_handle: Box<DeviceHandle<'context>>,
@@ -70,18 +21,28 @@ rental! {
     }
 }
 
-pub use rent::STLinkUSBDeviceRenter;
+// A helper struct to match STLink deviceinfo.
+#[derive(Clone, Default)]
+pub struct DAPLinkInfo {
+    pub vendor_id: VendorID,
+    pub product_id: ProductID,
+    pub firmware_version: FirmwareVersion,
+    ep_out: u8,
+    ep_in: u8,
+    ep_swv: u8,
+}
 
-pub struct STLinkUSBDevice {
-    renter: STLinkUSBDeviceRenter,
-    info: STLinkInfo,
+pub use rent::DAPLinkUSBDeviceRenter;
+
+pub struct DAPLinkUSBDevice {
+    renter: DAPLinkUSBDeviceRenter,
+    info: DAPLinkInfo,
 }
 
 fn usb_match<'a>(device: &Device<'a>) -> bool {
-    // Check the VID/PID.
     if let Ok(descriptor) = device.device_descriptor() {
-        (descriptor.vendor_id() == USB_VID)
-            && (USB_PID_EP_MAP.contains_key(&descriptor.product_id()))
+        // TODO: Poll DAPLinkInfo from device and check if the answer is valid.
+        true
     } else {
         false
     }
@@ -89,28 +50,28 @@ fn usb_match<'a>(device: &Device<'a>) -> bool {
 
 pub fn get_all_plugged_devices<'a>(
     context: &'a Context,
-) -> Result<Vec<(Device<'a>, STLinkInfo)>, DebugProbeError> {
+) -> Result<Vec<(Device<'a>, DAPLinkInfo)>, DebugProbeError> {
     let devices = context.devices().map_err(|_| DebugProbeError::USBError)?;
     devices.iter()
             .filter(usb_match)
             .map(|d| {
                 let descriptor = d.device_descriptor().map_err(|_| DebugProbeError::USBError)?;
-                let info = USB_PID_EP_MAP[&descriptor.product_id()].clone();
-                Ok((d, info))
+                Ok((d, Default::default()))
             })
             .collect::<Result<Vec<_>, DebugProbeError>>()
 }
 
-impl STLinkUSBDevice {
+impl DAPLinkUSBDevice {
     /// Creates and initializes a new USB device.
     pub fn new<F>(mut device_selector: F) -> Result<Self, DebugProbeError>
-    where F: for<'a> FnMut(Vec<(Device<'a>, STLinkInfo)>) -> Result<Device<'a>, Error>
+    where
+        F: for<'a> FnMut(Vec<(Device<'a>, DAPLinkInfo)>) -> Result<Device<'a>, Error>
     {
         let context = Context::new().map_err(|_| DebugProbeError::USBError)?;
 
         let mut info = Default::default();
 
-        let renter = STLinkUSBDeviceRenter::try_new(
+        let renter = DAPLinkUSBDeviceRenter::try_new(
             Box::new(context),
             |context| Ok(Box::new(device_selector(get_all_plugged_devices(context)?).map_err(|_| DebugProbeError::USBError)?)),
             |device, _context| {
@@ -119,111 +80,51 @@ impl STLinkUSBDevice {
 
                 let config = device.active_config_descriptor().map_err(|_| DebugProbeError::USBError)?;
                 let descriptor = device.device_descriptor().map_err(|_| DebugProbeError::USBError)?;
-                info = USB_PID_EP_MAP[&descriptor.product_id()].clone();
 
                 device_handle.claim_interface(0).map_err(|_| DebugProbeError::USBError)?;
-
-                let mut endpoint_out = false;
-                let mut endpoint_in = false;
-                let mut endpoint_swv = false;
 
                 if let Some(interface) = config.interfaces().next() {
                     if let Some(descriptor) = interface.descriptors().next() {
                         for endpoint in descriptor.endpoint_descriptors() {
-                            if endpoint.address() == info.ep_out {
-                                endpoint_out = true;
-                            } else if endpoint.address() == info.ep_in {
-                                endpoint_in = true;
-                            } else if endpoint.address() == info.ep_swv {
-                                endpoint_swv = true;
-                            }
+                            // TODO: Check endpoint capability.
                         }
                     }
                 }
 
-                if !endpoint_out {
-                    return Err(DebugProbeError::EndpointNotFound);
-                }
-
-                if !endpoint_in {
-                    return Err(DebugProbeError::EndpointNotFound);
-                }
-
-                if !endpoint_swv {
-                    return Err(DebugProbeError::EndpointNotFound);
-                }
-
                 Ok(device_handle)
             },
-        ).or_else(|_| Err(DebugProbeError::RentalInitError))?;
+        ).or_else(|_: rental::RentalError<_, std::boxed::Box<Context>>| Err(DebugProbeError::RentalInitError))?;
 
-        let usb_stlink = Self {
+        let usb_daplink = Self {
             renter,
             info,
         };
 
-        Ok(usb_stlink)
+        Ok(usb_daplink)
     }
 
-    /// Writes to the out EP.
-    pub fn read(&mut self, size: u16, timeout: Duration) -> Result<Vec<u8>, DebugProbeError> {
-        let mut buf = vec![0; size as usize];
-        let ep_in = self.info.ep_in;
-        self.renter.rent(|dh| dh.read_bulk(ep_in, buf.as_mut_slice(), timeout)).map_err(|_| DebugProbeError::USBError)?;
-        Ok(buf)
-    }
-
-    /// Writes to the out EP and reads back data if needed.
-    /// First the `cmd` is sent.
-    /// In a second step `write_data` is transmitted.
-    /// And lastly, data will be read back until `read_data` is filled.
+    /// Writes and reads the given data to and from the correct endpoints.
     pub fn write(
         &mut self,
-        mut cmd: Vec<u8>,
-        write_data: &[u8],
-        read_data: &mut [u8],
+        request_data: &[u8],
+        response_data: &mut [u8],
         timeout: Duration,
     ) -> Result<(), DebugProbeError> {
-        // Command phase.
-        for _ in 0..(CMD_LEN - cmd.len()) {
-            cmd.push(0);
-        }
-
         let ep_out = self.info.ep_out;
         let ep_in = self.info.ep_in;
 
-        let written_bytes = self.renter.rent(|dh| dh.write_bulk(ep_out, &cmd, timeout)).map_err(|_| DebugProbeError::USBError)?;
+        // Send the given data to the USB endpoint.
+        if !request_data.is_empty() {
+            let written_bytes = self.renter.rent(|dh| dh.write_bulk(ep_out, request_data, timeout))
+                                           .map_err(|_| DebugProbeError::USBError)?;
+        }
 
-        if written_bytes != CMD_LEN {
-            return Err(DebugProbeError::NotEnoughBytesRead);
-        }
-        // Optional data out phase.
-        if !write_data.is_empty() {
-            let written_bytes = self.renter.rent(|dh| dh.write_bulk(ep_out, write_data, timeout)).map_err(|_| DebugProbeError::USBError)?;
-            if written_bytes != write_data.len() {
-                return Err(DebugProbeError::NotEnoughBytesRead);
-            }
-        }
-        // Optional data in phase.
-        if !read_data.is_empty() {
-            let read_bytes = self.renter.rent(|dh| dh.read_bulk(ep_in, read_data, timeout)).map_err(|_| DebugProbeError::USBError)?;
-            if read_bytes != read_data.len() {
-                return Err(DebugProbeError::NotEnoughBytesRead);
-            }
+        // Receive the expected answer from the USB endpoint.
+        if !response_data.is_empty() {
+            let read_bytes = self.renter.rent(|dh| dh.read_bulk(ep_in, response_data, timeout))
+                                        .map_err(|_| DebugProbeError::USBError)?;
         }
         Ok(())
-    }
-
-    /// Special read, TODO: for later.
-    pub fn read_swv(&mut self, size: usize, timeout: Duration) -> Result<Vec<u8>, DebugProbeError> {
-        let ep_swv = self.info.ep_swv;
-        let mut buf = Vec::with_capacity(size as usize);
-        let read_bytes = self.renter.rent(|dh| dh.read_bulk(ep_swv, buf.as_mut_slice(), timeout)).map_err(|_| DebugProbeError::USBError)?;
-        if read_bytes != size {
-            Err(DebugProbeError::NotEnoughBytesRead)
-        } else {
-            Ok(buf)
-        }
     }
 
     /// Closes the USB interface gracefully.
@@ -233,7 +134,8 @@ impl STLinkUSBDevice {
     }
 }
 
-impl Drop for STLinkUSBDevice {
+impl Drop for DAPLinkUSBDevice {
+    /// This drop ensures we always release the USB device interface.
     fn drop(&mut self) {
         // We ignore the error case as we can't do much about it anyways.
         let _ = self.close();

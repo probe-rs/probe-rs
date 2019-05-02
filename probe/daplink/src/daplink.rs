@@ -16,7 +16,6 @@ use coresight::dap_access::DAPAccess;
 use probe::debug_probe::{DebugProbe, DebugProbeError};
 use probe::protocol::WireProtocol;
 
-use crate::constants::{commands, JTagFrequencyToDivider, Status, SwdFrequencyToDelayCount};
 use crate::usb_interface::{STLinkUSBDevice, TIMEOUT};
 
 pub struct STLink {
