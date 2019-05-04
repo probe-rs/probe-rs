@@ -218,23 +218,23 @@ fn show_info_of_device(n: u8) -> Result<(), Error> {
 
                 // CoreSight identification register offsets.
                 const DEVARCH: u32 = 0xfbc;
-                const DEVID: u32 = 0xfc8;
-                const DEVTYPE: u32 = 0xfcc;
-                const PIDR4: u32 = 0xfd0;
-                const PIDR0: u32 = 0xfe0;
+                // const DEVID: u32 = 0xfc8;
+                // const DEVTYPE: u32 = 0xfcc;
+                // const PIDR4: u32 = 0xfd0;
+                // const PIDR0: u32 = 0xfe0;
                 const CIDR0: u32 = 0xff0;
-                const IDR_END: u32 = 0x1000;
+                // const IDR_END: u32 = 0x1000;
 
                 // Range of identification registers to read at once and offsets in results.
                 //
                 // To improve component identification performance, we read all of a components
                 // CoreSight ID registers in a single read. Reading starts at the DEVARCH register.
                 const IDR_READ_START: u32 = DEVARCH;
-                const IDR_READ_COUNT: u32 = (IDR_END - IDR_READ_START) / 4;
-                const DEVARCH_OFFSET: u32 = (DEVARCH - IDR_READ_START) / 4;
-                const DEVTYPE_OFFSET: u32 = (DEVTYPE - IDR_READ_START) / 4;
-                const PIDR4_OFFSET: u32 = (PIDR4 - IDR_READ_START) / 4;
-                const PIDR0_OFFSET: u32 = (PIDR0 - IDR_READ_START) / 4;
+                // const IDR_READ_COUNT: u32 = (IDR_END - IDR_READ_START) / 4;
+                // const DEVARCH_OFFSET: u32 = (DEVARCH - IDR_READ_START) / 4;
+                // const DEVTYPE_OFFSET: u32 = (DEVTYPE - IDR_READ_START) / 4;
+                // const PIDR4_OFFSET: u32 = (PIDR4 - IDR_READ_START) / 4;
+                // const PIDR0_OFFSET: u32 = (PIDR0 - IDR_READ_START) / 4;
                 const CIDR0_OFFSET: u32 = (CIDR0 - IDR_READ_START) / 4;
 
                 let cidr = extract_id_register_value(data.as_slice(), CIDR0_OFFSET);
