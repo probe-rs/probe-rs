@@ -109,7 +109,9 @@ fn list_connected_devices() {
         println!("{:#?}", list);
         list.first().unwrap().clone()
     };
-    daplink::hidapi::read_status(&device);
+    let mut link = daplink::DAPLink::new_from_device(device);
+    println!("{:?}", link.attach(None));
+    println!("{:?}", link.detach());
 }
 
 #[derive(Debug)]
@@ -441,7 +443,7 @@ where
     }).or_local_err()?;
 
     st_link
-        .attach(probe::protocol::WireProtocol::Swd)
+        .attach(Some(probe::protocol::WireProtocol::Swd))
         .or_local_err()?;
     
     f(&mut st_link)

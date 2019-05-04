@@ -17,7 +17,7 @@ impl Request for DisconnectRequest {
     }
 }
 
-pub struct DisconnectResponse(Status);
+pub struct DisconnectResponse(pub(crate) Status);
 
 impl Response for DisconnectResponse {
     fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self> {

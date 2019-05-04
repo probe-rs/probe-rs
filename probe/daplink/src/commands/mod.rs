@@ -2,7 +2,7 @@ pub mod general;
 
 use core::ops::Deref;
 
-type Result<T> = std::result::Result<T, Error>;
+pub(crate) type Result<T> = std::result::Result<T, Error>;
 
 pub(crate) enum Status {
     DAPOk = 0x00,

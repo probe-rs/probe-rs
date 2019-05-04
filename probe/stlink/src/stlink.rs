@@ -97,12 +97,19 @@ impl DebugProbe for STLink {
     }
 
     /// Enters debug mode.
-    fn attach(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError> {
+    fn attach(&mut self, protocol: Option<WireProtocol>) -> Result<WireProtocol, DebugProbeError> {
         self.enter_idle()?;
 
-        let param = match protocol {
-            WireProtocol::Jtag => commands::JTAG_ENTER_JTAG_NO_CORE_RESET,
-            WireProtocol::Swd => commands::JTAG_ENTER_SWD,
+        let (param, protocol) = if let Some(protocol) = protocol {
+            (
+                match protocol {
+                    WireProtocol::Jtag => commands::JTAG_ENTER_JTAG_NO_CORE_RESET,
+                    WireProtocol::Swd => commands::JTAG_ENTER_SWD,
+                },
+                protocol,
+            )
+        } else {
+            (commands::JTAG_ENTER_SWD, WireProtocol::Swd)
         };
 
         let mut buf = [0; 2];
@@ -112,8 +119,10 @@ impl DebugProbe for STLink {
             &mut buf,
             TIMEOUT,
         )?;
-        self.protocol = protocol;
-        Self::check_status(&buf)
+        Self::check_status(&buf).and_then(|v| {
+            self.protocol = protocol.clone();
+            Ok(protocol)
+        })
     }
 
     /// Leave debug mode.

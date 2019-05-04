@@ -30,7 +30,7 @@ pub trait DebugProbe: MI {
     fn get_name(&self) -> &str;
 
     /// Enters debug mode
-    fn attach(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError>;
+    fn attach(&mut self, protocol: Option<WireProtocol>) -> Result<WireProtocol, DebugProbeError>;
 
     /// Leave debug mode
     fn detach(&mut self) -> Result<(), DebugProbeError>;
