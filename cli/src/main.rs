@@ -86,24 +86,30 @@ fn main() {
 }
 
 fn list_connected_devices() {
-    let context = libusb::Context::new().unwrap();
-    match stlink::get_all_plugged_devices(&context) {
-        Ok(connected_stlinks) => {
-            println!("The following devices were found:");
-            connected_stlinks
-                .iter()
-                .enumerate()
-                .for_each(|(num, link)| {
-                    println!(
-                        "[{}]: PID = {}, version = {}",
-                        num, link.1.usb_pid, link.1.version_name
-                    );
-                });
-        }
-        Err(e) => {
-            println!("{:?}", e);
-        }
+    // let context = libusb::Context::new().unwrap();
+    // match stlink::get_all_plugged_devices(&context) {
+    //     Ok(connected_stlinks) => {
+    //         println!("The following devices were found:");
+    //         connected_stlinks
+    //             .iter()
+    //             .enumerate()
+    //             .for_each(|(num, link)| {
+    //                 println!(
+    //                     "[{}]: PID = {}, version = {}",
+    //                     num, link.1.usb_pid, link.1.version_name
+    //                 );
+    //             });
+    //     }
+    //     Err(e) => {
+    //         println!("{:?}", e);
+    //     }
+    // };
+    let device = {
+        let list = daplink::hidapi::list_daplink_devices();
+        println!("{:#?}", list);
+        list.first().unwrap().clone()
     };
+    daplink::hidapi::read_status(&device);
 }
 
 #[derive(Debug)]

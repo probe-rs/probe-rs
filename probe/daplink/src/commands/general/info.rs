@@ -12,7 +12,7 @@ use scroll::Pread;
 #[derive(Copy, Clone)]
 pub enum Command {
     VendorID = 0x01,
-    ProductId = 0x02,
+    ProductID = 0x02,
     SerialNumber = 0x03,
     FirmwareVersion = 0x04,
     TargetDeviceVendor = 0x05,
@@ -33,7 +33,7 @@ impl Request for Command {
     }
 }
 
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Debug)]
 pub struct VendorID(String);
 
 impl Response for VendorID {
@@ -42,7 +42,7 @@ impl Response for VendorID {
     }
 }
 
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Debug)]
 pub struct ProductID(String);
 
 impl Response for ProductID {
@@ -51,7 +51,7 @@ impl Response for ProductID {
     }
 }
 
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Debug)]
 pub struct SerialNumber(String);
 
 impl Response for SerialNumber {
@@ -60,7 +60,7 @@ impl Response for SerialNumber {
     }
 }
 
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Debug)]
 pub struct FirmwareVersion(String);
 
 impl Response for FirmwareVersion {

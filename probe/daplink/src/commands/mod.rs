@@ -4,7 +4,7 @@ use core::ops::Deref;
 
 type Result<T> = std::result::Result<T, Error>;
 
-enum Status {
+pub(crate) enum Status {
     DAPOk = 0x00,
     DAPError = 0xFF,
 }
@@ -19,7 +19,7 @@ impl Status {
     }
 }
 
-struct Category(u8);
+pub(crate) struct Category(u8);
 
 impl Deref for Category {
     type Target = u8;
@@ -29,39 +29,50 @@ impl Deref for Category {
     }
 }
 
-trait Request {
+pub(crate) trait Request {
     const CATEGORY: Category;
 
     fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize>;
 }
 
-trait Response: Sized {
+pub(crate) trait Response: Sized {
     fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self>;
 }
 
-enum Error {
+#[derive(Clone, Debug)]
+pub(crate) enum Error {
     NotEnoughSpace,
     USB,
     UnexpectedAnswer,
     DAPError,
 }
 
-fn send_command<Req: Request, Res: Response>(request: Req) -> Result<Res> {
-    let buffer = &mut [0u8; 1024];
+pub(crate) fn send_command<Req: Request, Res: Response>(device_info: &hidapi::HidDeviceInfo, request: Req) -> Result<Res> {
+    match hidapi::HidApi::new() {
+        Ok(api) => {
+            let device = device_info.open_device(&api).unwrap();
 
-    // Write the command & request to the buffer.
-    // TODO: Error handling & real USB writing.
-    buffer[0] = *Req::CATEGORY;
-    let size = request.to_bytes(buffer, 1)?;
-    let size = request.to_bytes(buffer, size + 2)?;
+            // Write the command & request to the buffer.
+            // TODO: Error handling & real USB writing.
+            let buffer = &mut [0; 24];
+            buffer[0] = *Req::CATEGORY;
+            let size = request.to_bytes(buffer, 1)?;
+            device.write(buffer);
+            println!("{:?}", &buffer[..]);
 
-    // Read back resonse.
-    // TODO: Error handling & real USB reading.
-
-    // TODO: fix deref trait to avoid ugly .0
-    if buffer[0] == *Req::CATEGORY {
-        Res::from_bytes(buffer, 1)
-    } else {
-        Err(Error::UnexpectedAnswer)
+            // Read back resonse.
+            // TODO: Error handling & real USB reading.
+            let buffer = &mut [0; 24];
+            device.read(buffer);
+            println!("{:?}", &buffer[..]);
+            if buffer[0] == *Req::CATEGORY {
+                Res::from_bytes(buffer, 1)
+            } else {
+                Err(Error::UnexpectedAnswer)
+            }
+        },
+        Err(e) => {
+            Err(Error::USB)
+        },
     }
 }

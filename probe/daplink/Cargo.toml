@@ -12,3 +12,4 @@ memory = { path = "../../memory" }
 coresight = { path = "../../coresight" }
 scroll = "*"
 rental = "*"
+hidapi = "0.5.2"
