@@ -24,6 +24,6 @@ pub fn is_daplink_device(device: &hidapi::HidDeviceInfo) -> bool {
 
 pub fn read_status(device_info: &hidapi::HidDeviceInfo) {
     let vendor_id: crate::commands::general::info::ProductID
-        = crate::commands::send_command(device_info, crate::commands::general::info::Command::ProductID).unwrap();
+        = crate::commands::send_command(device_info, crate::commands::general::info::Command::SerialNumber).unwrap();
     println!("{:?}", vendor_id);
 }
