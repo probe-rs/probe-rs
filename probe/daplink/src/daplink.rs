@@ -26,6 +26,17 @@ use crate::commands::{
             DisconnectResponse,
         },
     },
+    transfer::{
+        transfer::{
+            TransferRequest,
+            TransferResponse,
+            InnerTransferRequest,
+            InnerTransferResponse,
+            Ack,
+            Port,
+            RW,
+        }
+    },
 };
 
 pub struct DAPLink {
@@ -38,6 +49,8 @@ pub struct DAPLink {
 }
 
 impl DAPLink {
+    const DP_PORT: u16 = 0xffff;
+
     pub fn new_from_device(device: hidapi::HidDeviceInfo) -> Self {
         Self {
             device,
@@ -108,54 +121,61 @@ impl DebugProbe for DAPLink {
     }
 }
 
-// impl DAPAccess for DAPLink {
-//     type Error = DebugProbeError;
+impl DAPAccess for DAPLink {
+    type Error = DebugProbeError;
 
-//     /// Reads the DAP register on the specified port and address.
-//     fn read_register(&mut self, port: u16, addr: u16) -> Result<u32, Self::Error> {
-//         if (addr & 0xf0) == 0 || port != Self::DP_PORT {
-//             let cmd = vec![
-//                 commands::JTAG_COMMAND,
-//                 commands::JTAG_READ_DAP_REG,
-//                 (port & 0xFF) as u8,
-//                 ((port >> 8) & 0xFF) as u8,
-//                 (addr & 0xFF) as u8,
-//                 ((addr >> 8) & 0xFF) as u8,
-//             ];
-//             let mut buf = [0; 8];
-//             self.device.write(cmd, &[], &mut buf, TIMEOUT)?;
-//             Self::check_status(&buf)?;
-//             // Unwrap is ok!
-//             Ok((&buf[4..8]).pread(0).unwrap())
-//         } else {
-//             Err(DebugProbeError::BlanksNotAllowedOnDPRegister)
-//         }
-//     }
+    /// Reads the DAP register on the specified port and address.
+    fn read_register(&mut self, port: u16, addr: u16) -> Result<u32, Self::Error> {
+        crate::commands::send_command::<TransferRequest, TransferResponse>(
+            &self.device,
+            TransferRequest::new(
+                InnerTransferRequest::new(Port::AP, RW::R, addr as u8),
+                0
+            )
+        )
+        .map_err(|e| DebugProbeError::UnknownError)
+        .and_then(|v| {
+            if v.transfer_count == 1 {
+                if v.transfer_response.protocol_error {
+                    Err(DebugProbeError::USBError)
+                } else {
+                    match v.transfer_response.ack {
+                        Ack::OK => Ok(v.transfer_data),
+                        _ => Err(DebugProbeError::UnknownError)
+                    }
+                }
+            } else {
+                Err(DebugProbeError::UnknownError)
+            }
+        })
+    }
 
-//     /// Writes a value to the DAP register on the specified port and address.
-//     fn write_register(&mut self, port: u16, addr: u16, value: u32) -> Result<(), Self::Error> {
-//         if (addr & 0xf0) == 0 || port != Self::DP_PORT {
-//             let cmd = vec![
-//                 commands::JTAG_COMMAND,
-//                 commands::JTAG_WRITE_DAP_REG,
-//                 (port & 0xFF) as u8,
-//                 ((port >> 8) & 0xFF) as u8,
-//                 (addr & 0xFF) as u8,
-//                 ((addr >> 8) & 0xFF) as u8,
-//                 (value & 0xFF) as u8,
-//                 ((value >> 8) & 0xFF) as u8,
-//                 ((value >> 16) & 0xFF) as u8,
-//                 ((value >> 24) & 0xFF) as u8,
-//             ];
-//             let mut buf = [0; 2];
-//             self.device.write(cmd, &[], &mut buf, TIMEOUT)?;
-//             Self::check_status(&buf)?;
-//             Ok(())
-//         } else {
-//             Err(DebugProbeError::BlanksNotAllowedOnDPRegister)
-//         }
-//     }
-// }
+    /// Writes a value to the DAP register on the specified port and address.
+    fn write_register(&mut self, port: u16, addr: u16, value: u32) -> Result<(), Self::Error> {
+        crate::commands::send_command::<TransferRequest, TransferResponse>(
+            &self.device,
+            TransferRequest::new(
+                InnerTransferRequest::new(Port::AP, RW::W, addr as u8),
+                value
+            )
+        )
+        .map_err(|e| DebugProbeError::UnknownError)
+        .and_then(|v| {
+            if v.transfer_count == 1 {
+                if v.transfer_response.protocol_error {
+                    Err(DebugProbeError::USBError)
+                } else {
+                    match v.transfer_response.ack {
+                        Ack::OK => Ok(()),
+                        _ => Err(DebugProbeError::UnknownError)
+                    }
+                }
+            } else {
+                Err(DebugProbeError::UnknownError)
+            }
+        })
+    }
+}
 
 // fn read_register_ap<AP, REGISTER>(link: &mut STLink, port: AP, _register: REGISTER) -> Result<REGISTER, DebugProbeError>
 // where

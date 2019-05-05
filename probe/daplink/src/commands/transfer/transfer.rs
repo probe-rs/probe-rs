@@ -7,12 +7,24 @@ use crate::commands::{
     Status,
 };
 
+#[derive(Copy, Clone, Debug)]
+pub enum Port {
+    AP = 0,
+    DP = 1,
+}
+
+#[derive(Copy, Clone, Debug)]
+pub enum RW {
+    R = 0,
+    W = 1,
+}
+
 /// Contains information about requested access from host debugger.
 pub struct InnerTransferRequest {
     /// 0 = Debug Port (DP), 1 = Access Port (AP).
-    pub APnDP: bool,
+    pub APnDP: Port,
     /// 0 = Write Register, 1 = Read Register.
-    pub RnW: bool,
+    pub RnW: RW,
     /// A2 Register Address bit 2.
     pub A2: bool,
     /// A3 Register Address bit 3.
@@ -26,10 +38,24 @@ pub struct InnerTransferRequest {
 }
 
 impl InnerTransferRequest {
+    pub fn new(port: Port, rw: RW, address: u8) -> Self {
+        Self {
+            APnDP: port,
+            RnW: rw,
+            A2: (address >> 2) & 0x01 == 1,
+            A3: (address >> 2) & 0x01 == 1,
+            value_match: false,
+            match_mask: false,
+            td_timestamp_request: false,
+        }
+    }
+}
+
+impl InnerTransferRequest {
     fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize> {
         buffer[offset] = (
-            (if self.APnDP { 1 } else { 0 }) << 0
-          | (if self.RnW { 1 } else { 0 }) << 1
+            (self.APnDP as u8) << 0
+          | (self.RnW as u8) << 1
           | (if self.A2 { 1 } else { 0 }) << 2
           | (if self.A3 { 1 } else { 0 }) << 3
           | (if self.value_match { 1 } else { 0 }) << 4
@@ -58,6 +84,17 @@ pub struct TransferRequest {
     pub transfer_data: u32,
 }
 
+impl TransferRequest {
+    pub fn new(transfer_request: InnerTransferRequest, data: u32) -> Self {
+        Self {
+            dap_index: 0,
+            transfer_count: 1,
+            transfer_request,
+            transfer_data: data,
+        }
+    }
+}
+
 impl Request for TransferRequest {
     const CATEGORY: Category = Category(0x05);
 
@@ -76,22 +113,22 @@ pub enum Ack {
 }
 
 pub struct InnerTransferResponse {
-    ack: Ack,
-    protocol_error: bool,
-    value_missmatch: bool,
+    pub ack: Ack,
+    pub protocol_error: bool,
+    pub value_missmatch: bool,
 }
 
 pub struct TransferResponse {
     /// Number of transfers: 1 .. 255 that are executed.
-    transfer_count: u8,
+    pub transfer_count: u8,
     /// Contains information about last response from target Device.
-    transfer_response: InnerTransferResponse,
+    pub transfer_response: InnerTransferResponse,
     /// Current Test Domain Timer value is added before each Transfer Data word when Transfer Request - bit 7: TD_TimeStamp request is set.
-    td_timestamp: u32,
+    pub td_timestamp: u32,
     /// register value or match value in the order of the Transfer Request.
     ///- for Read Register transfer request: the register value of the CoreSight register.
     ///- no data is sent for other operations.
-    transfer_data: u32
+    pub transfer_data: u32
 }
 
 impl Response for TransferResponse {
