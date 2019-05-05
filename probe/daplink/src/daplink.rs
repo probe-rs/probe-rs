@@ -276,8 +276,8 @@ impl MI for DAPLink
         address: u32,
         data: &mut [S]
     ) -> Result<(), AccessPortError> {
-        // ADIMemoryInterface::new(0).read_block(self, address, data)
-        Err(AccessPortError::ProbeError)
+        data[0] = ADIMemoryInterface::new(0).read(self, address)?;
+        Ok(())
     }
 
     fn write<S: ToMemoryReadSize>(
