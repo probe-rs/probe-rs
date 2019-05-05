@@ -2,9 +2,7 @@ use crate::commands::{
     Response,
     Category,
     Request,
-    Error,
     Result,
-    Status,
 };
 
 #[derive(Copy, Clone, Debug)]
@@ -53,7 +51,7 @@ impl InnerTransferRequest {
 
 impl InnerTransferRequest {
     fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize> {
-        buffer[offset] = (
+        buffer[offset] = 
             (self.APnDP as u8) << 0
           | (self.RnW as u8) << 1
           | (if self.A2 { 1 } else { 0 }) << 2
@@ -61,7 +59,7 @@ impl InnerTransferRequest {
           | (if self.value_match { 1 } else { 0 }) << 4
           | (if self.match_mask { 1 } else { 0 }) << 5
           | (if self.td_timestamp_request { 1 } else { 0 }) << 7
-        );
+        ;
         Ok(1)
     }
 }

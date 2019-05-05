@@ -2,7 +2,6 @@ use crate::commands::{
     Response,
     Category,
     Request,
-    Error,
     Result,
     Status,
 };

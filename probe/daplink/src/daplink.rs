@@ -10,6 +10,8 @@ use libusb::Device;
 use libusb::Error;
 use scroll::{Pread, BE};
 
+use memory::adi_v5_memory_interface::ADIMemoryInterface;
+
 use coresight::dap_access::DAPAccess;
 use probe::debug_probe::{DebugProbe, DebugProbeError};
 use probe::protocol::WireProtocol;
@@ -177,69 +179,69 @@ impl DAPAccess for DAPLink {
     }
 }
 
-// fn read_register_ap<AP, REGISTER>(link: &mut STLink, port: AP, _register: REGISTER) -> Result<REGISTER, DebugProbeError>
-// where
-//     AP: AccessPort,
-//     REGISTER: APRegister<AP>
-// {
-//     use coresight::ap_access::AccessPort;
-//     // TODO: Make those next lines use the future typed DP interface.
-//     let cache_changed = if link.current_apsel != port.get_port_number() {
-//         link.current_apsel = port.get_port_number();
-//         true
-//     } else if link.current_apbanksel != REGISTER::APBANKSEL {
-//         link.current_apbanksel = REGISTER::APBANKSEL;
-//         true
-//     } else {
-//         false
-//     };
-//     if cache_changed {
-//         let select = (u32::from(link.current_apsel) << 24) | (u32::from(link.current_apbanksel) << 4);
-//         link.write_register(0xFFFF, 0x008, select)?;
-//     }
-//     //println!("{:?}, {:08X}", link.current_apsel, REGISTER::ADDRESS);
-//     let result = link.read_register(u16::from(link.current_apsel), u16::from(REGISTER::ADDRESS))?;
-//     Ok(REGISTER::from(result))
-// }
+fn read_register_ap<AP, REGISTER>(link: &mut DAPLink, port: AP, _register: REGISTER) -> Result<REGISTER, DebugProbeError>
+where
+    AP: AccessPort,
+    REGISTER: APRegister<AP>
+{
+    use coresight::ap_access::AccessPort;
+    // TODO: Make those next lines use the future typed DP interface.
+    let cache_changed = if link.current_apsel != port.get_port_number() {
+        link.current_apsel = port.get_port_number();
+        true
+    } else if link.current_apbanksel != REGISTER::APBANKSEL {
+        link.current_apbanksel = REGISTER::APBANKSEL;
+        true
+    } else {
+        false
+    };
+    if cache_changed {
+        let select = (u32::from(link.current_apsel) << 24) | (u32::from(link.current_apbanksel) << 4);
+        link.write_register(0xFFFF, 0x008, select)?;
+    }
+    //println!("{:?}, {:08X}", link.current_apsel, REGISTER::ADDRESS);
+    let result = link.read_register(u16::from(link.current_apsel), u16::from(REGISTER::ADDRESS))?;
+    Ok(REGISTER::from(result))
+}
 
-// fn write_register_ap<AP, REGISTER>(link: &mut STLink, port: AP, register: REGISTER) -> Result<(), DebugProbeError>
-// where
-//     AP: AccessPort,
-//     REGISTER: APRegister<AP>
-// {
-//     use coresight::ap_access::AccessPort;
-//     // TODO: Make those next lines use the future typed DP interface.
-//     let cache_changed = if link.current_apsel != port.get_port_number() {
-//         link.current_apsel = port.get_port_number();
-//         true
-//     } else if link.current_apbanksel != REGISTER::APBANKSEL {
-//         link.current_apbanksel = REGISTER::APBANKSEL;
-//         true
-//     } else {
-//         false
-//     };
-//     if cache_changed {
-//         let select = (u32::from(link.current_apsel) << 24) | (u32::from(link.current_apbanksel) << 4);
-//         link.write_register(0xFFFF, 0x008, select)?;
-//     }
-//     link.write_register(u16::from(link.current_apsel), u16::from(REGISTER::ADDRESS), register.into())?;
-//     Ok(())
-// }
+fn write_register_ap<AP, REGISTER>(link: &mut DAPLink, port: AP, register: REGISTER) -> Result<(), DebugProbeError>
+where
+    AP: AccessPort,
+    REGISTER: APRegister<AP>
+{
+    use coresight::ap_access::AccessPort;
+    // TODO: Make those next lines use the future typed DP interface.
+    let cache_changed = if link.current_apsel != port.get_port_number() {
+        link.current_apsel = port.get_port_number();
+        true
+    } else if link.current_apbanksel != REGISTER::APBANKSEL {
+        link.current_apbanksel = REGISTER::APBANKSEL;
+        true
+    } else {
+        false
+    };
+    if cache_changed {
+        let select = (u32::from(link.current_apsel) << 24) | (u32::from(link.current_apbanksel) << 4);
+        link.write_register(0xFFFF, 0x008, select)?;
+    }
+    link.write_register(u16::from(link.current_apsel), u16::from(REGISTER::ADDRESS), register.into())?;
+    Ok(())
+}
 
-// impl<REGISTER> APAccess<MemoryAP, REGISTER> for DAPLink
-// where
-//     REGISTER: APRegister<MemoryAP>
-// {
-//     type Error = DebugProbeError;
+impl<REGISTER> APAccess<MemoryAP, REGISTER> for DAPLink
+where
+    REGISTER: APRegister<MemoryAP>
+{
+    type Error = DebugProbeError;
 
-//     fn read_register_ap(&mut self, port: MemoryAP, register: REGISTER) -> Result<REGISTER, Self::Error> {
-//         read_register_ap(self, port, register)
-//     }
+    fn read_register_ap(&mut self, port: MemoryAP, register: REGISTER) -> Result<REGISTER, Self::Error> {
+        read_register_ap(self, port, register)
+    }
     
-//     fn write_register_ap(&mut self, port: MemoryAP, register: REGISTER) -> Result<(), Self::Error> {
-//         write_register_ap(self, port, register)
-//     }
-// }
+    fn write_register_ap(&mut self, port: MemoryAP, register: REGISTER) -> Result<(), Self::Error> {
+        write_register_ap(self, port, register)
+    }
+}
 
 // impl<REGISTER> APAccess<GenericAP, REGISTER> for DAPLink
 // where
@@ -256,18 +258,17 @@ impl DAPAccess for DAPLink {
 //     }
 // }
 
-// impl Drop for DAPLink {
-//     fn drop(&mut self) {
-//         // We ignore the error case as we can't do much about it anyways.
-//         let _ = self.enter_idle();
-//     }
-// }
+impl Drop for DAPLink {
+    fn drop(&mut self) {
+        // We ignore the error case as we can't do much about it anyways.
+        let _ = self.detach();
+    }
+}
 
 impl MI for DAPLink
 {
     fn read<S: ToMemoryReadSize>(&mut self, address: u32) -> Result<S, AccessPortError> {
-        // ADIMemoryInterface::new(0).read(self, address)
-        Err(AccessPortError::ProbeError)
+        ADIMemoryInterface::new(0).read(self, address)
     }
 
     fn read_block<S: ToMemoryReadSize>(
@@ -297,221 +298,3 @@ impl MI for DAPLink
         Err(AccessPortError::ProbeError)
     }
 }
-
-// impl STLink {
-//     /// Maximum number of bytes to send or receive for 32- and 16- bit transfers.
-//     ///
-//     /// 8-bit transfers have a maximum size of the maximum USB packet size (64 bytes for full speed).
-//     const _MAXIMUM_TRANSFER_SIZE: u32 = 1024;
-
-//     /// Minimum required STLink firmware version.
-//     const MIN_JTAG_VERSION: u8 = 24;
-
-//     /// Firmware version that adds 16-bit transfers.
-//     const _MIN_JTAG_VERSION_16BIT_XFER: u8 = 26;
-
-//     /// Firmware version that adds multiple AP support.
-//     const MIN_JTAG_VERSION_MULTI_AP: u8 = 28;
-
-//     /// Port number to use to indicate DP registers.
-//     const DP_PORT: u16 = 0xffff;
-
-//     /// Creates a new STLink device instance.
-//     /// This function takes care of all the initialization routines and expects a selector closure.
-//     /// The selector closure is served with a list of connected, eligible ST-Links and should return one of them.
-//     pub fn new_from_connected<F>(device_selector: F) -> Result<Self, DebugProbeError>
-//     where
-//         F: for<'a> FnMut(Vec<(Device<'a>, STLinkInfo)>) -> Result<Device<'a>, Error>,
-//     {
-//         let mut stlink = Self {
-//             device: STLinkUSBDevice::new(device_selector)?,
-//             hw_version: 0,
-//             jtag_version: 0,
-//             protocol: WireProtocol::Swd,
-//             current_apsel: 0x0000,
-//             current_apbanksel: 0x00,
-//         };
-
-//         stlink.init()?;
-
-//         Ok(stlink)
-//     }
-
-//     /// Reads the target voltage.
-//     /// For the china fake variants this will always read a nonzero value!
-//     pub fn get_target_voltage(&mut self) -> Result<f32, DebugProbeError> {
-//         let mut buf = [0; 8];
-//         match self
-//             .device
-//             .write(vec![commands::GET_TARGET_VOLTAGE], &[], &mut buf, TIMEOUT)
-//         {
-//             Ok(_) => {
-//                 // The next two unwraps are safe!
-//                 let a0 = (&buf[0..4]).pread::<u32>(0).unwrap() as f32;
-//                 let a1 = (&buf[4..8]).pread::<u32>(0).unwrap() as f32;
-//                 if a0 != 0.0 {
-//                     Ok((2.0 * a1 * 1.2 / a0) as f32)
-//                 } else {
-//                     // Should never happen
-//                     Err(DebugProbeError::VoltageDivisionByZero)
-//                 }
-//             }
-//             Err(e) => Err(e),
-//         }
-//     }
-
-//     /// Commands the ST-Link to enter idle mode.
-//     /// Internal helper.
-//     fn enter_idle(&mut self) -> Result<(), DebugProbeError> {
-//         let mut buf = [0; 2];
-//         match self
-//             .device
-//             .write(vec![commands::GET_CURRENT_MODE], &[], &mut buf, TIMEOUT)
-//         {
-//             Ok(_) => {
-//                 if buf[0] == commands::DEV_DFU_MODE {
-//                     self.device.write(
-//                         vec![commands::DFU_COMMAND, commands::DFU_EXIT],
-//                         &[],
-//                         &mut [],
-//                         TIMEOUT,
-//                     )
-//                 } else if buf[0] == commands::DEV_JTAG_MODE {
-//                     self.device.write(
-//                         vec![commands::JTAG_COMMAND, commands::JTAG_EXIT],
-//                         &[],
-//                         &mut [],
-//                         TIMEOUT,
-//                     )
-//                 } else if buf[0] == commands::DEV_SWIM_MODE {
-//                     self.device.write(
-//                         vec![commands::SWIM_COMMAND, commands::SWIM_EXIT],
-//                         &[],
-//                         &mut [],
-//                         TIMEOUT,
-//                     )
-//                 } else {
-//                     Ok(())
-//                     // TODO: Look this up
-//                     // Err(DebugProbeError::UnknownMode)
-//                 }
-//             }
-//             Err(e) => Err(e),
-//         }
-//     }
-
-//     /// Opens the ST-Link USB device and tries to identify the ST-Links version and it's target voltage.
-//     /// Internal helper.
-//     fn init(&mut self) -> Result<(), DebugProbeError> {
-//         self.enter_idle()?;
-//         self.get_version()?;
-//         self.get_target_voltage().map(|_| ())
-//     }
-
-//     /// sets the SWD frequency.
-//     pub fn set_swd_frequency(
-//         &mut self,
-//         frequency: SwdFrequencyToDelayCount,
-//     ) -> Result<(), DebugProbeError> {
-//         let mut buf = [0; 2];
-//         self.device.write(
-//             vec![
-//                 commands::JTAG_COMMAND,
-//                 commands::SWD_SET_FREQ,
-//                 frequency as u8,
-//             ],
-//             &[],
-//             &mut buf,
-//             TIMEOUT,
-//         )?;
-//         Self::check_status(&buf)
-//     }
-
-//     /// Sets the JTAG frequency.
-//     pub fn set_jtag_frequency(
-//         &mut self,
-//         frequency: JTagFrequencyToDivider,
-//     ) -> Result<(), DebugProbeError> {
-//         let mut buf = [0; 2];
-//         self.device.write(
-//             vec![
-//                 commands::JTAG_COMMAND,
-//                 commands::JTAG_SET_FREQ,
-//                 frequency as u8,
-//             ],
-//             &[],
-//             &mut buf,
-//             TIMEOUT,
-//         )?;
-//         Self::check_status(&buf)
-//     }
-
-//     pub fn open_ap(&mut self, apsel: impl AccessPort) -> Result<(), DebugProbeError> {
-//         if self.jtag_version < Self::MIN_JTAG_VERSION_MULTI_AP {
-//             Err(DebugProbeError::JTagDoesNotSupportMultipleAP)
-//         } else {
-//             let mut buf = [0; 2];
-//             self.device.write(
-//                 vec![
-//                     commands::JTAG_COMMAND,
-//                     commands::JTAG_INIT_AP,
-//                     apsel.get_port_number(),
-//                     commands::JTAG_AP_NO_CORE,
-//                 ],
-//                 &[],
-//                 &mut buf,
-//                 TIMEOUT,
-//             )?;
-//             Self::check_status(&buf)
-//         }
-//     }
-
-//     pub fn close_ap(&mut self, apsel: impl AccessPort) -> Result<(), DebugProbeError> {
-//         if self.jtag_version < Self::MIN_JTAG_VERSION_MULTI_AP {
-//             Err(DebugProbeError::JTagDoesNotSupportMultipleAP)
-//         } else {
-//             let mut buf = [0; 2];
-//             self.device.write(
-//                 vec![
-//                     commands::JTAG_COMMAND,
-//                     commands::JTAG_CLOSE_AP_DBG,
-//                     apsel.get_port_number()
-//                 ],
-//                 &[],
-//                 &mut buf,
-//                 TIMEOUT,
-//             )?;
-//             Self::check_status(&buf)
-//         }
-//     }
-
-//     /// Drives the nRESET pin.
-//     /// `is_asserted` tells wheter the reset should be asserted or deasserted.
-//     pub fn drive_nreset(&mut self, is_asserted: bool) -> Result<(), DebugProbeError> {
-//         let state = if is_asserted {
-//             commands::JTAG_DRIVE_NRST_LOW
-//         } else {
-//             commands::JTAG_DRIVE_NRST_HIGH
-//         };
-//         let mut buf = [0; 2];
-//         self.device.write(
-//             vec![commands::JTAG_COMMAND, commands::JTAG_DRIVE_NRST, state],
-//             &[],
-//             &mut buf,
-//             TIMEOUT,
-//         )?;
-//         Self::check_status(&buf)
-//     }
-
-//     /// Validates the status given.
-//     /// Returns an `Err(DebugProbeError::UnknownError)` if the status is not `Status::JtagOk`.
-//     /// Returns Ok(()) otherwise.
-//     /// This can be called on any status returned from the attached target.
-//     fn check_status(status: &[u8]) -> Result<(), DebugProbeError> {
-//         if status[0] != Status::JtagOk as u8 {
-//             Err(DebugProbeError::UnknownError)
-//         } else {
-//             Ok(())
-//         }
-//     }
-// }

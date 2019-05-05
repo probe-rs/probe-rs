@@ -277,13 +277,33 @@ fn parse_target_id(value: u32) -> (u8, u16, u16, u8) {
 }
 
 fn dump_memory(n: u8, loc: u32, words: u32) -> Result<(), Error> {
-    with_device(n, |st_link| {
+    // with_device(n, |st_link| {
+    //     let mut data = vec![0 as u32; words as usize];
+
+    //     // Start timer.
+    //     let instant = Instant::now();
+
+    //     st_link.read_block(loc, &mut data.as_mut_slice()).or_else(|e| Err(Error::AccessPort(e)))?;
+    //     // Stop timer.
+    //     let elapsed = instant.elapsed();
+
+    //     // Print read values.
+    //     for word in 0..words {
+    //         println!("Addr 0x{:08x?}: 0x{:08x}", loc + 4 * word, data[word as usize]);
+    //     }
+    //     // Print stats.
+    //     println!("Read {:?} words in {:?}", words, elapsed);
+
+    //     Ok(())
+    // })
+
+    with_daplink(n, |link| {
         let mut data = vec![0 as u32; words as usize];
 
         // Start timer.
         let instant = Instant::now();
 
-        st_link.read_block(loc, &mut data.as_mut_slice()).or_else(|e| Err(Error::AccessPort(e)))?;
+        link.read_block(loc, &mut data.as_mut_slice()).or_else(|e| Err(Error::AccessPort(e)))?;
         // Stop timer.
         let elapsed = instant.elapsed();
 
@@ -447,4 +467,25 @@ where
         .or_local_err()?;
     
     f(&mut st_link)
+}
+
+/// Takes a closure that is handed an `DAPLink` instance and then executed.
+/// After the closure is done, the USB device is always closed,
+/// even in an error case inside the closure!
+fn with_daplink<F>(n: u8, mut f: F) -> Result<(), Error>
+where
+    F: FnMut(&mut daplink::DAPLink) -> Result<(), Error>
+{
+    let device = {
+        let mut list = daplink::hidapi::list_daplink_devices();
+        println!("{:#?}", list);
+        list.remove(n as usize)
+    };
+    let mut link = daplink::DAPLink::new_from_device(device);
+
+    link
+        .attach(Some(probe::protocol::WireProtocol::Swd))
+        .or_local_err()?;
+    
+    f(&mut link)
 }
