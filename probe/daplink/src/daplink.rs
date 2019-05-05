@@ -113,7 +113,7 @@ impl DebugProbe for DAPLink {
         .map_err(|e| DebugProbeError::USBError)
         .and_then(|v: DisconnectResponse| match v {
             DisconnectResponse(Status::DAPOk) => Ok(()),
-            DisconnectResponse(Status::DAPError) => Err((DebugProbeError::UnknownError))
+            DisconnectResponse(Status::DAPError) => Err(DebugProbeError::UnknownError)
         })
     }
 
@@ -154,12 +154,14 @@ impl DAPAccess for DAPLink {
 
     /// Writes a value to the DAP register on the specified port and address.
     fn write_register(&mut self, port: u16, addr: u16, value: u32) -> Result<(), Self::Error> {
+        dbg!(addr);
+        dbg!(value);
         crate::commands::send_command::<TransferRequest, TransferResponse>(
             &self.device,
-            TransferRequest::new(
+            dbg!(TransferRequest::new(
                 InnerTransferRequest::new(Port::AP, RW::W, addr as u8),
                 value
-            )
+            ))
         )
         .map_err(|e| DebugProbeError::UnknownError)
         .and_then(|v| {

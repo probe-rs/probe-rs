@@ -7,17 +7,18 @@ use crate::commands::{
 
 #[derive(Copy, Clone, Debug)]
 pub enum Port {
-    AP = 0,
-    DP = 1,
+    AP = 1,
+    DP = 0,
 }
 
 #[derive(Copy, Clone, Debug)]
 pub enum RW {
-    R = 0,
-    W = 1,
+    R = 1,
+    W = 0,
 }
 
 /// Contains information about requested access from host debugger.
+#[derive(Debug)]
 pub struct InnerTransferRequest {
     /// 0 = Debug Port (DP), 1 = Access Port (AP).
     pub APnDP: Port,
@@ -72,6 +73,7 @@ impl InnerTransferRequest {
 ///- Target FAULT response
 ///- Target WAIT responses exceed configured value
 ///- Value Mismatch (Read Register with Value Match)
+#[derive(Debug)]
 pub struct TransferRequest {
     /// Zero based device index of the selected JTAG device. For SWD mode the value is ignored.
     pub dap_index: u8,
@@ -102,7 +104,7 @@ impl Request for TransferRequest {
         buffer[offset] = self.dap_index;
         buffer[offset + 1] = self.transfer_count;
         self.transfer_request.to_bytes(buffer, offset + 2)?;
-        buffer.pwrite(self.dap_index, offset + 3).expect("This is a bug. Please report it.");
+        buffer.pwrite(self.transfer_data, offset + 3).expect("This is a bug. Please report it.");
         Ok(0)
     }
 }
