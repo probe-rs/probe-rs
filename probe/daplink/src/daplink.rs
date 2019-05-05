@@ -100,6 +100,7 @@ impl DebugProbe for DAPLink {
             Error::USB => DebugProbeError::USBError,
             Error::UnexpectedAnswer => DebugProbeError::UnknownError,
             Error::DAPError => DebugProbeError::UnknownError,
+            Error::TooMuchData => DebugProbeError::UnknownError,
         })
         .and_then(|v| match v {
             ConnectResponse::SuccessfulInitForSWD => Ok(WireProtocol::Swd),
@@ -133,6 +134,7 @@ impl DebugProbe for DAPLink {
             Error::USB => DebugProbeError::USBError,
             Error::UnexpectedAnswer => DebugProbeError::UnknownError,
             Error::DAPError => DebugProbeError::UnknownError,
+            Error::TooMuchData => DebugProbeError::UnknownError,
         })
         .map(|v: ResetResponse| {
             println!("{:?}", v);

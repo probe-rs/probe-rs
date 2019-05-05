@@ -1,4 +1,5 @@
 pub mod general;
+pub mod swj;
 pub mod transfer;
 
 use core::ops::Deref;
@@ -47,6 +48,7 @@ pub(crate) enum Error {
     USB,
     UnexpectedAnswer,
     DAPError,
+    TooMuchData,
 }
 
 pub(crate) fn send_command<Req: Request, Res: Response>(device_info: &hidapi::HidDeviceInfo, request: Req) -> Result<Res> {
