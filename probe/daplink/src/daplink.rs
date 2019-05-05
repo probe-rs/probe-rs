@@ -42,7 +42,7 @@ use crate::commands::{
 };
 
 pub struct DAPLink {
-    device: hidapi::HidDeviceInfo,
+    pub device: hidapi::HidDeviceInfo,
     hw_version: u8,
     jtag_version: u8,
     protocol: WireProtocol,
