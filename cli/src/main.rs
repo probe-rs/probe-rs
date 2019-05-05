@@ -110,6 +110,7 @@ fn list_connected_devices() {
         list.first().unwrap().clone()
     };
     let mut link = daplink::DAPLink::new_from_device(device);
+    daplink::hidapi::read_status(&link.device);
     println!("{:?}", link.attach(None));
     println!("{:?}", link.detach());
 }
