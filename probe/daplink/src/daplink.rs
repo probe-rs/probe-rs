@@ -52,7 +52,12 @@ use crate::commands::{
             SWJClockRequest,
             SWJClockResponse,
         },
+        sequence::{
+            SequenceRequest,
+            SequenceResponse,
+        },
     },
+    swd,
 };
 
 pub struct DAPLink {
@@ -115,6 +120,55 @@ impl DAPLink {
             ConfigureResponse(Status::DAPError) => Err(DebugProbeError::UnknownError),
         })
     }
+
+    fn configure_swd(&self, request: swd::configure::ConfigureRequest) -> Result<(), DebugProbeError> {
+        use crate::commands::Error;
+
+
+        crate::commands::send_command::<swd::configure::ConfigureRequest, swd::configure::ConfigureResponse>(
+            &self.device, 
+            request
+        )
+        .map_err(|e| match e {
+            Error::NotEnoughSpace => DebugProbeError::UnknownError,
+            Error::USB => DebugProbeError::USBError,
+            Error::UnexpectedAnswer => DebugProbeError::UnknownError,
+            Error::DAPError => DebugProbeError::UnknownError,
+            Error::TooMuchData => DebugProbeError::UnknownError,
+        })
+        .and_then(|v| match v {
+            swd::configure::ConfigureResponse(Status::DAPOk) => Ok(()),
+            swd::configure::ConfigureResponse(Status::DAPError) => Err(DebugProbeError::UnknownError),
+        })
+
+
+    }
+
+    fn send_swj_sequences(&self, request: SequenceRequest) -> Result<(), DebugProbeError> {
+        /* 12 38 FF FF FF FF FF FF FF -> 12 00 // SWJ Sequence
+        12 10 9E E7 -> 12 00 // SWJ Sequence
+        12 38 FF FF FF FF FF FF FF -> 12 00 // SWJ Sequence */
+        //let sequence_1 = SequenceRequest::new(&[0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF]);
+        use crate::commands::Error;
+
+
+        crate::commands::send_command::<SequenceRequest, SequenceResponse>(
+            &self.device, 
+            request
+        )
+        .map_err(|e| match e {
+            Error::NotEnoughSpace => DebugProbeError::UnknownError,
+            Error::USB => DebugProbeError::USBError,
+            Error::UnexpectedAnswer => DebugProbeError::UnknownError,
+            Error::DAPError => DebugProbeError::UnknownError,
+            Error::TooMuchData => DebugProbeError::UnknownError,
+        })
+        .and_then(|v| match v {
+            SequenceResponse(Status::DAPOk) => Ok(()),
+            SequenceResponse(Status::DAPError) => Err(DebugProbeError::UnknownError),
+        })
+
+    }
 }
 
 impl DebugProbe for DAPLink {
@@ -167,6 +221,25 @@ impl DebugProbe for DAPLink {
             match_retry: 0,
         })?;
 
+        self.configure_swd(swd::configure::ConfigureRequest {})?;
+
+        self.send_swj_sequences(SequenceRequest::new(&[0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff]).unwrap())?;
+
+        self.send_swj_sequences(SequenceRequest::new(&[0x9e, 0xe7]).unwrap())?;
+
+        self.send_swj_sequences(SequenceRequest::new(&[0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff]).unwrap())?;
+
+        self.send_swj_sequences(SequenceRequest::new(&[0x00]).unwrap())?;
+
+
+
+        dbg!(self.read_register(0, 0));
+
+/* 12 38 FF FF FF FF FF FF FF -> 12 00 // SWJ Sequence
+12 10 9E E7 -> 12 00 // SWJ Sequence
+12 38 FF FF FF FF FF FF FF -> 12 00 // SWJ Sequence
+12 08 00 -> 12 00 // SWJ Sequence */
+
         result
     }
 
@@ -212,7 +285,7 @@ impl DAPAccess for DAPLink {
         crate::commands::send_command::<TransferRequest, TransferResponse>(
             &self.device,
             TransferRequest::new(
-                InnerTransferRequest::new(Port::AP, RW::R, addr as u8),
+                InnerTransferRequest::new(Port::DP, RW::R, addr as u8),
                 0
             )
         )

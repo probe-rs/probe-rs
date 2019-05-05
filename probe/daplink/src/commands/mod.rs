@@ -1,5 +1,6 @@
 pub mod general;
 pub mod swj;
+pub mod swd;
 pub mod transfer;
 
 use core::ops::Deref;
@@ -62,13 +63,13 @@ pub(crate) fn send_command<Req: Request, Res: Response>(device_info: &hidapi::Hi
             buffer[0 + 1] = *Req::CATEGORY;
             let size = request.to_bytes(buffer, 1 + 1)?;
             device.write(buffer);
-            println!("Send buffer: {:?}", &buffer[..]);
+            println!("Send buffer: {:02X?}", &buffer[..]);
 
             // Read back resonse.
             // TODO: Error handling & real USB reading.
             let buffer = &mut [0; 24];
             device.read(buffer);
-            println!("Receive buffer: {:?}", &buffer[..]);
+            println!("Receive buffer: {:02X?}", &buffer[..]);
             if buffer[0] == *Req::CATEGORY {
                 Res::from_bytes(buffer, 1)
             } else {

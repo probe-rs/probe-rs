@@ -63,10 +63,10 @@ impl SequenceRequest {
     }
 }
 
-pub struct StructResponse(pub(crate) Status);
+pub struct SequenceResponse(pub(crate) Status);
 
-impl Response for StructResponse {
+impl Response for SequenceResponse {
     fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self> {
-        Ok(StructResponse(Status::from_byte(buffer[offset])?))
+        Ok(SequenceResponse(Status::from_byte(buffer[offset])?))
     }
 }
