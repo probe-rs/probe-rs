@@ -41,7 +41,17 @@ use crate::commands::{
             Ack,
             Port,
             RW,
+        },
+        configure::{
+            ConfigureRequest,
+            ConfigureResponse,
         }
+    },
+    swj::{
+        clock::{
+            SWJClockRequest,
+            SWJClockResponse,
+        },
     },
 };
 
@@ -67,6 +77,44 @@ impl DAPLink {
             current_apbanksel: 0,
         }
     }
+
+    fn set_swj_clock(&self, clock: u32) -> Result<(), DebugProbeError> {
+        use crate::commands::Error;
+        crate::commands::send_command::<SWJClockRequest, SWJClockResponse>(
+            &self.device,
+            SWJClockRequest(clock),
+        )
+        .map_err(|e| match e {
+            Error::NotEnoughSpace => DebugProbeError::UnknownError,
+            Error::USB => DebugProbeError::USBError,
+            Error::UnexpectedAnswer => DebugProbeError::UnknownError,
+            Error::DAPError => DebugProbeError::UnknownError,
+            Error::TooMuchData => DebugProbeError::UnknownError,
+        })
+        .and_then(|v| match v {
+            SWJClockResponse(Status::DAPOk) => Ok(()),
+            SWJClockResponse(Status::DAPError) => Err(DebugProbeError::UnknownError),
+        })
+    }
+
+    fn transfer_configure(&self, request: ConfigureRequest) -> Result<(), DebugProbeError> {
+        use crate::commands::Error;
+        crate::commands::send_command::<ConfigureRequest, ConfigureResponse>(
+            &self.device,
+            request,
+        )
+        .map_err(|e| match e {
+            Error::NotEnoughSpace => DebugProbeError::UnknownError,
+            Error::USB => DebugProbeError::USBError,
+            Error::UnexpectedAnswer => DebugProbeError::UnknownError,
+            Error::DAPError => DebugProbeError::UnknownError,
+            Error::TooMuchData => DebugProbeError::UnknownError,
+        })
+        .and_then(|v| match v {
+            ConfigureResponse(Status::DAPOk) => Ok(()),
+            ConfigureResponse(Status::DAPError) => Err(DebugProbeError::UnknownError),
+        })
+    }
 }
 
 impl DebugProbe for DAPLink {
@@ -84,7 +132,10 @@ impl DebugProbe for DAPLink {
     /// Enters debug mode.
     fn attach(&mut self, protocol: Option<WireProtocol>) -> Result<WireProtocol, DebugProbeError> {
         use crate::commands::Error;
-        crate::commands::send_command(
+
+        self.set_swj_clock(1_000_000)?;
+
+        let result = crate::commands::send_command(
             &self.device,
             if let Some(protocol) = protocol {
                 match protocol {
@@ -106,7 +157,17 @@ impl DebugProbe for DAPLink {
             ConnectResponse::SuccessfulInitForSWD => Ok(WireProtocol::Swd),
             ConnectResponse::SuccessfulInitForJTAG => Ok(WireProtocol::Jtag),
             ConnectResponse::InitFailed => Err(DebugProbeError::UnknownError),
-        })
+        });
+
+        self.set_swj_clock(1_000_000)?;
+
+        self.transfer_configure(ConfigureRequest {
+            idle_cycles: 0,
+            wait_retry: 80,
+            match_retry: 0,
+        })?;
+
+        result
     }
 
     /// Leave debug mode.
