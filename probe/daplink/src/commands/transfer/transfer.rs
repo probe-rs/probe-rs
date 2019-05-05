@@ -96,7 +96,13 @@ impl TransferRequest {
 impl Request for TransferRequest {
     const CATEGORY: Category = Category(0x05);
 
-    fn to_bytes(&self, _buffer: &mut [u8], _offset: usize) -> Result<usize> {
+    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize> {
+        use scroll::Pwrite;
+
+        buffer[offset] = self.dap_index;
+        buffer[offset + 1] = self.transfer_count;
+        self.transfer_request.to_bytes(buffer, offset + 2)?;
+        buffer.pwrite(self.dap_index, offset + 3).expect("This is a bug. Please report it.");
         Ok(0)
     }
 }
