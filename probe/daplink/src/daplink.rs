@@ -27,6 +27,10 @@ use crate::commands::{
             DisconnectRequest,
             DisconnectResponse,
         },
+        reset::{
+            ResetRequest,
+            ResetResponse,
+        }
     },
     transfer::{
         transfer::{
@@ -119,7 +123,21 @@ impl DebugProbe for DAPLink {
 
     /// Asserts the nRESET pin.
     fn target_reset(&mut self) -> Result<(), DebugProbeError> {
-        Ok(())
+        use crate::commands::Error;
+        crate::commands::send_command(
+            &self.device,
+            ResetRequest
+        )
+        .map_err(|e| match e {
+            Error::NotEnoughSpace => DebugProbeError::UnknownError,
+            Error::USB => DebugProbeError::USBError,
+            Error::UnexpectedAnswer => DebugProbeError::UnknownError,
+            Error::DAPError => DebugProbeError::UnknownError,
+        })
+        .map(|v: ResetResponse| {
+            println!("{:?}", v);
+            ()
+        })
     }
 }
 

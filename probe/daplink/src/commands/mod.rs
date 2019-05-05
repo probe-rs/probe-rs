@@ -5,6 +5,7 @@ use core::ops::Deref;
 
 pub(crate) type Result<T> = std::result::Result<T, Error>;
 
+#[derive(Debug)]
 pub(crate) enum Status {
     DAPOk = 0x00,
     DAPError = 0xFF,

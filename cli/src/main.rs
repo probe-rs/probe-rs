@@ -373,26 +373,32 @@ fn dump_memory(n: u8, loc: u32, words: u32) -> Result<(), Error> {
 // }
 
 fn reset_target_of_device(n: u8, assert: Option<bool>) -> Result<(), Error> {
-    with_device(n, |st_link| {
-        if let Some(assert) = assert {
-            println!(
-                "{} target reset.",
-                if assert { "Asserting" } else { "Deasserting" }
-            );
-            st_link
-                .drive_nreset(assert)
-                .or_local_err()?;
-            println!(
-                "Target reset has been {}.",
-                if assert { "asserted" } else { "deasserted" }
-            );
-        } else {
-            println!("Triggering target reset.");
-            st_link
-                .target_reset()
-                .or_local_err()?;
-            println!("Target reset has been triggered.");
-        }
+    // with_device(n, |st_link| {
+    //     if let Some(assert) = assert {
+    //         println!(
+    //             "{} target reset.",
+    //             if assert { "Asserting" } else { "Deasserting" }
+    //         );
+    //         st_link
+    //             .drive_nreset(assert)
+    //             .or_local_err()?;
+    //         println!(
+    //             "Target reset has been {}.",
+    //             if assert { "asserted" } else { "deasserted" }
+    //         );
+    //     } else {
+    //         println!("Triggering target reset.");
+    //         st_link
+    //             .target_reset()
+    //             .or_local_err()?;
+    //         println!("Target reset has been triggered.");
+    //     }
+    //     Ok(())
+    // })
+
+    with_daplink(n, |link| {
+        link.target_reset().or_else(|e| Err(Error::DebugProbe(e)))?;
+
         Ok(())
     })
 }
