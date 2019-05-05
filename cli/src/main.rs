@@ -1,3 +1,4 @@
+use probe::debug_probe::DebugProbeInfo;
 use std::io::Write;
 use memory::MI;
 use coresight::ap_access::APAccess;
@@ -7,7 +8,11 @@ use coresight::access_ports::AccessPortError;
 use std::time::Instant;
 
 use coresight::dap_access::DAPAccess;
-use probe::debug_probe::{DebugProbe, DebugProbeError};
+use probe::debug_probe::{
+    DebugProbe,
+    DebugProbeError,
+    DebugProbeType,
+};
 
 use structopt::StructOpt;
 
@@ -86,8 +91,7 @@ fn main() {
 }
 
 fn list_connected_devices() {
-    let mut links = daplink::tools::list_daplink_devices();
-    links.extend(stlink::tools::list_stlink_devices());
+    let links = get_connected_devices();
 
     if links.len() > 0 {
         println!("The following devices were found:");
@@ -478,4 +482,10 @@ where
         .or_local_err()?;
     
     f(&mut link)
+}
+
+fn get_connected_devices() -> Vec<DebugProbeInfo>{
+    let mut links = daplink::tools::list_daplink_devices();
+    links.extend(stlink::tools::list_stlink_devices());
+    links
 }
