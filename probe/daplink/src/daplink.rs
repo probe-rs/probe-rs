@@ -1,3 +1,4 @@
+use probe::debug_probe::DebugProbeInfo;
 use coresight::access_ports::generic_ap::GenericAP;
 use coresight::access_ports::AccessPortError;
 use memory::ToMemoryReadSize;
@@ -61,7 +62,7 @@ use crate::commands::{
 };
 
 pub struct DAPLink {
-    pub device: hidapi::HidDeviceInfo,
+    pub device: hidapi::HidDevice,
     hw_version: u8,
     jtag_version: u8,
     protocol: WireProtocol,
@@ -72,7 +73,7 @@ pub struct DAPLink {
 impl DAPLink {
     const DP_PORT: u16 = 0xffff;
 
-    pub fn new_from_device(device: hidapi::HidDeviceInfo) -> Self {
+    pub fn new_from_device(device: hidapi::HidDevice) -> Self {
         Self {
             device,
             hw_version: 0,
@@ -172,6 +173,24 @@ impl DAPLink {
 }
 
 impl DebugProbe for DAPLink {
+    fn new_from_probe_info(info: DebugProbeInfo) -> Result<Self, DebugProbeError> {
+        if let Some(serial_number) = info.serial_number {
+            Ok(Self::new_from_device(
+                hidapi::HidApi::new()
+                    .map_err(|e| DebugProbeError::ProbeCouldNotBeCreated)?
+                    .open_serial(info.vendor_id, info.vendor_id, &serial_number)
+                    .map_err(|e| DebugProbeError::ProbeCouldNotBeCreated)?
+            ))
+        } else {
+            Ok(Self::new_from_device(
+                hidapi::HidApi::new()
+                    .map_err(|e| DebugProbeError::ProbeCouldNotBeCreated)?
+                    .open(info.vendor_id, info.vendor_id)
+                    .map_err(|e| DebugProbeError::ProbeCouldNotBeCreated)?
+            ))
+        }
+    }
+
     /// Reads the ST-Links version.
     /// Returns a tuple (hardware version, firmware version).
     /// This method stores the version data on the struct to make later use of it.

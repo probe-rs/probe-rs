@@ -1,5 +1,5 @@
 pub mod commands;
 pub mod daplink;
-pub mod hidapi;
+pub mod tools;
 
 pub use daplink::DAPLink;

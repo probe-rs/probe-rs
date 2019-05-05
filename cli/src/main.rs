@@ -86,33 +86,18 @@ fn main() {
 }
 
 fn list_connected_devices() {
-    // let context = libusb::Context::new().unwrap();
-    // match stlink::get_all_plugged_devices(&context) {
-    //     Ok(connected_stlinks) => {
-    //         println!("The following devices were found:");
-    //         connected_stlinks
-    //             .iter()
-    //             .enumerate()
-    //             .for_each(|(num, link)| {
-    //                 println!(
-    //                     "[{}]: PID = {}, version = {}",
-    //                     num, link.1.usb_pid, link.1.version_name
-    //                 );
-    //             });
-    //     }
-    //     Err(e) => {
-    //         println!("{:?}", e);
-    //     }
-    // };
-    let device = {
-        let list = daplink::hidapi::list_daplink_devices();
-        println!("{:#?}", list);
-        list.first().unwrap().clone()
-    };
-    let mut link = daplink::DAPLink::new_from_device(device);
-    daplink::hidapi::read_status(&link.device);
-    println!("{:?}", link.attach(None));
-    println!("{:?}", link.detach());
+    let mut links = daplink::tools::list_daplink_devices();
+    links.extend(stlink::tools::list_stlink_devices());
+
+    if links.len() > 0 {
+        println!("The following devices were found:");
+        links
+            .iter()
+            .enumerate()
+            .for_each(|(num, link)| println!( "[{}]: {:?}", num, link));
+    } else {
+        println!("No devices were found.");
+    }
 }
 
 #[derive(Debug)]
@@ -146,7 +131,7 @@ impl<T> ToError<T> for Result<T, AccessPortError> {
 }
 
 fn show_info_of_device(n: u8) -> Result<(), Error> {
-    with_device(n, |st_link| {
+    with_stlink(n, |st_link| {
                 println!("EKKEKEEK");
         let version = st_link
             .get_version()
@@ -278,7 +263,7 @@ fn parse_target_id(value: u32) -> (u8, u16, u16, u8) {
 }
 
 fn dump_memory(n: u8, loc: u32, words: u32) -> Result<(), Error> {
-    // with_device(n, |st_link| {
+    // with_stlink(n, |st_link| {
     //     let mut data = vec![0 as u32; words as usize];
 
     //     // Start timer.
@@ -374,7 +359,7 @@ fn dump_memory(n: u8, loc: u32, words: u32) -> Result<(), Error> {
 // }
 
 fn reset_target_of_device(n: u8, assert: Option<bool>) -> Result<(), Error> {
-    // with_device(n, |st_link| {
+    // with_stlink(n, |st_link| {
     //     if let Some(assert) = assert {
     //         println!(
     //             "{} target reset.",
@@ -415,7 +400,7 @@ fn trace_u32_on_target(n: u8, loc: u32) -> Result<(), Error> {
 
     let start = Instant::now();
 
-    with_device(n, |st_link| {
+    with_stlink(n, |st_link| {
         loop {
             // Prepare read.
             let elapsed = start.elapsed();
@@ -456,24 +441,22 @@ fn trace_u32_on_target(n: u8, loc: u32) -> Result<(), Error> {
 /// Takes a closure that is handed an `STLink` instance and then executed.
 /// After the closure is done, the USB device is always closed,
 /// even in an error case inside the closure!
-fn with_device<F>(n: u8, mut f: F) -> Result<(), Error>
+fn with_stlink<F>(n: u8, mut f: F) -> Result<(), Error>
 where
     F: FnMut(&mut stlink::STLink) -> Result<(), Error>
 {
-    let mut st_link = stlink::STLink::new_from_connected(|mut devices| {
-        if devices.len() <= n as usize {
-            println!("The device with the given number was not found.");
-            Err(libusb::Error::NotFound)
-        } else {
-            Ok(devices.remove(n as usize).0)
-        }
-    }).or_local_err()?;
+    let device = {
+        let mut list = stlink::tools::list_stlink_devices();
+        list.remove(n as usize)
+    };
 
-    st_link
+    let mut link = stlink::STLink::new_from_probe_info(device).or_local_err()?;
+
+    link
         .attach(Some(probe::protocol::WireProtocol::Swd))
         .or_local_err()?;
     
-    f(&mut st_link)
+    f(&mut link)
 }
 
 /// Takes a closure that is handed an `DAPLink` instance and then executed.
@@ -484,11 +467,11 @@ where
     F: FnMut(&mut daplink::DAPLink) -> Result<(), Error>
 {
     let device = {
-        let mut list = daplink::hidapi::list_daplink_devices();
-        println!("{:#?}", list);
+        let mut list = daplink::tools::list_daplink_devices();
         list.remove(n as usize)
     };
-    let mut link = daplink::DAPLink::new_from_device(device);
+
+    let mut link = daplink::DAPLink::new_from_probe_info(device).or_local_err()?;
 
     link
         .attach(Some(probe::protocol::WireProtocol::Swd))

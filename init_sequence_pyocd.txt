@@ -7,7 +7,7 @@
 04 00 50 00 00 00 -> 04 00 // TransferConfigure
 13 00 -> 13 00 // SWD Configure
 12 38 FF FF FF FF FF FF FF -> 12 00 // SWJ Sequence
-12 10 9E E7 -> 12 00 // SWJ Sequence
+12 10 9E E7 -> 12 00 // SWJ Sequence (Switch from JTAG to SWD)
 12 38 FF FF FF FF FF FF FF -> 12 00 // SWJ Sequence
 12 08 00 -> 12 00 // SWJ Sequence
 06 00 01 00 02 -> 06 01 00 01 77 14 B1 0B // TransferBlock
