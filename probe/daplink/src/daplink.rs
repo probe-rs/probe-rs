@@ -178,14 +178,14 @@ impl DebugProbe for DAPLink {
             Ok(Self::new_from_device(
                 hidapi::HidApi::new()
                     .map_err(|e| DebugProbeError::ProbeCouldNotBeCreated)?
-                    .open_serial(info.vendor_id, info.vendor_id, &serial_number)
+                    .open_serial(info.vendor_id, info.product_id, &serial_number)
                     .map_err(|e| DebugProbeError::ProbeCouldNotBeCreated)?
             ))
         } else {
             Ok(Self::new_from_device(
                 hidapi::HidApi::new()
                     .map_err(|e| DebugProbeError::ProbeCouldNotBeCreated)?
-                    .open(info.vendor_id, info.vendor_id)
+                    .open(info.vendor_id, info.product_id)
                     .map_err(|e| DebugProbeError::ProbeCouldNotBeCreated)?
             ))
         }
