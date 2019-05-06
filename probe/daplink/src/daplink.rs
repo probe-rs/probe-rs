@@ -399,7 +399,7 @@ impl DAPAccess for DAPLink {
         crate::commands::send_command::<TransferRequest, TransferResponse>(
             &self.device,
             TransferRequest::new(
-                InnerTransferRequest::new(Port::DP, RW::W, addr as u8),
+                InnerTransferRequest::new(Port::AP, RW::W, addr as u8),
                 value
             )
         )
@@ -444,6 +444,7 @@ where
     };
     if cache_changed {
         let select = (u32::from(link.current_apsel) << 24) | (u32::from(link.current_apbanksel) << 4);
+        println!("Setting APBANKSEL to {}", select);
         link.write_register(0xFFFF, 0x008, select)?;
     }
     //println!("{:?}, {:08X}", link.current_apsel, REGISTER::ADDRESS);
@@ -456,7 +457,7 @@ where
     AP: AccessPort,
     REGISTER: APRegister<AP>
 {
-    println!("Write register {}", REGISTER::NAME);
+    println!("Write register {} = {:?}", REGISTER::NAME, register);
 
     use coresight::ap_access::AccessPort;
     // TODO: Make those next lines use the future typed DP interface.
@@ -471,6 +472,7 @@ where
     };
     if cache_changed {
         let select = (u32::from(link.current_apsel) << 24) | (u32::from(link.current_apbanksel) << 4);
+        println!("Setting APBANKSEL to {}", select);
         link.write_register(0xFFFF, 0x008, select)?;
     }
     link.write_register_ap_tmp(u16::from(link.current_apsel), u16::from(REGISTER::ADDRESS), register.into())?;
@@ -525,7 +527,7 @@ impl MI for DAPLink
         address: u32,
         data: &mut [S]
     ) -> Result<(), AccessPortError> {
-        data[0] = ADIMemoryInterface::new(0).read(self, address)?;
+        ADIMemoryInterface::new(0).read_block(self, address, data)?;
         Ok(())
     }
 
