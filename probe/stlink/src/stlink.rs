@@ -150,6 +150,10 @@ impl DebugProbe for STLink {
 impl DAPAccess for STLink {
     type Error = DebugProbeError;
 
+    fn read_register_ap_tmp(&mut self, port: u16, addr: u16) -> Result<u32, Self::Error> {
+        unimplemented!();
+    }
+
     /// Reads the DAP register on the specified port and address.
     fn read_register(&mut self, port: u16, addr: u16) -> Result<u32, Self::Error> {
         if (addr & 0xf0) == 0 || port != Self::DP_PORT {
@@ -170,6 +174,11 @@ impl DAPAccess for STLink {
             Err(DebugProbeError::BlanksNotAllowedOnDPRegister)
         }
     }
+
+    fn write_register_ap_tmp(&mut self, port: u16, addr: u16, value: u32) -> Result<(), Self::Error> {
+        unimplemented!();
+    }
+
 
     /// Writes a value to the DAP register on the specified port and address.
     fn write_register(&mut self, port: u16, addr: u16, value: u32) -> Result<(), Self::Error> {

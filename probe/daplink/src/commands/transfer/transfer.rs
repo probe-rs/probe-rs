@@ -42,12 +42,20 @@ impl InnerTransferRequest {
             APnDP: port,
             RnW: rw,
             A2: (address >> 2) & 0x01 == 1,
-            A3: (address >> 2) & 0x01 == 1,
+            A3: (address >> 3) & 0x01 == 1,
             value_match: false,
             match_mask: false,
             td_timestamp_request: false,
         }
     }
+}
+
+#[test]
+fn creating_inner_transfer_request() {
+    let req = InnerTransferRequest::new(Port::DP, RW::W, 0x8);
+
+    assert_eq!(true, req.A3);
+    assert_eq!(false, req.A2);
 }
 
 impl InnerTransferRequest {

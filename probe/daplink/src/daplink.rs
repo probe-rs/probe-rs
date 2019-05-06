@@ -235,6 +235,23 @@ impl DebugProbe for DAPLink {
 
         dbg!(self.read_register(0, 0));
 
+        self.write_register(0, 0x0, 0x1e); // clear errors 
+
+        println!("Writing to Select register (address 8)");
+        self.write_register(0, 0x8, 0x0); // select DBPANK 0
+        self.write_register(0, 0x4, 0x50_00_00_00); // CSYSPWRUPREQ, CDBGPWRUPREQ
+
+        // TODO: Check return value if power up was ok
+        dbg!(self.read_register(0, 0x4)); 
+
+        let ap = GenericAP::new(0);
+        use coresight::access_ports::generic_ap::{
+            IDR};
+
+
+
+        dbg!(read_register_ap(self, ap, IDR::default()));
+
 /* 12 38 FF FF FF FF FF FF FF -> 12 00 // SWJ Sequence
 12 10 9E E7 -> 12 00 // SWJ Sequence
 12 38 FF FF FF FF FF FF FF -> 12 00 // SWJ Sequence
@@ -306,16 +323,40 @@ impl DAPAccess for DAPLink {
         })
     }
 
-    /// Writes a value to the DAP register on the specified port and address.
-    fn write_register(&mut self, port: u16, addr: u16, value: u32) -> Result<(), Self::Error> {
-        dbg!(addr);
-        dbg!(value);
+    /// Reads the DAP register on the specified port and address.
+    fn read_register_ap_tmp(&mut self, port: u16, addr: u16) -> Result<u32, Self::Error> {
         crate::commands::send_command::<TransferRequest, TransferResponse>(
             &self.device,
-            dbg!(TransferRequest::new(
-                InnerTransferRequest::new(Port::AP, RW::W, addr as u8),
+            TransferRequest::new(
+                InnerTransferRequest::new(Port::AP, RW::R, addr as u8),
+                0
+            )
+        )
+        .map_err(|e| DebugProbeError::UnknownError)
+        .and_then(|v| {
+            if v.transfer_count == 1 {
+                if v.transfer_response.protocol_error {
+                    Err(DebugProbeError::USBError)
+                } else {
+                    match v.transfer_response.ack {
+                        Ack::OK => Ok(v.transfer_data),
+                        _ => Err(DebugProbeError::UnknownError)
+                    }
+                }
+            } else {
+                Err(DebugProbeError::UnknownError)
+            }
+        })
+    }
+
+    /// Writes a value to the DAP register on the specified port and address.
+    fn write_register(&mut self, port: u16, addr: u16, value: u32) -> Result<(), Self::Error> {
+        crate::commands::send_command::<TransferRequest, TransferResponse>(
+            &self.device,
+            TransferRequest::new(
+                InnerTransferRequest::new(Port::DP, RW::W, addr as u8),
                 value
-            ))
+            )
         )
         .map_err(|e| DebugProbeError::UnknownError)
         .and_then(|v| {
@@ -333,6 +374,35 @@ impl DAPAccess for DAPLink {
             }
         })
     }
+
+    /// Writes a value to the DAP register on the specified port and address.
+    fn write_register_ap_tmp(&mut self, port: u16, addr: u16, value: u32) -> Result<(), Self::Error> {
+        crate::commands::send_command::<TransferRequest, TransferResponse>(
+            &self.device,
+            TransferRequest::new(
+                InnerTransferRequest::new(Port::DP, RW::W, addr as u8),
+                value
+            )
+        )
+        .map_err(|e| DebugProbeError::UnknownError)
+        .and_then(|v| {
+            if v.transfer_count == 1 {
+                if v.transfer_response.protocol_error {
+                    Err(DebugProbeError::USBError)
+                } else {
+                    match v.transfer_response.ack {
+                        Ack::OK => Ok(()),
+                        _ => Err(DebugProbeError::UnknownError)
+                    }
+                }
+            } else {
+                Err(DebugProbeError::UnknownError)
+            }
+        })
+    }
+
+
+
 }
 
 fn read_register_ap<AP, REGISTER>(link: &mut DAPLink, port: AP, _register: REGISTER) -> Result<REGISTER, DebugProbeError>
@@ -340,6 +410,8 @@ where
     AP: AccessPort,
     REGISTER: APRegister<AP>
 {
+    println!("Reading register {}", REGISTER::NAME);
+
     use coresight::ap_access::AccessPort;
     // TODO: Make those next lines use the future typed DP interface.
     let cache_changed = if link.current_apsel != port.get_port_number() {
@@ -356,7 +428,7 @@ where
         link.write_register(0xFFFF, 0x008, select)?;
     }
     //println!("{:?}, {:08X}", link.current_apsel, REGISTER::ADDRESS);
-    let result = link.read_register(u16::from(link.current_apsel), u16::from(REGISTER::ADDRESS))?;
+    let result = link.read_register_ap_tmp(u16::from(link.current_apsel), u16::from(REGISTER::ADDRESS))?;
     Ok(REGISTER::from(result))
 }
 
@@ -365,6 +437,8 @@ where
     AP: AccessPort,
     REGISTER: APRegister<AP>
 {
+    println!("Write register {}", REGISTER::NAME);
+
     use coresight::ap_access::AccessPort;
     // TODO: Make those next lines use the future typed DP interface.
     let cache_changed = if link.current_apsel != port.get_port_number() {
@@ -380,7 +454,7 @@ where
         let select = (u32::from(link.current_apsel) << 24) | (u32::from(link.current_apbanksel) << 4);
         link.write_register(0xFFFF, 0x008, select)?;
     }
-    link.write_register(u16::from(link.current_apsel), u16::from(REGISTER::ADDRESS), register.into())?;
+    link.write_register_ap_tmp(u16::from(link.current_apsel), u16::from(REGISTER::ADDRESS), register.into())?;
     Ok(())
 }
 
