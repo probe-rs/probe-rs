@@ -52,32 +52,23 @@ pub(crate) enum Error {
     TooMuchData,
 }
 
-pub(crate) fn send_command<Req: Request, Res: Response>(device_info: &hidapi::HidDeviceInfo, request: Req) -> Result<Res> {
-    match hidapi::HidApi::new() {
-        Ok(api) => {
-            let device = device_info.open_device(&api).unwrap();
+pub(crate) fn send_command<Req: Request, Res: Response>(device: &hidapi::HidDevice, request: Req) -> Result<Res> {
+    // Write the command & request to the buffer.
+    // TODO: Error handling & real USB writing.
+    let buffer = &mut [0; 24];
+    buffer[0 + 1] = *Req::CATEGORY;
+    let size = request.to_bytes(buffer, 1 + 1)?;
+    device.write(buffer);
+    println!("Send buffer: {:02X?}", &buffer[..]);
 
-            // Write the command & request to the buffer.
-            // TODO: Error handling & real USB writing.
-            let buffer = &mut [0; 24];
-            buffer[0 + 1] = *Req::CATEGORY;
-            let size = request.to_bytes(buffer, 1 + 1)?;
-            device.write(buffer);
-            println!("Send buffer: {:02X?}", &buffer[..]);
-
-            // Read back resonse.
-            // TODO: Error handling & real USB reading.
-            let buffer = &mut [0; 24];
-            device.read(buffer);
-            println!("Receive buffer: {:02X?}", &buffer[..]);
-            if buffer[0] == *Req::CATEGORY {
-                Res::from_bytes(buffer, 1)
-            } else {
-                Err(Error::UnexpectedAnswer)
-            }
-        },
-        Err(e) => {
-            Err(Error::USB)
-        },
+    // Read back resonse.
+    // TODO: Error handling & real USB reading.
+    let buffer = &mut [0; 24];
+    device.read(buffer);
+    println!("Receive buffer: {:02X?}", &buffer[..]);
+    if buffer[0] == *Req::CATEGORY {
+        Res::from_bytes(buffer, 1)
+    } else {
+        Err(Error::UnexpectedAnswer)
     }
 }

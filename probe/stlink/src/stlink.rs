@@ -1,3 +1,4 @@
+use probe::debug_probe::DebugProbeInfo;
 use coresight::access_ports::generic_ap::GenericAP;
 use coresight::access_ports::AccessPortError;
 use memory::ToMemoryReadSize;
@@ -29,6 +30,21 @@ pub struct STLink {
 }
 
 impl DebugProbe for STLink {
+    fn new_from_probe_info(info: DebugProbeInfo) -> Result<Self, DebugProbeError> {
+        let mut stlink = Self {
+            device: STLinkUSBDevice::new_from_info(info)?,
+            hw_version: 0,
+            jtag_version: 0,
+            protocol: WireProtocol::Swd,
+            current_apsel: 0x0000,
+            current_apbanksel: 0x00,
+        };
+
+        stlink.init()?;
+
+        Ok(stlink)
+    }
+
     /// Reads the ST-Links version.
     /// Returns a tuple (hardware version, firmware version).
     /// This method stores the version data on the struct to make later use of it.
@@ -339,27 +355,6 @@ impl STLink {
 
     /// Port number to use to indicate DP registers.
     const DP_PORT: u16 = 0xffff;
-
-    /// Creates a new STLink device instance.
-    /// This function takes care of all the initialization routines and expects a selector closure.
-    /// The selector closure is served with a list of connected, eligible ST-Links and should return one of them.
-    pub fn new_from_connected<F>(device_selector: F) -> Result<Self, DebugProbeError>
-    where
-        F: for<'a> FnMut(Vec<(Device<'a>, STLinkInfo)>) -> Result<Device<'a>, Error>,
-    {
-        let mut stlink = Self {
-            device: STLinkUSBDevice::new(device_selector)?,
-            hw_version: 0,
-            jtag_version: 0,
-            protocol: WireProtocol::Swd,
-            current_apsel: 0x0000,
-            current_apbanksel: 0x00,
-        };
-
-        stlink.init()?;
-
-        Ok(stlink)
-    }
 
     /// Reads the target voltage.
     /// For the china fake variants this will always read a nonzero value!
