@@ -1,7 +1,10 @@
+
 #[macro_use]
-pub mod register_generation;
+mod register_generation;
+
 pub mod generic_ap;
 pub mod memory_ap;
+
 
 use crate::ap_access::AccessPort;
 use crate::common::Register;

@@ -1,3 +1,7 @@
+///! The DAP Access module
+/// 
+/// 
+ 
 pub trait DAPAccess {
     type Error: std::fmt::Debug;
 
