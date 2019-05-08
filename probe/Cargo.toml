@@ -6,4 +6,5 @@ edition = "2018"
 
 [dependencies]
 memory = { path = "../memory" }
+coresight = { path = "../coresight"}
 query_interface = "*"

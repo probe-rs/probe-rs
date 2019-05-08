@@ -1,6 +1,6 @@
 use probe::debug_probe::{
     DebugProbeInfo,
-    Probe,
+    //Probe,
 };
 use coresight::access_ports::generic_ap::GenericAP;
 use coresight::access_ports::AccessPortError;
@@ -32,7 +32,7 @@ pub struct STLink {
 probe::register_debug_probe!(STLink: DebugProbe);
 
 impl DebugProbe for STLink {
-    fn new_from_probe_info(info: DebugProbeInfo) -> Result<Probe, DebugProbeError> where Self: Sized {
+    fn new_from_probe_info(info: DebugProbeInfo) -> Result<Box<Self>, DebugProbeError> where Self: Sized {
         let mut stlink = Self {
             device: STLinkUSBDevice::new_from_info(info)?,
             hw_version: 0,
@@ -44,7 +44,7 @@ impl DebugProbe for STLink {
 
         stlink.init()?;
 
-        Ok(Probe::new(stlink))
+        Ok(Box::new(stlink))
     }
 
     /// Reads the ST-Links version.
@@ -166,10 +166,8 @@ impl DebugProbe for STLink {
 }
 
 impl DAPAccess for STLink {
-    type Error = DebugProbeError;
-
     /// Reads the DAP register on the specified port and address.
-    fn read_register(&mut self, port: u16, addr: u16) -> Result<u32, Self::Error> {
+    fn read_register(&mut self, port: u16, addr: u16) -> Option<u32> {
         if (addr & 0xf0) == 0 || port != Self::DP_PORT {
             let cmd = vec![
                 commands::JTAG_COMMAND,
@@ -180,17 +178,18 @@ impl DAPAccess for STLink {
                 ((addr >> 8) & 0xFF) as u8,
             ];
             let mut buf = [0; 8];
-            self.device.write(cmd, &[], &mut buf, TIMEOUT)?;
-            Self::check_status(&buf)?;
+            self.device.write(cmd, &[], &mut buf, TIMEOUT).ok()?;
+            Self::check_status(&buf).ok()?;
             // Unwrap is ok!
-            Ok((&buf[4..8]).pread(0).unwrap())
+            Some((&buf[4..8]).pread(0).unwrap())
         } else {
-            Err(DebugProbeError::BlanksNotAllowedOnDPRegister)
+            //Err(DebugProbeError::BlanksNotAllowedOnDPRegister)
+            None
         }
     }
 
     /// Writes a value to the DAP register on the specified port and address.
-    fn write_register(&mut self, port: u16, addr: u16, value: u32) -> Result<(), Self::Error> {
+    fn write_register(&mut self, port: u16, addr: u16, value: u32) -> Option<()> {
         if (addr & 0xf0) == 0 || port != Self::DP_PORT {
             let cmd = vec![
                 commands::JTAG_COMMAND,
@@ -205,16 +204,17 @@ impl DAPAccess for STLink {
                 ((value >> 24) & 0xFF) as u8,
             ];
             let mut buf = [0; 2];
-            self.device.write(cmd, &[], &mut buf, TIMEOUT)?;
-            Self::check_status(&buf)?;
-            Ok(())
+            self.device.write(cmd, &[], &mut buf, TIMEOUT).ok()?;
+            Self::check_status(&buf).ok()?;
+            Some(())
         } else {
-            Err(DebugProbeError::BlanksNotAllowedOnDPRegister)
+            //Err(DebugProbeError::BlanksNotAllowedOnDPRegister)
+            None
         }
     }
 }
 
-fn read_register_ap<AP, REGISTER>(link: &mut STLink, port: AP, _register: REGISTER) -> Result<REGISTER, DebugProbeError>
+fn read_register_ap<AP, REGISTER>(link: &mut STLink, port: AP, _register: REGISTER) -> Option<REGISTER>
 where
     AP: AccessPort,
     REGISTER: APRegister<AP>
@@ -236,10 +236,10 @@ where
     }
     //println!("{:?}, {:08X}", link.current_apsel, REGISTER::ADDRESS);
     let result = link.read_register(u16::from(link.current_apsel), u16::from(REGISTER::ADDRESS))?;
-    Ok(REGISTER::from(result))
+    Some(REGISTER::from(result))
 }
 
-fn write_register_ap<AP, REGISTER>(link: &mut STLink, port: AP, register: REGISTER) -> Result<(), DebugProbeError>
+fn write_register_ap<AP, REGISTER>(link: &mut STLink, port: AP, register: REGISTER) -> Option<()>
 where
     AP: AccessPort,
     REGISTER: APRegister<AP>
@@ -260,7 +260,7 @@ where
         link.write_register(0xFFFF, 0x008, select)?;
     }
     link.write_register(u16::from(link.current_apsel), u16::from(REGISTER::ADDRESS), register.into())?;
-    Ok(())
+    Some(())
 }
 
 impl<REGISTER> APAccess<MemoryAP, REGISTER> for STLink
@@ -270,11 +270,11 @@ where
     type Error = DebugProbeError;
 
     fn read_register_ap(&mut self, port: MemoryAP, register: REGISTER) -> Result<REGISTER, Self::Error> {
-        read_register_ap(self, port, register)
+        read_register_ap(self, port, register).ok_or(DebugProbeError::UnknownError)
     }
     
     fn write_register_ap(&mut self, port: MemoryAP, register: REGISTER) -> Result<(), Self::Error> {
-        write_register_ap(self, port, register)
+        write_register_ap(self, port, register).ok_or(DebugProbeError::UnknownError)
     }
 }
 
@@ -285,11 +285,11 @@ where
     type Error = DebugProbeError;
 
     fn read_register_ap(&mut self, port: GenericAP, register: REGISTER) -> Result<REGISTER, Self::Error> {
-        read_register_ap(self, port, register)
+        read_register_ap(self, port, register).ok_or(DebugProbeError::UnknownError)
     }
     
     fn write_register_ap(&mut self, port: GenericAP, register: REGISTER) -> Result<(), Self::Error> {
-        write_register_ap(self, port, register)
+        write_register_ap(self, port, register).ok_or(DebugProbeError::UnknownError)
     }
 }
 

@@ -1,3 +1,4 @@
+use probe::debug_probe::MasterProbe;
 use std::io::Write;
 use memory::MI;
 use coresight::ap_access::APAccess;
@@ -12,7 +13,7 @@ use probe::debug_probe::{
     DebugProbeError,
     DebugProbeType,
     DebugProbeInfo,
-    Probe,
+    //Probe,
 };
 
 use structopt::StructOpt;
@@ -269,46 +270,25 @@ fn parse_target_id(value: u32) -> (u8, u16, u16, u8) {
 }
 
 fn dump_memory(n: u8, loc: u32, words: u32) -> Result<(), Error> {
-    // with_stlink(n, |st_link| {
-    //     let mut data = vec![0 as u32; words as usize];
+    with_device(n as usize, |st_link| {
+        let mut data = vec![0 as u32; words as usize];
 
-    //     // Start timer.
-    //     let instant = Instant::now();
+        // Start timer.
+        let instant = Instant::now();
 
-    //     st_link.read_block(loc, &mut data.as_mut_slice()).or_else(|e| Err(Error::AccessPort(e)))?;
-    //     // Stop timer.
-    //     let elapsed = instant.elapsed();
+        st_link.read_block(loc, &mut data.as_mut_slice()).or_else(|e| Err(Error::AccessPort(e)))?;
+        // Stop timer.
+        let elapsed = instant.elapsed();
 
-    //     // Print read values.
-    //     for word in 0..words {
-    //         println!("Addr 0x{:08x?}: 0x{:08x}", loc + 4 * word, data[word as usize]);
-    //     }
-    //     // Print stats.
-    //     println!("Read {:?} words in {:?}", words, elapsed);
+        // Print read values.
+        for word in 0..words {
+            println!("Addr 0x{:08x?}: 0x{:08x}", loc + 4 * word, data[word as usize]);
+        }
+        // Print stats.
+        println!("Read {:?} words in {:?}", words, elapsed);
 
-    //     Ok(())
-    // })
-
-    // with_daplink(n, |link| {
-    //     let mut data = vec![0 as u32; words as usize];
-
-    //     // Start timer.
-    //     let instant = Instant::now();
-
-    //     link.read_block(loc, &mut data.as_mut_slice()).or_else(|e| Err(Error::AccessPort(e)))?;
-    //     // Stop timer.
-    //     let elapsed = instant.elapsed();
-
-    //     // Print read values.
-    //     for word in 0..words {
-    //         println!("Addr 0x{:08x?}: 0x{:08x}", loc + 4 * word, data[word as usize]);
-    //     }
-    //     // Print stats.
-    //     println!("Read {:?} words in {:?}", words, elapsed);
-
-    //     Ok(())
-    // })
-    Ok(())
+        Ok(())
+    })
 }
 
 // TODO: highly unfinished.
@@ -389,8 +369,9 @@ fn reset_target_of_device(n: u8, assert: Option<bool>) -> Result<(), Error> {
     //     Ok(())
     // })
 
-    with_device(n, |link| {
-        link.get_interface_mut::<DebugProbe>().unwrap().target_reset().or_else(|e| Err(Error::DebugProbe(e)))?;
+    with_device(n as usize, |link: &mut MasterProbe| {
+        //link.get_interface_mut::<DebugProbe>().unwrap().target_reset().or_else(|e| Err(Error::DebugProbe(e)))?;
+        link.target_reset().or_else(|e| Err(Error::DebugProbe(e)))?;
 
         Ok(())
     })
@@ -449,23 +430,54 @@ fn trace_u32_on_target(n: u8, loc: u32) -> Result<(), Error> {
 /// Takes a closure that is handed an `DAPLink` instance and then executed.
 /// After the closure is done, the USB device is always closed,
 /// even in an error case inside the closure!
-fn with_device<F>(n: u8, mut f: F) -> Result<(), Error>
+fn with_device<F>(n: usize, mut f: F) -> Result<(), Error>
 where
-    F: FnMut(&mut Probe) -> Result<(), Error>
+    F: FnMut(&mut MasterProbe) -> Result<(), Error>
 {
     let device = {
         let mut list = daplink::tools::list_daplink_devices();
-        list.remove(n as usize)
+        list.extend(stlink::tools::list_stlink_devices());
+
+        list.remove(n)
     };
 
-    let mut link = daplink::DAPLink::new_from_probe_info(device).or_local_err()?;
+    match device.probe_type {
+        DebugProbeType::DAPLink => {
+            let mut link = daplink::DAPLink::new_from_probe_info(device).or_local_err()?;
 
-    link.get_interface_mut::<DebugProbe>()
-        .unwrap()
-        .attach(Some(probe::protocol::WireProtocol::Swd))
-        .or_local_err()?;
-    
-    f(&mut link)
+            link.attach(Some(probe::protocol::WireProtocol::Swd));
+
+        /*
+            link.get_interface_mut::<DebugProbe>()
+                .unwrap()
+                .attach(Some(probe::protocol::WireProtocol::Swd))
+                .or_local_err()?;
+
+                */
+            
+            let mut probe = MasterProbe::from_specific_probe(link);
+            
+            f(&mut probe)
+        },
+        DebugProbeType::STLink => {
+            let mut link = stlink::STLink::new_from_probe_info(device).or_local_err()?;
+
+            link.attach(Some(probe::protocol::WireProtocol::Swd));
+
+        /*
+            link.get_interface_mut::<DebugProbe>()
+                .unwrap()
+                .attach(Some(probe::protocol::WireProtocol::Swd))
+                .or_local_err()?;
+
+                */
+            
+            let mut probe = MasterProbe::from_specific_probe(link);
+            
+            f(&mut probe)
+        },
+    }
+
 }
 
 

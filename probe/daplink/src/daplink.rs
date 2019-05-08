@@ -1,4 +1,4 @@
-use probe::debug_probe::Probe;
+//use probe::debug_probe::Probe;
 use coresight::access_ports::generic_ap::GenericAP;
 use coresight::access_ports::AccessPortError;
 use memory::ToMemoryReadSize;
@@ -73,6 +73,7 @@ pub struct DAPLink {
     current_apsel: u8,
     current_apbanksel: u8,
 }
+
 
 impl DAPLink {
     const DP_PORT: u16 = 0xffff;
@@ -179,16 +180,16 @@ impl DAPLink {
 probe::register_debug_probe!(DAPLink: DebugProbe);
 
 impl DebugProbe for DAPLink {
-    fn new_from_probe_info(info: DebugProbeInfo) -> Result<Probe, DebugProbeError> where Self: Sized {
+    fn new_from_probe_info(info: DebugProbeInfo) -> Result<Box<Self>, DebugProbeError> where Self: Sized {
         if let Some(serial_number) = info.serial_number {
-            Ok(Probe::new(Self::new_from_device(
+            Ok(Box::new(Self::new_from_device(
                 hidapi::HidApi::new()
                     .map_err(|e| DebugProbeError::ProbeCouldNotBeCreated)?
                     .open_serial(info.vendor_id, info.vendor_id, &serial_number)
                     .map_err(|e| DebugProbeError::ProbeCouldNotBeCreated)?
             )))
         } else {
-            Ok(Probe::new(Self::new_from_device(
+            Ok(Box::new(Self::new_from_device(
                 hidapi::HidApi::new()
                     .map_err(|e| DebugProbeError::ProbeCouldNotBeCreated)?
                     .open(info.vendor_id, info.vendor_id)
@@ -305,36 +306,38 @@ impl DebugProbe for DAPLink {
 }
 
 impl DAPAccess for DAPLink {
-    type Error = DebugProbeError;
+    //type Error = DebugProbeError;
 
     /// Reads the DAP register on the specified port and address.
-    fn read_register(&mut self, port: u16, addr: u16) -> Result<u32, Self::Error> {
+    fn read_register(&mut self, port: u16, addr: u16) -> Option<u32> {
         crate::commands::send_command::<TransferRequest, TransferResponse>(
             &self.device,
             TransferRequest::new(
                 InnerTransferRequest::new(Port::DP, RW::R, addr as u8),
                 0
             )
-        )
-        .map_err(|e| DebugProbeError::UnknownError)
+        ).ok()
+        //.map_err(|e| DebugProbeError::UnknownError)
         .and_then(|v| {
             if v.transfer_count == 1 {
                 if v.transfer_response.protocol_error {
-                    Err(DebugProbeError::USBError)
+                    //Err(DebugProbeError::USBError)
+                    None
                 } else {
                     match v.transfer_response.ack {
-                        Ack::OK => Ok(v.transfer_data),
-                        _ => Err(DebugProbeError::UnknownError)
+                        Ack::OK => Some(v.transfer_data),
+                        _ => None // Err(DebugProbeError::UnknownError)
                     }
                 }
             } else {
-                Err(DebugProbeError::UnknownError)
+                //Err(DebugProbeError::UnknownError)
+                None
             }
         })
     }
 
     /// Writes a value to the DAP register on the specified port and address.
-    fn write_register(&mut self, port: u16, addr: u16, value: u32) -> Result<(), Self::Error> {
+    fn write_register(&mut self, port: u16, addr: u16, value: u32) -> Option<()> {
         dbg!(addr);
         dbg!(value);
         crate::commands::send_command::<TransferRequest, TransferResponse>(
@@ -343,22 +346,24 @@ impl DAPAccess for DAPLink {
                 InnerTransferRequest::new(Port::AP, RW::W, addr as u8),
                 value
             ))
-        )
-        .map_err(|e| DebugProbeError::UnknownError)
+        ).ok()
+        //.map_err(|e| DebugProbeError::UnknownError)
         .and_then(|v| {
             if v.transfer_count == 1 {
                 if v.transfer_response.protocol_error {
-                    Err(DebugProbeError::USBError)
+                    //Err(DebugProbeError::USBError)
+                    None
                 } else {
                     match v.transfer_response.ack {
-                        Ack::OK => Ok(()),
-                        _ => Err(DebugProbeError::UnknownError)
+                        Ack::OK => Some(()),
+                        _ => None //Err(DebugProbeError::UnknownError)
                     }
                 }
             } else {
-                Err(DebugProbeError::UnknownError)
+                //Err(DebugProbeError::UnknownError)
+                None
             }
-        })
+        })    
     }
 }
 
@@ -380,10 +385,10 @@ where
     };
     if cache_changed {
         let select = (u32::from(link.current_apsel) << 24) | (u32::from(link.current_apbanksel) << 4);
-        link.write_register(0xFFFF, 0x008, select)?;
+        link.write_register(0xFFFF, 0x008, select).ok_or(DebugProbeError::UnknownError)?;
     }
     //println!("{:?}, {:08X}", link.current_apsel, REGISTER::ADDRESS);
-    let result = link.read_register(u16::from(link.current_apsel), u16::from(REGISTER::ADDRESS))?;
+    let result = link.read_register(u16::from(link.current_apsel), u16::from(REGISTER::ADDRESS)).ok_or(DebugProbeError::UnknownError)?;
     Ok(REGISTER::from(result))
 }
 
@@ -405,9 +410,9 @@ where
     };
     if cache_changed {
         let select = (u32::from(link.current_apsel) << 24) | (u32::from(link.current_apbanksel) << 4);
-        link.write_register(0xFFFF, 0x008, select)?;
+        link.write_register(0xFFFF, 0x008, select).ok_or(DebugProbeError::UnknownError)?;
     }
-    link.write_register(u16::from(link.current_apsel), u16::from(REGISTER::ADDRESS), register.into())?;
+    link.write_register(u16::from(link.current_apsel), u16::from(REGISTER::ADDRESS), register.into()).ok_or(DebugProbeError::UnknownError)?;
     Ok(())
 }
 
