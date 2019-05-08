@@ -1,4 +1,7 @@
-use probe::debug_probe::DebugProbeInfo;
+use probe::debug_probe::{
+    DebugProbeInfo,
+    Probe,
+};
 use coresight::access_ports::generic_ap::GenericAP;
 use coresight::access_ports::AccessPortError;
 use memory::ToMemoryReadSize;
@@ -6,11 +9,8 @@ use memory::MI;
 use memory::adi_v5_memory_interface::ADIMemoryInterface;
 use coresight::ap_access::AccessPort;
 use coresight::access_ports::APRegister;
-use crate::usb_interface::STLinkInfo;
 use coresight::access_ports::memory_ap::{MemoryAP};
 use coresight::ap_access::APAccess;
-use libusb::Device;
-use libusb::Error;
 use scroll::{Pread, BE};
 
 use coresight::dap_access::DAPAccess;
@@ -29,8 +29,10 @@ pub struct STLink {
     current_apbanksel: u8,
 }
 
+probe::register_debug_probe!(STLink: DebugProbe);
+
 impl DebugProbe for STLink {
-    fn new_from_probe_info(info: DebugProbeInfo) -> Result<Self, DebugProbeError> {
+    fn new_from_probe_info(info: DebugProbeInfo) -> Result<Probe, DebugProbeError> where Self: Sized {
         let mut stlink = Self {
             device: STLinkUSBDevice::new_from_info(info)?,
             hw_version: 0,
@@ -42,7 +44,7 @@ impl DebugProbe for STLink {
 
         stlink.init()?;
 
-        Ok(stlink)
+        Ok(Probe::new(stlink))
     }
 
     /// Reads the ST-Links version.

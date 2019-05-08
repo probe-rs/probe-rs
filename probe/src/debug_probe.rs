@@ -1,5 +1,8 @@
 use crate::protocol::WireProtocol;
 use memory::MI;
+use query_interface::{
+    Object
+};
 
 #[derive(Debug)]
 pub enum DebugProbeError {
@@ -22,8 +25,8 @@ pub enum DebugProbeError {
 }
 
 
-pub trait DebugProbe: MI where Self: Sized {
-    fn new_from_probe_info(info: DebugProbeInfo) -> Result<Self, DebugProbeError>;
+pub trait DebugProbe: Object {
+    fn new_from_probe_info(info: DebugProbeInfo) -> Result<Probe, DebugProbeError> where Self: Sized;
     /// Reads back the version of the Probe.
     /// TODO: Most likely this is bogus to be kept in here, as the interface is tailored to the ST-Link.
     fn get_version(&mut self) -> Result<(u8, u8), DebugProbeError>;
@@ -39,6 +42,16 @@ pub trait DebugProbe: MI where Self: Sized {
 
     /// Resets the target device.
     fn target_reset(&mut self) -> Result<(), DebugProbeError>;
+}
+
+query_interface::mopo!(DebugProbe);
+
+#[macro_export]
+macro_rules! register_debug_probe {
+    ($probe:ty: $($interfaces:ty),*) => {
+        pub use $crate::query_interface::*;
+        interfaces!($probe: $($interfaces),*);
+    }
 }
 
 #[derive(Debug)]
@@ -83,5 +96,25 @@ impl DebugProbeInfo {
             serial_number,
             probe_type,
         }
+    }
+}
+
+pub struct Probe {
+    pub inner: Box<dyn Object>,
+}
+
+impl Probe {
+    pub fn new<P: 'static + DebugProbe>(probe: P) -> Self {
+        Self {
+            inner: Box::new(probe)
+        }
+    }
+    
+    pub fn get_interface<T: 'static + ?Sized>(&self) -> Option<&T> {
+        self.inner.query_ref::<T>()
+    }
+    
+    pub fn get_interface_mut<T: 'static + ?Sized>(&mut self) -> Option<&mut T> {
+        self.inner.query_mut::<T>()
     }
 }

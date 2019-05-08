@@ -1,4 +1,4 @@
-use probe::debug_probe::DebugProbeInfo;
+use probe::debug_probe::Probe;
 use coresight::access_ports::generic_ap::GenericAP;
 use coresight::access_ports::AccessPortError;
 use memory::ToMemoryReadSize;
@@ -14,7 +14,11 @@ use scroll::{Pread, BE};
 use memory::adi_v5_memory_interface::ADIMemoryInterface;
 
 use coresight::dap_access::DAPAccess;
-use probe::debug_probe::{DebugProbe, DebugProbeError};
+use probe::debug_probe::{
+    DebugProbe,
+    DebugProbeError,
+    DebugProbeInfo,
+};
 use probe::protocol::WireProtocol;
 
 use crate::commands::{
@@ -172,22 +176,24 @@ impl DAPLink {
     }
 }
 
+probe::register_debug_probe!(DAPLink: DebugProbe);
+
 impl DebugProbe for DAPLink {
-    fn new_from_probe_info(info: DebugProbeInfo) -> Result<Self, DebugProbeError> {
+    fn new_from_probe_info(info: DebugProbeInfo) -> Result<Probe, DebugProbeError> where Self: Sized {
         if let Some(serial_number) = info.serial_number {
-            Ok(Self::new_from_device(
+            Ok(Probe::new(Self::new_from_device(
                 hidapi::HidApi::new()
                     .map_err(|e| DebugProbeError::ProbeCouldNotBeCreated)?
                     .open_serial(info.vendor_id, info.vendor_id, &serial_number)
                     .map_err(|e| DebugProbeError::ProbeCouldNotBeCreated)?
-            ))
+            )))
         } else {
-            Ok(Self::new_from_device(
+            Ok(Probe::new(Self::new_from_device(
                 hidapi::HidApi::new()
                     .map_err(|e| DebugProbeError::ProbeCouldNotBeCreated)?
                     .open(info.vendor_id, info.vendor_id)
                     .map_err(|e| DebugProbeError::ProbeCouldNotBeCreated)?
-            ))
+            )))
         }
     }
 
@@ -254,10 +260,12 @@ impl DebugProbe for DAPLink {
 
         dbg!(self.read_register(0, 0));
 
-/* 12 38 FF FF FF FF FF FF FF -> 12 00 // SWJ Sequence
-12 10 9E E7 -> 12 00 // SWJ Sequence
-12 38 FF FF FF FF FF FF FF -> 12 00 // SWJ Sequence
-12 08 00 -> 12 00 // SWJ Sequence */
+        /*
+        12 38 FF FF FF FF FF FF FF -> 12 00 // SWJ Sequence
+        12 10 9E E7 -> 12 00 // SWJ Sequence
+        12 38 FF FF FF FF FF FF FF -> 12 00 // SWJ Sequence
+        12 08 00 -> 12 00 // SWJ Sequence
+        */
 
         result
     }
