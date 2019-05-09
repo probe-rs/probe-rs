@@ -11,7 +11,6 @@ use memory::MI;
 use query_interface::{
     Object
 };
-use coresight::dap_access::DAPAccess;
 
 #[derive(Debug)]
 pub enum DebugProbeError {
@@ -33,6 +32,14 @@ pub enum DebugProbeError {
     ProbeCouldNotBeCreated,
 }
 
+pub trait DAPAccess {
+    /// Reads the DAP register on the specified port and address
+    fn read_register(&mut self, port: u16, addr: u16) -> Result<u32, DebugProbeError>;
+
+    /// Writes a value to the DAP register on the specified port and address
+    fn write_register(&mut self, port: u16, addr: u16, value: u32) -> Result<(), DebugProbeError>;
+}
+
 
 pub struct MasterProbe {
     actual_probe: Box<DebugProbe>,
@@ -52,58 +59,60 @@ impl MasterProbe {
     pub fn target_reset(&mut self) -> Result<(), DebugProbeError> {
         self.actual_probe.target_reset()
     }
+
+    fn write_register_ap<AP, REGISTER>(&mut self, port: AP, register: REGISTER) -> Result<(), DebugProbeError>
+    where
+        AP: AccessPort,
+        REGISTER: APRegister<AP>
+    {
+        let link = &mut self.actual_probe;
+        use coresight::ap_access::AccessPort;
+        // TODO: Make those next lines use the future typed DP interface.
+        let cache_changed = if self.current_apsel != port.get_port_number() {
+            self.current_apsel = port.get_port_number();
+            true
+        } else if self.current_apbanksel != REGISTER::APBANKSEL {
+            self.current_apbanksel = REGISTER::APBANKSEL;
+            true
+        } else {
+            false
+        };
+        if cache_changed {
+            let select = (u32::from(self.current_apsel) << 24) | (u32::from(self.current_apbanksel) << 4);
+            link.write_register(0xFFFF, 0x008, select)?;
+        }
+        link.write_register(u16::from(self.current_apsel), u16::from(REGISTER::ADDRESS), register.into())?;
+        Ok(())
+    }
+
+    fn read_register_ap<AP, REGISTER>(&mut self, port: AP, _register: REGISTER) -> Result<REGISTER, DebugProbeError>
+    where
+        AP: AccessPort,
+        REGISTER: APRegister<AP>
+    {
+        let link = &mut self.actual_probe;
+        use coresight::ap_access::AccessPort;
+        // TODO: Make those next lines use the future typed DP interface.
+        let cache_changed = if self.current_apsel != port.get_port_number() {
+            self.current_apsel = port.get_port_number();
+            true
+        } else if self.current_apbanksel != REGISTER::APBANKSEL {
+            self.current_apbanksel = REGISTER::APBANKSEL;
+            true
+        } else {
+            false
+        };
+        if cache_changed {
+            let select = (u32::from(self.current_apsel) << 24) | (u32::from(self.current_apbanksel) << 4);
+            link.write_register(0xFFFF, 0x008, select)?;
+        }
+        //println!("{:?}, {:08X}", link.current_apsel, REGISTER::ADDRESS);
+        let result = link.read_register(u16::from(self.current_apsel), u16::from(REGISTER::ADDRESS))?;
+        Ok(REGISTER::from(result))
+    }
 }
 
-fn read_register_ap<AP, REGISTER>(probe: &mut MasterProbe, port: AP, _register: REGISTER) -> Option<REGISTER>
-where
-    AP: AccessPort,
-    REGISTER: APRegister<AP>
-{
-    let link = &mut probe.actual_probe;
-    use coresight::ap_access::AccessPort;
-    // TODO: Make those next lines use the future typed DP interface.
-    let cache_changed = if probe.current_apsel != port.get_port_number() {
-        probe.current_apsel = port.get_port_number();
-        true
-    } else if probe.current_apbanksel != REGISTER::APBANKSEL {
-        probe.current_apbanksel = REGISTER::APBANKSEL;
-        true
-    } else {
-        false
-    };
-    if cache_changed {
-        let select = (u32::from(probe.current_apsel) << 24) | (u32::from(probe.current_apbanksel) << 4);
-        link.write_register(0xFFFF, 0x008, select)?;
-    }
-    //println!("{:?}, {:08X}", link.current_apsel, REGISTER::ADDRESS);
-    let result = link.read_register(u16::from(probe.current_apsel), u16::from(REGISTER::ADDRESS))?;
-    Some(REGISTER::from(result))
-}
 
-fn write_register_ap<AP, REGISTER>(probe: &mut MasterProbe, port: AP, register: REGISTER) -> Option<()>
-where
-    AP: AccessPort,
-    REGISTER: APRegister<AP>
-{
-    let link = &mut probe.actual_probe;
-    use coresight::ap_access::AccessPort;
-    // TODO: Make those next lines use the future typed DP interface.
-    let cache_changed = if probe.current_apsel != port.get_port_number() {
-        probe.current_apsel = port.get_port_number();
-        true
-    } else if probe.current_apbanksel != REGISTER::APBANKSEL {
-        probe.current_apbanksel = REGISTER::APBANKSEL;
-        true
-    } else {
-        false
-    };
-    if cache_changed {
-        let select = (u32::from(probe.current_apsel) << 24) | (u32::from(probe.current_apbanksel) << 4);
-        link.write_register(0xFFFF, 0x008, select)?;
-    }
-    link.write_register(u16::from(probe.current_apsel), u16::from(REGISTER::ADDRESS), register.into())?;
-    Some(())
-}
 
 impl<REGISTER> APAccess<MemoryAP, REGISTER> for MasterProbe
 where
@@ -112,11 +121,11 @@ where
     type Error = DebugProbeError;
 
     fn read_register_ap(&mut self, port: MemoryAP, register: REGISTER) -> Result<REGISTER, Self::Error> {
-        read_register_ap(self, port, register).ok_or(DebugProbeError::UnknownError)
+        self.read_register_ap(port, register)
     }
     
     fn write_register_ap(&mut self, port: MemoryAP, register: REGISTER) -> Result<(), Self::Error> {
-        write_register_ap(self, port, register).ok_or(DebugProbeError::UnknownError)
+        self.write_register_ap(port, register)
     }
 }
 
@@ -127,11 +136,11 @@ where
     type Error = DebugProbeError;
 
     fn read_register_ap(&mut self, port: GenericAP, register: REGISTER) -> Result<REGISTER, Self::Error> {
-        read_register_ap(self, port, register).ok_or(DebugProbeError::UnknownError)
+        self.read_register_ap(port, register)
     }
     
     fn write_register_ap(&mut self, port: GenericAP, register: REGISTER) -> Result<(), Self::Error> {
-        write_register_ap(self, port, register).ok_or(DebugProbeError::UnknownError)
+        self.write_register_ap(port, register)
     }
 }
 

@@ -7,7 +7,6 @@ use coresight::ap_access::access_port_is_valid;
 use coresight::access_ports::AccessPortError;
 use std::time::Instant;
 
-use coresight::dap_access::DAPAccess;
 use probe::debug_probe::{
     DebugProbe,
     DebugProbeError,

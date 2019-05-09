@@ -13,8 +13,7 @@ use coresight::access_ports::memory_ap::{MemoryAP};
 use coresight::ap_access::APAccess;
 use scroll::{Pread, BE};
 
-use coresight::dap_access::DAPAccess;
-use probe::debug_probe::{DebugProbe, DebugProbeError};
+use probe::debug_probe::{DebugProbe, DebugProbeError, DAPAccess};
 use probe::protocol::WireProtocol;
 
 use crate::constants::{commands, JTagFrequencyToDivider, Status, SwdFrequencyToDelayCount};
@@ -167,7 +166,7 @@ impl DebugProbe for STLink {
 
 impl DAPAccess for STLink {
     /// Reads the DAP register on the specified port and address.
-    fn read_register(&mut self, port: u16, addr: u16) -> Option<u32> {
+    fn read_register(&mut self, port: u16, addr: u16) -> Result<u32, DebugProbeError> {
         if (addr & 0xf0) == 0 || port != Self::DP_PORT {
             let cmd = vec![
                 commands::JTAG_COMMAND,
@@ -178,18 +177,17 @@ impl DAPAccess for STLink {
                 ((addr >> 8) & 0xFF) as u8,
             ];
             let mut buf = [0; 8];
-            self.device.write(cmd, &[], &mut buf, TIMEOUT).ok()?;
-            Self::check_status(&buf).ok()?;
+            self.device.write(cmd, &[], &mut buf, TIMEOUT)?;
+            Self::check_status(&buf)?;
             // Unwrap is ok!
-            Some((&buf[4..8]).pread(0).unwrap())
+            Ok((&buf[4..8]).pread(0).unwrap())
         } else {
-            //Err(DebugProbeError::BlanksNotAllowedOnDPRegister)
-            None
+            Err(DebugProbeError::BlanksNotAllowedOnDPRegister)
         }
     }
 
     /// Writes a value to the DAP register on the specified port and address.
-    fn write_register(&mut self, port: u16, addr: u16, value: u32) -> Option<()> {
+    fn write_register(&mut self, port: u16, addr: u16, value: u32) -> Result<(), DebugProbeError> {
         if (addr & 0xf0) == 0 || port != Self::DP_PORT {
             let cmd = vec![
                 commands::JTAG_COMMAND,
@@ -204,92 +202,12 @@ impl DAPAccess for STLink {
                 ((value >> 24) & 0xFF) as u8,
             ];
             let mut buf = [0; 2];
-            self.device.write(cmd, &[], &mut buf, TIMEOUT).ok()?;
-            Self::check_status(&buf).ok()?;
-            Some(())
+            self.device.write(cmd, &[], &mut buf, TIMEOUT)?;
+            Self::check_status(&buf)?;
+            Ok(())
         } else {
-            //Err(DebugProbeError::BlanksNotAllowedOnDPRegister)
-            None
+            Err(DebugProbeError::BlanksNotAllowedOnDPRegister)
         }
-    }
-}
-
-fn read_register_ap<AP, REGISTER>(link: &mut STLink, port: AP, _register: REGISTER) -> Option<REGISTER>
-where
-    AP: AccessPort,
-    REGISTER: APRegister<AP>
-{
-    use coresight::ap_access::AccessPort;
-    // TODO: Make those next lines use the future typed DP interface.
-    let cache_changed = if link.current_apsel != port.get_port_number() {
-        link.current_apsel = port.get_port_number();
-        true
-    } else if link.current_apbanksel != REGISTER::APBANKSEL {
-        link.current_apbanksel = REGISTER::APBANKSEL;
-        true
-    } else {
-        false
-    };
-    if cache_changed {
-        let select = (u32::from(link.current_apsel) << 24) | (u32::from(link.current_apbanksel) << 4);
-        link.write_register(0xFFFF, 0x008, select)?;
-    }
-    //println!("{:?}, {:08X}", link.current_apsel, REGISTER::ADDRESS);
-    let result = link.read_register(u16::from(link.current_apsel), u16::from(REGISTER::ADDRESS))?;
-    Some(REGISTER::from(result))
-}
-
-fn write_register_ap<AP, REGISTER>(link: &mut STLink, port: AP, register: REGISTER) -> Option<()>
-where
-    AP: AccessPort,
-    REGISTER: APRegister<AP>
-{
-    use coresight::ap_access::AccessPort;
-    // TODO: Make those next lines use the future typed DP interface.
-    let cache_changed = if link.current_apsel != port.get_port_number() {
-        link.current_apsel = port.get_port_number();
-        true
-    } else if link.current_apbanksel != REGISTER::APBANKSEL {
-        link.current_apbanksel = REGISTER::APBANKSEL;
-        true
-    } else {
-        false
-    };
-    if cache_changed {
-        let select = (u32::from(link.current_apsel) << 24) | (u32::from(link.current_apbanksel) << 4);
-        link.write_register(0xFFFF, 0x008, select)?;
-    }
-    link.write_register(u16::from(link.current_apsel), u16::from(REGISTER::ADDRESS), register.into())?;
-    Some(())
-}
-
-impl<REGISTER> APAccess<MemoryAP, REGISTER> for STLink
-where
-    REGISTER: APRegister<MemoryAP>
-{
-    type Error = DebugProbeError;
-
-    fn read_register_ap(&mut self, port: MemoryAP, register: REGISTER) -> Result<REGISTER, Self::Error> {
-        read_register_ap(self, port, register).ok_or(DebugProbeError::UnknownError)
-    }
-    
-    fn write_register_ap(&mut self, port: MemoryAP, register: REGISTER) -> Result<(), Self::Error> {
-        write_register_ap(self, port, register).ok_or(DebugProbeError::UnknownError)
-    }
-}
-
-impl<REGISTER> APAccess<GenericAP, REGISTER> for STLink
-where
-    REGISTER: APRegister<GenericAP>
-{
-    type Error = DebugProbeError;
-
-    fn read_register_ap(&mut self, port: GenericAP, register: REGISTER) -> Result<REGISTER, Self::Error> {
-        read_register_ap(self, port, register).ok_or(DebugProbeError::UnknownError)
-    }
-    
-    fn write_register_ap(&mut self, port: GenericAP, register: REGISTER) -> Result<(), Self::Error> {
-        write_register_ap(self, port, register).ok_or(DebugProbeError::UnknownError)
     }
 }
 
@@ -297,37 +215,6 @@ impl Drop for STLink {
     fn drop(&mut self) {
         // We ignore the error case as we can't do much about it anyways.
         let _ = self.enter_idle();
-    }
-}
-
-impl MI for STLink
-{
-    fn read<S: ToMemoryReadSize>(&mut self, address: u32) -> Result<S, AccessPortError> {
-        ADIMemoryInterface::new(0).read(self, address)
-    }
-
-    fn read_block<S: ToMemoryReadSize>(
-        &mut self,
-        address: u32,
-        data: &mut [S]
-    ) -> Result<(), AccessPortError> {
-        ADIMemoryInterface::new(0).read_block(self, address, data)
-    }
-
-    fn write<S: ToMemoryReadSize>(
-        &mut self,
-        addr: u32,
-        data: S
-    ) -> Result<(), AccessPortError> {
-        ADIMemoryInterface::new(0).write(self, addr, data)
-    }
-
-    fn write_block<S: ToMemoryReadSize>(
-        &mut self,
-        addr: u32,
-        data: &[S]
-    ) -> Result<(), AccessPortError> {
-        ADIMemoryInterface::new(0).write_block(self, addr, data)
     }
 }
 
