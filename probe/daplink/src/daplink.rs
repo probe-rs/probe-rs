@@ -1,20 +1,9 @@
-use probe::debug_probe::DebugProbeInfo;
-use coresight::access_ports::generic_ap::GenericAP;
-use coresight::access_ports::AccessPortError;
-use memory::ToMemoryReadSize;
-use memory::MI;
-use coresight::ap_access::AccessPort;
-use coresight::access_ports::APRegister;
-use coresight::access_ports::memory_ap::{MemoryAP};
-use coresight::ap_access::APAccess;
-use libusb::Device;
-use libusb::Error;
-use scroll::{Pread, BE};
-
-use memory::adi_v5_memory_interface::ADIMemoryInterface;
-
-use coresight::dap_access::DAPAccess;
-use probe::debug_probe::{DebugProbe, DebugProbeError};
+use probe::debug_probe::{
+    DebugProbe,
+    DebugProbeError,
+    DebugProbeInfo,
+    DAPAccess,
+};
 use probe::protocol::WireProtocol;
 
 use crate::commands::{
@@ -38,7 +27,6 @@ use crate::commands::{
             TransferRequest,
             TransferResponse,
             InnerTransferRequest,
-            InnerTransferResponse,
             Ack,
             Port,
             RW,
@@ -63,24 +51,19 @@ use crate::commands::{
 
 pub struct DAPLink {
     pub device: hidapi::HidDevice,
-    hw_version: u8,
-    jtag_version: u8,
-    protocol: WireProtocol,
-    current_apsel: u8,
-    current_apbanksel: u8,
+    _hw_version: u8,
+    _jtag_version: u8,
+    _protocol: WireProtocol,
 }
 
-impl DAPLink {
-    const DP_PORT: u16 = 0xffff;
 
+impl DAPLink {
     pub fn new_from_device(device: hidapi::HidDevice) -> Self {
         Self {
             device,
-            hw_version: 0,
-            jtag_version: 0,
-            protocol: WireProtocol::Swd,
-            current_apsel: 0,
-            current_apbanksel: 0,
+            _hw_version: 0,
+            _jtag_version: 0,
+            _protocol: WireProtocol::Swd,
         }
     }
 
@@ -90,17 +73,11 @@ impl DAPLink {
             &self.device,
             SWJClockRequest(clock),
         )
-        .map_err(|e| match e {
-            Error::NotEnoughSpace => DebugProbeError::UnknownError,
-            Error::USB => DebugProbeError::USBError,
-            Error::UnexpectedAnswer => DebugProbeError::UnknownError,
-            Error::DAPError => DebugProbeError::UnknownError,
-            Error::TooMuchData => DebugProbeError::UnknownError,
-        })
         .and_then(|v| match v {
             SWJClockResponse(Status::DAPOk) => Ok(()),
-            SWJClockResponse(Status::DAPError) => Err(DebugProbeError::UnknownError),
-        })
+            SWJClockResponse(Status::DAPError) => Err(Error::DAPError),
+        })?;
+        Ok(())
     }
 
     fn transfer_configure(&self, request: ConfigureRequest) -> Result<(), DebugProbeError> {
@@ -109,17 +86,11 @@ impl DAPLink {
             &self.device,
             request,
         )
-        .map_err(|e| match e {
-            Error::NotEnoughSpace => DebugProbeError::UnknownError,
-            Error::USB => DebugProbeError::USBError,
-            Error::UnexpectedAnswer => DebugProbeError::UnknownError,
-            Error::DAPError => DebugProbeError::UnknownError,
-            Error::TooMuchData => DebugProbeError::UnknownError,
-        })
         .and_then(|v| match v {
             ConfigureResponse(Status::DAPOk) => Ok(()),
-            ConfigureResponse(Status::DAPError) => Err(DebugProbeError::UnknownError),
-        })
+            ConfigureResponse(Status::DAPError) => Err(Error::DAPError),
+        })?;
+        Ok(())
     }
 
     fn configure_swd(&self, request: swd::configure::ConfigureRequest) -> Result<(), DebugProbeError> {
@@ -130,19 +101,11 @@ impl DAPLink {
             &self.device, 
             request
         )
-        .map_err(|e| match e {
-            Error::NotEnoughSpace => DebugProbeError::UnknownError,
-            Error::USB => DebugProbeError::USBError,
-            Error::UnexpectedAnswer => DebugProbeError::UnknownError,
-            Error::DAPError => DebugProbeError::UnknownError,
-            Error::TooMuchData => DebugProbeError::UnknownError,
-        })
         .and_then(|v| match v {
             swd::configure::ConfigureResponse(Status::DAPOk) => Ok(()),
-            swd::configure::ConfigureResponse(Status::DAPError) => Err(DebugProbeError::UnknownError),
-        })
-
-
+            swd::configure::ConfigureResponse(Status::DAPError) => Err(Error::DAPError),
+        })?;
+        Ok(())
     }
 
     fn send_swj_sequences(&self, request: SequenceRequest) -> Result<(), DebugProbeError> {
@@ -157,45 +120,31 @@ impl DAPLink {
             &self.device, 
             request
         )
-        .map_err(|e| match e {
-            Error::NotEnoughSpace => DebugProbeError::UnknownError,
-            Error::USB => DebugProbeError::USBError,
-            Error::UnexpectedAnswer => DebugProbeError::UnknownError,
-            Error::DAPError => DebugProbeError::UnknownError,
-            Error::TooMuchData => DebugProbeError::UnknownError,
-        })
         .and_then(|v| match v {
             SequenceResponse(Status::DAPOk) => Ok(()),
-            SequenceResponse(Status::DAPError) => Err(DebugProbeError::UnknownError),
-        })
-
+            SequenceResponse(Status::DAPError) => Err(Error::DAPError),
+        })?;
+        Ok(())
     }
 }
 
 impl DebugProbe for DAPLink {
-    fn new_from_probe_info(info: DebugProbeInfo) -> Result<Self, DebugProbeError> {
+    fn new_from_probe_info(info: DebugProbeInfo) -> Result<Box<Self>, DebugProbeError> where Self: Sized {
         if let Some(serial_number) = info.serial_number {
-            Ok(Self::new_from_device(
+            Ok(Box::new(Self::new_from_device(
                 hidapi::HidApi::new()
-                    .map_err(|e| DebugProbeError::ProbeCouldNotBeCreated)?
+                    .map_err(|_| DebugProbeError::ProbeCouldNotBeCreated)?
                     .open_serial(info.vendor_id, info.product_id, &serial_number)
-                    .map_err(|e| DebugProbeError::ProbeCouldNotBeCreated)?
-            ))
+                    .map_err(|_| DebugProbeError::ProbeCouldNotBeCreated)?
+            )))
         } else {
-            Ok(Self::new_from_device(
+            Ok(Box::new(Self::new_from_device(
                 hidapi::HidApi::new()
-                    .map_err(|e| DebugProbeError::ProbeCouldNotBeCreated)?
+                    .map_err(|_| DebugProbeError::ProbeCouldNotBeCreated)?
                     .open(info.vendor_id, info.product_id)
-                    .map_err(|e| DebugProbeError::ProbeCouldNotBeCreated)?
-            ))
+                    .map_err(|_| DebugProbeError::ProbeCouldNotBeCreated)?
+            )))
         }
-    }
-
-    /// Reads the ST-Links version.
-    /// Returns a tuple (hardware version, firmware version).
-    /// This method stores the version data on the struct to make later use of it.
-    fn get_version(&mut self) -> Result<(u8, u8), DebugProbeError> {
-        Ok((42, 42))
     }
 
     fn get_name(&self) -> &str {
@@ -219,18 +168,11 @@ impl DebugProbe for DAPLink {
                 ConnectRequest::UseDefaultPort
             },
         )
-        .map_err(|e| match e {
-            Error::NotEnoughSpace => DebugProbeError::UnknownError,
-            Error::USB => DebugProbeError::USBError,
-            Error::UnexpectedAnswer => DebugProbeError::UnknownError,
-            Error::DAPError => DebugProbeError::UnknownError,
-            Error::TooMuchData => DebugProbeError::UnknownError,
-        })
         .and_then(|v| match v {
             ConnectResponse::SuccessfulInitForSWD => Ok(WireProtocol::Swd),
             ConnectResponse::SuccessfulInitForJTAG => Ok(WireProtocol::Jtag),
-            ConnectResponse::InitFailed => Err(DebugProbeError::UnknownError),
-        });
+            ConnectResponse::InitFailed => Err(Error::DAPError),
+        })?;
 
         self.set_swj_clock(1_000_000)?;
 
@@ -252,31 +194,25 @@ impl DebugProbe for DAPLink {
 
 
 
-        dbg!(self.read_register(0, 0));
+        dbg!(self.read_register(0, 0))?;
 
-        self.write_register(0, 0x0, 0x1e); // clear errors 
+        self.write_register(0, 0x0, 0x1e)?; // clear errors 
 
         println!("Writing to Select register (address 8)");
-        self.write_register(0, 0x8, 0x0); // select DBPANK 0
-        self.write_register(0, 0x4, 0x50_00_00_00); // CSYSPWRUPREQ, CDBGPWRUPREQ
+        self.write_register(0, 0x8, 0x0)?; // select DBPANK 0
+        self.write_register(0, 0x4, 0x50_00_00_00)?; // CSYSPWRUPREQ, CDBGPWRUPREQ
 
         // TODO: Check return value if power up was ok
-        dbg!(self.read_register(0, 0x4)); 
+        dbg!(self.read_register(0, 0x4))?; 
 
-        let ap = GenericAP::new(0);
-        use coresight::access_ports::generic_ap::{
-            IDR};
+        /*
+        12 38 FF FF FF FF FF FF FF -> 12 00 // SWJ Sequence
+        12 10 9E E7 -> 12 00 // SWJ Sequence
+        12 38 FF FF FF FF FF FF FF -> 12 00 // SWJ Sequence
+        12 08 00 -> 12 00 // SWJ Sequence
+        */
 
-
-
-        dbg!(read_register_ap(self, ap, IDR::default()));
-
-/* 12 38 FF FF FF FF FF FF FF -> 12 00 // SWJ Sequence
-12 10 9E E7 -> 12 00 // SWJ Sequence
-12 38 FF FF FF FF FF FF FF -> 12 00 // SWJ Sequence
-12 08 00 -> 12 00 // SWJ Sequence */
-
-        result
+        Ok(result)
     }
 
     /// Leave debug mode.
@@ -285,7 +221,7 @@ impl DebugProbe for DAPLink {
             &self.device,
             DisconnectRequest {},
         )
-        .map_err(|e| DebugProbeError::USBError)
+        .map_err(|_| DebugProbeError::USBError)
         .and_then(|v: DisconnectResponse| match v {
             DisconnectResponse(Status::DAPOk) => Ok(()),
             DisconnectResponse(Status::DAPError) => Err(DebugProbeError::UnknownError)
@@ -294,30 +230,21 @@ impl DebugProbe for DAPLink {
 
     /// Asserts the nRESET pin.
     fn target_reset(&mut self) -> Result<(), DebugProbeError> {
-        use crate::commands::Error;
         crate::commands::send_command(
             &self.device,
             ResetRequest
         )
-        .map_err(|e| match e {
-            Error::NotEnoughSpace => DebugProbeError::UnknownError,
-            Error::USB => DebugProbeError::USBError,
-            Error::UnexpectedAnswer => DebugProbeError::UnknownError,
-            Error::DAPError => DebugProbeError::UnknownError,
-            Error::TooMuchData => DebugProbeError::UnknownError,
-        })
         .map(|v: ResetResponse| {
-            println!("{:?}", v);
+            println!("Target reset response: {:?}", v);
             ()
-        })
+        })?;
+        Ok(())
     }
 }
 
 impl DAPAccess for DAPLink {
-    type Error = DebugProbeError;
-
     /// Reads the DAP register on the specified port and address.
-    fn read_register(&mut self, port: u16, addr: u16) -> Result<u32, Self::Error> {
+    fn read_register(&mut self, _port: u16, addr: u16) -> Result<u32, DebugProbeError> {
         crate::commands::send_command::<TransferRequest, TransferResponse>(
             &self.device,
             TransferRequest::new(
@@ -325,40 +252,14 @@ impl DAPAccess for DAPLink {
                 0
             )
         )
-        .map_err(|e| DebugProbeError::UnknownError)
+        .map_err(|_| DebugProbeError::UnknownError)
         .and_then(|v| {
             if v.transfer_count == 1 {
                 if v.transfer_response.protocol_error {
                     Err(DebugProbeError::USBError)
                 } else {
                     match v.transfer_response.ack {
-                        Ack::OK => Ok(v.transfer_data),
-                        _ => Err(DebugProbeError::UnknownError)
-                    }
-                }
-            } else {
-                Err(DebugProbeError::UnknownError)
-            }
-        })
-    }
-
-    /// Reads the DAP register on the specified port and address.
-    fn read_register_ap_tmp(&mut self, port: u16, addr: u16) -> Result<u32, Self::Error> {
-        crate::commands::send_command::<TransferRequest, TransferResponse>(
-            &self.device,
-            TransferRequest::new(
-                InnerTransferRequest::new(Port::AP, RW::R, addr as u8),
-                0
-            )
-        )
-        .map_err(|e| DebugProbeError::UnknownError)
-        .and_then(|v| {
-            if v.transfer_count == 1 {
-                if v.transfer_response.protocol_error {
-                    Err(DebugProbeError::USBError)
-                } else {
-                    match v.transfer_response.ack {
-                        Ack::OK => Ok(v.transfer_data),
+                        Ack::Ok => Ok(v.transfer_data),
                         _ => Err(DebugProbeError::UnknownError)
                     }
                 }
@@ -369,7 +270,7 @@ impl DAPAccess for DAPLink {
     }
 
     /// Writes a value to the DAP register on the specified port and address.
-    fn write_register(&mut self, port: u16, addr: u16, value: u32) -> Result<(), Self::Error> {
+    fn write_register(&mut self, _port: u16, addr: u16, value: u32) -> Result<(), DebugProbeError> {
         crate::commands::send_command::<TransferRequest, TransferResponse>(
             &self.device,
             TransferRequest::new(
@@ -377,14 +278,14 @@ impl DAPAccess for DAPLink {
                 value
             )
         )
-        .map_err(|e| DebugProbeError::UnknownError)
+        .map_err(|_| DebugProbeError::UnknownError)
         .and_then(|v| {
             if v.transfer_count == 1 {
                 if v.transfer_response.protocol_error {
                     Err(DebugProbeError::USBError)
                 } else {
                     match v.transfer_response.ack {
-                        Ack::OK => Ok(()),
+                        Ack::Ok => Ok(()),
                         _ => Err(DebugProbeError::UnknownError)
                     }
                 }
@@ -393,159 +294,11 @@ impl DAPAccess for DAPLink {
             }
         })
     }
-
-    /// Writes a value to the DAP register on the specified port and address.
-    fn write_register_ap_tmp(&mut self, port: u16, addr: u16, value: u32) -> Result<(), Self::Error> {
-        crate::commands::send_command::<TransferRequest, TransferResponse>(
-            &self.device,
-            TransferRequest::new(
-                InnerTransferRequest::new(Port::AP, RW::W, addr as u8),
-                value
-            )
-        )
-        .map_err(|e| DebugProbeError::UnknownError)
-        .and_then(|v| {
-            if v.transfer_count == 1 {
-                if v.transfer_response.protocol_error {
-                    Err(DebugProbeError::USBError)
-                } else {
-                    match v.transfer_response.ack {
-                        Ack::OK => Ok(()),
-                        _ => Err(DebugProbeError::UnknownError)
-                    }
-                }
-            } else {
-                Err(DebugProbeError::UnknownError)
-            }
-        })
-    }
-
-
-
 }
-
-fn read_register_ap<AP, REGISTER>(link: &mut DAPLink, port: AP, _register: REGISTER) -> Result<REGISTER, DebugProbeError>
-where
-    AP: AccessPort,
-    REGISTER: APRegister<AP>
-{
-    println!("Reading register {}", REGISTER::NAME);
-
-    use coresight::ap_access::AccessPort;
-    // TODO: Make those next lines use the future typed DP interface.
-    let cache_changed = if link.current_apsel != port.get_port_number() {
-        link.current_apsel = port.get_port_number();
-        true
-    } else if link.current_apbanksel != REGISTER::APBANKSEL {
-        link.current_apbanksel = REGISTER::APBANKSEL;
-        true
-    } else {
-        false
-    };
-    if cache_changed {
-        let select = (u32::from(link.current_apsel) << 24) | (u32::from(link.current_apbanksel) << 4);
-        println!("Setting APBANKSEL to {}", select);
-        link.write_register(0xFFFF, 0x008, select)?;
-    }
-    //println!("{:?}, {:08X}", link.current_apsel, REGISTER::ADDRESS);
-    let result = link.read_register_ap_tmp(u16::from(link.current_apsel), u16::from(REGISTER::ADDRESS))?;
-    Ok(REGISTER::from(result))
-}
-
-fn write_register_ap<AP, REGISTER>(link: &mut DAPLink, port: AP, register: REGISTER) -> Result<(), DebugProbeError>
-where
-    AP: AccessPort,
-    REGISTER: APRegister<AP>
-{
-    println!("Write register {} = {:?}", REGISTER::NAME, register);
-
-    use coresight::ap_access::AccessPort;
-    // TODO: Make those next lines use the future typed DP interface.
-    let cache_changed = if link.current_apsel != port.get_port_number() {
-        link.current_apsel = port.get_port_number();
-        true
-    } else if link.current_apbanksel != REGISTER::APBANKSEL {
-        link.current_apbanksel = REGISTER::APBANKSEL;
-        true
-    } else {
-        false
-    };
-    if cache_changed {
-        let select = (u32::from(link.current_apsel) << 24) | (u32::from(link.current_apbanksel) << 4);
-        println!("Setting APBANKSEL to {}", select);
-        link.write_register(0xFFFF, 0x008, select)?;
-    }
-    link.write_register_ap_tmp(u16::from(link.current_apsel), u16::from(REGISTER::ADDRESS), register.into())?;
-    Ok(())
-}
-
-impl<REGISTER> APAccess<MemoryAP, REGISTER> for DAPLink
-where
-    REGISTER: APRegister<MemoryAP>
-{
-    type Error = DebugProbeError;
-
-    fn read_register_ap(&mut self, port: MemoryAP, register: REGISTER) -> Result<REGISTER, Self::Error> {
-        read_register_ap(self, port, register)
-    }
-    
-    fn write_register_ap(&mut self, port: MemoryAP, register: REGISTER) -> Result<(), Self::Error> {
-        write_register_ap(self, port, register)
-    }
-}
-
-// impl<REGISTER> APAccess<GenericAP, REGISTER> for DAPLink
-// where
-//     REGISTER: APRegister<GenericAP>
-// {
-//     type Error = DebugProbeError;
-
-//     fn read_register_ap(&mut self, port: GenericAP, register: REGISTER) -> Result<REGISTER, Self::Error> {
-//         read_register_ap(self, port, register)
-//     }
-    
-//     fn write_register_ap(&mut self, port: GenericAP, register: REGISTER) -> Result<(), Self::Error> {
-//         write_register_ap(self, port, register)
-//     }
-// }
 
 impl Drop for DAPLink {
     fn drop(&mut self) {
         // We ignore the error case as we can't do much about it anyways.
         let _ = self.detach();
-    }
-}
-
-impl MI for DAPLink
-{
-    fn read<S: ToMemoryReadSize>(&mut self, address: u32) -> Result<S, AccessPortError> {
-        ADIMemoryInterface::new(0).read(self, address)
-    }
-
-    fn read_block<S: ToMemoryReadSize>(
-        &mut self,
-        address: u32,
-        data: &mut [S]
-    ) -> Result<(), AccessPortError> {
-        ADIMemoryInterface::new(0).read_block(self, address, data)?;
-        Ok(())
-    }
-
-    fn write<S: ToMemoryReadSize>(
-        &mut self,
-        addr: u32,
-        data: S
-    ) -> Result<(), AccessPortError> {
-        // ADIMemoryInterface::new(0).write(self, addr, data)
-        Err(AccessPortError::ProbeError)
-    }
-
-    fn write_block<S: ToMemoryReadSize>(
-        &mut self,
-        addr: u32,
-        data: &[S]
-    ) -> Result<(), AccessPortError> {
-        // ADIMemoryInterface::new(0).write_block(self, addr, data)
-        Err(AccessPortError::ProbeError)
     }
 }

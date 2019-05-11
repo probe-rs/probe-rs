@@ -4,7 +4,6 @@ use crate::commands::{
     Request,
     Result,
     Status,
-    Error,
 };
 
 #[derive(Debug)]

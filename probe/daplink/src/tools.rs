@@ -19,7 +19,7 @@ pub fn list_daplink_devices() -> Vec<DebugProbeInfo> {
                 ))
                .collect::<Vec<_>>()
         },
-        Err(e) => {
+        Err(_e) => {
             vec![]
         },
     }

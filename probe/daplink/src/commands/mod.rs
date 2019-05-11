@@ -4,6 +4,7 @@ pub mod swd;
 pub mod transfer;
 
 use core::ops::Deref;
+use probe::debug_probe::DebugProbeError;
 
 pub(crate) type Result<T> = std::result::Result<T, Error>;
 
@@ -50,6 +51,26 @@ pub(crate) enum Error {
     UnexpectedAnswer,
     DAPError,
     TooMuchData,
+    HidApi,
+}
+
+impl From<Error> for DebugProbeError {
+    fn from(error: Error) -> Self {
+        match error {
+            Error::NotEnoughSpace => DebugProbeError::UnknownError,
+            Error::USB => DebugProbeError::USBError,
+            Error::UnexpectedAnswer => DebugProbeError::UnknownError,
+            Error::DAPError => DebugProbeError::UnknownError,
+            Error::TooMuchData => DebugProbeError::UnknownError,
+            Error::HidApi => DebugProbeError::USBError,
+        }
+    }
+}
+
+impl From<hidapi::HidError> for Error {
+    fn from(_error: hidapi::HidError) -> Self {
+        Error::HidApi
+    }
 }
 
 pub(crate) fn send_command<Req: Request, Res: Response>(device: &hidapi::HidDevice, request: Req) -> Result<Res> {
@@ -57,14 +78,14 @@ pub(crate) fn send_command<Req: Request, Res: Response>(device: &hidapi::HidDevi
     // TODO: Error handling & real USB writing.
     let buffer = &mut [0; 24];
     buffer[0 + 1] = *Req::CATEGORY;
-    let size = request.to_bytes(buffer, 1 + 1)?;
-    device.write(buffer);
+    let _size = request.to_bytes(buffer, 1 + 1)?;
+    device.write(buffer)?;
     println!("Send buffer: {:02X?}", &buffer[..]);
 
     // Read back resonse.
     // TODO: Error handling & real USB reading.
     let buffer = &mut [0; 24];
-    device.read(buffer);
+    device.read(buffer)?;
     println!("Receive buffer: {:02X?}", &buffer[..]);
     if buffer[0] == *Req::CATEGORY {
         Res::from_bytes(buffer, 1)

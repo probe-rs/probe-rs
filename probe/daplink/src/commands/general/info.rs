@@ -87,6 +87,7 @@ impl Response for TargetDeviceName {
     }
 }
 
+#[allow(dead_code)]
 pub struct Capabilities {
     swd_implemented: bool,
     jtag_implemented: bool,

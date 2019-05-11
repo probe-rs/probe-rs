@@ -18,6 +18,7 @@ pub enum RW {
 }
 
 /// Contains information about requested access from host debugger.
+#[allow(non_snake_case)]
 #[derive(Debug)]
 pub struct InnerTransferRequest {
     /// 0 = Debug Port (DP), 1 = Access Port (AP).
@@ -118,12 +119,12 @@ impl Request for TransferRequest {
 }
 
 pub enum Ack {
-    /// TODO: ???????????????????????
+    /// TODO: ??????????????????????? Docs are weird?
     /// OK (for SWD protocol), OK or FAULT (for JTAG protocol),
-    OK = 1,
-    WAIT = 2,
-    FAULT = 4,
-    NO_ACK = 7,
+    Ok = 1,
+    Wait = 2,
+    Fault = 4,
+    NoAck = 7,
 }
 
 pub struct InnerTransferResponse {
@@ -151,12 +152,12 @@ impl Response for TransferResponse {
         Ok(TransferResponse {
             transfer_count: buffer[offset],
             transfer_response: InnerTransferResponse {
-                ack: match (buffer[offset + 1] & 0x7) {
-                    1 => Ack::OK,
-                    2 => Ack::WAIT,
-                    4 => Ack::FAULT,
-                    7 => Ack::NO_ACK,
-                    _ => Ack::NO_ACK,
+                ack: match buffer[offset + 1] & 0x7 {
+                    1 => Ack::Ok,
+                    2 => Ack::Wait,
+                    4 => Ack::Fault,
+                    7 => Ack::NoAck,
+                    _ => Ack::NoAck,
                 },
                 protocol_error: buffer[offset + 1] & 0x8 > 1,
                 value_missmatch: buffer[offset + 1] & 0x10 > 1 ,

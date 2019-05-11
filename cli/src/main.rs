@@ -1,17 +1,21 @@
-use probe::debug_probe::DebugProbeInfo;
+use probe::debug_probe::MasterProbe;
 use std::io::Write;
 use memory::MI;
 use coresight::ap_access::APAccess;
-use coresight::access_ports::generic_ap::GenericAP;
+use coresight::access_ports::{
+    generic_ap::GenericAP,
+    memory_ap::MemoryAP,
+};
 use coresight::ap_access::access_port_is_valid;
 use coresight::access_ports::AccessPortError;
 use std::time::Instant;
 
-use coresight::dap_access::DAPAccess;
 use probe::debug_probe::{
     DebugProbe,
     DebugProbeError,
     DebugProbeType,
+    DebugProbeInfo,
+    //Probe,
 };
 
 use structopt::StructOpt;
@@ -34,13 +38,13 @@ enum CLI {
     #[structopt(name = "info")]
     Info {
         /// The number associated with the ST-Link to use
-        n: u8,
+        n: usize,
     },
     /// Resets the target attached to the selected ST-Link
     #[structopt(name = "reset")]
     Reset {
         /// The number associated with the ST-Link to use
-        n: u8,
+        n: usize,
         /// Whether the reset pin should be asserted or deasserted. If left open, just pulse it
         assert: Option<bool>,
     },
@@ -48,7 +52,7 @@ enum CLI {
     #[structopt(name = "dump")]
     Dump {
         /// The number associated with the ST-Link to use
-        n: u8,
+        n: usize,
         /// The address of the memory to dump from the target (in hexadecimal without 0x prefix)
         #[structopt(parse(try_from_str = "parse_hex"))]
         loc: u32,
@@ -59,7 +63,7 @@ enum CLI {
     // #[structopt(name = "download")]
     // Download {
     //     /// The number associated with the ST-Link to use
-    //     n: u8,
+    //     n: usize,
     //     /// The address of the memory to download to the target (in hexadecimal without 0x prefix)
     //     #[structopt(parse(try_from_str = "parse_hex"))]
     //     loc: u32,
@@ -70,7 +74,7 @@ enum CLI {
     #[structopt(name = "trace")]
     Trace {
         /// The number associated with the ST-Link to use
-        n: u8,
+        n: usize,
         /// The address of the memory to dump from the target (in hexadecimal without 0x prefix)
         #[structopt(parse(try_from_str = "parse_hex"))]
         loc: u32,
@@ -108,56 +112,37 @@ fn list_connected_devices() {
 enum Error {
     DebugProbe(DebugProbeError),
     AccessPort(AccessPortError),
-    Custom(&'static str),
+    //Custom(&'static str),
     StdIO(std::io::Error),
 }
 
-trait ToError<T> {
-    fn or_local_err(self) -> Result<T, Error>;
-}
-
-impl<T> ToError<T> for Result<T, DebugProbeError> {
-    fn or_local_err(self) -> Result<T, Error> {
-        match self {
-            Ok(t) => Ok(t),
-            Err(e) => Err(Error::DebugProbe(e)),
-        }
+impl From<AccessPortError> for Error {
+    fn from(error: AccessPortError) -> Self {
+        Error::AccessPort(error)
     }
 }
 
-impl<T> ToError<T> for Result<T, AccessPortError> {
-    fn or_local_err(self) -> Result<T, Error> {
-        match self {
-            Ok(t) => Ok(t),
-            Err(e) => Err(Error::AccessPort(e)),
-        }
+impl From<DebugProbeError> for Error {
+    fn from(error: DebugProbeError) -> Self {
+        Error::DebugProbe(error)
     }
 }
 
-fn show_info_of_device(n: u8) -> Result<(), Error> {
-    with_stlink(n, |st_link| {
-                println!("EKKEKEEK");
-        let version = st_link
-            .get_version()
-            .or_local_err()?;
-                println!("EKKEKEEK");
-        let vtg = st_link
-            .get_target_voltage()
-            .or_local_err()?;
-                println!("EKKEKEEK");
+impl From<std::io::Error> for Error {
+    fn from(error: std::io::Error) -> Self {
+        Error::StdIO(error)
+    }
+}
 
+fn show_info_of_device(n: usize) -> Result<(), Error> {
+    with_device(n, |link| {
         println!("Device information:");
-        println!("\nHardware Version: {:?}", version.0);
-        println!("\nJTAG Version: {:?}", version.1);
-        println!("\nTarget Voltage: {:?}", vtg);
 
-        st_link
-            .write_register(0xFFFF, 0x2, 0x2)
-            .or_local_err()?;
+        link
+            .write_register(0xFFFF, 0x2, 0x2)?;
 
-        let target_info = st_link
-            .read_register(0xFFFF, 0x4)
-            .or_local_err()?;
+        let target_info = link
+            .read_register(0xFFFF, 0x4)?;
         let target_info = parse_target_id(target_info);
         println!("\nTarget Identification Register (TARGETID):");
         println!(
@@ -165,9 +150,8 @@ fn show_info_of_device(n: u8) -> Result<(), Error> {
             target_info.0, target_info.3, target_info.2
         );
 
-        let target_info = st_link
-            .read_register(0xFFFF, 0x0)
-            .or_local_err()?;
+        let target_info = link
+            .read_register(0xFFFF, 0x0)?;
         let target_info = parse_target_id(target_info);
         println!("\nIdentification Code Register (IDCODE):");
         println!(
@@ -183,67 +167,54 @@ fn show_info_of_device(n: u8) -> Result<(), Error> {
             target_info.2
         );
 
-        println!("\nAvailable Ports");
+        println!("\nAvailable Ports:");
 
-        for port in 0..255 {
-            use coresight::access_ports::generic_ap::{
-                IDR,
-                APClass,
-            };
-
-            use coresight::access_ports::memory_ap::{
-                BASE,
+        for port in 0..1 { //255 {
+            use coresight::access_ports::{
+                generic_ap::{
+                    IDR,
+                },
+                memory_ap::{
+                    BASE,
+                },
             };
             let access_port = GenericAP::new(port);
-            if access_port_is_valid(st_link, access_port) {
-                let idr = st_link.read_register_ap(access_port, IDR::default())
-                                .or_local_err()?;
+            let memory_port = MemoryAP::new(port);
+            if access_port_is_valid(link, access_port) {
+                let idr = link.read_register_ap(access_port, IDR::default())?;
                 println!("{:#?}", idr);
 
-                if idr.CLASS == APClass::MEMAP {
-                    use coresight::access_ports::memory_ap::{
-                        MemoryAP,
-                        BASE,
-                    };
+                let base = link.read_register_ap(memory_port, BASE::default())?;
+                println!("{:#?}", base);
 
-                    let access_port: MemoryAP = access_port.into();
+                let mut data = vec![0 as u8; 1024];
+                link.read_block(base.BASEADDR, &mut data.as_mut_slice())?;
+                let mut file = std::fs::File::create("ROMtbl.bin")?;
+                file.write_all(data.as_slice())?;
 
-                    let base = st_link.read_register_ap(access_port, BASE::default())
-                                    .or_local_err()?;
-                    println!("{:#?}", base);
+                // CoreSight identification register offsets.
+                const DEVARCH: u32 = 0xfbc;
+                // const DEVID: u32 = 0xfc8;
+                // const DEVTYPE: u32 = 0xfcc;
+                // const PIDR4: u32 = 0xfd0;
+                // const PIDR0: u32 = 0xfe0;
+                const CIDR0: u32 = 0xff0;
+                // const IDR_END: u32 = 0x1000;
 
-                    let mut data = vec![0 as u8; 1024];
-                    st_link.read_block(base.BASEADDR, &mut data.as_mut_slice()).or_else(|e| Err(Error::AccessPort(e)))?;
-                    println!("READ STUFF");
-                    let mut file = std::fs::File::create("ROMtbl.bin").unwrap();
-                    file.write_all(data.as_slice());
+                // Range of identification registers to read at once and offsets in results.
+                //
+                // To improve component identification performance, we read all of a components
+                // CoreSight ID registers in a single read. Reading starts at the DEVARCH register.
+                const IDR_READ_START: u32 = DEVARCH;
+                // const IDR_READ_COUNT: u32 = (IDR_END - IDR_READ_START) / 4;
+                // const DEVARCH_OFFSET: u32 = (DEVARCH - IDR_READ_START) / 4;
+                // const DEVTYPE_OFFSET: u32 = (DEVTYPE - IDR_READ_START) / 4;
+                // const PIDR4_OFFSET: u32 = (PIDR4 - IDR_READ_START) / 4;
+                // const PIDR0_OFFSET: u32 = (PIDR0 - IDR_READ_START) / 4;
+                const CIDR0_OFFSET: u32 = (CIDR0 - IDR_READ_START) / 4;
 
-                    // CoreSight identification register offsets.
-                    const DEVARCH: u32 = 0xfbc;
-                    // const DEVID: u32 = 0xfc8;
-                    // const DEVTYPE: u32 = 0xfcc;
-                    // const PIDR4: u32 = 0xfd0;
-                    // const PIDR0: u32 = 0xfe0;
-                    const CIDR0: u32 = 0xff0;
-                    // const IDR_END: u32 = 0x1000;
-
-                    // Range of identification registers to read at once and offsets in results.
-                    //
-                    // To improve component identification performance, we read all of a components
-                    // CoreSight ID registers in a single read. Reading starts at the DEVARCH register.
-                    const IDR_READ_START: u32 = DEVARCH;
-                    // const IDR_READ_COUNT: u32 = (IDR_END - IDR_READ_START) / 4;
-                    // const DEVARCH_OFFSET: u32 = (DEVARCH - IDR_READ_START) / 4;
-                    // const DEVTYPE_OFFSET: u32 = (DEVTYPE - IDR_READ_START) / 4;
-                    // const PIDR4_OFFSET: u32 = (PIDR4 - IDR_READ_START) / 4;
-                    // const PIDR0_OFFSET: u32 = (PIDR0 - IDR_READ_START) / 4;
-                    const CIDR0_OFFSET: u32 = (CIDR0 - IDR_READ_START) / 4;
-
-                    let cidr = extract_id_register_value(data.as_slice(), CIDR0_OFFSET);
-                    println!("{:08X?}", cidr);
-
-                }
-
+                let cidr = extract_id_register_value(data.as_slice(), CIDR0_OFFSET);
+                println!("{:08X?}", cidr);
             }
         }
 
@@ -281,28 +252,8 @@ fn parse_target_id(value: u32) -> (u8, u16, u16, u8) {
     )
 }
 
-fn dump_memory(n: u8, loc: u32, words: u32) -> Result<(), Error> {
-    // with_stlink(n, |st_link| {
-    //     let mut data = vec![0 as u32; words as usize];
-
-    //     // Start timer.
-    //     let instant = Instant::now();
-
-    //     st_link.read_block(loc, &mut data.as_mut_slice()).or_else(|e| Err(Error::AccessPort(e)))?;
-    //     // Stop timer.
-    //     let elapsed = instant.elapsed();
-
-    //     // Print read values.
-    //     for word in 0..words {
-    //         println!("Addr 0x{:08x?}: 0x{:08x}", loc + 4 * word, data[word as usize]);
-    //     }
-    //     // Print stats.
-    //     println!("Read {:?} words in {:?}", words, elapsed);
-
-    //     Ok(())
-    // })
-
-    with_daplink(n, |link| {
+fn dump_memory(n: usize, loc: u32, words: u32) -> Result<(), Error> {
+    with_device(n as usize, |link| {
         let mut data = vec![0 as u32; words as usize];
 
         // Start timer.
@@ -377,127 +328,105 @@ fn dump_memory(n: u8, loc: u32, words: u32) -> Result<(), Error> {
 //     Ok(())
 // }
 
-fn reset_target_of_device(n: u8, assert: Option<bool>) -> Result<(), Error> {
-    // with_stlink(n, |st_link| {
-    //     if let Some(assert) = assert {
-    //         println!(
-    //             "{} target reset.",
-    //             if assert { "Asserting" } else { "Deasserting" }
-    //         );
-    //         st_link
-    //             .drive_nreset(assert)
-    //             .or_local_err()?;
-    //         println!(
-    //             "Target reset has been {}.",
-    //             if assert { "asserted" } else { "deasserted" }
-    //         );
-    //     } else {
-    //         println!("Triggering target reset.");
-    //         st_link
-    //             .target_reset()
-    //             .or_local_err()?;
-    //         println!("Target reset has been triggered.");
-    //     }
-    //     Ok(())
-    // })
-
-    with_daplink(n, |link| {
+fn reset_target_of_device(n: usize, _assert: Option<bool>) -> Result<(), Error> {
+    with_device(n as usize, |link: &mut MasterProbe| {
+        //link.get_interface_mut::<DebugProbe>().unwrap().target_reset().or_else(|e| Err(Error::DebugProbe(e)))?;
         link.target_reset().or_else(|e| Err(Error::DebugProbe(e)))?;
 
         Ok(())
     })
 }
 
-fn trace_u32_on_target(n: u8, loc: u32) -> Result<(), Error> {
-    use std::io::prelude::*;
-    use std::thread::sleep;
-    use std::time::Duration;
-    use scroll::{Pwrite};
+fn trace_u32_on_target(_n: usize, _loc: u32) -> Result<(), Error> {
+    // use std::io::prelude::*;
+    // use std::thread::sleep;
+    // use std::time::Duration;
+    // use scroll::{Pwrite};
 
-    let mut xs = vec![];
-    let mut ys = vec![];
+    // let mut xs = vec![];
+    // let mut ys = vec![];
 
-    let start = Instant::now();
+    // let start = Instant::now();
 
-    with_stlink(n, |st_link| {
-        loop {
-            // Prepare read.
-            let elapsed = start.elapsed();
-            let instant = elapsed.as_secs() * 1000 + u64::from(elapsed.subsec_millis());
+    // with_stlink(n, |st_link| {
+    //     loop {
+    //         // Prepare read.
+    //         let elapsed = start.elapsed();
+    //         let instant = elapsed.as_secs() * 1000 + u64::from(elapsed.subsec_millis());
 
-            // Read data.
-            let value: u32 = st_link.read(loc)
-                                    .or_local_err()?;
+    //         // Read data.
+    //         let value: u32 = st_link.read(loc)?;
 
-            xs.push(instant);
-            ys.push(value);
+    //         xs.push(instant);
+    //         ys.push(value);
 
-            // Send value to plot.py.
-            // Unwrap is safe as there is always an stdin in our case!
-            let mut buf = [0 as u8; 8];
-            // Unwrap is safe!
-            buf.pwrite(instant, 0).unwrap();
-            buf.pwrite(value, 4).unwrap();
-            std::io::stdout()
-                    .write(&buf)
-                    .or_else(|e| Err(Error::StdIO(e)))?;
-            std::io::stdout()
-                    .flush()
-                    .or_else(|e| Err(Error::StdIO(e)))?;
+    //         // Send value to plot.py.
+    //         // Unwrap is safe as there is always an stdin in our case!
+    //         let mut buf = [0 as u8; 8];
+    //         // Unwrap is safe!
+    //         buf.pwrite(instant, 0).unwrap();
+    //         buf.pwrite(value, 4).unwrap();
+    //         std::io::stdout()
+    //                 .write(&buf)
+    //                 .or_else(|e| Err(Error::StdIO(e)))?;
+    //         std::io::stdout()
+    //                 .flush()
+    //                 .or_else(|e| Err(Error::StdIO(e)))?;
 
-            // Schedule next read.
-            let elapsed = start.elapsed();
-            let instant = elapsed.as_secs() * 1000 + u64::from(elapsed.subsec_millis());
-            let poll_every_ms = 50;
-            let time_to_wait = poll_every_ms - instant % poll_every_ms;
-            sleep(Duration::from_millis(time_to_wait));
-        }
-    })?;
+    //         // Schedule next read.
+    //         let elapsed = start.elapsed();
+    //         let instant = elapsed.as_secs() * 1000 + u64::from(elapsed.subsec_millis());
+    //         let poll_every_ms = 50;
+    //         let time_to_wait = poll_every_ms - instant % poll_every_ms;
+    //         sleep(Duration::from_millis(time_to_wait));
+    //     }
+    // })?;
 
     Ok(())
 }
 
-/// Takes a closure that is handed an `STLink` instance and then executed.
-/// After the closure is done, the USB device is always closed,
-/// even in an error case inside the closure!
-fn with_stlink<F>(n: u8, mut f: F) -> Result<(), Error>
-where
-    F: FnMut(&mut stlink::STLink) -> Result<(), Error>
-{
-    let device = {
-        let mut list = stlink::tools::list_stlink_devices();
-        list.remove(n as usize)
-    };
-
-    let mut link = stlink::STLink::new_from_probe_info(device).or_local_err()?;
-
-    link
-        .attach(Some(probe::protocol::WireProtocol::Swd))
-        .or_local_err()?;
-    
-    f(&mut link)
-}
 
 /// Takes a closure that is handed an `DAPLink` instance and then executed.
 /// After the closure is done, the USB device is always closed,
 /// even in an error case inside the closure!
-fn with_daplink<F>(n: u8, mut f: F) -> Result<(), Error>
+fn with_device<F>(n: usize, mut f: F) -> Result<(), Error>
 where
-    F: FnMut(&mut daplink::DAPLink) -> Result<(), Error>
+    F: FnMut(&mut MasterProbe) -> Result<(), Error>
 {
     let device = {
         let mut list = daplink::tools::list_daplink_devices();
-        list.remove(n as usize)
+        list.extend(stlink::tools::list_stlink_devices());
+
+        list.remove(n)
     };
 
-    let mut link = daplink::DAPLink::new_from_probe_info(device).or_local_err()?;
+    let mut probe = match device.probe_type {
+        DebugProbeType::DAPLink => {
+            let mut link = daplink::DAPLink::new_from_probe_info(device)?;
 
-    link
-        .attach(Some(probe::protocol::WireProtocol::Swd))
-        .or_local_err()?;
+            link.attach(Some(probe::protocol::WireProtocol::Swd))?;
+            
+            MasterProbe::from_specific_probe(link)
+        },
+        DebugProbeType::STLink => {
+            let mut link = stlink::STLink::new_from_probe_info(device)?;
+
+            link.attach(Some(probe::protocol::WireProtocol::Swd))?;
+            
+            MasterProbe::from_specific_probe(link)
+        },
+    };
+
+    let ap = GenericAP::new(0);
+    use coresight::access_ports::generic_ap::{
+        IDR
+    };
+
+    let _ = dbg!(probe.read_register_ap(ap, IDR::default()));
     
-    f(&mut link)
+    f(&mut probe)
 }
+
 
 fn get_connected_devices() -> Vec<DebugProbeInfo>{
     let mut links = daplink::tools::list_daplink_devices();
