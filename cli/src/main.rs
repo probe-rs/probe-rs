@@ -15,7 +15,7 @@ use probe::debug_probe::{
     DebugProbeError,
     DebugProbeType,
     DebugProbeInfo,
-    //Probe,
+    Port,
 };
 
 use structopt::StructOpt;
@@ -139,10 +139,10 @@ fn show_info_of_device(n: usize) -> Result<(), Error> {
         println!("Device information:");
 
         link
-            .write_register(0xFFFF, 0x2, 0x2)?;
+            .write_register(Port::DebugPort, 0x2, 0x2)?;
 
         let target_info = link
-            .read_register(0xFFFF, 0x4)?;
+            .read_register(Port::DebugPort, 0x4)?;
         let target_info = parse_target_id(target_info);
         println!("\nTarget Identification Register (TARGETID):");
         println!(
@@ -151,11 +151,11 @@ fn show_info_of_device(n: usize) -> Result<(), Error> {
         );
 
         let target_info = link
-            .read_register(0xFFFF, 0x0)?;
+            .read_register(Port::DebugPort, 0x0)?;
         let target_info = parse_target_id(target_info);
         println!("\nIdentification Code Register (IDCODE):");
         println!(
-            "\tProtocol = {},\n\tPart Number = {},\n\tJEDEC Manufacturer ID = {:x}",
+            "\tProtocol = {},\n\tPart Number = {:x},\n\tJEDEC Manufacturer ID = {:x}",
             if target_info.0 == 0x4 {
                 "JTAG-DP"
             } else if target_info.0 == 0x3 {
@@ -182,39 +182,69 @@ fn show_info_of_device(n: usize) -> Result<(), Error> {
             let memory_port = MemoryAP::new(port);
             if access_port_is_valid(link, access_port) {
                 let idr = link.read_register_ap(access_port, IDR::default())?;
-                println!("{:#?}", idr);
+                println!("{:#x?}", idr);
 
                 let base = link.read_register_ap(memory_port, BASE::default())?;
-                println!("{:#?}", base);
+                println!("{:#x?}", base);
 
+                /*
                 let mut data = vec![0 as u8; 1024];
                 link.read_block(base.BASEADDR, &mut data.as_mut_slice())?;
                 let mut file = std::fs::File::create("ROMtbl.bin")?;
                 file.write_all(data.as_slice())?;
+                */
+
+                // read component identification information
+                let mut data = [0u32;4];
+                link.read_block(base.BASEADDR + 0xff0, &mut data);
+
+                println!("Component Identification data: {:#x?}", data);
+
+                let component_class = (data[1] >> 4) & 0xf;
+
+                println!("Component class: {}", component_class);
+
+
+                // read peripheral id
+                let mut peripheral_data = [0u8;8];
+                link.read_block(base.BASEADDR + 0xfd0, &mut peripheral_data);
+
+                let peripheral_id: u64 = (peripheral_data[3] as u64) << 56 |
+                                         (peripheral_data[2] as u64) << 48 |
+                                         (peripheral_data[1] as u64) << 40 |
+                                         (peripheral_data[0] as u64) << 32 |
+                                         (peripheral_data[7] as u64) << 24 |
+                                         (peripheral_data[6] as u64) << 16 |
+                                         (peripheral_data[5] as u64) <<  8 |
+                                         (peripheral_data[4] as u64) <<  0; 
+
+                println!("Peripheral Identification data: {:#x?}", peripheral_data);
+                println!("Peripheral ID: {:16x}", peripheral_id);
+
 
                 // CoreSight identification register offsets.
-                const DEVARCH: u32 = 0xfbc;
+                //const DEVARCH: u32 = 0xfbc;
                 // const DEVID: u32 = 0xfc8;
                 // const DEVTYPE: u32 = 0xfcc;
                 // const PIDR4: u32 = 0xfd0;
                 // const PIDR0: u32 = 0xfe0;
-                const CIDR0: u32 = 0xff0;
+                //const CIDR0: u32 = 0xff0;
                 // const IDR_END: u32 = 0x1000;
 
                 // Range of identification registers to read at once and offsets in results.
                 //
                 // To improve component identification performance, we read all of a components
                 // CoreSight ID registers in a single read. Reading starts at the DEVARCH register.
-                const IDR_READ_START: u32 = DEVARCH;
+                //const IDR_READ_START: u32 = DEVARCH;
                 // const IDR_READ_COUNT: u32 = (IDR_END - IDR_READ_START) / 4;
                 // const DEVARCH_OFFSET: u32 = (DEVARCH - IDR_READ_START) / 4;
                 // const DEVTYPE_OFFSET: u32 = (DEVTYPE - IDR_READ_START) / 4;
                 // const PIDR4_OFFSET: u32 = (PIDR4 - IDR_READ_START) / 4;
                 // const PIDR0_OFFSET: u32 = (PIDR0 - IDR_READ_START) / 4;
-                const CIDR0_OFFSET: u32 = (CIDR0 - IDR_READ_START) / 4;
+                //const CIDR0_OFFSET: u32 = (CIDR0 - IDR_READ_START) / 4;
 
-                let cidr = extract_id_register_value(data.as_slice(), CIDR0_OFFSET);
-                println!("{:08X?}", cidr);
+                //let cidr = extract_id_register_value(data.as_slice(), CIDR0_OFFSET);
+                //println!("{:08X?}", cidr);
             }
         }
 

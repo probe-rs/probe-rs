@@ -1,5 +1,6 @@
 use probe::debug_probe::{
     DebugProbeInfo,
+    Port,
 };
 use coresight::ap_access::AccessPort;
 use scroll::{Pread, BE};
@@ -90,8 +91,13 @@ impl DebugProbe for STLink {
 
 impl DAPAccess for STLink {
     /// Reads the DAP register on the specified port and address.
-    fn read_register(&mut self, port: u16, addr: u16) -> Result<u32, DebugProbeError> {
-        if (addr & 0xf0) == 0 || port != Self::DP_PORT {
+    fn read_register(&mut self, port: Port, addr: u16) -> Result<u32, DebugProbeError> {
+        if (addr & 0xf0) == 0 || port != Port::DebugPort {
+            let port = match port {
+                Port::DebugPort => 0xffff,
+                Port::AccessPort(p) => p,
+            };
+
             let cmd = vec![
                 commands::JTAG_COMMAND,
                 commands::JTAG_READ_DAP_REG,
@@ -111,8 +117,13 @@ impl DAPAccess for STLink {
     }
 
     /// Writes a value to the DAP register on the specified port and address.
-    fn write_register(&mut self, port: u16, addr: u16, value: u32) -> Result<(), DebugProbeError> {
-        if (addr & 0xf0) == 0 || port != Self::DP_PORT {
+    fn write_register(&mut self, port: Port, addr: u16, value: u32) -> Result<(), DebugProbeError> {
+        if (addr & 0xf0) == 0 || port != Port::DebugPort {
+            let port = match port {
+                Port::DebugPort => 0xffff,
+                Port::AccessPort(p) => p,
+            };
+
             let cmd = vec![
                 commands::JTAG_COMMAND,
                 commands::JTAG_WRITE_DAP_REG,
@@ -156,9 +167,6 @@ impl STLink {
 
     /// Firmware version that adds multiple AP support.
     const MIN_JTAG_VERSION_MULTI_AP: u8 = 28;
-
-    /// Port number to use to indicate DP registers.
-    const DP_PORT: u16 = 0xffff;
 
     /// Reads the target voltage.
     /// For the china fake variants this will always read a nonzero value!

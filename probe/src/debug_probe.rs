@@ -29,12 +29,18 @@ pub enum DebugProbeError {
     ProbeCouldNotBeCreated,
 }
 
+#[derive(Debug, PartialEq)]
+pub enum Port {
+    DebugPort,
+    AccessPort(u16)
+}
+
 pub trait DAPAccess {
     /// Reads the DAP register on the specified port and address
-    fn read_register(&mut self, port: u16, addr: u16) -> Result<u32, DebugProbeError>;
+    fn read_register(&mut self, port: Port, addr: u16) -> Result<u32, DebugProbeError>;
 
     /// Writes a value to the DAP register on the specified port and address
-    fn write_register(&mut self, port: u16, addr: u16, value: u32) -> Result<(), DebugProbeError>;
+    fn write_register(&mut self, port: Port, addr: u16, value: u32) -> Result<(), DebugProbeError>;
 }
 
 
@@ -75,9 +81,9 @@ impl MasterProbe {
         };
         if cache_changed {
             let select = (u32::from(self.current_apsel) << 24) | (u32::from(self.current_apbanksel) << 4);
-            link.write_register(0xFFFF, 0x008, select)?;
+            link.write_register(Port::DebugPort, 0x008, select)?;
         }
-        link.write_register(u16::from(self.current_apsel), u16::from(REGISTER::ADDRESS), register.into())?;
+        link.write_register(Port::AccessPort(u16::from(self.current_apsel)), u16::from(REGISTER::ADDRESS), register.into())?;
         Ok(())
     }
 
@@ -99,10 +105,10 @@ impl MasterProbe {
         };
         if cache_changed {
             let select = (u32::from(self.current_apsel) << 24) | (u32::from(self.current_apbanksel) << 4);
-            link.write_register(0xFFFF, 0x008, select)?;
+            link.write_register(Port::DebugPort, 0x008, select)?;
         }
         //println!("{:?}, {:08X}", link.current_apsel, REGISTER::ADDRESS);
-        let result = link.read_register(u16::from(self.current_apsel), u16::from(REGISTER::ADDRESS))?;
+        let result = link.read_register(Port::AccessPort(u16::from(self.current_apsel)), u16::from(REGISTER::ADDRESS))?;
         Ok(REGISTER::from(result))
     }
 }
