@@ -12,16 +12,26 @@ use coresight::{
         memory_ap::*,
         generic_ap::*,
     },
+    access_ports,
     ap_access::*,
 };
 
+#[derive(Debug)]
 pub struct RomTable {
 
 }
 
+#[derive(Debug)]
 pub enum RomTableError {
     Base,
     NotARomtable,
+    AccessPortError(access_ports::AccessPortError),
+}
+
+impl From<access_ports::AccessPortError> for RomTableError {
+    fn from(e: access_ports::AccessPortError) -> Self {
+        RomTableError::AccessPortError(e)
+    }
 }
 
 impl RomTable {
@@ -36,10 +46,39 @@ impl RomTable {
         // First we get the BASE register which lets us extract the BASEADDR required to access the romtable.
         if let Some(baseaddr) = get_base_addr(link, port) {
             // Determine the component class to find out what component we are dealing with.
-            let _component_class = get_component_class(link, baseaddr);
+            let component_class = get_component_class(link, baseaddr);
 
             // Determine the peripheral id to find out what peripheral we are dealing with.
-            let _peripheral_id = get_peripheral_id(link, baseaddr);
+            let peripheral_id = get_peripheral_id(link, baseaddr);
+
+            println!("Peripheral id: {:x?}", peripheral_id);
+
+            if Some(ComponentClass::RomTable) != component_class {
+                return Err(RomTableError::NotARomtable);
+            }
+
+
+            for component_offset in (0..0xfcc).step_by(4) {
+                let mut entry_data = [0u32;1];
+                link.read_block((baseaddr + component_offset) as u32, &mut entry_data)?;
+
+                // end of entries is marked by an all zero entry
+                if entry_data[0] == 0 {
+                    break;
+                }
+
+                let entry_data: RomTableEntry = entry_data[0].into();
+
+                println!("{:#x?}", entry_data);
+
+                let entry_base_addr = (baseaddr as i64) + ((entry_data.address_offset << 12) as i64);
+                println!("Entry address: {:08x}", entry_base_addr);
+
+                let component_peripheral_id = get_peripheral_id(link, entry_base_addr as u64);
+
+                println!("Component peripheral id: {:x?}", component_peripheral_id);
+                
+            }
         }
 
 
@@ -71,9 +110,38 @@ impl RomTable {
     }
 }
 
+#[derive(Debug)]
+struct RomTableEntry {
+    address_offset: i32,
+    power_domain_id: u8,
+    power_domain_valid: bool,
+    format: bool,
+    entry_present: bool,
+}
+
+impl From<u32> for RomTableEntry {
+    fn from(raw: u32) -> Self {
+        println!("raw value: 0x{:05x}", raw);
+
+        let address_offset = ((raw >> 12) & 0xf_ff_ff) as i32;
+        let power_domain_id = ((raw >> 4) & 0xf) as u8;
+        let power_domain_valid = (raw & 4) == 4;
+        let format = (raw & 2) == 2;
+        let entry_present = (raw & 1) == 1;
+
+        RomTableEntry {
+            address_offset,
+            power_domain_id,
+            power_domain_valid,
+            format,
+            entry_present,
+        }
+    }
+}
+
 /// This enum describes a component.
 /// Described in table D1-2 in the ADIv5.2 spec.
-#[derive(Primitive, Debug)]
+#[derive(Primitive, Debug, PartialEq)]
 enum ComponentClass {
     GenericVerificationComponent = 0,
     RomTable = 1,
