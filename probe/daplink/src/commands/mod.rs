@@ -5,6 +5,7 @@ pub mod transfer;
 
 use core::ops::Deref;
 use probe::debug_probe::DebugProbeError;
+use log::debug;
 
 pub(crate) type Result<T> = std::result::Result<T, Error>;
 
@@ -80,13 +81,13 @@ pub(crate) fn send_command<Req: Request, Res: Response>(device: &hidapi::HidDevi
     buffer[0 + 1] = *Req::CATEGORY;
     let _size = request.to_bytes(buffer, 1 + 1)?;
     device.write(buffer)?;
-    println!("Send buffer: {:02X?}", &buffer[..]);
+    debug!("Send buffer: {:02X?}", &buffer[..]);
 
     // Read back resonse.
     // TODO: Error handling & real USB reading.
     let buffer = &mut [0; 24];
     device.read(buffer)?;
-    println!("Receive buffer: {:02X?}", &buffer[..]);
+    debug!("Receive buffer: {:02X?}", &buffer[..]);
     if buffer[0] == *Req::CATEGORY {
         Res::from_bytes(buffer, 1)
     } else {

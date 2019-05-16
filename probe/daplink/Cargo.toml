@@ -5,6 +5,7 @@ authors = ["Noah Hüsser <yatekii@yatekii.ch>"]
 edition = "2018"
 
 [dependencies]
+log = "0.4.6"
 libusb = "0.3.0"
 lazy_static = "1.2.0"
 probe = { path = "../" }

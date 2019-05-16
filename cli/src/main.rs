@@ -82,6 +82,9 @@ enum CLI {
 }
 
 fn main() {
+    // Initialize the logging backend.
+    pretty_env_logger::init();
+
     let matches = CLI::from_args();
 
     match matches {
@@ -304,60 +307,6 @@ fn dump_memory(n: usize, loc: u32, words: u32) -> Result<(), Error> {
     })
 }
 
-// TODO: highly unfinished.
-// fn download(n: u8, loc: u32, word: u32) -> Result<(), Error> {
-//     const CSW_SIZE32: u32 = 0x00000002;
-//     const CSW_SADDRINC: u32 = 0x00000010;
-//     const CSW_DBGSTAT: u32 = 0x00000040;
-//     const CSW_HPROT: u32 = 0x02000000;
-//     const CSW_MSTRDBG: u32 = 0x20000000;
-//     const CSW_RESERVED: u32 = 0x01000000;
-
-//     const CSW_VALUE: u32 = (CSW_RESERVED | CSW_MSTRDBG | CSW_HPROT | CSW_DBGSTAT | CSW_SADDRINC);
-
-//     let mut context = libusb::Context::new().or_else(|e| {
-//         println!("Failed to open an USB context.");
-//         Err(Error::USB(e))
-//     })?;
-//     let mut connected_devices = stlink::get_all_plugged_devices(&mut context).or_else(|e| {
-//         println!("Failed to fetch plugged USB devices.");
-//         Err(Error::USB(e))
-//     })?;
-//     if connected_devices.len() <= n as usize {
-//         println!("The device with the given number was not found.");
-//         Err(Error::DeviceNotFound)
-//     } else {
-//         Ok(())
-//     }?;
-//     let usb_device = STLinkUSBDevice::new(|device| device.remove(n as usize));
-//     let mut st_link = stlink::STLink::new(usb_device);
-//     st_link.open().or_else(|e| Err(Error::DebugProbeError(e)))?;
-
-//     st_link
-//         .attach(probe::protocol::WireProtocol::Swd)
-//         .or_else(|e| Err(Error::DebugProbeError(e)))?;
-
-//     st_link
-//         .write_register(0x0, 0x0, CSW_VALUE | CSW_SIZE32)
-//         .ok();
-
-//     let mem = MemoryInterface::new(0x0);
-
-//     let instant = Instant::now();
-
-//     mem.write(&mut st_link, loc, word).or_else(|e| Err(Error::AccessPortError(e)))?;
-
-//     let elapsed = instant.elapsed();
-
-//     println!("Addr 0x{:08x?}: 0x{:08x}", loc, word);
-
-//     println!("Wrote 1 word in {:?}", elapsed);
-
-//     st_link.close().or_else(|e| Err(Error::DebugProbeError(e)))?;
-
-//     Ok(())
-// }
-
 fn reset_target_of_device(n: usize, _assert: Option<bool>) -> Result<(), Error> {
     with_device(n as usize, |link: &mut MasterProbe| {
         //link.get_interface_mut::<DebugProbe>().unwrap().target_reset().or_else(|e| Err(Error::DebugProbe(e)))?;
@@ -367,52 +316,50 @@ fn reset_target_of_device(n: usize, _assert: Option<bool>) -> Result<(), Error> 
     })
 }
 
-fn trace_u32_on_target(_n: usize, _loc: u32) -> Result<(), Error> {
-    // use std::io::prelude::*;
-    // use std::thread::sleep;
-    // use std::time::Duration;
-    // use scroll::{Pwrite};
+fn trace_u32_on_target(n: usize, loc: u32) -> Result<(), Error> {
+    use std::io::prelude::*;
+    use std::thread::sleep;
+    use std::time::Duration;
+    use scroll::{Pwrite};
 
-    // let mut xs = vec![];
-    // let mut ys = vec![];
+    let mut xs = vec![];
+    let mut ys = vec![];
 
-    // let start = Instant::now();
+    let start = Instant::now();
 
-    // with_stlink(n, |st_link| {
-    //     loop {
-    //         // Prepare read.
-    //         let elapsed = start.elapsed();
-    //         let instant = elapsed.as_secs() * 1000 + u64::from(elapsed.subsec_millis());
+    with_device(n, |link| {
+        loop {
+            // Prepare read.
+            let elapsed = start.elapsed();
+            let instant = elapsed.as_secs() * 1000 + u64::from(elapsed.subsec_millis());
 
-    //         // Read data.
-    //         let value: u32 = st_link.read(loc)?;
+            // Read data.
+            let value: u32 = link.read(loc)?;
 
-    //         xs.push(instant);
-    //         ys.push(value);
+            xs.push(instant);
+            ys.push(value);
 
-    //         // Send value to plot.py.
-    //         // Unwrap is safe as there is always an stdin in our case!
-    //         let mut buf = [0 as u8; 8];
-    //         // Unwrap is safe!
-    //         buf.pwrite(instant, 0).unwrap();
-    //         buf.pwrite(value, 4).unwrap();
-    //         std::io::stdout()
-    //                 .write(&buf)
-    //                 .or_else(|e| Err(Error::StdIO(e)))?;
-    //         std::io::stdout()
-    //                 .flush()
-    //                 .or_else(|e| Err(Error::StdIO(e)))?;
+            // Send value to plot.py.
+            // Unwrap is safe as there is always an stdin in our case!
+            let mut buf = [0 as u8; 8];
+            // Unwrap is safe!
+            buf.pwrite(instant, 0).unwrap();
+            buf.pwrite(value, 4).unwrap();
+            std::io::stdout()
+                    .write(&buf)
+                    .or_else(|e| Err(Error::StdIO(e)))?;
+            std::io::stdout()
+                    .flush()
+                    .or_else(|e| Err(Error::StdIO(e)))?;
 
-    //         // Schedule next read.
-    //         let elapsed = start.elapsed();
-    //         let instant = elapsed.as_secs() * 1000 + u64::from(elapsed.subsec_millis());
-    //         let poll_every_ms = 50;
-    //         let time_to_wait = poll_every_ms - instant % poll_every_ms;
-    //         sleep(Duration::from_millis(time_to_wait));
-    //     }
-    // })?;
-
-    Ok(())
+            // Schedule next read.
+            let elapsed = start.elapsed();
+            let instant = elapsed.as_secs() * 1000 + u64::from(elapsed.subsec_millis());
+            let poll_every_ms = 50;
+            let time_to_wait = poll_every_ms - instant % poll_every_ms;
+            sleep(Duration::from_millis(time_to_wait));
+        }
+    })
 }
 
 

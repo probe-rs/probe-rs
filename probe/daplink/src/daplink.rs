@@ -193,9 +193,7 @@ impl DebugProbe for DAPLink {
 
         self.send_swj_sequences(SequenceRequest::new(&[0x00]).unwrap())?;
 
-
-
-        dbg!(self.read_register(debug_probe::Port::DebugPort, 0))?;
+        self.read_register(debug_probe::Port::DebugPort, 0)?;
 
         self.write_register(debug_probe::Port::DebugPort, 0x0, 0x1e)?; // clear errors 
 

@@ -8,3 +8,4 @@ edition = "2018"
 memory = { path = "../memory" }
 coresight = { path = "../coresight"}
 query_interface = "*"
+log = "0.4.6"
