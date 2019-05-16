@@ -8,9 +8,9 @@ use crate::commands::{
 
 #[derive(Clone, Copy)]
 pub enum ConnectRequest {
-    UseDefaultPort = 0x01,
-    UseSWD = 0x02,
-    UseJTAG = 0x03,
+    UseDefaultPort = 0x00,
+    UseSWD = 0x01,
+    UseJTAG = 0x02,
 }
 
 impl Request for ConnectRequest {
@@ -23,9 +23,9 @@ impl Request for ConnectRequest {
 }
 
 pub enum ConnectResponse {
-    InitFailed = 0x01,
-    SuccessfulInitForSWD = 0x02,
-    SuccessfulInitForJTAG = 0x03,
+    InitFailed = 0x00,
+    SuccessfulInitForSWD = 0x01,
+    SuccessfulInitForJTAG = 0x02,
 }
 
 impl Response for ConnectResponse {

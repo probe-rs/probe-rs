@@ -15,7 +15,7 @@ where
     PORT: AccessPort,
     REGISTER: APRegister<PORT>,
 {
-    type Error;
+    type Error: std::fmt::Debug;
     fn read_register_ap(&mut self, port: PORT, register: REGISTER) -> Result<REGISTER, Self::Error>;
     fn write_register_ap(&mut self, port: PORT, register: REGISTER) -> Result<(), Self::Error>;
 }

@@ -1,3 +1,4 @@
+use probe::debug_probe::DebugProbeInfo;
 use lazy_static::lazy_static;
 use libusb::{Context, Device, DeviceHandle, Error};
 use std::time::Duration;
@@ -10,13 +11,13 @@ use probe::debug_probe::DebugProbeError;
 const CMD_LEN: usize = 16;
 
 /// The USB VendorID.
-const USB_VID: u16 = 0x0483;
+pub const USB_VID: u16 = 0x0483;
 
 pub const TIMEOUT: Duration = Duration::from_millis(1000);
 
 lazy_static! {
     /// Map of USB PID to firmware version name and device endpoints.
-    static ref USB_PID_EP_MAP: HashMap<u16, STLinkInfo> = {
+    pub static ref USB_PID_EP_MAP: HashMap<u16, STLinkInfo> = {
         let mut m = HashMap::new();
         m.insert(0x3748, STLinkInfo::new("V2",    0x3748, 0x02,   0x81,   0x83));
         m.insert(0x374b, STLinkInfo::new("V2-1",  0x374b, 0x01,   0x81,   0x82));
@@ -77,34 +78,9 @@ pub struct STLinkUSBDevice {
     info: STLinkInfo,
 }
 
-fn usb_match<'a>(device: &Device<'a>) -> bool {
-    // Check the VID/PID.
-    if let Ok(descriptor) = device.device_descriptor() {
-        (descriptor.vendor_id() == USB_VID)
-            && (USB_PID_EP_MAP.contains_key(&descriptor.product_id()))
-    } else {
-        false
-    }
-}
-
-pub fn get_all_plugged_devices<'a>(
-    context: &'a Context,
-) -> Result<Vec<(Device<'a>, STLinkInfo)>, DebugProbeError> {
-    let devices = context.devices().map_err(|_| DebugProbeError::USBError)?;
-    devices.iter()
-            .filter(usb_match)
-            .map(|d| {
-                let descriptor = d.device_descriptor().map_err(|_| DebugProbeError::USBError)?;
-                let info = USB_PID_EP_MAP[&descriptor.product_id()].clone();
-                Ok((d, info))
-            })
-            .collect::<Result<Vec<_>, DebugProbeError>>()
-}
-
 impl STLinkUSBDevice {
     /// Creates and initializes a new USB device.
-    pub fn new<F>(mut device_selector: F) -> Result<Self, DebugProbeError>
-    where F: for<'a> FnMut(Vec<(Device<'a>, STLinkInfo)>) -> Result<Device<'a>, Error>
+    pub fn new_from_info(probe_info: DebugProbeInfo) -> Result<Self, DebugProbeError>
     {
         let context = Context::new().map_err(|_| DebugProbeError::USBError)?;
 
@@ -112,9 +88,24 @@ impl STLinkUSBDevice {
 
         let renter = STLinkUSBDeviceRenter::try_new(
             Box::new(context),
-            |context| Ok(Box::new(device_selector(get_all_plugged_devices(context)?).map_err(|_| DebugProbeError::USBError)?)),
+            |context| {
+                Ok(Box::new(
+                    context
+                        .devices()
+                        .map_err(|_| DebugProbeError::ProbeCouldNotBeCreated)?
+                        .iter()
+                        .filter(|device| {
+                            if let Ok(descriptor) = device.device_descriptor() {
+                                probe_info.vendor_id == descriptor.vendor_id() && probe_info.product_id == descriptor.product_id()
+                            } else {
+                                false
+                            }
+                        })
+                        .next()
+                        .map_or(Err(DebugProbeError::ProbeCouldNotBeCreated), |v| Ok(v))?
+                ))
+            },
             |device, _context| {
-                
                 let mut device_handle = Box::new(device.open().map_err(|_| DebugProbeError::USBError)?);
 
                 let config = device.active_config_descriptor().map_err(|_| DebugProbeError::USBError)?;

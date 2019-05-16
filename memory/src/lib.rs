@@ -1,6 +1,9 @@
+pub mod adi_v5_memory_interface;
+pub mod romtable;
+
+
 use coresight::access_ports::AccessPortError;
 
-pub mod adi_v5_memory_interface;
 
 pub trait ToMemoryReadSize: Into<u32> + Copy {
     /// The alignment mask that is required to test for properly aligned memory.

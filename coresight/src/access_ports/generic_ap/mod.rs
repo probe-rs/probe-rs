@@ -1,3 +1,5 @@
+//! Generic access port
+ 
 use enum_primitive_derive::Primitive;
 use num_traits::cast::{
     FromPrimitive,
@@ -8,7 +10,7 @@ use crate::common::Register;
 use crate::access_ports::APRegister;
 
 #[allow(non_camel_case_types)]
-#[derive(Debug, Primitive, Clone, Copy)]
+#[derive(Debug, Primitive, Clone, Copy, PartialEq)]
 pub enum APClass {
     Undefined = 0b0000,
     COMAP = 0b0001,
@@ -36,7 +38,14 @@ impl Default for APType {
 
 define_ap!(GenericAP);
 
-define_ap_register!(GenericAP, IDR, 0x0FC, [
+define_ap_register!(
+    /// Identification Register
+    /// 
+    /// The identification register is used to identify
+    /// an AP.
+    /// 
+    /// It has to be present on every AP.
+    GenericAP, IDR, 0x0FC, [
         (REVISION: u8),
         (DESIGNER: u16),
         (CLASS: APClass),
@@ -58,23 +67,4 @@ define_ap_register!(GenericAP, IDR, 0x0FC, [
     | (value.CLASS.to_u32().unwrap()    << 13)
     | (u32::from(value.VARIANT        ) <<  4)
     | (value.TYPE.to_u32().unwrap()          )
-);
-
-define_ap_register!(GenericAP, BASE, 0x0F8, [
-        (BASEADDR: u32),
-        (_RES0: u8),
-        (Format: u8),
-        (P: u8),
-    ],
-    value,
-    BASE {
-        BASEADDR: value & 0xFFFFF000,
-        _RES0:    0,
-        Format:   ((value >> 1) & 0x01) as u8,
-        P:        (value & 0x01) as u8
-    },
-      (u32::from(value.BASEADDR       ) << 12)
-    // _RES0
-    | (u32::from(value.Format       ) << 1)
-    | (u32::from(value.P))
 );

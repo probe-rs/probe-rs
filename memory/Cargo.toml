@@ -5,4 +5,8 @@ authors = ["Noah Hüsser <yatekii@yatekii.ch>"]
 edition = "2018"
 
 [dependencies]
+log = "0.4.6"
+num = "0.2"
+num-traits = "*"
+enum-primitive-derive = "*"
 coresight = { path = "../coresight" }

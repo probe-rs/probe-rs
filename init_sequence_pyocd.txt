@@ -1,0 +1,24 @@
+00 FE -> 00 01 05 // Packet Count
+00 FF -> 00 02 40 00 // Packet Size
+00 F0 -> 00 01 01 // Capabilities (SWD)
+11 40 42 0F -> 11 00 // Clock
+02 00 -> 02 01 // Connect
+11 40 42 0F -> 11 00 // Clock
+04 00 50 00 00 00 -> 04 00 // TransferConfigure
+13 00 -> 13 00 // SWD Configure
+12 38 FF FF FF FF FF FF FF -> 12 00 // SWJ Sequence
+12 10 9E E7 -> 12 00 // SWJ Sequence (Switch from JTAG to SWD)
+12 38 FF FF FF FF FF FF FF -> 12 00 // SWJ Sequence
+12 08 00 -> 12 00 // SWJ Sequence
+06 00 01 00 02 -> 06 01 00 01 77 14 B1 0B // TransferBlock
+05 00 04             -> 05 04 01        // Transfer (4 transfers)
+    00 1e 00 00 00   -> _               // write DP @ 0x0 = 0x00 00 00 1e (clear errors)
+    08 00 00 00 00   -> _               // write DP @ 0x8 = 0x00 00 00 00 (select AP 0, APBANKSEL 0, DPBANKSEL 0)
+    04 00 00 00 50   -> _               // write DP @ 0x4 = 0x50 00 00 00 (CDBGPWRUPREQ, CSYSPWRUPREQ)
+    06               -> 00 00 00 f0     // read  DP @ 0x4 = 0xf0 00 00 00 (CDBGPWRUPREQ, CSYSPWRUPACK)
+
+05 00 03            -> 05 03 01
+    04 00 0f 00 50  -> _                // write DP @ 0x04 = 0x50 00 0f 00 (CDBGPWRUPREQ, CSYSPWRUPREQ, MASKLANE=0xf)
+    08 f0 00 00 00  -> _                // write DP @ 0x08 = 0x00 00 00 f0 (select AP 0, APBANKSEL 0xf, DPBANKSEL 0x0)
+    0f              -> 21 00 77 04      // read  AP @ 0x12 = 0x04 77 00 21
+    
