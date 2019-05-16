@@ -43,25 +43,65 @@ impl Default for DataSize {
     fn default() -> Self { DataSize::U32 }
 }
 
+#[derive(Debug, Primitive, Clone, Copy)]
+pub enum BaseaddrFormat {
+    Legacy = 0,
+    ADIv5 = 1,
+}
+
+impl Default for BaseaddrFormat {
+    fn default() -> Self { BaseaddrFormat::Legacy }
+}
+
+#[derive(Debug, Primitive, Clone, Copy)]
+pub enum DebugEntryState {
+    NotPresent = 0,
+    Present = 1,
+}
+
+impl Default for DebugEntryState {
+    fn default() -> Self { DebugEntryState::NotPresent }
+}
+
 define_ap_register!(
     /// Base register
     MemoryAP, BASE, 0xF8, [
         (BASEADDR: u32),
         (_RES0: u8),
-        (Format: u8),
-        (P: u8),
+        (Format: BaseaddrFormat),
+        (P: DebugEntryState),
     ],
     value,
     BASE {
-        BASEADDR: value & 0xFFFFF000,
+        BASEADDR: (value & 0xFFFFF000) >> 12,
         _RES0:    0,
-        Format:   ((value >> 1) & 0x01) as u8,
-        P:        (value & 0x01) as u8
+        Format:   match ((value >> 1) & 0x01) as u8 {
+                    0 => BaseaddrFormat::Legacy,
+                    1 => BaseaddrFormat::ADIv5,
+                    _ => panic!("This is a bug. Please report it.") 
+                  },
+        P:        match (value & 0x01) as u8 {
+                    0 => DebugEntryState::NotPresent,
+                    1 => DebugEntryState::Present,
+                    _ => panic!("This is a bug. Please report it.") 
+                  },
     },
       (u32::from(value.BASEADDR       ) << 12)
     // _RES0
-    | (u32::from(value.Format       ) << 1)
-    | (u32::from(value.P))
+    | (u32::from(value.Format as u8   ) << 1)
+    | (u32::from(value.P as u8))
+);
+
+define_ap_register!(
+    /// Base register
+    MemoryAP, BASE2, 0xF0, [
+        (BASEADDR: u32),
+    ],
+    value,
+    BASE2 {
+        BASEADDR: value,
+    },
+    u32::from(value.BASEADDR)
 );
 
 define_ap_register!(

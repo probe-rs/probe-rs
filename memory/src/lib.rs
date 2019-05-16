@@ -1,4 +1,5 @@
 pub mod adi_v5_memory_interface;
+pub mod romtable;
 
 
 use coresight::access_ports::AccessPortError;

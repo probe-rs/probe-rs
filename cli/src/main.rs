@@ -1,10 +1,8 @@
 use probe::debug_probe::MasterProbe;
-use std::io::Write;
 use memory::MI;
 use coresight::ap_access::APAccess;
 use coresight::access_ports::{
     generic_ap::GenericAP,
-    memory_ap::MemoryAP,
 };
 use coresight::ap_access::access_port_is_valid;
 use coresight::access_ports::AccessPortError;
@@ -177,77 +175,13 @@ fn show_info_of_device(n: usize) -> Result<(), Error> {
                 generic_ap::{
                     IDR,
                 },
-                memory_ap::{
-                    BASE,
-                },
             };
             let access_port = GenericAP::new(port);
-            let memory_port = MemoryAP::new(port);
             if access_port_is_valid(link, access_port) {
                 let idr = link.read_register_ap(access_port, IDR::default())?;
                 println!("{:#x?}", idr);
 
-                let base = link.read_register_ap(memory_port, BASE::default())?;
-                println!("{:#x?}", base);
-
-                /*
-                let mut data = vec![0 as u8; 1024];
-                link.read_block(base.BASEADDR, &mut data.as_mut_slice())?;
-                let mut file = std::fs::File::create("ROMtbl.bin")?;
-                file.write_all(data.as_slice())?;
-                */
-
-                // read component identification information
-                let mut data = [0u32;4];
-                link.read_block(base.BASEADDR + 0xff0, &mut data);
-
-                println!("Component Identification data: {:#x?}", data);
-
-                let component_class = (data[1] >> 4) & 0xf;
-
-                println!("Component class: {}", component_class);
-
-
-                // read peripheral id
-                let mut peripheral_data = [0u8;8];
-                link.read_block(base.BASEADDR + 0xfd0, &mut peripheral_data);
-
-                let peripheral_id: u64 = (peripheral_data[3] as u64) << 56 |
-                                         (peripheral_data[2] as u64) << 48 |
-                                         (peripheral_data[1] as u64) << 40 |
-                                         (peripheral_data[0] as u64) << 32 |
-                                         (peripheral_data[7] as u64) << 24 |
-                                         (peripheral_data[6] as u64) << 16 |
-                                         (peripheral_data[5] as u64) <<  8 |
-                                         (peripheral_data[4] as u64) <<  0; 
-
-                println!("Peripheral Identification data: {:#x?}", peripheral_data);
-                println!("Peripheral ID: {:16x}", peripheral_id);
-
-
-                // CoreSight identification register offsets.
-                //const DEVARCH: u32 = 0xfbc;
-                // const DEVID: u32 = 0xfc8;
-                // const DEVTYPE: u32 = 0xfcc;
-                // const PIDR4: u32 = 0xfd0;
-                // const PIDR0: u32 = 0xfe0;
-                //const CIDR0: u32 = 0xff0;
-                // const IDR_END: u32 = 0x1000;
-
-                // Range of identification registers to read at once and offsets in results.
-                //
-                // To improve component identification performance, we read all of a components
-                // CoreSight ID registers in a single read. Reading starts at the DEVARCH register.
-                //const IDR_READ_START: u32 = DEVARCH;
-                // const IDR_READ_COUNT: u32 = (IDR_END - IDR_READ_START) / 4;
-                // const DEVARCH_OFFSET: u32 = (DEVARCH - IDR_READ_START) / 4;
-                // const DEVTYPE_OFFSET: u32 = (DEVTYPE - IDR_READ_START) / 4;
-                // const PIDR4_OFFSET: u32 = (PIDR4 - IDR_READ_START) / 4;
-                // const PIDR0_OFFSET: u32 = (PIDR0 - IDR_READ_START) / 4;
-                //const CIDR0_OFFSET: u32 = (CIDR0 - IDR_READ_START) / 4;
-
-                //let cidr = extract_id_register_value(data.as_slice(), CIDR0_OFFSET);
-                //println!("{:08X?}", cidr);
+                memory::romtable::RomTable::try_parse(link, port);
             }
         }
 
@@ -262,16 +196,6 @@ fn show_info_of_device(n: usize) -> Result<(), Error> {
         // }
         Ok(())
     })
-}
-
-fn extract_id_register_value(regs: &[u8], offset: u32) -> u32 {
-    let mut result = 0 as u32;
-    println!("{}", result);
-    for i in 0..4 {
-        let value = regs[offset as usize + i] as u32;
-        result |= (value & 0xff) << (i * 8);
-    }
-    return result
 }
 
 // revision | partno | designer | reserved
