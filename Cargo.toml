@@ -5,5 +5,7 @@ members = [
     "probe/stlink",
     "probe/daplink",
     "cli",
-    "memory"
+    "memory",
+    "jep106",
+    "jep-test"
 ]
