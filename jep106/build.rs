@@ -1,8 +1,5 @@
 use std::env;
-use std::fs::{
-    self,
-    File
-};
+use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 
@@ -14,11 +11,7 @@ fn main() {
     let contents = pdf_extract::extract_text("JEP106AV.pdf")
         .expect("Something went wrong reading the file");
 
-    let mut bank = -1;
-
     let mut data: Vec<Vec<String>> = vec![];
-
-    let re = regex::Regex::new(r"^[0-9]+\s+(.*?)\s+([01]\s+){8}([0-9A-F]{2})\s+$").unwrap();
 
     for line in contents.lines() {
         use regex::Regex;
@@ -31,19 +24,19 @@ fn main() {
         }
     }
 
-    f.write(format!("const CODES: [[&'static str; 255]; {}] = [", data.len()).as_bytes());
+    let _ = f.write(format!("const CODES: [[&'static str; 255]; {}] = [", data.len()).as_bytes());
 
-    for (i, bank) in data.iter().enumerate() {
-        f.write(b"[");
+    for bank in data.iter() {
+        let _ = f.write(b"[");
         for company in bank {
-            f.write(format!("\"{}\",", company).as_bytes());
+            let _ = f.write(format!("\"{}\",", company).as_bytes());
         }
-        f.write(b"],");
+        let _ = f.write(b"],");
     }
 
-    f.write(b"];");
+    let _ = f.write(b"];");
 
-    f.write_all(b"
+    let _ = f.write_all(b"
         pub fn get(cc: u8, id: u8) -> &'static str {
             CODES[cc as usize][id as usize]
         }
