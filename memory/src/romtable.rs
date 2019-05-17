@@ -192,8 +192,7 @@ struct PeripheralID {
     pub CMOD: ComponentModification,
     pub REVISION: u8,
     pub JEDEC: bool,
-    pub JEP106ID: u8,
-    pub JEP106CC: u8,
+    pub JEP106: &'static str,
     pub PART: u16,
     /// The SIZE is indicated as a multiple of 4k blocks the peripheral occupies.
     pub SIZE: u8
@@ -207,7 +206,11 @@ where
         crate::MI
 {
     let mut data = [0u32;8];
-    match link.read_block(baseaddr as u32 | 0xFE0, &mut data) {
+    match link.read_block(baseaddr as u32 | 0xFD0, &mut data[4..]) {
+        Ok(_) => { info!("PIDR contents: {:#x?}", data) },
+        Err(e) => { error!("Error reading the PIDR registers: {:?}", e); return None },
+    };
+    match link.read_block(baseaddr as u32 | 0xFE0, &mut data[..4]) {
         Ok(_) => { info!("PIDR contents: {:#x?}", data) },
         Err(e) => { error!("Error reading the PIDR registers: {:?}", e); return None },
     };
@@ -224,8 +227,7 @@ where
         },
         REVISION: ((data[2] >> 4) & 0x0F) as u8,
         JEDEC: (data[2] & 0x8) > 1,
-        JEP106ID: ((1 - jep106id.count_ones() as u8 % 2) << 7) | jep106id,
-        JEP106CC: (data[4] & 0x0F) as u8,
+        JEP106: jep106::get((data[4] & 0x0F) as u8, ((1 - jep106id.count_ones() as u8 % 2) << 7) | jep106id),
         PART: ((data[1] & 0x0F) | (data[0] & 0xFF)) as u16,
         SIZE: 2u32.pow((data[4] >> 4) & 0x0F) as u8
     };
