@@ -37,16 +37,18 @@ fn main() {
     let _ = f.write(b"];");
 
     let _ = f.write_all(b"
-        pub fn get(cc: u8, id: u8) -> &'static str {
+        /// Returns the manufacturer corresponding to a complete JEP106 code.
+        /// Returns an empty string if the JEP106 code is unknown.
+        fn get(cc: u8, id: u8) -> &'static str {
             CODES[cc as usize][id as usize]
         }
 
-        pub fn print_all() {
-            for bank in CODES.iter() {
-                for comp in bank.iter() {
-                    println!(\"{:?}\", comp);
-                }
-            }
-        }
+        // pub fn print_all() {
+        //     for bank in CODES.iter() {
+        //         for comp in bank.iter() {
+        //             println!(\"{:?}\", comp);
+        //         }
+        //     }
+        // }
     ").unwrap();
 }

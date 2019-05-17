@@ -1,7 +1,7 @@
 extern crate jep106;
 
 #[test]
-fn print_all_test() {
-    let nordic = jep106::get(2, 0x44);
+fn print_nordic_test() {
+    let nordic = jep106::JEP106Code::new(0x02, 0x44).get();
     assert_eq!("Nordic VLSI ASA", nordic);
 }
