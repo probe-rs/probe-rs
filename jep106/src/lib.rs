@@ -17,7 +17,7 @@
 //! ```
 
 /// A Struct which contains a fully qualified JEP106 manufacturer code.
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 pub struct JEP106Code {
     /// JEP106 identification code.
     /// Points to a manufacturer name in the bank table corresponding to `cc`.
@@ -50,6 +50,12 @@ impl JEP106Code {
     /// Returns an empty string if the JEP106 code is unknown.
     pub fn get_raw(cc: u8, id: u8) -> &'static str {
         get(cc, id)
+    }
+}
+
+impl std::fmt::Debug for JEP106Code {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "JEP106Code({{ cc: 0x{:02x?}, id: 0x{:02x?} }} => {})", self.cc, self.id, self.get())
     }
 }
 
