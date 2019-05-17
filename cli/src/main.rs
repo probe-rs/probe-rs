@@ -174,14 +174,41 @@ fn show_info_of_device(n: usize) -> Result<(), Error> {
             use coresight::access_ports::{
                 generic_ap::{
                     IDR,
+                    APClass,
+                },
+                memory_ap::{
+                    MemoryAP,
+                    BASE,
+                    BASE2,
+                    BaseaddrFormat,
                 },
             };
+
             let access_port = GenericAP::new(port);
             if access_port_is_valid(link, access_port) {
+
                 let idr = link.read_register_ap(access_port, IDR::default())?;
                 println!("{:#x?}", idr);
 
-                memory::romtable::RomTable::try_parse(link, port);
+                if idr.CLASS == APClass::MEMAP {
+                    let access_port: MemoryAP = access_port.into();
+
+                    let base_register = link.read_register_ap(access_port, BASE::default())?;
+
+                    let mut baseaddr = if BaseaddrFormat::ADIv5 == base_register.Format {
+                        let base2 = link.read_register_ap(access_port, BASE2::default())?;
+                        (u64::from(base2.BASEADDR) << 32)
+                    } else { 0 };
+                    baseaddr |= u64::from(base_register.BASEADDR << 12);
+
+                    memory::romtable::RomTable::try_parse(link, baseaddr as u64);
+
+                    let mut reader = memory::romtable::RomTableReader::new(link, baseaddr as u64);
+
+                    for e in reader.entries().unwrap().iter() {
+                        println!("ROM Table Entry: Component @ 0x{:08x}", e.component_addr());
+                    }
+                }
             }
         }
 

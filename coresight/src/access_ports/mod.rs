@@ -9,7 +9,7 @@ pub mod memory_ap;
 use crate::ap_access::AccessPort;
 use crate::common::Register;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum AccessPortError {
     ProbeError,
     InvalidAccessPortNumber,

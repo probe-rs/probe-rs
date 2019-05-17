@@ -43,7 +43,7 @@ impl Default for DataSize {
     fn default() -> Self { DataSize::U32 }
 }
 
-#[derive(Debug, Primitive, Clone, Copy)]
+#[derive(Debug, PartialEq, Primitive, Clone, Copy)]
 pub enum BaseaddrFormat {
     Legacy = 0,
     ADIv5 = 1,
