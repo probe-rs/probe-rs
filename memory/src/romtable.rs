@@ -140,9 +140,8 @@ impl RomTable {
                 0x0,
             ]);
 
-            let scs_component_class = ComponentClass::GenericIPComponent;
-
-            if component_peripheral_id == scs_peripheral_id && component_class == scs_component_class {
+            if component_peripheral_id == PeripheralID::SystemControlSpace
+            && component_class == ComponentClass::SystemControlSpace {
                 // found the scs (System Control Space) register of a cortex m0
                 println!("Found SCS CoreSight at address 0x{:08x}", entry_base_addr);
                 
@@ -159,36 +158,11 @@ impl RomTable {
             }
         }
 
-
-        // CoreSight identification register offsets.
-        //const DEVARCH: u32 = 0xfbc;
-        // const DEVID: u32 = 0xfc8;
-        // const DEVTYPE: u32 = 0xfcc;
-        // const PIDR4: u32 = 0xfd0;
-        // const PIDR0: u32 = 0xfe0;
-        //const CIDR0: u32 = 0xff0;
-        // const IDR_END: u32 = 0x1000;
-
-        // Range of identification registers to read at once and offsets in results.
-        //
-        // To improve component identification performance, we read all of a components
-        // CoreSight ID registers in a single read. Reading starts at the DEVARCH register.
-        //const IDR_READ_START: u32 = DEVARCH;
-        // const IDR_READ_COUNT: u32 = (IDR_END - IDR_READ_START) / 4;
-        // const DEVARCH_OFFSET: u32 = (DEVARCH - IDR_READ_START) / 4;
-        // const DEVTYPE_OFFSET: u32 = (DEVTYPE - IDR_READ_START) / 4;
-        // const PIDR4_OFFSET: u32 = (PIDR4 - IDR_READ_START) / 4;
-        // const PIDR0_OFFSET: u32 = (PIDR0 - IDR_READ_START) / 4;
-        //const CIDR0_OFFSET: u32 = (CIDR0 - IDR_READ_START) / 4;
-
-        //let cidr = extract_id_register_value(data.as_slice(), CIDR0_OFFSET);
-        //println!("{:08X?}", cidr);
-
         Ok(RomTable {})
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct RomTableEntry {
     address_offset: i32,
     power_domain_id: u8,
@@ -236,6 +210,22 @@ enum ComponentClass {
     CoreLinkOrPrimeCellOrSystemComponent = 0xF,
 }
 
+impl ComponentClass {
+    const SystemControlSpace: ComponentClass = ComponentClass::GenericIPComponent;
+}
+
+/// This enum describes a component.
+/// Described in table D1-2 in the ADIv5.2 spec.
+#[derive(Debug, PartialEq)]
+enum Component {
+    GenericVerificationComponent,
+    Class1RomTable(RomTableEntry),
+    Class0RomTable,
+    PeripheralTestBlock,
+    GenericIPComponent,
+    CoreLinkOrPrimeCellOrSystemComponent,
+}
+
 /// Try retrieve the component class.
 /// The CIDR register is described in section D1.2.1 of the ADIv5.2 spec.
 fn get_component_class<P>(link: &mut P, baseaddr: u64) -> Result<ComponentClass, RomTableError>
@@ -273,10 +263,35 @@ struct PeripheralID {
     pub CMOD: ComponentModification,
     pub REVISION: u8,
     pub JEDEC: bool,
-    pub JEP106: &'static str,
+    pub JEP106: jep106::JEP106Code,
     pub PART: u16,
     /// The SIZE is indicated as a multiple of 4k blocks the peripheral occupies.
     pub SIZE: u8
+}
+
+impl PeripheralID {
+    const SystemControlSpace: PeripheralID = PeripheralID {
+        REVAND: 0, CMOD: ComponentModification::No, REVISION: 0, JEDEC: true, JEP106: jep106::JEP106Code { cc: 0x4, id: 0x3B}, PART: 8, SIZE: 1
+    };
+}
+
+impl PeripheralID {
+    fn from_raw(data: &[u32;8]) -> Self {
+        let jep106id = (((data[2] & 0x07) << 4) | ((data[1] >> 4) & 0x0F)) as u8;
+
+        PeripheralID {
+            REVAND: ((data[3] >> 4) & 0x0F) as u8,
+            CMOD: match (data[3] & 0x0F) as u8 {
+                0x0 => ComponentModification::No,
+                v => ComponentModification::Yes(v),
+            },
+            REVISION: ((data[2] >> 4) & 0x0F) as u8,
+            JEDEC: (data[2] & 0x8) > 1,
+            JEP106: jep106::JEP106Code::new((data[4] & 0x0F) as u8, ((1 - jep106id.count_ones() as u8 % 2) << 7) | jep106id),
+            PART: ((data[1] & 0x0F) | (data[0] & 0xFF)) as u16,
+            SIZE: 2u32.pow((data[4] >> 4) & 0x0F) as u8
+        }
+    }
 }
 
 /// Try retrieve the peripheral id.
@@ -298,25 +313,6 @@ where
     debug!("Raw peripheral id: {:x?}", data);
 
     Ok(PeripheralID::from_raw(&data))
-}
-
-impl PeripheralID {
-    fn from_raw(data: &[u32;8]) -> Self {
-        let jep106id = (((data[2] & 0x07) << 4) | ((data[1] >> 4) & 0x0F)) as u8;
-
-        PeripheralID {
-            REVAND: ((data[3] >> 4) & 0x0F) as u8,
-            CMOD: match (data[3] & 0x0F) as u8 {
-                0x0 => ComponentModification::No,
-                v => ComponentModification::Yes(v),
-            },
-            REVISION: ((data[2] >> 4) & 0x0F) as u8,
-            JEDEC: (data[2] & 0x8) > 1,
-            JEP106: jep106::get((data[4] & 0x0F) as u8, ((1 - jep106id.count_ones() as u8 % 2) << 7) | jep106id),
-            PART: ((data[1] & 0x0F) | (data[0] & 0xFF)) as u16,
-            SIZE: 2u32.pow((data[4] >> 4) & 0x0F) as u8
-        }
-    }
 }
 
 /// Retrieves the BASEADDR of a CoreSight component.
