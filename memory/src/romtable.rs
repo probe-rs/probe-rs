@@ -106,74 +106,65 @@ impl RomTable {
           + APAccess<MemoryAP, BASE>
           + APAccess<MemoryAP, BASE2>
     {
+        info!("\tReading component data at: {:08x}", baseaddr);
+
         // Determine the component class to find out what component we are dealing with.
-        let component_class = get_component_class(link, baseaddr);
+        let component_class = get_component_class(link, baseaddr)?;
+        info!("\tComponent class: {:x?}", component_class);
 
         // Determine the peripheral id to find out what peripheral we are dealing with.
-        let peripheral_id = get_peripheral_id(link, baseaddr);
+        let peripheral_id = get_peripheral_id(link, baseaddr)?;
+        info!("\tComponent peripheral id: {:x?}", peripheral_id);
 
-        info!("Peripheral id: {:x?}", peripheral_id);
+        if peripheral_id == PeripheralID::SystemControlSpace
+        && component_class == ComponentClass::SystemControlSpace {
+            // Found the scs (System Control Space) register of a cortex m0.
+            info!("Found SCS CoreSight at address 0x{:08x}", baseaddr);
+            
+            // This means we can check the cpuid register (located at 0xe000_ed00).
+            let cpu_id: u32 = link.read(0xe000_ed00)?;
 
-        if Ok(ComponentClass::RomTable) != component_class {
+            info!("CPUID: 0x{:08X}", cpu_id);
+        }
+
+        if ComponentClass::RomTable != component_class {
             return Err(RomTableError::NotARomtable);
         }
 
+        // Iterate over all the available ROM table entries.
         let entries = (0..0xfcc)
             .step_by(4)
             .map(|component_offset| {
+                // Read a single 32bit word which stands for a ROM table entry.
                 info!("Reading rom table entry at {:08x}", baseaddr + component_offset);
-
                 let mut entry_data = [0u32;1];
                 link.read_block((baseaddr + component_offset) as u32, &mut entry_data);
 
-                // end of entries is marked by an all zero entry
+                // The end of the ROM table is marked by an all zero entry.
                 if entry_data[0] == 0 {
-                    info!("Entry consists of all zeroes, stopping.");
+                    // We stop iterating as we have rached the end of the ROM table.
+                    info!("ROM table entry consists of all zeroes, stopping.");
                     Err(RomTableScanError::EndOfRomtable)
                 } else {
-                    let entry_data = RomTableEntryRaw::new(baseaddr as u32, entry_data[0]);
-                    info!("ROM Table Entry: {:x?}", entry_data);
+                    // We have found ourselves a valid ROM table entry and start working on it by parsing it.
+                    let raw_entry = RomTableEntryRaw::new(baseaddr as u32, entry_data[0]);
+                    info!("ROM Table Entry: {:x?}", raw_entry);
 
-                    let entry_base_addr = entry_data.component_addr();
-                    info!("\tEntry address: {:08x}", entry_base_addr);
-
-                    let component_peripheral_id = get_peripheral_id(link, entry_base_addr as u64)?;
-
-                    info!("\tComponent peripheral id: {:x?}", component_peripheral_id);
-
-
-                    let component_class = get_component_class(link, entry_base_addr as u64)?;
-
-                    info!("\tComponent class: {:x?}", component_class);
-
-                    if component_peripheral_id == PeripheralID::SystemControlSpace
-                    && component_class == ComponentClass::SystemControlSpace {
-                        // found the scs (System Control Space) register of a cortex m0
-                        println!("Found SCS CoreSight at address 0x{:08x}", entry_base_addr);
-                        
-                        // this means we can check the cpuid register (located at 0xe000_ed00)
-                        let cpu_id: u32 = link.read(0xe000_ed00)?;
-
-                        println!("CPUID: 0x{:08X}", cpu_id);
-                    }
-
-                    if component_class == ComponentClass::RomTable {
-                        info!("Recursively parsing ROM table at address 0x{:08x}", entry_base_addr);
-                        let _table = RomTable::try_parse(link, entry_base_addr as u64);
-                        info!("Finished parsing entries.");
-                    }
+                    let entry_base_addr = raw_entry.component_addr();
 
                     Ok(RomTableEntry {
-                        format: entry_data.format,
-                        power_domain_id: entry_data.power_domain_id,
-                        power_domain_valid: entry_data.power_domain_valid,
-                        rom_table: Some(RomTable::try_parse(link, entry_base_addr as u64)
-                                            .map_err(|e| match e {
-                                                RomTableError::Base => RomTableScanError::ReadFailed,
-                                                RomTableError::NotARomtable => RomTableScanError::SkipEntry,
-                                                RomTableError::AccessPortError(_) => RomTableScanError::ReadFailed,
-                                                RomTableError::ComponentIdentificationError => RomTableScanError::ReadFailed,
-                                            })?),
+                        format: raw_entry.format,
+                        power_domain_id: raw_entry.power_domain_id,
+                        power_domain_valid: raw_entry.power_domain_valid,
+                        rom_table: Some(
+                            RomTable::try_parse(link, entry_base_addr as u64)
+                                .map_err(|e| match e {
+                                    RomTableError::Base => RomTableScanError::ReadFailed,
+                                    RomTableError::NotARomtable => RomTableScanError::SkipEntry,
+                                    RomTableError::AccessPortError(_) => RomTableScanError::ReadFailed,
+                                    RomTableError::ComponentIdentificationError => RomTableScanError::ReadFailed,
+                                })?
+                            ),
                     })
                 }
             })
