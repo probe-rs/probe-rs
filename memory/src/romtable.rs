@@ -96,16 +96,9 @@ impl<'p,'r, P: crate::MI> Iterator for RomTableIterator<'p,'r,P> {
             entry_data[0]
         );
 
-
         //info!("ROM Table Entry: {:x?}", entry_data);
         Some(Ok(entry_data))
     }
-}
-
-#[derive(Debug, PartialEq)]
-pub struct RomTable {
-    id: ComponentId,
-    entries: Vec<RomTableEntry>,
 }
 
 #[derive(Debug, PartialEq)]
@@ -127,7 +120,15 @@ impl From<access_ports::AccessPortError> for RomTableScanError {
     }
 }
 
+/// Encapsulates information about a CoreSight component.
+#[derive(Debug, PartialEq)]
+pub struct RomTable {
+    id: ComponentId,
+    entries: Vec<RomTableEntry>,
+}
+
 impl RomTable {
+    /// Tries to parse a CoreSight component table.
     pub fn try_parse<P>(link: &RefCell<P>, baseaddr: u64) -> Result<RomTable, RomTableError>
     where
         P:
@@ -136,8 +137,6 @@ impl RomTable {
           + APAccess<MemoryAP, BASE>
           + APAccess<MemoryAP, BASE2>
     {
-        
-
         info!("\tReading component data at: {:08x}", baseaddr);
 
         let component_id = ComponentInformationReader::new(baseaddr, link).read_all()?;
@@ -148,8 +147,8 @@ impl RomTable {
         // Determine the peripheral id to find out what peripheral we are dealing with.
         info!("\tComponent peripheral id: {:x?}", component_id.peripheral_id);
 
-        if component_id.peripheral_id == PeripheralID::SystemControlSpace
-            && component_id.class == ComponentClass::SystemControlSpace {
+        if component_id.peripheral_id == PeripheralID::SYSTEM_CONTROL_SPACE
+            && component_id.class == ComponentClass::SYSTEM_CONTROL_SPACE {
             // Found the scs (System Control Space) register of a cortex m0.
             info!("Found SCS CoreSight at address 0x{:08x}", baseaddr);
             let mut borrowed_link = link.borrow_mut();
@@ -188,18 +187,34 @@ impl RomTable {
     }
 }
 
+/// A ROM table entry with raw information parsed.
+/// 
+/// Described in section D3.4.4 of the ADIv5.2 specification.
+/// 
+/// This should only be used for parsing the raw memory structures of the entry.
+/// 
+/// For advanced usages, see [RomTableEntry](struct.RomTableEntry.html).
 #[derive(Debug, PartialEq)]
 pub struct RomTableEntryRaw {
+    /// The offset from the BASEADDR at which the CoreSight component
+    /// behind this ROM table entry is located.
     address_offset: i32,
+    /// The power domain ID of the CoreSight component behind the ROM table entry.
     power_domain_id: u8,
+    /// The power domain is valid if this is true.
     power_domain_valid: bool,
+    /// Reads one if the ROM table has 32bit format.
+    /// 
+    /// It is unsure if it can have a RAZ value.
     format: bool,
+    /// Indicates whether the ROM table behind the address offset is present.
     entry_present: bool,
     // Base address of the rom table
     base_addr: u32,         
 }
 
 impl RomTableEntryRaw {
+    /// Create a new RomTableEntryRaw from a ROM table entry.
     fn new(base_addr: u32, raw: u32) -> Self {
         debug!("Parsing raw rom table entry: 0x{:05x}", raw);
 
@@ -219,6 +234,7 @@ impl RomTableEntryRaw {
         }
     }
 
+    /// Returns the address of the CoreSight component behind a ROM table entry.
     pub fn component_addr(&self) -> u32 {
         ((self.base_addr as i64) + ((self.address_offset << 12) as i64)) as u32
     }
@@ -242,12 +258,14 @@ pub struct ComponentId {
     peripheral_id: PeripheralID,
 }
 
+/// A reader to extract infromation from a CoreSight component table.
 pub struct ComponentInformationReader<'p, P: crate::MI> {
     base_address: u64,
     probe: &'p RefCell<P>,
 }
 
 impl<'p, P: crate::MI> ComponentInformationReader<'p, P> {
+    /// Creates a new `ComponentInformationReader`.
     pub fn new(base_address: u64, probe: &'p RefCell<P>) -> Self {
         ComponentInformationReader {
             base_address,
@@ -255,6 +273,7 @@ impl<'p, P: crate::MI> ComponentInformationReader<'p, P> {
         }
     }
 
+    /// Reads the component class from a component info table.
     pub fn component_class(&mut self) -> Result<ComponentClass, RomTableError> {
         let mut data = [0u32;4];
         let mut probe = self.probe.borrow_mut();
@@ -275,6 +294,7 @@ impl<'p, P: crate::MI> ComponentInformationReader<'p, P> {
         }
     }
 
+    /// Reads the peripheral ID from a component info table.
     pub fn peripheral_id(&mut self) -> Result<PeripheralID, RomTableError> {
         let mut probe = self.probe.borrow_mut();
 
@@ -292,6 +312,7 @@ impl<'p, P: crate::MI> ComponentInformationReader<'p, P> {
         Ok(PeripheralID::from_raw(&data))
     }
 
+    /// Reads all component properties from a component info table
     pub fn read_all(&mut self) -> Result<ComponentId, RomTableError> {
         Ok(ComponentId {
             base_address: self.base_address,
@@ -314,7 +335,7 @@ pub enum ComponentClass {
 }
 
 impl ComponentClass {
-    const SystemControlSpace: ComponentClass = ComponentClass::GenericIPComponent;
+    const SYSTEM_CONTROL_SPACE: ComponentClass = ComponentClass::GenericIPComponent;
 }
 
 /// This enum describes a component.
@@ -323,42 +344,58 @@ impl ComponentClass {
 enum Component {
     GenericVerificationComponent,
     Class1RomTable,
-    Class0RomTable,
+    Class9RomTable,
     PeripheralTestBlock,
     GenericIPComponent,
     CoreLinkOrPrimeCellOrSystemComponent,
 }
 
-
+/// Indicates component modifications by the implementor of a CoreSight component.
 #[derive(Debug, PartialEq)]
 pub enum ComponentModification {
+    /// Indicates that no specific modification was made.
     No,
+    /// Indicates that a modification was made and which one with the contained number.
     Yes(u8),
 }
 
+/// Peripheral ID information for a CoreSight component.
+/// 
+/// Described in section D1.2.2 of the ADIv5.2 spec.
 #[allow(non_snake_case)]
 #[derive(Debug, PartialEq)]
-/// Peripheral ID information for a CoreSight component
 pub struct PeripheralID {
+    /// Indicates minor errata fixes by the component `designer`.
     pub REVAND: u8,
+    /// Indicates component modifications by the `implementor`.
     pub CMOD: ComponentModification,
+    /// Indicates major component revisions by the component `designer`.
     pub REVISION: u8,
-    pub JEDEC: bool,
-    pub JEP106: jep106::JEP106Code,
+    /// Indicates the component `designer`.
+    /// 
+    /// `None` if it is a legacy component
+    pub JEP106: Option<jep106::JEP106Code>,
+    /// Indicates the specific component with an ID unique to this component.
     pub PART: u16,
     /// The SIZE is indicated as a multiple of 4k blocks the peripheral occupies.
     pub SIZE: u8
 }
 
 impl PeripheralID {
-    const SystemControlSpace: PeripheralID = PeripheralID {
-        REVAND: 0, CMOD: ComponentModification::No, REVISION: 0, JEDEC: true, JEP106: jep106::JEP106Code { cc: 0x4, id: 0x3B}, PART: 8, SIZE: 1
+    const SYSTEM_CONTROL_SPACE: PeripheralID = PeripheralID {
+        REVAND: 0,
+        CMOD: ComponentModification::No,
+        REVISION: 0,
+        JEP106: Some(jep106::JEP106Code { cc: 0x4, id: 0x3B}),
+        PART: 8,
+        SIZE: 1,
     };
-}
 
-impl PeripheralID {
+    /// Extract the peripheral ID of a CoreSight component table.
     fn from_raw(data: &[u32;8]) -> Self {
         let jep106id = (((data[2] & 0x07) << 4) | ((data[1] >> 4) & 0x0F)) as u8;
+        let jep106 = jep106::JEP106Code::new((data[4] & 0x0F) as u8, jep106id);
+        let legacy = (data[2] & 0x8) > 1;
 
         PeripheralID {
             REVAND: ((data[3] >> 4) & 0x0F) as u8,
@@ -367,8 +404,7 @@ impl PeripheralID {
                 v => ComponentModification::Yes(v),
             },
             REVISION: ((data[2] >> 4) & 0x0F) as u8,
-            JEDEC: (data[2] & 0x8) > 1,
-            JEP106: jep106::JEP106Code::new((data[4] & 0x0F) as u8, ((1 - jep106id.count_ones() as u8 % 2) << 7) | jep106id),
+            JEP106: if legacy { Some(jep106) } else { None },
             PART: ((data[1] & 0x0F) | (data[0] & 0xFF)) as u16,
             SIZE: 2u32.pow((data[4] >> 4) & 0x0F) as u8
         }
