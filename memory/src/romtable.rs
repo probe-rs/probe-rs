@@ -18,6 +18,20 @@ use coresight::{
 };
 
 
+#[derive(Debug, PartialEq)]
+pub enum RomTableError {
+    Base,
+    NotARomtable,
+    AccessPortError(access_ports::AccessPortError),
+    ComponentIdentificationError,
+}
+
+impl From<access_ports::AccessPortError> for RomTableError {
+    fn from(e: access_ports::AccessPortError) -> Self {
+        RomTableError::AccessPortError(e)
+    }
+}
+
 #[derive(Debug)]
 pub struct RomTableReader<'p, P: crate::MI> {
     base_address: u64,
@@ -33,7 +47,7 @@ impl<'p, P: crate::MI> RomTableReader<'p, P> {
     }
 
     // TODO: Use an iterator here
-    pub fn entries(&mut self) -> Result<Vec<RomTableEntry>, RomTableError> {
+    pub fn entries(&mut self) -> Result<Vec<RomTableEntryRaw>, RomTableError> {
         let mut entries = Vec::new();
         for component_offset in (0..0xfcc).step_by(4) {
             let component_address = self.base_address + component_offset;
@@ -48,7 +62,7 @@ impl<'p, P: crate::MI> RomTableReader<'p, P> {
                 break;
             }
 
-            let entry_data = RomTableEntry::new(self.base_address as u32, entry_data[0]);
+            let entry_data = RomTableEntryRaw::new(self.base_address as u32, entry_data[0]);
 
 
             info!("ROM Table Entry: {:x?}", entry_data);
@@ -60,22 +74,26 @@ impl<'p, P: crate::MI> RomTableReader<'p, P> {
     }
 }
 
-#[derive(Debug)]
-pub struct RomTable {
-
-}
-
 #[derive(Debug, PartialEq)]
-pub enum RomTableError {
-    Base,
-    NotARomtable,
-    AccessPortError(access_ports::AccessPortError),
-    ComponentIdentificationError,
+pub struct RomTable {
+    entries: Vec<RomTableEntry>,
 }
 
-impl From<access_ports::AccessPortError> for RomTableError {
+enum RomTableScanError {
+    EndOfRomtable,
+    SkipEntry,
+    ReadFailed,
+}
+
+impl From<RomTableError> for RomTableScanError {
+    fn from(e: RomTableError) -> Self {
+        RomTableScanError::ReadFailed
+    }
+}
+
+impl From<access_ports::AccessPortError> for RomTableScanError {
     fn from(e: access_ports::AccessPortError) -> Self {
-        RomTableError::AccessPortError(e)
+        RomTableScanError::ReadFailed
     }
 }
 
@@ -100,70 +118,79 @@ impl RomTable {
             return Err(RomTableError::NotARomtable);
         }
 
+        let entries = (0..0xfcc)
+            .step_by(4)
+            .map(|component_offset| {
+                info!("Reading rom table entry at {:08x}", baseaddr + component_offset);
 
-        for component_offset in (0..0xfcc).step_by(4) {
-            info!("Reading rom table entry at {:08x}", baseaddr + component_offset);
+                let mut entry_data = [0u32;1];
+                link.read_block((baseaddr + component_offset) as u32, &mut entry_data);
 
-            let mut entry_data = [0u32;1];
-            link.read_block((baseaddr + component_offset) as u32, &mut entry_data)?;
+                // end of entries is marked by an all zero entry
+                if entry_data[0] == 0 {
+                    info!("Entry consists of all zeroes, stopping.");
+                    Err(RomTableScanError::EndOfRomtable)
+                } else {
+                    let entry_data = RomTableEntryRaw::new(baseaddr as u32, entry_data[0]);
+                    info!("ROM Table Entry: {:x?}", entry_data);
 
-            // end of entries is marked by an all zero entry
-            if entry_data[0] == 0 {
-                info!("Entry consists of all zeroes, stopping.");
-                break;
-            }
+                    let entry_base_addr = entry_data.component_addr();
+                    info!("\tEntry address: {:08x}", entry_base_addr);
 
-            let entry_data = RomTableEntry::new(baseaddr as u32, entry_data[0]);
+                    let component_peripheral_id = get_peripheral_id(link, entry_base_addr as u64)?;
 
-            info!("ROM Table Entry: {:x?}", entry_data);
-
-            let entry_base_addr = entry_data.component_addr();
-            info!("\tEntry address: {:08x}", entry_base_addr);
-
-            let component_peripheral_id = get_peripheral_id(link, entry_base_addr as u64)?;
-
-            info!("\tComponent peripheral id: {:x?}", component_peripheral_id);
+                    info!("\tComponent peripheral id: {:x?}", component_peripheral_id);
 
 
-            let component_class = get_component_class(link, entry_base_addr as u64)?;
+                    let component_class = get_component_class(link, entry_base_addr as u64)?;
 
-            info!("\tComponent class: {:x?}", component_class);
+                    info!("\tComponent class: {:x?}", component_class);
 
-            let scs_peripheral_id = PeripheralID::from_raw(&[
-                0x8,
-                0xb0,
-                0xb,
-                0x0,
-                0x4,
-                0x0,
-                0x0,
-                0x0,
-            ]);
+                    if component_peripheral_id == PeripheralID::SystemControlSpace
+                    && component_class == ComponentClass::SystemControlSpace {
+                        // found the scs (System Control Space) register of a cortex m0
+                        println!("Found SCS CoreSight at address 0x{:08x}", entry_base_addr);
+                        
+                        // this means we can check the cpuid register (located at 0xe000_ed00)
+                        let cpu_id: u32 = link.read(0xe000_ed00)?;
 
-            if component_peripheral_id == PeripheralID::SystemControlSpace
-            && component_class == ComponentClass::SystemControlSpace {
-                // found the scs (System Control Space) register of a cortex m0
-                println!("Found SCS CoreSight at address 0x{:08x}", entry_base_addr);
-                
-                // this means we can check the cpuid register (located at 0xe000_ed00)
-                let cpu_id: u32 = link.read(0xe000_ed00)?;
+                        println!("CPUID: 0x{:08X}", cpu_id);
+                    }
 
-                println!("CPUID: 0x{:08X}", cpu_id);
-            }
+                    if component_class == ComponentClass::RomTable {
+                        info!("Recursively parsing ROM table at address 0x{:08x}", entry_base_addr);
+                        let _table = RomTable::try_parse(link, entry_base_addr as u64);
+                        info!("Finished parsing entries.");
+                    }
 
-            if component_class == ComponentClass::RomTable {
-                info!("Recursively parsing ROM table at address 0x{:08x}", entry_base_addr);
-                let _table = RomTable::try_parse(link, entry_base_addr as u64);
-                info!("Finished parsing entries.");
-            }
-        }
+                    Ok(RomTableEntry {
+                        format: entry_data.format,
+                        power_domain_id: entry_data.power_domain_id,
+                        power_domain_valid: entry_data.power_domain_valid,
+                        rom_table: Some(RomTable::try_parse(link, entry_base_addr as u64)
+                                            .map_err(|e| match e {
+                                                RomTableError::Base => RomTableScanError::ReadFailed,
+                                                RomTableError::NotARomtable => RomTableScanError::SkipEntry,
+                                                RomTableError::AccessPortError(_) => RomTableScanError::ReadFailed,
+                                                RomTableError::ComponentIdentificationError => RomTableScanError::ReadFailed,
+                                            })?),
+                    })
+                }
+            })
+            .take_while(|entry| match entry {
+                Err(RomTableScanError::EndOfRomtable) => false,
+                Err(RomTableScanError::ReadFailed) => false,
+                _ => true,
+            })
+            .filter_map(|v| v.ok())
+            .collect::<Vec<_>>();
 
-        Ok(RomTable {})
+        Ok(RomTable { entries })
     }
 }
 
 #[derive(Debug, PartialEq)]
-pub struct RomTableEntry {
+pub struct RomTableEntryRaw {
     address_offset: i32,
     power_domain_id: u8,
     power_domain_valid: bool,
@@ -173,7 +200,7 @@ pub struct RomTableEntry {
     base_addr: u32,         
 }
 
-impl  RomTableEntry {
+impl  RomTableEntryRaw {
     fn new(base_addr: u32, raw: u32) -> Self {
         debug!("Parsing raw rom table entry: 0x{:05x}", raw);
 
@@ -183,7 +210,7 @@ impl  RomTableEntry {
         let format = (raw & 2) == 2;
         let entry_present = (raw & 1) == 1;
 
-        RomTableEntry {
+        RomTableEntryRaw {
             address_offset,
             power_domain_id,
             power_domain_valid,
@@ -196,6 +223,14 @@ impl  RomTableEntry {
     pub fn component_addr(&self) -> u32 {
         ((self.base_addr as i64) + ((self.address_offset << 12) as i64)) as u32
     }
+}
+
+#[derive(Debug, PartialEq)]
+pub struct RomTableEntry {
+    power_domain_id: u8,
+    power_domain_valid: bool,
+    format: bool,
+    rom_table: Option<RomTable>,
 }
 
 /// This enum describes a component.
@@ -219,7 +254,7 @@ impl ComponentClass {
 #[derive(Debug, PartialEq)]
 enum Component {
     GenericVerificationComponent,
-    Class1RomTable(RomTableEntry),
+    Class1RomTable(RomTableEntryRaw),
     Class0RomTable,
     PeripheralTestBlock,
     GenericIPComponent,
