@@ -77,13 +77,17 @@ pub fn show_info_of_device(n: usize) -> Result<(), Error> {
                         (u64::from(base2.BASEADDR) << 32)
                     } else { 0 };
                     baseaddr |= u64::from(base_register.BASEADDR << 12);
+                    
+                    let link_ref = link.into();
 
-                    memory::romtable::RomTable::try_parse(link, baseaddr as u64);
+                    memory::romtable::RomTable::try_parse(&link_ref, baseaddr as u64);
 
-                    let mut reader = memory::romtable::RomTableReader::new(link, baseaddr as u64);
+                    let mut reader = memory::romtable::RomTableReader::new(&link_ref, baseaddr as u64);
 
-                    for e in reader.entries().unwrap().iter() {
-                        println!("ROM Table Entry: Component @ 0x{:08x}", e.component_addr());
+                    for e in reader.entries() {
+                        if let Ok(e) = e {
+                            println!("ROM Table Entry: Component @ 0x{:08x}", e.component_addr());
+                        }
                     }
                 }
             }

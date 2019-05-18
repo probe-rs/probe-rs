@@ -17,6 +17,8 @@ use coresight::{
     ap_access::*,
 };
 
+use std::cell::RefCell;
+
 
 #[derive(Debug, PartialEq)]
 pub enum RomTableError {
@@ -35,51 +37,79 @@ impl From<access_ports::AccessPortError> for RomTableError {
 #[derive(Debug)]
 pub struct RomTableReader<'p, P: crate::MI> {
     base_address: u64,
-    probe: &'p mut P,
+    probe: &'p RefCell<P>,
 }
 
 impl<'p, P: crate::MI> RomTableReader<'p, P> {
-    pub fn new(probe: &'p mut P, base_address: u64) -> Self {
+    pub fn new(probe: &'p RefCell<P>, base_address: u64) -> Self {
         RomTableReader {
             base_address,
             probe,
         }
     }
 
-    // TODO: Use an iterator here
-    pub fn entries(&mut self) -> Result<Vec<RomTableEntryRaw>, RomTableError> {
-        let mut entries = Vec::new();
-        for component_offset in (0..0xfcc).step_by(4) {
-            let component_address = self.base_address + component_offset;
-            info!("Reading rom table entry at {:08x}", component_address);
-
-            let mut entry_data = [0u32;1];
-            self.probe.read_block(component_address as u32, &mut entry_data)?;
-
-            // end of entries is marked by an all zero entry
-            if entry_data[0] == 0 {
-                info!("Entry consists of all zeroes, stopping.");
-                break;
-            }
-
-            let entry_data = RomTableEntryRaw::new(self.base_address as u32, entry_data[0]);
+    /// Iterate over all entries of the rom table, non-recursively
+    pub fn entries<'r>(&'r mut self) -> RomTableIterator<'p,'r,P> {
+        RomTableIterator::new(self)
+    }
+}
 
 
-            info!("ROM Table Entry: {:x?}", entry_data);
+pub struct RomTableIterator<'p, 'r, P: crate::MI> where 'r: 'p {
+    rom_table_reader: &'r mut RomTableReader<'p, P>,
+    offset: u64,
+}
 
-            entries.push(entry_data);
+impl<'r,'p, P: crate::MI> RomTableIterator<'r, 'p, P> {
+    pub fn new(reader: &'r mut RomTableReader<'p, P>) -> Self {
+        RomTableIterator {
+            rom_table_reader: reader,
+            offset: 0,
+        }
+    }
+}
+
+impl<'p,'r, P: crate::MI> Iterator for RomTableIterator<'p,'r,P> {
+    type Item = Result<RomTableEntryRaw, RomTableScanError>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let component_address = self.rom_table_reader.base_address + self.offset;
+        info!("Reading rom table entry at {:08x}", component_address);
+
+        let mut probe = self.rom_table_reader.probe.borrow_mut();
+
+        self.offset += 4;
+
+        let mut entry_data = [0u32;1];
+        if let Err(e) = probe.read_block(component_address as u32, &mut entry_data) {
+            return Some(Err(e.into()));
         }
 
-        Ok(entries)
+        // end of entries is marked by an all zero entry
+        if entry_data[0] == 0 {
+            info!("Entry consists of all zeroes, stopping.");
+            return None
+        }
+
+        let entry_data = RomTableEntryRaw::new(
+            self.rom_table_reader.base_address as u32, 
+            entry_data[0]
+        );
+
+
+        //info!("ROM Table Entry: {:x?}", entry_data);
+        Some(Ok(entry_data))
     }
 }
 
 #[derive(Debug, PartialEq)]
 pub struct RomTable {
+    id: ComponentId,
     entries: Vec<RomTableEntry>,
 }
 
-enum RomTableScanError {
+#[derive(Debug, PartialEq)]
+pub enum RomTableScanError {
     EndOfRomtable,
     SkipEntry,
     ReadFailed,
@@ -98,7 +128,7 @@ impl From<access_ports::AccessPortError> for RomTableScanError {
 }
 
 impl RomTable {
-    pub fn try_parse<P>(link: &mut P, baseaddr: u64) -> Result<RomTable, RomTableError>
+    pub fn try_parse<P>(link: &RefCell<P>, baseaddr: u64) -> Result<RomTable, RomTableError>
     where
         P:
             crate::MI
@@ -106,77 +136,55 @@ impl RomTable {
           + APAccess<MemoryAP, BASE>
           + APAccess<MemoryAP, BASE2>
     {
+        
+
         info!("\tReading component data at: {:08x}", baseaddr);
 
+        let component_id = ComponentInformationReader::new(baseaddr, link).read_all()?;
+
         // Determine the component class to find out what component we are dealing with.
-        let component_class = get_component_class(link, baseaddr)?;
-        info!("\tComponent class: {:x?}", component_class);
+        info!("\tComponent class: {:x?}", component_id.class);
 
         // Determine the peripheral id to find out what peripheral we are dealing with.
-        let peripheral_id = get_peripheral_id(link, baseaddr)?;
-        info!("\tComponent peripheral id: {:x?}", peripheral_id);
+        info!("\tComponent peripheral id: {:x?}", component_id.peripheral_id);
 
-        if peripheral_id == PeripheralID::SystemControlSpace
-        && component_class == ComponentClass::SystemControlSpace {
+        if component_id.peripheral_id == PeripheralID::SystemControlSpace
+            && component_id.class == ComponentClass::SystemControlSpace {
             // Found the scs (System Control Space) register of a cortex m0.
             info!("Found SCS CoreSight at address 0x{:08x}", baseaddr);
+            let mut borrowed_link = link.borrow_mut();
             
             // This means we can check the cpuid register (located at 0xe000_ed00).
-            let cpu_id: u32 = link.read(0xe000_ed00)?;
+            let cpu_id: u32 = borrowed_link.read(0xe000_ed00)?;
 
             info!("CPUID: 0x{:08X}", cpu_id);
         }
 
-        if ComponentClass::RomTable != component_class {
+        if ComponentClass::RomTable != component_id.class {
             return Err(RomTableError::NotARomtable);
         }
 
-        // Iterate over all the available ROM table entries.
-        let entries = (0..0xfcc)
-            .step_by(4)
-            .map(|component_offset| {
-                // Read a single 32bit word which stands for a ROM table entry.
-                info!("Reading rom table entry at {:08x}", baseaddr + component_offset);
-                let mut entry_data = [0u32;1];
-                link.read_block((baseaddr + component_offset) as u32, &mut entry_data);
+        let mut reader = RomTableReader::new(&link, baseaddr);
 
-                // The end of the ROM table is marked by an all zero entry.
-                if entry_data[0] == 0 {
-                    // We stop iterating as we have rached the end of the ROM table.
-                    info!("ROM table entry consists of all zeroes, stopping.");
-                    Err(RomTableScanError::EndOfRomtable)
-                } else {
-                    // We have found ourselves a valid ROM table entry and start working on it by parsing it.
-                    let raw_entry = RomTableEntryRaw::new(baseaddr as u32, entry_data[0]);
-                    info!("ROM Table Entry: {:x?}", raw_entry);
+        let entries = reader
+            .entries()
+            .filter_map(Result::ok)
+            .map(|raw_entry| {
+                let entry_base_addr = raw_entry.component_addr();
 
-                    let entry_base_addr = raw_entry.component_addr();
-
-                    Ok(RomTableEntry {
-                        format: raw_entry.format,
-                        power_domain_id: raw_entry.power_domain_id,
-                        power_domain_valid: raw_entry.power_domain_valid,
-                        rom_table: Some(
-                            RomTable::try_parse(link, entry_base_addr as u64)
-                                .map_err(|e| match e {
-                                    RomTableError::Base => RomTableScanError::ReadFailed,
-                                    RomTableError::NotARomtable => RomTableScanError::SkipEntry,
-                                    RomTableError::AccessPortError(_) => RomTableScanError::ReadFailed,
-                                    RomTableError::ComponentIdentificationError => RomTableScanError::ReadFailed,
-                                })?
-                            ),
-                    })
+                RomTableEntry {
+                    format: raw_entry.format,
+                    power_domain_id: raw_entry.power_domain_id,
+                    power_domain_valid: raw_entry.power_domain_valid,
+                    rom_table: RomTable::try_parse(link, entry_base_addr as u64).ok()
                 }
             })
-            .take_while(|entry| match entry {
-                Err(RomTableScanError::EndOfRomtable) => false,
-                Err(RomTableScanError::ReadFailed) => false,
-                _ => true,
-            })
-            .filter_map(|v| v.ok())
-            .collect::<Vec<_>>();
+            .collect();
 
-        Ok(RomTable { entries })
+        Ok(RomTable { 
+            id: component_id,
+            entries,
+        })
     }
 }
 
@@ -191,7 +199,7 @@ pub struct RomTableEntryRaw {
     base_addr: u32,         
 }
 
-impl  RomTableEntryRaw {
+impl RomTableEntryRaw {
     fn new(base_addr: u32, raw: u32) -> Self {
         debug!("Parsing raw rom table entry: 0x{:05x}", raw);
 
@@ -224,10 +232,79 @@ pub struct RomTableEntry {
     rom_table: Option<RomTable>,
 }
 
+/// Component Identification information 
+/// 
+/// Identification for a CoreSight component
+#[derive(Debug, PartialEq)]
+pub struct ComponentId {
+    base_address: u64,
+    class: ComponentClass,
+    peripheral_id: PeripheralID,
+}
+
+pub struct ComponentInformationReader<'p, P: crate::MI> {
+    base_address: u64,
+    probe: &'p RefCell<P>,
+}
+
+impl<'p, P: crate::MI> ComponentInformationReader<'p, P> {
+    pub fn new(base_address: u64, probe: &'p RefCell<P>) -> Self {
+        ComponentInformationReader {
+            base_address,
+            probe
+        }
+    }
+
+    pub fn component_class(&mut self) -> Result<ComponentClass, RomTableError> {
+        let mut data = [0u32;4];
+        let mut probe = self.probe.borrow_mut();
+
+        probe.read_block(self.base_address as u32 + 0xFF0, &mut data)?;
+
+        debug!("CIDR: {:x?}", data);
+
+        if data[0] & 0xFF == 0x0D
+            && data[1] & 0x0F == 0x00
+            && data[2] & 0xFF == 0x05
+            && data[3] & 0xFF == 0xB1 
+        {
+            FromPrimitive::from_u32((data[1] >> 4) & 0x0F).ok_or(RomTableError::ComponentIdentificationError)
+        } else {
+            error!("The CIDR registers did not contain the expected preambles.");
+            Err(RomTableError::ComponentIdentificationError)
+        }
+    }
+
+    pub fn peripheral_id(&mut self) -> Result<PeripheralID, RomTableError> {
+        let mut probe = self.probe.borrow_mut();
+
+        let mut data = [0u32;8];
+
+        let peripheral_id_address = self.base_address + 0xFD0;
+
+        debug!("Reading debug id from address: {:08x}", peripheral_id_address);
+
+        probe.read_block(self.base_address as u32 + 0xFD0, &mut data[4..])?;
+        probe.read_block(self.base_address as u32 + 0xFE0, &mut data[..4])?;
+
+        debug!("Raw peripheral id: {:x?}", data);
+
+        Ok(PeripheralID::from_raw(&data))
+    }
+
+    pub fn read_all(&mut self) -> Result<ComponentId, RomTableError> {
+        Ok(ComponentId {
+            base_address: self.base_address,
+            class: self.component_class()?,
+            peripheral_id: self.peripheral_id()?,
+        })
+    }
+}
+
 /// This enum describes a component.
 /// Described in table D1-2 in the ADIv5.2 spec.
 #[derive(Primitive, Debug, PartialEq)]
-enum ComponentClass {
+pub enum ComponentClass {
     GenericVerificationComponent = 0,
     RomTable = 1,
     CoreSightComponent = 9,
@@ -245,46 +322,24 @@ impl ComponentClass {
 #[derive(Debug, PartialEq)]
 enum Component {
     GenericVerificationComponent,
-    Class1RomTable(RomTableEntryRaw),
+    Class1RomTable,
     Class0RomTable,
     PeripheralTestBlock,
     GenericIPComponent,
     CoreLinkOrPrimeCellOrSystemComponent,
 }
 
-/// Try retrieve the component class.
-/// The CIDR register is described in section D1.2.1 of the ADIv5.2 spec.
-fn get_component_class<P>(link: &mut P, baseaddr: u64) -> Result<ComponentClass, RomTableError>
-where
-    P:
-        crate::MI
-{
-    let mut data = [0u32;4];
-    link.read_block(baseaddr as u32 | 0xFF0, &mut data)?;
-
-    debug!("CIDR: {:x?}", data);
-
-    if data[0] & 0xFF == 0x0D
-        && data[1] & 0x0F == 0x00
-        && data[2] & 0xFF == 0x05
-        && data[3] & 0xFF == 0xB1 
-    {
-        FromPrimitive::from_u32((data[1] >> 4) & 0x0F).ok_or(RomTableError::ComponentIdentificationError)
-    } else {
-        error!("The CIDR registers did not contain the expected preambles.");
-        Err(RomTableError::ComponentIdentificationError)
-    }
-}
 
 #[derive(Debug, PartialEq)]
-enum ComponentModification {
+pub enum ComponentModification {
     No,
     Yes(u8),
 }
 
 #[allow(non_snake_case)]
 #[derive(Debug, PartialEq)]
-struct PeripheralID {
+/// Peripheral ID information for a CoreSight component
+pub struct PeripheralID {
     pub REVAND: u8,
     pub CMOD: ComponentModification,
     pub REVISION: u8,
@@ -318,53 +373,4 @@ impl PeripheralID {
             SIZE: 2u32.pow((data[4] >> 4) & 0x0F) as u8
         }
     }
-}
-
-/// Try retrieve the peripheral id.
-/// The CIDR register is described in section D1.2.2 of the ADIv5.2 spec.
-fn get_peripheral_id<P>(link: &mut P, baseaddr: u64) -> Result<PeripheralID, RomTableError>
-where
-    P:
-        crate::MI
-{
-    let mut data = [0u32;8];
-
-    let peripheral_id_address = baseaddr + 0xFD0;
-
-    debug!("Reading debug id from address: {:08x}", peripheral_id_address);
-
-    link.read_block(baseaddr as u32 + 0xFD0, &mut data[4..])?;
-    link.read_block(baseaddr as u32 + 0xFE0, &mut data[..4])?;
-
-    debug!("Raw peripheral id: {:x?}", data);
-
-    Ok(PeripheralID::from_raw(&data))
-}
-
-/// Retrieves the BASEADDR of a CoreSight component.
-/// The layout of the BASE registers is defined in section C2.6.1 of the ADIv5.2 spec.
-pub fn get_base_addr<P>(link: &mut P, port: u8) -> Option<u64>
-    where
-        P: APAccess<MemoryAP, BASE> + APAccess<MemoryAP, BASE2>
-{
-    // First we get the BASE register which lets us extract the BASEADDR required to access the romtable.
-    let memory_port = MemoryAP::new(port);
-    let base = match link.read_register_ap(memory_port, BASE::default()) {
-        Ok(value) => value,
-        Err(e) => { error!("Error reading the BASE registers: {:?}", e); return None },
-    };
-    info!("\n{:#x?}", base);
-
-    let mut baseaddr = if let BaseaddrFormat::ADIv5 = base.Format {
-        let base2 = match link.read_register_ap(memory_port, BASE2::default()) {
-            Ok(value) => value,
-            Err(e) => { error!("Error reading the BASE registers: {:?}", e); return None }
-        };
-        info!("\n{:x?}", base2);
-        (u64::from(base2.BASEADDR) << 32)
-    } else { 0 };
-    baseaddr |= u64::from(base.BASEADDR << 12);
-
-    info!("\nBASEADDR: {:x?}", baseaddr);
-    Some(baseaddr)
 }
