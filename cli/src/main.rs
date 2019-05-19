@@ -56,17 +56,25 @@ enum CLI {
         words: u32,
     },
     /// Download memory to attached target
-    // #[structopt(name = "download")]
-    // Download {
-    //     /// The number associated with the ST-Link to use
-    //     n: usize,
-    //     /// The address of the memory to download to the target (in hexadecimal without 0x prefix)
-    //     #[structopt(parse(try_from_str = "parse_hex"))]
-    //     loc: u32,
-    //     /// The the word to write to memory
-    //     #[structopt(parse(try_from_str = "parse_hex"))]
-    //     word: u32,
-    // },
+    #[structopt(name = "download")]
+    Download {
+        /// The number associated with the ST-Link to use
+        n: usize,
+        /// The address of the memory to download to the target (in hexadecimal without 0x prefix)
+        #[structopt(parse(try_from_str = "parse_hex"))]
+        loc: u32,
+        /// The the word to write to memory
+        #[structopt(parse(try_from_str = "parse_hex"))]
+        word: u32,
+    },
+    #[structopt(name = "erase")]
+    Erase {
+        /// The number associated with the ST-Link to use
+        n: usize,
+        /// The address of the memory to dump from the target (in hexadecimal without 0x prefix)
+        #[structopt(parse(try_from_str = "parse_hex"))]
+        loc: u32
+    },
     #[structopt(name = "trace")]
     Trace {
         /// The number associated with the ST-Link to use
@@ -88,7 +96,8 @@ fn main() {
         CLI::Info { n } => crate::info::show_info_of_device(n).unwrap(),
         CLI::Reset { n, assert } => reset_target_of_device(n, assert).unwrap(),
         CLI::Dump { n, loc, words } => dump_memory(n, loc, words).unwrap(),
-        //CLI::Download { n, loc, word } => download(n, loc, word).unwrap(),
+        CLI::Download { n, loc, word } => download_program(n, loc, word).unwrap(),
+        CLI::Erase { n, loc } => erase_page(n, loc).unwrap(),
         CLI::Trace { n, loc } => trace_u32_on_target(n, loc).unwrap(),
     }
 }
@@ -114,6 +123,8 @@ fn dump_memory(n: usize, loc: u32, words: u32) -> Result<(), Error> {
         // Start timer.
         let instant = Instant::now();
 
+        let loc = 220 * 1024;
+
         link.read_block(loc, &mut data.as_mut_slice()).or_else(|e| Err(Error::AccessPort(e)))?;
         // Stop timer.
         let elapsed = instant.elapsed();
@@ -124,6 +135,49 @@ fn dump_memory(n: usize, loc: u32, words: u32) -> Result<(), Error> {
         }
         // Print stats.
         println!("Read {:?} words in {:?}", words, elapsed);
+
+        Ok(())
+    })
+}
+
+fn download_program(n: usize, loc: u32, words: u32) -> Result<(), Error> {
+    with_device(n as usize, |link| {
+
+        // Start timer.
+        let instant = Instant::now();
+
+        let NVMC = 0x4001E000;
+        let NVMC_CONFIG = NVMC + 0x504;
+        let WEN: u32 = 0x1;
+        let loc = 220 * 1024;
+
+        link.write(NVMC_CONFIG, WEN).or_else(|e| Err(Error::AccessPort(e)))?;
+        link.write(loc, 0x0u32).or_else(|e| Err(Error::AccessPort(e)))?;
+
+        // Stop timer.
+        let elapsed = instant.elapsed();
+
+        Ok(())
+    })
+}
+
+fn erase_page(n: usize, loc: u32) -> Result<(), Error> {
+    with_device(n as usize, |link| {
+
+        // Start timer.
+        let instant = Instant::now();
+
+        let NVMC = 0x4001E000;
+        let NVMC_CONFIG = NVMC + 0x504;
+        let NVMC_ERASEPAGE = NVMC + 0x508;
+        let EEN: u32 = 0x2;
+        let loc: u32 = 220 * 1024;
+
+        link.write(NVMC_CONFIG, EEN).or_else(|e| Err(Error::AccessPort(e)))?;
+        link.write(NVMC_ERASEPAGE, loc).or_else(|e| Err(Error::AccessPort(e)))?;
+        
+        // Stop timer.
+        let elapsed = instant.elapsed();
 
         Ok(())
     })
@@ -183,7 +237,6 @@ fn trace_u32_on_target(n: usize, loc: u32) -> Result<(), Error> {
         }
     })
 }
-
 
 fn get_connected_devices() -> Vec<DebugProbeInfo>{
     let mut links = daplink::tools::list_daplink_devices();
