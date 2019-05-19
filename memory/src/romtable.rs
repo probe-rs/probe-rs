@@ -25,7 +25,7 @@ pub enum RomTableError {
     Base,
     NotARomtable,
     AccessPortError(access_ports::AccessPortError),
-    ComponentIdentificationError,
+    CSComponentIdentificationError,
 }
 
 impl From<access_ports::AccessPortError> for RomTableError {
@@ -40,6 +40,7 @@ pub struct RomTableReader<'p, P: crate::MI> {
     probe: &'p RefCell<P>,
 }
 
+/// Iterates over a ROM table non recursively.
 impl<'p, P: crate::MI> RomTableReader<'p, P> {
     pub fn new(probe: &'p RefCell<P>, base_address: u64) -> Self {
         RomTableReader {
@@ -53,7 +54,6 @@ impl<'p, P: crate::MI> RomTableReader<'p, P> {
         RomTableIterator::new(self)
     }
 }
-
 
 pub struct RomTableIterator<'p, 'r, P: crate::MI> where 'r: 'p {
     rom_table_reader: &'r mut RomTableReader<'p, P>,
@@ -123,13 +123,15 @@ impl From<access_ports::AccessPortError> for RomTableScanError {
 /// Encapsulates information about a CoreSight component.
 #[derive(Debug, PartialEq)]
 pub struct RomTable {
-    id: ComponentId,
     entries: Vec<RomTableEntry>,
 }
 
 impl RomTable {
     /// Tries to parse a CoreSight component table.
-    pub fn try_parse<P>(link: &RefCell<P>, baseaddr: u64) -> Result<RomTable, RomTableError>
+    /// 
+    /// This does not check whether the data actually signalizes
+    /// to contain a ROM table but assumes this was checked beforehand.
+    pub fn try_parse<P>(link: &RefCell<P>, base_address: u64) -> Result<RomTable, RomTableError>
     where
         P:
             crate::MI
@@ -137,33 +139,7 @@ impl RomTable {
           + APAccess<MemoryAP, BASE>
           + APAccess<MemoryAP, BASE2>
     {
-        info!("\tReading component data at: {:08x}", baseaddr);
-
-        let component_id = ComponentInformationReader::new(baseaddr, link).read_all()?;
-
-        // Determine the component class to find out what component we are dealing with.
-        info!("\tComponent class: {:x?}", component_id.class);
-
-        // Determine the peripheral id to find out what peripheral we are dealing with.
-        info!("\tComponent peripheral id: {:x?}", component_id.peripheral_id);
-
-        if component_id.peripheral_id == PeripheralID::SYSTEM_CONTROL_SPACE
-            && component_id.class == ComponentClass::SYSTEM_CONTROL_SPACE {
-            // Found the scs (System Control Space) register of a cortex m0.
-            info!("Found SCS CoreSight at address 0x{:08x}", baseaddr);
-            let mut borrowed_link = link.borrow_mut();
-            
-            // This means we can check the cpuid register (located at 0xe000_ed00).
-            let cpu_id: u32 = borrowed_link.read(0xe000_ed00)?;
-
-            info!("CPUID: 0x{:08X}", cpu_id);
-        }
-
-        if ComponentClass::RomTable != component_id.class {
-            return Err(RomTableError::NotARomtable);
-        }
-
-        let mut reader = RomTableReader::new(&link, baseaddr);
+        let mut reader = RomTableReader::new(&link, base_address);
 
         let entries = reader
             .entries()
@@ -171,17 +147,16 @@ impl RomTable {
             .map(|raw_entry| {
                 let entry_base_addr = raw_entry.component_addr();
 
-                RomTableEntry {
+                Ok(RomTableEntry {
                     format: raw_entry.format,
                     power_domain_id: raw_entry.power_domain_id,
                     power_domain_valid: raw_entry.power_domain_valid,
-                    rom_table: RomTable::try_parse(link, entry_base_addr as u64).ok()
-                }
+                    component_data: CSComponent::try_parse(link, entry_base_addr as u64)?
+                })
             })
-            .collect();
+            .collect::<Result<Vec<_>, RomTableError>>()?;
 
-        Ok(RomTable { 
-            id: component_id,
+        Ok(RomTable {
             entries,
         })
     }
@@ -245,16 +220,16 @@ pub struct RomTableEntry {
     power_domain_id: u8,
     power_domain_valid: bool,
     format: bool,
-    rom_table: Option<RomTable>,
+    component_data: CSComponent,
 }
 
 /// Component Identification information 
 /// 
 /// Identification for a CoreSight component
 #[derive(Debug, PartialEq)]
-pub struct ComponentId {
+pub struct CSComponentId {
     base_address: u64,
-    class: ComponentClass,
+    class: CSComponentClass,
     peripheral_id: PeripheralID,
 }
 
@@ -274,7 +249,7 @@ impl<'p, P: crate::MI> ComponentInformationReader<'p, P> {
     }
 
     /// Reads the component class from a component info table.
-    pub fn component_class(&mut self) -> Result<ComponentClass, RomTableError> {
+    pub fn component_class(&mut self) -> Result<CSComponentClass, RomTableError> {
         let mut data = [0u32;4];
         let mut probe = self.probe.borrow_mut();
 
@@ -287,10 +262,10 @@ impl<'p, P: crate::MI> ComponentInformationReader<'p, P> {
             && data[2] & 0xFF == 0x05
             && data[3] & 0xFF == 0xB1 
         {
-            FromPrimitive::from_u32((data[1] >> 4) & 0x0F).ok_or(RomTableError::ComponentIdentificationError)
+            FromPrimitive::from_u32((data[1] >> 4) & 0x0F).ok_or(RomTableError::CSComponentIdentificationError)
         } else {
             error!("The CIDR registers did not contain the expected preambles.");
-            Err(RomTableError::ComponentIdentificationError)
+            Err(RomTableError::CSComponentIdentificationError)
         }
     }
 
@@ -313,8 +288,8 @@ impl<'p, P: crate::MI> ComponentInformationReader<'p, P> {
     }
 
     /// Reads all component properties from a component info table
-    pub fn read_all(&mut self) -> Result<ComponentId, RomTableError> {
-        Ok(ComponentId {
+    pub fn read_all(&mut self) -> Result<CSComponentId, RomTableError> {
+        Ok(CSComponentId {
             base_address: self.base_address,
             class: self.component_class()?,
             peripheral_id: self.peripheral_id()?,
@@ -325,7 +300,7 @@ impl<'p, P: crate::MI> ComponentInformationReader<'p, P> {
 /// This enum describes a component.
 /// Described in table D1-2 in the ADIv5.2 spec.
 #[derive(Primitive, Debug, PartialEq)]
-pub enum ComponentClass {
+pub enum CSComponentClass {
     GenericVerificationComponent = 0,
     RomTable = 1,
     CoreSightComponent = 9,
@@ -334,20 +309,76 @@ pub enum ComponentClass {
     CoreLinkOrPrimeCellOrSystemComponent = 0xF,
 }
 
-impl ComponentClass {
-    const SYSTEM_CONTROL_SPACE: ComponentClass = ComponentClass::GenericIPComponent;
+impl CSComponentClass {
+    const SYSTEM_CONTROL_SPACE: CSComponentClass = CSComponentClass::GenericIPComponent;
 }
 
 /// This enum describes a component.
 /// Described in table D1-2 in the ADIv5.2 spec.
 #[derive(Debug, PartialEq)]
-enum Component {
-    GenericVerificationComponent,
-    Class1RomTable,
-    Class9RomTable,
-    PeripheralTestBlock,
-    GenericIPComponent,
-    CoreLinkOrPrimeCellOrSystemComponent,
+pub enum CSComponent {
+    GenericVerificationComponent(CSComponentId),
+    Class1RomTable(CSComponentId, RomTable),
+    Class9RomTable(CSComponentId),
+    PeripheralTestBlock(CSComponentId),
+    GenericIPComponent(CSComponentId),
+    CoreLinkOrPrimeCellOrSystemComponent(CSComponentId),
+    None,
+}
+
+impl CSComponent {
+    /// Tries to parse a CoreSight component table.
+    pub fn try_parse<P>(link: &RefCell<P>, baseaddr: u64) -> Result<CSComponent, RomTableError>
+    where
+        P:
+            crate::MI
+          + APAccess<GenericAP, IDR>
+          + APAccess<MemoryAP, BASE>
+          + APAccess<MemoryAP, BASE2>
+    {
+        info!("\tReading component data at: {:08x}", baseaddr);
+
+        let component_id = ComponentInformationReader::new(baseaddr, link).read_all()?;
+
+        // Determine the component class to find out what component we are dealing with.
+        info!("\tComponent class: {:x?}", component_id.class);
+
+        // Determine the peripheral id to find out what peripheral we are dealing with.
+        info!("\tComponent peripheral id: {:x?}", component_id.peripheral_id);
+
+        if component_id.peripheral_id == PeripheralID::SYSTEM_CONTROL_SPACE
+            && component_id.class == CSComponentClass::SYSTEM_CONTROL_SPACE {
+            // Found the scs (System Control Space) register of a cortex m0.
+            info!("Found SCS CoreSight at address 0x{:08x}", baseaddr);
+            let mut borrowed_link = link.borrow_mut();
+            
+            // This means we can check the cpuid register (located at 0xe000_ed00).
+            let cpu_id: u32 = borrowed_link.read(0xe000_ed00)?;
+
+            info!("CPUID: 0x{:08X}", cpu_id);
+        }
+
+        match component_id.class {
+            CSComponentClass::GenericVerificationComponent =>
+                Ok(CSComponent::GenericVerificationComponent(component_id)),
+            CSComponentClass::RomTable => {
+                let rom_table = RomTable::try_parse(link, component_id.base_address)?;
+
+                Ok(CSComponent::Class1RomTable(
+                    component_id,
+                    rom_table
+                ))
+            },
+            CSComponentClass::CoreSightComponent =>
+                Ok(CSComponent::Class9RomTable(component_id)),
+            CSComponentClass::PeripheralTestBlock =>
+                Ok(CSComponent::PeripheralTestBlock(component_id)),
+            CSComponentClass::GenericIPComponent =>
+                Ok(CSComponent::GenericIPComponent(component_id)),
+            CSComponentClass::CoreLinkOrPrimeCellOrSystemComponent =>
+                Ok(CSComponent::CoreLinkOrPrimeCellOrSystemComponent(component_id)),
+        }
+    }
 }
 
 /// Indicates component modifications by the implementor of a CoreSight component.

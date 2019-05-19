@@ -1,3 +1,4 @@
+use log::info;
 use crate::common::{
     Error,
     with_device,
@@ -80,15 +81,16 @@ pub fn show_info_of_device(n: usize) -> Result<(), Error> {
                     
                     let link_ref = link.into();
 
-                    memory::romtable::RomTable::try_parse(&link_ref, baseaddr as u64);
+                    let rom_table = memory::romtable::CSComponent::try_parse(&link_ref, baseaddr as u64);
+                    info!("{:#08x?}", rom_table);
 
-                    let mut reader = memory::romtable::RomTableReader::new(&link_ref, baseaddr as u64);
+                    // let mut reader = memory::romtable::RomTableReader::new(&link_ref, baseaddr as u64);
 
-                    for e in reader.entries() {
-                        if let Ok(e) = e {
-                            println!("ROM Table Entry: Component @ 0x{:08x}", e.component_addr());
-                        }
-                    }
+                    // for e in reader.entries() {
+                    //     if let Ok(e) = e {
+                    //         println!("ROM Table Entry: Component @ 0x{:08x}", e.component_addr());
+                    //     }
+                    // }
                 }
             }
         }
