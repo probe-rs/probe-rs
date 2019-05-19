@@ -297,6 +297,35 @@ impl<'p, P: crate::MI> ComponentInformationReader<'p, P> {
     }
 }
 
+pub struct CSComponentIter<'a> {
+    component: Option<&'a CSComponent>,
+    // Signalized whether we are working on the inner iterator already or still need to return self.
+    inner: Option<usize>,
+}
+
+impl<'a> Iterator for CSComponentIter<'a> {
+    type Item = &'a CSComponent;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some(i) = self.inner {
+            let ret = match self.component.expect("This is a bug. Please report it.") {
+                CSComponent::Class1RomTable(_, v) => v.entries.get(i).map(|v| &v.component_data),
+                _ => None,
+            };
+            if ret.is_some() {
+                self.inner = Some(i + 1);
+            } else {
+                self.inner = None;
+            }
+            ret
+        } else {
+            let ret = self.component;
+            self.component = None;
+            ret
+        }
+    }
+}
+
 /// This enum describes a component.
 /// Described in table D1-2 in the ADIv5.2 spec.
 #[derive(Primitive, Debug, PartialEq)]
@@ -377,6 +406,14 @@ impl CSComponent {
                 Ok(CSComponent::GenericIPComponent(component_id)),
             CSComponentClass::CoreLinkOrPrimeCellOrSystemComponent =>
                 Ok(CSComponent::CoreLinkOrPrimeCellOrSystemComponent(component_id)),
+        }
+    }
+
+    pub fn iter(&self) -> CSComponentIter {
+
+        CSComponentIter {
+            component: Some(self),
+            inner: Some(0)
         }
     }
 }

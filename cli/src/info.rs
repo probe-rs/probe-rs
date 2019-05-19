@@ -81,8 +81,8 @@ pub fn show_info_of_device(n: usize) -> Result<(), Error> {
                     
                     let link_ref = link.into();
 
-                    let rom_table = memory::romtable::CSComponent::try_parse(&link_ref, baseaddr as u64);
-                    info!("{:#08x?}", rom_table);
+                    let component_table = memory::romtable::CSComponent::try_parse(&link_ref, baseaddr as u64);
+                    component_table.iter().for_each(|entry| info!("{:#08x?}", entry));
 
                     // let mut reader = memory::romtable::RomTableReader::new(&link_ref, baseaddr as u64);
 
