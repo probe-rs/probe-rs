@@ -7,3 +7,5 @@ edition = "2018"
 [dependencies]
 num-traits = "*"
 enum-primitive-derive = "*"
+bitfield = "*"
+jep106 = "*"

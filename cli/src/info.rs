@@ -28,13 +28,20 @@ use probe::debug_probe::{
 
 pub fn show_info_of_device(n: usize) -> Result<(), Error> {
     with_device(n, |link| {
+
+        /*
+            The following code only works with debug port v2,
+            which might not necessarily be present.
+
+            Once the typed interface for the debug port is done, it 
+            can be enabled again.
+
         println!("Device information:");
 
-        link
-            .write_register(Port::DebugPort, 0x2, 0x2)?;
 
         let target_info = link
             .read_register(Port::DebugPort, 0x4)?;
+
         let target_info = parse_target_id(target_info);
         println!("\nTarget Identification Register (TARGETID):");
         println!(
@@ -58,10 +65,11 @@ pub fn show_info_of_device(n: usize) -> Result<(), Error> {
             target_info.1,
             target_info.2
         );
+        */
 
-        println!("\nAvailable Ports:");
+        println!("\nAvailable Access Ports:");
 
-        for port in 0..1 { //255 {
+        for port in 0..255 { 
             let access_port = GenericAP::new(port);
             if access_port_is_valid(link, access_port) {
 
@@ -82,7 +90,9 @@ pub fn show_info_of_device(n: usize) -> Result<(), Error> {
                     let link_ref = link.into();
 
                     let component_table = memory::romtable::CSComponent::try_parse(&link_ref, baseaddr as u64);
-                    component_table.iter().for_each(|entry| info!("{:#08x?}", entry));
+
+
+                    component_table.iter().for_each(|entry| println!("{:#08x?}", entry));
 
                     // let mut reader = memory::romtable::RomTableReader::new(&link_ref, baseaddr as u64);
 

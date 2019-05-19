@@ -19,6 +19,8 @@ use coresight::{
 
 use std::cell::RefCell;
 
+mod standard_entries;
+
 
 #[derive(Debug, PartialEq)]
 pub enum RomTableError {
@@ -338,10 +340,6 @@ pub enum CSComponentClass {
     CoreLinkOrPrimeCellOrSystemComponent = 0xF,
 }
 
-impl CSComponentClass {
-    const SYSTEM_CONTROL_SPACE: CSComponentClass = CSComponentClass::GenericIPComponent;
-}
-
 /// This enum describes a component.
 /// Described in table D1-2 in the ADIv5.2 spec.
 #[derive(Debug, PartialEq)]
@@ -375,38 +373,28 @@ impl CSComponent {
         // Determine the peripheral id to find out what peripheral we are dealing with.
         info!("\tComponent peripheral id: {:x?}", component_id.peripheral_id);
 
-        if component_id.peripheral_id == PeripheralID::SYSTEM_CONTROL_SPACE
-            && component_id.class == CSComponentClass::SYSTEM_CONTROL_SPACE {
-            // Found the scs (System Control Space) register of a cortex m0.
-            info!("Found SCS CoreSight at address 0x{:08x}", baseaddr);
-            let mut borrowed_link = link.borrow_mut();
-            
-            // This means we can check the cpuid register (located at 0xe000_ed00).
-            let cpu_id: u32 = borrowed_link.read(0xe000_ed00)?;
-
-            info!("CPUID: 0x{:08X}", cpu_id);
-        }
-
-        match component_id.class {
+        let class = match component_id.class {
             CSComponentClass::GenericVerificationComponent =>
-                Ok(CSComponent::GenericVerificationComponent(component_id)),
+                CSComponent::GenericVerificationComponent(component_id),
             CSComponentClass::RomTable => {
                 let rom_table = RomTable::try_parse(link, component_id.base_address)?;
 
-                Ok(CSComponent::Class1RomTable(
+                CSComponent::Class1RomTable(
                     component_id,
                     rom_table
-                ))
+                )
             },
             CSComponentClass::CoreSightComponent =>
-                Ok(CSComponent::Class9RomTable(component_id)),
+                CSComponent::Class9RomTable(component_id),
             CSComponentClass::PeripheralTestBlock =>
-                Ok(CSComponent::PeripheralTestBlock(component_id)),
+                CSComponent::PeripheralTestBlock(component_id),
             CSComponentClass::GenericIPComponent =>
-                Ok(CSComponent::GenericIPComponent(component_id)),
+                CSComponent::GenericIPComponent(component_id),
             CSComponentClass::CoreLinkOrPrimeCellOrSystemComponent =>
-                Ok(CSComponent::CoreLinkOrPrimeCellOrSystemComponent(component_id)),
-        }
+                CSComponent::CoreLinkOrPrimeCellOrSystemComponent(component_id),
+        };
+
+        Ok(class)
     }
 
     pub fn iter(&self) -> CSComponentIter {
@@ -450,14 +438,6 @@ pub struct PeripheralID {
 }
 
 impl PeripheralID {
-    const SYSTEM_CONTROL_SPACE: PeripheralID = PeripheralID {
-        REVAND: 0,
-        CMOD: ComponentModification::No,
-        REVISION: 0,
-        JEP106: Some(jep106::JEP106Code { cc: 0x4, id: 0x3B}),
-        PART: 8,
-        SIZE: 1,
-    };
 
     /// Extract the peripheral ID of a CoreSight component table.
     fn from_raw(data: &[u32;8]) -> Self {
