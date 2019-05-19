@@ -10,4 +10,4 @@ num = "0.2"
 num-traits = "*"
 enum-primitive-derive = "*"
 coresight = { path = "../coresight" }
-jep106 = { path = "../jep106" }
+jep106 = "0.2.2"
