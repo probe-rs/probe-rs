@@ -1,8 +1,14 @@
 use coresight::access_ports::generic_ap::GenericAP;
 use coresight::access_ports::memory_ap::MemoryAP;
-use coresight::ap_access::APAccess;
 use coresight::access_ports::APRegister;
+
+use coresight::ap_access::APAccess;
 use coresight::ap_access::AccessPort;
+
+use coresight::common::Register;
+
+use log::debug;
+
 use memory::ToMemoryReadSize;
 use memory::adi_v5_memory_interface::ADIMemoryInterface;
 use coresight::access_ports::AccessPortError;
@@ -27,6 +33,7 @@ pub enum DebugProbeError {
     EndpointNotFound,
     RentalInitError,
     ProbeCouldNotBeCreated,
+    TargetPowerUpFailed,
 }
 
 #[derive(Debug, PartialEq)]
@@ -63,27 +70,48 @@ impl MasterProbe {
         self.actual_probe.target_reset()
     }
 
+    fn select_ap_and_ap_bank(&mut self, port: u8, ap_bank: u8) -> Result<(), DebugProbeError> {
+        let mut cache_changed = false;
+        
+        if self.current_apsel != port {
+            self.current_apsel = port;
+            cache_changed = true;
+        } 
+        
+        if self.current_apbanksel != ap_bank {
+            self.current_apbanksel = ap_bank;
+            cache_changed = true;
+        }
+
+        if cache_changed {
+            use coresight::debug_port::Select;
+
+            let mut select = Select(0);
+
+            debug!("Changing AP to {}, AP_BANK_SEL to {}", self.current_apsel, self.current_apbanksel);
+
+            select.set_ap_sel(self.current_apsel);
+            select.set_ap_bank_sel(self.current_apbanksel);
+
+            self.actual_probe.write_register(Port::DebugPort, u16::from(Select::ADDRESS), select.into())?;
+        }
+
+        Ok(())
+    }
+
     fn write_register_ap<AP, REGISTER>(&mut self, port: AP, register: REGISTER) -> Result<(), DebugProbeError>
     where
         AP: AccessPort,
         REGISTER: APRegister<AP>
     {
+        let register_value = register.into();
+
+        debug!("Writing register {}, value=0x{:08X}", REGISTER::NAME, register_value);
+
+        self.select_ap_and_ap_bank(port.get_port_number(), REGISTER::APBANKSEL)?;
+
         let link = &mut self.actual_probe;
-        // TODO: Make those next lines use the future typed DP interface.
-        let cache_changed = if self.current_apsel != port.get_port_number() {
-            self.current_apsel = port.get_port_number();
-            true
-        } else if self.current_apbanksel != REGISTER::APBANKSEL {
-            self.current_apbanksel = REGISTER::APBANKSEL;
-            true
-        } else {
-            false
-        };
-        if cache_changed {
-            let select = (u32::from(self.current_apsel) << 24) | (u32::from(self.current_apbanksel) << 4);
-            link.write_register(Port::DebugPort, 0x008, select)?;
-        }
-        link.write_register(Port::AccessPort(u16::from(self.current_apsel)), u16::from(REGISTER::ADDRESS), register.into())?;
+        link.write_register(Port::AccessPort(u16::from(self.current_apsel)), u16::from(REGISTER::ADDRESS), register_value)?;
         Ok(())
     }
 
@@ -92,23 +120,15 @@ impl MasterProbe {
         AP: AccessPort,
         REGISTER: APRegister<AP>
     {
+        debug!("Reading register {}", REGISTER::NAME);
+        self.select_ap_and_ap_bank(port.get_port_number(), REGISTER::APBANKSEL)?;
+
         let link = &mut self.actual_probe;
-        // TODO: Make those next lines use the future typed DP interface.
-        let cache_changed = if self.current_apsel != port.get_port_number() {
-            self.current_apsel = port.get_port_number();
-            true
-        } else if self.current_apbanksel != REGISTER::APBANKSEL {
-            self.current_apbanksel = REGISTER::APBANKSEL;
-            true
-        } else {
-            false
-        };
-        if cache_changed {
-            let select = (u32::from(self.current_apsel) << 24) | (u32::from(self.current_apbanksel) << 4);
-            link.write_register(Port::DebugPort, 0x008, select)?;
-        }
         //println!("{:?}, {:08X}", link.current_apsel, REGISTER::ADDRESS);
         let result = link.read_register(Port::AccessPort(u16::from(self.current_apsel)), u16::from(REGISTER::ADDRESS))?;
+
+        debug!("Read register    {}, value=0x{:08x}", REGISTER::NAME, result);
+
         Ok(REGISTER::from(result))
     }
 }
@@ -195,20 +215,6 @@ pub trait DebugProbe: DAPAccess {
 }
 
 
-impl std::ops::Deref for MasterProbe {
-    type Target = dyn DebugProbe;
-
-    fn deref(&self) -> &Self::Target {
-        &*self.actual_probe
-    }
-}
-
-
-impl std::ops::DerefMut for MasterProbe {
-    fn deref_mut(&mut self) -> &mut <Self as std::ops::Deref>::Target {
-        &mut *self.actual_probe
-    }
-}
 
 
 #[derive(Debug)]

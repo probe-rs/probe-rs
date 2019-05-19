@@ -72,13 +72,6 @@ where
             MasterProbe::from_specific_probe(link)
         },
     };
-
-    let ap = GenericAP::new(0);
-    use coresight::access_ports::generic_ap::{
-        IDR
-    };
-
-    let _ = dbg!(probe.read_register_ap(ap, IDR::default()));
     
     f(&mut probe)
 }

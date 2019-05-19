@@ -1,3 +1,6 @@
+use coresight::debug_port::DPRegister;
+use coresight::dp_access::DPAccess;
+use coresight::dp_access::DebugPort;
 use probe::debug_probe::{
     DebugProbe,
     DebugProbeError,
@@ -6,6 +9,8 @@ use probe::debug_probe::{
 };
 use probe::debug_probe;
 use probe::protocol::WireProtocol;
+
+use log::{error, debug, info};
 
 use crate::commands::{
     Status,
@@ -129,6 +134,27 @@ impl DAPLink {
     }
 }
 
+impl<P: DebugPort, R: DPRegister<P>> DPAccess<P,R> for DAPLink {
+    type Error = DebugProbeError;
+
+    fn read_dp_register(&mut self, _port: &P) -> Result<R, Self::Error> {
+        debug!("Reading DP register {}", R::NAME);
+        let result = self.read_register(debug_probe::Port::DebugPort, u16::from(R::ADDRESS))?;
+
+        debug!("Read    DP register {}, value=0x{:08x}", R::NAME, result);
+
+        Ok(result.into())
+    }
+
+    fn write_dp_register(&mut self, _port: &P, register: R) -> Result<(), Self::Error> {
+        let value = register.into();
+
+        debug!("Writing DP register {}, value=0x{:08x}", R::NAME, value);
+        self.write_register(debug_probe::Port::DebugPort, u16::from(R::ADDRESS), value)
+    }
+
+}
+
 impl DebugProbe for DAPLink {
     fn new_from_probe_info(info: DebugProbeInfo) -> Result<Box<Self>, DebugProbeError> where Self: Sized {
         if let Some(serial_number) = info.serial_number {
@@ -149,31 +175,31 @@ impl DebugProbe for DAPLink {
     }
 
     fn get_name(&self) -> &str {
-        "ST-Link"
+        "DAPLink"
     }
 
     /// Enters debug mode.
     fn attach(&mut self, protocol: Option<WireProtocol>) -> Result<WireProtocol, DebugProbeError> {
         use crate::commands::Error;
 
+        info!("Attaching to target system");
         self.set_swj_clock(1_000_000)?;
 
-        let result = crate::commands::send_command(
-            &self.device,
-            if let Some(protocol) = protocol {
-                match protocol {
-                    WireProtocol::Swd => ConnectRequest::UseSWD,
-                    WireProtocol::Jtag => ConnectRequest::UseJTAG,
-                }
-            } else {
-                ConnectRequest::UseDefaultPort
-            },
-        )
-        .and_then(|v| match v {
-            ConnectResponse::SuccessfulInitForSWD => Ok(WireProtocol::Swd),
-            ConnectResponse::SuccessfulInitForJTAG => Ok(WireProtocol::Jtag),
-            ConnectResponse::InitFailed => Err(Error::DAPError),
-        })?;
+        let protocol = if let Some(protocol) = protocol {
+            match protocol {
+                WireProtocol::Swd => ConnectRequest::UseSWD,
+                WireProtocol::Jtag => ConnectRequest::UseJTAG,
+            }
+        } else {
+            ConnectRequest::UseDefaultPort
+        };
+
+        let result = crate::commands::send_command(&self.device, protocol)
+            .and_then(|v| match v {
+                ConnectResponse::SuccessfulInitForSWD => Ok(WireProtocol::Swd),
+                ConnectResponse::SuccessfulInitForJTAG => Ok(WireProtocol::Jtag),
+                ConnectResponse::InitFailed => Err(Error::DAPError),
+            })?;
 
         self.set_swj_clock(1_000_000)?;
 
@@ -193,23 +219,59 @@ impl DebugProbe for DAPLink {
 
         self.send_swj_sequences(SequenceRequest::new(&[0x00]).unwrap())?;
 
-        self.read_register(debug_probe::Port::DebugPort, 0)?;
+        use coresight::common::Register;
+        use coresight::debug_port::{
+            Ctrl,
+            Select,
+            Abort,
+            DPIDR,
+            DebugPortId,
+            DPv1,
+        };
 
-        self.write_register(debug_probe::Port::DebugPort, 0x0, 0x1e)?; // clear errors 
+        // assume a dpv1 port for now
 
-        println!("Writing to Select register (address 8)");
-        self.write_register(debug_probe::Port::DebugPort, 0x8, 0x0)?; // select DBPANK 0
-        self.write_register(debug_probe::Port::DebugPort, 0x4, 0x50_00_00_00)?; // CSYSPWRUPREQ, CDBGPWRUPREQ
+        let port = DPv1{};
+
+        let dp_id: DPIDR = self.read_dp_register(&port)?;
+
+        let dp_id: DebugPortId = dp_id.into();
+
+        info!("Debug Port Version:  {:x?}", dp_id.version);
+        info!("Debug Port Designer: {}", dp_id.designer.get().unwrap_or("Unknown"));
+
+        let mut abort_reg = Abort(0);
+        abort_reg.set_orunerrclr(true);
+        abort_reg.set_wderrclr(true);
+        abort_reg.set_stkerrclr(true);
+        abort_reg.set_stkcmpclr(true);
+
+        self.write_dp_register(&port, abort_reg)?; // clear errors 
+
+
+        let mut select_reg = Select(0);
+        select_reg.set_dp_bank_sel(0);
+
+        self.write_dp_register(&port, select_reg)?; // select DBPANK 0
+
+        let mut ctrl_reg = Ctrl::default();
+
+        ctrl_reg.set_csyspwrupreq(true);
+        ctrl_reg.set_cdbgpwrupreq(true);
+
+        debug!("Requesting debug power");
+
+        self.write_dp_register(&port, ctrl_reg)?; // CSYSPWRUPREQ, CDBGPWRUPREQ
 
         // TODO: Check return value if power up was ok
-        dbg!(self.read_register(debug_probe::Port::DebugPort, 0x4))?; 
+        let ctrl_reg: Ctrl = self.read_dp_register(&port)?; 
 
-        /*
-        12 38 FF FF FF FF FF FF FF -> 12 00 // SWJ Sequence
-        12 10 9E E7 -> 12 00 // SWJ Sequence
-        12 38 FF FF FF FF FF FF FF -> 12 00 // SWJ Sequence
-        12 08 00 -> 12 00 // SWJ Sequence
-        */
+        if !(ctrl_reg.csyspwrupack() && ctrl_reg.cdbgpwrupack()) {
+            error!("Debug power request failed");
+            return Err(DebugProbeError::TargetPowerUpFailed);
+        }
+
+        info!("Succesfully attached to system and entered debug mode");
 
         Ok(result)
     }
