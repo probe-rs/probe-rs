@@ -30,7 +30,7 @@ pub struct JEP106Code {
 impl JEP106Code {
     /// Creates a new [JEP106Code](struct.JEP106Code.html) struct from
     /// a JEP106 continuation code and a JEP106 id code tuple.
-    pub fn new(cc: u8, id: u8) -> Self {
+    pub const fn new(cc: u8, id: u8) -> Self {
         Self {
             id,
             cc,
@@ -40,7 +40,7 @@ impl JEP106Code {
     /// Returns the manufacturer corresponding to a complete JEP106 code.
     /// 
     /// Returns an empty string if the JEP106 code is unknown.
-    pub fn get(&self) -> &'static str {
+    pub const fn get(&self) -> &'static str {
         get(self.cc, self.id)
     }
     
@@ -48,7 +48,7 @@ impl JEP106Code {
     /// a JEP106 continuation code and a JEP106 id code tuple.
     /// 
     /// Returns an empty string if the JEP106 code is unknown.
-    pub fn get_raw(cc: u8, id: u8) -> &'static str {
+    pub const fn get_raw(cc: u8, id: u8) -> &'static str {
         get(cc, id)
     }
 }

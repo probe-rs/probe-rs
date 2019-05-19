@@ -39,7 +39,7 @@ fn main() {
     let _ = f.write_all(b"
         /// Returns the manufacturer corresponding to a complete JEP106 code.
         /// Returns an empty string if the JEP106 code is unknown.
-        fn get(cc: u8, id: u8) -> &'static str {
+        const fn get(cc: u8, id: u8) -> &'static str {
             CODES[cc as usize][id as usize]
         }
 
