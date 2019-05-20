@@ -122,7 +122,7 @@ fn dump_memory(n: usize, loc: u32, words: u32) -> Result<(), Error> {
         // Start timer.
         let instant = Instant::now();
 
-        let loc = 220 * 1024;
+        // let loc = 220 * 1024;
 
         link.read_block(loc, &mut data.as_mut_slice()).or_else(|e| Err(Error::AccessPort(e)))?;
         // Stop timer.
