@@ -3,7 +3,7 @@
     <img src="https://travis-ci.com/Yatekii/probe-rs.svg?branch=master" alt="build:passed">
 </a>
 
-A debugging toolset and library for debugging ARM cores on a separate host
+A debugging toolset and library for debugging ARM cores on a separate host.
 
 ## Motivation
 
@@ -24,8 +24,12 @@ What's more is that we can use CoreSight to its full extent. We can trace and mo
 
 ## Functionality
 
-As of writing this, the lib can connect to an [ST-Link](https://www.st.com/en/development-tools/st-link-v2.html), attach to an STM32F429 (it should be able to connect to any target; this one was just used for testing) and read DAP registers.
-It can read all memory regions and can write to non ROM regions.
+The lib can connect to a DAPLink and read and write memory correctly.
+It can read ROM tables and extract CoreSight component information.
+Writing an entire hex file is halfaways there.
+The lib can also connect to an [ST-Link](https://www.st.com/en/development-tools/st-link-v2.html), attach to an STM32F429 (it should be able to connect to any target; this one was just used for testing) and read DAP registers. Reading ROM tables is buggy because of some STLink troubles but should possibly fixed in the long run.
+
+Focus of the development is having a full implementation (CoreSight, Flashing, Debugging) working for the DAPLink and go from there.
 
 ### CLI
 
@@ -60,7 +64,11 @@ Don't hesitate to [file an issue](https://github.com/Yatekii/probe-rs/issues/new
 
 ### How can I help?
 
-See [CONTRIBUTING.md](https://github.com/Yatekii/probe-rs/blob/master/CONTRIBUTING.md).
+Please have a look at the issues or open one if you feel that something is needed.
+
+Any contibutions are very welcome!
+
+Also have a look at [CONTRIBUTING.md](https://github.com/Yatekii/probe-rs/blob/master/CONTRIBUTING.md).
 
 ## License
 
