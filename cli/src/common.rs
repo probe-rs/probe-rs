@@ -19,7 +19,7 @@ use probe::debug_probe::{
 pub enum Error {
     DebugProbe(DebugProbeError),
     AccessPort(AccessPortError),
-    //Custom(&'static str),
+    Custom(&'static str),
     StdIO(std::io::Error),
 }
 
@@ -47,7 +47,7 @@ impl From<std::io::Error> for Error {
 /// even in an error case inside the closure!
 pub fn with_device<F>(n: usize, mut f: F) -> Result<(), Error>
 where
-    F: FnMut(&mut MasterProbe) -> Result<(), Error>
+    F: FnOnce(&mut MasterProbe) -> Result<(), Error>
 {
     let device = {
         let mut list = daplink::tools::list_daplink_devices();

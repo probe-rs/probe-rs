@@ -2,7 +2,10 @@ mod common;
 mod info;
 
 use probe::debug_probe::MasterProbe;
-use memory::MI;
+use memory::{
+    MI,
+    flash_writer,
+};
 use std::time::Instant;
 
 use probe::debug_probe::{
@@ -60,12 +63,8 @@ enum CLI {
     Download {
         /// The number associated with the ST-Link to use
         n: usize,
-        /// The address of the memory to download to the target (in hexadecimal without 0x prefix)
-        #[structopt(parse(try_from_str = "parse_hex"))]
-        loc: u32,
-        /// The the word to write to memory
-        #[structopt(parse(try_from_str = "parse_hex"))]
-        word: u32,
+        /// The path to the file to be downloaded to the flash
+        path: String,
     },
     #[structopt(name = "erase")]
     Erase {
@@ -96,7 +95,7 @@ fn main() {
         CLI::Info { n } => crate::info::show_info_of_device(n).unwrap(),
         CLI::Reset { n, assert } => reset_target_of_device(n, assert).unwrap(),
         CLI::Dump { n, loc, words } => dump_memory(n, loc, words).unwrap(),
-        CLI::Download { n, loc, word } => download_program(n, loc, word).unwrap(),
+        CLI::Download { n, path } => download_program(n, path).unwrap(),
         CLI::Erase { n, loc } => erase_page(n, loc).unwrap(),
         CLI::Trace { n, loc } => trace_u32_on_target(n, loc).unwrap(),
     }
@@ -140,24 +139,26 @@ fn dump_memory(n: usize, loc: u32, words: u32) -> Result<(), Error> {
     })
 }
 
-fn download_program(n: usize, loc: u32, words: u32) -> Result<(), Error> {
-    with_device(n as usize, |link| {
+fn download_program(n: usize, path: String) -> Result<(), Error> {
+    with_device(n as usize, |mut link| {
 
         // Start timer.
-        let instant = Instant::now();
+        // let instant = Instant::now();
 
-        let NVMC = 0x4001E000;
-        let NVMC_CONFIG = NVMC + 0x504;
-        let WEN: u32 = 0x1;
-        let loc = 220 * 1024;
+        // let NVMC = 0x4001E000;
+        // let NVMC_CONFIG = NVMC + 0x504;
+        // let WEN: u32 = 0x1;
+        // let loc = 220 * 1024;
 
-        link.write(NVMC_CONFIG, WEN).or_else(|e| Err(Error::AccessPort(e)))?;
-        link.write(loc, 0x0u32).or_else(|e| Err(Error::AccessPort(e)))?;
+        // link.write(NVMC_CONFIG, WEN).or_else(|e| Err(Error::AccessPort(e)))?;
+        // link.write(loc, 0x0u32).or_else(|e| Err(Error::AccessPort(e)))?;
 
-        // Stop timer.
-        let elapsed = instant.elapsed();
+        // // Stop timer.
+        // let elapsed = instant.elapsed();
 
-        Ok(())
+        flash_writer::download_hex(path, &mut link, 1024).map_err(|_e| Error::Custom("Failed to read IHEX."))
+
+        // Ok(())
     })
 }
 
