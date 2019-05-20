@@ -1,7 +1,9 @@
 # probe-rs
-<a href="https://travis-ci.com/Yatekii/probe-rs">
-    <img src="https://travis-ci.com/Yatekii/probe-rs.svg?branch=master" alt="build:passed">
-</a>
+<!-- [![crates.io](http://meritbadge.herokuapp.com/probe-rs)](https://crates.io/crates/probe-rs)
+
+[![documentation](https://docs.rs/probe-rs/badge.svg)](https://docs.rs/probe-rs) -->
+
+[![Build Status](https://www.travis-ci.com/Yatekii/probe-rs.svg)](https://www.travis-ci.com/Yatekii/probe-rs)
 
 A debugging toolset and library for debugging ARM cores on a separate host.
 
