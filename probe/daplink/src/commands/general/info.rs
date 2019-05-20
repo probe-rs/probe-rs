@@ -12,7 +12,7 @@ use scroll::Pread;
 #[derive(Copy, Clone)]
 pub enum Command {
     VendorID = 0x01,
-    ProductId = 0x02,
+    ProductID = 0x02,
     SerialNumber = 0x03,
     FirmwareVersion = 0x04,
     TargetDeviceVendor = 0x05,
@@ -33,6 +33,7 @@ impl Request for Command {
     }
 }
 
+#[derive(Clone, Default, Debug)]
 pub struct VendorID(String);
 
 impl Response for VendorID {
@@ -41,6 +42,7 @@ impl Response for VendorID {
     }
 }
 
+#[derive(Clone, Default, Debug)]
 pub struct ProductID(String);
 
 impl Response for ProductID {
@@ -49,6 +51,7 @@ impl Response for ProductID {
     }
 }
 
+#[derive(Clone, Default, Debug)]
 pub struct SerialNumber(String);
 
 impl Response for SerialNumber {
@@ -57,6 +60,7 @@ impl Response for SerialNumber {
     }
 }
 
+#[derive(Clone, Default, Debug)]
 pub struct FirmwareVersion(String);
 
 impl Response for FirmwareVersion {
@@ -65,6 +69,7 @@ impl Response for FirmwareVersion {
     }
 }
 
+#[derive(Debug)]
 pub struct TargetDeviceVendor(String);
 
 impl Response for TargetDeviceVendor {
@@ -73,6 +78,7 @@ impl Response for TargetDeviceVendor {
     }
 }
 
+#[derive(Debug)]
 pub struct TargetDeviceName(String);
 
 impl Response for TargetDeviceName {
@@ -81,6 +87,7 @@ impl Response for TargetDeviceName {
     }
 }
 
+#[allow(dead_code)]
 pub struct Capabilities {
     swd_implemented: bool,
     jtag_implemented: bool,
@@ -163,8 +170,16 @@ impl Response for PacketSize {
     }
 }
 
+/// Create a String out of the received buffer. 
+/// 
+/// The length of the buffer is read from the buffer, at index offset.
+/// 
 fn string_from_bytes<R, F: Fn(String) -> R>(buffer: &[u8], offset: usize, constructor: &F) -> Result<R> {
-    let buffer_end = buffer[offset + 1] as usize + 2;
-    let res = std::str::from_utf8(&buffer[offset + 2..offset + buffer_end + 1]).expect("This is a bug. Please report it.");
+    let string_len = buffer[dbg!(offset)] as usize; // including the zero terminator
+
+    let string_start = offset + 1;
+    let string_end = string_start + string_len;
+
+    let res = std::str::from_utf8(&buffer[string_start..string_end]).expect("This is a bug. Please report it.");
     Ok(constructor(res.to_owned()))
 }

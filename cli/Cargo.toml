@@ -5,10 +5,13 @@ authors = ["Noah Hüsser <yatekii@yatekii.ch>"]
 edition = "2018"
 
 [dependencies]
+pretty_env_logger = "0.3.0"
+log = "0.4.6"
 libusb = "0.3.0"
 structopt = "0.2.14"
 memory = { path = "../memory" }
 probe = { path = "../probe" }
 stlink = { path = "../probe/stlink" }
+daplink = { path = "../probe/daplink" }
 coresight = { path = "../coresight" }
 scroll = "*"

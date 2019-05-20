@@ -1,3 +1,4 @@
+/// Memory access according to ARM Debug Interface specification v5.0
 use crate::ToMemoryReadSize;
 use coresight::access_ports::{
     APRegister,
@@ -50,7 +51,7 @@ impl ADIMemoryInterface {
         AP: APAccess<MemoryAP, REGISTER>
     {
         debug_port.read_register_ap(self.access_port, register)
-                  .or_else(|_| Err(AccessPortError::ProbeError))
+                  .or_else(|_| Err(AccessPortError::register_read_error::<REGISTER>()))
     }
 
     /// Write a 32 bit register on the given AP.
@@ -60,7 +61,7 @@ impl ADIMemoryInterface {
         AP: APAccess<MemoryAP, REGISTER>
     {
         debug_port.write_register_ap(self.access_port, register)
-                  .or_else(|_| Err(AccessPortError::ProbeError))
+                  .or_else(|_| Err(AccessPortError::register_write_error::<REGISTER>()))
     }
 
     /// Read a word of the size defined by S at `addr`.

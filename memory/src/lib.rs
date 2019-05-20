@@ -1,6 +1,10 @@
+pub mod adi_v5_memory_interface;
+pub mod romtable;
+pub mod flash_writer;
+
+
 use coresight::access_ports::AccessPortError;
 
-pub mod adi_v5_memory_interface;
 
 pub trait ToMemoryReadSize: Into<u32> + Copy {
     /// The alignment mask that is required to test for properly aligned memory.
@@ -72,4 +76,34 @@ pub trait MI {
         addr: u32,
         data: &[S]
     ) -> Result<(), AccessPortError>;
+}
+
+impl<T> MI for &mut T where T: MI {
+    fn read<S: ToMemoryReadSize>(&mut self, address: u32) -> Result<S, AccessPortError> {
+        (*self).read(address)
+    }
+
+    fn read_block<S: ToMemoryReadSize>(
+        &mut self,
+        address: u32,
+        data: &mut [S]
+    ) -> Result<(), AccessPortError> {
+        (*self).read_block(address, data)
+    }
+
+    fn write<S: ToMemoryReadSize>(
+        &mut self,
+        addr: u32,
+        data: S
+    ) -> Result<(), AccessPortError> {
+        (*self).write(addr, data)
+    }
+
+    fn write_block<S: ToMemoryReadSize>(
+        &mut self,
+        addr: u32,
+        data: &[S]
+    ) -> Result<(), AccessPortError> {
+        (*self).write_block(addr, data)
+    }
 }
