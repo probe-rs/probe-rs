@@ -5,6 +5,8 @@ mod register_generation;
 pub mod generic_ap;
 pub mod memory_ap;
 
+use std::error::Error;
+use std::fmt;
 
 use crate::ap_access::AccessPort;
 use crate::common::Register;
@@ -24,6 +26,21 @@ pub enum AccessPortError {
     },
 }
 
+impl Error for AccessPortError { }
+
+impl fmt::Display for AccessPortError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use AccessPortError::*;
+
+        match self {
+            ProbeError => write!(f, "Internal Probe Error"),
+            InvalidAccessPortNumber => write!(f, "Invalid Access Port Number"),
+            MemoryNotAligned => write!(f, "Misaligned memory access"),
+            RegisterReadError { addr, name } => write!(f, "Failed to read register {}, address 0x{:08x}", name, addr),
+            RegisterWriteError { addr, name } => write!(f, "Failed to write register {}, address 0x{:08x}", name, addr),
+        }
+    }
+}
 
 impl AccessPortError {
     pub fn register_read_error<R: Register>() -> AccessPortError {
