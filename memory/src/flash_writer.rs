@@ -1,19 +1,14 @@
-use ihex::reader::{
-    Reader,
-    ReaderError,
-};
-use ihex::record::Record::{
-    self,
-    *,
-};
-use scroll::Pread;
+use ihex::reader::{Reader, ReaderError};
+use ihex::record::Record::*;
+
 use coresight::access_ports::AccessPortError;
-use std::time::Instant;
 use log::info;
-use std::thread;
-use std::time;
+use scroll::Pread;
 use std::error::Error;
 use std::fmt;
+use std::thread;
+use std::time;
+use std::time::Instant;
 
 #[derive(Debug)]
 pub enum FlashError {
@@ -30,7 +25,6 @@ impl fmt::Display for FlashError {
             AccessPortError(ref e) => e.fmt(f),
         }
     }
-
 }
 
 impl Error for FlashError {
@@ -56,8 +50,11 @@ impl From<ReaderError> for FlashError {
     }
 }
 
-pub fn download_hex<P: super::MI, S: Into<String>>(file_path: S, probe: &mut P, page_size: u32) -> Result<(), FlashError> {
-    let mut extended_segment_address = 0;
+pub fn download_hex<P: super::MI, S: Into<String>>(
+    file_path: S,
+    probe: &mut P,
+    page_size: u32,
+) -> Result<(), FlashError> {
     let mut extended_linear_address = 0;
 
     let mut total_bytes = 0;
@@ -71,24 +68,30 @@ pub fn download_hex<P: super::MI, S: Into<String>>(file_path: S, probe: &mut P, 
     for record in hex {
         let record = record?;
         match record {
-            Data {
-                offset: offset,
-                value: value,
-            } => {
-                let offset = extended_linear_address | offset as u32;
+            Data { offset, value } => {
+                let offset = extended_linear_address | u32::from(offset);
+
                 if offset % page_size == 0 {
                     erase_page(probe, offset)?;
                 }
+
                 write_bytes(probe, offset, value.as_slice())?;
                 total_bytes += value.len();
                 // Stop timer.
                 let elapsed = instant.elapsed();
-                println!("Wrote {} total 32bit words in {:.2?} seconds. Current addr: {}", total_bytes, elapsed, offset);
-            },
+                println!(
+                    "Wrote {} total 32bit words in {:.2?} seconds. Current addr: {}",
+                    total_bytes, elapsed, offset
+                );
+            }
             EndOfFile => return Ok(()),
-            ExtendedSegmentAddress(address) => { extended_segment_address = address * 16; },
+            ExtendedSegmentAddress(_) => {
+                unimplemented!();
+            }
             StartSegmentAddress { .. } => (),
-            ExtendedLinearAddress(address) => { extended_linear_address = (address as u32) << 16; },
+            ExtendedLinearAddress(address) => {
+                extended_linear_address = u32::from(address) << 16;
+            }
             StartLinearAddress(_) => (),
         };
     }
@@ -96,8 +99,13 @@ pub fn download_hex<P: super::MI, S: Into<String>>(file_path: S, probe: &mut P, 
     Ok(())
 }
 
-fn write_bytes<P: super::MI>(probe: &mut P, address: u32, data: &[u8]) -> Result<(), AccessPortError> {
-    let NVMC = 0x4001E000;
+#[allow(non_snake_case)]
+fn write_bytes<P: super::MI>(
+    probe: &mut P,
+    address: u32,
+    data: &[u8],
+) -> Result<(), AccessPortError> {
+    let NVMC = 0x4001_E000;
     let NVMC_CONFIG = NVMC + 0x504;
     let WEN: u32 = 0x1;
 
@@ -107,23 +115,21 @@ fn write_bytes<P: super::MI>(probe: &mut P, address: u32, data: &[u8]) -> Result
     probe.write_block(
         address,
         data.chunks(4)
-            .map(|c|
-                c.pread::<u32>(0)
-                 .expect("This is a bug. Please report it.")
-            )
+            .map(|c| c.pread::<u32>(0).expect("This is a bug. Please report it."))
             .collect::<Vec<_>>()
-            .as_slice()
-        )
+            .as_slice(),
+    )
 }
 
+#[allow(non_snake_case)]
 fn erase_page<P: super::MI>(probe: &mut P, address: u32) -> Result<(), AccessPortError> {
-    let NVMC = 0x4001E000;
-    let NVMC_READY = 0x4001E000 + 0x400;
+    let NVMC = 0x4001_E000;
+    let NVMC_READY = NVMC + 0x400;
     let NVMC_CONFIG = NVMC + 0x504;
     let NVMC_ERASEPAGE = NVMC + 0x508;
     let EEN: u32 = 0x2;
 
-    info!("Erasing page {:04} (0x{:08x})",address / 1024, address);
+    info!("Erasing page {:04} (0x{:08x})", address / 1024, address);
 
     probe.write(NVMC_CONFIG, EEN)?;
     probe.write(NVMC_ERASEPAGE, address)?;

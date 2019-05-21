@@ -15,6 +15,9 @@ use coresight::access_ports::AccessPortError;
 use crate::protocol::WireProtocol;
 use memory::MI;
 
+use std::error::Error;
+use std::fmt;
+
 #[derive(Debug)]
 pub enum DebugProbeError {
     USBError,
@@ -36,6 +39,15 @@ pub enum DebugProbeError {
     TargetPowerUpFailed,
 }
 
+impl Error for DebugProbeError {}
+
+impl fmt::Display for DebugProbeError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // TODO: Cleanup of Debug Probe Errors
+        write!(f, "{:?}", self)
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub enum Port {
     DebugPort,
@@ -52,13 +64,13 @@ pub trait DAPAccess {
 
 
 pub struct MasterProbe {
-    actual_probe: Box<DebugProbe>,
+    actual_probe: Box<dyn DebugProbe>,
     current_apsel: u8,
     current_apbanksel: u8,
 }
 
 impl MasterProbe {
-    pub fn from_specific_probe(probe: Box<DebugProbe>) -> Self {
+    pub fn from_specific_probe(probe: Box<dyn DebugProbe>) -> Self {
         MasterProbe {
             actual_probe: probe,
             current_apbanksel: 0,
@@ -71,12 +83,12 @@ impl MasterProbe {
     }
 
     fn select_ap_and_ap_bank(&mut self, port: u8, ap_bank: u8) -> Result<(), DebugProbeError> {
-        let mut cache_changed = false;
-        
-        if self.current_apsel != port {
+        let mut cache_changed = if self.current_apsel != port {
             self.current_apsel = port;
-            cache_changed = true;
-        } 
+            true
+        } else {
+            false
+        };
         
         if self.current_apbanksel != ap_bank {
             self.current_apbanksel = ap_bank;

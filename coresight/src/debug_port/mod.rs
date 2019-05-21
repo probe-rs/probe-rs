@@ -28,7 +28,7 @@ impl DebugPort for DPv1 {
 }
 
 /// Debug Port V2
-struct DPv2 { }
+pub struct DPv2 { }
 
 impl DebugPort for DPv2 {
     fn version(&self) -> &'static str {
@@ -209,10 +209,11 @@ pub enum MinDpSupport {
 }
 
 impl From<bool> for MinDpSupport {
-    fn from(value: bool) -> Self {
-        match value {
-            true => MinDpSupport::Implemented,
-            false => MinDpSupport::NotImplemented,
+    fn from(bit_set: bool) -> Self {
+        if bit_set {
+            MinDpSupport::Implemented
+        } else {
+            MinDpSupport::NotImplemented
         }
     }
 }

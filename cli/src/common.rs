@@ -1,12 +1,9 @@
 use coresight::{
     access_ports::{
         AccessPortError,
-        generic_ap::GenericAP,
-    },
-    ap_access::{
-        APAccess,
     },
 };
+
 use probe::debug_probe::{
     MasterProbe,
     DebugProbe,
@@ -14,30 +11,66 @@ use probe::debug_probe::{
     DebugProbeType,
 };
 
+use memory::flash_writer::FlashError;
+
+use std::error::Error; 
+use std::fmt;
 
 #[derive(Debug)]
-pub enum Error {
+pub enum CliError {
     DebugProbe(DebugProbeError),
     AccessPort(AccessPortError),
-    Custom(&'static str),
+    FlashError(FlashError),
     StdIO(std::io::Error),
 }
 
-impl From<AccessPortError> for Error {
+impl Error for CliError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        use CliError::*;
+
+        match self {
+            DebugProbe(ref e) => Some(e),
+            AccessPort(ref e) => Some(e),
+            FlashError(ref e) => Some(e),
+            StdIO(ref e) => Some(e),
+        }
+    }
+}
+
+impl fmt::Display for CliError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use CliError::*;
+
+        match self {
+            DebugProbe(ref e) => e.fmt(f),
+            AccessPort(ref e) => e.fmt(f),
+            FlashError(ref e) => e.fmt(f),
+            StdIO(ref e) => e.fmt(f),
+        }
+    }
+}
+
+impl From<AccessPortError> for CliError {
     fn from(error: AccessPortError) -> Self {
-        Error::AccessPort(error)
+        CliError::AccessPort(error)
     }
 }
 
-impl From<DebugProbeError> for Error {
+impl From<DebugProbeError> for CliError {
     fn from(error: DebugProbeError) -> Self {
-        Error::DebugProbe(error)
+        CliError::DebugProbe(error)
     }
 }
 
-impl From<std::io::Error> for Error {
+impl From<std::io::Error> for CliError {
     fn from(error: std::io::Error) -> Self {
-        Error::StdIO(error)
+        CliError::StdIO(error)
+    }
+}
+
+impl From<FlashError> for CliError {
+    fn from(error: FlashError) -> Self {
+        CliError::FlashError(error)
     }
 }
 
@@ -45,9 +78,9 @@ impl From<std::io::Error> for Error {
 /// Takes a closure that is handed an `DAPLink` instance and then executed.
 /// After the closure is done, the USB device is always closed,
 /// even in an error case inside the closure!
-pub fn with_device<F>(n: usize, mut f: F) -> Result<(), Error>
+pub fn with_device<F>(n: usize, f: F) -> Result<(), CliError>
 where
-    F: FnOnce(&mut MasterProbe) -> Result<(), Error>
+    F: FnOnce(&mut MasterProbe) -> Result<(), CliError>
 {
     let device = {
         let mut list = daplink::tools::list_daplink_devices();

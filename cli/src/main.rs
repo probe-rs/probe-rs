@@ -14,7 +14,7 @@ use probe::debug_probe::{
 
 use common::{
     with_device,
-    Error,
+    CliError,
 };
 
 use structopt::StructOpt;
@@ -115,7 +115,7 @@ fn list_connected_devices() {
     }
 }
 
-fn dump_memory(n: usize, loc: u32, words: u32) -> Result<(), Error> {
+fn dump_memory(n: usize, loc: u32, words: u32) -> Result<(), CliError> {
     with_device(n as usize, |link| {
         let mut data = vec![0 as u32; words as usize];
 
@@ -124,7 +124,7 @@ fn dump_memory(n: usize, loc: u32, words: u32) -> Result<(), Error> {
 
         // let loc = 220 * 1024;
 
-        link.read_block(loc, &mut data.as_mut_slice()).or_else(|e| Err(Error::AccessPort(e)))?;
+        link.read_block(loc, &mut data.as_mut_slice())?;
         // Stop timer.
         let elapsed = instant.elapsed();
 
@@ -139,7 +139,7 @@ fn dump_memory(n: usize, loc: u32, words: u32) -> Result<(), Error> {
     })
 }
 
-fn download_program(n: usize, path: String) -> Result<(), Error> {
+fn download_program(n: usize, path: String) -> Result<(), CliError> {
     with_device(n as usize, |mut link| {
 
         // Start timer.
@@ -156,44 +156,43 @@ fn download_program(n: usize, path: String) -> Result<(), Error> {
         // // Stop timer.
         // let elapsed = instant.elapsed();
 
-        flash_writer::download_hex(path, &mut link, 1024).map_err(|_e| Error::Custom("Failed to read IHEX."))
+        flash_writer::download_hex(path, &mut link, 1024)?;
+
+        Ok(())
 
         // Ok(())
     })
 }
 
-fn erase_page(n: usize, loc: u32) -> Result<(), Error> {
-    with_device(n as usize, |link| {
+#[allow(non_snake_case)]
+fn erase_page(n: usize, loc: u32) -> Result<(), CliError> {
 
-        // Start timer.
-        let instant = Instant::now();
+    with_device(n, |link| {
+
+        // TODO: Generic flash erase
 
         let NVMC = 0x4001E000;
         let NVMC_CONFIG = NVMC + 0x504;
         let NVMC_ERASEPAGE = NVMC + 0x508;
         let EEN: u32 = 0x2;
-        let loc: u32 = 220 * 1024;
 
-        link.write(NVMC_CONFIG, EEN).or_else(|e| Err(Error::AccessPort(e)))?;
-        link.write(NVMC_ERASEPAGE, loc).or_else(|e| Err(Error::AccessPort(e)))?;
-        
-        // Stop timer.
-        let elapsed = instant.elapsed();
+        link.write(NVMC_CONFIG, EEN)?;
+        link.write(NVMC_ERASEPAGE, loc)?;
 
         Ok(())
     })
 }
 
-fn reset_target_of_device(n: usize, _assert: Option<bool>) -> Result<(), Error> {
+fn reset_target_of_device(n: usize, _assert: Option<bool>) -> Result<(), CliError> {
     with_device(n as usize, |link: &mut MasterProbe| {
         //link.get_interface_mut::<DebugProbe>().unwrap().target_reset().or_else(|e| Err(Error::DebugProbe(e)))?;
-        link.target_reset().or_else(|e| Err(Error::DebugProbe(e)))?;
+        link.target_reset()?;
 
         Ok(())
     })
 }
 
-fn trace_u32_on_target(n: usize, loc: u32) -> Result<(), Error> {
+fn trace_u32_on_target(n: usize, loc: u32) -> Result<(), CliError> {
     use std::io::prelude::*;
     use std::thread::sleep;
     use std::time::Duration;
@@ -222,12 +221,9 @@ fn trace_u32_on_target(n: usize, loc: u32) -> Result<(), Error> {
             // Unwrap is safe!
             buf.pwrite(instant, 0).unwrap();
             buf.pwrite(value, 4).unwrap();
-            std::io::stdout()
-                    .write(&buf)
-                    .or_else(|e| Err(Error::StdIO(e)))?;
-            std::io::stdout()
-                    .flush()
-                    .or_else(|e| Err(Error::StdIO(e)))?;
+            std::io::stdout().write(&buf)?;
+
+            std::io::stdout() .flush()?;
 
             // Schedule next read.
             let elapsed = start.elapsed();

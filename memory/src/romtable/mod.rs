@@ -8,6 +8,10 @@ use num_traits::cast::{
     FromPrimitive,
 };
 
+use std::fmt;
+
+use std::error::Error;
+
 use coresight::{
     access_ports::{
         memory_ap::*,
@@ -19,15 +23,33 @@ use coresight::{
 
 use std::cell::RefCell;
 
-mod standard_entries;
-
 
 #[derive(Debug, PartialEq)]
 pub enum RomTableError {
-    Base,
     NotARomtable,
     AccessPortError(access_ports::AccessPortError),
     CSComponentIdentificationError,
+}
+
+impl Error for RomTableError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match self {
+            RomTableError::AccessPortError(ref e) => Some(e),
+            _ => None,
+        }
+    }
+}
+
+impl fmt::Display for RomTableError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use RomTableError::*;
+
+        match self {
+            NotARomtable => write!(f, "Component is not a valid rom table"),
+            AccessPortError(ref e) => e.fmt(f),
+            CSComponentIdentificationError => write!(f, "Failed to identify CoreSight component"),
+        }
+    }
 }
 
 impl From<access_ports::AccessPortError> for RomTableError {
@@ -72,7 +94,7 @@ impl<'r,'p, P: crate::MI> RomTableIterator<'r, 'p, P> {
 }
 
 impl<'p,'r, P: crate::MI> Iterator for RomTableIterator<'p,'r,P> {
-    type Item = Result<RomTableEntryRaw, RomTableScanError>;
+    type Item = Result<RomTableEntryRaw, RomTableError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let component_address = self.rom_table_reader.base_address + self.offset;
@@ -83,6 +105,7 @@ impl<'p,'r, P: crate::MI> Iterator for RomTableIterator<'p,'r,P> {
         self.offset += 4;
 
         let mut entry_data = [0u32;1];
+
         if let Err(e) = probe.read_block(component_address as u32, &mut entry_data) {
             return Some(Err(e.into()));
         }
@@ -100,25 +123,6 @@ impl<'p,'r, P: crate::MI> Iterator for RomTableIterator<'p,'r,P> {
 
         //info!("ROM Table Entry: {:x?}", entry_data);
         Some(Ok(entry_data))
-    }
-}
-
-#[derive(Debug, PartialEq)]
-pub enum RomTableScanError {
-    EndOfRomtable,
-    SkipEntry,
-    ReadFailed,
-}
-
-impl From<RomTableError> for RomTableScanError {
-    fn from(e: RomTableError) -> Self {
-        RomTableScanError::ReadFailed
-    }
-}
-
-impl From<access_ports::AccessPortError> for RomTableScanError {
-    fn from(e: access_ports::AccessPortError) -> Self {
-        RomTableScanError::ReadFailed
     }
 }
 

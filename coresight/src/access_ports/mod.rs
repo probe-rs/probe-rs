@@ -13,7 +13,6 @@ use crate::common::Register;
 
 #[derive(Debug, PartialEq)]
 pub enum AccessPortError {
-    ProbeError,
     InvalidAccessPortNumber,
     MemoryNotAligned,
     RegisterReadError{
@@ -33,7 +32,6 @@ impl fmt::Display for AccessPortError {
         use AccessPortError::*;
 
         match self {
-            ProbeError => write!(f, "Internal Probe Error"),
             InvalidAccessPortNumber => write!(f, "Invalid Access Port Number"),
             MemoryNotAligned => write!(f, "Misaligned memory access"),
             RegisterReadError { addr, name } => write!(f, "Failed to read register {}, address 0x{:08x}", name, addr),

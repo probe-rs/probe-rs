@@ -1,8 +1,8 @@
-use log::info;
 use crate::common::{
-    Error,
+    CliError,
     with_device,
 };
+
 use coresight::{
     access_ports::{
         generic_ap::{
@@ -22,11 +22,8 @@ use coresight::{
         access_port_is_valid,
     },
 };
-use probe::debug_probe::{
-    Port,
-};
 
-pub fn show_info_of_device(n: usize) -> Result<(), Error> {
+pub fn show_info_of_device(n: usize) -> Result<(), CliError> {
     with_device(n, |link| {
 
         /*
@@ -106,15 +103,4 @@ pub fn show_info_of_device(n: usize) -> Result<(), Error> {
         }
         Ok(())
     })
-}
-
-// revision | partno | designer | reserved
-// 4 bit    | 16 bit | 11 bit   | 1 bit
-fn parse_target_id(value: u32) -> (u8, u16, u16, u8) {
-    (
-        (value >> 28) as u8,
-        (value >> 12) as u16,
-        ((value >> 1) & 0x07FF) as u16,
-        (value & 0x01) as u8,
-    )
 }

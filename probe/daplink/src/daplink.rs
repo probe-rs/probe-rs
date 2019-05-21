@@ -219,7 +219,6 @@ impl DebugProbe for DAPLink {
 
         self.send_swj_sequences(SequenceRequest::new(&[0x00]).unwrap())?;
 
-        use coresight::common::Register;
         use coresight::debug_port::{
             Ctrl,
             Select,
