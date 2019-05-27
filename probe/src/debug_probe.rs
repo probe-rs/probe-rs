@@ -143,6 +143,23 @@ impl MasterProbe {
 
         Ok(REGISTER::from(result))
     }
+
+    pub fn halt(&mut self) -> Result<(), DebugProbeError> {
+        // TODO: Generic halt support
+
+        let dhcsr_addr = 0xe000_edf0;
+        let dhcsr_val: u32 = (0xa05f << 16) | (1 << 1) | (1 << 0);
+        self.write(dhcsr_addr, dhcsr_val)
+            .map_err(|_| DebugProbeError::UnknownError)
+    }
+
+    pub fn run(&mut self) -> Result<(), DebugProbeError> {
+        let dhcsr_addr = 0xe000_edf0;
+        let dhcsr_val: u32 = (0xa05f << 16) | (0 << 1) | (0 << 0);
+        self.write(dhcsr_addr, dhcsr_val)
+            .map_err(|_| DebugProbeError::UnknownError)
+
+    }
 }
 
 

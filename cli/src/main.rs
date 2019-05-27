@@ -19,6 +19,8 @@ use common::{
 
 use structopt::StructOpt;
 
+use rustyline::Editor;
+
 fn parse_hex(src: &str) -> Result<u32, std::num::ParseIntError> {
     u32::from_str_radix(src, 16)
 }
@@ -46,6 +48,11 @@ enum CLI {
         n: usize,
         /// Whether the reset pin should be asserted or deasserted. If left open, just pulse it
         assert: Option<bool>,
+    },
+    #[structopt(name = "debug")]
+    Debug {
+        // The number associated with the probe to use
+        n: usize,
     },
     /// Dump memory from attached target
     #[structopt(name = "dump")]
@@ -94,6 +101,7 @@ fn main() {
         CLI::List {} => list_connected_devices(),
         CLI::Info { n } => crate::info::show_info_of_device(n).unwrap(),
         CLI::Reset { n, assert } => reset_target_of_device(n, assert).unwrap(),
+        CLI::Debug { n } => debug(n).unwrap(),
         CLI::Dump { n, loc, words } => dump_memory(n, loc, words).unwrap(),
         CLI::Download { n, path } => download_program(n, path).unwrap(),
         CLI::Erase { n, loc } => erase_page(n, loc).unwrap(),
@@ -239,4 +247,43 @@ fn get_connected_devices() -> Vec<DebugProbeInfo>{
     let mut links = daplink::tools::list_daplink_devices();
     links.extend(stlink::tools::list_stlink_devices());
     links
+}
+
+fn debug(n: usize) -> Result<(), CliError> {
+    with_device(n, |dev| {
+        let mut rl = Editor::<()>::new();
+        //rl.set_auto_add_history(true);
+
+        loop {
+            let readline = rl.readline(">> ");
+            match readline {
+                Ok(line) => {
+                    rl.add_history_entry(line.as_ref());
+                    handle_line(dev, &line)?;
+                },
+                Err(e) => {
+                    // Just quit for now
+                    println!("Error handling input: {:?}", e);
+                    return Ok(());
+                }
+            }
+        }
+    })
+}
+
+fn handle_line(dev: &mut MasterProbe, line: &str) -> Result<(), CliError> {
+    match line {
+        "halt" => {
+            dev.halt()?;
+            Ok(())
+        },
+        "run" => {
+            dev.run()?;
+            Ok(())
+        },
+        _ => {
+            println!("Unknown command '{}'", line);
+            Ok(())
+        }
+    }
 }
