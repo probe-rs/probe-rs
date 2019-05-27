@@ -9,3 +9,10 @@
 [Microsoft DAP](https://microsoft.github.io/debug-adapter-protocol/overview)
 
 [JEDEC CODES](https://www.jedec.org/system/files/docs/JEP106AY.pdf)
+
+
+## Cortex M0
+
+[Architecture Reference Manual](https://static.docs.arm.com/ddi0419/d/DDI0419D_armv6m_arm.pdf)
+
+[Technical Reference Manual](http://infocenter.arm.com/help/topic/com.arm.doc.ddi0432c/DDI0432C_cortex_m0_r0p0_trm.pdf)
