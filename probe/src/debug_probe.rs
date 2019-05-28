@@ -15,6 +15,8 @@ use coresight::access_ports::AccessPortError;
 use crate::protocol::WireProtocol;
 use memory::MI;
 
+use bitfield::bitfield;
+
 use std::error::Error;
 use std::fmt;
 
@@ -144,13 +146,57 @@ impl MasterProbe {
         Ok(REGISTER::from(result))
     }
 
-    pub fn halt(&mut self) -> Result<(), DebugProbeError> {
+    pub fn halt(&mut self) -> Result<CpuInformation, DebugProbeError> {
         // TODO: Generic halt support
 
         let dhcsr_addr = 0xe000_edf0;
         let dhcsr_val: u32 = (0xa05f << 16) | (1 << 1) | (1 << 0);
         self.write(dhcsr_addr, dhcsr_val)
-            .map_err(|_| DebugProbeError::UnknownError)
+            .map_err(|_| DebugProbeError::UnknownError)?;
+
+        
+        // try to read the program counter
+        // 
+        // to read the processor register,
+        // the registers DCRSR (Debug Core Register Selector Register)
+        // and DCRDR (Debug Core Register Data Register) are used
+        
+        let dcrsr_addr: u32 = 0xE000_EDF4;
+        let dcrdr_addr: u32 = 0xE000_EDF8;
+
+
+        // write the dcrsr value to select the register we want to read,
+        // in this case, the dcrsr register
+
+        let mut dcrsr_val = Dcrsr(0);
+        dcrsr_val.set_REGWnR(false);    // perform a read
+        dcrsr_val.set_regsel(0b01111);  // read the debug return address (i.e. the next executed instruction)
+
+        self.write(dcrsr_addr, dcrsr_val.0)
+            .map_err(|_| DebugProbeError::UnknownError)?;
+
+
+        // now we have to poll the dhcsr register, until the dhcsr.s_regrdy bit is set
+        // (see C1-292, cortex m0 arm)
+
+        for _ in 0..100 {
+            let dhcsr_val: u32 = self.read(dhcsr_addr)
+                    .map_err(|_| DebugProbeError::UnknownError)?;
+
+
+            if (dhcsr_val & (1 << 16)) == (1<<16) {
+                break;
+            }
+        }
+
+        let pc_value = self.read(dcrdr_addr)
+            .map_err(|_| DebugProbeError::UnknownError)?;
+
+
+        // get pc
+        Ok(CpuInformation {
+            pc: pc_value,
+        })
     }
 
     pub fn run(&mut self) -> Result<(), DebugProbeError> {
@@ -160,6 +206,17 @@ impl MasterProbe {
             .map_err(|_| DebugProbeError::UnknownError)
 
     }
+}
+
+bitfield!{
+    struct Dcrsr(u32);
+    impl Debug;
+    pub _, set_REGWnR: 16;
+    pub _, set_regsel: 4,0;
+}
+
+pub struct CpuInformation {
+    pub pc: u32,
 }
 
 

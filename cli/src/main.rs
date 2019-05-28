@@ -274,7 +274,8 @@ fn debug(n: usize) -> Result<(), CliError> {
 fn handle_line(dev: &mut MasterProbe, line: &str) -> Result<(), CliError> {
     match line {
         "halt" => {
-            dev.halt()?;
+            let cpu_info = dev.halt()?;
+            println!("Core stopped at address 0x{:08x}", cpu_info.pc);
             Ok(())
         },
         "run" => {
