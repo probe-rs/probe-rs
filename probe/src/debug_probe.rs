@@ -204,8 +204,35 @@ impl MasterProbe {
         let dhcsr_val: u32 = (0xa05f << 16) | (0 << 1) | (0 << 0);
         self.write(dhcsr_addr, dhcsr_val)
             .map_err(|_| DebugProbeError::UnknownError)
-
     }
+
+    /// Steps one instruction and then enters halted state again.
+    /// Not tested!
+    pub fn step(&mut self) -> Result<(), DebugProbeError> {
+        let mut value = Dhcsr(0);
+        // Leave halted state.
+        // Step one instruction.
+        value.set_C_STEP(true);
+        value.set_C_HALT(false);
+        self.write::<u32>(Dhcsr::ADDRESS.into(), value.into())
+            .map_err(|_| DebugProbeError::UnknownError)?;
+
+        // Wait until halted state is active again.
+        for _ in 0..100 {
+            let dhcsr_value = Dhcsr(self.read(Dhcsr::ADDRESS.into())
+                    .map_err(|_| DebugProbeError::UnknownError)?);
+            if dhcsr_value.S_HALT() {
+                break;
+            }
+            log::error!("Halted state was not entered again after stepping.");
+        }
+        Ok(())
+    }
+}
+
+pub trait CoreRegister: Clone + From<u32> + Into<u32> + Sized + std::fmt::Debug {
+    const ADDRESS: u32;
+    const NAME: &'static str;
 }
 
 bitfield!{
@@ -213,6 +240,39 @@ bitfield!{
     impl Debug;
     pub _, set_REGWnR: 16;
     pub _, set_regsel: 4,0;
+}
+
+bitfield!{
+    #[derive(Copy, Clone)]
+    struct Dhcsr(u32);
+    impl Debug;
+    pub S_RESET_ST, _: 25;
+    pub S_RETIRE_ST, _: 24;
+    pub S_LOCKUP, _: 19;
+    pub S_SLEEP, _: 18;
+    pub S_HALT, _: 17;
+    pub S_REGRDY, _: 16;
+    pub _, set_C_MASKINTS: 3;
+    pub _, set_C_STEP: 2;
+    pub _, set_C_HALT: 1;
+    pub _, set_C_DEBUGEN: 0;
+}
+
+impl From<u32> for Dhcsr {
+    fn from(value: u32) -> Self {
+        Self(value)
+    }
+}
+
+impl From<Dhcsr> for u32 {
+    fn from(value: Dhcsr) -> Self {
+        value.0
+    }
+}
+
+impl CoreRegister for Dhcsr {
+    const ADDRESS: u32 = 0xe000_edf0;
+    const NAME: &'static str = "DHCSR";
 }
 
 pub struct CpuInformation {
