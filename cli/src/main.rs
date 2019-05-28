@@ -258,7 +258,8 @@ fn debug(n: usize) -> Result<(), CliError> {
             let readline = rl.readline(">> ");
             match readline {
                 Ok(line) => {
-                    rl.add_history_entry(line.as_ref());
+                    let history_entry: &str = line.as_ref();
+                    rl.add_history_entry(history_entry);
                     handle_line(dev, &line)?;
                 },
                 Err(e) => {
