@@ -21,8 +21,14 @@ use std::error::Error;
 use std::fmt;
 
 use crate::target::{
-    m0::Dhcsr,
-    CoreRegister,
+    m0::{
+        Dhcsr,
+        Dcrsr,
+        Dcrdr,
+        PC,
+    },
+    TargetRegister,
+    CoreRegisterAddress,
 };
 
 #[derive(Debug)]
@@ -161,30 +167,10 @@ impl MasterProbe {
 
         let dhcsr_addr = 0xe000_edf0;
         let dhcsr_val: u32 = (0xa05f << 16) | (1 << 1) | (1 << 0);
-        self.write(dhcsr_addr, dhcsr_val)
-            .map_err(|_| DebugProbeError::UnknownError)?;
-
+        self.write(dhcsr_addr, dhcsr_val)?;
         
         // try to read the program counter
-        // 
-        // to read the processor register,
-        // the registers DCRSR (Debug Core Register Selector Register)
-        // and DCRDR (Debug Core Register Data Register) are used
-        let dcrsr_addr: u32 = 0xE000_EDF4;
-        let dcrdr_addr: u32 = 0xE000_EDF8;
-
-
-        // write the dcrsr value to select the register we want to read,
-        // in this case, the dcrsr register
-        let mut dcrsr_val = Dcrsr(0);
-        dcrsr_val.set_REGWnR(false);    // perform a read
-        dcrsr_val.set_regsel(0b01111);  // read the debug return address (i.e. the next executed instruction)
-
-        self.write(dcrsr_addr, dcrsr_val.0)?;
-
-        self.wait_for_core_register()?;
-
-        let pc_value = self.read(dcrdr_addr)?;
+        let pc_value = self.read_core_reg(PC)?;
 
         // get pc
         Ok(CpuInformation {
@@ -208,18 +194,40 @@ impl MasterProbe {
         value.set_C_HALT(false);
         self.write::<u32>(Dhcsr::ADDRESS, value.into())?;
 
-        // Wait until halted state is active again.
-        for _ in 0..100 {
-            let dhcsr_value = Dhcsr(self.read(Dhcsr::ADDRESS.into())?);
-            if dhcsr_value.S_HALT() {
-                break;
-            }
-            log::error!("Halted state was not entered again after stepping.");
-        }
-        Ok(())
+        self.wait_for_core_halted()
     }
 
-    fn wait_for_core_register(&mut self) -> Result<(), DebugProbeError> {
+    pub fn read_core_reg(&mut self, addr: CoreRegisterAddress) -> Result<u32, DebugProbeError> {
+        // write the dcrsr value to select the register we want to read,
+        // in this case, the dcrsr register
+        let mut dcrsr_val = Dcrsr(0);
+        dcrsr_val.set_REGWnR(false);    // perform a read
+        dcrsr_val.set_regsel(0b01111);  // read the debug return address (i.e. the next executed instruction)
+
+        self.write::<u32>(Dcrsr::ADDRESS, dcrsr_val.into())?;
+
+        self.wait_for_core_register_transfer()?;
+
+        self.read(Dcrdr::ADDRESS).map_err(From::from)
+    }
+
+    pub fn write_core_reg(&mut self, addr: CoreRegisterAddress, value: u32) -> Result<(), DebugProbeError> {
+        Err(DebugProbeError::UnknownError)
+    }
+
+    fn wait_for_core_halted(&mut self) -> Result<(), DebugProbeError> {
+        // Wait until halted state is active again.
+        for _ in 0..100 {
+            let dhcsr_val = Dhcsr(self.read(Dhcsr::ADDRESS)?);
+
+            if dhcsr_val.S_HALT() {
+                break;
+            }
+        }
+        Err(DebugProbeError::UnknownError)
+    }
+
+    fn wait_for_core_register_transfer(&mut self) -> Result<(), DebugProbeError> {
         // now we have to poll the dhcsr register, until the dhcsr.s_regrdy bit is set
         // (see C1-292, cortex m0 arm)
         for _ in 0..100 {
@@ -231,13 +239,6 @@ impl MasterProbe {
         }
         Err(DebugProbeError::UnknownError)
     }
-}
-
-bitfield!{
-    struct Dcrsr(u32);
-    impl Debug;
-    pub _, set_REGWnR: 16;
-    pub _, set_regsel: 4,0;
 }
 
 pub struct CpuInformation {
