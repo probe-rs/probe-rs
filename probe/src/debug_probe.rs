@@ -221,7 +221,7 @@ impl MasterProbe {
             let dhcsr_val = Dhcsr(self.read(Dhcsr::ADDRESS)?);
 
             if dhcsr_val.S_HALT() {
-                break;
+                return Ok(());
             }
         }
         Err(DebugProbeError::UnknownError)
@@ -234,7 +234,7 @@ impl MasterProbe {
             let dhcsr_val = Dhcsr(self.read(Dhcsr::ADDRESS)?);
 
             if dhcsr_val.S_REGRDY() {
-                break;
+                return Ok(());
             }
         }
         Err(DebugProbeError::UnknownError)
