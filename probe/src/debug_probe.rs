@@ -1,34 +1,29 @@
-use coresight::access_ports::generic_ap::GenericAP;
-use coresight::access_ports::memory_ap::MemoryAP;
-use coresight::access_ports::APRegister;
-
-use coresight::ap_access::APAccess;
-use coresight::ap_access::AccessPort;
-
-use coresight::common::Register;
+use coresight::{
+    access_ports::{
+        generic_ap::GenericAP,
+        memory_ap::MemoryAP,
+        APRegister,
+        AccessPortError
+    },
+    ap_access::{
+        APAccess,
+        AccessPort,
+    },
+    common::Register,
+};
 
 use log::debug;
 
 use memory::ToMemoryReadSize;
 use memory::adi_v5_memory_interface::ADIMemoryInterface;
-use coresight::access_ports::AccessPortError;
 use crate::protocol::WireProtocol;
 use memory::MI;
-
-use bitfield::bitfield;
-
 use std::error::Error;
 use std::fmt;
 
 use crate::target::{
-    m0::{
-        Dhcsr,
-        Dcrsr,
-        Dcrdr,
-        PC,
-    },
-    TargetRegister,
     CoreRegisterAddress,
+    Target,
 };
 
 #[derive(Debug)]
@@ -62,7 +57,7 @@ impl fmt::Display for DebugProbeError {
 }
 
 impl From<AccessPortError> for DebugProbeError {
-    fn from(value: AccessPortError) -> Self {
+    fn from(_value: AccessPortError) -> Self {
         DebugProbeError::UnknownError
     }
 }
@@ -85,14 +80,16 @@ pub struct MasterProbe {
     actual_probe: Box<dyn DebugProbe>,
     current_apsel: u8,
     current_apbanksel: u8,
+    target: Option<Target>,
 }
 
 impl MasterProbe {
-    pub fn from_specific_probe(probe: Box<dyn DebugProbe>) -> Self {
+    pub fn from_specific_probe(probe: Box<dyn DebugProbe>, target: Option<Target>) -> Self {
         MasterProbe {
             actual_probe: probe,
             current_apbanksel: 0,
             current_apsel: 0,
+            target,
         }
     }
 
@@ -163,81 +160,25 @@ impl MasterProbe {
     }
 
     pub fn halt(&mut self) -> Result<CpuInformation, DebugProbeError> {
-        // TODO: Generic halt support
-
-        let dhcsr_addr = 0xe000_edf0;
-        let dhcsr_val: u32 = (0xa05f << 16) | (1 << 1) | (1 << 0);
-        self.write(dhcsr_addr, dhcsr_val)?;
-        
-        // try to read the program counter
-        let pc_value = self.read_core_reg(PC)?;
-
-        // get pc
-        Ok(CpuInformation {
-            pc: pc_value,
-        })
+        self.target.map(|t| (t.halt)(self)).unwrap()
     }
 
     pub fn run(&mut self) -> Result<(), DebugProbeError> {
-        let dhcsr_addr = 0xe000_edf0;
-        let dhcsr_val: u32 = (0xa05f << 16) | (0 << 1) | (0 << 0);
-        self.write(dhcsr_addr, dhcsr_val).map_err(Into::into)
+        self.target.map(|t| (t.run)(self)).unwrap()
     }
 
     /// Steps one instruction and then enters halted state again.
     /// Not tested!
     pub fn step(&mut self) -> Result<(), DebugProbeError> {
-        let mut value = Dhcsr(0);
-        // Leave halted state.
-        // Step one instruction.
-        value.set_C_STEP(true);
-        value.set_C_HALT(false);
-        self.write::<u32>(Dhcsr::ADDRESS, value.into())?;
-
-        self.wait_for_core_halted()
+        self.target.map(|t| (t.step)(self)).unwrap()
     }
 
     pub fn read_core_reg(&mut self, addr: CoreRegisterAddress) -> Result<u32, DebugProbeError> {
-        // write the dcrsr value to select the register we want to read,
-        // in this case, the dcrsr register
-        let mut dcrsr_val = Dcrsr(0);
-        dcrsr_val.set_REGWnR(false);    // perform a read
-        dcrsr_val.set_regsel(0b01111);  // read the debug return address (i.e. the next executed instruction)
-
-        self.write::<u32>(Dcrsr::ADDRESS, dcrsr_val.into())?;
-
-        self.wait_for_core_register_transfer()?;
-
-        self.read(Dcrdr::ADDRESS).map_err(From::from)
+        self.target.map(|t| (t.read_core_reg)(self, addr)).unwrap()
     }
 
     pub fn write_core_reg(&mut self, addr: CoreRegisterAddress, value: u32) -> Result<(), DebugProbeError> {
-        Err(DebugProbeError::UnknownError)
-    }
-
-    fn wait_for_core_halted(&mut self) -> Result<(), DebugProbeError> {
-        // Wait until halted state is active again.
-        for _ in 0..100 {
-            let dhcsr_val = Dhcsr(self.read(Dhcsr::ADDRESS)?);
-
-            if dhcsr_val.S_HALT() {
-                return Ok(());
-            }
-        }
-        Err(DebugProbeError::UnknownError)
-    }
-
-    fn wait_for_core_register_transfer(&mut self) -> Result<(), DebugProbeError> {
-        // now we have to poll the dhcsr register, until the dhcsr.s_regrdy bit is set
-        // (see C1-292, cortex m0 arm)
-        for _ in 0..100 {
-            let dhcsr_val = Dhcsr(self.read(Dhcsr::ADDRESS)?);
-
-            if dhcsr_val.S_REGRDY() {
-                return Ok(());
-            }
-        }
-        Err(DebugProbeError::UnknownError)
+        self.target.map(|t| (t.write_core_reg)(self, addr, value)).unwrap()
     }
 }
 

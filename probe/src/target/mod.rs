@@ -1,3 +1,9 @@
+use crate::debug_probe::{
+    MasterProbe,
+    DebugProbeError,
+    CpuInformation,
+};
+
 pub mod m0;
 
 pub trait TargetRegister: Clone + From<u32> + Into<u32> + Sized + std::fmt::Debug {
@@ -6,3 +12,23 @@ pub trait TargetRegister: Clone + From<u32> + Into<u32> + Sized + std::fmt::Debu
 }
 
 pub struct CoreRegisterAddress(u8);
+
+impl From<CoreRegisterAddress> for u32 {
+    fn from(value: CoreRegisterAddress) -> Self {
+        u32::from(value.0)
+    }
+}
+
+#[derive(Copy, Clone)]
+pub struct Target {
+    pub halt: fn(mi: &mut MasterProbe) -> Result<CpuInformation, DebugProbeError>,
+
+    pub run: fn(mi: &mut MasterProbe) -> Result<(), DebugProbeError>,
+
+    /// Steps one instruction and then enters halted state again.
+    pub step: fn(mi: &mut MasterProbe) -> Result<(), DebugProbeError>,
+
+    pub read_core_reg: fn(mi: &mut MasterProbe, addr: CoreRegisterAddress) -> Result<u32, DebugProbeError>,
+
+    pub write_core_reg: fn(mi: &mut MasterProbe, addr: CoreRegisterAddress, value: u32) -> Result<(), DebugProbeError>,
+}

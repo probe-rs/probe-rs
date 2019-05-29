@@ -283,6 +283,10 @@ fn handle_line(dev: &mut MasterProbe, line: &str) -> Result<(), CliError> {
             dev.run()?;
             Ok(())
         },
+        "step" => {
+            dev.step()?;
+            Ok(())
+        },
         _ => {
             println!("Unknown command '{}'", line);
             Ok(())

@@ -95,14 +95,14 @@ where
 
             link.attach(Some(probe::protocol::WireProtocol::Swd))?;
             
-            MasterProbe::from_specific_probe(link)
+            MasterProbe::from_specific_probe(link, Some(probe::target::m0::CORTEX_M0))
         },
         DebugProbeType::STLink => {
             let mut link = stlink::STLink::new_from_probe_info(device)?;
 
             link.attach(Some(probe::protocol::WireProtocol::Swd))?;
             
-            MasterProbe::from_specific_probe(link)
+            MasterProbe::from_specific_probe(link, Some(probe::target::m0::CORTEX_M0))
         },
     };
     
