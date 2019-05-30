@@ -184,7 +184,7 @@ fn wait_for_core_halted(mi: &mut impl MI) -> Result<(), DebugProbeError> {
             return Ok(());
         }
     }
-    Err(DebugProbeError::UnknownError)
+    Err(DebugProbeError::Timeout)
 }
 
 fn wait_for_core_register_transfer(mi: &mut impl MI) -> Result<(), DebugProbeError> {
@@ -197,7 +197,7 @@ fn wait_for_core_register_transfer(mi: &mut impl MI) -> Result<(), DebugProbeErr
             return Ok(());
         }
     }
-    Err(DebugProbeError::UnknownError)
+    Err(DebugProbeError::Timeout)
 }
 
 fn read_core_reg (mi: &mut MasterProbe, addr: CoreRegisterAddress) -> Result<u32, DebugProbeError> {
@@ -237,8 +237,7 @@ fn halt(mi: &mut MasterProbe) -> Result<CpuInformation, DebugProbeError> {
     value.set_c_debugen(true);
     value.enable_write();
 
-    let result: Result<(), DebugProbeError> = mi.write::<u32>(Dhcsr::ADDRESS, value.into()).map_err(Into::into);
-    result?;
+    mi.write::<u32>(Dhcsr::ADDRESS, value.into())?;
 
     // try to read the program counter
     let pc_value = read_core_reg(mi, PC)?;
@@ -258,17 +257,27 @@ fn run(mi: &mut MasterProbe) -> Result<(), DebugProbeError> {
     mi.write::<u32>(Dhcsr::ADDRESS, value.into()).map_err(Into::into)
 }
 
-fn step(mi: &mut MasterProbe) -> Result<(), DebugProbeError> {
+fn step(mi: &mut MasterProbe) -> Result<CpuInformation, DebugProbeError> {
     let mut value = Dhcsr(0);
     // Leave halted state.
     // Step one instruction.
     value.set_c_step(true);
     value.set_c_halt(false);
+    value.set_c_debugen(true);
+    value.set_c_maskints(true);
     value.enable_write();
 
     mi.write::<u32>(Dhcsr::ADDRESS, value.into())?;
 
-    wait_for_core_halted(mi)
+    wait_for_core_halted(mi)?;
+
+    // try to read the program counter
+    let pc_value = read_core_reg(mi, PC)?;
+
+    // get pc
+    Ok(CpuInformation {
+        pc: pc_value,
+    })
 }
 
 fn get_available_breakpoint_units(mi: &mut MasterProbe) -> Result<u32, DebugProbeError> {

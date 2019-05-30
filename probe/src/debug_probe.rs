@@ -45,9 +45,18 @@ pub enum DebugProbeError {
     RentalInitError,
     ProbeCouldNotBeCreated,
     TargetPowerUpFailed,
+    Timeout,
+    AccessPortError(AccessPortError)
 }
 
-impl Error for DebugProbeError {}
+impl Error for DebugProbeError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match self {
+            DebugProbeError::AccessPortError(ref e) => Some(e),
+            _ => None,
+        }
+    }
+}
 
 impl fmt::Display for DebugProbeError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -57,8 +66,8 @@ impl fmt::Display for DebugProbeError {
 }
 
 impl From<AccessPortError> for DebugProbeError {
-    fn from(_value: AccessPortError) -> Self {
-        DebugProbeError::UnknownError
+    fn from(e: AccessPortError) -> Self {
+        DebugProbeError::AccessPortError(e)
     }
 }
 
@@ -169,7 +178,7 @@ impl MasterProbe {
 
     /// Steps one instruction and then enters halted state again.
     /// Not tested!
-    pub fn step(&mut self) -> Result<(), DebugProbeError> {
+    pub fn step(&mut self) -> Result<CpuInformation, DebugProbeError> {
         self.target.map(|t| (t.step)(self)).unwrap()
     }
 
