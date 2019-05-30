@@ -27,6 +27,18 @@ bitfield!{
     pub _, set_c_debugen: 0;
 }
 
+impl Dhcsr {
+    /// This function sets the bit to enable writes to this register.
+    /// 
+    /// C1.6.3 Debug Halting Control and Status Register, DHCSR:
+    /// Debug key:
+    /// Software must write 0xA05F to this field to enable write accesses to bits
+    /// [15:0], otherwise the processor ignores the write access.
+    pub fn enable_write(&mut self) {
+        self.0 |= 0xa05f << 16;
+    }
+}
+
 impl From<u32> for Dhcsr {
     fn from(value: u32) -> Self {
         Self(value)
@@ -87,6 +99,78 @@ impl From<Dcrdr> for u32 {
 impl TargetRegister for Dcrdr {
     const ADDRESS: u32 = 0xE000_EDF8;
     const NAME: &'static str = "DCRDR";
+}
+
+bitfield!{
+    #[derive(Copy, Clone)]
+    pub struct BpCtrl(u32);
+    impl Debug;
+    /// The number of breakpoint comparators. If NUM_CODE is zero, the implementation does not support any comparators
+    pub numcode, _: 7, 4;
+    /// RAZ on reads, SBO, for writes. If written as zero, the write to the register is ignored.
+    pub key, set_key: 1;
+    /// Enables the BPU:
+    /// 0 BPU is disabled.
+    /// 1 BPU is enabled.
+    /// This bit is set to 0 on a power-on reset
+    pub _, set_enable: 0;
+}
+
+impl From<u32> for BpCtrl {
+    fn from(value: u32) -> Self {
+        Self(value)
+    }
+}
+
+impl From<BpCtrl> for u32 {
+    fn from(value: BpCtrl) -> Self {
+        value.0
+    }
+}
+
+impl TargetRegister for BpCtrl {
+    const ADDRESS: u32 = 0xE000_2000;
+    const NAME: &'static str = "BP_CTRL";
+}
+
+bitfield!{
+    #[derive(Copy, Clone)]
+    pub struct BpCompx(u32);
+    impl Debug;
+    /// BP_MATCH defines the behavior when the COMP address is matched:
+    /// - 00 no breakpoint matching.
+    /// - 01 breakpoint on lower halfword, upper is unaffected.
+    /// - 10 breakpoint on upper halfword, lower is unaffected.
+    /// - 11 breakpoint on both lower and upper halfwords.
+    /// - The field is UNKNOWN on reset.
+    pub _, set_bp_match: 31,30;
+    /// Stores bits [28:2] of the comparison address. The comparison address is
+    /// compared with the address from the Code memory region. Bits [31:29] and
+    /// [1:0] of the comparison address are zero.
+    /// The field is UNKNOWN on power-on reset.
+    pub _, set_comp: 28,2;
+    /// Enables the comparator:
+    /// 0 comparator is disabled.
+    /// 1 comparator is enabled.
+    /// This bit is set to 0 on a power-on reset.
+    pub _, set_enable: 0;
+}
+
+impl From<u32> for BpCompx {
+    fn from(value: u32) -> Self {
+        Self(value)
+    }
+}
+
+impl From<BpCompx> for u32 {
+    fn from(value: BpCompx) -> Self {
+        value.0
+    }
+}
+
+impl TargetRegister for BpCompx {
+    const ADDRESS: u32 = 0xE000_2008;
+    const NAME: &'static str = "BP_CTRL0";
 }
 
 pub const PC: CoreRegisterAddress = CoreRegisterAddress(0b01111);
@@ -151,7 +235,7 @@ fn halt(mi: &mut MasterProbe) -> Result<CpuInformation, DebugProbeError> {
     let mut value = Dhcsr(0);
     value.set_c_halt(true);
     value.set_c_debugen(true);
-    value.0 |= (0xa05f << 16);
+    value.enable_write();
 
     let result: Result<(), DebugProbeError> = mi.write::<u32>(Dhcsr::ADDRESS, value.into()).map_err(Into::into);
     result?;
@@ -169,7 +253,7 @@ fn run(mi: &mut MasterProbe) -> Result<(), DebugProbeError> {
     let mut value = Dhcsr(0);
     value.set_c_halt(false);
     value.set_c_debugen(false);
-    value.0 |= (0xa05f << 16);
+    value.enable_write();
 
     mi.write::<u32>(Dhcsr::ADDRESS, value.into()).map_err(Into::into)
 }
@@ -180,12 +264,47 @@ fn step(mi: &mut MasterProbe) -> Result<(), DebugProbeError> {
     // Step one instruction.
     value.set_c_step(true);
     value.set_c_halt(false);
-    value.set_c_debugen(false);
-    value.set_c_maskints(true);
+    value.enable_write();
 
     mi.write::<u32>(Dhcsr::ADDRESS, value.into())?;
 
     wait_for_core_halted(mi)
+}
+
+fn get_available_breakpoint_units(mi: &mut MasterProbe) -> Result<u32, DebugProbeError> {
+    let result = mi.read::<u32>(BpCtrl::ADDRESS)?;
+
+    wait_for_core_halted(mi)?;
+
+    Ok(result)
+}
+
+fn enable_breakpoints(mi: &mut MasterProbe, state: bool) -> Result<(), DebugProbeError> {
+    let mut value = BpCtrl(0);
+    value.set_enable(state);
+
+    mi.write::<u32>(BpCtrl::ADDRESS, value.into())?;
+
+    wait_for_core_halted(mi)
+}
+
+fn set_breakpoint(mi: &mut MasterProbe, addr: u32) -> Result<(), DebugProbeError> {
+    let mut value = BpCompx(0);
+    value.set_bp_match(0b11);
+    value.set_comp((addr >> 2) | 0x00FFFFFF);
+    value.set_enable(true);
+
+    mi.write::<u32>(BpCtrl::ADDRESS, value.into())?;
+
+    wait_for_core_halted(mi)
+}
+
+fn enable_breakpoint(_mi: &mut MasterProbe, _addr: u32) -> Result<(), DebugProbeError> {
+    unimplemented!();
+}
+
+fn disable_breakpoint(_mi: &mut MasterProbe, _addr: u32) -> Result<(), DebugProbeError> {
+    unimplemented!();
 }
 
 pub const CORTEX_M0: Target = Target {
@@ -194,4 +313,9 @@ pub const CORTEX_M0: Target = Target {
     step,
     read_core_reg,
     write_core_reg,
+    enable_breakpoints,
+    set_breakpoint,
+    enable_breakpoint,
+    disable_breakpoint,
+    get_available_breakpoint_units
 };

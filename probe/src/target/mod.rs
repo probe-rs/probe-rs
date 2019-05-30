@@ -31,4 +31,14 @@ pub struct Target {
     pub read_core_reg: fn(mi: &mut MasterProbe, addr: CoreRegisterAddress) -> Result<u32, DebugProbeError>,
 
     pub write_core_reg: fn(mi: &mut MasterProbe, addr: CoreRegisterAddress, value: u32) -> Result<(), DebugProbeError>,
+
+    pub get_available_breakpoint_units: fn(mi: &mut MasterProbe) -> Result<u32, DebugProbeError>,
+
+    pub enable_breakpoints: fn(mi: &mut MasterProbe, state: bool) -> Result<(), DebugProbeError>,
+
+    pub set_breakpoint: fn(mi: &mut MasterProbe, addr: u32) -> Result<(), DebugProbeError>,
+
+    pub enable_breakpoint: fn(mi: &mut MasterProbe, addr: u32) -> Result<(), DebugProbeError>,
+
+    pub disable_breakpoint: fn(mi: &mut MasterProbe, addr: u32) -> Result<(), DebugProbeError>,
 }
