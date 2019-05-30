@@ -26,7 +26,7 @@ pub struct Target {
     pub run: fn(mi: &mut MasterProbe) -> Result<(), DebugProbeError>,
 
     /// Steps one instruction and then enters halted state again.
-    pub step: fn(mi: &mut MasterProbe) -> Result<(), DebugProbeError>,
+    pub step: fn(mi: &mut MasterProbe) -> Result<CpuInformation, DebugProbeError>,
 
     pub read_core_reg: fn(mi: &mut MasterProbe, addr: CoreRegisterAddress) -> Result<u32, DebugProbeError>,
 

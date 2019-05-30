@@ -284,7 +284,8 @@ fn handle_line(dev: &mut MasterProbe, line: &str) -> Result<(), CliError> {
             Ok(())
         },
         "step" => {
-            dev.step()?;
+            let cpu_info = dev.step()?;
+            println!("Core stopped at address 0x{:08x}", cpu_info.pc);
             Ok(())
         },
         _ => {
