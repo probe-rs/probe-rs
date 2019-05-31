@@ -1,0 +1,21 @@
+[package]
+name = "sample"
+version = "0.1.0"
+authors = ["Noah Hüsser <nh@technokrat.ch>"]
+edition = "2018"
+
+[dependencies]
+cortex-m = "0.5.8"
+cortex-m-rt = "0.6.7"
+nb = "0.1.1"
+nrf51-hal = "0.6.0"
+panic-halt = "0.2.0"
+microbit = "*"
+
+[profile.dev]
+debug = true
+
+[profile.release]
+debug = true
+lto = true
+opt-level = "s"
