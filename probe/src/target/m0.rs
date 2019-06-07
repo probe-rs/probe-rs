@@ -283,7 +283,7 @@ fn step(mi: &mut MasterProbe) -> Result<CpuInformation, DebugProbeError> {
 fn get_available_breakpoint_units(mi: &mut MasterProbe) -> Result<u32, DebugProbeError> {
     let result = mi.read::<u32>(BpCtrl::ADDRESS)?;
 
-    wait_for_core_halted(mi)?;
+    wait_for_core_register_transfer(mi)?;
 
     Ok(result)
 }

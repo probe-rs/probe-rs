@@ -5,6 +5,7 @@ use coresight::access_ports::{
     memory_ap::{
         MemoryAP,
         DataSize,
+        AddressIncrement,
         CSW,
         TAR,
         DRW,
@@ -74,7 +75,7 @@ impl ADIMemoryInterface {
         AP: APAccess<MemoryAP, CSW> + APAccess<MemoryAP, TAR> + APAccess<MemoryAP, DRW>
     {
         if (address & S::ALIGNMENT_MASK) == 0 {
-            let csw: CSW = CSW { AddrInc: 1, SIZE: bytes_to_transfer_size(S::MEMORY_TRANSFER_SIZE), ..Default::default() };
+            let csw: CSW = CSW { AddrInc: AddressIncrement::Single, SIZE: bytes_to_transfer_size(S::MEMORY_TRANSFER_SIZE), ..Default::default() };
             let tar = TAR { address };
             self.write_register_ap(debug_port, csw)?;
             self.write_register_ap(debug_port, tar)?;
@@ -86,71 +87,113 @@ impl ADIMemoryInterface {
         }
     }
 
+
     /// Read a block of words of the size defined by S at `addr`.
     /// 
     /// The number of words read is `data.len()`.
     /// The address where the read should be performed at has to be word aligned.
     /// Returns `AccessPortError::MemoryNotAligned` if this does not hold true.
-    pub fn read_block<S, AP>(
+    pub fn read_block32<AP>(
         &self,
         debug_port: &mut AP,
         address: u32,
-        data: &mut [S]
+        data: &mut [u32]
     ) -> Result<(), AccessPortError>
     where
-        S: ToMemoryReadSize,
         AP: APAccess<MemoryAP, CSW> + APAccess<MemoryAP, TAR> + APAccess<MemoryAP, DRW>
     {
-        // In the context of this function, a word has size S. All other sizes are given in bits.
-        // One byte is 8 bits.
-        if (address & S::ALIGNMENT_MASK) == 0 {
-            // Store the size of one word in bytes.
-            let bytes_per_word = std::mem::size_of::<S>() as u32;
-            // Calculate how many words a 32 bit value consists of.
-            let f = 4 / bytes_per_word;
-            // The words of size S we have to read until we can do 32 bit aligned reads.
-            let num_words_at_start = (4 - (address & 0x3)) / bytes_per_word;
-            // The words of size S we have to read until we can do 32 bit aligned reads.
-            let num_words_at_end = (data.len() as u32 - num_words_at_start) % f;
-            // The number of 32 bit reads that are required in the second phase.
-            let num_32_bit_reads = (data.len() as u32 - num_words_at_start - num_words_at_end) / f;
 
-            // First we read data until we can do aligned 32 bit reads.
-            // This will at a maximum be 24 bits for 8 bit transfer size and 16 bits for 16 bit transfers.
-            let csw: CSW = CSW { AddrInc: 1, SIZE: bytes_to_transfer_size(4), ..Default::default() };
-            self.write_register_ap(debug_port, csw)?;
-            for offset in 0..num_words_at_start {
-                let tar = TAR { address: address + offset * bytes_per_word };
-                self.write_register_ap(debug_port, tar)?;
-                data[offset as usize] = S::to_result(self.read_register_ap(debug_port, DRW::default())?.data);
-            }
-
-            // Second we read in 32 bit reads until we have less than 32 bits left to read.
-            let csw: CSW = CSW { AddrInc: 1, SIZE: DataSize::U32, ..Default::default() };
-            self.write_register_ap(debug_port, csw)?;
-            for offset in 0..num_32_bit_reads {
-                let tar = TAR { address: address + num_words_at_start * bytes_per_word + offset * 4 };
-                self.write_register_ap(debug_port, tar)?;
-                let value = self.read_register_ap(debug_port, DRW::default())?.data;
-                for i in 0..f {
-                    data[(num_words_at_start + offset * f + i) as usize] = S::to_result(value >> (i * bytes_per_word * 8));
-                }
-            }
-
-            // Lastly we read data until we can have read all the remaining data that was requested.
-            // This will at a maximum be 24 bits for 8 bit transfer size and 16 bits for 16 bit transfers.
-            let csw: CSW = CSW { AddrInc: 1, SIZE: bytes_to_transfer_size(4), ..Default::default() };
-            self.write_register_ap(debug_port, csw)?;
-            for offset in 0..num_words_at_end {
-                let tar = TAR { address: address + num_words_at_start * bytes_per_word + num_32_bit_reads * 4 + offset * bytes_per_word };
-                self.write_register_ap(debug_port, tar)?;
-                data[(num_words_at_start + num_32_bit_reads * f + offset) as usize]
-                    = S::to_result(self.read_register_ap(debug_port, DRW::default())?.data);
-            }
-            Ok(())
-        } else {
-            Err(AccessPortError::MemoryNotAligned)
+        if (address % 4) != 0 {
+            Err(AccessPortError::MemoryNotAligned)?;
         }
+
+        // Second we read in 32 bit reads until we have less than 32 bits left to read.
+        let csw: CSW = CSW { AddrInc: AddressIncrement::Single, SIZE: DataSize::U32, ..Default::default() };
+        self.write_register_ap(debug_port, csw)?;
+
+        let tar = TAR { address: address };
+        self.write_register_ap(debug_port, tar)?;
+
+        let num_reads = data.len();
+
+        for offset in 0..num_reads {
+            data[offset] = self.read_register_ap(debug_port, DRW::default())?.data;
+        }
+
+        Ok(())
+    }
+
+    pub fn read_block8<AP>(
+        &self,
+        debug_port: &mut AP,
+        address: u32,
+        data: &mut [u8]
+    ) -> Result<(), AccessPortError>
+    where
+        AP: APAccess<MemoryAP, CSW> + APAccess<MemoryAP, TAR> + APAccess<MemoryAP, DRW>
+    {
+        let pre_bytes = (address % 4) as usize;
+
+        let aligned_addr = address - (address % 4);
+        let unaligned_end_addr = address + (data.len() as u32);
+
+        let aligned_end_addr = if unaligned_end_addr % 4 != 0 {
+            ( unaligned_end_addr - (unaligned_end_addr % 4) ) + 4
+        } else {
+            unaligned_end_addr
+        };
+
+        let post_bytes = aligned_end_addr - unaligned_end_addr;
+
+        let aligned_read_len = (aligned_end_addr - aligned_addr) as usize;
+
+        let mut buff = vec![0u32;(aligned_read_len / 4) as usize];
+
+        self.read_block32(debug_port, aligned_addr, &mut buff)?;
+
+        if pre_bytes > 2 {
+            data[0] = ((buff[0] >> 8) & 0xff) as u8;
+        }
+
+        if pre_bytes > 1 {
+            data[1] = ((buff[0] >> 16) & 0xff) as u8;
+        }
+        if pre_bytes > 0 {
+            data[2] = ((buff[0] >> 24) & 0xff) as u8;
+        }
+
+        let aligned_data = &mut data[(pre_bytes as usize)..((pre_bytes+aligned_read_len) as usize)];
+
+        let word_offset_start = if pre_bytes > 0 {
+            1
+        } else {
+            0
+        } as usize;
+
+        for (i,word) in buff[word_offset_start..(word_offset_start+aligned_read_len/4)].iter().enumerate() {
+            aligned_data[i*4] = (word & 0xff) as u8;
+            aligned_data[i*4+1] = ((word >> 8) & 0xffu32) as u8;
+            aligned_data[i*4+2] = ((word >> 16) & 0xffu32) as u8;
+            aligned_data[i*4+3] = ((word >> 24) & 0xffu32) as u8;
+        }
+
+
+        // end bytes...
+        if post_bytes > 0 {
+            data[data.len()-3] = ((buff[0] >> 0) & 0xff) as u8;
+        }
+
+        if post_bytes > 1 {
+            data[data.len()-2] = ((buff[0] >> 8) & 0xff) as u8;
+        }
+
+        if post_bytes > 2 {
+            data[data.len()-1] = ((buff[0] >> 16) & 0xff) as u8;
+        }
+
+
+
+        Ok(())
     }
 
     /// Write a word of the size defined by S at `addr`.
@@ -168,7 +211,7 @@ impl ADIMemoryInterface {
         AP: APAccess<MemoryAP, CSW> + APAccess<MemoryAP, TAR> + APAccess<MemoryAP, DRW>
     {
         if (addr & S::ALIGNMENT_MASK) == 0 {
-            let csw: CSW = CSW { AddrInc: 1, SIZE: bytes_to_transfer_size(S::MEMORY_TRANSFER_SIZE), ..Default::default() };
+            let csw: CSW = CSW { AddrInc: AddressIncrement::Single, SIZE: bytes_to_transfer_size(S::MEMORY_TRANSFER_SIZE), ..Default::default() };
             let drw = DRW { data: data.into() };
             let tar = TAR { address: addr };
             self.write_register_ap(debug_port, csw)?;
@@ -180,7 +223,7 @@ impl ADIMemoryInterface {
         }
     }
 
-    /// Like `read_block` but with much simpler stucture but way lower performance for u8 and u16.
+    /// Like `read_block32` but with much simpler stucture but way lower performance for u8 and u16.
     pub fn read_block_simple<S, AP>(
         &self,
         debug_port: &mut AP,
@@ -192,7 +235,7 @@ impl ADIMemoryInterface {
         AP: APAccess<MemoryAP, CSW> + APAccess<MemoryAP, TAR> + APAccess<MemoryAP, DRW>
     {
         if (addr & S::ALIGNMENT_MASK) == 0 {
-            let csw: CSW = CSW { AddrInc: 1, SIZE: bytes_to_transfer_size(S::MEMORY_TRANSFER_SIZE), ..Default::default() };
+            let csw: CSW = CSW { AddrInc: AddressIncrement::Single, SIZE: bytes_to_transfer_size(S::MEMORY_TRANSFER_SIZE), ..Default::default() };
             let drw: DRW = Default::default();
 
             let unit_size = std::mem::size_of::<S>() as u32;
@@ -242,7 +285,7 @@ impl ADIMemoryInterface {
 
             // First we write data until we can do aligned 32 bit writes.
             // This will at a maximum be 24 bits for 8 bit transfer size and 16 bits for 16 bit transfers.
-            let csw: CSW = CSW { AddrInc: 1, SIZE: bytes_to_transfer_size(4), ..Default::default() };
+            let csw: CSW = CSW { AddrInc: AddressIncrement::Single, SIZE: bytes_to_transfer_size(4), ..Default::default() };
             self.write_register_ap(debug_port, csw)?;
             for offset in 0..num_words_at_start {
                 let tar = TAR { address: addr + offset * bytes_per_word };
@@ -252,7 +295,7 @@ impl ADIMemoryInterface {
             }
 
             // Second we write in 32 bit reads until we have less than 32 bits left to write.
-            let csw: CSW = CSW { AddrInc: 1, SIZE: DataSize::U32, ..Default::default() };
+            let csw: CSW = CSW { AddrInc: AddressIncrement::Single, SIZE: DataSize::U32, ..Default::default() };
             self.write_register_ap(debug_port, csw)?;
             for offset in 0..num_32_bit_writes {
                 let address = addr + num_words_at_start * bytes_per_word + offset * 4;
@@ -266,7 +309,7 @@ impl ADIMemoryInterface {
 
             // Lastly we write data until we can have written all the remaining data that was requested.
             // This will at a maximum be 24 bits for 8 bit transfer size and 16 bits for 16 bit transfers.
-            let csw: CSW = CSW { AddrInc: 1, SIZE: bytes_to_transfer_size(4), ..Default::default() };
+            let csw: CSW = CSW { AddrInc: AddressIncrement::Single, SIZE: bytes_to_transfer_size(4), ..Default::default() };
             self.write_register_ap(debug_port, csw)?;
             for offset in 0..num_words_at_end {
                 let tar = TAR { address: addr + num_words_at_start * bytes_per_word + num_32_bit_writes * 4 + offset * bytes_per_word };
@@ -298,7 +341,7 @@ impl ADIMemoryInterface {
         if (addr & S::ALIGNMENT_MASK) == 0 {
             let len = data.len() as u32;
             let unit_size = std::mem::size_of::<S>() as u32;
-            let csw: CSW = CSW { AddrInc: 1, SIZE: bytes_to_transfer_size(S::MEMORY_TRANSFER_SIZE), ..Default::default() };
+            let csw: CSW = CSW { AddrInc: AddressIncrement::Single, SIZE: bytes_to_transfer_size(S::MEMORY_TRANSFER_SIZE), ..Default::default() };
             self.write_register_ap(debug_port, csw)?;
             for offset in 0..len {
                 let tar = TAR { address: addr + offset * unit_size };
@@ -406,7 +449,7 @@ mod tests {
         mock.data[7] = 0xAB;
         let mi = ADIMemoryInterface::new(0x0);
         let mut data = [0 as u32; 2];
-        let read = mi.read_block(&mut mock, 0, &mut data);
+        let read = mi.read_block32(&mut mock, 0, &mut data);
         debug_assert!(read.is_ok());
         debug_assert_eq!(data, [0xDEADBEEF, 0xABBABABE]);
     }
@@ -420,7 +463,7 @@ mod tests {
         mock.data[3] = 0xDE;
         let mi = ADIMemoryInterface::new(0x0);
         let mut data = [0 as u32; 1];
-        let read = mi.read_block(&mut mock, 0, &mut data);
+        let read = mi.read_block32(&mut mock, 0, &mut data);
         debug_assert!(read.is_ok());
         debug_assert_eq!(data, [0xDEADBEEF]);
     }
@@ -430,9 +473,9 @@ mod tests {
         let mut mock = MockMemoryAP::new();
         let mi = ADIMemoryInterface::new(0x0);
         let mut data = [0 as u32; 4];
-        debug_assert!(mi.read_block(&mut mock, 1, &mut data).is_err());
-        debug_assert!(mi.read_block(&mut mock, 127, &mut data).is_err());
-        debug_assert!(mi.read_block(&mut mock, 3, &mut data).is_err());
+        debug_assert!(mi.read_block32(&mut mock, 1, &mut data).is_err());
+        debug_assert!(mi.read_block32(&mut mock, 127, &mut data).is_err());
+        debug_assert!(mi.read_block32(&mut mock, 3, &mut data).is_err());
     }
 
     #[test]
@@ -448,7 +491,7 @@ mod tests {
         mock.data[7] = 0xAB;
         let mi = ADIMemoryInterface::new(0x0);
         let mut data = [0 as u16; 4];
-        let read = mi.read_block(&mut mock, 0, &mut data);
+        let read = mi.read_block32(&mut mock, 0, &mut data);
         debug_assert!(read.is_ok());
         debug_assert_eq!(data, [0xBEEF, 0xDEAD, 0xBABE, 0xABBA]);
     }
@@ -466,7 +509,7 @@ mod tests {
         mock.data[9] = 0xAB;
         let mi = ADIMemoryInterface::new(0x0);
         let mut data = [0 as u16; 4];
-        let read = mi.read_block(&mut mock, 2, &mut data);
+        let read = mi.read_block32(&mut mock, 2, &mut data);
         debug_assert!(read.is_ok());
         debug_assert_eq!(data, [0xBEEF, 0xDEAD, 0xBABE, 0xABBA]);
     }
@@ -476,9 +519,9 @@ mod tests {
         let mut mock = MockMemoryAP::new();
         let mi = ADIMemoryInterface::new(0x0);
         let mut data = [0 as u16; 4];
-        debug_assert!(mi.read_block(&mut mock, 1, &mut data).is_err());
-        debug_assert!(mi.read_block(&mut mock, 127, &mut data).is_err());
-        debug_assert!(mi.read_block(&mut mock, 3, &mut data).is_err());
+        debug_assert!(mi.read_block32(&mut mock, 1, &mut data).is_err());
+        debug_assert!(mi.read_block32(&mut mock, 127, &mut data).is_err());
+        debug_assert!(mi.read_block32(&mut mock, 3, &mut data).is_err());
     }
 
     #[test]
@@ -494,7 +537,7 @@ mod tests {
         mock.data[7] = 0xAB;
         let mi = ADIMemoryInterface::new(0x0);
         let mut data = [0 as u8; 8];
-        let read = mi.read_block(&mut mock, 0, &mut data);
+        let read = mi.read_block32(&mut mock, 0, &mut data);
         debug_assert!(read.is_ok());
         debug_assert_eq!(data, [0xEF, 0xBE, 0xAD, 0xDE, 0xBE, 0xBA, 0xBA ,0xAB]);
     }
@@ -512,7 +555,7 @@ mod tests {
         mock.data[8] = 0xAB;
         let mi = ADIMemoryInterface::new(0x0);
         let mut data = [0 as u8; 8];
-        let read = mi.read_block(&mut mock, 1, &mut data);
+        let read = mi.read_block32(&mut mock, 1, &mut data);
         debug_assert!(read.is_ok());
         debug_assert_eq!(data, [0xEF, 0xBE, 0xAD, 0xDE, 0xBE, 0xBA, 0xBA ,0xAB]);
     }
@@ -530,7 +573,7 @@ mod tests {
         mock.data[10] = 0xAB;
         let mi = ADIMemoryInterface::new(0x0);
         let mut data = [0 as u8; 8];
-        let read = mi.read_block(&mut mock, 3, &mut data);
+        let read = mi.read_block32(&mut mock, 3, &mut data);
         debug_assert!(read.is_ok());
         debug_assert_eq!(data, [0xEF, 0xBE, 0xAD, 0xDE, 0xBE, 0xBA, 0xBA ,0xAB]);
     }

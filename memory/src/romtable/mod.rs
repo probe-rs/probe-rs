@@ -106,7 +106,7 @@ impl<'p,'r, P: crate::MI> Iterator for RomTableIterator<'p,'r,P> {
 
         let mut entry_data = [0u32;1];
 
-        if let Err(e) = probe.read_block(component_address as u32, &mut entry_data) {
+        if let Err(e) = probe.read_block32(component_address as u32, &mut entry_data) {
             return Some(Err(e.into()));
         }
 
@@ -259,7 +259,7 @@ impl<'p, P: crate::MI> ComponentInformationReader<'p, P> {
         let mut data = [0u32;4];
         let mut probe = self.probe.borrow_mut();
 
-        probe.read_block(self.base_address as u32 + 0xFF0, &mut data)?;
+        probe.read_block32(self.base_address as u32 + 0xFF0, &mut data)?;
 
         debug!("CIDR: {:x?}", data);
 
@@ -285,8 +285,8 @@ impl<'p, P: crate::MI> ComponentInformationReader<'p, P> {
 
         debug!("Reading debug id from address: {:08x}", peripheral_id_address);
 
-        probe.read_block(self.base_address as u32 + 0xFD0, &mut data[4..])?;
-        probe.read_block(self.base_address as u32 + 0xFE0, &mut data[..4])?;
+        probe.read_block32(self.base_address as u32 + 0xFD0, &mut data[4..])?;
+        probe.read_block32(self.base_address as u32 + 0xFE0, &mut data[..4])?;
 
         debug!("Raw peripheral id: {:x?}", data);
 

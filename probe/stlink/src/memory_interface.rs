@@ -40,12 +40,12 @@
 //         self.interface.read(self.link, address)
 //     }
 
-//     fn read_block<S: ToMemoryReadSize>(
+//     fn read_block32<S: ToMemoryReadSize>(
 //         &mut self,
 //         address: u32,
 //         data: &mut [S]
 //     ) -> Result<(), AccessPortError> {
-//         self.interface.read_block(self.link, address, data)
+//         self.interface.read_block32(self.link, address, data)
 //     }
 
 //     fn write<S: ToMemoryReadSize>(

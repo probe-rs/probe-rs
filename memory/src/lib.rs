@@ -54,10 +54,16 @@ pub trait MI {
     /// The number of words read is `data.len()`.
     /// The address where the read should be performed at has to be word aligned.
     /// Returns `AccessPortError::MemoryNotAligned` if this does not hold true.
-    fn read_block<S: ToMemoryReadSize>(
+    fn read_block32(
         &mut self,
         address: u32,
-        data: &mut [S]
+        data: &mut [u32]
+    ) -> Result<(), AccessPortError>;
+
+    fn read_block8(
+        &mut self,
+        address: u32,
+        data: &mut [u8]
     ) -> Result<(), AccessPortError>;
 
     /// Write a word of the size defined by S at `addr`.
@@ -83,12 +89,20 @@ impl<T> MI for &mut T where T: MI {
         (*self).read(address)
     }
 
-    fn read_block<S: ToMemoryReadSize>(
+    fn read_block32(
         &mut self,
         address: u32,
-        data: &mut [S]
+        data: &mut [u32]
     ) -> Result<(), AccessPortError> {
-        (*self).read_block(address, data)
+        (*self).read_block32(address, data)
+    }
+
+    fn read_block8(
+        &mut self,
+        address: u32,
+        data: &mut [u8]
+    ) -> Result<(), AccessPortError> {
+        (*self).read_block8(address, data)
     }
 
     fn write<S: ToMemoryReadSize>(

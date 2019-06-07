@@ -43,6 +43,17 @@ impl Default for DataSize {
     fn default() -> Self { DataSize::U32 }
 }
 
+#[derive(Debug, Primitive, Clone, Copy)]
+pub enum AddressIncrement {
+    Off = 0b00,
+    Single = 0b01,
+    Packed = 0b10,
+}
+
+impl Default for AddressIncrement {
+    fn default() -> Self { AddressIncrement::Single }
+}
+
 #[derive(Debug, PartialEq, Primitive, Clone, Copy)]
 pub enum BaseaddrFormat {
     Legacy = 0,
@@ -189,7 +200,7 @@ define_ap_register!(
         (Mode:           u8), // 4 bits
         (TrinProg:       u8), // 1 bit
         (DeviceEn:       u8), // 1 bit
-        (AddrInc:        u8), // 2 bits
+        (AddrInc:        AddressIncrement), // 2 bits
         (_RES1:          u8), // 1 bit
         (SIZE:     DataSize), // 3 bits
     ],
@@ -204,7 +215,7 @@ define_ap_register!(
         Mode:       ((value >>  8) & 0x0F) as u8,
         TrinProg:   ((value >>  7) & 0x01) as u8,
         DeviceEn:   ((value >>  6) & 0x01) as u8,
-        AddrInc:    ((value >>  4) & 0x03) as u8,
+        AddrInc:    AddressIncrement::from_u8(((value >>  4) & 0x03) as u8).unwrap(),
         _RES1:       0,
                 // unwrap() is safe as the chip will only return valid values.
                 // If not it's good to crash for now.
@@ -219,7 +230,7 @@ define_ap_register!(
     | (u32::from(value.Mode       ) <<  8)
     | (u32::from(value.TrinProg   ) <<  7)
     | (u32::from(value.DeviceEn   ) <<  6)
-    | (u32::from(value.AddrInc    ) <<  4)
+    | (u32::from(value.AddrInc as u8) <<  4)
     //  value._RES1
     // unwrap() is safe!
     | value.SIZE.to_u32().unwrap()

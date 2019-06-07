@@ -21,6 +21,13 @@ use structopt::StructOpt;
 
 use rustyline::Editor;
 
+use capstone::{
+    Capstone,
+    Endian,
+};
+use capstone::prelude::*;
+use capstone::arch::arm::ArchMode;
+
 fn parse_hex(src: &str) -> Result<u32, std::num::ParseIntError> {
     u32::from_str_radix(src, 16)
 }
@@ -132,7 +139,7 @@ fn dump_memory(n: usize, loc: u32, words: u32) -> Result<(), CliError> {
 
         // let loc = 220 * 1024;
 
-        link.read_block(loc, &mut data.as_mut_slice())?;
+        link.read_block32(loc, &mut data.as_mut_slice())?;
         // Stop timer.
         let elapsed = instant.elapsed();
 
@@ -250,6 +257,14 @@ fn get_connected_devices() -> Vec<DebugProbeInfo>{
 }
 
 fn debug(n: usize) -> Result<(), CliError> {
+    let mut cs = Capstone::new()
+        .arm()
+        .mode(ArchMode::Thumb)
+        .endian(Endian::Little)
+        .build()
+        .unwrap();
+
+
     with_device(n, |dev| {
         let mut rl = Editor::<()>::new();
         //rl.set_auto_add_history(true);
@@ -260,7 +275,7 @@ fn debug(n: usize) -> Result<(), CliError> {
                 Ok(line) => {
                     let history_entry: &str = line.as_ref();
                     rl.add_history_entry(history_entry);
-                    handle_line(dev, &line)?;
+                    handle_line(dev, &mut cs, &line)?;
                 },
                 Err(e) => {
                     // Just quit for now
@@ -272,11 +287,24 @@ fn debug(n: usize) -> Result<(), CliError> {
     })
 }
 
-fn handle_line(dev: &mut MasterProbe, line: &str) -> Result<(), CliError> {
+fn handle_line(dev: &mut MasterProbe, cs: &mut Capstone, line: &str) -> Result<(), CliError> {
     match line {
         "halt" => {
             let cpu_info = dev.halt()?;
             println!("Core stopped at address 0x{:08x}", cpu_info.pc);
+
+            let mut code = [0u8;16*2];
+
+            dev.read_block8(cpu_info.pc, &mut code)?;
+
+
+            let instructions = cs.disasm_all(&code, cpu_info.pc as u64).unwrap();
+
+            for i in instructions.iter() {
+                println!("{}", i);
+            }
+
+
             Ok(())
         },
         "run" => {
