@@ -6,5 +6,5 @@ members = [
     "probe/daplink",
     "cli",
     "memory",
-    "sample"
+    # "sample"
 ]

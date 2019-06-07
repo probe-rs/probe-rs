@@ -86,37 +86,6 @@ impl ADIMemoryInterface {
         }
     }
 
-    /// Like `read_block` but with much simpler stucture but way lower performance for u8 and u16.
-    pub fn read_block_simple<S, AP>(
-        &self,
-        debug_port: &mut AP,
-        addr: u32,
-        data: &mut [S]
-    ) -> Result<(), AccessPortError>
-    where
-        S: ToMemoryReadSize,
-        AP: APAccess<MemoryAP, CSW> + APAccess<MemoryAP, TAR> + APAccess<MemoryAP, DRW>
-    {
-        if (addr & S::ALIGNMENT_MASK) == 0 {
-            let csw: CSW = CSW { AddrInc: 1, SIZE: bytes_to_transfer_size(S::MEMORY_TRANSFER_SIZE), ..Default::default() };
-            let drw: DRW = Default::default();
-
-            let unit_size = std::mem::size_of::<S>() as u32;
-            let len = data.len() as u32;
-            self.write_register_ap(debug_port, csw)?;
-            for offset in 0..len {
-                let addr = addr + offset * unit_size;
-
-                let tar = TAR { address: addr };
-                self.write_register_ap(debug_port, tar)?;
-                data[offset as usize] = S::to_result(self.read_register_ap(debug_port, drw)?.data);
-            }
-            Ok(())
-        } else {
-            Err(AccessPortError::MemoryNotAligned)
-        }
-    }
-
     /// Read a block of words of the size defined by S at `addr`.
     /// 
     /// The number of words read is `data.len()`.
@@ -148,7 +117,7 @@ impl ADIMemoryInterface {
 
             // First we read data until we can do aligned 32 bit reads.
             // This will at a maximum be 24 bits for 8 bit transfer size and 16 bits for 16 bit transfers.
-            let csw: CSW = CSW { AddrInc: 1, SIZE: bytes_to_transfer_size(S::MEMORY_TRANSFER_SIZE), ..Default::default() };
+            let csw: CSW = CSW { AddrInc: 1, SIZE: bytes_to_transfer_size(4), ..Default::default() };
             self.write_register_ap(debug_port, csw)?;
             for offset in 0..num_words_at_start {
                 let tar = TAR { address: address + offset * bytes_per_word };
@@ -170,7 +139,7 @@ impl ADIMemoryInterface {
 
             // Lastly we read data until we can have read all the remaining data that was requested.
             // This will at a maximum be 24 bits for 8 bit transfer size and 16 bits for 16 bit transfers.
-            let csw: CSW = CSW { AddrInc: 1, SIZE: bytes_to_transfer_size(S::MEMORY_TRANSFER_SIZE), ..Default::default() };
+            let csw: CSW = CSW { AddrInc: 1, SIZE: bytes_to_transfer_size(4), ..Default::default() };
             self.write_register_ap(debug_port, csw)?;
             for offset in 0..num_words_at_end {
                 let tar = TAR { address: address + num_words_at_start * bytes_per_word + num_32_bit_reads * 4 + offset * bytes_per_word };
@@ -211,7 +180,42 @@ impl ADIMemoryInterface {
         }
     }
 
-    /// Like `write_block` but with much simpler stucture but way lower performance for u8 and u16.
+    /// Like `read_block` but with much simpler stucture but way lower performance for u8 and u16.
+    pub fn read_block_simple<S, AP>(
+        &self,
+        debug_port: &mut AP,
+        addr: u32,
+        data: &mut [S]
+    ) -> Result<(), AccessPortError>
+    where
+        S: ToMemoryReadSize,
+        AP: APAccess<MemoryAP, CSW> + APAccess<MemoryAP, TAR> + APAccess<MemoryAP, DRW>
+    {
+        if (addr & S::ALIGNMENT_MASK) == 0 {
+            let csw: CSW = CSW { AddrInc: 1, SIZE: bytes_to_transfer_size(S::MEMORY_TRANSFER_SIZE), ..Default::default() };
+            let drw: DRW = Default::default();
+
+            let unit_size = std::mem::size_of::<S>() as u32;
+            let len = data.len() as u32;
+            self.write_register_ap(debug_port, csw)?;
+            for offset in 0..len {
+                let addr = addr + offset * unit_size;
+
+                let tar = TAR { address: addr };
+                self.write_register_ap(debug_port, tar)?;
+                data[offset as usize] = S::to_result(self.read_register_ap(debug_port, drw)?.data);
+            }
+            Ok(())
+        } else {
+            Err(AccessPortError::MemoryNotAligned)
+        }
+    }
+
+    /// Write a block of words of the size defined by S at `addr`.
+    /// 
+    /// The number of words written is `data.len()`.
+    /// The address where the write should be performed at has to be word aligned.
+    /// Returns `AccessPortError::MemoryNotAligned` if this does not hold true.
     pub fn write_block<S, AP>(
         &self,
         debug_port: &mut AP,
@@ -238,7 +242,7 @@ impl ADIMemoryInterface {
 
             // First we write data until we can do aligned 32 bit writes.
             // This will at a maximum be 24 bits for 8 bit transfer size and 16 bits for 16 bit transfers.
-            let csw: CSW = CSW { AddrInc: 1, SIZE: bytes_to_transfer_size(S::MEMORY_TRANSFER_SIZE), ..Default::default() };
+            let csw: CSW = CSW { AddrInc: 1, SIZE: bytes_to_transfer_size(4), ..Default::default() };
             self.write_register_ap(debug_port, csw)?;
             for offset in 0..num_words_at_start {
                 let tar = TAR { address: addr + offset * bytes_per_word };
@@ -262,7 +266,7 @@ impl ADIMemoryInterface {
 
             // Lastly we write data until we can have written all the remaining data that was requested.
             // This will at a maximum be 24 bits for 8 bit transfer size and 16 bits for 16 bit transfers.
-            let csw: CSW = CSW { AddrInc: 1, SIZE: bytes_to_transfer_size(S::MEMORY_TRANSFER_SIZE), ..Default::default() };
+            let csw: CSW = CSW { AddrInc: 1, SIZE: bytes_to_transfer_size(4), ..Default::default() };
             self.write_register_ap(debug_port, csw)?;
             for offset in 0..num_words_at_end {
                 let tar = TAR { address: addr + num_words_at_start * bytes_per_word + num_32_bit_writes * 4 + offset * bytes_per_word };
