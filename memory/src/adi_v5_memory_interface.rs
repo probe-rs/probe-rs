@@ -132,7 +132,7 @@ impl ADIMemoryInterface {
     where
         AP: APAccess<MemoryAP, CSW> + APAccess<MemoryAP, TAR> + APAccess<MemoryAP, DRW>
     {
-        let pre_bytes = (address % 4) as usize;
+        let pre_bytes = ((4 - (address % 4)) % 4) as usize;
 
         let aligned_addr = address - (address % 4);
         let unaligned_end_addr = address + (data.len() as u32);
@@ -143,55 +143,77 @@ impl ADIMemoryInterface {
             unaligned_end_addr
         };
 
-        let post_bytes = aligned_end_addr - unaligned_end_addr;
+        let post_bytes = ((4- (aligned_end_addr - unaligned_end_addr)) % 4) as usize;
 
         let aligned_read_len = (aligned_end_addr - aligned_addr) as usize;
+
+        let mut aligned_data_len = aligned_read_len;
+
+        if pre_bytes > 0 {
+            aligned_data_len -= 4;
+        }
+
+        if post_bytes > 0 {
+            aligned_data_len -= 4;
+        }
+
+        let aligned_data_len = aligned_data_len;
+
+        assert_eq!(pre_bytes + aligned_data_len + post_bytes, data.len());
+        assert_eq!(aligned_read_len - pre_bytes - post_bytes, data.len());
 
         let mut buff = vec![0u32;(aligned_read_len / 4) as usize];
 
         self.read_block32(debug_port, aligned_addr, &mut buff)?;
 
-        if pre_bytes > 2 {
-            data[0] = ((buff[0] >> 8) & 0xff) as u8;
+        match pre_bytes {
+            3 => { 
+                data[0] = ((buff[0] >> 8) & 0xff) as u8;
+                data[1] = ((buff[0] >> 16) & 0xff) as u8;
+                data[2] = ((buff[0] >> 24) & 0xff) as u8;
+            },
+            2 => {
+                data[0] = ((buff[0] >> 16) & 0xff) as u8;
+                data[1] = ((buff[0] >> 24) & 0xff) as u8;
+            },
+            1 => {
+                data[0] = ((buff[0] >> 24) & 0xff) as u8;
+            },
+            _ => (),
+        };
+
+        if aligned_read_len > 0 {
+            let aligned_data = &mut data[(pre_bytes as usize)..((pre_bytes+aligned_data_len) as usize)];
+
+            let word_offset_start = if pre_bytes > 0 {
+                1
+            } else {
+                0
+            } as usize;
+
+            for (i,word) in buff[word_offset_start..(word_offset_start+aligned_data_len/4)].iter().enumerate() {
+                aligned_data[i*4] = (word & 0xff) as u8;
+                aligned_data[i*4+1] = ((word >> 8) & 0xffu32) as u8;
+                aligned_data[i*4+2] = ((word >> 16) & 0xffu32) as u8;
+                aligned_data[i*4+3] = ((word >> 24) & 0xffu32) as u8;
+            }
         }
 
-        if pre_bytes > 1 {
-            data[1] = ((buff[0] >> 16) & 0xff) as u8;
+        match post_bytes {
+            1 => {
+                data[data.len()-1] = ((buff[buff.len()-1] >> 0) & 0xff) as u8;
+            },
+            2 => {
+                data[data.len()-2] = ((buff[buff.len()-1] >> 0) & 0xff) as u8;
+                data[data.len()-1] = ((buff[buff.len()-1] >> 8) & 0xff) as u8;
+            },
+            3 => {
+                data[data.len()-3] = ((buff[buff.len()-1] >> 0) & 0xff) as u8;
+                data[data.len()-2] = ((buff[buff.len()-1] >> 8) & 0xff) as u8;
+                data[data.len()-1] = ((buff[buff.len()-1] >> 16) & 0xff) as u8;
+            },
+            _ => ()
         }
-        if pre_bytes > 0 {
-            data[2] = ((buff[0] >> 24) & 0xff) as u8;
-        }
-
-        let aligned_data = &mut data[(pre_bytes as usize)..((pre_bytes+aligned_read_len) as usize)];
-
-        let word_offset_start = if pre_bytes > 0 {
-            1
-        } else {
-            0
-        } as usize;
-
-        for (i,word) in buff[word_offset_start..(word_offset_start+aligned_read_len/4)].iter().enumerate() {
-            aligned_data[i*4] = (word & 0xff) as u8;
-            aligned_data[i*4+1] = ((word >> 8) & 0xffu32) as u8;
-            aligned_data[i*4+2] = ((word >> 16) & 0xffu32) as u8;
-            aligned_data[i*4+3] = ((word >> 24) & 0xffu32) as u8;
-        }
-
-
-        // end bytes...
-        if post_bytes > 0 {
-            data[data.len()-3] = ((buff[0] >> 0) & 0xff) as u8;
-        }
-
-        if post_bytes > 1 {
-            data[data.len()-2] = ((buff[0] >> 8) & 0xff) as u8;
-        }
-
-        if post_bytes > 2 {
-            data[data.len()-1] = ((buff[0] >> 16) & 0xff) as u8;
-        }
-
-
 
         Ok(())
     }
@@ -478,6 +500,8 @@ mod tests {
         debug_assert!(mi.read_block32(&mut mock, 3, &mut data).is_err());
     }
 
+    /*
+
     #[test]
     fn read_block_u16() {
         let mut mock = MockMemoryAP::new();
@@ -524,6 +548,8 @@ mod tests {
         debug_assert!(mi.read_block32(&mut mock, 3, &mut data).is_err());
     }
 
+    */
+
     #[test]
     fn read_block_u8() {
         let mut mock = MockMemoryAP::new();
@@ -537,7 +563,7 @@ mod tests {
         mock.data[7] = 0xAB;
         let mi = ADIMemoryInterface::new(0x0);
         let mut data = [0 as u8; 8];
-        let read = mi.read_block32(&mut mock, 0, &mut data);
+        let read = mi.read_block8(&mut mock, 0, &mut data);
         debug_assert!(read.is_ok());
         debug_assert_eq!(data, [0xEF, 0xBE, 0xAD, 0xDE, 0xBE, 0xBA, 0xBA ,0xAB]);
     }
@@ -555,7 +581,7 @@ mod tests {
         mock.data[8] = 0xAB;
         let mi = ADIMemoryInterface::new(0x0);
         let mut data = [0 as u8; 8];
-        let read = mi.read_block32(&mut mock, 1, &mut data);
+        let read = mi.read_block8(&mut mock, 1, &mut data);
         debug_assert!(read.is_ok());
         debug_assert_eq!(data, [0xEF, 0xBE, 0xAD, 0xDE, 0xBE, 0xBA, 0xBA ,0xAB]);
     }
@@ -573,7 +599,7 @@ mod tests {
         mock.data[10] = 0xAB;
         let mi = ADIMemoryInterface::new(0x0);
         let mut data = [0 as u8; 8];
-        let read = mi.read_block32(&mut mock, 3, &mut data);
+        let read = mi.read_block8(&mut mock, 3, &mut data);
         debug_assert!(read.is_ok());
         debug_assert_eq!(data, [0xEF, 0xBE, 0xAD, 0xDE, 0xBE, 0xBA, 0xBA ,0xAB]);
     }
