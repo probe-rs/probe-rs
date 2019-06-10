@@ -319,7 +319,7 @@ impl ADIMemoryInterface {
 
         let num_writes = data.len();
         for offset in 0..num_writes {
-            dbg!(offset);
+            offset;
             let drw = DRW { data: data[offset] };
             self.write_register_ap(debug_port, drw)?;
         }
@@ -342,63 +342,38 @@ impl ADIMemoryInterface {
         AP: APAccess<MemoryAP, CSW> + APAccess<MemoryAP, TAR> + APAccess<MemoryAP, DRW>
     {
         let pre_bytes = ((4 - (address % 4)) % 4) as usize;
+        let pre_address = address / 4;
+        let aligned_address = address + pre_bytes as u32;
+        let post_bytes = (data.len() - pre_bytes) % 4;
+        let post_address = address + (data.len() - post_bytes) as u32;
 
-        let aligned_addr = address - (address % 4);
-        let unaligned_end_addr = address + (data.len() as u32);
-
-        let aligned_end_addr = if unaligned_end_addr % 4 != 0 {
-            ( unaligned_end_addr - (unaligned_end_addr % 4) ) + 4
-        } else {
-            unaligned_end_addr
-        };
-
-        let post_bytes = ((4- (aligned_end_addr - unaligned_end_addr)) % 4) as usize;
-
-        let aligned_read_len = (aligned_end_addr - aligned_addr) as usize;
-
-        let mut aligned_data_len = aligned_read_len;
-
-        if pre_bytes > 0 {
-            aligned_data_len -= 4;
-        }
-
-        if post_bytes > 0 {
-            aligned_data_len -= 4;
-        }
-
-        let aligned_data_len = aligned_data_len;
-
-        assert_eq!(pre_bytes + aligned_data_len + post_bytes, data.len());
-        assert_eq!(aligned_read_len - pre_bytes - post_bytes, data.len());
-
-        let pre_pre_bytes = (address % 4)as usize;
-        let pre_aligned_addr = address - (address % 4);
-        if pre_pre_bytes != 0 {
-            let mut pre_data = self.read32(debug_port, pre_aligned_addr)?;
-            for shift in 0..pre_pre_bytes {
+        if pre_bytes != 0 {
+            let mut pre_data = self.read32(debug_port, pre_address)?;
+            for (i, shift) in (4-pre_bytes..4).enumerate() {
                 pre_data &= !(0xFF << (shift * 8));
-                pre_data |= (data[shift] as u32) << (shift * 8);
+                pre_data |= (data[i] as u32) << (shift * 8);
             }
-            self.write32(debug_port, aligned_addr, pre_data)?;
+            self.write32(debug_port, pre_address, pre_data)?;
         }
 
         self.write_block32(
             debug_port,
-            dbg!(aligned_addr),
+            aligned_address,
             data[pre_bytes..data.len() - post_bytes].chunks(4)
                 .map(|c| c.pread::<u32>(0).expect("This is a bug. Please report it."))
                 .collect::<Vec<_>>()
                 .as_slice(),
         )?;
 
-        if aligned_read_len % 4 != 0 {
-            let mut post_data = self.read32(debug_port, aligned_read_len as u32 - 4)?;
+        if post_bytes != 0 {
+            let mut post_data = self.read32(debug_port, post_address)?;
+            dbg!(post_bytes);
             for shift in 0..post_bytes {
-                post_data &= !(0xFF << ((3 - shift) * 8));
-                post_data |= (data[aligned_read_len - shift] as u32) << ((3 - shift) * 8);
+                post_data &= !(0xFF << (shift * 8));
+                post_data |= (data[data.len() - post_bytes + shift] as u32) << (shift * 8);
             }
 
-            self.write32(debug_port, aligned_addr, post_data)?;
+            self.write32(debug_port, post_address, post_data)?;
         }
 
         Ok(())
@@ -695,7 +670,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn write_block_u8_unaligned() {
         let mut mock = MockMemoryAP::new();
         let mi = ADIMemoryInterface::new(0x0);
@@ -704,7 +678,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn write_block_u8_unaligned2() {
         let mut mock = MockMemoryAP::new();
         let mi = ADIMemoryInterface::new(0x0);

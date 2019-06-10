@@ -136,7 +136,6 @@ where
                                 DataSize::U8 => address + 1,
                                 _  => unimplemented!(),
                             };
-                            dbg!(new_address);
                             self.store.insert((TAR::ADDRESS, TAR::APBANKSEL), new_address);
                         },
                         AddressIncrement::Off => (),
