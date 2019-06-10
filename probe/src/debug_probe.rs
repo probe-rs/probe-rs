@@ -89,16 +89,14 @@ pub struct MasterProbe {
     actual_probe: Box<dyn DebugProbe>,
     current_apsel: u8,
     current_apbanksel: u8,
-    target: Option<Target>,
 }
 
 impl MasterProbe {
-    pub fn from_specific_probe(probe: Box<dyn DebugProbe>, target: Option<Target>) -> Self {
+    pub fn from_specific_probe(probe: Box<dyn DebugProbe>) -> Self {
         MasterProbe {
             actual_probe: probe,
             current_apbanksel: 0,
             current_apsel: 0,
-            target,
         }
     }
 
@@ -166,28 +164,6 @@ impl MasterProbe {
         debug!("Read register    {}, value=0x{:08x}", REGISTER::NAME, result);
 
         Ok(REGISTER::from(result))
-    }
-
-    pub fn halt(&mut self) -> Result<CpuInformation, DebugProbeError> {
-        self.target.map(|t| (t.halt)(self)).unwrap()
-    }
-
-    pub fn run(&mut self) -> Result<(), DebugProbeError> {
-        self.target.map(|t| (t.run)(self)).unwrap()
-    }
-
-    /// Steps one instruction and then enters halted state again.
-    /// Not tested!
-    pub fn step(&mut self) -> Result<CpuInformation, DebugProbeError> {
-        self.target.map(|t| (t.step)(self)).unwrap()
-    }
-
-    pub fn read_core_reg(&mut self, addr: CoreRegisterAddress) -> Result<u32, DebugProbeError> {
-        self.target.map(|t| (t.read_core_reg)(self, addr)).unwrap()
-    }
-
-    pub fn write_core_reg(&mut self, addr: CoreRegisterAddress, value: u32) -> Result<(), DebugProbeError> {
-        self.target.map(|t| (t.write_core_reg)(self, addr, value)).unwrap()
     }
 }
 

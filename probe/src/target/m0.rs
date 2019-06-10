@@ -175,156 +175,149 @@ impl TargetRegister for BpCompx {
 
 pub const PC: CoreRegisterAddress = CoreRegisterAddress(0b01111);
 
-fn wait_for_core_halted(mi: &mut impl MI) -> Result<(), DebugProbeError> {
-    // Wait until halted state is active again.
-    for _ in 0..100 {
-        let dhcsr_val = Dhcsr(mi.read32(Dhcsr::ADDRESS)?);
+pub struct M0;
 
-        if dhcsr_val.s_halt() {
-            return Ok(());
+impl M0 {
+    fn wait_for_core_halted(&self, mi: &mut impl MI) -> Result<(), DebugProbeError> {
+        // Wait until halted state is active again.
+        for _ in 0..100 {
+            let dhcsr_val = Dhcsr(mi.read32(Dhcsr::ADDRESS)?);
+
+            if dhcsr_val.s_halt() {
+                return Ok(());
+            }
         }
+        Err(DebugProbeError::Timeout)
     }
-    Err(DebugProbeError::Timeout)
-}
 
-fn wait_for_core_register_transfer(mi: &mut impl MI) -> Result<(), DebugProbeError> {
-    // now we have to poll the dhcsr register, until the dhcsr.s_regrdy bit is set
-    // (see C1-292, cortex m0 arm)
-    for _ in 0..100 {
-        let dhcsr_val = Dhcsr(mi.read32(Dhcsr::ADDRESS)?);
+    fn wait_for_core_register_transfer(&self, mi: &mut impl MI) -> Result<(), DebugProbeError> {
+        // now we have to poll the dhcsr register, until the dhcsr.s_regrdy bit is set
+        // (see C1-292, cortex m0 arm)
+        for _ in 0..100 {
+            let dhcsr_val = Dhcsr(mi.read32(Dhcsr::ADDRESS)?);
 
-        if dhcsr_val.s_regrdy() {
-            return Ok(());
+            if dhcsr_val.s_regrdy() {
+                return Ok(());
+            }
         }
+        Err(DebugProbeError::Timeout)
     }
-    Err(DebugProbeError::Timeout)
 }
 
-fn read_core_reg (mi: &mut MasterProbe, addr: CoreRegisterAddress) -> Result<u32, DebugProbeError> {
-    // Write the DCRSR value to select the register we want to read.
-    let mut dcrsr_val = Dcrsr(0);
-    dcrsr_val.set_regwnr(false); // Perform a read.
-    dcrsr_val.set_regsel(addr.into());  // The address of the register to read.
+impl Target for M0 {
+    fn read_core_reg(&self, mi: &mut MasterProbe, addr: CoreRegisterAddress) -> Result<u32, DebugProbeError> {
+        // Write the DCRSR value to select the register we want to read.
+        let mut dcrsr_val = Dcrsr(0);
+        dcrsr_val.set_regwnr(false); // Perform a read.
+        dcrsr_val.set_regsel(addr.into());  // The address of the register to read.
 
-    mi.write32(Dcrsr::ADDRESS, dcrsr_val.into())?;
+        mi.write32(Dcrsr::ADDRESS, dcrsr_val.into())?;
 
-    wait_for_core_register_transfer(mi)?;
+        self.wait_for_core_register_transfer(mi)?;
 
-    mi.read32(Dcrdr::ADDRESS).map_err(From::from)
+        mi.read32(Dcrdr::ADDRESS).map_err(From::from)
+    }
+
+    fn write_core_reg(&self, mi: &mut MasterProbe, addr: CoreRegisterAddress, value: u32) -> Result<(), DebugProbeError> {
+        // write the DCRSR value to select the register we want to write.
+        let mut dcrsr_val = Dcrsr(0);
+        dcrsr_val.set_regwnr(true); // Perform a write.
+        dcrsr_val.set_regsel(addr.into()); // The address of the register to write.
+
+        mi.write32(Dcrsr::ADDRESS, dcrsr_val.into())?;
+
+        self.wait_for_core_register_transfer(mi)?;
+
+        let result: Result<(), DebugProbeError> = mi.write32(Dcrdr::ADDRESS, value).map_err(From::from);
+        result?;
+
+        self.wait_for_core_register_transfer(mi)
+    }
+
+    fn halt(&self, mi: &mut MasterProbe) -> Result<CpuInformation, DebugProbeError> {
+        // TODO: Generic halt support
+
+        let mut value = Dhcsr(0);
+        value.set_c_halt(true);
+        value.set_c_debugen(true);
+        value.enable_write();
+
+        mi.write32(Dhcsr::ADDRESS, value.into())?;
+
+        // try to read the program counter
+        let pc_value = self.read_core_reg(mi, PC)?;
+
+        // get pc
+        Ok(CpuInformation {
+            pc: pc_value,
+        })
+    }
+
+    fn run(&self, mi: &mut MasterProbe) -> Result<(), DebugProbeError> {
+        let mut value = Dhcsr(0);
+        value.set_c_halt(false);
+        value.set_c_debugen(false);
+        value.enable_write();
+
+        mi.write32(Dhcsr::ADDRESS, value.into()).map_err(Into::into)
+    }
+
+    fn step(&self, mi: &mut MasterProbe) -> Result<CpuInformation, DebugProbeError> {
+        let mut value = Dhcsr(0);
+        // Leave halted state.
+        // Step one instruction.
+        value.set_c_step(true);
+        value.set_c_halt(false);
+        value.set_c_debugen(true);
+        value.set_c_maskints(true);
+        value.enable_write();
+
+        mi.write32(Dhcsr::ADDRESS, value.into())?;
+
+        self.wait_for_core_halted(mi)?;
+
+        // try to read the program counter
+        let pc_value = self.read_core_reg(mi, PC)?;
+
+        // get pc
+        Ok(CpuInformation {
+            pc: pc_value,
+        })
+    }
+
+    fn get_available_breakpoint_units(&self, mi: &mut MasterProbe) -> Result<u32, DebugProbeError> {
+        let result = mi.read32(BpCtrl::ADDRESS)?;
+
+        self.wait_for_core_register_transfer(mi)?;
+
+        Ok(result)
+    }
+
+    fn enable_breakpoints(&self, mi: &mut MasterProbe, state: bool) -> Result<(), DebugProbeError> {
+        let mut value = BpCtrl(0);
+        value.set_enable(state);
+
+        mi.write32(BpCtrl::ADDRESS, value.into())?;
+
+        self.wait_for_core_halted(mi)
+    }
+
+    fn set_breakpoint(&self, mi: &mut MasterProbe, addr: u32) -> Result<(), DebugProbeError> {
+        let mut value = BpCompx(0);
+        value.set_bp_match(0b11);
+        value.set_comp((addr >> 2) | 0x00FFFFFF);
+        value.set_enable(true);
+
+        mi.write32(BpCtrl::ADDRESS, value.into())?;
+
+        self.wait_for_core_halted(mi)
+    }
+
+    fn enable_breakpoint(&self, _mi: &mut MasterProbe, _addr: u32) -> Result<(), DebugProbeError> {
+        unimplemented!();
+    }
+
+    fn disable_breakpoint(&self, _mi: &mut MasterProbe, _addr: u32) -> Result<(), DebugProbeError> {
+        unimplemented!();
+    }
 }
-
-fn write_core_reg(mi: &mut MasterProbe, addr: CoreRegisterAddress, value: u32) -> Result<(), DebugProbeError> {
-    // write the DCRSR value to select the register we want to write.
-    let mut dcrsr_val = Dcrsr(0);
-    dcrsr_val.set_regwnr(true); // Perform a write.
-    dcrsr_val.set_regsel(addr.into()); // The address of the register to write.
-
-    mi.write32(Dcrsr::ADDRESS, dcrsr_val.into())?;
-
-    wait_for_core_register_transfer(mi)?;
-
-    let result: Result<(), DebugProbeError> = mi.write32(Dcrdr::ADDRESS, value).map_err(From::from);
-    result?;
-
-    wait_for_core_register_transfer(mi)
-}
-
-fn halt(mi: &mut MasterProbe) -> Result<CpuInformation, DebugProbeError> {
-    // TODO: Generic halt support
-
-    let mut value = Dhcsr(0);
-    value.set_c_halt(true);
-    value.set_c_debugen(true);
-    value.enable_write();
-
-    mi.write32(Dhcsr::ADDRESS, value.into())?;
-
-    // try to read the program counter
-    let pc_value = read_core_reg(mi, PC)?;
-
-    // get pc
-    Ok(CpuInformation {
-        pc: pc_value,
-    })
-}
-
-fn run(mi: &mut MasterProbe) -> Result<(), DebugProbeError> {
-    let mut value = Dhcsr(0);
-    value.set_c_halt(false);
-    value.set_c_debugen(false);
-    value.enable_write();
-
-    mi.write32(Dhcsr::ADDRESS, value.into()).map_err(Into::into)
-}
-
-fn step(mi: &mut MasterProbe) -> Result<CpuInformation, DebugProbeError> {
-    let mut value = Dhcsr(0);
-    // Leave halted state.
-    // Step one instruction.
-    value.set_c_step(true);
-    value.set_c_halt(false);
-    value.set_c_debugen(true);
-    value.set_c_maskints(true);
-    value.enable_write();
-
-    mi.write32(Dhcsr::ADDRESS, value.into())?;
-
-    wait_for_core_halted(mi)?;
-
-    // try to read the program counter
-    let pc_value = read_core_reg(mi, PC)?;
-
-    // get pc
-    Ok(CpuInformation {
-        pc: pc_value,
-    })
-}
-
-fn get_available_breakpoint_units(mi: &mut MasterProbe) -> Result<u32, DebugProbeError> {
-    let result = mi.read32(BpCtrl::ADDRESS)?;
-
-    wait_for_core_register_transfer(mi)?;
-
-    Ok(result)
-}
-
-fn enable_breakpoints(mi: &mut MasterProbe, state: bool) -> Result<(), DebugProbeError> {
-    let mut value = BpCtrl(0);
-    value.set_enable(state);
-
-    mi.write32(BpCtrl::ADDRESS, value.into())?;
-
-    wait_for_core_halted(mi)
-}
-
-fn set_breakpoint(mi: &mut MasterProbe, addr: u32) -> Result<(), DebugProbeError> {
-    let mut value = BpCompx(0);
-    value.set_bp_match(0b11);
-    value.set_comp((addr >> 2) | 0x00FFFFFF);
-    value.set_enable(true);
-
-    mi.write32(BpCtrl::ADDRESS, value.into())?;
-
-    wait_for_core_halted(mi)
-}
-
-fn enable_breakpoint(_mi: &mut MasterProbe, _addr: u32) -> Result<(), DebugProbeError> {
-    unimplemented!();
-}
-
-fn disable_breakpoint(_mi: &mut MasterProbe, _addr: u32) -> Result<(), DebugProbeError> {
-    unimplemented!();
-}
-
-pub const CORTEX_M0: Target = Target {
-    halt,
-    run,
-    step,
-    read_core_reg,
-    write_core_reg,
-    enable_breakpoints,
-    set_breakpoint,
-    enable_breakpoint,
-    disable_breakpoint,
-    get_available_breakpoint_units
-};

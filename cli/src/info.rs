@@ -24,7 +24,7 @@ use coresight::{
 };
 
 pub fn show_info_of_device(n: usize) -> Result<(), CliError> {
-    with_device(n, |link| {
+    with_device(n, probe::target::m0::M0, |session| {
 
         /*
             The following code only works with debug port v2,
@@ -68,25 +68,25 @@ pub fn show_info_of_device(n: usize) -> Result<(), CliError> {
 
         for port in 0..255 { 
             let access_port = GenericAP::new(port);
-            if access_port_is_valid(link, access_port) {
+            if access_port_is_valid(&mut session.probe, access_port) {
 
-                let idr = link.read_register_ap(access_port, IDR::default())?;
+                let idr = session.probe.read_register_ap(access_port, IDR::default())?;
                 println!("{:#x?}", idr);
 
                 if idr.CLASS == APClass::MEMAP {
                     let access_port: MemoryAP = access_port.into();
 
-                    let base_register = link.read_register_ap(access_port, BASE::default())?;
+                    let base_register = session.probe.read_register_ap(access_port, BASE::default())?;
 
                     let mut baseaddr = if BaseaddrFormat::ADIv5 == base_register.Format {
-                        let base2 = link.read_register_ap(access_port, BASE2::default())?;
+                        let base2 = session.probe.read_register_ap(access_port, BASE2::default())?;
                         (u64::from(base2.BASEADDR) << 32)
                     } else { 0 };
                     baseaddr |= u64::from(base_register.BASEADDR << 12);
                     
-                    let link_ref = link.into();
+                    let link_ref = &mut session.probe;
 
-                    let component_table = memory::romtable::CSComponent::try_parse(&link_ref, baseaddr as u64);
+                    let component_table = memory::romtable::CSComponent::try_parse(&link_ref.into(), baseaddr as u64);
 
 
                     component_table.iter().for_each(|entry| println!("{:#08x?}", entry));

@@ -1,7 +1,7 @@
 mod common;
 mod info;
+mod session;
 
-use probe::debug_probe::MasterProbe;
 use memory::{
     MI,
     flash_writer,
@@ -27,6 +27,8 @@ use capstone::{
 };
 use capstone::prelude::*;
 use capstone::arch::arm::ArchMode;
+
+use session::Session;
 
 fn parse_hex(src: &str) -> Result<u32, std::num::ParseIntError> {
     u32::from_str_radix(src, 16)
@@ -131,7 +133,7 @@ fn list_connected_devices() {
 }
 
 fn dump_memory(n: usize, loc: u32, words: u32) -> Result<(), CliError> {
-    with_device(n as usize, |link| {
+    with_device(n as usize, probe::target::m0::M0, |session| {
         let mut data = vec![0 as u32; words as usize];
 
         // Start timer.
@@ -139,7 +141,7 @@ fn dump_memory(n: usize, loc: u32, words: u32) -> Result<(), CliError> {
 
         // let loc = 220 * 1024;
 
-        link.read_block32(loc, &mut data.as_mut_slice())?;
+        session.probe.read_block32(loc, &mut data.as_mut_slice())?;
         // Stop timer.
         let elapsed = instant.elapsed();
 
@@ -155,7 +157,7 @@ fn dump_memory(n: usize, loc: u32, words: u32) -> Result<(), CliError> {
 }
 
 fn download_program(n: usize, path: String) -> Result<(), CliError> {
-    with_device(n as usize, |mut link| {
+    with_device(n as usize, probe::target::m0::M0, |session| {
 
         // Start timer.
         // let instant = Instant::now();
@@ -171,7 +173,7 @@ fn download_program(n: usize, path: String) -> Result<(), CliError> {
         // // Stop timer.
         // let elapsed = instant.elapsed();
 
-        flash_writer::download_hex(path, &mut link, 1024)?;
+        flash_writer::download_hex(path, &mut session.probe, 1024)?;
 
         Ok(())
 
@@ -182,7 +184,7 @@ fn download_program(n: usize, path: String) -> Result<(), CliError> {
 #[allow(non_snake_case)]
 fn erase_page(n: usize, loc: u32) -> Result<(), CliError> {
 
-    with_device(n, |link| {
+    with_device(n, probe::target::m0::M0, |session| {
 
         // TODO: Generic flash erase
 
@@ -191,17 +193,17 @@ fn erase_page(n: usize, loc: u32) -> Result<(), CliError> {
         let NVMC_ERASEPAGE = NVMC + 0x508;
         let EEN: u32 = 0x2;
 
-        link.write32(NVMC_CONFIG, EEN)?;
-        link.write32(NVMC_ERASEPAGE, loc)?;
+        session.probe.write32(NVMC_CONFIG, EEN)?;
+        session.probe.write32(NVMC_ERASEPAGE, loc)?;
 
         Ok(())
     })
 }
 
 fn reset_target_of_device(n: usize, _assert: Option<bool>) -> Result<(), CliError> {
-    with_device(n as usize, |link: &mut MasterProbe| {
+    with_device(n as usize, probe::target::m0::M0, |session| {
         //link.get_interface_mut::<DebugProbe>().unwrap().target_reset().or_else(|e| Err(Error::DebugProbe(e)))?;
-        link.target_reset()?;
+        session.probe.target_reset()?;
 
         Ok(())
     })
@@ -218,14 +220,14 @@ fn trace_u32_on_target(n: usize, loc: u32) -> Result<(), CliError> {
 
     let start = Instant::now();
 
-    with_device(n, |link| {
+    with_device(n, probe::target::m0::M0, |session| {
         loop {
             // Prepare read.
             let elapsed = start.elapsed();
             let instant = elapsed.as_secs() * 1000 + u64::from(elapsed.subsec_millis());
 
             // Read data.
-            let value: u32 = link.read32(loc)?;
+            let value: u32 = session.probe.read32(loc)?;
 
             xs.push(instant);
             ys.push(value);
@@ -265,7 +267,7 @@ fn debug(n: usize) -> Result<(), CliError> {
         .unwrap();
 
 
-    with_device(n, |dev| {
+    with_device(n, probe::target::m0::M0, |session| {
         let mut rl = Editor::<()>::new();
         //rl.set_auto_add_history(true);
 
@@ -275,7 +277,7 @@ fn debug(n: usize) -> Result<(), CliError> {
                 Ok(line) => {
                     let history_entry: &str = line.as_ref();
                     rl.add_history_entry(history_entry);
-                    handle_line(dev, &mut cs, &line)?;
+                    handle_line(session, &mut cs, &line)?;
                 },
                 Err(e) => {
                     // Just quit for now
@@ -287,15 +289,15 @@ fn debug(n: usize) -> Result<(), CliError> {
     })
 }
 
-fn handle_line(dev: &mut MasterProbe, cs: &mut Capstone, line: &str) -> Result<(), CliError> {
+fn handle_line(session: &mut Session, cs: &mut Capstone, line: &str) -> Result<(), CliError> {
     match line {
         "halt" => {
-            let cpu_info = dev.halt()?;
+            let cpu_info = session.target.halt(&mut session.probe)?;
             println!("Core stopped at address 0x{:08x}", cpu_info.pc);
 
             let mut code = [0u8;16*2];
 
-            dev.read_block8(cpu_info.pc, &mut code)?;
+            session.probe.read_block8(cpu_info.pc, &mut code)?;
 
 
             let instructions = cs.disasm_all(&code, cpu_info.pc as u64).unwrap();
@@ -308,11 +310,11 @@ fn handle_line(dev: &mut MasterProbe, cs: &mut Capstone, line: &str) -> Result<(
             Ok(())
         },
         "run" => {
-            dev.run()?;
+            session.target.run(&mut session.probe)?;
             Ok(())
         },
         "step" => {
-            let cpu_info = dev.step()?;
+            let cpu_info = session.target.step(&mut session.probe)?;
             println!("Core stopped at address 0x{:08x}", cpu_info.pc);
             Ok(())
         },

@@ -1,3 +1,5 @@
+use crate::session::Session;
+use probe::target::Target;
 use coresight::{
     access_ports::{
         AccessPortError,
@@ -78,9 +80,9 @@ impl From<FlashError> for CliError {
 /// Takes a closure that is handed an `DAPLink` instance and then executed.
 /// After the closure is done, the USB device is always closed,
 /// even in an error case inside the closure!
-pub fn with_device<F>(n: usize, f: F) -> Result<(), CliError>
+pub fn with_device<F>(n: usize, target: impl Target + 'static, f: F) -> Result<(), CliError>
 where
-    F: FnOnce(&mut MasterProbe) -> Result<(), CliError>
+    F: FnOnce(&mut Session) -> Result<(), CliError>
 {
     let device = {
         let mut list = daplink::tools::list_daplink_devices();
@@ -89,22 +91,24 @@ where
         list.remove(n)
     };
 
-    let mut probe = match device.probe_type {
+    let probe = match device.probe_type {
         DebugProbeType::DAPLink => {
             let mut link = daplink::DAPLink::new_from_probe_info(device)?;
 
             link.attach(Some(probe::protocol::WireProtocol::Swd))?;
             
-            MasterProbe::from_specific_probe(link, Some(probe::target::m0::CORTEX_M0))
+            MasterProbe::from_specific_probe(link)
         },
         DebugProbeType::STLink => {
             let mut link = stlink::STLink::new_from_probe_info(device)?;
 
             link.attach(Some(probe::protocol::WireProtocol::Swd))?;
             
-            MasterProbe::from_specific_probe(link, Some(probe::target::m0::CORTEX_M0))
+            MasterProbe::from_specific_probe(link)
         },
     };
     
-    f(&mut probe)
+    let mut session = Session::new(target, probe);
+
+    f(&mut session)
 }
