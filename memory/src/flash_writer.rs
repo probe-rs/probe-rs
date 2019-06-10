@@ -111,8 +111,8 @@ fn write_bytes<P: super::MI>(
 
     info!("Writing to address 0x{:08x}", address);
 
-    probe.write(NVMC_CONFIG, WEN)?;
-    probe.write_block(
+    probe.write32(NVMC_CONFIG, WEN)?;
+    probe.write_block32(
         address,
         data.chunks(4)
             .map(|c| c.pread::<u32>(0).expect("This is a bug. Please report it."))
@@ -131,8 +131,8 @@ fn erase_page<P: super::MI>(probe: &mut P, address: u32) -> Result<(), AccessPor
 
     info!("Erasing page {:04} (0x{:08x})", address / 1024, address);
 
-    probe.write(NVMC_CONFIG, EEN)?;
-    probe.write(NVMC_ERASEPAGE, address)?;
+    probe.write32(NVMC_CONFIG, EEN)?;
+    probe.write32(NVMC_ERASEPAGE, address)?;
 
     let mut read_flag: u32 = probe.read32(NVMC_READY)?;
 

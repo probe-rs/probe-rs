@@ -105,24 +105,48 @@ where
         let csw = self.store[&(CSW::ADDRESS, CSW::APBANKSEL)];
         let address = self.store[&(TAR::ADDRESS, TAR::APBANKSEL)];
         match (REGISTER::ADDRESS, REGISTER::APBANKSEL) {
-            (DRW::ADDRESS, DRW::APBANKSEL) => match CSW::from(csw).SIZE {
-                DataSize::U32 => {
-                    self.data[address as usize    ] =  value        as u8;
-                    self.data[address as usize + 1] = (value >>  8) as u8;
-                    self.data[address as usize + 2] = (value >> 16) as u8;
-                    self.data[address as usize + 3] = (value >> 24) as u8;
-                    Ok(())
-                },
-                DataSize::U16 => {
-                    self.data[address as usize    ] =  value        as u8;
-                    self.data[address as usize + 1] = (value >>  8) as u8;
-                    Ok(())
-                },
-                DataSize::U8 => {
-                    self.data[address as usize    ] =  value        as u8;
-                    Ok(())
-                },
-                _ => Err(MockMemoryError::UnknownWidth)
+            (DRW::ADDRESS, DRW::APBANKSEL) => {
+                let result = match CSW::from(csw).SIZE {
+                    DataSize::U32 => {
+                        self.data[address as usize    ] =  value        as u8;
+                        self.data[address as usize + 1] = (value >>  8) as u8;
+                        self.data[address as usize + 2] = (value >> 16) as u8;
+                        self.data[address as usize + 3] = (value >> 24) as u8;
+                        Ok(())
+                    },
+                    DataSize::U16 => {
+                        self.data[address as usize    ] =  value        as u8;
+                        self.data[address as usize + 1] = (value >>  8) as u8;
+                        Ok(())
+                    },
+                    DataSize::U8 => {
+                        self.data[address as usize    ] =  value        as u8;
+                        Ok(())
+                    },
+                    _ => Err(MockMemoryError::UnknownWidth)
+                };
+
+                if result.is_ok() {
+                    let csw = CSW::from(csw);
+                    match csw.AddrInc {
+                        AddressIncrement::Single => {
+                            let new_address = match csw.SIZE {
+                                DataSize::U32 => address + 4,
+                                DataSize::U16 => address + 2,
+                                DataSize::U8 => address + 1,
+                                _  => unimplemented!(),
+                            };
+
+                            self.store.insert((TAR::ADDRESS, TAR::APBANKSEL), new_address);
+                        },
+                        AddressIncrement::Off => (),
+                        AddressIncrement::Packed => {
+                            unimplemented!();
+                        }
+                    }
+                }
+
+                result
             },
             (CSW::ADDRESS, CSW::APBANKSEL) => Ok(()),
             (TAR::ADDRESS, TAR::APBANKSEL) => Ok(()),

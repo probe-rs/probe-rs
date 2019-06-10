@@ -251,20 +251,20 @@ impl MI for MasterProbe
         ADIMemoryInterface::new(0).read_block8(self, address, data)
     }
 
-    fn write<S: ToMemoryReadSize>(
+    fn write32(
         &mut self,
         addr: u32,
-        data: S
+        data: u32
     ) -> Result<(), AccessPortError> {
-        ADIMemoryInterface::new(0).write(self, addr, data)
+        ADIMemoryInterface::new(0).write32(self, addr, data)
     }
 
-    fn write_block<S: ToMemoryReadSize>(
+    fn write_block32(
         &mut self,
         addr: u32,
-        data: &[S]
+        data: &[u32]
     ) -> Result<(), AccessPortError> {
-        ADIMemoryInterface::new(0).write_block(self, addr, data)
+        ADIMemoryInterface::new(0).write_block32(self, addr, data)
     }
 }
 

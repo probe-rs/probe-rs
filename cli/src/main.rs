@@ -191,8 +191,8 @@ fn erase_page(n: usize, loc: u32) -> Result<(), CliError> {
         let NVMC_ERASEPAGE = NVMC + 0x508;
         let EEN: u32 = 0x2;
 
-        link.write(NVMC_CONFIG, EEN)?;
-        link.write(NVMC_ERASEPAGE, loc)?;
+        link.write32(NVMC_CONFIG, EEN)?;
+        link.write32(NVMC_ERASEPAGE, loc)?;
 
         Ok(())
     })

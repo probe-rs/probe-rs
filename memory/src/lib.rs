@@ -77,21 +77,25 @@ pub trait MI {
         data: &mut [u8]
     ) -> Result<(), AccessPortError>;
 
-    /// Write a word of the size defined by S at `addr`.
+    /// Write a 32bit word at `addr`.
     /// 
     /// The address where the write should be performed at has to be word aligned.
     /// Returns `AccessPortError::MemoryNotAligned` if this does not hold true.
-    fn write<S: ToMemoryReadSize>(
+    fn write32(
         &mut self,
         addr: u32,
-        data: S
+        data: u32
     ) -> Result<(), AccessPortError>;
 
-    /// Like `write_block` but with much simpler stucture but way lower performance for u8 and u16.
-    fn write_block<S: ToMemoryReadSize>(
+    /// Write a block of 32bit words at `addr`.
+    /// 
+    /// The number of words written is `data.len()`.
+    /// The address where the write should be performed at has to be word aligned.
+    /// Returns `AccessPortError::MemoryNotAligned` if this does not hold true.
+    fn write_block32(
         &mut self,
         addr: u32,
-        data: &[S]
+        data: &[u32]
     ) -> Result<(), AccessPortError>;
 }
 
@@ -120,19 +124,19 @@ impl<T> MI for &mut T where T: MI {
         (*self).read_block8(address, data)
     }
 
-    fn write<S: ToMemoryReadSize>(
+    fn write32(
         &mut self,
         addr: u32,
-        data: S
+        data: u32
     ) -> Result<(), AccessPortError> {
-        (*self).write(addr, data)
+        (*self).write32(addr, data)
     }
 
-    fn write_block<S: ToMemoryReadSize>(
+    fn write_block32(
         &mut self,
         addr: u32,
-        data: &[S]
+        data: &[u32]
     ) -> Result<(), AccessPortError> {
-        (*self).write_block(addr, data)
+        (*self).write_block32(addr, data)
     }
 }
