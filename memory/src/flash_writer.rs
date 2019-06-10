@@ -112,12 +112,9 @@ fn write_bytes<P: super::MI>(
     info!("Writing to address 0x{:08x}", address);
 
     probe.write32(NVMC_CONFIG, WEN)?;
-    probe.write_block32(
+    probe.write_block8(
         address,
-        data.chunks(4)
-            .map(|c| c.pread::<u32>(0).expect("This is a bug. Please report it."))
-            .collect::<Vec<_>>()
-            .as_slice(),
+        data
     )
 }
 

@@ -235,36 +235,28 @@ impl MI for MasterProbe
         ADIMemoryInterface::new(0).read8(self, address)
     }
 
-    fn read_block32(
-        &mut self,
-        address: u32,
-        data: &mut [u32]
-    ) -> Result<(), AccessPortError> {
+    fn read_block32(&mut self, address: u32, data: &mut [u32]) -> Result<(), AccessPortError> {
         ADIMemoryInterface::new(0).read_block32(self, address, data)
     }
 
-    fn read_block8(
-        &mut self,
-        address: u32,
-        data: &mut [u8]
-    ) -> Result<(), AccessPortError> {
+    fn read_block8(&mut self, address: u32, data: &mut [u8]) -> Result<(), AccessPortError> {
         ADIMemoryInterface::new(0).read_block8(self, address, data)
     }
 
-    fn write32(
-        &mut self,
-        addr: u32,
-        data: u32
-    ) -> Result<(), AccessPortError> {
+    fn write32(&mut self, addr: u32, data: u32) -> Result<(), AccessPortError> {
         ADIMemoryInterface::new(0).write32(self, addr, data)
     }
 
-    fn write_block32(
-        &mut self,
-        addr: u32,
-        data: &[u32]
-    ) -> Result<(), AccessPortError> {
+    fn write8(&mut self, addr: u32, data: u8) -> Result<(), AccessPortError> {
+        ADIMemoryInterface::new(0).write8(self, addr, data)
+    }
+
+    fn write_block32(&mut self, addr: u32, data: &[u32]) -> Result<(), AccessPortError> {
         ADIMemoryInterface::new(0).write_block32(self, addr, data)
+    }
+
+    fn write_block8(&mut self, addr: u32, data: &[u8]) -> Result<(), AccessPortError> {
+        ADIMemoryInterface::new(0).write_block8(self, addr, data)
     }
 }
 
