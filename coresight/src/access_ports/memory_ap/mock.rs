@@ -136,7 +136,7 @@ where
                                 DataSize::U8 => address + 1,
                                 _  => unimplemented!(),
                             };
-
+                            dbg!(new_address);
                             self.store.insert((TAR::ADDRESS, TAR::APBANKSEL), new_address);
                         },
                         AddressIncrement::Off => (),
@@ -148,8 +148,14 @@ where
 
                 result
             },
-            (CSW::ADDRESS, CSW::APBANKSEL) => Ok(()),
-            (TAR::ADDRESS, TAR::APBANKSEL) => Ok(()),
+            (CSW::ADDRESS, CSW::APBANKSEL) => {
+                self.store.insert((CSW::ADDRESS, CSW::APBANKSEL), value);
+                Ok(())
+            },
+            (TAR::ADDRESS, TAR::APBANKSEL) => {
+                self.store.insert((TAR::ADDRESS, TAR::APBANKSEL), value);
+                Ok(())
+            },
             _ => Err(MockMemoryError::UnknownRegister)
         }
     }
