@@ -225,7 +225,7 @@ fn trace_u32_on_target(n: usize, loc: u32) -> Result<(), CliError> {
             let instant = elapsed.as_secs() * 1000 + u64::from(elapsed.subsec_millis());
 
             // Read data.
-            let value: u32 = link.read(loc)?;
+            let value: u32 = link.read32(loc)?;
 
             xs.push(instant);
             ys.push(value);

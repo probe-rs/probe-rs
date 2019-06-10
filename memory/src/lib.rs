@@ -43,13 +43,19 @@ impl ToMemoryReadSize for u8 {
 }
 
 pub trait MI {
-    /// Read a word of the size defined by S at `addr`.
+    /// Read a 32bit word of at `addr`.
     /// 
     /// The address where the read should be performed at has to be word aligned.
     /// Returns `AccessPortError::MemoryNotAligned` if this does not hold true.
-    fn read<S: ToMemoryReadSize>(&mut self, address: u32) -> Result<S, AccessPortError>;
+    fn read32(&mut self, address: u32) -> Result<u32, AccessPortError>;
 
-    /// Read a block of words of the size defined by S at `addr`.
+    /// Read an 8bit word of at `addr`.
+    /// 
+    /// The address where the read should be performed at has to be word aligned.
+    /// Returns `AccessPortError::MemoryNotAligned` if this does not hold true.
+    fn read8(&mut self, address: u32) -> Result<u8, AccessPortError>;
+
+    /// Read a block of 32bit words at `addr`.
     /// 
     /// The number of words read is `data.len()`.
     /// The address where the read should be performed at has to be word aligned.
@@ -60,6 +66,11 @@ pub trait MI {
         data: &mut [u32]
     ) -> Result<(), AccessPortError>;
 
+    /// Read a block of 8bit words at `addr`.
+    /// 
+    /// The number of words read is `data.len()`.
+    /// The address where the read should be performed at has to be word aligned.
+    /// Returns `AccessPortError::MemoryNotAligned` if this does not hold true.
     fn read_block8(
         &mut self,
         address: u32,
@@ -85,8 +96,12 @@ pub trait MI {
 }
 
 impl<T> MI for &mut T where T: MI {
-    fn read<S: ToMemoryReadSize>(&mut self, address: u32) -> Result<S, AccessPortError> {
-        (*self).read(address)
+    fn read32(&mut self, address: u32) -> Result<u32, AccessPortError> {
+        (*self).read32(address)
+    }
+
+    fn read8(&mut self, address: u32) -> Result<u8, AccessPortError> {
+        (*self).read8(address)
     }
 
     fn read_block32(

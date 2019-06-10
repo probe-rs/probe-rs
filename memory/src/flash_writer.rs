@@ -134,11 +134,11 @@ fn erase_page<P: super::MI>(probe: &mut P, address: u32) -> Result<(), AccessPor
     probe.write(NVMC_CONFIG, EEN)?;
     probe.write(NVMC_ERASEPAGE, address)?;
 
-    let mut read_flag: u32 = probe.read(NVMC_READY)?;
+    let mut read_flag: u32 = probe.read32(NVMC_READY)?;
 
     while read_flag == 0 {
         info!("NVM busy (flag=0x{:08x}), waiting...", read_flag);
-        read_flag = probe.read(NVMC_READY)?;
+        read_flag = probe.read32(NVMC_READY)?;
         thread::sleep(time::Duration::from_millis(1));
     }
 

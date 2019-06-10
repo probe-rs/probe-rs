@@ -227,8 +227,12 @@ where
 
 impl MI for MasterProbe
 {
-    fn read<S: ToMemoryReadSize>(&mut self, address: u32) -> Result<S, AccessPortError> {
-        ADIMemoryInterface::new(0).read(self, address)
+    fn read32(&mut self, address: u32) -> Result<u32, AccessPortError> {
+        ADIMemoryInterface::new(0).read32(self, address)
+    }
+
+    fn read8(&mut self, address: u32) -> Result<u8, AccessPortError> {
+        ADIMemoryInterface::new(0).read8(self, address)
     }
 
     fn read_block32(

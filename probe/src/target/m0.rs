@@ -178,7 +178,7 @@ pub const PC: CoreRegisterAddress = CoreRegisterAddress(0b01111);
 fn wait_for_core_halted(mi: &mut impl MI) -> Result<(), DebugProbeError> {
     // Wait until halted state is active again.
     for _ in 0..100 {
-        let dhcsr_val = Dhcsr(mi.read(Dhcsr::ADDRESS)?);
+        let dhcsr_val = Dhcsr(mi.read32(Dhcsr::ADDRESS)?);
 
         if dhcsr_val.s_halt() {
             return Ok(());
@@ -191,7 +191,7 @@ fn wait_for_core_register_transfer(mi: &mut impl MI) -> Result<(), DebugProbeErr
     // now we have to poll the dhcsr register, until the dhcsr.s_regrdy bit is set
     // (see C1-292, cortex m0 arm)
     for _ in 0..100 {
-        let dhcsr_val = Dhcsr(mi.read(Dhcsr::ADDRESS)?);
+        let dhcsr_val = Dhcsr(mi.read32(Dhcsr::ADDRESS)?);
 
         if dhcsr_val.s_regrdy() {
             return Ok(());
@@ -210,7 +210,7 @@ fn read_core_reg (mi: &mut MasterProbe, addr: CoreRegisterAddress) -> Result<u32
 
     wait_for_core_register_transfer(mi)?;
 
-    mi.read(Dcrdr::ADDRESS).map_err(From::from)
+    mi.read32(Dcrdr::ADDRESS).map_err(From::from)
 }
 
 fn write_core_reg(mi: &mut MasterProbe, addr: CoreRegisterAddress, value: u32) -> Result<(), DebugProbeError> {
@@ -281,7 +281,7 @@ fn step(mi: &mut MasterProbe) -> Result<CpuInformation, DebugProbeError> {
 }
 
 fn get_available_breakpoint_units(mi: &mut MasterProbe) -> Result<u32, DebugProbeError> {
-    let result = mi.read::<u32>(BpCtrl::ADDRESS)?;
+    let result = mi.read32(BpCtrl::ADDRESS)?;
 
     wait_for_core_register_transfer(mi)?;
 
