@@ -15,5 +15,5 @@ stlink = { path = "../probe/stlink" }
 daplink = { path = "../probe/daplink" }
 coresight = { path = "../coresight" }
 scroll = "*"
-rustyline = "4.1.0"
+rustyline = "5.0.2"
 capstone = "0.6.0"

@@ -11,6 +11,8 @@ use super::{
 };
 use bitfield::bitfield;
 
+use log::debug;
+
 bitfield!{
     #[derive(Copy, Clone)]
     pub struct Dhcsr(u32);
@@ -256,7 +258,7 @@ impl Target for M0 {
     fn run(&self, mi: &mut MasterProbe) -> Result<(), DebugProbeError> {
         let mut value = Dhcsr(0);
         value.set_c_halt(false);
-        value.set_c_debugen(false);
+        value.set_c_debugen(true);
         value.enable_write();
 
         mi.write32(Dhcsr::ADDRESS, value.into()).map_err(Into::into)
@@ -294,7 +296,9 @@ impl Target for M0 {
     }
 
     fn enable_breakpoints(&self, mi: &mut MasterProbe, state: bool) -> Result<(), DebugProbeError> {
+        debug!("Enabling breakpoints: {:?}", state);
         let mut value = BpCtrl(0);
+        value.set_key(true);
         value.set_enable(state);
 
         mi.write32(BpCtrl::ADDRESS, value.into())?;
@@ -303,12 +307,13 @@ impl Target for M0 {
     }
 
     fn set_breakpoint(&self, mi: &mut MasterProbe, addr: u32) -> Result<(), DebugProbeError> {
+        debug!("Setting breakpoint on address 0x{:08x}", addr);
         let mut value = BpCompx(0);
         value.set_bp_match(0b11);
-        value.set_comp((addr >> 2) | 0x00FFFFFF);
+        value.set_comp((addr >> 2) & 0x00FFFFFF);
         value.set_enable(true);
 
-        mi.write32(BpCtrl::ADDRESS, value.into())?;
+        mi.write32(BpCompx::ADDRESS, value.into())?;
 
         self.wait_for_core_halted(mi)
     }

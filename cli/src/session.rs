@@ -7,6 +7,7 @@ pub struct Session {
 }
 
 impl Session {
+    /// Open a new session with a given debug target
     pub fn new(target: impl Target + 'static, probe: MasterProbe) -> Self {
         Self {
             target: Box::new(target),

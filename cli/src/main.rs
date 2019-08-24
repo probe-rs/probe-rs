@@ -290,7 +290,11 @@ fn debug(n: usize) -> Result<(), CliError> {
 }
 
 fn handle_line(session: &mut Session, cs: &mut Capstone, line: &str) -> Result<(), CliError> {
-    match line {
+    let mut command_parts = line.split_whitespace();
+
+    let command = command_parts.next().unwrap();
+
+    match command {
         "halt" => {
             let cpu_info = session.target.halt(&mut session.probe)?;
             println!("Core stopped at address 0x{:08x}", cpu_info.pc);
@@ -317,6 +321,28 @@ fn handle_line(session: &mut Session, cs: &mut Capstone, line: &str) -> Result<(
             let cpu_info = session.target.step(&mut session.probe)?;
             println!("Core stopped at address 0x{:08x}", cpu_info.pc);
             Ok(())
+        },
+        "read" => {
+            let address_str = command_parts.next().unwrap();
+            let address = u32::from_str_radix(address_str, 16).unwrap();
+            //println!("Would read from address 0x{:08x}", address);
+
+            let val = session.probe.read32(address)?;
+            println!("0x{:08x} = 0x{:08x}", address, val);
+            Ok(())
+        },
+        "break" => {
+            let address_str = command_parts.next().unwrap();
+            let address = u32::from_str_radix(address_str, 16).unwrap();
+            //println!("Would read from address 0x{:08x}", address);
+
+            session.target.enable_breakpoints(&mut session.probe, true);
+            session.target.set_breakpoint(&mut session.probe, address);
+
+            Ok(())
+        },
+        "quit" => {
+            Err(CliError::Quit)
         },
         _ => {
             println!("Unknown command '{}'", line);

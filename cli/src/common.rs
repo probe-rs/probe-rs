@@ -24,6 +24,7 @@ pub enum CliError {
     AccessPort(AccessPortError),
     FlashError(FlashError),
     StdIO(std::io::Error),
+    Quit,
 }
 
 impl Error for CliError {
@@ -35,6 +36,7 @@ impl Error for CliError {
             AccessPort(ref e) => Some(e),
             FlashError(ref e) => Some(e),
             StdIO(ref e) => Some(e),
+            Quit => None,
         }
     }
 }
@@ -48,6 +50,7 @@ impl fmt::Display for CliError {
             AccessPort(ref e) => e.fmt(f),
             FlashError(ref e) => e.fmt(f),
             StdIO(ref e) => e.fmt(f),
+            Quit => write!(f, "Quit error..."),
         }
     }
 }
