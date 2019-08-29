@@ -1,3 +1,4 @@
+use crate::flash_writer::FlashAlgorithm;
 use crate::debug_probe::{
     MasterProbe,
     DebugProbeError,
@@ -19,7 +20,24 @@ impl From<CoreRegisterAddress> for u32 {
     }
 }
 
+pub struct BasicRegisterAddresses {
+    pub R0: CoreRegisterAddress,
+    pub R1: CoreRegisterAddress,
+    pub R2: CoreRegisterAddress,
+    pub R3: CoreRegisterAddress,
+    pub R9: CoreRegisterAddress,
+    pub PC: CoreRegisterAddress,
+    pub LR: CoreRegisterAddress,
+    pub SP: CoreRegisterAddress,
+}
+
 pub trait Target {
+    fn get_flash_algorithm(&self) -> FlashAlgorithm;
+
+    fn get_basic_register_addresses(&self) -> BasicRegisterAddresses;
+
+    fn wait_for_core_halted(&self, mi: &mut MasterProbe) -> Result<(), DebugProbeError>;
+
     fn halt(&self, mi: &mut MasterProbe) -> Result<CpuInformation, DebugProbeError>;
 
     fn run(&self, mi: &mut MasterProbe) -> Result<(), DebugProbeError>;

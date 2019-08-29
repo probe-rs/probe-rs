@@ -1,7 +1,7 @@
 mod common;
 mod info;
-mod session;
 
+use probe::session::Session;
 use memory::{
     MI,
     flash_writer,
@@ -27,8 +27,6 @@ use capstone::{
 };
 use capstone::prelude::*;
 use capstone::arch::arm::ArchMode;
-
-use session::Session;
 
 fn parse_hex(src: &str) -> Result<u32, std::num::ParseIntError> {
     u32::from_str_radix(src, 16)

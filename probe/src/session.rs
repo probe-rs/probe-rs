@@ -1,5 +1,5 @@
-use probe::debug_probe::MasterProbe;
-use probe::target::Target;
+use crate::debug_probe::MasterProbe;
+use crate::target::Target;
 
 pub struct Session {
     pub target: Box<Target>,

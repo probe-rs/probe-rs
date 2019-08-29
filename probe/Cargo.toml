@@ -10,3 +10,5 @@ coresight = { path = "../coresight"}
 query_interface = "*"
 log = "0.4.6"
 bitfield = "*"
+ihex = "1.1.2"
+scroll = "*"

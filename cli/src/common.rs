@@ -1,5 +1,5 @@
-use crate::session::Session;
 use probe::target::Target;
+use probe::session::Session;
 use coresight::{
     access_ports::{
         AccessPortError,
