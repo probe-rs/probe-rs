@@ -1,10 +1,12 @@
-use libusb::Device;
+use rusb::Device;
+use rusb::UsbContext;
+
 use probe::debug_probe::{
     DebugProbeInfo,
     DebugProbeType,
 };
 
-fn is_stlink_device<'a>(device: &Device<'a>) -> bool {
+fn is_stlink_device<T: UsbContext>(device: &Device<T>) -> bool {
     // Check the VID/PID.
     if let Ok(descriptor) = device.device_descriptor() {
         (descriptor.vendor_id() == crate::usb_interface::USB_VID)
@@ -15,7 +17,7 @@ fn is_stlink_device<'a>(device: &Device<'a>) -> bool {
 }
 
 pub fn list_stlink_devices() -> Vec<DebugProbeInfo> {
-    if let Ok(context) = libusb::Context::new() {
+    if let Ok(context) = rusb::Context::new() {
         if let Ok(devices) = context.devices() {
             devices.iter()
                     .filter(is_stlink_device)
