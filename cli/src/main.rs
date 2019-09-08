@@ -3,7 +3,6 @@ mod info;
 mod session;
 
 use std::rc::Rc;
-use std::path::Path;
 use std::path::PathBuf;
 use memory::{
     MI,
@@ -399,16 +398,11 @@ fn handle_line(session: &mut Session, cs: &mut Capstone, debug_info: Option<&Deb
             Ok(())
         },
         "bt" => {
-            use probe::target::m0::{PC, SP};
-            let stack_pointer = session.target.read_core_reg(&mut session.probe, SP)?;
+            use probe::target::m0::PC;
             let program_counter = session.target.read_core_reg(&mut session.probe, PC)?;
 
-            println!("Current program counter: 0x{:08x}", program_counter);
-            println!("Current stack pointer:   0x{:08x}", stack_pointer);
 
             if let Some(di) = debug_info {
-                println!("Current function: {:?}", di.get_function_name(program_counter as u64));
-
                 let frames = di.try_unwind(session, program_counter as u64);
 
                 for frame in frames {
@@ -577,7 +571,7 @@ struct StackFrameIterator<'a> {
     debug_info: &'a DebugInfo,
     session: &'a mut Session,
     frame_count: u64,
-    pc: u64,
+    pc: Option<u64>,
     registers: Registers,
 }
 
@@ -589,8 +583,8 @@ impl<'a> StackFrameIterator<'a> {
         Self  {
             debug_info,
             session,
-            frame_count: 1,
-            pc,
+            frame_count: 0,
+            pc: Some(pc),
             registers,
         }
     }
@@ -604,10 +598,16 @@ impl<'a> Iterator for StackFrameIterator<'a> {
         let mut ctx = gimli::UninitializedUnwindContext::new();
         let bases = gimli::BaseAddresses::default();
 
+        let pc = match self.pc {
+            Some(pc) => pc,
+            None => { return None; }
+        };
+
+
         let unwind_info = self.debug_info.frame_section.unwind_info_for_address(
             &bases,
             &mut ctx,
-            self.pc,
+            pc,
             gimli::DebugFrame::cie_from_offset
         ).unwrap();
 
@@ -649,22 +649,19 @@ impl<'a> Iterator for StackFrameIterator<'a> {
         let return_frame = Some(StackFrame {
             id: self.frame_count,
             function_name: self.debug_info
-                .get_function_name(self.pc)
+                .get_function_name(pc)
                 .unwrap_or(format!("<unknown_function_{}>", self.frame_count).to_string()),
-            source_location: self.debug_info.get_source_location(self.pc),
+            source_location: self.debug_info.get_source_location(pc),
             registers: self.registers.clone(),
-            pc: self.pc as u32,
+            pc: pc as u32,
         });
 
-        self.pc = if let Some(pc) = self.registers[14] {
-            (pc & !1) as u64
-        } else {
-            // Break the iterator
-            return None;
-        };
-
         self.frame_count += 1;
-        
+
+        // Next function is where our current return register is pointing to.
+        // We just have to remove the lowest bit (indicator for Thumb mode).
+        self.pc = self.registers[14].map( |pc| (pc &!1) as u64);
+
         return return_frame;
     }
 }
