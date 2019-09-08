@@ -16,6 +16,7 @@ use probe::debug_probe::{
 };
 
 use std::fs;
+use log::debug;
 
 use std::borrow;
 use object;
@@ -406,7 +407,7 @@ fn handle_line(session: &mut Session, cs: &mut Capstone, debug_info: Option<&Deb
             println!("Current stack pointer:   0x{:08x}", stack_pointer);
 
             if let Some(di) = debug_info {
-                println!("Current function: {:?}", di.get_function_name(program_counter as u64, session));
+                println!("Current function: {:?}", di.get_function_name(program_counter as u64));
 
                 di.try_unwind(session, program_counter as u64);
             }
@@ -458,6 +459,44 @@ fn handle_line(session: &mut Session, cs: &mut Capstone, debug_info: Option<&Deb
             Ok(())
         }
     }
+}
+
+
+#[derive(Debug, Copy, Clone)]
+enum ColumnType {
+    LeftEdge,
+    Column(u64)
+}
+
+impl From<gimli::ColumnType> for ColumnType {
+    fn from(column: gimli::ColumnType) -> Self {
+        match column {
+            gimli::ColumnType::LeftEdge => ColumnType::LeftEdge,
+            gimli::ColumnType::Column(c) => ColumnType::Column(c),
+        }
+    }
+}
+
+#[derive(Debug)]
+struct StackFrame {
+    id: u64,
+    function_name: String,
+    source_location: Option<SourceLocation>,
+    registers: Registers,
+    call_frame_address: u32,
+    pc: u32
+}
+
+#[derive(Debug, Clone)]
+struct Registers([Option<u32>; 16]);
+
+#[derive(Debug)]
+struct SourceLocation {
+    line: Option<u64>,
+    column: Option<ColumnType>,
+
+    file: Option<String>,
+    directory: Option<PathBuf>,
 }
 
 type DwarfReader = gimli::read::EndianRcSlice<gimli::LittleEndian>;
@@ -549,9 +588,7 @@ impl<'a> DebugInfo {
 
     }
 
-    fn get_function_name(&self, address: u64, session: &mut Session) -> Option<String> {
-        // search line number information for this address
-
+    fn get_source_location(&self, address: u64) -> Option<SourceLocation> {
         let mut units = self.dwarf.units();
         
         while let Some(header) = units.next().unwrap() {
@@ -564,7 +601,7 @@ impl<'a> DebugInfo {
 
             while let Some(range) = ranges.next().unwrap() {
                 if (range.begin <= address) && (address < range.end) {
-                    println!("Unit: {:?}", unit.name.as_ref().and_then(|raw_name| std::str::from_utf8(&raw_name).ok()).unwrap_or("<unknown>") );
+                    debug!("Unit: {:?}", unit.name.as_ref().and_then(|raw_name| std::str::from_utf8(&raw_name).ok()).unwrap_or("<unknown>") );
 
 
                     // get function name
@@ -576,8 +613,6 @@ impl<'a> DebugInfo {
 
                     let (program, sequences) = ilnp.clone().sequences().unwrap();
 
-                    let mut address = address;
-
                     // normalize address
                     let mut target_seq = None;
 
@@ -587,6 +622,10 @@ impl<'a> DebugInfo {
                             target_seq = Some(seq);                            
                             break;
                         }
+                    }
+
+                    if target_seq.is_none() {
+                        return None;
                     }
 
                     let mut previous_row: Option<gimli::LineRow> = None;
@@ -602,8 +641,12 @@ impl<'a> DebugInfo {
                             let file_dir = row.file(header).unwrap().directory(header).unwrap();
                             let file_dir_str = std::str::from_utf8(&self.dwarf.attr_string(&unit, file_dir).unwrap()).unwrap().to_owned();
 
-                            println!("File {}, directory {:?}, on line {:?}, column {:?}", file_name_str, file_dir_str, row.line(), row.column());
-                            break;
+                            return Some(SourceLocation {
+                                line: row.line(),
+                                column: Some(row.column().into()),
+                                file: file_name_str.into(),
+                                directory: Some(file_dir_str.into()),
+                            })
                         } else {
                             if (row.address() > address) && previous_row.is_some() {
                                 let row = previous_row.unwrap();
@@ -614,26 +657,39 @@ impl<'a> DebugInfo {
                                 let file_dir = row.file(header).unwrap().directory(header).unwrap();
                                 let file_dir_str = std::str::from_utf8(&self.dwarf.attr_string(&unit, file_dir).unwrap()).unwrap().to_owned();
 
-                                println!("File {}, directory {:?}, on line {:?}, column {:?}", file_name_str, file_dir_str, row.line(), row.column());                                
-                                break;
+                                return Some(SourceLocation {
+                                    line: row.line(),
+                                    column: Some(row.column().into()),
+                                    file: file_name_str.into(),
+                                    directory: Some(file_dir_str.into()),
+                                })
                             }
                         }
                         previous_row = Some(row.clone());
                     }
                 }
             }
+        }
+        None
+
+    }
+
+    fn get_function_name(&self, address: u64) -> Option<String> {
+        // search line number information for this address
+
+        let mut units = self.dwarf.units();
+        
+        while let Some(header) = units.next().unwrap() {
+            let unit = match self.dwarf.unit(header) {
+                Ok(unit) => unit,
+                Err(_) => continue,
+            };
 
             let mut entries_cursor = unit.entries();
 
-            let mut current_depth = 0;
-
-            let mut frame_base = None;
-
-            'tag_loop: while let Some((depth, current)) = entries_cursor.next_dfs().unwrap() {
-                current_depth += depth;
+            while let Some((_depth, current)) = entries_cursor.next_dfs().unwrap() {
 
                 // we are interested in functions / inlined functions
-
 
                 match current.tag() {
                     gimli::DW_TAG_subprogram | gimli::DW_TAG_inlined_subroutine => {
@@ -641,27 +697,12 @@ impl<'a> DebugInfo {
 
                         while let Some(ranges) = ranges.next().unwrap() {
                             if (ranges.begin <= address) && (address < ranges.end) {
-                                // get framebase!
-                                if let Some(frame_base_attr) = current.attr(gimli::DW_AT_frame_base).expect(" Failed to parse entry") {
-                                    if let gimli::AttributeValue::Exprloc(e) = frame_base_attr.value() {
-                                        frame_base = self.evaluate_frame_base(session, e, &unit)
-                                    }
-                                };
-
-                                if let Some(fb) = frame_base {
-                                    println!("Framebase: 0x:{:08x}", fb);
-                                } else  {
-                                    println!("No frambease :(");
-                                }
-
                                 if let Some(fn_name_attr) = current.attr(gimli::DW_AT_name).expect(" Failed to parse entry") {
                                     match fn_name_attr.value() {
                                         gimli::AttributeValue::DebugStrRef(fn_name_ref) => {
                                             let fn_name_raw = self.dwarf.string(fn_name_ref).unwrap();
 
-                                            println!("Hooray! Function name: {:?}", std::str::from_utf8(&fn_name_raw).unwrap());
-                                            //print_all_attributes(session, frame_base, &self.dwarf, &unit, current, 0);
-                                            break 'tag_loop;
+                                            return Some(String::from_utf8_lossy(&fn_name_raw).to_string());
                                         },
                                         _ => (),
                                     }
@@ -673,29 +714,6 @@ impl<'a> DebugInfo {
                 };
             }
 
-            /*
-
-            let initial_depth = current_depth;
-
-            while let Some((depth, current)) = entries_cursor.next_dfs().unwrap() {
-                current_depth += depth;
-
-                if current_depth <= initial_depth {
-                    break;
-                }
-
-                let print_depth: usize = (current_depth-initial_depth) as usize;
-
-                for _ in 0..(print_depth) {
-                    print!("\t");
-                }
-                
-                println!("Tag: {}", current.tag());
-                print_all_attributes(session, frame_base, &self.dwarf, &unit, current, print_depth);
-            }
-
-            */
-
         }
 
         None
@@ -704,30 +722,30 @@ impl<'a> DebugInfo {
 
     fn try_unwind(&self, session: &mut Session, address: u64) {
 
+        let mut frames = vec![];
+
         // read current registers
-        let mut regs: [Option<u32>;16] = [None;16];
+        let mut registers = Registers([None;16]);
         let mut pc = address;
 
         for i in 0..16 {
-            regs[i as usize] = Some(session.target.read_core_reg(&mut session.probe, i.into()).unwrap());
+            registers.0[i as usize] = Some(session.target.read_core_reg(&mut session.probe, i.into()).unwrap());
         }
 
-        let mut cfa = regs[13];
+        let mut cfa = registers.0[13];
 
-        println!("Frame 0:");
-        println!("PC at 0x{:08x}", address);
-        println!("CFA: 0x{:08x}", cfa.unwrap());
-        for i in 0..16 {
-            println!("Register r{}: {:08x}", i, regs[i].unwrap_or(0));
-        }
+        let source_info = self.get_source_location(pc);
 
-        let mut lr = regs[14].unwrap() & (!1);
+        frames.push(StackFrame {
+            id: 0,
+            function_name: self.get_function_name(pc).unwrap_or(format!("<unknown_function_{}>", 0).to_string()),
+            source_location: source_info,
+            registers: registers.clone(),
+            call_frame_address: cfa.unwrap(),
+            pc: pc as u32,
+        });
 
-        // Just assume its 16 bit thumb for now
-        //lr -= 2;
-
-        println!("Calling function: {:?}", self.get_function_name(lr as u64, session));
-
+        let mut lr = registers.0[14].unwrap() & (!1);
 
 
         let mut ctx = gimli::UninitializedUnwindContext::new();
@@ -742,23 +760,23 @@ impl<'a> DebugInfo {
             println!("******************************************");
             let unwind_info = self.frame_section.unwind_info_for_address(&bases, &mut ctx, pc, gimli::DebugFrame::cie_from_offset).unwrap();
 
-            println!("CFA: {:?}", unwind_info.cfa());
+            debug!("CFA: {:?}", unwind_info.cfa());
 
             for i in 0..16 {
-                println!("Register r{}: {:?}", i, unwind_info.register(gimli::Register(i as u16)))
+                debug!("Register r{}: {:?}", i, unwind_info.register(gimli::Register(i as u16)))
             }
 
             cfa = match unwind_info.cfa() {
                 gimli::CfaRule::RegisterAndOffset { register, offset } => {
                     //let reg_val = session.target.read_core_reg(&mut session.probe, (register.0 as u8).into()).unwrap();
-                    let reg_val = regs[register.0 as usize];
+                    let reg_val = registers.0[register.0 as usize];
                     
-                    Some(((reg_val.expect("See!") as i64) + offset) as u32)
+                    Some(((reg_val.unwrap() as i64) + offset) as u32)
                 },
                 gimli::CfaRule::Expression(_) => unimplemented!()
             };
 
-            regs[13] = cfa;
+            registers.0[13] = cfa;
 
             // generate previous registers
             for i in 0..16 {
@@ -766,19 +784,15 @@ impl<'a> DebugInfo {
                     continue;
                 }
 
-                let current_val = regs[i];
-
                 use gimli::read::RegisterRule::*;
 
-                regs[i] = match unwind_info.register(gimli::Register(i as u16)) {
+                registers.0[i] = match unwind_info.register(gimli::Register(i as u16)) {
                     Undefined => None,
-                    SameValue => regs[i],
+                    SameValue => registers.0[i],
                     Offset(o) => {
                         let addr = (cfa.unwrap() as i64) + o;
                         let mut buff = [0u8;4];
                         session.target.read_block8(&mut session.probe, addr as u32, &mut buff).unwrap();
-
-                        println!("Read bytes: {:?}", &buff);
 
                         let val = u32::from_le_bytes(buff);
 
@@ -789,17 +803,45 @@ impl<'a> DebugInfo {
             }
 
             println!("Frame {}:", frame_count);
-            println!("Function name: {:?}", self.get_function_name(pc, session));
-            println!("PC at 0x{:08x}", pc);
-            println!("CFA: 0x{:08x}", cfa.unwrap());
-            for i in 0..16 {
-                println!("Register r{}: {:08x}", i, regs[i].unwrap_or(0));
-            }
 
-            pc = (regs[14].unwrap() & !1) as u64;
+            let source_info = self.get_source_location(pc);
+
+            frames.push(StackFrame {
+                id: frame_count,
+                function_name: self.get_function_name(pc).unwrap_or(format!("<unknown_function_{}>", frame_count).to_string()),
+                source_location: source_info,
+                registers: registers.clone(),
+                call_frame_address: cfa.unwrap(),
+                pc: pc as u32,
+            });
+
+            pc = if let Some(pc) = registers.0[14] {
+                (pc & !1) as u64
+            } else {
+                break;
+            };
 
             frame_count += 1;
-            println!("******************************************");
+        }
+
+        for frame in frames {
+            dbg!(&frame);
+            if let Some(si) = &frame.source_location {
+                print!(
+                    "{}/{}", 
+                    si.directory.as_ref().map(|p| p.to_string_lossy()).unwrap_or(std::borrow::Cow::from("<unknown dir>")), 
+                    si.file.as_ref().unwrap_or(&"<unknown file>".to_owned())
+                );
+
+                if si.column.is_some() && si.line.is_some() {
+                    match si.column.unwrap() {
+                        ColumnType::Column(c) => print!(":{}:{}", si.line.unwrap(), c),
+                        ColumnType::LeftEdge => print!(":{}", si.line.unwrap()),
+                    }
+                }
+
+                println!("");
+            }
         }
     }
 }

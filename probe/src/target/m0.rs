@@ -412,7 +412,7 @@ impl Target for FakeM0 {
     }
 
     fn read_block8(&self, mi: &mut MasterProbe, address: u32, data: &mut [u8]) -> Result<(), DebugProbeError> {
-        println!("Read from dump: addr=0x{:08x}, len={}", address, data.len());
+        debug!("Read from dump: addr=0x{:08x}, len={}", address, data.len());
 
         if (address < self.dump.stack_addr) || (address as usize > (self.dump.stack_addr as usize + self.dump.stack.len())) {
             return Err(DebugProbeError::UnknownError);
