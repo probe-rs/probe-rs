@@ -409,7 +409,11 @@ fn handle_line(session: &mut Session, cs: &mut Capstone, debug_info: Option<&Deb
             if let Some(di) = debug_info {
                 println!("Current function: {:?}", di.get_function_name(program_counter as u64));
 
-                di.try_unwind(session, program_counter as u64);
+                let frames = di.try_unwind(session, program_counter as u64);
+
+                for frame in frames {
+                    println!("{}", frame);
+                }
             }
 
 
@@ -486,6 +490,31 @@ struct StackFrame {
     pc: u32
 }
 
+impl std::fmt::Display for StackFrame {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        writeln!(f, "{}: {}", self.id, self.function_name)?;
+        if let Some(si) = &self.source_location {
+            write!(
+                f,
+                "\t{}/{}",
+                si.directory.as_ref().map(|p| p.to_string_lossy()).unwrap_or(std::borrow::Cow::from("<unknown dir>")), 
+                si.file.as_ref().unwrap_or(&"<unknown file>".to_owned())
+            )?;
+
+            if si.column.is_some() && si.line.is_some() {
+                match si.column.unwrap() {
+                    ColumnType::Column(c) => write!(f, ":{}:{}", si.line.unwrap(), c)?,
+                    ColumnType::LeftEdge => write!(f, ":{}", si.line.unwrap())?,
+                }
+            }
+
+            write!(f, "")
+        } else {
+            write!(f, "")
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 struct Registers([Option<u32>; 16]);
 
@@ -542,6 +571,102 @@ struct SourceLocation {
 
     file: Option<String>,
     directory: Option<PathBuf>,
+}
+
+struct StackFrameIterator<'a> {
+    debug_info: &'a DebugInfo,
+    session: &'a mut Session,
+    frame_count: u64,
+    pc: u64,
+    registers: Registers,
+}
+
+impl<'a> StackFrameIterator<'a> {
+    pub fn new(debug_info: &'a DebugInfo, session: &'a mut Session, address: u64) -> Self {
+        let registers = Registers::from_session(session);
+        let pc = address;
+
+        Self  {
+            debug_info,
+            session,
+            frame_count: 1,
+            pc,
+            registers,
+        }
+    }
+}
+
+impl<'a> Iterator for StackFrameIterator<'a> {
+    type Item = StackFrame;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        use gimli::UnwindSection;
+        let mut ctx = gimli::UninitializedUnwindContext::new();
+        let bases = gimli::BaseAddresses::default();
+
+        let unwind_info = self.debug_info.frame_section.unwind_info_for_address(
+            &bases,
+            &mut ctx,
+            self.pc,
+            gimli::DebugFrame::cie_from_offset
+        ).unwrap();
+
+        let current_cfa = match unwind_info.cfa() {
+            gimli::CfaRule::RegisterAndOffset { register, offset } => {
+                let reg_val = self.registers[register.0 as usize];
+                
+                Some(((reg_val.unwrap() as i64) + offset) as u32)
+            },
+            gimli::CfaRule::Expression(_) => unimplemented!()
+        };
+
+        // generate previous registers
+        for i in 0..16 {
+            if i == 13 {
+                continue;
+            }
+
+            use gimli::read::RegisterRule::*;
+
+            self.registers[i] = match unwind_info.register(gimli::Register(i as u16)) {
+                Undefined => None,
+                SameValue => self.registers[i],
+                Offset(o) => {
+                    let addr = (current_cfa.unwrap() as i64) + o;
+                    let mut buff = [0u8;4];
+                    self.session.target.read_block8(&mut self.session.probe, addr as u32, &mut buff).unwrap();
+
+                    let val = u32::from_le_bytes(buff);
+
+                    Some(val)
+                },
+                _ => unimplemented!()
+            }
+        }
+
+        self.registers.set_call_frame_address(current_cfa);
+
+        let return_frame = Some(StackFrame {
+            id: self.frame_count,
+            function_name: self.debug_info
+                .get_function_name(self.pc)
+                .unwrap_or(format!("<unknown_function_{}>", self.frame_count).to_string()),
+            source_location: self.debug_info.get_source_location(self.pc),
+            registers: self.registers.clone(),
+            pc: self.pc as u32,
+        });
+
+        self.pc = if let Some(pc) = self.registers[14] {
+            (pc & !1) as u64
+        } else {
+            // Break the iterator
+            return None;
+        };
+
+        self.frame_count += 1;
+        
+        return return_frame;
+    }
 }
 
 type DwarfReader = gimli::read::EndianRcSlice<gimli::LittleEndian>;
@@ -765,102 +890,8 @@ impl<'a> DebugInfo {
     }
 
 
-    fn try_unwind(&self, session: &mut Session, address: u64) {
-        use gimli::UnwindSection;
-        let mut ctx = gimli::UninitializedUnwindContext::new();
-        let bases = gimli::BaseAddresses::default();
-
-        let mut frames = vec![];
-        let mut registers = Registers::from_session(session);
-        let mut pc = address;
-
-        frames.push(StackFrame {
-            id: 0,
-            function_name: self
-                .get_function_name(pc)
-                .unwrap_or(format!("<unknown_function_{}>", 0).to_string()),
-            source_location: self.get_source_location(pc),
-            registers: registers.clone(),
-            pc: pc as u32,
-        });
-
-        let mut frame_count = 1;
-
-        loop {
-            let unwind_info = self.frame_section.unwind_info_for_address(&bases, &mut ctx, pc, gimli::DebugFrame::cie_from_offset).unwrap();
-
-            let current_cfa = match unwind_info.cfa() {
-                gimli::CfaRule::RegisterAndOffset { register, offset } => {
-                    //let reg_val = session.target.read_core_reg(&mut session.probe, (register.0 as u8).into()).unwrap();
-                    let reg_val = registers[register.0 as usize];
-                    
-                    Some(((reg_val.unwrap() as i64) + offset) as u32)
-                },
-                gimli::CfaRule::Expression(_) => unimplemented!()
-            };
-
-            // generate previous registers
-            for i in 0..16 {
-                if i == 13 {
-                    continue;
-                }
-
-                use gimli::read::RegisterRule::*;
-
-                registers[i] = match unwind_info.register(gimli::Register(i as u16)) {
-                    Undefined => None,
-                    SameValue => registers[i],
-                    Offset(o) => {
-                        let addr = (current_cfa.unwrap() as i64) + o;
-                        let mut buff = [0u8;4];
-                        session.target.read_block8(&mut session.probe, addr as u32, &mut buff).unwrap();
-
-                        let val = u32::from_le_bytes(buff);
-
-                        Some(val)
-                    },
-                    _ => unimplemented!()
-                }
-            }
-
-            registers.set_call_frame_address(current_cfa);
-
-            frames.push(StackFrame {
-                id: frame_count,
-                function_name: self.get_function_name(pc).unwrap_or(format!("<unknown_function_{}>", frame_count).to_string()),
-                source_location: self.get_source_location(pc),
-                registers: registers.clone(),
-                pc: pc as u32,
-            });
-
-            pc = if let Some(pc) = registers[14] {
-                (pc & !1) as u64
-            } else {
-                break;
-            };
-
-            frame_count += 1;
-        }
-
-        for frame in frames {
-            dbg!(&frame);
-            if let Some(si) = &frame.source_location {
-                print!(
-                    "{}/{}", 
-                    si.directory.as_ref().map(|p| p.to_string_lossy()).unwrap_or(std::borrow::Cow::from("<unknown dir>")), 
-                    si.file.as_ref().unwrap_or(&"<unknown file>".to_owned())
-                );
-
-                if si.column.is_some() && si.line.is_some() {
-                    match si.column.unwrap() {
-                        ColumnType::Column(c) => print!(":{}:{}", si.line.unwrap(), c),
-                        ColumnType::LeftEdge => print!(":{}", si.line.unwrap()),
-                    }
-                }
-
-                println!("");
-            }
-        }
+    fn try_unwind<'b>(&'b self, session: &'b mut Session, address: u64) -> StackFrameIterator<'b> {
+        StackFrameIterator::new(&self, session, address)
     }
 }
 
