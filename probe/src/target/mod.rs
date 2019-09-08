@@ -19,6 +19,12 @@ impl From<CoreRegisterAddress> for u32 {
     }
 }
 
+impl From<u8> for CoreRegisterAddress {
+    fn from(value: u8) -> Self {
+        CoreRegisterAddress(value)
+    }
+}
+
 pub trait Target {
     fn halt(&self, mi: &mut MasterProbe) -> Result<CpuInformation, DebugProbeError>;
 
@@ -40,4 +46,6 @@ pub trait Target {
     fn enable_breakpoint(&self, mi: &mut MasterProbe, addr: u32) -> Result<(), DebugProbeError>;
 
     fn disable_breakpoint(&self, mi: &mut MasterProbe, addr: u32) -> Result<(), DebugProbeError>;
+
+    fn read_block8(&self, mi: &mut MasterProbe, address: u32, data: &mut [u8]) -> Result<(), DebugProbeError>;
 }

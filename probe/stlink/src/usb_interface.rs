@@ -80,7 +80,7 @@ pub struct STLinkUSBDevice {
 
 impl STLinkUSBDevice {
     /// Creates and initializes a new USB device.
-    pub fn new_from_info(probe_info: DebugProbeInfo) -> Result<Self, DebugProbeError>
+    pub fn new_from_info(probe_info: &DebugProbeInfo) -> Result<Self, DebugProbeError>
     {
         let context = Context::new().map_err(|_| DebugProbeError::USBError)?;
 

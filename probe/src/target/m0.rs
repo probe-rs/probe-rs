@@ -11,7 +11,23 @@ use super::{
 };
 use bitfield::bitfield;
 
+use serde::{ Serialize, Deserialize };
 use log::debug;
+
+#[derive(Debug,Serialize,Deserialize)]
+pub struct CortexDump {
+    pub regs:  [u32;16],
+    stack: Vec<u8>,
+}
+
+impl CortexDump {
+    pub fn new(stack: Vec<u8>) -> CortexDump {
+        CortexDump {
+            regs: [0u32;16],
+            stack,
+        }
+    }
+}
 
 bitfield!{
     #[derive(Copy, Clone)]
@@ -175,9 +191,15 @@ impl TargetRegister for BpCompx {
     const NAME: &'static str = "BP_CTRL0";
 }
 
-pub const PC: CoreRegisterAddress = CoreRegisterAddress(0b01111);
+pub const PC:  CoreRegisterAddress = CoreRegisterAddress(0b01111);
+pub const SP:  CoreRegisterAddress = CoreRegisterAddress(0b01101);
+pub const LR:  CoreRegisterAddress = CoreRegisterAddress(0b01110);
+pub const MSP: CoreRegisterAddress = CoreRegisterAddress(0b01001);
+pub const PSP: CoreRegisterAddress = CoreRegisterAddress(0b01010);
 
+#[derive(Debug, Default, Copy, Clone)]
 pub struct M0;
+
 
 impl M0 {
     fn wait_for_core_halted(&self, mi: &mut impl MI) -> Result<(), DebugProbeError> {
@@ -325,4 +347,70 @@ impl Target for M0 {
     fn disable_breakpoint(&self, _mi: &mut MasterProbe, _addr: u32) -> Result<(), DebugProbeError> {
         unimplemented!();
     }
+
+    fn read_block8(&self, mi: &mut MasterProbe, address: u32, data: &mut [u8]) -> Result<(), DebugProbeError> {
+        unimplemented!();
+    }
+}
+
+pub struct FakeM0 {
+    dump: CortexDump,
+}
+
+impl FakeM0 {
+    pub fn new(dump: CortexDump) -> FakeM0 {
+        FakeM0 {
+            dump
+        }
+    }
+}
+
+impl Target for FakeM0 {
+    fn halt(&self, mi: &mut MasterProbe) -> Result<CpuInformation, DebugProbeError> {
+        unimplemented!()
+    }
+
+    fn run(&self, mi: &mut MasterProbe) -> Result<(), DebugProbeError> {
+        unimplemented!()
+    }
+
+    /// Steps one instruction and then enters halted state again.
+    fn step(&self, mi: &mut MasterProbe) -> Result<CpuInformation, DebugProbeError> {
+        unimplemented!()
+    }
+
+    fn read_core_reg(&self, mi: &mut MasterProbe, addr: CoreRegisterAddress) -> Result<u32, DebugProbeError> {
+        let index: u32 = addr.into();
+
+        self.dump.regs.get(index as usize).map(|v| *v).ok_or(DebugProbeError::UnknownError)
+    }
+
+    fn write_core_reg(&self, mi: &mut MasterProbe, addr: CoreRegisterAddress, value: u32) -> Result<(), DebugProbeError> {
+        unimplemented!()
+    }
+
+    fn get_available_breakpoint_units(&self, mi: &mut MasterProbe) -> Result<u32, DebugProbeError> {
+        unimplemented!()
+    }
+
+    fn enable_breakpoints(&self, mi: &mut MasterProbe, state: bool) -> Result<(), DebugProbeError> {
+        unimplemented!()
+    }
+
+    fn set_breakpoint(&self, mi: &mut MasterProbe, addr: u32) -> Result<(), DebugProbeError> {
+        unimplemented!()
+    }
+
+    fn enable_breakpoint(&self, mi: &mut MasterProbe, addr: u32) -> Result<(), DebugProbeError> {
+        unimplemented!()
+    }
+
+    fn disable_breakpoint(&self, mi: &mut MasterProbe, addr: u32) -> Result<(), DebugProbeError> { 
+        unimplemented!()
+    }
+
+    fn read_block8(&self, mi: &mut MasterProbe, address: u32, data: &mut [u8]) -> Result<(), DebugProbeError> {
+        unimplemented!()
+    }
+
 }

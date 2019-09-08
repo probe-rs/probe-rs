@@ -16,3 +16,8 @@ coresight = { path = "../coresight" }
 scroll = "*"
 rustyline = "5.0.2"
 capstone = "0.6.0"
+serde = "*"
+ron = "0.5.1"
+gimli = "*"
+object = "*"
+memmap = "*"
