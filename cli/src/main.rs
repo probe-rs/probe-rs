@@ -431,7 +431,7 @@ fn handle_line(session: &mut Session, cs: &mut Capstone, debug_info: Option<&Deb
 
             session.probe.read_block8(stack_bot, &mut stack[..])?;
 
-            let mut dump = CortexDump::new(stack);
+            let mut dump = CortexDump::new(stack_bot, stack);
 
             for i in 0..12 {
                 dump.regs[i as usize] = session.target.read_core_reg(&mut session.probe, i.into())?;
@@ -574,7 +574,24 @@ impl<'a> DebugInfo {
                         None => return None,
                     };
 
-                    let mut rows = ilnp.clone().rows();
+                    let (program, sequences) = ilnp.clone().sequences().unwrap();
+
+                    let mut address = address;
+
+                    // normalize address
+                    let mut target_seq = None;
+
+                    for seq in sequences {
+                        //println!("Seq 0x{:08x} - 0x{:08x}", seq.start, seq.end);
+                        if (seq.start <= address) && (address < seq.end) {
+                            target_seq = Some(seq);                            
+                            break;
+                        }
+                    }
+
+                    let mut previous_row: Option<gimli::LineRow> = None;
+
+                    let mut rows = program.resume_from(target_seq.as_ref().expect("Sequence not found"));
 
                     while let Some((header, row)) = rows.next_row().unwrap() {
                         //println!("Row address: 0x{:08x}", row.address());
@@ -586,14 +603,22 @@ impl<'a> DebugInfo {
                             let file_dir_str = std::str::from_utf8(&self.dwarf.attr_string(&unit, file_dir).unwrap()).unwrap().to_owned();
 
                             println!("File {}, directory {:?}, on line {:?}, column {:?}", file_name_str, file_dir_str, row.line(), row.column());
+                            break;
                         } else {
-                            let row_addr = row.address();
+                            if (row.address() > address) && previous_row.is_some() {
+                                let row = previous_row.unwrap();
 
-                            if ((row_addr as i64) - (address as i64)).abs() < 4 {
-                                println!("Near miss: addr {:08x} - line info addr: {:08x}", address, row_addr);
+                                let file = row.file(header).unwrap().path_name();
+                                let file_name_str = std::str::from_utf8(&self.dwarf.attr_string(&unit, file).unwrap()).unwrap().to_owned();
+
+                                let file_dir = row.file(header).unwrap().directory(header).unwrap();
+                                let file_dir_str = std::str::from_utf8(&self.dwarf.attr_string(&unit, file_dir).unwrap()).unwrap().to_owned();
+
+                                println!("File {}, directory {:?}, on line {:?}, column {:?}", file_name_str, file_dir_str, row.line(), row.column());                                
+                                break;
                             }
-
                         }
+                        previous_row = Some(row.clone());
                     }
                 }
             }
@@ -635,7 +660,7 @@ impl<'a> DebugInfo {
                                             let fn_name_raw = self.dwarf.string(fn_name_ref).unwrap();
 
                                             println!("Hooray! Function name: {:?}", std::str::from_utf8(&fn_name_raw).unwrap());
-                                            print_all_attributes(session, frame_base, &self.dwarf, &unit, current, 0);
+                                            //print_all_attributes(session, frame_base, &self.dwarf, &unit, current, 0);
                                             break 'tag_loop;
                                         },
                                         _ => (),
@@ -647,6 +672,8 @@ impl<'a> DebugInfo {
                     _ => (),
                 };
             }
+
+            /*
 
             let initial_depth = current_depth;
 
@@ -667,6 +694,8 @@ impl<'a> DebugInfo {
                 print_all_attributes(session, frame_base, &self.dwarf, &unit, current, print_depth);
             }
 
+            */
+
         }
 
         None
@@ -676,24 +705,29 @@ impl<'a> DebugInfo {
     fn try_unwind(&self, session: &mut Session, address: u64) {
 
         // read current registers
-        let mut regs = [0u32;16];
+        let mut regs: [Option<u32>;16] = [None;16];
+        let mut pc = address;
 
         for i in 0..16 {
-            regs[i as usize] = session.target.read_core_reg(&mut session.probe, i.into()).unwrap();
+            regs[i as usize] = Some(session.target.read_core_reg(&mut session.probe, i.into()).unwrap());
         }
+
+        let mut cfa = regs[13];
 
         println!("Frame 0:");
         println!("PC at 0x{:08x}", address);
+        println!("CFA: 0x{:08x}", cfa.unwrap());
         for i in 0..16 {
-            println!("Register r{}: {:08x}", i, regs[i]);
+            println!("Register r{}: {:08x}", i, regs[i].unwrap_or(0));
         }
 
-        let mut lr = regs[14] & (!1);
+        let mut lr = regs[14].unwrap() & (!1);
 
         // Just assume its 16 bit thumb for now
         //lr -= 2;
 
         println!("Calling function: {:?}", self.get_function_name(lr as u64, session));
+
 
 
         let mut ctx = gimli::UninitializedUnwindContext::new();
@@ -702,16 +736,71 @@ impl<'a> DebugInfo {
 
         use gimli::UnwindSection;
 
-        let unwind_info = self.frame_section.unwind_info_for_address(&bases, &mut ctx, address, gimli::DebugFrame::cie_from_offset).unwrap();
+        let mut frame_count = 1;
 
-        println!("CFA: {:?}", unwind_info.cfa());
+        loop {
+            println!("******************************************");
+            let unwind_info = self.frame_section.unwind_info_for_address(&bases, &mut ctx, pc, gimli::DebugFrame::cie_from_offset).unwrap();
 
-        for i in 0..16 {
-            println!("Register r{}: {:?}", i, unwind_info.register(gimli::Register(i as u16)))
+            println!("CFA: {:?}", unwind_info.cfa());
+
+            for i in 0..16 {
+                println!("Register r{}: {:?}", i, unwind_info.register(gimli::Register(i as u16)))
+            }
+
+            cfa = match unwind_info.cfa() {
+                gimli::CfaRule::RegisterAndOffset { register, offset } => {
+                    //let reg_val = session.target.read_core_reg(&mut session.probe, (register.0 as u8).into()).unwrap();
+                    let reg_val = regs[register.0 as usize];
+                    
+                    Some(((reg_val.expect("See!") as i64) + offset) as u32)
+                },
+                gimli::CfaRule::Expression(_) => unimplemented!()
+            };
+
+            regs[13] = cfa;
+
+            // generate previous registers
+            for i in 0..16 {
+                if i == 13 {
+                    continue;
+                }
+
+                let current_val = regs[i];
+
+                use gimli::read::RegisterRule::*;
+
+                regs[i] = match unwind_info.register(gimli::Register(i as u16)) {
+                    Undefined => None,
+                    SameValue => regs[i],
+                    Offset(o) => {
+                        let addr = (cfa.unwrap() as i64) + o;
+                        let mut buff = [0u8;4];
+                        session.target.read_block8(&mut session.probe, addr as u32, &mut buff).unwrap();
+
+                        println!("Read bytes: {:?}", &buff);
+
+                        let val = u32::from_le_bytes(buff);
+
+                        Some(val)
+                    },
+                    _ => unimplemented!()
+                }
+            }
+
+            println!("Frame {}:", frame_count);
+            println!("Function name: {:?}", self.get_function_name(pc, session));
+            println!("PC at 0x{:08x}", pc);
+            println!("CFA: 0x{:08x}", cfa.unwrap());
+            for i in 0..16 {
+                println!("Register r{}: {:08x}", i, regs[i].unwrap_or(0));
+            }
+
+            pc = (regs[14].unwrap() & !1) as u64;
+
+            frame_count += 1;
+            println!("******************************************");
         }
-
-        // generate previous registers
-
     }
 }
 

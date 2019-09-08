@@ -17,13 +17,15 @@ use log::debug;
 #[derive(Debug,Serialize,Deserialize)]
 pub struct CortexDump {
     pub regs:  [u32;16],
+    stack_addr: u32,
     stack: Vec<u8>,
 }
 
 impl CortexDump {
-    pub fn new(stack: Vec<u8>) -> CortexDump {
+    pub fn new(stack_addr: u32, stack: Vec<u8>) -> CortexDump {
         CortexDump {
             regs: [0u32;16],
+            stack_addr,
             stack,
         }
     }
@@ -410,7 +412,21 @@ impl Target for FakeM0 {
     }
 
     fn read_block8(&self, mi: &mut MasterProbe, address: u32, data: &mut [u8]) -> Result<(), DebugProbeError> {
-        unimplemented!()
+        println!("Read from dump: addr=0x{:08x}, len={}", address, data.len());
+
+        if (address < self.dump.stack_addr) || (address as usize > (self.dump.stack_addr as usize + self.dump.stack.len())) {
+            return Err(DebugProbeError::UnknownError);
+        }
+
+        if address as usize + data.len() > (self.dump.stack_addr as usize + self.dump.stack.len()) {
+            return Err(DebugProbeError::UnknownError);
+        }
+
+        let stack_offset = (address - self.dump.stack_addr) as usize;
+
+        data.copy_from_slice(&self.dump.stack[stack_offset..(stack_offset+data.len())]);
+
+        Ok(())
     }
 
 }
