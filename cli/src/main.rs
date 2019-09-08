@@ -483,12 +483,57 @@ struct StackFrame {
     function_name: String,
     source_location: Option<SourceLocation>,
     registers: Registers,
-    call_frame_address: u32,
     pc: u32
 }
 
 #[derive(Debug, Clone)]
 struct Registers([Option<u32>; 16]);
+
+impl Registers {
+    pub fn from_session(session: &mut Session) -> Self {
+        let mut registers = Registers([None;16]);
+        for i in 0..16 {
+            registers[i as usize] = Some(session.target.read_core_reg(&mut session.probe, i.into()).unwrap());
+        }
+        registers
+    }
+    
+    pub fn get_call_frame_address(&self) -> Option<u32> {
+        self.0[13]
+    }
+
+    pub fn set_call_frame_address(&mut self, value: Option<u32>) {
+        self.0[13] = value;
+    }
+}
+
+impl std::ops::Index<usize> for Registers {
+    type Output = Option<u32>;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.0[index]
+    }
+}
+
+impl std::ops::IndexMut<usize> for Registers {
+    fn index_mut<'a>(&'a mut self, index: usize) -> &'a mut Self::Output {
+        &mut self.0[index]
+    }
+}
+
+impl std::ops::Index<std::ops::Range<usize>> for Registers {
+    type Output = [Option<u32>];
+
+    fn index(&self, index: std::ops::Range<usize>) -> &Self::Output {
+        &self.0[index]
+    }
+}
+
+impl std::ops::IndexMut<std::ops::Range<usize>> for Registers {
+    fn index_mut<'a>(&'a mut self, index: std::ops::Range<usize>) -> &'a mut Self::Output {
+        &mut self.0[index]
+    }
+}
 
 #[derive(Debug)]
 struct SourceLocation {
@@ -721,62 +766,38 @@ impl<'a> DebugInfo {
 
 
     fn try_unwind(&self, session: &mut Session, address: u64) {
+        use gimli::UnwindSection;
+        let mut ctx = gimli::UninitializedUnwindContext::new();
+        let bases = gimli::BaseAddresses::default();
 
         let mut frames = vec![];
-
-        // read current registers
-        let mut registers = Registers([None;16]);
+        let mut registers = Registers::from_session(session);
         let mut pc = address;
-
-        for i in 0..16 {
-            registers.0[i as usize] = Some(session.target.read_core_reg(&mut session.probe, i.into()).unwrap());
-        }
-
-        let mut cfa = registers.0[13];
-
-        let source_info = self.get_source_location(pc);
 
         frames.push(StackFrame {
             id: 0,
-            function_name: self.get_function_name(pc).unwrap_or(format!("<unknown_function_{}>", 0).to_string()),
-            source_location: source_info,
+            function_name: self
+                .get_function_name(pc)
+                .unwrap_or(format!("<unknown_function_{}>", 0).to_string()),
+            source_location: self.get_source_location(pc),
             registers: registers.clone(),
-            call_frame_address: cfa.unwrap(),
             pc: pc as u32,
         });
-
-        let mut lr = registers.0[14].unwrap() & (!1);
-
-
-        let mut ctx = gimli::UninitializedUnwindContext::new();
-
-        let bases = gimli::BaseAddresses::default();
-
-        use gimli::UnwindSection;
 
         let mut frame_count = 1;
 
         loop {
-            println!("******************************************");
             let unwind_info = self.frame_section.unwind_info_for_address(&bases, &mut ctx, pc, gimli::DebugFrame::cie_from_offset).unwrap();
 
-            debug!("CFA: {:?}", unwind_info.cfa());
-
-            for i in 0..16 {
-                debug!("Register r{}: {:?}", i, unwind_info.register(gimli::Register(i as u16)))
-            }
-
-            cfa = match unwind_info.cfa() {
+            let current_cfa = match unwind_info.cfa() {
                 gimli::CfaRule::RegisterAndOffset { register, offset } => {
                     //let reg_val = session.target.read_core_reg(&mut session.probe, (register.0 as u8).into()).unwrap();
-                    let reg_val = registers.0[register.0 as usize];
+                    let reg_val = registers[register.0 as usize];
                     
                     Some(((reg_val.unwrap() as i64) + offset) as u32)
                 },
                 gimli::CfaRule::Expression(_) => unimplemented!()
             };
-
-            registers.0[13] = cfa;
 
             // generate previous registers
             for i in 0..16 {
@@ -786,11 +807,11 @@ impl<'a> DebugInfo {
 
                 use gimli::read::RegisterRule::*;
 
-                registers.0[i] = match unwind_info.register(gimli::Register(i as u16)) {
+                registers[i] = match unwind_info.register(gimli::Register(i as u16)) {
                     Undefined => None,
-                    SameValue => registers.0[i],
+                    SameValue => registers[i],
                     Offset(o) => {
-                        let addr = (cfa.unwrap() as i64) + o;
+                        let addr = (current_cfa.unwrap() as i64) + o;
                         let mut buff = [0u8;4];
                         session.target.read_block8(&mut session.probe, addr as u32, &mut buff).unwrap();
 
@@ -802,20 +823,17 @@ impl<'a> DebugInfo {
                 }
             }
 
-            println!("Frame {}:", frame_count);
-
-            let source_info = self.get_source_location(pc);
+            registers.set_call_frame_address(current_cfa);
 
             frames.push(StackFrame {
                 id: frame_count,
                 function_name: self.get_function_name(pc).unwrap_or(format!("<unknown_function_{}>", frame_count).to_string()),
-                source_location: source_info,
+                source_location: self.get_source_location(pc),
                 registers: registers.clone(),
-                call_frame_address: cfa.unwrap(),
                 pc: pc as u32,
             });
 
-            pc = if let Some(pc) = registers.0[14] {
+            pc = if let Some(pc) = registers[14] {
                 (pc & !1) as u64
             } else {
                 break;
