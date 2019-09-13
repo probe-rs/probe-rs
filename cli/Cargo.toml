@@ -13,6 +13,7 @@ probe = { path = "../probe" }
 stlink = { path = "../probe/stlink" }
 daplink = { path = "../probe/daplink" }
 coresight = { path = "../coresight" }
+probe-rs-debug = { path = "../debug" }
 scroll = "*"
 rustyline = "5.0.2"
 capstone = "0.6.0"
@@ -21,3 +22,4 @@ ron = "0.5.1"
 gimli = "*"
 object = "*"
 memmap = "*"
+rustc-demangle = "0.1.16"

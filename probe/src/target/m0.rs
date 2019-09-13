@@ -351,7 +351,7 @@ impl Target for M0 {
     }
 
     fn read_block8(&self, mi: &mut MasterProbe, address: u32, data: &mut [u8]) -> Result<(), DebugProbeError> {
-        unimplemented!();
+        Ok(mi.read_block8(address, data)?)
     }
 }
 

@@ -1,7 +1,7 @@
 use std::path::Path;
 use std::fs::File;
 
-use crate::session::Session;
+use probe_rs_debug::session::Session;
 use probe::target::Target;
 use coresight::{
     access_ports::{
