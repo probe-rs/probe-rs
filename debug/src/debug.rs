@@ -8,6 +8,7 @@ use memory::MI;
 use log::debug;
 
 use crate::session::Session;
+use crate::*;
 
 #[derive(Debug, Copy, Clone)]
 pub enum ColumnType {
@@ -30,7 +31,8 @@ pub struct StackFrame {
     pub function_name: String,
     pub source_location: Option<SourceLocation>,
     registers: Registers,
-    pc: u32
+    pc: u32,
+    variables: Vec<Variable>,
 }
 
 impl std::fmt::Display for StackFrame {
@@ -50,11 +52,15 @@ impl std::fmt::Display for StackFrame {
                     ColumnType::LeftEdge => write!(f, ":{}", si.line.unwrap())?,
                 }
             }
-
-            write!(f, "")
-        } else {
-            write!(f, "")
         }
+
+        write!(f, "\n")?;
+        writeln!(f, "\tVariables:")?;
+
+        for variable in &self.variables {
+            writeln!(f, "\t\t{}", variable.name)?;
+        }
+        write!(f, "")
     }
 }
 
@@ -195,14 +201,34 @@ impl<'a> Iterator for StackFrameIterator<'a> {
 
         self.registers.set_call_frame_address(current_cfa);
 
+        let unit_info = self.debug_info.get_unit_info();
+
+        let unknown_function = format!("<unknown_function_{}>", self.frame_count).to_string();
+
+        let (function_name, variables) = if let Some(ui) = unit_info {
+            if let Some(die_cursor_state) = &mut ui.get_function_die(pc) {
+                dbg!(die_cursor_state.depth);
+                let function_name = ui
+                    .get_function_name(&die_cursor_state.function_die)
+                    .unwrap_or(unknown_function);
+                
+                let variables = ui.get_variables(die_cursor_state);
+
+                (function_name, variables)
+            } else {
+                (unknown_function, vec![])
+            }
+        } else {
+            (unknown_function, vec![])
+        };
+
         let return_frame = Some(StackFrame {
             id: self.frame_count,
-            function_name: self.debug_info
-                .get_function_name(pc)
-                .unwrap_or(format!("<unknown_function_{}>", self.frame_count).to_string()),
+            function_name,
             source_location: self.debug_info.get_source_location(pc),
             registers: self.registers.clone(),
             pc: pc as u32,
+            variables,
         });
 
         self.frame_count += 1;
@@ -216,15 +242,17 @@ impl<'a> Iterator for StackFrameIterator<'a> {
 }
 
 type DwarfReader = gimli::read::EndianRcSlice<gimli::LittleEndian>;
+type FunctionDie<'a, 'u> = gimli::DebuggingInformationEntry<'a, 'u, gimli::EndianReader<gimli::LittleEndian, std::rc::Rc<[u8]>>, usize>;
+type EntriesCursor<'a, 'u> = gimli::EntriesCursor<'a, 'u, gimli::EndianReader<gimli::LittleEndian, std::rc::Rc<[u8]>>>;
 
 pub struct DebugInfo {
     dwarf: gimli::Dwarf<DwarfReader>,
     frame_section: gimli::DebugFrame<DwarfReader>,
+    current_unit: Option<gimli::Unit<gimli::EndianReader<gimli::LittleEndian, std::rc::Rc<[u8]>>, usize>>,
 }
 
-impl<'a> DebugInfo {
-
-    pub fn from_raw(data: &'a [u8]) -> Self {
+impl DebugInfo {
+    pub fn from_raw<'a> (data: &'a [u8]) -> Self {
 
         let object = object::File::parse(data).unwrap();
 
@@ -251,6 +279,7 @@ impl<'a> DebugInfo {
             //object,
             dwarf: dwarf_cow,
             frame_section,
+            current_unit: None,
         }
     }
 
@@ -389,54 +418,108 @@ impl<'a> DebugInfo {
 
     }
 
-    fn get_function_name(&self, address: u64) -> Option<String> {
-        // search line number information for this address
-
+    fn get_unit_info(&self) -> Option<UnitInfo> {
         let mut units = self.dwarf.units();
         
-        while let Some(header) = units.next().unwrap() {
+        if let Ok(Some(header)) = units.next() {
             let unit = match self.dwarf.unit(header) {
                 Ok(unit) => unit,
-                Err(_) => continue,
+                Err(_) => return None,
             };
+            return Some(UnitInfo {
+                debug_info: self,
+                unit,
+            })
+        }
+        None
+    }
 
-            let mut entries_cursor = unit.entries();
+    pub fn try_unwind<'b>(&'b self, session: &'b mut Session, address: u64) -> StackFrameIterator<'b> {
+        StackFrameIterator::new(&self, session, address)
+    }
+}
 
-            while let Some((_depth, current)) = entries_cursor.next_dfs().unwrap() {
+pub struct DieCursorState<'a, 'u> {
+    entries_cursor: EntriesCursor<'a, 'u>,
+    depth: isize,
+    function_die: FunctionDie<'a, 'u>,
+}
 
-                // we are interested in functions / inlined functions
+pub struct UnitInfo<'a> {
+    debug_info: &'a DebugInfo,
+    unit: gimli::Unit<gimli::EndianReader<gimli::LittleEndian, std::rc::Rc<[u8]>>, usize>,
+}
 
-                match current.tag() {
-                    gimli::DW_TAG_subprogram | gimli::DW_TAG_inlined_subroutine => {
-                        let mut ranges = self.dwarf.die_ranges(&unit, &current).unwrap();
+impl<'a> UnitInfo<'a> {
+    fn get_function_die<'b>(&'b self, address: u64) -> Option<DieCursorState<'b, 'b>> {
+        let mut entries_cursor = self.unit.entries();
+        dbg!(address);
 
-                        while let Some(ranges) = ranges.next().unwrap() {
-                            if (ranges.begin <= address) && (address < ranges.end) {
-                                if let Some(fn_name_attr) = current.attr(gimli::DW_AT_name).expect(" Failed to parse entry") {
-                                    match fn_name_attr.value() {
-                                        gimli::AttributeValue::DebugStrRef(fn_name_ref) => {
-                                            let fn_name_raw = self.dwarf.string(fn_name_ref).unwrap();
+        while let Some((depth, current)) = entries_cursor.next_dfs().unwrap() {
+            match current.tag() {
+                gimli::DW_TAG_subprogram | gimli::DW_TAG_inlined_subroutine => {
+                    let mut ranges = self.debug_info.dwarf.die_ranges(&self.unit, &current).unwrap();
 
-                                            return Some(String::from_utf8_lossy(&fn_name_raw).to_string());
-                                        },
-                                        _ => (),
-                                    }
-                                }
-                            }
+                    while let Some(ranges) = ranges.next().unwrap() {
+                        dbg!(ranges);
+                        if (ranges.begin <= address) && (address < ranges.end) {
+                            return Some(DieCursorState {
+                                depth,
+                                function_die: current.clone(),
+                                entries_cursor,
+                            });
                         }
-                    },
-                    _ => (),
-                };
-            }
+                    }
+                },
+                _ => (),
+            };
+        }
+        None
+    }
 
+    fn get_function_name(&self, function_die: &FunctionDie) -> Option<String> {
+        if let Some(fn_name_attr) = function_die.attr(gimli::DW_AT_name).expect(" Failed to parse entry") {
+            match fn_name_attr.value() {
+                gimli::AttributeValue::DebugStrRef(fn_name_ref) => {
+                    let fn_name_raw = self.debug_info.dwarf.string(fn_name_ref).unwrap();
+
+                    return Some(String::from_utf8_lossy(&fn_name_raw).to_string());
+                },
+                _ => (),
+            }
         }
 
         None
     }
 
+    fn get_variables(&self, die_cursor_state: &mut DieCursorState) -> Vec<Variable> {
+        let mut variables = vec![];
 
-    pub fn try_unwind<'b>(&'b self, session: &'b mut Session, address: u64) -> StackFrameIterator<'b> {
-        StackFrameIterator::new(&self, session, address)
+        while let Some((depth, current)) = die_cursor_state.entries_cursor.next_dfs().unwrap() {
+            println!("kakakdaksd: {}, {}", depth, die_cursor_state.depth);
+            if depth != die_cursor_state.depth {
+                break;
+            }
+            match current.tag() {
+                gimli::DW_TAG_variable => {
+                    if let Some(fn_name_attr) = die_cursor_state.function_die.attr(gimli::DW_AT_name).expect(" Failed to parse entry") {
+                        match fn_name_attr.value() {
+                            gimli::AttributeValue::DebugStrRef(fn_name_ref) => {
+                                let fn_name_raw = self.debug_info.dwarf.string(fn_name_ref).unwrap();
+
+                                variables.push(Variable {
+                                    name: String::from_utf8_lossy(&fn_name_raw).to_string(),
+                                });
+                            },
+                            _ => (),
+                        }
+                    }
+                },
+                _ => (),
+            };
+        }
+
+        variables
     }
 }
 
