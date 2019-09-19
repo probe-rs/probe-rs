@@ -32,7 +32,7 @@ pub struct StackFrame {
     pub source_location: Option<SourceLocation>,
     registers: Registers,
     pc: u32,
-    variables: Vec<Variable>,
+    pub variables: Vec<Variable>,
 }
 
 impl std::fmt::Display for StackFrame {
