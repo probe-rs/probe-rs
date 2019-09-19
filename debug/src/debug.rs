@@ -258,55 +258,6 @@ impl DebugInfo {
         }
     }
 
-    fn evaluate_frame_base(&self, session: &mut Session, expr: gimli::Expression<DwarfReader>, unit: &gimli::Unit<DwarfReader>) -> Option<u32> {
-        let mut evaluation = expr.evaluation(unit.encoding());
-
-        // go for evaluation
-        let mut result = evaluation.evaluate().unwrap();
-
-        loop {
-            use gimli::EvaluationResult::*;
-
-            result = match result {
-                Complete => break,
-                RequiresMemory { address, size, space, base_type } => {
-                    let mut buff = vec![0u8;size as usize];
-                    session.probe.read_block8(address as u32, &mut buff).expect("Failed to read memory");
-                    match size {
-                        1 => evaluation.resume_with_memory(gimli::Value::U8(buff[0])).unwrap(),
-                        2 => {
-                            let val: u16 = (buff[0] as u16) << 8 | (buff[1] as u16);
-                            evaluation.resume_with_memory(gimli::Value::U16(val)).unwrap()
-                        },
-                        4 => {
-                            let val: u32 = (buff[0] as u32) << 24 | (buff[1] as u32) << 16 | (buff[2] as u32) << 8 | (buff[3] as u32);
-                            evaluation.resume_with_memory(gimli::Value::U32(val)).unwrap()
-                        },
-                        _ => unimplemented!(),
-                    }
-                },
-                RequiresFrameBase => {
-                    // not possible right now!
-                    unimplemented!()
-                },
-                x => {
-                    println!("{:?}", x);
-                    unimplemented!()
-                }
-            }
-        }
-
-        let final_result = evaluation.result();
-
-        assert!(final_result.len() > 0);
-
-        let frame_base_loc = &final_result[0];
-
-
-        get_piece_value(session, frame_base_loc)
-
-    }
-
     fn get_source_location(&self, address: u64) -> Option<SourceLocation> {
         let mut units = self.dwarf.units();
         
@@ -598,7 +549,7 @@ impl<'a> UnitInfo<'a> {
                             },
                             gimli::DW_AT_type => {
                                 extract_type(
-                                    &self.debug_info,
+                                    &self,
                                     attr.value()
                                 ).unwrap_or("".to_string());
                             },
@@ -640,9 +591,42 @@ fn extract_location(
     }
 }
 
-fn extract_type(debug_info: &DebugInfo, attribute_value: gimli::AttributeValue<R>) -> Option<String> {
+fn process_tree(debug_info: &DebugInfo, mut node: gimli::EntriesTreeNode<R>, level: u64) -> gimli::Result<()>
+{
+    {
+        // Examine the entry attributes.
+        let mut attrs = node.entry().attrs();
+        while let Some(attr) = attrs.next()? {
+            for _ in 0..(level) {
+                print!("\t");
+            }
+            println!("{:?}", attr.name().static_string());
+
+            match attr.name() {
+                gimli::DW_AT_name => {
+                    dbg!(extract_name(debug_info, attr.value()));
+                },
+                _ => {}
+            }
+        }
+    }
+    let mut children = node.children();
+    while let Some(child) = children.next()? {
+        // Recursively process a child.
+        process_tree(debug_info, child, level + 1);
+    }
+    Ok(())
+}
+
+fn extract_type(
+    unit_info: &UnitInfo,
+    attribute_value: gimli::AttributeValue<R>
+) -> Option<String> {
     match attribute_value {
         gimli::AttributeValue::UnitRef(unit_ref) => {
+            if let Ok(mut tree) = unit_info.unit.entries_tree(Some(unit_ref)) {
+                process_tree(unit_info.debug_info, tree.root().unwrap(), 0);
+            }
             Some("<unimplemented>".to_string())
         },
         _ => None,
@@ -716,7 +700,14 @@ fn get_piece_value(session: &mut Session, p: &gimli::Piece<DwarfReader>) -> Opti
 
 }
 
-fn print_all_attributes(session: &mut Session, frame_base: Option<u32>, dwarf: &gimli::Dwarf<DwarfReader>, unit: &gimli::Unit<DwarfReader>, tag: &gimli::DebuggingInformationEntry<DwarfReader>, print_depth: usize) {
+fn print_all_attributes(
+    session: &mut Session,
+    frame_base: Option<u32>,
+    dwarf: &gimli::Dwarf<DwarfReader>,
+    unit: &gimli::Unit<DwarfReader>,
+    tag: &gimli::DebuggingInformationEntry<DwarfReader>,
+    print_depth: usize
+) {
     let mut attrs = tag.attrs();
 
 
