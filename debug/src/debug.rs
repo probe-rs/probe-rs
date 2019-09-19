@@ -58,7 +58,7 @@ impl std::fmt::Display for StackFrame {
         writeln!(f, "\tVariables:")?;
 
         for variable in &self.variables {
-            writeln!(f, "\t\t{}", variable.name)?;
+            writeln!(f, "\t\t{}: {}:{} = 0x{:08x}", variable.name, variable.file, variable.line, variable.value)?;
         }
         write!(f, "")
     }
@@ -131,7 +131,11 @@ pub struct StackFrameIterator<'a> {
 }
 
 impl<'a> StackFrameIterator<'a> {
-    pub fn new(debug_info: &'a DebugInfo, session: &'a mut Session, address: u64) -> Self {
+    pub fn new(
+        debug_info: &'a DebugInfo,
+        session: &'a mut Session,
+        address: u64
+    ) -> Self {
         let registers = Registers::from_session(session);
         let pc = address;
 
@@ -201,59 +205,31 @@ impl<'a> Iterator for StackFrameIterator<'a> {
 
         self.registers.set_call_frame_address(current_cfa);
 
-        let unit_info = self.debug_info.get_unit_info();
-
-        let unknown_function = format!("<unknown_function_{}>", self.frame_count).to_string();
-
-        let (function_name, variables) = if let Some(ui) = unit_info {
-            if let Some(die_cursor_state) = &mut ui.get_function_die(pc) {
-                dbg!(die_cursor_state.depth);
-                let function_name = ui
-                    .get_function_name(&die_cursor_state.function_die)
-                    .unwrap_or(unknown_function);
-                
-                let variables = ui.get_variables(die_cursor_state);
-
-                (function_name, variables)
-            } else {
-                (unknown_function, vec![])
-            }
-        } else {
-            (unknown_function, vec![])
-        };
-
-        let return_frame = Some(StackFrame {
-            id: self.frame_count,
-            function_name,
-            source_location: self.debug_info.get_source_location(pc),
-            registers: self.registers.clone(),
-            pc: pc as u32,
-            variables,
-        });
+        let return_frame = Some(self.debug_info.get_stackframe_info(&mut self.session, pc, self.frame_count, self.registers.clone()));
 
         self.frame_count += 1;
 
         // Next function is where our current return register is pointing to.
         // We just have to remove the lowest bit (indicator for Thumb mode).
-        self.pc = self.registers[14].map( |pc| (pc &!1) as u64);
+        self.pc = self.registers[14].map(|pc| (pc &!1) as u64);
 
         return return_frame;
     }
 }
 
+type R = gimli::EndianReader<gimli::LittleEndian, std::rc::Rc<[u8]>>;
 type DwarfReader = gimli::read::EndianRcSlice<gimli::LittleEndian>;
 type FunctionDie<'a, 'u> = gimli::DebuggingInformationEntry<'a, 'u, gimli::EndianReader<gimli::LittleEndian, std::rc::Rc<[u8]>>, usize>;
 type EntriesCursor<'a, 'u> = gimli::EntriesCursor<'a, 'u, gimli::EndianReader<gimli::LittleEndian, std::rc::Rc<[u8]>>>;
+type UnitIter = gimli::CompilationUnitHeadersIter<gimli::EndianReader<gimli::LittleEndian, std::rc::Rc<[u8]>>>;
 
 pub struct DebugInfo {
     dwarf: gimli::Dwarf<DwarfReader>,
     frame_section: gimli::DebugFrame<DwarfReader>,
-    current_unit: Option<gimli::Unit<gimli::EndianReader<gimli::LittleEndian, std::rc::Rc<[u8]>>, usize>>,
 }
 
 impl DebugInfo {
     pub fn from_raw<'a> (data: &'a [u8]) -> Self {
-
         let object = object::File::parse(data).unwrap();
 
         // Load a section and return as `Cow<[u8]>`.
@@ -279,7 +255,6 @@ impl DebugInfo {
             //object,
             dwarf: dwarf_cow,
             frame_section,
-            current_unit: None,
         }
     }
 
@@ -418,20 +393,62 @@ impl DebugInfo {
 
     }
 
-    fn get_unit_info(&self) -> Option<UnitInfo> {
-        let mut units = self.dwarf.units();
-        
-        if let Ok(Some(header)) = units.next() {
-            let unit = match self.dwarf.unit(header) {
-                Ok(unit) => unit,
-                Err(_) => return None,
-            };
-            return Some(UnitInfo {
-                debug_info: self,
-                unit,
-            })
+    fn get_units(&self) -> UnitIter {
+        self.dwarf.units()
+    }
+
+    fn get_next_unit_info(&self, units: &mut UnitIter) -> Option<UnitInfo> {
+        loop {
+            if let Ok(Some(header)) = units.next() {
+                match self.dwarf.unit(header) {
+                    Ok(unit) => return Some(UnitInfo {
+                        debug_info: self,
+                        unit,
+                    }),
+                    Err(_) => {},
+                };
+            } else {
+                return None;
+            }
         }
-        None
+    }
+
+    fn get_stackframe_info<'b>(
+        &self,
+        session: &mut Session,
+        address: u64,
+        frame_count: u64,
+        registers: Registers
+    ) -> StackFrame {
+        let mut units = self.get_units();
+        let unknown_function = format!("<unknown_function_{}>", frame_count).to_string();
+        while let Some(unit_info) = self.get_next_unit_info(&mut units) {
+            if let Some(die_cursor_state) = &mut unit_info.get_function_die(address) {
+                let function_name = unit_info
+                    .get_function_name(&die_cursor_state.function_die)
+                    .unwrap_or(unknown_function.clone());
+                
+                let variables = unit_info.get_variables(session, die_cursor_state, registers.get_call_frame_address().unwrap() as u64);
+
+                return StackFrame {
+                    id: frame_count,
+                    function_name,
+                    source_location: self.get_source_location(address),
+                    registers: registers.clone(),
+                    pc: address as u32,
+                    variables,
+                };
+            }
+        }
+
+        StackFrame {
+            id: frame_count,
+            function_name: unknown_function,
+            source_location: self.get_source_location(address),
+            registers: registers,
+            pc: address as u32,
+            variables: vec![],
+        }
     }
 
     pub fn try_unwind<'b>(&'b self, session: &'b mut Session, address: u64) -> StackFrameIterator<'b> {
@@ -453,7 +470,6 @@ pub struct UnitInfo<'a> {
 impl<'a> UnitInfo<'a> {
     fn get_function_die<'b>(&'b self, address: u64) -> Option<DieCursorState<'b, 'b>> {
         let mut entries_cursor = self.unit.entries();
-        dbg!(address);
 
         while let Some((depth, current)) = entries_cursor.next_dfs().unwrap() {
             match current.tag() {
@@ -461,7 +477,6 @@ impl<'a> UnitInfo<'a> {
                     let mut ranges = self.debug_info.dwarf.die_ranges(&self.unit, &current).unwrap();
 
                     while let Some(ranges) = ranges.next().unwrap() {
-                        dbg!(ranges);
                         if (ranges.begin <= address) && (address < ranges.end) {
                             return Some(DieCursorState {
                                 depth,
@@ -492,28 +507,113 @@ impl<'a> UnitInfo<'a> {
         None
     }
 
-    fn get_variables(&self, die_cursor_state: &mut DieCursorState) -> Vec<Variable> {
+    fn expr_to_piece(
+        &self,
+        session: &mut Session,
+        expression: gimli::Expression<R>,
+        frame_base: u64
+    ) -> Vec<gimli::Piece<R, usize>> {
+        let mut evaluation = expression.evaluation(self.unit.encoding());
+
+        // go for evaluation
+        let mut result = evaluation.evaluate().unwrap();
+
+        loop {
+            use gimli::EvaluationResult::*;
+
+            result = match result {
+                Complete => break,
+                RequiresMemory { address, size, space, base_type } => {
+                    let mut buff = vec![0u8; size as usize];
+                    session.probe.read_block8(address as u32, &mut buff).expect("Failed to read memory");
+                    match size {
+                        1 => evaluation.resume_with_memory(gimli::Value::U8(buff[0])).unwrap(),
+                        2 => {
+                            let val: u16 = (buff[0] as u16) << 8 | (buff[1] as u16);
+                            evaluation.resume_with_memory(gimli::Value::U16(val)).unwrap()
+                        },
+                        4 => {
+                            let val: u32 = (buff[0] as u32) << 24 | (buff[1] as u32) << 16 | (buff[2] as u32) << 8 | (buff[3] as u32);
+                            evaluation.resume_with_memory(gimli::Value::U32(val)).unwrap()
+                        },
+                        _ => unimplemented!(),
+                    }
+                },
+                RequiresFrameBase => {
+                    evaluation.resume_with_frame_base(frame_base).unwrap()
+                },
+                x => {
+                    println!("{:?}", x);
+                    unimplemented!()
+                }
+            }
+        }
+
+        let result = evaluation.result();
+
+        result
+    }
+
+    fn get_variables(
+        &self,
+        session: &mut Session,
+        die_cursor_state: &mut DieCursorState,
+        frame_base: u64
+    ) -> Vec<Variable> {
         let mut variables = vec![];
 
         while let Some((depth, current)) = die_cursor_state.entries_cursor.next_dfs().unwrap() {
-            println!("kakakdaksd: {}, {}", depth, die_cursor_state.depth);
-            if depth != die_cursor_state.depth {
+            if depth != 0 && depth != 1 {
                 break;
             }
             match current.tag() {
                 gimli::DW_TAG_variable => {
-                    if let Some(fn_name_attr) = die_cursor_state.function_die.attr(gimli::DW_AT_name).expect(" Failed to parse entry") {
-                        match fn_name_attr.value() {
-                            gimli::AttributeValue::DebugStrRef(fn_name_ref) => {
-                                let fn_name_raw = self.debug_info.dwarf.string(fn_name_ref).unwrap();
-
-                                variables.push(Variable {
-                                    name: String::from_utf8_lossy(&fn_name_raw).to_string(),
-                                });
+                    let mut variable = Variable {
+                        name: String::new(),
+                        file: String::new(),
+                        line: u64::max_value(),
+                        value: 0,
+                    };
+                    let mut attrs = current.attrs();
+                    while let Ok(Some(attr)) = attrs.next() {
+                        match attr.name() {
+                            gimli::DW_AT_name => {
+                                variable.name = extract_name(
+                                    &self.debug_info,
+                                    attr.value()
+                                ).unwrap_or("<undefined>".to_string());
                             },
-                            _ => (),
+                            gimli::DW_AT_decl_file => {
+                                variable.file = extract_file(
+                                    &self.debug_info,
+                                    &self.unit,
+                                    attr.value()
+                                ).unwrap_or("<undefined>".to_string());
+                            },
+                            gimli::DW_AT_decl_line => {
+                                variable.line = extract_line(
+                                    &self.debug_info,
+                                    attr.value()
+                                ).unwrap_or(u64::max_value());
+                            },
+                            gimli::DW_AT_type => {
+                                extract_type(
+                                    &self.debug_info,
+                                    attr.value()
+                                ).unwrap_or("".to_string());
+                            },
+                            gimli::DW_AT_location => {
+                                variable.value = extract_location(
+                                    &self,
+                                    session,
+                                    frame_base,
+                                    attr.value()
+                                ).unwrap_or(u64::max_value());
+                            },
+                            _ => ()
                         }
                     }
+                    variables.push(variable);
                 },
                 _ => (),
             };
@@ -523,14 +623,84 @@ impl<'a> UnitInfo<'a> {
     }
 }
 
+fn extract_location(
+    unit_info: &UnitInfo,
+    session: &mut Session,
+    frame_base: u64,
+    attribute_value: gimli::AttributeValue<R>,
+) -> Option<u64> {
+    match attribute_value {
+        gimli::AttributeValue::Exprloc(expression) => {
+            let piece = unit_info.expr_to_piece(session, expression, frame_base);
+
+            let value = get_piece_value(session, &piece[0]);
+            value.map(|v| v as u64)
+        },
+        _ => None,
+    }
+}
+
+fn extract_type(debug_info: &DebugInfo, attribute_value: gimli::AttributeValue<R>) -> Option<String> {
+    match attribute_value {
+        gimli::AttributeValue::UnitRef(unit_ref) => {
+            Some("<unimplemented>".to_string())
+        },
+        _ => None,
+    }
+}
+
+fn extract_file(
+    debug_info: &DebugInfo,
+    unit: &gimli::Unit<R>,
+    attribute_value: gimli::AttributeValue<R>
+) -> Option<String> {
+    match attribute_value {
+        gimli::AttributeValue::FileIndex(index) => {
+            unit.line_program.as_ref().and_then(|ilnp| {
+                let header = ilnp.header();
+                header.file(index).and_then(|file_entry| {
+                    file_entry.directory(header).and_then(|directory| {
+                        extract_name(debug_info, directory).and_then(|dir| {
+                            extract_name(debug_info, file_entry.path_name()).map(|file| {
+                                format!("{}/{}", dir, file)
+                            })
+                        })
+                    })
+                })
+            })
+        },
+        _ => None,
+    }
+}
+
+fn extract_line(debug_info: &DebugInfo, attribute_value: gimli::AttributeValue<R>) -> Option<u64> {
+    match attribute_value {
+        gimli::AttributeValue::Udata(line) => Some(line),
+        _ => None,
+    }
+}
+
+fn extract_name(debug_info: &DebugInfo, attribute_value: gimli::AttributeValue<R>) -> Option<String> {
+    match attribute_value {
+        gimli::AttributeValue::DebugStrRef(name_ref) => {
+            let name_raw = debug_info.dwarf.string(name_ref).unwrap();
+
+            Some(String::from_utf8_lossy(&name_raw).to_string())
+        },
+        gimli::AttributeValue::String(name) => {
+            Some(String::from_utf8_lossy(&name).to_string())
+        },
+        _ => None,
+    }
+}
+
 fn get_piece_value(session: &mut Session, p: &gimli::Piece<DwarfReader>) -> Option<u32> {
     use gimli::Location;
 
     match &p.location {
         Location::Empty => None,
         Location::Address { address } => {
-            println!("Piece in memory at 0x{:08x}! Not yet supported...", address);
-            None
+            Some(*address as u32)
         },
         Location::Value { value } => {
             Some(value.to_u64(0xff_ff_ff_ff).unwrap()  as u32)
