@@ -379,7 +379,13 @@ impl DebugInfo {
                     .get_function_name(&die_cursor_state.function_die)
                     .unwrap_or(unknown_function.clone());
                 
-                let variables = unit_info.get_variables(session, die_cursor_state, registers.get_call_frame_address().unwrap() as u64);
+                let variables = unit_info.get_variables(
+                    session,
+                    die_cursor_state,
+                    registers.get_call_frame_address().unwrap() as u64
+                );
+
+                // dbg!(&variables);
 
                 return StackFrame {
                     id: frame_count,
@@ -524,6 +530,7 @@ impl<'a> UnitInfo<'a> {
                         file: String::new(),
                         line: u64::max_value(),
                         value: 0,
+                        ..Default::default()
                     };
                     let mut attrs = current.attrs();
                     while let Ok(Some(attr)) = attrs.next() {
@@ -548,10 +555,14 @@ impl<'a> UnitInfo<'a> {
                                 ).unwrap_or(u64::max_value());
                             },
                             gimli::DW_AT_type => {
-                                extract_type(
+                                variable.typ = extract_type(
                                     &self,
                                     attr.value()
-                                ).unwrap_or("".to_string());
+                                ).unwrap_or(Type {
+                                    name: "<undefined>".to_string(),
+                                    named_children: None,
+                                    indexed_children: None,
+                                });
                             },
                             gimli::DW_AT_location => {
                                 variable.value = extract_location(
@@ -591,43 +602,48 @@ fn extract_location(
     }
 }
 
-fn process_tree(debug_info: &DebugInfo, mut node: gimli::EntriesTreeNode<R>, level: u64) -> gimli::Result<()>
-{
-    {
-        // Examine the entry attributes.
-        let mut attrs = node.entry().attrs();
-        while let Some(attr) = attrs.next()? {
-            for _ in 0..(level) {
-                print!("\t");
-            }
-            println!("{:?}", attr.name().static_string());
-
-            match attr.name() {
-                gimli::DW_AT_name => {
-                    dbg!(extract_name(debug_info, attr.value()));
-                },
-                _ => {}
-            }
-        }
-    }
-    let mut children = node.children();
-    while let Some(child) = children.next()? {
-        // Recursively process a child.
-        process_tree(debug_info, child, level + 1);
-    }
-    Ok(())
-}
-
 fn extract_type(
     unit_info: &UnitInfo,
     attribute_value: gimli::AttributeValue<R>
-) -> Option<String> {
+) -> Option<Type> {
     match attribute_value {
         gimli::AttributeValue::UnitRef(unit_ref) => {
             if let Ok(mut tree) = unit_info.unit.entries_tree(Some(unit_ref)) {
-                process_tree(unit_info.debug_info, tree.root().unwrap(), 0);
+                let node = tree.root().unwrap();
+                
+                // Examine the entry attributes.
+                let entry = node.entry();
+                match entry.tag() {
+                    gimli::DW_TAG_structure_type => {
+                        let type_name = extract_name(&unit_info.debug_info, entry.attr(gimli::DW_AT_name).unwrap().unwrap().value());
+                        let mut named_children = std::collections::HashMap::new();
+
+                        let mut children = node.children();
+                        while let Ok(Some(child)) = children.next() {
+                            // Recursively process a child.
+                            let entry = child.entry();
+                            match entry.tag() {
+                                gimli::DW_TAG_member => {
+                                    let member_name = extract_name(&unit_info.debug_info, entry.attr(gimli::DW_AT_name).unwrap().unwrap().value());
+                                    named_children.insert(
+                                        member_name.unwrap(),
+                                        extract_type(unit_info, entry.attr(gimli::DW_AT_type).unwrap().unwrap().value()).unwrap()
+                                    );
+                                },
+                                _ => {},
+                            };
+                        }
+
+                        return Some(Type {
+                            name: type_name.unwrap_or("<unnamed type>".to_string()),
+                            named_children: Some(named_children),
+                            indexed_children: Some(vec![]),
+                        })
+                    },
+                    _ => (),
+                };
             }
-            Some("<unimplemented>".to_string())
+            None
         },
         _ => None,
     }
@@ -668,7 +684,6 @@ fn extract_name(debug_info: &DebugInfo, attribute_value: gimli::AttributeValue<R
     match attribute_value {
         gimli::AttributeValue::DebugStrRef(name_ref) => {
             let name_raw = debug_info.dwarf.string(name_ref).unwrap();
-
             Some(String::from_utf8_lossy(&name_raw).to_string())
         },
         gimli::AttributeValue::String(name) => {
