@@ -58,6 +58,34 @@ Here is how it looks if you do everything correct and you trace a memory locatio
     <img src="https://github.com/Yatekii/probe-rs/blob/master/doc/img/counter.png" alt="counter plot">
 </p>
 
+## Roadmap
+
+- [ ] v0.1.0
+  - [ ] Basic debugging for Cortex m0, m3, m4.
+    - [ ] Stepping in
+    - [ ] Halting
+    - [ ] Breaking
+    - [ ] Running
+  - [ ] Basic VSCode plugin
+    - [ ] Stepping in
+    - [ ] Halting
+    - [ ] Breaking
+    - [ ] Running
+    - [ ] Variable inspection
+      - [ ] Structs
+      - [ ] Enums
+      - [ ] Basic types
+    - [ ] Stackframes
+  - [ ] Basic CLI
+    - [ ] Stepping in
+    - [ ] Halting
+    - [ ] Breaking
+    - [ ] Running
+- [ ] Flash downloader.
+- [ ] Semihosting.
+- [ ] Tracing.
+- [ ] SWD file support.
+
 ## FAQ
 
 ### I need help!
