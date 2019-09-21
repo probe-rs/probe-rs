@@ -4,7 +4,6 @@ mod info;
 use std::path::PathBuf;
 use memory::{
     MI,
-    flash_writer,
 };
 use std::time::Instant;
 use std::fs;
@@ -194,7 +193,7 @@ fn download_program(n: usize, path: String) -> Result<(), CliError> {
         // // Stop timer.
         // let elapsed = instant.elapsed();
 
-        flash_writer::download_hex(path, &mut session.probe, 1024)?;
+        probe::flash_writer::download_hex(path, &mut session.probe, 1024)?;
 
         Ok(())
 

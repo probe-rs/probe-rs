@@ -11,6 +11,7 @@ use std::time;
 use std::time::Instant;
 use crate::session::Session;
 use memory::MI;
+use crate::memory::MemoryRegion;
 
 #[derive(Debug)]
 pub enum FlashError {
@@ -163,7 +164,7 @@ pub struct FlashAlgorithm {
     /// least as large as the region's page_size attribute. If at least 2 buffers are included in
     /// the list, then double buffered programming will be enabled.
     pub page_buffers: &'static [u32],
-    pub min_program_length: u32,
+    pub min_program_length: Option<u32>,
     /// Whether the CRC32-based analyzer is supported.
     pub analyzer_supported: bool,
     /// RAM base address where the analyzer code will be placed. There must be at
@@ -171,22 +172,111 @@ pub struct FlashAlgorithm {
     pub analyzer_address: u32,
 }
 
-pub struct Flasher<'a> {
-    session: &'a Session,
+pub trait Operation {
+    fn operation() -> u32;
 }
 
+pub struct Erase;
 
+impl Operation for Erase {
+    fn operation() -> u32 { 1 }
+}
 
-impl<'a> Flasher<'a> {
-    pub fn init(&self) {
+pub struct Program;
+
+impl Operation for Program {
+    fn operation() -> u32 { 2 }
+}
+
+pub struct Verify;
+
+impl Operation for Verify {
+    fn operation() -> u32 { 3 }
+}
+
+pub enum FlasherError {
+    Init(u32),
+    Uninit(u32),
+    EraseAll(u32),
+    EraseAllNotSupported,
+    EraseSector(u32, u32),
+    ProgramPage(u32, u32),
+    InvalidBufferNumber(u32, u32),
+    UnalignedFlashWriteAddress,
+    UnalignedPhraseLength,
+    ProgramPhrase(u32, u32),
+}
+
+pub struct InactiveFlasher<'a> {
+    session: &'a mut Session,
+}
+
+impl<'a> InactiveFlasher<'a> {
+    pub fn init<O: Operation>(&mut self, address: Option<u32>, clock: Option<u32>) -> Result<ActiveFlasher<O>, FlasherError> {
         let algo = self.session.target.get_flash_algorithm();
         let regs = self.session.target.get_basic_register_addresses();
 
+        // TODO: Halt & reset target.
+
+        // TODO: Possible special preparation of the target such as enabling faster clocks for the flash e.g.
+
+        // Load flash algorithm code into target RAM.
         self.session.probe.write_block32(algo.load_address, algo.instructions);
 
+        let mut flasher = ActiveFlasher {
+            session: self.session,
+            region: MemoryRegion { page_size: 0 },
+            _operation: core::marker::PhantomData,
+        };
+
+        // Execute init routine if one is present.
         if let Some(pc_init) = algo.pc_init {
-            self.call_function_and_wait(pc_init, Some(address), Some(clock), Some(operation.value), None, true);
+            let result = flasher.call_function_and_wait(
+                pc_init,
+                address,
+                clock,
+                Some(O::operation()),
+                None,
+                true
+            );
+
+            if result != 0 {
+                return Err(FlasherError::Init(result));
+            }
         }
+
+        Ok(flasher)
+    }
+}
+
+pub struct ActiveFlasher<'a, O: Operation> {
+    session: &'a mut Session,
+    region: MemoryRegion,
+    _operation: core::marker::PhantomData<O>,
+}
+
+impl<'a, O: Operation> ActiveFlasher<'a, O> {
+    pub fn uninit(&mut self) -> Result<InactiveFlasher, FlasherError> {
+        let algo = self.session.target.get_flash_algorithm();
+
+        if let Some(pc_uninit) = algo.pc_uninit {
+            let result = self.call_function_and_wait(
+                pc_uninit,
+                Some(O::operation()),
+                None,
+                None,
+                None,
+                false
+            );
+
+            if result != 0 {
+                return Err(FlasherError::Uninit(result));
+            }
+        }
+
+        Ok(InactiveFlasher {
+            session: self.session,
+        })
     }
 
     fn call_function_and_wait(&mut self, pc: u32, r0: Option<u32>, r1: Option<u32>, r2: Option<u32>, r3: Option<u32>, init: bool) -> u32 {
@@ -194,7 +284,7 @@ impl<'a> Flasher<'a> {
         self.wait_for_completion()
     }
 
-    fn call_function(&self, pc: u32, r0: Option<u32>, r1: Option<u32>, r2: Option<u32>, r3: Option<u32>, init: bool) {
+    fn call_function(&mut self, pc: u32, r0: Option<u32>, r1: Option<u32>, r2: Option<u32>, r3: Option<u32>, init: bool) {
         let algo = self.session.target.get_flash_algorithm();
         let regs = self.session.target.get_basic_register_addresses();
         [
@@ -220,5 +310,150 @@ impl<'a> Flasher<'a> {
         while self.session.target.wait_for_core_halted(&mut self.session.probe).is_err() {}
 
         self.session.target.read_core_reg(&mut self.session.probe, regs.R0).unwrap()
+    }
+}
+
+impl <'a> ActiveFlasher<'a, Erase> {
+    pub fn erase_all(&mut self) -> Result<(), FlasherError> {
+        let algo = self.session.target.get_flash_algorithm();
+
+        if let Some(pc_erase_all) = algo.pc_erase_all {
+            let result = self.call_function_and_wait(
+                pc_erase_all,
+                None,
+                None,
+                None,
+                None,
+                false
+            );
+
+            if result != 0 {
+                Err(FlasherError::EraseAll(result))
+            } else {
+                Ok(())
+            }
+        } else {
+            Err(FlasherError::EraseAllNotSupported)
+        }
+    }
+
+    pub fn erase_sector(&mut self, address: u32) -> Result<(), FlasherError> {
+        let algo = self.session.target.get_flash_algorithm();
+
+        let result = self.call_function_and_wait(
+            algo.pc_erase_sector,
+            Some(address),
+            None,
+            None,
+            None,
+            false
+        );
+
+        if result != 0 {
+            Err(FlasherError::EraseSector(result, address))
+        } else {
+            Ok(())
+        }
+    }
+}
+
+impl <'a> ActiveFlasher<'a, Program> {
+    pub fn program_page(&mut self, address: u32, bytes: &[u8]) -> Result<(), FlasherError> {
+        let algo = self.session.target.get_flash_algorithm();
+
+        // TODO: Prevent security settings from locking the device.
+
+        // Transfer the bytes to RAM.
+        self.session.probe.write_block8(algo.begin_data, bytes);
+
+        let result = self.call_function_and_wait(
+            algo.pc_program_page,
+            Some(address),
+            Some(bytes.len() as u32),
+            Some(algo.begin_data),
+            None,
+            false
+        );
+
+        if result != 0 {
+            Err(FlasherError::ProgramPage(result, address))
+        } else {
+            Ok(())
+        }
+    }
+
+    pub fn start_program_page_with_buffer(&mut self, address: u32, buffer_number: u32) -> Result<(), FlasherError> {
+        let algo = self.session.target.get_flash_algorithm();
+
+        // Check the buffer number.
+        if buffer_number < algo.page_buffers.len() as u32 {
+            return Err(FlasherError::InvalidBufferNumber(buffer_number, algo.page_buffers.len() as u32));
+        }
+
+        self.call_function(
+            algo.pc_program_page,
+            Some(address),
+            Some(self.region.page_size),
+            Some(algo.page_buffers[buffer_number as usize]),
+            None,
+            false
+        );
+
+        Ok(())
+    }
+
+    pub fn load_page_buffer(&mut self, address: u32, bytes: &[u8], buffer_number: u32) -> Result<(), FlasherError> {
+        let algo = self.session.target.get_flash_algorithm();
+
+        // Check the buffer number.
+        if buffer_number < algo.page_buffers.len() as u32 {
+            return Err(FlasherError::InvalidBufferNumber(buffer_number, algo.page_buffers.len() as u32));
+        }
+
+        // TODO: Prevent security settings from locking the device.
+
+        // Transfer the buffer bytes to RAM.
+        self.session.probe.write_block8(algo.page_buffers[buffer_number as usize], bytes);
+
+        Ok(())
+    }
+
+    pub fn program_phrase(&mut self, address: u32, bytes: &[u8]) -> Result<(), FlasherError> {
+        let algo = self.session.target.get_flash_algorithm();
+
+        // Get the minimum programming length. If none was specified, use the page size.
+        let min_len = if let Some(min_program_length) = algo.min_program_length {
+            min_program_length
+        } else {
+            self.region.page_size
+        };
+
+        // Require write address and length to be aligned to the minimum write size.
+        if address % min_len != 0 {
+            return Err(FlasherError::UnalignedFlashWriteAddress);
+        }
+        if bytes.len() as u32 % min_len != 0 {
+            return Err(FlasherError::UnalignedPhraseLength);
+        }
+
+        // TODO: Prevent security settings from locking the device.
+
+        // Transfer the phrase bytes to RAM.
+        self.session.probe.write_block8(algo.begin_data, bytes);
+
+        let result = self.call_function_and_wait(
+            algo.pc_program_page,
+            Some(address),
+            Some(bytes.len() as u32),
+            Some(algo.begin_data),
+            None,
+            false
+        );
+
+        if result != 0 {
+            Err(FlasherError::ProgramPhrase(result, address))
+        } else {
+            Ok(())
+        }
     }
 }

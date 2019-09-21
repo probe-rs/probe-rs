@@ -3,7 +3,6 @@ use std::fs::File;
 
 use probe_rs_debug::session::Session;
 use probe::target::Target;
-use probe::session::Session;
 use coresight::{
     access_ports::{
         AccessPortError,
@@ -19,7 +18,7 @@ use probe::debug_probe::{
     DebugProbeType,
 };
 
-use memory::flash_writer::FlashError;
+use probe::flash_writer::FlashError;
 
 use std::error::Error; 
 use std::fmt;

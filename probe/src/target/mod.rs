@@ -12,6 +12,7 @@ pub trait TargetRegister: Clone + From<u32> + Into<u32> + Sized + std::fmt::Debu
     const NAME: &'static str;
 }
 
+#[derive(Debug, Copy, Clone)]
 pub struct CoreRegisterAddress(u8);
 
 impl From<CoreRegisterAddress> for u32 {

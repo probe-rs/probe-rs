@@ -5,3 +5,4 @@ pub mod debug_probe;
 pub mod target;
 pub mod session;
 pub mod flash_writer;
+pub mod memory;
