@@ -11,7 +11,12 @@ use std::time;
 use std::time::Instant;
 use crate::session::Session;
 use memory::MI;
-use crate::memory::MemoryRegion;
+use crate::memory::{
+    MemoryRegion,
+    SectorInfo,
+    PageInfo,
+    FlashInfo,
+};
 
 #[derive(Debug)]
 pub enum FlashError {
@@ -225,7 +230,7 @@ impl<'a> InactiveFlasher<'a> {
 
         let mut flasher = ActiveFlasher {
             session: self.session,
-            region: MemoryRegion { page_size: 0 },
+            region: Default::default(),
             _operation: core::marker::PhantomData,
         };
 
@@ -300,7 +305,7 @@ impl<'a, O: Operation> ActiveFlasher<'a, O> {
             self.session.target.write_core_reg(&mut self.session.probe, *addr, *v);
         });
 
-        // resume target
+        // Resume target operation.
         self.session.target.run(&mut self.session.probe);
     }
 
@@ -455,5 +460,43 @@ impl <'a> ActiveFlasher<'a, Program> {
         } else {
             Ok(())
         }
+    }
+
+    pub fn get_sector_info(&self, address: u32) -> Option<SectorInfo> {
+        if !self.region.contrains_address(address) {
+            return None
+        }
+
+        Some(SectorInfo {
+            base_address: address - (address % self.region.sector_size),
+            erase_weight: self.region.erase_sector_weight,
+            size: self.region.sector_size,
+        })
+    }
+
+    pub fn get_page_info(&self, address: u32) -> Option<PageInfo> {
+        if !self.region.contrains_address(address) {
+            return None
+        }
+
+        Some(PageInfo {
+            base_address: address - (address % self.region.page_size),
+            program_weight: self.region.program_page_weight,
+            size: self.region.page_size,
+        })
+    }
+
+    pub fn get_flash_info(&self, address: u32) -> Option<FlashInfo> {
+        if !self.region.contrains_address(address) {
+            return None
+        }
+
+        let algo = self.session.target.get_flash_algorithm();
+
+        Some(FlashInfo {
+            rom_start: self.region.start,
+            erase_weight: self.region.erase_all_weight,
+            crc_supported: algo.analyzer_supported,
+        })
     }
 }
