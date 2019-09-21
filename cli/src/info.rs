@@ -24,7 +24,12 @@ use coresight::{
 };
 
 pub fn show_info_of_device(n: usize) -> Result<(), CliError> {
-    with_device(n, Box::new(probe::target::m0::M0::default()), |mut session| {
+    let target = probe::target::Target::new(
+        probe::target::m0::M0::default(),
+        probe::target::nrf51822::nRF51822,
+    );
+
+    with_device(n, target, |mut session| {
 
         /*
             The following code only works with debug port v2,

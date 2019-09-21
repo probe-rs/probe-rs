@@ -1,13 +1,16 @@
-use crate::flash_writer::FlashAlgorithm;
+pub mod m0;
+pub mod nrf51822;
+
+pub use m0::*;
+
+use crate::flash::flasher::FlashAlgorithm;
 use crate::debug_probe::{
     MasterProbe,
     DebugProbeError,
     CpuInformation,
 };
 
-pub mod m0;
-
-pub trait TargetRegister: Clone + From<u32> + Into<u32> + Sized + std::fmt::Debug {
+pub trait CoreRegister: Clone + From<u32> + Into<u32> + Sized + std::fmt::Debug {
     const ADDRESS: u32;
     const NAME: &'static str;
 }
@@ -38,13 +41,9 @@ pub struct BasicRegisterAddresses {
     pub SP: CoreRegisterAddress,
 }
 
-pub trait Target {
-    fn get_flash_algorithm(&self) -> FlashAlgorithm;
-
-    fn get_basic_register_addresses(&self) -> BasicRegisterAddresses;
-
+pub trait Core {
     fn wait_for_core_halted(&self, mi: &mut MasterProbe) -> Result<(), DebugProbeError>;
-
+    
     fn halt(&self, mi: &mut MasterProbe) -> Result<CpuInformation, DebugProbeError>;
 
     fn run(&self, mi: &mut MasterProbe) -> Result<(), DebugProbeError>;
@@ -67,4 +66,24 @@ pub trait Target {
     fn disable_breakpoint(&self, mi: &mut MasterProbe, addr: u32) -> Result<(), DebugProbeError>;
 
     fn read_block8(&self, mi: &mut MasterProbe, address: u32, data: &mut [u8]) -> Result<(), DebugProbeError>;
+}
+
+pub trait TargetInfo {
+    fn get_flash_algorithm(&self) -> FlashAlgorithm;
+
+    fn get_basic_register_addresses(&self) -> BasicRegisterAddresses;
+}
+
+pub struct Target {
+    pub core: Box<dyn Core>,
+    pub info: Box<dyn TargetInfo>,
+}
+
+impl Target {
+    pub fn new(core: impl Core + 'static, info: impl TargetInfo + 'static) -> Self {
+        Self {
+            core: Box::new(core),
+            info: Box::new(info),
+        }
+    }
 }

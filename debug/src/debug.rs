@@ -7,7 +7,7 @@ use memory::MI;
 
 use log::debug;
 
-use crate::session::Session;
+use probe::session::Session;
 use crate::*;
 
 #[derive(Debug, Copy, Clone)]
@@ -71,7 +71,7 @@ impl Registers {
     pub fn from_session(session: &mut Session) -> Self {
         let mut registers = Registers([None;16]);
         for i in 0..16 {
-            registers[i as usize] = Some(session.target.read_core_reg(&mut session.probe, i.into()).unwrap());
+            registers[i as usize] = Some(session.target.core.read_core_reg(&mut session.probe, i.into()).unwrap());
         }
         registers
     }
@@ -193,7 +193,7 @@ impl<'a> Iterator for StackFrameIterator<'a> {
                 Offset(o) => {
                     let addr = (current_cfa.unwrap() as i64) + o;
                     let mut buff = [0u8;4];
-                    self.session.target.read_block8(&mut self.session.probe, addr as u32, &mut buff).unwrap();
+                    self.session.target.core.read_block8(&mut self.session.probe, addr as u32, &mut buff).unwrap();
 
                     let val = u32::from_le_bytes(buff);
 
@@ -705,7 +705,7 @@ fn get_piece_value(session: &mut Session, p: &gimli::Piece<DwarfReader>) -> Opti
             Some(value.to_u64(0xff_ff_ff_ff).unwrap()  as u32)
         },
         Location::Register { register } => {
-            let val = session.target.read_core_reg(&mut session.probe, (register.0 as u8).into()).expect("Failed to read register from target");
+            let val = session.target.core.read_core_reg(&mut session.probe, (register.0 as u8).into()).expect("Failed to read register from target");
             Some(val)
         },
         l => {

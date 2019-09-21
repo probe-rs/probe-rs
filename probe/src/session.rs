@@ -2,14 +2,15 @@ use crate::debug_probe::MasterProbe;
 use crate::target::Target;
 
 pub struct Session {
-    pub target: Box<Target>,
+    pub target: Target,
     pub probe: MasterProbe,
 }
 
 impl Session {
-    pub fn new(target: impl Target + 'static, probe: MasterProbe) -> Self {
+    /// Open a new session with a given debug target
+    pub fn new(target: Target, probe: MasterProbe) -> Self {
         Self {
-            target: Box::new(target),
+            target: target,
             probe: probe,
         }
     }

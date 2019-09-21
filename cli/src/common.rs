@@ -1,7 +1,7 @@
 use std::path::Path;
 use std::fs::File;
 
-use probe_rs_debug::session::Session;
+use probe::session::Session;
 use probe::target::Target;
 use coresight::{
     access_ports::{
@@ -88,7 +88,7 @@ impl From<FlashError> for CliError {
 /// Takes a closure that is handed an `DAPLink` instance and then executed.
 /// After the closure is done, the USB device is always closed,
 /// even in an error case inside the closure!
-pub fn with_device<F>(n: usize, target: Box<dyn Target>, f: F) -> Result<(), CliError>
+pub fn with_device<F>(n: usize, target: Target, f: F) -> Result<(), CliError>
 where
     for<'a> F: FnOnce(Session) -> Result<(), CliError>
 {
@@ -130,12 +130,17 @@ where
     let dump = ron::de::from_reader(&mut dump_file).unwrap();
 
 
-    let target = probe::target::m0::FakeM0::new(dump);
+    let core = probe::target::m0::FakeM0::new(dump);
     let fake_probe = probe::debug_probe::FakeProbe::new();
 
     let probe = MasterProbe::from_specific_probe(Box::new(fake_probe));
 
-    let session = Session::new(Box::new(target), probe);
+    let target = Target::new(
+        core,
+        probe::target::nrf51822::nRF51822,
+    );
+
+    let session = Session::new(target, probe);
 
     f(session)
 }
