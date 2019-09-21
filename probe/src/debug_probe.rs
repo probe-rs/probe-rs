@@ -1,3 +1,4 @@
+use crate::target::m0::CortexDump;
 use coresight::{
     access_ports::{
         generic_ap::GenericAP,
@@ -239,7 +240,7 @@ impl MI for MasterProbe
 
 
 pub trait DebugProbe: DAPAccess {
-    fn new_from_probe_info(info: DebugProbeInfo) -> Result<Box<Self>, DebugProbeError> where Self: Sized;
+    fn new_from_probe_info(info: &DebugProbeInfo) -> Result<Box<Self>, DebugProbeError> where Self: Sized;
 
     /// Get human readable name for the probe
     fn get_name(&self) -> &str;
@@ -302,5 +303,54 @@ impl DebugProbeInfo {
             serial_number,
             probe_type,
         }
+    }
+}
+
+pub struct FakeProbe;
+
+impl FakeProbe {
+    pub fn new() -> FakeProbe {
+        FakeProbe { }
+    }
+}
+
+impl DebugProbe for FakeProbe {
+    fn new_from_probe_info(info: &DebugProbeInfo) -> Result<Box<Self>, DebugProbeError> where Self: Sized {
+        Err(DebugProbeError::ProbeCouldNotBeCreated)
+    }
+
+    /// Get human readable name for the probe
+    fn get_name(&self) -> &str {
+        "Mock probe for testing"
+    }
+
+    /// Enters debug mode
+    fn attach(&mut self, protocol: Option<WireProtocol>) -> Result<WireProtocol, DebugProbeError> {
+        // attaching always work for the fake probe
+        Ok(protocol.unwrap_or(WireProtocol::Swd))
+    }
+
+    /// Leave debug mode
+    fn detach(&mut self) -> Result<(), DebugProbeError>
+    {
+        Ok(())
+    }
+
+    /// Resets the target device.
+    fn target_reset(&mut self) -> Result<(), DebugProbeError> {
+        Err(DebugProbeError::UnknownError)
+    }
+
+}
+
+impl DAPAccess for FakeProbe {
+    /// Reads the DAP register on the specified port and address
+    fn read_register(&mut self, port: Port, addr: u16) -> Result<u32, DebugProbeError> {
+        Err(DebugProbeError::UnknownError)
+    }
+
+    /// Writes a value to the DAP register on the specified port and address
+    fn write_register(&mut self, port: Port, addr: u16, value: u32) -> Result<(), DebugProbeError> {
+        Err(DebugProbeError::UnknownError)
     }
 }

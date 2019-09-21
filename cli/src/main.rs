@@ -1,21 +1,34 @@
 mod common;
 mod info;
 
-use probe::session::Session;
+use std::path::PathBuf;
 use memory::{
     MI,
     flash_writer,
 };
 use std::time::Instant;
+use std::fs;
+use std::fs::File;
+use std::io::Write;
 
 use probe::debug_probe::{
     DebugProbeInfo,
 };
 
+use probe_rs_debug::debug::DebugInfo;
+
+
+use memmap;
+
+use probe::target::m0::CortexDump;
+
 use common::{
     with_device,
+    with_dump,
     CliError,
 };
+
+
 
 use structopt::StructOpt;
 
@@ -27,6 +40,8 @@ use capstone::{
 };
 use capstone::prelude::*;
 use capstone::arch::arm::ArchMode;
+
+use probe_rs_debug::session::Session;
 
 fn parse_hex(src: &str) -> Result<u32, std::num::ParseIntError> {
     u32::from_str_radix(src, 16)
@@ -58,6 +73,14 @@ enum CLI {
     },
     #[structopt(name = "debug")]
     Debug {
+        #[structopt(long, parse(from_os_str))]
+        /// Dump file to debug
+        dump: Option<PathBuf>,
+
+        #[structopt(long, parse(from_os_str))]
+        /// Binary to debug
+        exe: Option<PathBuf>,
+
         // The number associated with the probe to use
         n: usize,
     },
@@ -108,7 +131,7 @@ fn main() {
         CLI::List {} => list_connected_devices(),
         CLI::Info { n } => crate::info::show_info_of_device(n).unwrap(),
         CLI::Reset { n, assert } => reset_target_of_device(n, assert).unwrap(),
-        CLI::Debug { n } => debug(n).unwrap(),
+        CLI::Debug { n, exe, dump } => debug(n, exe, dump).unwrap(),
         CLI::Dump { n, loc, words } => dump_memory(n, loc, words).unwrap(),
         CLI::Download { n, path } => download_program(n, path).unwrap(),
         CLI::Erase { n, loc } => erase_page(n, loc).unwrap(),
@@ -131,7 +154,7 @@ fn list_connected_devices() {
 }
 
 fn dump_memory(n: usize, loc: u32, words: u32) -> Result<(), CliError> {
-    with_device(n as usize, probe::target::m0::M0, |session| {
+    with_device(n as usize, Box::new(probe::target::m0::M0::default()), |mut session| {
         let mut data = vec![0 as u32; words as usize];
 
         // Start timer.
@@ -155,7 +178,7 @@ fn dump_memory(n: usize, loc: u32, words: u32) -> Result<(), CliError> {
 }
 
 fn download_program(n: usize, path: String) -> Result<(), CliError> {
-    with_device(n as usize, probe::target::m0::M0, |session| {
+    with_device(n as usize, Box::new(probe::target::m0::M0::default()), |mut session| {
 
         // Start timer.
         // let instant = Instant::now();
@@ -182,7 +205,7 @@ fn download_program(n: usize, path: String) -> Result<(), CliError> {
 #[allow(non_snake_case)]
 fn erase_page(n: usize, loc: u32) -> Result<(), CliError> {
 
-    with_device(n, probe::target::m0::M0, |session| {
+    with_device(n, Box::new(probe::target::m0::M0::default()), |mut session| {
 
         // TODO: Generic flash erase
 
@@ -199,7 +222,7 @@ fn erase_page(n: usize, loc: u32) -> Result<(), CliError> {
 }
 
 fn reset_target_of_device(n: usize, _assert: Option<bool>) -> Result<(), CliError> {
-    with_device(n as usize, probe::target::m0::M0, |session| {
+    with_device(n as usize, Box::new(probe::target::m0::M0::default()), |mut session| {
         //link.get_interface_mut::<DebugProbe>().unwrap().target_reset().or_else(|e| Err(Error::DebugProbe(e)))?;
         session.probe.target_reset()?;
 
@@ -218,7 +241,7 @@ fn trace_u32_on_target(n: usize, loc: u32) -> Result<(), CliError> {
 
     let start = Instant::now();
 
-    with_device(n, probe::target::m0::M0, |session| {
+    with_device(n, Box::new(probe::target::m0::M0::default()), |mut session| {
         loop {
             // Prepare read.
             let elapsed = start.elapsed();
@@ -256,16 +279,37 @@ fn get_connected_devices() -> Vec<DebugProbeInfo>{
     links
 }
 
-fn debug(n: usize) -> Result<(), CliError> {
-    let mut cs = Capstone::new()
-        .arm()
-        .mode(ArchMode::Thumb)
-        .endian(Endian::Little)
-        .build()
-        .unwrap();
+fn debug(n: usize, exe: Option<PathBuf>, dump: Option<PathBuf>) -> Result<(), CliError> {
+    
+    // try to load debug information
+    let debug_data = exe.and_then(|p| fs::File::open(&p).ok() )
+                        .and_then(|file| unsafe { memmap::Mmap::map(&file).ok() });
 
 
-    with_device(n, probe::target::m0::M0, |session| {
+    //let file = fs::File::open(&path).unwrap();
+    //let mmap = Rc::new(Box::new(unsafe { memmap::Mmap::map(&file).unwrap() }));
+
+    
+    let runner = |mut session| {
+        let mut cs = Capstone::new()
+            .arm()
+            .mode(ArchMode::Thumb)
+            .endian(Endian::Little)
+            .build()
+            .unwrap();
+
+
+
+        let di = debug_data.as_ref().map( |mmap| DebugInfo::from_raw(&*mmap));
+        
+        /*
+        if let Some(ref path) = exe {
+
+            DebugInfo::from_file(path)
+        } else {
+            DebugInfo::none()
+        }; */
+
         let mut rl = Editor::<()>::new();
         //rl.set_auto_add_history(true);
 
@@ -275,7 +319,7 @@ fn debug(n: usize) -> Result<(), CliError> {
                 Ok(line) => {
                     let history_entry: &str = line.as_ref();
                     rl.add_history_entry(history_entry);
-                    handle_line(session, &mut cs, &line)?;
+                    handle_line(&mut session, &mut cs, di.as_ref(), &line)?;
                 },
                 Err(e) => {
                     // Just quit for now
@@ -284,11 +328,22 @@ fn debug(n: usize) -> Result<(), CliError> {
                 }
             }
         }
-    })
+    };
+
+    match dump {
+        None => with_device(n, Box::new(probe::target::m0::M0::default()), &runner),
+        Some(p) => with_dump(&p, &runner),
+    }
+
 }
 
-fn handle_line(session: &mut Session, cs: &mut Capstone, line: &str) -> Result<(), CliError> {
-    match line {
+
+fn handle_line(session: &mut Session, cs: &mut Capstone, debug_info: Option<&DebugInfo>, line: &str) -> Result<(), CliError> {
+    let mut command_parts = line.split_whitespace();
+
+    let command = command_parts.next().unwrap();
+
+    match command {
         "halt" => {
             let cpu_info = session.target.halt(&mut session.probe)?;
             println!("Core stopped at address 0x{:08x}", cpu_info.pc);
@@ -315,6 +370,80 @@ fn handle_line(session: &mut Session, cs: &mut Capstone, line: &str) -> Result<(
             let cpu_info = session.target.step(&mut session.probe)?;
             println!("Core stopped at address 0x{:08x}", cpu_info.pc);
             Ok(())
+        },
+        "read" => {
+            let address_str = command_parts.next().unwrap();
+            let address = u32::from_str_radix(address_str, 16).unwrap();
+            //println!("Would read from address 0x{:08x}", address);
+
+            let val = session.probe.read32(address)?;
+            println!("0x{:08x} = 0x{:08x}", address, val);
+            Ok(())
+        },
+        "break" => {
+            let address_str = command_parts.next().unwrap();
+            let address = u32::from_str_radix(address_str, 16).unwrap();
+            //println!("Would read from address 0x{:08x}", address);
+
+            session.target.enable_breakpoints(&mut session.probe, true)?;
+            session.target.set_breakpoint(&mut session.probe, address)?;
+
+            Ok(())
+        },
+        "bt" => {
+            use probe::target::m0::PC;
+            let program_counter = session.target.read_core_reg(&mut session.probe, PC)?;
+
+
+            if let Some(di) = debug_info {
+                let frames = di.try_unwind(session, program_counter as u64);
+
+                for frame in frames {
+                    println!("{}", frame);
+                }
+            }
+
+
+            Ok(())
+        },
+        "dump" => {
+            // dump all relevant data, stack and regs for now..
+            //
+            // stack beginning -> assume beginning to be hardcoded
+
+
+            let stack_top: u32 = 0x2000_0000 + 0x4_000;
+
+            use probe::target::m0::{PC, SP, LR};
+
+            let stack_bot: u32 = session.target.read_core_reg(&mut session.probe, SP)?;
+            let pc: u32 = session.target.read_core_reg(&mut session.probe, PC)?;
+            
+            let mut stack = vec![0u8;(stack_top - stack_bot) as usize];
+
+            session.probe.read_block8(stack_bot, &mut stack[..])?;
+
+            let mut dump = CortexDump::new(stack_bot, stack);
+
+            for i in 0..12 {
+                dump.regs[i as usize] = session.target.read_core_reg(&mut session.probe, i.into())?;
+            }
+
+            dump.regs[13] = stack_bot;
+            dump.regs[14] = session.target.read_core_reg(&mut session.probe, LR)?;
+            dump.regs[15] = pc;
+
+            let serialized = ron::ser::to_string(&dump).expect("Failed to serialize dump");
+
+            let mut dump_file = File::create("dump.txt").expect("Failed to create file");
+
+            dump_file.write_all(serialized.as_bytes()).expect("Failed to write dump file");
+
+
+            Ok(())
+        },
+        "quit" => {
+            Err(CliError::Quit)
         },
         _ => {
             println!("Unknown command '{}'", line);

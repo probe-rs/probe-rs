@@ -156,8 +156,8 @@ impl<P: DebugPort, R: DPRegister<P>> DPAccess<P,R> for DAPLink {
 }
 
 impl DebugProbe for DAPLink {
-    fn new_from_probe_info(info: DebugProbeInfo) -> Result<Box<Self>, DebugProbeError> where Self: Sized {
-        if let Some(serial_number) = info.serial_number {
+    fn new_from_probe_info(info: &DebugProbeInfo) -> Result<Box<Self>, DebugProbeError> where Self: Sized {
+        if let Some(serial_number) = &info.serial_number {
             Ok(Box::new(Self::new_from_device(
                 hidapi::HidApi::new()
                     .map_err(|_| DebugProbeError::ProbeCouldNotBeCreated)?
@@ -368,6 +368,7 @@ impl DAPAccess for DAPLink {
 
 impl Drop for DAPLink {
     fn drop(&mut self) {
+        debug!("Detaching from DAPLink");
         // We ignore the error case as we can't do much about it anyways.
         let _ = self.detach();
     }

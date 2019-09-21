@@ -13,6 +13,26 @@ use super::{
 };
 use bitfield::bitfield;
 
+use serde::{ Serialize, Deserialize };
+use log::debug;
+
+#[derive(Debug,Serialize,Deserialize)]
+pub struct CortexDump {
+    pub regs:  [u32;16],
+    stack_addr: u32,
+    stack: Vec<u8>,
+}
+
+impl CortexDump {
+    pub fn new(stack_addr: u32, stack: Vec<u8>) -> CortexDump {
+        CortexDump {
+            regs: [0u32;16],
+            stack_addr,
+            stack,
+        }
+    }
+}
+
 bitfield!{
     #[derive(Copy, Clone)]
     pub struct Dhcsr(u32);
@@ -175,17 +195,21 @@ impl TargetRegister for BpCompx {
     const NAME: &'static str = "BP_CTRL0";
 }
 
-pub const R0: CoreRegisterAddress = CoreRegisterAddress(0b00000);
-pub const R1: CoreRegisterAddress = CoreRegisterAddress(0b00001);
-pub const R2: CoreRegisterAddress = CoreRegisterAddress(0b00010);
-pub const R3: CoreRegisterAddress = CoreRegisterAddress(0b00011);
-pub const R4: CoreRegisterAddress = CoreRegisterAddress(0b00100);
-pub const R9: CoreRegisterAddress = CoreRegisterAddress(0b01001);
-pub const SP: CoreRegisterAddress = CoreRegisterAddress(0b01101);
-pub const LR: CoreRegisterAddress = CoreRegisterAddress(0b01110);
-pub const PC: CoreRegisterAddress = CoreRegisterAddress(0b01111);
+pub const R0:  CoreRegisterAddress = CoreRegisterAddress(0b00000);
+pub const R1:  CoreRegisterAddress = CoreRegisterAddress(0b00001);
+pub const R2:  CoreRegisterAddress = CoreRegisterAddress(0b00010);
+pub const R3:  CoreRegisterAddress = CoreRegisterAddress(0b00011);
+pub const R4:  CoreRegisterAddress = CoreRegisterAddress(0b00100);
+pub const R9:  CoreRegisterAddress = CoreRegisterAddress(0b01001);
+pub const PC:  CoreRegisterAddress = CoreRegisterAddress(0b01111);
+pub const SP:  CoreRegisterAddress = CoreRegisterAddress(0b01101);
+pub const LR:  CoreRegisterAddress = CoreRegisterAddress(0b01110);
+pub const MSP: CoreRegisterAddress = CoreRegisterAddress(0b01001);
+pub const PSP: CoreRegisterAddress = CoreRegisterAddress(0b01010);
 
+#[derive(Debug, Default, Copy, Clone)]
 pub struct M0;
+
 
 impl M0 {
     fn wait_for_core_register_transfer(&self, mi: &mut impl MI) -> Result<(), DebugProbeError> {
@@ -304,7 +328,7 @@ impl Target for M0 {
     fn run(&self, mi: &mut MasterProbe) -> Result<(), DebugProbeError> {
         let mut value = Dhcsr(0);
         value.set_c_halt(false);
-        value.set_c_debugen(false);
+        value.set_c_debugen(true);
         value.enable_write();
 
         mi.write32(Dhcsr::ADDRESS, value.into()).map_err(Into::into)
@@ -342,7 +366,9 @@ impl Target for M0 {
     }
 
     fn enable_breakpoints(&self, mi: &mut MasterProbe, state: bool) -> Result<(), DebugProbeError> {
+        debug!("Enabling breakpoints: {:?}", state);
         let mut value = BpCtrl(0);
+        value.set_key(true);
         value.set_enable(state);
 
         mi.write32(BpCtrl::ADDRESS, value.into())?;
@@ -351,12 +377,13 @@ impl Target for M0 {
     }
 
     fn set_breakpoint(&self, mi: &mut MasterProbe, addr: u32) -> Result<(), DebugProbeError> {
+        debug!("Setting breakpoint on address 0x{:08x}", addr);
         let mut value = BpCompx(0);
         value.set_bp_match(0b11);
-        value.set_comp((addr >> 2) | 0x00FFFFFF);
+        value.set_comp((addr >> 2) & 0x00FFFFFF);
         value.set_enable(true);
 
-        mi.write32(BpCtrl::ADDRESS, value.into())?;
+        mi.write32(BpCompx::ADDRESS, value.into())?;
 
         self.wait_for_core_halted(mi)
     }
@@ -368,4 +395,84 @@ impl Target for M0 {
     fn disable_breakpoint(&self, _mi: &mut MasterProbe, _addr: u32) -> Result<(), DebugProbeError> {
         unimplemented!();
     }
+
+    fn read_block8(&self, mi: &mut MasterProbe, address: u32, data: &mut [u8]) -> Result<(), DebugProbeError> {
+        Ok(mi.read_block8(address, data)?)
+    }
+}
+
+pub struct FakeM0 {
+    dump: CortexDump,
+}
+
+impl FakeM0 {
+    pub fn new(dump: CortexDump) -> FakeM0 {
+        FakeM0 {
+            dump
+        }
+    }
+}
+
+impl Target for FakeM0 {
+    fn halt(&self, mi: &mut MasterProbe) -> Result<CpuInformation, DebugProbeError> {
+        unimplemented!()
+    }
+
+    fn run(&self, mi: &mut MasterProbe) -> Result<(), DebugProbeError> {
+        unimplemented!()
+    }
+
+    /// Steps one instruction and then enters halted state again.
+    fn step(&self, mi: &mut MasterProbe) -> Result<CpuInformation, DebugProbeError> {
+        unimplemented!()
+    }
+
+    fn read_core_reg(&self, mi: &mut MasterProbe, addr: CoreRegisterAddress) -> Result<u32, DebugProbeError> {
+        let index: u32 = addr.into();
+
+        self.dump.regs.get(index as usize).map(|v| *v).ok_or(DebugProbeError::UnknownError)
+    }
+
+    fn write_core_reg(&self, mi: &mut MasterProbe, addr: CoreRegisterAddress, value: u32) -> Result<(), DebugProbeError> {
+        unimplemented!()
+    }
+
+    fn get_available_breakpoint_units(&self, mi: &mut MasterProbe) -> Result<u32, DebugProbeError> {
+        unimplemented!()
+    }
+
+    fn enable_breakpoints(&self, mi: &mut MasterProbe, state: bool) -> Result<(), DebugProbeError> {
+        unimplemented!()
+    }
+
+    fn set_breakpoint(&self, mi: &mut MasterProbe, addr: u32) -> Result<(), DebugProbeError> {
+        unimplemented!()
+    }
+
+    fn enable_breakpoint(&self, mi: &mut MasterProbe, addr: u32) -> Result<(), DebugProbeError> {
+        unimplemented!()
+    }
+
+    fn disable_breakpoint(&self, mi: &mut MasterProbe, addr: u32) -> Result<(), DebugProbeError> { 
+        unimplemented!()
+    }
+
+    fn read_block8(&self, mi: &mut MasterProbe, address: u32, data: &mut [u8]) -> Result<(), DebugProbeError> {
+        debug!("Read from dump: addr=0x{:08x}, len={}", address, data.len());
+
+        if (address < self.dump.stack_addr) || (address as usize > (self.dump.stack_addr as usize + self.dump.stack.len())) {
+            return Err(DebugProbeError::UnknownError);
+        }
+
+        if address as usize + data.len() > (self.dump.stack_addr as usize + self.dump.stack.len()) {
+            return Err(DebugProbeError::UnknownError);
+        }
+
+        let stack_offset = (address - self.dump.stack_addr) as usize;
+
+        data.copy_from_slice(&self.dump.stack[stack_offset..(stack_offset+data.len())]);
+
+        Ok(())
+    }
+
 }

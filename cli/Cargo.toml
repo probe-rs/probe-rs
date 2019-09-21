@@ -7,13 +7,19 @@ edition = "2018"
 [dependencies]
 pretty_env_logger = "0.3.0"
 log = "0.4.6"
-libusb = "0.3.0"
 structopt = "0.2.14"
 memory = { path = "../memory" }
 probe = { path = "../probe" }
 stlink = { path = "../probe/stlink" }
 daplink = { path = "../probe/daplink" }
 coresight = { path = "../coresight" }
+probe-rs-debug = { path = "../debug" }
 scroll = "*"
-rustyline = "4.1.0"
+rustyline = "5.0.2"
 capstone = "0.6.0"
+serde = "*"
+ron = "0.5.1"
+gimli = "*"
+object = "*"
+memmap = "*"
+rustc-demangle = "0.1.16"

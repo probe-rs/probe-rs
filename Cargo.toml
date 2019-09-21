@@ -4,6 +4,7 @@ members = [
     "probe",
     "probe/stlink",
     "probe/daplink",
+    "debug",
     "cli",
     "memory",
     # "sample"

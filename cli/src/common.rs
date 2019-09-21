@@ -1,3 +1,7 @@
+use std::path::Path;
+use std::fs::File;
+
+use probe_rs_debug::session::Session;
 use probe::target::Target;
 use probe::session::Session;
 use coresight::{
@@ -5,6 +9,8 @@ use coresight::{
         AccessPortError,
     },
 };
+
+use ron;
 
 use probe::debug_probe::{
     MasterProbe,
@@ -24,6 +30,7 @@ pub enum CliError {
     AccessPort(AccessPortError),
     FlashError(FlashError),
     StdIO(std::io::Error),
+    Quit,
 }
 
 impl Error for CliError {
@@ -35,6 +42,7 @@ impl Error for CliError {
             AccessPort(ref e) => Some(e),
             FlashError(ref e) => Some(e),
             StdIO(ref e) => Some(e),
+            Quit => None,
         }
     }
 }
@@ -48,6 +56,7 @@ impl fmt::Display for CliError {
             AccessPort(ref e) => e.fmt(f),
             FlashError(ref e) => e.fmt(f),
             StdIO(ref e) => e.fmt(f),
+            Quit => write!(f, "Quit error..."),
         }
     }
 }
@@ -80,9 +89,9 @@ impl From<FlashError> for CliError {
 /// Takes a closure that is handed an `DAPLink` instance and then executed.
 /// After the closure is done, the USB device is always closed,
 /// even in an error case inside the closure!
-pub fn with_device<F>(n: usize, target: impl Target + 'static, f: F) -> Result<(), CliError>
+pub fn with_device<F>(n: usize, target: Box<dyn Target>, f: F) -> Result<(), CliError>
 where
-    F: FnOnce(&mut Session) -> Result<(), CliError>
+    for<'a> F: FnOnce(Session) -> Result<(), CliError>
 {
     let device = {
         let mut list = daplink::tools::list_daplink_devices();
@@ -93,14 +102,14 @@ where
 
     let probe = match device.probe_type {
         DebugProbeType::DAPLink => {
-            let mut link = daplink::DAPLink::new_from_probe_info(device)?;
+            let mut link = daplink::DAPLink::new_from_probe_info(&device)?;
 
             link.attach(Some(probe::protocol::WireProtocol::Swd))?;
             
             MasterProbe::from_specific_probe(link)
         },
         DebugProbeType::STLink => {
-            let mut link = stlink::STLink::new_from_probe_info(device)?;
+            let mut link = stlink::STLink::new_from_probe_info(&device)?;
 
             link.attach(Some(probe::protocol::WireProtocol::Swd))?;
             
@@ -108,7 +117,26 @@ where
         },
     };
     
-    let mut session = Session::new(target, probe);
+    let session = Session::new(target, probe);
 
-    f(&mut session)
+    f(session)
+}
+
+pub fn with_dump<F>(p: &Path, f: F) -> Result<(), CliError>
+where
+    for<'a> F: FnOnce(Session) -> Result<(), CliError>
+{
+    let mut dump_file = File::open(p)?;
+
+    let dump = ron::de::from_reader(&mut dump_file).unwrap();
+
+
+    let target = probe::target::m0::FakeM0::new(dump);
+    let fake_probe = probe::debug_probe::FakeProbe::new();
+
+    let probe = MasterProbe::from_specific_probe(Box::new(fake_probe));
+
+    let session = Session::new(Box::new(target), probe);
+
+    f(session)
 }

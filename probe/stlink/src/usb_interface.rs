@@ -1,6 +1,6 @@
 use probe::debug_probe::DebugProbeInfo;
 use lazy_static::lazy_static;
-use libusb::{Context, Device, DeviceHandle, Error};
+use rusb::{Context, Device, DeviceHandle, Error, UsbContext};
 use std::time::Duration;
 
 use std::collections::HashMap;
@@ -64,9 +64,9 @@ rental! {
         /// Provides low-level USB enumeration and transfers for STLinkV2/3 devices.
         #[rental]
         pub struct STLinkUSBDeviceRenter {
-            context: Box<Context>,
-            device: Box<Device<'context>>,
-            device_handle: Box<DeviceHandle<'context>>,
+            context: Box<rusb::Context>,
+            device: Box<Device<rusb::Context>>,
+            device_handle: Box<DeviceHandle<rusb::Context>>,
         }
     }
 }
@@ -80,7 +80,7 @@ pub struct STLinkUSBDevice {
 
 impl STLinkUSBDevice {
     /// Creates and initializes a new USB device.
-    pub fn new_from_info(probe_info: DebugProbeInfo) -> Result<Self, DebugProbeError>
+    pub fn new_from_info(probe_info: &DebugProbeInfo) -> Result<Self, DebugProbeError>
     {
         let context = Context::new().map_err(|_| DebugProbeError::USBError)?;
 
