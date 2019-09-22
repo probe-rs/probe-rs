@@ -114,9 +114,8 @@ impl<'a> InactiveFlasher<'a> {
         self.double_buffering_supported
     }
 
-    pub fn init<O: Operation>(&mut self, mut address: Option<u32>, clock: Option<u32>) -> Result<ActiveFlasher<O>, FlasherError> {
+    pub fn init<O: Operation>(mut self, mut address: Option<u32>, clock: Option<u32>) -> Result<ActiveFlasher<'a, O>, FlasherError> {
         let algo = self.session.target.info.flash_algorithm;
-        let regs = self.session.target.info.basic_register_addresses;
 
         if address.is_none() {
             address = Some(self.region.get_flash_info(algo.analyzer_supported).rom_start);
@@ -155,25 +154,25 @@ impl<'a> InactiveFlasher<'a> {
         Ok(flasher)
     }
 
-    pub fn run_erase(&mut self, f: impl FnOnce(&mut ActiveFlasher<Erase>) + Sized) -> Result<(), FlasherError> {
+    pub fn run_erase(mut self, f: impl FnOnce(&mut ActiveFlasher<Erase>) + Sized) -> Result<(), FlasherError> {
         // TODO: Fix those values (None, None).
-        let active = self.init(None, None)?;
+        let mut active = self.init(None, None)?;
         f(&mut active);
         active.uninit()?;
         Ok(())
     }
 
-    pub fn run_program(&mut self, f: impl FnOnce(&mut ActiveFlasher<Program>) + Sized) -> Result<(), FlasherError> {
+    pub fn run_program(mut self, f: impl FnOnce(&mut ActiveFlasher<Program>) + Sized) -> Result<(), FlasherError> {
         // TODO: Fix those values (None, None).
-        let active = self.init(None, None)?;
+        let mut active = self.init(None, None)?;
         f(&mut active);
         active.uninit()?;
         Ok(())
     }
 
-    pub fn run_verify(&mut self, f: impl FnOnce(&mut ActiveFlasher<Verify>) + Sized) -> Result<(), FlasherError> {
+    pub fn run_verify(mut self, f: impl FnOnce(&mut ActiveFlasher<Verify>) + Sized) -> Result<(), FlasherError> {
         // TODO: Fix those values (None, None).
-        let active = self.init(None, None)?;
+        let mut active = self.init(None, None)?;
         f(&mut active);
         active.uninit()?;
         Ok(())
@@ -200,7 +199,7 @@ impl<'a, O: Operation> ActiveFlasher<'a, O> {
         &mut self.session
     }
 
-    pub fn uninit(&mut self) -> Result<InactiveFlasher, FlasherError> {
+    pub fn uninit(mut self) -> Result<InactiveFlasher<'a>, FlasherError> {
         let algo = self.session.target.info.flash_algorithm;
 
         if let Some(pc_uninit) = algo.pc_uninit {
@@ -220,7 +219,7 @@ impl<'a, O: Operation> ActiveFlasher<'a, O> {
 
         Ok(InactiveFlasher {
             session: self.session,
-            region: self.region,
+            region: self.region.clone(),
             double_buffering_supported: self.double_buffering_supported,
         })
     }
@@ -250,7 +249,7 @@ impl<'a, O: Operation> ActiveFlasher<'a, O> {
         self.session.target.core.run(&mut self.session.probe);
     }
 
-    fn wait_for_completion(&mut self) -> u32 {
+    pub fn wait_for_completion(&mut self) -> u32 {
         let regs = self.session.target.info.basic_register_addresses;
 
         while self.session.target.core.wait_for_core_halted(&mut self.session.probe).is_err() {}
