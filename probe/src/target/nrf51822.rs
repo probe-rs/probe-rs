@@ -1,10 +1,9 @@
 use super::*;
+use crate::flash::*;
 
-pub struct nRF51822;
-
-impl TargetInfo for nRF51822 {
-    fn get_flash_algorithm(&self) -> FlashAlgorithm {
-        FlashAlgorithm {
+pub fn nRF51822() -> TargetInfo {
+    TargetInfo {
+        flash_algorithm: FlashAlgorithm {
             load_address: 0x20000000,
             instructions: &[
                 0xE00ABE00, 0x062D780D, 0x24084068, 0xD3000040, 0x1E644058, 0x1C49D1FA, 0x2A001E52, 0x4770D1F2,
@@ -32,12 +31,46 @@ impl TargetInfo for nRF51822 {
             min_program_length: Some(2),
             analyzer_supported: true,
             analyzer_address: 0x20002000,
-        }
-    }
-
-    fn get_basic_register_addresses(&self) -> BasicRegisterAddresses {
-        BasicRegisterAddresses {
+        },
+        basic_register_addresses: BasicRegisterAddresses {
             R0, R1, R2, R3, R9, PC, LR, SP,
-        }
+        },
+        memory_map: vec![
+            MemoryRegion::Flash(FlashRegion {
+                range: 0..0x40000,
+                is_boot_memory: true,
+                is_testable: true,
+                blocksize: 0x400,
+                sector_size: 0x400,
+                page_size: 0x400,
+                phrase_size: 0x400,
+                erase_all_weight: ERASE_ALL_WEIGHT,
+                erase_sector_weight: ERASE_SECTOR_WEIGHT,
+                program_page_weight: PROGRAM_PAGE_WEIGHT,
+                erased_byte_value: 0xFF,
+                access: Access::RX,
+                are_erased_sectors_readable: true,
+            }),
+            MemoryRegion::Flash(FlashRegion {
+                range: 0x10001000..0x10001000 + 0x100,
+                is_boot_memory: false,
+                is_testable: false,
+                blocksize: 0x100,
+                sector_size: 0x100,
+                page_size: 0x100,
+                phrase_size: 0x100,
+                erase_all_weight: ERASE_ALL_WEIGHT,
+                erase_sector_weight: ERASE_SECTOR_WEIGHT,
+                program_page_weight: PROGRAM_PAGE_WEIGHT,
+                erased_byte_value: 0xFF,
+                access: Access::RX,
+                are_erased_sectors_readable: true,
+            }),
+            MemoryRegion::Ram(RamRegion {
+                range: 0x20000000..0x20000000 + 0x4000,
+                is_boot_memory: false,
+                is_testable: true,
+            }),
+        ],
     }
 }

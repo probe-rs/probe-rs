@@ -3,7 +3,12 @@ pub mod nrf51822;
 
 pub use m0::*;
 
-use crate::flash::flasher::FlashAlgorithm;
+use crate::flash::{
+    flasher::FlashAlgorithm,
+    memory::{
+        MemoryRegion,
+    }
+};
 use crate::debug_probe::{
     MasterProbe,
     DebugProbeError,
@@ -30,6 +35,7 @@ impl From<u8> for CoreRegisterAddress {
     }
 }
 
+#[derive(Copy, Clone)]
 pub struct BasicRegisterAddresses {
     pub R0: CoreRegisterAddress,
     pub R1: CoreRegisterAddress,
@@ -68,22 +74,23 @@ pub trait Core {
     fn read_block8(&self, mi: &mut MasterProbe, address: u32, data: &mut [u8]) -> Result<(), DebugProbeError>;
 }
 
-pub trait TargetInfo {
-    fn get_flash_algorithm(&self) -> FlashAlgorithm;
-
-    fn get_basic_register_addresses(&self) -> BasicRegisterAddresses;
+#[derive(Clone)]
+pub struct TargetInfo {
+    pub flash_algorithm: FlashAlgorithm,
+    pub basic_register_addresses: BasicRegisterAddresses,
+    pub memory_map: Vec<MemoryRegion>,
 }
 
 pub struct Target {
     pub core: Box<dyn Core>,
-    pub info: Box<dyn TargetInfo>,
+    pub info: TargetInfo,
 }
 
 impl Target {
-    pub fn new(core: impl Core + 'static, info: impl TargetInfo + 'static) -> Self {
+    pub fn new(core: impl Core + 'static, info: TargetInfo) -> Self {
         Self {
             core: Box::new(core),
-            info: Box::new(info),
+            info: info,
         }
     }
 }

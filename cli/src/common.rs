@@ -137,7 +137,7 @@ where
 
     let target = Target::new(
         core,
-        probe::target::nrf51822::nRF51822,
+        probe::target::nrf51822::nRF51822(),
     );
 
     let session = Session::new(target, probe);

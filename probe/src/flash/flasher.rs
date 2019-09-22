@@ -3,7 +3,17 @@ use crate::session::Session;
 
 use super::*;
 
-#[derive(Debug, Default)]
+const ANALYZER: [u32; 49] = [
+    0x2780b5f0, 0x25004684, 0x4e2b2401, 0x447e4a2b, 0x0023007f, 0x425b402b, 0x40130868, 0x08584043,
+    0x425b4023, 0x40584013, 0x40200843, 0x40104240, 0x08434058, 0x42404020, 0x40584010, 0x40200843,
+    0x40104240, 0x08434058, 0x42404020, 0x40584010, 0x40200843, 0x40104240, 0x08584043, 0x425b4023,
+    0x40434013, 0xc6083501, 0xd1d242bd, 0xd01f2900, 0x46602301, 0x469c25ff, 0x00894e11, 0x447e1841,
+    0x88034667, 0x409f8844, 0x2f00409c, 0x2201d012, 0x4252193f, 0x34017823, 0x402b4053, 0x599b009b,
+    0x405a0a12, 0xd1f542bc, 0xc00443d2, 0xd1e74281, 0xbdf02000, 0xe7f82200, 0x000000b2, 0xedb88320,
+    0x00000042,
+];
+
+#[derive(Debug, Default, Copy, Clone)]
 pub struct FlashAlgorithm {
     /// Memory address where the flash algo instructions will be loaded to.
     pub load_address: u32,
@@ -78,9 +88,9 @@ pub struct InactiveFlasher<'a> {
 }
 
 impl<'a> InactiveFlasher<'a> {
-    pub fn init<O: Operation>(&mut self, address: Option<u32>, clock: Option<u32>) -> Result<ActiveFlasher<O>, FlasherError> {
-        let algo = self.session.target.info.get_flash_algorithm();
-        let regs = self.session.target.info.get_basic_register_addresses();
+    pub fn init<O: Operation>(&mut self, region: FlashRegion, address: Option<u32>, clock: Option<u32>) -> Result<ActiveFlasher<O>, FlasherError> {
+        let algo = self.session.target.info.flash_algorithm;
+        let regs = self.session.target.info.basic_register_addresses;
 
         // TODO: Halt & reset target.
 
@@ -91,7 +101,7 @@ impl<'a> InactiveFlasher<'a> {
 
         let mut flasher = ActiveFlasher {
             session: self.session,
-            region: Default::default(),
+            region,
             _operation: core::marker::PhantomData,
         };
 
@@ -117,13 +127,13 @@ impl<'a> InactiveFlasher<'a> {
 
 pub struct ActiveFlasher<'a, O: Operation> {
     session: &'a mut Session,
-    region: MemoryRegion,
+    region: FlashRegion,
     _operation: core::marker::PhantomData<O>,
 }
 
 impl<'a, O: Operation> ActiveFlasher<'a, O> {
     pub fn uninit(&mut self) -> Result<InactiveFlasher, FlasherError> {
-        let algo = self.session.target.info.get_flash_algorithm();
+        let algo = self.session.target.info.flash_algorithm;
 
         if let Some(pc_uninit) = algo.pc_uninit {
             let result = self.call_function_and_wait(
@@ -151,8 +161,8 @@ impl<'a, O: Operation> ActiveFlasher<'a, O> {
     }
 
     fn call_function(&mut self, pc: u32, r0: Option<u32>, r1: Option<u32>, r2: Option<u32>, r3: Option<u32>, init: bool) {
-        let algo = self.session.target.info.get_flash_algorithm();
-        let regs = self.session.target.info.get_basic_register_addresses();
+        let algo = self.session.target.info.flash_algorithm;
+        let regs = self.session.target.info.basic_register_addresses;
         [
             (regs.PC, Some(pc)),
             (regs.R0, r0),
@@ -171,7 +181,7 @@ impl<'a, O: Operation> ActiveFlasher<'a, O> {
     }
 
     fn wait_for_completion(&mut self) -> u32 {
-        let regs = self.session.target.info.get_basic_register_addresses();
+        let regs = self.session.target.info.basic_register_addresses;
 
         while self.session.target.core.wait_for_core_halted(&mut self.session.probe).is_err() {}
 
@@ -181,7 +191,7 @@ impl<'a, O: Operation> ActiveFlasher<'a, O> {
 
 impl <'a> ActiveFlasher<'a, Erase> {
     pub fn erase_all(&mut self) -> Result<(), FlasherError> {
-        let algo = self.session.target.info.get_flash_algorithm();
+        let algo = self.session.target.info.flash_algorithm;
 
         if let Some(pc_erase_all) = algo.pc_erase_all {
             let result = self.call_function_and_wait(
@@ -204,7 +214,7 @@ impl <'a> ActiveFlasher<'a, Erase> {
     }
 
     pub fn erase_sector(&mut self, address: u32) -> Result<(), FlasherError> {
-        let algo = self.session.target.info.get_flash_algorithm();
+        let algo = self.session.target.info.flash_algorithm;
 
         let result = self.call_function_and_wait(
             algo.pc_erase_sector,
@@ -225,7 +235,7 @@ impl <'a> ActiveFlasher<'a, Erase> {
 
 impl <'a> ActiveFlasher<'a, Program> {
     pub fn program_page(&mut self, address: u32, bytes: &[u8]) -> Result<(), FlasherError> {
-        let algo = self.session.target.info.get_flash_algorithm();
+        let algo = self.session.target.info.flash_algorithm;
 
         // TODO: Prevent security settings from locking the device.
 
@@ -249,7 +259,7 @@ impl <'a> ActiveFlasher<'a, Program> {
     }
 
     pub fn start_program_page_with_buffer(&mut self, address: u32, buffer_number: u32) -> Result<(), FlasherError> {
-        let algo = self.session.target.info.get_flash_algorithm();
+        let algo = self.session.target.info.flash_algorithm;
 
         // Check the buffer number.
         if buffer_number < algo.page_buffers.len() as u32 {
@@ -269,7 +279,7 @@ impl <'a> ActiveFlasher<'a, Program> {
     }
 
     pub fn load_page_buffer(&mut self, address: u32, bytes: &[u8], buffer_number: u32) -> Result<(), FlasherError> {
-        let algo = self.session.target.info.get_flash_algorithm();
+        let algo = self.session.target.info.flash_algorithm;
 
         // Check the buffer number.
         if buffer_number < algo.page_buffers.len() as u32 {
@@ -285,7 +295,7 @@ impl <'a> ActiveFlasher<'a, Program> {
     }
 
     pub fn program_phrase(&mut self, address: u32, bytes: &[u8]) -> Result<(), FlasherError> {
-        let algo = self.session.target.info.get_flash_algorithm();
+        let algo = self.session.target.info.flash_algorithm;
 
         // Get the minimum programming length. If none was specified, use the page size.
         let min_len = if let Some(min_program_length) = algo.min_program_length {
@@ -324,7 +334,7 @@ impl <'a> ActiveFlasher<'a, Program> {
     }
 
     pub fn get_sector_info(&self, address: u32) -> Option<SectorInfo> {
-        if !self.region.contrains_address(address) {
+        if !self.region.range.contains(&address) {
             return None
         }
 
@@ -336,7 +346,7 @@ impl <'a> ActiveFlasher<'a, Program> {
     }
 
     pub fn get_page_info(&self, address: u32) -> Option<PageInfo> {
-        if !self.region.contrains_address(address) {
+        if !self.region.range.contains(&address) {
             return None
         }
 
@@ -348,14 +358,14 @@ impl <'a> ActiveFlasher<'a, Program> {
     }
 
     pub fn get_flash_info(&self, address: u32) -> Option<FlashInfo> {
-        if !self.region.contrains_address(address) {
+        if !self.region.range.contains(&address) {
             return None
         }
 
-        let algo = self.session.target.info.get_flash_algorithm();
+        let algo = self.session.target.info.flash_algorithm;
 
         Some(FlashInfo {
-            rom_start: self.region.start,
+            rom_start: self.region.range.start,
             erase_weight: self.region.erase_all_weight,
             crc_supported: algo.analyzer_supported,
         })
