@@ -81,6 +81,9 @@ pub enum FlasherError {
     UnalignedFlashWriteAddress,
     UnalignedPhraseLength,
     ProgramPhrase(u32, u32),
+    AnalyzerNotSupported,
+    SizeNotPowerOf2,
+    AddressNotMultipleOfSize,
 }
 
 pub struct InactiveFlasher<'a> {
@@ -229,6 +232,52 @@ impl <'a> ActiveFlasher<'a, Erase> {
             Err(FlasherError::EraseSector(result, address))
         } else {
             Ok(())
+        }
+    }
+
+    pub fn compute_crcs(&mut self, sectors: &Vec<(u32, u32)>) -> Result<Vec<u32>, FlasherError> {
+        let algo = self.session.target.info.flash_algorithm;
+        if algo.analyzer_supported {
+            let mut data = vec![];
+
+            self.session.probe.write_block32(algo.analyzer_address, &ANALYZER);
+
+            for (address, mut size) in sectors {
+                let size_value = {
+                    let mut ndx = 0;
+                    while 1 < size {
+                        size = size >> 1;
+                        ndx += 1;
+                    }
+                    ndx
+                };
+                let address_value = address / size;
+                if 1 << size_value != size {
+                    return Err(FlasherError::SizeNotPowerOf2);
+                }
+                if address % size != 0 {
+                    return Err(FlasherError::AddressNotMultipleOfSize);
+                }
+                let value = (size_value << 0) | (address_value << 16);
+                data.push(value);
+            }
+
+            self.session.probe.write_block32(algo.begin_data, data.as_slice());
+
+            let result = self.call_function_and_wait(
+                algo.analyzer_address,
+                Some(algo.begin_data),
+                Some(data.len() as u32),
+                None,
+                None,
+                false
+            );
+
+            self.session.probe.read_block32(algo.begin_data, data.as_mut_slice());
+
+            Ok(data)
+        } else {
+            Err(FlasherError::AnalyzerNotSupported)
         }
     }
 }

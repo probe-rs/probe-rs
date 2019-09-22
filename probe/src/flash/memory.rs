@@ -48,7 +48,7 @@ pub struct DeviceRegion {
 
 pub struct SectorInfo {
     pub base_address: u32,
-    pub erase_weight: u32,
+    pub erase_weight: f32,
     pub size: u32,
 }
 
@@ -60,7 +60,7 @@ pub struct PageInfo {
 
 pub struct FlashInfo {
     pub rom_start: u32,
-    pub erase_weight: u32,
+    pub erase_weight: f32,
     pub crc_supported: bool,
 }
 
