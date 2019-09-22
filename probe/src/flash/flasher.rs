@@ -1,3 +1,4 @@
+use coresight::access_ports::AccessPortError;
 use ::memory::MI;
 use crate::session::Session;
 
@@ -88,12 +89,38 @@ pub enum FlasherError {
 
 pub struct InactiveFlasher<'a> {
     session: &'a mut Session,
+    region: FlashRegion,
+    double_buffering_supported: bool
 }
 
 impl<'a> InactiveFlasher<'a> {
-    pub fn init<O: Operation>(&mut self, region: FlashRegion, address: Option<u32>, clock: Option<u32>) -> Result<ActiveFlasher<O>, FlasherError> {
+    pub fn new(session: &'a mut Session, region: FlashRegion) -> Self {
+        Self {
+            session,
+            region,
+            double_buffering_supported: false,
+        }
+    }
+
+    pub fn region(&self) -> &FlashRegion {
+        &self.region
+    }
+
+    pub fn flash_algorithm(&self) -> &FlashAlgorithm {
+        &self.session.target.info.flash_algorithm
+    }
+
+    pub fn double_buffering_supported(&self) -> bool {
+        self.double_buffering_supported
+    }
+
+    pub fn init<O: Operation>(&mut self, mut address: Option<u32>, clock: Option<u32>) -> Result<ActiveFlasher<O>, FlasherError> {
         let algo = self.session.target.info.flash_algorithm;
         let regs = self.session.target.info.basic_register_addresses;
+
+        if address.is_none() {
+            address = Some(self.region.get_flash_info(algo.analyzer_supported).rom_start);
+        }
 
         // TODO: Halt & reset target.
 
@@ -104,7 +131,8 @@ impl<'a> InactiveFlasher<'a> {
 
         let mut flasher = ActiveFlasher {
             session: self.session,
-            region,
+            region: self.region,
+            double_buffering_supported: self.double_buffering_supported,
             _operation: core::marker::PhantomData,
         };
 
@@ -126,15 +154,52 @@ impl<'a> InactiveFlasher<'a> {
 
         Ok(flasher)
     }
+
+    pub fn run_erase(&mut self, f: impl FnOnce(&mut ActiveFlasher<Erase>) + Sized) -> Result<(), FlasherError> {
+        // TODO: Fix those values (None, None).
+        let active = self.init(None, None)?;
+        f(&mut active);
+        active.uninit()?;
+        Ok(())
+    }
+
+    pub fn run_program(&mut self, f: impl FnOnce(&mut ActiveFlasher<Program>) + Sized) -> Result<(), FlasherError> {
+        // TODO: Fix those values (None, None).
+        let active = self.init(None, None)?;
+        f(&mut active);
+        active.uninit()?;
+        Ok(())
+    }
+
+    pub fn run_verify(&mut self, f: impl FnOnce(&mut ActiveFlasher<Verify>) + Sized) -> Result<(), FlasherError> {
+        // TODO: Fix those values (None, None).
+        let active = self.init(None, None)?;
+        f(&mut active);
+        active.uninit()?;
+        Ok(())
+    }
 }
 
 pub struct ActiveFlasher<'a, O: Operation> {
     session: &'a mut Session,
     region: FlashRegion,
+    double_buffering_supported: bool,
     _operation: core::marker::PhantomData<O>,
 }
 
 impl<'a, O: Operation> ActiveFlasher<'a, O> {
+    pub fn region(&self) -> &FlashRegion {
+        &self.region
+    }
+
+    pub fn flash_algorithm(&self) -> &FlashAlgorithm {
+        &self.session.target.info.flash_algorithm
+    }
+
+    pub fn session_mut(&mut self) -> &mut Session {
+        &mut self.session
+    }
+
     pub fn uninit(&mut self) -> Result<InactiveFlasher, FlasherError> {
         let algo = self.session.target.info.flash_algorithm;
 
@@ -155,6 +220,8 @@ impl<'a, O: Operation> ActiveFlasher<'a, O> {
 
         Ok(InactiveFlasher {
             session: self.session,
+            region: self.region,
+            double_buffering_supported: self.double_buffering_supported,
         })
     }
 
@@ -189,6 +256,14 @@ impl<'a, O: Operation> ActiveFlasher<'a, O> {
         while self.session.target.core.wait_for_core_halted(&mut self.session.probe).is_err() {}
 
         self.session.target.core.read_core_reg(&mut self.session.probe, regs.R0).unwrap()
+    }
+
+    pub fn read_block32(&mut self, address: u32, data: &mut [u32]) -> Result<(), AccessPortError> {
+        self.session.probe.read_block32(address, data)
+    }
+
+    pub fn read_block8(&mut self, address: u32, data: &mut [u8]) -> Result<(), AccessPortError> {
+        self.session.probe.read_block8(address, data)
     }
 }
 
@@ -380,43 +455,5 @@ impl <'a> ActiveFlasher<'a, Program> {
         } else {
             Ok(())
         }
-    }
-
-    pub fn get_sector_info(&self, address: u32) -> Option<SectorInfo> {
-        if !self.region.range.contains(&address) {
-            return None
-        }
-
-        Some(SectorInfo {
-            base_address: address - (address % self.region.sector_size),
-            erase_weight: self.region.erase_sector_weight,
-            size: self.region.sector_size,
-        })
-    }
-
-    pub fn get_page_info(&self, address: u32) -> Option<PageInfo> {
-        if !self.region.range.contains(&address) {
-            return None
-        }
-
-        Some(PageInfo {
-            base_address: address - (address % self.region.page_size),
-            program_weight: self.region.program_page_weight,
-            size: self.region.page_size,
-        })
-    }
-
-    pub fn get_flash_info(&self, address: u32) -> Option<FlashInfo> {
-        if !self.region.range.contains(&address) {
-            return None
-        }
-
-        let algo = self.session.target.info.flash_algorithm;
-
-        Some(FlashInfo {
-            rom_start: self.region.range.start,
-            erase_weight: self.region.erase_all_weight,
-            crc_supported: algo.analyzer_supported,
-        })
     }
 }

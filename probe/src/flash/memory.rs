@@ -29,6 +29,49 @@ pub struct FlashRegion {
     pub are_erased_sectors_readable: bool,
 }
 
+impl FlashRegion {
+    pub fn get_sector_info(&self, address: u32) -> Option<SectorInfo> {
+        if !self.range.contains(&address) {
+            return None
+        }
+
+        Some(SectorInfo {
+            base_address: address - (address % self.sector_size),
+            erase_weight: self.erase_sector_weight,
+            size: self.sector_size,
+        })
+    }
+
+    pub fn get_page_info(&self, address: u32) -> Option<PageInfo> {
+        if !self.range.contains(&address) {
+            return None
+        }
+
+        Some(PageInfo {
+            base_address: address - (address % self.page_size),
+            program_weight: self.program_page_weight,
+            size: self.page_size,
+        })
+    }
+
+    pub fn get_flash_info(&self, analyzer_supported: bool) -> FlashInfo {
+        FlashInfo {
+            rom_start: self.range.start,
+            erase_weight: self.erase_all_weight,
+            crc_supported: analyzer_supported,
+        }
+    }
+
+    pub fn is_erased(&self, data: &[u8]) -> bool {
+        for b in data {
+            if *b != self.erased_byte_value {
+                return false;
+            }
+        }
+        true
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct RamRegion {
     pub range: core::ops::Range<u32>,
