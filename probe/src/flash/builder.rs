@@ -120,6 +120,13 @@ pub enum FlashBuilderError {
     FlashSectorNotMultipleOfPageSize(u32, u32), // The flash sector size is not a multiple of the flash page size.
     MaxPageCountExceeded(usize),
     ProgramPage(u32, u32),
+    Flasher(FlasherError),
+}
+
+impl From<FlasherError> for FlashBuilderError {
+    fn from(error: FlasherError) -> Self {
+        FlashBuilderError::Flasher(error)
+    }
 }
 
 impl<'a> FlashBuilder<'a> {
@@ -141,12 +148,12 @@ impl<'a> FlashBuilder<'a> {
         }
     }
     
-    pub fn pages(&self) -> Vec<&FlashPage> {
-        self.sectors.iter().map(|s| &s.pages).flatten().collect()
+    pub fn pages(sectors: &Vec<FlashSector>) -> Vec<&FlashPage> {
+        sectors.iter().map(|s| &s.pages).flatten().collect()
     }
 
-    pub fn pages_mut(&mut self) -> Vec<&mut FlashPage> {
-        self.sectors.iter_mut().map(|s| &mut s.pages).flatten().collect()
+    pub fn pages_mut(sectors: &mut Vec<FlashSector>) -> Vec<&mut FlashPage> {
+        sectors.iter_mut().map(|s| &mut s.pages).flatten().collect()
     }
 
     /// Add a block of data to be programmed.
@@ -178,8 +185,8 @@ impl<'a> FlashBuilder<'a> {
         }
     }
 
-    fn mark_all_pages_for_programming(&mut self) {
-        for sector in &mut self.sectors {
+    fn mark_all_pages_for_programming(sectors: &mut Vec<FlashSector>) {
+        for sector in sectors {
             sector.set_all_pages_dirty();
         }
     }
@@ -188,7 +195,7 @@ impl<'a> FlashBuilder<'a> {
     ///
     /// Data must have already been added with add_data
     /// TODO: Not sure if this works as intended ...
-    pub fn program(&mut self, mut chip_erase: Option<bool>, smart_flash: bool) -> Result<(), FlashBuilderError> {        
+    pub fn program(&'a mut self, mut chip_erase: Option<bool>, smart_flash: bool) -> Result<(), FlashBuilderError> {        
         // Disable smart options if attempting to read erased sectors will fail.
         let (smart_flash, fast_verify, keep_unwritten) = if !self.flash.region().are_erased_sectors_readable {
             (false, false, false)
@@ -210,7 +217,7 @@ impl<'a> FlashBuilder<'a> {
 
         // If smart flash was set to false then mark all pages as requiring programming.
         if !smart_flash {
-            self.mark_all_pages_for_programming();
+            Self::mark_all_pages_for_programming(&mut self.sectors);
         }
         
         // If the flash algo doesn't support erase all, disable chip erase.
@@ -272,50 +279,59 @@ impl<'a> FlashBuilder<'a> {
             return Err(FlashBuilderError::InvalidFlashAddress(flash_address));
         };
 
-        let mut current_sector = FlashSector::new(&sector_info);
-        let mut current_page = FlashPage::new(&page_info);
-        // TODO: This always adds a new sector??? Maybe retrieve the extisting one.
-        current_sector.add_page(current_page);
-        self.sectors.push(current_sector);
-        // TODO: Maybe self.pages.add(current_page);
+        let mut first_sector = FlashSector::new(&sector_info);
+        let first_page = FlashPage::new(&page_info);
+        first_sector.add_page(first_page);
+        self.sectors.push(first_sector);
+
+        let mut current_sector_index = self.sectors.len() - 1;
+        let mut current_page_index = self.sectors[current_sector_index].pages.len() - 1;
 
         for flash_operation in &self.flash_operations {
             let mut pos = 0;
             while pos < flash_operation.data.len() {
                 // Check if the operation is in another sector.
                 flash_address = flash_operation.address + pos as u32;
+
+                let current_sector = &mut self.sectors[current_sector_index];
                 if flash_address >= current_sector.address + current_sector.size {
                     let sector_info = self.flash.region().get_sector_info(flash_address);
                     if let Some(sector_info) = sector_info {
-                        current_sector = FlashSector::new(&sector_info); 
-                        self.sectors.push(current_sector);
+                        let new_sector = FlashSector::new(&sector_info); 
+                        self.sectors.push(new_sector);
+                        current_sector_index = self.sectors.len() - 1;
                     } else {
                         return Err(FlashBuilderError::InvalidFlashAddress(flash_address));
                     }
                 }
 
                 // Check if the operation is in another page.
+                let current_sector = &mut self.sectors[current_sector_index];
+                let current_page = &mut current_sector.pages[current_page_index];
                 if flash_address >= current_sector.address + current_sector.size {
                     // Fill any gap at the end of the current page before switching to a new page.
-                    self.fill_end_of_page_gap(
-                        &mut current_page,
+                    Self::fill_end_of_page_gap(
+                        &mut self.flash,
+                        current_page,
                         current_page.size as usize - current_page.data.len(),
                         keep_unwritten
                     );
 
                     let page_info = self.flash.region().get_page_info(flash_address);
                     if let Some(page_info) = page_info {
-                        current_page = FlashPage::new(&page_info); 
-                        current_sector.add_page(current_page);
-                        // TODO: Maybe self.pages.add(current_page);
+                        let new_page = FlashPage::new(&page_info); 
+                        current_sector.add_page(new_page);
+                        current_page_index = current_sector.pages.len() - 1;
                     } else {
                         return Err(FlashBuilderError::InvalidFlashAddress(flash_address));
                     }
                 }
 
                 // Fill the page gap if there is one.
-                self.fill_end_of_page_gap(
-                    &mut current_page,
+                let current_page = &mut current_sector.pages[current_page_index];
+                Self::fill_end_of_page_gap(
+                    &mut self.flash,
+                    current_page,
                     (flash_address - (current_page.address + current_page.data.len() as u32)) as usize,
                     keep_unwritten
                 );
@@ -332,45 +348,63 @@ impl<'a> FlashBuilder<'a> {
         }
 
         // Fill the page gap if there is one.
-        self.fill_end_of_page_gap(
-            &mut current_page,
+
+            let current_page = &mut self.sectors[current_sector_index].pages[current_page_index];
+        Self::fill_end_of_page_gap(
+            &mut self.flash,
+            current_page,
             current_page.size as usize - current_page.data.len(),
             keep_unwritten
         );
 
         if keep_unwritten && self.flash.region().access.contains(Access::R) {
-            self.fill_unwritten_sector_pages();
+            Self::fill_unwritten_sector_pages(&mut self.flash, &mut self.sectors);
         }
 
         Ok(())
     }
 
-    fn fill_end_of_page_gap(&self, current_page: &mut FlashPage, old_data_len: usize, keep_unwritten: bool) {
+    fn fill_end_of_page_gap(
+        flash: &mut InactiveFlasher,
+        current_page: &mut FlashPage,
+        old_data_len: usize,
+        keep_unwritten: bool
+    ) {
         if current_page.data.len() != current_page.size as usize {
             let page_data_end = current_page.address + current_page.data.len() as u32;
 
-            let old_data = if keep_unwritten && self.flash.region().access.contains(Access::R) {
+            let old_data = if keep_unwritten && flash.region().access.contains(Access::R) {
                 let mut data = vec![0; old_data_len];
-                self.flash.run_verify(|active| {
+                flash.run_verify(|active| {
                     active.read_block8(page_data_end, data.as_mut_slice());
                 });
                 data
             } else {
-                vec![self.flash.region().erased_byte_value; old_data_len]
+                vec![flash.region().erased_byte_value; old_data_len]
             };
             current_page.data.extend(old_data);
         }
     }
 
-    fn fill_unwritten_sector_pages(&mut self) -> Result<(), FlashBuilderError> {
-        for sector in &mut self.sectors {
-            let mut sector_page_address = sector.address;
+    fn fill_unwritten_sector_pages(
+        flash: &mut InactiveFlasher,
+        sectors: &mut Vec<FlashSector>
+    ) -> Result<(), FlashBuilderError> {
+        for sector_id in 0..sectors.len() {
+            let sector_address = sectors[sector_id].address;
+            let num_pages = sectors[sector_id].pages.len();
+            let mut sector_page_address = sector_address;
 
-            for sector_page_number in 0..sector.pages.len() {
-                let mut page = &mut sector.pages[sector_page_number];
+            for sector_page_number in 0..num_pages {
+                let mut page = &mut sectors[sector_id].pages[sector_page_number];
 
                 if page.address != sector_page_address {
-                    page = self.add_page_with_existing_data(sector, sector_page_address)?;
+                    page = Self::add_page_with_existing_data(
+                        flash,
+                        sectors,
+                        sector_id,
+                        sector_page_address
+                    )?;
                 }
 
                 sector_page_address += page.size;
@@ -379,8 +413,14 @@ impl<'a> FlashBuilder<'a> {
         Ok(())
     }
 
-    fn add_page_with_existing_data<'b>(&self, sector: &'b mut FlashSector, sector_page_address: u32) -> Result<&'b mut FlashPage, FlashBuilderError> {
-        let page_info = self.flash.region().get_page_info(sector_page_address);
+    fn add_page_with_existing_data<'b>(
+        flash: &mut InactiveFlasher,
+        sectors: &'b mut Vec<FlashSector>,
+        sector_id: usize,
+        sector_page_address: u32
+    ) -> Result<&'b mut FlashPage, FlashBuilderError> {
+        let sector = &mut sectors[sector_id];
+        let page_info = flash.region().get_page_info(sector_page_address);
         let page_info = if let Some(page_info) = page_info {
             page_info
         } else {
@@ -389,11 +429,11 @@ impl<'a> FlashBuilder<'a> {
         let mut new_page = FlashPage::new(&page_info);
         new_page.data = vec![0; new_page.size as usize];
         new_page.dirty = Some(false);
-        self.flash.run_verify(|active| {
+        flash.run_verify(|active| {
             active.read_block8(new_page.address, new_page.data.as_mut_slice());
         });
         sector.add_page(new_page);
-        // TODO: Maybe self.pages.add(current_page);
+
         let last = sector.pages.len() - 1;
         Ok(&mut sector.pages[last])
     }
@@ -405,7 +445,7 @@ impl<'a> FlashBuilder<'a> {
         let mut chip_erase_count: u32 = 0;
         // TODO: Fix the `get_flash_info` param.
         let mut chip_erase_weight: f32 = self.flash.region().get_flash_info(true).erase_weight;
-        for page in self.pages_mut() {
+        for page in Self::pages_mut(&mut self.sectors) {
             if let Some(erased) = page.erased {
                 if !erased {
                     chip_erase_count += 1;
@@ -424,15 +464,18 @@ impl<'a> FlashBuilder<'a> {
     }
 
     fn compute_sector_erase_pages_weight_min(&self) -> f32 {
-        self.pages().iter().map(|p| p.get_verify_weight()).sum()
+        Self::pages(&self.sectors).iter().map(|p| p.get_verify_weight()).sum()
     }
 
-    fn analyze_pages_with_partial_read(&mut self) {
-        for page in self.pages_mut() {
+    fn analyze_pages_with_partial_read(
+        flash: &mut InactiveFlasher,
+        sectors: &mut Vec<FlashSector>
+    ) {
+        for page in Self::pages_mut(sectors) {
             if let None = page.dirty {
                 let size = (PAGE_ESTIMATE_SIZE as usize).min(page.data.len());
                 let mut data = vec![0; size];
-                self.flash.run_verify(|active| {
+                flash.run_verify(|active| {
                     active.read_block8(page.address, data.as_mut_slice());
                 });
                 let page_dirty = data != &page.data[0..size];
@@ -446,12 +489,16 @@ impl<'a> FlashBuilder<'a> {
         }
     }
 
-    fn analyze_pages_with_crc32(&mut self, assume_estimate_correct: bool) {
-        let mut sectors = vec![];
+    fn analyze_pages_with_crc32(
+        flash: &mut InactiveFlasher,
+        sectors: &mut Vec<FlashSector>,
+        assume_estimate_correct: bool
+    ) -> Result<(), FlashBuilderError> {
+        let mut run_sectors = vec![];
         let mut pages = vec![];
 
         // Build a list of all pages to be analyzed.
-        for page in self.pages_mut() {
+        for page in Self::pages_mut(sectors) {
             if let None = page.dirty {
                 let mut data = page.data.clone();
                 let pad_size = page.size as usize - page.data.len();
@@ -459,15 +506,15 @@ impl<'a> FlashBuilder<'a> {
                     data.extend(&vec![0xFFu8; pad_size]);
                 }
 
-                sectors.push((page.address, page.size));
+                run_sectors.push((page.address, page.size));
                 pages.push((page, crc::crc32::checksum_ieee(data.as_slice())));
             }
         }
 
         // Analyze pages.
         if pages.len() > 0 {
-            self.flash.run_erase(|active| {
-                if let Ok(crcs) = active.compute_crcs(&sectors) {
+            flash.run_erase(|active| {
+                if let Ok(crcs) = active.compute_crcs(&run_sectors) {
                     for ((page, pcrc), crc) in pages.iter_mut().zip(crcs) {
                         let dirty = *pcrc != crc;
                         if assume_estimate_correct {
@@ -477,25 +524,28 @@ impl<'a> FlashBuilder<'a> {
                         }
                     }
                 }
-            });
+            })?;
         }
+
+        Ok(())
     }
 
     fn compute_sector_erase_pages_and_weight(&mut self, fast_verify: bool) -> (u32, f32) {
-        if self.pages().iter().any(|p| p.dirty.is_none()) {
-            if self.flash.flash_algorithm().analyzer_supported {
-                self.analyze_pages_with_crc32(fast_verify);
-            } else if self.flash.region().access.contains(Access::R) {
-                self.analyze_pages_with_partial_read();
+        let sectors = &mut self.sectors;
+        let flash = &mut self.flash;
+        if Self::pages(sectors).iter().any(|p| p.dirty.is_none()) {
+            if flash.flash_algorithm().analyzer_supported {
+                Self::analyze_pages_with_crc32(flash, sectors, fast_verify);
+            } else if flash.region().access.contains(Access::R) {
+                Self::analyze_pages_with_partial_read(flash, sectors);
             } else {
-                self.mark_all_pages_for_programming();
+                Self::mark_all_pages_for_programming(sectors);
             }
         }
-
         let mut sector_erase_count = 0;
         let mut sector_erase_weight = 0.0;
-        for sector in &self.sectors {
-            for page in sector.pages {
+        for sector in sectors {
+            for page in &sector.pages {
                 if let Some(true) = page.dirty {
                     sector_erase_count += 1;
                     sector_erase_weight += page.get_program_weight();
@@ -515,13 +565,14 @@ impl<'a> FlashBuilder<'a> {
     }
 
     /// Program by first performing a chip erase.
-    fn chip_erase_program(&mut self) {
+    fn chip_erase_program(&'a mut self) {
         self.flash.run_erase(|active| {
             active.erase_all();
         });
         
+        let sectors = &self.sectors;
         self.flash.run_program(|active| {
-            for page in self.pages() {
+            for page in Self::pages(sectors) {
                 // TODO: Check this condition.
                 if let Some(true) = page.erased {
                     continue;
@@ -532,8 +583,8 @@ impl<'a> FlashBuilder<'a> {
         });
     }
 
-    fn next_unerased_page(&self, page: u32) -> (Option<&FlashPage>, u32) {
-        let pages = self.pages();
+    fn next_unerased_page(sectors: &Vec<FlashSector>, page: u32) -> (Option<&FlashPage>, u32) {
+        let pages = Self::pages(sectors);
         for n in page as usize + 1..pages.len() {
             if let Some(page) = pages.get(n) {
                 if let Some(true) = page.erased {
@@ -544,14 +595,15 @@ impl<'a> FlashBuilder<'a> {
         (None, page)
     }
 
-    fn chip_erase_program_double_buffer(&self) -> Result<(), FlashBuilderError> {
+    fn chip_erase_program_double_buffer(&'a mut self) -> Result<(), FlashBuilderError> {
         self.flash.run_erase(|active| {
             active.erase_all();
         });
 
+        let sectors = &self.sectors;
         let mut current_buf = 0;
         let mut next_buf = 1;
-        let (first_page, i) = self.next_unerased_page(0);
+        let (first_page, i) = Self::next_unerased_page(sectors, 0);
 
         if let Some(page) = first_page {
             self.flash.run_program(|active| {
@@ -563,7 +615,7 @@ impl<'a> FlashBuilder<'a> {
                 while let Some(page) = current_page {
                     active.start_program_page_with_buffer(current_buf, page.address);
 
-                    let r = self.next_unerased_page(i);
+                    let r = Self::next_unerased_page(sectors, i);
                     current_page = r.0;
                     i = r.1;
 
@@ -589,9 +641,9 @@ impl<'a> FlashBuilder<'a> {
     }
 
     /// Program by performing sector erases.
-    fn sector_erase_program(&self) {
-
-        for sector in &self.sectors {
+    fn sector_erase_program(&'a mut self) {
+        let sectors = &self.sectors;
+        for sector in sectors {
             if sector.is_pages_to_be_programmed() {
                 self.flash.run_erase(|active| {
                     active.erase_sector(sector.address);
@@ -606,8 +658,7 @@ impl<'a> FlashBuilder<'a> {
         }
     }
 
-    fn next_nonsame_page(&self, page: u32) -> (Option<&FlashPage>, u32) {
-        let pages = self.pages();
+    fn next_nonsame_page<'b>(pages: &Vec<&'b FlashPage>, page: u32) -> (Option<&'b FlashPage>, u32) {
         for n in page as usize + 1..pages.len() {
             if let Some(page) = pages.get(n) {
                 if let Some(true) = page.dirty {
@@ -619,21 +670,24 @@ impl<'a> FlashBuilder<'a> {
     }
 
     // TODO: Analyze for sanity. Code looks stupid.
-    fn sector_erase_program_double_buffer(&mut self) -> Result<(), FlashBuilderError> {
+    fn sector_erase_program_double_buffer(&'a mut self) -> Result<(), FlashBuilderError> {
         let mut actual_sector_erase_count = 0;
         let mut actual_sector_erase_weight = 0.0;
 
+        let sectors = &mut self.sectors;
         self.flash.run_erase(|active| {
-            for sector in self.sectors {
+            for sector in sectors {
                 if sector.is_pages_to_be_programmed() {
                     active.erase_sector(sector.address);
                 }
             }
         });
 
+        let sectors = &self.sectors;
+
         let mut current_buf = 0;
         let mut next_buf = 1;
-        let (first_page, i) = self.next_nonsame_page(0);
+        let (first_page, i) = Self::next_nonsame_page(&Self::pages(sectors), 0);
 
         if let Some(page) = first_page {
             self.flash.run_program(|active| {
@@ -649,7 +703,7 @@ impl<'a> FlashBuilder<'a> {
                         actual_sector_erase_count += 1;
                         actual_sector_erase_weight += page.get_program_weight();
 
-                        let r = self.next_nonsame_page(i);
+                        let r = Self::next_nonsame_page(&Self::pages(sectors), i);
                         current_page = r.0;
                         i = r.1;
 

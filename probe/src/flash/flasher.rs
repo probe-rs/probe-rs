@@ -89,12 +89,12 @@ pub enum FlasherError {
 
 pub struct InactiveFlasher<'a> {
     session: &'a mut Session,
-    region: FlashRegion,
+    region: &'a FlashRegion,
     double_buffering_supported: bool
 }
 
 impl<'a> InactiveFlasher<'a> {
-    pub fn new(session: &'a mut Session, region: FlashRegion) -> Self {
+    pub fn new(session: &'a mut Session, region: &'a FlashRegion) -> Self {
         Self {
             session,
             region,
@@ -114,7 +114,11 @@ impl<'a> InactiveFlasher<'a> {
         self.double_buffering_supported
     }
 
-    pub fn init<O: Operation>(mut self, mut address: Option<u32>, clock: Option<u32>) -> Result<ActiveFlasher<'a, O>, FlasherError> {
+    pub fn init<'b, 's: 'b, O: Operation>(
+        &'s mut self,
+        mut address: Option<u32>,
+        clock: Option<u32>
+    ) -> Result<ActiveFlasher<'b, O>, FlasherError> {
         let algo = self.session.target.info.flash_algorithm;
 
         if address.is_none() {
@@ -154,7 +158,10 @@ impl<'a> InactiveFlasher<'a> {
         Ok(flasher)
     }
 
-    pub fn run_erase(mut self, f: impl FnOnce(&mut ActiveFlasher<Erase>) + Sized) -> Result<(), FlasherError> {
+    pub fn run_erase(
+        &mut self,
+        f: impl FnOnce(&mut ActiveFlasher<Erase>) + Sized
+    ) -> Result<(), FlasherError> {
         // TODO: Fix those values (None, None).
         let mut active = self.init(None, None)?;
         f(&mut active);
@@ -162,7 +169,10 @@ impl<'a> InactiveFlasher<'a> {
         Ok(())
     }
 
-    pub fn run_program(mut self, f: impl FnOnce(&mut ActiveFlasher<Program>) + Sized) -> Result<(), FlasherError> {
+    pub fn run_program(
+        &mut self,
+        f: impl FnOnce(&mut ActiveFlasher<Program>) + Sized
+    ) -> Result<(), FlasherError> {
         // TODO: Fix those values (None, None).
         let mut active = self.init(None, None)?;
         f(&mut active);
@@ -170,7 +180,10 @@ impl<'a> InactiveFlasher<'a> {
         Ok(())
     }
 
-    pub fn run_verify(mut self, f: impl FnOnce(&mut ActiveFlasher<Verify>) + Sized) -> Result<(), FlasherError> {
+    pub fn run_verify(
+        &mut self,
+        f: impl FnOnce(&mut ActiveFlasher<Verify>) + Sized
+    ) -> Result<(), FlasherError> {
         // TODO: Fix those values (None, None).
         let mut active = self.init(None, None)?;
         f(&mut active);
@@ -181,7 +194,7 @@ impl<'a> InactiveFlasher<'a> {
 
 pub struct ActiveFlasher<'a, O: Operation> {
     session: &'a mut Session,
-    region: FlashRegion,
+    region: &'a FlashRegion,
     double_buffering_supported: bool,
     _operation: core::marker::PhantomData<O>,
 }
@@ -199,7 +212,7 @@ impl<'a, O: Operation> ActiveFlasher<'a, O> {
         &mut self.session
     }
 
-    pub fn uninit(mut self) -> Result<InactiveFlasher<'a>, FlasherError> {
+    pub fn uninit<'b, 's: 'b>(&'s mut self) -> Result<InactiveFlasher<'b>, FlasherError> {
         let algo = self.session.target.info.flash_algorithm;
 
         if let Some(pc_uninit) = algo.pc_uninit {
@@ -219,7 +232,7 @@ impl<'a, O: Operation> ActiveFlasher<'a, O> {
 
         Ok(InactiveFlasher {
             session: self.session,
-            region: self.region.clone(),
+            region: self.region,
             double_buffering_supported: self.double_buffering_supported,
         })
     }
