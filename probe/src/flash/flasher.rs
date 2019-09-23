@@ -85,6 +85,13 @@ pub enum FlasherError {
     AnalyzerNotSupported,
     SizeNotPowerOf2,
     AddressNotMultipleOfSize,
+    AccessPort(AccessPortError),
+}
+
+impl From<AccessPortError> for FlasherError {
+    fn from(error: AccessPortError) -> Self {
+        Self::AccessPort(error)
+    }
 }
 
 pub struct InactiveFlasher<'a> {
@@ -158,37 +165,37 @@ impl<'a> InactiveFlasher<'a> {
         Ok(flasher)
     }
 
-    pub fn run_erase(
+    pub fn run_erase<T, E: From<FlasherError>>(
         &mut self,
-        f: impl FnOnce(&mut ActiveFlasher<Erase>) + Sized
-    ) -> Result<(), FlasherError> {
+        f: impl FnOnce(&mut ActiveFlasher<Erase>) -> Result<T, E> + Sized
+    ) -> Result<T, E> {
         // TODO: Fix those values (None, None).
         let mut active = self.init(None, None)?;
-        f(&mut active);
+        let r = f(&mut active)?;
         active.uninit()?;
-        Ok(())
+        Ok(r)
     }
 
-    pub fn run_program(
+    pub fn run_program<T, E: From<FlasherError>>(
         &mut self,
-        f: impl FnOnce(&mut ActiveFlasher<Program>) + Sized
-    ) -> Result<(), FlasherError> {
+        f: impl FnOnce(&mut ActiveFlasher<Program>) -> Result<T, E> + Sized
+    ) -> Result<T, E> {
         // TODO: Fix those values (None, None).
         let mut active = self.init(None, None)?;
-        f(&mut active);
+        let r = f(&mut active)?;
         active.uninit()?;
-        Ok(())
+        Ok(r)
     }
 
-    pub fn run_verify(
+    pub fn run_verify<T, E: From<FlasherError>>(
         &mut self,
-        f: impl FnOnce(&mut ActiveFlasher<Verify>) + Sized
-    ) -> Result<(), FlasherError> {
+        f: impl FnOnce(&mut ActiveFlasher<Verify>) -> Result<T, E> + Sized
+    ) -> Result<T, E> {
         // TODO: Fix those values (None, None).
         let mut active = self.init(None, None)?;
-        f(&mut active);
+        let r = f(&mut active)?;
         active.uninit()?;
-        Ok(())
+        Ok(r)
     }
 }
 
@@ -270,12 +277,14 @@ impl<'a, O: Operation> ActiveFlasher<'a, O> {
         self.session.target.core.read_core_reg(&mut self.session.probe, regs.R0).unwrap()
     }
 
-    pub fn read_block32(&mut self, address: u32, data: &mut [u32]) -> Result<(), AccessPortError> {
-        self.session.probe.read_block32(address, data)
+    pub fn read_block32(&mut self, address: u32, data: &mut [u32]) -> Result<(), FlasherError> {
+        self.session.probe.read_block32(address, data)?;
+        Ok(())
     }
 
-    pub fn read_block8(&mut self, address: u32, data: &mut [u8]) -> Result<(), AccessPortError> {
-        self.session.probe.read_block8(address, data)
+    pub fn read_block8(&mut self, address: u32, data: &mut [u8]) -> Result<(), FlasherError> {
+        self.session.probe.read_block8(address, data)?;
+        Ok(())
     }
 }
 
