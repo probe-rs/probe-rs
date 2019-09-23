@@ -106,7 +106,7 @@ pub struct FlashBuilder<'a> {
     pub(crate) flash_start: u32,
     flash_operations: Vec<FlashOperation<'a>>,
     buffered_data_size: usize,
-    flash: InactiveFlasher<'a>,
+    flash: Flasher<'a>,
     sectors: Vec<FlashSector>,
     enable_double_buffering: bool,
 }
@@ -137,7 +137,7 @@ impl<'a> FlashBuilder<'a> {
     // FLASH_ANALYSIS_CRC32 = "CRC32"
     // FLASH_ANALYSIS_PARTIAL_PAGE_READ = "PAGE_READ"
 
-    pub fn new(flash: InactiveFlasher<'a>) -> Self {
+    pub fn new(flash: Flasher<'a>) -> Self {
         let flash_start = flash.region().range.start;
         Self {
             flash,
@@ -196,12 +196,18 @@ impl<'a> FlashBuilder<'a> {
     ///
     /// Data must have already been added with add_data
     /// TODO: Not sure if this works as intended ...
-    pub fn program(&'a mut self, mut chip_erase: Option<bool>, _smart_flash: bool) -> Result<(), FlashBuilderError> {        
+    pub fn program(
+        &'a mut self,
+        mut chip_erase: Option<bool>,
+        smart_flash: bool,
+        fast_verify: bool,
+        keep_unwritten: bool
+    ) -> Result<(), FlashBuilderError> {        
         // Disable smart options if attempting to read erased sectors will fail.
         let (smart_flash, fast_verify, keep_unwritten) = if !self.flash.region().are_erased_sectors_readable {
             (false, false, false)
         } else {
-            (true, true, true)
+            (smart_flash, fast_verify, keep_unwritten)
         };
 
         if self.flash_operations.len() == 0 {
@@ -365,7 +371,7 @@ impl<'a> FlashBuilder<'a> {
     }
 
     fn fill_end_of_page_gap(
-        flash: &mut InactiveFlasher,
+        flash: &mut Flasher,
         current_page: &mut FlashPage,
         old_data_len: usize,
         keep_unwritten: bool
@@ -388,7 +394,7 @@ impl<'a> FlashBuilder<'a> {
     }
 
     fn fill_unwritten_sector_pages(
-        flash: &mut InactiveFlasher,
+        flash: &mut Flasher,
         sectors: &mut Vec<FlashSector>
     ) -> Result<(), FlashBuilderError> {
         for sector_id in 0..sectors.len() {
@@ -415,7 +421,7 @@ impl<'a> FlashBuilder<'a> {
     }
 
     fn add_page_with_existing_data<'b>(
-        flash: &mut InactiveFlasher,
+        flash: &mut Flasher,
         sectors: &'b mut Vec<FlashSector>,
         sector_id: usize,
         sector_page_address: u32
@@ -469,7 +475,7 @@ impl<'a> FlashBuilder<'a> {
     }
 
     fn analyze_pages_with_partial_read(
-        flash: &mut InactiveFlasher,
+        flash: &mut Flasher,
         sectors: &mut Vec<FlashSector>
     ) -> Result<(), FlashBuilderError> {
         for page in Self::pages_mut(sectors) {
@@ -492,7 +498,7 @@ impl<'a> FlashBuilder<'a> {
     }
 
     fn analyze_pages_with_crc32(
-        flash: &mut InactiveFlasher,
+        flash: &mut Flasher,
         sectors: &mut Vec<FlashSector>,
         assume_estimate_correct: bool
     ) -> Result<(), FlashBuilderError> {

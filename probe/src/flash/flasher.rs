@@ -1,3 +1,4 @@
+use crate::debug_probe::DebugProbeError;
 use coresight::access_ports::AccessPortError;
 use ::memory::MI;
 use crate::session::Session;
@@ -86,6 +87,14 @@ pub enum FlasherError {
     SizeNotPowerOf2,
     AddressNotMultipleOfSize,
     AccessPort(AccessPortError),
+    DebugProbe(DebugProbeError),
+    AddressNotInRegion(u32, FlashRegion),
+}
+
+impl From<DebugProbeError> for FlasherError {
+    fn from(error: DebugProbeError) -> Self {
+        Self::DebugProbe(error)
+    }
 }
 
 impl From<AccessPortError> for FlasherError {
@@ -94,13 +103,13 @@ impl From<AccessPortError> for FlasherError {
     }
 }
 
-pub struct InactiveFlasher<'a> {
+pub struct Flasher<'a> {
     session: &'a mut Session,
     region: &'a FlashRegion,
     double_buffering_supported: bool
 }
 
-impl<'a> InactiveFlasher<'a> {
+impl<'a> Flasher<'a> {
     pub fn new(session: &'a mut Session, region: &'a FlashRegion) -> Self {
         Self {
             session,
@@ -137,7 +146,7 @@ impl<'a> InactiveFlasher<'a> {
         // TODO: Possible special preparation of the target such as enabling faster clocks for the flash e.g.
 
         // Load flash algorithm code into target RAM.
-        self.session.probe.write_block32(algo.load_address, algo.instructions);
+        self.session.probe.write_block32(algo.load_address, algo.instructions)?;
 
         let mut flasher = ActiveFlasher {
             session: self.session,
@@ -155,7 +164,7 @@ impl<'a> InactiveFlasher<'a> {
                 Some(O::operation()),
                 None,
                 true
-            );
+            )?;
 
             if result != 0 {
                 return Err(FlasherError::Init(result));
@@ -197,6 +206,37 @@ impl<'a> InactiveFlasher<'a> {
         active.uninit()?;
         Ok(r)
     }
+
+    pub fn flash_block(
+        self,
+        address: u32,
+        data: &[u8],
+        chip_erase: Option<bool>,
+        smart_flash: bool,
+        fast_verify: bool,
+    ) -> Result<(), FlasherError> {
+        if !self.region.range.contains_range(&(address..address + data.len() as u32)) {
+            return Err(FlasherError::AddressNotInRegion(address, self.region.clone()));
+        }
+
+        let mut fb = FlashBuilder::new(self);
+        fb.add_data(address, data);
+        fb.program(chip_erase, smart_flash, fast_verify, true);
+
+        Ok(())
+    }
+
+        // def flash_block(self, addr, data, smart_flash=True, chip_erase=None, progress_cb=None, fast_verify=False):
+        // """!
+        // @brief Flash a block of data.
+        // """
+        // assert self.region is not None
+        // assert self.region.contains_range(start=addr, length=len(data))
+        
+        // fb = FlashBuilder(self)
+        // fb.add_data(addr, data)
+        // info = fb.program(chip_erase, progress_cb, smart_flash, fast_verify)
+        // return info
 }
 
 pub struct ActiveFlasher<'a, O: Operation> {
@@ -219,7 +259,7 @@ impl<'a, O: Operation> ActiveFlasher<'a, O> {
         &mut self.session
     }
 
-    pub fn uninit<'b, 's: 'b>(&'s mut self) -> Result<InactiveFlasher<'b>, FlasherError> {
+    pub fn uninit<'b, 's: 'b>(&'s mut self) -> Result<Flasher<'b>, FlasherError> {
         let algo = self.session.target.info.flash_algorithm;
 
         if let Some(pc_uninit) = algo.pc_uninit {
@@ -230,28 +270,29 @@ impl<'a, O: Operation> ActiveFlasher<'a, O> {
                 None,
                 None,
                 false
-            );
+            )?;
 
             if result != 0 {
                 return Err(FlasherError::Uninit(result));
             }
         }
 
-        Ok(InactiveFlasher {
+        Ok(Flasher {
             session: self.session,
             region: self.region,
             double_buffering_supported: self.double_buffering_supported,
         })
     }
 
-    fn call_function_and_wait(&mut self, pc: u32, r0: Option<u32>, r1: Option<u32>, r2: Option<u32>, r3: Option<u32>, init: bool) -> u32 {
-        self.call_function(pc, r0, r1, r2, r3, init);
-        self.wait_for_completion()
+    fn call_function_and_wait(&mut self, pc: u32, r0: Option<u32>, r1: Option<u32>, r2: Option<u32>, r3: Option<u32>, init: bool) -> Result<u32, FlasherError> {
+        self.call_function(pc, r0, r1, r2, r3, init)?;
+        Ok(self.wait_for_completion())
     }
 
-    fn call_function(&mut self, pc: u32, r0: Option<u32>, r1: Option<u32>, r2: Option<u32>, r3: Option<u32>, init: bool) {
+    fn call_function(&mut self, pc: u32, r0: Option<u32>, r1: Option<u32>, r2: Option<u32>, r3: Option<u32>, init: bool) -> Result<(), FlasherError> {
         let algo = self.session.target.info.flash_algorithm;
         let regs = self.session.target.info.basic_register_addresses;
+
         [
             (regs.PC, Some(pc)),
             (regs.R0, r0),
@@ -261,12 +302,19 @@ impl<'a, O: Operation> ActiveFlasher<'a, O> {
             (regs.R9, if init { Some(algo.static_base) } else { None }),
             (regs.SP, if init { Some(algo.begin_stack) } else { None }),
             (regs.LR, Some(algo.load_address + 1)),
-        ].into_iter().for_each(|(addr, value)| if let Some(v) = value {
-            self.session.target.core.write_core_reg(&mut self.session.probe, *addr, *v);
-        });
+        ]
+        .into_iter()
+        .map(|(addr, value)| if let Some(v) = value {
+            self.session.target.core.write_core_reg(&mut self.session.probe, *addr, *v)
+        } else {
+            Ok(())
+        })
+        .collect::<Result<Vec<()>, DebugProbeError>>()?;
 
         // Resume target operation.
-        self.session.target.core.run(&mut self.session.probe);
+        self.session.target.core.run(&mut self.session.probe)?;
+
+        Ok(())
     }
 
     pub fn wait_for_completion(&mut self) -> u32 {
@@ -300,7 +348,7 @@ impl <'a> ActiveFlasher<'a, Erase> {
                 None,
                 None,
                 false
-            );
+            )?;
 
             if result != 0 {
                 Err(FlasherError::EraseAll(result))
@@ -322,7 +370,7 @@ impl <'a> ActiveFlasher<'a, Erase> {
             None,
             None,
             false
-        );
+        )?;
 
         if result != 0 {
             Err(FlasherError::EraseSector(result, address))
@@ -336,7 +384,7 @@ impl <'a> ActiveFlasher<'a, Erase> {
         if algo.analyzer_supported {
             let mut data = vec![];
 
-            self.session.probe.write_block32(algo.analyzer_address, &ANALYZER);
+            self.session.probe.write_block32(algo.analyzer_address, &ANALYZER)?;
 
             for (address, mut size) in sectors {
                 let size_value = {
@@ -358,7 +406,7 @@ impl <'a> ActiveFlasher<'a, Erase> {
                 data.push(value);
             }
 
-            self.session.probe.write_block32(algo.begin_data, data.as_slice());
+            self.session.probe.write_block32(algo.begin_data, data.as_slice())?;
 
             let result = self.call_function_and_wait(
                 algo.analyzer_address,
@@ -368,8 +416,9 @@ impl <'a> ActiveFlasher<'a, Erase> {
                 None,
                 false
             );
+            result?;
 
-            self.session.probe.read_block32(algo.begin_data, data.as_mut_slice());
+            self.session.probe.read_block32(algo.begin_data, data.as_mut_slice())?;
 
             Ok(data)
         } else {
@@ -385,7 +434,7 @@ impl <'a> ActiveFlasher<'a, Program> {
         // TODO: Prevent security settings from locking the device.
 
         // Transfer the bytes to RAM.
-        self.session.probe.write_block8(algo.begin_data, bytes);
+        self.session.probe.write_block8(algo.begin_data, bytes)?;
 
         let result = self.call_function_and_wait(
             algo.pc_program_page,
@@ -394,7 +443,7 @@ impl <'a> ActiveFlasher<'a, Program> {
             Some(algo.begin_data),
             None,
             false
-        );
+        )?;
 
         if result != 0 {
             Err(FlasherError::ProgramPage(result, address))
@@ -418,12 +467,12 @@ impl <'a> ActiveFlasher<'a, Program> {
             Some(algo.page_buffers[buffer_number as usize]),
             None,
             false
-        );
+        )?;
 
         Ok(())
     }
 
-    pub fn load_page_buffer(&mut self, address: u32, bytes: &[u8], buffer_number: u32) -> Result<(), FlasherError> {
+    pub fn load_page_buffer(&mut self, _address: u32, bytes: &[u8], buffer_number: u32) -> Result<(), FlasherError> {
         let algo = self.session.target.info.flash_algorithm;
 
         // Check the buffer number.
@@ -434,7 +483,7 @@ impl <'a> ActiveFlasher<'a, Program> {
         // TODO: Prevent security settings from locking the device.
 
         // Transfer the buffer bytes to RAM.
-        self.session.probe.write_block8(algo.page_buffers[buffer_number as usize], bytes);
+        self.session.probe.write_block8(algo.page_buffers[buffer_number as usize], bytes)?;
 
         Ok(())
     }
@@ -460,7 +509,7 @@ impl <'a> ActiveFlasher<'a, Program> {
         // TODO: Prevent security settings from locking the device.
 
         // Transfer the phrase bytes to RAM.
-        self.session.probe.write_block8(algo.begin_data, bytes);
+        self.session.probe.write_block8(algo.begin_data, bytes)?;
 
         let result = self.call_function_and_wait(
             algo.pc_program_page,
@@ -469,7 +518,7 @@ impl <'a> ActiveFlasher<'a, Program> {
             Some(algo.begin_data),
             None,
             false
-        );
+        )?;
 
         if result != 0 {
             Err(FlasherError::ProgramPhrase(result, address))

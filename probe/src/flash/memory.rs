@@ -12,7 +12,8 @@ pub const PROGRAM_PAGE_WEIGHT: f32 = 0.130;
 pub const ERASE_SECTOR_WEIGHT: f32 = 0.048;
 pub const ERASE_ALL_WEIGHT: f32 = 0.174;
 
-#[derive(Debug, Clone)]
+#[derive(Derivative, Debug, Clone)]
+#[derivative(PartialEq, Eq, Hash)]
 pub struct FlashRegion {
     pub range: core::ops::Range<u32>,
     pub is_boot_memory: bool,
@@ -21,8 +22,14 @@ pub struct FlashRegion {
     pub sector_size: u32,
     pub page_size: u32,
     pub phrase_size: u32,
+    #[derivative(PartialEq="ignore")]
+    #[derivative(Hash="ignore")]
     pub erase_all_weight: f32,
+    #[derivative(PartialEq="ignore")]
+    #[derivative(Hash="ignore")]
     pub erase_sector_weight: f32,
+    #[derivative(PartialEq="ignore")]
+    #[derivative(Hash="ignore")]
     pub program_page_weight: f32,
     pub erased_byte_value: u8,
     pub access: Access,
@@ -72,19 +79,19 @@ impl FlashRegion {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RamRegion {
     pub range: core::ops::Range<u32>,
     pub is_boot_memory: bool,
     pub is_testable: bool,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RomRegion {
     pub range: core::ops::Range<u32>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct DeviceRegion {
     pub range: core::ops::Range<u32>,
 }
@@ -123,7 +130,7 @@ impl MemoryRange for core::ops::Range<u32> {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub enum MemoryRegion {
     Ram(RamRegion),
     Rom(RomRegion),
