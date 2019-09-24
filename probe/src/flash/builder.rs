@@ -298,23 +298,25 @@ impl<'a> FlashBuilder<'a> {
             while pos < flash_operation.data.len() {
                 // Check if the operation is in another sector.
                 flash_address = flash_operation.address + pos as u32;
-
-                let current_sector = &mut sectors[current_sector_index];
-                if flash_address >= current_sector.address + current_sector.size {
-                    let sector_info = flash.region().get_sector_info(flash_address);
-                    if let Some(sector_info) = sector_info {
-                        let new_sector = FlashSector::new(&sector_info); 
-                        sectors.push(new_sector);
-                        current_sector_index = sectors.len() - 1;
-                    } else {
-                        return Err(FlashBuilderError::InvalidFlashAddress(flash_address));
+                let mut added_new_sector = false;
+                {
+                    let current_sector = &mut sectors[current_sector_index];
+                    if flash_address >= current_sector.address + current_sector.size {
+                        let sector_info = flash.region().get_sector_info(flash_address);
+                        if let Some(sector_info) = sector_info {
+                            let new_sector = FlashSector::new(&sector_info); 
+                            sectors.push(new_sector);
+                            current_sector_index = sectors.len() - 1;
+                            added_new_sector = true;
+                        } else {
+                            return Err(FlashBuilderError::InvalidFlashAddress(flash_address));
+                        }
                     }
                 }
 
                 // Check if the operation is in another page.
-                let current_sector = &mut sectors[current_sector_index];
-                let current_page = &mut current_sector.pages[current_page_index];
-                if flash_address >= current_sector.address + current_sector.size {
+                let current_page = &mut sectors[current_sector_index - if added_new_sector { 1 } else { 0 }].pages[current_page_index];
+                if flash_address >= current_page.address + current_page.size {
                     // Fill any gap at the end of the current page before switching to a new page.
                     Self::fill_end_of_page_gap(
                         flash,
@@ -325,7 +327,8 @@ impl<'a> FlashBuilder<'a> {
 
                     let page_info = flash.region().get_page_info(flash_address);
                     if let Some(page_info) = page_info {
-                        let new_page = FlashPage::new(&page_info); 
+                        let current_sector = &mut sectors[current_sector_index];
+                        let new_page = FlashPage::new(&page_info);
                         current_sector.add_page(new_page)?;
                         current_page_index = current_sector.pages.len() - 1;
                     } else {
@@ -334,6 +337,7 @@ impl<'a> FlashBuilder<'a> {
                 }
 
                 // Fill the page gap if there is one.
+                let current_sector = &mut sectors[current_sector_index];
                 let current_page = &mut current_sector.pages[current_page_index];
                 Self::fill_end_of_page_gap(
                     flash,
