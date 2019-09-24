@@ -195,7 +195,13 @@ impl<'a, 'b> FlashLoader<'a, 'b> {
         for builder in sorted {
             // Program the data.
             let chip_erase = Some(if !did_chip_erase { self.chip_erase } else { false });
-            builder.1.program(Flasher::new(session, builder.0), chip_erase, self.smart_flash, self.trust_crc, self.keep_unwritten);
+            builder.1.program(
+                Flasher::new(session, builder.0),
+                chip_erase,
+                self.smart_flash,
+                self.trust_crc,
+                self.keep_unwritten
+            );
             did_chip_erase = true;
         }
 

@@ -1,7 +1,7 @@
 use super::*;
 
 const PAGE_ESTIMATE_SIZE: u32 = 32;
-const PAGE_READ_WEIGHT: f32 = 0.3;
+const _PAGE_READ_WEIGHT: f32 = 0.3;
 const DATA_TRANSFER_B_PER_S: f32 = 40.0 * 1000.0; // ~40KB/s, depends on clock speed, theoretical limit for HID is 56,000 B/s
 
 #[derive(Debug, Clone)]

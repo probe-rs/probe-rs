@@ -21,6 +21,37 @@ pub enum Format {
     Elf,
 }
 
+pub enum FileDownloadError {
+    FlashLoader(FlashLoaderError),
+    IhexRead(ihex::reader::ReaderError),
+    IO(std::io::Error),
+    Object(&'static str),
+}
+
+impl From<FlashLoaderError> for FileDownloadError {
+    fn from(error: FlashLoaderError) -> FileDownloadError {
+        FileDownloadError::FlashLoader(error)
+    }
+}
+
+impl From<ihex::reader::ReaderError> for FileDownloadError {
+    fn from(error: ihex::reader::ReaderError) -> FileDownloadError {
+        FileDownloadError::IhexRead(error)
+    }
+}
+
+impl From<std::io::Error> for FileDownloadError {
+    fn from(error: std::io::Error) -> FileDownloadError {
+        FileDownloadError::IO(error)
+    }
+}
+
+impl From<&'static str> for FileDownloadError {
+    fn from(error: &'static str) -> FileDownloadError {
+        FileDownloadError::Object(error)
+    }
+}
+
 /// This struct and impl bundle functionality to start the `Downloader` which then will flash
 /// the given data to the flash of the target.
 /// 
@@ -43,7 +74,7 @@ impl<'a> FileDownloader {
         path: &Path,
         format: Format,
         memory_map: &Vec<MemoryRegion>
-    ) -> Result<(), ()> {
+    ) -> Result<(), FileDownloadError> {
         let mut file = File::open(path).unwrap();
         let mut buffer = vec![];
         // IMPORTANT: Change this to an actual memory map of a real chip
@@ -51,9 +82,9 @@ impl<'a> FileDownloader {
 
         match format {
             Format::Bin(options) => self.download_bin(&mut buffer, &mut file, &mut loader, options),
-            Format::Elf => self.download_elf(&mut file, &mut loader),
+            Format::Elf => self.download_elf(&mut buffer, &mut file, &mut loader),
             Format::Hex => self.download_hex(&mut file, &mut loader),
-        };
+        }?;
 
         loader.commit(session);
 
@@ -61,11 +92,17 @@ impl<'a> FileDownloader {
     }
 
     /// Starts the download of a binary file.
-    fn download_bin<'b, T: Read + Seek>(self, buffer: &'b mut Vec<u8>, file: &'b mut T, loader: &mut FlashLoader<'_, 'b>, options: BinOptions) -> Result<(), ()> {
+    fn download_bin<'b, T: Read + Seek>(
+        self,
+        buffer: &'b mut Vec<u8>,
+        file: &'b mut T,
+        loader: &mut FlashLoader<'_, 'b>,
+        options: BinOptions
+    ) -> Result<(), FileDownloadError> {
         // Skip the specified bytes.
-        file.seek(SeekFrom::Start(options.skip as u64));
+        file.seek(SeekFrom::Start(options.skip as u64))?;
         
-        file.read_to_end(buffer);
+        file.read_to_end(buffer)?;
 
         loader.add_data(
             if let Some(address) = options.base_address {
@@ -77,22 +114,18 @@ impl<'a> FileDownloader {
                 0
             },
             buffer.as_slice()
-        );
+        )?;
 
         Ok(())
     }
 
     /// Starts the download of a hex file.
-    fn download_hex<T: Read + Seek>(self, file: &mut T, loader: &mut FlashLoader) -> Result<(), ()> {
+    fn download_hex<T: Read + Seek>(self, file: &mut T, _loader: &mut FlashLoader) -> Result<(), FileDownloadError> {
         let mut data = String::new();
-        file.read_to_string(&mut data);
+        file.read_to_string(&mut data)?;
 
         for item in ihex::reader::Reader::new(&data) {
-            if let Ok(record) = item {
-                println!("{:?}", record);
-            } else {
-                return Err(());
-            }
+            println!("{:?}", item?);
         }
         Ok(())
 
@@ -108,18 +141,26 @@ impl<'a> FileDownloader {
     }
         
     /// Starts the download of a elf file.
-    fn download_elf<T: Read + Seek>(self, file: &mut T, loader: &mut FlashLoader) -> Result<(), ()> {
-    // TODO:
-    //     elf = ELFBinaryFile(file_obj, self._session.target.memory_map)
-    //     for section in elf.sections:
-    //         if ((section.type == 'SHT_PROGBITS')
-    //                 and ((section.flags & (SH_FLAGS.SHF_ALLOC | SH_FLAGS.SHF_WRITE)) == SH_FLAGS.SHF_ALLOC)
-    //                 and (section.length > 0)
-    //                 and (section.region.is_flash)):
-    //             LOG.debug("Writing section %s", repr(section))
-    //             self._loader.add_data(section.start, section.data)
-    //         else:
-    //             LOG.debug("Skipping section %s", repr(section))
+    fn download_elf<'b, T: Read + Seek>(
+        self,
+        buffer: &'b mut Vec<u8>,
+        file: &'b mut T,
+        loader: &mut FlashLoader<'_, 'b>
+    ) -> Result<(), FileDownloadError> {
+        file.read_to_end(buffer)?;
+
+        use goblin::elf::program_header::*;
+
+        match goblin::elf::Elf::parse(&buffer.as_slice()) {
+            Ok(binary) => {
+                for ph in binary.program_headers {
+                    if ph.p_type == PT_LOAD && ph.p_filesz > 0 {
+                        loader.add_data(ph.p_paddr as u32, &buffer[ph.p_offset as usize..ph.p_filesz as usize])?;
+                    }
+                }
+            },
+            Err(_) => ()
+        }
         Ok(())
     }
 }
