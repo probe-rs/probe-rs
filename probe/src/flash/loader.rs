@@ -1,9 +1,5 @@
-use std::collections::HashMap;
 use crate::session::Session;
-use std::path::Path;
-use std::io::{ Read, Seek, SeekFrom };
-use std::fs::File;
-use ihex;
+use std::collections::HashMap;
 
 use super::*;
 
@@ -65,119 +61,6 @@ pub fn ranges<I: Iterator<Item = usize>>(list: I)-> Ranges<I> {
     Ranges::new(list)
 }
 
-pub struct BinOptions {
-    /// Memory address at which to program the binary data. If not set, the base
-    /// of the boot memory will be used.
-    base_address: Option<u32>,
-    /// Number of bytes to skip at the start of the binary file. Does not affect the
-    /// base address.
-    skip: u32,
-}
-
-pub enum Format {
-    Bin(BinOptions),
-    Hex,
-    Elf,
-}
-
-/// This struct and impl bundle functionality to start the `Downloader` which then will flash
-/// the given data to the flash of the target.
-/// 
-/// Supported file formats are:
-/// - Binary (.bin)
-/// - Intel Hex (.hex)
-/// - ELF (.elf or .axf)
-pub struct FileDownloader;
-
-impl<'a> FileDownloader {
-    pub fn new() -> Self {
-        Self {
-        }
-    }
-
-    /// Downloads a file at `path` into flash.
-    pub fn download_file(self, path: &Path, format: Format, memory_map: &Vec<MemoryRegion>) -> Result<(), ()> {
-        let file = File::open(path).unwrap();
-
-        // IMPORTANT: Change this to an actual memory map of a real
-        let mut loader = FlashLoader::new(memory_map);
-
-        match format {
-            Format::Bin(options) => self.download_bin(&mut file, &mut loader, options),
-            Format::Elf => self.download_elf(&mut file, &mut loader),
-            Format::Hex => self.download_hex(&mut file, &mut loader),
-        };
-
-        loader.commit();
-
-        Ok(())
-    }
-
-    /// Starts the download of a binary file.
-    fn download_bin<T: Read + Seek>(self, file: &mut T, loader: &mut FlashLoader, options: BinOptions) -> Result<(), ()> {
-        // Skip the specified bytes.
-        file.seek(SeekFrom::Start(options.skip as u64));
-        
-        let mut data = vec![];
-        file.read_to_end(&mut data);
-
-        loader.add_data(
-            if let Some(address) = options.base_address {
-                address
-            } else {
-                // If no base address is specified use the start of the boot memory.
-                // TODO: Implement this as soon as we know targets.
-                // self._session.target.memory_map.get_boot_memory().start
-                0
-            },
-            data.as_slice()
-        );
-
-        Ok(())
-    }
-
-    /// Starts the download of a hex file.
-    fn download_hex<T: Read + Seek>(self, file: &mut T, loader: &mut FlashLoader) -> Result<(), ()> {
-        let mut data: String;
-        file.read_to_string(&mut data);
-
-        for item in ihex::reader::Reader::new(&data) {
-            if let Ok(record) = item {
-                println!("{:?}", record);
-            } else {
-                return Err(());
-            }
-        }
-        Ok(())
-
-        // hexfile = IntelHex(file_obj)
-        // addresses = hexfile.addresses()
-        // addresses.sort()
-
-        // data_list = list(ranges(addresses))
-        // for start, end in data_list:
-        //     size = end - start + 1
-        //     data = list(hexfile.tobinarray(start=start, size=size))
-        //     self._loader.add_data(start, data)
-    }
-        
-    /// Starts the download of a elf file.
-    fn download_elf<T: Read + Seek>(self, file: &mut T, loader: &mut FlashLoader) -> Result<(), ()> {
-    // TODO:
-    //     elf = ELFBinaryFile(file_obj, self._session.target.memory_map)
-    //     for section in elf.sections:
-    //         if ((section.type == 'SHT_PROGBITS')
-    //                 and ((section.flags & (SH_FLAGS.SHF_ALLOC | SH_FLAGS.SHF_WRITE)) == SH_FLAGS.SHF_ALLOC)
-    //                 and (section.length > 0)
-    //                 and (section.region.is_flash)):
-    //             LOG.debug("Writing section %s", repr(section))
-    //             self._loader.add_data(section.start, section.data)
-    //         else:
-    //             LOG.debug("Skipping section %s", repr(section))
-        Ok(())
-    }
-}
-
 /// Handles high level programming of raw binary data to flash.
 /// 
 /// If you need file programming, either binary files or other formats, please see the
@@ -194,9 +77,9 @@ impl<'a> FileDownloader {
 /// is suppresed and a combined report is logged.
 /// 
 /// Internally, FlashBuilder is used to optimize programming within each memory region.
-pub struct FlashLoader<'a> {
+pub struct FlashLoader<'a, 'b> {
     memory_map: &'a Vec<MemoryRegion>,
-    builders: HashMap<FlashRegion, FlashBuilder<'a>>,
+    builders: HashMap<FlashRegion, FlashBuilder<'b>>,
     total_data_size: usize,
     chip_erase: bool,
     smart_flash: bool,
@@ -209,7 +92,7 @@ pub enum FlashLoaderError {
     MemoryRegionNotFlash(u32) // Contains the faulty address.
 }
 
-impl<'a> FlashLoader<'a> {
+impl<'a, 'b> FlashLoader<'a, 'b> {
     pub fn new(
         memory_map: &'a Vec<MemoryRegion>,
         smart_flash: bool,
@@ -217,7 +100,7 @@ impl<'a> FlashLoader<'a> {
         keep_unwritten: bool
     ) -> Self {
         Self {
-            memory_map: memory_map,
+            memory_map,
             builders: HashMap::new(),
             total_data_size: 0,
             chip_erase: false,
@@ -238,7 +121,7 @@ impl<'a> FlashLoader<'a> {
     /// The data may cross flash memory region boundaries, as long as the regions are contiguous.
     /// `address` is the address where the first byte of `data` is located.
     /// `data` is an iterator of u8 bytes to be written at given `address` and onwards.
-    pub fn add_data(&mut self, mut address: u32, data: &[u8]) -> Result<(), FlashLoaderError> {
+    pub fn add_data(& mut self, mut address: u32, data: &'b [u8]) -> Result<(), FlashLoaderError> {
         let size = data.len();
         let mut remaining = size;
         while remaining > 0 {
@@ -248,18 +131,15 @@ impl<'a> FlashLoader<'a> {
                 match region {
                     MemoryRegion::Flash(region) => {
                         // Get our builder instance.
-                        let builder = if self.builders.contains_key(&region) {
-                            self.builders[&region]
-                        } else {
+                        if !self.builders.contains_key(&region) {
                             // if region.flash is None:
                             //     raise RuntimeError("flash memory region at address 0x%08x has no flash instance" % address)
-                            self.builders[&region] = FlashBuilder::new(Flasher::new(target, region, FlashAlgorithm::new()));
-                            self.builders[&region]
+                            self.builders.insert(region.clone(), FlashBuilder::new(region.range.start));
                         };
                     
                         // Add as much data to the builder as is contained by this region.
-                        let program_length = usize::min(remaining, (region.end() - address + 1) as usize);
-                        builder.add_data(address, data[size - remaining..program_length]);
+                        let program_length = usize::min(remaining, (region.range.end - address + 1) as usize);
+                        self.builders.get_mut(&region).map(|r| r.add_data(address, &data[size - remaining..program_length]));
                         
                         // Advance the cursors.
                         remaining -= program_length;
@@ -282,10 +162,10 @@ impl<'a> FlashLoader<'a> {
     ) -> Option<&MemoryRegion> {
         for region in memory_map {
             let r = match region {
-                MemoryRegion::Ram(r) => r.range,
-                MemoryRegion::Rom(r) => r.range,
-                MemoryRegion::Flash(r) => r.range,
-                MemoryRegion::Device(r) => r.range
+                MemoryRegion::Ram(r) => r.range.clone(),
+                MemoryRegion::Rom(r) => r.range.clone(),
+                MemoryRegion::Flash(r) => r.range.clone(),
+                MemoryRegion::Device(r) => r.range.clone()
             };
             if r.contains(&address) {
                 return Some(region);
@@ -305,17 +185,17 @@ impl<'a> FlashLoader<'a> {
     /// algorithm for the first region doesn't actually erase the entire chip (all regions).
     
     /// After calling this method, the loader instance can be reused to program more data.
-    pub fn commit(self) {
+    pub fn commit(&mut self, session: &mut Session) {
         let mut did_chip_erase = false;
         
         // Iterate over builders we've created and program the data.
-        let builders: Vec<&FlashBuilder> = self.builders.values().collect();
-        builders.sort_unstable_by_key(|v| v.flash_start);
+        let mut builders: Vec<(&FlashRegion, &FlashBuilder)> = self.builders.iter().collect();
+        builders.sort_unstable_by_key(|v| v.1.flash_start);
         let sorted = builders;
         for builder in sorted {
             // Program the data.
             let chip_erase = Some(if !did_chip_erase { self.chip_erase } else { false });
-            builder.program(chip_erase, self.smart_flash, self.trust_crc, self.keep_unwritten);
+            builder.1.program(Flasher::new(session, builder.0), chip_erase, self.smart_flash, self.trust_crc, self.keep_unwritten);
             did_chip_erase = true;
         }
 

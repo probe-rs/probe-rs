@@ -92,14 +92,14 @@ pub enum FlasherError {
 }
 
 impl From<DebugProbeError> for FlasherError {
-    fn from(error: DebugProbeError) -> Self {
-        Self::DebugProbe(error)
+    fn from(error: DebugProbeError) -> FlasherError {
+        FlasherError::DebugProbe(error)
     }
 }
 
 impl From<AccessPortError> for FlasherError {
-    fn from(error: AccessPortError) -> Self {
-        Self::AccessPort(error)
+    fn from(error: AccessPortError) -> FlasherError {
+        FlasherError::AccessPort(error)
     }
 }
 
@@ -208,7 +208,7 @@ impl<'a> Flasher<'a> {
     }
 
     pub fn flash_block(
-        self,
+        mut self,
         address: u32,
         data: &[u8],
         chip_erase: Option<bool>,
@@ -219,9 +219,9 @@ impl<'a> Flasher<'a> {
             return Err(FlasherError::AddressNotInRegion(address, self.region.clone()));
         }
 
-        let mut fb = FlashBuilder::new(self);
+        let mut fb = FlashBuilder::new(self.region.range.start);
         fb.add_data(address, data);
-        fb.program(chip_erase, smart_flash, fast_verify, true);
+        fb.program(self, chip_erase, smart_flash, fast_verify, true);
 
         Ok(())
     }
