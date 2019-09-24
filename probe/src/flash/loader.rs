@@ -199,6 +199,9 @@ pub struct FlashLoader<'a> {
     builders: HashMap<FlashRegion, FlashBuilder<'a>>,
     total_data_size: usize,
     chip_erase: bool,
+    smart_flash: bool,
+    trust_crc: bool,
+    keep_unwritten: bool,
 }
 
 pub enum FlashLoaderError {
@@ -207,12 +210,20 @@ pub enum FlashLoaderError {
 }
 
 impl<'a> FlashLoader<'a> {
-    pub fn new(memory_map: &'a Vec<MemoryRegion>) -> Self {
+    pub fn new(
+        memory_map: &'a Vec<MemoryRegion>,
+        smart_flash: bool,
+        trust_crc: bool,
+        keep_unwritten: bool
+    ) -> Self {
         Self {
             memory_map: memory_map,
             builders: HashMap::new(),
             total_data_size: 0,
             chip_erase: false,
+            smart_flash,
+            trust_crc,
+            keep_unwritten,
         }
     }
     
@@ -265,7 +276,10 @@ impl<'a> FlashLoader<'a> {
         Ok(())
     }
 
-    pub fn get_region_for_address(memory_map: &Vec<MemoryRegion>, address: u32) -> Option<&MemoryRegion> {
+    pub fn get_region_for_address(
+        memory_map: &Vec<MemoryRegion>,
+        address: u32
+    ) -> Option<&MemoryRegion> {
         for region in memory_map {
             let r = match region {
                 MemoryRegion::Ram(r) => r.range,
@@ -300,8 +314,8 @@ impl<'a> FlashLoader<'a> {
         let sorted = builders;
         for builder in sorted {
             // Program the data.
-            let chip_erase = if !did_chip_erase { self.chip_erase } else { false };
-            builder.program(chip_erase, true);
+            let chip_erase = Some(if !did_chip_erase { self.chip_erase } else { false });
+            builder.program(chip_erase, self.smart_flash, self.trust_crc, self.keep_unwritten);
             did_chip_erase = true;
         }
 
