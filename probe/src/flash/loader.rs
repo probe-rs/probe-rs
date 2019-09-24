@@ -87,6 +87,7 @@ pub struct FlashLoader<'a, 'b> {
     keep_unwritten: bool,
 }
 
+#[derive(Debug)]
 pub enum FlashLoaderError {
     MemoryRegionNotDefined(u32), // Contains the faulty address.
     MemoryRegionNotFlash(u32) // Contains the faulty address.

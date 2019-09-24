@@ -21,6 +21,7 @@ pub enum Format {
     Elf,
 }
 
+#[derive(Debug)]
 pub enum FileDownloadError {
     FlashLoader(FlashLoaderError),
     IhexRead(ihex::reader::ReaderError),

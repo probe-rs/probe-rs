@@ -109,6 +109,7 @@ pub struct FlashBuilder<'a> {
     enable_double_buffering: bool,
 }
 
+#[derive(Debug)]
 pub enum FlashBuilderError {
     AddressBeforeFlashStart(u32), // Contains faulty address.
     DataOverlap(u32), // Contains faulty address.

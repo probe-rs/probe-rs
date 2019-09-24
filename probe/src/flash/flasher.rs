@@ -72,6 +72,7 @@ impl Operation for Verify {
     fn operation() -> u32 { 3 }
 }
 
+#[derive(Debug)]
 pub enum FlasherError {
     Init(u32),
     Uninit(u32),
@@ -220,8 +221,8 @@ impl<'a> Flasher<'a> {
         }
 
         let mut fb = FlashBuilder::new(self.region.range.start);
-        fb.add_data(address, data);
-        fb.program(self, chip_erase, smart_flash, fast_verify, true);
+        fb.add_data(address, data).expect("Add Data failed");
+        fb.program(self, chip_erase, smart_flash, fast_verify, true).expect("Add Data failed");
 
         Ok(())
     }

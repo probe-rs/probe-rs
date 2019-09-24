@@ -102,6 +102,14 @@ enum CLI {
         /// The path to the file to be downloaded to the flash
         path: String,
     },
+    /// Download memory to attached target
+    #[structopt(name = "d")]
+    D {
+        /// The number associated with the ST-Link to use
+        n: usize,
+        /// The path to the file to be downloaded to the flash
+        path: String,
+    },
     #[structopt(name = "erase")]
     Erase {
         /// The number associated with the ST-Link to use
@@ -133,6 +141,7 @@ fn main() {
         CLI::Debug { n, exe, dump } => debug(n, exe, dump).unwrap(),
         CLI::Dump { n, loc, words } => dump_memory(n, loc, words).unwrap(),
         CLI::Download { n, path } => download_program(n, path).unwrap(),
+        CLI::D { n, path } => download_program_fast(n, path).unwrap(),
         CLI::Erase { n, loc } => erase_page(n, loc).unwrap(),
         CLI::Trace { n, loc } => trace_u32_on_target(n, loc).unwrap(),
     }
@@ -206,6 +215,34 @@ fn download_program(n: usize, path: String) -> Result<(), CliError> {
         Ok(())
 
         // Ok(())
+    })
+}
+
+fn download_program_fast(n: usize, path: String) -> Result<(), CliError> {
+    let target = probe::target::Target::new(
+        probe::target::m0::M0::default(),
+        probe::target::nrf51822::nRF51822(),
+    );
+    with_device(n as usize, target, |mut session| {
+
+        // Start timer.
+        // let instant = Instant::now();
+
+        let mm = session.target.info.memory_map.clone();
+        let fd = probe::flash::download::FileDownloader::new();
+        fd.download_file(
+            &mut session,
+            std::path::Path::new(&path.as_str()),
+            probe::flash::download::Format::Elf,
+            &mm
+        ).unwrap();
+
+        let r = Ok(());
+
+        // Stop timer.
+        // let elapsed = instant.elapsed();
+
+        r
     })
 }
 
