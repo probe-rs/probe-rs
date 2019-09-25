@@ -154,9 +154,20 @@ impl<'a> FileDownloader {
 
         match goblin::elf::Elf::parse(&buffer.as_slice()) {
             Ok(binary) => {
-                for ph in binary.program_headers {
+                for ph in &binary.program_headers {
                     if ph.p_type == PT_LOAD && ph.p_filesz > 0 {
-                        loader.add_data(ph.p_paddr as u32, &buffer[ph.p_offset as usize..ph.p_filesz as usize])?;
+                        log::debug!("Found loadable segment containing:");
+                        
+                        let sector: core::ops::Range<u32> = ph.p_offset as u32..ph.p_offset as u32 + ph.p_filesz as u32;
+
+                        for sh in &binary.section_headers {
+                            if sector.contains_range(&(sh.sh_offset as u32..sh.sh_offset as u32 + sh.sh_size as u32)) {
+                                log::debug!("{:?}", &binary.shdr_strtab[sh.sh_name]);
+                            }
+                        }
+
+
+                        loader.add_data(ph.p_paddr as u32, &buffer[ph.p_offset as usize..][..ph.p_filesz as usize])?;
                     }
                 }
             },
