@@ -289,6 +289,8 @@ impl<'a> FlashBuilder<'a> {
         let first_page = FlashPage::new(&page_info);
         first_sector.add_page(first_page)?;
         sectors.push(first_sector);
+        println!("Adding Sector");
+        println!("Adding Page");
 
         let mut current_sector_index = sectors.len() - 1;
         let mut current_page_index = sectors[current_sector_index].pages.len() - 1;
@@ -308,6 +310,7 @@ impl<'a> FlashBuilder<'a> {
                             sectors.push(new_sector);
                             current_sector_index = sectors.len() - 1;
                             added_new_sector = true;
+                            println!("Adding Sector");
                         } else {
                             return Err(FlashBuilderError::InvalidFlashAddress(flash_address));
                         }
@@ -331,6 +334,7 @@ impl<'a> FlashBuilder<'a> {
                         let new_page = FlashPage::new(&page_info);
                         current_sector.add_page(new_page)?;
                         current_page_index = current_sector.pages.len() - 1;
+                        println!("Adding Page");
                     } else {
                         return Err(FlashBuilderError::InvalidFlashAddress(flash_address));
                     }

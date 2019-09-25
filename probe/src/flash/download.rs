@@ -163,6 +163,9 @@ impl<'a> FileDownloader {
                         for sh in &binary.section_headers {
                             if sector.contains_range(&(sh.sh_offset as u32..sh.sh_offset as u32 + sh.sh_size as u32)) {
                                 log::debug!("{:?}", &binary.shdr_strtab[sh.sh_name]);
+                                for line in hexdump::hexdump_iter(&buffer[sh.sh_offset as usize..][..sh.sh_size as usize]) {
+                                    log::trace!("{}", line);
+                                };
                             }
                         }
 

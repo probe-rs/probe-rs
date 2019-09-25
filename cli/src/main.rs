@@ -50,7 +50,7 @@ fn parse_hex(src: &str) -> Result<u32, std::num::ParseIntError> {
 #[structopt(
     name = "ST-Link CLI",
     about = "Get info about the connected ST-Links",
-    author = "Noah Hüsser <yatekii@yatekii.ch>"
+    author = "Noah Hüsser <yatekii@yatekii.ch> / Dominik Böhi <dominik.boehi@gmail.ch>"
 )]
 enum CLI {
     /// List all connected ST-Links
