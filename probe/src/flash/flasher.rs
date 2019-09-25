@@ -163,7 +163,7 @@ impl<'a> Flasher<'a> {
             .map(|i| *i)
             .collect::<Vec<u8>>();
 
-        let instructions = cs.disasm_all(i.as_slice(), self.region.get_flash_info(algo.analyzer_supported).rom_start as u64).unwrap();
+        let instructions = cs.disasm_all(i.as_slice(), algo.load_address as u64).unwrap();
 
         for instruction in instructions.iter() {
             log::debug!("{}", instruction);
@@ -183,6 +183,11 @@ impl<'a> Flasher<'a> {
         // Load flash algorithm code into target RAM.
         log::debug!("Loading algorithm into RAM at address 0x{:08x}", algo.load_address);
         self.session.probe.write_block32(algo.load_address, algo.instructions)?;
+
+        let mut data = vec![0; algo.instructions.len()];
+        self.session.probe.read_block32(algo.load_address, &mut data)?;
+
+        assert_eq!(&algo.instructions, &data.as_slice());
 
         log::debug!("Preparing Flasher for region:");
         log::debug!("{:#?}", &self.region);
@@ -331,7 +336,7 @@ impl<'a, O: Operation> ActiveFlasher<'a, O> {
     }
 
     fn call_function(&mut self, pc: u32, r0: Option<u32>, r1: Option<u32>, r2: Option<u32>, r3: Option<u32>, init: bool) -> Result<(), FlasherError> {
-        log::debug!("Calling routine {}({:?}, {:?}, {:?}, {:?}, init={})", pc, r0, r1, r2, r3, init);
+        log::debug!("Calling routine {:08x}({:?}, {:?}, {:?}, {:?}, init={})", pc, r0, r1, r2, r3, init);
         
         let algo = self.session.target.info.flash_algorithm;
         let regs = self.session.target.info.basic_register_addresses;
