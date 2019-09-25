@@ -3,10 +3,15 @@ pub mod variable;
 use crate::core::Core;
 use object::read::Object;
 use std::borrow;
+use std::fs;
+use std::path::Path;
 use std::path::PathBuf;
 use std::rc::Rc;
+use std::str::from_utf8;
 pub use typ::*;
 pub use variable::*;
+
+use gimli::{FileEntry, LineProgramHeader};
 
 #[derive(Debug, Copy, Clone)]
 pub enum ColumnType {
@@ -243,6 +248,12 @@ pub struct DebugInfo {
 }
 
 impl DebugInfo {
+    pub fn from_file(path: impl AsRef<Path>) -> Result<Self, std::io::Error> {
+        let data = fs::read(path)?;
+
+        Ok(Self::from_raw(&data))
+    }
+
     pub fn from_raw(data: &[u8]) -> Self {
         let object = object::File::parse(data).unwrap();
 
@@ -441,6 +452,84 @@ impl DebugInfo {
         address: u64,
     ) -> StackFrameIterator<'a, 'b> {
         StackFrameIterator::new(&self, core, address)
+    }
+
+    /// Find the program counter where a breakpoint should be set,
+    /// given a source file and a line.
+    pub fn get_breakpoint_location(
+        &self,
+        path: &Path,
+        line: u64,
+    ) -> Result<Option<u64>, gimli::read::Error> {
+        let mut unit_iter = self.dwarf.units();
+
+        while let Some(unit_header) = unit_iter.next()? {
+            let unit = self.dwarf.unit(unit_header)?;
+
+            let comp_dir = PathBuf::from(from_utf8(unit.comp_dir.as_ref().unwrap()).unwrap());
+
+            if let Some(ref line_program) = unit.line_program {
+                let header = line_program.header();
+
+                for file_name in header.file_names() {
+                    let combined_path = self.get_path(&comp_dir, &unit, &header, file_name);
+
+                    if combined_path.map(|p| p == path).unwrap_or(false) {
+                        let mut rows = line_program.clone().rows();
+
+                        while let Some((header, row)) = rows.next_row().unwrap() {
+                            let row_path = self.get_path(
+                                &comp_dir,
+                                &unit,
+                                &header,
+                                row.file(&header).unwrap(),
+                            );
+
+                            if row_path.map(|p| p != path).unwrap_or(true) {
+                                continue;
+                            }
+
+                            if let Some(cur_line) = row.line() {
+                                if cur_line == line {
+                                    return Ok(Some(row.address()));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(None)
+    }
+
+    fn get_path(
+        &self,
+        comp_dir: &Path,
+        unit: &gimli::read::Unit<DwarfReader>,
+        header: &LineProgramHeader<DwarfReader>,
+        file_entry: &FileEntry<DwarfReader>,
+    ) -> Option<PathBuf> {
+        let file_name_attr_string = self.dwarf.attr_string(unit, file_entry.path_name()).ok()?;
+        let dir_name_attr_string = file_entry
+            .directory(header)
+            .and_then(|dir| self.dwarf.attr_string(unit, dir).ok());
+
+        let name_path = Path::new(from_utf8(&file_name_attr_string).ok()?);
+
+        let dir_path = dir_name_attr_string
+            .and_then(|dir_name| from_utf8(&dir_name).ok().map(|path| PathBuf::from(path)));
+
+        let mut combined_path = match dir_path {
+            Some(dir_path) => dir_path.join(name_path),
+            None => name_path.to_owned(),
+        };
+
+        if combined_path.is_relative() {
+            combined_path = comp_dir.clone().join(&combined_path);
+        }
+
+        Some(combined_path)
     }
 }
 
