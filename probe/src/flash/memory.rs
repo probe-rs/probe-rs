@@ -12,8 +12,8 @@ pub const PROGRAM_PAGE_WEIGHT: f32 = 0.130;
 pub const ERASE_SECTOR_WEIGHT: f32 = 0.048;
 pub const ERASE_ALL_WEIGHT: f32 = 0.174;
 
-#[derive(Derivative, Debug, Clone)]
-#[derivative(PartialEq, Eq, Hash)]
+#[derive(Derivative, Clone)]
+#[derivative(Debug, PartialEq, Eq, Hash)]
 pub struct FlashRegion {
     pub range: core::ops::Range<u32>,
     pub is_boot_memory: bool,

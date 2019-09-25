@@ -168,6 +168,7 @@ impl MasterProbe {
     }
 }
 
+#[derive(Debug)]
 pub struct CpuInformation {
     pub pc: u32,
 }

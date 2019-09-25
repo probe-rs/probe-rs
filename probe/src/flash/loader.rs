@@ -194,6 +194,11 @@ impl<'a, 'b> FlashLoader<'a, 'b> {
         builders.sort_unstable_by_key(|v| v.1.flash_start);
         let sorted = builders;
         for builder in sorted {
+            log::debug!(
+                "Using builder for region (0x{:08x}..0x{:08x})",
+                builder.0.range.start,
+                builder.0.range.end
+            );
             // Program the data.
             let chip_erase = Some(if !did_chip_erase { self.chip_erase } else { false });
             builder.1.program(
@@ -202,7 +207,7 @@ impl<'a, 'b> FlashLoader<'a, 'b> {
                 self.smart_flash,
                 self.trust_crc,
                 self.keep_unwritten
-            );
+            ).unwrap();
             did_chip_erase = true;
         }
 

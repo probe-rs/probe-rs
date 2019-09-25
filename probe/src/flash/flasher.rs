@@ -52,6 +52,14 @@ pub struct FlashAlgorithm {
 
 pub trait Operation {
     fn operation() -> u32;
+    fn operation_name(&self) -> &str {
+        match Self::operation() {
+            1 => "Erase",
+            2 => "Program",
+            3 => "Verify",
+            _ => "Unknown Operation",
+        }
+    }
 }
 
 pub struct Erase;
@@ -136,6 +144,7 @@ impl<'a> Flasher<'a> {
         mut address: Option<u32>,
         clock: Option<u32>
     ) -> Result<ActiveFlasher<'b, O>, FlasherError> {
+        log::debug!("Initializing the flash algorithm.");
         let algo = self.session.target.info.flash_algorithm;
 
         if address.is_none() {
@@ -143,12 +152,19 @@ impl<'a> Flasher<'a> {
         }
 
         // TODO: Halt & reset target.
+        log::debug!("Halting core.");
+        let cpu_info = self.session.target.core.halt(&mut self.session.probe);
+        log::debug!("{:?}", &cpu_info);
 
         // TODO: Possible special preparation of the target such as enabling faster clocks for the flash e.g.
 
         // Load flash algorithm code into target RAM.
+        log::debug!("Loading algorithm into RAM at address 0x{:08x}", algo.load_address);
         self.session.probe.write_block32(algo.load_address, algo.instructions)?;
 
+        log::debug!("Preparing Flasher for region:");
+        log::debug!("{:#?}", &self.region);
+        log::debug!("Double buffering enabled: {}", self.double_buffering_supported);
         let mut flasher = ActiveFlasher {
             session: self.session,
             region: self.region,
@@ -158,10 +174,11 @@ impl<'a> Flasher<'a> {
 
         // Execute init routine if one is present.
         if let Some(pc_init) = algo.pc_init {
+            log::debug!("Running init routine.");
             let result = flasher.call_function_and_wait(
                 pc_init,
                 address,
-                clock,
+                clock.or(Some(0)),
                 Some(O::operation()),
                 None,
                 true
@@ -261,6 +278,7 @@ impl<'a, O: Operation> ActiveFlasher<'a, O> {
     }
 
     pub fn uninit<'b, 's: 'b>(&'s mut self) -> Result<Flasher<'b>, FlasherError> {
+        log::debug!("Running uninit routine.");
         let algo = self.session.target.info.flash_algorithm;
 
         if let Some(pc_uninit) = algo.pc_uninit {
@@ -291,6 +309,8 @@ impl<'a, O: Operation> ActiveFlasher<'a, O> {
     }
 
     fn call_function(&mut self, pc: u32, r0: Option<u32>, r1: Option<u32>, r2: Option<u32>, r3: Option<u32>, init: bool) -> Result<(), FlasherError> {
+        log::debug!("Calling routine {}({:?}, {:?}, {:?}, {:?}, init={})", pc, r0, r1, r2, r3, init);
+        
         let algo = self.session.target.info.flash_algorithm;
         let regs = self.session.target.info.basic_register_addresses;
 
@@ -319,6 +339,7 @@ impl<'a, O: Operation> ActiveFlasher<'a, O> {
     }
 
     pub fn wait_for_completion(&mut self) -> u32 {
+        log::debug!("Waiting for routine call completion.");
         let regs = self.session.target.info.basic_register_addresses;
 
         while self.session.target.core.wait_for_core_halted(&mut self.session.probe).is_err() {}
@@ -362,6 +383,7 @@ impl <'a> ActiveFlasher<'a, Erase> {
     }
 
     pub fn erase_sector(&mut self, address: u32) -> Result<(), FlasherError> {
+        log::debug!("Erasing sector at address 0x{:08x}.", address);
         let algo = self.session.target.info.flash_algorithm;
 
         let result = self.call_function_and_wait(
@@ -372,6 +394,7 @@ impl <'a> ActiveFlasher<'a, Erase> {
             None,
             false
         )?;
+        log::debug!("Done erasing sector. Result is {}", result);
 
         if result != 0 {
             Err(FlasherError::EraseSector(result, address))

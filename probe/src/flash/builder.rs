@@ -4,15 +4,27 @@ const PAGE_ESTIMATE_SIZE: u32 = 32;
 const _PAGE_READ_WEIGHT: f32 = 0.3;
 const DATA_TRANSFER_B_PER_S: f32 = 40.0 * 1000.0; // ~40KB/s, depends on clock speed, theoretical limit for HID is 56,000 B/s
 
-#[derive(Debug, Clone)]
+#[derive(Derivative, Clone)]
+#[derivative(Debug)]
 pub struct FlashPage {
+    #[derivative(Debug(format_with="fmt_hex"))]
     address: u32,
+    #[derivative(Debug(format_with="fmt_hex"))]
     size: u32,
+    #[derivative(Debug(format_with="fmt"))]
     data: Vec<u8>,
     program_weight: f32,
     pub erased: Option<bool>,
     pub dirty: Option<bool>,
     cached_estimate_data: Vec<u8>,
+}
+
+fn fmt(data: &Vec<u8>, f: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
+    write!(f, "[{} bytes]", data.len())
+}
+
+fn fmt_hex<T: std::fmt::LowerHex>(data: &T, f: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
+    write!(f, "0x{:08x}", data)
 }
 
 impl FlashPage {
@@ -39,8 +51,12 @@ impl FlashPage {
     }
 }
 
+#[derive(Derivative)]
+#[derivative(Debug)]
 pub struct FlashSector {
+    #[derivative(Debug(format_with="fmt_hex"))]
     address: u32,
+    #[derivative(Debug(format_with="fmt_hex"))]
     size: u32,
     max_page_count: usize,
     pages: Vec<FlashPage>,
@@ -77,7 +93,7 @@ impl FlashSector {
     }
 
     pub fn is_pages_to_be_programmed(&self) -> bool {
-        self.pages.iter().any(|p| if let Some(true) = p.dirty { false } else { true })
+        self.pages.iter().any(|p| if let Some(true) = p.dirty { true } else { false })
     }
 
     pub fn set_all_pages_dirty(&mut self) {
@@ -216,6 +232,7 @@ impl<'a> FlashBuilder<'a> {
             return Ok(())
         }
 
+        log::debug!("Smart Flash enabled: {:?}", smart_flash);
         // If smart flash was set to false then mark all pages as requiring programming.
         if !smart_flash {
             Self::mark_all_pages_for_programming(&mut sectors);
@@ -242,6 +259,8 @@ impl<'a> FlashBuilder<'a> {
             }
         }
 
+        log::debug!("Full Chip Erase enabled: {:?}", chip_erase);
+        log::debug!("Double Buffering enabled: {:?}", self.enable_double_buffering);
         if Some(true) == chip_erase {
             if flash.double_buffering_supported() && self.enable_double_buffering {
                 self.chip_erase_program_double_buffer(&mut flash, &sectors)?;
@@ -252,6 +271,7 @@ impl<'a> FlashBuilder<'a> {
             if flash.double_buffering_supported() && self.enable_double_buffering {
                 self.sector_erase_program_double_buffer(&mut flash, &mut sectors)?;
             } else {
+                // WORKING: We debug this atm.
                 self.sector_erase_program(&mut flash, &sectors)?;
             };
         }
@@ -267,6 +287,7 @@ impl<'a> FlashBuilder<'a> {
         sectors: &mut Vec<FlashSector>,
         keep_unwritten: bool
     ) -> Result<(), FlashBuilderError> {
+        log::debug!("Building sectors and pages");
         let mut flash_address = self.flash_operations[0].address;
         
         // Get sector info and make sure all data is valid.
@@ -372,6 +393,11 @@ impl<'a> FlashBuilder<'a> {
 
         if keep_unwritten && flash.region().access.contains(Access::R) {
             Self::fill_unwritten_sector_pages(flash, sectors)?;
+        }
+
+        log::debug!("Sectors are:");
+        for sector in sectors {
+            log::debug!("{:#?}", sector);
         }
 
         Ok(())
@@ -664,19 +690,32 @@ impl<'a> FlashBuilder<'a> {
     }
 
     /// Program by performing sector erases.
-    fn sector_erase_program(&self, flash: &mut Flasher, sectors: &Vec<FlashSector>) -> Result<(), FlashBuilderError> {
+    fn sector_erase_program(
+        &self,
+        flash: &mut Flasher,
+        sectors: &Vec<FlashSector>
+    ) -> Result<(), FlashBuilderError> {
+        let number_of_sectors_to_be_programmed = sectors
+            .iter()
+            .filter(|s| s.is_pages_to_be_programmed())
+            .count();
+        log::debug!("Flashing {} sectors.", number_of_sectors_to_be_programmed);
+        let mut i = 0;
         for sector in sectors {
             if sector.is_pages_to_be_programmed() {
+                log::debug!("Erasing sector {}", i);
                 flash.run_erase(|active| {
                     active.erase_sector(sector.address)
                 })?;
 
+                log::debug!("Programming sector {}", i);
                 for page in &sector.pages {
                     flash.run_program(|active| {
                         active.program_page(page.address, page.data.as_slice())
                     })?;
                 }
             }
+            i+=1;
         }
         Ok(())
     }

@@ -169,7 +169,6 @@ impl<'a> FileDownloader {
                             }
                         }
 
-
                         loader.add_data(ph.p_paddr as u32, &buffer[ph.p_offset as usize..][..ph.p_filesz as usize])?;
                     }
                 }
