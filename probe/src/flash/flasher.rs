@@ -147,6 +147,28 @@ impl<'a> Flasher<'a> {
         log::debug!("Initializing the flash algorithm.");
         let algo = self.session.target.info.flash_algorithm;
 
+        use capstone::arch::*;
+        let mut cs = capstone::Capstone::new()
+            .arm()
+            .mode(arm::ArchMode::Thumb)
+            .endian(capstone::Endian::Little)
+            .build()
+            .unwrap();
+        let i = algo.instructions
+            .iter()
+            .map(|i| [*i as u8, (*i >> 8) as u8, (*i >> 16) as u8, (*i >> 24) as u8])
+            .collect::<Vec<[u8; 4]>>()
+            .iter()
+            .flatten()
+            .map(|i| *i)
+            .collect::<Vec<u8>>();
+
+        let instructions = cs.disasm_all(i.as_slice(), self.region.get_flash_info(algo.analyzer_supported).rom_start as u64).unwrap();
+
+        for instruction in instructions.iter() {
+            log::debug!("{}", instruction);
+        }
+
         if address.is_none() {
             address = Some(self.region.get_flash_info(algo.analyzer_supported).rom_start);
         }
