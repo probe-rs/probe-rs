@@ -35,6 +35,7 @@ impl From<u8> for CoreRegisterAddress {
     }
 }
 
+#[allow(non_snake_case)]
 #[derive(Copy, Clone)]
 pub struct BasicRegisterAddresses {
     pub R0: CoreRegisterAddress,

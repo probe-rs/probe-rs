@@ -176,7 +176,7 @@ impl<'a> Flasher<'a> {
         // TODO: Halt & reset target.
         log::debug!("Halting core.");
         let cpu_info = self.session.target.core.halt(&mut self.session.probe);
-        log::debug!("{:?}", &cpu_info);
+        log::debug!("PC = 0x{:08x}", cpu_info.unwrap().pc);
 
         // TODO: Possible special preparation of the target such as enabling faster clocks for the flash e.g.
 
@@ -187,7 +187,7 @@ impl<'a> Flasher<'a> {
         let mut data = vec![0; algo.instructions.len()];
         self.session.probe.read_block32(algo.load_address, &mut data)?;
 
-        assert_eq!(&algo.instructions, &data.as_slice());
+        // assert_eq!(&algo.instructions, &data.as_slice());
 
         log::debug!("Preparing Flasher for region:");
         log::debug!("{:#?}", &self.region);
@@ -353,7 +353,9 @@ impl<'a, O: Operation> ActiveFlasher<'a, O> {
         ]
         .into_iter()
         .map(|(addr, value)| if let Some(v) = value {
-            self.session.target.core.write_core_reg(&mut self.session.probe, *addr, *v)
+            let r = self.session.target.core.write_core_reg(&mut self.session.probe, *addr, *v)?;
+            log::debug!("{} == {}", self.session.target.core.read_core_reg(&mut self.session.probe, *addr)?, *v);
+            Ok(r)
         } else {
             Ok(())
         })
