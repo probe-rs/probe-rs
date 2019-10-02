@@ -33,6 +33,20 @@ The lib can also connect to an [ST-Link](https://www.st.com/en/development-tools
 
 Focus of the development is having a full implementation (CoreSight, Flashing, Debugging) working for the DAPLink and go from there.
 
+### Flashing a file
+
+For flashing an ELF file (standard cargo build output), you can use
+
+```
+cargo run -p cli d 0 program.elf
+```
+
+Which should flash the ELF file. Don't expect any output. If you want some output, use
+
+```
+RUST_LOG=probe::flash=debug cargo run d 0 program.elf
+```
+
 ### CLI
 
 To demonstrate the functionality a small cli was written.
@@ -61,6 +75,13 @@ Here is how it looks if you do everything correct and you trace a memory locatio
 ## Roadmap
 
 - [ ] v0.1.0
+  - [x] Basic flash downloader working with nRF51.
+  - [ ] cargo-flash which can automatically build & flash the target elf file.
+  - [ ] Docs
+- [ ] v0.2.0
+  - [ ] Parse yaml (or anything else) config files for flash algorithm definitions, such that arbitrary chips can be added.
+  - [ ] Modularize code to allow other cores than M0 and be able to dynamically load chip definitions.
+- [ ] ...
   - [ ] Basic debugging for Cortex m0, m3, m4.
     - [ ] Stepping in
     - [ ] Halting
@@ -81,10 +102,9 @@ Here is how it looks if you do everything correct and you trace a memory locatio
     - [ ] Halting
     - [ ] Breaking
     - [ ] Running
-- [ ] Flash downloader.
-- [ ] Semihosting.
-- [ ] Tracing.
-- [ ] SWD file support.
+  - [ ] Semihosting.
+  - [ ] Tracing.
+  - [ ] SWD file support.
 
 ## FAQ
 
