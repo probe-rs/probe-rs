@@ -1,19 +1,27 @@
+use probe::debug_probe::DebugProbeError;
+use probe_rs_debug::session::Session;
 use ihex::reader::{Reader, ReaderError};
 use ihex::record::Record::*;
 
 use coresight::access_ports::AccessPortError;
-use log::info;
-use scroll::Pread;
+use log::{info, debug};
+
+use console::Term;
+
 use std::error::Error;
 use std::fmt;
 use std::thread;
 use std::time;
 use std::time::Instant;
+use std::path::Path;
+use std::io::Write;
 
 #[derive(Debug)]
 pub enum FlashError {
     ReaderError(ReaderError),
     AccessPortError(AccessPortError),
+    DebugProbeError(DebugProbeError),
+    IoError(std::io::Error),
 }
 
 impl fmt::Display for FlashError {
@@ -23,6 +31,8 @@ impl fmt::Display for FlashError {
         match self {
             ReaderError(ref e) => e.fmt(f),
             AccessPortError(ref e) => e.fmt(f),
+            DebugProbeError(ref e) => e.fmt(f),
+            IoError(ref e) => e.fmt(f),
         }
     }
 }
@@ -34,6 +44,8 @@ impl Error for FlashError {
         match self {
             ReaderError(ref e) => Some(e),
             AccessPortError(ref e) => Some(e),
+            DebugProbeError(ref e) => Some(e),
+            IoError(ref e) => Some(e),
         }
     }
 }
@@ -44,26 +56,54 @@ impl From<AccessPortError> for FlashError {
     }
 }
 
+impl From<DebugProbeError> for FlashError {
+    fn from(e: DebugProbeError) -> Self {
+        FlashError::DebugProbeError(e)
+    }
+}
+
 impl From<ReaderError> for FlashError {
     fn from(e: ReaderError) -> Self {
         FlashError::ReaderError(e)
     }
 }
 
-pub fn download_hex<P: super::MI, S: Into<String>>(
+impl From<std::io::Error> for FlashError {
+    fn from(e: std::io::Error) -> Self {
+        FlashError::IoError(e)
+    }
+}
+
+pub fn download_hex<S: AsRef<Path>>(
     file_path: S,
-    probe: &mut P,
+    session: &mut Session,
     page_size: u32,
 ) -> Result<(), FlashError> {
     let mut extended_linear_address = 0;
 
     let mut total_bytes = 0;
 
+    let mut output = Term::stdout();
+
     // Start timer.
     let instant = Instant::now();
 
-    let hex_file = std::fs::read_to_string(file_path.into()).unwrap();
+    session.target.halt(&mut session.probe).unwrap();
+
+    let hex_file = std::fs::read_to_string(file_path)?;
     let hex = Reader::new(&hex_file);
+
+    if output.is_term() {
+        write!(output,
+            "Wrote {} total 32bit words in {:.2?} seconds. Current addr: {}",
+            total_bytes, 0, 0,
+        )?;
+    }
+
+
+
+    let mut last_erased_page = 0;
+    erase_page(&mut session.probe, 0)?;
 
     for record in hex {
         let record = record?;
@@ -71,20 +111,37 @@ pub fn download_hex<P: super::MI, S: Into<String>>(
             Data { offset, value } => {
                 let offset = extended_linear_address | u32::from(offset);
 
-                if offset % page_size == 0 {
-                    erase_page(probe, offset)?;
+                let mut last_erased_address =  (last_erased_page + 1) * page_size - 1;
+
+                while last_erased_address < offset && last_erased_page < 255 {
+                    erase_page(&mut session.probe, (last_erased_page + 1) * page_size)?;
+
+                    last_erased_page += 1;
+                    last_erased_address =  (last_erased_page + 1) * page_size - 1;
                 }
 
-                write_bytes(probe, offset, value.as_slice())?;
+                write_bytes(&mut session.probe, offset, value.as_slice())?;
                 total_bytes += value.len();
                 // Stop timer.
                 let elapsed = instant.elapsed();
-                println!(
-                    "Wrote {} total 32bit words in {:.2?} seconds. Current addr: {}",
-                    total_bytes, elapsed, offset
-                );
-            }
-            EndOfFile => return Ok(()),
+
+                if output.is_term() {
+                    output.clear_line()?;
+                    write!(output,
+                        "Wrote {} total 32bit words in {:.2?} seconds. Current addr: {:#08x}",
+                        total_bytes, elapsed, offset
+                    )?;
+                } else {
+                    writeln!(output,
+                        "Wrote {} total 32bit words in {:.2?} seconds. Current addr: {:#08x}",
+                        total_bytes, elapsed, offset
+                    )?;
+                }
+
+            },
+            EndOfFile => {
+                info!("End of file, stopping");
+            },
             ExtendedSegmentAddress(_) => {
                 unimplemented!();
             }
@@ -95,6 +152,12 @@ pub fn download_hex<P: super::MI, S: Into<String>>(
             StartLinearAddress(_) => (),
         };
     }
+
+    output.write_line("")?;
+
+    session.target.reset(&mut session.probe)?;
+
+    session.target.run(&mut session.probe)?;
 
     Ok(())
 }
@@ -109,9 +172,11 @@ fn write_bytes<P: super::MI>(
     let NVMC_CONFIG = NVMC + 0x504;
     let WEN: u32 = 0x1;
 
-    info!("Writing to address 0x{:08x}", address);
+    info!("Writing to address 0x{:08x}, len={}", address, data.len());
 
+    debug!("Setting WEN bit in NVM");
     probe.write32(NVMC_CONFIG, WEN)?;
+
     probe.write_block8(
         address,
         data
@@ -138,6 +203,8 @@ fn erase_page<P: super::MI>(probe: &mut P, address: u32) -> Result<(), AccessPor
         read_flag = probe.read32(NVMC_READY)?;
         thread::sleep(time::Duration::from_millis(1));
     }
+
+    info!("Finished erasing page");
 
     Ok(())
 }
