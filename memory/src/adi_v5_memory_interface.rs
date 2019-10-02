@@ -317,6 +317,9 @@ impl ADIMemoryInterface {
         let csw: CSW = CSW { AddrInc: AddressIncrement::Single, SIZE: DataSize::U32, ..Default::default() };
         self.write_register_ap(debug_port, csw)?;
 
+        let tar = TAR { address: address };
+        self.write_register_ap(debug_port, tar)?;
+
         let num_writes = data.len();
         for offset in 0..num_writes {
             offset;

@@ -187,7 +187,8 @@ impl<'a> Flasher<'a> {
         let mut data = vec![0; algo.instructions.len()];
         self.session.probe.read_block32(algo.load_address, &mut data)?;
 
-        // assert_eq!(&algo.instructions, &data.as_slice());
+        assert_eq!(&algo.instructions, &data.as_slice());
+        log::debug!("RAM contents match flashing algo blob.");
 
         log::debug!("Preparing Flasher for region:");
         log::debug!("{:#?}", &self.region);
@@ -354,7 +355,7 @@ impl<'a, O: Operation> ActiveFlasher<'a, O> {
         .into_iter()
         .map(|(addr, value)| if let Some(v) = value {
             let r = self.session.target.core.write_core_reg(&mut self.session.probe, *addr, *v)?;
-            log::debug!("{} == {}", self.session.target.core.read_core_reg(&mut self.session.probe, *addr)?, *v);
+            log::debug!("content: 0x{:08x} should be: 0x{:08x}", self.session.target.core.read_core_reg(&mut self.session.probe, *addr)?, *v);
             Ok(r)
         } else {
             Ok(())
