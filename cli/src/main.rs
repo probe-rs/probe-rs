@@ -1,5 +1,6 @@
 mod common;
 mod info;
+mod flash_writer;
 
 use std::path::PathBuf;
 use arm_memory::{
@@ -207,7 +208,7 @@ fn download_program(n: usize, path: String) -> Result<(), CliError> {
         // // Stop timer.
         // let elapsed = instant.elapsed();
 
-        debug_probe::flash_writer::download_hex(path, &mut session.probe, 1024)?;
+        flash_writer::download_hex(path, &mut session, 1024)?;
 
         Ok(())
 
