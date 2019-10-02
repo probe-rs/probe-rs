@@ -154,10 +154,11 @@ impl ADIMemoryInterface {
     where
         AP: APAccess<MemoryAP, CSW> + APAccess<MemoryAP, TAR> + APAccess<MemoryAP, DRW>
     {
+
         let pre_bytes = ((4 - (address % 4)) % 4) as usize;
 
         let aligned_addr = address - (address % 4);
-        let unaligned_end_addr = address + (data.len() as u32);
+        let unaligned_end_addr = address.checked_add(data.len() as u32).ok_or(AccessPortError::OutOfBoundsError)?;
 
         let aligned_end_addr = if unaligned_end_addr % 4 != 0 {
             ( unaligned_end_addr - (unaligned_end_addr % 4) ) + 4
@@ -317,6 +318,9 @@ impl ADIMemoryInterface {
         let csw: CSW = CSW { AddrInc: AddressIncrement::Single, SIZE: DataSize::U32, ..Default::default() };
         self.write_register_ap(debug_port, csw)?;
 
+        let tar: TAR = TAR { address: address };
+        self.write_register_ap(debug_port, tar)?;
+
         let num_writes = data.len();
         for offset in 0..num_writes {
             offset;
@@ -353,6 +357,7 @@ impl ADIMemoryInterface {
                 pre_data &= !(0xFF << (shift * 8));
                 pre_data |= (data[i] as u32) << (shift * 8);
             }
+
             self.write32(debug_port, pre_address, pre_data)?;
         }
 
