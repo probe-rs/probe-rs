@@ -252,17 +252,17 @@ impl Core for M0 {
     }
 
     fn write_core_reg(&self, mi: &mut MasterProbe, addr: CoreRegisterAddress, value: u32) -> Result<(), DebugProbeError> {
+        let result: Result<(), DebugProbeError> = mi.write32(Dcrdr::ADDRESS, value).map_err(From::from);
+        result?;
+
+        self.wait_for_core_register_transfer(mi)?;
+
         // write the DCRSR value to select the register we want to write.
         let mut dcrsr_val = Dcrsr(0);
         dcrsr_val.set_regwnr(true); // Perform a write.
         dcrsr_val.set_regsel(addr.into()); // The address of the register to write.
 
         mi.write32(Dcrsr::ADDRESS, dcrsr_val.into())?;
-
-        self.wait_for_core_register_transfer(mi)?;
-
-        let result: Result<(), DebugProbeError> = mi.write32(Dcrdr::ADDRESS, value).map_err(From::from);
-        result?;
 
         self.wait_for_core_register_transfer(mi)
     }
