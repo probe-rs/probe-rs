@@ -7,5 +7,6 @@ members = [
     "debug",
     "cli",
     "memory",
+    "cargo-flash",
     # "sample"
 ]
