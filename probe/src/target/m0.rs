@@ -318,6 +318,18 @@ impl Core for M0 {
         })
     }
 
+    fn reset(&self, mi: &mut MasterProbe) -> Result<(), DebugProbeError> {
+        // Set THE AIRCR.SYSRESETREQ control bit to 1 to request a reset. (ARM V6 ARM, B1.5.16)
+
+        let reset_val = (0x05FA << 16)| (1 << 2);
+
+        let AIRCR: u32 = 0xE000_ED0C;
+
+        mi.write32(AIRCR, reset_val)?;
+
+        Ok(())
+    }
+
     fn get_available_breakpoint_units(&self, mi: &mut MasterProbe) -> Result<u32, DebugProbeError> {
         let result = mi.read32(BpCtrl::ADDRESS)?;
 
@@ -389,6 +401,10 @@ impl Core for FakeM0 {
 
     /// Steps one instruction and then enters halted state again.
     fn step(&self, mi: &mut MasterProbe) -> Result<CpuInformation, DebugProbeError> {
+        unimplemented!()
+    }
+
+    fn reset(&self, mi: &mut MasterProbe) -> Result<(), DebugProbeError> {
         unimplemented!()
     }
 

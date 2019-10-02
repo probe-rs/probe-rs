@@ -55,6 +55,8 @@ pub trait Core {
 
     fn run(&self, mi: &mut MasterProbe) -> Result<(), DebugProbeError>;
 
+    fn reset(&self, mi: &mut MasterProbe) -> Result<(), DebugProbeError>;
+
     /// Steps one instruction and then enters halted state again.
     fn step(&self, mi: &mut MasterProbe) -> Result<CpuInformation, DebugProbeError>;
 

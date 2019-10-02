@@ -1,5 +1,6 @@
 mod common;
 mod info;
+mod flash_writer;
 
 use std::path::PathBuf;
 use memory::{

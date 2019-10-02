@@ -23,6 +23,7 @@ pub enum AccessPortError {
         addr: u8,
         name: &'static str,
     },
+    OutOfBoundsError,
 }
 
 impl Error for AccessPortError { }
@@ -36,6 +37,7 @@ impl fmt::Display for AccessPortError {
             MemoryNotAligned => write!(f, "Misaligned memory access"),
             RegisterReadError { addr, name } => write!(f, "Failed to read register {}, address 0x{:08x}", name, addr),
             RegisterWriteError { addr, name } => write!(f, "Failed to write register {}, address 0x{:08x}", name, addr),
+            OutOfBoundsError => write!(f, "Out of bounds access"),
         }
     }
 }
