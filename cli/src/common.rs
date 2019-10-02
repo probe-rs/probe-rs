@@ -18,7 +18,7 @@ use probe::debug_probe::{
     DebugProbeType,
 };
 
-use memory::flash_writer::FlashError;
+use crate::flash_writer::FlashError;
 
 use std::error::Error; 
 use std::fmt;

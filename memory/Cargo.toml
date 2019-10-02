@@ -11,5 +11,4 @@ num-traits = "*"
 enum-primitive-derive = "*"
 coresight = { path = "../coresight" }
 jep106 = "0.2.2"
-ihex = "1.1.2"
 scroll = "*"

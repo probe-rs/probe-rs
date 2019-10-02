@@ -1,11 +1,10 @@
 mod common;
 mod info;
+mod flash_writer;
 
 use std::path::PathBuf;
-use memory::{
-    MI,
-    flash_writer,
-};
+use memory::MI;
+
 use std::time::Instant;
 use std::fs;
 use std::fs::File;
@@ -194,7 +193,7 @@ fn download_program(n: usize, path: String) -> Result<(), CliError> {
         // // Stop timer.
         // let elapsed = instant.elapsed();
 
-        flash_writer::download_hex(path, &mut session.probe, 1024)?;
+        flash_writer::download_hex(path, &mut session, 1024)?;
 
         Ok(())
 
