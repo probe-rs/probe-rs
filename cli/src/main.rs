@@ -106,24 +106,14 @@ enum CLI {
         words: u32,
     },
     /// Download memory to attached target
-    #[structopt(name = "d")]
-    D {
+    #[structopt(name = "download")]
+    Download {
         /// The number associated with the ST-Link to use
         n: usize,
         /// The target to be selected.
         target: Option<String>,
         /// The path to the file to be downloaded to the flash
         path: String,
-    },
-    #[structopt(name = "erase")]
-    Erase {
-        /// The number associated with the debug probe to use
-        n: usize,
-        /// The target to be selected.
-        target: Option<String>,
-        /// The address of the memory to dump from the target (in hexadecimal without 0x prefix)
-        #[structopt(parse(try_from_str = "parse_hex"))]
-        loc: u32
     },
     #[structopt(name = "trace")]
     Trace {
@@ -149,8 +139,7 @@ fn main() {
         CLI::Reset { n, target, assert } => reset_target_of_device(n, get_checked_target(target), assert).unwrap(),
         CLI::Debug { n, target, exe, dump } => debug(n, get_checked_target(target), exe, dump).unwrap(),
         CLI::Dump { n, target, loc, words } => dump_memory(n, get_checked_target(target), loc, words).unwrap(),
-        CLI::D { n, target, path } => download_program_fast(n, get_checked_target(target), path).unwrap(),
-        CLI::Erase { n, target, loc } => erase_page(n, get_checked_target(target), loc).unwrap(),
+        CLI::Download { n, target, path } => download_program_fast(n, get_checked_target(target), path).unwrap(),
         CLI::Trace { n, target, loc } => trace_u32_on_target(n, get_checked_target(target), loc).unwrap(),
     }
 }
@@ -234,24 +223,6 @@ fn download_program_fast(n: usize, target: Target, path: String) -> Result<(), C
         // let elapsed = instant.elapsed();
 
         r
-    })
-}
-
-#[allow(non_snake_case)]
-fn erase_page(n: usize, target: Target, loc: u32) -> Result<(), CliError> {
-    with_device(n, target, |mut session| {
-
-        // TODO: Generic flash erase
-
-        let NVMC = 0x4001E000;
-        let NVMC_CONFIG = NVMC + 0x504;
-        let NVMC_ERASEPAGE = NVMC + 0x508;
-        let EEN: u32 = 0x2;
-
-        session.probe.write32(NVMC_CONFIG, EEN)?;
-        session.probe.write32(NVMC_ERASEPAGE, loc)?;
-
-        Ok(())
     })
 }
 
@@ -353,12 +324,25 @@ fn debug(n: usize, target: Target, exe: Option<PathBuf>, dump: Option<PathBuf>) 
                 Ok(line) => {
                     let history_entry: &str = line.as_ref();
                     rl.add_history_entry(history_entry);
-                    handle_line(&mut session, &mut cs, di.as_ref(), &line)?;
+                    let cli_state = handle_line(&mut session, &mut cs, di.as_ref(), &line)?;
+
+                    match cli_state {
+                        CliState::Continue => (),
+                        CliState::Stop => return Ok(()),
+                    }
                 },
                 Err(e) => {
-                    // Just quit for now
-                    println!("Error handling input: {:?}", e);
-                    return Ok(());
+                    use rustyline::error::ReadlineError;
+
+                    match e {
+                        // For end of file and ctrl-c, we just quit
+                        ReadlineError::Eof | ReadlineError::Interrupted => return Ok(()),
+                        actual_error => {
+                            // Show error message and quit
+                            println!("Error handling input: {:?}", actual_error);
+                            return Ok(());
+                        }
+                    }
                 }
             }
         }
@@ -371,117 +355,155 @@ fn debug(n: usize, target: Target, exe: Option<PathBuf>, dump: Option<PathBuf>) 
 
 }
 
+enum CliState {
+    Continue,
+    Stop
+}
 
-fn handle_line(session: &mut Session, cs: &mut Capstone, debug_info: Option<&DebugInfo>, line: &str) -> Result<(), CliError> {
+
+fn handle_line(session: &mut Session, cs: &mut Capstone, debug_info: Option<&DebugInfo>, line: &str) -> Result<CliState, CliError> {
     let mut command_parts = line.split_whitespace();
 
-    let command = command_parts.next().unwrap();
+    if let Some(command) = command_parts.next() {
 
-    match command {
-        "halt" => {
-            let cpu_info = session.target.core.halt(&mut session.probe)?;
-            println!("Core stopped at address 0x{:08x}", cpu_info.pc);
+        match command {
+            "help" => {
+                let help_text = concat!(
+                    "The following commands are available: \n",
+                    " - break\n",
+                    " - bt\n",
+                    " - dump\n",
+                    " - halt\n",
+                    " - quit\n",
+                    " - read\n",
+                    " - regs\n",
+                    " - reset\n",
+                    " - run\n",
+                    " - step\n",
+                );
+                print!("{}", help_text);
+            },
+            "halt" => {
+                let cpu_info = session.target.core.halt(&mut session.probe)?;
+                println!("Core stopped at address 0x{:08x}", cpu_info.pc);
 
-            let mut code = [0u8;16*2];
+                let mut code = [0u8;16*2];
 
-            session.probe.read_block8(cpu_info.pc, &mut code)?;
-
-
-            let instructions = cs.disasm_all(&code, cpu_info.pc as u64).unwrap();
-
-            for i in instructions.iter() {
-                println!("{}", i);
-            }
-
-
-            Ok(())
-        },
-        "run" => {
-            session.target.core.run(&mut session.probe)?;
-            Ok(())
-        },
-        "step" => {
-            let cpu_info = session.target.core.step(&mut session.probe)?;
-            println!("Core stopped at address 0x{:08x}", cpu_info.pc);
-            Ok(())
-        },
-        "read" => {
-            let address_str = command_parts.next().unwrap();
-            let address = u32::from_str_radix(address_str, 16).unwrap();
-            //println!("Would read from address 0x{:08x}", address);
-
-            let val = session.probe.read32(address)?;
-            println!("0x{:08x} = 0x{:08x}", address, val);
-            Ok(())
-        },
-        "break" => {
-            let address_str = command_parts.next().unwrap();
-            let address = u32::from_str_radix(address_str, 16).unwrap();
-            //println!("Would read from address 0x{:08x}", address);
-
-            session.target.core.enable_breakpoints(&mut session.probe, true)?;
-            session.target.core.set_breakpoint(&mut session.probe, address)?;
-
-            Ok(())
-        },
-        "bt" => {
-            let regs = session.target.core.registers();
-            let program_counter = session.target.core.read_core_reg(&mut session.probe, regs.PC)?;
+                session.probe.read_block8(cpu_info.pc, &mut code)?;
 
 
-            if let Some(di) = debug_info {
-                let frames = di.try_unwind(session, program_counter as u64);
+                let instructions = cs.disasm_all(&code, cpu_info.pc as u64).unwrap();
 
-                for frame in frames {
-                    println!("{}", frame);
+                for i in instructions.iter() {
+                    println!("{}", i);
                 }
+            },
+            "run" => {
+                session.target.core.run(&mut session.probe)?;
+            },
+            "step" => {
+                let cpu_info = session.target.core.step(&mut session.probe)?;
+                println!("Core stopped at address 0x{:08x}", cpu_info.pc);
+            },
+            "read" => {
+                let address_str = command_parts.next().unwrap();
+                let address = u32::from_str_radix(address_str, 16).unwrap();
+                //println!("Would read from address 0x{:08x}", address);
+
+                let num_words = command_parts.next().map(|c| c.parse::<usize>().unwrap() ).unwrap_or(1);
+
+                let mut buff = vec![0u32;num_words]; 
+
+                session.probe.read_block32(address, &mut buff)?;
+
+                for (offset, word) in buff.iter().enumerate() {
+                    println!("0x{:08x} = 0x{:08x}", address + (offset*4) as u32, word);
+                }
+            },
+            "break" => {
+                let address_str = command_parts.next().unwrap();
+                let address = u32::from_str_radix(address_str, 16).unwrap();
+                //println!("Would read from address 0x{:08x}", address);
+
+                session.target.core.enable_breakpoints(&mut session.probe, true)?;
+                session.target.core.set_breakpoint(&mut session.probe, address)?;
+            },
+            "bt" => {
+                let regs = session.target.core.registers();
+                let program_counter = session.target.core.read_core_reg(&mut session.probe, regs.PC)?;
+
+
+                if let Some(di) = debug_info {
+                    let frames = di.try_unwind(session, program_counter as u64);
+
+                    for frame in frames {
+                        println!("{}", frame);
+                    }
+                }
+            },
+            "regs" => {
+                let mut regs = [0u32;15];
+
+                for i in 0..15 {
+                    regs[i as usize] = session.target.core.read_core_reg(&mut session.probe, i.into())?; 
+                }
+
+                for (i, val) in regs.iter().enumerate() {
+                    println!("Register {}: {:#08x}", i, val);
+                }
+            },
+            "dump" => {
+                // dump all relevant data, stack and regs for now..
+                //
+                // stack beginning -> assume beginning to be hardcoded
+
+
+                let stack_top: u32 = 0x2000_0000 + 0x4_000;
+
+                let regs = session.target.core.registers();
+
+                let stack_bot: u32 = session.target.core.read_core_reg(&mut session.probe, regs.SP)?;
+                let pc: u32 = session.target.core.read_core_reg(&mut session.probe, regs.PC)?;
+                
+                let mut stack = vec![0u8;(stack_top - stack_bot) as usize];
+
+                session.probe.read_block8(stack_bot, &mut stack[..])?;
+
+                let mut dump = CortexDump::new(stack_bot, stack);
+
+
+                for i in 0..12 {
+                    dump.regs[i as usize] = session.target.core.read_core_reg(&mut session.probe, i.into())?;
+                }
+
+                dump.regs[13] = stack_bot;
+                dump.regs[14] = session.target.core.read_core_reg(&mut session.probe, regs.LR)?;
+                dump.regs[15] = pc;
+
+                let serialized = ron::ser::to_string(&dump).expect("Failed to serialize dump");
+
+                let mut dump_file = File::create("dump.txt").expect("Failed to create file");
+
+                dump_file.write_all(serialized.as_bytes()).expect("Failed to write dump file");
+            },
+            "quit" => {
+                return Ok(CliState::Stop);
+            },
+            "reset" => {
+                session.target.core.halt(&mut session.probe)?;
+
+                // Enable vector catch after reset (set bit 1 in DEMCR register)
+                session.probe.write32(0xE000EDFC, 1)?;
+                session.target.core.reset(&mut session.probe)?;
+            },
+            _ => {
+                println!("Unknown command '{}'", line);
+                println!("Enter 'help' for a list of commands");
             }
-
-
-            Ok(())
-        },
-        "dump" => {
-            // dump all relevant data, stack and regs for now..
-            //
-            // stack beginning -> assume beginning to be hardcoded
-
-
-            let stack_top: u32 = 0x2000_0000 + 0x4_000;
-
-            let regs = session.target.core.registers();
-
-            let stack_bot: u32 = session.target.core.read_core_reg(&mut session.probe, regs.SP)?;
-            let pc: u32 = session.target.core.read_core_reg(&mut session.probe, regs.PC)?;
-            
-            let mut stack = vec![0u8;(stack_top - stack_bot) as usize];
-
-            session.probe.read_block8(stack_bot, &mut stack[..])?;
-
-            let mut dump = CortexDump::new(stack_bot, stack);
-
-            for i in 0..12 {
-                dump.regs[i as usize] = session.target.core.read_core_reg(&mut session.probe, i.into())?;
-            }
-
-            dump.regs[13] = stack_bot;
-            dump.regs[14] = session.target.core.read_core_reg(&mut session.probe, regs.LR)?;
-            dump.regs[15] = pc;
-
-            let serialized = ron::ser::to_string(&dump).expect("Failed to serialize dump");
-
-            let mut dump_file = File::create("dump.txt").expect("Failed to create file");
-
-            dump_file.write_all(serialized.as_bytes()).expect("Failed to write dump file");
-
-
-            Ok(())
-        },
-        "quit" => {
-            Err(CliError::Quit)
-        },
-        _ => {
-            println!("Unknown command '{}'", line);
-            Ok(())
         }
+    } else {
+        // Empty command, ignore
     }
+
+    Ok(CliState::Continue)
 }
