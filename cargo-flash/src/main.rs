@@ -117,9 +117,9 @@ fn main_try() -> Result<(), failure::Error> {
 }
 
 fn download_program_fast(n: usize, path: String) -> Result<(), DownloadError> {
-    let target = probe::target::Target::new(
-        probe::target::m0::M0::default(),
-        probe::target::nrf51822::nRF51822(),
+    let target = debug_probe::target::Target::new(
+        debug_probe::target::m0::M0::default(),
+        debug_probe::target::nrf51822::nRF51822(),
     );
     with_device(n as usize, target, |mut session| {
 
@@ -127,11 +127,11 @@ fn download_program_fast(n: usize, path: String) -> Result<(), DownloadError> {
         let instant = Instant::now();
 
         let mm = session.target.info.memory_map.clone();
-        let fd = probe::flash::download::FileDownloader::new();
+        let fd = debug_probe::flash::download::FileDownloader::new();
         fd.download_file(
             &mut session,
             std::path::Path::new(&path.as_str()),
-            probe::flash::download::Format::Elf,
+            debug_probe::flash::download::Format::Elf,
             &mm
         ).unwrap();
 
@@ -163,14 +163,14 @@ where
         DebugProbeType::DAPLink => {
             let mut link = daplink::DAPLink::new_from_probe_info(&device)?;
 
-            link.attach(Some(probe::protocol::WireProtocol::Swd))?;
+            link.attach(Some(debug_probe::protocol::WireProtocol::Swd))?;
             
             MasterProbe::from_specific_probe(link)
         },
         DebugProbeType::STLink => {
             let mut link = stlink::STLink::new_from_probe_info(&device)?;
 
-            link.attach(Some(probe::protocol::WireProtocol::Swd))?;
+            link.attach(Some(debug_probe::protocol::WireProtocol::Swd))?;
             
             MasterProbe::from_specific_probe(link)
         },
