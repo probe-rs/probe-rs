@@ -1,14 +1,14 @@
 use coresight::debug_port::DPRegister;
 use coresight::dp_access::DPAccess;
 use coresight::dp_access::DebugPort;
-use probe::debug_probe::{
+use ::debug_probe::debug_probe::{
     DebugProbe,
     DebugProbeError,
     DebugProbeInfo,
     DAPAccess,
 };
-use probe::debug_probe;
-use probe::protocol::WireProtocol;
+use ::debug_probe::debug_probe;
+use ::debug_probe::protocol::WireProtocol;
 
 use log::{error, debug, info};
 

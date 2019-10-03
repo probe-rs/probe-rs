@@ -7,7 +7,7 @@ use arm_memory::MI;
 
 use log::debug;
 
-use probe::session::Session;
+use debug_probe::session::Session;
 use crate::*;
 
 #[derive(Debug, Copy, Clone)]

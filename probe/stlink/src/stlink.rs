@@ -1,12 +1,12 @@
-use probe::debug_probe::{
+use debug_probe::debug_probe::{
     DebugProbeInfo,
     Port,
 };
 use coresight::ap_access::AccessPort;
 use scroll::{Pread, BE};
 
-use probe::debug_probe::{DebugProbe, DebugProbeError, DAPAccess};
-use probe::protocol::WireProtocol;
+use debug_probe::debug_probe::{DebugProbe, DebugProbeError, DAPAccess};
+use debug_probe::protocol::WireProtocol;
 
 use crate::constants::{commands, JTagFrequencyToDivider, Status, SwdFrequencyToDelayCount};
 use crate::usb_interface::{STLinkUSBDevice, TIMEOUT};

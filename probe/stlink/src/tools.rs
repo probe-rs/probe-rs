@@ -1,7 +1,7 @@
 use rusb::Device;
 use rusb::UsbContext;
 
-use probe::debug_probe::{
+use debug_probe::debug_probe::{
     DebugProbeInfo,
     DebugProbeType,
 };

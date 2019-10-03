@@ -1,8 +1,8 @@
 use std::path::Path;
 use std::fs::File;
 
-use probe::session::Session;
-use probe::target::Target;
+use debug_probe::session::Session;
+use debug_probe::target::Target;
 use coresight::{
     access_ports::{
         AccessPortError,
@@ -11,14 +11,14 @@ use coresight::{
 
 use ron;
 
-use probe::debug_probe::{
+use debug_probe::debug_probe::{
     MasterProbe,
     DebugProbe,
     DebugProbeError,
     DebugProbeType,
 };
 
-use probe::flash_writer::FlashError;
+use debug_probe::flash_writer::FlashError;
 
 use std::error::Error; 
 use std::fmt;
@@ -103,14 +103,14 @@ where
         DebugProbeType::DAPLink => {
             let mut link = daplink::DAPLink::new_from_probe_info(&device)?;
 
-            link.attach(Some(probe::protocol::WireProtocol::Swd))?;
+            link.attach(Some(debug_probe::protocol::WireProtocol::Swd))?;
             
             MasterProbe::from_specific_probe(link)
         },
         DebugProbeType::STLink => {
             let mut link = stlink::STLink::new_from_probe_info(&device)?;
 
-            link.attach(Some(probe::protocol::WireProtocol::Swd))?;
+            link.attach(Some(debug_probe::protocol::WireProtocol::Swd))?;
             
             MasterProbe::from_specific_probe(link)
         },
@@ -130,14 +130,14 @@ where
     let dump = ron::de::from_reader(&mut dump_file).unwrap();
 
 
-    let core = probe::target::m0::FakeM0::new(dump);
-    let fake_probe = probe::debug_probe::FakeProbe::new();
+    let core = debug_probe::target::m0::FakeM0::new(dump);
+    let fake_probe = debug_probe::debug_probe::FakeProbe::new();
 
     let probe = MasterProbe::from_specific_probe(Box::new(fake_probe));
 
     let target = Target::new(
         core,
-        probe::target::nrf51822::nRF51822(),
+        debug_probe::target::nrf51822::nRF51822(),
     );
 
     let session = Session::new(target, probe);

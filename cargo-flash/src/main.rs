@@ -21,7 +21,7 @@ use coresight::{
         AccessPortError,
     },
 };
-use probe::{
+use debug_probe::{
     debug_probe::{
         MasterProbe,
         DebugProbe,

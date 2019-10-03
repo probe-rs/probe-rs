@@ -11,7 +11,7 @@ log = "*"
 gimli = "*"
 object = "*"
 arm-memory = { path = "../memory" }
-probe = { path = "../probe" }
+debug-probe = { path = "../probe" }
 stlink = { path = "../probe/stlink" }
 daplink = { path = "../probe/daplink" }
 coresight = { path = "../coresight" }

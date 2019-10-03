@@ -4,7 +4,7 @@ pub mod swd;
 pub mod transfer;
 
 use core::ops::Deref;
-use probe::debug_probe::DebugProbeError;
+use debug_probe::debug_probe::DebugProbeError;
 use log::debug;
 
 pub(crate) type Result<T> = std::result::Result<T, Error>;
