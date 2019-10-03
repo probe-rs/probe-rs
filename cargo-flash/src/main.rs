@@ -1,8 +1,37 @@
-#[macro_use] extern crate structopt;
+extern crate structopt;
 
-use std::path::PathBuf;
+use std::{
+    time::Instant,
+    path::{
+        PathBuf,
+    },
+    process::{
+        Command,
+        Stdio,
+    },
+    error::Error,
+    fmt,
+};
 
-use crate::structopt::StructOpt;
+use structopt::StructOpt;
+use colored::*;
+
+use coresight::{
+    access_ports::{
+        AccessPortError,
+    },
+};
+use probe::{
+    debug_probe::{
+        MasterProbe,
+        DebugProbe,
+        DebugProbeError,
+        DebugProbeType,
+    },
+    session::Session,
+    target::Target,
+    flash_writer::FlashError,
+};
 
 #[derive(Debug, StructOpt)]
 struct Opt {
@@ -21,108 +50,194 @@ struct Opt {
 }
 
 fn main() {
-
-    let opt = Opt::from_args();
-
-    dbg!(&opt);
-
-    let mut cmd = cargo_metadata::MetadataCommand::new();
-    if let Some(path) = opt.manifest_path {
-        cmd.manifest_path(path);
+    match main_try() {
+        Ok(_) => (),
+        Err(e) => println!("{}", e),
     }
-    let metadata = cmd.exec().unwrap();
+}
 
-    let packages: Vec<cargo_metadata::Package> = if let Some(package) = opt.package {
-        metadata.workspace_members
-            .iter()
-            .filter(|member| {
-                if metadata[member].name == package {
-                    true
-                } else {
-                    false
-                }
-            })
-            .map(|member| metadata[member].clone())
-            .collect()
+fn main_try() -> Result<(), failure::Error> {
+    let mut args = std::env::args();
+    // Skip the first arg which is the calling application name.
+    let _ = args.next();
+
+    // Get commandline options.
+    let opt = Opt::from_iter(args);
+
+    // Try and get the cargo project information.
+    let project = cargo_project::Project::query(".")?;
+
+    // Decide what artifact to use.
+    let artifact = if let Some(bin) = &opt.bin {
+        cargo_project::Artifact::Bin(bin)
+    } else if let Some(example) = &opt.example {
+        cargo_project::Artifact::Example(example)
     } else {
-        metadata.workspace_members.iter().map(|member| metadata[member].clone()).collect()
+        cargo_project::Artifact::Bin(project.name())
     };
 
-    if packages.len() > 1 {
-        println!("Please specify the package.");
-        std::process::exit(0);
-    } else if packages.len() != 1 {
-        println!("No matching packages found!");
-        std::process::exit(0);
+    // Decide what profile to use.
+    let profile = if opt.release {
+        cargo_project::Profile::Release
     } else {
-        if let Some(example) = opt.example {
-            let example_target = packages
-                .iter()
-                .find(|package| {
-                    if package.targets.len() > 0 {
-                        for target in &package.targets {
-                            if target.kind.contains(&"example".to_string()) && target.name == example {
-                                return true;
-                            }
-                        }
-                        false
-                    } else {
-                        false
-                    }
-                });
-            if example_target.is_some() {
-                // TODO:
-                println!("EXAMPLE");
-            } else {
-                println!("Example {} does not exist.", example);
-                std::process::exit(0);
-            }
+        cargo_project::Profile::Dev
+    };
+
+    // Try and get the artifact path.
+    let path = project.path(
+        artifact,
+        profile,
+        opt.target.as_ref().map(|t| &**t),
+        "x86_64-unknown-linux-gnu"
+    )?;
+
+    let path_str = match path.to_str() {
+        Some(s) => s,
+        None => panic!(),
+    };
+
+    let mut args = std::env::args();
+    // Remove first two args which is the calling application name and the `flash` command from cargo.
+    let _ = args.next();
+    let _ = args.next();
+
+    Command::new("cargo")
+        .arg("build")
+        .args(args)
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .spawn()?
+        .wait()?;
+    
+    println!("    {} {}", "Flashing".green().bold(), path_str);
+
+    download_program_fast(0, path_str.to_string())?;
+
+    Ok(())
+}
+
+fn download_program_fast(n: usize, path: String) -> Result<(), DownloadError> {
+    let target = probe::target::Target::new(
+        probe::target::m0::M0::default(),
+        probe::target::nrf51822::nRF51822(),
+    );
+    with_device(n as usize, target, |mut session| {
+
+        // Start timer.
+        let instant = Instant::now();
+
+        let mm = session.target.info.memory_map.clone();
+        let fd = probe::flash::download::FileDownloader::new();
+        fd.download_file(
+            &mut session,
+            std::path::Path::new(&path.as_str()),
+            probe::flash::download::Format::Elf,
+            &mm
+        ).unwrap();
+
+        let r = Ok(());
+
+        // Stop timer.
+        let elapsed = instant.elapsed();
+        println!("    {} in {}s", "Finished".green().bold(), elapsed.as_millis() as f32 / 1000.0);
+
+        r
+    })
+}
+
+/// Takes a closure that is handed an `DAPLink` instance and then executed.
+/// After the closure is done, the USB device is always closed,
+/// even in an error case inside the closure!
+pub fn with_device<F>(n: usize, target: Target, f: F) -> Result<(), DownloadError>
+where
+    for<'a> F: FnOnce(Session) -> Result<(), DownloadError>
+{
+    let device = {
+        let mut list = daplink::tools::list_daplink_devices();
+        list.extend(stlink::tools::list_stlink_devices());
+
+        list.remove(n)
+    };
+
+    let probe = match device.probe_type {
+        DebugProbeType::DAPLink => {
+            let mut link = daplink::DAPLink::new_from_probe_info(&device)?;
+
+            link.attach(Some(probe::protocol::WireProtocol::Swd))?;
+            
+            MasterProbe::from_specific_probe(link)
+        },
+        DebugProbeType::STLink => {
+            let mut link = stlink::STLink::new_from_probe_info(&device)?;
+
+            link.attach(Some(probe::protocol::WireProtocol::Swd))?;
+            
+            MasterProbe::from_specific_probe(link)
+        },
+    };
+    
+    let session = Session::new(target, probe);
+
+    f(session)
+}
+
+#[derive(Debug)]
+pub enum DownloadError {
+    DebugProbe(DebugProbeError),
+    AccessPort(AccessPortError),
+    FlashError(FlashError),
+    StdIO(std::io::Error),
+    Quit,
+}
+
+impl Error for DownloadError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        use crate::DownloadError::*;
+
+        match self {
+            DebugProbe(ref e) => Some(e),
+            AccessPort(ref e) => Some(e),
+            FlashError(ref e) => Some(e),
+            StdIO(ref e) => Some(e),
+            Quit => None,
         }
-        
-        if let Some(bin) = opt.bin {
-            let bin_target = packages
-                .iter()
-                .find(|package| {
-                    if package.targets.len() > 0 {
-                        for target in &package.targets {
-                            if target.kind.contains(&"bin".to_string()) && target.name == bin {
-                                return true;
-                            }
-                        }
-                        false
-                    } else {
-                        false
-                    }
-                });
-            if bin_target.is_some() {
-                // TODO:
-                println!("BIN");
-            } else {
-                println!("Binary {} does not exist.", bin);
-                std::process::exit(0);
-            }
-        } else {
-            let default_bin_target = packages
-                .iter()
-                .find(|package| {
-                    if package.targets.len() > 0 {
-                        for target in &package.targets {
-                            if target.kind.contains(&"bin".to_string()) {
-                                return true;
-                            }
-                        }
-                        false
-                    } else {
-                        false
-                    }
-                });
-            if let Some(bin) = default_bin_target {
-                dbg!(bin);
-                dbg!(metadata.target_directory);
-            } else {
-                println!("Please specify a binary.");
-                std::process::exit(0);
-            }
+    }
+}
+
+impl fmt::Display for DownloadError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use crate::DownloadError::*;
+
+        match self {
+            DebugProbe(ref e) => e.fmt(f),
+            AccessPort(ref e) => e.fmt(f),
+            FlashError(ref e) => e.fmt(f),
+            StdIO(ref e) => e.fmt(f),
+            Quit => write!(f, "Quit error..."),
         }
+    }
+}
+
+impl From<AccessPortError> for DownloadError {
+    fn from(error: AccessPortError) -> Self {
+        DownloadError::AccessPort(error)
+    }
+}
+
+impl From<DebugProbeError> for DownloadError {
+    fn from(error: DebugProbeError) -> Self {
+        DownloadError::DebugProbe(error)
+    }
+}
+
+impl From<std::io::Error> for DownloadError {
+    fn from(error: std::io::Error) -> Self {
+        DownloadError::StdIO(error)
+    }
+}
+
+impl From<FlashError> for DownloadError {
+    fn from(error: FlashError) -> Self {
+        DownloadError::FlashError(error)
     }
 }
