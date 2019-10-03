@@ -1,22 +1,31 @@
 [package]
 name = "probe"
 version = "0.1.0"
-authors = ["Noah Hüsser <yatekii@yatekii.ch>"]
+authors = ["Noah Hüsser <yatekii@yatekii.ch>", "Dominik Boehi <dominik.boehi@gmail.ch>"]
 edition = "2018"
+description = "A collection of coresight tools to comminicate with ARM chips."
+documentation = "https://docs.rs/probe/"
+homepage = "https://github.com/probe-rs/probe-rs/probe"
+repository = "https://github.com/probe-rs/probe-rs/probe"
+readme = "README.md"
+categories = ["embedded", "hardware-support", "development-tools::debugging"]
+keywords = ["embedded"]
+license = "MIT OR Apache-2.0"
 
 [dependencies]
-memory = { path = "../memory" }
-coresight = { path = "../coresight"}
+memory = { path = "../memory", version = "0.1.0" }
+coresight = { path = "../coresight", version = "0.1.0"}
 query_interface = "*"
 log = "0.4.6"
-bitfield = "*"
-bitflags = "*"
+bitfield = "0.13.2"
+bitflags = "1.2.0"
 ihex = "1.1.2"
-scroll = "*"
-serde = "1.0.99"
+scroll = "0.9.2"
+serde = "1.0.101"
+serde_derive = "1.0.101"
 crc = "1.8.1"
 derivative = "1.0.3"
 goblin = "0.0.24"
 object = "0.14.0"
-hexdump = "*"
+hexdump = "0.1.0"
 capstone = "0.6.0"

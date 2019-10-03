@@ -1,7 +1,7 @@
 [package]
 name = "cargo-flash"
 version = "0.1.0"
-authors = ["Noah Hüsser <yatekii@yatekii.ch>"]
+authors = ["Noah Hüsser <yatekii@yatekii.ch>", "Dominik Boehi <dominik.boehi@gmail.ch>"]
 edition = "2018"
 
 [dependencies]

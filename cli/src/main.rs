@@ -16,7 +16,6 @@ use probe::debug_probe::{
 
 use probe_rs_debug::debug::DebugInfo;
 
-
 use memmap;
 
 use probe::target::m0::CortexDump;
@@ -26,8 +25,6 @@ use common::{
     with_dump,
     CliError,
 };
-
-
 
 use structopt::StructOpt;
 

@@ -1,4 +1,3 @@
-use crate::target::BasicRegisterAddresses;
 use crate::debug_probe::{
     MasterProbe,
     CpuInformation,
