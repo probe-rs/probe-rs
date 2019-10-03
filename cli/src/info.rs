@@ -91,7 +91,7 @@ pub fn show_info_of_device(n: usize) -> Result<(), CliError> {
                     
                     let link_ref = &mut session.probe;
 
-                    let component_table = memory::romtable::CSComponent::try_parse(&link_ref.into(), baseaddr as u64);
+                    let component_table = arm_memory::romtable::CSComponent::try_parse(&link_ref.into(), baseaddr as u64);
 
 
                     component_table.iter().for_each(|entry| println!("{:#08x?}", entry));

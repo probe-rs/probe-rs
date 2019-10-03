@@ -1,6 +1,6 @@
 use crate::debug_probe::DebugProbeError;
 use coresight::access_ports::AccessPortError;
-use ::memory::MI;
+use ::arm_memory::MI;
 use crate::session::Session;
 
 use super::*;

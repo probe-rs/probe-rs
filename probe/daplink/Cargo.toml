@@ -16,7 +16,7 @@ license = "MIT OR Apache-2.0"
 log = "0.4.6"
 lazy_static = "1.2.0"
 probe = { path = "../", version = "0.1.0" }
-memory = { path = "../../memory", version = "0.1.0" }
+arm-memory = { path = "../../memory", version = "0.1.0" }
 coresight = { path = "../../coresight", version = "0.1.0"}
 scroll = "0.9.2"
 rental = "0.5.4"

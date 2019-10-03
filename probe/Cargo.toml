@@ -13,7 +13,7 @@ keywords = ["embedded"]
 license = "MIT OR Apache-2.0"
 
 [dependencies]
-memory = { path = "../memory", version = "0.1.0" }
+arm-memory = { path = "../memory", version = "0.1.0" }
 coresight = { path = "../coresight", version = "0.1.0"}
 query_interface = "*"
 log = "0.4.6"

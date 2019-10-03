@@ -10,7 +10,7 @@ edition = "2018"
 log = "*"
 gimli = "*"
 object = "*"
-memory = { path = "../memory" }
+arm-memory = { path = "../memory" }
 probe = { path = "../probe" }
 stlink = { path = "../probe/stlink" }
 daplink = { path = "../probe/daplink" }

@@ -3,7 +3,7 @@ use std::borrow;
 use std::rc::Rc;
 
 use object::read::Object;
-use memory::MI;
+use arm_memory::MI;
 
 use log::debug;
 

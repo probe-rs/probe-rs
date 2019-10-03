@@ -50,7 +50,7 @@ impl From<ReaderError> for FlashError {
     }
 }
 
-pub fn download_hex<P: memory::MI, S: Into<String>>(file_path: S, probe: &mut P, page_size: u32) -> Result<(), FlashError> {
+pub fn download_hex<P: arm_memory::MI, S: Into<String>>(file_path: S, probe: &mut P, page_size: u32) -> Result<(), FlashError> {
     let mut extended_linear_address = 0;
 
     let mut total_bytes = 0;
@@ -96,7 +96,7 @@ pub fn download_hex<P: memory::MI, S: Into<String>>(file_path: S, probe: &mut P,
 }
 
 #[allow(non_snake_case)]
-fn write_bytes<P: memory::MI>( probe: &mut P, address: u32, data: &[u8]) -> Result<(), AccessPortError> {
+fn write_bytes<P: arm_memory::MI>( probe: &mut P, address: u32, data: &[u8]) -> Result<(), AccessPortError> {
     let NVMC = 0x4001_E000;
     let NVMC_CONFIG = NVMC + 0x504;
     let WEN: u32 = 0x1;
@@ -111,7 +111,7 @@ fn write_bytes<P: memory::MI>( probe: &mut P, address: u32, data: &[u8]) -> Resu
 }
 
 #[allow(non_snake_case)]
-fn erase_page<P: memory::MI>(probe: &mut P, address: u32) -> Result<(), AccessPortError> {
+fn erase_page<P: arm_memory::MI>(probe: &mut P, address: u32) -> Result<(), AccessPortError> {
     let NVMC = 0x4001_E000;
     let NVMC_READY = NVMC + 0x400;
     let NVMC_CONFIG = NVMC + 0x504;

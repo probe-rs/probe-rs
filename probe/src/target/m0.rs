@@ -3,7 +3,7 @@ use crate::debug_probe::{
     CpuInformation,
     DebugProbeError,
 };
-use memory::MI;
+use arm_memory::MI;
 use super::{
     CoreRegister,
     CoreRegisterAddress,

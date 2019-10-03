@@ -2,7 +2,7 @@ mod common;
 mod info;
 
 use std::path::PathBuf;
-use memory::{
+use arm_memory::{
     MI,
 };
 use std::time::Instant;

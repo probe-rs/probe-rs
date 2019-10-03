@@ -15,10 +15,10 @@ use coresight::{
 
 use log::debug;
 
-use memory::ToMemoryReadSize;
-use memory::adi_v5_memory_interface::ADIMemoryInterface;
+use arm_memory::ToMemoryReadSize;
+use arm_memory::adi_v5_memory_interface::ADIMemoryInterface;
 use crate::protocol::WireProtocol;
-use memory::MI;
+use arm_memory::MI;
 use std::error::Error;
 use std::fmt;
 
