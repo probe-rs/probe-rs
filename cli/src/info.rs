@@ -24,10 +24,7 @@ use coresight::{
 };
 
 pub fn show_info_of_device(n: usize) -> Result<(), CliError> {
-    let target = debug_probe::target::Target::new(
-        debug_probe::target::m0::M0::default(),
-        debug_probe::target::nrf51822::nRF51822(),
-    );
+    let target = debug_probe::target::nrf51822::nRF51822();
 
     with_device(n, target, |mut session| {
 

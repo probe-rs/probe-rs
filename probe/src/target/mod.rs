@@ -77,23 +77,9 @@ pub trait Core {
     fn read_block8(&self, mi: &mut MasterProbe, address: u32, data: &mut [u8]) -> Result<(), DebugProbeError>;
 }
 
-#[derive(Clone)]
-pub struct TargetInfo {
+pub struct Target {
     pub flash_algorithm: FlashAlgorithm,
     pub basic_register_addresses: BasicRegisterAddresses,
     pub memory_map: Vec<MemoryRegion>,
-}
-
-pub struct Target {
     pub core: Box<dyn Core>,
-    pub info: TargetInfo,
-}
-
-impl Target {
-    pub fn new(core: impl Core + 'static, info: TargetInfo) -> Self {
-        Self {
-            core: Box::new(core),
-            info: info,
-        }
-    }
 }
