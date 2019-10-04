@@ -1,12 +1,12 @@
 [package]
 name = "cargo-flash"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Noah Hüsser <yatekii@yatekii.ch>", "Dominik Boehi <dominik.boehi@gmail.ch>"]
 edition = "2018"
 description = "A utility to flash ARM cores with ELFs directly from within cargo."
 documentation = "https://docs.rs/cargo-flash/"
-homepage = "https://github.com/probe-rs/probe-rs/cargo-flash"
-repository = "https://github.com/probe-rs/probe-rs/cargo-flash"
+homepage = "https://github.com/probe-rs/probe-rs"
+repository = "https://github.com/probe-rs/probe-rs"
 readme = "README.md"
 categories = ["embedded", "hardware-support", "development-tools::debugging"]
 keywords = ["embedded"]
@@ -17,7 +17,7 @@ structopt = "0.3.2"
 cargo-project = "0.2.2"
 failure = "0.1.5"
 colored = "1.8.0"
-debug-probe = { path = "../probe", version = "0.1.0" }
-stlink = { path = "../probe/stlink", version = "0.1.0" }
-daplink = { path = "../probe/daplink", version = "0.1.0" }
-coresight = { path = "../coresight", version = "0.1.0" }
+debug-probe = { path = "../probe", version = "0.1.1" }
+stlink = { path = "../probe/stlink", version = "0.1.1" }
+daplink = { path = "../probe/daplink", version = "0.1.1" }
+coresight = { path = "../coresight", version = "0.1.1" }
