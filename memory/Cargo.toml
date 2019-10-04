@@ -1,12 +1,12 @@
 [package]
 name = "arm-memory"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Noah Hüsser <yatekii@yatekii.ch>", "Dominik Boehi <dominik.boehi@gmail.ch>"]
 edition = "2018"
 description = "A collection of memory inspection tools to comminicate with ARM chip memories."
 documentation = "https://docs.rs/memory/"
-homepage = "https://github.com/probe-rs/probe-rs/memory"
-repository = "https://github.com/probe-rs/probe-rs/memory"
+homepage = "https://github.com/probe-rs/probe-rs"
+repository = "https://github.com/probe-rs/probe-rs"
 readme = "../README.md"
 categories = ["embedded", "hardware-support", "development-tools::debugging"]
 keywords = ["embedded"]
@@ -17,6 +17,6 @@ log = "0.4.6"
 num = "0.2"
 num-traits = "0.2.8"
 enum-primitive-derive = "0.1.2"
-coresight = { path = "../coresight", version = "0.1.0" }
+coresight = { path = "../coresight", version = "0.1.1" }
 jep106 = "0.2.2"
 scroll = "0.9.2"

@@ -1,12 +1,12 @@
 [package]
 name = "stlink"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Noah Hüsser <yatekii@yatekii.ch>", "Dominik Boehi <dominik.boehi@gmail.ch>"]
 edition = "2018"
 description = "A driver to communicate with any stlink debug adapter."
 documentation = "https://docs.rs/stlink/"
-homepage = "https://github.com/probe-rs/probe-rs/stlink"
-repository = "https://github.com/probe-rs/probe-rs/stlink"
+homepage = "https://github.com/probe-rs/probe-rs"
+repository = "https://github.com/probe-rs/probe-rs"
 readme = "../../README.md"
 categories = ["embedded", "hardware-support", "development-tools::debugging"]
 keywords = ["embedded"]
@@ -15,8 +15,8 @@ license = "MIT OR Apache-2.0"
 [dependencies]
 rusb = "0.5.1"
 lazy_static = "1.2.0"
-debug-probe = { path = "../", version = "0.1.0" }
-arm-memory = { path = "../../memory", version = "0.1.0" }
-coresight = { path = "../../coresight", version = "0.1.0" }
+debug-probe = { path = "../", version = "0.1.1" }
+arm-memory = { path = "../../memory", version = "0.1.1" }
+coresight = { path = "../../coresight", version = "0.1.1" }
 scroll = "0.9.2"
 rental = "0.5.4"

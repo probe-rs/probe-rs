@@ -1,20 +1,20 @@
 [package]
 name = "debug-probe"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Noah Hüsser <yatekii@yatekii.ch>", "Dominik Boehi <dominik.boehi@gmail.ch>"]
 edition = "2018"
 description = "A collection of debug probe interface definitions to communicate with ARM chips."
 documentation = "https://docs.rs/probe/"
-homepage = "https://github.com/probe-rs/probe-rs/probe"
-repository = "https://github.com/probe-rs/probe-rs/probe"
+homepage = "https://github.com/probe-rs/probe-rs"
+repository = "https://github.com/probe-rs/probe-rs"
 readme = "../README.md"
 categories = ["embedded", "hardware-support", "development-tools::debugging"]
 keywords = ["embedded"]
 license = "MIT OR Apache-2.0"
 
 [dependencies]
-arm-memory = { path = "../memory", version = "0.1.0" }
-coresight = { path = "../coresight", version = "0.1.0"}
+arm-memory = { path = "../memory", version = "0.1.1" }
+coresight = { path = "../coresight", version = "0.1.1"}
 query_interface = "0.3.5"
 log = "0.4.6"
 bitfield = "0.13.2"
