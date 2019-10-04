@@ -30,7 +30,6 @@ use debug_probe::{
     },
     session::Session,
     target::Target,
-    flash_writer::FlashError,
 };
 
 #[derive(Debug, StructOpt)]
@@ -185,7 +184,6 @@ where
 pub enum DownloadError {
     DebugProbe(DebugProbeError),
     AccessPort(AccessPortError),
-    FlashError(FlashError),
     StdIO(std::io::Error),
     Quit,
 }
@@ -197,7 +195,6 @@ impl Error for DownloadError {
         match self {
             DebugProbe(ref e) => Some(e),
             AccessPort(ref e) => Some(e),
-            FlashError(ref e) => Some(e),
             StdIO(ref e) => Some(e),
             Quit => None,
         }
@@ -211,7 +208,6 @@ impl fmt::Display for DownloadError {
         match self {
             DebugProbe(ref e) => e.fmt(f),
             AccessPort(ref e) => e.fmt(f),
-            FlashError(ref e) => e.fmt(f),
             StdIO(ref e) => e.fmt(f),
             Quit => write!(f, "Quit error..."),
         }
@@ -233,11 +229,5 @@ impl From<DebugProbeError> for DownloadError {
 impl From<std::io::Error> for DownloadError {
     fn from(error: std::io::Error) -> Self {
         DownloadError::StdIO(error)
-    }
-}
-
-impl From<FlashError> for DownloadError {
-    fn from(error: FlashError) -> Self {
-        DownloadError::FlashError(error)
     }
 }

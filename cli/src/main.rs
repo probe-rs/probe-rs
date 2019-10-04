@@ -1,6 +1,5 @@
 mod common;
 mod info;
-mod flash_writer;
 
 use std::path::PathBuf;
 use arm_memory::{
@@ -93,14 +92,6 @@ enum CLI {
         words: u32,
     },
     /// Download memory to attached target
-    #[structopt(name = "download")]
-    Download {
-        /// The number associated with the ST-Link to use
-        n: usize,
-        /// The path to the file to be downloaded to the flash
-        path: String,
-    },
-    /// Download memory to attached target
     #[structopt(name = "d")]
     D {
         /// The number associated with the ST-Link to use
@@ -138,7 +129,6 @@ fn main() {
         CLI::Reset { n, assert } => reset_target_of_device(n, assert).unwrap(),
         CLI::Debug { n, exe, dump } => debug(n, exe, dump).unwrap(),
         CLI::Dump { n, loc, words } => dump_memory(n, loc, words).unwrap(),
-        CLI::Download { n, path } => download_program(n, path).unwrap(),
         CLI::D { n, path } => download_program_fast(n, path).unwrap(),
         CLI::Erase { n, loc } => erase_page(n, loc).unwrap(),
         CLI::Trace { n, loc } => trace_u32_on_target(n, loc).unwrap(),
@@ -184,35 +174,6 @@ fn dump_memory(n: usize, loc: u32, words: u32) -> Result<(), CliError> {
         println!("Read {:?} words in {:?}", words, elapsed);
 
         Ok(())
-    })
-}
-
-fn download_program(n: usize, path: String) -> Result<(), CliError> {
-    let target = debug_probe::target::Target::new(
-        debug_probe::target::m0::M0::default(),
-        debug_probe::target::nrf51822::nRF51822(),
-    );
-    with_device(n as usize, target, |mut session| {
-
-        // Start timer.
-        // let instant = Instant::now();
-
-        // let NVMC = 0x4001E000;
-        // let NVMC_CONFIG = NVMC + 0x504;
-        // let WEN: u32 = 0x1;
-        // let loc = 220 * 1024;
-
-        // link.write(NVMC_CONFIG, WEN).or_else(|e| Err(Error::AccessPort(e)))?;
-        // link.write(loc, 0x0u32).or_else(|e| Err(Error::AccessPort(e)))?;
-
-        // // Stop timer.
-        // let elapsed = instant.elapsed();
-
-        flash_writer::download_hex(path, &mut session, 1024)?;
-
-        Ok(())
-
-        // Ok(())
     })
 }
 

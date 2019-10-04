@@ -18,8 +18,6 @@ use debug_probe::debug_probe::{
     DebugProbeType,
 };
 
-use debug_probe::flash_writer::FlashError;
-
 use std::error::Error; 
 use std::fmt;
 
@@ -27,7 +25,6 @@ use std::fmt;
 pub enum CliError {
     DebugProbe(DebugProbeError),
     AccessPort(AccessPortError),
-    FlashError(FlashError),
     StdIO(std::io::Error),
     Quit,
 }
@@ -39,7 +36,6 @@ impl Error for CliError {
         match self {
             DebugProbe(ref e) => Some(e),
             AccessPort(ref e) => Some(e),
-            FlashError(ref e) => Some(e),
             StdIO(ref e) => Some(e),
             Quit => None,
         }
@@ -53,7 +49,6 @@ impl fmt::Display for CliError {
         match self {
             DebugProbe(ref e) => e.fmt(f),
             AccessPort(ref e) => e.fmt(f),
-            FlashError(ref e) => e.fmt(f),
             StdIO(ref e) => e.fmt(f),
             Quit => write!(f, "Quit error..."),
         }
@@ -75,12 +70,6 @@ impl From<DebugProbeError> for CliError {
 impl From<std::io::Error> for CliError {
     fn from(error: std::io::Error) -> Self {
         CliError::StdIO(error)
-    }
-}
-
-impl From<FlashError> for CliError {
-    fn from(error: FlashError) -> Self {
-        CliError::FlashError(error)
     }
 }
 
