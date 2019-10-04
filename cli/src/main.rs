@@ -154,10 +154,7 @@ fn list_connected_devices() {
 }
 
 fn dump_memory(n: usize, loc: u32, words: u32) -> Result<(), CliError> {
-    let target = probe::target::Target::new(
-        probe::target::m0::M0::default(),
-        probe::target::nrf51822::nRF51822(),
-    );
+    let target = probe::target::nrf51822::nRF51822();
     with_device(n as usize, target, |mut session| {
         let mut data = vec![0 as u32; words as usize];
 
@@ -182,16 +179,13 @@ fn dump_memory(n: usize, loc: u32, words: u32) -> Result<(), CliError> {
 }
 
 fn download_program_fast(n: usize, path: String) -> Result<(), CliError> {
-    let target = probe::target::Target::new(
-        probe::target::m0::M0::default(),
-        probe::target::nrf51822::nRF51822(),
-    );
+    let target = probe::target::nrf51822::nRF51822();
     with_device(n as usize, target, |mut session| {
 
         // Start timer.
         // let instant = Instant::now();
 
-        let mm = session.target.info.memory_map.clone();
+        let mm = session.target.memory_map.clone();
         let fd = probe::flash::download::FileDownloader::new();
         fd.download_file(
             &mut session,
@@ -211,10 +205,7 @@ fn download_program_fast(n: usize, path: String) -> Result<(), CliError> {
 
 #[allow(non_snake_case)]
 fn erase_page(n: usize, loc: u32) -> Result<(), CliError> {
-    let target = probe::target::Target::new(
-        probe::target::m0::M0::default(),
-        probe::target::nrf51822::nRF51822(),
-    );
+    let target = probe::target::nrf51822::nRF51822();
     with_device(n, target, |mut session| {
 
         // TODO: Generic flash erase
@@ -232,10 +223,7 @@ fn erase_page(n: usize, loc: u32) -> Result<(), CliError> {
 }
 
 fn reset_target_of_device(n: usize, _assert: Option<bool>) -> Result<(), CliError> {
-    let target = probe::target::Target::new(
-        probe::target::m0::M0::default(),
-        probe::target::nrf51822::nRF51822(),
-    );
+    let target = probe::target::nrf51822::nRF51822();
     with_device(n as usize, target, |mut session| {
         //link.get_interface_mut::<DebugProbe>().unwrap().target_reset().or_else(|e| Err(Error::DebugProbe(e)))?;
         session.probe.target_reset()?;
@@ -255,10 +243,7 @@ fn trace_u32_on_target(n: usize, loc: u32) -> Result<(), CliError> {
 
     let start = Instant::now();
 
-    let target = probe::target::Target::new(
-        probe::target::m0::M0::default(),
-        probe::target::nrf51822::nRF51822(),
-    );
+    let target = probe::target::nrf51822::nRF51822();
     with_device(n, target, |mut session| {
         loop {
             // Prepare read.
@@ -348,10 +333,7 @@ fn debug(n: usize, exe: Option<PathBuf>, dump: Option<PathBuf>) -> Result<(), Cl
         }
     };
 
-    let target = probe::target::Target::new(
-        probe::target::m0::M0::default(),
-        probe::target::nrf51822::nRF51822(),
-    );
+    let target = probe::target::nrf51822::nRF51822();
     match dump {
         None => with_device(n, target, &runner),
         Some(p) => with_dump(&p, &runner),

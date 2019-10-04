@@ -1,8 +1,8 @@
 use super::*;
 use crate::flash::*;
 
-pub fn nRF51822() -> TargetInfo {
-    TargetInfo {
+pub fn nRF51822() -> Target {
+    Target {
         flash_algorithm: FlashAlgorithm {
             load_address: 0x20000000,
             instructions: &[
@@ -68,5 +68,6 @@ pub fn nRF51822() -> TargetInfo {
                 is_testable: true,
             }),
         ],
+        core: Box::new(crate::target::m0::M0::default())
     }
 }

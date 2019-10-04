@@ -135,10 +135,8 @@ where
 
     let probe = MasterProbe::from_specific_probe(Box::new(fake_probe));
 
-    let target = Target::new(
-        core,
-        probe::target::nrf51822::nRF51822(),
-    );
+    let mut target = probe::target::nrf51822::nRF51822();
+    target.core = Box::new(core);
 
     let session = Session::new(target, probe);
 
