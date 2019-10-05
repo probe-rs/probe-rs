@@ -116,16 +116,13 @@ fn main_try() -> Result<(), failure::Error> {
 }
 
 fn download_program_fast(n: usize, path: String) -> Result<(), DownloadError> {
-    let target = debug_probe::target::Target::new(
-        debug_probe::target::m0::M0::default(),
-        debug_probe::target::nrf51822::nRF51822(),
-    );
+    let target = debug_probe::target::nrf51822::nRF51822();
     with_device(n as usize, target, |mut session| {
 
         // Start timer.
         let instant = Instant::now();
 
-        let mm = session.target.info.memory_map.clone();
+        let mm = session.target.memory_map.clone();
         let fd = debug_probe::flash::download::FileDownloader::new();
         fd.download_file(
             &mut session,
