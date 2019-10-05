@@ -49,24 +49,24 @@ fn parse_hex(src: &str) -> Result<u32, std::num::ParseIntError> {
 
 #[derive(StructOpt)]
 #[structopt(
-    name = "ST-Link CLI",
-    about = "Get info about the connected ST-Links",
+    name = "Probe-rs CLI",
+    about = "A CLI for on top of the debug probe capabilities provided by probe-rs",
     author = "Noah Hüsser <yatekii@yatekii.ch> / Dominik Böhi <dominik.boehi@gmail.ch>"
 )]
 enum CLI {
-    /// List all connected ST-Links
+    /// List all connected debug probes
     #[structopt(name = "list")]
     List {},
-    /// Gets infos about the selected ST-Link
+    /// Gets infos about the selected debug probe and connected target
     #[structopt(name = "info")]
     Info {
-        /// The number associated with the ST-Link to use
+        /// The number associated with the debug probe to use
         n: usize,
     },
-    /// Resets the target attached to the selected ST-Link
+    /// Resets the target attached to the selected debug probe
     #[structopt(name = "reset")]
     Reset {
-        /// The number associated with the ST-Link to use
+        /// The number associated with the debug probe to use
         n: usize,
         /// Whether the reset pin should be asserted or deasserted. If left open, just pulse it
         assert: Option<bool>,
@@ -87,7 +87,7 @@ enum CLI {
     /// Dump memory from attached target
     #[structopt(name = "dump")]
     Dump {
-        /// The number associated with the ST-Link to use
+        /// The number associated with the debug probe to use
         n: usize,
         /// The address of the memory to dump from the target (in hexadecimal without 0x prefix)
         #[structopt(parse(try_from_str = "parse_hex"))]
@@ -98,14 +98,14 @@ enum CLI {
     /// Download memory to attached target
     #[structopt(name = "d")]
     D {
-        /// The number associated with the ST-Link to use
+        /// The number associated with the debug probe to use
         n: usize,
         /// The path to the file to be downloaded to the flash
         path: String,
     },
     #[structopt(name = "erase")]
     Erase {
-        /// The number associated with the ST-Link to use
+        /// The number associated with the debug probe to use
         n: usize,
         /// The address of the memory to dump from the target (in hexadecimal without 0x prefix)
         #[structopt(parse(try_from_str = "parse_hex"))]
@@ -113,7 +113,7 @@ enum CLI {
     },
     #[structopt(name = "trace")]
     Trace {
-        /// The number associated with the ST-Link to use
+        /// The number associated with the debug probe to use
         n: usize,
         /// The address of the memory to dump from the target (in hexadecimal without 0x prefix)
         #[structopt(parse(try_from_str = "parse_hex"))]
