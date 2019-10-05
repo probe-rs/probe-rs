@@ -321,7 +321,7 @@ impl<'a, O: Operation> ActiveFlasher<'a, O> {
 
     fn call_function_and_wait(&mut self, pc: u32, r0: Option<u32>, r1: Option<u32>, r2: Option<u32>, r3: Option<u32>, init: bool) -> Result<u32, FlasherError> {
         self.call_function(pc, r0, r1, r2, r3, init)?;
-        Ok(self.wait_for_completion())
+        self.wait_for_completion()
     }
 
     fn call_function(&mut self, pc: u32, r0: Option<u32>, r1: Option<u32>, r2: Option<u32>, r3: Option<u32>, init: bool) -> Result<(), FlasherError> {
@@ -356,13 +356,14 @@ impl<'a, O: Operation> ActiveFlasher<'a, O> {
         Ok(())
     }
 
-    pub fn wait_for_completion(&mut self) -> u32 {
+    pub fn wait_for_completion(&mut self) -> Result<u32, FlasherError> {
         log::debug!("Waiting for routine call completion.");
         let regs = self.session.target.basic_register_addresses;
 
         while self.session.target.core.wait_for_core_halted(&mut self.session.probe).is_err() {}
 
-        self.session.target.core.read_core_reg(&mut self.session.probe, regs.R0).unwrap()
+        let r = self.session.target.core.read_core_reg(&mut self.session.probe, regs.R0)?;
+        Ok(r)
     }
 
     pub fn read_block32(&mut self, address: u32, data: &mut [u32]) -> Result<(), FlasherError> {

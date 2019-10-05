@@ -671,7 +671,8 @@ impl<'a> FlashBuilder<'a> {
                     }
 
                     let result = active.wait_for_completion();
-                    if result != 0 {
+                    if let Ok(0) = result {
+                    } else {
                         // TODO: Fix me.
                         // return Err(FlashBuilderError::ProgramPage(page.address, result));
                     }
@@ -772,7 +773,9 @@ impl<'a> FlashBuilder<'a> {
                         }
 
                         let result = active.wait_for_completion();
-                        if result != 0 {
+                        let result = active.wait_for_completion();
+                        if let Ok(0) = result {
+                        } else {
                             // TODO: Fix me.
                             // return Err(FlashBuilderError::ProgramPage(page.address, result));
                         }
