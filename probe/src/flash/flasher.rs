@@ -271,18 +271,6 @@ impl<'a> Flasher<'a> {
 
         Ok(())
     }
-
-        // def flash_block(self, addr, data, smart_flash=True, chip_erase=None, progress_cb=None, fast_verify=False):
-        // """!
-        // @brief Flash a block of data.
-        // """
-        // assert self.region is not None
-        // assert self.region.contains_range(start=addr, length=len(data))
-        
-        // fb = FlashBuilder(self)
-        // fb.add_data(addr, data)
-        // info = fb.program(chip_erase, progress_cb, smart_flash, fast_verify)
-        // return info
 }
 
 pub struct ActiveFlasher<'a, O: Operation> {
