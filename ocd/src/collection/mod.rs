@@ -10,4 +10,6 @@ pub fn get_target(name: impl Into<String>) -> Option<Target> {
 
     let name = name.into();
     map.get(&name[..]).map(|creator| creator())
+
+    // TODO: If not found try load chip from definition files (yaml, json, toml, you name it).
 }
