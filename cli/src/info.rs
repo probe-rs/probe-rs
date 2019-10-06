@@ -3,7 +3,7 @@ use crate::common::{
     with_device,
 };
 
-use coresight::{
+use ocd::coresight::{
     access_ports::{
         generic_ap::{
             GenericAP,
@@ -24,7 +24,7 @@ use coresight::{
 };
 
 pub fn show_info_of_device(n: usize) -> Result<(), CliError> {
-    let target = debug_probe::target::nrf51822::nRF51822();
+    let target = ocd::probe::target::nrf51822::nRF51822();
 
     with_device(n, target, |mut session| {
 
@@ -88,12 +88,12 @@ pub fn show_info_of_device(n: usize) -> Result<(), CliError> {
                     
                     let link_ref = &mut session.probe;
 
-                    let component_table = arm_memory::romtable::CSComponent::try_parse(&link_ref.into(), baseaddr as u64);
+                    let component_table = ocd::memory::romtable::CSComponent::try_parse(&link_ref.into(), baseaddr as u64);
 
 
                     component_table.iter().for_each(|entry| println!("{:#08x?}", entry));
 
-                    // let mut reader = memory::romtable::RomTableReader::new(&link_ref, baseaddr as u64);
+                    // let mut reader = crate::memory::romtable::RomTableReader::new(&link_ref, baseaddr as u64);
 
                     // for e in reader.entries() {
                     //     if let Ok(e) = e {

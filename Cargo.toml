@@ -1,12 +1,6 @@
 [workspace]
 members = [
-    "coresight",
-    "probe",
-    "probe/stlink",
-    "probe/daplink",
-    "debug",
+    "ocd",
     "cli",
-    "memory",
     "cargo-flash",
-    # "sample"
 ]

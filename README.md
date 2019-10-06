@@ -44,7 +44,7 @@ cargo run -p cli d 0 program.elf
 Which should flash the ELF file. Don't expect any output. If you want some output, use
 
 ```
-RUST_LOG=probe::flash=debug cargo run d 0 program.elf
+RUST_LOG=crate::probe::flash=debug cargo run d 0 program.elf
 ```
 
 ### CLI

@@ -16,21 +16,21 @@ use std::{
 use structopt::StructOpt;
 use colored::*;
 
-use coresight::{
+use ocd::coresight::{
     access_ports::{
         AccessPortError,
     },
 };
-use debug_probe::{
+use ocd::probe::{
     debug_probe::{
         MasterProbe,
         DebugProbe,
         DebugProbeError,
         DebugProbeType,
     },
-    session::Session,
     target::Target,
 };
+use ocd::session::Session;
 
 #[derive(Debug, StructOpt)]
 struct Opt {
@@ -116,18 +116,18 @@ fn main_try() -> Result<(), failure::Error> {
 }
 
 fn download_program_fast(n: usize, path: String) -> Result<(), DownloadError> {
-    let target = debug_probe::target::nrf51822::nRF51822();
+    let target = ocd::probe::target::nrf51822::nRF51822();
     with_device(n as usize, target, |mut session| {
 
         // Start timer.
         let instant = Instant::now();
 
         let mm = session.target.memory_map.clone();
-        let fd = debug_probe::flash::download::FileDownloader::new();
+        let fd = ocd::probe::flash::download::FileDownloader::new();
         fd.download_file(
             &mut session,
             std::path::Path::new(&path.as_str()),
-            debug_probe::flash::download::Format::Elf,
+            ocd::probe::flash::download::Format::Elf,
             &mm
         ).unwrap();
 
@@ -149,24 +149,24 @@ where
     for<'a> F: FnOnce(Session) -> Result<(), DownloadError>
 {
     let device = {
-        let mut list = daplink::tools::list_daplink_devices();
-        list.extend(stlink::tools::list_stlink_devices());
+        let mut list = ocd::probe::daplink::tools::list_daplink_devices();
+        list.extend(ocd::probe::stlink::tools::list_stlink_devices());
 
         list.remove(n)
     };
 
     let probe = match device.probe_type {
         DebugProbeType::DAPLink => {
-            let mut link = daplink::DAPLink::new_from_probe_info(&device)?;
+            let mut link = ocd::probe::daplink::DAPLink::new_from_probe_info(&device)?;
 
-            link.attach(Some(debug_probe::protocol::WireProtocol::Swd))?;
+            link.attach(Some(ocd::probe::protocol::WireProtocol::Swd))?;
             
             MasterProbe::from_specific_probe(link)
         },
         DebugProbeType::STLink => {
-            let mut link = stlink::STLink::new_from_probe_info(&device)?;
+            let mut link = ocd::probe::stlink::STLink::new_from_probe_info(&device)?;
 
-            link.attach(Some(debug_probe::protocol::WireProtocol::Swd))?;
+            link.attach(Some(ocd::probe::protocol::WireProtocol::Swd))?;
             
             MasterProbe::from_specific_probe(link)
         },
