@@ -308,7 +308,7 @@ impl Core for M0 {
 
         let reset_val = (0x05FA << 16)| (1 << 2);
 
-        let AIRCR: u32 = 0xE000_ED0C;
+        const AIRCR: u32 = 0xE000_ED0C;
 
         mi.write32(AIRCR, reset_val)?;
 
@@ -377,58 +377,58 @@ impl FakeM0 {
 }
 
 impl Core for FakeM0 {
-    fn wait_for_core_halted(&self, mi: &mut MasterProbe) -> Result<(), DebugProbeError> {
+    fn wait_for_core_halted(&self, _mi: &mut MasterProbe) -> Result<(), DebugProbeError> {
         unimplemented!();
     }
     
-    fn halt(&self, mi: &mut MasterProbe) -> Result<CpuInformation, DebugProbeError> {
+    fn halt(&self, _mi: &mut MasterProbe) -> Result<CpuInformation, DebugProbeError> {
         unimplemented!()
     }
 
-    fn run(&self, mi: &mut MasterProbe) -> Result<(), DebugProbeError> {
+    fn run(&self, _mi: &mut MasterProbe) -> Result<(), DebugProbeError> {
         unimplemented!()
     }
 
     /// Steps one instruction and then enters halted state again.
-    fn step(&self, mi: &mut MasterProbe) -> Result<CpuInformation, DebugProbeError> {
+    fn step(&self, _mi: &mut MasterProbe) -> Result<CpuInformation, DebugProbeError> {
         unimplemented!()
     }
 
-    fn reset(&self, mi: &mut MasterProbe) -> Result<(), DebugProbeError> {
+    fn reset(&self, _mi: &mut MasterProbe) -> Result<(), DebugProbeError> {
         unimplemented!()
     }
 
-    fn read_core_reg(&self, mi: &mut MasterProbe, addr: CoreRegisterAddress) -> Result<u32, DebugProbeError> {
+    fn read_core_reg(&self, _mi: &mut MasterProbe, addr: CoreRegisterAddress) -> Result<u32, DebugProbeError> {
         let index: u32 = addr.into();
 
         self.dump.regs.get(index as usize).map(|v| *v).ok_or(DebugProbeError::UnknownError)
     }
 
-    fn write_core_reg(&self, mi: &mut MasterProbe, addr: CoreRegisterAddress, value: u32) -> Result<(), DebugProbeError> {
+    fn write_core_reg(&self, _mi: &mut MasterProbe, _addr: CoreRegisterAddress, _value: u32) -> Result<(), DebugProbeError> {
         unimplemented!()
     }
 
-    fn get_available_breakpoint_units(&self, mi: &mut MasterProbe) -> Result<u32, DebugProbeError> {
+    fn get_available_breakpoint_units(&self, _mi: &mut MasterProbe) -> Result<u32, DebugProbeError> {
         unimplemented!()
     }
 
-    fn enable_breakpoints(&self, mi: &mut MasterProbe, state: bool) -> Result<(), DebugProbeError> {
+    fn enable_breakpoints(&self, _mi: &mut MasterProbe, _state: bool) -> Result<(), DebugProbeError> {
         unimplemented!()
     }
 
-    fn set_breakpoint(&self, mi: &mut MasterProbe, addr: u32) -> Result<(), DebugProbeError> {
+    fn set_breakpoint(&self, _mi: &mut MasterProbe, _addr: u32) -> Result<(), DebugProbeError> {
         unimplemented!()
     }
 
-    fn enable_breakpoint(&self, mi: &mut MasterProbe, addr: u32) -> Result<(), DebugProbeError> {
+    fn enable_breakpoint(&self, _mi: &mut MasterProbe, _addr: u32) -> Result<(), DebugProbeError> {
         unimplemented!()
     }
 
-    fn disable_breakpoint(&self, mi: &mut MasterProbe, addr: u32) -> Result<(), DebugProbeError> { 
+    fn disable_breakpoint(&self, _mi: &mut MasterProbe, _addr: u32) -> Result<(), DebugProbeError> { 
         unimplemented!()
     }
 
-    fn read_block8(&self, mi: &mut MasterProbe, address: u32, data: &mut [u8]) -> Result<(), DebugProbeError> {
+    fn read_block8(&self, _mi: &mut MasterProbe, address: u32, data: &mut [u8]) -> Result<(), DebugProbeError> {
         debug!("Read from dump: addr=0x{:08x}, len={}", address, data.len());
 
         if (address < self.dump.stack_addr) || (address as usize > (self.dump.stack_addr as usize + self.dump.stack.len())) {

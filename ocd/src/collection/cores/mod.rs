@@ -1,7 +1,5 @@
 pub mod m0;
 
-use serde::{ Serialize, Deserialize };
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CortexDump {
     pub regs:  [u32;16],

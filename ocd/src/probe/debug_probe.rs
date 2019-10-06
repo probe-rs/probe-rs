@@ -309,7 +309,7 @@ impl FakeProbe {
 }
 
 impl DebugProbe for FakeProbe {
-    fn new_from_probe_info(info: &DebugProbeInfo) -> Result<Box<Self>, DebugProbeError> where Self: Sized {
+    fn new_from_probe_info(_info: &DebugProbeInfo) -> Result<Box<Self>, DebugProbeError> where Self: Sized {
         Err(DebugProbeError::ProbeCouldNotBeCreated)
     }
 
@@ -339,12 +339,12 @@ impl DebugProbe for FakeProbe {
 
 impl DAPAccess for FakeProbe {
     /// Reads the DAP register on the specified port and address
-    fn read_register(&mut self, port: Port, addr: u16) -> Result<u32, DebugProbeError> {
+    fn read_register(&mut self, _port: Port, _addr: u16) -> Result<u32, DebugProbeError> {
         Err(DebugProbeError::UnknownError)
     }
 
     /// Writes a value to the DAP register on the specified port and address
-    fn write_register(&mut self, port: Port, addr: u16, value: u32) -> Result<(), DebugProbeError> {
+    fn write_register(&mut self, _port: Port, _addr: u16, _value: u32) -> Result<(), DebugProbeError> {
         Err(DebugProbeError::UnknownError)
     }
 }

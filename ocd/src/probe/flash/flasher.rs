@@ -15,12 +15,12 @@ const ANALYZER: [u32; 49] = [
     0x00000042,
 ];
 
-#[derive(Debug, Default, Copy, Clone)]
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct FlashAlgorithm {
     /// Memory address where the flash algo instructions will be loaded to.
     pub load_address: u32,
     /// List of 32-bit words containing the position-independant code for the algo.
-    pub instructions: &'static [u32],
+    pub instructions: Vec<u32>,
     /// Address of the `Init()` entry point. Optional.
     pub pc_init: Option<u32>,
     /// Address of the `UnInit()` entry point. Optional.
@@ -41,7 +41,7 @@ pub struct FlashAlgorithm {
     /// An optional list of base addresses for page buffers. The buffers must be at
     /// least as large as the region's page_size attribute. If at least 2 buffers are included in
     /// the list, then double buffered programming will be enabled.
-    pub page_buffers: &'static [u32],
+    pub page_buffers: Vec<u32>,
     pub min_program_length: Option<u32>,
     /// Whether the CRC32-based analyzer is supported.
     pub analyzer_supported: bool,
@@ -145,10 +145,10 @@ impl<'a> Flasher<'a> {
         clock: Option<u32>
     ) -> Result<ActiveFlasher<'b, O>, FlasherError> {
         log::debug!("Initializing the flash algorithm.");
-        let algo = self.session.target.flash_algorithm;
+        let algo = self.session.target.flash_algorithm.clone();
 
         use capstone::arch::*;
-        let mut cs = capstone::Capstone::new()
+        let cs = capstone::Capstone::new()
             .arm()
             .mode(arm::ArchMode::Thumb)
             .endian(capstone::Endian::Little)
@@ -182,7 +182,7 @@ impl<'a> Flasher<'a> {
 
         // Load flash algorithm code into target RAM.
         log::debug!("Loading algorithm into RAM at address 0x{:08x}", algo.load_address);
-        self.session.probe.write_block32(algo.load_address, algo.instructions)?;
+        self.session.probe.write_block32(algo.load_address, algo.instructions.as_slice())?;
 
         let mut data = vec![0; algo.instructions.len()];
         self.session.probe.read_block32(algo.load_address, &mut data)?;
@@ -254,7 +254,7 @@ impl<'a> Flasher<'a> {
     }
 
     pub fn flash_block(
-        mut self,
+        self,
         address: u32,
         data: &[u8],
         chip_erase: Option<bool>,
@@ -295,7 +295,7 @@ impl<'a, O: Operation> ActiveFlasher<'a, O> {
 
     pub fn uninit<'b, 's: 'b>(&'s mut self) -> Result<Flasher<'b>, FlasherError> {
         log::debug!("Running uninit routine.");
-        let algo = self.session.target.flash_algorithm;
+        let algo = self.session.target.flash_algorithm.clone();
 
         if let Some(pc_uninit) = algo.pc_uninit {
             let result = self.call_function_and_wait(
@@ -327,7 +327,7 @@ impl<'a, O: Operation> ActiveFlasher<'a, O> {
     fn call_function(&mut self, pc: u32, r0: Option<u32>, r1: Option<u32>, r2: Option<u32>, r3: Option<u32>, init: bool) -> Result<(), FlasherError> {
         log::debug!("Calling routine {:08x}({:?}, {:?}, {:?}, {:?}, init={})", pc, r0, r1, r2, r3, init);
         
-        let algo = self.session.target.flash_algorithm;
+        let algo = self.session.target.flash_algorithm.clone();
         let regs = self.session.target.core.registers();
 
         [
@@ -379,7 +379,7 @@ impl<'a, O: Operation> ActiveFlasher<'a, O> {
 
 impl <'a> ActiveFlasher<'a, Erase> {
     pub fn erase_all(&mut self) -> Result<(), FlasherError> {
-        let algo = self.session.target.flash_algorithm;
+        let algo = self.session.target.flash_algorithm.clone();
 
         if let Some(pc_erase_all) = algo.pc_erase_all {
             let result = self.call_function_and_wait(
@@ -403,7 +403,7 @@ impl <'a> ActiveFlasher<'a, Erase> {
 
     pub fn erase_sector(&mut self, address: u32) -> Result<(), FlasherError> {
         log::debug!("Erasing sector at address 0x{:08x}.", address);
-        let algo = self.session.target.flash_algorithm;
+        let algo = self.session.target.flash_algorithm.clone();
 
         let result = self.call_function_and_wait(
             algo.pc_erase_sector,
@@ -423,7 +423,7 @@ impl <'a> ActiveFlasher<'a, Erase> {
     }
 
     pub fn compute_crcs(&mut self, sectors: &Vec<(u32, u32)>) -> Result<Vec<u32>, FlasherError> {
-        let algo = self.session.target.flash_algorithm;
+        let algo = self.session.target.flash_algorithm.clone();
         if algo.analyzer_supported {
             let mut data = vec![];
 
@@ -472,7 +472,7 @@ impl <'a> ActiveFlasher<'a, Erase> {
 
 impl <'a> ActiveFlasher<'a, Program> {
     pub fn program_page(&mut self, address: u32, bytes: &[u8]) -> Result<(), FlasherError> {
-        let algo = self.session.target.flash_algorithm;
+        let algo = self.session.target.flash_algorithm.clone();
 
         // TODO: Prevent security settings from locking the device.
 
@@ -496,7 +496,7 @@ impl <'a> ActiveFlasher<'a, Program> {
     }
 
     pub fn start_program_page_with_buffer(&mut self, address: u32, buffer_number: u32) -> Result<(), FlasherError> {
-        let algo = self.session.target.flash_algorithm;
+        let algo = self.session.target.flash_algorithm.clone();
 
         // Check the buffer number.
         if buffer_number < algo.page_buffers.len() as u32 {
@@ -516,7 +516,7 @@ impl <'a> ActiveFlasher<'a, Program> {
     }
 
     pub fn load_page_buffer(&mut self, _address: u32, bytes: &[u8], buffer_number: u32) -> Result<(), FlasherError> {
-        let algo = self.session.target.flash_algorithm;
+        let algo = self.session.target.flash_algorithm.clone();
 
         // Check the buffer number.
         if buffer_number < algo.page_buffers.len() as u32 {
@@ -532,7 +532,7 @@ impl <'a> ActiveFlasher<'a, Program> {
     }
 
     pub fn program_phrase(&mut self, address: u32, bytes: &[u8]) -> Result<(), FlasherError> {
-        let algo = self.session.target.flash_algorithm;
+        let algo = self.session.target.flash_algorithm.clone();
 
         // Get the minimum programming length. If none was specified, use the page size.
         let min_len = if let Some(min_program_length) = algo.min_program_length {

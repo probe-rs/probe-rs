@@ -1,13 +1,23 @@
-use crate::probe::flash::{
-    flasher::FlashAlgorithm,
-    memory::{
-        MemoryRegion,
-    }
+use serde::de::{
+    Error,
+    Unexpected,
 };
-use crate::probe::debug_probe::{
-    MasterProbe,
-    DebugProbeError,
-    CpuInformation,
+
+use crate::{
+    probe::{
+        flash::{
+            flasher::FlashAlgorithm,
+            memory::{
+                MemoryRegion,
+            },
+        },
+        debug_probe::{
+            MasterProbe,
+            DebugProbeError,
+            CpuInformation,
+        },
+    },
+    collection::get_core,
 };
 
 pub trait CoreRegister: Clone + From<u32> + Into<u32> + Sized + std::fmt::Debug {
@@ -44,7 +54,7 @@ pub struct BasicRegisterAddresses {
     pub SP: CoreRegisterAddress,
 }
 
-pub trait Core: std::fmt::Debug {
+pub trait Core: std::fmt::Debug + objekt::Clone {
     fn wait_for_core_halted(&self, mi: &mut MasterProbe) -> Result<(), DebugProbeError>;
     
     fn halt(&self, mi: &mut MasterProbe) -> Result<CpuInformation, DebugProbeError>;
@@ -75,20 +85,72 @@ pub trait Core: std::fmt::Debug {
     fn registers<'a>(&self) -> &'a BasicRegisterAddresses;
 }
 
-#[derive(Debug)]
+
+objekt::clone_trait_object!(Core);
+
+#[derive(Debug, Clone, Deserialize)]
 pub struct Target {
+    pub name: String,
     pub flash_algorithm: FlashAlgorithm,
     pub memory_map: Vec<MemoryRegion>,
     pub core: Box<dyn Core>,
 }
 
-pub fn select_target(name: Option<String>) -> Target {
+struct CoreVisitor;
+
+impl<'de> serde::de::Visitor<'de> for CoreVisitor {
+    type Value = Box<dyn Core>;
+
+    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(formatter, "an existing core name")
+    }
+
+    fn visit_str<E>(self, s: &str) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        if let Some(core) = get_core(s) {
+            Ok(core)
+        } else {
+            Err(Error::invalid_value(Unexpected::Other(&format!("Core {} does not exist.", s)), &self))
+        }
+    }
+}
+
+impl<'de> serde::Deserialize<'de> for Box<dyn Core> {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        deserializer.deserialize_identifier(CoreVisitor)
+    }
+}
+
+pub enum TargetSelectionError {
+    CouldNotAutodetect,
+    TargetNotFound(String),
+}
+
+pub fn select_target(name: Option<String>) -> Result<Target, TargetSelectionError> {
     name
         .map_or_else(
-            || identify_target(),
-            |name| crate::collection::get_target(name)
+            || identify_target()
+                .map_or_else(|| Err(TargetSelectionError::CouldNotAutodetect), |target| Ok(target)),
+            |name| crate::collection::get_target(name.clone())
+                .map_or_else(|| Err(TargetSelectionError::TargetNotFound(name)), |target| Ok(target))
         )
-        .unwrap_or_else(|| panic!("Target could not be identified. Please select one."))
+}
+
+pub fn select_target_graceful_exit(name: Option<String>) -> Target {
+    use colored::*;
+    match select_target(name) {
+        Ok(target) => target,
+        Err(TargetSelectionError::CouldNotAutodetect) => {
+            println!("    {} Target could not automatically be identified. Please specify one.", "Error".red().bold());
+            std::process::exit(0);
+        },
+        Err(TargetSelectionError::TargetNotFound(name)) => {
+            println!("    {} Specified target ({}) was not found. Please select an existing one.", "Error".red().bold(), name);
+            std::process::exit(0);
+        },
+    }
 }
 
 pub fn identify_target() -> Option<Target> {

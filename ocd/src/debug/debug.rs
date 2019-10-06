@@ -413,7 +413,7 @@ impl DebugInfo {
 
 pub struct DieCursorState<'a, 'u> {
     entries_cursor: EntriesCursor<'a, 'u>,
-    depth: isize,
+    _depth: isize,
     function_die: FunctionDie<'a, 'u>,
 }
 
@@ -434,7 +434,7 @@ impl<'a> UnitInfo<'a> {
                     while let Some(ranges) = ranges.next().unwrap() {
                         if (ranges.begin <= address) && (address < ranges.end) {
                             return Some(DieCursorState {
-                                depth,
+                                _depth: depth,
                                 function_die: current.clone(),
                                 entries_cursor,
                             });
@@ -478,7 +478,7 @@ impl<'a> UnitInfo<'a> {
 
             result = match result {
                 Complete => break,
-                RequiresMemory { address, size, space, base_type } => {
+                RequiresMemory { address, size, .. } => {
                     let mut buff = vec![0u8; size as usize];
                     session.probe.read_block8(address as u32, &mut buff).expect("Failed to read memory");
                     match size {
@@ -671,7 +671,7 @@ fn extract_file(
     }
 }
 
-fn extract_line(debug_info: &DebugInfo, attribute_value: gimli::AttributeValue<R>) -> Option<u64> {
+fn extract_line(_debug_info: &DebugInfo, attribute_value: gimli::AttributeValue<R>) -> Option<u64> {
     match attribute_value {
         gimli::AttributeValue::Udata(line) => Some(line),
         _ => None,
@@ -713,7 +713,7 @@ fn get_piece_value(session: &mut Session, p: &gimli::Piece<DwarfReader>) -> Opti
 
 }
 
-fn print_all_attributes(
+pub fn print_all_attributes(
     session: &mut Session,
     frame_base: Option<u32>,
     dwarf: &gimli::Dwarf<DwarfReader>,
@@ -749,7 +749,7 @@ fn print_all_attributes(
 
                     result = match result {
                         Complete => break,
-                        RequiresMemory { address, size, space, base_type } => {
+                        RequiresMemory { address, size, .. } => {
                             let mut buff = vec![0u8;size as usize];
                             session.probe.read_block8(address as u32, &mut buff).expect("Failed to read memory");
                             match size {
