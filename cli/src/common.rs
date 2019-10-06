@@ -1,21 +1,32 @@
 use std::path::Path;
 use std::fs::File;
 
-use debug_probe::session::Session;
-use debug_probe::target::Target;
-use coresight::{
-    access_ports::{
-        AccessPortError,
-    },
-};
-
 use ron;
 
-use debug_probe::debug_probe::{
-    MasterProbe,
-    DebugProbe,
-    DebugProbeError,
-    DebugProbeType,
+use ocd::{
+    probe::{
+        debug_probe::{
+            MasterProbe,
+            DebugProbe,
+            FakeProbe,
+            DebugProbeError,
+            DebugProbeType,
+        },
+        target::{
+            Target,
+            m0::FakeM0,
+            nrf51822,
+        },
+        daplink,
+        stlink,
+        protocol::WireProtocol,
+    },
+    coresight::{
+        access_ports::{
+            AccessPortError,
+        },
+    },
+    session::Session
 };
 
 use std::error::Error; 
@@ -92,14 +103,14 @@ where
         DebugProbeType::DAPLink => {
             let mut link = daplink::DAPLink::new_from_probe_info(&device)?;
 
-            link.attach(Some(debug_probe::protocol::WireProtocol::Swd))?;
+            link.attach(Some(WireProtocol::Swd))?;
             
             MasterProbe::from_specific_probe(link)
         },
         DebugProbeType::STLink => {
             let mut link = stlink::STLink::new_from_probe_info(&device)?;
 
-            link.attach(Some(debug_probe::protocol::WireProtocol::Swd))?;
+            link.attach(Some(WireProtocol::Swd))?;
             
             MasterProbe::from_specific_probe(link)
         },
@@ -119,12 +130,12 @@ where
     let dump = ron::de::from_reader(&mut dump_file).unwrap();
 
 
-    let core = debug_probe::target::m0::FakeM0::new(dump);
-    let fake_probe = debug_probe::debug_probe::FakeProbe::new();
+    let core = FakeM0::new(dump);
+    let fake_probe = FakeProbe::new();
 
     let probe = MasterProbe::from_specific_probe(Box::new(fake_probe));
 
-    let mut target = debug_probe::target::nrf51822::nRF51822();
+    let mut target = nrf51822::nRF51822();
     target.core = Box::new(core);
 
     let session = Session::new(target, probe);

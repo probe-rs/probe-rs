@@ -2,23 +2,30 @@ mod common;
 mod info;
 
 use std::path::PathBuf;
-use arm_memory::{
-    MI,
-};
 use std::time::Instant;
 use std::fs;
 use std::fs::File;
 use std::io::Write;
-
-use debug_probe::debug_probe::{
-    DebugProbeInfo,
-};
-
-use probe_rs_debug::debug::DebugInfo;
+use std::num::ParseIntError;
 
 use memmap;
 
-use debug_probe::target::m0::CortexDump;
+use ocd::{
+    debug::debug::DebugInfo,
+    probe::{
+        debug_probe::{
+            DebugProbeInfo,
+        },
+        target::{
+            m0::CortexDump,
+            nrf51822,
+        },
+        stlink,
+        daplink,
+    },
+    session::Session,
+    memory::MI,
+};
 
 use common::{
     with_device,
@@ -33,13 +40,11 @@ use rustyline::Editor;
 use capstone::{
     Capstone,
     Endian,
+    prelude::*,
+    arch::arm::ArchMode,
 };
-use capstone::prelude::*;
-use capstone::arch::arm::ArchMode;
 
-use debug_probe::session::Session;
-
-fn parse_hex(src: &str) -> Result<u32, std::num::ParseIntError> {
+fn parse_hex(src: &str) -> Result<u32, ParseIntError> {
     u32::from_str_radix(src, 16)
 }
 
@@ -150,7 +155,7 @@ fn list_connected_devices() {
 }
 
 fn dump_memory(n: usize, loc: u32, words: u32) -> Result<(), CliError> {
-    let target = debug_probe::target::nrf51822::nRF51822();
+    let target = nrf51822::nRF51822();
     with_device(n as usize, target, |mut session| {
         let mut data = vec![0 as u32; words as usize];
 
@@ -175,18 +180,18 @@ fn dump_memory(n: usize, loc: u32, words: u32) -> Result<(), CliError> {
 }
 
 fn download_program_fast(n: usize, path: String) -> Result<(), CliError> {
-    let target = debug_probe::target::nrf51822::nRF51822();
+    let target = nrf51822::nRF51822();
     with_device(n as usize, target, |mut session| {
 
         // Start timer.
         // let instant = Instant::now();
 
         let mm = session.target.memory_map.clone();
-        let fd = debug_probe::flash::download::FileDownloader::new();
+        let fd = ocd::probe::flash::download::FileDownloader::new();
         fd.download_file(
             &mut session,
             std::path::Path::new(&path.as_str()),
-            debug_probe::flash::download::Format::Elf,
+            ocd::probe::flash::download::Format::Elf,
             &mm
         ).unwrap();
 
@@ -201,7 +206,7 @@ fn download_program_fast(n: usize, path: String) -> Result<(), CliError> {
 
 #[allow(non_snake_case)]
 fn erase_page(n: usize, loc: u32) -> Result<(), CliError> {
-    let target = debug_probe::target::nrf51822::nRF51822();
+    let target = nrf51822::nRF51822();
     with_device(n, target, |mut session| {
 
         // TODO: Generic flash erase
@@ -219,7 +224,7 @@ fn erase_page(n: usize, loc: u32) -> Result<(), CliError> {
 }
 
 fn reset_target_of_device(n: usize, _assert: Option<bool>) -> Result<(), CliError> {
-    let target = debug_probe::target::nrf51822::nRF51822();
+    let target = nrf51822::nRF51822();
     with_device(n as usize, target, |mut session| {
         //link.get_interface_mut::<DebugProbe>().unwrap().target_reset().or_else(|e| Err(Error::DebugProbe(e)))?;
         session.probe.target_reset()?;
@@ -239,7 +244,7 @@ fn trace_u32_on_target(n: usize, loc: u32) -> Result<(), CliError> {
 
     let start = Instant::now();
 
-    let target = debug_probe::target::nrf51822::nRF51822();
+    let target = nrf51822::nRF51822();
     with_device(n, target, |mut session| {
         loop {
             // Prepare read.
@@ -329,7 +334,7 @@ fn debug(n: usize, exe: Option<PathBuf>, dump: Option<PathBuf>) -> Result<(), Cl
         }
     };
 
-    let target = debug_probe::target::nrf51822::nRF51822();
+    let target = nrf51822::nRF51822();
     match dump {
         None => with_device(n, target, &runner),
         Some(p) => with_dump(&p, &runner),
@@ -391,7 +396,7 @@ fn handle_line(session: &mut Session, cs: &mut Capstone, debug_info: Option<&Deb
             Ok(())
         },
         "bt" => {
-            use debug_probe::target::m0::PC;
+            use ocd::probe::target::m0::PC;
             let program_counter = session.target.core.read_core_reg(&mut session.probe, PC)?;
 
 
@@ -414,7 +419,7 @@ fn handle_line(session: &mut Session, cs: &mut Capstone, debug_info: Option<&Deb
 
             let stack_top: u32 = 0x2000_0000 + 0x4_000;
 
-            use debug_probe::target::m0::{PC, SP, LR};
+            use ocd::probe::target::m0::{PC, SP, LR};
 
             let stack_bot: u32 = session.target.core.read_core_reg(&mut session.probe, SP)?;
             let pc: u32 = session.target.core.read_core_reg(&mut session.probe, PC)?;

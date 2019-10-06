@@ -16,20 +16,29 @@ use std::{
 use structopt::StructOpt;
 use colored::*;
 
-use coresight::{
-    access_ports::{
-        AccessPortError,
+use ocd::{
+    coresight::{
+        access_ports::{
+            AccessPortError,
+        },
     },
-};
-use debug_probe::{
-    debug_probe::{
-        MasterProbe,
-        DebugProbe,
-        DebugProbeError,
-        DebugProbeType,
+    probe::{
+        debug_probe::{
+            MasterProbe,
+            DebugProbe,
+            DebugProbeError,
+            DebugProbeType,
+        },
+        target::Target,
+        flash::download::{
+            FileDownloader,
+            Format,
+        },
+        daplink,
+        stlink,
+        protocol::WireProtocol
     },
     session::Session,
-    target::Target,
 };
 
 #[derive(Debug, StructOpt)]
@@ -116,18 +125,18 @@ fn main_try() -> Result<(), failure::Error> {
 }
 
 fn download_program_fast(n: usize, path: String) -> Result<(), DownloadError> {
-    let target = debug_probe::target::nrf51822::nRF51822();
+    let target = ocd::probe::target::nrf51822::nRF51822();
     with_device(n as usize, target, |mut session| {
 
         // Start timer.
         let instant = Instant::now();
 
         let mm = session.target.memory_map.clone();
-        let fd = debug_probe::flash::download::FileDownloader::new();
+        let fd = FileDownloader::new();
         fd.download_file(
             &mut session,
             std::path::Path::new(&path.as_str()),
-            debug_probe::flash::download::Format::Elf,
+            Format::Elf,
             &mm
         ).unwrap();
 
@@ -159,14 +168,14 @@ where
         DebugProbeType::DAPLink => {
             let mut link = daplink::DAPLink::new_from_probe_info(&device)?;
 
-            link.attach(Some(debug_probe::protocol::WireProtocol::Swd))?;
+            link.attach(Some(WireProtocol::Swd))?;
             
             MasterProbe::from_specific_probe(link)
         },
         DebugProbeType::STLink => {
             let mut link = stlink::STLink::new_from_probe_info(&device)?;
 
-            link.attach(Some(debug_probe::protocol::WireProtocol::Swd))?;
+            link.attach(Some(WireProtocol::Swd))?;
             
             MasterProbe::from_specific_probe(link)
         },
