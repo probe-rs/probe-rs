@@ -4,32 +4,16 @@ use crate::probe::debug_probe::{
     DebugProbeError,
 };
 use crate::memory::MI;
-use super::{
+use crate::target::{
     CoreRegister,
     CoreRegisterAddress,
     Core,
+    BasicRegisterAddresses
 };
 use bitfield::bitfield;
 
-use serde::{ Serialize, Deserialize };
 use log::debug;
-
-#[derive(Debug,Serialize,Deserialize)]
-pub struct CortexDump {
-    pub regs:  [u32;16],
-    stack_addr: u32,
-    stack: Vec<u8>,
-}
-
-impl CortexDump {
-    pub fn new(stack_addr: u32, stack: Vec<u8>) -> CortexDump {
-        CortexDump {
-            regs: [0u32;16],
-            stack_addr,
-            stack,
-        }
-    }
-}
+use super::CortexDump;
 
 bitfield!{
     #[derive(Copy, Clone)]
@@ -193,21 +177,23 @@ impl CoreRegister for BpCompx {
     const NAME: &'static str = "BP_CTRL0";
 }
 
-pub const R0:  CoreRegisterAddress = CoreRegisterAddress(0b00000);
-pub const R1:  CoreRegisterAddress = CoreRegisterAddress(0b00001);
-pub const R2:  CoreRegisterAddress = CoreRegisterAddress(0b00010);
-pub const R3:  CoreRegisterAddress = CoreRegisterAddress(0b00011);
-pub const R4:  CoreRegisterAddress = CoreRegisterAddress(0b00100);
-pub const R9:  CoreRegisterAddress = CoreRegisterAddress(0b01001);
-pub const PC:  CoreRegisterAddress = CoreRegisterAddress(0b01111);
-pub const SP:  CoreRegisterAddress = CoreRegisterAddress(0b01101);
-pub const LR:  CoreRegisterAddress = CoreRegisterAddress(0b01110);
+pub const REGISTERS : BasicRegisterAddresses = BasicRegisterAddresses {
+    R0: CoreRegisterAddress(0b00000),
+    R1: CoreRegisterAddress(0b00001),
+    R2: CoreRegisterAddress(0b00010),
+    R3: CoreRegisterAddress(0b00011),
+    R4: CoreRegisterAddress(0b00100),
+    R9: CoreRegisterAddress(0b01001),
+    PC: CoreRegisterAddress(0b01111),
+    SP: CoreRegisterAddress(0b01101),
+    LR: CoreRegisterAddress(0b01110),
+};
+
 pub const MSP: CoreRegisterAddress = CoreRegisterAddress(0b01001);
 pub const PSP: CoreRegisterAddress = CoreRegisterAddress(0b01010);
 
 #[derive(Debug, Default, Copy, Clone)]
 pub struct M0;
-
 
 impl M0 {
     fn wait_for_core_register_transfer(&self, mi: &mut impl MI) -> Result<(), DebugProbeError> {
@@ -277,7 +263,7 @@ impl Core for M0 {
         mi.write32(Dhcsr::ADDRESS, value.into())?;
 
         // try to read the program counter
-        let pc_value = self.read_core_reg(mi, PC)?;
+        let pc_value = self.read_core_reg(mi, REGISTERS.PC)?;
 
         // get pc
         Ok(CpuInformation {
@@ -309,7 +295,7 @@ impl Core for M0 {
         self.wait_for_core_halted(mi)?;
 
         // try to read the program counter
-        let pc_value = self.read_core_reg(mi, PC)?;
+        let pc_value = self.read_core_reg(mi, REGISTERS.PC)?;
 
         // get pc
         Ok(CpuInformation {
@@ -371,8 +357,13 @@ impl Core for M0 {
     fn read_block8(&self, mi: &mut MasterProbe, address: u32, data: &mut [u8]) -> Result<(), DebugProbeError> {
         Ok(mi.read_block8(address, data)?)
     }
+
+    fn registers<'a>(&self) -> &'a BasicRegisterAddresses {
+        &REGISTERS
+    }
 }
 
+#[derive(Debug, Clone)]
 pub struct FakeM0 {
     dump: CortexDump,
 }
@@ -454,5 +445,8 @@ impl Core for FakeM0 {
 
         Ok(())
     }
-
+    
+    fn registers<'a>(&self) -> &'a BasicRegisterAddresses {
+        &REGISTERS
+    }
 }

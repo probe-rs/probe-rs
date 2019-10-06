@@ -29,7 +29,6 @@ use ocd::{
             DebugProbeError,
             DebugProbeType,
         },
-        target::Target,
         flash::download::{
             FileDownloader,
             Format,
@@ -39,6 +38,10 @@ use ocd::{
         protocol::WireProtocol
     },
     session::Session,
+    target::{
+        Target,
+        select_target,
+    },
 };
 
 #[derive(Debug, StructOpt)]
@@ -55,6 +58,8 @@ struct Opt {
     target: Option<String>,
     #[structopt(name = "PATH", long="manifest-path", parse(from_os_str))]
     manifest_path: Option<PathBuf>,
+    #[structopt(name = "chip", long="chip")]
+    chip: Option<String>,
 }
 
 fn main() {
@@ -119,13 +124,12 @@ fn main_try() -> Result<(), failure::Error> {
     
     println!("    {} {}", "Flashing".green().bold(), path_str);
 
-    download_program_fast(0, path_str.to_string())?;
+    download_program_fast(0, select_target(opt.chip), path_str.to_string())?;
 
     Ok(())
 }
 
-fn download_program_fast(n: usize, path: String) -> Result<(), DownloadError> {
-    let target = ocd::probe::target::nrf51822::nRF51822();
+fn download_program_fast(n: usize, target: Target, path: String) -> Result<(), DownloadError> {
     with_device(n as usize, target, |mut session| {
 
         // Start timer.

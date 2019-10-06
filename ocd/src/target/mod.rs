@@ -1,9 +1,4 @@
-pub mod m0;
-pub mod nrf51822;
-
-pub use m0::*;
-
-use super::flash::{
+use crate::probe::flash::{
     flasher::FlashAlgorithm,
     memory::{
         MemoryRegion,
@@ -21,7 +16,7 @@ pub trait CoreRegister: Clone + From<u32> + Into<u32> + Sized + std::fmt::Debug 
 }
 
 #[derive(Debug, Copy, Clone)]
-pub struct CoreRegisterAddress(u8);
+pub struct CoreRegisterAddress(pub u8);
 
 impl From<CoreRegisterAddress> for u32 {
     fn from(value: CoreRegisterAddress) -> Self {
@@ -42,13 +37,14 @@ pub struct BasicRegisterAddresses {
     pub R1: CoreRegisterAddress,
     pub R2: CoreRegisterAddress,
     pub R3: CoreRegisterAddress,
+    pub R4: CoreRegisterAddress,
     pub R9: CoreRegisterAddress,
     pub PC: CoreRegisterAddress,
     pub LR: CoreRegisterAddress,
     pub SP: CoreRegisterAddress,
 }
 
-pub trait Core {
+pub trait Core: std::fmt::Debug {
     fn wait_for_core_halted(&self, mi: &mut MasterProbe) -> Result<(), DebugProbeError>;
     
     fn halt(&self, mi: &mut MasterProbe) -> Result<CpuInformation, DebugProbeError>;
@@ -75,11 +71,26 @@ pub trait Core {
     fn disable_breakpoint(&self, mi: &mut MasterProbe, addr: u32) -> Result<(), DebugProbeError>;
 
     fn read_block8(&self, mi: &mut MasterProbe, address: u32, data: &mut [u8]) -> Result<(), DebugProbeError>;
+
+    fn registers<'a>(&self) -> &'a BasicRegisterAddresses;
 }
 
+#[derive(Debug)]
 pub struct Target {
     pub flash_algorithm: FlashAlgorithm,
-    pub basic_register_addresses: BasicRegisterAddresses,
     pub memory_map: Vec<MemoryRegion>,
     pub core: Box<dyn Core>,
+}
+
+pub fn select_target(name: Option<String>) -> Target {
+    name
+        .map_or_else(
+            || identify_target(),
+            |name| crate::collection::get_target(name)
+        )
+        .unwrap_or_else(|| panic!("Target could not be identified. Please select one."))
+}
+
+pub fn identify_target() -> Option<Target> {
+    Some(crate::collection::targets::nrf51822::nRF51822())
 }

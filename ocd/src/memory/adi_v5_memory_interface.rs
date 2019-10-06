@@ -1,5 +1,4 @@
 /// Memory access according to ARM Debug Interface specification v5.0
-use crate::memory::ToMemoryReadSize;
 use crate::coresight::access_ports::{
     APRegister,
     memory_ap::{

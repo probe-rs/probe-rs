@@ -1,14 +1,21 @@
-use crate::coresight::debug_port::DPRegister;
-use crate::coresight::dp_access::DPAccess;
-use crate::coresight::dp_access::DebugPort;
-use crate::probe::debug_probe::{
-    DebugProbe,
-    DebugProbeError,
-    DebugProbeInfo,
-    DAPAccess,
+use crate::{
+    coresight::{
+        debug_port::DPRegister,
+        dp_access::{
+            DPAccess,
+            DebugPort,
+        },
+    },
+    probe::{
+        debug_probe::{
+            DebugProbe,
+            DebugProbeError,
+            DebugProbeInfo,
+            DAPAccess,
+        },
+        protocol::WireProtocol,
+    },
 };
-use crate::probe::debug_probe;
-use crate::probe::protocol::WireProtocol;
 
 use log::{error, debug, info};
 

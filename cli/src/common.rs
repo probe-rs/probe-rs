@@ -12,11 +12,6 @@ use ocd::{
             DebugProbeError,
             DebugProbeType,
         },
-        target::{
-            Target,
-            m0::FakeM0,
-            nrf51822,
-        },
         daplink,
         stlink,
         protocol::WireProtocol,
@@ -26,6 +21,12 @@ use ocd::{
             AccessPortError,
         },
     },
+    collection::{
+        cores::{
+            m0::FakeM0,
+        },
+    },
+    target::Target,
     session::Session
 };
 
@@ -121,7 +122,7 @@ where
     f(session)
 }
 
-pub fn with_dump<F>(p: &Path, f: F) -> Result<(), CliError>
+pub fn with_dump<F>(p: &Path, mut target: Target, f: F) -> Result<(), CliError>
 where
     for<'a> F: FnOnce(Session) -> Result<(), CliError>
 {
@@ -135,7 +136,6 @@ where
 
     let probe = MasterProbe::from_specific_probe(Box::new(fake_probe));
 
-    let mut target = nrf51822::nRF51822();
     target.core = Box::new(core);
 
     let session = Session::new(target, probe);
