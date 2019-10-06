@@ -4,9 +4,10 @@ use crate::probe::flash::*;
 #[allow(non_snake_case)]
 pub fn nRF51822() -> Target {
     Target {
+        name: "nRF51822".to_owned(),
         flash_algorithm: FlashAlgorithm {
             load_address: 0x20000000,
-            instructions: &[
+            instructions: vec![
                 0xE00ABE00, 0x062D780D, 0x24084068, 0xD3000040, 0x1E644058, 0x1C49D1FA, 0x2A001E52, 0x4770D1F2,
                 0x47702000, 0x47702000, 0x4c26b570, 0x60602002, 0x60e02001, 0x68284d24, 0xd00207c0, 0x60602000,
                 0xf000bd70, 0xe7f6f82c, 0x4c1eb570, 0x60612102, 0x4288491e, 0x2001d302, 0xe0006160, 0x4d1a60a0,
@@ -24,7 +25,7 @@ pub fn nRF51822() -> Target {
             static_base: 0x20000170,
             begin_stack: 0x20001000,
             begin_data: 0x20002000,
-            page_buffers: &[0x20002000, 0x20002400],
+            page_buffers: vec![0x20002000, 0x20002400],
             min_program_length: Some(4),
             analyzer_supported: true,
             analyzer_address: 0x20003000,
@@ -66,6 +67,6 @@ pub fn nRF51822() -> Target {
                 is_testable: true,
             }),
         ],
-        core: Box::new(crate::collection::cores::m0::M0::default())
+        core: Box::new(crate::collection::cores::m0::M0::default()),
     }
 }

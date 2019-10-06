@@ -1,4 +1,5 @@
 bitflags! {
+    #[derive(Serialize, Deserialize)]
     pub struct Access: u8 {
         const R = 0b00000001;
         const W = 0b00000010;
@@ -8,11 +9,38 @@ bitflags! {
     }
 }
 
+mod integer_representation {
+    use serde::{self, Deserialize, Deserializer, Serialize, Serializer};
+    
+    // CHANGE THIS ACCORDING TO YOUR CODE
+    use super::Access; 
+    type IntRep = u8;
+    type Flags = Access;
+    
+    pub fn serialize<S>(date: &Flags, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {   
+        date.bits().serialize(serializer)
+    }
+    
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Flags, D::Error>
+    where
+        D: Deserializer<'de>,
+    {   
+        let raw: IntRep = IntRep::deserialize(deserializer)?;
+        Access::from_bits(raw).ok_or(serde::de::Error::custom(format!(
+            "Unexpected flags value {}",
+            raw              
+        )))                  
+    }                  
+} 
+
 pub const PROGRAM_PAGE_WEIGHT: f32 = 0.130;
 pub const ERASE_SECTOR_WEIGHT: f32 = 0.048;
 pub const ERASE_ALL_WEIGHT: f32 = 0.174;
 
-#[derive(Derivative, Clone)]
+#[derive(Derivative, Clone, Serialize, Deserialize)]
 #[derivative(Debug, PartialEq, Eq, Hash)]
 pub struct FlashRegion {
     pub range: core::ops::Range<u32>,
@@ -32,6 +60,7 @@ pub struct FlashRegion {
     #[derivative(Hash="ignore")]
     pub program_page_weight: f32,
     pub erased_byte_value: u8,
+    #[serde(with = "integer_representation")]
     pub access: Access,
     pub are_erased_sectors_readable: bool,
 }
@@ -79,19 +108,19 @@ impl FlashRegion {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct RamRegion {
     pub range: core::ops::Range<u32>,
     pub is_boot_memory: bool,
     pub is_testable: bool,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct RomRegion {
     pub range: core::ops::Range<u32>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct DeviceRegion {
     pub range: core::ops::Range<u32>,
 }
@@ -130,7 +159,7 @@ impl MemoryRange for core::ops::Range<u32> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum MemoryRegion {
     Ram(RamRegion),
     Rom(RomRegion),

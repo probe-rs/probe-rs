@@ -2,6 +2,7 @@
 #[macro_use] pub extern crate derivative;
 #[macro_use] extern crate rental;
 #[macro_use] extern crate maplit;
+#[macro_use] extern crate serde_derive;
 
 pub mod collection;
 pub mod coresight;

@@ -322,7 +322,6 @@ impl ADIMemoryInterface {
 
         let num_writes = data.len();
         for offset in 0..num_writes {
-            offset;
             let drw = DRW { data: data[offset] };
             self.write_register_ap(debug_port, drw)?;
         }
