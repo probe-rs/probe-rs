@@ -1,22 +1,32 @@
 use std::path::Path;
 use std::fs::File;
 
-use ocd::session::Session;
-use ocd::probe::target::Target;
-use ocd::coresight::{
-    access_ports::{
-        AccessPortError,
-    },
-};
-
 use ron;
 
-use ocd::probe::debug_probe::{
-    MasterProbe,
-    DebugProbe,
-    FakeProbe,
-    DebugProbeError,
-    DebugProbeType,
+use ocd::{
+    probe::{
+        debug_probe::{
+            MasterProbe,
+            DebugProbe,
+            FakeProbe,
+            DebugProbeError,
+            DebugProbeType,
+        },
+        target::{
+            Target,
+            m0::FakeM0,
+            nrf51822,
+        },
+        daplink,
+        stlink,
+        protocol::WireProtocol,
+    },
+    coresight::{
+        access_ports::{
+            AccessPortError,
+        },
+    },
+    session::Session
 };
 
 use std::error::Error; 
@@ -83,24 +93,24 @@ where
     for<'a> F: FnOnce(Session) -> Result<(), CliError>
 {
     let device = {
-        let mut list = ocd::probe::daplink::tools::list_daplink_devices();
-        list.extend(ocd::probe::stlink::tools::list_stlink_devices());
+        let mut list = daplink::tools::list_daplink_devices();
+        list.extend(stlink::tools::list_stlink_devices());
 
         list.remove(n)
     };
 
     let probe = match device.probe_type {
         DebugProbeType::DAPLink => {
-            let mut link = ocd::probe::daplink::DAPLink::new_from_probe_info(&device)?;
+            let mut link = daplink::DAPLink::new_from_probe_info(&device)?;
 
-            link.attach(Some(ocd::probe::protocol::WireProtocol::Swd))?;
+            link.attach(Some(WireProtocol::Swd))?;
             
             MasterProbe::from_specific_probe(link)
         },
         DebugProbeType::STLink => {
-            let mut link = ocd::probe::stlink::STLink::new_from_probe_info(&device)?;
+            let mut link = stlink::STLink::new_from_probe_info(&device)?;
 
-            link.attach(Some(ocd::probe::protocol::WireProtocol::Swd))?;
+            link.attach(Some(WireProtocol::Swd))?;
             
             MasterProbe::from_specific_probe(link)
         },
@@ -120,12 +130,12 @@ where
     let dump = ron::de::from_reader(&mut dump_file).unwrap();
 
 
-    let core = ocd::probe::target::m0::FakeM0::new(dump);
+    let core = FakeM0::new(dump);
     let fake_probe = FakeProbe::new();
 
     let probe = MasterProbe::from_specific_probe(Box::new(fake_probe));
 
-    let mut target = ocd::probe::target::nrf51822::nRF51822();
+    let mut target = nrf51822::nRF51822();
     target.core = Box::new(core);
 
     let session = Session::new(target, probe);

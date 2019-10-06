@@ -2,23 +2,30 @@ mod common;
 mod info;
 
 use std::path::PathBuf;
-use ocd::memory::{
-    MI,
-};
 use std::time::Instant;
 use std::fs;
 use std::fs::File;
 use std::io::Write;
-
-use ocd::probe::debug_probe::{
-    DebugProbeInfo,
-};
-
-use ocd::debug::debug::DebugInfo;
+use std::num::ParseIntError;
 
 use memmap;
 
-use ocd::probe::target::m0::CortexDump;
+use ocd::{
+    debug::debug::DebugInfo,
+    probe::{
+        debug_probe::{
+            DebugProbeInfo,
+        },
+        target::{
+            m0::CortexDump,
+            nrf51822,
+        },
+        stlink,
+        daplink,
+    },
+    session::Session,
+    memory::MI,
+};
 
 use common::{
     with_device,
@@ -33,13 +40,11 @@ use rustyline::Editor;
 use capstone::{
     Capstone,
     Endian,
+    prelude::*,
+    arch::arm::ArchMode,
 };
-use capstone::prelude::*;
-use capstone::arch::arm::ArchMode;
 
-use ocd::session::Session;
-
-fn parse_hex(src: &str) -> Result<u32, std::num::ParseIntError> {
+fn parse_hex(src: &str) -> Result<u32, ParseIntError> {
     u32::from_str_radix(src, 16)
 }
 
@@ -150,7 +155,7 @@ fn list_connected_devices() {
 }
 
 fn dump_memory(n: usize, loc: u32, words: u32) -> Result<(), CliError> {
-    let target = ocd::probe::target::nrf51822::nRF51822();
+    let target = nrf51822::nRF51822();
     with_device(n as usize, target, |mut session| {
         let mut data = vec![0 as u32; words as usize];
 
@@ -175,7 +180,7 @@ fn dump_memory(n: usize, loc: u32, words: u32) -> Result<(), CliError> {
 }
 
 fn download_program_fast(n: usize, path: String) -> Result<(), CliError> {
-    let target = ocd::probe::target::nrf51822::nRF51822();
+    let target = nrf51822::nRF51822();
     with_device(n as usize, target, |mut session| {
 
         // Start timer.
@@ -201,7 +206,7 @@ fn download_program_fast(n: usize, path: String) -> Result<(), CliError> {
 
 #[allow(non_snake_case)]
 fn erase_page(n: usize, loc: u32) -> Result<(), CliError> {
-    let target = ocd::probe::target::nrf51822::nRF51822();
+    let target = nrf51822::nRF51822();
     with_device(n, target, |mut session| {
 
         // TODO: Generic flash erase
@@ -219,7 +224,7 @@ fn erase_page(n: usize, loc: u32) -> Result<(), CliError> {
 }
 
 fn reset_target_of_device(n: usize, _assert: Option<bool>) -> Result<(), CliError> {
-    let target = ocd::probe::target::nrf51822::nRF51822();
+    let target = nrf51822::nRF51822();
     with_device(n as usize, target, |mut session| {
         //link.get_interface_mut::<DebugProbe>().unwrap().target_reset().or_else(|e| Err(Error::DebugProbe(e)))?;
         session.probe.target_reset()?;
@@ -239,7 +244,7 @@ fn trace_u32_on_target(n: usize, loc: u32) -> Result<(), CliError> {
 
     let start = Instant::now();
 
-    let target = ocd::probe::target::nrf51822::nRF51822();
+    let target = nrf51822::nRF51822();
     with_device(n, target, |mut session| {
         loop {
             // Prepare read.
@@ -273,8 +278,8 @@ fn trace_u32_on_target(n: usize, loc: u32) -> Result<(), CliError> {
 }
 
 fn get_connected_devices() -> Vec<DebugProbeInfo>{
-    let mut links = ocd::probe::daplink::tools::list_daplink_devices();
-    links.extend(ocd::probe::stlink::tools::list_stlink_devices());
+    let mut links = daplink::tools::list_daplink_devices();
+    links.extend(stlink::tools::list_stlink_devices());
     links
 }
 
@@ -329,7 +334,7 @@ fn debug(n: usize, exe: Option<PathBuf>, dump: Option<PathBuf>) -> Result<(), Cl
         }
     };
 
-    let target = ocd::probe::target::nrf51822::nRF51822();
+    let target = nrf51822::nRF51822();
     match dump {
         None => with_device(n, target, &runner),
         Some(p) => with_dump(&p, &runner),
