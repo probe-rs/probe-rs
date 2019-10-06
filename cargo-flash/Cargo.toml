@@ -17,7 +17,4 @@ structopt = "0.3.2"
 cargo-project = "0.2.2"
 failure = "0.1.5"
 colored = "1.8.0"
-debug-probe = { path = "../probe", version = "0.1.1" }
-stlink = { path = "../probe/stlink", version = "0.1.1" }
-daplink = { path = "../probe/daplink", version = "0.1.1" }
-coresight = { path = "../coresight", version = "0.1.1" }
+ocd = { path = "../ocd", version = "0.1.0" }
