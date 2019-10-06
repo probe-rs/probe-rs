@@ -92,5 +92,6 @@ pub fn select_target(name: Option<String>) -> Target {
 }
 
 pub fn identify_target() -> Option<Target> {
+    // TODO: Poll this from the connected target. For now return nRF51.
     Some(crate::collection::targets::nrf51822::nRF51822())
 }
