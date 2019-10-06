@@ -16,15 +16,18 @@ use ocd::{
         debug_probe::{
             DebugProbeInfo,
         },
-        target::{
-            m0::CortexDump,
-            nrf51822,
-        },
         stlink,
         daplink,
     },
+    collection::{
+        cores::CortexDump,
+    },
     session::Session,
     memory::MI,
+    target::{
+        Target,
+        select_target,
+    },
 };
 
 use common::{
@@ -63,12 +66,16 @@ enum CLI {
     Info {
         /// The number associated with the debug probe to use
         n: usize,
+        /// The target to be selected.
+        target: Option<String>,
     },
     /// Resets the target attached to the selected debug probe
     #[structopt(name = "reset")]
     Reset {
         /// The number associated with the debug probe to use
         n: usize,
+        /// The target to be selected.
+        target: Option<String>,
         /// Whether the reset pin should be asserted or deasserted. If left open, just pulse it
         assert: Option<bool>,
     },
@@ -77,7 +84,8 @@ enum CLI {
         #[structopt(long, parse(from_os_str))]
         /// Dump file to debug
         dump: Option<PathBuf>,
-
+        /// The target to be selected.
+        target: Option<String>,
         #[structopt(long, parse(from_os_str))]
         /// Binary to debug
         exe: Option<PathBuf>,
@@ -90,6 +98,8 @@ enum CLI {
     Dump {
         /// The number associated with the debug probe to use
         n: usize,
+        /// The target to be selected.
+        target: Option<String>,
         /// The address of the memory to dump from the target (in hexadecimal without 0x prefix)
         #[structopt(parse(try_from_str = "parse_hex"))]
         loc: u32,
@@ -101,6 +111,8 @@ enum CLI {
     D {
         /// The number associated with the ST-Link to use
         n: usize,
+        /// The target to be selected.
+        target: Option<String>,
         /// The path to the file to be downloaded to the flash
         path: String,
     },
@@ -108,6 +120,8 @@ enum CLI {
     Erase {
         /// The number associated with the debug probe to use
         n: usize,
+        /// The target to be selected.
+        target: Option<String>,
         /// The address of the memory to dump from the target (in hexadecimal without 0x prefix)
         #[structopt(parse(try_from_str = "parse_hex"))]
         loc: u32
@@ -116,6 +130,8 @@ enum CLI {
     Trace {
         /// The number associated with the debug probe to use
         n: usize,
+        /// The target to be selected.
+        target: Option<String>,
         /// The address of the memory to dump from the target (in hexadecimal without 0x prefix)
         #[structopt(parse(try_from_str = "parse_hex"))]
         loc: u32,
@@ -130,13 +146,13 @@ fn main() {
 
     match matches {
         CLI::List {} => list_connected_devices(),
-        CLI::Info { n } => crate::info::show_info_of_device(n).unwrap(),
-        CLI::Reset { n, assert } => reset_target_of_device(n, assert).unwrap(),
-        CLI::Debug { n, exe, dump } => debug(n, exe, dump).unwrap(),
-        CLI::Dump { n, loc, words } => dump_memory(n, loc, words).unwrap(),
-        CLI::D { n, path } => download_program_fast(n, path).unwrap(),
-        CLI::Erase { n, loc } => erase_page(n, loc).unwrap(),
-        CLI::Trace { n, loc } => trace_u32_on_target(n, loc).unwrap(),
+        CLI::Info { n, target } => crate::info::show_info_of_device(n, select_target(target)).unwrap(),
+        CLI::Reset { n, target, assert } => reset_target_of_device(n, select_target(target), assert).unwrap(),
+        CLI::Debug { n, target, exe, dump } => debug(n, select_target(target), exe, dump).unwrap(),
+        CLI::Dump { n, target, loc, words } => dump_memory(n, select_target(target), loc, words).unwrap(),
+        CLI::D { n, target, path } => download_program_fast(n, select_target(target), path).unwrap(),
+        CLI::Erase { n, target, loc } => erase_page(n, select_target(target), loc).unwrap(),
+        CLI::Trace { n, target, loc } => trace_u32_on_target(n, select_target(target), loc).unwrap(),
     }
 }
 
@@ -154,8 +170,7 @@ fn list_connected_devices() {
     }
 }
 
-fn dump_memory(n: usize, loc: u32, words: u32) -> Result<(), CliError> {
-    let target = nrf51822::nRF51822();
+fn dump_memory(n: usize, target: Target, loc: u32, words: u32) -> Result<(), CliError> {
     with_device(n as usize, target, |mut session| {
         let mut data = vec![0 as u32; words as usize];
 
@@ -179,8 +194,7 @@ fn dump_memory(n: usize, loc: u32, words: u32) -> Result<(), CliError> {
     })
 }
 
-fn download_program_fast(n: usize, path: String) -> Result<(), CliError> {
-    let target = nrf51822::nRF51822();
+fn download_program_fast(n: usize, target: Target, path: String) -> Result<(), CliError> {
     with_device(n as usize, target, |mut session| {
 
         // Start timer.
@@ -205,8 +219,7 @@ fn download_program_fast(n: usize, path: String) -> Result<(), CliError> {
 }
 
 #[allow(non_snake_case)]
-fn erase_page(n: usize, loc: u32) -> Result<(), CliError> {
-    let target = nrf51822::nRF51822();
+fn erase_page(n: usize, target: Target, loc: u32) -> Result<(), CliError> {
     with_device(n, target, |mut session| {
 
         // TODO: Generic flash erase
@@ -223,8 +236,7 @@ fn erase_page(n: usize, loc: u32) -> Result<(), CliError> {
     })
 }
 
-fn reset_target_of_device(n: usize, _assert: Option<bool>) -> Result<(), CliError> {
-    let target = nrf51822::nRF51822();
+fn reset_target_of_device(n: usize, target: Target, _assert: Option<bool>) -> Result<(), CliError> {
     with_device(n as usize, target, |mut session| {
         //link.get_interface_mut::<DebugProbe>().unwrap().target_reset().or_else(|e| Err(Error::DebugProbe(e)))?;
         session.probe.target_reset()?;
@@ -233,7 +245,7 @@ fn reset_target_of_device(n: usize, _assert: Option<bool>) -> Result<(), CliErro
     })
 }
 
-fn trace_u32_on_target(n: usize, loc: u32) -> Result<(), CliError> {
+fn trace_u32_on_target(n: usize, target: Target, loc: u32) -> Result<(), CliError> {
     use std::io::prelude::*;
     use std::thread::sleep;
     use std::time::Duration;
@@ -244,7 +256,6 @@ fn trace_u32_on_target(n: usize, loc: u32) -> Result<(), CliError> {
 
     let start = Instant::now();
 
-    let target = nrf51822::nRF51822();
     with_device(n, target, |mut session| {
         loop {
             // Prepare read.
@@ -283,7 +294,7 @@ fn get_connected_devices() -> Vec<DebugProbeInfo>{
     links
 }
 
-fn debug(n: usize, exe: Option<PathBuf>, dump: Option<PathBuf>) -> Result<(), CliError> {
+fn debug(n: usize, target: Target, exe: Option<PathBuf>, dump: Option<PathBuf>) -> Result<(), CliError> {
     
     // try to load debug information
     let debug_data = exe.and_then(|p| fs::File::open(&p).ok() )
@@ -334,10 +345,9 @@ fn debug(n: usize, exe: Option<PathBuf>, dump: Option<PathBuf>) -> Result<(), Cl
         }
     };
 
-    let target = nrf51822::nRF51822();
     match dump {
         None => with_device(n, target, &runner),
-        Some(p) => with_dump(&p, &runner),
+        Some(p) => with_dump(&p, target, &runner),
     }
 
 }
@@ -396,8 +406,8 @@ fn handle_line(session: &mut Session, cs: &mut Capstone, debug_info: Option<&Deb
             Ok(())
         },
         "bt" => {
-            use ocd::probe::target::m0::PC;
-            let program_counter = session.target.core.read_core_reg(&mut session.probe, PC)?;
+            let regs = session.target.core.registers();
+            let program_counter = session.target.core.read_core_reg(&mut session.probe, regs.PC)?;
 
 
             if let Some(di) = debug_info {
@@ -419,10 +429,10 @@ fn handle_line(session: &mut Session, cs: &mut Capstone, debug_info: Option<&Deb
 
             let stack_top: u32 = 0x2000_0000 + 0x4_000;
 
-            use ocd::probe::target::m0::{PC, SP, LR};
+            let regs = session.target.core.registers();
 
-            let stack_bot: u32 = session.target.core.read_core_reg(&mut session.probe, SP)?;
-            let pc: u32 = session.target.core.read_core_reg(&mut session.probe, PC)?;
+            let stack_bot: u32 = session.target.core.read_core_reg(&mut session.probe, regs.SP)?;
+            let pc: u32 = session.target.core.read_core_reg(&mut session.probe, regs.PC)?;
             
             let mut stack = vec![0u8;(stack_top - stack_bot) as usize];
 
@@ -435,7 +445,7 @@ fn handle_line(session: &mut Session, cs: &mut Capstone, debug_info: Option<&Deb
             }
 
             dump.regs[13] = stack_bot;
-            dump.regs[14] = session.target.core.read_core_reg(&mut session.probe, LR)?;
+            dump.regs[14] = session.target.core.read_core_reg(&mut session.probe, regs.LR)?;
             dump.regs[15] = pc;
 
             let serialized = ron::ser::to_string(&dump).expect("Failed to serialize dump");

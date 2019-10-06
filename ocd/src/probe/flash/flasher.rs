@@ -328,7 +328,7 @@ impl<'a, O: Operation> ActiveFlasher<'a, O> {
         log::debug!("Calling routine {:08x}({:?}, {:?}, {:?}, {:?}, init={})", pc, r0, r1, r2, r3, init);
         
         let algo = self.session.target.flash_algorithm;
-        let regs = self.session.target.basic_register_addresses;
+        let regs = self.session.target.core.registers();
 
         [
             (regs.PC, Some(pc)),
@@ -358,7 +358,7 @@ impl<'a, O: Operation> ActiveFlasher<'a, O> {
 
     pub fn wait_for_completion(&mut self) -> Result<u32, FlasherError> {
         log::debug!("Waiting for routine call completion.");
-        let regs = self.session.target.basic_register_addresses;
+        let regs = self.session.target.core.registers();
 
         while self.session.target.core.wait_for_core_halted(&mut self.session.probe).is_err() {}
 

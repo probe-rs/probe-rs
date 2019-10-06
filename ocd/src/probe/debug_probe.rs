@@ -1,4 +1,3 @@
-use crate::probe::target::m0::CortexDump;
 use crate::coresight::{
     access_ports::{
         generic_ap::GenericAP,
@@ -15,17 +14,11 @@ use crate::coresight::{
 
 use log::debug;
 
-use crate::memory::ToMemoryReadSize;
 use crate::memory::adi_v5_memory_interface::ADIMemoryInterface;
 use crate::probe::protocol::WireProtocol;
 use crate::memory::MI;
 use std::error::Error;
 use std::fmt;
-
-use crate::probe::target::{
-    CoreRegisterAddress,
-    Target,
-};
 
 #[derive(Debug)]
 pub enum DebugProbeError {

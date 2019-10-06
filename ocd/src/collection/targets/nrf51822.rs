@@ -1,6 +1,7 @@
-use super::*;
-use super::super::flash::*;
+use crate::target::*;
+use crate::probe::flash::*;
 
+#[allow(non_snake_case)]
 pub fn nRF51822() -> Target {
     Target {
         flash_algorithm: FlashAlgorithm {
@@ -27,9 +28,6 @@ pub fn nRF51822() -> Target {
             min_program_length: Some(4),
             analyzer_supported: true,
             analyzer_address: 0x20003000,
-        },
-        basic_register_addresses: BasicRegisterAddresses {
-            R0, R1, R2, R3, R9, PC, LR, SP,
         },
         memory_map: vec![
             MemoryRegion::Flash(FlashRegion {
@@ -68,6 +66,6 @@ pub fn nRF51822() -> Target {
                 is_testable: true,
             }),
         ],
-        core: Box::new(crate::probe::target::m0::M0::default())
+        core: Box::new(crate::collection::cores::m0::M0::default())
     }
 }

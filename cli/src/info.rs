@@ -23,17 +23,11 @@ use ocd::{
             access_port_is_valid,
         },
     },
-    probe::{
-        target::{
-            nrf51822,
-        }
-    },
     memory::romtable::CSComponent,
+    target::Target,
 };
 
-pub fn show_info_of_device(n: usize) -> Result<(), CliError> {
-    let target = nrf51822::nRF51822();
-
+pub fn show_info_of_device(n: usize, target: Target) -> Result<(), CliError> {
     with_device(n, target, |mut session| {
 
         /*

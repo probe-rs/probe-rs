@@ -130,7 +130,7 @@ impl MemoryRange for core::ops::Range<u32> {
     }
 }
 
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum MemoryRegion {
     Ram(RamRegion),
     Rom(RomRegion),

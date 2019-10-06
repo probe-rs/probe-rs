@@ -5,8 +5,6 @@ use std::rc::Rc;
 use object::read::Object;
 use crate::memory::MI;
 
-use log::debug;
-
 use crate::session::Session;
 use super::*;
 
