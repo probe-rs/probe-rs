@@ -40,7 +40,7 @@ use ocd::{
     session::Session,
     target::{
         Target,
-        select_target,
+        select_target_graceful_exit,
     },
 };
 
@@ -56,10 +56,10 @@ struct Opt {
     release: bool,
     #[structopt(name = "target", long="target")]
     target: Option<String>,
-    #[structopt(name = "PATH", long="manifest-path", parse(from_os_str))]
-    manifest_path: Option<PathBuf>,
     #[structopt(name = "chip", long="chip")]
     chip: Option<String>,
+    #[structopt(name = "PATH", long="manifest-path", parse(from_os_str))]
+    manifest_path: Option<PathBuf>,
 }
 
 fn main() {
@@ -109,10 +109,15 @@ fn main_try() -> Result<(), failure::Error> {
         None => panic!(),
     };
 
-    let mut args = std::env::args();
+    let mut args: Vec<_> = std::env::args().collect();
     // Remove first two args which is the calling application name and the `flash` command from cargo.
-    let _ = args.next();
-    let _ = args.next();
+    args.remove(0);
+    args.remove(0);
+    // Remove possible `--chip <chip>` arguments as cargo build does not understand it.
+    if let Some(index) = args.iter().position(|x| *x == "--chip") {
+        args.remove(index);
+        args.remove(index);
+    }
 
     Command::new("cargo")
         .arg("build")
@@ -124,7 +129,7 @@ fn main_try() -> Result<(), failure::Error> {
     
     println!("    {} {}", "Flashing".green().bold(), path_str);
 
-    download_program_fast(0, select_target(opt.chip), path_str.to_string())?;
+    download_program_fast(0, select_target_graceful_exit(opt.chip), path_str.to_string())?;
 
     Ok(())
 }
