@@ -9,6 +9,7 @@ pretty_env_logger = "0.3.0"
 log = "0.4.6"
 structopt = "0.2.14"
 ocd = { path = "../ocd", version = "0.2.0" }
+ocd-targets = { path = "../ocd-targets", version = "0.2.0" }
 scroll = "*"
 rustyline = "5.0.2"
 capstone = "0.6.0"
@@ -20,3 +21,4 @@ memmap = "*"
 rustc-demangle = "0.1.16"
 ihex = "1.1.2"
 console = "0.9"
+colored = "1.8.0"

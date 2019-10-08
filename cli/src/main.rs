@@ -26,7 +26,6 @@ use ocd::{
     memory::MI,
     target::{
         Target,
-        select_target_graceful_exit,
     },
 };
 
@@ -146,13 +145,28 @@ fn main() {
 
     match matches {
         CLI::List {} => list_connected_devices(),
-        CLI::Info { n, target } => crate::info::show_info_of_device(n, select_target_graceful_exit(target)).unwrap(),
-        CLI::Reset { n, target, assert } => reset_target_of_device(n, select_target_graceful_exit(target), assert).unwrap(),
-        CLI::Debug { n, target, exe, dump } => debug(n, select_target_graceful_exit(target), exe, dump).unwrap(),
-        CLI::Dump { n, target, loc, words } => dump_memory(n, select_target_graceful_exit(target), loc, words).unwrap(),
-        CLI::D { n, target, path } => download_program_fast(n, select_target_graceful_exit(target), path).unwrap(),
-        CLI::Erase { n, target, loc } => erase_page(n, select_target_graceful_exit(target), loc).unwrap(),
-        CLI::Trace { n, target, loc } => trace_u32_on_target(n, select_target_graceful_exit(target), loc).unwrap(),
+        CLI::Info { n, target } => crate::info::show_info_of_device(n, get_checked_target(target)).unwrap(),
+        CLI::Reset { n, target, assert } => reset_target_of_device(n, get_checked_target(target), assert).unwrap(),
+        CLI::Debug { n, target, exe, dump } => debug(n, get_checked_target(target), exe, dump).unwrap(),
+        CLI::Dump { n, target, loc, words } => dump_memory(n, get_checked_target(target), loc, words).unwrap(),
+        CLI::D { n, target, path } => download_program_fast(n, get_checked_target(target), path).unwrap(),
+        CLI::Erase { n, target, loc } => erase_page(n, get_checked_target(target), loc).unwrap(),
+        CLI::Trace { n, target, loc } => trace_u32_on_target(n, get_checked_target(target), loc).unwrap(),
+    }
+}
+
+pub fn get_checked_target(name: Option<String>) -> Target {
+    use colored::*;
+    match ocd_targets::select_target(name) {
+        Ok(target) => target,
+        Err(ocd::target::TargetSelectionError::CouldNotAutodetect) => {
+            println!("    {} Target could not automatically be identified. Please specify one.", "Error".red().bold());
+            std::process::exit(0);
+        },
+        Err(ocd::target::TargetSelectionError::TargetNotFound(name)) => {
+            println!("    {} Specified target ({}) was not found. Please select an existing one.", "Error".red().bold(), name);
+            std::process::exit(0);
+        },
     }
 }
 
