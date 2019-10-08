@@ -153,21 +153,6 @@ pub fn select_target(name: Option<String>) -> Result<Target, TargetSelectionErro
         )
 }
 
-pub fn select_target_graceful_exit(name: Option<String>) -> Target {
-    use colored::*;
-    match select_target(name) {
-        Ok(target) => target,
-        Err(TargetSelectionError::CouldNotAutodetect) => {
-            println!("    {} Target could not automatically be identified. Please specify one.", "Error".red().bold());
-            std::process::exit(0);
-        },
-        Err(TargetSelectionError::TargetNotFound(name)) => {
-            println!("    {} Specified target ({}) was not found. Please select an existing one.", "Error".red().bold(), name);
-            std::process::exit(0);
-        },
-    }
-}
-
 pub fn identify_target() -> Option<Target> {
     // TODO: Poll this from the connected target. For now return nRF51.
     Some(crate::collection::targets::nrf51822::nRF51822())

@@ -71,7 +71,7 @@ fn main() {
                 .and_then(|i| Target::new(TARGETS[*i]))
         }
 
-        pub fn get_target(name: Option<String>) -> Result<Target, TargetSelectionError> {
+        pub fn select_target(name: Option<String>) -> Result<Target, TargetSelectionError> {
             match name {
                 Some(name) => {
                     let target = match collection::get_target(name.clone()) {
