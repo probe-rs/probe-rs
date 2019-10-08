@@ -4,7 +4,7 @@ use crate::probe::flash::*;
 #[allow(non_snake_case)]
 pub fn nRF51822() -> Target {
     Target {
-        name: "nRF51822".to_owned(),
+        names: vec!["nRF51822".to_owned()],
         flash_algorithm: FlashAlgorithm {
             load_address: 0x20000000,
             instructions: vec![

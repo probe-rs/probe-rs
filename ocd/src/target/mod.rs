@@ -90,10 +90,25 @@ objekt::clone_trait_object!(Core);
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct Target {
-    pub name: String,
+    pub names: Vec<String>,
     pub flash_algorithm: FlashAlgorithm,
     pub memory_map: Vec<MemoryRegion>,
     pub core: Box<dyn Core>,
+}
+
+impl Target {
+    pub fn new(definition: &str) -> Option<Self> {
+        match serde_yaml::from_str(definition) as serde_yaml::Result<Self> {
+            Ok(target) => {
+                let mut names = target.names.clone();
+                for name in &mut names {
+                    name.make_ascii_lowercase();
+                }
+                Some(target)
+            },
+            Err(e) => None,
+        }
+    }
 }
 
 struct CoreVisitor;
