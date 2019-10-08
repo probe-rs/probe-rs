@@ -150,9 +150,9 @@ fn main_try() -> Result<(), failure::Error> {
         match target {
             Ok(target) => target,
             Err(e) => {
-                println!("    {} Target specification file could not be parsed.", "Error".red().bold());
-                println!("{:?}", e);
-                std::process::exit(0);
+                eprintln!("    {} Target specification file could not be parsed.", "Error".red().bold());
+                eprintln!("    {:?}", e);
+                std::process::exit(1);
             }
         }
     });
@@ -167,17 +167,17 @@ pub fn get_checked_target(name: Option<String>) -> Target {
     match ocd_targets::select_target(name) {
         Ok(target) => target,
         Err(ocd::target::TargetSelectionError::CouldNotAutodetect) => {
-            println!("    {} Target could not automatically be identified. Please specify one.", "Error".red().bold());
-            std::process::exit(0);
+            eprintln!("    {} Target could not automatically be identified. Please specify one.", "Error".red().bold());
+            std::process::exit(1);
         },
         Err(ocd::target::TargetSelectionError::TargetNotFound(name)) => {
-            println!("    {} Specified target ({}) was not found. Please select an existing one.", "Error".red().bold(), name);
-            std::process::exit(0);
+            eprintln!("    {} Specified target ({}) was not found. Please select an existing one.", "Error".red().bold(), name);
+            std::process::exit(1);
         },
         Err(ocd::target::TargetSelectionError::TargetCouldNotBeParsed(error)) => {
-            println!("    {} Target specification could not be parsed.", "Error".red().bold());
-            println!("    {} {}", "Error".red().bold(), error);
-            std::process::exit(0);
+            eprintln!("    {} Target specification could not be parsed.", "Error".red().bold());
+            eprintln!("    {} {}", "Error".red().bold(), error);
+            std::process::exit(1);
         },
     }
 }
