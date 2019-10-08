@@ -46,8 +46,13 @@ fn main() {
     // START QUOTE
         use std::collections::HashMap;
 
-        use ocd::target::{
-            Target,
+        use ocd::{
+            target::{
+                Target,
+                TargetSelectionError,
+                identify_target,
+            },
+            collection
         };
 
         lazy_static::lazy_static! {
@@ -64,6 +69,33 @@ fn main() {
             NAMES
                 .get(name.as_ref())
                 .and_then(|i| Target::new(TARGETS[*i]))
+        }
+
+        pub fn get_target(name: Option<String>) -> Result<Target, TargetSelectionError> {
+            match name {
+                Some(name) => {
+                    let target = match collection::get_target(name.clone()) {
+                        Some(target) => Some(target),
+                        None => None,
+                    };
+                    match target {
+                        Some(target) => Ok(target),
+                        None => {
+                            match get_built_in_target(name.clone()) {
+                                Some(target) => Ok(target),
+                                None => Err(TargetSelectionError::TargetNotFound(name)),
+                            }
+                        }
+                    }
+                },
+                None => {
+                    // If no target name was given, try to identify the target.
+                    match identify_target() {
+                        Some(target) => Ok(target),
+                        None => Err(TargetSelectionError::CouldNotAutodetect),
+                    }
+                },
+            }
         }
     // END QUOTE
     });
