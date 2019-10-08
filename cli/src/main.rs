@@ -1,11 +1,10 @@
 mod common;
 mod info;
+mod debugger;
 
 use std::path::PathBuf;
 use std::time::Instant;
 use std::fs;
-use std::fs::File;
-use std::io::Write;
 use std::num::ParseIntError;
 
 use memmap;
@@ -19,10 +18,6 @@ use ocd::{
         stlink,
         daplink,
     },
-    collection::{
-        cores::CortexDump,
-    },
-    session::Session,
     memory::MI,
     target::{
         Target,
@@ -34,6 +29,8 @@ use common::{
     with_dump,
     CliError,
 };
+
+use debugger::CliState;
 
 use structopt::StructOpt;
 
@@ -289,14 +286,9 @@ fn debug(n: usize, target: Target, exe: Option<PathBuf>, dump: Option<PathBuf>) 
     // try to load debug information
     let debug_data = exe.and_then(|p| fs::File::open(&p).ok() )
                         .and_then(|file| unsafe { memmap::Mmap::map(&file).ok() });
-
-
-    //let file = fs::File::open(&path).unwrap();
-    //let mmap = Rc::new(Box::new(unsafe { memmap::Mmap::map(&file).unwrap() }));
-
     
-    let runner = |mut session| {
-        let mut cs = Capstone::new()
+    let runner = |session| {
+        let cs = Capstone::new()
             .arm()
             .mode(ArchMode::Thumb)
             .endian(Endian::Little)
@@ -306,17 +298,17 @@ fn debug(n: usize, target: Target, exe: Option<PathBuf>, dump: Option<PathBuf>) 
 
 
         let di = debug_data.as_ref().map( |mmap| DebugInfo::from_raw(&*mmap));
-        
-        /*
-        if let Some(ref path) = exe {
 
-            DebugInfo::from_file(path)
-        } else {
-            DebugInfo::none()
-        }; */
+
+        let cli = debugger::DebugCli::new();
+
+        let mut cli_data = debugger::CliData {
+            session,
+            debug_info: di,
+            capstone: cs,
+        };
 
         let mut rl = Editor::<()>::new();
-        //rl.set_auto_add_history(true);
 
         loop {
             let readline = rl.readline(">> ");
@@ -324,7 +316,8 @@ fn debug(n: usize, target: Target, exe: Option<PathBuf>, dump: Option<PathBuf>) 
                 Ok(line) => {
                     let history_entry: &str = line.as_ref();
                     rl.add_history_entry(history_entry);
-                    let cli_state = handle_line(&mut session, &mut cs, di.as_ref(), &line)?;
+                    let cli_state = cli.handle_line(&line, &mut cli_data)?;
+
 
                     match cli_state {
                         CliState::Continue => (),
@@ -352,158 +345,4 @@ fn debug(n: usize, target: Target, exe: Option<PathBuf>, dump: Option<PathBuf>) 
         None => with_device(n, target, &runner),
         Some(p) => with_dump(&p, target, &runner),
     }
-
-}
-
-enum CliState {
-    Continue,
-    Stop
-}
-
-
-fn handle_line(session: &mut Session, cs: &mut Capstone, debug_info: Option<&DebugInfo>, line: &str) -> Result<CliState, CliError> {
-    let mut command_parts = line.split_whitespace();
-
-    if let Some(command) = command_parts.next() {
-
-        match command {
-            "help" => {
-                let help_text = concat!(
-                    "The following commands are available: \n",
-                    " - break\n",
-                    " - bt\n",
-                    " - dump\n",
-                    " - halt\n",
-                    " - quit\n",
-                    " - read\n",
-                    " - regs\n",
-                    " - reset\n",
-                    " - run\n",
-                    " - step\n",
-                );
-                print!("{}", help_text);
-            },
-            "halt" => {
-                let cpu_info = session.target.core.halt(&mut session.probe)?;
-                println!("Core stopped at address 0x{:08x}", cpu_info.pc);
-
-                let mut code = [0u8;16*2];
-
-                session.probe.read_block8(cpu_info.pc, &mut code)?;
-
-
-                let instructions = cs.disasm_all(&code, cpu_info.pc as u64).unwrap();
-
-                for i in instructions.iter() {
-                    println!("{}", i);
-                }
-            },
-            "run" => {
-                session.target.core.run(&mut session.probe)?;
-            },
-            "step" => {
-                let cpu_info = session.target.core.step(&mut session.probe)?;
-                println!("Core stopped at address 0x{:08x}", cpu_info.pc);
-            },
-            "read" => {
-                let address_str = command_parts.next().unwrap();
-                let address = u32::from_str_radix(address_str, 16).unwrap();
-                //println!("Would read from address 0x{:08x}", address);
-
-                let num_words = command_parts.next().map(|c| c.parse::<usize>().unwrap() ).unwrap_or(1);
-
-                let mut buff = vec![0u32;num_words]; 
-
-                session.probe.read_block32(address, &mut buff)?;
-
-                for (offset, word) in buff.iter().enumerate() {
-                    println!("0x{:08x} = 0x{:08x}", address + (offset*4) as u32, word);
-                }
-            },
-            "break" => {
-                let address_str = command_parts.next().unwrap();
-                let address = u32::from_str_radix(address_str, 16).unwrap();
-                //println!("Would read from address 0x{:08x}", address);
-
-                session.target.core.enable_breakpoints(&mut session.probe, true)?;
-                session.target.core.set_breakpoint(&mut session.probe, address)?;
-            },
-            "bt" => {
-                let regs = session.target.core.registers();
-                let program_counter = session.target.core.read_core_reg(&mut session.probe, regs.PC)?;
-
-
-                if let Some(di) = debug_info {
-                    let frames = di.try_unwind(session, program_counter as u64);
-
-                    for frame in frames {
-                        println!("{}", frame);
-                    }
-                }
-            },
-            "regs" => {
-                let mut regs = [0u32;15];
-
-                for i in 0..15 {
-                    regs[i as usize] = session.target.core.read_core_reg(&mut session.probe, i.into())?; 
-                }
-
-                for (i, val) in regs.iter().enumerate() {
-                    println!("Register {}: {:#08x}", i, val);
-                }
-            },
-            "dump" => {
-                // dump all relevant data, stack and regs for now..
-                //
-                // stack beginning -> assume beginning to be hardcoded
-
-
-                let stack_top: u32 = 0x2000_0000 + 0x4_000;
-
-                let regs = session.target.core.registers();
-
-                let stack_bot: u32 = session.target.core.read_core_reg(&mut session.probe, regs.SP)?;
-                let pc: u32 = session.target.core.read_core_reg(&mut session.probe, regs.PC)?;
-                
-                let mut stack = vec![0u8;(stack_top - stack_bot) as usize];
-
-                session.probe.read_block8(stack_bot, &mut stack[..])?;
-
-                let mut dump = CortexDump::new(stack_bot, stack);
-
-
-                for i in 0..12 {
-                    dump.regs[i as usize] = session.target.core.read_core_reg(&mut session.probe, i.into())?;
-                }
-
-                dump.regs[13] = stack_bot;
-                dump.regs[14] = session.target.core.read_core_reg(&mut session.probe, regs.LR)?;
-                dump.regs[15] = pc;
-
-                let serialized = ron::ser::to_string(&dump).expect("Failed to serialize dump");
-
-                let mut dump_file = File::create("dump.txt").expect("Failed to create file");
-
-                dump_file.write_all(serialized.as_bytes()).expect("Failed to write dump file");
-            },
-            "quit" => {
-                return Ok(CliState::Stop);
-            },
-            "reset" => {
-                session.target.core.halt(&mut session.probe)?;
-
-                // Enable vector catch after reset (set bit 1 in DEMCR register)
-                session.probe.write32(0xE000EDFC, 1)?;
-                session.target.core.reset(&mut session.probe)?;
-            },
-            _ => {
-                println!("Unknown command '{}'", line);
-                println!("Enter 'help' for a list of commands");
-            }
-        }
-    } else {
-        // Empty command, ignore
-    }
-
-    Ok(CliState::Continue)
 }

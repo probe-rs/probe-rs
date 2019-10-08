@@ -38,6 +38,7 @@ pub enum CliError {
     DebugProbe(DebugProbeError),
     AccessPort(AccessPortError),
     StdIO(std::io::Error),
+    MissingArgument,
 }
 
 impl Error for CliError {
@@ -48,6 +49,7 @@ impl Error for CliError {
             DebugProbe(ref e) => Some(e),
             AccessPort(ref e) => Some(e),
             StdIO(ref e) => Some(e),
+            MissingArgument => None,
         }
     }
 }
@@ -60,6 +62,9 @@ impl fmt::Display for CliError {
             DebugProbe(ref e) => e.fmt(f),
             AccessPort(ref e) => e.fmt(f),
             StdIO(ref e) => e.fmt(f),
+            MissingArgument => {
+                write!(f, "Command expected more arguments")
+            }
         }
     }
 }
