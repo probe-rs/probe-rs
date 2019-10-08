@@ -96,17 +96,19 @@ pub struct Target {
     pub core: Box<dyn Core>,
 }
 
+pub type TargetParseError = serde_yaml::Error;
+
 impl Target {
-    pub fn new(definition: &str) -> Option<Self> {
+    pub fn new(definition: &str) -> Result<Self, TargetParseError> {
         match serde_yaml::from_str(definition) as serde_yaml::Result<Self> {
             Ok(target) => {
                 let mut names = target.names.clone();
                 for name in &mut names {
                     name.make_ascii_lowercase();
                 }
-                Some(target)
+                Ok(target)
             },
-            Err(e) => None,
+            Err(e) => Err(e),
         }
     }
 }
@@ -141,19 +143,16 @@ impl<'de> serde::Deserialize<'de> for Box<dyn Core> {
 pub enum TargetSelectionError {
     CouldNotAutodetect,
     TargetNotFound(String),
+    TargetCouldNotBeParsed(TargetParseError),
 }
 
-pub fn select_target(name: Option<String>) -> Result<Target, TargetSelectionError> {
-    name
-        .map_or_else(
-            || identify_target()
-                .map_or_else(|| Err(TargetSelectionError::CouldNotAutodetect), |target| Ok(target)),
-            |name| crate::collection::get_target(name.clone())
-                .map_or_else(|| Err(TargetSelectionError::TargetNotFound(name)), |target| Ok(target))
-        )
+impl From<TargetParseError> for TargetSelectionError {
+    fn from(error: TargetParseError) -> Self {
+        TargetSelectionError::TargetCouldNotBeParsed(error)
+    }
 }
 
-pub fn identify_target() -> Option<Target> {
+pub fn identify_target() -> Result<Target, TargetSelectionError> {
     // TODO: Poll this from the connected target. For now return nRF51.
-    Some(crate::collection::targets::nrf51822::nRF51822())
+    Ok(crate::collection::targets::nrf51822::nRF51822())
 }

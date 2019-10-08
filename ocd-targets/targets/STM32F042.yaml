@@ -1,8 +1,4 @@
-########################################################################################
-# BEWARE: THIS IS ACTUALLY THE CONFIG OF THE nRF51822. IT IS INTENDED ONLY FOR TESTING.#
-########################################################################################
-
-name: "STM32F042"
+names: ["STM32F042"]
 flash_algorithm:
   load_address: 0x20000000
   instructions: [

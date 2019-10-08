@@ -27,6 +27,7 @@ pub enum FileDownloadError {
     IhexRead(ihex::reader::ReaderError),
     IO(std::io::Error),
     Object(&'static str),
+    TargetDoesNotExists,
 }
 
 impl From<FlashLoaderError> for FileDownloadError {
@@ -76,7 +77,10 @@ impl<'a> FileDownloader {
         format: Format,
         memory_map: &Vec<MemoryRegion>
     ) -> Result<(), FileDownloadError> {
-        let mut file = File::open(path).unwrap();
+        let mut file = match File::open(path) {
+            Ok(file) => file,
+            Err(_e) => return Err(FileDownloadError::TargetDoesNotExists)
+        };
         let mut buffer = vec![];
         // IMPORTANT: Change this to an actual memory map of a real chip
         let mut loader = FlashLoader::new(memory_map, false, false, false);
