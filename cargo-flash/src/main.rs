@@ -11,6 +11,7 @@ use std::{
     },
     error::Error,
     fmt,
+    fs::read_to_string,
 };
 
 use structopt::StructOpt;
@@ -57,6 +58,8 @@ struct Opt {
     target: Option<String>,
     #[structopt(name = "chip", long="chip")]
     chip: Option<String>,
+    #[structopt(name = "chip description file path", short="cdp", long="chip-description-path")]
+    chip_description_path: Option<String>,
     #[structopt(name = "PATH", long="manifest-path", parse(from_os_str))]
     manifest_path: Option<PathBuf>,
 }
@@ -118,6 +121,18 @@ fn main_try() -> Result<(), failure::Error> {
         args.remove(index);
     }
 
+    // Remove possible `--chip-description-path <chip description path>` arguments as cargo build does not understand it.
+    if let Some(index) = args.iter().position(|x| *x == "--chip-description-path") {
+        args.remove(index);
+        args.remove(index);
+    }
+
+    // Remove possible `-cdp <chip description path>` arguments as cargo build does not understand it.
+    if let Some(index) = args.iter().position(|x| *x == "-cdp") {
+        args.remove(index);
+        args.remove(index);
+    }
+
     Command::new("cargo")
         .arg("build")
         .args(args)
@@ -128,7 +143,21 @@ fn main_try() -> Result<(), failure::Error> {
     
     println!("    {} {}", "Flashing".green().bold(), path_str);
 
-    download_program_fast(0, get_checked_target(opt.chip), path_str.to_string())?;
+    let target_override = opt.chip_description_path.as_ref().map(|cd| {
+        let string = read_to_string(&cd)
+            .expect("Chip definition file could not be read. This is a bug. Please report it.");
+        let target = Target::new(&string);
+        match target {
+            Ok(target) => target,
+            Err(e) => {
+                println!("    {} Target specification file could not be parsed.", "Error".red().bold());
+                println!("{:?}", e);
+                std::process::exit(0);
+            }
+        }
+    });
+
+    download_program_fast(0, target_override.unwrap_or_else(|| get_checked_target(opt.chip)), path_str.to_string())?;
 
     Ok(())
 }
@@ -145,12 +174,16 @@ pub fn get_checked_target(name: Option<String>) -> Target {
             println!("    {} Specified target ({}) was not found. Please select an existing one.", "Error".red().bold(), name);
             std::process::exit(0);
         },
+        Err(ocd::target::TargetSelectionError::TargetCouldNotBeParsed(error)) => {
+            println!("    {} Target specification could not be parsed.", "Error".red().bold());
+            println!("    {} {}", "Error".red().bold(), error);
+            std::process::exit(0);
+        },
     }
 }
 
 fn download_program_fast(n: usize, target: Target, path: String) -> Result<(), DownloadError> {
     with_device(n as usize, target, |mut session| {
-
         // Start timer.
         let instant = Instant::now();
 

@@ -21,10 +21,9 @@ pub fn get_target(name: impl AsRef<str>) -> Option<Target> {
 
     load_targets(dirs::home_dir().map(|home| home.join(".config/probe-rs/targets")), &mut map);
 
-    let mut name: String = name.as_ref().into();
-    name.make_ascii_lowercase();
+    let name: String = name.as_ref().into();
 
-    map.get(&name).map(|target| target.clone())
+    map.get(&name.to_ascii_lowercase()).map(|target| target.clone())
 }
 
 pub fn load_targets(root: Option<PathBuf>, map: &mut HashMap<String, Target>) {
@@ -43,13 +42,13 @@ pub fn load_targets_from_dir(dir: &DirEntry, map: &mut HashMap<String, Target>) 
             // Read the JSON contents of the file as an instance of `User`.
             match serde_yaml::from_reader(reader) as serde_yaml::Result<Target> {
                 Ok(target) => {
-                    let mut names = target.names.clone();
+                    let names = target.names.clone();
                     for mut name in names {
                         name.make_ascii_lowercase();
                         map.insert(name, target.clone());
                     }
                 },
-                Err(e) => { println!("{}", e); log::warn!("Error loading chip definition: {}", e) }
+                Err(e) => { log::warn!("Error loading chip definition: {}", e) }
             }
         },
         Err(e) => {

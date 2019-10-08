@@ -25,19 +25,19 @@ fn main() {
     let mut target_files = vec![];
 
     for file in files {
-        println!("{}", &file);
         let string = read_to_string(&file)
             .expect("Chip definition file could not be read. This is a bug. Please report it.");
         match Target::new(&string) {
-            Some(target) => {
-                target_files.push(file);
+            Ok(target) => {
+                target_files.push("/".to_string() + &file);
                 for name in target.names {
-                    names.push(name);
+                    names.push(name.to_ascii_lowercase());
                     indices.push(target_files.len() - 1);
                 }
             },
-            None => {
+            Err(e) => {
                 log::error!("Failed to parse file {}.", string);
+                log::error!("{:?}.", e);
             }
         }
     }
@@ -61,14 +61,16 @@ fn main() {
             ].into_iter().collect();
 
             static ref TARGETS: Vec<&'static str> = vec! [
-                #(#target_files,)*
+                #(include_str!(concat!(env!("CARGO_MANIFEST_DIR"), #target_files)),)*
             ];
         }
 
-        pub fn get_built_in_target(name: impl AsRef<str>) -> Option<Target> {
+        pub fn get_built_in_target(name: impl AsRef<str>) -> Result<Target, TargetSelectionError> {
+            let name = name.as_ref().to_string().to_ascii_lowercase();
             NAMES
-                .get(name.as_ref())
-                .and_then(|i| Target::new(TARGETS[*i]))
+                .get(&name[..])
+                .ok_or(TargetSelectionError::TargetNotFound(name))
+                .and_then(|i| { Target::new(TARGETS[*i]).map_err(From::from) })
         }
 
         pub fn select_target(name: Option<String>) -> Result<Target, TargetSelectionError> {
@@ -80,21 +82,10 @@ fn main() {
                     };
                     match target {
                         Some(target) => Ok(target),
-                        None => {
-                            match get_built_in_target(name.clone()) {
-                                Some(target) => Ok(target),
-                                None => Err(TargetSelectionError::TargetNotFound(name)),
-                            }
-                        }
+                        None => get_built_in_target(name.clone()),
                     }
                 },
-                None => {
-                    // If no target name was given, try to identify the target.
-                    match identify_target() {
-                        Some(target) => Ok(target),
-                        None => Err(TargetSelectionError::CouldNotAutodetect),
-                    }
-                },
+                None => identify_target(),
             }
         }
     // END QUOTE

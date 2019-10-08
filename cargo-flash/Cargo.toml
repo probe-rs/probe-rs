@@ -1,6 +1,6 @@
 [package]
 name = "cargo-flash"
-version = "0.1.1"
+version = "0.2.0"
 authors = ["Noah Hüsser <yatekii@yatekii.ch>", "Dominik Boehi <dominik.boehi@gmail.ch>"]
 edition = "2018"
 description = "A utility to flash ARM cores with ELFs directly from within cargo."
