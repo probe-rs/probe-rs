@@ -159,6 +159,14 @@ impl MasterProbe {
 
         Ok(REGISTER::from(result))
     }
+
+    pub fn read_register_dp(&mut self, offset: u16) -> Result<u32, DebugProbeError> {
+        self.actual_probe.read_register(Port::DebugPort, offset)
+    }
+
+    pub fn write_register_dp(&mut self, offset: u16, val: u32) -> Result<(), DebugProbeError> {
+        self.actual_probe.write_register(Port::DebugPort, offset, val)
+    }
 }
 
 #[derive(Debug)]

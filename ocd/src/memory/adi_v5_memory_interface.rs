@@ -77,7 +77,7 @@ impl ADIMemoryInterface {
             Err(AccessPortError::MemoryNotAligned)?;
         }
 
-        let csw: CSW = CSW { AddrInc: AddressIncrement::Single, SIZE: DataSize::U32, ..Default::default() };
+        let csw: CSW = CSW { PROT: 0b110, CACHE: 0b11, AddrInc: AddressIncrement::Single, SIZE: DataSize::U32, ..Default::default() };
         let tar = TAR { address };
         self.write_register_ap(debug_port, csw)?;
         self.write_register_ap(debug_port, tar)?;
@@ -129,7 +129,7 @@ impl ADIMemoryInterface {
         }
 
         // Second we read in 32 bit reads until we have less than 32 bits left to read.
-        let csw: CSW = CSW { AddrInc: AddressIncrement::Single, SIZE: DataSize::U32, ..Default::default() };
+        let csw: CSW = CSW { PROT: 0b110, CACHE: 0b11, AddrInc: AddressIncrement::Single, SIZE: DataSize::U32, ..Default::default() };
         self.write_register_ap(debug_port, csw)?;
 
         let tar = TAR { address: address };
@@ -257,7 +257,7 @@ impl ADIMemoryInterface {
             Err(AccessPortError::MemoryNotAligned)?;
         }
 
-        let csw: CSW = CSW { AddrInc: AddressIncrement::Single, SIZE: DataSize::U32, ..Default::default() };
+        let csw: CSW = CSW { PROT: 0b110, CACHE: 0b11, AddrInc: AddressIncrement::Single, SIZE: DataSize::U32, ..Default::default() };
         let drw = DRW { data };
         let tar = TAR { address: address };
         self.write_register_ap(debug_port, csw)?;

@@ -50,23 +50,19 @@ pub fn show_info_of_device(n: usize, target: Target) -> Result<(), CliError> {
             target_info.0, target_info.3, target_info.2
         );
 
-        let target_info = link
-            .read_register(Port::DebugPort, 0x0)?;
-        let target_info = parse_target_id(target_info);
-        println!("\nIdentification Code Register (IDCODE):");
-        println!(
-            "\tProtocol = {},\n\tPart Number = {:x},\n\tJEDEC Manufacturer ID = {:x}",
-            if target_info.0 == 0x4 {
-                "JTAG-DP"
-            } else if target_info.0 == 0x3 {
-                "SW-DP"
-            } else {
-                "Unknown Protocol"
-            },
-            target_info.1,
-            target_info.2
-        );
         */
+
+
+        // Note: Temporary read to ensure the DP information is read at
+        //       least once before reading the ROM table 
+        //       (necessary according to STM manual).
+        //
+        // TODO: Move to proper place somewhere in init code
+        //
+
+        let target_info = session.probe.read_register_dp(0x0)?;
+        println!("DP info: {:#08x}", target_info);
+
 
         println!("\nAvailable Access Ports:");
 
@@ -105,6 +101,7 @@ pub fn show_info_of_device(n: usize, target: Target) -> Result<(), CliError> {
                 }
             }
         }
+
         Ok(())
     })
 }
