@@ -80,6 +80,8 @@ pub fn show_info_of_device(n: usize, target: Target) -> Result<(), CliError> {
                 if idr.CLASS == APClass::MEMAP {
                     let access_port: MemoryAP = access_port.into();
 
+                    session.target.core.unlock_romtables(&mut session.probe).unwrap();
+
                     let base_register = session.probe.read_register_ap(access_port, BASE::default())?;
 
                     let mut baseaddr = if BaseaddrFormat::ADIv5 == base_register.Format {

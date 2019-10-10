@@ -177,6 +177,50 @@ impl CoreRegister for BpCompx {
     const NAME: &'static str = "BP_CTRL0";
 }
 
+//demcr = self.read32(DEMCR)
+// self.write32(DEMCR, demcr | DEMCR_TRCENA)
+
+bitfield!{
+    /// Manages vector catch behavior and enables the DWT.
+    #[derive(Copy, Clone)]
+    pub struct Demcr(u32);
+    impl Debug;
+    /// Global enable for all features configured and controlled by the DWT unit:
+    /// 0 DWT disabled.
+    /// 1 DWT enabled.
+    /// When DWTENA is set to 0 DWT registers return UNKNOWN values on reads.
+    /// In addition, it is IMPLEMENTATION DEFINED whether the processor ignores writes
+    /// to the DWT while DWTENA is 0.
+    pub dwtena, set_dwtena: 24;
+    /// Enable Halting debug trap on a HardFault exception.
+    /// 0 Halting debug trap disabled.
+    /// 1 Halting debug trap enabled.
+    /// If DHCSR.C_DEBUGEN is set to 0, the processor ignores the value of this bit.
+    pub vc_harderr, set_vc_harderr: 10;
+    /// Enable Reset Vector Catch. This causes a Local reset to halt a running system:
+    /// 0 Reset Vector Catch disabled.
+    /// 1 Reset Vector Catch enabled.
+    /// If DHCSR.C_DEBUGEN is set to 0, the processor ignores the value of this bit
+    pub vc_corereset, set_vc_corereset: 0;
+}
+
+impl From<u32> for Demcr {
+    fn from(value: u32) -> Self {
+        Self(value)
+    }
+}
+
+impl From<Demcr> for u32 {
+    fn from(value: Demcr) -> Self {
+        value.0
+    }
+}
+
+impl CoreRegister for Demcr {
+    const ADDRESS: u32 = 0xE000_EDFC;
+    const NAME: &'static str = "DEMCR";
+}
+
 pub const REGISTERS : BasicRegisterAddresses = BasicRegisterAddresses {
     R0: CoreRegisterAddress(0b00000),
     R1: CoreRegisterAddress(0b00001),
@@ -358,6 +402,14 @@ impl Core for M0 {
         Ok(mi.read_block8(address, data)?)
     }
 
+    fn unlock_romtables(&self, mi: &mut MasterProbe) -> Result<(), DebugProbeError> {
+        let mut value = Demcr::from(mi.read32(Demcr::ADDRESS).map_err(DebugProbeError::from)?);
+        
+        value.set_dwtena(true);
+
+        mi.write32(Demcr::ADDRESS, value.into()).map_err(Into::into)
+    }
+
     fn registers<'a>(&self) -> &'a BasicRegisterAddresses {
         &REGISTERS
     }
@@ -443,6 +495,10 @@ impl Core for FakeM0 {
 
         data.copy_from_slice(&self.dump.stack[stack_offset..(stack_offset+data.len())]);
 
+        Ok(())
+    }
+
+    fn unlock_romtables(&self, _mi: &mut MasterProbe) -> Result<(), DebugProbeError> {
         Ok(())
     }
     

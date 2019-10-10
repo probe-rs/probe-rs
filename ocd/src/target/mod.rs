@@ -82,6 +82,8 @@ pub trait Core: std::fmt::Debug + objekt::Clone {
 
     fn read_block8(&self, mi: &mut MasterProbe, address: u32, data: &mut [u8]) -> Result<(), DebugProbeError>;
 
+    fn unlock_romtables(&self, mi: &mut MasterProbe) -> Result<(), DebugProbeError>;
+
     fn registers<'a>(&self) -> &'a BasicRegisterAddresses;
 }
 
