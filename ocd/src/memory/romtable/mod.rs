@@ -457,7 +457,7 @@ impl PeripheralID {
             },
             REVISION: ((data[2] >> 4) & 0x0F) as u8,
             JEP106: if legacy { Some(jep106) } else { None },
-            PART: (((data[1] & 0x0F) << 4) | (data[0] & 0xFF)) as u16,
+            PART: (((data[1] & 0x0F) << 8) | (data[0] & 0xFF)) as u16,
             SIZE: 2u32.pow((data[4] >> 4) & 0x0F) as u8
         }
     }
