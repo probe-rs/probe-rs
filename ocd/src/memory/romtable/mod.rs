@@ -137,34 +137,31 @@ impl RomTable {
     /// 
     /// This does not check whether the data actually signalizes
     /// to contain a ROM table but assumes this was checked beforehand.
-    pub fn try_parse<P>(link: &RefCell<P>, base_address: u64) -> Result<RomTable, RomTableError>
+    pub fn try_parse<P>(link: &RefCell<P>, base_address: u64) -> RomTable
     where
-        P:
-            MI
-          + APAccess<GenericAP, IDR>
-          + APAccess<MemoryAP, BASE>
-          + APAccess<MemoryAP, BASE2>
+        P: MI + APAccess<GenericAP, IDR> + APAccess<MemoryAP, BASE> + APAccess<MemoryAP, BASE2>,
     {
-        let mut reader = RomTableReader::new(&link, base_address);
+        RomTable {
+            entries: RomTableReader::new(&link, base_address)
+                .entries()
+                .filter_map(Result::ok)
+                .filter_map(|raw_entry| {
+                    let entry_base_addr = raw_entry.component_addr();
 
-        let entries = reader
-            .entries()
-            .filter_map(Result::ok)
-            .map(|raw_entry| {
-                let entry_base_addr = raw_entry.component_addr();
-
-                Ok(RomTableEntry {
-                    format: raw_entry.format,
-                    power_domain_id: raw_entry.power_domain_id,
-                    power_domain_valid: raw_entry.power_domain_valid,
-                    component_data: CSComponent::try_parse(link, entry_base_addr as u64)?
+                    if let Ok(component_data) = CSComponent::try_parse(link, entry_base_addr as u64)
+                    {
+                        Some(RomTableEntry {
+                            format: raw_entry.format,
+                            power_domain_id: raw_entry.power_domain_id,
+                            power_domain_valid: raw_entry.power_domain_valid,
+                            component_data,
+                        })
+                    } else {
+                        None
+                    }
                 })
-            })
-            .collect::<Result<Vec<_>, RomTableError>>()?;
-
-        Ok(RomTable {
-            entries,
-        })
+                .collect::<Vec<_>>(),
+        }
     }
 }
 
@@ -381,7 +378,7 @@ impl CSComponent {
             CSComponentClass::GenericVerificationComponent =>
                 CSComponent::GenericVerificationComponent(component_id),
             CSComponentClass::RomTable => {
-                let rom_table = RomTable::try_parse(link, component_id.base_address)?;
+                let rom_table = RomTable::try_parse(link, component_id.base_address);
 
                 CSComponent::Class1RomTable(
                     component_id,
