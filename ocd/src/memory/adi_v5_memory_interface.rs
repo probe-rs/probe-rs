@@ -45,6 +45,29 @@ impl ADIMemoryInterface {
         }
     }
 
+    /// Build the correct CSW register for a memory access
+    /// 
+    /// Currently, only AMBA AHB Access is supported.
+    fn build_csw_register(&self, data_size: DataSize) -> CSW {
+
+
+        // The CSW Register is set for an AMBA AHB Acccess, according to
+        // the ARM Debug Interface Architecture Specification.
+        //
+        // The PROT bits are set as follows:
+        //  BIT[30]              = 1  - Should be One, otherwise unpredictable
+        //  MasterType, bit [29] = 1  - Access as default AHB Master
+        //  HPROT[4]             = 0  - Non-allocating access
+        //
+        // The CACHE bits are set for the following AHB access:
+        //   HPROT[0] == 1   - data           access
+        //   HPROT[1] == 1   - privileged     access
+        //   HPROT[2] == 0   - non-cacheable  access 
+        //   HPROT[3] == 0   - non-bufferable access
+
+        CSW { PROT: 0b110, CACHE: 0b11, AddrInc: AddressIncrement::Single, SIZE: data_size, ..Default::default() }
+    }
+
     /// Read a 32 bit register on the given AP.
     fn read_register_ap<REGISTER, AP>(&self, debug_port: &mut AP, register: REGISTER) -> Result<REGISTER, AccessPortError>
     where
@@ -77,7 +100,8 @@ impl ADIMemoryInterface {
             Err(AccessPortError::MemoryNotAligned)?;
         }
 
-        let csw: CSW = CSW { PROT: 0b110, CACHE: 0b11, AddrInc: AddressIncrement::Single, SIZE: DataSize::U32, ..Default::default() };
+        let csw = self.build_csw_register(DataSize::U32);
+
         let tar = TAR { address };
         self.write_register_ap(debug_port, csw)?;
         self.write_register_ap(debug_port, tar)?;
@@ -129,7 +153,7 @@ impl ADIMemoryInterface {
         }
 
         // Second we read in 32 bit reads until we have less than 32 bits left to read.
-        let csw: CSW = CSW { PROT: 0b110, CACHE: 0b11, AddrInc: AddressIncrement::Single, SIZE: DataSize::U32, ..Default::default() };
+        let csw = self.build_csw_register(DataSize::U32);
         self.write_register_ap(debug_port, csw)?;
 
         let tar = TAR { address: address };
@@ -257,7 +281,7 @@ impl ADIMemoryInterface {
             Err(AccessPortError::MemoryNotAligned)?;
         }
 
-        let csw: CSW = CSW { PROT: 0b110, CACHE: 0b11, AddrInc: AddressIncrement::Single, SIZE: DataSize::U32, ..Default::default() };
+        let csw = self.build_csw_register(DataSize::U32);
         let drw = DRW { data };
         let tar = TAR { address: address };
         self.write_register_ap(debug_port, csw)?;
@@ -286,7 +310,7 @@ impl ADIMemoryInterface {
         let data_t = before & !(0xFF << (pre_bytes * 8));
         let data = data_t | ((data as u32) << (pre_bytes * 8));
 
-        let csw: CSW = CSW { AddrInc: AddressIncrement::Single, SIZE: DataSize::U32, ..Default::default() };
+        let csw = self.build_csw_register(DataSize::U32);
         let drw = DRW { data: data };
         let tar = TAR { address: aligned_addr };
         self.write_register_ap(debug_port, csw)?;
@@ -314,7 +338,8 @@ impl ADIMemoryInterface {
         }
 
         // Second we write in 32 bit reads until we have less than 32 bits left to write.
-        let csw: CSW = CSW { AddrInc: AddressIncrement::Single, SIZE: DataSize::U32, ..Default::default() };
+        let csw = self.build_csw_register(DataSize::U32);
+
         self.write_register_ap(debug_port, csw)?;
 
         let tar = TAR { address: address };
