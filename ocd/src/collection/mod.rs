@@ -15,9 +15,7 @@ use crate::target::Target;
 use crate::target::Core;
 
 pub fn get_target(name: impl AsRef<str>) -> Option<Target> {
-    let mut map: HashMap<String, Target> = hashmap!{
-        "nrf51822".to_string() => self::targets::nrf51822::nRF51822(),
-    };
+    let mut map: HashMap<String, Target> = HashMap::new();
 
     load_targets(dirs::home_dir().map(|home| home.join(".config/probe-rs/targets")), &mut map);
 
@@ -41,12 +39,9 @@ pub fn load_targets_from_dir(dir: &DirEntry, map: &mut HashMap<String, Target>) 
 
             // Read the JSON contents of the file as an instance of `User`.
             match serde_yaml::from_reader(reader) as serde_yaml::Result<Target> {
-                Ok(target) => {
-                    let names = target.names.clone();
-                    for mut name in names {
-                        name.make_ascii_lowercase();
-                        map.insert(name, target.clone());
-                    }
+                Ok(mut target) => {
+                    target.name.make_ascii_lowercase();
+                    map.insert(target.name.clone(), target);
                 },
                 Err(e) => { log::warn!("Error loading chip definition: {}", e) }
             }

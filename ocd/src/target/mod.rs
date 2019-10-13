@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+use std::fs::read_to_string;
 use serde::de::{
     Error,
     Unexpected,
@@ -87,13 +89,12 @@ pub trait Core: std::fmt::Debug + objekt::Clone {
     fn registers<'a>(&self) -> &'a BasicRegisterAddresses;
 }
 
-
 objekt::clone_trait_object!(Core);
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct Target {
-    pub names: Vec<String>,
-    pub flash_algorithm: FlashAlgorithm,
+    pub name: String,
+    pub flash_algorithm: FlashAlgorithmContainer,
     pub memory_map: Vec<MemoryRegion>,
     pub core: Box<dyn Core>,
 }
@@ -102,16 +103,7 @@ pub type TargetParseError = serde_yaml::Error;
 
 impl Target {
     pub fn new(definition: &str) -> Result<Self, TargetParseError> {
-        match serde_yaml::from_str(definition) as serde_yaml::Result<Self> {
-            Ok(target) => {
-                let mut names = target.names.clone();
-                for name in &mut names {
-                    name.make_ascii_lowercase();
-                }
-                Ok(target)
-            },
-            Err(e) => Err(e),
-        }
+        serde_yaml::from_str(definition)
     }
 }
 
@@ -176,5 +168,77 @@ impl From<TargetParseError> for TargetSelectionError {
 
 pub fn identify_target() -> Result<Target, TargetSelectionError> {
     // TODO: Poll this from the connected target. For now return nRF51.
-    Ok(crate::collection::targets::nrf51822::nRF51822())
+    Err(TargetSelectionError::CouldNotAutodetect)
+}
+
+#[derive(Debug, Clone)]
+pub struct FlashAlgorithmContainer {
+    path: String,
+    cache: Option<FlashAlgorithm>,
+}
+
+impl FlashAlgorithmContainer {
+    pub fn internal(&mut self, registry: &HashMap<&'static str, &'static str>) -> Option<&FlashAlgorithm> {
+        if self.cache.is_none() {
+            dbg!(registry);
+            dbg!(self.path.as_str());
+            self.cache = registry
+                .get(self.path.as_str())
+                .and_then(|definition| {
+                    match FlashAlgorithm::new(definition) {
+                        Ok(algorithm) => Some(algorithm),
+                        Err(error) => { log::error!("{:?}", error); None },
+                    }
+                });
+            dbg!(&self.cache);
+        }
+
+        self.cache.as_ref()
+    }
+
+    pub fn external(&mut self) -> Option<&FlashAlgorithm> {
+        if self.cache.is_none() {
+            let string = read_to_string(& self.path);
+            self.cache = match string {
+                Ok(definition) => match FlashAlgorithm::new(definition.as_str()) {
+                    Ok(algorithm) => Some(algorithm),
+                    Err(error) => { log::error!("{:?}", error); None },
+                },
+                Err(error) => { log::error!("{:?}", error); None },
+            }
+        }
+        
+        self.cache.as_ref()
+    }
+
+    pub fn get(&self) -> Option<&FlashAlgorithm> {
+        self.cache.as_ref()
+    }
+}
+
+struct FlashAlgorithmVisitor;
+
+impl<'de> serde::de::Visitor<'de> for FlashAlgorithmVisitor {
+    type Value = FlashAlgorithmContainer;
+
+    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(formatter, "a path to an existing an algorithm description file")
+    }
+
+    fn visit_str<E>(self, s: &str) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        // TODO: Maybe validate path somehow.
+        Ok(FlashAlgorithmContainer {
+            path: s.to_owned(),
+            cache: None,
+        })
+    }
+}
+
+impl<'de> serde::Deserialize<'de> for FlashAlgorithmContainer {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        deserializer.deserialize_identifier(FlashAlgorithmVisitor)
+    }
 }
