@@ -11,17 +11,43 @@ use std::io::{
 use std::path::Path;
 
 use ocd::target::Target;
+use ocd::probe::flash::FlashAlgorithm;
 
 fn main() {
     let out_dir = env::var("OUT_DIR").unwrap();
     let dest_path = Path::new(&out_dir).join("targets.rs");
     let mut f = File::create(&dest_path).unwrap();
 
+    // TARGETS
+    let mut files = vec![];
+    visit_dirs(Path::new("algorithms"), &mut files).unwrap();
+
+    let mut algorithm_names = vec![];
+    let mut algorithm_files = vec![];
+
+    for file in files {
+        let string = read_to_string(&file)
+            .expect("Algorithm definition file could not be read. This is a bug. Please report it.");
+        match FlashAlgorithm::new(&string) {
+            Ok(algorithm) => {
+                algorithm_files.push("/".to_string() + &file);
+                algorithm_names.push(file);
+            },
+            Err(e) => {
+                log::error!("Failed to parse file {}.", string);
+                log::error!("{:?}.", e);
+            }
+        }
+    }
+
+    dbg!(&algorithm_names);
+    dbg!(&algorithm_files);
+
+    // TARGETS
     let mut files = vec![];
     visit_dirs(Path::new("targets"), &mut files).unwrap();
 
-    let mut names = vec![];
-    let mut indices = vec![];
+    let mut target_names = vec![];
     let mut target_files = vec![];
 
     for file in files {
@@ -30,10 +56,7 @@ fn main() {
         match Target::new(&string) {
             Ok(target) => {
                 target_files.push("/".to_string() + &file);
-                for name in target.names {
-                    names.push(name.to_ascii_lowercase());
-                    indices.push(target_files.len() - 1);
-                }
+                target_names.push(target.name.to_ascii_lowercase());
             },
             Err(e) => {
                 log::error!("Failed to parse file {}.", string);
@@ -41,6 +64,9 @@ fn main() {
             }
         }
     }
+
+    dbg!(&target_names);
+    dbg!(&target_files);
 
     let stream: String = format!("{}", quote::quote! {
     // START QUOTE
@@ -56,21 +82,26 @@ fn main() {
         };
 
         lazy_static::lazy_static! {
-            static ref NAMES: HashMap<&'static str, usize> = vec![
-                #((#names, #indices),)*
+            static ref FLASH_ALGORITHMS: HashMap<&'static str, &'static str> = vec![
+                #((#algorithm_names, include_str!(concat!(env!("CARGO_MANIFEST_DIR"), #algorithm_files))),)*
             ].into_iter().collect();
 
-            static ref TARGETS: Vec<&'static str> = vec! [
-                #(include_str!(concat!(env!("CARGO_MANIFEST_DIR"), #target_files)),)*
-            ];
+
+            static ref TARGETS: HashMap<&'static str, &'static str> = vec![
+                #((#target_names, include_str!(concat!(env!("CARGO_MANIFEST_DIR"), #target_files))),)*
+            ].into_iter().collect();
         }
 
         pub fn get_built_in_target(name: impl AsRef<str>) -> Result<Target, TargetSelectionError> {
             let name = name.as_ref().to_string().to_ascii_lowercase();
-            NAMES
+            TARGETS
                 .get(&name[..])
                 .ok_or(TargetSelectionError::TargetNotFound(name))
-                .and_then(|i| { Target::new(TARGETS[*i]).map_err(From::from) })
+                .and_then(|target| {
+                    Target::new(target)
+                        .map(|mut target| { target.flash_algorithm.internal(&FLASH_ALGORITHMS); target })
+                        .map_err(From::from)
+                })
         }
 
         pub fn select_target(name: Option<&str>) -> Result<Target, TargetSelectionError> {
