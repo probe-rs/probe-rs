@@ -1,27 +1,12 @@
-use crate::common::{
-    CliError,
-    with_device,
-};
+use crate::common::{with_device, CliError};
 
 use ocd::{
     coresight::{
         access_ports::{
-            generic_ap::{
-                GenericAP,
-                IDR,
-                APClass,
-            },
-            memory_ap::{
-                MemoryAP,
-                BASE,
-                BASE2,
-                BaseaddrFormat,
-            },
+            generic_ap::{APClass, IDR},
+            memory_ap::{BaseaddrFormat, MemoryAP, BASE, BASE2},
         },
-        ap_access::{
-            APAccess,
-            access_port_is_valid,
-        },
+        ap_access::{valid_access_ports, APAccess},
     },
     memory::romtable::CSComponent,
     target::Target,
@@ -63,42 +48,46 @@ pub fn show_info_of_device(n: usize, target: Target) -> Result<(), CliError> {
         let target_info = session.probe.read_register_dp(0x0)?;
         println!("DP info: {:#08x}", target_info);
 
-
         println!("\nAvailable Access Ports:");
 
-        for port in 0..255 { 
-            let access_port = GenericAP::new(port);
-            if access_port_is_valid(&mut session.probe, access_port) {
+        for access_port in valid_access_ports(&mut session.probe) {
+            let idr = session
+                .probe
+                .read_register_ap(access_port, IDR::default())?;
+            println!("{:#x?}", idr);
 
-                let idr = session.probe.read_register_ap(access_port, IDR::default())?;
-                println!("{:#x?}", idr);
+            if idr.CLASS == APClass::MEMAP {
+                let access_port: MemoryAP = access_port.into();
 
-                if idr.CLASS == APClass::MEMAP {
-                    let access_port: MemoryAP = access_port.into();
+                let base_register = session
+                    .probe
+                    .read_register_ap(access_port, BASE::default())?;
 
-                    let base_register = session.probe.read_register_ap(access_port, BASE::default())?;
+                let mut baseaddr = if BaseaddrFormat::ADIv5 == base_register.Format {
+                    let base2 = session
+                        .probe
+                        .read_register_ap(access_port, BASE2::default())?;
+                    (u64::from(base2.BASEADDR) << 32)
+                } else {
+                    0
+                };
+                baseaddr |= u64::from(base_register.BASEADDR << 12);
 
-                    let mut baseaddr = if BaseaddrFormat::ADIv5 == base_register.Format {
-                        let base2 = session.probe.read_register_ap(access_port, BASE2::default())?;
-                        (u64::from(base2.BASEADDR) << 32)
-                    } else { 0 };
-                    baseaddr |= u64::from(base_register.BASEADDR << 12);
-                    
-                    let link_ref = &mut session.probe;
+                let link_ref = &mut session.probe;
 
-                    let component_table = CSComponent::try_parse(&link_ref.into(), baseaddr as u64);
+                let component_table = CSComponent::try_parse(&link_ref.into(), baseaddr as u64);
 
+                component_table
+                    .iter()
+                    .for_each(|entry| println!("{:#08x?}", entry));
 
-                    component_table.iter().for_each(|entry| println!("{:#08x?}", entry));
+                // let mut reader = crate::memory::romtable::RomTableReader::new(&link_ref, baseaddr as u64);
 
-                    // let mut reader = crate::memory::romtable::RomTableReader::new(&link_ref, baseaddr as u64);
-
-                    // for e in reader.entries() {
-                    //     if let Ok(e) = e {
-                    //         println!("ROM Table Entry: Component @ 0x{:08x}", e.component_addr());
-                    //     }
-                    // }
-                }
+                // for e in reader.entries() {
+                //     if let Ok(e) = e {
+                //         println!("ROM Table Entry: Component @ 0x{:08x}", e.component_addr());
+                //     }
+                // }
             }
         }
 
