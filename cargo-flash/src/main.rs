@@ -30,9 +30,14 @@ use ocd::{
             DebugProbeError,
             DebugProbeType,
         },
-        flash::download::{
-            FileDownloader,
-            Format,
+        flash::{
+            download::{
+                FileDownloader,
+                Format,
+            },
+            flasher::{
+                AlgorithmSelectionError,
+            },
         },
         daplink,
         stlink,
@@ -240,8 +245,13 @@ where
             MasterProbe::from_specific_probe(link)
         },
     };
+
+    let flash_algorithm = match target.flash_algorithm.clone() {
+        Some(name) => ocd_targets::select_algorithm(name)?,
+        None => Err(AlgorithmSelectionError::NoAlgorithmSuggested)?
+    };
     
-    let session = Session::new(target, probe);
+    let session = Session::new(target, probe, Some(flash_algorithm));
 
     f(session)
 }
@@ -252,6 +262,7 @@ pub enum DownloadError {
     AccessPort(AccessPortError),
     StdIO(std::io::Error),
     Quit,
+    FlashAlgorithm(AlgorithmSelectionError),
 }
 
 impl Error for DownloadError {
@@ -263,6 +274,7 @@ impl Error for DownloadError {
             AccessPort(ref e) => Some(e),
             StdIO(ref e) => Some(e),
             Quit => None,
+            FlashAlgorithm(ref e) => Some(e),
         }
     }
 }
@@ -276,6 +288,7 @@ impl fmt::Display for DownloadError {
             AccessPort(ref e) => e.fmt(f),
             StdIO(ref e) => e.fmt(f),
             Quit => write!(f, "Quit error..."),
+            FlashAlgorithm(ref e) => e.fmt(f),
         }
     }
 }
@@ -295,5 +308,11 @@ impl From<DebugProbeError> for DownloadError {
 impl From<std::io::Error> for DownloadError {
     fn from(error: std::io::Error) -> Self {
         DownloadError::StdIO(error)
+    }
+}
+
+impl From<AlgorithmSelectionError> for DownloadError {
+    fn from(error: AlgorithmSelectionError) -> Self {
+        DownloadError::FlashAlgorithm(error)
     }
 }

@@ -1,3 +1,7 @@
+use std::error::Error;
+use std::fmt;
+use crate::probe::debug_probe::MasterProbe;
+use crate::target::Target;
 use crate::probe::debug_probe::DebugProbeError;
 use crate::coresight::access_ports::AccessPortError;
 use crate::memory::MI;
@@ -55,6 +59,33 @@ pub type AlgorithmParseError = serde_yaml::Error;
 impl FlashAlgorithm {
     pub fn new(definition: &str) -> Result<Self, AlgorithmParseError> {
         serde_yaml::from_str(definition)
+    }
+}
+
+#[derive(Debug)]
+pub enum AlgorithmSelectionError {
+    AlgorithmNotFound(String),
+    AlgorithmCouldNotBeParsed(AlgorithmParseError),
+    NoAlgorithmSuggested,
+}
+
+impl Error for AlgorithmSelectionError { }
+
+impl fmt::Display for AlgorithmSelectionError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use AlgorithmSelectionError::*;
+
+        match self {
+            AlgorithmNotFound(name) => write!(f, "Algorithm \"{}\" could not be found.", name),
+            AlgorithmCouldNotBeParsed(error) => write!(f, "Algorithm could not be parsed.\r\nReason: {:?}", error),
+            NoAlgorithmSuggested => write!(f, "Target description did not contain an algorithm."),
+        }
+    }
+}
+
+impl From<AlgorithmParseError> for AlgorithmSelectionError {
+    fn from(error: AlgorithmParseError) -> Self {
+        AlgorithmSelectionError::AlgorithmCouldNotBeParsed(error)
     }
 }
 
@@ -121,15 +152,24 @@ impl From<AccessPortError> for FlasherError {
 }
 
 pub struct Flasher<'a> {
-    session: &'a mut Session,
+    target: &'a Target,
+    probe: &'a mut MasterProbe,
+    flash_algorithm: &'a FlashAlgorithm,
     region: &'a FlashRegion,
     double_buffering_supported: bool
 }
 
 impl<'a> Flasher<'a> {
-    pub fn new(session: &'a mut Session, region: &'a FlashRegion) -> Self {
+    pub fn new(
+        target: &'a Target,
+        probe: &'a mut MasterProbe,
+        flash_algorithm: &'a FlashAlgorithm,
+        region: &'a FlashRegion
+    ) -> Self {
         Self {
-            session,
+            target,
+            probe,
+            flash_algorithm,
             region,
             double_buffering_supported: false,
         }
@@ -140,7 +180,7 @@ impl<'a> Flasher<'a> {
     }
 
     pub fn flash_algorithm(&self) -> &FlashAlgorithm {
-        self.session.target.flash_algorithm.get().unwrap()
+        &self.flash_algorithm
     }
 
     pub fn double_buffering_supported(&self) -> bool {
@@ -153,7 +193,7 @@ impl<'a> Flasher<'a> {
         clock: Option<u32>
     ) -> Result<ActiveFlasher<'b, O>, FlasherError> {
         log::debug!("Initializing the flash algorithm.");
-        let algo = self.session.target.flash_algorithm.get().unwrap();
+        let algo = &self.flash_algorithm;
 
         use capstone::arch::*;
         let cs = capstone::Capstone::new()
@@ -183,17 +223,17 @@ impl<'a> Flasher<'a> {
 
         // TODO: Halt & reset target.
         log::debug!("Halting core.");
-        let cpu_info = self.session.target.core.halt(&mut self.session.probe);
+        let cpu_info = self.target.core.halt(&mut self.probe);
         log::debug!("PC = 0x{:08x}", cpu_info.unwrap().pc);
 
         // TODO: Possible special preparation of the target such as enabling faster clocks for the flash e.g.
 
         // Load flash algorithm code into target RAM.
         log::debug!("Loading algorithm into RAM at address 0x{:08x}", algo.load_address);
-        self.session.probe.write_block32(algo.load_address, algo.instructions.as_slice())?;
+        self.probe.write_block32(algo.load_address, algo.instructions.as_slice())?;
 
         let mut data = vec![0; algo.instructions.len()];
-        self.session.probe.read_block32(algo.load_address, &mut data)?;
+        self.probe.read_block32(algo.load_address, &mut data)?;
 
         assert_eq!(&algo.instructions, &data.as_slice());
         log::debug!("RAM contents match flashing algo blob.");
@@ -202,7 +242,9 @@ impl<'a> Flasher<'a> {
         log::debug!("{:#?}", &self.region);
         log::debug!("Double buffering enabled: {}", self.double_buffering_supported);
         let mut flasher = ActiveFlasher {
-            session: self.session,
+            target: self.target,
+            probe: self.probe,
+            flash_algorithm: self.flash_algorithm,
             region: self.region,
             double_buffering_supported: self.double_buffering_supported,
             _operation: core::marker::PhantomData,
@@ -267,7 +309,9 @@ impl<'a> Flasher<'a> {
 }
 
 pub struct ActiveFlasher<'a, O: Operation> {
-    session: &'a mut Session,
+    target: &'a Target,
+    probe: &'a mut MasterProbe,
+    flash_algorithm: &'a FlashAlgorithm,
     region: &'a FlashRegion,
     double_buffering_supported: bool,
     _operation: core::marker::PhantomData<O>,
@@ -279,7 +323,7 @@ impl<'a, O: Operation> ActiveFlasher<'a, O> {
         address: Option<u32>,
         clock: Option<u32>
     ) -> Result<(), FlasherError> {
-        let algo = self.session.target.flash_algorithm.get().unwrap();
+        let algo = &self.flash_algorithm;
 
         // Execute init routine if one is present.
         if let Some(pc_init) = algo.pc_init {
@@ -306,16 +350,16 @@ impl<'a, O: Operation> ActiveFlasher<'a, O> {
     }
 
     pub fn flash_algorithm(&self) -> &FlashAlgorithm {
-        &self.session.target.flash_algorithm.get().unwrap()
+        &&self.flash_algorithm
     }
 
-    pub fn session_mut(&mut self) -> &mut Session {
-        &mut self.session
-    }
+    // pub fn session_mut(&mut self) -> &mut Session {
+    //     &mut self.session
+    // }
 
     pub fn uninit<'b, 's: 'b>(&'s mut self) -> Result<Flasher<'b>, FlasherError> {
         log::debug!("Running uninit routine.");
-        let algo = self.session.target.flash_algorithm.get().unwrap();
+        let algo = &self.flash_algorithm;
 
         if let Some(pc_uninit) = algo.pc_uninit {
             let result = self.call_function_and_wait(
@@ -333,7 +377,9 @@ impl<'a, O: Operation> ActiveFlasher<'a, O> {
         }
 
         Ok(Flasher {
-            session: self.session,
+            target: self.target,
+            probe: self.probe,
+            flash_algorithm: self.flash_algorithm,
             region: self.region,
             double_buffering_supported: self.double_buffering_supported,
         })
@@ -347,8 +393,8 @@ impl<'a, O: Operation> ActiveFlasher<'a, O> {
     fn call_function(&mut self, pc: u32, r0: Option<u32>, r1: Option<u32>, r2: Option<u32>, r3: Option<u32>, init: bool) -> Result<(), FlasherError> {
         log::debug!("Calling routine {:08x}({:?}, {:?}, {:?}, {:?}, init={})", pc, r0, r1, r2, r3, init);
         
-        let algo = self.session.target.flash_algorithm.get().unwrap();
-        let regs = self.session.target.core.registers();
+        let algo = &self.flash_algorithm;
+        let regs = self.target.core.registers();
 
         [
             (regs.PC, Some(pc)),
@@ -362,8 +408,8 @@ impl<'a, O: Operation> ActiveFlasher<'a, O> {
         ]
         .into_iter()
         .map(|(addr, value)| if let Some(v) = value {
-            let r = self.session.target.core.write_core_reg(&mut self.session.probe, *addr, *v)?;
-            log::debug!("content: 0x{:08x} should be: 0x{:08x}", self.session.target.core.read_core_reg(&mut self.session.probe, *addr)?, *v);
+            let r = self.target.core.write_core_reg(&mut self.probe, *addr, *v)?;
+            log::debug!("content: 0x{:08x} should be: 0x{:08x}", self.target.core.read_core_reg(&mut self.probe, *addr)?, *v);
             Ok(r)
         } else {
             Ok(())
@@ -371,35 +417,35 @@ impl<'a, O: Operation> ActiveFlasher<'a, O> {
         .collect::<Result<Vec<()>, DebugProbeError>>()?;
 
         // Resume target operation.
-        self.session.target.core.run(&mut self.session.probe)?;
+        self.target.core.run(&mut self.probe)?;
 
         Ok(())
     }
 
     pub fn wait_for_completion(&mut self) -> Result<u32, FlasherError> {
         log::debug!("Waiting for routine call completion.");
-        let regs = self.session.target.core.registers();
+        let regs = self.target.core.registers();
 
-        while self.session.target.core.wait_for_core_halted(&mut self.session.probe).is_err() {}
+        while self.target.core.wait_for_core_halted(&mut self.probe).is_err() {}
 
-        let r = self.session.target.core.read_core_reg(&mut self.session.probe, regs.R0)?;
+        let r = self.target.core.read_core_reg(&mut self.probe, regs.R0)?;
         Ok(r)
     }
 
     pub fn read_block32(&mut self, address: u32, data: &mut [u32]) -> Result<(), FlasherError> {
-        self.session.probe.read_block32(address, data)?;
+        self.probe.read_block32(address, data)?;
         Ok(())
     }
 
     pub fn read_block8(&mut self, address: u32, data: &mut [u8]) -> Result<(), FlasherError> {
-        self.session.probe.read_block8(address, data)?;
+        self.probe.read_block8(address, data)?;
         Ok(())
     }
 }
 
 impl <'a> ActiveFlasher<'a, Erase> {
     pub fn erase_all(&mut self) -> Result<(), FlasherError> {
-        let algo = self.session.target.flash_algorithm.get().unwrap();
+        let algo = &self.flash_algorithm;
 
         if let Some(pc_erase_all) = algo.pc_erase_all {
             let result = self.call_function_and_wait(
@@ -423,7 +469,7 @@ impl <'a> ActiveFlasher<'a, Erase> {
 
     pub fn erase_sector(&mut self, address: u32) -> Result<(), FlasherError> {
         log::debug!("Erasing sector at address 0x{:08x}.", address);
-        let algo = self.session.target.flash_algorithm.get().unwrap();
+        let algo = &self.flash_algorithm;
 
         let result = self.call_function_and_wait(
             algo.pc_erase_sector,
@@ -443,11 +489,11 @@ impl <'a> ActiveFlasher<'a, Erase> {
     }
 
     pub fn compute_crcs(&mut self, sectors: &Vec<(u32, u32)>) -> Result<Vec<u32>, FlasherError> {
-        let algo = self.session.target.flash_algorithm.get().unwrap();
+        let algo = &self.flash_algorithm;
         if algo.analyzer_supported {
             let mut data = vec![];
 
-            self.session.probe.write_block32(algo.analyzer_address, &ANALYZER)?;
+            self.probe.write_block32(algo.analyzer_address, &ANALYZER)?;
 
             for (address, mut size) in sectors {
                 let size_value = {
@@ -469,7 +515,7 @@ impl <'a> ActiveFlasher<'a, Erase> {
                 data.push(value);
             }
 
-            self.session.probe.write_block32(algo.begin_data, data.as_slice())?;
+            self.probe.write_block32(algo.begin_data, data.as_slice())?;
 
             let analyzer_address = algo.analyzer_address;
             let begin_data = algo.begin_data;
@@ -483,7 +529,7 @@ impl <'a> ActiveFlasher<'a, Erase> {
             );
             result?;
 
-            self.session.probe.read_block32(begin_data, data.as_mut_slice())?;
+            self.probe.read_block32(begin_data, data.as_mut_slice())?;
 
             Ok(data)
         } else {
@@ -494,12 +540,12 @@ impl <'a> ActiveFlasher<'a, Erase> {
 
 impl <'a> ActiveFlasher<'a, Program> {
     pub fn program_page(&mut self, address: u32, bytes: &[u8]) -> Result<(), FlasherError> {
-        let algo = self.session.target.flash_algorithm.get().unwrap();
+        let algo = &self.flash_algorithm;
 
         // TODO: Prevent security settings from locking the device.
 
         // Transfer the bytes to RAM.
-        self.session.probe.write_block8(algo.begin_data, bytes)?;
+        self.probe.write_block8(algo.begin_data, bytes)?;
 
         let result = self.call_function_and_wait(
             algo.pc_program_page,
@@ -518,7 +564,7 @@ impl <'a> ActiveFlasher<'a, Program> {
     }
 
     pub fn start_program_page_with_buffer(&mut self, address: u32, buffer_number: u32) -> Result<(), FlasherError> {
-        let algo = self.session.target.flash_algorithm.get().unwrap();
+        let algo = &self.flash_algorithm;
 
         // Check the buffer number.
         if buffer_number < algo.page_buffers.len() as u32 {
@@ -538,7 +584,7 @@ impl <'a> ActiveFlasher<'a, Program> {
     }
 
     pub fn load_page_buffer(&mut self, _address: u32, bytes: &[u8], buffer_number: u32) -> Result<(), FlasherError> {
-        let algo = self.session.target.flash_algorithm.get().unwrap();
+        let algo = &self.flash_algorithm;
 
         // Check the buffer number.
         if buffer_number < algo.page_buffers.len() as u32 {
@@ -548,13 +594,13 @@ impl <'a> ActiveFlasher<'a, Program> {
         // TODO: Prevent security settings from locking the device.
 
         // Transfer the buffer bytes to RAM.
-        self.session.probe.write_block8(algo.page_buffers[buffer_number as usize], bytes)?;
+        self.probe.write_block8(algo.page_buffers[buffer_number as usize], bytes)?;
 
         Ok(())
     }
 
     pub fn program_phrase(&mut self, address: u32, bytes: &[u8]) -> Result<(), FlasherError> {
-        let algo = self.session.target.flash_algorithm.get().unwrap();
+        let algo = &self.flash_algorithm;
 
         // Get the minimum programming length. If none was specified, use the page size.
         let min_len = if let Some(min_program_length) = algo.min_program_length {
@@ -574,7 +620,7 @@ impl <'a> ActiveFlasher<'a, Program> {
         // TODO: Prevent security settings from locking the device.
 
         // Transfer the phrase bytes to RAM.
-        self.session.probe.write_block8(algo.begin_data, bytes)?;
+        self.probe.write_block8(algo.begin_data, bytes)?;
 
         let result = self.call_function_and_wait(
             algo.pc_program_page,

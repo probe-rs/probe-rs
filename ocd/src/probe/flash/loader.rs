@@ -90,7 +90,8 @@ pub struct FlashLoader<'a, 'b> {
 #[derive(Debug)]
 pub enum FlashLoaderError {
     MemoryRegionNotDefined(u32), // Contains the faulty address.
-    MemoryRegionNotFlash(u32) // Contains the faulty address.
+    MemoryRegionNotFlash(u32), // Contains the faulty address.
+    NoFlashLoaderAlgorithmAttached,
 }
 
 impl<'a, 'b> FlashLoader<'a, 'b> {
@@ -186,33 +187,41 @@ impl<'a, 'b> FlashLoader<'a, 'b> {
     /// algorithm for the first region doesn't actually erase the entire chip (all regions).
     
     /// After calling this method, the loader instance can be reused to program more data.
-    pub fn commit(&mut self, session: &mut Session) {
-        let mut did_chip_erase = false;
-        
-        // Iterate over builders we've created and program the data.
-        let mut builders: Vec<(&FlashRegion, &FlashBuilder)> = self.builders.iter().collect();
-        builders.sort_unstable_by_key(|v| v.1.flash_start);
-        let sorted = builders;
-        for builder in sorted {
-            log::debug!(
-                "Using builder for region (0x{:08x}..0x{:08x})",
-                builder.0.range.start,
-                builder.0.range.end
-            );
-            // Program the data.
-            let chip_erase = Some(if !did_chip_erase { self.chip_erase } else { false });
-            builder.1.program(
-                Flasher::new(session, builder.0),
-                chip_erase,
-                self.smart_flash,
-                self.trust_crc,
-                self.keep_unwritten
-            ).unwrap();
-            did_chip_erase = true;
-        }
+    pub fn commit(&mut self, session: &mut Session) -> Result<(), FlashLoaderError> {
+        let target = &session.target;
+        let probe = &mut session.probe;
+        if let Some(flash_algorithm) = session.flash_algorithm.as_ref() {
+            let mut did_chip_erase = false;
+            
+            // Iterate over builders we've created and program the data.
+            let mut builders: Vec<(&FlashRegion, &FlashBuilder)> = self.builders.iter().collect();
+            builders.sort_unstable_by_key(|v| v.1.flash_start);
+            let sorted = builders;
+            for builder in sorted {
+                log::debug!(
+                    "Using builder for region (0x{:08x}..0x{:08x})",
+                    builder.0.range.start,
+                    builder.0.range.end
+                );
+                // Program the data.
+                let chip_erase = Some(if !did_chip_erase { self.chip_erase } else { false });
+                builder.1.program(
+                    Flasher::new(target, probe, flash_algorithm, builder.0),
+                    chip_erase,
+                    self.smart_flash,
+                    self.trust_crc,
+                    self.keep_unwritten
+                ).unwrap();
+                did_chip_erase = true;
+            }
 
-        // Clear state to allow reuse.
-        self.reset_state();
+            // Clear state to allow reuse.
+            self.reset_state();
+
+            Ok(())
+        } else {
+            Err(FlashLoaderError::NoFlashLoaderAlgorithmAttached)
+        }
     }
 }
 
