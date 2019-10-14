@@ -26,7 +26,7 @@ pub fn get_target(name: impl AsRef<str>) -> Option<Target> {
 
     let name: String = name.as_ref().into();
 
-    map.get(&name.to_ascii_lowercase()).map(|target| target.clone())
+    map.get(&name.to_ascii_lowercase()).cloned()
 }
 
 pub fn get_algorithm(name: impl AsRef<str>) -> Option<FlashAlgorithm> {
@@ -42,7 +42,7 @@ pub fn get_algorithm(name: impl AsRef<str>) -> Option<FlashAlgorithm> {
             .to_string_lossy()
             .to_string();
 
-        map.get(&name).map(|algorithm| algorithm.clone())
+        map.get(&name).cloned()
     } else {
         log::warn!("Home directory could not be determined while loading algorithms.");
         None
@@ -54,7 +54,7 @@ pub fn get_core(name: impl AsRef<str>) -> Option<Box<dyn Core>> {
         "M0".to_string() => Box::new(self::cores::m0::M0) as _,
     };
 
-    map.get(name.as_ref()).map(|target| target.clone())
+    map.get(name.as_ref()).cloned()
 }
 
 pub fn load_targets(root: Option<&Path>, map: &mut HashMap<String, Target>) {
@@ -93,7 +93,7 @@ pub fn load_algorithms_from_dir(dir: &DirEntry, map: &mut HashMap<String, FlashA
 
             // Read the JSON contents of the file as an instance of `User`.
             match serde_yaml::from_reader(reader) as serde_yaml::Result<FlashAlgorithm> {
-                Ok(mut target) => {
+                Ok(target) => {
                     map.insert(dir.path().to_string_lossy().to_string(), target);
                 },
                 Err(e) => { log::warn!("Error loading chip definition: {}", e) }

@@ -204,7 +204,7 @@ fn main_try() -> Result<(), failure::Error> {
 
     let flash_algorithm = match target.flash_algorithm.clone() {
         Some(name) => ocd_targets::select_algorithm(name)?,
-        None => Err(AlgorithmSelectionError::NoAlgorithmSuggested)?
+        None => return Err(AlgorithmSelectionError::NoAlgorithmSuggested.into())
     };
     
     let mut session = Session::new(target, probe, Some(flash_algorithm));
@@ -261,7 +261,7 @@ where
 
     let flash_algorithm = match target.flash_algorithm.clone() {
         Some(name) => ocd_targets::select_algorithm(name)?,
-        None => Err(AlgorithmSelectionError::NoAlgorithmSuggested)?
+        None => return Err(AlgorithmSelectionError::NoAlgorithmSuggested.into())
     };
     
     let session = Session::new(target, probe, Some(flash_algorithm));

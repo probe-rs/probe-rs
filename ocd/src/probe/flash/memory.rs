@@ -1,9 +1,9 @@
 bitflags! {
     #[derive(Serialize, Deserialize)]
     pub struct Access: u8 {
-        const R = 0b00000001;
-        const W = 0b00000010;
-        const X = 0b00000100;
+        const R = 0b0000_0001;
+        const W = 0b0000_0010;
+        const X = 0b0000_0100;
         const RW = Self::R.bits | Self::W.bits;
         const RX = Self::R.bits | Self::X.bits;
     }

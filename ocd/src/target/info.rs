@@ -1,4 +1,4 @@
-use crate::probe::debug_probe::DebugProbeError;
+
 use crate::probe::debug_probe::MasterProbe;
 use jep106::JEP106Code;
 use crate::{

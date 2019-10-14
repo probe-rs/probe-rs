@@ -83,7 +83,7 @@ define_ap_register!(
     ],
     value,
     BASE {
-        BASEADDR: (value & 0xFFFFF000) >> 12,
+        BASEADDR: (value & 0xFFFF_F000) >> 12,
         _RES0:    0,
         Format:   match ((value >> 1) & 0x01) as u8 {
                     0 => BaseaddrFormat::Legacy,
@@ -96,7 +96,7 @@ define_ap_register!(
                     _ => panic!("This is a bug. Please report it.") 
                   },
     },
-      (u32::from(value.BASEADDR       ) << 12)
+      (value.BASEADDR << 12)
     // _RES0
     | (u32::from(value.Format as u8   ) << 1)
     | (u32::from(value.P as u8))
@@ -111,7 +111,7 @@ define_ap_register!(
     BASE2 {
         BASEADDR: value,
     },
-    u32::from(value.BASEADDR)
+    value.BASEADDR
 );
 
 define_ap_register!(

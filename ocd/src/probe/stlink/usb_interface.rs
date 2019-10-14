@@ -102,7 +102,7 @@ impl STLinkUSBDevice {
                             }
                         })
                         .next()
-                        .map_or(Err(DebugProbeError::ProbeCouldNotBeCreated), |v| Ok(v))?
+                        .map_or(Err(DebugProbeError::ProbeCouldNotBeCreated), Ok)?
                 ))
             },
             |device, _context| {

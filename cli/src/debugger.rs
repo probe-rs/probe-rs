@@ -209,7 +209,7 @@ impl DebugCli {
                 cli_data.session.target.core.halt(&mut cli_data.session.probe)?;
 
                 // Enable vector catch after reset (set bit 1 in DEMCR register)
-                cli_data.session.probe.write32(0xE000EDFC, 1)?;
+                cli_data.session.probe.write32(0xE000_EDFC, 1)?;
                 cli_data.session.target.core.reset(&mut cli_data.session.probe)?;
 
                 Ok(CliState::Continue)

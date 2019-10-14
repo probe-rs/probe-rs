@@ -97,7 +97,7 @@ impl ADIMemoryInterface {
         AP: APAccess<MemoryAP, CSW> + APAccess<MemoryAP, TAR> + APAccess<MemoryAP, DRW>
     {
         if (address % 4) != 0 {
-            Err(AccessPortError::MemoryNotAligned)?;
+            return Err(AccessPortError::MemoryNotAligned);
         }
 
         let csw = self.build_csw_register(DataSize::U32);
@@ -149,14 +149,14 @@ impl ADIMemoryInterface {
         AP: APAccess<MemoryAP, CSW> + APAccess<MemoryAP, TAR> + APAccess<MemoryAP, DRW>
     {
         if (address % 4) != 0 {
-            Err(AccessPortError::MemoryNotAligned)?;
+            return Err(AccessPortError::MemoryNotAligned);
         }
 
         // Second we read in 32 bit reads until we have less than 32 bits left to read.
         let csw = self.build_csw_register(DataSize::U32);
         self.write_register_ap(debug_port, csw)?;
 
-        let tar = TAR { address: address };
+        let tar = TAR { address };
         self.write_register_ap(debug_port, tar)?;
 
         let num_reads = data.len();
@@ -278,12 +278,12 @@ impl ADIMemoryInterface {
         AP: APAccess<MemoryAP, CSW> + APAccess<MemoryAP, TAR> + APAccess<MemoryAP, DRW>
     {
         if (address % 4) != 0 {
-            Err(AccessPortError::MemoryNotAligned)?;
+            return Err(AccessPortError::MemoryNotAligned);
         }
 
         let csw = self.build_csw_register(DataSize::U32);
         let drw = DRW { data };
-        let tar = TAR { address: address };
+        let tar = TAR { address };
         self.write_register_ap(debug_port, csw)?;
         self.write_register_ap(debug_port, tar)?;
         self.write_register_ap(debug_port, drw)?;
@@ -311,7 +311,7 @@ impl ADIMemoryInterface {
         let data = data_t | ((data as u32) << (pre_bytes * 8));
 
         let csw = self.build_csw_register(DataSize::U32);
-        let drw = DRW { data: data };
+        let drw = DRW { data };
         let tar = TAR { address: aligned_addr };
         self.write_register_ap(debug_port, csw)?;
         self.write_register_ap(debug_port, tar)?;
@@ -334,7 +334,7 @@ impl ADIMemoryInterface {
         AP: APAccess<MemoryAP, CSW> + APAccess<MemoryAP, TAR> + APAccess<MemoryAP, DRW>
     {
         if (address % 4) != 0 {
-            Err(AccessPortError::MemoryNotAligned)?;
+            return Err(AccessPortError::MemoryNotAligned);
         }
 
         // Second we write in 32 bit reads until we have less than 32 bits left to write.
@@ -342,7 +342,7 @@ impl ADIMemoryInterface {
 
         self.write_register_ap(debug_port, csw)?;
 
-        let tar = TAR { address: address };
+        let tar = TAR { address };
         self.write_register_ap(debug_port, tar)?;
 
         let num_writes = data.len();
@@ -423,7 +423,7 @@ mod tests {
         let mi = ADIMemoryInterface::new(0x0);
         let read = mi.read32(&mut mock, 0);
         debug_assert!(read.is_ok());
-        debug_assert_eq!(read.unwrap(), 0xDEADBEEF);
+        debug_assert_eq!(read.unwrap(), 0xDEAD_BEEF);
     }
 
     #[test]
@@ -465,7 +465,7 @@ mod tests {
     fn write_u32() {
         let mut mock = MockMemoryAP::new();
         let mi = ADIMemoryInterface::new(0x0);
-        debug_assert!(mi.write32(&mut mock, 0, 0xDEADBEEF as u32).is_ok());
+        debug_assert!(mi.write32(&mut mock, 0, 0xDEAD_BEEF as u32).is_ok());
         debug_assert_eq!(mock.data[0..4], [0xEF, 0xBE, 0xAD, 0xDE]);
     }
 
@@ -505,7 +505,7 @@ mod tests {
         let mut data = [0 as u32; 2];
         let read = mi.read_block32(&mut mock, 0, &mut data);
         debug_assert!(read.is_ok());
-        debug_assert_eq!(data, [0xDEADBEEF, 0xABBABABE]);
+        debug_assert_eq!(data, [0xDEAD_BEEF, 0xABBA_BABE]);
     }
 
     #[test]
@@ -519,7 +519,7 @@ mod tests {
         let mut data = [0 as u32; 1];
         let read = mi.read_block32(&mut mock, 0, &mut data);
         debug_assert!(read.is_ok());
-        debug_assert_eq!(data, [0xDEADBEEF]);
+        debug_assert_eq!(data, [0xDEAD_BEEF]);
     }
 
     #[test]
@@ -640,7 +640,7 @@ mod tests {
     fn write_block_u32() {
         let mut mock = MockMemoryAP::new();
         let mi = ADIMemoryInterface::new(0x0);
-        debug_assert!(mi.write_block32(&mut mock, 0, &([0xDEADBEEF, 0xABBABABE] as [u32; 2])).is_ok());
+        debug_assert!(mi.write_block32(&mut mock, 0, &([0xDEAD_BEEF, 0xABBA_BABE] as [u32; 2])).is_ok());
         debug_assert_eq!(mock.data[0..8], [0xEF, 0xBE, 0xAD, 0xDE, 0xBE, 0xBA, 0xBA ,0xAB]);
     }
 
@@ -648,7 +648,7 @@ mod tests {
     fn write_block_u32_only_1_word() {
         let mut mock = MockMemoryAP::new();
         let mi = ADIMemoryInterface::new(0x0);
-        debug_assert!(mi.write_block32(&mut mock, 0, &([0xDEADBEEF] as [u32; 1])).is_ok());
+        debug_assert!(mi.write_block32(&mut mock, 0, &([0xDEAD_BEEF] as [u32; 1])).is_ok());
         debug_assert_eq!(mock.data[0..4], [0xEF, 0xBE, 0xAD, 0xDE]);
     }
 
@@ -656,9 +656,9 @@ mod tests {
     fn write_block_u32_unaligned_should_error() {
         let mut mock = MockMemoryAP::new();
         let mi = ADIMemoryInterface::new(0x0);
-        debug_assert!(mi.write_block32(&mut mock, 1, &([0xDEADBEEF, 0xABBABABE] as [u32; 2])).is_err());
-        debug_assert!(mi.write_block32(&mut mock, 127, &([0xDEADBEEF, 0xABBABABE] as [u32; 2])).is_err());
-        debug_assert!(mi.write_block32(&mut mock, 3, &([0xDEADBEEF, 0xABBABABE] as [u32; 2])).is_err());
+        debug_assert!(mi.write_block32(&mut mock, 1, &([0xDEAD_BEEF, 0xABBA_BABE] as [u32; 2])).is_err());
+        debug_assert!(mi.write_block32(&mut mock, 127, &([0xDEAD_BEEF, 0xABBA_BABE] as [u32; 2])).is_err());
+        debug_assert!(mi.write_block32(&mut mock, 3, &([0xDEAD_BEEF, 0xABBA_BABE] as [u32; 2])).is_err());
     }
 
     #[test]

@@ -38,14 +38,12 @@ impl<I: Iterator<Item=usize> + Sized> Iterator for Ranges<I> {
                     self.start_item = self.last_item;
                     break;
                 }
-            } else {
-                if let Some(last_item) = self.last_item {
-                    self.last_item = None;
-                    return Some((self.start_item.unwrap(), last_item));
-                } else {
-                    return None;
-                }
-            }
+            } else if let Some(last_item) = self.last_item {
+    self.last_item = None;
+    return Some((self.start_item.unwrap(), last_item));
+} else {
+    return None;
+}
         }
 
         Some(r)

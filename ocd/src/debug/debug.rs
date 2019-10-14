@@ -211,7 +211,7 @@ impl<'a> Iterator for StackFrameIterator<'a> {
         // We just have to remove the lowest bit (indicator for Thumb mode).
         self.pc = self.registers[14].map(|pc| (pc &!1) as u64);
 
-        return return_frame;
+        return_frame
     }
 }
 
@@ -298,40 +298,53 @@ impl DebugInfo {
 
                     let mut previous_row: Option<gimli::LineRow> = None;
 
-                    let mut rows = program.resume_from(target_seq.as_ref().expect("Sequence not found"));
+                    let mut rows =
+                        program.resume_from(target_seq.as_ref().expect("Sequence not found"));
 
                     while let Some((header, row)) = rows.next_row().unwrap() {
                         //println!("Row address: 0x{:08x}", row.address());
                         if row.address() == address {
                             let file = row.file(header).unwrap().path_name();
-                            let file_name_str = std::str::from_utf8(&self.dwarf.attr_string(&unit, file).unwrap()).unwrap().to_owned();
+                            let file_name_str =
+                                std::str::from_utf8(&self.dwarf.attr_string(&unit, file).unwrap())
+                                    .unwrap()
+                                    .to_owned();
 
                             let file_dir = row.file(header).unwrap().directory(header).unwrap();
-                            let file_dir_str = std::str::from_utf8(&self.dwarf.attr_string(&unit, file_dir).unwrap()).unwrap().to_owned();
+                            let file_dir_str = std::str::from_utf8(
+                                &self.dwarf.attr_string(&unit, file_dir).unwrap(),
+                            )
+                            .unwrap()
+                            .to_owned();
 
                             return Some(SourceLocation {
                                 line: row.line(),
                                 column: Some(row.column().into()),
                                 file: file_name_str.into(),
                                 directory: Some(file_dir_str.into()),
-                            })
-                        } else {
-                            if (row.address() > address) && previous_row.is_some() {
-                                let row = previous_row.unwrap();
+                            });
+                        } else if (row.address() > address) && previous_row.is_some() {
+                            let row = previous_row.unwrap();
 
-                                let file = row.file(header).unwrap().path_name();
-                                let file_name_str = std::str::from_utf8(&self.dwarf.attr_string(&unit, file).unwrap()).unwrap().to_owned();
+                            let file = row.file(header).unwrap().path_name();
+                            let file_name_str =
+                                std::str::from_utf8(&self.dwarf.attr_string(&unit, file).unwrap())
+                                    .unwrap()
+                                    .to_owned();
 
-                                let file_dir = row.file(header).unwrap().directory(header).unwrap();
-                                let file_dir_str = std::str::from_utf8(&self.dwarf.attr_string(&unit, file_dir).unwrap()).unwrap().to_owned();
+                            let file_dir = row.file(header).unwrap().directory(header).unwrap();
+                            let file_dir_str = std::str::from_utf8(
+                                &self.dwarf.attr_string(&unit, file_dir).unwrap(),
+                            )
+                            .unwrap()
+                            .to_owned();
 
-                                return Some(SourceLocation {
-                                    line: row.line(),
-                                    column: Some(row.column().into()),
-                                    file: file_name_str.into(),
-                                    directory: Some(file_dir_str.into()),
-                                })
-                            }
+                            return Some(SourceLocation {
+                                line: row.line(),
+                                column: Some(row.column().into()),
+                                file: file_name_str.into(),
+                                directory: Some(file_dir_str.into()),
+                            });
                         }
                         previous_row = Some(row.clone());
                     }
@@ -339,7 +352,6 @@ impl DebugInfo {
             }
         }
         None
-
     }
 
     fn get_units(&self) -> UnitIter {
@@ -370,12 +382,12 @@ impl DebugInfo {
         registers: Registers
     ) -> StackFrame {
         let mut units = self.get_units();
-        let unknown_function = format!("<unknown_function_{}>", frame_count).to_string();
+        let unknown_function = format!("<unknown_function_{}>", frame_count);
         while let Some(unit_info) = self.get_next_unit_info(&mut units) {
             if let Some(die_cursor_state) = &mut unit_info.get_function_die(address) {
                 let function_name = unit_info
                     .get_function_name(&die_cursor_state.function_die)
-                    .unwrap_or(unknown_function.clone());
+                    .unwrap_or(unknown_function);
                 
                 let variables = unit_info.get_variables(
                     session,
@@ -389,7 +401,7 @@ impl DebugInfo {
                     id: frame_count,
                     function_name,
                     source_location: self.get_source_location(address),
-                    registers: registers.clone(),
+                    registers,
                     pc: address as u32,
                     variables,
                 };
@@ -400,7 +412,7 @@ impl DebugInfo {
             id: frame_count,
             function_name: unknown_function,
             source_location: self.get_source_location(address),
-            registers: registers,
+            registers,
             pc: address as u32,
             variables: vec![],
         }
