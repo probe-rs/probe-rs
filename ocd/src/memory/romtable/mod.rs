@@ -113,7 +113,7 @@ impl<'p,'r, P: MI> Iterator for RomTableIterator<'p,'r,P> {
         // end of entries is marked by an all zero entry
         if entry_data[0] == 0 {
             info!("Entry consists of all zeroes, stopping.");
-            return None
+            return None;
         }
 
         let entry_data = RomTableEntryRaw::new(
@@ -147,6 +147,9 @@ impl RomTable {
                 .filter_map(Result::ok)
                 .filter_map(|raw_entry| {
                     let entry_base_addr = raw_entry.component_addr();
+                    if !raw_entry.entry_present {
+                        return None
+                    }
 
                     if let Ok(component_data) = CSComponent::try_parse(link, entry_base_addr as u64)
                     {
@@ -186,7 +189,7 @@ pub struct RomTableEntryRaw {
     /// It is unsure if it can have a RAZ value.
     format: bool,
     /// Indicates whether the ROM table behind the address offset is present.
-    entry_present: bool,
+    pub entry_present: bool,
     // Base address of the rom table
     base_addr: u32,         
 }
