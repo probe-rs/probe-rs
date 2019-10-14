@@ -40,7 +40,7 @@ pub fn select_target(name: Option<String>) -> Result<Target, TargetSelectionErro
 }
 
 pub fn get_built_in_algorithm(name: impl AsRef<str>) -> Result<FlashAlgorithm, AlgorithmSelectionError> {
-    let name = name.as_ref().to_string().to_ascii_lowercase();
+    let name = name.as_ref().to_string();
     FLASH_ALGORITHMS
         .get(&name[..])
         .ok_or(AlgorithmSelectionError::AlgorithmNotFound(name))
