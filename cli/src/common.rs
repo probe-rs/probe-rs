@@ -16,6 +16,11 @@ use ocd::{
         daplink,
         stlink,
         protocol::WireProtocol,
+        flash::{
+            flasher::{
+                AlgorithmSelectionError,
+            },
+        },
     },
     coresight::{
         access_ports::{
@@ -41,6 +46,7 @@ pub enum CliError {
     TargetSelectionError(TargetSelectionError),
     StdIO(std::io::Error),
     MissingArgument,
+    FlashAlgorithm(AlgorithmSelectionError),
 }
 
 impl Error for CliError {
@@ -53,6 +59,7 @@ impl Error for CliError {
             TargetSelectionError(ref e) => Some(e),
             StdIO(ref e) => Some(e),
             MissingArgument => None,
+            FlashAlgorithm(ref e) => Some(e),
         }
     }
 }
@@ -69,6 +76,7 @@ impl fmt::Display for CliError {
             MissingArgument => {
                 write!(f, "Command expected more arguments")
             }
+            FlashAlgorithm(ref e) => e.fmt(f),
         }
     }
 }
@@ -94,6 +102,12 @@ impl From<std::io::Error> for CliError {
 impl From<TargetSelectionError> for CliError {
     fn from(error: TargetSelectionError) -> Self {
         CliError::TargetSelectionError(error)
+    }
+}
+
+impl From<AlgorithmSelectionError> for CliError {
+    fn from(error: AlgorithmSelectionError) -> Self {
+        CliError::FlashAlgorithm(error)
     }
 }
 
@@ -133,7 +147,12 @@ where
         shared_options.target.as_ref().map(|s| s.as_ref())
     )?;
     
-    let session = Session::new(target, probe);
+    let flash_algorithm = match target.flash_algorithm.clone() {
+        Some(name) => ocd_targets::select_algorithm(name)?,
+        None => Err(AlgorithmSelectionError::NoAlgorithmSuggested)?
+    };
+    
+    let session = Session::new(target, probe, Some(flash_algorithm));
 
     f(session)
 }
@@ -158,7 +177,7 @@ where
 
     target.core = Box::new(core);
 
-    let session = Session::new(target, probe);
+    let session = Session::new(target, probe, None);
 
     f(session)
 }

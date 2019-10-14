@@ -70,17 +70,6 @@ fn main() {
 
     let stream: String = format!("{}", quote::quote! {
     // START QUOTE
-        use std::collections::HashMap;
-
-        use ocd::{
-            target::{
-                Target,
-                TargetSelectionError,
-                identify_target,
-            },
-            collection
-        };
-
         lazy_static::lazy_static! {
             static ref FLASH_ALGORITHMS: HashMap<&'static str, &'static str> = vec![
                 #((#algorithm_names, include_str!(concat!(env!("CARGO_MANIFEST_DIR"), #algorithm_files))),)*
@@ -90,34 +79,6 @@ fn main() {
             static ref TARGETS: HashMap<&'static str, &'static str> = vec![
                 #((#target_names, include_str!(concat!(env!("CARGO_MANIFEST_DIR"), #target_files))),)*
             ].into_iter().collect();
-        }
-
-        pub fn get_built_in_target(name: impl AsRef<str>) -> Result<Target, TargetSelectionError> {
-            let name = name.as_ref().to_string().to_ascii_lowercase();
-            TARGETS
-                .get(&name[..])
-                .ok_or(TargetSelectionError::TargetNotFound(name))
-                .and_then(|target| {
-                    Target::new(target)
-                        .map(|mut target| { target.flash_algorithm.internal(&FLASH_ALGORITHMS); target })
-                        .map_err(From::from)
-                })
-        }
-
-        pub fn select_target(name: Option<&str>) -> Result<Target, TargetSelectionError> {
-            match name {
-                Some(name) => {
-                    let target = match collection::get_target(name) {
-                        Some(target) => Some(target),
-                        None => None,
-                    };
-                    match target {
-                        Some(target) => Ok(target),
-                        None => get_built_in_target(name),
-                    }
-                },
-                None => identify_target(),
-            }
         }
     // END QUOTE
     });

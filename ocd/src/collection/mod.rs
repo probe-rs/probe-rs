@@ -13,6 +13,7 @@ use std::io::BufReader;
 
 use crate::target::Target;
 use crate::target::Core;
+use crate::probe::flash::flasher::FlashAlgorithm;
 
 pub fn get_target(name: impl AsRef<str>) -> Option<Target> {
     let mut map: HashMap<String, Target> = HashMap::new();
@@ -24,11 +25,38 @@ pub fn get_target(name: impl AsRef<str>) -> Option<Target> {
     map.get(&name.to_ascii_lowercase()).map(|target| target.clone())
 }
 
+pub fn get_algorithm(name: impl AsRef<str>) -> Option<FlashAlgorithm> {
+    let mut map: HashMap<String, FlashAlgorithm> = HashMap::new();
+
+    load_algorithms(dirs::home_dir().map(|home| home.join(".config/probe-rs/algorithms")), &mut map);
+
+    let name: String = name.as_ref().into();
+
+    map.get(&name.to_ascii_lowercase()).map(|algorithm| algorithm.clone())
+        
+}
+
+pub fn get_core(name: impl AsRef<str>) -> Option<Box<dyn Core>> {
+    let map: HashMap<String, Box<dyn Core>> = hashmap!{
+        "M0".to_string() => Box::new(self::cores::m0::M0) as _,
+    };
+
+    map.get(name.as_ref()).map(|target| target.clone())
+}
+
 pub fn load_targets(root: Option<PathBuf>, map: &mut HashMap<String, Target>) {
     if let Some(root) = root {
-        visit_dirs(root.as_path(), map).unwrap();
+        visit_dirs(root.as_path(), map, &load_targets_from_dir).unwrap();
     } else {
         log::warn!("Home directory could not be determined while loading targets.");
+    }
+}
+
+pub fn load_algorithms(root: Option<PathBuf>, map: &mut HashMap<String, FlashAlgorithm>) {
+    if let Some(root) = root {
+        visit_dirs(root.as_path(), map, &load_algorithms_from_dir).unwrap();
+    } else {
+        log::warn!("Home directory could not be determined while loading algorithms.");
     }
 }
 
@@ -53,26 +81,41 @@ pub fn load_targets_from_dir(dir: &DirEntry, map: &mut HashMap<String, Target>) 
     }
 }
 
-// one possible implementation of walking a directory only visiting files
-fn visit_dirs(dir: &Path, map: &mut HashMap<String, Target>) -> io::Result<()> {
+pub fn load_algorithms_from_dir(dir: &DirEntry, map: &mut HashMap<String, FlashAlgorithm>) {
+    match File::open(dir.path()) {
+        Ok(file) => {
+            let reader = BufReader::new(file);
+
+            // Read the JSON contents of the file as an instance of `User`.
+            match serde_yaml::from_reader(reader) as serde_yaml::Result<FlashAlgorithm> {
+                Ok(mut target) => {
+                    map.insert(dir.path().to_string_lossy().to_string(), target);
+                },
+                Err(e) => { log::warn!("Error loading chip definition: {}", e) }
+            }
+        },
+        Err(e) => {
+            log::info!("Unable to load file {:?}.", dir.path());
+            log::info!("Reason: {:?}", e);
+        }
+    }
+}
+
+fn visit_dirs<T>(
+    dir: &Path,
+    map: &mut HashMap<String, T>,
+    cb: &dyn Fn(&DirEntry, &mut HashMap<String, T>)
+) -> io::Result<()> {
     if dir.is_dir() {
         for entry in fs::read_dir(dir)? {
             let entry = entry?;
             let path = entry.path();
             if path.is_dir() {
-                visit_dirs(&path, map)?;
+                visit_dirs(&path, map, cb)?;
             } else {
-                load_targets_from_dir(&entry, map);
+                cb(&entry, map);
             }
         }
     }
     Ok(())
-}
-
-pub fn get_core(name: impl AsRef<str>) -> Option<Box<dyn Core>> {
-    let map: HashMap<String, Box<dyn Core>> = hashmap!{
-        "M0".to_string() => Box::new(self::cores::m0::M0) as _,
-    };
-
-    map.get(name.as_ref()).map(|target| target.clone())
 }
