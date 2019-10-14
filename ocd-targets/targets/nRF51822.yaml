@@ -1,5 +1,5 @@
 name: "nRF51822"
-flash_algorithm: "algorithms/nRF51822.yaml"
+flash_algorithm: "nRF51822.yaml"
 memory_map:
     - Flash:
         range:

@@ -31,7 +31,7 @@ fn main() {
         match FlashAlgorithm::new(&string) {
             Ok(algorithm) => {
                 algorithm_files.push("/".to_string() + &file);
-                algorithm_names.push(file);
+                algorithm_names.push(file.split("algorithms/").skip(1).next().unwrap().to_string());
             },
             Err(e) => {
                 log::error!("Failed to parse file {}.", string);

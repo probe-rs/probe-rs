@@ -28,12 +28,21 @@ pub fn get_target(name: impl AsRef<str>) -> Option<Target> {
 pub fn get_algorithm(name: impl AsRef<str>) -> Option<FlashAlgorithm> {
     let mut map: HashMap<String, FlashAlgorithm> = HashMap::new();
 
-    load_algorithms(dirs::home_dir().map(|home| home.join(".config/probe-rs/algorithms")), &mut map);
-
-    let name: String = name.as_ref().into();
-
-    map.get(&name.to_ascii_lowercase()).map(|algorithm| algorithm.clone())
+    let root = dirs::home_dir().map(|home| home.join(".config/probe-rs/algorithms"));
+    if let Some(root) = root {
+        visit_dirs(root.as_path(), &mut map, &load_algorithms_from_dir).unwrap();
         
+        let name =
+            root.join(name.as_ref())
+            .as_path()
+            .to_string_lossy()
+            .to_string();
+
+        map.get(&name).map(|algorithm| algorithm.clone())
+    } else {
+        log::warn!("Home directory could not be determined while loading algorithms.");
+        None
+    }
 }
 
 pub fn get_core(name: impl AsRef<str>) -> Option<Box<dyn Core>> {
@@ -49,14 +58,6 @@ pub fn load_targets(root: Option<PathBuf>, map: &mut HashMap<String, Target>) {
         visit_dirs(root.as_path(), map, &load_targets_from_dir).unwrap();
     } else {
         log::warn!("Home directory could not be determined while loading targets.");
-    }
-}
-
-pub fn load_algorithms(root: Option<PathBuf>, map: &mut HashMap<String, FlashAlgorithm>) {
-    if let Some(root) = root {
-        visit_dirs(root.as_path(), map, &load_algorithms_from_dir).unwrap();
-    } else {
-        log::warn!("Home directory could not be determined while loading algorithms.");
     }
 }
 
