@@ -1,7 +1,7 @@
 pub mod info;
 
-use std::collections::HashMap;
-use std::fs::read_to_string;
+
+
 use serde::de::{
     Error,
     Unexpected,
@@ -10,7 +10,6 @@ use serde::de::{
 use crate::{
     probe::{
         flash::{
-            flasher::FlashAlgorithm,
             memory::{
                 MemoryRegion,
             },

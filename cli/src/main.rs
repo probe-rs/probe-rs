@@ -155,7 +155,7 @@ fn main() {
 fn list_connected_devices() -> Result<(), CliError> {
     let links = get_connected_devices();
 
-    if links.len() > 0 {
+    if !links.is_empty() {
         println!("The following devices were found:");
         links
             .iter()

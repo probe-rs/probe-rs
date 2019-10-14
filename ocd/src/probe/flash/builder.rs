@@ -75,7 +75,7 @@ impl FlashSector {
     }
 
     pub fn add_page(&mut self, page: FlashPage) -> Result<(), FlashBuilderError> {
-        if self.pages.len() == 0 {
+        if self.pages.is_empty() {
             if self.size % page.size != 0 {
                 return Err(FlashBuilderError::FlashSectorNotMultipleOfPageSize(page.size, self.size));
             }
@@ -218,7 +218,7 @@ impl<'a> FlashBuilder<'a> {
             (smart_flash, fast_verify, keep_unwritten)
         };
 
-        if self.flash_operations.len() == 0 {
+        if self.flash_operations.is_empty() {
             // Nothing to do.
             return Ok(())
         }
@@ -227,7 +227,7 @@ impl<'a> FlashBuilder<'a> {
 
         // Convert the list of flash operations into flash sectors and pages.
         self.build_sectors_and_pages(&mut flash, &mut sectors, keep_unwritten)?;
-        if sectors.len() == 0 || sectors[0].pages.len() == 0 {
+        if sectors.is_empty() || sectors[0].pages.is_empty() {
             // Nothing to do.
             return Ok(())
         }
@@ -239,7 +239,7 @@ impl<'a> FlashBuilder<'a> {
         }
         
         // If the flash algo doesn't support erase all, disable chip erase.
-        if !flash.flash_algorithm().pc_erase_all.is_some() {
+        if flash.flash_algorithm().pc_erase_all.is_none() {
             chip_erase = Some(false);
         }
 
@@ -267,16 +267,12 @@ impl<'a> FlashBuilder<'a> {
             } else {
                 self.chip_erase_program(&mut flash, &sectors)?;
             };
+        } else if flash.double_buffering_supported() && self.enable_double_buffering {
+            self.sector_erase_program_double_buffer(&mut flash, &mut sectors)?;
         } else {
-            if flash.double_buffering_supported() && self.enable_double_buffering {
-                self.sector_erase_program_double_buffer(&mut flash, &mut sectors)?;
-            } else {
-                // WORKING: We debug this atm.
-                self.sector_erase_program(&mut flash, &sectors)?;
-            };
+            // WORKING: We debug this atm.
+            self.sector_erase_program(&mut flash, &sectors)?;
         }
-
-        
 
         Ok(())
     }
@@ -554,7 +550,7 @@ impl<'a> FlashBuilder<'a> {
         }
 
         // Analyze pages.
-        if pages.len() > 0 {
+        if !pages.is_empty() {
             let r: R = flash.run_erase(|active| {
                 let crcs = active.compute_crcs(&run_sectors)?;
                 for ((page, pcrc), crc) in pages.iter_mut().zip(crcs) {

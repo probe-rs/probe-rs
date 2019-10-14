@@ -12,8 +12,8 @@ impl Session {
     /// Open a new session with a given debug target
     pub fn new(target: Target, probe: MasterProbe, flash_algorithm: Option<FlashAlgorithm>) -> Self {
         Self {
-            target: target,
-            probe: probe,
+            target,
+            probe,
             flash_algorithm
         }
     }

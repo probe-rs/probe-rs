@@ -338,7 +338,7 @@ impl Core for M0 {
         debug!("Setting breakpoint on address 0x{:08x}", addr);
         let mut value = BpCompx(0);
         value.set_bp_match(0b11);
-        value.set_comp((addr >> 2) & 0x00FFFFFF);
+        value.set_comp((addr >> 2) & 0x00FF_FFFF);
         value.set_enable(true);
 
         mi.write32(BpCompx::ADDRESS, value.into())?;
@@ -401,7 +401,7 @@ impl Core for FakeM0 {
     fn read_core_reg(&self, _mi: &mut MasterProbe, addr: CoreRegisterAddress) -> Result<u32, DebugProbeError> {
         let index: u32 = addr.into();
 
-        self.dump.regs.get(index as usize).map(|v| *v).ok_or(DebugProbeError::UnknownError)
+        self.dump.regs.get(index as usize).copied().ok_or(DebugProbeError::UnknownError)
     }
 
     fn write_core_reg(&self, _mi: &mut MasterProbe, _addr: CoreRegisterAddress, _value: u32) -> Result<(), DebugProbeError> {

@@ -5,18 +5,18 @@ use crate::target::Target;
 use crate::probe::debug_probe::DebugProbeError;
 use crate::coresight::access_ports::AccessPortError;
 use crate::memory::MI;
-use crate::session::Session;
+
 
 use super::*;
 
 const ANALYZER: [u32; 49] = [
-    0x2780b5f0, 0x25004684, 0x4e2b2401, 0x447e4a2b, 0x0023007f, 0x425b402b, 0x40130868, 0x08584043,
-    0x425b4023, 0x40584013, 0x40200843, 0x40104240, 0x08434058, 0x42404020, 0x40584010, 0x40200843,
-    0x40104240, 0x08434058, 0x42404020, 0x40584010, 0x40200843, 0x40104240, 0x08584043, 0x425b4023,
-    0x40434013, 0xc6083501, 0xd1d242bd, 0xd01f2900, 0x46602301, 0x469c25ff, 0x00894e11, 0x447e1841,
-    0x88034667, 0x409f8844, 0x2f00409c, 0x2201d012, 0x4252193f, 0x34017823, 0x402b4053, 0x599b009b,
-    0x405a0a12, 0xd1f542bc, 0xc00443d2, 0xd1e74281, 0xbdf02000, 0xe7f82200, 0x000000b2, 0xedb88320,
-    0x00000042,
+    0x2780_b5f0, 0x2500_4684, 0x4e2b_2401, 0x447e_4a2b, 0x0023_007f, 0x425b_402b, 0x4013_0868, 0x0858_4043,
+    0x425b_4023, 0x4058_4013, 0x4020_0843, 0x4010_4240, 0x0843_4058, 0x4240_4020, 0x4058_4010, 0x4020_0843,
+    0x4010_4240, 0x0843_4058, 0x4240_4020, 0x4058_4010, 0x4020_0843, 0x4010_4240, 0x0858_4043, 0x425b_4023,
+    0x4043_4013, 0xc608_3501, 0xd1d2_42bd, 0xd01f_2900, 0x4660_2301, 0x469c_25ff, 0x0089_4e11, 0x447e_1841,
+    0x8803_4667, 0x409f_8844, 0x2f00_409c, 0x2201_d012, 0x4252_193f, 0x3401_7823, 0x402b_4053, 0x599b_009b,
+    0x405a_0a12, 0xd1f5_42bc, 0xc004_43d2, 0xd1e7_4281, 0xbdf0_2000, 0xe7f8_2200, 0x0000_00b2, 0xedb8_8320,
+    0x0000_0042,
 ];
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
@@ -207,8 +207,7 @@ impl<'a> Flasher<'a> {
             .map(|i| [*i as u8, (*i >> 8) as u8, (*i >> 16) as u8, (*i >> 24) as u8])
             .collect::<Vec<[u8; 4]>>()
             .iter()
-            .flatten()
-            .map(|i| *i)
+            .flatten().copied()
             .collect::<Vec<u8>>();
 
         let instructions = cs.disasm_all(i.as_slice(), algo.load_address as u64).unwrap();
@@ -406,11 +405,11 @@ impl<'a, O: Operation> ActiveFlasher<'a, O> {
             (regs.SP, if init { Some(algo.begin_stack) } else { None }),
             (regs.LR, Some(algo.load_address + 1)),
         ]
-        .into_iter()
+        .iter()
         .map(|(addr, value)| if let Some(v) = value {
-            let r = self.target.core.write_core_reg(&mut self.probe, *addr, *v)?;
+            self.target.core.write_core_reg(&mut self.probe, *addr, *v)?;
             log::debug!("content: 0x{:08x} should be: 0x{:08x}", self.target.core.read_core_reg(&mut self.probe, *addr)?, *v);
-            Ok(r)
+            Ok(())
         } else {
             Ok(())
         })
@@ -499,7 +498,7 @@ impl <'a> ActiveFlasher<'a, Erase> {
                 let size_value = {
                     let mut ndx = 0;
                     while 1 < size {
-                        size = size >> 1;
+                        size >>= 1;
                         ndx += 1;
                     }
                     ndx

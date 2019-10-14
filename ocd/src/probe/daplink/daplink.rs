@@ -303,7 +303,6 @@ impl DebugProbe for DAPLink {
         )
         .map(|v: ResetResponse| {
             println!("Target reset response: {:?}", v);
-            ()
         })?;
         Ok(())
     }

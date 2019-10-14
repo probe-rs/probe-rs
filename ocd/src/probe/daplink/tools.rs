@@ -14,7 +14,7 @@ pub fn list_daplink_devices() -> Vec<DebugProbeInfo> {
                     v.product_string.unwrap_or("Unknown CMSIS-DAP Probe".to_owned()),
                     v.vendor_id,
                     v.product_id,
-                    v.serial_number.map(|v| v.to_owned()),
+                    v.serial_number.map(|v| v),
                     DebugProbeType::DAPLink
                 ))
                .collect::<Vec<_>>()
