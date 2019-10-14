@@ -19,9 +19,6 @@ use ocd::{
         daplink,
     },
     memory::MI,
-    target::{
-        Target,
-    },
 };
 
 use common::{
@@ -35,6 +32,8 @@ use debugger::CliState;
 use structopt::StructOpt;
 
 use rustyline::Editor;
+
+use colored::*;
 
 use capstone::{
     Capstone,
@@ -60,42 +59,37 @@ enum CLI {
     /// Gets infos about the selected debug probe and connected target
     #[structopt(name = "info")]
     Info {
-        /// The number associated with the debug probe to use
-        n: usize,
-        /// The target to be selected.
-        target: Option<String>,
+        #[structopt(flatten)]
+        shared: SharedOptions,
     },
     /// Resets the target attached to the selected debug probe
     #[structopt(name = "reset")]
     Reset {
-        /// The number associated with the debug probe to use
-        n: usize,
-        /// The target to be selected.
-        target: Option<String>,
+        #[structopt(flatten)]
+        shared: SharedOptions,
+
         /// Whether the reset pin should be asserted or deasserted. If left open, just pulse it
         assert: Option<bool>,
     },
     #[structopt(name = "debug")]
     Debug {
+        #[structopt(flatten)]
+        shared: SharedOptions,
+
         #[structopt(long, parse(from_os_str))]
         /// Dump file to debug
         dump: Option<PathBuf>,
-        /// The target to be selected.
-        target: Option<String>,
+
         #[structopt(long, parse(from_os_str))]
         /// Binary to debug
         exe: Option<PathBuf>,
-
-        // The number associated with the probe to use
-        n: usize,
     },
     /// Dump memory from attached target
     #[structopt(name = "dump")]
     Dump {
-        /// The number associated with the debug probe to use
-        n: usize,
-        /// The target to be selected.
-        target: Option<String>,
+        #[structopt(flatten)]
+        shared: SharedOptions,
+
         /// The address of the memory to dump from the target (in hexadecimal without 0x prefix)
         #[structopt(parse(try_from_str = "parse_hex"))]
         loc: u32,
@@ -105,24 +99,32 @@ enum CLI {
     /// Download memory to attached target
     #[structopt(name = "download")]
     Download {
-        /// The number associated with the ST-Link to use
-        n: usize,
-        /// The target to be selected.
-        target: Option<String>,
+        #[structopt(flatten)]
+        shared: SharedOptions,
+
         /// The path to the file to be downloaded to the flash
         path: String,
     },
     #[structopt(name = "trace")]
     Trace {
-        /// The number associated with the debug probe to use
-        n: usize,
-        /// The target to be selected.
-        target: Option<String>,
+        #[structopt(flatten)]
+        shared: SharedOptions,
+
         /// The address of the memory to dump from the target (in hexadecimal without 0x prefix)
         #[structopt(parse(try_from_str = "parse_hex"))]
         loc: u32,
     },
 }
+
+/// Shared options for all commands which use a specific probe 
+#[derive(StructOpt)]
+struct SharedOptions {
+    /// The number associated with the debug probe to use
+    n: usize,
+    /// The target to be selected.
+    target: Option<String>,
+}
+
 
 fn main() {
     // Initialize the logging backend.
@@ -130,38 +132,27 @@ fn main() {
 
     let matches = CLI::from_args();
 
-    match matches {
+    let cli_result = match matches {
         CLI::List {} => list_connected_devices(),
-        CLI::Info { n, target } => crate::info::show_info_of_device(n, get_checked_target(target)).unwrap(),
-        CLI::Reset { n, target, assert } => reset_target_of_device(n, get_checked_target(target), assert).unwrap(),
-        CLI::Debug { n, target, exe, dump } => debug(n, get_checked_target(target), exe, dump).unwrap(),
-        CLI::Dump { n, target, loc, words } => dump_memory(n, get_checked_target(target), loc, words).unwrap(),
-        CLI::Download { n, target, path } => download_program_fast(n, get_checked_target(target), path).unwrap(),
-        CLI::Trace { n, target, loc } => trace_u32_on_target(n, get_checked_target(target), loc).unwrap(),
+        CLI::Info { shared } => crate::info::show_info_of_device(&shared),
+        CLI::Reset { shared, assert } => reset_target_of_device(&shared, assert),
+        CLI::Debug { shared, exe, dump } => debug(&shared, exe, dump),
+        CLI::Dump { shared, loc, words } => dump_memory(&shared, loc, words),
+        CLI::Download { shared, path } => download_program_fast(&shared, path),
+        CLI::Trace { shared, loc } => trace_u32_on_target(&shared, loc),
+    };
+
+    if let Err(e) = cli_result {
+        if let CliError::TargetSelectionError(e) = e {
+            eprintln!("    {} {}", "Error".red().bold(), e);
+        } else {
+            eprintln!("Error processing command: {}", e);
+        }
+        std::process::exit(1);
     }
 }
 
-pub fn get_checked_target(name: Option<String>) -> Target {
-    use colored::*;
-    match ocd_targets::select_target(name) {
-        Ok(target) => target,
-        Err(ocd::target::TargetSelectionError::CouldNotAutodetect) => {
-            eprintln!("    {} Target could not automatically be identified. Please specify one.", "Error".red().bold());
-            std::process::exit(1);
-        },
-        Err(ocd::target::TargetSelectionError::TargetNotFound(name)) => {
-            eprintln!("    {} Specified target ({}) was not found. Please select an existing one.", "Error".red().bold(), name);
-            std::process::exit(1);
-        },
-        Err(ocd::target::TargetSelectionError::TargetCouldNotBeParsed(error)) => {
-            eprintln!("    {} Target specification could not be parsed.", "Error".red().bold());
-            eprintln!("    {} {}", "Error".red().bold(), error);
-            std::process::exit(1);
-        },
-    }
-}
-
-fn list_connected_devices() {
+fn list_connected_devices() -> Result<(), CliError> {
     let links = get_connected_devices();
 
     if links.len() > 0 {
@@ -173,10 +164,12 @@ fn list_connected_devices() {
     } else {
         println!("No devices were found.");
     }
+
+    Ok(())
 }
 
-fn dump_memory(n: usize, target: Target, loc: u32, words: u32) -> Result<(), CliError> {
-    with_device(n as usize, target, |mut session| {
+fn dump_memory(shared_options: &SharedOptions, loc: u32, words: u32) -> Result<(), CliError> {
+    with_device(shared_options, |mut session| {
         let mut data = vec![0 as u32; words as usize];
 
         // Start timer.
@@ -199,8 +192,8 @@ fn dump_memory(n: usize, target: Target, loc: u32, words: u32) -> Result<(), Cli
     })
 }
 
-fn download_program_fast(n: usize, target: Target, path: String) -> Result<(), CliError> {
-    with_device(n as usize, target, |mut session| {
+fn download_program_fast(shared_options: &SharedOptions, path: String) -> Result<(), CliError> {
+    with_device(shared_options, |mut session| {
 
         // Start timer.
         // let instant = Instant::now();
@@ -223,8 +216,8 @@ fn download_program_fast(n: usize, target: Target, path: String) -> Result<(), C
     })
 }
 
-fn reset_target_of_device(n: usize, target: Target, _assert: Option<bool>) -> Result<(), CliError> {
-    with_device(n as usize, target, |mut session| {
+fn reset_target_of_device(shared_options: &SharedOptions, _assert: Option<bool>) -> Result<(), CliError> {
+    with_device(shared_options, |mut session| {
         //link.get_interface_mut::<DebugProbe>().unwrap().target_reset().or_else(|e| Err(Error::DebugProbe(e)))?;
         session.probe.target_reset()?;
 
@@ -232,7 +225,7 @@ fn reset_target_of_device(n: usize, target: Target, _assert: Option<bool>) -> Re
     })
 }
 
-fn trace_u32_on_target(n: usize, target: Target, loc: u32) -> Result<(), CliError> {
+fn trace_u32_on_target(shared_options: &SharedOptions, loc: u32) -> Result<(), CliError> {
     use std::io::prelude::*;
     use std::thread::sleep;
     use std::time::Duration;
@@ -243,7 +236,7 @@ fn trace_u32_on_target(n: usize, target: Target, loc: u32) -> Result<(), CliErro
 
     let start = Instant::now();
 
-    with_device(n, target, |mut session| {
+    with_device(shared_options, |mut session| {
         loop {
             // Prepare read.
             let elapsed = start.elapsed();
@@ -281,7 +274,7 @@ fn get_connected_devices() -> Vec<DebugProbeInfo>{
     links
 }
 
-fn debug(n: usize, target: Target, exe: Option<PathBuf>, dump: Option<PathBuf>) -> Result<(), CliError> {
+fn debug(shared_options: &SharedOptions, exe: Option<PathBuf>, dump: Option<PathBuf>) -> Result<(), CliError> {
     
     // try to load debug information
     let debug_data = exe.and_then(|p| fs::File::open(&p).ok() )
@@ -342,7 +335,7 @@ fn debug(n: usize, target: Target, exe: Option<PathBuf>, dump: Option<PathBuf>) 
     };
 
     match dump {
-        None => with_device(n, target, &runner),
-        Some(p) => with_dump(&p, target, &runner),
+        None => with_device(shared_options, &runner),
+        Some(p) => with_dump(shared_options, &p, &runner),
     }
 }

@@ -20,6 +20,8 @@ use crate::{
     collection::get_core,
 };
 
+use std::fmt;
+
 pub trait CoreRegister: Clone + From<u32> + Into<u32> + Sized + std::fmt::Debug {
     const ADDRESS: u32;
     const NAME: &'static str;
@@ -140,11 +142,31 @@ impl<'de> serde::Deserialize<'de> for Box<dyn Core> {
     }
 }
 
+#[derive(Debug)]
 pub enum TargetSelectionError {
     CouldNotAutodetect,
     TargetNotFound(String),
     TargetCouldNotBeParsed(TargetParseError),
 }
+
+impl fmt::Display for TargetSelectionError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use TargetSelectionError::*;
+
+        match self {
+            CouldNotAutodetect => 
+                write!(f, "Target could not be automatically identified."),
+            TargetNotFound(ref t) =>
+                write!(f, "Failed to find target defintion for target {}", t),
+            TargetCouldNotBeParsed(ref e) => {
+                write!(f, "Failed to parse target definition for target: ")?;
+                e.fmt(f)
+            }
+        }
+    }
+}
+
+impl std::error::Error for TargetSelectionError { }
 
 impl From<TargetParseError> for TargetSelectionError {
     fn from(error: TargetParseError) -> Self {

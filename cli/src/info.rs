@@ -1,4 +1,10 @@
-use crate::common::{with_device, CliError};
+use crate::{
+    SharedOptions,
+    common::{
+        CliError,
+        with_device,
+    },
+};
 
 use ocd::{
     coresight::{
@@ -9,11 +15,10 @@ use ocd::{
         ap_access::{valid_access_ports, APAccess},
     },
     memory::romtable::CSComponent,
-    target::Target,
 };
 
-pub fn show_info_of_device(n: usize, target: Target) -> Result<(), CliError> {
-    with_device(n, target, |mut session| {
+pub(crate) fn show_info_of_device(shared_options: &SharedOptions) -> Result<(), CliError> {
+    with_device(shared_options, |mut session| {
 
         /*
             The following code only works with debug port v2,

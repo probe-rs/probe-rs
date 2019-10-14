@@ -157,12 +157,16 @@ fn main_try() -> Result<(), failure::Error> {
         }
     });
 
-    download_program_fast(0, target_override.unwrap_or_else(|| get_checked_target(opt.chip)), path_str.to_string())?;
+    download_program_fast(
+        0, 
+        target_override.unwrap_or_else( || get_checked_target(opt.chip.as_ref().map(|s| s.as_ref()) )), 
+        path_str.to_string()
+    )?;
 
     Ok(())
 }
 
-pub fn get_checked_target(name: Option<String>) -> Target {
+fn get_checked_target(name: Option<&str>) -> Target {
     use colored::*;
     match ocd_targets::select_target(name) {
         Ok(target) => target,
