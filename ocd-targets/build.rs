@@ -73,16 +73,16 @@ fn main() {
                 .and_then(|i| { Target::new(TARGETS[*i]).map_err(From::from) })
         }
 
-        pub fn select_target(name: Option<String>) -> Result<Target, TargetSelectionError> {
+        pub fn select_target(name: Option<&str>) -> Result<Target, TargetSelectionError> {
             match name {
                 Some(name) => {
-                    let target = match collection::get_target(name.clone()) {
+                    let target = match collection::get_target(name) {
                         Some(target) => Some(target),
                         None => None,
                     };
                     match target {
                         Some(target) => Ok(target),
-                        None => get_built_in_target(name.clone()),
+                        None => get_built_in_target(name),
                     }
                 },
                 None => identify_target(),

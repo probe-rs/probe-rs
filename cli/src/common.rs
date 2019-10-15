@@ -1,3 +1,4 @@
+use crate::SharedOptions;
 use std::path::Path;
 use std::fs::File;
 
@@ -26,7 +27,7 @@ use ocd::{
             m0::FakeM0,
         },
     },
-    target::Target,
+    target::TargetSelectionError,
     session::Session
 };
 
@@ -37,8 +38,9 @@ use std::fmt;
 pub enum CliError {
     DebugProbe(DebugProbeError),
     AccessPort(AccessPortError),
+    TargetSelectionError(TargetSelectionError),
     StdIO(std::io::Error),
-    Quit,
+    MissingArgument,
 }
 
 impl Error for CliError {
@@ -48,8 +50,9 @@ impl Error for CliError {
         match self {
             DebugProbe(ref e) => Some(e),
             AccessPort(ref e) => Some(e),
+            TargetSelectionError(ref e) => Some(e),
             StdIO(ref e) => Some(e),
-            Quit => None,
+            MissingArgument => None,
         }
     }
 }
@@ -61,8 +64,11 @@ impl fmt::Display for CliError {
         match self {
             DebugProbe(ref e) => e.fmt(f),
             AccessPort(ref e) => e.fmt(f),
+            TargetSelectionError(ref e) => e.fmt(f),
             StdIO(ref e) => e.fmt(f),
-            Quit => write!(f, "Quit error..."),
+            MissingArgument => {
+                write!(f, "Command expected more arguments")
+            }
         }
     }
 }
@@ -85,11 +91,17 @@ impl From<std::io::Error> for CliError {
     }
 }
 
+impl From<TargetSelectionError> for CliError {
+    fn from(error: TargetSelectionError) -> Self {
+        CliError::TargetSelectionError(error)
+    }
+}
+
 
 /// Takes a closure that is handed an `DAPLink` instance and then executed.
 /// After the closure is done, the USB device is always closed,
 /// even in an error case inside the closure!
-pub fn with_device<F>(n: usize, target: Target, f: F) -> Result<(), CliError>
+pub(crate) fn with_device<F>(shared_options: &SharedOptions, f: F) -> Result<(), CliError>
 where
     for<'a> F: FnOnce(Session) -> Result<(), CliError>
 {
@@ -97,7 +109,7 @@ where
         let mut list = daplink::tools::list_daplink_devices();
         list.extend(stlink::tools::list_stlink_devices());
 
-        list.remove(n)
+        list.remove(shared_options.n)
     };
 
     let probe = match device.probe_type {
@@ -116,13 +128,17 @@ where
             MasterProbe::from_specific_probe(link)
         },
     };
+
+    let target = ocd_targets::select_target(
+        shared_options.target.as_ref().map(|s| s.as_ref())
+    )?;
     
     let session = Session::new(target, probe);
 
     f(session)
 }
 
-pub fn with_dump<F>(p: &Path, mut target: Target, f: F) -> Result<(), CliError>
+pub(crate) fn with_dump<F>(shared_options: &SharedOptions, p: &Path, f: F) -> Result<(), CliError>
 where
     for<'a> F: FnOnce(Session) -> Result<(), CliError>
 {
@@ -135,6 +151,10 @@ where
     let fake_probe = FakeProbe::new();
 
     let probe = MasterProbe::from_specific_probe(Box::new(fake_probe));
+
+    let mut target = ocd_targets::select_target(
+        shared_options.target.as_ref().map(|s| s.as_ref())
+    )?;
 
     target.core = Box::new(core);
 

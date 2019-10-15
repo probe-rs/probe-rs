@@ -1,11 +1,10 @@
 mod common;
 mod info;
+mod debugger;
 
 use std::path::PathBuf;
 use std::time::Instant;
 use std::fs;
-use std::fs::File;
-use std::io::Write;
 use std::num::ParseIntError;
 
 use memmap;
@@ -19,14 +18,7 @@ use ocd::{
         stlink,
         daplink,
     },
-    collection::{
-        cores::CortexDump,
-    },
-    session::Session,
     memory::MI,
-    target::{
-        Target,
-    },
 };
 
 use common::{
@@ -35,9 +27,13 @@ use common::{
     CliError,
 };
 
+use debugger::CliState;
+
 use structopt::StructOpt;
 
 use rustyline::Editor;
+
+use colored::*;
 
 use capstone::{
     Capstone,
@@ -63,42 +59,37 @@ enum CLI {
     /// Gets infos about the selected debug probe and connected target
     #[structopt(name = "info")]
     Info {
-        /// The number associated with the debug probe to use
-        n: usize,
-        /// The target to be selected.
-        target: Option<String>,
+        #[structopt(flatten)]
+        shared: SharedOptions,
     },
     /// Resets the target attached to the selected debug probe
     #[structopt(name = "reset")]
     Reset {
-        /// The number associated with the debug probe to use
-        n: usize,
-        /// The target to be selected.
-        target: Option<String>,
+        #[structopt(flatten)]
+        shared: SharedOptions,
+
         /// Whether the reset pin should be asserted or deasserted. If left open, just pulse it
         assert: Option<bool>,
     },
     #[structopt(name = "debug")]
     Debug {
+        #[structopt(flatten)]
+        shared: SharedOptions,
+
         #[structopt(long, parse(from_os_str))]
         /// Dump file to debug
         dump: Option<PathBuf>,
-        /// The target to be selected.
-        target: Option<String>,
+
         #[structopt(long, parse(from_os_str))]
         /// Binary to debug
         exe: Option<PathBuf>,
-
-        // The number associated with the probe to use
-        n: usize,
     },
     /// Dump memory from attached target
     #[structopt(name = "dump")]
     Dump {
-        /// The number associated with the debug probe to use
-        n: usize,
-        /// The target to be selected.
-        target: Option<String>,
+        #[structopt(flatten)]
+        shared: SharedOptions,
+
         /// The address of the memory to dump from the target (in hexadecimal without 0x prefix)
         #[structopt(parse(try_from_str = "parse_hex"))]
         loc: u32,
@@ -106,36 +97,34 @@ enum CLI {
         words: u32,
     },
     /// Download memory to attached target
-    #[structopt(name = "d")]
-    D {
-        /// The number associated with the ST-Link to use
-        n: usize,
-        /// The target to be selected.
-        target: Option<String>,
+    #[structopt(name = "download")]
+    Download {
+        #[structopt(flatten)]
+        shared: SharedOptions,
+
         /// The path to the file to be downloaded to the flash
         path: String,
     },
-    #[structopt(name = "erase")]
-    Erase {
-        /// The number associated with the debug probe to use
-        n: usize,
-        /// The target to be selected.
-        target: Option<String>,
-        /// The address of the memory to dump from the target (in hexadecimal without 0x prefix)
-        #[structopt(parse(try_from_str = "parse_hex"))]
-        loc: u32
-    },
     #[structopt(name = "trace")]
     Trace {
-        /// The number associated with the debug probe to use
-        n: usize,
-        /// The target to be selected.
-        target: Option<String>,
+        #[structopt(flatten)]
+        shared: SharedOptions,
+
         /// The address of the memory to dump from the target (in hexadecimal without 0x prefix)
         #[structopt(parse(try_from_str = "parse_hex"))]
         loc: u32,
     },
 }
+
+/// Shared options for all commands which use a specific probe 
+#[derive(StructOpt)]
+struct SharedOptions {
+    /// The number associated with the debug probe to use
+    n: usize,
+    /// The target to be selected.
+    target: Option<String>,
+}
+
 
 fn main() {
     // Initialize the logging backend.
@@ -143,39 +132,27 @@ fn main() {
 
     let matches = CLI::from_args();
 
-    match matches {
+    let cli_result = match matches {
         CLI::List {} => list_connected_devices(),
-        CLI::Info { n, target } => crate::info::show_info_of_device(n, get_checked_target(target)).unwrap(),
-        CLI::Reset { n, target, assert } => reset_target_of_device(n, get_checked_target(target), assert).unwrap(),
-        CLI::Debug { n, target, exe, dump } => debug(n, get_checked_target(target), exe, dump).unwrap(),
-        CLI::Dump { n, target, loc, words } => dump_memory(n, get_checked_target(target), loc, words).unwrap(),
-        CLI::D { n, target, path } => download_program_fast(n, get_checked_target(target), path).unwrap(),
-        CLI::Erase { n, target, loc } => erase_page(n, get_checked_target(target), loc).unwrap(),
-        CLI::Trace { n, target, loc } => trace_u32_on_target(n, get_checked_target(target), loc).unwrap(),
+        CLI::Info { shared } => crate::info::show_info_of_device(&shared),
+        CLI::Reset { shared, assert } => reset_target_of_device(&shared, assert),
+        CLI::Debug { shared, exe, dump } => debug(&shared, exe, dump),
+        CLI::Dump { shared, loc, words } => dump_memory(&shared, loc, words),
+        CLI::Download { shared, path } => download_program_fast(&shared, path),
+        CLI::Trace { shared, loc } => trace_u32_on_target(&shared, loc),
+    };
+
+    if let Err(e) = cli_result {
+        if let CliError::TargetSelectionError(e) = e {
+            eprintln!("    {} {}", "Error".red().bold(), e);
+        } else {
+            eprintln!("Error processing command: {}", e);
+        }
+        std::process::exit(1);
     }
 }
 
-pub fn get_checked_target(name: Option<String>) -> Target {
-    use colored::*;
-    match ocd_targets::select_target(name) {
-        Ok(target) => target,
-        Err(ocd::target::TargetSelectionError::CouldNotAutodetect) => {
-            eprintln!("    {} Target could not automatically be identified. Please specify one.", "Error".red().bold());
-            std::process::exit(1);
-        },
-        Err(ocd::target::TargetSelectionError::TargetNotFound(name)) => {
-            eprintln!("    {} Specified target ({}) was not found. Please select an existing one.", "Error".red().bold(), name);
-            std::process::exit(1);
-        },
-        Err(ocd::target::TargetSelectionError::TargetCouldNotBeParsed(error)) => {
-            eprintln!("    {} Target specification could not be parsed.", "Error".red().bold());
-            eprintln!("    {} {}", "Error".red().bold(), error);
-            std::process::exit(1);
-        },
-    }
-}
-
-fn list_connected_devices() {
+fn list_connected_devices() -> Result<(), CliError> {
     let links = get_connected_devices();
 
     if links.len() > 0 {
@@ -187,10 +164,12 @@ fn list_connected_devices() {
     } else {
         println!("No devices were found.");
     }
+
+    Ok(())
 }
 
-fn dump_memory(n: usize, target: Target, loc: u32, words: u32) -> Result<(), CliError> {
-    with_device(n as usize, target, |mut session| {
+fn dump_memory(shared_options: &SharedOptions, loc: u32, words: u32) -> Result<(), CliError> {
+    with_device(shared_options, |mut session| {
         let mut data = vec![0 as u32; words as usize];
 
         // Start timer.
@@ -213,8 +192,8 @@ fn dump_memory(n: usize, target: Target, loc: u32, words: u32) -> Result<(), Cli
     })
 }
 
-fn download_program_fast(n: usize, target: Target, path: String) -> Result<(), CliError> {
-    with_device(n as usize, target, |mut session| {
+fn download_program_fast(shared_options: &SharedOptions, path: String) -> Result<(), CliError> {
+    with_device(shared_options, |mut session| {
 
         // Start timer.
         // let instant = Instant::now();
@@ -237,26 +216,8 @@ fn download_program_fast(n: usize, target: Target, path: String) -> Result<(), C
     })
 }
 
-#[allow(non_snake_case)]
-fn erase_page(n: usize, target: Target, loc: u32) -> Result<(), CliError> {
-    with_device(n, target, |mut session| {
-
-        // TODO: Generic flash erase
-
-        let NVMC = 0x4001E000;
-        let NVMC_CONFIG = NVMC + 0x504;
-        let NVMC_ERASEPAGE = NVMC + 0x508;
-        let EEN: u32 = 0x2;
-
-        session.probe.write32(NVMC_CONFIG, EEN)?;
-        session.probe.write32(NVMC_ERASEPAGE, loc)?;
-
-        Ok(())
-    })
-}
-
-fn reset_target_of_device(n: usize, target: Target, _assert: Option<bool>) -> Result<(), CliError> {
-    with_device(n as usize, target, |mut session| {
+fn reset_target_of_device(shared_options: &SharedOptions, _assert: Option<bool>) -> Result<(), CliError> {
+    with_device(shared_options, |mut session| {
         //link.get_interface_mut::<DebugProbe>().unwrap().target_reset().or_else(|e| Err(Error::DebugProbe(e)))?;
         session.probe.target_reset()?;
 
@@ -264,7 +225,7 @@ fn reset_target_of_device(n: usize, target: Target, _assert: Option<bool>) -> Re
     })
 }
 
-fn trace_u32_on_target(n: usize, target: Target, loc: u32) -> Result<(), CliError> {
+fn trace_u32_on_target(shared_options: &SharedOptions, loc: u32) -> Result<(), CliError> {
     use std::io::prelude::*;
     use std::thread::sleep;
     use std::time::Duration;
@@ -275,7 +236,7 @@ fn trace_u32_on_target(n: usize, target: Target, loc: u32) -> Result<(), CliErro
 
     let start = Instant::now();
 
-    with_device(n, target, |mut session| {
+    with_device(shared_options, |mut session| {
         loop {
             // Prepare read.
             let elapsed = start.elapsed();
@@ -313,19 +274,14 @@ fn get_connected_devices() -> Vec<DebugProbeInfo>{
     links
 }
 
-fn debug(n: usize, target: Target, exe: Option<PathBuf>, dump: Option<PathBuf>) -> Result<(), CliError> {
+fn debug(shared_options: &SharedOptions, exe: Option<PathBuf>, dump: Option<PathBuf>) -> Result<(), CliError> {
     
     // try to load debug information
     let debug_data = exe.and_then(|p| fs::File::open(&p).ok() )
                         .and_then(|file| unsafe { memmap::Mmap::map(&file).ok() });
-
-
-    //let file = fs::File::open(&path).unwrap();
-    //let mmap = Rc::new(Box::new(unsafe { memmap::Mmap::map(&file).unwrap() }));
-
     
-    let runner = |mut session| {
-        let mut cs = Capstone::new()
+    let runner = |session| {
+        let cs = Capstone::new()
             .arm()
             .mode(ArchMode::Thumb)
             .endian(Endian::Little)
@@ -335,17 +291,17 @@ fn debug(n: usize, target: Target, exe: Option<PathBuf>, dump: Option<PathBuf>) 
 
 
         let di = debug_data.as_ref().map( |mmap| DebugInfo::from_raw(&*mmap));
-        
-        /*
-        if let Some(ref path) = exe {
 
-            DebugInfo::from_file(path)
-        } else {
-            DebugInfo::none()
-        }; */
+
+        let cli = debugger::DebugCli::new();
+
+        let mut cli_data = debugger::CliData {
+            session,
+            debug_info: di,
+            capstone: cs,
+        };
 
         let mut rl = Editor::<()>::new();
-        //rl.set_auto_add_history(true);
 
         loop {
             let readline = rl.readline(">> ");
@@ -353,135 +309,33 @@ fn debug(n: usize, target: Target, exe: Option<PathBuf>, dump: Option<PathBuf>) 
                 Ok(line) => {
                     let history_entry: &str = line.as_ref();
                     rl.add_history_entry(history_entry);
-                    handle_line(&mut session, &mut cs, di.as_ref(), &line)?;
+                    let cli_state = cli.handle_line(&line, &mut cli_data)?;
+
+
+                    match cli_state {
+                        CliState::Continue => (),
+                        CliState::Stop => return Ok(()),
+                    }
                 },
                 Err(e) => {
-                    // Just quit for now
-                    println!("Error handling input: {:?}", e);
-                    return Ok(());
+                    use rustyline::error::ReadlineError;
+
+                    match e {
+                        // For end of file and ctrl-c, we just quit
+                        ReadlineError::Eof | ReadlineError::Interrupted => return Ok(()),
+                        actual_error => {
+                            // Show error message and quit
+                            println!("Error handling input: {:?}", actual_error);
+                            return Ok(());
+                        }
+                    }
                 }
             }
         }
     };
 
     match dump {
-        None => with_device(n, target, &runner),
-        Some(p) => with_dump(&p, target, &runner),
-    }
-
-}
-
-
-fn handle_line(session: &mut Session, cs: &mut Capstone, debug_info: Option<&DebugInfo>, line: &str) -> Result<(), CliError> {
-    let mut command_parts = line.split_whitespace();
-
-    let command = command_parts.next().unwrap();
-
-    match command {
-        "halt" => {
-            let cpu_info = session.target.core.halt(&mut session.probe)?;
-            println!("Core stopped at address 0x{:08x}", cpu_info.pc);
-
-            let mut code = [0u8;16*2];
-
-            session.probe.read_block8(cpu_info.pc, &mut code)?;
-
-
-            let instructions = cs.disasm_all(&code, cpu_info.pc as u64).unwrap();
-
-            for i in instructions.iter() {
-                println!("{}", i);
-            }
-
-
-            Ok(())
-        },
-        "run" => {
-            session.target.core.run(&mut session.probe)?;
-            Ok(())
-        },
-        "step" => {
-            let cpu_info = session.target.core.step(&mut session.probe)?;
-            println!("Core stopped at address 0x{:08x}", cpu_info.pc);
-            Ok(())
-        },
-        "read" => {
-            let address_str = command_parts.next().unwrap();
-            let address = u32::from_str_radix(address_str, 16).unwrap();
-            //println!("Would read from address 0x{:08x}", address);
-
-            let val = session.probe.read32(address)?;
-            println!("0x{:08x} = 0x{:08x}", address, val);
-            Ok(())
-        },
-        "break" => {
-            let address_str = command_parts.next().unwrap();
-            let address = u32::from_str_radix(address_str, 16).unwrap();
-            //println!("Would read from address 0x{:08x}", address);
-
-            session.target.core.enable_breakpoints(&mut session.probe, true)?;
-            session.target.core.set_breakpoint(&mut session.probe, address)?;
-
-            Ok(())
-        },
-        "bt" => {
-            let regs = session.target.core.registers();
-            let program_counter = session.target.core.read_core_reg(&mut session.probe, regs.PC)?;
-
-
-            if let Some(di) = debug_info {
-                let frames = di.try_unwind(session, program_counter as u64);
-
-                for frame in frames {
-                    println!("{}", frame);
-                }
-            }
-
-
-            Ok(())
-        },
-        "dump" => {
-            // dump all relevant data, stack and regs for now..
-            //
-            // stack beginning -> assume beginning to be hardcoded
-
-
-            let stack_top: u32 = 0x2000_0000 + 0x4_000;
-
-            let regs = session.target.core.registers();
-
-            let stack_bot: u32 = session.target.core.read_core_reg(&mut session.probe, regs.SP)?;
-            let pc: u32 = session.target.core.read_core_reg(&mut session.probe, regs.PC)?;
-            
-            let mut stack = vec![0u8;(stack_top - stack_bot) as usize];
-
-            session.probe.read_block8(stack_bot, &mut stack[..])?;
-
-            let mut dump = CortexDump::new(stack_bot, stack);
-
-            for i in 0..12 {
-                dump.regs[i as usize] = session.target.core.read_core_reg(&mut session.probe, i.into())?;
-            }
-
-            dump.regs[13] = stack_bot;
-            dump.regs[14] = session.target.core.read_core_reg(&mut session.probe, regs.LR)?;
-            dump.regs[15] = pc;
-
-            let serialized = ron::ser::to_string(&dump).expect("Failed to serialize dump");
-
-            let mut dump_file = File::create("dump.txt").expect("Failed to create file");
-
-            dump_file.write_all(serialized.as_bytes()).expect("Failed to write dump file");
-
-
-            Ok(())
-        },
-        "quit" => {
-            Err(CliError::Quit)
-        },
-        _ => {
-            println!("Unknown command '{}'", line);
-            Ok(())
-        }
+        None => with_device(shared_options, &runner),
+        Some(p) => with_dump(shared_options, &p, &runner),
     }
 }
