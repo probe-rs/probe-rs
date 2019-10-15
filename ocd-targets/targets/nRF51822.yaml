@@ -1,4 +1,8 @@
 name: "nRF51822"
+manufacturer:
+  cc: 0x02
+  id: 0x44
+part: 0x000001
 flash_algorithm: "nRF51822.yaml"
 memory_map:
     - Flash:

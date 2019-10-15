@@ -1,4 +1,6 @@
 name: "STM32F042"
+manufacturer: 123
+part: 123
 flash_algorithm: "algorithms/STM32F042.yaml"
 memory_map:
     - Flash:

@@ -236,7 +236,7 @@ pub struct RomTableEntry {
 pub struct CSComponentId {
     base_address: u64,
     class: CSComponentClass,
-    peripheral_id: PeripheralID,
+    pub peripheral_id: PeripheralID,
 }
 
 /// A reader to extract infromation from a CoreSight component table.

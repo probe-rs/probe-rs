@@ -1,3 +1,5 @@
+pub mod info;
+
 use std::collections::HashMap;
 use std::fs::read_to_string;
 use serde::de::{
@@ -94,6 +96,8 @@ objekt::clone_trait_object!(Core);
 #[derive(Debug, Clone, Deserialize)]
 pub struct Target {
     pub name: String,
+    pub manufacturer: jep106::JEP106Code,
+    pub part: u16,
     pub flash_algorithm: Option<String>,
     pub memory_map: Vec<MemoryRegion>,
     pub core: Box<dyn Core>,
@@ -164,9 +168,4 @@ impl From<TargetParseError> for TargetSelectionError {
     fn from(error: TargetParseError) -> Self {
         TargetSelectionError::TargetCouldNotBeParsed(error)
     }
-}
-
-pub fn identify_target() -> Result<Target, TargetSelectionError> {
-    // TODO: Poll this from the connected target. For now return nRF51.
-    Err(TargetSelectionError::CouldNotAutodetect)
 }

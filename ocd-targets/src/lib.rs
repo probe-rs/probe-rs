@@ -4,7 +4,7 @@ use ocd::{
     target::{
         Target,
         TargetSelectionError,
-        identify_target,
+        info::ChipInfo,
     },
     collection,
     probe::flash::flasher::{
@@ -23,7 +23,23 @@ pub fn get_built_in_target(name: impl AsRef<str>) -> Result<Target, TargetSelect
         .and_then(|target| Target::new(target).map_err(From::from))
 }
 
-pub fn select_target(name: Option<String>) -> Result<Target, TargetSelectionError> {
+pub fn get_built_in_target_by_chip_id(chip_info: &ChipInfo) -> Result<Target, TargetSelectionError> {
+    for target in TARGETS.values() {
+        match Target::new(target) {
+            Ok(target) => {
+                if target.manufacturer == chip_info.manufacturer
+                && target.part == chip_info.part {
+                    return Ok(target);
+                }
+            },
+            Err(_e) => continue,
+        }
+    }
+
+    Err(TargetSelectionError::CouldNotAutodetect)
+}
+
+pub fn select_target(name: Option<String>, chip_info: Option<ChipInfo>) -> Result<Target, TargetSelectionError> {
     match name {
         Some(name) => {
             let target = match collection::get_target(name.clone()) {
@@ -35,7 +51,7 @@ pub fn select_target(name: Option<String>) -> Result<Target, TargetSelectionErro
                 None => get_built_in_target(name.clone()),
             }
         },
-        None => identify_target(),
+        None => get_built_in_target_by_chip_id(&chip_info.unwrap()),
     }
 }
 
