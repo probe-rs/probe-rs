@@ -1,5 +1,6 @@
 extern crate structopt;
 
+use ocd::target::info::ChipInfo;
 use std::{
     time::Instant,
     path::{
@@ -148,6 +149,30 @@ fn main_try() -> Result<(), failure::Error> {
     
     println!("    {} {}", "Flashing".green().bold(), path_str);
 
+    let device = {
+        let mut list = daplink::tools::list_daplink_devices();
+        list.extend(stlink::tools::list_stlink_devices());
+
+        list.remove(0)
+    };
+
+    let mut probe = match device.probe_type {
+        DebugProbeType::DAPLink => {
+            let mut link = daplink::DAPLink::new_from_probe_info(&device)?;
+
+            link.attach(Some(WireProtocol::Swd))?;
+            
+            MasterProbe::from_specific_probe(link)
+        },
+        DebugProbeType::STLink => {
+            let mut link = stlink::STLink::new_from_probe_info(&device)?;
+
+            link.attach(Some(WireProtocol::Swd))?;
+            
+            MasterProbe::from_specific_probe(link)
+        },
+    };
+
     let target_override = opt.chip_description_path.as_ref().map(|cd| {
         let string = read_to_string(&cd)
             .expect("Chip definition file could not be read. This is a bug. Please report it.");
@@ -162,18 +187,37 @@ fn main_try() -> Result<(), failure::Error> {
         }
     });
 
-    download_program_fast(
-        0, 
-        target_override.unwrap_or_else( || get_checked_target(opt.chip.as_ref().map(|s| s.as_ref()) )), 
-        path_str.to_string()
-    )?;
+    let target = target_override.unwrap_or_else(|| get_checked_target(opt.chip, ChipInfo::new(&mut probe)));
+
+    let flash_algorithm = match target.flash_algorithm.clone() {
+        Some(name) => ocd_targets::select_algorithm(name)?,
+        None => Err(AlgorithmSelectionError::NoAlgorithmSuggested)?
+    };
+    
+    let mut session = Session::new(target, probe, Some(flash_algorithm));
+
+    // Start timer.
+    let instant = Instant::now();
+
+    let mm = session.target.memory_map.clone();
+    let fd = FileDownloader::new();
+    fd.download_file(
+        &mut session,
+        std::path::Path::new(&path_str.to_string().as_str()),
+        Format::Elf,
+        &mm
+    ).unwrap();
+
+    // Stop timer.
+    let elapsed = instant.elapsed();
+    println!("    {} in {}s", "Finished".green().bold(), elapsed.as_millis() as f32 / 1000.0);
 
     Ok(())
 }
 
-fn get_checked_target(name: Option<&str>) -> Target {
+pub fn get_checked_target(name: Option<String>, chip_info: Option<ChipInfo>) -> Target {
     use colored::*;
-    match ocd_targets::select_target(name) {
+    match ocd_targets::select_target(name, chip_info) {
         Ok(target) => target,
         Err(ocd::target::TargetSelectionError::CouldNotAutodetect) => {
             eprintln!("    {} Target could not automatically be identified. Please specify one.", "Error".red().bold());
@@ -189,30 +233,6 @@ fn get_checked_target(name: Option<&str>) -> Target {
             std::process::exit(1);
         },
     }
-}
-
-fn download_program_fast(n: usize, target: Target, path: String) -> Result<(), DownloadError> {
-    with_device(n as usize, target, |mut session| {
-        // Start timer.
-        let instant = Instant::now();
-
-        let mm = session.target.memory_map.clone();
-        let fd = FileDownloader::new();
-        fd.download_file(
-            &mut session,
-            std::path::Path::new(&path.as_str()),
-            Format::Elf,
-            &mm
-        ).unwrap();
-
-        let r = Ok(());
-
-        // Stop timer.
-        let elapsed = instant.elapsed();
-        println!("    {} in {}s", "Finished".green().bold(), elapsed.as_millis() as f32 / 1000.0);
-
-        r
-    })
 }
 
 /// Takes a closure that is handed an `DAPLink` instance and then executed.
