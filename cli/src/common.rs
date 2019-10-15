@@ -32,7 +32,10 @@ use ocd::{
             m0::FakeM0,
         },
     },
-    target::TargetSelectionError,
+    target::{
+        TargetSelectionError,
+        Target,
+    },
     session::Session
 };
 
@@ -111,6 +114,25 @@ impl From<AlgorithmSelectionError> for CliError {
     }
 }
 
+pub fn get_checked_target(name: Option<String>) -> Target {
+    use colored::*;
+    match ocd_targets::select_target(name, None) {
+        Ok(target) => target,
+        Err(ocd::target::TargetSelectionError::CouldNotAutodetect) => {
+            eprintln!("    {} Target could not automatically be identified. Please specify one.", "Error".red().bold());
+            std::process::exit(1);
+        },
+        Err(ocd::target::TargetSelectionError::TargetNotFound(name)) => {
+            eprintln!("    {} Specified target ({}) was not found. Please select an existing one.", "Error".red().bold(), name);
+            std::process::exit(1);
+        },
+        Err(ocd::target::TargetSelectionError::TargetCouldNotBeParsed(error)) => {
+            eprintln!("    {} Target specification could not be parsed.", "Error".red().bold());
+            eprintln!("    {} {}", "Error".red().bold(), error);
+            std::process::exit(1);
+        },
+    }
+}
 
 /// Takes a closure that is handed an `DAPLink` instance and then executed.
 /// After the closure is done, the USB device is always closed,
@@ -143,16 +165,19 @@ where
         },
     };
 
-    let target = ocd_targets::select_target(
-        shared_options.target.as_ref().map(|s| s.as_ref())
-    )?;
-    
+    let target = get_checked_target(shared_options.target.clone());
+
     let flash_algorithm = match target.flash_algorithm.clone() {
-        Some(name) => ocd_targets::select_algorithm(name)?,
-        None => Err(AlgorithmSelectionError::NoAlgorithmSuggested)?
+        Some(name) => ocd_targets::select_algorithm(name),
+        None => Err(AlgorithmSelectionError::NoAlgorithmSuggested),
+    };
+
+    let flash_algorithm = match flash_algorithm {
+        Ok(flash_algorithm) => Some(flash_algorithm),
+        Err(error) => { println!("{:?}", error); None },
     };
     
-    let session = Session::new(target, probe, Some(flash_algorithm));
+    let session = Session::new(target, probe, flash_algorithm);
 
     f(session)
 }
@@ -172,7 +197,8 @@ where
     let probe = MasterProbe::from_specific_probe(Box::new(fake_probe));
 
     let mut target = ocd_targets::select_target(
-        shared_options.target.as_ref().map(|s| s.as_ref())
+        shared_options.target.clone(),
+        None
     )?;
 
     target.core = Box::new(core);
