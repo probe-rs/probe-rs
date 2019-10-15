@@ -50,6 +50,10 @@ use ocd::{
     },
 };
 
+use ocd_targets::{
+    SelectionStrategy,
+};
+
 #[derive(Debug, StructOpt)]
 struct Opt {
     #[structopt(name = "binary", long="bin")]
@@ -187,7 +191,12 @@ fn main_try() -> Result<(), failure::Error> {
         }
     });
 
-    let target = target_override.unwrap_or_else(|| get_checked_target(opt.chip, ChipInfo::new(&mut probe)));
+    let strategy = if let Some(name) = opt.chip {
+        SelectionStrategy::Name(name)
+    } else {
+        SelectionStrategy::ChipInfo(ChipInfo::new(&mut probe).unwrap())
+    };
+    let target = target_override.unwrap_or_else(|| get_checked_target(&strategy));
 
     let flash_algorithm = match target.flash_algorithm.clone() {
         Some(name) => ocd_targets::select_algorithm(name)?,
@@ -215,9 +224,9 @@ fn main_try() -> Result<(), failure::Error> {
     Ok(())
 }
 
-pub fn get_checked_target(name: Option<String>, chip_info: Option<ChipInfo>) -> Target {
+pub fn get_checked_target(strategy: &SelectionStrategy) -> Target {
     use colored::*;
-    match ocd_targets::select_target(name, chip_info) {
+    match ocd_targets::select_target(strategy) {
         Ok(target) => target,
         Err(ocd::target::TargetSelectionError::CouldNotAutodetect) => {
             eprintln!("    {} Target could not automatically be identified. Please specify one.", "Error".red().bold());

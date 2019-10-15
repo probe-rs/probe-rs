@@ -39,6 +39,10 @@ use ocd::{
     session::Session
 };
 
+use ocd_targets::{
+    SelectionStrategy,
+};
+
 use std::error::Error; 
 use std::fmt;
 
@@ -116,7 +120,7 @@ impl From<AlgorithmSelectionError> for CliError {
 
 pub fn get_checked_target(name: Option<String>) -> Target {
     use colored::*;
-    match ocd_targets::select_target(name, None) {
+    match ocd_targets::select_target(&SelectionStrategy::Name(name.unwrap())) {
         Ok(target) => target,
         Err(ocd::target::TargetSelectionError::CouldNotAutodetect) => {
             eprintln!("    {} Target could not automatically be identified. Please specify one.", "Error".red().bold());
@@ -197,8 +201,7 @@ where
     let probe = MasterProbe::from_specific_probe(Box::new(fake_probe));
 
     let mut target = ocd_targets::select_target(
-        shared_options.target.clone(),
-        None
+        &SelectionStrategy::Name(shared_options.target.clone().unwrap())
     )?;
 
     target.core = Box::new(core);

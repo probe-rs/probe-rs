@@ -1,11 +1,9 @@
 pub mod cores;
-pub mod targets;
 
 use std::io;
 use std::fs::{self, DirEntry};
 use std::path::{
     Path,
-    PathBuf,
 };
 use std::collections::HashMap;
 use std::fs::File;
@@ -18,7 +16,13 @@ use crate::probe::flash::flasher::FlashAlgorithm;
 pub fn get_target(name: impl AsRef<str>) -> Option<Target> {
     let mut map: HashMap<String, Target> = HashMap::new();
 
-    load_targets(dirs::home_dir().map(|home| home.join(".config/probe-rs/targets")), &mut map);
+    load_targets(
+        dirs::home_dir()
+            .map(|home| home.join(".config/probe-rs/targets"))
+            .as_ref()
+            .map(|path| path.as_path()),
+        &mut map
+    );
 
     let name: String = name.as_ref().into();
 
@@ -53,9 +57,9 @@ pub fn get_core(name: impl AsRef<str>) -> Option<Box<dyn Core>> {
     map.get(name.as_ref()).map(|target| target.clone())
 }
 
-pub fn load_targets(root: Option<PathBuf>, map: &mut HashMap<String, Target>) {
+pub fn load_targets(root: Option<&Path>, map: &mut HashMap<String, Target>) {
     if let Some(root) = root {
-        visit_dirs(root.as_path(), map, &load_targets_from_dir).unwrap();
+        visit_dirs(root, map, &load_targets_from_dir).unwrap();
     } else {
         log::warn!("Home directory could not be determined while loading targets.");
     }

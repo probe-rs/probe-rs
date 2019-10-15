@@ -39,19 +39,24 @@ pub fn get_built_in_target_by_chip_id(chip_info: &ChipInfo) -> Result<Target, Ta
     Err(TargetSelectionError::CouldNotAutodetect)
 }
 
-pub fn select_target(name: Option<String>, chip_info: Option<ChipInfo>) -> Result<Target, TargetSelectionError> {
-    match name {
-        Some(name) => {
-            let target = match collection::get_target(name.clone()) {
+pub enum SelectionStrategy {
+    Name(String),
+    ChipInfo(ChipInfo),
+}
+
+pub fn select_target(strategy: &SelectionStrategy) -> Result<Target, TargetSelectionError> {
+    match strategy {
+        SelectionStrategy::Name(name) => {
+            let target = match collection::get_target(name) {
                 Some(target) => Some(target),
                 None => None,
             };
             match target {
                 Some(target) => Ok(target),
-                None => get_built_in_target(name.clone()),
+                None => get_built_in_target(name),
             }
         },
-        None => get_built_in_target_by_chip_id(&chip_info.unwrap()),
+        SelectionStrategy::ChipInfo(chip_info) => get_built_in_target_by_chip_id(&chip_info),
     }
 }
 
@@ -63,13 +68,13 @@ pub fn get_built_in_algorithm(name: impl AsRef<str>) -> Result<FlashAlgorithm, A
         .and_then(|definition| FlashAlgorithm::new(definition).map_err(From::from))
 }
 
-pub fn select_algorithm(name: String) -> Result<FlashAlgorithm, AlgorithmSelectionError> {
-    let algorithm = match collection::get_algorithm(name.clone()) {
+pub fn select_algorithm(name: impl AsRef<str>) -> Result<FlashAlgorithm, AlgorithmSelectionError> {
+    let algorithm = match collection::get_algorithm(name.as_ref()) {
         Some(algorithm) => Some(algorithm),
         None => None,
     };
     match algorithm {
         Some(algorithm) => Ok(algorithm),
-        None => get_built_in_algorithm(name.clone()),
+        None => get_built_in_algorithm(name),
     }
 }

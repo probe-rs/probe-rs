@@ -51,14 +51,14 @@ pub fn get_chip_info(probe: &mut MasterProbe) -> Option<ChipInfo> {
                 CSComponent::Class1RomTable(
                     CSComponentId {
                         peripheral_id: PeripheralID {
-                            JEP106,
-                            PART,
+                            JEP106: jep106,
+                            PART: part,
                             ..
                         },
                         ..
                     },
                     ..
-                ) => return Some(ChipInfo { manufacturer: JEP106?, part: PART, }),
+                ) => return Some(ChipInfo { manufacturer: jep106?, part, }),
                 _ => continue
             }
         }

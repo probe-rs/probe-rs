@@ -29,9 +29,15 @@ fn main() {
         let string = read_to_string(&file)
             .expect("Algorithm definition file could not be read. This is a bug. Please report it.");
         match FlashAlgorithm::new(&string) {
-            Ok(algorithm) => {
+            Ok(_algorithm) => {
                 algorithm_files.push("/".to_string() + &file);
-                algorithm_names.push(file.split("algorithms/").skip(1).next().unwrap().to_string());
+                algorithm_names.push(
+                    file.split("algorithms/")
+                        .skip(1)
+                        .next()
+                        .unwrap()
+                        .to_string()
+                );
             },
             Err(e) => {
                 log::error!("Failed to parse file {}.", string);
