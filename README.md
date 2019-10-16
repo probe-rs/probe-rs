@@ -34,15 +34,15 @@ Focus of the development is having a full implementation (CoreSight, Flashing, D
 For downloading an ELF binary (standard cargo build output), you should use the `cargo-flash` utility.
 You can install it via `cargo install cargo-flash` and then use it via `cargo flash` or just use your own built `cargo-flash`. `cargo flash` is just an alias for `cargo-flash`.
 
-Use
+#### Basic
 
-```
-cargo flash
-```
+Use `cargo flash` to build your binary and download the ELF binary to your target.
 
-to build your binary and download the ELF binary to your target.
+#### Full set of commands
 
 You can pass some arguments you could pass to `cargo build` to configure your build target. Use `cargo flash --help` for a list of available commands.
+
+#### Autodetection
 
 If you do not pass a target via `cargo flash --target <target-triplet>` probe-rs will try to identify your target. If this doesn't succeed, please specify your target manually.
 
