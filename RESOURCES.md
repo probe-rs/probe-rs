@@ -17,6 +17,12 @@
 
 [Technical Reference Manual](http://infocenter.arm.com/help/topic/com.arm.doc.ddi0432c/DDI0432C_cortex_m0_r0p0_trm.pdf)
 
+## Cortex M4
+
+[Architecture Reference Manual](https://static.docs.arm.com/ddi0406/c/DDI0406C_C_arm_architecture_reference_manual.pdf)
+
+[Technical Reference Manual](http://infocenter.arm.com/help/topic/com.arm.doc.ddi0439b/DDI0439B_cortex_m4_r0p0_trm.pdf)
+
 
 ## CMSIS-DAP
 [CMSIS-DAP Spec](https://arm-software.github.io/CMSIS_5/DAP/html/index.html)
