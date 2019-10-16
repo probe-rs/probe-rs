@@ -62,7 +62,7 @@ fn creating_inner_transfer_request() {
 impl InnerTransferRequest {
     fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize> {
         buffer[offset] = 
-            (self.APnDP as u8) << 0
+            (self.APnDP as u8)
           | (self.RnW as u8) << 1
           | (if self.A2 { 1 } else { 0 }) << 2
           | (if self.A3 { 1 } else { 0 }) << 3

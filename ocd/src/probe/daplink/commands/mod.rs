@@ -80,7 +80,7 @@ pub(crate) fn send_command<Req: Request, Res: Response>(device: &hidapi::HidDevi
     // Write the command & request to the buffer.
     // TODO: Error handling & real USB writing.
     let buffer = &mut [0; 24];
-    buffer[0 + 1] = *Req::CATEGORY;
+    buffer[1] = *Req::CATEGORY;
     let _size = request.to_bytes(buffer, 1 + 1)?;
     device.write(buffer)?;
     debug!("Send buffer: {:02X?}", &buffer[..]);

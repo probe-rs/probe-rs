@@ -94,14 +94,13 @@ impl STLinkUSBDevice {
                         .devices()
                         .map_err(|_| DebugProbeError::ProbeCouldNotBeCreated)?
                         .iter()
-                        .filter(|device| {
+                        .find(|device| {
                             if let Ok(descriptor) = device.device_descriptor() {
                                 probe_info.vendor_id == descriptor.vendor_id() && probe_info.product_id == descriptor.product_id()
                             } else {
                                 false
                             }
                         })
-                        .next()
                         .map_or(Err(DebugProbeError::ProbeCouldNotBeCreated), Ok)?
                 ))
             },

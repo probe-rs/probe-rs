@@ -76,7 +76,7 @@ pub fn ranges<I: Iterator<Item = usize>>(list: I)-> Ranges<I> {
 /// 
 /// Internally, FlashBuilder is used to optimize programming within each memory region.
 pub struct FlashLoader<'a, 'b> {
-    memory_map: &'a Vec<MemoryRegion>,
+    memory_map: &'a [MemoryRegion],
     builders: HashMap<FlashRegion, FlashBuilder<'b>>,
     total_data_size: usize,
     chip_erase: bool,
@@ -94,7 +94,7 @@ pub enum FlashLoaderError {
 
 impl<'a, 'b> FlashLoader<'a, 'b> {
     pub fn new(
-        memory_map: &'a Vec<MemoryRegion>,
+        memory_map: &'a [MemoryRegion],
         smart_flash: bool,
         trust_crc: bool,
         keep_unwritten: bool
@@ -157,7 +157,7 @@ impl<'a, 'b> FlashLoader<'a, 'b> {
     }
 
     pub fn get_region_for_address(
-        memory_map: &Vec<MemoryRegion>,
+        memory_map: &[MemoryRegion],
         address: u32
     ) -> Option<&MemoryRegion> {
         for region in memory_map {
