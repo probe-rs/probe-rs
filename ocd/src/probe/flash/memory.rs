@@ -29,7 +29,7 @@ mod integer_representation {
         D: Deserializer<'de>,
     {   
         let raw: IntRep = IntRep::deserialize(deserializer)?;
-        Access::from_bits(raw).ok_or(serde::de::Error::custom(format!(
+        Access::from_bits(raw).ok_or_else(|| serde::de::Error::custom(format!(
             "Unexpected flags value {}",
             raw              
         )))                  

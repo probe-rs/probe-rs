@@ -308,11 +308,12 @@ impl DebugProbeInfo {
     }
 }
 
+#[derive(Default)]
 pub struct FakeProbe;
 
 impl FakeProbe {
-    pub fn new() -> FakeProbe {
-        FakeProbe { }
+    pub fn new() -> Self {
+        Self::default()
     }
 }
 

@@ -1,8 +1,8 @@
 use crate::session::Session;
-use std::path::Path;
-use std::io::{ Read, Seek, SeekFrom };
-use std::fs::File;
 use ihex;
+use std::fs::File;
+use std::io::{Read, Seek, SeekFrom};
+use std::path::Path;
 
 use super::*;
 
@@ -56,17 +56,17 @@ impl From<&'static str> for FileDownloadError {
 
 /// This struct and impl bundle functionality to start the `Downloader` which then will flash
 /// the given data to the flash of the target.
-/// 
+///
 /// Supported file formats are:
 /// - Binary (.bin)
 /// - Intel Hex (.hex)
 /// - ELF (.elf or .axf)
+#[derive(Default)]
 pub struct FileDownloader;
 
 impl<'a> FileDownloader {
     pub fn new() -> Self {
-        Self {
-        }
+        Self::default()
     }
 
     /// Downloads a file at `path` into flash.
@@ -75,11 +75,11 @@ impl<'a> FileDownloader {
         session: &mut Session,
         path: &Path,
         format: Format,
-        memory_map: &Vec<MemoryRegion>
+        memory_map: &[MemoryRegion],
     ) -> Result<(), FileDownloadError> {
         let mut file = match File::open(path) {
             Ok(file) => file,
-            Err(_e) => return Err(FileDownloadError::TargetDoesNotExists)
+            Err(_e) => return Err(FileDownloadError::TargetDoesNotExists),
         };
         let mut buffer = vec![];
         // IMPORTANT: Change this to an actual memory map of a real chip
@@ -91,7 +91,9 @@ impl<'a> FileDownloader {
             Format::Hex => self.download_hex(&mut file, &mut loader),
         }?;
 
-        loader.commit(session).map_err(|e| FileDownloadError::FlashLoader (e))
+        loader
+            .commit(session)
+            .map_err(FileDownloadError::FlashLoader)
     }
 
     /// Starts the download of a binary file.
@@ -100,11 +102,11 @@ impl<'a> FileDownloader {
         buffer: &'b mut Vec<u8>,
         file: &'b mut T,
         loader: &mut FlashLoader<'_, 'b>,
-        options: BinOptions
+        options: BinOptions,
     ) -> Result<(), FileDownloadError> {
         // Skip the specified bytes.
-        file.seek(SeekFrom::Start(options.skip as u64))?;
-        
+        file.seek(SeekFrom::Start(u64::from(options.skip)))?;
+
         file.read_to_end(buffer)?;
 
         loader.add_data(
@@ -116,14 +118,18 @@ impl<'a> FileDownloader {
                 // self._session.target.memory_map.get_boot_memory().start
                 0
             },
-            buffer.as_slice()
+            buffer.as_slice(),
         )?;
 
         Ok(())
     }
 
     /// Starts the download of a hex file.
-    fn download_hex<T: Read + Seek>(self, file: &mut T, _loader: &mut FlashLoader) -> Result<(), FileDownloadError> {
+    fn download_hex<T: Read + Seek>(
+        self,
+        file: &mut T,
+        _loader: &mut FlashLoader,
+    ) -> Result<(), FileDownloadError> {
         let mut data = String::new();
         file.read_to_string(&mut data)?;
 
@@ -142,40 +148,45 @@ impl<'a> FileDownloader {
         //     data = list(hexfile.tobinarray(start=start, size=size))
         //     self._loader.add_data(start, data)
     }
-        
+
     /// Starts the download of a elf file.
     fn download_elf<'b, T: Read + Seek>(
         self,
         buffer: &'b mut Vec<u8>,
         file: &'b mut T,
-        loader: &mut FlashLoader<'_, 'b>
+        loader: &mut FlashLoader<'_, 'b>,
     ) -> Result<(), FileDownloadError> {
         file.read_to_end(buffer)?;
 
         use goblin::elf::program_header::*;
 
-        match goblin::elf::Elf::parse(&buffer.as_slice()) {
-            Ok(binary) => {
-                for ph in &binary.program_headers {
-                    if ph.p_type == PT_LOAD && ph.p_filesz > 0 {
-                        log::debug!("Found loadable segment containing:");
-                        
-                        let sector: core::ops::Range<u32> = ph.p_offset as u32..ph.p_offset as u32 + ph.p_filesz as u32;
+        if let Ok(binary) = goblin::elf::Elf::parse(&buffer.as_slice()) {
+            for ph in &binary.program_headers {
+                if ph.p_type == PT_LOAD && ph.p_filesz > 0 {
+                    log::debug!("Found loadable segment containing:");
 
-                        for sh in &binary.section_headers {
-                            if sector.contains_range(&(sh.sh_offset as u32..sh.sh_offset as u32 + sh.sh_size as u32)) {
-                                log::debug!("{:?}", &binary.shdr_strtab[sh.sh_name]);
-                                for line in hexdump::hexdump_iter(&buffer[sh.sh_offset as usize..][..sh.sh_size as usize]) {
-                                    log::trace!("{}", line);
-                                };
+                    let sector: core::ops::Range<u32> =
+                        ph.p_offset as u32..ph.p_offset as u32 + ph.p_filesz as u32;
+
+                    for sh in &binary.section_headers {
+                        if sector.contains_range(
+                            &(sh.sh_offset as u32..sh.sh_offset as u32 + sh.sh_size as u32),
+                        ) {
+                            log::debug!("{:?}", &binary.shdr_strtab[sh.sh_name]);
+                            for line in hexdump::hexdump_iter(
+                                &buffer[sh.sh_offset as usize..][..sh.sh_size as usize],
+                            ) {
+                                log::trace!("{}", line);
                             }
                         }
-
-                        loader.add_data(ph.p_paddr as u32, &buffer[ph.p_offset as usize..][..ph.p_filesz as usize])?;
                     }
+
+                    loader.add_data(
+                        ph.p_paddr as u32,
+                        &buffer[ph.p_offset as usize..][..ph.p_filesz as usize],
+                    )?;
                 }
-            },
-            Err(_) => ()
+            }
         }
         Ok(())
     }

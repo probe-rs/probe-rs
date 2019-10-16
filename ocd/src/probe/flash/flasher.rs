@@ -211,7 +211,7 @@ impl<'a> Flasher<'a> {
             .flatten().copied()
             .collect::<Vec<u8>>();
 
-        let instructions = cs.disasm_all(i.as_slice(), algo.load_address as u64).unwrap();
+        let instructions = cs.disasm_all(i.as_slice(), u64::from(algo.load_address)).unwrap();
 
         for instruction in instructions.iter() {
             log::debug!("{}", instruction);
@@ -490,7 +490,7 @@ impl <'a> ActiveFlasher<'a, Erase> {
         }
     }
 
-    pub fn compute_crcs(&mut self, sectors: &Vec<(u32, u32)>) -> Result<Vec<u32>, FlasherError> {
+    pub fn compute_crcs(&mut self, sectors: &[(u32, u32)]) -> Result<Vec<u32>, FlasherError> {
         let flasher = self;
         let algo = flasher.flash_algorithm;
 
@@ -515,7 +515,7 @@ impl <'a> ActiveFlasher<'a, Erase> {
                 if address % size != 0 {
                     return Err(FlasherError::AddressNotMultipleOfSize);
                 }
-                let value = (size_value << 0) | (address_value << 16);
+                let value = size_value | (address_value << 16);
                 data.push(value);
             }
 

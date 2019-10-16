@@ -1,4 +1,5 @@
 use super::*;
+use std::mem::swap;
 
 const PAGE_ESTIMATE_SIZE: u32 = 32;
 const _PAGE_READ_WEIGHT: f32 = 0.3;
@@ -19,7 +20,7 @@ pub struct FlashPage {
     cached_estimate_data: Vec<u8>,
 }
 
-fn fmt(data: &Vec<u8>, f: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
+fn fmt(data: &[u8], f: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
     write!(f, "[{} bytes]", data.len())
 }
 
@@ -254,7 +255,7 @@ impl<'a> FlashBuilder<'a> {
 
         if Some(true) != chip_erase {
             let (_sector_erase_count, page_program_time) = self.compute_sector_erase_pages_and_weight(&mut flash, &mut sectors, fast_verify)?;
-            if let None = chip_erase {
+            if chip_erase.is_none() {
                 chip_erase = Some(chip_erase_program_time < page_program_time);
             }
         }
@@ -509,7 +510,7 @@ impl<'a> FlashBuilder<'a> {
         sectors: &mut Vec<FlashSector>
     ) -> Result<(), FlashBuilderError> {
         for page in Self::pages_mut(sectors) {
-            if let None = page.dirty {
+            if page.dirty.is_none() {
                 let size = (PAGE_ESTIMATE_SIZE as usize).min(page.data.len());
                 let mut data = vec![0; size];
                 flash.run_verify(|active| {
@@ -537,7 +538,7 @@ impl<'a> FlashBuilder<'a> {
 
         // Build a list of all pages to be analyzed.
         for page in Self::pages_mut(sectors) {
-            if let None = page.dirty {
+            if page.dirty.is_none() {
                 let mut data = page.data.clone();
                 let pad_size = page.size as usize - page.data.len();
                 if pad_size > 0 {
@@ -673,10 +674,7 @@ impl<'a> FlashBuilder<'a> {
                         // return Err(FlashBuilderError::ProgramPage(page.address, result));
                     }
 
-                    // Swap buffers.
-                    let tmp = current_buf;
-                    current_buf = next_buf;
-                    next_buf = tmp;
+                    swap(&mut current_buf, &mut next_buf);
                 }
 
                 Ok(())
@@ -690,9 +688,8 @@ impl<'a> FlashBuilder<'a> {
     fn sector_erase_program(
         &self,
         flash: &mut Flasher,
-        sectors: &Vec<FlashSector>
+        sectors: &[FlashSector]
     ) -> Result<(), FlashBuilderError> {
-        println!("KEKEKEK", );
         let number_of_sectors_to_be_programmed = sectors
             .iter()
             .filter(|s| s.is_pages_to_be_programmed())
@@ -718,7 +715,7 @@ impl<'a> FlashBuilder<'a> {
         Ok(())
     }
 
-    fn next_nonsame_page<'b>(pages: &Vec<&'b FlashPage>, page: u32) -> (Option<&'b FlashPage>, u32) {
+    fn next_nonsame_page<'b>(pages: &[&'b FlashPage], page: u32) -> (Option<&'b FlashPage>, u32) {
         for n in page as usize + 1..pages.len() {
             if let Some(page) = pages.get(n) {
                 if let Some(true) = page.dirty {
@@ -776,10 +773,7 @@ impl<'a> FlashBuilder<'a> {
                             // return Err(FlashBuilderError::ProgramPage(page.address, result));
                         }
 
-                        // Swap buffers.
-                        let tmp = current_buf;
-                        current_buf = next_buf;
-                        next_buf = tmp;
+                        swap(&mut current_buf, &mut next_buf);
                     }
                 }
 

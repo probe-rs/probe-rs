@@ -159,10 +159,8 @@ impl ADIMemoryInterface {
         let tar = TAR { address };
         self.write_register_ap(debug_port, tar)?;
 
-        let num_reads = data.len();
-
-        for offset in 0..num_reads {
-            data[offset] = self.read_register_ap(debug_port, DRW::default())?.data;
+        for data in data.iter_mut() {
+            *data = self.read_register_ap(debug_port, DRW::default())?.data;
         }
 
         Ok(())
@@ -247,14 +245,14 @@ impl ADIMemoryInterface {
 
         match post_bytes {
             1 => {
-                data[data.len()-1] = ((buff[buff.len()-1] >> 0) & 0xff) as u8;
+                data[data.len()-1] = (buff[buff.len()-1] & 0xff) as u8;
             },
             2 => {
-                data[data.len()-2] = ((buff[buff.len()-1] >> 0) & 0xff) as u8;
+                data[data.len()-2] = (buff[buff.len()-1] & 0xff) as u8;
                 data[data.len()-1] = ((buff[buff.len()-1] >> 8) & 0xff) as u8;
             },
             3 => {
-                data[data.len()-3] = ((buff[buff.len()-1] >> 0) & 0xff) as u8;
+                data[data.len()-3] = (buff[buff.len()-1] & 0xff) as u8;
                 data[data.len()-2] = ((buff[buff.len()-1] >> 8) & 0xff) as u8;
                 data[data.len()-1] = ((buff[buff.len()-1] >> 16) & 0xff) as u8;
             },
@@ -345,9 +343,8 @@ impl ADIMemoryInterface {
         let tar = TAR { address };
         self.write_register_ap(debug_port, tar)?;
 
-        let num_writes = data.len();
-        for offset in 0..num_writes {
-            let drw = DRW { data: data[offset] };
+        for data in data.iter() {
+            let drw = DRW { data : *data };
             self.write_register_ap(debug_port, drw)?;
         }
 

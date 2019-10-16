@@ -70,7 +70,7 @@ impl DebugProbe for STLink {
         Self::check_status(&buf).and_then(|_| {
             // After we checked the status with success,
             // We store the current protocol.
-            self.protocol = protocol.clone();
+            self.protocol = protocol;
             Ok(protocol)
         })
     }

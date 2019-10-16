@@ -40,7 +40,7 @@ impl std::fmt::Display for StackFrame {
             write!(
                 f,
                 "\t{}/{}",
-                si.directory.as_ref().map(|p| p.to_string_lossy()).unwrap_or(std::borrow::Cow::from("<unknown dir>")), 
+                si.directory.as_ref().map(|p| p.to_string_lossy()).unwrap_or_else(|| std::borrow::Cow::from("<unknown dir>")),
                 si.file.as_ref().unwrap_or(&"<unknown file>".to_owned())
             )?;
 
@@ -52,7 +52,7 @@ impl std::fmt::Display for StackFrame {
             }
         }
 
-        write!(f, "\n")?;
+        writeln!(f)?;
         writeln!(f, "\tVariables:")?;
 
         for variable in &self.variables {
@@ -73,7 +73,7 @@ impl Registers {
         }
         registers
     }
-    
+
     pub fn get_call_frame_address(&self) -> Option<u32> {
         self.0[13]
     }
@@ -92,7 +92,7 @@ impl std::ops::Index<usize> for Registers {
 }
 
 impl std::ops::IndexMut<usize> for Registers {
-    fn index_mut<'a>(&'a mut self, index: usize) -> &'a mut Self::Output {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
         &mut self.0[index]
     }
 }
@@ -171,8 +171,8 @@ impl<'a> Iterator for StackFrameIterator<'a> {
         let current_cfa = match unwind_info.cfa() {
             gimli::CfaRule::RegisterAndOffset { register, offset } => {
                 let reg_val = self.registers[register.0 as usize];
-                
-                Some(((reg_val.unwrap() as i64) + offset) as u32)
+
+                Some((i64::from(reg_val.unwrap()) + offset) as u32)
             },
             gimli::CfaRule::Expression(_) => unimplemented!()
         };
@@ -227,15 +227,15 @@ pub struct DebugInfo {
 }
 
 impl DebugInfo {
-    pub fn from_raw<'a> (data: &'a [u8]) -> Self {
+    pub fn from_raw(data: &[u8]) -> Self {
         let object = object::File::parse(data).unwrap();
 
         // Load a section and return as `Cow<[u8]>`.
         let load_section = |id: gimli::SectionId| -> Result<DwarfReader, gimli::Error> {
             let data = object
                 .section_data_by_name(id.name())
-                .unwrap_or(borrow::Cow::Borrowed(&[][..]));
-            
+                .unwrap_or_else(|| borrow::Cow::Borrowed(&[][..]));
+
             Ok(gimli::read::EndianRcSlice::new(Rc::from(&*data), gimli::LittleEndian))
         };
         // Load a supplementary section. We don't have a supplementary object file,
@@ -258,7 +258,7 @@ impl DebugInfo {
 
     fn get_source_location(&self, address: u64) -> Option<SourceLocation> {
         let mut units = self.dwarf.units();
-        
+
         while let Some(header) = units.next().unwrap() {
             let unit = match self.dwarf.unit(header) {
                 Ok(unit) => unit,
@@ -287,14 +287,12 @@ impl DebugInfo {
                     for seq in sequences {
                         //println!("Seq 0x{:08x} - 0x{:08x}", seq.start, seq.end);
                         if (seq.start <= address) && (address < seq.end) {
-                            target_seq = Some(seq);                            
+                            target_seq = Some(seq);
                             break;
                         }
                     }
 
-                    if target_seq.is_none() {
-                        return None;
-                    }
+                    target_seq.as_ref()?;
 
                     let mut previous_row: Option<gimli::LineRow> = None;
 
@@ -346,7 +344,7 @@ impl DebugInfo {
                                 directory: Some(file_dir_str.into()),
                             });
                         }
-                        previous_row = Some(row.clone());
+                        previous_row = Some(*row);
                     }
                 }
             }
@@ -374,7 +372,7 @@ impl DebugInfo {
         }
     }
 
-    fn get_stackframe_info<'b>(
+    fn get_stackframe_info(
         &self,
         session: &mut Session,
         address: u64,
@@ -388,7 +386,7 @@ impl DebugInfo {
                 let function_name = unit_info
                     .get_function_name(&die_cursor_state.function_die)
                     .unwrap_or(unknown_function);
-                
+
                 let variables = unit_info.get_variables(
                     session,
                     die_cursor_state,
@@ -435,7 +433,7 @@ pub struct UnitInfo<'a> {
 }
 
 impl<'a> UnitInfo<'a> {
-    fn get_function_die<'b>(&'b self, address: u64) -> Option<DieCursorState<'b, 'b>> {
+    fn get_function_die(&self, address: u64) -> Option<DieCursorState> {
         let mut entries_cursor = self.unit.entries();
 
         while let Some((depth, current)) = entries_cursor.next_dfs().unwrap() {
@@ -496,11 +494,11 @@ impl<'a> UnitInfo<'a> {
                     match size {
                         1 => evaluation.resume_with_memory(gimli::Value::U8(buff[0])).unwrap(),
                         2 => {
-                            let val: u16 = (buff[0] as u16) << 8 | (buff[1] as u16);
+                            let val = (u16::from(buff[0]) << 8) | (u16::from(buff[1]) as u16);
                             evaluation.resume_with_memory(gimli::Value::U16(val)).unwrap()
                         },
                         4 => {
-                            let val: u32 = (buff[0] as u32) << 24 | (buff[1] as u32) << 16 | (buff[2] as u32) << 8 | (buff[3] as u32);
+                            let val = (u32::from(buff[0]) << 24) | (u32::from(buff[1]) << 16) | (u32::from(buff[2]) << 8) | u32::from(buff[3]);
                             evaluation.resume_with_memory(gimli::Value::U32(val)).unwrap()
                         },
                         _ => unimplemented!(),
@@ -516,9 +514,7 @@ impl<'a> UnitInfo<'a> {
             }
         }
 
-        let result = evaluation.result();
-
-        result
+        evaluation.result()
     }
 
     fn get_variables(
@@ -549,26 +545,26 @@ impl<'a> UnitInfo<'a> {
                                 variable.name = extract_name(
                                     &self.debug_info,
                                     attr.value()
-                                ).unwrap_or("<undefined>".to_string());
+                                ).unwrap_or_else(|| "<undefined>".to_string());
                             },
                             gimli::DW_AT_decl_file => {
                                 variable.file = extract_file(
                                     &self.debug_info,
                                     &self.unit,
                                     attr.value()
-                                ).unwrap_or("<undefined>".to_string());
+                                ).unwrap_or_else(|| "<undefined>".to_string());
                             },
                             gimli::DW_AT_decl_line => {
                                 variable.line = extract_line(
                                     &self.debug_info,
                                     attr.value()
-                                ).unwrap_or(u64::max_value());
+                                ).unwrap_or_else(u64::max_value);
                             },
                             gimli::DW_AT_type => {
                                 variable.typ = extract_type(
                                     &self,
                                     attr.value()
-                                ).unwrap_or(Type {
+                                ).unwrap_or_else(|| Type {
                                     name: "<undefined>".to_string(),
                                     named_children: None,
                                     indexed_children: None,
@@ -580,7 +576,7 @@ impl<'a> UnitInfo<'a> {
                                     session,
                                     frame_base,
                                     attr.value()
-                                ).unwrap_or(u64::max_value());
+                                ).unwrap_or_else(u64::max_value);
                             },
                             _ => ()
                         }
@@ -620,7 +616,7 @@ fn extract_type(
         gimli::AttributeValue::UnitRef(unit_ref) => {
             if let Ok(mut tree) = unit_info.unit.entries_tree(Some(unit_ref)) {
                 let node = tree.root().unwrap();
-                
+
                 // Examine the entry attributes.
                 let entry = node.entry();
                 match entry.tag() {
@@ -645,7 +641,7 @@ fn extract_type(
                         }
 
                         return Some(Type {
-                            name: type_name.unwrap_or("<unnamed type>".to_string()),
+                            name: type_name.unwrap_or_else(|| "<unnamed type>".to_string()),
                             named_children: Some(named_children),
                             indexed_children: Some(vec![]),
                         })
