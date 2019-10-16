@@ -12,8 +12,6 @@ use crate::target::{
 };
 use bitfield::bitfield;
 
-use log::debug;
-
 bitfield!{
     #[derive(Copy, Clone)]
     pub struct Dhcsr(u32);
@@ -107,74 +105,41 @@ impl CoreRegister for Dcrdr {
 
 bitfield!{
     #[derive(Copy, Clone)]
-    pub struct BpCtrl(u32);
+    pub struct Aircr(u32);
     impl Debug;
-    /// The number of breakpoint comparators. If NUM_CODE is zero, the implementation does not support any comparators
-    pub numcode, _: 7, 4;
-    /// RAZ on reads, SBO, for writes. If written as zero, the write to the register is ignored.
-    pub key, set_key: 1;
-    /// Enables the BPU:
-    /// 0 BPU is disabled.
-    /// 1 BPU is enabled.
-    /// This bit is set to 0 on a power-on reset
-    pub _, set_enable: 0;
+    pub get_vectkeystat, set_vectkey: 31,16;
+    pub endianness, set_endianness: 15;
+    pub prigroup, set_prigroup: 10,8;
+    pub sysresetreq, set_sysresetreq: 2;
+    pub vectclractive, set_vectclractive: 15;
+    pub vectreset, set_vectreset: 15;
 }
 
-impl From<u32> for BpCtrl {
+impl From<u32> for Aircr {
     fn from(value: u32) -> Self {
         Self(value)
     }
 }
 
-impl From<BpCtrl> for u32 {
-    fn from(value: BpCtrl) -> Self {
+impl From<Aircr> for u32 {
+    fn from(value: Aircr) -> Self {
         value.0
     }
 }
 
-impl CoreRegister for BpCtrl {
-    const ADDRESS: u32 = 0xE000_2000;
-    const NAME: &'static str = "BP_CTRL";
-}
+impl Aircr {
+    fn vectkey(&mut self) {
+        self.set_vectkey(0x05FA);
+    }
 
-bitfield!{
-    #[derive(Copy, Clone)]
-    pub struct BpCompx(u32);
-    impl Debug;
-    /// BP_MATCH defines the behavior when the COMP address is matched:
-    /// - 00 no breakpoint matching.
-    /// - 01 breakpoint on lower halfword, upper is unaffected.
-    /// - 10 breakpoint on upper halfword, lower is unaffected.
-    /// - 11 breakpoint on both lower and upper halfwords.
-    /// - The field is UNKNOWN on reset.
-    pub _, set_bp_match: 31,30;
-    /// Stores bits [28:2] of the comparison address. The comparison address is
-    /// compared with the address from the Code memory region. Bits [31:29] and
-    /// [1:0] of the comparison address are zero.
-    /// The field is UNKNOWN on power-on reset.
-    pub _, set_comp: 28,2;
-    /// Enables the comparator:
-    /// 0 comparator is disabled.
-    /// 1 comparator is enabled.
-    /// This bit is set to 0 on a power-on reset.
-    pub _, set_enable: 0;
-}
-
-impl From<u32> for BpCompx {
-    fn from(value: u32) -> Self {
-        Self(value)
+    fn vectkeystat(&self) -> bool {
+        self.get_vectkeystat() == 0xFA05
     }
 }
 
-impl From<BpCompx> for u32 {
-    fn from(value: BpCompx) -> Self {
-        value.0
-    }
-}
-
-impl CoreRegister for BpCompx {
-    const ADDRESS: u32 = 0xE000_2008;
-    const NAME: &'static str = "BP_CTRL0";
+impl CoreRegister for Aircr {
+    const ADDRESS: u32 = 0xE000_ED0C;
+    const NAME: &'static str = "AIRCR";
 }
 
 pub const REGISTERS : BasicRegisterAddresses = BasicRegisterAddresses {
@@ -193,9 +158,9 @@ pub const MSP: CoreRegisterAddress = CoreRegisterAddress(0b01001);
 pub const PSP: CoreRegisterAddress = CoreRegisterAddress(0b01010);
 
 #[derive(Debug, Default, Copy, Clone)]
-pub struct M0;
+pub struct M4;
 
-impl M0 {
+impl M4 {
     fn wait_for_core_register_transfer(&self, mi: &mut impl MI) -> Result<(), DebugProbeError> {
         // now we have to poll the dhcsr register, until the dhcsr.s_regrdy bit is set
         // (see C1-292, cortex m0 arm)
@@ -210,7 +175,7 @@ impl M0 {
     }
 }
 
-impl Core for M0 {
+impl Core for M4 {
     fn wait_for_core_halted(&self, mi: &mut MasterProbe) -> Result<(), DebugProbeError> {
         // Wait until halted state is active again.
         for _ in 0..100 {
@@ -305,45 +270,25 @@ impl Core for M0 {
 
     fn reset(&self, mi: &mut MasterProbe) -> Result<(), DebugProbeError> {
         // Set THE AIRCR.SYSRESETREQ control bit to 1 to request a reset. (ARM V6 ARM, B1.5.16)
+        let mut value = Aircr(0);
+        value.vectkey();
+        value.set_sysresetreq(true);
 
-        let reset_val = (0x05FA << 16)| (1 << 2);
-
-        const AIRCR: u32 = 0xE000_ED0C;
-
-        mi.write32(AIRCR, reset_val)?;
+        mi.write32(Aircr::ADDRESS, value.into())?;
 
         Ok(())
     }
 
     fn get_available_breakpoint_units(&self, mi: &mut MasterProbe) -> Result<u32, DebugProbeError> {
-        let result = mi.read32(BpCtrl::ADDRESS)?;
-
-        self.wait_for_core_register_transfer(mi)?;
-
-        Ok(result)
+        unimplemented!();
     }
 
     fn enable_breakpoints(&self, mi: &mut MasterProbe, state: bool) -> Result<(), DebugProbeError> {
-        debug!("Enabling breakpoints: {:?}", state);
-        let mut value = BpCtrl(0);
-        value.set_key(true);
-        value.set_enable(state);
-
-        mi.write32(BpCtrl::ADDRESS, value.into())?;
-
-        self.wait_for_core_halted(mi)
+        unimplemented!();
     }
 
     fn set_breakpoint(&self, mi: &mut MasterProbe, addr: u32) -> Result<(), DebugProbeError> {
-        debug!("Setting breakpoint on address 0x{:08x}", addr);
-        let mut value = BpCompx(0);
-        value.set_bp_match(0b11);
-        value.set_comp((addr >> 2) & 0x00FFFFFF);
-        value.set_enable(true);
-
-        mi.write32(BpCompx::ADDRESS, value.into())?;
-
-        self.wait_for_core_halted(mi)
+        unimplemented!();
     }
 
     fn enable_breakpoint(&self, _mi: &mut MasterProbe, _addr: u32) -> Result<(), DebugProbeError> {
