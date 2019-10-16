@@ -692,6 +692,7 @@ impl<'a> FlashBuilder<'a> {
         flash: &mut Flasher,
         sectors: &Vec<FlashSector>
     ) -> Result<(), FlashBuilderError> {
+        println!("KEKEKEK", );
         let number_of_sectors_to_be_programmed = sectors
             .iter()
             .filter(|s| s.is_pages_to_be_programmed())
