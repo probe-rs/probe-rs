@@ -21,7 +21,7 @@
 
 [Architecture Reference Manual](https://static.docs.arm.com/ddi0403/e/DDI0403E_d_armv7m_arm.pdf)
 
-[Technical Reference Manual](http://infocenter.arm.com/help/topic/com.arm.doc.ddi0439b/DDI0439B_cortex_m4_r0p0_trm.pdf)
+[Technical Reference Manual](https://static.docs.arm.com/100166/0001/arm_cortexm4_processor_trm_100166_0001_00_en.pdf)
 
 
 ## CMSIS-DAP
