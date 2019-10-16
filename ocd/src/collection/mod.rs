@@ -50,9 +50,9 @@ pub fn get_algorithm(name: impl AsRef<str>) -> Option<FlashAlgorithm> {
 }
 
 pub fn get_core(name: impl AsRef<str>) -> Option<Box<dyn Core>> {
-    let map: HashMap<String, Box<dyn Core>> = hashmap!{
-        "M0".to_string() => Box::new(self::cores::m0::M0) as _,
-        "M4".to_string() => Box::new(self::cores::m0::M4) as _,
+    let map: HashMap<&'static str, Box<dyn Core>> = hashmap!{
+        "M0" => Box::new(self::cores::m0::M0) as _,
+        "M4" => Box::new(self::cores::m4::M4) as _,
     };
 
     map.get(name.as_ref()).cloned()
