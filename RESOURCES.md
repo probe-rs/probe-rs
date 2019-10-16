@@ -19,7 +19,7 @@
 
 ## Cortex M4
 
-[Architecture Reference Manual](https://static.docs.arm.com/ddi0406/c/DDI0406C_C_arm_architecture_reference_manual.pdf)
+[Architecture Reference Manual](https://static.docs.arm.com/ddi0403/e/DDI0403E_d_armv7m_arm.pdf)
 
 [Technical Reference Manual](http://infocenter.arm.com/help/topic/com.arm.doc.ddi0439b/DDI0439B_cortex_m4_r0p0_trm.pdf)
 
