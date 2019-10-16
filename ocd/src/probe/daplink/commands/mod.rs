@@ -47,7 +47,9 @@ pub(crate) trait Response: Sized {
 
 #[derive(Clone, Debug)]
 pub(crate) enum Error {
+    #[allow(dead_code)]
     NotEnoughSpace,
+    #[allow(dead_code)]
     USB,
     UnexpectedAnswer,
     DAPError,
