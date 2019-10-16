@@ -196,7 +196,11 @@ fn main_try() -> Result<(), failure::Error> {
     } else {
         SelectionStrategy::ChipInfo(ChipInfo::new(&mut probe).unwrap())
     };
-    let target = target_override.unwrap_or_else(|| get_checked_target(&strategy));
+    let target = if let Some(target) = target_override {
+        target
+    } else {
+        ocd_targets::select_target(&strategy)?
+    };
 
     let flash_algorithm = match target.flash_algorithm.clone() {
         Some(name) => ocd_targets::select_algorithm(name)?,
@@ -222,26 +226,6 @@ fn main_try() -> Result<(), failure::Error> {
     println!("    {} in {}s", "Finished".green().bold(), elapsed.as_millis() as f32 / 1000.0);
 
     Ok(())
-}
-
-pub fn get_checked_target(strategy: &SelectionStrategy) -> Target {
-    use colored::*;
-    match ocd_targets::select_target(strategy) {
-        Ok(target) => target,
-        Err(ocd::target::TargetSelectionError::CouldNotAutodetect) => {
-            eprintln!("    {} Target could not automatically be identified. Please specify one.", "Error".red().bold());
-            std::process::exit(1);
-        },
-        Err(ocd::target::TargetSelectionError::TargetNotFound(name)) => {
-            eprintln!("    {} Specified target ({}) was not found. Please select an existing one.", "Error".red().bold(), name);
-            std::process::exit(1);
-        },
-        Err(ocd::target::TargetSelectionError::TargetCouldNotBeParsed(error)) => {
-            eprintln!("    {} Target specification could not be parsed.", "Error".red().bold());
-            eprintln!("    {} {}", "Error".red().bold(), error);
-            std::process::exit(1);
-        },
-    }
 }
 
 /// Takes a closure that is handed an `DAPLink` instance and then executed.
