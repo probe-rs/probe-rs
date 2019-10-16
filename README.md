@@ -1,9 +1,5 @@
 # probe-rs
-<!-- [![crates.io](http://meritbadge.herokuapp.com/probe-rs)](https://crates.io/crates/probe-rs)
-
-[![documentation](https://docs.rs/probe-rs/badge.svg)](https://docs.rs/probe-rs) -->
-
-[![Build Status](https://www.travis-ci.com/Yatekii/probe-rs.svg)](https://www.travis-ci.com/Yatekii/probe-rs)
+[![crates.io](http://meritbadge.herokuapp.com/probe-rs)](https://crates.io/crates/probe-rs) [![documentation](https://docs.rs/probe-rs/badge.svg)](https://docs.rs/probe-rs) [![![Actions Status](https://github.com/probe-rs/probe-rs/workflows/CI/badge.svg)](https://github.com/probe-rs/probe-rs/actions)
 
 A debugging toolset and library for debugging ARM cores on a separate host.
 
