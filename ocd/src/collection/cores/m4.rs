@@ -128,11 +128,11 @@ impl From<Aircr> for u32 {
 }
 
 impl Aircr {
-    fn vectkey(&mut self) {
+    pub fn vectkey(&mut self) {
         self.set_vectkey(0x05FA);
     }
 
-    fn vectkeystat(&self) -> bool {
+    pub fn vectkeystat(&self) -> bool {
         self.get_vectkeystat() == 0xFA05
     }
 }
@@ -279,15 +279,15 @@ impl Core for M4 {
         Ok(())
     }
 
-    fn get_available_breakpoint_units(&self, mi: &mut MasterProbe) -> Result<u32, DebugProbeError> {
+    fn get_available_breakpoint_units(&self, _mi: &mut MasterProbe) -> Result<u32, DebugProbeError> {
         unimplemented!();
     }
 
-    fn enable_breakpoints(&self, mi: &mut MasterProbe, state: bool) -> Result<(), DebugProbeError> {
+    fn enable_breakpoints(&self, _mi: &mut MasterProbe, _state: bool) -> Result<(), DebugProbeError> {
         unimplemented!();
     }
 
-    fn set_breakpoint(&self, mi: &mut MasterProbe, addr: u32) -> Result<(), DebugProbeError> {
+    fn set_breakpoint(&self, _mi: &mut MasterProbe, _addr: u32) -> Result<(), DebugProbeError> {
         unimplemented!();
     }
 
