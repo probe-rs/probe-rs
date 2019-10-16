@@ -47,11 +47,7 @@ pub enum SelectionStrategy {
 pub fn select_target(strategy: &SelectionStrategy) -> Result<Target, TargetSelectionError> {
     match strategy {
         SelectionStrategy::Name(name) => {
-            let target = match collection::get_target(name) {
-                Some(target) => Some(target),
-                None => None,
-            };
-            match target {
+            match collection::get_target(name) {
                 Some(target) => Ok(target),
                 None => get_built_in_target(name),
             }
