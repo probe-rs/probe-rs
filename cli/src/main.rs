@@ -1,46 +1,26 @@
 mod common;
-mod info;
 mod debugger;
+mod info;
 
-use std::path::PathBuf;
-use std::time::Instant;
-use std::fs;
-use std::num::ParseIntError;
-
-use memmap;
+use common::{with_device, with_dump, CliError};
+use debugger::CliState;
 
 use ocd::{
     debug::debug::DebugInfo,
-    probe::{
-        debug_probe::{
-            DebugProbeInfo,
-        },
-        stlink,
-        daplink,
-    },
     memory::MI,
+    probe::{daplink, debug_probe::DebugProbeInfo, stlink},
 };
 
-use common::{
-    with_device,
-    with_dump,
-    CliError,
-};
-
-use debugger::CliState;
-
+use capstone::{arch::arm::ArchMode, prelude::*, Capstone, Endian};
+use colored::*;
+use memmap;
+use rustyline::Editor;
 use structopt::StructOpt;
 
-use rustyline::Editor;
-
-use colored::*;
-
-use capstone::{
-    Capstone,
-    Endian,
-    prelude::*,
-    arch::arm::ArchMode,
-};
+use std::fs;
+use std::num::ParseIntError;
+use std::path::PathBuf;
+use std::time::Instant;
 
 fn parse_hex(src: &str) -> Result<u32, ParseIntError> {
     u32::from_str_radix(src, 16)
@@ -116,7 +96,7 @@ enum CLI {
     },
 }
 
-/// Shared options for all commands which use a specific probe 
+/// Shared options for all commands which use a specific probe
 #[derive(StructOpt)]
 struct SharedOptions {
     /// The number associated with the debug probe to use
@@ -124,7 +104,6 @@ struct SharedOptions {
     /// The target to be selected.
     target: Option<String>,
 }
-
 
 fn main() {
     // Initialize the logging backend.
@@ -160,7 +139,7 @@ fn list_connected_devices() -> Result<(), CliError> {
         links
             .iter()
             .enumerate()
-            .for_each(|(num, link)| println!( "[{}]: {:?}", num, link));
+            .for_each(|(num, link)| println!("[{}]: {:?}", num, link));
     } else {
         println!("No devices were found.");
     }
@@ -183,7 +162,11 @@ fn dump_memory(shared_options: &SharedOptions, loc: u32, words: u32) -> Result<(
 
         // Print read values.
         for word in 0..words {
-            println!("Addr 0x{:08x?}: 0x{:08x}", loc + 4 * word, data[word as usize]);
+            println!(
+                "Addr 0x{:08x?}: 0x{:08x}",
+                loc + 4 * word,
+                data[word as usize]
+            );
         }
         // Print stats.
         println!("Read {:?} words in {:?}", words, elapsed);
@@ -194,7 +177,6 @@ fn dump_memory(shared_options: &SharedOptions, loc: u32, words: u32) -> Result<(
 
 fn download_program_fast(shared_options: &SharedOptions, path: String) -> Result<(), CliError> {
     with_device(shared_options, |mut session| {
-
         // Start timer.
         // let instant = Instant::now();
 
@@ -204,19 +186,18 @@ fn download_program_fast(shared_options: &SharedOptions, path: String) -> Result
             &mut session,
             std::path::Path::new(&path.as_str()),
             ocd::probe::flash::download::Format::Elf,
-            &mm
-        ).unwrap();
+            &mm,
+        )
+        .unwrap();
 
-        let r = Ok(());
-
-        // Stop timer.
-        // let elapsed = instant.elapsed();
-
-        r
+        Ok(())
     })
 }
 
-fn reset_target_of_device(shared_options: &SharedOptions, _assert: Option<bool>) -> Result<(), CliError> {
+fn reset_target_of_device(
+    shared_options: &SharedOptions,
+    _assert: Option<bool>,
+) -> Result<(), CliError> {
     with_device(shared_options, |mut session| {
         //link.get_interface_mut::<DebugProbe>().unwrap().target_reset().or_else(|e| Err(Error::DebugProbe(e)))?;
         session.probe.target_reset()?;
@@ -226,10 +207,10 @@ fn reset_target_of_device(shared_options: &SharedOptions, _assert: Option<bool>)
 }
 
 fn trace_u32_on_target(shared_options: &SharedOptions, loc: u32) -> Result<(), CliError> {
+    use scroll::Pwrite;
     use std::io::prelude::*;
     use std::thread::sleep;
     use std::time::Duration;
-    use scroll::{Pwrite};
 
     let mut xs = vec![];
     let mut ys = vec![];
@@ -254,9 +235,9 @@ fn trace_u32_on_target(shared_options: &SharedOptions, loc: u32) -> Result<(), C
             // Unwrap is safe!
             buf.pwrite(instant, 0).unwrap();
             buf.pwrite(value, 4).unwrap();
-            std::io::stdout().write(&buf)?;
+            std::io::stdout().write_all(&buf)?;
 
-            std::io::stdout() .flush()?;
+            std::io::stdout().flush()?;
 
             // Schedule next read.
             let elapsed = start.elapsed();
@@ -268,18 +249,22 @@ fn trace_u32_on_target(shared_options: &SharedOptions, loc: u32) -> Result<(), C
     })
 }
 
-fn get_connected_devices() -> Vec<DebugProbeInfo>{
+fn get_connected_devices() -> Vec<DebugProbeInfo> {
     let mut links = daplink::tools::list_daplink_devices();
     links.extend(stlink::tools::list_stlink_devices());
     links
 }
 
-fn debug(shared_options: &SharedOptions, exe: Option<PathBuf>, dump: Option<PathBuf>) -> Result<(), CliError> {
-    
+fn debug(
+    shared_options: &SharedOptions,
+    exe: Option<PathBuf>,
+    dump: Option<PathBuf>,
+) -> Result<(), CliError> {
     // try to load debug information
-    let debug_data = exe.and_then(|p| fs::File::open(&p).ok() )
-                        .and_then(|file| unsafe { memmap::Mmap::map(&file).ok() });
-    
+    let debug_data = exe
+        .and_then(|p| fs::File::open(&p).ok())
+        .and_then(|file| unsafe { memmap::Mmap::map(&file).ok() });
+
     let runner = |session| {
         let cs = Capstone::new()
             .arm()
@@ -288,10 +273,7 @@ fn debug(shared_options: &SharedOptions, exe: Option<PathBuf>, dump: Option<Path
             .build()
             .unwrap();
 
-
-
-        let di = debug_data.as_ref().map( |mmap| DebugInfo::from_raw(&*mmap));
-
+        let di = debug_data.as_ref().map(|mmap| DebugInfo::from_raw(&*mmap));
 
         let cli = debugger::DebugCli::new();
 
@@ -311,12 +293,11 @@ fn debug(shared_options: &SharedOptions, exe: Option<PathBuf>, dump: Option<Path
                     rl.add_history_entry(history_entry);
                     let cli_state = cli.handle_line(&line, &mut cli_data)?;
 
-
                     match cli_state {
                         CliState::Continue => (),
                         CliState::Stop => return Ok(()),
                     }
-                },
+                }
                 Err(e) => {
                     use rustyline::error::ReadlineError;
 

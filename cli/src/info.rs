@@ -1,9 +1,4 @@
-use crate::{
-    SharedOptions,
-    common::{
-        CliError,
-    },
-};
+use crate::{common::CliError, SharedOptions};
 
 use ocd::{
     coresight::{
@@ -16,13 +11,9 @@ use ocd::{
     memory::romtable::CSComponent,
     probe::{
         daplink,
-        stlink,
-        debug_probe::{
-            DebugProbeType,
-            MasterProbe,
-            DebugProbe,
-        },
+        debug_probe::{DebugProbe, DebugProbeType, MasterProbe},
         protocol::WireProtocol,
+        stlink,
     },
 };
 
@@ -39,23 +30,23 @@ pub(crate) fn show_info_of_device(shared_options: &SharedOptions) -> Result<(), 
             let mut link = daplink::DAPLink::new_from_probe_info(&device)?;
 
             link.attach(Some(WireProtocol::Swd))?;
-            
+
             MasterProbe::from_specific_probe(link)
-        },
+        }
         DebugProbeType::STLink => {
             let mut link = stlink::STLink::new_from_probe_info(&device)?;
 
             link.attach(Some(WireProtocol::Swd))?;
-            
+
             MasterProbe::from_specific_probe(link)
-        },
+        }
     };
 
     /*
         The following code only works with debug port v2,
         which might not necessarily be present.
 
-        Once the typed interface for the debug port is done, it 
+        Once the typed interface for the debug port is done, it
         can be enabled again.
 
     println!("Device information:");
@@ -73,9 +64,8 @@ pub(crate) fn show_info_of_device(shared_options: &SharedOptions) -> Result<(), 
 
     */
 
-
     // Note: Temporary read to ensure the DP information is read at
-    //       least once before reading the ROM table 
+    //       least once before reading the ROM table
     //       (necessary according to STM manual).
     //
     // TODO: Move to proper place somewhere in init code
