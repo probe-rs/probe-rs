@@ -14,10 +14,10 @@ use crate::coresight::access_ports::APRegister;
 use crate::coresight::ap_access::AccessPort;
 use crate::coresight::access_ports::generic_ap::GenericAP;
 
-///! Memory AP
-///! 
-///! The memory AP can be used to access a memory-mapped
-///! set of debug resouces of the attached system.
+// Memory AP
+// 
+// The memory AP can be used to access a memory-mapped
+// set of debug resouces of the attached system.
 define_ap!(MemoryAP);
 
 impl From<GenericAP> for MemoryAP {

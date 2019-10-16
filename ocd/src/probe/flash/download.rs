@@ -91,9 +91,7 @@ impl<'a> FileDownloader {
             Format::Hex => self.download_hex(&mut file, &mut loader),
         }?;
 
-        loader.commit(session);
-
-        Ok(())
+        loader.commit(session).map_err(|e| FileDownloadError::FlashLoader (e))
     }
 
     /// Starts the download of a binary file.

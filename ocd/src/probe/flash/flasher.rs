@@ -193,7 +193,8 @@ impl<'a> Flasher<'a> {
         clock: Option<u32>
     ) -> Result<ActiveFlasher<'b, O>, FlasherError> {
         log::debug!("Initializing the flash algorithm.");
-        let algo = &self.flash_algorithm;
+        let flasher = self;
+        let algo = flasher.flash_algorithm;
 
         use capstone::arch::*;
         let cs = capstone::Capstone::new()
@@ -217,35 +218,35 @@ impl<'a> Flasher<'a> {
         }
 
         if address.is_none() {
-            address = Some(self.region.get_flash_info(algo.analyzer_supported).rom_start);
+            address = Some(flasher.region.get_flash_info(algo.analyzer_supported).rom_start);
         }
 
         // TODO: Halt & reset target.
         log::debug!("Halting core.");
-        let cpu_info = self.target.core.halt(&mut self.probe);
+        let cpu_info = flasher.target.core.halt(&mut flasher.probe);
         log::debug!("PC = 0x{:08x}", cpu_info.unwrap().pc);
 
         // TODO: Possible special preparation of the target such as enabling faster clocks for the flash e.g.
 
         // Load flash algorithm code into target RAM.
         log::debug!("Loading algorithm into RAM at address 0x{:08x}", algo.load_address);
-        self.probe.write_block32(algo.load_address, algo.instructions.as_slice())?;
+        flasher.probe.write_block32(algo.load_address, algo.instructions.as_slice())?;
 
         let mut data = vec![0; algo.instructions.len()];
-        self.probe.read_block32(algo.load_address, &mut data)?;
+        flasher.probe.read_block32(algo.load_address, &mut data)?;
 
         assert_eq!(&algo.instructions, &data.as_slice());
         log::debug!("RAM contents match flashing algo blob.");
 
         log::debug!("Preparing Flasher for region:");
-        log::debug!("{:#?}", &self.region);
-        log::debug!("Double buffering enabled: {}", self.double_buffering_supported);
+        log::debug!("{:#?}", &flasher.region);
+        log::debug!("Double buffering enabled: {}", flasher.double_buffering_supported);
         let mut flasher = ActiveFlasher {
-            target: self.target,
-            probe: self.probe,
-            flash_algorithm: self.flash_algorithm,
-            region: self.region,
-            double_buffering_supported: self.double_buffering_supported,
+            target: flasher.target,
+            probe: flasher.probe,
+            flash_algorithm: flasher.flash_algorithm,
+            region: flasher.region,
+            double_buffering_supported: flasher.double_buffering_supported,
             _operation: core::marker::PhantomData,
         };
 
@@ -444,10 +445,11 @@ impl<'a, O: Operation> ActiveFlasher<'a, O> {
 
 impl <'a> ActiveFlasher<'a, Erase> {
     pub fn erase_all(&mut self) -> Result<(), FlasherError> {
-        let algo = &self.flash_algorithm;
+        let flasher = self;
+        let algo = flasher.flash_algorithm;
 
         if let Some(pc_erase_all) = algo.pc_erase_all {
-            let result = self.call_function_and_wait(
+            let result = flasher.call_function_and_wait(
                 pc_erase_all,
                 None,
                 None,
@@ -468,9 +470,10 @@ impl <'a> ActiveFlasher<'a, Erase> {
 
     pub fn erase_sector(&mut self, address: u32) -> Result<(), FlasherError> {
         log::debug!("Erasing sector at address 0x{:08x}.", address);
-        let algo = &self.flash_algorithm;
+        let flasher = self;
+        let algo = flasher.flash_algorithm;
 
-        let result = self.call_function_and_wait(
+        let result = flasher.call_function_and_wait(
             algo.pc_erase_sector,
             Some(address),
             None,
@@ -488,11 +491,13 @@ impl <'a> ActiveFlasher<'a, Erase> {
     }
 
     pub fn compute_crcs(&mut self, sectors: &Vec<(u32, u32)>) -> Result<Vec<u32>, FlasherError> {
-        let algo = &self.flash_algorithm;
+        let flasher = self;
+        let algo = flasher.flash_algorithm;
+
         if algo.analyzer_supported {
             let mut data = vec![];
 
-            self.probe.write_block32(algo.analyzer_address, &ANALYZER)?;
+            flasher.probe.write_block32(algo.analyzer_address, &ANALYZER)?;
 
             for (address, mut size) in sectors {
                 let size_value = {
@@ -514,11 +519,11 @@ impl <'a> ActiveFlasher<'a, Erase> {
                 data.push(value);
             }
 
-            self.probe.write_block32(algo.begin_data, data.as_slice())?;
+            flasher.probe.write_block32(algo.begin_data, data.as_slice())?;
 
             let analyzer_address = algo.analyzer_address;
             let begin_data = algo.begin_data;
-            let result = self.call_function_and_wait(
+            let result = flasher.call_function_and_wait(
                 analyzer_address,
                 Some(begin_data),
                 Some(data.len() as u32),
@@ -528,7 +533,7 @@ impl <'a> ActiveFlasher<'a, Erase> {
             );
             result?;
 
-            self.probe.read_block32(begin_data, data.as_mut_slice())?;
+            flasher.probe.read_block32(begin_data, data.as_mut_slice())?;
 
             Ok(data)
         } else {
@@ -539,14 +544,15 @@ impl <'a> ActiveFlasher<'a, Erase> {
 
 impl <'a> ActiveFlasher<'a, Program> {
     pub fn program_page(&mut self, address: u32, bytes: &[u8]) -> Result<(), FlasherError> {
-        let algo = &self.flash_algorithm;
+        let flasher = self;
+        let algo = flasher.flash_algorithm;
 
         // TODO: Prevent security settings from locking the device.
 
         // Transfer the bytes to RAM.
-        self.probe.write_block8(algo.begin_data, bytes)?;
+        flasher.probe.write_block8(algo.begin_data, bytes)?;
 
-        let result = self.call_function_and_wait(
+        let result = flasher.call_function_and_wait(
             algo.pc_program_page,
             Some(address),
             Some(bytes.len() as u32),
@@ -563,17 +569,18 @@ impl <'a> ActiveFlasher<'a, Program> {
     }
 
     pub fn start_program_page_with_buffer(&mut self, address: u32, buffer_number: u32) -> Result<(), FlasherError> {
-        let algo = &self.flash_algorithm;
+        let flasher = self;
+        let algo = flasher.flash_algorithm;
 
         // Check the buffer number.
         if buffer_number < algo.page_buffers.len() as u32 {
             return Err(FlasherError::InvalidBufferNumber(buffer_number, algo.page_buffers.len() as u32));
         }
 
-        self.call_function(
+        flasher.call_function(
             algo.pc_program_page,
             Some(address),
-            Some(self.region.page_size),
+            Some(flasher.region.page_size),
             Some(algo.page_buffers[buffer_number as usize]),
             None,
             false
@@ -583,7 +590,8 @@ impl <'a> ActiveFlasher<'a, Program> {
     }
 
     pub fn load_page_buffer(&mut self, _address: u32, bytes: &[u8], buffer_number: u32) -> Result<(), FlasherError> {
-        let algo = &self.flash_algorithm;
+        let flasher = self;
+        let algo = flasher.flash_algorithm;
 
         // Check the buffer number.
         if buffer_number < algo.page_buffers.len() as u32 {
@@ -593,19 +601,20 @@ impl <'a> ActiveFlasher<'a, Program> {
         // TODO: Prevent security settings from locking the device.
 
         // Transfer the buffer bytes to RAM.
-        self.probe.write_block8(algo.page_buffers[buffer_number as usize], bytes)?;
+        flasher.probe.write_block8(algo.page_buffers[buffer_number as usize], bytes)?;
 
         Ok(())
     }
 
     pub fn program_phrase(&mut self, address: u32, bytes: &[u8]) -> Result<(), FlasherError> {
-        let algo = &self.flash_algorithm;
+        let flasher = self;
+        let algo = flasher.flash_algorithm;
 
         // Get the minimum programming length. If none was specified, use the page size.
         let min_len = if let Some(min_program_length) = algo.min_program_length {
             min_program_length
         } else {
-            self.region.page_size
+            flasher.region.page_size
         };
 
         // Require write address and length to be aligned to the minimum write size.
@@ -619,9 +628,9 @@ impl <'a> ActiveFlasher<'a, Program> {
         // TODO: Prevent security settings from locking the device.
 
         // Transfer the phrase bytes to RAM.
-        self.probe.write_block8(algo.begin_data, bytes)?;
+        flasher.probe.write_block8(algo.begin_data, bytes)?;
 
-        let result = self.call_function_and_wait(
+        let result = flasher.call_function_and_wait(
             algo.pc_program_page,
             Some(address),
             Some(bytes.len() as u32),
