@@ -1,49 +1,26 @@
 use crate::SharedOptions;
-use std::path::Path;
-use std::fs::File;
+
+use ocd::{
+    collection::cores::m0::FakeM0,
+    coresight::access_ports::AccessPortError,
+    probe::{
+        daplink,
+        debug_probe::{DebugProbe, DebugProbeError, DebugProbeType, FakeProbe, MasterProbe},
+        flash::flasher::AlgorithmSelectionError,
+        protocol::WireProtocol,
+        stlink,
+    },
+    session::Session,
+    target::TargetSelectionError,
+};
+use ocd_targets::SelectionStrategy;
 
 use ron;
 
-use ocd::{
-    probe::{
-        debug_probe::{
-            MasterProbe,
-            DebugProbe,
-            FakeProbe,
-            DebugProbeError,
-            DebugProbeType,
-        },
-        daplink,
-        stlink,
-        protocol::WireProtocol,
-        flash::{
-            flasher::{
-                AlgorithmSelectionError,
-            },
-        },
-    },
-    coresight::{
-        access_ports::{
-            AccessPortError,
-        },
-    },
-    collection::{
-        cores::{
-            m0::FakeM0,
-        },
-    },
-    target::{
-        TargetSelectionError,
-    },
-    session::Session
-};
-
-use ocd_targets::{
-    SelectionStrategy,
-};
-
-use std::error::Error; 
+use std::error::Error;
 use std::fmt;
+use std::fs::File;
+use std::path::Path;
 
 #[derive(Debug)]
 pub enum CliError {
@@ -79,9 +56,7 @@ impl fmt::Display for CliError {
             AccessPort(ref e) => e.fmt(f),
             TargetSelectionError(ref e) => e.fmt(f),
             StdIO(ref e) => e.fmt(f),
-            MissingArgument => {
-                write!(f, "Command expected more arguments")
-            }
+            MissingArgument => write!(f, "Command expected more arguments"),
             FlashAlgorithm(ref e) => e.fmt(f),
         }
     }
@@ -122,7 +97,7 @@ impl From<AlgorithmSelectionError> for CliError {
 /// even in an error case inside the closure!
 pub(crate) fn with_device<F>(shared_options: &SharedOptions, f: F) -> Result<(), CliError>
 where
-    for<'a> F: FnOnce(Session) -> Result<(), CliError>
+    for<'a> F: FnOnce(Session) -> Result<(), CliError>,
 {
     let device = {
         let mut list = daplink::tools::list_daplink_devices();
@@ -136,19 +111,21 @@ where
             let mut link = daplink::DAPLink::new_from_probe_info(&device)?;
 
             link.attach(Some(WireProtocol::Swd))?;
-            
+
             MasterProbe::from_specific_probe(link)
-        },
+        }
         DebugProbeType::STLink => {
             let mut link = stlink::STLink::new_from_probe_info(&device)?;
 
             link.attach(Some(WireProtocol::Swd))?;
-            
+
             MasterProbe::from_specific_probe(link)
-        },
+        }
     };
 
-    let target = ocd_targets::select_target(&SelectionStrategy::Name(shared_options.target.clone().unwrap()))?;
+    let target = ocd_targets::select_target(&SelectionStrategy::Name(
+        shared_options.target.clone().unwrap(),
+    ))?;
 
     let flash_algorithm = match target.flash_algorithm.clone() {
         Some(name) => ocd_targets::select_algorithm(name),
@@ -157,9 +134,12 @@ where
 
     let flash_algorithm = match flash_algorithm {
         Ok(flash_algorithm) => Some(flash_algorithm),
-        Err(error) => { println!("{:?}", error); None },
+        Err(error) => {
+            println!("{:?}", error);
+            None
+        }
     };
-    
+
     let session = Session::new(target, probe, flash_algorithm);
 
     f(session)
@@ -167,7 +147,7 @@ where
 
 pub(crate) fn with_dump<F>(shared_options: &SharedOptions, p: &Path, f: F) -> Result<(), CliError>
 where
-    for<'a> F: FnOnce(Session) -> Result<(), CliError>
+    for<'a> F: FnOnce(Session) -> Result<(), CliError>,
 {
     let mut dump_file = File::open(p)?;
 
@@ -178,9 +158,9 @@ where
 
     let probe = MasterProbe::from_specific_probe(Box::new(fake_probe));
 
-    let mut target = ocd_targets::select_target(
-        &SelectionStrategy::Name(shared_options.target.clone().unwrap())
-    )?;
+    let mut target = ocd_targets::select_target(&SelectionStrategy::Name(
+        shared_options.target.clone().unwrap(),
+    ))?;
 
     target.core = Box::new(core);
 

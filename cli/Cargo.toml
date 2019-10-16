@@ -5,20 +5,16 @@ authors = ["Noah Hüsser <yatekii@yatekii.ch>", "Dominik Boehi <dominik.boehi@gm
 edition = "2018"
 
 [dependencies]
+ocd = { path = "../ocd", version = "0.2.0" }
+ocd-targets = { path = "../ocd-targets", version = "0.2.0" }
+
 pretty_env_logger = "0.3.0"
 log = "0.4.6"
 structopt = "0.2.14"
-ocd = { path = "../ocd", version = "0.2.0" }
-ocd-targets = { path = "../ocd-targets", version = "0.2.0" }
-scroll = "*"
+scroll = "0.9.2"
 rustyline = "5.0.2"
 capstone = "0.6.0"
-serde = "*"
 ron = "0.5.1"
-gimli = "*"
-object = "*"
-memmap = "*"
-rustc-demangle = "0.1.16"
+memmap = "0.7.0"
 ihex = "1.1.2"
-console = "0.9"
 colored = "1.8.0"
