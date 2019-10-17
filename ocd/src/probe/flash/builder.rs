@@ -162,7 +162,7 @@ impl<'a> FlashBuilder<'a> {
         }
     }
     
-    pub fn pages(sectors: &Vec<FlashSector>) -> Vec<&FlashPage> {
+    pub fn pages(sectors: &[FlashSector]) -> Vec<&FlashPage> {
         sectors.iter().map(|s| &s.pages).flatten().collect()
     }
 
@@ -608,7 +608,7 @@ impl<'a> FlashBuilder<'a> {
     }
 
     /// Program by first performing a chip erase.
-    fn chip_erase_program(&self, flash: &mut Flasher, sectors: &Vec<FlashSector>) -> Result<(), FlashBuilderError> {
+    fn chip_erase_program(&self, flash: &mut Flasher, sectors: &[FlashSector]) -> Result<(), FlashBuilderError> {
         flash.run_erase(|active| {
             active.erase_all()
         })?;
@@ -628,7 +628,7 @@ impl<'a> FlashBuilder<'a> {
         r
     }
 
-    fn next_unerased_page(sectors: &Vec<FlashSector>, page: u32) -> (Option<&FlashPage>, u32) {
+    fn next_unerased_page(sectors: &[FlashSector], page: u32) -> (Option<&FlashPage>, u32) {
         let pages = Self::pages(sectors);
         for n in page as usize + 1..pages.len() {
             if let Some(page) = pages.get(n) {
@@ -640,7 +640,7 @@ impl<'a> FlashBuilder<'a> {
         (None, page)
     }
 
-    fn chip_erase_program_double_buffer(&self, flash: &mut Flasher, sectors: &Vec<FlashSector>) -> Result<(), FlashBuilderError> {
+    fn chip_erase_program_double_buffer(&self, flash: &mut Flasher, sectors: &[FlashSector]) -> Result<(), FlashBuilderError> {
         flash.run_erase(|active| {
             active.erase_all()
         })?;

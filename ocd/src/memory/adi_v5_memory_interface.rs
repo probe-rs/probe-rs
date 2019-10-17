@@ -306,7 +306,7 @@ impl ADIMemoryInterface {
 
         let before = self.read32(debug_port, aligned_addr)?;
         let data_t = before & !(0xFF << (pre_bytes * 8));
-        let data = data_t | ((data as u32) << (pre_bytes * 8));
+        let data = data_t | (u32::from(data) << (pre_bytes * 8));
 
         let csw = self.build_csw_register(DataSize::U32);
         let drw = DRW { data };
@@ -375,7 +375,7 @@ impl ADIMemoryInterface {
             let mut pre_data = self.read32(debug_port, pre_address)?;
             for (i, shift) in (4-pre_bytes..4).enumerate() {
                 pre_data &= !(0xFF << (shift * 8));
-                pre_data |= (data[i] as u32) << (shift * 8);
+                pre_data |= u32::from(data[i]) << (shift * 8);
             }
 
             self.write32(debug_port, pre_address, pre_data)?;
@@ -395,7 +395,7 @@ impl ADIMemoryInterface {
             dbg!(post_bytes);
             for shift in 0..post_bytes {
                 post_data &= !(0xFF << (shift * 8));
-                post_data |= (data[data.len() - post_bytes + shift] as u32) << (shift * 8);
+                post_data |= u32::from(data[data.len() - post_bytes + shift]) << (shift * 8);
             }
 
             self.write32(debug_port, post_address, post_data)?;
@@ -412,7 +412,7 @@ mod tests {
 
     #[test]
     fn read_u32() {
-        let mut mock = MockMemoryAP::new();
+        let mut mock = MockMemoryAP::default();
         mock.data[0] = 0xEF;
         mock.data[1] = 0xBE;
         mock.data[2] = 0xAD;
@@ -426,7 +426,7 @@ mod tests {
     #[test]
     #[ignore]
     fn read_u16() {
-        // let mut mock = MockMemoryAP::new();
+        // let mut mock = MockMemoryAP::default();
         // mock.data[0] = 0xEF;
         // mock.data[1] = 0xBE;
         // mock.data[2] = 0xAD;
@@ -441,7 +441,7 @@ mod tests {
 
     #[test]
     fn read_u8() {
-        let mut mock = MockMemoryAP::new();
+        let mut mock = MockMemoryAP::default();
         mock.data[0] = 0xEF;
         mock.data[1] = 0xBE;
         mock.data[2] = 0xAD;
@@ -460,7 +460,7 @@ mod tests {
 
     #[test]
     fn write_u32() {
-        let mut mock = MockMemoryAP::new();
+        let mut mock = MockMemoryAP::default();
         let mi = ADIMemoryInterface::new(0x0);
         debug_assert!(mi.write32(&mut mock, 0, 0xDEAD_BEEF as u32).is_ok());
         debug_assert_eq!(mock.data[0..4], [0xEF, 0xBE, 0xAD, 0xDE]);
@@ -469,7 +469,7 @@ mod tests {
     #[test]
     #[ignore]
     fn write_u16() {
-        // let mut mock = MockMemoryAP::new();
+        // let mut mock = MockMemoryAP::default();
         // let mi = ADIMemoryInterface::new(0x0);
         // debug_assert!(mi.write(&mut mock, 0, 0xBEEF as u16).is_ok());
         // debug_assert!(mi.write(&mut mock, 2, 0xDEAD as u16).is_ok());
@@ -478,7 +478,7 @@ mod tests {
 
     #[test]
     fn write_u8() {
-        let mut mock = MockMemoryAP::new();
+        let mut mock = MockMemoryAP::default();
         let mi = ADIMemoryInterface::new(0x0);
         debug_assert!(mi.write8(&mut mock, 0, 0xEF as u8).is_ok());
         debug_assert!(mi.write8(&mut mock, 1, 0xBE as u8).is_ok());
@@ -489,7 +489,7 @@ mod tests {
 
     #[test]
     fn read_block_u32() {
-        let mut mock = MockMemoryAP::new();
+        let mut mock = MockMemoryAP::default();
         mock.data[0] = 0xEF;
         mock.data[1] = 0xBE;
         mock.data[2] = 0xAD;
@@ -507,7 +507,7 @@ mod tests {
 
     #[test]
     fn read_block_u32_only_1_word() {
-        let mut mock = MockMemoryAP::new();
+        let mut mock = MockMemoryAP::default();
         mock.data[0] = 0xEF;
         mock.data[1] = 0xBE;
         mock.data[2] = 0xAD;
@@ -521,7 +521,7 @@ mod tests {
 
     #[test]
     fn read_block_u32_unaligned_should_error() {
-        let mut mock = MockMemoryAP::new();
+        let mut mock = MockMemoryAP::default();
         let mi = ADIMemoryInterface::new(0x0);
         let mut data = [0 as u32; 4];
         debug_assert!(mi.read_block32(&mut mock, 1, &mut data).is_err());
@@ -533,7 +533,7 @@ mod tests {
 
     #[test]
     fn read_block_u16() {
-        let mut mock = MockMemoryAP::new();
+        let mut mock = MockMemoryAP::default();
         mock.data[0] = 0xEF;
         mock.data[1] = 0xBE;
         mock.data[2] = 0xAD;
@@ -551,7 +551,7 @@ mod tests {
 
     #[test]
     fn read_block_u16_unaligned() {
-        let mut mock = MockMemoryAP::new();
+        let mut mock = MockMemoryAP::default();
         mock.data[2] = 0xEF;
         mock.data[3] = 0xBE;
         mock.data[4] = 0xAD;
@@ -569,7 +569,7 @@ mod tests {
 
     #[test]
     fn read_block_u16_unaligned_should_error() {
-        let mut mock = MockMemoryAP::new();
+        let mut mock = MockMemoryAP::default();
         let mi = ADIMemoryInterface::new(0x0);
         let mut data = [0 as u16; 4];
         debug_assert!(mi.read_block32(&mut mock, 1, &mut data).is_err());
@@ -581,7 +581,7 @@ mod tests {
 
     #[test]
     fn read_block_u8() {
-        let mut mock = MockMemoryAP::new();
+        let mut mock = MockMemoryAP::default();
         mock.data[0] = 0xEF;
         mock.data[1] = 0xBE;
         mock.data[2] = 0xAD;
@@ -599,7 +599,7 @@ mod tests {
 
     #[test]
     fn read_block_u8_unaligned() {
-        let mut mock = MockMemoryAP::new();
+        let mut mock = MockMemoryAP::default();
         mock.data[1] = 0xEF;
         mock.data[2] = 0xBE;
         mock.data[3] = 0xAD;
@@ -617,7 +617,7 @@ mod tests {
 
     #[test]
     fn read_block_u8_unaligned2() {
-        let mut mock = MockMemoryAP::new();
+        let mut mock = MockMemoryAP::default();
         mock.data[3] = 0xEF;
         mock.data[4] = 0xBE;
         mock.data[5] = 0xAD;
@@ -635,7 +635,7 @@ mod tests {
 
     #[test]
     fn write_block_u32() {
-        let mut mock = MockMemoryAP::new();
+        let mut mock = MockMemoryAP::default();
         let mi = ADIMemoryInterface::new(0x0);
         debug_assert!(mi.write_block32(&mut mock, 0, &([0xDEAD_BEEF, 0xABBA_BABE] as [u32; 2])).is_ok());
         debug_assert_eq!(mock.data[0..8], [0xEF, 0xBE, 0xAD, 0xDE, 0xBE, 0xBA, 0xBA ,0xAB]);
@@ -643,7 +643,7 @@ mod tests {
 
     #[test]
     fn write_block_u32_only_1_word() {
-        let mut mock = MockMemoryAP::new();
+        let mut mock = MockMemoryAP::default();
         let mi = ADIMemoryInterface::new(0x0);
         debug_assert!(mi.write_block32(&mut mock, 0, &([0xDEAD_BEEF] as [u32; 1])).is_ok());
         debug_assert_eq!(mock.data[0..4], [0xEF, 0xBE, 0xAD, 0xDE]);
@@ -651,7 +651,7 @@ mod tests {
 
     #[test]
     fn write_block_u32_unaligned_should_error() {
-        let mut mock = MockMemoryAP::new();
+        let mut mock = MockMemoryAP::default();
         let mi = ADIMemoryInterface::new(0x0);
         debug_assert!(mi.write_block32(&mut mock, 1, &([0xDEAD_BEEF, 0xABBA_BABE] as [u32; 2])).is_err());
         debug_assert!(mi.write_block32(&mut mock, 127, &([0xDEAD_BEEF, 0xABBA_BABE] as [u32; 2])).is_err());
@@ -661,7 +661,7 @@ mod tests {
     #[test]
     #[ignore]
     fn write_block_u16() {
-        // let mut mock = MockMemoryAP::new();
+        // let mut mock = MockMemoryAP::default();
         // let mi = ADIMemoryInterface::new(0x0);
         // debug_assert!(mi.write_block(&mut mock, 0, &([0xBEEF, 0xDEAD, 0xBABE, 0xABBA] as [u16; 4])).is_ok());
         // debug_assert_eq!(mock.data[0..8], [0xEF, 0xBE, 0xAD, 0xDE, 0xBE, 0xBA, 0xBA ,0xAB]);
@@ -670,7 +670,7 @@ mod tests {
     #[test]
     #[ignore]
     fn write_block_u16_unaligned2() {
-        // let mut mock = MockMemoryAP::new();
+        // let mut mock = MockMemoryAP::default();
         // let mi = ADIMemoryInterface::new(0x0);
         // debug_assert!(mi.write_block(&mut mock, 2, &([0xBEEF, 0xDEAD, 0xBABE, 0xABBA] as [u16; 4])).is_ok());
         // debug_assert_eq!(mock.data[0..10], [0x00, 0x00, 0xEF, 0xBE, 0xAD, 0xDE, 0xBE, 0xBA, 0xBA ,0xAB]);
@@ -679,7 +679,7 @@ mod tests {
     #[test]
     #[ignore]
     fn write_block_u16_unaligned_should_error() {
-        // let mut mock = MockMemoryAP::new();
+        // let mut mock = MockMemoryAP::default();
         // let mi = ADIMemoryInterface::new(0x0);
         // debug_assert!(mi.write_block(&mut mock, 1, &([0xBEEF, 0xDEAD, 0xBABE, 0xABBA] as [u16; 4])).is_err());
         // debug_assert!(mi.write_block(&mut mock, 127, &([0xBEEF, 0xDEAD, 0xBABE, 0xABBA] as [u16; 4])).is_err());
@@ -688,7 +688,7 @@ mod tests {
 
     #[test]
     fn write_block_u8() {
-        let mut mock = MockMemoryAP::new();
+        let mut mock = MockMemoryAP::default();
         let mi = ADIMemoryInterface::new(0x0);
         debug_assert!(mi.write_block8(&mut mock, 0, &([0xEF, 0xBE, 0xAD, 0xDE, 0xBE, 0xBA, 0xBA ,0xAB] as [u8; 8])).is_ok());
         debug_assert_eq!(mock.data[0..8], [0xEF, 0xBE, 0xAD, 0xDE, 0xBE, 0xBA, 0xBA ,0xAB]);
@@ -696,7 +696,7 @@ mod tests {
 
     #[test]
     fn write_block_u8_unaligned() {
-        let mut mock = MockMemoryAP::new();
+        let mut mock = MockMemoryAP::default();
         let mi = ADIMemoryInterface::new(0x0);
         debug_assert!(mi.write_block8(&mut mock, 3, &([0xEF, 0xBE, 0xAD, 0xDE, 0xBE, 0xBA, 0xBA ,0xAB] as [u8; 8])).is_ok());
         debug_assert_eq!(mock.data[0..11], [0x00, 0x00, 0x00, 0xEF, 0xBE, 0xAD, 0xDE, 0xBE, 0xBA, 0xBA ,0xAB]);
@@ -704,7 +704,7 @@ mod tests {
 
     #[test]
     fn write_block_u8_unaligned2() {
-        let mut mock = MockMemoryAP::new();
+        let mut mock = MockMemoryAP::default();
         let mi = ADIMemoryInterface::new(0x0);
         debug_assert!(mi.write_block8(&mut mock, 1, &([0xEF, 0xBE, 0xAD, 0xDE, 0xBE, 0xBA, 0xBA ,0xAB] as [u8; 8])).is_ok());
         debug_assert_eq!(mock.data[0..9], [0x00, 0xEF, 0xBE, 0xAD, 0xDE, 0xBE, 0xBA, 0xBA ,0xAB]);

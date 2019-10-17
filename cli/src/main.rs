@@ -6,7 +6,7 @@ use common::{with_device, with_dump, CliError};
 use debugger::CliState;
 
 use ocd::{
-    debug::debug::DebugInfo,
+    debug::DebugInfo,
     memory::MI,
     probe::{daplink, debug_probe::DebugProbeInfo, stlink},
 };

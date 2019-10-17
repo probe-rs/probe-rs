@@ -177,11 +177,13 @@ define_ap_register!(
     CFG {
         LD: ((value >> 2) & 0x01) as u8,
         LA: ((value >> 1) & 0x01) as u8,
-        BE: ((value >> 0) & 0x01) as u8,
+        BE: ( value       & 0x01) as u8,
     },
-    ((value.LD << 2) |
-     (value.LA << 1) |
-     (value.BE << 0)) as u32
+    u32::from(
+        (value.LD << 2) |
+        (value.LA << 1) |
+        value.BE
+    )
 );
 
 define_ap_register!(

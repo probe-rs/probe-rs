@@ -52,7 +52,7 @@ pub(crate) enum Error {
     #[allow(dead_code)]
     USB,
     UnexpectedAnswer,
-    DAPError,
+    DAP,
     TooMuchData,
     HidApi,
 }
@@ -63,7 +63,7 @@ impl From<Error> for DebugProbeError {
             Error::NotEnoughSpace => DebugProbeError::UnknownError,
             Error::USB => DebugProbeError::USBError,
             Error::UnexpectedAnswer => DebugProbeError::UnknownError,
-            Error::DAPError => DebugProbeError::UnknownError,
+            Error::DAP => DebugProbeError::UnknownError,
             Error::TooMuchData => DebugProbeError::UnknownError,
             Error::HidApi => DebugProbeError::USBError,
         }

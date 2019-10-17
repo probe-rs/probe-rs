@@ -59,6 +59,8 @@ impl STLinkInfo {
 }
 
 rental! {
+    // This lint is not in our hands; disable it for this scope.
+    #[allow(clippy::useless_transmute)]
     pub mod rent {
         use super::*;
         /// Provides low-level USB enumeration and transfers for STLinkV2/3 devices.

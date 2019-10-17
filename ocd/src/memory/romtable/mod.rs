@@ -151,7 +151,7 @@ impl RomTable {
                         return None
                     }
 
-                    if let Ok(component_data) = CSComponent::try_parse(link, entry_base_addr as u64)
+                    if let Ok(component_data) = CSComponent::try_parse(link, u64::from(entry_base_addr))
                     {
                         Some(RomTableEntry {
                             format: raw_entry.format,
@@ -217,7 +217,7 @@ impl RomTableEntryRaw {
 
     /// Returns the address of the CoreSight component behind a ROM table entry.
     pub fn component_addr(&self) -> u32 {
-        ((self.base_addr as i64) + ((self.address_offset << 12) as i64)) as u32
+        (i64::from(self.base_addr) + (i64::from(self.address_offset << 12))) as u32
     }
 }
 
@@ -256,6 +256,7 @@ impl<'p, P: MI> ComponentInformationReader<'p, P> {
 
     /// Reads the component class from a component info table.
     pub fn component_class(&mut self) -> Result<CSComponentClass, RomTableError> {
+        #![allow(clippy::verbose_bit_mask)]
         let mut data = [0u32;4];
         let mut probe = self.probe.borrow_mut();
 
@@ -264,9 +265,9 @@ impl<'p, P: MI> ComponentInformationReader<'p, P> {
         debug!("CIDR: {:x?}", data);
 
         if data[0] & 0xFF == 0x0D
-            && data[1] & 0x0F == 0x00
-            && data[2] & 0xFF == 0x05
-            && data[3] & 0xFF == 0xB1 
+        && data[1] & 0x0F == 0x00
+        && data[2] & 0xFF == 0x05
+        && data[3] & 0xFF == 0xB1 
         {
             FromPrimitive::from_u32((data[1] >> 4) & 0x0F).ok_or(RomTableError::CSComponentIdentificationError)
         } else {

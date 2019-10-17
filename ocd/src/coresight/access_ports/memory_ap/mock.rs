@@ -22,8 +22,8 @@ pub enum MockMemoryError {
     UnknownRegister,
 }
 
-impl MockMemoryAP {
-    pub fn new() -> Self {
+impl Default for MockMemoryAP {
+    fn default() -> Self {
         let mut store = HashMap::new();
         store.insert((CSW::ADDRESS, CSW::APBANKSEL), 0);
         store.insert((TAR::ADDRESS, TAR::APBANKSEL), 0);
