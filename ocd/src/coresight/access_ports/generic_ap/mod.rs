@@ -1,13 +1,10 @@
 //! Generic access port
- 
-use enum_primitive_derive::Primitive;
-use num_traits::cast::{
-    FromPrimitive,
-    ToPrimitive,
-};
+
+use super::APRegister;
 use crate::coresight::ap_access::AccessPort;
 use crate::coresight::common::Register;
-use super::APRegister;
+use enum_primitive_derive::Primitive;
+use num_traits::cast::{FromPrimitive, ToPrimitive};
 
 #[allow(non_camel_case_types)]
 #[derive(Debug, Primitive, Clone, Copy, PartialEq)]
@@ -18,7 +15,9 @@ pub enum APClass {
 }
 
 impl Default for APClass {
-    fn default() -> Self { APClass::Undefined }
+    fn default() -> Self {
+        APClass::Undefined
+    }
 }
 
 #[allow(non_camel_case_types)]
@@ -33,19 +32,24 @@ pub enum APType {
 }
 
 impl Default for APType {
-    fn default() -> Self { APType::JTAG_COM_AP }
+    fn default() -> Self {
+        APType::JTAG_COM_AP
+    }
 }
 
 define_ap!(GenericAP);
 
 define_ap_register!(
     /// Identification Register
-    /// 
+    ///
     /// The identification register is used to identify
     /// an AP.
-    /// 
+    ///
     /// It has to be present on every AP.
-    GenericAP, IDR, 0x0FC, [
+    GenericAP,
+    IDR,
+    0x0FC,
+    [
         (REVISION: u8),
         (DESIGNER: u16),
         (CLASS: APClass),
@@ -57,14 +61,14 @@ define_ap_register!(
     IDR {
         REVISION: ((value >> 28) & 0x0F) as u8,
         DESIGNER: ((value >> 17) & 0x7FF) as u16,
-        CLASS:    APClass::from_u8(((value >> 13) & 0x0F) as u8).unwrap(),
-        _RES0:     0,
-        VARIANT:  ((value >> 4) & 0x0F) as u8,
-        TYPE:     APType::from_u8((value & 0x0F) as u8).unwrap()
+        CLASS: APClass::from_u8(((value >> 13) & 0x0F) as u8).unwrap(),
+        _RES0: 0,
+        VARIANT: ((value >> 4) & 0x0F) as u8,
+        TYPE: APType::from_u8((value & 0x0F) as u8).unwrap()
     },
-      (u32::from(value.REVISION       ) << 28)
-    | (u32::from(value.DESIGNER       ) << 17)
-    | (value.CLASS.to_u32().unwrap()    << 13)
-    | (u32::from(value.VARIANT        ) <<  4)
-    | (value.TYPE.to_u32().unwrap()          )
+    (u32::from(value.REVISION) << 28)
+        | (u32::from(value.DESIGNER) << 17)
+        | (value.CLASS.to_u32().unwrap() << 13)
+        | (u32::from(value.VARIANT) << 4)
+        | (value.TYPE.to_u32().unwrap())
 );

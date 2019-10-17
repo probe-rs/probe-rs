@@ -1,18 +1,9 @@
-use crate::probe::debug_probe::{
-    MasterProbe,
-    CpuInformation,
-    DebugProbeError,
-};
 use crate::memory::MI;
-use crate::target::{
-    CoreRegister,
-    CoreRegisterAddress,
-    Core,
-    BasicRegisterAddresses
-};
+use crate::probe::debug_probe::{CpuInformation, DebugProbeError, MasterProbe};
+use crate::target::{BasicRegisterAddresses, Core, CoreRegister, CoreRegisterAddress};
 use bitfield::bitfield;
 
-bitfield!{
+bitfield! {
     #[derive(Copy, Clone)]
     pub struct Dhcsr(u32);
     impl Debug;
@@ -22,7 +13,7 @@ bitfield!{
     pub s_sleep, _: 18;
     pub s_halt, _: 17;
     pub s_regrdy, _: 16;
-    pub c_snapstall, set_c_snapstall: 5; 
+    pub c_snapstall, set_c_snapstall: 5;
     pub _, set_c_maskints: 3;
     pub _, set_c_step: 2;
     pub _, set_c_halt: 1;
@@ -31,7 +22,7 @@ bitfield!{
 
 impl Dhcsr {
     /// This function sets the bit to enable writes to this register.
-    /// 
+    ///
     /// C1.6.3 Debug Halting Control and Status Register, DHCSR:
     /// Debug key:
     /// Software must write 0xA05F to this field to enable write accesses to bits
@@ -58,7 +49,7 @@ impl CoreRegister for Dhcsr {
     const NAME: &'static str = "DHCSR";
 }
 
-bitfield!{
+bitfield! {
     #[derive(Copy, Clone)]
     pub struct Dcrsr(u32);
     impl Debug;
@@ -103,7 +94,7 @@ impl CoreRegister for Dcrdr {
     const NAME: &'static str = "DCRDR";
 }
 
-bitfield!{
+bitfield! {
     #[derive(Copy, Clone)]
     pub struct Aircr(u32);
     impl Debug;
@@ -142,7 +133,7 @@ impl CoreRegister for Aircr {
     const NAME: &'static str = "AIRCR";
 }
 
-pub const REGISTERS : BasicRegisterAddresses = BasicRegisterAddresses {
+pub const REGISTERS: BasicRegisterAddresses = BasicRegisterAddresses {
     R0: CoreRegisterAddress(0b00000),
     R1: CoreRegisterAddress(0b00001),
     R2: CoreRegisterAddress(0b00010),
@@ -188,11 +179,15 @@ impl Core for M4 {
         Err(DebugProbeError::Timeout)
     }
 
-    fn read_core_reg(&self, mi: &mut MasterProbe, addr: CoreRegisterAddress) -> Result<u32, DebugProbeError> {
+    fn read_core_reg(
+        &self,
+        mi: &mut MasterProbe,
+        addr: CoreRegisterAddress,
+    ) -> Result<u32, DebugProbeError> {
         // Write the DCRSR value to select the register we want to read.
         let mut dcrsr_val = Dcrsr(0);
         dcrsr_val.set_regwnr(false); // Perform a read.
-        dcrsr_val.set_regsel(addr.into());  // The address of the register to read.
+        dcrsr_val.set_regsel(addr.into()); // The address of the register to read.
 
         mi.write32(Dcrsr::ADDRESS, dcrsr_val.into())?;
 
@@ -201,8 +196,14 @@ impl Core for M4 {
         mi.read32(Dcrdr::ADDRESS).map_err(From::from)
     }
 
-    fn write_core_reg(&self, mi: &mut MasterProbe, addr: CoreRegisterAddress, value: u32) -> Result<(), DebugProbeError> {
-        let result: Result<(), DebugProbeError> = mi.write32(Dcrdr::ADDRESS, value).map_err(From::from);
+    fn write_core_reg(
+        &self,
+        mi: &mut MasterProbe,
+        addr: CoreRegisterAddress,
+        value: u32,
+    ) -> Result<(), DebugProbeError> {
+        let result: Result<(), DebugProbeError> =
+            mi.write32(Dcrdr::ADDRESS, value).map_err(From::from);
         result?;
 
         self.wait_for_core_register_transfer(mi)?;
@@ -231,9 +232,7 @@ impl Core for M4 {
         let pc_value = self.read_core_reg(mi, REGISTERS.PC)?;
 
         // get pc
-        Ok(CpuInformation {
-            pc: pc_value,
-        })
+        Ok(CpuInformation { pc: pc_value })
     }
 
     fn run(&self, mi: &mut MasterProbe) -> Result<(), DebugProbeError> {
@@ -263,9 +262,7 @@ impl Core for M4 {
         let pc_value = self.read_core_reg(mi, REGISTERS.PC)?;
 
         // get pc
-        Ok(CpuInformation {
-            pc: pc_value,
-        })
+        Ok(CpuInformation { pc: pc_value })
     }
 
     fn reset(&self, mi: &mut MasterProbe) -> Result<(), DebugProbeError> {
@@ -279,11 +276,18 @@ impl Core for M4 {
         Ok(())
     }
 
-    fn get_available_breakpoint_units(&self, _mi: &mut MasterProbe) -> Result<u32, DebugProbeError> {
+    fn get_available_breakpoint_units(
+        &self,
+        _mi: &mut MasterProbe,
+    ) -> Result<u32, DebugProbeError> {
         unimplemented!();
     }
 
-    fn enable_breakpoints(&self, _mi: &mut MasterProbe, _state: bool) -> Result<(), DebugProbeError> {
+    fn enable_breakpoints(
+        &self,
+        _mi: &mut MasterProbe,
+        _state: bool,
+    ) -> Result<(), DebugProbeError> {
         unimplemented!();
     }
 
@@ -299,7 +303,12 @@ impl Core for M4 {
         unimplemented!();
     }
 
-    fn read_block8(&self, mi: &mut MasterProbe, address: u32, data: &mut [u8]) -> Result<(), DebugProbeError> {
+    fn read_block8(
+        &self,
+        mi: &mut MasterProbe,
+        address: u32,
+        data: &mut [u8],
+    ) -> Result<(), DebugProbeError> {
         Ok(mi.read_block8(address, data)?)
     }
 

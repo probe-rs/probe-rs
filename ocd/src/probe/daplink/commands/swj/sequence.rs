@@ -1,19 +1,11 @@
 /// Implementation of the DAP_SWJ_SEQUENCE command
-/// 
-
-use super::super::{
-    Response,
-    Category,
-    Request,
-    Error,
-    Result,
-    Status,
-};
+///
+use super::super::{Category, Error, Request, Response, Result, Status};
 
 #[derive(Clone, Copy)]
 pub struct SequenceRequest {
     bit_count: u8,
-    data: [u8;32],
+    data: [u8; 32],
 }
 
 impl Request for SequenceRequest {
@@ -33,8 +25,9 @@ impl Request for SequenceRequest {
         if self.bit_count % 8 != 0 {
             transfer_len_bytes += 1;
         }
-        
-        buffer[(offset + 1)..(offset + 1 + transfer_len_bytes)].copy_from_slice(&self.data[..transfer_len_bytes]);
+
+        buffer[(offset + 1)..(offset + 1 + transfer_len_bytes)]
+            .copy_from_slice(&self.data[..transfer_len_bytes]);
 
         // bit_count + data
         Ok(1 + transfer_len_bytes)
@@ -49,10 +42,10 @@ impl SequenceRequest {
 
         let bit_count = match data.len() {
             32 => 0,
-            x => x*8,
+            x => x * 8,
         } as u8;
 
-        let mut owned_data = [0u8;32];
+        let mut owned_data = [0u8; 32];
 
         owned_data[..data.len()].copy_from_slice(data);
 

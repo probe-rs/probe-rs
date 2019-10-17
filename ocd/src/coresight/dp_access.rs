@@ -1,6 +1,4 @@
-use super::debug_port::{
-    DPRegister,
-};
+use super::debug_port::DPRegister;
 
 pub trait DebugPort {
     fn version(&self) -> &'static str;

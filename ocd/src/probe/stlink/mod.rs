@@ -1,31 +1,19 @@
-mod usb_interface;
 pub mod constants;
 pub mod memory_interface;
 pub mod tools;
+mod usb_interface;
 
-pub use self::usb_interface::{
-    STLinkUSBDevice,
-};
+pub use self::usb_interface::STLinkUSBDevice;
 
-use crate::probe::debug_probe::{
-    DebugProbeInfo,
-    Port,
-};
 use crate::coresight::ap_access::AccessPort;
+use crate::probe::debug_probe::{DebugProbeInfo, Port};
 use scroll::{Pread, BE};
 
-use crate::probe::debug_probe::{DebugProbe, DebugProbeError, DAPAccess};
+use crate::probe::debug_probe::{DAPAccess, DebugProbe, DebugProbeError};
 use crate::probe::protocol::WireProtocol;
 
-use constants::{
-    commands,
-    JTagFrequencyToDivider,
-    Status,
-    SwdFrequencyToDelayCount
-};
-use usb_interface::{
-    TIMEOUT
-};
+use constants::{commands, JTagFrequencyToDivider, Status, SwdFrequencyToDelayCount};
+use usb_interface::TIMEOUT;
 
 pub struct STLink {
     device: STLinkUSBDevice,
@@ -35,7 +23,10 @@ pub struct STLink {
 }
 
 impl DebugProbe for STLink {
-    fn new_from_probe_info(info: &DebugProbeInfo) -> Result<Box<Self>, DebugProbeError> where Self: Sized {
+    fn new_from_probe_info(info: &DebugProbeInfo) -> Result<Box<Self>, DebugProbeError>
+    where
+        Self: Sized,
+    {
         let mut stlink = Self {
             device: STLinkUSBDevice::new_from_info(info)?,
             hw_version: 0,
@@ -385,7 +376,7 @@ impl STLink {
                 vec![
                     commands::JTAG_COMMAND,
                     commands::JTAG_CLOSE_AP_DBG,
-                    apsel.get_port_number()
+                    apsel.get_port_number(),
                 ],
                 &[],
                 &mut buf,

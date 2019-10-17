@@ -19,7 +19,7 @@ pub trait DPRegister<Port: DebugPort>: Register {
 }
 
 /// Debug Port V1
-pub struct DPv1 { }
+pub struct DPv1 {}
 
 impl DebugPort for DPv1 {
     fn version(&self) -> &'static str {
@@ -28,7 +28,7 @@ impl DebugPort for DPv1 {
 }
 
 /// Debug Port V2
-pub struct DPv2 { }
+pub struct DPv2 {}
 
 impl DebugPort for DPv2 {
     fn version(&self) -> &'static str {
@@ -36,7 +36,7 @@ impl DebugPort for DPv2 {
     }
 }
 
-bitfield!{
+bitfield! {
     #[derive(Clone)]
     pub struct Abort(u32);
     impl Debug;
@@ -63,12 +63,12 @@ impl DPRegister<DPv1> for Abort {
     const DP_BANK: DPBankSel = DPBankSel::DontCare;
 }
 
-impl Register for Abort { 
+impl Register for Abort {
     const ADDRESS: u8 = 0x0;
     const NAME: &'static str = "ABORT";
 }
 
-bitfield!{
+bitfield! {
     #[derive(Clone)]
     pub struct Ctrl(u32);
     impl Debug;
@@ -107,16 +107,16 @@ impl From<Ctrl> for u32 {
     }
 }
 
-impl DPRegister<DPv1> for Ctrl { 
+impl DPRegister<DPv1> for Ctrl {
     const DP_BANK: DPBankSel = DPBankSel::Bank(0);
 }
 
-impl Register for Ctrl { 
+impl Register for Ctrl {
     const ADDRESS: u8 = 0x4;
     const NAME: &'static str = "CTRL/STAT";
 }
 
-bitfield!{
+bitfield! {
     #[derive(Clone)]
     pub struct Select(u32);
     impl Debug;
@@ -137,17 +137,16 @@ impl From<Select> for u32 {
     }
 }
 
-impl DPRegister<DPv1> for Select { 
+impl DPRegister<DPv1> for Select {
     const DP_BANK: DPBankSel = DPBankSel::DontCare;
 }
 
-impl Register for Select { 
+impl Register for Select {
     const ADDRESS: u8 = 0x8;
     const NAME: &'static str = "SELECT";
 }
 
-
-bitfield!{
+bitfield! {
     #[derive(Clone)]
     pub struct DPIDR(u32);
     impl Debug;
@@ -172,11 +171,11 @@ impl From<DPIDR> for u32 {
     }
 }
 
-impl DPRegister<DPv1> for DPIDR { 
+impl DPRegister<DPv1> for DPIDR {
     const DP_BANK: DPBankSel = DPBankSel::DontCare;
 }
 
-impl Register for DPIDR { 
+impl Register for DPIDR {
     const ADDRESS: u8 = 0x0;
     const NAME: &'static str = "DPIDR";
 }
@@ -185,7 +184,7 @@ impl Register for DPIDR {
 pub struct DebugPortId {
     pub revision: u8,
     pub part_no: u8,
-    pub version: DebugPortVersion, 
+    pub version: DebugPortVersion,
     pub min_dp_support: MinDpSupport,
     pub designer: JEP106Code,
 }
@@ -194,8 +193,8 @@ impl From<DPIDR> for DebugPortId {
     fn from(dpidr: DPIDR) -> DebugPortId {
         DebugPortId {
             revision: dpidr.revision(),
-            part_no:  dpidr.part_no(),
-            version:  dpidr.version().into(),
+            part_no: dpidr.part_no(),
+            version: dpidr.version().into(),
             min_dp_support: dpidr.min().into(),
             designer: JEP106Code::new(dpidr.jep_cc(), dpidr.jep_id()),
         }
@@ -223,7 +222,7 @@ pub enum DebugPortVersion {
     DPv0,
     DPv1,
     DPv2,
-    Unsupported
+    Unsupported,
 }
 
 impl From<u8> for DebugPortVersion {

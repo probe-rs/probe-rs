@@ -1,10 +1,4 @@
-use super::super::{
-    Response,
-    Category,
-    Request,
-    Result,
-    Status,
-};
+use super::super::{Category, Request, Response, Result, Status};
 
 pub struct DisconnectRequest;
 

@@ -1,4 +1,3 @@
-
 #[macro_use]
 mod register_generation;
 
@@ -15,18 +14,12 @@ use crate::coresight::common::Register;
 pub enum AccessPortError {
     InvalidAccessPortNumber,
     MemoryNotAligned,
-    RegisterReadError{
-        addr: u8,
-        name: &'static str,
-    },
-    RegisterWriteError{
-        addr: u8,
-        name: &'static str,
-    },
+    RegisterReadError { addr: u8, name: &'static str },
+    RegisterWriteError { addr: u8, name: &'static str },
     OutOfBoundsError,
 }
 
-impl Error for AccessPortError { }
+impl Error for AccessPortError {}
 
 impl fmt::Display for AccessPortError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -35,8 +28,16 @@ impl fmt::Display for AccessPortError {
         match self {
             InvalidAccessPortNumber => write!(f, "Invalid Access Port Number"),
             MemoryNotAligned => write!(f, "Misaligned memory access"),
-            RegisterReadError { addr, name } => write!(f, "Failed to read register {}, address 0x{:08x}", name, addr),
-            RegisterWriteError { addr, name } => write!(f, "Failed to write register {}, address 0x{:08x}", name, addr),
+            RegisterReadError { addr, name } => write!(
+                f,
+                "Failed to read register {}, address 0x{:08x}",
+                name, addr
+            ),
+            RegisterWriteError { addr, name } => write!(
+                f,
+                "Failed to write register {}, address 0x{:08x}",
+                name, addr
+            ),
             OutOfBoundsError => write!(f, "Out of bounds access"),
         }
     }

@@ -1,2 +1,2 @@
-pub mod sequence;
 pub mod clock;
+pub mod sequence;

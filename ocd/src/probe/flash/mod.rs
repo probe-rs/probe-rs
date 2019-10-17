@@ -3,13 +3,13 @@
 // Copyright (c) for that code 2015-2019 Arm Limited under the the Apache 2.0 license.
 
 pub mod builder;
-pub mod flasher;
-pub mod memory;
-pub mod loader;
 pub mod download;
+pub mod flasher;
+pub mod loader;
+pub mod memory;
 
-pub use flasher::*;
-pub use memory::*;
 pub use builder::*;
-pub use loader::*;
 pub use download::*;
+pub use flasher::*;
+pub use loader::*;
+pub use memory::*;

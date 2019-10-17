@@ -1,28 +1,19 @@
-use log::{
-    info,
-    debug,
-    error,
-};
 use enum_primitive_derive::Primitive;
-use num_traits::cast::{
-    FromPrimitive,
-};
+use log::{debug, error, info};
+use num_traits::cast::FromPrimitive;
 
 use std::fmt;
 
 use std::error::Error;
 
 use crate::coresight::{
-    access_ports::{
-        memory_ap::*,
-        generic_ap::*,
-    },
     access_ports,
+    access_ports::{generic_ap::*, memory_ap::*},
     ap_access::*,
 };
 
-use std::cell::RefCell;
 use crate::memory::MI;
+use std::cell::RefCell;
 
 #[derive(Debug, PartialEq)]
 pub enum RomTableError {
@@ -74,17 +65,20 @@ impl<'p, P: MI> RomTableReader<'p, P> {
     }
 
     /// Iterate over all entries of the rom table, non-recursively
-    pub fn entries<'r>(&'r mut self) -> RomTableIterator<'p,'r,P> {
+    pub fn entries<'r>(&'r mut self) -> RomTableIterator<'p, 'r, P> {
         RomTableIterator::new(self)
     }
 }
 
-pub struct RomTableIterator<'p, 'r, P: MI> where 'r: 'p {
+pub struct RomTableIterator<'p, 'r, P: MI>
+where
+    'r: 'p,
+{
     rom_table_reader: &'r mut RomTableReader<'p, P>,
     offset: u64,
 }
 
-impl<'r,'p, P: MI> RomTableIterator<'r, 'p, P> {
+impl<'r, 'p, P: MI> RomTableIterator<'r, 'p, P> {
     pub fn new(reader: &'r mut RomTableReader<'p, P>) -> Self {
         RomTableIterator {
             rom_table_reader: reader,
@@ -93,7 +87,7 @@ impl<'r,'p, P: MI> RomTableIterator<'r, 'p, P> {
     }
 }
 
-impl<'p,'r, P: MI> Iterator for RomTableIterator<'p,'r,P> {
+impl<'p, 'r, P: MI> Iterator for RomTableIterator<'p, 'r, P> {
     type Item = Result<RomTableEntryRaw, RomTableError>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -104,7 +98,7 @@ impl<'p,'r, P: MI> Iterator for RomTableIterator<'p,'r,P> {
 
         self.offset += 4;
 
-        let mut entry_data = [0u32;1];
+        let mut entry_data = [0u32; 1];
 
         if let Err(e) = probe.read_block32(component_address as u32, &mut entry_data) {
             return Some(Err(e.into()));
@@ -116,10 +110,8 @@ impl<'p,'r, P: MI> Iterator for RomTableIterator<'p,'r,P> {
             return None;
         }
 
-        let entry_data = RomTableEntryRaw::new(
-            self.rom_table_reader.base_address as u32, 
-            entry_data[0]
-        );
+        let entry_data =
+            RomTableEntryRaw::new(self.rom_table_reader.base_address as u32, entry_data[0]);
 
         //info!("ROM Table Entry: {:x?}", entry_data);
         Some(Ok(entry_data))
@@ -134,7 +126,7 @@ pub struct RomTable {
 
 impl RomTable {
     /// Tries to parse a CoreSight component table.
-    /// 
+    ///
     /// This does not check whether the data actually signalizes
     /// to contain a ROM table but assumes this was checked beforehand.
     pub fn try_parse<P>(link: &RefCell<P>, base_address: u64) -> RomTable
@@ -148,10 +140,11 @@ impl RomTable {
                 .filter_map(|raw_entry| {
                     let entry_base_addr = raw_entry.component_addr();
                     if !raw_entry.entry_present {
-                        return None
+                        return None;
                     }
 
-                    if let Ok(component_data) = CSComponent::try_parse(link, u64::from(entry_base_addr))
+                    if let Ok(component_data) =
+                        CSComponent::try_parse(link, u64::from(entry_base_addr))
                     {
                         Some(RomTableEntry {
                             format: raw_entry.format,
@@ -169,11 +162,11 @@ impl RomTable {
 }
 
 /// A ROM table entry with raw information parsed.
-/// 
+///
 /// Described in section D3.4.4 of the ADIv5.2 specification.
-/// 
+///
 /// This should only be used for parsing the raw memory structures of the entry.
-/// 
+///
 /// For advanced usages, see [RomTableEntry](struct.RomTableEntry.html).
 #[derive(Debug, PartialEq)]
 pub struct RomTableEntryRaw {
@@ -185,13 +178,13 @@ pub struct RomTableEntryRaw {
     /// The power domain is valid if this is true.
     power_domain_valid: bool,
     /// Reads one if the ROM table has 32bit format.
-    /// 
+    ///
     /// It is unsure if it can have a RAZ value.
     format: bool,
     /// Indicates whether the ROM table behind the address offset is present.
     pub entry_present: bool,
     // Base address of the rom table
-    base_addr: u32,         
+    base_addr: u32,
 }
 
 impl RomTableEntryRaw {
@@ -229,8 +222,8 @@ pub struct RomTableEntry {
     component_data: CSComponent,
 }
 
-/// Component Identification information 
-/// 
+/// Component Identification information
+///
 /// Identification for a CoreSight component
 #[derive(Debug, PartialEq)]
 pub struct CSComponentId {
@@ -250,14 +243,14 @@ impl<'p, P: MI> ComponentInformationReader<'p, P> {
     pub fn new(base_address: u64, probe: &'p RefCell<P>) -> Self {
         ComponentInformationReader {
             base_address,
-            probe
+            probe,
         }
     }
 
     /// Reads the component class from a component info table.
     pub fn component_class(&mut self) -> Result<CSComponentClass, RomTableError> {
         #![allow(clippy::verbose_bit_mask)]
-        let mut data = [0u32;4];
+        let mut data = [0u32; 4];
         let mut probe = self.probe.borrow_mut();
 
         probe.read_block32(self.base_address as u32 + 0xFF0, &mut data)?;
@@ -265,11 +258,12 @@ impl<'p, P: MI> ComponentInformationReader<'p, P> {
         debug!("CIDR: {:x?}", data);
 
         if data[0] & 0xFF == 0x0D
-        && data[1] & 0x0F == 0x00
-        && data[2] & 0xFF == 0x05
-        && data[3] & 0xFF == 0xB1 
+            && data[1] & 0x0F == 0x00
+            && data[2] & 0xFF == 0x05
+            && data[3] & 0xFF == 0xB1
         {
-            FromPrimitive::from_u32((data[1] >> 4) & 0x0F).ok_or(RomTableError::CSComponentIdentificationError)
+            FromPrimitive::from_u32((data[1] >> 4) & 0x0F)
+                .ok_or(RomTableError::CSComponentIdentificationError)
         } else {
             error!("The CIDR registers did not contain the expected preambles.");
             Err(RomTableError::CSComponentIdentificationError)
@@ -280,11 +274,14 @@ impl<'p, P: MI> ComponentInformationReader<'p, P> {
     pub fn peripheral_id(&mut self) -> Result<PeripheralID, RomTableError> {
         let mut probe = self.probe.borrow_mut();
 
-        let mut data = [0u32;8];
+        let mut data = [0u32; 8];
 
         let peripheral_id_address = self.base_address + 0xFD0;
 
-        debug!("Reading debug id from address: {:08x}", peripheral_id_address);
+        debug!(
+            "Reading debug id from address: {:08x}",
+            peripheral_id_address
+        );
 
         probe.read_block32(self.base_address as u32 + 0xFD0, &mut data[4..])?;
         probe.read_block32(self.base_address as u32 + 0xFE0, &mut data[..4])?;
@@ -362,11 +359,7 @@ impl CSComponent {
     /// Tries to parse a CoreSight component table.
     pub fn try_parse<P>(link: &RefCell<P>, baseaddr: u64) -> Result<CSComponent, RomTableError>
     where
-        P:
-            MI
-          + APAccess<GenericAP, IDR>
-          + APAccess<MemoryAP, BASE>
-          + APAccess<MemoryAP, BASE2>
+        P: MI + APAccess<GenericAP, IDR> + APAccess<MemoryAP, BASE> + APAccess<MemoryAP, BASE2>,
     {
         info!("\tReading component data at: {:08x}", baseaddr);
 
@@ -376,37 +369,35 @@ impl CSComponent {
         info!("\tComponent class: {:x?}", component_id.class);
 
         // Determine the peripheral id to find out what peripheral we are dealing with.
-        info!("\tComponent peripheral id: {:x?}", component_id.peripheral_id);
+        info!(
+            "\tComponent peripheral id: {:x?}",
+            component_id.peripheral_id
+        );
 
         let class = match component_id.class {
-            CSComponentClass::GenericVerificationComponent =>
-                CSComponent::GenericVerificationComponent(component_id),
+            CSComponentClass::GenericVerificationComponent => {
+                CSComponent::GenericVerificationComponent(component_id)
+            }
             CSComponentClass::RomTable => {
                 let rom_table = RomTable::try_parse(link, component_id.base_address);
 
-                CSComponent::Class1RomTable(
-                    component_id,
-                    rom_table
-                )
-            },
-            CSComponentClass::CoreSightComponent =>
-                CSComponent::Class9RomTable(component_id),
-            CSComponentClass::PeripheralTestBlock =>
-                CSComponent::PeripheralTestBlock(component_id),
-            CSComponentClass::GenericIPComponent =>
-                CSComponent::GenericIPComponent(component_id),
-            CSComponentClass::CoreLinkOrPrimeCellOrSystemComponent =>
-                CSComponent::CoreLinkOrPrimeCellOrSystemComponent(component_id),
+                CSComponent::Class1RomTable(component_id, rom_table)
+            }
+            CSComponentClass::CoreSightComponent => CSComponent::Class9RomTable(component_id),
+            CSComponentClass::PeripheralTestBlock => CSComponent::PeripheralTestBlock(component_id),
+            CSComponentClass::GenericIPComponent => CSComponent::GenericIPComponent(component_id),
+            CSComponentClass::CoreLinkOrPrimeCellOrSystemComponent => {
+                CSComponent::CoreLinkOrPrimeCellOrSystemComponent(component_id)
+            }
         };
 
         Ok(class)
     }
 
     pub fn iter(&self) -> CSComponentIter {
-
         CSComponentIter {
             component: Some(self),
-            inner: Some(0)
+            inner: Some(0),
         }
     }
 }
@@ -421,7 +412,7 @@ pub enum ComponentModification {
 }
 
 /// Peripheral ID information for a CoreSight component.
-/// 
+///
 /// Described in section D1.2.2 of the ADIv5.2 spec.
 #[allow(non_snake_case)]
 #[derive(Debug, PartialEq)]
@@ -433,19 +424,18 @@ pub struct PeripheralID {
     /// Indicates major component revisions by the component `designer`.
     pub REVISION: u8,
     /// Indicates the component `designer`.
-    /// 
+    ///
     /// `None` if it is a legacy component
     pub JEP106: Option<jep106::JEP106Code>,
     /// Indicates the specific component with an ID unique to this component.
     pub PART: u16,
     /// The SIZE is indicated as a multiple of 4k blocks the peripheral occupies.
-    pub SIZE: u8
+    pub SIZE: u8,
 }
 
 impl PeripheralID {
-
     /// Extract the peripheral ID of a CoreSight component table.
-    fn from_raw(data: &[u32;8]) -> Self {
+    fn from_raw(data: &[u32; 8]) -> Self {
         let jep106id = (((data[2] & 0x07) << 4) | ((data[1] >> 4) & 0x0F)) as u8;
         let jep106 = jep106::JEP106Code::new((data[4] & 0x0F) as u8, jep106id);
         let legacy = (data[2] & 0x8) > 1;
@@ -459,7 +449,7 @@ impl PeripheralID {
             REVISION: ((data[2] >> 4) & 0x0F) as u8,
             JEP106: if legacy { Some(jep106) } else { None },
             PART: (((data[1] & 0x0F) << 8) | (data[0] & 0xFF)) as u16,
-            SIZE: 2u32.pow((data[4] >> 4) & 0x0F) as u8
+            SIZE: 2u32.pow((data[4] >> 4) & 0x0F) as u8,
         }
     }
 }

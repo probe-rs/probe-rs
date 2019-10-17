@@ -1,6 +1,4 @@
-
 use crate::probe::debug_probe::MasterProbe;
-use jep106::JEP106Code;
 use crate::{
     coresight::{
         access_ports::{
@@ -9,12 +7,9 @@ use crate::{
         },
         ap_access::{valid_access_ports, APAccess},
     },
-    memory::romtable::{
-        CSComponent,
-        CSComponentId,
-        PeripheralID,
-    },
+    memory::romtable::{CSComponent, CSComponentId, PeripheralID},
 };
+use jep106::JEP106Code;
 
 pub struct ChipInfo {
     pub manufacturer: JEP106Code,
@@ -50,16 +45,22 @@ pub fn get_chip_info(probe: &mut MasterProbe) -> Option<ChipInfo> {
             match component_table.ok()? {
                 CSComponent::Class1RomTable(
                     CSComponentId {
-                        peripheral_id: PeripheralID {
-                            JEP106: jep106,
-                            PART: part,
-                            ..
-                        },
+                        peripheral_id:
+                            PeripheralID {
+                                JEP106: jep106,
+                                PART: part,
+                                ..
+                            },
                         ..
                     },
-                    ..
-                ) => return Some(ChipInfo { manufacturer: jep106?, part, }),
-                _ => continue
+                    ..,
+                ) => {
+                    return Some(ChipInfo {
+                        manufacturer: jep106?,
+                        part,
+                    })
+                }
+                _ => continue,
             }
         }
     }

@@ -1,10 +1,4 @@
-use super::super::{
-    Response,
-    Category,
-    Request,
-    Result,
-    Status,
-};
+use super::super::{Category, Request, Response, Result, Status};
 
 /// The DAP_TransferConfigure Command sets parameters for DAP_Transfer and DAP_TransferBlock.
 pub struct ConfigureRequest {
@@ -23,8 +17,12 @@ impl Request for ConfigureRequest {
         use scroll::Pwrite;
 
         buffer[offset] = self.idle_cycles;
-        buffer.pwrite(self.wait_retry, offset + 1).expect("This is a bug. Please report it.");
-        buffer.pwrite(self.match_retry, offset + 3).expect("This is a bug. Please report it.");
+        buffer
+            .pwrite(self.wait_retry, offset + 1)
+            .expect("This is a bug. Please report it.");
+        buffer
+            .pwrite(self.match_retry, offset + 3)
+            .expect("This is a bug. Please report it.");
         Ok(5)
     }
 }

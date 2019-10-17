@@ -1,11 +1,4 @@
-use super::super::{
-    Response,
-    Category,
-    Request,
-    Result,
-    Status,
-    Error,
-};
+use super::super::{Category, Error, Request, Response, Result, Status};
 
 #[derive(Debug)]
 pub struct ResetRequest;

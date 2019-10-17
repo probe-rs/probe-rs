@@ -1,26 +1,13 @@
 pub mod info;
 
-
-
-use serde::de::{
-    Error,
-    Unexpected,
-};
+use serde::de::{Error, Unexpected};
 
 use crate::{
-    probe::{
-        flash::{
-            memory::{
-                MemoryRegion,
-            },
-        },
-        debug_probe::{
-            MasterProbe,
-            DebugProbeError,
-            CpuInformation,
-        },
-    },
     collection::get_core,
+    probe::{
+        debug_probe::{CpuInformation, DebugProbeError, MasterProbe},
+        flash::memory::MemoryRegion,
+    },
 };
 
 use std::fmt;
@@ -61,7 +48,7 @@ pub struct BasicRegisterAddresses {
 
 pub trait Core: std::fmt::Debug + objekt::Clone {
     fn wait_for_core_halted(&self, mi: &mut MasterProbe) -> Result<(), DebugProbeError>;
-    
+
     fn halt(&self, mi: &mut MasterProbe) -> Result<CpuInformation, DebugProbeError>;
 
     fn run(&self, mi: &mut MasterProbe) -> Result<(), DebugProbeError>;
@@ -71,9 +58,18 @@ pub trait Core: std::fmt::Debug + objekt::Clone {
     /// Steps one instruction and then enters halted state again.
     fn step(&self, mi: &mut MasterProbe) -> Result<CpuInformation, DebugProbeError>;
 
-    fn read_core_reg(&self, mi: &mut MasterProbe, addr: CoreRegisterAddress) -> Result<u32, DebugProbeError>;
+    fn read_core_reg(
+        &self,
+        mi: &mut MasterProbe,
+        addr: CoreRegisterAddress,
+    ) -> Result<u32, DebugProbeError>;
 
-    fn write_core_reg(&self, mi: &mut MasterProbe, addr: CoreRegisterAddress, value: u32) -> Result<(), DebugProbeError>;
+    fn write_core_reg(
+        &self,
+        mi: &mut MasterProbe,
+        addr: CoreRegisterAddress,
+        value: u32,
+    ) -> Result<(), DebugProbeError>;
 
     fn get_available_breakpoint_units(&self, mi: &mut MasterProbe) -> Result<u32, DebugProbeError>;
 
@@ -85,7 +81,12 @@ pub trait Core: std::fmt::Debug + objekt::Clone {
 
     fn disable_breakpoint(&self, mi: &mut MasterProbe, addr: u32) -> Result<(), DebugProbeError>;
 
-    fn read_block8(&self, mi: &mut MasterProbe, address: u32, data: &mut [u8]) -> Result<(), DebugProbeError>;
+    fn read_block8(
+        &self,
+        mi: &mut MasterProbe,
+        address: u32,
+        data: &mut [u8],
+    ) -> Result<(), DebugProbeError>;
 
     fn registers<'a>(&self) -> &'a BasicRegisterAddresses;
 }
@@ -126,7 +127,10 @@ impl<'de> serde::de::Visitor<'de> for CoreVisitor {
         if let Some(core) = get_core(s) {
             Ok(core)
         } else {
-            Err(Error::invalid_value(Unexpected::Other(&format!("Core {} does not exist.", s)), &self))
+            Err(Error::invalid_value(
+                Unexpected::Other(&format!("Core {} does not exist.", s)),
+                &self,
+            ))
         }
     }
 }
@@ -149,10 +153,8 @@ impl fmt::Display for TargetSelectionError {
         use TargetSelectionError::*;
 
         match self {
-            CouldNotAutodetect => 
-                write!(f, "Target could not be automatically identified."),
-            TargetNotFound(ref t) =>
-                write!(f, "Failed to find target defintion for target {}", t),
+            CouldNotAutodetect => write!(f, "Target could not be automatically identified."),
+            TargetNotFound(ref t) => write!(f, "Failed to find target defintion for target {}", t),
             TargetCouldNotBeParsed(ref e) => {
                 write!(f, "Failed to parse target definition for target: ")?;
                 e.fmt(f)
@@ -161,7 +163,7 @@ impl fmt::Display for TargetSelectionError {
     }
 }
 
-impl std::error::Error for TargetSelectionError { }
+impl std::error::Error for TargetSelectionError {}
 
 impl From<TargetParseError> for TargetSelectionError {
     fn from(error: TargetParseError) -> Self {
