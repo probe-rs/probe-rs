@@ -1,6 +1,6 @@
 # cargo-flash
 
-This crate provides an utility to download ELF binaries onto ARM chips.
+This crate provides an utility to flash ELF binaries onto ARM chips.
 
 As of writing this, flashing works for the **nRF51822, nRF52832, nRF52840, STMF042, STMF429xI** using a **DAPLink** or an **ST-Link**.
 
