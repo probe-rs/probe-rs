@@ -1,16 +1,16 @@
 //! Helper macros to implement an access port
- 
+
 #[macro_export]
 macro_rules! define_dp_register {
     (
         $(#[$outer:meta])*
-        $name:ident, 
-        $address:expr, 
-        [$(($field:ident: $type:ty)$(,)?)*], 
-        $param:ident, 
-        $from:expr, 
+        $name:ident,
+        $address:expr,
+        [$(($field:ident: $type:ty)$(,)?)*],
+        $param:ident,
+        $from:expr,
         $to:expr
-    ) 
+    )
     => {
         $(#[$outer])*
         #[allow(non_snake_case)]
@@ -38,4 +38,3 @@ macro_rules! define_dp_register {
         }
     }
 }
-    

@@ -11,30 +11,28 @@ bitflags! {
 
 mod integer_representation {
     use serde::{self, Deserialize, Deserializer, Serialize, Serializer};
-    
+
     // CHANGE THIS ACCORDING TO YOUR CODE
-    use super::Access; 
+    use super::Access;
     type IntRep = u8;
     type Flags = Access;
-    
+
     pub fn serialize<S>(date: &Flags, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
-    {   
+    {
         date.bits().serialize(serializer)
     }
-    
+
     pub fn deserialize<'de, D>(deserializer: D) -> Result<Flags, D::Error>
     where
         D: Deserializer<'de>,
-    {   
+    {
         let raw: IntRep = IntRep::deserialize(deserializer)?;
-        Access::from_bits(raw).ok_or_else(|| serde::de::Error::custom(format!(
-            "Unexpected flags value {}",
-            raw              
-        )))                  
-    }                  
-} 
+        Access::from_bits(raw)
+            .ok_or_else(|| serde::de::Error::custom(format!("Unexpected flags value {}", raw)))
+    }
+}
 
 pub const PROGRAM_PAGE_WEIGHT: f32 = 0.130;
 pub const ERASE_SECTOR_WEIGHT: f32 = 0.048;
@@ -50,14 +48,14 @@ pub struct FlashRegion {
     pub sector_size: u32,
     pub page_size: u32,
     pub phrase_size: u32,
-    #[derivative(PartialEq="ignore")]
-    #[derivative(Hash="ignore")]
+    #[derivative(PartialEq = "ignore")]
+    #[derivative(Hash = "ignore")]
     pub erase_all_weight: f32,
-    #[derivative(PartialEq="ignore")]
-    #[derivative(Hash="ignore")]
+    #[derivative(PartialEq = "ignore")]
+    #[derivative(Hash = "ignore")]
     pub erase_sector_weight: f32,
-    #[derivative(PartialEq="ignore")]
-    #[derivative(Hash="ignore")]
+    #[derivative(PartialEq = "ignore")]
+    #[derivative(Hash = "ignore")]
     pub program_page_weight: f32,
     pub erased_byte_value: u8,
     #[serde(with = "integer_representation")]
@@ -68,7 +66,7 @@ pub struct FlashRegion {
 impl FlashRegion {
     pub fn get_sector_info(&self, address: u32) -> Option<SectorInfo> {
         if !self.range.contains(&address) {
-            return None
+            return None;
         }
 
         Some(SectorInfo {
@@ -80,7 +78,7 @@ impl FlashRegion {
 
     pub fn get_page_info(&self, address: u32) -> Option<PageInfo> {
         if !self.range.contains(&address) {
-            return None
+            return None;
         }
 
         Some(PageInfo {
@@ -155,7 +153,7 @@ impl MemoryRange for core::ops::Range<u32> {
 
     fn intersects_range(&self, range: &std::ops::Range<u32>) -> bool {
         self.contains(&range.start) && !self.contains(&(range.end - 1))
-     || !self.contains(&range.start) && self.contains(&(range.end - 1))
+            || !self.contains(&range.start) && self.contains(&(range.end - 1))
     }
 }
 
@@ -164,5 +162,5 @@ pub enum MemoryRegion {
     Ram(RamRegion),
     Rom(RomRegion),
     Flash(FlashRegion),
-    Device(DeviceRegion)
+    Device(DeviceRegion),
 }

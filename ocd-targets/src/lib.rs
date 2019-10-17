@@ -1,16 +1,9 @@
 use std::collections::HashMap;
 
 use ocd::{
-    target::{
-        Target,
-        TargetSelectionError,
-        info::ChipInfo,
-    },
     collection,
-    probe::flash::flasher::{
-        FlashAlgorithm,
-        AlgorithmSelectionError,
-    },
+    probe::flash::flasher::{AlgorithmSelectionError, FlashAlgorithm},
+    target::{info::ChipInfo, Target, TargetSelectionError},
 };
 
 include!(concat!(env!("OUT_DIR"), "/targets.rs"));
@@ -23,15 +16,16 @@ pub fn get_built_in_target(name: impl AsRef<str>) -> Result<Target, TargetSelect
         .and_then(|target| Target::new(target).map_err(From::from))
 }
 
-pub fn get_built_in_target_by_chip_id(chip_info: &ChipInfo) -> Result<Target, TargetSelectionError> {
+pub fn get_built_in_target_by_chip_id(
+    chip_info: &ChipInfo,
+) -> Result<Target, TargetSelectionError> {
     for target in TARGETS.values() {
         match Target::new(target) {
             Ok(target) => {
-                if target.manufacturer == chip_info.manufacturer
-                && target.part == chip_info.part {
+                if target.manufacturer == chip_info.manufacturer && target.part == chip_info.part {
                     return Ok(target);
                 }
-            },
+            }
             Err(_e) => continue,
         }
     }
@@ -46,17 +40,17 @@ pub enum SelectionStrategy {
 
 pub fn select_target(strategy: &SelectionStrategy) -> Result<Target, TargetSelectionError> {
     match strategy {
-        SelectionStrategy::Name(name) => {
-            match collection::get_target(name) {
-                Some(target) => Ok(target),
-                None => get_built_in_target(name),
-            }
+        SelectionStrategy::Name(name) => match collection::get_target(name) {
+            Some(target) => Ok(target),
+            None => get_built_in_target(name),
         },
         SelectionStrategy::ChipInfo(chip_info) => get_built_in_target_by_chip_id(&chip_info),
     }
 }
 
-pub fn get_built_in_algorithm(name: impl AsRef<str>) -> Result<FlashAlgorithm, AlgorithmSelectionError> {
+pub fn get_built_in_algorithm(
+    name: impl AsRef<str>,
+) -> Result<FlashAlgorithm, AlgorithmSelectionError> {
     let name = name.as_ref().to_string();
     FLASH_ALGORITHMS
         .get(&name[..])

@@ -1,10 +1,10 @@
 pub mod general;
-pub mod swj;
 pub mod swd;
+pub mod swj;
 pub mod transfer;
 
-use core::ops::Deref;
 use crate::probe::debug_probe::DebugProbeError;
+use core::ops::Deref;
 use log::debug;
 
 pub(crate) type Result<T> = std::result::Result<T, Error>;
@@ -76,7 +76,10 @@ impl From<hidapi::HidError> for Error {
     }
 }
 
-pub(crate) fn send_command<Req: Request, Res: Response>(device: &hidapi::HidDevice, request: Req) -> Result<Res> {
+pub(crate) fn send_command<Req: Request, Res: Response>(
+    device: &hidapi::HidDevice,
+    request: Req,
+) -> Result<Res> {
     // Write the command & request to the buffer.
     // TODO: Error handling & real USB writing.
     let buffer = &mut [0; 24];

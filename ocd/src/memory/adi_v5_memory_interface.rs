@@ -1,15 +1,7 @@
 /// Memory access according to ARM Debug Interface specification v5.0
 use crate::coresight::access_ports::{
-    APRegister,
-    memory_ap::{
-        MemoryAP,
-        DataSize,
-        AddressIncrement,
-        CSW,
-        TAR,
-        DRW,
-    },
-    AccessPortError,
+    memory_ap::{AddressIncrement, DataSize, MemoryAP, CSW, DRW, TAR},
+    APRegister, AccessPortError,
 };
 use crate::coresight::ap_access::APAccess;
 use scroll::Pread;
@@ -41,16 +33,14 @@ impl ADIMemoryInterface {
     /// Creates a new MemoryInterface for given AccessPort.
     pub fn new(access_port_number: u8) -> Self {
         Self {
-            access_port: MemoryAP::new(access_port_number)
+            access_port: MemoryAP::new(access_port_number),
         }
     }
 
     /// Build the correct CSW register for a memory access
-    /// 
+    ///
     /// Currently, only AMBA AHB Access is supported.
     fn build_csw_register(&self, data_size: DataSize) -> CSW {
-
-
         // The CSW Register is set for an AMBA AHB Acccess, according to
         // the ARM Debug Interface Architecture Specification.
         //
@@ -62,39 +52,55 @@ impl ADIMemoryInterface {
         // The CACHE bits are set for the following AHB access:
         //   HPROT[0] == 1   - data           access
         //   HPROT[1] == 1   - privileged     access
-        //   HPROT[2] == 0   - non-cacheable  access 
+        //   HPROT[2] == 0   - non-cacheable  access
         //   HPROT[3] == 0   - non-bufferable access
 
-        CSW { PROT: 0b110, CACHE: 0b11, AddrInc: AddressIncrement::Single, SIZE: data_size, ..Default::default() }
+        CSW {
+            PROT: 0b110,
+            CACHE: 0b11,
+            AddrInc: AddressIncrement::Single,
+            SIZE: data_size,
+            ..Default::default()
+        }
     }
 
     /// Read a 32 bit register on the given AP.
-    fn read_register_ap<REGISTER, AP>(&self, debug_port: &mut AP, register: REGISTER) -> Result<REGISTER, AccessPortError>
+    fn read_register_ap<REGISTER, AP>(
+        &self,
+        debug_port: &mut AP,
+        register: REGISTER,
+    ) -> Result<REGISTER, AccessPortError>
     where
         REGISTER: APRegister<MemoryAP>,
-        AP: APAccess<MemoryAP, REGISTER>
+        AP: APAccess<MemoryAP, REGISTER>,
     {
-        debug_port.read_register_ap(self.access_port, register)
-                  .or_else(|_| Err(AccessPortError::register_read_error::<REGISTER>()))
+        debug_port
+            .read_register_ap(self.access_port, register)
+            .or_else(|_| Err(AccessPortError::register_read_error::<REGISTER>()))
     }
 
     /// Write a 32 bit register on the given AP.
-    fn write_register_ap<REGISTER, AP>(&self, debug_port: &mut AP, register: REGISTER) -> Result<(), AccessPortError>
+    fn write_register_ap<REGISTER, AP>(
+        &self,
+        debug_port: &mut AP,
+        register: REGISTER,
+    ) -> Result<(), AccessPortError>
     where
         REGISTER: APRegister<MemoryAP>,
-        AP: APAccess<MemoryAP, REGISTER>
+        AP: APAccess<MemoryAP, REGISTER>,
     {
-        debug_port.write_register_ap(self.access_port, register)
-                  .or_else(|_| Err(AccessPortError::register_write_error::<REGISTER>()))
+        debug_port
+            .write_register_ap(self.access_port, register)
+            .or_else(|_| Err(AccessPortError::register_write_error::<REGISTER>()))
     }
 
     /// Read a 32bit word at `addr`.
-    /// 
+    ///
     /// The address where the read should be performed at has to be word aligned.
     /// Returns `AccessPortError::MemoryNotAligned` if this does not hold true.
     pub fn read32<AP>(&self, debug_port: &mut AP, address: u32) -> Result<u32, AccessPortError>
     where
-        AP: APAccess<MemoryAP, CSW> + APAccess<MemoryAP, TAR> + APAccess<MemoryAP, DRW>
+        AP: APAccess<MemoryAP, CSW> + APAccess<MemoryAP, TAR> + APAccess<MemoryAP, DRW>,
     {
         if (address % 4) != 0 {
             return Err(AccessPortError::MemoryNotAligned);
@@ -111,12 +117,12 @@ impl ADIMemoryInterface {
     }
 
     /// Read an 8bit word at `addr`.
-    /// 
+    ///
     /// The address where the read should be performed at has to be word aligned.
     /// Returns `AccessPortError::MemoryNotAligned` if this does not hold true.
     pub fn read8<AP>(&self, debug_port: &mut AP, address: u32) -> Result<u8, AccessPortError>
     where
-        AP: APAccess<MemoryAP, CSW> + APAccess<MemoryAP, TAR> + APAccess<MemoryAP, DRW>
+        AP: APAccess<MemoryAP, CSW> + APAccess<MemoryAP, TAR> + APAccess<MemoryAP, DRW>,
     {
         let pre_bytes = ((4 - (address % 4)) % 4) as usize;
         let aligned_addr = address - (address % 4);
@@ -135,7 +141,7 @@ impl ADIMemoryInterface {
     }
 
     /// Read a block of words of the size defined by S at `addr`.
-    /// 
+    ///
     /// The number of words read is `data.len()`.
     /// The address where the read should be performed at has to be word aligned.
     /// Returns `AccessPortError::MemoryNotAligned` if this does not hold true.
@@ -143,10 +149,10 @@ impl ADIMemoryInterface {
         &self,
         debug_port: &mut AP,
         address: u32,
-        data: &mut [u32]
+        data: &mut [u32],
     ) -> Result<(), AccessPortError>
     where
-        AP: APAccess<MemoryAP, CSW> + APAccess<MemoryAP, TAR> + APAccess<MemoryAP, DRW>
+        AP: APAccess<MemoryAP, CSW> + APAccess<MemoryAP, TAR> + APAccess<MemoryAP, DRW>,
     {
         if (address % 4) != 0 {
             return Err(AccessPortError::MemoryNotAligned);
@@ -170,24 +176,25 @@ impl ADIMemoryInterface {
         &self,
         debug_port: &mut AP,
         address: u32,
-        data: &mut [u8]
+        data: &mut [u8],
     ) -> Result<(), AccessPortError>
     where
-        AP: APAccess<MemoryAP, CSW> + APAccess<MemoryAP, TAR> + APAccess<MemoryAP, DRW>
+        AP: APAccess<MemoryAP, CSW> + APAccess<MemoryAP, TAR> + APAccess<MemoryAP, DRW>,
     {
-
         let pre_bytes = ((4 - (address % 4)) % 4) as usize;
 
         let aligned_addr = address - (address % 4);
-        let unaligned_end_addr = address.checked_add(data.len() as u32).ok_or(AccessPortError::OutOfBoundsError)?;
+        let unaligned_end_addr = address
+            .checked_add(data.len() as u32)
+            .ok_or(AccessPortError::OutOfBoundsError)?;
 
         let aligned_end_addr = if unaligned_end_addr % 4 != 0 {
-            ( unaligned_end_addr - (unaligned_end_addr % 4) ) + 4
+            (unaligned_end_addr - (unaligned_end_addr % 4)) + 4
         } else {
             unaligned_end_addr
         };
 
-        let post_bytes = ((4- (aligned_end_addr - unaligned_end_addr)) % 4) as usize;
+        let post_bytes = ((4 - (aligned_end_addr - unaligned_end_addr)) % 4) as usize;
 
         let aligned_read_len = (aligned_end_addr - aligned_addr) as usize;
 
@@ -206,74 +213,74 @@ impl ADIMemoryInterface {
         assert_eq!(pre_bytes + aligned_data_len + post_bytes, data.len());
         assert_eq!(aligned_read_len - pre_bytes - post_bytes, data.len());
 
-        let mut buff = vec![0u32;(aligned_read_len / 4) as usize];
+        let mut buff = vec![0u32; (aligned_read_len / 4) as usize];
 
         self.read_block32(debug_port, aligned_addr, &mut buff)?;
 
         match pre_bytes {
-            3 => { 
+            3 => {
                 data[0] = ((buff[0] >> 8) & 0xff) as u8;
                 data[1] = ((buff[0] >> 16) & 0xff) as u8;
                 data[2] = ((buff[0] >> 24) & 0xff) as u8;
-            },
+            }
             2 => {
                 data[0] = ((buff[0] >> 16) & 0xff) as u8;
                 data[1] = ((buff[0] >> 24) & 0xff) as u8;
-            },
+            }
             1 => {
                 data[0] = ((buff[0] >> 24) & 0xff) as u8;
-            },
+            }
             _ => (),
         };
 
         if aligned_read_len > 0 {
-            let aligned_data = &mut data[(pre_bytes as usize)..((pre_bytes+aligned_data_len) as usize)];
+            let aligned_data =
+                &mut data[(pre_bytes as usize)..((pre_bytes + aligned_data_len) as usize)];
 
-            let word_offset_start = if pre_bytes > 0 {
-                1
-            } else {
-                0
-            } as usize;
+            let word_offset_start = if pre_bytes > 0 { 1 } else { 0 } as usize;
 
-            for (i,word) in buff[word_offset_start..(word_offset_start+aligned_data_len/4)].iter().enumerate() {
-                aligned_data[i*4] = (word & 0xff) as u8;
-                aligned_data[i*4+1] = ((word >> 8) & 0xffu32) as u8;
-                aligned_data[i*4+2] = ((word >> 16) & 0xffu32) as u8;
-                aligned_data[i*4+3] = ((word >> 24) & 0xffu32) as u8;
+            for (i, word) in buff[word_offset_start..(word_offset_start + aligned_data_len / 4)]
+                .iter()
+                .enumerate()
+            {
+                aligned_data[i * 4] = (word & 0xff) as u8;
+                aligned_data[i * 4 + 1] = ((word >> 8) & 0xffu32) as u8;
+                aligned_data[i * 4 + 2] = ((word >> 16) & 0xffu32) as u8;
+                aligned_data[i * 4 + 3] = ((word >> 24) & 0xffu32) as u8;
             }
         }
 
         match post_bytes {
             1 => {
-                data[data.len()-1] = (buff[buff.len()-1] & 0xff) as u8;
-            },
+                data[data.len() - 1] = (buff[buff.len() - 1] & 0xff) as u8;
+            }
             2 => {
-                data[data.len()-2] = (buff[buff.len()-1] & 0xff) as u8;
-                data[data.len()-1] = ((buff[buff.len()-1] >> 8) & 0xff) as u8;
-            },
+                data[data.len() - 2] = (buff[buff.len() - 1] & 0xff) as u8;
+                data[data.len() - 1] = ((buff[buff.len() - 1] >> 8) & 0xff) as u8;
+            }
             3 => {
-                data[data.len()-3] = (buff[buff.len()-1] & 0xff) as u8;
-                data[data.len()-2] = ((buff[buff.len()-1] >> 8) & 0xff) as u8;
-                data[data.len()-1] = ((buff[buff.len()-1] >> 16) & 0xff) as u8;
-            },
-            _ => ()
+                data[data.len() - 3] = (buff[buff.len() - 1] & 0xff) as u8;
+                data[data.len() - 2] = ((buff[buff.len() - 1] >> 8) & 0xff) as u8;
+                data[data.len() - 1] = ((buff[buff.len() - 1] >> 16) & 0xff) as u8;
+            }
+            _ => (),
         }
 
         Ok(())
     }
 
     /// Write a 32bit word at `addr`.
-    /// 
+    ///
     /// The address where the write should be performed at has to be word aligned.
     /// Returns `AccessPortError::MemoryNotAligned` if this does not hold true.
     pub fn write32<AP>(
         &self,
         debug_port: &mut AP,
         address: u32,
-        data: u32
+        data: u32,
     ) -> Result<(), AccessPortError>
     where
-        AP: APAccess<MemoryAP, CSW> + APAccess<MemoryAP, TAR> + APAccess<MemoryAP, DRW>
+        AP: APAccess<MemoryAP, CSW> + APAccess<MemoryAP, TAR> + APAccess<MemoryAP, DRW>,
     {
         if (address % 4) != 0 {
             return Err(AccessPortError::MemoryNotAligned);
@@ -289,19 +296,19 @@ impl ADIMemoryInterface {
     }
 
     /// Write an 8bit word at `addr`.
-    /// 
+    ///
     /// The address where the write should be performed at has to be word aligned.
     /// Returns `AccessPortError::MemoryNotAligned` if this does not hold true.
     pub fn write8<AP>(
         &self,
         debug_port: &mut AP,
         address: u32,
-        data: u8
+        data: u8,
     ) -> Result<(), AccessPortError>
     where
-        AP: APAccess<MemoryAP, CSW> + APAccess<MemoryAP, TAR> + APAccess<MemoryAP, DRW>
+        AP: APAccess<MemoryAP, CSW> + APAccess<MemoryAP, TAR> + APAccess<MemoryAP, DRW>,
     {
-        let pre_bytes = (address % 4)as usize;
+        let pre_bytes = (address % 4) as usize;
         let aligned_addr = address - (address % 4);
 
         let before = self.read32(debug_port, aligned_addr)?;
@@ -310,7 +317,9 @@ impl ADIMemoryInterface {
 
         let csw = self.build_csw_register(DataSize::U32);
         let drw = DRW { data };
-        let tar = TAR { address: aligned_addr };
+        let tar = TAR {
+            address: aligned_addr,
+        };
         self.write_register_ap(debug_port, csw)?;
         self.write_register_ap(debug_port, tar)?;
         self.write_register_ap(debug_port, drw)?;
@@ -318,7 +327,7 @@ impl ADIMemoryInterface {
     }
 
     /// Write a block of 32bit words at `addr`.
-    /// 
+    ///
     /// The number of words written is `data.len()`.
     /// The address where the write should be performed at has to be word aligned.
     /// Returns `AccessPortError::MemoryNotAligned` if this does not hold true.
@@ -326,10 +335,10 @@ impl ADIMemoryInterface {
         &self,
         debug_port: &mut AP,
         address: u32,
-        data: &[u32]
+        data: &[u32],
     ) -> Result<(), AccessPortError>
     where
-        AP: APAccess<MemoryAP, CSW> + APAccess<MemoryAP, TAR> + APAccess<MemoryAP, DRW>
+        AP: APAccess<MemoryAP, CSW> + APAccess<MemoryAP, TAR> + APAccess<MemoryAP, DRW>,
     {
         if (address % 4) != 0 {
             return Err(AccessPortError::MemoryNotAligned);
@@ -344,7 +353,7 @@ impl ADIMemoryInterface {
         self.write_register_ap(debug_port, tar)?;
 
         for data in data.iter() {
-            let drw = DRW { data : *data };
+            let drw = DRW { data: *data };
             self.write_register_ap(debug_port, drw)?;
         }
 
@@ -352,7 +361,7 @@ impl ADIMemoryInterface {
     }
 
     /// Write a block of 8bit words at `addr`.
-    /// 
+    ///
     /// The number of words written is `data.len()`.
     /// The address where the write should be performed at has to be word aligned.
     /// Returns `AccessPortError::MemoryNotAligned` if this does not hold true.
@@ -360,10 +369,10 @@ impl ADIMemoryInterface {
         &self,
         debug_port: &mut AP,
         address: u32,
-        data: &[u8]
+        data: &[u8],
     ) -> Result<(), AccessPortError>
     where
-        AP: APAccess<MemoryAP, CSW> + APAccess<MemoryAP, TAR> + APAccess<MemoryAP, DRW>
+        AP: APAccess<MemoryAP, CSW> + APAccess<MemoryAP, TAR> + APAccess<MemoryAP, DRW>,
     {
         let pre_bytes = ((4 - (address % 4)) % 4) as usize;
         let pre_address = address / 4;
@@ -373,7 +382,7 @@ impl ADIMemoryInterface {
 
         if pre_bytes != 0 {
             let mut pre_data = self.read32(debug_port, pre_address)?;
-            for (i, shift) in (4-pre_bytes..4).enumerate() {
+            for (i, shift) in (4 - pre_bytes..4).enumerate() {
                 pre_data &= !(0xFF << (shift * 8));
                 pre_data |= u32::from(data[i]) << (shift * 8);
             }
@@ -384,7 +393,8 @@ impl ADIMemoryInterface {
         self.write_block32(
             debug_port,
             aligned_address,
-            data[pre_bytes..data.len() - post_bytes].chunks(4)
+            data[pre_bytes..data.len() - post_bytes]
+                .chunks(4)
                 .map(|c| c.pread::<u32>(0).expect("This is a bug. Please report it."))
                 .collect::<Vec<_>>()
                 .as_slice(),
@@ -594,7 +604,7 @@ mod tests {
         let mut data = [0 as u8; 8];
         let read = mi.read_block8(&mut mock, 0, &mut data);
         debug_assert!(read.is_ok());
-        debug_assert_eq!(data, [0xEF, 0xBE, 0xAD, 0xDE, 0xBE, 0xBA, 0xBA ,0xAB]);
+        debug_assert_eq!(data, [0xEF, 0xBE, 0xAD, 0xDE, 0xBE, 0xBA, 0xBA, 0xAB]);
     }
 
     #[test]
@@ -612,7 +622,7 @@ mod tests {
         let mut data = [0 as u8; 8];
         let read = mi.read_block8(&mut mock, 1, &mut data);
         debug_assert!(read.is_ok());
-        debug_assert_eq!(data, [0xEF, 0xBE, 0xAD, 0xDE, 0xBE, 0xBA, 0xBA ,0xAB]);
+        debug_assert_eq!(data, [0xEF, 0xBE, 0xAD, 0xDE, 0xBE, 0xBA, 0xBA, 0xAB]);
     }
 
     #[test]
@@ -630,22 +640,29 @@ mod tests {
         let mut data = [0 as u8; 8];
         let read = mi.read_block8(&mut mock, 3, &mut data);
         debug_assert!(read.is_ok());
-        debug_assert_eq!(data, [0xEF, 0xBE, 0xAD, 0xDE, 0xBE, 0xBA, 0xBA ,0xAB]);
+        debug_assert_eq!(data, [0xEF, 0xBE, 0xAD, 0xDE, 0xBE, 0xBA, 0xBA, 0xAB]);
     }
 
     #[test]
     fn write_block_u32() {
         let mut mock = MockMemoryAP::default();
         let mi = ADIMemoryInterface::new(0x0);
-        debug_assert!(mi.write_block32(&mut mock, 0, &([0xDEAD_BEEF, 0xABBA_BABE] as [u32; 2])).is_ok());
-        debug_assert_eq!(mock.data[0..8], [0xEF, 0xBE, 0xAD, 0xDE, 0xBE, 0xBA, 0xBA ,0xAB]);
+        debug_assert!(mi
+            .write_block32(&mut mock, 0, &([0xDEAD_BEEF, 0xABBA_BABE] as [u32; 2]))
+            .is_ok());
+        debug_assert_eq!(
+            mock.data[0..8],
+            [0xEF, 0xBE, 0xAD, 0xDE, 0xBE, 0xBA, 0xBA, 0xAB]
+        );
     }
 
     #[test]
     fn write_block_u32_only_1_word() {
         let mut mock = MockMemoryAP::default();
         let mi = ADIMemoryInterface::new(0x0);
-        debug_assert!(mi.write_block32(&mut mock, 0, &([0xDEAD_BEEF] as [u32; 1])).is_ok());
+        debug_assert!(mi
+            .write_block32(&mut mock, 0, &([0xDEAD_BEEF] as [u32; 1]))
+            .is_ok());
         debug_assert_eq!(mock.data[0..4], [0xEF, 0xBE, 0xAD, 0xDE]);
     }
 
@@ -653,9 +670,15 @@ mod tests {
     fn write_block_u32_unaligned_should_error() {
         let mut mock = MockMemoryAP::default();
         let mi = ADIMemoryInterface::new(0x0);
-        debug_assert!(mi.write_block32(&mut mock, 1, &([0xDEAD_BEEF, 0xABBA_BABE] as [u32; 2])).is_err());
-        debug_assert!(mi.write_block32(&mut mock, 127, &([0xDEAD_BEEF, 0xABBA_BABE] as [u32; 2])).is_err());
-        debug_assert!(mi.write_block32(&mut mock, 3, &([0xDEAD_BEEF, 0xABBA_BABE] as [u32; 2])).is_err());
+        debug_assert!(mi
+            .write_block32(&mut mock, 1, &([0xDEAD_BEEF, 0xABBA_BABE] as [u32; 2]))
+            .is_err());
+        debug_assert!(mi
+            .write_block32(&mut mock, 127, &([0xDEAD_BEEF, 0xABBA_BABE] as [u32; 2]))
+            .is_err());
+        debug_assert!(mi
+            .write_block32(&mut mock, 3, &([0xDEAD_BEEF, 0xABBA_BABE] as [u32; 2]))
+            .is_err());
     }
 
     #[test]
@@ -690,23 +713,50 @@ mod tests {
     fn write_block_u8() {
         let mut mock = MockMemoryAP::default();
         let mi = ADIMemoryInterface::new(0x0);
-        debug_assert!(mi.write_block8(&mut mock, 0, &([0xEF, 0xBE, 0xAD, 0xDE, 0xBE, 0xBA, 0xBA ,0xAB] as [u8; 8])).is_ok());
-        debug_assert_eq!(mock.data[0..8], [0xEF, 0xBE, 0xAD, 0xDE, 0xBE, 0xBA, 0xBA ,0xAB]);
+        debug_assert!(mi
+            .write_block8(
+                &mut mock,
+                0,
+                &([0xEF, 0xBE, 0xAD, 0xDE, 0xBE, 0xBA, 0xBA, 0xAB] as [u8; 8])
+            )
+            .is_ok());
+        debug_assert_eq!(
+            mock.data[0..8],
+            [0xEF, 0xBE, 0xAD, 0xDE, 0xBE, 0xBA, 0xBA, 0xAB]
+        );
     }
 
     #[test]
     fn write_block_u8_unaligned() {
         let mut mock = MockMemoryAP::default();
         let mi = ADIMemoryInterface::new(0x0);
-        debug_assert!(mi.write_block8(&mut mock, 3, &([0xEF, 0xBE, 0xAD, 0xDE, 0xBE, 0xBA, 0xBA ,0xAB] as [u8; 8])).is_ok());
-        debug_assert_eq!(mock.data[0..11], [0x00, 0x00, 0x00, 0xEF, 0xBE, 0xAD, 0xDE, 0xBE, 0xBA, 0xBA ,0xAB]);
+        debug_assert!(mi
+            .write_block8(
+                &mut mock,
+                3,
+                &([0xEF, 0xBE, 0xAD, 0xDE, 0xBE, 0xBA, 0xBA, 0xAB] as [u8; 8])
+            )
+            .is_ok());
+        debug_assert_eq!(
+            mock.data[0..11],
+            [0x00, 0x00, 0x00, 0xEF, 0xBE, 0xAD, 0xDE, 0xBE, 0xBA, 0xBA, 0xAB]
+        );
     }
 
     #[test]
     fn write_block_u8_unaligned2() {
         let mut mock = MockMemoryAP::default();
         let mi = ADIMemoryInterface::new(0x0);
-        debug_assert!(mi.write_block8(&mut mock, 1, &([0xEF, 0xBE, 0xAD, 0xDE, 0xBE, 0xBA, 0xBA ,0xAB] as [u8; 8])).is_ok());
-        debug_assert_eq!(mock.data[0..9], [0x00, 0xEF, 0xBE, 0xAD, 0xDE, 0xBE, 0xBA, 0xBA ,0xAB]);
+        debug_assert!(mi
+            .write_block8(
+                &mut mock,
+                1,
+                &([0xEF, 0xBE, 0xAD, 0xDE, 0xBE, 0xBA, 0xBA, 0xAB] as [u8; 8])
+            )
+            .is_ok());
+        debug_assert_eq!(
+            mock.data[0..9],
+            [0x00, 0xEF, 0xBE, 0xAD, 0xDE, 0xBE, 0xBA, 0xBA, 0xAB]
+        );
     }
 }

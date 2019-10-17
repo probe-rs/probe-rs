@@ -1,22 +1,14 @@
 use crate::coresight::{
-    access_ports::{
-        generic_ap::GenericAP,
-        memory_ap::MemoryAP,
-        APRegister,
-        AccessPortError
-    },
-    ap_access::{
-        APAccess,
-        AccessPort,
-    },
+    access_ports::{generic_ap::GenericAP, memory_ap::MemoryAP, APRegister, AccessPortError},
+    ap_access::{APAccess, AccessPort},
     common::Register,
 };
 
 use log::debug;
 
 use crate::memory::adi_v5_memory_interface::ADIMemoryInterface;
-use crate::probe::protocol::WireProtocol;
 use crate::memory::MI;
+use crate::probe::protocol::WireProtocol;
 use std::error::Error;
 use std::fmt;
 
@@ -40,7 +32,7 @@ pub enum DebugProbeError {
     ProbeCouldNotBeCreated,
     TargetPowerUpFailed,
     Timeout,
-    AccessPortError(AccessPortError)
+    AccessPortError(AccessPortError),
 }
 
 impl Error for DebugProbeError {
@@ -68,7 +60,7 @@ impl From<AccessPortError> for DebugProbeError {
 #[derive(Debug, PartialEq)]
 pub enum Port {
     DebugPort,
-    AccessPort(u16)
+    AccessPort(u16),
 }
 
 pub trait DAPAccess {
@@ -105,7 +97,7 @@ impl MasterProbe {
         } else {
             false
         };
-        
+
         if self.current_apbanksel != ap_bank {
             self.current_apbanksel = ap_bank;
             cache_changed = true;
@@ -116,46 +108,76 @@ impl MasterProbe {
 
             let mut select = Select(0);
 
-            debug!("Changing AP to {}, AP_BANK_SEL to {}", self.current_apsel, self.current_apbanksel);
+            debug!(
+                "Changing AP to {}, AP_BANK_SEL to {}",
+                self.current_apsel, self.current_apbanksel
+            );
 
             select.set_ap_sel(self.current_apsel);
             select.set_ap_bank_sel(self.current_apbanksel);
 
-            self.actual_probe.write_register(Port::DebugPort, u16::from(Select::ADDRESS), select.into())?;
+            self.actual_probe.write_register(
+                Port::DebugPort,
+                u16::from(Select::ADDRESS),
+                select.into(),
+            )?;
         }
 
         Ok(())
     }
 
-    fn write_register_ap<AP, REGISTER>(&mut self, port: AP, register: REGISTER) -> Result<(), DebugProbeError>
+    fn write_register_ap<AP, REGISTER>(
+        &mut self,
+        port: AP,
+        register: REGISTER,
+    ) -> Result<(), DebugProbeError>
     where
         AP: AccessPort,
-        REGISTER: APRegister<AP>
+        REGISTER: APRegister<AP>,
     {
         let register_value = register.into();
 
-        debug!("Writing register {}, value=0x{:08X}", REGISTER::NAME, register_value);
+        debug!(
+            "Writing register {}, value=0x{:08X}",
+            REGISTER::NAME,
+            register_value
+        );
 
         self.select_ap_and_ap_bank(port.get_port_number(), REGISTER::APBANKSEL)?;
 
         let link = &mut self.actual_probe;
-        link.write_register(Port::AccessPort(u16::from(self.current_apsel)), u16::from(REGISTER::ADDRESS), register_value)?;
+        link.write_register(
+            Port::AccessPort(u16::from(self.current_apsel)),
+            u16::from(REGISTER::ADDRESS),
+            register_value,
+        )?;
         Ok(())
     }
 
-    fn read_register_ap<AP, REGISTER>(&mut self, port: AP, _register: REGISTER) -> Result<REGISTER, DebugProbeError>
+    fn read_register_ap<AP, REGISTER>(
+        &mut self,
+        port: AP,
+        _register: REGISTER,
+    ) -> Result<REGISTER, DebugProbeError>
     where
         AP: AccessPort,
-        REGISTER: APRegister<AP>
+        REGISTER: APRegister<AP>,
     {
         debug!("Reading register {}", REGISTER::NAME);
         self.select_ap_and_ap_bank(port.get_port_number(), REGISTER::APBANKSEL)?;
 
         let link = &mut self.actual_probe;
         //println!("{:?}, {:08X}", link.current_apsel, REGISTER::ADDRESS);
-        let result = link.read_register(Port::AccessPort(u16::from(self.current_apsel)), u16::from(REGISTER::ADDRESS))?;
+        let result = link.read_register(
+            Port::AccessPort(u16::from(self.current_apsel)),
+            u16::from(REGISTER::ADDRESS),
+        )?;
 
-        debug!("Read register    {}, value=0x{:08x}", REGISTER::NAME, result);
+        debug!(
+            "Read register    {}, value=0x{:08x}",
+            REGISTER::NAME,
+            result
+        );
 
         Ok(REGISTER::from(result))
     }
@@ -165,7 +187,8 @@ impl MasterProbe {
     }
 
     pub fn write_register_dp(&mut self, offset: u16, val: u32) -> Result<(), DebugProbeError> {
-        self.actual_probe.write_register(Port::DebugPort, offset, val)
+        self.actual_probe
+            .write_register(Port::DebugPort, offset, val)
     }
 }
 
@@ -176,14 +199,18 @@ pub struct CpuInformation {
 
 impl<REGISTER> APAccess<MemoryAP, REGISTER> for MasterProbe
 where
-    REGISTER: APRegister<MemoryAP>
+    REGISTER: APRegister<MemoryAP>,
 {
     type Error = DebugProbeError;
 
-    fn read_register_ap(&mut self, port: MemoryAP, register: REGISTER) -> Result<REGISTER, Self::Error> {
+    fn read_register_ap(
+        &mut self,
+        port: MemoryAP,
+        register: REGISTER,
+    ) -> Result<REGISTER, Self::Error> {
         self.read_register_ap(port, register)
     }
-    
+
     fn write_register_ap(&mut self, port: MemoryAP, register: REGISTER) -> Result<(), Self::Error> {
         self.write_register_ap(port, register)
     }
@@ -191,21 +218,28 @@ where
 
 impl<REGISTER> APAccess<GenericAP, REGISTER> for MasterProbe
 where
-    REGISTER: APRegister<GenericAP>
+    REGISTER: APRegister<GenericAP>,
 {
     type Error = DebugProbeError;
 
-    fn read_register_ap(&mut self, port: GenericAP, register: REGISTER) -> Result<REGISTER, Self::Error> {
+    fn read_register_ap(
+        &mut self,
+        port: GenericAP,
+        register: REGISTER,
+    ) -> Result<REGISTER, Self::Error> {
         self.read_register_ap(port, register)
     }
-    
-    fn write_register_ap(&mut self, port: GenericAP, register: REGISTER) -> Result<(), Self::Error> {
+
+    fn write_register_ap(
+        &mut self,
+        port: GenericAP,
+        register: REGISTER,
+    ) -> Result<(), Self::Error> {
         self.write_register_ap(port, register)
     }
 }
 
-impl MI for MasterProbe
-{
+impl MI for MasterProbe {
     fn read32(&mut self, address: u32) -> Result<u32, AccessPortError> {
         ADIMemoryInterface::new(0).read32(self, address)
     }
@@ -239,10 +273,10 @@ impl MI for MasterProbe
     }
 }
 
-
-
 pub trait DebugProbe: DAPAccess {
-    fn new_from_probe_info(info: &DebugProbeInfo) -> Result<Box<Self>, DebugProbeError> where Self: Sized;
+    fn new_from_probe_info(info: &DebugProbeInfo) -> Result<Box<Self>, DebugProbeError>
+    where
+        Self: Sized;
 
     /// Get human readable name for the probe
     fn get_name(&self) -> &str;
@@ -257,15 +291,11 @@ pub trait DebugProbe: DAPAccess {
     fn target_reset(&mut self) -> Result<(), DebugProbeError>;
 }
 
-
-
-
 #[derive(Debug)]
 pub enum DebugProbeType {
     DAPLink,
     STLink,
 }
-
 
 pub struct DebugProbeInfo {
     pub identifier: String,
@@ -275,20 +305,21 @@ pub struct DebugProbeInfo {
     pub probe_type: DebugProbeType,
 }
 
-
 impl std::fmt::Debug for DebugProbeInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(
-            f, "{} (VID: {}, PID: {}, {}{:?})",
+            f,
+            "{} (VID: {}, PID: {}, {}{:?})",
             self.identifier,
             self.vendor_id,
             self.product_id,
-            self.serial_number.clone().map_or("".to_owned(), |v| format!("Serial: {},", v)),
+            self.serial_number
+                .clone()
+                .map_or("".to_owned(), |v| format!("Serial: {},", v)),
             self.probe_type
         )
     }
 }
-
 
 impl DebugProbeInfo {
     pub fn new<S: Into<String>>(
@@ -296,7 +327,7 @@ impl DebugProbeInfo {
         vendor_id: u16,
         product_id: u16,
         serial_number: Option<String>,
-        probe_type: DebugProbeType
+        probe_type: DebugProbeType,
     ) -> Self {
         Self {
             identifier: identifier.into(),
@@ -318,7 +349,10 @@ impl FakeProbe {
 }
 
 impl DebugProbe for FakeProbe {
-    fn new_from_probe_info(_info: &DebugProbeInfo) -> Result<Box<Self>, DebugProbeError> where Self: Sized {
+    fn new_from_probe_info(_info: &DebugProbeInfo) -> Result<Box<Self>, DebugProbeError>
+    where
+        Self: Sized,
+    {
         Err(DebugProbeError::ProbeCouldNotBeCreated)
     }
 
@@ -334,8 +368,7 @@ impl DebugProbe for FakeProbe {
     }
 
     /// Leave debug mode
-    fn detach(&mut self) -> Result<(), DebugProbeError>
-    {
+    fn detach(&mut self) -> Result<(), DebugProbeError> {
         Ok(())
     }
 
@@ -343,7 +376,6 @@ impl DebugProbe for FakeProbe {
     fn target_reset(&mut self) -> Result<(), DebugProbeError> {
         Err(DebugProbeError::UnknownError)
     }
-
 }
 
 impl DAPAccess for FakeProbe {
@@ -353,7 +385,12 @@ impl DAPAccess for FakeProbe {
     }
 
     /// Writes a value to the DAP register on the specified port and address
-    fn write_register(&mut self, _port: Port, _addr: u16, _value: u32) -> Result<(), DebugProbeError> {
+    fn write_register(
+        &mut self,
+        _port: Port,
+        _addr: u16,
+        _value: u32,
+    ) -> Result<(), DebugProbeError> {
         Err(DebugProbeError::UnknownError)
     }
 }

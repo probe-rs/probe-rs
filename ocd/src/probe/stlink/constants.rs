@@ -1,4 +1,4 @@
-pub mod commands {    
+pub mod commands {
     // Common commands.
     pub const GET_VERSION: u8 = 0xf1;
     pub const JTAG_COMMAND: u8 = 0xf2;
@@ -40,7 +40,7 @@ pub mod commands {
     pub const JTAG_CLOSE_AP_DBG: u8 = 0x4c; // From V2J28
     pub const SET_COM_FREQ: u8 = 0x61; // V3 only, replaces SWD/JTAG_SET_FREQ
     pub const GET_COM_FREQ: u8 = 0x62; // V3 only
-    
+
     // Parameters for JTAG_ENTER2.
     pub const JTAG_ENTER_SWD: u8 = 0xa3;
     pub const JTAG_ENTER_JTAG_NO_CORE_RESET: u8 = 0xa3;
@@ -49,16 +49,16 @@ pub mod commands {
     pub const JTAG_DRIVE_NRST_LOW: u8 = 0x00;
     pub const JTAG_DRIVE_NRST_HIGH: u8 = 0x01;
     pub const JTAG_DRIVE_NRST_PULSE: u8 = 0x02;
-    
+
     // Parameters for JTAG_INIT_AP and JTAG_CLOSE_AP_DBG.
     pub const JTAG_AP_NO_CORE: u8 = 0x00;
     pub const JTAG_AP_CORTEXM_CORE: u8 = 0x01;
-    
+
     // Parameters for SET_COM_FREQ and GET_COM_FREQ.
     pub const JTAG_STLINK_SWD_COM: u8 = 0x00;
     pub const JTAG_STLINK_JTAG_COM: u8 = 0x01;
 }
-    
+
 /// STLink status codes and messages.
 pub enum Status {
     JtagOk = 0x80,

@@ -1,15 +1,7 @@
-use std::collections::HashMap;
+use super::{APRegister, AddressIncrement, DataSize, MemoryAP, CSW, DRW, TAR};
 use crate::coresight::ap_access::APAccess;
-use super::{
-    MemoryAP,
-    APRegister,
-    AddressIncrement,
-    CSW,
-    DataSize,
-    TAR,
-    DRW,
-};
 use crate::coresight::common::Register;
+use std::collections::HashMap;
 
 pub struct MockMemoryAP {
     pub data: Vec<u8>,
@@ -37,14 +29,18 @@ impl Default for MockMemoryAP {
 
 impl<REGISTER> APAccess<MemoryAP, REGISTER> for MockMemoryAP
 where
-    REGISTER: APRegister<MemoryAP>
+    REGISTER: APRegister<MemoryAP>,
 {
     type Error = MockMemoryError;
 
     /// Mocks the read_register method of a AP.
-    /// 
+    ///
     /// Returns an Error if any bad instructions or values are chosen.
-    fn read_register_ap(&mut self, _port: MemoryAP, _register: REGISTER) -> Result<REGISTER, Self::Error> {
+    fn read_register_ap(
+        &mut self,
+        _port: MemoryAP,
+        _register: REGISTER,
+    ) -> Result<REGISTER, Self::Error> {
         let csw = self.store[&(CSW::ADDRESS, CSW::APBANKSEL)];
         let address = self.store[&(TAR::ADDRESS, TAR::APBANKSEL)];
 
@@ -54,19 +50,17 @@ where
 
                 let data = match csw.SIZE {
                     DataSize::U32 => Ok(REGISTER::from(
-                        u32::from(self.data[address as usize    ])        |
-                        (u32::from(self.data[address as usize + 1]) <<  8) |
-                        (u32::from(self.data[address as usize + 2]) << 16) |
-                        (u32::from(self.data[address as usize + 3]) << 24)
+                        u32::from(self.data[address as usize])
+                            | (u32::from(self.data[address as usize + 1]) << 8)
+                            | (u32::from(self.data[address as usize + 2]) << 16)
+                            | (u32::from(self.data[address as usize + 3]) << 24),
                     )),
                     DataSize::U16 => Ok(REGISTER::from(
-                        u32::from(self.data[address as usize    ])         |
-                        (u32::from(self.data[address as usize + 1]) <<  8)
+                        u32::from(self.data[address as usize])
+                            | (u32::from(self.data[address as usize + 1]) << 8),
                     )),
-                    DataSize::U8 => Ok(REGISTER::from(
-                        u32::from(self.data[address as usize    ])
-                    )),
-                    _ => Err(MockMemoryError::UnknownWidth)
+                    DataSize::U8 => Ok(REGISTER::from(u32::from(self.data[address as usize]))),
+                    _ => Err(MockMemoryError::UnknownWidth),
                 };
 
                 if data.is_ok() {
@@ -76,11 +70,12 @@ where
                                 DataSize::U32 => address + 4,
                                 DataSize::U16 => address + 2,
                                 DataSize::U8 => address + 1,
-                                _  => unimplemented!(),
+                                _ => unimplemented!(),
                             };
 
-                            self.store.insert((TAR::ADDRESS, TAR::APBANKSEL), new_address);
-                        },
+                            self.store
+                                .insert((TAR::ADDRESS, TAR::APBANKSEL), new_address);
+                        }
                         AddressIncrement::Off => (),
                         AddressIncrement::Packed => {
                             unimplemented!();
@@ -89,41 +84,50 @@ where
                 }
 
                 data
-            },
-            (CSW::ADDRESS, CSW::APBANKSEL) => Ok(REGISTER::from(self.store[&(REGISTER::ADDRESS, REGISTER::APBANKSEL)])),
-            (TAR::ADDRESS, TAR::APBANKSEL) => Ok(REGISTER::from(self.store[&(REGISTER::ADDRESS, REGISTER::APBANKSEL)])),
-            _ => Err(MockMemoryError::UnknownRegister)
+            }
+            (CSW::ADDRESS, CSW::APBANKSEL) => Ok(REGISTER::from(
+                self.store[&(REGISTER::ADDRESS, REGISTER::APBANKSEL)],
+            )),
+            (TAR::ADDRESS, TAR::APBANKSEL) => Ok(REGISTER::from(
+                self.store[&(REGISTER::ADDRESS, REGISTER::APBANKSEL)],
+            )),
+            _ => Err(MockMemoryError::UnknownRegister),
         }
     }
 
     /// Mocks the write_register method of a AP.
-    /// 
+    ///
     /// Returns an Error if any bad instructions or values are chosen.
-    fn write_register_ap(&mut self, _port: MemoryAP, register: REGISTER) -> Result<(), Self::Error> {
+    fn write_register_ap(
+        &mut self,
+        _port: MemoryAP,
+        register: REGISTER,
+    ) -> Result<(), Self::Error> {
         let value = register.into();
-        self.store.insert((REGISTER::ADDRESS, REGISTER::APBANKSEL), value);
+        self.store
+            .insert((REGISTER::ADDRESS, REGISTER::APBANKSEL), value);
         let csw = self.store[&(CSW::ADDRESS, CSW::APBANKSEL)];
         let address = self.store[&(TAR::ADDRESS, TAR::APBANKSEL)];
         match (REGISTER::ADDRESS, REGISTER::APBANKSEL) {
             (DRW::ADDRESS, DRW::APBANKSEL) => {
                 let result = match CSW::from(csw).SIZE {
                     DataSize::U32 => {
-                        self.data[address as usize    ] =  value        as u8;
-                        self.data[address as usize + 1] = (value >>  8) as u8;
+                        self.data[address as usize] = value as u8;
+                        self.data[address as usize + 1] = (value >> 8) as u8;
                         self.data[address as usize + 2] = (value >> 16) as u8;
                         self.data[address as usize + 3] = (value >> 24) as u8;
                         Ok(())
-                    },
+                    }
                     DataSize::U16 => {
-                        self.data[address as usize    ] =  value        as u8;
-                        self.data[address as usize + 1] = (value >>  8) as u8;
+                        self.data[address as usize] = value as u8;
+                        self.data[address as usize + 1] = (value >> 8) as u8;
                         Ok(())
-                    },
+                    }
                     DataSize::U8 => {
-                        self.data[address as usize    ] =  value        as u8;
+                        self.data[address as usize] = value as u8;
                         Ok(())
-                    },
-                    _ => Err(MockMemoryError::UnknownWidth)
+                    }
+                    _ => Err(MockMemoryError::UnknownWidth),
                 };
 
                 if result.is_ok() {
@@ -134,10 +138,11 @@ where
                                 DataSize::U32 => address + 4,
                                 DataSize::U16 => address + 2,
                                 DataSize::U8 => address + 1,
-                                _  => unimplemented!(),
+                                _ => unimplemented!(),
                             };
-                            self.store.insert((TAR::ADDRESS, TAR::APBANKSEL), new_address);
-                        },
+                            self.store
+                                .insert((TAR::ADDRESS, TAR::APBANKSEL), new_address);
+                        }
                         AddressIncrement::Off => (),
                         AddressIncrement::Packed => {
                             unimplemented!();
@@ -146,16 +151,16 @@ where
                 }
 
                 result
-            },
+            }
             (CSW::ADDRESS, CSW::APBANKSEL) => {
                 self.store.insert((CSW::ADDRESS, CSW::APBANKSEL), value);
                 Ok(())
-            },
+            }
             (TAR::ADDRESS, TAR::APBANKSEL) => {
                 self.store.insert((TAR::ADDRESS, TAR::APBANKSEL), value);
                 Ok(())
-            },
-            _ => Err(MockMemoryError::UnknownRegister)
+            }
+            _ => Err(MockMemoryError::UnknownRegister),
         }
     }
 }

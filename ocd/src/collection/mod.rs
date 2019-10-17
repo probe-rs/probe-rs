@@ -1,17 +1,15 @@
 pub mod cores;
 
-use std::io;
-use std::fs::{self, DirEntry};
-use std::path::{
-    Path,
-};
 use std::collections::HashMap;
 use std::fs::File;
+use std::fs::{self, DirEntry};
+use std::io;
 use std::io::BufReader;
+use std::path::Path;
 
-use crate::target::Target;
-use crate::target::Core;
 use crate::probe::flash::flasher::FlashAlgorithm;
+use crate::target::Core;
+use crate::target::Target;
 
 pub fn get_target(name: impl AsRef<str>) -> Option<Target> {
     let mut map: HashMap<String, Target> = HashMap::new();
@@ -21,7 +19,7 @@ pub fn get_target(name: impl AsRef<str>) -> Option<Target> {
             .map(|home| home.join(".config/probe-rs/targets"))
             .as_ref()
             .map(|path| path.as_path()),
-        &mut map
+        &mut map,
     );
 
     let name: String = name.as_ref().into();
@@ -35,9 +33,9 @@ pub fn get_algorithm(name: impl AsRef<str>) -> Option<FlashAlgorithm> {
     let root = dirs::home_dir().map(|home| home.join(".config/probe-rs/algorithms"));
     if let Some(root) = root {
         visit_dirs(root.as_path(), &mut map, &load_algorithms_from_dir).unwrap();
-        
-        let name =
-            root.join(name.as_ref())
+
+        let name = root
+            .join(name.as_ref())
             .as_path()
             .to_string_lossy()
             .to_string();
@@ -50,7 +48,7 @@ pub fn get_algorithm(name: impl AsRef<str>) -> Option<FlashAlgorithm> {
 }
 
 pub fn get_core(name: impl AsRef<str>) -> Option<Box<dyn Core>> {
-    let map: HashMap<&'static str, Box<dyn Core>> = hashmap!{
+    let map: HashMap<&'static str, Box<dyn Core>> = hashmap! {
         "M0" => Box::new(self::cores::m0::M0) as _,
         "M4" => Box::new(self::cores::m4::M4) as _,
     };
@@ -76,10 +74,10 @@ pub fn load_targets_from_dir(dir: &DirEntry, map: &mut HashMap<String, Target>) 
                 Ok(mut target) => {
                     target.name.make_ascii_lowercase();
                     map.insert(target.name.clone(), target);
-                },
-                Err(e) => { log::warn!("Error loading chip definition: {}", e) }
+                }
+                Err(e) => log::warn!("Error loading chip definition: {}", e),
             }
-        },
+        }
         Err(e) => {
             log::info!("Unable to load file {:?}.", dir.path());
             log::info!("Reason: {:?}", e);
@@ -96,10 +94,10 @@ pub fn load_algorithms_from_dir(dir: &DirEntry, map: &mut HashMap<String, FlashA
             match serde_yaml::from_reader(reader) as serde_yaml::Result<FlashAlgorithm> {
                 Ok(target) => {
                     map.insert(dir.path().to_string_lossy().to_string(), target);
-                },
-                Err(e) => { log::warn!("Error loading chip definition: {}", e) }
+                }
+                Err(e) => log::warn!("Error loading chip definition: {}", e),
             }
-        },
+        }
         Err(e) => {
             log::info!("Unable to load file {:?}.", dir.path());
             log::info!("Reason: {:?}", e);
@@ -110,7 +108,7 @@ pub fn load_algorithms_from_dir(dir: &DirEntry, map: &mut HashMap<String, FlashA
 fn visit_dirs<T>(
     dir: &Path,
     map: &mut HashMap<String, T>,
-    cb: &dyn Fn(&DirEntry, &mut HashMap<String, T>)
+    cb: &dyn Fn(&DirEntry, &mut HashMap<String, T>),
 ) -> io::Result<()> {
     if dir.is_dir() {
         for entry in fs::read_dir(dir)? {

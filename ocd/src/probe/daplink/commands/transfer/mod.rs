@@ -1,11 +1,6 @@
 pub mod configure;
 
-use super::{
-    Response,
-    Category,
-    Request,
-    Result,
-};
+use super::{Category, Request, Response, Result};
 
 #[derive(Copy, Clone, Debug)]
 pub enum Port {
@@ -63,15 +58,13 @@ fn creating_inner_transfer_request() {
 
 impl InnerTransferRequest {
     fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize> {
-        buffer[offset] = 
-            (self.APnDP as u8)
-          | (self.RnW as u8) << 1
-          | (if self.A2 { 1 } else { 0 }) << 2
-          | (if self.A3 { 1 } else { 0 }) << 3
-          | (if self.value_match { 1 } else { 0 }) << 4
-          | (if self.match_mask { 1 } else { 0 }) << 5
-          | (if self.td_timestamp_request { 1 } else { 0 }) << 7
-        ;
+        buffer[offset] = (self.APnDP as u8)
+            | (self.RnW as u8) << 1
+            | (if self.A2 { 1 } else { 0 }) << 2
+            | (if self.A3 { 1 } else { 0 }) << 3
+            | (if self.value_match { 1 } else { 0 }) << 4
+            | (if self.match_mask { 1 } else { 0 }) << 5
+            | (if self.td_timestamp_request { 1 } else { 0 }) << 7;
         Ok(1)
     }
 }
@@ -115,7 +108,9 @@ impl Request for TransferRequest {
         buffer[offset] = self.dap_index;
         buffer[offset + 1] = self.transfer_count;
         self.transfer_request.to_bytes(buffer, offset + 2)?;
-        buffer.pwrite(self.transfer_data, offset + 3).expect("This is a bug. Please report it.");
+        buffer
+            .pwrite(self.transfer_data, offset + 3)
+            .expect("This is a bug. Please report it.");
         Ok(0)
     }
 }
@@ -145,7 +140,7 @@ pub struct TransferResponse {
     /// register value or match value in the order of the Transfer Request.
     ///- for Read Register transfer request: the register value of the CoreSight register.
     ///- no data is sent for other operations.
-    pub transfer_data: u32
+    pub transfer_data: u32,
 }
 
 impl Response for TransferResponse {
@@ -162,11 +157,13 @@ impl Response for TransferResponse {
                     _ => Ack::NoAck,
                 },
                 protocol_error: buffer[offset + 1] & 0x8 > 1,
-                value_missmatch: buffer[offset + 1] & 0x10 > 1 ,
+                value_missmatch: buffer[offset + 1] & 0x10 > 1,
             },
             // TODO: implement this properly.
             td_timestamp: 0, // scroll::pread(buffer[offset + 2..offset + 2 + 4]),
-            transfer_data: buffer.pread(offset + 2).expect("This is a bug. Please report it."),
+            transfer_data: buffer
+                .pread(offset + 2)
+                .expect("This is a bug. Please report it."),
         })
     }
 }

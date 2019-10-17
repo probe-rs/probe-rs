@@ -1,13 +1,6 @@
-use super::super::{
-    Response,
-    Category,
-    Request,
-    Error,
-    Result,
-};
+use super::super::{Category, Error, Request, Response, Result};
 
 use scroll::Pread;
-
 
 #[derive(Copy, Clone)]
 pub enum Command {
@@ -104,13 +97,13 @@ impl Response for Capabilities {
         // In the docs only the first byte is described, so for now we always will only parse that specific byte.
         if buffer[offset + 1] > 0 {
             Ok(Capabilities {
-                swd_implemented:                    buffer[offset + 2] & 0x01 > 0,
-                jtag_implemented:                   buffer[offset + 2] & 0x02 > 0,
-                swo_uart_implemented:               buffer[offset + 2] & 0x04 > 0,
-                swo_manchester_implemented:         buffer[offset + 2] & 0x08 > 0,
-                atomic_commands_implemented:        buffer[offset + 2] & 0x10 > 0,
-                test_domain_timer_implemented:      buffer[offset + 2] & 0x20 > 0,
-                swo_streaming_trace_implemented:    buffer[offset + 2] & 0x40 > 0,
+                swd_implemented: buffer[offset + 2] & 0x01 > 0,
+                jtag_implemented: buffer[offset + 2] & 0x02 > 0,
+                swo_uart_implemented: buffer[offset + 2] & 0x04 > 0,
+                swo_manchester_implemented: buffer[offset + 2] & 0x08 > 0,
+                atomic_commands_implemented: buffer[offset + 2] & 0x10 > 0,
+                test_domain_timer_implemented: buffer[offset + 2] & 0x20 > 0,
+                swo_streaming_trace_implemented: buffer[offset + 2] & 0x40 > 0,
             })
         } else {
             Err(Error::UnexpectedAnswer)
@@ -123,7 +116,9 @@ pub struct TestDomainTime(u32);
 impl Response for TestDomainTime {
     fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self> {
         if buffer[offset + 1] == 0x08 {
-            let res = buffer.pread::<u32>(offset + 2).expect("This is a bug. Please report it.");
+            let res = buffer
+                .pread::<u32>(offset + 2)
+                .expect("This is a bug. Please report it.");
             Ok(TestDomainTime(res))
         } else {
             Err(Error::UnexpectedAnswer)
@@ -136,7 +131,9 @@ pub struct SWOTraceBufferSize(u32);
 impl Response for SWOTraceBufferSize {
     fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self> {
         if buffer[offset + 1] == 0x04 {
-            let res = buffer.pread::<u32>(offset + 2).expect("This is a bug. Please report it.");
+            let res = buffer
+                .pread::<u32>(offset + 2)
+                .expect("This is a bug. Please report it.");
             Ok(SWOTraceBufferSize(res))
         } else {
             Err(Error::UnexpectedAnswer)
@@ -149,7 +146,9 @@ pub struct PacketCount(u8);
 impl Response for PacketCount {
     fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self> {
         if buffer[offset + 1] == 0x01 {
-            let res = buffer.pread::<u8>(offset + 2).expect("This is a bug. Please report it.");
+            let res = buffer
+                .pread::<u8>(offset + 2)
+                .expect("This is a bug. Please report it.");
             Ok(PacketCount(res))
         } else {
             Err(Error::UnexpectedAnswer)
@@ -162,7 +161,9 @@ pub struct PacketSize(u16);
 impl Response for PacketSize {
     fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self> {
         if buffer[offset + 1] == 0x02 {
-            let res = buffer.pread::<u16>(offset + 2).expect("This is a bug. Please report it.");
+            let res = buffer
+                .pread::<u16>(offset + 2)
+                .expect("This is a bug. Please report it.");
             Ok(PacketSize(res))
         } else {
             Err(Error::UnexpectedAnswer)
@@ -170,16 +171,21 @@ impl Response for PacketSize {
     }
 }
 
-/// Create a String out of the received buffer. 
-/// 
+/// Create a String out of the received buffer.
+///
 /// The length of the buffer is read from the buffer, at index offset.
-/// 
-fn string_from_bytes<R, F: Fn(String) -> R>(buffer: &[u8], offset: usize, constructor: &F) -> Result<R> {
+///
+fn string_from_bytes<R, F: Fn(String) -> R>(
+    buffer: &[u8],
+    offset: usize,
+    constructor: &F,
+) -> Result<R> {
     let string_len = buffer[dbg!(offset)] as usize; // including the zero terminator
 
     let string_start = offset + 1;
     let string_end = string_start + string_len;
 
-    let res = std::str::from_utf8(&buffer[string_start..string_end]).expect("This is a bug. Please report it.");
+    let res = std::str::from_utf8(&buffer[string_start..string_end])
+        .expect("This is a bug. Please report it.");
     Ok(constructor(res.to_owned()))
 }

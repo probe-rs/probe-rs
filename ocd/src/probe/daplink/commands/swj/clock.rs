@@ -1,21 +1,17 @@
-use super::super::{
-    Response,
-    Category,
-    Request,
-    Result,
-    Status,
-};
+use super::super::{Category, Request, Response, Result, Status};
 
 #[derive(Debug)]
 pub struct SWJClockRequest(pub(crate) u32);
 
-impl Request for SWJClockRequest  {
+impl Request for SWJClockRequest {
     const CATEGORY: Category = Category(0x11);
 
     fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize> {
         use scroll::Pwrite;
 
-        buffer.pwrite(self.0, offset).expect("This is a bug. Please report it.");
+        buffer
+            .pwrite(self.0, offset)
+            .expect("This is a bug. Please report it.");
         Ok(4)
     }
 }
