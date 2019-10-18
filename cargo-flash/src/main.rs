@@ -138,7 +138,16 @@ fn main_try() -> Result<(), failure::Error> {
         let mut list = daplink::tools::list_daplink_devices();
         list.extend(stlink::tools::list_stlink_devices());
 
-        list.remove(0)
+
+        if !list.is_empty() {
+            list.remove(0)
+        } else {
+            eprintln!(
+                "    {} No supported probe was found.",
+                "Error".red().bold()
+            );
+            std::process::exit(1);
+        }
     };
 
     let mut probe = match device.probe_type {
