@@ -124,7 +124,7 @@ fn main_try() -> Result<(), failure::Error> {
         args.remove(index);
     }
 
-    Command::new("cargo")
+    let status = Command::new("cargo")
         .arg("build")
         .args(args)
         .stdout(Stdio::inherit())
@@ -132,12 +132,15 @@ fn main_try() -> Result<(), failure::Error> {
         .spawn()?
         .wait()?;
 
+    if !status.success() {
+        std::process::exit(1);
+    }
+
     println!("    {} {}", "Flashing".green().bold(), path_str);
 
     let device = {
         let mut list = daplink::tools::list_daplink_devices();
         list.extend(stlink::tools::list_stlink_devices());
-
 
         if !list.is_empty() {
             list.remove(0)
