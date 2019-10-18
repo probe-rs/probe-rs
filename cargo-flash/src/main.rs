@@ -145,10 +145,7 @@ fn main_try() -> Result<(), failure::Error> {
         if !list.is_empty() {
             list.remove(0)
         } else {
-            eprintln!(
-                "    {} No supported probe was found.",
-                "Error".red().bold()
-            );
+            eprintln!("    {} No supported probe was found.", "Error".red().bold());
             std::process::exit(1);
         }
     };
