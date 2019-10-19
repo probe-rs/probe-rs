@@ -54,7 +54,7 @@ bitfield! {
     pub struct Dcrsr(u32);
     impl Debug;
     pub _, set_regwnr: 16;
-    pub _, set_regsel: 4,0;
+    pub _, set_regsel: 6,0;
 }
 
 impl From<u32> for Dcrsr {
@@ -102,8 +102,8 @@ bitfield! {
     pub endianness, set_endianness: 15;
     pub prigroup, set_prigroup: 10,8;
     pub sysresetreq, set_sysresetreq: 2;
-    pub vectclractive, set_vectclractive: 15;
-    pub vectreset, set_vectreset: 15;
+    pub vectclractive, set_vectclractive: 1;
+    pub vectreset, set_vectreset: 0;
 }
 
 impl From<u32> for Aircr {
@@ -133,20 +133,74 @@ impl CoreRegister for Aircr {
     const NAME: &'static str = "AIRCR";
 }
 
+bitfield! {
+    #[derive(Copy, Clone)]
+    pub struct Demcr(u32);
+    impl Debug;
+    /// Global enable for DWT and ITM features
+    pub trcena, set_trcena: 24;
+    /// DebugMonitor semaphore bit
+    pub mon_req, set_mon_req: 19;
+    /// Step the processor?
+    pub mon_step, set_mon_step: 18;
+    /// Sets or clears the pending state of the DebugMonitor exception
+    pub mon_pend, set_mon_pend: 17;
+    /// Enable the DebugMonitor exception
+    pub mon_en, set_mon_en: 16;
+    /// Enable halting debug trap on a HardFault exception
+    pub vc_harderr, set_vc_harderr: 10;
+    /// Enable halting debug trap on a fault occurring during exception entry
+    /// or exception return
+    pub vc_interr, set_vc_interr: 9;
+    /// Enable halting debug trap on a BusFault exception
+    pub vc_buserr, set_vc_buserr: 8;
+    /// Enable halting debug trap on a UsageFault exception caused by a state
+    /// information error, for example an Undefined Instruction exception
+    pub vc_staterr, set_vc_staterr: 7;
+    /// Enable halting debug trap on a UsageFault exception caused by a
+    /// checking error, for example an alignment check error
+    pub vc_chkerr, set_vc_chkerr: 6;
+    /// Enable halting debug trap on a UsageFault caused by an access to a
+    /// Coprocessor
+    pub vc_nocperr, set_vc_nocperr: 5;
+    /// Enable halting debug trap on a MemManage exception.
+    pub vc_mmerr, set_vc_mmerr: 4;
+    /// Enable Reset Vector Catch
+    pub vc_corereset, set_vc_corereset: 0;
+}
+
+impl From<u32> for Demcr {
+    fn from(value: u32) -> Self {
+        Self(value)
+    }
+}
+
+impl From<Demcr> for u32 {
+    fn from(value: Demcr) -> Self {
+        value.0
+    }
+}
+
+impl CoreRegister for Demcr {
+    const ADDRESS: u32 = 0xe000_edfc;
+    const NAME: &'static str = "DEMCR";
+}
+
 pub const REGISTERS: BasicRegisterAddresses = BasicRegisterAddresses {
-    R0: CoreRegisterAddress(0b00000),
-    R1: CoreRegisterAddress(0b00001),
-    R2: CoreRegisterAddress(0b00010),
-    R3: CoreRegisterAddress(0b00011),
-    R4: CoreRegisterAddress(0b00100),
-    R9: CoreRegisterAddress(0b01001),
-    PC: CoreRegisterAddress(0b01111),
-    SP: CoreRegisterAddress(0b01101),
-    LR: CoreRegisterAddress(0b01110),
+    R0: CoreRegisterAddress(0b000_0000),
+    R1: CoreRegisterAddress(0b000_0001),
+    R2: CoreRegisterAddress(0b000_0010),
+    R3: CoreRegisterAddress(0b000_0011),
+    R4: CoreRegisterAddress(0b000_0100),
+    R9: CoreRegisterAddress(0b000_1001),
+    PC: CoreRegisterAddress(0b000_1111),
+    SP: CoreRegisterAddress(0b000_1101),
+    LR: CoreRegisterAddress(0b000_1110),
+    XPSR: CoreRegisterAddress(0b001_0000),
 };
 
-pub const MSP: CoreRegisterAddress = CoreRegisterAddress(0b01001);
-pub const PSP: CoreRegisterAddress = CoreRegisterAddress(0b01010);
+pub const MSP: CoreRegisterAddress = CoreRegisterAddress(0b000_1001);
+pub const PSP: CoreRegisterAddress = CoreRegisterAddress(0b000_1010);
 
 #[derive(Debug, Default, Copy, Clone)]
 pub struct M4;
@@ -171,7 +225,6 @@ impl Core for M4 {
         // Wait until halted state is active again.
         for _ in 0..100 {
             let dhcsr_val = Dhcsr(mi.read32(Dhcsr::ADDRESS)?);
-
             if dhcsr_val.s_halt() {
                 return Ok(());
             }
@@ -205,8 +258,6 @@ impl Core for M4 {
         let result: Result<(), DebugProbeError> =
             mi.write32(Dcrdr::ADDRESS, value).map_err(From::from);
         result?;
-
-        self.wait_for_core_register_transfer(mi)?;
 
         // write the DCRSR value to select the register we want to write.
         let mut dcrsr_val = Dcrsr(0);
@@ -272,6 +323,38 @@ impl Core for M4 {
         value.set_sysresetreq(true);
 
         mi.write32(Aircr::ADDRESS, value.into())?;
+
+        Ok(())
+    }
+
+    fn reset_and_halt(&self, mi: &mut MasterProbe) -> Result<(), DebugProbeError> {
+        let demcr_val = Demcr(mi.read32(Demcr::ADDRESS)?);
+        if !demcr_val.vc_corereset() {
+            let mut demcr_enabled = demcr_val;
+            demcr_enabled.set_vc_corereset(true);
+            mi.write32(Demcr::ADDRESS, demcr_enabled.into())?;
+        }
+
+        let mut value = Aircr(0);
+        value.vectkey();
+        value.set_sysresetreq(true);
+
+        mi.write32(Aircr::ADDRESS, value.into())?;
+
+        loop {
+            let dhcsr_val = Dhcsr(mi.read32(Dhcsr::ADDRESS)?);
+            if dhcsr_val.s_halt() || dhcsr_val.s_lockup() || dhcsr_val.s_sleep() {
+                break;
+            }
+        }
+
+        const XPSR_THUMB: u32 = 1 << 24;
+        let xpsr_value = self.read_core_reg(mi, REGISTERS.XPSR)?;
+        if xpsr_value & XPSR_THUMB == 0 {
+            self.write_core_reg(mi, REGISTERS.XPSR, xpsr_value | XPSR_THUMB)?;
+        }
+
+        mi.write32(Demcr::ADDRESS, demcr_val.into())?;
 
         Ok(())
     }

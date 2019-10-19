@@ -290,6 +290,9 @@ impl<'a> Flasher<'a> {
         log::debug!("Halting core.");
         let cpu_info = flasher.target.core.halt(&mut flasher.probe);
         log::debug!("PC = 0x{:08x}", cpu_info.unwrap().pc);
+        flasher.target.core.wait_for_core_halted(&mut flasher.probe)?;
+        log::debug!("Reset and halt");
+        flasher.target.core.reset_and_halt(&mut flasher.probe)?;
 
         // TODO: Possible special preparation of the target such as enabling faster clocks for the flash e.g.
 
