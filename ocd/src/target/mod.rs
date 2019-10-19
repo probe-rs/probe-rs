@@ -44,6 +44,7 @@ pub struct BasicRegisterAddresses {
     pub PC: CoreRegisterAddress,
     pub LR: CoreRegisterAddress,
     pub SP: CoreRegisterAddress,
+    pub XPSR: CoreRegisterAddress,
 }
 
 pub trait Core: std::fmt::Debug + objekt::Clone {
@@ -54,6 +55,8 @@ pub trait Core: std::fmt::Debug + objekt::Clone {
     fn run(&self, mi: &mut MasterProbe) -> Result<(), DebugProbeError>;
 
     fn reset(&self, mi: &mut MasterProbe) -> Result<(), DebugProbeError>;
+
+    fn reset_and_halt(&self, mi: &mut MasterProbe) -> Result<(), DebugProbeError>;
 
     /// Steps one instruction and then enters halted state again.
     fn step(&self, mi: &mut MasterProbe) -> Result<CpuInformation, DebugProbeError>;

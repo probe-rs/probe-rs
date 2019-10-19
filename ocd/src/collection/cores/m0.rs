@@ -168,16 +168,83 @@ impl CoreRegister for BpCompx {
     const NAME: &'static str = "BP_CTRL0";
 }
 
+bitfield! {
+    #[derive(Copy, Clone)]
+    pub struct Aircr(u32);
+    impl Debug;
+    pub get_vectkeystat, set_vectkey: 31,16;
+    pub endianness, set_endianness: 15;
+    pub sysresetreq, set_sysresetreq: 2;
+    pub vectclractive, set_vectclractive: 1;
+}
+
+impl From<u32> for Aircr {
+    fn from(value: u32) -> Self {
+        Self(value)
+    }
+}
+
+impl From<Aircr> for u32 {
+    fn from(value: Aircr) -> Self {
+        value.0
+    }
+}
+
+impl Aircr {
+    pub fn vectkey(&mut self) {
+        self.set_vectkey(0x05FA);
+    }
+
+    pub fn vectkeystat(&self) -> bool {
+        self.get_vectkeystat() == 0xFA05
+    }
+}
+
+impl CoreRegister for Aircr {
+    const ADDRESS: u32 = 0xE000_ED0C;
+    const NAME: &'static str = "AIRCR";
+}
+
+bitfield! {
+    #[derive(Copy, Clone)]
+    pub struct Demcr(u32);
+    impl Debug;
+    /// Global enable for DWT
+    pub dwtena, set_dwtena: 24;
+    /// Enable halting debug trap on a HardFault exception
+    pub vc_harderr, set_vc_harderr: 10;
+    /// Enable Reset Vector Catch
+    pub vc_corereset, set_vc_corereset: 0;
+}
+
+impl From<u32> for Demcr {
+    fn from(value: u32) -> Self {
+        Self(value)
+    }
+}
+
+impl From<Demcr> for u32 {
+    fn from(value: Demcr) -> Self {
+        value.0
+    }
+}
+
+impl CoreRegister for Demcr {
+    const ADDRESS: u32 = 0xe000_edfc;
+    const NAME: &'static str = "DEMCR";
+}
+
 pub const REGISTERS: BasicRegisterAddresses = BasicRegisterAddresses {
-    R0: CoreRegisterAddress(0b00000),
-    R1: CoreRegisterAddress(0b00001),
-    R2: CoreRegisterAddress(0b00010),
-    R3: CoreRegisterAddress(0b00011),
-    R4: CoreRegisterAddress(0b00100),
-    R9: CoreRegisterAddress(0b01001),
-    PC: CoreRegisterAddress(0b01111),
-    SP: CoreRegisterAddress(0b01101),
-    LR: CoreRegisterAddress(0b01110),
+    R0: CoreRegisterAddress(0b0_0000),
+    R1: CoreRegisterAddress(0b0_0001),
+    R2: CoreRegisterAddress(0b0_0010),
+    R3: CoreRegisterAddress(0b0_0011),
+    R4: CoreRegisterAddress(0b0_0100),
+    R9: CoreRegisterAddress(0b0_1001),
+    PC: CoreRegisterAddress(0b0_1111),
+    SP: CoreRegisterAddress(0b0_1101),
+    LR: CoreRegisterAddress(0b0_1110),
+    XPSR: CoreRegisterAddress(0b1_0000),
 };
 
 pub const MSP: CoreRegisterAddress = CoreRegisterAddress(0b01001);
@@ -240,8 +307,6 @@ impl Core for M0 {
         let result: Result<(), DebugProbeError> =
             mi.write32(Dcrdr::ADDRESS, value).map_err(From::from);
         result?;
-
-        self.wait_for_core_register_transfer(mi)?;
 
         // write the DCRSR value to select the register we want to write.
         let mut dcrsr_val = Dcrsr(0);
@@ -308,6 +373,38 @@ impl Core for M0 {
         const AIRCR: u32 = 0xE000_ED0C;
 
         mi.write32(AIRCR, reset_val)?;
+
+        Ok(())
+    }
+
+    fn reset_and_halt(&self, mi: &mut MasterProbe) -> Result<(), DebugProbeError> {
+        let demcr_val = Demcr(mi.read32(Demcr::ADDRESS)?);
+        if !demcr_val.vc_corereset() {
+            let mut demcr_enabled = demcr_val;
+            demcr_enabled.set_vc_corereset(true);
+            mi.write32(Demcr::ADDRESS, demcr_enabled.into())?;
+        }
+
+        let mut value = Aircr(0);
+        value.vectkey();
+        value.set_sysresetreq(true);
+
+        mi.write32(Aircr::ADDRESS, value.into())?;
+
+        loop {
+            let dhcsr_val = Dhcsr(mi.read32(Dhcsr::ADDRESS)?);
+            if dhcsr_val.s_halt() || dhcsr_val.s_lockup() || dhcsr_val.s_sleep() {
+                break;
+            }
+        }
+
+        const XPSR_THUMB: u32 = 1 << 24;
+        let xpsr_value = self.read_core_reg(mi, REGISTERS.XPSR)?;
+        if xpsr_value & XPSR_THUMB == 0 {
+            self.write_core_reg(mi, REGISTERS.XPSR, xpsr_value | XPSR_THUMB)?;
+        }
+
+        mi.write32(Demcr::ADDRESS, demcr_val.into())?;
 
         Ok(())
     }
@@ -395,6 +492,10 @@ impl Core for FakeM0 {
     }
 
     fn reset(&self, _mi: &mut MasterProbe) -> Result<(), DebugProbeError> {
+        unimplemented!()
+    }
+
+    fn reset_and_halt(&self, _mi: &mut MasterProbe) -> Result<(), DebugProbeError> {
         unimplemented!()
     }
 
