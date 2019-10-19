@@ -133,22 +133,27 @@ fn main_try() -> Result<(), failure::Error> {
         .wait()?;
 
     if !status.success() {
-        std::process::exit(1);
+        use std::os::unix::process::ExitStatusExt;
+        let status = status
+            .code()
+            .or_else(|| if cfg!(unix) {
+                status.signal()
+            } else {
+                None
+            })
+            .unwrap_or(1);
+        std::process::exit(status);
     }
 
     println!("    {} {}", "Flashing".green().bold(), path_str);
 
-    let device = {
-        let mut list = daplink::tools::list_daplink_devices();
-        list.extend(stlink::tools::list_stlink_devices());
+    let mut list = daplink::tools::list_daplink_devices();
+    list.extend(stlink::tools::list_stlink_devices());
 
-        if !list.is_empty() {
-            list.remove(0)
-        } else {
-            eprintln!("    {} No supported probe was found.", "Error".red().bold());
-            std::process::exit(1);
-        }
-    };
+    let device = list.pop().unwrap_or_else(|| {
+        eprintln!("    {} No supported probe was found.", "Error".red().bold());
+        std::process::exit(1);
+    });
 
     let mut probe = match device.probe_type {
         DebugProbeType::DAPLink => {
