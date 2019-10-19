@@ -47,7 +47,7 @@ struct Opt {
     chip: Option<String>,
     #[structopt(
         name = "chip description file path",
-        short = "cdp",
+        short = "c",
         long = "chip-description-path"
     )]
     chip_description_path: Option<String>,
@@ -112,19 +112,37 @@ fn main_try() -> Result<(), failure::Error> {
         args.remove(index);
     }
 
+    // Remove possible `--chip=<chip>` argument as cargo build does not understand it.
+    if let Some(index) = args.iter().position(|x| x.starts_with("--chip=")) {
+        args.remove(index);
+    }
+
     // Remove possible `--chip-description-path <chip description path>` arguments as cargo build does not understand it.
     if let Some(index) = args.iter().position(|x| *x == "--chip-description-path") {
         args.remove(index);
         args.remove(index);
     }
 
-    // Remove possible `-cdp <chip description path>` arguments as cargo build does not understand it.
-    if let Some(index) = args.iter().position(|x| *x == "-cdp") {
+    // Remove possible `--chip-description-path=<chip description path>` arguments as cargo build does not understand it.
+    if let Some(index) = args
+        .iter()
+        .position(|x| x.starts_with("--chip-description-path="))
+    {
+        args.remove(index);
+    }
+
+    // Remove possible `-c <chip description path>` arguments as cargo build does not understand it.
+    if let Some(index) = args.iter().position(|x| *x == "-c") {
         args.remove(index);
         args.remove(index);
     }
 
-    Command::new("cargo")
+    // Remove possible `-c=<chip description path>` arguments as cargo build does not understand it.
+    if let Some(index) = args.iter().position(|x| x.starts_with("-c=")) {
+        args.remove(index);
+    }
+
+    let status = Command::new("cargo")
         .arg("build")
         .args(args)
         .stdout(Stdio::inherit())
@@ -132,14 +150,24 @@ fn main_try() -> Result<(), failure::Error> {
         .spawn()?
         .wait()?;
 
+    if !status.success() {
+        use std::os::unix::process::ExitStatusExt;
+        let status = status
+            .code()
+            .or_else(|| if cfg!(unix) { status.signal() } else { None })
+            .unwrap_or(1);
+        std::process::exit(status);
+    }
+
     println!("    {} {}", "Flashing".green().bold(), path_str);
 
-    let device = {
-        let mut list = daplink::tools::list_daplink_devices();
-        list.extend(stlink::tools::list_stlink_devices());
+    let mut list = daplink::tools::list_daplink_devices();
+    list.extend(stlink::tools::list_stlink_devices());
 
-        list.remove(0)
-    };
+    let device = list.pop().unwrap_or_else(|| {
+        eprintln!("    {} No supported probe was found.", "Error".red().bold());
+        std::process::exit(1);
+    });
 
     let mut probe = match device.probe_type {
         DebugProbeType::DAPLink => {
