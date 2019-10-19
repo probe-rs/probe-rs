@@ -47,7 +47,7 @@ struct Opt {
     chip: Option<String>,
     #[structopt(
         name = "chip description file path",
-        short = "cdp",
+        short = "c",
         long = "chip-description-path"
     )]
     chip_description_path: Option<String>,
@@ -112,15 +112,33 @@ fn main_try() -> Result<(), failure::Error> {
         args.remove(index);
     }
 
+    // Remove possible `--chip=<chip>` argument as cargo build does not understand it.
+    if let Some(index) = args.iter().position(|x| x.starts_with("--chip=")) {
+        args.remove(index);
+    }
+
     // Remove possible `--chip-description-path <chip description path>` arguments as cargo build does not understand it.
     if let Some(index) = args.iter().position(|x| *x == "--chip-description-path") {
         args.remove(index);
         args.remove(index);
     }
 
-    // Remove possible `-cdp <chip description path>` arguments as cargo build does not understand it.
-    if let Some(index) = args.iter().position(|x| *x == "-cdp") {
+    // Remove possible `--chip-description-path=<chip description path>` arguments as cargo build does not understand it.
+    if let Some(index) = args
+        .iter()
+        .position(|x| x.starts_with("--chip-description-path="))
+    {
         args.remove(index);
+    }
+
+    // Remove possible `-c <chip description path>` arguments as cargo build does not understand it.
+    if let Some(index) = args.iter().position(|x| *x == "-c") {
+        args.remove(index);
+        args.remove(index);
+    }
+
+    // Remove possible `-c=<chip description path>` arguments as cargo build does not understand it.
+    if let Some(index) = args.iter().position(|x| x.starts_with("-c=")) {
         args.remove(index);
     }
 
@@ -136,11 +154,7 @@ fn main_try() -> Result<(), failure::Error> {
         use std::os::unix::process::ExitStatusExt;
         let status = status
             .code()
-            .or_else(|| if cfg!(unix) {
-                status.signal()
-            } else {
-                None
-            })
+            .or_else(|| if cfg!(unix) { status.signal() } else { None })
             .unwrap_or(1);
         std::process::exit(status);
     }
