@@ -102,31 +102,29 @@ fn main_try() -> Result<(), failure::Error> {
         None => panic!(),
     };
 
-    let mut args: Vec<_> = std::env::args().collect();
-    // Remove first two args which is the calling application name and the `flash` command from cargo.
-    args.remove(0);
-    args.remove(0);
-    // Remove possible `--chip <chip>` arguments as cargo build does not understand it.
-    if let Some(index) = args.iter().position(|x| *x == "--chip") {
-        args.remove(index);
-        args.remove(index);
+    // Skip first two args which is the calling application name and the `flash` command from cargo.
+    let mut args = std::env::args().skip(2);
+
+    let mut skipcount = 0;
+
+    // Skip `--chip <chip>` arguments as cargo build does not understand it.
+    if args.any(|x| x == "--chip") {
+        skipcount += 2;
     }
 
-    // Remove possible `--chip-description-path <chip description path>` arguments as cargo build does not understand it.
-    if let Some(index) = args.iter().position(|x| *x == "--chip-description-path") {
-        args.remove(index);
-        args.remove(index);
+    // Skip `--chip-description-path <chip description path>` arguments as cargo build does not understand it.
+    if args.any(|x| x == "--chip-description-path") {
+        skipcount += 2;
     }
 
-    // Remove possible `-cdp <chip description path>` arguments as cargo build does not understand it.
-    if let Some(index) = args.iter().position(|x| *x == "-cdp") {
-        args.remove(index);
-        args.remove(index);
+    // Skip `-c <chip description path>` arguments as cargo build does not understand it.
+    if args.any(|x| x == "-c") {
+        skipcount += 2;
     }
 
     Command::new("cargo")
         .arg("build")
-        .args(args)
+        .args(args.skip(skipcount).collect::<Vec<_>>())
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .spawn()?
