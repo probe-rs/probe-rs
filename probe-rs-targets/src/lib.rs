@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use ocd::{
+use probe_rs::{
     collection,
     probe::flash::flasher::{AlgorithmSelectionError, FlashAlgorithm},
     target::{info::ChipInfo, Target, TargetSelectionError},

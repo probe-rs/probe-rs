@@ -1,7 +1,7 @@
 [workspace]
 members = [
-    "ocd",
-    "ocd-targets",
+    "probe-rs",
+    "probe-rs-targets",
     "cli",
     "cargo-flash",
 ]

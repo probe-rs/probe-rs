@@ -5,10 +5,18 @@ mod info;
 use common::{with_device, with_dump, CliError};
 use debugger::CliState;
 
-use ocd::{
+use probe_rs::{
     debug::DebugInfo,
     memory::MI,
-    probe::{daplink, debug_probe::DebugProbeInfo, stlink},
+    probe::{
+        daplink,
+        debug_probe::DebugProbeInfo,
+        stlink,
+        flash::download::{
+            FileDownloader,
+            Format,
+        },
+    },
 };
 
 use capstone::{arch::arm::ArchMode, prelude::*, Capstone, Endian};
@@ -183,13 +191,13 @@ fn download_program_fast(shared_options: &SharedOptions, path: &str) -> Result<(
         // Start timer.
         // let instant = Instant::now();
 
-        let fd = ocd::probe::flash::download::FileDownloader::new();
+        let fd = FileDownloader::new();
         let mm = session.target.memory_map.clone();
 
         fd.download_file(
             &mut session,
             std::path::Path::new(&path),
-            ocd::probe::flash::download::Format::Elf,
+            Format::Elf,
             &mm,
         )?;
 

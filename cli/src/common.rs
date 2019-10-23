@@ -1,6 +1,6 @@
 use crate::SharedOptions;
 
-use ocd::{
+use probe_rs::{
     collection::cores::m0::FakeM0,
     coresight::access_ports::AccessPortError,
     probe::{
@@ -14,7 +14,11 @@ use ocd::{
     target::info::ChipInfo,
     target::TargetSelectionError,
 };
-use ocd_targets::SelectionStrategy;
+use probe_rs_targets::{
+    SelectionStrategy,
+    select_algorithm,
+    select_target,
+};
 
 use ron;
 
@@ -158,10 +162,10 @@ where
         SelectionStrategy::ChipInfo(chip_info)
     };
 
-    let target = ocd_targets::select_target(&selection_strategy)?;
+    let target = select_target(&selection_strategy)?;
 
     let flash_algorithm = match target.flash_algorithm {
-        Some(ref name) => ocd_targets::select_algorithm(name),
+        Some(ref name) => select_algorithm(name),
         None => Err(AlgorithmSelectionError::NoAlgorithmSuggested),
     };
 
@@ -197,7 +201,7 @@ where
         unimplemented!();
     };
 
-    let mut target = ocd_targets::select_target(&selection_strategy)?;
+    let mut target = select_target(&selection_strategy)?;
 
     target.core = Box::new(core);
 

@@ -3,8 +3,10 @@ use std::fs::{read_dir, read_to_string, File};
 use std::io::{self, Write};
 use std::path::Path;
 
-use ocd::probe::flash::FlashAlgorithm;
-use ocd::target::Target;
+use probe_rs::{
+    probe::flash::FlashAlgorithm,
+    target::Target,
+};
 
 fn main() {
     let out_dir = env::var("OUT_DIR").unwrap();
