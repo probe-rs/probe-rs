@@ -1,6 +1,6 @@
 # cargo-flash
 
-[![crates.io](http://meritbadge.herokuapp.com/cargo-flash)](https://crates.io/crates/cargo-flash) [![documentation](https://docs.rs/probe-rs/badge.svg)](https://docs.rs/probe-rs) [![Actions Status](https://github.com/probe-rs/probe-rs/workflows/CI/badge.svg)](https://github.com/probe-rs/probe-rs/actions) [![chat](https://img.shields.io/badge/chat-probe--rs%3Amatrix.org-brightgreen)](https://matrix.to/#/!vhKMWjizPZBgKeknOo:matrix.org)
+[![crates.io](https://meritbadge.herokuapp.com/cargo-flash)](https://crates.io/crates/cargo-flash) [![documentation](https://docs.rs/cargo-flash/badge.svg)](https://docs.rs/cargo-flash) [![Actions Status](https://github.com/probe-rs/probe-rs/workflows/CI/badge.svg)](https://github.com/probe-rs/probe-rs/actions) [![chat](https://img.shields.io/badge/chat-probe--rs%3Amatrix.org-brightgreen)](https://matrix.to/#/!vhKMWjizPZBgKeknOo:matrix.org)
 
 This crate provides an utility to flash ELF binaries onto ARM chips.
 
