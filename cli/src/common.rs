@@ -14,11 +14,7 @@ use probe_rs::{
     target::info::ChipInfo,
     target::TargetSelectionError,
 };
-use probe_rs_targets::{
-    SelectionStrategy,
-    select_algorithm,
-    select_target,
-};
+use probe_rs_targets::{select_algorithm, select_target, SelectionStrategy};
 
 use ron;
 

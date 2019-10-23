@@ -25,17 +25,10 @@ use probe_rs::{
         stlink,
     },
     session::Session,
-    target::{
-        Target,
-        info::ChipInfo,
-    },
+    target::{info::ChipInfo, Target},
 };
 
-use probe_rs_targets::{
-    SelectionStrategy,
-    select_target,
-    select_algorithm,
-};
+use probe_rs_targets::{select_algorithm, select_target, SelectionStrategy};
 
 #[derive(Debug, StructOpt)]
 struct Opt {

@@ -11,11 +11,8 @@ use probe_rs::{
     probe::{
         daplink,
         debug_probe::DebugProbeInfo,
+        flash::download::{FileDownloader, Format},
         stlink,
-        flash::download::{
-            FileDownloader,
-            Format,
-        },
     },
 };
 
@@ -194,12 +191,7 @@ fn download_program_fast(shared_options: &SharedOptions, path: &str) -> Result<(
         let fd = FileDownloader::new();
         let mm = session.target.memory_map.clone();
 
-        fd.download_file(
-            &mut session,
-            std::path::Path::new(&path),
-            Format::Elf,
-            &mm,
-        )?;
+        fd.download_file(&mut session, std::path::Path::new(&path), Format::Elf, &mm)?;
 
         Ok(())
     })
