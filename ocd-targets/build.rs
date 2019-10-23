@@ -34,8 +34,7 @@ fn main() {
                 );
             }
             Err(e) => {
-                log::error!("Failed to parse file {}.", string);
-                log::error!("{:?}.", e);
+                panic!("Failed to parse target file: {} because:\n{}", file, e);
             }
         }
     }
@@ -55,12 +54,14 @@ fn main() {
             .expect("Chip definition file could not be read. This is a bug. Please report it.");
         match Target::new(&string) {
             Ok(target) => {
+                if let Some(algo) = target.flash_algorithm {
+                    assert!(algorithm_names.contains(&algo), "Algorithm {} does not exist.", algo);
+                }
                 target_files.push("/".to_string() + &file);
                 target_names.push(target.name.to_ascii_lowercase());
             }
             Err(e) => {
-                log::error!("Failed to parse file {}.", string);
-                log::error!("{:?}.", e);
+                panic!("Failed to parse target file: {} because:\n{}", file, e);
             }
         }
     }
@@ -76,7 +77,6 @@ fn main() {
                 static ref FLASH_ALGORITHMS: HashMap<&'static str, &'static str> = vec![
                     #((#algorithm_names, include_str!(concat!(env!("CARGO_MANIFEST_DIR"), #algorithm_files))),)*
                 ].into_iter().collect();
-
 
                 static ref TARGETS: HashMap<&'static str, &'static str> = vec![
                     #((#target_names, include_str!(concat!(env!("CARGO_MANIFEST_DIR"), #target_files))),)*

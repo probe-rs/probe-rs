@@ -1,4 +1,5 @@
 name: "STM32F429xI"
+# TODO: Manufacturer and Part are not correct yet. They are only needed for autodetection.
 manufacturer:
   cc: 0x00
   id: 0x20

@@ -3,7 +3,7 @@ name: "nRF52832"
 manufacturer:
   cc: 0x02
   id: 0x44
-part: 0x000001
+part: 0x000111
 flash_algorithm: "nRF52832.yaml"
 memory_map:
     - Flash:
