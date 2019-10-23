@@ -1,5 +1,7 @@
 use crate::session::Session;
 use std::collections::HashMap;
+use std::error::Error;
+use std::fmt;
 
 use super::*;
 
@@ -90,6 +92,20 @@ pub enum FlashLoaderError {
     MemoryRegionNotDefined(u32), // Contains the faulty address.
     MemoryRegionNotFlash(u32),   // Contains the faulty address.
     NoFlashLoaderAlgorithmAttached,
+}
+
+impl Error for FlashLoaderError {}
+
+impl fmt::Display for FlashLoaderError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use FlashLoaderError::*;
+
+        match self {
+            MemoryRegionNotDefined(addr) => write!(f, "Trying to access memory at address {:#08x}, which is not inside any defined memory region.", addr),
+            MemoryRegionNotFlash(addr) => write!(f, "Trying to access flash at address {:#08x}, which is not inside any defined flash region.", addr),
+            NoFlashLoaderAlgorithmAttached => write!(f, "Trying to write flash, but no flash loader algorithm is attached."),
+        }
+    }
 }
 
 impl<'a, 'b> FlashLoader<'a, 'b> {

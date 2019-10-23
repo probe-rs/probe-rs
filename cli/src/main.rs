@@ -100,8 +100,11 @@ enum CLI {
 #[derive(StructOpt)]
 struct SharedOptions {
     /// The number associated with the debug probe to use
-    n: usize,
+    #[structopt(long = "probe-index")]
+    n: Option<usize>,
+
     /// The target to be selected.
+    #[structopt(short, long)]
     target: Option<String>,
 }
 
@@ -117,7 +120,7 @@ fn main() {
         CLI::Reset { shared, assert } => reset_target_of_device(&shared, assert),
         CLI::Debug { shared, exe, dump } => debug(&shared, exe, dump),
         CLI::Dump { shared, loc, words } => dump_memory(&shared, loc, words),
-        CLI::Download { shared, path } => download_program_fast(&shared, path),
+        CLI::Download { shared, path } => download_program_fast(&shared, &path),
         CLI::Trace { shared, loc } => trace_u32_on_target(&shared, loc),
     };
 
@@ -175,20 +178,20 @@ fn dump_memory(shared_options: &SharedOptions, loc: u32, words: u32) -> Result<(
     })
 }
 
-fn download_program_fast(shared_options: &SharedOptions, path: String) -> Result<(), CliError> {
+fn download_program_fast(shared_options: &SharedOptions, path: &str) -> Result<(), CliError> {
     with_device(shared_options, |mut session| {
         // Start timer.
         // let instant = Instant::now();
 
-        let mm = session.target.memory_map.clone();
         let fd = ocd::probe::flash::download::FileDownloader::new();
+        let mm = session.target.memory_map.clone();
+
         fd.download_file(
             &mut session,
-            std::path::Path::new(&path.as_str()),
+            std::path::Path::new(&path),
             ocd::probe::flash::download::Format::Elf,
             &mm,
-        )
-        .unwrap();
+        )?;
 
         Ok(())
     })
@@ -199,7 +202,6 @@ fn reset_target_of_device(
     _assert: Option<bool>,
 ) -> Result<(), CliError> {
     with_device(shared_options, |mut session| {
-        //link.get_interface_mut::<DebugProbe>().unwrap().target_reset().or_else(|e| Err(Error::DebugProbe(e)))?;
         session.probe.target_reset()?;
 
         Ok(())

@@ -291,12 +291,13 @@ pub trait DebugProbe: DAPAccess {
     fn target_reset(&mut self) -> Result<(), DebugProbeError>;
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum DebugProbeType {
     DAPLink,
     STLink,
 }
 
+#[derive(Clone)]
 pub struct DebugProbeInfo {
     pub identifier: String,
     pub vendor_id: u16,
