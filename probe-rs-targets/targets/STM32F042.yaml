@@ -1,9 +1,10 @@
 name: "STM32F042"
+# TODO: Manufacturer and Part are not correct yet. They are only needed for autodetection.
 manufacturer:
-  cc: 0x02
-  id: 0x44
-part: 0x000001
-flash_algorithm: "algorithms/STM32F042.yaml"
+  cc: 0x00
+  id: 0x20
+part: 0x1991
+flash_algorithm: "STM32F042.yaml"
 memory_map:
     - Flash:
         range:

@@ -1,7 +1,7 @@
 use crate::common::open_probe;
 use crate::{common::CliError, SharedOptions};
 
-use ocd::{
+use probe_rs::{
     coresight::{
         access_ports::{
             generic_ap::{APClass, IDR},

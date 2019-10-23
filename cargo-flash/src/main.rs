@@ -1,6 +1,5 @@
 extern crate structopt;
 
-use ocd::target::info::ChipInfo;
 use std::{
     error::Error,
     fmt,
@@ -13,7 +12,7 @@ use std::{
 use colored::*;
 use structopt::StructOpt;
 
-use ocd::{
+use probe_rs::{
     coresight::access_ports::AccessPortError,
     probe::{
         daplink,
@@ -26,10 +25,10 @@ use ocd::{
         stlink,
     },
     session::Session,
-    target::Target,
+    target::{info::ChipInfo, Target},
 };
 
-use ocd_targets::SelectionStrategy;
+use probe_rs_targets::{select_algorithm, select_target, SelectionStrategy};
 
 #[derive(Debug, StructOpt)]
 struct Opt {
@@ -211,11 +210,11 @@ fn main_try() -> Result<(), failure::Error> {
     let target = if let Some(target) = target_override {
         target
     } else {
-        ocd_targets::select_target(&strategy)?
+        select_target(&strategy)?
     };
 
     let flash_algorithm = match target.flash_algorithm.clone() {
-        Some(name) => ocd_targets::select_algorithm(name)?,
+        Some(name) => select_algorithm(name)?,
         None => return Err(AlgorithmSelectionError::NoAlgorithmSuggested.into()),
     };
 
@@ -277,7 +276,7 @@ where
     };
 
     let flash_algorithm = match target.flash_algorithm.clone() {
-        Some(name) => ocd_targets::select_algorithm(name)?,
+        Some(name) => select_algorithm(name)?,
         None => return Err(AlgorithmSelectionError::NoAlgorithmSuggested.into()),
     };
 

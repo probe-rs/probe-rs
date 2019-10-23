@@ -5,8 +5,8 @@ authors = ["Noah Hüsser <yatekii@yatekii.ch>", "Dominik Boehi <dominik.boehi@gm
 edition = "2018"
 
 [dependencies]
-ocd = { path = "../ocd", version = "0.2.0" }
-ocd-targets = { path = "../ocd-targets", version = "0.2.0" }
+probe-rs = { path = "../probe-rs", version = "0.2.0" }
+probe-rs-targets = { path = "../probe-rs-targets", version = "0.2.0" }
 
 pretty_env_logger = "0.3.0"
 log = "0.4.6"

@@ -1,5 +1,5 @@
 [package]
-name = "ocd-targets"
+name = "probe-rs"
 version = "0.2.0"
 authors = ["Noah Hüsser <yatekii@yatekii.ch>", "Dominik Boehi <dominik.boehi@gmail.ch>"]
 edition = "2018"
@@ -12,14 +12,32 @@ categories = ["embedded", "hardware-support", "development-tools::debugging"]
 keywords = ["embedded"]
 license = "MIT OR Apache-2.0"
 
-build = "build.rs"
-
 [dependencies]
-phf = { version = "0.7.24", default-features = false  }
-ocd = { path = "../ocd", version = "0.2.0" }
-lazy_static = "1.4.0"
-
-[build-dependencies]
-quote = "1.0.2"
 log = "0.4.6"
-ocd = { path = "../ocd", version = "0.2.0" }
+num = "0.2"
+num-traits = "0.2.8"
+enum-primitive-derive = "0.1.2"
+jep106 = "0.2.3"
+scroll = "0.9.2"
+rusb = "0.5.1"
+lazy_static = "1.2.0"
+rental = "0.5.4"
+hidapi = "0.5.2"
+gimli = "0.19.0"
+object = "0.14.0"
+bitfield = "0.13.2"
+bitflags = "1.2.0"
+derivative = "1.0.3"
+serde = "1.0.101"
+serde_derive = "1.0.101"
+serde_yaml = "0.8"
+ihex = "1.1.2"
+capstone = "0.6.0"
+goblin = "0.0.24"
+crc = "1.8.1"
+hexdump = "0.1.0"
+maplit = "1.0.2"
+dirs = "2.0.2"
+objekt = "0.1.2"
+colored = "1.8.0"
+includedir = "0.5.0"
