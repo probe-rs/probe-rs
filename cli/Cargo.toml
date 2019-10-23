@@ -1,8 +1,16 @@
 [package]
-name = "cli"
+name = "probe-rs-cli"
 version = "0.2.0"
 authors = ["Noah Hüsser <yatekii@yatekii.ch>", "Dominik Boehi <dominik.boehi@gmail.ch>"]
 edition = "2018"
+description = "A cli for on chip debugging and flashing of ARM chips."
+documentation = "https://docs.rs/probe-rs-cli/"
+homepage = "https://github.com/probe-rs/probe-rs"
+repository = "https://github.com/probe-rs/probe-rs"
+readme = "../README.md"
+categories = ["embedded", "hardware-support", "development-tools::debugging"]
+keywords = ["embedded"]
+license = "MIT OR Apache-2.0"
 
 [dependencies]
 probe-rs = { path = "../probe-rs", version = "0.2.0" }
