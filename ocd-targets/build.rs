@@ -55,7 +55,11 @@ fn main() {
         match Target::new(&string) {
             Ok(target) => {
                 if let Some(algo) = target.flash_algorithm {
-                    assert!(algorithm_names.contains(&algo), "Algorithm {} does not exist.", algo);
+                    assert!(
+                        algorithm_names.contains(&algo),
+                        "Algorithm {} does not exist.",
+                        algo
+                    );
                 }
                 target_files.push("/".to_string() + &file);
                 target_names.push(target.name.to_ascii_lowercase());
