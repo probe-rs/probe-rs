@@ -1,3 +1,4 @@
+use crate::common::open_probe;
 use crate::{common::CliError, SharedOptions};
 
 use ocd::{
@@ -9,38 +10,10 @@ use ocd::{
         ap_access::{valid_access_ports, APAccess},
     },
     memory::romtable::CSComponent,
-    probe::{
-        daplink,
-        debug_probe::{DebugProbe, DebugProbeType, MasterProbe},
-        protocol::WireProtocol,
-        stlink,
-    },
 };
 
 pub(crate) fn show_info_of_device(shared_options: &SharedOptions) -> Result<(), CliError> {
-    let device = {
-        let mut list = daplink::tools::list_daplink_devices();
-        list.extend(stlink::tools::list_stlink_devices());
-
-        list.remove(shared_options.n)
-    };
-
-    let mut probe = match device.probe_type {
-        DebugProbeType::DAPLink => {
-            let mut link = daplink::DAPLink::new_from_probe_info(&device)?;
-
-            link.attach(Some(WireProtocol::Swd))?;
-
-            MasterProbe::from_specific_probe(link)
-        }
-        DebugProbeType::STLink => {
-            let mut link = stlink::STLink::new_from_probe_info(&device)?;
-
-            link.attach(Some(WireProtocol::Swd))?;
-
-            MasterProbe::from_specific_probe(link)
-        }
-    };
+    let mut probe = open_probe(shared_options.n)?;
 
     /*
         The following code only works with debug port v2,

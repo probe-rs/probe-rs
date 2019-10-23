@@ -1,5 +1,7 @@
 use crate::session::Session;
 use ihex;
+use std::error::Error;
+use std::fmt;
 use std::fs::File;
 use std::io::{Read, Seek, SeekFrom};
 use std::path::Path;
@@ -27,7 +29,23 @@ pub enum FileDownloadError {
     IhexRead(ihex::reader::ReaderError),
     IO(std::io::Error),
     Object(&'static str),
-    TargetDoesNotExists,
+    TargetDoesNotExist,
+}
+
+impl Error for FileDownloadError {}
+
+impl fmt::Display for FileDownloadError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use FileDownloadError::*;
+
+        match self {
+            FlashLoader(ref e) => e.fmt(f),
+            IhexRead(ref e) => e.fmt(f),
+            IO(ref e) => e.fmt(f),
+            Object(ref s) => write!(f, "Object Error: {}.", s),
+            TargetDoesNotExist => write!(f, "File Downlaod: Target does not exist."),
+        }
+    }
 }
 
 impl From<FlashLoaderError> for FileDownloadError {
@@ -79,7 +97,7 @@ impl<'a> FileDownloader {
     ) -> Result<(), FileDownloadError> {
         let mut file = match File::open(path) {
             Ok(file) => file,
-            Err(_e) => return Err(FileDownloadError::TargetDoesNotExists),
+            Err(_e) => return Err(FileDownloadError::TargetDoesNotExist),
         };
         let mut buffer = vec![];
         // IMPORTANT: Change this to an actual memory map of a real chip

@@ -6,11 +6,12 @@ use ocd::{
     probe::{
         daplink,
         debug_probe::{DebugProbe, DebugProbeError, DebugProbeType, FakeProbe, MasterProbe},
-        flash::flasher::AlgorithmSelectionError,
+        flash::{download::FileDownloadError, flasher::AlgorithmSelectionError},
         protocol::WireProtocol,
         stlink,
     },
     session::Session,
+    target::info::ChipInfo,
     target::TargetSelectionError,
 };
 use ocd_targets::SelectionStrategy;
@@ -28,8 +29,10 @@ pub enum CliError {
     AccessPort(AccessPortError),
     TargetSelectionError(TargetSelectionError),
     StdIO(std::io::Error),
-    MissingArgument,
     FlashAlgorithm(AlgorithmSelectionError),
+    FileDownload(FileDownloadError),
+    MissingArgument,
+    UnableToOpenProbe,
 }
 
 impl Error for CliError {
@@ -42,7 +45,9 @@ impl Error for CliError {
             TargetSelectionError(ref e) => Some(e),
             StdIO(ref e) => Some(e),
             MissingArgument => None,
+            UnableToOpenProbe => None,
             FlashAlgorithm(ref e) => Some(e),
+            FileDownload(ref e) => Some(e),
         }
     }
 }
@@ -56,8 +61,10 @@ impl fmt::Display for CliError {
             AccessPort(ref e) => e.fmt(f),
             TargetSelectionError(ref e) => e.fmt(f),
             StdIO(ref e) => e.fmt(f),
-            MissingArgument => write!(f, "Command expected more arguments"),
             FlashAlgorithm(ref e) => e.fmt(f),
+            FileDownload(ref e) => e.fmt(f),
+            MissingArgument => write!(f, "Command expected more arguments."),
+            UnableToOpenProbe => write!(f, "Unable to open probe."),
         }
     }
 }
@@ -92,18 +99,26 @@ impl From<AlgorithmSelectionError> for CliError {
     }
 }
 
-/// Takes a closure that is handed an `DAPLink` instance and then executed.
-/// After the closure is done, the USB device is always closed,
-/// even in an error case inside the closure!
-pub(crate) fn with_device<F>(shared_options: &SharedOptions, f: F) -> Result<(), CliError>
-where
-    for<'a> F: FnOnce(Session) -> Result<(), CliError>,
-{
-    let device = {
-        let mut list = daplink::tools::list_daplink_devices();
-        list.extend(stlink::tools::list_stlink_devices());
+impl From<FileDownloadError> for CliError {
+    fn from(error: FileDownloadError) -> Self {
+        CliError::FileDownload(error)
+    }
+}
 
-        list.remove(shared_options.n)
+pub(crate) fn open_probe(index: Option<usize>) -> Result<MasterProbe, CliError> {
+    let mut list = daplink::tools::list_daplink_devices();
+    list.extend(stlink::tools::list_stlink_devices());
+
+    let device = match index {
+        Some(index) => list.get(index).ok_or(CliError::UnableToOpenProbe)?,
+        None => {
+            // open the default probe, if only one probe was found
+            if list.len() == 1 {
+                &list[0]
+            } else {
+                return Err(CliError::UnableToOpenProbe);
+            }
+        }
     };
 
     let probe = match device.probe_type {
@@ -123,12 +138,30 @@ where
         }
     };
 
-    let target = ocd_targets::select_target(&SelectionStrategy::Name(
-        shared_options.target.clone().unwrap(),
-    ))?;
+    Ok(probe)
+}
 
-    let flash_algorithm = match target.flash_algorithm.clone() {
-        Some(name) => ocd_targets::select_algorithm(name),
+/// Takes a closure that is handed an `DAPLink` instance and then executed.
+/// After the closure is done, the USB device is always closed,
+/// even in an error case inside the closure!
+pub(crate) fn with_device<F>(shared_options: &SharedOptions, f: F) -> Result<(), CliError>
+where
+    for<'a> F: FnOnce(Session) -> Result<(), CliError>,
+{
+    let mut probe = open_probe(shared_options.n)?;
+
+    let selection_strategy = if let Some(ref target_name) = shared_options.target {
+        SelectionStrategy::Name(target_name.clone())
+    } else {
+        let chip_info = ChipInfo::read_from_rom_table(&mut probe)
+            .ok_or(TargetSelectionError::CouldNotAutodetect)?;
+        SelectionStrategy::ChipInfo(chip_info)
+    };
+
+    let target = ocd_targets::select_target(&selection_strategy)?;
+
+    let flash_algorithm = match target.flash_algorithm {
+        Some(ref name) => ocd_targets::select_algorithm(name),
         None => Err(AlgorithmSelectionError::NoAlgorithmSuggested),
     };
 
@@ -158,9 +191,13 @@ where
 
     let probe = MasterProbe::from_specific_probe(Box::new(fake_probe));
 
-    let mut target = ocd_targets::select_target(&SelectionStrategy::Name(
-        shared_options.target.clone().unwrap(),
-    ))?;
+    let selection_strategy = if let Some(ref target_name) = shared_options.target {
+        SelectionStrategy::Name(target_name.clone())
+    } else {
+        unimplemented!();
+    };
+
+    let mut target = ocd_targets::select_target(&selection_strategy)?;
 
     target.core = Box::new(core);
 
