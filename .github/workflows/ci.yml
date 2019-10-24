@@ -9,13 +9,23 @@ name: CI
 jobs:
   check:
     name: Check
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+
+    runs-on: ${{ matrix.os }} 
+
     steps:
       - name: Checkout sources
         uses: actions/checkout@v1
       
       - name: Install libusb
         run: sudo apt install -y libusb-dev libusb-1.0
+        # Only install on Ubuntu
+        if: matrix.os == 'ubuntu-latest'
+
 
       - name: Install stable toolchain
         uses: actions-rs/toolchain@v1
