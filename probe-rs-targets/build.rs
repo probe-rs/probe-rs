@@ -1,7 +1,7 @@
 use std::env;
 use std::fs::{read_dir, read_to_string, File};
 use std::io::{self, Write};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use probe_rs::{probe::flash::FlashAlgorithm, target::Target};
 
@@ -17,23 +17,29 @@ fn main() {
     let mut algorithm_names = vec![];
     let mut algorithm_files = vec![];
 
+    let root_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
+
     for file in files {
         let string = read_to_string(&file).expect(
             "Algorithm definition file could not be read. This is a bug. Please report it.",
         );
+
         match FlashAlgorithm::new(&string) {
             Ok(_algorithm) => {
-                algorithm_files.push("/".to_string() + &file);
+                let abs_path = root_dir.join(&file);
+
+                algorithm_files.push(abs_path.to_str().unwrap().to_owned());
+
                 algorithm_names.push(
-                    file.split("algorithms/")
-                        .skip(1)
-                        .next()
+                    file.strip_prefix("algorithms")
                         .unwrap()
-                        .to_string(),
+                        .to_str()
+                        .expect("Non UTF-8 Filename!")
+                        .to_owned(),
                 );
             }
             Err(e) => {
-                panic!("Failed to parse target file: {} because:\n{}", file, e);
+                panic!("Failed to parse target file: {:?} because:\n{}", file, e);
             }
         }
     }
@@ -60,11 +66,13 @@ fn main() {
                         algo
                     );
                 }
-                target_files.push("/".to_string() + &file);
+
+                target_files.push(root_dir.join(file).to_str().unwrap().to_owned());
+
                 target_names.push(target.name.to_ascii_lowercase());
             }
             Err(e) => {
-                panic!("Failed to parse target file: {} because:\n{}", file, e);
+                panic!("Failed to parse target file: {:?} because:\n{}", file, e);
             }
         }
     }
@@ -78,11 +86,11 @@ fn main() {
         // START QUOTE
             lazy_static::lazy_static! {
                 static ref FLASH_ALGORITHMS: HashMap<&'static str, &'static str> = vec![
-                    #((#algorithm_names, include_str!(concat!(env!("CARGO_MANIFEST_DIR"), #algorithm_files))),)*
+                    #((#algorithm_names, include_str!(#algorithm_files)),)*
                 ].into_iter().collect();
 
                 static ref TARGETS: HashMap<&'static str, &'static str> = vec![
-                    #((#target_names, include_str!(concat!(env!("CARGO_MANIFEST_DIR"), #target_files))),)*
+                    #((#target_names, include_str!(#target_files)),)*
                 ].into_iter().collect();
             }
         // END QUOTE
@@ -94,7 +102,7 @@ fn main() {
 }
 
 // one possible implementation of walking a directory only visiting files
-fn visit_dirs(dir: &Path, targets: &mut Vec<String>) -> io::Result<()> {
+fn visit_dirs(dir: &Path, targets: &mut Vec<PathBuf>) -> io::Result<()> {
     if dir.is_dir() {
         for entry in read_dir(dir)? {
             let entry = entry?;
@@ -102,7 +110,7 @@ fn visit_dirs(dir: &Path, targets: &mut Vec<String>) -> io::Result<()> {
             if path.is_dir() {
                 visit_dirs(&path, targets)?;
             } else {
-                targets.push(format!("{}", path.to_str().unwrap()));
+                targets.push(path.to_owned());
             }
         }
     }
