@@ -150,12 +150,7 @@ fn main_try() -> Result<(), failure::Error> {
         .wait()?;
 
     if !status.success() {
-        use std::os::unix::process::ExitStatusExt;
-        let status = status
-            .code()
-            .or_else(|| if cfg!(unix) { status.signal() } else { None })
-            .unwrap_or(1);
-        std::process::exit(status);
+        handle_failed_command(status)
     }
 
     println!("    {} {}", "Flashing".green().bold(), path_str);
@@ -283,6 +278,19 @@ where
     let session = Session::new(target, probe, Some(flash_algorithm));
 
     f(session)
+}
+
+#[cfg(unix)]
+fn handle_failed_command(status: std::process::ExitStatus) -> ! {
+    use std::os::unix::process::ExitStatusExt;
+    let status = status.code().or_else(|| status.signal()).unwrap_or(1);
+    std::process::exit(status)
+}
+
+#[cfg(not(unix))]
+fn handle_failed_command(status: std::process::ExitStatus) -> ! {
+    let status = status.code().unwrap_or(1);
+    std::process::exit(status)
 }
 
 #[derive(Debug)]
