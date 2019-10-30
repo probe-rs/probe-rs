@@ -518,7 +518,7 @@ impl DebugInfo {
         let name_path = Path::new(from_utf8(&file_name_attr_string).ok()?);
 
         let dir_path = dir_name_attr_string
-            .and_then(|dir_name| from_utf8(&dir_name).ok().map(|path| PathBuf::from(path)));
+            .and_then(|dir_name| from_utf8(&dir_name).ok().map(PathBuf::from));
 
         let mut combined_path = match dir_path {
             Some(dir_path) => dir_path.join(name_path),
@@ -526,7 +526,7 @@ impl DebugInfo {
         };
 
         if combined_path.is_relative() {
-            combined_path = comp_dir.clone().join(&combined_path);
+            combined_path = comp_dir.to_owned().join(&combined_path);
         }
 
         Some(combined_path)
