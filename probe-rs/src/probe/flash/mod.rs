@@ -7,9 +7,11 @@ pub mod download;
 pub mod flasher;
 pub mod loader;
 pub mod memory;
+pub mod parser;
 
 pub use builder::*;
 pub use download::*;
 pub use flasher::*;
 pub use loader::*;
 pub use memory::*;
+pub use parser::*;

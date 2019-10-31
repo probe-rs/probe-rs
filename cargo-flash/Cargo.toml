@@ -19,3 +19,10 @@ failure = "0.1.5"
 colored = "1.8.0"
 probe-rs = { path = "../probe-rs", version = "0.2.0" }
 probe-rs-targets = { path = "../probe-rs-targets", version = "0.2.0" }
+cmsis-update = { path = "../../../cmsis-pack-manager/rust/cmsis-update" }
+pack-index = { path = "../../../cmsis-pack-manager/rust/pack-index" }
+utils = { path = "../../../cmsis-pack-manager/rust/utils" }
+pdsc = { path = "../../../cmsis-pack-manager/rust/pdsc" }
+slog = "*"
+slog-term = "*"
+slog-async = "*"
