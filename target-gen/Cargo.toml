@@ -1,0 +1,20 @@
+[package]
+name = "target-gen"
+version = "0.1.0"
+authors = ["Noah Huesser <yatekii@yatekii.ch>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+probe-rs = { path = "../probe-rs/probe-rs", version = "0.2.0" }
+probe-rs-targets = { path = "../probe-rs/probe-rs-targets", version = "0.2.0" }
+cmsis-update = { path = "../cmsis-pack-manager/rust/cmsis-update" }
+pack-index = { path = "../cmsis-pack-manager/rust/pack-index" }
+utils = { path = "../cmsis-pack-manager/rust/utils" }
+pdsc = { path = "../cmsis-pack-manager/rust/pdsc" }
+slog = "*"
+slog-term = "*"
+slog-async = "*"
+goblin = "*"
+scroll = "*"
