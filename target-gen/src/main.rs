@@ -1,5 +1,6 @@
 pub mod parser;
 pub mod flash_device;
+pub mod algorithm_binary;
 
 use std::io;
 use std::fs::{self, DirEntry};
