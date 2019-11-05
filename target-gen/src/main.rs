@@ -10,7 +10,6 @@ use utils::parse::FromElem;
 use probe_rs::probe::flash::RamRegion;
 
 fn main() {
-
     let decorator = slog_term::TermDecorator::new().build();
     let drain = slog_term::FullFormat::new(decorator).build().fuse();
     let drain = slog_async::Async::new(drain).build().fuse();
@@ -28,7 +27,7 @@ fn main() {
                     println!("{:#?}", v);
                     for algorithm in v.algorithms.iter() {
                         if algorithm.default {
-                            crate::parser::extract_flash_algo(
+                            let algo = crate::parser::extract_flash_algo(
                                 dir
                                     .join(algorithm.file_name
                                         .as_path()
@@ -43,6 +42,8 @@ fn main() {
                                     range: 0x2000_0000..0x2000_4000,
                                 })
                             .unwrap();
+
+                            algo.write_to_file("test.yaml");
                             break;
                         }
                     }
