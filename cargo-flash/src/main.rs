@@ -57,6 +57,9 @@ struct Opt {
 }
 
 fn main() {
+    // Initialize the logging backend.
+    pretty_env_logger::init();
+
     match main_try() {
         Ok(_) => (),
         Err(e) => println!("{}", e),
