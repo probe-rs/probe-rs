@@ -52,6 +52,8 @@ struct Opt {
     chip_description_path: Option<String>,
     #[structopt(name = "PATH", long = "manifest-path", parse(from_os_str))]
     manifest_path: Option<PathBuf>,
+    #[structopt(name = "ap", long = "ap")]
+    access_port: Option<u8>,
 }
 
 fn main() {
@@ -141,6 +143,17 @@ fn main_try() -> Result<(), failure::Error> {
         args.remove(index);
     }
 
+    // Remove possible `--ap <ap>` arguments as cargo build does not understand it.
+    if let Some(index) = args.iter().position(|x| *x == "--ap") {
+        args.remove(index);
+        args.remove(index);
+    }
+
+    // Remove possible `--ap=<ap>` argument as cargo build does not understand it.
+    if let Some(index) = args.iter().position(|x| x.starts_with("--ap=")) {
+        args.remove(index);
+    }
+
     let status = Command::new("cargo")
         .arg("build")
         .args(args)
@@ -169,14 +182,14 @@ fn main_try() -> Result<(), failure::Error> {
 
             link.attach(Some(WireProtocol::Swd))?;
 
-            MasterProbe::from_specific_probe(link)
+            MasterProbe::from_specific_probe(link, opt.access_port.unwrap_or(0))
         }
         DebugProbeType::STLink => {
             let mut link = stlink::STLink::new_from_probe_info(&device)?;
 
             link.attach(Some(WireProtocol::Swd))?;
 
-            MasterProbe::from_specific_probe(link)
+            MasterProbe::from_specific_probe(link, opt.access_port.unwrap_or(0))
         }
     };
 
@@ -237,47 +250,6 @@ fn main_try() -> Result<(), failure::Error> {
     );
 
     Ok(())
-}
-
-/// Takes a closure that is handed an `DAPLink` instance and then executed.
-/// After the closure is done, the USB device is always closed,
-/// even in an error case inside the closure!
-pub fn with_device<F>(n: usize, target: Target, f: F) -> Result<(), DownloadError>
-where
-    for<'a> F: FnOnce(Session) -> Result<(), DownloadError>,
-{
-    let device = {
-        let mut list = daplink::tools::list_daplink_devices();
-        list.extend(stlink::tools::list_stlink_devices());
-
-        list.remove(n)
-    };
-
-    let probe = match device.probe_type {
-        DebugProbeType::DAPLink => {
-            let mut link = daplink::DAPLink::new_from_probe_info(&device)?;
-
-            link.attach(Some(WireProtocol::Swd))?;
-
-            MasterProbe::from_specific_probe(link)
-        }
-        DebugProbeType::STLink => {
-            let mut link = stlink::STLink::new_from_probe_info(&device)?;
-
-            link.attach(Some(WireProtocol::Swd))?;
-
-            MasterProbe::from_specific_probe(link)
-        }
-    };
-
-    let flash_algorithm = match target.flash_algorithm.clone() {
-        Some(name) => select_algorithm(name)?,
-        None => return Err(AlgorithmSelectionError::NoAlgorithmSuggested.into()),
-    };
-
-    let session = Session::new(target, probe, Some(flash_algorithm));
-
-    f(session)
 }
 
 #[cfg(unix)]

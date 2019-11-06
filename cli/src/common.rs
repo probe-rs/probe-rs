@@ -127,14 +127,14 @@ pub(crate) fn open_probe(index: Option<usize>) -> Result<MasterProbe, CliError> 
 
             link.attach(Some(WireProtocol::Swd))?;
 
-            MasterProbe::from_specific_probe(link)
+            MasterProbe::from_specific_probe(link, 0)
         }
         DebugProbeType::STLink => {
             let mut link = stlink::STLink::new_from_probe_info(&device)?;
 
             link.attach(Some(WireProtocol::Swd))?;
 
-            MasterProbe::from_specific_probe(link)
+            MasterProbe::from_specific_probe(link, 0)
         }
     };
 
@@ -189,7 +189,7 @@ where
     let core = FakeM0::new(dump);
     let fake_probe = FakeProbe::new();
 
-    let probe = MasterProbe::from_specific_probe(Box::new(fake_probe));
+    let probe = MasterProbe::from_specific_probe(Box::new(fake_probe), 0);
 
     let selection_strategy = if let Some(ref target_name) = shared_options.target {
         SelectionStrategy::Name(target_name.clone())

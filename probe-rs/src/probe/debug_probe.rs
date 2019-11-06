@@ -73,14 +73,16 @@ pub trait DAPAccess {
 
 pub struct MasterProbe {
     actual_probe: Box<dyn DebugProbe>,
+    access_port: u8,
     current_apsel: u8,
     current_apbanksel: u8,
 }
 
 impl MasterProbe {
-    pub fn from_specific_probe(probe: Box<dyn DebugProbe>) -> Self {
+    pub fn from_specific_probe(probe: Box<dyn DebugProbe>, access_port: u8) -> Self {
         MasterProbe {
             actual_probe: probe,
+            access_port,
             current_apbanksel: 0,
             current_apsel: 0,
         }
@@ -241,35 +243,35 @@ where
 
 impl MI for MasterProbe {
     fn read32(&mut self, address: u32) -> Result<u32, AccessPortError> {
-        ADIMemoryInterface::new(0).read32(self, address)
+        ADIMemoryInterface::new(self.access_port).read32(self, address)
     }
 
     fn read8(&mut self, address: u32) -> Result<u8, AccessPortError> {
-        ADIMemoryInterface::new(0).read8(self, address)
+        ADIMemoryInterface::new(self.access_port).read8(self, address)
     }
 
     fn read_block32(&mut self, address: u32, data: &mut [u32]) -> Result<(), AccessPortError> {
-        ADIMemoryInterface::new(0).read_block32(self, address, data)
+        ADIMemoryInterface::new(self.access_port).read_block32(self, address, data)
     }
 
     fn read_block8(&mut self, address: u32, data: &mut [u8]) -> Result<(), AccessPortError> {
-        ADIMemoryInterface::new(0).read_block8(self, address, data)
+        ADIMemoryInterface::new(self.access_port).read_block8(self, address, data)
     }
 
     fn write32(&mut self, addr: u32, data: u32) -> Result<(), AccessPortError> {
-        ADIMemoryInterface::new(0).write32(self, addr, data)
+        ADIMemoryInterface::new(self.access_port).write32(self, addr, data)
     }
 
     fn write8(&mut self, addr: u32, data: u8) -> Result<(), AccessPortError> {
-        ADIMemoryInterface::new(0).write8(self, addr, data)
+        ADIMemoryInterface::new(self.access_port).write8(self, addr, data)
     }
 
     fn write_block32(&mut self, addr: u32, data: &[u32]) -> Result<(), AccessPortError> {
-        ADIMemoryInterface::new(0).write_block32(self, addr, data)
+        ADIMemoryInterface::new(self.access_port).write_block32(self, addr, data)
     }
 
     fn write_block8(&mut self, addr: u32, data: &[u8]) -> Result<(), AccessPortError> {
-        ADIMemoryInterface::new(0).write_block8(self, addr, data)
+        ADIMemoryInterface::new(self.access_port).write_block8(self, addr, data)
     }
 }
 

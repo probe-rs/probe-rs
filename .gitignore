@@ -2,3 +2,5 @@
 **/*.rs.bk
 Cargo.lock
 cache
+cli/target/
+probe-rs/target/
