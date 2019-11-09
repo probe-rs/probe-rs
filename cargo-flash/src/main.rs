@@ -236,6 +236,8 @@ fn main_try() -> Result<(), failure::Error> {
         elapsed.as_millis() as f32 / 1000.0
     );
 
+    session.target.core.reset(&mut session.probe)?;
+
     Ok(())
 }
 
