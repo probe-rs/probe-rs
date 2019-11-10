@@ -14,7 +14,10 @@ use std::{
 use structopt::StructOpt;
 
 use probe_rs::{
-    coresight::access_ports::AccessPortError,
+    coresight::{
+        access_ports::{generic_ap::APClass, AccessPortError},
+        ap_access::get_ap_by_idr,
+    },
     probe::{
         daplink,
         debug_probe::{DebugProbe, DebugProbeError, DebugProbeType, MasterProbe},
@@ -41,6 +44,8 @@ struct Opt {
         long = "chip-description-path"
     )]
     chip_description_path: Option<String>,
+    #[structopt(name = "nrf-recover", long = "nrf-recover")]
+    nrf_recover: bool,
 
     // `cargo build` arguments
     #[structopt(name = "binary", long = "bin")]
@@ -125,6 +130,11 @@ fn main_try() -> Result<(), failure::Error> {
         args.remove(index);
     }
 
+    // Remove possible `--nrf_recover` argument as cargo build does not understand it.
+    if let Some(index) = args.iter().position(|x| x.starts_with("--nrf-recover")) {
+        args.remove(index);
+    }
+
     let status = Command::new("cargo")
         .arg("build")
         .args(args)
@@ -196,6 +206,10 @@ fn main_try() -> Result<(), failure::Error> {
         }
     };
 
+    if opt.nrf_recover {
+        probe.nrf_recover()?;
+    }
+
     let target_override = opt
         .chip_description_path
         .as_ref()
@@ -220,6 +234,19 @@ fn main_try() -> Result<(), failure::Error> {
     } else {
         select_target(&strategy)?
     };
+
+    if target.manufacturer.get() == Some("Nordic VLSI ASA") {
+        if get_ap_by_idr(&mut probe, |idr| idr.CLASS == APClass::MEMAP).is_none() {
+            println!(
+                "{}\n{}\n{}",
+                "Your Nordic chip might be locked to debug access".yellow(),
+                "Run cargo flash with --nrf-recover flag".yellow(),
+                "WARNING: --nrf-recover will erase the entire code flash and UICR area of the
+                device, in addition to the entire RAM"
+                    .red()
+            );
+        }
+    }
 
     let flash_algorithm = match target.flash_algorithm.clone() {
         Some(name) => select_algorithm(name)?,
