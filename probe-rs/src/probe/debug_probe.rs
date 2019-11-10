@@ -1,6 +1,11 @@
 use crate::coresight::{
-    access_ports::{generic_ap::GenericAP, memory_ap::MemoryAP, APRegister, AccessPortError},
-    ap_access::{APAccess, AccessPort},
+    access_ports::{
+        custom_ap::{CtrlAP, ERASEALL, ERASEALLSTATUS, RESET},
+        generic_ap::GenericAP,
+        memory_ap::MemoryAP,
+        APRegister, AccessPortError,
+    },
+    ap_access::{get_ap_by_idr, APAccess, AccessPort},
     common::Register,
 };
 
@@ -9,8 +14,10 @@ use log::debug;
 use crate::memory::adi_v5_memory_interface::ADIMemoryInterface;
 use crate::memory::MI;
 use crate::probe::protocol::WireProtocol;
+use colored::*;
 use std::error::Error;
 use std::fmt;
+use std::time::Instant;
 
 #[derive(Debug)]
 pub enum DebugProbeError {
@@ -189,6 +196,43 @@ impl MasterProbe {
     pub fn write_register_dp(&mut self, offset: u16, val: u32) -> Result<(), DebugProbeError> {
         self.actual_probe
             .write_register(Port::DebugPort, offset, val)
+    }
+
+    pub fn nrf_recover(&mut self) -> Result<(), DebugProbeError> {
+        let ctrl_port = match get_ap_by_idr(self, |idr| u32::from(idr) == 0x02880000) {
+            Some(port) => CtrlAP::from(port),
+            None => {
+                eprintln!("    {} Couldn't find Nordic's CtrlAP", "Error".red().bold());
+                std::process::exit(1)
+            }
+        };
+        let mut erase_reg = ERASEALL::from(1);
+        let status_reg = ERASEALLSTATUS::from(0);
+        let mut reset_reg = RESET::from(1);
+        println!("Starting mass erase...");
+        self.write_register_ap(ctrl_port, erase_reg)?;
+
+        // Prepare timeout
+        let now = Instant::now();
+        let status = self.read_register_ap(ctrl_port, status_reg)?;
+        log::info!("Erase status: {:?}", status.ERASEALLSTATUS);
+        loop {
+            let status = self.read_register_ap(ctrl_port, status_reg)?;
+            if !status.ERASEALLSTATUS {
+                break;
+            }
+            if now.elapsed().as_secs() >= 15 {
+                eprintln!("    {} Mass erase process timeout", "Error".red().bold());
+                std::process::exit(1)
+            }
+        }
+        self.write_register_ap(ctrl_port, reset_reg)?;
+        reset_reg.RESET = false;
+        self.write_register_ap(ctrl_port, reset_reg)?;
+        erase_reg.ERASEALL = false;
+        self.write_register_ap(ctrl_port, erase_reg)?;
+        println!("Mass erase completed, chip unlocked");
+        Ok(())
     }
 }
 

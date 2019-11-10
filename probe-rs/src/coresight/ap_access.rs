@@ -61,3 +61,18 @@ where
         .filter(|port| access_port_is_valid(debug_port, *port))
         .collect::<Vec<GenericAP>>()
 }
+
+/// Tries to find the first AP with the given idr value, returns `None` if there isn't any
+pub fn get_ap_by_idr<AP, P>(debug_port: &mut AP, f: P) -> Option<GenericAP>
+where
+    AP: APAccess<GenericAP, IDR>,
+    P: Fn(IDR) -> bool,
+{
+    (0..=255).map(GenericAP::new).find(|ap| {
+        if let Ok(idr) = debug_port.read_register_ap(*ap, IDR::default()) {
+            f(idr)
+        } else {
+            false
+        }
+    })
+}

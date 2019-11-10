@@ -5,7 +5,7 @@ mod usb_interface;
 
 pub use self::usb_interface::STLinkUSBDevice;
 
-use crate::coresight::ap_access::AccessPort;
+use crate::coresight::{ap_access::AccessPort, common::Register, debug_port::Ctrl};
 use crate::probe::debug_probe::{DebugProbeInfo, Port};
 use scroll::{Pread, BE};
 
@@ -67,12 +67,14 @@ impl DebugProbe for STLink {
             &mut buf,
             TIMEOUT,
         )?;
-        Self::check_status(&buf).and_then(|_| {
-            // After we checked the status with success,
-            // We store the current protocol.
-            self.protocol = protocol;
-            Ok(protocol)
-        })
+        Self::check_status(&buf)?;
+        let mut ctrl_reg = Ctrl::default();
+        ctrl_reg.set_csyspwrupreq(true);
+        ctrl_reg.set_cdbgpwrupreq(true);
+        let value = ctrl_reg.into();
+        self.write_register(Port::DebugPort, Ctrl::ADDRESS.into(), value)?;
+        self.protocol = protocol;
+        Ok(protocol)
     }
 
     /// Leave debug mode.

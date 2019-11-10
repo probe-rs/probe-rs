@@ -13,6 +13,7 @@ keywords = ["embedded"]
 license = "MIT OR Apache-2.0"
 
 [dependencies]
+pretty_env_logger = "0.3.0"
 structopt = "0.3.2"
 cargo-project = "0.2.2"
 failure = "0.1.5"
