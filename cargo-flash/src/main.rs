@@ -33,6 +33,16 @@ use probe_rs_targets::{select_algorithm, select_target, SelectionStrategy};
 
 #[derive(Debug, StructOpt)]
 struct Opt {
+    #[structopt(name = "chip", long = "chip")]
+    chip: Option<String>,
+    #[structopt(
+        name = "chip description file path",
+        short = "c",
+        long = "chip-description-path"
+    )]
+    chip_description_path: Option<String>,
+
+    // `cargo build` arguments
     #[structopt(name = "binary", long = "bin")]
     bin: Option<String>,
     #[structopt(name = "example", long = "example")]
@@ -43,16 +53,14 @@ struct Opt {
     release: bool,
     #[structopt(name = "target", long = "target")]
     target: Option<String>,
-    #[structopt(name = "chip", long = "chip")]
-    chip: Option<String>,
-    #[structopt(
-        name = "chip description file path",
-        short = "c",
-        long = "chip-description-path"
-    )]
-    chip_description_path: Option<String>,
     #[structopt(name = "PATH", long = "manifest-path", parse(from_os_str))]
     manifest_path: Option<PathBuf>,
+    #[structopt(long)]
+    no_default_features: bool,
+    #[structopt(long)]
+    all_features: bool,
+    #[structopt(long)]
+    features: Vec<String>,
 }
 
 fn main() {
