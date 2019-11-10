@@ -283,7 +283,7 @@ impl STLink {
                 .write(vec![commands::GET_VERSION_EXT], &[], &mut buf, TIMEOUT)
             {
                 Ok(_) => {
-                    let version: u8 = (&buf[3..4]).pread(0).unwrap();
+                    let version: u8 = (&buf[2..3]).pread(0).unwrap();
                     self.jtag_version = version;
                 }
                 Err(e) => return Err(e),
@@ -294,7 +294,7 @@ impl STLink {
         if self.jtag_version == 0 {
             return Err(DebugProbeError::JTAGNotSupportedOnProbe);
         }
-        if self.jtag_version < Self::MIN_JTAG_VERSION {
+        if self.hw_version < 3 && self.jtag_version < Self::MIN_JTAG_VERSION {
             return Err(DebugProbeError::ProbeFirmwareOutdated);
         }
 
