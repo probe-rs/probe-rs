@@ -1,6 +1,7 @@
 extern crate structopt;
 
 use std::{
+    env,
     error::Error,
     fmt,
     fs::read_to_string,
@@ -63,11 +64,18 @@ fn main() {
 
 fn main_try() -> Result<(), failure::Error> {
     let mut args = std::env::args();
-    // Skip the first arg which is the calling application name.
-    let _ = args.next();
+
+    // When called by Cargo, the first argument after the binary name will be `flash`. If that's the
+    // case, remove one argument (`Opt::from_iter` will remove the binary name by itself).
+    if env::args().skip(1).next() == Some("flash".to_string()) {
+        args.next();
+    }
+
+    let mut args: Vec<_> = args.collect();
 
     // Get commandline options.
-    let opt = Opt::from_iter(args);
+    let opt = Opt::from_iter(&args);
+    args.remove(0); // Remove executable name
 
     // Try and get the cargo project information.
     let project = cargo_project::Project::query(".")?;
@@ -101,10 +109,6 @@ fn main_try() -> Result<(), failure::Error> {
         None => panic!(),
     };
 
-    let mut args: Vec<_> = std::env::args().collect();
-    // Remove first two args which is the calling application name and the `flash` command from cargo.
-    args.remove(0);
-    args.remove(0);
     // Remove possible `--chip <chip>` arguments as cargo build does not understand it.
     if let Some(index) = args.iter().position(|x| *x == "--chip") {
         args.remove(index);
