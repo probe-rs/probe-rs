@@ -1,7 +1,7 @@
 use super::{APRegister, AddressIncrement, DataSize, MemoryAP, CSW, DRW, TAR};
 use crate::coresight::ap_access::APAccess;
 use crate::coresight::common::Register;
-use std::collections::HashMap;
+use std::{collections::HashMap, error::Error, fmt};
 
 pub struct MockMemoryAP {
     pub data: Vec<u8>,
@@ -13,6 +13,17 @@ pub enum MockMemoryError {
     UnknownWidth,
     UnknownRegister,
 }
+
+impl fmt::Display for MockMemoryError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::UnknownWidth => f.write_str("unknown register width"),
+            Self::UnknownRegister => f.write_str("unknown register"),
+        }
+    }
+}
+
+impl Error for MockMemoryError {}
 
 impl Default for MockMemoryAP {
     fn default() -> Self {
