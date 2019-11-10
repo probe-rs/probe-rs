@@ -2,7 +2,9 @@
 #
 # Currently only builds on Linux
 
-on: push
+on:
+  - push
+  - pull_request
 
 name: CI
 
