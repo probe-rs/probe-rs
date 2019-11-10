@@ -14,10 +14,7 @@ use std::{
 use structopt::StructOpt;
 
 use probe_rs::{
-    coresight::{
-        access_ports::{generic_ap::APClass, AccessPortError},
-        ap_access::get_ap_by_idr,
-    },
+    coresight::access_ports::AccessPortError,
     probe::{
         daplink,
         debug_probe::{DebugProbe, DebugProbeError, DebugProbeType, MasterProbe},
@@ -195,20 +192,23 @@ fn main_try() -> Result<(), failure::Error> {
 
             link.attach(Some(WireProtocol::Swd))?;
 
-            MasterProbe::from_specific_probe(link)
+            let mut probe = MasterProbe::from_specific_probe(link);
+            if opt.nrf_recover {
+                probe.nrf_recover()?;
+            }
+            probe
         }
         DebugProbeType::STLink => {
             let mut link = stlink::STLink::new_from_probe_info(&device)?;
 
             link.attach(Some(WireProtocol::Swd))?;
 
+            if opt.nrf_recover {
+                return format_err!("It isn't possible to recover with a ST-Link");
+            }
             MasterProbe::from_specific_probe(link)
         }
     };
-
-    if opt.nrf_recover {
-        probe.nrf_recover()?;
-    }
 
     let target_override = opt
         .chip_description_path
@@ -225,6 +225,9 @@ fn main_try() -> Result<(), failure::Error> {
         .transpose()?;
 
     let strategy = if let Some(name) = opt.chip {
+        if name == "nRF52832" || name == "nRF52840" {
+            let _ = ChipInfo::read_from_rom_table(&mut probe)?;
+        }
         SelectionStrategy::Name(name)
     } else {
         SelectionStrategy::ChipInfo(ChipInfo::read_from_rom_table(&mut probe)?)
@@ -234,19 +237,6 @@ fn main_try() -> Result<(), failure::Error> {
     } else {
         select_target(&strategy)?
     };
-
-    if target.manufacturer.get() == Some("Nordic VLSI ASA") {
-        if get_ap_by_idr(&mut probe, |idr| idr.CLASS == APClass::MEMAP).is_none() {
-            println!(
-                "{}\n{}\n{}",
-                "Your Nordic chip might be locked to debug access".yellow(),
-                "Run cargo flash with --nrf-recover flag".yellow(),
-                "WARNING: --nrf-recover will erase the entire code flash and UICR area of the
-                device, in addition to the entire RAM"
-                    .red()
-            );
-        }
-    }
 
     let flash_algorithm = match target.flash_algorithm.clone() {
         Some(name) => select_algorithm(name)?,
