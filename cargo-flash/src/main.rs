@@ -1,16 +1,16 @@
 extern crate structopt;
 
+use colored::*;
+use failure::format_err;
 use std::{
     env,
     error::Error,
     fmt,
     fs::read_to_string,
     path::PathBuf,
-    process::{Command, Stdio},
+    process::{self, Command, Stdio},
     time::Instant,
 };
-
-use colored::*;
 use structopt::StructOpt;
 
 use probe_rs::{
@@ -66,7 +66,10 @@ struct Opt {
 fn main() {
     match main_try() {
         Ok(_) => (),
-        Err(e) => println!("{}", e),
+        Err(e) => {
+            eprintln!("{}: {}", "error".red().bold(), e);
+            process::exit(1);
+        }
     }
 }
 
@@ -84,38 +87,6 @@ fn main_try() -> Result<(), failure::Error> {
     // Get commandline options.
     let opt = Opt::from_iter(&args);
     args.remove(0); // Remove executable name
-
-    // Try and get the cargo project information.
-    let project = cargo_project::Project::query(".")?;
-
-    // Decide what artifact to use.
-    let artifact = if let Some(bin) = &opt.bin {
-        cargo_project::Artifact::Bin(bin)
-    } else if let Some(example) = &opt.example {
-        cargo_project::Artifact::Example(example)
-    } else {
-        cargo_project::Artifact::Bin(project.name())
-    };
-
-    // Decide what profile to use.
-    let profile = if opt.release {
-        cargo_project::Profile::Release
-    } else {
-        cargo_project::Profile::Dev
-    };
-
-    // Try and get the artifact path.
-    let path = project.path(
-        artifact,
-        profile,
-        opt.target.as_ref().map(|t| &**t),
-        "x86_64-unknown-linux-gnu",
-    )?;
-
-    let path_str = match path.to_str() {
-        Some(s) => s,
-        None => panic!(),
-    };
 
     // Remove possible `--chip <chip>` arguments as cargo build does not understand it.
     if let Some(index) = args.iter().position(|x| *x == "--chip") {
@@ -165,15 +136,47 @@ fn main_try() -> Result<(), failure::Error> {
         handle_failed_command(status)
     }
 
+    // Try and get the cargo project information.
+    let project = cargo_project::Project::query(".")
+        .map_err(|e| format_err!("failed to parse Cargo project information: {}", e))?;
+
+    // Decide what artifact to use.
+    let artifact = if let Some(bin) = &opt.bin {
+        cargo_project::Artifact::Bin(bin)
+    } else if let Some(example) = &opt.example {
+        cargo_project::Artifact::Example(example)
+    } else {
+        cargo_project::Artifact::Bin(project.name())
+    };
+
+    // Decide what profile to use.
+    let profile = if opt.release {
+        cargo_project::Profile::Release
+    } else {
+        cargo_project::Profile::Dev
+    };
+
+    // Try and get the artifact path.
+    let path = project.path(
+        artifact,
+        profile,
+        opt.target.as_ref().map(|t| &**t),
+        "x86_64-unknown-linux-gnu",
+    )?;
+
+    let path_str = match path.to_str() {
+        Some(s) => s,
+        None => panic!(),
+    };
+
     println!("    {} {}", "Flashing".green().bold(), path_str);
 
     let mut list = daplink::tools::list_daplink_devices();
     list.extend(stlink::tools::list_stlink_devices());
 
-    let device = list.pop().unwrap_or_else(|| {
-        eprintln!("    {} No supported probe was found.", "Error".red().bold());
-        std::process::exit(1);
-    });
+    let device = list
+        .pop()
+        .ok_or_else(|| format_err!("no supported probe was found"))?;
 
     let mut probe = match device.probe_type {
         DebugProbeType::DAPLink => {
@@ -192,22 +195,19 @@ fn main_try() -> Result<(), failure::Error> {
         }
     };
 
-    let target_override = opt.chip_description_path.as_ref().map(|cd| {
-        let string = read_to_string(&cd)
-            .expect("Chip definition file could not be read. This is a bug. Please report it.");
-        let target = Target::new(&string);
-        match target {
-            Ok(target) => target,
-            Err(e) => {
-                eprintln!(
-                    "    {} Target specification file could not be parsed.",
-                    "Error".red().bold()
-                );
-                eprintln!("    {:?}", e);
-                std::process::exit(1);
-            }
-        }
-    });
+    let target_override = opt
+        .chip_description_path
+        .as_ref()
+        .map(|cd| -> Result<_, failure::Error> {
+            let string = read_to_string(&cd).map_err(|e| {
+                format_err!("failed to read chip description file from {}: {}", cd, e)
+            })?;
+            let target = Target::new(&string)
+                .map_err(|e| format_err!("failed to parse chip description file {}: {}", cd, e))?;
+
+            Ok(target)
+        })
+        .transpose()?;
 
     let strategy = if let Some(name) = opt.chip {
         SelectionStrategy::Name(name)
@@ -238,7 +238,7 @@ fn main_try() -> Result<(), failure::Error> {
         Format::Elf,
         &mm,
     )
-    .unwrap();
+    .map_err(|e| format_err!("failed to flash {}: {}", path_str, e))?;
 
     // Stop timer.
     let elapsed = instant.elapsed();
