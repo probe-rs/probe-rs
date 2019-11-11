@@ -29,7 +29,6 @@ pub enum FileDownloadError {
     IhexRead(ihex::reader::ReaderError),
     IO(std::io::Error),
     Object(&'static str),
-    TargetDoesNotExist,
 }
 
 impl Error for FileDownloadError {}
@@ -43,7 +42,6 @@ impl fmt::Display for FileDownloadError {
             IhexRead(ref e) => e.fmt(f),
             IO(ref e) => e.fmt(f),
             Object(ref s) => write!(f, "Object Error: {}.", s),
-            TargetDoesNotExist => write!(f, "File Downlaod: Target does not exist."),
         }
     }
 }
@@ -97,7 +95,7 @@ impl<'a> FileDownloader {
     ) -> Result<(), FileDownloadError> {
         let mut file = match File::open(path) {
             Ok(file) => file,
-            Err(_e) => return Err(FileDownloadError::TargetDoesNotExist),
+            Err(e) => return Err(FileDownloadError::IO(e)),
         };
         let mut buffer = vec![];
         // IMPORTANT: Change this to an actual memory map of a real chip
