@@ -64,6 +64,7 @@ struct Opt {
 }
 
 fn main() {
+    pretty_env_logger::init();
     match main_try() {
         Ok(_) => (),
         Err(e) => {
