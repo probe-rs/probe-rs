@@ -9,8 +9,8 @@ use goblin::elf::program_header::*;
 
 use crate::flash_device::FlashDevice;
 
-const FLASH_BLOB_HEADER_SIZE: u32 = 8;
-const FLASH_BLOB_HEADER: [u32; FLASH_BLOB_HEADER_SIZE as usize] = [
+const FLASH_BLOB_HEADER_SIZE: u32 = 8 * 4;
+const FLASH_BLOB_HEADER: [u32; FLASH_BLOB_HEADER_SIZE as usize / 4] = [
     0xE00A_BE00, 0x062D_780D, 0x2408_4068, 0xD300_0040,
     0x1E64_4058, 0x1C49_D1FA, 0x2A00_1E52, 0x0477_0D1F
 ];
@@ -121,6 +121,6 @@ pub fn extract_flash_algo(file_name: &std::path::Path, blocksize: u32, ram_regio
         algo.analyzer_supported = false;
     }
 
-    println!("{:08x?}", &algo);
+    println!("{:?}", &algo);
     Ok(algo)
 }

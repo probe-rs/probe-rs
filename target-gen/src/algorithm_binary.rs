@@ -53,7 +53,8 @@ impl AlgorithmBinary {
                 for sh in &elf.section_headers {
                     let range = sh.sh_offset as u32..sh.sh_offset as u32 + sh.sh_size as u32;
                     if sector.contains_range(&range) {
-                        let data = Vec::from(&buffer[ph.p_offset as usize..][..sh.sh_size as usize]);
+                        dbg!(sh);
+                        let mut data = Vec::from(&buffer[sh.sh_offset as usize..][..sh.sh_size as usize]);
                         let section = Some(Section {
                             start: sh.sh_addr as u32,
                             length: sh.sh_size as u32,
@@ -79,7 +80,9 @@ impl AlgorithmBinary {
         blob.extend(&rw.data);
 
         let zi = zi.unwrap();
-        blob.extend(&zi.data);
+        blob.extend(&vec![0; zi.length as usize]);
+
+        println!("{}/{}, {}/{}, {}/{}", ro.start, ro.length, rw.start, rw.length, zi.start, zi.length);
 
         Self {
             ro,
