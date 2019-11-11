@@ -1,0 +1,18 @@
+# Flashing algorithm file for lpc84x MCUs
+#
+# TODO: None of the values below are correct!
+
+load_address: 0x00000000
+instructions: []
+pc_init: 0
+pc_uninit: null
+pc_program_page: 0
+pc_erase_sector: 0
+pc_erase_all: 0
+static_base: 0
+begin_stack: 0
+begin_data: 0
+page_buffers: [0, 0]
+min_program_length: 2
+analyzer_supported: true
+analyzer_address: 0

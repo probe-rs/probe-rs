@@ -1,0 +1,33 @@
+# WIP target file for LPC84x MCUs
+
+name: "LPC84x"
+# TODO: Manufacturer and Part are not correct yet. They are only needed for autodetection.
+manufacturer:
+  cc: 0x05
+  id: 0x01
+part: 0x0
+flash_algorithm: "lpc84x.yaml"
+memory_map:
+    - Flash:
+        range:
+          start: 0x00000000
+          end:   0x00004000
+        is_boot_memory: true
+        is_testable: true
+        blocksize: 0x10
+        sector_size: 0x10
+        page_size: 0x10
+        phrase_size: 0x10
+        erase_all_weight: 0.174 # TODO: Replace with proper constant later.
+        erase_sector_weight: 0.048 # TODO: Replace with proper constant later.
+        program_page_weight: 0.130 # TODO: Replace with proper constant later.
+        erased_byte_value: 0xFF
+        access: 0b00000101 # TODO: Replace with proper constant later.
+        are_erased_sectors_readable: true
+    - Ram:
+        range:
+          start: 0x10000000
+          end: 0x10001000
+        is_boot_memory: false
+        is_testable: true
+core: "M0+"
