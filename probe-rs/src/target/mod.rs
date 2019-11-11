@@ -2,6 +2,7 @@ pub mod info;
 
 use serde::de::{Error, Unexpected};
 
+use self::info::ReadError;
 use crate::{
     collection::get_core,
     probe::{
@@ -146,7 +147,7 @@ impl<'de> serde::Deserialize<'de> for Box<dyn Core> {
 
 #[derive(Debug)]
 pub enum TargetSelectionError {
-    CouldNotAutodetect,
+    InfoReadError(ReadError),
     TargetNotFound(String),
     TargetCouldNotBeParsed(TargetParseError),
 }
@@ -156,7 +157,7 @@ impl fmt::Display for TargetSelectionError {
         use TargetSelectionError::*;
 
         match self {
-            CouldNotAutodetect => write!(f, "Target could not be automatically identified."),
+            InfoReadError(e) => write!(f, "Failed to read target into: {}", e),
             TargetNotFound(ref t) => write!(f, "Failed to find target defintion for target {}", t),
             TargetCouldNotBeParsed(ref e) => {
                 write!(f, "Failed to parse target definition for target: ")?;
@@ -171,5 +172,11 @@ impl std::error::Error for TargetSelectionError {}
 impl From<TargetParseError> for TargetSelectionError {
     fn from(error: TargetParseError) -> Self {
         TargetSelectionError::TargetCouldNotBeParsed(error)
+    }
+}
+
+impl From<ReadError> for TargetSelectionError {
+    fn from(e: ReadError) -> Self {
+        TargetSelectionError::InfoReadError(e)
     }
 }

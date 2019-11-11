@@ -16,21 +16,15 @@ pub fn get_built_in_target(name: impl AsRef<str>) -> Result<Target, TargetSelect
         .and_then(|target| Target::new(target).map_err(From::from))
 }
 
-pub fn get_built_in_target_by_chip_id(
-    chip_info: &ChipInfo,
-) -> Result<Target, TargetSelectionError> {
+pub fn get_built_in_target_by_chip_id(chip_info: &ChipInfo) -> Option<Target> {
     for target in TARGETS.values() {
-        match Target::new(target) {
-            Ok(target) => {
-                if target.manufacturer == chip_info.manufacturer && target.part == chip_info.part {
-                    return Ok(target);
-                }
-            }
-            Err(_e) => continue,
+        let target = Target::new(target).unwrap();
+        if target.manufacturer == chip_info.manufacturer && target.part == chip_info.part {
+            return Some(target);
         }
     }
 
-    Err(TargetSelectionError::CouldNotAutodetect)
+    None
 }
 
 pub enum SelectionStrategy {
@@ -44,7 +38,11 @@ pub fn select_target(strategy: &SelectionStrategy) -> Result<Target, TargetSelec
             Some(target) => Ok(target),
             None => get_built_in_target(name),
         },
-        SelectionStrategy::ChipInfo(chip_info) => get_built_in_target_by_chip_id(&chip_info),
+        SelectionStrategy::ChipInfo(chip_info) => {
+            get_built_in_target_by_chip_id(&chip_info).ok_or(TargetSelectionError::TargetNotFound(
+                format!("No target info found for device: {}", chip_info),
+            ))
+        }
     }
 }
 
