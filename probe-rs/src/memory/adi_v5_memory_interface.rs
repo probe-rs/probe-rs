@@ -148,13 +148,13 @@ impl ADIMemoryInterface {
     pub fn read_block32<AP>(
         &self,
         debug_port: &mut AP,
-        address: u32,
+        start_address: u32,
         data: &mut [u32],
     ) -> Result<(), AccessPortError>
     where
         AP: APAccess<MemoryAP, CSW> + APAccess<MemoryAP, TAR> + APAccess<MemoryAP, DRW>,
     {
-        if (address % 4) != 0 {
+        if (start_address % 4) != 0 {
             return Err(AccessPortError::MemoryNotAligned);
         }
 
@@ -162,11 +162,21 @@ impl ADIMemoryInterface {
         let csw = self.build_csw_register(DataSize::U32);
         self.write_register_ap(debug_port, csw)?;
 
+        let mut address = start_address;
         let tar = TAR { address };
         self.write_register_ap(debug_port, tar)?;
 
         for data in data.iter_mut() {
             *data = self.read_register_ap(debug_port, DRW::default())?.data;
+
+            // the autoincrement is limited to the 10 lowest bits so we need to write the address
+            // every time it overflows
+            address += 4;
+            if address.trailing_zeros() >= 10 {
+                log::debug!("Writing TAR: {:08x}", address);
+                let tar = TAR { address };
+                self.write_register_ap(debug_port, tar)?;
+            }
         }
 
         Ok(())
@@ -334,13 +344,13 @@ impl ADIMemoryInterface {
     pub fn write_block32<AP>(
         &self,
         debug_port: &mut AP,
-        address: u32,
+        start_address: u32,
         data: &[u32],
     ) -> Result<(), AccessPortError>
     where
         AP: APAccess<MemoryAP, CSW> + APAccess<MemoryAP, TAR> + APAccess<MemoryAP, DRW>,
     {
-        if (address % 4) != 0 {
+        if (start_address % 4) != 0 {
             return Err(AccessPortError::MemoryNotAligned);
         }
 
@@ -349,12 +359,22 @@ impl ADIMemoryInterface {
 
         self.write_register_ap(debug_port, csw)?;
 
+        let mut address = start_address;
         let tar = TAR { address };
         self.write_register_ap(debug_port, tar)?;
 
         for data in data.iter() {
             let drw = DRW { data: *data };
             self.write_register_ap(debug_port, drw)?;
+
+            // the autoincrement is limited to the 10 lowest bits so we need to write the address
+            // every time it overflows
+            address += 4;
+            if address.trailing_zeros() >= 10 {
+                log::debug!("Writing TAR: {:08x}", address);
+                let tar = TAR { address };
+                self.write_register_ap(debug_port, tar)?;
+            }
         }
 
         Ok(())
