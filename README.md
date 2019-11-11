@@ -52,7 +52,7 @@ To demonstrate the functionality a small cli was written.
 Fire it up with
 
 ```
-cargo run -p cli -- help
+cargo run -p probe-rs-cli -- help
 ```
 
 The help dialog should then tell you how to use the CLI.
