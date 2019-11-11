@@ -212,7 +212,7 @@ fn main_try() -> Result<(), failure::Error> {
     let strategy = if let Some(name) = opt.chip {
         SelectionStrategy::Name(name)
     } else {
-        SelectionStrategy::ChipInfo(ChipInfo::read_from_rom_table(&mut probe).unwrap())
+        SelectionStrategy::ChipInfo(ChipInfo::read_from_rom_table(&mut probe)?)
     };
     let target = if let Some(target) = target_override {
         target

@@ -11,7 +11,7 @@ use probe_rs::{
         stlink,
     },
     session::Session,
-    target::info::ChipInfo,
+    target::info::{self, ChipInfo},
     target::TargetSelectionError,
 };
 use probe_rs_targets::{select_algorithm, select_target, SelectionStrategy};
@@ -25,6 +25,7 @@ use std::path::Path;
 
 #[derive(Debug)]
 pub enum CliError {
+    InfoReadError(info::ReadError),
     DebugProbe(DebugProbeError),
     AccessPort(AccessPortError),
     TargetSelectionError(TargetSelectionError),
@@ -40,6 +41,7 @@ impl Error for CliError {
         use CliError::*;
 
         match self {
+            InfoReadError(e) => Some(e),
             DebugProbe(ref e) => Some(e),
             AccessPort(ref e) => Some(e),
             TargetSelectionError(ref e) => Some(e),
@@ -57,6 +59,7 @@ impl fmt::Display for CliError {
         use CliError::*;
 
         match self {
+            InfoReadError(e) => e.fmt(f),
             DebugProbe(ref e) => e.fmt(f),
             AccessPort(ref e) => e.fmt(f),
             TargetSelectionError(ref e) => e.fmt(f),
@@ -66,6 +69,12 @@ impl fmt::Display for CliError {
             MissingArgument => write!(f, "Command expected more arguments."),
             UnableToOpenProbe => write!(f, "Unable to open probe."),
         }
+    }
+}
+
+impl From<info::ReadError> for CliError {
+    fn from(error: info::ReadError) -> Self {
+        CliError::InfoReadError(error)
     }
 }
 
@@ -153,8 +162,7 @@ where
     let selection_strategy = if let Some(ref target_name) = shared_options.target {
         SelectionStrategy::Name(target_name.clone())
     } else {
-        let chip_info = ChipInfo::read_from_rom_table(&mut probe)
-            .ok_or(TargetSelectionError::CouldNotAutodetect)?;
+        let chip_info = ChipInfo::read_from_rom_table(&mut probe)?;
         SelectionStrategy::ChipInfo(chip_info)
     };
 
