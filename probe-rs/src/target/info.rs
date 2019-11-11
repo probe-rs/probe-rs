@@ -10,6 +10,7 @@ use crate::{
     memory::romtable::{CSComponent, CSComponentId, PeripheralID, RomTableError},
 };
 use jep106::JEP106Code;
+use log::debug;
 use std::{error::Error, fmt};
 
 #[derive(Debug)]
@@ -52,7 +53,7 @@ impl ChipInfo {
     pub fn read_from_rom_table(probe: &mut MasterProbe) -> Result<Self, ReadError> {
         for access_port in valid_access_ports(probe) {
             let idr = probe.read_register_ap(access_port, IDR::default())?;
-            println!("{:#x?}", idr);
+            debug!("{:#x?}", idr);
 
             if idr.CLASS == APClass::MEMAP {
                 let access_port: MemoryAP = access_port.into();
