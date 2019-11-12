@@ -45,6 +45,7 @@ impl DebugProbe for STLink {
 
     /// Enters debug mode.
     fn attach(&mut self, protocol: Option<WireProtocol>) -> Result<WireProtocol, DebugProbeError> {
+        log::debug!("attach({:?}", protocol);
         self.enter_idle()?;
 
         let (param, protocol) = if let Some(protocol) = protocol {
@@ -409,7 +410,9 @@ impl STLink {
     /// Returns Ok(()) otherwise.
     /// This can be called on any status returned from the attached target.
     fn check_status(status: &[u8]) -> Result<(), DebugProbeError> {
+        log::trace!("check_status({:?})", status);
         if status[0] != Status::JtagOk as u8 {
+            log::debug!("check_status failed: {:?}", status);
             Err(DebugProbeError::UnknownError)
         } else {
             Ok(())
