@@ -9,6 +9,7 @@ use log::debug;
 use crate::memory::adi_v5_memory_interface::ADIMemoryInterface;
 use crate::memory::MI;
 use crate::probe::protocol::WireProtocol;
+use crate::probe::stlink::constants::Status as StLinkStatus;
 use std::error::Error;
 use std::fmt;
 
@@ -33,6 +34,7 @@ pub enum DebugProbeError {
     TargetPowerUpFailed,
     Timeout,
     AccessPortError(AccessPortError),
+    Custom(String),
 }
 
 impl Error for DebugProbeError {
@@ -54,6 +56,15 @@ impl fmt::Display for DebugProbeError {
 impl From<AccessPortError> for DebugProbeError {
     fn from(e: AccessPortError) -> Self {
         DebugProbeError::AccessPortError(e)
+    }
+}
+
+impl From<StLinkStatus> for DebugProbeError {
+    fn from(status: StLinkStatus) -> Self {
+        Self::Custom(format!(
+            "Unexpected STLink status {}: {:?}",
+            status as u8, status
+        ))
     }
 }
 

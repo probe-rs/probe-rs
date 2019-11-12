@@ -67,12 +67,12 @@ impl DebugProbe for STLink {
             &mut buf,
             TIMEOUT,
         )?;
-        Self::check_status(&buf).and_then(|_| {
-            // After we checked the status with success,
-            // We store the current protocol.
-            self.protocol = protocol;
-            Ok(protocol)
-        })
+        Self::check_status(&buf)?;
+
+        // After we checked the status with success,
+        // We store the current protocol.
+        self.protocol = protocol;
+        Ok(protocol)
     }
 
     /// Leave debug mode.
@@ -93,7 +93,8 @@ impl DebugProbe for STLink {
             &mut buf,
             TIMEOUT,
         )?;
-        Self::check_status(&buf)
+        Self::check_status(&buf)?;
+        Ok(())
     }
 }
 
@@ -326,7 +327,8 @@ impl STLink {
             &mut buf,
             TIMEOUT,
         )?;
-        Self::check_status(&buf)
+        Self::check_status(&buf)?;
+        Ok(())
     }
 
     /// Sets the JTAG frequency.
@@ -345,7 +347,8 @@ impl STLink {
             &mut buf,
             TIMEOUT,
         )?;
-        Self::check_status(&buf)
+        Self::check_status(&buf)?;
+        Ok(())
     }
 
     pub fn open_ap(&mut self, apsel: impl AccessPort) -> Result<(), DebugProbeError> {
@@ -364,7 +367,8 @@ impl STLink {
                 &mut buf,
                 TIMEOUT,
             )?;
-            Self::check_status(&buf)
+            Self::check_status(&buf)?;
+            Ok(())
         }
     }
 
@@ -383,7 +387,8 @@ impl STLink {
                 &mut buf,
                 TIMEOUT,
             )?;
-            Self::check_status(&buf)
+            Self::check_status(&buf)?;
+            Ok(())
         }
     }
 
@@ -402,18 +407,20 @@ impl STLink {
             &mut buf,
             TIMEOUT,
         )?;
-        Self::check_status(&buf)
+        Self::check_status(&buf)?;
+        Ok(())
     }
 
     /// Validates the status given.
     /// Returns an `Err(DebugProbeError::UnknownError)` if the status is not `Status::JtagOk`.
     /// Returns Ok(()) otherwise.
     /// This can be called on any status returned from the attached target.
-    fn check_status(status: &[u8]) -> Result<(), DebugProbeError> {
+    fn check_status(status: &[u8]) -> Result<(), Status> {
         log::trace!("check_status({:?})", status);
-        if status[0] != Status::JtagOk as u8 {
+        let status = Status::from(status[0]);
+        if status != Status::JtagOk {
             log::debug!("check_status failed: {:?}", status);
-            Err(DebugProbeError::UnknownError)
+            Err(status)
         } else {
             Ok(())
         }

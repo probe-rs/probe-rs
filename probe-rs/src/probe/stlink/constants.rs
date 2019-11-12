@@ -63,7 +63,7 @@ pub mod commands {
 }
 
 /// STLink status codes and messages.
-#[derive(Primitive)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Primitive)]
 pub enum Status {
     JtagOk = 0x80,
     JtagUnknownError = 0x01,
