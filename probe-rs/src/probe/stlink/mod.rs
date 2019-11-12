@@ -269,7 +269,7 @@ impl STLink {
 
         // For the STLinkV3 we must use the extended get version command.
         if self.hw_version >= 3 {
-            // GET_VERSION_EXT response structure (byte offsets) {
+            // GET_VERSION_EXT response structure (byte offsets)
             //  0: HW version
             //  1: SWIM version
             //  2: JTAG/SWD version
