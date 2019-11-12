@@ -79,21 +79,19 @@ impl FlashSector {
     }
 
     pub fn add_page(&mut self, page: FlashPage) -> Result<(), FlashBuilderError> {
-        if self.pages.is_empty() {
-            if self.size % page.size != 0 {
-                return Err(FlashBuilderError::FlashSectorNotMultipleOfPageSize(
-                    page.size, self.size,
-                ));
-            }
-            let max_page_count = (self.size / page.size) as usize;
+        if self.size % page.size != 0 {
+            return Err(FlashBuilderError::FlashSectorNotMultipleOfPageSize(
+                page.size, self.size,
+            ));
+        }
+        let max_page_count = (self.size / page.size) as usize;
 
-            if self.pages.len() < max_page_count {
-                self.max_page_count = max_page_count;
-                self.pages.push(page);
-                self.pages.sort_by_key(|p| p.address);
-            } else {
-                return Err(FlashBuilderError::MaxPageCountExceeded(max_page_count));
-            }
+        if self.pages.len() < max_page_count {
+            self.max_page_count = max_page_count;
+            self.pages.push(page);
+            self.pages.sort_by_key(|p| p.address);
+        } else {
+            return Err(FlashBuilderError::MaxPageCountExceeded(max_page_count));
         }
         Ok(())
     }
@@ -303,114 +301,99 @@ impl<'a> FlashBuilder<'a> {
         sectors: &mut Vec<FlashSector>,
         keep_unwritten: bool,
     ) -> Result<(), FlashBuilderError> {
-        log::debug!("Building sectors and pages");
-        let mut flash_address = self.flash_operations[0].address;
-
-        // Get sector info and make sure all data is valid.
-        let sector_info = flash.region().get_sector_info(flash_address);
-        let sector_info = if let Some(sector_info) = sector_info {
-            sector_info
-        } else {
-            return Err(FlashBuilderError::InvalidFlashAddress(flash_address));
-        };
-
-        // Get page info and make sure all data is valid.
-        let page_info = flash.region().get_page_info(flash_address);
-        let page_info = if let Some(page_info) = page_info {
-            page_info
-        } else {
-            return Err(FlashBuilderError::InvalidFlashAddress(flash_address));
-        };
-
-        let mut first_sector = FlashSector::new(&sector_info);
-        let first_page = FlashPage::new(&page_info);
-        first_sector.add_page(first_page)?;
-        sectors.push(first_sector);
-        log::debug!("Adding Sector");
-        log::debug!("Adding Page");
-
-        let mut current_sector_index = sectors.len() - 1;
-        let mut current_page_index = sectors[current_sector_index].pages.len() - 1;
-
-        for flash_operation in &self.flash_operations {
+        for op in &self.flash_operations {
             let mut pos = 0;
-            while pos < flash_operation.data.len() {
+            while pos < op.data.len() {
                 // Check if the operation is in another sector.
-                flash_address = flash_operation.address + pos as u32;
-                let mut added_new_sector = false;
-                {
-                    let current_sector = &mut sectors[current_sector_index];
-                    if flash_address >= current_sector.address + current_sector.size {
+                let flash_address = op.address + pos as u32;
+                if let Some(sector) = sectors.last_mut() {
+                    // If the address is not in the sector, add a new sector.
+                    if flash_address >= sector.address + sector.size {
+                        dbg!(sectors.len());
                         let sector_info = flash.region().get_sector_info(flash_address);
                         if let Some(sector_info) = sector_info {
                             let new_sector = FlashSector::new(&sector_info);
                             sectors.push(new_sector);
-                            current_sector_index = sectors.len() - 1;
-                            added_new_sector = true;
-                            log::debug!("Adding Sector");
+                            log::debug!("Added Sector");
                         } else {
                             return Err(FlashBuilderError::InvalidFlashAddress(flash_address));
                         }
+                        continue;
+                    } else {
+                        if let Some(page) = sector.pages.last_mut() {
+                            // If the current page does not contain the address.
+                            dbg!(flash_address);
+                            dbg!(page.address, page.size);
+                            if flash_address >= page.address + page.size {
+                                // Fill any gap at the end of the current page before switching to a new page.
+                                Self::fill_end_of_page_gap(
+                                    flash,
+                                    page,
+                                    page.size as usize - page.data.len(),
+                                    keep_unwritten,
+                                )?;
+
+                                let page_info = flash.region().get_page_info(flash_address);
+                                if let Some(page_info) = page_info {
+                                    let new_page = FlashPage::new(&page_info);
+                                    dbg!(sector.pages.len());
+                                    dbg!(&new_page);
+                                    sector.add_page(new_page)?;
+                                    log::debug!("Added Page");
+                                } else {
+                                    return Err(FlashBuilderError::InvalidFlashAddress(flash_address));
+                                }
+                                continue;
+                            } else {
+                                let space_left_in_page = page.size - page.data.len() as u32;
+                                let space_left_in_data = op.data.len() - pos;
+                                let amount = usize::min(space_left_in_page as usize, space_left_in_data);
+
+                                page
+                                    .data
+                                    .extend(&op.data[pos..pos + amount]);
+                                log::debug!("Added {} bytes to page", amount);
+                                pos += amount;
+                            }
+                        } else {
+                            // If no page is on the sector yet.
+                            let page_info = flash.region().get_page_info(flash_address);
+                            if let Some(page_info) = page_info {
+                                let new_page = FlashPage::new(&page_info);
+                                sector.add_page(new_page)?;
+                                log::debug!("Added Page");
+                            } else {
+                                return Err(FlashBuilderError::InvalidFlashAddress(flash_address));
+                            }
+                            continue;
+                        }
                     }
-                }
-
-                // Check if the operation is in another page.
-                let current_page = &mut sectors
-                    [current_sector_index - if added_new_sector { 1 } else { 0 }]
-                .pages[current_page_index];
-                if flash_address >= current_page.address + current_page.size {
-                    // Fill any gap at the end of the current page before switching to a new page.
-                    Self::fill_end_of_page_gap(
-                        flash,
-                        current_page,
-                        current_page.size as usize - current_page.data.len(),
-                        keep_unwritten,
-                    )?;
-
-                    let page_info = flash.region().get_page_info(flash_address);
-                    if let Some(page_info) = page_info {
-                        let current_sector = &mut sectors[current_sector_index];
-                        let new_page = FlashPage::new(&page_info);
-                        current_sector.add_page(new_page)?;
-                        current_page_index = current_sector.pages.len() - 1;
-                        log::debug!("Adding Page");
+                } else {
+                    // If no sector exists, create a new one.
+                    let sector_info = flash.region().get_sector_info(flash_address);
+                    if let Some(sector_info) = sector_info {
+                        let new_sector = FlashSector::new(&sector_info);
+                        sectors.push(new_sector);
+                        log::debug!("Added Sector");
                     } else {
                         return Err(FlashBuilderError::InvalidFlashAddress(flash_address));
                     }
+                    continue;
                 }
-
-                // Fill the page gap if there is one.
-                let current_sector = &mut sectors[current_sector_index];
-                let current_page = &mut current_sector.pages[current_page_index];
-                Self::fill_end_of_page_gap(
-                    flash,
-                    current_page,
-                    (flash_address - (current_page.address + current_page.data.len() as u32))
-                        as usize,
-                    keep_unwritten,
-                )?;
-
-                // Copy data to page and increment pos
-                let space_left_in_page = page_info.size - current_page.data.len() as u32;
-                let space_left_in_data = flash_operation.data.len() - pos;
-                let amount = usize::min(space_left_in_page as usize, space_left_in_data);
-                current_page
-                    .data
-                    .extend(&flash_operation.data[pos..pos + amount]);
-
-                // increment position
-                pos += amount;
             }
         }
 
         // Fill the page gap if there is one.
-        let current_page = &mut sectors[current_sector_index].pages[current_page_index];
-        Self::fill_end_of_page_gap(
-            flash,
-            current_page,
-            current_page.size as usize - current_page.data.len(),
-            keep_unwritten,
-        )?;
+        if let Some(sector) = sectors.last_mut() {
+            if let Some(page) = sector.pages.last_mut() {
+                Self::fill_end_of_page_gap(
+                    flash,
+                    page,
+                    page.size as usize - page.data.len(),
+                    keep_unwritten,
+                )?;
+            }
+        }
 
         if keep_unwritten && flash.region().access.contains(Access::R) {
             Self::fill_unwritten_sector_pages(flash, sectors)?;
