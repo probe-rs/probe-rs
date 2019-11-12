@@ -38,11 +38,13 @@ pub fn select_target(strategy: &SelectionStrategy) -> Result<Target, TargetSelec
             Some(target) => Ok(target),
             None => get_built_in_target(name),
         },
-        SelectionStrategy::ChipInfo(chip_info) => {
-            get_built_in_target_by_chip_id(&chip_info).ok_or(TargetSelectionError::TargetNotFound(
-                format!("No target info found for device: {}", chip_info),
-            ))
-        }
+        SelectionStrategy::ChipInfo(chip_info) => get_built_in_target_by_chip_id(&chip_info)
+            .ok_or_else(|| {
+                TargetSelectionError::TargetNotFound(format!(
+                    "No target info found for device: {}",
+                    chip_info
+                ))
+            }),
     }
 }
 

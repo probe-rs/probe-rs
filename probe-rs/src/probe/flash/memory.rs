@@ -123,18 +123,21 @@ pub struct DeviceRegion {
     pub range: core::ops::Range<u32>,
 }
 
+#[derive(Debug, Copy, Clone)]
 pub struct SectorInfo {
     pub base_address: u32,
     pub erase_weight: f32,
     pub size: u32,
 }
 
+#[derive(Debug, Copy, Clone)]
 pub struct PageInfo {
     pub base_address: u32,
     pub program_weight: f32,
     pub size: u32,
 }
 
+#[derive(Debug, Copy, Clone)]
 pub struct FlashInfo {
     pub rom_start: u32,
     pub erase_weight: f32,

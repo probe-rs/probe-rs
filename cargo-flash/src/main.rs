@@ -79,7 +79,7 @@ fn main_try() -> Result<(), failure::Error> {
 
     // When called by Cargo, the first argument after the binary name will be `flash`. If that's the
     // case, remove one argument (`Opt::from_iter` will remove the binary name by itself).
-    if env::args().skip(1).next() == Some("flash".to_string()) {
+    if env::args().nth(1) == Some("flash".to_string()) {
         args.next();
     }
 
