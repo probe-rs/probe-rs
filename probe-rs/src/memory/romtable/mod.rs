@@ -5,7 +5,7 @@ use crate::coresight::{
 };
 use crate::memory::MI;
 use enum_primitive_derive::Primitive;
-use log::{debug, error, info, warn};
+use log::{debug, info, warn};
 use num_traits::cast::FromPrimitive;
 use std::cell::RefCell;
 use std::error::Error;
