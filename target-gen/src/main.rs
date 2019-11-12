@@ -35,11 +35,10 @@ fn main() {
                                         .replace("\\", "/")
                                     )
                                     .as_path(),
-                                512,
                                 RamRegion {
                                     is_boot_memory: true,
                                     is_testable: true,
-                                    range: 0x2000_0000..0x2000_4000,
+                                    range: 0x1000_0000..0x1000_4000,
                                 })
                             .unwrap();
 

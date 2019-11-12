@@ -38,7 +38,7 @@ pub fn read_elf_bin_data<'a>(elf: &'a goblin::elf::Elf<'_>, buffer: &'a [u8], ad
     None
 }
 
-pub fn extract_flash_algo(file_name: &std::path::Path, blocksize: u32, ram_region: RamRegion) -> Result<FlashAlgorithm, AlgorithmParseError> {
+pub fn extract_flash_algo(file_name: &std::path::Path, ram_region: RamRegion) -> Result<FlashAlgorithm, AlgorithmParseError> {
     let mut file = std::fs::File::open(file_name).unwrap();
     let mut buffer = vec![];
     use std::io::Read;
@@ -47,6 +47,24 @@ pub fn extract_flash_algo(file_name: &std::path::Path, blocksize: u32, ram_regio
     let mut algo = FlashAlgorithm::default();
 
     if let Ok(elf) = goblin::elf::Elf::parse(&buffer.as_slice()) {
+        let mut flash_device = None;
+        // Extract the flash device info.
+        for sym in elf.syms.iter() {
+            let name = &elf.strtab[sym.st_name];
+            // println!("{}: 0x{:08x?}", name, sym.st_value);
+
+            match name {
+                "FlashDevice" => {
+                    // This struct contains information about the FLM file structure.
+                    let address = sym.st_value as u32;
+                    flash_device = Some(FlashDevice::new(&elf, &buffer, address));
+                }
+                _ => {},
+            }
+        }
+
+        let flash_device = flash_device.unwrap();
+
         // Extract binary blob.
         let algorithm_binary = crate::algorithm_binary::AlgorithmBinary::new(&elf, &buffer);
 
@@ -72,13 +90,13 @@ pub fn extract_flash_algo(file_name: &std::path::Path, blocksize: u32, ram_regio
 
         // Data buffer 1
         let addr_data = ram_region.range.start + offset;
-        offset += blocksize;
+        offset += flash_device.page_size;
 
         assert!(offset < ram_region.range.end - ram_region.range.start, "Not enough space for flash algorithm");
 
         // Data buffer 2
         let addr_data2 = ram_region.range.start + offset;
-        offset += blocksize;
+        offset += flash_device.page_size;
 
         // Determine whether we can use double buffering or not by the remaining RAM region size.
         let page_buffers = if offset < ram_region.range.end - ram_region.range.start {
@@ -91,8 +109,6 @@ pub fn extract_flash_algo(file_name: &std::path::Path, blocksize: u32, ram_regio
 
         algo.load_address = addr_load;
 
-        let mut flash_device = None;
-
         // Extract the function pointers.
         for sym in elf.syms.iter() {
             let name = &elf.strtab[sym.st_name];
@@ -104,11 +120,6 @@ pub fn extract_flash_algo(file_name: &std::path::Path, blocksize: u32, ram_regio
                 "EraseChip" => algo.pc_erase_all = Some(code_start + sym.st_value as u32),
                 "EraseSector" => algo.pc_erase_sector = code_start + sym.st_value as u32,
                 "ProgramPage" => algo.pc_program_page = code_start + sym.st_value as u32,
-                "FlashDevice" => {
-                    // This struct contains information about the FLM file structure.
-                    let address = sym.st_value as u32;
-                    flash_device = Some(FlashDevice::new(&elf, &buffer, address));
-                }
                 _ => {},
             }
         }
@@ -117,7 +128,7 @@ pub fn extract_flash_algo(file_name: &std::path::Path, blocksize: u32, ram_regio
         algo.begin_data = page_buffers[0];
         algo.begin_stack = addr_stack;
         algo.static_base = code_start + algorithm_binary.rw.start;
-        algo.min_program_length = flash_device.map(|device| device.page_size);
+        algo.min_program_length = Some(flash_device.page_size);
         algo.analyzer_supported = false;
     }
 
