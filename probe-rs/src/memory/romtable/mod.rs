@@ -1,19 +1,15 @@
-use enum_primitive_derive::Primitive;
-use log::{debug, error, info};
-use num_traits::cast::FromPrimitive;
-
-use std::fmt;
-
-use std::error::Error;
-
 use crate::coresight::{
     access_ports,
     access_ports::{generic_ap::*, memory_ap::*},
     ap_access::*,
 };
-
 use crate::memory::MI;
+use enum_primitive_derive::Primitive;
+use log::{debug, info, warn};
+use num_traits::cast::FromPrimitive;
 use std::cell::RefCell;
+use std::error::Error;
+use std::fmt;
 
 #[derive(Debug, PartialEq)]
 pub enum RomTableError {
@@ -250,24 +246,34 @@ impl<'p, P: MI> ComponentInformationReader<'p, P> {
     /// Reads the component class from a component info table.
     pub fn component_class(&mut self) -> Result<CSComponentClass, RomTableError> {
         #![allow(clippy::verbose_bit_mask)]
-        let mut data = [0u32; 4];
+        let mut cidr = [0u32; 4];
         let mut probe = self.probe.borrow_mut();
 
-        probe.read_block32(self.base_address as u32 + 0xFF0, &mut data)?;
+        probe.read_block32(self.base_address as u32 + 0xFF0, &mut cidr)?;
 
-        debug!("CIDR: {:x?}", data);
+        debug!("CIDR: {:x?}", cidr);
 
-        if data[0] & 0xFF == 0x0D
-            && data[1] & 0x0F == 0x00
-            && data[2] & 0xFF == 0x05
-            && data[3] & 0xFF == 0xB1
-        {
-            FromPrimitive::from_u32((data[1] >> 4) & 0x0F)
-                .ok_or(RomTableError::CSComponentIdentificationError)
-        } else {
-            error!("The CIDR registers did not contain the expected preambles.");
-            Err(RomTableError::CSComponentIdentificationError)
+        let preambles = [
+            cidr[0] & 0xff,
+            cidr[1] & 0x0f,
+            cidr[2] & 0xff,
+            cidr[3] & 0xff,
+        ];
+
+        let expected = [0x0D, 0x0, 0x05, 0xB1];
+
+        for i in 0..4 {
+            if preambles[i] != expected[i] {
+                warn!(
+                    "Component at 0x{:x}: CIDR{} has invalid preamble (expected 0x{:x}, got 0x{:x})",
+                    self.base_address, i, expected[i], preambles[i],
+                );
+                return Err(RomTableError::CSComponentIdentificationError);
+            }
         }
+
+        FromPrimitive::from_u32((cidr[1] >> 4) & 0x0F)
+            .ok_or(RomTableError::CSComponentIdentificationError)
     }
 
     /// Reads the peripheral ID from a component info table.
