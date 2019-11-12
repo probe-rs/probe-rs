@@ -341,17 +341,18 @@ impl<'a> FlashBuilder<'a> {
                                     sector.add_page(new_page)?;
                                     log::debug!("Added Page");
                                 } else {
-                                    return Err(FlashBuilderError::InvalidFlashAddress(flash_address));
+                                    return Err(FlashBuilderError::InvalidFlashAddress(
+                                        flash_address,
+                                    ));
                                 }
                                 continue;
                             } else {
                                 let space_left_in_page = page.size - page.data.len() as u32;
                                 let space_left_in_data = op.data.len() - pos;
-                                let amount = usize::min(space_left_in_page as usize, space_left_in_data);
+                                let amount =
+                                    usize::min(space_left_in_page as usize, space_left_in_data);
 
-                                page
-                                    .data
-                                    .extend(&op.data[pos..pos + amount]);
+                                page.data.extend(&op.data[pos..pos + amount]);
                                 log::debug!("Added {} bytes to page", amount);
                                 pos += amount;
                             }
