@@ -45,7 +45,7 @@ impl DebugProbe for STLink {
 
     /// Enters debug mode.
     fn attach(&mut self, protocol: Option<WireProtocol>) -> Result<WireProtocol, DebugProbeError> {
-        log::debug!("attach({:?}", protocol);
+        log::debug!("attach({:?})", protocol);
         self.enter_idle()?;
 
         let (param, protocol) = if let Some(protocol) = protocol {
