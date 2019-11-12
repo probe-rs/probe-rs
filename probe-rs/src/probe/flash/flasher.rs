@@ -520,7 +520,8 @@ impl<'a, O: Operation> ActiveFlasher<'a, O> {
                     .core
                     .write_core_reg(&mut self.probe, *addr, *v)?;
                 log::debug!(
-                    "content: 0x{:08x} should be: 0x{:08x}",
+                    "content of {:#x}: 0x{:08x} should be: 0x{:08x}",
+                    addr.0,
                     self.target.core.read_core_reg(&mut self.probe, *addr)?,
                     *v
                 );
