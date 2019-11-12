@@ -1,3 +1,6 @@
+use enum_primitive_derive::Primitive;
+use num_traits::FromPrimitive;
+
 pub mod commands {
     // Common commands.
     pub const GET_VERSION: u8 = 0xf1;
@@ -60,6 +63,7 @@ pub mod commands {
 }
 
 /// STLink status codes and messages.
+#[derive(Primitive)]
 pub enum Status {
     JtagOk = 0x80,
     JtagUnknownError = 0x01,
@@ -90,6 +94,12 @@ pub enum Status {
     SwvNotAvailable = 0x20,
     JtagFreqNotSupported = 0x41,
     JtagUnknownCmd = 0x42,
+}
+
+impl From<u8> for Status {
+    fn from(status_byte: u8) -> Status {
+        Status::from_u8(status_byte).unwrap_or(Status::JtagUnknownError)
+    }
 }
 
 /// Map from SWD frequency in Hertz to delay loop count.
