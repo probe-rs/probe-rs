@@ -10,6 +10,14 @@
 
 [JEDEC CODES](https://www.jedec.org/system/files/docs/JEP106AY.pdf)
 
+## Releated OSS projects
+
+[PyOCD](https://github.com/mbedmicro/pyOCD) Open source Python library for
+programming and debugging Arm Cortex-M microcontrollers using CMSIS-DAP.
+
+[stlink](https://github.com/texane/stlink) Programmer for STM32. Supporting
+STLINKv1, v2 and v2-1. Written in C.
+
 
 ## Cortex M0
 
