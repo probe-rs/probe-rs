@@ -106,6 +106,6 @@ impl fmt::Display for ChipInfo {
                 self.manufacturer.cc, self.manufacturer.id
             ),
         };
-        write!(f, "{} 0x{:4x}", manu, self.part)
+        write!(f, "{} 0x{:04x}", manu, self.part)
     }
 }
