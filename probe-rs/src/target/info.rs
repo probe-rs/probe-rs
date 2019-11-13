@@ -9,6 +9,7 @@ use crate::{
     },
     memory::romtable::{CSComponent, CSComponentId, PeripheralID, RomTableError},
 };
+use colored::*;
 use jep106::JEP106Code;
 use log::debug;
 use std::{error::Error, fmt};

@@ -18,6 +18,7 @@ pub enum AccessPortError {
     RegisterReadError { addr: u8, name: &'static str },
     RegisterWriteError { addr: u8, name: &'static str },
     OutOfBoundsError,
+    CtrlAPNotFound,
 }
 
 impl Error for AccessPortError {}
@@ -40,6 +41,7 @@ impl fmt::Display for AccessPortError {
                 name, addr
             ),
             OutOfBoundsError => write!(f, "Out of bounds access"),
+            CtrlAPNotFound => write!(f, "Could not find Nordic's CTRL-AP"),
         }
     }
 }

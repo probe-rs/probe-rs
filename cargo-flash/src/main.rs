@@ -204,7 +204,7 @@ fn main_try() -> Result<(), failure::Error> {
             link.attach(Some(WireProtocol::Swd))?;
 
             if opt.nrf_recover {
-                return format_err!("It isn't possible to recover with a ST-Link");
+                return Err(format_err!("It isn't possible to recover with a ST-Link"));
             }
             MasterProbe::from_specific_probe(link)
         }
