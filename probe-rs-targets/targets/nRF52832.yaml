@@ -1,9 +1,8 @@
 name: "nRF52832"
-# TODO: Manufacturer and Part are not correct yet. They are only needed for autodetection.
 manufacturer:
   cc: 0x02
   id: 0x44
-part: 0x000111
+part: 0x000006
 flash_algorithm: "nRF52832.yaml"
 memory_map:
     - Flash:
