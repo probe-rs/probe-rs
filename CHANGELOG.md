@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Added `nrf-recover` feature that unlocks nRF52 chips through Nordic's custom `AP`
+
 ### Changed
 
 ### Fixed
