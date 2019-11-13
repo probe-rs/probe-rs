@@ -33,7 +33,7 @@ define_ap_register!(
 );
 
 define_ap_register!(
-    /// Soft reset triggered through CTRL-AP
+    /// Start mass erase
     CtrlAP,
     ERASEALL,
     0x004,
@@ -46,7 +46,7 @@ define_ap_register!(
 );
 
 define_ap_register!(
-    /// Soft reset triggered through CTRL-AP
+    /// Flag that indicates if the mass erase process is on-going
     CtrlAP,
     ERASEALLSTATUS,
     0x008,
@@ -59,7 +59,7 @@ define_ap_register!(
 );
 
 define_ap_register!(
-    /// Soft reset triggered through CTRL-AP
+    /// Flag that indicates if the chip is locked, `0` means locked
     CtrlAP,
     APPROTECTSTATUS,
     0x00C,
