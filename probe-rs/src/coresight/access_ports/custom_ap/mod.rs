@@ -26,9 +26,7 @@ define_ap_register!(
     0x000,
     [(RESET: bool),],
     value,
-    RESET {
-        RESET: if value == 1 { true } else { false },
-    },
+    RESET { RESET: value == 1 },
     if value.RESET { 1 } else { 0 }
 );
 
@@ -40,7 +38,7 @@ define_ap_register!(
     [(ERASEALL: bool),],
     value,
     ERASEALL {
-        ERASEALL: if value == 1 { true } else { false },
+        ERASEALL: value == 1,
     },
     if value.ERASEALL { 1 } else { 0 }
 );
@@ -53,7 +51,7 @@ define_ap_register!(
     [(ERASEALLSTATUS: bool),],
     value,
     ERASEALLSTATUS {
-        ERASEALLSTATUS: if value == 1 { true } else { false },
+        ERASEALLSTATUS: value == 1,
     },
     if value.ERASEALLSTATUS { 1 } else { 0 }
 );
@@ -66,7 +64,7 @@ define_ap_register!(
     [(APPROTECTSTATUS: bool),],
     value,
     APPROTECTSTATUS {
-        APPROTECTSTATUS: if value == 1 { true } else { false },
+        APPROTECTSTATUS: value == 1,
     },
     if value.APPROTECTSTATUS { 1 } else { 0 }
 );

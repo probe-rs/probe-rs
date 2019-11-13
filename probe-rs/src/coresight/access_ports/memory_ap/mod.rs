@@ -25,7 +25,7 @@ impl From<GenericAP> for MemoryAP {
     }
 }
 
-#[derive(Debug, Primitive, Clone, Copy)]
+#[derive(Debug, Primitive, Clone, Copy, PartialEq)]
 pub enum DataSize {
     U8 = 0b000,
     U16 = 0b001,
@@ -41,7 +41,7 @@ impl Default for DataSize {
     }
 }
 
-#[derive(Debug, Primitive, Clone, Copy)]
+#[derive(Debug, Primitive, Clone, Copy, PartialEq)]
 pub enum AddressIncrement {
     Off = 0b00,
     Single = 0b01,
@@ -66,7 +66,7 @@ impl Default for BaseaddrFormat {
     }
 }
 
-#[derive(Debug, Primitive, Clone, Copy)]
+#[derive(Debug, Primitive, Clone, Copy, PartialEq)]
 pub enum DebugEntryState {
     NotPresent = 0,
     Present = 1,

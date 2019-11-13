@@ -127,7 +127,7 @@ fn main_try() -> Result<(), failure::Error> {
         args.remove(index);
     }
 
-    // Remove possible `--nrf_recover` argument as cargo build does not understand it.
+    // Remove possible `--nrf-recover` argument as cargo build does not understand it.
     if let Some(index) = args.iter().position(|x| x.starts_with("--nrf-recover")) {
         args.remove(index);
     }
