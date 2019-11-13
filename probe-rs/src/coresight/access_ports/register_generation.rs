@@ -16,7 +16,7 @@ macro_rules! define_ap_register {
     => {
         $(#[$outer])*
         #[allow(non_snake_case)]
-        #[derive(Debug, Default, Clone, Copy)]
+        #[derive(Debug, Default, Clone, Copy, PartialEq)]
         pub struct $name {
             $(pub $field: $type,)*
         }

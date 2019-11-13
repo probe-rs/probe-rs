@@ -1,7 +1,7 @@
 use crate::coresight::{
     access_ports::{
         custom_ap::{CtrlAP, ERASEALL, ERASEALLSTATUS, RESET},
-        generic_ap::GenericAP,
+        generic_ap::{APClass, APType, GenericAP, IDR},
         memory_ap::MemoryAP,
         APRegister, AccessPortError,
     },
@@ -19,9 +19,15 @@ use std::error::Error;
 use std::fmt;
 use std::time::Instant;
 
-const UNLOCK_TRIES: usize = 2;
 const UNLOCK_TIMEOUT: u64 = 15;
-const CTRL_AP_IDR: u32 = 0x0288_0000;
+const CTRL_AP_IDR: IDR = IDR {
+    REVISION: 0,
+    DESIGNER: 0x0144,
+    CLASS: APClass::Undefined,
+    _RES0: 0,
+    VARIANT: 0,
+    TYPE: APType::JTAG_COM_AP,
+};
 
 #[derive(Debug)]
 pub enum DebugProbeError {
@@ -205,7 +211,7 @@ impl MasterProbe {
     /// Tries to mass erase a locked nRF52 chip, this process may timeout, if it does, the chip
     /// might be unlocked or not, it is advised to try again if flashing fails
     pub fn nrf_recover(&mut self) -> Result<(), DebugProbeError> {
-        let ctrl_port = match get_ap_by_idr(self, |idr| u32::from(idr) == CTRL_AP_IDR) {
+        let ctrl_port = match get_ap_by_idr(self, |idr| idr == CTRL_AP_IDR) {
             Some(port) => CtrlAP::from(port),
             None => {
                 return Err(DebugProbeError::AccessPortError(
@@ -214,37 +220,39 @@ impl MasterProbe {
             }
         };
         println!("Starting mass erase...");
-        let mut timeout = false;
-        for _ in 0..UNLOCK_TRIES {
-            let mut erase_reg = ERASEALL::from(1);
-            let status_reg = ERASEALLSTATUS::from(0);
-            let mut reset_reg = RESET::from(1);
-            self.write_register_ap(ctrl_port, erase_reg)?;
+        let mut erase_reg = ERASEALL::from(1);
+        let status_reg = ERASEALLSTATUS::from(0);
+        let mut reset_reg = RESET::from(1);
 
-            // Prepare timeout
-            let now = Instant::now();
+        // Reset first
+        self.write_register_ap(ctrl_port, reset_reg)?;
+        reset_reg.RESET = false;
+        self.write_register_ap(ctrl_port, reset_reg)?;
+
+        self.write_register_ap(ctrl_port, erase_reg)?;
+
+        // Prepare timeout
+        let now = Instant::now();
+        let status = self.read_register_ap(ctrl_port, status_reg)?;
+        log::info!("Erase status: {:?}", status.ERASEALLSTATUS);
+        let timeout = loop {
             let status = self.read_register_ap(ctrl_port, status_reg)?;
-            log::info!("Erase status: {:?}", status.ERASEALLSTATUS);
-            loop {
-                let status = self.read_register_ap(ctrl_port, status_reg)?;
-                if !status.ERASEALLSTATUS {
-                    timeout = false;
-                    break;
-                }
-                if now.elapsed().as_secs() >= UNLOCK_TIMEOUT {
-                    timeout = true;
-                    break;
-                }
+            if !status.ERASEALLSTATUS {
+                break false;
             }
-            self.write_register_ap(ctrl_port, reset_reg)?;
-            reset_reg.RESET = false;
-            self.write_register_ap(ctrl_port, reset_reg)?;
-            erase_reg.ERASEALL = false;
-            self.write_register_ap(ctrl_port, erase_reg)?;
-        }
+            if now.elapsed().as_secs() >= UNLOCK_TIMEOUT {
+                break true;
+            }
+        };
+        reset_reg.RESET = true;
+        self.write_register_ap(ctrl_port, reset_reg)?;
+        reset_reg.RESET = false;
+        self.write_register_ap(ctrl_port, reset_reg)?;
+        erase_reg.ERASEALL = false;
+        self.write_register_ap(ctrl_port, erase_reg)?;
         if timeout {
             eprintln!(
-                "    {} Mass erase process timeout, try running it again",
+                "    {} Mass erase process timeout, the chip might still be locked.",
                 "Error".red().bold()
             );
         } else {

@@ -21,7 +21,7 @@ impl Default for APClass {
 }
 
 #[allow(non_camel_case_types)]
-#[derive(Debug, Primitive, Clone, Copy)]
+#[derive(Debug, Primitive, Clone, Copy, PartialEq)]
 pub enum APType {
     JTAG_COM_AP = 0x0,
     AMBA_AHB3 = 0x1,
