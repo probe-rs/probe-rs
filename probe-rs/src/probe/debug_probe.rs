@@ -21,6 +21,7 @@ use std::time::Instant;
 
 const UNLOCK_TRIES: usize = 2;
 const UNLOCK_TIMEOUT: u64 = 15;
+const CTRL_AP_IDR: u32 = 0x0288_0000;
 
 #[derive(Debug)]
 pub enum DebugProbeError {
@@ -204,7 +205,7 @@ impl MasterProbe {
     /// Tries to mass erase a locked nRF52 chip, this process may timeout, if it does, the chip
     /// might be unlocked or not, it is advised to try again if flashing fails
     pub fn nrf_recover(&mut self) -> Result<(), DebugProbeError> {
-        let ctrl_port = match get_ap_by_idr(self, |idr| u32::from(idr) == 0x02880000) {
+        let ctrl_port = match get_ap_by_idr(self, |idr| u32::from(idr) == CTRL_AP_IDR) {
             Some(port) => CtrlAP::from(port),
             None => {
                 return Err(DebugProbeError::AccessPortError(
