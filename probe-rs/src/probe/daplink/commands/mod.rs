@@ -5,7 +5,6 @@ pub mod transfer;
 
 use crate::probe::debug_probe::DebugProbeError;
 use core::ops::Deref;
-use log::debug;
 
 pub(crate) type Result<T> = std::result::Result<T, Error>;
 
@@ -86,13 +85,13 @@ pub(crate) fn send_command<Req: Request, Res: Response>(
     buffer[1] = *Req::CATEGORY;
     let _size = request.to_bytes(buffer, 1 + 1)?;
     device.write(buffer)?;
-    debug!("Send buffer: {:02X?}", &buffer[..]);
+    log::trace!("Send buffer: {:02X?}", &buffer[..]);
 
     // Read back resonse.
     // TODO: Error handling & real USB reading.
     let buffer = &mut [0; 24];
     device.read(buffer)?;
-    debug!("Receive buffer: {:02X?}", &buffer[..]);
+    log::trace!("Receive buffer: {:02X?}", &buffer[..]);
     if buffer[0] == *Req::CATEGORY {
         Res::from_bytes(buffer, 1)
     } else {
