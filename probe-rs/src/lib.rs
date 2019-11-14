@@ -14,6 +14,7 @@ extern crate maplit;
 extern crate serde_derive;
 
 pub mod collection;
+pub mod config;
 pub mod coresight;
 pub mod debug;
 pub mod memory;
