@@ -107,6 +107,8 @@ impl MemoryRange for Range<u32> {
     fn intersects_range(&self, range: &Range<u32>) -> bool {
         self.contains(&range.start) && !self.contains(&(range.end - 1))
     || !self.contains(&range.start) && self.contains(&(range.end - 1))
+    || self.contains_range(range)
+    || range.contains_range(self)
     }
 }
 
@@ -116,4 +118,115 @@ pub enum MemoryRegion {
     Ram(RamRegion),
     Generic(GenericRegion),
     Flash(FlashRegion),
+}
+
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn contains_range1() {
+        let range1 = 0..1;
+        let range2 = 0..1;
+        assert!(range1.contains_range(&range2));
+    }
+
+    #[test]
+    fn contains_range2() {
+        let range1 = 0..1;
+        let range2 = 0..2;
+        assert!(!range1.contains_range(&range2));
+    }
+
+    #[test]
+    fn contains_range3() {
+        let range1 = 0..4;
+        let range2 = 0..1;
+        assert!(range1.contains_range(&range2));
+    }
+
+    #[test]
+    fn contains_range4() {
+        let range1 = 4..8;
+        let range2 = 3..9;
+        assert!(!range1.contains_range(&range2));
+    }
+
+    #[test]
+    fn contains_range5() {
+        let range1 = 4..8;
+        let range2 = 0..1;
+        assert!(!range1.contains_range(&range2));
+    }
+
+    #[test]
+    fn contains_range6() {
+        let range1 = 4..8;
+        let range2 = 6..8;
+        assert!(range1.contains_range(&range2));
+    }
+
+    #[test]
+    fn intersects_range1() {
+        let range1 = 0..1;
+        let range2 = 0..1;
+        assert!(range1.intersects_range(&range2));
+    }
+
+    #[test]
+    fn intersects_range2() {
+        let range1 = 0..1;
+        let range2 = 0..2;
+        assert!(range1.intersects_range(&range2));
+    }
+
+    #[test]
+    fn intersects_range3() {
+        let range1 = 0..4;
+        let range2 = 0..1;
+        assert!(range1.intersects_range(&range2));
+    }
+
+    #[test]
+    fn intersects_range4() {
+        let range1 = 4..8;
+        let range2 = 3..9;
+        assert!(range1.intersects_range(&range2));
+    }
+
+    #[test]
+    fn intersects_range5() {
+        let range1 = 4..8;
+        let range2 = 0..1;
+        assert!(!range1.intersects_range(&range2));
+    }
+
+    #[test]
+    fn intersects_range6() {
+        let range1 = 4..8;
+        let range2 = 6..8;
+        assert!(range1.intersects_range(&range2));
+    }
+
+    #[test]
+    fn intersects_range7() {
+        let range1 = 4..8;
+        let range2 = 3..4;
+        assert!(!range1.intersects_range(&range2));
+    }
+
+    #[test]
+    fn intersects_range8() {
+        let range1 = 8..9;
+        let range2 = 6..8;
+        assert!(!range1.intersects_range(&range2));
+    }
+
+    #[test]
+    fn intersects_range9() {
+        let range1 = 2..4;
+        let range2 = 6..8;
+        assert!(!range1.intersects_range(&range2));
+    }
 }
