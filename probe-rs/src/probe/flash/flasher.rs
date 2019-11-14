@@ -97,16 +97,31 @@ pub struct FlashAlgorithm {
 
 pub type AlgorithmParseError = serde_yaml::Error;
 
+pub enum FlashAlgorithmSaveError {
+    Io(std::io::Error),
+    Serde(serde_yaml::Error),
+}
+
+impl From<std::io::Error> for FlashAlgorithmSaveError {
+    fn from(error: std::io::Error) -> FlashAlgorithmSaveError {
+        FlashAlgorithmSaveError::Io(error)
+    }
+}
+
+impl From<serde_yaml::Error> for FlashAlgorithmSaveError {
+    fn from(error: serde_yaml::Error) -> FlashAlgorithmSaveError {
+        FlashAlgorithmSaveError::Serde(error)
+    }
+}
+
 impl FlashAlgorithm {
     pub fn new(definition: &str) -> Result<Self, AlgorithmParseError> {
         serde_yaml::from_str(definition)
     }
 
-    pub fn write_to_file(&self, file_name: impl AsRef<str>) {
-        use std::io::Write;
-        let s = serde_yaml::to_string(self).unwrap();
-        let mut file = std::fs::File::create(file_name.as_ref()).unwrap();
-        file.write_all(s.as_bytes()).unwrap();
+    pub fn write_to_file(&self, file_name: impl AsRef<str>) -> Result<(), FlashAlgorithmSaveError> {
+        let file = std::fs::File::create(file_name.as_ref())?;
+        serde_yaml::to_writer(file, self).map_err(From::from)
     }
 }
 
