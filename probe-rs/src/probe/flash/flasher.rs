@@ -101,6 +101,13 @@ impl FlashAlgorithm {
     pub fn new(definition: &str) -> Result<Self, AlgorithmParseError> {
         serde_yaml::from_str(definition)
     }
+
+    pub fn write_to_file(&self, file_name: impl AsRef<str>) {
+        use std::io::Write;
+        let s = serde_yaml::to_string(self).unwrap();
+        let mut file = std::fs::File::create(file_name.as_ref()).unwrap();
+        file.write_all(s.as_bytes()).unwrap();
+    }
 }
 
 #[derive(Debug)]
