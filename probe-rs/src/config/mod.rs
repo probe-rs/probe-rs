@@ -4,3 +4,4 @@ pub mod memory;
 pub mod registry;
 pub mod target;
 pub mod variant;
+pub mod repositories;
