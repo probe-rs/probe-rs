@@ -7,14 +7,12 @@ fn main() {
     let out_dir = env::var("OUT_DIR").unwrap();
     let dest_path = Path::new(&out_dir).join("targets.rs");
     let mut f = File::create(&dest_path).unwrap();
-    let root_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
 
     // Determine all config files to parse.
     let mut files = vec![];
     visit_dirs(Path::new("targets"), &mut files).unwrap();
 
     let mut configs: Vec<proc_macro2::TokenStream> = vec![];
-    let mut config_names: Vec<String> = vec![];
     for file in files {
         let string = read_to_string(&file).expect(
             "Algorithm definition file could not be read. This is a bug. Please report it.",
@@ -24,8 +22,7 @@ fn main() {
 
         match yaml {
             Ok(chip) => {
-                let (name, chip) = extract_chip(&chip);
-                config_names.push(name);
+                let chip = extract_chip(&chip);
                 configs.push(chip);
             },
             Err(e) => {
@@ -37,11 +34,9 @@ fn main() {
     let stream: String = format!(
         "{}",
         quote::quote! {
-            lazy_static::lazy_static! {
-                static ref TARGETS: Vec<(&'static str, Chip)> = vec![
-                    #((#config_names, #configs),)*
-                ];
-            }
+            vec![
+                #(#configs,)*
+            ]
         }
     );
 
@@ -90,7 +85,7 @@ fn extract_algorithms(chip: &serde_yaml::Value) -> Vec<proc_macro2::TokenStream>
 
     algorithm_iter.map(|algorithm| {
         // Extract all values and form them into a struct.
-        let name = algorithm.get("name").unwrap().as_str().unwrap();
+        let name = algorithm.get("name").unwrap().as_str().unwrap().to_ascii_lowercase();
         let default = algorithm.get("default").unwrap().as_bool().unwrap();
         let load_address = algorithm.get("load_address").unwrap().as_u64().unwrap() as u32;
         let instructions = algorithm.get("instructions").unwrap().as_sequence().unwrap().iter().map(|v| v.as_u64().unwrap() as u32);
@@ -187,17 +182,17 @@ fn extract_memory_map(chip: &serde_yaml::Value) -> Vec<proc_macro2::TokenStream>
 }
 
 /// Extracts a chip token streams from a yaml value.
-fn extract_chip(chip: &serde_yaml::Value) -> (String, proc_macro2::TokenStream) {
+fn extract_chip(chip: &serde_yaml::Value) -> proc_macro2::TokenStream {
     // Extract all the algorithms into a Vec of TokenStreams.
     let algorithms = extract_algorithms(&chip);
 
     // Extract all the memory regions into a Vec of TookenStreams.
     let memory_map = extract_memory_map(&chip);
 
-    let name = chip.get("name").unwrap().as_str().unwrap().to_owned();
+    let name = chip.get("name").unwrap().as_str().unwrap().to_ascii_lowercase();
     let manufacturer = quote_option(chip.get("manufacturer").map(|v| v.as_str()));
     let part = quote_option(chip.get("part").map(|v| v.as_str()));
-    let core = chip.get("core").unwrap().as_str().unwrap();
+    let core = chip.get("core").unwrap().as_str().unwrap().to_ascii_lowercase();
 
     // Quote the chip.
     let chip = quote::quote! {
@@ -215,5 +210,5 @@ fn extract_chip(chip: &serde_yaml::Value) -> (String, proc_macro2::TokenStream) 
         }
     };
 
-    (name, chip)
+    chip
 }
