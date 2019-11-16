@@ -3,7 +3,6 @@ use std::path::Path;
 
 use super::target::Target;
 use super::chip::Chip;
-use super::flash_algorithm::FlashAlgorithm;
 use crate::collection::get_core;
 
 pub enum TargetSelectionError {
@@ -17,7 +16,6 @@ pub struct Registry {
     /// All the available chips.
     /// <chip_name, chip>
     chips: HashMap<String, Chip>,
-    flash_algorithms: HashMap<String, FlashAlgorithm>,
 }
 
 impl Registry {
@@ -40,45 +38,40 @@ impl Registry {
             return Err(TargetSelectionError::CoreNotFound);
         };
 
-        // Determine potential variant.
-        let potential_variant = if let Some(variant_name) = identifier.variant_name {
-            chip.variants.iter().find(|variant| variant.name == variant_name)
-        } else {
-            chip.variants.first()
-        };
-
-        // Try get the corresponding variant.
-        let variant = if let Some(variant) = potential_variant {
-            variant
-        } else {
-            return Err(TargetSelectionError::VariantNotFound);
-        };
-
         // Try get the correspnding flash algorithm.
-        let flash_algorithm = if let Some(flash_algorithm) = self.flash_algorithms.get(&chip.flash_algorithm) {
+        // TODO: fix algo selection (should take default)
+        let potential_flash_algorithm = chip.flash_algorithms.iter().find(|flash_algorithm| {
+            if let Some(flash_algorithm_name) = identifier.flash_algorithm_name.clone() {
+                flash_algorithm.name == flash_algorithm_name
+            } else {
+                flash_algorithm.default
+            }
+        }).or_else(|| chip.flash_algorithms.first());
+
+        let flash_algorithm = if let Some(flash_algorithm) = potential_flash_algorithm {
             flash_algorithm
         } else {
             return Err(TargetSelectionError::AlgorithmNotFound);
         };
 
-        Ok(Target::from((chip, variant, flash_algorithm, core)))
+        Ok(Target::from((chip, flash_algorithm, core)))
     }
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TargetIdentifier {
     pub chip_name: String,
-    pub variant_name: Option<String>,
+    pub flash_algorithm_name: Option<String>,
 }
 
 impl From<String> for TargetIdentifier {
     fn from(value: String) -> TargetIdentifier {
-        let split: Vec<_> = value.split("::").collect();
 
+        let split: Vec<_> = value.split("::").collect();
         TargetIdentifier {
             // There will always be a 0th element, so this is safe!
             chip_name: split[0].to_owned(),
-            variant_name: split.get(1).map(|s| s.to_owned().to_owned()),
+            flash_algorithm_name: split.get(1).map(|s| s.to_owned().to_owned()),
         }
     }
 }

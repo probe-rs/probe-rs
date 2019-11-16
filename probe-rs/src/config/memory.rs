@@ -61,7 +61,6 @@ impl FlashRegion {
 pub struct RamRegion {
     pub range: Range<u32>,
     pub is_boot_memory: bool,
-    pub is_testable: bool,
 }
 
 /// Represents a generic region.

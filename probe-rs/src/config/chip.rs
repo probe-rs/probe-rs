@@ -1,5 +1,6 @@
 use jep106::JEP106Code;
-use super::variant::Variant;
+use super::memory::MemoryRegion;
+use super::flash_algorithm::FlashAlgorithm;
 
 /// This describes a single chip model.
 /// It can come in different configurations (memory, peripherals).
@@ -15,9 +16,9 @@ pub struct Chip {
     /// This value can be determined via the `cli info` command.
     pub part: u32,
     /// The name of the flash algorithm.
-    pub flash_algorithm: String,
-    /// A list of available variants of the chip.
-    pub variants: Vec<Variant>,
+    pub flash_algorithms: Vec<FlashAlgorithm>,
+    /// The memory regions available on the chip.
+    pub memory_map: Vec<MemoryRegion>,
     /// The name of the core type.
     /// E.g. `M0` or `M4`.
     pub core: String,

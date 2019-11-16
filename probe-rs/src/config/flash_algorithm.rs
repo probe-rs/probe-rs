@@ -1,5 +1,9 @@
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct FlashAlgorithm {
+    /// The name of the flash algorithm.
+    pub name: String,
+    /// Whether this flash algorithm is the default one or not.
+    pub default: bool,
     /// Memory address where the flash algo instructions will be loaded to.
     pub load_address: u32,
     /// List of 32-bit words containing the position-independent code for the algo.
