@@ -1,11 +1,5 @@
-use probe_rs::probe::flash::flasher::FlashAlgorithm;
-use probe_rs::probe::flash::flasher::AlgorithmParseError;
-use probe_rs::probe::flash::memory::{
-    MemoryRange,
-    RamRegion,
-};
-
-use goblin::elf::program_header::*;
+use probe_rs::config::flash_algorithm::FlashAlgorithm;
+use probe_rs::config::memory::RamRegion;
 
 use crate::flash_device::FlashDevice;
 
@@ -38,7 +32,11 @@ pub fn read_elf_bin_data<'a>(elf: &'a goblin::elf::Elf<'_>, buffer: &'a [u8], ad
     None
 }
 
-pub fn extract_flash_algo(file_name: &std::path::Path, ram_region: RamRegion) -> Result<FlashAlgorithm, AlgorithmParseError> {
+pub fn extract_flash_algo(
+    file_name: &std::path::Path,
+    ram_region: RamRegion,
+    default: bool,
+) -> (FlashAlgorithm, u32, u32, u8) {
     let mut file = std::fs::File::open(file_name).unwrap();
     let mut buffer = vec![];
     use std::io::Read;
@@ -46,12 +44,11 @@ pub fn extract_flash_algo(file_name: &std::path::Path, ram_region: RamRegion) ->
 
     let mut algo = FlashAlgorithm::default();
 
+    let mut flash_device = None;
     if let Ok(elf) = goblin::elf::Elf::parse(&buffer.as_slice()) {
-        let mut flash_device = None;
         // Extract the flash device info.
         for sym in elf.syms.iter() {
             let name = &elf.strtab[sym.st_name];
-            // println!("{}: 0x{:08x?}", name, sym.st_value);
 
             match name {
                 "FlashDevice" => {
@@ -63,7 +60,7 @@ pub fn extract_flash_algo(file_name: &std::path::Path, ram_region: RamRegion) ->
             }
         }
 
-        let flash_device = flash_device.unwrap();
+        let flash_device = flash_device.clone().unwrap();
 
         // Extract binary blob.
         let algorithm_binary = crate::algorithm_binary::AlgorithmBinary::new(&elf, &buffer);
@@ -112,7 +109,6 @@ pub fn extract_flash_algo(file_name: &std::path::Path, ram_region: RamRegion) ->
         // Extract the function pointers.
         for sym in elf.syms.iter() {
             let name = &elf.strtab[sym.st_name];
-            // println!("{}: 0x{:08x?}", name, sym.st_value);
 
             match name {
                 "Init" => algo.pc_init = Some(code_start + sym.st_value as u32),
@@ -124,6 +120,8 @@ pub fn extract_flash_algo(file_name: &std::path::Path, ram_region: RamRegion) ->
             }
         }
 
+        algo.name = file_name.file_stem().unwrap().to_str().unwrap().to_owned();
+        algo.default = default;
         algo.page_buffers = page_buffers.clone();
         algo.begin_data = page_buffers[0];
         algo.begin_stack = addr_stack;
@@ -131,7 +129,7 @@ pub fn extract_flash_algo(file_name: &std::path::Path, ram_region: RamRegion) ->
         algo.min_program_length = Some(flash_device.page_size);
         algo.analyzer_supported = false;
     }
-
-    println!("{:?}", &algo);
-    Ok(algo)
+    
+    let flash_device = flash_device.unwrap();
+    (algo, flash_device.page_size, flash_device.sectors[0].size, flash_device.erased_default_value)
 }

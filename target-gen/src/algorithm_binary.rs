@@ -78,10 +78,12 @@ impl AlgorithmBinary {
         let rw = rw.unwrap();
         blob.extend(&rw.data);
 
-        let zi = zi.unwrap();
+        let zi = zi.unwrap_or_else(|| Section {
+            start: rw.start + rw.length,
+            length: 0,
+            data: Vec::new(),
+        });
         blob.extend(&vec![0; zi.length as usize]);
-
-        println!("{}/{}, {}/{}, {}/{}", ro.start, ro.length, rw.start, rw.length, zi.start, zi.length);
 
         Self {
             ro,
