@@ -1,4 +1,5 @@
 pub mod cores;
+pub mod targets;
 
 use std::collections::HashMap;
 use std::fs::File;

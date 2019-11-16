@@ -11,10 +11,10 @@ pub struct Chip {
     /// E.g. `nRF52832`.
     pub name: String,
     /// The JEP106 code of the manufacturer.
-    pub manufacturer: JEP106Code,
+    pub manufacturer: Option<JEP106Code>,
     /// The `PART` register of the chip.
     /// This value can be determined via the `cli info` command.
-    pub part: u32,
+    pub part: Option<u32>,
     /// The name of the flash algorithm.
     pub flash_algorithms: Vec<FlashAlgorithm>,
     /// The memory regions available on the chip.
