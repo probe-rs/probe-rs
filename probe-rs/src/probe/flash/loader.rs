@@ -3,7 +3,9 @@ use std::collections::HashMap;
 use std::error::Error;
 use std::fmt;
 
-use super::*;
+use crate::config::memory::{MemoryRegion, FlashRegion};
+use super::builder::FlashBuilder;
+use super::flasher::Flasher;
 
 pub struct Ranges<I: Iterator<Item = usize> + Sized> {
     list: I,
@@ -83,7 +85,6 @@ pub struct FlashLoader<'a, 'b> {
     total_data_size: usize,
     chip_erase: bool,
     smart_flash: bool,
-    trust_crc: bool,
     keep_unwritten: bool,
 }
 
@@ -112,7 +113,6 @@ impl<'a, 'b> FlashLoader<'a, 'b> {
     pub fn new(
         memory_map: &'a [MemoryRegion],
         smart_flash: bool,
-        trust_crc: bool,
         keep_unwritten: bool,
     ) -> Self {
         Self {
@@ -121,7 +121,6 @@ impl<'a, 'b> FlashLoader<'a, 'b> {
             total_data_size: 0,
             chip_erase: false,
             smart_flash,
-            trust_crc,
             keep_unwritten,
         }
     }
@@ -147,7 +146,7 @@ impl<'a, 'b> FlashLoader<'a, 'b> {
                 match region {
                     MemoryRegion::Flash(region) => {
                         // Get our builder instance.
-                        if !self.builders.contains_key(&region) {
+                        if !self.builders.contains_key(region) {
                             // if region.flash is None:
                             //     raise RuntimeError("flash memory region at address 0x%08x has no flash instance" % address)
                             self.builders
@@ -183,9 +182,8 @@ impl<'a, 'b> FlashLoader<'a, 'b> {
         for region in memory_map {
             let r = match region {
                 MemoryRegion::Ram(r) => r.range.clone(),
-                MemoryRegion::Rom(r) => r.range.clone(),
                 MemoryRegion::Flash(r) => r.range.clone(),
-                MemoryRegion::Device(r) => r.range.clone(),
+                MemoryRegion::Generic(r) => r.range.clone(),
             };
             if r.contains(&address) {
                 return Some(region);
@@ -208,7 +206,7 @@ impl<'a, 'b> FlashLoader<'a, 'b> {
     pub fn commit(&mut self, session: &mut Session) -> Result<(), FlashLoaderError> {
         let target = &session.target;
         let probe = &mut session.probe;
-        if let Some(flash_algorithm) = session.flash_algorithm.as_ref() {
+        if let Some(flash_algorithm) = target.flash_algorithm.as_ref() {
             let mut did_chip_erase = false;
 
             // Iterate over builders we've created and program the data.
@@ -233,7 +231,6 @@ impl<'a, 'b> FlashLoader<'a, 'b> {
                         Flasher::new(target, probe, flash_algorithm, builder.0),
                         chip_erase,
                         self.smart_flash,
-                        self.trust_crc,
                         self.keep_unwritten,
                     )
                     .unwrap();

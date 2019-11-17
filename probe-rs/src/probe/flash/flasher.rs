@@ -1,12 +1,12 @@
+use crate::config::flash_algorithm::FlashAlgorithm;
 use crate::coresight::access_ports::AccessPortError;
 use crate::memory::MI;
 use crate::probe::debug_probe::DebugProbeError;
 use crate::probe::debug_probe::MasterProbe;
-use crate::target::Target;
-use std::error::Error;
-use std::fmt;
+use crate::config::target::Target;
 
-use super::*;
+use crate::config::memory::{FlashRegion, MemoryRange};
+use super::builder::FlashBuilder;
 
 const ANALYZER: [u32; 49] = [
     0x2780_b5f0,
@@ -59,78 +59,6 @@ const ANALYZER: [u32; 49] = [
     0xedb8_8320,
     0x0000_0042,
 ];
-
-#[derive(Debug, Default, Clone, Serialize, Deserialize)]
-pub struct FlashAlgorithm {
-    /// Memory address where the flash algo instructions will be loaded to.
-    pub load_address: u32,
-    /// List of 32-bit words containing the position-independant code for the algo.
-    pub instructions: Vec<u32>,
-    /// Address of the `Init()` entry point. Optional.
-    pub pc_init: Option<u32>,
-    /// Address of the `UnInit()` entry point. Optional.
-    pub pc_uninit: Option<u32>,
-    /// Address of the `ProgramPage()` entry point.
-    pub pc_program_page: u32,
-    /// Address of the `EraseSector()` entry point.
-    pub pc_erase_sector: u32,
-    /// Address of the `EraseAll()` entry point. Optional.
-    pub pc_erase_all: Option<u32>,
-    /// Initial value of the R9 register for calling flash algo entry points, which
-    /// determines where the position-independant data resides.
-    pub static_base: u32,
-    /// Initial value of the stack pointer when calling any flash algo API.
-    pub begin_stack: u32,
-    /// Base address of the page buffer. Used if `page_buffers` is not provided.
-    pub begin_data: u32,
-    /// An optional list of base addresses for page buffers. The buffers must be at
-    /// least as large as the region's page_size attribute. If at least 2 buffers are included in
-    /// the list, then double buffered programming will be enabled.
-    pub page_buffers: Vec<u32>,
-    pub min_program_length: Option<u32>,
-    /// Whether the CRC32-based analyzer is supported.
-    pub analyzer_supported: bool,
-    /// RAM base address where the analyzer code will be placed. There must be at
-    /// least 0x600 free bytes after this address.
-    pub analyzer_address: u32,
-}
-
-pub type AlgorithmParseError = serde_yaml::Error;
-
-impl FlashAlgorithm {
-    pub fn new(definition: &str) -> Result<Self, AlgorithmParseError> {
-        serde_yaml::from_str(definition)
-    }
-}
-
-#[derive(Debug)]
-pub enum AlgorithmSelectionError {
-    AlgorithmNotFound(String),
-    AlgorithmCouldNotBeParsed(AlgorithmParseError),
-    NoAlgorithmSuggested,
-}
-
-impl Error for AlgorithmSelectionError {}
-
-impl fmt::Display for AlgorithmSelectionError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use AlgorithmSelectionError::*;
-
-        match self {
-            AlgorithmNotFound(name) => write!(f, "Algorithm \"{}\" could not be found.", name),
-            AlgorithmCouldNotBeParsed(error) => {
-                write!(f, "Algorithm could not be parsed.\r\nReason: {:?}", error)
-            }
-            NoAlgorithmSuggested => write!(f, "Target description did not contain an algorithm."),
-        }
-    }
-}
-
-impl From<AlgorithmParseError> for AlgorithmSelectionError {
-    fn from(error: AlgorithmParseError) -> Self {
-        AlgorithmSelectionError::AlgorithmCouldNotBeParsed(error)
-    }
-}
 
 pub trait Operation {
     fn operation() -> u32;
@@ -281,7 +209,7 @@ impl<'a> Flasher<'a> {
             address = Some(
                 flasher
                     .region
-                    .get_flash_info(algo.analyzer_supported)
+                    .flash_info(algo.analyzer_supported)
                     .rom_start,
             );
         }
@@ -373,7 +301,7 @@ impl<'a> Flasher<'a> {
         data: &[u8],
         chip_erase: Option<bool>,
         smart_flash: bool,
-        fast_verify: bool,
+        _fast_verify: bool,
     ) -> Result<(), FlasherError> {
         if !self
             .region
@@ -388,7 +316,7 @@ impl<'a> Flasher<'a> {
 
         let mut fb = FlashBuilder::new(self.region.range.start);
         fb.add_data(address, data).expect("Add Data failed");
-        fb.program(self, chip_erase, smart_flash, fast_verify, true)
+        fb.program(self, chip_erase, smart_flash, true)
             .expect("Add Data failed");
 
         Ok(())

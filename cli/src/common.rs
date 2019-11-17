@@ -6,15 +6,15 @@ use probe_rs::{
     probe::{
         daplink,
         debug_probe::{DebugProbe, DebugProbeError, DebugProbeType, FakeProbe, MasterProbe},
-        flash::{download::FileDownloadError, flasher::AlgorithmSelectionError},
+        flash::{download::FileDownloadError},
         protocol::WireProtocol,
         stlink,
     },
     session::Session,
     target::info::{self, ChipInfo},
     target::TargetSelectionError,
+    config::registry::{Registry, RegistryError, SelectionStrategy},
 };
-use probe_rs_targets::{select_algorithm, select_target, SelectionStrategy};
 
 use ron;
 
@@ -30,8 +30,8 @@ pub enum CliError {
     AccessPort(AccessPortError),
     TargetSelectionError(TargetSelectionError),
     StdIO(std::io::Error),
-    FlashAlgorithm(AlgorithmSelectionError),
     FileDownload(FileDownloadError),
+    RegistryError(RegistryError),
     MissingArgument,
     UnableToOpenProbe,
 }
@@ -46,9 +46,9 @@ impl Error for CliError {
             AccessPort(ref e) => Some(e),
             TargetSelectionError(ref e) => Some(e),
             StdIO(ref e) => Some(e),
+            RegistryError(ref e) => Some(e),
             MissingArgument => None,
             UnableToOpenProbe => None,
-            FlashAlgorithm(ref e) => Some(e),
             FileDownload(ref e) => Some(e),
         }
     }
@@ -64,8 +64,8 @@ impl fmt::Display for CliError {
             AccessPort(ref e) => e.fmt(f),
             TargetSelectionError(ref e) => e.fmt(f),
             StdIO(ref e) => e.fmt(f),
-            FlashAlgorithm(ref e) => e.fmt(f),
             FileDownload(ref e) => e.fmt(f),
+            RegistryError(ref e) => e.fmt(f),
             MissingArgument => write!(f, "Command expected more arguments."),
             UnableToOpenProbe => write!(f, "Unable to open probe."),
         }
@@ -96,15 +96,15 @@ impl From<std::io::Error> for CliError {
     }
 }
 
-impl From<TargetSelectionError> for CliError {
-    fn from(error: TargetSelectionError) -> Self {
-        CliError::TargetSelectionError(error)
+impl From<RegistryError> for CliError {
+    fn from(error: RegistryError) -> Self {
+        CliError::RegistryError(error)
     }
 }
 
-impl From<AlgorithmSelectionError> for CliError {
-    fn from(error: AlgorithmSelectionError) -> Self {
-        CliError::FlashAlgorithm(error)
+impl From<TargetSelectionError> for CliError {
+    fn from(error: TargetSelectionError) -> Self {
+        CliError::TargetSelectionError(error)
     }
 }
 
@@ -159,29 +159,17 @@ where
 {
     let mut probe = open_probe(shared_options.n)?;
 
-    let selection_strategy = if let Some(ref target_name) = shared_options.target {
-        SelectionStrategy::Name(target_name.clone())
+    let strategy = if let Some(identifier) = &shared_options.target {
+        SelectionStrategy::TargetIdentifier(identifier.into())
     } else {
-        let chip_info = ChipInfo::read_from_rom_table(&mut probe)?;
-        SelectionStrategy::ChipInfo(chip_info)
+        SelectionStrategy::ChipInfo(ChipInfo::read_from_rom_table(&mut probe)?)
     };
 
-    let target = select_target(&selection_strategy)?;
+    let registry = Registry::new();
 
-    let flash_algorithm = match target.flash_algorithm {
-        Some(ref name) => select_algorithm(name),
-        None => Err(AlgorithmSelectionError::NoAlgorithmSuggested),
-    };
+    let target = registry.get_target(strategy)?;
 
-    let flash_algorithm = match flash_algorithm {
-        Ok(flash_algorithm) => Some(flash_algorithm),
-        Err(error) => {
-            println!("{:?}", error);
-            None
-        }
-    };
-
-    let session = Session::new(target, probe, flash_algorithm);
+    let session = Session::new(target, probe);
 
     f(session)
 }
@@ -199,17 +187,19 @@ where
 
     let probe = MasterProbe::from_specific_probe(Box::new(fake_probe));
 
-    let selection_strategy = if let Some(ref target_name) = shared_options.target {
-        SelectionStrategy::Name(target_name.clone())
+    let strategy = if let Some(identifier) = &shared_options.target {
+        SelectionStrategy::TargetIdentifier(identifier.into())
     } else {
         unimplemented!();
     };
 
-    let mut target = select_target(&selection_strategy)?;
+    let registry = Registry::new();
+
+    let mut target = registry.get_target(strategy)?;
 
     target.core = Box::new(core);
 
-    let session = Session::new(target, probe, None);
+    let session = Session::new(target, probe);
 
     f(session)
 }

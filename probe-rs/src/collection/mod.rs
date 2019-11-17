@@ -7,7 +7,7 @@ use std::io;
 use std::io::BufReader;
 use std::path::Path;
 
-use crate::probe::flash::flasher::FlashAlgorithm;
+use crate::config::flash_algorithm::FlashAlgorithm;
 use crate::target::Core;
 use crate::target::Target;
 

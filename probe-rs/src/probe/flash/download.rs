@@ -7,6 +7,7 @@ use std::io::{Read, Seek, SeekFrom};
 use std::path::Path;
 
 use super::*;
+use crate::config::memory::MemoryRegion;
 
 pub struct BinOptions {
     /// Memory address at which to program the binary data. If not set, the base
@@ -99,7 +100,7 @@ impl<'a> FileDownloader {
         };
         let mut buffer = vec![];
         // IMPORTANT: Change this to an actual memory map of a real chip
-        let mut loader = FlashLoader::new(memory_map, false, false, false);
+        let mut loader = FlashLoader::new(memory_map, false, false);
 
         match format {
             Format::Bin(options) => self.download_bin(&mut buffer, &mut file, &mut loader, options),

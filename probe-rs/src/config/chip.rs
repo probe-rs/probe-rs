@@ -1,3 +1,4 @@
+use crate::target::TargetParseError;
 use jep106::JEP106Code;
 use super::memory::MemoryRegion;
 use super::flash_algorithm::FlashAlgorithm;
@@ -14,7 +15,7 @@ pub struct Chip {
     pub manufacturer: Option<JEP106Code>,
     /// The `PART` register of the chip.
     /// This value can be determined via the `cli info` command.
-    pub part: Option<u32>,
+    pub part: Option<u16>,
     /// The name of the flash algorithm.
     pub flash_algorithms: Vec<FlashAlgorithm>,
     /// The memory regions available on the chip.
@@ -22,4 +23,10 @@ pub struct Chip {
     /// The name of the core type.
     /// E.g. `M0` or `M4`.
     pub core: String,
+}
+
+impl Chip {
+    pub fn from_yaml_reader<R: std::io::Read>(definition_reader: R) -> Result<Self, TargetParseError> {
+        serde_yaml::from_reader(definition_reader)
+    }
 }
