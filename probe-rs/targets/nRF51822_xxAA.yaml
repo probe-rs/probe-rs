@@ -3,7 +3,7 @@ name: nRF51822_xxAA
 flash_algorithms:
   - name: nrf51xxx
     default: true
-    load_address: 512
+    load_address: 536871424
     instructions:
       - 3758800384
       - 103643149
@@ -538,22 +538,22 @@ flash_algorithms:
       - 0
       - 0
       - 0
-    pc_init: 545
-    pc_uninit: 609
-    pc_program_page: 997
-    pc_erase_sector: 853
-    pc_erase_all: 681
-    static_base: 2624
-    begin_stack: 512
-    begin_data: 2644
+    pc_init: 536871457
+    pc_uninit: 536871521
+    pc_program_page: 536871909
+    pc_erase_sector: 536871765
+    pc_erase_all: 536871593
+    static_base: 536873536
+    begin_stack: 536871424
+    begin_data: 536873556
     page_buffers:
-      - 2644
+      - 536873556
     min_program_length: 1024
     analyzer_supported: false
     analyzer_address: 0
   - name: nrf51xxx_sde
     default: false
-    load_address: 512
+    load_address: 536871424
     instructions:
       - 3758800384
       - 103643149
@@ -976,22 +976,22 @@ flash_algorithms:
       - 0
       - 0
       - 0
-    pc_init: 545
-    pc_uninit: 609
-    pc_program_page: 845
-    pc_erase_sector: 741
-    pc_erase_all: 681
-    static_base: 2176
-    begin_stack: 512
-    begin_data: 2196
+    pc_init: 536871457
+    pc_uninit: 536871521
+    pc_program_page: 536871757
+    pc_erase_sector: 536871653
+    pc_erase_all: 536871593
+    static_base: 536873088
+    begin_stack: 536871424
+    begin_data: 536873108
     page_buffers:
-      - 2196
+      - 536873108
     min_program_length: 1024
     analyzer_supported: false
     analyzer_address: 0
   - name: nrf51xxx_ecb
     default: false
-    load_address: 512
+    load_address: 536871424
     instructions:
       - 3758800384
       - 103643149
@@ -1180,25 +1180,25 @@ flash_algorithms:
       - 1187006144
       - 48386
       - 0
-    pc_init: 553
-    pc_uninit: 601
-    pc_program_page: 685
-    pc_erase_sector: 637
-    pc_erase_all: 619
-    static_base: 1256
-    begin_stack: 512
-    begin_data: 1260
+    pc_init: 536871465
+    pc_uninit: 536871513
+    pc_program_page: 536871597
+    pc_erase_sector: 536871549
+    pc_erase_all: 536871531
+    static_base: 536872168
+    begin_stack: 536871424
+    begin_data: 536872172
     page_buffers:
-      - 1260
+      - 536872172
     min_program_length: 1024
     analyzer_supported: false
     analyzer_address: 0
 memory_map:
   - Ram:
       range:
-        start: 0
-        end: 262144
-      is_boot_memory: true
+        start: 536870912
+        end: 536887296
+      is_boot_memory: false
   - Flash:
       range:
         start: 0
