@@ -8,7 +8,6 @@ edition = "2018"
 
 [dependencies]
 probe-rs = { path = "../probe-rs/probe-rs", version = "0.2.0" }
-probe-rs-targets = { path = "../probe-rs/probe-rs-targets", version = "0.2.0" }
 cmsis-pack = { path = "../cmsis-pack-manager/rust/cmsis-pack" }
 goblin = "*"
 scroll = "*"

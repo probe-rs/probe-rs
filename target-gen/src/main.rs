@@ -31,7 +31,7 @@ fn main() {
                     // Extract the RAM info from the .pdsc file.
                     let mut ram = None;
                     for (_name, memory) in &device.memories.0 {
-                        if memory.access.read && memory.access.execute {
+                        if memory.access.read && memory.access.write {
                             ram = Some(RamRegion {
                                 range: memory.start as u32..memory.start as u32 + memory.size as u32,
                                 is_boot_memory: memory.startup,
