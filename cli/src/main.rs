@@ -12,11 +12,9 @@ use probe_rs::{
 };
 
 use capstone::{arch::arm::ArchMode, prelude::*, Capstone, Endian};
-use memmap;
 use rustyline::Editor;
 use structopt::StructOpt;
 
-use std::fs;
 use std::num::ParseIntError;
 use std::path::PathBuf;
 use std::time::Instant;
@@ -238,11 +236,6 @@ fn trace_u32_on_target(shared_options: &SharedOptions, loc: u32) -> Result<(), C
 }
 
 fn debug(shared_options: &SharedOptions, exe: Option<PathBuf>) -> Result<(), CliError> {
-    // try to load debug information
-    let debug_data = exe
-        .and_then(|p| fs::File::open(&p).ok())
-        .and_then(|file| unsafe { memmap::Mmap::map(&file).ok() });
-
     let runner = |session: Session| {
         let cs = Capstone::new()
             .arm()
@@ -251,7 +244,9 @@ fn debug(shared_options: &SharedOptions, exe: Option<PathBuf>) -> Result<(), Cli
             .build()
             .unwrap();
 
-        let di = debug_data.as_ref().map(|mmap| DebugInfo::from_raw(&*mmap));
+        let di = exe
+            .as_ref()
+            .and_then(|path| DebugInfo::from_file(path).ok());
 
         let cli = debugger::DebugCli::new();
 
