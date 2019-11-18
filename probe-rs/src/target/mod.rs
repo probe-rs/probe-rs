@@ -6,7 +6,7 @@ use self::info::ReadError;
 use crate::{
     collection::get_core,
     probe::{
-        debug_probe::{CpuInformation, DebugProbeError, MasterProbe},
+        debug_probe::{DebugProbeError, MasterProbe},
         flash::memory::MemoryRegion,
     },
 };
@@ -48,19 +48,40 @@ pub struct BasicRegisterAddresses {
     pub XPSR: CoreRegisterAddress,
 }
 
+#[derive(Debug, Clone)]
+pub struct CoreInformation {
+    pub pc: u32,
+}
+
 pub trait Core: std::fmt::Debug + objekt::Clone {
+    /// Wait until the core is halted. If the core does not halt on its own,
+    /// a [`DebugProbeError::Timeout`] error will be returned.
+    ///
+    /// [`DebugProbeError::Timeout`]: ../probe/debug_probe/enum.DebugProbeError.html#variant.Timeout
     fn wait_for_core_halted(&self, mi: &mut MasterProbe) -> Result<(), DebugProbeError>;
 
-    fn halt(&self, mi: &mut MasterProbe) -> Result<CpuInformation, DebugProbeError>;
+    /// Try to halt the core. This function ensures the core is actually halted, and
+    /// returns a [`DebugProbeError::Timeout`] otherwise.
+    ///
+    /// [`DebugProbeError::Timeout`]: ../probe/debug_probe/enum.DebugProbeError.html#variant.Timeout
+    fn halt(&self, mi: &mut MasterProbe) -> Result<CoreInformation, DebugProbeError>;
 
     fn run(&self, mi: &mut MasterProbe) -> Result<(), DebugProbeError>;
 
+    /// Reset the core, and then continue to execute instructions. If the core
+    /// should be halted after reset, use the [`reset_and_halt`] function.
+    ///
+    /// [`reset_and_halt`]: trait.Core.html#tymethod.reset_and_halt
     fn reset(&self, mi: &mut MasterProbe) -> Result<(), DebugProbeError>;
 
-    fn reset_and_halt(&self, mi: &mut MasterProbe) -> Result<(), DebugProbeError>;
+    /// Reset the core, and then immediately halt. To continue execution after
+    /// reset, use the [`reset`] function.
+    ///
+    /// [`reset`]: trait.Core.html#tymethod.reset
+    fn reset_and_halt(&self, mi: &mut MasterProbe) -> Result<CoreInformation, DebugProbeError>;
 
     /// Steps one instruction and then enters halted state again.
-    fn step(&self, mi: &mut MasterProbe) -> Result<CpuInformation, DebugProbeError>;
+    fn step(&self, mi: &mut MasterProbe) -> Result<CoreInformation, DebugProbeError>;
 
     fn read_core_reg(
         &self,
@@ -80,10 +101,6 @@ pub trait Core: std::fmt::Debug + objekt::Clone {
     fn enable_breakpoints(&self, mi: &mut MasterProbe, state: bool) -> Result<(), DebugProbeError>;
 
     fn set_breakpoint(&self, mi: &mut MasterProbe, addr: u32) -> Result<(), DebugProbeError>;
-
-    fn enable_breakpoint(&self, mi: &mut MasterProbe, addr: u32) -> Result<(), DebugProbeError>;
-
-    fn disable_breakpoint(&self, mi: &mut MasterProbe, addr: u32) -> Result<(), DebugProbeError>;
 
     fn read_block8(
         &self,
