@@ -262,11 +262,6 @@ impl MasterProbe {
     }
 }
 
-#[derive(Debug)]
-pub struct CpuInformation {
-    pub pc: u32,
-}
-
 impl<REGISTER> APAccess<MemoryAP, REGISTER> for MasterProbe
 where
     REGISTER: APRegister<MemoryAP>,

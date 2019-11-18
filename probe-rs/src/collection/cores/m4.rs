@@ -1,6 +1,8 @@
 use crate::memory::MI;
-use crate::probe::debug_probe::{CpuInformation, DebugProbeError, MasterProbe};
-use crate::target::{BasicRegisterAddresses, Core, CoreRegister, CoreRegisterAddress};
+use crate::probe::debug_probe::{DebugProbeError, MasterProbe};
+use crate::target::{
+    BasicRegisterAddresses, Core, CoreInformation, CoreRegister, CoreRegisterAddress,
+};
 use bitfield::bitfield;
 
 bitfield! {
@@ -14,10 +16,10 @@ bitfield! {
     pub s_halt, _: 17;
     pub s_regrdy, _: 16;
     pub c_snapstall, set_c_snapstall: 5;
-    pub _, set_c_maskints: 3;
-    pub _, set_c_step: 2;
-    pub _, set_c_halt: 1;
-    pub _, set_c_debugen: 0;
+    pub c_maskings, set_c_maskints: 3;
+    pub c_step, set_c_step: 2;
+    pub c_halt, set_c_halt: 1;
+    pub c_debugen, set_c_debugen: 0;
 }
 
 impl Dhcsr {
@@ -28,6 +30,7 @@ impl Dhcsr {
     /// Software must write 0xA05F to this field to enable write accesses to bits
     /// [15:0], otherwise the processor ignores the write access.
     pub fn enable_write(&mut self) {
+        self.0 &= !(0xffff << 16);
         self.0 |= 0xa05f << 16;
     }
 }
@@ -269,7 +272,7 @@ impl Core for M4 {
         self.wait_for_core_register_transfer(mi)
     }
 
-    fn halt(&self, mi: &mut MasterProbe) -> Result<CpuInformation, DebugProbeError> {
+    fn halt(&self, mi: &mut MasterProbe) -> Result<CoreInformation, DebugProbeError> {
         // TODO: Generic halt support
 
         let mut value = Dhcsr(0);
@@ -279,11 +282,13 @@ impl Core for M4 {
 
         mi.write32(Dhcsr::ADDRESS, value.into())?;
 
+        self.wait_for_core_halted(mi)?;
+
         // try to read the program counter
         let pc_value = self.read_core_reg(mi, REGISTERS.PC)?;
 
         // get pc
-        Ok(CpuInformation { pc: pc_value })
+        Ok(CoreInformation { pc: pc_value })
     }
 
     fn run(&self, mi: &mut MasterProbe) -> Result<(), DebugProbeError> {
@@ -295,7 +300,7 @@ impl Core for M4 {
         mi.write32(Dhcsr::ADDRESS, value.into()).map_err(Into::into)
     }
 
-    fn step(&self, mi: &mut MasterProbe) -> Result<CpuInformation, DebugProbeError> {
+    fn step(&self, mi: &mut MasterProbe) -> Result<CoreInformation, DebugProbeError> {
         let mut value = Dhcsr(0);
         // Leave halted state.
         // Step one instruction.
@@ -313,7 +318,7 @@ impl Core for M4 {
         let pc_value = self.read_core_reg(mi, REGISTERS.PC)?;
 
         // get pc
-        Ok(CpuInformation { pc: pc_value })
+        Ok(CoreInformation { pc: pc_value })
     }
 
     fn reset(&self, mi: &mut MasterProbe) -> Result<(), DebugProbeError> {
@@ -327,7 +332,18 @@ impl Core for M4 {
         Ok(())
     }
 
-    fn reset_and_halt(&self, mi: &mut MasterProbe) -> Result<(), DebugProbeError> {
+    fn reset_and_halt(&self, mi: &mut MasterProbe) -> Result<CoreInformation, DebugProbeError> {
+        // Ensure debug mode is enabled
+        let dhcsr_val = Dhcsr(mi.read32(Dhcsr::ADDRESS)?);
+        if !dhcsr_val.c_debugen() {
+            let mut dhcsr = Dhcsr(0);
+            dhcsr.set_c_debugen(true);
+            dhcsr.enable_write();
+            mi.write32(Dhcsr::ADDRESS, dhcsr.into())?;
+        }
+
+        // Set the vc_corereset bit in the DEMCR register.
+        // This will halt the core after reset.
         let demcr_val = Demcr(mi.read32(Demcr::ADDRESS)?);
         if !demcr_val.vc_corereset() {
             let mut demcr_enabled = demcr_val;
@@ -335,18 +351,9 @@ impl Core for M4 {
             mi.write32(Demcr::ADDRESS, demcr_enabled.into())?;
         }
 
-        let mut value = Aircr(0);
-        value.vectkey();
-        value.set_sysresetreq(true);
+        self.reset(mi)?;
 
-        mi.write32(Aircr::ADDRESS, value.into())?;
-
-        loop {
-            let dhcsr_val = Dhcsr(mi.read32(Dhcsr::ADDRESS)?);
-            if dhcsr_val.s_halt() || dhcsr_val.s_lockup() || dhcsr_val.s_sleep() {
-                break;
-            }
-        }
+        self.wait_for_core_halted(mi)?;
 
         const XPSR_THUMB: u32 = 1 << 24;
         let xpsr_value = self.read_core_reg(mi, REGISTERS.XPSR)?;
@@ -356,7 +363,11 @@ impl Core for M4 {
 
         mi.write32(Demcr::ADDRESS, demcr_val.into())?;
 
-        Ok(())
+        // try to read the program counter
+        let pc_value = self.read_core_reg(mi, REGISTERS.PC)?;
+
+        // get pc
+        Ok(CoreInformation { pc: pc_value })
     }
 
     fn get_available_breakpoint_units(
@@ -375,14 +386,6 @@ impl Core for M4 {
     }
 
     fn set_breakpoint(&self, _mi: &mut MasterProbe, _addr: u32) -> Result<(), DebugProbeError> {
-        unimplemented!();
-    }
-
-    fn enable_breakpoint(&self, _mi: &mut MasterProbe, _addr: u32) -> Result<(), DebugProbeError> {
-        unimplemented!();
-    }
-
-    fn disable_breakpoint(&self, _mi: &mut MasterProbe, _addr: u32) -> Result<(), DebugProbeError> {
         unimplemented!();
     }
 
