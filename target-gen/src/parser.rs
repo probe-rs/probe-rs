@@ -9,6 +9,7 @@ const FLASH_BLOB_HEADER: [u32; FLASH_BLOB_HEADER_SIZE as usize / 4] = [
     0x1E64_4058, 0x1C49_D1FA, 0x2A00_1E52, 0x0477_0D1F
 ];
 const FLASH_ALGO_STACK_SIZE: u32 = 512;
+const FLASH_ALGO_STACK_DECREMENT: u32 = 64;
 
 pub fn read_elf_bin_data<'a>(elf: &'a goblin::elf::Elf<'_>, buffer: &'a [u8], address: u32, size: u32) -> Option<&'a [u8]> {
     for ph in &elf.program_headers {
@@ -77,19 +78,28 @@ pub fn extract_flash_algo(
 
         algo.instructions = instructions.clone();
 
-        let mut offset = FLASH_ALGO_STACK_SIZE;
+        let mut offset = 0;
+        let mut addr_stack = 0;
+        let mut addr_load = 0;
+        let mut addr_data = 0;
 
-        // Stack address
-        let addr_stack = ram_region.range.start + offset;
-        // Load address
-        let addr_load = addr_stack;
-        offset += instructions.len() as u32 * 4;
+        // Try to find a stack size that fits with at least one page of data.
+        for i in 0..FLASH_ALGO_STACK_SIZE / FLASH_ALGO_STACK_DECREMENT {
+            offset = FLASH_ALGO_STACK_SIZE - FLASH_ALGO_STACK_DECREMENT * i;
+            // Stack address
+            addr_stack = ram_region.range.start + offset;
+            // Load address
+            addr_load = addr_stack;
+            offset += instructions.len() as u32 * 4;
 
-        // Data buffer 1
-        let addr_data = ram_region.range.start + offset;
-        offset += flash_device.page_size;
+            // Data buffer 1
+            addr_data = ram_region.range.start + offset;
+            offset += flash_device.page_size;
 
-        assert!(offset < ram_region.range.end - ram_region.range.start, "Not enough space for flash algorithm");
+            if offset <= ram_region.range.end - ram_region.range.start {
+                break;
+            }
+        }
 
         // Data buffer 2
         let addr_data2 = ram_region.range.start + offset;

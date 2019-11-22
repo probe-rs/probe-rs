@@ -110,8 +110,6 @@ fn main() {
         let file = std::fs::File::create(out_dir.join(chip.name.clone() + ".yaml")).unwrap();
         serde_yaml::to_writer(file, &chip).unwrap();
     }
-
-    println!("{:#?}", chips);
 }
 
 // one possible implementation of walking a directory only visiting files
