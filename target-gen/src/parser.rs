@@ -106,10 +106,10 @@ pub fn extract_flash_algo(
         offset += flash_device.page_size;
 
         // Determine whether we can use double buffering or not by the remaining RAM region size.
-        let page_buffers = if offset < ram_region.range.end - ram_region.range.start {
-            vec![addr_data]
-        } else {
+        let page_buffers = if offset <= ram_region.range.end - ram_region.range.start {
             vec![addr_data, addr_data2]
+        } else {
+            vec![addr_data]
         };
 
         let code_start = addr_load + FLASH_BLOB_HEADER_SIZE;
