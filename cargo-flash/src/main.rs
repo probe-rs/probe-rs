@@ -18,7 +18,7 @@ use probe_rs::{
     probe::{
         daplink,
         debug_probe::{DebugProbe, DebugProbeError, DebugProbeType, MasterProbe},
-        flash::download::{FileDownloader, Format},
+        flash::download::{Format, download_file},
         protocol::WireProtocol,
         stlink,
     },
@@ -224,8 +224,7 @@ fn main_try() -> Result<(), failure::Error> {
     let instant = Instant::now();
 
     let mm = session.target.memory_map.clone();
-    let fd = FileDownloader::new();
-    fd.download_file(
+    download_file(
         &mut session,
         std::path::Path::new(&path_str.to_string().as_str()),
         Format::Elf,

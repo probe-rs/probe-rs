@@ -84,7 +84,6 @@ pub struct FlashLoader<'a, 'b> {
     builders: HashMap<FlashRegion, FlashBuilder<'b>>,
     total_data_size: usize,
     chip_erase: bool,
-    smart_flash: bool,
     keep_unwritten: bool,
 }
 
@@ -110,13 +109,12 @@ impl fmt::Display for FlashLoaderError {
 }
 
 impl<'a, 'b> FlashLoader<'a, 'b> {
-    pub fn new(memory_map: &'a [MemoryRegion], smart_flash: bool, keep_unwritten: bool) -> Self {
+    pub fn new(memory_map: &'a [MemoryRegion], keep_unwritten: bool) -> Self {
         Self {
             memory_map,
             builders: HashMap::new(),
             total_data_size: 0,
             chip_erase: false,
-            smart_flash,
             keep_unwritten,
         }
     }

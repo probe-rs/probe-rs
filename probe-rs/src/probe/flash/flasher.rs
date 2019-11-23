@@ -295,7 +295,6 @@ impl<'a> Flasher<'a> {
         address: u32,
         data: &[u8],
         chip_erase: Option<bool>,
-        smart_flash: bool,
         _fast_verify: bool,
     ) -> Result<(), FlasherError> {
         if !self
