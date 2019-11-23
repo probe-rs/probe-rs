@@ -34,13 +34,12 @@ pub fn read_elf_bin_data<'a>(elf: &'a goblin::elf::Elf<'_>, buffer: &'a [u8], ad
 }
 
 pub fn extract_flash_algo(
+    mut file: impl std::io::Read,
     file_name: &std::path::Path,
     ram_region: RamRegion,
     default: bool,
 ) -> (FlashAlgorithm, u32, u32, u8) {
-    let mut file = std::fs::File::open(file_name).unwrap();
     let mut buffer = vec![];
-    use std::io::Read;
     file.read_to_end(&mut buffer).unwrap();
 
     let mut algo = FlashAlgorithm::default();
@@ -51,13 +50,10 @@ pub fn extract_flash_algo(
         for sym in elf.syms.iter() {
             let name = &elf.strtab[sym.st_name];
 
-            match name {
-                "FlashDevice" => {
-                    // This struct contains information about the FLM file structure.
-                    let address = sym.st_value as u32;
-                    flash_device = Some(FlashDevice::new(&elf, &buffer, address));
-                }
-                _ => {},
+            if let "FlashDevice" = name {
+                // This struct contains information about the FLM file structure.
+                let address = sym.st_value as u32;
+                flash_device = Some(FlashDevice::new(&elf, &buffer, address));
             }
         }
 

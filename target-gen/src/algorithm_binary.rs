@@ -1,7 +1,7 @@
 use goblin::elf::program_header::PT_LOAD;   
 use num_traits::FromPrimitive;
 use num_derive::FromPrimitive;
-use probe_rs::probe::flash::memory::MemoryRange;
+use probe_rs::config::memory::MemoryRange;
 
 const RO: (&str, Option<SectionType>) = ("PrgCode", Some(SectionType::SHT_PROGBITS));
 const RW: (&str, Option<SectionType>) = ("PrgData", Some(SectionType::SHT_PROGBITS));
