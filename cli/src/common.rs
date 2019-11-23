@@ -1,7 +1,7 @@
 use crate::SharedOptions;
 
 use probe_rs::{
-    collection::cores::m0::FakeM0,
+    cores::m0::FakeM0,
     config::registry::{Registry, RegistryError, SelectionStrategy},
     coresight::access_ports::AccessPortError,
     probe::{
@@ -13,7 +13,6 @@ use probe_rs::{
     },
     session::Session,
     target::info::{self, ChipInfo},
-    target::TargetSelectionError,
 };
 
 use ron;
@@ -28,7 +27,6 @@ pub enum CliError {
     InfoReadError(info::ReadError),
     DebugProbe(DebugProbeError),
     AccessPort(AccessPortError),
-    TargetSelectionError(TargetSelectionError),
     StdIO(std::io::Error),
     FileDownload(FileDownloadError),
     RegistryError(RegistryError),
@@ -44,7 +42,6 @@ impl Error for CliError {
             InfoReadError(e) => Some(e),
             DebugProbe(ref e) => Some(e),
             AccessPort(ref e) => Some(e),
-            TargetSelectionError(ref e) => Some(e),
             StdIO(ref e) => Some(e),
             RegistryError(ref e) => Some(e),
             MissingArgument => None,
@@ -62,7 +59,6 @@ impl fmt::Display for CliError {
             InfoReadError(e) => e.fmt(f),
             DebugProbe(ref e) => e.fmt(f),
             AccessPort(ref e) => e.fmt(f),
-            TargetSelectionError(ref e) => e.fmt(f),
             StdIO(ref e) => e.fmt(f),
             FileDownload(ref e) => e.fmt(f),
             RegistryError(ref e) => e.fmt(f),
@@ -99,12 +95,6 @@ impl From<std::io::Error> for CliError {
 impl From<RegistryError> for CliError {
     fn from(error: RegistryError) -> Self {
         CliError::RegistryError(error)
-    }
-}
-
-impl From<TargetSelectionError> for CliError {
-    fn from(error: TargetSelectionError) -> Self {
-        CliError::TargetSelectionError(error)
     }
 }
 

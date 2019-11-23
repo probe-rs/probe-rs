@@ -10,7 +10,7 @@ use std::io::{Read, Seek, SeekFrom};
 use std::path::Path;
 
 use super::*;
-use crate::config::memory::MemoryRegion;
+use crate::config::memory::{MemoryRegion, MemoryRange};
 
 pub struct BinOptions {
     /// Memory address at which to program the binary data. If not set, the base

@@ -9,7 +9,7 @@ use std::fs::File;
 use std::path::Path;
 
 use super::target::Target;
-use crate::collection::get_core;
+use crate::cores::get_core;
 
 #[derive(Debug)]
 pub enum RegistryError {

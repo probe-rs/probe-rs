@@ -17,7 +17,6 @@ use probe_rs::{
 };
 
 use capstone::{arch::arm::ArchMode, prelude::*, Capstone, Endian};
-use colored::*;
 use memmap;
 use rustyline::Editor;
 use structopt::StructOpt;
@@ -130,11 +129,7 @@ fn main() {
     };
 
     if let Err(e) = cli_result {
-        if let CliError::TargetSelectionError(e) = e {
-            eprintln!("    {} {}", "Error".red().bold(), e);
-        } else {
-            eprintln!("Error processing command: {}", e);
-        }
+        eprintln!("Error processing command: {}", e);
         std::process::exit(1);
     }
 }

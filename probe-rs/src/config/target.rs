@@ -23,6 +23,8 @@ pub struct Target {
     pub memory_map: Vec<MemoryRegion>,
 }
 
+pub type TargetParseError = serde_yaml::Error;
+
 impl From<(&Chip, &FlashAlgorithm, Box<dyn Core>)> for Target {
     fn from(value: (&Chip, &FlashAlgorithm, Box<dyn Core>)) -> Target {
         let (chip, flash_algorithm, core) = value;

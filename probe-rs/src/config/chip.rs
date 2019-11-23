@@ -1,6 +1,6 @@
+use crate::config::target::TargetParseError;
 use super::flash_algorithm::FlashAlgorithm;
 use super::memory::MemoryRegion;
-use crate::target::TargetParseError;
 use jep106::JEP106Code;
 
 /// This describes a single chip model.

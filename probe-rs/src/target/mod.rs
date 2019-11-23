@@ -2,16 +2,12 @@ pub mod info;
 
 use serde::de::{Error, Unexpected};
 
-use self::info::ReadError;
 use crate::{
-    collection::get_core,
+    cores::get_core,
     probe::{
         debug_probe::{DebugProbeError, MasterProbe},
-        flash::memory::MemoryRegion,
     },
 };
-
-use std::fmt;
 
 pub trait CoreRegister: Clone + From<u32> + Into<u32> + Sized + std::fmt::Debug {
     const ADDRESS: u32;
@@ -114,24 +110,6 @@ pub trait Core: std::fmt::Debug + objekt::Clone {
 
 objekt::clone_trait_object!(Core);
 
-#[derive(Debug, Clone, Deserialize)]
-pub struct Target {
-    pub name: String,
-    pub manufacturer: jep106::JEP106Code,
-    pub part: u16,
-    pub flash_algorithm: Option<String>,
-    pub memory_map: Vec<MemoryRegion>,
-    pub core: Box<dyn Core>,
-}
-
-pub type TargetParseError = serde_yaml::Error;
-
-impl Target {
-    pub fn new(definition: &str) -> Result<Self, TargetParseError> {
-        serde_yaml::from_str(definition)
-    }
-}
-
 struct CoreVisitor;
 
 impl<'de> serde::de::Visitor<'de> for CoreVisitor {
@@ -159,41 +137,5 @@ impl<'de> serde::de::Visitor<'de> for CoreVisitor {
 impl<'de> serde::Deserialize<'de> for Box<dyn Core> {
     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         deserializer.deserialize_identifier(CoreVisitor)
-    }
-}
-
-#[derive(Debug)]
-pub enum TargetSelectionError {
-    InfoReadError(ReadError),
-    TargetNotFound(String),
-    TargetCouldNotBeParsed(TargetParseError),
-}
-
-impl fmt::Display for TargetSelectionError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use TargetSelectionError::*;
-
-        match self {
-            InfoReadError(e) => write!(f, "Failed to read target into: {}", e),
-            TargetNotFound(ref t) => write!(f, "Failed to find target defintion for target {}", t),
-            TargetCouldNotBeParsed(ref e) => {
-                write!(f, "Failed to parse target definition for target: ")?;
-                e.fmt(f)
-            }
-        }
-    }
-}
-
-impl std::error::Error for TargetSelectionError {}
-
-impl From<TargetParseError> for TargetSelectionError {
-    fn from(error: TargetParseError) -> Self {
-        TargetSelectionError::TargetCouldNotBeParsed(error)
-    }
-}
-
-impl From<ReadError> for TargetSelectionError {
-    fn from(e: ReadError) -> Self {
-        TargetSelectionError::InfoReadError(e)
     }
 }
