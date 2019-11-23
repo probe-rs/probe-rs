@@ -24,7 +24,7 @@ impl FlashRegion {
             size: self.sector_size,
         })
     }
-    
+
     /// Returns the necessary information about the page which `address` resides in
     /// if the address is inside the flash region.
     pub fn page_info(&self, address: u32) -> Option<PageInfo> {
@@ -107,9 +107,9 @@ impl MemoryRange for Range<u32> {
     /// Returns true if `self` intersects `range` partially.
     fn intersects_range(&self, range: &Range<u32>) -> bool {
         self.contains(&range.start) && !self.contains(&(range.end - 1))
-    || !self.contains(&range.start) && self.contains(&(range.end - 1))
-    || self.contains_range(range)
-    || range.contains_range(self)
+            || !self.contains(&range.start) && self.contains(&(range.end - 1))
+            || self.contains_range(range)
+            || range.contains_range(self)
     }
 }
 
@@ -120,7 +120,6 @@ pub enum MemoryRegion {
     Generic(GenericRegion),
     Flash(FlashRegion),
 }
-
 
 #[cfg(test)]
 mod test {

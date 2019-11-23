@@ -1,12 +1,12 @@
 use crate::config::flash_algorithm::FlashAlgorithm;
+use crate::config::target::Target;
 use crate::coresight::access_ports::AccessPortError;
 use crate::memory::MI;
 use crate::probe::debug_probe::DebugProbeError;
 use crate::probe::debug_probe::MasterProbe;
-use crate::config::target::Target;
 
-use crate::config::memory::{FlashRegion, MemoryRange};
 use super::builder::FlashBuilder;
+use crate::config::memory::{FlashRegion, MemoryRange};
 
 const ANALYZER: [u32; 49] = [
     0x2780_b5f0,
@@ -206,12 +206,7 @@ impl<'a> Flasher<'a> {
         }
 
         if address.is_none() {
-            address = Some(
-                flasher
-                    .region
-                    .flash_info(algo.analyzer_supported)
-                    .rom_start,
-            );
+            address = Some(flasher.region.flash_info(algo.analyzer_supported).rom_start);
         }
 
         // TODO: Halt & reset target.
@@ -316,8 +311,7 @@ impl<'a> Flasher<'a> {
 
         let mut fb = FlashBuilder::new(self.region.range.start);
         fb.add_data(address, data).expect("Add Data failed");
-        fb.program(self, chip_erase, true)
-            .expect("Add Data failed");
+        fb.program(self, chip_erase, true).expect("Add Data failed");
 
         Ok(())
     }

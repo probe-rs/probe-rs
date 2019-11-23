@@ -1,12 +1,12 @@
-use crate::target::info::ChipInfo;
 use crate::config::{
-    memory::{MemoryRegion, FlashRegion, RamRegion },
-    flash_algorithm::FlashAlgorithm,
     chip::Chip,
+    flash_algorithm::FlashAlgorithm,
+    memory::{FlashRegion, MemoryRegion, RamRegion},
 };
+use crate::target::info::ChipInfo;
+use std::error::Error;
 use std::fs::File;
 use std::path::Path;
-use std::error::Error;
 
 use super::target::Target;
 use crate::collection::get_core;
@@ -82,18 +82,22 @@ impl Registry {
         let (chip, flash_algorithm) = match strategy {
             SelectionStrategy::TargetIdentifier(identifier) => {
                 // Try get the corresponding chip.
-                let potential_chip = self.chips
+                let potential_chip = self
+                    .chips
                     .iter()
                     .find(|chip| {
-                        chip.name.starts_with(&identifier.chip_name.to_ascii_lowercase())
+                        chip.name
+                            .starts_with(&identifier.chip_name.to_ascii_lowercase())
                     })
                     .ok_or_else(|| RegistryError::ChipNotFound)?;
 
                 // Try get the correspnding flash algorithm.
-                let potential_flash_algorithm = potential_chip.flash_algorithms
+                let potential_flash_algorithm = potential_chip
+                    .flash_algorithms
                     .iter()
                     .find(|flash_algorithm| {
-                        if let Some(flash_algorithm_name) = identifier.flash_algorithm_name.clone() {
+                        if let Some(flash_algorithm_name) = identifier.flash_algorithm_name.clone()
+                        {
                             flash_algorithm.name == flash_algorithm_name
                         } else {
                             flash_algorithm.default
@@ -102,20 +106,24 @@ impl Registry {
                     .or_else(|| potential_chip.flash_algorithms.first())
                     .ok_or_else(|| RegistryError::AlgorithmNotFound)?;
 
-                    (potential_chip, potential_flash_algorithm)
-            },
+                (potential_chip, potential_flash_algorithm)
+            }
             SelectionStrategy::ChipInfo(chip_info) => {
                 // Try get the corresponding chip.
-                let potential_chip = self.chips
+                let potential_chip = self
+                    .chips
                     .iter()
                     .find(|chip| {
-                        chip.manufacturer.map(|m| m == chip_info.manufacturer).unwrap_or(false)
-                     && chip.part.map(|p| p == chip_info.part).unwrap_or(false)
+                        chip.manufacturer
+                            .map(|m| m == chip_info.manufacturer)
+                            .unwrap_or(false)
+                            && chip.part.map(|p| p == chip_info.part).unwrap_or(false)
                     })
                     .ok_or_else(|| RegistryError::ChipNotFound)?;
 
                 // Try get the correspnding flash algorithm.
-                let potential_flash_algorithm = potential_chip.flash_algorithms
+                let potential_flash_algorithm = potential_chip
+                    .flash_algorithms
                     .first()
                     .ok_or_else(|| RegistryError::AlgorithmNotFound)?;
 
@@ -137,7 +145,10 @@ impl Registry {
         let file = File::open(path_to_yaml)?;
         let chip = Chip::from_yaml_reader(file)?;
 
-        let index = self.chips.iter().position(|old_chip| old_chip.name == chip.name);
+        let index = self
+            .chips
+            .iter()
+            .position(|old_chip| old_chip.name == chip.name);
         if let Some(index) = index {
             self.chips.remove(index);
         }

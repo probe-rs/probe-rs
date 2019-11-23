@@ -2,18 +2,18 @@ use crate::SharedOptions;
 
 use probe_rs::{
     collection::cores::m0::FakeM0,
+    config::registry::{Registry, RegistryError, SelectionStrategy},
     coresight::access_ports::AccessPortError,
     probe::{
         daplink,
         debug_probe::{DebugProbe, DebugProbeError, DebugProbeType, FakeProbe, MasterProbe},
-        flash::{download::FileDownloadError},
+        flash::download::FileDownloadError,
         protocol::WireProtocol,
         stlink,
     },
     session::Session,
     target::info::{self, ChipInfo},
     target::TargetSelectionError,
-    config::registry::{Registry, RegistryError, SelectionStrategy},
 };
 
 use ron;

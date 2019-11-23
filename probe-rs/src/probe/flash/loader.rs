@@ -3,9 +3,9 @@ use std::collections::HashMap;
 use std::error::Error;
 use std::fmt;
 
-use crate::config::memory::{MemoryRegion, FlashRegion};
 use super::builder::FlashBuilder;
 use super::flasher::Flasher;
+use crate::config::memory::{FlashRegion, MemoryRegion};
 
 pub struct Ranges<I: Iterator<Item = usize> + Sized> {
     list: I,
@@ -110,11 +110,7 @@ impl fmt::Display for FlashLoaderError {
 }
 
 impl<'a, 'b> FlashLoader<'a, 'b> {
-    pub fn new(
-        memory_map: &'a [MemoryRegion],
-        smart_flash: bool,
-        keep_unwritten: bool,
-    ) -> Self {
+    pub fn new(memory_map: &'a [MemoryRegion], smart_flash: bool, keep_unwritten: bool) -> Self {
         Self {
             memory_map,
             builders: HashMap::new(),

@@ -6,28 +6,24 @@ use std::{
     env,
     error::Error,
     fmt,
-    path::{PathBuf, Path},
+    path::{Path, PathBuf},
     process::{self, Command, Stdio},
     time::Instant,
 };
 use structopt::StructOpt;
 
 use probe_rs::{
+    config::registry::{Registry, SelectionStrategy},
     coresight::access_ports::AccessPortError,
     probe::{
         daplink,
         debug_probe::{DebugProbe, DebugProbeError, DebugProbeType, MasterProbe},
-        flash::{
-            download::{FileDownloader, Format},
-        },
+        flash::download::{FileDownloader, Format},
         protocol::WireProtocol,
         stlink,
     },
     session::Session,
-    target::{info::ChipInfo},
-    config::{
-        registry::{Registry, SelectionStrategy},
-    },
+    target::info::ChipInfo,
 };
 
 #[derive(Debug, StructOpt)]

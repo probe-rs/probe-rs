@@ -1,7 +1,7 @@
+use super::flash_algorithm::FlashAlgorithm;
+use super::memory::MemoryRegion;
 use crate::target::TargetParseError;
 use jep106::JEP106Code;
-use super::memory::MemoryRegion;
-use super::flash_algorithm::FlashAlgorithm;
 
 /// This describes a single chip model.
 /// It can come in different configurations (memory, peripherals).
@@ -26,7 +26,9 @@ pub struct Chip {
 }
 
 impl Chip {
-    pub fn from_yaml_reader<R: std::io::Read>(definition_reader: R) -> Result<Self, TargetParseError> {
+    pub fn from_yaml_reader<R: std::io::Read>(
+        definition_reader: R,
+    ) -> Result<Self, TargetParseError> {
         serde_yaml::from_reader(definition_reader)
     }
 }

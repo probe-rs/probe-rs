@@ -1,9 +1,9 @@
-use jep106::JEP106Code;
-use crate::target::Core;
-use super::registry::TargetIdentifier;
+use super::chip::Chip;
 use super::flash_algorithm::FlashAlgorithm;
 use super::memory::MemoryRegion;
-use super::chip::Chip;
+use super::registry::TargetIdentifier;
+use crate::target::Core;
+use jep106::JEP106Code;
 
 /// This describes a complete target with a fixed chip model and variant.
 #[derive(Debug, Clone)]
