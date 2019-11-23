@@ -20,6 +20,7 @@ impl FlashRegion {
 
         Some(SectorInfo {
             base_address: address - (address % self.sector_size),
+            page_size: self.page_size,
             size: self.sector_size,
         })
     }
@@ -73,6 +74,7 @@ pub struct GenericRegion {
 #[derive(Debug, Copy, Clone)]
 pub struct SectorInfo {
     pub base_address: u32,
+    pub page_size: u32,
     pub size: u32,
 }
 

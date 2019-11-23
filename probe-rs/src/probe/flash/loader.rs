@@ -230,7 +230,6 @@ impl<'a, 'b> FlashLoader<'a, 'b> {
                     .program(
                         Flasher::new(target, probe, flash_algorithm, builder.0),
                         chip_erase,
-                        self.smart_flash,
                         self.keep_unwritten,
                     )
                     .unwrap();

@@ -316,7 +316,7 @@ impl<'a> Flasher<'a> {
 
         let mut fb = FlashBuilder::new(self.region.range.start);
         fb.add_data(address, data).expect("Add Data failed");
-        fb.program(self, chip_erase, smart_flash, true)
+        fb.program(self, chip_erase, true)
             .expect("Add Data failed");
 
         Ok(())
