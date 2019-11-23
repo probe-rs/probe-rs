@@ -1,5 +1,5 @@
 ---
-name: LPC845M301JBD48
+name: LPC845
 flash_algorithms:
   - name: LPC84x_64
     default: true
