@@ -5,3 +5,4 @@ Cargo.lock
 # Needed for RLS
 probe-rs/target
 cli/target
+cargo-flash/target

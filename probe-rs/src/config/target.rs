@@ -1,6 +1,7 @@
 use super::chip::Chip;
-use super::flash_algorithm::FlashAlgorithm;
-use super::memory::MemoryRegion;
+use super::chip_family::ChipFamily;
+use super::flash_algorithm::{RawFlashAlgorithm, FlashAlgorithm};
+use super::memory::{MemoryRegion, RamRegion, FlashRegion};
 use super::registry::TargetIdentifier;
 use crate::target::Core;
 use jep106::JEP106Code;
@@ -25,17 +26,18 @@ pub struct Target {
 
 pub type TargetParseError = serde_yaml::Error;
 
-impl From<(&Chip, &FlashAlgorithm, Box<dyn Core>)> for Target {
-    fn from(value: (&Chip, &FlashAlgorithm, Box<dyn Core>)) -> Target {
-        let (chip, flash_algorithm, core) = value;
+impl From<(&ChipFamily, &Chip, &RamRegion, &FlashRegion, &RawFlashAlgorithm, Box<dyn Core>)> for Target {
+    fn from(value: (&ChipFamily, &Chip, &RamRegion, &FlashRegion, &RawFlashAlgorithm, Box<dyn Core>)) -> Target {
+        let (chip_family, chip, ram, flash, flash_algorithm, core) = value;
+
         Target {
             identifier: TargetIdentifier {
                 chip_name: chip.name.clone(),
                 flash_algorithm_name: Some(flash_algorithm.name.clone()),
             },
-            manufacturer: chip.manufacturer,
-            part: chip.part,
-            flash_algorithm: Some(flash_algorithm.clone()),
+            manufacturer: chip_family.manufacturer,
+            part: chip_family.part,
+            flash_algorithm: Some(flash_algorithm.assemble(ram, flash)),
             core,
             memory_map: chip.memory_map.clone(),
         }

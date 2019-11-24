@@ -39,10 +39,9 @@ impl FlashRegion {
     }
 
     /// Returns the necessary information about the flash.
-    pub fn flash_info(&self, analyzer_supported: bool) -> FlashInfo {
+    pub fn flash_info(&self) -> FlashInfo {
         FlashInfo {
             rom_start: self.range.start,
-            crc_supported: analyzer_supported,
         }
     }
 
@@ -89,7 +88,6 @@ pub struct PageInfo {
 #[derive(Debug, Copy, Clone)]
 pub struct FlashInfo {
     pub rom_start: u32,
-    pub crc_supported: bool,
 }
 
 /// Enables the user to do range intersection testing.

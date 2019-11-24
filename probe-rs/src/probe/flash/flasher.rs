@@ -8,58 +8,6 @@ use crate::probe::debug_probe::MasterProbe;
 use super::builder::FlashBuilder;
 use crate::config::memory::{FlashRegion, MemoryRange};
 
-const ANALYZER: [u32; 49] = [
-    0x2780_b5f0,
-    0x2500_4684,
-    0x4e2b_2401,
-    0x447e_4a2b,
-    0x0023_007f,
-    0x425b_402b,
-    0x4013_0868,
-    0x0858_4043,
-    0x425b_4023,
-    0x4058_4013,
-    0x4020_0843,
-    0x4010_4240,
-    0x0843_4058,
-    0x4240_4020,
-    0x4058_4010,
-    0x4020_0843,
-    0x4010_4240,
-    0x0843_4058,
-    0x4240_4020,
-    0x4058_4010,
-    0x4020_0843,
-    0x4010_4240,
-    0x0858_4043,
-    0x425b_4023,
-    0x4043_4013,
-    0xc608_3501,
-    0xd1d2_42bd,
-    0xd01f_2900,
-    0x4660_2301,
-    0x469c_25ff,
-    0x0089_4e11,
-    0x447e_1841,
-    0x8803_4667,
-    0x409f_8844,
-    0x2f00_409c,
-    0x2201_d012,
-    0x4252_193f,
-    0x3401_7823,
-    0x402b_4053,
-    0x599b_009b,
-    0x405a_0a12,
-    0xd1f5_42bc,
-    0xc004_43d2,
-    0xd1e7_4281,
-    0xbdf0_2000,
-    0xe7f8_2200,
-    0x0000_00b2,
-    0xedb8_8320,
-    0x0000_0042,
-];
-
 pub trait Operation {
     fn operation() -> u32;
     fn operation_name(&self) -> &str {
@@ -206,7 +154,7 @@ impl<'a> Flasher<'a> {
         }
 
         if address.is_none() {
-            address = Some(flasher.region.flash_info(algo.analyzer_supported).rom_start);
+            address = Some(flasher.region.flash_info().rom_start);
         }
 
         // TODO: Halt & reset target.
@@ -525,63 +473,6 @@ impl<'a> ActiveFlasher<'a, Erase> {
             Ok(())
         }
     }
-
-    pub fn compute_crcs(&mut self, sectors: &[(u32, u32)]) -> Result<Vec<u32>, FlasherError> {
-        let flasher = self;
-        let algo = flasher.flash_algorithm;
-
-        if algo.analyzer_supported {
-            let mut data = vec![];
-
-            flasher
-                .probe
-                .write_block32(algo.analyzer_address, &ANALYZER)?;
-
-            for (address, mut size) in sectors {
-                let size_value = {
-                    let mut ndx = 0;
-                    while 1 < size {
-                        size >>= 1;
-                        ndx += 1;
-                    }
-                    ndx
-                };
-                let address_value = address / size;
-                if 1 << size_value != size {
-                    return Err(FlasherError::SizeNotPowerOf2);
-                }
-                if address % size != 0 {
-                    return Err(FlasherError::AddressNotMultipleOfSize);
-                }
-                let value = size_value | (address_value << 16);
-                data.push(value);
-            }
-
-            flasher
-                .probe
-                .write_block32(algo.begin_data, data.as_slice())?;
-
-            let analyzer_address = algo.analyzer_address;
-            let begin_data = algo.begin_data;
-            let result = flasher.call_function_and_wait(
-                analyzer_address,
-                Some(begin_data),
-                Some(data.len() as u32),
-                None,
-                None,
-                false,
-            );
-            result?;
-
-            flasher
-                .probe
-                .read_block32(begin_data, data.as_mut_slice())?;
-
-            Ok(data)
-        } else {
-            Err(FlasherError::AnalyzerNotSupported)
-        }
-    }
 }
 
 impl<'a> ActiveFlasher<'a, Program> {
@@ -670,11 +561,7 @@ impl<'a> ActiveFlasher<'a, Program> {
         let algo = flasher.flash_algorithm;
 
         // Get the minimum programming length. If none was specified, use the page size.
-        let min_len = if let Some(min_program_length) = algo.min_program_length {
-            min_program_length
-        } else {
-            flasher.region.page_size
-        };
+        let min_len = flasher.region.page_size;
 
         // Require write address and length to be aligned to the minimum write size.
         if address % min_len != 0 {

@@ -22,7 +22,7 @@ fn main() {
 
         match yaml {
             Ok(chip) => {
-                let chip = extract_chip(&chip);
+                let chip = extract_chip_family(&chip);
                 configs.push(chip);
             }
             Err(e) => {
@@ -92,8 +92,13 @@ fn extract_algorithms(chip: &serde_yaml::Value) -> Vec<proc_macro2::TokenStream>
                 .as_str()
                 .unwrap()
                 .to_ascii_lowercase();
+            let description = algorithm
+                .get("description")
+                .unwrap()
+                .as_str()
+                .unwrap()
+                .to_ascii_lowercase();
             let default = algorithm.get("default").unwrap().as_bool().unwrap();
-            let load_address = algorithm.get("load_address").unwrap().as_u64().unwrap() as u32;
             let instructions = algorithm
                 .get("instructions")
                 .unwrap()
@@ -121,37 +126,14 @@ fn extract_algorithms(chip: &serde_yaml::Value) -> Vec<proc_macro2::TokenStream>
                     .as_u64()
                     .map(|v| v as u32),
             );
-            let static_base = algorithm.get("static_base").unwrap().as_u64().unwrap() as u32;
-            let begin_stack = algorithm.get("begin_stack").unwrap().as_u64().unwrap() as u32;
-            let begin_data = algorithm.get("begin_data").unwrap().as_u64().unwrap() as u32;
-            let page_buffers = algorithm
-                .get("page_buffers")
-                .unwrap()
-                .as_sequence()
-                .unwrap()
-                .iter()
-                .map(|v| v.as_u64().unwrap() as u32);
-            let min_program_length = quote_option(
-                algorithm
-                    .get("min_program_length")
-                    .unwrap()
-                    .as_u64()
-                    .map(|v| v as u32),
-            );
-            let analyzer_supported = algorithm
-                .get("analyzer_supported")
-                .unwrap()
-                .as_bool()
-                .unwrap();
-            let analyzer_address =
-                algorithm.get("analyzer_address").unwrap().as_u64().unwrap() as u32;
+            let data_section_offset = algorithm.get("data_section_offset").unwrap().as_u64().unwrap() as u32;
 
             // Quote the algorithm struct.
             let algorithm = quote::quote! {
-                FlashAlgorithm {
+                RawFlashAlgorithm {
                     name: #name.to_owned(),
+                    description: #description.to_owned(),
                     default: #default,
-                    load_address: #load_address,
                     instructions: vec![
                         #(#instructions,)*
                     ],
@@ -160,15 +142,7 @@ fn extract_algorithms(chip: &serde_yaml::Value) -> Vec<proc_macro2::TokenStream>
                     pc_program_page: #pc_program_page,
                     pc_erase_sector: #pc_erase_sector,
                     pc_erase_all: #pc_erase_all,
-                    static_base: #static_base,
-                    begin_stack: #begin_stack,
-                    begin_data: #begin_data,
-                    page_buffers: vec![
-                        #(#page_buffers,)*
-                    ],
-                    min_program_length: #min_program_length,
-                    analyzer_supported: #analyzer_supported,
-                    analyzer_address: #analyzer_address,
+                    data_section_offset: #data_section_offset,
                 }
             };
 
@@ -233,13 +207,42 @@ fn extract_memory_map(chip: &serde_yaml::Value) -> Vec<proc_macro2::TokenStream>
         .collect()
 }
 
-/// Extracts a chip token streams from a yaml value.
-fn extract_chip(chip: &serde_yaml::Value) -> proc_macro2::TokenStream {
+/// Extracts a list of algorithm token streams from a yaml value.
+fn extract_variants(chip_family: &serde_yaml::Value) -> Vec<proc_macro2::TokenStream> {
+    // Get an iterator over all the algorithms contained in the chip value obtained from the yaml file.
+    let variants_iter = chip_family
+        .get("variants")
+        .unwrap()
+        .as_sequence()
+        .unwrap()
+        .iter();
+
+    variants_iter
+        .map(|variant| {
+            let name = variant.get("name").unwrap().as_str().unwrap();
+
+            // Extract all the memory regions into a Vec of TookenStreams.
+            let memory_map = extract_memory_map(&variant);
+
+            quote::quote! {
+                Chip {
+                    name: #name.to_owned(),
+                    memory_map: vec![
+                        #(#memory_map,)*
+                    ],
+                }
+            }
+        })
+        .collect()
+}
+
+/// Extracts a chip family token stream from a yaml value.
+fn extract_chip_family(chip: &serde_yaml::Value) -> proc_macro2::TokenStream {
     // Extract all the algorithms into a Vec of TokenStreams.
     let algorithms = extract_algorithms(&chip);
 
-    // Extract all the memory regions into a Vec of TookenStreams.
-    let memory_map = extract_memory_map(&chip);
+    // Extract all the available variants into a Vec of TokenStreams.
+    let variants = extract_variants(&chip);
 
     let name = chip
         .get("name")
@@ -257,20 +260,20 @@ fn extract_chip(chip: &serde_yaml::Value) -> proc_macro2::TokenStream {
         .to_ascii_lowercase();
 
     // Quote the chip.
-    let chip = quote::quote! {
-        Chip {
+    let chip_family = quote::quote! {
+        ChipFamily {
             name: #name.to_owned(),
             manufacturer: #manufacturer,
             part: #part,
             flash_algorithms: vec![
                 #(#algorithms,)*
             ],
-            memory_map: vec![
-                #(#memory_map,)*
+            variants: vec![
+                #(#variants,)*
             ],
             core: #core.to_owned(),
         }
     };
 
-    chip
+    chip_family
 }

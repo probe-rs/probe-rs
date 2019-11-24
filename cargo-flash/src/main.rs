@@ -38,6 +38,8 @@ struct Opt {
     chip_description_path: Option<String>,
     #[structopt(name = "nrf-recover", long = "nrf-recover")]
     nrf_recover: bool,
+    #[structopt(name = "list-chips", long = "list-chips")]
+    list_chips: bool,
 
     // `cargo build` arguments
     #[structopt(name = "binary", long = "bin")]
@@ -84,6 +86,12 @@ fn main_try() -> Result<(), failure::Error> {
 
     // Get commandline options.
     let opt = Opt::from_iter(&args);
+
+    if opt.list_chips {
+        print_families();
+        std::process::exit(0);
+    }
+
     args.remove(0); // Remove executable name
 
     // Remove possible `--chip <chip>` arguments as cargo build does not understand it.
@@ -243,6 +251,23 @@ fn main_try() -> Result<(), failure::Error> {
     session.target.core.reset(&mut session.probe)?;
 
     Ok(())
+}
+
+fn print_families() {
+    println!("Available chips:");
+    let registry = Registry::new();
+    for family in registry.families() {
+        println!("{}", family.name);
+        println!("    Variants:");
+        for variant in family.variants() {
+            println!("        {}", variant.name);
+        }
+
+        println!("    Algorithms:");
+        for algorithms in family.algorithms() {
+            println!("        {} ({})", algorithms.name, algorithms.description);
+        }
+    }
 }
 
 #[cfg(unix)]
