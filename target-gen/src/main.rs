@@ -2,16 +2,20 @@ pub mod algorithm_binary;
 pub mod flash_device;
 pub mod parser;
 pub mod chip;
+pub mod chip_family;
+pub mod error;
 
+use probe_rs::config::flash_algorithm::RawFlashAlgorithm;
 use probe_rs::config::memory::{RamRegion, FlashRegion, MemoryRegion};
 use std::fs::{self, File};
-use std::io;
 use std::path::Path;
 use cmsis_pack::utils::FromElem;
 use cmsis_pack::pdsc::Package;
 use cmsis_pack::pdsc::Processors;
 use cmsis_pack::pdsc::Core;
 use chip::Chip;
+use chip_family::ChipFamily;
+use crate::error::Error;
 
 fn main() {
     let args: Vec<_> = std::env::args().collect();
@@ -19,14 +23,15 @@ fn main() {
     let in_dir = &std::path::Path::new(&args[1]);
     let out_dir = &std::path::Path::new(&args[2]);
 
-    let mut chips = Vec::<Chip>::new();
+    let mut families = Vec::<ChipFamily>::new();
 
     // Look for the .pdsc file in the given dir and it's child directories.
     visit_dirs(Path::new(&in_dir), &mut |pdsc, mut archive| {
-        // Parse the .pdsc file.
-
         // Forge a definition file for each device in the .pdsc file.
         for (device_name, device) in pdsc.devices.0 {
+            // Check if this device family is already known.
+            let mut potential_family = families.iter_mut().find(|family| family.name == device.family);
+
             // Extract the RAM info from the .pdsc file.
             let mut ram = None;
             for memory in device.memories.0.values() {
@@ -40,32 +45,44 @@ fn main() {
             }
 
             // Extract the flash algorithm, block & sector size and the erased byte value from the ELF binary.
+            // Only do this if this wasn't done yet for this family.
             let mut page_size = 0;
             let mut sector_size = 0;
             let mut erased_byte_value = 0xFF;
-            let flash_algorithms = device.algorithms.iter().map(|flash_algorithm| {
-                let (algo, ps, ss, ebv) = if let Some(ref mut archive) = archive {
-                    crate::parser::extract_flash_algo(
-                        archive.by_name(&flash_algorithm.file_name.as_path().to_string_lossy()).unwrap(),
-                        flash_algorithm.file_name.as_path(),
-                        ram.as_ref().unwrap().clone(),
-                        flash_algorithm.default
-                    )
-                } else {
-                    crate::parser::extract_flash_algo(
-                        std::fs::File::open(in_dir.join(&flash_algorithm.file_name).as_path()).unwrap(),
-                        flash_algorithm.file_name.as_path(),
-                        ram.as_ref().unwrap().clone(),
-                        flash_algorithm.default
-                    )
-                };
+            let flash_algorithms = device.algorithms
+                .iter()
+                .map(|flash_algorithm| {
+                    let (algo, ps, ss, ebv) = if let Some(ref mut archive) = archive {
+                        crate::parser::extract_flash_algo(
+                            archive.by_name(&flash_algorithm.file_name.as_path().to_string_lossy()).unwrap(),
+                            flash_algorithm.file_name.as_path(),
+                            flash_algorithm.default
+                        )
+                    } else {
+                        crate::parser::extract_flash_algo(
+                            std::fs::File::open(in_dir.join(&flash_algorithm.file_name).as_path()).unwrap(),
+                            flash_algorithm.file_name.as_path(),
+                            flash_algorithm.default
+                        )
+                    }?;
 
-                page_size = ps;
-                sector_size = ss;
-                erased_byte_value = ebv;
+                    page_size = ps;
+                    sector_size = ss;
+                    erased_byte_value = ebv;
 
-                algo
-            }).collect::<Vec<_>>();
+                    Ok(algo)
+                })
+                .filter_map(|flash_algorithm: Result<RawFlashAlgorithm, Error>| {
+                    match flash_algorithm {
+                        Ok(flash_algorithm) => Some(flash_algorithm),
+                        Err(error) => {
+                            log::warn!("Failed to parse flash algorithm.");
+                            log::warn!("Reason: {:?}", error);
+                            None
+                        }
+                    }
+                })
+                .collect::<Vec<_>>();
 
             // Extract the flash info from the .pdsc file.
             let mut flash = None;
@@ -82,6 +99,7 @@ fn main() {
                 }
             }
 
+            // Get the core type.
             let core = if let Processors::Symmetric(processor) = device.processor {
                 match processor.core {
                     Core::CortexM0 => "M0",
@@ -98,29 +116,38 @@ fn main() {
                 ""
             };
 
-            let chip = Chip {
+            let family = if let Some(ref mut family) = potential_family {
+                family
+            } else {
+                families.push(ChipFamily::new(device.family, flash_algorithms, core.to_owned()));
+                // This unwrap is always safe as we insert at least one item previously.
+                families.last_mut().unwrap()
+            };
+
+            family.variants.push(Chip {
                 name: device_name,
-                flash_algorithms,
                 memory_map: vec![
                     MemoryRegion::Ram(ram.unwrap()),
                     MemoryRegion::Flash(flash.unwrap()),
                 ],
-                core: core.to_owned(),
-            };
-
-            chips.push(chip)
+            });
         }
+
+        Ok(())
     })
     .unwrap();
 
-    for chip in &chips {
-        let file = std::fs::File::create(out_dir.join(chip.name.clone() + ".yaml")).unwrap();
-        serde_yaml::to_writer(file, &chip).unwrap();
+    for family in &families {
+        let file = std::fs::File::create(out_dir.join(family.name.clone() + ".yaml")).unwrap();
+        serde_yaml::to_writer(file, &family).unwrap();
     }
 }
 
 // one possible implementation of walking a directory only visiting files
-fn visit_dirs(path: &Path, cb: &mut dyn FnMut(Package, Option<&mut zip::ZipArchive<File>>)) -> io::Result<()> {
+fn visit_dirs<T>(
+    path: &Path,
+    cb: &mut dyn FnMut(Package, Option<&mut zip::ZipArchive<File>>
+) -> Result<T, Error>) -> Result<(), Error> {
     // If we get a dir, look for all .pdsc files.
     if path.is_dir() {
         for entry in fs::read_dir(path)? {
@@ -130,7 +157,7 @@ fn visit_dirs(path: &Path, cb: &mut dyn FnMut(Package, Option<&mut zip::ZipArchi
                 visit_dirs(&path, cb)?;
             } else if let Some(extension) = path.as_path().extension() {
                 if extension == "pdsc" {
-                    cb(Package::from_path(entry.path().as_path()).unwrap(), None);
+                    cb(Package::from_path(entry.path().as_path()).unwrap(), None)?;
                 }
             }
         }
@@ -150,7 +177,7 @@ fn visit_dirs(path: &Path, cb: &mut dyn FnMut(Package, Option<&mut zip::ZipArchi
                             pdsc_string
                         }
                     );
-                    cb(Package::from_string(&pdsc).unwrap(), Some(&mut archive));
+                    cb(Package::from_string(&pdsc).unwrap(), Some(&mut archive))?;
                 },
                 Err(e) => {
                     log::error!("Zip file could not be read. Reason:");
