@@ -51,6 +51,7 @@ pub fn get_core(name: impl AsRef<str>) -> Option<Box<dyn Core>> {
     let map: HashMap<&'static str, Box<dyn Core>> = hashmap! {
         "M0" => Box::new(self::cores::m0::M0) as _,
         "M4" => Box::new(self::cores::m4::M4) as _,
+        "M33" => Box::new(self::cores::m33::M33) as _,
     };
 
     map.get(name.as_ref()).cloned()
