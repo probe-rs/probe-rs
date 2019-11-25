@@ -213,24 +213,24 @@ mod tests {
     #[test]
     fn try_fetch1() {
         let registry = Registry::new();
-        assert!(registry.get_target("nrf51".into()).is_ok());
+        assert!(registry.get_target(SelectionStrategy::TargetIdentifier("nrf51".into())).is_ok());
     }
 
     #[test]
     fn try_fetch2() {
         let registry = Registry::new();
-        assert!(registry.get_target("nrf5182".into()).is_ok());
+        assert!(registry.get_target(SelectionStrategy::TargetIdentifier("nrf5182".into())).is_ok());
     }
 
     #[test]
     fn try_fetch3() {
         let registry = Registry::new();
-        assert!(registry.get_target("nrF51822_x".into()).is_ok());
+        assert!(registry.get_target(SelectionStrategy::TargetIdentifier("nrF51822_x".into())).is_ok());
     }
 
     #[test]
     fn try_fetch4() {
         let registry = Registry::new();
-        assert!(registry.get_target("nrf51822_Xxaa".into()).is_ok());
+        assert!(registry.get_target(SelectionStrategy::TargetIdentifier("nrf51822_Xxaa".into())).is_ok());
     }
 }
