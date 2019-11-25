@@ -13,11 +13,9 @@ use super::*;
 use crate::config::memory::{MemoryRegion, MemoryRange};
 
 pub struct BinOptions {
-    /// Memory address at which to program the binary data. If not set, the base
-    /// of the boot memory will be used.
+    /// The address in memory where the binary will be put at.
     base_address: Option<u32>,
-    /// Number of bytes to skip at the start of the binary file. Does not affect the
-    /// base address.
+    /// The number of bytes to skip at the start of the binary file.
     skip: u32,
 }
 
@@ -97,7 +95,8 @@ pub fn download_file(
     }?;
 
     loader
-        .commit(session)
+        // TODO: hand out chip erase flag
+        .commit(session, false)
         .map_err(FileDownloadError::FlashLoader)
 }
 

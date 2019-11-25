@@ -95,7 +95,6 @@ impl<'a> FlashWriteData<'a> {
 }
 
 pub struct FlashBuilder<'a> {
-    pub(crate) flash_start: u32,
     flash_write_data: Vec<FlashWriteData<'a>>,
     buffered_data_size: usize,
     enable_double_buffering: bool,
@@ -123,9 +122,8 @@ type R = Result<(), FlashBuilderError>;
 
 impl<'a> FlashBuilder<'a> {
     /// Creates a new `FlashBuilder` with empty data.
-    pub fn new(flash_start: u32) -> Self {
+    pub fn new() -> Self {
         Self {
-            flash_start,
             flash_write_data: vec![],
             buffered_data_size: 0,
             enable_double_buffering: false,
@@ -178,7 +176,7 @@ impl<'a> FlashBuilder<'a> {
     pub fn program(
         &self,
         mut flash: Flasher,
-        mut perform_chip_erase: Option<bool>,
+        mut do_chip_erase: bool,
         restore_unwritten_bytes: bool,
     ) -> Result<(), FlashBuilderError> {
         if self.flash_write_data.is_empty() {
@@ -199,17 +197,17 @@ impl<'a> FlashBuilder<'a> {
 
         // If the flash algo doesn't support erase all, disable chip erase.
         if flash.flash_algorithm().pc_erase_all.is_none() {
-            perform_chip_erase = Some(false);
+            do_chip_erase = false;
         }
 
-        log::debug!("Full Chip Erase enabled: {:?}", perform_chip_erase);
+        log::debug!("Full Chip Erase enabled: {:?}", do_chip_erase);
         log::debug!(
             "Double Buffering enabled: {:?}",
             self.enable_double_buffering
         );
 
         // Erase all necessary sectors.
-        if Some(true) == perform_chip_erase {
+        if do_chip_erase {
             self.chip_erase(&mut flash)?;
         } else {
             self.sector_erase(&mut flash, &sectors)?;

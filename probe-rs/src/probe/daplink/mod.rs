@@ -51,6 +51,7 @@ impl DAPLink {
 
     fn set_swj_clock(&self, clock: u32) -> Result<(), DebugProbeError> {
         use commands::Error;
+        println!("{}", clock);
         commands::send_command::<SWJClockRequest, SWJClockResponse>(
             &self.device,
             SWJClockRequest(clock),

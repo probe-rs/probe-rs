@@ -242,7 +242,7 @@ impl<'a> Flasher<'a> {
         self,
         address: u32,
         data: &[u8],
-        chip_erase: Option<bool>,
+        do_chip_erase: bool,
         _fast_verify: bool,
     ) -> Result<(), FlasherError> {
         if !self
@@ -256,9 +256,9 @@ impl<'a> Flasher<'a> {
             ));
         }
 
-        let mut fb = FlashBuilder::new(self.region.range.start);
+        let mut fb = FlashBuilder::new();
         fb.add_data(address, data).expect("Add Data failed");
-        fb.program(self, chip_erase, true).expect("Add Data failed");
+        fb.program(self, do_chip_erase, true).expect("Add Data failed");
 
         Ok(())
     }
