@@ -436,6 +436,7 @@ impl<'a, O: Operation> ActiveFlasher<'a, O> {
 
 impl<'a> ActiveFlasher<'a, Erase> {
     pub fn erase_all(&mut self) -> Result<(), FlasherError> {
+        log::debug!("Erasing entire chip.");
         let flasher = self;
         let algo = flasher.flash_algorithm;
 
@@ -454,7 +455,8 @@ impl<'a> ActiveFlasher<'a, Erase> {
     }
 
     pub fn erase_sector(&mut self, address: u32) -> Result<(), FlasherError> {
-        log::debug!("Erasing sector at address 0x{:08x}.", address);
+        log::info!("Erasing sector at address 0x{:08x}.", address);
+        let t1 = std::time::Instant::now();
         let flasher = self;
         let algo = flasher.flash_algorithm;
 
@@ -466,7 +468,7 @@ impl<'a> ActiveFlasher<'a, Erase> {
             None,
             false,
         )?;
-        log::debug!("Done erasing sector. Result is {}", result);
+        log::info!("Done erasing sector. Result is {}. This took {:?}", result, t1.elapsed());
 
         if result != 0 {
             Err(FlasherError::EraseSector(result, address))
@@ -478,14 +480,14 @@ impl<'a> ActiveFlasher<'a, Erase> {
 
 impl<'a> ActiveFlasher<'a, Program> {
     pub fn program_page(&mut self, address: u32, bytes: &[u8]) -> Result<(), FlasherError> {
+        let t1 = std::time::Instant::now();
         let flasher = self;
         let algo = flasher.flash_algorithm;
 
-        // TODO: Prevent security settings from locking the device.
+        log::info!("Flashing one page of size: {}", bytes.len());
 
         // Transfer the bytes to RAM.
         flasher.probe.write_block8(algo.begin_data, bytes)?;
-
         let result = flasher.call_function_and_wait(
             algo.pc_program_page,
             Some(address),
@@ -494,6 +496,7 @@ impl<'a> ActiveFlasher<'a, Program> {
             None,
             false,
         )?;
+        log::info!("Flashing took: {:?}", t1.elapsed());
 
         if result != 0 {
             Err(FlasherError::ProgramPage(result, address))

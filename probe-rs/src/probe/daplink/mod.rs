@@ -162,8 +162,10 @@ impl DebugProbe for DAPLink {
     fn attach(&mut self, protocol: Option<WireProtocol>) -> Result<WireProtocol, DebugProbeError> {
         use commands::Error;
 
-        info!("Attaching to target system");
-        self.set_swj_clock(1_000_000)?;
+        let clock = 1_000_000;
+
+        info!("Attaching to target system (clock = {})", clock);
+        self.set_swj_clock(clock)?;
 
         let protocol = if let Some(protocol) = protocol {
             match protocol {
@@ -180,7 +182,7 @@ impl DebugProbe for DAPLink {
             ConnectResponse::InitFailed => Err(Error::DAP),
         })?;
 
-        self.set_swj_clock(1_000_000)?;
+        self.set_swj_clock(clock)?;
 
         self.transfer_configure(ConfigureRequest {
             idle_cycles: 0,
