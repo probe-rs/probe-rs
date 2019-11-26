@@ -276,6 +276,7 @@ pub struct ActiveFlasher<'a, O: Operation> {
 impl<'a, O: Operation> ActiveFlasher<'a, O> {
     pub fn init(&mut self, address: Option<u32>, clock: Option<u32>) -> Result<(), FlasherError> {
         let algo = &self.flash_algorithm;
+        println!("RUN INIT");
 
         // Execute init routine if one is present.
         if let Some(pc_init) = algo.pc_init {
@@ -554,41 +555,5 @@ impl<'a> ActiveFlasher<'a, Program> {
             .write_block8(algo.page_buffers[buffer_number as usize], bytes)?;
 
         Ok(())
-    }
-
-    pub fn program_phrase(&mut self, address: u32, bytes: &[u8]) -> Result<(), FlasherError> {
-        let flasher = self;
-        let algo = flasher.flash_algorithm;
-
-        // Get the minimum programming length. If none was specified, use the page size.
-        let min_len = flasher.region.page_size;
-
-        // Require write address and length to be aligned to the minimum write size.
-        if address % min_len != 0 {
-            return Err(FlasherError::UnalignedFlashWriteAddress);
-        }
-        if bytes.len() as u32 % min_len != 0 {
-            return Err(FlasherError::UnalignedPhraseLength);
-        }
-
-        // TODO: Prevent security settings from locking the device.
-
-        // Transfer the phrase bytes to RAM.
-        flasher.probe.write_block8(algo.begin_data, bytes)?;
-
-        let result = flasher.call_function_and_wait(
-            algo.pc_program_page,
-            Some(address),
-            Some(bytes.len() as u32),
-            Some(algo.begin_data),
-            None,
-            false,
-        )?;
-
-        if result != 0 {
-            Err(FlasherError::ProgramPhrase(result, address))
-        } else {
-            Ok(())
-        }
     }
 }
