@@ -62,8 +62,14 @@ impl RawFlashAlgorithm {
     const FLASH_ALGO_STACK_SIZE: u32 = 512;
     const FLASH_ALGO_STACK_DECREMENT: u32 = 64;
     const FLASH_BLOB_HEADER: [u32; Self::FLASH_BLOB_HEADER_SIZE as usize / 4] = [
-        0xE00A_BE00, 0x062D_780D, 0x2408_4068, 0xD300_0040,
-        0x1E64_4058, 0x1C49_D1FA, 0x2A00_1E52, 0x0477_0D1F
+        0xE00A_BE00,
+        0x062D_780D,
+        0x2408_4068,
+        0xD300_0040,
+        0x1E64_4058,
+        0x1C49_D1FA,
+        0x2A00_1E52,
+        0x0477_0D1F,
     ];
 
     /// Constructs a complete flash algorithm, tailored to the flash and RAM sizes given.

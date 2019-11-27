@@ -20,8 +20,8 @@ pub struct FlashLoader<'a, 'b> {
 
 #[derive(Debug)]
 pub enum FlashLoaderError {
-    NoSuitableFlash(u32), // Contains the faulty address.
-    MemoryRegionNotFlash(u32),   // Contains the faulty address.
+    NoSuitableFlash(u32),      // Contains the faulty address.
+    MemoryRegionNotFlash(u32), // Contains the faulty address.
     NoFlashLoaderAlgorithmAttached,
 }
 
@@ -48,7 +48,7 @@ impl<'a, 'b> FlashLoader<'a, 'b> {
         }
     }
     /// Stages a junk of data to be programmed.
-    /// 
+    ///
     /// The chunk can cross flash boundaries as long as one flash region connects to another flash region.
     pub fn add_data(&mut self, mut address: u32, data: &'b [u8]) -> Result<(), FlashLoaderError> {
         let size = data.len();
@@ -60,17 +60,12 @@ impl<'a, 'b> FlashLoader<'a, 'b> {
             if let Some(MemoryRegion::Flash(region)) = possible_region {
                 // Get our builder instance.
                 if !self.builders.contains_key(region) {
-                    self.builders.insert(
-                        region.clone(),
-                        FlashBuilder::new()
-                    );
+                    self.builders.insert(region.clone(), FlashBuilder::new());
                 };
 
                 // Determine how much more data can be contained by this region.
-                let program_length = usize::min(
-                    remaining,
-                    (region.range.end - address + 1) as usize
-                );
+                let program_length =
+                    usize::min(remaining, (region.range.end - address + 1) as usize);
 
                 // Add as much data to the builder as can be contained by this region.
                 self.builders
@@ -105,11 +100,15 @@ impl<'a, 'b> FlashLoader<'a, 'b> {
     }
 
     /// Writes all the stored data chunks to flash.
-    /// 
+    ///
     /// Requires a session with an attached target that has a known flash algorithm.
-    /// 
+    ///
     /// If `do_chip_erase` is `true` the entire flash will be erased.
-    pub fn commit(&mut self, session: &mut Session, do_chip_erase: bool) -> Result<(), FlashLoaderError> {
+    pub fn commit(
+        &mut self,
+        session: &mut Session,
+        do_chip_erase: bool,
+    ) -> Result<(), FlashLoaderError> {
         let target = &session.target;
         let probe = &mut session.probe;
 
@@ -123,12 +122,13 @@ impl<'a, 'b> FlashLoader<'a, 'b> {
                     region.range.end
                 );
                 // Program the data.
-                builder.program(
-                    Flasher::new(target, probe, flash_algorithm, region),
-                    do_chip_erase,
-                    self.keep_unwritten,
-                )
-                .unwrap();
+                builder
+                    .program(
+                        Flasher::new(target, probe, flash_algorithm, region),
+                        do_chip_erase,
+                        self.keep_unwritten,
+                    )
+                    .unwrap();
             }
 
             Ok(())

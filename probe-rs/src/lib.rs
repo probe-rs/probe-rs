@@ -11,8 +11,8 @@ extern crate maplit;
 #[macro_use]
 extern crate serde_derive;
 
-pub mod cores;
 pub mod config;
+pub mod cores;
 pub mod coresight;
 pub mod debug;
 pub mod memory;

@@ -1,8 +1,8 @@
 use crate::config::{
-    chip_family::ChipFamily,
     chip::Chip,
-    memory::{MemoryRegion, FlashRegion, RamRegion},
+    chip_family::ChipFamily,
     flash_algorithm::RawFlashAlgorithm,
+    memory::{FlashRegion, MemoryRegion, RamRegion},
 };
 use crate::target::info::ChipInfo;
 use std::error::Error;
@@ -96,7 +96,11 @@ impl Registry {
                 let mut selected_family_and_chip = None;
                 for family in &self.families {
                     for variant in &family.variants {
-                        if variant.name.to_ascii_lowercase().starts_with(&identifier.chip_name.to_ascii_lowercase()) {
+                        if variant
+                            .name
+                            .to_ascii_lowercase()
+                            .starts_with(&identifier.chip_name.to_ascii_lowercase())
+                        {
                             selected_family_and_chip = Some((family, variant));
                         }
                     }
@@ -125,10 +129,12 @@ impl Registry {
                 let mut selected_family_and_chip = None;
                 for family in &self.families {
                     for variant in &family.variants {
-                        if family.manufacturer
+                        if family
+                            .manufacturer
                             .map(|m| m == chip_info.manufacturer)
                             .unwrap_or(false)
-                        && family.part.map(|p| p == chip_info.part).unwrap_or(false) {
+                            && family.part.map(|p| p == chip_info.part).unwrap_or(false)
+                        {
                             selected_family_and_chip = Some((family, variant));
                         }
                     }
@@ -168,7 +174,7 @@ impl Registry {
             ram.ok_or(RegistryError::RamMissing)?,
             flash.ok_or(RegistryError::FlashMissing)?,
             flash_algorithm,
-            core
+            core,
         )))
     }
 
@@ -213,24 +219,32 @@ mod tests {
     #[test]
     fn try_fetch1() {
         let registry = Registry::new();
-        assert!(registry.get_target(SelectionStrategy::TargetIdentifier("nrf51".into())).is_ok());
+        assert!(registry
+            .get_target(SelectionStrategy::TargetIdentifier("nrf51".into()))
+            .is_ok());
     }
 
     #[test]
     fn try_fetch2() {
         let registry = Registry::new();
-        assert!(registry.get_target(SelectionStrategy::TargetIdentifier("nrf5182".into())).is_ok());
+        assert!(registry
+            .get_target(SelectionStrategy::TargetIdentifier("nrf5182".into()))
+            .is_ok());
     }
 
     #[test]
     fn try_fetch3() {
         let registry = Registry::new();
-        assert!(registry.get_target(SelectionStrategy::TargetIdentifier("nrF51822_x".into())).is_ok());
+        assert!(registry
+            .get_target(SelectionStrategy::TargetIdentifier("nrF51822_x".into()))
+            .is_ok());
     }
 
     #[test]
     fn try_fetch4() {
         let registry = Registry::new();
-        assert!(registry.get_target(SelectionStrategy::TargetIdentifier("nrf51822_Xxaa".into())).is_ok());
+        assert!(registry
+            .get_target(SelectionStrategy::TargetIdentifier("nrf51822_Xxaa".into()))
+            .is_ok());
     }
 }

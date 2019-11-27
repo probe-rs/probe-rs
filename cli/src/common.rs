@@ -1,8 +1,8 @@
 use crate::SharedOptions;
 
 use probe_rs::{
-    cores::m0::FakeM0,
     config::registry::{Registry, RegistryError, SelectionStrategy},
+    cores::m0::FakeM0,
     coresight::access_ports::AccessPortError,
     probe::{
         daplink,

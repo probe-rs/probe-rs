@@ -1,7 +1,7 @@
 use super::chip::Chip;
 use super::chip_family::ChipFamily;
-use super::flash_algorithm::{RawFlashAlgorithm, FlashAlgorithm};
-use super::memory::{MemoryRegion, RamRegion, FlashRegion};
+use super::flash_algorithm::{FlashAlgorithm, RawFlashAlgorithm};
+use super::memory::{FlashRegion, MemoryRegion, RamRegion};
 use super::registry::TargetIdentifier;
 use crate::target::Core;
 use jep106::JEP106Code;
@@ -26,8 +26,26 @@ pub struct Target {
 
 pub type TargetParseError = serde_yaml::Error;
 
-impl From<(&ChipFamily, &Chip, &RamRegion, &FlashRegion, &RawFlashAlgorithm, Box<dyn Core>)> for Target {
-    fn from(value: (&ChipFamily, &Chip, &RamRegion, &FlashRegion, &RawFlashAlgorithm, Box<dyn Core>)) -> Target {
+impl
+    From<(
+        &ChipFamily,
+        &Chip,
+        &RamRegion,
+        &FlashRegion,
+        &RawFlashAlgorithm,
+        Box<dyn Core>,
+    )> for Target
+{
+    fn from(
+        value: (
+            &ChipFamily,
+            &Chip,
+            &RamRegion,
+            &FlashRegion,
+            &RawFlashAlgorithm,
+            Box<dyn Core>,
+        ),
+    ) -> Target {
         let (chip_family, chip, ram, flash, flash_algorithm, core) = value;
 
         Target {

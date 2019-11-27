@@ -258,7 +258,8 @@ impl<'a> Flasher<'a> {
 
         let mut fb = FlashBuilder::new();
         fb.add_data(address, data).expect("Add Data failed");
-        fb.program(self, do_chip_erase, true).expect("Add Data failed");
+        fb.program(self, do_chip_erase, true)
+            .expect("Add Data failed");
 
         Ok(())
     }
@@ -468,7 +469,11 @@ impl<'a> ActiveFlasher<'a, Erase> {
             None,
             false,
         )?;
-        log::info!("Done erasing sector. Result is {}. This took {:?}", result, t1.elapsed());
+        log::info!(
+            "Done erasing sector. Result is {}. This took {:?}",
+            result,
+            t1.elapsed()
+        );
 
         if result != 0 {
             Err(FlasherError::EraseSector(result, address))

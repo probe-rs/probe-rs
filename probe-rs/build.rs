@@ -126,7 +126,11 @@ fn extract_algorithms(chip: &serde_yaml::Value) -> Vec<proc_macro2::TokenStream>
                     .as_u64()
                     .map(|v| v as u32),
             );
-            let data_section_offset = algorithm.get("data_section_offset").unwrap().as_u64().unwrap() as u32;
+            let data_section_offset = algorithm
+                .get("data_section_offset")
+                .unwrap()
+                .as_u64()
+                .unwrap() as u32;
 
             // Quote the algorithm struct.
             let algorithm = quote::quote! {

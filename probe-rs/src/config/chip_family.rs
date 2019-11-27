@@ -1,9 +1,9 @@
-use jep106::JEP106Code;
 use super::chip::Chip;
 use super::flash_algorithm::RawFlashAlgorithm;
 use crate::config::target::TargetParseError;
+use jep106::JEP106Code;
 
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 /// This describes a chip family with all its variants.
 #[derive(Debug, Clone, Serialize, Deserialize)]

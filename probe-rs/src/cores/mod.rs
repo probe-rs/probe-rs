@@ -1,5 +1,5 @@
-use std::collections::HashMap;
 use crate::target::Core;
+use std::collections::HashMap;
 
 pub mod m0;
 pub mod m33;

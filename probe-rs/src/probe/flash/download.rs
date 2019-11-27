@@ -1,8 +1,6 @@
 use crate::session::Session;
 use ihex;
-use ihex::record::Record::{
-    *,
-};
+use ihex::record::Record::*;
 use std::error::Error;
 use std::fmt;
 use std::fs::File;
@@ -10,7 +8,7 @@ use std::io::{Read, Seek, SeekFrom};
 use std::path::Path;
 
 use super::*;
-use crate::config::memory::{MemoryRegion, MemoryRange};
+use crate::config::memory::{MemoryRange, MemoryRegion};
 
 pub struct BinOptions {
     /// The address in memory where the binary will be put at.
@@ -141,17 +139,18 @@ fn download_hex<'b, T: Read + Seek>(
     for record in ihex::reader::Reader::new(&data) {
         let record = record?;
         match record {
-            Data {
-                offset,
-                value,
-            } => {
+            Data { offset, value } => {
                 let offset = extended_linear_address | offset as u32;
                 buffer.push((offset, value));
-            },
+            }
             EndOfFile => return Ok(()),
-            ExtendedSegmentAddress(address) => { _extended_segment_address = address * 16; },
+            ExtendedSegmentAddress(address) => {
+                _extended_segment_address = address * 16;
+            }
             StartSegmentAddress { .. } => (),
-            ExtendedLinearAddress(address) => { extended_linear_address = (address as u32) << 16; },
+            ExtendedLinearAddress(address) => {
+                extended_linear_address = (address as u32) << 16;
+            }
             StartLinearAddress(_) => (),
         };
     }
