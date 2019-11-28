@@ -101,7 +101,9 @@ impl Registry {
                             .to_ascii_lowercase()
                             .starts_with(&identifier.chip_name.to_ascii_lowercase())
                         {
-                            if variant.name.to_ascii_lowercase() != identifier.chip_name.to_ascii_lowercase() {
+                            if variant.name.to_ascii_lowercase()
+                                != identifier.chip_name.to_ascii_lowercase()
+                            {
                                 log::warn!(
                                     "Found chip {} which matches given partial name {}. Consider specifying it's full name.",
                                     variant.name,
