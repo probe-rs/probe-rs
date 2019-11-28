@@ -32,19 +32,22 @@ which will then build your binary and download the contents onto the connected t
 
 #### Use a custom chip definition from a non-builtin file
 
-`cargo flash --release --chip-description-path ../../.config/probe-rs/targets/nRF52840.yaml --target thumbv6m-none-eabi --example gpio_hal_blinky`
+`cargo flash --release --chip-description-path nRF51822.yaml --target thumbv6m-none-eabi --example gpio_hal_blinky`
 
 ### Manually selecting a chip
 
 To manually select a chip, you can use the `--chip <chip name>` argument. The chip name is an identifier such as `nRF51822` or `STM32F042`. Capitalization does not matter; Special characters do matter.
 
-### Specifying the chip via chip configuration file
+### Specifying a chip family description file
 
-You can directly set the chip description by using the `--chip-description-path <chip description file path>` or `-c` argument. You need to pass it the path to a valid yaml chip description.
+You can add a temporary chip family description by using the `--chip-description-path <chip description file path>` or `-c` argument. You need to pass it the path to a valid yaml family description.
+All the targets of the family will then be added to the registry temporarily and will override existing variants with the same name.
+You can use this feature to tinker with a chip family description until it works and then submit it to upstream for inclusion.
 
-### Locally installing & overriding chip descripions
+### Extracting a chip family descritpion file from a CMSIS-Pack
 
-You can install valid chip description files locally under `$HOME/.config/probe-rs/targets` and flash algorithm files under `$HOME/.config/probe-rs/algorithms`. Any chip descriptions for identifiers that match the compiled in identifiers will replace the compiled in descriptions. You can override all the descriptions like this. Invalid files will be ignored gracefully.
+You can extract the family description file by running [traget-gen](https://github.com/probe-rs/target-gen) on a `.pack` file with `cargo run file.pack out_dir`. You can obtain the pack from ARM for example. Their online [registry](https://developer.arm.com/tools-and-software/embedded/cmsis/cmsis-search) is a good start :)
+You can also reference to an already unziped `pack` directory instead of the `file.pack` archive file.
 
 ## Add more chip definitions
 
