@@ -10,12 +10,11 @@ use crate::coresight::{
     },
     ap_access::{get_ap_by_idr, APAccess, AccessPort},
     common::Register,
+    memory::{adi_v5_memory_interface::ADIMemoryInterface, MI},
 };
 
 use log::debug;
 
-use crate::memory::adi_v5_memory_interface::ADIMemoryInterface;
-use crate::memory::MI;
 use colored::*;
 use std::error::Error;
 use std::fmt;

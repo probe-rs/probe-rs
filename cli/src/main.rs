@@ -6,9 +6,9 @@ use common::{with_device, with_dump, CliError};
 use debugger::CliState;
 
 use probe_rs::{
+    coresight::memory::MI,
     debug::DebugInfo,
     flash::download::{download_file, Format},
-    memory::MI,
     probe::{daplink, stlink, DebugProbeInfo},
 };
 

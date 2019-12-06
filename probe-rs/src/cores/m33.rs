@@ -1,7 +1,7 @@
 //! Support for Cortex-M33
 //!
 
-use crate::memory::MI;
+use crate::coresight::memory::MI;
 use crate::probe::{DebugProbeError, MasterProbe};
 use crate::target::{
     BasicRegisterAddresses, Core, CoreInformation, CoreRegister, CoreRegisterAddress,

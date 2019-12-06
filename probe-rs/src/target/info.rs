@@ -1,14 +1,12 @@
-use crate::probe::{DebugProbeError, MasterProbe};
-use crate::{
-    coresight::{
-        access_ports::{
-            generic_ap::{APClass, IDR},
-            memory_ap::{BaseaddrFormat, MemoryAP, BASE, BASE2},
-        },
-        ap_access::{valid_access_ports, APAccess},
+use crate::coresight::{
+    access_ports::{
+        generic_ap::{APClass, IDR},
+        memory_ap::{BaseaddrFormat, MemoryAP, BASE, BASE2},
     },
+    ap_access::{valid_access_ports, APAccess},
     memory::romtable::{CSComponent, CSComponentId, PeripheralID, RomTableError},
 };
+use crate::probe::{DebugProbeError, MasterProbe};
 use colored::*;
 use jep106::JEP106Code;
 use log::debug;
