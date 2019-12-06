@@ -6,30 +6,25 @@ use std::{
     env,
     error::Error,
     fmt,
-    fs::read_to_string,
-    path::PathBuf,
+    path::{Path, PathBuf},
     process::{self, Command, Stdio},
     time::Instant,
 };
 use structopt::StructOpt;
 
 use probe_rs::{
+    config::registry::{Registry, SelectionStrategy},
     coresight::access_ports::AccessPortError,
     probe::{
         daplink,
         debug_probe::{DebugProbe, DebugProbeError, DebugProbeType, MasterProbe},
-        flash::{
-            download::{FileDownloader, Format},
-            flasher::AlgorithmSelectionError,
-        },
+        flash::download::{download_file, Format},
         protocol::WireProtocol,
         stlink,
     },
     session::Session,
-    target::{info::ChipInfo, Target},
+    target::info::ChipInfo,
 };
-
-use probe_rs_targets::{select_algorithm, select_target, SelectionStrategy};
 
 #[derive(Debug, StructOpt)]
 struct Opt {
@@ -43,6 +38,8 @@ struct Opt {
     chip_description_path: Option<String>,
     #[structopt(name = "nrf-recover", long = "nrf-recover")]
     nrf_recover: bool,
+    #[structopt(name = "list-chips", long = "list-chips")]
+    list_chips: bool,
 
     // `cargo build` arguments
     #[structopt(name = "binary", long = "bin")]
@@ -89,6 +86,12 @@ fn main_try() -> Result<(), failure::Error> {
 
     // Get commandline options.
     let opt = Opt::from_iter(&args);
+
+    if opt.list_chips {
+        print_families();
+        std::process::exit(0);
+    }
+
     args.remove(0); // Remove executable name
 
     // Remove possible `--chip <chip>` arguments as cargo build does not understand it.
@@ -210,47 +213,26 @@ fn main_try() -> Result<(), failure::Error> {
         }
     };
 
-    let target_override = opt
-        .chip_description_path
-        .as_ref()
-        .map(|cd| -> Result<_, failure::Error> {
-            let string = read_to_string(&cd).map_err(|e| {
-                format_err!("failed to read chip description file from {}: {}", cd, e)
-            })?;
-            let target = Target::new(&string)
-                .map_err(|e| format_err!("failed to parse chip description file {}: {}", cd, e))?;
-
-            Ok(target)
-        })
-        .transpose()?;
-
-    let strategy = if let Some(name) = opt.chip {
-        if name == "nRF52832" || name == "nRF52840" {
-            let _ = ChipInfo::read_from_rom_table(&mut probe)?;
-        }
-        SelectionStrategy::Name(name)
+    let strategy = if let Some(identifier) = opt.chip {
+        SelectionStrategy::TargetIdentifier(identifier.into())
     } else {
         SelectionStrategy::ChipInfo(ChipInfo::read_from_rom_table(&mut probe)?)
     };
-    let target = if let Some(target) = target_override {
-        target
-    } else {
-        select_target(&strategy)?
-    };
 
-    let flash_algorithm = match target.flash_algorithm.clone() {
-        Some(name) => select_algorithm(name)?,
-        None => return Err(AlgorithmSelectionError::NoAlgorithmSuggested.into()),
-    };
+    let mut registry = Registry::from_builtin_families();
+    if let Some(cdp) = opt.chip_description_path {
+        registry.add_target_from_yaml(&Path::new(&cdp))?;
+    }
 
-    let mut session = Session::new(target, probe, Some(flash_algorithm));
+    let target = registry.get_target(strategy)?;
+
+    let mut session = Session::new(target, probe);
 
     // Start timer.
     let instant = Instant::now();
 
     let mm = session.target.memory_map.clone();
-    let fd = FileDownloader::new();
-    fd.download_file(
+    download_file(
         &mut session,
         std::path::Path::new(&path_str.to_string().as_str()),
         Format::Elf,
@@ -271,45 +253,21 @@ fn main_try() -> Result<(), failure::Error> {
     Ok(())
 }
 
-/// Takes a closure that is handed an `DAPLink` instance and then executed.
-/// After the closure is done, the USB device is always closed,
-/// even in an error case inside the closure!
-pub fn with_device<F>(n: usize, target: Target, f: F) -> Result<(), DownloadError>
-where
-    for<'a> F: FnOnce(Session) -> Result<(), DownloadError>,
-{
-    let device = {
-        let mut list = daplink::tools::list_daplink_devices();
-        list.extend(stlink::tools::list_stlink_devices());
-
-        list.remove(n)
-    };
-
-    let probe = match device.probe_type {
-        DebugProbeType::DAPLink => {
-            let mut link = daplink::DAPLink::new_from_probe_info(&device)?;
-
-            link.attach(Some(WireProtocol::Swd))?;
-
-            MasterProbe::from_specific_probe(link)
+fn print_families() {
+    println!("Available chips:");
+    let registry = Registry::from_builtin_families();
+    for family in registry.families() {
+        println!("{}", family.name);
+        println!("    Variants:");
+        for variant in family.variants() {
+            println!("        {}", variant.name);
         }
-        DebugProbeType::STLink => {
-            let mut link = stlink::STLink::new_from_probe_info(&device)?;
 
-            link.attach(Some(WireProtocol::Swd))?;
-
-            MasterProbe::from_specific_probe(link)
+        println!("    Algorithms:");
+        for algorithms in family.algorithms() {
+            println!("        {} ({})", algorithms.name, algorithms.description);
         }
-    };
-
-    let flash_algorithm = match target.flash_algorithm.clone() {
-        Some(name) => select_algorithm(name)?,
-        None => return Err(AlgorithmSelectionError::NoAlgorithmSuggested.into()),
-    };
-
-    let session = Session::new(target, probe, Some(flash_algorithm));
-
-    f(session)
+    }
 }
 
 #[cfg(unix)]
@@ -331,7 +289,6 @@ pub enum DownloadError {
     AccessPort(AccessPortError),
     StdIO(std::io::Error),
     Quit,
-    FlashAlgorithm(AlgorithmSelectionError),
 }
 
 impl Error for DownloadError {
@@ -343,7 +300,6 @@ impl Error for DownloadError {
             AccessPort(ref e) => Some(e),
             StdIO(ref e) => Some(e),
             Quit => None,
-            FlashAlgorithm(ref e) => Some(e),
         }
     }
 }
@@ -357,7 +313,6 @@ impl fmt::Display for DownloadError {
             AccessPort(ref e) => e.fmt(f),
             StdIO(ref e) => e.fmt(f),
             Quit => write!(f, "Quit error..."),
-            FlashAlgorithm(ref e) => e.fmt(f),
         }
     }
 }
@@ -377,11 +332,5 @@ impl From<DebugProbeError> for DownloadError {
 impl From<std::io::Error> for DownloadError {
     fn from(error: std::io::Error) -> Self {
         DownloadError::StdIO(error)
-    }
-}
-
-impl From<AlgorithmSelectionError> for DownloadError {
-    fn from(error: AlgorithmSelectionError) -> Self {
-        DownloadError::FlashAlgorithm(error)
     }
 }
