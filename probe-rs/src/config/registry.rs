@@ -227,7 +227,7 @@ mod tests {
 
     #[test]
     fn try_fetch1() {
-        let registry = Registry::new();
+        let registry = Registry::from_builtin_families();
         assert!(registry
             .get_target(SelectionStrategy::TargetIdentifier("nrf51".into()))
             .is_ok());
@@ -235,7 +235,7 @@ mod tests {
 
     #[test]
     fn try_fetch2() {
-        let registry = Registry::new();
+        let registry = Registry::from_builtin_families();
         assert!(registry
             .get_target(SelectionStrategy::TargetIdentifier("nrf5182".into()))
             .is_ok());
@@ -243,7 +243,7 @@ mod tests {
 
     #[test]
     fn try_fetch3() {
-        let registry = Registry::new();
+        let registry = Registry::from_builtin_families();
         assert!(registry
             .get_target(SelectionStrategy::TargetIdentifier("nrF51822_x".into()))
             .is_ok());
@@ -251,7 +251,7 @@ mod tests {
 
     #[test]
     fn try_fetch4() {
-        let registry = Registry::new();
+        let registry = Registry::from_builtin_families();
         assert!(registry
             .get_target(SelectionStrategy::TargetIdentifier("nrf51822_Xxaa".into()))
             .is_ok());
