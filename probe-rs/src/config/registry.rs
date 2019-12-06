@@ -78,6 +78,7 @@ pub struct Registry {
 }
 
 impl Registry {
+    #[allow(clippy::all)]
     pub fn from_builtin_families() -> Self {
         Self {
             families: include!(concat!(env!("OUT_DIR"), "/targets.rs")),

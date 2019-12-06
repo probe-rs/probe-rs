@@ -94,6 +94,7 @@ impl<'a> FlashWriteData<'a> {
     }
 }
 
+#[derive(Default)]
 pub struct FlashBuilder<'a> {
     flash_write_data: Vec<FlashWriteData<'a>>,
     buffered_data_size: usize,
@@ -391,7 +392,7 @@ impl<'a> FlashBuilder<'a> {
     fn sector_erase(
         &self,
         flash: &mut Flasher,
-        sectors: &Vec<FlashSector>,
+        sectors: &[FlashSector],
     ) -> Result<(), FlashBuilderError> {
         let r: R = flash.run_erase(|active| {
             for sector in sectors {
@@ -411,7 +412,7 @@ impl<'a> FlashBuilder<'a> {
     fn program_double_buffer(
         &self,
         flash: &mut Flasher,
-        sectors: &Vec<FlashSector>,
+        sectors: &[FlashSector],
     ) -> Result<(), FlashBuilderError> {
         let mut current_buf = 0;
 
