@@ -15,13 +15,10 @@ use structopt::StructOpt;
 use probe_rs::{
     config::registry::{Registry, SelectionStrategy},
     coresight::access_ports::AccessPortError,
-    probe::{
-        daplink,
-        debug_probe::{DebugProbe, DebugProbeError, DebugProbeType, MasterProbe},
-        WireProtocol,
-        stlink,
-    },
     flash::download::{download_file, Format},
+    probe::{
+        daplink, stlink, DebugProbe, DebugProbeError, DebugProbeType, MasterProbe, WireProtocol,
+    },
     session::Session,
     target::info::ChipInfo,
 };
