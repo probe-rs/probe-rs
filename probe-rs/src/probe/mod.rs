@@ -2,4 +2,9 @@ pub mod daplink;
 pub mod stlink;
 
 pub mod debug_probe;
-pub mod protocol;
+
+#[derive(Copy, Clone, Debug)]
+pub enum WireProtocol {
+    Swd,
+    Jtag,
+}

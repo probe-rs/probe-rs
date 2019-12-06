@@ -10,7 +10,7 @@ use crate::probe::debug_probe::{DebugProbeInfo, Port};
 use scroll::{Pread, BE};
 
 use crate::probe::debug_probe::{DAPAccess, DebugProbe, DebugProbeError};
-use crate::probe::protocol::WireProtocol;
+use super::WireProtocol;
 
 use constants::{commands, JTagFrequencyToDivider, Status, SwdFrequencyToDelayCount};
 use usb_interface::TIMEOUT;

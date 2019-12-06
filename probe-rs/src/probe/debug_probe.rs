@@ -13,7 +13,7 @@ use log::debug;
 
 use crate::memory::adi_v5_memory_interface::ADIMemoryInterface;
 use crate::memory::MI;
-use crate::probe::protocol::WireProtocol;
+use super::WireProtocol;
 use colored::*;
 use std::error::Error;
 use std::fmt;
