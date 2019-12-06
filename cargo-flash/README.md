@@ -46,7 +46,7 @@ You can use this feature to tinker with a chip family description until it works
 
 ### Extracting a chip family descritpion file from a CMSIS-Pack
 
-You can extract the family description file by running [traget-gen](https://github.com/probe-rs/target-gen) on a `.pack` file with `cargo run file.pack out_dir`. You can obtain the pack from ARM for example. Their online [registry](https://developer.arm.com/tools-and-software/embedded/cmsis/cmsis-search) is a good start :)
+You can extract the family description file by running [target-gen](https://github.com/probe-rs/target-gen) on a `.pack` file with `cargo run -- file.pack out_dir`. You can obtain the pack from ARM for example. Their online [registry](https://developer.arm.com/tools-and-software/embedded/cmsis/cmsis-search) is a good start :)
 You can also reference to an already unziped `pack` directory instead of the `file.pack` archive file.
 
 ## Add more chip definitions
