@@ -74,12 +74,11 @@ pub enum SelectionStrategy {
 
 pub struct Registry {
     /// All the available chips.
-    /// <chip_name, chip>
     families: Vec<ChipFamily>,
 }
 
 impl Registry {
-    pub fn new() -> Self {
+    pub fn from_builtin_families() -> Self {
         Self {
             families: include!(concat!(env!("OUT_DIR"), "/targets.rs")),
         }
@@ -177,14 +176,14 @@ impl Registry {
             };
         }
 
-        Ok(Target::from((
+        Ok(Target::new(
             family,
             chip,
             ram.ok_or(RegistryError::RamMissing)?,
             flash.ok_or(RegistryError::FlashMissing)?,
             flash_algorithm,
             core,
-        )))
+        ))
     }
 
     pub fn add_target_from_yaml(&mut self, path_to_yaml: &Path) -> Result<(), RegistryError> {

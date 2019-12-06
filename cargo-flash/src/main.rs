@@ -219,7 +219,7 @@ fn main_try() -> Result<(), failure::Error> {
         SelectionStrategy::ChipInfo(ChipInfo::read_from_rom_table(&mut probe)?)
     };
 
-    let mut registry = Registry::new();
+    let mut registry = Registry::from_builtin_families();
     if let Some(cdp) = opt.chip_description_path {
         registry.add_target_from_yaml(&Path::new(&cdp))?;
     }
@@ -255,7 +255,7 @@ fn main_try() -> Result<(), failure::Error> {
 
 fn print_families() {
     println!("Available chips:");
-    let registry = Registry::new();
+    let registry = Registry::from_builtin_families();
     for family in registry.families() {
         println!("{}", family.name);
         println!("    Variants:");

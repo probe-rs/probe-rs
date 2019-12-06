@@ -155,7 +155,7 @@ where
         SelectionStrategy::ChipInfo(ChipInfo::read_from_rom_table(&mut probe)?)
     };
 
-    let registry = Registry::new();
+    let registry = Registry::from_builtin_families();
 
     let target = registry.get_target(strategy)?;
 
@@ -183,7 +183,7 @@ where
         unimplemented!();
     };
 
-    let registry = Registry::new();
+    let registry = Registry::from_builtin_families();
 
     let mut target = registry.get_target(strategy)?;
 

@@ -26,28 +26,15 @@ pub struct Target {
 
 pub type TargetParseError = serde_yaml::Error;
 
-impl
-    From<(
-        &ChipFamily,
-        &Chip,
-        &RamRegion,
-        &FlashRegion,
-        &RawFlashAlgorithm,
-        Box<dyn Core>,
-    )> for Target
-{
-    fn from(
-        value: (
-            &ChipFamily,
-            &Chip,
-            &RamRegion,
-            &FlashRegion,
-            &RawFlashAlgorithm,
-            Box<dyn Core>,
-        ),
+impl Target {
+    pub fn new(
+        chip_family: &ChipFamily,
+        chip: &Chip,
+        ram: &RamRegion,
+        flash: &FlashRegion,
+        flash_algorithm: &RawFlashAlgorithm,
+        core: Box<dyn Core>,
     ) -> Target {
-        let (chip_family, chip, ram, flash, flash_algorithm, core) = value;
-
         Target {
             identifier: TargetIdentifier {
                 chip_name: chip.name.clone(),
