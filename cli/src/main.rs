@@ -11,13 +11,12 @@ use probe_rs::{
     probe::{
         daplink,
         debug_probe::DebugProbeInfo,
-        flash::download::{FileDownloader, Format},
+        flash::download::{download_file, Format},
         stlink,
     },
 };
 
 use capstone::{arch::arm::ArchMode, prelude::*, Capstone, Endian};
-use colored::*;
 use memmap;
 use rustyline::Editor;
 use structopt::StructOpt;
@@ -130,11 +129,7 @@ fn main() {
     };
 
     if let Err(e) = cli_result {
-        if let CliError::TargetSelectionError(e) = e {
-            eprintln!("    {} {}", "Error".red().bold(), e);
-        } else {
-            eprintln!("Error processing command: {}", e);
-        }
+        eprintln!("Error processing command: {}", e);
         std::process::exit(1);
     }
 }
@@ -188,10 +183,9 @@ fn download_program_fast(shared_options: &SharedOptions, path: &str) -> Result<(
         // Start timer.
         // let instant = Instant::now();
 
-        let fd = FileDownloader::new();
         let mm = session.target.memory_map.clone();
 
-        fd.download_file(&mut session, std::path::Path::new(&path), Format::Elf, &mm)?;
+        download_file(&mut session, std::path::Path::new(&path), Format::Elf, &mm)?;
 
         Ok(())
     })

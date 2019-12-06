@@ -1,136 +1,12 @@
+use crate::config::flash_algorithm::FlashAlgorithm;
+use crate::config::target::Target;
 use crate::coresight::access_ports::AccessPortError;
 use crate::memory::MI;
 use crate::probe::debug_probe::DebugProbeError;
 use crate::probe::debug_probe::MasterProbe;
-use crate::target::Target;
-use std::error::Error;
-use std::fmt;
 
-use super::*;
-
-const ANALYZER: [u32; 49] = [
-    0x2780_b5f0,
-    0x2500_4684,
-    0x4e2b_2401,
-    0x447e_4a2b,
-    0x0023_007f,
-    0x425b_402b,
-    0x4013_0868,
-    0x0858_4043,
-    0x425b_4023,
-    0x4058_4013,
-    0x4020_0843,
-    0x4010_4240,
-    0x0843_4058,
-    0x4240_4020,
-    0x4058_4010,
-    0x4020_0843,
-    0x4010_4240,
-    0x0843_4058,
-    0x4240_4020,
-    0x4058_4010,
-    0x4020_0843,
-    0x4010_4240,
-    0x0858_4043,
-    0x425b_4023,
-    0x4043_4013,
-    0xc608_3501,
-    0xd1d2_42bd,
-    0xd01f_2900,
-    0x4660_2301,
-    0x469c_25ff,
-    0x0089_4e11,
-    0x447e_1841,
-    0x8803_4667,
-    0x409f_8844,
-    0x2f00_409c,
-    0x2201_d012,
-    0x4252_193f,
-    0x3401_7823,
-    0x402b_4053,
-    0x599b_009b,
-    0x405a_0a12,
-    0xd1f5_42bc,
-    0xc004_43d2,
-    0xd1e7_4281,
-    0xbdf0_2000,
-    0xe7f8_2200,
-    0x0000_00b2,
-    0xedb8_8320,
-    0x0000_0042,
-];
-
-#[derive(Debug, Default, Clone, Serialize, Deserialize)]
-pub struct FlashAlgorithm {
-    /// Memory address where the flash algo instructions will be loaded to.
-    pub load_address: u32,
-    /// List of 32-bit words containing the position-independant code for the algo.
-    pub instructions: Vec<u32>,
-    /// Address of the `Init()` entry point. Optional.
-    pub pc_init: Option<u32>,
-    /// Address of the `UnInit()` entry point. Optional.
-    pub pc_uninit: Option<u32>,
-    /// Address of the `ProgramPage()` entry point.
-    pub pc_program_page: u32,
-    /// Address of the `EraseSector()` entry point.
-    pub pc_erase_sector: u32,
-    /// Address of the `EraseAll()` entry point. Optional.
-    pub pc_erase_all: Option<u32>,
-    /// Initial value of the R9 register for calling flash algo entry points, which
-    /// determines where the position-independant data resides.
-    pub static_base: u32,
-    /// Initial value of the stack pointer when calling any flash algo API.
-    pub begin_stack: u32,
-    /// Base address of the page buffer. Used if `page_buffers` is not provided.
-    pub begin_data: u32,
-    /// An optional list of base addresses for page buffers. The buffers must be at
-    /// least as large as the region's page_size attribute. If at least 2 buffers are included in
-    /// the list, then double buffered programming will be enabled.
-    pub page_buffers: Vec<u32>,
-    pub min_program_length: Option<u32>,
-    /// Whether the CRC32-based analyzer is supported.
-    pub analyzer_supported: bool,
-    /// RAM base address where the analyzer code will be placed. There must be at
-    /// least 0x600 free bytes after this address.
-    pub analyzer_address: u32,
-}
-
-pub type AlgorithmParseError = serde_yaml::Error;
-
-impl FlashAlgorithm {
-    pub fn new(definition: &str) -> Result<Self, AlgorithmParseError> {
-        serde_yaml::from_str(definition)
-    }
-}
-
-#[derive(Debug)]
-pub enum AlgorithmSelectionError {
-    AlgorithmNotFound(String),
-    AlgorithmCouldNotBeParsed(AlgorithmParseError),
-    NoAlgorithmSuggested,
-}
-
-impl Error for AlgorithmSelectionError {}
-
-impl fmt::Display for AlgorithmSelectionError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use AlgorithmSelectionError::*;
-
-        match self {
-            AlgorithmNotFound(name) => write!(f, "Algorithm \"{}\" could not be found.", name),
-            AlgorithmCouldNotBeParsed(error) => {
-                write!(f, "Algorithm could not be parsed.\r\nReason: {:?}", error)
-            }
-            NoAlgorithmSuggested => write!(f, "Target description did not contain an algorithm."),
-        }
-    }
-}
-
-impl From<AlgorithmParseError> for AlgorithmSelectionError {
-    fn from(error: AlgorithmParseError) -> Self {
-        AlgorithmSelectionError::AlgorithmCouldNotBeParsed(error)
-    }
-}
+use super::builder::FlashBuilder;
+use crate::config::memory::{FlashRegion, MemoryRange};
 
 pub trait Operation {
     fn operation() -> u32;
@@ -278,12 +154,7 @@ impl<'a> Flasher<'a> {
         }
 
         if address.is_none() {
-            address = Some(
-                flasher
-                    .region
-                    .get_flash_info(algo.analyzer_supported)
-                    .rom_start,
-            );
+            address = Some(flasher.region.flash_info().rom_start);
         }
 
         // TODO: Halt & reset target.
@@ -371,9 +242,8 @@ impl<'a> Flasher<'a> {
         self,
         address: u32,
         data: &[u8],
-        chip_erase: Option<bool>,
-        smart_flash: bool,
-        fast_verify: bool,
+        do_chip_erase: bool,
+        _fast_verify: bool,
     ) -> Result<(), FlasherError> {
         if !self
             .region
@@ -386,9 +256,9 @@ impl<'a> Flasher<'a> {
             ));
         }
 
-        let mut fb = FlashBuilder::new(self.region.range.start);
+        let mut fb = FlashBuilder::new();
         fb.add_data(address, data).expect("Add Data failed");
-        fb.program(self, chip_erase, smart_flash, fast_verify, true)
+        fb.program(self, do_chip_erase, true)
             .expect("Add Data failed");
 
         Ok(())
@@ -407,6 +277,7 @@ pub struct ActiveFlasher<'a, O: Operation> {
 impl<'a, O: Operation> ActiveFlasher<'a, O> {
     pub fn init(&mut self, address: Option<u32>, clock: Option<u32>) -> Result<(), FlasherError> {
         let algo = &self.flash_algorithm;
+        println!("RUN INIT");
 
         // Execute init routine if one is present.
         if let Some(pc_init) = algo.pc_init {
@@ -566,6 +437,7 @@ impl<'a, O: Operation> ActiveFlasher<'a, O> {
 
 impl<'a> ActiveFlasher<'a, Erase> {
     pub fn erase_all(&mut self) -> Result<(), FlasherError> {
+        log::debug!("Erasing entire chip.");
         let flasher = self;
         let algo = flasher.flash_algorithm;
 
@@ -584,7 +456,8 @@ impl<'a> ActiveFlasher<'a, Erase> {
     }
 
     pub fn erase_sector(&mut self, address: u32) -> Result<(), FlasherError> {
-        log::debug!("Erasing sector at address 0x{:08x}.", address);
+        log::info!("Erasing sector at address 0x{:08x}.", address);
+        let t1 = std::time::Instant::now();
         let flasher = self;
         let algo = flasher.flash_algorithm;
 
@@ -596,7 +469,11 @@ impl<'a> ActiveFlasher<'a, Erase> {
             None,
             false,
         )?;
-        log::debug!("Done erasing sector. Result is {}", result);
+        log::info!(
+            "Done erasing sector. Result is {}. This took {:?}",
+            result,
+            t1.elapsed()
+        );
 
         if result != 0 {
             Err(FlasherError::EraseSector(result, address))
@@ -604,75 +481,18 @@ impl<'a> ActiveFlasher<'a, Erase> {
             Ok(())
         }
     }
-
-    pub fn compute_crcs(&mut self, sectors: &[(u32, u32)]) -> Result<Vec<u32>, FlasherError> {
-        let flasher = self;
-        let algo = flasher.flash_algorithm;
-
-        if algo.analyzer_supported {
-            let mut data = vec![];
-
-            flasher
-                .probe
-                .write_block32(algo.analyzer_address, &ANALYZER)?;
-
-            for (address, mut size) in sectors {
-                let size_value = {
-                    let mut ndx = 0;
-                    while 1 < size {
-                        size >>= 1;
-                        ndx += 1;
-                    }
-                    ndx
-                };
-                let address_value = address / size;
-                if 1 << size_value != size {
-                    return Err(FlasherError::SizeNotPowerOf2);
-                }
-                if address % size != 0 {
-                    return Err(FlasherError::AddressNotMultipleOfSize);
-                }
-                let value = size_value | (address_value << 16);
-                data.push(value);
-            }
-
-            flasher
-                .probe
-                .write_block32(algo.begin_data, data.as_slice())?;
-
-            let analyzer_address = algo.analyzer_address;
-            let begin_data = algo.begin_data;
-            let result = flasher.call_function_and_wait(
-                analyzer_address,
-                Some(begin_data),
-                Some(data.len() as u32),
-                None,
-                None,
-                false,
-            );
-            result?;
-
-            flasher
-                .probe
-                .read_block32(begin_data, data.as_mut_slice())?;
-
-            Ok(data)
-        } else {
-            Err(FlasherError::AnalyzerNotSupported)
-        }
-    }
 }
 
 impl<'a> ActiveFlasher<'a, Program> {
     pub fn program_page(&mut self, address: u32, bytes: &[u8]) -> Result<(), FlasherError> {
+        let t1 = std::time::Instant::now();
         let flasher = self;
         let algo = flasher.flash_algorithm;
 
-        // TODO: Prevent security settings from locking the device.
+        log::info!("Flashing one page of size: {}", bytes.len());
 
         // Transfer the bytes to RAM.
         flasher.probe.write_block8(algo.begin_data, bytes)?;
-
         let result = flasher.call_function_and_wait(
             algo.pc_program_page,
             Some(address),
@@ -681,6 +501,7 @@ impl<'a> ActiveFlasher<'a, Program> {
             None,
             false,
         )?;
+        log::info!("Flashing took: {:?}", t1.elapsed());
 
         if result != 0 {
             Err(FlasherError::ProgramPage(result, address))
@@ -742,45 +563,5 @@ impl<'a> ActiveFlasher<'a, Program> {
             .write_block8(algo.page_buffers[buffer_number as usize], bytes)?;
 
         Ok(())
-    }
-
-    pub fn program_phrase(&mut self, address: u32, bytes: &[u8]) -> Result<(), FlasherError> {
-        let flasher = self;
-        let algo = flasher.flash_algorithm;
-
-        // Get the minimum programming length. If none was specified, use the page size.
-        let min_len = if let Some(min_program_length) = algo.min_program_length {
-            min_program_length
-        } else {
-            flasher.region.page_size
-        };
-
-        // Require write address and length to be aligned to the minimum write size.
-        if address % min_len != 0 {
-            return Err(FlasherError::UnalignedFlashWriteAddress);
-        }
-        if bytes.len() as u32 % min_len != 0 {
-            return Err(FlasherError::UnalignedPhraseLength);
-        }
-
-        // TODO: Prevent security settings from locking the device.
-
-        // Transfer the phrase bytes to RAM.
-        flasher.probe.write_block8(algo.begin_data, bytes)?;
-
-        let result = flasher.call_function_and_wait(
-            algo.pc_program_page,
-            Some(address),
-            Some(bytes.len() as u32),
-            Some(algo.begin_data),
-            None,
-            false,
-        )?;
-
-        if result != 0 {
-            Err(FlasherError::ProgramPhrase(result, address))
-        } else {
-            Ok(())
-        }
     }
 }

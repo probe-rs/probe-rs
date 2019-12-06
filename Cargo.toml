@@ -1,7 +1,6 @@
 [workspace]
 members = [
     "probe-rs",
-    "probe-rs-targets",
     "cli",
     "cargo-flash",
 ]

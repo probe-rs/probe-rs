@@ -3,8 +3,6 @@
 #![allow(clippy::implicit_hasher)]
 
 #[macro_use]
-pub extern crate bitflags;
-#[macro_use]
 pub extern crate derivative;
 #[macro_use]
 extern crate rental;
@@ -13,7 +11,8 @@ extern crate maplit;
 #[macro_use]
 extern crate serde_derive;
 
-pub mod collection;
+pub mod config;
+pub mod cores;
 pub mod coresight;
 pub mod debug;
 pub mod memory;

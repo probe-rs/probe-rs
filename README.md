@@ -63,11 +63,13 @@ The help dialog should then tell you how to use the CLI.
   - [x] Basic flash downloader working with nRF51.
   - [x] cargo-flash which can automatically build & flash the target elf file.
   - [x] Docs
-- [ ] v0.2.0
+- [x] v0.2.0
   - [x] Parse yaml (or anything else) config files for flash algorithm definitions, such that arbitrary chips can be added.
   - [x] Modularize code to allow other cores than M0 and be able to dynamically load chip definitions.
   - [x] Target autodetection.
   - [x] M4 targets.
+- [ ] v0.3.0
+  - [x] Automatic CMSIS-Pack parsing and loading for flash algorithms.
 - [ ] ...
   - [ ] Basic debugging for Cortex m0, m3, m4.
     - [ ] Stepping in
