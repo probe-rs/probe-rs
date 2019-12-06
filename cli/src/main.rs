@@ -11,9 +11,9 @@ use probe_rs::{
     probe::{
         daplink,
         debug_probe::DebugProbeInfo,
-        flash::download::{download_file, Format},
         stlink,
     },
+    flash::download::{download_file, Format},
 };
 
 use capstone::{arch::arm::ArchMode, prelude::*, Capstone, Endian};

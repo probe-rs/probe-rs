@@ -7,10 +7,10 @@ use probe_rs::{
     probe::{
         daplink,
         debug_probe::{DebugProbe, DebugProbeError, DebugProbeType, FakeProbe, MasterProbe},
-        flash::download::FileDownloadError,
         protocol::WireProtocol,
         stlink,
     },
+    flash::download::FileDownloadError,
     session::Session,
     target::info::{self, ChipInfo},
 };

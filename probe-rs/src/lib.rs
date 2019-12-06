@@ -15,6 +15,7 @@ pub mod config;
 pub mod cores;
 pub mod coresight;
 pub mod debug;
+pub mod flash;
 pub mod memory;
 pub mod probe;
 pub mod session;
