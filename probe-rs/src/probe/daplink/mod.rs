@@ -8,7 +8,7 @@ use crate::{
     },
     probe::{
         debug_probe::{DAPAccess, DebugProbe, DebugProbeError, DebugProbeInfo},
-        protocol::WireProtocol,
+        WireProtocol,
     },
 };
 

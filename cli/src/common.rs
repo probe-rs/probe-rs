@@ -7,7 +7,7 @@ use probe_rs::{
     probe::{
         daplink,
         debug_probe::{DebugProbe, DebugProbeError, DebugProbeType, FakeProbe, MasterProbe},
-        protocol::WireProtocol,
+        WireProtocol,
         stlink,
     },
     flash::download::FileDownloadError,
