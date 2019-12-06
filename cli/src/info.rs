@@ -1,14 +1,12 @@
 use crate::common::open_probe;
 use crate::{common::CliError, SharedOptions};
 
-use probe_rs::{
-    coresight::{
-        access_ports::{
-            generic_ap::{APClass, IDR},
-            memory_ap::{BaseaddrFormat, MemoryAP, BASE, BASE2},
-        },
-        ap_access::{valid_access_ports, APAccess},
+use probe_rs::coresight::{
+    access_ports::{
+        generic_ap::{APClass, IDR},
+        memory_ap::{BaseaddrFormat, MemoryAP, BASE, BASE2},
     },
+    ap_access::{valid_access_ports, APAccess},
     memory::romtable::CSComponent,
 };
 

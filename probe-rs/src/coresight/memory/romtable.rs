@@ -2,8 +2,8 @@ use crate::coresight::{
     access_ports,
     access_ports::{generic_ap::*, memory_ap::*},
     ap_access::*,
+    memory::MI,
 };
-use crate::memory::MI;
 use enum_primitive_derive::Primitive;
 use log::{debug, info, warn};
 use num_traits::cast::FromPrimitive;

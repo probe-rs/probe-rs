@@ -8,7 +8,7 @@ use std::borrow;
 use std::path::PathBuf;
 use std::rc::Rc;
 
-use crate::memory::MI;
+use crate::coresight::memory::MI;
 use object::read::Object;
 
 use crate::session::Session;
