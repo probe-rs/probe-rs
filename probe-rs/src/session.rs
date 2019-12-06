@@ -1,5 +1,5 @@
 use crate::config::target::Target;
-use crate::probe::debug_probe::MasterProbe;
+use crate::probe::MasterProbe;
 
 pub struct Session {
     pub target: Target,

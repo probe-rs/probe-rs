@@ -1,12 +1,13 @@
-use crate::config::flash_algorithm::FlashAlgorithm;
-use crate::config::target::Target;
+use crate::config::{
+    flash_algorithm::FlashAlgorithm,
+    memory::{FlashRegion, MemoryRange},
+    target::Target,
+};
 use crate::coresight::access_ports::AccessPortError;
 use crate::memory::MI;
-use crate::probe::debug_probe::DebugProbeError;
-use crate::probe::debug_probe::MasterProbe;
+use crate::probe::{DebugProbeError, MasterProbe};
 
 use super::builder::FlashBuilder;
-use crate::config::memory::{FlashRegion, MemoryRange};
 
 pub trait Operation {
     fn operation() -> u32;

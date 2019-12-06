@@ -3,7 +3,7 @@ pub mod swd;
 pub mod swj;
 pub mod transfer;
 
-use crate::probe::debug_probe::DebugProbeError;
+use crate::probe::DebugProbeError;
 use core::ops::Deref;
 
 pub(crate) type Result<T> = std::result::Result<T, Error>;

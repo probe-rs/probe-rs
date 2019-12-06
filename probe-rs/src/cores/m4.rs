@@ -1,5 +1,5 @@
 use crate::memory::MI;
-use crate::probe::debug_probe::{DebugProbeError, MasterProbe};
+use crate::probe::{DebugProbeError, MasterProbe};
 use crate::target::{
     BasicRegisterAddresses, Core, CoreInformation, CoreRegister, CoreRegisterAddress,
 };
