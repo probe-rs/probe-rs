@@ -4,7 +4,7 @@ use serde::de::{Error, Unexpected};
 
 use crate::{
     cores::get_core,
-    probe::debug_probe::{DebugProbeError, MasterProbe},
+    probe::{DebugProbeError, MasterProbe},
 };
 
 pub trait CoreRegister: Clone + From<u32> + Into<u32> + Sized + std::fmt::Debug {

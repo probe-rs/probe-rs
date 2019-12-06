@@ -1,7 +1,7 @@
 use rusb::Device;
 use rusb::UsbContext;
 
-use crate::probe::debug_probe::{DebugProbeInfo, DebugProbeType};
+use crate::probe::{DebugProbeInfo, DebugProbeType};
 
 use super::usb_interface::USB_PID_EP_MAP;
 use super::usb_interface::USB_VID;

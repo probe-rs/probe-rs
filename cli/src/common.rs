@@ -4,13 +4,11 @@ use probe_rs::{
     config::registry::{Registry, RegistryError, SelectionStrategy},
     cores::m0::FakeM0,
     coresight::access_ports::AccessPortError,
-    probe::{
-        daplink,
-        debug_probe::{DebugProbe, DebugProbeError, DebugProbeType, FakeProbe, MasterProbe},
-        WireProtocol,
-        stlink,
-    },
     flash::download::FileDownloadError,
+    probe::{
+        daplink, stlink, DebugProbe, DebugProbeError, DebugProbeType, FakeProbe, MasterProbe,
+        WireProtocol,
+    },
     session::Session,
     target::info::{self, ChipInfo},
 };

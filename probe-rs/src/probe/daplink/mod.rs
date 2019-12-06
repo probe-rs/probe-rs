@@ -6,10 +6,7 @@ use crate::{
         debug_port::DPRegister,
         dp_access::{DPAccess, DebugPort},
     },
-    probe::{
-        debug_probe::{DAPAccess, DebugProbe, DebugProbeError, DebugProbeInfo},
-        WireProtocol,
-    },
+    probe::{DAPAccess, DebugProbe, DebugProbeError, DebugProbeInfo, Port, WireProtocol},
 };
 
 use log::{debug, error, info};
@@ -27,7 +24,7 @@ use commands::{
     },
     transfer::{
         configure::{ConfigureRequest, ConfigureResponse},
-        Ack, InnerTransferRequest, Port, TransferRequest, TransferResponse, RW,
+        Ack, InnerTransferRequest, PortType, TransferRequest, TransferResponse, RW,
     },
     Status,
 };
@@ -110,10 +107,7 @@ impl<P: DebugPort, R: DPRegister<P>> DPAccess<P, R> for DAPLink {
 
     fn read_dp_register(&mut self, _port: &P) -> Result<R, Self::Error> {
         debug!("Reading DP register {}", R::NAME);
-        let result = self.read_register(
-            crate::probe::debug_probe::Port::DebugPort,
-            u16::from(R::ADDRESS),
-        )?;
+        let result = self.read_register(Port::DebugPort, u16::from(R::ADDRESS))?;
 
         debug!("Read    DP register {}, value=0x{:08x}", R::NAME, result);
 
@@ -124,11 +118,7 @@ impl<P: DebugPort, R: DPRegister<P>> DPAccess<P, R> for DAPLink {
         let value = register.into();
 
         debug!("Writing DP register {}, value=0x{:08x}", R::NAME, value);
-        self.write_register(
-            crate::probe::debug_probe::Port::DebugPort,
-            u16::from(R::ADDRESS),
-            value,
-        )
+        self.write_register(Port::DebugPort, u16::from(R::ADDRESS), value)
     }
 }
 
@@ -276,14 +266,10 @@ impl DebugProbe for DAPLink {
 
 impl DAPAccess for DAPLink {
     /// Reads the DAP register on the specified port and address.
-    fn read_register(
-        &mut self,
-        port: crate::probe::debug_probe::Port,
-        addr: u16,
-    ) -> Result<u32, DebugProbeError> {
+    fn read_register(&mut self, port: Port, addr: u16) -> Result<u32, DebugProbeError> {
         let port = match port {
-            crate::probe::debug_probe::Port::DebugPort => Port::DP,
-            crate::probe::debug_probe::Port::AccessPort(_) => Port::AP,
+            Port::DebugPort => PortType::DP,
+            Port::AccessPort(_) => PortType::AP,
         };
 
         commands::send_command::<TransferRequest, TransferResponse>(
@@ -308,15 +294,10 @@ impl DAPAccess for DAPLink {
     }
 
     /// Writes a value to the DAP register on the specified port and address.
-    fn write_register(
-        &mut self,
-        port: crate::probe::debug_probe::Port,
-        addr: u16,
-        value: u32,
-    ) -> Result<(), DebugProbeError> {
+    fn write_register(&mut self, port: Port, addr: u16, value: u32) -> Result<(), DebugProbeError> {
         let port = match port {
-            crate::probe::debug_probe::Port::DebugPort => Port::DP,
-            crate::probe::debug_probe::Port::AccessPort(_) => Port::AP,
+            Port::DebugPort => PortType::DP,
+            Port::AccessPort(_) => PortType::AP,
         };
 
         commands::send_command::<TransferRequest, TransferResponse>(

@@ -1,11 +1,11 @@
-use crate::probe::debug_probe::DebugProbeInfo;
+use crate::probe::DebugProbeInfo;
 use lazy_static::lazy_static;
 use rusb::{Context, Device, DeviceHandle, Error, UsbContext};
 use std::time::Duration;
 
 use std::collections::HashMap;
 
-use crate::probe::debug_probe::DebugProbeError;
+use crate::probe::DebugProbeError;
 
 /// The USB Command packet size.
 const CMD_LEN: usize = 16;

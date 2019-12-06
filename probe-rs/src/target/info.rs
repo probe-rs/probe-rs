@@ -1,4 +1,4 @@
-use crate::probe::debug_probe::{DebugProbeError, MasterProbe};
+use crate::probe::{DebugProbeError, MasterProbe};
 use crate::{
     coresight::{
         access_ports::{

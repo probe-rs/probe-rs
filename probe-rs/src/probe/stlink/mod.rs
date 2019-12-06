@@ -5,12 +5,9 @@ mod usb_interface;
 
 pub use self::usb_interface::STLinkUSBDevice;
 
+use super::{DAPAccess, DebugProbe, DebugProbeError, DebugProbeInfo, Port, WireProtocol};
 use crate::coresight::{ap_access::AccessPort, common::Register, debug_port::Ctrl};
-use crate::probe::debug_probe::{DebugProbeInfo, Port};
 use scroll::{Pread, BE};
-
-use crate::probe::debug_probe::{DAPAccess, DebugProbe, DebugProbeError};
-use super::WireProtocol;
 
 use constants::{commands, JTagFrequencyToDivider, Status, SwdFrequencyToDelayCount};
 use usb_interface::TIMEOUT;

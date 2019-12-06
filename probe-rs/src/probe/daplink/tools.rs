@@ -1,4 +1,4 @@
-use crate::probe::debug_probe::{DebugProbeInfo, DebugProbeType};
+use crate::probe::{DebugProbeInfo, DebugProbeType};
 
 pub fn list_daplink_devices() -> Vec<DebugProbeInfo> {
     match hidapi::HidApi::new() {

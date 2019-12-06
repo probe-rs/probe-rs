@@ -7,13 +7,9 @@ use debugger::CliState;
 
 use probe_rs::{
     debug::DebugInfo,
-    memory::MI,
-    probe::{
-        daplink,
-        debug_probe::DebugProbeInfo,
-        stlink,
-    },
     flash::download::{download_file, Format},
+    memory::MI,
+    probe::{daplink, stlink, DebugProbeInfo},
 };
 
 use capstone::{arch::arm::ArchMode, prelude::*, Capstone, Endian};

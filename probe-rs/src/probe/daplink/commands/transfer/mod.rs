@@ -3,7 +3,7 @@ pub mod configure;
 use super::{Category, Request, Response, Result};
 
 #[derive(Copy, Clone, Debug)]
-pub enum Port {
+pub enum PortType {
     AP = 1,
     DP = 0,
 }
@@ -19,7 +19,7 @@ pub enum RW {
 #[derive(Debug)]
 pub struct InnerTransferRequest {
     /// 0 = Debug Port (DP), 1 = Access Port (AP).
-    pub APnDP: Port,
+    pub APnDP: PortType,
     /// 0 = Write Register, 1 = Read Register.
     pub RnW: RW,
     /// A2 Register Address bit 2.
@@ -35,7 +35,7 @@ pub struct InnerTransferRequest {
 }
 
 impl InnerTransferRequest {
-    pub fn new(port: Port, rw: RW, address: u8) -> Self {
+    pub fn new(port: PortType, rw: RW, address: u8) -> Self {
         Self {
             APnDP: port,
             RnW: rw,
@@ -50,7 +50,7 @@ impl InnerTransferRequest {
 
 #[test]
 fn creating_inner_transfer_request() {
-    let req = InnerTransferRequest::new(Port::DP, RW::W, 0x8);
+    let req = InnerTransferRequest::new(PortType::DP, RW::W, 0x8);
 
     assert_eq!(true, req.A3);
     assert_eq!(false, req.A2);
