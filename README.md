@@ -72,28 +72,30 @@ The help dialog should then tell you how to use the CLI.
   - [x] Automatic CMSIS-Pack parsing and loading for flash algorithms.
 - [ ] ...
   - [ ] Basic debugging for Cortex m0, m3, m4.
-    - [ ] Stepping in
-    - [ ] Halting
-    - [ ] Breaking
-    - [ ] Running
+    - [x] Stepping
+    - [x] Halting
+    - [X] Breaking
+    - [x] Running
   - [ ] Basic VSCode plugin
-    - [ ] Stepping in
-    - [ ] Halting
+    - [x] Stepping
+    - [x] Halting
     - [ ] Breaking
-    - [ ] Running
+    - [x] Running
     - [ ] Variable inspection
+      - [x] Pointers/References
       - [ ] Structs
       - [ ] Enums
       - [ ] Basic types
-    - [ ] Stackframes
-  - [ ] Basic CLI
-    - [ ] Stepping in
-    - [ ] Halting
-    - [ ] Breaking
-    - [ ] Running
+    - [x] Stack Trace display
+    - [ ] Stackframe display
+  - [] Basic CLI
+    - [x] Stepping
+    - [x] Halting
+    - [X] Breaking
+    - [x] Running
   - [ ] Semihosting.
   - [ ] Tracing.
-  - [ ] SWD file support.
+  - [ ] SVD file support.
 
 ## FAQ
 
