@@ -88,7 +88,7 @@ The help dialog should then tell you how to use the CLI.
       - [ ] Basic types
     - [x] Stack Trace display
     - [ ] Stackframe display
-  - [] Basic CLI
+  - [ ] Basic CLI
     - [x] Stepping
     - [x] Halting
     - [X] Breaking
