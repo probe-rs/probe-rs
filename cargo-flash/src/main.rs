@@ -19,7 +19,7 @@ use probe_rs::{
     probe::{
         daplink, stlink, DebugProbe, DebugProbeError, DebugProbeType, MasterProbe, WireProtocol,
     },
-    session::Session,
+    Session,
     target::info::ChipInfo,
 };
 

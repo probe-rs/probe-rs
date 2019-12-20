@@ -1,7 +1,7 @@
 use crate::SharedOptions;
 
 use probe_rs::{
-    config::registry::{Registry, RegistryError, SelectionStrategy},
+    config::registry::{Registry, SelectionStrategy},
     cores::m0::FakeM0,
     coresight::access_ports::AccessPortError,
     flash::download::FileDownloadError,
@@ -9,13 +9,14 @@ use probe_rs::{
         daplink, stlink, DebugProbe, DebugProbeError, DebugProbeType, FakeProbe, MasterProbe,
         WireProtocol,
     },
-    session::Session,
+    Session,
     target::info::{self, ChipInfo},
+    Error,
 };
 
 use ron;
 
-use std::error::Error;
+use std::error;
 use std::fmt;
 use std::fs::File;
 use std::path::Path;
@@ -27,13 +28,13 @@ pub enum CliError {
     AccessPort(AccessPortError),
     StdIO(std::io::Error),
     FileDownload(FileDownloadError),
-    RegistryError(RegistryError),
+    ProbeRs(Error),
     MissingArgument,
     UnableToOpenProbe,
 }
 
-impl Error for CliError {
-    fn source(&self) -> Option<&(dyn Error + 'static)> {
+impl error::Error for CliError {
+    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
         use CliError::*;
 
         match self {
@@ -41,7 +42,7 @@ impl Error for CliError {
             DebugProbe(ref e) => Some(e),
             AccessPort(ref e) => Some(e),
             StdIO(ref e) => Some(e),
-            RegistryError(ref e) => Some(e),
+            ProbeRs(ref e) => Some(e),
             MissingArgument => None,
             UnableToOpenProbe => None,
             FileDownload(ref e) => Some(e),
@@ -59,7 +60,7 @@ impl fmt::Display for CliError {
             AccessPort(ref e) => e.fmt(f),
             StdIO(ref e) => e.fmt(f),
             FileDownload(ref e) => e.fmt(f),
-            RegistryError(ref e) => e.fmt(f),
+            ProbeRs(ref e) => e.fmt(f),
             MissingArgument => write!(f, "Command expected more arguments."),
             UnableToOpenProbe => write!(f, "Unable to open probe."),
         }
@@ -90,9 +91,9 @@ impl From<std::io::Error> for CliError {
     }
 }
 
-impl From<RegistryError> for CliError {
-    fn from(error: RegistryError) -> Self {
-        CliError::RegistryError(error)
+impl From<probe_rs::Error> for CliError {
+    fn from(error: probe_rs::Error) -> Self {
+        CliError::ProbeRs(error)
     }
 }
 
@@ -155,7 +156,7 @@ where
 
     let registry = Registry::from_builtin_families();
 
-    let target = registry.get_target(strategy)?;
+    let target = registry.get_target(strategy).map_err(Error::from)?;
 
     let session = Session::new(target, probe);
 
@@ -183,7 +184,7 @@ where
 
     let registry = Registry::from_builtin_families();
 
-    let mut target = registry.get_target(strategy)?;
+    let mut target = registry.get_target(strategy).map_err(Error::from)?;
 
     target.core = Box::new(core);
 

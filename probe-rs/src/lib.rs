@@ -1,3 +1,7 @@
+//! Foobarino
+//! 
+//! This is some documentation
+
 #![allow(clippy::useless_let_if_seq)]
 #![allow(clippy::trivially_copy_pass_by_ref)]
 #![allow(clippy::implicit_hasher)]
@@ -11,11 +15,15 @@ extern crate maplit;
 #[macro_use]
 extern crate serde_derive;
 
+mod error;
 pub mod config;
 pub mod cores;
 pub mod coresight;
 pub mod debug;
 pub mod flash;
 pub mod probe;
-pub mod session;
+mod session;
 pub mod target;
+
+pub use session::Session;
+pub use error::Error;

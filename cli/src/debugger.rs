@@ -1,6 +1,6 @@
 use crate::common::CliError;
 
-use probe_rs::{cores::CortexDump, coresight::memory::MI, debug::DebugInfo, session::Session};
+use probe_rs::{cores::CortexDump, coresight::memory::MI, debug::DebugInfo, Session};
 
 use capstone::Capstone;
 

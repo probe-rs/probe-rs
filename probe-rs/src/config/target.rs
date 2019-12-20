@@ -27,7 +27,7 @@ pub struct Target {
 pub type TargetParseError = serde_yaml::Error;
 
 impl Target {
-    pub fn new(
+    pub(crate) fn new(
         chip_family: &ChipFamily,
         chip: &Chip,
         ram: &RamRegion,
