@@ -14,14 +14,6 @@ macro_rules! res {
             }
         }
     };
-    ($source:expr) => {
-        {
-            match $source {
-                Ok(v) => v,
-                Err(e) => Err(Error::new_with_source(ErrorKind::from(&e), Some(e)))?,
-            }
-        }
-    };
 }
 
 #[macro_export]
@@ -103,14 +95,20 @@ pub enum MissingKind {
     FlashRegion,
 }
 
-impl From<&std::io::Error> for ErrorKind {
-    fn from(_value: &std::io::Error) -> ErrorKind {
-        ErrorKind::Io
+impl From<ErrorKind> for Error {
+    fn from(value: ErrorKind) -> Error {
+        Error::new(value)
     }
 }
 
-impl From<&serde_yaml::Error> for ErrorKind {
-    fn from(_value: &serde_yaml::Error) -> ErrorKind {
-        ErrorKind::Yaml
+impl From<std::io::Error> for Error {
+    fn from(value: std::io::Error) -> Error {
+        Error::new_with_source(ErrorKind::Io, Some(Box::new(value)))
+    }
+}
+
+impl From<serde_yaml::Error> for Error {
+    fn from(value: serde_yaml::Error) -> Error {
+        Error::new_with_source(ErrorKind::Yaml, Some(value))
     }
 }

@@ -133,8 +133,8 @@ impl Registry {
     }
 
     pub fn add_target_from_yaml(&mut self, path_to_yaml: &Path) -> Result<()> {
-        let file = res!(File::open(path_to_yaml));
-        let chip = res!(ChipFamily::from_yaml_reader(file));
+        let file = File::open(path_to_yaml)?;
+        let chip = ChipFamily::from_yaml_reader(file)?;
 
         let index = self
             .families
