@@ -3,9 +3,7 @@ extern crate structopt;
 use colored::*;
 use failure::format_err;
 use std::{
-    env,
-    error::Error,
-    fmt,
+    env, error, fmt,
     path::{Path, PathBuf},
     process::{self, Command, Stdio},
     time::Instant,
@@ -14,13 +12,10 @@ use structopt::StructOpt;
 
 use probe_rs::{
     config::registry::{Registry, SelectionStrategy},
-    coresight::access_ports::AccessPortError,
     flash::download::{download_file, Format},
-    probe::{
-        daplink, stlink, DebugProbe, DebugProbeError, DebugProbeType, MasterProbe, WireProtocol,
-    },
-    Session,
+    probe::{daplink, stlink, DebugProbe, DebugProbeType, MasterProbe, WireProtocol},
     target::info::ChipInfo,
+    Error, Session,
 };
 
 #[derive(Debug, StructOpt)]
@@ -282,19 +277,17 @@ fn handle_failed_command(status: std::process::ExitStatus) -> ! {
 
 #[derive(Debug)]
 pub enum DownloadError {
-    DebugProbe(DebugProbeError),
-    AccessPort(AccessPortError),
+    ProbeRs(Error),
     StdIO(std::io::Error),
     Quit,
 }
 
-impl Error for DownloadError {
-    fn source(&self) -> Option<&(dyn Error + 'static)> {
+impl error::Error for DownloadError {
+    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
         use crate::DownloadError::*;
 
         match self {
-            DebugProbe(ref e) => Some(e),
-            AccessPort(ref e) => Some(e),
+            ProbeRs(ref e) => Some(e),
             StdIO(ref e) => Some(e),
             Quit => None,
         }
@@ -306,23 +299,16 @@ impl fmt::Display for DownloadError {
         use crate::DownloadError::*;
 
         match self {
-            DebugProbe(ref e) => e.fmt(f),
-            AccessPort(ref e) => e.fmt(f),
+            ProbeRs(ref e) => e.fmt(f),
             StdIO(ref e) => e.fmt(f),
             Quit => write!(f, "Quit error..."),
         }
     }
 }
 
-impl From<AccessPortError> for DownloadError {
-    fn from(error: AccessPortError) -> Self {
-        DownloadError::AccessPort(error)
-    }
-}
-
-impl From<DebugProbeError> for DownloadError {
-    fn from(error: DebugProbeError) -> Self {
-        DownloadError::DebugProbe(error)
+impl From<Error> for DownloadError {
+    fn from(error: Error) -> Self {
+        DownloadError::ProbeRs(error)
     }
 }
 

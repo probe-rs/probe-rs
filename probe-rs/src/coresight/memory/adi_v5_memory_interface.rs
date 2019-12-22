@@ -1,9 +1,10 @@
 /// Memory access according to ARM Debug Interface specification v5.0
 use crate::coresight::access_ports::{
     memory_ap::{AddressIncrement, DataSize, MemoryAP, CSW, DRW, TAR},
-    APRegister, AccessPortError,
+    APRegister,
 };
 use crate::coresight::ap_access::APAccess;
+use crate::error::*;
 use scroll::Pread;
 
 /// A struct to give access to a targets memory using a certain DAP.
@@ -69,41 +70,37 @@ impl ADIMemoryInterface {
         &self,
         debug_port: &mut AP,
         register: REGISTER,
-    ) -> Result<REGISTER, AccessPortError>
+    ) -> Result<REGISTER>
     where
         REGISTER: APRegister<MemoryAP>,
         AP: APAccess<MemoryAP, REGISTER>,
     {
         debug_port
             .read_register_ap(self.access_port, register)
-            .or_else(|_| Err(AccessPortError::register_read_error::<REGISTER>()))
+            .or_else(|e| Err(Error::register_read_error::<REGISTER>(e)))
     }
 
     /// Write a 32 bit register on the given AP.
-    fn write_register_ap<REGISTER, AP>(
-        &self,
-        debug_port: &mut AP,
-        register: REGISTER,
-    ) -> Result<(), AccessPortError>
+    fn write_register_ap<REGISTER, AP>(&self, debug_port: &mut AP, register: REGISTER) -> Result<()>
     where
         REGISTER: APRegister<MemoryAP>,
         AP: APAccess<MemoryAP, REGISTER>,
     {
         debug_port
             .write_register_ap(self.access_port, register)
-            .or_else(|_| Err(AccessPortError::register_write_error::<REGISTER>()))
+            .or_else(|e| Err(Error::register_write_error::<REGISTER>(e)))
     }
 
     /// Read a 32bit word at `addr`.
     ///
     /// The address where the read should be performed at has to be word aligned.
     /// Returns `AccessPortError::MemoryNotAligned` if this does not hold true.
-    pub fn read32<AP>(&self, debug_port: &mut AP, address: u32) -> Result<u32, AccessPortError>
+    pub fn read32<AP>(&self, debug_port: &mut AP, address: u32) -> Result<u32>
     where
         AP: APAccess<MemoryAP, CSW> + APAccess<MemoryAP, TAR> + APAccess<MemoryAP, DRW>,
     {
         if (address % 4) != 0 {
-            return Err(AccessPortError::MemoryNotAligned);
+            return res!(MemoryNotAligned);
         }
 
         let csw = self.build_csw_register(DataSize::U32);
@@ -120,7 +117,7 @@ impl ADIMemoryInterface {
     ///
     /// The address where the read should be performed at has to be word aligned.
     /// Returns `AccessPortError::MemoryNotAligned` if this does not hold true.
-    pub fn read8<AP>(&self, debug_port: &mut AP, address: u32) -> Result<u8, AccessPortError>
+    pub fn read8<AP>(&self, debug_port: &mut AP, address: u32) -> Result<u8>
     where
         AP: APAccess<MemoryAP, CSW> + APAccess<MemoryAP, TAR> + APAccess<MemoryAP, DRW>,
     {
@@ -150,12 +147,12 @@ impl ADIMemoryInterface {
         debug_port: &mut AP,
         start_address: u32,
         data: &mut [u32],
-    ) -> Result<(), AccessPortError>
+    ) -> Result<()>
     where
         AP: APAccess<MemoryAP, CSW> + APAccess<MemoryAP, TAR> + APAccess<MemoryAP, DRW>,
     {
         if (start_address % 4) != 0 {
-            return Err(AccessPortError::MemoryNotAligned);
+            return res!(MemoryNotAligned);
         }
 
         // Second we read in 32 bit reads until we have less than 32 bits left to read.
@@ -182,12 +179,7 @@ impl ADIMemoryInterface {
         Ok(())
     }
 
-    pub fn read_block8<AP>(
-        &self,
-        debug_port: &mut AP,
-        address: u32,
-        data: &mut [u8],
-    ) -> Result<(), AccessPortError>
+    pub fn read_block8<AP>(&self, debug_port: &mut AP, address: u32, data: &mut [u8]) -> Result<()>
     where
         AP: APAccess<MemoryAP, CSW> + APAccess<MemoryAP, TAR> + APAccess<MemoryAP, DRW>,
     {
@@ -196,7 +188,7 @@ impl ADIMemoryInterface {
         let aligned_addr = address - (address % 4);
         let unaligned_end_addr = address
             .checked_add(data.len() as u32)
-            .ok_or(AccessPortError::OutOfBoundsError)?;
+            .ok_or(err!(OutOfBounds))?;
 
         let aligned_end_addr = if unaligned_end_addr % 4 != 0 {
             (unaligned_end_addr - (unaligned_end_addr % 4)) + 4
@@ -283,17 +275,12 @@ impl ADIMemoryInterface {
     ///
     /// The address where the write should be performed at has to be word aligned.
     /// Returns `AccessPortError::MemoryNotAligned` if this does not hold true.
-    pub fn write32<AP>(
-        &self,
-        debug_port: &mut AP,
-        address: u32,
-        data: u32,
-    ) -> Result<(), AccessPortError>
+    pub fn write32<AP>(&self, debug_port: &mut AP, address: u32, data: u32) -> Result<()>
     where
         AP: APAccess<MemoryAP, CSW> + APAccess<MemoryAP, TAR> + APAccess<MemoryAP, DRW>,
     {
         if (address % 4) != 0 {
-            return Err(AccessPortError::MemoryNotAligned);
+            return res!(MemoryNotAligned);
         }
 
         let csw = self.build_csw_register(DataSize::U32);
@@ -309,12 +296,7 @@ impl ADIMemoryInterface {
     ///
     /// The address where the write should be performed at has to be word aligned.
     /// Returns `AccessPortError::MemoryNotAligned` if this does not hold true.
-    pub fn write8<AP>(
-        &self,
-        debug_port: &mut AP,
-        address: u32,
-        data: u8,
-    ) -> Result<(), AccessPortError>
+    pub fn write8<AP>(&self, debug_port: &mut AP, address: u32, data: u8) -> Result<()>
     where
         AP: APAccess<MemoryAP, CSW> + APAccess<MemoryAP, TAR> + APAccess<MemoryAP, DRW>,
     {
@@ -346,12 +328,12 @@ impl ADIMemoryInterface {
         debug_port: &mut AP,
         start_address: u32,
         data: &[u32],
-    ) -> Result<(), AccessPortError>
+    ) -> Result<()>
     where
         AP: APAccess<MemoryAP, CSW> + APAccess<MemoryAP, TAR> + APAccess<MemoryAP, DRW>,
     {
         if (start_address % 4) != 0 {
-            return Err(AccessPortError::MemoryNotAligned);
+            return res!(MemoryNotAligned);
         }
 
         // Second we write in 32 bit reads until we have less than 32 bits left to write.
@@ -385,12 +367,7 @@ impl ADIMemoryInterface {
     /// The number of words written is `data.len()`.
     /// The address where the write should be performed at has to be word aligned.
     /// Returns `AccessPortError::MemoryNotAligned` if this does not hold true.
-    pub fn write_block8<AP>(
-        &self,
-        debug_port: &mut AP,
-        address: u32,
-        data: &[u8],
-    ) -> Result<(), AccessPortError>
+    pub fn write_block8<AP>(&self, debug_port: &mut AP, address: u32, data: &[u8]) -> Result<()>
     where
         AP: APAccess<MemoryAP, CSW> + APAccess<MemoryAP, TAR> + APAccess<MemoryAP, DRW>,
     {

@@ -1,49 +1,13 @@
 use crate::coresight::{
-    access_ports,
     access_ports::{generic_ap::*, memory_ap::*},
     ap_access::*,
     memory::MI,
 };
+use crate::error::*;
 use enum_primitive_derive::Primitive;
 use log::{debug, info, warn};
 use num_traits::cast::FromPrimitive;
 use std::cell::RefCell;
-use std::error::Error;
-use std::fmt;
-
-#[derive(Debug, PartialEq)]
-pub enum RomTableError {
-    NotARomtable,
-    AccessPortError(access_ports::AccessPortError),
-    CSComponentIdentificationError,
-}
-
-impl Error for RomTableError {
-    fn source(&self) -> Option<&(dyn Error + 'static)> {
-        match self {
-            RomTableError::AccessPortError(ref e) => Some(e),
-            _ => None,
-        }
-    }
-}
-
-impl fmt::Display for RomTableError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use RomTableError::*;
-
-        match self {
-            NotARomtable => write!(f, "Component is not a valid rom table"),
-            AccessPortError(ref e) => e.fmt(f),
-            CSComponentIdentificationError => write!(f, "Failed to identify CoreSight component"),
-        }
-    }
-}
-
-impl From<access_ports::AccessPortError> for RomTableError {
-    fn from(e: access_ports::AccessPortError) -> Self {
-        RomTableError::AccessPortError(e)
-    }
-}
 
 #[derive(Debug)]
 pub struct RomTableReader<'p, P: MI> {
@@ -84,7 +48,7 @@ impl<'r, 'p, P: MI> RomTableIterator<'r, 'p, P> {
 }
 
 impl<'p, 'r, P: MI> Iterator for RomTableIterator<'p, 'r, P> {
-    type Item = Result<RomTableEntryRaw, RomTableError>;
+    type Item = Result<RomTableEntryRaw>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let component_address = self.rom_table_reader.base_address + self.offset;
@@ -244,7 +208,7 @@ impl<'p, P: MI> ComponentInformationReader<'p, P> {
     }
 
     /// Reads the component class from a component info table.
-    pub fn component_class(&mut self) -> Result<CSComponentClass, RomTableError> {
+    pub fn component_class(&mut self) -> Result<CSComponentClass> {
         #![allow(clippy::verbose_bit_mask)]
         let mut cidr = [0u32; 4];
         let mut probe = self.probe.borrow_mut();
@@ -268,16 +232,15 @@ impl<'p, P: MI> ComponentInformationReader<'p, P> {
                     "Component at 0x{:x}: CIDR{} has invalid preamble (expected 0x{:x}, got 0x{:x})",
                     self.base_address, i, expected[i], preambles[i],
                 );
-                return Err(RomTableError::CSComponentIdentificationError);
+                return res!(CSComponentIdentification);
             }
         }
 
-        FromPrimitive::from_u32((cidr[1] >> 4) & 0x0F)
-            .ok_or(RomTableError::CSComponentIdentificationError)
+        FromPrimitive::from_u32((cidr[1] >> 4) & 0x0F).ok_or(err!(CSComponentIdentification))
     }
 
     /// Reads the peripheral ID from a component info table.
-    pub fn peripheral_id(&mut self) -> Result<PeripheralID, RomTableError> {
+    pub fn peripheral_id(&mut self) -> Result<PeripheralID> {
         let mut probe = self.probe.borrow_mut();
 
         let mut data = [0u32; 8];
@@ -298,7 +261,7 @@ impl<'p, P: MI> ComponentInformationReader<'p, P> {
     }
 
     /// Reads all component properties from a component info table
-    pub fn read_all(&mut self) -> Result<CSComponentId, RomTableError> {
+    pub fn read_all(&mut self) -> Result<CSComponentId> {
         Ok(CSComponentId {
             base_address: self.base_address,
             class: self.component_class()?,
@@ -363,7 +326,7 @@ pub enum CSComponent {
 
 impl CSComponent {
     /// Tries to parse a CoreSight component table.
-    pub fn try_parse<P>(link: &RefCell<P>, baseaddr: u64) -> Result<CSComponent, RomTableError>
+    pub fn try_parse<P>(link: &RefCell<P>, baseaddr: u64) -> Result<CSComponent>
     where
         P: MI + APAccess<GenericAP, IDR> + APAccess<MemoryAP, BASE> + APAccess<MemoryAP, BASE2>,
     {

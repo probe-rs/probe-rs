@@ -1,5 +1,9 @@
-use super::flasher::{Flasher, FlasherError};
+use super::flasher::Flasher;
 use crate::config::memory::{PageInfo, SectorInfo};
+use crate::error::*;
+
+use std::fmt;
+use std::result;
 
 /// A struct to hold all the information about one page of flash.
 #[derive(Derivative, Clone)]
@@ -13,14 +17,11 @@ pub struct FlashPage {
     data: Vec<u8>,
 }
 
-fn fmt(data: &[u8], f: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
+fn fmt(data: &[u8], f: &mut fmt::Formatter) -> result::Result<(), fmt::Error> {
     write!(f, "[{} bytes]", data.len())
 }
 
-fn fmt_hex<T: std::fmt::LowerHex>(
-    data: &T,
-    f: &mut std::fmt::Formatter,
-) -> Result<(), std::fmt::Error> {
+fn fmt_hex<T: fmt::LowerHex>(data: &T, f: &mut fmt::Formatter) -> result::Result<(), fmt::Error> {
     write!(f, "0x{:08x}", data)
 }
 
@@ -58,13 +59,15 @@ impl FlashSector {
     }
 
     /// Adds a new `FlashPage` to the `FlashSector`.
-    pub fn add_page(&mut self, page: FlashPage) -> Result<(), FlashBuilderError> {
+    pub fn add_page(&mut self, page: FlashPage) -> Result<()> {
         // If the pages do not align nicely within the sector, return an error.
         if self.page_size != page.size {
-            return Err(FlashBuilderError::PageSizeDoesNotMatch(
+            log::error!(
+                "The size {} of the page to be added does not match the expected page size {}",
                 page.size,
-                self.page_size,
-            ));
+                self.page_size
+            );
+            return res!(FlashBuilder);
         }
 
         // Determine the maximal amout of pages in the sector.
@@ -76,7 +79,11 @@ impl FlashSector {
             self.pages.push(page);
             self.pages.sort_by_key(|p| p.address);
         } else {
-            return Err(FlashBuilderError::MaxPageCountExceeded(max_page_count));
+            log::error!(
+                "The maximum page count of {} that can be held by this sectro has been exceeded.",
+                max_page_count
+            );
+            return res!(FlashBuilder);
         }
         Ok(())
     }
@@ -101,26 +108,6 @@ pub struct FlashBuilder<'a> {
     enable_double_buffering: bool,
 }
 
-#[derive(Debug)]
-pub enum FlashBuilderError {
-    AddressBeforeFlashStart(u32),   // Contains faulty address.
-    DataOverlap(u32),               // Contains faulty address.
-    InvalidFlashAddress(u32),       // Contains faulty address.
-    DuplicateDataEntry(u32),        // There is two entries for data at the same address.
-    PageSizeDoesNotMatch(u32, u32), // The flash sector size is not a multiple of the flash page size.
-    MaxPageCountExceeded(usize),
-    ProgramPage(u32, u32),
-    Flasher(FlasherError),
-}
-
-impl From<FlasherError> for FlashBuilderError {
-    fn from(error: FlasherError) -> Self {
-        FlashBuilderError::Flasher(error)
-    }
-}
-
-type R = Result<(), FlashBuilderError>;
-
 impl<'a> FlashBuilder<'a> {
     /// Creates a new `FlashBuilder` with empty data.
     pub fn new() -> Self {
@@ -139,14 +126,17 @@ impl<'a> FlashBuilder<'a> {
     /// Add a block of data to be programmed.
     ///
     /// Programming does not start until the `program` method is called.
-    pub fn add_data(&mut self, address: u32, data: &'a [u8]) -> Result<(), FlashBuilderError> {
+    pub fn add_data(&mut self, address: u32, data: &'a [u8]) -> Result<()> {
         // Add the operation to the sorted data list.
         match self
             .flash_write_data
             .binary_search_by_key(&address, |&v| v.address)
         {
             // If it already is present in the list, return an error.
-            Ok(_) => return Err(FlashBuilderError::DuplicateDataEntry(address)),
+            Ok(_) => {
+                log::error!("There is already data present at address 0x{:x}.", address);
+                return res!(FlashBuilder);
+            }
             // Add it to the list if it is not present yet.
             Err(position) => self
                 .flash_write_data
@@ -161,7 +151,14 @@ impl<'a> FlashBuilder<'a> {
         for operation in &self.flash_write_data {
             if let Some(previous) = previous_operation {
                 if previous.address + previous.data.len() as u32 > operation.address {
-                    return Err(FlashBuilderError::DataOverlap(operation.address));
+                    log::error!(
+                        "The data block at address 0x{:x} with size 0x{:x} overlaps an already contained data block at address 0x{:x} with size 0x:{:x}.",
+                        operation.address,
+                        operation.data.len(),
+                        previous.address,
+                        previous.data.len()
+                    );
+                    return res!(FlashBuilder);
                 }
             }
             previous_operation = Some(operation);
@@ -179,7 +176,7 @@ impl<'a> FlashBuilder<'a> {
         mut flash: Flasher,
         mut do_chip_erase: bool,
         restore_unwritten_bytes: bool,
-    ) -> Result<(), FlashBuilderError> {
+    ) -> Result<()> {
         if self.flash_write_data.is_empty() {
             // Nothing to do.
             return Ok(());
@@ -234,7 +231,7 @@ impl<'a> FlashBuilder<'a> {
         flash: &mut Flasher,
         sectors: &mut Vec<FlashSector>,
         restore_unwritten_bytes: bool,
-    ) -> Result<(), FlashBuilderError> {
+    ) -> Result<()> {
         for op in &self.flash_write_data {
             let mut pos = 0;
             while pos < op.data.len() {
@@ -253,7 +250,10 @@ impl<'a> FlashBuilder<'a> {
                                 sector_info.base_address + sector_info.size
                             );
                         } else {
-                            return Err(FlashBuilderError::InvalidFlashAddress(flash_address));
+                            return res!(AddressNotInRegion {
+                                address: flash_address,
+                                region: flash.region().clone()
+                            });
                         }
                         continue;
                     } else if let Some(page) = sector.pages.last_mut() {
@@ -272,7 +272,10 @@ impl<'a> FlashBuilder<'a> {
                                     page_info.base_address + page_info.size
                                 );
                             } else {
-                                return Err(FlashBuilderError::InvalidFlashAddress(flash_address));
+                                return res!(AddressNotInRegion {
+                                    address: flash_address,
+                                    region: flash.region().clone()
+                                });
                             }
                             continue;
                         } else {
@@ -297,7 +300,8 @@ impl<'a> FlashBuilder<'a> {
                                 page_info.base_address + page_info.size
                             );
                         } else {
-                            return Err(FlashBuilderError::InvalidFlashAddress(flash_address));
+                            log::error!("Address 0x{:x} does not exist in flash.", flash_address);
+                            return res!(FlashBuilder);
                         }
                         continue;
                     }
@@ -313,7 +317,8 @@ impl<'a> FlashBuilder<'a> {
                             sector_info.base_address + sector_info.size
                         );
                     } else {
-                        return Err(FlashBuilderError::InvalidFlashAddress(flash_address));
+                        log::error!("Address 0x{:x} does not exist in flash.", flash_address);
+                        return res!(FlashBuilder);
                     }
                     continue;
                 }
@@ -344,7 +349,7 @@ impl<'a> FlashBuilder<'a> {
         flash: &mut Flasher,
         current_page: &mut FlashPage,
         restore_unwritten_bytes: bool,
-    ) -> Result<(), FlashBuilderError> {
+    ) -> Result<()> {
         // The remaining bytes to be filled in at the end of the page.
         let remaining_bytes = current_page.size as usize - current_page.data.len();
         if current_page.data.len() != current_page.size as usize {
@@ -368,18 +373,14 @@ impl<'a> FlashBuilder<'a> {
     }
 
     // Erase the entire chip.
-    fn chip_erase(&self, flash: &mut Flasher) -> Result<(), FlashBuilderError> {
+    fn chip_erase(&self, flash: &mut Flasher) -> Result<()> {
         flash
             .run_erase(|active| active.erase_all())
             .map_err(From::from)
     }
 
     /// Program all sectors in `sectors` by first performing a chip erase.
-    fn program_simple(
-        &self,
-        flash: &mut Flasher,
-        sectors: &[FlashSector],
-    ) -> Result<(), FlashBuilderError> {
+    fn program_simple(&self, flash: &mut Flasher, sectors: &[FlashSector]) -> Result<()> {
         flash.run_program(|active| {
             for page in Self::pages(sectors) {
                 active.program_page(page.address, page.data.as_slice())?;
@@ -389,12 +390,8 @@ impl<'a> FlashBuilder<'a> {
     }
 
     /// Perform an erase of all sectors given in `sectors` which contain pages.
-    fn sector_erase(
-        &self,
-        flash: &mut Flasher,
-        sectors: &[FlashSector],
-    ) -> Result<(), FlashBuilderError> {
-        let r: R = flash.run_erase(|active| {
+    fn sector_erase(&self, flash: &mut Flasher, sectors: &[FlashSector]) -> Result<()> {
+        let r: Result<()> = flash.run_erase(|active| {
             for sector in sectors {
                 if !sector.pages.is_empty() {
                     active.erase_sector(sector.address)?;
@@ -409,11 +406,7 @@ impl<'a> FlashBuilder<'a> {
     /// Flash a program using double buffering.
     ///
     /// UNTESTED
-    fn program_double_buffer(
-        &self,
-        flash: &mut Flasher,
-        sectors: &[FlashSector],
-    ) -> Result<(), FlashBuilderError> {
+    fn program_double_buffer(&self, flash: &mut Flasher, sectors: &[FlashSector]) -> Result<()> {
         let mut current_buf = 0;
 
         flash.run_program(|active| {
@@ -426,7 +419,8 @@ impl<'a> FlashBuilder<'a> {
                 let result = active.wait_for_completion();
                 if let Ok(0) = result {
                 } else {
-                    return Err(FlashBuilderError::ProgramPage(page.address, 0));
+                    log::error!("Failed to program page at address 0x{:0}.", page.address);
+                    return res!(FlashBuilder);
                 }
 
                 // Start the next copy process.

@@ -4,44 +4,14 @@ use crate::coresight::{
         memory_ap::{BaseaddrFormat, MemoryAP, BASE, BASE2},
     },
     ap_access::{valid_access_ports, APAccess},
-    memory::romtable::{CSComponent, CSComponentId, PeripheralID, RomTableError},
+    memory::romtable::{CSComponent, CSComponentId, PeripheralID},
 };
-use crate::probe::{DebugProbeError, MasterProbe};
+use crate::error::*;
+use crate::probe::MasterProbe;
 use colored::*;
 use jep106::JEP106Code;
 use log::debug;
-use std::{error::Error, fmt};
-
-#[derive(Debug)]
-pub enum ReadError {
-    DebugProbeError(DebugProbeError),
-    RomTableError(RomTableError),
-    NotFound,
-}
-
-impl From<DebugProbeError> for ReadError {
-    fn from(e: DebugProbeError) -> Self {
-        ReadError::DebugProbeError(e)
-    }
-}
-
-impl From<RomTableError> for ReadError {
-    fn from(e: RomTableError) -> Self {
-        ReadError::RomTableError(e)
-    }
-}
-
-impl fmt::Display for ReadError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            ReadError::DebugProbeError(e) => write!(f, "failed to access target: {}", e),
-            ReadError::RomTableError(e) => write!(f, "failed to parse ROM table: {}", e),
-            ReadError::NotFound => f.write_str("chip info not found in IDR"),
-        }
-    }
-}
-
-impl Error for ReadError {}
+use std::fmt;
 
 pub struct ChipInfo {
     pub manufacturer: JEP106Code,
@@ -49,25 +19,25 @@ pub struct ChipInfo {
 }
 
 impl ChipInfo {
-    pub fn read_from_rom_table(probe: &mut MasterProbe) -> Result<Self, ReadError> {
+    pub fn read_from_rom_table(probe: &mut MasterProbe) -> Result<Self> {
         for access_port in valid_access_ports(probe) {
-            let idr = probe.read_register_ap(access_port, IDR::default())?;
+            let idr = dp!(probe.read_register_ap(access_port, IDR::default()));
             debug!("{:#x?}", idr);
 
             if idr.CLASS == APClass::MEMAP {
                 let access_port: MemoryAP = access_port.into();
 
-                let base_register = probe.read_register_ap(access_port, BASE::default())?;
+                let base_register = dp!(probe.read_register_ap(access_port, BASE::default()));
 
                 let mut baseaddr = if BaseaddrFormat::ADIv5 == base_register.Format {
-                    let base2 = probe.read_register_ap(access_port, BASE2::default())?;
+                    let base2 = dp!(probe.read_register_ap(access_port, BASE2::default()));
                     (u64::from(base2.BASEADDR) << 32)
                 } else {
                     0
                 };
                 baseaddr |= u64::from(base_register.BASEADDR << 12);
 
-                let component_table = CSComponent::try_parse(&probe.into(), baseaddr as u64)?;
+                let component_table = rt!(CSComponent::try_parse(&probe.into(), baseaddr as u64));
 
                 match component_table {
                     CSComponent::Class1RomTable(
@@ -99,7 +69,7 @@ impl ChipInfo {
             "flash and UICR area of the device, in addition to the entire RAM".yellow()
         );
 
-        Err(ReadError::NotFound)
+        res!(NotFound(NotFoundKind::Algorithm))
     }
 }
 

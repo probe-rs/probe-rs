@@ -4,8 +4,8 @@ use crate::config::{
     flash_algorithm::RawFlashAlgorithm,
     memory::{FlashRegion, MemoryRegion, RamRegion},
 };
-use crate::target::info::ChipInfo;
 use crate::error::*;
+use crate::target::info::ChipInfo;
 use std::fs::File;
 use std::path::Path;
 
@@ -59,7 +59,8 @@ impl Registry {
                         }
                     }
                 }
-                let (family, chip) = selected_family_and_chip.ok_or(err!(NotFound(NotFoundKind::Chip)))?;
+                let (family, chip) =
+                    selected_family_and_chip.ok_or(err!(NotFound(NotFoundKind::Chip)))?;
 
                 // Try get the correspnding flash algorithm.
                 let flash_algorithm = family
@@ -74,7 +75,7 @@ impl Registry {
                         }
                     })
                     .or_else(|| family.flash_algorithms.first())
-                    .ok_or(err!(NotFound(NotFoundKind::Algorithm)))?;
+                    .ok_or(NotFound(NotFoundKind::Algorithm))?;
 
                 (family, chip, flash_algorithm)
             }
@@ -93,13 +94,14 @@ impl Registry {
                         }
                     }
                 }
-                let (family, chip) = selected_family_and_chip.ok_or(err!(NotFound(NotFoundKind::Chip)))?;
+                let (family, chip) =
+                    selected_family_and_chip.ok_or(err!(NotFound(NotFoundKind::Chip)))?;
 
                 // Try get the correspnding flash algorithm.
                 let flash_algorithm = family
                     .flash_algorithms
                     .first()
-                    .ok_or(err!(NotFound(NotFoundKind::Algorithm)))?;
+                    .ok_or(NotFound(NotFoundKind::Algorithm))?;
 
                 (family, chip, flash_algorithm)
             }
@@ -109,7 +111,7 @@ impl Registry {
         let core = if let Some(core) = get_core(&family.core) {
             core
         } else {
-            return Err(err!(NotFound(NotFoundKind::Core)));
+            return res!(NotFound(NotFoundKind::Core));
         };
 
         let mut ram = None;
@@ -125,8 +127,8 @@ impl Registry {
         Ok(Target::new(
             family,
             chip,
-            ram.ok_or(err!(Missing(MissingKind::RamRegion)))?,
-            flash.ok_or(err!(Missing(MissingKind::FlashRegion)))?,
+            ram.ok_or(Missing(MissingKind::RamRegion))?,
+            flash.ok_or(Missing(MissingKind::FlashRegion))?,
             flash_algorithm,
             core,
         ))

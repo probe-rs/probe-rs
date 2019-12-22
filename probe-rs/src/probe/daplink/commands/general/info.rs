@@ -1,4 +1,6 @@
-use super::super::{Category, Error, Request, Response, Result};
+use super::super::{Category, Request, Response};
+
+use crate::error::*;
 
 use scroll::Pread;
 
@@ -106,7 +108,7 @@ impl Response for Capabilities {
                 swo_streaming_trace_implemented: buffer[offset + 2] & 0x40 > 0,
             })
         } else {
-            Err(Error::UnexpectedAnswer)
+            res!(UnexpectedDapAnswer)
         }
     }
 }
@@ -121,7 +123,7 @@ impl Response for TestDomainTime {
                 .expect("This is a bug. Please report it.");
             Ok(TestDomainTime(res))
         } else {
-            Err(Error::UnexpectedAnswer)
+            res!(UnexpectedDapAnswer)
         }
     }
 }
@@ -136,7 +138,7 @@ impl Response for SWOTraceBufferSize {
                 .expect("This is a bug. Please report it.");
             Ok(SWOTraceBufferSize(res))
         } else {
-            Err(Error::UnexpectedAnswer)
+            res!(UnexpectedDapAnswer)
         }
     }
 }
@@ -151,7 +153,7 @@ impl Response for PacketCount {
                 .expect("This is a bug. Please report it.");
             Ok(PacketCount(res))
         } else {
-            Err(Error::UnexpectedAnswer)
+            res!(UnexpectedDapAnswer)
         }
     }
 }
@@ -166,7 +168,7 @@ impl Response for PacketSize {
                 .expect("This is a bug. Please report it.");
             Ok(PacketSize(res))
         } else {
-            Err(Error::UnexpectedAnswer)
+            res!(UnexpectedDapAnswer)
         }
     }
 }

@@ -3,6 +3,8 @@ use super::access_ports::{
     APRegister,
 };
 
+use crate::error::Result;
+
 pub trait AccessPort {
     fn get_port_number(&self) -> u8;
 }
@@ -12,10 +14,8 @@ where
     PORT: AccessPort,
     REGISTER: APRegister<PORT>,
 {
-    type Error: std::error::Error;
-    fn read_register_ap(&mut self, port: PORT, register: REGISTER)
-        -> Result<REGISTER, Self::Error>;
-    fn write_register_ap(&mut self, port: PORT, register: REGISTER) -> Result<(), Self::Error>;
+    fn read_register_ap(&mut self, port: PORT, register: REGISTER) -> Result<REGISTER>;
+    fn write_register_ap(&mut self, port: PORT, register: REGISTER) -> Result<()>;
 }
 
 impl<'a, T, PORT, REGISTER> APAccess<PORT, REGISTER> for &'a mut T
@@ -24,17 +24,11 @@ where
     PORT: AccessPort,
     REGISTER: APRegister<PORT>,
 {
-    type Error = T::Error;
-
-    fn read_register_ap(
-        &mut self,
-        port: PORT,
-        register: REGISTER,
-    ) -> Result<REGISTER, Self::Error> {
+    fn read_register_ap(&mut self, port: PORT, register: REGISTER) -> Result<REGISTER> {
         (*self).read_register_ap(port, register)
     }
 
-    fn write_register_ap(&mut self, port: PORT, register: REGISTER) -> Result<(), Self::Error> {
+    fn write_register_ap(&mut self, port: PORT, register: REGISTER) -> Result<()> {
         (*self).write_register_ap(port, register)
     }
 }

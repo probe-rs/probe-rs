@@ -3,10 +3,9 @@ pub mod swd;
 pub mod swj;
 pub mod transfer;
 
-use crate::probe::DebugProbeError;
 use core::ops::Deref;
 
-pub(crate) type Result<T> = std::result::Result<T, Error>;
+use crate::error::*;
 
 #[derive(Debug)]
 pub(crate) enum Status {
@@ -19,7 +18,7 @@ impl Status {
         match value {
             0x00 => Ok(Status::DAPOk),
             0xFF => Ok(Status::DAPError),
-            _ => Err(Error::UnexpectedAnswer),
+            _ => res!(UnexpectedDapAnswer),
         }
     }
 }
@@ -44,37 +43,6 @@ pub(crate) trait Response: Sized {
     fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self>;
 }
 
-#[derive(Clone, Debug)]
-pub(crate) enum Error {
-    #[allow(dead_code)]
-    NotEnoughSpace,
-    #[allow(dead_code)]
-    USB,
-    UnexpectedAnswer,
-    DAP,
-    TooMuchData,
-    HidApi,
-}
-
-impl From<Error> for DebugProbeError {
-    fn from(error: Error) -> Self {
-        match error {
-            Error::NotEnoughSpace => DebugProbeError::UnknownError,
-            Error::USB => DebugProbeError::USBError,
-            Error::UnexpectedAnswer => DebugProbeError::UnknownError,
-            Error::DAP => DebugProbeError::UnknownError,
-            Error::TooMuchData => DebugProbeError::UnknownError,
-            Error::HidApi => DebugProbeError::USBError,
-        }
-    }
-}
-
-impl From<hidapi::HidError> for Error {
-    fn from(_error: hidapi::HidError) -> Self {
-        Error::HidApi
-    }
-}
-
 pub(crate) fn send_command<Req: Request, Res: Response>(
     device: &hidapi::HidDevice,
     request: Req,
@@ -95,6 +63,6 @@ pub(crate) fn send_command<Req: Request, Res: Response>(
     if buffer[0] == *Req::CATEGORY {
         Res::from_bytes(buffer, 1)
     } else {
-        Err(Error::UnexpectedAnswer)
+        res!(UnexpectedDapAnswer)
     }
 }

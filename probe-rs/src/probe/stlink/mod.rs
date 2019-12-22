@@ -5,12 +5,14 @@ mod usb_interface;
 
 pub use self::usb_interface::STLinkUSBDevice;
 
-use super::{DAPAccess, DebugProbe, DebugProbeError, DebugProbeInfo, Port, WireProtocol};
+use super::{DAPAccess, DebugProbe, DebugProbeInfo, Port, WireProtocol};
 use crate::coresight::{ap_access::AccessPort, common::Register, debug_port::Ctrl};
 use scroll::{Pread, BE};
 
 use constants::{commands, JTagFrequencyToDivider, Status, SwdFrequencyToDelayCount};
 use usb_interface::TIMEOUT;
+
+use crate::error::*;
 
 pub struct STLink {
     device: STLinkUSBDevice,
@@ -20,7 +22,7 @@ pub struct STLink {
 }
 
 impl DebugProbe for STLink {
-    fn new_from_probe_info(info: &DebugProbeInfo) -> Result<Box<Self>, DebugProbeError>
+    fn new_from_probe_info(info: &DebugProbeInfo) -> Result<Box<Self>>
     where
         Self: Sized,
     {
@@ -41,7 +43,7 @@ impl DebugProbe for STLink {
     }
 
     /// Enters debug mode.
-    fn attach(&mut self, protocol: Option<WireProtocol>) -> Result<WireProtocol, DebugProbeError> {
+    fn attach(&mut self, protocol: Option<WireProtocol>) -> Result<WireProtocol> {
         log::debug!("attach({:?})", protocol);
         self.enter_idle()?;
 
@@ -75,12 +77,12 @@ impl DebugProbe for STLink {
     }
 
     /// Leave debug mode.
-    fn detach(&mut self) -> Result<(), DebugProbeError> {
+    fn detach(&mut self) -> Result<()> {
         self.enter_idle()
     }
 
     /// Asserts the nRESET pin.
-    fn target_reset(&mut self) -> Result<(), DebugProbeError> {
+    fn target_reset(&mut self) -> Result<()> {
         let mut buf = [0; 2];
         self.device.write(
             vec![
@@ -98,58 +100,50 @@ impl DebugProbe for STLink {
 
 impl DAPAccess for STLink {
     /// Reads the DAP register on the specified port and address.
-    fn read_register(&mut self, port: Port, addr: u16) -> Result<u32, DebugProbeError> {
-        if (addr & 0xf0) == 0 || port != Port::DebugPort {
-            let port = match port {
-                Port::DebugPort => 0xffff,
-                Port::AccessPort(p) => p,
-            };
+    fn read_register(&mut self, port: Port, addr: u16) -> Result<u32> {
+        let port = match port {
+            Port::DebugPort => 0xffff,
+            Port::AccessPort(p) => p,
+        };
 
-            let cmd = vec![
-                commands::JTAG_COMMAND,
-                commands::JTAG_READ_DAP_REG,
-                (port & 0xFF) as u8,
-                ((port >> 8) & 0xFF) as u8,
-                (addr & 0xFF) as u8,
-                ((addr >> 8) & 0xFF) as u8,
-            ];
-            let mut buf = [0; 8];
-            self.device.write(cmd, &[], &mut buf, TIMEOUT)?;
-            Self::check_status(&buf)?;
-            // Unwrap is ok!
-            Ok((&buf[4..8]).pread(0).unwrap())
-        } else {
-            Err(DebugProbeError::BlanksNotAllowedOnDPRegister)
-        }
+        let cmd = vec![
+            commands::JTAG_COMMAND,
+            commands::JTAG_READ_DAP_REG,
+            (port & 0xFF) as u8,
+            ((port >> 8) & 0xFF) as u8,
+            (addr & 0xFF) as u8,
+            ((addr >> 8) & 0xFF) as u8,
+        ];
+        let mut buf = [0; 8];
+        self.device.write(cmd, &[], &mut buf, TIMEOUT)?;
+        Self::check_status(&buf)?;
+        // Unwrap is ok!
+        Ok((&buf[4..8]).pread(0).unwrap())
     }
 
     /// Writes a value to the DAP register on the specified port and address.
-    fn write_register(&mut self, port: Port, addr: u16, value: u32) -> Result<(), DebugProbeError> {
-        if (addr & 0xf0) == 0 || port != Port::DebugPort {
-            let port = match port {
-                Port::DebugPort => 0xffff,
-                Port::AccessPort(p) => p,
-            };
+    fn write_register(&mut self, port: Port, addr: u16, value: u32) -> Result<()> {
+        let port = match port {
+            Port::DebugPort => 0xffff,
+            Port::AccessPort(p) => p,
+        };
 
-            let cmd = vec![
-                commands::JTAG_COMMAND,
-                commands::JTAG_WRITE_DAP_REG,
-                (port & 0xFF) as u8,
-                ((port >> 8) & 0xFF) as u8,
-                (addr & 0xFF) as u8,
-                ((addr >> 8) & 0xFF) as u8,
-                (value & 0xFF) as u8,
-                ((value >> 8) & 0xFF) as u8,
-                ((value >> 16) & 0xFF) as u8,
-                ((value >> 24) & 0xFF) as u8,
-            ];
-            let mut buf = [0; 2];
-            self.device.write(cmd, &[], &mut buf, TIMEOUT)?;
-            Self::check_status(&buf)?;
-            Ok(())
-        } else {
-            Err(DebugProbeError::BlanksNotAllowedOnDPRegister)
-        }
+        let cmd = vec![
+            commands::JTAG_COMMAND,
+            commands::JTAG_WRITE_DAP_REG,
+            (port & 0xFF) as u8,
+            ((port >> 8) & 0xFF) as u8,
+            (addr & 0xFF) as u8,
+            ((addr >> 8) & 0xFF) as u8,
+            (value & 0xFF) as u8,
+            ((value >> 8) & 0xFF) as u8,
+            ((value >> 16) & 0xFF) as u8,
+            ((value >> 24) & 0xFF) as u8,
+        ];
+        let mut buf = [0; 2];
+        self.device.write(cmd, &[], &mut buf, TIMEOUT)?;
+        Self::check_status(&buf)?;
+        Ok(())
     }
 }
 
@@ -177,7 +171,7 @@ impl STLink {
 
     /// Reads the target voltage.
     /// For the china fake variants this will always read a nonzero value!
-    pub fn get_target_voltage(&mut self) -> Result<f32, DebugProbeError> {
+    pub fn get_target_voltage(&mut self) -> Result<f32> {
         let mut buf = [0; 8];
         match self
             .device
@@ -185,14 +179,13 @@ impl STLink {
         {
             Ok(_) => {
                 // The next two unwraps are safe!
-                let a0 = (&buf[0..4]).pread::<u32>(0).unwrap() as f32;
+                let mut a0 = (&buf[0..4]).pread::<u32>(0).unwrap() as f32;
                 let a1 = (&buf[4..8]).pread::<u32>(0).unwrap() as f32;
-                if a0 != 0.0 {
-                    Ok((2.0 * a1 * 1.2 / a0) as f32)
-                } else {
-                    // Should never happen
-                    Err(DebugProbeError::VoltageDivisionByZero)
+                if a0 == 0.0 {
+                    a0 = std::f32::MAX;
+                    log::warn!("The St-Link voltage was divided by 0.");
                 }
+                Ok((2.0 * a1 * 1.2 / a0) as f32)
             }
             Err(e) => Err(e),
         }
@@ -200,7 +193,7 @@ impl STLink {
 
     /// Commands the ST-Link to enter idle mode.
     /// Internal helper.
-    fn enter_idle(&mut self) -> Result<(), DebugProbeError> {
+    fn enter_idle(&mut self) -> Result<()> {
         let mut buf = [0; 2];
         match self
             .device
@@ -241,7 +234,7 @@ impl STLink {
     /// Reads the ST-Links version.
     /// Returns a tuple (hardware version, firmware version).
     /// This method stores the version data on the struct to make later use of it.
-    fn get_version(&mut self) -> Result<(u8, u8), DebugProbeError> {
+    fn get_version(&mut self) -> Result<(u8, u8)> {
         const HW_VERSION_SHIFT: u8 = 12;
         const HW_VERSION_MASK: u8 = 0x0F;
         const JTAG_VERSION_SHIFT: u8 = 6;
@@ -292,10 +285,10 @@ impl STLink {
 
         // Make sure everything is okay with the firmware we use.
         if self.jtag_version == 0 {
-            return Err(DebugProbeError::JTAGNotSupportedOnProbe);
+            log::info!("St-Link does not support JTAG");
         }
         if self.hw_version < 3 && self.jtag_version < Self::MIN_JTAG_VERSION {
-            return Err(DebugProbeError::ProbeFirmwareOutdated);
+            log::info!("St-Link firmware is outdated and not supported");
         }
 
         Ok((self.hw_version, self.jtag_version))
@@ -303,17 +296,14 @@ impl STLink {
 
     /// Opens the ST-Link USB device and tries to identify the ST-Links version and it's target voltage.
     /// Internal helper.
-    fn init(&mut self) -> Result<(), DebugProbeError> {
+    fn init(&mut self) -> Result<()> {
         self.enter_idle()?;
         self.get_version()?;
         self.get_target_voltage().map(|_| ())
     }
 
     /// sets the SWD frequency.
-    pub fn set_swd_frequency(
-        &mut self,
-        frequency: SwdFrequencyToDelayCount,
-    ) -> Result<(), DebugProbeError> {
+    pub fn set_swd_frequency(&mut self, frequency: SwdFrequencyToDelayCount) -> Result<()> {
         let mut buf = [0; 2];
         self.device.write(
             vec![
@@ -329,10 +319,7 @@ impl STLink {
     }
 
     /// Sets the JTAG frequency.
-    pub fn set_jtag_frequency(
-        &mut self,
-        frequency: JTagFrequencyToDivider,
-    ) -> Result<(), DebugProbeError> {
+    pub fn set_jtag_frequency(&mut self, frequency: JTagFrequencyToDivider) -> Result<()> {
         let mut buf = [0; 2];
         self.device.write(
             vec![
@@ -347,48 +334,48 @@ impl STLink {
         Self::check_status(&buf)
     }
 
-    pub fn open_ap(&mut self, apsel: impl AccessPort) -> Result<(), DebugProbeError> {
+    pub fn open_ap(&mut self, apsel: impl AccessPort) -> Result<()> {
         if self.jtag_version < Self::MIN_JTAG_VERSION_MULTI_AP {
-            Err(DebugProbeError::JTagDoesNotSupportMultipleAP)
-        } else {
-            let mut buf = [0; 2];
-            self.device.write(
-                vec![
-                    commands::JTAG_COMMAND,
-                    commands::JTAG_INIT_AP,
-                    apsel.get_port_number(),
-                    commands::JTAG_AP_NO_CORE,
-                ],
-                &[],
-                &mut buf,
-                TIMEOUT,
-            )?;
-            Self::check_status(&buf)
+            log::info!("This St-Link firmware version does not support multiple APs through JTAG.");
         }
+
+        let mut buf = [0; 2];
+        self.device.write(
+            vec![
+                commands::JTAG_COMMAND,
+                commands::JTAG_INIT_AP,
+                apsel.get_port_number(),
+                commands::JTAG_AP_NO_CORE,
+            ],
+            &[],
+            &mut buf,
+            TIMEOUT,
+        )?;
+        Self::check_status(&buf)
     }
 
-    pub fn close_ap(&mut self, apsel: impl AccessPort) -> Result<(), DebugProbeError> {
+    pub fn close_ap(&mut self, apsel: impl AccessPort) -> Result<()> {
         if self.jtag_version < Self::MIN_JTAG_VERSION_MULTI_AP {
-            Err(DebugProbeError::JTagDoesNotSupportMultipleAP)
-        } else {
-            let mut buf = [0; 2];
-            self.device.write(
-                vec![
-                    commands::JTAG_COMMAND,
-                    commands::JTAG_CLOSE_AP_DBG,
-                    apsel.get_port_number(),
-                ],
-                &[],
-                &mut buf,
-                TIMEOUT,
-            )?;
-            Self::check_status(&buf)
+            log::info!("This St-Link firmware version does not support multiple APs through JTAG.");
         }
+
+        let mut buf = [0; 2];
+        self.device.write(
+            vec![
+                commands::JTAG_COMMAND,
+                commands::JTAG_CLOSE_AP_DBG,
+                apsel.get_port_number(),
+            ],
+            &[],
+            &mut buf,
+            TIMEOUT,
+        )?;
+        Self::check_status(&buf)
     }
 
     /// Drives the nRESET pin.
     /// `is_asserted` tells wheter the reset should be asserted or deasserted.
-    pub fn drive_nreset(&mut self, is_asserted: bool) -> Result<(), DebugProbeError> {
+    pub fn drive_nreset(&mut self, is_asserted: bool) -> Result<()> {
         let state = if is_asserted {
             commands::JTAG_DRIVE_NRST_LOW
         } else {
@@ -408,11 +395,11 @@ impl STLink {
     /// Returns an `Err(DebugProbeError::UnknownError)` if the status is not `Status::JtagOk`.
     /// Returns Ok(()) otherwise.
     /// This can be called on any status returned from the attached target.
-    fn check_status(status: &[u8]) -> Result<(), DebugProbeError> {
+    fn check_status(status: &[u8]) -> Result<()> {
         log::trace!("check_status({:?})", status);
         if status[0] != Status::JtagOk as u8 {
             log::debug!("check_status failed: {:?}", status);
-            Err(DebugProbeError::UnknownError)
+            res!(UnknownError)
         } else {
             Ok(())
         }

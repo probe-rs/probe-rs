@@ -3,15 +3,10 @@ use crate::SharedOptions;
 use probe_rs::{
     config::registry::{Registry, SelectionStrategy},
     cores::m0::FakeM0,
-    coresight::access_ports::AccessPortError,
     flash::download::FileDownloadError,
-    probe::{
-        daplink, stlink, DebugProbe, DebugProbeError, DebugProbeType, FakeProbe, MasterProbe,
-        WireProtocol,
-    },
-    Session,
-    target::info::{self, ChipInfo},
-    Error,
+    probe::{daplink, stlink, DebugProbe, DebugProbeType, FakeProbe, MasterProbe, WireProtocol},
+    target::info::ChipInfo,
+    Error, Session,
 };
 
 use ron;
@@ -23,9 +18,6 @@ use std::path::Path;
 
 #[derive(Debug)]
 pub enum CliError {
-    InfoReadError(info::ReadError),
-    DebugProbe(DebugProbeError),
-    AccessPort(AccessPortError),
     StdIO(std::io::Error),
     FileDownload(FileDownloadError),
     ProbeRs(Error),
@@ -38,9 +30,6 @@ impl error::Error for CliError {
         use CliError::*;
 
         match self {
-            InfoReadError(e) => Some(e),
-            DebugProbe(ref e) => Some(e),
-            AccessPort(ref e) => Some(e),
             StdIO(ref e) => Some(e),
             ProbeRs(ref e) => Some(e),
             MissingArgument => None,
@@ -55,33 +44,12 @@ impl fmt::Display for CliError {
         use CliError::*;
 
         match self {
-            InfoReadError(e) => e.fmt(f),
-            DebugProbe(ref e) => e.fmt(f),
-            AccessPort(ref e) => e.fmt(f),
             StdIO(ref e) => e.fmt(f),
             FileDownload(ref e) => e.fmt(f),
             ProbeRs(ref e) => e.fmt(f),
             MissingArgument => write!(f, "Command expected more arguments."),
             UnableToOpenProbe => write!(f, "Unable to open probe."),
         }
-    }
-}
-
-impl From<info::ReadError> for CliError {
-    fn from(error: info::ReadError) -> Self {
-        CliError::InfoReadError(error)
-    }
-}
-
-impl From<AccessPortError> for CliError {
-    fn from(error: AccessPortError) -> Self {
-        CliError::AccessPort(error)
-    }
-}
-
-impl From<DebugProbeError> for CliError {
-    fn from(error: DebugProbeError) -> Self {
-        CliError::DebugProbe(error)
     }
 }
 

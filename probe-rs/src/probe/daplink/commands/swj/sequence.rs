@@ -1,6 +1,6 @@
 /// Implementation of the DAP_SWJ_SEQUENCE command
 ///
-use super::super::{Category, Error, Request, Response, Result, Status};
+use super::super::{Category, Request, Response, Result, Status};
 
 #[derive(Clone, Copy)]
 pub struct SequenceRequest {
@@ -37,7 +37,7 @@ impl Request for SequenceRequest {
 impl SequenceRequest {
     pub(crate) fn new(data: &[u8]) -> Result<SequenceRequest> {
         if data.len() > 32 {
-            return Err(Error::TooMuchData);
+            log::warn!("The data size exceeds the maximum supported length of 32 bytes.");
         }
 
         let bit_count = match data.len() {

@@ -1,4 +1,5 @@
 use super::debug_port::DPRegister;
+use crate::error::Result;
 
 pub trait DebugPort {
     fn version(&self) -> &'static str;
@@ -9,8 +10,7 @@ where
     PORT: DebugPort,
     REGISTER: DPRegister<PORT>,
 {
-    type Error: std::fmt::Debug;
-    fn read_dp_register(&mut self, port: &PORT) -> Result<REGISTER, Self::Error>;
+    fn read_dp_register(&mut self, port: &PORT) -> Result<REGISTER>;
 
-    fn write_dp_register(&mut self, port: &PORT, register: REGISTER) -> Result<(), Self::Error>;
+    fn write_dp_register(&mut self, port: &PORT, register: REGISTER) -> Result<()>;
 }

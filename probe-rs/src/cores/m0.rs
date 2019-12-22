@@ -1,11 +1,12 @@
 use crate::coresight::memory::MI;
-use crate::probe::{DebugProbeError, MasterProbe};
+use crate::probe::MasterProbe;
 use crate::target::{
     BasicRegisterAddresses, Core, CoreInformation, CoreRegister, CoreRegisterAddress,
 };
 use bitfield::bitfield;
 
 use super::CortexDump;
+use crate::error::*;
 use log::debug;
 
 bitfield! {
@@ -257,7 +258,7 @@ pub const PSP: CoreRegisterAddress = CoreRegisterAddress(0b01010);
 pub struct M0;
 
 impl M0 {
-    fn wait_for_core_register_transfer(&self, mi: &mut impl MI) -> Result<(), DebugProbeError> {
+    fn wait_for_core_register_transfer(&self, mi: &mut impl MI) -> Result<()> {
         // now we have to poll the dhcsr register, until the dhcsr.s_regrdy bit is set
         // (see C1-292, cortex m0 arm)
         for _ in 0..100 {
@@ -267,12 +268,12 @@ impl M0 {
                 return Ok(());
             }
         }
-        Err(DebugProbeError::Timeout)
+        res!(Timeout)
     }
 }
 
 impl Core for M0 {
-    fn wait_for_core_halted(&self, mi: &mut MasterProbe) -> Result<(), DebugProbeError> {
+    fn wait_for_core_halted(&self, mi: &mut MasterProbe) -> Result<()> {
         // Wait until halted state is active again.
         for _ in 0..100 {
             let dhcsr_val = Dhcsr(mi.read32(Dhcsr::ADDRESS)?);
@@ -281,14 +282,10 @@ impl Core for M0 {
                 return Ok(());
             }
         }
-        Err(DebugProbeError::Timeout)
+        res!(Timeout)
     }
 
-    fn read_core_reg(
-        &self,
-        mi: &mut MasterProbe,
-        addr: CoreRegisterAddress,
-    ) -> Result<u32, DebugProbeError> {
+    fn read_core_reg(&self, mi: &mut MasterProbe, addr: CoreRegisterAddress) -> Result<u32> {
         // Write the DCRSR value to select the register we want to read.
         let mut dcrsr_val = Dcrsr(0);
         dcrsr_val.set_regwnr(false); // Perform a read.
@@ -306,9 +303,8 @@ impl Core for M0 {
         mi: &mut MasterProbe,
         addr: CoreRegisterAddress,
         value: u32,
-    ) -> Result<(), DebugProbeError> {
-        let result: Result<(), DebugProbeError> =
-            mi.write32(Dcrdr::ADDRESS, value).map_err(From::from);
+    ) -> Result<()> {
+        let result: Result<()> = mi.write32(Dcrdr::ADDRESS, value).map_err(From::from);
         result?;
 
         // write the DCRSR value to select the register we want to write.
@@ -321,7 +317,7 @@ impl Core for M0 {
         self.wait_for_core_register_transfer(mi)
     }
 
-    fn halt(&self, mi: &mut MasterProbe) -> Result<CoreInformation, DebugProbeError> {
+    fn halt(&self, mi: &mut MasterProbe) -> Result<CoreInformation> {
         // TODO: Generic halt support
 
         let mut value = Dhcsr(0);
@@ -340,7 +336,7 @@ impl Core for M0 {
         Ok(CoreInformation { pc: pc_value })
     }
 
-    fn run(&self, mi: &mut MasterProbe) -> Result<(), DebugProbeError> {
+    fn run(&self, mi: &mut MasterProbe) -> Result<()> {
         let mut value = Dhcsr(0);
         value.set_c_halt(false);
         value.set_c_debugen(true);
@@ -349,7 +345,7 @@ impl Core for M0 {
         mi.write32(Dhcsr::ADDRESS, value.into()).map_err(Into::into)
     }
 
-    fn step(&self, mi: &mut MasterProbe) -> Result<CoreInformation, DebugProbeError> {
+    fn step(&self, mi: &mut MasterProbe) -> Result<CoreInformation> {
         let mut value = Dhcsr(0);
         // Leave halted state.
         // Step one instruction.
@@ -370,7 +366,7 @@ impl Core for M0 {
         Ok(CoreInformation { pc: pc_value })
     }
 
-    fn reset(&self, mi: &mut MasterProbe) -> Result<(), DebugProbeError> {
+    fn reset(&self, mi: &mut MasterProbe) -> Result<()> {
         // Set THE AIRCR.SYSRESETREQ control bit to 1 to request a reset. (ARM V6 ARM, B1.5.16)
 
         let mut value = Aircr(0);
@@ -382,7 +378,7 @@ impl Core for M0 {
         Ok(())
     }
 
-    fn reset_and_halt(&self, mi: &mut MasterProbe) -> Result<CoreInformation, DebugProbeError> {
+    fn reset_and_halt(&self, mi: &mut MasterProbe) -> Result<CoreInformation> {
         // Ensure debug mode is enabled
         let dhcsr_val = Dhcsr(mi.read32(Dhcsr::ADDRESS)?);
         if !dhcsr_val.c_debugen() {
@@ -420,7 +416,7 @@ impl Core for M0 {
         Ok(CoreInformation { pc: pc_value })
     }
 
-    fn get_available_breakpoint_units(&self, mi: &mut MasterProbe) -> Result<u32, DebugProbeError> {
+    fn get_available_breakpoint_units(&self, mi: &mut MasterProbe) -> Result<u32> {
         let result = mi.read32(BpCtrl::ADDRESS)?;
 
         self.wait_for_core_register_transfer(mi)?;
@@ -428,7 +424,7 @@ impl Core for M0 {
         Ok(result)
     }
 
-    fn enable_breakpoints(&self, mi: &mut MasterProbe, state: bool) -> Result<(), DebugProbeError> {
+    fn enable_breakpoints(&self, mi: &mut MasterProbe, state: bool) -> Result<()> {
         debug!("Enabling breakpoints: {:?}", state);
         let mut value = BpCtrl(0);
         value.set_key(true);
@@ -439,7 +435,7 @@ impl Core for M0 {
         Ok(())
     }
 
-    fn set_breakpoint(&self, mi: &mut MasterProbe, addr: u32) -> Result<(), DebugProbeError> {
+    fn set_breakpoint(&self, mi: &mut MasterProbe, addr: u32) -> Result<()> {
         debug!("Setting breakpoint on address 0x{:08x}", addr);
         let mut value = BpCompx(0);
         value.set_bp_match(0b11);
@@ -451,12 +447,7 @@ impl Core for M0 {
         Ok(())
     }
 
-    fn read_block8(
-        &self,
-        mi: &mut MasterProbe,
-        address: u32,
-        data: &mut [u8],
-    ) -> Result<(), DebugProbeError> {
+    fn read_block8(&self, mi: &mut MasterProbe, address: u32, data: &mut [u8]) -> Result<()> {
         Ok(mi.read_block8(address, data)?)
     }
 
@@ -477,43 +468,39 @@ impl FakeM0 {
 }
 
 impl Core for FakeM0 {
-    fn wait_for_core_halted(&self, _mi: &mut MasterProbe) -> Result<(), DebugProbeError> {
+    fn wait_for_core_halted(&self, _mi: &mut MasterProbe) -> Result<()> {
         unimplemented!();
     }
 
-    fn halt(&self, _mi: &mut MasterProbe) -> Result<CoreInformation, DebugProbeError> {
+    fn halt(&self, _mi: &mut MasterProbe) -> Result<CoreInformation> {
         unimplemented!()
     }
 
-    fn run(&self, _mi: &mut MasterProbe) -> Result<(), DebugProbeError> {
+    fn run(&self, _mi: &mut MasterProbe) -> Result<()> {
         unimplemented!()
     }
 
     /// Steps one instruction and then enters halted state again.
-    fn step(&self, _mi: &mut MasterProbe) -> Result<CoreInformation, DebugProbeError> {
+    fn step(&self, _mi: &mut MasterProbe) -> Result<CoreInformation> {
         unimplemented!()
     }
 
-    fn reset(&self, _mi: &mut MasterProbe) -> Result<(), DebugProbeError> {
+    fn reset(&self, _mi: &mut MasterProbe) -> Result<()> {
         unimplemented!()
     }
 
-    fn reset_and_halt(&self, _mi: &mut MasterProbe) -> Result<CoreInformation, DebugProbeError> {
+    fn reset_and_halt(&self, _mi: &mut MasterProbe) -> Result<CoreInformation> {
         unimplemented!()
     }
 
-    fn read_core_reg(
-        &self,
-        _mi: &mut MasterProbe,
-        addr: CoreRegisterAddress,
-    ) -> Result<u32, DebugProbeError> {
+    fn read_core_reg(&self, _mi: &mut MasterProbe, addr: CoreRegisterAddress) -> Result<u32> {
         let index: u32 = addr.into();
 
         self.dump
             .regs
             .get(index as usize)
             .copied()
-            .ok_or(DebugProbeError::UnknownError)
+            .ok_or(err!(UnknownError))
     }
 
     fn write_core_reg(
@@ -521,45 +508,33 @@ impl Core for FakeM0 {
         _mi: &mut MasterProbe,
         _addr: CoreRegisterAddress,
         _value: u32,
-    ) -> Result<(), DebugProbeError> {
+    ) -> Result<()> {
         unimplemented!()
     }
 
-    fn get_available_breakpoint_units(
-        &self,
-        _mi: &mut MasterProbe,
-    ) -> Result<u32, DebugProbeError> {
+    fn get_available_breakpoint_units(&self, _mi: &mut MasterProbe) -> Result<u32> {
         unimplemented!()
     }
 
-    fn enable_breakpoints(
-        &self,
-        _mi: &mut MasterProbe,
-        _state: bool,
-    ) -> Result<(), DebugProbeError> {
+    fn enable_breakpoints(&self, _mi: &mut MasterProbe, _state: bool) -> Result<()> {
         unimplemented!()
     }
 
-    fn set_breakpoint(&self, _mi: &mut MasterProbe, _addr: u32) -> Result<(), DebugProbeError> {
+    fn set_breakpoint(&self, _mi: &mut MasterProbe, _addr: u32) -> Result<()> {
         unimplemented!()
     }
 
-    fn read_block8(
-        &self,
-        _mi: &mut MasterProbe,
-        address: u32,
-        data: &mut [u8],
-    ) -> Result<(), DebugProbeError> {
+    fn read_block8(&self, _mi: &mut MasterProbe, address: u32, data: &mut [u8]) -> Result<()> {
         debug!("Read from dump: addr=0x{:08x}, len={}", address, data.len());
 
         if (address < self.dump.stack_addr)
             || (address as usize > (self.dump.stack_addr as usize + self.dump.stack.len()))
         {
-            return Err(DebugProbeError::UnknownError);
+            return res!(UnknownError);
         }
 
         if address as usize + data.len() > (self.dump.stack_addr as usize + self.dump.stack.len()) {
-            return Err(DebugProbeError::UnknownError);
+            return res!(UnknownError);
         }
 
         let stack_offset = (address - self.dump.stack_addr) as usize;

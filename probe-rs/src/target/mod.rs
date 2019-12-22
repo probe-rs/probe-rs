@@ -2,10 +2,9 @@ pub mod info;
 
 use serde::de::{Error, Unexpected};
 
-use crate::{
-    cores::get_core,
-    probe::{DebugProbeError, MasterProbe},
-};
+use crate::{cores::get_core, probe::MasterProbe};
+
+use crate::error::*;
 
 pub trait CoreRegister: Clone + From<u32> + Into<u32> + Sized + std::fmt::Debug {
     const ADDRESS: u32;
@@ -52,56 +51,47 @@ pub trait Core: std::fmt::Debug + objekt::Clone {
     /// a [`DebugProbeError::Timeout`] error will be returned.
     ///
     /// [`DebugProbeError::Timeout`]: ../probe/debug_probe/enum.DebugProbeError.html#variant.Timeout
-    fn wait_for_core_halted(&self, mi: &mut MasterProbe) -> Result<(), DebugProbeError>;
+    fn wait_for_core_halted(&self, mi: &mut MasterProbe) -> Result<()>;
 
     /// Try to halt the core. This function ensures the core is actually halted, and
     /// returns a [`DebugProbeError::Timeout`] otherwise.
     ///
     /// [`DebugProbeError::Timeout`]: ../probe/debug_probe/enum.DebugProbeError.html#variant.Timeout
-    fn halt(&self, mi: &mut MasterProbe) -> Result<CoreInformation, DebugProbeError>;
+    fn halt(&self, mi: &mut MasterProbe) -> Result<CoreInformation>;
 
-    fn run(&self, mi: &mut MasterProbe) -> Result<(), DebugProbeError>;
+    fn run(&self, mi: &mut MasterProbe) -> Result<()>;
 
     /// Reset the core, and then continue to execute instructions. If the core
     /// should be halted after reset, use the [`reset_and_halt`] function.
     ///
     /// [`reset_and_halt`]: trait.Core.html#tymethod.reset_and_halt
-    fn reset(&self, mi: &mut MasterProbe) -> Result<(), DebugProbeError>;
+    fn reset(&self, mi: &mut MasterProbe) -> Result<()>;
 
     /// Reset the core, and then immediately halt. To continue execution after
     /// reset, use the [`reset`] function.
     ///
     /// [`reset`]: trait.Core.html#tymethod.reset
-    fn reset_and_halt(&self, mi: &mut MasterProbe) -> Result<CoreInformation, DebugProbeError>;
+    fn reset_and_halt(&self, mi: &mut MasterProbe) -> Result<CoreInformation>;
 
     /// Steps one instruction and then enters halted state again.
-    fn step(&self, mi: &mut MasterProbe) -> Result<CoreInformation, DebugProbeError>;
+    fn step(&self, mi: &mut MasterProbe) -> Result<CoreInformation>;
 
-    fn read_core_reg(
-        &self,
-        mi: &mut MasterProbe,
-        addr: CoreRegisterAddress,
-    ) -> Result<u32, DebugProbeError>;
+    fn read_core_reg(&self, mi: &mut MasterProbe, addr: CoreRegisterAddress) -> Result<u32>;
 
     fn write_core_reg(
         &self,
         mi: &mut MasterProbe,
         addr: CoreRegisterAddress,
         value: u32,
-    ) -> Result<(), DebugProbeError>;
+    ) -> Result<()>;
 
-    fn get_available_breakpoint_units(&self, mi: &mut MasterProbe) -> Result<u32, DebugProbeError>;
+    fn get_available_breakpoint_units(&self, mi: &mut MasterProbe) -> Result<u32>;
 
-    fn enable_breakpoints(&self, mi: &mut MasterProbe, state: bool) -> Result<(), DebugProbeError>;
+    fn enable_breakpoints(&self, mi: &mut MasterProbe, state: bool) -> Result<()>;
 
-    fn set_breakpoint(&self, mi: &mut MasterProbe, addr: u32) -> Result<(), DebugProbeError>;
+    fn set_breakpoint(&self, mi: &mut MasterProbe, addr: u32) -> Result<()>;
 
-    fn read_block8(
-        &self,
-        mi: &mut MasterProbe,
-        address: u32,
-        data: &mut [u8],
-    ) -> Result<(), DebugProbeError>;
+    fn read_block8(&self, mi: &mut MasterProbe, address: u32, data: &mut [u8]) -> Result<()>;
 
     fn registers<'a>(&self) -> &'a BasicRegisterAddresses;
 }
@@ -117,7 +107,7 @@ impl<'de> serde::de::Visitor<'de> for CoreVisitor {
         write!(formatter, "an existing core name")
     }
 
-    fn visit_str<E>(self, s: &str) -> Result<Self::Value, E>
+    fn visit_str<E>(self, s: &str) -> std::result::Result<Self::Value, E>
     where
         E: serde::de::Error,
     {
@@ -133,7 +123,9 @@ impl<'de> serde::de::Visitor<'de> for CoreVisitor {
 }
 
 impl<'de> serde::Deserialize<'de> for Box<dyn Core> {
-    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+    fn deserialize<D: serde::Deserializer<'de>>(
+        deserializer: D,
+    ) -> std::result::Result<Self, D::Error> {
         deserializer.deserialize_identifier(CoreVisitor)
     }
 }

@@ -1,29 +1,13 @@
 use super::{APRegister, AddressIncrement, DataSize, MemoryAP, CSW, DRW, TAR};
 use crate::coresight::ap_access::APAccess;
 use crate::coresight::common::Register;
-use std::{collections::HashMap, error::Error, fmt};
+use crate::error::*;
+use std::collections::HashMap;
 
 pub struct MockMemoryAP {
     pub data: Vec<u8>,
     store: HashMap<(u8, u8), u32>,
 }
-
-#[derive(Debug)]
-pub enum MockMemoryError {
-    UnknownWidth,
-    UnknownRegister,
-}
-
-impl fmt::Display for MockMemoryError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::UnknownWidth => f.write_str("unknown register width"),
-            Self::UnknownRegister => f.write_str("unknown register"),
-        }
-    }
-}
-
-impl Error for MockMemoryError {}
 
 impl Default for MockMemoryAP {
     fn default() -> Self {
@@ -42,16 +26,10 @@ impl<REGISTER> APAccess<MemoryAP, REGISTER> for MockMemoryAP
 where
     REGISTER: APRegister<MemoryAP>,
 {
-    type Error = MockMemoryError;
-
     /// Mocks the read_register method of a AP.
     ///
     /// Returns an Error if any bad instructions or values are chosen.
-    fn read_register_ap(
-        &mut self,
-        _port: MemoryAP,
-        _register: REGISTER,
-    ) -> Result<REGISTER, Self::Error> {
+    fn read_register_ap(&mut self, _port: MemoryAP, _register: REGISTER) -> Result<REGISTER> {
         let csw = self.store[&(CSW::ADDRESS, CSW::APBANKSEL)];
         let address = self.store[&(TAR::ADDRESS, TAR::APBANKSEL)];
 
@@ -71,7 +49,7 @@ where
                             | (u32::from(self.data[address as usize + 1]) << 8),
                     )),
                     DataSize::U8 => Ok(REGISTER::from(u32::from(self.data[address as usize]))),
-                    _ => Err(MockMemoryError::UnknownWidth),
+                    _ => res!(Custom("unknown register width".into())),
                 };
 
                 if data.is_ok() {
@@ -102,18 +80,14 @@ where
             (TAR::ADDRESS, TAR::APBANKSEL) => Ok(REGISTER::from(
                 self.store[&(REGISTER::ADDRESS, REGISTER::APBANKSEL)],
             )),
-            _ => Err(MockMemoryError::UnknownRegister),
+            _ => res!(Custom("unknown register".into())),
         }
     }
 
     /// Mocks the write_register method of a AP.
     ///
     /// Returns an Error if any bad instructions or values are chosen.
-    fn write_register_ap(
-        &mut self,
-        _port: MemoryAP,
-        register: REGISTER,
-    ) -> Result<(), Self::Error> {
+    fn write_register_ap(&mut self, _port: MemoryAP, register: REGISTER) -> Result<()> {
         let value = register.into();
         self.store
             .insert((REGISTER::ADDRESS, REGISTER::APBANKSEL), value);
@@ -138,7 +112,7 @@ where
                         self.data[address as usize] = value as u8;
                         Ok(())
                     }
-                    _ => Err(MockMemoryError::UnknownWidth),
+                    _ => res!(Custom("unknown register width".into())),
                 };
 
                 if result.is_ok() {
@@ -171,7 +145,7 @@ where
                 self.store.insert((TAR::ADDRESS, TAR::APBANKSEL), value);
                 Ok(())
             }
-            _ => Err(MockMemoryError::UnknownRegister),
+            _ => res!(Custom("unknown register".into())),
         }
     }
 }

@@ -1,5 +1,5 @@
 //! Foobarino
-//! 
+//!
 //! This is some documentation
 
 #![allow(clippy::useless_let_if_seq)]
@@ -15,15 +15,15 @@ extern crate maplit;
 #[macro_use]
 extern crate serde_derive;
 
-mod error;
 pub mod config;
 pub mod cores;
 pub mod coresight;
 pub mod debug;
+mod error;
 pub mod flash;
 pub mod probe;
 mod session;
 pub mod target;
 
-pub use session::Session;
 pub use error::Error;
+pub use session::Session;
