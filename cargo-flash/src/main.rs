@@ -16,6 +16,7 @@ use probe_rs::{
     config::registry::{Registry, SelectionStrategy},
     coresight::access_ports::AccessPortError,
     flash::download::{download_file, Format},
+    flash::loader::FlashProgress,
     probe::{
         daplink, stlink, DebugProbe, DebugProbeError, DebugProbeType, MasterProbe, WireProtocol,
     },
@@ -229,11 +230,30 @@ fn main_try() -> Result<(), failure::Error> {
     let instant = Instant::now();
 
     let mm = session.target.memory_map.clone();
+    let progress = std::sync::Arc::new(std::sync::RwLock::new(FlashProgress::new()));
+    let tprogress = progress.clone();
+
+    std::thread::spawn(move || {
+        let pb = indicatif::ProgressBar::new(0);
+        let done = false;
+        while !done {
+            let progress = tprogress.read().unwrap();
+            pb.set_length(progress.total() as u64);
+            pb.set_position(progress.done() as u64);
+            if progress.total() == progress.done() {
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(3));
+        }
+        pb.finish_and_clear();
+    });
+
     download_file(
         &mut session,
         std::path::Path::new(&path_str.to_string().as_str()),
         Format::Elf,
         &mm,
+        progress
     )
     .map_err(|e| format_err!("failed to flash {}: {}", path_str, e))?;
 
