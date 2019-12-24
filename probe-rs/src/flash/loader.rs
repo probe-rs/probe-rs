@@ -107,6 +107,7 @@ impl<'a, 'b> FlashLoader<'a, 'b> {
     pub fn commit(
         &mut self,
         session: &mut Session,
+        progress: std::sync::Arc<std::sync::RwLock<FlashProgress>>,
         do_chip_erase: bool,
     ) -> Result<(), FlashLoaderError> {
         let target = &session.target;
@@ -127,6 +128,7 @@ impl<'a, 'b> FlashLoader<'a, 'b> {
                         Flasher::new(target, probe, flash_algorithm, region),
                         do_chip_erase,
                         self.keep_unwritten,
+                        progress.clone(),
                     )
                     .unwrap();
             }
@@ -135,5 +137,51 @@ impl<'a, 'b> FlashLoader<'a, 'b> {
         } else {
             Err(FlashLoaderError::NoFlashLoaderAlgorithmAttached)
         }
+    }
+}
+
+#[derive(Default)]
+pub struct FlashProgress {
+    total_sectors: usize,
+    total_pages: usize,
+    erased_sectors: usize,
+    programmed_pages: usize,
+    total_time: u128,
+}
+
+impl FlashProgress {
+    pub fn new() -> Self {
+        Self {
+            total_sectors: 0,
+            total_pages: 0,
+            erased_sectors: 0,
+            programmed_pages: 0,
+            total_time: 0,
+        }
+    }
+
+    pub fn set_goal(&mut self, total_sectors: usize, total_pages: usize) {
+        self.total_sectors = total_sectors;
+        self.total_pages = total_pages;
+    }
+
+    pub fn increment_erased_sectors(&mut self) {
+        self.erased_sectors += 1;
+    }
+
+    pub fn increment_programmed_pages(&mut self) {
+        self.programmed_pages += 1;
+    }
+
+    pub fn add_time(&mut self, delta: u128) {
+        self.total_time += delta;
+    }
+
+    pub fn done(&self) -> usize {
+        self.programmed_pages + self.erased_sectors
+    }
+
+    pub fn total(&self) -> usize {
+        self.total_sectors + self.total_pages
     }
 }

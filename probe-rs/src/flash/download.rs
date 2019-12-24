@@ -76,6 +76,7 @@ pub fn download_file(
     path: &Path,
     format: Format,
     memory_map: &[MemoryRegion],
+    progress: std::sync::Arc<std::sync::RwLock<FlashProgress>>,
 ) -> Result<(), FileDownloadError> {
     let mut file = match File::open(path) {
         Ok(file) => file,
@@ -94,7 +95,7 @@ pub fn download_file(
 
     loader
         // TODO: hand out chip erase flag
-        .commit(session, false)
+        .commit(session, progress, false)
         .map_err(FileDownloadError::FlashLoader)
 }
 
