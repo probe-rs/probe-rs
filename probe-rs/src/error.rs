@@ -10,7 +10,7 @@ macro_rules! u {
     ($kind:expr, $source:expr) => {{
         match $source {
             Ok(v) => v,
-            Err(e) => Err(Error::new_with_source($kind, Some(e)))?,
+            Err(e) => return Err(Error::new_with_source($kind, Some(e))),
         }
     }};
 }
@@ -85,6 +85,7 @@ pub enum ErrorKind {
     Missing(MissingKind),
     Io,
     Yaml,
+    IHexRead,
 
     AccessPort,
     InvalidAccessPortNumber,
@@ -134,6 +135,11 @@ pub enum ErrorKind {
     // MaxPageCountExceeded(usize),
     // ProgramPage(u32, u32),
     // Flasher(FlasherError),
+    FlashLoader,
+    NoSuitableFlash(u32),
+
+    FileDownloader,
+
     Custom(String),
 }
 
@@ -173,8 +179,9 @@ impl fmt::Display for Error {
             Registry => write!(f, "An error within the registry was encountered"),
             NotFound(nfk) => write!(f, "{} was not found", nfk),
             Missing(mk) => write!(f, "{} is missing", mk),
-            Io => write!(f, "Invalid Access Port Number"),
-            Yaml => write!(f, "Invalid Access Port Number"),
+            Io => write!(f, "An IO error was encountered"),
+            Yaml => write!(f, "The yaml parser failed"),
+            IHexRead => write!(f, "The ihex reader encountered an error"),
 
             Usb => write!(f, "An error with USB was encountered"),
             ProbeCouldNotBeCreated => write!(f, "Probe object could not be created"),
@@ -199,7 +206,7 @@ impl fmt::Display for Error {
             OutOfBounds => write!(f, "Out of bounds access"),
 
             NotARomtable => write!(f, "Component is not a valid rom table"),
-            CSComponentIdentificationError => write!(f, "Failed to identify CoreSight component"),
+            CSComponentIdentification => write!(f, "Failed to identify CoreSight component"),
 
             Flasher => write!(f, "The flasher encountered an error"),
             CallFailed { call, result } => {
@@ -215,6 +222,14 @@ impl fmt::Display for Error {
             ),
 
             FlashBuilder => write!(f, "The flash builder encountered an error"),
+
+            NoSuitableFlash(addr) => {
+                write!(f, "No flash memory was found at address {:#08x}.", addr)
+            }
+            FlashLoader => write!(f, "The flash loader encountered an error"),
+
+            FileDownloader => write!(f, "The file downloader encountered an error"),
+            _ => unimplemented!(),
         }
     }
 }
@@ -281,6 +296,12 @@ impl From<serde_yaml::Error> for Error {
     }
 }
 
+impl From<ihex::reader::ReaderError> for Error {
+    fn from(value: ihex::reader::ReaderError) -> Error {
+        Error::new_with_source(ErrorKind::IHexRead, Some(value))
+    }
+}
+
 impl From<rusb::Error> for Error {
     fn from(value: rusb::Error) -> Error {
         Error::new_with_source(ErrorKind::Usb, Some(value))
@@ -288,7 +309,7 @@ impl From<rusb::Error> for Error {
 }
 
 impl From<hidapi::HidError> for Error {
-    fn from(value: hidapi::HidError) -> Error {
+    fn from(_value: hidapi::HidError) -> Error {
         // std::error::Error is not implemented for hidapo::HidError,
         // which is why we cannot propagate it here.
         Error::new(ErrorKind::Usb)

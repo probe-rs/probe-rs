@@ -35,51 +35,6 @@ const CTRL_AP_IDR: IDR = IDR {
     TYPE: APType::JTAG_COM_AP,
 };
 
-// #[derive(Debug)]
-// pub enum DebugProbeError {
-//     USBError,
-//     JTAGNotSupportedOnProbe,
-//     ProbeFirmwareOutdated,
-//     VoltageDivisionByZero,
-//     UnknownMode,
-//     JTagDoesNotSupportMultipleAP,
-//     UnknownError,
-//     TransferFault(u32, u16),
-//     DataAlignmentError,
-//     Access16BitNotSupported,
-//     BlanksNotAllowedOnDPRegister,
-//     RegisterAddressMustBe16Bit,
-//     NotEnoughBytesRead,
-//     EndpointNotFound,
-//     RentalInitError,
-//     ProbeCouldNotBeCreated,
-//     TargetPowerUpFailed,
-//     Timeout,
-//     AccessPortError(AccessPortError),
-// }
-
-// impl Error for DebugProbeError {
-//     fn source(&self) -> Option<&(dyn Error + 'static)> {
-//         match self {
-//             DebugProbeError::AccessPortError(ref e) => Some(e),
-//             _ => None,
-//         }
-//     }
-// }
-
-// impl fmt::Display for DebugProbeError {
-//     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-//         // TODO: Cleanup of Debug Probe Errors
-//         write!(f, "{:?}", self)
-//     }
-// }
-
-// impl From<AccessPortError> for DebugProbeError {
-//     fn from(e: AccessPortError) -> Self {
-//         DebugProbeError::AccessPortError(e)
-//     }
-// }
-
 #[derive(Debug, PartialEq)]
 pub enum Port {
     DebugPort,

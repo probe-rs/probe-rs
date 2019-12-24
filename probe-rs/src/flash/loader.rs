@@ -1,7 +1,6 @@
+use crate::error::*;
 use crate::session::Session;
 use std::collections::HashMap;
-use std::error::Error;
-use std::fmt;
 
 use super::builder::FlashBuilder;
 use super::flasher::Flasher;
@@ -18,27 +17,6 @@ pub struct FlashLoader<'a, 'b> {
     keep_unwritten: bool,
 }
 
-#[derive(Debug)]
-pub enum FlashLoaderError {
-    NoSuitableFlash(u32),      // Contains the faulty address.
-    MemoryRegionNotFlash(u32), // Contains the faulty address.
-    NoFlashLoaderAlgorithmAttached,
-}
-
-impl Error for FlashLoaderError {}
-
-impl fmt::Display for FlashLoaderError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use FlashLoaderError::*;
-
-        match self {
-            NoSuitableFlash(addr) => write!(f, "No flash memory was found at address {:#08x}.", addr),
-            MemoryRegionNotFlash(addr) => write!(f, "Trying to access flash at address {:#08x}, which is not inside any defined flash region.", addr),
-            NoFlashLoaderAlgorithmAttached => write!(f, "Trying to write flash, but no flash loader algorithm is attached."),
-        }
-    }
-}
-
 impl<'a, 'b> FlashLoader<'a, 'b> {
     pub fn new(memory_map: &'a [MemoryRegion], keep_unwritten: bool) -> Self {
         Self {
@@ -50,7 +28,7 @@ impl<'a, 'b> FlashLoader<'a, 'b> {
     /// Stages a junk of data to be programmed.
     ///
     /// The chunk can cross flash boundaries as long as one flash region connects to another flash region.
-    pub fn add_data(&mut self, mut address: u32, data: &'b [u8]) -> Result<(), FlashLoaderError> {
+    pub fn add_data(&mut self, mut address: u32, data: &'b [u8]) -> Result<()> {
         let size = data.len();
         let mut remaining = size;
         while remaining > 0 {
@@ -76,7 +54,7 @@ impl<'a, 'b> FlashLoader<'a, 'b> {
                 remaining -= program_length;
                 address += program_length as u32;
             } else {
-                return Err(FlashLoaderError::NoSuitableFlash(address));
+                return res!(NoSuitableFlash(address));
             }
         }
         Ok(())
@@ -104,11 +82,7 @@ impl<'a, 'b> FlashLoader<'a, 'b> {
     /// Requires a session with an attached target that has a known flash algorithm.
     ///
     /// If `do_chip_erase` is `true` the entire flash will be erased.
-    pub fn commit(
-        &mut self,
-        session: &mut Session,
-        do_chip_erase: bool,
-    ) -> Result<(), FlashLoaderError> {
+    pub fn commit(&mut self, session: &mut Session, do_chip_erase: bool) -> Result<()> {
         let target = &session.target;
         let probe = &mut session.probe;
 
@@ -133,7 +107,8 @@ impl<'a, 'b> FlashLoader<'a, 'b> {
 
             Ok(())
         } else {
-            Err(FlashLoaderError::NoFlashLoaderAlgorithmAttached)
+            log::error!("Trying to write flash, but no flash loader algorithm is attached.");
+            res!(FlashLoader)
         }
     }
 }

@@ -3,7 +3,6 @@ use crate::SharedOptions;
 use probe_rs::{
     config::registry::{Registry, SelectionStrategy},
     cores::m0::FakeM0,
-    flash::download::FileDownloadError,
     probe::{daplink, stlink, DebugProbe, DebugProbeType, FakeProbe, MasterProbe, WireProtocol},
     target::info::ChipInfo,
     Error, Session,
@@ -19,7 +18,6 @@ use std::path::Path;
 #[derive(Debug)]
 pub enum CliError {
     StdIO(std::io::Error),
-    FileDownload(FileDownloadError),
     ProbeRs(Error),
     MissingArgument,
     UnableToOpenProbe,
@@ -34,7 +32,6 @@ impl error::Error for CliError {
             ProbeRs(ref e) => Some(e),
             MissingArgument => None,
             UnableToOpenProbe => None,
-            FileDownload(ref e) => Some(e),
         }
     }
 }
@@ -45,7 +42,6 @@ impl fmt::Display for CliError {
 
         match self {
             StdIO(ref e) => e.fmt(f),
-            FileDownload(ref e) => e.fmt(f),
             ProbeRs(ref e) => e.fmt(f),
             MissingArgument => write!(f, "Command expected more arguments."),
             UnableToOpenProbe => write!(f, "Unable to open probe."),
@@ -62,12 +58,6 @@ impl From<std::io::Error> for CliError {
 impl From<probe_rs::Error> for CliError {
     fn from(error: probe_rs::Error) -> Self {
         CliError::ProbeRs(error)
-    }
-}
-
-impl From<FileDownloadError> for CliError {
-    fn from(error: FileDownloadError) -> Self {
-        CliError::FileDownload(error)
     }
 }
 

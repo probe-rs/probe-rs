@@ -46,24 +46,6 @@ impl Operation for Verify {
     }
 }
 
-#[derive(Debug)]
-pub enum FlasherError {
-    Init(u32),
-    Uninit(u32),
-    EraseAll(u32),
-    EraseAllNotSupported,
-    EraseSector(u32, u32),
-    ProgramPage(u32, u32),
-    InvalidBufferNumber(u32, u32),
-    UnalignedFlashWriteAddress,
-    UnalignedPhraseLength,
-    ProgramPhrase(u32, u32),
-    AnalyzerNotSupported,
-    SizeNotPowerOf2,
-    AddressNotMultipleOfSize,
-    AddressNotInRegion(u32, FlashRegion),
-}
-
 pub struct Flasher<'a> {
     target: &'a Target,
     probe: &'a mut MasterProbe,

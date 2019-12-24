@@ -1,13 +1,11 @@
+use crate::error::*;
 use crate::session::Session;
 use ihex;
 use ihex::record::Record::*;
-use std::error::Error;
-use std::fmt;
 use std::fs::File;
 use std::io::{Read, Seek, SeekFrom};
 use std::path::Path;
 
-use super::*;
 use crate::config::memory::{MemoryRange, MemoryRegion};
 
 pub struct BinOptions {
@@ -23,68 +21,18 @@ pub enum Format {
     Elf,
 }
 
-#[derive(Debug)]
-pub enum FileDownloadError {
-    FlashLoader(FlashLoaderError),
-    IhexRead(ihex::reader::ReaderError),
-    IO(std::io::Error),
-    Object(&'static str),
-}
-
-impl Error for FileDownloadError {}
-
-impl fmt::Display for FileDownloadError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use FileDownloadError::*;
-
-        match self {
-            FlashLoader(ref e) => e.fmt(f),
-            IhexRead(ref e) => e.fmt(f),
-            IO(ref e) => e.fmt(f),
-            Object(ref s) => write!(f, "Object Error: {}.", s),
-        }
-    }
-}
-
-impl From<FlashLoaderError> for FileDownloadError {
-    fn from(error: FlashLoaderError) -> FileDownloadError {
-        FileDownloadError::FlashLoader(error)
-    }
-}
-
-impl From<ihex::reader::ReaderError> for FileDownloadError {
-    fn from(error: ihex::reader::ReaderError) -> FileDownloadError {
-        FileDownloadError::IhexRead(error)
-    }
-}
-
-impl From<std::io::Error> for FileDownloadError {
-    fn from(error: std::io::Error) -> FileDownloadError {
-        FileDownloadError::IO(error)
-    }
-}
-
-impl From<&'static str> for FileDownloadError {
-    fn from(error: &'static str) -> FileDownloadError {
-        FileDownloadError::Object(error)
-    }
-}
-
 /// Downloads a file at `path` into flash.
 pub fn download_file(
     session: &mut Session,
     path: &Path,
     format: Format,
     memory_map: &[MemoryRegion],
-) -> Result<(), FileDownloadError> {
-    let mut file = match File::open(path) {
-        Ok(file) => file,
-        Err(e) => return Err(FileDownloadError::IO(e)),
-    };
+) -> Result<()> {
+    let mut file = u!(FileDownloader, File::open(path));
     let mut buffer = vec![];
     let mut buffer_vec = vec![];
     // IMPORTANT: Change this to an actual memory map of a real chip
-    let mut loader = FlashLoader::new(memory_map, false);
+    let mut loader = super::FlashLoader::new(memory_map, false);
 
     match format {
         Format::Bin(options) => download_bin(&mut buffer, &mut file, &mut loader, options),
@@ -95,16 +43,16 @@ pub fn download_file(
     loader
         // TODO: hand out chip erase flag
         .commit(session, false)
-        .map_err(FileDownloadError::FlashLoader)
+        .map_err(|e| err!(FlashLoader, e))
 }
 
 /// Starts the download of a binary file.
 fn download_bin<'b, T: Read + Seek>(
     buffer: &'b mut Vec<u8>,
     file: &'b mut T,
-    loader: &mut FlashLoader<'_, 'b>,
+    loader: &mut super::FlashLoader<'_, 'b>,
     options: BinOptions,
-) -> Result<(), FileDownloadError> {
+) -> Result<()> {
     // Skip the specified bytes.
     file.seek(SeekFrom::Start(u64::from(options.skip)))?;
 
@@ -128,8 +76,8 @@ fn download_bin<'b, T: Read + Seek>(
 fn download_hex<'b, T: Read + Seek>(
     buffer: &'b mut Vec<(u32, Vec<u8>)>,
     file: &mut T,
-    loader: &mut FlashLoader<'_, 'b>,
-) -> Result<(), FileDownloadError> {
+    loader: &mut super::FlashLoader<'_, 'b>,
+) -> Result<()> {
     let mut _extended_segment_address = 0;
     let mut extended_linear_address = 0;
 
@@ -164,8 +112,8 @@ fn download_hex<'b, T: Read + Seek>(
 fn download_elf<'b, T: Read + Seek>(
     buffer: &'b mut Vec<u8>,
     file: &'b mut T,
-    loader: &mut FlashLoader<'_, 'b>,
-) -> Result<(), FileDownloadError> {
+    loader: &mut super::FlashLoader<'_, 'b>,
+) -> Result<()> {
     file.read_to_end(buffer)?;
 
     use goblin::elf::program_header::*;

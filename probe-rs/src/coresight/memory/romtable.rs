@@ -61,7 +61,7 @@ impl<'p, 'r, P: MI> Iterator for RomTableIterator<'p, 'r, P> {
         let mut entry_data = [0u32; 1];
 
         if let Err(e) = probe.read_block32(component_address as u32, &mut entry_data) {
-            return Some(Err(e.into()));
+            return Some(Err(e));
         }
 
         // end of entries is marked by an all zero entry
