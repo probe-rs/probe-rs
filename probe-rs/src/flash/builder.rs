@@ -1,3 +1,4 @@
+use crate::flash::loader::FlashProgress;
 use super::flasher::{Flasher, FlasherError};
 use crate::config::memory::{PageInfo, SectorInfo};
 
@@ -179,6 +180,7 @@ impl<'a> FlashBuilder<'a> {
         mut flash: Flasher,
         mut do_chip_erase: bool,
         restore_unwritten_bytes: bool,
+        progress: std::sync::Arc<std::sync::RwLock<FlashProgress>>,
     ) -> Result<(), FlashBuilderError> {
         if self.flash_write_data.is_empty() {
             // Nothing to do.
@@ -189,6 +191,9 @@ impl<'a> FlashBuilder<'a> {
 
         // Convert the list of flash operations into flash sectors and pages.
         self.build_sectors_and_pages(&mut flash, &mut sectors, restore_unwritten_bytes)?;
+
+        let num_pages = sectors.iter().map(|s| s.pages.len()).sum();
+        progress.write().unwrap().set_goal(sectors.len(), num_pages);
 
         // Check if there is even sectors to flash.
         if sectors.is_empty() || sectors[0].pages.is_empty() {
@@ -209,16 +214,16 @@ impl<'a> FlashBuilder<'a> {
 
         // Erase all necessary sectors.
         if do_chip_erase {
-            self.chip_erase(&mut flash)?;
+            self.chip_erase(&mut flash, &sectors, progress.clone())?;
         } else {
-            self.sector_erase(&mut flash, &sectors)?;
+            self.sector_erase(&mut flash, &sectors, progress.clone())?;
         }
 
         // Flash all necessary pages.
         if flash.double_buffering_supported() && self.enable_double_buffering {
-            self.program_double_buffer(&mut flash, &sectors)?;
+            self.program_double_buffer(&mut flash, &sectors, progress)?;
         } else {
-            self.program_simple(&mut flash, &sectors)?;
+            self.program_simple(&mut flash, &sectors, progress)?;
         };
 
         Ok(())
@@ -368,10 +373,17 @@ impl<'a> FlashBuilder<'a> {
     }
 
     // Erase the entire chip.
-    fn chip_erase(&self, flash: &mut Flasher) -> Result<(), FlashBuilderError> {
-        flash
+    fn chip_erase(&self, flash: &mut Flasher, 
+        sectors: &[FlashSector], progress: std::sync::Arc<std::sync::RwLock<FlashProgress>>) -> Result<(), FlashBuilderError> {
+        let t = std::time::Instant::now();
+        let result = flash
             .run_erase(|active| active.erase_all())
-            .map_err(From::from)
+            .map_err(From::from);
+        for _ in sectors {
+            progress.write().unwrap().increment_erased_sectors();
+        }
+        progress.write().unwrap().add_time(t.elapsed().as_millis());
+        result
     }
 
     /// Program all sectors in `sectors` by first performing a chip erase.
@@ -379,13 +391,18 @@ impl<'a> FlashBuilder<'a> {
         &self,
         flash: &mut Flasher,
         sectors: &[FlashSector],
+        progress: std::sync::Arc<std::sync::RwLock<FlashProgress>>,
     ) -> Result<(), FlashBuilderError> {
-        flash.run_program(|active| {
+        let t = std::time::Instant::now();
+        let result = flash.run_program(|active| {
             for page in Self::pages(sectors) {
                 active.program_page(page.address, page.data.as_slice())?;
+                progress.write().unwrap().increment_programmed_pages();
             }
             Ok(())
-        })
+        });
+        progress.write().unwrap().add_time(t.elapsed().as_millis());
+        result
     }
 
     /// Perform an erase of all sectors given in `sectors` which contain pages.
@@ -393,16 +410,20 @@ impl<'a> FlashBuilder<'a> {
         &self,
         flash: &mut Flasher,
         sectors: &[FlashSector],
+        progress: std::sync::Arc<std::sync::RwLock<FlashProgress>>,
     ) -> Result<(), FlashBuilderError> {
+        let t = std::time::Instant::now();
         let r: R = flash.run_erase(|active| {
             for sector in sectors {
                 if !sector.pages.is_empty() {
                     active.erase_sector(sector.address)?;
+                    progress.write().unwrap().increment_erased_sectors();
                 }
             }
             Ok(())
         });
         r?;
+        progress.write().unwrap().add_time(t.elapsed().as_millis());
         Ok(())
     }
 
@@ -413,10 +434,11 @@ impl<'a> FlashBuilder<'a> {
         &self,
         flash: &mut Flasher,
         sectors: &[FlashSector],
+        progress: std::sync::Arc<std::sync::RwLock<FlashProgress>>,
     ) -> Result<(), FlashBuilderError> {
         let mut current_buf = 0;
-
-        flash.run_program(|active| {
+        let t = std::time::Instant::now();
+        let result = flash.run_program(|active| {
             for page in Self::pages(sectors) {
                 // At the start of each loop cycle load the next page buffer into RAM.
                 active.load_page_buffer(page.address, page.data.as_slice(), current_buf)?;
@@ -424,6 +446,7 @@ impl<'a> FlashBuilder<'a> {
                 // Then wait for the active RAM -> Flash copy process to finish.
                 // Also check if it finished properly. If it didn't, return an error.
                 let result = active.wait_for_completion();
+                progress.write().unwrap().increment_programmed_pages();
                 if let Ok(0) = result {
                 } else {
                     return Err(FlashBuilderError::ProgramPage(page.address, 0));
@@ -441,6 +464,8 @@ impl<'a> FlashBuilder<'a> {
             }
 
             Ok(())
-        })
+        });
+        progress.write().unwrap().add_time(t.elapsed().as_millis());
+        result
     }
 }

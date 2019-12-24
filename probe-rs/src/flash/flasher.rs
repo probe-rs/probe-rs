@@ -1,3 +1,4 @@
+use crate::flash::loader::FlashProgress;
 use super::builder::FlashBuilder;
 use crate::config::{
     flash_algorithm::FlashAlgorithm,
@@ -241,6 +242,7 @@ impl<'a> Flasher<'a> {
         self,
         address: u32,
         data: &[u8],
+        progress: std::sync::Arc<std::sync::RwLock<FlashProgress>>,
         do_chip_erase: bool,
         _fast_verify: bool,
     ) -> Result<(), FlasherError> {
@@ -257,7 +259,7 @@ impl<'a> Flasher<'a> {
 
         let mut fb = FlashBuilder::new();
         fb.add_data(address, data).expect("Add Data failed");
-        fb.program(self, do_chip_erase, true)
+        fb.program(self, do_chip_erase, true, progress)
             .expect("Add Data failed");
 
         Ok(())
