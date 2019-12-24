@@ -235,8 +235,7 @@ fn main_try() -> Result<(), failure::Error> {
 
     std::thread::spawn(move || {
         let pb = indicatif::ProgressBar::new(0);
-        let done = false;
-        while !done {
+        loop {
             let progress = tprogress.read().unwrap();
             pb.set_length(progress.total() as u64);
             pb.set_position(progress.done() as u64);
