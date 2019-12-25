@@ -142,6 +142,7 @@ impl<'a, 'b> FlashLoader<'a, 'b> {
 
 #[derive(Default)]
 pub struct FlashProgress {
+    initialized: bool,
     total_sectors: usize,
     total_pages: usize,
     erased_sectors: usize,
@@ -152,6 +153,7 @@ pub struct FlashProgress {
 impl FlashProgress {
     pub fn new() -> Self {
         Self {
+            initialized: false,
             total_sectors: 0,
             total_pages: 0,
             erased_sectors: 0,
@@ -160,9 +162,10 @@ impl FlashProgress {
         }
     }
 
-    pub fn set_goal(&mut self, total_sectors: usize, total_pages: usize) {
+    pub fn initialize(&mut self, total_sectors: usize, total_pages: usize) {
         self.total_sectors = total_sectors;
         self.total_pages = total_pages;
+        self.initialized = true;
     }
 
     pub fn increment_erased_sectors(&mut self) {
@@ -183,5 +186,25 @@ impl FlashProgress {
 
     pub fn total(&self) -> usize {
         self.total_sectors + self.total_pages
+    }
+
+    pub fn total_sectors(&self) -> usize {
+        self.total_sectors
+    }
+
+    pub fn total_pages(&self) -> usize {
+        self.total_pages
+    }
+
+    pub fn sectors(&self) -> usize {
+        self.erased_sectors
+    }
+
+    pub fn pages(&self) -> usize {
+        self.programmed_pages
+    }
+
+    pub fn initialized(&self) -> bool {
+        self.initialized
     }
 }

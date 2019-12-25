@@ -34,25 +34,25 @@ pub fn read_status(device: &hidapi::HidDevice) {
     let vendor_id: super::commands::general::info::VendorID =
         super::commands::send_command(device, super::commands::general::info::Command::VendorID)
             .unwrap();
-    println!("{:?}", vendor_id);
+    log::info!("{:?}", vendor_id);
     let product_id: super::commands::general::info::ProductID =
         super::commands::send_command(device, super::commands::general::info::Command::ProductID)
             .unwrap();
-    println!("{:?}", product_id);
+    log::info!("{:?}", product_id);
     let serial_number: super::commands::general::info::SerialNumber =
         super::commands::send_command(
             device,
             super::commands::general::info::Command::SerialNumber,
         )
         .unwrap();
-    println!("{:?}", serial_number);
+    log::info!("{:?}", serial_number);
     let firmware_version: super::commands::general::info::FirmwareVersion =
         super::commands::send_command(
             device,
             super::commands::general::info::Command::FirmwareVersion,
         )
         .unwrap();
-    println!("{:?}", firmware_version);
+    log::info!("{:?}", firmware_version);
 
     let target_device_vendor: super::commands::general::info::TargetDeviceVendor =
         super::commands::send_command(
@@ -60,7 +60,7 @@ pub fn read_status(device: &hidapi::HidDevice) {
             super::commands::general::info::Command::TargetDeviceVendor,
         )
         .unwrap();
-    println!("{:?}", target_device_vendor);
+    log::info!("{:?}", target_device_vendor);
 
     let target_device_name: super::commands::general::info::TargetDeviceName =
         super::commands::send_command(
@@ -68,5 +68,5 @@ pub fn read_status(device: &hidapi::HidDevice) {
             super::commands::general::info::Command::TargetDeviceName,
         )
         .unwrap();
-    println!("{:?}", target_device_name);
+    log::info!("{:?}", target_device_name);
 }
