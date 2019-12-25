@@ -1,6 +1,6 @@
-use crate::flash::loader::FlashProgress;
 use super::flasher::{Flasher, FlasherError};
 use crate::config::memory::{PageInfo, SectorInfo};
+use crate::flash::loader::FlashProgress;
 
 /// A struct to hold all the information about one page of flash.
 #[derive(Derivative, Clone)]
@@ -193,7 +193,10 @@ impl<'a> FlashBuilder<'a> {
         self.build_sectors_and_pages(&mut flash, &mut sectors, restore_unwritten_bytes)?;
 
         let num_pages = sectors.iter().map(|s| s.pages.len()).sum();
-        progress.write().unwrap().initialize(sectors.len(), num_pages);
+        progress
+            .write()
+            .unwrap()
+            .initialize(sectors.len(), num_pages);
 
         // Check if there is even sectors to flash.
         if sectors.is_empty() || sectors[0].pages.is_empty() {
@@ -373,8 +376,12 @@ impl<'a> FlashBuilder<'a> {
     }
 
     // Erase the entire chip.
-    fn chip_erase(&self, flash: &mut Flasher, 
-        sectors: &[FlashSector], progress: std::sync::Arc<std::sync::RwLock<FlashProgress>>) -> Result<(), FlashBuilderError> {
+    fn chip_erase(
+        &self,
+        flash: &mut Flasher,
+        sectors: &[FlashSector],
+        progress: std::sync::Arc<std::sync::RwLock<FlashProgress>>,
+    ) -> Result<(), FlashBuilderError> {
         let t = std::time::Instant::now();
         let result = flash
             .run_erase(|active| active.erase_all())

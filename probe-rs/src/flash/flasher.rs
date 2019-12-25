@@ -1,4 +1,3 @@
-use crate::flash::loader::FlashProgress;
 use super::builder::FlashBuilder;
 use crate::config::{
     flash_algorithm::FlashAlgorithm,
@@ -6,6 +5,7 @@ use crate::config::{
     target::Target,
 };
 use crate::coresight::{access_ports::AccessPortError, memory::MI};
+use crate::flash::loader::FlashProgress;
 use crate::probe::{DebugProbeError, MasterProbe};
 
 pub trait Operation {
