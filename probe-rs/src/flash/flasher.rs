@@ -278,11 +278,10 @@ pub struct ActiveFlasher<'a, O: Operation> {
 impl<'a, O: Operation> ActiveFlasher<'a, O> {
     pub fn init(&mut self, address: Option<u32>, clock: Option<u32>) -> Result<(), FlasherError> {
         let algo = &self.flash_algorithm;
-        println!("RUN INIT");
+        log::debug!("Running init routine.");
 
         // Execute init routine if one is present.
         if let Some(pc_init) = algo.pc_init {
-            log::debug!("Running init routine.");
             let result = self.call_function_and_wait(
                 pc_init,
                 address,

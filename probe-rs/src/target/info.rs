@@ -91,7 +91,7 @@ impl ChipInfo {
                 }
             }
         }
-        println!(
+        log::info!(
             "{}\n{}\n{}\n{}",
             "If you are using a Nordic chip, it might be locked to debug access".yellow(),
             "Run cargo flash with --nrf-recover to unlock".yellow(),

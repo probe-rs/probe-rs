@@ -231,20 +231,65 @@ fn main_try() -> Result<(), failure::Error> {
 
     let mm = session.target.memory_map.clone();
     let progress = std::sync::Arc::new(std::sync::RwLock::new(FlashProgress::new()));
-    let tprogress = progress.clone();
 
+    let m = indicatif::MultiProgress::new();
+    let style = indicatif::ProgressStyle::default_bar()
+            .tick_chars("⠁⠂⠄⡀⢀⠠⠐⠈✔")
+            .progress_chars("##-")
+            .template("    {msg:.green.bold} {spinner} [{elapsed_precise}] [{bar:>40}] {pos}/{len} (eta {eta})");
+
+    // Create a new progress bar for the erase progress.
+    let pbe = m.add(indicatif::ProgressBar::new(0));
+    pbe.set_style(style.clone());
+    pbe.set_message("Erasing sectors  ");
+
+    // Create a new progress bar for the program progress.
+    let pbp = m.add(indicatif::ProgressBar::new(0));
+    pbp.set_style(style);
+    pbp.set_message("Programming pages");
+
+    // static CHECK_MARK: console::Emoji<'_, '_> = console::Emoji("✓  ", "");
+
+    let tprogress = progress.clone();
     std::thread::spawn(move || {
-        let pb = indicatif::ProgressBar::new(0);
+        // Wait until the progress bars were initialized.
         loop {
             let progress = tprogress.read().unwrap();
-            pb.set_length(progress.total() as u64);
-            pb.set_position(progress.done() as u64);
-            if progress.total() == progress.done() {
+            if progress.initialized() {
+                pbe.set_length(progress.total_sectors() as u64);
+                pbp.set_length(progress.total_pages() as u64);
+                break;
+            }
+        }
+
+        loop {
+            let progress = tprogress.read().unwrap();
+
+            // Set erased sectors progress.
+            if progress.total_sectors() != progress.sectors() {
+                pbe.set_position(progress.sectors() as u64);
+            } else {
+                pbe.finish();
+            }
+
+            // Set programmed pages progress.
+            if progress.total_pages() != progress.pages() {
+                pbp.set_position(progress.pages() as u64);
+            } else {
+                pbp.finish();
+            }
+
+            // Break if we have everything done.
+            if progress.total_pages() == progress.pages() && progress.total_sectors() == progress.sectors() {
                 break;
             }
             std::thread::sleep(std::time::Duration::from_millis(3));
         }
-        pb.finish_and_clear();
+    });
+
+    // Make the multi progresses print.
+    std::thread::spawn(move || {
+        m.join().unwrap();
     });
 
     download_file(

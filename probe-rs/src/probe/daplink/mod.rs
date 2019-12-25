@@ -258,7 +258,7 @@ impl DebugProbe for DAPLink {
     /// Asserts the nRESET pin.
     fn target_reset(&mut self) -> Result<(), DebugProbeError> {
         commands::send_command(&self.device, ResetRequest).map(|v: ResetResponse| {
-            println!("Target reset response: {:?}", v);
+            log::info!("Target reset response: {:?}", v);
         })?;
         Ok(())
     }

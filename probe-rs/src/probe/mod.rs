@@ -191,7 +191,7 @@ impl MasterProbe {
         self.select_ap_and_ap_bank(port.get_port_number(), REGISTER::APBANKSEL)?;
 
         let link = &mut self.actual_probe;
-        //println!("{:?}, {:08X}", link.current_apsel, REGISTER::ADDRESS);
+        //log::debug!("{:?}, {:08X}", link.current_apsel, REGISTER::ADDRESS);
         let result = link.read_register(
             Port::AccessPort(u16::from(self.current_apsel)),
             u16::from(REGISTER::ADDRESS),
@@ -226,7 +226,7 @@ impl MasterProbe {
                 ));
             }
         };
-        println!("Starting mass erase...");
+        log::info!("Starting mass erase...");
         let mut erase_reg = ERASEALL::from(1);
         let status_reg = ERASEALLSTATUS::from(0);
         let mut reset_reg = RESET::from(1);
@@ -258,12 +258,12 @@ impl MasterProbe {
         erase_reg.ERASEALL = false;
         self.write_register_ap(ctrl_port, erase_reg)?;
         if timeout {
-            eprintln!(
+            log::error!(
                 "    {} Mass erase process timeout, the chip might still be locked.",
                 "Error".red().bold()
             );
         } else {
-            println!("Mass erase completed, chip unlocked");
+            log::info!("Mass erase completed, chip unlocked");
         }
         Ok(())
     }
