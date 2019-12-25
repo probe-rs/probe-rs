@@ -20,3 +20,4 @@ failure = "0.1.5"
 colored = "1.8.0"
 probe-rs = { path = "../probe-rs", version = "0.2.0" }
 indicatif = "0.13.0"
+console = "0.9.1"
