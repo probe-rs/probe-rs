@@ -280,7 +280,9 @@ fn main_try() -> Result<(), failure::Error> {
             }
 
             // Break if we have everything done.
-            if progress.total_pages() == progress.pages() && progress.total_sectors() == progress.sectors() {
+            if progress.total_pages() == progress.pages()
+                && progress.total_sectors() == progress.sectors()
+            {
                 break;
             }
             std::thread::sleep(std::time::Duration::from_millis(3));
@@ -297,7 +299,7 @@ fn main_try() -> Result<(), failure::Error> {
         std::path::Path::new(&path_str.to_string().as_str()),
         Format::Elf,
         &mm,
-        progress
+        progress,
     )
     .map_err(|e| format_err!("failed to flash {}: {}", path_str, e))?;
 
