@@ -1,5 +1,5 @@
 use probe_rs::config::memory::MemoryRegion;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 /// This describes a single chip model.
 /// It can come in different configurations (memory, peripherals).

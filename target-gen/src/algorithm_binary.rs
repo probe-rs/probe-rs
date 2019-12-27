@@ -1,8 +1,8 @@
-use goblin::elf::program_header::PT_LOAD;   
-use num_traits::FromPrimitive;
-use num_derive::FromPrimitive;
-use probe_rs::config::memory::MemoryRange;
 use crate::error::Error;
+use goblin::elf::program_header::PT_LOAD;
+use num_derive::FromPrimitive;
+use num_traits::FromPrimitive;
+use probe_rs::config::memory::MemoryRange;
 
 const CODE_SECTION_KEY: (&str, Option<SectionType>) = ("PrgCode", Some(SectionType::SHT_PROGBITS));
 const DATA_SECTION_KEY: (&str, Option<SectionType>) = ("PrgData", Some(SectionType::SHT_PROGBITS));
@@ -52,7 +52,8 @@ impl AlgorithmBinary {
                     let range = sh.sh_offset as u32..sh.sh_offset as u32 + sh.sh_size as u32;
                     if sector.contains_range(&range) {
                         // If we found a valid section, store its contents.
-                        let data = Vec::from(&buffer[sh.sh_offset as usize..][..sh.sh_size as usize]);
+                        let data =
+                            Vec::from(&buffer[sh.sh_offset as usize..][..sh.sh_size as usize]);
                         let section = Some(Section {
                             start: sh.sh_addr as u32,
                             length: sh.sh_size as u32,
@@ -60,11 +61,14 @@ impl AlgorithmBinary {
                         });
 
                         // Make sure we store the section contents under the right name.
-                        match (&elf.shdr_strtab[sh.sh_name], FromPrimitive::from_u32(sh.sh_type)) {
+                        match (
+                            &elf.shdr_strtab[sh.sh_name],
+                            FromPrimitive::from_u32(sh.sh_type),
+                        ) {
                             CODE_SECTION_KEY => code_section = section,
                             DATA_SECTION_KEY => data_section = section,
                             BSS_SECTION_KEY => bss_section = section,
-                            _ => {},
+                            _ => {}
                         }
                     }
                 }
@@ -101,7 +105,7 @@ impl AlgorithmBinary {
     /// Assembles one huge binary blob as u32 values to write to RAM from the three sections.
     pub(crate) fn blob_as_u32(&self) -> Vec<u32> {
         use scroll::Pread;
-        
+
         self.blob()
             .chunks(4)
             .map(|bytes| bytes.pread(0).unwrap())

@@ -1,23 +1,23 @@
-use probe_rs::config::flash_algorithm::RawFlashAlgorithm;
 use crate::error::Error;
+use probe_rs::config::flash_algorithm::RawFlashAlgorithm;
 
 use crate::flash_device::FlashDevice;
 
 /// Extract a chunk of data from an ELF binary.
-/// 
+///
 /// This does only return the data chunk if it is fully contained in one section.
 /// If it is across two sections, no chunk will be returned.
 pub(crate) fn read_elf_bin_data<'a>(
     elf: &'a goblin::elf::Elf<'_>,
     buffer: &'a [u8],
     address: u32,
-    size: u32
+    size: u32,
 ) -> Option<&'a [u8]> {
     // Iterate all segments.
     for ph in &elf.program_headers {
         let segment_address = ph.p_paddr as u32;
         let segment_size = ph.p_memsz.min(ph.p_filesz) as u32;
-        
+
         // If the requested data is above the current segment, skip the segment.
         if address > segment_address + segment_size {
             continue;
@@ -76,7 +76,7 @@ pub fn extract_flash_algo(
                 "EraseChip" => algo.pc_erase_all = Some(sym.st_value as u32),
                 "EraseSector" => algo.pc_erase_sector = sym.st_value as u32,
                 "ProgramPage" => algo.pc_program_page = sym.st_value as u32,
-                _ => {},
+                _ => {}
             }
         }
 
@@ -85,7 +85,12 @@ pub fn extract_flash_algo(
         algo.default = default;
         algo.data_section_offset = algorithm_binary.data_section.start;
     }
-    
+
     let flash_device = flash_device.unwrap();
-    Ok((algo, flash_device.page_size, flash_device.sectors[0].size, flash_device.erased_default_value))
+    Ok((
+        algo,
+        flash_device.page_size,
+        flash_device.sectors[0].size,
+        flash_device.erased_default_value,
+    ))
 }

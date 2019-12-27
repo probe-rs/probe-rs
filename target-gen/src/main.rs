@@ -1,21 +1,21 @@
 pub mod algorithm_binary;
-pub mod flash_device;
-pub mod parser;
 pub mod chip;
 pub mod chip_family;
 pub mod error;
+pub mod flash_device;
+pub mod parser;
 
-use probe_rs::config::flash_algorithm::RawFlashAlgorithm;
-use probe_rs::config::memory::{RamRegion, FlashRegion, MemoryRegion};
-use std::fs::{self, File};
-use std::path::Path;
-use cmsis_pack::utils::FromElem;
-use cmsis_pack::pdsc::Package;
-use cmsis_pack::pdsc::Processors;
-use cmsis_pack::pdsc::Core;
+use crate::error::Error;
 use chip::Chip;
 use chip_family::ChipFamily;
-use crate::error::Error;
+use cmsis_pack::pdsc::Core;
+use cmsis_pack::pdsc::Package;
+use cmsis_pack::pdsc::Processors;
+use cmsis_pack::utils::FromElem;
+use probe_rs::config::flash_algorithm::RawFlashAlgorithm;
+use probe_rs::config::memory::{FlashRegion, MemoryRegion, RamRegion};
+use std::fs::{self, File};
+use std::path::Path;
 
 fn main() {
     let args: Vec<_> = std::env::args().collect();
@@ -30,7 +30,9 @@ fn main() {
         // Forge a definition file for each device in the .pdsc file.
         for (device_name, device) in pdsc.devices.0 {
             // Check if this device family is already known.
-            let mut potential_family = families.iter_mut().find(|family| family.name == device.family);
+            let mut potential_family = families
+                .iter_mut()
+                .find(|family| family.name == device.family);
 
             // Extract the RAM info from the .pdsc file.
             let mut ram = None;
@@ -49,20 +51,24 @@ fn main() {
             let mut page_size = 0;
             let mut sector_size = 0;
             let mut erased_byte_value = 0xFF;
-            let flash_algorithms = device.algorithms
+            let flash_algorithms = device
+                .algorithms
                 .iter()
                 .map(|flash_algorithm| {
                     let (algo, ps, ss, ebv) = if let Some(ref mut archive) = archive {
                         crate::parser::extract_flash_algo(
-                            archive.by_name(&flash_algorithm.file_name.as_path().to_string_lossy()).unwrap(),
+                            archive
+                                .by_name(&flash_algorithm.file_name.as_path().to_string_lossy())
+                                .unwrap(),
                             flash_algorithm.file_name.as_path(),
-                            flash_algorithm.default
+                            flash_algorithm.default,
                         )
                     } else {
                         crate::parser::extract_flash_algo(
-                            std::fs::File::open(in_dir.join(&flash_algorithm.file_name).as_path()).unwrap(),
+                            std::fs::File::open(in_dir.join(&flash_algorithm.file_name).as_path())
+                                .unwrap(),
                             flash_algorithm.file_name.as_path(),
-                            flash_algorithm.default
+                            flash_algorithm.default,
                         )
                     }?;
 
@@ -109,7 +115,7 @@ fn main() {
                     c => {
                         log::warn!("Core {:?} not supported yet.", c);
                         ""
-                    },
+                    }
                 }
             } else {
                 log::warn!("Asymmetric cores are not supported yet.");
@@ -119,7 +125,11 @@ fn main() {
             let family = if let Some(ref mut family) = potential_family {
                 family
             } else {
-                families.push(ChipFamily::new(device.family, flash_algorithms, core.to_owned()));
+                families.push(ChipFamily::new(
+                    device.family,
+                    flash_algorithms,
+                    core.to_owned(),
+                ));
                 // This unwrap is always safe as we insert at least one item previously.
                 families.last_mut().unwrap()
             };
@@ -146,8 +156,8 @@ fn main() {
 // one possible implementation of walking a directory only visiting files
 fn visit_dirs<T>(
     path: &Path,
-    cb: &mut dyn FnMut(Package, Option<&mut zip::ZipArchive<File>>
-) -> Result<T, Error>) -> Result<(), Error> {
+    cb: &mut dyn FnMut(Package, Option<&mut zip::ZipArchive<File>>) -> Result<T, Error>,
+) -> Result<(), Error> {
     // If we get a dir, look for all .pdsc files.
     if path.is_dir() {
         for entry in fs::read_dir(path)? {
@@ -166,19 +176,17 @@ fn visit_dirs<T>(
             // If we get a file, try to unpack it.
             let file = fs::File::open(&path).unwrap();
 
-            match zip::ZipArchive::new(file){
+            match zip::ZipArchive::new(file) {
                 Ok(mut archive) => {
-                    let pdsc = find_pdsc_in_archive(&mut archive).map_or_else(
-                        String::new,
-                        |mut pdsc| {
+                    let pdsc =
+                        find_pdsc_in_archive(&mut archive).map_or_else(String::new, |mut pdsc| {
                             let mut pdsc_string = String::new();
                             use std::io::Read;
                             pdsc.read_to_string(&mut pdsc_string).unwrap();
                             pdsc_string
-                        }
-                    );
+                        });
                     cb(Package::from_string(&pdsc).unwrap(), Some(&mut archive))?;
-                },
+                }
                 Err(e) => {
                     log::error!("Zip file could not be read. Reason:");
                     log::error!("{:?}", e);

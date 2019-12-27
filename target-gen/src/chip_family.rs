@@ -1,6 +1,6 @@
 use crate::Chip;
 use probe_rs::config::flash_algorithm::RawFlashAlgorithm;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 /// This describes a chip family with all its variants.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -19,7 +19,11 @@ pub(crate) struct ChipFamily {
 
 impl ChipFamily {
     /// Create a new `ChipFamily`.
-    pub(crate) fn new(name: String, flash_algorithms: Vec<RawFlashAlgorithm>, core: String) -> Self {
+    pub(crate) fn new(
+        name: String,
+        flash_algorithms: Vec<RawFlashAlgorithm>,
+        core: String,
+    ) -> Self {
         Self {
             name,
             variants: Vec::new(),

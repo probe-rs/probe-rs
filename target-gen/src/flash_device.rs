@@ -16,10 +16,7 @@ impl SectorInfo {
         let size = data.pread(0).unwrap();
         let address = data.pread(4).unwrap();
         if size != Self::SECTOR_END && address != Self::SECTOR_END {
-            Some(Self {
-                address,
-                size,
-            })
+            Some(Self { address, size })
         } else {
             None
         }
@@ -28,9 +25,9 @@ impl SectorInfo {
 
 /// This struct describes the flash algorithm.
 /// It can be parsed from an ELF symbol.
-/// 
+///
 /// You should always use `FlashDevice::new()` to create this struct.
-/// 
+///
 // This struct takes 160 bytes + the size of all sectors at the end in the ELF binary.
 // The data types of this struct represent the actual size they have in the C struct too!
 #[derive(Clone, Debug)]
@@ -47,7 +44,7 @@ pub(crate) struct FlashDevice {
     pub(crate) device_size: u32,
     /// The flash page size in bytes.
     pub(crate) page_size: u32,
-               _reserved: u32,
+    _reserved: u32,
     /// The default erased value of one byte in flash.
     pub(crate) erased_default_value: u8,
     //  _pad: u24,
@@ -97,18 +94,16 @@ impl FlashDevice {
 
     /// Parse the sector infos in the device struct.
     pub(crate) fn parse_sectors(
-        elf: &goblin::elf::Elf<'_>, buffer: &[u8],
-        address: u32
+        elf: &goblin::elf::Elf<'_>,
+        buffer: &[u8],
+        address: u32,
     ) -> Vec<SectorInfo> {
         let mut sectors = vec![];
         let mut offset = Self::INFO_SIZE;
         // As long as we find new sectors, keep em comming.
-        while let Some(data) = crate::parser::read_elf_bin_data(
-            elf,
-            buffer,
-            address + offset,
-            Self::SECTOR_INFO_SIZE
-        ) {
+        while let Some(data) =
+            crate::parser::read_elf_bin_data(elf, buffer, address + offset, Self::SECTOR_INFO_SIZE)
+        {
             if let Some(sector) = SectorInfo::new(data) {
                 sectors.push(sector);
                 offset += 8;
