@@ -149,7 +149,8 @@ fn main() {
 
     for family in &families {
         let path = out_dir.join(family.name.clone() + ".yaml");
-        let file = std::fs::File::create(&path).expect(&format!("Opening {:?} failed", path));
+        let file = std::fs::File::create(&path)
+            .unwrap_or_else(|e| panic!("Opening {:?} failed: {}", path, e));
         serde_yaml::to_writer(file, &family).unwrap();
     }
 }
