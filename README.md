@@ -38,6 +38,26 @@ You can install it via `cargo install cargo-flash` and then use it via `cargo fl
 
 Use `cargo flash` to build your binary and download the ELF binary to your target.
 
+Example with the https://github.com/therealprof/microbit.git:
+
+```
+$ RUST_LOG=info cargo flash --release --example  gpio_hal_ledbutton  --chip  nRF51822_xxAA
+    Finished release [optimized + debuginfo] target(s) in 0.06s
+    Flashing ./target/thumbv6m-none-eabi/release/examples/gpio_hal_ledbutton
+ INFO  probe_rs::probe::daplink > Attaching to target system (clock = 1000000)
+ INFO  probe_rs::probe::daplink > Debug Port Version:  DPv1
+ INFO  probe_rs::probe::daplink > Debug Port Designer: ARM Ltd
+ INFO  probe_rs::probe::daplink > Succesfully attached to system and entered debug mode
+RUN INIT
+ INFO  probe_rs::flash::flasher > Erasing sector at address 0x00000000.
+ INFO  probe_rs::flash::flasher > Done erasing sector. Result is 0. This took 113.665878ms
+RUN INIT
+ INFO  probe_rs::flash::flasher > Flashing one page of size: 1024
+ INFO  probe_rs::flash::flasher > Flashing took: 723.845166ms
+    Finished in 6.507s
+```
+
+
 #### Full set of commands
 
 You can pass some arguments you could pass to `cargo build` to configure your build target. Use `cargo flash --help` for a list of available commands.
