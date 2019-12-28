@@ -9,7 +9,6 @@ use probe_rs::{
     coresight::memory::MI,
     debug::DebugInfo,
     flash::download::{download_file, Format},
-    flash::FlashProgress,
     probe::{daplink, stlink, DebugProbeInfo},
 };
 
@@ -181,15 +180,7 @@ fn download_program_fast(shared_options: &SharedOptions, path: &str) -> Result<(
         // let instant = Instant::now();
 
         let mm = session.target.memory_map.clone();
-
-        let progress = FlashProgress::new(|_| {});
-        download_file(
-            &mut session,
-            std::path::Path::new(&path),
-            Format::Elf,
-            &mm,
-            &progress,
-        )?;
+        download_file(&mut session, std::path::Path::new(&path), Format::Elf, &mm)?;
 
         Ok(())
     })

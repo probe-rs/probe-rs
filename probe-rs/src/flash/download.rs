@@ -71,7 +71,34 @@ impl From<&'static str> for FileDownloadError {
 }
 
 /// Downloads a file at `path` into flash.
+pub fn download_file_with_progress_reporting(
+    session: &mut Session,
+    path: &Path,
+    format: Format,
+    memory_map: &[MemoryRegion],
+    progress: &FlashProgress,
+) -> Result<(), FileDownloadError> {
+    download_file_internal(session, path, format, memory_map, progress)
+}
+
+/// Downloads a file at `path` into flash.
 pub fn download_file(
+    session: &mut Session,
+    path: &Path,
+    format: Format,
+    memory_map: &[MemoryRegion],
+) -> Result<(), FileDownloadError> {
+    download_file_internal(
+        session,
+        path,
+        format,
+        memory_map,
+        &FlashProgress::new(|_| {}),
+    )
+}
+
+/// Downloads a file at `path` into flash.
+fn download_file_internal(
     session: &mut Session,
     path: &Path,
     format: Format,
