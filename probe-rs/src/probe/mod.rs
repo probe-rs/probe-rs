@@ -81,7 +81,7 @@ impl From<AccessPortError> for DebugProbeError {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum Port {
     DebugPort,
     AccessPort(u16),
@@ -93,6 +93,23 @@ pub trait DAPAccess {
 
     /// Writes a value to the DAP register on the specified port and address
     fn write_register(&mut self, port: Port, addr: u16, value: u32) -> Result<(), DebugProbeError>;
+
+    /// Write multiple values to the same DAP register.
+    ///
+    /// If possible, this uses optimized write functions, otherwise it
+    /// falls back to the `write_register` function.
+    fn write_block(
+        &mut self,
+        port: Port,
+        addr: u16,
+        values: &[u32],
+    ) -> Result<(), DebugProbeError> {
+        for val in values {
+            self.write_register(port, addr, *val)?;
+        }
+
+        Ok(())
+    }
 }
 
 pub struct MasterProbe {
@@ -174,6 +191,33 @@ impl MasterProbe {
             Port::AccessPort(u16::from(self.current_apsel)),
             u16::from(REGISTER::ADDRESS),
             register_value,
+        )?;
+        Ok(())
+    }
+
+    fn write_block_ap<AP, REGISTER>(
+        &mut self,
+        port: AP,
+        _register: REGISTER,
+        values: &[u32],
+    ) -> Result<(), DebugProbeError>
+    where
+        AP: AccessPort,
+        REGISTER: APRegister<AP>,
+    {
+        debug!(
+            "Writing register {}, block with len={} words",
+            REGISTER::NAME,
+            values.len(),
+        );
+
+        self.select_ap_and_ap_bank(port.get_port_number(), REGISTER::APBANKSEL)?;
+
+        let link = &mut self.actual_probe;
+        link.write_block(
+            Port::AccessPort(u16::from(self.current_apsel)),
+            u16::from(REGISTER::ADDRESS),
+            values,
         )?;
         Ok(())
     }
@@ -286,6 +330,15 @@ where
     fn write_register_ap(&mut self, port: MemoryAP, register: REGISTER) -> Result<(), Self::Error> {
         self.write_register_ap(port, register)
     }
+
+    fn write_block_ap(
+        &mut self,
+        port: MemoryAP,
+        register: REGISTER,
+        values: &[u32],
+    ) -> Result<(), Self::Error> {
+        self.write_block_ap(port, register, values)
+    }
 }
 
 impl<REGISTER> APAccess<GenericAP, REGISTER> for MasterProbe
@@ -308,6 +361,15 @@ where
         register: REGISTER,
     ) -> Result<(), Self::Error> {
         self.write_register_ap(port, register)
+    }
+
+    fn write_block_ap(
+        &mut self,
+        port: GenericAP,
+        register: REGISTER,
+        values: &[u32],
+    ) -> Result<(), Self::Error> {
+        self.write_block_ap(port, register, values)
     }
 }
 

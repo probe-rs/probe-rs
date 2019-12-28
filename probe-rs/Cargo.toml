@@ -47,3 +47,8 @@ quote = "1.0.2"
 log = "0.4.6"
 serde_yaml = "0.8.11"
 proc-macro2 = "1.0.4"
+
+[dev-dependencies]
+rand = "0.7.2"
+structopt = "*"
+pretty_env_logger = "0.3.0"

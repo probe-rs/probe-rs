@@ -37,6 +37,8 @@ impl Deref for Category {
 pub(crate) trait Request {
     const CATEGORY: Category;
 
+    /// Convert the request to bytes, which can be sent to the Daplink. Returns
+    /// the amount of bytes written to the buffer.
     fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize>;
 }
 
@@ -81,11 +83,19 @@ pub(crate) fn send_command<Req: Request, Res: Response>(
 ) -> Result<Res> {
     // Write the command & request to the buffer.
     // TODO: Error handling & real USB writing.
-    let buffer = &mut [0; 24];
+    // TODO: Use proper buffer size based on the HID
+    //       report count.
+    let buffer = &mut [0; 100];
     buffer[1] = *Req::CATEGORY;
-    let _size = request.to_bytes(buffer, 1 + 1)?;
-    device.write(buffer)?;
-    log::trace!("Send buffer: {:02X?}", &buffer[..]);
+    let mut size = request.to_bytes(buffer, 1 + 1)?;
+    size += 2;
+
+    // ensure size of packet is at least 64
+    // this should be read from the USB HID Record
+    size = std::cmp::max(size, 64);
+
+    device.write(&buffer[..size])?;
+    log::trace!("Send buffer: {:02X?}", &buffer[..size]);
 
     // Read back resonse.
     // TODO: Error handling & real USB reading.

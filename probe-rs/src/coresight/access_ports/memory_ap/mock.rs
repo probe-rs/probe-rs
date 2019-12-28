@@ -174,4 +174,13 @@ where
             _ => Err(MockMemoryError::UnknownRegister),
         }
     }
+
+    fn write_block_ap(
+        &mut self,
+        _port: MemoryAP,
+        _register: REGISTER,
+        _values: &[u32],
+    ) -> Result<(), Self::Error> {
+        unimplemented!("Not implemented for MOCK AP");
+    }
 }

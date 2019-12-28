@@ -141,13 +141,14 @@ impl Response for SWOTraceBufferSize {
     }
 }
 
-pub struct PacketCount(u8);
+#[derive(Debug)]
+pub struct PacketCount(pub u8);
 
 impl Response for PacketCount {
     fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self> {
-        if buffer[offset + 1] == 0x01 {
+        if buffer[offset] == 0x01 {
             let res = buffer
-                .pread::<u8>(offset + 2)
+                .pread::<u8>(offset + 1)
                 .expect("This is a bug. Please report it.");
             Ok(PacketCount(res))
         } else {
@@ -156,13 +157,14 @@ impl Response for PacketCount {
     }
 }
 
-pub struct PacketSize(u16);
+#[derive(Debug)]
+pub struct PacketSize(pub u16);
 
 impl Response for PacketSize {
     fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self> {
-        if buffer[offset + 1] == 0x02 {
+        if buffer[offset] == 0x02 {
             let res = buffer
-                .pread::<u16>(offset + 2)
+                .pread::<u16>(offset + 1)
                 .expect("This is a bug. Please report it.");
             Ok(PacketSize(res))
         } else {

@@ -105,13 +105,22 @@ impl Request for TransferRequest {
     fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize> {
         use scroll::Pwrite;
 
+        let mut size = 0;
+
         buffer[offset] = self.dap_index;
+        size += 1;
+
         buffer[offset + 1] = self.transfer_count;
-        self.transfer_request.to_bytes(buffer, offset + 2)?;
+        size += 1;
+
+        size += self.transfer_request.to_bytes(buffer, offset + 2)?;
+
         buffer
             .pwrite(self.transfer_data, offset + 3)
             .expect("This is a bug. Please report it.");
-        Ok(0)
+
+        size += 4;
+        Ok(size)
     }
 }
 
@@ -164,6 +173,123 @@ impl Response for TransferResponse {
             transfer_data: buffer
                 .pread(offset + 2)
                 .expect("This is a bug. Please report it."),
+        })
+    }
+}
+
+#[derive(Debug)]
+pub(crate) struct TransferBlockRequest {
+    /// Zero-based device index of the selected JTAG device. For SWD mode the
+    /// value is ignored.
+    dap_index: u8,
+    /// Number of transfers
+    transfer_count: u16,
+
+    /// Information about requested access
+    transfer_request: InnerTransferBlockRequest,
+
+    /// Register values to write for writes
+    transfer_data: Vec<u32>,
+}
+
+impl Request for TransferBlockRequest {
+    const CATEGORY: Category = Category(0x06);
+
+    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize> {
+        use scroll::Pwrite;
+
+        let mut size = 0;
+        buffer[offset] = self.dap_index;
+        size += 1;
+
+        buffer
+            .pwrite(self.transfer_count, offset + 1)
+            .expect("This is a bug. Please report it.");
+        size += 2;
+
+        size += self.transfer_request.to_bytes(buffer, offset + 3)?;
+
+        let mut data_offset = offset + 4;
+
+        for word in &self.transfer_data {
+            buffer.pwrite(word, data_offset).expect(&format!(
+                "Failed to write word at data_offset {}. This is a bug. Please report it.",
+                data_offset
+            ));
+            data_offset += 4;
+            size += 4;
+        }
+
+        Ok(size)
+    }
+}
+
+impl TransferBlockRequest {
+    pub(crate) fn write_request(address: u8, port: PortType, data: Vec<u32>) -> Self {
+        let inner = InnerTransferBlockRequest {
+            ap_n_dp: port,
+            r_n_w: RW::W,
+            a2: (address >> 2) & 0x01 == 1,
+            a3: (address >> 3) & 0x01 == 1,
+        };
+
+        TransferBlockRequest {
+            dap_index: 0,
+            transfer_count: data.len() as u16,
+            transfer_request: inner,
+            transfer_data: data,
+        }
+    }
+}
+
+#[derive(Debug)]
+struct InnerTransferBlockRequest {
+    ap_n_dp: PortType,
+    r_n_w: RW,
+    a2: bool,
+    a3: bool,
+}
+
+impl InnerTransferBlockRequest {
+    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize> {
+        buffer[offset] = (self.ap_n_dp as u8)
+            | (self.r_n_w as u8) << 1
+            | (if self.a2 { 1 } else { 0 }) << 2
+            | (if self.a3 { 1 } else { 0 }) << 3;
+        Ok(1)
+    }
+}
+
+#[derive(Debug)]
+pub(crate) struct TransferBlockResponse {
+    transfer_count: u16,
+    pub transfer_response: u8,
+    transfer_data: Vec<u32>,
+}
+
+impl Response for TransferBlockResponse {
+    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self> {
+        use scroll::Pread;
+
+        let transfer_count = buffer.pread(offset).expect("Failed to read transfer count");
+        let transfer_response = buffer
+            .pread(offset + 2)
+            .expect("Failed to read transfer response");
+
+        let mut data = Vec::with_capacity(transfer_count as usize);
+
+        for data_offset in 0..(transfer_count as usize) {
+            data.push(
+                buffer
+                    .pread(offset + 3 + data_offset)
+                    .expect("Failed to read value.."),
+            );
+        }
+
+        Ok(TransferBlockResponse {
+            transfer_count,
+            transfer_response,
+            transfer_data: data,
         })
     }
 }

@@ -182,7 +182,23 @@ impl<'a> Flasher<'a> {
         let mut data = vec![0; algo.instructions.len()];
         flasher.probe.read_block32(algo.load_address, &mut data)?;
 
-        assert_eq!(&algo.instructions, &data.as_slice());
+        for (offset, (original, read_back)) in algo.instructions.iter().zip(data.iter()).enumerate()
+        {
+            if original != read_back {
+                eprintln!(
+                    "Failed to verify flash algorithm. Data mismatch at address {:#08x}",
+                    algo.load_address + (4 * offset) as u32
+                );
+                eprintln!("Original instruction: {:#08x}", original);
+                eprintln!("Readback instruction: {:#08x}", read_back);
+
+                eprintln!("Original: {:x?}", &algo.instructions);
+                eprintln!("Readback: {:x?}", &data);
+
+                panic!("Flash algorithm not written to flash correctly.");
+            }
+        }
+
         log::debug!("RAM contents match flashing algo blob.");
 
         log::debug!("Preparing Flasher for region:");

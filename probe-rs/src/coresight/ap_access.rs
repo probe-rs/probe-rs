@@ -16,6 +16,15 @@ where
     fn read_register_ap(&mut self, port: PORT, register: REGISTER)
         -> Result<REGISTER, Self::Error>;
     fn write_register_ap(&mut self, port: PORT, register: REGISTER) -> Result<(), Self::Error>;
+
+    /// Write a register using a block transfer. This can be used
+    /// to write multiple values to the same register.
+    fn write_block_ap(
+        &mut self,
+        port: PORT,
+        register: REGISTER,
+        values: &[u32],
+    ) -> Result<(), Self::Error>;
 }
 
 impl<'a, T, PORT, REGISTER> APAccess<PORT, REGISTER> for &'a mut T
@@ -36,6 +45,15 @@ where
 
     fn write_register_ap(&mut self, port: PORT, register: REGISTER) -> Result<(), Self::Error> {
         (*self).write_register_ap(port, register)
+    }
+
+    fn write_block_ap(
+        &mut self,
+        port: PORT,
+        register: REGISTER,
+        values: &[u32],
+    ) -> Result<(), Self::Error> {
+        (*self).write_block_ap(port, register, values)
     }
 }
 

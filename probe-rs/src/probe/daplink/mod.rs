@@ -15,6 +15,7 @@ use commands::{
     general::{
         connect::{ConnectRequest, ConnectResponse},
         disconnect::{DisconnectRequest, DisconnectResponse},
+        info::{Command, PacketCount, PacketSize},
         reset::{ResetRequest, ResetResponse},
     },
     swd,
@@ -24,7 +25,8 @@ use commands::{
     },
     transfer::{
         configure::{ConfigureRequest, ConfigureResponse},
-        Ack, InnerTransferRequest, PortType, TransferRequest, TransferResponse, RW,
+        Ack, InnerTransferRequest, PortType, TransferBlockRequest, TransferBlockResponse,
+        TransferRequest, TransferResponse, RW,
     },
     Status,
 };
@@ -34,6 +36,9 @@ pub struct DAPLink {
     _hw_version: u8,
     _jtag_version: u8,
     _protocol: WireProtocol,
+
+    packet_size: Option<u16>,
+    packet_count: Option<u8>,
 }
 
 impl DAPLink {
@@ -43,6 +48,8 @@ impl DAPLink {
             _hw_version: 0,
             _jtag_version: 0,
             _protocol: WireProtocol::Swd,
+            packet_count: None,
+            packet_size: None,
         }
     }
 
@@ -151,6 +158,13 @@ impl DebugProbe for DAPLink {
     /// Enters debug mode.
     fn attach(&mut self, protocol: Option<WireProtocol>) -> Result<WireProtocol, DebugProbeError> {
         use commands::Error;
+
+        // get information about the daplink
+        let PacketCount(packet_count) = commands::send_command(&self.device, Command::PacketCount)?;
+        let PacketSize(packet_size) = commands::send_command(&self.device, Command::PacketSize)?;
+
+        self.packet_count = Some(packet_count);
+        self.packet_size = Some(packet_size);
 
         let clock = 1_000_000;
 
@@ -319,6 +333,46 @@ impl DAPAccess for DAPLink {
                 Err(DebugProbeError::UnknownError)
             }
         })
+    }
+
+    fn write_block(
+        &mut self,
+        port: Port,
+        register_address: u16,
+        values: &[u32],
+    ) -> Result<(), DebugProbeError> {
+        let port = match port {
+            Port::DebugPort => PortType::DP,
+            Port::AccessPort(_) => PortType::AP,
+        };
+
+        // the overhead for a single packet is 6 bytes
+        //
+        // [0]: HID overhead
+        // [1]: Category
+        // [2]: DAP Index
+        // [3]: Len 1
+        // [4]: Len 2
+        // [5]: Request type
+        //
+
+        let max_packet_size_words = (self.packet_size.unwrap_or(32) - 6) / 4;
+
+        let data_chunk_len = max_packet_size_words as usize;
+
+        for (i, chunk) in values.chunks(data_chunk_len).enumerate() {
+            let request =
+                TransferBlockRequest::write_request(register_address as u8, port, Vec::from(chunk));
+
+            debug!("Transfer block: chunk={}, len={} bytes", i, chunk.len() * 4);
+
+            let resp: TransferBlockResponse = commands::send_command(&self.device, request)
+                .map_err(|_| DebugProbeError::UnknownError)?;
+
+            assert_eq!(resp.transfer_response, 1);
+        }
+
+        Ok(())
     }
 }
 
