@@ -232,8 +232,7 @@ fn main_try() -> Result<(), failure::Error> {
     let mm = session.target.memory_map.clone();
 
     // Create progress bars.
-    let multi_progress =
-        indicatif::MultiProgress::new();//with_draw_target(indicatif::ProgressDrawTarget::stdout_nohz());
+    let multi_progress = indicatif::MultiProgress::new(); //with_draw_target(indicatif::ProgressDrawTarget::stdout_nohz());
     let style = indicatif::ProgressStyle::default_bar()
             .tick_chars("⠁⠁⠉⠙⠚⠒⠂⠂⠒⠲⠴⠤⠄⠄⠤⠠⠠⠤⠦⠖⠒⠐⠐⠒⠓⠋⠉⠈⠈✔")
             .progress_chars("##-")
@@ -253,7 +252,12 @@ fn main_try() -> Result<(), failure::Error> {
     let progress = FlashProgress::new(move |event| {
         use ProgressEvent::*;
         match event {
-            Initialized {total_pages, total_sectors, sector_size, page_size, } => {
+            Initialized {
+                total_pages,
+                total_sectors,
+                sector_size,
+                page_size,
+            } => {
                 erase_progress.set_length(total_sectors as u64 * sector_size as u64);
                 program_progress.set_length(total_pages as u64 * page_size as u64);
             }
