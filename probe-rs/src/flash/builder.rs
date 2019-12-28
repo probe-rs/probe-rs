@@ -193,7 +193,7 @@ impl<'a> FlashBuilder<'a> {
         self.build_sectors_and_pages(&mut flash, &mut sectors, restore_unwritten_bytes)?;
 
         let num_pages = sectors.iter().map(|s| s.pages.len()).sum();
-        progress.initialize(sectors.len(), num_pages);
+        progress.initialized(sectors.len(), num_pages);
 
         // Check if there is even sectors to flash.
         if sectors.is_empty() || sectors[0].pages.is_empty() {
@@ -213,6 +213,8 @@ impl<'a> FlashBuilder<'a> {
         );
 
         // Erase all necessary sectors.
+        progress.started_erasing();
+
         if do_chip_erase {
             self.chip_erase(&mut flash, &sectors, progress)?;
         } else {
@@ -220,6 +222,8 @@ impl<'a> FlashBuilder<'a> {
         }
 
         // Flash all necessary pages.
+        progress.started_flashing();
+
         if flash.double_buffering_supported() && self.enable_double_buffering {
             self.program_double_buffer(&mut flash, &sectors, progress)?;
         } else {
