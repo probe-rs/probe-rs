@@ -16,7 +16,7 @@ use structopt::StructOpt;
 struct CLI {
     #[structopt(long = "target")]
     target: String,
-    #[structopt(long = "address", parse(try_from_str = "parse_hex"))]
+    #[structopt(long = "address", parse(try_from_str = parse_hex))]
     address: u32,
     #[structopt(long = "size")]
     size: usize,
