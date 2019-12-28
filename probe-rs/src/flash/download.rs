@@ -76,7 +76,7 @@ pub fn download_file(
     path: &Path,
     format: Format,
     memory_map: &[MemoryRegion],
-    progress: std::sync::Arc<std::sync::RwLock<FlashProgress>>,
+    progress: &FlashProgress,
 ) -> Result<(), FileDownloadError> {
     let mut file = match File::open(path) {
         Ok(file) => file,

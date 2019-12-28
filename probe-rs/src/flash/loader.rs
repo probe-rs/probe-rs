@@ -5,6 +5,7 @@ use std::fmt;
 
 use super::builder::FlashBuilder;
 use super::flasher::Flasher;
+use super::FlashProgress;
 use crate::config::memory::{FlashRegion, MemoryRegion};
 
 /// `FlashLoader` is a struct which manages the flashing of any chunks of data onto any sections of flash.
@@ -107,7 +108,7 @@ impl<'a, 'b> FlashLoader<'a, 'b> {
     pub fn commit(
         &mut self,
         session: &mut Session,
-        progress: std::sync::Arc<std::sync::RwLock<FlashProgress>>,
+        progress: &FlashProgress,
         do_chip_erase: bool,
     ) -> Result<(), FlashLoaderError> {
         let target = &session.target;
@@ -128,7 +129,7 @@ impl<'a, 'b> FlashLoader<'a, 'b> {
                         Flasher::new(target, probe, flash_algorithm, region),
                         do_chip_erase,
                         self.keep_unwritten,
-                        progress.clone(),
+                        progress,
                     )
                     .unwrap();
             }
@@ -137,74 +138,5 @@ impl<'a, 'b> FlashLoader<'a, 'b> {
         } else {
             Err(FlashLoaderError::NoFlashLoaderAlgorithmAttached)
         }
-    }
-}
-
-#[derive(Default)]
-pub struct FlashProgress {
-    initialized: bool,
-    total_sectors: usize,
-    total_pages: usize,
-    erased_sectors: usize,
-    programmed_pages: usize,
-    total_time: u128,
-}
-
-impl FlashProgress {
-    pub fn new() -> Self {
-        Self {
-            initialized: false,
-            total_sectors: 0,
-            total_pages: 0,
-            erased_sectors: 0,
-            programmed_pages: 0,
-            total_time: 0,
-        }
-    }
-
-    pub fn initialize(&mut self, total_sectors: usize, total_pages: usize) {
-        self.total_sectors = total_sectors;
-        self.total_pages = total_pages;
-        self.initialized = true;
-    }
-
-    pub fn increment_erased_sectors(&mut self) {
-        self.erased_sectors += 1;
-    }
-
-    pub fn increment_programmed_pages(&mut self) {
-        self.programmed_pages += 1;
-    }
-
-    pub fn add_time(&mut self, delta: u128) {
-        self.total_time += delta;
-    }
-
-    pub fn done(&self) -> usize {
-        self.programmed_pages + self.erased_sectors
-    }
-
-    pub fn total(&self) -> usize {
-        self.total_sectors + self.total_pages
-    }
-
-    pub fn total_sectors(&self) -> usize {
-        self.total_sectors
-    }
-
-    pub fn total_pages(&self) -> usize {
-        self.total_pages
-    }
-
-    pub fn sectors(&self) -> usize {
-        self.erased_sectors
-    }
-
-    pub fn pages(&self) -> usize {
-        self.programmed_pages
-    }
-
-    pub fn initialized(&self) -> bool {
-        self.initialized
     }
 }
