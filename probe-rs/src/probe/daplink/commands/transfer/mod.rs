@@ -240,6 +240,22 @@ impl TransferBlockRequest {
             transfer_data: data,
         }
     }
+
+    pub(crate) fn read_request(address: u8, port: PortType, read_count: u16) -> Self {
+        let inner = InnerTransferBlockRequest {
+            ap_n_dp: port,
+            r_n_w: RW::R,
+            a2: (address >> 2) & 0x01 == 1,
+            a3: (address >> 3) & 0x01 == 1,
+        };
+
+        TransferBlockRequest {
+            dap_index: 0,
+            transfer_count: read_count,
+            transfer_request: inner,
+            transfer_data: Vec::new(),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -264,7 +280,7 @@ impl InnerTransferBlockRequest {
 pub(crate) struct TransferBlockResponse {
     transfer_count: u16,
     pub transfer_response: u8,
-    transfer_data: Vec<u32>,
+    pub transfer_data: Vec<u32>,
 }
 
 impl Response for TransferBlockResponse {
@@ -281,7 +297,7 @@ impl Response for TransferBlockResponse {
         for data_offset in 0..(transfer_count as usize) {
             data.push(
                 buffer
-                    .pread(offset + 3 + data_offset)
+                    .pread(offset + 3 + data_offset * 4)
                     .expect("Failed to read value.."),
             );
         }

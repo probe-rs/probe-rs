@@ -91,6 +91,23 @@ pub trait DAPAccess {
     /// Reads the DAP register on the specified port and address
     fn read_register(&mut self, port: Port, addr: u16) -> Result<u32, DebugProbeError>;
 
+    /// Read multiple values from the same DAP register.
+    ///
+    /// If possible, this uses optimized read functions, otherwise it
+    /// falls back to the `read_register` function.
+    fn read_block(
+        &mut self,
+        port: Port,
+        addr: u16,
+        values: &mut [u32],
+    ) -> Result<(), DebugProbeError> {
+        for val in values {
+            *val = self.read_register(port, addr)?;
+        }
+
+        Ok(())
+    }
+
     /// Writes a value to the DAP register on the specified port and address
     fn write_register(&mut self, port: Port, addr: u16, value: u32) -> Result<(), DebugProbeError>;
 
@@ -250,6 +267,33 @@ impl MasterProbe {
         Ok(REGISTER::from(result))
     }
 
+    fn read_block_ap<AP, REGISTER>(
+        &mut self,
+        port: AP,
+        _register: REGISTER,
+        values: &mut [u32],
+    ) -> Result<(), DebugProbeError>
+    where
+        AP: AccessPort,
+        REGISTER: APRegister<AP>,
+    {
+        debug!(
+            "Reading register {}, block with len={} words",
+            REGISTER::NAME,
+            values.len(),
+        );
+
+        self.select_ap_and_ap_bank(port.get_port_number(), REGISTER::APBANKSEL)?;
+
+        let link = &mut self.actual_probe;
+        link.read_block(
+            Port::AccessPort(u16::from(self.current_apsel)),
+            u16::from(REGISTER::ADDRESS),
+            values,
+        )?;
+        Ok(())
+    }
+
     pub fn read_register_dp(&mut self, offset: u16) -> Result<u32, DebugProbeError> {
         self.actual_probe.read_register(Port::DebugPort, offset)
     }
@@ -339,6 +383,14 @@ where
     ) -> Result<(), Self::Error> {
         self.write_block_ap(port, register, values)
     }
+    fn read_block_ap(
+        &mut self,
+        port: MemoryAP,
+        register: REGISTER,
+        values: &mut [u32],
+    ) -> Result<(), Self::Error> {
+        self.read_block_ap(port, register, values)
+    }
 }
 
 impl<REGISTER> APAccess<GenericAP, REGISTER> for MasterProbe
@@ -370,6 +422,15 @@ where
         values: &[u32],
     ) -> Result<(), Self::Error> {
         self.write_block_ap(port, register, values)
+    }
+
+    fn read_block_ap(
+        &mut self,
+        port: GenericAP,
+        register: REGISTER,
+        values: &mut [u32],
+    ) -> Result<(), Self::Error> {
+        self.read_block_ap(port, register, values)
     }
 }
 

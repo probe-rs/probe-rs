@@ -15,6 +15,16 @@ where
     type Error: std::error::Error;
     fn read_register_ap(&mut self, port: PORT, register: REGISTER)
         -> Result<REGISTER, Self::Error>;
+
+    /// Read a register using a block transfer. This can be used
+    /// to read multiple values to the same register.
+    fn read_block_ap(
+        &mut self,
+        port: PORT,
+        register: REGISTER,
+        values: &mut [u32],
+    ) -> Result<(), Self::Error>;
+
     fn write_register_ap(&mut self, port: PORT, register: REGISTER) -> Result<(), Self::Error>;
 
     /// Write a register using a block transfer. This can be used
@@ -54,6 +64,14 @@ where
         values: &[u32],
     ) -> Result<(), Self::Error> {
         (*self).write_block_ap(port, register, values)
+    }
+    fn read_block_ap(
+        &mut self,
+        port: PORT,
+        register: REGISTER,
+        values: &mut [u32],
+    ) -> Result<(), Self::Error> {
+        (*self).read_block_ap(port, register, values)
     }
 }
 

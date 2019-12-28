@@ -81,29 +81,30 @@ pub(crate) fn send_command<Req: Request, Res: Response>(
     device: &hidapi::HidDevice,
     request: Req,
 ) -> Result<Res> {
+    const BUFFER_LEN: usize = 100;
     // Write the command & request to the buffer.
     // TODO: Error handling & real USB writing.
     // TODO: Use proper buffer size based on the HID
     //       report count.
-    let buffer = &mut [0; 100];
-    buffer[1] = *Req::CATEGORY;
-    let mut size = request.to_bytes(buffer, 1 + 1)?;
+    let mut write_buffer = [0; BUFFER_LEN];
+    write_buffer[1] = *Req::CATEGORY;
+    let mut size = request.to_bytes(&mut write_buffer, 1 + 1)?;
     size += 2;
 
     // ensure size of packet is at least 64
     // this should be read from the USB HID Record
     size = std::cmp::max(size, 64);
 
-    device.write(&buffer[..size])?;
-    log::trace!("Send buffer: {:02X?}", &buffer[..size]);
+    device.write(&write_buffer[..size])?;
+    log::trace!("Send buffer: {:02X?}", &write_buffer[..size]);
 
     // Read back resonse.
     // TODO: Error handling & real USB reading.
-    let buffer = &mut [0; 24];
-    device.read(buffer)?;
-    log::trace!("Receive buffer: {:02X?}", &buffer[..]);
-    if buffer[0] == *Req::CATEGORY {
-        Res::from_bytes(buffer, 1)
+    let mut read_buffer = [0; BUFFER_LEN];
+    device.read(&mut read_buffer)?;
+    log::trace!("Receive buffer: {:02X?}", &read_buffer[..]);
+    if read_buffer[0] == *Req::CATEGORY {
+        Res::from_bytes(&read_buffer, 1)
     } else {
         Err(Error::UnexpectedAnswer)
     }

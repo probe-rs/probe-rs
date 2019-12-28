@@ -374,6 +374,51 @@ impl DAPAccess for DAPLink {
 
         Ok(())
     }
+
+    fn read_block(
+        &mut self,
+        port: Port,
+        register_address: u16,
+        values: &mut [u32],
+    ) -> Result<(), DebugProbeError> {
+        let port = match port {
+            Port::DebugPort => PortType::DP,
+            Port::AccessPort(_) => PortType::AP,
+        };
+
+        // the overhead for a single packet is 6 bytes
+        //
+        // [0]: HID overhead
+        // [1]: Category
+        // [2]: DAP Index
+        // [3]: Len 1
+        // [4]: Len 2
+        // [5]: Request type
+        //
+
+        let max_packet_size_words = (self.packet_size.unwrap_or(32) - 6) / 4;
+
+        let data_chunk_len = max_packet_size_words as usize;
+
+        for (i, chunk) in values.chunks_mut(data_chunk_len).enumerate() {
+            let request = TransferBlockRequest::read_request(
+                register_address as u8,
+                port,
+                chunk.len() as u16,
+            );
+
+            debug!("Transfer block: chunk={}, len={} bytes", i, chunk.len() * 4);
+
+            let resp: TransferBlockResponse = commands::send_command(&self.device, request)
+                .map_err(|_| DebugProbeError::UnknownError)?;
+
+            assert_eq!(resp.transfer_response, 1);
+
+            chunk.clone_from_slice(&resp.transfer_data[..]);
+        }
+
+        Ok(())
+    }
 }
 
 impl Drop for DAPLink {

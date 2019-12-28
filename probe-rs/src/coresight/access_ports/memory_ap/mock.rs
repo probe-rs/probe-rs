@@ -187,4 +187,16 @@ where
 
         Ok(())
     }
+    fn read_block_ap(
+        &mut self,
+        port: MemoryAP,
+        register: REGISTER,
+        values: &mut [u32],
+    ) -> Result<(), Self::Error> {
+        for value in values {
+            *value = self.read_register_ap(port, register.clone())?.into()
+        }
+
+        Ok(())
+    }
 }
