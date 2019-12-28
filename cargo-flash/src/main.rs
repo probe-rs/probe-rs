@@ -232,7 +232,8 @@ fn main_try() -> Result<(), failure::Error> {
     let mm = session.target.memory_map.clone();
 
     // Create progress bars.
-    let m = indicatif::MultiProgress::with_draw_target(indicatif::ProgressDrawTarget::stdout_nohz());
+    let m =
+        indicatif::MultiProgress::with_draw_target(indicatif::ProgressDrawTarget::stdout_nohz());
     let style = indicatif::ProgressStyle::default_bar()
             .tick_chars("⠁⠂⠄⡀⢀⠠⠐⠈✔")
             .progress_chars("##-")
@@ -258,19 +259,19 @@ fn main_try() -> Result<(), failure::Error> {
             } => {
                 pbe.set_length(total_sectors as u64);
                 pbp.set_length(total_pages as u64);
-            },
+            }
             PageFlashed { size: _, time: _ } => {
                 pbp.inc(1);
-            },
+            }
             SectorErased { size: _, time: _ } => {
                 pbe.inc(1);
-            },
+            }
             FinishedErasing => {
                 pbe.finish();
-            },
+            }
             FinishedProgramming => {
                 pbp.finish();
-            },
+            }
         }
     });
 
