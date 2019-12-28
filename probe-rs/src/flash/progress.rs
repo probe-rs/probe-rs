@@ -13,10 +13,12 @@ impl FlashProgress {
         (self.handler)(event);
     }
 
-    pub fn initialized(&self, total_sectors: usize, total_pages: usize) {
+    pub fn initialized(&self, total_sectors: usize, total_pages: usize, sector_size: u32, page_size: u32) {
         self.emit(ProgressEvent::Initialized {
             total_sectors,
             total_pages,
+            sector_size,
+            page_size,
         });
     }
 
@@ -49,6 +51,8 @@ pub enum ProgressEvent {
     Initialized {
         total_pages: usize,
         total_sectors: usize,
+        sector_size: u32,
+        page_size: u32,
     },
     StartedFlashing,
     StartedErasing,

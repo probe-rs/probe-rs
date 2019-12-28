@@ -193,7 +193,9 @@ impl<'a> FlashBuilder<'a> {
         self.build_sectors_and_pages(&mut flash, &mut sectors, restore_unwritten_bytes)?;
 
         let num_pages = sectors.iter().map(|s| s.pages.len()).sum();
-        progress.initialized(sectors.len(), num_pages);
+        let sizes = sectors.first().map(|s| (s.size, s.page_size));
+        let (sector_size, page_size) = sizes.unwrap_or((0, 0));
+        progress.initialized(sectors.len(), num_pages, sector_size, page_size);
 
         // Check if there is even sectors to flash.
         if sectors.is_empty() || sectors[0].pages.is_empty() {

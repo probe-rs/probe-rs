@@ -237,7 +237,7 @@ fn main_try() -> Result<(), failure::Error> {
     let style = indicatif::ProgressStyle::default_bar()
             .tick_chars("⠁⠁⠉⠙⠚⠒⠂⠂⠒⠲⠴⠤⠄⠄⠤⠠⠠⠤⠦⠖⠒⠐⠐⠒⠓⠋⠉⠈⠈✔")
             .progress_chars("##-")
-            .template("    {msg:.green.bold} {spinner} [{elapsed_precise}] [{wide_bar}] {pos}/{len} (eta {eta})");
+            .template("    {msg:.green.bold} {spinner} [{elapsed_precise}] [{wide_bar}] {bytes:>8}/{total_bytes:>8} @ {bytes_per_sec:>10} (eta {eta:3})");
 
     // Create a new progress bar for the erase progress.
     let erase_progress = multi_progress.add(indicatif::ProgressBar::new(0));
@@ -253,9 +253,9 @@ fn main_try() -> Result<(), failure::Error> {
     let progress = FlashProgress::new(move |event| {
         use ProgressEvent::*;
         match event {
-            Initialized {total_pages, total_sectors, } => {
-                erase_progress.set_length(total_sectors as u64);
-                program_progress.set_length(total_pages as u64);
+            Initialized {total_pages, total_sectors, sector_size, page_size, } => {
+                erase_progress.set_length(total_sectors as u64 * sector_size as u64);
+                program_progress.set_length(total_pages as u64 * page_size as u64);
             }
             StartedFlashing => {
                 program_progress.enable_steady_tick(100);
@@ -265,11 +265,11 @@ fn main_try() -> Result<(), failure::Error> {
                 erase_progress.enable_steady_tick(100);
                 erase_progress.reset_elapsed();
             }
-            PageFlashed { size: _, time: _ } => {
-                program_progress.inc(1);
+            PageFlashed { size, time: _ } => {
+                program_progress.inc(size as u64);
             }
-            SectorErased { size: _, time: _ } => {
-                erase_progress.inc(1);
+            SectorErased { size, time: _ } => {
+                erase_progress.inc(size as u64);
             }
             FinishedErasing => {
                 erase_progress.finish();
