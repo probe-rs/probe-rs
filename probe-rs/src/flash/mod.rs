@@ -6,8 +6,10 @@ pub mod builder;
 pub mod download;
 pub mod flasher;
 pub mod loader;
+pub mod progress;
 
 pub use builder::*;
 pub use download::*;
 pub use flasher::*;
 pub use loader::*;
+pub use progress::*;

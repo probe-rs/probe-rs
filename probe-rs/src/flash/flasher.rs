@@ -1,11 +1,11 @@
 use super::builder::FlashBuilder;
+use super::FlashProgress;
 use crate::config::{
     flash_algorithm::FlashAlgorithm,
     memory::{FlashRegion, MemoryRange},
     target::Target,
 };
 use crate::coresight::{access_ports::AccessPortError, memory::MI};
-use crate::flash::loader::FlashProgress;
 use crate::probe::{DebugProbeError, MasterProbe};
 
 pub trait Operation {
@@ -242,7 +242,7 @@ impl<'a> Flasher<'a> {
         self,
         address: u32,
         data: &[u8],
-        progress: std::sync::Arc<std::sync::RwLock<FlashProgress>>,
+        progress: &FlashProgress,
         do_chip_erase: bool,
         _fast_verify: bool,
     ) -> Result<(), FlasherError> {
