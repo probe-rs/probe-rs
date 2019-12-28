@@ -15,7 +15,7 @@ use structopt::StructOpt;
 use probe_rs::{
     config::registry::{Registry, SelectionStrategy},
     coresight::access_ports::AccessPortError,
-    flash::download::{download_file, Format},
+    flash::download::{download_file_with_progress_reporting, Format},
     flash::{FlashProgress, ProgressEvent},
     probe::{
         daplink, stlink, DebugProbe, DebugProbeError, DebugProbeType, MasterProbe, WireProtocol,
@@ -285,11 +285,13 @@ fn main_try() -> Result<(), failure::Error> {
     });
 
     // Make the multi progresses print.
+    // indicatif requires this in a separate thread as this join is a blocking op,
+    // but is required for printing multiprogress.
     let progress_thread_handle = std::thread::spawn(move || {
         multi_progress.join().unwrap();
     });
 
-    download_file(
+    download_file_with_progress_reporting(
         &mut session,
         std::path::Path::new(&path_str.to_string().as_str()),
         Format::Elf,
