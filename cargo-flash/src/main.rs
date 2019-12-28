@@ -232,52 +232,57 @@ fn main_try() -> Result<(), failure::Error> {
     let mm = session.target.memory_map.clone();
 
     // Create progress bars.
-    let m =
-        indicatif::MultiProgress::with_draw_target(indicatif::ProgressDrawTarget::stdout_nohz());
+    let multi_progress =
+        indicatif::MultiProgress::new();//with_draw_target(indicatif::ProgressDrawTarget::stdout_nohz());
     let style = indicatif::ProgressStyle::default_bar()
-            .tick_chars("⠁⠂⠄⡀⢀⠠⠐⠈✔")
+            .tick_chars("⠁⠁⠉⠙⠚⠒⠂⠂⠒⠲⠴⠤⠄⠄⠤⠠⠠⠤⠦⠖⠒⠐⠐⠒⠓⠋⠉⠈⠈✔")
             .progress_chars("##-")
             .template("    {msg:.green.bold} {spinner} [{elapsed_precise}] [{wide_bar}] {pos}/{len} (eta {eta})");
 
     // Create a new progress bar for the erase progress.
-    let pbe = m.add(indicatif::ProgressBar::new(0));
-    pbe.set_style(style.clone());
-    pbe.set_message("Erasing sectors  ");
+    let erase_progress = multi_progress.add(indicatif::ProgressBar::new(0));
+    erase_progress.set_style(style.clone());
+    erase_progress.set_message("Erasing sectors  ");
 
     // Create a new progress bar for the program progress.
-    let pbp = m.add(indicatif::ProgressBar::new(0));
-    pbp.set_style(style);
-    pbp.set_message("Programming pages");
+    let program_progress = multi_progress.add(indicatif::ProgressBar::new(0));
+    program_progress.set_style(style);
+    program_progress.set_message("Programming pages");
 
     // Register callback to update the progress.
     let progress = FlashProgress::new(move |event| {
         use ProgressEvent::*;
         match event {
-            Initialize {
-                total_sectors,
-                total_pages,
-            } => {
-                pbe.set_length(total_sectors as u64);
-                pbp.set_length(total_pages as u64);
+            Initialized {total_pages, total_sectors, } => {
+                erase_progress.set_length(total_sectors as u64);
+                program_progress.set_length(total_pages as u64);
+            }
+            StartedFlashing => {
+                program_progress.enable_steady_tick(100);
+                program_progress.reset_elapsed();
+            }
+            StartedErasing => {
+                erase_progress.enable_steady_tick(100);
+                erase_progress.reset_elapsed();
             }
             PageFlashed { size: _, time: _ } => {
-                pbp.inc(1);
+                program_progress.inc(1);
             }
             SectorErased { size: _, time: _ } => {
-                pbe.inc(1);
+                erase_progress.inc(1);
             }
             FinishedErasing => {
-                pbe.finish();
+                erase_progress.finish();
             }
             FinishedProgramming => {
-                pbp.finish();
+                program_progress.finish();
             }
         }
     });
 
     // Make the multi progresses print.
     let progress_thread_handle = std::thread::spawn(move || {
-        m.join().unwrap();
+        multi_progress.join().unwrap();
     });
 
     download_file(
