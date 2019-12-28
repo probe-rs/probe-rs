@@ -3,6 +3,7 @@ use probe_rs::{
     coresight::memory::MI,
     probe::{daplink, stlink, DebugProbe, DebugProbeType, MasterProbe, WireProtocol},
     session::Session,
+    target::info::ChipInfo,
 };
 
 use std::num::ParseIntError;
@@ -15,7 +16,7 @@ use structopt::StructOpt;
 #[derive(StructOpt)]
 struct CLI {
     #[structopt(long = "target")]
-    target: String,
+    target: Option<String>,
     #[structopt(long = "address", parse(try_from_str = parse_hex))]
     address: u32,
     #[structopt(long = "size")]
@@ -33,9 +34,15 @@ fn main() -> Result<(), &'static str> {
 
     let identifier = &matches.target;
 
-    let probe = open_probe(None)?;
+    let mut probe = open_probe(None)?;
 
-    let strategy = SelectionStrategy::TargetIdentifier(identifier.into());
+    let strategy = match identifier {
+        Some(identifier) => SelectionStrategy::TargetIdentifier(identifier.into()),
+        None => SelectionStrategy::ChipInfo(
+            ChipInfo::read_from_rom_table(&mut probe)
+                .map_err(|_| "Failed to read chip info from ROM table")?,
+        ),
+    };
 
     let registry = Registry::from_builtin_families();
 
