@@ -16,7 +16,7 @@ use probe_rs::{
     config::registry::{Registry, SelectionStrategy},
     coresight::access_ports::AccessPortError,
     flash::download::{download_file, Format},
-    flash::loader::FlashProgress,
+    flash::{FlashProgress, ProgressEvent},
     probe::{
         daplink, stlink, DebugProbe, DebugProbeError, DebugProbeType, MasterProbe, WireProtocol,
     },
@@ -230,13 +230,13 @@ fn main_try() -> Result<(), failure::Error> {
     let instant = Instant::now();
 
     let mm = session.target.memory_map.clone();
-    let progress = std::sync::Arc::new(std::sync::RwLock::new(FlashProgress::new()));
 
-    let m = indicatif::MultiProgress::new();
+    // Create progress bars.
+    let m = indicatif::MultiProgress::with_draw_target(indicatif::ProgressDrawTarget::stdout_nohz());
     let style = indicatif::ProgressStyle::default_bar()
             .tick_chars("⠁⠂⠄⡀⢀⠠⠐⠈✔")
             .progress_chars("##-")
-            .template("    {msg:.green.bold} {spinner} [{elapsed_precise}] [{bar:>40}] {pos}/{len} (eta {eta})");
+            .template("    {msg:.green.bold} {spinner} [{elapsed_precise}] [{wide_bar}] {pos}/{len} (eta {eta})");
 
     // Create a new progress bar for the erase progress.
     let pbe = m.add(indicatif::ProgressBar::new(0));
@@ -248,49 +248,34 @@ fn main_try() -> Result<(), failure::Error> {
     pbp.set_style(style);
     pbp.set_message("Programming pages");
 
-    // static CHECK_MARK: console::Emoji<'_, '_> = console::Emoji("✓  ", "");
-
-    let tprogress = progress.clone();
-    std::thread::spawn(move || {
-        // Wait until the progress bars were initialized.
-        loop {
-            let progress = tprogress.read().unwrap();
-            if progress.initialized() {
-                pbe.set_length(progress.total_sectors() as u64);
-                pbp.set_length(progress.total_pages() as u64);
-                break;
-            }
-        }
-
-        loop {
-            let progress = tprogress.read().unwrap();
-
-            // Set erased sectors progress.
-            if progress.total_sectors() != progress.sectors() {
-                pbe.set_position(progress.sectors() as u64);
-            } else {
+    // Register callback to update the progress.
+    let progress = FlashProgress::new(move |event| {
+        use ProgressEvent::*;
+        match event {
+            Initialize {
+                total_sectors,
+                total_pages,
+            } => {
+                pbe.set_length(total_sectors as u64);
+                pbp.set_length(total_pages as u64);
+            },
+            PageFlashed { size: _, time: _ } => {
+                pbp.inc(1);
+            },
+            SectorErased { size: _, time: _ } => {
+                pbe.inc(1);
+            },
+            FinishedErasing => {
                 pbe.finish();
-            }
-
-            // Set programmed pages progress.
-            if progress.total_pages() != progress.pages() {
-                pbp.set_position(progress.pages() as u64);
-            } else {
+            },
+            FinishedProgramming => {
                 pbp.finish();
-            }
-
-            // Break if we have everything done.
-            if progress.total_pages() == progress.pages()
-                && progress.total_sectors() == progress.sectors()
-            {
-                break;
-            }
-            std::thread::sleep(std::time::Duration::from_millis(3));
+            },
         }
     });
 
     // Make the multi progresses print.
-    std::thread::spawn(move || {
+    let progress_thread_handle = std::thread::spawn(move || {
         m.join().unwrap();
     });
 
@@ -299,9 +284,12 @@ fn main_try() -> Result<(), failure::Error> {
         std::path::Path::new(&path_str.to_string().as_str()),
         Format::Elf,
         &mm,
-        progress,
+        &progress,
     )
     .map_err(|e| format_err!("failed to flash {}: {}", path_str, e))?;
+
+    // We don't care if we cannot join this thread.
+    let _ = progress_thread_handle.join();
 
     // Stop timer.
     let elapsed = instant.elapsed();
