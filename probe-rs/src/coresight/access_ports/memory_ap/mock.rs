@@ -177,10 +177,14 @@ where
 
     fn write_block_ap(
         &mut self,
-        _port: MemoryAP,
+        port: MemoryAP,
         _register: REGISTER,
-        _values: &[u32],
+        values: &[u32],
     ) -> Result<(), Self::Error> {
-        unimplemented!("Not implemented for MOCK AP");
+        for value in values {
+            self.write_register_ap(port, REGISTER::from(*value))?
+        }
+
+        Ok(())
     }
 }
