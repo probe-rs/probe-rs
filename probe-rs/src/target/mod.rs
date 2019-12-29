@@ -35,11 +35,33 @@ pub struct BasicRegisterAddresses {
     pub R2: CoreRegisterAddress,
     pub R3: CoreRegisterAddress,
     pub R4: CoreRegisterAddress,
+    pub R5: CoreRegisterAddress,
+    pub R6: CoreRegisterAddress,
+    pub R7: CoreRegisterAddress,
+    pub R8: CoreRegisterAddress,
     pub R9: CoreRegisterAddress,
     pub PC: CoreRegisterAddress,
     pub LR: CoreRegisterAddress,
     pub SP: CoreRegisterAddress,
     pub XPSR: CoreRegisterAddress,
+}
+
+impl BasicRegisterAddresses {
+    pub fn get_reg(&self, name: impl AsRef<str>) -> Option<CoreRegisterAddress> {
+        match name.as_ref() {
+            "0" => Some(self.R0),
+            "1" => Some(self.R1),
+            "2" => Some(self.R2),
+            "3" => Some(self.R3),
+            "4" => Some(self.R4),
+            "5" => Some(self.R5),
+            "6" => Some(self.R6),
+            "7" => Some(self.R7),
+            "8" => Some(self.R8),
+            "9" => Some(self.R9),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
