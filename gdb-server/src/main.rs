@@ -10,6 +10,7 @@ use probe_rs::{
     probe::{daplink, stlink, DebugProbe, DebugProbeType, MasterProbe, WireProtocol},
     session::Session,
     target::info::ChipInfo,
+    target::{CoreRegisterAddress, BasicRegisterAddresses},
 };
 
 #[derive(StructOpt)]
@@ -49,9 +50,8 @@ fn main() -> Result<(), Error> {
 
     while let Some(packet) = server.next_packet()? {
         println!(
-            "-> {:?} {:?}",
-            packet.kind,
-            std::str::from_utf8(&packet.data)
+            "{:?}",
+            std::str::from_utf8(&packet.data).unwrap()
         );
 
         let response: String = if packet.data.starts_with("qSupported".as_bytes()) {
@@ -79,14 +79,20 @@ fn main() -> Result<(), Error> {
             println!("{:?}", p);
 
             let cpu_info = session.target.core.halt(&mut session.probe);
-            let reg = session.target.core.registers().get_reg("2");
+            println!("PC = 0x{:08x}", cpu_info.unwrap().pc);
+            session
+                .target
+                .core
+                .wait_for_core_halted(&mut session.probe).unwrap();
+            session.target.core.reset_and_halt(&mut session.probe).unwrap();
+            let reg = CoreRegisterAddress(u8::from_str_radix(&p.reg, 16).unwrap());
             println!("{:?}", reg);
 
             let value = session.target
                 .core
-                .read_core_reg(&mut session.probe, reg.unwrap()).unwrap();
+                .read_core_reg(&mut session.probe, reg).unwrap();
 
-            format!("{:08x}", value)
+            format!("{:08x}", value.to_be())
         } else if packet.data.starts_with("qTsP".as_bytes()) {
             "".into()
         } else if packet.data.starts_with("qfThreadInfo".as_bytes()) {
@@ -144,7 +150,8 @@ fn main() -> Result<(), Error> {
 
         let mut bytes = Vec::new();
         response.encode(&mut bytes).unwrap();
-        println!("<- {:?}", std::str::from_utf8(&bytes));
+        println!("{:x?}", std::str::from_utf8(&response.data).unwrap());
+        println!("-----------------------------------------------");
 
         server.dispatch(&response)?;
     }
