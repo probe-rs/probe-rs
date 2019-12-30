@@ -15,13 +15,22 @@ use cmsis_pack::utils::FromElem;
 use probe_rs::config::flash_algorithm::RawFlashAlgorithm;
 use probe_rs::config::memory::{FlashRegion, MemoryRegion, RamRegion};
 use std::fs::{self, File};
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use structopt::StructOpt;
+
+#[derive(StructOpt)]
+struct Options {
+    #[structopt(name = "INPUT_DIR", parse(from_os_str))]
+    input_dir: PathBuf,
+    #[structopt(name = "OUTPUT_DIR", parse(from_os_str))]
+    output_dir: PathBuf,
+}
 
 fn main() {
-    let args: Vec<_> = std::env::args().collect();
+    let options = Options::from_args();
     // The directory in which to look for the .pdsc file.
-    let in_dir = &std::path::Path::new(&args[1]);
-    let out_dir = &std::path::Path::new(&args[2]);
+    let in_dir = options.input_dir;
+    let out_dir = options.output_dir;
 
     let mut families = Vec::<ChipFamily>::new();
 

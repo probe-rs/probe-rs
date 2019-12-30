@@ -9,11 +9,12 @@ edition = "2018"
 [dependencies]
 probe-rs = { git = "https://github.com/probe-rs/probe-rs.git" }
 cmsis-pack = { git = "https://github.com/probe-rs/cmsis-pack-manager.git" }
-goblin = "*"
-scroll = "*"
-num-traits = "*"
-num-derive = "*"
+goblin = "0.1.3"
+scroll = "0.10.1"
+num-traits = "0.2.10"
+num-derive = "0.3.0"
 serde = "1.0.101"
-serde_yaml = "*"
+serde_yaml = "0.8.11"
 log = "0.4.8"
 zip = "0.5.3"
+structopt = "0.3.2"
