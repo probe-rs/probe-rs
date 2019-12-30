@@ -50,5 +50,5 @@ proc-macro2 = "1.0.4"
 
 [dev-dependencies]
 rand = "0.7.2"
-structopt = "*"
+structopt = "0.3"
 pretty_env_logger = "0.3.0"

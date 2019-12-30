@@ -13,23 +13,23 @@ where
     REGISTER: APRegister<PORT>,
 {
     type Error: std::error::Error;
-    fn read_register_ap(&mut self, port: PORT, register: REGISTER)
+    fn read_ap_register(&mut self, port: PORT, register: REGISTER)
         -> Result<REGISTER, Self::Error>;
 
     /// Read a register using a block transfer. This can be used
-    /// to read multiple values to the same register.
-    fn read_block_ap(
+    /// to read multiple values from the same register.
+    fn read_ap_register_repeated(
         &mut self,
         port: PORT,
         register: REGISTER,
         values: &mut [u32],
     ) -> Result<(), Self::Error>;
 
-    fn write_register_ap(&mut self, port: PORT, register: REGISTER) -> Result<(), Self::Error>;
+    fn write_ap_register(&mut self, port: PORT, register: REGISTER) -> Result<(), Self::Error>;
 
     /// Write a register using a block transfer. This can be used
     /// to write multiple values to the same register.
-    fn write_block_ap(
+    fn write_ap_register_repeated(
         &mut self,
         port: PORT,
         register: REGISTER,
@@ -45,33 +45,33 @@ where
 {
     type Error = T::Error;
 
-    fn read_register_ap(
+    fn read_ap_register(
         &mut self,
         port: PORT,
         register: REGISTER,
     ) -> Result<REGISTER, Self::Error> {
-        (*self).read_register_ap(port, register)
+        (*self).read_ap_register(port, register)
     }
 
-    fn write_register_ap(&mut self, port: PORT, register: REGISTER) -> Result<(), Self::Error> {
-        (*self).write_register_ap(port, register)
+    fn write_ap_register(&mut self, port: PORT, register: REGISTER) -> Result<(), Self::Error> {
+        (*self).write_ap_register(port, register)
     }
 
-    fn write_block_ap(
+    fn write_ap_register_repeated(
         &mut self,
         port: PORT,
         register: REGISTER,
         values: &[u32],
     ) -> Result<(), Self::Error> {
-        (*self).write_block_ap(port, register, values)
+        (*self).write_ap_register_repeated(port, register, values)
     }
-    fn read_block_ap(
+    fn read_ap_register_repeated(
         &mut self,
         port: PORT,
         register: REGISTER,
         values: &mut [u32],
     ) -> Result<(), Self::Error> {
-        (*self).read_block_ap(port, register, values)
+        (*self).read_ap_register_repeated(port, register, values)
     }
 }
 
@@ -80,7 +80,7 @@ pub fn access_port_is_valid<AP>(debug_port: &mut AP, access_port: GenericAP) -> 
 where
     AP: APAccess<GenericAP, IDR>,
 {
-    if let Ok(idr) = debug_port.read_register_ap(access_port, IDR::default()) {
+    if let Ok(idr) = debug_port.read_ap_register(access_port, IDR::default()) {
         u32::from(idr) != 0
     } else {
         false
@@ -105,7 +105,7 @@ where
     P: Fn(IDR) -> bool,
 {
     (0..=255).map(GenericAP::new).find(|ap| {
-        if let Ok(idr) = debug_port.read_register_ap(*ap, IDR::default()) {
+        if let Ok(idr) = debug_port.read_ap_register(*ap, IDR::default()) {
             f(idr)
         } else {
             false

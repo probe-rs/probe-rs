@@ -15,8 +15,8 @@ use structopt::StructOpt;
 
 #[derive(StructOpt)]
 struct CLI {
-    #[structopt(long = "target")]
-    target: Option<String>,
+    #[structopt(long = "chip")]
+    chip: Option<String>,
     #[structopt(long = "address", parse(try_from_str = parse_hex))]
     address: u32,
     #[structopt(long = "size")]
@@ -32,7 +32,7 @@ fn main() -> Result<(), &'static str> {
 
     let matches = CLI::from_args();
 
-    let identifier = &matches.target;
+    let identifier = &matches.chip;
 
     let mut probe = open_probe(None)?;
 
