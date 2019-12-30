@@ -64,7 +64,7 @@ fn main() -> Result<(), Error> {
                 let mut local_session = session.lock().unwrap();
                 let local_session: &mut Session = &mut local_session;
                 let awaits_halt: &mut bool = &mut awaits_halt.lock().unwrap();
-                local_session.target.core.halt(&mut local_session.probe).unwrap();
+                // local_session.target.core.halt(&mut local_session.probe).unwrap();
                 if *awaits_halt && local_session.target.core.core_halted(&mut local_session.probe).unwrap() {
                     let response = CheckedPacket::from_data(Kind::Packet, "T05swbreak:;".to_string().into_bytes());
 
@@ -122,7 +122,7 @@ fn main() -> Result<(), Error> {
                 );
 
                 let response: Option<String> = if packet.data.starts_with("qSupported".as_bytes()) {
-                    Some("PacketSize=2048;swbreak+;vContSupported+".into())
+                    Some("PacketSize=2048;swbreak-;hwbreak+;vContSupported+".into())
                 } else if packet.data.starts_with("vMustReplyEmpty".as_bytes()) {
                     Some("".into())
                 } else if packet.data.starts_with("qTStatus".as_bytes()) {

@@ -188,6 +188,10 @@ impl ADIMemoryInterface {
     where
         AP: APAccess<MemoryAP, CSW> + APAccess<MemoryAP, TAR> + APAccess<MemoryAP, DRW>,
     {
+        if data.len() == 0 {
+            return Ok(());
+        }
+
         if (start_address % 4) != 0 {
             return Err(AccessPortError::MemoryNotAligned);
         }
@@ -274,6 +278,10 @@ impl ADIMemoryInterface {
     where
         AP: APAccess<MemoryAP, CSW> + APAccess<MemoryAP, TAR> + APAccess<MemoryAP, DRW>,
     {
+        if data.len() == 0 {
+            return Ok(());
+        }
+
         let pre_bytes = ((4 - (address % 4)) % 4) as usize;
 
         let aligned_addr = address - (address % 4);
@@ -432,6 +440,10 @@ impl ADIMemoryInterface {
     where
         AP: APAccess<MemoryAP, CSW> + APAccess<MemoryAP, TAR> + APAccess<MemoryAP, DRW>,
     {
+        if data.len() == 0 {
+            return Ok(());
+        }
+
         if (start_address % 4) != 0 {
             return Err(AccessPortError::MemoryNotAligned);
         }
@@ -530,9 +542,13 @@ impl ADIMemoryInterface {
     where
         AP: APAccess<MemoryAP, CSW> + APAccess<MemoryAP, TAR> + APAccess<MemoryAP, DRW>,
     {
-        let pre_bytes = ((4 - (address % 4)) % 4) as usize;
-        let pre_address = address / 4;
+        if data.len() == 0 {
+            return Ok(());
+        }
+
+        let pre_bytes = usize::min(data.len(), ((4 - (address % 4)) % 4) as usize);
         let aligned_address = address + pre_bytes as u32;
+        let pre_address = aligned_address - 4;
         let post_bytes = (data.len() - pre_bytes) % 4;
         let post_address = address + (data.len() - post_bytes) as u32;
 
@@ -558,6 +574,7 @@ impl ADIMemoryInterface {
 
         if post_bytes != 0 {
             let mut post_data = self.read32(debug_port, post_address)?;
+
             dbg!(post_bytes);
             for shift in 0..post_bytes {
                 post_data &= !(0xFF << (shift * 8));
