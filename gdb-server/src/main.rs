@@ -1,4 +1,5 @@
 mod gdb_server;
+// mod gdb_server_async;
 
 use gdb_protocol::{ packet::{CheckedPacket, Kind}, Error};
 use std::io::{self, prelude::*, Error as iError, ErrorKind};
@@ -65,8 +66,9 @@ fn main() -> Result<(), Error> {
                 let local_session: &mut Session = &mut local_session;
                 let awaits_halt: &mut bool = &mut awaits_halt.lock().unwrap();
                 // local_session.target.core.halt(&mut local_session.probe).unwrap();
+                // println!("await halt");
                 if *awaits_halt && local_session.target.core.core_halted(&mut local_session.probe).unwrap() {
-                    let response = CheckedPacket::from_data(Kind::Packet, "T05swbreak:;".to_string().into_bytes());
+                    let response = CheckedPacket::from_data(Kind::Packet, "T05hwbreak:;".to_string().into_bytes());
 
                     let mut bytes = Vec::new();
                     response.encode(&mut bytes).unwrap();
@@ -122,7 +124,7 @@ fn main() -> Result<(), Error> {
                 );
 
                 let response: Option<String> = if packet.data.starts_with("qSupported".as_bytes()) {
-                    Some("PacketSize=2048;swbreak-;hwbreak+;vContSupported+".into())
+                    Some("PacketSize=2048;swbreak-;hwbreak+;vContSupported+;qXfer:memory-map:read+".into())
                 } else if packet.data.starts_with("vMustReplyEmpty".as_bytes()) {
                     Some("".into())
                 } else if packet.data.starts_with("qTStatus".as_bytes()) {
@@ -222,6 +224,25 @@ fn main() -> Result<(), Error> {
                     Some("S05".into())
                 } else if packet.data.starts_with("Z0".as_bytes()) {
                     Some("".into())
+                } else if packet.data.starts_with("Z1".as_bytes()) {
+                    #[derive(Debug, Deserialize, PartialEq, Recap)]
+                    #[recap(regex=r#"Z1,(?P<addr>\w+),(?P<size>\w+)"#)]
+                    struct Z1 {
+                        addr: String,
+                        size: String,
+                    }
+
+                    let z1 = packet_string.parse::<Z1>().unwrap();
+                    println!("{:?}", z1);
+
+                    let addr = u32::from_str_radix(&z1.addr, 16).unwrap();
+
+                    session.target.core.reset_and_halt(&mut session.probe).unwrap();
+                    session.target.core.wait_for_core_halted(&mut session.probe).unwrap();
+                    session.target.core.enable_breakpoints(&mut session.probe, true).unwrap();
+                    session.target.core.set_breakpoint(&mut session.probe, addr).unwrap();
+                    session.target.core.run(&mut session.probe).unwrap();
+                    Some("OK".into())
                 } else if packet.data.starts_with("X".as_bytes()) {
                     #[derive(Debug, Deserialize, PartialEq, Recap)]
                     #[recap(regex=r#"X(?P<addr>\w+),(?P<length>\w+):(?P<data>[01]*)"#)]
@@ -248,8 +269,14 @@ fn main() -> Result<(), Error> {
                     println!("{:?}", data);
 
                     Some("OK".into())
-                } else if packet.data.starts_with("qTfV".as_bytes()) {
-                    Some("".into())
+                } else if packet.data.starts_with("qXfer:memory-map:read".as_bytes()) {
+                    let xml = r#"<?xml version="1.0"?>
+<!DOCTYPE memory-map PUBLIC "+//IDN gnu.org//DTD GDB Memory Map V1.0//EN" "http://sourceware.org/gdb/gdb-memory-map.dtd">
+<memory-map>
+    <memory type="ram" start="0x20000000" length="0x4000"/>
+    <memory type="rom" start="0x00000000" length="0x40000"/>
+</memory-map>"#;
+                    Some(xml.into())
                 } else if packet.data.starts_with("qTfV".as_bytes()) {
                     Some("".into())
                 } else if packet.data.starts_with("qTfV".as_bytes()) {
