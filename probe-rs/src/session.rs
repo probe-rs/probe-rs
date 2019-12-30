@@ -117,3 +117,5 @@ struct Breakpoint {
     address: u32,
     register_hw: usize,
 }
+
+unsafe impl Send for Session {}

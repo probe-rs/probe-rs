@@ -46,24 +46,6 @@ pub struct BasicRegisterAddresses {
     pub XPSR: CoreRegisterAddress,
 }
 
-impl BasicRegisterAddresses {
-    pub fn get_reg(&self, name: impl AsRef<str>) -> Option<CoreRegisterAddress> {
-        match name.as_ref() {
-            "0" => Some(self.R0),
-            "1" => Some(self.R1),
-            "2" => Some(self.R2),
-            "3" => Some(self.R3),
-            "4" => Some(self.R4),
-            "5" => Some(self.R5),
-            "6" => Some(self.R6),
-            "7" => Some(self.R7),
-            "8" => Some(self.R8),
-            "9" => Some(self.R9),
-            _ => None,
-        }
-    }
-}
-
 #[derive(Debug, Clone)]
 pub struct CoreInformation {
     pub pc: u32,
@@ -75,6 +57,12 @@ pub trait Core: std::fmt::Debug + dyn_clone::DynClone {
     ///
     /// [`DebugProbeError::Timeout`]: ../probe/debug_probe/enum.DebugProbeError.html#variant.Timeout
     fn wait_for_core_halted(&self, mi: &mut MasterProbe) -> Result<(), DebugProbeError>;
+
+    /// Check if the core is halted. If the core does not halt on its own,
+    /// a [`DebugProbeError::Timeout`] error will be returned.
+    ///
+    /// [`DebugProbeError::Timeout`]: ../probe/debug_probe/enum.DebugProbeError.html#variant.Timeout
+    fn core_halted(&self, mi: &mut MasterProbe) -> Result<bool, DebugProbeError>;
 
     /// Try to halt the core. This function ensures the core is actually halted, and
     /// returns a [`DebugProbeError::Timeout`] otherwise.

@@ -327,6 +327,17 @@ impl Core for M4 {
         Err(DebugProbeError::Timeout)
     }
 
+    fn core_halted(&self, mi: &mut MasterProbe) -> Result<bool, DebugProbeError> {
+        // Wait until halted state is active again.
+        let dhcsr_val = Dhcsr(mi.read32(Dhcsr::ADDRESS)?);
+
+        if dhcsr_val.s_halt() {
+            Ok(true)
+        } else {
+            Ok(false)
+        }
+    }
+
     fn read_core_reg(
         &self,
         mi: &mut MasterProbe,
