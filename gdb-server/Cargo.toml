@@ -8,7 +8,7 @@ edition = "2018"
 
 [dependencies]
 probe-rs = { path = "../probe-rs", version = "0.2.0" }
-gdb-protocol = "0.1.0"
+gdb-protocol = { version = "0.1.0" }
 recap = "0.1.1"
 serde = "1.0.1"
 pretty_env_logger = "0.3.0"

@@ -1,9 +1,11 @@
-use gdb_protocol::{io::GdbServer, packet::{CheckedPacket, Kind}, Error};
-use std::io::{self, prelude::*};
+mod gdb_server;
+
+use gdb_protocol::{ packet::{CheckedPacket, Kind}, Error};
+use std::io::{self, prelude::*, Error as iError, ErrorKind};
 use recap::Recap;
 use serde::Deserialize;
 use structopt::StructOpt;
-use std::num::ParseIntError;
+use crate::gdb_server::GdbServer;
 use probe_rs::{
     config::registry::{Registry, SelectionStrategy},
     coresight::memory::MI,
@@ -12,6 +14,8 @@ use probe_rs::{
     target::info::ChipInfo,
     target::{CoreRegisterAddress, BasicRegisterAddresses},
 };
+use std::thread;
+use std::sync::mpsc::channel;
 
 #[derive(StructOpt)]
 struct CLI {
@@ -42,121 +46,261 @@ fn main() -> Result<(), Error> {
         .get_target(strategy)
         .map_err(|_| "Failed to find target").unwrap();
 
-    let mut session = Session::new(target, probe);
+    let mut session = std::sync::Arc::new(std::sync::Mutex::new(Session::new(target, probe)));
 
     println!("Listening on port 1337...");
-    let mut server = GdbServer::listen("0.0.0.0:1337")?;
+    let mut server = std::sync::Arc::new(std::sync::Mutex::new(GdbServer::listen("0.0.0.0:1337")?));
     println!("Connected!");
 
-    while let Some(packet) = server.next_packet()? {
-        println!(
-            "{:?}",
-            std::str::from_utf8(&packet.data).unwrap()
-        );
+    let mut awaits_halt = std::sync::Arc::new(std::sync::Mutex::new(false));
 
-        let response: String = if packet.data.starts_with("qSupported".as_bytes()) {
-            "PacketSize=2048".into()
-        } else if packet.data.starts_with("vMustReplyEmpty".as_bytes()) {
-            "".into()
-        } else if packet.data.starts_with("qTStatus".as_bytes()) {
-            "".into()
-        } else if packet.data.starts_with("qTfV".as_bytes()) {
-            "".into()
-        } else if packet.data.starts_with("qAttached".as_bytes()) {
-            "1".into()
-        } else if packet.data.starts_with("?".as_bytes()) {
-            "S05".into()
-        } else if packet.data.starts_with("g".as_bytes()) {
-            "xxxxxxxx".into()
-        } else if packet.data.starts_with("p".as_bytes()) {
-            #[derive(Debug, Deserialize, PartialEq, Recap)]
-            #[recap(regex=r#"p(?P<reg>\w+)"#)]
-            struct P {
-                reg: String,
+    let mut session_clone = session.clone();
+    let mut server_clone = server.clone();
+    let mut awaits_halt_clone = awaits_halt.clone();
+
+    let probe_rs_executor = thread::spawn(move || {
+        loop {
+            {
+                let mut local_session = session.lock().unwrap();
+                let local_session: &mut Session = &mut local_session;
+                let awaits_halt: &mut bool = &mut awaits_halt.lock().unwrap();
+                local_session.target.core.halt(&mut local_session.probe).unwrap();
+                if *awaits_halt && local_session.target.core.core_halted(&mut local_session.probe).unwrap() {
+                    let response = CheckedPacket::from_data(Kind::Packet, "T05swbreak:;".to_string().into_bytes());
+
+                    let mut bytes = Vec::new();
+                    response.encode(&mut bytes).unwrap();
+                    println!("Core halted");
+                    println!("{:x?}", std::str::from_utf8(&response.data).unwrap());
+                    println!("-----------------------------------------------");
+
+                    *awaits_halt = false;
+                    println!("get lock");
+                    let mut server = server.lock().unwrap();
+                    println!("got lock");
+                    loop {
+                        match server.dispatch(&response) {
+                            Ok(_) => break,
+                            Err(Error::IoError(ref e)) if e.kind() == io::ErrorKind::WouldBlock => {
+                                continue
+                            }
+                            Err(e) => panic!("encountered IO error: {}", e),
+                        };
+                    };
+                }
+            }
+            thread::sleep(std::time::Duration::from_millis(5));
+        }
+    });
+
+    let mut session = session_clone;
+    let mut server = server_clone;
+    let awaits_halt = awaits_halt_clone;
+
+    let gdb_executor = thread::spawn(move || {
+        loop {
+            let packet = {
+                let packet = server.lock().unwrap().next_packet();
+                if let Err(Error::IoError(e)) = packet {
+                    if e.kind() == ErrorKind::WouldBlock {
+                        continue;
+                    } else {
+                        panic!(e);
+                    }
+                } else {
+                    packet.unwrap()
+                }
+            };
+            if let Some(packet) = packet {
+
+                let session: &mut Session = &mut session.lock().unwrap();
+
+                let packet_string = String::from_utf8_lossy(&packet.data).to_string();
+                println!(
+                    "{:?}",
+                    packet_string
+                );
+
+                let response: Option<String> = if packet.data.starts_with("qSupported".as_bytes()) {
+                    Some("PacketSize=2048;swbreak+;vContSupported+".into())
+                } else if packet.data.starts_with("vMustReplyEmpty".as_bytes()) {
+                    Some("".into())
+                } else if packet.data.starts_with("qTStatus".as_bytes()) {
+                    Some("".into())
+                } else if packet.data.starts_with("qTfV".as_bytes()) {
+                    Some("".into())
+                } else if packet.data.starts_with("qAttached".as_bytes()) {
+                    Some("1".into())
+                } else if packet.data.starts_with("?".as_bytes()) {
+                    Some("S05".into())
+                } else if packet.data.starts_with("g".as_bytes()) {
+                    Some("xxxxxxxx".into())
+                } else if packet.data.starts_with("p".as_bytes()) {
+                    #[derive(Debug, Deserialize, PartialEq, Recap)]
+                    #[recap(regex=r#"p(?P<reg>\w+)"#)]
+                    struct P {
+                        reg: String,
+                    }
+
+                    let p = packet_string.parse::<P>().unwrap();
+                    println!("{:?}", p);
+
+                    let cpu_info = session.target.core.halt(&mut session.probe);
+                    println!("PC = 0x{:08x}", cpu_info.unwrap().pc);
+                    session
+                        .target
+                        .core
+                        .wait_for_core_halted(&mut session.probe).unwrap();
+                    // session.target.core.reset_and_halt(&mut session.probe).unwrap();
+                    let reg = CoreRegisterAddress(u8::from_str_radix(&p.reg, 16).unwrap());
+                    println!("{:?}", reg);
+
+                    let value = session.target
+                        .core
+                        .read_core_reg(&mut session.probe, reg).unwrap();
+
+                    format!("{}{}{}{}", value as u8, (value >> 8) as u8, (value >> 16) as u8, (value >> 24) as u8);
+
+                    Some(format!("{:02x}{:02x}{:02x}{:02x}", value as u8, (value >> 8) as u8, (value >> 16) as u8, (value >> 24) as u8))
+                } else if packet.data.starts_with("qTsP".as_bytes()) {
+                    Some("".into())
+                } else if packet.data.starts_with("qfThreadInfo".as_bytes()) {
+                    Some("".into())
+                } else if packet.data.starts_with("m".as_bytes()) {
+                    #[derive(Debug, Deserialize, PartialEq, Recap)]
+                    #[recap(regex=r#"m(?P<addr>\w+),(?P<length>\w+)"#)]
+                    struct M {
+                        addr: String,
+                        length: String,
+                    }
+
+                    let m = packet_string.parse::<M>().unwrap();
+                    println!("{:?}", m);
+
+                    let mut readback_data = vec![0u8; usize::from_str_radix(&m.length, 16).unwrap()];
+                    session
+                        .probe
+                        .read_block8(u32::from_str_radix(&m.addr, 16).unwrap(), &mut readback_data)
+                        .unwrap();
+
+                    Some(readback_data.iter().map(|s| format!("{:02x?}", s)).collect::<Vec<String>>().join(""))
+                } else if packet.data.starts_with("qL".as_bytes()) {
+                    Some("".into())
+                } else if packet.data.starts_with("qC".as_bytes()) {
+                    Some("".into())
+                } else if packet.data.starts_with("qOffsets".as_bytes()) {
+                    Some("".into())
+                } else if packet.data.starts_with("vCont?".as_bytes()) {
+                    Some("vCont;c;t;s".into())
+                } else if packet.data.starts_with("vCont;c".as_bytes()) || packet.data.starts_with("c".as_bytes()) {
+                    session
+                        .target
+                        .core
+                        .run(&mut session.probe).unwrap();
+                    let awaits_halt: &mut bool = &mut awaits_halt.lock().unwrap();
+                    *awaits_halt = true;
+                    None
+                } else if packet.data.starts_with("vCont;t".as_bytes()) {
+                    session
+                        .target
+                        .core
+                        .halt(&mut session.probe).unwrap();
+                    session
+                        .target
+                        .core
+                        .wait_for_core_halted(&mut session.probe).unwrap();
+                    let awaits_halt: &mut bool = &mut awaits_halt.lock().unwrap();
+                    *awaits_halt = false;
+                    Some("OK".into())
+                } else if packet.data.starts_with("vCont;s".as_bytes()) {
+                    session
+                        .target
+                        .core
+                        .step(&mut session.probe).unwrap();
+                    let awaits_halt: &mut bool = &mut awaits_halt.lock().unwrap();
+                    *awaits_halt = false;
+                    Some("S05".into())
+                } else if packet.data.starts_with("Z0".as_bytes()) {
+                    Some("".into())
+                } else if packet.data.starts_with("X".as_bytes()) {
+                    #[derive(Debug, Deserialize, PartialEq, Recap)]
+                    #[recap(regex=r#"X(?P<addr>\w+),(?P<length>\w+):(?P<data>[01]*)"#)]
+                    struct X {
+                        addr: String,
+                        length: String,
+                        data: String,
+                    }
+
+                    let x = packet_string.parse::<X>().unwrap();
+                    println!("{:?}", x);
+
+                    let length = usize::from_str_radix(&x.length, 16).unwrap();
+                    let mut data = vec![0; length];
+                    for i in 0..length {
+                        data[i] = packet.data[packet.data.len() - length + i];
+                    }
+
+                    session
+                        .probe
+                        .write_block8(u32::from_str_radix(&x.addr, 16).unwrap(), &data)
+                        .unwrap();
+
+                    println!("{:?}", data);
+
+                    Some("OK".into())
+                } else if packet.data.starts_with("qTfV".as_bytes()) {
+                    Some("".into())
+                } else if packet.data.starts_with("qTfV".as_bytes()) {
+                    Some("".into())
+                } else if packet.data.starts_with("qTfV".as_bytes()) {
+                    Some("".into())
+                } else if packet.data.starts_with("qTfV".as_bytes()) {
+                    Some("".into())
+                } else if packet.data.starts_with("qTfV".as_bytes()) {
+                    Some("".into())
+                } else if packet.data.starts_with("qTfV".as_bytes()) {
+                    Some("".into())
+                } else {
+                    Some("OK".into())
+                };
+
+                // print!(": ");
+                // io::stdout().flush()?;
+                // let mut response = String::new();
+                // io::stdin().read_line(&mut response)?;
+                // if response.ends_with('\n') {
+                //     response.truncate(response.len() - 1);
+                // }
+                response.map(|response| {
+                    let response = CheckedPacket::from_data(Kind::Packet, response.into_bytes());
+
+                    let mut bytes = Vec::new();
+                    response.encode(&mut bytes).unwrap();
+                    println!("{:x?}", std::str::from_utf8(&response.data).unwrap());
+                    println!("-----------------------------------------------");
+                    loop {
+                        match server.lock().unwrap().dispatch(&response) {
+                            Ok(_) => break,
+                            Err(Error::IoError(ref e)) if e.kind() == io::ErrorKind::WouldBlock => {
+                                continue
+                            }
+                            Err(e) => panic!("encountered IO error: {}", e),
+                        };
+                    };
+                });
+            } else {
+                break;
             }
 
-            let p = std::str::from_utf8(&packet.data).unwrap().parse::<P>().unwrap();
-            println!("{:?}", p);
+            thread::sleep(std::time::Duration::from_micros(100));
+        }
 
-            let cpu_info = session.target.core.halt(&mut session.probe);
-            println!("PC = 0x{:08x}", cpu_info.unwrap().pc);
-            session
-                .target
-                .core
-                .wait_for_core_halted(&mut session.probe).unwrap();
-            session.target.core.reset_and_halt(&mut session.probe).unwrap();
-            let reg = CoreRegisterAddress(u8::from_str_radix(&p.reg, 16).unwrap());
-            println!("{:?}", reg);
+        println!("EOF");
+    });
 
-            let value = session.target
-                .core
-                .read_core_reg(&mut session.probe, reg).unwrap();
+    probe_rs_executor.join();
+    gdb_executor.join();
 
-            format!("{:08x}", value.to_be())
-        } else if packet.data.starts_with("qTsP".as_bytes()) {
-            "".into()
-        } else if packet.data.starts_with("qfThreadInfo".as_bytes()) {
-            "".into()
-        } else if packet.data.starts_with("m".as_bytes()) {
-            #[derive(Debug, Deserialize, PartialEq, Recap)]
-            #[recap(regex=r#"m(?P<addr>\w+),(?P<length>\w+)"#)]
-            struct M {
-                addr: String,
-                length: String,
-            }
-
-            let m = std::str::from_utf8(&packet.data).unwrap().parse::<M>().unwrap();
-            println!("{:?}", m);
-
-            let mut readback_data = vec![0u8; usize::from_str_radix(&m.length, 16).unwrap()];
-            session
-                .probe
-                .read_block8(u32::from_str_radix(&m.addr, 16).unwrap(), &mut readback_data)
-                .unwrap();
-
-            readback_data.iter().map(|s| format!("{:02x?}", s)).collect::<Vec<String>>().join("")
-        } else if packet.data.starts_with("qL".as_bytes()) {
-            "".into()
-        } else if packet.data.starts_with("qC".as_bytes()) {
-            "".into()
-        } else if packet.data.starts_with("qOffsets".as_bytes()) {
-            "".into()
-        } else if packet.data.starts_with("qTfV".as_bytes()) {
-            "".into()
-        } else if packet.data.starts_with("qTfV".as_bytes()) {
-            "".into()
-        } else if packet.data.starts_with("qTfV".as_bytes()) {
-            "".into()
-        } else if packet.data.starts_with("qTfV".as_bytes()) {
-            "".into()
-        } else if packet.data.starts_with("qTfV".as_bytes()) {
-            "".into()
-        } else if packet.data.starts_with("qTfV".as_bytes()) {
-            "".into()
-        } else if packet.data.starts_with("qTfV".as_bytes()) {
-            "".into()
-        } else {
-            "OK".into()
-        };
-
-        // print!(": ");
-        // io::stdout().flush()?;
-        // let mut response = String::new();
-        // io::stdin().read_line(&mut response)?;
-        // if response.ends_with('\n') {
-        //     response.truncate(response.len() - 1);
-        // }
-        let response = CheckedPacket::from_data(Kind::Packet, response.into_bytes());
-
-        let mut bytes = Vec::new();
-        response.encode(&mut bytes).unwrap();
-        println!("{:x?}", std::str::from_utf8(&response.data).unwrap());
-        println!("-----------------------------------------------");
-
-        server.dispatch(&response)?;
-    }
-
-    println!("EOF");
     Ok(())
 }
 
