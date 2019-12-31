@@ -13,9 +13,6 @@ pub struct ChipFamily {
     pub name: String,
     /// The JEP106 code of the manufacturer.
     pub manufacturer: Option<JEP106Code>,
-    /// The `PART` register of the chip.
-    /// This value can be determined via the `cli info` command.
-    pub part: Option<u16>,
     /// This vector holds all the variants of the family.
     pub variants: Vec<Chip>,
     /// This vector holds all available algorithms.

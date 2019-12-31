@@ -43,6 +43,7 @@ impl fmt::Display for ReadError {
 
 impl Error for ReadError {}
 
+#[derive(Debug)]
 pub struct ChipInfo {
     pub manufacturer: JEP106Code,
     pub part: u16,

@@ -5,6 +5,7 @@ use crate::config::{
     memory::{FlashRegion, MemoryRegion, RamRegion},
 };
 use crate::target::info::ChipInfo;
+use jep106::JEP106Code;
 use std::error::Error;
 use std::fs::File;
 use std::path::Path;
@@ -15,6 +16,7 @@ use crate::cores::get_core;
 #[derive(Debug)]
 pub enum RegistryError {
     ChipNotFound,
+    ChipAutodetectFailed,
     AlgorithmNotFound,
     CoreNotFound,
     RamMissing,
@@ -29,6 +31,7 @@ impl Error for RegistryError {
 
         match self {
             ChipNotFound => None,
+            ChipAutodetectFailed => None,
             AlgorithmNotFound => None,
             CoreNotFound => None,
             RamMissing => None,
@@ -45,6 +48,10 @@ impl std::fmt::Display for RegistryError {
 
         match self {
             ChipNotFound => write!(f, "The requested chip was not found."),
+            ChipAutodetectFailed => write!(
+                f,
+                "The connected chip could not automatically be determined."
+            ),
             AlgorithmNotFound => write!(f, "The requested algorithm was not found."),
             CoreNotFound => write!(f, "The requested core was not found."),
             RamMissing => write!(f, "No RAM description was found."),
@@ -67,6 +74,7 @@ impl From<serde_yaml::Error> for RegistryError {
     }
 }
 
+#[derive(Debug)]
 pub enum SelectionStrategy {
     TargetIdentifier(TargetIdentifier),
     ChipInfo(ChipInfo),
@@ -137,18 +145,20 @@ impl Registry {
                 // Try get the corresponding chip.
                 let mut selected_family_and_chip = None;
                 for family in &self.families {
-                    for variant in &family.variants {
-                        if family
-                            .manufacturer
-                            .map(|m| m == chip_info.manufacturer)
-                            .unwrap_or(false)
-                            && family.part.map(|p| p == chip_info.part).unwrap_or(false)
-                        {
-                            selected_family_and_chip = Some((family, variant));
+                    if family
+                        .manufacturer
+                        .map(|m| m == chip_info.manufacturer)
+                        .unwrap_or(false)
+                    {
+                        for variant in &family.variants {
+                            if variant.part.map(|p| p == chip_info.part).unwrap_or(false) {
+                                selected_family_and_chip = Some((family, variant));
+                            }
                         }
                     }
                 }
-                let (family, chip) = selected_family_and_chip.ok_or(RegistryError::ChipNotFound)?;
+                let (family, chip) =
+                    selected_family_and_chip.ok_or(RegistryError::ChipAutodetectFailed)?;
 
                 // Try get the correspnding flash algorithm.
                 let flash_algorithm = family
@@ -178,7 +188,6 @@ impl Registry {
         }
 
         Ok(Target::new(
-            family,
             chip,
             ram.ok_or(RegistryError::RamMissing)?,
             flash.ok_or(RegistryError::FlashMissing)?,

@@ -1,7 +1,11 @@
 ---
 name: nRF52 Series
+manufacturer:
+  cc: 0x02
+  id: 0x44
 variants:
   - name: nRF52832_xxAA
+    part: 0x000006
     memory_map:
       - Ram:
           range:
@@ -17,6 +21,7 @@ variants:
           page_size: 4096
           erased_byte_value: 255
   - name: nRF52832_xxAB
+    part: 0x000006
     memory_map:
       - Ram:
           range:
@@ -47,6 +52,7 @@ variants:
           page_size: 4096
           erased_byte_value: 255
   - name: nRF52840_xxAA
+    part: 0x000008
     memory_map:
       - Ram:
           range:
