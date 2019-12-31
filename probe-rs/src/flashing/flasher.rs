@@ -80,7 +80,7 @@ impl<'session> Flasher<'session> {
     }
 
     pub(super) fn double_buffering_supported(&self) -> bool {
-        self.double_buffering_supported
+        self.flash_algorithm.page_buffers.len() > 1
     }
 
     pub(super) fn init<O: Operation>(
@@ -420,7 +420,15 @@ impl<'session> Flasher<'session> {
                 }
             }
 
-            Ok(())
+            let result = active.wait_for_completion(Duration::from_secs(2));
+            if let Ok(0) = result {
+                Ok(())
+            } else {
+                Err(FlashError::PageWrite {
+                    page_address: 0,
+                    error_code: 0,
+                })
+            }
         });
 
         if result.is_ok() {
@@ -730,7 +738,7 @@ impl<'p> ActiveFlasher<'p, Program> {
         buffer_number: usize,
     ) -> Result<()> {
         // Check the buffer number.
-        if buffer_number < self.flash_algorithm.page_buffers.len() {
+        if buffer_number >= self.flash_algorithm.page_buffers.len() {
             return Err(anyhow!(FlashError::InvalidBufferNumber {
                 n: buffer_number,
                 max: self.flash_algorithm.page_buffers.len(),
@@ -761,7 +769,7 @@ impl<'p> ActiveFlasher<'p, Program> {
         let algo = &flasher.flash_algorithm;
 
         // Check the buffer number.
-        if buffer_number < algo.page_buffers.len() {
+        if buffer_number >= algo.page_buffers.len() {
             return Err(anyhow!(FlashError::InvalidBufferNumber {
                 n: buffer_number,
                 max: algo.page_buffers.len(),
