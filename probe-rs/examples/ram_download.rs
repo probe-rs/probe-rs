@@ -105,20 +105,6 @@ fn main() -> Result<(), &'static str> {
         println!("Verification succesful.");
     }
 
-    /*
-    with_device(shared_options, |mut session| {
-        // Start timer.
-        // let instant = Instant::now();
-
-        let mm = session.target.memory_map.clone();
-
-        download_file(&mut session, std::path::Path::new(&path), Format::Elf, &mm)?;
-
-        Ok(())
-    })
-
-    */
-
     Ok(())
 }
 
