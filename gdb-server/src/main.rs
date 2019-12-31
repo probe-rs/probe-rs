@@ -16,7 +16,6 @@ use probe_rs::{
     target::{CoreRegisterAddress, BasicRegisterAddresses},
 };
 use std::thread;
-use std::sync::mpsc::channel;
 
 #[derive(StructOpt)]
 struct CLI {
