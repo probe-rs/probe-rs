@@ -90,8 +90,6 @@ where
     /// Sends a packet, retrying upon any failed checksum verification
     /// on the remote.
     pub fn dispatch(&mut self, packet: &CheckedPacket) -> Result<(), Error> {
-        
-            println!("{:?}", packet);
             packet.encode(&mut self.writer)?;
             self.writer.flush()?;
             
