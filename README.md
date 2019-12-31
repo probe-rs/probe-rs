@@ -38,9 +38,27 @@ You can install it via `cargo install cargo-flash` and then use it via `cargo fl
 
 Use `cargo flash` to build your binary and download the ELF binary to your target.
 
-Example with the https://github.com/therealprof/microbit.git:
+The following example shows the necessary steps using 
+a [BBC micro:bit](https://microbit.org/) as the target board, and an example from 
+the [microbit](https://github.com/therealprof/microbit) crate.
 
+First, ensure that you have a local copy of the crate:
+
+```console
+$ git clone https://github.com/therealprof/microbit.git && cd microbit/
+Cloning into 'microbit'...
+remote: Enumerating objects: 31, done.
+remote: Counting objects: 100% (31/31), done.
+remote: Compressing objects: 100% (21/21), done.
+remote: Total 423 (delta 15), reused 15 (delta 10), pack-reused 392
+Receiving objects: 100% (423/423), 94.83 KiB | 57.00 KiB/s, done.
+Resolving deltas: 100% (282/282), done.
 ```
+
+In the `microbit` folder, you can now run
+`cargo flash` to compile and flash it in a single step:
+
+```console
 $ RUST_LOG=info cargo flash --release --example  gpio_hal_ledbutton  --chip  nRF51822_xxAA
     Finished release [optimized + debuginfo] target(s) in 0.06s
     Flashing ./target/thumbv6m-none-eabi/release/examples/gpio_hal_ledbutton
@@ -56,6 +74,8 @@ RUN INIT
  INFO  probe_rs::flash::flasher > Flashing took: 723.845166ms
     Finished in 6.507s
 ```
+
+Now a single LED should blink on your micro:bit.
 
 
 #### Full set of commands
