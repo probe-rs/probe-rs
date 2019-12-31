@@ -81,7 +81,7 @@ impl From<AccessPortError> for DebugProbeError {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum Port {
     DebugPort,
     AccessPort(u16),
@@ -91,8 +91,42 @@ pub trait DAPAccess {
     /// Reads the DAP register on the specified port and address
     fn read_register(&mut self, port: Port, addr: u16) -> Result<u32, DebugProbeError>;
 
+    /// Read multiple values from the same DAP register.
+    ///
+    /// If possible, this uses optimized read functions, otherwise it
+    /// falls back to the `read_register` function.
+    fn read_block(
+        &mut self,
+        port: Port,
+        addr: u16,
+        values: &mut [u32],
+    ) -> Result<(), DebugProbeError> {
+        for val in values {
+            *val = self.read_register(port, addr)?;
+        }
+
+        Ok(())
+    }
+
     /// Writes a value to the DAP register on the specified port and address
     fn write_register(&mut self, port: Port, addr: u16, value: u32) -> Result<(), DebugProbeError>;
+
+    /// Write multiple values to the same DAP register.
+    ///
+    /// If possible, this uses optimized write functions, otherwise it
+    /// falls back to the `write_register` function.
+    fn write_block(
+        &mut self,
+        port: Port,
+        addr: u16,
+        values: &[u32],
+    ) -> Result<(), DebugProbeError> {
+        for val in values {
+            self.write_register(port, addr, *val)?;
+        }
+
+        Ok(())
+    }
 }
 
 pub struct MasterProbe {
@@ -150,7 +184,7 @@ impl MasterProbe {
         Ok(())
     }
 
-    fn write_register_ap<AP, REGISTER>(
+    fn write_ap_register<AP, REGISTER>(
         &mut self,
         port: AP,
         register: REGISTER,
@@ -178,7 +212,34 @@ impl MasterProbe {
         Ok(())
     }
 
-    fn read_register_ap<AP, REGISTER>(
+    fn write_ap_register_repeated<AP, REGISTER>(
+        &mut self,
+        port: AP,
+        _register: REGISTER,
+        values: &[u32],
+    ) -> Result<(), DebugProbeError>
+    where
+        AP: AccessPort,
+        REGISTER: APRegister<AP>,
+    {
+        debug!(
+            "Writing register {}, block with len={} words",
+            REGISTER::NAME,
+            values.len(),
+        );
+
+        self.select_ap_and_ap_bank(port.get_port_number(), REGISTER::APBANKSEL)?;
+
+        let link = &mut self.actual_probe;
+        link.write_block(
+            Port::AccessPort(u16::from(self.current_apsel)),
+            u16::from(REGISTER::ADDRESS),
+            values,
+        )?;
+        Ok(())
+    }
+
+    fn read_ap_register<AP, REGISTER>(
         &mut self,
         port: AP,
         _register: REGISTER,
@@ -204,6 +265,33 @@ impl MasterProbe {
         );
 
         Ok(REGISTER::from(result))
+    }
+
+    fn read_ap_register_repeated<AP, REGISTER>(
+        &mut self,
+        port: AP,
+        _register: REGISTER,
+        values: &mut [u32],
+    ) -> Result<(), DebugProbeError>
+    where
+        AP: AccessPort,
+        REGISTER: APRegister<AP>,
+    {
+        debug!(
+            "Reading register {}, block with len={} words",
+            REGISTER::NAME,
+            values.len(),
+        );
+
+        self.select_ap_and_ap_bank(port.get_port_number(), REGISTER::APBANKSEL)?;
+
+        let link = &mut self.actual_probe;
+        link.read_block(
+            Port::AccessPort(u16::from(self.current_apsel)),
+            u16::from(REGISTER::ADDRESS),
+            values,
+        )?;
+        Ok(())
     }
 
     pub fn read_register_dp(&mut self, offset: u16) -> Result<u32, DebugProbeError> {
@@ -232,18 +320,18 @@ impl MasterProbe {
         let mut reset_reg = RESET::from(1);
 
         // Reset first
-        self.write_register_ap(ctrl_port, reset_reg)?;
+        self.write_ap_register(ctrl_port, reset_reg)?;
         reset_reg.RESET = false;
-        self.write_register_ap(ctrl_port, reset_reg)?;
+        self.write_ap_register(ctrl_port, reset_reg)?;
 
-        self.write_register_ap(ctrl_port, erase_reg)?;
+        self.write_ap_register(ctrl_port, erase_reg)?;
 
         // Prepare timeout
         let now = Instant::now();
-        let status = self.read_register_ap(ctrl_port, status_reg)?;
+        let status = self.read_ap_register(ctrl_port, status_reg)?;
         log::info!("Erase status: {:?}", status.ERASEALLSTATUS);
         let timeout = loop {
-            let status = self.read_register_ap(ctrl_port, status_reg)?;
+            let status = self.read_ap_register(ctrl_port, status_reg)?;
             if !status.ERASEALLSTATUS {
                 break false;
             }
@@ -252,11 +340,11 @@ impl MasterProbe {
             }
         };
         reset_reg.RESET = true;
-        self.write_register_ap(ctrl_port, reset_reg)?;
+        self.write_ap_register(ctrl_port, reset_reg)?;
         reset_reg.RESET = false;
-        self.write_register_ap(ctrl_port, reset_reg)?;
+        self.write_ap_register(ctrl_port, reset_reg)?;
         erase_reg.ERASEALL = false;
-        self.write_register_ap(ctrl_port, erase_reg)?;
+        self.write_ap_register(ctrl_port, erase_reg)?;
         if timeout {
             log::error!(
                 "    {} Mass erase process timeout, the chip might still be locked.",
@@ -275,16 +363,34 @@ where
 {
     type Error = DebugProbeError;
 
-    fn read_register_ap(
+    fn read_ap_register(
         &mut self,
         port: MemoryAP,
         register: REGISTER,
     ) -> Result<REGISTER, Self::Error> {
-        self.read_register_ap(port, register)
+        self.read_ap_register(port, register)
     }
 
-    fn write_register_ap(&mut self, port: MemoryAP, register: REGISTER) -> Result<(), Self::Error> {
-        self.write_register_ap(port, register)
+    fn write_ap_register(&mut self, port: MemoryAP, register: REGISTER) -> Result<(), Self::Error> {
+        self.write_ap_register(port, register)
+    }
+
+    fn write_ap_register_repeated(
+        &mut self,
+        port: MemoryAP,
+        register: REGISTER,
+        values: &[u32],
+    ) -> Result<(), Self::Error> {
+        self.write_ap_register_repeated(port, register, values)
+    }
+
+    fn read_ap_register_repeated(
+        &mut self,
+        port: MemoryAP,
+        register: REGISTER,
+        values: &mut [u32],
+    ) -> Result<(), Self::Error> {
+        self.read_ap_register_repeated(port, register, values)
     }
 }
 
@@ -294,20 +400,38 @@ where
 {
     type Error = DebugProbeError;
 
-    fn read_register_ap(
+    fn read_ap_register(
         &mut self,
         port: GenericAP,
         register: REGISTER,
     ) -> Result<REGISTER, Self::Error> {
-        self.read_register_ap(port, register)
+        self.read_ap_register(port, register)
     }
 
-    fn write_register_ap(
+    fn write_ap_register(
         &mut self,
         port: GenericAP,
         register: REGISTER,
     ) -> Result<(), Self::Error> {
-        self.write_register_ap(port, register)
+        self.write_ap_register(port, register)
+    }
+
+    fn write_ap_register_repeated(
+        &mut self,
+        port: GenericAP,
+        register: REGISTER,
+        values: &[u32],
+    ) -> Result<(), Self::Error> {
+        self.write_ap_register_repeated(port, register, values)
+    }
+
+    fn read_ap_register_repeated(
+        &mut self,
+        port: GenericAP,
+        register: REGISTER,
+        values: &mut [u32],
+    ) -> Result<(), Self::Error> {
+        self.read_ap_register_repeated(port, register, values)
     }
 }
 

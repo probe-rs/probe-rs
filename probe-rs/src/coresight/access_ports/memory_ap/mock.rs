@@ -47,7 +47,7 @@ where
     /// Mocks the read_register method of a AP.
     ///
     /// Returns an Error if any bad instructions or values are chosen.
-    fn read_register_ap(
+    fn read_ap_register(
         &mut self,
         _port: MemoryAP,
         _register: REGISTER,
@@ -109,7 +109,7 @@ where
     /// Mocks the write_register method of a AP.
     ///
     /// Returns an Error if any bad instructions or values are chosen.
-    fn write_register_ap(
+    fn write_ap_register(
         &mut self,
         _port: MemoryAP,
         register: REGISTER,
@@ -173,5 +173,30 @@ where
             }
             _ => Err(MockMemoryError::UnknownRegister),
         }
+    }
+
+    fn write_ap_register_repeated(
+        &mut self,
+        port: MemoryAP,
+        _register: REGISTER,
+        values: &[u32],
+    ) -> Result<(), Self::Error> {
+        for value in values {
+            self.write_ap_register(port, REGISTER::from(*value))?
+        }
+
+        Ok(())
+    }
+    fn read_ap_register_repeated(
+        &mut self,
+        port: MemoryAP,
+        register: REGISTER,
+        values: &mut [u32],
+    ) -> Result<(), Self::Error> {
+        for value in values {
+            *value = self.read_ap_register(port, register.clone())?.into()
+        }
+
+        Ok(())
     }
 }

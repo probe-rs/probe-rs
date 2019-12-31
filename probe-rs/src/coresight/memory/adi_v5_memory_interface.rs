@@ -65,7 +65,7 @@ impl ADIMemoryInterface {
     }
 
     /// Read a 32 bit register on the given AP.
-    fn read_register_ap<REGISTER, AP>(
+    fn read_ap_register<REGISTER, AP>(
         &self,
         debug_port: &mut AP,
         register: REGISTER,
@@ -75,12 +75,29 @@ impl ADIMemoryInterface {
         AP: APAccess<MemoryAP, REGISTER>,
     {
         debug_port
-            .read_register_ap(self.access_port, register)
+            .read_ap_register(self.access_port, register)
+            .or_else(|_| Err(AccessPortError::register_read_error::<REGISTER>()))
+    }
+
+    /// Read multiple 32 bit values from the same
+    /// register on the given AP.
+    fn read_ap_register_repeated<REGISTER, AP>(
+        &self,
+        debug_port: &mut AP,
+        register: REGISTER,
+        values: &mut [u32],
+    ) -> Result<(), AccessPortError>
+    where
+        REGISTER: APRegister<MemoryAP>,
+        AP: APAccess<MemoryAP, REGISTER>,
+    {
+        debug_port
+            .read_ap_register_repeated(self.access_port, register, values)
             .or_else(|_| Err(AccessPortError::register_read_error::<REGISTER>()))
     }
 
     /// Write a 32 bit register on the given AP.
-    fn write_register_ap<REGISTER, AP>(
+    fn write_ap_register<REGISTER, AP>(
         &self,
         debug_port: &mut AP,
         register: REGISTER,
@@ -90,7 +107,24 @@ impl ADIMemoryInterface {
         AP: APAccess<MemoryAP, REGISTER>,
     {
         debug_port
-            .write_register_ap(self.access_port, register)
+            .write_ap_register(self.access_port, register)
+            .or_else(|_| Err(AccessPortError::register_write_error::<REGISTER>()))
+    }
+
+    /// Write multiple 32 bit values to the same
+    /// register on the given AP.
+    fn write_ap_register_repeated<REGISTER, AP>(
+        &self,
+        debug_port: &mut AP,
+        register: REGISTER,
+        values: &[u32],
+    ) -> Result<(), AccessPortError>
+    where
+        REGISTER: APRegister<MemoryAP>,
+        AP: APAccess<MemoryAP, REGISTER>,
+    {
+        debug_port
+            .write_ap_register_repeated(self.access_port, register, values)
             .or_else(|_| Err(AccessPortError::register_write_error::<REGISTER>()))
     }
 
@@ -109,9 +143,9 @@ impl ADIMemoryInterface {
         let csw = self.build_csw_register(DataSize::U32);
 
         let tar = TAR { address };
-        self.write_register_ap(debug_port, csw)?;
-        self.write_register_ap(debug_port, tar)?;
-        let result = self.read_register_ap(debug_port, DRW::default())?;
+        self.write_ap_register(debug_port, csw)?;
+        self.write_ap_register(debug_port, tar)?;
+        let result = self.read_ap_register(debug_port, DRW::default())?;
 
         Ok(result.data)
     }
@@ -160,24 +194,73 @@ impl ADIMemoryInterface {
 
         // Second we read in 32 bit reads until we have less than 32 bits left to read.
         let csw = self.build_csw_register(DataSize::U32);
-        self.write_register_ap(debug_port, csw)?;
+        self.write_ap_register(debug_port, csw)?;
 
         let mut address = start_address;
         let tar = TAR { address };
-        self.write_register_ap(debug_port, tar)?;
+        self.write_ap_register(debug_port, tar)?;
 
-        for data in data.iter_mut() {
-            *data = self.read_register_ap(debug_port, DRW::default())?.data;
+        // figure out how many words we can write before the
+        // data overflows
 
+        // maximum chunk size
+        let max_chunk_size_bytes = 0x400;
+
+        let mut remaining_data_len = data.len();
+
+        let first_chunk_size_bytes = std::cmp::min(
+            max_chunk_size_bytes - (address as usize % max_chunk_size_bytes),
+            data.len() * 4,
+        );
+
+        let mut data_offset = 0;
+
+        log::debug!(
+            "Read first block with len {} at address {:#08x}",
+            first_chunk_size_bytes,
+            address
+        );
+
+        let first_chunk_size_words = first_chunk_size_bytes / 4;
+
+        self.read_ap_register_repeated(
+            debug_port,
+            DRW { data: 0 },
+            &mut data[data_offset..first_chunk_size_words],
+        )?;
+
+        remaining_data_len -= first_chunk_size_words;
+        address += (4 * first_chunk_size_words) as u32;
+        data_offset += first_chunk_size_words;
+
+        while remaining_data_len > 0 {
             // the autoincrement is limited to the 10 lowest bits so we need to write the address
             // every time it overflows
-            address += 4;
-            if address.trailing_zeros() >= 10 {
-                log::debug!("Writing TAR: {:08x}", address);
-                let tar = TAR { address };
-                self.write_register_ap(debug_port, tar)?;
-            }
+            let tar = TAR { address };
+            self.write_ap_register(debug_port, tar)?;
+
+            let next_chunk_size_bytes = std::cmp::min(max_chunk_size_bytes, remaining_data_len * 4);
+
+            log::debug!(
+                "Reading chunk with len {} at address {:#08x}",
+                next_chunk_size_bytes,
+                address
+            );
+
+            let next_chunk_size_words = next_chunk_size_bytes / 4;
+
+            self.read_ap_register_repeated(
+                debug_port,
+                DRW { data: 0 },
+                &mut data[data_offset..(data_offset + next_chunk_size_words)],
+            )?;
+
+            remaining_data_len -= next_chunk_size_words;
+            address += (4 * next_chunk_size_words) as u32;
+            data_offset += next_chunk_size_words;
         }
+
+        log::debug!("Finished reading block");
 
         Ok(())
     }
@@ -299,9 +382,9 @@ impl ADIMemoryInterface {
         let csw = self.build_csw_register(DataSize::U32);
         let drw = DRW { data };
         let tar = TAR { address };
-        self.write_register_ap(debug_port, csw)?;
-        self.write_register_ap(debug_port, tar)?;
-        self.write_register_ap(debug_port, drw)?;
+        self.write_ap_register(debug_port, csw)?;
+        self.write_ap_register(debug_port, tar)?;
+        self.write_ap_register(debug_port, drw)?;
         Ok(())
     }
 
@@ -330,9 +413,9 @@ impl ADIMemoryInterface {
         let tar = TAR {
             address: aligned_addr,
         };
-        self.write_register_ap(debug_port, csw)?;
-        self.write_register_ap(debug_port, tar)?;
-        self.write_register_ap(debug_port, drw)?;
+        self.write_ap_register(debug_port, csw)?;
+        self.write_ap_register(debug_port, tar)?;
+        self.write_ap_register(debug_port, drw)?;
         Ok(())
     }
 
@@ -354,28 +437,82 @@ impl ADIMemoryInterface {
             return Err(AccessPortError::MemoryNotAligned);
         }
 
+        log::debug!(
+            "Write block with total size {} bytes to address {:#08x}",
+            data.len() * 4,
+            start_address
+        );
+
         // Second we write in 32 bit reads until we have less than 32 bits left to write.
         let csw = self.build_csw_register(DataSize::U32);
 
-        self.write_register_ap(debug_port, csw)?;
+        self.write_ap_register(debug_port, csw)?;
 
         let mut address = start_address;
         let tar = TAR { address };
-        self.write_register_ap(debug_port, tar)?;
+        self.write_ap_register(debug_port, tar)?;
 
-        for data in data.iter() {
-            let drw = DRW { data: *data };
-            self.write_register_ap(debug_port, drw)?;
+        // figure out how many words we can write before the
+        // data overflows
 
+        // maximum chunk size
+        let max_chunk_size_bytes = 0x400_usize;
+
+        let mut remaining_data_len = data.len();
+
+        let first_chunk_size_bytes = std::cmp::min(
+            max_chunk_size_bytes - (address as usize % max_chunk_size_bytes),
+            data.len() * 4,
+        );
+
+        let mut data_offset = 0;
+
+        log::debug!(
+            "Write first block with len {} at address {:#08x}",
+            first_chunk_size_bytes,
+            address
+        );
+
+        let first_chunk_size_words = first_chunk_size_bytes / 4;
+
+        self.write_ap_register_repeated(
+            debug_port,
+            DRW { data: 0 },
+            &data[data_offset..first_chunk_size_words],
+        )?;
+
+        remaining_data_len -= first_chunk_size_words;
+        address += (4 * first_chunk_size_words) as u32;
+        data_offset += first_chunk_size_words;
+
+        while remaining_data_len > 0 {
             // the autoincrement is limited to the 10 lowest bits so we need to write the address
             // every time it overflows
-            address += 4;
-            if address.trailing_zeros() >= 10 {
-                log::debug!("Writing TAR: {:08x}", address);
-                let tar = TAR { address };
-                self.write_register_ap(debug_port, tar)?;
-            }
+            let tar = TAR { address };
+            self.write_ap_register(debug_port, tar)?;
+
+            let next_chunk_size_bytes = std::cmp::min(max_chunk_size_bytes, remaining_data_len * 4);
+
+            log::debug!(
+                "Writing chunk with len {} at address {:#08x}",
+                next_chunk_size_bytes,
+                address
+            );
+
+            let next_chunk_size_words = next_chunk_size_bytes / 4;
+
+            self.write_ap_register_repeated(
+                debug_port,
+                DRW { data: 0 },
+                &data[data_offset..(data_offset + next_chunk_size_words)],
+            )?;
+
+            remaining_data_len -= next_chunk_size_words;
+            address += (4 * next_chunk_size_words) as u32;
+            data_offset += next_chunk_size_words;
         }
+
+        log::debug!("Finished writing block");
 
         Ok(())
     }

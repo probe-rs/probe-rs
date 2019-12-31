@@ -51,16 +51,16 @@ pub struct ChipInfo {
 impl ChipInfo {
     pub fn read_from_rom_table(probe: &mut MasterProbe) -> Result<Self, ReadError> {
         for access_port in valid_access_ports(probe) {
-            let idr = probe.read_register_ap(access_port, IDR::default())?;
+            let idr = probe.read_ap_register(access_port, IDR::default())?;
             debug!("{:#x?}", idr);
 
             if idr.CLASS == APClass::MEMAP {
                 let access_port: MemoryAP = access_port.into();
 
-                let base_register = probe.read_register_ap(access_port, BASE::default())?;
+                let base_register = probe.read_ap_register(access_port, BASE::default())?;
 
                 let mut baseaddr = if BaseaddrFormat::ADIv5 == base_register.Format {
-                    let base2 = probe.read_register_ap(access_port, BASE2::default())?;
+                    let base2 = probe.read_ap_register(access_port, BASE2::default())?;
                     (u64::from(base2.BASEADDR) << 32)
                 } else {
                     0
