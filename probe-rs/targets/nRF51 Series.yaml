@@ -1,5 +1,8 @@
 ---
 name: nRF51 Series
+manufacturer:
+  cc: 0x02
+  id: 0x44
 variants:
   - name: nRF51802_xxAA
     memory_map:
@@ -77,6 +80,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: nRF51822_xxAC
+    part: 0x1
     memory_map:
       - Ram:
           range:
@@ -107,6 +111,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: nRF51822_xxAB
+    part: 0x1
     memory_map:
       - Ram:
           range:

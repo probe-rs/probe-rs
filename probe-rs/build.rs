@@ -224,6 +224,7 @@ fn extract_variants(chip_family: &serde_yaml::Value) -> Vec<proc_macro2::TokenSt
     variants_iter
         .map(|variant| {
             let name = variant.get("name").unwrap().as_str().unwrap();
+            let part = quote_option(variant.get("part").and_then(|v| v.as_u64().map(|v| v as u16)));
 
             // Extract all the memory regions into a Vec of TookenStreams.
             let memory_map = extract_memory_map(&variant);
@@ -231,6 +232,7 @@ fn extract_variants(chip_family: &serde_yaml::Value) -> Vec<proc_macro2::TokenSt
             quote::quote! {
                 Chip {
                     name: #name.to_owned(),
+                    part: #part,
                     memory_map: vec![
                         #(#memory_map,)*
                     ],
@@ -241,34 +243,22 @@ fn extract_variants(chip_family: &serde_yaml::Value) -> Vec<proc_macro2::TokenSt
 }
 
 /// Extracts a chip family token stream from a yaml value.
-fn extract_chip_family(chip: &serde_yaml::Value) -> proc_macro2::TokenStream {
+fn extract_chip_family(chip_family: &serde_yaml::Value) -> proc_macro2::TokenStream {
     // Extract all the algorithms into a Vec of TokenStreams.
-    let algorithms = extract_algorithms(&chip);
+    let algorithms = extract_algorithms(&chip_family);
 
     // Extract all the available variants into a Vec of TokenStreams.
-    let variants = extract_variants(&chip);
+    let variants = extract_variants(&chip_family);
 
-    let name = chip
-        .get("name")
-        .unwrap()
-        .as_str()
-        .unwrap()
-        .to_ascii_lowercase();
-    let manufacturer = quote_option(chip.get("manufacturer").map(|v| v.as_str()));
-    let part = quote_option(chip.get("part").map(|v| v.as_str()));
-    let core = chip
-        .get("core")
-        .unwrap()
-        .as_str()
-        .unwrap()
-        .to_ascii_lowercase();
+    let name = chip_family.get("name").unwrap().as_str().unwrap().to_ascii_lowercase();
+    let core = chip_family.get("core").unwrap().as_str().unwrap().to_ascii_lowercase();
+    let manufacturer = quote_option(extract_manufacturer(&chip_family));
 
     // Quote the chip.
     let chip_family = quote::quote! {
         ChipFamily {
             name: #name.to_owned(),
             manufacturer: #manufacturer,
-            part: #part,
             flash_algorithms: vec![
                 #(#algorithms,)*
             ],
@@ -280,4 +270,21 @@ fn extract_chip_family(chip: &serde_yaml::Value) -> proc_macro2::TokenStream {
     };
 
     chip_family
+}
+
+/// Extracts the jep code token stream from a yaml value.
+fn extract_manufacturer(chip: &serde_yaml::Value) -> Option<proc_macro2::TokenStream> {
+   chip
+        .get("manufacturer")
+        .map(|manufacturer| {
+            let cc = manufacturer.get("cc").map(|v| v.as_u64().unwrap() as u8);
+            let id = manufacturer.get("id").map(|v| v.as_u64().unwrap() as u8);
+
+            quote::quote! {
+                JEP106Code {
+                    cc: #cc,
+                    id: #id,
+                }
+            }
+        })
 }

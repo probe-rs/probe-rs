@@ -4,6 +4,7 @@ use crate::config::{
     flash_algorithm::RawFlashAlgorithm,
     memory::{FlashRegion, MemoryRegion, RamRegion},
 };
+use jep106::JEP106Code;
 use crate::target::info::ChipInfo;
 use std::error::Error;
 use std::fs::File;
@@ -44,7 +45,7 @@ impl std::fmt::Display for RegistryError {
         use RegistryError::*;
 
         match self {
-            ChipNotFound => write!(f, "The requested chip was not found."),
+            ChipNotFound => write!(f, "The requested chip was not found and could not automatically be determined."),
             AlgorithmNotFound => write!(f, "The requested algorithm was not found."),
             CoreNotFound => write!(f, "The requested core was not found."),
             RamMissing => write!(f, "No RAM description was found."),
@@ -67,6 +68,7 @@ impl From<serde_yaml::Error> for RegistryError {
     }
 }
 
+#[derive(Debug)]
 pub enum SelectionStrategy {
     TargetIdentifier(TargetIdentifier),
     ChipInfo(ChipInfo),
@@ -99,11 +101,9 @@ impl Registry {
                         if variant
                             .name
                             .to_ascii_lowercase()
-                            .starts_with(&identifier.chip_name.to_ascii_lowercase())
-                        {
+                            .starts_with(&identifier.chip_name.to_ascii_lowercase()) {
                             if variant.name.to_ascii_lowercase()
-                                != identifier.chip_name.to_ascii_lowercase()
-                            {
+                                != identifier.chip_name.to_ascii_lowercase() {
                                 log::warn!(
                                     "Found chip {} which matches given partial name {}. Consider specifying it's full name.",
                                     variant.name,
@@ -121,8 +121,7 @@ impl Registry {
                     .flash_algorithms
                     .iter()
                     .find(|flash_algorithm| {
-                        if let Some(flash_algorithm_name) = identifier.flash_algorithm_name.clone()
-                        {
+                        if let Some(flash_algorithm_name) = identifier.flash_algorithm_name.clone() {
                             flash_algorithm.name == flash_algorithm_name
                         } else {
                             flash_algorithm.default
@@ -137,14 +136,14 @@ impl Registry {
                 // Try get the corresponding chip.
                 let mut selected_family_and_chip = None;
                 for family in &self.families {
-                    for variant in &family.variants {
-                        if family
-                            .manufacturer
-                            .map(|m| m == chip_info.manufacturer)
-                            .unwrap_or(false)
-                            && family.part.map(|p| p == chip_info.part).unwrap_or(false)
-                        {
-                            selected_family_and_chip = Some((family, variant));
+                    if family
+                        .manufacturer
+                        .map(|m| m == chip_info.manufacturer)
+                        .unwrap_or(false) {
+                        for variant in &family.variants {
+                            if variant.part.map(|p| p == chip_info.part).unwrap_or(false) {
+                                selected_family_and_chip = Some((family, variant));
+                            }
                         }
                     }
                 }
@@ -178,7 +177,6 @@ impl Registry {
         }
 
         Ok(Target::new(
-            family,
             chip,
             ram.ok_or(RegistryError::RamMissing)?,
             flash.ok_or(RegistryError::FlashMissing)?,
