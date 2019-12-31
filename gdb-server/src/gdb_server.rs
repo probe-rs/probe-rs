@@ -90,12 +90,15 @@ where
     /// Sends a packet, retrying upon any failed checksum verification
     /// on the remote.
     pub fn dispatch(&mut self, packet: &CheckedPacket) -> Result<(), Error> {
-        loop {
+        
+            println!("{:?}", packet);
+            packet.encode(&mut self.writer)?;
+            self.writer.flush()?;
+            
+            loop {
             // std::io::stdin()
             //     .bytes() 
             //     .next();
-            packet.encode(&mut self.writer)?;
-            self.writer.flush()?;
 
             // TCP guarantees the order of packets, so theoretically
             // '+' or '-' will always be sent directly after a packet
