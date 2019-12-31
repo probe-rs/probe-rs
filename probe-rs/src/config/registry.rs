@@ -4,8 +4,8 @@ use crate::config::{
     flash_algorithm::RawFlashAlgorithm,
     memory::{FlashRegion, MemoryRegion, RamRegion},
 };
-use jep106::JEP106Code;
 use crate::target::info::ChipInfo;
+use jep106::JEP106Code;
 use std::error::Error;
 use std::fs::File;
 use std::path::Path;
@@ -104,9 +104,11 @@ impl Registry {
                         if variant
                             .name
                             .to_ascii_lowercase()
-                            .starts_with(&identifier.chip_name.to_ascii_lowercase()) {
+                            .starts_with(&identifier.chip_name.to_ascii_lowercase())
+                        {
                             if variant.name.to_ascii_lowercase()
-                                != identifier.chip_name.to_ascii_lowercase() {
+                                != identifier.chip_name.to_ascii_lowercase()
+                            {
                                 log::warn!(
                                     "Found chip {} which matches given partial name {}. Consider specifying it's full name.",
                                     variant.name,
@@ -124,7 +126,8 @@ impl Registry {
                     .flash_algorithms
                     .iter()
                     .find(|flash_algorithm| {
-                        if let Some(flash_algorithm_name) = identifier.flash_algorithm_name.clone() {
+                        if let Some(flash_algorithm_name) = identifier.flash_algorithm_name.clone()
+                        {
                             flash_algorithm.name == flash_algorithm_name
                         } else {
                             flash_algorithm.default
@@ -142,7 +145,8 @@ impl Registry {
                     if family
                         .manufacturer
                         .map(|m| m == chip_info.manufacturer)
-                        .unwrap_or(false) {
+                        .unwrap_or(false)
+                    {
                         for variant in &family.variants {
                             if variant.part.map(|p| p == chip_info.part).unwrap_or(false) {
                                 selected_family_and_chip = Some((family, variant));
@@ -150,7 +154,8 @@ impl Registry {
                         }
                     }
                 }
-                let (family, chip) = selected_family_and_chip.ok_or(RegistryError::ChipAutodetectFailed)?;
+                let (family, chip) =
+                    selected_family_and_chip.ok_or(RegistryError::ChipAutodetectFailed)?;
 
                 // Try get the correspnding flash algorithm.
                 let flash_algorithm = family

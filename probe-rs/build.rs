@@ -224,7 +224,11 @@ fn extract_variants(chip_family: &serde_yaml::Value) -> Vec<proc_macro2::TokenSt
     variants_iter
         .map(|variant| {
             let name = variant.get("name").unwrap().as_str().unwrap();
-            let part = quote_option(variant.get("part").and_then(|v| v.as_u64().map(|v| v as u16)));
+            let part = quote_option(
+                variant
+                    .get("part")
+                    .and_then(|v| v.as_u64().map(|v| v as u16)),
+            );
 
             // Extract all the memory regions into a Vec of TookenStreams.
             let memory_map = extract_memory_map(&variant);
@@ -250,8 +254,18 @@ fn extract_chip_family(chip_family: &serde_yaml::Value) -> proc_macro2::TokenStr
     // Extract all the available variants into a Vec of TokenStreams.
     let variants = extract_variants(&chip_family);
 
-    let name = chip_family.get("name").unwrap().as_str().unwrap().to_ascii_lowercase();
-    let core = chip_family.get("core").unwrap().as_str().unwrap().to_ascii_lowercase();
+    let name = chip_family
+        .get("name")
+        .unwrap()
+        .as_str()
+        .unwrap()
+        .to_ascii_lowercase();
+    let core = chip_family
+        .get("core")
+        .unwrap()
+        .as_str()
+        .unwrap()
+        .to_ascii_lowercase();
     let manufacturer = quote_option(extract_manufacturer(&chip_family));
 
     // Quote the chip.
@@ -274,17 +288,15 @@ fn extract_chip_family(chip_family: &serde_yaml::Value) -> proc_macro2::TokenStr
 
 /// Extracts the jep code token stream from a yaml value.
 fn extract_manufacturer(chip: &serde_yaml::Value) -> Option<proc_macro2::TokenStream> {
-   chip
-        .get("manufacturer")
-        .map(|manufacturer| {
-            let cc = manufacturer.get("cc").map(|v| v.as_u64().unwrap() as u8);
-            let id = manufacturer.get("id").map(|v| v.as_u64().unwrap() as u8);
+    chip.get("manufacturer").map(|manufacturer| {
+        let cc = manufacturer.get("cc").map(|v| v.as_u64().unwrap() as u8);
+        let id = manufacturer.get("id").map(|v| v.as_u64().unwrap() as u8);
 
-            quote::quote! {
-                JEP106Code {
-                    cc: #cc,
-                    id: #id,
-                }
+        quote::quote! {
+            JEP106Code {
+                cc: #cc,
+                id: #id,
             }
-        })
+        }
+    })
 }
