@@ -16,6 +16,7 @@ use crate::cores::get_core;
 #[derive(Debug)]
 pub enum RegistryError {
     ChipNotFound,
+    ChipAutodetectFailed,
     AlgorithmNotFound,
     CoreNotFound,
     RamMissing,
@@ -30,6 +31,7 @@ impl Error for RegistryError {
 
         match self {
             ChipNotFound => None,
+            ChipAutodetectFailed => None,
             AlgorithmNotFound => None,
             CoreNotFound => None,
             RamMissing => None,
@@ -45,7 +47,8 @@ impl std::fmt::Display for RegistryError {
         use RegistryError::*;
 
         match self {
-            ChipNotFound => write!(f, "The requested chip was not found and could not automatically be determined."),
+            ChipNotFound => write!(f, "The requested chip was not found."),
+            ChipAutodetectFailed => write!(f, "The detected chip is unknown."),
             AlgorithmNotFound => write!(f, "The requested algorithm was not found."),
             CoreNotFound => write!(f, "The requested core was not found."),
             RamMissing => write!(f, "No RAM description was found."),
@@ -147,7 +150,7 @@ impl Registry {
                         }
                     }
                 }
-                let (family, chip) = selected_family_and_chip.ok_or(RegistryError::ChipNotFound)?;
+                let (family, chip) = selected_family_and_chip.ok_or(RegistryError::ChipAutodetectFailed)?;
 
                 // Try get the correspnding flash algorithm.
                 let flash_algorithm = family
