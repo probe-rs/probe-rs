@@ -48,7 +48,7 @@ impl std::fmt::Display for RegistryError {
 
         match self {
             ChipNotFound => write!(f, "The requested chip was not found."),
-            ChipAutodetectFailed => write!(f, "The detected chip is unknown."),
+            ChipAutodetectFailed => write!(f, "The connected chip could not automatically be determined."),
             AlgorithmNotFound => write!(f, "The requested algorithm was not found."),
             CoreNotFound => write!(f, "The requested core was not found."),
             RamMissing => write!(f, "No RAM description was found."),
