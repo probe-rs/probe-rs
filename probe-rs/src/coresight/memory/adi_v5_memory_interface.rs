@@ -4,7 +4,6 @@ use crate::coresight::access_ports::{
     APRegister, AccessPortError,
 };
 use crate::coresight::ap_access::APAccess;
-use log::debug;
 use scroll::Pread;
 
 /// A struct to give access to a targets memory using a certain DAP.
@@ -216,9 +215,10 @@ impl ADIMemoryInterface {
 
         let mut data_offset = 0;
 
-        debug!(
+        log::debug!(
             "Read first block with len {} at address {:#08x}",
-            first_chunk_size_bytes, address
+            first_chunk_size_bytes,
+            address
         );
 
         let first_chunk_size_words = first_chunk_size_bytes / 4;
@@ -241,9 +241,10 @@ impl ADIMemoryInterface {
 
             let next_chunk_size_bytes = std::cmp::min(max_chunk_size_bytes, remaining_data_len * 4);
 
-            debug!(
+            log::debug!(
                 "Reading chunk with len {} at address {:#08x}",
-                next_chunk_size_bytes, address
+                next_chunk_size_bytes,
+                address
             );
 
             let next_chunk_size_words = next_chunk_size_bytes / 4;
@@ -259,7 +260,7 @@ impl ADIMemoryInterface {
             data_offset += next_chunk_size_words;
         }
 
-        debug!("Finished reading block");
+        log::debug!("Finished reading block");
 
         Ok(())
     }
@@ -436,7 +437,7 @@ impl ADIMemoryInterface {
             return Err(AccessPortError::MemoryNotAligned);
         }
 
-        debug!(
+        log::debug!(
             "Write block with total size {} bytes to address {:#08x}",
             data.len() * 4,
             start_address
@@ -466,9 +467,10 @@ impl ADIMemoryInterface {
 
         let mut data_offset = 0;
 
-        debug!(
+        log::debug!(
             "Write first block with len {} at address {:#08x}",
-            first_chunk_size_bytes, address
+            first_chunk_size_bytes,
+            address
         );
 
         let first_chunk_size_words = first_chunk_size_bytes / 4;
@@ -491,9 +493,10 @@ impl ADIMemoryInterface {
 
             let next_chunk_size_bytes = std::cmp::min(max_chunk_size_bytes, remaining_data_len * 4);
 
-            debug!(
+            log::debug!(
                 "Writing chunk with len {} at address {:#08x}",
-                next_chunk_size_bytes, address
+                next_chunk_size_bytes,
+                address
             );
 
             let next_chunk_size_words = next_chunk_size_bytes / 4;
@@ -509,7 +512,7 @@ impl ADIMemoryInterface {
             data_offset += next_chunk_size_words;
         }
 
-        debug!("Finished writing block");
+        log::debug!("Finished writing block");
 
         Ok(())
     }
