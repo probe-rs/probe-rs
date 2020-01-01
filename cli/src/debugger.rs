@@ -1,6 +1,11 @@
 use crate::common::CliError;
 
-use probe_rs::{cores::CortexDump, coresight::memory::MI, debug::DebugInfo, session::Session};
+use probe_rs::{
+    cores::CortexDump,
+    coresight::memory::MI,
+    debug::DebugInfo,
+    session::{BreakpointId, Session},
+};
 
 use capstone::Capstone;
 
@@ -120,16 +125,29 @@ impl DebugCli {
                 let address = u32::from_str_radix(address_str, 16).unwrap();
                 //println!("Would read from address 0x{:08x}", address);
 
+                let id = cli_data.session.set_hw_breakpoint(address)?;
+
+                println!(
+                    "Set new breakpoint at address {:#08x} with id {:?}",
+                    address, id
+                );
+
+                Ok(CliState::Continue)
+            },
+        });
+
+        cli.add_command(Command {
+            name: "clear_break",
+            help_text: "Clear a breakpoint",
+
+            function: |cli_data, args| {
+                let id_str = args.get(0).ok_or(CliError::MissingArgument)?;
+                let id = usize::from_str_radix(id_str, 10).unwrap();
+                //println!("Would read from address 0x{:08x}", address);
+
                 cli_data
                     .session
-                    .target
-                    .core
-                    .enable_breakpoints(&mut cli_data.session.probe, true)?;
-                cli_data
-                    .session
-                    .target
-                    .core
-                    .set_breakpoint(&mut cli_data.session.probe, address)?;
+                    .clear_hw_breakpoint(BreakpointId::new(id))?;
 
                 Ok(CliState::Continue)
             },

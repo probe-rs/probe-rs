@@ -182,7 +182,12 @@ impl Core for M33 {
     ) -> Result<(), DebugProbeError> {
         unimplemented!()
     }
-    fn set_breakpoint(&self, _mi: &mut MasterProbe, _addr: u32) -> Result<(), DebugProbeError> {
+    fn set_breakpoint(
+        &self,
+        _mi: &mut MasterProbe,
+        _bp_unit_index: usize,
+        _addr: u32,
+    ) -> Result<(), DebugProbeError> {
         unimplemented!()
     }
 
@@ -197,6 +202,14 @@ impl Core for M33 {
 
     fn registers<'a>(&self) -> &'a BasicRegisterAddresses {
         &REGISTERS
+    }
+
+    fn clear_breakpoint(
+        &self,
+        _mi: &mut MasterProbe,
+        _bp_unit_index: usize,
+    ) -> Result<(), DebugProbeError> {
+        unimplemented!()
     }
 }
 

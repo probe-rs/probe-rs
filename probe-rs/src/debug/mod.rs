@@ -251,6 +251,7 @@ type EntriesCursor<'a, 'u> =
 type UnitIter =
     gimli::CompilationUnitHeadersIter<gimli::EndianReader<gimli::LittleEndian, std::rc::Rc<[u8]>>>;
 
+/// Debug information which is parsed from DWARF debugging information.
 pub struct DebugInfo {
     dwarf: gimli::Dwarf<DwarfReader>,
     frame_section: gimli::DebugFrame<DwarfReader>,
