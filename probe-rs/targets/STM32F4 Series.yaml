@@ -1,0 +1,3310 @@
+---
+name: STM32F4 Series
+manufacturer:
+  cc: 0x00
+  id: 0x20
+variants:
+  - name: STM32F415ZGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F401CDYx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536969216
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134610944
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F410R8Ix
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+          sector_size: 4
+          page_size: 4
+          erased_byte_value: 255
+  - name: STM32F401CEYx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536969216
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F401CDUx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536969216
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134610944
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F407VGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F407IEHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F411RCTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F405RGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F417ZETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F429VETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F427VITx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F437IITx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F439ZGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F405VGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F439NIHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F469AGYx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 65536
+          page_size: 1024
+          erased_byte_value: 255
+  - name: STM32F469IEHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+          sector_size: 65536
+          page_size: 1024
+          erased_byte_value: 255
+  - name: STM32F423VHHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135790592
+          is_boot_memory: true
+          sector_size: 4
+          page_size: 4
+          erased_byte_value: 255
+  - name: STM32F413MHYx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135790592
+          is_boot_memory: true
+          sector_size: 4
+          page_size: 4
+          erased_byte_value: 255
+  - name: STM32F446VETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F429ZIYx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F413CGUx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 4
+          page_size: 4
+          erased_byte_value: 255
+  - name: STM32F439VITx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F413VHTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135790592
+          is_boot_memory: true
+          sector_size: 4
+          page_size: 4
+          erased_byte_value: 255
+  - name: STM32F410RBIx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+          sector_size: 4
+          page_size: 4
+          erased_byte_value: 255
+  - name: STM32F427VGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F407ZGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F427ZITx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F479AIYx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+          sector_size: 65536
+          page_size: 1024
+          erased_byte_value: 255
+  - name: STM32F479VGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 65536
+          page_size: 1024
+          erased_byte_value: 255
+  - name: STM32F412ZGJx
+    part: 0x411
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537133056
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F479ZGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 65536
+          page_size: 1024
+          erased_byte_value: 255
+  - name: STM32F415VGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F429IITx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F437IGHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F429BETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F401VCTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536936448
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F401CCUx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536936448
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F446RCTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F446ZCHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F429BITx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F429IEHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F423CHUx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135790592
+          is_boot_memory: true
+          sector_size: 4
+          page_size: 4
+          erased_byte_value: 255
+  - name: STM32F411CEYx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F429AIHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F479NGHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 65536
+          page_size: 1024
+          erased_byte_value: 255
+  - name: STM32F410RBTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+          sector_size: 4
+          page_size: 4
+          erased_byte_value: 255
+  - name: STM32F423ZHJx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135790592
+          is_boot_memory: true
+          sector_size: 4
+          page_size: 4
+          erased_byte_value: 255
+  - name: STM32F446RETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F469VGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 65536
+          page_size: 1024
+          erased_byte_value: 255
+  - name: STM32F429ZGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F413VGHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 4
+          page_size: 4
+          erased_byte_value: 255
+  - name: STM32F427IIHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F429IGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F412ZEJx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537133056
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F417VGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F412RGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537133056
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F407ZETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F407IETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F429BGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F437VITx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F439VGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F401RBTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536936448
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F479NIHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+          sector_size: 65536
+          page_size: 1024
+          erased_byte_value: 255
+  - name: STM32F417IGHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F429NGHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F401RDTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536969216
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134610944
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F437AIHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F410C8Ux
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+          sector_size: 4
+          page_size: 4
+          erased_byte_value: 255
+  - name: STM32F410T8Yx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+          sector_size: 4
+          page_size: 4
+          erased_byte_value: 255
+  - name: STM32F437IIHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F446ZEJx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F479AGYx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 65536
+          page_size: 1024
+          erased_byte_value: 255
+  - name: STM32F446ZCTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F439IGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F423MHYx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135790592
+          is_boot_memory: true
+          sector_size: 4
+          page_size: 4
+          erased_byte_value: 255
+  - name: STM32F479IITx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+          sector_size: 65536
+          page_size: 1024
+          erased_byte_value: 255
+  - name: STM32F401VDHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536969216
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134610944
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F423VHTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135790592
+          is_boot_memory: true
+          sector_size: 4
+          page_size: 4
+          erased_byte_value: 255
+  - name: STM32F429VGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F439IGHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F469AEYx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+          sector_size: 65536
+          page_size: 1024
+          erased_byte_value: 255
+  - name: STM32F401VCHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536936448
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F401CCYx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536936448
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F413RGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 4
+          page_size: 4
+          erased_byte_value: 255
+  - name: STM32F401RETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536969216
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F411VEHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F417IGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F407IGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F479AGHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 65536
+          page_size: 1024
+          erased_byte_value: 255
+  - name: STM32F469BGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 65536
+          page_size: 1024
+          erased_byte_value: 255
+  - name: STM32F411RETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F412CGUx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537133056
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F412VGHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537133056
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F429IGHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F401CBYx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536936448
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F401VBTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536936448
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F427ZGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F439IITx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F446MCYx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F469NIHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+          sector_size: 65536
+          page_size: 1024
+          erased_byte_value: 255
+  - name: STM32F410R8Tx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+          sector_size: 4
+          page_size: 4
+          erased_byte_value: 255
+  - name: STM32F415OGYx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F413CHUx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135790592
+          is_boot_memory: true
+          sector_size: 4
+          page_size: 4
+          erased_byte_value: 255
+  - name: STM32F427AIHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F429AGHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F429IIHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F469IITx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+          sector_size: 65536
+          page_size: 1024
+          erased_byte_value: 255
+  - name: STM32F469BETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+          sector_size: 65536
+          page_size: 1024
+          erased_byte_value: 255
+  - name: STM32F410TBYx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+          sector_size: 4
+          page_size: 4
+          erased_byte_value: 255
+  - name: STM32F411VETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F469NEHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+          sector_size: 65536
+          page_size: 1024
+          erased_byte_value: 255
+  - name: STM32F469AIYx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+          sector_size: 65536
+          page_size: 1024
+          erased_byte_value: 255
+  - name: STM32F469VETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+          sector_size: 65536
+          page_size: 1024
+          erased_byte_value: 255
+  - name: STM32F479AIHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+          sector_size: 65536
+          page_size: 1024
+          erased_byte_value: 255
+  - name: STM32F469ZITx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+          sector_size: 65536
+          page_size: 1024
+          erased_byte_value: 255
+  - name: STM32F401CEUx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536969216
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F469AIHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+          sector_size: 65536
+          page_size: 1024
+          erased_byte_value: 255
+  - name: STM32F411VCHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F479IIHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+          sector_size: 65536
+          page_size: 1024
+          erased_byte_value: 255
+  - name: STM32F479BGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 65536
+          page_size: 1024
+          erased_byte_value: 255
+  - name: STM32F479VITx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+          sector_size: 65536
+          page_size: 1024
+          erased_byte_value: 255
+  - name: STM32F423ZHTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135790592
+          is_boot_memory: true
+          sector_size: 4
+          page_size: 4
+          erased_byte_value: 255
+  - name: STM32F412ZETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537133056
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F429IETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F415RGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F412CEUx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537133056
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F413VHHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135790592
+          is_boot_memory: true
+          sector_size: 4
+          page_size: 4
+          erased_byte_value: 255
+  - name: STM32F469IETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+          sector_size: 65536
+          page_size: 1024
+          erased_byte_value: 255
+  - name: STM32F412VETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537133056
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F411VCTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F412ZGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537133056
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F401CBUx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536936448
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F413MGYx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 4
+          page_size: 4
+          erased_byte_value: 255
+  - name: STM32F429ZITx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F437IGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F439BITx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F439AIHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F412VEHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537133056
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F423RHTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135790592
+          is_boot_memory: true
+          sector_size: 4
+          page_size: 4
+          erased_byte_value: 255
+  - name: STM32F413ZGJx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 4
+          page_size: 4
+          erased_byte_value: 255
+  - name: STM32F427IGHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F412RETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537133056
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F401VEHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536969216
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F429NIHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F411CCUx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F417IEHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F437VGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F405OGYx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F429NEHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F401VDTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536969216
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134610944
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F437ZGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F437ZITx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F446ZEHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F469AEHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+          sector_size: 65536
+          page_size: 1024
+          erased_byte_value: 255
+  - name: STM32F417IETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F469IIHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+          sector_size: 65536
+          page_size: 1024
+          erased_byte_value: 255
+  - name: STM32F469BITx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+          sector_size: 65536
+          page_size: 1024
+          erased_byte_value: 255
+  - name: STM32F469ZGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 65536
+          page_size: 1024
+          erased_byte_value: 255
+  - name: STM32F410C8Tx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+          sector_size: 4
+          page_size: 4
+          erased_byte_value: 255
+  - name: STM32F417ZGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F479BITx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+          sector_size: 65536
+          page_size: 1024
+          erased_byte_value: 255
+  - name: STM32F412VGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537133056
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F413ZGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 4
+          page_size: 4
+          erased_byte_value: 255
+  - name: STM32F412REYx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537133056
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F405ZGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F413ZHTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135790592
+          is_boot_memory: true
+          sector_size: 4
+          page_size: 4
+          erased_byte_value: 255
+  - name: STM32F407VETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F413RHTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135790592
+          is_boot_memory: true
+          sector_size: 4
+          page_size: 4
+          erased_byte_value: 255
+  - name: STM32F401RCTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536936448
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F417VETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F429VITx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F429ZETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F439ZITx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F439IIHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F410CBUx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+          sector_size: 4
+          page_size: 4
+          erased_byte_value: 255
+  - name: STM32F439ZIYx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F401VBHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536936448
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F446MEYx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F446VCTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F469AGHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 65536
+          page_size: 1024
+          erased_byte_value: 255
+  - name: STM32F469IGHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 65536
+          page_size: 1024
+          erased_byte_value: 255
+  - name: STM32F469NGHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 65536
+          page_size: 1024
+          erased_byte_value: 255
+  - name: STM32F469VITx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+          sector_size: 65536
+          page_size: 1024
+          erased_byte_value: 255
+  - name: STM32F479IGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 65536
+          page_size: 1024
+          erased_byte_value: 255
+  - name: STM32F479ZITx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+          sector_size: 65536
+          page_size: 1024
+          erased_byte_value: 255
+  - name: STM32F410CBTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+          sector_size: 4
+          page_size: 4
+          erased_byte_value: 255
+  - name: STM32F411CEUx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F439NGHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F469ZETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+          sector_size: 65536
+          page_size: 1024
+          erased_byte_value: 255
+  - name: STM32F427IGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F446ZETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F469IGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 65536
+          page_size: 1024
+          erased_byte_value: 255
+  - name: STM32F439BGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F405OEYx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F413ZHJx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135790592
+          is_boot_memory: true
+          sector_size: 4
+          page_size: 4
+          erased_byte_value: 255
+  - name: STM32F411CCYx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F427AGHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F413VGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 4
+          page_size: 4
+          erased_byte_value: 255
+  - name: STM32F412RGYx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537133056
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F479IGHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 65536
+          page_size: 1024
+          erased_byte_value: 255
+  - name: STM32F401VETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536969216
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F427IITx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F407IGHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+flash_algorithms:
+  - name: STM32F4xx_1024
+    description: STM32F4xx Flash
+    default: true
+    instructions:
+      - 234881792
+      - 3540133920
+      - 486541632
+      - 672155504
+      - 151048962
+      - 1198529728
+      - 1198524544
+      - 1229015106
+      - 1229086785
+      - 553672769
+      - 1757503489
+      - 1125196528
+      - 1765826753
+      - 3557164672
+      - 1228752958
+      - 554065921
+      - 1228759105
+      - 536895617
+      - 1211582320
+      - 88238337
+      - 1627472657
+      - 1198530560
+      - 1211348240
+      - 604268801
+      - 1627472673
+      - 60975361
+      - 1627472657
+      - 1244743987
+      - 1611784192
+      - 64710851
+      - 1761727739
+      - 1627472801
+      - 3171950592
+      - 4160730416
+      - 1227358139
+      - 602958026
+      - 1623868186
+      - 1628185602
+      - 117467402
+      - 1124208192
+      - 1762156810
+      - 1125123042
+      - 1210343688
+      - 3758115361
+      - 1758289936
+      - 3573220333
+      - 1134586120
+      - 1757962504
+      - 251659776
+      - 1757990915
+      - 1623737112
+      - 3174047745
+      - 1293268336
+      - 143203529
+      - 9005291
+      - 1127425776
+      - 587227371
+      - 1259757867
+      - 1764548631
+      - 1630290716
+      - 1610901524
+      - 65300716
+      - 1764545788
+      - 6555748
+      - 1760321836
+      - 254019108
+      - 1760088068
+      - 1625834288
+      - 3178242049
+      - 487726336
+      - 687873801
+      - 536924645
+      - 48496
+      - 1164378403
+      - 1073888256
+      - 3455027627
+      - 21845
+      - 1073754112
+      - 4095
+      - 43690
+      - 513
+      - 0
+    pc_init: 29
+    pc_uninit: 75
+    pc_program_page: 209
+    pc_erase_sector: 133
+    pc_erase_all: 89
+    data_section_offset: 324
+  - name: STM32F40xxx_41xxx_OPT
+    description: STM32F40xxx/41xxx Flash Options
+    default: false
+    instructions:
+      - 50349569
+      - 673189376
+      - 155243266
+      - 3758431488
+      - 3540133904
+      - 482347264
+      - 142663680
+      - 3573613257
+      - 1124606224
+      - 1210861424
+      - 1619085610
+      - 1619085611
+      - 586180801
+      - 1623278353
+      - 109078848
+      - 1210700806
+      - 1610696999
+      - 1614881030
+      - 1619085607
+      - 1198530560
+      - 1765885985
+      - 1125196289
+      - 536895809
+      - 1209943920
+      - 569403586
+      - 1623343882
+      - 1631734304
+      - 587360578
+      - 1631732506
+      - 101869762
+      - 3489926930
+      - 1124755650
+      - 536961218
+      - 536889200
+      - 536889200
+      - 1209157488
+      - 1757636625
+      - 1125327600
+      - 1259692227
+      - 478756889
+      - 1757503809
+      - 3573285833
+      - 101279937
+      - 3489926921
+      - 1125214401
+      - 536961217
+      - 536889200
+      - 3037742960
+      - 1746029573
+      - 1768180490
+      - 1075593242
+      - 3506455202
+      - 3171948608
+      - 135866939
+      - 1073888256
+      - 1281191551
+      - 21845
+      - 1073754112
+      - 4095
+      - 268413676
+      - 268435452
+      - 0
+    pc_init: 39
+    pc_uninit: 81
+    pc_program_page: 143
+    pc_erase_sector: 139
+    pc_erase_all: 95
+    data_section_offset: 244
+  - name: STM32F4xx_OTP
+    description: STM32F4xx Flash OTP
+    default: false
+    instructions:
+      - 234881792
+      - 3540133920
+      - 486541632
+      - 672155504
+      - 151048962
+      - 1198529728
+      - 1198524544
+      - 1227114533
+      - 1227186241
+      - 553672769
+      - 1757503489
+      - 1125196528
+      - 1765826753
+      - 3557164672
+      - 1226852385
+      - 554065921
+      - 1226858561
+      - 536895617
+      - 1209681776
+      - 88238337
+      - 1627472657
+      - 1198530560
+      - 1198530560
+      - 1293268336
+      - 143203529
+      - 9005291
+      - 1127425776
+      - 587227371
+      - 1259692331
+      - 1764548631
+      - 1630290716
+      - 1610901524
+      - 65300716
+      - 1764545788
+      - 6555748
+      - 1760321836
+      - 254019108
+      - 1760088068
+      - 1625834288
+      - 3178242049
+      - 487726336
+      - 687873801
+      - 536924645
+      - 48496
+      - 1164378403
+      - 1073888256
+      - 3455027627
+      - 21845
+      - 1073754112
+      - 4095
+      - 513
+      - 0
+    pc_init: 29
+    pc_uninit: 75
+    pc_program_page: 93
+    pc_erase_sector: 89
+    pc_erase_all: ~
+    data_section_offset: 204
+core: M4
