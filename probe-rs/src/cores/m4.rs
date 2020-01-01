@@ -5,6 +5,8 @@ use crate::target::{
 };
 use bitfield::bitfield;
 
+use std::mem::size_of;
+
 bitfield! {
     #[derive(Copy, Clone)]
     pub struct Dhcsr(u32);
@@ -187,6 +189,70 @@ impl From<Demcr> for u32 {
 impl CoreRegister for Demcr {
     const ADDRESS: u32 = 0xe000_edfc;
     const NAME: &'static str = "DEMCR";
+}
+
+
+bitfield! {
+    #[derive(Copy,Clone)]
+    pub struct FpCtrl(u32);
+    impl Debug;
+
+    pub rev, _: 31, 28;
+    num_code_1, _: 14, 12;
+    pub num_lit, _: 11, 8;
+    num_code_0, _: 7, 4;
+    pub _, set_key: 1;
+    pub enable, set_enable: 0;
+}
+
+
+impl FpCtrl {
+    pub fn num_code(&self) -> u32 {
+        (self.num_code_1() << 12) | self.num_code_0()
+    }
+}
+
+impl CoreRegister for FpCtrl {
+    const ADDRESS: u32 = 0xE000_2000;
+    const NAME: &'static str = "FP_CTRL";
+}
+
+impl From<u32> for FpCtrl {
+    fn from(value: u32) -> Self {
+        FpCtrl(value)
+    }
+}
+
+impl From<FpCtrl> for u32 {
+    fn from(value: FpCtrl) -> Self {
+        value.0
+    }
+}
+bitfield! {
+    #[derive(Copy,Clone)]
+    pub struct FpCompX(u32);
+    impl Debug;
+
+    pub replace, set_replace: 31, 30;
+    pub comp, set_comp: 28, 2;
+    pub enable, set_enable: 0;
+}
+
+impl CoreRegister for FpCompX {
+    const ADDRESS: u32 = 0xE000_2000;
+    const NAME: &'static str = "FP_CTRL";
+}
+
+impl From<u32> for FpCompX {
+    fn from(value: u32) -> Self {
+        FpCompX(value)
+    }
+}
+
+impl From<FpCompX> for u32 {
+    fn from(value: FpCompX) -> Self {
+        value.0
+    }
 }
 
 pub const REGISTERS: BasicRegisterAddresses = BasicRegisterAddresses {
@@ -372,26 +438,50 @@ impl Core for M4 {
 
     fn get_available_breakpoint_units(
         &self,
-        _mi: &mut MasterProbe,
+        mi: &mut MasterProbe,
     ) -> Result<u32, DebugProbeError> {
-        unimplemented!();
+        let raw_val = mi.read32(FpCtrl::ADDRESS)?;
+
+        let reg = FpCtrl::from(raw_val);
+
+        Ok(reg.num_code())
     }
 
     fn enable_breakpoints(
         &self,
-        _mi: &mut MasterProbe,
-        _state: bool,
+        mi: &mut MasterProbe,
+        state: bool,
     ) -> Result<(), DebugProbeError> {
-        unimplemented!();
+        let mut val = FpCtrl::from(0);
+        val.set_key(true);
+        val.set_enable(state);
+
+        mi.write32(FpCtrl::ADDRESS, val.into())?;
+        Ok(())
     }
 
     fn set_breakpoint(
         &self,
-        _mi: &mut MasterProbe,
-        _bp_unit_index: usize,
-        _addr: u32,
+        mi: &mut MasterProbe,
+        bp_unit_index: usize,
+        addr: u32,
     ) -> Result<(), DebugProbeError> {
-        unimplemented!();
+        let mut val = FpCompX::from(0);
+
+
+        // clear bits which cannot be set
+        let comp_val = addr & 0x1f_ff_ff_fc;
+        let replace_val = addr & 0x3;
+
+        val.set_replace(replace_val);
+        val.set_comp(comp_val);
+        val.set_enable(true);
+
+        let reg_addr = FpCompX::ADDRESS + (bp_unit_index * size_of::<u32>()) as u32;
+
+        mi.write32(reg_addr, val.into())?;
+
+        Ok(())
     }
 
     fn read_block8(
@@ -409,9 +499,16 @@ impl Core for M4 {
 
     fn clear_breakpoint(
         &self,
-        _mi: &mut MasterProbe,
-        _bp_unit_index: usize,
+        mi: &mut MasterProbe,
+        bp_unit_index: usize,
     ) -> Result<(), DebugProbeError> {
-        unimplemented!()
+        let mut val = FpCompX::from(0);
+        val.set_enable(false);
+
+        let reg_addr = FpCompX::ADDRESS + (bp_unit_index * size_of::<u32>()) as u32;
+
+        mi.write32(reg_addr, val.into())?;
+
+        Ok(())
     }
 }
