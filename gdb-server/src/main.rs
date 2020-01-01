@@ -26,7 +26,12 @@ struct CLI {
     target: Option<String>,
 }
 
-fn main() -> Result<(), Error> {
+fn main() {
+    pretty_env_logger::init();
+    crate::gdb_server_async::run().unwrap();
+}
+
+fn _main() -> Result<(), Error> {
     pretty_env_logger::init();
 
     let matches = CLI::from_args();
