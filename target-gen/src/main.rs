@@ -145,12 +145,17 @@ fn main() {
                 families.last_mut().unwrap()
             };
 
+            let mut memory_map: Vec<MemoryRegion> = Vec::new();
+            if let Some(mem) = ram {
+                memory_map.push(MemoryRegion::Ram(mem));
+            }
+            if let Some(mem) = flash {
+                memory_map.push(MemoryRegion::Flash(mem));
+            }
+
             family.variants.push(Chip {
                 name: device_name,
-                memory_map: vec![
-                    MemoryRegion::Ram(ram.unwrap()),
-                    MemoryRegion::Flash(flash.unwrap()),
-                ],
+                memory_map,
             });
         }
 
