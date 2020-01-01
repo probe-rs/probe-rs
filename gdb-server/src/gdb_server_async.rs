@@ -107,45 +107,71 @@ fn main() {
 
     #[derive(Debug)]
     enum Event {
-        NewPeer {
-            name: String,
-            stream: Arc<TcpStream>,
-        },
-        Message {
-            from: String,
-            to: Vec<String>,
-            msg: String,
-        },
+        Message(String),
+        NewPeer(Sender<String>)
     }
 
     /// The transmitter loop handles any messages that are outbound.
     /// It will take care of delivering any message to GDB reliably.
     /// This means that it also handles retransmission and ACKs.
-    async fn broker_loop(mut events: Receiver<Event>) -> Result<()> {
-        let mut peers: HashMap<String, Sender<String>> = HashMap::new();
+    async fn outbound_broker_loop(mut events: Receiver<Event>) -> Result<()> {
+        let mut peer: Option<Sender<String>> = None;
 
         while let Some(event) = events.next().await {
-            match event {
-                Event::Message { from, to, msg } => {
-                    for addr in to {
-                        if let Some(peer) = peers.get_mut(&addr) {
-                            let msg = format!("from {}: {}\n", from, msg);
-                            peer.send(msg).await?
+            peer.map(|peer| { 
+                match event {
+                    Event::Message(msg) => {
+                        packet.encode(&mut self.writer)?;
+                        self.writer.flush()?;
+
+                        loop {
+                            // std::io::stdin()
+                            //     .bytes()
+                            //     .next();
+
+                            // TCP guarantees the order of packets, so theoretically
+                            // '+' or '-' will always be sent directly after a packet
+                            // is received.
+                            let buf = self.reader.fill_buf()?;
+                            match buf.first() {
+                                Some(b'+') => {
+                                    self.reader.consume(1);
+                                    break;
+                                }
+                                Some(b'-') => {
+                                    self.reader.consume(1);
+                                    if packet.is_valid() {
+                                        // Well, ok, not our fault. The packet is
+                                        // definitely valid, let's re-try
+                                        continue;
+                                    } else {
+                                        // Oh... so the user actually tried to send a
+                                        // packet with an invalid checksum. It's very
+                                        // possible that they know what they're doing
+                                        // though, perhaps they thought they disabled
+                                        // the checksum verification. So let's not
+                                        // panic.
+                                        return Err(Error::InvalidChecksum);
+                                    }
+                                }
+                                // Never mind... Just... hope for the best?
+                                _ => break,
+                            }
+                        }
+                    }
+                    Event::NewPeer { name, stream } => {
+                        match peers.entry(name) {
+                            Entry::Occupied(..) => (),
+                            Entry::Vacant(entry) => {
+                                let (client_sender, client_receiver) = mpsc::unbounded();
+                                entry.insert(client_sender); // 4
+                                spawn_and_log_error(connection_writer_loop(client_receiver, stream));
+                                // 5
+                            }
                         }
                     }
                 }
-                Event::NewPeer { name, stream } => {
-                    match peers.entry(name) {
-                        Entry::Occupied(..) => (),
-                        Entry::Vacant(entry) => {
-                            let (client_sender, client_receiver) = mpsc::unbounded();
-                            entry.insert(client_sender); // 4
-                            spawn_and_log_error(connection_writer_loop(client_receiver, stream));
-                            // 5
-                        }
-                    }
-                }
-            }
+            })
         }
         Ok(())
     }
