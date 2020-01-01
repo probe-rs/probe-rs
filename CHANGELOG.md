@@ -7,13 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Added `nrf-recover` feature that unlocks nRF52 chips through Nordic's custom `AP`
-- Added automatic CMSIS-Pack parsing and loading for flash algorithms.
-
 ### Changed
 
 ### Fixed
 
+## [0.3.0]
+
+Improved flashing for `cargo-flash` considering speed and useability.
+
+### Added
+
+- Increased the raw flashing speed by factor 10 and the actual flashing speed for small programs by factor 5. This is done using batched CMSIS-DAP transfers.
+- Added CMSIS-Pack powered flashing. This feature essentially enables to flash any ARM core which can also be flashed by ARM Keil.
+- Added progress bars for flash progress indication.
+- Added `nrf-recover` feature that unlocks nRF52 chips through Nordic's custom `AP`
+
+### Changed
+
+- Improved target autodetection with better error distinction.
+- Improved messaging overall.
+
+### Fixed
+
+- Various bugfixes
+- Binaries bigger than a sector can now be flashed.
 
 ## [0.2.0]
 
@@ -22,11 +39,9 @@ Initial release on crates.io
 - Modularized code to allow other cores than M0 and be able to dynamically load chip definitions.
 - Added target autodetection.
 - Added M4 targets.
-
-## [0.2.0]
-
 - Working basic flash downloader with nRF51.
 - Introduce cargo-flash which can automatically build & flash the target elf file.
 
 [Unreleased]: https://github.com/probe-rs/probe-rs/compare/v0.2.0...master
+[0.3.0]: https://github.com/probe-rs/probe-rs/releases/tag/v0.3.0
 [0.2.0]: https://github.com/probe-rs/probe-rs/releases/tag/v0.2.0
