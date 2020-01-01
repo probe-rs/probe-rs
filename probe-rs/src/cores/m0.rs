@@ -5,6 +5,8 @@ use crate::target::{
 };
 use bitfield::bitfield;
 
+use std::mem::size_of;
+
 use super::CortexDump;
 use log::debug;
 
@@ -104,7 +106,7 @@ bitfield! {
     pub struct BpCtrl(u32);
     impl Debug;
     /// The number of breakpoint comparators. If NUM_CODE is zero, the implementation does not support any comparators
-    pub numcode, _: 7, 4;
+    pub num_code, _: 7, 4;
     /// RAZ on reads, SBO, for writes. If written as zero, the write to the register is ignored.
     pub key, set_key: 1;
     /// Enables the BPU:
@@ -423,9 +425,9 @@ impl Core for M0 {
     fn get_available_breakpoint_units(&self, mi: &mut MasterProbe) -> Result<u32, DebugProbeError> {
         let result = mi.read32(BpCtrl::ADDRESS)?;
 
-        self.wait_for_core_register_transfer(mi)?;
+        let register = BpCtrl::from(result);
 
-        Ok(result)
+        Ok(register.num_code())
     }
 
     fn enable_breakpoints(&self, mi: &mut MasterProbe, state: bool) -> Result<(), DebugProbeError> {
@@ -439,14 +441,21 @@ impl Core for M0 {
         Ok(())
     }
 
-    fn set_breakpoint(&self, mi: &mut MasterProbe, addr: u32) -> Result<(), DebugProbeError> {
+    fn set_breakpoint(
+        &self,
+        mi: &mut MasterProbe,
+        bp_register_index: usize,
+        addr: u32,
+    ) -> Result<(), DebugProbeError> {
         debug!("Setting breakpoint on address 0x{:08x}", addr);
         let mut value = BpCompx(0);
         value.set_bp_match(0b11);
         value.set_comp((addr >> 2) & 0x00FF_FFFF);
         value.set_enable(true);
 
-        mi.write32(BpCompx::ADDRESS, value.into())?;
+        let register_addr = BpCompx::ADDRESS + (bp_register_index * size_of::<u32>()) as u32;
+
+        mi.write32(register_addr, value.into())?;
 
         Ok(())
     }
@@ -462,6 +471,20 @@ impl Core for M0 {
 
     fn registers<'a>(&self) -> &'a BasicRegisterAddresses {
         &REGISTERS
+    }
+    fn clear_breakpoint(
+        &self,
+        mi: &mut MasterProbe,
+        bp_unit_index: usize,
+    ) -> Result<(), DebugProbeError> {
+        let register_addr = BpCompx::ADDRESS + (bp_unit_index * size_of::<u32>()) as u32;
+
+        let mut value = BpCompx::from(0);
+        value.set_enable(false);
+
+        mi.write32(register_addr, value.into())?;
+
+        Ok(())
     }
 }
 
@@ -540,7 +563,12 @@ impl Core for FakeM0 {
         unimplemented!()
     }
 
-    fn set_breakpoint(&self, _mi: &mut MasterProbe, _addr: u32) -> Result<(), DebugProbeError> {
+    fn set_breakpoint(
+        &self,
+        _mi: &mut MasterProbe,
+        _bp_unit_index: usize,
+        _addr: u32,
+    ) -> Result<(), DebugProbeError> {
         unimplemented!()
     }
 
@@ -571,5 +599,13 @@ impl Core for FakeM0 {
 
     fn registers<'a>(&self) -> &'a BasicRegisterAddresses {
         &REGISTERS
+    }
+
+    fn clear_breakpoint(
+        &self,
+        _mi: &mut MasterProbe,
+        _bp_unit_index: usize,
+    ) -> Result<(), DebugProbeError> {
+        unimplemented!()
     }
 }
