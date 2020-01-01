@@ -37,7 +37,9 @@ fn main() {
     // Look for the .pdsc file in the given dir and it's child directories.
     visit_dirs(Path::new(&in_dir), &mut |pdsc, mut archive| {
         // Forge a definition file for each device in the .pdsc file.
-        for (device_name, device) in pdsc.devices.0 {
+        let mut devices = pdsc.devices.0.into_iter().collect::<Vec<_>>();
+        devices.sort_by(|a, b| a.0.cmp(&b.0));
+        for (device_name, device) in devices {
             // Check if this device family is already known.
             let mut potential_family = families
                 .iter_mut()
