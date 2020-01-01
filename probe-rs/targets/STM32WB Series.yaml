@@ -1,0 +1,231 @@
+---
+name: STM32WB Series
+variants:
+  - name: STM32WB55CCUx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+          sector_size: 4096
+          page_size: 1024
+          erased_byte_value: 255
+  - name: STM32WB55CEUx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537133056
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+          sector_size: 4096
+          page_size: 1024
+          erased_byte_value: 255
+  - name: STM32WB55CGUx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537133056
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 4096
+          page_size: 1024
+          erased_byte_value: 255
+  - name: STM32WB55RCVx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+          sector_size: 4096
+          page_size: 1024
+          erased_byte_value: 255
+  - name: STM32WB55REVx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537133056
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+          sector_size: 4096
+          page_size: 1024
+          erased_byte_value: 255
+  - name: STM32WB55RGVx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537133056
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 150994944
+          is_boot_memory: true
+          sector_size: 4096
+          page_size: 1024
+          erased_byte_value: 255
+  - name: STM32WB55VCYx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+          sector_size: 4096
+          page_size: 1024
+          erased_byte_value: 255
+  - name: STM32WB55VEYx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537133056
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+          sector_size: 4096
+          page_size: 1024
+          erased_byte_value: 255
+  - name: STM32WB55VGYx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537133056
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 150994944
+          is_boot_memory: true
+          sector_size: 4096
+          page_size: 1024
+          erased_byte_value: 255
+flash_algorithms:
+  - name: STM32WB_M4
+    description: STM32WB_M4 Flash
+    default: true
+    instructions:
+      - 1912141377
+      - 542173697
+      - 1212827504
+      - 1619085640
+      - 1619085641
+      - 1198530560
+      - 1765886022
+      - 1090580545
+      - 536895809
+      - 536954736
+      - 3037742960
+      - 581629514
+      - 1212172610
+      - 1611325440
+      - 64710915
+      - 4064597243
+      - 1627665658
+      - 50655816
+      - 1766023491
+      - 864089155
+      - 3758121283
+      - 1761828874
+      - 3573220315
+      - 1631658240
+      - 1109485825
+      - 1627705346
+      - 3171950593
+      - 3171950592
+      - 1912141377
+      - 575728129
+      - 1211020560
+      - 4094781697
+      - 3522903872
+      - 55142657
+      - 1761727740
+      - 3573285641
+      - 888861252
+      - 4030882052
+      - 1631650050
+      - 4097927489
+      - 1631662464
+      - 564852298
+      - 3758115364
+      - 1761828881
+      - 3573220315
+      - 1631658240
+      - 1109485825
+      - 1627705346
+      - 3171950593
+      - 3171950592
+      - 1260041488
+      - 4064288201
+      - 4028699903
+      - 1629225223
+      - 1633428481
+      - 1763500063
+      - 1061221396
+      - 1763496443
+      - 3573285732
+      - 52717852
+      - 1746195708
+      - 1750360068
+      - 1763467332
+      - 1061221396
+      - 1763496443
+      - 3573285732
+      - 52717852
+      - 1763497212
+      - 3573614500
+      - 3171950593
+      - 956837896
+      - 687878664
+      - 1767428573
+      - 127008
+      - 536895832
+      - 48400
+      - 1164378403
+      - 1476411392
+      - 3455027627
+      - 1073754112
+      - 0
+    pc_init: 11
+    pc_uninit: 25
+    pc_program_page: 201
+    pc_erase_sector: 113
+    pc_erase_all: 43
+    data_section_offset: 320
+core: M4

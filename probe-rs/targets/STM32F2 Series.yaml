@@ -1,0 +1,915 @@
+---
+name: STM32F2 Series
+variants:
+  - name: STM32F205RBTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536936448
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F205RCTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536969216
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F205RETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F205REYx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F205RFTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135004160
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F205RGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F205RGYx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F205VBTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536936448
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F205VCTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536969216
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F205VETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F205VFTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135004160
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F205VGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F205ZCTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536969216
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F205ZETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F205ZFTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135004160
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F205ZGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F207ICHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F207ICTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F207IEHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F207IETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F207IFHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135004160
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F207IFTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135004160
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F207IGHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F207IGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F207VCTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F207VETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F207VFTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135004160
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F207VGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F207ZCTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F207ZETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F207ZFTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135004160
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F207ZGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F215RETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F215RGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F215VETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F215VGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F215ZETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F215ZGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F217IEHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F217IETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F217IGHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F217IGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F217VETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F217VGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F217ZETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+  - name: STM32F217ZGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+          sector_size: 528
+          page_size: 528
+          erased_byte_value: 255
+flash_algorithms:
+  - name: STM32F2xx_1024
+    description: STM32F2xx Flash
+    default: true
+    instructions:
+      - 234881792
+      - 3540133920
+      - 486541632
+      - 672155504
+      - 151048962
+      - 1198529728
+      - 1198524544
+      - 1229015106
+      - 1229086785
+      - 553672769
+      - 1757503489
+      - 1125196528
+      - 1765826753
+      - 3557164672
+      - 1228752958
+      - 554065921
+      - 1228759105
+      - 536895617
+      - 1211582320
+      - 88238337
+      - 1627472657
+      - 1198530560
+      - 1211348240
+      - 604268801
+      - 1627472673
+      - 60975361
+      - 1627472657
+      - 1244743987
+      - 1611784192
+      - 64710851
+      - 1761727739
+      - 1627472801
+      - 3171950592
+      - 4160730416
+      - 1227358139
+      - 602958026
+      - 1623868186
+      - 1628185602
+      - 117467402
+      - 1124208192
+      - 1762156810
+      - 1125123042
+      - 1210343688
+      - 3758115361
+      - 1758289936
+      - 3573220333
+      - 1134586120
+      - 1757962504
+      - 251659776
+      - 1757990915
+      - 1623737112
+      - 3174047745
+      - 1293268336
+      - 143203529
+      - 9005291
+      - 1127425776
+      - 587227371
+      - 1259757867
+      - 1764548631
+      - 1630290716
+      - 1610901524
+      - 65300716
+      - 1764545788
+      - 6555748
+      - 1760321836
+      - 254019108
+      - 1760088068
+      - 1625834288
+      - 3178242049
+      - 487726336
+      - 687873801
+      - 536924645
+      - 48496
+      - 1164378403
+      - 1073888256
+      - 3455027627
+      - 21845
+      - 1073754112
+      - 4095
+      - 43690
+      - 513
+      - 0
+    pc_init: 29
+    pc_uninit: 75
+    pc_program_page: 209
+    pc_erase_sector: 133
+    pc_erase_all: 89
+    data_section_offset: 324
+  - name: STM32F2xx_OPT
+    description: STM32F2xx Flash Options
+    default: false
+    instructions:
+      - 234881792
+      - 3540133920
+      - 486541632
+      - 672155504
+      - 151048962
+      - 1198529728
+      - 1198524544
+      - 1227376681
+      - 1227448449
+      - 1757503617
+      - 1125196528
+      - 1765826753
+      - 3557164672
+      - 1227180070
+      - 554065921
+      - 1227186241
+      - 536895617
+      - 1210009456
+      - 570517825
+      - 1631666961
+      - 1198530560
+      - 1757562907
+      - 1124737520
+      - 1243504834
+      - 1765957954
+      - 1125786370
+      - 1757569346
+      - 252839442
+      - 1757597700
+      - 1623343882
+      - 1198530561
+      - 1198530560
+      - 1198530560
+      - 2282785041
+      - 151586057
+      - 8390784
+      - 1208763137
+      - 586180803
+      - 1623409427
+      - 1125720834
+      - 1757503809
+      - 3573285833
+      - 101279937
+      - 3489926921
+      - 1125214401
+      - 536961217
+      - 536889200
+      - 18288
+      - 135866939
+      - 1073888256
+      - 1281191551
+      - 21845
+      - 1073754112
+      - 4095
+      - 268413676
+      - 0
+    pc_init: 29
+    pc_uninit: 71
+    pc_program_page: 133
+    pc_erase_sector: 129
+    pc_erase_all: 85
+    data_section_offset: 220
+  - name: STM32F2xx_OTP
+    description: STM32F2xx Flash OTP
+    default: false
+    instructions:
+      - 234881792
+      - 3540133920
+      - 486541632
+      - 672155504
+      - 151048962
+      - 1198529728
+      - 1198524544
+      - 1227114533
+      - 1227186241
+      - 553672769
+      - 1757503489
+      - 1125196528
+      - 1765826753
+      - 3557164672
+      - 1226852385
+      - 554065921
+      - 1226858561
+      - 536895617
+      - 1209681776
+      - 88238337
+      - 1627472657
+      - 1198530560
+      - 1198530560
+      - 1293268336
+      - 143203529
+      - 9005291
+      - 1127425776
+      - 587227371
+      - 1259692331
+      - 1764548631
+      - 1630290716
+      - 1610901524
+      - 65300716
+      - 1764545788
+      - 6555748
+      - 1760321836
+      - 254019108
+      - 1760088068
+      - 1625834288
+      - 3178242049
+      - 487726336
+      - 687873801
+      - 536924645
+      - 48496
+      - 1164378403
+      - 1073888256
+      - 3455027627
+      - 21845
+      - 1073754112
+      - 4095
+      - 513
+      - 0
+    pc_init: 29
+    pc_uninit: 75
+    pc_program_page: 93
+    pc_erase_sector: 89
+    pc_erase_all: ~
+    data_section_offset: 204
+core: M3
