@@ -1,6 +1,8 @@
 mod gdb_server;
 mod gdb_server_async;
 mod worker;
+mod reader;
+mod writer;
 
 use crate::gdb_server::GdbServer;
 use gdb_protocol::{

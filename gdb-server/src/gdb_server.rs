@@ -6,7 +6,6 @@ use gdb_protocol::{
 
 use std::{
     io::{prelude::*, BufReader},
-    mem,
     net::{TcpListener, TcpStream, ToSocketAddrs},
 };
 
@@ -127,6 +126,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::mem;
     use gdb_protocol::packet::UncheckedPacket;
 
     impl<'a> GdbServer<&'a mut &'a [u8], Vec<u8>> {
