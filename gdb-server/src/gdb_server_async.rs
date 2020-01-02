@@ -81,28 +81,31 @@ async fn inbound_broker_loop(
     use futures::future::FutureExt;
 
     let mut buffer = vec![];
-    let mut tmp_buf = [0; 128];
+    let mut tmp_buf = [0; 1024];
     // let mut glob = vec![];
 
     loop {
         let mut packet_stream_2 = packet_stream_2.next().fuse();
         let mut s = &*stream;
         let mut read = s.read(&mut tmp_buf).fuse();
+        // let reader = crate::reader::reader(stream.clone(), packet_stream.clone(), &mut buffer);
         
         futures::select! {
             packet = packet_stream_2 => {
+                println!("WRITE RACE WIN");
                 if let Some(packet) = packet {
-                    crate::writer::writer(packet, stream.clone(), &mut buffer).await?
+                    crate::writer::writer(packet, stream.clone(), packet_stream.clone(), &mut buffer).await?
                 }
             },
             n = read => {
+                println!("READ RACE WIN");
                 if let Ok(n) = n {
                     if n > 0 {
                         buffer.extend(&tmp_buf[0..n]);
                         // glob.extend(&tmp_buf[0..n]);
-                        log::info!("Current buf {}", String::from_utf8_lossy(&buffer));
-                        crate::reader::reader(stream.clone(), packet_stream.clone(), &mut buffer).await?
                     }
+                    log::info!("Current buf {}", String::from_utf8_lossy(&buffer));
+                    crate::reader::reader(stream.clone(), packet_stream.clone(), &mut buffer).await?
                 }
             }
         }
