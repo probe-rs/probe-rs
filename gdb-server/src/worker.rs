@@ -24,6 +24,8 @@ pub async fn worker(
                 )
             } else if packet.data.starts_with("vMustReplyEmpty".as_bytes()) {
                 Some("".into())
+            } else if packet.data.starts_with("qTStatus".as_bytes()) {
+                Some("".into())
             } else {
                 Some("OK".into())
             };
