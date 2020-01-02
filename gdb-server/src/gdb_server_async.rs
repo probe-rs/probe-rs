@@ -12,6 +12,8 @@ use gdb_protocol::{
     parser::Parser,
 };
 use std::sync::Arc;
+use std::sync::atomic::AtomicUsize;
+use std::sync::atomic::Ordering;
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 type Sender<T> = mpsc::UnboundedSender<T>;
@@ -45,26 +47,27 @@ async fn accept_loop(addr: impl ToSocketAddrs) -> Result<()> {
     let mut incoming = listener.incoming();
     while let Some(stream) = incoming.next().await {
         let (packet_stream_sender, packet_stream_receiver) = mpsc::unbounded();
-        let (control_stream_sender, control_stream_receiver) = mpsc::unbounded();
+        let acks_due = Arc::new(AtomicUsize::new(0));
         let (tbd_sender, tbd_receiver) = mpsc::unbounded();
         let stream = Arc::new(stream?);
 
-        let outbound_broker_handle = task::spawn(outbound_broker_loop(
-            Arc::clone(&stream),
-            packet_stream_receiver,
-            control_stream_sender,
-        ));
+        // let outbound_broker_handle = task::spawn(outbound_broker_loop(
+        //     Arc::clone(&stream),
+        //     packet_stream_receiver,
+        //     Arc::clone(&acks_due),
+        // ));
         let inbound_broker_handle = task::spawn(inbound_broker_loop(
             Arc::clone(&stream),
             tbd_sender,
-            control_stream_receiver,
+            packet_stream_receiver,
+            acks_due,
         ));
-        let worker = task::spawn(worker(
+        let worker = task::spawn(crate::worker::worker(
             tbd_receiver,
             packet_stream_sender,
         ));
         println!("Accepted a new connection from: {}", stream.peer_addr()?);
-        outbound_broker_handle.await?;
+        // outbound_broker_handle.await?;
         inbound_broker_handle.await?;
         worker.await?;
     }
@@ -77,13 +80,14 @@ async fn accept_loop(addr: impl ToSocketAddrs) -> Result<()> {
 async fn outbound_broker_loop(
     stream: Arc<TcpStream>,
     mut packet_stream: Receiver<CheckedPacket>,
-    control_stream: Sender<ReceiverState>,
+    acks_due: Arc<AtomicUsize>,
 ) -> Result<()> {
     while let Some(packet) = packet_stream.next().await {
         if packet.is_valid() {
             encode(&packet, &*stream).await?;
             (&*stream).flush().await?;
-            control_stream.unbounded_send(ReceiverState::AwaitAck)?;
+            println!("Request ACK for {}", String::from_utf8_lossy(&packet.data));
+            acks_due.fetch_add(1, Ordering::SeqCst);
         } else {
             log::warn!("Broken packet! It will not be sent.");
         }
@@ -95,7 +99,8 @@ async fn outbound_broker_loop(
 async fn inbound_broker_loop(
     stream: Arc<TcpStream>,
     packet_stream: Sender<CheckedPacket>,
-    mut control_stream: Receiver<ReceiverState>,
+    mut packet_stream_2: Receiver<CheckedPacket>,
+    acks_due: Arc<AtomicUsize>,
 ) -> Result<()> {
     use ReceiverState::*;
     let mut receiver_state = AwaitPacket;
@@ -103,33 +108,80 @@ async fn inbound_broker_loop(
 
     let mut buffer = vec![];
     let mut tmp_buf = [0; 128];
+    // let mut glob = vec![];
 
     loop {
-        log::trace!("Working Inbound ...");
-        if let Ok(Some(state)) = control_stream.try_next() {
-            log::debug!("Received new request for ack.");
-            receiver_state = state;
+        while let Some(packet) = packet_stream_2.next().await {
+            if packet.is_valid() {
+                encode(&packet, &*stream).await?;
+                (&*stream).flush().await?;
+                println!("Request ACK for {}", String::from_utf8_lossy(&packet.data));
+                acks_due.fetch_add(1, Ordering::SeqCst);
+                loop {
+                    let n = (&*stream).read(&mut tmp_buf).await?;
+                    if n > 0 {
+                        buffer.extend(&tmp_buf[0..n]);
+                        // glob.extend(&tmp_buf[0..n]);
+                        log::info!("Current buf {}", String::from_utf8_lossy(&buffer));
+                    }
+                    let mut i = 0;
+                    for byte in buffer.iter() {
+                        match byte {
+                            b'+' => {
+                                log::debug!("Ack received.");
+                                acks_due.fetch_sub(1, Ordering::SeqCst);
+                                i += 1;
+                                break;
+                            }
+                            b'-' => {
+                                log::debug!("Nack received. Retrying.");
+                                i += 1;
+                                continue;
+                            }
+                            // This should never happen.
+                            // And if it does, GDB fucked up, so we might as well stop.
+                            _ => break,
+                        }
+                    }
+                    buffer.drain(..i);
+                }
+            } else {
+                log::warn!("Broken packet! It will not be sent.");
+            }
         }
+
+        log::trace!("Working Inbound ...");
         let n = (&*stream).read(&mut tmp_buf).await?;
         if n > 0 {
             buffer.extend(&tmp_buf[0..n]);
-            log::trace!("Read {} bytes.", n);
+            // glob.extend(&tmp_buf[0..n]);
+            log::info!("Current buf {}", String::from_utf8_lossy(&buffer));
         }
+        if acks_due.load(Ordering::SeqCst) > 0 {
+            log::debug!("Received new request for ack.");
+            receiver_state = AwaitAck;
+        }
+        // println!("{}", String::from_utf8_lossy(&glob));
+
+        // continue;
 
         match receiver_state {
             AwaitPacket => {
                 log::trace!("Awaiting packet");
                 let (read, packet) = parser.feed(&buffer)?;
                 buffer.drain(..read);
+                println!("Drained {} for {:?}", read, packet);
 
                 if let Some(packet) = packet {
                     match packet.kind {
                         PacketKind::Packet => match packet.check() {
                             Some(checked) => {
+                                println!("Sending ACK");
                                 (&*stream).write_all(&[b'+']).await?;
                                 packet_stream.unbounded_send(checked)?;
                             }
                             None => {
+                                println!("Sending nACK");
                                 (&*stream).write_all(&[b'-']).await?;
                             }
                         },
@@ -143,16 +195,19 @@ async fn inbound_broker_loop(
                 }
             }
             AwaitAck => {
-                log::debug!("Awaiting ack");
-                for (i, byte) in buffer.iter().enumerate() {
+                log::trace!("Awaiting ack");
+                let mut i = 0;
+                for byte in buffer.iter() {
                     match byte {
                         b'+' => {
                             log::debug!("Ack received.");
-                            receiver_state = AwaitPacket;
+                            acks_due.fetch_sub(1, Ordering::SeqCst);
+                            i += 1;
                             break;
                         }
                         b'-' => {
                             log::debug!("Nack received. Retrying.");
+                            i += 1;
                             continue;
                         }
                         // This should never happen.
@@ -160,41 +215,10 @@ async fn inbound_broker_loop(
                         _ => break,
                     }
                 }
+                buffer.drain(..i);
             }
         }
     }
-}
-
-
-async fn worker(
-    mut input_stream: Receiver<CheckedPacket>,
-    output_stream: Sender<CheckedPacket>,
-) -> Result<()> {
-    while let Some(packet) = input_stream.next().await {
-        if packet.is_valid() {
-            let response: Option<String> = if packet.data.starts_with("qSupported".as_bytes()) {
-                Some(
-                    "PacketSize=2048;swbreak-;hwbreak+;vContSupported+;qXfer:memory-map:read+"
-                        .into(),
-                )
-            } else if packet.data.starts_with("vMustReplyEmpty".as_bytes()) {
-                Some("".into())
-            } else {
-                Some("OK".into())
-            };
-
-            if let Some(response) = response {
-                let response = CheckedPacket::from_data(PacketKind::Packet, response.into_bytes());
-
-                let mut bytes = Vec::new();
-                response.encode(&mut bytes).unwrap();
-                println!("{:x?}", std::str::from_utf8(&response.data).unwrap());
-                println!("-----------------------------------------------");
-                output_stream.unbounded_send(response)?;
-            };
-        }
-    }
-    Ok(())
 }
 
 pub enum ReceiverState {
