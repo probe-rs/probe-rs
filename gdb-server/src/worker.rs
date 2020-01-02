@@ -1,7 +1,5 @@
 use async_std::{
-    net::{TcpListener, TcpStream, ToSocketAddrs},
     prelude::*,
-    task,
 };
 use futures::{channel::mpsc};
 use gdb_protocol::{
