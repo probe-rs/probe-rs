@@ -33,8 +33,8 @@ pub async fn worker(
 
                 let mut bytes = Vec::new();
                 response.encode(&mut bytes).unwrap();
-                println!("{:x?}", std::str::from_utf8(&response.data).unwrap());
-                println!("-----------------------------------------------");
+                log::debug!("{:x?}", std::str::from_utf8(&response.data).unwrap());
+                log::debug!("-----------------------------------------------");
                 output_stream.unbounded_send(response)?;
             };
         }

@@ -16,39 +16,42 @@ type Sender<T> = mpsc::UnboundedSender<T>;
 type Receiver<T> = mpsc::UnboundedReceiver<T>;
 
 pub async fn writer(packet: CheckedPacket, stream: Arc<TcpStream>,
+    mut packet_stream: Sender<CheckedPacket>,
     buffer: &mut Vec<u8>,) -> Result<()> {
     let mut tmp_buf = [0; 128];
-    println!("WRITE WIN");
+    log::debug!("WRITE WIN");
     if packet.is_valid() {
         encode(&packet, &*stream).await?;
         (&*stream).flush().await?;
-        println!("Request ACK for {}", String::from_utf8_lossy(&packet.data));
-        loop {
+        log::debug!("Request ACK for {}", String::from_utf8_lossy(&packet.data));
+        'ack: loop {
+            log::debug!("Reading");
             let n = (&*stream).read(&mut tmp_buf).await?;
+            log::debug!("Done Reading ({})", String::from_utf8_lossy(&buffer));
             if n > 0 {
                 buffer.extend(&tmp_buf[0..n]);
                 // glob.extend(&tmp_buf[0..n]);
                 log::info!("Current buf {}", String::from_utf8_lossy(&buffer));
             }
-            let mut i = 0;
-            for byte in buffer.iter() {
+            for (i, byte) in buffer.iter().enumerate() {
                 match byte {
                     b'+' => {
                         log::debug!("Ack received.");
-                        i += 1;
-                        break;
+                        buffer.remove(i);
+                        break 'ack Ok(());
                     }
                     b'-' => {
                         log::debug!("Nack received. Retrying.");
-                        i += 1;
-                        continue;
+                        buffer.remove(i);
+                        continue 'ack;
                     }
                     // This should never happen.
                     // And if it does, GDB fucked up, so we might as well stop.
-                    _ => break,
+                    _ => break 'ack Ok(()),
                 }
             }
-            buffer.drain(..i);
+            log::debug!("Done checking ACK");
+            // crate::reader::reader(stream.clone(), packet_stream.clone(), buffer).await?
         }
     } else {
         log::warn!("Broken packet! It will not be sent.");
