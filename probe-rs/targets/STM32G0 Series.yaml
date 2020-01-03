@@ -1,7 +1,11 @@
 ---
 name: STM32G0 Series
+manufacturer:
+  cc: 0x00
+  id: 0x20
 variants:
   - name: STM32G030C6Tx
+    part: 0x466
     memory_map:
       - Ram:
           range:
@@ -17,6 +21,7 @@ variants:
           page_size: 12
           erased_byte_value: 255
   - name: STM32G030C8Tx
+    part: 0x466
     memory_map:
       - Ram:
           range:
@@ -32,6 +37,7 @@ variants:
           page_size: 12
           erased_byte_value: 255
   - name: STM32G030F6Px
+    part: 0x466
     memory_map:
       - Ram:
           range:
@@ -47,6 +53,7 @@ variants:
           page_size: 12
           erased_byte_value: 255
   - name: STM32G030J6Mx
+    part: 0x466
     memory_map:
       - Ram:
           range:
@@ -62,6 +69,7 @@ variants:
           page_size: 12
           erased_byte_value: 255
   - name: STM32G030K6Tx
+    part: 0x466
     memory_map:
       - Ram:
           range:
@@ -77,6 +85,7 @@ variants:
           page_size: 12
           erased_byte_value: 255
   - name: STM32G030K8Tx
+    part: 0x466
     memory_map:
       - Ram:
           range:
@@ -92,6 +101,7 @@ variants:
           page_size: 12
           erased_byte_value: 255
   - name: STM32G031C4Tx
+    part: 0x466
     memory_map:
       - Ram:
           range:
@@ -107,6 +117,7 @@ variants:
           page_size: 32
           erased_byte_value: 255
   - name: STM32G031C4Ux
+    part: 0x466
     memory_map:
       - Ram:
           range:
@@ -122,6 +133,7 @@ variants:
           page_size: 32
           erased_byte_value: 255
   - name: STM32G031C6Tx
+    part: 0x466
     memory_map:
       - Ram:
           range:
@@ -137,6 +149,7 @@ variants:
           page_size: 32
           erased_byte_value: 255
   - name: STM32G031C6Ux
+    part: 0x466
     memory_map:
       - Ram:
           range:
@@ -152,6 +165,7 @@ variants:
           page_size: 32
           erased_byte_value: 255
   - name: STM32G031C8Tx
+    part: 0x466
     memory_map:
       - Ram:
           range:
@@ -167,6 +181,7 @@ variants:
           page_size: 32
           erased_byte_value: 255
   - name: STM32G031C8Ux
+    part: 0x466
     memory_map:
       - Ram:
           range:
@@ -182,6 +197,7 @@ variants:
           page_size: 32
           erased_byte_value: 255
   - name: STM32G031F4Px
+    part: 0x466
     memory_map:
       - Ram:
           range:
@@ -197,6 +213,7 @@ variants:
           page_size: 32
           erased_byte_value: 255
   - name: STM32G031F6Px
+    part: 0x466
     memory_map:
       - Ram:
           range:
@@ -212,6 +229,7 @@ variants:
           page_size: 32
           erased_byte_value: 255
   - name: STM32G031F8Px
+    part: 0x466
     memory_map:
       - Ram:
           range:
@@ -227,6 +245,7 @@ variants:
           page_size: 32
           erased_byte_value: 255
   - name: STM32G031G4Ux
+    part: 0x466
     memory_map:
       - Ram:
           range:
@@ -242,6 +261,7 @@ variants:
           page_size: 32
           erased_byte_value: 255
   - name: STM32G031G6Ux
+    part: 0x466
     memory_map:
       - Ram:
           range:
@@ -257,6 +277,7 @@ variants:
           page_size: 32
           erased_byte_value: 255
   - name: STM32G031G8Ux
+    part: 0x466
     memory_map:
       - Ram:
           range:
@@ -272,6 +293,7 @@ variants:
           page_size: 32
           erased_byte_value: 255
   - name: STM32G031J4Mx
+    part: 0x466
     memory_map:
       - Ram:
           range:
@@ -287,6 +309,7 @@ variants:
           page_size: 32
           erased_byte_value: 255
   - name: STM32G031J6Mx
+    part: 0x466
     memory_map:
       - Ram:
           range:
@@ -302,6 +325,7 @@ variants:
           page_size: 32
           erased_byte_value: 255
   - name: STM32G031K4Tx
+    part: 0x466
     memory_map:
       - Ram:
           range:
@@ -317,6 +341,7 @@ variants:
           page_size: 32
           erased_byte_value: 255
   - name: STM32G031K4Ux
+    part: 0x466
     memory_map:
       - Ram:
           range:
@@ -332,6 +357,7 @@ variants:
           page_size: 32
           erased_byte_value: 255
   - name: STM32G031K6Tx
+    part: 0x466
     memory_map:
       - Ram:
           range:
@@ -347,6 +373,7 @@ variants:
           page_size: 32
           erased_byte_value: 255
   - name: STM32G031K6Ux
+    part: 0x466
     memory_map:
       - Ram:
           range:
@@ -362,6 +389,7 @@ variants:
           page_size: 32
           erased_byte_value: 255
   - name: STM32G031K8Tx
+    part: 0x466
     memory_map:
       - Ram:
           range:
@@ -377,6 +405,7 @@ variants:
           page_size: 32
           erased_byte_value: 255
   - name: STM32G031K8Ux
+    part: 0x466
     memory_map:
       - Ram:
           range:
@@ -392,6 +421,7 @@ variants:
           page_size: 32
           erased_byte_value: 255
   - name: STM32G031Y8Yx
+    part: 0x466
     memory_map:
       - Ram:
           range:
@@ -407,6 +437,7 @@ variants:
           page_size: 32
           erased_byte_value: 255
   - name: STM32G041C6Tx
+    part: 0x466
     memory_map:
       - Ram:
           range:
@@ -422,6 +453,7 @@ variants:
           page_size: 32
           erased_byte_value: 255
   - name: STM32G041C6Ux
+    part: 0x466
     memory_map:
       - Ram:
           range:
@@ -437,6 +469,7 @@ variants:
           page_size: 32
           erased_byte_value: 255
   - name: STM32G041C8Tx
+    part: 0x466
     memory_map:
       - Ram:
           range:
@@ -452,6 +485,7 @@ variants:
           page_size: 32
           erased_byte_value: 255
   - name: STM32G041C8Ux
+    part: 0x466
     memory_map:
       - Ram:
           range:
@@ -467,6 +501,7 @@ variants:
           page_size: 32
           erased_byte_value: 255
   - name: STM32G041F6Px
+    part: 0x466
     memory_map:
       - Ram:
           range:
@@ -482,6 +517,7 @@ variants:
           page_size: 32
           erased_byte_value: 255
   - name: STM32G041F8Px
+    part: 0x466
     memory_map:
       - Ram:
           range:
@@ -497,6 +533,7 @@ variants:
           page_size: 32
           erased_byte_value: 255
   - name: STM32G041G6Ux
+    part: 0x466
     memory_map:
       - Ram:
           range:
@@ -512,6 +549,7 @@ variants:
           page_size: 32
           erased_byte_value: 255
   - name: STM32G041G8Ux
+    part: 0x466
     memory_map:
       - Ram:
           range:
@@ -527,6 +565,7 @@ variants:
           page_size: 32
           erased_byte_value: 255
   - name: STM32G041J6Mx
+    part: 0x466
     memory_map:
       - Ram:
           range:
@@ -542,6 +581,7 @@ variants:
           page_size: 32
           erased_byte_value: 255
   - name: STM32G041K6Tx
+    part: 0x466
     memory_map:
       - Ram:
           range:
@@ -557,6 +597,7 @@ variants:
           page_size: 32
           erased_byte_value: 255
   - name: STM32G041K6Ux
+    part: 0x466
     memory_map:
       - Ram:
           range:
@@ -572,6 +613,7 @@ variants:
           page_size: 32
           erased_byte_value: 255
   - name: STM32G041K8Tx
+    part: 0x466
     memory_map:
       - Ram:
           range:
@@ -587,6 +629,7 @@ variants:
           page_size: 32
           erased_byte_value: 255
   - name: STM32G041K8Ux
+    part: 0x466
     memory_map:
       - Ram:
           range:
@@ -602,6 +645,7 @@ variants:
           page_size: 32
           erased_byte_value: 255
   - name: STM32G041Y8Yx
+    part: 0x466
     memory_map:
       - Ram:
           range:
@@ -617,6 +661,7 @@ variants:
           page_size: 32
           erased_byte_value: 255
   - name: STM32G070CBTx
+    part: 0x460
     memory_map:
       - Ram:
           range:
@@ -632,6 +677,7 @@ variants:
           page_size: 12
           erased_byte_value: 255
   - name: STM32G070KBTx
+    part: 0x460
     memory_map:
       - Ram:
           range:
@@ -647,6 +693,7 @@ variants:
           page_size: 12
           erased_byte_value: 255
   - name: STM32G070RBTx
+    part: 0x460
     memory_map:
       - Ram:
           range:
@@ -662,6 +709,7 @@ variants:
           page_size: 12
           erased_byte_value: 255
   - name: STM32G071C6Tx
+    part: 0x460
     memory_map:
       - Ram:
           range:
@@ -677,6 +725,7 @@ variants:
           page_size: 32
           erased_byte_value: 255
   - name: STM32G071C6Ux
+    part: 0x460
     memory_map:
       - Ram:
           range:
@@ -692,6 +741,7 @@ variants:
           page_size: 32
           erased_byte_value: 255
   - name: STM32G071C8Tx
+    part: 0x460
     memory_map:
       - Ram:
           range:
@@ -707,6 +757,7 @@ variants:
           page_size: 32
           erased_byte_value: 255
   - name: STM32G071C8Ux
+    part: 0x460
     memory_map:
       - Ram:
           range:
@@ -722,6 +773,7 @@ variants:
           page_size: 32
           erased_byte_value: 255
   - name: STM32G071CBTx
+    part: 0x460
     memory_map:
       - Ram:
           range:
@@ -737,6 +789,7 @@ variants:
           page_size: 32
           erased_byte_value: 255
   - name: STM32G071CBUx
+    part: 0x460
     memory_map:
       - Ram:
           range:
@@ -752,6 +805,7 @@ variants:
           page_size: 32
           erased_byte_value: 255
   - name: STM32G071EBYx
+    part: 0x460
     memory_map:
       - Ram:
           range:
@@ -767,6 +821,7 @@ variants:
           page_size: 32
           erased_byte_value: 255
   - name: STM32G071G6Ux
+    part: 0x460
     memory_map:
       - Ram:
           range:
@@ -782,6 +837,7 @@ variants:
           page_size: 32
           erased_byte_value: 255
   - name: STM32G071G8Ux
+    part: 0x460
     memory_map:
       - Ram:
           range:
@@ -797,6 +853,7 @@ variants:
           page_size: 32
           erased_byte_value: 255
   - name: STM32G071G8UxN
+    part: 0x460
     memory_map:
       - Ram:
           range:
@@ -812,6 +869,7 @@ variants:
           page_size: 32
           erased_byte_value: 255
   - name: STM32G071GBUx
+    part: 0x460
     memory_map:
       - Ram:
           range:
@@ -827,6 +885,7 @@ variants:
           page_size: 32
           erased_byte_value: 255
   - name: STM32G071GBUxN
+    part: 0x460
     memory_map:
       - Ram:
           range:
@@ -842,6 +901,7 @@ variants:
           page_size: 32
           erased_byte_value: 255
   - name: STM32G071K6Tx
+    part: 0x460
     memory_map:
       - Ram:
           range:
@@ -857,6 +917,7 @@ variants:
           page_size: 32
           erased_byte_value: 255
   - name: STM32G071K6Ux
+    part: 0x460
     memory_map:
       - Ram:
           range:
@@ -872,6 +933,7 @@ variants:
           page_size: 32
           erased_byte_value: 255
   - name: STM32G071K8Tx
+    part: 0x460
     memory_map:
       - Ram:
           range:
@@ -887,6 +949,7 @@ variants:
           page_size: 32
           erased_byte_value: 255
   - name: STM32G071K8TxN
+    part: 0x460
     memory_map:
       - Ram:
           range:
@@ -902,6 +965,7 @@ variants:
           page_size: 32
           erased_byte_value: 255
   - name: STM32G071K8Ux
+    part: 0x460
     memory_map:
       - Ram:
           range:
@@ -917,6 +981,7 @@ variants:
           page_size: 32
           erased_byte_value: 255
   - name: STM32G071K8UxN
+    part: 0x460
     memory_map:
       - Ram:
           range:
@@ -932,6 +997,7 @@ variants:
           page_size: 32
           erased_byte_value: 255
   - name: STM32G071KBTx
+    part: 0x460
     memory_map:
       - Ram:
           range:
@@ -947,6 +1013,7 @@ variants:
           page_size: 32
           erased_byte_value: 255
   - name: STM32G071KBTxN
+    part: 0x460
     memory_map:
       - Ram:
           range:
@@ -962,6 +1029,7 @@ variants:
           page_size: 32
           erased_byte_value: 255
   - name: STM32G071KBUx
+    part: 0x460
     memory_map:
       - Ram:
           range:
@@ -977,6 +1045,7 @@ variants:
           page_size: 32
           erased_byte_value: 255
   - name: STM32G071KBUxN
+    part: 0x460
     memory_map:
       - Ram:
           range:
@@ -992,6 +1061,7 @@ variants:
           page_size: 32
           erased_byte_value: 255
   - name: STM32G071R6Tx
+    part: 0x460
     memory_map:
       - Ram:
           range:
@@ -1007,6 +1077,7 @@ variants:
           page_size: 32
           erased_byte_value: 255
   - name: STM32G071R8Tx
+    part: 0x460
     memory_map:
       - Ram:
           range:
@@ -1022,6 +1093,7 @@ variants:
           page_size: 32
           erased_byte_value: 255
   - name: STM32G071RBIx
+    part: 0x460
     memory_map:
       - Ram:
           range:
@@ -1037,6 +1109,7 @@ variants:
           page_size: 32
           erased_byte_value: 255
   - name: STM32G071RBTx
+    part: 0x460
     memory_map:
       - Ram:
           range:
@@ -1052,6 +1125,7 @@ variants:
           page_size: 32
           erased_byte_value: 255
   - name: STM32G081CBTx
+    part: 0x460
     memory_map:
       - Ram:
           range:
@@ -1067,6 +1141,7 @@ variants:
           page_size: 32
           erased_byte_value: 255
   - name: STM32G081CBUx
+    part: 0x460
     memory_map:
       - Ram:
           range:
@@ -1082,6 +1157,7 @@ variants:
           page_size: 32
           erased_byte_value: 255
   - name: STM32G081EBYx
+    part: 0x460
     memory_map:
       - Ram:
           range:
@@ -1097,6 +1173,7 @@ variants:
           page_size: 32
           erased_byte_value: 255
   - name: STM32G081GBUx
+    part: 0x460
     memory_map:
       - Ram:
           range:
@@ -1112,6 +1189,7 @@ variants:
           page_size: 32
           erased_byte_value: 255
   - name: STM32G081GBUxN
+    part: 0x460
     memory_map:
       - Ram:
           range:
@@ -1127,6 +1205,7 @@ variants:
           page_size: 32
           erased_byte_value: 255
   - name: STM32G081KBTx
+    part: 0x460
     memory_map:
       - Ram:
           range:
@@ -1142,6 +1221,7 @@ variants:
           page_size: 32
           erased_byte_value: 255
   - name: STM32G081KBTxN
+    part: 0x460
     memory_map:
       - Ram:
           range:
@@ -1157,6 +1237,7 @@ variants:
           page_size: 32
           erased_byte_value: 255
   - name: STM32G081KBUx
+    part: 0x460
     memory_map:
       - Ram:
           range:
@@ -1172,6 +1253,7 @@ variants:
           page_size: 32
           erased_byte_value: 255
   - name: STM32G081KBUxN
+    part: 0x460
     memory_map:
       - Ram:
           range:
@@ -1187,6 +1269,7 @@ variants:
           page_size: 32
           erased_byte_value: 255
   - name: STM32G081RBIx
+    part: 0x460
     memory_map:
       - Ram:
           range:
@@ -1202,6 +1285,7 @@ variants:
           page_size: 32
           erased_byte_value: 255
   - name: STM32G081RBTx
+    part: 0x460
     memory_map:
       - Ram:
           range:

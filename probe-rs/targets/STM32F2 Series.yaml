@@ -1,7 +1,11 @@
 ---
 name: STM32F2 Series
+manufacturer:
+  cc: 0x00
+  id: 0x20
 variants:
   - name: STM32F205RBTx
+    part: 0x411
     memory_map:
       - Ram:
           range:
@@ -17,6 +21,7 @@ variants:
           page_size: 528
           erased_byte_value: 255
   - name: STM32F205RCTx
+    part: 0x411
     memory_map:
       - Ram:
           range:
@@ -32,6 +37,7 @@ variants:
           page_size: 528
           erased_byte_value: 255
   - name: STM32F205RETx
+    part: 0x411
     memory_map:
       - Ram:
           range:
@@ -47,6 +53,7 @@ variants:
           page_size: 528
           erased_byte_value: 255
   - name: STM32F205REYx
+    part: 0x411
     memory_map:
       - Ram:
           range:
@@ -62,6 +69,7 @@ variants:
           page_size: 528
           erased_byte_value: 255
   - name: STM32F205RFTx
+    part: 0x411
     memory_map:
       - Ram:
           range:
@@ -77,6 +85,7 @@ variants:
           page_size: 528
           erased_byte_value: 255
   - name: STM32F205RGTx
+    part: 0x411
     memory_map:
       - Ram:
           range:
@@ -92,6 +101,7 @@ variants:
           page_size: 528
           erased_byte_value: 255
   - name: STM32F205RGYx
+    part: 0x411
     memory_map:
       - Ram:
           range:
@@ -107,6 +117,7 @@ variants:
           page_size: 528
           erased_byte_value: 255
   - name: STM32F205VBTx
+    part: 0x411
     memory_map:
       - Ram:
           range:
@@ -122,6 +133,7 @@ variants:
           page_size: 528
           erased_byte_value: 255
   - name: STM32F205VCTx
+    part: 0x411
     memory_map:
       - Ram:
           range:
@@ -137,6 +149,7 @@ variants:
           page_size: 528
           erased_byte_value: 255
   - name: STM32F205VETx
+    part: 0x411
     memory_map:
       - Ram:
           range:
@@ -152,6 +165,7 @@ variants:
           page_size: 528
           erased_byte_value: 255
   - name: STM32F205VFTx
+    part: 0x411
     memory_map:
       - Ram:
           range:
@@ -167,6 +181,7 @@ variants:
           page_size: 528
           erased_byte_value: 255
   - name: STM32F205VGTx
+    part: 0x411
     memory_map:
       - Ram:
           range:
@@ -182,6 +197,7 @@ variants:
           page_size: 528
           erased_byte_value: 255
   - name: STM32F205ZCTx
+    part: 0x411
     memory_map:
       - Ram:
           range:
@@ -197,6 +213,7 @@ variants:
           page_size: 528
           erased_byte_value: 255
   - name: STM32F205ZETx
+    part: 0x411
     memory_map:
       - Ram:
           range:
@@ -212,6 +229,7 @@ variants:
           page_size: 528
           erased_byte_value: 255
   - name: STM32F205ZFTx
+    part: 0x411
     memory_map:
       - Ram:
           range:
@@ -227,6 +245,7 @@ variants:
           page_size: 528
           erased_byte_value: 255
   - name: STM32F205ZGTx
+    part: 0x411
     memory_map:
       - Ram:
           range:
@@ -242,6 +261,7 @@ variants:
           page_size: 528
           erased_byte_value: 255
   - name: STM32F207ICHx
+    part: 0x411
     memory_map:
       - Ram:
           range:
@@ -257,6 +277,7 @@ variants:
           page_size: 528
           erased_byte_value: 255
   - name: STM32F207ICTx
+    part: 0x411
     memory_map:
       - Ram:
           range:
@@ -272,6 +293,7 @@ variants:
           page_size: 528
           erased_byte_value: 255
   - name: STM32F207IEHx
+    part: 0x411
     memory_map:
       - Ram:
           range:
@@ -287,6 +309,7 @@ variants:
           page_size: 528
           erased_byte_value: 255
   - name: STM32F207IETx
+    part: 0x411
     memory_map:
       - Ram:
           range:
@@ -302,6 +325,7 @@ variants:
           page_size: 528
           erased_byte_value: 255
   - name: STM32F207IFHx
+    part: 0x411
     memory_map:
       - Ram:
           range:
@@ -317,6 +341,7 @@ variants:
           page_size: 528
           erased_byte_value: 255
   - name: STM32F207IFTx
+    part: 0x411
     memory_map:
       - Ram:
           range:
@@ -332,6 +357,7 @@ variants:
           page_size: 528
           erased_byte_value: 255
   - name: STM32F207IGHx
+    part: 0x411
     memory_map:
       - Ram:
           range:
@@ -347,6 +373,7 @@ variants:
           page_size: 528
           erased_byte_value: 255
   - name: STM32F207IGTx
+    part: 0x411
     memory_map:
       - Ram:
           range:
@@ -362,6 +389,7 @@ variants:
           page_size: 528
           erased_byte_value: 255
   - name: STM32F207VCTx
+    part: 0x411
     memory_map:
       - Ram:
           range:
@@ -377,6 +405,7 @@ variants:
           page_size: 528
           erased_byte_value: 255
   - name: STM32F207VETx
+    part: 0x411
     memory_map:
       - Ram:
           range:
@@ -392,6 +421,7 @@ variants:
           page_size: 528
           erased_byte_value: 255
   - name: STM32F207VFTx
+    part: 0x411
     memory_map:
       - Ram:
           range:
@@ -407,6 +437,7 @@ variants:
           page_size: 528
           erased_byte_value: 255
   - name: STM32F207VGTx
+    part: 0x411
     memory_map:
       - Ram:
           range:
@@ -422,6 +453,7 @@ variants:
           page_size: 528
           erased_byte_value: 255
   - name: STM32F207ZCTx
+    part: 0x411
     memory_map:
       - Ram:
           range:
@@ -437,6 +469,7 @@ variants:
           page_size: 528
           erased_byte_value: 255
   - name: STM32F207ZETx
+    part: 0x411
     memory_map:
       - Ram:
           range:
@@ -452,6 +485,7 @@ variants:
           page_size: 528
           erased_byte_value: 255
   - name: STM32F207ZFTx
+    part: 0x411
     memory_map:
       - Ram:
           range:
@@ -467,6 +501,7 @@ variants:
           page_size: 528
           erased_byte_value: 255
   - name: STM32F207ZGTx
+    part: 0x411
     memory_map:
       - Ram:
           range:
@@ -482,6 +517,7 @@ variants:
           page_size: 528
           erased_byte_value: 255
   - name: STM32F215RETx
+    part: 0x411
     memory_map:
       - Ram:
           range:
@@ -497,6 +533,7 @@ variants:
           page_size: 528
           erased_byte_value: 255
   - name: STM32F215RGTx
+    part: 0x411
     memory_map:
       - Ram:
           range:
@@ -512,6 +549,7 @@ variants:
           page_size: 528
           erased_byte_value: 255
   - name: STM32F215VETx
+    part: 0x411
     memory_map:
       - Ram:
           range:
@@ -527,6 +565,7 @@ variants:
           page_size: 528
           erased_byte_value: 255
   - name: STM32F215VGTx
+    part: 0x411
     memory_map:
       - Ram:
           range:
@@ -542,6 +581,7 @@ variants:
           page_size: 528
           erased_byte_value: 255
   - name: STM32F215ZETx
+    part: 0x411
     memory_map:
       - Ram:
           range:
@@ -557,6 +597,7 @@ variants:
           page_size: 528
           erased_byte_value: 255
   - name: STM32F215ZGTx
+    part: 0x411
     memory_map:
       - Ram:
           range:
@@ -572,6 +613,7 @@ variants:
           page_size: 528
           erased_byte_value: 255
   - name: STM32F217IEHx
+    part: 0x411
     memory_map:
       - Ram:
           range:
@@ -587,6 +629,7 @@ variants:
           page_size: 528
           erased_byte_value: 255
   - name: STM32F217IETx
+    part: 0x411
     memory_map:
       - Ram:
           range:
@@ -602,6 +645,7 @@ variants:
           page_size: 528
           erased_byte_value: 255
   - name: STM32F217IGHx
+    part: 0x411
     memory_map:
       - Ram:
           range:
@@ -617,6 +661,7 @@ variants:
           page_size: 528
           erased_byte_value: 255
   - name: STM32F217IGTx
+    part: 0x411
     memory_map:
       - Ram:
           range:
@@ -632,6 +677,7 @@ variants:
           page_size: 528
           erased_byte_value: 255
   - name: STM32F217VETx
+    part: 0x411
     memory_map:
       - Ram:
           range:
@@ -647,6 +693,7 @@ variants:
           page_size: 528
           erased_byte_value: 255
   - name: STM32F217VGTx
+    part: 0x411
     memory_map:
       - Ram:
           range:
@@ -662,6 +709,7 @@ variants:
           page_size: 528
           erased_byte_value: 255
   - name: STM32F217ZETx
+    part: 0x411
     memory_map:
       - Ram:
           range:
@@ -677,6 +725,7 @@ variants:
           page_size: 528
           erased_byte_value: 255
   - name: STM32F217ZGTx
+    part: 0x411
     memory_map:
       - Ram:
           range:

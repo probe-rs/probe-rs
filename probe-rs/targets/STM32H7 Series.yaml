@@ -1,7 +1,11 @@
 ---
 name: STM32H7 Series
+manufacturer:
+  cc: 0x00
+  id: 0x20
 variants:
   - name: STM32H742AGIx
+    part: 0x450
     memory_map:
       - Ram:
           range:
@@ -17,6 +21,7 @@ variants:
           page_size: 4096
           erased_byte_value: 255
   - name: STM32H742AIIx
+    part: 0x450
     memory_map:
       - Ram:
           range:
@@ -32,6 +37,7 @@ variants:
           page_size: 4096
           erased_byte_value: 255
   - name: STM32H742BGTx
+    part: 0x450
     memory_map:
       - Ram:
           range:
@@ -47,6 +53,7 @@ variants:
           page_size: 4096
           erased_byte_value: 255
   - name: STM32H742BITx
+    part: 0x450
     memory_map:
       - Ram:
           range:
@@ -62,6 +69,7 @@ variants:
           page_size: 4096
           erased_byte_value: 255
   - name: STM32H742IGKx
+    part: 0x450
     memory_map:
       - Ram:
           range:
@@ -77,6 +85,7 @@ variants:
           page_size: 4096
           erased_byte_value: 255
   - name: STM32H742IGTx
+    part: 0x450
     memory_map:
       - Ram:
           range:
@@ -92,6 +101,7 @@ variants:
           page_size: 4096
           erased_byte_value: 255
   - name: STM32H742IIKx
+    part: 0x450
     memory_map:
       - Ram:
           range:
@@ -107,6 +117,7 @@ variants:
           page_size: 4096
           erased_byte_value: 255
   - name: STM32H742IITx
+    part: 0x450
     memory_map:
       - Ram:
           range:
@@ -122,6 +133,7 @@ variants:
           page_size: 4096
           erased_byte_value: 255
   - name: STM32H742VGHx
+    part: 0x450
     memory_map:
       - Ram:
           range:
@@ -137,6 +149,7 @@ variants:
           page_size: 4096
           erased_byte_value: 255
   - name: STM32H742VGTx
+    part: 0x450
     memory_map:
       - Ram:
           range:
@@ -152,6 +165,7 @@ variants:
           page_size: 4096
           erased_byte_value: 255
   - name: STM32H742VIHx
+    part: 0x450
     memory_map:
       - Ram:
           range:
@@ -167,6 +181,7 @@ variants:
           page_size: 4096
           erased_byte_value: 255
   - name: STM32H742VITx
+    part: 0x450
     memory_map:
       - Ram:
           range:
@@ -182,6 +197,7 @@ variants:
           page_size: 4096
           erased_byte_value: 255
   - name: STM32H742XGHx
+    part: 0x450
     memory_map:
       - Ram:
           range:
@@ -197,6 +213,7 @@ variants:
           page_size: 4096
           erased_byte_value: 255
   - name: STM32H742XIHx
+    part: 0x450
     memory_map:
       - Ram:
           range:
@@ -212,6 +229,7 @@ variants:
           page_size: 4096
           erased_byte_value: 255
   - name: STM32H742ZGTx
+    part: 0x450
     memory_map:
       - Ram:
           range:
@@ -227,6 +245,7 @@ variants:
           page_size: 4096
           erased_byte_value: 255
   - name: STM32H742ZITx
+    part: 0x450
     memory_map:
       - Ram:
           range:
@@ -242,6 +261,7 @@ variants:
           page_size: 4096
           erased_byte_value: 255
   - name: STM32H743AGIx
+    part: 0x450
     memory_map:
       - Ram:
           range:
@@ -257,6 +277,7 @@ variants:
           page_size: 4096
           erased_byte_value: 255
   - name: STM32H743AIIx
+    part: 0x450
     memory_map:
       - Ram:
           range:
@@ -272,6 +293,7 @@ variants:
           page_size: 4096
           erased_byte_value: 255
   - name: STM32H743BGTx
+    part: 0x450
     memory_map:
       - Ram:
           range:
@@ -287,6 +309,7 @@ variants:
           page_size: 4096
           erased_byte_value: 255
   - name: STM32H743BITx
+    part: 0x450
     memory_map:
       - Ram:
           range:
@@ -302,6 +325,7 @@ variants:
           page_size: 4096
           erased_byte_value: 255
   - name: STM32H743IGKx
+    part: 0x450
     memory_map:
       - Ram:
           range:
@@ -317,6 +341,7 @@ variants:
           page_size: 4096
           erased_byte_value: 255
   - name: STM32H743IGTx
+    part: 0x450
     memory_map:
       - Ram:
           range:
@@ -332,6 +357,7 @@ variants:
           page_size: 4096
           erased_byte_value: 255
   - name: STM32H743IIKx
+    part: 0x450
     memory_map:
       - Ram:
           range:
@@ -347,6 +373,7 @@ variants:
           page_size: 4096
           erased_byte_value: 255
   - name: STM32H743IITx
+    part: 0x450
     memory_map:
       - Ram:
           range:
@@ -362,6 +389,7 @@ variants:
           page_size: 4096
           erased_byte_value: 255
   - name: STM32H743VGHx
+    part: 0x450
     memory_map:
       - Ram:
           range:
@@ -377,6 +405,7 @@ variants:
           page_size: 4096
           erased_byte_value: 255
   - name: STM32H743VGTx
+    part: 0x450
     memory_map:
       - Ram:
           range:
@@ -392,6 +421,7 @@ variants:
           page_size: 4096
           erased_byte_value: 255
   - name: STM32H743VIHx
+    part: 0x450
     memory_map:
       - Ram:
           range:
@@ -407,6 +437,7 @@ variants:
           page_size: 4096
           erased_byte_value: 255
   - name: STM32H743VITx
+    part: 0x450
     memory_map:
       - Ram:
           range:
@@ -422,6 +453,7 @@ variants:
           page_size: 4096
           erased_byte_value: 255
   - name: STM32H743XGHx
+    part: 0x450
     memory_map:
       - Ram:
           range:
@@ -437,6 +469,7 @@ variants:
           page_size: 4096
           erased_byte_value: 255
   - name: STM32H743XIHx
+    part: 0x450
     memory_map:
       - Ram:
           range:
@@ -452,6 +485,7 @@ variants:
           page_size: 4096
           erased_byte_value: 255
   - name: STM32H743ZGTx
+    part: 0x450
     memory_map:
       - Ram:
           range:
@@ -467,6 +501,7 @@ variants:
           page_size: 4096
           erased_byte_value: 255
   - name: STM32H743ZITx
+    part: 0x450
     memory_map:
       - Ram:
           range:
@@ -482,6 +517,7 @@ variants:
           page_size: 4096
           erased_byte_value: 255
   - name: STM32H745BGTx
+    part: 0x450
     memory_map:
       - Ram:
           range:
@@ -497,6 +533,7 @@ variants:
           page_size: 4096
           erased_byte_value: 255
   - name: STM32H745BITx
+    part: 0x450
     memory_map:
       - Ram:
           range:
@@ -512,6 +549,7 @@ variants:
           page_size: 4096
           erased_byte_value: 255
   - name: STM32H745IGKx
+    part: 0x450
     memory_map:
       - Ram:
           range:
@@ -527,6 +565,7 @@ variants:
           page_size: 4096
           erased_byte_value: 255
   - name: STM32H745IGTx
+    part: 0x450
     memory_map:
       - Ram:
           range:
@@ -542,6 +581,7 @@ variants:
           page_size: 4096
           erased_byte_value: 255
   - name: STM32H745IIKx
+    part: 0x450
     memory_map:
       - Ram:
           range:
@@ -557,6 +597,7 @@ variants:
           page_size: 4096
           erased_byte_value: 255
   - name: STM32H745IITx
+    part: 0x450
     memory_map:
       - Ram:
           range:
@@ -572,6 +613,7 @@ variants:
           page_size: 4096
           erased_byte_value: 255
   - name: STM32H745XGHx
+    part: 0x450
     memory_map:
       - Ram:
           range:
@@ -587,6 +629,7 @@ variants:
           page_size: 4096
           erased_byte_value: 255
   - name: STM32H745XIHx
+    part: 0x450
     memory_map:
       - Ram:
           range:
@@ -602,6 +645,7 @@ variants:
           page_size: 4096
           erased_byte_value: 255
   - name: STM32H745ZGTx
+    part: 0x450
     memory_map:
       - Ram:
           range:
@@ -617,6 +661,7 @@ variants:
           page_size: 4096
           erased_byte_value: 255
   - name: STM32H745ZITx
+    part: 0x450
     memory_map:
       - Ram:
           range:
@@ -632,6 +677,7 @@ variants:
           page_size: 4096
           erased_byte_value: 255
   - name: STM32H747AGIx
+    part: 0x450
     memory_map:
       - Ram:
           range:
@@ -647,6 +693,7 @@ variants:
           page_size: 4096
           erased_byte_value: 255
   - name: STM32H747AIIx
+    part: 0x450
     memory_map:
       - Ram:
           range:
@@ -662,6 +709,7 @@ variants:
           page_size: 4096
           erased_byte_value: 255
   - name: STM32H747BGTx
+    part: 0x450
     memory_map:
       - Ram:
           range:
@@ -677,6 +725,7 @@ variants:
           page_size: 4096
           erased_byte_value: 255
   - name: STM32H747BITx
+    part: 0x450
     memory_map:
       - Ram:
           range:
@@ -692,6 +741,7 @@ variants:
           page_size: 4096
           erased_byte_value: 255
   - name: STM32H747IGTx
+    part: 0x450
     memory_map:
       - Ram:
           range:
@@ -707,6 +757,7 @@ variants:
           page_size: 4096
           erased_byte_value: 255
   - name: STM32H747IITx
+    part: 0x450
     memory_map:
       - Ram:
           range:
@@ -722,6 +773,7 @@ variants:
           page_size: 4096
           erased_byte_value: 255
   - name: STM32H747XGHx
+    part: 0x450
     memory_map:
       - Ram:
           range:
@@ -737,6 +789,7 @@ variants:
           page_size: 4096
           erased_byte_value: 255
   - name: STM32H747XIHx
+    part: 0x450
     memory_map:
       - Ram:
           range:
@@ -752,6 +805,7 @@ variants:
           page_size: 4096
           erased_byte_value: 255
   - name: STM32H747ZIYx
+    part: 0x450
     memory_map:
       - Ram:
           range:
@@ -767,6 +821,7 @@ variants:
           page_size: 4096
           erased_byte_value: 255
   - name: STM32H750IBKx
+    part: 0x450
     memory_map:
       - Ram:
           range:
@@ -782,6 +837,7 @@ variants:
           page_size: 4096
           erased_byte_value: 255
   - name: STM32H750VBTx
+    part: 0x450
     memory_map:
       - Ram:
           range:
@@ -797,6 +853,7 @@ variants:
           page_size: 4096
           erased_byte_value: 255
   - name: STM32H750XBHx
+    part: 0x450
     memory_map:
       - Ram:
           range:
@@ -812,6 +869,7 @@ variants:
           page_size: 4096
           erased_byte_value: 255
   - name: STM32H753AIIx
+    part: 0x450
     memory_map:
       - Ram:
           range:
@@ -827,6 +885,7 @@ variants:
           page_size: 4096
           erased_byte_value: 255
   - name: STM32H753BITx
+    part: 0x450
     memory_map:
       - Ram:
           range:
@@ -842,6 +901,7 @@ variants:
           page_size: 4096
           erased_byte_value: 255
   - name: STM32H753IIKx
+    part: 0x450
     memory_map:
       - Ram:
           range:
@@ -857,6 +917,7 @@ variants:
           page_size: 4096
           erased_byte_value: 255
   - name: STM32H753IITx
+    part: 0x450
     memory_map:
       - Ram:
           range:
@@ -872,6 +933,7 @@ variants:
           page_size: 4096
           erased_byte_value: 255
   - name: STM32H753VIHx
+    part: 0x450
     memory_map:
       - Ram:
           range:
@@ -887,6 +949,7 @@ variants:
           page_size: 4096
           erased_byte_value: 255
   - name: STM32H753VITx
+    part: 0x450
     memory_map:
       - Ram:
           range:
@@ -902,6 +965,7 @@ variants:
           page_size: 4096
           erased_byte_value: 255
   - name: STM32H753XIHx
+    part: 0x450
     memory_map:
       - Ram:
           range:
@@ -917,6 +981,7 @@ variants:
           page_size: 4096
           erased_byte_value: 255
   - name: STM32H753ZITx
+    part: 0x450
     memory_map:
       - Ram:
           range:
@@ -932,6 +997,7 @@ variants:
           page_size: 4096
           erased_byte_value: 255
   - name: STM32H755BITx
+    part: 0x450
     memory_map:
       - Ram:
           range:
@@ -947,6 +1013,7 @@ variants:
           page_size: 4096
           erased_byte_value: 255
   - name: STM32H755IIKx
+    part: 0x450
     memory_map:
       - Ram:
           range:
@@ -962,6 +1029,7 @@ variants:
           page_size: 4096
           erased_byte_value: 255
   - name: STM32H755IITx
+    part: 0x450
     memory_map:
       - Ram:
           range:
@@ -977,6 +1045,7 @@ variants:
           page_size: 4096
           erased_byte_value: 255
   - name: STM32H755XIHx
+    part: 0x450
     memory_map:
       - Ram:
           range:
@@ -992,6 +1061,7 @@ variants:
           page_size: 4096
           erased_byte_value: 255
   - name: STM32H755ZITx
+    part: 0x450
     memory_map:
       - Ram:
           range:
@@ -1007,6 +1077,7 @@ variants:
           page_size: 4096
           erased_byte_value: 255
   - name: STM32H757AIIx
+    part: 0x450
     memory_map:
       - Ram:
           range:
@@ -1022,6 +1093,7 @@ variants:
           page_size: 4096
           erased_byte_value: 255
   - name: STM32H757BITx
+    part: 0x450
     memory_map:
       - Ram:
           range:
@@ -1037,6 +1109,7 @@ variants:
           page_size: 4096
           erased_byte_value: 255
   - name: STM32H757IITx
+    part: 0x450
     memory_map:
       - Ram:
           range:
@@ -1052,6 +1125,7 @@ variants:
           page_size: 4096
           erased_byte_value: 255
   - name: STM32H757XIHx
+    part: 0x450
     memory_map:
       - Ram:
           range:
@@ -1067,6 +1141,7 @@ variants:
           page_size: 4096
           erased_byte_value: 255
   - name: STM32H757ZIYx
+    part: 0x450
     memory_map:
       - Ram:
           range:

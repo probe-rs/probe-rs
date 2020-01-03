@@ -1,7 +1,11 @@
 ---
 name: STM32G4 Series
+manufacturer:
+  cc: 0x00
+  id: 0x20
 variants:
   - name: STM32G431C6Tx
+    part: 0x468
     memory_map:
       - Ram:
           range:
@@ -17,6 +21,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G431C6Ux
+    part: 0x468
     memory_map:
       - Ram:
           range:
@@ -32,6 +37,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G431C8Tx
+    part: 0x468
     memory_map:
       - Ram:
           range:
@@ -47,6 +53,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G431C8Ux
+    part: 0x468
     memory_map:
       - Ram:
           range:
@@ -62,6 +69,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G431CBTx
+    part: 0x468
     memory_map:
       - Ram:
           range:
@@ -77,6 +85,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G431CBUx
+    part: 0x468
     memory_map:
       - Ram:
           range:
@@ -92,6 +101,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G431CBYx
+    part: 0x468
     memory_map:
       - Ram:
           range:
@@ -107,6 +117,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G431K6Tx
+    part: 0x468
     memory_map:
       - Ram:
           range:
@@ -122,6 +133,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G431K6Ux
+    part: 0x468
     memory_map:
       - Ram:
           range:
@@ -137,6 +149,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G431K8Tx
+    part: 0x468
     memory_map:
       - Ram:
           range:
@@ -152,6 +165,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G431K8Ux
+    part: 0x468
     memory_map:
       - Ram:
           range:
@@ -167,6 +181,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G431KBTx
+    part: 0x468
     memory_map:
       - Ram:
           range:
@@ -182,6 +197,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G431KBUx
+    part: 0x468
     memory_map:
       - Ram:
           range:
@@ -197,6 +213,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G431M6Tx
+    part: 0x468
     memory_map:
       - Ram:
           range:
@@ -212,6 +229,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G431M8Tx
+    part: 0x468
     memory_map:
       - Ram:
           range:
@@ -227,6 +245,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G431R6Ix
+    part: 0x468
     memory_map:
       - Ram:
           range:
@@ -242,6 +261,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G431R6Tx
+    part: 0x468
     memory_map:
       - Ram:
           range:
@@ -257,6 +277,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G431R8Ix
+    part: 0x468
     memory_map:
       - Ram:
           range:
@@ -272,6 +293,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G431R8Tx
+    part: 0x468
     memory_map:
       - Ram:
           range:
@@ -287,6 +309,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G431RBIx
+    part: 0x468
     memory_map:
       - Ram:
           range:
@@ -302,6 +325,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G431RBTx
+    part: 0x468
     memory_map:
       - Ram:
           range:
@@ -317,6 +341,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G431V6Tx
+    part: 0x468
     memory_map:
       - Ram:
           range:
@@ -332,6 +357,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G431V8Tx
+    part: 0x468
     memory_map:
       - Ram:
           range:
@@ -347,6 +373,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G431VBTx
+    part: 0x468
     memory_map:
       - Ram:
           range:
@@ -362,6 +389,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G441CBTx
+    part: 0x468
     memory_map:
       - Ram:
           range:
@@ -377,6 +405,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G441CBUx
+    part: 0x468
     memory_map:
       - Ram:
           range:
@@ -392,6 +421,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G441CBYx
+    part: 0x468
     memory_map:
       - Ram:
           range:
@@ -407,6 +437,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G441KBTx
+    part: 0x468
     memory_map:
       - Ram:
           range:
@@ -422,6 +453,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G441KBUx
+    part: 0x468
     memory_map:
       - Ram:
           range:
@@ -437,6 +469,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G441RBIx
+    part: 0x468
     memory_map:
       - Ram:
           range:
@@ -452,6 +485,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G441RBTx
+    part: 0x468
     memory_map:
       - Ram:
           range:
@@ -467,6 +501,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G441VBTx
+    part: 0x468
     memory_map:
       - Ram:
           range:
@@ -482,6 +517,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G471CCTx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -497,6 +533,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G471CCUx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -512,6 +549,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G471CETx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -527,6 +565,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G471CEUx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -542,6 +581,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G471MCTx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -557,6 +597,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G471METx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -572,6 +613,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G471MEYx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -587,6 +629,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G471QCTx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -602,6 +645,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G471QETx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -617,6 +661,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G471RCTx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -632,6 +677,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G471RE
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -647,6 +693,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G471VCHx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -662,6 +709,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G471VCIx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -677,6 +725,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G471VCTx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -692,6 +741,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G471VEHx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -707,6 +757,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G471VEIx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -722,6 +773,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G471VETx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -737,6 +789,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G473CBTx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -752,6 +805,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G473CBUx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -767,6 +821,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G473CCTx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -782,6 +837,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G473CCUx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -797,6 +853,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G473CETx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -812,6 +869,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G473CEUx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -827,6 +885,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G473MBTx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -842,6 +901,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G473MCTx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -857,6 +917,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G473METx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -872,6 +933,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G473MEUx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -887,6 +949,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G473QBTx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -902,6 +965,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G473QCTx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -917,6 +981,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G473QETx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -932,6 +997,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G473RBTx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -947,6 +1013,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G473RCTx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -962,6 +1029,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G473RETx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -977,6 +1045,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G473VBHx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -992,6 +1061,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G473VBIx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -1007,6 +1077,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G473VBTx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -1022,6 +1093,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G473VCHx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -1037,6 +1109,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G473VCIx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -1052,6 +1125,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G473VCTx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -1067,6 +1141,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G473VEHx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -1082,6 +1157,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G473VEIx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -1097,6 +1173,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G473VETx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -1112,6 +1189,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G474CBTx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -1127,6 +1205,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G474CBUx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -1142,6 +1221,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G474CCTx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -1157,6 +1237,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G474CCUx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -1172,6 +1253,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G474CETx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -1187,6 +1269,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G474CEUx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -1202,6 +1285,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G474MBTx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -1217,6 +1301,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G474MCTx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -1232,6 +1317,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G474METx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -1247,6 +1333,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G474MEYx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -1262,6 +1349,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G474QBTx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -1277,6 +1365,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G474QCTx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -1292,6 +1381,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G474QETx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -1307,6 +1397,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G474RBTx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -1322,6 +1413,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G474RCTx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -1337,6 +1429,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G474RETx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -1352,6 +1445,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G474VBHx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -1367,6 +1461,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G474VBIx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -1382,6 +1477,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G474VBTx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -1397,6 +1493,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G474VCHx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -1412,6 +1509,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G474VCIx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -1427,6 +1525,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G474VCTx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -1442,6 +1541,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G474VEHx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -1457,6 +1557,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G474VEIx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -1472,6 +1573,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G474VETx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -1487,6 +1589,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G483CETx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -1502,6 +1605,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G483CEUx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -1517,6 +1621,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G483METx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -1532,6 +1637,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G483MEYx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -1547,6 +1653,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G483QETx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -1562,6 +1669,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G483RETx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -1577,6 +1685,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G483VEHx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -1592,6 +1701,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G483VEIx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -1607,6 +1717,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G483VETx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -1622,6 +1733,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G484CETx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -1637,6 +1749,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G484CEUx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -1652,6 +1765,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G484METx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -1667,6 +1781,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G484MEYx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -1682,6 +1797,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G484QETx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -1697,6 +1813,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G484RETx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -1712,6 +1829,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G484VEHx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -1727,6 +1845,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G484VEIx
+    part: 0x469
     memory_map:
       - Ram:
           range:
@@ -1742,6 +1861,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32G484VETx
+    part: 0x469
     memory_map:
       - Ram:
           range:

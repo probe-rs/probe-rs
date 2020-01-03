@@ -1,7 +1,11 @@
 ---
 name: STM32WB Series
+manufacturer:
+  cc: 0x00
+  id: 0x20
 variants:
   - name: STM32WB55CCUx
+    part: 0x495
     memory_map:
       - Ram:
           range:
@@ -17,6 +21,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32WB55CEUx
+    part: 0x495
     memory_map:
       - Ram:
           range:
@@ -32,6 +37,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32WB55CGUx
+    part: 0x495
     memory_map:
       - Ram:
           range:
@@ -47,6 +53,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32WB55RCVx
+    part: 0x495
     memory_map:
       - Ram:
           range:
@@ -62,6 +69,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32WB55REVx
+    part: 0x495
     memory_map:
       - Ram:
           range:
@@ -77,6 +85,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32WB55RGVx
+    part: 0x495
     memory_map:
       - Ram:
           range:
@@ -92,6 +101,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32WB55VCYx
+    part: 0x495
     memory_map:
       - Ram:
           range:
@@ -107,6 +117,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32WB55VEYx
+    part: 0x495
     memory_map:
       - Ram:
           range:
@@ -122,6 +133,7 @@ variants:
           page_size: 1024
           erased_byte_value: 255
   - name: STM32WB55VGYx
+    part: 0x495
     memory_map:
       - Ram:
           range:
