@@ -126,8 +126,8 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::mem;
     use gdb_protocol::packet::UncheckedPacket;
+    use std::mem;
 
     impl<'a> GdbServer<&'a mut &'a [u8], Vec<u8>> {
         pub fn tester(input: &'a mut &'a [u8]) -> Self {

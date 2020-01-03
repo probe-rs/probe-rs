@@ -1,23 +1,19 @@
 #![allow(unused_variables)]
 
-use async_std::{
-    io::{Write},
-    net::{TcpStream},
-    prelude::*,
-};
-use futures::{channel::mpsc};
-use gdb_protocol::{
-    packet::{CheckedPacket, Kind as PacketKind},
-};
+use async_std::{io::Write, net::TcpStream, prelude::*};
+use futures::channel::mpsc;
+use gdb_protocol::packet::{CheckedPacket, Kind as PacketKind};
 use std::sync::Arc;
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 type Sender<T> = mpsc::UnboundedSender<T>;
-type Receiver<T> = mpsc::UnboundedReceiver<T>;
 
-pub async fn writer(packet: CheckedPacket, stream: Arc<TcpStream>,
-    mut packet_stream: Sender<CheckedPacket>,
-    buffer: &mut Vec<u8>,) -> Result<()> {
+pub async fn writer(
+    packet: CheckedPacket,
+    stream: Arc<TcpStream>,
+    packet_stream: Sender<CheckedPacket>,
+    buffer: &mut Vec<u8>,
+) -> Result<()> {
     let mut tmp_buf = [0; 128];
     log::debug!("WRITE WIN");
     if packet.is_valid() {
@@ -52,11 +48,10 @@ pub async fn writer(packet: CheckedPacket, stream: Arc<TcpStream>,
             }
             log::debug!("Done checking ACK");
         }
-        crate::reader::reader(stream.clone(), packet_stream.clone(), buffer).await
     } else {
         log::warn!("Broken packet! It will not be sent.");
-        Ok(())
     }
+    crate::reader::reader(stream.clone(), packet_stream.clone(), buffer).await
 }
 
 pub async fn encode<W>(packet: &CheckedPacket, mut w: W) -> Result<()>
@@ -66,7 +61,8 @@ where
     w.write_all(&[match packet.kind {
         PacketKind::Notification => b'%',
         PacketKind::Packet => b'$',
-    }]).await?;
+    }])
+    .await?;
 
     let mut remaining: &[u8] = &packet.data;
     while !remaining.is_empty() {
