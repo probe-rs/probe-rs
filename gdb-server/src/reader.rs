@@ -1,10 +1,7 @@
 #![allow(unused_variables)]
 
-use async_std::{
-    net::{TcpStream},
-    prelude::*,
-};
-use futures::{channel::mpsc};
+use async_std::{net::TcpStream, prelude::*};
+use futures::channel::mpsc;
 use gdb_protocol::{
     packet::{CheckedPacket, Kind as PacketKind},
     parser::Parser,
@@ -13,11 +10,12 @@ use std::sync::Arc;
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 type Sender<T> = mpsc::UnboundedSender<T>;
-type Receiver<T> = mpsc::UnboundedReceiver<T>;
 
-pub async fn reader(stream: Arc<TcpStream>,
+pub async fn reader(
+    stream: Arc<TcpStream>,
     packet_stream: Sender<CheckedPacket>,
-    buffer: &mut Vec<u8>,) -> Result<()> {
+    buffer: &mut Vec<u8>,
+) -> Result<()> {
     log::debug!("READ WIN");
     let mut parser = Parser::default();
     log::trace!("Awaiting packet");
@@ -25,7 +23,11 @@ pub async fn reader(stream: Arc<TcpStream>,
         let (read, packet) = parser.feed(&buffer)?;
 
         let drained = buffer.drain(..read);
-        log::debug!("Drained {} for {:?}", read, String::from_utf8_lossy(&drained.collect::<Vec<_>>()));
+        log::debug!(
+            "Drained {} for {:?}",
+            read,
+            String::from_utf8_lossy(&drained.collect::<Vec<_>>())
+        );
 
         if let Some(packet) = packet {
             match packet.kind {

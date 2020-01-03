@@ -1,9 +1,9 @@
-#![recursion_limit="256"]
+#![recursion_limit = "256"]
 
 mod gdb_server;
 mod gdb_server_async;
-mod worker;
 mod reader;
+mod worker;
 mod writer;
 
 use crate::gdb_server::GdbServer;

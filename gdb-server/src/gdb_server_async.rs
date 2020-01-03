@@ -5,12 +5,10 @@ use async_std::{
     prelude::*,
     task,
 };
-use futures::{channel::mpsc};
-use gdb_protocol::{
-    packet::CheckedPacket,
-};
-use std::sync::Arc;
+use futures::channel::mpsc;
+use gdb_protocol::packet::CheckedPacket;
 use std::sync::atomic::AtomicUsize;
+use std::sync::Arc;
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 type Sender<T> = mpsc::UnboundedSender<T>;
@@ -59,10 +57,7 @@ async fn accept_loop(addr: impl ToSocketAddrs) -> Result<()> {
             packet_stream_receiver,
             acks_due,
         ));
-        let worker = task::spawn(crate::worker::worker(
-            tbd_receiver,
-            packet_stream_sender,
-        ));
+        let worker = task::spawn(crate::worker::worker(tbd_receiver, packet_stream_sender));
         println!("Accepted a new connection from: {}", stream.peer_addr()?);
         // outbound_broker_handle.await?;
         inbound_broker_handle.await?;
@@ -89,7 +84,7 @@ async fn inbound_broker_loop(
         let mut s = &*stream;
         let mut read = s.read(&mut tmp_buf).fuse();
         // let reader = crate::reader::reader(stream.clone(), packet_stream.clone(), &mut buffer);
-        
+
         let t = std::time::Instant::now();
         futures::select! {
             packet = packet_stream_2 => {

@@ -1,10 +1,6 @@
-use async_std::{
-    prelude::*,
-};
-use futures::{channel::mpsc};
-use gdb_protocol::{
-    packet::{CheckedPacket, Kind as PacketKind},
-};
+use async_std::prelude::*;
+use futures::channel::mpsc;
+use gdb_protocol::packet::{CheckedPacket, Kind as PacketKind};
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 type Sender<T> = mpsc::UnboundedSender<T>;
