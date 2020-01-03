@@ -90,6 +90,7 @@ async fn inbound_broker_loop(
         let mut read = s.read(&mut tmp_buf).fuse();
         // let reader = crate::reader::reader(stream.clone(), packet_stream.clone(), &mut buffer);
         
+        let t = std::time::Instant::now();
         futures::select! {
             packet = packet_stream_2 => {
                 println!("WRITE RACE WIN");
@@ -98,7 +99,7 @@ async fn inbound_broker_loop(
                 }
             },
             n = read => {
-                println!("READ RACE WIN");
+                println!("READ RACE WIN {:?}", t.elapsed());
                 if let Ok(n) = n {
                     if n > 0 {
                         buffer.extend(&tmp_buf[0..n]);

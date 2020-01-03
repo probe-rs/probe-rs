@@ -38,7 +38,7 @@ pub async fn writer(packet: CheckedPacket, stream: Arc<TcpStream>,
                     b'+' => {
                         log::debug!("Ack received.");
                         buffer.remove(i);
-                        break 'ack Ok(());
+                        break 'ack;
                     }
                     b'-' => {
                         log::debug!("Nack received. Retrying.");
@@ -47,12 +47,12 @@ pub async fn writer(packet: CheckedPacket, stream: Arc<TcpStream>,
                     }
                     // This should never happen.
                     // And if it does, GDB fucked up, so we might as well stop.
-                    _ => break 'ack Ok(()),
+                    _ => break 'ack,
                 }
             }
             log::debug!("Done checking ACK");
-            // crate::reader::reader(stream.clone(), packet_stream.clone(), buffer).await?
         }
+        crate::reader::reader(stream.clone(), packet_stream.clone(), buffer).await
     } else {
         log::warn!("Broken packet! It will not be sent.");
         Ok(())
