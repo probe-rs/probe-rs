@@ -102,8 +102,6 @@ pub async fn worker(
         log::warn!("WORKING {}", String::from_utf8_lossy(&packet.data));
         if packet.is_valid() {
             let packet_string = String::from_utf8_lossy(&packet.data).to_string();
-                println!("{:?}", packet_string);
-            
             let session: &mut Session = &mut session.lock().unwrap();
             let response: Option<String> = if packet.data.starts_with("qSupported".as_bytes()) {
                 Some(
@@ -328,8 +326,15 @@ pub async fn worker(
                         .unwrap()
                         .to_string(),
                 )
-            } else if packet.data.starts_with("qTfV".as_bytes()) {
-                Some("".into())
+            } else if packet.data.starts_with(&[0x03]) {
+                let cpu_info = session.target.core.halt(&mut session.probe);
+                println!("PC = 0x{:08x}", cpu_info.unwrap().pc);
+                session
+                    .target
+                    .core
+                    .wait_for_core_halted(&mut session.probe)
+                    .unwrap();
+                Some("T05hwbreak:;".into())
             } else if packet.data.starts_with("qTfV".as_bytes()) {
                 Some("".into())
             } else if packet.data.starts_with("qTfV".as_bytes()) {
