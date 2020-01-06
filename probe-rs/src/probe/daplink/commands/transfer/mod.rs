@@ -212,10 +212,12 @@ impl Request for TransferBlockRequest {
         let mut data_offset = offset + 4;
 
         for word in &self.transfer_data {
-            buffer.pwrite(word, data_offset).expect(&format!(
-                "Failed to write word at data_offset {}. This is a bug. Please report it.",
-                data_offset
-            ));
+            buffer.pwrite(word, data_offset).unwrap_or_else(|_| {
+                panic!(
+                    "Failed to write word at data_offset {}. This is a bug. Please report it.",
+                    data_offset
+                )
+            });
             data_offset += 4;
             size += 4;
         }

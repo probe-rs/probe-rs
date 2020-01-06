@@ -269,10 +269,10 @@ fn main_try() -> Result<(), failure::Error> {
                 erase_progress.enable_steady_tick(100);
                 erase_progress.reset_elapsed();
             }
-            PageFlashed { size, time: _ } => {
+            PageFlashed { size, .. } => {
                 program_progress.inc(size as u64);
             }
-            SectorErased { size, time: _ } => {
+            SectorErased { size, .. } => {
                 erase_progress.inc(size as u64);
             }
             FinishedErasing => {
