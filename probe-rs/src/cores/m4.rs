@@ -191,7 +191,6 @@ impl CoreRegister for Demcr {
     const NAME: &'static str = "DEMCR";
 }
 
-
 bitfield! {
     #[derive(Copy,Clone)]
     pub struct FpCtrl(u32);
@@ -205,10 +204,9 @@ bitfield! {
     pub enable, set_enable: 0;
 }
 
-
 impl FpCtrl {
     pub fn num_code(&self) -> u32 {
-        (self.num_code_1() << 12) | self.num_code_0()
+        (self.num_code_1() << 4) | self.num_code_0()
     }
 }
 
@@ -239,7 +237,7 @@ bitfield! {
 }
 
 impl CoreRegister for FpCompX {
-    const ADDRESS: u32 = 0xE000_2000;
+    const ADDRESS: u32 = 0xE000_2008;
     const NAME: &'static str = "FP_CTRL";
 }
 
@@ -436,10 +434,7 @@ impl Core for M4 {
         Ok(CoreInformation { pc: pc_value })
     }
 
-    fn get_available_breakpoint_units(
-        &self,
-        mi: &mut MasterProbe,
-    ) -> Result<u32, DebugProbeError> {
+    fn get_available_breakpoint_units(&self, mi: &mut MasterProbe) -> Result<u32, DebugProbeError> {
         let raw_val = mi.read32(FpCtrl::ADDRESS)?;
 
         let reg = FpCtrl::from(raw_val);
@@ -447,11 +442,7 @@ impl Core for M4 {
         Ok(reg.num_code())
     }
 
-    fn enable_breakpoints(
-        &self,
-        mi: &mut MasterProbe,
-        state: bool,
-    ) -> Result<(), DebugProbeError> {
+    fn enable_breakpoints(&self, mi: &mut MasterProbe, state: bool) -> Result<(), DebugProbeError> {
         let mut val = FpCtrl::from(0);
         val.set_key(true);
         val.set_enable(state);
@@ -467,7 +458,6 @@ impl Core for M4 {
         addr: u32,
     ) -> Result<(), DebugProbeError> {
         let mut val = FpCompX::from(0);
-
 
         // clear bits which cannot be set
         let comp_val = addr & 0x1f_ff_ff_fc;
