@@ -72,14 +72,11 @@ async fn inbound_broker_loop(
 
     let mut buffer = vec![];
     let mut tmp_buf = [0; 1024];
-    // let mut glob = vec![];
 
     loop {
-        // async_std::io::timeout(std::time::Duration::from_millis(50),
         let mut packet_stream_2 = packet_stream_2.next().fuse();
         let mut s = &*stream;
         let mut read = s.read(&mut tmp_buf).fuse();
-        // let reader = crate::reader::reader(stream.clone(), packet_stream.clone(), &mut buffer);
 
         let t = std::time::Instant::now();
         futures::select! {
@@ -91,13 +88,19 @@ async fn inbound_broker_loop(
             },
             n = read => {
                 println!("READ RACE WIN {:?}, {:?}", t.elapsed(), n);
-                if let Ok(n) = n {
-                    if n > 0 {
+                match n {
+                    Ok(n) => {
+                        if n == 0 {
+                            println!("GDB connection closed.");
+                            break Ok(());
+                        }
                         buffer.extend(&tmp_buf[0..n]);
-                        // glob.extend(&tmp_buf[0..n]);
+                        log::info!("Current buf {}", String::from_utf8_lossy(&buffer));
+                        super::reader::reader(stream.clone(), packet_stream.clone(), &mut buffer).await?
+                    },
+                    Err(e) => {
+                        
                     }
-                    log::info!("Current buf {}", String::from_utf8_lossy(&buffer));
-                    super::reader::reader(stream.clone(), packet_stream.clone(), &mut buffer).await?
                 }
             }
         }
