@@ -62,7 +62,10 @@ impl Session {
     }
 
     pub fn clear_hw_breakpoint(&mut self, address: u32) -> Result<(), DebugProbeError> {
-        let bp_position = self.active_breakpoints.iter().position(|bp| bp.address == address);
+        let bp_position = self
+            .active_breakpoints
+            .iter()
+            .position(|bp| bp.address == address);
 
         match bp_position {
             Some(bp_position) => {

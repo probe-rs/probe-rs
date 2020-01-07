@@ -1,11 +1,6 @@
 use crate::common::CliError;
 
-use probe_rs::{
-    cores::CortexDump,
-    coresight::memory::MI,
-    debug::DebugInfo,
-    session::Session,
-};
+use probe_rs::{cores::CortexDump, coresight::memory::MI, debug::DebugInfo, session::Session};
 
 use capstone::Capstone;
 
@@ -145,9 +140,7 @@ impl DebugCli {
                 let address = u32::from_str_radix(address_str, 16).unwrap();
                 //println!("Would read from address 0x{:08x}", address);
 
-                cli_data
-                    .session
-                    .clear_hw_breakpoint(address)?;
+                cli_data.session.clear_hw_breakpoint(address)?;
 
                 Ok(CliState::Continue)
             },
