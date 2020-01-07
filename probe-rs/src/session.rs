@@ -7,7 +7,6 @@ pub struct Session {
 
     hw_breakpoint_enabled: bool,
     active_breakpoints: Vec<Breakpoint>,
-    bp_id_count: usize,
 }
 
 impl Session {
@@ -18,12 +17,11 @@ impl Session {
             probe,
             hw_breakpoint_enabled: false,
             active_breakpoints: Vec::new(),
-            bp_id_count: 0,
         }
     }
 
     /// Set a hardware breakpoint
-    pub fn set_hw_breakpoint(&mut self, address: u32) -> Result<BreakpointId, DebugProbeError> {
+    pub fn set_hw_breakpoint(&mut self, address: u32) -> Result<(), DebugProbeError> {
         log::debug!("Trying to set HW breakpoint at address {:#08x}", address);
 
         // Get the number of HW breakpoints available
@@ -55,19 +53,16 @@ impl Session {
             .core
             .set_breakpoint(&mut self.probe, bp_unit, address)?;
 
-        let id = BreakpointId(self.bp_id_count);
-        self.bp_id_count += 1;
-
         self.active_breakpoints.push(Breakpoint {
-            id,
+            address,
             register_hw: bp_unit,
         });
 
-        Ok(id)
+        Ok(())
     }
 
-    pub fn clear_hw_breakpoint(&mut self, id: BreakpointId) -> Result<(), DebugProbeError> {
-        let bp_position = self.active_breakpoints.iter().position(|bp| bp.id == id);
+    pub fn clear_hw_breakpoint(&mut self, address: u32) -> Result<(), DebugProbeError> {
+        let bp_position = self.active_breakpoints.iter().position(|bp| bp.address == address);
 
         match bp_position {
             Some(bp_position) => {
@@ -116,6 +111,6 @@ impl BreakpointId {
 }
 
 struct Breakpoint {
-    id: BreakpointId,
+    address: u32,
     register_hw: usize,
 }
