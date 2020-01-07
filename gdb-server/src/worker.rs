@@ -29,7 +29,6 @@ pub async fn worker(
                 let local_session: &mut Session = &mut local_session;
                 let awaits_halt: &mut bool = &mut awaits_halt.lock().unwrap();
                 // local_session.target.core.halt(&mut local_session.probe).unwrap();
-                // println!("await halt");
                 if *awaits_halt
                     && local_session
                         .target
@@ -44,9 +43,6 @@ pub async fn worker(
 
                     let mut bytes = Vec::new();
                     response.encode(&mut bytes).unwrap();
-                    println!("Core halted");
-                    println!("{:x?}", std::str::from_utf8(&response.data).unwrap());
-                    println!("-----------------------------------------------");
 
                     *awaits_halt = false;
                     let _ = output_stream.unbounded_send(response);
@@ -92,10 +88,8 @@ pub async fn worker(
                 }
 
                 let p = packet_string.parse::<P>().unwrap();
-                println!("{:?}", p);
 
                 let cpu_info = session.target.core.halt(&mut session.probe);
-                println!("PC = 0x{:08x}", cpu_info.unwrap().pc);
                 session
                     .target
                     .core
@@ -103,7 +97,6 @@ pub async fn worker(
                     .unwrap();
                 // session.target.core.reset_and_halt(&mut session.probe).unwrap();
                 let reg = CoreRegisterAddress(u8::from_str_radix(&p.reg, 16).unwrap());
-                println!("{:?}", reg);
 
                 let value = session
                     .target
@@ -139,7 +132,6 @@ pub async fn worker(
                 }
 
                 let m = packet_string.parse::<M>().unwrap();
-                println!("{:?}", m);
 
                 let mut readback_data = vec![0u8; usize::from_str_radix(&m.length, 16).unwrap()];
                 session
@@ -200,7 +192,6 @@ pub async fn worker(
                 }
 
                 let z1 = packet_string.parse::<Z1>().unwrap();
-                println!("{:?}", z1);
 
                 let addr = u32::from_str_radix(&z1.addr, 16).unwrap();
 
@@ -231,7 +222,6 @@ pub async fn worker(
                 }
 
                 let z1 = packet_string.parse::<Z1>().unwrap();
-                println!("{:?}", z1);
 
                 let addr = u32::from_str_radix(&z1.addr, 16).unwrap();
 
@@ -263,7 +253,6 @@ pub async fn worker(
                 }
 
                 let x = packet_string.parse::<X>().unwrap();
-                println!("{:?}", x);
 
                 let length = usize::from_str_radix(&x.length, 16).unwrap();
                 let mut data = vec![0; length];
@@ -275,8 +264,6 @@ pub async fn worker(
                     .probe
                     .write_block8(u32::from_str_radix(&x.addr, 16).unwrap(), &data)
                     .unwrap();
-
-                println!("{:?}", data);
 
                 Some("OK".into())
             } else if packet.data.starts_with("qXfer:memory-map:read".as_bytes()) {
@@ -293,7 +280,6 @@ pub async fn worker(
                 )
             } else if packet.data.starts_with(&[0x03]) {
                 let cpu_info = session.target.core.halt(&mut session.probe);
-                println!("PC = 0x{:08x}", cpu_info.unwrap().pc);
                 session
                     .target
                     .core

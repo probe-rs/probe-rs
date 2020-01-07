@@ -51,12 +51,16 @@ async fn accept_loop(addr: impl ToSocketAddrs, session: Arc<Mutex<Session>>) -> 
         println!("Accepted a new connection from: {}", stream.peer_addr()?);
         // outbound_broker_handle.await?;
         if let Err(e) = inbound_broker_handle.await {
-            eprintln!("An error with the current connection has been encountered. It has been closed.");
+            eprintln!(
+                "An error with the current connection has been encountered. It has been closed."
+            );
             eprintln!("{:?}", e);
         }
 
         if let Err(e) = worker.await {
-            eprintln!("An error with the current connection has been encountered. It has been closed.");
+            eprintln!(
+                "An error with the current connection has been encountered. It has been closed."
+            );
             eprintln!("{:?}", e);
         }
     }
