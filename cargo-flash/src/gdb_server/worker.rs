@@ -7,11 +7,8 @@ type Sender<T> = mpsc::UnboundedSender<T>;
 type Receiver<T> = mpsc::UnboundedReceiver<T>;
 
 use probe_rs::{
-    config::registry::{Registry, SelectionStrategy},
     coresight::memory::MI,
-    probe::{daplink, stlink, DebugProbe, DebugProbeType, MasterProbe, WireProtocol},
     session::Session,
-    target::info::ChipInfo,
     target::CoreRegisterAddress,
 };
 use std::sync::{Arc, Mutex};
@@ -29,7 +26,7 @@ pub async fn worker(
     let session_clone = session.clone();
     let awaits_halt_clone = awaits_halt.clone();
     let output_stream_clone = output_stream.clone();
-    let probe_rs_executor = std::thread::spawn(move || {
+    let _ = std::thread::spawn(move || {
         loop {
             {
                 let mut local_session = session.lock().unwrap();
@@ -56,7 +53,7 @@ pub async fn worker(
                     println!("-----------------------------------------------");
 
                     *awaits_halt = false;
-                    output_stream.unbounded_send(response);
+                    let _ = output_stream.unbounded_send(response);
                 }
             }
             std::thread::sleep(std::time::Duration::from_millis(5));
@@ -66,6 +63,8 @@ pub async fn worker(
     let session = session_clone;
     let awaits_halt = awaits_halt_clone;
     let output_stream = output_stream_clone;
+
+    let mut break_due = false;
 
     while let Some(packet) = input_stream.next().await {
         log::warn!("WORKING {}", String::from_utf8_lossy(&packet.data));
@@ -305,8 +304,9 @@ pub async fn worker(
                     .wait_for_core_halted(&mut session.probe)
                     .unwrap();
                 Some("T05hwbreak:;".into())
-            } else if packet.data.starts_with("qTfV".as_bytes()) {
-                Some("".into())
+            } else if packet.data.starts_with("D".as_bytes()) {
+                break_due = true;
+                Some("OK".into())
             } else if packet.data.starts_with("qTfV".as_bytes()) {
                 Some("".into())
             } else if packet.data.starts_with("qTfV".as_bytes()) {
@@ -326,51 +326,13 @@ pub async fn worker(
                 log::debug!("-----------------------------------------------");
                 output_stream.unbounded_send(response)?;
             };
+
+            if break_due {
+                break;
+            }
         }
     }
     Ok(())
-}
-
-fn open_probe(index: Option<usize>) -> std::result::Result<MasterProbe, &'static str> {
-    let mut list = daplink::tools::list_daplink_devices();
-    list.extend(stlink::tools::list_stlink_devices());
-
-    let device = match index {
-        Some(index) => list
-            .get(index)
-            .ok_or("Probe with specified index not found")?,
-        None => {
-            // open the default probe, if only one probe was found
-            if list.len() == 1 {
-                &list[0]
-            } else {
-                return Err("No probe found.");
-            }
-        }
-    };
-
-    let probe = match device.probe_type {
-        DebugProbeType::DAPLink => {
-            let mut link = daplink::DAPLink::new_from_probe_info(&device)
-                .map_err(|_| "Failed to open DAPLink.")?;
-
-            link.attach(Some(WireProtocol::Swd))
-                .map_err(|_| "Failed to attach to DAPLink")?;
-
-            MasterProbe::from_specific_probe(link)
-        }
-        DebugProbeType::STLink => {
-            let mut link = stlink::STLink::new_from_probe_info(&device)
-                .map_err(|_| "Failed to open STLINK")?;
-
-            link.attach(Some(WireProtocol::Swd))
-                .map_err(|_| "Failed to attach to STLink")?;
-
-            MasterProbe::from_specific_probe(link)
-        }
-    };
-
-    Ok(probe)
 }
 
 fn gdb_sanitize_file(mut data: Vec<u8>, offset: u32, len: u32) -> Vec<u8> {
