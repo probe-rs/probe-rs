@@ -303,8 +303,10 @@ pub async fn worker(
             } else if packet.data.starts_with("D".as_bytes()) {
                 break_due = true;
                 Some("OK".into())
-            } else if packet.data.starts_with("qTfV".as_bytes()) {
-                Some("".into())
+            } else if packet.data.starts_with("qRcmd,7265736574".as_bytes()) {
+                let _cpu_info = session.target.core.reset(&mut session.probe);
+                let _cpu_info = session.target.core.halt(&mut session.probe);
+                Some("OK".into())
             } else if packet.data.starts_with("qTfV".as_bytes()) {
                 Some("".into())
             } else if packet.data.starts_with("qTfV".as_bytes()) {
