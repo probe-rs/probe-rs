@@ -4,7 +4,7 @@ use probe_rs::{
     cores::CortexDump,
     coresight::memory::MI,
     debug::DebugInfo,
-    session::{BreakpointId, Session},
+    session::Session,
 };
 
 use capstone::Capstone;
@@ -141,13 +141,13 @@ impl DebugCli {
             help_text: "Clear a breakpoint",
 
             function: |cli_data, args| {
-                let id_str = args.get(0).ok_or(CliError::MissingArgument)?;
-                let id = usize::from_str_radix(id_str, 10).unwrap();
+                let address_str = args.get(0).ok_or(CliError::MissingArgument)?;
+                let address = u32::from_str_radix(address_str, 16).unwrap();
                 //println!("Would read from address 0x{:08x}", address);
 
                 cli_data
                     .session
-                    .clear_hw_breakpoint(BreakpointId::new(id))?;
+                    .clear_hw_breakpoint(address)?;
 
                 Ok(CliState::Continue)
             },
