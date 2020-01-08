@@ -99,7 +99,7 @@ async fn inbound_broker_loop(
                         super::reader::reader(stream.clone(), packet_stream.clone(), &mut buffer).await?
                     },
                     Err(e) => {
-                        
+
                     }
                 }
             }
