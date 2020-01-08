@@ -1,21 +1,24 @@
 mod gdb_server;
-// mod gdb_server_async;
+mod gdb_server_async;
 
-use gdb_protocol::{ packet::{CheckedPacket, Kind}, Error};
-use std::io::{self, prelude::*, Error as iError, ErrorKind};
-use recap::Recap;
-use serde::Deserialize;
-use structopt::StructOpt;
 use crate::gdb_server::GdbServer;
+use gdb_protocol::{
+    packet::{CheckedPacket, Kind},
+    Error,
+};
 use probe_rs::{
     config::registry::{Registry, SelectionStrategy},
     coresight::memory::MI,
     probe::{daplink, stlink, DebugProbe, DebugProbeType, MasterProbe, WireProtocol},
     session::Session,
     target::info::ChipInfo,
-    target::{CoreRegisterAddress, BasicRegisterAddresses},
+    target::CoreRegisterAddress,
 };
+use recap::Recap;
+use serde::Deserialize;
+use std::io::{self, ErrorKind};
 use std::thread;
+use structopt::StructOpt;
 
 #[derive(StructOpt)]
 struct CLI {
@@ -36,7 +39,8 @@ fn main() -> Result<(), Error> {
         Some(identifier) => SelectionStrategy::TargetIdentifier(identifier.into()),
         None => SelectionStrategy::ChipInfo(
             ChipInfo::read_from_rom_table(&mut probe)
-                .map_err(|_| "Failed to read chip info from ROM table").unwrap(),
+                .map_err(|_| "Failed to read chip info from ROM table")
+                .unwrap(),
         ),
     };
 
@@ -44,19 +48,20 @@ fn main() -> Result<(), Error> {
 
     let target = registry
         .get_target(strategy)
-        .map_err(|_| "Failed to find target").unwrap();
+        .map_err(|_| "Failed to find target")
+        .unwrap();
 
-    let mut session = std::sync::Arc::new(std::sync::Mutex::new(Session::new(target, probe)));
+    let session = std::sync::Arc::new(std::sync::Mutex::new(Session::new(target, probe)));
 
     println!("Listening on port 1337...");
-    let mut server = std::sync::Arc::new(std::sync::Mutex::new(GdbServer::listen("0.0.0.0:1337")?));
+    let server = std::sync::Arc::new(std::sync::Mutex::new(GdbServer::listen("0.0.0.0:1337")?));
     println!("Connected!");
 
-    let mut awaits_halt = std::sync::Arc::new(std::sync::Mutex::new(false));
+    let awaits_halt = std::sync::Arc::new(std::sync::Mutex::new(false));
 
-    let mut session_clone = session.clone();
-    let mut server_clone = server.clone();
-    let mut awaits_halt_clone = awaits_halt.clone();
+    let session_clone = session.clone();
+    let server_clone = server.clone();
+    let awaits_halt_clone = awaits_halt.clone();
 
     let probe_rs_executor = thread::spawn(move || {
         loop {
@@ -66,8 +71,17 @@ fn main() -> Result<(), Error> {
                 let awaits_halt: &mut bool = &mut awaits_halt.lock().unwrap();
                 // local_session.target.core.halt(&mut local_session.probe).unwrap();
                 // println!("await halt");
-                if *awaits_halt && local_session.target.core.core_halted(&mut local_session.probe).unwrap() {
-                    let response = CheckedPacket::from_data(Kind::Packet, "T05hwbreak:;".to_string().into_bytes());
+                if *awaits_halt
+                    && local_session
+                        .target
+                        .core
+                        .core_halted(&mut local_session.probe)
+                        .unwrap()
+                {
+                    let response = CheckedPacket::from_data(
+                        Kind::Packet,
+                        "T05hwbreak:;".to_string().into_bytes(),
+                    );
 
                     let mut bytes = Vec::new();
                     response.encode(&mut bytes).unwrap();
@@ -87,15 +101,15 @@ fn main() -> Result<(), Error> {
                             }
                             Err(e) => panic!("encountered IO error: {}", e),
                         };
-                    };
+                    }
                 }
             }
             thread::sleep(std::time::Duration::from_millis(5));
         }
     });
 
-    let mut session = session_clone;
-    let mut server = server_clone;
+    let session = session_clone;
+    let server = server_clone;
     let awaits_halt = awaits_halt_clone;
 
     let gdb_executor = thread::spawn(move || {
@@ -113,17 +127,16 @@ fn main() -> Result<(), Error> {
                 }
             };
             if let Some(packet) = packet {
-
                 let session: &mut Session = &mut session.lock().unwrap();
 
                 let packet_string = String::from_utf8_lossy(&packet.data).to_string();
-                println!(
-                    "{:?}",
-                    packet_string
-                );
+                println!("{:?}", packet_string);
 
                 let response: Option<String> = if packet.data.starts_with("qSupported".as_bytes()) {
-                    Some("PacketSize=2048;swbreak-;hwbreak+;vContSupported+;qXfer:memory-map:read+".into())
+                    Some(
+                        "PacketSize=2048;swbreak-;hwbreak+;vContSupported+;qXfer:memory-map:read+"
+                            .into(),
+                    )
                 } else if packet.data.starts_with("vMustReplyEmpty".as_bytes()) {
                     Some("".into())
                 } else if packet.data.starts_with("qTStatus".as_bytes()) {
@@ -138,7 +151,7 @@ fn main() -> Result<(), Error> {
                     Some("xxxxxxxx".into())
                 } else if packet.data.starts_with("p".as_bytes()) {
                     #[derive(Debug, Deserialize, PartialEq, Recap)]
-                    #[recap(regex=r#"p(?P<reg>\w+)"#)]
+                    #[recap(regex = r#"p(?P<reg>\w+)"#)]
                     struct P {
                         reg: String,
                     }
@@ -151,25 +164,40 @@ fn main() -> Result<(), Error> {
                     session
                         .target
                         .core
-                        .wait_for_core_halted(&mut session.probe).unwrap();
+                        .wait_for_core_halted(&mut session.probe)
+                        .unwrap();
                     // session.target.core.reset_and_halt(&mut session.probe).unwrap();
                     let reg = CoreRegisterAddress(u8::from_str_radix(&p.reg, 16).unwrap());
                     println!("{:?}", reg);
 
-                    let value = session.target
+                    let value = session
+                        .target
                         .core
-                        .read_core_reg(&mut session.probe, reg).unwrap();
+                        .read_core_reg(&mut session.probe, reg)
+                        .unwrap();
 
-                    format!("{}{}{}{}", value as u8, (value >> 8) as u8, (value >> 16) as u8, (value >> 24) as u8);
+                    format!(
+                        "{}{}{}{}",
+                        value as u8,
+                        (value >> 8) as u8,
+                        (value >> 16) as u8,
+                        (value >> 24) as u8
+                    );
 
-                    Some(format!("{:02x}{:02x}{:02x}{:02x}", value as u8, (value >> 8) as u8, (value >> 16) as u8, (value >> 24) as u8))
+                    Some(format!(
+                        "{:02x}{:02x}{:02x}{:02x}",
+                        value as u8,
+                        (value >> 8) as u8,
+                        (value >> 16) as u8,
+                        (value >> 24) as u8
+                    ))
                 } else if packet.data.starts_with("qTsP".as_bytes()) {
                     Some("".into())
                 } else if packet.data.starts_with("qfThreadInfo".as_bytes()) {
                     Some("".into())
                 } else if packet.data.starts_with("m".as_bytes()) {
                     #[derive(Debug, Deserialize, PartialEq, Recap)]
-                    #[recap(regex=r#"m(?P<addr>\w+),(?P<length>\w+)"#)]
+                    #[recap(regex = r#"m(?P<addr>\w+),(?P<length>\w+)"#)]
                     struct M {
                         addr: String,
                         length: String,
@@ -178,13 +206,23 @@ fn main() -> Result<(), Error> {
                     let m = packet_string.parse::<M>().unwrap();
                     println!("{:?}", m);
 
-                    let mut readback_data = vec![0u8; usize::from_str_radix(&m.length, 16).unwrap()];
+                    let mut readback_data =
+                        vec![0u8; usize::from_str_radix(&m.length, 16).unwrap()];
                     session
                         .probe
-                        .read_block8(u32::from_str_radix(&m.addr, 16).unwrap(), &mut readback_data)
+                        .read_block8(
+                            u32::from_str_radix(&m.addr, 16).unwrap(),
+                            &mut readback_data,
+                        )
                         .unwrap();
 
-                    Some(readback_data.iter().map(|s| format!("{:02x?}", s)).collect::<Vec<String>>().join(""))
+                    Some(
+                        readback_data
+                            .iter()
+                            .map(|s| format!("{:02x?}", s))
+                            .collect::<Vec<String>>()
+                            .join(""),
+                    )
                 } else if packet.data.starts_with("qL".as_bytes()) {
                     Some("".into())
                 } else if packet.data.starts_with("qC".as_bytes()) {
@@ -193,31 +231,25 @@ fn main() -> Result<(), Error> {
                     Some("".into())
                 } else if packet.data.starts_with("vCont?".as_bytes()) {
                     Some("vCont;c;t;s".into())
-                } else if packet.data.starts_with("vCont;c".as_bytes()) || packet.data.starts_with("c".as_bytes()) {
-                    session
-                        .target
-                        .core
-                        .run(&mut session.probe).unwrap();
+                } else if packet.data.starts_with("vCont;c".as_bytes())
+                    || packet.data.starts_with("c".as_bytes())
+                {
+                    session.target.core.run(&mut session.probe).unwrap();
                     let awaits_halt: &mut bool = &mut awaits_halt.lock().unwrap();
                     *awaits_halt = true;
                     None
                 } else if packet.data.starts_with("vCont;t".as_bytes()) {
+                    session.target.core.halt(&mut session.probe).unwrap();
                     session
                         .target
                         .core
-                        .halt(&mut session.probe).unwrap();
-                    session
-                        .target
-                        .core
-                        .wait_for_core_halted(&mut session.probe).unwrap();
+                        .wait_for_core_halted(&mut session.probe)
+                        .unwrap();
                     let awaits_halt: &mut bool = &mut awaits_halt.lock().unwrap();
                     *awaits_halt = false;
                     Some("OK".into())
                 } else if packet.data.starts_with("vCont;s".as_bytes()) {
-                    session
-                        .target
-                        .core
-                        .step(&mut session.probe).unwrap();
+                    session.target.core.step(&mut session.probe).unwrap();
                     let awaits_halt: &mut bool = &mut awaits_halt.lock().unwrap();
                     *awaits_halt = false;
                     Some("S05".into())
@@ -225,7 +257,7 @@ fn main() -> Result<(), Error> {
                     Some("".into())
                 } else if packet.data.starts_with("Z1".as_bytes()) {
                     #[derive(Debug, Deserialize, PartialEq, Recap)]
-                    #[recap(regex=r#"Z1,(?P<addr>\w+),(?P<size>\w+)"#)]
+                    #[recap(regex = r#"Z1,(?P<addr>\w+),(?P<size>\w+)"#)]
                     struct Z1 {
                         addr: String,
                         size: String,
@@ -236,15 +268,59 @@ fn main() -> Result<(), Error> {
 
                     let addr = u32::from_str_radix(&z1.addr, 16).unwrap();
 
-                    session.target.core.reset_and_halt(&mut session.probe).unwrap();
-                    session.target.core.wait_for_core_halted(&mut session.probe).unwrap();
-                    session.target.core.enable_breakpoints(&mut session.probe, true).unwrap();
-                    session.target.core.set_breakpoint(&mut session.probe, addr).unwrap();
+                    session
+                        .target
+                        .core
+                        .reset_and_halt(&mut session.probe)
+                        .unwrap();
+                    session
+                        .target
+                        .core
+                        .wait_for_core_halted(&mut session.probe)
+                        .unwrap();
+                    session
+                        .target
+                        .core
+                        .enable_breakpoints(&mut session.probe, true)
+                        .unwrap();
+                    session.set_hw_breakpoint(addr).unwrap();
+                    session.target.core.run(&mut session.probe).unwrap();
+                    Some("OK".into())
+                } else if packet.data.starts_with("z1".as_bytes()) {
+                    #[derive(Debug, Deserialize, PartialEq, Recap)]
+                    #[recap(regex = r#"z1,(?P<addr>\w+),(?P<size>\w+)"#)]
+                    struct Z1 {
+                        addr: String,
+                        size: String,
+                    }
+
+                    let z1 = packet_string.parse::<Z1>().unwrap();
+                    println!("{:?}", z1);
+
+                    let addr = u32::from_str_radix(&z1.addr, 16).unwrap();
+
+                    session
+                        .target
+                        .core
+                        .reset_and_halt(&mut session.probe)
+                        .unwrap();
+                    session
+                        .target
+                        .core
+                        .wait_for_core_halted(&mut session.probe)
+                        .unwrap();
+                    session
+                        .target
+                        .core
+                        .enable_breakpoints(&mut session.probe, true)
+                        .unwrap();
+                    session.clear_hw_breakpoint(addr)
+                        .unwrap();
                     session.target.core.run(&mut session.probe).unwrap();
                     Some("OK".into())
                 } else if packet.data.starts_with("X".as_bytes()) {
                     #[derive(Debug, Deserialize, PartialEq, Recap)]
-                    #[recap(regex=r#"X(?P<addr>\w+),(?P<length>\w+):(?P<data>[01]*)"#)]
+                    #[recap(regex = r#"X(?P<addr>\w+),(?P<length>\w+):(?P<data>[01]*)"#)]
                     struct X {
                         addr: String,
                         length: String,
@@ -275,7 +351,11 @@ fn main() -> Result<(), Error> {
     <memory type="ram" start="0x20000000" length="0x4000"/>
     <memory type="rom" start="0x00000000" length="0x40000"/>
 </memory-map>"#;
-                    Some(std::str::from_utf8(&gdb_sanitize_file(xml.as_bytes().to_vec(), 0, 1000)).unwrap().to_string())
+                    Some(
+                        std::str::from_utf8(&gdb_sanitize_file(xml.as_bytes().to_vec(), 0, 1000))
+                            .unwrap()
+                            .to_string(),
+                    )
                 } else if packet.data.starts_with("qTfV".as_bytes()) {
                     Some("".into())
                 } else if packet.data.starts_with("qTfV".as_bytes()) {
@@ -312,7 +392,7 @@ fn main() -> Result<(), Error> {
                             }
                             Err(e) => panic!("encountered IO error: {}", e),
                         };
-                    };
+                    }
                 });
             } else {
                 break;
@@ -324,8 +404,8 @@ fn main() -> Result<(), Error> {
         println!("EOF");
     });
 
-    probe_rs_executor.join();
-    gdb_executor.join();
+    probe_rs_executor.join().unwrap();
+    gdb_executor.join().unwrap();
 
     Ok(())
 }
