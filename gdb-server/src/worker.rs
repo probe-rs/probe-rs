@@ -6,11 +6,7 @@ type ServerResult<T> = std::result::Result<T, Box<dyn std::error::Error + Send +
 type Sender<T> = mpsc::UnboundedSender<T>;
 type Receiver<T> = mpsc::UnboundedReceiver<T>;
 
-use probe_rs::{
-    coresight::memory::MI,
-    session::Session,
-    target::CoreRegisterAddress,
-};
+use probe_rs::{coresight::memory::MI, session::Session, target::CoreRegisterAddress};
 use std::sync::{Arc, Mutex};
 
 use recap::Recap;

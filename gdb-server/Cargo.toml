@@ -1,16 +1,24 @@
 [package]
-name = "cargo-flash"
+name = "gdb-server"
 version = "0.3.0"
 authors = ["Noah Hüsser <yatekii@yatekii.ch>", "Dominik Boehi <dominik.boehi@gmail.ch>"]
 edition = "2018"
-description = "A utility to flash ARM cores with ELFs directly from within cargo."
-documentation = "https://docs.rs/cargo-flash/"
+description = "A gdb stub implementation for on chip debugging and flashing of ARM chips."
+documentation = "https://docs.rs/probe-rs-cli/"
 homepage = "https://github.com/probe-rs/probe-rs"
 repository = "https://github.com/probe-rs/probe-rs"
-readme = "README.md"
+readme = "../README.md"
 categories = ["embedded", "hardware-support", "development-tools::debugging"]
 keywords = ["embedded"]
 license = "MIT OR Apache-2.0"
+
+[lib]
+name = "probe_rs_gdb_server"
+path = "src/lib.rs"
+
+[[bin]]
+name = "gdb-server"
+path = "src/bin.rs"
 
 [dependencies]
 pretty_env_logger = "0.3.0"
@@ -19,7 +27,6 @@ cargo-project = "0.2.2"
 failure = "0.1.5"
 colored = "1.8.0"
 probe-rs = { path = "../probe-rs", version = "0.3.0" }
-gdb-server = { path = "../gdb-server", version = "0.3.0" }
 indicatif = "0.13.0"
 console = "0.9.1"
 gdb-protocol = { version = "0.1.0" }
@@ -28,3 +35,4 @@ serde = "1.0.1"
 async-std = { version = "1.4.0", features = ["unstable"] }
 futures = "*"
 log = "0.4.0"
+memchr = "2.2.1"
