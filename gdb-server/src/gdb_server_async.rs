@@ -1,204 +1,152 @@
-use gdb_protocol::{
-    packet::{CheckedPacket, Kind},
-    parser::Parser,
-    Error,
-};
+#![allow(unused_variables)]
+fn main() {
+    extern crate async_std;
+    extern crate futures;
+    use async_std::{
+        io::BufReader,
+        net::{TcpListener, TcpStream, ToSocketAddrs},
+        prelude::*,
+        task,
+    };
+    use futures::channel::mpsc;
+    use futures::sink::SinkExt;
+    use std::{
+        collections::hash_map::{Entry, HashMap},
+        sync::Arc,
+    };
 
-use async_std::{
-    net::{TcpListener, TcpStream, ToSocketAddrs},
-    io::{prelude::*, BufReader},
-    sync::{Sender, Receiver, channel},
-};
+    type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
+    type Sender<T> = mpsc::UnboundedSender<T>;
+    type Receiver<T> = mpsc::UnboundedReceiver<T>;
 
-pub const BUF_SIZE: usize = 8 * 1024;
+    /// This is the main entrypoint which we will call to start the GDB stub.
+    fn run() -> Result<()> {
+        task::block_on(accept_loop("127.0.0.1:8080"))
+    }
 
-pub struct GdbServer<R, W>
-where
-    R: BufRead,
-    W: Write,
-{
-    pub reader: R,
-    pub writer: W,
-    queue_in: Receiver<CheckedPacket>,
-    queue_out: Sender<CheckedPacket>,
-    parser: Parser,
-}
-
-impl GdbServer<BufReader<&TcpStream>, TcpStream> {
-    pub async fn listen<A>(addr: A) -> Result<Self, Error>
+    /// This method is a helper to spawn a new thread and await the future on that trait.
+    /// If an error occurs during execution it will be logged.
+    fn spawn_and_log_error<F>(future: F) -> task::JoinHandle<()>
     where
-        A: ToSocketAddrs,
+        F: Future<Output = Result<()>> + Send + 'static,
     {
+        task::spawn(async move {
+            if let Err(e) = future.await {
+                eprintln!("{}", e)
+            }
+        })
+    }
+
+    /// This function accepts any incomming connection.
+    async fn accept_loop(addr: impl ToSocketAddrs) -> Result<()> {
         let listener = TcpListener::bind(addr).await?;
 
-        let (writer, _addr) = listener.accept().await?;
-        let reader = BufReader::new(&writer);
-
-        let (s, r) = channel(100);
-
-        Ok(Self::new(reader, writer, s, r))
-    }
-}
-
-// impl<'a> GdbServer<&'a mut &'a [u8], Vec<u8>> {
-//     // pub fn tester(input: &'a mut &'a [u8]) -> Self {
-//     //     Self::new(input, Vec::new())
-//     // }
-
-//     pub fn response(&mut self) -> Vec<u8> {
-//         mem::replace(&mut self.writer, Vec::new())
-//     }
-// }
-
-impl<R, W> GdbServer<R, W>
-where
-    R: BufRead,
-    W: Write,
-{
-    pub fn new(reader: R, writer: W, queue_out: Sender<CheckedPacket>, queue_in: Receiver<CheckedPacket>) -> Self {
-        Self {
-            reader,
-            writer,
-            queue_in,
-            queue_out,
-            parser: Parser::default(),
+        let (broker_sender, broker_receiver) = mpsc::unbounded(); // 1
+        let _broker_handle = task::spawn(broker_loop(broker_receiver));
+        let mut incoming = listener.incoming();
+        while let Some(stream) = incoming.next().await {
+            let stream = stream?;
+            println!("Accepting from: {}", stream.peer_addr()?);
+            spawn_and_log_error(connection_loop(broker_sender.clone(), stream));
         }
+        Ok(())
     }
 
-//     pub fn next_packet(&mut self) -> Result<Option<CheckedPacket>, Error> {
-//         loop {
-//             let buf = self.reader.fill_buf()?;
-//             if buf.is_empty() {
-//                 break Ok(None);
-//             }
+    async fn connection_loop(mut broker: Sender<Event>, stream: TcpStream) -> Result<()> {
+        let stream = Arc::new(stream); // 2
+        let reader = BufReader::new(&*stream);
+        let mut lines = reader.lines();
 
-//             // println!("{:?}", std::str::from_utf8(buf));
-//             let (read, packet) = self.parser.feed(buf)?;
-//             self.reader.consume(read);
+        let name = match lines.next().await {
+            None => Err("peer disconnected immediately")?,
+            Some(line) => line?,
+        };
+        broker
+            .send(Event::NewPeer {
+                name: name.clone(),
+                stream: Arc::clone(&stream),
+            })
+            .await // 3
+            .unwrap();
 
-//             if let Some(packet) = packet {
-//                 break Ok(match packet.kind {
-//                     Kind::Packet => match packet.check() {
-//                         Some(checked) => {
-//                             self.writer.write_all(&[b'+'])?;
-//                             Some(checked)
-//                         }
-//                         None => {
-//                             self.writer.write_all(&[b'-'])?;
-//                             continue; // Retry
-//                         }
-//                     },
-//                     // Protocol specifies notifications should not be checked
-//                     Kind::Notification => packet.check(),
-//                 });
-//             }
-//         }
-//     }
+        while let Some(line) = lines.next().await {
+            let line = line?;
+            let (dest, msg) = match line.find(':') {
+                None => continue,
+                Some(idx) => (&line[..idx], line[idx + 1..].trim()),
+            };
+            let dest: Vec<String> = dest
+                .split(',')
+                .map(|name| name.trim().to_string())
+                .collect();
+            let msg: String = msg.to_string();
 
-//     /// Sends a packet, retrying upon any failed checksum verification
-//     /// on the remote.
-//     pub fn dispatch(&mut self, packet: &CheckedPacket) -> Result<(), Error> {
-//         loop {
-//             // std::io::stdin()
-//             //     .bytes() 
-//             //     .next();
-//             packet.encode(&mut self.writer)?;
-//             self.writer.flush()?;
+            broker
+                .send(Event::Message {
+                    // 4
+                    from: name.clone(),
+                    to: dest,
+                    msg,
+                })
+                .await
+                .unwrap();
+        }
+        Ok(())
+    }
 
-//             // TCP guarantees the order of packets, so theoretically
-//             // '+' or '-' will always be sent directly after a packet
-//             // is received.
-//             let buf = self.reader.fill_buf()?;
-//             match buf.first() {
-//                 Some(b'+') => {
-//                     self.reader.consume(1);
-//                     break;
-//                 },
-//                 Some(b'-') => {
-//                     self.reader.consume(1);
-//                     if packet.is_valid() {
-//                         // Well, ok, not our fault. The packet is
-//                         // definitely valid, let's re-try
-//                         continue;
-//                     } else {
-//                         // Oh... so the user actually tried to send a
-//                         // packet with an invalid checksum. It's very
-//                         // possible that they know what they're doing
-//                         // though, perhaps they thought they disabled
-//                         // the checksum verification. So let's not
-//                         // panic.
-//                         return Err(Error::InvalidChecksum);
-//                     }
-//                 },
-//                 // Never mind... Just... hope for the best?
-//                 _ => break,
-//             }
-//         }
-//         Ok(())
-//     }
-// }
+    async fn connection_writer_loop(
+        mut messages: Receiver<String>,
+        stream: Arc<TcpStream>,
+    ) -> Result<()> {
+        let mut stream = &*stream;
+        while let Some(msg) = messages.next().await {
+            stream.write_all(msg.as_bytes()).await?;
+        }
+        Ok(())
+    }
 
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-//     use gdb_protocol::packet::UncheckedPacket;
+    #[derive(Debug)]
+    enum Event {
+        NewPeer {
+            name: String,
+            stream: Arc<TcpStream>,
+        },
+        Message {
+            from: String,
+            to: Vec<String>,
+            msg: String,
+        },
+    }
 
-//     #[test]
-//     fn it_acknowledges_valid_packets() {
-//         let mut input: &[u8] = b"$packet#78";
-//         let mut tester = GdbServer::tester(&mut input);
-//         assert_eq!(
-//             tester.next_packet().unwrap(),
-//             Some(CheckedPacket::from_data(Kind::Packet, b"packet".to_vec()))
-//         );
-//         assert_eq!(tester.response(), b"+");
-//     }
-//     #[test]
-//     fn it_acknowledges_invalid_packets() {
-//         let mut input: &[u8] = b"$packet#99";
-//         let mut tester = GdbServer::tester(&mut input);
-//         assert_eq!(tester.next_packet().unwrap(), None);
-//         assert_eq!(tester.response(), b"-");
-//     }
-//     #[test]
-//     fn it_ignores_garbage() {
-//         let mut input: &[u8] =
-//             b"<garbage here yada yaya> $packet#13 $packet#37 more garbage $GARBA#GE-- $packet#78";
-//         let mut tester = GdbServer::tester(&mut input);
-//         assert_eq!(
-//             tester.next_packet().unwrap(),
-//             Some(CheckedPacket::from_data(Kind::Packet, b"packet".to_vec()))
-//         );
-//         assert_eq!(tester.response(), b"---+");
-//     }
-//     #[test]
-//     fn it_dispatches() {
-//         let mut input: &[u8] = b"";
-//         let mut tester = GdbServer::tester(&mut input);
-//         tester.dispatch(&CheckedPacket::from_data(Kind::Packet, b"hOi!!".to_vec())).unwrap();
-//         assert_eq!(tester.response(), b"$hOi!!#62");
-//     }
-//     #[test]
-//     fn it_resends() {
-//         let mut input: &[u8] = b"-+";
-//         let mut tester = GdbServer::tester(&mut input);
-//         tester.dispatch(&CheckedPacket::from_data(Kind::Packet, b"IMBATMAN".to_vec())).unwrap();
-//         assert_eq!(tester.response(), b"$IMBATMAN#49$IMBATMAN#49");
-//     }
-//     #[test]
-//     fn it_complains_when_the_user_lies() {
-//         let mut input: &[u8] = b"-";
-//         let mut tester = GdbServer::tester(&mut input);
-//         let result = tester.dispatch(&CheckedPacket::assume_checked(UncheckedPacket {
-//             kind: Kind::Packet,
-//             data: b"This sentence is false. (dontthinkaboutitdontthinkaboutit)".to_vec(),
-//             checksum: *b"FF",
-//         }));
-//         if let Err(Error::InvalidChecksum) = result {
-//         } else {
-//             panic!("Expected error InvalidChecksum, got {:?}", result);
-//         }
-//         // It will still send once, just in case the user has disabled checksum verification
-//         assert_eq!(tester.response(), b"$This sentence is false. (dontthinkaboutitdontthinkaboutit)#FF".to_vec());
-//     }
+    /// The transmitter loop handles any messages that are outbound.
+    /// It will take care of delivering any message to GDB reliably.
+    /// This means that it also handles retransmission and ACKs.
+    async fn broker_loop(mut events: Receiver<Event>) -> Result<()> {
+        let mut peers: HashMap<String, Sender<String>> = HashMap::new();
+
+        while let Some(event) = events.next().await {
+            match event {
+                Event::Message { from, to, msg } => {
+                    for addr in to {
+                        if let Some(peer) = peers.get_mut(&addr) {
+                            let msg = format!("from {}: {}\n", from, msg);
+                            peer.send(msg).await?
+                        }
+                    }
+                }
+                Event::NewPeer { name, stream } => {
+                    match peers.entry(name) {
+                        Entry::Occupied(..) => (),
+                        Entry::Vacant(entry) => {
+                            let (client_sender, client_receiver) = mpsc::unbounded();
+                            entry.insert(client_sender); // 4
+                            spawn_and_log_error(connection_writer_loop(client_receiver, stream));
+                            // 5
+                        }
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
 }

@@ -30,20 +30,13 @@ impl GdbServer<BufReader<TcpStream>, TcpStream> {
         let listener = TcpListener::bind(addr)?;
 
         let (writer, _addr) = listener.accept()?;
-        writer.set_nonblocking(true);
+        writer.set_nonblocking(true)?;
         let reader = BufReader::new(writer.try_clone()?);
 
         Ok(Self::new(reader, writer))
     }
 }
-impl<'a> GdbServer<&'a mut &'a [u8], Vec<u8>> {
-    pub fn tester(input: &'a mut &'a [u8]) -> Self {
-        Self::new(input, Vec::new())
-    }
-    pub fn response(&mut self) -> Vec<u8> {
-        mem::replace(&mut self.writer, Vec::new())
-    }
-}
+
 impl<R, W> GdbServer<R, W>
 where
     R: BufRead,
@@ -90,12 +83,12 @@ where
     /// Sends a packet, retrying upon any failed checksum verification
     /// on the remote.
     pub fn dispatch(&mut self, packet: &CheckedPacket) -> Result<(), Error> {
-            packet.encode(&mut self.writer)?;
-            self.writer.flush()?;
-            
-            loop {
+        packet.encode(&mut self.writer)?;
+        self.writer.flush()?;
+
+        loop {
             // std::io::stdin()
-            //     .bytes() 
+            //     .bytes()
             //     .next();
 
             // TCP guarantees the order of packets, so theoretically
@@ -106,7 +99,7 @@ where
                 Some(b'+') => {
                     self.reader.consume(1);
                     break;
-                },
+                }
                 Some(b'-') => {
                     self.reader.consume(1);
                     if packet.is_valid() {
@@ -122,7 +115,7 @@ where
                         // panic.
                         return Err(Error::InvalidChecksum);
                     }
-                },
+                }
                 // Never mind... Just... hope for the best?
                 _ => break,
             }
@@ -135,6 +128,15 @@ where
 mod tests {
     use super::*;
     use gdb_protocol::packet::UncheckedPacket;
+
+    impl<'a> GdbServer<&'a mut &'a [u8], Vec<u8>> {
+        pub fn tester(input: &'a mut &'a [u8]) -> Self {
+            Self::new(input, Vec::new())
+        }
+        pub fn response(&mut self) -> Vec<u8> {
+            mem::replace(&mut self.writer, Vec::new())
+        }
+    }
 
     #[test]
     fn it_acknowledges_valid_packets() {
@@ -168,14 +170,21 @@ mod tests {
     fn it_dispatches() {
         let mut input: &[u8] = b"";
         let mut tester = GdbServer::tester(&mut input);
-        tester.dispatch(&CheckedPacket::from_data(Kind::Packet, b"hOi!!".to_vec())).unwrap();
+        tester
+            .dispatch(&CheckedPacket::from_data(Kind::Packet, b"hOi!!".to_vec()))
+            .unwrap();
         assert_eq!(tester.response(), b"$hOi!!#62");
     }
     #[test]
     fn it_resends() {
         let mut input: &[u8] = b"-+";
         let mut tester = GdbServer::tester(&mut input);
-        tester.dispatch(&CheckedPacket::from_data(Kind::Packet, b"IMBATMAN".to_vec())).unwrap();
+        tester
+            .dispatch(&CheckedPacket::from_data(
+                Kind::Packet,
+                b"IMBATMAN".to_vec(),
+            ))
+            .unwrap();
         assert_eq!(tester.response(), b"$IMBATMAN#49$IMBATMAN#49");
     }
     #[test]
@@ -192,6 +201,9 @@ mod tests {
             panic!("Expected error InvalidChecksum, got {:?}", result);
         }
         // It will still send once, just in case the user has disabled checksum verification
-        assert_eq!(tester.response(), b"$This sentence is false. (dontthinkaboutitdontthinkaboutit)#FF".to_vec());
+        assert_eq!(
+            tester.response(),
+            b"$This sentence is false. (dontthinkaboutitdontthinkaboutit)#FF".to_vec()
+        );
     }
 }
