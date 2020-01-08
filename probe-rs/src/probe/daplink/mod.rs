@@ -31,8 +31,10 @@ use commands::{
     Status,
 };
 
+use std::sync::{Mutex};
+
 pub struct DAPLink {
-    pub device: hidapi::HidDevice,
+    pub device: Mutex<hidapi::HidDevice>,
     _hw_version: u8,
     _jtag_version: u8,
     _protocol: WireProtocol,
@@ -44,7 +46,7 @@ pub struct DAPLink {
 impl DAPLink {
     pub fn new_from_device(device: hidapi::HidDevice) -> Self {
         Self {
-            device,
+            device: Mutex::new(device),
             _hw_version: 0,
             _jtag_version: 0,
             _protocol: WireProtocol::Swd,
@@ -53,10 +55,10 @@ impl DAPLink {
         }
     }
 
-    fn set_swj_clock(&self, clock: u32) -> Result<(), DebugProbeError> {
+    fn set_swj_clock(&mut self, clock: u32) -> Result<(), DebugProbeError> {
         use commands::Error;
         commands::send_command::<SWJClockRequest, SWJClockResponse>(
-            &self.device,
+            &mut self.device,
             SWJClockRequest(clock),
         )
         .and_then(|v| match v {
@@ -66,9 +68,9 @@ impl DAPLink {
         Ok(())
     }
 
-    fn transfer_configure(&self, request: ConfigureRequest) -> Result<(), DebugProbeError> {
+    fn transfer_configure(&mut self, request: ConfigureRequest) -> Result<(), DebugProbeError> {
         use commands::Error;
-        commands::send_command::<ConfigureRequest, ConfigureResponse>(&self.device, request)
+        commands::send_command::<ConfigureRequest, ConfigureResponse>(&mut self.device, request)
             .and_then(|v| match v {
                 ConfigureResponse(Status::DAPOk) => Ok(()),
                 ConfigureResponse(Status::DAPError) => Err(Error::DAP),
@@ -77,13 +79,13 @@ impl DAPLink {
     }
 
     fn configure_swd(
-        &self,
+        &mut self,
         request: swd::configure::ConfigureRequest,
     ) -> Result<(), DebugProbeError> {
         use commands::Error;
 
         commands::send_command::<swd::configure::ConfigureRequest, swd::configure::ConfigureResponse>(
-            &self.device,
+            &mut self.device,
             request
         )
         .and_then(|v| match v {
@@ -93,14 +95,14 @@ impl DAPLink {
         Ok(())
     }
 
-    fn send_swj_sequences(&self, request: SequenceRequest) -> Result<(), DebugProbeError> {
+    fn send_swj_sequences(&mut self, request: SequenceRequest) -> Result<(), DebugProbeError> {
         /* 12 38 FF FF FF FF FF FF FF -> 12 00 // SWJ Sequence
         12 10 9E E7 -> 12 00 // SWJ Sequence
         12 38 FF FF FF FF FF FF FF -> 12 00 // SWJ Sequence */
         //let sequence_1 = SequenceRequest::new(&[0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF]);
         use commands::Error;
 
-        commands::send_command::<SequenceRequest, SequenceResponse>(&self.device, request)
+        commands::send_command::<SequenceRequest, SequenceResponse>(&mut self.device, request)
             .and_then(|v| match v {
                 SequenceResponse(Status::DAPOk) => Ok(()),
                 SequenceResponse(Status::DAPError) => Err(Error::DAP),
@@ -160,8 +162,8 @@ impl DebugProbe for DAPLink {
         use commands::Error;
 
         // get information about the daplink
-        let PacketCount(packet_count) = commands::send_command(&self.device, Command::PacketCount)?;
-        let PacketSize(packet_size) = commands::send_command(&self.device, Command::PacketSize)?;
+        let PacketCount(packet_count) = commands::send_command(&mut self.device, Command::PacketCount)?;
+        let PacketSize(packet_size) = commands::send_command(&mut self.device, Command::PacketSize)?;
 
         self.packet_count = Some(packet_count);
         self.packet_size = Some(packet_size);
@@ -180,7 +182,7 @@ impl DebugProbe for DAPLink {
             ConnectRequest::UseDefaultPort
         };
 
-        let result = commands::send_command(&self.device, protocol).and_then(|v| match v {
+        let result = commands::send_command(&mut self.device, protocol).and_then(|v| match v {
             ConnectResponse::SuccessfulInitForSWD => Ok(WireProtocol::Swd),
             ConnectResponse::SuccessfulInitForJTAG => Ok(WireProtocol::Jtag),
             ConnectResponse::InitFailed => Err(Error::DAP),
@@ -261,7 +263,7 @@ impl DebugProbe for DAPLink {
 
     /// Leave debug mode.
     fn detach(&mut self) -> Result<(), DebugProbeError> {
-        commands::send_command(&self.device, DisconnectRequest {})
+        commands::send_command(&mut self.device, DisconnectRequest {})
             .map_err(|_| DebugProbeError::USBError)
             .and_then(|v: DisconnectResponse| match v {
                 DisconnectResponse(Status::DAPOk) => Ok(()),
@@ -271,7 +273,7 @@ impl DebugProbe for DAPLink {
 
     /// Asserts the nRESET pin.
     fn target_reset(&mut self) -> Result<(), DebugProbeError> {
-        commands::send_command(&self.device, ResetRequest).map(|v: ResetResponse| {
+        commands::send_command(&mut self.device, ResetRequest).map(|v: ResetResponse| {
             log::info!("Target reset response: {:?}", v);
         })?;
         Ok(())
@@ -287,7 +289,7 @@ impl DAPAccess for DAPLink {
         };
 
         commands::send_command::<TransferRequest, TransferResponse>(
-            &self.device,
+            &mut self.device,
             TransferRequest::new(InnerTransferRequest::new(port, RW::R, addr as u8), 0),
         )
         .map_err(|_| DebugProbeError::UnknownError)
@@ -315,7 +317,7 @@ impl DAPAccess for DAPLink {
         };
 
         commands::send_command::<TransferRequest, TransferResponse>(
-            &self.device,
+            &mut self.device,
             TransferRequest::new(InnerTransferRequest::new(port, RW::W, addr as u8), value),
         )
         .map_err(|_| DebugProbeError::UnknownError)
@@ -366,7 +368,7 @@ impl DAPAccess for DAPLink {
 
             debug!("Transfer block: chunk={}, len={} bytes", i, chunk.len() * 4);
 
-            let resp: TransferBlockResponse = commands::send_command(&self.device, request)
+            let resp: TransferBlockResponse = commands::send_command(&mut self.device, request)
                 .map_err(|_| DebugProbeError::UnknownError)?;
 
             assert_eq!(resp.transfer_response, 1);
@@ -409,7 +411,7 @@ impl DAPAccess for DAPLink {
 
             debug!("Transfer block: chunk={}, len={} bytes", i, chunk.len() * 4);
 
-            let resp: TransferBlockResponse = commands::send_command(&self.device, request)
+            let resp: TransferBlockResponse = commands::send_command(&mut self.device, request)
                 .map_err(|_| DebugProbeError::UnknownError)?;
 
             assert_eq!(resp.transfer_response, 1);
