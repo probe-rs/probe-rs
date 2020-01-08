@@ -19,6 +19,7 @@ cargo-project = "0.2.2"
 failure = "0.1.5"
 colored = "1.8.0"
 probe-rs = { path = "../probe-rs", version = "0.3.0" }
+gdb-server = { path = "../gdb-server", version = "0.3.0" }
 indicatif = "0.13.0"
 console = "0.9.1"
 gdb-protocol = { version = "0.1.0" }
@@ -27,4 +28,3 @@ serde = "1.0.1"
 async-std = { version = "1.4.0", features = ["unstable"] }
 futures = "*"
 log = "0.4.0"
-memchr = "2.2.1"

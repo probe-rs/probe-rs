@@ -1,7 +1,3 @@
-#![recursion_limit = "256"]
-
-mod gdb_server;
-
 use structopt;
 
 use colored::*;
@@ -401,7 +397,9 @@ fn main_try() -> Result<(), failure::Error> {
             "Firing up GDB stub at {}",
             gdb_connection_string.as_ref().unwrap()
         );
-        if let Err(e) = gdb_server::run(gdb_connection_string, Arc::new(Mutex::new(session))) {
+        if let Err(e) =
+            probe_rs_gdb_server::run(gdb_connection_string, Arc::new(Mutex::new(session)))
+        {
             eprintln!("During the execution of GDB an error was encountered:");
             eprintln!("{:?}", e);
         }
