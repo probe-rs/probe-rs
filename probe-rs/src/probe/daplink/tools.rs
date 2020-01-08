@@ -30,7 +30,7 @@ pub fn is_daplink_device(device: &hidapi::HidDeviceInfo) -> bool {
     }
 }
 
-pub fn read_status(device: &hidapi::HidDevice) {
+pub fn read_status(device: &mut std::sync::Mutex<hidapi::HidDevice>) {
     let vendor_id: super::commands::general::info::VendorID =
         super::commands::send_command(device, super::commands::general::info::Command::VendorID)
             .unwrap();

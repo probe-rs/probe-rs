@@ -78,7 +78,7 @@ impl From<hidapi::HidError> for Error {
 }
 
 pub(crate) fn send_command<Req: Request, Res: Response>(
-    device: &hidapi::HidDevice,
+    device: &mut std::sync::Mutex<hidapi::HidDevice>,
     request: Req,
 ) -> Result<Res> {
     const BUFFER_LEN: usize = 100;
@@ -95,13 +95,13 @@ pub(crate) fn send_command<Req: Request, Res: Response>(
     // this should be read from the USB HID Record
     size = std::cmp::max(size, 64);
 
-    device.write(&write_buffer[..size])?;
+    device.get_mut().unwrap().write(&write_buffer[..size])?;
     log::trace!("Send buffer: {:02X?}", &write_buffer[..size]);
 
     // Read back resonse.
     // TODO: Error handling & real USB reading.
     let mut read_buffer = [0; BUFFER_LEN];
-    device.read(&mut read_buffer)?;
+    device.get_mut().unwrap().read(&mut read_buffer)?;
     log::trace!("Receive buffer: {:02X?}", &read_buffer[..]);
     if read_buffer[0] == *Req::CATEGORY {
         Res::from_bytes(&read_buffer, 1)

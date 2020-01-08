@@ -520,7 +520,7 @@ impl MI for MasterProbe {
     }
 }
 
-pub trait DebugProbe: DAPAccess {
+pub trait DebugProbe: DAPAccess + Send + Sync {
     fn new_from_probe_info(info: &DebugProbeInfo) -> Result<Box<Self>, DebugProbeError>
     where
         Self: Sized;

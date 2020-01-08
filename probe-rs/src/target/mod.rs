@@ -51,7 +51,7 @@ pub struct CoreInformation {
     pub pc: u32,
 }
 
-pub trait Core: std::fmt::Debug + dyn_clone::DynClone {
+pub trait Core: std::fmt::Debug + dyn_clone::DynClone + Sync + Send {
     /// Wait until the core is halted. If the core does not halt on its own,
     /// a [`DebugProbeError::Timeout`] error will be returned.
     ///
