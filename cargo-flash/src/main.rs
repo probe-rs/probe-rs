@@ -15,7 +15,7 @@ use structopt::StructOpt;
 use probe_rs::{
     config::registry::{Registry, SelectionStrategy},
     coresight::access_ports::AccessPortError,
-    flash::download::{download_file_with_progress_reporting, Format},
+    flash::download::{download_file, download_file_with_progress_reporting, Format},
     flash::{FlashProgress, ProgressEvent},
     probe::{
         daplink, stlink, DebugProbe, DebugProbeError, DebugProbeType, MasterProbe, WireProtocol,
@@ -38,6 +38,8 @@ struct Opt {
     nrf_recover: bool,
     #[structopt(name = "list-chips", long = "list-chips")]
     list_chips: bool,
+    #[structopt(name = "disable-progressbars", long = "disable-progressbars")]
+    disable_progressbars: bool,
 
     // `cargo build` arguments
     #[structopt(name = "binary", long = "bin")]
@@ -125,6 +127,14 @@ fn main_try() -> Result<(), failure::Error> {
 
     // Remove possible `-c=<chip description path>` arguments as cargo build does not understand it.
     if let Some(index) = args.iter().position(|x| x.starts_with("-c=")) {
+        args.remove(index);
+    }
+
+    // Remove possible `--disable-progressbars` argument as cargo build does not understand it.
+    if let Some(index) = args
+        .iter()
+        .position(|x| x.starts_with("--disable-progressbars"))
+    {
         args.remove(index);
     }
 
@@ -231,77 +241,87 @@ fn main_try() -> Result<(), failure::Error> {
 
     let mm = session.target.memory_map.clone();
 
-    // Create progress bars.
-    let multi_progress = indicatif::MultiProgress::new(); //with_draw_target(indicatif::ProgressDrawTarget::stdout_nohz());
-    let style = indicatif::ProgressStyle::default_bar()
-            .tick_chars("⠁⠁⠉⠙⠚⠒⠂⠂⠒⠲⠴⠤⠄⠄⠤⠠⠠⠤⠦⠖⠒⠐⠐⠒⠓⠋⠉⠈⠈✔")
-            .progress_chars("##-")
-            .template("    {msg:.green.bold} {spinner} [{elapsed_precise}] [{wide_bar}] {bytes:>8}/{total_bytes:>8} @ {bytes_per_sec:>10} (eta {eta:3})");
+    if !opt.disable_progressbars {
+        // Create progress bars.
+        let multi_progress = indicatif::MultiProgress::new(); //with_draw_target(indicatif::ProgressDrawTarget::stdout_nohz());
+        let style = indicatif::ProgressStyle::default_bar()
+                .tick_chars("⠁⠁⠉⠙⠚⠒⠂⠂⠒⠲⠴⠤⠄⠄⠤⠠⠠⠤⠦⠖⠒⠐⠐⠒⠓⠋⠉⠈⠈✔")
+                .progress_chars("##-")
+                .template("    {msg:.green.bold} {spinner} [{elapsed_precise}] [{wide_bar}] {bytes:>8}/{total_bytes:>8} @ {bytes_per_sec:>10} (eta {eta:3})");
 
-    // Create a new progress bar for the erase progress.
-    let erase_progress = multi_progress.add(indicatif::ProgressBar::new(0));
-    erase_progress.set_style(style.clone());
-    erase_progress.set_message("Erasing sectors  ");
+        // Create a new progress bar for the erase progress.
+        let erase_progress = multi_progress.add(indicatif::ProgressBar::new(0));
+        erase_progress.set_style(style.clone());
+        erase_progress.set_message("Erasing sectors  ");
 
-    // Create a new progress bar for the program progress.
-    let program_progress = multi_progress.add(indicatif::ProgressBar::new(0));
-    program_progress.set_style(style);
-    program_progress.set_message("Programming pages");
+        // Create a new progress bar for the program progress.
+        let program_progress = multi_progress.add(indicatif::ProgressBar::new(0));
+        program_progress.set_style(style);
+        program_progress.set_message("Programming pages");
 
-    // Register callback to update the progress.
-    let progress = FlashProgress::new(move |event| {
-        use ProgressEvent::*;
-        match event {
-            Initialized {
-                total_pages,
-                total_sectors,
-                sector_size,
-                page_size,
-            } => {
-                erase_progress.set_length(total_sectors as u64 * sector_size as u64);
-                program_progress.set_length(total_pages as u64 * page_size as u64);
+        // Register callback to update the progress.
+        let progress = FlashProgress::new(move |event| {
+            use ProgressEvent::*;
+            match event {
+                Initialized {
+                    total_pages,
+                    total_sectors,
+                    sector_size,
+                    page_size,
+                } => {
+                    erase_progress.set_length(total_sectors as u64 * sector_size as u64);
+                    program_progress.set_length(total_pages as u64 * page_size as u64);
+                }
+                StartedFlashing => {
+                    program_progress.enable_steady_tick(100);
+                    program_progress.reset_elapsed();
+                }
+                StartedErasing => {
+                    erase_progress.enable_steady_tick(100);
+                    erase_progress.reset_elapsed();
+                }
+                PageFlashed { size, .. } => {
+                    program_progress.inc(size as u64);
+                }
+                SectorErased { size, .. } => {
+                    erase_progress.inc(size as u64);
+                }
+                FinishedErasing => {
+                    erase_progress.finish();
+                }
+                FinishedProgramming => {
+                    program_progress.finish();
+                }
             }
-            StartedFlashing => {
-                program_progress.enable_steady_tick(100);
-                program_progress.reset_elapsed();
-            }
-            StartedErasing => {
-                erase_progress.enable_steady_tick(100);
-                erase_progress.reset_elapsed();
-            }
-            PageFlashed { size, .. } => {
-                program_progress.inc(size as u64);
-            }
-            SectorErased { size, .. } => {
-                erase_progress.inc(size as u64);
-            }
-            FinishedErasing => {
-                erase_progress.finish();
-            }
-            FinishedProgramming => {
-                program_progress.finish();
-            }
-        }
-    });
+        });
 
-    // Make the multi progresses print.
-    // indicatif requires this in a separate thread as this join is a blocking op,
-    // but is required for printing multiprogress.
-    let progress_thread_handle = std::thread::spawn(move || {
-        multi_progress.join().unwrap();
-    });
+        // Make the multi progresses print.
+        // indicatif requires this in a separate thread as this join is a blocking op,
+        // but is required for printing multiprogress.
+        let progress_thread_handle = std::thread::spawn(move || {
+            multi_progress.join().unwrap();
+        });
 
-    download_file_with_progress_reporting(
-        &mut session,
-        std::path::Path::new(&path_str.to_string().as_str()),
-        Format::Elf,
-        &mm,
-        &progress,
-    )
-    .map_err(|e| format_err!("failed to flash {}: {}", path_str, e))?;
+        download_file_with_progress_reporting(
+            &mut session,
+            std::path::Path::new(&path_str.to_string().as_str()),
+            Format::Elf,
+            &mm,
+            &progress,
+        )
+        .map_err(|e| format_err!("failed to flash {}: {}", path_str, e))?;
 
-    // We don't care if we cannot join this thread.
-    let _ = progress_thread_handle.join();
+        // We don't care if we cannot join this thread.
+        let _ = progress_thread_handle.join();
+    } else {
+        download_file(
+            &mut session,
+            std::path::Path::new(&path_str.to_string().as_str()),
+            Format::Elf,
+            &mm,
+        )
+        .map_err(|e| format_err!("failed to flash {}: {}", path_str, e))?;
+    }
 
     // Stop timer.
     let elapsed = instant.elapsed();
