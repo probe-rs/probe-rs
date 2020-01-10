@@ -15,7 +15,7 @@ use structopt::StructOpt;
 use probe_rs::{
     config::registry::{Registry, SelectionStrategy},
     coresight::access_ports::AccessPortError,
-    flash::download::{download_file_with_progress_reporting, Format},
+    flash::download::{download_file_with_progress_reporting, download_file, Format},
     flash::{FlashProgress, ProgressEvent},
     probe::{
         daplink, stlink, DebugProbe, DebugProbeError, DebugProbeType, MasterProbe, WireProtocol,
@@ -232,76 +232,76 @@ fn main_try() -> Result<(), failure::Error> {
     let mm = session.target.memory_map.clone();
 
     // Create progress bars.
-    let multi_progress = indicatif::MultiProgress::new(); //with_draw_target(indicatif::ProgressDrawTarget::stdout_nohz());
-    let style = indicatif::ProgressStyle::default_bar()
-            .tick_chars("⠁⠁⠉⠙⠚⠒⠂⠂⠒⠲⠴⠤⠄⠄⠤⠠⠠⠤⠦⠖⠒⠐⠐⠒⠓⠋⠉⠈⠈✔")
-            .progress_chars("##-")
-            .template("    {msg:.green.bold} {spinner} [{elapsed_precise}] [{wide_bar}] {bytes:>8}/{total_bytes:>8} @ {bytes_per_sec:>10} (eta {eta:3})");
+    // let multi_progress = indicatif::MultiProgress::new(); //with_draw_target(indicatif::ProgressDrawTarget::stdout_nohz());
+    // let style = indicatif::ProgressStyle::default_bar()
+    //         .tick_chars("⠁⠁⠉⠙⠚⠒⠂⠂⠒⠲⠴⠤⠄⠄⠤⠠⠠⠤⠦⠖⠒⠐⠐⠒⠓⠋⠉⠈⠈✔")
+    //         .progress_chars("##-")
+    //         .template("    {msg:.green.bold} {spinner} [{elapsed_precise}] [{wide_bar}] {bytes:>8}/{total_bytes:>8} @ {bytes_per_sec:>10} (eta {eta:3})");
 
-    // Create a new progress bar for the erase progress.
-    let erase_progress = multi_progress.add(indicatif::ProgressBar::new(0));
-    erase_progress.set_style(style.clone());
-    erase_progress.set_message("Erasing sectors  ");
+    // // Create a new progress bar for the erase progress.
+    // let erase_progress = multi_progress.add(indicatif::ProgressBar::new(0));
+    // erase_progress.set_style(style.clone());
+    // erase_progress.set_message("Erasing sectors  ");
 
-    // Create a new progress bar for the program progress.
-    let program_progress = multi_progress.add(indicatif::ProgressBar::new(0));
-    program_progress.set_style(style);
-    program_progress.set_message("Programming pages");
+    // // Create a new progress bar for the program progress.
+    // let program_progress = multi_progress.add(indicatif::ProgressBar::new(0));
+    // program_progress.set_style(style);
+    // program_progress.set_message("Programming pages");
 
     // Register callback to update the progress.
-    let progress = FlashProgress::new(move |event| {
-        use ProgressEvent::*;
-        match event {
-            Initialized {
-                total_pages,
-                total_sectors,
-                sector_size,
-                page_size,
-            } => {
-                erase_progress.set_length(total_sectors as u64 * sector_size as u64);
-                program_progress.set_length(total_pages as u64 * page_size as u64);
-            }
-            StartedFlashing => {
-                program_progress.enable_steady_tick(100);
-                program_progress.reset_elapsed();
-            }
-            StartedErasing => {
-                erase_progress.enable_steady_tick(100);
-                erase_progress.reset_elapsed();
-            }
-            PageFlashed { size, .. } => {
-                program_progress.inc(size as u64);
-            }
-            SectorErased { size, .. } => {
-                erase_progress.inc(size as u64);
-            }
-            FinishedErasing => {
-                erase_progress.finish();
-            }
-            FinishedProgramming => {
-                program_progress.finish();
-            }
-        }
-    });
+    // let progress = FlashProgress::new(move |event| {
+    //     use ProgressEvent::*;
+    //     match event {
+    //         Initialized {
+    //             total_pages,
+    //             total_sectors,
+    //             sector_size,
+    //             page_size,
+    //         } => {
+    //             erase_progress.set_length(total_sectors as u64 * sector_size as u64);
+    //             program_progress.set_length(total_pages as u64 * page_size as u64);
+    //         }
+    //         StartedFlashing => {
+    //             program_progress.enable_steady_tick(100);
+    //             program_progress.reset_elapsed();
+    //         }
+    //         StartedErasing => {
+    //             erase_progress.enable_steady_tick(100);
+    //             erase_progress.reset_elapsed();
+    //         }
+    //         PageFlashed { size, .. } => {
+    //             program_progress.inc(size as u64);
+    //         }
+    //         SectorErased { size, .. } => {
+    //             erase_progress.inc(size as u64);
+    //         }
+    //         FinishedErasing => {
+    //             erase_progress.finish();
+    //         }
+    //         FinishedProgramming => {
+    //             program_progress.finish();
+    //         }
+    //     }
+    // });
 
-    // Make the multi progresses print.
-    // indicatif requires this in a separate thread as this join is a blocking op,
-    // but is required for printing multiprogress.
-    let progress_thread_handle = std::thread::spawn(move || {
-        multi_progress.join().unwrap();
-    });
+    // // Make the multi progresses print.
+    // // indicatif requires this in a separate thread as this join is a blocking op,
+    // // but is required for printing multiprogress.
+    // let progress_thread_handle = std::thread::spawn(move || {
+    //     multi_progress.join().unwrap();
+    // });
 
-    download_file_with_progress_reporting(
+    download_file(
         &mut session,
         std::path::Path::new(&path_str.to_string().as_str()),
         Format::Elf,
         &mm,
-        &progress,
+        // &progress,
     )
     .map_err(|e| format_err!("failed to flash {}: {}", path_str, e))?;
 
     // We don't care if we cannot join this thread.
-    let _ = progress_thread_handle.join();
+    // let _ = progress_thread_handle.join();
 
     // Stop timer.
     let elapsed = instant.elapsed();
