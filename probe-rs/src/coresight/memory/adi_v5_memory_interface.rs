@@ -548,11 +548,10 @@ impl ADIMemoryInterface {
 
         let pre_bytes = usize::min(data.len(), ((4 - (address % 4)) % 4) as usize);
         let aligned_address = address + pre_bytes as u32;
-        let pre_address = aligned_address - 4;
         let post_bytes = (data.len() - pre_bytes) % 4;
-        let post_address = address + (data.len() - post_bytes) as u32;
 
         if pre_bytes != 0 {
+            let pre_address = aligned_address - 4;
             let mut pre_data = self.read32(debug_port, pre_address)?;
             for (i, shift) in (4 - pre_bytes..4).enumerate() {
                 pre_data &= !(0xFF << (shift * 8));
@@ -573,6 +572,7 @@ impl ADIMemoryInterface {
         )?;
 
         if post_bytes != 0 {
+            let post_address = address + (data.len() - post_bytes) as u32;
             let mut post_data = self.read32(debug_port, post_address)?;
 
             dbg!(post_bytes);
