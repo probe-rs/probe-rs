@@ -463,7 +463,13 @@ impl Core for M4 {
 
         let reg = FpCtrl::from(raw_val);
 
-        Ok(reg.num_code())
+        // We currently only support revision 0 of the FPBU, so we return an error
+        if reg.rev() == 0 {
+            Ok(reg.num_code())
+        } else {
+            log::warn!("This chip uses FPBU revision {}, which is not yet supported. HW breakpoints are not available.", reg.rev());
+            Err(DebugProbeError::UnknownError)
+        }
     }
 
     fn enable_breakpoints(&self, mi: &mut MasterProbe, state: bool) -> Result<(), DebugProbeError> {
