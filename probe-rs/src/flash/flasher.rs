@@ -2,7 +2,7 @@ use super::builder::FlashBuilder;
 use super::FlashProgress;
 use crate::config::{
     flash_algorithm::FlashAlgorithm,
-    memory::{FlashRegion, MemoryRange},
+    memory::{FlashRegion, MemoryRange, SectorInfo},
     target::Target,
 };
 use crate::coresight::{access_ports::AccessPortError, memory::MI};
@@ -104,6 +104,12 @@ impl<'a> Flasher<'a> {
         &self.region
     }
 
+    /// Returns the necessary information about the sector which `address` resides in
+    /// if the address is inside the flash region.
+    pub fn sector_info(&self, address: u32) -> Option<SectorInfo> {
+        self.flash_algorithm.sector_info(self.region(), address)
+    }
+
     pub fn flash_algorithm(&self) -> &FlashAlgorithm {
         &self.flash_algorithm
     }
@@ -150,7 +156,7 @@ impl<'a> Flasher<'a> {
             .unwrap();
 
         for instruction in instructions.iter() {
-            log::debug!("{}", instruction);
+            log::trace!("{}", instruction);
         }
 
         if address.is_none() {

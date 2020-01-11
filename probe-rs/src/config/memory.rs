@@ -5,26 +5,12 @@ use core::ops::Range;
 pub struct FlashRegion {
     pub range: Range<u32>,
     pub is_boot_memory: bool,
-    pub sector_size: u32,
     pub page_size: u32,
+    pub sector_size: u32,
     pub erased_byte_value: u8,
 }
 
 impl FlashRegion {
-    /// Returns the necessary information about the sector which `address` resides in
-    /// if the address is inside the flash region.
-    pub fn sector_info(&self, address: u32) -> Option<SectorInfo> {
-        if !self.range.contains(&address) {
-            return None;
-        }
-
-        Some(SectorInfo {
-            base_address: address - (address % self.sector_size),
-            page_size: self.page_size,
-            size: self.sector_size,
-        })
-    }
-
     /// Returns the necessary information about the page which `address` resides in
     /// if the address is inside the flash region.
     pub fn page_info(&self, address: u32) -> Option<PageInfo> {
@@ -69,12 +55,25 @@ pub struct GenericRegion {
     pub range: Range<u32>,
 }
 
-/// Holds information about a flash sector.
-#[derive(Debug, Copy, Clone)]
+/// Holds information about a sepcific flash sector.
+#[derive(Debug, Copy, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SectorInfo {
     pub base_address: u32,
     pub page_size: u32,
     pub size: u32,
+}
+
+/// Holds information about a sepcific flash sector.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct SectorDescription {
+    pub size: u32,
+    pub count: u32,
+}
+
+impl SectorDescription {
+    pub fn total_size(&self) -> u32 {
+        self.size * self.count
+    }
 }
 
 /// Holds information about a page in flash.
@@ -111,7 +110,7 @@ impl MemoryRange for Range<u32> {
     }
 }
 
-/// Decalares the type of a memory region.
+/// Declares the type of a memory region.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum MemoryRegion {
     Ram(RamRegion),
