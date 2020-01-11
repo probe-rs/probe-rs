@@ -1,0 +1,20 @@
+[package]
+name = "probe-rs-t2rust"
+version = "0.1.0"
+authors = ["Dominik Boehi <dominik.boehi@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[[bin]]
+name = "probe-rs-t2rust"
+path = "src/bin.rs"
+
+[lib]
+name = "probe_rs_t2rust"
+path = "src/lib.rs"
+
+[dependencies]
+quote = "1.0.2"
+serde_yaml = "0.8.11"
+proc-macro2 = "1.0.4"
