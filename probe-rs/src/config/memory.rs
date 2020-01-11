@@ -67,13 +67,7 @@ pub struct SectorInfo {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct SectorDescription {
     pub size: u32,
-    pub count: u32,
-}
-
-impl SectorDescription {
-    pub fn total_size(&self) -> u32 {
-        self.size * self.count
-    }
+    pub address: u32,
 }
 
 /// Holds information about a page in flash.

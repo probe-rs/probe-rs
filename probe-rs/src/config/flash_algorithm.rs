@@ -41,24 +41,17 @@ impl FlashAlgorithm {
             return None;
         }
 
-        let mut current_address = region.range.start;
+        let containing_sector = dbg!(self.sectors.iter().rfind(|s| s.address <= address))?;
 
-        for sd in &self.sectors {
-            if address < current_address + sd.total_size() {
-                // We found the correct group of sectors
-                let sector_index = (address - current_address) / sd.size;
+        let sector_index = (address - containing_sector.address) / containing_sector.size;
 
-                return Some(SectorInfo {
-                    base_address: current_address + sector_index * sd.size,
-                    page_size: region.page_size,
-                    size: sd.size,
-                });
-            }
+        let sector_address = containing_sector.address + sector_index * containing_sector.size;
 
-            current_address += sd.total_size()
-        }
-
-        None
+        Some(SectorInfo {
+            base_address: sector_address,
+            size: containing_sector.size,
+            page_size: region.page_size,
+        })
     }
 }
 
@@ -169,7 +162,7 @@ fn flash_sector_single_size() {
     let config = FlashAlgorithm {
         sectors: vec![SectorDescription {
             size: 0x100,
-            count: 0x10,
+            address: 0x1000,
         }],
         ..Default::default()
     };
@@ -202,7 +195,7 @@ fn flash_sector_single_size_weird_sector_size() {
     let config = FlashAlgorithm {
         sectors: vec![SectorDescription {
             size: 258,
-            count: 4064,
+            address: 0x800_0000,
         }],
         ..Default::default()
     };
@@ -248,15 +241,15 @@ fn flash_sector_multiple_sizes() {
         sectors: vec![
             SectorDescription {
                 size: 0x4000,
-                count: 4,
+                address: 0x800_0000,
             },
             SectorDescription {
                 size: 0x1_0000,
-                count: 1,
+                address: 0x801_0000,
             },
             SectorDescription {
                 size: 0x2_0000,
-                count: 6,
+                address: 0x802_0000,
             },
         ],
         ..Default::default()

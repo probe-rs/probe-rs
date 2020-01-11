@@ -169,12 +169,12 @@ fn extract_sectors(region: &serde_yaml::Value) -> Vec<proc_macro2::TokenStream> 
 
             iter.map(|sector| {
                 let size = sector.get("size").unwrap().as_u64().unwrap() as u32;
-                let count = sector.get("size").unwrap().as_u64().unwrap() as u32;
+                let address = sector.get("address").unwrap().as_u64().unwrap() as u32;
 
                 quote::quote! {
                     SectorDescription {
                         size: #size,
-                        count: #count,
+                        address: #address,
                     }
                 }
             })
