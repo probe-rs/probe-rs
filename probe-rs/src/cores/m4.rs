@@ -253,6 +253,30 @@ impl From<FpCompX> for u32 {
     }
 }
 
+impl FpCompX {
+    /// Get the correct register configuration which enables
+    /// a hardware breakpoint at the given address.
+    fn breakpoint_configuration(address: u32) -> Self {
+        let mut reg = FpCompX::from(0);
+
+        let comp_val = (address & 0x1f_ff_ff_fc) >> 2;
+
+        // the replace value decides if the upper or lower half
+        // word is matched for the break point
+        let replace_val = if (address & 0x3) == 0 {
+            0b01 // lower half word
+        } else {
+            0b10 // upper half word
+        };
+
+        reg.set_replace(replace_val);
+        reg.set_comp(comp_val);
+        reg.set_enable(true);
+
+        reg
+    }
+}
+
 pub const REGISTERS: BasicRegisterAddresses = BasicRegisterAddresses {
     R0: CoreRegisterAddress(0b000_0000),
     R1: CoreRegisterAddress(0b000_0001),
@@ -457,15 +481,7 @@ impl Core for M4 {
         bp_unit_index: usize,
         addr: u32,
     ) -> Result<(), DebugProbeError> {
-        let mut val = FpCompX::from(0);
-
-        // clear bits which cannot be set
-        let comp_val = addr & 0x1f_ff_ff_fc;
-        let replace_val = addr & 0x3;
-
-        val.set_replace(replace_val);
-        val.set_comp(comp_val);
-        val.set_enable(true);
+        let val = FpCompX::breakpoint_configuration(addr);
 
         let reg_addr = FpCompX::ADDRESS + (bp_unit_index * size_of::<u32>()) as u32;
 
@@ -501,4 +517,18 @@ impl Core for M4 {
 
         Ok(())
     }
+}
+
+#[test]
+fn breakpoint_register_value() {
+    // Check that the register configuration for the FPBU is
+    // calculated correctly.
+    //
+    // See ARMv7 Architecture Reference Manual, Section C1.11.5
+    let address: u32 = 0x0800_09A4;
+
+    let reg = FpCompX::breakpoint_configuration(address);
+    let reg_val: u32 = reg.into();
+
+    assert_eq!(0x4800_09A5, reg_val);
 }
