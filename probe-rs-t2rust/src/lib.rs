@@ -1,10 +1,9 @@
-use std::fs::{read_dir, read_to_string, File};
-use std::io::{self, Write};
+use std::fs;
+use std::fs::{read_dir, read_to_string};
+use std::io;
 use std::path::{Path, PathBuf};
 
 pub fn run(input_dir: impl AsRef<Path>, output_file: impl AsRef<Path>) {
-    let mut f = File::create(output_file.as_ref()).unwrap();
-
     // Determine all config files to parse.
     let mut files = vec![];
     visit_dirs(input_dir.as_ref(), &mut files).unwrap();
@@ -28,28 +27,22 @@ pub fn run(input_dir: impl AsRef<Path>, output_file: impl AsRef<Path>) {
         }
     }
 
-    let use_statements = r#"
-    use jep106::JEP106Code;
-    use crate::config::chip::Chip;
-    use crate::config::flash_algorithm::RawFlashAlgorithm;
-    use crate::config::chip_family::ChipFamily;
-    use crate::config::memory::{FlashRegion, MemoryRegion, RamRegion};
-    "#;
+    let stream = quote::quote! {
+        use jep106::JEP106Code;
+        use crate::config::chip::Chip;
+        use crate::config::flash_algorithm::RawFlashAlgorithm;
+        use crate::config::chip_family::ChipFamily;
+        use crate::config::memory::{FlashRegion, MemoryRegion, RamRegion};
 
-    let stream: String = format!(
-        r#"{}
         #[allow(clippy::all)]
-        pub fn get_targets() -> Vec<ChipFamily> {{ {} }}"#,
-        use_statements,
-        quote::quote! {
+        pub fn get_targets() -> Vec<ChipFamily> {
             vec![
                 #(#configs,)*
             ]
         }
-    );
+    };
 
-    f.write_all(stream.as_bytes())
-        .expect("Writing build.rs output failed.");
+    fs::write(output_file, stream.to_string()).expect("Writing build.rs output failed.");
 }
 
 // one possible implementation of walking a directory only visiting files
