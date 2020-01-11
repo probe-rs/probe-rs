@@ -187,10 +187,8 @@ impl<'a> FlashBuilder<'a> {
             return Ok(());
         }
 
-        let mut sectors = vec![];
-
         // Convert the list of flash operations into flash sectors and pages.
-        self.build_sectors_and_pages(&mut flash, &mut sectors, restore_unwritten_bytes)?;
+        let sectors = self.build_sectors_and_pages(&mut flash, restore_unwritten_bytes)?;
 
         let num_pages = sectors.iter().map(|s| s.pages.len()).sum();
         let sizes = sectors.first().map(|s| (s.size, s.page_size));
@@ -243,18 +241,21 @@ impl<'a> FlashBuilder<'a> {
     fn build_sectors_and_pages(
         &self,
         flash: &mut Flasher,
-        sectors: &mut Vec<FlashSector>,
         restore_unwritten_bytes: bool,
-    ) -> Result<(), FlashBuilderError> {
+    ) -> Result<Vec<FlashSector>, FlashBuilderError> {
+        let mut sectors: Vec<FlashSector> = Vec::new();
+
         for op in &self.flash_write_data {
             let mut pos = 0;
+
             while pos < op.data.len() {
                 // Check if the operation is in another sector.
                 let flash_address = op.address + pos as u32;
+
                 if let Some(sector) = sectors.last_mut() {
                     // If the address is not in the sector, add a new sector.
                     if flash_address >= sector.address + sector.size {
-                        let sector_info = flash.region().sector_info(flash_address);
+                        let sector_info = flash.sector_info(flash_address);
                         if let Some(sector_info) = sector_info {
                             let new_sector = FlashSector::new(&sector_info);
                             sectors.push(new_sector);
@@ -314,11 +315,13 @@ impl<'a> FlashBuilder<'a> {
                     }
                 } else {
                     // If no sector exists, create a new one.
-                    let sector_info = flash.region().sector_info(flash_address);
+                    let sector_info = flash.sector_info(flash_address);
+
                     if let Some(sector_info) = sector_info {
+                        assert!(sector_info.base_address >= flash.region().range.start);
                         let new_sector = FlashSector::new(&sector_info);
                         sectors.push(new_sector);
-                        log::trace!(
+                        log::debug!(
                             "Added Sector (0x{:08x}..0x{:08x})",
                             sector_info.base_address,
                             sector_info.base_address + sector_info.size
@@ -339,11 +342,11 @@ impl<'a> FlashBuilder<'a> {
         }
 
         log::debug!("Sectors are:");
-        for sector in sectors {
+        for sector in &sectors {
             log::debug!("{:#?}", sector);
         }
 
-        Ok(())
+        Ok(sectors)
     }
 
     /// Fills all the bytes of `current_page`.

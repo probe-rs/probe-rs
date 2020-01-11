@@ -32,7 +32,7 @@ pub fn run(input_dir: impl AsRef<Path>, output_file: impl AsRef<Path>) {
         use crate::config::chip::Chip;
         use crate::config::flash_algorithm::RawFlashAlgorithm;
         use crate::config::chip_family::ChipFamily;
-        use crate::config::memory::{FlashRegion, MemoryRegion, RamRegion};
+        use crate::config::memory::{FlashRegion, MemoryRegion, RamRegion, SectorDescription};
 
         #[allow(clippy::all)]
         pub fn get_targets() -> Vec<ChipFamily> {
@@ -133,6 +133,9 @@ fn extract_algorithms(chip: &serde_yaml::Value) -> Vec<proc_macro2::TokenStream>
                 .as_u64()
                 .unwrap() as u32;
 
+            // get all sectors
+            let sectors = extract_sectors(&algorithm);
+
             // Quote the algorithm struct.
             let algorithm = quote::quote! {
                 RawFlashAlgorithm {
@@ -148,12 +151,39 @@ fn extract_algorithms(chip: &serde_yaml::Value) -> Vec<proc_macro2::TokenStream>
                     pc_erase_sector: #pc_erase_sector,
                     pc_erase_all: #pc_erase_all,
                     data_section_offset: #data_section_offset,
+                    sectors: vec![
+                        #(#sectors,)*
+                    ],
                 }
             };
 
             algorithm
         })
         .collect()
+}
+
+fn extract_sectors(region: &serde_yaml::Value) -> Vec<proc_macro2::TokenStream> {
+    match region.get("sectors") {
+        Some(sectors) => {
+            let iter = sectors.as_sequence().unwrap().iter();
+
+            iter.map(|sector| {
+                let size = sector.get("size").unwrap().as_u64().unwrap() as u32;
+                let count = sector.get("size").unwrap().as_u64().unwrap() as u32;
+
+                quote::quote! {
+                    SectorDescription {
+                        size: #size,
+                        count: #count,
+                    }
+                }
+            })
+            .collect()
+        }
+        // Currently, sectors might be missing due to the old target generation code
+        // For that case, just create a single entry based on the old values
+        None => vec![],
+    }
 }
 
 /// Extracts a list of algorithm token streams from a yaml value.
