@@ -1,11 +1,5 @@
-use crate::config::{
-    chip::Chip,
-    chip_family::ChipFamily,
-    flash_algorithm::RawFlashAlgorithm,
-    memory::{FlashRegion, MemoryRegion, RamRegion},
-};
+use crate::config::{chip_family::ChipFamily, memory::MemoryRegion};
 use crate::target::info::ChipInfo;
-use jep106::JEP106Code;
 use std::error::Error;
 use std::fs::File;
 use std::path::Path;
@@ -85,11 +79,23 @@ pub struct Registry {
     families: Vec<ChipFamily>,
 }
 
+#[cfg(feature = "builtin-targets")]
+mod builtin {
+    include!(concat!(env!("OUT_DIR"), "/targets.rs"));
+}
+
 impl Registry {
-    #[allow(clippy::all)]
+    #[cfg(feature = "builtin-targets")]
     pub fn from_builtin_families() -> Self {
         Self {
-            families: include!(concat!(env!("OUT_DIR"), "/targets.rs")),
+            families: builtin::get_targets(),
+        }
+    }
+
+    #[cfg(not(feature = "builtin-targets"))]
+    pub fn from_builtin_families() -> Self {
+        Self {
+            families: Vec::new(),
         }
     }
 

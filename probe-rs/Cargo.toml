@@ -12,6 +12,12 @@ categories = ["embedded", "hardware-support", "development-tools::debugging"]
 keywords = ["embedded"]
 license = "MIT OR Apache-2.0"
 
+[features]
+default = ["builtin-targets"]
+
+# Enable all built in targets.
+builtin-targets = []
+
 [dependencies]
 log = "0.4.6"
 num-traits = "0.2.8"
@@ -38,10 +44,7 @@ dyn-clone = "1.0.1"
 colored = "1.8.0"
 
 [build-dependencies]
-quote = "1.0.2"
-log = "0.4.6"
-serde_yaml = "0.8.11"
-proc-macro2 = "1.0.4"
+probe-rs-t2rust  = { path = "../probe-rs-t2rust", version ="0.1.0" }
 
 [dev-dependencies]
 rand = "0.7.2"
