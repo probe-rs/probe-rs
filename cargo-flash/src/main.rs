@@ -17,9 +17,7 @@ use probe_rs::{
     coresight::access_ports::AccessPortError,
     flash::download::{download_file, download_file_with_progress_reporting, Format},
     flash::{FlashProgress, ProgressEvent},
-    probe::{
-        daplink, stlink, DebugProbe, DebugProbeError, DebugProbeType, MasterProbe, WireProtocol,
-    },
+    probe::{DebugProbeError, DebugProbeType, MasterProbe},
     session::Session,
     target::info::ChipInfo,
 };
@@ -190,36 +188,24 @@ fn main_try() -> Result<(), failure::Error> {
 
     println!("    {} {}", "Flashing".green().bold(), path_str);
 
-    let mut list = daplink::tools::list_daplink_devices();
-    list.extend(stlink::tools::list_stlink_devices());
+    let mut list = MasterProbe::list_all();
 
     let device = list
         .pop()
         .ok_or_else(|| format_err!("no supported probe was found"))?;
 
-    let mut probe = match device.probe_type {
-        DebugProbeType::DAPLink => {
-            let mut link = daplink::DAPLink::new_from_probe_info(&device)?;
+    let mut probe = MasterProbe::from_probe_info(&device)?;
 
-            link.attach(Some(WireProtocol::Swd))?;
-
-            let mut probe = MasterProbe::from_specific_probe(link);
-            if opt.nrf_recover {
+    if opt.nrf_recover {
+        match device.probe_type {
+            DebugProbeType::DAPLink => {
                 probe.nrf_recover()?;
             }
-            probe
-        }
-        DebugProbeType::STLink => {
-            let mut link = stlink::STLink::new_from_probe_info(&device)?;
-
-            link.attach(Some(WireProtocol::Swd))?;
-
-            if opt.nrf_recover {
+            DebugProbeType::STLink => {
                 return Err(format_err!("It isn't possible to recover with a ST-Link"));
             }
-            MasterProbe::from_specific_probe(link)
-        }
-    };
+        };
+    }
 
     let strategy = if let Some(identifier) = opt.chip {
         SelectionStrategy::TargetIdentifier(identifier.into())

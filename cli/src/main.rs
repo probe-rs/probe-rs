@@ -9,7 +9,7 @@ use probe_rs::{
     coresight::memory::MI,
     debug::DebugInfo,
     flash::download::{download_file, Format},
-    probe::{daplink, stlink, DebugProbeInfo},
+    probe::MasterProbe,
 };
 
 use capstone::{arch::arm::ArchMode, prelude::*, Capstone, Endian};
@@ -131,7 +131,7 @@ fn main() {
 }
 
 fn list_connected_devices() -> Result<(), CliError> {
-    let links = get_connected_devices();
+    let links = MasterProbe::list_all();
 
     if !links.is_empty() {
         println!("The following devices were found:");
@@ -238,12 +238,6 @@ fn trace_u32_on_target(shared_options: &SharedOptions, loc: u32) -> Result<(), C
             sleep(Duration::from_millis(time_to_wait));
         }
     })
-}
-
-fn get_connected_devices() -> Vec<DebugProbeInfo> {
-    let mut links = daplink::tools::list_daplink_devices();
-    links.extend(stlink::tools::list_stlink_devices());
-    links
 }
 
 fn debug(

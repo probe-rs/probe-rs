@@ -1,7 +1,7 @@
 use probe_rs::{
     config::registry::{Registry, SelectionStrategy},
     coresight::memory::MI,
-    probe::{daplink, stlink, DebugProbe, DebugProbeType, MasterProbe, WireProtocol},
+    probe::{DebugProbe, DebugProbeType, MasterProbe, WireProtocol},
     session::Session,
     target::info::ChipInfo,
 };
@@ -109,8 +109,7 @@ fn main() -> Result<(), &'static str> {
 }
 
 fn open_probe(index: Option<usize>) -> Result<MasterProbe, &'static str> {
-    let mut list = daplink::tools::list_daplink_devices();
-    list.extend(stlink::tools::list_stlink_devices());
+    let list = MasterProbe::list_all();
 
     let device = match index {
         Some(index) => list
@@ -126,26 +125,7 @@ fn open_probe(index: Option<usize>) -> Result<MasterProbe, &'static str> {
         }
     };
 
-    let probe = match device.probe_type {
-        DebugProbeType::DAPLink => {
-            let mut link = daplink::DAPLink::new_from_probe_info(&device)
-                .map_err(|_| "Failed to open DAPLink.")?;
-
-            link.attach(Some(WireProtocol::Swd))
-                .map_err(|_| "Failed to attach to DAPLink")?;
-
-            MasterProbe::from_specific_probe(link)
-        }
-        DebugProbeType::STLink => {
-            let mut link = stlink::STLink::new_from_probe_info(&device)
-                .map_err(|_| "Failed to open STLINK")?;
-
-            link.attach(Some(WireProtocol::Swd))
-                .map_err(|_| "Failed to attach to STLink")?;
-
-            MasterProbe::from_specific_probe(link)
-        }
-    };
+    let probe = MasterProbe::from_probe_info(&device).map_err(|_| "Failed to open probe")?;
 
     Ok(probe)
 }

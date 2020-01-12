@@ -129,6 +129,23 @@ pub trait DAPAccess {
     }
 }
 
+/// The MasterProbe struct is a generic wrapper over the different
+/// probes supported.
+///
+/// # Examples
+///
+/// ## Open the first probe found
+///
+/// The `list_all` and `from_probe_info` functions can be used
+/// to create a new `MasterProbe`::
+///
+/// ```no_run
+/// use probe_rs::probe::MasterProbe;
+///
+/// let probe_list = MasterProbe::list_all();
+/// let probe = MasterProbe::from_probe_info(&probe_list[0]);
+/// ```
+
 pub struct MasterProbe {
     actual_probe: Box<dyn DebugProbe>,
     current_apsel: u8,
@@ -136,6 +153,40 @@ pub struct MasterProbe {
 }
 
 impl MasterProbe {
+    /// Get a list of all debug probes found.
+    /// This can be used to select the debug probe which
+    /// should be used.
+    pub fn list_all() -> Vec<DebugProbeInfo> {
+        let mut list = daplink::tools::list_daplink_devices();
+        list.extend(stlink::tools::list_stlink_devices());
+
+        list
+    }
+
+    /// Create a `MasterProbe` from `DebugProbeInfo`. Use the
+    /// `MasterProbe::list_all()` function to get the information
+    /// about all probes available.
+    pub fn from_probe_info(info: &DebugProbeInfo) -> Result<Self, DebugProbeError> {
+        let probe = match info.probe_type {
+            DebugProbeType::DAPLink => {
+                let mut dap_link = daplink::DAPLink::new_from_probe_info(info)?;
+
+                dap_link.attach(Some(WireProtocol::Swd))?;
+
+                MasterProbe::from_specific_probe(dap_link)
+            }
+            DebugProbeType::STLink => {
+                let mut link = stlink::STLink::new_from_probe_info(info)?;
+
+                link.attach(Some(WireProtocol::Swd))?;
+
+                MasterProbe::from_specific_probe(link)
+            }
+        };
+
+        Ok(probe)
+    }
+
     pub fn from_specific_probe(probe: Box<dyn DebugProbe>) -> Self {
         MasterProbe {
             actual_probe: probe,
