@@ -265,11 +265,10 @@ fn main_try() -> Result<(), failure::Error> {
             match event {
                 Initialized {
                     total_pages,
-                    total_sectors,
-                    sector_size,
+                    total_sector_size,
                     page_size,
                 } => {
-                    erase_progress.set_length(total_sectors as u64 * sector_size as u64);
+                    erase_progress.set_length(total_sector_size as u64);
                     program_progress.set_length(total_pages as u64 * page_size as u64);
                 }
                 StartedFlashing => {

@@ -10,6 +10,8 @@
 
 [JEDEC CODES](https://www.jedec.org/system/files/docs/JEP106AY.pdf)
 
+[CMSIS Packs](https://developer.arm.com/tools-and-software/embedded/cmsis/cmsis-packs)
+
 ## Releated OSS projects
 
 [PyOCD](https://github.com/mbedmicro/pyOCD) Open source Python library for

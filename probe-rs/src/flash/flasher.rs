@@ -478,7 +478,7 @@ impl<'a> ActiveFlasher<'a, Erase> {
     }
 
     pub fn erase_sector(&mut self, address: u32) -> Result<(), FlasherError> {
-        log::info!("Erasing sector at address 0x{:08x}.", address);
+        log::info!("Erasing sector at address 0x{:08x}", address);
         let t1 = std::time::Instant::now();
         let flasher = self;
         let algo = flasher.flash_algorithm;
@@ -511,7 +511,7 @@ impl<'a> ActiveFlasher<'a, Program> {
         let flasher = self;
         let algo = flasher.flash_algorithm;
 
-        log::info!("Flashing one page of size: {}", bytes.len());
+        log::info!("Flashing page at address {:#08x} with size: {}", address, bytes.len());
 
         // Transfer the bytes to RAM.
         flasher.probe.write_block8(algo.begin_data, bytes)?;
