@@ -193,7 +193,10 @@ impl<'a> FlashBuilder<'a> {
         let num_pages = sectors.iter().map(|s| s.pages.len()).sum();
         let sizes = sectors.first().map(|s| (s.size, s.page_size));
         let (sector_size, page_size) = sizes.unwrap_or((0, 0));
-        progress.initialized(sectors.len(), num_pages, sector_size, page_size);
+
+        let sector_size:u32 = sectors.iter().map(|s| s.size ).sum();
+
+        progress.initialized(num_pages, sector_size as usize, page_size);
 
         // Check if there is even sectors to flash.
         if sectors.is_empty() || sectors[0].pages.is_empty() {
@@ -434,7 +437,7 @@ impl<'a> FlashBuilder<'a> {
             for sector in sectors {
                 if !sector.pages.is_empty() {
                     active.erase_sector(sector.address)?;
-                    progress.sector_erased(sector.page_size, t.elapsed().as_millis());
+                    progress.sector_erased(sector.size, t.elapsed().as_millis());
                     t = std::time::Instant::now();
                 }
             }
