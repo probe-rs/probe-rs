@@ -347,8 +347,8 @@ fn print_families() {
         }
 
         println!("    Algorithms:");
-        for algorithms in family.algorithms() {
-            println!("        {} ({})", algorithms.name, algorithms.description);
+        for (name, algorithm) in family.algorithms() {
+            println!("        {} ({})", name, algorithm.description);
         }
     }
 }

@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use super::chip::Chip;
 use super::flash_algorithm::RawFlashAlgorithm;
 use crate::config::target::TargetParseError;
@@ -16,7 +17,7 @@ pub struct ChipFamily {
     /// This vector holds all the variants of the family.
     pub variants: Vec<Chip>,
     /// This vector holds all available algorithms.
-    pub flash_algorithms: Vec<RawFlashAlgorithm>,
+    pub flash_algorithms: HashMap<String, RawFlashAlgorithm>,
     /// The name of the core type.
     /// E.g. `M0` or `M4`.
     pub core: String,
@@ -33,7 +34,7 @@ impl ChipFamily {
         &self.variants
     }
 
-    pub fn algorithms(&self) -> &Vec<RawFlashAlgorithm> {
+    pub fn algorithms(&self) -> &HashMap<String, RawFlashAlgorithm> {
         &self.flash_algorithms
     }
 }

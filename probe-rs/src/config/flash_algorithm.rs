@@ -39,12 +39,12 @@ pub struct FlashAlgorithm {
 
 impl FlashAlgorithm {
     pub fn sector_info(&self, address: u32) -> Option<SectorInfo> {
-        if !self.flash_properties.address_range().contains(&address) {
+        if !self.flash_properties.range.contains(&address) {
             log::trace!("Address {:08x} not contained in this flash device", address);
             return None;
         }
 
-        let offset_address = address - self.flash_properties.start_address;
+        let offset_address = address - self.flash_properties.range.start;
 
         let containing_sector = self
             .flash_properties
@@ -54,7 +54,7 @@ impl FlashAlgorithm {
 
         let sector_index = (offset_address - containing_sector.address) / containing_sector.size;
 
-        let sector_address = self.flash_properties.start_address
+        let sector_address = self.flash_properties.range.start
             + containing_sector.address
             + sector_index * containing_sector.size;
 
@@ -68,7 +68,7 @@ impl FlashAlgorithm {
     /// Returns the necessary information about the page which `address` resides in
     /// if the address is inside the flash region.
     pub fn page_info(&self, address: u32) -> Option<PageInfo> {
-        if !self.flash_properties.address_range().contains(&address) {
+        if !self.flash_properties.range.contains(&address) {
             return None;
         }
 
@@ -193,14 +193,14 @@ impl RawFlashAlgorithm {
 
 #[test]
 fn flash_sector_single_size() {
+    use crate::config::memory::SectorDescription;
     let config = FlashAlgorithm {
         flash_properties: FlashProperties {
             sectors: vec![SectorDescription {
                 size: 0x100,
                 address: 0x0,
             }],
-            start_address: 0x1000,
-            size: 0x1000,
+            range: 0x1000..0x1000 + 0x1000,
             page_size: 0x10,
             ..Default::default()
         },
@@ -224,14 +224,14 @@ fn flash_sector_single_size() {
 
 #[test]
 fn flash_sector_single_size_weird_sector_size() {
+    use crate::config::memory::SectorDescription;
     let config = FlashAlgorithm {
         flash_properties: FlashProperties {
             sectors: vec![SectorDescription {
                 size: 258,
                 address: 0x0,
             }],
-            start_address: 0x800_0000,
-            size: 258 * 10,
+            range: 0x800_0000..0x800_0000 + 258 * 10,
             page_size: 0x10,
             ..Default::default()
         },
@@ -258,6 +258,7 @@ fn flash_sector_single_size_weird_sector_size() {
 
 #[test]
 fn flash_sector_multiple_sizes() {
+    use crate::config::memory::SectorDescription;
     let config = FlashAlgorithm {
         flash_properties: FlashProperties {
             sectors: vec![
@@ -274,8 +275,7 @@ fn flash_sector_multiple_sizes() {
                     address: 0x2_0000,
                 },
             ],
-            start_address: 0x800_0000,
-            size: 0x10_0000,
+            range: 0x800_0000..0x800_0000 + 0x10_0000,
             page_size: 0x10,
             ..Default::default()
         },

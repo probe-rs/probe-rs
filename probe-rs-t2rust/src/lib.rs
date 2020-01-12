@@ -76,17 +76,13 @@ fn quote_option<T: quote::ToTokens>(option: Option<T>) -> proc_macro2::TokenStre
 }
 
 /// Extracts a list of algorithm token streams from a yaml value.
-fn extract_algorithms(chip: &serde_yaml::Value) -> Vec<proc_macro2::TokenStream> {
+fn extract_algorithms(chip: &serde_yaml::Value) -> Vec<(String, proc_macro2::TokenStream)> {
     // Get an iterator over all the algorithms contained in the chip value obtained from the yaml file.
-    let algorithm_iter = chip
-        .get("flash_algorithms")
-        .unwrap()
-        .as_sequence()
-        .unwrap()
-        .iter();
+    let algorithm_iter = chip.get("flash_algorithms")
+    .unwrap().as_mapping().unwrap().iter();
 
     algorithm_iter
-        .map(|algorithm| {
+        .map(|(_name, algorithm)| {
             // Extract all values and form them into a struct.
             let name = algorithm
                 .get("name")
@@ -136,12 +132,9 @@ fn extract_algorithms(chip: &serde_yaml::Value) -> Vec<proc_macro2::TokenStream>
 
             let flash_properties = algorithm.get("flash_properties").unwrap();
 
-            let start_address = flash_properties
-                .get("start_address")
-                .unwrap()
-                .as_u64()
-                .unwrap() as u32;
-            let size = flash_properties.get("size").unwrap().as_u64().unwrap() as u32;
+            let range = flash_properties.get("range").unwrap();
+            let start = range.get("start").unwrap().as_u64().unwrap() as u32;
+            let end = range.get("end").unwrap().as_u64().unwrap() as u32;
             let page_size = flash_properties.get("page_size").unwrap().as_u64().unwrap() as u32;
             let erased_byte_value = flash_properties
                 .get("erased_byte_value")
@@ -178,8 +171,7 @@ fn extract_algorithms(chip: &serde_yaml::Value) -> Vec<proc_macro2::TokenStream>
                     pc_erase_all: #pc_erase_all,
                     data_section_offset: #data_section_offset,
                     flash_properties: FlashProperties {
-                        start_address: #start_address,
-                        size: #size,
+                        range: #start..#end,
                         page_size: #page_size,
                         erased_byte_value: #erased_byte_value,
                         program_page_timeout: #program_page_timeout,
@@ -191,7 +183,7 @@ fn extract_algorithms(chip: &serde_yaml::Value) -> Vec<proc_macro2::TokenStream>
                 }
             };
 
-            algorithm
+            (name, algorithm)
         })
         .collect()
 }
@@ -315,7 +307,7 @@ fn extract_variants(chip_family: &serde_yaml::Value) -> Vec<proc_macro2::TokenSt
 /// Extracts a chip family token stream from a yaml value.
 fn extract_chip_family(chip_family: &serde_yaml::Value) -> proc_macro2::TokenStream {
     // Extract all the algorithms into a Vec of TokenStreams.
-    let algorithms = extract_algorithms(&chip_family);
+    let (algorithm_names, algorithms): (Vec<_>, Vec<_>) = extract_algorithms(&chip_family).into_iter().unzip();
 
     // Extract all the available variants into a Vec of TokenStreams.
     let variants = extract_variants(&chip_family);
@@ -339,8 +331,8 @@ fn extract_chip_family(chip_family: &serde_yaml::Value) -> proc_macro2::TokenStr
         ChipFamily {
             name: #name.to_owned(),
             manufacturer: #manufacturer,
-            flash_algorithms: vec![
-                #(#algorithms,)*
+            flash_algorithms: hashmap![
+                #(#algorithm_names.to_owned() => #algorithms,)*
             ],
             variants: vec![
                 #(#variants,)*
