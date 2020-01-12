@@ -19,6 +19,7 @@ use probe_rs::config::memory::{FlashRegion, MemoryRegion, RamRegion};
 use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 use structopt::StructOpt;
+use std::collections::HashMap;
 
 use log;
 
@@ -135,7 +136,7 @@ fn main() {
             let family = if let Some(ref mut family) = potential_family {
                 family
             } else {
-                families.push(ChipFamily::new(device.family, Vec::new(), core.to_owned()));
+                families.push(ChipFamily::new(device.family, HashMap::new(), core.to_owned()));
                 // This unwrap is always safe as we insert at least one item previously.
                 families.last_mut().unwrap()
             };
@@ -145,7 +146,9 @@ fn main() {
                 .map(|fa| fa.name.clone().to_lowercase())
                 .collect();
 
-            family.flash_algorithms.extend(variant_flash_algorithms);
+            for fa in variant_flash_algorithms {
+                family.flash_algorithms.insert(fa.name.clone(), fa);
+            }
 
             let mut memory_map: Vec<MemoryRegion> = Vec::new();
             if let Some(mem) = ram {

@@ -105,8 +105,7 @@ pub fn extract_flash_algo(
         .collect();
 
     let properties = FlashProperties {
-        start_address: flash_device.start_address,
-        size: flash_device.device_size,
+        range: flash_device.start_address..(flash_device.start_address + flash_device.device_size),
 
         page_size: flash_device.page_size,
         erased_byte_value: flash_device.erased_default_value,
