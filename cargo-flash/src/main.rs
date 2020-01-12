@@ -39,6 +39,10 @@ struct Opt {
     #[structopt(name = "disable-progressbars", long = "disable-progressbars")]
     disable_progressbars: bool,
 
+    /// The number associated with the debug probe to use
+    #[structopt(long = "probe-index")]
+    n: Option<usize>,
+
     // `cargo build` arguments
     #[structopt(name = "binary", long = "bin")]
     bin: Option<String>,
@@ -188,11 +192,23 @@ fn main_try() -> Result<(), failure::Error> {
 
     println!("    {} {}", "Flashing".green().bold(), path_str);
 
-    let mut list = MasterProbe::list_all();
+    let list = MasterProbe::list_all();
 
-    let device = list
-        .pop()
-        .ok_or_else(|| format_err!("no supported probe was found"))?;
+    let device = match opt.n {
+        Some(index) => list.get(index).ok_or_else(|| {
+            format_err!("Unable to open probe with index {}: Probe not found", index)
+        })?,
+        None => {
+            // Only automatically select a probe if there is only
+            // a single probe detected.
+            if list.len() > 1 {
+                return Err(format_err!("More than a single probe detected. Use the --probe-index argument to select which probe to use."));
+            }
+
+            list.first()
+                .ok_or_else(|| format_err!("no supported probe was found"))?
+        }
+    };
 
     let mut probe = MasterProbe::from_probe_info(&device)?;
 
