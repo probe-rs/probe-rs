@@ -1,0 +1,587 @@
+---
+name: LPC800 Series
+variants:
+  - name: LPC802M001JDH16
+    memory_map:
+      - Ram:
+          range:
+            start: 268435456
+            end: 268437504
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 0
+            end: 16384
+          is_boot_memory: true
+    flash_algorithms:
+      - lpc80x_16
+  - name: LPC802M001JDH20
+    memory_map:
+      - Ram:
+          range:
+            start: 268435456
+            end: 268437504
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 0
+            end: 16384
+          is_boot_memory: true
+    flash_algorithms:
+      - lpc80x_16
+  - name: LPC802M001JHI33
+    memory_map:
+      - Ram:
+          range:
+            start: 268435456
+            end: 268437504
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 0
+            end: 16384
+          is_boot_memory: true
+    flash_algorithms:
+      - lpc80x_16
+  - name: LPC802M011JDH20
+    memory_map:
+      - Ram:
+          range:
+            start: 268435456
+            end: 268437504
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 0
+            end: 16384
+          is_boot_memory: true
+    flash_algorithms:
+      - lpc80x_16
+  - name: LPC804M101JDH20
+    memory_map:
+      - Ram:
+          range:
+            start: 268435456
+            end: 268439552
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 0
+            end: 32768
+          is_boot_memory: true
+    flash_algorithms:
+      - lpc80x_32
+  - name: LPC804M101JDH24
+    memory_map:
+      - Ram:
+          range:
+            start: 268435456
+            end: 268439552
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 0
+            end: 32768
+          is_boot_memory: true
+    flash_algorithms:
+      - lpc80x_32
+  - name: LPC804M101JHI33
+    memory_map:
+      - Ram:
+          range:
+            start: 268435456
+            end: 268439552
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 0
+            end: 32768
+          is_boot_memory: true
+    flash_algorithms:
+      - lpc80x_32
+  - name: LPC804M111JDH24
+    memory_map:
+      - Ram:
+          range:
+            start: 268435456
+            end: 268439552
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 0
+            end: 32768
+          is_boot_memory: true
+    flash_algorithms:
+      - lpc80x_32
+  - name: LPC810M021FN8
+    memory_map:
+      - Ram:
+          range:
+            start: 268435456
+            end: 268436480
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 0
+            end: 4096
+          is_boot_memory: true
+    flash_algorithms:
+      - lpc8xx_4
+  - name: LPC811M001JDH16
+    memory_map:
+      - Ram:
+          range:
+            start: 268435456
+            end: 268437504
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 0
+            end: 8192
+          is_boot_memory: true
+    flash_algorithms:
+      - lpc8xx_8
+  - name: LPC812M101JD20
+    memory_map:
+      - Ram:
+          range:
+            start: 268435456
+            end: 268439552
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 0
+            end: 16384
+          is_boot_memory: true
+    flash_algorithms:
+      - lpc8xx_16
+  - name: LPC812M101JDH16
+    memory_map:
+      - Ram:
+          range:
+            start: 268435456
+            end: 268439552
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 0
+            end: 16384
+          is_boot_memory: true
+    flash_algorithms:
+      - lpc8xx_16
+  - name: LPC812M101JDH20
+    memory_map:
+      - Ram:
+          range:
+            start: 268435456
+            end: 268439552
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 0
+            end: 16384
+          is_boot_memory: true
+    flash_algorithms:
+      - lpc8xx_16
+  - name: LPC812M101JTB16
+    memory_map:
+      - Ram:
+          range:
+            start: 268435456
+            end: 268439552
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 0
+            end: 16384
+          is_boot_memory: true
+    flash_algorithms:
+      - lpc8xx_16
+  - name: LPC822M101JDH20
+    memory_map:
+      - Ram:
+          range:
+            start: 268435456
+            end: 268439552
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 0
+            end: 16384
+          is_boot_memory: true
+    flash_algorithms:
+      - lpc8xx_16
+  - name: LPC822M101JHI33
+    memory_map:
+      - Ram:
+          range:
+            start: 268435456
+            end: 268439552
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 0
+            end: 16384
+          is_boot_memory: true
+    flash_algorithms:
+      - lpc8xx_16
+  - name: LPC824M201JDH20
+    memory_map:
+      - Ram:
+          range:
+            start: 268435456
+            end: 268443648
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 0
+            end: 32768
+          is_boot_memory: true
+    flash_algorithms:
+      - lpc8xx_32
+  - name: LPC824M201JHI33
+    memory_map:
+      - Ram:
+          range:
+            start: 268435456
+            end: 268443648
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 0
+            end: 32768
+          is_boot_memory: true
+    flash_algorithms:
+      - lpc8xx_32
+  - name: LPC832M101FDH20
+    memory_map:
+      - Ram:
+          range:
+            start: 268435456
+            end: 268439552
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 0
+            end: 16384
+          is_boot_memory: true
+    flash_algorithms:
+      - lpc8xx_16
+  - name: LPC834M101FHI33
+    memory_map:
+      - Ram:
+          range:
+            start: 268435456
+            end: 268439552
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 0
+            end: 32768
+          is_boot_memory: true
+    flash_algorithms:
+      - lpc8xx_32
+  - name: LPC844M201JBD48
+    memory_map:
+      - Ram:
+          range:
+            start: 268435456
+            end: 268443648
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 0
+            end: 65536
+          is_boot_memory: true
+    flash_algorithms:
+      - lpc84x_64
+  - name: LPC844M201JBD64
+    memory_map:
+      - Ram:
+          range:
+            start: 268435456
+            end: 268443648
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 0
+            end: 65536
+          is_boot_memory: true
+    flash_algorithms:
+      - lpc84x_64
+  - name: LPC844M201JHI33
+    memory_map:
+      - Ram:
+          range:
+            start: 268435456
+            end: 268443648
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 0
+            end: 65536
+          is_boot_memory: true
+    flash_algorithms:
+      - lpc84x_64
+  - name: LPC844M201JHI48
+    memory_map:
+      - Ram:
+          range:
+            start: 268435456
+            end: 268443648
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 0
+            end: 65536
+          is_boot_memory: true
+    flash_algorithms:
+      - lpc84x_64
+  - name: LPC845M301JBD48
+    memory_map:
+      - Ram:
+          range:
+            start: 268435456
+            end: 268451840
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 0
+            end: 65536
+          is_boot_memory: true
+    flash_algorithms:
+      - lpc84x_64
+  - name: LPC845M301JBD64
+    memory_map:
+      - Ram:
+          range:
+            start: 268435456
+            end: 268451840
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 0
+            end: 65536
+          is_boot_memory: true
+    flash_algorithms:
+      - lpc84x_64
+  - name: LPC845M301JHI33
+    memory_map:
+      - Ram:
+          range:
+            start: 268435456
+            end: 268451840
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 0
+            end: 65536
+          is_boot_memory: true
+    flash_algorithms:
+      - lpc84x_64
+  - name: LPC845M301JHI48
+    memory_map:
+      - Ram:
+          range:
+            start: 268435456
+            end: 268451840
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 0
+            end: 65536
+          is_boot_memory: true
+    flash_algorithms:
+      - lpc84x_64
+  - name: LPC8N04FHI24
+    memory_map:
+      - Ram:
+          range:
+            start: 268435456
+            end: 268443648
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 0
+            end: 30720
+          is_boot_memory: true
+    flash_algorithms:
+      - lpc8n04_30
+flash_algorithms:
+  LPC80x_16:
+    name: LPC80x_16
+    description: LPC80x IAP 16kB Flash
+    default: true
+    instructions: gApwR0hJR0hJRAhgR0gAIgJhASFBYUJhQWGBYUNJAiBAOQhwEEZwRwAgcEf4tUBMMiBMRCFGACUPJmHEFDE8SDxPSEQMPACRuEdgaQAoDdE0IGHENEhIRABoIGA0SAw8SEQAmbhHYGkAKADQASD4vfi1L02ECjIgTUQRxSlGDDErSCxOLGAPRkhECD2wR2hpACgO0TQgEcUjSCxgSEQAaGhgI0g5RkhECD2wR2hpACgA0AEg+L34tRRGBgAO0QPMYmhAGCFoiRhAGKFoQBjhaEAYIWlAGEBCYGEIPBRNsApNRDIhaGApYKhgKUYUMRFPKEYAkbhHaGkAKBHRMyCsYEHF/yABMGhgB0hIRABoqGAHSAg9SEQAmbhHaGkAKADQASD4veAuAAAEAAAAQIAEQAgAAADxHwAPAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==
+    pc_init: 5
+    pc_uninit: 41
+    pc_program_page: 183
+    pc_erase_sector: 113
+    pc_erase_all: 45
+    data_section_offset: 312
+    flash_properties:
+      address_range:
+        start: 0
+        end: 16384
+      page_size: 256
+      erased_byte_value: 0
+      program_page_timeout: 300
+      erase_sector_timeout: 3000
+      sectors:
+        - size: 1024
+          address: 0
+  LPC80x_32:
+    name: LPC80x_32
+    description: LPC80x IAP 32kB Flash
+    default: true
+    instructions: gApwR0hJR0hJRAhgR0gAIgJhASFBYUJhQWGBYUNJAiBAOQhwEEZwRwAgcEf4tUBMMiBMRCFGACUfJmHEFDE8SDxPSEQMPACRuEdgaQAoDdE0IGHENEhIRABoIGA0SAw8SEQAmbhHYGkAKADQASD4vfi1L02ECjIgTUQRxSlGDDErSCxOLGAPRkhECD2wR2hpACgO0TQgEcUjSCxgSEQAaGhgI0g5RkhECD2wR2hpACgA0AEg+L34tRRGBgAO0QPMYmhAGCFoiRhAGKFoQBjhaEAYIWlAGEBCYGEIPBRNsApNRDIhaGApYKhgKUYUMRFPKEYAkbhHaGkAKBHRMyCsYEHF/yABMGhgB0hIRABoqGAHSAg9SEQAmbhHaGkAKADQASD4veAuAAAEAAAAQIAEQAgAAADxHwAPAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+    pc_init: 5
+    pc_uninit: 41
+    pc_program_page: 183
+    pc_erase_sector: 113
+    pc_erase_all: 45
+    data_section_offset: 312
+    flash_properties:
+      address_range:
+        start: 0
+        end: 32768
+      page_size: 256
+      erased_byte_value: 0
+      program_page_timeout: 300
+      erase_sector_timeout: 3000
+      sectors:
+        - size: 1024
+          address: 0
+  LPC8xx_4:
+    name: LPC8xx_4
+    description: LPC8xx IAP 4kB Flash
+    default: true
+    instructions: gApwR0ZJRUhJRAhgRUgAIgJjASFBY0JjQWOBY0FJAiBAOQhwEEZwRwAgcEf4tT5MMiBMRAAlAyYiRmHCIUYUMTpPIEYAkbhHYGkAKAzRNCAhRmHBMkhIRABo4GAgRgCZuEdgaQAoANABIPi9+LUuTYQKTUQyIGxgKUasYBQxKGAqTg9GKEawR2hpACgN0WxgNCCsYChgIkg5RkhEAGjoYChGsEdoaQAoANABIPi9+LUURgYADtFhaCBo4mhAGKFoiRhAGCFpQBhhaUAYoWlAGEBC4GEUTbAKTUQyIWhgKWCoYClGFDERTyhGAJG4R2hpACgQ0W5gMyCsYChg/yABMOhgB0hIRABoKGEoRgCZuEdoaQAoANABIPi9AADgLgAABAAAAECABEAIAAAA8R//HwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+    pc_init: 5
+    pc_uninit: 41
+    pc_program_page: 175
+    pc_erase_sector: 109
+    pc_erase_all: 45
+    data_section_offset: 304
+    flash_properties:
+      address_range:
+        start: 0
+        end: 4096
+      page_size: 256
+      erased_byte_value: 255
+      program_page_timeout: 300
+      erase_sector_timeout: 3000
+      sectors:
+        - size: 1024
+          address: 0
+  LPC8xx_16:
+    name: LPC8xx_16
+    description: LPC8xx IAP 16kB Flash
+    default: true
+    instructions: gApwR0ZJRUhJRAhgRUgAIgJjASFBY0JjQWOBY0FJAiBAOQhwEEZwRwAgcEf4tT5MMiBMRAAlDyYiRmHCIUYUMTpPIEYAkbhHYGkAKAzRNCAhRmHBMkhIRABo4GAgRgCZuEdgaQAoANABIPi9+LUuTYQKTUQyIGxgKUasYBQxKGAqTg9GKEawR2hpACgN0WxgNCCsYChgIkg5RkhEAGjoYChGsEdoaQAoANABIPi9+LUURgYADtFhaCBo4mhAGKFoiRhAGCFpQBhhaUAYoWlAGEBC4GEUTbAKTUQyIWhgKWCoYClGFDERTyhGAJG4R2hpACgQ0W5gMyCsYChg/yABMOhgB0hIRABoKGEoRgCZuEdoaQAoANABIPi9AADgLgAABAAAAECABEAIAAAA8R//HwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+    pc_init: 5
+    pc_uninit: 41
+    pc_program_page: 175
+    pc_erase_sector: 109
+    pc_erase_all: 45
+    data_section_offset: 304
+    flash_properties:
+      address_range:
+        start: 0
+        end: 16384
+      page_size: 256
+      erased_byte_value: 255
+      program_page_timeout: 300
+      erase_sector_timeout: 3000
+      sectors:
+        - size: 1024
+          address: 0
+  LPC8xx_32:
+    name: LPC8xx_32
+    description: LPC8xx IAP 32kB Flash
+    default: true
+    instructions: gApwR0hJR0hJRAhgR0gAIgJjASFBY0JjQWOBY0NJAiBAOQhwEEZwRwAgcEf4tUBMMiBMRCFGACUfJmHEFDE8SDxPSEQMPACRuEdgaQAoDdE0IGHENEhIRABoIGA0SAw8SEQAmbhHYGkAKADQASD4vfi1L02ECjIgTUQRxSlGDDErSCxOLGAPRkhECD2wR2hpACgO0TQgEcUjSCxgSEQAaGhgI0g5RkhECD2wR2hpACgA0AEg+L34tRRGBgAO0QPMYmhAGCFoiRhAGKFoQBjhaEAYIWlAGEBCYGEIPBRNsApNRDIhaGApYKhgKUYUMRFPKEYAkbhHaGkAKBHRMyCsYEHF/yABMGhgB0hIRABoqGAHSAg9SEQAmbhHaGkAKADQASD4veAuAAAEAAAAQIAEQAgAAADxH/8fAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==
+    pc_init: 5
+    pc_uninit: 41
+    pc_program_page: 183
+    pc_erase_sector: 113
+    pc_erase_all: 45
+    data_section_offset: 312
+    flash_properties:
+      address_range:
+        start: 0
+        end: 32768
+      page_size: 256
+      erased_byte_value: 255
+      program_page_timeout: 300
+      erase_sector_timeout: 3000
+      sectors:
+        - size: 1024
+          address: 0
+  LPC84x_64:
+    name: LPC84x_64
+    description: LPC84x IAP 64kB Flash
+    default: true
+    instructions: gApwR0hJR0hJRAhgR0gAIgJhASFBYUJhQWGBYUNJAiBAOQhwEEZwRwAgcEf4tUBMMiBMRCFGACU/JmHEFDE8SDxPSEQMPACRuEdgaQAoDdE0IGHENEhIRABoIGA0SAw8SEQAmbhHYGkAKADQASD4vfi1L02ECjIgTUQRxSlGDDErSCxOLGAPRkhECD2wR2hpACgO0TQgEcUjSCxgSEQAaGhgI0g5RkhECD2wR2hpACgA0AEg+L34tRRGBgAO0QPMYmhAGCFoiRhAGKFoQBjhaEAYIWlAGEBCYGEIPBRNsApNRDIhaGApYKhgKUYUMRFPKEYAkbhHaGkAKBHRMyCsYEHF/yABMGhgB0hIRABoqGAHSAg9SEQAmbhHaGkAKADQASD4veAuAAAEAAAAQIAEQAgAAADxHwAPAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==
+    pc_init: 5
+    pc_uninit: 41
+    pc_program_page: 183
+    pc_erase_sector: 113
+    pc_erase_all: 45
+    data_section_offset: 312
+    flash_properties:
+      address_range:
+        start: 0
+        end: 65536
+      page_size: 256
+      erased_byte_value: 255
+      program_page_timeout: 300
+      erase_sector_timeout: 3000
+      sectors:
+        - size: 1024
+          address: 0
+  LPC8N04_30:
+    name: LPC8N04_30
+    description: LPC8N04 IAP 30kB Flash
+    default: true
+    instructions: gApwR0FJfSCAAUlECGBASAFoASKSBJFDAWA+SAFqCQwJBAFiACFBYgEhQWIAIHBHACBwR/i1OEwyIExEIUYAJR0mYcQUMTRINE9IRAw8AJG4R2BpACgN0TQgYcQrSEhEAGggYCxIDDxIRACZuEdgaQAoANABIPi9+LUnTYQKMiBNRBHFKUYMMSNIJE4sYA9GSEQIPbBHaGkAKA7RNCARxRpILGBIRABoaGAbSDlGSEQIPbBHaGkAKADQASD4vfi1FUwFRoAKTEQyIWBgIWCgYCFGFDERThdGIEYAkbBHYGkAKBDRMyChxP8gATAgYAdISEQAaGBgCEgMPEhEAJmwR2BpACgA0AEg+L0AAAQAAAAAwANAAIAEQAgAAADxH/8fAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+    pc_init: 5
+    pc_uninit: 49
+    pc_program_page: 191
+    pc_erase_sector: 121
+    pc_erase_all: 53
+    data_section_offset: 288
+    flash_properties:
+      address_range:
+        start: 0
+        end: 30720
+      page_size: 256
+      erased_byte_value: 255
+      program_page_timeout: 300
+      erase_sector_timeout: 3000
+      sectors:
+        - size: 1024
+          address: 0
+  LPC8xx_8:
+    name: LPC8xx_8
+    description: LPC8xx IAP 8kB Flash
+    default: true
+    instructions: gApwR0ZJRUhJRAhgRUgAIgJjASFBY0JjQWOBY0FJAiBAOQhwEEZwRwAgcEf4tT5MMiBMRAAlByYiRmHCIUYUMTpPIEYAkbhHYGkAKAzRNCAhRmHBMkhIRABo4GAgRgCZuEdgaQAoANABIPi9+LUuTYQKTUQyIGxgKUasYBQxKGAqTg9GKEawR2hpACgN0WxgNCCsYChgIkg5RkhEAGjoYChGsEdoaQAoANABIPi9+LUURgYADtFhaCBo4mhAGKFoiRhAGCFpQBhhaUAYoWlAGEBC4GEUTbAKTUQyIWhgKWCoYClGFDERTyhGAJG4R2hpACgQ0W5gMyCsYChg/yABMOhgB0hIRABoKGEoRgCZuEdoaQAoANABIPi9AADgLgAABAAAAECABEAIAAAA8R//HwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+    pc_init: 5
+    pc_uninit: 41
+    pc_program_page: 175
+    pc_erase_sector: 109
+    pc_erase_all: 45
+    data_section_offset: 304
+    flash_properties:
+      address_range:
+        start: 0
+        end: 8192
+      page_size: 256
+      erased_byte_value: 255
+      program_page_timeout: 300
+      erase_sector_timeout: 3000
+      sectors:
+        - size: 1024
+          address: 0
+core: M0
