@@ -194,7 +194,7 @@ impl<'a> FlashBuilder<'a> {
         let sizes = sectors.first().map(|s| (s.size, s.page_size));
         let (sector_size, page_size) = sizes.unwrap_or((0, 0));
 
-        let sector_size:u32 = sectors.iter().map(|s| s.size ).sum();
+        let sector_size: u32 = sectors.iter().map(|s| s.size).sum();
 
         progress.initialized(num_pages, sector_size as usize, page_size);
 

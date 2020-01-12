@@ -136,9 +136,7 @@ impl<'a, 'b> FlashLoader<'a, 'b> {
             let algorithms: Vec<_> = target
                 .flash_algorithms
                 .iter()
-                .filter(|fa| {
-                    fa.flash_properties.range.contains_range(&region.range)
-                })
+                .filter(|fa| fa.flash_properties.range.contains_range(&region.range))
                 .collect();
 
             //log::debug!("Algorithms: {:?}", &algorithms);
