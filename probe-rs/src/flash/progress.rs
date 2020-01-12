@@ -13,12 +13,7 @@ impl FlashProgress {
         (self.handler)(event);
     }
 
-    pub fn initialized(
-        &self,
-        total_pages: usize,
-        total_sector_size: usize,
-        page_size: u32,
-    ) {
+    pub fn initialized(&self, total_pages: usize, total_sector_size: usize, page_size: u32) {
         self.emit(ProgressEvent::Initialized {
             total_pages,
             total_sector_size,

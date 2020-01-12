@@ -165,7 +165,8 @@ impl Registry {
         };
 
         // find relevant algorithms
-        let chip_algorithms = chip.flash_algorithms
+        let chip_algorithms = chip
+            .flash_algorithms
             .iter()
             .filter_map(|fa| family.flash_algorithms.get(fa))
             .cloned()

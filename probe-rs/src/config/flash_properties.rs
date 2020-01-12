@@ -1,11 +1,11 @@
 use super::memory::SectorDescription;
-use std::ops::Range;
 use derivative::Derivative;
+use std::ops::Range;
 #[derive(Debug, Derivative, Clone, Serialize, Deserialize)]
 #[derivative(Default)]
 pub struct FlashProperties {
     /// The range of the device flash.
-    #[derivative(Default(value="0..0"))]
+    #[derivative(Default(value = "0..0"))]
     pub range: Range<u32>,
     /// The page size of the device flash.
     pub page_size: u32,

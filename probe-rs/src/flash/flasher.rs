@@ -511,7 +511,11 @@ impl<'a> ActiveFlasher<'a, Program> {
         let flasher = self;
         let algo = flasher.flash_algorithm;
 
-        log::info!("Flashing page at address {:#08x} with size: {}", address, bytes.len());
+        log::info!(
+            "Flashing page at address {:#08x} with size: {}",
+            address,
+            bytes.len()
+        );
 
         // Transfer the bytes to RAM.
         flasher.probe.write_block8(algo.begin_data, bytes)?;

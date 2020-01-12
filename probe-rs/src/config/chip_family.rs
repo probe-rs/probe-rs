@@ -1,8 +1,8 @@
-use std::collections::HashMap;
 use super::chip::Chip;
 use super::flash_algorithm::RawFlashAlgorithm;
 use crate::config::target::TargetParseError;
 use jep106::JEP106Code;
+use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 

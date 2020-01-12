@@ -78,8 +78,12 @@ fn quote_option<T: quote::ToTokens>(option: Option<T>) -> proc_macro2::TokenStre
 /// Extracts a list of algorithm token streams from a yaml value.
 fn extract_algorithms(chip: &serde_yaml::Value) -> Vec<(String, proc_macro2::TokenStream)> {
     // Get an iterator over all the algorithms contained in the chip value obtained from the yaml file.
-    let algorithm_iter = chip.get("flash_algorithms")
-    .unwrap().as_mapping().unwrap().iter();
+    let algorithm_iter = chip
+        .get("flash_algorithms")
+        .unwrap()
+        .as_mapping()
+        .unwrap()
+        .iter();
 
     algorithm_iter
         .map(|(_name, algorithm)| {
@@ -307,7 +311,8 @@ fn extract_variants(chip_family: &serde_yaml::Value) -> Vec<proc_macro2::TokenSt
 /// Extracts a chip family token stream from a yaml value.
 fn extract_chip_family(chip_family: &serde_yaml::Value) -> proc_macro2::TokenStream {
     // Extract all the algorithms into a Vec of TokenStreams.
-    let (algorithm_names, algorithms): (Vec<_>, Vec<_>) = extract_algorithms(&chip_family).into_iter().unzip();
+    let (algorithm_names, algorithms): (Vec<_>, Vec<_>) =
+        extract_algorithms(&chip_family).into_iter().unzip();
 
     // Extract all the available variants into a Vec of TokenStreams.
     let variants = extract_variants(&chip_family);
