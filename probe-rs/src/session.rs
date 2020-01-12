@@ -20,6 +20,13 @@ impl Session {
         }
     }
 
+    pub fn builder() -> SessionBuilder {
+        SessionBuilder {
+            target: None,
+            probe: None,
+        }
+    }
+
     /// Set a hardware breakpoint
     pub fn set_hw_breakpoint(&mut self, address: u32) -> Result<(), DebugProbeError> {
         log::debug!("Trying to set HW breakpoint at address {:#08x}", address);
@@ -101,6 +108,68 @@ impl Session {
         }
 
         free_bp
+    }
+}
+
+pub enum SessionBuilderError {
+    NoTargetSpecified,
+    NoProbeSpecified,
+    NoProbeFound,
+    ChipAutodetectFailed,
+}
+
+/// A builder for the [Session](struct.Session.html) struct.
+/// It can be used to conveniently create a new session.
+pub struct SessionBuilder {
+    target: Option<Target>,
+    probe: Option<MasterProbe>,
+}
+
+impl SessionBuilder {
+    pub fn with_discovered_probe(mut self) -> Result<SessionBuilder, SessionBuilderError> {
+        let probes = MasterProbe::list_all();
+        if probes.len() == 1 {
+            match MasterProbe::from_probe_info(&probes[0]) {
+                Ok(probe) => self.probe = Some(probe),
+                Err(e) => {
+                    log::error!("{}", e);
+                    return Err(SessionBuilderError::NoProbeFound);
+                }
+            }
+        }
+        Ok(self)
+    }
+
+    pub fn with_specific_probe(
+        mut self,
+        probe: MasterProbe,
+    ) -> Result<SessionBuilder, SessionBuilderError> {
+        self.probe = Some(probe);
+        Ok(self)
+    }
+
+    // pub fn with_discovered_target(self) -> Result<SessionBuilder, SessionBuilderError> {
+    //     let registry = Registry::from_builtin_families();
+
+    //     let target = registry
+    //         .get_target(SelectionStrategy::ChipInfo(ChipInfo::read_from_rom_table(&mut probe))
+    //         .map_err(|_| "Failed to find target")?;
+    // }
+
+    pub fn with_specific_target(
+        mut self,
+        target: Target,
+    ) -> Result<SessionBuilder, SessionBuilderError> {
+        self.target = Some(target);
+        Ok(self)
+    }
+
+    /// Tries to build the Session from the stored parameters.
+    pub fn build(self) -> Result<Session, SessionBuilderError> {
+        Ok(Session::new(
+            self.target.ok_or(SessionBuilderError::NoTargetSpecified)?,
+            self.probe.ok_or(SessionBuilderError::NoProbeSpecified)?,
+        ))
     }
 }
 
