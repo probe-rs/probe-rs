@@ -1,0 +1,1562 @@
+---
+name: STM32F1 Series
+variants:
+  - name: STM32F100C4
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536875008
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134234112
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_16
+      - stm32f10x_opt
+  - name: STM32F100C6
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536875008
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_128
+      - stm32f10x_opt
+  - name: STM32F100C8
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_128
+      - stm32f10x_opt
+  - name: STM32F100CB
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_128
+      - stm32f10x_opt
+  - name: STM32F100R4
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536875008
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134234112
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_16
+      - stm32f10x_opt
+  - name: STM32F100R6
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536875008
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_128
+      - stm32f10x_opt
+  - name: STM32F100R8
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_128
+      - stm32f10x_opt
+  - name: STM32F100RB
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_128
+      - stm32f10x_opt
+  - name: STM32F100RC
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536895488
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_512
+      - stm32f10x_opt
+  - name: STM32F100RD
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134610944
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_512
+      - stm32f10x_opt
+  - name: STM32F100RE
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_512
+      - stm32f10x_opt
+  - name: STM32F100V8
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_128
+      - stm32f10x_opt
+  - name: STM32F100VB
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_128
+      - stm32f10x_opt
+  - name: STM32F100VC
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536895488
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_512
+      - stm32f10x_opt
+  - name: STM32F100VD
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134610944
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_512
+      - stm32f10x_opt
+  - name: STM32F100VE
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_512
+      - stm32f10x_opt
+  - name: STM32F100ZC
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536895488
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_512
+      - stm32f10x_opt
+  - name: STM32F100ZD
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134610944
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_512
+      - stm32f10x_opt
+  - name: STM32F100ZE
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_512
+      - stm32f10x_opt
+  - name: STM32F101C4
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536875008
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134234112
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_16
+      - stm32f10x_opt
+  - name: STM32F101C6
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536877056
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_128
+      - stm32f10x_opt
+  - name: STM32F101C8
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536881152
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_128
+      - stm32f10x_opt
+  - name: STM32F101CB
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536887296
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_128
+      - stm32f10x_opt
+  - name: STM32F101R4
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536875008
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134234112
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_16
+      - stm32f10x_opt
+  - name: STM32F101R6
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536877056
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_128
+      - stm32f10x_opt
+  - name: STM32F101R8
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536881152
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_128
+      - stm32f10x_opt
+  - name: STM32F101RB
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536887296
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_128
+      - stm32f10x_opt
+  - name: STM32F101RC
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_512
+      - stm32f10x_opt
+  - name: STM32F101RD
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536920064
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134610944
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_512
+      - stm32f10x_opt
+  - name: STM32F101RE
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536920064
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_512
+      - stm32f10x_opt
+  - name: STM32F101RF
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536952832
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135004160
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_1024
+      - stm32f10x_opt
+  - name: STM32F101RG
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536952832
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_1024
+      - stm32f10x_opt
+  - name: STM32F101T4
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536875008
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134234112
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_16
+      - stm32f10x_opt
+  - name: STM32F101T6
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536877056
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_128
+      - stm32f10x_opt
+  - name: STM32F101T8
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536881152
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_128
+      - stm32f10x_opt
+  - name: STM32F101TB
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536887296
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_128
+      - stm32f10x_opt
+  - name: STM32F101V8
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536881152
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_128
+      - stm32f10x_opt
+  - name: STM32F101VB
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536887296
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_128
+      - stm32f10x_opt
+  - name: STM32F101VC
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_512
+      - stm32f10x_opt
+  - name: STM32F101VD
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536920064
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134610944
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_512
+      - stm32f10x_opt
+  - name: STM32F101VE
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536920064
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_512
+      - stm32f10x_opt
+  - name: STM32F101VF
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536952832
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135004160
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_1024
+      - stm32f10x_opt
+  - name: STM32F101VG
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536952832
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_1024
+      - stm32f10x_opt
+  - name: STM32F101ZC
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_512
+      - stm32f10x_opt
+  - name: STM32F101ZD
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536920064
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134610944
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_512
+      - stm32f10x_opt
+  - name: STM32F101ZE
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536920064
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_512
+      - stm32f10x_opt
+  - name: STM32F101ZF
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536952832
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135004160
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_1024
+      - stm32f10x_opt
+  - name: STM32F101ZG
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536952832
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_1024
+      - stm32f10x_opt
+  - name: STM32F102C4
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536875008
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134234112
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_16
+      - stm32f10x_opt
+  - name: STM32F102C6
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536877056
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_128
+      - stm32f10x_opt
+  - name: STM32F102C8
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536881152
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_128
+      - stm32f10x_opt
+  - name: STM32F102CB
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536887296
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_128
+      - stm32f10x_opt
+  - name: STM32F102R4
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536875008
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134234112
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_16
+      - stm32f10x_opt
+  - name: STM32F102R6
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536877056
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_128
+      - stm32f10x_opt
+  - name: STM32F102R8
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536881152
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_128
+      - stm32f10x_opt
+  - name: STM32F102RB
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536887296
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_128
+      - stm32f10x_opt
+  - name: STM32F103C4
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536877056
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134234112
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_16
+      - stm32f10x_opt
+  - name: STM32F103C6
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536881152
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_128
+      - stm32f10x_opt
+  - name: STM32F103C8
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536891392
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_128
+      - stm32f10x_opt
+  - name: STM32F103CB
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536891392
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_128
+      - stm32f10x_opt
+  - name: STM32F103R4
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536877056
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134234112
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_16
+      - stm32f10x_opt
+  - name: STM32F103R6
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536881152
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_128
+      - stm32f10x_opt
+  - name: STM32F103R8
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536891392
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_128
+      - stm32f10x_opt
+  - name: STM32F103RB
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536891392
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_128
+      - stm32f10x_opt
+  - name: STM32F103RC
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536920064
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_512
+      - stm32f10x_opt
+  - name: STM32F103RD
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536936448
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134610944
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_512
+      - stm32f10x_opt
+  - name: STM32F103RE
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536936448
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_512
+      - stm32f10x_opt
+  - name: STM32F103RF
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536969216
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135004160
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_1024
+      - stm32f10x_opt
+  - name: STM32F103RG
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536969216
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_1024
+      - stm32f10x_opt
+  - name: STM32F103T4
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536877056
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134234112
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_16
+      - stm32f10x_opt
+  - name: STM32F103T6
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536881152
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_128
+      - stm32f10x_opt
+  - name: STM32F103T8
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536891392
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_128
+      - stm32f10x_opt
+  - name: STM32F103TB
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536891392
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_128
+      - stm32f10x_opt
+  - name: STM32F103V8
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536891392
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_128
+      - stm32f10x_opt
+  - name: STM32F103VB
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536891392
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_128
+      - stm32f10x_opt
+  - name: STM32F103VC
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536920064
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_512
+      - stm32f10x_opt
+  - name: STM32F103VD
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536936448
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134610944
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_512
+      - stm32f10x_opt
+  - name: STM32F103VE
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536936448
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_512
+      - stm32f10x_opt
+  - name: STM32F103VF
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536969216
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135004160
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_1024
+      - stm32f10x_opt
+  - name: STM32F103VG
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536969216
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_1024
+      - stm32f10x_opt
+  - name: STM32F103ZC
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536920064
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_512
+      - stm32f10x_opt
+  - name: STM32F103ZD
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536936448
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134610944
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_512
+      - stm32f10x_opt
+  - name: STM32F103ZE
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536936448
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_512
+      - stm32f10x_opt
+  - name: STM32F103ZF
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536969216
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135004160
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_1024
+      - stm32f10x_opt
+  - name: STM32F103ZG
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536969216
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_1024
+      - stm32f10x_opt
+  - name: STM32F105R8
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536936448
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_cl
+      - stm32f10x_opt
+  - name: STM32F105RB
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536936448
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_cl
+      - stm32f10x_opt
+  - name: STM32F105RC
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536936448
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_cl
+      - stm32f10x_opt
+  - name: STM32F105V8
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536936448
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_cl
+      - stm32f10x_opt
+  - name: STM32F105VB
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536936448
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_cl
+      - stm32f10x_opt
+  - name: STM32F105VC
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536936448
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_cl
+      - stm32f10x_opt
+  - name: STM32F107RB
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536936448
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_cl
+      - stm32f10x_opt
+  - name: STM32F107RC
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536936448
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_cl
+      - stm32f10x_opt
+  - name: STM32F107VB
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536936448
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_cl
+      - stm32f10x_opt
+  - name: STM32F107VC
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536936448
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f10x_cl
+      - stm32f10x_opt
+flash_algorithms:
+  STM32F10x_512:
+    name: STM32F10x_512
+    description: STM32F10x High-density Flash
+    default: true
+    instructions: ELUDRgAgREwgYERIYGBESGBgIEbAaRDwBA8I0UXyVVBATCBgBiBgYED2/3CgYAAgEL0BRjhIAGlA8IAANkoQYQAgcEc0SABpQPAEADJJCGEIRgBpQPBAAAhhA+BK9qogMEkIYCxIwGgQ8AEP9tEqSABpIPAEAChJCGEAIHBHAUYlSABpQPACACNKEGEQRkFhAGlA8EAAEGED4Er2qiAhShBgHUjAaBDwAQ/20RpIAGkg8AIAGEoQYQAgcEcQtQNGSBwg8AEBIuATSABpQPABABFMIGEQiBiAAL8PSMBoEPABD/rRDEgAaSDwAQAKTCBhIEbAaBDwFA8G0CBGwGhA8BQA4GABIBC9mxySHIkeACna0QAg9+cAAAAgAkAjAWdFq4nvzQAwAEAAAAAA
+    pc_init: 1
+    pc_uninit: 51
+    pc_program_page: 189
+    pc_erase_sector: 127
+    pc_erase_all: 69
+    data_section_offset: 296
+    flash_properties:
+      address_range:
+        start: 134217728
+        end: 134742016
+      page_size: 1024
+      erased_byte_value: 255
+      program_page_timeout: 100
+      erase_sector_timeout: 500
+      sectors:
+        - size: 2048
+          address: 0
+  STM32F10x_128:
+    name: STM32F10x_128
+    description: STM32F10x Med-density Flash
+    default: true
+    instructions: ELUDRgAgREwgYERIYGBESGBgIEbAaRDwBA8I0UXyVVBATCBgBiBgYED2/3CgYAAgEL0BRjhIAGlA8IAANkoQYQAgcEc0SABpQPAEADJJCGEIRgBpQPBAAAhhA+BK9qogMEkIYCxIwGgQ8AEP9tEqSABpIPAEAChJCGEAIHBHAUYlSABpQPACACNKEGEQRkFhAGlA8EAAEGED4Er2qiAhShBgHUjAaBDwAQ/20RpIAGkg8AIAGEoQYQAgcEcQtQNGSBwg8AEBIuATSABpQPABABFMIGEQiBiAAL8PSMBoEPABD/rRDEgAaSDwAQAKTCBhIEbAaBDwFA8G0CBGwGhA8BQA4GABIBC9mxySHIkeACna0QAg9+cAAAAgAkAjAWdFq4nvzQAwAEAAAAAA
+    pc_init: 1
+    pc_uninit: 51
+    pc_program_page: 189
+    pc_erase_sector: 127
+    pc_erase_all: 69
+    data_section_offset: 296
+    flash_properties:
+      address_range:
+        start: 134217728
+        end: 134348800
+      page_size: 1024
+      erased_byte_value: 255
+      program_page_timeout: 100
+      erase_sector_timeout: 500
+      sectors:
+        - size: 1024
+          address: 0
+  STM32F10x_OPT:
+    name: STM32F10x_OPT
+    description: STM32F10x Flash Options
+    default: false
+    instructions: ELUDRgAgXkwgYF5IYGBeSGBgXEigYFxIoGAgRsBpEPAEDwjRRfJVUFhMIGAGIGBgQPb/cKBgACAQvQFGUEgAaSD0gHBOShBhEEYAaUDwgAAQYQAgcEdKSABpQPAgAEhJCGEIRgBpQPBAAAhhA+BK9qogRkkIYEJIwGgQ8AEP9tE/SABpIPAgAD1JCGEIRgBpQPAQAAhhRfalID1JCIAD4Er2qiA5SQhgNUjAaBDwAQ/20TNIAGkg8BAAMUkIYQhGwGgQ8BQPBtAIRsBoQPAUAMhgASBwRwAg/OcBRihIAGlA8CAAJkoQYRBGAGlA8EAAEGED4Er2qiAkShBgIEjAaBDwAQ/20R5IAGkg8CAAHEoQYQAgcEcDRgEgcEcQtQNGSBwg8AEBJuAVSABpQPAQABNMIGEQiBiAA+BK9qogE0wgYA9IwGgQ8AEP9tEMSABpIPAQAApMIGEgRsBoEPAUDwbQIEbAaEDwFADgYAEgEL2bHJIciR4AKdbRACD35wAAACACQCMBZ0Wrie/NADAAQAD4/x8AAAAA
+    pc_init: 1
+    pc_uninit: 59
+    pc_program_page: 285
+    pc_erase_sector: 219
+    pc_erase_all: 87
+    data_section_offset: 404
+    flash_properties:
+      address_range:
+        start: 536868864
+        end: 536868880
+      page_size: 16
+      erased_byte_value: 255
+      program_page_timeout: 3000
+      erase_sector_timeout: 3000
+      sectors:
+        - size: 16
+          address: 0
+  STM32F10x_CL:
+    name: STM32F10x_CL
+    description: STM32F10x Connectivity Line Flash
+    default: true
+    instructions: ELUDRgAgREwgYERIYGBESGBgIEbAaRDwBA8I0UXyVVBATCBgBiBgYED2/3CgYAAgEL0BRjhIAGlA8IAANkoQYQAgcEc0SABpQPAEADJJCGEIRgBpQPBAAAhhA+BK9qogMEkIYCxIwGgQ8AEP9tEqSABpIPAEAChJCGEAIHBHAUYlSABpQPACACNKEGEQRkFhAGlA8EAAEGED4Er2qiAhShBgHUjAaBDwAQ/20RpIAGkg8AIAGEoQYQAgcEcQtQNGSBwg8AEBIuATSABpQPABABFMIGEQiBiAAL8PSMBoEPABD/rRDEgAaSDwAQAKTCBhIEbAaBDwFA8G0CBGwGhA8BQA4GABIBC9mxySHIkeACna0QAg9+cAAAAgAkAjAWdFq4nvzQAwAEAAAAAA
+    pc_init: 1
+    pc_uninit: 51
+    pc_program_page: 189
+    pc_erase_sector: 127
+    pc_erase_all: 69
+    data_section_offset: 296
+    flash_properties:
+      address_range:
+        start: 134217728
+        end: 134479872
+      page_size: 1024
+      erased_byte_value: 255
+      program_page_timeout: 100
+      erase_sector_timeout: 500
+      sectors:
+        - size: 2048
+          address: 0
+  STM32F10x_1024:
+    name: STM32F10x_1024
+    description: STM32F10x XL-density Flash
+    default: true
+    instructions: ELUDRtgMwASATExEIGAAIH9MIGB/SGBgf0hgYH1IYGR9SGBkIEbAaRDwBA8I0UXyVVB6TCBgBiBgYED2/3CgYAAgEL0BRnJIAGlA8IAAcEoQYRBGAG1A8IAAEGUAIHBHa0gAaUDwBABpSQhhCEYAaUDwQAAIYQPgSvaqIGdJCGBjSMBoEPABD/bRYUgAaSDwBABfSQhhCEYAbUDwBAAIZQhGAG1A8EAACGUD4Er2qiBaSQhgVkjAbBDwAQ/20VRIAG0g8AQAUkkIZQAgcEcBRk5ISEQAaAD1ACCBQhzSTEgAaUDwAgBKShBhEEZBYQBpQPBAABBhA+BK9qogR0oQYENIwGgQ8AEP9tFBSABpIPACAD9KEGEb4D1IAG1A8AIAO0oQZRBGQWUAbUDwQAAQZQPgSvaqIDlKEGA1SMBsEPABD/bRMkgAbSDwAgAwShBlACBwRxC1A0ZIHCDwAQErSEhEAGgA9QAgg0Im0iLgKEgAaUDwAQAmTCBhEIgYgAC/I0jAaBDwAQ/60SFIAGkg8AEAH0wgYSBGwGgQ8BQPBtAgRsBoQPAUAOBgASAQvZsckhyJHgAp2tEl4CLgFEgAbUDwAQASTCBlEIgYgAC/EEjAbBDwAQ/60Q1IAG0g8AEAC0wgZSBGwGwQ8BQPBtAgRsBsQPAUAOBkASDX55sckhyJHgAp2tEAINDnAAAEAAAAACACQCMBZ0Wrie/NADAAQAAAAAAAAAAA
+    pc_init: 1
+    pc_uninit: 69
+    pc_program_page: 341
+    pc_erase_sector: 207
+    pc_erase_all: 97
+    data_section_offset: 544
+    flash_properties:
+      address_range:
+        start: 134217728
+        end: 135266304
+      page_size: 1024
+      erased_byte_value: 255
+      program_page_timeout: 100
+      erase_sector_timeout: 500
+      sectors:
+        - size: 2048
+          address: 0
+  STM32F10x_16:
+    name: STM32F10x_16
+    description: STM32F10x Low-density Flash
+    default: true
+    instructions: ELUDRgAgREwgYERIYGBESGBgIEbAaRDwBA8I0UXyVVBATCBgBiBgYED2/3CgYAAgEL0BRjhIAGlA8IAANkoQYQAgcEc0SABpQPAEADJJCGEIRgBpQPBAAAhhA+BK9qogMEkIYCxIwGgQ8AEP9tEqSABpIPAEAChJCGEAIHBHAUYlSABpQPACACNKEGEQRkFhAGlA8EAAEGED4Er2qiAhShBgHUjAaBDwAQ/20RpIAGkg8AIAGEoQYQAgcEcQtQNGSBwg8AEBIuATSABpQPABABFMIGEQiBiAAL8PSMBoEPABD/rRDEgAaSDwAQAKTCBhIEbAaBDwFA8G0CBGwGhA8BQA4GABIBC9mxySHIkeACna0QAg9+cAAAAgAkAjAWdFq4nvzQAwAEAAAAAA
+    pc_init: 1
+    pc_uninit: 51
+    pc_program_page: 189
+    pc_erase_sector: 127
+    pc_erase_all: 69
+    data_section_offset: 296
+    flash_properties:
+      address_range:
+        start: 134217728
+        end: 134234112
+      page_size: 1024
+      erased_byte_value: 255
+      program_page_timeout: 100
+      erase_sector_timeout: 500
+      sectors:
+        - size: 1024
+          address: 0
+core: M3
