@@ -11,4 +11,6 @@ pub struct Chip {
     pub name: String,
     /// The name of the flash algorithm.
     pub memory_map: Vec<MemoryRegion>,
+
+    pub flash_algorithms: Vec<String>,
 }

@@ -39,7 +39,7 @@ pub(crate) struct FlashDevice {
     /// The type of flash algorithm (MORE INFO REQUIRED).
     pub(crate) typ: u16,
     /// The flash start address.
-    pub(crate) address_start: u32,
+    pub(crate) start_address: u32,
     /// The flash size in bytes.
     pub(crate) device_size: u32,
     /// The flash page size in bytes.
@@ -81,7 +81,7 @@ impl FlashDevice {
             driver_version: data.pread(0).unwrap(),
             name: String::from_utf8_lossy(&data[2..2 + sanitized_length]).to_string(),
             typ: data.pread(130).unwrap(),
-            address_start: data.pread(132).unwrap(),
+            start_address: data.pread(132).unwrap(),
             device_size: data.pread(136).unwrap(),
             page_size: data.pread(140).unwrap(),
             _reserved: data.pread(144).unwrap(),

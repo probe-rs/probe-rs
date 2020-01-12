@@ -1,5 +1,7 @@
 use crate::error::Error;
 use probe_rs::config::flash_algorithm::RawFlashAlgorithm;
+use probe_rs::config::flash_properties::FlashProperties;
+use probe_rs::config::memory::SectorDescription;
 
 use crate::flash_device::FlashDevice;
 
@@ -38,59 +40,84 @@ pub(crate) fn read_elf_bin_data<'a>(
     None
 }
 
+fn extract_flash_device(elf: &goblin::elf::Elf, buffer: &[u8]) -> Option<FlashDevice> {
+    // Extract the flash device info.
+    for sym in elf.syms.iter() {
+        let name = &elf.strtab[sym.st_name];
+
+        if let "FlashDevice" = name {
+            // This struct contains information about the FLM file structure.
+            let address = sym.st_value as u32;
+            return Some(FlashDevice::new(&elf, buffer, address));
+        }
+    }
+
+    None
+}
+
 /// Extracts a position & memory independent flash algorithm blob from the proveided ELF file.
 pub fn extract_flash_algo(
     mut file: impl std::io::Read,
     file_name: &std::path::Path,
     default: bool,
-) -> Result<(RawFlashAlgorithm, u32, u32, u8), Error> {
+) -> Result<RawFlashAlgorithm, Error> {
     let mut buffer = vec![];
     file.read_to_end(&mut buffer).unwrap();
 
     let mut algo = RawFlashAlgorithm::default();
 
-    let mut flash_device = None;
-    if let Ok(elf) = goblin::elf::Elf::parse(&buffer.as_slice()) {
-        // Extract the flash device info.
-        for sym in elf.syms.iter() {
-            let name = &elf.strtab[sym.st_name];
+    let elf =
+        goblin::elf::Elf::parse(&buffer.as_slice()).map_err(|e| Error::IoError(e.to_string()))?;
 
-            if let "FlashDevice" = name {
-                // This struct contains information about the FLM file structure.
-                let address = sym.st_value as u32;
-                flash_device = Some(FlashDevice::new(&elf, &buffer, address));
-            }
+    let flash_device = extract_flash_device(&elf, &buffer)
+        .ok_or_else(|| Error::IoError("Failed to read flash device".to_owned()))?;
+
+    // Extract binary blob.
+    let algorithm_binary = crate::algorithm_binary::AlgorithmBinary::new(&elf, &buffer)?;
+    algo.instructions = algorithm_binary.blob_as_u32();
+
+    // Extract the function pointers.
+    for sym in elf.syms.iter() {
+        let name = &elf.strtab[sym.st_name];
+
+        match name {
+            "Init" => algo.pc_init = Some(sym.st_value as u32),
+            "UnInit" => algo.pc_uninit = Some(sym.st_value as u32),
+            "EraseChip" => algo.pc_erase_all = Some(sym.st_value as u32),
+            "EraseSector" => algo.pc_erase_sector = sym.st_value as u32,
+            "ProgramPage" => algo.pc_program_page = sym.st_value as u32,
+            _ => {}
         }
-
-        // Extract binary blob.
-        let algorithm_binary = crate::algorithm_binary::AlgorithmBinary::new(&elf, &buffer)?;
-        algo.instructions = algorithm_binary.blob_as_u32();
-
-        // Extract the function pointers.
-        for sym in elf.syms.iter() {
-            let name = &elf.strtab[sym.st_name];
-
-            match name {
-                "Init" => algo.pc_init = Some(sym.st_value as u32),
-                "UnInit" => algo.pc_uninit = Some(sym.st_value as u32),
-                "EraseChip" => algo.pc_erase_all = Some(sym.st_value as u32),
-                "EraseSector" => algo.pc_erase_sector = sym.st_value as u32,
-                "ProgramPage" => algo.pc_program_page = sym.st_value as u32,
-                _ => {}
-            }
-        }
-
-        algo.description = flash_device.as_ref().map(|fd| fd.name.clone()).unwrap();
-        algo.name = file_name.file_stem().unwrap().to_str().unwrap().to_owned();
-        algo.default = default;
-        algo.data_section_offset = algorithm_binary.data_section.start;
     }
 
-    let flash_device = flash_device.unwrap();
-    Ok((
-        algo,
-        flash_device.page_size,
-        flash_device.sectors[0].size,
-        flash_device.erased_default_value,
-    ))
+    algo.description = flash_device.name;
+    algo.name = file_name.file_stem().unwrap().to_str().unwrap().to_owned();
+    algo.default = default;
+    algo.data_section_offset = algorithm_binary.data_section.start;
+
+    let sectors = flash_device
+        .sectors
+        .iter()
+        .map(|si| SectorDescription {
+            address: si.address,
+            size: si.size,
+        })
+        .collect();
+
+    let properties = FlashProperties {
+        start_address: flash_device.start_address,
+        size: flash_device.device_size,
+
+        page_size: flash_device.page_size,
+        erased_byte_value: flash_device.erased_default_value,
+
+        program_page_timeout: flash_device.program_page_timeout,
+        erase_sector_timeout: flash_device.erase_sector_timeout,
+
+        sectors,
+    };
+
+    algo.flash_properties = properties;
+
+    Ok(algo)
 }

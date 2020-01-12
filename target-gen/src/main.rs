@@ -9,14 +9,18 @@ use crate::error::Error;
 use chip::Chip;
 use chip_family::ChipFamily;
 use cmsis_pack::pdsc::Core;
+use cmsis_pack::pdsc::Device;
 use cmsis_pack::pdsc::Package;
 use cmsis_pack::pdsc::Processors;
 use cmsis_pack::utils::FromElem;
+use pretty_env_logger;
 use probe_rs::config::flash_algorithm::RawFlashAlgorithm;
 use probe_rs::config::memory::{FlashRegion, MemoryRegion, RamRegion};
 use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 use structopt::StructOpt;
+
+use log;
 
 #[derive(StructOpt)]
 struct Options {
@@ -26,47 +30,44 @@ struct Options {
     output_dir: PathBuf,
 }
 
+fn get_ram(device: &Device) -> Option<RamRegion> {
+    for memory in device.memories.0.values() {
+        if memory.default && memory.access.read && memory.access.write {
+            return Some(RamRegion {
+                range: memory.start as u32..memory.start as u32 + memory.size as u32,
+                is_boot_memory: memory.startup,
+            });
+        }
+    }
+
+    None
+}
+
 fn main() {
+    pretty_env_logger::init();
+
     let options = Options::from_args();
     // The directory in which to look for the .pdsc file.
     let in_dir = options.input_dir;
     let out_dir = options.output_dir;
 
     let mut families = Vec::<ChipFamily>::new();
-
     // Look for the .pdsc file in the given dir and it's child directories.
     visit_dirs(Path::new(&in_dir), &mut |pdsc, mut archive| {
         // Forge a definition file for each device in the .pdsc file.
         let mut devices = pdsc.devices.0.into_iter().collect::<Vec<_>>();
         devices.sort_by(|a, b| a.0.cmp(&b.0));
-        for (device_name, device) in devices {
-            // Check if this device family is already known.
-            let mut potential_family = families
-                .iter_mut()
-                .find(|family| family.name == device.family);
 
+        for (device_name, device) in devices {
             // Extract the RAM info from the .pdsc file.
-            let mut ram = None;
-            for memory in device.memories.0.values() {
-                if memory.default && memory.access.read && memory.access.write {
-                    ram = Some(RamRegion {
-                        range: memory.start as u32..memory.start as u32 + memory.size as u32,
-                        is_boot_memory: memory.startup,
-                    });
-                    break;
-                }
-            }
+            let ram = get_ram(&device);
 
             // Extract the flash algorithm, block & sector size and the erased byte value from the ELF binary.
-            // Only do this if this wasn't done yet for this family.
-            let mut page_size = 0;
-            let mut sector_size = 0;
-            let mut erased_byte_value = 0xFF;
-            let flash_algorithms = device
+            let variant_flash_algorithms = device
                 .algorithms
                 .iter()
                 .map(|flash_algorithm| {
-                    let (algo, ps, ss, ebv) = if let Some(ref mut archive) = archive {
+                    let algo = if let Some(ref mut archive) = archive {
                         crate::parser::extract_flash_algo(
                             archive
                                 .by_name(&flash_algorithm.file_name.as_path().to_string_lossy())
@@ -82,10 +83,6 @@ fn main() {
                             flash_algorithm.default,
                         )
                     }?;
-
-                    page_size = ps;
-                    sector_size = ss;
-                    erased_byte_value = ebv;
 
                     Ok(algo)
                 })
@@ -108,17 +105,14 @@ fn main() {
                     flash = Some(FlashRegion {
                         range: memory.start as u32..memory.start as u32 + memory.size as u32,
                         is_boot_memory: memory.startup,
-                        sector_size,
-                        page_size,
-                        erased_byte_value,
                     });
                     break;
                 }
             }
 
             // Get the core type.
-            let core = if let Processors::Symmetric(processor) = device.processor {
-                match processor.core {
+            let core = if let Processors::Symmetric(processor) = &device.processor {
+                match &processor.core {
                     Core::CortexM0 => "M0",
                     Core::CortexM0Plus => "M0",
                     Core::CortexM4 => "M4",
@@ -133,17 +127,25 @@ fn main() {
                 ""
             };
 
+            // Check if this device family is already known.
+            let mut potential_family = families
+                .iter_mut()
+                .find(|family| family.name == device.family);
+
             let family = if let Some(ref mut family) = potential_family {
                 family
             } else {
-                families.push(ChipFamily::new(
-                    device.family,
-                    flash_algorithms,
-                    core.to_owned(),
-                ));
+                families.push(ChipFamily::new(device.family, Vec::new(), core.to_owned()));
                 // This unwrap is always safe as we insert at least one item previously.
                 families.last_mut().unwrap()
             };
+
+            let flash_algorithm_names: Vec<_> = variant_flash_algorithms
+                .iter()
+                .map(|fa| fa.name.clone().to_lowercase())
+                .collect();
+
+            family.flash_algorithms.extend(variant_flash_algorithms);
 
             let mut memory_map: Vec<MemoryRegion> = Vec::new();
             if let Some(mem) = ram {
@@ -156,6 +158,7 @@ fn main() {
             family.variants.push(Chip {
                 name: device_name,
                 memory_map,
+                flash_algorithms: flash_algorithm_names,
             });
         }
 
@@ -181,16 +184,19 @@ fn visit_dirs<T>(
         for entry in fs::read_dir(path)? {
             let entry = entry?;
             let path = entry.path();
+
             if path.is_dir() {
                 visit_dirs(&path, cb)?;
             } else if let Some(extension) = path.as_path().extension() {
                 if extension == "pdsc" {
+                    log::info!("Found .pdsc file: {}", path.display());
                     cb(Package::from_path(entry.path().as_path()).unwrap(), None)?;
                 }
             }
         }
     } else if let Some(extension) = path.extension() {
         if extension == "pack" {
+            log::info!("Found .pack file: {}", path.display());
             // If we get a file, try to unpack it.
             let file = fs::File::open(&path).unwrap();
 
