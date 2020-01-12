@@ -200,7 +200,7 @@ fn flash_sector_single_size() {
                 size: 0x100,
                 address: 0x0,
             }],
-            range: 0x1000..0x1000 + 0x1000,
+            address_range: 0x1000..0x1000 + 0x1000,
             page_size: 0x10,
             ..Default::default()
         },
@@ -231,7 +231,7 @@ fn flash_sector_single_size_weird_sector_size() {
                 size: 258,
                 address: 0x0,
             }],
-            range: 0x800_0000..0x800_0000 + 258 * 10,
+            address_range: 0x800_0000..0x800_0000 + 258 * 10,
             page_size: 0x10,
             ..Default::default()
         },
@@ -275,7 +275,7 @@ fn flash_sector_multiple_sizes() {
                     address: 0x2_0000,
                 },
             ],
-            range: 0x800_0000..0x800_0000 + 0x10_0000,
+            address_range: 0x800_0000..0x800_0000 + 0x10_0000,
             page_size: 0x10,
             ..Default::default()
         },
