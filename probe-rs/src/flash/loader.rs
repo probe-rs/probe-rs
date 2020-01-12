@@ -129,14 +129,19 @@ impl<'a, 'b> FlashLoader<'a, 'b> {
                     "Algorithm {} - start: {:#08x} - size: {:#08x}",
                     algorithm.name,
                     algorithm.flash_properties.address_range.start,
-                    algorithm.flash_properties.address_range.end - algorithm.flash_properties.address_range.start
+                    algorithm.flash_properties.address_range.end
+                        - algorithm.flash_properties.address_range.start
                 );
             }
 
             let algorithms: Vec<_> = target
                 .flash_algorithms
                 .iter()
-                .filter(|fa| fa.flash_properties.address_range.contains_range(&region.range))
+                .filter(|fa| {
+                    fa.flash_properties
+                        .address_range
+                        .contains_range(&region.range)
+                })
                 .collect();
 
             //log::debug!("Algorithms: {:?}", &algorithms);

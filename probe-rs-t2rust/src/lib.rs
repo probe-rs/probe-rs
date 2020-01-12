@@ -1,3 +1,4 @@
+use scroll::Pread;
 use std::fs;
 use std::fs::{read_dir, read_to_string};
 use std::io;
@@ -110,13 +111,12 @@ fn extract_algorithms(chip: &serde_yaml::Value) -> Vec<(String, proc_macro2::Tok
                 .unwrap()
                 .to_ascii_lowercase();
             let default = algorithm.get("default").unwrap().as_bool().unwrap();
-            let instructions = algorithm
-                .get("instructions")
-                .unwrap()
-                .as_sequence()
-                .unwrap()
-                .iter()
-                .map(|v| v.as_u64().unwrap() as u32);
+            let instructions: Vec<u32> =
+                base64::decode(algorithm.get("instructions").unwrap().as_str().unwrap())
+                    .unwrap()
+                    .chunks(4)
+                    .map(|bytes| bytes.pread(0).unwrap())
+                    .collect();
             let pc_init =
                 quote_option(algorithm.get("pc_init").unwrap().as_u64().map(|v| v as u32));
             let pc_uninit = quote_option(
