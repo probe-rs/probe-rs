@@ -1,0 +1,6236 @@
+---
+name: STM32F4 Series
+variants:
+  - name: STM32F401CBUx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536936448
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_128
+      - stm32f401xx_opt
+      - stm32f4xx_otp
+  - name: STM32F401CBYx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536936448
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_128
+      - stm32f401xx_opt
+      - stm32f4xx_otp
+  - name: STM32F401CCUx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536936448
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_256
+      - stm32f401xx_opt
+      - stm32f4xx_otp
+  - name: STM32F401CCYx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536936448
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_256
+      - stm32f401xx_opt
+      - stm32f4xx_otp
+  - name: STM32F401CDUx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536969216
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134610944
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_384
+      - stm32f401xx_opt
+      - stm32f4xx_otp
+  - name: STM32F401CDYx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536969216
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134610944
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_384
+      - stm32f401xx_opt
+      - stm32f4xx_otp
+  - name: STM32F401CEUx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536969216
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_512
+      - stm32f401xx_opt
+      - stm32f4xx_otp
+  - name: STM32F401CEYx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536969216
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_512
+      - stm32f401xx_opt
+      - stm32f4xx_otp
+  - name: STM32F401RBTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536936448
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_128
+      - stm32f401xx_opt
+      - stm32f4xx_otp
+  - name: STM32F401RCTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536936448
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_256
+      - stm32f401xx_opt
+      - stm32f4xx_otp
+  - name: STM32F401RDTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536969216
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134610944
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_384
+      - stm32f401xx_opt
+      - stm32f4xx_otp
+  - name: STM32F401RETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536969216
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_512
+      - stm32f401xx_opt
+      - stm32f4xx_otp
+  - name: STM32F401VBHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536936448
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_128
+      - stm32f401xx_opt
+      - stm32f4xx_otp
+  - name: STM32F401VBTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536936448
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_128
+      - stm32f401xx_opt
+      - stm32f4xx_otp
+  - name: STM32F401VCHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536936448
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_256
+      - stm32f401xx_opt
+      - stm32f4xx_otp
+  - name: STM32F401VCTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536936448
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_256
+      - stm32f401xx_opt
+      - stm32f4xx_otp
+  - name: STM32F401VDHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536969216
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134610944
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_384
+      - stm32f401xx_opt
+      - stm32f4xx_otp
+  - name: STM32F401VDTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536969216
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134610944
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_384
+      - stm32f401xx_opt
+      - stm32f4xx_otp
+  - name: STM32F401VEHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536969216
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_512
+      - stm32f401xx_opt
+      - stm32f4xx_otp
+  - name: STM32F401VETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536969216
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_512
+      - stm32f401xx_opt
+      - stm32f4xx_otp
+  - name: STM32F405OEYx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_512
+      - stm32f40xxx_41xxx_opt
+      - stm32f4xx_otp
+  - name: STM32F405OGYx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1024
+      - stm32f40xxx_41xxx_opt
+      - stm32f4xx_otp
+  - name: STM32F405RGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1024
+      - stm32f40xxx_41xxx_opt
+      - stm32f4xx_otp
+  - name: STM32F405VGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1024
+      - stm32f40xxx_41xxx_opt
+      - stm32f4xx_otp
+  - name: STM32F405ZGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1024
+      - stm32f40xxx_41xxx_opt
+      - stm32f4xx_otp
+  - name: STM32F407IEHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_512
+      - stm32f40xxx_41xxx_opt
+      - stm32f4xx_otp
+  - name: STM32F407IETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_512
+      - stm32f40xxx_41xxx_opt
+      - stm32f4xx_otp
+  - name: STM32F407IGHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1024
+      - stm32f40xxx_41xxx_opt
+      - stm32f4xx_otp
+  - name: STM32F407IGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1024
+      - stm32f40xxx_41xxx_opt
+      - stm32f4xx_otp
+  - name: STM32F407VETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_512
+      - stm32f40xxx_41xxx_opt
+      - stm32f4xx_otp
+  - name: STM32F407VGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1024
+      - stm32f40xxx_41xxx_opt
+      - stm32f4xx_otp
+  - name: STM32F407ZETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_512
+      - stm32f40xxx_41xxx_opt
+      - stm32f4xx_otp
+  - name: STM32F407ZGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1024
+      - stm32f40xxx_41xxx_opt
+      - stm32f4xx_otp
+  - name: STM32F410C8Tx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_128
+      - stm32f410xx_412xx_opt
+  - name: STM32F410C8Ux
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_128
+      - stm32f410xx_412xx_opt
+  - name: STM32F410CBTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_128
+      - stm32f410xx_412xx_opt
+  - name: STM32F410CBUx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_128
+      - stm32f410xx_412xx_opt
+  - name: STM32F410R8Ix
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_128
+      - stm32f410xx_412xx_opt
+  - name: STM32F410R8Tx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_128
+      - stm32f410xx_412xx_opt
+  - name: STM32F410RBIx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_128
+      - stm32f410xx_412xx_opt
+  - name: STM32F410RBTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_128
+      - stm32f410xx_412xx_opt
+  - name: STM32F410T8Yx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_128
+      - stm32f410xx_412xx_opt
+  - name: STM32F410TBYx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_128
+      - stm32f410xx_412xx_opt
+  - name: STM32F411CCUx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_256
+      - stm32f411xx_opt
+      - stm32f4xx_otp
+  - name: STM32F411CCYx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_256
+      - stm32f411xx_opt
+      - stm32f4xx_otp
+  - name: STM32F411CEUx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_512
+      - stm32f411xx_opt
+      - stm32f4xx_otp
+  - name: STM32F411CEYx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_512
+      - stm32f411xx_opt
+      - stm32f4xx_otp
+  - name: STM32F411RCTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_256
+      - stm32f411xx_opt
+      - stm32f4xx_otp
+  - name: STM32F411RETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_512
+      - stm32f411xx_opt
+      - stm32f4xx_otp
+  - name: STM32F411VCHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_256
+      - stm32f411xx_opt
+      - stm32f4xx_otp
+  - name: STM32F411VCTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_256
+      - stm32f411xx_opt
+      - stm32f4xx_otp
+  - name: STM32F411VEHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_512
+      - stm32f411xx_opt
+      - stm32f4xx_otp
+  - name: STM32F411VETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_512
+      - stm32f411xx_opt
+      - stm32f4xx_otp
+  - name: STM32F412CEUx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537133056
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_512
+      - stm32f410xx_412xx_opt
+      - stm32f4xx_otp
+  - name: STM32F412CGUx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537133056
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1024
+      - stm32f410xx_412xx_opt
+      - stm32f4xx_otp
+  - name: STM32F412RETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537133056
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_512
+      - stm32f410xx_412xx_opt
+      - stm32f4xx_otp
+  - name: STM32F412REYx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537133056
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_512
+      - stm32f410xx_412xx_opt
+      - stm32f4xx_otp
+  - name: STM32F412RGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537133056
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1024
+      - stm32f410xx_412xx_opt
+      - stm32f4xx_otp
+  - name: STM32F412RGYx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537133056
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1024
+      - stm32f410xx_412xx_opt
+      - stm32f4xx_otp
+  - name: STM32F412VEHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537133056
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_512
+      - stm32f410xx_412xx_opt
+      - stm32f4xx_otp
+  - name: STM32F412VETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537133056
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_512
+      - stm32f410xx_412xx_opt
+      - stm32f4xx_otp
+  - name: STM32F412VGHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537133056
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1024
+      - stm32f410xx_412xx_opt
+      - stm32f4xx_otp
+  - name: STM32F412VGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537133056
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1024
+      - stm32f410xx_412xx_opt
+      - stm32f4xx_otp
+  - name: STM32F412ZEJx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537133056
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_512
+      - stm32f410xx_412xx_opt
+      - stm32f4xx_otp
+  - name: STM32F412ZETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537133056
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_512
+      - stm32f410xx_412xx_opt
+      - stm32f4xx_otp
+  - name: STM32F412ZGJx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537133056
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1024
+      - stm32f410xx_412xx_opt
+      - stm32f4xx_otp
+  - name: STM32F412ZGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537133056
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1024
+      - stm32f410xx_412xx_opt
+      - stm32f4xx_otp
+  - name: STM32F413CGUx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1024
+      - stm32f413xx_423xx_opt
+  - name: STM32F413CHUx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135790592
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1536
+      - stm32f413xx_423xx_opt
+  - name: STM32F413MGYx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1024
+      - stm32f413xx_423xx_opt
+  - name: STM32F413MHYx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135790592
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1536
+      - stm32f413xx_423xx_opt
+  - name: STM32F413RGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1024
+      - stm32f413xx_423xx_opt
+  - name: STM32F413RHTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135790592
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1536
+      - stm32f413xx_423xx_opt
+  - name: STM32F413VGHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1024
+      - stm32f413xx_423xx_opt
+  - name: STM32F413VGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1024
+      - stm32f413xx_423xx_opt
+  - name: STM32F413VHHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135790592
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1536
+      - stm32f413xx_423xx_opt
+  - name: STM32F413VHTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135790592
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1536
+      - stm32f413xx_423xx_opt
+  - name: STM32F413ZGJx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1024
+      - stm32f413xx_423xx_opt
+  - name: STM32F413ZGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1024
+      - stm32f413xx_423xx_opt
+  - name: STM32F413ZHJx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135790592
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1536
+      - stm32f413xx_423xx_opt
+  - name: STM32F413ZHTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135790592
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1536
+      - stm32f413xx_423xx_opt
+  - name: STM32F415OGYx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1024
+      - stm32f40xxx_41xxx_opt
+      - stm32f4xx_otp
+  - name: STM32F415RGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1024
+      - stm32f40xxx_41xxx_opt
+      - stm32f4xx_otp
+  - name: STM32F415VGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1024
+      - stm32f40xxx_41xxx_opt
+      - stm32f4xx_otp
+  - name: STM32F415ZGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1024
+      - stm32f40xxx_41xxx_opt
+      - stm32f4xx_otp
+  - name: STM32F417IEHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_512
+      - stm32f40xxx_41xxx_opt
+      - stm32f4xx_otp
+  - name: STM32F417IETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_512
+      - stm32f40xxx_41xxx_opt
+      - stm32f4xx_otp
+  - name: STM32F417IGHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1024
+      - stm32f40xxx_41xxx_opt
+      - stm32f4xx_otp
+  - name: STM32F417IGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1024
+      - stm32f40xxx_41xxx_opt
+      - stm32f4xx_otp
+  - name: STM32F417VETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_512
+      - stm32f40xxx_41xxx_opt
+      - stm32f4xx_otp
+  - name: STM32F417VGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1024
+      - stm32f40xxx_41xxx_opt
+      - stm32f4xx_otp
+  - name: STM32F417ZETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_512
+      - stm32f40xxx_41xxx_opt
+      - stm32f4xx_otp
+  - name: STM32F417ZGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1024
+      - stm32f40xxx_41xxx_opt
+      - stm32f4xx_otp
+  - name: STM32F423CHUx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135790592
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1536
+      - stm32f413xx_423xx_opt
+  - name: STM32F423MHYx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135790592
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1536
+      - stm32f413xx_423xx_opt
+  - name: STM32F423RHTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135790592
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1536
+      - stm32f413xx_423xx_opt
+  - name: STM32F423VHHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135790592
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1536
+      - stm32f413xx_423xx_opt
+  - name: STM32F423VHTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135790592
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1536
+      - stm32f413xx_423xx_opt
+  - name: STM32F423ZHJx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135790592
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1536
+      - stm32f413xx_423xx_opt
+  - name: STM32F423ZHTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135790592
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1536
+      - stm32f413xx_423xx_opt
+  - name: STM32F427AGHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1024
+      - stm32f4xx_1024dual
+      - stm32f42xxx_43xxx_opt
+      - stm32f4xx_otp
+  - name: STM32F427AIHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_2048
+      - stm32f42xxx_43xxx_opt
+      - stm32f4xx_otp
+  - name: STM32F427IGHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1024
+      - stm32f4xx_1024dual
+      - stm32f42xxx_43xxx_opt
+      - stm32f4xx_otp
+  - name: STM32F427IGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1024
+      - stm32f4xx_1024dual
+      - stm32f42xxx_43xxx_opt
+      - stm32f4xx_otp
+  - name: STM32F427IIHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_2048
+      - stm32f42xxx_43xxx_opt
+      - stm32f4xx_otp
+  - name: STM32F427IITx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_2048
+      - stm32f42xxx_43xxx_opt
+      - stm32f4xx_otp
+  - name: STM32F427VGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1024
+      - stm32f4xx_1024dual
+      - stm32f42xxx_43xxx_opt
+      - stm32f4xx_otp
+  - name: STM32F427VITx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_2048
+      - stm32f42xxx_43xxx_opt
+      - stm32f4xx_otp
+  - name: STM32F427ZGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1024
+      - stm32f4xx_1024dual
+      - stm32f42xxx_43xxx_opt
+      - stm32f4xx_otp
+  - name: STM32F427ZITx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_2048
+      - stm32f42xxx_43xxx_opt
+      - stm32f4xx_otp
+  - name: STM32F429AGHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1024
+      - stm32f4xx_1024dual
+      - stm32f42xxx_43xxx_opt
+      - stm32f4xx_otp
+  - name: STM32F429AIHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_2048
+      - stm32f42xxx_43xxx_opt
+      - stm32f4xx_otp
+  - name: STM32F429BETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_512
+      - stm32f42xxx_43xxx_opt
+      - stm32f4xx_otp
+  - name: STM32F429BGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1024
+      - stm32f4xx_1024dual
+      - stm32f42xxx_43xxx_opt
+      - stm32f4xx_otp
+  - name: STM32F429BITx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_2048
+      - stm32f42xxx_43xxx_opt
+      - stm32f4xx_otp
+  - name: STM32F429IEHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_512
+      - stm32f42xxx_43xxx_opt
+      - stm32f4xx_otp
+  - name: STM32F429IETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_512
+      - stm32f42xxx_43xxx_opt
+      - stm32f4xx_otp
+  - name: STM32F429IGHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1024
+      - stm32f4xx_1024dual
+      - stm32f42xxx_43xxx_opt
+      - stm32f4xx_otp
+  - name: STM32F429IGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1024
+      - stm32f4xx_1024dual
+      - stm32f42xxx_43xxx_opt
+      - stm32f4xx_otp
+  - name: STM32F429IIHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_2048
+      - stm32f42xxx_43xxx_opt
+      - stm32f4xx_otp
+  - name: STM32F429IITx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_2048
+      - stm32f42xxx_43xxx_opt
+      - stm32f4xx_otp
+  - name: STM32F429NEHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_512
+      - stm32f42xxx_43xxx_opt
+      - stm32f4xx_otp
+  - name: STM32F429NGHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1024
+      - stm32f4xx_1024dual
+      - stm32f42xxx_43xxx_opt
+      - stm32f4xx_otp
+  - name: STM32F429NIHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_2048
+      - stm32f42xxx_43xxx_opt
+      - stm32f4xx_otp
+  - name: STM32F429VETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_512
+      - stm32f42xxx_43xxx_opt
+      - stm32f4xx_otp
+  - name: STM32F429VGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1024
+      - stm32f4xx_1024dual
+      - stm32f42xxx_43xxx_opt
+      - stm32f4xx_otp
+  - name: STM32F429VITx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_2048
+      - stm32f42xxx_43xxx_opt
+      - stm32f4xx_otp
+  - name: STM32F429ZETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_512
+      - stm32f42xxx_43xxx_opt
+      - stm32f4xx_otp
+  - name: STM32F429ZGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1024
+      - stm32f4xx_1024dual
+      - stm32f42xxx_43xxx_opt
+      - stm32f4xx_otp
+  - name: STM32F429ZITx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_2048
+      - stm32f42xxx_43xxx_opt
+      - stm32f4xx_otp
+  - name: STM32F429ZIYx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_2048
+      - stm32f42xxx_43xxx_opt
+      - stm32f4xx_otp
+  - name: STM32F437AIHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_2048
+      - stm32f42xxx_43xxx_opt
+      - stm32f4xx_otp
+  - name: STM32F437IGHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1024
+      - stm32f4xx_1024dual
+      - stm32f42xxx_43xxx_opt
+      - stm32f4xx_otp
+  - name: STM32F437IGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1024
+      - stm32f4xx_1024dual
+      - stm32f42xxx_43xxx_opt
+      - stm32f4xx_otp
+  - name: STM32F437IIHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_2048
+      - stm32f42xxx_43xxx_opt
+      - stm32f4xx_otp
+  - name: STM32F437IITx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_2048
+      - stm32f42xxx_43xxx_opt
+      - stm32f4xx_otp
+  - name: STM32F437VGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1024
+      - stm32f4xx_1024dual
+      - stm32f42xxx_43xxx_opt
+      - stm32f4xx_otp
+  - name: STM32F437VITx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_2048
+      - stm32f42xxx_43xxx_opt
+      - stm32f4xx_otp
+  - name: STM32F437ZGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1024
+      - stm32f4xx_1024dual
+      - stm32f42xxx_43xxx_opt
+      - stm32f4xx_otp
+  - name: STM32F437ZITx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_2048
+      - stm32f42xxx_43xxx_opt
+      - stm32f4xx_otp
+  - name: STM32F439AIHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_2048
+      - stm32f42xxx_43xxx_opt
+      - stm32f4xx_otp
+  - name: STM32F439BGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1024
+      - stm32f4xx_1024dual
+      - stm32f42xxx_43xxx_opt
+      - stm32f4xx_otp
+  - name: STM32F439BITx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_2048
+      - stm32f42xxx_43xxx_opt
+      - stm32f4xx_otp
+  - name: STM32F439IGHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1024
+      - stm32f4xx_1024dual
+      - stm32f42xxx_43xxx_opt
+      - stm32f4xx_otp
+  - name: STM32F439IGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1024
+      - stm32f4xx_1024dual
+      - stm32f42xxx_43xxx_opt
+      - stm32f4xx_otp
+  - name: STM32F439IIHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_2048
+      - stm32f42xxx_43xxx_opt
+      - stm32f4xx_otp
+  - name: STM32F439IITx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_2048
+      - stm32f42xxx_43xxx_opt
+      - stm32f4xx_otp
+  - name: STM32F439NGHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1024
+      - stm32f4xx_1024dual
+      - stm32f42xxx_43xxx_opt
+      - stm32f4xx_otp
+  - name: STM32F439NIHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_2048
+      - stm32f42xxx_43xxx_opt
+      - stm32f4xx_otp
+  - name: STM32F439VGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1024
+      - stm32f4xx_1024dual
+      - stm32f42xxx_43xxx_opt
+      - stm32f4xx_otp
+  - name: STM32F439VITx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_2048
+      - stm32f42xxx_43xxx_opt
+      - stm32f4xx_otp
+  - name: STM32F439ZGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1024
+      - stm32f4xx_1024dual
+      - stm32f42xxx_43xxx_opt
+      - stm32f4xx_otp
+  - name: STM32F439ZITx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_2048
+      - stm32f42xxx_43xxx_opt
+      - stm32f4xx_otp
+  - name: STM32F439ZIYx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_2048
+      - stm32f42xxx_43xxx_opt
+      - stm32f4xx_otp
+  - name: STM32F446MCYx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_256
+      - stm32f446xx_opt
+      - stm32f4xx_otp
+  - name: STM32F446MEYx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_512
+      - stm32f446xx_opt
+      - stm32f4xx_otp
+  - name: STM32F446RCTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_256
+      - stm32f446xx_opt
+      - stm32f4xx_otp
+  - name: STM32F446RETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_512
+      - stm32f446xx_opt
+      - stm32f4xx_otp
+  - name: STM32F446VCTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_256
+      - stm32f446xx_opt
+      - stm32f4xx_otp
+  - name: STM32F446VETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_512
+      - stm32f446xx_opt
+      - stm32f4xx_otp
+  - name: STM32F446ZCHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_256
+      - stm32f446xx_opt
+      - stm32f4xx_otp
+  - name: STM32F446ZCTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_256
+      - stm32f446xx_opt
+      - stm32f4xx_otp
+  - name: STM32F446ZEHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_512
+      - stm32f446xx_opt
+      - stm32f4xx_otp
+  - name: STM32F446ZEJx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_512
+      - stm32f446xx_opt
+      - stm32f4xx_otp
+  - name: STM32F446ZETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_512
+      - stm32f446xx_opt
+      - stm32f4xx_otp
+  - name: STM32F469AEHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_512
+      - stm32f469xx_479xx_opt
+      - stm32f469_quad_spi
+  - name: STM32F469AEYx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_512
+      - stm32f469xx_479xx_opt
+      - stm32f469_quad_spi
+  - name: STM32F469AGHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1024
+      - stm32f4xx_1024dual
+      - stm32f469xx_479xx_opt
+      - stm32f469_quad_spi
+  - name: STM32F469AGYx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1024
+      - stm32f4xx_1024dual
+      - stm32f469xx_479xx_opt
+      - stm32f469_quad_spi
+  - name: STM32F469AIHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_2048
+      - stm32f469xx_479xx_opt
+      - stm32f469_quad_spi
+  - name: STM32F469AIYx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_2048
+      - stm32f469xx_479xx_opt
+      - stm32f469_quad_spi
+  - name: STM32F469BETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_512
+      - stm32f469xx_479xx_opt
+      - stm32f469_quad_spi
+  - name: STM32F469BGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1024
+      - stm32f4xx_1024dual
+      - stm32f469xx_479xx_opt
+      - stm32f469_quad_spi
+  - name: STM32F469BITx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_2048
+      - stm32f469xx_479xx_opt
+      - stm32f469_quad_spi
+  - name: STM32F469IEHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_512
+      - stm32f469xx_479xx_opt
+      - stm32f469_quad_spi
+  - name: STM32F469IETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_512
+      - stm32f469xx_479xx_opt
+      - stm32f469_quad_spi
+  - name: STM32F469IGHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1024
+      - stm32f4xx_1024dual
+      - stm32f469xx_479xx_opt
+      - stm32f469_quad_spi
+  - name: STM32F469IGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1024
+      - stm32f4xx_1024dual
+      - stm32f469xx_479xx_opt
+      - stm32f469_quad_spi
+  - name: STM32F469IIHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_2048
+      - stm32f469xx_479xx_opt
+      - stm32f469_quad_spi
+  - name: STM32F469IITx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_2048
+      - stm32f469xx_479xx_opt
+      - stm32f469_quad_spi
+  - name: STM32F469NEHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_512
+      - stm32f469xx_479xx_opt
+      - stm32f469_quad_spi
+  - name: STM32F469NGHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1024
+      - stm32f4xx_1024dual
+      - stm32f469xx_479xx_opt
+      - stm32f469_quad_spi
+  - name: STM32F469NIHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_2048
+      - stm32f469xx_479xx_opt
+      - stm32f469_quad_spi
+  - name: STM32F469VETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_512
+      - stm32f469xx_479xx_opt
+      - stm32f469_quad_spi
+  - name: STM32F469VGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1024
+      - stm32f4xx_1024dual
+      - stm32f469xx_479xx_opt
+      - stm32f469_quad_spi
+  - name: STM32F469VITx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_2048
+      - stm32f469xx_479xx_opt
+      - stm32f469_quad_spi
+  - name: STM32F469ZETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_512
+      - stm32f469xx_479xx_opt
+      - stm32f469_quad_spi
+  - name: STM32F469ZGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1024
+      - stm32f4xx_1024dual
+      - stm32f469xx_479xx_opt
+      - stm32f469_quad_spi
+  - name: STM32F469ZITx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_2048
+      - stm32f469xx_479xx_opt
+      - stm32f469_quad_spi
+  - name: STM32F479AGHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1024
+      - stm32f4xx_1024dual
+      - stm32f469xx_479xx_opt
+      - stm32f469_quad_spi
+  - name: STM32F479AGYx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1024
+      - stm32f4xx_1024dual
+      - stm32f469xx_479xx_opt
+      - stm32f469_quad_spi
+  - name: STM32F479AIHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_2048
+      - stm32f469xx_479xx_opt
+      - stm32f469_quad_spi
+  - name: STM32F479AIYx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_2048
+      - stm32f469xx_479xx_opt
+      - stm32f469_quad_spi
+  - name: STM32F479BGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1024
+      - stm32f4xx_1024dual
+      - stm32f469xx_479xx_opt
+      - stm32f469_quad_spi
+  - name: STM32F479BITx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_2048
+      - stm32f469xx_479xx_opt
+      - stm32f469_quad_spi
+  - name: STM32F479IGHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1024
+      - stm32f4xx_1024dual
+      - stm32f469xx_479xx_opt
+      - stm32f469_quad_spi
+  - name: STM32F479IGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1024
+      - stm32f4xx_1024dual
+      - stm32f469xx_479xx_opt
+      - stm32f469_quad_spi
+  - name: STM32F479IIHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_2048
+      - stm32f469xx_479xx_opt
+      - stm32f469_quad_spi
+  - name: STM32F479IITx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_2048
+      - stm32f469xx_479xx_opt
+      - stm32f469_quad_spi
+  - name: STM32F479NGHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1024
+      - stm32f4xx_1024dual
+      - stm32f469xx_479xx_opt
+      - stm32f469_quad_spi
+  - name: STM32F479NIHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_2048
+      - stm32f469xx_479xx_opt
+      - stm32f469_quad_spi
+  - name: STM32F479VGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1024
+      - stm32f4xx_1024dual
+      - stm32f469xx_479xx_opt
+      - stm32f469_quad_spi
+  - name: STM32F479VITx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_2048
+      - stm32f469xx_479xx_opt
+      - stm32f469_quad_spi
+  - name: STM32F479ZGTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_1024
+      - stm32f4xx_1024dual
+      - stm32f469xx_479xx_opt
+      - stm32f469_quad_spi
+  - name: STM32F479ZITx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 136314880
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f4xx_2048
+      - stm32f469xx_479xx_opt
+      - stm32f469_quad_spi
+flash_algorithms:
+  STM32F4xx_256:
+    name: STM32F4xx_256
+    description: STM32F4xx 256kB Flash
+    default: true
+    instructions:
+      - 50349569
+      - 673189376
+      - 155243266
+      - 3758431488
+      - 3540133904
+      - 482347264
+      - 142663680
+      - 3573613257
+      - 1124606224
+      - 1212303216
+      - 1614891328
+      - 1614891329
+      - 1610686720
+      - 586180801
+      - 1623278353
+      - 109078848
+      - 1212077062
+      - 1610697020
+      - 1614881030
+      - 1619085628
+      - 1198530560
+      - 1761691702
+      - 1125188930
+      - 536895745
+      - 3037742960
+      - 1761691698
+      - 1126245380
+      - 1761698049
+      - 1125188514
+      - 1228103937
+      - 3758115376
+      - 1757634577
+      - 3573220315
+      - 1134651649
+      - 536895745
+      - 3039870224
+      - 4290181119
+      - 1758087462
+      - 1125786608
+      - 604135626
+      - 1762287884
+      - 234882752
+      - 1628062466
+      - 65169672
+      - 1627931408
+      - 1243695139
+      - 1611718656
+      - 65890509
+      - 1762186491
+      - 1627931552
+      - 100690120
+      - 3489861376
+      - 1125673160
+      - 536961224
+      - 3044064560
+      - 482954516
+      - 1760233609
+      - 653262985
+      - 1626030899
+      - 1630216960
+      - 3759622933
+      - 1125935404
+      - 1746166060
+      - 1760321540
+      - 3573285860
+      - 140798252
+      - 1630273636
+      - 103049452
+      - 3489926948
+      - 1127246056
+      - 536961256
+      - 486587760
+      - 520690962
+      - 3521456384
+      - 3178242048
+      - 1164378403
+      - 1073888256
+      - 3455027627
+      - 21845
+      - 1073754112
+      - 4095
+      - 43690
+      - 513
+      - 0
+    pc_init: 39
+    pc_uninit: 85
+    pc_program_page: 219
+    pc_erase_sector: 143
+    pc_erase_all: 99
+    data_section_offset: 332
+    flash_properties:
+      address_range:
+        start: 134217728
+        end: 134479872
+      page_size: 1024
+      erased_byte_value: 255
+      program_page_timeout: 100
+      erase_sector_timeout: 6000
+      sectors:
+        - size: 16384
+          address: 0
+        - size: 65536
+          address: 65536
+        - size: 131072
+          address: 131072
+  STM32F40xxx_41xxx_OPT:
+    name: STM32F40xxx_41xxx_OPT
+    description: STM32F40xxx/41xxx Flash Options
+    default: false
+    instructions:
+      - 50349569
+      - 673189376
+      - 155243266
+      - 3758431488
+      - 3540133904
+      - 482347264
+      - 142663680
+      - 3573613257
+      - 1124606224
+      - 1210861424
+      - 1619085610
+      - 1619085611
+      - 586180801
+      - 1623278353
+      - 109078848
+      - 1210700806
+      - 1610696999
+      - 1614881030
+      - 1619085607
+      - 1198530560
+      - 1765885985
+      - 1125196289
+      - 536895809
+      - 1209943920
+      - 569403586
+      - 1623343882
+      - 1631734304
+      - 587360578
+      - 1631732506
+      - 101869762
+      - 3489926930
+      - 1124755650
+      - 536961218
+      - 536889200
+      - 536889200
+      - 1209157488
+      - 1757636625
+      - 1125327600
+      - 1259692227
+      - 478756889
+      - 1757503809
+      - 3573285833
+      - 101279937
+      - 3489926921
+      - 1125214401
+      - 536961217
+      - 536889200
+      - 3037742960
+      - 1746029573
+      - 1768180490
+      - 1075593242
+      - 3506455202
+      - 3171948608
+      - 135866939
+      - 1073888256
+      - 1281191551
+      - 21845
+      - 1073754112
+      - 4095
+      - 268413676
+      - 268435452
+      - 0
+    pc_init: 39
+    pc_uninit: 81
+    pc_program_page: 143
+    pc_erase_sector: 139
+    pc_erase_all: 95
+    data_section_offset: 244
+    flash_properties:
+      address_range:
+        start: 536854528
+        end: 536854532
+      page_size: 4
+      erased_byte_value: 255
+      program_page_timeout: 3000
+      erase_sector_timeout: 3000
+      sectors:
+        - size: 4
+          address: 0
+  STM32F4xx_1024dual:
+    name: STM32F4xx_1024dual
+    description: STM32F4xx 1MB dual bank Flash
+    default: false
+    instructions:
+      - 54543873
+      - 673189440
+      - 155243266
+      - 3758431488
+      - 3540133904
+      - 482347264
+      - 142663680
+      - 3573613321
+      - 1124606224
+      - 1212303216
+      - 1614891328
+      - 1614891329
+      - 1610686720
+      - 586180801
+      - 1623278353
+      - 109078848
+      - 1212077062
+      - 1610697020
+      - 1614881030
+      - 1619085628
+      - 1198530560
+      - 1761691702
+      - 1125188930
+      - 536895745
+      - 3037742960
+      - 1761691698
+      - 1126245380
+      - 1761698049
+      - 1125188514
+      - 1228103937
+      - 3758115376
+      - 1757634577
+      - 3573220315
+      - 1134651649
+      - 536895745
+      - 3039870224
+      - 4290181119
+      - 1758087462
+      - 1125786608
+      - 604135626
+      - 1762287884
+      - 234882752
+      - 1628062466
+      - 65169672
+      - 1627931408
+      - 1243695139
+      - 1611718656
+      - 65890509
+      - 1762186491
+      - 1627931552
+      - 100690120
+      - 3489861376
+      - 1125673160
+      - 536961224
+      - 3044064560
+      - 482954516
+      - 1760233609
+      - 653262985
+      - 1626030899
+      - 1630216960
+      - 3759622933
+      - 1125935404
+      - 1746166060
+      - 1760321540
+      - 3573285860
+      - 140798252
+      - 1630273636
+      - 103049452
+      - 3489926948
+      - 1127246056
+      - 536961256
+      - 486587760
+      - 487726857
+      - 3521456384
+      - 3178242048
+      - 1164378403
+      - 1073888256
+      - 3455027627
+      - 21845
+      - 1073754112
+      - 4095
+      - 43690
+      - 513
+      - 0
+    pc_init: 39
+    pc_uninit: 85
+    pc_program_page: 219
+    pc_erase_sector: 143
+    pc_erase_all: 99
+    data_section_offset: 332
+    flash_properties:
+      address_range:
+        start: 134217728
+        end: 135266304
+      page_size: 1024
+      erased_byte_value: 255
+      program_page_timeout: 1000
+      erase_sector_timeout: 6000
+      sectors:
+        - size: 16384
+          address: 0
+        - size: 65536
+          address: 65536
+        - size: 131072
+          address: 131072
+        - size: 16384
+          address: 524288
+        - size: 65536
+          address: 589824
+        - size: 131072
+          address: 655360
+  STM32F42xxx_43xxx_OPT:
+    name: STM32F42xxx_43xxx_OPT
+    description: STM32F42xxx/43xxx Flash Options
+    default: false
+    instructions:
+      - 50349569
+      - 673189376
+      - 155243266
+      - 3758431488
+      - 3540133904
+      - 482347264
+      - 142663680
+      - 3573613257
+      - 1124606224
+      - 1211385712
+      - 1619085618
+      - 1619085619
+      - 586180801
+      - 1623278353
+      - 109078848
+      - 1211225094
+      - 1610697007
+      - 1614881030
+      - 1619085615
+      - 1198530560
+      - 1765885993
+      - 1125196289
+      - 536895809
+      - 1210468208
+      - 569403586
+      - 1623343882
+      - 1635928616
+      - 1631734312
+      - 587360578
+      - 1631732506
+      - 101869762
+      - 3489926930
+      - 1124755650
+      - 536961218
+      - 536889200
+      - 536889200
+      - 3037742960
+      - 3389409304
+      - 602958020
+      - 1623474972
+      - 1075989530
+      - 1243308418
+      - 478756881
+      - 1757503809
+      - 3573285833
+      - 101279937
+      - 3489926921
+      - 1125738689
+      - 536961217
+      - 536919312
+      - 3044064528
+      - 1746095626
+      - 1750223888
+      - 1076062581
+      - 1118519333
+      - 1259065606
+      - 1075472820
+      - 1117929500
+      - 474009601
+      - 406895984
+      - 48496
+      - 135866939
+      - 1073888256
+      - 1281191551
+      - 21845
+      - 1073754112
+      - 4095
+      - 268369920
+      - 268413676
+      - 268435452
+      - 0
+    pc_init: 39
+    pc_uninit: 81
+    pc_program_page: 147
+    pc_erase_sector: 143
+    pc_erase_all: 95
+    data_section_offset: 280
+    flash_properties:
+      address_range:
+        start: 536854528
+        end: 536854536
+      page_size: 8
+      erased_byte_value: 255
+      program_page_timeout: 3000
+      erase_sector_timeout: 3000
+      sectors:
+        - size: 8
+          address: 0
+  STM32F4xx_OTP:
+    name: STM32F4xx_OTP
+    description: STM32F4xx Flash OTP
+    default: false
+    instructions:
+      - 234881792
+      - 3540133920
+      - 486541632
+      - 672155504
+      - 151048962
+      - 1198529728
+      - 1198524544
+      - 1227114533
+      - 1227186241
+      - 553672769
+      - 1757503489
+      - 1125196528
+      - 1765826753
+      - 3557164672
+      - 1226852385
+      - 554065921
+      - 1226858561
+      - 536895617
+      - 1209681776
+      - 88238337
+      - 1627472657
+      - 1198530560
+      - 1198530560
+      - 1293268336
+      - 143203529
+      - 9005291
+      - 1127425776
+      - 587227371
+      - 1259692331
+      - 1764548631
+      - 1630290716
+      - 1610901524
+      - 65300716
+      - 1764545788
+      - 6555748
+      - 1760321836
+      - 254019108
+      - 1760088068
+      - 1625834288
+      - 3178242049
+      - 487726336
+      - 687873801
+      - 536924645
+      - 48496
+      - 1164378403
+      - 1073888256
+      - 3455027627
+      - 21845
+      - 1073754112
+      - 4095
+      - 513
+      - 0
+    pc_init: 29
+    pc_uninit: 75
+    pc_program_page: 93
+    pc_erase_sector: 89
+    pc_erase_all: ~
+    data_section_offset: 204
+    flash_properties:
+      address_range:
+        start: 536836096
+        end: 536836624
+      page_size: 528
+      erased_byte_value: 255
+      program_page_timeout: 3000
+      erase_sector_timeout: 3000
+      sectors:
+        - size: 528
+          address: 0
+  STM32F4xx_2048:
+    name: STM32F4xx_2048
+    description: STM32F4xx 2MB Flash
+    default: true
+    instructions:
+      - 50349569
+      - 673189376
+      - 155243266
+      - 3758431488
+      - 3540133904
+      - 482347264
+      - 142663680
+      - 3573613257
+      - 1124606224
+      - 1212565360
+      - 1614891332
+      - 1614891333
+      - 1610686720
+      - 586180801
+      - 1623278353
+      - 109078848
+      - 1212339206
+      - 1610697024
+      - 1614881030
+      - 1619085632
+      - 1198530560
+      - 1761691706
+      - 1125188930
+      - 536895745
+      - 3039840112
+      - 1761691702
+      - 1126245380
+      - 1761698049
+      - 1126761317
+      - 1761698049
+      - 1125188514
+      - 1228235009
+      - 3758115378
+      - 1757634577
+      - 3573220315
+      - 1134651649
+      - 1761698049
+      - 1627472809
+      - 3174047744
+      - 4160730416
+      - 1227358127
+      - 602958026
+      - 1623868186
+      - 1628185602
+      - 113273098
+      - 1124208128
+      - 1762156810
+      - 1125123042
+      - 1210343688
+      - 3758115361
+      - 1758289936
+      - 3573220333
+      - 1134586120
+      - 1757962504
+      - 251659776
+      - 1757990915
+      - 1623737112
+      - 3174047745
+      - 1293268336
+      - 143203529
+      - 9005291
+      - 1127425776
+      - 587227371
+      - 1259757867
+      - 1764548631
+      - 1630290716
+      - 1610901524
+      - 65300716
+      - 1764545788
+      - 6555748
+      - 1760321836
+      - 254019108
+      - 1760088068
+      - 1625834288
+      - 3178242049
+      - 487726336
+      - 687873801
+      - 536924645
+      - 48496
+      - 1164378403
+      - 1073888256
+      - 3455027627
+      - 21845
+      - 1073754112
+      - 4095
+      - 43690
+      - 513
+      - 0
+    pc_init: 39
+    pc_uninit: 85
+    pc_program_page: 233
+    pc_erase_sector: 157
+    pc_erase_all: 99
+    data_section_offset: 348
+    flash_properties:
+      address_range:
+        start: 134217728
+        end: 136314880
+      page_size: 1024
+      erased_byte_value: 255
+      program_page_timeout: 100
+      erase_sector_timeout: 6000
+      sectors:
+        - size: 16384
+          address: 0
+        - size: 65536
+          address: 65536
+        - size: 131072
+          address: 131072
+        - size: 16384
+          address: 1048576
+        - size: 65536
+          address: 1114112
+        - size: 131072
+          address: 1179648
+  STM32F446xx_OPT:
+    name: STM32F446xx_OPT
+    description: STM32F446xx Flash Options
+    default: false
+    instructions:
+      - 50349569
+      - 673189376
+      - 155243266
+      - 3758431488
+      - 3540133904
+      - 482347264
+      - 142663680
+      - 3573613257
+      - 1124606224
+      - 1210861424
+      - 1619085610
+      - 1619085611
+      - 586180801
+      - 1623278353
+      - 109078848
+      - 1210700806
+      - 1610696999
+      - 1614881030
+      - 1619085607
+      - 1198530560
+      - 1765885985
+      - 1125196289
+      - 536895809
+      - 1209943920
+      - 569403586
+      - 1623343882
+      - 1631734304
+      - 587360578
+      - 1631732506
+      - 101869762
+      - 3489926930
+      - 1124755650
+      - 536961218
+      - 536889200
+      - 536889200
+      - 1209157488
+      - 1757636625
+      - 1125327600
+      - 1259692227
+      - 478756889
+      - 1757503809
+      - 3573285833
+      - 101279937
+      - 3489926921
+      - 1125214401
+      - 536961217
+      - 536889200
+      - 3037742960
+      - 1746029573
+      - 1768180490
+      - 1075593242
+      - 3506455202
+      - 3171948608
+      - 135866939
+      - 1073888256
+      - 1281191551
+      - 21845
+      - 1073754112
+      - 4095
+      - 268413676
+      - 268435452
+      - 0
+    pc_init: 39
+    pc_uninit: 81
+    pc_program_page: 143
+    pc_erase_sector: 139
+    pc_erase_all: 95
+    data_section_offset: 244
+    flash_properties:
+      address_range:
+        start: 536854528
+        end: 536854532
+      page_size: 4
+      erased_byte_value: 255
+      program_page_timeout: 3000
+      erase_sector_timeout: 3000
+      sectors:
+        - size: 4
+          address: 0
+  STM32F411xx_OPT:
+    name: STM32F411xx_OPT
+    description: STM32F411xx Flash Options
+    default: false
+    instructions:
+      - 50349569
+      - 673189376
+      - 155243266
+      - 3758431488
+      - 3540133904
+      - 482347264
+      - 142663680
+      - 3573613257
+      - 1124606224
+      - 1210861424
+      - 1619085610
+      - 1619085611
+      - 586180801
+      - 1623278353
+      - 109078848
+      - 1210700806
+      - 1610696999
+      - 1614881030
+      - 1619085607
+      - 1198530560
+      - 1765885985
+      - 1125196289
+      - 536895809
+      - 1209943920
+      - 569403586
+      - 1623343882
+      - 1631734304
+      - 587360578
+      - 1631732506
+      - 101869762
+      - 3489926930
+      - 1124755650
+      - 536961218
+      - 536889200
+      - 536889200
+      - 1209157488
+      - 1757636625
+      - 1125327600
+      - 1259692227
+      - 478756889
+      - 1757503809
+      - 3573285833
+      - 101279937
+      - 3489926921
+      - 1125214401
+      - 536961217
+      - 536889200
+      - 3037742960
+      - 1746029573
+      - 1768180490
+      - 1075593242
+      - 3506455202
+      - 3171948608
+      - 135866939
+      - 1073888256
+      - 1281191551
+      - 21845
+      - 1073754112
+      - 4095
+      - 268413676
+      - 268435452
+      - 0
+    pc_init: 39
+    pc_uninit: 81
+    pc_program_page: 143
+    pc_erase_sector: 139
+    pc_erase_all: 95
+    data_section_offset: 244
+    flash_properties:
+      address_range:
+        start: 536854528
+        end: 536854532
+      page_size: 4
+      erased_byte_value: 255
+      program_page_timeout: 3000
+      erase_sector_timeout: 3000
+      sectors:
+        - size: 4
+          address: 0
+  STM32F4xx_1024:
+    name: STM32F4xx_1024
+    description: STM32F4xx Flash
+    default: true
+    instructions:
+      - 234881792
+      - 3540133920
+      - 486541632
+      - 672155504
+      - 151048962
+      - 1198529728
+      - 1198524544
+      - 1229015106
+      - 1229086785
+      - 553672769
+      - 1757503489
+      - 1125196528
+      - 1765826753
+      - 3557164672
+      - 1228752958
+      - 554065921
+      - 1228759105
+      - 536895617
+      - 1211582320
+      - 88238337
+      - 1627472657
+      - 1198530560
+      - 1211348240
+      - 604268801
+      - 1627472673
+      - 60975361
+      - 1627472657
+      - 1244743987
+      - 1611784192
+      - 64710851
+      - 1761727739
+      - 1627472801
+      - 3171950592
+      - 4160730416
+      - 1227358139
+      - 602958026
+      - 1623868186
+      - 1628185602
+      - 117467402
+      - 1124208192
+      - 1762156810
+      - 1125123042
+      - 1210343688
+      - 3758115361
+      - 1758289936
+      - 3573220333
+      - 1134586120
+      - 1757962504
+      - 251659776
+      - 1757990915
+      - 1623737112
+      - 3174047745
+      - 1293268336
+      - 143203529
+      - 9005291
+      - 1127425776
+      - 587227371
+      - 1259757867
+      - 1764548631
+      - 1630290716
+      - 1610901524
+      - 65300716
+      - 1764545788
+      - 6555748
+      - 1760321836
+      - 254019108
+      - 1760088068
+      - 1625834288
+      - 3178242049
+      - 487726336
+      - 687873801
+      - 536924645
+      - 48496
+      - 1164378403
+      - 1073888256
+      - 3455027627
+      - 21845
+      - 1073754112
+      - 4095
+      - 43690
+      - 513
+      - 0
+    pc_init: 29
+    pc_uninit: 75
+    pc_program_page: 209
+    pc_erase_sector: 133
+    pc_erase_all: 89
+    data_section_offset: 324
+    flash_properties:
+      address_range:
+        start: 134217728
+        end: 135266304
+      page_size: 1024
+      erased_byte_value: 255
+      program_page_timeout: 100
+      erase_sector_timeout: 6000
+      sectors:
+        - size: 16384
+          address: 0
+        - size: 65536
+          address: 65536
+        - size: 131072
+          address: 131072
+  STM32F4xx_1536:
+    name: STM32F4xx_1536
+    description: STM32F4xx 1.5MB Flash
+    default: true
+    instructions:
+      - 230687424
+      - 3540133920
+      - 486541632
+      - 672155504
+      - 151048962
+      - 1198529728
+      - 1198524544
+      - 1229015106
+      - 1229086785
+      - 553672769
+      - 1757503489
+      - 1125196528
+      - 1765826753
+      - 3557164672
+      - 1228752958
+      - 554065921
+      - 1228759105
+      - 536895617
+      - 1211582320
+      - 88238337
+      - 1627472657
+      - 1198530560
+      - 1211348240
+      - 604268801
+      - 1627472673
+      - 60975361
+      - 1627472657
+      - 1244743987
+      - 1611784192
+      - 64710851
+      - 1761727739
+      - 1627472801
+      - 3171950592
+      - 4160730416
+      - 1227358139
+      - 602958026
+      - 1623868186
+      - 1628185602
+      - 113273098
+      - 1124208128
+      - 1762156810
+      - 1125123042
+      - 1210343688
+      - 3758115361
+      - 1758289936
+      - 3573220333
+      - 1134586120
+      - 1757962504
+      - 251659776
+      - 1757990915
+      - 1623737112
+      - 3174047745
+      - 1293268336
+      - 143203529
+      - 9005291
+      - 1127425776
+      - 587227371
+      - 1259757867
+      - 1764548631
+      - 1630290716
+      - 1610901524
+      - 65300716
+      - 1764545788
+      - 6555748
+      - 1760321836
+      - 254019108
+      - 1760088068
+      - 1625834288
+      - 3178242049
+      - 520690944
+      - 687873298
+      - 536924645
+      - 48496
+      - 1164378403
+      - 1073888256
+      - 3455027627
+      - 21845
+      - 1073754112
+      - 4095
+      - 43690
+      - 513
+      - 0
+    pc_init: 29
+    pc_uninit: 75
+    pc_program_page: 209
+    pc_erase_sector: 133
+    pc_erase_all: 89
+    data_section_offset: 324
+    flash_properties:
+      address_range:
+        start: 134217728
+        end: 135790592
+      page_size: 1024
+      erased_byte_value: 255
+      program_page_timeout: 100
+      erase_sector_timeout: 6000
+      sectors:
+        - size: 16384
+          address: 0
+        - size: 65536
+          address: 65536
+        - size: 131072
+          address: 131072
+  STM32F4xx_512:
+    name: STM32F4xx_512
+    description: STM32F4xx 512kB Flash
+    default: true
+    instructions:
+      - 50349569
+      - 673189376
+      - 155243266
+      - 3758431488
+      - 3540133904
+      - 482347264
+      - 142663680
+      - 3573613257
+      - 1124606224
+      - 1212303216
+      - 1614891328
+      - 1614891329
+      - 1610686720
+      - 586180801
+      - 1623278353
+      - 109078848
+      - 1212077062
+      - 1610697020
+      - 1614881030
+      - 1619085628
+      - 1198530560
+      - 1761691702
+      - 1125188930
+      - 536895745
+      - 3037742960
+      - 1761691698
+      - 1126245380
+      - 1761698049
+      - 1125188514
+      - 1228103937
+      - 3758115376
+      - 1757634577
+      - 3573220315
+      - 1134651649
+      - 536895745
+      - 3039870224
+      - 4290181119
+      - 1758087462
+      - 1125786608
+      - 604135626
+      - 1762287884
+      - 234882752
+      - 1628062466
+      - 65169672
+      - 1627931408
+      - 1243695139
+      - 1611718656
+      - 65890509
+      - 1762186491
+      - 1627931552
+      - 100690120
+      - 3489861376
+      - 1125673160
+      - 536961224
+      - 3044064560
+      - 482954516
+      - 1760233609
+      - 653262985
+      - 1626030899
+      - 1630216960
+      - 3759622933
+      - 1125935404
+      - 1746166060
+      - 1760321540
+      - 3573285860
+      - 140798252
+      - 1630273636
+      - 103049452
+      - 3489926948
+      - 1127246056
+      - 536961256
+      - 486587760
+      - 520690962
+      - 3521456384
+      - 3178242048
+      - 1164378403
+      - 1073888256
+      - 3455027627
+      - 21845
+      - 1073754112
+      - 4095
+      - 43690
+      - 513
+      - 0
+    pc_init: 39
+    pc_uninit: 85
+    pc_program_page: 219
+    pc_erase_sector: 143
+    pc_erase_all: 99
+    data_section_offset: 332
+    flash_properties:
+      address_range:
+        start: 134217728
+        end: 134742016
+      page_size: 1024
+      erased_byte_value: 255
+      program_page_timeout: 100
+      erase_sector_timeout: 6000
+      sectors:
+        - size: 16384
+          address: 0
+        - size: 65536
+          address: 65536
+        - size: 131072
+          address: 131072
+  STM32F4xx_128:
+    name: STM32F4xx_128
+    description: STM32F4xx 128kB Flash
+    default: true
+    instructions:
+      - 50349569
+      - 673189376
+      - 155243266
+      - 3758431488
+      - 3540133904
+      - 482347264
+      - 142663680
+      - 3573613257
+      - 1124606224
+      - 1212303216
+      - 1614891328
+      - 1614891329
+      - 1610686720
+      - 586180801
+      - 1623278353
+      - 109078848
+      - 1212077062
+      - 1610697020
+      - 1614881030
+      - 1619085628
+      - 1198530560
+      - 1761691702
+      - 1125188930
+      - 536895745
+      - 3037742960
+      - 1761691698
+      - 1126245380
+      - 1761698049
+      - 1125188514
+      - 1228103937
+      - 3758115376
+      - 1757634577
+      - 3573220315
+      - 1134651649
+      - 536895745
+      - 3039870224
+      - 4290181119
+      - 1758087462
+      - 1125786608
+      - 604135626
+      - 1762287884
+      - 234882752
+      - 1628062466
+      - 65169672
+      - 1627931408
+      - 1243695139
+      - 1611718656
+      - 65890509
+      - 1762186491
+      - 1627931552
+      - 100690120
+      - 3489861376
+      - 1125673160
+      - 536961224
+      - 3044064560
+      - 482954516
+      - 1760233609
+      - 653262985
+      - 1626030899
+      - 1630216960
+      - 3759622933
+      - 1125935404
+      - 1746166060
+      - 1760321540
+      - 3573285860
+      - 140798252
+      - 1630273636
+      - 103049452
+      - 3489926948
+      - 1127246056
+      - 536961256
+      - 486587760
+      - 520690962
+      - 3521456384
+      - 3178242048
+      - 1164378403
+      - 1073888256
+      - 3455027627
+      - 21845
+      - 1073754112
+      - 4095
+      - 43690
+      - 513
+      - 0
+    pc_init: 39
+    pc_uninit: 85
+    pc_program_page: 219
+    pc_erase_sector: 143
+    pc_erase_all: 99
+    data_section_offset: 332
+    flash_properties:
+      address_range:
+        start: 134217728
+        end: 134348800
+      page_size: 1024
+      erased_byte_value: 255
+      program_page_timeout: 100
+      erase_sector_timeout: 6000
+      sectors:
+        - size: 16384
+          address: 0
+        - size: 65536
+          address: 65536
+  STM32F413xx_423xx_OPT:
+    name: STM32F413xx_423xx_OPT
+    description: STM32F413xx/423xx Flash Options
+    default: false
+    instructions:
+      - 50349569
+      - 673189376
+      - 155243266
+      - 3758431488
+      - 3540133904
+      - 482347264
+      - 142663680
+      - 3573613257
+      - 1124606224
+      - 1210861424
+      - 1619085610
+      - 1619085611
+      - 586180801
+      - 1623278353
+      - 109078848
+      - 1210700806
+      - 1610696999
+      - 1614881030
+      - 1619085607
+      - 1198530560
+      - 1765885985
+      - 1125196289
+      - 536895809
+      - 1209943920
+      - 569403586
+      - 1623343882
+      - 1631734304
+      - 587360578
+      - 1631732506
+      - 101869762
+      - 3489926930
+      - 1124755650
+      - 536961218
+      - 536889200
+      - 536889200
+      - 1209157488
+      - 1757636625
+      - 1125327600
+      - 1259692227
+      - 478756889
+      - 1757503809
+      - 3573285833
+      - 101279937
+      - 3489926921
+      - 1125214401
+      - 536961217
+      - 536889200
+      - 3037742960
+      - 1746029573
+      - 1768180490
+      - 1075593242
+      - 3506455202
+      - 3171948608
+      - 135866939
+      - 1073888256
+      - 1281191551
+      - 21845
+      - 1073754112
+      - 4095
+      - 268413676
+      - 268435452
+      - 0
+    pc_init: 39
+    pc_uninit: 81
+    pc_program_page: 143
+    pc_erase_sector: 139
+    pc_erase_all: 95
+    data_section_offset: 244
+    flash_properties:
+      address_range:
+        start: 536854528
+        end: 536854532
+      page_size: 4
+      erased_byte_value: 255
+      program_page_timeout: 3000
+      erase_sector_timeout: 3000
+      sectors:
+        - size: 4
+          address: 0
+  STM32F469xx_479xx_OPT:
+    name: STM32F469xx_479xx_OPT
+    description: STM32F469xx/479xx Flash Options
+    default: false
+    instructions:
+      - 50349569
+      - 673189376
+      - 155243266
+      - 3758431488
+      - 3540133904
+      - 482347264
+      - 142663680
+      - 3573613257
+      - 1124606224
+      - 1211385712
+      - 1619085618
+      - 1619085619
+      - 586180801
+      - 1623278353
+      - 109078848
+      - 1211225094
+      - 1610697007
+      - 1614881030
+      - 1619085615
+      - 1198530560
+      - 1765885993
+      - 1125196289
+      - 536895809
+      - 1210468208
+      - 569403586
+      - 1623343882
+      - 1635928616
+      - 1631734312
+      - 587360578
+      - 1631732506
+      - 101869762
+      - 3489926930
+      - 1124755650
+      - 536961218
+      - 536889200
+      - 536889200
+      - 3037742960
+      - 3389409304
+      - 602958020
+      - 1623474972
+      - 1075989530
+      - 1243308418
+      - 478756881
+      - 1757503809
+      - 3573285833
+      - 101279937
+      - 3489926921
+      - 1125738689
+      - 536961217
+      - 536919312
+      - 3044064528
+      - 1746095626
+      - 1750223888
+      - 1076062581
+      - 1118519333
+      - 1259065606
+      - 1075472820
+      - 1117929500
+      - 474009601
+      - 406895984
+      - 48496
+      - 135866939
+      - 1073888256
+      - 1281191551
+      - 21845
+      - 1073754112
+      - 4095
+      - 268369920
+      - 268413676
+      - 268435452
+      - 0
+    pc_init: 39
+    pc_uninit: 81
+    pc_program_page: 147
+    pc_erase_sector: 143
+    pc_erase_all: 95
+    data_section_offset: 280
+    flash_properties:
+      address_range:
+        start: 536854528
+        end: 536854536
+      page_size: 8
+      erased_byte_value: 255
+      program_page_timeout: 3000
+      erase_sector_timeout: 3000
+      sectors:
+        - size: 8
+          address: 0
+  STM32F401xx_OPT:
+    name: STM32F401xx_OPT
+    description: STM32F401xx Flash Options
+    default: false
+    instructions:
+      - 50349569
+      - 673189376
+      - 155243266
+      - 3758431488
+      - 3540133904
+      - 482347264
+      - 142663680
+      - 3573613257
+      - 1124606224
+      - 1210861424
+      - 1619085610
+      - 1619085611
+      - 586180801
+      - 1623278353
+      - 109078848
+      - 1210700806
+      - 1610696999
+      - 1614881030
+      - 1619085607
+      - 1198530560
+      - 1765885985
+      - 1125196289
+      - 536895809
+      - 1209943920
+      - 569403586
+      - 1623343882
+      - 1631734304
+      - 587360578
+      - 1631732506
+      - 101869762
+      - 3489926930
+      - 1124755650
+      - 536961218
+      - 536889200
+      - 536889200
+      - 1209157488
+      - 1757636625
+      - 1125327600
+      - 1259692227
+      - 478756889
+      - 1757503809
+      - 3573285833
+      - 101279937
+      - 3489926921
+      - 1125214401
+      - 536961217
+      - 536889200
+      - 3037742960
+      - 1746029573
+      - 1768180490
+      - 1075593242
+      - 3506455202
+      - 3171948608
+      - 135866939
+      - 1073888256
+      - 1281191551
+      - 21845
+      - 1073754112
+      - 4095
+      - 268413676
+      - 268435452
+      - 0
+    pc_init: 39
+    pc_uninit: 81
+    pc_program_page: 143
+    pc_erase_sector: 139
+    pc_erase_all: 95
+    data_section_offset: 244
+    flash_properties:
+      address_range:
+        start: 536854528
+        end: 536854532
+      page_size: 4
+      erased_byte_value: 255
+      program_page_timeout: 3000
+      erase_sector_timeout: 3000
+      sectors:
+        - size: 4
+          address: 0
+  STM32F4xx_384:
+    name: STM32F4xx_384
+    description: STM32F4xx 384kB Flash
+    default: true
+    instructions:
+      - 50349569
+      - 673189376
+      - 155243266
+      - 3758431488
+      - 3540133904
+      - 482347264
+      - 142663680
+      - 3573613257
+      - 1124606224
+      - 1212303216
+      - 1614891328
+      - 1614891329
+      - 1610686720
+      - 586180801
+      - 1623278353
+      - 109078848
+      - 1212077062
+      - 1610697020
+      - 1614881030
+      - 1619085628
+      - 1198530560
+      - 1761691702
+      - 1125188930
+      - 536895745
+      - 3037742960
+      - 1761691698
+      - 1126245380
+      - 1761698049
+      - 1125188514
+      - 1228103937
+      - 3758115376
+      - 1757634577
+      - 3573220315
+      - 1134651649
+      - 536895745
+      - 3039870224
+      - 4290181119
+      - 1758087462
+      - 1125786608
+      - 604135626
+      - 1762287884
+      - 234882752
+      - 1628062466
+      - 65169672
+      - 1627931408
+      - 1243695139
+      - 1611718656
+      - 65890509
+      - 1762186491
+      - 1627931552
+      - 100690120
+      - 3489861376
+      - 1125673160
+      - 536961224
+      - 3044064560
+      - 482954516
+      - 1760233609
+      - 653262985
+      - 1626030899
+      - 1630216960
+      - 3759622933
+      - 1125935404
+      - 1746166060
+      - 1760321540
+      - 3573285860
+      - 140798252
+      - 1630273636
+      - 103049452
+      - 3489926948
+      - 1127246056
+      - 536961256
+      - 486587760
+      - 520690962
+      - 3521456384
+      - 3178242048
+      - 1164378403
+      - 1073888256
+      - 3455027627
+      - 21845
+      - 1073754112
+      - 4095
+      - 43690
+      - 513
+      - 0
+    pc_init: 39
+    pc_uninit: 85
+    pc_program_page: 219
+    pc_erase_sector: 143
+    pc_erase_all: 99
+    data_section_offset: 332
+    flash_properties:
+      address_range:
+        start: 134217728
+        end: 134610944
+      page_size: 1024
+      erased_byte_value: 255
+      program_page_timeout: 100
+      erase_sector_timeout: 6000
+      sectors:
+        - size: 16384
+          address: 0
+        - size: 65536
+          address: 65536
+        - size: 131072
+          address: 131072
+  STM32F469_Quad_SPI:
+    name: STM32F469_Quad_SPI
+    description: STM32F469 QSPI Flash
+    default: true
+    instructions:
+      - 554087696
+      - 1145587959
+      - 4026558464
+      - 593755243
+      - 553984514
+      - 1145587955
+      - 4026558464
+      - 3172007248
+      - 1106307373
+      - 1175406086
+      - 1746945556
+      - 3904747784
+      - 1307410928
+      - 4293195775
+      - 1223343872
+      - 1744847944
+      - 4026558592
+      - 671088672
+      - 1746981367
+      - 1239752256
+      - 1745437769
+      - 4098187528
+      - 4098188704
+      - 3204470016
+      - 1145587936
+      - 1753245696
+      - 2158592
+      - 3522635776
+      - 1145587932
+      - 1631938560
+      - 1145587930
+      - 1636263936
+      - 3204505615
+      - 1145587927
+      - 1753245696
+      - 323584
+      - 3522635780
+      - 184678422
+      - 1145653714
+      - 4169230345
+      - 1746993184
+      - 1612717640
+      - 3521784064
+      - 1612718080
+      - 570499865
+      - 1221271813
+      - 1744847944
+      - 4244631552
+      - 1145587912
+      - 1744857088
+      - 192576
+      - 1145653701
+      - 1611163657
+      - 1220787968
+      - 1744847944
+      - 4026558592
+      - 671088672
+      - 3204502007
+      - 3044075425
+      - 4160701956
+      - 3204513671
+      - 1145587899
+      - 1753245696
+      - 2158592
+      - 3522635776
+      - 1145653687
+      - 1627940873
+      - 4098182583
+      - 3204470016
+      - 1145587891
+      - 1753245696
+      - 2158592
+      - 3522635776
+      - 1145587887
+      - 1631938560
+      - 1219346176
+      - 1744847944
+      - 4026558592
+      - 671088672
+      - 1219088887
+      - 1744847944
+      - 4160708996
+      - 588906331
+      - 553984513
+      - 1145587876
+      - 4026558464
+      - 3204512946
+      - 1145587873
+      - 1753245696
+      - 2158592
+      - 3522635776
+      - 3044851056
+      - 1175275012
+      - 4026549782
+      - 536936425
+      - 1145653660
+      - 553742344
+      - 4026540034
+      - 553778846
+      - 4026533256
+      - 571080304
+      - 1217863946
+      - 1744847944
+      - 4206358528
+      - 554050058
+      - 1145587860
+      - 4026558464
+      - 571144880
+      - 1217405192
+      - 1744847944
+      - 4205441024
+      - 554246666
+      - 1145587852
+      - 4026558464
+      - 571079330
+      - 1216946439
+      - 1744847944
+      - 4204523520
+      - 554050057
+      - 1145587845
+      - 4026558464
+      - 4026595988
+      - 536935221
+      - 1174554115
+      - 2415937025
+      - 1145587835
+      - 4026558464
+      - 587266909
+      - 4098826753
+      - 1215762936
+      - 1744847944
+      - 4215664640
+      - 1145587828
+      - 1744857088
+      - 127040
+      - 1145653617
+      - 1611163657
+      - 1215282944
+      - 1744847944
+      - 4026558592
+      - 671088672
+      - 4064334327
+      - 1231687935
+      - 1745437769
+      - 1215193352
+      - 2550239233
+      - 1342239808
+      - 3204485121
+      - 1145587812
+      - 1753245696
+      - 2158592
+      - 3522635776
+      - 1145653600
+      - 1745459201
+      - 536895816
+      - 1174519164
+      - 1198530560
+      - 1174713616
+      - 1081143332
+      - 4281726975
+      - 3171950592
+      - 4031755632
+      - 4031726608
+      - 3758376210
+      - 4160701984
+      - 4110745583
+      - 1118123136
+      - 536924920
+      - 3912088944
+      - 1174883836
+      - 1175733774
+      - 167833679
+      - 1187202768
+      - 536880384
+      - 2415955969
+      - 201322502
+      - 1971385803
+      - 3931072544
+      - 4170459664
+      - 4055597056
+      - 3508801280
+      - 251720122
+      - 1746981127
+      - 1181388800
+      - 1178093105
+      - 4271699967
+      - 3758874725
+      - 1887499343
+      - 1181388800
+      - 1178093105
+      - 4271044607
+      - 1988162822
+      - 2004940039
+      - 715359
+      - 167899562
+      - 4174238190
+      - 1181384704
+      - 1178093105
+      - 4269996031
+      - 4055556171
+      - 3508276992
+      - 3641853352
+      - 388008
+      - 2499842049
+      - 1177634410
+      - 4160702008
+      - 1143930483
+      - 2550219823
+      - 1181388800
+      - 1178093105
+      - 4268423167
+      - 1746985011
+      - 1181388800
+      - 1178093105
+      - 4267898879
+      - 1746985003
+      - 1612716864
+      - 3931072544
+      - 4170459664
+      - 2499837952
+      - 1177634410
+      - 4160702008
+      - 1143930451
+      - 3758834735
+      - 1887499343
+      - 1181388800
+      - 1178093105
+      - 4266194943
+      - 1988162822
+      - 2004940039
+      - 715359
+      - 167899562
+      - 4055421422
+      - 3490057984
+      - 2147547341
+      - 1177634410
+      - 4160702008
+      - 3904765493
+      - 3912076796
+      - 1174684664
+      - 1175864845
+      - 1199501348
+      - 2499823280
+      - 1178158698
+      - 4160702016
+      - 536936294
+      - 2214127805
+      - 536954371
+      - 18288
+      - 72
+      - 16777218
+      - 67110360
+      - 172
+      - 128
+      - 112
+      - 236979515
+      - 1174713616
+      - 652228
+      - 3510511616
+      - 4120908448
+      - 947916928
+      - 3526895626
+      - 4026591455
+      - 336529925
+      - 673390105
+      - 553726509
+      - 4026549768
+      - 3761175842
+      - 537010433
+      - 4246597632
+      - 553771049
+      - 4026540036
+      - 3760520472
+      - 537403649
+      - 4245942272
+      - 553771039
+      - 4026540048
+      - 3759865102
+      - 538976513
+      - 4245286912
+      - 553771029
+      - 4026540096
+      - 3759209732
+      - 545267969
+      - 4244631552
+      - 553771019
+      - 4026532360
+      - 3758554362
+      - 38281473
+      - 4243976192
+      - 3204505601
+      - 3204507646
+      - 3037773072
+      - 4089726468
+      - 671088649
+      - 312529268
+      - 276886944
+      - 671824000
+      - 3906982510
+      - 252112896
+      - 858399000
+      - 1481524540
+      - 553713762
+      - 4026549768
+      - 553712961
+      - 4026540033
+      - 3764321597
+      - 537010433
+      - 4248367104
+      - 537010432
+      - 4248104960
+      - 553771093
+      - 4026540036
+      - 553712943
+      - 4026540036
+      - 3763141931
+      - 537403649
+      - 4247187456
+      - 537403648
+      - 4246925312
+      - 553771075
+      - 4026540048
+      - 553712925
+      - 4026540048
+      - 3761962265
+      - 538976513
+      - 4246007808
+      - 538976512
+      - 4245745664
+      - 553771057
+      - 4026540096
+      - 553712907
+      - 4026540096
+      - 3760782599
+      - 545267969
+      - 4244828160
+      - 545267968
+      - 4244566016
+      - 553771039
+      - 4026532360
+      - 553712889
+      - 1887499343
+      - 4243910656
+      - 553771029
+      - 4026532424
+      - 553712879
+      - 1879110735
+      - 4243255296
+      - 553771019
+      - 4026532488
+      - 553712869
+      - 1619063887
+      - 4242599936
+      - 3892305921
+      - 3204497152
+      - 3912088848
+      - 1175211504
+      - 1728637405
+      - 620765440
+      - 3204466316
+      - 4031766626
+      - 4194830337
+      - 3926193409
+      - 1168903173
+      - 4174434649
+      - 3931078656
+      - 4031712065
+      - 4194961923
+      - 3928553995
+      - 4173334538
+      - 4174413824
+      - 3931078656
+      - 4194437697
+      - 3930651146
+      - 4173334538
+      - 704741376
+      - 704827393
+      - 4174434601
+      - 3931078664
+      - 4031712065
+      - 4194961923
+      - 3928553995
+      - 4173334538
+      - 4174413832
+      - 3931078664
+      - 4194503233
+      - 3930651146
+      - 4173334538
+      - 4172316680
+      - 4031741956
+      - 4194961921
+      - 3928553985
+      - 4171237386
+      - 4172316676
+      - 4194729988
+      - 4196399617
+      - 3930651274
+      - 4171237386
+      - 4174413828
+      - 3931078668
+      - 4031712065
+      - 4194961923
+      - 3928553995
+      - 4173334538
+      - 4174413836
+      - 3931078668
+      - 4194765377
+      - 3930651146
+      - 4173334538
+      - 474578956
+      - 3550095632
+      - 2381375677
+      - 536888834
+      - 1074498067
+      - 536981771
+      - 536928256
+      - 1174488944
+      - 1198557704
+      - 536888834
+      - 1074498195
+      - 536981771
+      - 536928256
+      - 1174488944
+      - 1198557832
+      - 1198555905
+      - 1198555969
+      - 2197926154
+      - 2202132480
+      - 2189510512
+      - 4098836336
+      - 1124741760
+      - 1640063426
+      - 1774346690
+      - 1198549442
+      - 587249136
+      - 122496000
+      - 4194438893
+      - 281998085
+      - 86044928
+      - 1344731221
+      - 251070286
+      - 1086203407
+      - 282018741
+      - 102822144
+      - 1344796742
+      - 4043313358
+      - 4166321440
+      - 3930411046
+      - 281936899
+      - 86044928
+      - 1076295749
+      - 3912089072
+      - 1174749692
+      - 1175864844
+      - 1177036544
+      - 4268816383
+      - 1084235777
+      - 536916615
+      - 587370496
+      - 1178158618
+      - 1177063425
+      - 4281071615
+      - 1176585778
+      - 4160701992
+      - 3904765891
+      - 3912073724
+      - 1174749692
+      - 1175864844
+      - 1177036544
+      - 4266981375
+      - 1084235777
+      - 536916615
+      - 587342081
+      - 3922544154
+      - 1178144768
+      - 4160701992
+      - 1177747214
+      - 1177044513
+      - 4289132543
+      - 2180835517
+      - 1107093805
+      - 1175209478
+      - 654329365
+      - 4160702000
+      - 537001527
+      - 2995208352
+      - 587341824
+      - 1178149377
+      - 1342237133
+      - 4160702000
+      - 3904765682
+      - 3912073724
+      - 1174815228
+      - 1175799308
+      - 1177560832
+      - 4263573503
+      - 1084235777
+      - 536916615
+      - 1174545154
+      - 3922544185
+      - 1177552128
+      - 4275828735
+      - 2180835517
+      - 1174713712
+      - 637617677
+      - 4160701984
+      - 1759575563
+      - 553844842
+      - 1133002897
+      - 1759535328
+      - 4194697321
+      - 1124659457
+      - 3178258656
+      - 1174713712
+      - 637683213
+      - 4160701984
+      - 1759575543
+      - 553844842
+      - 1133002897
+      - 1759535328
+      - 4194697321
+      - 1124659457
+      - 3178258656
+      - 1174713712
+      - 637552141
+      - 4160701984
+      - 1759575523
+      - 553844842
+      - 1133002897
+      - 1759535328
+      - 4194697321
+      - 1124659457
+      - 3178258656
+      - 553760016
+      - 4026540034
+      - 553712557
+      - 4026540034
+      - 3172006825
+      - 3204494608
+      - 4026820740
+      - 738198560
+      - 604164602
+      - 1745117892
+      - 67171364
+      - 1745117188
+      - 1610892060
+      - 1648517761
+      - 1753530112
+      - 69267460
+      - 3522833408
+      - 3039870224
+      - 1753595648
+      - 86044677
+      - 3522833664
+      - 620948033
+      - 67365445
+      - 1126524997
+      - 3174064197
+      - 2634331504
+      - 4029048838
+      - 1611007489
+      - 1753661184
+      - 102821894
+      - 3522833920
+      - 3930129929
+      - 1126041090
+      - 67496518
+      - 1126590470
+      - 3178258438
+      - 1753464576
+      - 52490243
+      - 3522833152
+      - 4097925379
+      - 1631744640
+      - 1753464576
+      - 52490243
+      - 3522833152
+      - 3052423024
+      - 3923592718
+      - 553665797
+      - 1627856471
+      - 1636000070
+      - 3507367176
+      - 3204497152
+      - 4027017351
+      - 788530948
+      - 657838330
+      - 1881208960
+      - 4027017351
+      - 788530946
+      - 756470001
+      - 3204501784
+      - 1753726720
+      - 117764103
+      - 3506056960
+      - 3221551316
+      - 117633292
+      - 4173095015
+      - 2215079936
+      - 3002670159
+      - 3506448645
+      - 1753726720
+      - 117633031
+      - 3504811776
+      - 3508022578
+      - 3204497152
+      - 4027017351
+      - 788530948
+      - 4174696698
+      - 4044144648
+      - 1621559044
+      - 1879111900
+      - 474964487
+      - 688108281
+      - 3204501760
+      - 4027017351
+      - 788530946
+      - 654495975
+      - 3186647239
+      - 3923621360
+      - 1627538693
+      - 1125017926
+      - 1636000070
+      - 3507760392
+      - 3758669568
+      - 1881208976
+      - 3221289172
+      - 100790540
+      - 4169949222
+      - 1753640960
+      - 100986886
+      - 3505466880
+      - 4026951814
+      - 771753474
+      - 756470251
+      - 3204501779
+      - 2349326343
+      - 3221551316
+      - 100856076
+      - 4172046438
+      - 1753640960
+      - 100986886
+      - 3505532416
+      - 4026951814
+      - 771753474
+      - 758305260
+      - 3204501779
+      - 1778900999
+      - 3221813460
+      - 100987148
+      - 4174143654
+      - 1753640960
+      - 100986886
+      - 3505532416
+      - 4026951814
+      - 771753474
+      - 3186676204
+      - 1175238128
+      - 1996486223
+      - 553839170
+      - 1753726720
+      - 119599111
+      - 3522834176
+      - 1627856511
+      - 2004939844
+      - 1705046087
+      - 1753726720
+      - 119599111
+      - 3522834176
+      - 723083589
+      - 3758412041
+      - 4027017351
+      - 2970027780
+      - 3926297606
+      - 788530945
+      - 727962102
+      - 637587722
+      - 1753735172
+      - 117764103
+      - 2349248775
+      - 117565958
+      - 3522577039
+      - 4031211527
+      - 1611073282
+      - 1753726720
+      - 119599111
+      - 3522834176
+      - 3044064752
+      - 3204457983
+      - 4026951814
+      - 771753504
+      - 511103482
+      - 4097925382
+      - 4031149696
+      - 3204474016
+      - 4026951814
+      - 771753504
+      - 1631900154
+      - 3507104537
+      - 1753669637
+      - 100986886
+      - 4170232078
+      - 3926216736
+      - 771753474
+      - 727962101
+      - 620810507
+      - 1753669637
+      - 100986886
+      - 4170232078
+      - 3926216736
+      - 1117128194
+      - 1745277429
+      - 100855878
+      - 3204472838
+      - 4026951814
+      - 771753504
+      - 3178287610
+      - 1308158253
+      - 1175275012
+      - 1176454678
+      - 2869619165
+      - 2149906653
+      - 2415946080
+      - 1176520273
+      - 4274583551
+      - 1177699899
+      - 1176520233
+      - 4270127103
+      - 127403
+      - 3204473120
+      - 4026558624
+      - 671088672
+      - 4031304186
+      - 4030750720
+      - 1633689601
+      - 1755365120
+      - 585728
+      - 3506055168
+      - 4030752800
+      - 1612709890
+      - 1755365120
+      - 192512
+      - 3506055168
+      - 1755365120
+      - 2158592
+      - 3522832384
+      - 4030752992
+      - 1625292808
+      - 4030752992
+      - 1625292802
+      - 2381899965
+      - 1145587958
+      - 1744857088
+      - 127040
+      - 1145653747
+      - 1611163657
+      - 1240539136
+      - 1745437769
+      - 1223647368
+      - 1744847944
+      - 1240360960
+      - 1240219656
+      - 1745437769
+      - 536895496
+      - 1145653737
+      - 1615357961
+      - 1145587943
+      - 1744857088
+      - 545322016
+      - 1145653732
+      - 1611163657
+      - 1239556096
+      - 1745437769
+      - 1198547144
+      - 1145653727
+      - 1745446921
+      - 830534689
+      - 1145719516
+      - 1611753490
+      - 1145653722
+      - 1745446921
+      - 562099233
+      - 1145719511
+      - 1611753490
+      - 1065416112
+      - 4122005507
+      - 3507892096
+      - 1238556682
+      - 1745437769
+      - 4097927177
+      - 1255092608
+      - 1746027594
+      - 3758841873
+      - 1145653708
+      - 1745446921
+      - 564196417
+      - 1145719497
+      - 1611753490
+      - 3204505600
+      - 1198571264
+      - 536888833
+      - 1145719492
+      - 1745905682
+      - 16314400
+      - 12708416
+      - 1145719488
+      - 1611687954
+      - 3052423024
+      - 1158015453
+      - 377678401
+      - 3955697409
+      - 3930457939
+      - 1124484615
+      - 1711598150
+      - 1980099142
+      - 1146048438
+      - 1618896959
+      - 1174519280
+      - 1253253120
+      - 1746027594
+      - 4028655760
+      - 1124597763
+      - 1145719471
+      - 1620076562
+      - 1219315568
+      - 1744847944
+      - 4026558592
+      - 1198522380
+      - 536888833
+      - 1145719464
+      - 1754294290
+      - 15790112
+      - 1252344584
+      - 1746027594
+      - 1198547088
+      - 536888833
+      - 1145719457
+      - 1754294290
+      - 1356919840
+      - 1251885832
+      - 1746027594
+      - 1198547088
+      - 536888833
+      - 1145719450
+      - 1754294290
+      - 1080095776
+      - 12708416
+      - 1145719446
+      - 1620076562
+      - 553666416
+      - 1880181397
+      - 671182865
+      - 671404034
+      - 3758346504
+      - 1251025153
+      - 3758387217
+      - 1250894085
+      - 3758125073
+      - 3204497152
+      - 553666416
+      - 1916859392
+      - 2134963634
+      - 1250414860
+      - 1746027594
+      - 4095830161
+      - 1250365944
+      - 1125203970
+      - 1145719426
+      - 1620142098
+      - 1145719424
+      - 1863477266
+      - 1916859426
+      - 1145785213
+      - 1729783835
+      - 1145719419
+      - 1863477266
+      - 51114944
+      - 1266172698
+      - 1746617419
+      - 1198548762
+      - 553694576
+      - 603988480
+      - 1299391234
+      - 1747797069
+      - 4026886317
+      - 2971730188
+      - 3489999108
+      - 3508152584
+      - 1299308549
+      - 3759759365
+      - 1610960240
+      - 1298849814
+      - 1747797069
+      - 4089800813
+      - 1298601096
+      - 1747797069
+      - 4089800813
+      - 476923137
+      - 4222877803
+      - 1315501555
+      - 1610957685
+      - 1298456578
+      - 3204472837
+      - 1298054912
+      - 1747797069
+      - 4026886317
+      - 151585264
+      - 1149062497
+      - 1745181802
+      - 1615151317
+      - 1145916759
+      - 1756194861
+      - 1373697029
+      - 1297812105
+      - 1025131645
+      - 1749376106
+      - 1619345621
+      - 1145916752
+      - 1756194861
+      - 1096872965
+      - 1297353545
+      - 1026966653
+      - 1749376106
+      - 1623539925
+      - 2974399856
+      - 1145719368
+      - 1796368402
+      - 1262895874
+      - 1746617419
+      - 3758646042
+      - 1145719363
+      - 1796368402
+      - 1262568322
+      - 1746617419
+      - 1198547738
+      - 1245622601
+      - 1746027594
+      - 1124232018
+      - 1145785147
+      - 1666869275
+      - 1245306888
+      - 1746027594
+      - 1132620626
+      - 1145785142
+      - 1666869275
+      - 2974369648
+      - 1145719347
+      - 1804757010
+      - 1261519618
+      - 1746617419
+      - 3758646170
+      - 1145719342
+      - 1804757010
+      - 1261192066
+      - 1746617419
+      - 1198547866
+      - 1244246345
+      - 1746027594
+      - 1124232210
+      - 1145785126
+      - 1679452187
+      - 1243930632
+      - 1746027594
+      - 1132620818
+      - 1145785121
+      - 1679452187
+      - 2974369648
+      - 1145719326
+      - 1817339922
+      - 1260143362
+      - 1746617419
+      - 3758646362
+      - 1145719321
+      - 1817339922
+      - 1259815810
+      - 1746617419
+      - 1198548058
+      - 1242870089
+      - 1746027594
+      - 1124231442
+      - 1145785105
+      - 1629120539
+      - 1242554376
+      - 1746027594
+      - 1132620050
+      - 1145785100
+      - 1629120539
+      - 2974369648
+      - 1145719305
+      - 1767008274
+      - 1258767106
+      - 1746617419
+      - 3758645594
+      - 1145719300
+      - 1767008274
+      - 1258439554
+      - 1746617419
+      - 1198547290
+      - 140
+      - 4277600255
+      - 1073887344
+      - 268434687
+      - 16000000
+      - 30000000
+      - 1000000
+      - 1246
+      - 1248047433
+      - 1746027594
+      - 1124231570
+      - 1145785184
+      - 1637509147
+      - 1247731720
+      - 1746027594
+      - 1132620178
+      - 1145785179
+      - 1637509147
+      - 2974369648
+      - 1145719384
+      - 1779591186
+      - 1263944450
+      - 1746617419
+      - 3758645786
+      - 1145719379
+      - 1779591186
+      - 1263616898
+      - 1746617419
+      - 1198547482
+      - 1246671177
+      - 1746027594
+      - 1124231762
+      - 1145785163
+      - 1650092059
+      - 1246355464
+      - 1746027594
+      - 1132620370
+      - 1145785158
+      - 1650092059
+      - 2974369648
+      - 1145719363
+      - 1829922834
+      - 1262568194
+      - 1746617419
+      - 3758646554
+      - 1145719358
+      - 1829922834
+      - 1262240642
+      - 1746617419
+      - 1198548250
+      - 1245294921
+      - 1746027594
+      - 1124232530
+      - 1145785142
+      - 1700423707
+      - 1244979208
+      - 1746027594
+      - 1132621138
+      - 1145785137
+      - 1700423707
+      - 2974369648
+      - 1145719342
+      - 1838311442
+      - 1261191938
+      - 1746617419
+      - 3758646682
+      - 1145719337
+      - 1838311442
+      - 1260864386
+      - 1746617419
+      - 1198548378
+      - 1243918665
+      - 1746027594
+      - 1124232722
+      - 1145785121
+      - 1713006619
+      - 1243602952
+      - 1746027594
+      - 1132621330
+      - 1145785116
+      - 1713006619
+      - 2974369648
+      - 1145719321
+      - 1850894354
+      - 1259815682
+      - 1746617419
+      - 3758646874
+      - 1145719316
+      - 1850894354
+      - 1259488130
+      - 1746617419
+      - 1198548570
+      - 536888834
+      - 1145785102
+      - 1754818587
+      - 1626140704
+      - 50457154
+      - 1258963736
+      - 1746617419
+      - 1198547096
+      - 536888834
+      - 1145785094
+      - 1754818587
+      - 1348661280
+      - 50457154
+      - 1258439448
+      - 1746617419
+      - 1198547096
+      - 140
+      - 1082191951
+      - 1145653569
+      - 1212243976
+      - 1145653569
+      - 1212243976
+      - 1145653569
+      - 1212243976
+      - 1145653569
+      - 1212243976
+      - 1145653569
+      - 1212243976
+      - 1145653569
+      - 1212243976
+      - 1145653569
+      - 1212243976
+      - 1145653569
+      - 1212243976
+      - 1145653569
+      - 1212243976
+      - 1145653569
+      - 1212243976
+      - 1145653569
+      - 1212243976
+      - 1145653569
+      - 1212243976
+      - 1145653569
+      - 1212243976
+      - 1145653569
+      - 1212243976
+      - 1145653569
+      - 1212243976
+      - 1145653569
+      - 1212243976
+      - 1145653569
+      - 1212243976
+      - 1145653569
+      - 1212243976
+      - 1145653569
+      - 1212243976
+      - 1145653569
+      - 1212112904
+      - 1228943544
+      - 1611154505
+      - 1228884002
+      - 1611154505
+      - 1228884030
+      - 1611154505
+      - 1228884030
+      - 1611154505
+      - 814762044
+      - 1145653565
+      - 1198546952
+      - 3758273793
+      - 507549696
+      - 2550173696
+      - 3522766848
+      - 1174519048
+      - 3657574688
+      - 1082662913
+      - 692078448
+      - 4053916165
+      - 570490912
+      - 4026595842
+      - 4053919734
+      - 570490944
+      - 4026595842
+      - 59376
+      - 80
+      - 2684358656
+      - 72
+      - 1073761280
+      - 84
+      - 1073770496
+      - 88
+      - 1073807360
+      - 92
+      - 1073811456
+      - 96
+      - 1073821696
+      - 100
+      - 1073822720
+      - 104
+      - 1073872896
+      - 108
+      - 1073873920
+      - 112
+      - 1073874944
+      - 116
+      - 1073875968
+      - 120
+      - 1073876992
+      - 124
+      - 1073878016
+      - 128
+      - 1073879040
+      - 132
+      - 1073880064
+      - 136
+      - 1073887232
+      - 140
+      - 1073888256
+      - 144
+      - 1073897472
+      - 148
+      - 1073898496
+      - 152
+      - 156
+      - 76
+      - 3758153984
+      - 160
+      - 3758157056
+      - 164
+      - 168
+      - 0
+      - 67305985
+      - 67305985
+      - 151521030
+      - 0
+      - 0
+      - 0
+      - 0
+      - 0
+      - 0
+      - 0
+      - 0
+      - 0
+      - 128
+      - 144
+      - 160
+      - 84412424
+      - 1795884294
+      - 3186429243
+      - 3289602
+      - 0
+      - 0
+      - 0
+      - 0
+      - 0
+      - 0
+      - 0
+      - 0
+      - 0
+      - 0
+      - 0
+      - 0
+      - 0
+      - 0
+      - 0
+      - 0
+      - 0
+      - 0
+      - 0
+      - 0
+      - 0
+      - 0
+      - 0
+      - 0
+      - 0
+      - 0
+      - 0
+      - 0
+    pc_init: 367
+    pc_uninit: 623
+    pc_program_page: 955
+    pc_erase_sector: 629
+    pc_erase_all: 645
+    data_section_offset: 4896
+    flash_properties:
+      address_range:
+        start: 2415919104
+        end: 2449473536
+      page_size: 1024
+      erased_byte_value: 255
+      program_page_timeout: 1000
+      erase_sector_timeout: 3000
+      sectors:
+        - size: 65536
+          address: 0
+  STM32F410xx_412xx_OPT:
+    name: STM32F410xx_412xx_OPT
+    description: STM32F410xx/412xx Flash Options
+    default: false
+    instructions:
+      - 50349569
+      - 673189376
+      - 155243266
+      - 3758431488
+      - 3540133904
+      - 482347264
+      - 142663680
+      - 3573613257
+      - 1124606224
+      - 1210861424
+      - 1619085610
+      - 1619085611
+      - 586180801
+      - 1623278353
+      - 109078848
+      - 1210700806
+      - 1610696999
+      - 1614881030
+      - 1619085607
+      - 1198530560
+      - 1765885985
+      - 1125196289
+      - 536895809
+      - 1209943920
+      - 569403586
+      - 1623343882
+      - 1631734304
+      - 587360578
+      - 1631732506
+      - 101869762
+      - 3489926930
+      - 1124755650
+      - 536961218
+      - 536889200
+      - 536889200
+      - 1209157488
+      - 1757636625
+      - 1125327600
+      - 1259692227
+      - 478756889
+      - 1757503809
+      - 3573285833
+      - 101279937
+      - 3489926921
+      - 1125214401
+      - 536961217
+      - 536889200
+      - 3037742960
+      - 1746029573
+      - 1768180490
+      - 1075593242
+      - 3506455202
+      - 3171948608
+      - 135866939
+      - 1073888256
+      - 1281191551
+      - 21845
+      - 1073754112
+      - 4095
+      - 268413676
+      - 268435452
+      - 0
+    pc_init: 39
+    pc_uninit: 81
+    pc_program_page: 143
+    pc_erase_sector: 139
+    pc_erase_all: 95
+    data_section_offset: 244
+    flash_properties:
+      address_range:
+        start: 536854528
+        end: 536854532
+      page_size: 4
+      erased_byte_value: 255
+      program_page_timeout: 3000
+      erase_sector_timeout: 3000
+      sectors:
+        - size: 4
+          address: 0
+core: M4

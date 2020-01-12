@@ -4,8 +4,10 @@ pub mod chip_family;
 pub mod error;
 pub mod flash_device;
 pub mod parser;
+pub mod raw_flash_algorithm;
 
 use crate::error::Error;
+use crate::raw_flash_algorithm::RawFlashAlgorithm;
 use chip::Chip;
 use chip_family::ChipFamily;
 use cmsis_pack::pdsc::Core;
@@ -14,12 +16,11 @@ use cmsis_pack::pdsc::Package;
 use cmsis_pack::pdsc::Processors;
 use cmsis_pack::utils::FromElem;
 use pretty_env_logger;
-use probe_rs::config::flash_algorithm::RawFlashAlgorithm;
 use probe_rs::config::memory::{FlashRegion, MemoryRegion, RamRegion};
+use std::collections::HashMap;
 use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 use structopt::StructOpt;
-use std::collections::HashMap;
 
 use log;
 
@@ -136,7 +137,11 @@ fn main() {
             let family = if let Some(ref mut family) = potential_family {
                 family
             } else {
-                families.push(ChipFamily::new(device.family, HashMap::new(), core.to_owned()));
+                families.push(ChipFamily::new(
+                    device.family,
+                    HashMap::new(),
+                    core.to_owned(),
+                ));
                 // This unwrap is always safe as we insert at least one item previously.
                 families.last_mut().unwrap()
             };

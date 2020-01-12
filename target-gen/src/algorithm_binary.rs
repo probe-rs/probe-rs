@@ -101,14 +101,4 @@ impl AlgorithmBinary {
 
         blob
     }
-
-    /// Assembles one huge binary blob as u32 values to write to RAM from the three sections.
-    pub(crate) fn blob_as_u32(&self) -> Vec<u32> {
-        use scroll::Pread;
-
-        self.blob()
-            .chunks(4)
-            .map(|bytes| bytes.pread(0).unwrap())
-            .collect()
-    }
 }

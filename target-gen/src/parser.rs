@@ -1,5 +1,5 @@
 use crate::error::Error;
-use probe_rs::config::flash_algorithm::RawFlashAlgorithm;
+use crate::raw_flash_algorithm::RawFlashAlgorithm;
 use probe_rs::config::flash_properties::FlashProperties;
 use probe_rs::config::memory::SectorDescription;
 
@@ -74,7 +74,7 @@ pub fn extract_flash_algo(
 
     // Extract binary blob.
     let algorithm_binary = crate::algorithm_binary::AlgorithmBinary::new(&elf, &buffer)?;
-    algo.instructions = algorithm_binary.blob_as_u32();
+    algo.instructions = base64::encode(&algorithm_binary.blob());
 
     // Extract the function pointers.
     for sym in elf.syms.iter() {
@@ -105,7 +105,8 @@ pub fn extract_flash_algo(
         .collect();
 
     let properties = FlashProperties {
-        address_range: flash_device.start_address..(flash_device.start_address + flash_device.device_size),
+        address_range: flash_device.start_address
+            ..(flash_device.start_address + flash_device.device_size),
 
         page_size: flash_device.page_size,
         erased_byte_value: flash_device.erased_default_value,

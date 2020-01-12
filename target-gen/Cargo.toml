@@ -19,5 +19,5 @@ serde_yaml = "0.8.11"
 log = "0.4.8"
 zip = "0.5.3"
 structopt = "0.3.2"
-
+base64 = "0.11.0"
 pretty_env_logger = "0.3"

@@ -1,5 +1,5 @@
+use crate::raw_flash_algorithm::RawFlashAlgorithm;
 use crate::Chip;
-use probe_rs::config::flash_algorithm::RawFlashAlgorithm;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
