@@ -1,4 +1,5 @@
-use super::memory::{FlashRegion, RamRegion, SectorDescription, SectorInfo};
+use super::flash_properties::FlashProperties;
+use super::memory::{PageInfo, RamRegion, SectorInfo};
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct FlashAlgorithm {
@@ -32,26 +33,59 @@ pub struct FlashAlgorithm {
     /// the list, then double buffered programming will be enabled.
     pub page_buffers: Vec<u32>,
 
-    pub sectors: Vec<SectorDescription>,
+    /// The properties of the flash on the device.
+    pub flash_properties: FlashProperties,
 }
 
 impl FlashAlgorithm {
-    pub fn sector_info(&self, region: &FlashRegion, address: u32) -> Option<SectorInfo> {
-        if !region.range.contains(&address) {
+    pub fn sector_info(&self, address: u32) -> Option<SectorInfo> {
+        if !self.flash_properties.address_range().contains(&address) {
+            log::trace!("Address {:08x} not contained in this flash device", address);
             return None;
         }
 
-        let containing_sector = dbg!(self.sectors.iter().rfind(|s| s.address <= address))?;
+        let offset_address = address - self.flash_properties.start_address;
 
-        let sector_index = (address - containing_sector.address) / containing_sector.size;
+        let containing_sector = self
+            .flash_properties
+            .sectors
+            .iter()
+            .rfind(|s| s.address <= offset_address)?;
 
-        let sector_address = containing_sector.address + sector_index * containing_sector.size;
+        let sector_index = (offset_address - containing_sector.address) / containing_sector.size;
+
+        let sector_address = self.flash_properties.start_address
+            + containing_sector.address
+            + sector_index * containing_sector.size;
 
         Some(SectorInfo {
             base_address: sector_address,
             size: containing_sector.size,
-            page_size: region.page_size,
+            page_size: self.flash_properties.page_size,
         })
+    }
+
+    /// Returns the necessary information about the page which `address` resides in
+    /// if the address is inside the flash region.
+    pub fn page_info(&self, address: u32) -> Option<PageInfo> {
+        if !self.flash_properties.address_range().contains(&address) {
+            return None;
+        }
+
+        Some(PageInfo {
+            base_address: address - (address % self.flash_properties.page_size),
+            size: self.flash_properties.page_size,
+        })
+    }
+
+    /// Returns true if the entire contents of the argument array equal the erased byte value.
+    pub fn is_erased(&self, data: &[u8]) -> bool {
+        for b in data {
+            if *b != self.flash_properties.erased_byte_value {
+                return false;
+            }
+        }
+        true
     }
 }
 
@@ -77,8 +111,8 @@ pub struct RawFlashAlgorithm {
     pub pc_erase_all: Option<u32>,
     /// The offset from the start of RAM to the data section.
     pub data_section_offset: u32,
-
-    pub sectors: Vec<SectorDescription>,
+    /// The properties of the flash on the device.
+    pub flash_properties: FlashProperties,
 }
 
 impl RawFlashAlgorithm {
@@ -97,7 +131,7 @@ impl RawFlashAlgorithm {
     ];
 
     /// Constructs a complete flash algorithm, tailored to the flash and RAM sizes given.
-    pub fn assemble(&self, ram_region: &RamRegion, flash_region: &FlashRegion) -> FlashAlgorithm {
+    pub fn assemble(&self, ram_region: &RamRegion) -> FlashAlgorithm {
         let mut instructions = Self::FLASH_BLOB_HEADER.to_vec();
 
         instructions.extend(&self.instructions);
@@ -118,7 +152,7 @@ impl RawFlashAlgorithm {
 
             // Data buffer 1
             addr_data = ram_region.range.start + offset;
-            offset += flash_region.page_size;
+            offset += self.flash_properties.page_size;
 
             if offset <= ram_region.range.end - ram_region.range.start {
                 break;
@@ -127,7 +161,7 @@ impl RawFlashAlgorithm {
 
         // Data buffer 2
         let addr_data2 = ram_region.range.start + offset;
-        offset += flash_region.page_size;
+        offset += self.flash_properties.page_size;
 
         // Determine whether we can use double buffering or not by the remaining RAM region size.
         let page_buffers = if offset <= ram_region.range.end - ram_region.range.start {
@@ -152,7 +186,7 @@ impl RawFlashAlgorithm {
             begin_stack: addr_stack,
             begin_data: page_buffers[0],
             page_buffers: page_buffers.clone(),
-            sectors: self.sectors.clone(),
+            flash_properties: self.flash_properties.clone(),
         }
     }
 }
@@ -160,19 +194,17 @@ impl RawFlashAlgorithm {
 #[test]
 fn flash_sector_single_size() {
     let config = FlashAlgorithm {
-        sectors: vec![SectorDescription {
-            size: 0x100,
-            address: 0x1000,
-        }],
+        flash_properties: FlashProperties {
+            sectors: vec![SectorDescription {
+                size: 0x100,
+                address: 0x0,
+            }],
+            start_address: 0x1000,
+            size: 0x1000,
+            page_size: 0x10,
+            ..Default::default()
+        },
         ..Default::default()
-    };
-
-    let region = FlashRegion {
-        range: 0x1000..0x2000,
-        is_boot_memory: true,
-        erased_byte_value: 0xff,
-        page_size: 0x10,
-        sector_size: 0,
     };
 
     let expected_first = SectorInfo {
@@ -181,31 +213,29 @@ fn flash_sector_single_size() {
         size: 0x100,
     };
 
-    assert!(config.sector_info(&region, 0x1000 - 1).is_none());
+    assert!(config.sector_info(0x1000 - 1).is_none());
 
-    assert_eq!(expected_first, config.sector_info(&region, 0x1000).unwrap());
-    assert_eq!(expected_first, config.sector_info(&region, 0x10ff).unwrap());
+    assert_eq!(expected_first, config.sector_info(0x1000).unwrap());
+    assert_eq!(expected_first, config.sector_info(0x10ff).unwrap());
 
-    assert_eq!(expected_first, config.sector_info(&region, 0x100b).unwrap());
-    assert_eq!(expected_first, config.sector_info(&region, 0x10ea).unwrap());
+    assert_eq!(expected_first, config.sector_info(0x100b).unwrap());
+    assert_eq!(expected_first, config.sector_info(0x10ea).unwrap());
 }
 
 #[test]
 fn flash_sector_single_size_weird_sector_size() {
     let config = FlashAlgorithm {
-        sectors: vec![SectorDescription {
-            size: 258,
-            address: 0x800_0000,
-        }],
+        flash_properties: FlashProperties {
+            sectors: vec![SectorDescription {
+                size: 258,
+                address: 0x0,
+            }],
+            start_address: 0x800_0000,
+            size: 258 * 10,
+            page_size: 0x10,
+            ..Default::default()
+        },
         ..Default::default()
-    };
-
-    let region = FlashRegion {
-        range: 0x800_0000..0x810_0000,
-        is_boot_memory: true,
-        erased_byte_value: 0xff,
-        page_size: 0x10,
-        sector_size: 0,
     };
 
     let expected_first = SectorInfo {
@@ -214,53 +244,42 @@ fn flash_sector_single_size_weird_sector_size() {
         size: 258,
     };
 
-    assert!(config.sector_info(&region, 0x800_0000 - 1).is_none());
+    assert!(config.sector_info(0x800_0000 - 1).is_none());
 
+    assert_eq!(expected_first, config.sector_info(0x800_0000).unwrap());
     assert_eq!(
         expected_first,
-        config.sector_info(&region, 0x800_0000).unwrap()
-    );
-    assert_eq!(
-        expected_first,
-        config.sector_info(&region, 0x800_0000 + 257).unwrap()
+        config.sector_info(0x800_0000 + 257).unwrap()
     );
 
-    assert_eq!(
-        expected_first,
-        config.sector_info(&region, 0x800_000b).unwrap()
-    );
-    assert_eq!(
-        expected_first,
-        config.sector_info(&region, 0x800_00e0).unwrap()
-    );
+    assert_eq!(expected_first, config.sector_info(0x800_000b).unwrap());
+    assert_eq!(expected_first, config.sector_info(0x800_00e0).unwrap());
 }
 
 #[test]
 fn flash_sector_multiple_sizes() {
     let config = FlashAlgorithm {
-        sectors: vec![
-            SectorDescription {
-                size: 0x4000,
-                address: 0x800_0000,
-            },
-            SectorDescription {
-                size: 0x1_0000,
-                address: 0x801_0000,
-            },
-            SectorDescription {
-                size: 0x2_0000,
-                address: 0x802_0000,
-            },
-        ],
+        flash_properties: FlashProperties {
+            sectors: vec![
+                SectorDescription {
+                    size: 0x4000,
+                    address: 0x0,
+                },
+                SectorDescription {
+                    size: 0x1_0000,
+                    address: 0x1_0000,
+                },
+                SectorDescription {
+                    size: 0x2_0000,
+                    address: 0x2_0000,
+                },
+            ],
+            start_address: 0x800_0000,
+            size: 0x10_0000,
+            page_size: 0x10,
+            ..Default::default()
+        },
         ..Default::default()
-    };
-
-    let region = FlashRegion {
-        range: 0x800_0000..0x810_0000,
-        is_boot_memory: true,
-        erased_byte_value: 0xff,
-        page_size: 0x10,
-        sector_size: 0,
     };
 
     let expected_a = SectorInfo {
@@ -281,7 +300,7 @@ fn flash_sector_multiple_sizes() {
         size: 0x2_0000,
     };
 
-    assert_eq!(expected_a, config.sector_info(&region, 0x800_4000).unwrap());
-    assert_eq!(expected_b, config.sector_info(&region, 0x801_0000).unwrap());
-    assert_eq!(expected_c, config.sector_info(&region, 0x80A_0000).unwrap());
+    assert_eq!(expected_a, config.sector_info(0x800_4000).unwrap());
+    assert_eq!(expected_b, config.sector_info(0x801_0000).unwrap());
+    assert_eq!(expected_c, config.sector_info(0x80A_0000).unwrap());
 }

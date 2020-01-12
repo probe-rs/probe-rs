@@ -13,4 +13,6 @@ pub struct Chip {
     pub part: Option<u16>,
     /// The memory regions available on the chip.
     pub memory_map: Vec<MemoryRegion>,
+
+    pub flash_algorithms: Vec<String>,
 }

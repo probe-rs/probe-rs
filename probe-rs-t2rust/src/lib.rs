@@ -33,6 +33,7 @@ pub fn run(input_dir: impl AsRef<Path>, output_file: impl AsRef<Path>) {
         use crate::config::flash_algorithm::RawFlashAlgorithm;
         use crate::config::chip_family::ChipFamily;
         use crate::config::memory::{FlashRegion, MemoryRegion, RamRegion, SectorDescription};
+        use crate::config::flash_properties::FlashProperties;
 
         #[allow(clippy::all)]
         pub fn get_targets() -> Vec<ChipFamily> {
@@ -133,8 +134,33 @@ fn extract_algorithms(chip: &serde_yaml::Value) -> Vec<proc_macro2::TokenStream>
                 .as_u64()
                 .unwrap() as u32;
 
+            let flash_properties = algorithm.get("flash_properties").unwrap();
+
+            let start_address = flash_properties
+                .get("start_address")
+                .unwrap()
+                .as_u64()
+                .unwrap() as u32;
+            let size = flash_properties.get("size").unwrap().as_u64().unwrap() as u32;
+            let page_size = flash_properties.get("page_size").unwrap().as_u64().unwrap() as u32;
+            let erased_byte_value = flash_properties
+                .get("erased_byte_value")
+                .unwrap()
+                .as_u64()
+                .unwrap() as u8;
+            let program_page_timeout = flash_properties
+                .get("program_page_timeout")
+                .unwrap()
+                .as_u64()
+                .unwrap() as u32;
+            let erase_sector_timeout = flash_properties
+                .get("erase_sector_timeout")
+                .unwrap()
+                .as_u64()
+                .unwrap() as u32;
+
             // get all sectors
-            let sectors = extract_sectors(&algorithm);
+            let sectors = extract_sectors(&flash_properties);
 
             // Quote the algorithm struct.
             let algorithm = quote::quote! {
@@ -151,9 +177,17 @@ fn extract_algorithms(chip: &serde_yaml::Value) -> Vec<proc_macro2::TokenStream>
                     pc_erase_sector: #pc_erase_sector,
                     pc_erase_all: #pc_erase_all,
                     data_section_offset: #data_section_offset,
-                    sectors: vec![
-                        #(#sectors,)*
-                    ],
+                    flash_properties: FlashProperties {
+                        start_address: #start_address,
+                        size: #size,
+                        page_size: #page_size,
+                        erased_byte_value: #erased_byte_value,
+                        program_page_timeout: #program_page_timeout,
+                        erase_sector_timeout: #erase_sector_timeout,
+                        sectors: vec![
+                            #(#sectors,)*
+                        ]
+                    },
                 }
             };
 
@@ -221,19 +255,11 @@ fn extract_memory_map(chip: &serde_yaml::Value) -> Vec<proc_macro2::TokenStream>
                         let end = range.get("end").unwrap().as_u64().unwrap() as u32;
                         let is_boot_memory =
                             region.get("is_boot_memory").unwrap().as_bool().unwrap();
-                        let sector_size =
-                            region.get("sector_size").unwrap().as_u64().unwrap() as u32;
-                        let page_size = region.get("page_size").unwrap().as_u64().unwrap() as u32;
-                        let erased_byte_value =
-                            region.get("erased_byte_value").unwrap().as_u64().unwrap() as u8;
 
                         quote::quote! {
                             MemoryRegion::Flash(FlashRegion {
                                 range: #start..#end,
                                 is_boot_memory: #is_boot_memory,
-                                sector_size: #sector_size,
-                                page_size: #page_size,
-                                erased_byte_value: #erased_byte_value,
                             })
                         }
                     })
@@ -264,12 +290,21 @@ fn extract_variants(chip_family: &serde_yaml::Value) -> Vec<proc_macro2::TokenSt
             // Extract all the memory regions into a Vec of TookenStreams.
             let memory_map = extract_memory_map(&variant);
 
+            let flash_algorithms = variant
+                .get("flash_algorithms")
+                .unwrap()
+                .as_sequence()
+                .unwrap();
+            let flash_algorithm_names = flash_algorithms.iter().map(|a| a.as_str().unwrap());
             quote::quote! {
                 Chip {
                     name: #name.to_owned(),
                     part: #part,
                     memory_map: vec![
                         #(#memory_map,)*
+                    ],
+                    flash_algorithms: vec![
+                        #(#flash_algorithm_names.to_owned(),)*
                     ],
                 }
             }

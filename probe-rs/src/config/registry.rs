@@ -1,4 +1,4 @@
-use crate::config::{chip_family::ChipFamily, memory::MemoryRegion};
+use crate::config::chip_family::ChipFamily;
 use crate::target::info::ChipInfo;
 use std::error::Error;
 use std::fs::File;
@@ -104,7 +104,7 @@ impl Registry {
     }
 
     pub fn get_target(&self, strategy: SelectionStrategy) -> Result<Target, RegistryError> {
-        let (family, chip, flash_algorithm) = match strategy {
+        let (family, chip) = match strategy {
             SelectionStrategy::TargetIdentifier(identifier) => {
                 // Try get the corresponding chip.
                 let mut selected_family_and_chip = None;
@@ -131,21 +131,7 @@ impl Registry {
                 let (family, chip) = selected_family_and_chip.ok_or(RegistryError::ChipNotFound)?;
 
                 // Try get the correspnding flash algorithm.
-                let flash_algorithm = family
-                    .flash_algorithms
-                    .iter()
-                    .find(|flash_algorithm| {
-                        if let Some(flash_algorithm_name) = identifier.flash_algorithm_name.clone()
-                        {
-                            flash_algorithm.name == flash_algorithm_name
-                        } else {
-                            flash_algorithm.default
-                        }
-                    })
-                    .or_else(|| family.flash_algorithms.first())
-                    .ok_or(RegistryError::AlgorithmNotFound)?;
-
-                (family, chip, flash_algorithm)
+                (family, chip)
             }
             SelectionStrategy::ChipInfo(chip_info) => {
                 // Try get the corresponding chip.
@@ -166,13 +152,7 @@ impl Registry {
                 let (family, chip) =
                     selected_family_and_chip.ok_or(RegistryError::ChipAutodetectFailed)?;
 
-                // Try get the correspnding flash algorithm.
-                let flash_algorithm = family
-                    .flash_algorithms
-                    .first()
-                    .ok_or(RegistryError::AlgorithmNotFound)?;
-
-                (family, chip, flash_algorithm)
+                (family, chip)
             }
         };
 
@@ -183,23 +163,15 @@ impl Registry {
             return Err(RegistryError::CoreNotFound);
         };
 
-        let mut ram = None;
-        let mut flash = None;
-        for region in &chip.memory_map {
-            match region {
-                MemoryRegion::Ram(r) => ram = Some(r),
-                MemoryRegion::Flash(r) => flash = Some(r),
-                _ => (),
-            };
-        }
+        // find relevant algorithms
+        let chip_algorithms: Vec<_> = family
+            .flash_algorithms
+            .iter()
+            .filter(|fa| chip.flash_algorithms.contains(&fa.name))
+            .cloned()
+            .collect();
 
-        Ok(Target::new(
-            chip,
-            ram.ok_or(RegistryError::RamMissing)?,
-            flash.ok_or(RegistryError::FlashMissing)?,
-            flash_algorithm,
-            core,
-        ))
+        Ok(Target::new(chip, chip_algorithms, core))
     }
 
     pub fn add_target_from_yaml(&mut self, path_to_yaml: &Path) -> Result<(), RegistryError> {

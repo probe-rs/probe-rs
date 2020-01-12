@@ -252,6 +252,8 @@ impl<'a> FlashBuilder<'a> {
                 // Check if the operation is in another sector.
                 let flash_address = op.address + pos as u32;
 
+                log::trace!("Checking sector for address {:#08x}", flash_address);
+
                 if let Some(sector) = sectors.last_mut() {
                     // If the address is not in the sector, add a new sector.
                     if flash_address >= sector.address + sector.size {
@@ -274,7 +276,7 @@ impl<'a> FlashBuilder<'a> {
                             // Fill any gap at the end of the current page before switching to a new page.
                             Self::fill_page(flash, page, restore_unwritten_bytes)?;
 
-                            let page_info = flash.region().page_info(flash_address);
+                            let page_info = flash.flash_algorithm().page_info(flash_address);
                             if let Some(page_info) = page_info {
                                 let new_page = FlashPage::new(&page_info);
                                 sector.add_page(new_page)?;
@@ -299,7 +301,7 @@ impl<'a> FlashBuilder<'a> {
                         }
                     } else {
                         // If no page is on the sector yet.
-                        let page_info = flash.region().page_info(flash_address);
+                        let page_info = flash.flash_algorithm().page_info(flash_address);
                         if let Some(page_info) = page_info {
                             let new_page = FlashPage::new(&page_info);
                             sector.add_page(new_page.clone())?;
@@ -315,10 +317,10 @@ impl<'a> FlashBuilder<'a> {
                     }
                 } else {
                     // If no sector exists, create a new one.
+                    log::trace!("Trying to create a new sector");
                     let sector_info = flash.sector_info(flash_address);
 
                     if let Some(sector_info) = sector_info {
-                        assert!(sector_info.base_address >= flash.region().range.start);
                         let new_sector = FlashSector::new(&sector_info);
                         sectors.push(new_sector);
                         log::debug!(
@@ -374,7 +376,7 @@ impl<'a> FlashBuilder<'a> {
                 data
             } else {
                 // Set all the remaining bytes to their default erased value.
-                vec![flash.region().erased_byte_value; remaining_bytes]
+                vec![flash.flash_algorithm().flash_properties.erased_byte_value; remaining_bytes]
             };
             current_page.data.extend(old_data);
         }
