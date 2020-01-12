@@ -5,10 +5,7 @@ use probe_rs::{
     cores::m0::FakeM0,
     coresight::access_ports::AccessPortError,
     flash::download::FileDownloadError,
-    probe::{
-        daplink, stlink, DebugProbe, DebugProbeError, DebugProbeType, FakeProbe, MasterProbe,
-        WireProtocol,
-    },
+    probe::{DebugProbeError, FakeProbe, MasterProbe},
     session::Session,
     target::info::{self, ChipInfo},
 };
@@ -29,7 +26,7 @@ pub enum CliError {
     FileDownload(FileDownloadError),
     RegistryError(RegistryError),
     MissingArgument,
-    UnableToOpenProbe,
+    UnableToOpenProbe(Option<&'static str>),
 }
 
 impl Error for CliError {
@@ -43,7 +40,7 @@ impl Error for CliError {
             StdIO(ref e) => Some(e),
             RegistryError(ref e) => Some(e),
             MissingArgument => None,
-            UnableToOpenProbe => None,
+            UnableToOpenProbe(_) => None,
             FileDownload(ref e) => Some(e),
         }
     }
@@ -61,7 +58,10 @@ impl fmt::Display for CliError {
             FileDownload(ref e) => e.fmt(f),
             RegistryError(ref e) => e.fmt(f),
             MissingArgument => write!(f, "Command expected more arguments."),
-            UnableToOpenProbe => write!(f, "Unable to open probe."),
+            UnableToOpenProbe(ref details) => match details {
+                None => write!(f, "Unable to open probe."),
+                Some(details) => write!(f, "Unable to open probe: {}", details),
+            },
         }
     }
 }
@@ -103,37 +103,21 @@ impl From<FileDownloadError> for CliError {
 }
 
 pub(crate) fn open_probe(index: Option<usize>) -> Result<MasterProbe, CliError> {
-    let mut list = daplink::tools::list_daplink_devices();
-    list.extend(stlink::tools::list_stlink_devices());
+    let available_probes = MasterProbe::list_all();
 
     let device = match index {
-        Some(index) => list.get(index).ok_or(CliError::UnableToOpenProbe)?,
+        Some(index) => available_probes.get(index).ok_or(CliError::UnableToOpenProbe(Some("Unable to open the specified probe. Use the 'list' subcommand to see all available probes.")))?,
         None => {
             // open the default probe, if only one probe was found
-            if list.len() == 1 {
-                &list[0]
+            if available_probes.len() == 1 {
+                &available_probes[0]
             } else {
-                return Err(CliError::UnableToOpenProbe);
+                return Err(CliError::UnableToOpenProbe(Some("Multiple probes found. Please specify which probe to use using the -n parameter.")));
             }
         }
     };
 
-    let probe = match device.probe_type {
-        DebugProbeType::DAPLink => {
-            let mut link = daplink::DAPLink::new_from_probe_info(&device)?;
-
-            link.attach(Some(WireProtocol::Swd))?;
-
-            MasterProbe::from_specific_probe(link)
-        }
-        DebugProbeType::STLink => {
-            let mut link = stlink::STLink::new_from_probe_info(&device)?;
-
-            link.attach(Some(WireProtocol::Swd))?;
-
-            MasterProbe::from_specific_probe(link)
-        }
-    };
+    let probe = MasterProbe::from_probe_info(&device)?;
 
     Ok(probe)
 }
