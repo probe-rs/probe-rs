@@ -81,6 +81,7 @@ pub struct Registry {
 
 #[cfg(feature = "builtin-targets")]
 mod builtin {
+    use maplit::hashmap;
     include!(concat!(env!("OUT_DIR"), "/targets.rs"));
 }
 
@@ -164,10 +165,9 @@ impl Registry {
         };
 
         // find relevant algorithms
-        let chip_algorithms: Vec<_> = family
-            .flash_algorithms
+        let chip_algorithms = chip.flash_algorithms
             .iter()
-            .filter(|fa| chip.flash_algorithms.contains(&fa.name))
+            .filter_map(|fa| family.flash_algorithms.get(fa))
             .cloned()
             .collect();
 

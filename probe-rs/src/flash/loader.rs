@@ -128,8 +128,8 @@ impl<'a, 'b> FlashLoader<'a, 'b> {
                 log::debug!(
                     "Algorithm {} - start: {:#08x} - size: {:#08x}",
                     algorithm.name,
-                    algorithm.flash_properties.start_address,
-                    algorithm.flash_properties.size
+                    algorithm.flash_properties.range.start,
+                    algorithm.flash_properties.range.end - algorithm.flash_properties.range.start
                 );
             }
 
@@ -137,12 +137,7 @@ impl<'a, 'b> FlashLoader<'a, 'b> {
                 .flash_algorithms
                 .iter()
                 .filter(|fa| {
-                    fa.flash_properties
-                        .address_range()
-                        .contains_range(&region.range)
-                    //region.range.start >= fa.flash_properties.start_address
-                    //    && region.range.end
-                    //        <= (fa.flash_properties.start_address + fa.flash_properties.size)
+                    fa.flash_properties.range.contains_range(&region.range)
                 })
                 .collect();
 

@@ -1,11 +1,12 @@
 use super::memory::SectorDescription;
 use std::ops::Range;
-#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+use derivative::Derivative;
+#[derive(Debug, Derivative, Clone, Serialize, Deserialize)]
+#[derivative(Default)]
 pub struct FlashProperties {
-    /// The flash start address of the device.
-    pub start_address: u32,
-    /// The flash size of the device.
-    pub size: u32,
+    /// The range of the device flash.
+    #[derivative(Default(value="0..0"))]
+    pub range: Range<u32>,
     /// The page size of the device flash.
     pub page_size: u32,
     /// The value of a byte in flash that was just erased.
@@ -18,8 +19,8 @@ pub struct FlashProperties {
     pub sectors: Vec<SectorDescription>,
 }
 
-impl FlashProperties {
-    pub fn address_range(&self) -> Range<u32> {
-        self.start_address..(self.start_address + self.size)
-    }
-}
+// impl FlashProperties {
+//     pub fn address_range(&self) -> Range<u32> {
+//         self.start_address..(self.start_address + self.size)
+//     }
+// }
