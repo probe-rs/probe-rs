@@ -39,12 +39,12 @@ pub struct FlashAlgorithm {
 
 impl FlashAlgorithm {
     pub fn sector_info(&self, address: u32) -> Option<SectorInfo> {
-        if !self.flash_properties.range.contains(&address) {
+        if !self.flash_properties.address_range.contains(&address) {
             log::trace!("Address {:08x} not contained in this flash device", address);
             return None;
         }
 
-        let offset_address = address - self.flash_properties.range.start;
+        let offset_address = address - self.flash_properties.address_range.start;
 
         let containing_sector = self
             .flash_properties
@@ -54,7 +54,7 @@ impl FlashAlgorithm {
 
         let sector_index = (offset_address - containing_sector.address) / containing_sector.size;
 
-        let sector_address = self.flash_properties.range.start
+        let sector_address = self.flash_properties.address_range.start
             + containing_sector.address
             + sector_index * containing_sector.size;
 
@@ -68,7 +68,7 @@ impl FlashAlgorithm {
     /// Returns the necessary information about the page which `address` resides in
     /// if the address is inside the flash region.
     pub fn page_info(&self, address: u32) -> Option<PageInfo> {
-        if !self.flash_properties.range.contains(&address) {
+        if !self.flash_properties.address_range.contains(&address) {
             return None;
         }
 

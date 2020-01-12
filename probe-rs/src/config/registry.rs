@@ -81,7 +81,6 @@ pub struct Registry {
 
 #[cfg(feature = "builtin-targets")]
 mod builtin {
-    use maplit::hashmap;
     include!(concat!(env!("OUT_DIR"), "/targets.rs"));
 }
 

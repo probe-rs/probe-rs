@@ -191,9 +191,7 @@ impl<'a> FlashBuilder<'a> {
         let sectors = self.build_sectors_and_pages(&mut flash, restore_unwritten_bytes)?;
 
         let num_pages = sectors.iter().map(|s| s.pages.len()).sum();
-        let sizes = sectors.first().map(|s| (s.size, s.page_size));
-        let (sector_size, page_size) = sizes.unwrap_or((0, 0));
-
+        let page_size = flash.flash_algorithm().flash_properties.page_size;
         let sector_size: u32 = sectors.iter().map(|s| s.size).sum();
 
         progress.initialized(num_pages, sector_size as usize, page_size);

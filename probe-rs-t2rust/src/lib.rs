@@ -27,13 +27,22 @@ pub fn run(input_dir: impl AsRef<Path>, output_file: impl AsRef<Path>) {
         }
     }
 
+    let include_stream = if configs.is_empty() {
+        quote::quote! {}
+    } else {
+        quote::quote! {
+            use jep106::JEP106Code;
+            use crate::config::chip::Chip;
+            use crate::config::flash_algorithm::RawFlashAlgorithm;
+            use crate::config::memory::{FlashRegion, MemoryRegion, RamRegion, SectorDescription};
+            use crate::config::flash_properties::FlashProperties;
+            use maplit::hashmap;
+        }
+    };
+
     let stream = quote::quote! {
-        use jep106::JEP106Code;
-        use crate::config::chip::Chip;
-        use crate::config::flash_algorithm::RawFlashAlgorithm;
+        #include_stream
         use crate::config::chip_family::ChipFamily;
-        use crate::config::memory::{FlashRegion, MemoryRegion, RamRegion, SectorDescription};
-        use crate::config::flash_properties::FlashProperties;
 
         #[allow(clippy::all)]
         pub fn get_targets() -> Vec<ChipFamily> {
@@ -136,7 +145,7 @@ fn extract_algorithms(chip: &serde_yaml::Value) -> Vec<(String, proc_macro2::Tok
 
             let flash_properties = algorithm.get("flash_properties").unwrap();
 
-            let range = flash_properties.get("range").unwrap();
+            let range = flash_properties.get("address_range").unwrap();
             let start = range.get("start").unwrap().as_u64().unwrap() as u32;
             let end = range.get("end").unwrap().as_u64().unwrap() as u32;
             let page_size = flash_properties.get("page_size").unwrap().as_u64().unwrap() as u32;
@@ -175,7 +184,7 @@ fn extract_algorithms(chip: &serde_yaml::Value) -> Vec<(String, proc_macro2::Tok
                     pc_erase_all: #pc_erase_all,
                     data_section_offset: #data_section_offset,
                     flash_properties: FlashProperties {
-                        range: #start..#end,
+                        address_range: #start..#end,
                         page_size: #page_size,
                         erased_byte_value: #erased_byte_value,
                         program_page_timeout: #program_page_timeout,
