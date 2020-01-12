@@ -1,6 +1,6 @@
 use super::chip::Chip;
-use super::flash_algorithm::{FlashAlgorithm, RawFlashAlgorithm};
-use super::memory::{FlashRegion, MemoryRegion, RamRegion};
+use super::flash_algorithm::RawFlashAlgorithm;
+use super::memory::MemoryRegion;
 use super::registry::TargetIdentifier;
 use crate::target::Core;
 
@@ -10,7 +10,7 @@ pub struct Target {
     /// The complete identifier of the target.
     pub identifier: TargetIdentifier,
     /// The name of the flash algorithm.
-    pub flash_algorithm: Option<FlashAlgorithm>,
+    pub flash_algorithms: Vec<RawFlashAlgorithm>,
     /// The core type.
     pub core: Box<dyn Core>,
     /// The memory map of the target.
@@ -22,17 +22,15 @@ pub type TargetParseError = serde_yaml::Error;
 impl Target {
     pub fn new(
         chip: &Chip,
-        ram: &RamRegion,
-        flash: &FlashRegion,
-        flash_algorithm: &RawFlashAlgorithm,
+        flash_algorithms: Vec<RawFlashAlgorithm>,
         core: Box<dyn Core>,
     ) -> Target {
         Target {
             identifier: TargetIdentifier {
                 chip_name: chip.name.clone(),
-                flash_algorithm_name: Some(flash_algorithm.name.clone()),
+                flash_algorithm_name: None,
             },
-            flash_algorithm: Some(flash_algorithm.assemble(ram, flash)),
+            flash_algorithms,
             core,
             memory_map: chip.memory_map.clone(),
         }

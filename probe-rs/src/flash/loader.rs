@@ -6,6 +6,7 @@ use std::fmt;
 use super::builder::FlashBuilder;
 use super::flasher::Flasher;
 use super::FlashProgress;
+use crate::config::memory::MemoryRange;
 use crate::config::memory::{FlashRegion, MemoryRegion};
 
 /// `FlashLoader` is a struct which manages the flashing of any chunks of data onto any sections of flash.
@@ -114,29 +115,77 @@ impl<'a, 'b> FlashLoader<'a, 'b> {
         let target = &session.target;
         let probe = &mut session.probe;
 
-        // If the session target has a flash algorithm attached, initiate the download.
-        if let Some(flash_algorithm) = target.flash_algorithm.as_ref() {
-            // Iterate over builders we've created and program the data.
-            for (region, builder) in &self.builders {
+        // Iterate over builders we've created and program the data.
+        for (region, builder) in &self.builders {
+            log::debug!(
+                "Using builder for regioon (0x{:08x}..0x{:08x})",
+                region.range.start,
+                region.range.end
+            );
+
+            // Try to find a flash algorithm for the range of the current builder
+            for algorithm in &target.flash_algorithms {
                 log::debug!(
-                    "Using builder for region (0x{:08x}..0x{:08x})",
-                    region.range.start,
-                    region.range.end
+                    "Algorithm {} - start: {:#08x} - size: {:#08x}",
+                    algorithm.name,
+                    algorithm.flash_properties.start_address,
+                    algorithm.flash_properties.size
                 );
-                // Program the data.
-                builder
-                    .program(
-                        Flasher::new(target, probe, flash_algorithm, region),
-                        do_chip_erase,
-                        self.keep_unwritten,
-                        progress,
-                    )
-                    .unwrap();
             }
 
-            Ok(())
-        } else {
-            Err(FlashLoaderError::NoFlashLoaderAlgorithmAttached)
+            let algorithms: Vec<_> = target
+                .flash_algorithms
+                .iter()
+                .filter(|fa| {
+                    fa.flash_properties
+                        .address_range()
+                        .contains_range(&region.range)
+                    //region.range.start >= fa.flash_properties.start_address
+                    //    && region.range.end
+                    //        <= (fa.flash_properties.start_address + fa.flash_properties.size)
+                })
+                .collect();
+
+            //log::debug!("Algorithms: {:?}", &algorithms);
+
+            let raw_flash_algorithm = match algorithms.len() {
+                0 => {
+                    return Err(FlashLoaderError::NoFlashLoaderAlgorithmAttached);
+                }
+                1 => &algorithms[0],
+                _ => algorithms
+                    .iter()
+                    .find(|a| a.default)
+                    .ok_or(FlashLoaderError::NoFlashLoaderAlgorithmAttached)?,
+            };
+
+            let ram = target
+                .memory_map
+                .iter()
+                .find(|mm| match mm {
+                    MemoryRegion::Ram(_) => true,
+                    _ => false,
+                })
+                .expect("No RAM defined for chip.");
+
+            let unwrapped_ram = match ram {
+                MemoryRegion::Ram(ram) => ram,
+                _ => unreachable!(),
+            };
+
+            let flash_algorithm = raw_flash_algorithm.assemble(unwrapped_ram);
+
+            // Program the data.
+            builder
+                .program(
+                    Flasher::new(target, probe, &flash_algorithm, region),
+                    do_chip_erase,
+                    self.keep_unwritten,
+                    progress,
+                )
+                .unwrap();
         }
+
+        Ok(())
     }
 }

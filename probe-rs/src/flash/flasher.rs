@@ -107,7 +107,7 @@ impl<'a> Flasher<'a> {
     /// Returns the necessary information about the sector which `address` resides in
     /// if the address is inside the flash region.
     pub fn sector_info(&self, address: u32) -> Option<SectorInfo> {
-        self.flash_algorithm.sector_info(self.region(), address)
+        self.flash_algorithm.sector_info(address)
     }
 
     pub fn flash_algorithm(&self) -> &FlashAlgorithm {
@@ -551,7 +551,7 @@ impl<'a> ActiveFlasher<'a, Program> {
         flasher.call_function(
             algo.pc_program_page,
             Some(address),
-            Some(flasher.region.page_size),
+            Some(flasher.flash_algorithm().flash_properties.page_size),
             Some(algo.page_buffers[buffer_number as usize]),
             None,
             false,

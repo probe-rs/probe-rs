@@ -5,40 +5,14 @@ use core::ops::Range;
 pub struct FlashRegion {
     pub range: Range<u32>,
     pub is_boot_memory: bool,
-    pub page_size: u32,
-    pub sector_size: u32,
-    pub erased_byte_value: u8,
 }
 
 impl FlashRegion {
-    /// Returns the necessary information about the page which `address` resides in
-    /// if the address is inside the flash region.
-    pub fn page_info(&self, address: u32) -> Option<PageInfo> {
-        if !self.range.contains(&address) {
-            return None;
-        }
-
-        Some(PageInfo {
-            base_address: address - (address % self.page_size),
-            size: self.page_size,
-        })
-    }
-
     /// Returns the necessary information about the flash.
     pub fn flash_info(&self) -> FlashInfo {
         FlashInfo {
             rom_start: self.range.start,
         }
-    }
-
-    /// Returns true if the entire contents of the argument array equal the erased byte value.
-    pub fn is_erased(&self, data: &[u8]) -> bool {
-        for b in data {
-            if *b != self.erased_byte_value {
-                return false;
-            }
-        }
-        true
     }
 }
 
