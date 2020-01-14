@@ -1,6 +1,28 @@
+use crate::config::registry::{Registry, SelectionStrategy};
 use crate::config::target::Target;
 use crate::probe::{DebugProbeError, MasterProbe};
+use crate::target::info::ChipInfo;
 
+/// The session object holds all the necessary information to make your debugging session as enjoyable as possible.
+///
+/// It holds a [MasterProbe](/probe_rs/probe/struct.MasterProbe) and a debug [Target](Target).
+///
+/// It also keeps track of all active and remaining free breakpoints.
+///
+/// Use a [SessionBuilder](SessionBuilder) to acquire this struct.
+/// Keep in mind that the builder evaluates lazily on `[build()](SessionBuilder::build)`.
+///
+/// ```rust
+/// // Create a new session with autodiscovery for probe and target.
+/// // Observe how the ordering of with_discovered_target() and with_discovered_probe()
+/// // does not matter, as it will always be attempted to create the probe before the target is created.
+/// # use probe_rs::session::SessionBuilderError;
+/// use probe_rs::session::Session;
+/// # fn _main() -> Result<(), SessionBuilderError> {
+/// let session = Session::builder().with_discovered_target().with_discovered_probe().build()?;
+/// # Ok(())
+/// # }
+/// ```
 pub struct Session {
     pub target: Target,
     pub probe: MasterProbe,
@@ -10,7 +32,7 @@ pub struct Session {
 }
 
 impl Session {
-    /// Open a new session with a given debug target
+    /// Creates a new [Session](Session) with [MasterProbe](/probe_rs/probe/struct.MasterProbe) and a given debug [Target](Target).
     pub fn new(target: Target, probe: MasterProbe) -> Self {
         Self {
             target,
@@ -20,10 +42,11 @@ impl Session {
         }
     }
 
+    /// Creates a new [SessionBuilder](SessionBuilder).
     pub fn builder() -> SessionBuilder {
         SessionBuilder {
-            target: None,
-            probe: None,
+            target_creator: Box::new(|_| Err(SessionBuilderError::NoTargetCreator)),
+            probe_creator: Box::new(|| Err(SessionBuilderError::NoProbeCreator)),
         }
     }
 
@@ -111,65 +134,117 @@ impl Session {
     }
 }
 
+#[derive(Debug, Copy, Clone)]
 pub enum SessionBuilderError {
-    NoTargetSpecified,
-    NoProbeSpecified,
     NoProbeFound,
-    ChipAutodetectFailed,
+    UnknownError,
+    MultipleProbesFound,
+    NoTargetCreator,
+    NoProbeCreator,
 }
 
 /// A builder for the [Session](struct.Session.html) struct.
-/// It can be used to conveniently create a new session.
+/// It should be used to conveniently create a new session.
+///
+/// The builder is evaluated lazily. Only when [build()](SessionBuilder::build) is called,
+/// the stored creators are called.
 pub struct SessionBuilder {
-    target: Option<Target>,
-    probe: Option<MasterProbe>,
+    target_creator: Box<dyn FnOnce(&mut MasterProbe) -> Result<Target, SessionBuilderError>>,
+    probe_creator: Box<dyn FnOnce() -> Result<MasterProbe, SessionBuilderError>>,
 }
 
 impl SessionBuilder {
-    pub fn with_discovered_probe(mut self) -> Result<SessionBuilder, SessionBuilderError> {
-        let probes = MasterProbe::list_all();
-        if probes.len() == 1 {
-            match MasterProbe::from_probe_info(&probes[0]) {
-                Ok(probe) => self.probe = Some(probe),
+    /// Prepares the `SessionBuilder` to use the currently connected probe.
+    ///
+    /// If exactly one probe is discovered it will be used in the session.
+    ///
+    /// If multiple probes are discovered a `SessionBuilderError::MultipleProbesFound`
+    /// will be will be generated during [build()](SessionBuilder::build).
+    ///
+    /// If no probe is found, a `SessionBuilderError::NoProbeFound`
+    /// will be generated during [build()](SessionBuilder::build).
+    ///
+    /// If anything goes wrong during probe creation, a `SessionBuildError::UnknownError`
+    /// will be generated during [build()](SessionBuilder::build).
+    /// Check the log for more information.
+    pub fn with_discovered_probe(mut self) -> SessionBuilder {
+        self.probe_creator = Box::new(|| {
+            let probes = MasterProbe::list_all();
+            match probes.len() {
+                1 => match MasterProbe::from_probe_info(&probes[0]) {
+                    Ok(probe) => Ok(probe),
+                    Err(e) => {
+                        log::error!("{}", e);
+                        Err(SessionBuilderError::UnknownError)
+                    }
+                },
+                0 => Err(SessionBuilderError::NoProbeFound),
+                _ => Err(SessionBuilderError::MultipleProbesFound),
+            }
+        });
+        self
+    }
+
+    /// Prepares the `SessionBuilder` to select the probe returned by the creator.
+    pub fn with_probe_creator(
+        mut self,
+        creator: impl FnOnce() -> Result<MasterProbe, SessionBuilderError> + 'static,
+    ) -> SessionBuilder {
+        self.probe_creator = Box::new(creator);
+        self
+    }
+
+    /// Prepares the `SessionBuilder` to use the discovered target.
+    ///
+    /// If target discovery or creation goes wrong, a `SessionBuildError::UnknownError`
+    /// will be generated during [build()](SessionBuilder::build).
+    /// Check the log for more information.
+    ///
+    /// If no probe could be created on the `SessionBuilder` resolve,
+    /// this creator will never be called.
+    pub fn with_discovered_target(mut self) -> SessionBuilder {
+        self.target_creator = Box::new(|probe| {
+            let registry = Registry::from_builtin_families();
+
+            let chip_info = match ChipInfo::read_from_rom_table(probe) {
+                Ok(chip_info) => chip_info,
                 Err(e) => {
                     log::error!("{}", e);
-                    return Err(SessionBuilderError::NoProbeFound);
+                    return Err(SessionBuilderError::UnknownError);
+                }
+            };
+            match registry.get_target(SelectionStrategy::ChipInfo(chip_info)) {
+                Ok(target) => Ok(target),
+                Err(e) => {
+                    log::error!("{}", e);
+                    Err(SessionBuilderError::UnknownError)
                 }
             }
-        }
-        Ok(self)
+        });
+        self
     }
 
-    pub fn with_specific_probe(
+    /// Prepares the `SessionBuilder` to select the probe returned by the creator.
+    ///
+    /// Once the `SessionBuilder` resolves, it will first try and create the probe.
+    /// Then it will pass the created probe to the target creator, if it succeeded.
+    pub fn with_target_creator(
         mut self,
-        probe: MasterProbe,
-    ) -> Result<SessionBuilder, SessionBuilderError> {
-        self.probe = Some(probe);
-        Ok(self)
+        creator: impl FnOnce(&mut MasterProbe) -> Result<Target, SessionBuilderError> + 'static,
+    ) -> SessionBuilder {
+        self.target_creator = Box::new(creator);
+        self
     }
 
-    // pub fn with_discovered_target(self) -> Result<SessionBuilder, SessionBuilderError> {
-    //     let registry = Registry::from_builtin_families();
-
-    //     let target = registry
-    //         .get_target(SelectionStrategy::ChipInfo(ChipInfo::read_from_rom_table(&mut probe))
-    //         .map_err(|_| "Failed to find target")?;
-    // }
-
-    pub fn with_specific_target(
-        mut self,
-        target: Target,
-    ) -> Result<SessionBuilder, SessionBuilderError> {
-        self.target = Some(target);
-        Ok(self)
-    }
-
-    /// Tries to build the Session from the stored parameters.
+    /// Tries to build the `Session` from the stored parameters.
+    /// First the `SessionBuilder` tries to create the `MasterProbe`.
+    /// If anything goes wrong, the error will immediately be returned.
+    /// If the probe is successfully created, and only if, the `SessionBuilder`
+    /// tries to create the `Target`.
     pub fn build(self) -> Result<Session, SessionBuilderError> {
-        Ok(Session::new(
-            self.target.ok_or(SessionBuilderError::NoTargetSpecified)?,
-            self.probe.ok_or(SessionBuilderError::NoProbeSpecified)?,
-        ))
+        let mut probe = (self.probe_creator)()?;
+        let target = (self.target_creator)(&mut probe)?;
+        Ok(Session::new(target, probe))
     }
 }
 
