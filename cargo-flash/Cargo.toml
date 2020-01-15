@@ -1,6 +1,6 @@
 [package]
 name = "cargo-flash"
-version = "0.3.0"
+version = "0.4.0"
 authors = ["Noah Hüsser <yatekii@yatekii.ch>", "Dominik Boehi <dominik.boehi@gmail.ch>"]
 edition = "2018"
 description = "A utility to flash ARM cores with ELFs directly from within cargo."
@@ -18,8 +18,8 @@ structopt = "0.3.2"
 cargo-project = "0.2.2"
 failure = "0.1.5"
 colored = "1.8.0"
-probe-rs = { path = "../probe-rs", version = "0.3.0" }
-gdb-server = { path = "../gdb-server", version = "0.3.0" }
+probe-rs = { path = "../probe-rs", version = "0.4.0" }
+gdb-server = { path = "../gdb-server", version = "0.4.0" }
 indicatif = "0.13.0"
 console = "0.9.1"
 gdb-protocol = { version = "0.1.0" }
