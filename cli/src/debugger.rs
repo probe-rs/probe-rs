@@ -120,12 +120,9 @@ impl DebugCli {
                 let address = u32::from_str_radix(address_str, 16).unwrap();
                 //println!("Would read from address 0x{:08x}", address);
 
-                let id = cli_data.session.set_hw_breakpoint(address)?;
+                cli_data.session.set_hw_breakpoint(address)?;
 
-                println!(
-                    "Set new breakpoint at address {:#08x} with id {:?}",
-                    address, id
-                );
+                println!("Set new breakpoint at address {:#08x}", address);
 
                 Ok(CliState::Continue)
             },
