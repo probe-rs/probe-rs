@@ -187,7 +187,9 @@ pub async fn worker(
                 let awaits_halt: &mut bool = &mut awaits_halt.lock().unwrap();
                 *awaits_halt = false;
                 Some("OK".into())
-            } else if packet.data.starts_with("vCont;s".as_bytes()) {
+            } else if packet.data.starts_with("vCont;s".as_bytes())
+                || packet.data.starts_with("s".as_bytes())
+            {
                 session.target.core.step(&mut session.probe).unwrap();
                 let awaits_halt: &mut bool = &mut awaits_halt.lock().unwrap();
                 *awaits_halt = false;
