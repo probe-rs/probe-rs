@@ -21,7 +21,7 @@ const CONNECTION_STRING: &str = "127.0.0.1:1337";
 pub fn run(connection_string: Option<impl AsRef<str>>, session: Arc<Mutex<Session>>) -> Result<()> {
     let connection_string = connection_string
         .map(|cs| cs.as_ref().to_owned())
-        .unwrap_or(CONNECTION_STRING.to_owned());
+        .unwrap_or_else(|| CONNECTION_STRING.to_owned());
     println!("GDB stub listening on {}", connection_string);
     task::block_on(accept_loop(connection_string, session))
 }
@@ -79,6 +79,7 @@ async fn inbound_broker_loop(
     let mut buffer = vec![];
     let mut tmp_buf = [0; 1024];
 
+    #[allow(clippy::unnecessary_mut_passed)]
     loop {
         let mut packet_stream_2 = packet_stream_2.next().fuse();
         let mut s = &*stream;

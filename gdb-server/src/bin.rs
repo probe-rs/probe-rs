@@ -68,8 +68,7 @@ fn main_try() -> Result<(), failure::Error> {
 
             link.attach(Some(WireProtocol::Swd))?;
 
-            let probe = MasterProbe::from_specific_probe(link);
-            probe
+            MasterProbe::from_specific_probe(link)
         }
         DebugProbeType::STLink => {
             let mut link = stlink::STLink::new_from_probe_info(&device)?;
@@ -97,7 +96,7 @@ fn main_try() -> Result<(), failure::Error> {
 
     let gdb_connection_string = opt
         .gdb_connection_string
-        .or(Some("localhost:1337".to_string()));
+        .or_else(|| Some("localhost:1337".to_string()));
     // This next unwrap will always resolve as the connection string is always Some(T).
     println!(
         "Firing up GDB stub at {}",

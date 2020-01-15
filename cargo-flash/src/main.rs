@@ -391,7 +391,7 @@ fn main_try() -> Result<(), failure::Error> {
     if opt.gdb {
         let gdb_connection_string = opt
             .gdb_connection_string
-            .or(Some("localhost:1337".to_string()));
+            .or_else(|| Some("localhost:1337".to_string()));
         // This next unwrap will always resolve as the connection string is always Some(T).
         println!(
             "Firing up GDB stub at {}",
