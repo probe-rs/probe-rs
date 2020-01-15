@@ -3,7 +3,14 @@ name = "probe-rs-t2rust"
 version = "0.4.0"
 authors = ["Dominik Boehi <dominik.boehi@gmail.com>"]
 edition = "2018"
-
+description = "A collection of ARM chips for the `probe-rs` crate."
+documentation = "https://docs.rs/probe-rs/"
+homepage = "https://github.com/probe-rs/probe-rs"
+repository = "https://github.com/probe-rs/probe-rs"
+readme = "../README.md"
+categories = ["embedded", "hardware-support", "development-tools::debugging"]
+keywords = ["embedded"]
+license = "MIT OR Apache-2.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [[bin]]
