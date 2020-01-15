@@ -43,7 +43,7 @@ pub async fn writer(
                     }
                     // This should never happen.
                     // And if it does, GDB fucked up, so we might as well stop.
-                    _ => break 'ack,
+                    _ => (),
                 }
             }
             log::debug!("Done checking ACK");

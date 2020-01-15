@@ -188,7 +188,7 @@ impl ADIMemoryInterface {
     where
         AP: APAccess<MemoryAP, CSW> + APAccess<MemoryAP, TAR> + APAccess<MemoryAP, DRW>,
     {
-        if data.len() == 0 {
+        if data.is_empty() {
             return Ok(());
         }
 
@@ -278,7 +278,7 @@ impl ADIMemoryInterface {
     where
         AP: APAccess<MemoryAP, CSW> + APAccess<MemoryAP, TAR> + APAccess<MemoryAP, DRW>,
     {
-        if data.len() == 0 {
+        if data.is_empty() {
             return Ok(());
         }
 
@@ -440,7 +440,7 @@ impl ADIMemoryInterface {
     where
         AP: APAccess<MemoryAP, CSW> + APAccess<MemoryAP, TAR> + APAccess<MemoryAP, DRW>,
     {
-        if data.len() == 0 {
+        if data.is_empty() {
             return Ok(());
         }
 
@@ -542,7 +542,7 @@ impl ADIMemoryInterface {
     where
         AP: APAccess<MemoryAP, CSW> + APAccess<MemoryAP, TAR> + APAccess<MemoryAP, DRW>,
     {
-        if data.len() == 0 {
+        if data.is_empty() {
             return Ok(());
         }
 

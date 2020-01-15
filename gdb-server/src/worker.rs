@@ -12,6 +12,8 @@ use std::sync::{Arc, Mutex};
 use recap::Recap;
 use serde::Deserialize;
 
+#[allow(clippy::mutex_atomic)]
+#[allow(clippy::cognitive_complexity)]
 pub async fn worker(
     mut input_stream: Receiver<CheckedPacket>,
     output_stream: Sender<CheckedPacket>,
@@ -63,24 +65,25 @@ pub async fn worker(
         if packet.is_valid() {
             let packet_string = String::from_utf8_lossy(&packet.data).to_string();
             let session: &mut Session = &mut session.lock().unwrap();
-            let response: Option<String> = if packet.data.starts_with("qSupported".as_bytes()) {
+            #[allow(clippy::if_same_then_else)]
+            let response: Option<String> = if packet.data.starts_with(b"qSupported") {
                 Some(
                     "PacketSize=2048;swbreak-;hwbreak+;vContSupported+;qXfer:memory-map:read+"
                         .into(),
                 )
-            } else if packet.data.starts_with("vMustReplyEmpty".as_bytes()) {
+            } else if packet.data.starts_with(b"vMustReplyEmpty") {
                 Some("".into())
-            } else if packet.data.starts_with("qTStatus".as_bytes()) {
+            } else if packet.data.starts_with(b"qTStatus") {
                 Some("".into())
-            } else if packet.data.starts_with("qTfV".as_bytes()) {
+            } else if packet.data.starts_with(b"qTfV") {
                 Some("".into())
-            } else if packet.data.starts_with("qAttached".as_bytes()) {
+            } else if packet.data.starts_with(b"qAttached") {
                 Some("1".into())
-            } else if packet.data.starts_with("?".as_bytes()) {
+            } else if packet.data.starts_with(b"?") {
                 Some("S05".into())
-            } else if packet.data.starts_with("g".as_bytes()) {
+            } else if packet.data.starts_with(b"g") {
                 Some("xxxxxxxx".into())
-            } else if packet.data.starts_with("p".as_bytes()) {
+            } else if packet.data.starts_with(b"p") {
                 #[derive(Debug, Deserialize, PartialEq, Recap)]
                 #[recap(regex = r#"p(?P<reg>\w+)"#)]
                 struct P {
@@ -89,7 +92,7 @@ pub async fn worker(
 
                 let p = packet_string.parse::<P>().unwrap();
 
-                let cpu_info = session.target.core.halt(&mut session.probe);
+                let _ = session.target.core.halt(&mut session.probe);
                 session
                     .target
                     .core
@@ -119,11 +122,11 @@ pub async fn worker(
                     (value >> 16) as u8,
                     (value >> 24) as u8
                 ))
-            } else if packet.data.starts_with("qTsP".as_bytes()) {
+            } else if packet.data.starts_with(b"qTsP") {
                 Some("".into())
-            } else if packet.data.starts_with("qfThreadInfo".as_bytes()) {
+            } else if packet.data.starts_with(b"qfThreadInfo") {
                 Some("".into())
-            } else if packet.data.starts_with("m".as_bytes()) {
+            } else if packet.data.starts_with(b"m") {
                 #[derive(Debug, Deserialize, PartialEq, Recap)]
                 #[recap(regex = r#"m(?P<addr>\w+),(?P<length>\w+)"#)]
                 struct M {
@@ -149,22 +152,20 @@ pub async fn worker(
                         .collect::<Vec<String>>()
                         .join(""),
                 )
-            } else if packet.data.starts_with("qL".as_bytes()) {
+            } else if packet.data.starts_with(b"qL") {
                 Some("".into())
-            } else if packet.data.starts_with("qC".as_bytes()) {
+            } else if packet.data.starts_with(b"qC") {
                 Some("".into())
-            } else if packet.data.starts_with("qOffsets".as_bytes()) {
+            } else if packet.data.starts_with(b"qOffsets") {
                 Some("".into())
-            } else if packet.data.starts_with("vCont?".as_bytes()) {
+            } else if packet.data.starts_with(b"vCont?") {
                 Some("vCont;c;t;s".into())
-            } else if packet.data.starts_with("vCont;c".as_bytes())
-                || packet.data.starts_with("c".as_bytes())
-            {
+            } else if packet.data.starts_with(b"vContb;c") || packet.data.starts_with(b"c") {
                 session.target.core.run(&mut session.probe).unwrap();
                 let awaits_halt: &mut bool = &mut awaits_halt.lock().unwrap();
                 *awaits_halt = true;
                 None
-            } else if packet.data.starts_with("vCont;t".as_bytes()) {
+            } else if packet.data.starts_with(b"vContb;t") {
                 session.target.core.halt(&mut session.probe).unwrap();
                 session
                     .target
@@ -174,16 +175,14 @@ pub async fn worker(
                 let awaits_halt: &mut bool = &mut awaits_halt.lock().unwrap();
                 *awaits_halt = false;
                 Some("OK".into())
-            } else if packet.data.starts_with("vCont;s".as_bytes())
-                || packet.data.starts_with("s".as_bytes())
-            {
+            } else if packet.data.starts_with(b"vContb;s") || packet.data.starts_with(b"s") {
                 session.target.core.step(&mut session.probe).unwrap();
                 let awaits_halt: &mut bool = &mut awaits_halt.lock().unwrap();
                 *awaits_halt = false;
                 Some("S05".into())
-            } else if packet.data.starts_with("Z0".as_bytes()) {
+            } else if packet.data.starts_with(b"Z0") {
                 Some("".into())
-            } else if packet.data.starts_with("Z1".as_bytes()) {
+            } else if packet.data.starts_with(b"Z1") {
                 #[derive(Debug, Deserialize, PartialEq, Recap)]
                 #[recap(regex = r#"Z1,(?P<addr>\w+),(?P<size>\w+)"#)]
                 struct Z1 {
@@ -213,7 +212,7 @@ pub async fn worker(
                 session.set_hw_breakpoint(addr).unwrap();
                 session.target.core.run(&mut session.probe).unwrap();
                 Some("OK".into())
-            } else if packet.data.starts_with("z1".as_bytes()) {
+            } else if packet.data.starts_with(b"z1") {
                 #[derive(Debug, Deserialize, PartialEq, Recap)]
                 #[recap(regex = r#"z1,(?P<addr>\w+),(?P<size>\w+)"#)]
                 struct Z1 {
@@ -243,7 +242,7 @@ pub async fn worker(
                 session.clear_hw_breakpoint(addr).unwrap();
                 session.target.core.run(&mut session.probe).unwrap();
                 Some("OK".into())
-            } else if packet.data.starts_with("X".as_bytes()) {
+            } else if packet.data.starts_with(b"X") {
                 #[derive(Debug, Deserialize, PartialEq, Recap)]
                 #[recap(regex = r#"X(?P<addr>\w+),(?P<length>\w+):(?P<data>[01]*)"#)]
                 struct X {
@@ -255,18 +254,15 @@ pub async fn worker(
                 let x = packet_string.parse::<X>().unwrap();
 
                 let length = usize::from_str_radix(&x.length, 16).unwrap();
-                let mut data = vec![0; length];
-                for i in 0..length {
-                    data[i] = packet.data[packet.data.len() - length + i];
-                }
+                let data = &packet.data[packet.data.len() - length..];
 
                 session
                     .probe
-                    .write_block8(u32::from_str_radix(&x.addr, 16).unwrap(), &data)
+                    .write_block8(u32::from_str_radix(&x.addr, 16).unwrap(), data)
                     .unwrap();
 
                 Some("OK".into())
-            } else if packet.data.starts_with("qXfer:memory-map:read".as_bytes()) {
+            } else if packet.data.starts_with(b"qXfer:memory-mapb:read") {
                 let xml = r#"<?xml version="1.0"?>
 <!DOCTYPE memory-map PUBLIC "+//IDN gnu.org//DTD GDB Memory Map V1.0//EN" "http://sourceware.org/gdb/gdb-memory-map.dtd">
 <memory-map>
@@ -279,23 +275,23 @@ pub async fn worker(
                         .to_string(),
                 )
             } else if packet.data.starts_with(&[0x03]) {
-                let cpu_info = session.target.core.halt(&mut session.probe);
+                let _ = session.target.core.halt(&mut session.probe);
                 session
                     .target
                     .core
                     .wait_for_core_halted(&mut session.probe)
                     .unwrap();
                 Some("T05hwbreak:;".into())
-            } else if packet.data.starts_with("D".as_bytes()) {
+            } else if packet.data.starts_with(b"D") {
                 break_due = true;
                 Some("OK".into())
-            } else if packet.data.starts_with("qRcmd,7265736574".as_bytes()) {
+            } else if packet.data.starts_with(b"qRcmdb,7265736574") {
                 let _cpu_info = session.target.core.reset(&mut session.probe);
                 let _cpu_info = session.target.core.halt(&mut session.probe);
                 Some("OK".into())
-            } else if packet.data.starts_with("qTfV".as_bytes()) {
+            } else if packet.data.starts_with(b"qTfV") {
                 Some("".into())
-            } else if packet.data.starts_with("qTfV".as_bytes()) {
+            } else if packet.data.starts_with(b"qTfV") {
                 Some("".into())
             } else {
                 Some("OK".into())
@@ -332,9 +328,9 @@ fn gdb_sanitize_file(mut data: Vec<u8>, offset: u32, len: u32) -> Vec<u8> {
         let mut trimmed_data: Vec<u8> = data.drain(offset..end).collect();
         if trimmed_data.len() >= len {
             // XXX should this be <= or < ?
-            trimmed_data.insert(0, 'm' as u8);
+            trimmed_data.insert(0, b'm');
         } else {
-            trimmed_data.insert(0, 'l' as u8);
+            trimmed_data.insert(0, b'l');
         }
         trimmed_data
     }
