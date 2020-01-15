@@ -1,6 +1,7 @@
 #![allow(clippy::useless_let_if_seq)]
 #![allow(clippy::trivially_copy_pass_by_ref)]
 #![allow(clippy::implicit_hasher)]
+#![allow(clippy::verbose_bit_mask)]
 
 #[macro_use]
 pub extern crate derivative;

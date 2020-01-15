@@ -1,6 +1,6 @@
 [package]
 name = "gdb-server"
-version = "0.3.0"
+version = "0.4.0"
 authors = ["Noah Hüsser <yatekii@yatekii.ch>", "Dominik Boehi <dominik.boehi@gmail.ch>"]
 edition = "2018"
 description = "A gdb stub implementation for on chip debugging and flashing of ARM chips."
@@ -26,13 +26,13 @@ structopt = "0.3.2"
 cargo-project = "0.2.2"
 failure = "0.1.5"
 colored = "1.8.0"
-probe-rs = { path = "../probe-rs", version = "0.3.0" }
+probe-rs = { path = "../probe-rs", version = "0.4.0" }
 indicatif = "0.13.0"
 console = "0.9.1"
 gdb-protocol = { version = "0.1.0" }
 recap = "0.1.1"
 serde = "1.0.1"
 async-std = { version = "1.4.0", features = ["unstable"] }
-futures = "*"
+futures = "0.3.1"
 log = "0.4.0"
 memchr = "2.2.1"
