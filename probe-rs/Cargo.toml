@@ -44,7 +44,7 @@ dyn-clone = "1.0.1"
 colored = "1.8.0"
 
 [build-dependencies]
-probe-rs-t2rust  = { path = "../probe-rs-t2rust", version ="0.1.0" }
+probe-rs-t2rust  = { path = "../probe-rs-t2rust", version ="0.4.0" }
 
 [dev-dependencies]
 rand = "0.7.2"

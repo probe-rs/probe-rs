@@ -1,6 +1,6 @@
 [package]
 name = "probe-rs-t2rust"
-version = "0.1.0"
+version = "0.4.0"
 authors = ["Dominik Boehi <dominik.boehi@gmail.com>"]
 edition = "2018"
 
