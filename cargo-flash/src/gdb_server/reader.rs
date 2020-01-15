@@ -3,7 +3,7 @@
 use async_std::{net::TcpStream, prelude::*};
 use futures::channel::mpsc;
 use gdb_protocol::{
-    packet::{UncheckedPacket, CheckedPacket, Kind as PacketKind},
+    packet::{CheckedPacket, Kind as PacketKind},
     parser::Parser,
 };
 use std::sync::Arc;
@@ -31,7 +31,8 @@ pub async fn reader(
 
         // TODO: Fix this later on. I am sure there is a better way to handle this in the parser maybe.
         if drained[0] == 0x03 {
-            packet_stream.unbounded_send(CheckedPacket::from_data(PacketKind::Packet, vec![0x03]))?;
+            packet_stream
+                .unbounded_send(CheckedPacket::from_data(PacketKind::Packet, vec![0x03]))?;
         }
 
         if let Some(packet) = packet {

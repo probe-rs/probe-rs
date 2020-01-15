@@ -1,8 +1,6 @@
 use async_std::prelude::*;
 use futures::channel::mpsc;
-use gdb_protocol::{
-    packet::{CheckedPacket, Kind as PacketKind},
-};
+use gdb_protocol::packet::{CheckedPacket, Kind as PacketKind};
 
 type ServerResult<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 type Sender<T> = mpsc::UnboundedSender<T>;
@@ -16,45 +14,16 @@ use probe_rs::{
     target::info::ChipInfo,
     target::CoreRegisterAddress,
 };
+use std::sync::{Arc, Mutex};
 
-use structopt::StructOpt;
 use recap::Recap;
 use serde::Deserialize;
-
-#[derive(StructOpt)]
-struct CLI {
-    #[structopt(long = "target")]
-    target: Option<String>,
-}
 
 pub async fn worker(
     mut input_stream: Receiver<CheckedPacket>,
     output_stream: Sender<CheckedPacket>,
+    session: Arc<Mutex<Session>>,
 ) -> ServerResult<()> {
-    let matches = CLI::from_args();
-
-    let identifier = &matches.target;
-
-    let mut probe = open_probe(None).unwrap();
-
-    let strategy = match identifier {
-        Some(identifier) => SelectionStrategy::TargetIdentifier(identifier.into()),
-        None => SelectionStrategy::ChipInfo(
-            ChipInfo::read_from_rom_table(&mut probe)
-                .map_err(|_| "Failed to read chip info from ROM table")
-                .unwrap(),
-        ),
-    };
-
-    let registry = Registry::from_builtin_families();
-
-    let target = registry
-        .get_target(strategy)
-        .map_err(|_| "Failed to find target")
-        .unwrap();
-
-    let session = std::sync::Arc::new(std::sync::Mutex::new(Session::new(target, probe)));
-
     let awaits_halt = std::sync::Arc::new(std::sync::Mutex::new(false));
 
     let session_clone = session.clone();
@@ -177,8 +146,7 @@ pub async fn worker(
                 let m = packet_string.parse::<M>().unwrap();
                 println!("{:?}", m);
 
-                let mut readback_data =
-                    vec![0u8; usize::from_str_radix(&m.length, 16).unwrap()];
+                let mut readback_data = vec![0u8; usize::from_str_radix(&m.length, 16).unwrap()];
                 session
                     .probe
                     .read_block8(
