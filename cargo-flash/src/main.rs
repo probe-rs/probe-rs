@@ -1,4 +1,8 @@
-extern crate structopt;
+#![recursion_limit = "256"]
+
+mod gdb_server;
+
+use structopt;
 
 use colored::*;
 use failure::format_err;
@@ -8,6 +12,7 @@ use std::{
     fmt,
     path::{Path, PathBuf},
     process::{self, Command, Stdio},
+    sync::{Arc, Mutex},
     time::Instant,
 };
 use structopt::StructOpt;
@@ -42,6 +47,30 @@ struct Opt {
     /// The number associated with the debug probe to use
     #[structopt(long = "probe-index")]
     n: Option<usize>,
+    #[structopt(
+        name = "gdb",
+        long = "gdb",
+        help = "Use this flag to automatically spawn a GDB server instance after flashing the target."
+    )]
+    gdb: bool,
+    #[structopt(
+        name = "no-download",
+        long = "no-download",
+        help = "Use this flag to prevent the actual flashing procedure (use if you just want to attach GDB)."
+    )]
+    no_download: bool,
+    #[structopt(
+        name = "reset-halt",
+        long = "reset-halt",
+        help = "Use this flag to reset and halt (instead of just a reset) the attached core after flashing the target."
+    )]
+    reset_halt: bool,
+    #[structopt(
+        name = "gdb-connection-string",
+        long = "gdb-connection-string",
+        help = "Use this flag to override the default GDB connection string (localhost:1337)."
+    )]
+    gdb_connection_string: Option<String>,
 
     // `cargo build` arguments
     #[structopt(name = "binary", long = "bin")]
@@ -145,6 +174,29 @@ fn main_try() -> Result<(), failure::Error> {
         args.remove(index);
     }
 
+    // Remove possible `--gdb` argument as cargo build does not understand it.
+    if let Some(index) = args.iter().position(|x| x.starts_with("--gdb")) {
+        args.remove(index);
+    }
+
+    // Remove possible `--no-download` argument as cargo build does not understand it.
+    if let Some(index) = args.iter().position(|x| x.starts_with("--no-download")) {
+        args.remove(index);
+    }
+
+    // Remove possible `--reset-halt` argument as cargo build does not understand it.
+    if let Some(index) = args.iter().position(|x| x.starts_with("--reset-halt")) {
+        args.remove(index);
+    }
+
+    // Remove possible `--gdb-connection-string` argument as cargo build does not understand it.
+    if let Some(index) = args
+        .iter()
+        .position(|x| x.starts_with("--gdb-connection-string"))
+    {
+        args.remove(index);
+    }
+
     let status = Command::new("cargo")
         .arg("build")
         .args(args)
@@ -223,7 +275,7 @@ fn main_try() -> Result<(), failure::Error> {
         };
     }
 
-    let strategy = if let Some(identifier) = opt.chip {
+    let strategy = if let Some(identifier) = opt.chip.clone() {
         SelectionStrategy::TargetIdentifier(identifier.into())
     } else {
         SelectionStrategy::ChipInfo(ChipInfo::read_from_rom_table(&mut probe)?)
@@ -243,96 +295,117 @@ fn main_try() -> Result<(), failure::Error> {
 
     let mm = session.target.memory_map.clone();
 
-    if !opt.disable_progressbars {
-        // Create progress bars.
-        let multi_progress = indicatif::MultiProgress::new(); //with_draw_target(indicatif::ProgressDrawTarget::stdout_nohz());
-        let style = indicatif::ProgressStyle::default_bar()
-                .tick_chars("⠁⠁⠉⠙⠚⠒⠂⠂⠒⠲⠴⠤⠄⠄⠤⠠⠠⠤⠦⠖⠒⠐⠐⠒⠓⠋⠉⠈⠈✔")
-                .progress_chars("##-")
-                .template("    {msg:.green.bold} {spinner} [{elapsed_precise}] [{wide_bar}] {bytes:>8}/{total_bytes:>8} @ {bytes_per_sec:>10} (eta {eta:3})");
+    if !opt.no_download {
+        if !opt.disable_progressbars {
+            // Create progress bars.
+            let multi_progress = indicatif::MultiProgress::new(); //with_draw_target(indicatif::ProgressDrawTarget::stdout_nohz());
+            let style = indicatif::ProgressStyle::default_bar()
+                    .tick_chars("⠁⠁⠉⠙⠚⠒⠂⠂⠒⠲⠴⠤⠄⠄⠤⠠⠠⠤⠦⠖⠒⠐⠐⠒⠓⠋⠉⠈⠈✔")
+                    .progress_chars("##-")
+                    .template("    {msg:.green.bold} {spinner} [{elapsed_precise}] [{wide_bar}] {bytes:>8}/{total_bytes:>8} @ {bytes_per_sec:>10} (eta {eta:3})");
 
-        // Create a new progress bar for the erase progress.
-        let erase_progress = multi_progress.add(indicatif::ProgressBar::new(0));
-        erase_progress.set_style(style.clone());
-        erase_progress.set_message("Erasing sectors  ");
+            // Create a new progress bar for the erase progress.
+            let erase_progress = multi_progress.add(indicatif::ProgressBar::new(0));
+            erase_progress.set_style(style.clone());
+            erase_progress.set_message("Erasing sectors  ");
 
-        // Create a new progress bar for the program progress.
-        let program_progress = multi_progress.add(indicatif::ProgressBar::new(0));
-        program_progress.set_style(style);
-        program_progress.set_message("Programming pages");
+            // Create a new progress bar for the program progress.
+            let program_progress = multi_progress.add(indicatif::ProgressBar::new(0));
+            program_progress.set_style(style);
+            program_progress.set_message("Programming pages");
 
-        // Register callback to update the progress.
-        let progress = FlashProgress::new(move |event| {
-            use ProgressEvent::*;
-            match event {
-                Initialized {
-                    total_pages,
-                    total_sector_size,
-                    page_size,
-                } => {
-                    erase_progress.set_length(total_sector_size as u64);
-                    program_progress.set_length(total_pages as u64 * page_size as u64);
+            // Register callback to update the progress.
+            let progress = FlashProgress::new(move |event| {
+                use ProgressEvent::*;
+                match event {
+                    Initialized {
+                        total_pages,
+                        total_sector_size,
+                        page_size,
+                    } => {
+                        erase_progress.set_length(total_sector_size as u64);
+                        program_progress.set_length(total_pages as u64 * page_size as u64);
+                    }
+                    StartedFlashing => {
+                        program_progress.enable_steady_tick(100);
+                        program_progress.reset_elapsed();
+                    }
+                    StartedErasing => {
+                        erase_progress.enable_steady_tick(100);
+                        erase_progress.reset_elapsed();
+                    }
+                    PageFlashed { size, .. } => {
+                        program_progress.inc(size as u64);
+                    }
+                    SectorErased { size, .. } => {
+                        erase_progress.inc(size as u64);
+                    }
+                    FinishedErasing => {
+                        erase_progress.finish();
+                    }
+                    FinishedProgramming => {
+                        program_progress.finish();
+                    }
                 }
-                StartedFlashing => {
-                    program_progress.enable_steady_tick(100);
-                    program_progress.reset_elapsed();
-                }
-                StartedErasing => {
-                    erase_progress.enable_steady_tick(100);
-                    erase_progress.reset_elapsed();
-                }
-                PageFlashed { size, .. } => {
-                    program_progress.inc(size as u64);
-                }
-                SectorErased { size, .. } => {
-                    erase_progress.inc(size as u64);
-                }
-                FinishedErasing => {
-                    erase_progress.finish();
-                }
-                FinishedProgramming => {
-                    program_progress.finish();
-                }
-            }
-        });
+            });
 
-        // Make the multi progresses print.
-        // indicatif requires this in a separate thread as this join is a blocking op,
-        // but is required for printing multiprogress.
-        let progress_thread_handle = std::thread::spawn(move || {
-            multi_progress.join().unwrap();
-        });
+            // Make the multi progresses print.
+            // indicatif requires this in a separate thread as this join is a blocking op,
+            // but is required for printing multiprogress.
+            let progress_thread_handle = std::thread::spawn(move || {
+                multi_progress.join().unwrap();
+            });
 
-        download_file_with_progress_reporting(
-            &mut session,
-            std::path::Path::new(&path_str.to_string().as_str()),
-            Format::Elf,
-            &mm,
-            &progress,
-        )
-        .map_err(|e| format_err!("failed to flash {}: {}", path_str, e))?;
+            download_file_with_progress_reporting(
+                &mut session,
+                std::path::Path::new(&path_str.to_string().as_str()),
+                Format::Elf,
+                &mm,
+                &progress,
+            )
+            .map_err(|e| format_err!("failed to flash {}: {}", path_str, e))?;
 
-        // We don't care if we cannot join this thread.
-        let _ = progress_thread_handle.join();
-    } else {
-        download_file(
-            &mut session,
-            std::path::Path::new(&path_str.to_string().as_str()),
-            Format::Elf,
-            &mm,
-        )
-        .map_err(|e| format_err!("failed to flash {}: {}", path_str, e))?;
+            // We don't care if we cannot join this thread.
+            let _ = progress_thread_handle.join();
+        } else {
+            download_file(
+                &mut session,
+                std::path::Path::new(&path_str.to_string().as_str()),
+                Format::Elf,
+                &mm,
+            )
+            .map_err(|e| format_err!("failed to flash {}: {}", path_str, e))?;
+        }
+
+        // Stop timer.
+        let elapsed = instant.elapsed();
+        println!(
+            "    {} in {}s",
+            "Finished".green().bold(),
+            elapsed.as_millis() as f32 / 1000.0
+        );
     }
 
-    // Stop timer.
-    let elapsed = instant.elapsed();
-    println!(
-        "    {} in {}s",
-        "Finished".green().bold(),
-        elapsed.as_millis() as f32 / 1000.0
-    );
+    if opt.reset_halt {
+        session.target.core.reset_and_halt(&mut session.probe)?;
+    } else {
+        session.target.core.reset(&mut session.probe)?;
+    }
 
-    session.target.core.reset(&mut session.probe)?;
+    if opt.gdb {
+        let gdb_connection_string = opt
+            .gdb_connection_string
+            .or(Some("localhost:1337".to_string()));
+        // This next unwrap will always resolve as the connection string is always Some(T).
+        println!(
+            "Firing up GDB stub at {}",
+            gdb_connection_string.as_ref().unwrap()
+        );
+        if let Err(e) = gdb_server::run(gdb_connection_string, Arc::new(Mutex::new(session))) {
+            eprintln!("During the execution of GDB an error was encountered:");
+            eprintln!("{:?}", e);
+        }
+    }
 
     Ok(())
 }

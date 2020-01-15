@@ -31,7 +31,7 @@ use commands::{
     Status,
 };
 
-use std::sync::{Mutex};
+use std::sync::Mutex;
 
 pub struct DAPLink {
     pub device: Mutex<hidapi::HidDevice>,
@@ -162,8 +162,10 @@ impl DebugProbe for DAPLink {
         use commands::Error;
 
         // get information about the daplink
-        let PacketCount(packet_count) = commands::send_command(&mut self.device, Command::PacketCount)?;
-        let PacketSize(packet_size) = commands::send_command(&mut self.device, Command::PacketSize)?;
+        let PacketCount(packet_count) =
+            commands::send_command(&mut self.device, Command::PacketCount)?;
+        let PacketSize(packet_size) =
+            commands::send_command(&mut self.device, Command::PacketSize)?;
 
         self.packet_count = Some(packet_count);
         self.packet_size = Some(packet_size);

@@ -21,3 +21,10 @@ colored = "1.8.0"
 probe-rs = { path = "../probe-rs", version = "0.3.0" }
 indicatif = "0.13.0"
 console = "0.9.1"
+gdb-protocol = { version = "0.1.0" }
+recap = "0.1.1"
+serde = "1.0.1"
+async-std = { version = "1.4.0", features = ["unstable"] }
+futures = "*"
+log = "0.4.0"
+memchr = "2.2.1"

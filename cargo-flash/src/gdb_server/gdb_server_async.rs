@@ -7,8 +7,9 @@ use async_std::{
 };
 use futures::channel::mpsc;
 use gdb_protocol::packet::CheckedPacket;
+use probe_rs::session::Session;
 use std::sync::atomic::AtomicUsize;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 type Sender<T> = mpsc::UnboundedSender<T>;
@@ -17,26 +18,16 @@ type Receiver<T> = mpsc::UnboundedReceiver<T>;
 const CONNECTION_STRING: &str = "127.0.0.1:1337";
 
 /// This is the main entrypoint which we will call to start the GDB stub.
-pub fn run() -> Result<()> {
-    println!("Listening on {}", CONNECTION_STRING);
-    task::block_on(accept_loop(CONNECTION_STRING))
-}
-
-/// This method is a helper to spawn a new thread and await the future on that trait.
-/// If an error occurs during execution it will be logged.
-fn spawn_and_log_error<F>(future: F) -> task::JoinHandle<()>
-where
-    F: Future<Output = Result<()>> + Send + 'static,
-{
-    task::spawn(async move {
-        if let Err(e) = future.await {
-            eprintln!("{}", e)
-        }
-    })
+pub fn run(connection_string: Option<impl AsRef<str>>, session: Arc<Mutex<Session>>) -> Result<()> {
+    let connection_string = connection_string
+        .map(|cs| cs.as_ref().to_owned())
+        .unwrap_or(CONNECTION_STRING.to_owned());
+    println!("GDB stub listening on {}", connection_string);
+    task::block_on(accept_loop(connection_string, session))
 }
 
 /// This function accepts any incomming connection.
-async fn accept_loop(addr: impl ToSocketAddrs) -> Result<()> {
+async fn accept_loop(addr: impl ToSocketAddrs, session: Arc<Mutex<Session>>) -> Result<()> {
     let listener = TcpListener::bind(addr).await?;
 
     let mut incoming = listener.incoming();
@@ -57,7 +48,11 @@ async fn accept_loop(addr: impl ToSocketAddrs) -> Result<()> {
             packet_stream_receiver,
             acks_due,
         ));
-        let worker = task::spawn(crate::worker::worker(tbd_receiver, packet_stream_sender));
+        let worker = task::spawn(super::worker::worker(
+            tbd_receiver,
+            packet_stream_sender,
+            session.clone(),
+        ));
         println!("Accepted a new connection from: {}", stream.peer_addr()?);
         // outbound_broker_handle.await?;
         inbound_broker_handle.await?;
@@ -80,6 +75,7 @@ async fn inbound_broker_loop(
     // let mut glob = vec![];
 
     loop {
+        // async_std::io::timeout(std::time::Duration::from_millis(50),
         let mut packet_stream_2 = packet_stream_2.next().fuse();
         let mut s = &*stream;
         let mut read = s.read(&mut tmp_buf).fuse();
@@ -90,18 +86,18 @@ async fn inbound_broker_loop(
             packet = packet_stream_2 => {
                 println!("WRITE RACE WIN");
                 if let Some(packet) = packet {
-                    crate::writer::writer(packet, stream.clone(), packet_stream.clone(), &mut buffer).await?
+                    super::writer::writer(packet, stream.clone(), packet_stream.clone(), &mut buffer).await?
                 }
             },
             n = read => {
-                println!("READ RACE WIN {:?}", t.elapsed());
+                println!("READ RACE WIN {:?}, {:?}", t.elapsed(), n);
                 if let Ok(n) = n {
                     if n > 0 {
                         buffer.extend(&tmp_buf[0..n]);
                         // glob.extend(&tmp_buf[0..n]);
                     }
                     log::info!("Current buf {}", String::from_utf8_lossy(&buffer));
-                    crate::reader::reader(stream.clone(), packet_stream.clone(), &mut buffer).await?
+                    super::reader::reader(stream.clone(), packet_stream.clone(), &mut buffer).await?
                 }
             }
         }

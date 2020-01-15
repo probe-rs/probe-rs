@@ -51,7 +51,7 @@ pub async fn writer(
     } else {
         log::warn!("Broken packet! It will not be sent.");
     }
-    crate::reader::reader(stream.clone(), packet_stream.clone(), buffer).await
+    super::reader::reader(stream.clone(), packet_stream.clone(), buffer).await
 }
 
 pub async fn encode<W>(packet: &CheckedPacket, mut w: W) -> Result<()>
