@@ -55,7 +55,7 @@ fn main() {
 
     let mut families = Vec::<ChipFamily>::new();
     // Look for the .pdsc file in the given dir and it's child directories.
-    visit_dirs(Path::new(&in_dir), &mut |pdsc, mut archive| {
+    let generation_result = visit_dirs(Path::new(&in_dir), &mut |pdsc, mut archive| {
         // Forge a definition file for each device in the .pdsc file.
         let mut devices = pdsc.devices.0.into_iter().collect::<Vec<_>>();
         devices.sort_by(|a, b| a.0.cmp(&b.0));
@@ -119,9 +119,12 @@ fn main() {
                     Core::CortexM0Plus => "M0",
                     Core::CortexM4 => "M4",
                     Core::CortexM3 => "M3",
+                    Core::CortexM33 => "M33",
                     c => {
-                        log::warn!("Core {:?} not supported yet.", c);
-                        ""
+                        return Err(Error::Unsupported(format!(
+                            "Core '{:?}' is not yet supported for target generation.",
+                            c
+                        )));
                     }
                 }
             } else {
@@ -171,8 +174,12 @@ fn main() {
         }
 
         Ok(())
-    })
-    .unwrap();
+    });
+
+    if let Err(e) = generation_result {
+        eprintln!("Failed to generate target configuration: {}", e);
+        std::process::exit(-1);
+    }
 
     for family in &families {
         let path = out_dir.join(family.name.clone() + ".yaml");

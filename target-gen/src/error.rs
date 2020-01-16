@@ -2,6 +2,7 @@
 pub enum Error {
     SectionNotFound(&'static str),
     IoError(String),
+    Unsupported(String),
 }
 
 impl From<std::io::Error> for Error {
@@ -23,6 +24,11 @@ impl std::fmt::Display for Error {
             Error::IoError(description) => {
                 write!(f, "I/O error while parsing data: {}", description)
             }
+            Error::Unsupported(description) => write!(
+                f,
+                "Unsupported configuration in pdsc found: {}",
+                description
+            ),
         }
     }
 }
