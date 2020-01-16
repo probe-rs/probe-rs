@@ -26,5 +26,4 @@ gdb-protocol = { version = "0.1.0" }
 recap = "0.1.1"
 serde = "1.0.1"
 async-std = { version = "1.4.0", features = ["unstable"] }
-futures = "*"
 log = "0.4.0"
