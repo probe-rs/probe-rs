@@ -7,7 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Added `MemoryInterface` trait as a replacement for the old `MI` trait.
+- Extend `DebugProbe` trait to be able to return a dedicated memory interface.
+
 ### Changed
+
+- `MasterProbe` was renamed to a more concise `Probe`.
 
 ### Fixed
 
@@ -18,7 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A basic GDB server was added \o/ You can either use the provided `gdb-server` binary or use `cargo flash --gdb` to first flash the target and then open a GDB session. There is many more new options which you can list with `cargo flash --help`.
 - Support for multiple breakpoints was added. Breakpoints can now conveniently be set and unset. probe-rs checks for you that there is a free breakpoint and complains if not.
 - A flag to disable progressbars was added. Error reporting was broken because of progressbar overdraw. Now one can disable progress bars to see errors. In the long run this has to be fixed.
-- Added an improved way to create a `MasterProbe`.
+- Added an improved way to create a `Probe`.
 - Added an older USB PID to have probe-rs detect older STLinks with updated Firmware.
 - Added support for flashing with different sector properties. This fixed broken flashing on the STM M4s.
 

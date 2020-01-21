@@ -1,121 +1,161 @@
+use crate::architecture::arm::{memory::ADIMemoryInterface, ArmCommunicationInterface, DAPAccess};
 use crate::config::target::Target;
-use crate::probe::{DebugProbeError, MasterProbe};
+use crate::config::memory::MemoryRegion;
+use crate::core::CoreType;
+use crate::config::flash_algorithm::RawFlashAlgorithm;
+use crate::{Core, CoreInterface, CoreList, Error, Memory, MemoryList, Probe};
+use std::cell::RefCell;
+use std::rc::Rc;
 
+#[derive(Clone)]
 pub struct Session {
-    pub target: Target,
-    pub probe: MasterProbe,
+    inner: Rc<RefCell<InnerSession>>,
+}
 
-    hw_breakpoint_enabled: bool,
-    active_breakpoints: Vec<Breakpoint>,
+struct InnerSession {
+    target: Target,
+    architecture_session: ArchitectureSession,
+}
+
+enum ArchitectureSession {
+    Arm(ArmCommunicationInterface),
 }
 
 impl Session {
     /// Open a new session with a given debug target
-    pub fn new(target: Target, probe: MasterProbe) -> Self {
+    pub fn new(probe: Probe, target: Target) -> Self {
+
+        // TODO: Handle different architectures
+
+        let session = ArchitectureSession::Arm(ArmCommunicationInterface::new(probe));
+
         Self {
-            target,
-            probe,
-            hw_breakpoint_enabled: false,
-            active_breakpoints: Vec::new(),
+            inner: Rc::new(RefCell::new(
+                InnerSession {
+                    target,
+                    architecture_session: session,
+                }
+            )),
         }
     }
 
-    /// Set a hardware breakpoint
-    pub fn set_hw_breakpoint(&mut self, address: u32) -> Result<(), DebugProbeError> {
-        log::debug!("Trying to set HW breakpoint at address {:#08x}", address);
-
-        // Get the number of HW breakpoints available
-        let num_hw_breakpoints =
-            self.target
-                .core
-                .get_available_breakpoint_units(&mut self.probe)? as usize;
-
-        log::debug!("{} HW breakpoints are supported.", num_hw_breakpoints);
-
-        if num_hw_breakpoints <= self.active_breakpoints.len() {
-            // We cannot set additional breakpoints
-            log::warn!("Maximum number of breakpoints ({}) reached, unable to set additional HW breakpoint.", num_hw_breakpoints);
-
-            // TODO: Better error here
-            return Err(DebugProbeError::Unknown);
-        }
-
-        if !self.hw_breakpoint_enabled {
-            self.target.core.enable_breakpoints(&mut self.probe, true)?;
-            self.hw_breakpoint_enabled = true;
-        }
-
-        let bp_unit = self.find_free_breakpoint_unit();
-
-        log::debug!("Using comparator {} of breakpoint unit", bp_unit);
-        // actually set the breakpoint
-        self.target
-            .core
-            .set_breakpoint(&mut self.probe, bp_unit, address)?;
-
-        self.active_breakpoints.push(Breakpoint {
-            address,
-            register_hw: bp_unit,
-        });
-
-        Ok(())
+    pub fn list_cores(&self) -> CoreList {
+        CoreList::new(vec![self.inner.borrow().target.core_type.clone()])
     }
 
-    pub fn clear_hw_breakpoint(&mut self, address: u32) -> Result<(), DebugProbeError> {
-        let bp_position = self
-            .active_breakpoints
-            .iter()
-            .position(|bp| bp.address == address);
-
-        match bp_position {
-            Some(bp_position) => {
-                let bp = &self.active_breakpoints[bp_position];
-                self.target
-                    .core
-                    .clear_breakpoint(&mut self.probe, bp.register_hw)?;
-
-                // We only remove the breakpoint if we have actually managed to clear it.
-                self.active_breakpoints.swap_remove(bp_position);
-                Ok(())
-            }
-            None => Err(DebugProbeError::Unknown),
-        }
+    pub fn attach_to_core(&self, n: usize) -> Result<Core, Error> {
+        let core = self.list_cores()
+            .get(n)
+            .ok_or_else(|| Error::CoreNotFound(n))?
+            .attach(self.clone(), self.attach_to_memory(0)?);
+        Ok(core)
     }
 
-    fn find_free_breakpoint_unit(&self) -> usize {
-        let mut used_bp: Vec<_> = self
-            .active_breakpoints
-            .iter()
-            .map(|bp| bp.register_hw)
-            .collect();
-        used_bp.sort();
+    pub fn attach_to_specific_core(&self, core_type: CoreType) -> Result<Core, Error> {
+        let core = core_type.attach(self.clone(), self.attach_to_memory(0)?);
+        Ok(core)
+    }
 
-        let mut free_bp = 0;
+    pub fn attach_to_core_with_specific_memory(&self, n: usize, memory: Option<Memory>) -> Result<Core, Error> {
+        let core = self.list_cores()
+            .get(n)
+            .ok_or_else(|| Error::CoreNotFound(n))?
+            .attach(
+                self.clone(),
+                match memory {
+                    Some(memory) => memory,
+                    None => self.attach_to_memory(0)?,
+                },
+            );
+        Ok(core)
+    }
 
-        for bp in used_bp {
-            if bp == free_bp {
-                free_bp += 1;
-            } else {
-                return free_bp;
+    pub fn list_memories(&self) -> MemoryList {
+        MemoryList::new(vec![])
+    }
+
+    pub fn attach_to_memory(&self, _id: usize) -> Result<Memory, Error> {
+        match self.inner.borrow().architecture_session {
+            ArchitectureSession::Arm(ref interface) => {
+                if let Some(memory) = interface.dedicated_memory_interface() {
+                    Ok(memory)
+                } else {
+
+                    // TODO: Change this to actually grab the proper memory IF.
+                    // For now always use the ARM IF.
+                    Ok(Memory::new(ADIMemoryInterface::<ArmCommunicationInterface>::new(
+                        interface.clone(),
+                        0,
+                    )))
+                }
             }
         }
+    }
 
-        free_bp
+    pub fn attach_to_best_memory(&self) -> Result<Memory, Error> {
+        match self.inner.borrow().architecture_session {
+            ArchitectureSession::Arm(ref interface) => {
+                if let Some(memory) = interface.dedicated_memory_interface() {
+                    Ok(memory)
+                } else {
+                    // TODO: Change this to actually grab the proper memory IF.
+                    // For now always use the ARM IF.
+                    Ok(Memory::new(ADIMemoryInterface::<ArmCommunicationInterface>::new(
+                        interface.clone(),
+                        0,
+                    )))
+                }
+            }
+        }
+    }
+
+    pub fn flash_algorithms(&self) -> Vec<RawFlashAlgorithm> {
+        self.inner.borrow().target.flash_algorithms.clone()
+    }
+
+    pub fn memory_map(&self) -> Vec<MemoryRegion> {
+        self.inner.borrow().target.memory_map.clone()
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq)]
-pub struct BreakpointId(usize);
+// pub struct Session {
+//     probe: Probe,
+// }
 
-impl BreakpointId {
-    pub fn new(id: usize) -> Self {
-        BreakpointId(id)
-    }
-}
 
-struct Breakpoint {
-    address: u32,
-    register_hw: usize,
-}
 
-unsafe impl Send for Session {}
+// pub trait Session {
+//     fn get_core(n: usize) -> Result<Core, Error>;
+// }
+
+// pub struct ArmSession {
+//     pub target: Target,
+//     pub probe: Rc<RefCell<dyn DAPAccess>>,
+// }
+
+// impl ArmSession {
+//     pub fn new(target: Target, probe: impl DAPAccess) -> Self {
+//         Self {
+//             target,
+//             probe: Rc::new(RefCell::new(probe)),
+//         }
+//     }
+// }
+
+// pub struct RiscVSession {
+//     pub target: Target,
+//     pub probe: Rc<RefCell<dyn DAPAccess>>,
+// }
+
+// impl RiscVSession {
+//     pub fn new(target: Target, probe: impl DAPAccess) -> Self {
+//         Self {
+//             target,
+//             probe: Rc::new(RefCell::new(probe)),
+//         }
+//     }
+// }
+
+// impl Session for RiscVSession {
+//     fn get_core(n: usize) -> Result<Core, Error> {}
+// }

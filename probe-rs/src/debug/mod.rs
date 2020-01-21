@@ -1,17 +1,12 @@
 pub mod typ;
 pub mod variable;
-
-pub use typ::*;
-pub use variable::*;
-
+use crate::core::Core;
+use object::read::Object;
 use std::borrow;
 use std::path::PathBuf;
 use std::rc::Rc;
-
-use crate::coresight::memory::MI;
-use object::read::Object;
-
-use crate::session::Session;
+pub use typ::*;
+pub use variable::*;
 
 #[derive(Debug, Copy, Clone)]
 pub enum ColumnType {
@@ -78,16 +73,10 @@ impl std::fmt::Display for StackFrame {
 struct Registers([Option<u32>; 16]);
 
 impl Registers {
-    pub fn from_session(session: &mut Session) -> Self {
+    pub fn from_core(core: Core) -> Self {
         let mut registers = Registers([None; 16]);
         for i in 0..16 {
-            registers[i as usize] = Some(
-                session
-                    .target
-                    .core
-                    .read_core_reg(&mut session.probe, i.into())
-                    .unwrap(),
-            );
+            registers[i as usize] = Some(core.read_core_reg(i).unwrap());
         }
         registers
     }
@@ -140,20 +129,20 @@ pub struct SourceLocation {
 
 pub struct StackFrameIterator<'a> {
     debug_info: &'a DebugInfo,
-    session: &'a mut Session,
+    core: Core,
     frame_count: u64,
     pc: Option<u64>,
     registers: Registers,
 }
 
 impl<'a> StackFrameIterator<'a> {
-    pub fn new(debug_info: &'a DebugInfo, session: &'a mut Session, address: u64) -> Self {
-        let registers = Registers::from_session(session);
+    pub fn new(debug_info: &'a DebugInfo, core: Core, address: u64) -> Self {
+        let registers = Registers::from_core(core.clone());
         let pc = address;
 
         Self {
             debug_info,
-            session,
+            core,
             frame_count: 0,
             pc: Some(pc),
             registers,
@@ -205,11 +194,7 @@ impl<'a> Iterator for StackFrameIterator<'a> {
                 Offset(o) => {
                     let addr = i64::from(current_cfa.unwrap()) + o;
                     let mut buff = [0u8; 4];
-                    self.session
-                        .target
-                        .core
-                        .read_block8(&mut self.session.probe, addr as u32, &mut buff)
-                        .unwrap();
+                    self.core.read_block8(addr as u32, &mut buff).unwrap();
 
                     let val = u32::from_le_bytes(buff);
 
@@ -222,7 +207,7 @@ impl<'a> Iterator for StackFrameIterator<'a> {
         self.registers.set_call_frame_address(current_cfa);
 
         let return_frame = Some(self.debug_info.get_stackframe_info(
-            &mut self.session,
+            self.core.clone(),
             pc,
             self.frame_count,
             self.registers.clone(),
@@ -408,7 +393,7 @@ impl DebugInfo {
 
     fn get_stackframe_info(
         &self,
-        session: &mut Session,
+        core: Core,
         address: u64,
         frame_count: u64,
         registers: Registers,
@@ -422,7 +407,7 @@ impl DebugInfo {
                     .unwrap_or(unknown_function);
 
                 let variables = unit_info.get_variables(
-                    session,
+                    core,
                     die_cursor_state,
                     u64::from(registers.get_call_frame_address().unwrap()),
                 );
@@ -450,12 +435,8 @@ impl DebugInfo {
         }
     }
 
-    pub fn try_unwind<'b>(
-        &'b self,
-        session: &'b mut Session,
-        address: u64,
-    ) -> StackFrameIterator<'b> {
-        StackFrameIterator::new(&self, session, address)
+    pub fn try_unwind<'b>(&'b self, core: Core, address: u64) -> StackFrameIterator<'b> {
+        StackFrameIterator::new(&self, core, address)
     }
 }
 
@@ -516,7 +497,7 @@ impl<'a> UnitInfo<'a> {
 
     fn expr_to_piece(
         &self,
-        session: &mut Session,
+        core: Core,
         expression: gimli::Expression<R>,
         frame_base: u64,
     ) -> Vec<gimli::Piece<R, usize>> {
@@ -532,8 +513,7 @@ impl<'a> UnitInfo<'a> {
                 Complete => break,
                 RequiresMemory { address, size, .. } => {
                     let mut buff = vec![0u8; size as usize];
-                    session
-                        .probe
+                    core.memory()
                         .read_block8(address as u32, &mut buff)
                         .expect("Failed to read memory");
                     match size {
@@ -571,7 +551,7 @@ impl<'a> UnitInfo<'a> {
 
     fn get_variables(
         &self,
-        session: &mut Session,
+        core: Core,
         die_cursor_state: &mut DieCursorState,
         frame_base: u64,
     ) -> Vec<Variable> {
@@ -615,7 +595,7 @@ impl<'a> UnitInfo<'a> {
                         }
                         gimli::DW_AT_location => {
                             variable.value =
-                                extract_location(&self, session, frame_base, attr.value())
+                                extract_location(&self, core.clone(), frame_base, attr.value())
                                     .unwrap_or_else(u64::max_value);
                         }
                         _ => (),
@@ -631,15 +611,15 @@ impl<'a> UnitInfo<'a> {
 
 fn extract_location(
     unit_info: &UnitInfo,
-    session: &mut Session,
+    core: Core,
     frame_base: u64,
     attribute_value: gimli::AttributeValue<R>,
 ) -> Option<u64> {
     match attribute_value {
         gimli::AttributeValue::Exprloc(expression) => {
-            let piece = unit_info.expr_to_piece(session, expression, frame_base);
+            let piece = unit_info.expr_to_piece(core.clone(), expression, frame_base);
 
-            let value = get_piece_value(session, &piece[0]);
+            let value = get_piece_value(core, &piece[0]);
             value.map(u64::from)
         }
         _ => None,
@@ -736,7 +716,7 @@ fn extract_name(
     }
 }
 
-fn get_piece_value(session: &mut Session, p: &gimli::Piece<DwarfReader>) -> Option<u32> {
+fn get_piece_value(core: Core, p: &gimli::Piece<DwarfReader>) -> Option<u32> {
     use gimli::Location;
 
     match &p.location {
@@ -744,10 +724,8 @@ fn get_piece_value(session: &mut Session, p: &gimli::Piece<DwarfReader>) -> Opti
         Location::Address { address } => Some(*address as u32),
         Location::Value { value } => Some(value.to_u64(0xff_ff_ff_ff).unwrap() as u32),
         Location::Register { register } => {
-            let val = session
-                .target
-                .core
-                .read_core_reg(&mut session.probe, (register.0 as u8).into())
+            let val = core
+                .read_core_reg(register.0 as u8)
                 .expect("Failed to read register from target");
             Some(val)
         }
@@ -756,7 +734,7 @@ fn get_piece_value(session: &mut Session, p: &gimli::Piece<DwarfReader>) -> Opti
 }
 
 pub fn print_all_attributes(
-    session: &mut Session,
+    core: Core,
     frame_base: Option<u32>,
     dwarf: &gimli::Dwarf<DwarfReader>,
     unit: &gimli::Unit<DwarfReader>,
@@ -792,9 +770,7 @@ pub fn print_all_attributes(
                         Complete => break,
                         RequiresMemory { address, size, .. } => {
                             let mut buff = vec![0u8; size as usize];
-                            session
-                                .probe
-                                .read_block8(address as u32, &mut buff)
+                            core.read_block8(address as u32, &mut buff)
                                 .expect("Failed to read memory");
                             match size {
                                 1 => evaluation

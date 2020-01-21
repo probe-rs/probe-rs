@@ -1,5 +1,4 @@
 //! Helper macros to implement an access port
-
 #[macro_export]
 macro_rules! define_dp_register {
     (

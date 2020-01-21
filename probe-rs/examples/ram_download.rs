@@ -1,9 +1,6 @@
 use probe_rs::{
     config::registry::{Registry, SelectionStrategy},
-    coresight::memory::MI,
-    probe::MasterProbe,
-    session::Session,
-    target::info::ChipInfo,
+    Probe,
 };
 
 use std::num::ParseIntError;
@@ -38,10 +35,13 @@ fn main() -> Result<(), &'static str> {
 
     let strategy = match identifier {
         Some(identifier) => SelectionStrategy::TargetIdentifier(identifier.into()),
-        None => SelectionStrategy::ChipInfo(
-            ChipInfo::read_from_rom_table(&mut probe)
-                .map_err(|_| "Failed to read chip info from ROM table")?,
-        ),
+        None => return Err("Autodetection is not supported at the moment"), // TODO:
+                                                                            // SelectionStrategy::ChipInfo(
+                                                                            //     ChipInfo::Arm(match probe.communication_interface().probe_for_chip_info().map_err(|_| "Failed to read chip info from ROM table")? {
+                                                                            //         Some(info) => info,
+                                                                            //         None => return Err("Failed to read chip info from ROM table")
+                                                                            //     })
+                                                                            // )
     };
 
     let registry = Registry::from_builtin_families();
@@ -50,7 +50,12 @@ fn main() -> Result<(), &'static str> {
         .get_target(strategy)
         .map_err(|_| "Failed to find target")?;
 
-    let mut session = Session::new(target, probe);
+    let session = probe
+        .attach(target, None)
+        .map_err(|_| "Failed to attach probe to target")?;
+    let core = session
+        .attach_to_core(0)
+        .map_err(|_| "Failed to attach to core")?;
 
     let data_size_words = matches.size;
 
@@ -63,8 +68,7 @@ fn main() -> Result<(), &'static str> {
     rng.fill(&mut sample_data[..]);
 
     let write_start = Instant::now();
-    session
-        .probe
+    core.memory()
         .write_block32(matches.address, &sample_data)
         .unwrap();
 
@@ -84,8 +88,7 @@ fn main() -> Result<(), &'static str> {
     let mut readback_data = vec![0u32; data_size_words];
 
     let read_start = Instant::now();
-    session
-        .probe
+    core.memory()
         .read_block32(matches.address, &mut readback_data)
         .unwrap();
     let read_duration = read_start.elapsed();
@@ -101,6 +104,8 @@ fn main() -> Result<(), &'static str> {
 
     if sample_data != readback_data {
         eprintln!("Verification failed!");
+        eprintln!("Wrote: {:?}", &sample_data[..]);
+        eprintln!("Read: {:?}", &readback_data[..]);
     } else {
         println!("Verification succesful.");
     }
@@ -108,8 +113,8 @@ fn main() -> Result<(), &'static str> {
     Ok(())
 }
 
-fn open_probe(index: Option<usize>) -> Result<MasterProbe, &'static str> {
-    let list = MasterProbe::list_all();
+fn open_probe(index: Option<usize>) -> Result<Probe, &'static str> {
+    let list = Probe::list_all();
 
     let device = match index {
         Some(index) => list
@@ -125,7 +130,7 @@ fn open_probe(index: Option<usize>) -> Result<MasterProbe, &'static str> {
         }
     };
 
-    let probe = MasterProbe::from_probe_info(&device).map_err(|_| "Failed to open probe")?;
+    let probe = Probe::from_probe_info(&device).map_err(|_| "Failed to open probe")?;
 
     Ok(probe)
 }

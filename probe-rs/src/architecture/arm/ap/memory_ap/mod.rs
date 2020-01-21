@@ -1,15 +1,11 @@
 //! Memory access port
 
 #[doc(hidden)]
-pub mod mock;
+pub(crate) mod mock;
 
-use crate::coresight::common::Register;
+use super::{APRegister, AccessPort, GenericAP, Register};
 use enum_primitive_derive::Primitive;
 use num_traits::{FromPrimitive, ToPrimitive};
-
-use crate::coresight::access_ports::generic_ap::GenericAP;
-use crate::coresight::access_ports::APRegister;
-use crate::coresight::ap_access::AccessPort;
 
 // Memory AP
 //
@@ -25,6 +21,12 @@ impl From<GenericAP> for MemoryAP {
     }
 }
 
+impl From<u8> for MemoryAP {
+    fn from(value: u8) -> Self {
+        MemoryAP { port_number: value }
+    }
+}
+
 #[derive(Debug, Primitive, Clone, Copy, PartialEq)]
 pub enum DataSize {
     U8 = 0b000,
@@ -33,6 +35,26 @@ pub enum DataSize {
     U64 = 0b011,
     U128 = 0b100,
     U256 = 0b101,
+}
+
+impl DataSize {
+    pub fn from_bytes(bytes: u8) -> Self {
+        if bytes == 1 {
+            DataSize::U8
+        } else if bytes == 2 {
+            DataSize::U16
+        } else if bytes == 4 {
+            DataSize::U32
+        } else if bytes == 8 {
+            DataSize::U64
+        } else if bytes == 16 {
+            DataSize::U128
+        } else if bytes == 32 {
+            DataSize::U256
+        } else {
+            DataSize::U32
+        }
+    }
 }
 
 impl Default for DataSize {

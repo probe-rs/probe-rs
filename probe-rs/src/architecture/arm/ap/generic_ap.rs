@@ -1,8 +1,6 @@
 //! Generic access port
 
-use super::APRegister;
-use crate::coresight::ap_access::AccessPort;
-use crate::coresight::common::Register;
+use super::{APRegister, AccessPort, Register};
 use enum_primitive_derive::Primitive;
 use num_traits::cast::{FromPrimitive, ToPrimitive};
 

@@ -1,7 +1,6 @@
 use structopt;
 
 use colored::*;
-use failure::format_err;
 use std::{
     path::Path,
     process::{self},
@@ -11,9 +10,7 @@ use structopt::StructOpt;
 
 use probe_rs::{
     config::registry::{Registry, SelectionStrategy},
-    probe::{daplink, stlink, DebugProbe, DebugProbeType, MasterProbe, WireProtocol},
-    session::Session,
-    target::info::ChipInfo,
+    Probe,
 };
 
 #[derive(Debug, StructOpt)]
@@ -51,38 +48,41 @@ fn main() {
     }
 }
 
+pub fn open_probe(index: Option<usize>) -> Result<Probe, failure::Error> {
+    let available_probes = Probe::list_all();
+
+    let device = match index {
+        Some(index) => available_probes
+            .get(index)
+            .ok_or(failure::err_msg("Unable to open the specified probe. Use the 'list' subcommand to see all available probes."))?,
+        None => {
+            // open the default probe, if only one probe was found
+            if available_probes.len() == 1 {
+                &available_probes[0]
+            } else {
+                return Err(failure::err_msg("Multiple probes found. Please specify which probe to use using the -n parameter."));
+            }
+        }
+    };
+
+    let probe = Probe::from_probe_info(&device)?;
+
+    Ok(probe)
+}
+
 fn main_try() -> Result<(), failure::Error> {
     // Get commandline options.
     let opt = Opt::from_iter(std::env::args());
 
-    let mut list = daplink::tools::list_daplink_devices();
-    list.extend(stlink::tools::list_stlink_devices());
-
-    let device = list
-        .pop()
-        .ok_or_else(|| format_err!("no supported probe was found"))?;
-
-    let mut probe = match device.probe_type {
-        DebugProbeType::DAPLink => {
-            let mut link = daplink::DAPLink::new_from_probe_info(&device)?;
-
-            link.attach(Some(WireProtocol::Swd))?;
-
-            MasterProbe::from_specific_probe(link)
-        }
-        DebugProbeType::STLink => {
-            let mut link = stlink::STLink::new_from_probe_info(&device)?;
-
-            link.attach(Some(WireProtocol::Swd))?;
-
-            MasterProbe::from_specific_probe(link)
-        }
-    };
+    let mut probe = open_probe(None)?;
 
     let strategy = if let Some(identifier) = opt.chip.clone() {
         SelectionStrategy::TargetIdentifier(identifier.into())
     } else {
-        SelectionStrategy::ChipInfo(ChipInfo::read_from_rom_table(&mut probe)?)
+        eprintln!("Autodetection of the target is currently disabled for stability reasons.");
+        std::process::exit(1);
+        // TODO:
+        // SelectionStrategy::ChipInfo(ChipInfo::read_from_rom_table(&mut probe)?)
     };
 
     let mut registry = Registry::from_builtin_families();
@@ -91,8 +91,7 @@ fn main_try() -> Result<(), failure::Error> {
     }
 
     let target = registry.get_target(strategy)?;
-
-    let session = Session::new(target, probe);
+    let session = probe.attach(target, None)?;
 
     let gdb_connection_string = opt
         .gdb_connection_string

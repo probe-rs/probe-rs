@@ -1,11 +1,21 @@
 pub mod configure;
 
 use super::{Category, Request, Response, Result};
+use crate::architecture::arm::PortType as ArmPortType;
 
 #[derive(Copy, Clone, Debug)]
 pub enum PortType {
     AP = 1,
     DP = 0,
+}
+
+impl From<ArmPortType> for PortType {
+    fn from(typ: ArmPortType) -> PortType {
+        match typ {
+            ArmPortType::DebugPort => PortType::DP,
+            ArmPortType::AccessPort(_) => PortType::AP,
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -18,7 +28,7 @@ pub enum RW {
 #[allow(non_snake_case)]
 #[derive(Debug)]
 pub struct InnerTransferRequest {
-    /// 0 = Debug Port (DP), 1 = Access Port (AP).
+    /// 0 = Debug PortType (DP), 1 = Access PortType (AP).
     pub APnDP: PortType,
     /// 0 = Write Register, 1 = Read Register.
     pub RnW: RW,

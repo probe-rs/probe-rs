@@ -1,11 +1,11 @@
 use crate::config::chip_family::ChipFamily;
-use crate::target::info::ChipInfo;
+use crate::config::chip_info::ChipInfo;
 use std::error::Error;
 use std::fs::File;
 use std::path::Path;
 
 use super::target::Target;
-use crate::cores::get_core;
+use crate::core::get_core;
 
 #[derive(Debug)]
 pub enum RegistryError {
@@ -133,7 +133,7 @@ impl Registry {
                 // Try get the correspnding flash algorithm.
                 (family, chip)
             }
-            SelectionStrategy::ChipInfo(chip_info) => {
+            SelectionStrategy::ChipInfo(ChipInfo::Arm(chip_info)) => {
                 // Try get the corresponding chip.
                 let mut selected_family_and_chip = None;
                 for family in &self.families {

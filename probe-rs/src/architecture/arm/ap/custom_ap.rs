@@ -1,13 +1,9 @@
 //! Definition of some custom (proprietary) access ports
 
-use crate::coresight::common::Register;
-
-use crate::coresight::access_ports::generic_ap::GenericAP;
-use crate::coresight::access_ports::APRegister;
-use crate::coresight::ap_access::AccessPort;
+use super::{APRegister, AccessPort, GenericAP, Register};
 
 // Ctrl-Ap
-// The Control Access Port (CTRL-AP) is a Nordic's custom access port that enables control of the
+// The Control Access PortType (CTRL-AP) is a Nordic's custom access port that enables control of the
 // device even if the other access ports in the DAP are being disabled by the access port protection.
 define_ap!(CtrlAP);
 

@@ -1,7 +1,9 @@
-pub mod adi_v5_memory_interface;
-pub mod romtable;
+pub(crate) mod adi_v5_memory_interface;
+pub(crate) mod romtable;
 
-use crate::coresight::access_ports::AccessPortError;
+use super::ap::AccessPortError;
+pub use adi_v5_memory_interface::ADIMemoryInterface;
+pub use romtable::{CSComponent, CSComponentClass};
 
 pub trait ToMemoryReadSize: Into<u32> + Copy {
     /// The alignment mask that is required to test for properly aligned memory.
@@ -40,57 +42,57 @@ impl ToMemoryReadSize for u8 {
 }
 
 pub trait MI {
-    /// Read a 32bit word of at `addr`.
+    /// Read a 32bit word of at `address`.
     ///
     /// The address where the read should be performed at has to be word aligned.
     /// Returns `AccessPortError::MemoryNotAligned` if this does not hold true.
     fn read32(&mut self, address: u32) -> Result<u32, AccessPortError>;
 
-    /// Read an 8bit word of at `addr`.
+    /// Read an 8bit word of at `address`.
     ///
     /// The address where the read should be performed at has to be word aligned.
     /// Returns `AccessPortError::MemoryNotAligned` if this does not hold true.
     fn read8(&mut self, address: u32) -> Result<u8, AccessPortError>;
 
-    /// Read a block of 32bit words at `addr`.
+    /// Read a block of 32bit words at `address`.
     ///
     /// The number of words read is `data.len()`.
     /// The address where the read should be performed at has to be word aligned.
     /// Returns `AccessPortError::MemoryNotAligned` if this does not hold true.
     fn read_block32(&mut self, address: u32, data: &mut [u32]) -> Result<(), AccessPortError>;
 
-    /// Read a block of 8bit words at `addr`.
+    /// Read a block of 8bit words at `address`.
     ///
     /// The number of words read is `data.len()`.
     /// The address where the read should be performed at has to be word aligned.
     /// Returns `AccessPortError::MemoryNotAligned` if this does not hold true.
     fn read_block8(&mut self, address: u32, data: &mut [u8]) -> Result<(), AccessPortError>;
 
-    /// Write a 32bit word at `addr`.
+    /// Write a 32bit word at `address`.
     ///
     /// The address where the write should be performed at has to be word aligned.
     /// Returns `AccessPortError::MemoryNotAligned` if this does not hold true.
-    fn write32(&mut self, addr: u32, data: u32) -> Result<(), AccessPortError>;
+    fn write32(&mut self, address: u32, data: u32) -> Result<(), AccessPortError>;
 
-    /// Write an 8bit word at `addr`.
+    /// Write an 8bit word at `address`.
     ///
     /// The address where the write should be performed at has to be word aligned.
     /// Returns `AccessPortError::MemoryNotAligned` if this does not hold true.
-    fn write8(&mut self, addr: u32, data: u8) -> Result<(), AccessPortError>;
+    fn write8(&mut self, address: u32, data: u8) -> Result<(), AccessPortError>;
 
-    /// Write a block of 32bit words at `addr`.
+    /// Write a block of 32bit words at `address`.
     ///
     /// The number of words written is `data.len()`.
     /// The address where the write should be performed at has to be word aligned.
     /// Returns `AccessPortError::MemoryNotAligned` if this does not hold true.
-    fn write_block32(&mut self, addr: u32, data: &[u32]) -> Result<(), AccessPortError>;
+    fn write_block32(&mut self, address: u32, data: &[u32]) -> Result<(), AccessPortError>;
 
-    /// Write a block of 8bit words at `addr`.
+    /// Write a block of 8bit words at `address`.
     ///
     /// The number of words written is `data.len()`.
     /// The address where the write should be performed at has to be word aligned.
     /// Returns `AccessPortError::MemoryNotAligned` if this does not hold true.
-    fn write_block8(&mut self, addr: u32, data: &[u8]) -> Result<(), AccessPortError>;
+    fn write_block8(&mut self, address: u32, data: &[u8]) -> Result<(), AccessPortError>;
 }
 
 impl<T> MI for &mut T
@@ -113,19 +115,19 @@ where
         (*self).read_block8(address, data)
     }
 
-    fn write32(&mut self, addr: u32, data: u32) -> Result<(), AccessPortError> {
-        (*self).write32(addr, data)
+    fn write32(&mut self, address: u32, data: u32) -> Result<(), AccessPortError> {
+        (*self).write32(address, data)
     }
 
-    fn write8(&mut self, addr: u32, data: u8) -> Result<(), AccessPortError> {
-        (*self).write8(addr, data)
+    fn write8(&mut self, address: u32, data: u8) -> Result<(), AccessPortError> {
+        (*self).write8(address, data)
     }
 
-    fn write_block32(&mut self, addr: u32, data: &[u32]) -> Result<(), AccessPortError> {
-        (*self).write_block32(addr, data)
+    fn write_block32(&mut self, address: u32, data: &[u32]) -> Result<(), AccessPortError> {
+        (*self).write_block32(address, data)
     }
 
-    fn write_block8(&mut self, addr: u32, data: &[u8]) -> Result<(), AccessPortError> {
-        (*self).write_block8(addr, data)
+    fn write_block8(&mut self, address: u32, data: &[u8]) -> Result<(), AccessPortError> {
+        (*self).write_block8(address, data)
     }
 }

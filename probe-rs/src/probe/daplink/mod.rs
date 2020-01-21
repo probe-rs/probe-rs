@@ -1,17 +1,11 @@
 pub mod commands;
 pub mod tools;
 
-use crate::{
-    coresight::{
-        debug_port::DPRegister,
-        dp_access::{DPAccess, DebugPort},
-    },
-    probe::daplink::commands::Error,
-    probe::{DAPAccess, DebugProbe, DebugProbeError, DebugProbeInfo, Port, WireProtocol},
-};
-
-use log::{debug, error, info};
-
+use crate::{Memory, DebugProbeError, DebugProbe, DebugProbeInfo, WireProtocol};
+use crate::architecture::arm::dp::{DPRegister, DPAccess, DebugPort};
+use crate::architecture::arm::PortType;
+use crate::architecture::arm::DAPAccess;
+use crate::probe::daplink::commands::Error;
 use commands::{
     general::{
         connect::{ConnectRequest, ConnectResponse},
@@ -26,11 +20,14 @@ use commands::{
     },
     transfer::{
         configure::{ConfigureRequest, ConfigureResponse},
-        Ack, InnerTransferRequest, PortType, TransferBlockRequest, TransferBlockResponse,
-        TransferRequest, TransferResponse, RW,
+        Ack, InnerTransferRequest, TransferBlockRequest, TransferBlockResponse, TransferRequest,
+        TransferResponse, RW,
     },
     Status,
 };
+use log::{debug, error, info};
+use std::cell::RefCell;
+use std::rc::Rc;
 
 use std::sync::Mutex;
 
@@ -109,7 +106,7 @@ impl<P: DebugPort, R: DPRegister<P>> DPAccess<P, R> for DAPLink {
 
     fn read_dp_register(&mut self, _port: &P) -> Result<R, Self::Error> {
         debug!("Reading DP register {}", R::NAME);
-        let result = self.read_register(Port::DebugPort, u16::from(R::ADDRESS))?;
+        let result = self.read_register(PortType::DebugPort, u16::from(R::ADDRESS))?;
 
         debug!("Read    DP register {}, value=0x{:08x}", R::NAME, result);
 
@@ -120,7 +117,7 @@ impl<P: DebugPort, R: DPRegister<P>> DPAccess<P, R> for DAPLink {
         let value = register.into();
 
         debug!("Writing DP register {}, value=0x{:08x}", R::NAME, value);
-        self.write_register(Port::DebugPort, u16::from(R::ADDRESS), value)
+        self.write_register(PortType::DebugPort, u16::from(R::ADDRESS), value)
     }
 }
 
@@ -203,7 +200,7 @@ impl DebugProbe for DAPLink {
 
         self.send_swj_sequences(SequenceRequest::new(&[0x00]).unwrap())?;
 
-        use crate::coresight::debug_port::{Abort, Ctrl, DPv1, DebugPortId, Select, DPIDR};
+        use crate::architecture::arm::dp::{Abort, Ctrl, DPv1, DebugPortId, Select, DPIDR};
 
         // assume a dpv1 port for now
 
@@ -213,9 +210,9 @@ impl DebugProbe for DAPLink {
 
         let dp_id: DebugPortId = dp_id.into();
 
-        info!("Debug Port Version:  {:x?}", dp_id.version);
+        info!("Debug PortType Version:  {:x?}", dp_id.version);
         info!(
-            "Debug Port Designer: {}",
+            "Debug PortType Designer: {}",
             dp_id.designer.get().unwrap_or("Unknown")
         );
 
@@ -271,19 +268,26 @@ impl DebugProbe for DAPLink {
         })?;
         Ok(())
     }
+
+    fn dedicated_memory_interface(&self) -> Option<Memory> {
+        None
+    }
+
+    fn get_interface_dap(&self) -> Option<&dyn DAPAccess> {
+        Some(self as _)
+    }
+
+    fn get_interface_dap_mut(&mut self) -> Option<&mut dyn DAPAccess> {
+        Some(self as _)
+    }
 }
 
 impl DAPAccess for DAPLink {
     /// Reads the DAP register on the specified port and address.
-    fn read_register(&mut self, port: Port, addr: u16) -> Result<u32, DebugProbeError> {
-        let port = match port {
-            Port::DebugPort => PortType::DP,
-            Port::AccessPort(_) => PortType::AP,
-        };
-
+    fn read_register(&mut self, port: PortType, addr: u16) -> Result<u32, DebugProbeError> {
         let response = commands::send_command::<TransferRequest, TransferResponse>(
             &mut self.device,
-            TransferRequest::new(InnerTransferRequest::new(port, RW::R, addr as u8), 0),
+            TransferRequest::new(InnerTransferRequest::new(port.into(), RW::R, addr as u8), 0),
         )?;
 
         if response.transfer_count == 1 {
@@ -304,15 +308,10 @@ impl DAPAccess for DAPLink {
     }
 
     /// Writes a value to the DAP register on the specified port and address.
-    fn write_register(&mut self, port: Port, addr: u16, value: u32) -> Result<(), DebugProbeError> {
-        let port = match port {
-            Port::DebugPort => PortType::DP,
-            Port::AccessPort(_) => PortType::AP,
-        };
-
+    fn write_register(&mut self, port: PortType, addr: u16, value: u32) -> Result<(), DebugProbeError> {
         let response = commands::send_command::<TransferRequest, TransferResponse>(
             &mut self.device,
-            TransferRequest::new(InnerTransferRequest::new(port, RW::W, addr as u8), value),
+            TransferRequest::new(InnerTransferRequest::new(port.into(), RW::W, addr as u8), value),
         )?;
 
         if response.transfer_count == 1 {
@@ -331,15 +330,10 @@ impl DAPAccess for DAPLink {
 
     fn write_block(
         &mut self,
-        port: Port,
+        port: PortType,
         register_address: u16,
         values: &[u32],
     ) -> Result<(), DebugProbeError> {
-        let port = match port {
-            Port::DebugPort => PortType::DP,
-            Port::AccessPort(_) => PortType::AP,
-        };
-
         // the overhead for a single packet is 6 bytes
         //
         // [0]: HID overhead
@@ -355,8 +349,11 @@ impl DAPAccess for DAPLink {
         let data_chunk_len = max_packet_size_words as usize;
 
         for (i, chunk) in values.chunks(data_chunk_len).enumerate() {
-            let request =
-                TransferBlockRequest::write_request(register_address as u8, port, Vec::from(chunk));
+            let request = TransferBlockRequest::write_request(
+                register_address as u8,
+                port.into(),
+                Vec::from(chunk),
+            );
 
             debug!("Transfer block: chunk={}, len={} bytes", i, chunk.len() * 4);
 
@@ -371,15 +368,10 @@ impl DAPAccess for DAPLink {
 
     fn read_block(
         &mut self,
-        port: Port,
+        port: PortType,
         register_address: u16,
         values: &mut [u32],
     ) -> Result<(), DebugProbeError> {
-        let port = match port {
-            Port::DebugPort => PortType::DP,
-            Port::AccessPort(_) => PortType::AP,
-        };
-
         // the overhead for a single packet is 6 bytes
         //
         // [0]: HID overhead
@@ -397,7 +389,7 @@ impl DAPAccess for DAPLink {
         for (i, chunk) in values.chunks_mut(data_chunk_len).enumerate() {
             let request = TransferBlockRequest::read_request(
                 register_address as u8,
-                port,
+                port.into(),
                 chunk.len() as u16,
             );
 

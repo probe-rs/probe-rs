@@ -473,7 +473,7 @@ impl<'a> FlashBuilder<'a> {
                 }
 
                 // Start the next copy process.
-                active.start_program_page_with_buffer(current_buf, page.address)?;
+                active.start_program_page_with_buffer(page.address, current_buf)?;
 
                 // Swap the buffers
                 if current_buf == 1 {

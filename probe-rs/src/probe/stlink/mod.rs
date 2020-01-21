@@ -1,18 +1,17 @@
-pub mod constants;
-pub mod memory_interface;
-pub mod tools;
+pub(crate) mod constants;
+pub(crate) mod memory_interface;
+pub(crate) mod tools;
 mod usb_interface;
 
 use self::usb_interface::STLinkUSBDevice;
-
-use super::{DAPAccess, DebugProbe, DebugProbeError, DebugProbeInfo, Port, WireProtocol};
-use crate::coresight::{ap_access::AccessPort, common::Register, debug_port::Ctrl};
-use scroll::{Pread, BE};
-
+use super::{DAPAccess, DebugProbe, DebugProbeError, DebugProbeInfo, WireProtocol};
+use crate::architecture::arm::PortType;
+use crate::architecture::arm::{ap::AccessPort, dp::Ctrl, Register};
+use crate::Memory;
 use constants::{commands, JTagFrequencyToDivider, Mode, Status, SwdFrequencyToDelayCount};
-use usb_interface::TIMEOUT;
-
+use scroll::{Pread, BE};
 use thiserror::Error;
+use usb_interface::TIMEOUT;
 
 pub struct STLink {
     device: STLinkUSBDevice,
@@ -71,7 +70,7 @@ impl DebugProbe for STLink {
         ctrl_reg.set_csyspwrupreq(true);
         ctrl_reg.set_cdbgpwrupreq(true);
         let value = ctrl_reg.into();
-        self.write_register(Port::DebugPort, Ctrl::ADDRESS.into(), value)?;
+        self.write_register(PortType::DebugPort, Ctrl::ADDRESS.into(), value)?;
         self.protocol = protocol;
         Ok(protocol)
     }
@@ -97,15 +96,27 @@ impl DebugProbe for STLink {
         )?;
         Self::check_status(&buf)
     }
+
+    fn dedicated_memory_interface(&self) -> Option<Memory> {
+        None
+    }
+
+    fn get_interface_dap(&self) -> Option<&dyn DAPAccess> {
+        Some(self as _)
+    }
+
+    fn get_interface_dap_mut(&mut self) -> Option<&mut dyn DAPAccess> {
+        Some(self as _)
+    }
 }
 
 impl DAPAccess for STLink {
     /// Reads the DAP register on the specified port and address.
-    fn read_register(&mut self, port: Port, addr: u16) -> Result<u32, DebugProbeError> {
-        if (addr & 0xf0) == 0 || port != Port::DebugPort {
+    fn read_register(&mut self, port: PortType, addr: u16) -> Result<u32, DebugProbeError> {
+        if (addr & 0xf0) == 0 || port != PortType::DebugPort {
             let port = match port {
-                Port::DebugPort => 0xffff,
-                Port::AccessPort(p) => p,
+                PortType::DebugPort => 0xffff,
+                PortType::AccessPort(p) => p,
             };
 
             let cmd = vec![
@@ -127,11 +138,16 @@ impl DAPAccess for STLink {
     }
 
     /// Writes a value to the DAP register on the specified port and address.
-    fn write_register(&mut self, port: Port, addr: u16, value: u32) -> Result<(), DebugProbeError> {
-        if (addr & 0xf0) == 0 || port != Port::DebugPort {
+    fn write_register(
+        &mut self,
+        port: PortType,
+        addr: u16,
+        value: u32,
+    ) -> Result<(), DebugProbeError> {
+        if (addr & 0xf0) == 0 || port != PortType::DebugPort {
             let port = match port {
-                Port::DebugPort => 0xffff,
-                Port::AccessPort(p) => p,
+                PortType::DebugPort => 0xffff,
+                PortType::AccessPort(p) => p,
             };
 
             let cmd = vec![
@@ -455,4 +471,10 @@ pub(crate) enum StlinkError {
     NotEnoughBytesRead,
     #[error("USB endpoint not found.")]
     EndpointNotFound,
+}
+
+impl From<StlinkError> for DebugProbeError {
+    fn from(e: StlinkError) -> Self {
+        DebugProbeError::ProbeSpecific(Box::new(e))
+    }
 }
