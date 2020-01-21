@@ -1,7 +1,7 @@
 use probe_rs::{
     config::registry::{Registry, SelectionStrategy},
     coresight::memory::MI,
-    probe::{DebugProbe, DebugProbeType, MasterProbe, WireProtocol},
+    probe::MasterProbe,
     session::Session,
     target::info::ChipInfo,
 };
