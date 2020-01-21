@@ -1,7 +1,9 @@
 use crate::probe::DebugProbeInfo;
 use lazy_static::lazy_static;
-use rusb::{Context, Device, DeviceHandle, Error, UsbContext};
+use rusb::{Context, DeviceHandle, Error, UsbContext};
 use std::time::Duration;
+
+use crate::probe::stlink::StlinkError;
 
 use std::collections::HashMap;
 
@@ -59,118 +61,96 @@ impl STLinkInfo {
     }
 }
 
-rental! {
-    // This lint is not in our hands; disable it for this scope.
-    #[allow(clippy::useless_transmute)]
-    pub mod rent {
-        use super::*;
-        /// Provides low-level USB enumeration and transfers for STLinkV2/3 devices.
-        #[rental]
-        pub struct STLinkUSBDeviceRenter {
-            context: Box<rusb::Context>,
-            device: Box<Device<rusb::Context>>,
-            device_handle: Box<DeviceHandle<rusb::Context>>,
-        }
-    }
-}
-
-pub use rent::STLinkUSBDeviceRenter;
-
-pub struct STLinkUSBDevice {
-    renter: STLinkUSBDeviceRenter,
+pub(super) struct STLinkUSBDevice {
+    device_handle: DeviceHandle<rusb::Context>,
     info: STLinkInfo,
 }
 
 impl STLinkUSBDevice {
     /// Creates and initializes a new USB device.
     pub fn new_from_info(probe_info: &DebugProbeInfo) -> Result<Self, DebugProbeError> {
-        let context = Context::new().map_err(|_| DebugProbeError::USBError)?;
+        let context = Context::new().map_err(|e| DebugProbeError::USBError(Some(Box::new(e))))?;
 
-        let mut info = Default::default();
+        log::debug!("Acquired libusb context.");
 
-        let renter = STLinkUSBDeviceRenter::try_new(
-            Box::new(context),
-            |context| {
-                Ok(Box::new(
-                    context
-                        .devices()
-                        .map_err(|_| DebugProbeError::ProbeCouldNotBeCreated)?
-                        .iter()
-                        .find(|device| {
-                            if let Ok(descriptor) = device.device_descriptor() {
-                                probe_info.vendor_id == descriptor.vendor_id()
-                                    && probe_info.product_id == descriptor.product_id()
-                            } else {
-                                false
-                            }
-                        })
-                        .map_or(Err(DebugProbeError::ProbeCouldNotBeCreated), Ok)?,
-                ))
-            },
-            |device, _context| {
-                let mut device_handle =
-                    Box::new(device.open().map_err(|_| DebugProbeError::USBError)?);
+        let device = context
+            .devices()
+            .map_err(|_| DebugProbeError::ProbeCouldNotBeCreated)?
+            .iter()
+            .find(|device| {
+                if let Ok(descriptor) = device.device_descriptor() {
+                    probe_info.vendor_id == descriptor.vendor_id()
+                        && probe_info.product_id == descriptor.product_id()
+                } else {
+                    false
+                }
+            })
+            .map_or(Err(DebugProbeError::ProbeCouldNotBeCreated), Ok)?;
 
-                let config = device
-                    .active_config_descriptor()
-                    .map_err(|_| DebugProbeError::USBError)?;
-                let descriptor = device
-                    .device_descriptor()
-                    .map_err(|_| DebugProbeError::USBError)?;
-                info = USB_PID_EP_MAP[&descriptor.product_id()].clone();
+        let mut device_handle = device
+            .open()
+            .map_err(|e| DebugProbeError::USBError(Some(Box::new(e))))?;
 
-                device_handle
-                    .claim_interface(0)
-                    .map_err(|_| DebugProbeError::USBError)?;
+        log::debug!("Aquired handle for probe");
 
-                let mut endpoint_out = false;
-                let mut endpoint_in = false;
-                let mut endpoint_swv = false;
+        let config = device
+            .active_config_descriptor()
+            .map_err(|e| DebugProbeError::USBError(Some(Box::new(e))))?;
 
-                if let Some(interface) = config.interfaces().next() {
-                    if let Some(descriptor) = interface.descriptors().next() {
-                        for endpoint in descriptor.endpoint_descriptors() {
-                            if endpoint.address() == info.ep_out {
-                                endpoint_out = true;
-                            } else if endpoint.address() == info.ep_in {
-                                endpoint_in = true;
-                            } else if endpoint.address() == info.ep_swv {
-                                endpoint_swv = true;
-                            }
-                        }
+        log::debug!("Active config descriptor: {:?}", &config);
+
+        let descriptor = device
+            .device_descriptor()
+            .map_err(|e| DebugProbeError::USBError(Some(Box::new(e))))?;
+
+        log::debug!("Device descriptor: {:?}", &descriptor);
+
+        let info = USB_PID_EP_MAP[&descriptor.product_id()].clone();
+
+        device_handle
+            .claim_interface(0)
+            .map_err(|e| DebugProbeError::USBError(Some(Box::new(e))))?;
+
+        log::debug!("Claimed interface 0 of USB device.");
+
+        let mut endpoint_out = false;
+        let mut endpoint_in = false;
+        let mut endpoint_swv = false;
+
+        if let Some(interface) = config.interfaces().next() {
+            if let Some(descriptor) = interface.descriptors().next() {
+                for endpoint in descriptor.endpoint_descriptors() {
+                    if endpoint.address() == info.ep_out {
+                        endpoint_out = true;
+                    } else if endpoint.address() == info.ep_in {
+                        endpoint_in = true;
+                    } else if endpoint.address() == info.ep_swv {
+                        endpoint_swv = true;
                     }
                 }
+            }
+        }
 
-                if !endpoint_out {
-                    return Err(DebugProbeError::EndpointNotFound);
-                }
+        if !endpoint_out {
+            return Err(StlinkError::EndpointNotFound.into());
+        }
 
-                if !endpoint_in {
-                    return Err(DebugProbeError::EndpointNotFound);
-                }
+        if !endpoint_in {
+            return Err(StlinkError::EndpointNotFound.into());
+        }
 
-                if !endpoint_swv {
-                    return Err(DebugProbeError::EndpointNotFound);
-                }
+        if !endpoint_swv {
+            return Err(StlinkError::EndpointNotFound.into());
+        }
 
-                Ok(device_handle)
-            },
-        )
-        .or_else(|_| Err(DebugProbeError::RentalInitError))?;
+        let usb_stlink = Self {
+            device_handle,
+            info,
+        };
 
-        let usb_stlink = Self { renter, info };
+        log::debug!("Succesfully attached to STLink.");
 
         Ok(usb_stlink)
-    }
-
-    /// Writes to the out EP.
-    pub fn read(&mut self, size: u16, timeout: Duration) -> Result<Vec<u8>, DebugProbeError> {
-        let mut buf = vec![0; size as usize];
-        let ep_in = self.info.ep_in;
-        self.renter
-            .rent(|dh| dh.read_bulk(ep_in, buf.as_mut_slice(), timeout))
-            .map_err(|_| DebugProbeError::USBError)?;
-        Ok(buf)
     }
 
     /// Writes to the out EP and reads back data if needed.
@@ -184,6 +164,12 @@ impl STLinkUSBDevice {
         read_data: &mut [u8],
         timeout: Duration,
     ) -> Result<(), DebugProbeError> {
+        log::trace!(
+            "Sending command {:x?} to STLink, timeout: {:?}",
+            cmd,
+            timeout
+        );
+
         // Command phase.
         for _ in 0..(CMD_LEN - cmd.len()) {
             cmd.push(0);
@@ -193,55 +179,49 @@ impl STLinkUSBDevice {
         let ep_in = self.info.ep_in;
 
         let written_bytes = self
-            .renter
-            .rent(|dh| dh.write_bulk(ep_out, &cmd, timeout))
-            .map_err(|_| DebugProbeError::USBError)?;
+            .device_handle
+            .write_bulk(ep_out, &cmd, timeout)
+            .map_err(|e| DebugProbeError::USBError(Some(Box::new(e))))?;
 
         if written_bytes != CMD_LEN {
-            return Err(DebugProbeError::NotEnoughBytesRead);
+            return Err(StlinkError::NotEnoughBytesRead.into());
         }
         // Optional data out phase.
         if !write_data.is_empty() {
             let written_bytes = self
-                .renter
-                .rent(|dh| dh.write_bulk(ep_out, write_data, timeout))
-                .map_err(|_| DebugProbeError::USBError)?;
+                .device_handle
+                .write_bulk(ep_out, write_data, timeout)
+                .map_err(|e| DebugProbeError::USBError(Some(Box::new(e))))?;
             if written_bytes != write_data.len() {
-                return Err(DebugProbeError::NotEnoughBytesRead);
+                return Err(StlinkError::NotEnoughBytesRead.into());
             }
         }
         // Optional data in phase.
         if !read_data.is_empty() {
             let read_bytes = self
-                .renter
-                .rent(|dh| dh.read_bulk(ep_in, read_data, timeout))
-                .map_err(|_| DebugProbeError::USBError)?;
+                .device_handle
+                .read_bulk(ep_in, read_data, timeout)
+                .map_err(|e| DebugProbeError::USBError(Some(Box::new(e))))?;
             if read_bytes != read_data.len() {
-                return Err(DebugProbeError::NotEnoughBytesRead);
+                return Err(StlinkError::NotEnoughBytesRead.into());
             }
         }
         Ok(())
     }
 
-    /// Special read, TODO: for later.
-    pub fn read_swv(&mut self, size: usize, timeout: Duration) -> Result<Vec<u8>, DebugProbeError> {
-        let ep_swv = self.info.ep_swv;
-        let mut buf = Vec::with_capacity(size as usize);
-        let read_bytes = self
-            .renter
-            .rent(|dh| dh.read_bulk(ep_swv, buf.as_mut_slice(), timeout))
-            .map_err(|_| DebugProbeError::USBError)?;
-        if read_bytes != size {
-            Err(DebugProbeError::NotEnoughBytesRead)
-        } else {
-            Ok(buf)
-        }
+    /// Reset the USB device. This can be used to recover when the
+    /// STLink does not respond to USB requests.
+    pub(crate) fn reset(&mut self) -> Result<(), DebugProbeError> {
+        log::debug!("Resetting USB device of STLink");
+        self.device_handle
+            .reset()
+            .map_err(|e| DebugProbeError::USBError(Some(Box::new(e))))
     }
 
     /// Closes the USB interface gracefully.
     /// Internal helper.
     fn close(&mut self) -> Result<(), Error> {
-        self.renter.rent_mut(|dh| dh.release_interface(0))
+        self.device_handle.release_interface(0)
     }
 }
 

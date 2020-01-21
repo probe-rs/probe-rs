@@ -26,7 +26,6 @@ jep106 = "0.2.3"
 scroll = "0.10.1"
 rusb = "0.5.1"
 lazy_static = "1.2.0"
-rental = "0.5.4"
 hidapi = "1.1.0"
 gimli = "0.19.0"
 object = "0.17.0"
@@ -42,6 +41,7 @@ hexdump = "0.1.0"
 maplit = "1.0.2"
 dyn-clone = "1.0.1"
 colored = "1.8.0"
+thiserror = "1.0"
 
 [build-dependencies]
 probe-rs-t2rust  = { path = "../probe-rs-t2rust", version ="0.4.0" }

@@ -17,8 +17,9 @@ use log::debug;
 
 use colored::*;
 use std::error::Error;
-use std::fmt;
 use std::time::Instant;
+
+use thiserror::Error;
 
 #[derive(Copy, Clone, Debug)]
 pub enum WireProtocol {
@@ -36,48 +37,34 @@ const CTRL_AP_IDR: IDR = IDR {
     TYPE: APType::JTAG_COM_AP,
 };
 
-#[derive(Debug)]
+#[derive(Error, Debug)]
 pub enum DebugProbeError {
-    USBError,
+    #[error("USB Communication Error")]
+    USBError(#[source] Option<Box<dyn Error + Send + Sync>>),
+    #[error("JTAG not supported on probe")]
     JTAGNotSupportedOnProbe,
+    #[error("The firmware on the probe is outdated")]
     ProbeFirmwareOutdated,
-    VoltageDivisionByZero,
-    UnknownMode,
-    JTagDoesNotSupportMultipleAP,
+    #[error("Error specific to a probe type occured")]
+    ProbeSpecificError(#[source] Box<dyn Error + Send + Sync>),
+    // TODO: Unknown errors are not very useful, this should be removed.
+    #[error("An unknown error occured.")]
     UnknownError,
-    TransferFault(u32, u16),
-    DataAlignmentError,
-    Access16BitNotSupported,
-    BlanksNotAllowedOnDPRegister,
-    RegisterAddressMustBe16Bit,
-    NotEnoughBytesRead,
-    EndpointNotFound,
-    RentalInitError,
+    #[error("Probe could not be created.")]
     ProbeCouldNotBeCreated,
+    // TODO: This is daplink specific, could be moved there.
+    #[error("Target power-up failed.")]
     TargetPowerUpFailed,
+    // TODO: This is core specific, so should probably be moved there.
+    #[error("Operation timed out.")]
     Timeout,
-    AccessPortError(AccessPortError),
+    #[error("Communication with access port failed: {0:?}")]
+    AccessPortError(#[from] AccessPortError),
 }
 
-impl Error for DebugProbeError {
-    fn source(&self) -> Option<&(dyn Error + 'static)> {
-        match self {
-            DebugProbeError::AccessPortError(ref e) => Some(e),
-            _ => None,
-        }
-    }
-}
-
-impl fmt::Display for DebugProbeError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        // TODO: Cleanup of Debug Probe Errors
-        write!(f, "{:?}", self)
-    }
-}
-
-impl From<AccessPortError> for DebugProbeError {
-    fn from(e: AccessPortError) -> Self {
-        DebugProbeError::AccessPortError(e)
+impl From<stlink::StlinkError> for DebugProbeError {
+    fn from(e: stlink::StlinkError) -> Self {
+        DebugProbeError::ProbeSpecificError(Box::new(e))
     }
 }
 

@@ -8,12 +8,6 @@ pub mod commands {
     pub const GET_TARGET_VOLTAGE: u8 = 0xf7;
     pub const GET_VERSION_EXT: u8 = 0xfb;
 
-    // Modes returned by GET_CURRENT_MODE.
-    pub const DEV_DFU_MODE: u8 = 0x00;
-    pub const DEV_MASS_MODE: u8 = 0x01;
-    pub const DEV_JTAG_MODE: u8 = 0x02;
-    pub const DEV_SWIM_MODE: u8 = 0x03;
-
     // Commands to exit other modes.
     pub const DFU_EXIT: u8 = 0x07;
     pub const SWIM_EXIT: u8 = 0x01;
@@ -118,4 +112,17 @@ pub enum JTagFrequencyToDivider {
     Hz560000 = 64,
     Hz280000 = 128,
     Hz140000 = 256,
+}
+
+/// Modes returned by GET_CURRENT_MODE.
+#[derive(Debug)]
+pub(crate) enum Mode {
+    /// Device is in DFU (Device Firmware Update) mode
+    Dfu = 0x00,
+    /// Device is in mass storage mode?
+    MassStorage = 0x01,
+    /// Device is in JTAG mode
+    Jtag = 0x02,
+    /// Device is in SWIM (Single Wire Interface) mode
+    Swim = 0x03,
 }

@@ -3,14 +3,16 @@ pub mod memory_interface;
 pub mod tools;
 mod usb_interface;
 
-pub use self::usb_interface::STLinkUSBDevice;
+use self::usb_interface::STLinkUSBDevice;
 
 use super::{DAPAccess, DebugProbe, DebugProbeError, DebugProbeInfo, Port, WireProtocol};
 use crate::coresight::{ap_access::AccessPort, common::Register, debug_port::Ctrl};
 use scroll::{Pread, BE};
 
-use constants::{commands, JTagFrequencyToDivider, Status, SwdFrequencyToDelayCount};
+use constants::{commands, JTagFrequencyToDivider, Mode, Status, SwdFrequencyToDelayCount};
 use usb_interface::TIMEOUT;
+
+use thiserror::Error;
 
 pub struct STLink {
     device: STLinkUSBDevice,
@@ -76,6 +78,7 @@ impl DebugProbe for STLink {
 
     /// Leave debug mode.
     fn detach(&mut self) -> Result<(), DebugProbeError> {
+        log::debug!("Detaching from STLink.");
         self.enter_idle()
     }
 
@@ -119,7 +122,7 @@ impl DAPAccess for STLink {
             // Unwrap is ok!
             Ok((&buf[4..8]).pread(0).unwrap())
         } else {
-            Err(DebugProbeError::BlanksNotAllowedOnDPRegister)
+            Err(StlinkError::BlanksNotAllowedOnDPRegister.into())
         }
     }
 
@@ -148,7 +151,7 @@ impl DAPAccess for STLink {
             Self::check_status(&buf)?;
             Ok(())
         } else {
-            Err(DebugProbeError::BlanksNotAllowedOnDPRegister)
+            Err(StlinkError::BlanksNotAllowedOnDPRegister.into())
         }
     }
 }
@@ -191,50 +194,54 @@ impl STLink {
                     Ok((2.0 * a1 * 1.2 / a0) as f32)
                 } else {
                     // Should never happen
-                    Err(DebugProbeError::VoltageDivisionByZero)
+                    Err(StlinkError::VoltageDivisionByZero.into())
                 }
             }
             Err(e) => Err(e),
         }
     }
 
+    /// Get the current mode of the ST-Link
+    fn get_current_mode(&mut self) -> Result<Mode, DebugProbeError> {
+        log::trace!("Getting current mode of device...");
+        let mut buf = [0; 2];
+        self.device
+            .write(vec![commands::GET_CURRENT_MODE], &[], &mut buf, TIMEOUT)?;
+
+        use Mode::*;
+
+        let mode = match buf[0] {
+            0 => Dfu,
+            1 => MassStorage,
+            2 => Jtag,
+            3 => Swim,
+            _ => return Err(StlinkError::UnknownMode.into()),
+        };
+
+        log::debug!("Current device mode: {:?}", mode);
+
+        Ok(mode)
+    }
+
     /// Commands the ST-Link to enter idle mode.
     /// Internal helper.
     fn enter_idle(&mut self) -> Result<(), DebugProbeError> {
-        let mut buf = [0; 2];
-        match self
-            .device
-            .write(vec![commands::GET_CURRENT_MODE], &[], &mut buf, TIMEOUT)
-        {
-            Ok(_) => {
-                if buf[0] == commands::DEV_DFU_MODE {
-                    self.device.write(
-                        vec![commands::DFU_COMMAND, commands::DFU_EXIT],
-                        &[],
-                        &mut [],
-                        TIMEOUT,
-                    )
-                } else if buf[0] == commands::DEV_JTAG_MODE {
-                    self.device.write(
-                        vec![commands::JTAG_COMMAND, commands::JTAG_EXIT],
-                        &[],
-                        &mut [],
-                        TIMEOUT,
-                    )
-                } else if buf[0] == commands::DEV_SWIM_MODE {
-                    self.device.write(
-                        vec![commands::SWIM_COMMAND, commands::SWIM_EXIT],
-                        &[],
-                        &mut [],
-                        TIMEOUT,
-                    )
-                } else {
-                    Ok(())
-                    // TODO: Look this up
-                    // Err(DebugProbeError::UnknownMode)
-                }
-            }
-            Err(e) => Err(e),
+        let mode = self.get_current_mode()?;
+
+        match mode {
+            Mode::Dfu => self.device.write(
+                vec![commands::DFU_COMMAND, commands::DFU_EXIT],
+                &[],
+                &mut [],
+                TIMEOUT,
+            ),
+            Mode::Swim => self.device.write(
+                vec![commands::SWIM_COMMAND, commands::SWIM_EXIT],
+                &[],
+                &mut [],
+                TIMEOUT,
+            ),
+            _ => Ok(()),
         }
     }
 
@@ -304,8 +311,23 @@ impl STLink {
     /// Opens the ST-Link USB device and tries to identify the ST-Links version and it's target voltage.
     /// Internal helper.
     fn init(&mut self) -> Result<(), DebugProbeError> {
-        self.enter_idle()?;
-        self.get_version()?;
+        log::debug!("Initializing STLink...");
+
+        if let Err(e) = self.enter_idle() {
+            match e {
+                DebugProbeError::USBError(_) => {
+                    // Reset the device, and try to enter idle mode again
+                    self.device.reset()?;
+
+                    self.enter_idle()?;
+                }
+                // Other error occured, return it
+                _ => return Err(e),
+            }
+        }
+
+        let version = self.get_version()?;
+        log::debug!("STLink version: {:?}", version);
         self.get_target_voltage().map(|_| ())
     }
 
@@ -349,7 +371,7 @@ impl STLink {
 
     pub fn open_ap(&mut self, apsel: impl AccessPort) -> Result<(), DebugProbeError> {
         if self.jtag_version < Self::MIN_JTAG_VERSION_MULTI_AP {
-            Err(DebugProbeError::JTagDoesNotSupportMultipleAP)
+            Err(StlinkError::JTagDoesNotSupportMultipleAP.into())
         } else {
             let mut buf = [0; 2];
             self.device.write(
@@ -369,7 +391,7 @@ impl STLink {
 
     pub fn close_ap(&mut self, apsel: impl AccessPort) -> Result<(), DebugProbeError> {
         if self.jtag_version < Self::MIN_JTAG_VERSION_MULTI_AP {
-            Err(DebugProbeError::JTagDoesNotSupportMultipleAP)
+            Err(StlinkError::JTagDoesNotSupportMultipleAP.into())
         } else {
             let mut buf = [0; 2];
             self.device.write(
@@ -417,4 +439,20 @@ impl STLink {
             Ok(())
         }
     }
+}
+
+#[derive(Error, Debug)]
+pub(crate) enum StlinkError {
+    #[error("Invalid voltage values retourned by probe.")]
+    VoltageDivisionByZero,
+    #[error("Probe is an unknown mode.")]
+    UnknownMode,
+    #[error("JTAG does not support multiple APs.")]
+    JTagDoesNotSupportMultipleAP,
+    #[error("Blank values are not allowed on DebugPort writes.")]
+    BlanksNotAllowedOnDPRegister,
+    #[error("Not enough bytes read.")]
+    NotEnoughBytesRead,
+    #[error("USB endpoint not found.")]
+    EndpointNotFound,
 }

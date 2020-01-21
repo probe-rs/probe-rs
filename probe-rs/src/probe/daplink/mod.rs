@@ -266,7 +266,7 @@ impl DebugProbe for DAPLink {
     /// Leave debug mode.
     fn detach(&mut self) -> Result<(), DebugProbeError> {
         commands::send_command(&mut self.device, DisconnectRequest {})
-            .map_err(|_| DebugProbeError::USBError)
+            .map_err(|_e| DebugProbeError::USBError(None))
             .and_then(|v: DisconnectResponse| match v {
                 DisconnectResponse(Status::DAPOk) => Ok(()),
                 DisconnectResponse(Status::DAPError) => Err(DebugProbeError::UnknownError),
@@ -298,7 +298,7 @@ impl DAPAccess for DAPLink {
         .and_then(|v| {
             if v.transfer_count == 1 {
                 if v.transfer_response.protocol_error {
-                    Err(DebugProbeError::USBError)
+                    Err(DebugProbeError::USBError(None))
                 } else {
                     match v.transfer_response.ack {
                         Ack::Ok => Ok(v.transfer_data),
@@ -326,7 +326,7 @@ impl DAPAccess for DAPLink {
         .and_then(|v| {
             if v.transfer_count == 1 {
                 if v.transfer_response.protocol_error {
-                    Err(DebugProbeError::USBError)
+                    Err(DebugProbeError::USBError(None))
                 } else {
                     match v.transfer_response.ack {
                         Ack::Ok => Ok(()),

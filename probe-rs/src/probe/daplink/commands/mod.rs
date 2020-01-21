@@ -62,11 +62,11 @@ impl From<Error> for DebugProbeError {
     fn from(error: Error) -> Self {
         match error {
             Error::NotEnoughSpace => DebugProbeError::UnknownError,
-            Error::USB => DebugProbeError::USBError,
+            Error::USB => DebugProbeError::USBError(None),
             Error::UnexpectedAnswer => DebugProbeError::UnknownError,
             Error::DAP => DebugProbeError::UnknownError,
             Error::TooMuchData => DebugProbeError::UnknownError,
-            Error::HidApi => DebugProbeError::USBError,
+            Error::HidApi => DebugProbeError::USBError(None),
         }
     }
 }
