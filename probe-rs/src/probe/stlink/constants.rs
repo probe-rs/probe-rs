@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 pub mod commands {
     // Common commands.
     pub const GET_VERSION: u8 = 0xf1;

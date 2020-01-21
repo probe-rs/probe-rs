@@ -6,10 +6,9 @@ use common::{with_device, with_dump, CliError};
 use debugger::CliState;
 
 use probe_rs::{
-    coresight::memory::MI,
     debug::DebugInfo,
     flash::download::{download_file, Format},
-    probe::MasterProbe,
+    Probe,
 };
 
 use capstone::{arch::arm::ArchMode, prelude::*, Capstone, Endian};
@@ -131,7 +130,7 @@ fn main() {
 }
 
 fn list_connected_devices() -> Result<(), CliError> {
-    let links = MasterProbe::list_all();
+    let links = Probe::list_all();
 
     if !links.is_empty() {
         println!("The following devices were found:");
@@ -147,7 +146,7 @@ fn list_connected_devices() -> Result<(), CliError> {
 }
 
 fn dump_memory(shared_options: &SharedOptions, loc: u32, words: u32) -> Result<(), CliError> {
-    with_device(shared_options, |mut session| {
+    with_device(shared_options, |session| {
         let mut data = vec![0 as u32; words as usize];
 
         // Start timer.
@@ -155,7 +154,9 @@ fn dump_memory(shared_options: &SharedOptions, loc: u32, words: u32) -> Result<(
 
         // let loc = 220 * 1024;
 
-        session.probe.read_block32(loc, &mut data.as_mut_slice())?;
+        session
+            .attach_to_best_memory()?
+            .read_block32(loc, &mut data.as_mut_slice())?;
         // Stop timer.
         let elapsed = instant.elapsed();
 
@@ -175,12 +176,12 @@ fn dump_memory(shared_options: &SharedOptions, loc: u32, words: u32) -> Result<(
 }
 
 fn download_program_fast(shared_options: &SharedOptions, path: &str) -> Result<(), CliError> {
-    with_device(shared_options, |mut session| {
+    with_device(shared_options, |session| {
         // Start timer.
         // let instant = Instant::now();
 
         let mm = session.target.memory_map.clone();
-        download_file(&mut session, std::path::Path::new(&path), Format::Elf, &mm)?;
+        download_file(session, std::path::Path::new(&path), Format::Elf, &mm)?;
 
         Ok(())
     })
@@ -208,14 +209,14 @@ fn trace_u32_on_target(shared_options: &SharedOptions, loc: u32) -> Result<(), C
 
     let start = Instant::now();
 
-    with_device(shared_options, |mut session| {
+    with_device(shared_options, |session| {
         loop {
             // Prepare read.
             let elapsed = start.elapsed();
             let instant = elapsed.as_secs() * 1000 + u64::from(elapsed.subsec_millis());
 
             // Read data.
-            let value: u32 = session.probe.read32(loc)?;
+            let value: u32 = session.attach_to_best_memory()?.read32(loc)?;
 
             xs.push(instant);
             ys.push(value);
@@ -250,7 +251,7 @@ fn debug(
         .and_then(|p| fs::File::open(&p).ok())
         .and_then(|file| unsafe { memmap::Mmap::map(&file).ok() });
 
-    let runner = |session| {
+    let runner = |session, core| {
         let cs = Capstone::new()
             .arm()
             .mode(ArchMode::Thumb)
@@ -264,6 +265,7 @@ fn debug(
 
         let mut cli_data = debugger::CliData {
             session,
+            core,
             debug_info: di,
             capstone: cs,
         };
@@ -301,7 +303,7 @@ fn debug(
     };
 
     match dump {
-        None => with_device(shared_options, &runner),
+        None => with_device(shared_options, |session| runner(session, None)),
         Some(p) => with_dump(shared_options, &p, &runner),
     }
 }

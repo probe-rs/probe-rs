@@ -1,13 +1,12 @@
-use crate::session::Session;
-use std::collections::HashMap;
-use std::error::Error;
-use std::fmt;
-
 use super::builder::FlashBuilder;
 use super::flasher::Flasher;
 use super::FlashProgress;
 use crate::config::memory::MemoryRange;
 use crate::config::memory::{FlashRegion, MemoryRegion};
+use crate::session::Session;
+use std::collections::HashMap;
+use std::error::Error;
+use std::fmt;
 
 /// `FlashLoader` is a struct which manages the flashing of any chunks of data onto any sections of flash.
 /// Use `add_data()` to add a chunks of data.
@@ -108,13 +107,10 @@ impl<'a, 'b> FlashLoader<'a, 'b> {
     /// If `do_chip_erase` is `true` the entire flash will be erased.
     pub fn commit(
         &mut self,
-        session: &mut Session,
+        session: Session,
         progress: &FlashProgress,
         do_chip_erase: bool,
     ) -> Result<(), FlashLoaderError> {
-        let target = &session.target;
-        let probe = &mut session.probe;
-
         // Iterate over builders we've created and program the data.
         for (region, builder) in &self.builders {
             log::debug!(
@@ -124,7 +120,7 @@ impl<'a, 'b> FlashLoader<'a, 'b> {
             );
 
             // Try to find a flash algorithm for the range of the current builder
-            for algorithm in &target.flash_algorithms {
+            for algorithm in session.flash_algorithms() {
                 log::debug!(
                     "Algorithm {} - start: {:#08x} - size: {:#08x}",
                     algorithm.name,
@@ -134,15 +130,14 @@ impl<'a, 'b> FlashLoader<'a, 'b> {
                 );
             }
 
-            let algorithms: Vec<_> = target
-                .flash_algorithms
-                .iter()
+            let algorithms: Vec<_> = session.flash_algorithms();
+            let algorithms = algorithms.iter()
                 .filter(|fa| {
                     fa.flash_properties
                         .address_range
                         .contains_range(&region.range)
                 })
-                .collect();
+                .collect::<Vec<_>>();
 
             //log::debug!("Algorithms: {:?}", &algorithms);
 
@@ -157,9 +152,8 @@ impl<'a, 'b> FlashLoader<'a, 'b> {
                     .ok_or(FlashLoaderError::NoFlashLoaderAlgorithmAttached)?,
             };
 
-            let ram = target
-                .memory_map
-                .iter()
+            let mm = session.memory_map();
+            let ram = mm.iter()
                 .find(|mm| match mm {
                     MemoryRegion::Ram(_) => true,
                     _ => false,
@@ -176,7 +170,7 @@ impl<'a, 'b> FlashLoader<'a, 'b> {
             // Program the data.
             builder
                 .program(
-                    Flasher::new(target, probe, &flash_algorithm, region),
+                    Flasher::new(session.clone(), &flash_algorithm, region),
                     do_chip_erase,
                     self.keep_unwritten,
                     progress,

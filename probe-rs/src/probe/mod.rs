@@ -1,24 +1,13 @@
-pub mod daplink;
-pub mod stlink;
+pub(crate) mod daplink;
+pub(crate) mod stlink;
 
-use crate::coresight::{
-    access_ports::{
-        custom_ap::{CtrlAP, ERASEALL, ERASEALLSTATUS, RESET},
-        generic_ap::{APClass, APType, GenericAP, IDR},
-        memory_ap::MemoryAP,
-        APRegister, AccessPortError,
-    },
-    ap_access::{get_ap_by_idr, APAccess, AccessPort},
-    common::Register,
-    memory::{adi_v5_memory_interface::ADIMemoryInterface, MI},
-};
+use std::cell::{Ref, RefCell, RefMut};
+use std::rc::Rc;
 
-use log::debug;
-
-use colored::*;
+use crate::architecture::arm::{ap::AccessPortError, DAPAccess, PortType};
+use crate::config::target::Target;
+use crate::{Memory, Session};
 use std::error::Error;
-use std::time::Instant;
-
 use thiserror::Error;
 
 #[derive(Copy, Clone, Debug)]
@@ -26,16 +15,6 @@ pub enum WireProtocol {
     Swd,
     Jtag,
 }
-
-const UNLOCK_TIMEOUT: u64 = 15;
-const CTRL_AP_IDR: IDR = IDR {
-    REVISION: 0,
-    DESIGNER: 0x0144,
-    CLASS: APClass::Undefined,
-    _RES0: 0,
-    VARIANT: 0,
-    TYPE: APType::JTAG_COM_AP,
-};
 
 #[derive(Error, Debug)]
 pub enum DebugProbeError {
@@ -57,63 +36,11 @@ pub enum DebugProbeError {
     Timeout,
     #[error("Communication with access port failed: {0:?}")]
     AccessPort(#[from] AccessPortError),
+    #[error("The connected probe does not support the interface '{0}'")]
+    InterfaceNotAvailable(&'static str),
 }
 
-impl From<stlink::StlinkError> for DebugProbeError {
-    fn from(e: stlink::StlinkError) -> Self {
-        DebugProbeError::ProbeSpecific(Box::new(e))
-    }
-}
-
-#[derive(Debug, PartialEq, Clone, Copy)]
-pub enum Port {
-    DebugPort,
-    AccessPort(u16),
-}
-
-pub trait DAPAccess {
-    /// Reads the DAP register on the specified port and address
-    fn read_register(&mut self, port: Port, addr: u16) -> Result<u32, DebugProbeError>;
-
-    /// Read multiple values from the same DAP register.
-    ///
-    /// If possible, this uses optimized read functions, otherwise it
-    /// falls back to the `read_register` function.
-    fn read_block(
-        &mut self,
-        port: Port,
-        addr: u16,
-        values: &mut [u32],
-    ) -> Result<(), DebugProbeError> {
-        for val in values {
-            *val = self.read_register(port, addr)?;
-        }
-
-        Ok(())
-    }
-
-    /// Writes a value to the DAP register on the specified port and address
-    fn write_register(&mut self, port: Port, addr: u16, value: u32) -> Result<(), DebugProbeError>;
-
-    /// Write multiple values to the same DAP register.
-    ///
-    /// If possible, this uses optimized write functions, otherwise it
-    /// falls back to the `write_register` function.
-    fn write_block(
-        &mut self,
-        port: Port,
-        addr: u16,
-        values: &[u32],
-    ) -> Result<(), DebugProbeError> {
-        for val in values {
-            self.write_register(port, addr, *val)?;
-        }
-
-        Ok(())
-    }
-}
-
-/// The MasterProbe struct is a generic wrapper over the different
+/// The Probe struct is a generic wrapper over the different
 /// probes supported.
 ///
 /// # Examples
@@ -121,22 +48,29 @@ pub trait DAPAccess {
 /// ## Open the first probe found
 ///
 /// The `list_all` and `from_probe_info` functions can be used
-/// to create a new `MasterProbe`::
+/// to create a new `Probe`::
 ///
 /// ```no_run
-/// use probe_rs::probe::MasterProbe;
+/// use probe_rs::probe::Probe;
 ///
-/// let probe_list = MasterProbe::list_all();
-/// let probe = MasterProbe::from_probe_info(&probe_list[0]);
+/// let probe_list = Probe::list_all();
+/// let probe = Probe::from_probe_info(&probe_list[0]);
 /// ```
-
-pub struct MasterProbe {
-    actual_probe: Box<dyn DebugProbe>,
-    current_apsel: u8,
-    current_apbanksel: u8,
+pub struct Probe {
+    inner: Box<dyn DebugProbe>,
 }
 
-impl MasterProbe {
+impl Probe {
+    pub fn new(probe: impl DebugProbe + 'static) -> Self {
+        Self {
+            inner: Box::new(probe),
+        }
+    }
+
+    pub fn new_dummy() -> Self {
+        Self::new(FakeProbe::default())
+    }
+
     /// Get a list of all debug probes found.
     /// This can be used to select the debug probe which
     /// should be used.
@@ -147,8 +81,8 @@ impl MasterProbe {
         list
     }
 
-    /// Create a `MasterProbe` from `DebugProbeInfo`. Use the
-    /// `MasterProbe::list_all()` function to get the information
+    /// Create a `Probe` from `DebugProbeInfo`. Use the
+    /// `Probe::list_all()` function to get the information
     /// about all probes available.
     pub fn from_probe_info(info: &DebugProbeInfo) -> Result<Self, DebugProbeError> {
         let probe = match info.probe_type {
@@ -157,14 +91,14 @@ impl MasterProbe {
 
                 dap_link.attach(Some(WireProtocol::Swd))?;
 
-                MasterProbe::from_specific_probe(dap_link)
+                Probe::from_specific_probe(dap_link)
             }
             DebugProbeType::STLink => {
                 let mut link = stlink::STLink::new_from_probe_info(info)?;
 
                 link.attach(Some(WireProtocol::Swd))?;
 
-                MasterProbe::from_specific_probe(link)
+                Probe::from_specific_probe(link)
             }
         };
 
@@ -172,337 +106,104 @@ impl MasterProbe {
     }
 
     pub fn from_specific_probe(probe: Box<dyn DebugProbe>) -> Self {
-        MasterProbe {
-            actual_probe: probe,
-            current_apbanksel: 0,
-            current_apsel: 0,
-        }
+        Probe { inner: probe }
     }
 
+    // /// Tries to mass erase a locked nRF52 chip, this process may timeout, if it does, the chip
+    // /// might be unlocked or not, it is advised to try again if flashing fails
+    // pub fn nrf_recover(&mut self) -> Result<(), DebugProbeError> {
+    //     let ctrl_port = match get_ap_by_idr(self, |idr| idr == CTRL_AP_IDR) {
+    //         Some(port) => CtrlAP::from(port),
+    //         None => {
+    //             return Err(DebugProbeError::AccessPortError(
+    //                 AccessPortError::CtrlAPNotFound,
+    //             ));
+    //         }
+    //     };
+    //     log::info!("Starting mass erase...");
+    //     let mut erase_reg = ERASEALL::from(1);
+    //     let status_reg = ERASEALLSTATUS::from(0);
+    //     let mut reset_reg = RESET::from(1);
+
+    //     // Reset first
+    //     self.write_ap_register(ctrl_port, reset_reg)?;
+    //     reset_reg.RESET = false;
+    //     self.write_ap_register(ctrl_port, reset_reg)?;
+
+    //     self.write_ap_register(ctrl_port, erase_reg)?;
+
+    //     // Prepare timeout
+    //     let now = Instant::now();
+    //     let status = self.read_ap_register(ctrl_port, status_reg)?;
+    //     log::info!("Erase status: {:?}", status.ERASEALLSTATUS);
+    //     let timeout = loop {
+    //         let status = self.read_ap_register(ctrl_port, status_reg)?;
+    //         if !status.ERASEALLSTATUS {
+    //             break false;
+    //         }
+    //         if now.elapsed().as_secs() >= UNLOCK_TIMEOUT {
+    //             break true;
+    //         }
+    //     };
+    //     reset_reg.RESET = true;
+    //     self.write_ap_register(ctrl_port, reset_reg)?;
+    //     reset_reg.RESET = false;
+    //     self.write_ap_register(ctrl_port, reset_reg)?;
+    //     erase_reg.ERASEALL = false;
+    //     self.write_ap_register(ctrl_port, erase_reg)?;
+    //     if timeout {
+    //         log::error!(
+    //             "    {} Mass erase process timeout, the chip might still be locked.",
+    //             "Error".red().bold()
+    //         );
+    //     } else {
+    //         log::info!("Mass erase completed, chip unlocked");
+    //     }
+    //     Ok(())
+    // }
+
+    /// Get human readable name for the probe
+    pub fn get_name(&self) -> String {
+        self.inner.get_name().to_string()
+    }
+
+    /// Enters debug mode
+    pub fn attach(
+        mut self,
+        target: Target,
+        protocol: Option<WireProtocol>,
+    ) -> Result<Session, DebugProbeError> {
+        self.inner.attach(protocol)?;
+
+        Ok(Session::new(self, target))
+    }
+
+    /// Leave debug mode
+    pub fn detach(&mut self) -> Result<(), DebugProbeError> {
+        self.inner.detach()
+    }
+
+    /// Resets the target device.
     pub fn target_reset(&mut self) -> Result<(), DebugProbeError> {
-        self.actual_probe.target_reset()
+        self.inner.target_reset()
     }
 
-    fn select_ap_and_ap_bank(&mut self, port: u8, ap_bank: u8) -> Result<(), DebugProbeError> {
-        let mut cache_changed = if self.current_apsel != port {
-            self.current_apsel = port;
-            true
-        } else {
-            false
-        };
-
-        if self.current_apbanksel != ap_bank {
-            self.current_apbanksel = ap_bank;
-            cache_changed = true;
-        }
-
-        if cache_changed {
-            use crate::coresight::debug_port::Select;
-
-            let mut select = Select(0);
-
-            debug!(
-                "Changing AP to {}, AP_BANK_SEL to {}",
-                self.current_apsel, self.current_apbanksel
-            );
-
-            select.set_ap_sel(self.current_apsel);
-            select.set_ap_bank_sel(self.current_apbanksel);
-
-            self.actual_probe.write_register(
-                Port::DebugPort,
-                u16::from(Select::ADDRESS),
-                select.into(),
-            )?;
-        }
-
-        Ok(())
+    /// Returns a probe specific memory interface if any is present for given probe.
+    pub fn dedicated_memory_interface(&self) -> Option<Memory> {
+        self.inner.dedicated_memory_interface()
     }
 
-    fn write_ap_register<AP, REGISTER>(
-        &mut self,
-        port: AP,
-        register: REGISTER,
-    ) -> Result<(), DebugProbeError>
-    where
-        AP: AccessPort,
-        REGISTER: APRegister<AP>,
-    {
-        let register_value = register.into();
-
-        debug!(
-            "Writing register {}, value=0x{:08X}",
-            REGISTER::NAME,
-            register_value
-        );
-
-        self.select_ap_and_ap_bank(port.get_port_number(), REGISTER::APBANKSEL)?;
-
-        let link = &mut self.actual_probe;
-        link.write_register(
-            Port::AccessPort(u16::from(self.current_apsel)),
-            u16::from(REGISTER::ADDRESS),
-            register_value,
-        )?;
-        Ok(())
+    
+    pub fn get_interface_dap(&self) -> Option<&dyn DAPAccess> {
+        self.inner.get_interface_dap()
     }
 
-    fn write_ap_register_repeated<AP, REGISTER>(
-        &mut self,
-        port: AP,
-        _register: REGISTER,
-        values: &[u32],
-    ) -> Result<(), DebugProbeError>
-    where
-        AP: AccessPort,
-        REGISTER: APRegister<AP>,
-    {
-        debug!(
-            "Writing register {}, block with len={} words",
-            REGISTER::NAME,
-            values.len(),
-        );
-
-        self.select_ap_and_ap_bank(port.get_port_number(), REGISTER::APBANKSEL)?;
-
-        let link = &mut self.actual_probe;
-        link.write_block(
-            Port::AccessPort(u16::from(self.current_apsel)),
-            u16::from(REGISTER::ADDRESS),
-            values,
-        )?;
-        Ok(())
-    }
-
-    fn read_ap_register<AP, REGISTER>(
-        &mut self,
-        port: AP,
-        _register: REGISTER,
-    ) -> Result<REGISTER, DebugProbeError>
-    where
-        AP: AccessPort,
-        REGISTER: APRegister<AP>,
-    {
-        debug!("Reading register {}", REGISTER::NAME);
-        self.select_ap_and_ap_bank(port.get_port_number(), REGISTER::APBANKSEL)?;
-
-        let link = &mut self.actual_probe;
-        //log::debug!("{:?}, {:08X}", link.current_apsel, REGISTER::ADDRESS);
-        let result = link.read_register(
-            Port::AccessPort(u16::from(self.current_apsel)),
-            u16::from(REGISTER::ADDRESS),
-        )?;
-
-        debug!(
-            "Read register    {}, value=0x{:08x}",
-            REGISTER::NAME,
-            result
-        );
-
-        Ok(REGISTER::from(result))
-    }
-
-    fn read_ap_register_repeated<AP, REGISTER>(
-        &mut self,
-        port: AP,
-        _register: REGISTER,
-        values: &mut [u32],
-    ) -> Result<(), DebugProbeError>
-    where
-        AP: AccessPort,
-        REGISTER: APRegister<AP>,
-    {
-        debug!(
-            "Reading register {}, block with len={} words",
-            REGISTER::NAME,
-            values.len(),
-        );
-
-        self.select_ap_and_ap_bank(port.get_port_number(), REGISTER::APBANKSEL)?;
-
-        let link = &mut self.actual_probe;
-        link.read_block(
-            Port::AccessPort(u16::from(self.current_apsel)),
-            u16::from(REGISTER::ADDRESS),
-            values,
-        )?;
-        Ok(())
-    }
-
-    pub fn read_register_dp(&mut self, offset: u16) -> Result<u32, DebugProbeError> {
-        self.actual_probe.read_register(Port::DebugPort, offset)
-    }
-
-    pub fn write_register_dp(&mut self, offset: u16, val: u32) -> Result<(), DebugProbeError> {
-        self.actual_probe
-            .write_register(Port::DebugPort, offset, val)
-    }
-
-    /// Tries to mass erase a locked nRF52 chip, this process may timeout, if it does, the chip
-    /// might be unlocked or not, it is advised to try again if flashing fails
-    pub fn nrf_recover(&mut self) -> Result<(), DebugProbeError> {
-        let ctrl_port = match get_ap_by_idr(self, |idr| idr == CTRL_AP_IDR) {
-            Some(port) => CtrlAP::from(port),
-            None => {
-                return Err(DebugProbeError::AccessPort(AccessPortError::CtrlAPNotFound));
-            }
-        };
-        log::info!("Starting mass erase...");
-        let mut erase_reg = ERASEALL::from(1);
-        let status_reg = ERASEALLSTATUS::from(0);
-        let mut reset_reg = RESET::from(1);
-
-        // Reset first
-        self.write_ap_register(ctrl_port, reset_reg)?;
-        reset_reg.RESET = false;
-        self.write_ap_register(ctrl_port, reset_reg)?;
-
-        self.write_ap_register(ctrl_port, erase_reg)?;
-
-        // Prepare timeout
-        let now = Instant::now();
-        let status = self.read_ap_register(ctrl_port, status_reg)?;
-        log::info!("Erase status: {:?}", status.ERASEALLSTATUS);
-        let timeout = loop {
-            let status = self.read_ap_register(ctrl_port, status_reg)?;
-            if !status.ERASEALLSTATUS {
-                break false;
-            }
-            if now.elapsed().as_secs() >= UNLOCK_TIMEOUT {
-                break true;
-            }
-        };
-        reset_reg.RESET = true;
-        self.write_ap_register(ctrl_port, reset_reg)?;
-        reset_reg.RESET = false;
-        self.write_ap_register(ctrl_port, reset_reg)?;
-        erase_reg.ERASEALL = false;
-        self.write_ap_register(ctrl_port, erase_reg)?;
-        if timeout {
-            log::error!(
-                "    {} Mass erase process timeout, the chip might still be locked.",
-                "Error".red().bold()
-            );
-        } else {
-            log::info!("Mass erase completed, chip unlocked");
-        }
-        Ok(())
+    pub fn get_interface_dap_mut(&mut self) -> Option<&mut dyn DAPAccess> {
+        self.inner.get_interface_dap_mut()
     }
 }
 
-impl<REGISTER> APAccess<MemoryAP, REGISTER> for MasterProbe
-where
-    REGISTER: APRegister<MemoryAP>,
-{
-    type Error = DebugProbeError;
-
-    fn read_ap_register(
-        &mut self,
-        port: MemoryAP,
-        register: REGISTER,
-    ) -> Result<REGISTER, Self::Error> {
-        self.read_ap_register(port, register)
-    }
-
-    fn write_ap_register(&mut self, port: MemoryAP, register: REGISTER) -> Result<(), Self::Error> {
-        self.write_ap_register(port, register)
-    }
-
-    fn write_ap_register_repeated(
-        &mut self,
-        port: MemoryAP,
-        register: REGISTER,
-        values: &[u32],
-    ) -> Result<(), Self::Error> {
-        self.write_ap_register_repeated(port, register, values)
-    }
-
-    fn read_ap_register_repeated(
-        &mut self,
-        port: MemoryAP,
-        register: REGISTER,
-        values: &mut [u32],
-    ) -> Result<(), Self::Error> {
-        self.read_ap_register_repeated(port, register, values)
-    }
-}
-
-impl<REGISTER> APAccess<GenericAP, REGISTER> for MasterProbe
-where
-    REGISTER: APRegister<GenericAP>,
-{
-    type Error = DebugProbeError;
-
-    fn read_ap_register(
-        &mut self,
-        port: GenericAP,
-        register: REGISTER,
-    ) -> Result<REGISTER, Self::Error> {
-        self.read_ap_register(port, register)
-    }
-
-    fn write_ap_register(
-        &mut self,
-        port: GenericAP,
-        register: REGISTER,
-    ) -> Result<(), Self::Error> {
-        self.write_ap_register(port, register)
-    }
-
-    fn write_ap_register_repeated(
-        &mut self,
-        port: GenericAP,
-        register: REGISTER,
-        values: &[u32],
-    ) -> Result<(), Self::Error> {
-        self.write_ap_register_repeated(port, register, values)
-    }
-
-    fn read_ap_register_repeated(
-        &mut self,
-        port: GenericAP,
-        register: REGISTER,
-        values: &mut [u32],
-    ) -> Result<(), Self::Error> {
-        self.read_ap_register_repeated(port, register, values)
-    }
-}
-
-impl MI for MasterProbe {
-    fn read32(&mut self, address: u32) -> Result<u32, AccessPortError> {
-        ADIMemoryInterface::new(0).read32(self, address)
-    }
-
-    fn read8(&mut self, address: u32) -> Result<u8, AccessPortError> {
-        ADIMemoryInterface::new(0).read8(self, address)
-    }
-
-    fn read_block32(&mut self, address: u32, data: &mut [u32]) -> Result<(), AccessPortError> {
-        ADIMemoryInterface::new(0).read_block32(self, address, data)
-    }
-
-    fn read_block8(&mut self, address: u32, data: &mut [u8]) -> Result<(), AccessPortError> {
-        ADIMemoryInterface::new(0).read_block8(self, address, data)
-    }
-
-    fn write32(&mut self, addr: u32, data: u32) -> Result<(), AccessPortError> {
-        ADIMemoryInterface::new(0).write32(self, addr, data)
-    }
-
-    fn write8(&mut self, addr: u32, data: u8) -> Result<(), AccessPortError> {
-        ADIMemoryInterface::new(0).write8(self, addr, data)
-    }
-
-    fn write_block32(&mut self, addr: u32, data: &[u32]) -> Result<(), AccessPortError> {
-        ADIMemoryInterface::new(0).write_block32(self, addr, data)
-    }
-
-    fn write_block8(&mut self, addr: u32, data: &[u8]) -> Result<(), AccessPortError> {
-        ADIMemoryInterface::new(0).write_block8(self, addr, data)
-    }
-}
-
-pub trait DebugProbe: DAPAccess + Send + Sync {
+pub trait DebugProbe: Send + Sync {
     fn new_from_probe_info(info: &DebugProbeInfo) -> Result<Box<Self>, DebugProbeError>
     where
         Self: Sized;
@@ -518,6 +219,13 @@ pub trait DebugProbe: DAPAccess + Send + Sync {
 
     /// Resets the target device.
     fn target_reset(&mut self) -> Result<(), DebugProbeError>;
+
+    /// Returns a probe specific memory interface if any is present for given probe.
+    fn dedicated_memory_interface(&self) -> Option<Memory>;
+
+    fn get_interface_dap(&self) -> Option<&dyn DAPAccess>;
+
+    fn get_interface_dap_mut(&mut self) -> Option<&mut dyn DAPAccess>;
 }
 
 #[derive(Debug, Clone)]
@@ -572,12 +280,6 @@ impl DebugProbeInfo {
 #[derive(Default)]
 pub struct FakeProbe;
 
-impl FakeProbe {
-    pub fn new() -> Self {
-        Self::default()
-    }
-}
-
 impl DebugProbe for FakeProbe {
     fn new_from_probe_info(_info: &DebugProbeInfo) -> Result<Box<Self>, DebugProbeError>
     where
@@ -606,18 +308,30 @@ impl DebugProbe for FakeProbe {
     fn target_reset(&mut self) -> Result<(), DebugProbeError> {
         Err(DebugProbeError::Unknown)
     }
+
+    fn dedicated_memory_interface(&self) -> Option<Memory> {
+        None
+    }
+
+    fn get_interface_dap(&self) -> Option<&dyn DAPAccess> {
+        None
+    }
+
+    fn get_interface_dap_mut(&mut self) -> Option<&mut dyn DAPAccess> {
+        None
+    }
 }
 
 impl DAPAccess for FakeProbe {
     /// Reads the DAP register on the specified port and address
-    fn read_register(&mut self, _port: Port, _addr: u16) -> Result<u32, DebugProbeError> {
+    fn read_register(&mut self, _port: PortType, _addr: u16) -> Result<u32, DebugProbeError> {
         Err(DebugProbeError::Unknown)
     }
 
     /// Writes a value to the DAP register on the specified port and address
     fn write_register(
         &mut self,
-        _port: Port,
+        _port: PortType,
         _addr: u16,
         _value: u32,
     ) -> Result<(), DebugProbeError> {

@@ -2,6 +2,7 @@ use super::super::{Category, Error, Request, Response, Result};
 
 use scroll::Pread;
 
+#[allow(unused)]
 #[derive(Copy, Clone)]
 pub enum Command {
     VendorID = 0x01,

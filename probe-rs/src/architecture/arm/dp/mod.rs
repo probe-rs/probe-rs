@@ -1,11 +1,24 @@
 #[macro_use]
 mod register_generation;
 
-use super::common::Register;
-use super::dp_access::DebugPort;
-
+use super::Register;
 use bitfield::bitfield;
 use jep106::JEP106Code;
+
+pub trait DebugPort {
+    fn version(&self) -> &'static str;
+}
+
+pub trait DPAccess<PORT, R>
+where
+    PORT: DebugPort,
+    R: DPRegister<PORT>,
+{
+    type Error: std::fmt::Debug;
+    fn read_dp_register(&mut self, port: &PORT) -> Result<R, Self::Error>;
+
+    fn write_dp_register(&mut self, port: &PORT, register: R) -> Result<(), Self::Error>;
+}
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub enum DPBankSel {
@@ -14,11 +27,11 @@ pub enum DPBankSel {
     Bank(u8),
 }
 
-pub trait DPRegister<Port: DebugPort>: Register {
+pub trait DPRegister<PortType: DebugPort>: Register {
     const DP_BANK: DPBankSel;
 }
 
-/// Debug Port V1
+/// Debug PortType V1
 pub struct DPv1 {}
 
 impl DebugPort for DPv1 {
@@ -27,7 +40,7 @@ impl DebugPort for DPv1 {
     }
 }
 
-/// Debug Port V2
+/// Debug PortType V2
 pub struct DPv2 {}
 
 impl DebugPort for DPv2 {

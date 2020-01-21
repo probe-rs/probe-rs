@@ -7,7 +7,7 @@ use async_std::{
 };
 use futures::channel::mpsc;
 use gdb_protocol::packet::CheckedPacket;
-use probe_rs::session::Session;
+use probe_rs::Session;
 use std::sync::atomic::AtomicUsize;
 use std::sync::{Arc, Mutex};
 
@@ -43,21 +43,17 @@ async fn accept_loop(addr: impl ToSocketAddrs, session: Arc<Mutex<Session>>) -> 
             packet_stream_receiver,
             acks_due,
         ));
-        let worker = task::spawn(super::worker::worker(
-            tbd_receiver,
-            packet_stream_sender,
-            session.clone(),
-        ));
-        println!("Accepted a new connection from: {}", stream.peer_addr()?);
-        // outbound_broker_handle.await?;
-        if let Err(e) = inbound_broker_handle.await {
+        if let Err(e) =
+            super::worker::worker(tbd_receiver, packet_stream_sender, session.clone()).await
+        {
             eprintln!(
                 "An error with the current connection has been encountered. It has been closed."
             );
             eprintln!("{:?}", e);
-        }
-
-        if let Err(e) = worker.await {
+        };
+        println!("Accepted a new connection from: {}", stream.peer_addr()?);
+        // outbound_broker_handle.await?;
+        if let Err(e) = inbound_broker_handle.await {
             eprintln!(
                 "An error with the current connection has been encountered. It has been closed."
             );
@@ -88,13 +84,11 @@ async fn inbound_broker_loop(
         let t = std::time::Instant::now();
         futures::select! {
             packet = packet_stream_2 => {
-                println!("WRITE RACE WIN");
                 if let Some(packet) = packet {
                     super::writer::writer(packet, stream.clone(), packet_stream.clone(), &mut buffer).await?
                 }
             },
             n = read => {
-                println!("READ RACE WIN {:?}, {:?}", t.elapsed(), n);
                 match n {
                     Ok(n) => {
                         if n == 0 {

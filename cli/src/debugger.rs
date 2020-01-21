@@ -1,9 +1,10 @@
 use crate::common::CliError;
 
-use probe_rs::{cores::CortexDump, coresight::memory::MI, debug::DebugInfo, session::Session};
-
 use capstone::Capstone;
-
+use probe_rs::architecture::arm::CortexDump;
+use probe_rs::debug::DebugInfo;
+use probe_rs::CoreRegisterAddress;
+use probe_rs::{Core, Error, Session};
 use std::fs::File;
 use std::io::prelude::*;
 
@@ -22,11 +23,7 @@ impl DebugCli {
             help_text: "Step a single instruction",
 
             function: |cli_data, _args| {
-                let cpu_info = cli_data
-                    .session
-                    .target
-                    .core
-                    .step(&mut cli_data.session.probe)?;
+                let cpu_info = cli_data.get_core(0)?.step()?;
                 println!("Core stopped at address 0x{:08x}", cpu_info.pc);
 
                 Ok(CliState::Continue)
@@ -38,16 +35,15 @@ impl DebugCli {
             help_text: "Stop the CPU",
 
             function: |cli_data, _args| {
-                let cpu_info = cli_data
-                    .session
-                    .target
-                    .core
-                    .halt(&mut cli_data.session.probe)?;
+                let cpu_info = cli_data.get_core(0)?.halt()?;
                 println!("Core stopped at address 0x{:08x}", cpu_info.pc);
 
                 let mut code = [0u8; 16 * 2];
 
-                cli_data.session.probe.read_block8(cpu_info.pc, &mut code)?;
+                cli_data
+                    .get_core(0)?
+                    .memory()
+                    .read_block8(cpu_info.pc, &mut code)?;
 
                 let instructions = cli_data
                     .capstone
@@ -67,11 +63,7 @@ impl DebugCli {
             help_text: "Resume execution of the CPU",
 
             function: |cli_data, _args| {
-                cli_data
-                    .session
-                    .target
-                    .core
-                    .run(&mut cli_data.session.probe)?;
+                cli_data.get_core(0)?.run()?;
 
                 Ok(CliState::Continue)
             },
@@ -101,7 +93,10 @@ impl DebugCli {
 
                 let mut buff = vec![0u32; num_words];
 
-                cli_data.session.probe.read_block32(address, &mut buff)?;
+                cli_data
+                    .get_core(0)?
+                    .memory()
+                    .read_block32(address, &mut buff)?;
 
                 for (offset, word) in buff.iter().enumerate() {
                     println!("0x{:08x} = 0x{:08x}", address + (offset * 4) as u32, word);
@@ -120,7 +115,7 @@ impl DebugCli {
                 let address = u32::from_str_radix(address_str, 16).unwrap();
                 //println!("Would read from address 0x{:08x}", address);
 
-                cli_data.session.set_hw_breakpoint(address)?;
+                cli_data.get_core(0)?.set_hw_breakpoint(address)?;
 
                 println!("Set new breakpoint at address {:#08x}", address);
 
@@ -137,7 +132,7 @@ impl DebugCli {
                 let address = u32::from_str_radix(address_str, 16).unwrap();
                 //println!("Would read from address 0x{:08x}", address);
 
-                cli_data.session.clear_hw_breakpoint(address)?;
+                cli_data.get_core(0)?.clear_hw_breakpoint(address)?;
 
                 Ok(CliState::Continue)
             },
@@ -149,14 +144,10 @@ impl DebugCli {
 
             function: |cli_data, _args| {
                 let regs = cli_data.session.target.core.registers();
-                let program_counter = cli_data
-                    .session
-                    .target
-                    .core
-                    .read_core_reg(&mut cli_data.session.probe, regs.PC)?;
+                let program_counter = cli_data.get_core(0)?.read_core_reg(regs.PC)?;
 
                 if let Some(di) = &cli_data.debug_info {
-                    let frames = di.try_unwind(&mut cli_data.session, u64::from(program_counter));
+                    let frames = di.try_unwind(cli_data.get_core(0)?, u64::from(program_counter));
 
                     for frame in frames {
                         println!("{}", frame);
@@ -175,11 +166,10 @@ impl DebugCli {
                 let mut regs = [0u32; 15];
 
                 for i in 0..15 {
-                    regs[i as usize] = cli_data
-                        .session
-                        .target
-                        .core
-                        .read_core_reg(&mut cli_data.session.probe, i.into())?;
+                    regs[i as usize] =
+                        cli_data
+                            .get_core(0)?
+                            .read_core_reg(Into::<CoreRegisterAddress>::into(i))?;
                 }
 
                 for (i, val) in regs.iter().enumerate() {
@@ -203,40 +193,27 @@ impl DebugCli {
 
                 let regs = cli_data.session.target.core.registers();
 
-                let stack_bot: u32 = cli_data
-                    .session
-                    .target
-                    .core
-                    .read_core_reg(&mut cli_data.session.probe, regs.SP)?;
-                let pc: u32 = cli_data
-                    .session
-                    .target
-                    .core
-                    .read_core_reg(&mut cli_data.session.probe, regs.PC)?;
+                let stack_bot: u32 = cli_data.get_core(0)?.read_core_reg(regs.SP)?;
+                let pc: u32 = cli_data.get_core(0)?.read_core_reg(regs.PC)?;
 
                 let mut stack = vec![0u8; (stack_top - stack_bot) as usize];
 
                 cli_data
-                    .session
-                    .probe
+                    .get_core(0)?
+                    .memory()
                     .read_block8(stack_bot, &mut stack[..])?;
 
                 let mut dump = CortexDump::new(stack_bot, stack);
 
                 for i in 0..12 {
-                    dump.regs[i as usize] = cli_data
-                        .session
-                        .target
-                        .core
-                        .read_core_reg(&mut cli_data.session.probe, i.into())?;
+                    dump.regs[i as usize] =
+                        cli_data
+                            .get_core(0)?
+                            .read_core_reg(Into::<CoreRegisterAddress>::into(i))?;
                 }
 
                 dump.regs[13] = stack_bot;
-                dump.regs[14] = cli_data
-                    .session
-                    .target
-                    .core
-                    .read_core_reg(&mut cli_data.session.probe, regs.LR)?;
+                dump.regs[14] = cli_data.get_core(0)?.read_core_reg(regs.LR)?;
                 dump.regs[15] = pc;
 
                 let serialized = ron::ser::to_string(&dump).expect("Failed to serialize dump");
@@ -257,19 +234,11 @@ impl DebugCli {
             help_text: "Reset the CPU",
 
             function: |cli_data, _args| {
-                cli_data
-                    .session
-                    .target
-                    .core
-                    .halt(&mut cli_data.session.probe)?;
+                cli_data.get_core(0)?.halt()?;
 
                 // Enable vector catch after reset (set bit 1 in DEMCR register)
-                cli_data.session.probe.write32(0xE000_EDFC, 1)?;
-                cli_data
-                    .session
-                    .target
-                    .core
-                    .reset(&mut cli_data.session.probe)?;
+                cli_data.get_core(0)?.memory().write32(0xE000_EDFC, 1)?;
+                cli_data.get_core(0)?.reset()?;
 
                 Ok(CliState::Continue)
             },
@@ -318,8 +287,19 @@ impl DebugCli {
 
 pub struct CliData {
     pub session: Session,
+    pub core: Option<Core>,
     pub debug_info: Option<DebugInfo>,
     pub capstone: Capstone,
+}
+
+impl CliData {
+    fn get_core(&self, _n: usize) -> Result<Core, Error> {
+        if let Some(core) = &self.core {
+            Ok(core.clone())
+        } else {
+            self.session.attach_to_core(0)
+        }
+    }
 }
 
 pub enum CliState {

@@ -1,66 +1,110 @@
-use super::access_ports::{
-    generic_ap::{GenericAP, IDR},
-    APRegister,
+#[macro_use]
+mod register_generation;
+pub(crate) mod custom_ap;
+pub(crate) mod generic_ap;
+pub(crate) mod memory_ap;
+
+pub use generic_ap::{APClass, GenericAP, IDR};
+pub(crate) use memory_ap::mock;
+pub use memory_ap::{
+    AddressIncrement, BaseaddrFormat, DataSize, MemoryAP, BASE, BASE2, CSW, DRW, TAR,
 };
+
+use super::Register;
+use thiserror::Error;
+
+#[derive(Debug, Error, PartialEq)]
+pub enum AccessPortError {
+    #[error("Invalid Access PortType Number")]
+    InvalidAccessPortNumber,
+    #[error("Misaligned memory access")]
+    MemoryNotAligned,
+    #[error("Failed to read register {name}, address 0x{address:08x}")]
+    RegisterReadError { address: u8, name: &'static str },
+    #[error("Failed to write register {name}, address 0x{address:08x}")]
+    RegisterWriteError { address: u8, name: &'static str },
+    #[error("Out of bounds access")]
+    OutOfBoundsError,
+}
+
+impl AccessPortError {
+    pub fn register_read_error<R: Register>() -> AccessPortError {
+        AccessPortError::RegisterReadError {
+            address: R::ADDRESS,
+            name: R::NAME,
+        }
+    }
+
+    pub fn register_write_error<R: Register>() -> AccessPortError {
+        AccessPortError::RegisterWriteError {
+            address: R::ADDRESS,
+            name: R::NAME,
+        }
+    }
+}
+
+pub trait APRegister<PORT: AccessPort>: Register + Sized {
+    const APBANKSEL: u8;
+}
 
 pub trait AccessPort {
     fn get_port_number(&self) -> u8;
 }
 
-pub trait APAccess<PORT, REGISTER>
+pub trait APAccess<PORT, R>
 where
     PORT: AccessPort,
-    REGISTER: APRegister<PORT>,
+    R: APRegister<PORT>,
 {
     type Error: std::error::Error;
-    fn read_ap_register(&mut self, port: PORT, register: REGISTER)
-        -> Result<REGISTER, Self::Error>;
+    fn read_ap_register(&mut self, port: PORT, register: R)
+        -> Result<R, Self::Error>;
 
     /// Read a register using a block transfer. This can be used
     /// to read multiple values from the same register.
     fn read_ap_register_repeated(
         &mut self,
         port: PORT,
-        register: REGISTER,
+        register: R,
         values: &mut [u32],
     ) -> Result<(), Self::Error>;
 
-    fn write_ap_register(&mut self, port: PORT, register: REGISTER) -> Result<(), Self::Error>;
+    fn write_ap_register(&mut self, port: PORT, register: R) -> Result<(), Self::Error>;
 
     /// Write a register using a block transfer. This can be used
     /// to write multiple values to the same register.
     fn write_ap_register_repeated(
         &mut self,
         port: PORT,
-        register: REGISTER,
+        register: R,
         values: &[u32],
     ) -> Result<(), Self::Error>;
 }
 
-impl<'a, T, PORT, REGISTER> APAccess<PORT, REGISTER> for &'a mut T
+impl<'a, T, PORT, R> APAccess<PORT, R> for &'a mut T
 where
-    T: APAccess<PORT, REGISTER>,
+    T: APAccess<PORT, R>,
     PORT: AccessPort,
-    REGISTER: APRegister<PORT>,
+    R: APRegister<PORT>,
 {
     type Error = T::Error;
 
     fn read_ap_register(
         &mut self,
         port: PORT,
-        register: REGISTER,
-    ) -> Result<REGISTER, Self::Error> {
+        register: R,
+    ) -> Result<R, Self::Error> {
         (*self).read_ap_register(port, register)
     }
 
-    fn write_ap_register(&mut self, port: PORT, register: REGISTER) -> Result<(), Self::Error> {
+    fn write_ap_register(&mut self, port: PORT, register: R) -> Result<(), Self::Error> {
         (*self).write_ap_register(port, register)
     }
 
     fn write_ap_register_repeated(
         &mut self,
         port: PORT,
-        register: REGISTER,
+        register: R,
         values: &[u32],
     ) -> Result<(), Self::Error> {
         (*self).write_ap_register_repeated(port, register, values)
@@ -68,7 +112,7 @@ where
     fn read_ap_register_repeated(
         &mut self,
         port: PORT,
-        register: REGISTER,
+        register: R,
         values: &mut [u32],
     ) -> Result<(), Self::Error> {
         (*self).read_ap_register_repeated(port, register, values)

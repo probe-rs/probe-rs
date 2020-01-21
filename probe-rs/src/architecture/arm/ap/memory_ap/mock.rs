@@ -1,29 +1,22 @@
+use super::super::{APAccess, Register};
 use super::{APRegister, AddressIncrement, DataSize, MemoryAP, CSW, DRW, TAR};
-use crate::coresight::ap_access::APAccess;
-use crate::coresight::common::Register;
-use std::{collections::HashMap, error::Error, fmt};
+use crate::config::chip_info::ChipInfo;
+use crate::{CommunicationInterface, Error, Probe};
+use std::collections::HashMap;
+use thiserror::Error;
 
 pub struct MockMemoryAP {
     pub data: Vec<u8>,
     store: HashMap<(u8, u8), u32>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum MockMemoryError {
+    #[error("Unknown register width")]
     UnknownWidth,
+    #[error("Unknown register")]
     UnknownRegister,
 }
-
-impl fmt::Display for MockMemoryError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::UnknownWidth => f.write_str("unknown register width"),
-            Self::UnknownRegister => f.write_str("unknown register"),
-        }
-    }
-}
-
-impl Error for MockMemoryError {}
 
 impl Default for MockMemoryAP {
     fn default() -> Self {
@@ -38,9 +31,15 @@ impl Default for MockMemoryAP {
     }
 }
 
-impl<REGISTER> APAccess<MemoryAP, REGISTER> for MockMemoryAP
+impl CommunicationInterface for MockMemoryAP {
+    fn probe_for_chip_info(self) -> Result<Option<ChipInfo>, Error> {
+        unimplemented!()
+    }
+}
+
+impl<R> APAccess<MemoryAP, R> for MockMemoryAP
 where
-    REGISTER: APRegister<MemoryAP>,
+    R: APRegister<MemoryAP>,
 {
     type Error = MockMemoryError;
 
@@ -50,27 +49,27 @@ where
     fn read_ap_register(
         &mut self,
         _port: MemoryAP,
-        _register: REGISTER,
-    ) -> Result<REGISTER, Self::Error> {
+        _register: R,
+    ) -> Result<R, Self::Error> {
         let csw = self.store[&(CSW::ADDRESS, CSW::APBANKSEL)];
         let address = self.store[&(TAR::ADDRESS, TAR::APBANKSEL)];
 
-        match (REGISTER::ADDRESS, REGISTER::APBANKSEL) {
+        match (R::ADDRESS, R::APBANKSEL) {
             (DRW::ADDRESS, DRW::APBANKSEL) => {
                 let csw = CSW::from(csw);
 
                 let data = match csw.SIZE {
-                    DataSize::U32 => Ok(REGISTER::from(
+                    DataSize::U32 => Ok(R::from(
                         u32::from(self.data[address as usize])
                             | (u32::from(self.data[address as usize + 1]) << 8)
                             | (u32::from(self.data[address as usize + 2]) << 16)
                             | (u32::from(self.data[address as usize + 3]) << 24),
                     )),
-                    DataSize::U16 => Ok(REGISTER::from(
+                    DataSize::U16 => Ok(R::from(
                         u32::from(self.data[address as usize])
                             | (u32::from(self.data[address as usize + 1]) << 8),
                     )),
-                    DataSize::U8 => Ok(REGISTER::from(u32::from(self.data[address as usize]))),
+                    DataSize::U8 => Ok(R::from(u32::from(self.data[address as usize]))),
                     _ => Err(MockMemoryError::UnknownWidth),
                 };
 
@@ -96,11 +95,11 @@ where
 
                 data
             }
-            (CSW::ADDRESS, CSW::APBANKSEL) => Ok(REGISTER::from(
-                self.store[&(REGISTER::ADDRESS, REGISTER::APBANKSEL)],
+            (CSW::ADDRESS, CSW::APBANKSEL) => Ok(R::from(
+                self.store[&(R::ADDRESS, R::APBANKSEL)],
             )),
-            (TAR::ADDRESS, TAR::APBANKSEL) => Ok(REGISTER::from(
-                self.store[&(REGISTER::ADDRESS, REGISTER::APBANKSEL)],
+            (TAR::ADDRESS, TAR::APBANKSEL) => Ok(R::from(
+                self.store[&(R::ADDRESS, R::APBANKSEL)],
             )),
             _ => Err(MockMemoryError::UnknownRegister),
         }
@@ -112,14 +111,14 @@ where
     fn write_ap_register(
         &mut self,
         _port: MemoryAP,
-        register: REGISTER,
+        register: R,
     ) -> Result<(), Self::Error> {
         let value = register.into();
         self.store
-            .insert((REGISTER::ADDRESS, REGISTER::APBANKSEL), value);
+            .insert((R::ADDRESS, R::APBANKSEL), value);
         let csw = self.store[&(CSW::ADDRESS, CSW::APBANKSEL)];
         let address = self.store[&(TAR::ADDRESS, TAR::APBANKSEL)];
-        match (REGISTER::ADDRESS, REGISTER::APBANKSEL) {
+        match (R::ADDRESS, R::APBANKSEL) {
             (DRW::ADDRESS, DRW::APBANKSEL) => {
                 let result = match CSW::from(csw).SIZE {
                     DataSize::U32 => {
@@ -178,11 +177,11 @@ where
     fn write_ap_register_repeated(
         &mut self,
         port: MemoryAP,
-        _register: REGISTER,
+        _register: R,
         values: &[u32],
     ) -> Result<(), Self::Error> {
         for value in values {
-            self.write_ap_register(port, REGISTER::from(*value))?
+            self.write_ap_register(port, R::from(*value))?
         }
 
         Ok(())
@@ -190,7 +189,7 @@ where
     fn read_ap_register_repeated(
         &mut self,
         port: MemoryAP,
-        register: REGISTER,
+        register: R,
         values: &mut [u32],
     ) -> Result<(), Self::Error> {
         for value in values {

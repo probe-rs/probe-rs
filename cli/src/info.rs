@@ -1,17 +1,14 @@
 use crate::common::open_probe;
 use crate::{common::CliError, SharedOptions};
-
-use probe_rs::coresight::{
-    access_ports::{
-        generic_ap::{APClass, IDR},
-        memory_ap::{BaseaddrFormat, MemoryAP, BASE, BASE2},
-    },
-    ap_access::{valid_access_ports, APAccess},
-    memory::romtable::CSComponent,
+use probe_rs::architecture::arm::ap::{
+    valid_access_ports, APAccess, APClass, BaseaddrFormat, MemoryAP, BASE, BASE2, IDR,
 };
+use probe_rs::architecture::arm::memory::{ADIMemoryInterface, CSComponent};
+use probe_rs::architecture::arm::ArmCommunicationInterface;
+use probe_rs::Memory;
 
 pub(crate) fn show_info_of_device(shared_options: &SharedOptions) -> Result<(), CliError> {
-    let mut probe = open_probe(shared_options.n)?;
+    let probe = open_probe(shared_options.n)?;
 
     /*
         The following code only works with debug port v2,
@@ -24,7 +21,7 @@ pub(crate) fn show_info_of_device(shared_options: &SharedOptions) -> Result<(), 
 
 
     let target_info = link
-        .read_register(Port::DebugPort, 0x4)?;
+        .read_register(PortType::DebugPort, 0x4)?;
 
     let target_info = parse_target_id(target_info);
     println!("\nTarget Identification Register (TARGETID):");
@@ -42,31 +39,35 @@ pub(crate) fn show_info_of_device(shared_options: &SharedOptions) -> Result<(), 
     // TODO: Move to proper place somewhere in init code
     //
 
-    let target_info = probe.read_register_dp(0x0)?;
+    probe.get_debug_probe().get_interface_dap();
+    let mut interface = ArmCommunicationInterface::new(probe.clone());
+    let target_info = interface.read_register_dp(0x0)?;
     println!("DP info: {:#08x}", target_info);
 
     println!("\nAvailable Access Ports:");
 
-    for access_port in valid_access_ports(&mut probe) {
-        let idr = probe.read_ap_register(access_port, IDR::default())?;
+    for access_port in valid_access_ports(&mut interface) {
+        let idr = interface.read_ap_register(access_port, IDR::default())?;
         println!("{:#x?}", idr);
 
         if idr.CLASS == APClass::MEMAP {
             let access_port: MemoryAP = access_port.into();
 
-            let base_register = probe.read_ap_register(access_port, BASE::default())?;
+            let base_register = interface.read_ap_register(access_port, BASE::default())?;
 
             let mut baseaddr = if BaseaddrFormat::ADIv5 == base_register.Format {
-                let base2 = probe.read_ap_register(access_port, BASE2::default())?;
+                let base2 = interface.read_ap_register(access_port, BASE2::default())?;
                 (u64::from(base2.BASEADDR) << 32)
             } else {
                 0
             };
             baseaddr |= u64::from(base_register.BASEADDR << 12);
 
-            let link_ref = &mut probe;
-
-            let component_table = CSComponent::try_parse(&link_ref.into(), baseaddr as u64);
+            let memory = Memory::new(ADIMemoryInterface::<ArmCommunicationInterface>::new(
+                probe.clone(),
+                0,
+            ));
+            let component_table = CSComponent::try_parse(memory, baseaddr as u64);
 
             component_table
                 .iter()
