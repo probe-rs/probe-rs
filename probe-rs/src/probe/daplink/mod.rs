@@ -6,6 +6,7 @@ use crate::{
         debug_port::DPRegister,
         dp_access::{DPAccess, DebugPort},
     },
+    probe::daplink::commands::Error,
     probe::{DAPAccess, DebugProbe, DebugProbeError, DebugProbeInfo, Port, WireProtocol},
 };
 
@@ -55,8 +56,7 @@ impl DAPLink {
         }
     }
 
-    fn set_swj_clock(&mut self, clock: u32) -> Result<(), DebugProbeError> {
-        use commands::Error;
+    fn set_swj_clock(&mut self, clock: u32) -> Result<(), Error> {
         commands::send_command::<SWJClockRequest, SWJClockResponse>(
             &mut self.device,
             SWJClockRequest(clock),
@@ -68,8 +68,7 @@ impl DAPLink {
         Ok(())
     }
 
-    fn transfer_configure(&mut self, request: ConfigureRequest) -> Result<(), DebugProbeError> {
-        use commands::Error;
+    fn transfer_configure(&mut self, request: ConfigureRequest) -> Result<(), Error> {
         commands::send_command::<ConfigureRequest, ConfigureResponse>(&mut self.device, request)
             .and_then(|v| match v {
                 ConfigureResponse(Status::DAPOk) => Ok(()),
@@ -78,12 +77,7 @@ impl DAPLink {
         Ok(())
     }
 
-    fn configure_swd(
-        &mut self,
-        request: swd::configure::ConfigureRequest,
-    ) -> Result<(), DebugProbeError> {
-        use commands::Error;
-
+    fn configure_swd(&mut self, request: swd::configure::ConfigureRequest) -> Result<(), Error> {
         commands::send_command::<swd::configure::ConfigureRequest, swd::configure::ConfigureResponse>(
             &mut self.device,
             request
@@ -95,12 +89,11 @@ impl DAPLink {
         Ok(())
     }
 
-    fn send_swj_sequences(&mut self, request: SequenceRequest) -> Result<(), DebugProbeError> {
+    fn send_swj_sequences(&mut self, request: SequenceRequest) -> Result<(), Error> {
         /* 12 38 FF FF FF FF FF FF FF -> 12 00 // SWJ Sequence
         12 10 9E E7 -> 12 00 // SWJ Sequence
         12 38 FF FF FF FF FF FF FF -> 12 00 // SWJ Sequence */
         //let sequence_1 = SequenceRequest::new(&[0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF]);
-        use commands::Error;
 
         commands::send_command::<SequenceRequest, SequenceResponse>(&mut self.device, request)
             .and_then(|v| match v {
@@ -159,8 +152,6 @@ impl DebugProbe for DAPLink {
 
     /// Enters debug mode.
     fn attach(&mut self, protocol: Option<WireProtocol>) -> Result<WireProtocol, DebugProbeError> {
-        use commands::Error;
-
         // get information about the daplink
         let PacketCount(packet_count) =
             commands::send_command(&mut self.device, Command::PacketCount)?;
@@ -255,7 +246,7 @@ impl DebugProbe for DAPLink {
 
         if !(ctrl_reg.csyspwrupack() && ctrl_reg.cdbgpwrupack()) {
             error!("Debug power request failed");
-            return Err(DebugProbeError::TargetPowerUpFailed);
+            return Err(Error::TargetPowerUpFailed.into());
         }
 
         info!("Succesfully attached to system and entered debug mode");
@@ -265,12 +256,12 @@ impl DebugProbe for DAPLink {
 
     /// Leave debug mode.
     fn detach(&mut self) -> Result<(), DebugProbeError> {
-        commands::send_command(&mut self.device, DisconnectRequest {})
-            .map_err(|_e| DebugProbeError::USBError(None))
-            .and_then(|v: DisconnectResponse| match v {
-                DisconnectResponse(Status::DAPOk) => Ok(()),
-                DisconnectResponse(Status::DAPError) => Err(DebugProbeError::UnknownError),
-            })
+        let response = commands::send_command(&mut self.device, DisconnectRequest {})?;
+
+        match response {
+            DisconnectResponse(Status::DAPOk) => Ok(()),
+            DisconnectResponse(Status::DAPError) => Err(Error::UnexpectedAnswer.into()),
+        }
     }
 
     /// Asserts the nRESET pin.
@@ -290,25 +281,26 @@ impl DAPAccess for DAPLink {
             Port::AccessPort(_) => PortType::AP,
         };
 
-        commands::send_command::<TransferRequest, TransferResponse>(
+        let response = commands::send_command::<TransferRequest, TransferResponse>(
             &mut self.device,
             TransferRequest::new(InnerTransferRequest::new(port, RW::R, addr as u8), 0),
-        )
-        .map_err(|_| DebugProbeError::UnknownError)
-        .and_then(|v| {
-            if v.transfer_count == 1 {
-                if v.transfer_response.protocol_error {
-                    Err(DebugProbeError::USBError(None))
-                } else {
-                    match v.transfer_response.ack {
-                        Ack::Ok => Ok(v.transfer_data),
-                        _ => Err(DebugProbeError::UnknownError),
-                    }
-                }
+        )?;
+
+        if response.transfer_count == 1 {
+            if response.transfer_response.protocol_error {
+                // An SWD Protocol Error occured
+                Err(Error::SwdProtocolError.into())
             } else {
-                Err(DebugProbeError::UnknownError)
+                match response.transfer_response.ack {
+                    Ack::Ok => Ok(response.transfer_data),
+                    Ack::NoAck => Err(Error::NoAcknowledge.into()),
+                    Ack::Fault => Err(Error::DeviceFault.into()),
+                    Ack::Wait => Err(Error::Wait.into()),
+                }
             }
-        })
+        } else {
+            Err(Error::UnexpectedAnswer.into())
+        }
     }
 
     /// Writes a value to the DAP register on the specified port and address.
@@ -318,25 +310,23 @@ impl DAPAccess for DAPLink {
             Port::AccessPort(_) => PortType::AP,
         };
 
-        commands::send_command::<TransferRequest, TransferResponse>(
+        let response = commands::send_command::<TransferRequest, TransferResponse>(
             &mut self.device,
             TransferRequest::new(InnerTransferRequest::new(port, RW::W, addr as u8), value),
-        )
-        .map_err(|_| DebugProbeError::UnknownError)
-        .and_then(|v| {
-            if v.transfer_count == 1 {
-                if v.transfer_response.protocol_error {
-                    Err(DebugProbeError::USBError(None))
-                } else {
-                    match v.transfer_response.ack {
-                        Ack::Ok => Ok(()),
-                        _ => Err(DebugProbeError::UnknownError),
-                    }
-                }
+        )?;
+
+        if response.transfer_count == 1 {
+            if response.transfer_response.protocol_error {
+                Err(DebugProbeError::USBError(None))
             } else {
-                Err(DebugProbeError::UnknownError)
+                match response.transfer_response.ack {
+                    Ack::Ok => Ok(()),
+                    _ => Err(DebugProbeError::UnknownError),
+                }
             }
-        })
+        } else {
+            Err(DebugProbeError::UnknownError)
+        }
     }
 
     fn write_block(

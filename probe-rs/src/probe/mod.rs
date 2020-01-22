@@ -52,9 +52,6 @@ pub enum DebugProbeError {
     UnknownError,
     #[error("Probe could not be created.")]
     ProbeCouldNotBeCreated,
-    // TODO: This is daplink specific, could be moved there.
-    #[error("Target power-up failed.")]
-    TargetPowerUpFailed,
     // TODO: This is core specific, so should probably be moved there.
     #[error("Operation timed out.")]
     Timeout,
