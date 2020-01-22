@@ -6,6 +6,8 @@ pub mod transfer;
 use crate::probe::DebugProbeError;
 use core::ops::Deref;
 
+use thiserror::Error;
+
 pub(crate) type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Debug)]
@@ -46,34 +48,31 @@ pub(crate) trait Response: Sized {
     fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self>;
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug, Error)]
 pub(crate) enum Error {
-    #[allow(dead_code)]
-    NotEnoughSpace,
-    #[allow(dead_code)]
-    USB,
+    #[error("Unexpected answer to command")]
     UnexpectedAnswer,
+    #[error("DAP Error")]
     DAP,
+    #[error("Too much data provided for SWJ Sequence command")]
     TooMuchData,
-    HidApi,
+    #[error("Error in the USB HID access")]
+    HidApi(#[from] hidapi::HidError),
+    #[error("An error occured in the SWD communication between DAPlink and device.")]
+    SwdProtocolError,
+    #[error("Target device did not respond to request.")]
+    NoAcknowledge,
+    #[error("Target device responded with FAULT response to request.")]
+    DeviceFault,
+    #[error("Target device responded with WAIT response to request.")]
+    Wait,
+    #[error("Target power-up failed.")]
+    TargetPowerUpFailed,
 }
 
 impl From<Error> for DebugProbeError {
     fn from(error: Error) -> Self {
-        match error {
-            Error::NotEnoughSpace => DebugProbeError::UnknownError,
-            Error::USB => DebugProbeError::USBError(None),
-            Error::UnexpectedAnswer => DebugProbeError::UnknownError,
-            Error::DAP => DebugProbeError::UnknownError,
-            Error::TooMuchData => DebugProbeError::UnknownError,
-            Error::HidApi => DebugProbeError::USBError(None),
-        }
-    }
-}
-
-impl From<hidapi::HidError> for Error {
-    fn from(_error: hidapi::HidError) -> Self {
-        Error::HidApi
+        DebugProbeError::ProbeSpecificError(Box::new(error))
     }
 }
 
