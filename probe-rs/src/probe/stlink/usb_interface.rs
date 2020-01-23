@@ -69,7 +69,7 @@ pub(super) struct STLinkUSBDevice {
 impl STLinkUSBDevice {
     /// Creates and initializes a new USB device.
     pub fn new_from_info(probe_info: &DebugProbeInfo) -> Result<Self, DebugProbeError> {
-        let context = Context::new().map_err(|e| DebugProbeError::USBError(Some(Box::new(e))))?;
+        let context = Context::new().map_err(|e| DebugProbeError::USB(Some(Box::new(e))))?;
 
         log::debug!("Acquired libusb context.");
 
@@ -89,19 +89,19 @@ impl STLinkUSBDevice {
 
         let mut device_handle = device
             .open()
-            .map_err(|e| DebugProbeError::USBError(Some(Box::new(e))))?;
+            .map_err(|e| DebugProbeError::USB(Some(Box::new(e))))?;
 
         log::debug!("Aquired handle for probe");
 
         let config = device
             .active_config_descriptor()
-            .map_err(|e| DebugProbeError::USBError(Some(Box::new(e))))?;
+            .map_err(|e| DebugProbeError::USB(Some(Box::new(e))))?;
 
         log::debug!("Active config descriptor: {:?}", &config);
 
         let descriptor = device
             .device_descriptor()
-            .map_err(|e| DebugProbeError::USBError(Some(Box::new(e))))?;
+            .map_err(|e| DebugProbeError::USB(Some(Box::new(e))))?;
 
         log::debug!("Device descriptor: {:?}", &descriptor);
 
@@ -109,7 +109,7 @@ impl STLinkUSBDevice {
 
         device_handle
             .claim_interface(0)
-            .map_err(|e| DebugProbeError::USBError(Some(Box::new(e))))?;
+            .map_err(|e| DebugProbeError::USB(Some(Box::new(e))))?;
 
         log::debug!("Claimed interface 0 of USB device.");
 
@@ -181,7 +181,7 @@ impl STLinkUSBDevice {
         let written_bytes = self
             .device_handle
             .write_bulk(ep_out, &cmd, timeout)
-            .map_err(|e| DebugProbeError::USBError(Some(Box::new(e))))?;
+            .map_err(|e| DebugProbeError::USB(Some(Box::new(e))))?;
 
         if written_bytes != CMD_LEN {
             return Err(StlinkError::NotEnoughBytesRead.into());
@@ -191,7 +191,7 @@ impl STLinkUSBDevice {
             let written_bytes = self
                 .device_handle
                 .write_bulk(ep_out, write_data, timeout)
-                .map_err(|e| DebugProbeError::USBError(Some(Box::new(e))))?;
+                .map_err(|e| DebugProbeError::USB(Some(Box::new(e))))?;
             if written_bytes != write_data.len() {
                 return Err(StlinkError::NotEnoughBytesRead.into());
             }
@@ -201,7 +201,7 @@ impl STLinkUSBDevice {
             let read_bytes = self
                 .device_handle
                 .read_bulk(ep_in, read_data, timeout)
-                .map_err(|e| DebugProbeError::USBError(Some(Box::new(e))))?;
+                .map_err(|e| DebugProbeError::USB(Some(Box::new(e))))?;
             if read_bytes != read_data.len() {
                 return Err(StlinkError::NotEnoughBytesRead.into());
             }
@@ -215,7 +215,7 @@ impl STLinkUSBDevice {
         log::debug!("Resetting USB device of STLink");
         self.device_handle
             .reset()
-            .map_err(|e| DebugProbeError::USBError(Some(Box::new(e))))
+            .map_err(|e| DebugProbeError::USB(Some(Box::new(e))))
     }
 
     /// Closes the USB interface gracefully.

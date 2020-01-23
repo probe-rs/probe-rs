@@ -37,7 +37,7 @@ impl Session {
             log::warn!("Maximum number of breakpoints ({}) reached, unable to set additional HW breakpoint.", num_hw_breakpoints);
 
             // TODO: Better error here
-            return Err(DebugProbeError::UnknownError);
+            return Err(DebugProbeError::Unknown);
         }
 
         if !self.hw_breakpoint_enabled {
@@ -78,7 +78,7 @@ impl Session {
                 self.active_breakpoints.swap_remove(bp_position);
                 Ok(())
             }
-            None => Err(DebugProbeError::UnknownError),
+            None => Err(DebugProbeError::Unknown),
         }
     }
 

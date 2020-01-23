@@ -315,7 +315,7 @@ impl STLink {
 
         if let Err(e) = self.enter_idle() {
             match e {
-                DebugProbeError::USBError(_) => {
+                DebugProbeError::USB(_) => {
                     // Reset the device, and try to enter idle mode again
                     self.device.reset()?;
 
@@ -434,7 +434,7 @@ impl STLink {
         log::trace!("check_status({:?})", status);
         if status[0] != Status::JtagOk as u8 {
             log::debug!("check_status failed: {:?}", status);
-            Err(DebugProbeError::UnknownError)
+            Err(DebugProbeError::Unknown)
         } else {
             Ok(())
         }

@@ -483,7 +483,7 @@ impl Core for M4 {
             Ok(reg.num_code())
         } else {
             log::warn!("This chip uses FPBU revision {}, which is not yet supported. HW breakpoints are not available.", reg.rev());
-            Err(DebugProbeError::UnknownError)
+            Err(DebugProbeError::Unknown)
         }
     }
 

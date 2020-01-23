@@ -555,7 +555,7 @@ impl Core for FakeM0 {
             .regs
             .get(index as usize)
             .copied()
-            .ok_or(DebugProbeError::UnknownError)
+            .ok_or(DebugProbeError::Unknown)
     }
 
     fn write_core_reg(
@@ -602,11 +602,11 @@ impl Core for FakeM0 {
         if (address < self.dump.stack_addr)
             || (address as usize > (self.dump.stack_addr as usize + self.dump.stack.len()))
         {
-            return Err(DebugProbeError::UnknownError);
+            return Err(DebugProbeError::Unknown);
         }
 
         if address as usize + data.len() > (self.dump.stack_addr as usize + self.dump.stack.len()) {
-            return Err(DebugProbeError::UnknownError);
+            return Err(DebugProbeError::Unknown);
         }
 
         let stack_offset = (address - self.dump.stack_addr) as usize;

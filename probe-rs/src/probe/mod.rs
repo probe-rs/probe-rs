@@ -40,28 +40,28 @@ const CTRL_AP_IDR: IDR = IDR {
 #[derive(Error, Debug)]
 pub enum DebugProbeError {
     #[error("USB Communication Error")]
-    USBError(#[source] Option<Box<dyn Error + Send + Sync>>),
+    USB(#[source] Option<Box<dyn Error + Send + Sync>>),
     #[error("JTAG not supported on probe")]
     JTAGNotSupportedOnProbe,
     #[error("The firmware on the probe is outdated")]
     ProbeFirmwareOutdated,
     #[error("Error specific to a probe type occured")]
-    ProbeSpecificError(#[source] Box<dyn Error + Send + Sync>),
+    ProbeSpecific(#[source] Box<dyn Error + Send + Sync>),
     // TODO: Unknown errors are not very useful, this should be removed.
     #[error("An unknown error occured.")]
-    UnknownError,
+    Unknown,
     #[error("Probe could not be created.")]
     ProbeCouldNotBeCreated,
     // TODO: This is core specific, so should probably be moved there.
     #[error("Operation timed out.")]
     Timeout,
     #[error("Communication with access port failed: {0:?}")]
-    AccessPortError(#[from] AccessPortError),
+    AccessPort(#[from] AccessPortError),
 }
 
 impl From<stlink::StlinkError> for DebugProbeError {
     fn from(e: stlink::StlinkError) -> Self {
-        DebugProbeError::ProbeSpecificError(Box::new(e))
+        DebugProbeError::ProbeSpecific(Box::new(e))
     }
 }
 
@@ -344,9 +344,7 @@ impl MasterProbe {
         let ctrl_port = match get_ap_by_idr(self, |idr| idr == CTRL_AP_IDR) {
             Some(port) => CtrlAP::from(port),
             None => {
-                return Err(DebugProbeError::AccessPortError(
-                    AccessPortError::CtrlAPNotFound,
-                ));
+                return Err(DebugProbeError::AccessPort(AccessPortError::CtrlAPNotFound));
             }
         };
         log::info!("Starting mass erase...");
@@ -606,14 +604,14 @@ impl DebugProbe for FakeProbe {
 
     /// Resets the target device.
     fn target_reset(&mut self) -> Result<(), DebugProbeError> {
-        Err(DebugProbeError::UnknownError)
+        Err(DebugProbeError::Unknown)
     }
 }
 
 impl DAPAccess for FakeProbe {
     /// Reads the DAP register on the specified port and address
     fn read_register(&mut self, _port: Port, _addr: u16) -> Result<u32, DebugProbeError> {
-        Err(DebugProbeError::UnknownError)
+        Err(DebugProbeError::Unknown)
     }
 
     /// Writes a value to the DAP register on the specified port and address
@@ -623,6 +621,6 @@ impl DAPAccess for FakeProbe {
         _addr: u16,
         _value: u32,
     ) -> Result<(), DebugProbeError> {
-        Err(DebugProbeError::UnknownError)
+        Err(DebugProbeError::Unknown)
     }
 }

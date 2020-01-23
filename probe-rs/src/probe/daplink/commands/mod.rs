@@ -59,7 +59,7 @@ pub(crate) enum Error {
     #[error("Error in the USB HID access")]
     HidApi(#[from] hidapi::HidError),
     #[error("An error occured in the SWD communication between DAPlink and device.")]
-    SwdProtocolError,
+    SwdProtocol,
     #[error("Target device did not respond to request.")]
     NoAcknowledge,
     #[error("Target device responded with FAULT response to request.")]
@@ -72,7 +72,7 @@ pub(crate) enum Error {
 
 impl From<Error> for DebugProbeError {
     fn from(error: Error) -> Self {
-        DebugProbeError::ProbeSpecificError(Box::new(error))
+        DebugProbeError::ProbeSpecific(Box::new(error))
     }
 }
 
