@@ -289,7 +289,7 @@ impl DAPAccess for DAPLink {
         if response.transfer_count == 1 {
             if response.transfer_response.protocol_error {
                 // An SWD Protocol Error occured
-                Err(Error::SwdProtocolError.into())
+                Err(Error::SwdProtocol.into())
             } else {
                 match response.transfer_response.ack {
                     Ack::Ok => Ok(response.transfer_data),
@@ -317,15 +317,15 @@ impl DAPAccess for DAPLink {
 
         if response.transfer_count == 1 {
             if response.transfer_response.protocol_error {
-                Err(DebugProbeError::USBError(None))
+                Err(DebugProbeError::USB(None))
             } else {
                 match response.transfer_response.ack {
                     Ack::Ok => Ok(()),
-                    _ => Err(DebugProbeError::UnknownError),
+                    _ => Err(DebugProbeError::Unknown),
                 }
             }
         } else {
-            Err(DebugProbeError::UnknownError)
+            Err(DebugProbeError::Unknown)
         }
     }
 
@@ -361,7 +361,7 @@ impl DAPAccess for DAPLink {
             debug!("Transfer block: chunk={}, len={} bytes", i, chunk.len() * 4);
 
             let resp: TransferBlockResponse = commands::send_command(&mut self.device, request)
-                .map_err(|_| DebugProbeError::UnknownError)?;
+                .map_err(|_| DebugProbeError::Unknown)?;
 
             assert_eq!(resp.transfer_response, 1);
         }
@@ -404,7 +404,7 @@ impl DAPAccess for DAPLink {
             debug!("Transfer block: chunk={}, len={} bytes", i, chunk.len() * 4);
 
             let resp: TransferBlockResponse = commands::send_command(&mut self.device, request)
-                .map_err(|_| DebugProbeError::UnknownError)?;
+                .map_err(|_| DebugProbeError::Unknown)?;
 
             assert_eq!(resp.transfer_response, 1);
 
