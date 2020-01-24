@@ -45,7 +45,7 @@ pub enum DebugProbeError {
     JTAGNotSupportedOnProbe,
     #[error("The firmware on the probe is outdated")]
     ProbeFirmwareOutdated,
-    #[error("Error specific to a probe type occured")]
+    #[error("Error specific to a probe type occured: {0}")]
     ProbeSpecific(#[source] Box<dyn Error + Send + Sync>),
     // TODO: Unknown errors are not very useful, this should be removed.
     #[error("An unknown error occured.")]
@@ -55,8 +55,10 @@ pub enum DebugProbeError {
     // TODO: This is core specific, so should probably be moved there.
     #[error("Operation timed out.")]
     Timeout,
-    #[error("Communication with access port failed: {0:?}")]
+    #[error("Communication with access port failed: {0}")]
     AccessPort(#[from] AccessPortError),
+    #[error("The requested speed setting ({0} kHz) is not supported by the probe.")]
+    UnsupportedSpeed(u32),
 }
 
 impl From<stlink::StlinkError> for DebugProbeError {
@@ -181,6 +183,16 @@ impl MasterProbe {
 
     pub fn target_reset(&mut self) -> Result<(), DebugProbeError> {
         self.actual_probe.target_reset()
+    }
+
+    /// Configure protocol speed to use in kHz
+    pub fn set_speed(&mut self, speed_khz: u32) -> Result<u32, DebugProbeError> {
+        self.actual_probe.set_speed(speed_khz)
+    }
+
+    /// Configured protocol speed in kHz
+    pub fn speed_khz(&self) -> u32 {
+        self.actual_probe.speed()
     }
 
     fn select_ap_and_ap_bank(&mut self, port: u8, ap_bank: u8) -> Result<(), DebugProbeError> {
@@ -510,6 +522,26 @@ pub trait DebugProbe: DAPAccess + Send + Sync {
     /// Get human readable name for the probe
     fn get_name(&self) -> &str;
 
+    /// Get the currently used maximum speed for the debug protocol in kHz.
+    ///
+    /// Not all probes report which speed is used, meaning this value is not
+    /// always the actual speed used. However, the speed should not be any
+    /// higher than this value.
+    fn speed(&self) -> u32;
+
+    /// Set the speed in kHz used for communication with the target device.
+    ///
+    /// The desired speed might not be supported by the probe. If the desired
+    /// speed is not directly supported, a lower speed will be selected if possible.
+    ///
+    /// If possible, the actual speed used is returned by the function. Some probes
+    /// cannot report this, so the value may be inaccurate.
+    ///
+    /// If the requested speed is not supported,
+    /// `DebugProbeError::UnsupportedSpeed` will be returned.
+    ///
+    fn set_speed(&mut self, speed: u32) -> Result<u32, DebugProbeError>;
+
     /// Enters debug mode
     fn attach(&mut self, protocol: Option<WireProtocol>) -> Result<WireProtocol, DebugProbeError>;
 
@@ -605,6 +637,12 @@ impl DebugProbe for FakeProbe {
     /// Resets the target device.
     fn target_reset(&mut self) -> Result<(), DebugProbeError> {
         Err(DebugProbeError::Unknown)
+    }
+    fn speed(&self) -> u32 {
+        unimplemented!()
+    }
+    fn set_speed(&mut self, _speed: u32) -> Result<u32, DebugProbeError> {
+        unimplemented!()
     }
 }
 

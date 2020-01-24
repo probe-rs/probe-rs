@@ -19,6 +19,7 @@ pub struct STLink {
     hw_version: u8,
     jtag_version: u8,
     protocol: WireProtocol,
+    speed: WireSpeed,
 }
 
 impl DebugProbe for STLink {
@@ -31,6 +32,7 @@ impl DebugProbe for STLink {
             hw_version: 0,
             jtag_version: 0,
             protocol: WireProtocol::Swd,
+            speed: WireSpeed::Swd(SwdFrequencyToDelayCount::Hz1800000),
         };
 
         stlink.init()?;
@@ -96,6 +98,43 @@ impl DebugProbe for STLink {
             TIMEOUT,
         )?;
         Self::check_status(&buf)
+    }
+    fn speed(&self) -> u32 {
+        match self.speed {
+            WireSpeed::Jtag(speed) => speed.to_khz(),
+            WireSpeed::Swd(speed) => speed.to_khz(),
+        }
+    }
+
+    fn set_speed(&mut self, speed: u32) -> Result<u32, DebugProbeError> {
+        match self.protocol {
+            WireProtocol::Swd => {
+                let actual_speed = SwdFrequencyToDelayCount::find_setting(speed);
+
+                if let Some(actual_speed) = actual_speed {
+                    self.set_swd_frequency(actual_speed)?;
+
+                    self.speed = WireSpeed::Swd(actual_speed);
+
+                    Ok(actual_speed.to_khz())
+                } else {
+                    Err(DebugProbeError::UnsupportedSpeed(speed))
+                }
+            }
+            WireProtocol::Jtag => {
+                let actual_speed = JTagFrequencyToDivider::find_setting(speed);
+
+                if let Some(actual_speed) = actual_speed {
+                    self.set_jtag_frequency(actual_speed)?;
+
+                    self.speed = WireSpeed::Jtag(actual_speed);
+
+                    Ok(actual_speed.to_khz())
+                } else {
+                    Err(DebugProbeError::UnsupportedSpeed(speed))
+                }
+            }
+        }
     }
 }
 
@@ -439,6 +478,11 @@ impl STLink {
             Ok(())
         }
     }
+}
+
+enum WireSpeed {
+    Jtag(JTagFrequencyToDivider),
+    Swd(SwdFrequencyToDelayCount),
 }
 
 #[derive(Error, Debug)]

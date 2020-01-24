@@ -40,6 +40,10 @@ struct Opt {
     #[structopt(name = "disable-progressbars", long = "disable-progressbars")]
     disable_progressbars: bool,
 
+    /// Speed setting for debug protocol, in kHz
+    #[structopt(name = "speed", long = "speed", short = "s")]
+    speed: Option<u32>,
+
     /// The number associated with the debug probe to use
     #[structopt(long = "probe-index")]
     n: Option<usize>,
@@ -193,6 +197,23 @@ fn main_try() -> Result<(), failure::Error> {
         args.remove(index);
     }
 
+    // Remove possible `--speed` argument as cargo build does not understand it.
+    if let Some(index) = args
+        .iter()
+        .position(|x| x.starts_with("--speed=") || x.starts_with("-s="))
+    {
+        args.remove(index);
+    }
+
+    // Remove possible `--speed` argument as cargo build does not understand it.
+    if let Some(index) = args
+        .iter()
+        .position(|x| x.starts_with("--speed") || x.starts_with("-s"))
+    {
+        args.remove(index);
+        args.remove(index);
+    }
+
     let status = Command::new("cargo")
         .arg("build")
         .args(args)
@@ -259,6 +280,22 @@ fn main_try() -> Result<(), failure::Error> {
     };
 
     let mut probe = MasterProbe::from_probe_info(&device)?;
+
+    if let Some(speed) = opt.speed {
+        let actual_speed = probe.set_speed(speed)?;
+
+        if actual_speed != speed {
+            log::warn!(
+                "Probe does not support configured speed of {} kHz, using {} kHz",
+                speed,
+                actual_speed
+            );
+        } else {
+            log::info!("Using configured speed of {} kHz", speed);
+        }
+    } else {
+        log::info!("Using default speed of {} kHz", probe.speed_khz());
+    }
 
     if opt.nrf_recover {
         match device.probe_type {

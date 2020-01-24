@@ -100,8 +100,8 @@ pub(crate) fn send_command<Req: Request, Res: Response>(
     // Read back resonse.
     // TODO: Error handling & real USB reading.
     let mut read_buffer = [0; BUFFER_LEN];
-    device.get_mut().unwrap().read(&mut read_buffer)?;
-    log::trace!("Receive buffer: {:02X?}", &read_buffer[..]);
+    let read_size = device.get_mut().unwrap().read(&mut read_buffer)?;
+    log::trace!("Receive buffer: {:02X?}", &read_buffer[..read_size]);
     if read_buffer[0] == *Req::CATEGORY {
         Res::from_bytes(&read_buffer, 1)
     } else {
