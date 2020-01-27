@@ -1,16 +1,29 @@
 pub(crate) mod daplink;
 pub(crate) mod stlink;
+pub(crate) mod jlink;
 
 use crate::architecture::arm::{ap::AccessPortError, DAPAccess, PortType};
 use crate::config::{RegistryError, TargetSelector};
 use crate::error::Error;
 use crate::{Memory, Session};
+use std::fmt;
 use thiserror::Error;
+use jlink::list_jlink_devices;
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 pub enum WireProtocol {
     Swd,
     Jtag,
+}
+
+impl fmt::Display for WireProtocol {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { 
+        match self {
+            WireProtocol::Swd => write!(f, "SWD"),
+            WireProtocol::Jtag => write!(f, "JTAG"),
+        }
+     }
+     
 }
 
 #[derive(Error, Debug)]
@@ -28,6 +41,8 @@ pub enum DebugProbeError {
     Unknown,
     #[error("Probe could not be created.")]
     ProbeCouldNotBeCreated,
+    #[error("Probe does not support protocol {0}.")]
+    UnsupportedProtocol(WireProtocol),
     // TODO: This is core specific, so should probably be moved there.
     #[error("Operation timed out.")]
     Timeout,
@@ -73,6 +88,8 @@ impl Probe {
         let mut list = daplink::tools::list_daplink_devices();
         list.extend(stlink::tools::list_stlink_devices());
 
+        list.extend(list_jlink_devices().expect("Failed to list J-Link devices."));
+
         list
     }
 
@@ -90,6 +107,13 @@ impl Probe {
             }
             DebugProbeType::STLink => {
                 let mut link = stlink::STLink::new_from_probe_info(info)?;
+
+                link.attach()?;
+
+                Probe::from_specific_probe(link)
+            }
+            DebugProbeType::JLink => {
+                let mut link = jlink::JLink::new_from_probe_info(info)?;
 
                 link.attach()?;
 
@@ -230,6 +254,7 @@ pub trait DebugProbe: Send + Sync {
 pub enum DebugProbeType {
     DAPLink,
     STLink,
+    JLink,
 }
 
 #[derive(Clone)]
