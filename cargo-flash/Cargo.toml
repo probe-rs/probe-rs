@@ -1,12 +1,12 @@
 [package]
 name = "cargo-flash"
 version = "0.4.0"
-authors = ["Noah Hüsser <yatekii@yatekii.ch>", "Dominik Boehi <dominik.boehi@gmail.ch>"]
+authors = ["Noah Hüsser <yatekii@yatekii.ch>", "Dominik Boehi <dominik.boehi@gmail.com>"]
 edition = "2018"
 description = "A utility to flash ARM cores with ELFs directly from within cargo."
 documentation = "https://docs.rs/cargo-flash/"
-homepage = "https://github.com/probe-rs/probe-rs"
-repository = "https://github.com/probe-rs/probe-rs"
+homepage = "https://github.com/probe-rs/cargo-flash"
+repository = "https://github.com/probe-rs/cargo-flash"
 readme = "README.md"
 categories = ["embedded", "hardware-support", "development-tools::debugging"]
 keywords = ["embedded"]
@@ -18,12 +18,6 @@ structopt = "0.3.2"
 cargo-project = "0.2.2"
 failure = "0.1.5"
 colored = "1.8.0"
-probe-rs = { path = "../probe-rs", version = "0.4.0" }
-gdb-server = { path = "../gdb-server", version = "0.4.0" }
+probe-rs = "0.4.0"
+gdb-server = "0.4.0"
 indicatif = "0.13.0"
-console = "0.9.1"
-gdb-protocol = { version = "0.1.0" }
-recap = "0.1.1"
-serde = "1.0.1"
-async-std = { version = "1.4.0", features = ["unstable"] }
-log = "0.4.0"
