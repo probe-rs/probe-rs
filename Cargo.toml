@@ -3,6 +3,5 @@ members = [
     "probe-rs",
     "probe-rs-t2rust",
     "cli",
-    "cargo-flash",
     "gdb-server",
 ]
