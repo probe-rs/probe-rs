@@ -11,6 +11,7 @@ use crate::{DebugProbeError, Session};
 
 use bitfield::bitfield;
 
+use crate::core::Architecture;
 use std::mem::size_of;
 
 #[derive(Clone)]
@@ -253,6 +254,10 @@ impl CoreInterface for M33 {
 
     fn hw_breakpoints_enabled(&self) -> bool {
         self.hw_breakpoints_enabled
+    }
+
+    fn architecture(&self) -> Architecture {
+        Architecture::ARM
     }
 }
 

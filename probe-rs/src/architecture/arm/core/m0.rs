@@ -1,6 +1,6 @@
 use crate::core::{
     BasicRegisterAddresses, Breakpoint, CoreInformation, CoreInterface, CoreRegister,
-    CoreRegisterAddress,
+    CoreRegisterAddress,Architecture,
 };
 use crate::error::Error;
 use crate::memory::Memory;
@@ -503,5 +503,9 @@ impl CoreInterface for M0 {
 
     fn hw_breakpoints_enabled(&self) -> bool {
         self.hw_breakpoints_enabled
+    }
+
+    fn architecture(&self) -> Architecture {
+        unimplemented!()
     }
 }

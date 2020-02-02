@@ -75,7 +75,7 @@ pub(crate) fn open_probe(index: Option<usize>) -> Result<Probe, CliError> {
         }
     };
 
-    let probe = Probe::from_probe_info(&device)?;
+    let probe = device.open()?;
 
     Ok(probe)
 }
