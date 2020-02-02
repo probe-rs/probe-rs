@@ -14,7 +14,7 @@ pub trait CoreRegister: Clone + From<u32> + Into<u32> + Sized + std::fmt::Debug 
 }
 
 #[derive(Debug, Copy, Clone)]
-pub struct CoreRegisterAddress(pub u8);
+pub struct CoreRegisterAddress(pub u16);
 
 impl From<CoreRegisterAddress> for u32 {
     fn from(value: CoreRegisterAddress) -> Self {
@@ -22,8 +22,8 @@ impl From<CoreRegisterAddress> for u32 {
     }
 }
 
-impl From<u8> for CoreRegisterAddress {
-    fn from(value: u8) -> Self {
+impl From<u16> for CoreRegisterAddress {
+    fn from(value: u16) -> Self {
         CoreRegisterAddress(value)
     }
 }
@@ -167,6 +167,8 @@ pub trait CoreInterface {
 
     fn memory(&self) -> Memory;
     fn hw_breakpoints_enabled(&self) -> bool;
+
+    fn architecture(&self) -> Architecture;
 }
 
 // dyn_clone::clone_trait_object!(CoreInterface);
@@ -467,4 +469,9 @@ impl BreakpointId {
 pub struct Breakpoint {
     address: u32,
     register_hw: usize,
+}
+
+pub enum Architecture {
+    ARM,
+    RISCV,
 }

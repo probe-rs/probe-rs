@@ -4,7 +4,7 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum Error {
-    #[error("An error with the usage of the probe occured")]
+    #[error("An error with the usage of the probe occured: {0}")]
     Probe(#[from] DebugProbeError),
     #[error("A core architecture specific error occured")]
     ArchitectureSpecific(#[from] Box<dyn std::error::Error + Send + Sync>),
