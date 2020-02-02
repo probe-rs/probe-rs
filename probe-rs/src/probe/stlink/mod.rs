@@ -115,6 +115,18 @@ impl DebugProbe for STLink {
     fn get_interface_dap_mut(&mut self) -> Option<&mut dyn DAPAccess> {
         Some(self as _)
     }
+
+    fn get_interface_jtag(
+        &self,
+    ) -> Option<&dyn crate::architecture::riscv::communication_interface::JTAGAccess> {
+        None
+    }
+
+    fn get_interface_jtag_mut(
+        &mut self,
+    ) -> Option<&mut dyn crate::architecture::riscv::communication_interface::JTAGAccess> {
+        None
+    }
 }
 
 impl DAPAccess for STLink {

@@ -7,6 +7,7 @@ use crate::DebugProbeError;
 use bitfield::bitfield;
 
 use super::{register, ARM_REGISTER_FILE};
+use crate::core::Architecture;
 use std::mem::size_of;
 
 bitfield! {
@@ -520,6 +521,10 @@ impl CoreInterface for M4 {
 
     fn hw_breakpoints_enabled(&self) -> bool {
         self.hw_breakpoints_enabled
+    }
+
+    fn architecture(&self) -> Architecture {
+        Architecture::ARM
     }
 }
 

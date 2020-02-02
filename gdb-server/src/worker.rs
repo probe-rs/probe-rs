@@ -78,7 +78,7 @@ pub async fn handler(
             core.wait_for_core_halted().unwrap();
 
             let value = core
-                .read_core_reg(u8::from_str_radix(&p.reg, 16).unwrap())
+                .read_core_reg(u16::from_str_radix(&p.reg, 16).unwrap())
                 .unwrap();
 
             format!(

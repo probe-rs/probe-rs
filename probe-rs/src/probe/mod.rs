@@ -1,14 +1,15 @@
 pub(crate) mod daplink;
-pub(crate) mod stlink;
 pub(crate) mod jlink;
+pub(crate) mod stlink;
 
 use crate::architecture::arm::{ap::AccessPortError, DAPAccess, PortType};
+use crate::architecture::riscv::communication_interface::JTAGAccess;
 use crate::config::{RegistryError, TargetSelector};
 use crate::error::Error;
 use crate::{Memory, Session};
+use jlink::list_jlink_devices;
 use std::fmt;
 use thiserror::Error;
-use jlink::list_jlink_devices;
 
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub enum WireProtocol {
@@ -17,13 +18,12 @@ pub enum WireProtocol {
 }
 
 impl fmt::Display for WireProtocol {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { 
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             WireProtocol::Swd => write!(f, "SWD"),
             WireProtocol::Jtag => write!(f, "JTAG"),
         }
-     }
-     
+    }
 }
 
 #[derive(Error, Debug)]
@@ -220,6 +220,14 @@ impl Probe {
     pub fn get_interface_dap_mut(&mut self) -> Option<&mut dyn DAPAccess> {
         self.inner.get_interface_dap_mut()
     }
+
+    pub fn get_interface_jtag(&self) -> Option<&dyn JTAGAccess> {
+        self.inner.get_interface_jtag()
+    }
+
+    pub fn get_interface_jtag_mut(&mut self) -> Option<&mut dyn JTAGAccess> {
+        self.inner.get_interface_jtag_mut()
+    }
 }
 
 pub trait DebugProbe: Send + Sync {
@@ -248,6 +256,10 @@ pub trait DebugProbe: Send + Sync {
     fn get_interface_dap(&self) -> Option<&dyn DAPAccess>;
 
     fn get_interface_dap_mut(&mut self) -> Option<&mut dyn DAPAccess>;
+
+    fn get_interface_jtag(&self) -> Option<&dyn JTAGAccess>;
+
+    fn get_interface_jtag_mut(&mut self) -> Option<&mut dyn JTAGAccess>;
 }
 
 #[derive(Debug, Clone)]
@@ -349,6 +361,14 @@ impl DebugProbe for FakeProbe {
     }
 
     fn get_interface_dap_mut(&mut self) -> Option<&mut dyn DAPAccess> {
+        None
+    }
+
+    fn get_interface_jtag(&self) -> Option<&dyn JTAGAccess> {
+        None
+    }
+
+    fn get_interface_jtag_mut(&mut self) -> Option<&mut dyn JTAGAccess> {
         None
     }
 }

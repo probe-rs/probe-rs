@@ -746,7 +746,7 @@ impl<'a> UnitInfo<'a> {
                     register,
                     base_type,
                 } => {
-                    let raw_value = core.read_core_reg(register.0 as u8)?;
+                    let raw_value = core.read_core_reg(register.0 as u16)?;
 
                     if base_type != gimli::UnitOffset(0) {
                         unimplemented!(
@@ -941,7 +941,7 @@ fn get_piece_value(core: &Core, p: &gimli::Piece<DwarfReader>) -> Option<u32> {
         Location::Value { value } => Some(value.to_u64(0xff_ff_ff_ff).unwrap() as u32),
         Location::Register { register } => {
             let val = core
-                .read_core_reg(register.0 as u8)
+                .read_core_reg(register.0 as u16)
                 .expect("Failed to read register from target");
             Some(val)
         }
