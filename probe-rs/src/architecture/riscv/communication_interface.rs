@@ -191,3 +191,18 @@ bitfield! {
     abits, _: 9,4;
     version, _: 3,0;
 }
+
+bitfield! {
+    /// Abstract command register, located at address 0x17
+    /// This is not for all commands, only for the ones
+    /// from the debug spec.
+    pub struct AccessRegisterCommand(u32);
+    impl Debug;
+    pub _, set_cmd_type: 31, 24;
+    pub _, set_aarsize: 22, 20;
+    pub _, set_aarpostincrement: 19;
+    pub _, set_postexec: 18;
+    pub _, set_transfer: 17;
+    pub _, set_write: 16;
+    pub _, set_regno: 15, 0;
+}
