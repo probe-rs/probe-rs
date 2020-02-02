@@ -10,7 +10,10 @@ use crate::probe::{
     DAPAccess, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeType, WireProtocol,
 };
 
+use crate::architecture::riscv::communication_interface::JTAGAccess;
 use bitfield::bitfield;
+use bitvec::bitvec;
+use bitvec::vec::BitVec;
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -23,6 +26,8 @@ pub(crate) struct JLink {
 
     /// Currently selected protocol
     protocol: Option<WireProtocol>,
+
+    current_ir_reg: u32,
 }
 
 impl JLink {
@@ -72,10 +77,9 @@ impl JLink {
         }
     }
 
-    fn read_dr(
-        &mut self,
-        register_bits: usize,
-    ) -> Result<Vec<u8>, DebugProbeError> {
+    fn read_dr(&mut self, register_bits: usize) -> Result<Vec<u8>, DebugProbeError> {
+        log::debug!("Read {} bits from DR", register_bits);
+
         let jlink = self.handle.get_mut().unwrap();
 
         let tms_enter_shift = [true, false, false];
@@ -91,9 +95,14 @@ impl JLink {
         tms.extend(tms_shift_out_value);
         tms.extend_from_slice(&tms_enter_idle);
 
-        let tdi = iter::repeat(false).take(tms.len());
+        let tdi = iter::repeat(false).take(tms.len() + self.jtag_idle_cycles.unwrap_or(0) as usize);
+
+        // We have to stay in the idle cycle a bit
+        tms.extend(iter::repeat(false).take(self.jtag_idle_cycles.unwrap_or(0) as usize));
 
         let mut response = jlink.jtag_io(tms, tdi)?;
+
+        log::trace!("Response: {:?}", response);
 
         let _remainder = response.split_off(tms_enter_shift.len());
 
@@ -112,7 +121,7 @@ impl JLink {
             result.push(bits_to_byte(response.split_off(remaining_bits)) as u8);
         }
 
-        log::trace!("result: {:?}", result);
+        log::debug!("Read from DR: {:?}", result);
 
         Ok(result)
     }
@@ -121,11 +130,8 @@ impl JLink {
     /// IR register might have an odd length, so the dta
     /// will be truncated to `len` bits. If data has less
     /// than `len` bits, an error will be returned.
-    fn write_ir(
-        &mut self,
-        data: &[u8],
-        len: usize,
-    ) -> Result<(), DebugProbeError> {
+    fn write_ir(&mut self, data: &[u8], len: usize) -> Result<(), DebugProbeError> {
+        log::debug!("Write IR: {:?}, len={}", data, len);
 
         // Check the bit length, enough data has to be
         // available
@@ -152,7 +158,6 @@ impl JLink {
         tms.extend_from_slice(&tms_enter_ir_shift);
         tms.extend(tms_data);
         tms.extend_from_slice(&tms_enter_idle);
-
 
         let skip_out = 4;
 
@@ -189,16 +194,109 @@ impl JLink {
             }
         }
 
-
         tdi.extend_from_slice(&tms_enter_idle);
 
-        let jlink = self.handle.get_mut().unwrap();
-        let _response = jlink.jtag_io(tms, tdi)?;
+        log::trace!("tms: {:?}", tms);
+        log::trace!("tdi: {:?}", tdi);
 
+        let jlink = self.handle.get_mut().unwrap();
+        let response = jlink.jtag_io(tms, tdi)?;
+
+        log::trace!("Response: {:?}", response);
+
+        assert!(
+            len < 8,
+            "Not yet implemented for IR registers larger than 8 bit"
+        );
+
+        self.current_ir_reg = data[0] as u32;
 
         // Maybe we could return the previous state of the IR register here...
 
         Ok(())
+    }
+
+    fn write_dr(&mut self, data: &[u8], register_bits: usize) -> Result<Vec<u8>, DebugProbeError> {
+        log::debug!("Write DR: {:?}, len={}", data, register_bits);
+
+        let jlink = self.handle.get_mut().unwrap();
+
+        let tms_enter_shift = [true, false, false];
+
+        // Last bit of data is shifted out when we exi the SHIFT-DR State
+        let tms_shift_out_value = iter::repeat(false).take(register_bits - 1);
+
+        let tms_enter_idle = [true, true, false];
+
+        let mut tms = Vec::with_capacity(register_bits + 7);
+
+        tms.extend_from_slice(&tms_enter_shift);
+        tms.extend(tms_shift_out_value);
+        tms.extend_from_slice(&tms_enter_idle);
+
+        let tdi_enter_shift = [false, false, false];
+
+        let tdi_enter_idle = [false, false];
+
+        // TODO: TDI data
+        let mut tdi =
+            Vec::with_capacity(tdi_enter_shift.len() + tdi_enter_idle.len() + register_bits);
+
+        tdi.extend_from_slice(&tdi_enter_shift);
+
+        let num_bytes = register_bits / 8;
+
+        let num_bits = register_bits - (num_bytes * 8);
+
+        for bytes in &data[..num_bytes] {
+            let mut byte = *bytes;
+
+            for _ in 0..8 {
+                tdi.push(byte & 1 == 1);
+
+                byte >>= 1;
+            }
+        }
+
+        if num_bits > 0 {
+            let mut remaining_byte = data[num_bytes];
+
+            for _ in 0..num_bits {
+                tdi.push(remaining_byte & 1 == 1);
+                remaining_byte >>= 1;
+            }
+        }
+
+        tdi.extend_from_slice(&tdi_enter_idle);
+
+        // We need to stay in the idle cycle a bit
+        tms.extend(iter::repeat(false).take(self.jtag_idle_cycles.unwrap_or(0) as usize));
+        tdi.extend(iter::repeat(false).take(self.jtag_idle_cycles.unwrap_or(0) as usize));
+
+        let mut response = jlink.jtag_io(tms, tdi)?;
+
+        log::trace!("Response: {:?}", response);
+
+        let _remainder = response.split_off(tms_enter_shift.len());
+
+        let mut remaining_bits = register_bits;
+
+        let mut result = Vec::new();
+
+        while remaining_bits >= 8 {
+            let byte = bits_to_byte(response.split_off(8)) as u8;
+            result.push(byte);
+            remaining_bits -= 8;
+        }
+
+        // Handle leftover bytes
+        if remaining_bits > 0 {
+            result.push(bits_to_byte(response.split_off(remaining_bits)) as u8);
+        }
+
+        log::trace!("result: {:?}", result);
+
+        Ok(result)
     }
 }
 
@@ -231,6 +329,7 @@ impl DebugProbe for JLink {
             handle: Mutex::new(usb_devices.pop().unwrap().open()?),
             jtag_idle_cycles: None,
             protocol: None,
+            current_ir_reg: 1,
         }))
     }
 
@@ -252,9 +351,7 @@ impl DebugProbe for JLink {
         "J-Link"
     }
 
-    fn attach(
-        &mut self,
-    ) -> Result<(), super::DebugProbeError> {
+    fn attach(&mut self) -> Result<(), super::DebugProbeError> {
         // todo: check selected protocols
 
         self.select_protocol(self.protocol.unwrap_or(WireProtocol::Jtag))?;
@@ -314,11 +411,71 @@ impl DebugProbe for JLink {
     fn target_reset(&mut self) -> Result<(), super::DebugProbeError> {
         unimplemented!()
     }
-    fn dedicated_memory_interface(&self) -> Option<crate::Memory> { unimplemented!() }
 
-    fn get_interface_dap(&self) -> Option<&dyn DAPAccess> { unimplemented!() }
+    fn dedicated_memory_interface(&self) -> Option<crate::Memory> {
+        None
+    }
 
-    fn get_interface_dap_mut(&mut self) -> Option<&mut dyn DAPAccess> { unimplemented!() }
+    fn get_interface_dap(&self) -> Option<&dyn DAPAccess> {
+        None
+    }
+
+    fn get_interface_dap_mut(&mut self) -> Option<&mut dyn DAPAccess> {
+        None
+    }
+
+    fn get_interface_jtag(&self) -> Option<&dyn JTAGAccess> {
+        Some(self as _)
+    }
+
+    fn get_interface_jtag_mut(&mut self) -> Option<&mut dyn JTAGAccess> {
+        Some(self as _)
+    }
+}
+
+impl JTAGAccess for JLink {
+    /// Read the data register
+    fn read_register(&mut self, address: u32, len: u32) -> Result<Vec<u8>, DebugProbeError> {
+        let address_bits = address.to_le_bytes();
+
+        // TODO: This is limited to 5 bit addresses for now
+        assert!(
+            address <= 0x1f,
+            "JTAG Register addresses are fixed to 5 bits"
+        );
+
+        if self.current_ir_reg != address {
+            // Write IR register
+            self.write_ir(&address_bits[..1], 5)?;
+        }
+
+        // read DR register
+        self.read_dr(len as usize)
+    }
+
+    /// Write the data register
+    fn write_register(
+        &mut self,
+        address: u32,
+        data: &[u8],
+        len: u32,
+    ) -> Result<Vec<u8>, DebugProbeError> {
+        let address_bits = address.to_le_bytes();
+
+        // TODO: This is limited to 5 bit addresses for now
+        assert!(
+            address <= 0x1f,
+            "JTAG Register addresses are fixed to 5 bits"
+        );
+
+        if self.current_ir_reg != address {
+            // Write IR register
+            self.write_ir(&address_bits[..1], 5)?;
+        }
+
+        // read DR register
+        self.write_dr(data, len as usize)
+    }
 }
 
 fn bits_to_byte(bits: jaylink::BitIter) -> u32 {

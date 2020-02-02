@@ -8,7 +8,7 @@ use probe_rs::architecture::arm::ArmCommunicationInterface;
 use probe_rs::Memory;
 
 pub(crate) fn show_info_of_device(shared_options: &SharedOptions) -> Result<(), CliError> {
-    let probe = open_probe(shared_options.n)?;
+    let mut probe = open_probe(shared_options.n)?;
 
     /*
         The following code only works with debug port v2,

@@ -13,6 +13,7 @@ use crate::architecture::arm::core::register;
 use bitfield::bitfield;
 
 use super::ARM_REGISTER_FILE;
+use crate::core::Architecture;
 use std::mem::size_of;
 
 pub struct M33 {
@@ -250,6 +251,10 @@ impl CoreInterface for M33 {
 
     fn hw_breakpoints_enabled(&self) -> bool {
         self.hw_breakpoints_enabled
+    }
+
+    fn architecture(&self) -> Architecture {
+        Architecture::ARM
     }
 }
 
