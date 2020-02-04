@@ -2,7 +2,6 @@ use crate::SharedOptions;
 
 use probe_rs::{
     architecture::arm::ap::AccessPortError,
-    architecture::arm::m0::FakeM0,
     config::registry::{Registry, RegistryError, SelectionStrategy},
     flash::download::FileDownloadError,
     Core, DebugProbeError, Error, Probe, Session,
@@ -117,33 +116,4 @@ where
     let session = probe.attach(target, None)?;
 
     f(session)
-}
-
-pub(crate) fn with_dump<F>(shared_options: &SharedOptions, p: &Path, f: F) -> Result<(), CliError>
-where
-    for<'a> F: FnOnce(Session, Option<Core>) -> Result<(), CliError>,
-{
-    let mut dump_file = File::open(p)?;
-
-    let dump = ron::de::from_reader(&mut dump_file).unwrap();
-
-    let mut probe = Probe::new_dummy();
-
-    let strategy = if let Some(identifier) = &shared_options.target {
-        SelectionStrategy::TargetIdentifier(identifier.into())
-    } else {
-        unimplemented!();
-    };
-
-    let registry = Registry::from_builtin_families();
-
-    let target = registry.get_target(strategy)?;
-
-    // TODO: fix this
-    // target.core = Box::new(core);
-
-    let session = probe.attach(target, None)?;
-    let core = session.attach_to_specific_core(FakeM0::new(dump))?;
-
-    f(session, Some(core))
 }

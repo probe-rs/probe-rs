@@ -143,7 +143,7 @@ impl DebugCli {
             help_text: "Show backtrace",
 
             function: |cli_data, _args| {
-                let regs = cli_data.session.target.core.registers();
+                let regs = cli_data.session.attach_to_core(0)?.registers();
                 let program_counter = cli_data.get_core(0)?.read_core_reg(regs.PC)?;
 
                 if let Some(di) = &cli_data.debug_info {
@@ -191,7 +191,7 @@ impl DebugCli {
 
                 let stack_top: u32 = 0x2000_0000 + 0x4_000;
 
-                let regs = cli_data.session.target.core.registers();
+                let regs = cli_data.session.attach_to_core(0)?.registers();
 
                 let stack_bot: u32 = cli_data.get_core(0)?.read_core_reg(regs.SP)?;
                 let pc: u32 = cli_data.get_core(0)?.read_core_reg(regs.PC)?;

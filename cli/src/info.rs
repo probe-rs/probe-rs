@@ -39,8 +39,7 @@ pub(crate) fn show_info_of_device(shared_options: &SharedOptions) -> Result<(), 
     // TODO: Move to proper place somewhere in init code
     //
 
-    probe.get_debug_probe().get_interface_dap();
-    let mut interface = ArmCommunicationInterface::new(probe.clone());
+    let mut interface = ArmCommunicationInterface::new(probe);
     let target_info = interface.read_register_dp(0x0)?;
     println!("DP info: {:#08x}", target_info);
 
@@ -64,7 +63,7 @@ pub(crate) fn show_info_of_device(shared_options: &SharedOptions) -> Result<(), 
             baseaddr |= u64::from(base_register.BASEADDR << 12);
 
             let memory = Memory::new(ADIMemoryInterface::<ArmCommunicationInterface>::new(
-                probe.clone(),
+                interface.clone(),
                 0,
             ));
             let component_table = CSComponent::try_parse(memory, baseaddr as u64);
