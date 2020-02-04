@@ -2,7 +2,7 @@ mod common;
 mod debugger;
 mod info;
 
-use common::{with_device, with_dump, CliError};
+use common::{with_device, CliError};
 use debugger::CliState;
 
 use probe_rs::{
@@ -54,10 +54,6 @@ enum CLI {
     Debug {
         #[structopt(flatten)]
         shared: SharedOptions,
-
-        #[structopt(long, parse(from_os_str))]
-        /// Dump file to debug
-        dump: Option<PathBuf>,
 
         #[structopt(long, parse(from_os_str))]
         /// Binary to debug
@@ -117,7 +113,7 @@ fn main() {
         CLI::List {} => list_connected_devices(),
         CLI::Info { shared } => crate::info::show_info_of_device(&shared),
         CLI::Reset { shared, assert } => reset_target_of_device(&shared, assert),
-        CLI::Debug { shared, exe, dump } => debug(&shared, exe, dump),
+        CLI::Debug { shared, exe } => debug(&shared, exe),
         CLI::Dump { shared, loc, words } => dump_memory(&shared, loc, words),
         CLI::Download { shared, path } => download_program_fast(&shared, &path),
         CLI::Trace { shared, loc } => trace_u32_on_target(&shared, loc),
@@ -180,7 +176,7 @@ fn download_program_fast(shared_options: &SharedOptions, path: &str) -> Result<(
         // Start timer.
         // let instant = Instant::now();
 
-        let mm = session.target.memory_map.clone();
+        let mm = session.memory_map().clone();
         download_file(session, std::path::Path::new(&path), Format::Elf, &mm)?;
 
         Ok(())
@@ -192,7 +188,7 @@ fn reset_target_of_device(
     _assert: Option<bool>,
 ) -> Result<(), CliError> {
     with_device(shared_options, |mut session| {
-        session.probe.target_reset()?;
+        session.attach_to_core(0)?.reset()?;
 
         Ok(())
     })
@@ -244,7 +240,6 @@ fn trace_u32_on_target(shared_options: &SharedOptions, loc: u32) -> Result<(), C
 fn debug(
     shared_options: &SharedOptions,
     exe: Option<PathBuf>,
-    dump: Option<PathBuf>,
 ) -> Result<(), CliError> {
     // try to load debug information
     let debug_data = exe
@@ -302,8 +297,5 @@ fn debug(
         }
     };
 
-    match dump {
-        None => with_device(shared_options, |session| runner(session, None)),
-        Some(p) => with_dump(shared_options, &p, &runner),
-    }
+    with_device(shared_options, |session| runner(session, None))
 }

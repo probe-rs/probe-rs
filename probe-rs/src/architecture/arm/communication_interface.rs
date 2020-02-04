@@ -89,6 +89,14 @@ impl ArmCommunicationInterface {
     pub fn dedicated_memory_interface(&self) -> Option<Memory> {
         self.inner.borrow().probe.dedicated_memory_interface()
     }
+
+    pub fn read_register_dp(&mut self, offset: u16) -> Result<u32, DebugProbeError> {
+        self.inner.borrow_mut().read_register_dp(offset)
+    }
+
+    pub fn write_register_dp(&mut self, offset: u16, val: u32) -> Result<(), DebugProbeError> {
+        self.inner.borrow_mut().write_register_dp(offset, val)
+    }
 }
 
 struct InnerArmCommunicationInterface {
