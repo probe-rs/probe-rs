@@ -7,7 +7,7 @@ use std::rc::Rc;
 
 use crate::error;
 use crate::memory::Memory;
-use crate::probe::{DebugProbeError, Probe};
+use crate::probe::DebugProbeError;
 use crate::Session;
 use std::collections::HashMap;
 

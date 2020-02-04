@@ -1,11 +1,11 @@
 pub mod commands;
 pub mod tools;
 
-use crate::{Memory, DebugProbeError, DebugProbe, DebugProbeInfo, WireProtocol};
-use crate::architecture::arm::dp::{DPRegister, DPAccess, DebugPort};
-use crate::architecture::arm::PortType;
+use crate::architecture::arm::dp::{DPAccess, DPRegister, DebugPort};
 use crate::architecture::arm::DAPAccess;
+use crate::architecture::arm::PortType;
 use crate::probe::daplink::commands::Error;
+use crate::{DebugProbe, DebugProbeError, DebugProbeInfo, Memory, WireProtocol};
 use commands::{
     general::{
         connect::{ConnectRequest, ConnectResponse},
@@ -26,8 +26,6 @@ use commands::{
     Status,
 };
 use log::{debug, error, info};
-use std::cell::RefCell;
-use std::rc::Rc;
 
 use std::sync::Mutex;
 
@@ -308,10 +306,18 @@ impl DAPAccess for DAPLink {
     }
 
     /// Writes a value to the DAP register on the specified port and address.
-    fn write_register(&mut self, port: PortType, addr: u16, value: u32) -> Result<(), DebugProbeError> {
+    fn write_register(
+        &mut self,
+        port: PortType,
+        addr: u16,
+        value: u32,
+    ) -> Result<(), DebugProbeError> {
         let response = commands::send_command::<TransferRequest, TransferResponse>(
             &mut self.device,
-            TransferRequest::new(InnerTransferRequest::new(port.into(), RW::W, addr as u8), value),
+            TransferRequest::new(
+                InnerTransferRequest::new(port.into(), RW::W, addr as u8),
+                value,
+            ),
         )?;
 
         if response.transfer_count == 1 {

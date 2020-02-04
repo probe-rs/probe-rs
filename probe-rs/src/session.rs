@@ -1,9 +1,9 @@
-use crate::architecture::arm::{memory::ADIMemoryInterface, ArmCommunicationInterface, DAPAccess};
-use crate::config::target::Target;
-use crate::config::memory::MemoryRegion;
-use crate::core::CoreType;
+use crate::architecture::arm::{memory::ADIMemoryInterface, ArmCommunicationInterface};
 use crate::config::flash_algorithm::RawFlashAlgorithm;
-use crate::{Core, CoreInterface, CoreList, Error, Memory, MemoryList, Probe};
+use crate::config::memory::MemoryRegion;
+use crate::config::target::Target;
+use crate::core::CoreType;
+use crate::{Core, CoreList, Error, Memory, MemoryList, Probe};
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -24,18 +24,15 @@ enum ArchitectureSession {
 impl Session {
     /// Open a new session with a given debug target
     pub fn new(probe: Probe, target: Target) -> Self {
-
         // TODO: Handle different architectures
 
         let session = ArchitectureSession::Arm(ArmCommunicationInterface::new(probe));
 
         Self {
-            inner: Rc::new(RefCell::new(
-                InnerSession {
-                    target,
-                    architecture_session: session,
-                }
-            )),
+            inner: Rc::new(RefCell::new(InnerSession {
+                target,
+                architecture_session: session,
+            })),
         }
     }
 
@@ -44,7 +41,8 @@ impl Session {
     }
 
     pub fn attach_to_core(&self, n: usize) -> Result<Core, Error> {
-        let core = self.list_cores()
+        let core = self
+            .list_cores()
             .get(n)
             .ok_or_else(|| Error::CoreNotFound(n))?
             .attach(self.clone(), self.attach_to_memory(0)?);
@@ -56,8 +54,13 @@ impl Session {
         Ok(core)
     }
 
-    pub fn attach_to_core_with_specific_memory(&self, n: usize, memory: Option<Memory>) -> Result<Core, Error> {
-        let core = self.list_cores()
+    pub fn attach_to_core_with_specific_memory(
+        &self,
+        n: usize,
+        memory: Option<Memory>,
+    ) -> Result<Core, Error> {
+        let core = self
+            .list_cores()
             .get(n)
             .ok_or_else(|| Error::CoreNotFound(n))?
             .attach(
@@ -80,13 +83,11 @@ impl Session {
                 if let Some(memory) = interface.dedicated_memory_interface() {
                     Ok(memory)
                 } else {
-
                     // TODO: Change this to actually grab the proper memory IF.
                     // For now always use the ARM IF.
-                    Ok(Memory::new(ADIMemoryInterface::<ArmCommunicationInterface>::new(
-                        interface.clone(),
-                        0,
-                    )))
+                    Ok(Memory::new(
+                        ADIMemoryInterface::<ArmCommunicationInterface>::new(interface.clone(), 0),
+                    ))
                 }
             }
         }
@@ -100,10 +101,9 @@ impl Session {
                 } else {
                     // TODO: Change this to actually grab the proper memory IF.
                     // For now always use the ARM IF.
-                    Ok(Memory::new(ADIMemoryInterface::<ArmCommunicationInterface>::new(
-                        interface.clone(),
-                        0,
-                    )))
+                    Ok(Memory::new(
+                        ADIMemoryInterface::<ArmCommunicationInterface>::new(interface.clone(), 0),
+                    ))
                 }
             }
         }
@@ -121,8 +121,6 @@ impl Session {
 // pub struct Session {
 //     probe: Probe,
 // }
-
-
 
 // pub trait Session {
 //     fn get_core(n: usize) -> Result<Core, Error>;

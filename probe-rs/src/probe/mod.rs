@@ -1,9 +1,6 @@
 pub(crate) mod daplink;
 pub(crate) mod stlink;
 
-use std::cell::{Ref, RefCell, RefMut};
-use std::rc::Rc;
-
 use crate::architecture::arm::{ap::AccessPortError, DAPAccess, PortType};
 use crate::config::target::Target;
 use crate::{Memory, Session};
@@ -193,7 +190,6 @@ impl Probe {
         self.inner.dedicated_memory_interface()
     }
 
-    
     pub fn get_interface_dap(&self) -> Option<&dyn DAPAccess> {
         self.inner.get_interface_dap()
     }

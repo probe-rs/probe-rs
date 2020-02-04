@@ -131,7 +131,8 @@ impl<'a, 'b> FlashLoader<'a, 'b> {
             }
 
             let algorithms: Vec<_> = session.flash_algorithms();
-            let algorithms = algorithms.iter()
+            let algorithms = algorithms
+                .iter()
                 .filter(|fa| {
                     fa.flash_properties
                         .address_range
@@ -153,7 +154,8 @@ impl<'a, 'b> FlashLoader<'a, 'b> {
             };
 
             let mm = session.memory_map();
-            let ram = mm.iter()
+            let ram = mm
+                .iter()
                 .find(|mm| match mm {
                     MemoryRegion::Ram(_) => true,
                     _ => false,

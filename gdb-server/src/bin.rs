@@ -74,7 +74,7 @@ fn main_try() -> Result<(), failure::Error> {
     // Get commandline options.
     let opt = Opt::from_iter(std::env::args());
 
-    let mut probe = open_probe(None)?;
+    let probe = open_probe(None)?;
 
     let strategy = if let Some(identifier) = opt.chip.clone() {
         SelectionStrategy::TargetIdentifier(identifier.into())

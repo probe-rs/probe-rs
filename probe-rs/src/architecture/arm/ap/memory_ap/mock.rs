@@ -1,7 +1,7 @@
 use super::super::{APAccess, Register};
 use super::{APRegister, AddressIncrement, DataSize, MemoryAP, CSW, DRW, TAR};
 use crate::config::chip_info::ChipInfo;
-use crate::{CommunicationInterface, Error, Probe};
+use crate::{CommunicationInterface, Error};
 use std::collections::HashMap;
 use thiserror::Error;
 
@@ -46,11 +46,7 @@ where
     /// Mocks the read_register method of a AP.
     ///
     /// Returns an Error if any bad instructions or values are chosen.
-    fn read_ap_register(
-        &mut self,
-        _port: MemoryAP,
-        _register: R,
-    ) -> Result<R, Self::Error> {
+    fn read_ap_register(&mut self, _port: MemoryAP, _register: R) -> Result<R, Self::Error> {
         let csw = self.store[&(CSW::ADDRESS, CSW::APBANKSEL)];
         let address = self.store[&(TAR::ADDRESS, TAR::APBANKSEL)];
 
@@ -95,12 +91,8 @@ where
 
                 data
             }
-            (CSW::ADDRESS, CSW::APBANKSEL) => Ok(R::from(
-                self.store[&(R::ADDRESS, R::APBANKSEL)],
-            )),
-            (TAR::ADDRESS, TAR::APBANKSEL) => Ok(R::from(
-                self.store[&(R::ADDRESS, R::APBANKSEL)],
-            )),
+            (CSW::ADDRESS, CSW::APBANKSEL) => Ok(R::from(self.store[&(R::ADDRESS, R::APBANKSEL)])),
+            (TAR::ADDRESS, TAR::APBANKSEL) => Ok(R::from(self.store[&(R::ADDRESS, R::APBANKSEL)])),
             _ => Err(MockMemoryError::UnknownRegister),
         }
     }
@@ -108,14 +100,9 @@ where
     /// Mocks the write_register method of a AP.
     ///
     /// Returns an Error if any bad instructions or values are chosen.
-    fn write_ap_register(
-        &mut self,
-        _port: MemoryAP,
-        register: R,
-    ) -> Result<(), Self::Error> {
+    fn write_ap_register(&mut self, _port: MemoryAP, register: R) -> Result<(), Self::Error> {
         let value = register.into();
-        self.store
-            .insert((R::ADDRESS, R::APBANKSEL), value);
+        self.store.insert((R::ADDRESS, R::APBANKSEL), value);
         let csw = self.store[&(CSW::ADDRESS, CSW::APBANKSEL)];
         let address = self.store[&(TAR::ADDRESS, TAR::APBANKSEL)];
         match (R::ADDRESS, R::APBANKSEL) {

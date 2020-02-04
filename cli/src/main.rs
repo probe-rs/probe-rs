@@ -187,7 +187,7 @@ fn reset_target_of_device(
     shared_options: &SharedOptions,
     _assert: Option<bool>,
 ) -> Result<(), CliError> {
-    with_device(shared_options, |mut session| {
+    with_device(shared_options, |session| {
         session.attach_to_core(0)?.reset()?;
 
         Ok(())
@@ -237,10 +237,7 @@ fn trace_u32_on_target(shared_options: &SharedOptions, loc: u32) -> Result<(), C
     })
 }
 
-fn debug(
-    shared_options: &SharedOptions,
-    exe: Option<PathBuf>,
-) -> Result<(), CliError> {
+fn debug(shared_options: &SharedOptions, exe: Option<PathBuf>) -> Result<(), CliError> {
     // try to load debug information
     let debug_data = exe
         .and_then(|p| fs::File::open(&p).ok())

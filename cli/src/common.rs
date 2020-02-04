@@ -4,13 +4,10 @@ use probe_rs::{
     architecture::arm::ap::AccessPortError,
     config::registry::{Registry, RegistryError, SelectionStrategy},
     flash::download::FileDownloadError,
-    Core, DebugProbeError, Error, Probe, Session,
+    DebugProbeError, Error, Probe, Session,
 };
 
-use ron;
 use std::fmt;
-use std::fs::File;
-use std::path::Path;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -98,7 +95,7 @@ pub(crate) fn with_device<F>(shared_options: &SharedOptions, f: F) -> Result<(),
 where
     for<'a> F: FnOnce(Session) -> Result<(), CliError>,
 {
-    let mut probe = open_probe(shared_options.n)?;
+    let probe = open_probe(shared_options.n)?;
 
     let strategy = if let Some(identifier) = &shared_options.target {
         SelectionStrategy::TargetIdentifier(identifier.into())

@@ -1,13 +1,8 @@
+use crate::error;
 use std::cell::{Ref, RefCell, RefMut};
 use std::rc::Rc;
 
-use crate::core::communication_interface::CommunicationInterface;
-use crate::error;
-use crate::probe::Probe;
-
 pub trait MemoryInterface {
-    fn communication_interface(&self) -> &dyn CommunicationInterface;
-
     /// Read a 32bit word of at `addr`.
     ///
     /// The address where the read should be performed at has to be word aligned.
@@ -65,10 +60,6 @@ impl<T> MemoryInterface for &mut T
 where
     T: MemoryInterface,
 {
-    fn communication_interface(&self) -> &dyn CommunicationInterface {
-        (*self).communication_interface()
-    }
-
     fn read32(&mut self, address: u32) -> Result<u32, error::Error> {
         (*self).read32(address)
     }
@@ -105,9 +96,6 @@ where
 pub struct MemoryDummy;
 
 impl MemoryInterface for MemoryDummy {
-    fn communication_interface(&self) -> &dyn CommunicationInterface {
-        unimplemented!()
-    }
     fn read32(&mut self, _address: u32) -> Result<u32, error::Error> {
         unimplemented!()
     }

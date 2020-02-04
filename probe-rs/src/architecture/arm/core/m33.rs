@@ -7,7 +7,7 @@ use crate::core::{
 };
 use crate::error::Error;
 use crate::memory::Memory;
-use crate::{Session, DebugProbeError};
+use crate::{DebugProbeError, Session};
 
 use bitfield::bitfield;
 
