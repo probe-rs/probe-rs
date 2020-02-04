@@ -2,7 +2,8 @@ pub(crate) mod daplink;
 pub(crate) mod stlink;
 
 use crate::architecture::arm::{ap::AccessPortError, DAPAccess, PortType};
-use crate::config::target::Target;
+use crate::config::target::{Target, TargetSpecification};
+use crate::config::registry::{Registry, SelectionStrategy, TargetIdentifier, RegistryError};
 use crate::{Memory, Session};
 use std::error::Error;
 use thiserror::Error;
@@ -35,6 +36,8 @@ pub enum DebugProbeError {
     AccessPort(#[from] AccessPortError),
     #[error("The connected probe does not support the interface '{0}'")]
     InterfaceNotAvailable(&'static str),
+    #[error("An error occured while working with the registry occured: {0}")]
+    Registry(#[from] RegistryError),
 }
 
 /// The Probe struct is a generic wrapper over the different
@@ -45,10 +48,10 @@ pub enum DebugProbeError {
 /// ## Open the first probe found
 ///
 /// The `list_all` and `from_probe_info` functions can be used
-/// to create a new `Probe`::
+/// to create a new `Probe`:
 ///
 /// ```no_run
-/// use probe_rs::probe::Probe;
+/// use probe_rs::Probe;
 ///
 /// let probe_list = Probe::list_all();
 /// let probe = Probe::from_probe_info(&probe_list[0]);
@@ -62,10 +65,6 @@ impl Probe {
         Self {
             inner: Box::new(probe),
         }
-    }
-
-    pub fn new_dummy() -> Self {
-        Self::new(FakeProbe::default())
     }
 
     /// Get a list of all debug probes found.
@@ -86,14 +85,14 @@ impl Probe {
             DebugProbeType::DAPLink => {
                 let mut dap_link = daplink::DAPLink::new_from_probe_info(info)?;
 
-                dap_link.attach(Some(WireProtocol::Swd))?;
+                dap_link.attach()?;
 
                 Probe::from_specific_probe(dap_link)
             }
             DebugProbeType::STLink => {
                 let mut link = stlink::STLink::new_from_probe_info(info)?;
 
-                link.attach(Some(WireProtocol::Swd))?;
+                link.attach()?;
 
                 Probe::from_specific_probe(link)
             }
@@ -103,7 +102,9 @@ impl Probe {
     }
 
     pub fn from_specific_probe(probe: Box<dyn DebugProbe>) -> Self {
-        Probe { inner: probe }
+        Probe {
+            inner: probe,
+        }
     }
 
     // /// Tries to mass erase a locked nRF52 chip, this process may timeout, if it does, the chip
@@ -167,12 +168,27 @@ impl Probe {
     /// Enters debug mode
     pub fn attach(
         mut self,
-        target: Target,
-        protocol: Option<WireProtocol>,
+        target: impl Into<TargetSpecification>,
     ) -> Result<Session, DebugProbeError> {
-        self.inner.attach(protocol)?;
+        let target = match target.into() {
+            TargetSpecification::Unspecified(name) => {
+                let registry = Registry::from_builtin_families();
+                registry.get_target(SelectionStrategy::TargetIdentifier(TargetIdentifier {
+                    chip_name: name,
+                    flash_algorithm_name: None,
+                }))?
+            },
+            TargetSpecification::Specified(target) => target,
+        };
+
+        self.inner.attach()?;
 
         Ok(Session::new(self, target))
+    }
+
+    /// Selects the transport protocol to be used by the debug probe.
+    pub fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError> {
+        self.inner.select_protocol(protocol)
     }
 
     /// Leave debug mode
@@ -208,13 +224,16 @@ pub trait DebugProbe: Send + Sync {
     fn get_name(&self) -> &str;
 
     /// Enters debug mode
-    fn attach(&mut self, protocol: Option<WireProtocol>) -> Result<WireProtocol, DebugProbeError>;
+    fn attach(&mut self) -> Result<(), DebugProbeError>;
 
     /// Leave debug mode
     fn detach(&mut self) -> Result<(), DebugProbeError>;
 
     /// Resets the target device.
     fn target_reset(&mut self) -> Result<(), DebugProbeError>;
+
+    /// Selects the transport protocol to be used by the debug probe.
+    fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError>;
 
     /// Returns a probe specific memory interface if any is present for given probe.
     fn dedicated_memory_interface(&self) -> Option<Memory>;
@@ -256,6 +275,7 @@ impl std::fmt::Debug for DebugProbeInfo {
 }
 
 impl DebugProbeInfo {
+    /// Creates a new info struct that uniquely identifies a probe.
     pub fn new<S: Into<String>>(
         identifier: S,
         vendor_id: u16,
@@ -270,6 +290,11 @@ impl DebugProbeInfo {
             serial_number,
             probe_type,
         }
+    }
+
+    /// Open the probe described by this `DebugProbeInfo`.
+    pub fn open(&self) -> Result<Probe, DebugProbeError> {
+        Probe::from_probe_info(&self)
     }
 }
 
@@ -289,10 +314,12 @@ impl DebugProbe for FakeProbe {
         "Mock probe for testing"
     }
 
-    /// Enters debug mode
-    fn attach(&mut self, protocol: Option<WireProtocol>) -> Result<WireProtocol, DebugProbeError> {
-        // attaching always work for the fake probe
-        Ok(protocol.unwrap_or(WireProtocol::Swd))
+    fn attach(&mut self) -> Result<(), DebugProbeError> {
+        unimplemented!()
+    }
+
+    fn select_protocol(&mut self, _protocol: WireProtocol) -> Result<(), DebugProbeError> {
+        unimplemented!()
     }
 
     /// Leave debug mode

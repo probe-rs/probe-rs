@@ -1,6 +1,6 @@
 use probe_rs::{
     config::registry::{Registry, SelectionStrategy},
-    Probe,
+    Probe, WireProtocol,
 };
 
 use std::num::ParseIntError;
@@ -50,8 +50,9 @@ fn main() -> Result<(), &'static str> {
         .get_target(strategy)
         .map_err(|_| "Failed to find target")?;
 
+    probe.select_protocol(WireProtocol::Swd).map_err(|_| "Failed to select SWD as the transport protocol")?;
     let session = probe
-        .attach(target, None)
+        .attach(target)
         .map_err(|_| "Failed to attach probe to target")?;
     let core = session
         .attach_to_core(0)

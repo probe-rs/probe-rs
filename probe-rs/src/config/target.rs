@@ -50,3 +50,20 @@ impl Target {
         }
     }
 }
+
+pub enum TargetSpecification {
+    Unspecified(String),
+    Specified(Target),
+}
+
+impl<I: Into<String>> From<I> for TargetSpecification {
+    fn from(value: I) -> Self {
+        TargetSpecification::Unspecified(value.into())
+    }
+}
+
+impl From<Target> for TargetSpecification {
+    fn from(target: Target) -> Self {
+        TargetSpecification::Specified(target)
+    }
+}

@@ -33,7 +33,7 @@ pub struct DAPLink {
     pub device: Mutex<hidapi::HidDevice>,
     _hw_version: u8,
     _jtag_version: u8,
-    _protocol: WireProtocol,
+    protocol: Option<WireProtocol>,
 
     packet_size: Option<u16>,
     packet_count: Option<u8>,
@@ -45,7 +45,7 @@ impl DAPLink {
             device: Mutex::new(device),
             _hw_version: 0,
             _jtag_version: 0,
-            _protocol: WireProtocol::Swd,
+            protocol: None,
             packet_count: None,
             packet_size: None,
         }
@@ -146,7 +146,7 @@ impl DebugProbe for DAPLink {
     }
 
     /// Enters debug mode.
-    fn attach(&mut self, protocol: Option<WireProtocol>) -> Result<WireProtocol, DebugProbeError> {
+    fn attach(&mut self) -> Result<(), DebugProbeError> {
         // get information about the daplink
         let PacketCount(packet_count) =
             commands::send_command(&mut self.device, Command::PacketCount)?;
@@ -161,7 +161,7 @@ impl DebugProbe for DAPLink {
         info!("Attaching to target system (clock = {})", clock);
         self.set_swj_clock(clock)?;
 
-        let protocol = if let Some(protocol) = protocol {
+        let protocol = if let Some(protocol) = self.protocol {
             match protocol {
                 WireProtocol::Swd => ConnectRequest::UseSWD,
                 WireProtocol::Jtag => ConnectRequest::UseJTAG,
@@ -246,7 +246,7 @@ impl DebugProbe for DAPLink {
 
         info!("Succesfully attached to system and entered debug mode");
 
-        Ok(result)
+        Ok(())
     }
 
     /// Leave debug mode.
@@ -257,6 +257,14 @@ impl DebugProbe for DAPLink {
             DisconnectResponse(Status::DAPOk) => Ok(()),
             DisconnectResponse(Status::DAPError) => Err(Error::UnexpectedAnswer.into()),
         }
+    }
+
+    fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError> {
+        match protocol {
+            WireProtocol::Jtag => self.protocol = Some(WireProtocol::Jtag),
+            WireProtocol::Swd => self.protocol = Some(WireProtocol::Swd),
+        }
+        Ok(())
     }
 
     /// Asserts the nRESET pin.
