@@ -1,17 +1,16 @@
-pub(crate) mod constants;
-pub(crate) mod memory_interface;
-pub(crate) mod tools;
+pub mod constants;
+pub mod memory_interface;
+pub mod tools;
 mod usb_interface;
 
 use self::usb_interface::STLinkUSBDevice;
-use super::{DAPAccess, DebugProbe, DebugProbeError, DebugProbeInfo, WireProtocol};
-use crate::architecture::arm::PortType;
-use crate::architecture::arm::{ap::AccessPort, dp::Ctrl, Register};
+use super::{DAPAccess, DebugProbe, DebugProbeError, DebugProbeInfo, PortType, WireProtocol};
+use crate::architecture::arm::{ap::AccessPort, Register, dp::Ctrl};
 use crate::Memory;
-use constants::{commands, JTagFrequencyToDivider, Mode, Status, SwdFrequencyToDelayCount};
 use scroll::{Pread, BE};
-use thiserror::Error;
+use constants::{commands, JTagFrequencyToDivider, Mode, Status, SwdFrequencyToDelayCount};
 use usb_interface::TIMEOUT;
+use thiserror::Error;
 
 pub struct STLink {
     device: STLinkUSBDevice,
@@ -42,21 +41,15 @@ impl DebugProbe for STLink {
     }
 
     /// Enters debug mode.
-    fn attach(&mut self, protocol: Option<WireProtocol>) -> Result<WireProtocol, DebugProbeError> {
-        log::debug!("attach({:?})", protocol);
+    fn attach(&mut self) -> Result<(), DebugProbeError> {
+        log::debug!("attach({:?})", self.protocol);
         self.enter_idle()?;
 
-        let (param, protocol) = if let Some(protocol) = protocol {
-            (
-                match protocol {
-                    WireProtocol::Jtag => commands::JTAG_ENTER_JTAG_NO_CORE_RESET,
-                    WireProtocol::Swd => commands::JTAG_ENTER_SWD,
-                },
-                protocol,
-            )
-        } else {
-            (commands::JTAG_ENTER_SWD, WireProtocol::Swd)
+        let param = match self.protocol {
+            WireProtocol::Jtag => commands::JTAG_ENTER_JTAG_NO_CORE_RESET,
+            WireProtocol::Swd => commands::JTAG_ENTER_SWD,
         };
+        let protocol = self.protocol;
 
         let mut buf = [0; 2];
         self.device.write(
@@ -72,7 +65,7 @@ impl DebugProbe for STLink {
         let value = ctrl_reg.into();
         self.write_register(PortType::DebugPort, Ctrl::ADDRESS.into(), value)?;
         self.protocol = protocol;
-        Ok(protocol)
+        Ok(())
     }
 
     /// Leave debug mode.
@@ -97,6 +90,14 @@ impl DebugProbe for STLink {
         Self::check_status(&buf)
     }
 
+    fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError> {
+        match protocol {
+            WireProtocol::Jtag => self.protocol = WireProtocol::Jtag,
+            WireProtocol::Swd => self.protocol = WireProtocol::Swd,
+        }
+        Ok(())
+    }
+
     fn dedicated_memory_interface(&self) -> Option<Memory> {
         None
     }
@@ -114,10 +115,7 @@ impl DAPAccess for STLink {
     /// Reads the DAP register on the specified port and address.
     fn read_register(&mut self, port: PortType, addr: u16) -> Result<u32, DebugProbeError> {
         if (addr & 0xf0) == 0 || port != PortType::DebugPort {
-            let port = match port {
-                PortType::DebugPort => 0xffff,
-                PortType::AccessPort(p) => p,
-            };
+            let port: u16 = port.into();
 
             let cmd = vec![
                 commands::JTAG_COMMAND,
@@ -138,17 +136,9 @@ impl DAPAccess for STLink {
     }
 
     /// Writes a value to the DAP register on the specified port and address.
-    fn write_register(
-        &mut self,
-        port: PortType,
-        addr: u16,
-        value: u32,
-    ) -> Result<(), DebugProbeError> {
+    fn write_register(&mut self, port: PortType, addr: u16, value: u32) -> Result<(), DebugProbeError> {
         if (addr & 0xf0) == 0 || port != PortType::DebugPort {
-            let port = match port {
-                PortType::DebugPort => 0xffff,
-                PortType::AccessPort(p) => p,
-            };
+            let port: u16 = port.into();
 
             let cmd = vec![
                 commands::JTAG_COMMAND,

@@ -91,7 +91,7 @@ fn main_try() -> Result<(), failure::Error> {
     }
 
     let target = registry.get_target(strategy)?;
-    let session = probe.attach(target, None)?;
+    let session = probe.attach(target)?;
 
     let gdb_connection_string = opt
         .gdb_connection_string

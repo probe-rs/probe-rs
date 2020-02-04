@@ -1,28 +1,25 @@
-//! # As short as it gets
+//! # As short as it gets 
 //! ```
-//! # use probe_rs::probe::{MasterProbe, daplink, DebugProbe};
-//! # use probe_rs::probe::daplink::DAPLink;
-//! # use probe_rs::config::registry::{Registry, SelectionStrategy, TargetIdentifier};
-//! # use probe_rs::{Session, Error};
+//! # use probe_rs::DebugProbeError;
+//! use probe_rs::Probe;
 //!
-//! # fn main() -> Result<(), Error> {
+//! // Get a list of all available debug probes.
+//! let probes = Probe::list_all();
 //!
-//! let registry = Registry::from_builtin_families();
-//! let target = registry.get_target(SelectionStrategy::TargetIdentifier(TargetIdentifier {
-//!    chip_name: "nrf52".to_owned(),
-//!    flash_algorithm_name: None,
-//! }))?;
+//! // Use the first probe found.
+//! let probe = probes[0].open()?;
 //!
-//! let probes = daplink::tools::list_daplink_devices();
-//!
-//! let specific_probe = DAPLink::new_from_probe_info(probes[0])?;
-//!
-//! let probe = MasterProbe::from_specific_probe(specific_probe);
-//!
-//! let session = Session::new(target, probe);
-//! # Ok(())
-//! # }
+//! // Attach to a chip.
+//! let session = probe.attach("nrf52")?;
+//! 
+//! // Select a core.
+//! let core = session.attach_to_core(0)?;
+//! 
+//! // Halt the attached core.
+//! core.halt()?; 
+//! # Ok::<(), DebugProbeError>(())
 //! ```
+//!
 //! probe-rs is built around 5 main interfaces: the [Probe](./struct.Probe.html),
 //! [Target](./struct.Target.html), [Session](./struct.Session.html), [Memory](./struct.Memory.html) and [Core](./struct.Core.html) strucs.
 
@@ -32,7 +29,7 @@
 #![allow(clippy::verbose_bit_mask)]
 
 #[macro_use]
-pub extern crate derivative;
+extern crate derivative;
 #[macro_use]
 extern crate maplit;
 #[macro_use]

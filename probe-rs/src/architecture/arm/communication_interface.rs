@@ -20,6 +20,24 @@ pub enum PortType {
     AccessPort(u16),
 }
 
+impl From<u16> for PortType {
+    fn from(value: u16) -> PortType {
+        if value == 0xFFFF {
+            PortType::DebugPort
+        } else {
+            PortType::AccessPort(value)
+        }
+    }
+}
+
+impl From<PortType> for u16 {
+    fn from(value: PortType) -> u16 {
+        match value {
+            PortType::DebugPort => 0xFFFF,
+            PortType::AccessPort(value) => value,
+        }
+    }
+}
 use std::fmt::Debug;
 
 pub trait Register: Clone + From<u32> + Into<u32> + Sized + Debug {

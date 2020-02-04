@@ -110,7 +110,7 @@ where
 
     let target = registry.get_target(strategy)?;
 
-    let session = probe.attach(target, None)?;
+    let session = probe.attach(target)?;
 
     f(session)
 }
