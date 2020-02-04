@@ -9,10 +9,10 @@ use super::{
 };
 use crate::config::chip_info::ChipInfo;
 use crate::{CommunicationInterface, DebugProbe, DebugProbeError, Error, Memory, Probe};
-use std::rc::Rc;
-use std::cell::RefCell;
 use jep106::JEP106Code;
 use log::debug;
+use std::cell::RefCell;
+use std::rc::Rc;
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum PortType {
@@ -105,8 +105,6 @@ struct InnerArmCommunicationInterface {
     current_apbanksel: u8,
 }
 
-
-
 impl InnerArmCommunicationInterface {
     fn new(probe: Probe) -> Self {
         Self {
@@ -115,7 +113,6 @@ impl InnerArmCommunicationInterface {
             current_apbanksel: 0,
         }
     }
-
 
     fn select_ap_and_ap_bank(&mut self, port: u8, ap_bank: u8) -> Result<(), DebugProbeError> {
         let mut cache_changed = if self.current_apsel != port {
@@ -141,7 +138,8 @@ impl InnerArmCommunicationInterface {
             select.set_ap_sel(self.current_apsel);
             select.set_ap_bank_sel(self.current_apbanksel);
 
-            let interface = self.probe
+            let interface = self
+                .probe
                 .get_interface_dap_mut()
                 .ok_or_else(|| DebugProbeError::InterfaceNotAvailable("ARM"))?;
 
@@ -157,7 +155,8 @@ impl InnerArmCommunicationInterface {
 
     fn write_ap_register<AP, R>(&mut self, port: AP, register: R) -> Result<(), DebugProbeError>
     where
-        AP: AccessPort, R: APRegister<AP>,
+        AP: AccessPort,
+        R: APRegister<AP>,
     {
         let register_value = register.into();
 
@@ -169,7 +168,8 @@ impl InnerArmCommunicationInterface {
 
         self.select_ap_and_ap_bank(port.get_port_number(), R::APBANKSEL)?;
 
-        let interface = self.probe
+        let interface = self
+            .probe
             .get_interface_dap_mut()
             .ok_or_else(|| DebugProbeError::InterfaceNotAvailable("ARM"))?;
 
@@ -182,9 +182,15 @@ impl InnerArmCommunicationInterface {
     }
 
     /// TODO: Fix this ugly: _register: R, values: &[u32]
-    fn write_ap_register_repeated<AP, R>(&mut self, port: AP, _register: R, values: &[u32]) -> Result<(), DebugProbeError>
+    fn write_ap_register_repeated<AP, R>(
+        &mut self,
+        port: AP,
+        _register: R,
+        values: &[u32],
+    ) -> Result<(), DebugProbeError>
     where
-        AP: AccessPort, R: APRegister<AP>,
+        AP: AccessPort,
+        R: APRegister<AP>,
     {
         debug!(
             "Writing register {}, block with len={} words",
@@ -194,7 +200,8 @@ impl InnerArmCommunicationInterface {
 
         self.select_ap_and_ap_bank(port.get_port_number(), R::APBANKSEL)?;
 
-        let interface = self.probe
+        let interface = self
+            .probe
             .get_interface_dap_mut()
             .ok_or_else(|| DebugProbeError::InterfaceNotAvailable("ARM"))?;
 
@@ -208,12 +215,14 @@ impl InnerArmCommunicationInterface {
 
     fn read_ap_register<AP, R>(&mut self, port: AP, _register: R) -> Result<R, DebugProbeError>
     where
-        AP: AccessPort, R: APRegister<AP>,
+        AP: AccessPort,
+        R: APRegister<AP>,
     {
         debug!("Reading register {}", R::NAME);
         self.select_ap_and_ap_bank(port.get_port_number(), R::APBANKSEL)?;
 
-        let interface = self.probe
+        let interface = self
+            .probe
             .get_interface_dap_mut()
             .ok_or_else(|| DebugProbeError::InterfaceNotAvailable("ARM"))?;
 
@@ -222,19 +231,21 @@ impl InnerArmCommunicationInterface {
             u16::from(R::ADDRESS),
         )?;
 
-        debug!(
-            "Read register    {}, value=0x{:08x}",
-            R::NAME,
-            result
-        );
+        debug!("Read register    {}, value=0x{:08x}", R::NAME, result);
 
         Ok(R::from(result))
     }
 
     /// TODO: fix types, see above!
-    fn read_ap_register_repeated<AP, R>(&mut self, port: AP, _register: R, values: &mut [u32]) -> Result<(), DebugProbeError>
+    fn read_ap_register_repeated<AP, R>(
+        &mut self,
+        port: AP,
+        _register: R,
+        values: &mut [u32],
+    ) -> Result<(), DebugProbeError>
     where
-        AP: AccessPort, R: APRegister<AP>,
+        AP: AccessPort,
+        R: APRegister<AP>,
     {
         debug!(
             "Reading register {}, block with len={} words",
@@ -244,7 +255,8 @@ impl InnerArmCommunicationInterface {
 
         self.select_ap_and_ap_bank(port.get_port_number(), R::APBANKSEL)?;
 
-        let interface = self.probe
+        let interface = self
+            .probe
             .get_interface_dap_mut()
             .ok_or_else(|| DebugProbeError::InterfaceNotAvailable("ARM"))?;
 
@@ -257,7 +269,8 @@ impl InnerArmCommunicationInterface {
     }
 
     fn read_register_dp(&mut self, offset: u16) -> Result<u32, DebugProbeError> {
-        let interface = self.probe
+        let interface = self
+            .probe
             .get_interface_dap_mut()
             .ok_or_else(|| DebugProbeError::InterfaceNotAvailable("ARM"))?;
 
@@ -265,7 +278,8 @@ impl InnerArmCommunicationInterface {
     }
 
     fn write_register_dp(&mut self, offset: u16, val: u32) -> Result<(), DebugProbeError> {
-        let interface = self.probe
+        let interface = self
+            .probe
             .get_interface_dap_mut()
             .ok_or_else(|| DebugProbeError::InterfaceNotAvailable("ARM"))?;
 
@@ -285,16 +299,12 @@ where
 {
     type Error = DebugProbeError;
 
-    fn read_ap_register(
-        &mut self,
-        port: MemoryAP,
-        register: R,
-    ) -> Result<R, Self::Error> {
-        self.read_ap_register(port, register)
+    fn read_ap_register(&mut self, port: MemoryAP, register: R) -> Result<R, Self::Error> {
+        self.inner.borrow_mut().read_ap_register(port, register)
     }
 
     fn write_ap_register(&mut self, port: MemoryAP, register: R) -> Result<(), Self::Error> {
-        self.write_ap_register(port, register)
+        self.inner.borrow_mut().write_ap_register(port, register)
     }
 
     fn write_ap_register_repeated(
@@ -303,7 +313,9 @@ where
         register: R,
         values: &[u32],
     ) -> Result<(), Self::Error> {
-        self.write_ap_register_repeated(port, register, values)
+        self.inner
+            .borrow_mut()
+            .write_ap_register_repeated(port, register, values)
     }
 
     fn read_ap_register_repeated(
@@ -312,7 +324,9 @@ where
         register: R,
         values: &mut [u32],
     ) -> Result<(), Self::Error> {
-        self.read_ap_register_repeated(port, register, values)
+        self.inner
+            .borrow_mut()
+            .read_ap_register_repeated(port, register, values)
     }
 }
 
@@ -322,20 +336,12 @@ where
 {
     type Error = DebugProbeError;
 
-    fn read_ap_register(
-        &mut self,
-        port: GenericAP,
-        register: R,
-    ) -> Result<R, Self::Error> {
-        self.read_ap_register(port, register)
+    fn read_ap_register(&mut self, port: GenericAP, register: R) -> Result<R, Self::Error> {
+        self.inner.borrow_mut().read_ap_register(port, register)
     }
 
-    fn write_ap_register(
-        &mut self,
-        port: GenericAP,
-        register: R,
-    ) -> Result<(), Self::Error> {
-        self.write_ap_register(port, register)
+    fn write_ap_register(&mut self, port: GenericAP, register: R) -> Result<(), Self::Error> {
+        self.inner.borrow_mut().write_ap_register(port, register)
     }
 
     fn write_ap_register_repeated(
@@ -344,7 +350,9 @@ where
         register: R,
         values: &[u32],
     ) -> Result<(), Self::Error> {
-        self.write_ap_register_repeated(port, register, values)
+        self.inner
+            .borrow_mut()
+            .write_ap_register_repeated(port, register, values)
     }
 
     fn read_ap_register_repeated(
@@ -353,7 +361,9 @@ where
         register: R,
         values: &mut [u32],
     ) -> Result<(), Self::Error> {
-        self.read_ap_register_repeated(port, register, values)
+        self.inner
+            .borrow_mut()
+            .read_ap_register_repeated(port, register, values)
     }
 }
 

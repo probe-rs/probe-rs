@@ -1,11 +1,10 @@
-use super::CortexDump;
 use crate::core::{
     BasicRegisterAddresses, Breakpoint, CoreInformation, CoreInterface, CoreRegister,
     CoreRegisterAddress,
 };
 use crate::error::Error;
 use crate::memory::Memory;
-use crate::{DebugProbeError, Probe};
+use crate::DebugProbeError;
 use crate::Session;
 use bitfield::bitfield;
 use log::debug;

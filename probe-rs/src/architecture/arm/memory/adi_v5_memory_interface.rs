@@ -3,7 +3,7 @@ use super::super::ap::{
     MemoryAP, CSW, DRW, TAR,
 };
 use crate::architecture::arm::ArmCommunicationInterface;
-use crate::{CommunicationInterface, Error, MemoryInterface, Probe};
+use crate::{CommunicationInterface, Error, MemoryInterface};
 use scroll::Pread;
 
 /// A struct to give access to a targets memory using a certain DAP.
@@ -20,7 +20,10 @@ where
 
 impl ADIMemoryInterface<ArmCommunicationInterface> {
     /// Creates a new MemoryInterface for given AccessPort.
-    pub fn new(interface: ArmCommunicationInterface, access_port_number: impl Into<MemoryAP>) -> Self {
+    pub fn new(
+        interface: ArmCommunicationInterface,
+        access_port_number: impl Into<MemoryAP>,
+    ) -> Self {
         Self {
             interface,
             access_port: access_port_number.into(),
@@ -73,10 +76,7 @@ where
     }
 
     /// Read a 32 bit register on the given AP.
-    fn read_ap_register<R>(
-        &mut self,
-        register: R,
-    ) -> Result<R, AccessPortError>
+    fn read_ap_register<R>(&mut self, register: R) -> Result<R, AccessPortError>
     where
         R: APRegister<MemoryAP>,
         AP: APAccess<MemoryAP, R>,
@@ -545,10 +545,6 @@ where
         + APAccess<MemoryAP, TAR>
         + APAccess<MemoryAP, DRW>,
 {
-    fn communication_interface(&self) -> &dyn CommunicationInterface {
-        &self.interface as _
-    }
-
     fn read32(&mut self, address: u32) -> Result<u32, Error> {
         ADIMemoryInterface::read32(self, address).map_err(Error::architecture_specific)
     }

@@ -57,8 +57,7 @@ where
     R: APRegister<PORT>,
 {
     type Error: std::error::Error;
-    fn read_ap_register(&mut self, port: PORT, register: R)
-        -> Result<R, Self::Error>;
+    fn read_ap_register(&mut self, port: PORT, register: R) -> Result<R, Self::Error>;
 
     /// Read a register using a block transfer. This can be used
     /// to read multiple values from the same register.
@@ -89,11 +88,7 @@ where
 {
     type Error = T::Error;
 
-    fn read_ap_register(
-        &mut self,
-        port: PORT,
-        register: R,
-    ) -> Result<R, Self::Error> {
+    fn read_ap_register(&mut self, port: PORT, register: R) -> Result<R, Self::Error> {
         (*self).read_ap_register(port, register)
     }
 

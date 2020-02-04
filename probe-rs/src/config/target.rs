@@ -2,7 +2,7 @@ use super::chip::Chip;
 use super::flash_algorithm::RawFlashAlgorithm;
 use super::memory::MemoryRegion;
 use super::registry::TargetIdentifier;
-use crate::core::{Core, CoreType};
+use crate::core::CoreType;
 
 /// This describes a complete target with a fixed chip model and variant.
 #[derive(Clone)]
@@ -34,7 +34,11 @@ impl std::fmt::Debug for Target {
 pub type TargetParseError = serde_yaml::Error;
 
 impl Target {
-    pub fn new(chip: &Chip, flash_algorithms: Vec<RawFlashAlgorithm>, core_type: CoreType) -> Target {
+    pub fn new(
+        chip: &Chip,
+        flash_algorithms: Vec<RawFlashAlgorithm>,
+        core_type: CoreType,
+    ) -> Target {
         Target {
             identifier: TargetIdentifier {
                 chip_name: chip.name.clone(),

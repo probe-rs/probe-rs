@@ -211,7 +211,7 @@ impl<'a> Flasher<'a> {
             core: core,
             flash_algorithm: flasher.flash_algorithm,
             region: flasher.region,
-            double_buffering_supported: flasher.double_buffering_supported,
+            _double_buffering_supported: flasher.double_buffering_supported,
             _operation: core::marker::PhantomData,
         };
 
@@ -285,7 +285,7 @@ pub struct ActiveFlasher<'a, O: Operation> {
     core: Core,
     flash_algorithm: &'a FlashAlgorithm,
     region: &'a FlashRegion,
-    double_buffering_supported: bool,
+    _double_buffering_supported: bool,
     _operation: core::marker::PhantomData<O>,
 }
 
