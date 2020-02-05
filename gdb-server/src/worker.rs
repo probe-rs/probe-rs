@@ -20,7 +20,7 @@ pub async fn worker(
     output_stream: Sender<CheckedPacket>,
     session: Arc<Mutex<Session>>,
 ) -> ServerResult<()> {
-    let core = session.lock().unwrap().attach_to_core(0).unwrap();
+    let mut core = session.lock().unwrap().attach_to_core(0).unwrap();
     let mut awaits_halt = false;
 
     loop {
@@ -28,21 +28,21 @@ pub async fn worker(
             potential_packet = input_stream.next().fuse() => {
                 if let Some(packet) = potential_packet {
                     log::warn!("WORKING {}", String::from_utf8_lossy(&packet.data));
-                    if handler(core.clone(), output_stream.clone(), &mut awaits_halt, packet).await? {
+                    if handler(&mut core, output_stream.clone(), &mut awaits_halt, packet).await? {
                         break;
                     }
                 } else {
                     break
                 }
             },
-            _ = await_halt(core.clone(), output_stream.clone(), awaits_halt).fuse() => {}
+            _ = await_halt(&core, output_stream.clone(), awaits_halt).fuse() => {}
         }
     }
     Ok(())
 }
 
 pub async fn handler(
-    mut core: Core,
+    core: &mut Core,
     output_stream: Sender<CheckedPacket>,
     awaits_halt: &mut bool,
     packet: CheckedPacket,
@@ -162,7 +162,6 @@ pub async fn handler(
 
             core.reset_and_halt().unwrap();
             core.wait_for_core_halted().unwrap();
-            core.enable_breakpoints(true).unwrap();
             core.set_hw_breakpoint(addr).unwrap();
             core.run().unwrap();
             Some("OK".into())
@@ -180,7 +179,6 @@ pub async fn handler(
 
             core.reset_and_halt().unwrap();
             core.wait_for_core_halted().unwrap();
-            core.enable_breakpoints(true).unwrap();
             core.clear_hw_breakpoint(addr).unwrap();
             core.run().unwrap();
             Some("OK".into())
@@ -247,7 +245,7 @@ pub async fn handler(
     Ok(break_due)
 }
 
-pub async fn await_halt(core: Core, output_stream: Sender<CheckedPacket>, await_halt: bool) {
+pub async fn await_halt(core: &Core, output_stream: Sender<CheckedPacket>, await_halt: bool) {
     if await_halt && core.core_halted().unwrap() {
         let response =
             CheckedPacket::from_data(PacketKind::Packet, "T05hwbreak:;".to_string().into_bytes());

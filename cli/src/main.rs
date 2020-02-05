@@ -8,7 +8,7 @@ use debugger::CliState;
 use probe_rs::{
     debug::DebugInfo,
     flash::download::{download_file, Format},
-    Probe,
+    Probe, Session,
 };
 
 use capstone::{arch::arm::ArchMode, prelude::*, Capstone, Endian};
@@ -243,7 +243,7 @@ fn debug(shared_options: &SharedOptions, exe: Option<PathBuf>) -> Result<(), Cli
         .and_then(|p| fs::File::open(&p).ok())
         .and_then(|file| unsafe { memmap::Mmap::map(&file).ok() });
 
-    let runner = |session, core| {
+    let runner = |session: Session| {
         let cs = Capstone::new()
             .arm()
             .mode(ArchMode::Thumb)
@@ -255,8 +255,9 @@ fn debug(shared_options: &SharedOptions, exe: Option<PathBuf>) -> Result<(), Cli
 
         let cli = debugger::DebugCli::new();
 
+        let core = session.attach_to_core(0)?;
+
         let mut cli_data = debugger::CliData {
-            session,
             core,
             debug_info: di,
             capstone: cs,
@@ -294,5 +295,5 @@ fn debug(shared_options: &SharedOptions, exe: Option<PathBuf>) -> Result<(), Cli
         }
     };
 
-    with_device(shared_options, |session| runner(session, None))
+    with_device(shared_options, runner)
 }

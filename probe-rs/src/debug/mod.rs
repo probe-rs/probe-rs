@@ -73,7 +73,7 @@ impl std::fmt::Display for StackFrame {
 struct Registers([Option<u32>; 16]);
 
 impl Registers {
-    pub fn from_core(core: Core) -> Self {
+    pub fn from_core(core: &Core) -> Self {
         let mut registers = Registers([None; 16]);
         for i in 0..16 {
             registers[i as usize] = Some(core.read_core_reg(i).unwrap());
@@ -127,17 +127,17 @@ pub struct SourceLocation {
     pub directory: Option<PathBuf>,
 }
 
-pub struct StackFrameIterator<'a> {
+pub struct StackFrameIterator<'a, 'b> {
     debug_info: &'a DebugInfo,
-    core: Core,
+    core: &'b Core,
     frame_count: u64,
     pc: Option<u64>,
     registers: Registers,
 }
 
-impl<'a> StackFrameIterator<'a> {
-    pub fn new(debug_info: &'a DebugInfo, core: Core, address: u64) -> Self {
-        let registers = Registers::from_core(core.clone());
+impl<'a, 'b> StackFrameIterator<'a, 'b> {
+    pub fn new(debug_info: &'a DebugInfo, core: &'b Core, address: u64) -> Self {
+        let registers = Registers::from_core(core);
         let pc = address;
 
         Self {
@@ -150,7 +150,7 @@ impl<'a> StackFrameIterator<'a> {
     }
 }
 
-impl<'a> Iterator for StackFrameIterator<'a> {
+impl<'a, 'b> Iterator for StackFrameIterator<'a, 'b> {
     type Item = StackFrame;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -194,7 +194,7 @@ impl<'a> Iterator for StackFrameIterator<'a> {
                 Offset(o) => {
                     let addr = i64::from(current_cfa.unwrap()) + o;
                     let mut buff = [0u8; 4];
-                    self.core.read_block8(addr as u32, &mut buff).unwrap();
+                    self.core.read_8(addr as u32, &mut buff).unwrap();
 
                     let val = u32::from_le_bytes(buff);
 
@@ -207,7 +207,7 @@ impl<'a> Iterator for StackFrameIterator<'a> {
         self.registers.set_call_frame_address(current_cfa);
 
         let return_frame = Some(self.debug_info.get_stackframe_info(
-            self.core.clone(),
+            &self.core,
             pc,
             self.frame_count,
             self.registers.clone(),
@@ -393,7 +393,7 @@ impl DebugInfo {
 
     fn get_stackframe_info(
         &self,
-        core: Core,
+        core: &Core,
         address: u64,
         frame_count: u64,
         registers: Registers,
@@ -435,7 +435,7 @@ impl DebugInfo {
         }
     }
 
-    pub fn try_unwind<'b>(&'b self, core: Core, address: u64) -> StackFrameIterator<'b> {
+    pub fn try_unwind<'a, 'b>(&'a self, core: &'b Core, address: u64) -> StackFrameIterator<'a, 'b> {
         StackFrameIterator::new(&self, core, address)
     }
 }
@@ -497,7 +497,7 @@ impl<'a> UnitInfo<'a> {
 
     fn expr_to_piece(
         &self,
-        core: Core,
+        core: &Core,
         expression: gimli::Expression<R>,
         frame_base: u64,
     ) -> Vec<gimli::Piece<R, usize>> {
@@ -551,7 +551,7 @@ impl<'a> UnitInfo<'a> {
 
     fn get_variables(
         &self,
-        core: Core,
+        core: &Core,
         die_cursor_state: &mut DieCursorState,
         frame_base: u64,
     ) -> Vec<Variable> {
@@ -595,7 +595,7 @@ impl<'a> UnitInfo<'a> {
                         }
                         gimli::DW_AT_location => {
                             variable.value =
-                                extract_location(&self, core.clone(), frame_base, attr.value())
+                                extract_location(&self, core, frame_base, attr.value())
                                     .unwrap_or_else(u64::max_value);
                         }
                         _ => (),
@@ -611,13 +611,13 @@ impl<'a> UnitInfo<'a> {
 
 fn extract_location(
     unit_info: &UnitInfo,
-    core: Core,
+    core: &Core,
     frame_base: u64,
     attribute_value: gimli::AttributeValue<R>,
 ) -> Option<u64> {
     match attribute_value {
         gimli::AttributeValue::Exprloc(expression) => {
-            let piece = unit_info.expr_to_piece(core.clone(), expression, frame_base);
+            let piece = unit_info.expr_to_piece(core, expression, frame_base);
 
             let value = get_piece_value(core, &piece[0]);
             value.map(u64::from)
@@ -716,7 +716,7 @@ fn extract_name(
     }
 }
 
-fn get_piece_value(core: Core, p: &gimli::Piece<DwarfReader>) -> Option<u32> {
+fn get_piece_value(core: &Core, p: &gimli::Piece<DwarfReader>) -> Option<u32> {
     use gimli::Location;
 
     match &p.location {
@@ -770,7 +770,7 @@ pub fn print_all_attributes(
                         Complete => break,
                         RequiresMemory { address, size, .. } => {
                             let mut buff = vec![0u8; size as usize];
-                            core.read_block8(address as u32, &mut buff)
+                            core.read_8(address as u32, &mut buff)
                                 .expect("Failed to read memory");
                             match size {
                                 1 => evaluation

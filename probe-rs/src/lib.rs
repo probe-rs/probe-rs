@@ -1,6 +1,18 @@
-//! # As short as it gets 
-//! ```
-//! # use probe_rs::DebugProbeError;
+
+//! # Debugging toolset for embedded devices
+//!
+//!  
+//! # Prerequisites
+//! 
+//! - Udev rules
+//! - libusb
+//!
+//! # Examples
+//!
+//!
+//! ## Halting the attached chip
+//! ```no_run
+//! # use probe_rs::Error;
 //! use probe_rs::Probe;
 //!
 //! // Get a list of all available debug probes.
@@ -17,7 +29,32 @@
 //! 
 //! // Halt the attached core.
 //! core.halt()?; 
-//! # Ok::<(), DebugProbeError>(())
+//! # Ok::<(), Error>(())
+//! ```
+//!
+//! ## Reading from RAM
+//!
+//! ```no_run
+//! # use probe_rs::Error;
+//! use probe_rs::Core;
+//! let core = Core::auto_attach("nrf52")?;
+//! 
+//! // Read a block of 50 32 bit words.
+//! let mut buff = [0u32;50];
+//! core.read_32(0x2000_0000, &mut buff)?;
+//!
+//! // Read a single 32 bit word.
+//! let word = core.read_word_32(0x2000_0000)?;
+//! 
+//! // Writing is just as simple.
+//! let buff = [0u32;50];
+//! core.write_32(0x2000_0000, &buff)?;
+//! 
+//! // of course we can also write 8bit words.
+//! let buff = [0u8;50];
+//! core.write_8(0x2000_0000, &buff)?;
+//! 
+//! # Ok::<(), Error>(())
 //! ```
 //!
 //! probe-rs is built around 5 main interfaces: the [Probe](./struct.Probe.html),
@@ -30,8 +67,6 @@
 
 #[macro_use]
 extern crate derivative;
-#[macro_use]
-extern crate maplit;
 #[macro_use]
 extern crate serde_derive;
 
