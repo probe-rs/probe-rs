@@ -6,10 +6,8 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use crate::error;
-use crate::memory::Memory;
-use crate::probe::DebugProbeError;
-use crate::Session;
-use std::collections::HashMap;
+use crate::{Probe, DebugProbeError, Session, Memory};
+use crate::config::target::TargetSpecification;
 
 pub trait CoreRegister: Clone + From<u32> + Into<u32> + Sized + std::fmt::Debug {
     const ADDRESS: u32;
@@ -103,92 +101,11 @@ pub trait CoreInterface: dyn_clone::DynClone {
 
     fn clear_breakpoint(&self, unit_index: usize) -> Result<(), error::Error>;
 
-    fn read_block8(&self, address: u32, data: &mut [u8]) -> Result<(), error::Error>;
-
     fn registers<'a>(&self) -> &'a BasicRegisterAddresses;
 
     fn memory(&self) -> Memory;
-
-    fn active_breakpoints(&self) -> &Vec<Breakpoint>;
-
-    fn active_breakpoints_mut(&mut self) -> &mut Vec<Breakpoint>;
-
     fn hw_breakpoints_enabled(&self) -> bool;
 
-    /// Set a hardware breakpoint
-    fn set_hw_breakpoint(&mut self, address: u32) -> Result<(), error::Error> {
-        log::debug!("Trying to set HW breakpoint at address {:#08x}", address);
-
-        // Get the number of HW breakpoints available
-        let num_hw_breakpoints = self.get_available_breakpoint_units()? as usize;
-
-        log::debug!("{} HW breakpoints are supported.", num_hw_breakpoints);
-
-        if num_hw_breakpoints <= self.active_breakpoints().len() {
-            // We cannot set additional breakpoints
-            log::warn!("Maximum number of breakpoints ({}) reached, unable to set additional HW breakpoint.", num_hw_breakpoints);
-
-            // TODO: Better error here
-            return Err(error::Error::Probe(DebugProbeError::Unknown));
-        }
-
-        if !self.hw_breakpoints_enabled() {
-            self.enable_breakpoints(true)?;
-        }
-
-        let bp_unit = self.find_free_breakpoint_unit();
-
-        log::debug!("Using comparator {} of breakpoint unit", bp_unit);
-        // actually set the breakpoint
-        self.set_breakpoint(bp_unit, address)?;
-
-        self.active_breakpoints_mut().push(Breakpoint {
-            address,
-            register_hw: bp_unit,
-        });
-
-        Ok(())
-    }
-
-    fn clear_hw_breakpoint(&mut self, address: u32) -> Result<(), error::Error> {
-        let bp_position = self
-            .active_breakpoints()
-            .iter()
-            .position(|bp| bp.address == address);
-
-        match bp_position {
-            Some(bp_position) => {
-                let bp = &self.active_breakpoints()[bp_position];
-                self.clear_breakpoint(bp.register_hw)?;
-
-                // We only remove the breakpoint if we have actually managed to clear it.
-                self.active_breakpoints_mut().swap_remove(bp_position);
-                Ok(())
-            }
-            None => Err(error::Error::Probe(DebugProbeError::Unknown)),
-        }
-    }
-
-    fn find_free_breakpoint_unit(&self) -> usize {
-        let mut used_bp: Vec<_> = self
-            .active_breakpoints()
-            .iter()
-            .map(|bp| bp.register_hw)
-            .collect();
-        used_bp.sort();
-
-        let mut free_bp = 0;
-
-        for bp in used_bp {
-            if bp == free_bp {
-                free_bp += 1;
-            } else {
-                return free_bp;
-            }
-        }
-
-        free_bp
-    }
 }
 
 dyn_clone::clone_trait_object!(CoreInterface);
@@ -240,16 +157,31 @@ impl CoreType {
     }
 }
 
-#[derive(Clone)]
 pub struct Core {
     inner: Rc<RefCell<dyn CoreInterface>>,
+    breakpoints: Vec<Breakpoint>,
 }
 
 impl Core {
     pub fn new(core: impl CoreInterface + 'static) -> Self {
         Self {
             inner: Rc::new(RefCell::new(core)),
+            breakpoints: Vec::new(),
         }
+    }
+
+    pub fn auto_attach(target: impl Into<TargetSpecification>) -> Result<Core, error::Error> {
+        // Get a list of all available debug probes.
+        let probes = Probe::list_all();
+
+        // Use the first probe found.
+        let probe = probes[0].open()?;
+
+        // Attach to a chip.
+        let session = probe.attach(target)?;
+
+        // Select a core.
+        session.attach_to_core(0)
     }
 
     /// Wait until the core is halted. If the core does not halt on its own,
@@ -320,28 +252,8 @@ impl Core {
         self.inner.borrow().get_available_breakpoint_units()
     }
 
-    pub fn enable_breakpoints(&self, state: bool) -> Result<(), error::Error> {
+    fn enable_breakpoints(&self, state: bool) -> Result<(), error::Error> {
         self.inner.borrow_mut().enable_breakpoints(state)
-    }
-
-    pub fn set_breakpoint(&self, bp_unit_index: usize, addr: u32) -> Result<(), error::Error> {
-        self.inner.borrow().set_breakpoint(bp_unit_index, addr)
-    }
-
-    pub fn clear_breakpoint(&self, unit_index: usize) -> Result<(), error::Error> {
-        self.inner.borrow().clear_breakpoint(unit_index)
-    }
-
-    pub fn set_hw_breakpoint(&mut self, address: u32) -> Result<(), error::Error> {
-        self.inner.borrow_mut().set_hw_breakpoint(address)
-    }
-
-    pub fn clear_hw_breakpoint(&mut self, address: u32) -> Result<(), error::Error> {
-        self.inner.borrow_mut().clear_hw_breakpoint(address)
-    }
-
-    pub fn read_block8(&self, address: u32, data: &mut [u8]) -> Result<(), error::Error> {
-        self.inner.borrow().read_block8(address, data)
     }
 
     pub fn registers<'a>(&self) -> &'a BasicRegisterAddresses {
@@ -351,16 +263,126 @@ impl Core {
     pub fn memory(&self) -> Memory {
         self.inner.borrow().memory()
     }
+
+    pub fn read_word_32(&self, address: u32) -> Result<u32, error::Error> {
+        self.inner.borrow_mut().memory().read32(address)
+    }
+
+    pub fn read_word_8(&self, address: u32) -> Result<u8, error::Error> {
+        self.inner.borrow_mut().memory().read8(address)
+    }
+
+    pub fn read_32(&self, address: u32, data: &mut [u32]) -> Result<(), error::Error> {
+        self.inner.borrow_mut().memory().read_block32(address, data)
+    }
+
+    pub fn read_8(&self, address: u32, data: &mut [u8]) -> Result<(), error::Error> {
+        self.inner.borrow_mut().memory().read_block8(address, data)
+    }
+
+    pub fn write_word_32(&self, addr: u32, data: u32) -> Result<(), error::Error> {
+        self.inner.borrow_mut().memory().write32(addr, data)
+    }
+
+    pub fn write_word_8(&self, addr: u32, data: u8) -> Result<(), error::Error> {
+        self.inner.borrow_mut().memory().write8(addr, data)
+    }
+
+    pub fn write_32(&self, addr: u32, data: &[u32]) -> Result<(), error::Error> {
+        self.inner.borrow_mut().memory().write_block32(addr, data)
+    }
+
+    pub fn write_8(&self, addr: u32, data: &[u8]) -> Result<(), error::Error> {
+        self.inner.borrow_mut().memory().write_block8(addr, data)
+    }
+
+    /// Set a hardware breakpoint
+    ///
+    /// This function will try to set a hardware breakpoint. The amount
+    /// of hardware breakpoints which are supported is chip specific,
+    /// and can be queried using the `get_available_breakpoint_units` function.
+    pub fn set_hw_breakpoint(&mut self, address: u32) -> Result<(), error::Error> {
+        log::debug!("Trying to set HW breakpoint at address {:#08x}", address);
+
+        // Get the number of HW breakpoints available
+        let num_hw_breakpoints = self.get_available_breakpoint_units()? as usize;
+
+        log::debug!("{} HW breakpoints are supported.", num_hw_breakpoints);
+
+        if num_hw_breakpoints <= self.breakpoints.len() {
+            // We cannot set additional breakpoints
+            log::warn!("Maximum number of breakpoints ({}) reached, unable to set additional HW breakpoint.", num_hw_breakpoints);
+
+            // TODO: Better error here
+            return Err(error::Error::Probe(DebugProbeError::Unknown));
+        }
+
+        if !self.inner.borrow().hw_breakpoints_enabled() {
+            self.enable_breakpoints(true)?;
+        }
+
+        let bp_unit = self.find_free_breakpoint_unit();
+
+        log::debug!("Using comparator {} of breakpoint unit", bp_unit);
+        // actually set the breakpoint
+        self.inner.borrow_mut().set_breakpoint(bp_unit, address)?;
+
+        self.breakpoints.push(Breakpoint {
+            address,
+            register_hw: bp_unit,
+        });
+
+        Ok(())
+    }
+
+    pub fn clear_hw_breakpoint(&mut self, address: u32) -> Result<(), error::Error> {
+        let bp_position = self
+            .breakpoints
+            .iter()
+            .position(|bp| bp.address == address);
+
+        match bp_position {
+            Some(bp_position) => {
+                let bp = &self.breakpoints[bp_position];
+                self.inner.borrow_mut().clear_breakpoint(bp.register_hw)?;
+
+                // We only remove the breakpoint if we have actually managed to clear it.
+                self.breakpoints.swap_remove(bp_position);
+                Ok(())
+            }
+            None => Err(error::Error::Probe(DebugProbeError::Unknown)),
+        }
+    }
+
+    fn find_free_breakpoint_unit(&self) -> usize {
+        let mut used_bp: Vec<_> = self
+            .breakpoints
+            .iter()
+            .map(|bp| bp.register_hw)
+            .collect();
+        used_bp.sort();
+
+        let mut free_bp = 0;
+
+        for bp in used_bp {
+            if bp == free_bp {
+                free_bp += 1;
+            } else {
+                return free_bp;
+            }
+        }
+
+        free_bp
+    }
 }
 
-pub fn get_core(name: impl AsRef<str>) -> Option<CoreType> {
-    let map: HashMap<&'static str, CoreType> = hashmap! {
-        "m0" => CoreType::M0,
-        "m4" => CoreType::M4,
-        "m33" => CoreType::M33,
-    };
-
-    map.get(&name.as_ref().to_ascii_lowercase()[..]).cloned()
+pub(crate) fn get_core(name: impl AsRef<str>) -> Option<CoreType> {
+    match &name.as_ref().to_ascii_lowercase()[..] {
+        "m0" => Some(CoreType::M0),
+        "m4" => Some(CoreType::M4),
+        "m33" => Some(CoreType::M33),
+        _ => None,
+    }
 }
 
 pub struct CoreList(Vec<CoreType>);

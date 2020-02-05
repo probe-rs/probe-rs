@@ -231,10 +231,6 @@ impl CoreInterface for M33 {
         Ok(())
     }
 
-    fn read_block8(&self, address: u32, data: &mut [u8]) -> Result<(), Error> {
-        Ok(self.memory.read_block8(address, data)?)
-    }
-
     fn registers<'a>(&self) -> &'a BasicRegisterAddresses {
         &REGISTERS
     }
@@ -254,12 +250,7 @@ impl CoreInterface for M33 {
     fn memory(&self) -> Memory {
         self.memory.clone()
     }
-    fn active_breakpoints(&self) -> &Vec<Breakpoint> {
-        &self.active_breakpoints
-    }
-    fn active_breakpoints_mut(&mut self) -> &mut Vec<Breakpoint> {
-        &mut self.active_breakpoints
-    }
+
     fn hw_breakpoints_enabled(&self) -> bool {
         self.hw_breakpoints_enabled
     }
