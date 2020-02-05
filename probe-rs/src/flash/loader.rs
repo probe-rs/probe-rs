@@ -107,7 +107,7 @@ impl<'a, 'b> FlashLoader<'a, 'b> {
     /// If `do_chip_erase` is `true` the entire flash will be erased.
     pub fn commit(
         &mut self,
-        session: Session,
+        session: &Session,
         progress: &FlashProgress,
         do_chip_erase: bool,
     ) -> Result<(), FlashLoaderError> {
