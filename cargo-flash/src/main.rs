@@ -15,26 +15,25 @@ use structopt::StructOpt;
 
 use probe_rs::{
     config::registry::{Registry, SelectionStrategy},
-    coresight::access_ports::AccessPortError,
+    architecture::arm::ap::AccessPortError,
     flash::download::{download_file, download_file_with_progress_reporting, Format},
     flash::{FlashProgress, ProgressEvent},
-    probe::{DebugProbeError, DebugProbeType, MasterProbe},
-    session::Session,
-    target::info::ChipInfo,
+    DebugProbeError, Probe,
 };
 
 #[derive(Debug, StructOpt)]
 struct Opt {
     #[structopt(name = "chip", long = "chip")]
-    chip: Option<String>,
+    chip: String,
     #[structopt(
         name = "chip description file path",
         short = "c",
         long = "chip-description-path"
     )]
     chip_description_path: Option<String>,
-    #[structopt(name = "nrf-recover", long = "nrf-recover")]
-    nrf_recover: bool,
+    // TODO: enable once the plugin architecture is here.
+    // #[structopt(name = "nrf-recover", long = "nrf-recover")]
+    // nrf_recover: bool,
     #[structopt(name = "list-chips", long = "list-chips")]
     list_chips: bool,
     #[structopt(name = "disable-progressbars", long = "disable-progressbars")]
@@ -240,7 +239,7 @@ fn main_try() -> Result<(), failure::Error> {
 
     println!("    {} {}", "Flashing".green().bold(), path_str);
 
-    let list = MasterProbe::list_all();
+    let list = Probe::list_all();
 
     let device = match opt.n {
         Some(index) => list.get(index).ok_or_else(|| {
@@ -258,38 +257,42 @@ fn main_try() -> Result<(), failure::Error> {
         }
     };
 
-    let mut probe = MasterProbe::from_probe_info(&device)?;
+    let probe = Probe::from_probe_info(&device)?;
 
-    if opt.nrf_recover {
-        match device.probe_type {
-            DebugProbeType::DAPLink => {
-                probe.nrf_recover()?;
-            }
-            DebugProbeType::STLink => {
-                return Err(format_err!("It isn't possible to recover with a ST-Link"));
-            }
-        };
-    }
+    // Disabled for now
+    // TODO: reenable once we got the plugin architecture working.
+    // if opt.nrf_recover {
+    //     match device.probe_type {
+    //         DebugProbeType::DAPLink => {
+    //             probe.nrf_recover()?;
+    //         }
+    //         DebugProbeType::STLink => {
+    //             return Err(format_err!("It isn't possible to recover with a ST-Link"));
+    //         }
+    //     };
+    // }
 
-    let strategy = if let Some(identifier) = opt.chip.clone() {
-        SelectionStrategy::TargetIdentifier(identifier.into())
-    } else {
-        SelectionStrategy::ChipInfo(ChipInfo::read_from_rom_table(&mut probe)?)
-    };
+    // TODO: Reenable once the ChipInfo API is fixed.
+    // let strategy = if let Some(identifier) = opt.chip.clone() {
+    //     SelectionStrategy::TargetIdentifier(identifier.into())
+    // } else {
+    //     SelectionStrategy::ChipInfo(ChipInfo::read_from_rom_table(&mut probe)?)
+    // };
 
     let mut registry = Registry::from_builtin_families();
     if let Some(cdp) = opt.chip_description_path {
         registry.add_target_from_yaml(&Path::new(&cdp))?;
     }
 
-    let target = registry.get_target(strategy)?;
+    let target = registry.get_target(SelectionStrategy::TargetIdentifier(opt.chip.into()))?;
 
-    let mut session = Session::new(target, probe);
+    let session = probe.attach(target)?;
+    let core = session.attach_to_core(0)?;
 
     // Start timer.
     let instant = Instant::now();
 
-    let mm = session.target.memory_map.clone();
+    let mm = session.memory_map();
 
     if !opt.no_download {
         if !opt.disable_progressbars {
@@ -353,7 +356,7 @@ fn main_try() -> Result<(), failure::Error> {
             });
 
             download_file_with_progress_reporting(
-                &mut session,
+                &session,
                 std::path::Path::new(&path_str.to_string().as_str()),
                 Format::Elf,
                 &mm,
@@ -365,7 +368,7 @@ fn main_try() -> Result<(), failure::Error> {
             let _ = progress_thread_handle.join();
         } else {
             download_file(
-                &mut session,
+                &session,
                 std::path::Path::new(&path_str.to_string().as_str()),
                 Format::Elf,
                 &mm,
@@ -383,9 +386,9 @@ fn main_try() -> Result<(), failure::Error> {
     }
 
     if opt.reset_halt {
-        session.target.core.reset_and_halt(&mut session.probe)?;
+        core.reset_and_halt()?;
     } else {
-        session.target.core.reset(&mut session.probe)?;
+        core.reset()?;
     }
 
     if opt.gdb {

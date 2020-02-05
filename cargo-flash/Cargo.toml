@@ -18,6 +18,6 @@ structopt = "0.3.2"
 cargo-project = "0.2.2"
 failure = "0.1.5"
 colored = "1.8.0"
-probe-rs = "0.4.0"
-gdb-server = "0.4.0"
+probe-rs = { version = "0.4.0", git = "https://github.com/probe-rs/probe-rs.git", branch = "new-api" }
+gdb-server = { version = "0.4.0", git = "https://github.com/probe-rs/probe-rs.git", branch = "new-api" }
 indicatif = "0.13.0"
