@@ -42,7 +42,6 @@ impl Target {
         Target {
             identifier: TargetIdentifier {
                 chip_name: chip.name.clone(),
-                flash_algorithm_name: None,
             },
             flash_algorithms,
             core_type,
@@ -51,14 +50,16 @@ impl Target {
     }
 }
 
+#[derive(Debug, Clone)]
 pub enum TargetSpecification {
     Unspecified(String),
     Specified(Target),
+    ChipInfo,
 }
 
-impl<I: Into<String>> From<I> for TargetSpecification {
+impl<I: AsRef<str>> From<I> for TargetSpecification {
     fn from(value: I) -> Self {
-        TargetSpecification::Unspecified(value.into())
+        TargetSpecification::Unspecified(value.as_ref().into())
     }
 }
 

@@ -1,11 +1,11 @@
 pub(crate) mod daplink;
 pub(crate) mod stlink;
 
-use crate::architecture::arm::{ap::AccessPortError, DAPAccess, PortType};
+use crate::architecture::arm::{ArmCommunicationInterface, ap::AccessPortError, DAPAccess, PortType};
 use crate::config::target::{Target, TargetSpecification};
 use crate::config::registry::{Registry, SelectionStrategy, TargetIdentifier, RegistryError};
 use crate::{Memory, Session};
-use std::error::Error;
+use crate::error::Error;
 use thiserror::Error;
 
 #[derive(Copy, Clone, Debug)]
@@ -17,13 +17,13 @@ pub enum WireProtocol {
 #[derive(Error, Debug)]
 pub enum DebugProbeError {
     #[error("USB Communication Error")]
-    USB(#[source] Option<Box<dyn Error + Send + Sync>>),
+    USB(#[source] Option<Box<dyn std::error::Error + Send + Sync>>),
     #[error("JTAG not supported on probe")]
     JTAGNotSupportedOnProbe,
     #[error("The firmware on the probe is outdated")]
     ProbeFirmwareOutdated,
     #[error("Error specific to a probe type occured")]
-    ProbeSpecific(#[source] Box<dyn Error + Send + Sync>),
+    ProbeSpecific(#[source] Box<dyn std::error::Error + Send + Sync>),
     // TODO: Unknown errors are not very useful, this should be removed.
     #[error("An unknown error occured.")]
     Unknown,
@@ -169,21 +169,10 @@ impl Probe {
     pub fn attach(
         mut self,
         target: impl Into<TargetSpecification>,
-    ) -> Result<Session, DebugProbeError> {
-        let target = match target.into() {
-            TargetSpecification::Unspecified(name) => {
-                let registry = Registry::from_builtin_families();
-                registry.get_target(SelectionStrategy::TargetIdentifier(TargetIdentifier {
-                    chip_name: name,
-                    flash_algorithm_name: None,
-                }))?
-            },
-            TargetSpecification::Specified(target) => target,
-        };
-
+    ) -> Result<Session, Error> {
         self.inner.attach()?;
 
-        Ok(Session::new(self, target))
+        Session::new(self, target)
     }
 
     /// Selects the transport protocol to be used by the debug probe.

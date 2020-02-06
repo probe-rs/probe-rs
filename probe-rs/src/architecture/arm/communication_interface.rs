@@ -306,8 +306,8 @@ impl InnerArmCommunicationInterface {
 }
 
 impl CommunicationInterface for ArmCommunicationInterface {
-    fn probe_for_chip_info(self) -> Result<Option<ChipInfo>, Error> {
-        ArmChipInfo::read_from_rom_table(self).map(|option| option.map(ChipInfo::Arm))
+    fn probe_for_chip_info(mut self) -> Result<Option<ChipInfo>, Error> {
+        ArmChipInfo::read_from_rom_table(&mut self).map(|option| option.map(ChipInfo::Arm))
     }
 }
 
@@ -393,9 +393,9 @@ pub struct ArmChipInfo {
 
 impl ArmChipInfo {
     pub fn read_from_rom_table(
-        mut interface: ArmCommunicationInterface,
+        interface: &mut ArmCommunicationInterface,
     ) -> Result<Option<Self>, Error> {
-        for access_port in valid_access_ports(&mut interface) {
+        for access_port in valid_access_ports(interface) {
             let idr = interface
                 .read_ap_register(access_port, IDR::default())
                 .map_err(Error::Probe)?;

@@ -1,4 +1,5 @@
 use crate::config::chip_family::ChipFamily;
+use crate::config::chip::Chip;
 use crate::config::chip_info::ChipInfo;
 use std::error::Error;
 use std::fs::File;
@@ -103,58 +104,68 @@ impl Registry {
         &self.families
     }
 
-    pub fn get_target(&self, strategy: SelectionStrategy) -> Result<Target, RegistryError> {
-        let (family, chip) = match strategy {
-            SelectionStrategy::TargetIdentifier(identifier) => {
-                // Try get the corresponding chip.
-                let mut selected_family_and_chip = None;
-                for family in &self.families {
-                    for variant in &family.variants {
-                        if variant
-                            .name
-                            .to_ascii_lowercase()
-                            .starts_with(&identifier.chip_name.to_ascii_lowercase())
-                        {
-                            if variant.name.to_ascii_lowercase()
-                                != identifier.chip_name.to_ascii_lowercase()
-                            {
-                                log::warn!(
-                                    "Found chip {} which matches given partial name {}. Consider specifying it's full name.",
-                                    variant.name,
-                                    identifier.chip_name,
-                                )
-                            }
-                            selected_family_and_chip = Some((family, variant));
-                        }
-                    }
-                }
-                let (family, chip) = selected_family_and_chip.ok_or(RegistryError::ChipNotFound)?;
-
-                // Try get the correspnding flash algorithm.
-                (family, chip)
-            }
-            SelectionStrategy::ChipInfo(ChipInfo::Arm(chip_info)) => {
-                // Try get the corresponding chip.
-                let mut selected_family_and_chip = None;
-                for family in &self.families {
-                    if family
-                        .manufacturer
-                        .map(|m| m == chip_info.manufacturer)
-                        .unwrap_or(false)
+    pub fn get_target_by_name(&self, name: impl AsRef<str>) -> Result<Target, RegistryError> {
+        let (family, chip) = {
+            // Try get the corresponding chip.
+            let mut selected_family_and_chip = None;
+            for family in &self.families {
+                for variant in &family.variants {
+                    if variant
+                        .name
+                        .to_ascii_lowercase()
+                        .starts_with(&name.as_ref().to_ascii_lowercase())
                     {
-                        for variant in &family.variants {
-                            if variant.part.map(|p| p == chip_info.part).unwrap_or(false) {
-                                selected_family_and_chip = Some((family, variant));
+                        if variant.name.to_ascii_lowercase()
+                            != name.as_ref().to_ascii_lowercase()
+                        {
+                            log::warn!(
+                                "Found chip {} which matches given partial name {}. Consider specifying it's full name.",
+                                variant.name,
+                                name.as_ref(),
+                            )
+                        }
+                        selected_family_and_chip = Some((family, variant));
+                    }
+                }
+            }
+            let (family, chip) = selected_family_and_chip.ok_or(RegistryError::ChipNotFound)?;
+
+            // Try get the correspnding flash algorithm.
+            (family, chip)
+        };
+        self.get_target(family, chip)
+    }
+
+    pub fn get_target_by_chip_info(&self, chip_info: ChipInfo) -> Result<Target, RegistryError> {
+        let (family, chip) = {
+            match chip_info {
+                ChipInfo::Arm(chip_info) => {
+                    // Try get the corresponding chip.
+                    let mut selected_family_and_chip = None;
+                    for family in &self.families {
+                        if family
+                            .manufacturer
+                            .map(|m| m == chip_info.manufacturer)
+                            .unwrap_or(false)
+                        {
+                            for variant in &family.variants {
+                                if variant.part.map(|p| p == chip_info.part).unwrap_or(false) {
+                                    selected_family_and_chip = Some((family, variant));
+                                }
                             }
                         }
                     }
-                }
-                let (family, chip) =
-                    selected_family_and_chip.ok_or(RegistryError::ChipAutodetectFailed)?;
+                    let (family, chip) =
+                        selected_family_and_chip.ok_or(RegistryError::ChipAutodetectFailed)?;
 
-                (family, chip)
+                    (family, chip)
+                }
             }
         };
+        self.get_target(family, chip)
+    }
+
+    fn get_target(&self, family: &ChipFamily, chip: &Chip) -> Result<Target, RegistryError> {
 
         // Try get the corresponding chip.
         let core = if let Some(core) = get_core(&family.core) {
@@ -194,7 +205,6 @@ impl Registry {
 #[derive(Debug, Clone, Hash, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TargetIdentifier {
     pub chip_name: String,
-    pub flash_algorithm_name: Option<String>,
 }
 
 impl<S: AsRef<str>> From<S> for TargetIdentifier {
@@ -203,7 +213,6 @@ impl<S: AsRef<str>> From<S> for TargetIdentifier {
         TargetIdentifier {
             // There will always be a 0th element, so this is safe!
             chip_name: split[0].to_owned(),
-            flash_algorithm_name: split.get(1).map(|s| s.to_owned().to_owned()),
         }
     }
 }
@@ -216,7 +225,7 @@ mod tests {
     fn try_fetch1() {
         let registry = Registry::from_builtin_families();
         assert!(registry
-            .get_target(SelectionStrategy::TargetIdentifier("nrf51".into()))
+            .get_target_by_name("nrf51")
             .is_ok());
     }
 
@@ -224,7 +233,7 @@ mod tests {
     fn try_fetch2() {
         let registry = Registry::from_builtin_families();
         assert!(registry
-            .get_target(SelectionStrategy::TargetIdentifier("nrf5182".into()))
+            .get_target_by_name("nrf5182")
             .is_ok());
     }
 
@@ -232,7 +241,7 @@ mod tests {
     fn try_fetch3() {
         let registry = Registry::from_builtin_families();
         assert!(registry
-            .get_target(SelectionStrategy::TargetIdentifier("nrF51822_x".into()))
+            .get_target_by_name("nrF51822_x")
             .is_ok());
     }
 
@@ -240,7 +249,7 @@ mod tests {
     fn try_fetch4() {
         let registry = Registry::from_builtin_families();
         assert!(registry
-            .get_target(SelectionStrategy::TargetIdentifier("nrf51822_Xxaa".into()))
+            .get_target_by_name("nrf51822_Xxaa")
             .is_ok());
     }
 }

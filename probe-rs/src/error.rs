@@ -1,5 +1,6 @@
 use crate::DebugProbeError;
 use thiserror::Error;
+use crate::config::registry::RegistryError;
 
 #[derive(Error, Debug)]
 pub enum Error {
@@ -11,6 +12,8 @@ pub enum Error {
     UnableToOpenProbe(&'static str),
     #[error("Core {0} does not exist")]
     CoreNotFound(usize),
+    #[error("Chip does not exist: {0:?}")]
+    ChipNotFound(#[from] RegistryError),
 }
 
 impl Error {
