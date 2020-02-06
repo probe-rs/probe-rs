@@ -5,9 +5,9 @@ pub use communication_interface::CommunicationInterface;
 use std::cell::RefCell;
 use std::rc::Rc;
 
+use crate::config::target::TargetSelector;
 use crate::error;
-use crate::{Probe, DebugProbeError, Session, Memory};
-use crate::config::target::TargetSpecification;
+use crate::{DebugProbeError, Memory, Probe, Session};
 
 pub trait CoreRegister: Clone + From<u32> + Into<u32> + Sized + std::fmt::Debug {
     const ADDRESS: u32;
@@ -105,7 +105,6 @@ pub trait CoreInterface: dyn_clone::DynClone {
 
     fn memory(&self) -> Memory;
     fn hw_breakpoints_enabled(&self) -> bool;
-
 }
 
 dyn_clone::clone_trait_object!(CoreInterface);
@@ -170,7 +169,7 @@ impl Core {
         }
     }
 
-    pub fn auto_attach(target: impl Into<TargetSpecification>) -> Result<Core, error::Error> {
+    pub fn auto_attach(target: impl Into<TargetSelector>) -> Result<Core, error::Error> {
         // Get a list of all available debug probes.
         let probes = Probe::list_all();
 
@@ -336,10 +335,7 @@ impl Core {
     }
 
     pub fn clear_hw_breakpoint(&mut self, address: u32) -> Result<(), error::Error> {
-        let bp_position = self
-            .breakpoints
-            .iter()
-            .position(|bp| bp.address == address);
+        let bp_position = self.breakpoints.iter().position(|bp| bp.address == address);
 
         match bp_position {
             Some(bp_position) => {
@@ -355,11 +351,7 @@ impl Core {
     }
 
     fn find_free_breakpoint_unit(&self) -> usize {
-        let mut used_bp: Vec<_> = self
-            .breakpoints
-            .iter()
-            .map(|bp| bp.register_hw)
-            .collect();
+        let mut used_bp: Vec<_> = self.breakpoints.iter().map(|bp| bp.register_hw).collect();
         used_bp.sort();
 
         let mut free_bp = 0;

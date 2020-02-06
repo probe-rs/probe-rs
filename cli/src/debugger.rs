@@ -3,8 +3,7 @@ use crate::common::CliError;
 use capstone::Capstone;
 use probe_rs::architecture::arm::CortexDump;
 use probe_rs::debug::DebugInfo;
-use probe_rs::CoreRegisterAddress;
-use probe_rs::{Core, Error, Session};
+use probe_rs::{Core, CoreRegisterAddress};
 use std::fs::File;
 use std::io::prelude::*;
 
@@ -40,10 +39,7 @@ impl DebugCli {
 
                 let mut code = [0u8; 16 * 2];
 
-                cli_data
-                    .core
-                    .memory()
-                    .read_block8(cpu_info.pc, &mut code)?;
+                cli_data.core.memory().read_block8(cpu_info.pc, &mut code)?;
 
                 let instructions = cli_data
                     .capstone
@@ -93,10 +89,7 @@ impl DebugCli {
 
                 let mut buff = vec![0u32; num_words];
 
-                cli_data
-                    .core
-                    .memory()
-                    .read_block32(address, &mut buff)?;
+                cli_data.core.memory().read_block32(address, &mut buff)?;
 
                 for (offset, word) in buff.iter().enumerate() {
                     println!("0x{:08x} = 0x{:08x}", address + (offset * 4) as u32, word);
@@ -166,10 +159,9 @@ impl DebugCli {
                 let mut regs = [0u32; 15];
 
                 for i in 0..15 {
-                    regs[i as usize] =
-                        cli_data
-                            .core
-                            .read_core_reg(Into::<CoreRegisterAddress>::into(i))?;
+                    regs[i as usize] = cli_data
+                        .core
+                        .read_core_reg(Into::<CoreRegisterAddress>::into(i))?;
                 }
 
                 for (i, val) in regs.iter().enumerate() {
