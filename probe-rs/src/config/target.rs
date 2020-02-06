@@ -57,9 +57,27 @@ pub enum TargetSelector {
     Auto,
 }
 
-impl<I: AsRef<str>> From<I> for TargetSelector {
-    fn from(value: I) -> Self {
-        TargetSelector::Unspecified(value.as_ref().into())
+impl<'a> From<&'a str> for TargetSelector {
+    fn from(value: &'a str) -> Self {
+        TargetSelector::Unspecified(value.into())
+    }
+}
+
+impl<'a> From<&'a String> for TargetSelector {
+    fn from(value: &'a String) -> Self {
+        TargetSelector::Unspecified(value.into())
+    }
+}
+
+impl From<String> for TargetSelector {
+    fn from(value: String) -> Self {
+        TargetSelector::Unspecified(value)
+    }
+}
+
+impl From<()> for TargetSelector {
+    fn from(_value: ()) -> Self {
+        TargetSelector::Auto
     }
 }
 
