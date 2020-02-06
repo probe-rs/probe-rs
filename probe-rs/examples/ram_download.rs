@@ -54,8 +54,7 @@ fn main() -> Result<(), &'static str> {
     rng.fill(&mut sample_data[..]);
 
     let write_start = Instant::now();
-    core.memory()
-        .write_block32(matches.address, &sample_data)
+    core.write_32(matches.address, &sample_data)
         .unwrap();
 
     let write_duration = write_start.elapsed();
@@ -74,8 +73,7 @@ fn main() -> Result<(), &'static str> {
     let mut readback_data = vec![0u32; data_size_words];
 
     let read_start = Instant::now();
-    core.memory()
-        .read_block32(matches.address, &mut readback_data)
+    core.read_32(matches.address, &mut readback_data)
         .unwrap();
     let read_duration = read_start.elapsed();
 
@@ -116,7 +114,7 @@ fn open_probe(index: Option<usize>) -> Result<Probe, &'static str> {
         }
     };
 
-    let probe = Probe::from_probe_info(&device).map_err(|_| "Failed to open probe")?;
+    let probe = device.open().map_err(|_| "Failed to open probe")?;
 
     Ok(probe)
 }
