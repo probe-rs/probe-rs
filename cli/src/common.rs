@@ -1,10 +1,8 @@
 use crate::SharedOptions;
 
 use probe_rs::{
-    architecture::arm::ap::AccessPortError,
-    config::registry::{Registry, RegistryError, SelectionStrategy},
-    flash::download::FileDownloadError,
-    DebugProbeError, Error, Probe, Session,
+    architecture::arm::ap::AccessPortError, config::target::TargetSelector,
+    flash::download::FileDownloadError, DebugProbeError, Error, Probe, Session,
 };
 
 use std::fmt;
@@ -32,11 +30,6 @@ pub enum CliError {
         #[from]
         FileDownloadError,
     ),
-    RegistryError(
-        #[source]
-        #[from]
-        RegistryError,
-    ),
     MissingArgument,
     UnableToOpenProbe(Option<&'static str>),
     ProbeRs(
@@ -55,7 +48,6 @@ impl fmt::Display for CliError {
             AccessPort(ref e) => e.fmt(f),
             StdIO(ref e) => e.fmt(f),
             FileDownload(ref e) => e.fmt(f),
-            RegistryError(ref e) => e.fmt(f),
             MissingArgument => write!(f, "Command expected more arguments."),
             UnableToOpenProbe(ref details) => match details {
                 None => write!(f, "Unable to open probe."),
@@ -97,20 +89,12 @@ where
 {
     let probe = open_probe(shared_options.n)?;
 
-    let strategy = if let Some(identifier) = &shared_options.target {
-        SelectionStrategy::TargetIdentifier(identifier.into())
-    } else {
-        eprintln!("Autodetection of the target is currently disabled for stability reasons.");
-        std::process::exit(1);
-        // TODO:
-        // SelectionStrategy::ChipInfo(ChipInfo::read_from_rom_table(&mut probe)?)
+    let target_selector = match &shared_options.target {
+        Some(identifier) => identifier.into(),
+        None => TargetSelector::Auto,
     };
 
-    let registry = Registry::from_builtin_families();
-
-    let target = registry.get_target(strategy)?;
-
-    let session = probe.attach(target)?;
+    let session = probe.attach(target_selector)?;
 
     f(session)
 }

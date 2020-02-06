@@ -500,7 +500,7 @@ impl CoreInterface for M0 {
     fn memory(&self) -> Memory {
         self.memory.clone()
     }
-    
+
     fn hw_breakpoints_enabled(&self) -> bool {
         self.hw_breakpoints_enabled
     }

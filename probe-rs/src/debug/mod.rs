@@ -435,7 +435,11 @@ impl DebugInfo {
         }
     }
 
-    pub fn try_unwind<'a, 'b>(&'a self, core: &'b Core, address: u64) -> StackFrameIterator<'a, 'b> {
+    pub fn try_unwind<'a, 'b>(
+        &'a self,
+        core: &'b Core,
+        address: u64,
+    ) -> StackFrameIterator<'a, 'b> {
         StackFrameIterator::new(&self, core, address)
     }
 }

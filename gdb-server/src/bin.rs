@@ -2,16 +2,12 @@ use structopt;
 
 use colored::*;
 use std::{
-    path::Path,
     process::{self},
     sync::{Arc, Mutex},
 };
 use structopt::StructOpt;
 
-use probe_rs::{
-    config::registry::{Registry, SelectionStrategy},
-    Probe,
-};
+use probe_rs::{config::target::TargetSelector, Probe};
 
 #[derive(Debug, StructOpt)]
 struct Opt {
@@ -76,22 +72,11 @@ fn main_try() -> Result<(), failure::Error> {
 
     let probe = open_probe(None)?;
 
-    let strategy = if let Some(identifier) = opt.chip.clone() {
-        SelectionStrategy::TargetIdentifier(identifier.into())
-    } else {
-        eprintln!("Autodetection of the target is currently disabled for stability reasons.");
-        std::process::exit(1);
-        // TODO:
-        // SelectionStrategy::ChipInfo(ChipInfo::read_from_rom_table(&mut probe)?)
+    let target_selector = match opt.chip {
+        Some(identifier) => identifier.into(),
+        None => TargetSelector::Auto,
     };
-
-    let mut registry = Registry::from_builtin_families();
-    if let Some(cdp) = opt.chip_description_path {
-        registry.add_target_from_yaml(&Path::new(&cdp))?;
-    }
-
-    let target = registry.get_target(strategy)?;
-    let session = probe.attach(target)?;
+    let session = probe.attach(target_selector)?;
 
     let gdb_connection_string = opt
         .gdb_connection_string

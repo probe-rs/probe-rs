@@ -1,7 +1,4 @@
-use probe_rs::{
-    config::registry::{Registry, SelectionStrategy},
-    Probe, WireProtocol,
-};
+use probe_rs::{config::target::TargetSelector, Probe, WireProtocol};
 
 use std::num::ParseIntError;
 use std::time::Instant;
@@ -29,30 +26,18 @@ fn main() -> Result<(), &'static str> {
 
     let matches = CLI::from_args();
 
-    let identifier = &matches.chip;
-
     let mut probe = open_probe(None)?;
 
-    let strategy = match identifier {
-        Some(identifier) => SelectionStrategy::TargetIdentifier(identifier.into()),
-        None => return Err("Autodetection is not supported at the moment"), // TODO:
-                                                                            // SelectionStrategy::ChipInfo(
-                                                                            //     ChipInfo::Arm(match probe.communication_interface().probe_for_chip_info().map_err(|_| "Failed to read chip info from ROM table")? {
-                                                                            //         Some(info) => info,
-                                                                            //         None => return Err("Failed to read chip info from ROM table")
-                                                                            //     })
-                                                                            // )
+    let target_selector = match matches.chip {
+        Some(identifier) => identifier.into(),
+        None => TargetSelector::Auto,
     };
 
-    let registry = Registry::from_builtin_families();
-
-    let target = registry
-        .get_target(strategy)
-        .map_err(|_| "Failed to find target")?;
-
-    probe.select_protocol(WireProtocol::Swd).map_err(|_| "Failed to select SWD as the transport protocol")?;
+    probe
+        .select_protocol(WireProtocol::Swd)
+        .map_err(|_| "Failed to select SWD as the transport protocol")?;
     let session = probe
-        .attach(target)
+        .attach(target_selector)
         .map_err(|_| "Failed to attach probe to target")?;
     let core = session
         .attach_to_core(0)

@@ -1,11 +1,11 @@
 pub(crate) mod daplink;
 pub(crate) mod stlink;
 
-use crate::architecture::arm::{ArmCommunicationInterface, ap::AccessPortError, DAPAccess, PortType};
-use crate::config::target::{Target, TargetSpecification};
-use crate::config::registry::{Registry, SelectionStrategy, TargetIdentifier, RegistryError};
-use crate::{Memory, Session};
+use crate::architecture::arm::{ap::AccessPortError, DAPAccess, PortType};
+use crate::config::registry::RegistryError;
+use crate::config::target::TargetSelector;
 use crate::error::Error;
+use crate::{Memory, Session};
 use thiserror::Error;
 
 #[derive(Copy, Clone, Debug)]
@@ -102,9 +102,7 @@ impl Probe {
     }
 
     pub fn from_specific_probe(probe: Box<dyn DebugProbe>) -> Self {
-        Probe {
-            inner: probe,
-        }
+        Probe { inner: probe }
     }
 
     // /// Tries to mass erase a locked nRF52 chip, this process may timeout, if it does, the chip
@@ -166,10 +164,7 @@ impl Probe {
     }
 
     /// Enters debug mode
-    pub fn attach(
-        mut self,
-        target: impl Into<TargetSpecification>,
-    ) -> Result<Session, Error> {
+    pub fn attach(mut self, target: impl Into<TargetSelector>) -> Result<Session, Error> {
         self.inner.attach()?;
 
         Session::new(self, target)

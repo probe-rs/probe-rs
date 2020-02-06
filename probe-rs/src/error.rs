@@ -1,6 +1,6 @@
+use crate::config::registry::RegistryError;
 use crate::DebugProbeError;
 use thiserror::Error;
-use crate::config::registry::RegistryError;
 
 #[derive(Error, Debug)]
 pub enum Error {

@@ -51,20 +51,20 @@ impl Target {
 }
 
 #[derive(Debug, Clone)]
-pub enum TargetSpecification {
+pub enum TargetSelector {
     Unspecified(String),
     Specified(Target),
-    ChipInfo,
+    Auto,
 }
 
-impl<I: AsRef<str>> From<I> for TargetSpecification {
+impl<I: AsRef<str>> From<I> for TargetSelector {
     fn from(value: I) -> Self {
-        TargetSpecification::Unspecified(value.as_ref().into())
+        TargetSelector::Unspecified(value.as_ref().into())
     }
 }
 
-impl From<Target> for TargetSpecification {
+impl From<Target> for TargetSelector {
     fn from(target: Target) -> Self {
-        TargetSpecification::Specified(target)
+        TargetSelector::Specified(target)
     }
 }

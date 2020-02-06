@@ -5,12 +5,12 @@ mod usb_interface;
 
 use self::usb_interface::STLinkUSBDevice;
 use super::{DAPAccess, DebugProbe, DebugProbeError, DebugProbeInfo, PortType, WireProtocol};
-use crate::architecture::arm::{ap::AccessPort, Register, dp::Ctrl};
+use crate::architecture::arm::{ap::AccessPort, dp::Ctrl, Register};
 use crate::Memory;
-use scroll::{Pread, BE};
 use constants::{commands, JTagFrequencyToDivider, Mode, Status, SwdFrequencyToDelayCount};
-use usb_interface::TIMEOUT;
+use scroll::{Pread, BE};
 use thiserror::Error;
+use usb_interface::TIMEOUT;
 
 pub struct STLink {
     device: STLinkUSBDevice,
@@ -136,7 +136,12 @@ impl DAPAccess for STLink {
     }
 
     /// Writes a value to the DAP register on the specified port and address.
-    fn write_register(&mut self, port: PortType, addr: u16, value: u32) -> Result<(), DebugProbeError> {
+    fn write_register(
+        &mut self,
+        port: PortType,
+        addr: u16,
+        value: u32,
+    ) -> Result<(), DebugProbeError> {
         if (addr & 0xf0) == 0 || port != PortType::DebugPort {
             let port: u16 = port.into();
 

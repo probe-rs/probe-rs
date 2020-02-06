@@ -539,7 +539,7 @@ impl CoreInterface for M4 {
     fn memory(&self) -> Memory {
         self.memory.clone()
     }
-    
+
     fn hw_breakpoints_enabled(&self) -> bool {
         self.hw_breakpoints_enabled
     }

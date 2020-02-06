@@ -1,5 +1,5 @@
-use crate::config::chip_family::ChipFamily;
 use crate::config::chip::Chip;
+use crate::config::chip_family::ChipFamily;
 use crate::config::chip_info::ChipInfo;
 use std::error::Error;
 use std::fs::File;
@@ -69,12 +69,6 @@ impl From<serde_yaml::Error> for RegistryError {
     }
 }
 
-#[derive(Debug)]
-pub enum SelectionStrategy {
-    TargetIdentifier(TargetIdentifier),
-    ChipInfo(ChipInfo),
-}
-
 pub struct Registry {
     /// All the available chips.
     families: Vec<ChipFamily>,
@@ -115,9 +109,7 @@ impl Registry {
                         .to_ascii_lowercase()
                         .starts_with(&name.as_ref().to_ascii_lowercase())
                     {
-                        if variant.name.to_ascii_lowercase()
-                            != name.as_ref().to_ascii_lowercase()
-                        {
+                        if variant.name.to_ascii_lowercase() != name.as_ref().to_ascii_lowercase() {
                             log::warn!(
                                 "Found chip {} which matches given partial name {}. Consider specifying it's full name.",
                                 variant.name,
@@ -166,7 +158,6 @@ impl Registry {
     }
 
     fn get_target(&self, family: &ChipFamily, chip: &Chip) -> Result<Target, RegistryError> {
-
         // Try get the corresponding chip.
         let core = if let Some(core) = get_core(&family.core) {
             core
@@ -224,32 +215,24 @@ mod tests {
     #[test]
     fn try_fetch1() {
         let registry = Registry::from_builtin_families();
-        assert!(registry
-            .get_target_by_name("nrf51")
-            .is_ok());
+        assert!(registry.get_target_by_name("nrf51").is_ok());
     }
 
     #[test]
     fn try_fetch2() {
         let registry = Registry::from_builtin_families();
-        assert!(registry
-            .get_target_by_name("nrf5182")
-            .is_ok());
+        assert!(registry.get_target_by_name("nrf5182").is_ok());
     }
 
     #[test]
     fn try_fetch3() {
         let registry = Registry::from_builtin_families();
-        assert!(registry
-            .get_target_by_name("nrF51822_x")
-            .is_ok());
+        assert!(registry.get_target_by_name("nrF51822_x").is_ok());
     }
 
     #[test]
     fn try_fetch4() {
         let registry = Registry::from_builtin_families();
-        assert!(registry
-            .get_target_by_name("nrf51822_Xxaa")
-            .is_ok());
+        assert!(registry.get_target_by_name("nrf51822_Xxaa").is_ok());
     }
 }

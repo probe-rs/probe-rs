@@ -1,9 +1,11 @@
-use crate::architecture::arm::{ArmChipInfo, memory::ADIMemoryInterface, ArmCommunicationInterface};
+use crate::architecture::arm::{
+    memory::ADIMemoryInterface, ArmChipInfo, ArmCommunicationInterface,
+};
+use crate::config::chip_info::ChipInfo;
 use crate::config::flash_algorithm::RawFlashAlgorithm;
 use crate::config::memory::MemoryRegion;
-use crate::config::target::{TargetSpecification, Target};
-use crate::config::chip_info::ChipInfo;
 use crate::config::registry::{Registry, RegistryError};
+use crate::config::target::{Target, TargetSelector};
 use crate::core::CoreType;
 use crate::{Core, CoreList, Error, Memory, MemoryList, Probe};
 use std::cell::RefCell;
@@ -25,7 +27,7 @@ enum ArchitectureSession {
 
 impl Session {
     /// Open a new session with a given debug target
-    pub fn new(probe: Probe, target: impl Into<TargetSpecification>) -> Result<Self, Error> {
+    pub fn new(probe: Probe, target: impl Into<TargetSelector>) -> Result<Self, Error> {
         // TODO: Handle different architectures
 
         let mut arm_interface = ArmCommunicationInterface::new(probe);
@@ -33,14 +35,12 @@ impl Session {
 
         let target = target.into();
         let target = match target.into() {
-            TargetSpecification::Unspecified(name) => {
-                match registry.get_target_by_name(name) {
-                    Ok(target) => target,
-                    Err(err) => return Err(err)?,
-                }
+            TargetSelector::Unspecified(name) => match registry.get_target_by_name(name) {
+                Ok(target) => target,
+                Err(err) => return Err(err)?,
             },
-            TargetSpecification::Specified(target) => target,
-            TargetSpecification::ChipInfo => {
+            TargetSelector::Specified(target) => target,
+            TargetSelector::Auto => {
                 let arm_chip = ArmChipInfo::read_from_rom_table(&mut arm_interface)
                     .map(|option| option.map(ChipInfo::Arm))?;
                 if let Some(chip) = arm_chip {
@@ -50,7 +50,7 @@ impl Session {
                     }
                 } else {
                     // Not sure if this is ok.
-                    return Err(Error::ChipNotFound(RegistryError::ChipAutodetectFailed))
+                    return Err(Error::ChipNotFound(RegistryError::ChipAutodetectFailed));
                 }
             }
         };
