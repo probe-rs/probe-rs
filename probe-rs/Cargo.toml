@@ -1,6 +1,6 @@
 [package]
 name = "probe-rs"
-version = "0.4.0"
+version = "0.5.0"
 authors = ["Noah Hüsser <yatekii@yatekii.ch>", "Dominik Boehi <dominik.boehi@gmail.ch>"]
 edition = "2018"
 description = "A collection of on chip debugging tools to comminicate with ARM chips."
@@ -44,7 +44,7 @@ colored = "1.8.0"
 thiserror = "1.0"
 
 [build-dependencies]
-probe-rs-t2rust  = { path = "../probe-rs-t2rust", version ="0.4.0" }
+probe-rs-t2rust  = { path = "../probe-rs-t2rust", version ="0.5.0" }
 
 [dev-dependencies]
 rand = "0.7.2"

@@ -1,4 +1,4 @@
-use probe_rs::{config::target::TargetSelector, Probe, WireProtocol};
+use probe_rs::{config::TargetSelector, Probe, WireProtocol};
 
 use std::num::ParseIntError;
 use std::time::Instant;
