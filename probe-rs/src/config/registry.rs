@@ -1,71 +1,42 @@
 use crate::config::chip::Chip;
 use crate::config::chip_family::ChipFamily;
 use crate::config::chip_info::ChipInfo;
-use std::error::Error;
+use thiserror::Error;
 use std::fs::File;
 use std::path::Path;
-
 use super::target::Target;
 use crate::core::get_core;
+use std::sync::{Arc, Mutex, TryLockError};
 
-#[derive(Debug)]
+lazy_static::lazy_static! {
+    static ref REGISTRY: Arc<Mutex<Registry>> = Arc::new(Mutex::new(Registry::from_builtin_families()));
+}
+
+#[derive(Debug, Error)]
 pub enum RegistryError {
+    #[error("The requested chip was not found.")]
     ChipNotFound,
+    #[error("The connected chip could not automatically be determined.")]
     ChipAutodetectFailed,
+    #[error("The requested algorithm was not found.")]
     AlgorithmNotFound,
+    #[error("The requested core was not found.")]
     CoreNotFound,
+    #[error("No RAM description was found.")]
     RamMissing,
+    #[error("No flash description was found.")]
     FlashMissing,
-    Io(std::io::Error),
-    Yaml(serde_yaml::Error),
+    #[error("An IO error was encountered: {0}")]
+    Io(#[from] std::io::Error),
+    #[error("Deserializing the yaml encountered an error: {0}")]
+    Yaml(#[from] serde_yaml::Error),
+    #[error("Unable to lock registry")]
+    LockUnavailable,
 }
 
-impl Error for RegistryError {
-    fn source(&self) -> Option<&(dyn Error + 'static)> {
-        use RegistryError::*;
-
-        match self {
-            ChipNotFound => None,
-            ChipAutodetectFailed => None,
-            AlgorithmNotFound => None,
-            CoreNotFound => None,
-            RamMissing => None,
-            FlashMissing => None,
-            Io(ref e) => Some(e),
-            Yaml(ref e) => Some(e),
-        }
-    }
-}
-
-impl std::fmt::Display for RegistryError {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        use RegistryError::*;
-
-        match self {
-            ChipNotFound => write!(f, "The requested chip was not found."),
-            ChipAutodetectFailed => write!(
-                f,
-                "The connected chip could not automatically be determined."
-            ),
-            AlgorithmNotFound => write!(f, "The requested algorithm was not found."),
-            CoreNotFound => write!(f, "The requested core was not found."),
-            RamMissing => write!(f, "No RAM description was found."),
-            FlashMissing => write!(f, "No flash description was found."),
-            Io(ref e) => e.fmt(f),
-            Yaml(ref e) => e.fmt(f),
-        }
-    }
-}
-
-impl From<std::io::Error> for RegistryError {
-    fn from(value: std::io::Error) -> RegistryError {
-        RegistryError::Io(value)
-    }
-}
-
-impl From<serde_yaml::Error> for RegistryError {
-    fn from(value: serde_yaml::Error) -> RegistryError {
-        RegistryError::Yaml(value)
+impl<R> From<TryLockError<R>> for RegistryError {
+    fn from(_: TryLockError<R>) -> Self {
+        RegistryError::LockUnavailable
     }
 }
 
@@ -191,6 +162,18 @@ impl Registry {
 
         Ok(())
     }
+}
+
+pub fn get_target_by_name(name: impl AsRef<str>) -> Result<Target, RegistryError> {
+    REGISTRY.try_lock()?.get_target_by_name(name)
+}
+
+pub fn get_target_by_chip_info(chip_info: ChipInfo) -> Result<Target, RegistryError> {
+    REGISTRY.try_lock()?.get_target_by_chip_info(chip_info)
+}
+
+pub fn add_target_from_yaml(path_to_yaml: &Path) -> Result<(), RegistryError> {
+    REGISTRY.try_lock()?.add_target_from_yaml(path_to_yaml)
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq, Serialize, Deserialize)]
