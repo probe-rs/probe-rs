@@ -31,11 +31,10 @@ impl Session {
         // TODO: Handle different architectures
 
         let mut arm_interface = ArmCommunicationInterface::new(probe);
-        let registry = Registry::from_builtin_families();
 
         let target = target.into();
         let target = match target.into() {
-            TargetSelector::Unspecified(name) => match registry.get_target_by_name(name) {
+            TargetSelector::Unspecified(name) => match crate::config::registry::get_target_by_name(name) {
                 Ok(target) => target,
                 Err(err) => return Err(err)?,
             },
@@ -44,7 +43,7 @@ impl Session {
                 let arm_chip = ArmChipInfo::read_from_rom_table(&mut arm_interface)
                     .map(|option| option.map(ChipInfo::Arm))?;
                 if let Some(chip) = arm_chip {
-                    match registry.get_target_by_chip_info(chip) {
+                    match crate::config::registry::get_target_by_chip_info(chip) {
                         Ok(target) => target,
                         Err(err) => return Err(err)?,
                     }
