@@ -176,6 +176,10 @@ pub fn add_target_from_yaml(path_to_yaml: &Path) -> Result<(), RegistryError> {
     REGISTRY.try_lock()?.add_target_from_yaml(path_to_yaml)
 }
 
+pub fn families() -> Result<Vec<ChipFamily>, RegistryError> {
+    Ok(REGISTRY.try_lock()?.families().clone())
+}
+
 #[derive(Debug, Clone, Hash, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TargetIdentifier {
     pub chip_name: String,
