@@ -1,4 +1,4 @@
-use crate::config::chip_info::ChipInfo;
+use crate::config::ChipInfo;
 use crate::error::Error;
 
 pub trait CommunicationInterface {

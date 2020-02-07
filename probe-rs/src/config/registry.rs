@@ -1,6 +1,4 @@
-use crate::config::chip::Chip;
-use crate::config::chip_family::ChipFamily;
-use crate::config::chip_info::ChipInfo;
+use crate::config::{ChipFamily, ChipInfo, Chip};
 use thiserror::Error;
 use std::fs::File;
 use std::path::Path;
@@ -52,24 +50,24 @@ mod builtin {
 
 impl Registry {
     #[cfg(feature = "builtin-targets")]
-    pub fn from_builtin_families() -> Self {
+    fn from_builtin_families() -> Self {
         Self {
             families: builtin::get_targets(),
         }
     }
 
     #[cfg(not(feature = "builtin-targets"))]
-    pub fn from_builtin_families() -> Self {
+    fn from_builtin_families() -> Self {
         Self {
             families: Vec::new(),
         }
     }
 
-    pub fn families(&self) -> &Vec<ChipFamily> {
+    fn families(&self) -> &Vec<ChipFamily> {
         &self.families
     }
 
-    pub fn get_target_by_name(&self, name: impl AsRef<str>) -> Result<Target, RegistryError> {
+    fn get_target_by_name(&self, name: impl AsRef<str>) -> Result<Target, RegistryError> {
         let (family, chip) = {
             // Try get the corresponding chip.
             let mut selected_family_and_chip = None;
@@ -99,7 +97,7 @@ impl Registry {
         self.get_target(family, chip)
     }
 
-    pub fn get_target_by_chip_info(&self, chip_info: ChipInfo) -> Result<Target, RegistryError> {
+    fn get_target_by_chip_info(&self, chip_info: ChipInfo) -> Result<Target, RegistryError> {
         let (family, chip) = {
             match chip_info {
                 ChipInfo::Arm(chip_info) => {
@@ -147,7 +145,7 @@ impl Registry {
         Ok(Target::new(chip, chip_algorithms, core))
     }
 
-    pub fn add_target_from_yaml(&mut self, path_to_yaml: &Path) -> Result<(), RegistryError> {
+    fn add_target_from_yaml(&mut self, path_to_yaml: &Path) -> Result<(), RegistryError> {
         let file = File::open(path_to_yaml)?;
         let chip = ChipFamily::from_yaml_reader(file)?;
 

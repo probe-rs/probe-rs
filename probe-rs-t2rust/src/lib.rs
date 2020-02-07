@@ -33,17 +33,14 @@ pub fn run(input_dir: impl AsRef<Path>, output_file: impl AsRef<Path>) {
     } else {
         quote::quote! {
             use jep106::JEP106Code;
-            use crate::config::chip::Chip;
-            use crate::config::flash_algorithm::RawFlashAlgorithm;
-            use crate::config::memory::{FlashRegion, MemoryRegion, RamRegion, SectorDescription};
-            use crate::config::flash_properties::FlashProperties;
+            use crate::config::{Chip, RawFlashAlgorithm, FlashRegion, MemoryRegion, RamRegion, SectorDescription, FlashProperties};
             use maplit::hashmap;
         }
     };
 
     let stream = quote::quote! {
         #include_stream
-        use crate::config::chip_family::ChipFamily;
+        use crate::config::ChipFamily;
 
         #[allow(clippy::all)]
         pub fn get_targets() -> Vec<ChipFamily> {

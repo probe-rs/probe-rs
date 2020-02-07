@@ -1,8 +1,7 @@
 use super::builder::FlashBuilder;
 use super::flasher::Flasher;
 use super::FlashProgress;
-use crate::config::memory::MemoryRange;
-use crate::config::memory::{FlashRegion, MemoryRegion};
+use crate::config::{FlashRegion, MemoryRegion, MemoryRange};
 use crate::session::Session;
 use std::collections::HashMap;
 use std::error::Error;

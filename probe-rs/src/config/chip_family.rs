@@ -1,6 +1,6 @@
 use super::chip::Chip;
 use super::flash_algorithm::RawFlashAlgorithm;
-use crate::config::target::TargetParseError;
+use crate::config::TargetParseError;
 use jep106::JEP106Code;
 use std::collections::HashMap;
 

@@ -1,6 +1,6 @@
 use super::flasher::{Flasher, FlasherError};
 use super::FlashProgress;
-use crate::config::memory::{PageInfo, SectorInfo};
+use crate::config::{PageInfo, SectorInfo};
 
 /// A struct to hold all the information about one page of flash.
 #[derive(Derivative, Clone)]

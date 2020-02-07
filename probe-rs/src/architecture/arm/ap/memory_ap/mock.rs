@@ -1,6 +1,6 @@
 use super::super::{APAccess, Register};
 use super::{APRegister, AddressIncrement, DataSize, MemoryAP, CSW, DRW, TAR};
-use crate::config::chip_info::ChipInfo;
+use crate::config::ChipInfo;
 use crate::{CommunicationInterface, Error};
 use std::collections::HashMap;
 use thiserror::Error;
