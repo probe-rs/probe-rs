@@ -211,6 +211,7 @@ fn download_elf<'b, T: Read + Seek>(
                         &(sh.sh_offset as u32..sh.sh_offset as u32 + sh.sh_size as u32),
                     ) {
                         log::debug!("{:?}", &binary.shdr_strtab[sh.sh_name]);
+                        #[cfg(feature = "hexdump")]
                         for line in hexdump::hexdump_iter(
                             &buffer[sh.sh_offset as usize..][..sh.sh_size as usize],
                         ) {
