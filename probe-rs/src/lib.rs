@@ -67,7 +67,7 @@
 #[macro_use]
 extern crate derivative;
 #[macro_use]
-extern crate serde_derive;
+extern crate serde;
 
 pub mod architecture;
 pub mod config;
