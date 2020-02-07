@@ -45,36 +45,50 @@ cargo run -p probe-rs-cli -- help
 
 The help dialog should then tell you how to use the CLI.
 
-## Roadmap
+# Usage Examples
+## Halting the attached chip
 
-- [ ] v0.3.0
-  - [x] Automatic CMSIS-Pack parsing and loading for flash algorithms.
-- [ ] ...
-  - [ ] Basic debugging for Cortex m0, m3, m4.
-    - [x] Stepping
-    - [x] Halting
-    - [X] Breaking
-    - [x] Running
-  - [ ] Basic VSCode plugin
-    - [x] Stepping
-    - [x] Halting
-    - [ ] Breaking
-    - [x] Running
-    - [ ] Variable inspection
-      - [x] Pointers/References
-      - [ ] Structs
-      - [ ] Enums
-      - [ ] Basic types
-    - [x] Stack Trace display
-    - [ ] Stackframe display
-  - [ ] Basic CLI
-    - [x] Stepping
-    - [x] Halting
-    - [X] Breaking
-    - [x] Running
-  - [ ] Semihosting.
-  - [ ] Tracing.
-  - [ ] SVD file support.
+```rust
+use probe_rs::Probe;
+
+// Get a list of all available debug probes.
+let probes = Probe::list_all();
+
+// Use the first probe found.
+let probe = probes[0].open()?;
+
+// Attach to a chip.
+let session = probe.attach("nrf52")?;
+
+// Select a core.
+let core = session.attach_to_core(0)?;
+
+// Halt the attached core.
+core.halt()?;
+```
+
+## Reading from RAM
+
+```rust
+use probe_rs::Core;
+
+let core = Core::auto_attach("nrf52")?;
+
+// Read a block of 50 32 bit words.
+let mut buff = [0u32;50];
+core.read_32(0x2000_0000, &mut buff)?;
+
+// Read a single 32 bit word.
+let word = core.read_word_32(0x2000_0000)?;
+
+// Writing is just as simple.
+let buff = [0u32;50];
+core.write_32(0x2000_0000, &buff)?;
+
+// of course we can also write 8bit words.
+let buff = [0u8;50];
+core.write_8(0x2000_0000, &buff)?;
+```
 
 ## FAQ
 
