@@ -1,10 +1,10 @@
-use crate::config::{ChipFamily, ChipInfo, Chip};
-use thiserror::Error;
+use super::target::Target;
+use crate::config::{Chip, ChipFamily, ChipInfo};
+use crate::core::get_core;
 use std::fs::File;
 use std::path::Path;
-use super::target::Target;
-use crate::core::get_core;
 use std::sync::{Arc, Mutex, TryLockError};
+use thiserror::Error;
 
 lazy_static::lazy_static! {
     static ref REGISTRY: Arc<Mutex<Registry>> = Arc::new(Mutex::new(Registry::from_builtin_families()));

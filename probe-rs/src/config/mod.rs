@@ -7,11 +7,13 @@ mod memory;
 pub mod registry;
 mod target;
 
+pub use chip::Chip;
 pub use chip_family::ChipFamily;
 pub use chip_info::ChipInfo;
-pub use chip::Chip;
-pub use registry::RegistryError;
-pub use target::{Target, TargetSelector, TargetParseError};
-pub use memory::{MemoryRegion, FlashRegion, RamRegion, MemoryRange, SectorDescription, PageInfo, SectorInfo};
-pub use flash_algorithm::{RawFlashAlgorithm, FlashAlgorithm};
+pub use flash_algorithm::{FlashAlgorithm, RawFlashAlgorithm};
 pub use flash_properties::FlashProperties;
+pub use memory::{
+    FlashRegion, MemoryRange, MemoryRegion, PageInfo, RamRegion, SectorDescription, SectorInfo,
+};
+pub use registry::RegistryError;
+pub use target::{Target, TargetParseError, TargetSelector};

@@ -2,11 +2,11 @@ pub(crate) mod communication_interface;
 
 pub use communication_interface::CommunicationInterface;
 
-use std::cell::RefCell;
-use std::rc::Rc;
 use crate::config::TargetSelector;
 use crate::error;
 use crate::{DebugProbeError, Memory, Probe, Session};
+use std::cell::RefCell;
+use std::rc::Rc;
 
 pub trait CoreRegister: Clone + From<u32> + Into<u32> + Sized + std::fmt::Debug {
     const ADDRESS: u32;

@@ -1,7 +1,9 @@
 use crate::architecture::arm::{
     memory::ADIMemoryInterface, ArmChipInfo, ArmCommunicationInterface,
 };
-use crate::config::{RegistryError, Target, TargetSelector, MemoryRegion, RawFlashAlgorithm, ChipInfo};
+use crate::config::{
+    ChipInfo, MemoryRegion, RawFlashAlgorithm, RegistryError, Target, TargetSelector,
+};
 use crate::core::CoreType;
 use crate::{Core, CoreList, Error, Memory, MemoryList, Probe};
 use std::cell::RefCell;
@@ -30,10 +32,12 @@ impl Session {
 
         let target = target.into();
         let target = match target.into() {
-            TargetSelector::Unspecified(name) => match crate::config::registry::get_target_by_name(name) {
-                Ok(target) => target,
-                Err(err) => return Err(err)?,
-            },
+            TargetSelector::Unspecified(name) => {
+                match crate::config::registry::get_target_by_name(name) {
+                    Ok(target) => target,
+                    Err(err) => return Err(err)?,
+                }
+            }
             TargetSelector::Specified(target) => target,
             TargetSelector::Auto => {
                 let arm_chip = ArmChipInfo::read_from_rom_table(&mut arm_interface)
