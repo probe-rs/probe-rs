@@ -14,7 +14,6 @@ use std::{
 use structopt::StructOpt;
 
 use probe_rs::{
-    config::registry::{Registry, SelectionStrategy},
     architecture::arm::ap::AccessPortError,
     flash::download::{download_file, download_file_with_progress_reporting, Format},
     flash::{FlashProgress, ProgressEvent},
@@ -112,6 +111,11 @@ fn main_try() -> Result<(), failure::Error> {
 
     // Get commandline options.
     let opt = Opt::from_iter(&args);
+
+    // Make sure we load the config given in the cli parameters.
+    if let Some(cdp) = opt.chip_description_path {
+        probe_rs::config::registry::add_target_from_yaml(&Path::new(&cdp))?;
+    }
 
     if opt.list_chips {
         print_families();
@@ -279,14 +283,7 @@ fn main_try() -> Result<(), failure::Error> {
     //     SelectionStrategy::ChipInfo(ChipInfo::read_from_rom_table(&mut probe)?)
     // };
 
-    let mut registry = Registry::from_builtin_families();
-    if let Some(cdp) = opt.chip_description_path {
-        registry.add_target_from_yaml(&Path::new(&cdp))?;
-    }
-
-    let target = registry.get_target(SelectionStrategy::TargetIdentifier(opt.chip.into()))?;
-
-    let session = probe.attach(target)?;
+    let session = probe.attach(opt.chip)?;
     let core = session.attach_to_core(0)?;
 
     // Start timer.
@@ -411,10 +408,9 @@ fn main_try() -> Result<(), failure::Error> {
     Ok(())
 }
 
-fn print_families() {
+fn print_families() -> Result<(), failure::Error> {
     println!("Available chips:");
-    let registry = Registry::from_builtin_families();
-    for family in registry.families() {
+    for family in probe_rs::config::registry::families().map_err(|e| format_err!("Families could not be read: {:?}", e))? {
         println!("{}", family.name);
         println!("    Variants:");
         for variant in family.variants() {
@@ -426,6 +422,7 @@ fn print_families() {
             println!("        {} ({})", name, algorithm.description);
         }
     }
+    Ok(())
 }
 
 #[cfg(unix)]
