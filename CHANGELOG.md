@@ -7,12 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Added `MemoryInterface` trait as a replacement for the old `MI` trait.
-- Extend `DebugProbe` trait to be able to return a dedicated memory interface.
+- Flashing support for the STM32G0 series.
+- Flashing support for the STM32F0 series.
 
 ### Changed
 
-- `MasterProbe` was renamed to a more concise `Probe`.
+- The entire API was overhauled. The Probe, Session and Core structs have different interaction and APIs now.
+  Please have a look at the docs and examples to get an idea of the new interface.
+  The new API supports multiple architectures and makes the initialization process until the point where you can talk to a core easier.
+  The core methods don't need a passed probe anymore. Instead it stores an Rc to the Session object internally. The Probe object is taken by the Session which then can attach to multiple cores.
+  The modules have been cleaned up. Some heavily nested hierarchy has been flattened.$
+- More consistent and clean naming and reporting of errors in the stlink and daplink modules. Also the errorhandling for the probe has been improved.
+- Updated pretty_env_logger, gimly and goblin.
 
 ### Fixed
 
