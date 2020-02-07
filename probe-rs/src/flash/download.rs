@@ -8,7 +8,7 @@ use std::io::{Read, Seek, SeekFrom};
 use std::path::Path;
 
 use super::*;
-use crate::config::memory::{MemoryRange, MemoryRegion};
+use crate::config::{MemoryRange, MemoryRegion};
 
 pub struct BinOptions {
     /// The address in memory where the binary will be put at.

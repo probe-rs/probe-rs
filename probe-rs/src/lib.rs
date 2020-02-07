@@ -79,7 +79,7 @@ mod memory;
 mod probe;
 mod session;
 
-pub use crate::config::target::Target;
+pub use crate::config::Target;
 pub use crate::core::{
     Breakpoint, BreakpointId, CommunicationInterface, Core, CoreInterface, CoreList,
     CoreRegisterAddress,

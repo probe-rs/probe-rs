@@ -170,7 +170,7 @@ impl DebugProbe for DAPLink {
             ConnectRequest::UseDefaultPort
         };
 
-        let result = commands::send_command(&mut self.device, protocol).and_then(|v| match v {
+        let _result = commands::send_command(&mut self.device, protocol).and_then(|v| match v {
             ConnectResponse::SuccessfulInitForSWD => Ok(WireProtocol::Swd),
             ConnectResponse::SuccessfulInitForJTAG => Ok(WireProtocol::Jtag),
             ConnectResponse::InitFailed => Err(Error::DAP),

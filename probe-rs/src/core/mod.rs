@@ -4,8 +4,7 @@ pub use communication_interface::CommunicationInterface;
 
 use std::cell::RefCell;
 use std::rc::Rc;
-
-use crate::config::target::TargetSelector;
+use crate::config::TargetSelector;
 use crate::error;
 use crate::{DebugProbeError, Memory, Probe, Session};
 

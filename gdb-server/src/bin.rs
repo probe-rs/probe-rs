@@ -7,7 +7,7 @@ use std::{
 };
 use structopt::StructOpt;
 
-use probe_rs::{config::target::TargetSelector, Probe};
+use probe_rs::{config::TargetSelector, Probe};
 
 #[derive(Debug, StructOpt)]
 struct Opt {

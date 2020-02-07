@@ -1,4 +1,4 @@
-use crate::config::registry::RegistryError;
+use crate::config::RegistryError;
 use crate::DebugProbeError;
 use thiserror::Error;
 

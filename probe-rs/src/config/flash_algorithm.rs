@@ -193,7 +193,7 @@ impl RawFlashAlgorithm {
 
 #[test]
 fn flash_sector_single_size() {
-    use crate::config::memory::SectorDescription;
+    use crate::config::SectorDescription;
     let config = FlashAlgorithm {
         flash_properties: FlashProperties {
             sectors: vec![SectorDescription {
@@ -224,7 +224,7 @@ fn flash_sector_single_size() {
 
 #[test]
 fn flash_sector_single_size_weird_sector_size() {
-    use crate::config::memory::SectorDescription;
+    use crate::config::SectorDescription;
     let config = FlashAlgorithm {
         flash_properties: FlashProperties {
             sectors: vec![SectorDescription {
@@ -258,7 +258,7 @@ fn flash_sector_single_size_weird_sector_size() {
 
 #[test]
 fn flash_sector_multiple_sizes() {
-    use crate::config::memory::SectorDescription;
+    use crate::config::SectorDescription;
     let config = FlashAlgorithm {
         flash_properties: FlashProperties {
             sectors: vec![

@@ -1,11 +1,7 @@
 use crate::architecture::arm::{
     memory::ADIMemoryInterface, ArmChipInfo, ArmCommunicationInterface,
 };
-use crate::config::chip_info::ChipInfo;
-use crate::config::flash_algorithm::RawFlashAlgorithm;
-use crate::config::memory::MemoryRegion;
-use crate::config::registry::{Registry, RegistryError};
-use crate::config::target::{Target, TargetSelector};
+use crate::config::{RegistryError, Target, TargetSelector, MemoryRegion, RawFlashAlgorithm, ChipInfo};
 use crate::core::CoreType;
 use crate::{Core, CoreList, Error, Memory, MemoryList, Probe};
 use std::cell::RefCell;

@@ -7,7 +7,7 @@ use super::{
     memory::romtable::{CSComponent, CSComponentId, PeripheralID},
     memory::ADIMemoryInterface,
 };
-use crate::config::chip_info::ChipInfo;
+use crate::config::ChipInfo;
 use crate::{CommunicationInterface, DebugProbe, DebugProbeError, Error, Memory, Probe};
 use jep106::JEP106Code;
 use log::debug;

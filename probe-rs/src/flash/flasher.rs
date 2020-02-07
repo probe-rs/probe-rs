@@ -1,10 +1,6 @@
 use super::builder::FlashBuilder;
 use super::FlashProgress;
-use crate::config::{
-    flash_algorithm::FlashAlgorithm,
-    memory::{FlashRegion, MemoryRange, SectorInfo},
-};
-
+use crate::config::{FlashAlgorithm, FlashRegion, MemoryRange, SectorInfo};
 use crate::core::Core;
 use crate::error;
 use crate::session::Session;
