@@ -410,7 +410,9 @@ fn main_try() -> Result<(), failure::Error> {
 
 fn print_families() -> Result<(), failure::Error> {
     println!("Available chips:");
-    for family in probe_rs::config::registry::families().map_err(|e| format_err!("Families could not be read: {:?}", e))? {
+    for family in probe_rs::config::registry::families()
+        .map_err(|e| format_err!("Families could not be read: {:?}", e))?
+    {
         println!("{}", family.name);
         println!("    Variants:");
         for variant in family.variants() {
