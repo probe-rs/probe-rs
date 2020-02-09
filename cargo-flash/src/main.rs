@@ -15,10 +15,10 @@ use structopt::StructOpt;
 
 use probe_rs::{
     architecture::arm::ap::AccessPortError,
+    config::TargetSelector,
     flash::download::{download_file, download_file_with_progress_reporting, Format},
     flash::{FlashProgress, ProgressEvent},
     DebugProbeError, Probe,
-    config::TargetSelector,
 };
 
 #[derive(Debug, StructOpt)]
@@ -122,7 +122,9 @@ fn main_try() -> Result<(), failure::Error> {
         print_families()?;
         std::process::exit(0);
     } else {
-        opt.chip.map(|chip| chip.into()).unwrap_or(TargetSelector::Auto)
+        opt.chip
+            .map(|chip| chip.into())
+            .unwrap_or(TargetSelector::Auto)
     };
 
     args.remove(0); // Remove executable name
