@@ -3,8 +3,8 @@
 //! The `debug` module contains various debug functionality, which can be
 //! used to implement a debugger based on `probe-rs`.
 
-pub mod typ;
-pub mod variable;
+mod typ;
+mod variable;
 use crate::core::Core;
 use object::read::Object;
 
@@ -16,39 +16,24 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::rc::Rc;
 
-use std::fmt;
 use std::io;
 use std::str::from_utf8;
-pub use typ::*;
-pub use variable::*;
 
 use gimli::{FileEntry, LineProgramHeader};
 
 use log::{debug, info};
 
-#[derive(Debug)]
+use thiserror::Error;
+
+#[derive(Debug, Error)]
 pub enum Error {
-    Io(io::Error),
+    #[error("IO Error while accessing debug data: {0}")]
+    Io(#[from] io::Error),
+    #[error("Error accessing debug data: {0}")]
     DebugData(&'static str),
+    #[error("Error parsing debug data: {0}")]
+    Parse(#[from] gimli::read::Error),
 }
-
-impl From<std::io::Error> for Error {
-    fn from(e: std::io::Error) -> Self {
-        Error::Io(e)
-    }
-}
-
-impl std::error::Error for Error {}
-
-impl fmt::Display for Error {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Error::Io(e) => e.fmt(fmt),
-            Error::DebugData(e) => write!(fmt, "Error accessing debug data: {}", e),
-        }
-    }
-}
-
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum ColumnType {
     LeftEdge,
@@ -303,13 +288,14 @@ pub struct DebugInfo {
 }
 
 impl DebugInfo {
-    /// Read debug info directly from a file.
+    /// Read debug info directly from a ELF file.
     pub fn from_file<P: AsRef<Path>>(path: P) -> Result<DebugInfo, Error> {
         let data = std::fs::read(path)?;
 
         DebugInfo::from_raw(&data)
     }
 
+    /// Parse debug information directly from a buffer containing an ELF file.
     pub fn from_raw(data: &[u8]) -> Result<Self, Error> {
         let object = object::File::parse(data).map_err(|e| Error::DebugData(e))?;
 
@@ -517,7 +503,7 @@ impl DebugInfo {
         path: &Path,
         line: u64,
         column: Option<u64>,
-    ) -> Result<Option<u64>, gimli::read::Error> {
+    ) -> Result<Option<u64>, Error> {
         debug!(
             "Looking for breakpoint location for {}:{}{}",
             path.display(),
@@ -647,13 +633,13 @@ impl DebugInfo {
     }
 }
 
-pub struct DieCursorState<'a, 'u> {
+struct DieCursorState<'a, 'u> {
     entries_cursor: EntriesCursor<'a, 'u>,
     _depth: isize,
     function_die: FunctionDie<'a, 'u>,
 }
 
-pub struct UnitInfo<'a> {
+struct UnitInfo<'a> {
     debug_info: &'a DebugInfo,
     unit: gimli::Unit<gimli::EndianReader<gimli::LittleEndian, std::rc::Rc<[u8]>>, usize>,
 }
@@ -939,7 +925,7 @@ fn get_piece_value(core: &Core, p: &gimli::Piece<DwarfReader>) -> Option<u32> {
     }
 }
 
-pub fn print_all_attributes(
+pub(crate) fn print_all_attributes(
     core: Core,
     frame_base: Option<u32>,
     dwarf: &gimli::Dwarf<DwarfReader>,
