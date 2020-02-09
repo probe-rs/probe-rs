@@ -18,12 +18,13 @@ use probe_rs::{
     flash::download::{download_file, download_file_with_progress_reporting, Format},
     flash::{FlashProgress, ProgressEvent},
     DebugProbeError, Probe,
+    config::TargetSelector,
 };
 
 #[derive(Debug, StructOpt)]
 struct Opt {
     #[structopt(name = "chip", long = "chip")]
-    chip: String,
+    chip: Option<String>,
     #[structopt(
         name = "chip description file path",
         short = "c",
@@ -117,10 +118,12 @@ fn main_try() -> Result<(), failure::Error> {
         probe_rs::config::registry::add_target_from_yaml(&Path::new(&cdp))?;
     }
 
-    if opt.list_chips {
-        print_families();
+    let chip = if opt.list_chips {
+        print_families()?;
         std::process::exit(0);
-    }
+    } else {
+        opt.chip.map(|chip| chip.into()).unwrap_or(TargetSelector::Auto)
+    };
 
     args.remove(0); // Remove executable name
 
@@ -283,7 +286,7 @@ fn main_try() -> Result<(), failure::Error> {
     //     SelectionStrategy::ChipInfo(ChipInfo::read_from_rom_table(&mut probe)?)
     // };
 
-    let session = probe.attach(opt.chip)?;
+    let session = probe.attach(chip)?;
     let core = session.attach_to_core(0)?;
 
     // Start timer.
@@ -417,11 +420,6 @@ fn print_families() -> Result<(), failure::Error> {
         println!("    Variants:");
         for variant in family.variants() {
             println!("        {}", variant.name);
-        }
-
-        println!("    Algorithms:");
-        for (name, algorithm) in family.algorithms() {
-            println!("        {} ({})", name, algorithm.description);
         }
     }
     Ok(())
