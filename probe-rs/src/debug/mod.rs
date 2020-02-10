@@ -5,34 +5,32 @@
 
 mod typ;
 mod variable;
-use crate::core::Core;
 use object::read::Object;
 
+use crate::core::Core;
 use typ::Type;
 use variable::Variable;
 
 use std::borrow;
-use std::path::Path;
-use std::path::PathBuf;
-use std::rc::Rc;
-
 use std::io;
-use std::str::from_utf8;
+use std::path::{Path, PathBuf};
+use std::rc::Rc;
+use std::str::{from_utf8, Utf8Error};
 
 use gimli::{FileEntry, LineProgramHeader};
-
 use log::{debug, info};
-
 use thiserror::Error;
 
 #[derive(Debug, Error)]
-pub enum Error {
+pub enum DebugError {
     #[error("IO Error while accessing debug data: {0}")]
     Io(#[from] io::Error),
     #[error("Error accessing debug data: {0}")]
     DebugData(&'static str),
     #[error("Error parsing debug data: {0}")]
     Parse(#[from] gimli::read::Error),
+    #[error("Non-UTF8 data found in debug data: {0}")]
+    NonUtf8(#[from] Utf8Error),
 }
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum ColumnType {
@@ -289,15 +287,15 @@ pub struct DebugInfo {
 
 impl DebugInfo {
     /// Read debug info directly from a ELF file.
-    pub fn from_file<P: AsRef<Path>>(path: P) -> Result<DebugInfo, Error> {
+    pub fn from_file<P: AsRef<Path>>(path: P) -> Result<DebugInfo, DebugError> {
         let data = std::fs::read(path)?;
 
         DebugInfo::from_raw(&data)
     }
 
     /// Parse debug information directly from a buffer containing an ELF file.
-    pub fn from_raw(data: &[u8]) -> Result<Self, Error> {
-        let object = object::File::parse(data).map_err(|e| Error::DebugData(e))?;
+    pub fn from_raw(data: &[u8]) -> Result<Self, DebugError> {
+        let object = object::File::parse(data).map_err(|e| DebugError::DebugData(e))?;
 
         // Load a section and return as `Cow<[u8]>`.
         let load_section = |id: gimli::SectionId| -> Result<DwarfReader, gimli::Error> {
@@ -503,9 +501,9 @@ impl DebugInfo {
         path: &Path,
         line: u64,
         column: Option<u64>,
-    ) -> Result<Option<u64>, Error> {
+    ) -> Result<Option<u64>, DebugError> {
         debug!(
-            "Looking for breakpoint location for {}:{}{}",
+            "Looking for breakpoint location for {}:{}:{}",
             path.display(),
             line,
             column
@@ -520,24 +518,28 @@ impl DebugInfo {
         while let Some(unit_header) = unit_iter.next()? {
             let unit = self.dwarf.unit(unit_header)?;
 
-            let comp_dir = PathBuf::from(from_utf8(unit.comp_dir.as_ref().unwrap()).unwrap());
+            let comp_dir = unit
+                .comp_dir
+                .as_ref()
+                .map(|dir| from_utf8(dir))
+                .transpose()?
+                .map(|p| PathBuf::from(p));
 
             if let Some(ref line_program) = unit.line_program {
                 let header = line_program.header();
 
                 for file_name in header.file_names() {
-                    let combined_path = self.get_path(&comp_dir, &unit, &header, file_name);
+                    let combined_path = comp_dir
+                        .as_ref()
+                        .and_then(|dir| self.get_path(&dir, &unit, &header, file_name));
 
                     if combined_path.map(|p| p == path).unwrap_or(false) {
                         let mut rows = line_program.clone().rows();
 
-                        while let Some((header, row)) = rows.next_row().unwrap() {
-                            let row_path = self.get_path(
-                                &comp_dir,
-                                &unit,
-                                &header,
-                                row.file(&header).unwrap(),
-                            );
+                        while let Some((header, row)) = rows.next_row()? {
+                            let row_path = comp_dir.as_ref().and_then(|dir| {
+                                self.get_path(&dir, &unit, &header, row.file(&header)?)
+                            });
 
                             if row_path.map(|p| p != path).unwrap_or(true) {
                                 continue;
@@ -559,7 +561,7 @@ impl DebugInfo {
             0 => Ok(None),
             1 => Ok(Some(locations[0].0)),
             n => {
-                println!("Found {} possible breakpoint locations", n);
+                debug!("Found {} possible breakpoint locations", n);
 
                 locations.sort_by({
                     |a, b| {
@@ -572,7 +574,7 @@ impl DebugInfo {
                 });
 
                 for loc in &locations {
-                    println!("col={:?}, addr={}", loc.1, loc.0);
+                    debug!("col={:?}, addr={}", loc.1, loc.0);
                 }
 
                 match column {
