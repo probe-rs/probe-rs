@@ -1,16 +1,16 @@
 pub mod constants;
-pub mod memory_interface;
 pub mod tools;
 mod usb_interface;
 
 use self::usb_interface::STLinkUSBDevice;
 use super::{DAPAccess, DebugProbe, DebugProbeError, DebugProbeInfo, PortType, WireProtocol};
 use crate::architecture::arm::{ap::AccessPort, dp::Ctrl, Register};
-use crate::Memory;
+use crate::{Memory, Error};
 use constants::{commands, JTagFrequencyToDivider, Mode, Status, SwdFrequencyToDelayCount};
 use scroll::{Pread, BE};
 use thiserror::Error;
 use usb_interface::TIMEOUT;
+use crate::itm::SwvReader;
 
 pub struct STLink {
     device: STLinkUSBDevice,
@@ -107,6 +107,14 @@ impl DebugProbe for STLink {
     }
 
     fn get_interface_dap_mut(&mut self) -> Option<&mut dyn DAPAccess> {
+        Some(self as _)
+    }
+
+    fn get_interface_itm(&self) -> Option<&dyn SwvReader> {
+        Some(self as _)
+    }
+
+    fn get_interface_itm_mut(&mut self) -> Option<&mut dyn SwvReader> {
         Some(self as _)
     }
 }
@@ -449,6 +457,43 @@ impl STLink {
         } else {
             Ok(())
         }
+    }
+
+    fn read_swv_available_byte_count(&mut self) -> Result<usize, DebugProbeError> {
+        let mut buf = [0; 2];
+        self.device.write(
+            vec![
+                commands::JTAG_COMMAND,
+                commands::SWV_GET_TRACE_NEW_RECORD_NB,
+            ],
+            &[],
+            &mut buf,
+            TIMEOUT,
+        )?;
+        Self::check_status(&buf)?;
+        Ok(buf.pread::<u16>(0).unwrap() as usize)
+    }
+
+    fn read_swv_data(&mut self) -> Result<Vec<u8>, DebugProbeError> {
+        let mut buf = vec![0; self.read_swv_available_byte_count()?];
+        self.device.write(
+            vec![
+                0x83, // TODO: make a constant
+            ],
+            &[],
+            &mut buf,
+            TIMEOUT,
+        )?;
+        Self::check_status(&buf)?;
+        Ok(buf)
+    }
+}
+
+
+impl SwvReader for STLink {
+    fn read(&mut self) -> Result<Vec<u8>, Error> {
+        let data = self.read_swv_data()?;
+        Ok(data)
     }
 }
 

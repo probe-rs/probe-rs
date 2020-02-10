@@ -4,6 +4,7 @@ pub mod tools;
 use crate::architecture::arm::dp::{DPAccess, DPRegister, DebugPort};
 use crate::architecture::arm::DAPAccess;
 use crate::architecture::arm::PortType;
+use crate::itm::SwvReader;
 use crate::probe::daplink::commands::Error;
 use crate::{DebugProbe, DebugProbeError, DebugProbeInfo, Memory, WireProtocol};
 use commands::{
@@ -285,6 +286,14 @@ impl DebugProbe for DAPLink {
 
     fn get_interface_dap_mut(&mut self) -> Option<&mut dyn DAPAccess> {
         Some(self as _)
+    }
+
+    fn get_interface_itm(&self) -> Option<&dyn SwvReader> {
+        None
+    }
+
+    fn get_interface_itm_mut(&mut self) -> Option<&mut dyn SwvReader> {
+        None
     }
 }
 

@@ -115,6 +115,10 @@ impl ArmCommunicationInterface {
     pub fn write_register_dp(&mut self, offset: u16, val: u32) -> Result<(), DebugProbeError> {
         self.inner.borrow_mut().write_register_dp(offset, val)
     }
+
+    pub fn read_swv(&mut self) -> Result<Vec<u8>, Error> {
+        self.inner.borrow_mut().read_swv()
+    }
 }
 
 struct InnerArmCommunicationInterface {
@@ -302,6 +306,13 @@ impl InnerArmCommunicationInterface {
             .ok_or_else(|| DebugProbeError::InterfaceNotAvailable("ARM"))?;
 
         interface.write_register(PortType::DebugPort, offset, val)
+    }
+
+    fn read_swv(&mut self) -> Result<Vec<u8>, Error> {
+        match self.probe.get_interface_itm_mut() {
+            Some(interface) => interface.read(),
+            None => Err(Error::WouldBlock)
+        }
     }
 }
 

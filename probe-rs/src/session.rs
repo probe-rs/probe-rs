@@ -144,44 +144,10 @@ impl Session {
     pub fn memory_map(&self) -> Vec<MemoryRegion> {
         self.inner.borrow().target.memory_map.clone()
     }
+
+    pub fn read_swv(&self) -> Result<Vec<u8>, Error> {
+        match &mut self.inner.borrow_mut().architecture_session {
+            ArchitectureSession::Arm(interface) => interface.read_swv()
+        }
+    }
 }
-
-// pub struct Session {
-//     probe: Probe,
-// }
-
-// pub trait Session {
-//     fn get_core(n: usize) -> Result<Core, Error>;
-// }
-
-// pub struct ArmSession {
-//     pub target: Target,
-//     pub probe: Rc<RefCell<dyn DAPAccess>>,
-// }
-
-// impl ArmSession {
-//     pub fn new(target: Target, probe: impl DAPAccess) -> Self {
-//         Self {
-//             target,
-//             probe: Rc::new(RefCell::new(probe)),
-//         }
-//     }
-// }
-
-// pub struct RiscVSession {
-//     pub target: Target,
-//     pub probe: Rc<RefCell<dyn DAPAccess>>,
-// }
-
-// impl RiscVSession {
-//     pub fn new(target: Target, probe: impl DAPAccess) -> Self {
-//         Self {
-//             target,
-//             probe: Rc::new(RefCell::new(probe)),
-//         }
-//     }
-// }
-
-// impl Session for RiscVSession {
-//     fn get_core(n: usize) -> Result<Core, Error> {}
-// }

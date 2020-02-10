@@ -14,6 +14,8 @@ pub enum Error {
     CoreNotFound(usize),
     #[error("Chip does not exist: {0:?}")]
     ChipNotFound(#[from] RegistryError),
+    #[error("THe routine would have blocked")]
+    WouldBlock,
 }
 
 impl Error {

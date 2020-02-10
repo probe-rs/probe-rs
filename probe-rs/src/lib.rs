@@ -78,6 +78,7 @@ pub mod flash;
 mod memory;
 mod probe;
 mod session;
+pub mod itm;
 
 pub use crate::config::Target;
 pub use crate::core::{

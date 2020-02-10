@@ -2,6 +2,7 @@ pub(crate) mod daplink;
 pub(crate) mod stlink;
 
 use crate::architecture::arm::{ap::AccessPortError, DAPAccess, PortType};
+use crate::itm::SwvReader;
 use crate::config::{RegistryError, TargetSelector};
 use crate::error::Error;
 use crate::{Memory, Session};
@@ -196,6 +197,14 @@ impl Probe {
     pub fn get_interface_dap_mut(&mut self) -> Option<&mut dyn DAPAccess> {
         self.inner.get_interface_dap_mut()
     }
+
+    pub fn get_interface_itm(&self) -> Option<&dyn SwvReader> {
+        self.inner.get_interface_itm()
+    }
+
+    pub fn get_interface_itm_mut(&mut self) -> Option<&mut dyn SwvReader> {
+        self.inner.get_interface_itm_mut()
+    }
 }
 
 pub trait DebugProbe: Send + Sync {
@@ -224,6 +233,10 @@ pub trait DebugProbe: Send + Sync {
     fn get_interface_dap(&self) -> Option<&dyn DAPAccess>;
 
     fn get_interface_dap_mut(&mut self) -> Option<&mut dyn DAPAccess>;
+
+    fn get_interface_itm(&self) -> Option<&dyn SwvReader>;
+
+    fn get_interface_itm_mut(&mut self) -> Option<&mut dyn SwvReader>;
 }
 
 #[derive(Debug, Clone)]
@@ -324,6 +337,14 @@ impl DebugProbe for FakeProbe {
     }
 
     fn get_interface_dap_mut(&mut self) -> Option<&mut dyn DAPAccess> {
+        None
+    }
+
+    fn get_interface_itm(&self) -> Option<&dyn SwvReader> {
+        None
+    }
+
+    fn get_interface_itm_mut(&mut self) -> Option<&mut dyn SwvReader> {
         None
     }
 }
