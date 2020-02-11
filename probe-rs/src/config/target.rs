@@ -2,7 +2,7 @@ use super::chip::Chip;
 use super::flash_algorithm::RawFlashAlgorithm;
 use super::memory::MemoryRegion;
 use super::registry::TargetIdentifier;
-use crate::core::CoreType;
+use crate::core::{Architecture, CoreType};
 
 /// This describes a complete target with a fixed chip model and variant.
 #[derive(Clone)]
@@ -46,6 +46,16 @@ impl Target {
             flash_algorithms,
             core_type,
             memory_map: chip.memory_map.clone(),
+        }
+    }
+
+    pub fn architecture(&self) -> Architecture {
+        match &self.core_type {
+            CoreType::M0 => Architecture::ARM,
+            CoreType::M3 => Architecture::ARM,
+            CoreType::M33 => Architecture::ARM,
+            CoreType::M4 => Architecture::ARM,
+            CoreType::Riscv => Architecture::RISCV,
         }
     }
 }
