@@ -3,6 +3,7 @@ use super::FlashProgress;
 use crate::config::{FlashAlgorithm, FlashRegion, MemoryRange, SectorInfo};
 use crate::core::{Core, RegisterFile};
 use crate::error;
+use crate::memory::MemoryInterface;
 use crate::session::Session;
 use thiserror::Error;
 
@@ -143,13 +144,9 @@ impl<'a> Flasher<'a> {
         }
 
         // Attach to memory and core.
-        let memory = flasher
+        let mut core = flasher
             .session
-            .attach_to_best_memory()
-            .map_err(FlasherError::Core)?;
-        let core = flasher
-            .session
-            .attach_to_core_with_specific_memory(0, Some(memory.clone()))
+            .attach_to_core(0)
             .map_err(FlasherError::Memory)?;
 
         // TODO: Halt & reset target.
@@ -168,14 +165,11 @@ impl<'a> Flasher<'a> {
             algo.load_address
         );
 
-        memory
-            .clone()
-            .write_block32(algo.load_address, algo.instructions.as_slice())
+        core.write_block32(algo.load_address, algo.instructions.as_slice())
             .map_err(FlasherError::Memory)?;
 
         let mut data = vec![0; algo.instructions.len()];
-        memory
-            .read_block32(algo.load_address, &mut data)
+        core.read_block32(algo.load_address, &mut data)
             .map_err(FlasherError::Memory)?;
 
         for (offset, (original, read_back)) in algo.instructions.iter().zip(data.iter()).enumerate()

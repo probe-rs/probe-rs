@@ -1,13 +1,18 @@
 use super::target::Target;
 use crate::config::{Chip, ChipFamily, ChipInfo};
-use crate::core::get_core;
+use crate::core::CoreType;
+use lazy_static::lazy_static;
 use std::fs::File;
 use std::path::Path;
-use std::sync::{Arc, Mutex, TryLockError};
+use std::{
+    collections::HashMap,
+    sync::{Arc, Mutex, TryLockError},
+};
 use thiserror::Error;
 
-lazy_static::lazy_static! {
-    static ref REGISTRY: Arc<Mutex<Registry>> = Arc::new(Mutex::new(Registry::from_builtin_families()));
+lazy_static! {
+    static ref REGISTRY: Arc<Mutex<Registry>> =
+        Arc::new(Mutex::new(Registry::from_builtin_families()));
 }
 
 #[derive(Debug, Error)]
@@ -18,8 +23,8 @@ pub enum RegistryError {
     ChipAutodetectFailed,
     #[error("The requested algorithm was not found.")]
     AlgorithmNotFound,
-    #[error("The requested core was not found.")]
-    CoreNotFound,
+    #[error("The requested core '{0}' was not found.")]
+    CoreNotFound(String),
     #[error("No RAM description was found.")]
     RamMissing,
     #[error("No flash description was found.")]
@@ -38,6 +43,59 @@ impl<R> From<TryLockError<R>> for RegistryError {
     }
 }
 
+lazy_static! {
+    static ref GENERIC_TARGETS: [ChipFamily; 4] = [
+        ChipFamily {
+            name: "Generic Cortex-M0".to_owned(),
+            manufacturer: None,
+            variants: vec![Chip {
+                name: "cortex-m0".into(),
+                part: None,
+                memory_map: vec![],
+                flash_algorithms: vec![],
+            }],
+            flash_algorithms: HashMap::new(),
+            core: "M0".to_owned(),
+        },
+        ChipFamily {
+            name: "Generic Cortex-M4".to_owned(),
+            manufacturer: None,
+            variants: vec![Chip {
+                name: "cortex-m4".to_owned(),
+                part: None,
+                memory_map: vec![],
+                flash_algorithms: vec![],
+            }],
+            flash_algorithms: HashMap::new(),
+            core: "M4".to_owned(),
+        },
+        ChipFamily {
+            name: "Generic Cortex-M33".to_owned(),
+            manufacturer: None,
+            variants: vec![Chip {
+                name: "cortex-m33".to_owned(),
+                part: None,
+                memory_map: vec![],
+                flash_algorithms: vec![],
+            }],
+            flash_algorithms: HashMap::new(),
+            core: "M33".to_owned(),
+        },
+        ChipFamily {
+            name: "Generic Riscv".to_owned(),
+            manufacturer: None,
+            variants: vec![Chip {
+                name: "riscv".to_owned(),
+                part: None,
+                memory_map: vec![],
+                flash_algorithms: vec![],
+            }],
+            flash_algorithms: HashMap::new(),
+            core: "riscv".to_owned(),
+        },
+    ];
+}
+
 pub struct Registry {
     /// All the available chips.
     families: Vec<ChipFamily>,
@@ -51,15 +109,17 @@ mod builtin {
 impl Registry {
     #[cfg(feature = "builtin-targets")]
     fn from_builtin_families() -> Self {
-        Self {
-            families: builtin::get_targets(),
-        }
+        let mut families = builtin::get_targets();
+
+        families.extend(GENERIC_TARGETS.iter().cloned());
+
+        Self { families }
     }
 
     #[cfg(not(feature = "builtin-targets"))]
     fn from_builtin_families() -> Self {
         Self {
-            families: Vec::new(),
+            families: Vec::from(generic_targets),
         }
     }
 
@@ -68,6 +128,10 @@ impl Registry {
     }
 
     fn get_target_by_name(&self, name: impl AsRef<str>) -> Result<Target, RegistryError> {
+        let name = name.as_ref();
+
+        log::trace!("Searching registry for chip with name {}", name);
+
         let (family, chip) = {
             // Try get the corresponding chip.
             let mut selected_family_and_chip = None;
@@ -76,13 +140,13 @@ impl Registry {
                     if variant
                         .name
                         .to_ascii_lowercase()
-                        .starts_with(&name.as_ref().to_ascii_lowercase())
+                        .starts_with(&name.to_ascii_lowercase())
                     {
-                        if variant.name.to_ascii_lowercase() != name.as_ref().to_ascii_lowercase() {
+                        if variant.name.to_ascii_lowercase() != name.to_ascii_lowercase() {
                             log::warn!(
                                 "Found chip {} which matches given partial name {}. Consider specifying it's full name.",
                                 variant.name,
-                                name.as_ref(),
+                                name,
                             )
                         }
                         selected_family_and_chip = Some((family, variant));
@@ -128,10 +192,10 @@ impl Registry {
 
     fn get_target(&self, family: &ChipFamily, chip: &Chip) -> Result<Target, RegistryError> {
         // Try get the corresponding chip.
-        let core = if let Some(core) = get_core(&family.core) {
+        let core = if let Some(core) = CoreType::from_string(&family.core) {
             core
         } else {
-            return Err(RegistryError::CoreNotFound);
+            return Err(RegistryError::CoreNotFound(family.core.clone()));
         };
 
         // find relevant algorithms

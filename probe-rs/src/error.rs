@@ -12,7 +12,7 @@ pub enum Error {
     UnableToOpenProbe(&'static str),
     #[error("Core {0} does not exist")]
     CoreNotFound(usize),
-    #[error("Chip does not exist: {0:?}")]
+    #[error("Unable to load specification for chip: {0}")]
     ChipNotFound(#[from] RegistryError),
 }
 
