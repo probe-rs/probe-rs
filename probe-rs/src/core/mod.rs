@@ -4,6 +4,13 @@ pub use communication_interface::CommunicationInterface;
 
 use crate::config::TargetSelector;
 use crate::error;
+use crate::{
+    architecture::{
+        arm::{memory::ADIMemoryInterface, ArmCommunicationInterface},
+        riscv::{communication_interface::RiscvCommunicationInterface, Riscv32},
+    },
+    Error, MemoryInterface,
+};
 use crate::{DebugProbeError, Memory, Probe};
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -171,6 +178,36 @@ pub trait CoreInterface {
     fn architecture(&self) -> Architecture;
 }
 
+impl MemoryInterface for Core {
+    fn read32(&mut self, address: u32) -> Result<u32, Error> {
+        self.memory().read32(address)
+    }
+
+    fn read8(&mut self, address: u32) -> Result<u8, Error> {
+        self.memory().read8(address)
+    }
+
+    fn read_block32(&mut self, address: u32, data: &mut [u32]) -> Result<(), Error> {
+        self.memory().read_block32(address, data)
+    }
+    fn read_block8(&mut self, address: u32, data: &mut [u8]) -> Result<(), Error> {
+        self.memory().read_block8(address, data)
+    }
+
+    fn write32(&mut self, addr: u32, data: u32) -> Result<(), Error> {
+        self.memory().write32(addr, data)
+    }
+    fn write8(&mut self, addr: u32, data: u8) -> Result<(), Error> {
+        self.memory().write8(addr, data)
+    }
+    fn write_block32(&mut self, addr: u32, data: &[u32]) -> Result<(), Error> {
+        self.memory().write_block32(addr, data)
+    }
+    fn write_block8(&mut self, addr: u32, data: &[u8]) -> Result<(), Error> {
+        self.memory().write_block8(addr, data)
+    }
+}
+
 // dyn_clone::clone_trait_object!(CoreInterface);
 
 // struct CoreVisitor;
@@ -203,19 +240,57 @@ pub trait CoreInterface {
 //     }
 // }
 
-#[derive(Clone)]
+#[derive(Copy, Clone)]
 pub enum CoreType {
     M4,
     M33,
     M0,
+    Riscv,
 }
 
 impl CoreType {
-    pub fn attach(&self, memory: Memory) -> Core {
-        match self {
+    pub fn attach_arm(&self, interface: ArmCommunicationInterface) -> Result<Core, Error> {
+        let memory = if let Some(memory) = interface.dedicated_memory_interface() {
+            memory
+        } else {
+            // TODO: Change this to actually grab the proper memory IF.
+            // For now always use the ARM IF.
+            Memory::new(ADIMemoryInterface::<ArmCommunicationInterface>::new(
+                interface.clone(),
+                0,
+            ))
+        };
+
+        Ok(match self {
             CoreType::M4 => Core::new(crate::architecture::arm::m4::M4::new(memory)),
             CoreType::M33 => Core::new(crate::architecture::arm::m33::M33::new(memory)),
             CoreType::M0 => Core::new(crate::architecture::arm::m0::M0::new(memory)),
+            _ => {
+                return Err(Error::UnableToOpenProbe(
+                    "Core architecture and Probe mismatch.",
+                ))
+            }
+        })
+    }
+
+    pub fn attach_riscv(&self, interface: RiscvCommunicationInterface) -> Result<Core, Error> {
+        Ok(match self {
+            CoreType::Riscv => Core::new(Riscv32::new(interface)),
+            _ => {
+                return Err(Error::UnableToOpenProbe(
+                    "Core architecture and Probe mismatch.",
+                ))
+            }
+        })
+    }
+
+    pub(crate) fn from_string(name: impl AsRef<str>) -> Option<Self> {
+        match &name.as_ref().to_ascii_lowercase()[..] {
+            "m0" => Some(CoreType::M0),
+            "m4" => Some(CoreType::M4),
+            "m33" => Some(CoreType::M33),
+            "riscv" => Some(CoreType::Riscv),
+            _ => None,
         }
     }
 }
@@ -429,15 +504,6 @@ impl Core {
         }
 
         free_bp
-    }
-}
-
-pub(crate) fn get_core(name: impl AsRef<str>) -> Option<CoreType> {
-    match &name.as_ref().to_ascii_lowercase()[..] {
-        "m0" => Some(CoreType::M0),
-        "m4" => Some(CoreType::M4),
-        "m33" => Some(CoreType::M33),
-        _ => None,
     }
 }
 

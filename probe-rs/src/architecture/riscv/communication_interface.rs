@@ -36,6 +36,18 @@ impl RiscvCommunicationInterface {
     pub fn write_dm_register(&self, address: u8, data: u32) -> Result<(), DebugProbeError> {
         self.inner.borrow_mut().write_dm_register(address, data)
     }
+
+    /// Read the IDCODE register
+    pub fn read_idcode(&self) -> Result<u32, DebugProbeError> {
+        self.inner.borrow_mut().read_idcode()
+    }
+
+    pub fn close(self) -> Probe {
+        match Rc::try_unwrap(self.inner) {
+            Ok(inner) => inner.into_inner().probe,
+            Err(_) => panic!("Failed to unwrap RiscvCommunicationInterface"),
+        }
+    }
 }
 
 struct InnerRiscvCommunicationInterface {
@@ -82,11 +94,6 @@ impl InnerRiscvCommunicationInterface {
         Ok(interface)
     }
 
-    /// Read the IDCODE register
-    fn idcode(&self) -> u32 {
-        todo!();
-    }
-
     /// Read the `dtmcs` register
     fn read_dtmcs(&self) -> u32 {
         todo!();
@@ -99,6 +106,17 @@ impl InnerRiscvCommunicationInterface {
     fn version(&self) -> () {}
 
     fn idle_cycles(&self) -> () {}
+
+    fn read_idcode(&mut self) -> Result<u32, DebugProbeError> {
+        let jtag_interface = self
+            .probe
+            .get_interface_jtag_mut()
+            .ok_or(DebugProbeError::InterfaceNotAvailable("JTAG"))?;
+
+        let value = jtag_interface.read_register(0x1, 32)?;
+
+        Ok(u32::from_le_bytes((&value[..]).try_into().unwrap()))
+    }
 
     pub fn read_dm_register(&mut self, address: u32) -> Result<u32, DebugProbeError> {
         log::debug!("Reading DM register at {:#010x}", address);

@@ -98,10 +98,10 @@ pub struct ArmCommunicationInterface {
 }
 
 impl ArmCommunicationInterface {
-    pub fn new(probe: Probe) -> Self {
-        Self {
-            inner: Rc::new(RefCell::new(InnerArmCommunicationInterface::new(probe))),
-        }
+    pub fn new(probe: Probe) -> Result<Self, DebugProbeError> {
+        Ok(Self {
+            inner: Rc::new(RefCell::new(InnerArmCommunicationInterface::new(probe)?)),
+        })
     }
 
     pub fn dedicated_memory_interface(&self) -> Option<Memory> {
@@ -115,6 +115,17 @@ impl ArmCommunicationInterface {
     pub fn write_register_dp(&mut self, offset: u16, val: u32) -> Result<(), DebugProbeError> {
         self.inner.borrow_mut().write_register_dp(offset, val)
     }
+
+    pub fn close(self) -> Probe {
+        let inner = Rc::try_unwrap(self.inner);
+
+        match inner {
+            Ok(inner) => inner.into_inner().probe,
+            Err(_) => {
+                panic!("Failed to close ArmCommunicationInterface");
+            }
+        }
+    }
 }
 
 struct InnerArmCommunicationInterface {
@@ -124,12 +135,18 @@ struct InnerArmCommunicationInterface {
 }
 
 impl InnerArmCommunicationInterface {
-    fn new(probe: Probe) -> Self {
-        Self {
+    fn new(probe: Probe) -> Result<Self, DebugProbeError> {
+        // TODO: It would be nice if could store a DapInterface directly, so we don't have to get
+        //       it everytime we want to access it.
+        if probe.get_interface_dap().is_none() {
+            return Err(DebugProbeError::InterfaceNotAvailable("ARM"));
+        }
+
+        Ok(Self {
             probe,
             current_apsel: 0,
             current_apbanksel: 0,
-        }
+        })
     }
 
     fn select_ap_and_ap_bank(&mut self, port: u8, ap_bank: u8) -> Result<(), DebugProbeError> {

@@ -1,8 +1,8 @@
 use super::ARM_REGISTER_FILE;
 use crate::core::RegisterDescription;
 use crate::core::{
-    Architecture, CoreInformation, CoreInterface, CoreRegister, CoreRegisterAddress, RegisterFile,
-    RegisterKind,
+    Architecture, Breakpoint, CoreInformation, CoreInterface, CoreRegister, CoreRegisterAddress,
+    RegisterFile, RegisterKind,
 };
 use crate::error::Error;
 use crate::memory::Memory;

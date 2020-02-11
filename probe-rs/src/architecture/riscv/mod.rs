@@ -1,7 +1,7 @@
 //! RISCV Support
 
 use crate::core::Architecture;
-use crate::{CoreInterface, Probe};
+use crate::CoreInterface;
 use communication_interface::{AccessRegisterCommand, RiscvCommunicationInterface};
 
 use crate::core::{CoreInformation, RegisterFile};

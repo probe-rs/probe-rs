@@ -39,7 +39,7 @@ pub(crate) fn show_info_of_device(shared_options: &SharedOptions) -> Result<(), 
     // TODO: Move to proper place somewhere in init code
     //
 
-    let mut interface = ArmCommunicationInterface::new(probe);
+    let mut interface = ArmCommunicationInterface::new(probe)?;
     let target_info = interface.read_register_dp(0x0)?;
     println!("DP info: {:#08x}", target_info);
 
