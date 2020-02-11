@@ -65,6 +65,10 @@ impl DebugProbe for STLink {
         let value = ctrl_reg.into();
         self.write_register(PortType::DebugPort, Ctrl::ADDRESS.into(), value)?;
         self.protocol = protocol;
+
+
+
+        self.cmd_x40()?;
         Ok(())
     }
 
@@ -459,6 +463,28 @@ impl STLink {
         }
     }
 
+    pub fn cmd_x40(&mut self) -> Result<(), DebugProbeError> {
+        println!("cmd_x40");
+        let mut buf = [0; 2];
+        self.device.write(
+            vec![
+                commands::JTAG_COMMAND,
+                commands::SWV_START_TRACE_RECEPTION,
+                commands::JTAG_STLINK_SWD_COM,
+                0x10,
+                0x80,
+                0x84,
+                0x1e
+            ],
+            &[],
+            &mut buf,
+            TIMEOUT,
+        )?;
+        Self::check_status(&buf)?;
+
+        Ok(())
+    }
+    
     fn read_swv_available_byte_count(&mut self) -> Result<usize, DebugProbeError> {
         let mut buf = [0; 2];
         self.device.write(
@@ -471,7 +497,7 @@ impl STLink {
             TIMEOUT,
         )?;
         Self::check_status(&buf)?;
-        Ok(buf.pread::<u16>(0).unwrap() as usize)
+        Ok(dbg!(buf.pread::<u16>(0).unwrap() as usize))
     }
 
     fn read_swv_data(&mut self) -> Result<Vec<u8>, DebugProbeError> {

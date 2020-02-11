@@ -10,6 +10,8 @@ use serde::{Serialize, Deserialize};
 
 
 fn main() -> Result<(), Error> {
+    pretty_env_logger::init();
+
     use probe_rs::Probe;
 
     // Get a list of all available debug probes.
@@ -19,7 +21,7 @@ fn main() -> Result<(), Error> {
     let probe = probes[0].open()?;
 
     // Attach to a chip.
-    let session = probe.attach("nrf52")?;
+    let session = probe.attach("stm32f407")?;
 
     loop {
         let bytes = session.read_swv();
