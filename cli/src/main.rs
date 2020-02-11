@@ -8,7 +8,7 @@ use debugger::CliState;
 use probe_rs::{
     debug::DebugInfo,
     flash::download::{download_file, Format},
-    Probe, Session,
+    MemoryInterface, Probe, Session,
 };
 
 use capstone::{arch::arm::ArchMode, prelude::*, Capstone, Endian};
@@ -150,9 +150,9 @@ fn dump_memory(shared_options: &SharedOptions, loc: u32, words: u32) -> Result<(
 
         // let loc = 220 * 1024;
 
-        session
-            .attach_to_best_memory()?
-            .read_block32(loc, &mut data.as_mut_slice())?;
+        let mut core = session.attach_to_core(0)?;
+
+        core.read_block32(loc, &mut data.as_mut_slice())?;
         // Stop timer.
         let elapsed = instant.elapsed();
 
@@ -206,13 +206,15 @@ fn trace_u32_on_target(shared_options: &SharedOptions, loc: u32) -> Result<(), C
     let start = Instant::now();
 
     with_device(shared_options, |session| {
+        let mut core = session.attach_to_core(0)?;
+
         loop {
             // Prepare read.
             let elapsed = start.elapsed();
             let instant = elapsed.as_secs() * 1000 + u64::from(elapsed.subsec_millis());
 
             // Read data.
-            let value: u32 = session.attach_to_best_memory()?.read32(loc)?;
+            let value: u32 = core.read32(loc)?;
 
             xs.push(instant);
             ys.push(value);

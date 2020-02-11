@@ -351,9 +351,7 @@ impl DebugProbe for JLink {
         "J-Link"
     }
 
-    fn attach(
-        &mut self,
-    ) -> Result<(), super::DebugProbeError> {
+    fn attach(&mut self) -> Result<(), super::DebugProbeError> {
         // todo: check selected protocols
 
         self.select_protocol(self.protocol.unwrap_or(WireProtocol::Jtag))?;

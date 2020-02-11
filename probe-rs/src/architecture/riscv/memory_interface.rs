@@ -13,7 +13,6 @@ impl RiscvMemoryInterface {
 }
 
 impl MemoryInterface for RiscvMemoryInterface {
-
     fn read32(&mut self, address: u32) -> Result<u32, crate::Error> {
         unimplemented!()
     }

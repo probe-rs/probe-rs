@@ -1,7 +1,7 @@
 //! RISCV Support
 
 use crate::core::Architecture;
-use crate::{CoreInterface, Probe};
+use crate::CoreInterface;
 use communication_interface::{AccessRegisterCommand, RiscvCommunicationInterface};
 
 use crate::core::CoreInformation;
@@ -17,6 +17,10 @@ pub struct Riscv32 {
 }
 
 impl Riscv32 {
+    pub fn new(interface: RiscvCommunicationInterface) -> Self {
+        Self { interface }
+    }
+
     // Read a core register using an abstract command
     fn abstract_cmd_register_read(&self, regno: u32) -> Result<u32, crate::Error> {
         // GPR

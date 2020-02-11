@@ -1,10 +1,11 @@
-use crate::architecture::arm::{
-    memory::ADIMemoryInterface, ArmChipInfo, ArmCommunicationInterface,
+use crate::architecture::{
+    arm::{memory::ADIMemoryInterface, ArmChipInfo, ArmCommunicationInterface},
+    riscv::communication_interface::RiscvCommunicationInterface,
 };
 use crate::config::{
     ChipInfo, MemoryRegion, RawFlashAlgorithm, RegistryError, Target, TargetSelector,
 };
-use crate::core::CoreType;
+use crate::core::Architecture;
 use crate::{Core, CoreList, Error, Memory, MemoryList, Probe};
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -21,6 +22,7 @@ struct InnerSession {
 
 enum ArchitectureSession {
     Arm(ArmCommunicationInterface),
+    Riscv(RiscvCommunicationInterface),
 }
 
 impl Session {
@@ -28,9 +30,8 @@ impl Session {
     pub fn new(probe: Probe, target: impl Into<TargetSelector>) -> Result<Self, Error> {
         // TODO: Handle different architectures
 
-        let mut arm_interface = ArmCommunicationInterface::new(probe);
+        let mut generic_probe = Some(probe);
 
-        let target = target.into();
         let target = match target.into() {
             TargetSelector::Unspecified(name) => {
                 match crate::config::registry::get_target_by_name(name) {
@@ -40,13 +41,34 @@ impl Session {
             }
             TargetSelector::Specified(target) => target,
             TargetSelector::Auto => {
-                let arm_chip = ArmChipInfo::read_from_rom_table(&mut arm_interface)
-                    .map(|option| option.map(ChipInfo::Arm))?;
-                if let Some(chip) = arm_chip {
-                    match crate::config::registry::get_target_by_chip_info(chip) {
-                        Ok(target) => target,
-                        Err(err) => return Err(err)?,
-                    }
+                let mut found_chip = None;
+
+                if generic_probe.as_ref().unwrap().has_dap_interface() {
+                    let mut arm_interface =
+                        ArmCommunicationInterface::new(generic_probe.take().unwrap())?;
+                    found_chip = ArmChipInfo::read_from_rom_table(&mut arm_interface)
+                        .map(|option| option.map(ChipInfo::Arm))?;
+
+                    generic_probe = Some(arm_interface.close());
+                } else {
+                    log::debug!("No DAP interface available on Probe");
+                }
+
+                if generic_probe.as_ref().unwrap().has_jtag_interface() {
+                    let riscv_interface =
+                        RiscvCommunicationInterface::new(generic_probe.take().unwrap());
+
+                    let idcode = riscv_interface.read_idcode();
+
+                    log::debug!("ID Code read over JTAG: {:x?}", idcode);
+
+                    // TODO: Implement autodetect for RISC-V
+
+                    generic_probe = Some(riscv_interface.close());
+                }
+
+                if let Some(chip) = found_chip {
+                    crate::config::registry::get_target_by_chip_info(chip)?
                 } else {
                     // Not sure if this is ok.
                     return Err(Error::ChipNotFound(RegistryError::ChipAutodetectFailed));
@@ -54,7 +76,16 @@ impl Session {
             }
         };
 
-        let session = ArchitectureSession::Arm(arm_interface);
+        let session = match target.architecture() {
+            Architecture::ARM => {
+                let arm_interface = ArmCommunicationInterface::new(generic_probe.unwrap())?;
+                ArchitectureSession::Arm(arm_interface)
+            }
+            Architecture::RISCV => {
+                let riscv_interface = RiscvCommunicationInterface::new(generic_probe.unwrap());
+                ArchitectureSession::Riscv(riscv_interface)
+            }
+        };
 
         Ok(Self {
             inner: Rc::new(RefCell::new(InnerSession {
@@ -69,36 +100,17 @@ impl Session {
     }
 
     pub fn attach_to_core(&self, n: usize) -> Result<Core, Error> {
-        let core = self
+        let core = *self
             .list_cores()
             .get(n)
-            .ok_or_else(|| Error::CoreNotFound(n))?
-            .attach(self.clone(), self.attach_to_memory(0)?);
-        Ok(core)
-    }
+            .ok_or_else(|| Error::CoreNotFound(n))?;
 
-    pub fn attach_to_specific_core(&self, core_type: CoreType) -> Result<Core, Error> {
-        let core = core_type.attach(self.clone(), self.attach_to_memory(0)?);
-        Ok(core)
-    }
-
-    pub fn attach_to_core_with_specific_memory(
-        &self,
-        n: usize,
-        memory: Option<Memory>,
-    ) -> Result<Core, Error> {
-        let core = self
-            .list_cores()
-            .get(n)
-            .ok_or_else(|| Error::CoreNotFound(n))?
-            .attach(
-                self.clone(),
-                match memory {
-                    Some(memory) => memory,
-                    None => self.attach_to_memory(0)?,
-                },
-            );
-        Ok(core)
+        match self.inner.borrow().architecture_session {
+            ArchitectureSession::Arm(ref arm_interface) => core.attach_arm(arm_interface.clone()),
+            ArchitectureSession::Riscv(ref riscv_interface) => {
+                core.attach_riscv(riscv_interface.clone())
+            }
+        }
     }
 
     pub fn list_memories(&self) -> MemoryList {
@@ -118,21 +130,9 @@ impl Session {
                     ))
                 }
             }
-        }
-    }
-
-    pub fn attach_to_best_memory(&self) -> Result<Memory, Error> {
-        match self.inner.borrow().architecture_session {
-            ArchitectureSession::Arm(ref interface) => {
-                if let Some(memory) = interface.dedicated_memory_interface() {
-                    Ok(memory)
-                } else {
-                    // TODO: Change this to actually grab the proper memory IF.
-                    // For now always use the ARM IF.
-                    Ok(Memory::new(
-                        ADIMemoryInterface::<ArmCommunicationInterface>::new(interface.clone(), 0),
-                    ))
-                }
+            ArchitectureSession::Riscv(ref _interface) => {
+                // We don't need a memory interface..
+                Ok(Memory::new_dummy())
             }
         }
     }

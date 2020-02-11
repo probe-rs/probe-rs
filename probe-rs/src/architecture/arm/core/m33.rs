@@ -7,7 +7,7 @@ use crate::core::{
 };
 use crate::error::Error;
 use crate::memory::Memory;
-use crate::{DebugProbeError, Session};
+use crate::DebugProbeError;
 
 use bitfield::bitfield;
 
@@ -17,16 +17,14 @@ use std::mem::size_of;
 #[derive(Clone)]
 pub struct M33 {
     memory: Memory,
-    session: Session,
 
     hw_breakpoints_enabled: bool,
     active_breakpoints: Vec<Breakpoint>,
 }
 
 impl M33 {
-    pub fn new(session: Session, memory: Memory) -> Self {
+    pub fn new(memory: Memory) -> Self {
         Self {
-            session,
             memory,
             hw_breakpoints_enabled: false,
             active_breakpoints: vec![],

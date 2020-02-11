@@ -7,9 +7,9 @@ use crate::architecture::riscv::communication_interface::JTAGAccess;
 use crate::config::{RegistryError, TargetSelector};
 use crate::error::Error;
 use crate::{Memory, Session};
+use jlink::list_jlink_devices;
 use std::fmt;
 use thiserror::Error;
-use jlink::list_jlink_devices;
 
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub enum WireProtocol {
@@ -213,12 +213,20 @@ impl Probe {
         self.inner.dedicated_memory_interface()
     }
 
+    pub fn has_dap_interface(&self) -> bool {
+        self.inner.get_interface_dap().is_some()
+    }
+
     pub fn get_interface_dap(&self) -> Option<&dyn DAPAccess> {
         self.inner.get_interface_dap()
     }
 
     pub fn get_interface_dap_mut(&mut self) -> Option<&mut dyn DAPAccess> {
         self.inner.get_interface_dap_mut()
+    }
+
+    pub fn has_jtag_interface(&self) -> bool {
+        self.inner.get_interface_jtag().is_some()
     }
 
     pub fn get_interface_jtag(&self) -> Option<&dyn JTAGAccess> {

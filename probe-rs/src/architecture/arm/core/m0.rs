@@ -1,11 +1,10 @@
 use crate::core::{
-    BasicRegisterAddresses, Breakpoint, CoreInformation, CoreInterface, CoreRegister,
-    CoreRegisterAddress,Architecture,
+    Architecture, BasicRegisterAddresses, Breakpoint, CoreInformation, CoreInterface, CoreRegister,
+    CoreRegisterAddress,
 };
 use crate::error::Error;
 use crate::memory::Memory;
 use crate::DebugProbeError;
-use crate::Session;
 use bitfield::bitfield;
 use log::debug;
 use std::mem::size_of;
@@ -262,16 +261,14 @@ pub const PSP: CoreRegisterAddress = CoreRegisterAddress(0b01010);
 #[derive(Clone)]
 pub struct M0 {
     memory: Memory,
-    session: Session,
 
     hw_breakpoints_enabled: bool,
     active_breakpoints: Vec<Breakpoint>,
 }
 
 impl M0 {
-    pub fn new(session: Session, memory: Memory) -> Self {
+    pub fn new(memory: Memory) -> Self {
         Self {
-            session,
             memory,
             hw_breakpoints_enabled: false,
             active_breakpoints: vec![],
