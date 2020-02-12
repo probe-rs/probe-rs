@@ -58,6 +58,7 @@ impl DebugProbe for STLink {
             &mut buf,
             TIMEOUT,
         )?;
+        println!("KEK");
         Self::check_status(&buf)?;
         let mut ctrl_reg = Ctrl::default();
         ctrl_reg.set_csyspwrupreq(true);
@@ -455,7 +456,7 @@ impl STLink {
     /// This can be called on any status returned from the attached target.
     fn check_status(status: &[u8]) -> Result<(), DebugProbeError> {
         log::trace!("check_status({:?})", status);
-        if status[0] != Status::JtagOk as u8 {
+        if status.len() > 0 && status[0] != Status::JtagOk as u8 {
             log::debug!("check_status failed: {:?}", status);
             Err(DebugProbeError::Unknown)
         } else {
@@ -496,21 +497,15 @@ impl STLink {
             &mut buf,
             TIMEOUT,
         )?;
-        Self::check_status(&buf)?;
-        Ok(dbg!(buf.pread::<u16>(0).unwrap() as usize))
+        Ok(buf.pread::<u16>(0).unwrap() as usize)
     }
 
     fn read_swv_data(&mut self) -> Result<Vec<u8>, DebugProbeError> {
         let mut buf = vec![0; self.read_swv_available_byte_count()?];
-        self.device.write(
-            vec![
-                0x83, // TODO: make a constant
-            ],
-            &[],
+        self.device.read_swv(
             &mut buf,
             TIMEOUT,
         )?;
-        Self::check_status(&buf)?;
         Ok(buf)
     }
 }
@@ -534,7 +529,7 @@ pub(crate) enum StlinkError {
     #[error("Blank values are not allowed on DebugPort writes.")]
     BlanksNotAllowedOnDPRegister,
     #[error("Not enough bytes read.")]
-    NotEnoughBytesRead,
+    NotEnoughBytesRead { is: usize, should: usize },
     #[error("USB endpoint not found.")]
     EndpointNotFound,
 }

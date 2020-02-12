@@ -20,6 +20,7 @@ pub mod commands {
     pub const JTAG_READMEM_8BIT: u8 = 0x0c;
     pub const JTAG_WRITEMEM_8BIT: u8 = 0x0d;
     pub const JTAG_EXIT: u8 = 0x21;
+    pub const JTAG_ENTER: u8 = 0x20;
     pub const JTAG_ENTER2: u8 = 0x30;
     pub const JTAG_GETLASTRWSTATUS2: u8 = 0x3e; // From V2J15
     pub const JTAG_DRIVE_NRST: u8 = 0x3c;

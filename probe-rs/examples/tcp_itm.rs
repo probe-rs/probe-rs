@@ -7,6 +7,7 @@ use probe_rs::Error;
 use std::io::{BufRead, BufReader};
 use std::io::prelude::*;
 use serde::{Serialize, Deserialize};
+use scroll::Pread;
 
 
 fn main() -> Result<(), Error> {
@@ -23,10 +24,37 @@ fn main() -> Result<(), Error> {
     // Attach to a chip.
     let session = probe.attach("stm32f407")?;
 
-    loop {
-        let bytes = session.read_swv();
+    let mut timestamp: f64 = 0.0;
 
-        println!("{:?}", bytes);
+    let mut decoder = probe_rs::itm::Decoder::new();
+
+    loop {
+        let bytes = session.read_swv().unwrap();
+
+        decoder.feed(bytes);
+        while let Some(packet) = decoder.pull() {
+            match packet {
+                probe_rs::itm::TracePacket::TimeStamp { tc, ts } => {
+                    log::debug!("Timestamp packet: tc={} ts={}", tc, ts);
+                    let mut time_delta: f64 = ts as f64;
+                    // Divide by core clock frequency to go from ticks to seconds.
+                    time_delta /= 16_000_000.0;
+                    timestamp += time_delta;
+                }
+                probe_rs::itm::TracePacket::DwtData { id, payload } => {
+                    log::debug!("Dwt: id={} payload={:?}", id, payload);
+
+                    if id == 17 {
+                        let value: i32 = payload.pread(0).unwrap();
+                        log::trace!("VAL={}", value);
+                        // client.send_sample("a", timestamp, value as f64).unwrap();
+                    }
+                }
+                _ => {
+                    log::debug!("Trace packet: {:?}", packet);
+                }
+            }
+        }
     }
 
     Ok(())
