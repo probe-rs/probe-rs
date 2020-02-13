@@ -43,6 +43,7 @@ dyn-clone = "1.0.1"
 colored = "1.8.0"
 jaylink = { git = "https://github.com/jonas-schievink/jaylink.git" }
 bitvec = "0.17.2"
+bitmatch = "0.1.0"
 
 [build-dependencies]
 probe-rs-t2rust  = { path = "../probe-rs-t2rust", version ="0.5.0" }

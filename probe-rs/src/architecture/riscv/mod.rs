@@ -2,11 +2,14 @@
 
 use crate::core::Architecture;
 use crate::CoreInterface;
-use communication_interface::{AccessRegisterCommand, RiscvCommunicationInterface};
+use communication_interface::{AccessRegisterCommand, DebugRegister, RiscvCommunicationInterface};
 
 use crate::core::{CoreInformation, RegisterFile};
 use crate::CoreRegisterAddress;
 use bitfield::bitfield;
+
+#[macro_use]
+mod register;
 
 pub mod communication_interface;
 pub mod memory_interface;
@@ -35,13 +38,13 @@ impl Riscv32 {
 
         self.execute_abstract_command(command.0)?;
 
-        let register_value = self.interface.read_dm_register(0x04)?;
+        let register_value: Data0 = self.interface.read_dm_register()?;
 
-        Ok(register_value)
+        Ok(register_value.into())
     }
 
     fn abstract_cmd_register_write(&self, regno: u32, value: u32) -> Result<(), crate::Error> {
-        // read from data0
+        // write to data0
         let mut command = AccessRegisterCommand(0);
         command.set_cmd_type(0);
         command.set_transfer(true);
@@ -51,7 +54,7 @@ impl Riscv32 {
         command.set_regno(regno);
 
         // write data0
-        self.interface.write_dm_register(0x04, value)?;
+        self.interface.write_dm_register(Data0(value))?;
 
         self.execute_abstract_command(command.0)
     }
@@ -67,10 +70,10 @@ impl Riscv32 {
         dmcontrol.set_resumereq(false);
         dmcontrol.set_ackhavereset(true);
         dmcontrol.set_dmactive(true);
-        self.interface.write_dm_register(0x10, dmcontrol.0)?;
+        self.interface.write_dm_register(dmcontrol)?;
 
         // read abstractcs to see its state
-        let abstractcs_prev = Abstractcs(self.interface.read_dm_register(0x16)?);
+        let abstractcs_prev: Abstractcs = self.interface.read_dm_register()?;
 
         log::debug!("abstractcs: {:?}", abstractcs_prev);
 
@@ -79,10 +82,10 @@ impl Riscv32 {
             let mut abstractcs_clear = Abstractcs(0);
             abstractcs_clear.set_cmderr(0x7);
 
-            self.interface.write_dm_register(0x16, abstractcs_clear.0)?;
+            self.interface.write_dm_register(abstractcs_clear)?;
         }
 
-        self.interface.write_dm_register(0x17, command)?;
+        self.interface.write_dm_register(Command(command))?;
 
         // poll busy flag in abstractcs
 
@@ -91,7 +94,7 @@ impl Riscv32 {
         let mut abstractcs = Abstractcs(1);
 
         for _ in 0..repeat_count {
-            abstractcs = Abstractcs(self.interface.read_dm_register(0x16)?);
+            abstractcs = self.interface.read_dm_register()?;
 
             if !abstractcs.busy() {
                 break;
@@ -122,7 +125,7 @@ impl CoreInterface for Riscv32 {
         let num_retries = 10;
 
         for _ in 0..num_retries {
-            let dmstatus = Dmstatus(self.interface.read_dm_register(0x11)?);
+            let dmstatus: Dmstatus = self.interface.read_dm_register()?;
 
             log::trace!("{:?}", dmstatus);
 
@@ -142,7 +145,7 @@ impl CoreInterface for Riscv32 {
         // of the dmcontrol register
 
         // read the current dmcontrol register
-        let current_dmcontrol = Dmcontrol(self.interface.read_dm_register(0x10)?);
+        let current_dmcontrol: Dmcontrol = self.interface.read_dm_register()?;
         log::debug!("{:?}", current_dmcontrol);
 
         let mut dmcontrol = Dmcontrol(0);
@@ -150,7 +153,7 @@ impl CoreInterface for Riscv32 {
         dmcontrol.set_haltreq(true);
         dmcontrol.set_dmactive(true);
 
-        self.interface.write_dm_register(0x10, dmcontrol.0)?;
+        self.interface.write_dm_register(dmcontrol)?;
 
         self.wait_for_core_halted()?;
 
@@ -159,7 +162,7 @@ impl CoreInterface for Riscv32 {
 
         dmcontrol.set_dmactive(true);
 
-        self.interface.write_dm_register(0x10, dmcontrol.0)?;
+        self.interface.write_dm_register(dmcontrol)?;
 
         let pc = self.read_core_reg(CoreRegisterAddress(0x7b1))?;
 
@@ -207,10 +210,10 @@ impl CoreInterface for Riscv32 {
             let ebreak_cmd = 0b000000000001_00000_000_00000_1110011;
 
             // write progbuf0: csrr xxxxxx s0, (address) // lookup correct command
-            self.interface.write_dm_register(0x20, csrrs_cmd)?;
+            self.interface.write_dm_register(Progbuf0(csrrs_cmd))?;
 
             // write progbuf1: ebreak
-            self.interface.write_dm_register(0x21, ebreak_cmd)?;
+            self.interface.write_dm_register(Progbuf1(ebreak_cmd))?;
 
             // command: postexec
             let mut postexec_cmd = AccessRegisterCommand(0);
@@ -244,6 +247,7 @@ impl CoreInterface for Riscv32 {
     fn set_breakpoint(&self, bp_unit_index: usize, addr: u32) -> Result<(), crate::Error> {
         unimplemented!()
     }
+
     fn clear_breakpoint(&self, unit_index: usize) -> Result<(), crate::Error> {
         unimplemented!()
     }
@@ -252,7 +256,7 @@ impl CoreInterface for Riscv32 {
         unimplemented!()
     }
     fn memory(&self) -> crate::Memory {
-        unimplemented!()
+        self.interface.memory()
     }
 
     fn hw_breakpoints_enabled(&self) -> bool {
@@ -283,6 +287,23 @@ bitfield! {
     dmactive, set_dmactive: 0;
 }
 
+impl DebugRegister for Dmcontrol {
+    const ADDRESS: u8 = 0x10;
+    const NAME: &'static str = "dmcontrol";
+}
+
+impl From<Dmcontrol> for u32 {
+    fn from(register: Dmcontrol) -> Self {
+        register.0
+    }
+}
+
+impl From<u32> for Dmcontrol {
+    fn from(value: u32) -> Self {
+        Self(value)
+    }
+}
+
 bitfield! {
     /// Readonly `dmstatus` register.
     ///
@@ -310,6 +331,23 @@ bitfield! {
     version, _: 3, 0;
 }
 
+impl DebugRegister for Dmstatus {
+    const ADDRESS: u8 = 0x11;
+    const NAME: &'static str = "dmstatus";
+}
+
+impl From<u32> for Dmstatus {
+    fn from(value: u32) -> Self {
+        Self(value)
+    }
+}
+
+impl From<Dmstatus> for u32 {
+    fn from(register: Dmstatus) -> Self {
+        register.0
+    }
+}
+
 bitfield! {
     pub struct Abstractcs(u32);
     impl Debug;
@@ -319,3 +357,38 @@ bitfield! {
     cmderr, set_cmderr: 10, 8;
     datacount, _: 3, 0;
 }
+
+impl DebugRegister for Abstractcs {
+    const ADDRESS: u8 = 0x16;
+    const NAME: &'static str = "abstractcs";
+}
+
+impl From<Abstractcs> for u32 {
+    fn from(register: Abstractcs) -> Self {
+        register.0
+    }
+}
+
+impl From<u32> for Abstractcs {
+    fn from(value: u32) -> Self {
+        Self(value)
+    }
+}
+
+data_register! { pub Data0, 0x04, "data0" }
+data_register! { pub Data1, 0x05, "data1" }
+data_register! { pub Data2, 0x05, "data2" }
+data_register! { pub Data3, 0x05, "data3" }
+data_register! { pub Data4, 0x05, "data4" }
+data_register! { pub Data5, 0x05, "data5" }
+data_register! { pub Data6, 0x05, "data6" }
+data_register! { pub Data7, 0x05, "data7" }
+data_register! { pub Data8, 0x05, "data8" }
+data_register! { pub Data9, 0x05, "data9" }
+data_register! { pub Data10, 0x05, "data10" }
+data_register! { pub Data11, 0x0f, "data11" }
+
+data_register! { Command, 0x17, "command" }
+
+data_register! { pub Progbuf0, 0x20, "progbuf0" }
+data_register! { pub Progbuf1, 0x21, "progbuf1" }
