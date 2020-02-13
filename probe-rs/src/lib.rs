@@ -80,6 +80,7 @@ mod probe;
 mod session;
 
 pub use crate::config::Target;
+pub use crate::core::CoreType;
 pub use crate::core::{
     Breakpoint, BreakpointId, CommunicationInterface, Core, CoreInterface, CoreList,
     CoreRegisterAddress,
