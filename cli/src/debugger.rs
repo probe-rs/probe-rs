@@ -41,6 +41,7 @@ impl DebugCli {
 
                 cli_data.core.memory().read_block8(cpu_info.pc, &mut code)?;
 
+                /*
                 let instructions = cli_data
                     .capstone
                     .disasm_all(&code, u64::from(cpu_info.pc))
@@ -48,6 +49,15 @@ impl DebugCli {
 
                 for i in instructions.iter() {
                     println!("{}", i);
+                }
+                 */
+
+                for (offset, instruction) in code.iter().enumerate() {
+                    println!(
+                        "{:#010x}: {:010x}",
+                        cpu_info.pc + offset as u32,
+                        instruction
+                    );
                 }
 
                 Ok(CliState::Continue)
