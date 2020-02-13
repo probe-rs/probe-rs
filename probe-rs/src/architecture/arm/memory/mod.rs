@@ -3,7 +3,7 @@ pub(crate) mod romtable;
 
 use super::ap::AccessPortError;
 pub use adi_v5_memory_interface::ADIMemoryInterface;
-pub use romtable::{CSComponent, CSComponentClass};
+pub use romtable::{RomTable, CSComponent, CSComponentClass};
 
 pub trait ToMemoryReadSize: Into<u32> + Copy {
     /// The alignment mask that is required to test for properly aligned memory.

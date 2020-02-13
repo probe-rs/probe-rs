@@ -1,7 +1,7 @@
 use super::super::{APAccess, Register};
 use super::{APRegister, AddressIncrement, DataSize, MemoryAP, CSW, DRW, TAR};
 use crate::config::ChipInfo;
-use crate::{CommunicationInterface, Error};
+use crate::{CommunicationInterface, Error, Core};
 use std::collections::HashMap;
 use thiserror::Error;
 
@@ -32,7 +32,7 @@ impl Default for MockMemoryAP {
 }
 
 impl CommunicationInterface for MockMemoryAP {
-    fn probe_for_chip_info(self) -> Result<Option<ChipInfo>, Error> {
+    fn probe_for_chip_info(self, core: &mut Core) -> Result<Option<ChipInfo>, Error> {
         unimplemented!()
     }
 }

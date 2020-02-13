@@ -62,15 +62,16 @@ pub(crate) fn show_info_of_device(shared_options: &SharedOptions) -> Result<(), 
             };
             baseaddr |= u64::from(base_register.BASEADDR << 12);
 
-            let memory = Memory::new(ADIMemoryInterface::<ArmCommunicationInterface>::new(
-                interface.clone(),
-                0,
-            ));
-            let component_table = CSComponent::try_parse(memory, baseaddr as u64);
+            // TODO: renable once generic core is here.
+            // let memory = Memory::new(ADIMemoryInterface::<ArmCommunicationInterface>::new(
+            //     interface.clone(),
+            //     0,
+            // ));
+            // let component_table = CSComponent::try_parse(memory, baseaddr as u64);
 
-            component_table
-                .iter()
-                .for_each(|entry| println!("{:#08x?}", entry));
+            // component_table
+            //     .iter()
+            //     .for_each(|entry| println!("{:#08x?}", entry));
 
             // let mut reader = crate::memory::romtable::RomTableReader::new(&link_ref, baseaddr as u64);
 

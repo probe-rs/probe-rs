@@ -40,8 +40,10 @@ impl Session {
             }
             TargetSelector::Specified(target) => target,
             TargetSelector::Auto => {
-                let arm_chip = ArmChipInfo::read_from_rom_table(&mut arm_interface)
-                    .map(|option| option.map(ChipInfo::Arm))?;
+                let arm_chip = None;
+                // TODO: Replace this with a generic core!
+                // let arm_chip = ArmChipInfo::read_from_rom_table(core, &mut arm_interface)
+                //     .map(|option| option.map(ChipInfo::Arm))?;
                 if let Some(chip) = arm_chip {
                     match crate::config::registry::get_target_by_chip_info(chip) {
                         Ok(target) => target,

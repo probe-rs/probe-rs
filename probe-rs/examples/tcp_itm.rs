@@ -14,6 +14,7 @@ fn main() -> Result<(), Error> {
     pretty_env_logger::init();
 
     use probe_rs::Probe;
+    use probe_rs::architecture::arm::memory::RomTable;
 
     // Get a list of all available debug probes.
     let probes = Probe::list_all();
@@ -23,6 +24,9 @@ fn main() -> Result<(), Error> {
 
     // Attach to a chip.
     let session = probe.attach("stm32f407")?;
+
+    let core = session.attach_to_core(0)?;
+    let romtable = RomTable::try_parse(core);
 
     let mut timestamp: f64 = 0.0;
 

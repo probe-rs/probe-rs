@@ -8,7 +8,7 @@ use super::{
     memory::ADIMemoryInterface,
 };
 use crate::config::ChipInfo;
-use crate::{CommunicationInterface, DebugProbe, DebugProbeError, Error, Memory, Probe};
+use crate::{Core, CommunicationInterface, DebugProbe, DebugProbeError, Error, Memory, Probe};
 use jep106::JEP106Code;
 use log::debug;
 use std::cell::RefCell;
@@ -317,8 +317,8 @@ impl InnerArmCommunicationInterface {
 }
 
 impl CommunicationInterface for ArmCommunicationInterface {
-    fn probe_for_chip_info(mut self) -> Result<Option<ChipInfo>, Error> {
-        ArmChipInfo::read_from_rom_table(&mut self).map(|option| option.map(ChipInfo::Arm))
+    fn probe_for_chip_info(mut self, core: &mut Core) -> Result<Option<ChipInfo>, Error> {
+        ArmChipInfo::read_from_rom_table(core, &mut self).map(|option| option.map(ChipInfo::Arm))
     }
 }
 
@@ -404,6 +404,7 @@ pub struct ArmChipInfo {
 
 impl ArmChipInfo {
     pub fn read_from_rom_table(
+        core: &mut Core,
         interface: &mut ArmCommunicationInterface,
     ) -> Result<Option<Self>, Error> {
         for access_port in valid_access_ports(interface) {
@@ -429,16 +430,11 @@ impl ArmChipInfo {
                 };
                 baseaddr |= u64::from(base_register.BASEADDR << 12);
 
-                let memory = Memory::new(ADIMemoryInterface::<ArmCommunicationInterface>::new(
-                    interface.clone(),
-                    access_port,
-                ));
-
-                let component_table = CSComponent::try_parse(memory, baseaddr as u64)
+                let component_table = CSComponent::try_parse(core, baseaddr as u64)
                     .map_err(Error::architecture_specific)?;
 
                 match component_table {
-                    CSComponent::Class1RomTable(
+                    (
                         CSComponentId {
                             peripheral_id:
                                 PeripheralID {
@@ -448,7 +444,7 @@ impl ArmChipInfo {
                                 },
                             ..
                         },
-                        ..,
+                        CSComponent::Class1RomTable(_),
                     ) => {
                         return Ok(Some(ArmChipInfo {
                             manufacturer: jep106,
