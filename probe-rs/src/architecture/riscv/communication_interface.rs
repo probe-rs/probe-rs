@@ -305,6 +305,90 @@ impl InnerRiscvCommunicationInterface {
 
         Ok(u32::from(value))
     }
+
+    /// Perform memory write to a single location using the program buffer.
+    /// Only writes up to a width of 32 bits are currently supported.
+    fn perform_memory_write(&mut self, address: u32, width: u8, data: u32) -> Result<(), Error> {
+        // assemble
+        //  lb s0, 0(s0)
+
+        //let o = 0; // offset = 0
+        //let b = 9; // base register -> s0
+        //let w = 0; // width
+        //let d = 9; // dest register -> s0
+        //let l = 0b11;
+
+        //let lw_command = bitpack!("oooooooooooobbbbb_www_ddddd_lllllll");
+        let mut sw_command: u32 = 0b0000000_01001_01000_000_00000_0100011;
+
+        // sw command -> sb s1, 0(s0)
+
+        // verify the width is supported
+        // 0 ==  8 bit
+        // 1 == 16 bit
+        // 2 == 32 bit
+
+        assert!(width < 3, "Width larger than 3 not supported yet");
+
+        sw_command |= (width as u32) << 12;
+
+        //if width == 2 {
+        //    sw_command = 0xc004;
+        //}
+
+        let ebreak_cmd = 0b000000000001_00000_000_00000_1110011;
+
+        self.write_dm_register(Progbuf0(sw_command))?;
+        self.write_dm_register(Progbuf1(ebreak_cmd))?;
+
+        // write value into data 1
+        self.write_dm_register(Data0(address))?;
+
+        let mut command = AccessRegisterCommand(0);
+        command.set_cmd_type(0);
+        command.set_transfer(true);
+        command.set_write(true);
+
+        // registers are 32 bit, so we have size 2 here
+        command.set_aarsize(2);
+
+        // register s1, ie. 0x1009
+        command.set_regno(0x1008);
+
+        self.write_dm_register(command)?;
+
+        let status: Abstractcs = self.read_dm_register()?;
+
+        if status.cmderr() != 0 {
+            todo!("Error code for command execution ({:?})", status);
+        }
+
+        // write address into data 0
+        self.write_dm_register(Data0(data))?;
+
+        // Write s0, then execute program buffer
+        let mut command = AccessRegisterCommand(0);
+        command.set_cmd_type(0);
+        command.set_transfer(true);
+        command.set_write(true);
+
+        // registers are 32 bit, so we have size 2 here
+        command.set_aarsize(2);
+        command.set_postexec(true);
+
+        // register s0, ie. 0x1008
+        command.set_regno(0x1009);
+
+        self.write_dm_register(command)?;
+
+        let status: Abstractcs = self.read_dm_register()?;
+
+        if status.cmderr() != 0 {
+            todo!("Error code for command execution ({:?})", status);
+        }
+
+        Ok(())
+    }
 }
 
 impl MemoryInterface for InnerRiscvCommunicationInterface {
@@ -319,7 +403,7 @@ impl MemoryInterface for InnerRiscvCommunicationInterface {
 
     fn read_block32(&mut self, address: u32, data: &mut [u32]) -> Result<(), crate::Error> {
         for (offset, word) in data.iter_mut().enumerate() {
-            *word = self.read32(address + (offset as u32))?;
+            *word = self.read32(address + ((offset * 4) as u32))?;
         }
 
         Ok(())
@@ -333,17 +417,26 @@ impl MemoryInterface for InnerRiscvCommunicationInterface {
         Ok(())
     }
 
-    fn write32(&mut self, addr: u32, data: u32) -> Result<(), crate::Error> {
-        unimplemented!()
+    fn write32(&mut self, address: u32, data: u32) -> Result<(), crate::Error> {
+        self.perform_memory_write(address, 2, data)
     }
-    fn write8(&mut self, addr: u32, data: u8) -> Result<(), crate::Error> {
-        unimplemented!()
+
+    fn write8(&mut self, address: u32, data: u8) -> Result<(), crate::Error> {
+        self.perform_memory_write(address, 0, data as u32)
     }
-    fn write_block32(&mut self, addr: u32, data: &[u32]) -> Result<(), crate::Error> {
-        unimplemented!()
+    fn write_block32(&mut self, address: u32, data: &[u32]) -> Result<(), crate::Error> {
+        for (offset, word) in data.iter().enumerate() {
+            self.write32(address + ((offset * 4) as u32), *word)?;
+        }
+
+        Ok(())
     }
-    fn write_block8(&mut self, addr: u32, data: &[u8]) -> Result<(), crate::Error> {
-        unimplemented!()
+    fn write_block8(&mut self, address: u32, data: &[u8]) -> Result<(), crate::Error> {
+        for (offset, byte) in data.iter().enumerate() {
+            self.write8(address + (offset as u32), *byte)?;
+        }
+
+        Ok(())
     }
 }
 

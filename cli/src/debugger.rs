@@ -110,6 +110,24 @@ impl DebugCli {
         });
 
         cli.add_command(Command {
+            name: "write",
+            help_text: "Write 32bit value to memory",
+
+            function: |cli_data, args| {
+                let address_str = args.get(0).ok_or(CliError::MissingArgument)?;
+                let address = u32::from_str_radix(address_str, 16).unwrap();
+                //println!("Would read from address 0x{:08x}", address);
+
+                let data_str = args.get(1).ok_or(CliError::MissingArgument)?;
+                let data = u32::from_str_radix(data_str, 16).unwrap();
+
+                cli_data.core.memory().write32(address, data)?;
+
+                Ok(CliState::Continue)
+            },
+        });
+
+        cli.add_command(Command {
             name: "break",
             help_text: "Set a breakpoint at a specifc address",
 
