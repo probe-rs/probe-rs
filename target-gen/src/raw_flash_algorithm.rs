@@ -1,4 +1,4 @@
-use probe_rs::config::flash_properties::FlashProperties;
+use probe_rs::config::FlashProperties;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]

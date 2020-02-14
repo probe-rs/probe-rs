@@ -2,7 +2,7 @@ use crate::error::Error;
 use goblin::elf::program_header::PT_LOAD;
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
-use probe_rs::config::memory::MemoryRange;
+use probe_rs::config::MemoryRange;
 
 const CODE_SECTION_KEY: (&str, Option<SectionType>) = ("PrgCode", Some(SectionType::SHT_PROGBITS));
 const DATA_SECTION_KEY: (&str, Option<SectionType>) = ("PrgData", Some(SectionType::SHT_PROGBITS));

@@ -16,7 +16,7 @@ use cmsis_pack::pdsc::Package;
 use cmsis_pack::pdsc::Processors;
 use cmsis_pack::utils::FromElem;
 use pretty_env_logger;
-use probe_rs::config::memory::{FlashRegion, MemoryRegion, RamRegion};
+use probe_rs::config::{FlashRegion, MemoryRegion, RamRegion};
 use std::collections::HashMap;
 use std::fs::{self, File};
 use std::path::{Path, PathBuf};
@@ -103,7 +103,11 @@ fn main() {
             // Extract the flash info from the .pdsc file.
             let mut flash = None;
             for memory in device.memories.0.values() {
-                if memory.default && memory.access.read && memory.access.execute && !memory.access.write {
+                if memory.default
+                    && memory.access.read
+                    && memory.access.execute
+                    && !memory.access.write
+                {
                     flash = Some(FlashRegion {
                         range: memory.start as u32..memory.start as u32 + memory.size as u32,
                         is_boot_memory: memory.startup,

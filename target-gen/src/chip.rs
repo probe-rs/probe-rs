@@ -1,4 +1,4 @@
-use probe_rs::config::memory::MemoryRegion;
+use probe_rs::config::MemoryRegion;
 use serde::{Deserialize, Serialize};
 
 /// This describes a single chip model.
