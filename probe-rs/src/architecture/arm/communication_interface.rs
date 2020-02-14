@@ -123,6 +123,7 @@ impl ArmCommunicationInterface {
 
 struct InnerArmCommunicationInterface {
     probe: Probe,
+    memory_access_ports: Vec<MemoryAccessPortData>,
     current_apsel: u8,
     current_apbanksel: u8,
 }
@@ -131,6 +132,7 @@ impl InnerArmCommunicationInterface {
     fn new(probe: Probe) -> Self {
         Self {
             probe,
+            memory_access_ports,
             current_apsel: 0,
             current_apbanksel: 0,
         }
@@ -314,6 +316,50 @@ impl InnerArmCommunicationInterface {
             None => Err(Error::WouldBlock)
         }
     }
+
+    pub fn memory_access_ports(
+        core: &mut Core,
+        interface: &mut ArmCommunicationInterface,
+    ) -> Result<Vec<MemoryAccessPortData>, Error> {
+        let mut memory_access_ports = vec![];
+        for access_port in valid_access_ports(interface) {
+            let idr = interface
+                .read_ap_register(access_port, IDR::default())
+                .map_err(Error::Probe)?;
+
+            if idr.CLASS == APClass::MEMAP {
+                let access_port: MemoryAP = access_port.into();
+
+                let base_register = interface
+                    .read_ap_register(access_port, BASE::default())
+                    .map_err(Error::Probe)?;
+
+                let mut base_address = if BaseaddrFormat::ADIv5 == base_register.Format {
+                    let base2 = interface
+                        .read_ap_register(access_port, BASE2::default())
+                        .map_err(Error::Probe)?;
+                    (u64::from(base2.BASEADDR) << 32)
+                } else {
+                    0
+                };
+                base_address |= u64::from(base_register.BASEADDR << 12);
+
+                let component_table = CSComponent::try_parse(core, base_address as u64)
+                    .map_err(Error::architecture_specific)?;
+
+                memory_access_ports.push(MemoryAccessPortData {
+                    base_address,
+                    component_table,
+                })
+            }
+        }
+        Ok(memory_access_ports)
+    }
+}
+
+struct MemoryAccessPortData {
+    base_address: u64,
+    component_table: (CSComponentId, CSComponent),
 }
 
 impl CommunicationInterface for ArmCommunicationInterface {
