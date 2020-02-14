@@ -5,7 +5,6 @@ use super::{
     },
     dp::Select,
     memory::romtable::{CSComponent, CSComponentId, PeripheralID},
-    memory::ADIMemoryInterface,
 };
 use crate::config::ChipInfo;
 use crate::{Core, CommunicationInterface, DebugProbe, DebugProbeError, Error, Memory, Probe};
@@ -119,6 +118,46 @@ impl ArmCommunicationInterface {
     pub fn read_swv(&mut self) -> Result<Vec<u8>, Error> {
         self.inner.borrow_mut().read_swv()
     }
+
+    /// This function should be called once when initializing the object.
+    /// It stores all the memory AP IDs and BASEADDRs in a Vec.
+    pub(crate) fn memory_access_ports(&mut self) -> Result<Vec<MemoryAccessPortData>, Error> {
+        if self.inner.borrow().memory_access_ports.is_empty() {
+            let mut memory_access_ports = vec![];
+            for access_port in valid_access_ports(self) {
+                let idr = self
+                    .read_ap_register(access_port, IDR::default())
+                    .map_err(Error::Probe)?;
+
+                if idr.CLASS == APClass::MEMAP {
+                    let access_port: MemoryAP = access_port.into();
+
+                    let base_register = self
+                        .read_ap_register(access_port, BASE::default())
+                        .map_err(Error::Probe)?;
+
+                    let mut base_address = if BaseaddrFormat::ADIv5 == base_register.Format {
+                        let base2 = self
+                            .read_ap_register(access_port, BASE2::default())
+                            .map_err(Error::Probe)?;
+                        (u64::from(base2.BASEADDR) << 32)
+                    } else {
+                        0
+                    };
+                    base_address |= u64::from(base_register.BASEADDR << 12);
+
+                    memory_access_ports.push(MemoryAccessPortData {
+                        id: access_port.port_number(),
+                        base_address,
+                    })
+                }
+            }
+            self.inner.borrow_mut().memory_access_ports = memory_access_ports.clone();
+            Ok(memory_access_ports)
+        } else {
+            Ok(self.inner.borrow().memory_access_ports.clone())
+        }
+    }
 }
 
 struct InnerArmCommunicationInterface {
@@ -130,12 +169,13 @@ struct InnerArmCommunicationInterface {
 
 impl InnerArmCommunicationInterface {
     fn new(probe: Probe) -> Self {
-        Self {
+        let interface = Self {
             probe,
-            memory_access_ports,
+            memory_access_ports: vec![],
             current_apsel: 0,
             current_apbanksel: 0,
-        }
+        };
+        interface
     }
 
     fn select_ap_and_ap_bank(&mut self, port: u8, ap_bank: u8) -> Result<(), DebugProbeError> {
@@ -190,7 +230,7 @@ impl InnerArmCommunicationInterface {
             register_value
         );
 
-        self.select_ap_and_ap_bank(port.get_port_number(), R::APBANKSEL)?;
+        self.select_ap_and_ap_bank(port.port_number(), R::APBANKSEL)?;
 
         let interface = self
             .probe
@@ -222,7 +262,7 @@ impl InnerArmCommunicationInterface {
             values.len(),
         );
 
-        self.select_ap_and_ap_bank(port.get_port_number(), R::APBANKSEL)?;
+        self.select_ap_and_ap_bank(port.port_number(), R::APBANKSEL)?;
 
         let interface = self
             .probe
@@ -243,7 +283,7 @@ impl InnerArmCommunicationInterface {
         R: APRegister<AP>,
     {
         debug!("Reading register {}", R::NAME);
-        self.select_ap_and_ap_bank(port.get_port_number(), R::APBANKSEL)?;
+        self.select_ap_and_ap_bank(port.port_number(), R::APBANKSEL)?;
 
         let interface = self
             .probe
@@ -277,7 +317,7 @@ impl InnerArmCommunicationInterface {
             values.len(),
         );
 
-        self.select_ap_and_ap_bank(port.get_port_number(), R::APBANKSEL)?;
+        self.select_ap_and_ap_bank(port.port_number(), R::APBANKSEL)?;
 
         let interface = self
             .probe
@@ -316,50 +356,12 @@ impl InnerArmCommunicationInterface {
             None => Err(Error::WouldBlock)
         }
     }
-
-    pub fn memory_access_ports(
-        core: &mut Core,
-        interface: &mut ArmCommunicationInterface,
-    ) -> Result<Vec<MemoryAccessPortData>, Error> {
-        let mut memory_access_ports = vec![];
-        for access_port in valid_access_ports(interface) {
-            let idr = interface
-                .read_ap_register(access_port, IDR::default())
-                .map_err(Error::Probe)?;
-
-            if idr.CLASS == APClass::MEMAP {
-                let access_port: MemoryAP = access_port.into();
-
-                let base_register = interface
-                    .read_ap_register(access_port, BASE::default())
-                    .map_err(Error::Probe)?;
-
-                let mut base_address = if BaseaddrFormat::ADIv5 == base_register.Format {
-                    let base2 = interface
-                        .read_ap_register(access_port, BASE2::default())
-                        .map_err(Error::Probe)?;
-                    (u64::from(base2.BASEADDR) << 32)
-                } else {
-                    0
-                };
-                base_address |= u64::from(base_register.BASEADDR << 12);
-
-                let component_table = CSComponent::try_parse(core, base_address as u64)
-                    .map_err(Error::architecture_specific)?;
-
-                memory_access_ports.push(MemoryAccessPortData {
-                    base_address,
-                    component_table,
-                })
-            }
-        }
-        Ok(memory_access_ports)
-    }
 }
 
-struct MemoryAccessPortData {
-    base_address: u64,
-    component_table: (CSComponentId, CSComponent),
+#[derive(Clone)]
+pub(crate) struct MemoryAccessPortData {
+    pub id: u8,
+    pub base_address: u64,
 }
 
 impl CommunicationInterface for ArmCommunicationInterface {

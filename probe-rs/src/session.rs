@@ -75,7 +75,7 @@ impl Session {
             .list_cores()
             .get(n)
             .ok_or_else(|| Error::CoreNotFound(n))?
-            .attach(self.clone(), self.attach_to_memory(0)?);
+            .attach(self.clone(), self.attach_to_memory(n)?);
         Ok(core)
     }
 
@@ -107,16 +107,17 @@ impl Session {
         MemoryList::new(vec![])
     }
 
-    pub fn attach_to_memory(&self, _id: usize) -> Result<Memory, Error> {
-        match self.inner.borrow().architecture_session {
-            ArchitectureSession::Arm(ref interface) => {
+    pub fn attach_to_memory(&self, id: usize) -> Result<Memory, Error> {
+        match self.inner.borrow_mut().architecture_session {
+            ArchitectureSession::Arm(ref mut interface) => {
                 if let Some(memory) = interface.dedicated_memory_interface() {
                     Ok(memory)
                 } else {
                     // TODO: Change this to actually grab the proper memory IF.
                     // For now always use the ARM IF.
+                    let maps = interface.memory_access_ports()?;
                     Ok(Memory::new(
-                        ADIMemoryInterface::<ArmCommunicationInterface>::new(interface.clone(), 0),
+                        ADIMemoryInterface::<ArmCommunicationInterface>::new(interface.clone(), maps[0].id),
                     ))
                 }
             }

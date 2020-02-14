@@ -10,7 +10,7 @@ define_ap!(CtrlAP);
 impl From<GenericAP> for CtrlAP {
     fn from(other: GenericAP) -> Self {
         CtrlAP {
-            port_number: other.get_port_number(),
+            port_number: other.port_number(),
         }
     }
 }

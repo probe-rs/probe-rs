@@ -61,7 +61,7 @@ macro_rules! define_ap {
         }
 
         impl AccessPort for $name {
-            fn get_port_number(&self) -> u8 {
+            fn port_number(&self) -> u8 {
                 self.port_number
             }
         }

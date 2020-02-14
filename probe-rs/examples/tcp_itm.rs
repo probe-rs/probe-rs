@@ -26,7 +26,6 @@ fn main() -> Result<(), Error> {
     let session = probe.attach("stm32f407")?;
 
     let core = session.attach_to_core(0)?;
-    let romtable = RomTable::try_parse(core);
 
     let mut timestamp: f64 = 0.0;
 

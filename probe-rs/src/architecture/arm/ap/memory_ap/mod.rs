@@ -16,7 +16,7 @@ define_ap!(MemoryAP);
 impl From<GenericAP> for MemoryAP {
     fn from(other: GenericAP) -> Self {
         MemoryAP {
-            port_number: other.get_port_number(),
+            port_number: other.port_number(),
         }
     }
 }

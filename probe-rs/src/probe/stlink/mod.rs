@@ -402,7 +402,7 @@ impl STLink {
                 vec![
                     commands::JTAG_COMMAND,
                     commands::JTAG_INIT_AP,
-                    apsel.get_port_number(),
+                    apsel.port_number(),
                     commands::JTAG_AP_NO_CORE,
                 ],
                 &[],
@@ -422,7 +422,7 @@ impl STLink {
                 vec![
                     commands::JTAG_COMMAND,
                     commands::JTAG_CLOSE_AP_DBG,
-                    apsel.get_port_number(),
+                    apsel.port_number(),
                 ],
                 &[],
                 &mut buf,

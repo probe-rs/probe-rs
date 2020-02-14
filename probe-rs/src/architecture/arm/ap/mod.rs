@@ -48,7 +48,7 @@ pub trait APRegister<PORT: AccessPort>: Register + Sized {
 }
 
 pub trait AccessPort {
-    fn get_port_number(&self) -> u8;
+    fn port_number(&self) -> u8;
 }
 
 pub trait APAccess<PORT, R>
