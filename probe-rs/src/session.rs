@@ -1,5 +1,7 @@
 use crate::architecture::arm::{
     memory::ADIMemoryInterface, ArmChipInfo, ArmCommunicationInterface,
+    memory::romtable::{CSComponent, RomTableReader},
+    ap::{APAccess, BaseaddrFormat, BASE, BASE2, IDR},
 };
 use crate::config::{
     ChipInfo, MemoryRegion, RawFlashAlgorithm, RegistryError, Target, TargetSelector,
@@ -75,12 +77,17 @@ impl Session {
             .list_cores()
             .get(n)
             .ok_or_else(|| Error::CoreNotFound(n))?
-            .attach(self.clone(), self.attach_to_memory(n)?);
-        Ok(core)
+            .attach(self.clone(), self.attach_to_memory(n)?, n);
+        match self.inner.borrow_mut().architecture_session {
+            ArchitectureSession::Arm(ref mut interface) => {
+                let maps = interface.memory_access_ports()?;
+                Ok(core)
+            }
+        }
     }
 
     pub fn attach_to_specific_core(&self, core_type: CoreType) -> Result<Core, Error> {
-        let core = core_type.attach(self.clone(), self.attach_to_memory(0)?);
+        let core = core_type.attach(self.clone(), self.attach_to_memory(0)?, 0);
         Ok(core)
     }
 
@@ -99,6 +106,7 @@ impl Session {
                     Some(memory) => memory,
                     None => self.attach_to_memory(0)?,
                 },
+                n,
             );
         Ok(core)
     }
@@ -117,7 +125,7 @@ impl Session {
                     // For now always use the ARM IF.
                     let maps = interface.memory_access_ports()?;
                     Ok(Memory::new(
-                        ADIMemoryInterface::<ArmCommunicationInterface>::new(interface.clone(), maps[0].id),
+                        ADIMemoryInterface::<ArmCommunicationInterface>::new(interface.clone(), maps[id].id),
                     ))
                 }
             }
@@ -153,4 +161,44 @@ impl Session {
             ArchitectureSession::Arm(interface) => interface.read_swv()
         }
     }
+
+    pub fn setup_tracing(&mut self, core: &mut Core) -> Result<(), Error> {
+        match self.inner.borrow_mut().architecture_session {
+            ArchitectureSession::Arm(ref mut interface) => {
+                let maps = interface.memory_access_ports()?;
+
+                let access_port = maps[core.id()].id.into();
+
+                let base_register = interface.read_ap_register(access_port, BASE::default())?;
+
+                let mut baseaddr = if BaseaddrFormat::ADIv5 == base_register.Format {
+                    let base2 = interface.read_ap_register(access_port, BASE2::default())?;
+                    (u64::from(base2.BASEADDR) << 32)
+                } else {
+                    0
+                };
+                baseaddr |= u64::from(base_register.BASEADDR << 12);
+                
+                let component_table = CSComponent::try_parse(core, baseaddr as u64);
+
+                component_table
+                    .iter()
+                    .for_each(|entry| println!("{:#08x?}", entry));
+
+                let mut reader = RomTableReader::new(core, baseaddr as u64);
+
+                for e in reader.entries() {
+                    if let Ok(e) = e {
+                        println!("ROM Table Entry: Component @ 0x{:08x}", e.component_address());
+                    }
+                }
+                Ok(())
+                // crate::architecture::arm::component::setup_tracing()
+            }
+        }
+    }
+
+    // pub fn start_trace_memory_address(core: &mut Core, romtable: &RomTable, addr: u32) -> Result<(), Error> {
+
+    // }
 }

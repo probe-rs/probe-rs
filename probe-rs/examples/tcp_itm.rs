@@ -23,9 +23,11 @@ fn main() -> Result<(), Error> {
     let probe = probes[0].open()?;
 
     // Attach to a chip.
-    let session = probe.attach("stm32f407")?;
+    let mut session = probe.attach("stm32f407")?;
 
-    let core = session.attach_to_core(0)?;
+    let mut core = session.attach_to_core(0)?;
+    
+    // session.setup_tracing(&mut core).unwrap();
 
     let mut timestamp: f64 = 0.0;
 
