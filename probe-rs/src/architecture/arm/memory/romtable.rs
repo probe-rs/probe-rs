@@ -43,6 +43,8 @@ impl<'c> RomTableReader<'c> {
 }
 
 /// An iterator to lazily iterate over all the romtable entries in memory.
+/// 
+/// For internal use only.
 struct RomTableIterator<'r, 'c> {
     rom_table_reader: &'r mut RomTableReader<'c>,
     offset: u64,
@@ -114,6 +116,8 @@ impl RomTable {
         let mut dwt = None;
         let mut itm = None;
 
+        log::info!("Parsing romtable at base_address {:x?}", base_address);
+
         // Read all the raw romtable entries and flatten them.
         let reader = RomTableReader::new(core, base_address)
             .entries()
@@ -123,6 +127,9 @@ impl RomTable {
         // Iterate all entries and get their data.
         for (id, raw_entry) in reader.into_iter().enumerate() {
             let entry_base_addr = raw_entry.component_address();
+
+            log::info!("Parsing entry at {:x?}", entry_base_addr);
+
             if raw_entry.entry_present {
                 let (component_id, component_data) =
                     ComponentClass::try_parse(core, u64::from(entry_base_addr))?;
@@ -489,9 +496,9 @@ pub struct PeripheralID {
 }
 
 impl PeripheralID {
-    const ITM_PID: [u8; 8] = [0x1, 0xB0, 0x3b, 0x0, 0x4, 0x0, 0x0, 0x0];
-    const TPIU_PID: [u8; 8] = [0xA1, 0xB9, 0x0B, 0x0, 0x4, 0x0, 0x0, 0x0];
-    const DWT_PID: [u8; 8] = [0x2, 0xB0, 0x3b, 0x0, 0x4, 0x0, 0x0, 0x0];
+    const _ITM_PID: [u8; 8] = [0x1, 0xB0, 0x3b, 0x0, 0x4, 0x0, 0x0, 0x0];
+    const _TPIU_PID: [u8; 8] = [0xA1, 0xB9, 0x0B, 0x0, 0x4, 0x0, 0x0, 0x0];
+    const _DWT_PID: [u8; 8] = [0x2, 0xB0, 0x3b, 0x0, 0x4, 0x0, 0x0, 0x0];
 
     /// Extracts the peripheral ID of the CoreSight component table data.
     fn from_raw(data: &[u32; 8]) -> Self {

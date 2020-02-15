@@ -1,11 +1,9 @@
 use crate::common::open_probe;
 use crate::{common::CliError, SharedOptions};
 use probe_rs::architecture::arm::ap::{
-    valid_access_ports, APAccess, APClass, BaseaddrFormat, MemoryAP, BASE, BASE2, IDR,
+    valid_access_ports, APAccess, APClass, IDR,
 };
-use probe_rs::architecture::arm::memory::{ADIMemoryInterface};
 use probe_rs::architecture::arm::ArmCommunicationInterface;
-use probe_rs::Memory;
 
 pub(crate) fn show_info_of_device(shared_options: &SharedOptions) -> Result<(), CliError> {
     let probe = open_probe(shared_options.n)?;
@@ -50,35 +48,26 @@ pub(crate) fn show_info_of_device(shared_options: &SharedOptions) -> Result<(), 
         println!("{:#x?}", idr);
 
         if idr.CLASS == APClass::MEMAP {
-            let access_port: MemoryAP = access_port.into();
+            // let access_port: MemoryAP = access_port.into();
 
-            let base_register = interface.read_ap_register(access_port, BASE::default())?;
+            // let base_register = interface.read_ap_register(access_port, BASE::default())?;
 
-            let mut baseaddr = if BaseaddrFormat::ADIv5 == base_register.Format {
-                let base2 = interface.read_ap_register(access_port, BASE2::default())?;
-                (u64::from(base2.BASEADDR) << 32)
-            } else {
-                0
-            };
-            baseaddr |= u64::from(base_register.BASEADDR << 12);
+            // let mut baseaddr = if BaseaddrFormat::ADIv5 == base_register.Format {
+            //     let base2 = interface.read_ap_register(access_port, BASE2::default())?;
+            //     (u64::from(base2.BASEADDR) << 32)
+            // } else {
+            //     0
+            // };
+            // baseaddr |= u64::from(base_register.BASEADDR << 12);
 
-            // TODO: renable once generic core is here.
-            // let memory = Memory::new(ADIMemoryInterface::<ArmCommunicationInterface>::new(
-            //     interface.clone(),
-            //     0,
-            // ));
-            // let component_table = CSComponent::try_parse(memory, baseaddr as u64);
+            // let rom_table = RomTable::try_parse(core, baseaddr as u64)
+            //         .map_err(Error::architecture_specific)?;
 
-            // component_table
-            //     .iter()
-            //     .for_each(|entry| println!("{:#08x?}", entry));
-
-            // let mut reader = crate::memory::romtable::RomTableReader::new(&link_ref, baseaddr as u64);
-
-            // for e in reader.entries() {
-            //     if let Ok(e) = e {
-            //         println!("ROM Table Entry: Component @ 0x{:08x}", e.component_addr());
-            //     }
+            // for e in rom_table.entries() {
+            //     println!(
+            //         "ROM Table Entry: Component @ 0x{:08x}",
+            //         e.component_id.component_address()
+            //     );
             // }
         }
     }

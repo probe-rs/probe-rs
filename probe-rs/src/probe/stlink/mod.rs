@@ -354,7 +354,7 @@ impl STLink {
     }
 
     /// sets the SWD frequency.
-    pub fn set_swd_frequency(
+    pub fn _set_swd_frequency(
         &mut self,
         frequency: SwdFrequencyToDelayCount,
     ) -> Result<(), DebugProbeError> {
@@ -373,7 +373,7 @@ impl STLink {
     }
 
     /// Sets the JTAG frequency.
-    pub fn set_jtag_frequency(
+    pub fn _set_jtag_frequency(
         &mut self,
         frequency: JTagFrequencyToDivider,
     ) -> Result<(), DebugProbeError> {
@@ -391,7 +391,7 @@ impl STLink {
         Self::check_status(&buf)
     }
 
-    pub fn open_ap(&mut self, apsel: impl AccessPort) -> Result<(), DebugProbeError> {
+    pub fn _open_ap(&mut self, apsel: impl AccessPort) -> Result<(), DebugProbeError> {
         if self.jtag_version < Self::MIN_JTAG_VERSION_MULTI_AP {
             Err(StlinkError::JTagDoesNotSupportMultipleAP.into())
         } else {
@@ -411,7 +411,7 @@ impl STLink {
         }
     }
 
-    pub fn close_ap(&mut self, apsel: impl AccessPort) -> Result<(), DebugProbeError> {
+    pub fn _close_ap(&mut self, apsel: impl AccessPort) -> Result<(), DebugProbeError> {
         if self.jtag_version < Self::MIN_JTAG_VERSION_MULTI_AP {
             Err(StlinkError::JTagDoesNotSupportMultipleAP.into())
         } else {
@@ -432,7 +432,7 @@ impl STLink {
 
     /// Drives the nRESET pin.
     /// `is_asserted` tells wheter the reset should be asserted or deasserted.
-    pub fn drive_nreset(&mut self, is_asserted: bool) -> Result<(), DebugProbeError> {
+    pub fn _drive_nreset(&mut self, is_asserted: bool) -> Result<(), DebugProbeError> {
         let state = if is_asserted {
             commands::JTAG_DRIVE_NRST_LOW
         } else {

@@ -5,7 +5,7 @@
 use super::super::memory::romtable::RomTableEntry;
 use crate::{Core, Error};
 
-pub const ITM_PID: [u8; 8] = [0x1, 0xB0, 0x3b, 0x0, 0x4, 0x0, 0x0, 0x0];
+pub const _ITM_PID: [u8; 8] = [0x1, 0xB0, 0x3b, 0x0, 0x4, 0x0, 0x0, 0x0];
 
 pub struct Itm<'c> {
     component: &'c RomTableEntry,
@@ -13,7 +13,7 @@ pub struct Itm<'c> {
 }
 
 const REGISTER_OFFSET_ITM_TER: usize = 0xE00;
-const REGISTER_OFFSET_ITM_TPR: usize = 0xE40;
+const _REGISTER_OFFSET_ITM_TPR: usize = 0xE40;
 const REGISTER_OFFSET_ITM_TCR: usize = 0xE80;
 const REGISTER_OFFSET_ACCESS: usize = 0xFB0;
 

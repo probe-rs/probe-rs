@@ -1,9 +1,9 @@
 use super::super::memory::romtable::RomTableEntry;
 use crate::{Core, Error};
 
-pub const TPIU_PID: [u8; 8] = [0xA1, 0xB9, 0x0B, 0x0, 0x4, 0x0, 0x0, 0x0];
+pub const _TPIU_PID: [u8; 8] = [0xA1, 0xB9, 0x0B, 0x0, 0x4, 0x0, 0x0, 0x0];
 
-const REGISTER_OFFSET_TPIU_SSPSR: usize = 0x0;
+const _REGISTER_OFFSET_TPIU_SSPSR: usize = 0x0;
 const REGISTER_OFFSET_TPIU_CSPSR: usize = 0x4;
 const REGISTER_OFFSET_TPIU_ACPR: usize = 0x10;
 const REGISTER_OFFSET_TPIU_SPPR: usize = 0xF0;

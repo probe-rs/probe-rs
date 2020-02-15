@@ -1,11 +1,11 @@
 use crate::architecture::arm::{
-    ap::{APAccess, BaseaddrFormat, BASE, BASE2, IDR},
+    ap::{MemoryAP},
     memory::romtable::{RomTable},
     memory::ADIMemoryInterface,
-    ArmChipInfo, ArmCommunicationInterface,
+    ArmCommunicationInterface,
 };
 use crate::config::{
-    ChipInfo, MemoryRegion, RawFlashAlgorithm, RegistryError, Target, TargetSelector,
+    MemoryRegion, RawFlashAlgorithm, RegistryError, Target, TargetSelector,
 };
 use crate::core::CoreType;
 use crate::{Core, CoreList, Error, Memory, MemoryList, Probe};
@@ -31,7 +31,7 @@ impl Session {
     pub fn new(probe: Probe, target: impl Into<TargetSelector>) -> Result<Self, Error> {
         // TODO: Handle different architectures
 
-        let mut arm_interface = ArmCommunicationInterface::new(probe);
+        let arm_interface = ArmCommunicationInterface::new(probe);
 
         let target = target.into();
         let target = match target.into() {
@@ -80,8 +80,7 @@ impl Session {
             .ok_or_else(|| Error::CoreNotFound(n))?
             .attach(self.clone(), self.attach_to_memory(n)?, n);
         match self.inner.borrow_mut().architecture_session {
-            ArchitectureSession::Arm(ref mut interface) => {
-                let maps = interface.memory_access_ports()?;
+            ArchitectureSession::Arm(ref mut _interface) => {
                 Ok(core)
             }
         }
@@ -128,7 +127,7 @@ impl Session {
                     Ok(Memory::new(
                         ADIMemoryInterface::<ArmCommunicationInterface>::new(
                             interface.clone(),
-                            maps[id].id,
+                            maps[id].id(),
                         ),
                     ))
                 }
@@ -171,20 +170,11 @@ impl Session {
             ArchitectureSession::Arm(ref mut interface) => {
                 println!("Setting up tracing");
                 let maps = interface.memory_access_ports()?;
+                println!("{:?}", maps);
 
-                let access_port = maps[core.id()].id.into();
-
-                let base_register = interface.read_ap_register(access_port, BASE::default())?;
-
-                let mut baseaddr = if BaseaddrFormat::ADIv5 == base_register.Format {
-                    let base2 = interface.read_ap_register(access_port, BASE2::default())?;
-                    (u64::from(base2.BASEADDR) << 32)
-                } else {
-                    0
-                };
-                baseaddr |= u64::from(base_register.BASEADDR << 12);
-
-                println!("{}", baseaddr);
+                let baseaddr = maps[core.id()].base_address();
+                println!("{:x?}", baseaddr);
+                
                 let rom_table = RomTable::try_parse(core, baseaddr as u64)
                     .map_err(Error::architecture_specific)?;
 

@@ -1,17 +1,15 @@
-use probe_rs::itm::{ItmPublisher, TracePacket, UpdaterChannel};
+use probe_rs::itm::{ItmPublisher, UpdaterChannel};
 use probe_rs::Error;
 use scroll::Pread;
 use serde::{Deserialize, Serialize};
 use std::io::prelude::*;
-use std::io::{BufRead, BufReader};
 use std::net::{SocketAddr, TcpListener, TcpStream};
-use std::sync::mpsc::{channel, Receiver, Sender};
+use std::sync::mpsc::{channel, Sender};
 use std::thread::{sleep, spawn, JoinHandle};
 
 fn main() -> Result<(), Error> {
     pretty_env_logger::init();
 
-    use probe_rs::architecture::arm::memory::RomTable;
     use probe_rs::Probe;
 
     // Get a list of all available debug probes.
@@ -57,10 +55,9 @@ fn main() -> Result<(), Error> {
                     log::debug!("Trace packet: {:?}", packet);
                 }
             }
+            log::debug!("{}", timestamp);
         }
-    }
-
-    Ok(())
+    } 
 }
 
 pub struct TcpPublisher {
@@ -79,16 +76,16 @@ impl TcpPublisher {
     /// Writes a message to all connected websockets and removes websockets that are no longer connected.
     fn write_to_all_sockets(sockets: &mut Vec<(TcpStream, SocketAddr)>, message: impl AsRef<str>) {
         let mut to_remove = vec![];
-        for (i, (socket, addr)) in sockets.iter_mut().enumerate() {
+        for (i, (socket, _addr)) in sockets.iter_mut().enumerate() {
             match socket.write(message.as_ref().as_bytes()) {
                 Ok(_) => (),
                 Err(err) => {
                     if err.kind() == std::io::ErrorKind::WouldBlock {
                     } else {
-                        log::error!("Writing to a tcp experienced an error: {:?}", err)
+                        to_remove.push(i);
+                        log::error!("Writing to a tcp socket experienced an error: {:?}", err)
                     }
                 }
-                Err(err) => log::error!("Writing to a websocket experienced an error: {:?}", err),
             }
         }
 
@@ -109,7 +106,7 @@ impl ItmPublisher for TcpPublisher {
         let mut sockets = Vec::new();
 
         let (rx, inbound) = channel::<I>();
-        let (outbound, tx) = channel::<O>();
+        let (_outbound, tx) = channel::<O>();
         let (halt_tx, halt_rx) = channel::<()>();
 
         log::info!("Opening websocket on '{}'", self.connection_string);
