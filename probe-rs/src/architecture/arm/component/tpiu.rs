@@ -17,7 +17,7 @@ pub struct Tpiu<'c> {
     core: &'c mut Core,
 }
 
-impl<'c> Tpiu<'c> where {
+impl<'c> Tpiu<'c> {
     pub fn new(core: &'c mut Core, component: &'c RomTableEntry) -> Self {
         Tpiu { core, component }
     }
@@ -29,7 +29,8 @@ impl<'c> Tpiu<'c> where {
     }
 
     pub fn set_prescaler(&mut self, value: u32) -> Result<(), Error> {
-        self.component.write_reg(self.core, REGISTER_OFFSET_TPIU_ACPR, value)?;
+        self.component
+            .write_reg(self.core, REGISTER_OFFSET_TPIU_ACPR, value)?;
         Ok(())
     }
 
@@ -39,12 +40,14 @@ impl<'c> Tpiu<'c> where {
     /// 2 = async SWO (NRZ)
     /// 3 = reserved
     pub fn set_pin_protocol(&mut self, value: u32) -> Result<(), Error> {
-        self.component.write_reg(self.core, REGISTER_OFFSET_TPIU_SPPR, value)?;
+        self.component
+            .write_reg(self.core, REGISTER_OFFSET_TPIU_SPPR, value)?;
         Ok(())
     }
 
     pub fn set_formatter(&mut self, value: u32) -> Result<(), Error> {
-        self.component.write_reg(self.core, REGISTER_OFFSET_TPIU_FFCR, value)?;
+        self.component
+            .write_reg(self.core, REGISTER_OFFSET_TPIU_FFCR, value)?;
         Ok(())
     }
 }

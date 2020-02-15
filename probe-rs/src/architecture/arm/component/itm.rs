@@ -30,7 +30,9 @@ impl<'c> Itm<'c> {
     }
 
     pub fn tx_enable(&mut self) -> Result<(), Error> {
-        let mut value = self.component.read_reg(self.core, REGISTER_OFFSET_ITM_TCR)?;
+        let mut value = self
+            .component
+            .read_reg(self.core, REGISTER_OFFSET_ITM_TCR)?;
         log::info!("ITM_TCR Before: 0x{:08X}", value);
 
         value |= 1; // itm enable
@@ -38,9 +40,12 @@ impl<'c> Itm<'c> {
         value |= 1 << 2; // Enable sync pulses, note DWT_CTRL.SYNCTAP must be configured.
         value |= 1 << 3; // tx enable (for DWT)
         value |= 13 << 16; // 7 bits trace bus ID
-        self.component.write_reg(self.core, REGISTER_OFFSET_ITM_TCR, value)?;
+        self.component
+            .write_reg(self.core, REGISTER_OFFSET_ITM_TCR, value)?;
 
-        let value = self.component.read_reg(self.core, REGISTER_OFFSET_ITM_TCR)?;
+        let value = self
+            .component
+            .read_reg(self.core, REGISTER_OFFSET_ITM_TCR)?;
         log::info!("ITM_TCR After: 0x{:08X}", value);
 
         // Enable 32 channels:

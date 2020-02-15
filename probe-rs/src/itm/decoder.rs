@@ -1,8 +1,8 @@
 //! This code was initially written by https://github.com/windelbouwman.
 //! It was moved to the probe-rs project in accordance with him.
-//! 
+//!
 //! Additions and fixes have been made thereafter.
-//! 
+//!
 //! Trace protocol for the SWO pin.
 //!
 //! Refer to appendix E in the ARMv7-M architecture reference manual.

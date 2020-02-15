@@ -2,9 +2,9 @@ pub(crate) mod daplink;
 pub(crate) mod stlink;
 
 use crate::architecture::arm::{ap::AccessPortError, DAPAccess, PortType};
-use crate::itm::SwvReader;
 use crate::config::{RegistryError, TargetSelector};
 use crate::error::Error;
+use crate::itm::SwvReader;
 use crate::{Memory, Session};
 use thiserror::Error;
 

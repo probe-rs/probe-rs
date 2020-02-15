@@ -3,7 +3,7 @@ use crate::{common::CliError, SharedOptions};
 use probe_rs::architecture::arm::ap::{
     valid_access_ports, APAccess, APClass, BaseaddrFormat, MemoryAP, BASE, BASE2, IDR,
 };
-use probe_rs::architecture::arm::memory::{ADIMemoryInterface, CSComponent};
+use probe_rs::architecture::arm::memory::{ADIMemoryInterface};
 use probe_rs::architecture::arm::ArmCommunicationInterface;
 use probe_rs::Memory;
 

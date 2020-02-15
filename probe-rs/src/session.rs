@@ -1,7 +1,8 @@
 use crate::architecture::arm::{
-    memory::ADIMemoryInterface, ArmChipInfo, ArmCommunicationInterface,
-    memory::romtable::{CSComponent, RomTableReader},
     ap::{APAccess, BaseaddrFormat, BASE, BASE2, IDR},
+    memory::romtable::{RomTable},
+    memory::ADIMemoryInterface,
+    ArmChipInfo, ArmCommunicationInterface,
 };
 use crate::config::{
     ChipInfo, MemoryRegion, RawFlashAlgorithm, RegistryError, Target, TargetSelector,
@@ -125,7 +126,10 @@ impl Session {
                     // For now always use the ARM IF.
                     let maps = interface.memory_access_ports()?;
                     Ok(Memory::new(
-                        ADIMemoryInterface::<ArmCommunicationInterface>::new(interface.clone(), maps[id].id),
+                        ADIMemoryInterface::<ArmCommunicationInterface>::new(
+                            interface.clone(),
+                            maps[id].id,
+                        ),
                     ))
                 }
             }
@@ -158,13 +162,14 @@ impl Session {
 
     pub fn read_swv(&self) -> Result<Vec<u8>, Error> {
         match &mut self.inner.borrow_mut().architecture_session {
-            ArchitectureSession::Arm(interface) => interface.read_swv()
+            ArchitectureSession::Arm(interface) => interface.read_swv(),
         }
     }
 
     pub fn setup_tracing(&mut self, core: &mut Core) -> Result<(), Error> {
         match self.inner.borrow_mut().architecture_session {
             ArchitectureSession::Arm(ref mut interface) => {
+                println!("Setting up tracing");
                 let maps = interface.memory_access_ports()?;
 
                 let access_port = maps[core.id()].id.into();
@@ -178,22 +183,19 @@ impl Session {
                     0
                 };
                 baseaddr |= u64::from(base_register.BASEADDR << 12);
-                
-                let component_table = CSComponent::try_parse(core, baseaddr as u64);
 
-                component_table
-                    .iter()
-                    .for_each(|entry| println!("{:#08x?}", entry));
+                println!("{}", baseaddr);
+                let rom_table = RomTable::try_parse(core, baseaddr as u64)
+                    .map_err(Error::architecture_specific)?;
 
-                let mut reader = RomTableReader::new(core, baseaddr as u64);
-
-                for e in reader.entries() {
-                    if let Ok(e) = e {
-                        println!("ROM Table Entry: Component @ 0x{:08x}", e.component_address());
-                    }
+                for e in rom_table.entries() {
+                    println!(
+                        "ROM Table Entry: Component @ 0x{:08x}",
+                        e.component_id.component_address()
+                    );
                 }
-                Ok(())
-                // crate::architecture::arm::component::setup_tracing()
+
+                crate::architecture::arm::component::setup_tracing(core, &rom_table)
             }
         }
     }

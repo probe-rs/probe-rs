@@ -184,7 +184,11 @@ impl STLinkUSBDevice {
             .map_err(|e| DebugProbeError::USB(Some(Box::new(e))))?;
 
         if written_bytes != CMD_LEN {
-            return Err(StlinkError::NotEnoughBytesRead { is: written_bytes, should: CMD_LEN }.into());
+            return Err(StlinkError::NotEnoughBytesRead {
+                is: written_bytes,
+                should: CMD_LEN,
+            }
+            .into());
         }
         // Optional data out phase.
         if !write_data.is_empty() {
@@ -193,7 +197,11 @@ impl STLinkUSBDevice {
                 .write_bulk(ep_out, write_data, timeout)
                 .map_err(|e| DebugProbeError::USB(Some(Box::new(e))))?;
             if written_bytes != write_data.len() {
-                return Err(StlinkError::NotEnoughBytesRead { is: written_bytes, should: write_data.len() }.into());
+                return Err(StlinkError::NotEnoughBytesRead {
+                    is: written_bytes,
+                    should: write_data.len(),
+                }
+                .into());
             }
         }
         // Optional data in phase.
@@ -203,7 +211,11 @@ impl STLinkUSBDevice {
                 .read_bulk(ep_in, read_data, timeout)
                 .map_err(|e| DebugProbeError::USB(Some(Box::new(e))))?;
             if read_bytes != read_data.len() {
-                return Err(StlinkError::NotEnoughBytesRead { is: read_bytes, should: read_data.len() }.into());
+                return Err(StlinkError::NotEnoughBytesRead {
+                    is: read_bytes,
+                    should: read_data.len(),
+                }
+                .into());
             }
         }
         Ok(())
@@ -229,7 +241,11 @@ impl STLinkUSBDevice {
                 .read_bulk(ep_swv, read_data, timeout)
                 .map_err(|e| DebugProbeError::USB(Some(Box::new(e))))?;
             if read_bytes != read_data.len() {
-                return Err(StlinkError::NotEnoughBytesRead { is: read_bytes, should: read_data.len() }.into());
+                return Err(StlinkError::NotEnoughBytesRead {
+                    is: read_bytes,
+                    should: read_data.len(),
+                }
+                .into());
             }
         }
         Ok(())

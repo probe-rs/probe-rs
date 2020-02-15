@@ -149,7 +149,9 @@ impl CoreType {
     pub fn attach(&self, session: Session, memory: Memory, id: usize) -> Core {
         match self {
             CoreType::M4 => Core::new(id, crate::architecture::arm::m4::M4::new(session, memory)),
-            CoreType::M33 => Core::new(id, crate::architecture::arm::m33::M33::new(session, memory)),
+            CoreType::M33 => {
+                Core::new(id, crate::architecture::arm::m33::M33::new(session, memory))
+            }
             CoreType::M0 => Core::new(id, crate::architecture::arm::m0::M0::new(session, memory)),
         }
     }

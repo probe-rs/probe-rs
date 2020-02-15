@@ -2,8 +2,8 @@ mod dwt;
 mod itm;
 mod tpiu;
 
-use crate::{Core, Error};
 use super::memory::romtable::RomTable;
+use crate::{Core, Error};
 pub use dwt::Dwt;
 pub use itm::Itm;
 pub use tpiu::Tpiu;
@@ -34,7 +34,11 @@ pub fn setup_tracing(core: &mut Core, romtable: &RomTable) -> Result<(), Error> 
     Ok(())
 }
 
-pub fn start_trace_memory_address(core: &mut Core, romtable: &RomTable, addr: u32) -> Result<(), Error> {
+pub fn start_trace_memory_address(
+    core: &mut Core,
+    romtable: &RomTable,
+    addr: u32,
+) -> Result<(), Error> {
     // config dwt:
     let mut dwt = romtable.dwt(core).map_err(Error::architecture_specific)?;
     // Future:

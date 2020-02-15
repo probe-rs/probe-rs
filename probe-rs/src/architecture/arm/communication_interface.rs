@@ -4,10 +4,10 @@ use super::{
         MemoryAP, BASE, BASE2, IDR,
     },
     dp::Select,
-    memory::romtable::{CSComponent, CSComponentId, PeripheralID},
+    memory::romtable::{ComponentId, ComponentClass, RomTable, RomTableEntry},
 };
 use crate::config::ChipInfo;
-use crate::{Core, CommunicationInterface, DebugProbe, DebugProbeError, Error, Memory, Probe};
+use crate::{CommunicationInterface, Core, DebugProbe, DebugProbeError, Error, Memory, Probe};
 use jep106::JEP106Code;
 use log::debug;
 use std::cell::RefCell;
@@ -353,7 +353,7 @@ impl InnerArmCommunicationInterface {
     fn read_swv(&mut self) -> Result<Vec<u8>, Error> {
         match self.probe.get_interface_itm_mut() {
             Some(interface) => interface.read(),
-            None => Err(Error::WouldBlock)
+            None => Err(Error::WouldBlock),
         }
     }
 }
@@ -478,28 +478,23 @@ impl ArmChipInfo {
                 };
                 baseaddr |= u64::from(base_register.BASEADDR << 12);
 
-                let component_table = CSComponent::try_parse(core, baseaddr as u64)
+                let rom_table = RomTable::try_parse(core, baseaddr as u64)
                     .map_err(Error::architecture_specific)?;
 
-                match component_table {
-                    (
-                        CSComponentId {
-                            peripheral_id:
-                                PeripheralID {
-                                    JEP106: Some(jep106),
-                                    PART: part,
-                                    ..
-                                },
-                            ..
-                        },
-                        CSComponent::Class1RomTable(_),
-                    ) => {
+                let mut rom_table_entries = rom_table.entries();
+
+                if let Some(RomTableEntry {
+                    component_data: ComponentClass::Class1RomTable(_),
+                    component_id: ComponentId { peripheral_id, .. },
+                    ..
+                }) = rom_table_entries.next()
+                {
+                    if let Some(jep106) = peripheral_id.jep106() {
                         return Ok(Some(ArmChipInfo {
                             manufacturer: jep106,
-                            part,
+                            part: peripheral_id.part(),
                         }));
                     }
-                    _ => continue,
                 }
             }
         }

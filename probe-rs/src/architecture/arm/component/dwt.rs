@@ -49,7 +49,8 @@ impl<'c> Dwt<'c> {
         let mut value = self.component.read_reg(self.core, REG_OFFSET_DWT_CTRL)?;
         value |= 1 << 10; // Sync packet rate.
         value |= 1 << 0; // Enable CYCCNT.
-        self.component.write_reg(self.core, REG_OFFSET_DWT_CTRL, value)?;
+        self.component
+            .write_reg(self.core, REG_OFFSET_DWT_CTRL, value)?;
         Ok(())
     }
 
