@@ -4,7 +4,7 @@ use super::{
         MemoryAP, BASE, BASE2, IDR,
     },
     dp::Select,
-    memory::romtable::{ComponentId, ComponentClass, RomTable, RomTableEntry},
+    memory::romtable::{ComponentId, Component},
 };
 use crate::config::ChipInfo;
 use crate::{CommunicationInterface, Core, DebugProbe, DebugProbeError, Error, Memory, Probe};
@@ -476,35 +476,16 @@ impl ArmChipInfo {
             if idr.CLASS == APClass::MEMAP {
                 let access_port: MemoryAP = access_port.into();
 
-                let base_register = interface
-                    .read_ap_register(access_port, BASE::default())
-                    .map_err(Error::Probe)?;
-
-                let mut baseaddr = if BaseaddrFormat::ADIv5 == base_register.Format {
-                    let base2 = interface
-                        .read_ap_register(access_port, BASE2::default())
-                        .map_err(Error::Probe)?;
-                    (u64::from(base2.BASEADDR) << 32)
-                } else {
-                    0
-                };
-                baseaddr |= u64::from(base_register.BASEADDR << 12);
-
-                let rom_table = RomTable::try_parse(core, baseaddr as u64)
+                let baseaddr = access_port.base_address(interface)?;
+                let component = Component::try_parse(core, baseaddr)
                     .map_err(Error::architecture_specific)?;
 
-                let mut rom_table_entries = rom_table.entries();
-
-                if let Some(RomTableEntry {
-                    component_data: ComponentClass::Class1RomTable(_),
-                    component_id: ComponentId { peripheral_id, .. },
-                    ..
-                }) = rom_table_entries.next()
+                if let Component::Class1RomTable(component_id, _) = component
                 {
-                    if let Some(jep106) = peripheral_id.jep106() {
+                    if let Some(jep106) = component_id.peripheral_id().jep106() {
                         return Ok(Some(ArmChipInfo {
                             manufacturer: jep106,
-                            part: peripheral_id.part(),
+                            part: component_id.peripheral_id().part(),
                         }));
                     }
                 }

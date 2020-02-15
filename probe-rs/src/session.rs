@@ -1,6 +1,5 @@
 use crate::architecture::arm::{
-    ap::{MemoryAP},
-    memory::romtable::{RomTable},
+    memory::romtable::Component,
     memory::ADIMemoryInterface,
     ArmCommunicationInterface,
 };
@@ -175,17 +174,21 @@ impl Session {
                 let baseaddr = maps[core.id()].base_address();
                 println!("{:x?}", baseaddr);
                 
-                let rom_table = RomTable::try_parse(core, baseaddr as u64)
+                let component = Component::try_parse(core, baseaddr as u64)
                     .map_err(Error::architecture_specific)?;
 
-                for e in rom_table.entries() {
+                println!("{:#x?}", component);
+
+                println!("LEN: {}", component.iter().count());
+
+                for e in component.iter() {
                     println!(
                         "ROM Table Entry: Component @ 0x{:08x}",
-                        e.component_id.component_address()
+                        e.id().component_address()
                     );
                 }
 
-                crate::architecture::arm::component::setup_tracing(core, &rom_table)
+                crate::architecture::arm::component::setup_tracing(core, &component)
             }
         }
     }

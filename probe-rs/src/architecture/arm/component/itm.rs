@@ -2,13 +2,13 @@
 //!
 //! ITM = Instrumentation Trace Macrocell
 
-use super::super::memory::romtable::RomTableEntry;
+use super::super::memory::romtable::Component;
 use crate::{Core, Error};
 
 pub const _ITM_PID: [u8; 8] = [0x1, 0xB0, 0x3b, 0x0, 0x4, 0x0, 0x0, 0x0];
 
 pub struct Itm<'c> {
-    component: &'c RomTableEntry,
+    component: &'c Component,
     core: &'c mut Core,
 }
 
@@ -18,7 +18,7 @@ const REGISTER_OFFSET_ITM_TCR: usize = 0xE80;
 const REGISTER_OFFSET_ACCESS: usize = 0xFB0;
 
 impl<'c> Itm<'c> {
-    pub fn new(core: &'c mut Core, component: &'c RomTableEntry) -> Self {
+    pub fn new(core: &'c mut Core, component: &'c Component) -> Self {
         Itm { core, component }
     }
 

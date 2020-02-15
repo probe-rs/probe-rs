@@ -1,4 +1,4 @@
-use super::super::memory::romtable::RomTableEntry;
+use super::super::memory::romtable::Component;
 use crate::{Core, Error};
 
 pub const _TPIU_PID: [u8; 8] = [0xA1, 0xB9, 0x0B, 0x0, 0x4, 0x0, 0x0, 0x0];
@@ -13,12 +13,12 @@ const REGISTER_OFFSET_TPIU_FFCR: usize = 0x304;
 ///
 /// Trace port interface unit unit.
 pub struct Tpiu<'c> {
-    component: &'c RomTableEntry,
+    component: &'c Component,
     core: &'c mut Core,
 }
 
 impl<'c> Tpiu<'c> {
-    pub fn new(core: &'c mut Core, component: &'c RomTableEntry) -> Self {
+    pub fn new(core: &'c mut Core, component: &'c Component) -> Self {
         Tpiu { core, component }
     }
 
