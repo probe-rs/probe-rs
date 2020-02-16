@@ -34,7 +34,7 @@ pub enum DebugProbeError {
     JTAGNotSupportedOnProbe,
     #[error("The firmware on the probe is outdated")]
     ProbeFirmwareOutdated,
-    #[error("Error specific to a probe type occured")]
+    #[error("Error specific to a probe type occured: {0}")]
     ProbeSpecific(#[source] Box<dyn std::error::Error + Send + Sync>),
     // TODO: Unknown errors are not very useful, this should be removed.
     #[error("An unknown error occured.")]
