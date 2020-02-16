@@ -11,7 +11,7 @@
 
 use std::collections::VecDeque;
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum TracePacket {
     /// A sync package to enable synchronization in the byte stream.
     Sync,
