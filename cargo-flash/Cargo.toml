@@ -13,11 +13,11 @@ keywords = ["embedded"]
 license = "MIT OR Apache-2.0"
 
 [dependencies]
-pretty_env_logger = "0.3.0"
+pretty_env_logger = "0.4"
 structopt = "0.3.2"
 cargo-project = "0.2.2"
 failure = "0.1.5"
 colored = "1.8.0"
 probe-rs = { version = "0.5.0", git = "https://github.com/probe-rs/probe-rs.git" }
 gdb-server = { version = "0.5.0", git = "https://github.com/probe-rs/probe-rs.git" }
-indicatif = "0.13.0"
+indicatif = "0.14"
