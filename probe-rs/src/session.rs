@@ -193,6 +193,10 @@ impl Session {
         }
     }
 
+    pub fn trace_enable(&mut self, core: &mut Core) -> Result<(), Error> {
+        crate::architecture::arm::component::trace_enable(core)
+    }
+
     // pub fn start_trace_memory_address(core: &mut Core, romtable: &RomTable, addr: u32) -> Result<(), Error> {
 
     // }

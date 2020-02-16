@@ -23,6 +23,8 @@ fn main() -> Result<(), Error> {
 
     let mut core = session.attach_to_core(0)?;
 
+    session.trace_enable(&mut core).unwrap();
+
     session.setup_tracing(&mut core).unwrap();
 
     let mut timestamp: f64 = 0.0;

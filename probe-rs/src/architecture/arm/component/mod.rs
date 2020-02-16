@@ -47,3 +47,9 @@ pub fn start_trace_memory_address(
 
     Ok(())
 }
+
+pub fn trace_enable(core: &mut Core) -> Result<(), Error> {
+    // TODO: What is this magic mystery STM32 register?
+    core.write_word_32(0xE000_EDFC, 0x0100_0000)?;
+    Ok(())
+}
