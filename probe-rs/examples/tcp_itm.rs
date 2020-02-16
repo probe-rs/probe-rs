@@ -1,4 +1,4 @@
-use probe_rs::itm::{ItmPublisher, UpdaterChannel};
+use probe_rs::itm::{Decoder, ItmPublisher, TracePacket, UpdaterChannel};
 use probe_rs::Error;
 use scroll::Pread;
 use serde::{Deserialize, Serialize};
@@ -29,7 +29,11 @@ fn main() -> Result<(), Error> {
 
     let mut timestamp: f64 = 0.0;
 
-    let mut decoder = probe_rs::itm::Decoder::new();
+    let mut decoder = Decoder::new();
+
+    let mut stimuli = vec![String::new(); 32];
+
+    println!("Starting ITM trace ...");
 
     loop {
         let bytes = session.read_swv().unwrap();
@@ -37,15 +41,15 @@ fn main() -> Result<(), Error> {
         decoder.feed(bytes);
         while let Some(packet) = decoder.pull() {
             match packet {
-                probe_rs::itm::TracePacket::TimeStamp { tc, ts } => {
+                TracePacket::TimeStamp { tc, ts } => {
                     log::debug!("Timestamp packet: tc={} ts={}", tc, ts);
                     let mut time_delta: f64 = ts as f64;
                     // Divide by core clock frequency to go from ticks to seconds.
                     time_delta /= 16_000_000.0;
                     timestamp += time_delta;
                 }
-                probe_rs::itm::TracePacket::DwtData { id, payload } => {
-                    log::debug!("Dwt: id={} payload={:?}", id, payload);
+                TracePacket::DwtData { id, payload } => {
+                    log::warn!("Dwt: id={} payload={:?}", id, payload);
 
                     if id == 17 {
                         let value: i32 = payload.pread(0).unwrap();
@@ -53,13 +57,40 @@ fn main() -> Result<(), Error> {
                         // client.send_sample("a", timestamp, value as f64).unwrap();
                     }
                 }
+                TracePacket::ItmData { id, payload } => {
+                    // First decode the string data from the stimuli.
+                    stimuli[id].push_str(&String::from_utf8_lossy(&payload));
+                    // Then collect all the lines we have gotten so far.
+                    let data = stimuli[id].clone();
+                    let mut lines: Vec<_> = data.lines().collect();
+                    
+                    // If there is at least one char in the total of all received chars, look at the last one.
+                    let last_char = stimuli[id].chars().last();
+                    if let Some(last_char) = last_char {
+                        // If the last one is not a newline (this is always the last one for Windows (\r\n) as well as Linux (\n)),
+                        // we keep the last line as it was not fully received yet.
+                        if last_char != '\n' {
+                            // Get the last line and keep it if there is even one.
+                            if let Some(last_line) = lines.pop() {
+                                stimuli[id] = last_line.to_string();
+                            }
+                        } else {
+                            stimuli[id] = String::new();
+                        }
+                    }
+
+                    // Finally print all due lines!
+                    for line in lines {
+                        println!("{}> {}", id, line);
+                    }
+                }
                 _ => {
-                    log::debug!("Trace packet: {:?}", packet);
+                    log::warn!("Trace packet: {:?}", packet);
                 }
             }
             log::debug!("{}", timestamp);
         }
-    } 
+    }
 }
 
 pub struct TcpPublisher {

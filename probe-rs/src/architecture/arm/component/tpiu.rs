@@ -3,11 +3,11 @@ use crate::{Core, Error};
 
 pub const _TPIU_PID: [u8; 8] = [0xA1, 0xB9, 0x0B, 0x0, 0x4, 0x0, 0x0, 0x0];
 
-const _REGISTER_OFFSET_TPIU_SSPSR: usize = 0x0;
-const REGISTER_OFFSET_TPIU_CSPSR: usize = 0x4;
-const REGISTER_OFFSET_TPIU_ACPR: usize = 0x10;
-const REGISTER_OFFSET_TPIU_SPPR: usize = 0xF0;
-const REGISTER_OFFSET_TPIU_FFCR: usize = 0x304;
+const _REGISTER_OFFSET_TPIU_SSPSR: u32 = 0x0;
+const REGISTER_OFFSET_TPIU_CSPSR: u32 = 0x4;
+const REGISTER_OFFSET_TPIU_ACPR: u32 = 0x10;
+const REGISTER_OFFSET_TPIU_SPPR: u32 = 0xF0;
+const REGISTER_OFFSET_TPIU_FFCR: u32 = 0x304;
 
 /// TPIU unit
 ///

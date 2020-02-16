@@ -43,7 +43,7 @@ impl<'c> RomTableReader<'c> {
 }
 
 /// An iterator to lazily iterate over all the romtable entries in memory.
-/// 
+///
 /// For internal use only.
 struct RomTableIterator<'r, 'c> {
     rom_table_reader: &'r mut RomTableReader<'c>,
@@ -221,7 +221,7 @@ impl RomTableEntryRaw {
 }
 
 /// A completely finished-parsing romtable entry.
-/// 
+///
 /// This struct should be used for public interfacing.
 #[derive(Debug, PartialEq)]
 struct RomTableEntry {
@@ -280,7 +280,6 @@ impl<'c> ComponentInformationReader<'c> {
         #![allow(clippy::verbose_bit_mask)]
         let mut cidr = [0u32; 4];
 
-        println!("BASE: {:#x?}", self.base_address);
         self.core
             .read_32(self.base_address as u32 + 0xFF0, &mut cidr)
             .map_err(RomTableError::Memory)?;
@@ -378,10 +377,7 @@ pub enum Component {
 
 impl Component {
     /// Tries to parse a CoreSight component table from memory.
-    pub fn try_parse<'c>(
-        core: &'c mut Core,
-        baseaddr: u64,
-    ) -> Result<Component, RomTableError> {
+    pub fn try_parse<'c>(core: &'c mut Core, baseaddr: u64) -> Result<Component, RomTableError> {
         log::info!("\tReading component data at: {:08x}", baseaddr);
 
         let component_id = ComponentInformationReader::new(baseaddr, core).read_all()?;
@@ -407,7 +403,9 @@ impl Component {
             RawComponent::CoreSightComponent => Component::Class9RomTable(component_id),
             RawComponent::PeripheralTestBlock => Component::PeripheralTestBlock(component_id),
             RawComponent::GenericIPComponent => Component::GenericIPComponent(component_id),
-            RawComponent::CoreLinkOrPrimeCellOrSystemComponent => Component::CoreLinkOrPrimeCellOrSystemComponent(component_id)
+            RawComponent::CoreLinkOrPrimeCellOrSystemComponent => {
+                Component::CoreLinkOrPrimeCellOrSystemComponent(component_id)
+            }
         };
 
         Ok(class)
@@ -423,18 +421,26 @@ impl Component {
             Component::CoreLinkOrPrimeCellOrSystemComponent(component_id) => component_id,
         }
     }
-    
+
     /// Reads a register of the component pointed to by this romtable entry.
-    pub fn read_reg(&self, core: &mut Core, offset: usize) -> Result<u32, Error> {
-        log::debug!("{:x?}: {:x?}", self.id().component_address, offset);
-        let value = core.read_word_32(self.id().component_address as u32 + offset as u32)?;
+    pub fn read_reg(&self, core: &mut Core, offset: u32) -> Result<u32, Error> {
+        let value = core.read_word_32(self.id().component_address as u32 + offset)?;
+        log::debug!(
+            "Read reg: {:x?} = {:x?}",
+            self.id().component_address as u32 + offset,
+            value
+        );
         Ok(value)
     }
 
     /// Writes a register of the component pointed to by this romtable entry.
-    pub fn write_reg(&self, core: &mut Core, offset: usize, value: u32) -> Result<(), Error> {
-        log::debug!("{:x?}: {:x?}", self.id().component_address, offset);
-        core.write_word_32(self.id().component_address as u32 + offset as u32, value)?;
+    pub fn write_reg(&self, core: &mut Core, offset: u32, value: u32) -> Result<(), Error> {
+        log::debug!(
+            "Writing reg: {:x?} = {:x?}",
+            self.id().component_address as u32 + offset,
+            value
+        );
+        core.write_word_32(self.id().component_address as u32 + offset, value)?;
         Ok(())
     }
 
@@ -512,10 +518,10 @@ impl<'a> Iterator for ComponentIter<'a> {
         if let Some(component) = self.components.get(self.current) {
             // If it has children, remember to iterate them next.
             self.children = match component {
-                Component::Class1RomTable(_, v) => {
-                    Some(Box::new(ComponentIter::new(v.entries.iter().map(|v| &v.component).collect())))
-                },
-                _ => None
+                Component::Class1RomTable(_, v) => Some(Box::new(ComponentIter::new(
+                    v.entries.iter().map(|v| &v.component).collect(),
+                ))),
+                _ => None,
             };
             // Advance the pointer by one.
             self.current += 1;
@@ -567,7 +573,6 @@ impl PeripheralID {
 
     /// Extracts the peripheral ID of the CoreSight component table data.
     fn from_raw(data: &[u32; 8]) -> Self {
-        println!("FROM_RAW: {:x?}", data);
         let jep106id = (((data[2] & 0x07) << 4) | ((data[1] >> 4) & 0x0F)) as u8;
         let jep106 = jep106::JEP106Code::new((data[4] & 0x0F) as u8, jep106id);
         let legacy = (data[2] & 0x8) > 1;
@@ -587,7 +592,6 @@ impl PeripheralID {
 
     /// Returns whether the peripheral is a TPIU cell.
     pub fn is_tpiu(&self) -> bool {
-        println!("IS_TPIU: {:x?}", self.PART);
         self.PART == 0x9A1
     }
 

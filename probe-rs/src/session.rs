@@ -1,11 +1,7 @@
 use crate::architecture::arm::{
-    memory::romtable::Component,
-    memory::ADIMemoryInterface,
-    ArmCommunicationInterface,
+    memory::romtable::Component, memory::ADIMemoryInterface, ArmCommunicationInterface,
 };
-use crate::config::{
-    MemoryRegion, RawFlashAlgorithm, RegistryError, Target, TargetSelector,
-};
+use crate::config::{MemoryRegion, RawFlashAlgorithm, RegistryError, Target, TargetSelector};
 use crate::core::CoreType;
 use crate::{Core, CoreList, Error, Memory, MemoryList, Probe};
 use std::cell::RefCell;
@@ -79,9 +75,7 @@ impl Session {
             .ok_or_else(|| Error::CoreNotFound(n))?
             .attach(self.clone(), self.attach_to_memory(n)?, n);
         match self.inner.borrow_mut().architecture_session {
-            ArchitectureSession::Arm(ref mut _interface) => {
-                Ok(core)
-            }
+            ArchitectureSession::Arm(ref mut _interface) => Ok(core),
         }
     }
 
@@ -167,26 +161,12 @@ impl Session {
     pub fn setup_tracing(&mut self, core: &mut Core) -> Result<(), Error> {
         match self.inner.borrow_mut().architecture_session {
             ArchitectureSession::Arm(ref mut interface) => {
-                println!("Setting up tracing");
                 let maps = interface.memory_access_ports()?;
-                println!("{:?}", maps);
 
                 let baseaddr = maps[core.id()].base_address();
-                println!("{:x?}", baseaddr);
-                
+
                 let component = Component::try_parse(core, baseaddr as u64)
                     .map_err(Error::architecture_specific)?;
-
-                println!("{:#x?}", component);
-
-                println!("LEN: {}", component.iter().count());
-
-                for e in component.iter() {
-                    println!(
-                        "ROM Table Entry: Component @ 0x{:08x}",
-                        e.id().component_address()
-                    );
-                }
 
                 crate::architecture::arm::component::setup_tracing(core, &component)
             }

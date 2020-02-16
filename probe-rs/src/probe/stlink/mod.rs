@@ -58,7 +58,7 @@ impl DebugProbe for STLink {
             &mut buf,
             TIMEOUT,
         )?;
-        println!("KEK");
+
         Self::check_status(&buf)?;
         let mut ctrl_reg = Ctrl::default();
         ctrl_reg.set_csyspwrupreq(true);
@@ -67,7 +67,7 @@ impl DebugProbe for STLink {
         self.write_register(PortType::DebugPort, Ctrl::ADDRESS.into(), value)?;
         self.protocol = protocol;
 
-        self.cmd_x40()?;
+        self.start_trace_reception()?;
         Ok(())
     }
 
@@ -462,8 +462,7 @@ impl STLink {
         }
     }
 
-    pub fn cmd_x40(&mut self) -> Result<(), DebugProbeError> {
-        println!("cmd_x40");
+    pub fn start_trace_reception(&mut self) -> Result<(), DebugProbeError> {
         let mut buf = [0; 2];
         self.device.write(
             vec![

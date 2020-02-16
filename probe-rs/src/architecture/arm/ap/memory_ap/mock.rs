@@ -46,7 +46,11 @@ where
     /// Mocks the read_register method of a AP.
     ///
     /// Returns an Error if any bad instructions or values are chosen.
-    fn read_ap_register(&mut self, _port: impl Into<MemoryAP>, _register: R) -> Result<R, Self::Error> {
+    fn read_ap_register(
+        &mut self,
+        _port: impl Into<MemoryAP>,
+        _register: R,
+    ) -> Result<R, Self::Error> {
         let csw = self.store[&(CSW::ADDRESS, CSW::APBANKSEL)];
         let address = self.store[&(TAR::ADDRESS, TAR::APBANKSEL)];
 
@@ -100,7 +104,11 @@ where
     /// Mocks the write_register method of a AP.
     ///
     /// Returns an Error if any bad instructions or values are chosen.
-    fn write_ap_register(&mut self, _port: impl Into<MemoryAP>, register: R) -> Result<(), Self::Error> {
+    fn write_ap_register(
+        &mut self,
+        _port: impl Into<MemoryAP>,
+        register: R,
+    ) -> Result<(), Self::Error> {
         let value = register.into();
         self.store.insert((R::ADDRESS, R::APBANKSEL), value);
         let csw = self.store[&(CSW::ADDRESS, CSW::APBANKSEL)];
@@ -180,7 +188,9 @@ where
         values: &mut [u32],
     ) -> Result<(), Self::Error> {
         for value in values {
-            *value = self.read_ap_register(port.clone(), register.clone())?.into()
+            *value = self
+                .read_ap_register(port.clone(), register.clone())?
+                .into()
         }
 
         Ok(())

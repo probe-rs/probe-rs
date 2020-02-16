@@ -18,7 +18,7 @@ impl MemoryAP {
     pub fn base_address<A>(&self, interface: &mut A) -> Result<u64, DebugProbeError>
     where
         A: APAccess<MemoryAP, BASE, Error = DebugProbeError>
-         + APAccess<MemoryAP, BASE2, Error = DebugProbeError>
+            + APAccess<MemoryAP, BASE2, Error = DebugProbeError>,
     {
         let base_register = interface.read_ap_register(self.port_number(), BASE::default())?;
 

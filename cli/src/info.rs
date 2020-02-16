@@ -1,8 +1,6 @@
 use crate::common::open_probe;
 use crate::{common::CliError, SharedOptions};
-use probe_rs::architecture::arm::ap::{
-    valid_access_ports, APAccess, APClass, IDR,
-};
+use probe_rs::architecture::arm::ap::{valid_access_ports, APAccess, APClass, IDR};
 use probe_rs::architecture::arm::ArmCommunicationInterface;
 
 pub(crate) fn show_info_of_device(shared_options: &SharedOptions) -> Result<(), CliError> {

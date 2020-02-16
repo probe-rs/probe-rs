@@ -167,11 +167,11 @@ impl Decoder {
                 }
                 0x4 => {
                     log::info!("Reserverd");
-                    unimplemented!();
+                    // TODO: Implement! Do not put unimplemented!() here as it will crash the logger in some cases!
                 }
                 0x8 => {
                     log::info!("Extension!");
-                    unimplemented!();
+                    // TODO: Implement! Do not put unimplemented!() here as it will crash the logger in some cases!
                 }
                 x => {
                     match extract_size(x) {

@@ -17,7 +17,7 @@ pub struct Dwt<'c> {
     core: &'c mut Core,
 }
 
-const REG_OFFSET_DWT_CTRL: usize = 0;
+const REG_OFFSET_DWT_CTRL: u32 = 0;
 
 impl<'c> Dwt<'c> {
     pub fn new(core: &'c mut Core, component: &'c Component) -> Self {

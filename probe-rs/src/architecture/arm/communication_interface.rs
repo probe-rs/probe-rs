@@ -4,7 +4,7 @@ use super::{
         MemoryAP, BASE, BASE2, IDR,
     },
     dp::Select,
-    memory::romtable::{ComponentId, Component},
+    memory::romtable::{Component, ComponentId},
 };
 use crate::config::ChipInfo;
 use crate::{CommunicationInterface, Core, DebugProbe, DebugProbeError, Error, Memory, Probe};
@@ -125,13 +125,11 @@ impl ArmCommunicationInterface {
         if self.inner.borrow().memory_access_ports.is_empty() {
             let mut memory_access_ports = vec![];
             for access_port in valid_access_ports(self) {
-                println!("VALID: {:?}", access_port.port_number());
                 let idr = self
                     .read_ap_register(access_port, IDR::default())
                     .map_err(Error::Probe)?;
 
                 if idr.CLASS == APClass::MEMAP {
-                    println!("MEMORY AP");
                     let access_port: MemoryAP = access_port.into();
 
                     let base_register = self
@@ -219,7 +217,11 @@ impl InnerArmCommunicationInterface {
         Ok(())
     }
 
-    fn write_ap_register<AP, R>(&mut self, port: impl Into<AP>, register: R) -> Result<(), DebugProbeError>
+    fn write_ap_register<AP, R>(
+        &mut self,
+        port: impl Into<AP>,
+        register: R,
+    ) -> Result<(), DebugProbeError>
     where
         AP: AccessPort,
         R: APRegister<AP>,
@@ -279,7 +281,11 @@ impl InnerArmCommunicationInterface {
         Ok(())
     }
 
-    fn read_ap_register<AP, R>(&mut self, port: impl Into<AP>, _register: R) -> Result<R, DebugProbeError>
+    fn read_ap_register<AP, R>(
+        &mut self,
+        port: impl Into<AP>,
+        _register: R,
+    ) -> Result<R, DebugProbeError>
     where
         AP: AccessPort,
         R: APRegister<AP>,
@@ -388,11 +394,19 @@ where
 {
     type Error = DebugProbeError;
 
-    fn read_ap_register(&mut self, port: impl Into<MemoryAP>, register: R) -> Result<R, Self::Error> {
+    fn read_ap_register(
+        &mut self,
+        port: impl Into<MemoryAP>,
+        register: R,
+    ) -> Result<R, Self::Error> {
         self.inner.borrow_mut().read_ap_register(port, register)
     }
 
-    fn write_ap_register(&mut self, port: impl Into<MemoryAP>, register: R) -> Result<(), Self::Error> {
+    fn write_ap_register(
+        &mut self,
+        port: impl Into<MemoryAP>,
+        register: R,
+    ) -> Result<(), Self::Error> {
         self.inner.borrow_mut().write_ap_register(port, register)
     }
 
@@ -425,11 +439,19 @@ where
 {
     type Error = DebugProbeError;
 
-    fn read_ap_register(&mut self, port: impl Into<GenericAP>, register: R) -> Result<R, Self::Error> {
+    fn read_ap_register(
+        &mut self,
+        port: impl Into<GenericAP>,
+        register: R,
+    ) -> Result<R, Self::Error> {
         self.inner.borrow_mut().read_ap_register(port, register)
     }
 
-    fn write_ap_register(&mut self, port: impl Into<GenericAP>, register: R) -> Result<(), Self::Error> {
+    fn write_ap_register(
+        &mut self,
+        port: impl Into<GenericAP>,
+        register: R,
+    ) -> Result<(), Self::Error> {
         self.inner.borrow_mut().write_ap_register(port, register)
     }
 
@@ -477,11 +499,10 @@ impl ArmChipInfo {
                 let access_port: MemoryAP = access_port.into();
 
                 let baseaddr = access_port.base_address(interface)?;
-                let component = Component::try_parse(core, baseaddr)
-                    .map_err(Error::architecture_specific)?;
+                let component =
+                    Component::try_parse(core, baseaddr).map_err(Error::architecture_specific)?;
 
-                if let Component::Class1RomTable(component_id, _) = component
-                {
+                if let Component::Class1RomTable(component_id, _) = component {
                     if let Some(jep106) = component_id.peripheral_id().jep106() {
                         return Ok(Some(ArmChipInfo {
                             manufacturer: jep106,

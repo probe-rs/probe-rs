@@ -3,12 +3,17 @@ mod itm;
 mod tpiu;
 
 use super::memory::romtable::Component;
-use crate::{Core, Error};
 use crate::architecture::arm::core::m0::Demcr;
 use crate::core::CoreRegister;
+use crate::{Core, Error};
 pub use dwt::Dwt;
 pub use itm::Itm;
 pub use tpiu::Tpiu;
+
+pub trait DebugRegister: Clone + From<u32> + Into<u32> + Sized + std::fmt::Debug {
+    const ADDRESS: u32;
+    const NAME: &'static str;
+}
 
 pub fn setup_tracing(core: &mut Core, component: &Component) -> Result<(), Error> {
     // stm32 specific reg (DBGMCU_CR):
