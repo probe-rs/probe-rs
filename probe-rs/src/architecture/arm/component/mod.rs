@@ -4,6 +4,8 @@ mod tpiu;
 
 use super::memory::romtable::Component;
 use crate::{Core, Error};
+use crate::architecture::arm::core::m0::Demcr;
+use crate::core::CoreRegister;
 pub use dwt::Dwt;
 pub use itm::Itm;
 pub use tpiu::Tpiu;
@@ -49,7 +51,13 @@ pub fn start_trace_memory_address(
 }
 
 pub fn trace_enable(core: &mut Core) -> Result<(), Error> {
-    // TODO: What is this magic mystery STM32 register?
-    core.write_word_32(0xE000_EDFC, 0x0100_0000)?;
+    // Enable
+    // - Data Watchpoint and Trace (DWT)
+    // - Instrumentation Trace Macrocell (ITM)
+    // - Embedded Trace Macrocell (ETM)
+    // - Trace Port Interface Unit (TPIU).
+    let mut demcr = Demcr(core.read_word_32(Demcr::ADDRESS)?);
+    demcr.set_dwtena(true);
+    core.write_word_32(Demcr::ADDRESS, demcr.into())?;
     Ok(())
 }

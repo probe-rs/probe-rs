@@ -214,7 +214,12 @@ bitfield! {
     #[derive(Copy, Clone)]
     pub struct Demcr(u32);
     impl Debug;
-    /// Global enable for DWT
+    /// Global enable for DWT.
+    /// Enables:
+    /// - Data Watchpoint and Trace (DWT)
+    /// - Instrumentation Trace Macrocell (ITM)
+    /// - Embedded Trace Macrocell (ETM)
+    /// - Trace Port Interface Unit (TPIU).
     pub dwtena, set_dwtena: 24;
     /// Enable halting debug trap on a HardFault exception
     pub vc_harderr, set_vc_harderr: 10;
