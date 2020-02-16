@@ -280,6 +280,7 @@ impl<'c> ComponentInformationReader<'c> {
         #![allow(clippy::verbose_bit_mask)]
         let mut cidr = [0u32; 4];
 
+        println!("BASE: {:#x?}", self.base_address);
         self.core
             .read_32(self.base_address as u32 + 0xFF0, &mut cidr)
             .map_err(RomTableError::Memory)?;
