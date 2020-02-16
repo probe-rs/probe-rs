@@ -177,7 +177,18 @@ impl Session {
         crate::architecture::arm::component::trace_enable(core)
     }
 
-    // pub fn start_trace_memory_address(core: &mut Core, romtable: &RomTable, addr: u32) -> Result<(), Error> {
+    pub fn start_trace_memory_address(&mut self, core: &mut Core, unit: usize, address: u32) -> Result<(), Error> {
+        match self.inner.borrow_mut().architecture_session {
+            ArchitectureSession::Arm(ref mut interface) => {
+                let maps = interface.memory_access_ports()?;
 
-    // }
+                let baseaddr = maps[core.id()].base_address();
+
+                let component = Component::try_parse(core, baseaddr as u64)
+                    .map_err(Error::architecture_specific)?;
+
+                crate::architecture::arm::component::start_trace_memory_address(core, &component, unit, address)
+            }
+        }
+    }
 }

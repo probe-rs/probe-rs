@@ -44,12 +44,13 @@ pub fn setup_tracing(core: &mut Core, component: &Component) -> Result<(), Error
 pub fn start_trace_memory_address(
     core: &mut Core,
     component: &Component,
+    unit: usize,
     addr: u32,
 ) -> Result<(), Error> {
     // config dwt:
     let mut dwt = component.dwt(core).map_err(Error::architecture_specific)?;
     // Future:
-    dwt.enable_trace(addr)?;
+    dwt.enable_trace(unit, addr)?;
     // dwt.disable_memory_watch()?;
 
     Ok(())

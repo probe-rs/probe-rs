@@ -55,15 +55,15 @@ impl<'c> Dwt<'c> {
     }
 
     /// Enable data monitor on a given user variable at some address
-    pub fn enable_trace(&mut self, var_address: u32) -> Result<(), Error> {
+    pub fn enable_trace(&mut self, unit: usize, var_address: u32) -> Result<(), Error> {
         let mask = 0; // size of the ignore mask, ignore nothing!
         let function: u32 = 3; // sample PC and data
                                // function |= 0b10 << 10; // COMP register contains word sized unit.
 
-        // entry 0:
-        self.component.write_reg(self.core, 0x20, var_address)?; // COMp value
-        self.component.write_reg(self.core, 0x24, mask)?; // mask
-        self.component.write_reg(self.core, 0x28, function)?; // function
+        let unit = ((unit + 2) << 4) as u32;
+        self.component.write_reg(self.core, unit | 0x00, var_address)?; // COMp value
+        self.component.write_reg(self.core, unit | 0x04, mask)?; // mask
+        self.component.write_reg(self.core, unit | 0x08, function)?; // function
         Ok(())
     }
 
