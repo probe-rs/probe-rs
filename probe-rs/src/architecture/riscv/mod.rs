@@ -136,6 +136,7 @@ impl CoreInterface for Riscv32 {
 
         todo!("Proper error for core halt timeout")
     }
+
     fn core_halted(&self) -> Result<bool, crate::Error> {
         unimplemented!()
     }
@@ -170,7 +171,29 @@ impl CoreInterface for Riscv32 {
     }
 
     fn run(&self) -> Result<(), crate::Error> {
-        unimplemented!()
+        // test if core halted?
+
+        // set resume request
+        let mut dmcontrol = Dmcontrol(0);
+        dmcontrol.set_dmactive(true);
+        dmcontrol.set_resumereq(true);
+
+        self.interface.write_dm_register(dmcontrol)?;
+
+        // check if request has been acknowleged
+        let status: Dmstatus = self.interface.read_dm_register()?;
+
+        if !status.allresumeack() {
+            todo!("Error, unable to resume")
+        };
+
+        // clear resume request
+        let mut dmcontrol = Dmcontrol(0);
+        dmcontrol.set_dmactive(true);
+
+        self.interface.write_dm_register(dmcontrol)?;
+
+        Ok(())
     }
     fn reset(&self) -> Result<(), crate::Error> {
         unimplemented!()
@@ -178,8 +201,28 @@ impl CoreInterface for Riscv32 {
     fn reset_and_halt(&self) -> Result<crate::core::CoreInformation, crate::Error> {
         unimplemented!()
     }
+
     fn step(&self) -> Result<crate::core::CoreInformation, crate::Error> {
-        unimplemented!()
+        let mut dcsr = self.read_core_reg(CoreRegisterAddress(0x7b0))?;
+
+        dcsr |= 1 << 2;
+
+        self.write_core_reg(CoreRegisterAddress(0x7b0), dcsr)?;
+
+        self.run()?;
+
+        self.wait_for_core_halted()?;
+
+        let pc = self.read_core_reg(CoreRegisterAddress(0x7b1))?;
+
+        // clear step request
+        let mut dcsr = self.read_core_reg(CoreRegisterAddress(0x7b0))?;
+
+        dcsr &= !(1 << 2);
+
+        self.write_core_reg(CoreRegisterAddress(0x7b0), dcsr)?;
+
+        Ok(CoreInformation { pc })
     }
 
     fn read_core_reg(&self, address: crate::CoreRegisterAddress) -> Result<u32, crate::Error> {
@@ -196,8 +239,6 @@ impl CoreInterface for Riscv32 {
         if address.0 >= 0x1000 && address.0 <= 0x101f {
             self.abstract_cmd_register_read(address.0 as u32)
         } else {
-            // todo: need to preserve s0?
-
             let s0 = self.abstract_cmd_register_read(0x1008)?;
 
             // csrrs,
@@ -236,7 +277,44 @@ impl CoreInterface for Riscv32 {
         address: crate::CoreRegisterAddress,
         value: u32,
     ) -> Result<(), crate::Error> {
-        unimplemented!()
+        if address.0 >= 0x1000 && address.0 <= 0x101f {
+            self.abstract_cmd_register_write(address.0 as u32, value)
+        } else {
+            // Backup register s0
+            let s0 = self.abstract_cmd_register_read(0x1008)?;
+
+            // csrrw,
+            // with rd  = x0
+            //      rs1 = s0
+            //      csr = address
+
+            // 0x7b041073
+
+            // Write value into s0
+            self.abstract_cmd_register_write(0x1008, value)?;
+
+            let mut csrrw_cmd: u32 = 0b_01000_010_00000_1110011;
+            csrrw_cmd |= ((address.0 as u32) & 0xfff) << 20;
+            let ebreak_cmd = 0b000000000001_00000_000_00000_1110011;
+
+            // write progbuf0: csrr xxxxxx s0, (address) // lookup correct command
+            self.interface.write_dm_register(Progbuf0(csrrw_cmd))?;
+
+            // write progbuf1: ebreak
+            self.interface.write_dm_register(Progbuf1(ebreak_cmd))?;
+
+            // command: postexec
+            let mut postexec_cmd = AccessRegisterCommand(0);
+            postexec_cmd.set_postexec(true);
+
+            self.execute_abstract_command(postexec_cmd.0)?;
+
+            // command: transfer, regno = 0x1008
+            // restore original value in s0
+            self.abstract_cmd_register_write(0x1008, s0)?;
+
+            Ok(())
+        }
     }
     fn get_available_breakpoint_units(&self) -> Result<u32, crate::Error> {
         unimplemented!()
