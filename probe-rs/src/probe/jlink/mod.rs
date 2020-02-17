@@ -31,6 +31,10 @@ pub(crate) struct JLink {
 }
 
 impl JLink {
+    fn idle_cycles(&self) -> u8 {
+        self.jtag_idle_cycles.unwrap_or(0)
+    }
+
     fn select_interface(
         &mut self,
         protocol: Option<WireProtocol>,
@@ -80,8 +84,6 @@ impl JLink {
     fn read_dr(&mut self, register_bits: usize) -> Result<Vec<u8>, DebugProbeError> {
         log::debug!("Read {} bits from DR", register_bits);
 
-        let jlink = self.handle.get_mut().unwrap();
-
         let tms_enter_shift = [true, false, false];
 
         // Last bit of data is shifted out when we exi the SHIFT-DR State
@@ -95,11 +97,12 @@ impl JLink {
         tms.extend(tms_shift_out_value);
         tms.extend_from_slice(&tms_enter_idle);
 
-        let tdi = iter::repeat(false).take(tms.len() + self.jtag_idle_cycles.unwrap_or(0) as usize);
+        let tdi = iter::repeat(false).take(tms.len() + self.idle_cycles() as usize);
 
         // We have to stay in the idle cycle a bit
-        tms.extend(iter::repeat(false).take(self.jtag_idle_cycles.unwrap_or(0) as usize));
+        tms.extend(iter::repeat(false).take(self.idle_cycles() as usize));
 
+        let jlink = self.handle.get_mut().unwrap();
         let mut response = jlink.jtag_io(tms, tdi)?;
 
         log::trace!("Response: {:?}", response);
@@ -219,8 +222,6 @@ impl JLink {
     fn write_dr(&mut self, data: &[u8], register_bits: usize) -> Result<Vec<u8>, DebugProbeError> {
         log::debug!("Write DR: {:?}, len={}", data, register_bits);
 
-        let jlink = self.handle.get_mut().unwrap();
-
         let tms_enter_shift = [true, false, false];
 
         // Last bit of data is shifted out when we exi the SHIFT-DR State
@@ -270,9 +271,10 @@ impl JLink {
         tdi.extend_from_slice(&tdi_enter_idle);
 
         // We need to stay in the idle cycle a bit
-        tms.extend(iter::repeat(false).take(self.jtag_idle_cycles.unwrap_or(0) as usize));
-        tdi.extend(iter::repeat(false).take(self.jtag_idle_cycles.unwrap_or(0) as usize));
+        tms.extend(iter::repeat(false).take(self.idle_cycles() as usize));
+        tdi.extend(iter::repeat(false).take(self.idle_cycles() as usize));
 
+        let jlink = self.handle.get_mut().unwrap();
         let mut response = jlink.jtag_io(tms, tdi)?;
 
         log::trace!("Response: {:?}", response);
@@ -473,7 +475,7 @@ impl JTAGAccess for JLink {
             self.write_ir(&address_bits[..1], 5)?;
         }
 
-        // read DR register
+        // write DR register
         self.write_dr(data, len as usize)
     }
 }
