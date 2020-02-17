@@ -256,9 +256,7 @@ impl DebugCli {
             function: |cli_data, _args| {
                 cli_data.core.halt()?;
 
-                // Enable vector catch after reset (set bit 1 in DEMCR register)
-                cli_data.core.memory().write32(0xE000_EDFC, 1)?;
-                cli_data.core.reset()?;
+                cli_data.core.reset_and_halt()?;
 
                 Ok(CliState::Continue)
             },
