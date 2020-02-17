@@ -23,100 +23,6 @@ impl Riscv32 {
     pub fn new(interface: RiscvCommunicationInterface) -> Self {
         Self { interface }
     }
-
-    // Read a core register using an abstract command
-    fn abstract_cmd_register_read(&self, regno: u32) -> Result<u32, crate::Error> {
-        // GPR
-
-        // read from data0
-        let mut command = AccessRegisterCommand(0);
-        command.set_cmd_type(0);
-        command.set_transfer(true);
-        command.set_aarsize(2);
-
-        command.set_regno(regno);
-
-        self.execute_abstract_command(command.0)?;
-
-        let register_value: Data0 = self.interface.read_dm_register()?;
-
-        Ok(register_value.into())
-    }
-
-    fn abstract_cmd_register_write(&self, regno: u32, value: u32) -> Result<(), crate::Error> {
-        // write to data0
-        let mut command = AccessRegisterCommand(0);
-        command.set_cmd_type(0);
-        command.set_transfer(true);
-        command.set_write(true);
-        command.set_aarsize(2);
-
-        command.set_regno(regno);
-
-        // write data0
-        self.interface.write_dm_register(Data0(value))?;
-
-        self.execute_abstract_command(command.0)
-    }
-
-    fn execute_abstract_command(&self, command: u32) -> Result<(), crate::Error> {
-        // ensure that preconditions are fullfileld
-        // haltreq      = 0
-        // resumereq    = 0
-        // ackhavereset = 0
-
-        let mut dmcontrol = Dmcontrol(0);
-        dmcontrol.set_haltreq(false);
-        dmcontrol.set_resumereq(false);
-        dmcontrol.set_ackhavereset(true);
-        dmcontrol.set_dmactive(true);
-        self.interface.write_dm_register(dmcontrol)?;
-
-        // read abstractcs to see its state
-        let abstractcs_prev: Abstractcs = self.interface.read_dm_register()?;
-
-        log::debug!("abstractcs: {:?}", abstractcs_prev);
-
-        if abstractcs_prev.cmderr() != 0 {
-            //clear previous command error
-            let mut abstractcs_clear = Abstractcs(0);
-            abstractcs_clear.set_cmderr(0x7);
-
-            self.interface.write_dm_register(abstractcs_clear)?;
-        }
-
-        self.interface.write_dm_register(Command(command))?;
-
-        // poll busy flag in abstractcs
-
-        let repeat_count = 10;
-
-        let mut abstractcs = Abstractcs(1);
-
-        for _ in 0..repeat_count {
-            abstractcs = self.interface.read_dm_register()?;
-
-            if !abstractcs.busy() {
-                break;
-            }
-        }
-
-        log::debug!("abstracts: {:?}", abstractcs);
-
-        if abstractcs.busy() {
-            todo!("Proper error, error executing abstract command");
-        }
-
-        // check cmderr
-        if abstractcs.cmderr() != 0 {
-            todo!(
-                "Cmderr {} occured while executing command, add proper error",
-                abstractcs.cmderr()
-            );
-        }
-
-        Ok(())
-    }
 }
 
 impl CoreInterface for Riscv32 {
@@ -195,11 +101,125 @@ impl CoreInterface for Riscv32 {
 
         Ok(())
     }
+
     fn reset(&self) -> Result<(), crate::Error> {
-        unimplemented!()
+        log::debug!("Resetting core, setting hartreset bit");
+
+        let mut dmcontrol = Dmcontrol(0);
+        dmcontrol.set_dmactive(true);
+        dmcontrol.set_hartreset(true);
+
+        self.interface.write_dm_register(dmcontrol)?;
+
+        // Read back register to verify reset is supported
+        let readback: Dmcontrol = self.interface.read_dm_register()?;
+
+        if readback.hartreset() {
+            log::debug!("Clearing hartreset bit");
+            // Reset is performed by setting the bit high, and then low again
+            let mut dmcontrol = Dmcontrol(0);
+            dmcontrol.set_dmactive(true);
+            dmcontrol.set_hartreset(false);
+
+            self.interface.write_dm_register(dmcontrol)?;
+        } else {
+            // Hartreset is not supported, whole core needs to be reset
+            //
+            // TODO: Cache this
+            log::debug!("Hartreset bit not supported, using ndmreset");
+            let mut dmcontrol = Dmcontrol(0);
+            dmcontrol.set_dmactive(true);
+            dmcontrol.set_ndmreset(true);
+
+            self.interface.write_dm_register(dmcontrol)?;
+
+            log::debug!("Clearing ndmreset bit");
+            let mut dmcontrol = Dmcontrol(0);
+            dmcontrol.set_dmactive(true);
+            dmcontrol.set_ndmreset(false);
+
+            self.interface.write_dm_register(dmcontrol)?;
+        }
+
+        // check that cores have reset
+
+        let readback: Dmstatus = self.interface.read_dm_register()?;
+
+        if !readback.allhavereset() {
+            log::warn!("Dmstatue: {:?}", readback);
+            todo!("Error: Not all harts have reset");
+        }
+
+        // acknowledge the reset
+        let mut dmcontrol = Dmcontrol(0);
+        dmcontrol.set_dmactive(true);
+        dmcontrol.set_ackhavereset(true);
+
+        self.interface.write_dm_register(dmcontrol)?;
+
+        Ok(())
     }
+
     fn reset_and_halt(&self) -> Result<crate::core::CoreInformation, crate::Error> {
-        unimplemented!()
+        log::debug!("Resetting core, setting hartreset bit");
+
+        let mut dmcontrol = Dmcontrol(0);
+        dmcontrol.set_dmactive(true);
+        dmcontrol.set_hartreset(true);
+        dmcontrol.set_haltreq(true);
+
+        self.interface.write_dm_register(dmcontrol)?;
+
+        // Read back register to verify reset is supported
+        let readback: Dmcontrol = self.interface.read_dm_register()?;
+
+        if readback.hartreset() {
+            log::debug!("Clearing hartreset bit");
+            // Reset is performed by setting the bit high, and then low again
+            let mut dmcontrol = Dmcontrol(0);
+            dmcontrol.set_dmactive(true);
+            dmcontrol.set_haltreq(true);
+            dmcontrol.set_hartreset(false);
+
+            self.interface.write_dm_register(dmcontrol)?;
+        } else {
+            // Hartreset is not supported, whole core needs to be reset
+            //
+            // TODO: Cache this
+            log::debug!("Hartreset bit not supported, using ndmreset");
+            let mut dmcontrol = Dmcontrol(0);
+            dmcontrol.set_dmactive(true);
+            dmcontrol.set_ndmreset(true);
+            dmcontrol.set_haltreq(true);
+
+            self.interface.write_dm_register(dmcontrol)?;
+
+            log::debug!("Clearing ndmreset bit");
+            let mut dmcontrol = Dmcontrol(0);
+            dmcontrol.set_dmactive(true);
+            dmcontrol.set_ndmreset(false);
+            dmcontrol.set_haltreq(true);
+
+            self.interface.write_dm_register(dmcontrol)?;
+        }
+
+        // check that cores have reset
+        let readback: Dmstatus = self.interface.read_dm_register()?;
+
+        if !(readback.allhavereset() && readback.allhalted()) {
+            todo!("Error: Not all harts have reset and halted");
+        }
+
+        // acknowledge the reset, clear the halt request
+        let mut dmcontrol = Dmcontrol(0);
+        dmcontrol.set_dmactive(true);
+        dmcontrol.set_ackhavereset(true);
+
+        self.interface.write_dm_register(dmcontrol)?;
+
+        let pc = self.read_core_reg(CoreRegisterAddress(0x7b1))?;
+
+        Ok(CoreInformation { pc })
     }
 
     fn step(&self) -> Result<crate::core::CoreInformation, crate::Error> {
@@ -237,9 +257,12 @@ impl CoreInterface for Riscv32 {
         // if it is a gpr (general purpose register) read using an abstract command,
         // otherwise, use the program buffer
         if address.0 >= 0x1000 && address.0 <= 0x101f {
-            self.abstract_cmd_register_read(address.0 as u32)
+            let value = self
+                .interface
+                .abstract_cmd_register_read(address.0 as u32)?;
+            Ok(value)
         } else {
-            let s0 = self.abstract_cmd_register_read(0x1008)?;
+            let s0 = self.interface.abstract_cmd_register_read(0x1008)?;
 
             // csrrs,
             // with rd  = s0
@@ -260,13 +283,13 @@ impl CoreInterface for Riscv32 {
             let mut postexec_cmd = AccessRegisterCommand(0);
             postexec_cmd.set_postexec(true);
 
-            self.execute_abstract_command(postexec_cmd.0)?;
+            self.interface.execute_abstract_command(postexec_cmd.0)?;
 
             // command: transfer, regno = 0x1008
-            let reg_value = self.abstract_cmd_register_read(0x1008)?;
+            let reg_value = self.interface.abstract_cmd_register_read(0x1008)?;
 
             // restore original value in s0
-            self.abstract_cmd_register_write(0x1008, s0)?;
+            self.interface.abstract_cmd_register_write(0x1008, s0)?;
 
             Ok(reg_value)
         }
@@ -278,10 +301,13 @@ impl CoreInterface for Riscv32 {
         value: u32,
     ) -> Result<(), crate::Error> {
         if address.0 >= 0x1000 && address.0 <= 0x101f {
-            self.abstract_cmd_register_write(address.0 as u32, value)
+            let value = self
+                .interface
+                .abstract_cmd_register_write(address.0 as u32, value)?;
+            Ok(value)
         } else {
             // Backup register s0
-            let s0 = self.abstract_cmd_register_read(0x1008)?;
+            let s0 = self.interface.abstract_cmd_register_read(0x1008)?;
 
             // csrrw,
             // with rd  = x0
@@ -291,7 +317,7 @@ impl CoreInterface for Riscv32 {
             // 0x7b041073
 
             // Write value into s0
-            self.abstract_cmd_register_write(0x1008, value)?;
+            self.interface.abstract_cmd_register_write(0x1008, value)?;
 
             let mut csrrw_cmd: u32 = 0b_01000_010_00000_1110011;
             csrrw_cmd |= ((address.0 as u32) & 0xfff) << 20;
@@ -307,11 +333,11 @@ impl CoreInterface for Riscv32 {
             let mut postexec_cmd = AccessRegisterCommand(0);
             postexec_cmd.set_postexec(true);
 
-            self.execute_abstract_command(postexec_cmd.0)?;
+            self.interface.execute_abstract_command(postexec_cmd.0)?;
 
             // command: transfer, regno = 0x1008
             // restore original value in s0
-            self.abstract_cmd_register_write(0x1008, s0)?;
+            self.interface.abstract_cmd_register_write(0x1008, s0)?;
 
             Ok(())
         }
