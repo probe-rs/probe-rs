@@ -6,7 +6,7 @@ use thiserror::Error;
 pub enum Error {
     #[error("An error with the usage of the probe occured: {0}")]
     Probe(#[from] DebugProbeError),
-    #[error("A core architecture specific error occured")]
+    #[error("A core architecture specific error occured: {0}")]
     ArchitectureSpecific(#[from] Box<dyn std::error::Error + Send + Sync>),
     #[error("Probe could not be opened: {0}")]
     UnableToOpenProbe(&'static str),

@@ -6,19 +6,45 @@
 
 use super::{Dmcontrol, Dmstatus};
 use crate::architecture::riscv::Abstractcs;
+use crate::architecture::riscv::Command;
 use crate::architecture::riscv::Data0;
 use crate::architecture::riscv::Data1;
 use crate::architecture::riscv::Progbuf0;
 use crate::architecture::riscv::Progbuf1;
 use crate::DebugProbeError;
-use crate::{Error, Memory, MemoryInterface, Probe};
+use crate::{Memory, MemoryInterface, Probe};
+
+use crate::Error as ProbeRsError;
 
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use std::convert::TryInto;
+use std::{
+    convert::TryInto,
+    time::{Duration, Instant},
+};
 
 use bitfield::bitfield;
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+pub(crate) enum RiscvError {
+    #[error("Error during write/read to dmi register: {0:?}")]
+    DmiTransfer(DmiOperationStatus),
+    #[error("Debug Probe Error: {0}")]
+    DebugProbe(#[from] DebugProbeError),
+    #[error("Timeout during JTAG register access.")]
+    Timeout,
+}
+
+impl From<RiscvError> for ProbeRsError {
+    fn from(err: RiscvError) -> Self {
+        match err {
+            RiscvError::DebugProbe(e) => e.into(),
+            other => ProbeRsError::ArchitectureSpecific(Box::new(other)),
+        }
+    }
+}
 
 #[derive(Clone)]
 pub struct RiscvCommunicationInterface {
@@ -34,15 +60,30 @@ impl RiscvCommunicationInterface {
         }
     }
 
-    pub(super) fn read_dm_register<R: DebugRegister>(&self) -> Result<R, DebugProbeError> {
+    pub(super) fn read_dm_register<R: DebugRegister>(&self) -> Result<R, RiscvError> {
         self.inner.borrow_mut().read_dm_register()
     }
 
-    pub(super) fn write_dm_register(
-        &self,
-        register: impl DebugRegister,
-    ) -> Result<(), DebugProbeError> {
+    pub(super) fn write_dm_register(&self, register: impl DebugRegister) -> Result<(), RiscvError> {
         self.inner.borrow_mut().write_dm_register(register)
+    }
+
+    pub(crate) fn execute_abstract_command(&self, command: u32) -> Result<(), RiscvError> {
+        self.inner.borrow_mut().execute_abstract_command(command)
+    }
+
+    pub(crate) fn abstract_cmd_register_read(&self, regno: u32) -> Result<u32, RiscvError> {
+        self.inner.borrow_mut().abstract_cmd_register_read(regno)
+    }
+
+    pub(crate) fn abstract_cmd_register_write(
+        &self,
+        regno: u32,
+        value: u32,
+    ) -> Result<(), RiscvError> {
+        self.inner
+            .borrow_mut()
+            .abstract_cmd_register_write(regno, value)
     }
 
     /// Read the IDCODE register
@@ -95,7 +136,7 @@ struct InnerRiscvCommunicationInterface {
 }
 
 impl InnerRiscvCommunicationInterface {
-    pub fn build(mut probe: Probe) -> Result<Self, DebugProbeError> {
+    pub fn build(mut probe: Probe) -> Result<Self, RiscvError> {
         // We need a jtag interface
 
         log::debug!("Building RISCV interface");
@@ -134,13 +175,39 @@ impl InnerRiscvCommunicationInterface {
     }
 
     /// Read the `dtmcs` register
-    fn read_dtmcs(&self) -> u32 {
-        todo!();
+    fn read_dtmcs(&mut self) -> Result<Dtmcs, DebugProbeError> {
+        let jtag_interface = self
+            .probe
+            .get_interface_jtag_mut()
+            .ok_or(DebugProbeError::InterfaceNotAvailable("JTAG"))?;
+
+        let dtmcs_raw = jtag_interface.read_register(0x10, 32)?;
+
+        let dtmcs = Dtmcs(u32::from_le_bytes((&dtmcs_raw[..]).try_into().unwrap()));
+
+        Ok(dtmcs)
     }
 
     fn dmi_hard_reset(&self) -> () {}
 
-    fn dmi_reset(&self) -> () {}
+    fn dmi_reset(&mut self) -> Result<(), RiscvError> {
+        let mut dtmcs = Dtmcs(0);
+
+        dtmcs.set_dmireset(true);
+
+        let Dtmcs(reg_value) = dtmcs;
+
+        let bytes = reg_value.to_le_bytes();
+
+        let jtag_interface = self
+            .probe
+            .get_interface_jtag_mut()
+            .ok_or(DebugProbeError::InterfaceNotAvailable("JTAG"))?;
+
+        jtag_interface.write_register(0x10, &bytes, 32)?;
+
+        Ok(())
+    }
 
     fn version(&self) -> () {}
 
@@ -157,53 +224,110 @@ impl InnerRiscvCommunicationInterface {
         Ok(u32::from_le_bytes((&value[..]).try_into().unwrap()))
     }
 
-    pub fn read_dm_register<R: DebugRegister>(&mut self) -> Result<R, DebugProbeError> {
-        log::debug!("Reading DM register '{}' at {:#010x}", R::NAME, R::ADDRESS);
+    /// Perform an access to the dmi register of the JTAG Transport module.
+    ///
+    /// Every access both writes and reads from the register, which means a value is always
+    /// returned. The `op` is checked for errors, and if it is not equal to zero, an error is returned.
+    fn dmi_register_access(
+        &mut self,
+        address: u64,
+        value: u32,
+        op: DmiOperation,
+    ) -> Result<u32, RiscvError> {
+        let register_value: u128 = ((address as u128) << 34) | ((value as u128) << 2) | op as u128;
+
+        let bytes = register_value.to_le_bytes();
+
+        let bit_size = self.abits + 34;
 
         let jtag_interface = self
             .probe
             .get_interface_jtag_mut()
             .ok_or(DebugProbeError::InterfaceNotAvailable("JTAG"))?;
 
-        let dm_reg = dm_read_reg(R::ADDRESS);
-        log::debug!("Sending write command (u64): {:#018x?}", dm_reg);
+        let response_bytes = jtag_interface.write_register(0x11, &bytes, bit_size)?;
 
-        let bytes = dm_reg.to_le_bytes();
-
-        log::debug!("Sending write command (hex): {:x?}", bytes);
-
-        // Send read command
-        jtag_interface.write_register(0x11, &bytes[..6], 41)?;
-
-        // Read back response
-        let response = jtag_interface.read_register(0x11, 41)?;
-
-        let lower_value = u32::from_le_bytes((&response[0..4]).try_into().unwrap());
-        let higher_value = u16::from_le_bytes((&response[4..6]).try_into().unwrap());
-
-        let complete_value = ((higher_value as u64) << 32) | (lower_value as u64);
+        let response_value: u128 = response_bytes.iter().enumerate().fold(0, |acc, elem| {
+            let (byte_offset, value) = elem;
+            acc + ((*value as u128) << (8 * byte_offset))
+        });
 
         // Verify that the transfer was ok
-        assert!((complete_value & 0x3) == 0, "Last transfer was not ok...");
 
-        let response_value = ((complete_value >> 2) & 0xffff_ffff) as u32;
+        let op = (response_value & 0x3) as u8;
 
-        log::debug!("Address: {:#010x}", (complete_value >> 34) & 0x3f);
+        if op != 0 {
+            return Err(RiscvError::DmiTransfer(
+                DmiOperationStatus::parse(op).unwrap(),
+            ));
+        }
+
+        let value = (response_value >> 2) as u32;
+
+        Ok(value)
+    }
+
+    pub(crate) fn read_dm_register<R: DebugRegister>(&mut self) -> Result<R, RiscvError> {
+        log::debug!("Reading DM register '{}' at {:#010x}", R::NAME, R::ADDRESS);
+
+        // TODO: parameter for this
+        let retry_duration = Duration::from_secs(5);
+
+        let start_time = Instant::now();
+
+        loop {
+            // Prepare the read, answer will be read back in a second operation
+            match self.dmi_register_access(R::ADDRESS as u64, 0, DmiOperation::Read) {
+                Ok(_) => break,
+                Err(RiscvError::DmiTransfer(DmiOperationStatus::RequestInProgress)) => {
+                    // Operation still in progress, reset dmi status and try again.
+                    self.dmi_reset()?;
+                }
+                Err(e) => return Err(e),
+            }
+
+            if start_time.elapsed() > retry_duration {
+                return Err(RiscvError::Timeout);
+            }
+        }
+
+        let mut response;
+
+        loop {
+            // Prepare the read, answer will be read back in a second operation
+            match self.dmi_register_access(0, 0, DmiOperation::Read) {
+                Ok(r) => {
+                    response = r;
+                    break;
+                }
+                Err(RiscvError::DmiTransfer(DmiOperationStatus::RequestInProgress)) => {
+                    // Operation still in progress, reset dmi status and try again.
+                    self.dmi_reset()?;
+                }
+                Err(e) => return Err(e),
+            }
+
+            if start_time.elapsed() > retry_duration {
+                return Err(RiscvError::Timeout);
+            }
+        }
+
+        //let response = self.dmi_register_access(0, 0, DmiOperation::Read)?;
 
         log::debug!(
             "Read DM register '{}' at {:#010x} = {:#010x}",
             R::NAME,
             R::ADDRESS,
-            response_value
+            response
         );
 
-        Ok(response_value.into())
+        Ok(response.into())
     }
 
-    pub fn write_dm_register<R: DebugRegister>(
+    pub(crate) fn write_dm_register<R: DebugRegister>(
         &mut self,
         register: R,
-    ) -> Result<(), DebugProbeError> {
+    ) -> Result<(), RiscvError> {
         // write write command to dmi register
 
         let data = register.into();
@@ -215,16 +339,7 @@ impl InnerRiscvCommunicationInterface {
             data
         );
 
-        let jtag_interface = self
-            .probe
-            .get_interface_jtag_mut()
-            .ok_or(DebugProbeError::InterfaceNotAvailable("JTAG"))?;
-
-        let dm_reg = dm_write_reg(R::ADDRESS, data);
-
-        let bytes = dm_reg.to_le_bytes();
-
-        jtag_interface.write_register(0x11, &bytes[..6], 41)?;
+        self.dmi_register_access(R::ADDRESS as u64, data, DmiOperation::Write)?;
 
         Ok(())
     }
@@ -232,9 +347,12 @@ impl InnerRiscvCommunicationInterface {
     /// Perfrom memory read from a single location using the program buffer.
     /// Only reads up to a width of 32 bits are currently supported.
     /// For widths smaller than u32, the higher bits have to be discarded manually.
-    fn perform_memory_read(&mut self, address: u32, width: u8) -> Result<u32, Error> {
+    fn perform_memory_read(&mut self, address: u32, width: u8) -> Result<u32, ProbeRsError> {
         // assemble
         //  lb s1, 0(s0)
+
+        // Backup registers s0 and s1
+        let s0 = self.abstract_cmd_register_read(0x1008)?;
 
         //let o = 0; // offset = 0
         //let b = 9; // base register -> s0
@@ -303,12 +421,23 @@ impl InnerRiscvCommunicationInterface {
 
         let value: Data0 = self.read_dm_register()?;
 
+        self.abstract_cmd_register_write(0x1008, s0)?;
+
         Ok(u32::from(value))
     }
 
     /// Perform memory write to a single location using the program buffer.
     /// Only writes up to a width of 32 bits are currently supported.
-    fn perform_memory_write(&mut self, address: u32, width: u8, data: u32) -> Result<(), Error> {
+    fn perform_memory_write(
+        &mut self,
+        address: u32,
+        width: u8,
+        data: u32,
+    ) -> Result<(), ProbeRsError> {
+        // Backup registers s0 and s1
+        let s0 = self.abstract_cmd_register_read(0x1008)?;
+        let s1 = self.abstract_cmd_register_read(0x1009)?;
+
         // assemble
         //  lb s0, 0(s0)
 
@@ -386,6 +515,111 @@ impl InnerRiscvCommunicationInterface {
         if status.cmderr() != 0 {
             todo!("Error code for command execution ({:?})", status);
         }
+
+        // Restore register s0 and s1
+
+        self.abstract_cmd_register_write(0x1008, s0)?;
+        self.abstract_cmd_register_write(0x1009, s1)?;
+
+        Ok(())
+    }
+
+    pub(crate) fn execute_abstract_command(&mut self, command: u32) -> Result<(), RiscvError> {
+        // ensure that preconditions are fullfileld
+        // haltreq      = 0
+        // resumereq    = 0
+        // ackhavereset = 0
+
+        let mut dmcontrol = Dmcontrol(0);
+        dmcontrol.set_haltreq(false);
+        dmcontrol.set_resumereq(false);
+        dmcontrol.set_ackhavereset(true);
+        dmcontrol.set_dmactive(true);
+        self.write_dm_register(dmcontrol)?;
+
+        // read abstractcs to see its state
+        let abstractcs_prev: Abstractcs = self.read_dm_register()?;
+
+        log::debug!("abstractcs: {:?}", abstractcs_prev);
+
+        if abstractcs_prev.cmderr() != 0 {
+            //clear previous command error
+            let mut abstractcs_clear = Abstractcs(0);
+            abstractcs_clear.set_cmderr(0x7);
+
+            self.write_dm_register(abstractcs_clear)?;
+        }
+
+        self.write_dm_register(Command(command))?;
+
+        // poll busy flag in abstractcs
+
+        let repeat_count = 10;
+
+        let mut abstractcs = Abstractcs(1);
+
+        for _ in 0..repeat_count {
+            abstractcs = self.read_dm_register()?;
+
+            if !abstractcs.busy() {
+                break;
+            }
+        }
+
+        log::debug!("abstracts: {:?}", abstractcs);
+
+        if abstractcs.busy() {
+            todo!("Proper error, error executing abstract command");
+        }
+
+        // check cmderr
+        if abstractcs.cmderr() != 0 {
+            todo!(
+                "Cmderr {} occured while executing command, add proper error",
+                abstractcs.cmderr()
+            );
+        }
+
+        Ok(())
+    }
+
+    // Read a core register using an abstract command
+    pub(crate) fn abstract_cmd_register_read(&mut self, regno: u32) -> Result<u32, RiscvError> {
+        // GPR
+
+        // read from data0
+        let mut command = AccessRegisterCommand(0);
+        command.set_cmd_type(0);
+        command.set_transfer(true);
+        command.set_aarsize(2);
+
+        command.set_regno(regno);
+
+        self.execute_abstract_command(command.0)?;
+
+        let register_value: Data0 = self.read_dm_register()?;
+
+        Ok(register_value.into())
+    }
+
+    pub(crate) fn abstract_cmd_register_write(
+        &mut self,
+        regno: u32,
+        value: u32,
+    ) -> Result<(), RiscvError> {
+        // write to data0
+        let mut command = AccessRegisterCommand(0);
+        command.set_cmd_type(0);
+        command.set_transfer(true);
+        command.set_write(true);
+        command.set_aarsize(2);
+
+        command.set_regno(regno);
+
+        // write data0
+        self.write_dm_register(Data0(value))?;
+
+        self.execute_abstract_command(command.0)?;
 
         Ok(())
     }
@@ -828,3 +1062,36 @@ data_register! { Sbdata0, 0x3c, "sbdata0" }
 data_register! { Sbdata1, 0x3d, "sbdata1" }
 data_register! { Sbdata2, 0x3e, "sbdata2" }
 data_register! { Sbdata3, 0x3f, "sbdata3" }
+
+/// Possible return values in the op field of
+/// the dmi register.
+#[derive(Debug)]
+pub(crate) enum DmiOperationStatus {
+    Ok = 0,
+    Reserved = 1,
+    OperationFailed = 2,
+    RequestInProgress = 3,
+}
+
+impl DmiOperationStatus {
+    fn parse(value: u8) -> Option<Self> {
+        use DmiOperationStatus::*;
+
+        let status = match value {
+            0 => Ok,
+            1 => Reserved,
+            2 => OperationFailed,
+            3 => RequestInProgress,
+            _ => return None,
+        };
+
+        Some(status)
+    }
+}
+
+enum DmiOperation {
+    NoOp = 0,
+    Read = 1,
+    Write = 2,
+    _Reserved = 3,
+}
