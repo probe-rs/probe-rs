@@ -7,18 +7,16 @@ use std::iter;
 use std::sync::Mutex;
 
 use crate::probe::{
-    DAPAccess, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeType, WireProtocol,
+    DAPAccess, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeType, JTAGAccess,
+    WireProtocol,
 };
-
-use crate::architecture::riscv::communication_interface::JTAGAccess;
-use bitfield::bitfield;
 
 pub(crate) struct JLink {
     handle: Mutex<JayLink>,
 
     /// Idle cycles necessary between consecutive
     /// accesses to the DMI register
-    jtag_idle_cycles: Option<u8>,
+    jtag_idle_cycles: u8,
 
     /// Currently selected protocol
     protocol: Option<WireProtocol>,
@@ -28,7 +26,7 @@ pub(crate) struct JLink {
 
 impl JLink {
     fn idle_cycles(&self) -> u8 {
-        self.jtag_idle_cycles.unwrap_or(0)
+        self.jtag_idle_cycles
     }
 
     fn select_interface(
@@ -296,18 +294,6 @@ impl JLink {
     }
 }
 
-bitfield! {
-    struct Dtmcs(u32);
-    impl Debug;
-
-    dmihardreset, set_dmihardreset: 17;
-    dmireset, set_dmireset: 16;
-    idle, _: 14, 12;
-    dmistat, _: 11,10;
-    abits, _: 9,4;
-    version, _: 3,0;
-}
-
 impl DebugProbe for JLink {
     fn new_from_probe_info(info: &super::DebugProbeInfo) -> Result<Box<Self>, DebugProbeError> {
         let mut usb_devices: Vec<_> = jaylink::scan_usb()?
@@ -323,7 +309,7 @@ impl DebugProbe for JLink {
 
         Ok(Box::new(JLink {
             handle: Mutex::new(usb_devices.pop().unwrap().open()?),
-            jtag_idle_cycles: None,
+            jtag_idle_cycles: 0,
             protocol: None,
             current_ir_reg: 1,
         }))
@@ -377,25 +363,7 @@ impl DebugProbe for JLink {
         let idcode_bytes = self.read_dr(32)?;
         let idcode = u32::from_le_bytes((&idcode_bytes[..]).try_into().unwrap());
 
-        println!("IDCODE: {:#010x}", idcode);
-
-        // TODO:
-        //
-        // * select dtmcs register (ir -> 0x10)
-        // * read 32 bit dtmcs value
-        //
-        // Sanity check: abits should be 7
-
-        self.write_ir(&[0x10], 5)?;
-
-        let dr_bytes = self.read_dr(32)?;
-        let dtmcs_raw = u32::from_le_bytes((&dr_bytes[..]).try_into().unwrap());
-
-        let dtmcs = Dtmcs(dtmcs_raw);
-
-        println!("dtmcs: {:?}", dtmcs);
-
-        self.jtag_idle_cycles = Some(dtmcs.idle() as u8);
+        log::debug!("IDCODE: {:#010x}", idcode);
 
         Ok(())
     }
@@ -471,6 +439,10 @@ impl JTAGAccess for JLink {
 
         // write DR register
         self.write_dr(data, len as usize)
+    }
+
+    fn set_idle_cycles(&mut self, idle_cycles: u8) {
+        self.jtag_idle_cycles = idle_cycles;
     }
 }
 

@@ -27,6 +27,7 @@ use commands::{
 };
 use log::{debug, error, info};
 
+use super::JTAGAccess;
 use std::sync::Mutex;
 
 pub struct DAPLink {
@@ -286,14 +287,10 @@ impl DebugProbe for DAPLink {
     fn get_interface_dap_mut(&mut self) -> Option<&mut dyn DAPAccess> {
         Some(self as _)
     }
-    fn get_interface_jtag(
-        &self,
-    ) -> Option<&dyn crate::architecture::riscv::communication_interface::JTAGAccess> {
+    fn get_interface_jtag(&self) -> Option<&dyn JTAGAccess> {
         None
     }
-    fn get_interface_jtag_mut(
-        &mut self,
-    ) -> Option<&mut dyn crate::architecture::riscv::communication_interface::JTAGAccess> {
+    fn get_interface_jtag_mut(&mut self) -> Option<&mut dyn JTAGAccess> {
         None
     }
 }
