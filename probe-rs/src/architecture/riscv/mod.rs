@@ -223,11 +223,11 @@ impl CoreInterface for Riscv32 {
     }
 
     fn step(&self) -> Result<crate::core::CoreInformation, crate::Error> {
-        let mut dcsr = self.read_core_reg(CoreRegisterAddress(0x7b0))?;
+        let mut dcsr = Dcsr(self.read_core_reg(CoreRegisterAddress(0x7b0))?);
 
-        dcsr |= 1 << 2;
+        dcsr.set_step(true);
 
-        self.write_core_reg(CoreRegisterAddress(0x7b0), dcsr)?;
+        self.write_core_reg(CoreRegisterAddress(0x7b0), dcsr.0)?;
 
         self.run()?;
 
@@ -236,11 +236,11 @@ impl CoreInterface for Riscv32 {
         let pc = self.read_core_reg(CoreRegisterAddress(0x7b1))?;
 
         // clear step request
-        let mut dcsr = self.read_core_reg(CoreRegisterAddress(0x7b0))?;
+        let mut dcsr = Dcsr(self.read_core_reg(CoreRegisterAddress(0x7b0))?);
 
-        dcsr &= !(1 << 2);
+        dcsr.set_step(false);
 
-        self.write_core_reg(CoreRegisterAddress(0x7b0), dcsr)?;
+        self.write_core_reg(CoreRegisterAddress(0x7b0), dcsr.0)?;
 
         Ok(CoreInformation { pc })
     }
@@ -319,7 +319,7 @@ impl CoreInterface for Riscv32 {
             // Write value into s0
             self.interface.abstract_cmd_register_write(0x1008, value)?;
 
-            let mut csrrw_cmd: u32 = 0b_01000_010_00000_1110011;
+            let mut csrrw_cmd: u32 = 0b_01000_001_00000_1110011;
             csrrw_cmd |= ((address.0 as u32) & 0xfff) << 20;
             let ebreak_cmd = 0b000000000001_00000_000_00000_1110011;
 
@@ -450,6 +450,24 @@ impl From<Dmstatus> for u32 {
     fn from(register: Dmstatus) -> Self {
         register.0
     }
+}
+
+bitfield! {
+        struct Dcsr(u32);
+        impl Debug;
+
+        xdebugver, _: 31, 28;
+        ebreakm, set_ebreakm: 15;
+        ebreaks, set_ebreaks: 13;
+        ebreaku, set_ebreaku: 12;
+        stepie, set_stepie: 11;
+        stopcount, set_stopcount: 10;
+        stoptime, set_stoptime: 9;
+        cause, _: 8, 6;
+        mprven, set_mprven: 4;
+        nmip, _: 3;
+        step, set_step: 2;
+        prv, set_prv: 1,0;
 }
 
 bitfield! {
