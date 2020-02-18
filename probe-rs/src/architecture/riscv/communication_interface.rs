@@ -5,12 +5,7 @@
 //! specification v0.13.2 .
 
 use super::{Dmcontrol, Dmstatus};
-use crate::architecture::riscv::Abstractcs;
-use crate::architecture::riscv::Command;
-use crate::architecture::riscv::Data0;
-use crate::architecture::riscv::Data1;
-use crate::architecture::riscv::Progbuf0;
-use crate::architecture::riscv::Progbuf1;
+use crate::architecture::riscv::{Abstractcs, Command, Data0, Progbuf0, Progbuf1};
 use crate::DebugProbeError;
 use crate::{Memory, MemoryInterface, Probe};
 
@@ -207,22 +202,6 @@ impl InnerRiscvCommunicationInterface {
         Ok(interface)
     }
 
-    /// Read the `dtmcs` register
-    fn read_dtmcs(&mut self) -> Result<Dtmcs, DebugProbeError> {
-        let jtag_interface = self
-            .probe
-            .get_interface_jtag_mut()
-            .ok_or(DebugProbeError::InterfaceNotAvailable("JTAG"))?;
-
-        let dtmcs_raw = jtag_interface.read_register(0x10, 32)?;
-
-        let dtmcs = Dtmcs(u32::from_le_bytes((&dtmcs_raw[..]).try_into().unwrap()));
-
-        Ok(dtmcs)
-    }
-
-    fn dmi_hard_reset(&self) -> () {}
-
     fn dmi_reset(&mut self) -> Result<(), RiscvError> {
         let mut dtmcs = Dtmcs(0);
 
@@ -241,10 +220,6 @@ impl InnerRiscvCommunicationInterface {
 
         Ok(())
     }
-
-    fn version(&self) -> () {}
-
-    fn idle_cycles(&self) -> () {}
 
     fn read_idcode(&mut self) -> Result<u32, DebugProbeError> {
         let jtag_interface = self
@@ -324,11 +299,11 @@ impl InnerRiscvCommunicationInterface {
             }
         }
 
-        let mut response;
+        let response;
 
         loop {
-            // Prepare the read, answer will be read back in a second operation
-            match self.dmi_register_access(0, 0, DmiOperation::Read) {
+            // Perform the actual read
+            match self.dmi_register_access(0, 0, DmiOperation::NoOp) {
                 Ok(r) => {
                     response = r;
                     break;
@@ -704,231 +679,6 @@ impl MemoryInterface for InnerRiscvCommunicationInterface {
 
         Ok(())
     }
-}
-
-struct AbstractCommandMemoryInterface {
-    interface: RiscvCommunicationInterface,
-}
-
-impl MemoryInterface for AbstractCommandMemoryInterface {
-    fn read32(&mut self, address: u32) -> Result<u32, crate::Error> {
-        unimplemented!()
-    }
-    fn read8(&mut self, address: u32) -> Result<u8, crate::Error> {
-        unimplemented!()
-    }
-    fn read_block32(&mut self, address: u32, data: &mut [u32]) -> Result<(), crate::Error> {
-        unimplemented!()
-    }
-    fn read_block8(&mut self, address: u32, data: &mut [u8]) -> Result<(), crate::Error> {
-        let mut abstractauto = Abstractauto(0);
-        abstractauto.set_autoexecdata(1);
-        self.interface.write_dm_register(abstractauto)?;
-
-        self.interface.write_dm_register(Data1(address))?;
-
-        let mut access_memory_command = AccessMemoryCommand(0);
-        access_memory_command.set_aamsize(0);
-        access_memory_command.set_aampostincrement(true);
-
-        self.interface.write_dm_register(access_memory_command)?;
-
-        for byte in data {
-            let val: Data0 = self.interface.read_dm_register()?;
-
-            *byte = (u32::from(val) & 0xff) as u8
-        }
-
-        // verify all commands worked
-        let command_status: Abstractcs = self.interface.read_dm_register()?;
-
-        if command_status.cmderr() == 0 {
-            Ok(())
-        } else {
-            todo!("Proper error for command err: {:?}", command_status)
-        }
-    }
-    fn write32(&mut self, addr: u32, data: u32) -> Result<(), crate::Error> {
-        unimplemented!()
-    }
-    fn write8(&mut self, addr: u32, data: u8) -> Result<(), crate::Error> {
-        unimplemented!()
-    }
-    fn write_block32(&mut self, addr: u32, data: &[u32]) -> Result<(), crate::Error> {
-        unimplemented!()
-    }
-    fn write_block8(&mut self, addr: u32, data: &[u8]) -> Result<(), crate::Error> {
-        unimplemented!()
-    }
-}
-
-struct SystemBusAccessor {
-    interface: RiscvCommunicationInterface,
-}
-
-impl MemoryInterface for SystemBusAccessor {
-    fn read32(&mut self, address: u32) -> Result<u32, crate::Error> {
-        let status: Sbcs = self.interface.read_dm_register()?;
-
-        if !status.sbaccess32() {
-            todo!("Proper error, access by system bus not supported");
-        }
-
-        log::debug!("sbcs: {:?}", status);
-
-        let mut access_setup = Sbcs(0);
-        access_setup.set_sbaccess(2);
-        access_setup.set_sbreadondata(true);
-
-        self.interface.write_dm_register(access_setup)?;
-
-        self.interface.write_dm_register(Sbaddress0(address))?;
-
-        // wait until sbbusy is low
-        let mut status_busy: Sbcs = self.interface.read_dm_register()?;
-
-        let repeat_count = 10;
-
-        for _ in 0..repeat_count {
-            status_busy = self.interface.read_dm_register()?;
-
-            if !status_busy.sbbusy() {
-                break;
-            }
-        }
-
-        if status_busy.sbbusy() {
-            todo!("Timeout, sbbusy still set...");
-        }
-
-        if status.sberror() != 0 {
-            todo!("Error for sberror...");
-        }
-
-        let data: Sbdata0 = self.interface.read_dm_register()?;
-
-        Ok(data.into())
-    }
-
-    fn read8(&mut self, address: u32) -> Result<u8, crate::Error> {
-        let status: Sbcs = self.interface.read_dm_register()?;
-
-        if !status.sbaccess8() {
-            todo!("Proper error, access by system bus not supported");
-        }
-
-        log::debug!("sbcs: {:?}", status);
-
-        let mut access_setup = Sbcs(0);
-        access_setup.set_sbaccess(0);
-        access_setup.set_sbreadondata(true);
-
-        self.interface.write_dm_register(access_setup)?;
-
-        self.interface.write_dm_register(Sbaddress0(address))?;
-
-        // wait until sbbusy is low
-        let mut status_busy: Sbcs = self.interface.read_dm_register()?;
-
-        let repeat_count = 10;
-
-        for _ in 0..repeat_count {
-            status_busy = self.interface.read_dm_register()?;
-
-            if !status_busy.sbbusy() {
-                break;
-            }
-        }
-
-        if status_busy.sbbusy() {
-            todo!("Timeout, sbbusy still set...");
-        }
-
-        if status.sberror() != 0 {
-            todo!("Error for sberror...");
-        }
-
-        let data: Sbdata0 = self.interface.read_dm_register()?;
-
-        let value: u32 = data.into();
-
-        Ok((value & 0xff) as u8)
-    }
-
-    fn read_block32(&mut self, address: u32, data: &mut [u32]) -> Result<(), crate::Error> {
-        unimplemented!()
-    }
-
-    fn read_block8(&mut self, address: u32, data: &mut [u8]) -> Result<(), crate::Error> {
-        let status: Sbcs = self.interface.read_dm_register()?;
-
-        if !status.sbaccess8() {
-            todo!("Proper error, access by system bus not supported");
-        }
-
-        log::debug!("sbcs: {:?}", status);
-
-        let mut access_setup = Sbcs(0);
-        access_setup.set_sbaccess(0);
-        access_setup.set_sbreadondata(true);
-        access_setup.set_sbautoincrement(true);
-
-        self.interface.write_dm_register(access_setup)?;
-
-        self.interface.write_dm_register(Sbaddress0(address))?;
-
-        for byte in data {
-            // wait until sbbusy is low
-            let mut status_busy: Sbcs = self.interface.read_dm_register()?;
-
-            let repeat_count = 10;
-
-            for _ in 0..repeat_count {
-                status_busy = self.interface.read_dm_register()?;
-
-                if !status_busy.sbbusy() {
-                    break;
-                }
-            }
-
-            if status_busy.sbbusy() {
-                todo!("Timeout, sbbusy still set...");
-            }
-
-            if status.sberror() != 0 {
-                todo!("Error for sberror...");
-            }
-
-            let register: Sbdata0 = self.interface.read_dm_register()?;
-
-            let value: u32 = register.into();
-
-            *byte = (value & 0xff) as u8;
-        }
-
-        Ok(())
-    }
-
-    fn write32(&mut self, addr: u32, data: u32) -> Result<(), crate::Error> {
-        unimplemented!()
-    }
-    fn write8(&mut self, addr: u32, data: u8) -> Result<(), crate::Error> {
-        unimplemented!()
-    }
-    fn write_block32(&mut self, addr: u32, data: &[u32]) -> Result<(), crate::Error> {
-        unimplemented!()
-    }
-    fn write_block8(&mut self, addr: u32, data: &[u8]) -> Result<(), crate::Error> {
-        unimplemented!()
-    }
-}
-
-fn dm_write_reg(address: u8, data: u32) -> u64 {
-    ((address as u64) << 34) | ((data as u64) << 2) | 2
-}
-
-fn dm_read_reg(address: u8) -> u64 {
-    ((address as u64) << 34) | 1
 }
 
 pub trait JTAGAccess {

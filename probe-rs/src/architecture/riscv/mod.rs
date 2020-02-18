@@ -15,7 +15,6 @@ use bitfield::bitfield;
 mod register;
 
 pub mod communication_interface;
-pub mod memory_interface;
 
 #[derive(Clone)]
 pub struct Riscv32 {
@@ -423,10 +422,12 @@ impl CoreInterface for Riscv32 {
 
         Ok(tselect_index)
     }
-    fn enable_breakpoints(&mut self, state: bool) -> Result<(), crate::Error> {
+
+    fn enable_breakpoints(&mut self, _state: bool) -> Result<(), crate::Error> {
         // seems not needed on RISCV
         Ok(())
     }
+
     fn set_breakpoint(&self, bp_unit_index: usize, addr: u32) -> Result<(), crate::Error> {
         // select requested trigger
         let tselect = 0x7a0;
