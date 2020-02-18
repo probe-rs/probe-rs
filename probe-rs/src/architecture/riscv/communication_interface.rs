@@ -35,6 +35,8 @@ pub(crate) enum RiscvError {
     DebugProbe(#[from] DebugProbeError),
     #[error("Timeout during JTAG register access.")]
     Timeout,
+    #[error("Error occured during execution of an abstract command: {0:?}")]
+    AbstractCommand(AbstractCommandErrorKind),
 }
 
 impl From<RiscvError> for ProbeRsError {
@@ -42,6 +44,37 @@ impl From<RiscvError> for ProbeRsError {
         match err {
             RiscvError::DebugProbe(e) => e.into(),
             other => ProbeRsError::ArchitectureSpecific(Box::new(other)),
+        }
+    }
+}
+
+/// Errors which can occur while executing an abstract command
+#[derive(Debug)]
+pub(crate) enum AbstractCommandErrorKind {
+    None = 0,
+    Busy = 1,
+    NotSupported = 2,
+    Exception = 3,
+    HaltResume = 4,
+    Bus = 5,
+    _Reserved = 6,
+    Other = 7,
+}
+
+impl AbstractCommandErrorKind {
+    fn parse(value: u8) -> Self {
+        use AbstractCommandErrorKind::*;
+
+        match value {
+            0 => None,
+            1 => Busy,
+            2 => NotSupported,
+            3 => Exception,
+            4 => HaltResume,
+            5 => Bus,
+            6 => _Reserved,
+            7 => Other,
+            _ => panic!("cmderr is a 3 bit value, values higher than 7 should not occur."),
         }
     }
 }
@@ -574,10 +607,9 @@ impl InnerRiscvCommunicationInterface {
 
         // check cmderr
         if abstractcs.cmderr() != 0 {
-            todo!(
-                "Cmderr {} occured while executing command, add proper error",
-                abstractcs.cmderr()
-            );
+            return Err(RiscvError::AbstractCommand(
+                AbstractCommandErrorKind::parse(abstractcs.cmderr() as u8),
+            ));
         }
 
         Ok(())
