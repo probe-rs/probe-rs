@@ -12,10 +12,6 @@ use crate::probe::{
 
 use crate::architecture::riscv::communication_interface::JTAGAccess;
 use bitfield::bitfield;
-use bitvec::bitvec;
-use bitvec::vec::BitVec;
-use std::cell::RefCell;
-use std::rc::Rc;
 
 pub(crate) struct JLink {
     handle: Mutex<JayLink>,
@@ -161,8 +157,6 @@ impl JLink {
         tms.extend_from_slice(&tms_enter_ir_shift);
         tms.extend(tms_data);
         tms.extend_from_slice(&tms_enter_idle);
-
-        let skip_out = 4;
 
         let tdi_enter_ir_shift = [false, false, false, false];
 
@@ -490,13 +484,6 @@ fn bits_to_byte(bits: jaylink::BitIter) -> u32 {
     }
 
     bit_val
-}
-
-#[derive(PartialEq)]
-enum JtagState {
-    Reset,
-    Idle,
-    // TODO: Add more state
 }
 
 pub(crate) fn list_jlink_devices() -> Result<impl Iterator<Item = DebugProbeInfo>, DebugProbeError>
