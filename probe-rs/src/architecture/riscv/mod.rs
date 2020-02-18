@@ -2,7 +2,10 @@
 
 use crate::core::Architecture;
 use crate::CoreInterface;
-use communication_interface::{AccessRegisterCommand, DebugRegister, RiscvCommunicationInterface};
+use communication_interface::{
+    AbstractCommandErrorKind, AccessRegisterCommand, DebugRegister, RiscvCommunicationInterface,
+    RiscvError,
+};
 
 use crate::core::{CoreInformation, RegisterFile};
 use crate::CoreRegisterAddress;
@@ -22,6 +25,76 @@ pub struct Riscv32 {
 impl Riscv32 {
     pub fn new(interface: RiscvCommunicationInterface) -> Self {
         Self { interface }
+    }
+
+    fn read_csr(&self, address: u16) -> Result<u32, RiscvError> {
+        let s0 = self.interface.abstract_cmd_register_read(0x1008)?;
+
+        // csrrs,
+        // with rd  = s0
+        //      rs1 = x0
+        //      csr = address
+
+        let mut csrrs_cmd: u32 = 0b_00000_010_01000_1110011;
+        csrrs_cmd |= ((address as u32) & 0xfff) << 20;
+        let ebreak_cmd = 0b000000000001_00000_000_00000_1110011;
+
+        // write progbuf0: csrr xxxxxx s0, (address) // lookup correct command
+        self.interface.write_dm_register(Progbuf0(csrrs_cmd))?;
+
+        // write progbuf1: ebreak
+        self.interface.write_dm_register(Progbuf1(ebreak_cmd))?;
+
+        // command: postexec
+        let mut postexec_cmd = AccessRegisterCommand(0);
+        postexec_cmd.set_postexec(true);
+
+        self.interface.execute_abstract_command(postexec_cmd.0)?;
+
+        // command: transfer, regno = 0x1008
+        let reg_value = self.interface.abstract_cmd_register_read(0x1008)?;
+
+        // restore original value in s0
+        self.interface.abstract_cmd_register_write(0x1008, s0)?;
+
+        Ok(reg_value)
+    }
+
+    fn write_csr(&self, address: u16, value: u32) -> Result<(), RiscvError> {
+        // Backup register s0
+        let s0 = self.interface.abstract_cmd_register_read(0x1008)?;
+
+        // csrrw,
+        // with rd  = x0
+        //      rs1 = s0
+        //      csr = address
+
+        // 0x7b041073
+
+        // Write value into s0
+        self.interface.abstract_cmd_register_write(0x1008, value)?;
+
+        let mut csrrw_cmd: u32 = 0b_01000_001_00000_1110011;
+        csrrw_cmd |= ((address as u32) & 0xfff) << 20;
+        let ebreak_cmd = 0b000000000001_00000_000_00000_1110011;
+
+        // write progbuf0: csrr xxxxxx s0, (address) // lookup correct command
+        self.interface.write_dm_register(Progbuf0(csrrw_cmd))?;
+
+        // write progbuf1: ebreak
+        self.interface.write_dm_register(Progbuf1(ebreak_cmd))?;
+
+        // command: postexec
+        let mut postexec_cmd = AccessRegisterCommand(0);
+        postexec_cmd.set_postexec(true);
+
+        self.interface.execute_abstract_command(postexec_cmd.0)?;
+
+        // command: transfer, regno = 0x1008
+        // restore original value in s0
+        self.interface.abstract_cmd_register_write(0x1008, s0)?;
+
+        Ok(())
     }
 }
 
@@ -44,7 +117,9 @@ impl CoreInterface for Riscv32 {
     }
 
     fn core_halted(&self) -> Result<bool, crate::Error> {
-        unimplemented!()
+        let dmstatus: Dmstatus = self.interface.read_dm_register()?;
+
+        Ok(dmstatus.allhalted())
     }
 
     fn halt(&self) -> Result<CoreInformation, crate::Error> {
@@ -227,7 +302,7 @@ impl CoreInterface for Riscv32 {
 
         dcsr.set_step(true);
 
-        self.write_core_reg(CoreRegisterAddress(0x7b0), dcsr.0)?;
+        self.write_csr(0x7b0, dcsr.0)?;
 
         self.run()?;
 
@@ -240,7 +315,7 @@ impl CoreInterface for Riscv32 {
 
         dcsr.set_step(false);
 
-        self.write_core_reg(CoreRegisterAddress(0x7b0), dcsr.0)?;
+        self.write_csr(0x7b0, dcsr.0)?;
 
         Ok(CoreInformation { pc })
     }
@@ -262,35 +337,7 @@ impl CoreInterface for Riscv32 {
                 .abstract_cmd_register_read(address.0 as u32)?;
             Ok(value)
         } else {
-            let s0 = self.interface.abstract_cmd_register_read(0x1008)?;
-
-            // csrrs,
-            // with rd  = s0
-            //      rs1 = x0
-            //      csr = address
-
-            let mut csrrs_cmd: u32 = 0b_00000_010_01000_1110011;
-            csrrs_cmd |= ((address.0 as u32) & 0xfff) << 20;
-            let ebreak_cmd = 0b000000000001_00000_000_00000_1110011;
-
-            // write progbuf0: csrr xxxxxx s0, (address) // lookup correct command
-            self.interface.write_dm_register(Progbuf0(csrrs_cmd))?;
-
-            // write progbuf1: ebreak
-            self.interface.write_dm_register(Progbuf1(ebreak_cmd))?;
-
-            // command: postexec
-            let mut postexec_cmd = AccessRegisterCommand(0);
-            postexec_cmd.set_postexec(true);
-
-            self.interface.execute_abstract_command(postexec_cmd.0)?;
-
-            // command: transfer, regno = 0x1008
-            let reg_value = self.interface.abstract_cmd_register_read(0x1008)?;
-
-            // restore original value in s0
-            self.interface.abstract_cmd_register_write(0x1008, s0)?;
-
+            let reg_value = self.read_csr(address.0)?;
             Ok(reg_value)
         }
     }
@@ -301,59 +348,129 @@ impl CoreInterface for Riscv32 {
         value: u32,
     ) -> Result<(), crate::Error> {
         if address.0 >= 0x1000 && address.0 <= 0x101f {
-            let value = self
-                .interface
+            self.interface
                 .abstract_cmd_register_write(address.0 as u32, value)?;
-            Ok(value)
         } else {
-            // Backup register s0
-            let s0 = self.interface.abstract_cmd_register_read(0x1008)?;
-
-            // csrrw,
-            // with rd  = x0
-            //      rs1 = s0
-            //      csr = address
-
-            // 0x7b041073
-
-            // Write value into s0
-            self.interface.abstract_cmd_register_write(0x1008, value)?;
-
-            let mut csrrw_cmd: u32 = 0b_01000_001_00000_1110011;
-            csrrw_cmd |= ((address.0 as u32) & 0xfff) << 20;
-            let ebreak_cmd = 0b000000000001_00000_000_00000_1110011;
-
-            // write progbuf0: csrr xxxxxx s0, (address) // lookup correct command
-            self.interface.write_dm_register(Progbuf0(csrrw_cmd))?;
-
-            // write progbuf1: ebreak
-            self.interface.write_dm_register(Progbuf1(ebreak_cmd))?;
-
-            // command: postexec
-            let mut postexec_cmd = AccessRegisterCommand(0);
-            postexec_cmd.set_postexec(true);
-
-            self.interface.execute_abstract_command(postexec_cmd.0)?;
-
-            // command: transfer, regno = 0x1008
-            // restore original value in s0
-            self.interface.abstract_cmd_register_write(0x1008, s0)?;
-
-            Ok(())
+            self.write_csr(address.0, value)?;
         }
+        Ok(())
     }
+
     fn get_available_breakpoint_units(&self) -> Result<u32, crate::Error> {
-        unimplemented!()
+        // TODO: This should probably only be done once, when initialising
+
+        log::debug!("Determining number of HW breakpoints supported");
+
+        let tselect = 0x7a0;
+        let tdata1 = 0x7a1;
+        let tinfo = 0x7a4;
+
+        let mut tselect_index = 0;
+
+        // These steps follow the debug specification 0.13, section 5.1 Enumeration
+        loop {
+            log::debug!("Trying tselect={}", tselect_index);
+            if let Err(e) = self.write_csr(tselect, tselect_index) {
+                match e {
+                    RiscvError::AbstractCommand(AbstractCommandErrorKind::Exception) => break,
+                    other_error => return Err(other_error.into()),
+                }
+            }
+
+            let readback = self.read_csr(tselect)?;
+
+            if readback != tselect_index {
+                break;
+            }
+
+            match self.read_csr(tinfo) {
+                Ok(tinfo_val) => {
+                    if tinfo_val & 0xffff == 1 {
+                        // Trigger doesn't exist, break the loop
+                        break;
+                    } else {
+                        log::info!(
+                            "Discovered trigger with index {} and type {}",
+                            tselect_index,
+                            tinfo_val & 0xffff
+                        );
+                    }
+                }
+                Err(RiscvError::AbstractCommand(AbstractCommandErrorKind::Exception)) => {
+                    // An exception means we have to read tdata1 to discover the type
+                    let tdata_val = self.read_csr(tdata1)?;
+
+                    // TODO: Proper handle xlen
+                    let xlen = 32;
+
+                    let trigger_type = tdata_val >> (xlen - 4);
+
+                    if trigger_type == 0 {
+                        break;
+                    }
+
+                    log::info!(
+                        "Discovered trigger with index {} and type {}",
+                        tselect_index,
+                        trigger_type,
+                    );
+                }
+                Err(other) => return Err(other.into()),
+            }
+
+            tselect_index += 1;
+        }
+
+        Ok(tselect_index)
     }
     fn enable_breakpoints(&mut self, state: bool) -> Result<(), crate::Error> {
-        unimplemented!()
+        // seems not needed on RISCV
+        Ok(())
     }
     fn set_breakpoint(&self, bp_unit_index: usize, addr: u32) -> Result<(), crate::Error> {
-        unimplemented!()
+        // select requested trigger
+        let tselect = 0x7a0;
+        let tdata1 = 0x7a1;
+        let tdata2 = 0x7a2;
+
+        self.write_csr(tselect, bp_unit_index as u32)?;
+
+        // verify the trigger has the correct type
+
+        let tdata_value = dbg!(Mcontrol(self.read_csr(tdata1)?));
+
+        if tdata_value.type_() != 2 {
+            todo!("Error: Incorrect trigger type for address breakpoint");
+        }
+
+        // Setup the trigger
+
+        let mut instruction_breakpoint = Mcontrol(0);
+        instruction_breakpoint.set_action(1);
+        instruction_breakpoint.set_match(0);
+
+        instruction_breakpoint.set_m(true);
+        instruction_breakpoint.set_s(true);
+        instruction_breakpoint.set_u(true);
+
+        instruction_breakpoint.set_execute(true);
+
+        self.write_csr(tdata1, instruction_breakpoint.0)?;
+        self.write_csr(tdata2, addr)?;
+
+        Ok(())
     }
 
     fn clear_breakpoint(&self, unit_index: usize) -> Result<(), crate::Error> {
-        unimplemented!()
+        let tselect = 0x7a0;
+        let tdata1 = 0x7a1;
+        let tdata2 = 0x7a2;
+
+        self.write_csr(tselect, unit_index as u32)?;
+        self.write_csr(tdata1, 0)?;
+        self.write_csr(tdata2, 0)?;
+
+        Ok(())
     }
 
     fn registers(&self) -> &'static RegisterFile {
@@ -364,7 +481,8 @@ impl CoreInterface for Riscv32 {
     }
 
     fn hw_breakpoints_enabled(&self) -> bool {
-        unimplemented!()
+        // No special enable on RISCV
+        true
     }
 
     fn architecture(&self) -> Architecture {
@@ -514,3 +632,25 @@ data_register! { Command, 0x17, "command" }
 
 data_register! { pub Progbuf0, 0x20, "progbuf0" }
 data_register! { pub Progbuf1, 0x21, "progbuf1" }
+
+bitfield! {
+    struct Mcontrol(u32);
+    impl Debug;
+
+    type_, _: 31, 28;
+    dmode, _: 27;
+    maskmax, _: 26, 21;
+    hit, set_hit: 20;
+    select, set_select: 19;
+    timing, set_timing: 18;
+    sizelo, set_sizelo: 17, 16;
+    action, set_action: 15, 12;
+    chain, set_chain: 11;
+    match_, set_match: 10, 7;
+    m, set_m: 6;
+    s, set_s: 4;
+    u, set_u: 3;
+    execute, set_execute: 2;
+    store, set_store: 1;
+    load, set_load: 0;
+}
