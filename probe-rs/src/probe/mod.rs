@@ -3,7 +3,6 @@ pub(crate) mod jlink;
 pub(crate) mod stlink;
 
 use crate::architecture::arm::{ap::AccessPortError, DAPAccess, PortType};
-use crate::architecture::riscv::communication_interface::JTAGAccess;
 use crate::config::{RegistryError, TargetSelector};
 use crate::error::Error;
 use crate::{Memory, Session};
@@ -396,4 +395,30 @@ impl DAPAccess for FakeProbe {
     ) -> Result<(), DebugProbeError> {
         Err(DebugProbeError::Unknown)
     }
+}
+
+/// Low-Level Access to the JTAG protocol
+///
+/// This trait should be implemented by all probes which offer low-level access to
+/// the JTAG protocol, i.e. directo control over the bytes sent and received.
+pub trait JTAGAccess {
+    fn read_register(&mut self, address: u32, len: u32) -> Result<Vec<u8>, DebugProbeError>;
+
+    /// For Riscv, and possibly other interfaces, the JTAG interface has to remain in
+    /// the idle state for several cycles between consecutive accesses to the DR register.
+    ///
+    /// This function configures the number of idle cycles which are inserted after each access.
+    fn set_idle_cycles(&mut self, idle_cycles: u8);
+
+    /// Write to a JTAG register
+    ///
+    /// This function will perform a write to the IR register, if necessary,
+    /// to select the correct register, and then to the DR register, to transmit the
+    /// data. The data shifted out of the DR register will be returned.
+    fn write_register(
+        &mut self,
+        address: u32,
+        data: &[u8],
+        len: u32,
+    ) -> Result<Vec<u8>, DebugProbeError>;
 }
