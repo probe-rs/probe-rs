@@ -4,7 +4,9 @@ pub mod tools;
 mod usb_interface;
 
 use self::usb_interface::STLinkUSBDevice;
-use super::{DAPAccess, DebugProbe, DebugProbeError, DebugProbeInfo, PortType, WireProtocol};
+use super::{
+    DAPAccess, DebugProbe, DebugProbeError, DebugProbeInfo, JTAGAccess, PortType, WireProtocol,
+};
 use crate::architecture::arm::{ap::AccessPort, dp::Ctrl, Register};
 use crate::Memory;
 use constants::{commands, JTagFrequencyToDivider, Mode, Status, SwdFrequencyToDelayCount};
@@ -110,15 +112,11 @@ impl DebugProbe for STLink {
         Some(self as _)
     }
 
-    fn get_interface_jtag(
-        &self,
-    ) -> Option<&dyn crate::architecture::riscv::communication_interface::JTAGAccess> {
+    fn get_interface_jtag(&self) -> Option<&dyn JTAGAccess> {
         None
     }
 
-    fn get_interface_jtag_mut(
-        &mut self,
-    ) -> Option<&mut dyn crate::architecture::riscv::communication_interface::JTAGAccess> {
+    fn get_interface_jtag_mut(&mut self) -> Option<&mut dyn JTAGAccess> {
         None
     }
 }

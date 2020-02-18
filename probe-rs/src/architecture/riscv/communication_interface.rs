@@ -180,6 +180,10 @@ impl InnerRiscvCommunicationInterface {
         log::debug!("Dtmcs: {:?}", dtmcs);
 
         let abits = dtmcs.abits();
+        let idle_cycles = dtmcs.idle();
+
+        // Setup the number of idle cycles between JTAG accesses
+        jtag_interface.set_idle_cycles(idle_cycles as u8);
 
         let mut interface = InnerRiscvCommunicationInterface { probe, abits };
 
@@ -355,7 +359,7 @@ impl InnerRiscvCommunicationInterface {
     /// Perfrom memory read from a single location using the program buffer.
     /// Only reads up to a width of 32 bits are currently supported.
     /// For widths smaller than u32, the higher bits have to be discarded manually.
-    fn perform_memory_read(&mut self, address: u32, width: u8) -> Result<u32, ProbeRsError> {
+    fn perform_memory_read(&mut self, address: u32, width: u8) -> Result<u32, RiscvError> {
         // assemble
         //  lb s1, 0(s0)
 
@@ -368,14 +372,12 @@ impl InnerRiscvCommunicationInterface {
         //let d = 9; // dest register -> s0
         //let l = 0b11;
 
-        //let lw_command = bitpack!("oooooooooooobbbbbwwwddddd_lllllll");
         let mut lw_command: u32 = 0b000000000000_01000_000_01000_0000011;
 
         // verify the width is supported
         // 0 ==  8 bit
         // 1 == 16 bit
         // 2 == 32 bit
-
         assert!(width < 3, "Width larger than 3 not supported yet");
 
         lw_command |= (width as u32) << 12;
@@ -405,29 +407,13 @@ impl InnerRiscvCommunicationInterface {
         let status: Abstractcs = self.read_dm_register()?;
 
         if status.cmderr() != 0 {
-            todo!("Error code for command execution ({:?})", status);
+            return Err(RiscvError::AbstractCommand(
+                AbstractCommandErrorKind::parse(status.cmderr() as u8),
+            ));
         }
-
-        // Execute program buffer (how?)
 
         // Read back s0
-        let mut read_command = AccessRegisterCommand(0);
-        read_command.set_cmd_type(0);
-        read_command.set_transfer(true);
-        read_command.set_regno(0x1008);
-        read_command.set_aarsize(2);
-
-        self.write_dm_register(read_command)?;
-
-        // Ensure commands run without error
-
-        let status: Abstractcs = self.read_dm_register()?;
-
-        if status.cmderr() != 0 {
-            todo!("Error code for command execution ({:?})", status);
-        }
-
-        let value: Data0 = self.read_dm_register()?;
+        let value = self.abstract_cmd_register_read(0x1008)?;
 
         self.abstract_cmd_register_write(0x1008, s0)?;
 
@@ -441,7 +427,7 @@ impl InnerRiscvCommunicationInterface {
         address: u32,
         width: u8,
         data: u32,
-    ) -> Result<(), ProbeRsError> {
+    ) -> Result<(), RiscvError> {
         // Backup registers s0 and s1
         let s0 = self.abstract_cmd_register_read(0x1008)?;
         let s1 = self.abstract_cmd_register_read(0x1009)?;
@@ -478,27 +464,8 @@ impl InnerRiscvCommunicationInterface {
         self.write_dm_register(Progbuf0(sw_command))?;
         self.write_dm_register(Progbuf1(ebreak_cmd))?;
 
-        // write value into data 1
-        self.write_dm_register(Data0(address))?;
-
-        let mut command = AccessRegisterCommand(0);
-        command.set_cmd_type(0);
-        command.set_transfer(true);
-        command.set_write(true);
-
-        // registers are 32 bit, so we have size 2 here
-        command.set_aarsize(2);
-
-        // register s1, ie. 0x1009
-        command.set_regno(0x1008);
-
-        self.write_dm_register(command)?;
-
-        let status: Abstractcs = self.read_dm_register()?;
-
-        if status.cmderr() != 0 {
-            todo!("Error code for command execution ({:?})", status);
-        }
+        // write value into s0
+        self.abstract_cmd_register_write(0x1008, address)?;
 
         // write address into data 0
         self.write_dm_register(Data0(data))?;
@@ -521,7 +488,9 @@ impl InnerRiscvCommunicationInterface {
         let status: Abstractcs = self.read_dm_register()?;
 
         if status.cmderr() != 0 {
-            todo!("Error code for command execution ({:?})", status);
+            return Err(RiscvError::AbstractCommand(
+                AbstractCommandErrorKind::parse(status.cmderr() as u8),
+            ));
         }
 
         // Restore register s0 and s1
@@ -576,8 +545,9 @@ impl InnerRiscvCommunicationInterface {
 
         log::debug!("abstracts: {:?}", abstractcs);
 
+        // Abstract command still busy after timeout
         if abstractcs.busy() {
-            todo!("Proper error, error executing abstract command");
+            return Err(RiscvError::Timeout);
         }
 
         // check cmderr
@@ -634,8 +604,11 @@ impl InnerRiscvCommunicationInterface {
 
 impl MemoryInterface for InnerRiscvCommunicationInterface {
     fn read32(&mut self, address: u32) -> Result<u32, crate::Error> {
-        self.perform_memory_read(address, 2)
+        let result = self.perform_memory_read(address, 2)?;
+
+        Ok(result)
     }
+
     fn read8(&mut self, address: u32) -> Result<u8, crate::Error> {
         let value = self.perform_memory_read(address, 0)?;
 
@@ -659,11 +632,15 @@ impl MemoryInterface for InnerRiscvCommunicationInterface {
     }
 
     fn write32(&mut self, address: u32, data: u32) -> Result<(), crate::Error> {
-        self.perform_memory_write(address, 2, data)
+        self.perform_memory_write(address, 2, data)?;
+
+        Ok(())
     }
 
     fn write8(&mut self, address: u32, data: u8) -> Result<(), crate::Error> {
-        self.perform_memory_write(address, 0, data as u32)
+        self.perform_memory_write(address, 0, data as u32)?;
+
+        Ok(())
     }
     fn write_block32(&mut self, address: u32, data: &[u32]) -> Result<(), crate::Error> {
         for (offset, word) in data.iter().enumerate() {
@@ -683,6 +660,18 @@ impl MemoryInterface for InnerRiscvCommunicationInterface {
 
 pub trait JTAGAccess {
     fn read_register(&mut self, address: u32, len: u32) -> Result<Vec<u8>, DebugProbeError>;
+
+    /// For Riscv, and possibly other interfaces, the JTAG interface has to remain in
+    /// the idle state for several cycles between consecutive accesses to the DR register.
+    ///
+    /// This function configures the number of idle cycles which are inserted after each access.
+    fn set_idle_cycles(&mut self, idle_cycles: u8);
+
+    /// Write to a JTAG register
+    ///
+    /// This function will perform a write to the IR register, if necessary,
+    /// to select the correct register, and then to the DR register, to transmit the
+    /// data. The data shifted out of the DR register will be returned.
     fn write_register(
         &mut self,
         address: u32,
