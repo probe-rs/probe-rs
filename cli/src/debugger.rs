@@ -137,7 +137,7 @@ impl DebugCli {
 
             function: |cli_data, _args| {
                 let regs = cli_data.core.registers().clone();
-                let program_counter = cli_data.core.read_core_reg(regs.PC)?;
+                let program_counter = cli_data.core.read_core_reg(regs.program_counter())?;
 
                 if let Some(di) = &cli_data.debug_info {
                     let frames = di.try_unwind(&cli_data.core, u64::from(program_counter));
@@ -156,16 +156,12 @@ impl DebugCli {
             help_text: "Show CPU register values",
 
             function: |cli_data, _args| {
-                let mut regs = [0u32; 15];
+                let register_file = cli_data.core.registers();
 
-                for i in 0..15 {
-                    regs[i as usize] = cli_data
-                        .core
-                        .read_core_reg(Into::<CoreRegisterAddress>::into(i))?;
-                }
+                for register in register_file.registers() {
+                    let value = cli_data.core.read_core_reg(register)?;
 
-                for (i, val) in regs.iter().enumerate() {
-                    println!("Register {}: {:#08x}", i, val);
+                    println!("{}: {:#010x}", register.name(), value)
                 }
 
                 Ok(CliState::Continue)
@@ -185,8 +181,8 @@ impl DebugCli {
 
                 let regs = cli_data.core.registers();
 
-                let stack_bot: u32 = cli_data.core.read_core_reg(regs.SP)?;
-                let pc: u32 = cli_data.core.read_core_reg(regs.PC)?;
+                let stack_bot: u32 = cli_data.core.read_core_reg(regs.stack_pointer())?;
+                let pc: u32 = cli_data.core.read_core_reg(regs.program_counter())?;
 
                 let mut stack = vec![0u8; (stack_top - stack_bot) as usize];
 
@@ -205,7 +201,7 @@ impl DebugCli {
                 }
 
                 dump.regs[13] = stack_bot;
-                dump.regs[14] = cli_data.core.read_core_reg(regs.LR)?;
+                dump.regs[14] = cli_data.core.read_core_reg(regs.return_address())?;
                 dump.regs[15] = pc;
 
                 let serialized = ron::ser::to_string(&dump).expect("Failed to serialize dump");
