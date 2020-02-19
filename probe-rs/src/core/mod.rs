@@ -52,6 +52,75 @@ pub struct CoreInformation {
     pub pc: u32,
 }
 
+#[derive(Debug, Clone)]
+pub struct RegisterDescription {
+    pub(crate) name: &'static str,
+    pub(crate) kind: RegisterKind,
+    pub(crate) address: CoreRegisterAddress,
+}
+
+impl RegisterDescription {
+    pub fn name(&self) -> &'static str {
+        self.name
+    }
+}
+
+impl From<&RegisterDescription> for CoreRegisterAddress {
+    fn from(description: &RegisterDescription) -> CoreRegisterAddress {
+        description.address
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub(crate) enum RegisterKind {
+    General,
+    PC,
+}
+
+#[derive(Clone)]
+pub struct RegisterFile {
+    pub(crate) platform_registers: Vec<RegisterDescription>,
+
+    pub(crate) program_counter: RegisterDescription,
+
+    pub(crate) stack_pointer: RegisterDescription,
+
+    pub(crate) return_address: RegisterDescription,
+
+    pub(crate) argument_registers: Vec<RegisterDescription>,
+    pub(crate) result_registers: Vec<RegisterDescription>,
+}
+
+impl RegisterFile {
+    pub fn registers(&self) -> impl Iterator<Item = &RegisterDescription> {
+        self.platform_registers.iter()
+    }
+
+    pub fn program_counter(&self) -> &RegisterDescription {
+        &self.program_counter
+    }
+
+    pub fn stack_pointer(&self) -> &RegisterDescription {
+        &self.stack_pointer
+    }
+
+    pub fn return_address(&self) -> &RegisterDescription {
+        &self.return_address
+    }
+
+    pub fn argument_register(&self, index: usize) -> &RegisterDescription {
+        &self.argument_registers[index]
+    }
+
+    pub fn result_register(&self, index: usize) -> &RegisterDescription {
+        &self.result_registers[index]
+    }
+
+    pub fn platform_register(&self, index: usize) -> &RegisterDescription {
+        &self.platform_registers[index]
+    }
+}
+
 pub trait CoreInterface {
     /// Wait until the core is halted. If the core does not halt on its own,
     /// a [`DebugProbeError::Timeout`] error will be returned.
@@ -100,7 +169,7 @@ pub trait CoreInterface {
 
     fn clear_breakpoint(&self, unit_index: usize) -> Result<(), error::Error>;
 
-    fn registers<'a>(&self) -> &'a BasicRegisterAddresses;
+    fn registers(&self) -> &RegisterFile;
 
     fn memory(&self) -> Memory;
     fn hw_breakpoints_enabled(&self) -> bool;
@@ -254,8 +323,10 @@ impl Core {
         self.inner.borrow_mut().enable_breakpoints(state)
     }
 
-    pub fn registers<'a>(&self) -> &'a BasicRegisterAddresses {
-        self.inner.borrow().registers()
+    pub fn registers(&self) -> RegisterFile {
+        let register_file = self.inner.borrow().registers().clone();
+
+        register_file
     }
 
     pub fn memory(&self) -> Memory {

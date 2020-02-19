@@ -384,23 +384,29 @@ impl<'a, O: Operation> ActiveFlasher<'a, O> {
         let regs = self.core.registers();
 
         [
-            (regs.PC, Some(pc)),
-            (regs.R0, r0),
-            (regs.R1, r1),
-            (regs.R2, r2),
-            (regs.R3, r3),
-            (regs.R9, if init { Some(algo.static_base) } else { None }),
-            (regs.SP, if init { Some(algo.begin_stack) } else { None }),
-            (regs.LR, Some(algo.load_address + 1)),
+            (regs.program_counter(), Some(pc)),
+            (regs.argument_register(0), r0),
+            (regs.argument_register(1), r1),
+            (regs.argument_register(2), r2),
+            (regs.argument_register(3), r3),
+            (
+                regs.platform_register(9),
+                if init { Some(algo.static_base) } else { None },
+            ),
+            (
+                regs.stack_pointer(),
+                if init { Some(algo.begin_stack) } else { None },
+            ),
+            (regs.return_address(), Some(algo.load_address + 1)),
         ]
         .iter()
-        .map(|(addr, value)| {
+        .map(|(description, value)| {
             if let Some(v) = value {
-                self.core.write_core_reg(*addr, *v)?;
+                self.core.write_core_reg(description.address, *v)?;
                 log::debug!(
                     "content of {:#x}: 0x{:08x} should be: 0x{:08x}",
-                    addr.0,
-                    self.core.read_core_reg(*addr)?,
+                    description.address.0,
+                    self.core.read_core_reg(description.address)?,
                     *v
                 );
                 Ok(())
@@ -425,7 +431,7 @@ impl<'a, O: Operation> ActiveFlasher<'a, O> {
 
         let r = self
             .core
-            .read_core_reg(regs.R0)
+            .read_core_reg(regs.result_register(0).address)
             .map_err(FlasherError::Core)?;
         Ok(r)
     }

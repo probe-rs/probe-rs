@@ -4,6 +4,7 @@
 use crate::core::Breakpoint;
 use crate::core::{
     BasicRegisterAddresses, CoreInformation, CoreInterface, CoreRegister, CoreRegisterAddress,
+    RegisterFile,
 };
 use crate::error::Error;
 use crate::memory::Memory;
@@ -11,12 +12,14 @@ use crate::{DebugProbeError, Session};
 
 use bitfield::bitfield;
 
+use super::arm_register_file;
 use std::mem::size_of;
 
-#[derive(Clone)]
 pub struct M33 {
     memory: Memory,
     session: Session,
+
+    registers: RegisterFile,
 
     hw_breakpoints_enabled: bool,
     active_breakpoints: Vec<Breakpoint>,
@@ -27,6 +30,7 @@ impl M33 {
         Self {
             session,
             memory,
+            registers: arm_register_file(),
             hw_breakpoints_enabled: false,
             active_breakpoints: vec![],
         }
@@ -231,8 +235,8 @@ impl CoreInterface for M33 {
         Ok(())
     }
 
-    fn registers<'a>(&self) -> &'a BasicRegisterAddresses {
-        &REGISTERS
+    fn registers(&self) -> &RegisterFile {
+        &self.registers
     }
 
     fn clear_breakpoint(&self, bp_unit_index: usize) -> Result<(), Error> {
