@@ -658,28 +658,6 @@ impl MemoryInterface for InnerRiscvCommunicationInterface {
     }
 }
 
-pub trait JTAGAccess {
-    fn read_register(&mut self, address: u32, len: u32) -> Result<Vec<u8>, DebugProbeError>;
-
-    /// For Riscv, and possibly other interfaces, the JTAG interface has to remain in
-    /// the idle state for several cycles between consecutive accesses to the DR register.
-    ///
-    /// This function configures the number of idle cycles which are inserted after each access.
-    fn set_idle_cycles(&mut self, idle_cycles: u8);
-
-    /// Write to a JTAG register
-    ///
-    /// This function will perform a write to the IR register, if necessary,
-    /// to select the correct register, and then to the DR register, to transmit the
-    /// data. The data shifted out of the DR register will be returned.
-    fn write_register(
-        &mut self,
-        address: u32,
-        data: &[u8],
-        len: u32,
-    ) -> Result<Vec<u8>, DebugProbeError>;
-}
-
 bitfield! {
     struct Dtmcs(u32);
     impl Debug;
