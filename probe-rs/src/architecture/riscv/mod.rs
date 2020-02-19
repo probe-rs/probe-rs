@@ -456,7 +456,9 @@ impl CoreInterface for Riscv32 {
 
         instruction_breakpoint.set_execute(true);
 
-        self.write_csr(tdata1, instruction_breakpoint.0)?;
+        instruction_breakpoint.set_dmode(true);
+
+        self.write_csr(tdata1, dbg!(instruction_breakpoint).0)?;
         self.write_csr(tdata2, addr)?;
 
         Ok(())
@@ -638,8 +640,8 @@ bitfield! {
     struct Mcontrol(u32);
     impl Debug;
 
-    type_, _: 31, 28;
-    dmode, _: 27;
+    type_, set_type: 31, 28;
+    dmode, set_dmode: 27;
     maskmax, _: 26, 21;
     hit, set_hit: 20;
     select, set_select: 19;
