@@ -136,7 +136,7 @@ impl DebugCli {
             help_text: "Show backtrace",
 
             function: |cli_data, _args| {
-                let regs = cli_data.core.registers().clone();
+                let regs = cli_data.core.registers();
                 let program_counter = cli_data.core.read_core_reg(regs.program_counter())?;
 
                 if let Some(di) = &cli_data.debug_info {
