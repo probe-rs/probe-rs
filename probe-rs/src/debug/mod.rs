@@ -18,7 +18,7 @@ use std::rc::Rc;
 use std::str::{from_utf8, Utf8Error};
 
 use gimli::{FileEntry, LineProgramHeader};
-use log::{debug, info};
+use log::{debug, error, info};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -31,6 +31,8 @@ pub enum DebugError {
     Parse(#[from] gimli::read::Error),
     #[error("Non-UTF8 data found in debug data: {0}")]
     NonUtf8(#[from] Utf8Error),
+    #[error("Error using the probe: {0}")]
+    Probe(#[from] crate::Error),
 }
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum ColumnType {
@@ -249,12 +251,18 @@ impl<'a, 'b> Iterator for StackFrameIterator<'a, 'b> {
 
         self.registers.set_call_frame_address(current_cfa);
 
-        let return_frame = Some(self.debug_info.get_stackframe_info(
+        let return_frame = match self.debug_info.get_stackframe_info(
             &self.core,
             pc,
             self.frame_count,
             self.registers.clone(),
-        ));
+        ) {
+            Ok(frame) => Some(frame),
+            Err(e) => {
+                log::warn!("Unable to get stack frame information: {}", e);
+                None
+            }
+        };
 
         self.frame_count += 1;
 
@@ -448,7 +456,7 @@ impl DebugInfo {
         address: u64,
         frame_count: u64,
         registers: Registers,
-    ) -> StackFrame {
+    ) -> Result<StackFrame, DebugError> {
         let mut units = self.get_units();
         let unknown_function = format!("<unknown_function_{}>", frame_count);
         while let Some(unit_info) = self.get_next_unit_info(&mut units) {
@@ -461,29 +469,29 @@ impl DebugInfo {
                     core,
                     die_cursor_state,
                     u64::from(registers.get_call_frame_address().unwrap()),
-                );
+                )?;
 
                 // dbg!(&variables);
 
-                return StackFrame {
+                return Ok(StackFrame {
                     id: frame_count,
                     function_name,
                     source_location: self.get_source_location(address),
                     registers,
                     pc: address as u32,
                     variables,
-                };
+                });
             }
         }
 
-        StackFrame {
+        Ok(StackFrame {
             id: frame_count,
             function_name: unknown_function,
             source_location: self.get_source_location(address),
             registers,
             pc: address as u32,
             variables: vec![],
-        }
+        })
     }
 
     pub fn try_unwind<'a, 'b>(
@@ -695,11 +703,11 @@ impl<'a> UnitInfo<'a> {
         core: &Core,
         expression: gimli::Expression<R>,
         frame_base: u64,
-    ) -> Vec<gimli::Piece<R, usize>> {
+    ) -> Result<Vec<gimli::Piece<R, usize>>, DebugError> {
         let mut evaluation = expression.evaluation(self.unit.encoding());
 
         // go for evaluation
-        let mut result = evaluation.evaluate().unwrap();
+        let mut result = evaluation.evaluate()?;
 
         loop {
             use gimli::EvaluationResult::*;
@@ -712,28 +720,42 @@ impl<'a> UnitInfo<'a> {
                         .read_block8(address as u32, &mut buff)
                         .expect("Failed to read memory");
                     match size {
-                        1 => evaluation
-                            .resume_with_memory(gimli::Value::U8(buff[0]))
-                            .unwrap(),
+                        1 => evaluation.resume_with_memory(gimli::Value::U8(buff[0]))?,
                         2 => {
                             let val = (u16::from(buff[0]) << 8) | (u16::from(buff[1]) as u16);
-                            evaluation
-                                .resume_with_memory(gimli::Value::U16(val))
-                                .unwrap()
+                            evaluation.resume_with_memory(gimli::Value::U16(val))?
                         }
                         4 => {
                             let val = (u32::from(buff[0]) << 24)
                                 | (u32::from(buff[1]) << 16)
                                 | (u32::from(buff[2]) << 8)
                                 | u32::from(buff[3]);
-                            evaluation
-                                .resume_with_memory(gimli::Value::U32(val))
-                                .unwrap()
+                            evaluation.resume_with_memory(gimli::Value::U32(val))?
                         }
-                        _ => unimplemented!(),
+                        x => {
+                            error!(
+                                "Requested memory with size {}, which is not supported yet.",
+                                x
+                            );
+                            unimplemented!();
+                        }
                     }
                 }
                 RequiresFrameBase => evaluation.resume_with_frame_base(frame_base).unwrap(),
+                RequiresRegister {
+                    register,
+                    base_type,
+                } => {
+                    let raw_value = core.read_core_reg(register.0 as u8)?;
+
+                    if base_type != gimli::UnitOffset(0) {
+                        unimplemented!(
+                            "Support for units in RequiresRegister request is not yet implemented."
+                        )
+                    }
+
+                    evaluation.resume_with_register(gimli::Value::Generic(raw_value as u64))?
+                }
                 x => {
                     println!("{:?}", x);
                     unimplemented!()
@@ -741,7 +763,7 @@ impl<'a> UnitInfo<'a> {
             }
         }
 
-        evaluation.result()
+        Ok(evaluation.result())
     }
 
     fn get_variables(
@@ -749,10 +771,10 @@ impl<'a> UnitInfo<'a> {
         core: &Core,
         die_cursor_state: &mut DieCursorState,
         frame_base: u64,
-    ) -> Vec<Variable> {
+    ) -> Result<Vec<Variable>, DebugError> {
         let mut variables = vec![];
 
-        while let Some((depth, current)) = die_cursor_state.entries_cursor.next_dfs().unwrap() {
+        while let Some((depth, current)) = die_cursor_state.entries_cursor.next_dfs()? {
             if depth != 0 && depth != 1 {
                 break;
             }
@@ -790,7 +812,7 @@ impl<'a> UnitInfo<'a> {
                         }
                         gimli::DW_AT_location => {
                             variable.value =
-                                extract_location(&self, core, frame_base, attr.value())
+                                extract_location(&self, core, frame_base, attr.value())?
                                     .unwrap_or_else(u64::max_value);
                         }
                         _ => (),
@@ -800,7 +822,7 @@ impl<'a> UnitInfo<'a> {
             };
         }
 
-        variables
+        Ok(variables)
     }
 }
 
@@ -809,15 +831,15 @@ fn extract_location(
     core: &Core,
     frame_base: u64,
     attribute_value: gimli::AttributeValue<R>,
-) -> Option<u64> {
+) -> Result<Option<u64>, DebugError> {
     match attribute_value {
         gimli::AttributeValue::Exprloc(expression) => {
-            let piece = unit_info.expr_to_piece(core, expression, frame_base);
+            let piece = unit_info.expr_to_piece(core, expression, frame_base)?;
 
             let value = get_piece_value(core, &piece[0]);
-            value.map(u64::from)
+            Ok(value.map(u64::from))
         }
-        _ => None,
+        _ => Ok(None),
     }
 }
 
