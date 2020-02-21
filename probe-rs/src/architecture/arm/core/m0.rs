@@ -1,13 +1,11 @@
-use super::arm_register_file;
+use super::ARM_REGISTER_FILE;
 use crate::core::RegisterDescription;
 use crate::core::{
-    Breakpoint, CoreInformation, CoreInterface, CoreRegister, CoreRegisterAddress, RegisterFile,
-    RegisterKind,
+    CoreInformation, CoreInterface, CoreRegister, CoreRegisterAddress, RegisterFile, RegisterKind,
 };
 use crate::error::Error;
 use crate::memory::Memory;
 use crate::DebugProbeError;
-use crate::Session;
 use bitfield::bitfield;
 use log::debug;
 use std::mem::size_of;
@@ -278,22 +276,15 @@ const XPSR: RegisterDescription = RegisterDescription {
 
 pub struct M0 {
     memory: Memory,
-    session: Session,
-
-    registers: RegisterFile,
 
     hw_breakpoints_enabled: bool,
-    active_breakpoints: Vec<Breakpoint>,
 }
 
 impl M0 {
-    pub fn new(session: Session, memory: Memory) -> Self {
+    pub fn new(memory: Memory) -> Self {
         Self {
-            session,
             memory,
-            registers: arm_register_file(),
             hw_breakpoints_enabled: false,
-            active_breakpoints: vec![],
         }
     }
 
@@ -501,8 +492,8 @@ impl CoreInterface for M0 {
         Ok(())
     }
 
-    fn registers(&self) -> &RegisterFile {
-        &self.registers
+    fn registers(&self) -> &'static RegisterFile {
+        &ARM_REGISTER_FILE
     }
 
     fn clear_breakpoint(&self, bp_unit_index: usize) -> Result<(), Error> {

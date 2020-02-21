@@ -4,7 +4,7 @@ pub use communication_interface::CommunicationInterface;
 
 use crate::config::TargetSelector;
 use crate::error;
-use crate::{DebugProbeError, Memory, Probe, Session};
+use crate::{DebugProbeError, Memory, Probe};
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -27,26 +27,6 @@ impl From<u8> for CoreRegisterAddress {
         CoreRegisterAddress(value)
     }
 }
-
-#[allow(non_snake_case)]
-#[derive(Copy, Clone)]
-pub struct BasicRegisterAddresses {
-    pub R0: CoreRegisterAddress,
-    pub R1: CoreRegisterAddress,
-    pub R2: CoreRegisterAddress,
-    pub R3: CoreRegisterAddress,
-    pub R4: CoreRegisterAddress,
-    pub R5: CoreRegisterAddress,
-    pub R6: CoreRegisterAddress,
-    pub R7: CoreRegisterAddress,
-    pub R8: CoreRegisterAddress,
-    pub R9: CoreRegisterAddress,
-    pub PC: CoreRegisterAddress,
-    pub LR: CoreRegisterAddress,
-    pub SP: CoreRegisterAddress,
-    pub XPSR: CoreRegisterAddress,
-}
-
 #[derive(Debug, Clone)]
 pub struct CoreInformation {
     pub pc: u32,
@@ -77,18 +57,20 @@ pub(crate) enum RegisterKind {
     PC,
 }
 
-#[derive(Clone)]
+/// Register description for a core.
+
+#[derive(Debug)]
 pub struct RegisterFile {
-    pub(crate) platform_registers: Vec<RegisterDescription>,
+    pub(crate) platform_registers: &'static [RegisterDescription],
 
-    pub(crate) program_counter: RegisterDescription,
+    pub(crate) program_counter: &'static RegisterDescription,
 
-    pub(crate) stack_pointer: RegisterDescription,
+    pub(crate) stack_pointer: &'static RegisterDescription,
 
-    pub(crate) return_address: RegisterDescription,
+    pub(crate) return_address: &'static RegisterDescription,
 
-    pub(crate) argument_registers: Vec<RegisterDescription>,
-    pub(crate) result_registers: Vec<RegisterDescription>,
+    pub(crate) argument_registers: &'static [RegisterDescription],
+    pub(crate) result_registers: &'static [RegisterDescription],
 }
 
 impl RegisterFile {
@@ -112,12 +94,24 @@ impl RegisterFile {
         &self.argument_registers[index]
     }
 
+    pub fn get_argument_register(&self, index: usize) -> Option<&RegisterDescription> {
+        self.argument_registers.get(index)
+    }
+
     pub fn result_register(&self, index: usize) -> &RegisterDescription {
         &self.result_registers[index]
     }
 
+    pub fn get_result_register(&self, index: usize) -> Option<&RegisterDescription> {
+        self.result_registers.get(index)
+    }
+
     pub fn platform_register(&self, index: usize) -> &RegisterDescription {
         &self.platform_registers[index]
+    }
+
+    pub fn get_platform_register(&self, index: usize) -> Option<&RegisterDescription> {
+        self.platform_registers.get(index)
     }
 }
 
@@ -169,7 +163,7 @@ pub trait CoreInterface {
 
     fn clear_breakpoint(&self, unit_index: usize) -> Result<(), error::Error>;
 
-    fn registers(&self) -> &RegisterFile;
+    fn registers(&self) -> &'static RegisterFile;
 
     fn memory(&self) -> Memory;
     fn hw_breakpoints_enabled(&self) -> bool;
@@ -215,11 +209,11 @@ pub enum CoreType {
 }
 
 impl CoreType {
-    pub fn attach(&self, session: Session, memory: Memory) -> Core {
+    pub fn attach(&self, memory: Memory) -> Core {
         match self {
-            CoreType::M4 => Core::new(crate::architecture::arm::m4::M4::new(session, memory)),
-            CoreType::M33 => Core::new(crate::architecture::arm::m33::M33::new(session, memory)),
-            CoreType::M0 => Core::new(crate::architecture::arm::m0::M0::new(session, memory)),
+            CoreType::M4 => Core::new(crate::architecture::arm::m4::M4::new(memory)),
+            CoreType::M33 => Core::new(crate::architecture::arm::m33::M33::new(memory)),
+            CoreType::M0 => Core::new(crate::architecture::arm::m0::M0::new(memory)),
         }
     }
 }
@@ -323,10 +317,8 @@ impl Core {
         self.inner.borrow_mut().enable_breakpoints(state)
     }
 
-    pub fn registers(&self) -> RegisterFile {
-        let register_file = self.inner.borrow().registers().clone();
-
-        register_file
+    pub fn registers(&self) -> &'static RegisterFile {
+        self.inner.borrow().registers()
     }
 
     pub fn memory(&self) -> Memory {

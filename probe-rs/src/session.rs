@@ -73,12 +73,12 @@ impl Session {
             .list_cores()
             .get(n)
             .ok_or_else(|| Error::CoreNotFound(n))?
-            .attach(self.clone(), self.attach_to_memory(0)?);
+            .attach(self.attach_to_memory(0)?);
         Ok(core)
     }
 
     pub fn attach_to_specific_core(&self, core_type: CoreType) -> Result<Core, Error> {
-        let core = core_type.attach(self.clone(), self.attach_to_memory(0)?);
+        let core = core_type.attach(self.attach_to_memory(0)?);
         Ok(core)
     }
 
@@ -91,13 +91,10 @@ impl Session {
             .list_cores()
             .get(n)
             .ok_or_else(|| Error::CoreNotFound(n))?
-            .attach(
-                self.clone(),
-                match memory {
-                    Some(memory) => memory,
-                    None => self.attach_to_memory(0)?,
-                },
-            );
+            .attach(match memory {
+                Some(memory) => memory,
+                None => self.attach_to_memory(0)?,
+            });
         Ok(core)
     }
 

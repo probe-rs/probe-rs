@@ -24,143 +24,158 @@ impl CortexDump {
     }
 }
 
-fn arm_register_file() -> RegisterFile {
-    RegisterFile {
-        platform_registers: vec![
-            RegisterDescription {
-                name: "R0",
-                kind: RegisterKind::General,
-                address: CoreRegisterAddress(0),
-            },
-            RegisterDescription {
-                name: "R1",
-                kind: RegisterKind::General,
-                address: CoreRegisterAddress(1),
-            },
-            RegisterDescription {
-                name: "R2",
-                kind: RegisterKind::General,
-                address: CoreRegisterAddress(2),
-            },
-            RegisterDescription {
-                name: "R3",
-                kind: RegisterKind::General,
-                address: CoreRegisterAddress(3),
-            },
-            RegisterDescription {
-                name: "R4",
-                kind: RegisterKind::General,
-                address: CoreRegisterAddress(4),
-            },
-            RegisterDescription {
-                name: "R5",
-                kind: RegisterKind::General,
-                address: CoreRegisterAddress(5),
-            },
-            RegisterDescription {
-                name: "R6",
-                kind: RegisterKind::General,
-                address: CoreRegisterAddress(6),
-            },
-            RegisterDescription {
-                name: "R7",
-                kind: RegisterKind::General,
-                address: CoreRegisterAddress(7),
-            },
-            RegisterDescription {
-                name: "R8",
-                kind: RegisterKind::General,
-                address: CoreRegisterAddress(8),
-            },
-            RegisterDescription {
-                name: "R9",
-                kind: RegisterKind::General,
-                address: CoreRegisterAddress(9),
-            },
-            RegisterDescription {
-                name: "R10",
-                kind: RegisterKind::General,
-                address: CoreRegisterAddress(10),
-            },
-            RegisterDescription {
-                name: "R11",
-                kind: RegisterKind::General,
-                address: CoreRegisterAddress(11),
-            },
-            RegisterDescription {
-                name: "R12",
-                kind: RegisterKind::General,
-                address: CoreRegisterAddress(12),
-            },
-            RegisterDescription {
-                name: "R13",
-                kind: RegisterKind::General,
-                address: CoreRegisterAddress(13),
-            },
-            RegisterDescription {
-                name: "R14",
-                kind: RegisterKind::General,
-                address: CoreRegisterAddress(14),
-            },
-            RegisterDescription {
-                name: "R15",
-                kind: RegisterKind::General,
-                address: CoreRegisterAddress(15),
-            },
-        ],
+pub(crate) mod register {
+    use crate::{
+        core::{RegisterDescription, RegisterKind},
+        CoreRegisterAddress,
+    };
 
-        program_counter: RegisterDescription {
-            name: "PC",
-            kind: RegisterKind::PC,
-            address: CoreRegisterAddress(15),
+    pub const PC: RegisterDescription = RegisterDescription {
+        name: "PC",
+        kind: RegisterKind::PC,
+        address: CoreRegisterAddress(15),
+    };
+
+    pub const XPSR: RegisterDescription = RegisterDescription {
+        name: "XPSR",
+        kind: RegisterKind::General,
+        address: CoreRegisterAddress(0b1_0000),
+    };
+
+    pub const SP: RegisterDescription = RegisterDescription {
+        name: "SP",
+        kind: RegisterKind::General,
+        address: CoreRegisterAddress(13),
+    };
+
+    pub const LR: RegisterDescription = RegisterDescription {
+        name: "LR",
+        kind: RegisterKind::General,
+        address: CoreRegisterAddress(14),
+    };
+}
+
+static ARM_REGISTER_FILE: RegisterFile = RegisterFile {
+    platform_registers: &[
+        RegisterDescription {
+            name: "R0",
+            kind: RegisterKind::General,
+            address: CoreRegisterAddress(0),
         },
-
-        stack_pointer: RegisterDescription {
-            name: "SP",
+        RegisterDescription {
+            name: "R1",
+            kind: RegisterKind::General,
+            address: CoreRegisterAddress(1),
+        },
+        RegisterDescription {
+            name: "R2",
+            kind: RegisterKind::General,
+            address: CoreRegisterAddress(2),
+        },
+        RegisterDescription {
+            name: "R3",
+            kind: RegisterKind::General,
+            address: CoreRegisterAddress(3),
+        },
+        RegisterDescription {
+            name: "R4",
+            kind: RegisterKind::General,
+            address: CoreRegisterAddress(4),
+        },
+        RegisterDescription {
+            name: "R5",
+            kind: RegisterKind::General,
+            address: CoreRegisterAddress(5),
+        },
+        RegisterDescription {
+            name: "R6",
+            kind: RegisterKind::General,
+            address: CoreRegisterAddress(6),
+        },
+        RegisterDescription {
+            name: "R7",
+            kind: RegisterKind::General,
+            address: CoreRegisterAddress(7),
+        },
+        RegisterDescription {
+            name: "R8",
+            kind: RegisterKind::General,
+            address: CoreRegisterAddress(8),
+        },
+        RegisterDescription {
+            name: "R9",
+            kind: RegisterKind::General,
+            address: CoreRegisterAddress(9),
+        },
+        RegisterDescription {
+            name: "R10",
+            kind: RegisterKind::General,
+            address: CoreRegisterAddress(10),
+        },
+        RegisterDescription {
+            name: "R11",
+            kind: RegisterKind::General,
+            address: CoreRegisterAddress(11),
+        },
+        RegisterDescription {
+            name: "R12",
+            kind: RegisterKind::General,
+            address: CoreRegisterAddress(12),
+        },
+        RegisterDescription {
+            name: "R13",
             kind: RegisterKind::General,
             address: CoreRegisterAddress(13),
         },
-
-        return_address: RegisterDescription {
-            name: "LR",
+        RegisterDescription {
+            name: "R14",
             kind: RegisterKind::General,
             address: CoreRegisterAddress(14),
         },
+        RegisterDescription {
+            name: "R15",
+            kind: RegisterKind::General,
+            address: CoreRegisterAddress(15),
+        },
+    ],
 
-        argument_registers: vec![
-            RegisterDescription {
-                name: "a1",
-                kind: RegisterKind::General,
-                address: CoreRegisterAddress(0),
-            },
-            RegisterDescription {
-                name: "a2",
-                kind: RegisterKind::General,
-                address: CoreRegisterAddress(1),
-            },
-            RegisterDescription {
-                name: "a3",
-                kind: RegisterKind::General,
-                address: CoreRegisterAddress(2),
-            },
-            RegisterDescription {
-                name: "a4",
-                kind: RegisterKind::General,
-                address: CoreRegisterAddress(3),
-            },
-        ],
+    program_counter: &register::PC,
+    stack_pointer: &register::SP,
+    return_address: &register::LR,
 
-        result_registers: vec![
-            RegisterDescription {
-                name: "a1",
-                kind: RegisterKind::General,
-                address: CoreRegisterAddress(0),
-            },
-            RegisterDescription {
-                name: "a2",
-                kind: RegisterKind::General,
-                address: CoreRegisterAddress(1),
-            },
-        ],
-    }
-}
+    argument_registers: &[
+        RegisterDescription {
+            name: "a1",
+            kind: RegisterKind::General,
+            address: CoreRegisterAddress(0),
+        },
+        RegisterDescription {
+            name: "a2",
+            kind: RegisterKind::General,
+            address: CoreRegisterAddress(1),
+        },
+        RegisterDescription {
+            name: "a3",
+            kind: RegisterKind::General,
+            address: CoreRegisterAddress(2),
+        },
+        RegisterDescription {
+            name: "a4",
+            kind: RegisterKind::General,
+            address: CoreRegisterAddress(3),
+        },
+    ],
+
+    result_registers: &[
+        RegisterDescription {
+            name: "a1",
+            kind: RegisterKind::General,
+            address: CoreRegisterAddress(0),
+        },
+        RegisterDescription {
+            name: "a2",
+            kind: RegisterKind::General,
+            address: CoreRegisterAddress(1),
+        },
+    ],
+};
