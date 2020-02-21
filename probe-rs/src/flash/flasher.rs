@@ -1,7 +1,7 @@
 use super::builder::FlashBuilder;
 use super::FlashProgress;
 use crate::config::{FlashAlgorithm, FlashRegion, MemoryRange, SectorInfo};
-use crate::core::Core;
+use crate::core::{Core, RegisterFile};
 use crate::error;
 use crate::session::Session;
 use thiserror::Error;
@@ -381,7 +381,7 @@ impl<'a, O: Operation> ActiveFlasher<'a, O> {
         );
 
         let algo = &self.flash_algorithm;
-        let regs = self.core.registers();
+        let regs: &'static RegisterFile = self.core.registers();
 
         [
             (regs.program_counter(), Some(pc)),
