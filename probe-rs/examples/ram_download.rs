@@ -38,7 +38,8 @@ fn main() -> Result<(), &'static str> {
         .map_err(|_| "Failed to select SWD as the transport protocol")?;
     let session = probe
         .attach(target_selector)
-        .map_err(|_| "Failed to attach probe to target")?;
+        .unwrap();
+        // .map_err(|_| "Failed to attach probe to target")?;
     let core = session
         .attach_to_core(0)
         .map_err(|_| "Failed to attach to core")?;

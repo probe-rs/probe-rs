@@ -337,36 +337,63 @@ impl DebugProbe for JLink {
     }
 
     fn attach(&mut self) -> Result<(), super::DebugProbeError> {
-        // todo: check selected protocols
+        let protocol = self.protocol.unwrap_or(WireProtocol::Jtag);
+        self.select_protocol(protocol.clone())?;
 
-        self.select_protocol(self.protocol.unwrap_or(WireProtocol::Jtag))?;
+        println!("{:?}", protocol);
 
-        // try some JTAG stuff
-        let jlink = self.handle.get_mut().unwrap();
+        match protocol {
+            WireProtocol::Jtag => {
+                // try some JTAG stuff
+                let jlink = self.handle.get_mut().unwrap();
 
-        log::info!(
-            "Target voltage: {:2.2} V",
-            jlink.read_target_voltage()? as f32 / 1000f32
-        );
+                log::info!(
+                    "Target voltage: {:2.2} V",
+                    jlink.read_target_voltage()? as f32 / 1000f32
+                );
 
-        log::debug!("Resetting JTAG chain using trst");
-        jlink.reset_trst()?;
+                log::debug!("Resetting JTAG chain using trst");
+                jlink.reset_trst()?;
 
-        log::debug!("Resetting JTAG chain by setting tms high for 32 bits");
+                log::debug!("Resetting JTAG chain by setting tms high for 32 bits");
 
-        // Reset JTAG chain (5 times TMS high), and enter idle state afterwards
-        let tms = vec![true, true, true, true, true, false];
-        let tdi = iter::repeat(false).take(6);
+                // Reset JTAG chain (5 times TMS high), and enter idle state afterwards
+                let tms = vec![true, true, true, true, true, false];
+                let tdi = iter::repeat(false).take(6);
 
-        let response: Vec<_> = jlink.jtag_io(tms, tdi)?.collect();
+                let response: Vec<_> = jlink.jtag_io(tms, tdi)?.collect();
 
-        log::debug!("Response to reset: {:?}", response);
+                log::debug!("Response to reset: {:?}", response);
 
-        // try to read the idcode
-        let idcode_bytes = self.read_dr(32)?;
-        let idcode = u32::from_le_bytes((&idcode_bytes[..]).try_into().unwrap());
+                // try to read the idcode
+                let idcode_bytes = self.read_dr(32)?;
+                let idcode = u32::from_le_bytes((&idcode_bytes[..]).try_into().unwrap());
 
-        log::debug!("IDCODE: {:#010x}", idcode);
+                log::debug!("IDCODE: {:#010x}", idcode);
+            },
+            WireProtocol::Swd => {
+                let jlink = self.handle.get_mut().unwrap();
+
+                let jtag_to_swd_sequence = [
+                    false, true, true, true, true, false, false, true, true, true, true, false, false, true, true, true
+                ];
+                
+                // Construct the init sequence
+                let direction = iter::repeat(true).take(50 + 16 + 50);
+                let swd_io_sequence =
+                    iter::repeat(true).take(50)
+                    .chain(jtag_to_swd_sequence.iter().copied())
+                    .chain(iter::repeat(true).take(50));
+
+                // Send the init sequence.
+                let response: Vec<_> = jlink.swd_io(direction, swd_io_sequence)?.collect();
+
+                // Read the DPIDR register to complete the init sequence.
+                let response = DAPAccess::read_register(self, PortType::DebugPort, 0x0000)?;
+
+                println!("KEK: {:?}", response);
+            }
+        }
 
         Ok(())
     }
@@ -384,11 +411,11 @@ impl DebugProbe for JLink {
     }
 
     fn get_interface_dap(&self) -> Option<&dyn DAPAccess> {
-        None
+        Some(self as _)
     }
 
     fn get_interface_dap_mut(&mut self) -> Option<&mut dyn DAPAccess> {
-        None
+        Some(self as _)
     }
 
     fn get_interface_jtag(&self) -> Option<&dyn JTAGAccess> {
@@ -451,6 +478,7 @@ impl JTAGAccess for JLink {
 
 impl DAPAccess for JLink {
     fn read_register(&mut self, port: PortType, address: u16) -> Result<u32, DebugProbeError> {
+        println!("READ");
         let port = match port {
             PortType::DebugPort => false,
             PortType::AccessPort(_) => true,
@@ -475,6 +503,8 @@ impl DAPAccess for JLink {
             false, // ACK bit.
         ];
 
+        println!("{:?}", swd_io_sequence);
+
         // Add data + parity + turnaround bits.
         for _ in 0..32 + 1 + 1 {
             swd_io_sequence.push(false);
@@ -493,10 +523,13 @@ impl DAPAccess for JLink {
                 .unwrap()
                 .swd_io(direction.clone(), swd_io_sequence.iter().copied())?;
 
+            println!("RESULT: {:?}", result_sequence);
+
             // Throw away the first 9 bits.
-            let _ = result_sequence.by_ref().take(9);
+            let mut result_sequence = result_sequence.by_ref().skip(9);
             // Get the ack.
             let ack = result_sequence.by_ref().take(3).collect::<Vec<_>>();
+            println!("ACK: {:?}", ack);
             if ack[1] {
                 // If ack[1] is set the host must retry the request. So let's do that right awayt!
                 retries += 1;
@@ -519,6 +552,7 @@ impl DAPAccess for JLink {
     }
 
     fn write_register(&mut self, port: PortType, address: u16, mut value: u32) -> Result<(), DebugProbeError> {
+        println!("WRITE");
         let port = match port {
             PortType::DebugPort => false,
             PortType::AccessPort(_) => true,
@@ -570,10 +604,20 @@ impl DAPAccess for JLink {
                 .unwrap()
                 .swd_io(direction.clone(), swd_io_sequence.iter().copied())?;
 
-            // Throw away the first 8 bits.
-            let _ = result_sequence.by_ref().take(9);
+            println!("DIREC : BitIter{:?}", direction.clone().map(|b| if b { "1" } else { "0" }).collect::<Vec<_>>().join(""));
+            println!("SEQUE : BitIter{:?}", swd_io_sequence.iter().map(|b| if *b { "1" } else { "0" }).collect::<Vec<_>>().join(""));
+            println!("RESULT: {:?}", result_sequence);
+
             // Get the ack.
-            let ack = result_sequence.take(3).collect::<Vec<_>>();
+            let ack = result_sequence
+                // Throw away the first 8 bits.
+                .skip(8 + 1)
+                // Get the 3 ack bits.
+                .take(3)
+                .collect::<Vec<_>>();
+                
+            println!("{:?}", ack);
+            
             if ack[1] {
                 // If ack[1] is set the host must retry the request. So let's do that right awayt!
                 retries += 1;
@@ -586,6 +630,7 @@ impl DAPAccess for JLink {
             // Don't care about Trn + Data + Parity bits.
         }
 
+        log::debug!("DAP write timeout.");
         Err(DebugProbeError::Timeout)
     }
 }
