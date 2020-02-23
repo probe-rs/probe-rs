@@ -6,9 +6,12 @@ use std::convert::TryInto;
 use std::iter;
 use std::sync::Mutex;
 
-use crate::probe::{
-    DAPAccess, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeType, JTAGAccess,
-    WireProtocol,
+use crate::{
+    architecture::arm::PortType,
+    probe::{
+        DAPAccess, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeType, JTAGAccess,
+        WireProtocol,
+    },
 };
 
 pub(crate) struct JLink {
@@ -446,7 +449,148 @@ impl JTAGAccess for JLink {
     }
 }
 
-fn bits_to_byte(bits: jaylink::BitIter) -> u32 {
+impl DAPAccess for JLink {
+    fn read_register(&mut self, port: PortType, address: u16) -> Result<u32, DebugProbeError> {
+        let port = match port {
+            PortType::DebugPort => false,
+            PortType::AccessPort(_) => true,
+        };
+        let a2 = (address >> 2) & 0x01 == 1;
+        let a3 = (address >> 3) & 0x01 == 1;
+
+        let mut swd_io_sequence = vec![
+            true,                  // Start bit (always 1).
+            port,                  // APnDP (0 for DP, 1 for AP).
+            true,                  // RnW (0 for Write, 1 for Read).
+            a2,                    // Address bit 2.
+            a3,                    // Address bit 3,
+            port ^ true ^ a2 ^ a3, // Odd parity bit over ApnDP, RnW a2 and a3
+            false,                 // Stop bit (always 0).
+            true,                  // Park bit (always 1).
+
+            false,                 // Turnaround bit.
+
+            false, // ACK bit.
+            false, // ACK bit.
+            false, // ACK bit.
+        ];
+
+        // Add data + parity + turnaround bits.
+        for _ in 0..32 + 1 + 1 {
+            swd_io_sequence.push(false);
+        }
+
+        let direction = iter::repeat(true)
+            .take(8)
+            .chain(iter::repeat(false).take(1 + 3 + 32 + 1 + 1)); // Trn, Ack, Data, Parity, Trn
+
+        let mut retries = 0;
+        // We will timeout after 50 retries.
+        while retries < 50 {
+            let mut result_sequence = self
+                .handle
+                .get_mut()
+                .unwrap()
+                .swd_io(direction.clone(), swd_io_sequence.iter().copied())?;
+
+            // Throw away the first 9 bits.
+            let _ = result_sequence.by_ref().take(9);
+            // Get the ack.
+            let ack = result_sequence.by_ref().take(3).collect::<Vec<_>>();
+            if ack[1] {
+                // If ack[1] is set the host must retry the request. So let's do that right awayt!
+                retries += 1;
+                continue;
+            }
+            if ack[2] {
+                // A fault happened during operation.
+                return Err(DebugProbeError::Unknown);
+            }
+            // Take the data bits and convert them into a 32bit int.
+            let register_val = result_sequence.by_ref().take(32);
+            let value = bits_to_byte(register_val);
+            return Ok(value);
+            // take the parity bit.
+            let parity = result_sequence.next().unwrap();
+            // Don't care about the Trn bit at the end.
+        }
+
+        Err(DebugProbeError::Timeout)
+    }
+
+    fn write_register(&mut self, port: PortType, address: u16, mut value: u32) -> Result<(), DebugProbeError> {
+        let port = match port {
+            PortType::DebugPort => false,
+            PortType::AccessPort(_) => true,
+        };
+        let a2 = (address >> 2) & 0x01 == 1;
+        let a3 = (address >> 3) & 0x01 == 1;
+
+        let mut swd_io_sequence = vec![
+            true,                  // Start bit (always 1).
+            port,                  // APnDP (0 for DP, 1 for AP).
+            false,                  // RnW (0 for Write, 1 for Read).
+            a2,                    // Address bit 2.
+            a3,                    // Address bit 3,
+            port ^ false ^ a2 ^ a3, // Odd parity bit over ApnDP, RnW a2 and a3
+            false,                 // Stop bit (always 0).
+            true,                  // Park bit (always 1).
+
+            false,                 // Turnaround bit.
+
+            false, // ACK bit.
+            false, // ACK bit.
+            false, // ACK bit.
+
+            false,                 // Turnaround bit.
+        ];
+
+        let mut parity = false;
+
+        for _ in 0..32 {
+            let bit = value & 1 == 1;
+            swd_io_sequence.push(bit);
+            parity ^= bit;
+            value >>= 1;
+        }
+
+        swd_io_sequence.push(parity); // Parity bit.
+
+        let direction = iter::repeat(true)
+            .take(8)
+            .chain(iter::repeat(false).take(1 + 3 + 1)) // Trn, Ack, Trn
+            .chain(iter::repeat(true).take(32 + 1)); // Data, Parity
+
+        let mut retries = 0;
+        // We will timeout after 50 retries.
+        while retries < 50 {
+            let mut result_sequence = self
+                .handle
+                .get_mut()
+                .unwrap()
+                .swd_io(direction.clone(), swd_io_sequence.iter().copied())?;
+
+            // Throw away the first 8 bits.
+            let _ = result_sequence.by_ref().take(9);
+            // Get the ack.
+            let ack = result_sequence.take(3).collect::<Vec<_>>();
+            if ack[1] {
+                // If ack[1] is set the host must retry the request. So let's do that right awayt!
+                retries += 1;
+                continue;
+            }
+            if ack[2] {
+                // A fault happened during operation.
+                return Err(DebugProbeError::Unknown);
+            }
+            // Don't care about Trn + Data + Parity bits.
+        }
+
+        Err(DebugProbeError::Timeout)
+    }
+}
+
+fn bits_to_byte(bits: impl IntoIterator<Item = bool>) -> u32 {
     let mut bit_val = 0u32;
 
     for (index, bit) in bits.into_iter().take(32).enumerate() {
