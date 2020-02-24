@@ -498,26 +498,42 @@ impl JTAGAccess for JLink {
 
 impl DAPAccess for JLink {
     fn read_register(&mut self, port: PortType, address: u16) -> Result<u32, DebugProbeError> {
+        // JLink operates on raw SWD bit sequences.
+        // So we need to manually assemble the read and write bitsequences.
+        // The following code with the comments hopefully explains well enough how it works.
+        // `true` means `1` and `false` means `0` for the SWDIO sequence.
+        // `true` means `drive line` and `false` means `open drain` for the direction sequence.
+
+        // First we determine the APnDP bit.
         let port = match port {
             PortType::DebugPort => false,
             PortType::AccessPort(_) => true,
         };
+
+        // Then we determine the address bits.
+        // Only bits 2 and 3 are relevant as we use byte addressing but can only read 32bits
+        // which means we can skip bits 0 and 1. The ADI specification is defined like this.
         let a2 = (address >> 2) & 0x01 == 1;
         let a3 = (address >> 3) & 0x01 == 1;
 
+        // Now we assemble an SWD read request.
         let mut swd_io_sequence = vec![
-            false,
-            false,
+            // First we make sure we have the SDWIO line on idle for at least 2 clock cylces.
+            false, // Line IDLE.
+            false, // Line IDLE.
 
+            // Then we assemble the actual request.
             true,                  // Start bit (always 1).
             port,                  // APnDP (0 for DP, 1 for AP).
             true,                  // RnW (0 for Write, 1 for Read).
             a2,                    // Address bit 2.
             a3,                    // Address bit 3,
-            port ^ true ^ a2 ^ a3, // Odd parity bit over ApnDP, RnW a2 and a3
+            port ^ true ^ a2 ^ a3, // Odd parity bit over APnDP, RnW a2 and a3
             false,                 // Stop bit (always 0).
             true,                  // Park bit (always 1).
 
+            // Theoretically the spec says that there is a turnaround bit required here, where no clock is driven.
+            // This seems to not be the case in actual implementations. So we do not insert this bit either!
             // false,                 // Turnaround bit.
 
             false, // ACK bit.
@@ -525,31 +541,37 @@ impl DAPAccess for JLink {
             false, // ACK bit.
         ];
 
-        // Add data + parity + turnaround bits.
+        // Finally add the data + parity + turnaround bits to the SWDIO sequence.
         for _ in 0..32 + 1 + 1 {
             swd_io_sequence.push(false);
         }
 
-        let direction = iter::repeat(true)
-            .take(2 + 8)
-            .chain(iter::repeat(false).take(3 + 32 + 1 + 1)); // (Trn is missing which is different from the spec), Ack, Data, Parity, Trn
+        // Assemble the direction sequence.
+        let direction =
+            iter::repeat(true).take(2) // Transmit 2 Line IDLE bits.
+            .chain(iter::repeat(true).take(8)) // Transmit 8 Request bits
+            // Here *should* be a Trn bit, but since something with the spec is akward we leave it away.
+            // See comments above!
+            .chain(iter::repeat(false).take(3)) // Receive 3 Ack bits.
+            .chain(iter::repeat(false).take(32)) // Receive 32 Data bits.
+            .chain(iter::repeat(false).take(1)) // Receive 1 Parity bit.
+            .chain(iter::repeat(false).take(1)); // Receive 1 Turnaround bit.
 
+        // Now we try to issue the request until it fails or succeeds.
+        // If we timeout we retry a maximum of 5 times.
         let mut retries = 0;
-        // We will timeout after 50 retries.
         while retries < 5 {
-            let mut result_sequence = self
-                .handle
-                .get_mut()
-                .unwrap()
-                .swd_io(direction.clone(), swd_io_sequence.iter().copied())?;
+            // Transmit the sequence and record the line sequence for the ack bits.
             let mut result_sequence = self
                 .handle
                 .get_mut()
                 .unwrap()
                 .swd_io(direction.clone(), swd_io_sequence.iter().copied())?;
 
-            // Throw away the first 9 bits.
-            let mut result_sequence = result_sequence.by_ref().skip(2 + 8);
+            // Throw away the first  bits.
+            result_sequence.split_off(2);
+            result_sequence.split_off(8);
+
             // Get the ack.
             let ack = result_sequence.by_ref().take(3).collect::<Vec<_>>();
             if ack[1] {
@@ -566,13 +588,21 @@ impl DAPAccess for JLink {
 
                 return Err(DebugProbeError::Unknown);
             }
-            // Take the data bits and convert them into a 32bit int.
-            let register_val = result_sequence.by_ref().take(32);
-            let value = bits_to_byte(register_val);
-            return Ok(value);
-            // take the parity bit.
-            let parity = result_sequence.next().unwrap();
-            // Don't care about the Trn bit at the end.
+
+            // If we are reading an AP register we need to read it twice to get the actual result.
+            if port {
+                // Read the RDBUFF register to get the value of the last AP transaction.
+                // This wont have any sideeffects on running AP facilities.
+                return DAPAccess::read_register(self, PortType::DebugPort, 0x0C)
+            } else {
+                // Take the data bits and convert them into a 32bit int.
+                let register_val = result_sequence.by_ref().take(32);
+                let value = bits_to_byte(register_val);
+                return Ok(value);
+                // take the parity bit.
+                let parity = result_sequence.next().unwrap();
+                // Don't care about the Trn bit at the end.
+            }
         }
 
         Err(DebugProbeError::Timeout)

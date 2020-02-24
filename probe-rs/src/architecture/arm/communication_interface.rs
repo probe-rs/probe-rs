@@ -59,10 +59,7 @@ pub trait DAPAccess: DebugProbe {
         addr: u16,
         values: &mut [u32],
     ) -> Result<(), DebugProbeError> {
-        let mut i = 0;
         for val in values {
-            println!("{}", i);
-            i+=1;
             *val = self.read_register(port, addr)?;
         }
 
