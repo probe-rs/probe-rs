@@ -32,6 +32,8 @@ pub(crate) enum RiscvError {
     Timeout,
     #[error("Error occured during execution of an abstract command: {0:?}")]
     AbstractCommand(AbstractCommandErrorKind),
+    #[error("The core did not acknowledge a request for reset, resume or halt")]
+    RequestNotAcknowledged,
 }
 
 impl From<RiscvError> for ProbeRsError {
