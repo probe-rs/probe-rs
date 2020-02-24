@@ -1,8 +1,8 @@
 use super::ARM_REGISTER_FILE;
 use crate::core::RegisterDescription;
 use crate::core::{
-    Architecture, Breakpoint, CoreInformation, CoreInterface, CoreRegister, CoreRegisterAddress,
-    RegisterFile, RegisterKind,
+    Architecture, CoreInformation, CoreInterface, CoreRegister, CoreRegisterAddress, RegisterFile,
+    RegisterKind,
 };
 use crate::error::Error;
 use crate::memory::Memory;
@@ -517,6 +517,6 @@ impl CoreInterface for M0 {
     }
 
     fn architecture(&self) -> Architecture {
-        unimplemented!()
+        Architecture::ARM
     }
 }

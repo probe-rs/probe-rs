@@ -10,6 +10,7 @@ use communication_interface::{
 use crate::core::{CoreInformation, RegisterFile};
 use crate::CoreRegisterAddress;
 use bitfield::bitfield;
+use register::RISCV_REGISTERS;
 
 #[macro_use]
 mod register;
@@ -112,7 +113,7 @@ impl CoreInterface for Riscv32 {
             }
         }
 
-        todo!("Proper error for core halt timeout")
+        Err(RiscvError::Timeout.into())
     }
 
     fn core_halted(&self) -> Result<bool, crate::Error> {
@@ -164,7 +165,7 @@ impl CoreInterface for Riscv32 {
         let status: Dmstatus = self.interface.read_dm_register()?;
 
         if !status.allresumeack() {
-            todo!("Error, unable to resume")
+            return Err(RiscvError::RequestNotAcknowledged.into());
         };
 
         // clear resume request
@@ -221,7 +222,7 @@ impl CoreInterface for Riscv32 {
 
         if !readback.allhavereset() {
             log::warn!("Dmstatue: {:?}", readback);
-            todo!("Error: Not all harts have reset");
+            return Err(RiscvError::RequestNotAcknowledged.into());
         }
 
         // acknowledge the reset
@@ -281,7 +282,7 @@ impl CoreInterface for Riscv32 {
         let readback: Dmstatus = self.interface.read_dm_register()?;
 
         if !(readback.allhavereset() && readback.allhalted()) {
-            todo!("Error: Not all harts have reset and halted");
+            return Err(RiscvError::RequestNotAcknowledged.into());
         }
 
         // acknowledge the reset, clear the halt request
@@ -438,11 +439,14 @@ impl CoreInterface for Riscv32 {
 
         // verify the trigger has the correct type
 
-        let tdata_value = dbg!(Mcontrol(self.read_csr(tdata1)?));
+        let tdata_value = Mcontrol(self.read_csr(tdata1)?);
 
-        if tdata_value.type_() != 2 {
-            todo!("Error: Incorrect trigger type for address breakpoint");
-        }
+        // This should not happen
+        assert_eq!(
+            tdata_value.type_(),
+            2,
+            "Error: Incorrect trigger type for address breakpoint"
+        );
 
         // Setup the trigger
 
@@ -458,7 +462,7 @@ impl CoreInterface for Riscv32 {
 
         instruction_breakpoint.set_dmode(true);
 
-        self.write_csr(tdata1, dbg!(instruction_breakpoint).0)?;
+        self.write_csr(tdata1, instruction_breakpoint.0)?;
         self.write_csr(tdata2, addr)?;
 
         Ok(())
@@ -477,8 +481,9 @@ impl CoreInterface for Riscv32 {
     }
 
     fn registers(&self) -> &'static RegisterFile {
-        unimplemented!()
+        &RISCV_REGISTERS
     }
+
     fn memory(&self) -> crate::Memory {
         self.interface.memory()
     }
