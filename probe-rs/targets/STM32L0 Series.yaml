@@ -1,0 +1,2769 @@
+---
+name: STM32L0 Series
+variants:
+  - name: STM32L010C6Tx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_32
+      - stm32l010x6_8_eeprom
+      - stm32l0xx_opt
+  - name: STM32L010F4Px
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536872960
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134234112
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_16
+      - stm32l010x4_eeprom
+      - stm32l0xx_opt
+  - name: STM32L010K4Tx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536872960
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134234112
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_16
+      - stm32l010x4_eeprom
+      - stm32l0xx_opt
+  - name: STM32L010K8Tx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_64
+      - stm32l010x6_8_eeprom
+      - stm32l0xx_opt
+  - name: STM32L010R8Tx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536872960
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_64
+      - stm32l010x6_8_eeprom
+      - stm32l0xx_opt
+  - name: STM32L010RBTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536872960
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_128
+      - stm32l010xb_eeprom
+      - stm32l0xx_opt
+  - name: STM32L011D3Px
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536872960
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134225920
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_8
+      - stm32l01_2x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L011D4Px
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536872960
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134234112
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_16
+      - stm32l01_2x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L011E4Yx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536872960
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134234112
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_16
+      - stm32l01_2x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L011F3Px
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536872960
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134225920
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_8
+      - stm32l01_2x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L011F3Ux
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536872960
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134225920
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_8
+      - stm32l01_2x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L011F4Px
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536872960
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134234112
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_16
+      - stm32l01_2x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L011F4Ux
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536872960
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134234112
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_16
+      - stm32l01_2x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L011G3Ux
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536872960
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134225920
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_8
+      - stm32l01_2x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L011G4Ux
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536872960
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134234112
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_16
+      - stm32l01_2x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L011K3Tx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536872960
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134225920
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_8
+      - stm32l01_2x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L011K3Ux
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536872960
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134225920
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_8
+      - stm32l01_2x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L011K4Tx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536872960
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134234112
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_16
+      - stm32l01_2x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L011K4Ux
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536872960
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134234112
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_16
+      - stm32l01_2x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L021D4Px
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536872960
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134234112
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_16
+      - stm32l01_2x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L021F4Px
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536872960
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134234112
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_16
+      - stm32l01_2x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L021F4Ux
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536872960
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134234112
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_16
+      - stm32l01_2x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L021G4Ux
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536872960
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134234112
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_16
+      - stm32l01_2x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L021K4Tx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536872960
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134234112
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_16
+      - stm32l01_2x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L021K4Ux
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536872960
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134234112
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_16
+      - stm32l01_2x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L031C4Tx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134234112
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_16
+      - stm32l03_4x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L031C6Tx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_32
+      - stm32l03_4x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L031E4Yx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134234112
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_16
+      - stm32l03_4x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L031E6Yx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_32
+      - stm32l03_4x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L031F4Px
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134234112
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_16
+      - stm32l03_4x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L031F6Px
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_32
+      - stm32l03_4x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L031G4Ux
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134234112
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_16
+      - stm32l03_4x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L031G6Ux
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_32
+      - stm32l03_4x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L031G6UxS
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_32
+      - stm32l03_4x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L031K4Tx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134234112
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_16
+      - stm32l03_4x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L031K4Ux
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134234112
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_16
+      - stm32l03_4x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L031K6Tx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_32
+      - stm32l03_4x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L031K6Ux
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_32
+      - stm32l03_4x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L041C4Tx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134234112
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_16
+      - stm32l03_4x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L041C6Tx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_32
+      - stm32l03_4x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L041E6Yx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_32
+      - stm32l03_4x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L041F6Px
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_32
+      - stm32l03_4x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L041G6Ux
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_32
+      - stm32l03_4x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L041K6Tx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_32
+      - stm32l03_4x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L041K6Ux
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_32
+      - stm32l03_4x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L051C6Tx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_32
+      - stm32l05_6x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L051C8Tx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_64
+      - stm32l05_6x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L051K6Tx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_32
+      - stm32l05_6x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L051K6Ux
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_32
+      - stm32l05_6x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L051K8Tx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_64
+      - stm32l05_6x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L051K8Ux
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_64
+      - stm32l05_6x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L051R6Hx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_32
+      - stm32l05_6x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L051R6Tx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_32
+      - stm32l05_6x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L051R8Hx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_64
+      - stm32l05_6x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L051R8Tx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_64
+      - stm32l05_6x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L051T6Yx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_32
+      - stm32l05_6x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L051T8Yx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_64
+      - stm32l05_6x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L052C6Tx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_32
+      - stm32l05_6x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L052C8Tx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_64
+      - stm32l05_6x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L052K6Tx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_32
+      - stm32l05_6x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L052K6Ux
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_32
+      - stm32l05_6x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L052K8Tx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_64
+      - stm32l05_6x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L052K8Ux
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_64
+      - stm32l05_6x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L052R6Hx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_32
+      - stm32l05_6x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L052R6Tx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_32
+      - stm32l05_6x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L052R8Hx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_64
+      - stm32l05_6x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L052R8Tx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_64
+      - stm32l05_6x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L052T6Yx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_32
+      - stm32l05_6x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L052T8Yx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_64
+      - stm32l05_6x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L053C6Tx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_32
+      - stm32l05_6x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L053C8Tx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_64
+      - stm32l05_6x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L053R6Hx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_32
+      - stm32l05_6x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L053R6Tx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_32
+      - stm32l05_6x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L053R8Hx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_64
+      - stm32l05_6x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L053R8Tx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_64
+      - stm32l05_6x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L062K8Tx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_64
+      - stm32l05_6x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L062K8Ux
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_64
+      - stm32l05_6x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L063C8Tx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_64
+      - stm32l05_6x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L063R8Tx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_64
+      - stm32l05_6x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L071C8Tx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536891392
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_64
+      - stm32l07x_64_eeprom
+      - stm32l0xx_opt
+  - name: STM32L071CBTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536891392
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_128
+      - stm32l07_8x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L071CBYx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536891392
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_128
+      - stm32l07_8x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L071CZTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536891392
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134414336
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_192
+      - stm32l07_8x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L071CZYx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536891392
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134414336
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_192
+      - stm32l07_8x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L071K8Ux
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536891392
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_64
+      - stm32l07x_64_eeprom
+      - stm32l0xx_opt
+  - name: STM32L071KBTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536891392
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_128
+      - stm32l07_8x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L071KBUx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536891392
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_128
+      - stm32l07_8x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L071KZTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536891392
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134414336
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_192
+      - stm32l07_8x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L071KZUx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536891392
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134414336
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_192
+      - stm32l07_8x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L071RBHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536891392
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_128
+      - stm32l07_8x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L071RBTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536891392
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_128
+      - stm32l07_8x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L071RZHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536891392
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134414336
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_192
+      - stm32l07_8x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L071RZTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536891392
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134414336
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_192
+      - stm32l07_8x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L071V8Ix
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536891392
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_64
+      - stm32l07x_64_eeprom
+      - stm32l0xx_opt
+  - name: STM32L071V8Tx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536891392
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_64
+      - stm32l07x_64_eeprom
+      - stm32l0xx_opt
+  - name: STM32L071VBIx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536891392
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_128
+      - stm32l07_8x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L071VBTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536891392
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_128
+      - stm32l07_8x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L071VZIx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536891392
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134414336
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_192
+      - stm32l07_8x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L071VZTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536891392
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134414336
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_192
+      - stm32l07_8x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L072CBTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536891392
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_128
+      - stm32l07_8x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L072CBYx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536891392
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_128
+      - stm32l07_8x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L072CZEx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536891392
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134414336
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_192
+      - stm32l07_8x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L072CZTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536891392
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134414336
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_192
+      - stm32l07_8x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L072CZYx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536891392
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134414336
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_192
+      - stm32l07_8x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L072KBTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536891392
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_128
+      - stm32l07_8x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L072KBUx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536891392
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_128
+      - stm32l07_8x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L072KZTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536891392
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134414336
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_192
+      - stm32l07_8x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L072KZUx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536891392
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134414336
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_192
+      - stm32l07_8x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L072RBHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536891392
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_128
+      - stm32l07_8x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L072RBIx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536891392
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_128
+      - stm32l07_8x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L072RBTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536891392
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_128
+      - stm32l07_8x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L072RZHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536891392
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134414336
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_192
+      - stm32l07_8x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L072RZIx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536891392
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134414336
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_192
+      - stm32l07_8x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L072RZTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536891392
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134414336
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_192
+      - stm32l07_8x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L072V8Ix
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536891392
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_64
+      - stm32l07x_64_eeprom
+      - stm32l0xx_opt
+  - name: STM32L072V8Tx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536891392
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_64
+      - stm32l07x_64_eeprom
+      - stm32l0xx_opt
+  - name: STM32L072VBIx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536891392
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_128
+      - stm32l07_8x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L072VBTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536891392
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_128
+      - stm32l07_8x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L072VZIx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536891392
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134414336
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_192
+      - stm32l07_8x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L072VZTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536891392
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134414336
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_192
+      - stm32l07_8x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L073CBTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536891392
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_128
+      - stm32l07_8x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L073CZTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536891392
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134414336
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_192
+      - stm32l07_8x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L073RBHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536891392
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_128
+      - stm32l07_8x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L073RBTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536891392
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_128
+      - stm32l07_8x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L073RZHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536891392
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134414336
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_192
+      - stm32l07_8x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L073RZTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536891392
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134414336
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_192
+      - stm32l07_8x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L073V8Ix
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536891392
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_64
+      - stm32l07x_64_eeprom
+      - stm32l0xx_opt
+  - name: STM32L073V8Tx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536891392
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_64
+      - stm32l07x_64_eeprom
+      - stm32l0xx_opt
+  - name: STM32L073VBIx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536891392
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_128
+      - stm32l07_8x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L073VBTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536891392
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_128
+      - stm32l07_8x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L073VZIx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536891392
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134414336
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_192
+      - stm32l07_8x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L073VZTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536891392
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134414336
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_192
+      - stm32l07_8x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L081CZTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536891392
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134414336
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_192
+      - stm32l07_8x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L081KZTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536891392
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134414336
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_192
+      - stm32l07_8x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L081KZUx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536891392
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134414336
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_192
+      - stm32l07_8x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L082CZYx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536891392
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134414336
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_192
+      - stm32l0xx_opt
+      - stm32l07_8x_eeprom
+  - name: STM32L082KBTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536891392
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_128
+      - stm32l0xx_opt
+      - stm32l07_8x_eeprom
+  - name: STM32L082KBUx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536891392
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_128
+      - stm32l0xx_opt
+      - stm32l07_8x_eeprom
+  - name: STM32L082KZTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536891392
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134414336
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_192
+      - stm32l0xx_opt
+      - stm32l07_8x_eeprom
+  - name: STM32L082KZUx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536891392
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134414336
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_192
+      - stm32l0xx_opt
+      - stm32l07_8x_eeprom
+  - name: STM32L083CBTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536891392
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_128
+      - stm32l07_8x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L083CZTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536891392
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134414336
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_192
+      - stm32l07_8x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L083RBHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536891392
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_128
+      - stm32l07_8x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L083RBTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536891392
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_128
+      - stm32l07_8x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L083RZHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536891392
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134414336
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_192
+      - stm32l07_8x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L083RZTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536891392
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134414336
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_192
+      - stm32l07_8x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L083V8Ix
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_64
+      - stm32l07x_64_eeprom
+      - stm32l0xx_opt
+  - name: STM32L083V8Tx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537198592
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_64
+      - stm32l07x_64_eeprom
+      - stm32l0xx_opt
+  - name: STM32L083VBIx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536891392
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_128
+      - stm32l07_8x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L083VBTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536891392
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_128
+      - stm32l07_8x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L083VZIx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536891392
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134414336
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_192
+      - stm32l07_8x_eeprom
+      - stm32l0xx_opt
+  - name: STM32L083VZTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536891392
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134414336
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l0xx_192
+      - stm32l07_8x_eeprom
+      - stm32l0xx_opt
+flash_algorithms:
+  STM32L0xx_16:
+    name: STM32L0xx_16
+    description: STM32L0 16KB Flash
+    default: true
+    instructions: ASoB0AIqF9E7SIFpDyISAhFDgWE5ScFgOUnBYDlJAWE5SQFhwGnAAgbUOUg3SQFgBiFBYDdJgWAAIHBHASgB0AIoCNEsSEFoAiIRQ0FgQWgBIhFDQWAAIHBHMLUmSUpoTBUiQ0pgSmgIJSpDSmAAIgJgKUgmSgDgEGCLadsH+9FIaKBDSGBIaKhDSGAAIDC9ASBwR/C1GEwAIyUVCCY/MYkJjEYk4GFoKUNhYGFoMUNhYEAhgMqAwAkfACn60RZJp2n/BwLQEk85YPnnoWkJBQkPBtCgaQ8hCQIIQ6BhASDwvWFoqUNhYGFosUNhYFscnEXY2AAg8L0AIAJA782riQUEAwK/rp2MFhUUE1VVAAAAMABA/w8AAKqqAAAAAAAA
+    pc_init: 1
+    pc_uninit: 61
+    pc_program_page: 149
+    pc_erase_sector: 91
+    pc_erase_all: ~
+    data_section_offset: 284
+    flash_properties:
+      address_range:
+        start: 134217728
+        end: 134234112
+      page_size: 1024
+      erased_byte_value: 0
+      program_page_timeout: 500
+      erase_sector_timeout: 500
+      sectors:
+        - size: 128
+          address: 0
+  STM32L01_2x_EEPROM:
+    name: STM32L01_2x_EEPROM
+    description: STM32L0 512 Byte Data EEPROM
+    default: false
+    instructions: ASoB0AIqE9E3SIFpDyISAhFDgWE1ScFgNUnBYMBpwAIG1DVIM0kBYAYhQWAzSYFgACBwRwEoAdACKATRKkhBaAEiEUNBYAAgcEfwtf8hATElTP8wAApiaAACTQAqQ2JgYmgQJzpDYmAlSiNLACYGYADgGmCmafYH+9GmaTYFNg8G0KBpDyEJAghDoGEBIPC9AB0JH+rRYGioQ2BgYGi4Q2BgACDwvQEgcEfwtf8jATMNTv8xCQp0aAkCnEN0YBBMDU0K4BdoB2AA4Cxgt2n/B/vRAB0JHxIdGx8AKQHQACvw0QAg8L0AAAAgAkDvzauJBQQDAlVVAAAAMABA/w8AAKqqAAAAAAAA
+    pc_init: 1
+    pc_uninit: 53
+    pc_program_page: 171
+    pc_erase_sector: 75
+    pc_erase_all: ~
+    data_section_offset: 260
+    flash_properties:
+      address_range:
+        start: 134742016
+        end: 134742528
+      page_size: 256
+      erased_byte_value: 0
+      program_page_timeout: 500
+      erase_sector_timeout: 500
+      sectors:
+        - size: 512
+          address: 0
+  STM32L0xx_192:
+    name: STM32L0xx_192
+    description: "STM32L0 192KB Flash "
+    default: true
+    instructions: ASoB0AIqF9E7SIFpDyISAhFDgWE5ScFgOUnBYDlJAWE5SQFhwGnAAgbUOUg3SQFgBiFBYDdJgWAAIHBHASgB0AIoCNEsSEFoAiIRQ0FgQWgBIhFDQWAAIHBHMLUmSUpoTBUiQ0pgSmgIJSpDSmAAIgJgKUgmSgDgEGCLadsH+9FIaKBDSGBIaKhDSGAAIDC9ASBwR/C1GEwAIyUVCCY/MYkJjEYk4GFoKUNhYGFoMUNhYEAhgMqAwAkfACn60RZJp2n/BwLQEk85YPnnoWkJBQkPBtCgaQ8hCQIIQ6BhASDwvWFoqUNhYGFosUNhYFscnEXY2AAg8L0AIAJA782riQUEAwK/rp2MFhUUE1VVAAAAMABA/w8AAKqqAAAAAAAA
+    pc_init: 1
+    pc_uninit: 61
+    pc_program_page: 149
+    pc_erase_sector: 91
+    pc_erase_all: ~
+    data_section_offset: 284
+    flash_properties:
+      address_range:
+        start: 134217728
+        end: 134414336
+      page_size: 1024
+      erased_byte_value: 0
+      program_page_timeout: 500
+      erase_sector_timeout: 500
+      sectors:
+        - size: 128
+          address: 0
+  STM32L010xB_EEPROM:
+    name: STM32L010xB_EEPROM
+    description: STM32L010 512 Byte Data EEPROM
+    default: false
+    instructions: ASoB0AIqE9E3SIFpDyISAhFDgWE1ScFgNUnBYMBpwAIG1DVIM0kBYAYhQWAzSYFgACBwRwEoAdACKATRKkhBaAEiEUNBYAAgcEfwtf8hATElTP8wAApiaAACTQAqQ2JgYmgQJzpDYmAlSiNLACYGYADgGmCmafYH+9GmaTYFNg8G0KBpDyEJAghDoGEBIPC9AB0JH+rRYGioQ2BgYGi4Q2BgACDwvQEgcEfwtf8jATMNTv8xCQp0aAkCnEN0YBBMDU0K4BdoB2AA4Cxgt2n/B/vRAB0JHxIdGx8AKQHQACvw0QAg8L0AAAAgAkDvzauJBQQDAlVVAAAAMABA/w8AAKqqAAAAAAAA
+    pc_init: 1
+    pc_uninit: 53
+    pc_program_page: 171
+    pc_erase_sector: 75
+    pc_erase_all: ~
+    data_section_offset: 260
+    flash_properties:
+      address_range:
+        start: 134742016
+        end: 134742528
+      page_size: 256
+      erased_byte_value: 0
+      program_page_timeout: 500
+      erase_sector_timeout: 500
+      sectors:
+        - size: 512
+          address: 0
+  STM32L05_6x_EEPROM:
+    name: STM32L05_6x_EEPROM
+    description: STM32L0 2 KByte Data EEPROM
+    default: false
+    instructions: ASoB0AIqE9E3SIFpDyISAhFDgWE1ScFgNUnBYMBpwAIG1DVIM0kBYAYhQWAzSYFgACBwRwEoAdACKATRKkhBaAEiEUNBYAAgcEfwtf8hATElTP8wAApiaAACTQAqQ2JgYmgQJzpDYmAlSiNLACYGYADgGmCmafYH+9GmaTYFNg8G0KBpDyEJAghDoGEBIPC9AB0JH+rRYGioQ2BgYGi4Q2BgACDwvQEgcEfwtf8jATMNTv8xCQp0aAkCnEN0YBBMDU0K4BdoB2AA4Cxgt2n/B/vRAB0JHxIdGx8AKQHQACvw0QAg8L0AAAAgAkDvzauJBQQDAlVVAAAAMABA/w8AAKqqAAAAAAAA
+    pc_init: 1
+    pc_uninit: 53
+    pc_program_page: 171
+    pc_erase_sector: 75
+    pc_erase_all: ~
+    data_section_offset: 260
+    flash_properties:
+      address_range:
+        start: 134742016
+        end: 134744064
+      page_size: 256
+      erased_byte_value: 0
+      program_page_timeout: 500
+      erase_sector_timeout: 500
+      sectors:
+        - size: 2048
+          address: 0
+  STM32L03_4x_EEPROM:
+    name: STM32L03_4x_EEPROM
+    description: STM32L0 1KB Data EEPROM
+    default: false
+    instructions: ASoB0AIqE9E3SIFpDyISAhFDgWE1ScFgNUnBYMBpwAIG1DVIM0kBYAYhQWAzSYFgACBwRwEoAdACKATRKkhBaAEiEUNBYAAgcEfwtf8hATElTP8wAApiaAACTQAqQ2JgYmgQJzpDYmAlSiNLACYGYADgGmCmafYH+9GmaTYFNg8G0KBpDyEJAghDoGEBIPC9AB0JH+rRYGioQ2BgYGi4Q2BgACDwvQEgcEfwtf8jATMNTv8xCQp0aAkCnEN0YBBMDU0K4BdoB2AA4Cxgt2n/B/vRAB0JHxIdGx8AKQHQACvw0QAg8L0AAAAgAkDvzauJBQQDAlVVAAAAMABA/w8AAKqqAAAAAAAA
+    pc_init: 1
+    pc_uninit: 53
+    pc_program_page: 171
+    pc_erase_sector: 75
+    pc_erase_all: ~
+    data_section_offset: 260
+    flash_properties:
+      address_range:
+        start: 134742016
+        end: 134743040
+      page_size: 256
+      erased_byte_value: 0
+      program_page_timeout: 500
+      erase_sector_timeout: 500
+      sectors:
+        - size: 1024
+          address: 0
+  STM32L07_8x_EEPROM:
+    name: STM32L07_8x_EEPROM
+    description: STM32L0 2 KByte Data EEPROM
+    default: false
+    instructions: ASoB0AIqE9E3SIFpDyISAhFDgWE1ScFgNUnBYMBpwAIG1DVIM0kBYAYhQWAzSYFgACBwRwEoAdACKATRKkhBaAEiEUNBYAAgcEfwtf8hATElTP8wAApiaAACTQAqQ2JgYmgQJzpDYmAlSiNLACYGYADgGmCmafYH+9GmaTYFNg8G0KBpDyEJAghDoGEBIPC9AB0JH+rRYGioQ2BgYGi4Q2BgACDwvQEgcEfwtf8jATMNTv8xCQp0aAkCnEN0YBBMDU0K4BdoB2AA4Cxgt2n/B/vRAB0JHxIdGx8AKQHQACvw0QAg8L0AAAAgAkDvzauJBQQDAlVVAAAAMABA/w8AAKqqAAAAAAAA
+    pc_init: 1
+    pc_uninit: 53
+    pc_program_page: 171
+    pc_erase_sector: 75
+    pc_erase_all: ~
+    data_section_offset: 260
+    flash_properties:
+      address_range:
+        start: 134742016
+        end: 134748160
+      page_size: 256
+      erased_byte_value: 0
+      program_page_timeout: 500
+      erase_sector_timeout: 500
+      sectors:
+        - size: 3072
+          address: 0
+        - size: 3072
+          address: 3072
+  STM32L0xx_32:
+    name: STM32L0xx_32
+    description: STM32L0 32KB Flash
+    default: true
+    instructions: ASoB0AIqF9E7SIFpDyISAhFDgWE5ScFgOUnBYDlJAWE5SQFhwGnAAgbUOUg3SQFgBiFBYDdJgWAAIHBHASgB0AIoCNEsSEFoAiIRQ0FgQWgBIhFDQWAAIHBHMLUmSUpoTBUiQ0pgSmgIJSpDSmAAIgJgKUgmSgDgEGCLadsH+9FIaKBDSGBIaKhDSGAAIDC9ASBwR/C1GEwAIyUVCCY/MYkJjEYk4GFoKUNhYGFoMUNhYEAhgMqAwAkfACn60RZJp2n/BwLQEk85YPnnoWkJBQkPBtCgaQ8hCQIIQ6BhASDwvWFoqUNhYGFosUNhYFscnEXY2AAg8L0AIAJA782riQUEAwK/rp2MFhUUE1VVAAAAMABA/w8AAKqqAAAAAAAA
+    pc_init: 1
+    pc_uninit: 61
+    pc_program_page: 149
+    pc_erase_sector: 91
+    pc_erase_all: ~
+    data_section_offset: 284
+    flash_properties:
+      address_range:
+        start: 134217728
+        end: 134250496
+      page_size: 1024
+      erased_byte_value: 0
+      program_page_timeout: 500
+      erase_sector_timeout: 500
+      sectors:
+        - size: 128
+          address: 0
+  STM32L0xx_128:
+    name: STM32L0xx_128
+    description: STM32L0 128KB Flash
+    default: true
+    instructions: ASoB0AIqF9E7SIFpDyISAhFDgWE5ScFgOUnBYDlJAWE5SQFhwGnAAgbUOUg3SQFgBiFBYDdJgWAAIHBHASgB0AIoCNEsSEFoAiIRQ0FgQWgBIhFDQWAAIHBHMLUmSUpoTBUiQ0pgSmgIJSpDSmAAIgJgKUgmSgDgEGCLadsH+9FIaKBDSGBIaKhDSGAAIDC9ASBwR/C1GEwAIyUVCCY/MYkJjEYk4GFoKUNhYGFoMUNhYEAhgMqAwAkfACn60RZJp2n/BwLQEk85YPnnoWkJBQkPBtCgaQ8hCQIIQ6BhASDwvWFoqUNhYGFosUNhYFscnEXY2AAg8L0AIAJA782riQUEAwK/rp2MFhUUE1VVAAAAMABA/w8AAKqqAAAAAAAA
+    pc_init: 1
+    pc_uninit: 61
+    pc_program_page: 149
+    pc_erase_sector: 91
+    pc_erase_all: ~
+    data_section_offset: 284
+    flash_properties:
+      address_range:
+        start: 134217728
+        end: 134348800
+      page_size: 1024
+      erased_byte_value: 0
+      program_page_timeout: 500
+      erase_sector_timeout: 500
+      sectors:
+        - size: 128
+          address: 0
+  STM32L0xx_8:
+    name: STM32L0xx_8
+    description: STM32L0 8KB Flash
+    default: true
+    instructions: ASoB0AIqF9E7SIFpDyISAhFDgWE5ScFgOUnBYDlJAWE5SQFhwGnAAgbUOUg3SQFgBiFBYDdJgWAAIHBHASgB0AIoCNEsSEFoAiIRQ0FgQWgBIhFDQWAAIHBHMLUmSUpoTBUiQ0pgSmgIJSpDSmAAIgJgKUgmSgDgEGCLadsH+9FIaKBDSGBIaKhDSGAAIDC9ASBwR/C1GEwAIyUVCCY/MYkJjEYk4GFoKUNhYGFoMUNhYEAhgMqAwAkfACn60RZJp2n/BwLQEk85YPnnoWkJBQkPBtCgaQ8hCQIIQ6BhASDwvWFoqUNhYGFosUNhYFscnEXY2AAg8L0AIAJA782riQUEAwK/rp2MFhUUE1VVAAAAMABA/w8AAKqqAAAAAAAA
+    pc_init: 1
+    pc_uninit: 61
+    pc_program_page: 149
+    pc_erase_sector: 91
+    pc_erase_all: ~
+    data_section_offset: 284
+    flash_properties:
+      address_range:
+        start: 134217728
+        end: 134225920
+      page_size: 1024
+      erased_byte_value: 0
+      program_page_timeout: 500
+      erase_sector_timeout: 500
+      sectors:
+        - size: 128
+          address: 0
+  STM32L010x6_8_EEPROM:
+    name: STM32L010x6_8_EEPROM
+    description: STM32L010 256 Byte Data EEPROM
+    default: false
+    instructions: ASoB0AIqE9E3SIFpDyISAhFDgWE1ScFgNUnBYMBpwAIG1DVIM0kBYAYhQWAzSYFgACBwRwEoAdACKATRKkhBaAEiEUNBYAAgcEfwtf8hATElTP8wAApiaAACTQAqQ2JgYmgQJzpDYmAlSiNLACYGYADgGmCmafYH+9GmaTYFNg8G0KBpDyEJAghDoGEBIPC9AB0JH+rRYGioQ2BgYGi4Q2BgACDwvQEgcEfwtf8jATMNTv8xCQp0aAkCnEN0YBBMDU0K4BdoB2AA4Cxgt2n/B/vRAB0JHxIdGx8AKQHQACvw0QAg8L0AAAAgAkDvzauJBQQDAlVVAAAAMABA/w8AAKqqAAAAAAAA
+    pc_init: 1
+    pc_uninit: 53
+    pc_program_page: 171
+    pc_erase_sector: 75
+    pc_erase_all: ~
+    data_section_offset: 260
+    flash_properties:
+      address_range:
+        start: 134742016
+        end: 134742272
+      page_size: 256
+      erased_byte_value: 0
+      program_page_timeout: 500
+      erase_sector_timeout: 500
+      sectors:
+        - size: 256
+          address: 0
+  STM32L07x_64_EEPROM:
+    name: STM32L07x_64_EEPROM
+    description: STM32L0 2 KByte Data EEPROM
+    default: false
+    instructions: ASoB0AIqE9E3SIFpDyISAhFDgWE1ScFgNUnBYMBpwAIG1DVIM0kBYAYhQWAzSYFgACBwRwEoAdACKATRKkhBaAEiEUNBYAAgcEfwtf8hATElTP8wAApiaAACTQAqQ2JgYmgQJzpDYmAlSiNLACYGYADgGmCmafYH+9GmaTYFNg8G0KBpDyEJAghDoGEBIPC9AB0JH+rRYGioQ2BgYGi4Q2BgACDwvQEgcEfwtf8jATMNTv8xCQp0aAkCnEN0YBBMDU0K4BdoB2AA4Cxgt2n/B/vRAB0JHxIdGx8AKQHQACvw0QAg8L0AAAAgAkDvzauJBQQDAlVVAAAAMABA/w8AAKqqAAAAAAAA
+    pc_init: 1
+    pc_uninit: 53
+    pc_program_page: 171
+    pc_erase_sector: 75
+    pc_erase_all: ~
+    data_section_offset: 260
+    flash_properties:
+      address_range:
+        start: 134745088
+        end: 134748160
+      page_size: 256
+      erased_byte_value: 0
+      program_page_timeout: 500
+      erase_sector_timeout: 500
+      sectors:
+        - size: 3072
+          address: 0
+  STM32L0xx_OPT:
+    name: STM32L0xx_OPT
+    description: STM32L0xx Flash Options
+    default: false
+    instructions: ASoB0AIqF9E/SIFpDyISAhFDgWE9ScFgPUnBYD1JQWE9SUFhwGnAAgbUPUg7SQFgBiFBYDtJgWAAIHBHASgB0AIoCNEwSEFoBCIRQ0FgQWgBIhFDQWAAIHBHNEgySQFgM0lBYDNJgWCBYCdIMkksSgDgEWCDadsH+9GBaQkFCQ8G0IFpDyISAhFDgWEBIHBHACBwRwAgcEcBIHBH8LUmTR9OGUwUIQdoE2ifQgLQA2AA4DVgo2nbB/vRo2kbBRsPBtCgaQ8hCQIIQ6BhASDwvQAdCR8SHQAp5dEAIPC98LUVTA9NCE4UIQNoF2i7QgnRAOAsYLNp2wf70QAdCR8SHQAp8dHwvQAAACACQO/Nq4kFBAMCyNnq+ycmJSRVVQAAADAAQP8PAACqAFX/AAD4H3CAj38AAP//qqoAAAAAAAA=
+    pc_init: 1
+    pc_uninit: 61
+    pc_program_page: 157
+    pc_erase_sector: 149
+    pc_erase_all: 91
+    data_section_offset: 316
+    flash_properties:
+      address_range:
+        start: 536346624
+        end: 536346644
+      page_size: 12
+      erased_byte_value: 255
+      program_page_timeout: 3000
+      erase_sector_timeout: 3000
+      sectors:
+        - size: 20
+          address: 0
+  STM32L010x4_EEPROM:
+    name: STM32L010x4_EEPROM
+    description: STM32L010 128 Byte Data EEPROM
+    default: false
+    instructions: ASoB0AIqE9E3SIFpDyISAhFDgWE1ScFgNUnBYMBpwAIG1DVIM0kBYAYhQWAzSYFgACBwRwEoAdACKATRKkhBaAEiEUNBYAAgcEfwtf8hATElTP8wAApiaAACTQAqQ2JgYmgQJzpDYmAlSiNLACYGYADgGmCmafYH+9GmaTYFNg8G0KBpDyEJAghDoGEBIPC9AB0JH+rRYGioQ2BgYGi4Q2BgACDwvQEgcEfwtf8jATMNTv8xCQp0aAkCnEN0YBBMDU0K4BdoB2AA4Cxgt2n/B/vRAB0JHxIdGx8AKQHQACvw0QAg8L0AAAAgAkDvzauJBQQDAlVVAAAAMABA/w8AAKqqAAAAAAAA
+    pc_init: 1
+    pc_uninit: 53
+    pc_program_page: 171
+    pc_erase_sector: 75
+    pc_erase_all: ~
+    data_section_offset: 260
+    flash_properties:
+      address_range:
+        start: 134742016
+        end: 134742144
+      page_size: 128
+      erased_byte_value: 0
+      program_page_timeout: 500
+      erase_sector_timeout: 500
+      sectors:
+        - size: 128
+          address: 0
+  STM32L0xx_64:
+    name: STM32L0xx_64
+    description: "STM32L0 64KB Flash "
+    default: true
+    instructions: ASoB0AIqF9E7SIFpDyISAhFDgWE5ScFgOUnBYDlJAWE5SQFhwGnAAgbUOUg3SQFgBiFBYDdJgWAAIHBHASgB0AIoCNEsSEFoAiIRQ0FgQWgBIhFDQWAAIHBHMLUmSUpoTBUiQ0pgSmgIJSpDSmAAIgJgKUgmSgDgEGCLadsH+9FIaKBDSGBIaKhDSGAAIDC9ASBwR/C1GEwAIyUVCCY/MYkJjEYk4GFoKUNhYGFoMUNhYEAhgMqAwAkfACn60RZJp2n/BwLQEk85YPnnoWkJBQkPBtCgaQ8hCQIIQ6BhASDwvWFoqUNhYGFosUNhYFscnEXY2AAg8L0AIAJA782riQUEAwK/rp2MFhUUE1VVAAAAMABA/w8AAKqqAAAAAAAA
+    pc_init: 1
+    pc_uninit: 61
+    pc_program_page: 149
+    pc_erase_sector: 91
+    pc_erase_all: ~
+    data_section_offset: 284
+    flash_properties:
+      address_range:
+        start: 134217728
+        end: 134283264
+      page_size: 1024
+      erased_byte_value: 0
+      program_page_timeout: 500
+      erase_sector_timeout: 500
+      sectors:
+        - size: 128
+          address: 0
+core: M0
