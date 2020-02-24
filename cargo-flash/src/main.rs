@@ -19,6 +19,7 @@ use probe_rs::{
     flash::download::{download_file, download_file_with_progress_reporting, Format},
     flash::{FlashProgress, ProgressEvent},
     DebugProbeError, Probe,
+    WireProtocol,
 };
 
 #[derive(Debug, StructOpt)]
@@ -266,7 +267,8 @@ fn main_try() -> Result<(), failure::Error> {
         }
     };
 
-    let probe = Probe::from_probe_info(&device)?;
+    let mut probe = Probe::from_probe_info(&device)?;
+    probe.select_protocol(WireProtocol::Swd)?;
 
     // Disabled for now
     // TODO: reenable once we got the plugin architecture working.
