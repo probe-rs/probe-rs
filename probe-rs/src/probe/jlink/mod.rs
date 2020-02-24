@@ -379,17 +379,21 @@ impl DebugProbe for JLink {
                 ];
                 
                 // Construct the init sequence
-                let direction = iter::repeat(true).take(50 + 16 + 50);
+                let direction = iter::repeat(true).take(64 + 16 + 64 + 10);
                 let swd_io_sequence =
-                    iter::repeat(true).take(50)
+                    iter::repeat(true).take(64)
                     .chain(jtag_to_swd_sequence.iter().copied())
-                    .chain(iter::repeat(true).take(50));
+                    .chain(iter::repeat(true).take(64))
+                    .chain(iter::repeat(false).take(10));
 
                 // Send the init sequence.
                 let response: Vec<_> = jlink.swd_io(direction, swd_io_sequence)?.collect();
 
                 // Read the DPIDR register to complete the init sequence.
                 let response = DAPAccess::read_register(self, PortType::DebugPort, 0x0000)?;
+
+                // Clear the abort flag.
+                let response = DAPAccess::write_register(self, PortType::DebugPort, 0x0000, 0x1e)?;
 
                 println!("KEK: {:?}", response);
             }
@@ -496,7 +500,7 @@ impl DAPAccess for JLink {
             false,                 // Stop bit (always 0).
             true,                  // Park bit (always 1).
 
-            false,                 // Turnaround bit.
+            // false,                 // Turnaround bit.
 
             false, // ACK bit.
             false, // ACK bit.
@@ -512,7 +516,7 @@ impl DAPAccess for JLink {
 
         let direction = iter::repeat(true)
             .take(8)
-            .chain(iter::repeat(false).take(1 + 3 + 32 + 1 + 1)); // Trn, Ack, Data, Parity, Trn
+            .chain(iter::repeat(false).take(3 + 32 + 1 + 1)); // (Trn is missing which is different from the spec), Ack, Data, Parity, Trn
 
         let mut retries = 0;
         // We will timeout after 50 retries.
@@ -526,7 +530,7 @@ impl DAPAccess for JLink {
             println!("RESULT: {:?}", result_sequence);
 
             // Throw away the first 9 bits.
-            let mut result_sequence = result_sequence.by_ref().skip(9);
+            let mut result_sequence = result_sequence.by_ref().skip(8);
             // Get the ack.
             let ack = result_sequence.by_ref().take(3).collect::<Vec<_>>();
             println!("ACK: {:?}", ack);
@@ -561,6 +565,9 @@ impl DAPAccess for JLink {
         let a3 = (address >> 3) & 0x01 == 1;
 
         let mut swd_io_sequence = vec![
+            false,
+            false,
+
             true,                  // Start bit (always 1).
             port,                  // APnDP (0 for DP, 1 for AP).
             false,                  // RnW (0 for Write, 1 for Read).
@@ -570,12 +577,12 @@ impl DAPAccess for JLink {
             false,                 // Stop bit (always 0).
             true,                  // Park bit (always 1).
 
+            false, // ACK bit.
+            false, // ACK bit.
+            false, // ACK bit.
+
+
             false,                 // Turnaround bit.
-
-            false, // ACK bit.
-            false, // ACK bit.
-            false, // ACK bit.
-
             false,                 // Turnaround bit.
         ];
 
@@ -591,8 +598,8 @@ impl DAPAccess for JLink {
         swd_io_sequence.push(parity); // Parity bit.
 
         let direction = iter::repeat(true)
-            .take(8)
-            .chain(iter::repeat(false).take(1 + 3 + 1)) // Trn, Ack, Trn
+            .take(2 + 8)
+            .chain(iter::repeat(false).take(3 + 1 + 1)) // Ack, Trn, Trn
             .chain(iter::repeat(true).take(32 + 1)); // Data, Parity
 
         let mut retries = 0;
@@ -611,7 +618,7 @@ impl DAPAccess for JLink {
             // Get the ack.
             let ack = result_sequence
                 // Throw away the first 8 bits.
-                .skip(8 + 1)
+                .skip(8)
                 // Get the 3 ack bits.
                 .take(3)
                 .collect::<Vec<_>>();
