@@ -517,6 +517,6 @@ impl CoreInterface for M0 {
     }
 
     fn architecture(&self) -> Architecture {
-        unimplemented!()
+        Architecture::ARM
     }
 }
