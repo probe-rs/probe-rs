@@ -168,8 +168,8 @@ bitfield! {
     pub min, _: 16;
     pub u8, version, _: 15, 12;
     pub designer, _: 11, 1;
-    u8, jep_cc, _: 11, 8;
-    u8, jep_id, _: 7, 1;
+    pub u8, jep_cc, _: 11, 8;
+    pub u8, jep_id, _: 7, 1;
 }
 
 impl From<u32> for DPIDR {

@@ -392,6 +392,10 @@ impl DebugProbe for JLink {
                 // Read the DPIDR register to complete the init sequence.
                 let response = DAPAccess::read_register(self, PortType::DebugPort, 0x0000)?;
 
+                let dpidr = crate::architecture::arm::dp::DPIDR(response);
+                println!("{:#?}", dpidr);
+                println!("{:?}", jep106::JEP106Code::new(dpidr.jep_cc(), dpidr.jep_id()));
+
                 // Clear the abort flag.
                 let response = DAPAccess::write_register(self, PortType::DebugPort, 0x0000, 0x1e)?;
 
@@ -520,7 +524,7 @@ impl DAPAccess for JLink {
 
         let mut retries = 0;
         // We will timeout after 50 retries.
-        while retries < 50 {
+        while retries < 5 {
             let mut result_sequence = self
                 .handle
                 .get_mut()
@@ -604,7 +608,7 @@ impl DAPAccess for JLink {
 
         let mut retries = 0;
         // We will timeout after 50 retries.
-        while retries < 50 {
+        while retries < 5 {
             let mut result_sequence = self
                 .handle
                 .get_mut()
