@@ -60,6 +60,12 @@ bitfield! {
     pub _, set_dapabort: 1;
 }
 
+impl Default for Abort {
+    fn default() -> Self {
+        Abort(0)
+    }
+}
+
 impl From<u32> for Abort {
     fn from(raw: u32) -> Self {
         Abort(raw)
@@ -85,11 +91,11 @@ bitfield! {
     #[derive(Clone)]
     pub struct Ctrl(u32);
     impl Debug;
-    pub csyspwrupack, _: 31;
+    pub csyspwrupack, set_csyspwrupack: 31;
     pub csyspwrupreq, set_csyspwrupreq: 30;
-    pub cdbgpwrupack, _: 29;
+    pub cdbgpwrupack, set_cdbgpwrupack: 29;
     pub cdbgpwrupreq, set_cdbgpwrupreq: 28;
-    pub cdbgrstack, _: 27;
+    pub cdbgrstack, set_cdbgrstack: 27;
     pub c_dbg_rst_req, set_c_dbg_rst_req: 26;
     pub u16, trn_cnt, set_trn_cnt: 23, 12;
     pub u8, mask_lane, set_mask_lane: 11, 8;

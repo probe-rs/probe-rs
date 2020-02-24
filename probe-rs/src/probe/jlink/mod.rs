@@ -12,6 +12,8 @@ use crate::{
         DAPAccess, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeType, JTAGAccess,
         WireProtocol,
     },
+    architecture::arm::dp::{Ctrl, Abort, DPIDR},
+    architecture::arm::Register,
 };
 
 pub(crate) struct JLink {
@@ -392,12 +394,22 @@ impl DebugProbe for JLink {
                 // Read the DPIDR register to complete the init sequence.
                 let response = DAPAccess::read_register(self, PortType::DebugPort, 0x0000)?;
 
-                let dpidr = crate::architecture::arm::dp::DPIDR(response);
+                let dpidr = DPIDR(response);
                 println!("{:#?}", dpidr);
                 println!("{:?}", jep106::JEP106Code::new(dpidr.jep_cc(), dpidr.jep_id()));
 
                 // Clear the abort flag.
-                let response = DAPAccess::write_register(self, PortType::DebugPort, 0x0000, 0x1e)?;
+                let mut abort = Abort::default();
+                abort.set_orunerrclr(true);
+                abort.set_wderrclr(true);
+                let response = DAPAccess::write_register(self, PortType::DebugPort, Abort::ADDRESS as u16, abort.into())?;
+
+                let mut ctrl = Ctrl::default();
+                ctrl.set_cdbgpwrupack(true);
+                ctrl.set_cdbgpwrupreq(true);
+                let response = DAPAccess::write_register(self, PortType::DebugPort, Ctrl::ADDRESS as u16, ctrl.into())?;
+
+                let response = DAPAccess::read_register(self, PortType::DebugPort, Ctrl::ADDRESS as u16)?;
 
                 println!("KEK: {:?}", response);
             }
@@ -486,7 +498,6 @@ impl JTAGAccess for JLink {
 
 impl DAPAccess for JLink {
     fn read_register(&mut self, port: PortType, address: u16) -> Result<u32, DebugProbeError> {
-        println!("READ");
         let port = match port {
             PortType::DebugPort => false,
             PortType::AccessPort(_) => true,
@@ -495,6 +506,9 @@ impl DAPAccess for JLink {
         let a3 = (address >> 3) & 0x01 == 1;
 
         let mut swd_io_sequence = vec![
+            false,
+            false,
+
             true,                  // Start bit (always 1).
             port,                  // APnDP (0 for DP, 1 for AP).
             true,                  // RnW (0 for Write, 1 for Read).
@@ -511,15 +525,13 @@ impl DAPAccess for JLink {
             false, // ACK bit.
         ];
 
-        println!("{:?}", swd_io_sequence);
-
         // Add data + parity + turnaround bits.
         for _ in 0..32 + 1 + 1 {
             swd_io_sequence.push(false);
         }
 
         let direction = iter::repeat(true)
-            .take(8)
+            .take(2 + 8)
             .chain(iter::repeat(false).take(3 + 32 + 1 + 1)); // (Trn is missing which is different from the spec), Ack, Data, Parity, Trn
 
         let mut retries = 0;
@@ -530,21 +542,28 @@ impl DAPAccess for JLink {
                 .get_mut()
                 .unwrap()
                 .swd_io(direction.clone(), swd_io_sequence.iter().copied())?;
-
-            println!("RESULT: {:?}", result_sequence);
+            let mut result_sequence = self
+                .handle
+                .get_mut()
+                .unwrap()
+                .swd_io(direction.clone(), swd_io_sequence.iter().copied())?;
 
             // Throw away the first 9 bits.
-            let mut result_sequence = result_sequence.by_ref().skip(8);
+            let mut result_sequence = result_sequence.by_ref().skip(2 + 8);
             // Get the ack.
             let ack = result_sequence.by_ref().take(3).collect::<Vec<_>>();
-            println!("ACK: {:?}", ack);
             if ack[1] {
-                // If ack[1] is set the host must retry the request. So let's do that right awayt!
+                // If ack[1] is set the host must retry the request. So let's do that right away!
                 retries += 1;
                 continue;
             }
             if ack[2] {
                 // A fault happened during operation.
+
+                let response = DAPAccess::read_register(self, PortType::DebugPort, Ctrl::ADDRESS as u16)?;
+                let ctrl = Ctrl::from(response);
+                log::error!("Reading  DAP register failed. Ctrl/Stat: {:#?}", ctrl);
+
                 return Err(DebugProbeError::Unknown);
             }
             // Take the data bits and convert them into a 32bit int.
@@ -560,7 +579,6 @@ impl DAPAccess for JLink {
     }
 
     fn write_register(&mut self, port: PortType, address: u16, mut value: u32) -> Result<(), DebugProbeError> {
-        println!("WRITE");
         let port = match port {
             PortType::DebugPort => false,
             PortType::AccessPort(_) => true,
@@ -609,25 +627,19 @@ impl DAPAccess for JLink {
         let mut retries = 0;
         // We will timeout after 50 retries.
         while retries < 5 {
-            let mut result_sequence = self
+            let result_sequence = self
                 .handle
                 .get_mut()
                 .unwrap()
                 .swd_io(direction.clone(), swd_io_sequence.iter().copied())?;
 
-            println!("DIREC : BitIter{:?}", direction.clone().map(|b| if b { "1" } else { "0" }).collect::<Vec<_>>().join(""));
-            println!("SEQUE : BitIter{:?}", swd_io_sequence.iter().map(|b| if *b { "1" } else { "0" }).collect::<Vec<_>>().join(""));
-            println!("RESULT: {:?}", result_sequence);
-
             // Get the ack.
             let ack = result_sequence
-                // Throw away the first 8 bits.
-                .skip(8)
+                // Throw away the first 2 + 8 bits.
+                .skip(2 + 8)
                 // Get the 3 ack bits.
                 .take(3)
                 .collect::<Vec<_>>();
-                
-            println!("{:?}", ack);
             
             if ack[1] {
                 // If ack[1] is set the host must retry the request. So let's do that right awayt!
@@ -635,13 +647,17 @@ impl DAPAccess for JLink {
                 continue;
             }
             if ack[2] {
+                let response = DAPAccess::read_register(self, PortType::DebugPort, Ctrl::ADDRESS as u16)?;
+                let ctrl = Ctrl::from(response);
+                log::error!("Writing  DAP register failed. Ctrl/Stat: {:#?}", ctrl);
                 // A fault happened during operation.
                 return Err(DebugProbeError::Unknown);
             }
             // Don't care about Trn + Data + Parity bits.
+            return Ok(())
         }
 
-        log::debug!("DAP write timeout.");
+        log::error!("DAP write timeout.");
         Err(DebugProbeError::Timeout)
     }
 }
