@@ -203,6 +203,7 @@ pub trait CoreInterface {
 
 #[derive(Clone)]
 pub enum CoreType {
+    M3,
     M4,
     M33,
     M0,
@@ -211,6 +212,9 @@ pub enum CoreType {
 impl CoreType {
     pub fn attach(&self, memory: Memory) -> Core {
         match self {
+            // Cortex-M3 and M4 both use the Armv7[E]-M architecture and are
+            // identical for our purposes.
+            CoreType::M3 => Core::new(crate::architecture::arm::m4::M4::new(memory)),
             CoreType::M4 => Core::new(crate::architecture::arm::m4::M4::new(memory)),
             CoreType::M33 => Core::new(crate::architecture::arm::m33::M33::new(memory)),
             CoreType::M0 => Core::new(crate::architecture::arm::m0::M0::new(memory)),
@@ -433,6 +437,7 @@ impl Core {
 pub(crate) fn get_core(name: impl AsRef<str>) -> Option<CoreType> {
     match &name.as_ref().to_ascii_lowercase()[..] {
         "m0" => Some(CoreType::M0),
+        "m3" => Some(CoreType::M3),
         "m4" => Some(CoreType::M4),
         "m33" => Some(CoreType::M33),
         _ => None,
