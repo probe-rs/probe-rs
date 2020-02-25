@@ -212,6 +212,7 @@ pub enum CoreType {
 impl CoreType {
     pub fn attach(&self, memory: Memory) -> Core {
         match self {
+            // TODO: Change this once the new archtecture structure for ARM hits.
             // Cortex-M3 and M4 both use the Armv7[E]-M architecture and are
             // identical for our purposes.
             CoreType::M3 => Core::new(crate::architecture::arm::m4::M4::new(memory)),
