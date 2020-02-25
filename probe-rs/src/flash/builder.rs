@@ -69,7 +69,7 @@ impl FlashSector {
         }
 
         // Determine the maximal amout of pages in the sector.
-        let max_page_count = (self.size / page.size) as usize;
+        let max_page_count = (page.size / self.size) as usize;
 
         // Make sure we haven't reached the sectors maximum capacity yet.
         if self.pages.len() < max_page_count {
