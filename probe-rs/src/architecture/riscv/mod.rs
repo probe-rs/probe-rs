@@ -152,7 +152,7 @@ impl CoreInterface for Riscv32 {
     }
 
     fn run(&self) -> Result<(), crate::Error> {
-        // test if core halted?
+        // TODO: test if core halted?
 
         // set resume request
         let mut dmcontrol = Dmcontrol(0);
