@@ -69,6 +69,20 @@ static SP: RegisterDescription = RegisterDescription {
     address: CoreRegisterAddress(0x1002),
 };
 
+pub static S0: RegisterDescription = RegisterDescription {
+    name: "s0",
+    kind: RegisterKind::General,
+    /// This is a CSR register
+    address: CoreRegisterAddress(0x1008),
+};
+
+pub static S1: RegisterDescription = RegisterDescription {
+    name: "s1",
+    kind: RegisterKind::General,
+    /// This is a CSR register
+    address: CoreRegisterAddress(0x1009),
+};
+
 pub(super) static RISCV_REGISTERS: RegisterFile = RegisterFile {
     platform_registers: &[
         RegisterDescription {

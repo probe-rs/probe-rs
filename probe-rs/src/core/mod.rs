@@ -52,6 +52,12 @@ impl RegisterDescription {
     }
 }
 
+impl From<RegisterDescription> for CoreRegisterAddress {
+    fn from(description: RegisterDescription) -> CoreRegisterAddress {
+        description.address
+    }
+}
+
 impl From<&RegisterDescription> for CoreRegisterAddress {
     fn from(description: &RegisterDescription) -> CoreRegisterAddress {
         description.address

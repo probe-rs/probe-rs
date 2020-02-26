@@ -4,12 +4,12 @@
 //! Debug Module, as described in the RISCV debug
 //! specification v0.13.2 .
 
-use super::{Dmcontrol, Dmstatus};
+use super::{register, Dmcontrol, Dmstatus};
 use crate::architecture::riscv::{Abstractcs, Command, Data0, Progbuf0, Progbuf1};
 use crate::DebugProbeError;
 use crate::{Memory, MemoryInterface, Probe};
 
-use crate::Error as ProbeRsError;
+use crate::{CoreRegisterAddress, Error as ProbeRsError};
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -34,6 +34,8 @@ pub(crate) enum RiscvError {
     AbstractCommand(AbstractCommandErrorKind),
     #[error("The core did not acknowledge a request for reset, resume or halt")]
     RequestNotAcknowledged,
+    #[error("The version '{0}' of the debug module is currently not supported.")]
+    UnsupportedDebugModuleVersion(u8),
 }
 
 impl From<RiscvError> for ProbeRsError {
@@ -76,6 +78,23 @@ impl AbstractCommandErrorKind {
     }
 }
 
+/// List of all debug module versions.
+///
+/// The version of the debug module can be read from the version field of the `dmstatus`
+/// register.
+#[allow(dead_code)]
+#[derive(Debug, Copy, Clone, PartialEq)]
+enum DebugModuleVersion {
+    /// There is no debug module present.
+    NoModule = 0,
+    /// The debug module confirms to the version 0.11 of the RISCV Debug Specification.
+    Version0_11 = 1,
+    /// The debug module confirms to the version 0.13 of the RISCV Debug Specification.
+    Version0_13 = 2,
+    /// The debug module is present, but does not confirm to any available version of the RISCV Debug Specification.
+    NonConforming = 15,
+}
+
 #[derive(Clone)]
 pub struct RiscvCommunicationInterface {
     inner: Rc<RefCell<InnerRiscvCommunicationInterface>>,
@@ -102,13 +121,16 @@ impl RiscvCommunicationInterface {
         self.inner.borrow_mut().execute_abstract_command(command)
     }
 
-    pub(crate) fn abstract_cmd_register_read(&self, regno: u32) -> Result<u32, RiscvError> {
+    pub(crate) fn abstract_cmd_register_read(
+        &self,
+        regno: impl Into<CoreRegisterAddress>,
+    ) -> Result<u32, RiscvError> {
         self.inner.borrow_mut().abstract_cmd_register_read(regno)
     }
 
     pub(crate) fn abstract_cmd_register_write(
         &self,
-        regno: u32,
+        regno: impl Into<CoreRegisterAddress>,
         value: u32,
     ) -> Result<(), RiscvError> {
         self.inner
@@ -165,6 +187,9 @@ struct InnerRiscvCommunicationInterface {
     abits: u32,
 }
 
+/// Timeout for RISCV operations.
+const RISCV_TIMEOUT: Duration = Duration::from_secs(5);
+
 impl InnerRiscvCommunicationInterface {
     pub fn build(mut probe: Probe) -> Result<Self, RiscvError> {
         // We need a jtag interface
@@ -175,7 +200,7 @@ impl InnerRiscvCommunicationInterface {
             .get_interface_jtag_mut()
             .ok_or(DebugProbeError::InterfaceNotAvailable("JTAG"))?;
 
-        let dtmcs_raw = jtag_interface.read_register(0x10, 32)?;
+        let dtmcs_raw = jtag_interface.read_register(DTMCS_ADDRESS, DTMCS_WIDTH)?;
 
         let dtmcs = Dtmcs(u32::from_le_bytes((&dtmcs_raw[..]).try_into().unwrap()));
 
@@ -192,10 +217,12 @@ impl InnerRiscvCommunicationInterface {
         // read the  version of the debug module
         let status: Dmstatus = interface.read_dm_register()?;
 
-        assert!(
-            status.version() == 2,
-            "Only Debug Module version 0.13 is supported!"
-        );
+        // Only version of 0.13 of the debug specification is currently supported.
+        if status.version() != DebugModuleVersion::Version0_13 as u32 {
+            return Err(RiscvError::UnsupportedDebugModuleVersion(
+                status.version() as u8
+            ));
+        }
 
         log::debug!("dmstatus: {:?}", status);
 
@@ -222,7 +249,7 @@ impl InnerRiscvCommunicationInterface {
             .get_interface_jtag_mut()
             .ok_or(DebugProbeError::InterfaceNotAvailable("JTAG"))?;
 
-        jtag_interface.write_register(0x10, &bytes, 32)?;
+        jtag_interface.write_register(DTMCS_ADDRESS, &bytes, DTMCS_WIDTH)?;
 
         Ok(())
     }
@@ -248,18 +275,20 @@ impl InnerRiscvCommunicationInterface {
         value: u32,
         op: DmiOperation,
     ) -> Result<u32, RiscvError> {
-        let register_value: u128 = ((address as u128) << 34) | ((value as u128) << 2) | op as u128;
+        let register_value: u128 = ((address as u128) << DMI_ADDRESS_BIT_OFFSET)
+            | ((value as u128) << DMI_VALUE_BIT_OFFSET)
+            | op as u128;
 
         let bytes = register_value.to_le_bytes();
 
-        let bit_size = self.abits + 34;
+        let bit_size = self.abits + DMI_ADDRESS_BIT_OFFSET;
 
         let jtag_interface = self
             .probe
             .get_interface_jtag_mut()
             .ok_or(DebugProbeError::InterfaceNotAvailable("JTAG"))?;
 
-        let response_bytes = jtag_interface.write_register(0x11, &bytes, bit_size)?;
+        let response_bytes = jtag_interface.write_register(DMI_ADDRESS, &bytes, bit_size)?;
 
         let response_value: u128 = response_bytes.iter().enumerate().fold(0, |acc, elem| {
             let (byte_offset, value) = elem;
@@ -285,8 +314,6 @@ impl InnerRiscvCommunicationInterface {
         log::debug!("Reading DM register '{}' at {:#010x}", R::NAME, R::ADDRESS);
 
         // TODO: parameter for this
-        let retry_duration = Duration::from_secs(5);
-
         let start_time = Instant::now();
 
         loop {
@@ -300,7 +327,7 @@ impl InnerRiscvCommunicationInterface {
                 Err(e) => return Err(e),
             }
 
-            if start_time.elapsed() > retry_duration {
+            if start_time.elapsed() > RISCV_TIMEOUT {
                 return Err(RiscvError::Timeout);
             }
         }
@@ -321,7 +348,7 @@ impl InnerRiscvCommunicationInterface {
                 Err(e) => return Err(e),
             }
 
-            if start_time.elapsed() > retry_duration {
+            if start_time.elapsed() > RISCV_TIMEOUT {
                 return Err(RiscvError::Timeout);
             }
         }
@@ -361,12 +388,16 @@ impl InnerRiscvCommunicationInterface {
     /// Perfrom memory read from a single location using the program buffer.
     /// Only reads up to a width of 32 bits are currently supported.
     /// For widths smaller than u32, the higher bits have to be discarded manually.
-    fn perform_memory_read(&mut self, address: u32, width: u8) -> Result<u32, RiscvError> {
+    fn perform_memory_read(
+        &mut self,
+        address: u32,
+        width: RiscvBusAccess,
+    ) -> Result<u32, RiscvError> {
         // assemble
         //  lb s1, 0(s0)
 
         // Backup registers s0 and s1
-        let s0 = self.abstract_cmd_register_read(0x1008)?;
+        let s0 = self.abstract_cmd_register_read(&register::S0)?;
 
         //let o = 0; // offset = 0
         //let b = 9; // base register -> s0
@@ -380,7 +411,7 @@ impl InnerRiscvCommunicationInterface {
         // 0 ==  8 bit
         // 1 == 16 bit
         // 2 == 32 bit
-        assert!(width < 3, "Width larger than 3 not supported yet");
+        assert!((width as u32) < 3, "Width larger than 3 not supported yet");
 
         lw_command |= (width as u32) << 12;
 
@@ -398,11 +429,11 @@ impl InnerRiscvCommunicationInterface {
         command.set_write(true);
 
         // registers are 32 bit, so we have size 2 here
-        command.set_aarsize(2);
+        command.set_aarsize(RiscvBusAccess::A32);
         command.set_postexec(true);
 
         // register s0, ie. 0x1008
-        command.set_regno(0x1008);
+        command.set_regno((&register::S0).address.0 as u32);
 
         self.write_dm_register(command)?;
 
@@ -415,9 +446,9 @@ impl InnerRiscvCommunicationInterface {
         }
 
         // Read back s0
-        let value = self.abstract_cmd_register_read(0x1008)?;
+        let value = self.abstract_cmd_register_read(&register::S0)?;
 
-        self.abstract_cmd_register_write(0x1008, s0)?;
+        self.abstract_cmd_register_write(&register::S0, s0)?;
 
         Ok(u32::from(value))
     }
@@ -427,12 +458,12 @@ impl InnerRiscvCommunicationInterface {
     fn perform_memory_write(
         &mut self,
         address: u32,
-        width: u8,
+        width: RiscvBusAccess,
         data: u32,
     ) -> Result<(), RiscvError> {
         // Backup registers s0 and s1
-        let s0 = self.abstract_cmd_register_read(0x1008)?;
-        let s1 = self.abstract_cmd_register_read(0x1009)?;
+        let s0 = self.abstract_cmd_register_read(&register::S0)?;
+        let s1 = self.abstract_cmd_register_read(&register::S1)?;
 
         // assemble
         //  lb s0, 0(s0)
@@ -453,7 +484,7 @@ impl InnerRiscvCommunicationInterface {
         // 1 == 16 bit
         // 2 == 32 bit
 
-        assert!(width < 3, "Width larger than 3 not supported yet");
+        assert!((width as u32) < 3, "Width larger than 3 not supported yet");
 
         sw_command |= (width as u32) << 12;
 
@@ -467,7 +498,7 @@ impl InnerRiscvCommunicationInterface {
         self.write_dm_register(Progbuf1(ebreak_cmd))?;
 
         // write value into s0
-        self.abstract_cmd_register_write(0x1008, address)?;
+        self.abstract_cmd_register_write(&register::S0, address)?;
 
         // write address into data 0
         self.write_dm_register(Data0(data))?;
@@ -479,11 +510,11 @@ impl InnerRiscvCommunicationInterface {
         command.set_write(true);
 
         // registers are 32 bit, so we have size 2 here
-        command.set_aarsize(2);
+        command.set_aarsize(RiscvBusAccess::A32);
         command.set_postexec(true);
 
         // register s0, ie. 0x1008
-        command.set_regno(0x1009);
+        command.set_regno((&register::S1).address.0 as u32);
 
         self.write_dm_register(command)?;
 
@@ -497,8 +528,8 @@ impl InnerRiscvCommunicationInterface {
 
         // Restore register s0 and s1
 
-        self.abstract_cmd_register_write(0x1008, s0)?;
-        self.abstract_cmd_register_write(0x1009, s1)?;
+        self.abstract_cmd_register_write(&register::S0, s0)?;
+        self.abstract_cmd_register_write(&register::S1, s1)?;
 
         Ok(())
     }
@@ -533,24 +564,23 @@ impl InnerRiscvCommunicationInterface {
 
         // poll busy flag in abstractcs
 
-        let repeat_count = 10;
+        let start_time = Instant::now();
 
-        let mut abstractcs = Abstractcs(1);
+        let mut abstractcs: Abstractcs;
 
-        for _ in 0..repeat_count {
+        loop {
             abstractcs = self.read_dm_register()?;
 
             if !abstractcs.busy() {
                 break;
             }
+
+            if start_time.elapsed() > RISCV_TIMEOUT {
+                return Err(RiscvError::Timeout);
+            }
         }
 
         log::debug!("abstracts: {:?}", abstractcs);
-
-        // Abstract command still busy after timeout
-        if abstractcs.busy() {
-            return Err(RiscvError::Timeout);
-        }
 
         // check cmderr
         if abstractcs.cmderr() != 0 {
@@ -563,16 +593,19 @@ impl InnerRiscvCommunicationInterface {
     }
 
     // Read a core register using an abstract command
-    pub(crate) fn abstract_cmd_register_read(&mut self, regno: u32) -> Result<u32, RiscvError> {
+    pub(crate) fn abstract_cmd_register_read(
+        &mut self,
+        regno: impl Into<CoreRegisterAddress>,
+    ) -> Result<u32, RiscvError> {
         // GPR
 
         // read from data0
         let mut command = AccessRegisterCommand(0);
         command.set_cmd_type(0);
         command.set_transfer(true);
-        command.set_aarsize(2);
+        command.set_aarsize(RiscvBusAccess::A32);
 
-        command.set_regno(regno);
+        command.set_regno(regno.into().0 as u32);
 
         self.execute_abstract_command(command.0)?;
 
@@ -583,7 +616,7 @@ impl InnerRiscvCommunicationInterface {
 
     pub(crate) fn abstract_cmd_register_write(
         &mut self,
-        regno: u32,
+        regno: impl Into<CoreRegisterAddress>,
         value: u32,
     ) -> Result<(), RiscvError> {
         // write to data0
@@ -591,9 +624,9 @@ impl InnerRiscvCommunicationInterface {
         command.set_cmd_type(0);
         command.set_transfer(true);
         command.set_write(true);
-        command.set_aarsize(2);
+        command.set_aarsize(RiscvBusAccess::A32);
 
-        command.set_regno(regno);
+        command.set_regno(regno.into().0 as u32);
 
         // write data0
         self.write_dm_register(Data0(value))?;
@@ -606,13 +639,13 @@ impl InnerRiscvCommunicationInterface {
 
 impl MemoryInterface for InnerRiscvCommunicationInterface {
     fn read32(&mut self, address: u32) -> Result<u32, crate::Error> {
-        let result = self.perform_memory_read(address, 2)?;
+        let result = self.perform_memory_read(address, RiscvBusAccess::A32)?;
 
         Ok(result)
     }
 
     fn read8(&mut self, address: u32) -> Result<u8, crate::Error> {
-        let value = self.perform_memory_read(address, 0)?;
+        let value = self.perform_memory_read(address, RiscvBusAccess::A8)?;
 
         Ok((value & 0xff) as u8)
     }
@@ -634,13 +667,13 @@ impl MemoryInterface for InnerRiscvCommunicationInterface {
     }
 
     fn write32(&mut self, address: u32, data: u32) -> Result<(), crate::Error> {
-        self.perform_memory_write(address, 2, data)?;
+        self.perform_memory_write(address, RiscvBusAccess::A32, data)?;
 
         Ok(())
     }
 
     fn write8(&mut self, address: u32, data: u8) -> Result<(), crate::Error> {
-        self.perform_memory_write(address, 0, data as u32)?;
+        self.perform_memory_write(address, RiscvBusAccess::A8, data as u32)?;
 
         Ok(())
     }
@@ -660,7 +693,26 @@ impl MemoryInterface for InnerRiscvCommunicationInterface {
     }
 }
 
+/// Access width for bus access.
+/// This is used both for system bus access (`sbcs` register),
+/// as well for abstract commands.
+#[derive(Copy, Clone, Debug)]
+pub enum RiscvBusAccess {
+    A8 = 0,
+    A16 = 1,
+    A32 = 2,
+    A64 = 3,
+    A128 = 4,
+}
+
+impl From<RiscvBusAccess> for u8 {
+    fn from(value: RiscvBusAccess) -> Self {
+        value as u8
+    }
+}
+
 bitfield! {
+    /// The `dtmcs` register is
     struct Dtmcs(u32);
     impl Debug;
 
@@ -672,6 +724,21 @@ bitfield! {
     version, _: 3,0;
 }
 
+/// Address of the `dtmcs` JTAG register.
+const DTMCS_ADDRESS: u32 = 0x10;
+
+/// Width of the `dtmcs` JTAG register.
+const DTMCS_WIDTH: u32 = 32;
+
+/// Address of the `dmi` JTAG register
+const DMI_ADDRESS: u32 = 0x11;
+
+/// Offset of the `address` field in the `dmi` JTAG register.
+const DMI_ADDRESS_BIT_OFFSET: u32 = 34;
+
+/// Offset of the `value` field in the `dmi` JTAG register.
+const DMI_VALUE_BIT_OFFSET: u32 = 2;
+
 bitfield! {
     /// Abstract command register, located at address 0x17
     /// This is not for all commands, only for the ones
@@ -679,7 +746,7 @@ bitfield! {
     pub struct AccessRegisterCommand(u32);
     impl Debug;
     pub _, set_cmd_type: 31, 24;
-    pub _, set_aarsize: 22, 20;
+    pub u8, from into RiscvBusAccess, _, set_aarsize: 22, 20;
     pub _, set_aarpostincrement: 19;
     pub _, set_postexec: 18;
     pub _, set_transfer: 17;
