@@ -24,7 +24,7 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub(crate) enum RiscvError {
-    #[error("Error during write/read to dmi register: {0:?}")]
+    #[error("Error during read/write to the DMI register: {0:?}")]
     DmiTransfer(DmiOperationStatus),
     #[error("Debug Probe Error: {0}")]
     DebugProbe(#[from] DebugProbeError),
