@@ -136,7 +136,7 @@ struct InnerArmCommunicationInterface {
 
 impl InnerArmCommunicationInterface {
     fn new(probe: Probe) -> Result<Self, DebugProbeError> {
-        // TODO: It would be nice if could store a DapInterface directly, so we don't have to get
+        // TODO: It would be nice if we could store a DapInterface directly, so we don't have to get
         //       it everytime we want to access it.
         if probe.get_interface_dap().is_none() {
             return Err(DebugProbeError::InterfaceNotAvailable("ARM"));
