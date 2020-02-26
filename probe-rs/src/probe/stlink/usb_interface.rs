@@ -34,7 +34,7 @@ lazy_static! {
 }
 
 /// A helper struct to match STLink deviceinfo.
-#[derive(Clone, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct STLinkInfo {
     pub version_name: String,
     pub usb_pid: u16,
@@ -64,6 +64,15 @@ impl STLinkInfo {
 pub(super) struct STLinkUSBDevice {
     device_handle: DeviceHandle<rusb::Context>,
     info: STLinkInfo,
+}
+
+impl std::fmt::Debug for STLinkUSBDevice {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        fmt.debug_struct("STLinkUSBDevice")
+            .field("device_handle", &"DeviceHandle<rusb::Context>")
+            .field("info", &self.info)
+            .finish()
+    }
 }
 
 impl STLinkUSBDevice {
