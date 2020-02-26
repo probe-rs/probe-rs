@@ -28,8 +28,13 @@ impl Riscv32 {
     }
 
     fn read_csr(&self, address: u16) -> Result<u32, RiscvError> {
-        let s0 = self.interface.abstract_cmd_register_read(0x1008)?;
+        let s0 = self.interface.abstract_cmd_register_read(&register::S0)?;
 
+        // We need to perform the csrr instruction, which reads a CSR.
+        // This is a pseudo instruction, which actually is encoded as a
+        // csrrs instruction, with the rs1 register being x0,
+        // so no bits are changed in the CSR, but the CSR is read into rd, i.e. s0.
+        //
         // csrrs,
         // with rd  = s0
         //      rs1 = x0
@@ -51,28 +56,33 @@ impl Riscv32 {
 
         self.interface.execute_abstract_command(postexec_cmd.0)?;
 
-        // command: transfer, regno = 0x1008
-        let reg_value = self.interface.abstract_cmd_register_read(0x1008)?;
+        // read the s0 value
+        let reg_value = self.interface.abstract_cmd_register_read(&register::S0)?;
 
         // restore original value in s0
-        self.interface.abstract_cmd_register_write(0x1008, s0)?;
+        self.interface
+            .abstract_cmd_register_write(&register::S0, s0)?;
 
         Ok(reg_value)
     }
 
     fn write_csr(&self, address: u16, value: u32) -> Result<(), RiscvError> {
         // Backup register s0
-        let s0 = self.interface.abstract_cmd_register_read(0x1008)?;
+        let s0 = self.interface.abstract_cmd_register_read(&register::S0)?;
 
+        // We need to perform the csrw instruction, which writes a CSR.
+        // This is a pseudo instruction, which actually is encoded as a
+        // csrrw instruction, with the destination register being x0,
+        // so the read is ignored.
+        //
         // csrrw,
         // with rd  = x0
         //      rs1 = s0
         //      csr = address
 
-        // 0x7b041073
-
         // Write value into s0
-        self.interface.abstract_cmd_register_write(0x1008, value)?;
+        self.interface
+            .abstract_cmd_register_write(&register::S0, value)?;
 
         let mut csrrw_cmd: u32 = 0b_01000_001_00000_1110011;
         csrrw_cmd |= ((address as u32) & 0xfff) << 20;
@@ -92,7 +102,8 @@ impl Riscv32 {
 
         // command: transfer, regno = 0x1008
         // restore original value in s0
-        self.interface.abstract_cmd_register_write(0x1008, s0)?;
+        self.interface
+            .abstract_cmd_register_write(&register::S0, s0)?;
 
         Ok(())
     }
@@ -332,9 +343,7 @@ impl CoreInterface for Riscv32 {
         // if it is a gpr (general purpose register) read using an abstract command,
         // otherwise, use the program buffer
         if address.0 >= 0x1000 && address.0 <= 0x101f {
-            let value = self
-                .interface
-                .abstract_cmd_register_read(address.0 as u32)?;
+            let value = self.interface.abstract_cmd_register_read(address)?;
             Ok(value)
         } else {
             let reg_value = self.read_csr(address.0)?;
@@ -348,8 +357,7 @@ impl CoreInterface for Riscv32 {
         value: u32,
     ) -> Result<(), crate::Error> {
         if address.0 >= 0x1000 && address.0 <= 0x101f {
-            self.interface
-                .abstract_cmd_register_write(address.0 as u32, value)?;
+            self.interface.abstract_cmd_register_write(address, value)?;
         } else {
             self.write_csr(address.0, value)?;
         }
