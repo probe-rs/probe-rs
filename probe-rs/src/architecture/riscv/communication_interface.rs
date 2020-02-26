@@ -95,7 +95,7 @@ enum DebugModuleVersion {
     NonConforming = 15,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct RiscvCommunicationInterface {
     inner: Rc<RefCell<InnerRiscvCommunicationInterface>>,
 }
@@ -143,11 +143,10 @@ impl RiscvCommunicationInterface {
         self.inner.borrow_mut().read_idcode()
     }
 
-    pub fn close(self) -> Probe {
-        match Rc::try_unwrap(self.inner) {
-            Ok(inner) => inner.into_inner().probe,
-            Err(_) => panic!("Failed to unwrap RiscvCommunicationInterface"),
-        }
+    pub fn close(self) -> Result<Probe, Self> {
+        Rc::try_unwrap(self.inner)
+            .map(|cell| cell.into_inner().probe)
+            .map_err(|e| RiscvCommunicationInterface { inner: e })
     }
 
     pub fn memory(&self) -> Memory {
@@ -182,6 +181,7 @@ impl MemoryInterface for RiscvCommunicationInterface {
     }
 }
 
+#[derive(Debug)]
 struct InnerRiscvCommunicationInterface {
     probe: Probe,
     abits: u32,
@@ -296,8 +296,7 @@ impl InnerRiscvCommunicationInterface {
         });
 
         // Verify that the transfer was ok
-
-        let op = (response_value & 0x3) as u8;
+        let op = (response_value & DMI_OP_MASK) as u8;
 
         if op != 0 {
             return Err(RiscvError::DmiTransfer(
@@ -738,6 +737,8 @@ const DMI_ADDRESS_BIT_OFFSET: u32 = 34;
 
 /// Offset of the `value` field in the `dmi` JTAG register.
 const DMI_VALUE_BIT_OFFSET: u32 = 2;
+
+const DMI_OP_MASK: u128 = 0x3;
 
 bitfield! {
     /// Abstract command register, located at address 0x17
