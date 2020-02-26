@@ -51,6 +51,8 @@ pub enum DebugProbeError {
     InterfaceNotAvailable(&'static str),
     #[error("An error occured while working with the registry occured: {0}")]
     Registry(#[from] RegistryError),
+    #[error("Tryied to close interface while it was still in use.")]
+    InterfaceInUse,
 }
 
 /// The Probe struct is a generic wrapper over the different
@@ -69,6 +71,7 @@ pub enum DebugProbeError {
 /// let probe_list = Probe::list_all();
 /// let probe = Probe::from_probe_info(&probe_list[0]);
 /// ```
+#[derive(Debug)]
 pub struct Probe {
     inner: Box<dyn DebugProbe>,
 }
@@ -237,7 +240,7 @@ impl Probe {
     }
 }
 
-pub trait DebugProbe: Send + Sync {
+pub trait DebugProbe: Send + Sync + fmt::Debug {
     fn new_from_probe_info(info: &DebugProbeInfo) -> Result<Box<Self>, DebugProbeError>
     where
         Self: Sized;
@@ -325,7 +328,7 @@ impl DebugProbeInfo {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct FakeProbe;
 
 impl DebugProbe for FakeProbe {

@@ -11,6 +11,7 @@ use crate::probe::{
     WireProtocol,
 };
 
+#[derive(Debug)]
 pub(crate) struct JLink {
     handle: Mutex<JayLink>,
 

@@ -14,6 +14,7 @@ use scroll::{Pread, BE};
 use thiserror::Error;
 use usb_interface::TIMEOUT;
 
+#[derive(Debug)]
 pub struct STLink {
     device: STLinkUSBDevice,
     hw_version: u8,

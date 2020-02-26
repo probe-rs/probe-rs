@@ -57,7 +57,8 @@ impl Session {
                         }
                     };
 
-                    generic_probe = Some(arm_interface.close());
+                    // This will always work, the interface is created and used only in this function
+                    generic_probe = Some(arm_interface.close().unwrap());
                 } else {
                     log::debug!("No DAP interface available on Probe");
                 }
@@ -72,7 +73,8 @@ impl Session {
 
                     // TODO: Implement autodetect for RISC-V
 
-                    generic_probe = Some(riscv_interface.close());
+                    // This will always work, the interface is created and used only in this function
+                    generic_probe = Some(riscv_interface.close().unwrap());
                 }
 
                 if let Some(chip) = found_chip {
