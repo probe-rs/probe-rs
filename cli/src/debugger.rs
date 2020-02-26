@@ -111,7 +111,7 @@ impl DebugCli {
 
         cli.add_command(Command {
             name: "write",
-            help_text: "Write 32bit value to memory",
+            help_text: "Write a 32bit value to memory",
 
             function: |cli_data, args| {
                 let address_str = args.get(0).ok_or(CliError::MissingArgument)?;
