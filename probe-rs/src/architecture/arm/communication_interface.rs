@@ -294,13 +294,13 @@ impl InnerArmCommunicationInterface {
             .probe
             .get_interface_dap_mut()
             .ok_or_else(|| DebugProbeError::InterfaceNotAvailable("ARM"))?;
-        
+
         interface.read_block(
             PortType::AccessPort(u16::from(self.current_apsel)),
             u16::from(R::ADDRESS),
             values,
         )?;
-        
+
         Ok(())
     }
 

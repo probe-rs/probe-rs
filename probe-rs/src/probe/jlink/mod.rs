@@ -7,13 +7,13 @@ use std::iter;
 use std::sync::Mutex;
 
 use crate::{
+    architecture::arm::dp::{Abort, Ctrl, DPIDR},
     architecture::arm::PortType,
+    architecture::arm::Register,
     probe::{
         DAPAccess, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeType, JTAGAccess,
         WireProtocol,
     },
-    architecture::arm::dp::{Ctrl, Abort, DPIDR},
-    architecture::arm::Register,
 };
 
 pub(crate) struct JLink {
@@ -372,16 +372,17 @@ impl DebugProbe for JLink {
                 let idcode = u32::from_le_bytes((&idcode_bytes[..]).try_into().unwrap());
 
                 log::debug!("IDCODE: {:#010x}", idcode);
-            },
+            }
             WireProtocol::Swd => {
                 // Get the JLink device handle.
                 let jlink = self.handle.get_mut().unwrap();
 
                 // Construct the JTAG to SWD sequence.
                 let jtag_to_swd_sequence = [
-                    false, true, true, true, true, false, false, true, true, true, true, false, false, true, true, true
+                    false, true, true, true, true, false, false, true, true, true, true, false,
+                    false, true, true, true,
                 ];
-                
+
                 // Construct the entire init sequence.
                 let swd_io_sequence =
                     // Send the reset sequence (> 50 0-bits).    
@@ -417,7 +418,9 @@ impl DebugProbe for JLink {
                 log::debug!("Successfully read DPIDR. SWD init successful.");
                 log::debug!(
                     "Manufacturer is {} with part_no={} and revision={}",
-                    jep106::JEP106Code::new(dpidr.jep_cc(), dpidr.jep_id()).get().unwrap_or("Unknown JEP106 code."),
+                    jep106::JEP106Code::new(dpidr.jep_cc(), dpidr.jep_id())
+                        .get()
+                        .unwrap_or("Unknown JEP106 code."),
                     dpidr.part_no(),
                     dpidr.revision(),
                 );
@@ -426,13 +429,23 @@ impl DebugProbe for JLink {
                 let mut abort = Abort::default();
                 abort.set_orunerrclr(true);
                 abort.set_wderrclr(true);
-                DAPAccess::write_register(self, PortType::DebugPort, Abort::ADDRESS as u16, abort.into())?;
+                DAPAccess::write_register(
+                    self,
+                    PortType::DebugPort,
+                    Abort::ADDRESS as u16,
+                    abort.into(),
+                )?;
 
                 // Enable & power up all debug facilities.
                 let mut ctrl = Ctrl::default();
                 ctrl.set_cdbgpwrupack(true);
                 ctrl.set_cdbgpwrupreq(true);
-                DAPAccess::write_register(self, PortType::DebugPort, Ctrl::ADDRESS as u16, ctrl.into())?;
+                DAPAccess::write_register(
+                    self,
+                    PortType::DebugPort,
+                    Ctrl::ADDRESS as u16,
+                    ctrl.into(),
+                )?;
 
                 // We are ready to debug.
             }
@@ -544,7 +557,6 @@ impl DAPAccess for JLink {
             // First we make sure we have the SDWIO line on idle for at least 2 clock cylces.
             false, // Line idle.
             false, // Line idle.
-
             // Then we assemble the actual request.
             true,                  // Start bit (always 1).
             port,                  // APnDP (0 for DP, 1 for AP).
@@ -554,11 +566,9 @@ impl DAPAccess for JLink {
             port ^ true ^ a2 ^ a3, // Odd parity bit over APnDP, RnW a2 and a3
             false,                 // Stop bit (always 0).
             true,                  // Park bit (always 1).
-
             // Theoretically the spec says that there is a turnaround bit required here, where no clock is driven.
             // This seems to not be the case in actual implementations. So we do not insert this bit either!
             // false,                 // Turnaround bit.
-
             false, // ACK bit.
             false, // ACK bit.
             false, // ACK bit.
@@ -570,8 +580,8 @@ impl DAPAccess for JLink {
         }
 
         // Assemble the direction sequence.
-        let direction =
-            iter::repeat(true).take(2) // Transmit 2 Line idle bits.
+        let direction = iter::repeat(true)
+            .take(2) // Transmit 2 Line idle bits.
             .chain(iter::repeat(true).take(8)) // Transmit 8 Request bits
             // Here *should* be a Trn bit, but since something with the spec is akward we leave it away.
             // See comments above!
@@ -609,9 +619,13 @@ impl DAPAccess for JLink {
 
                 // To get a clue about the actual fault we read the ctrl register,
                 // which will have the fault status flags set.
-                let response = DAPAccess::read_register(self, PortType::DebugPort, Ctrl::ADDRESS as u16)?;
+                let response =
+                    DAPAccess::read_register(self, PortType::DebugPort, Ctrl::ADDRESS as u16)?;
                 let ctrl = Ctrl::from(response);
-                log::error!("Reading DAP register failed. Ctrl/Stat register value is: {:#?}", ctrl);
+                log::error!(
+                    "Reading DAP register failed. Ctrl/Stat register value is: {:#?}",
+                    ctrl
+                );
 
                 return Err(DebugProbeError::Unknown);
             }
@@ -621,7 +635,7 @@ impl DAPAccess for JLink {
             if port {
                 // We read the RDBUFF register to get the value of the last AP transaction.
                 // This special register just returns the last read value with no side-effects like auto-increment.
-                return DAPAccess::read_register(self, PortType::DebugPort, 0x0C)
+                return DAPAccess::read_register(self, PortType::DebugPort, 0x0C);
             } else {
                 // Take the data bits and convert them into a 32bit int.
                 let register_val = result_sequence.split_off(32);
@@ -639,8 +653,8 @@ impl DAPAccess for JLink {
                 } else {
                     log::error!("DAP read fault.");
                     Err(DebugProbeError::Unknown)
-                }
-                
+                };
+
                 // Don't care about the Trn bit at the end.
             }
         }
@@ -650,7 +664,12 @@ impl DAPAccess for JLink {
         Err(DebugProbeError::Timeout)
     }
 
-    fn write_register(&mut self, port: PortType, address: u16, mut value: u32) -> Result<(), DebugProbeError> {
+    fn write_register(
+        &mut self,
+        port: PortType,
+        address: u16,
+        mut value: u32,
+    ) -> Result<(), DebugProbeError> {
         // JLink operates on raw SWD bit sequences.
         // So we need to manually assemble the read and write bitsequences.
         // The following code with the comments hopefully explains well enough how it works.
@@ -673,29 +692,25 @@ impl DAPAccess for JLink {
         let mut swd_io_sequence = vec![
             false, // Line idle.
             false, // Line idle.
-
             // Then we assemble the actual request.
-            true,                  // Start bit (always 1).
-            port,                  // APnDP (0 for DP, 1 for AP).
+            true,                   // Start bit (always 1).
+            port,                   // APnDP (0 for DP, 1 for AP).
             false,                  // RnW (0 for Write, 1 for Read).
-            a2,                    // Address bit 2.
-            a3,                    // Address bit 3,
+            a2,                     // Address bit 2.
+            a3,                     // Address bit 3,
             port ^ false ^ a2 ^ a3, // Odd parity bit over ApnDP, RnW a2 and a3
-            false,                 // Stop bit (always 0).
-            true,                  // Park bit (always 1).
-
+            false,                  // Stop bit (always 0).
+            true,                   // Park bit (always 1).
             // Theoretically the spec says that there is a turnaround bit required here, where no clock is driven.
             // This seems to not be the case in actual implementations. So we do not insert this bit either!
             // false,                 // Turnaround bit.
-
             false, // ACK bit.
             false, // ACK bit.
             false, // ACK bit.
-
             // Theoretically the spec says that there is only one turnaround bit required here, where no clock is driven.
             // This seems to not be the case in actual implementations. So we insert two turnaround bits here!
-            false,                 // Turnaround bit.
-            false,                 // Turnaround bit.
+            false, // Turnaround bit.
+            false, // Turnaround bit.
         ];
 
         // Now we add all the data bits to the sequence and in the same loop we also calculate the parity bit.
@@ -711,8 +726,8 @@ impl DAPAccess for JLink {
         swd_io_sequence.push(parity);
 
         // Assemble the direction sequence.
-        let direction =
-            iter::repeat(true).take(2) // Transmit 2 Line idle bits.
+        let direction = iter::repeat(true)
+            .take(2) // Transmit 2 Line idle bits.
             .chain(iter::repeat(true).take(8)) // Transmit 8 Request bits
             // Here *should* be a Trn bit, but since something with the spec is akward we leave it away.
             // See comments above!
@@ -750,17 +765,21 @@ impl DAPAccess for JLink {
 
                 // To get a clue about the actual fault we read the ctrl register,
                 // which will have the fault status flags set.
-                let response = DAPAccess::read_register(self, PortType::DebugPort, Ctrl::ADDRESS as u16)?;
+                let response =
+                    DAPAccess::read_register(self, PortType::DebugPort, Ctrl::ADDRESS as u16)?;
                 let ctrl = Ctrl::from(response);
-                log::error!("Writing DAP register failed. Ctrl/Stat register value is: {:#?}", ctrl);
+                log::error!(
+                    "Writing DAP register failed. Ctrl/Stat register value is: {:#?}",
+                    ctrl
+                );
 
                 return Err(DebugProbeError::Unknown);
             }
-            
+
             // Since this is a write request, we don't care about the part after the ack bits.
             // So we just discard the Trn + Data + Parity bits.
             log::trace!("DAP wrote {}.", value);
-            return Ok(())
+            return Ok(());
         }
 
         // If we land here, the DAP operation timed out.
