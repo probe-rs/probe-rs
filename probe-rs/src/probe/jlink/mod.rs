@@ -342,7 +342,7 @@ impl DebugProbe for JLink {
         let protocol = self.protocol.unwrap_or(WireProtocol::Jtag);
         self.select_protocol(protocol.clone())?;
 
-        println!("{:?}", protocol);
+        log::debug!("Attaching with protocol '{:?}'", protocol);
 
         match protocol {
             WireProtocol::Jtag => {
@@ -374,44 +374,67 @@ impl DebugProbe for JLink {
                 log::debug!("IDCODE: {:#010x}", idcode);
             },
             WireProtocol::Swd => {
+                // Get the JLink device handle.
                 let jlink = self.handle.get_mut().unwrap();
 
+                // Construct the JTAG to SWD sequence.
                 let jtag_to_swd_sequence = [
                     false, true, true, true, true, false, false, true, true, true, true, false, false, true, true, true
                 ];
                 
-                // Construct the init sequence
-                let direction = iter::repeat(true).take(64 + 16 + 64 + 10);
+                // Construct the entire init sequence.
                 let swd_io_sequence =
+                    // Send the reset sequence (> 50 0-bits).    
                     iter::repeat(true).take(64)
+                    // Send the JTAG to SWD sequence.
                     .chain(jtag_to_swd_sequence.iter().copied())
+                    // Send the reset sequence again in case we were in SWD mode already (> 50 0-bits).
                     .chain(iter::repeat(true).take(64))
+                    // Send 10 idle line bits.
                     .chain(iter::repeat(false).take(10));
 
-                // Send the init sequence.
-                let response: Vec<_> = jlink.swd_io(direction, swd_io_sequence)?.collect();
+                // Construct the direction sequence for reset sequence.
+                let direction =
+                    // Send the reset sequence (> 50 0-bits).    
+                    iter::repeat(true).take(64)
+                    // Send the JTAG to SWD sequence.
+                    .chain(iter::repeat(true).take(16))
+                    // Send the reset sequence again in case we were in SWD mode already (> 50 0-bits).
+                    .chain(iter::repeat(true).take(64))
+                    // Send 10 idle line bits.
+                    .chain(iter::repeat(true).take(10));
 
-                // Read the DPIDR register to complete the init sequence.
+                // Send the init sequence.
+                // We don't actually care about the response here.
+                // A read on the DPIDR will finalize the init procedure and tell us if it worked.
+                jlink.swd_io(direction, swd_io_sequence)?;
+
+                // So we read the DPIDR to complete the init sequence.
                 let response = DAPAccess::read_register(self, PortType::DebugPort, 0x0000)?;
 
+                // If we get to here, the init worked.
                 let dpidr = DPIDR(response);
-                println!("{:#?}", dpidr);
-                println!("{:?}", jep106::JEP106Code::new(dpidr.jep_cc(), dpidr.jep_id()));
+                log::debug!("Successfully read DPIDR. SWD init successful.");
+                log::debug!(
+                    "Manufacturer is {} with part_no={} and revision={}",
+                    jep106::JEP106Code::new(dpidr.jep_cc(), dpidr.jep_id()).get().unwrap_or("Unknown JEP106 code."),
+                    dpidr.part_no(),
+                    dpidr.revision(),
+                );
 
-                // Clear the abort flag.
+                // Clear all error flags in the abort register.
                 let mut abort = Abort::default();
                 abort.set_orunerrclr(true);
                 abort.set_wderrclr(true);
-                let response = DAPAccess::write_register(self, PortType::DebugPort, Abort::ADDRESS as u16, abort.into())?;
+                DAPAccess::write_register(self, PortType::DebugPort, Abort::ADDRESS as u16, abort.into())?;
 
+                // Enable & power up all debug facilities.
                 let mut ctrl = Ctrl::default();
                 ctrl.set_cdbgpwrupack(true);
                 ctrl.set_cdbgpwrupreq(true);
-                let response = DAPAccess::write_register(self, PortType::DebugPort, Ctrl::ADDRESS as u16, ctrl.into())?;
+                DAPAccess::write_register(self, PortType::DebugPort, Ctrl::ADDRESS as u16, ctrl.into())?;
 
-                let response = DAPAccess::read_register(self, PortType::DebugPort, Ctrl::ADDRESS as u16)?;
-
-                println!("KEK: {:?}", response);
+                // We are ready to debug.
             }
         }
 
@@ -519,8 +542,8 @@ impl DAPAccess for JLink {
         // Now we assemble an SWD read request.
         let mut swd_io_sequence = vec![
             // First we make sure we have the SDWIO line on idle for at least 2 clock cylces.
-            false, // Line IDLE.
-            false, // Line IDLE.
+            false, // Line idle.
+            false, // Line idle.
 
             // Then we assemble the actual request.
             true,                  // Start bit (always 1).
@@ -548,7 +571,7 @@ impl DAPAccess for JLink {
 
         // Assemble the direction sequence.
         let direction =
-            iter::repeat(true).take(2) // Transmit 2 Line IDLE bits.
+            iter::repeat(true).take(2) // Transmit 2 Line idle bits.
             .chain(iter::repeat(true).take(8)) // Transmit 8 Request bits
             // Here *should* be a Trn bit, but since something with the spec is akward we leave it away.
             // See comments above!
@@ -568,58 +591,90 @@ impl DAPAccess for JLink {
                 .unwrap()
                 .swd_io(direction.clone(), swd_io_sequence.iter().copied())?;
 
-            // Throw away the first  bits.
+            // Throw away the two idle bits.
             result_sequence.split_off(2);
+            // Throw away the request bits.
             result_sequence.split_off(8);
 
             // Get the ack.
-            let ack = result_sequence.by_ref().take(3).collect::<Vec<_>>();
+            let ack = result_sequence.split_off(3).collect::<Vec<_>>();
             if ack[1] {
                 // If ack[1] is set the host must retry the request. So let's do that right away!
                 retries += 1;
+                log::debug!("DAP line busy, retries remaining {}.", 5 - retries);
                 continue;
             }
             if ack[2] {
                 // A fault happened during operation.
 
+                // To get a clue about the actual fault we read the ctrl register,
+                // which will have the fault status flags set.
                 let response = DAPAccess::read_register(self, PortType::DebugPort, Ctrl::ADDRESS as u16)?;
                 let ctrl = Ctrl::from(response);
-                log::error!("Reading  DAP register failed. Ctrl/Stat: {:#?}", ctrl);
+                log::error!("Reading DAP register failed. Ctrl/Stat register value is: {:#?}", ctrl);
 
                 return Err(DebugProbeError::Unknown);
             }
 
-            // If we are reading an AP register we need to read it twice to get the actual result.
+            // If we are reading an AP register we only get the actual result in the next transaction.
+            // So we issue a special transaction to get the read value.
             if port {
-                // Read the RDBUFF register to get the value of the last AP transaction.
-                // This wont have any sideeffects on running AP facilities.
+                // We read the RDBUFF register to get the value of the last AP transaction.
+                // This special register just returns the last read value with no side-effects like auto-increment.
                 return DAPAccess::read_register(self, PortType::DebugPort, 0x0C)
             } else {
                 // Take the data bits and convert them into a 32bit int.
-                let register_val = result_sequence.by_ref().take(32);
+                let register_val = result_sequence.split_off(32);
                 let value = bits_to_byte(register_val);
-                return Ok(value);
-                // take the parity bit.
-                let parity = result_sequence.next().unwrap();
+
+                // Make sure the parity is correct.
+                return if let Some(parity) = result_sequence.next() {
+                    if (value.count_ones() % 2 == 1) == parity {
+                        log::trace!("DAP read {}.", value);
+                        Ok(value)
+                    } else {
+                        log::error!("DAP read fault.");
+                        Err(DebugProbeError::Unknown)
+                    }
+                } else {
+                    log::error!("DAP read fault.");
+                    Err(DebugProbeError::Unknown)
+                }
+                
                 // Don't care about the Trn bit at the end.
             }
         }
 
+        // If we land here, the DAP operation timed out.
+        log::error!("DAP read timeout.");
         Err(DebugProbeError::Timeout)
     }
 
     fn write_register(&mut self, port: PortType, address: u16, mut value: u32) -> Result<(), DebugProbeError> {
+        // JLink operates on raw SWD bit sequences.
+        // So we need to manually assemble the read and write bitsequences.
+        // The following code with the comments hopefully explains well enough how it works.
+        // `true` means `1` and `false` means `0` for the SWDIO sequence.
+        // `true` means `drive line` and `false` means `open drain` for the direction sequence.
+
+        // First we determine the APnDP bit.
         let port = match port {
             PortType::DebugPort => false,
             PortType::AccessPort(_) => true,
         };
+
+        // Then we determine the address bits.
+        // Only bits 2 and 3 are relevant as we use byte addressing but can only read 32bits
+        // which means we can skip bits 0 and 1. The ADI specification is defined like this.
         let a2 = (address >> 2) & 0x01 == 1;
         let a3 = (address >> 3) & 0x01 == 1;
 
+        // Now we assemble an SWD write request.
         let mut swd_io_sequence = vec![
-            false,
-            false,
+            false, // Line idle.
+            false, // Line idle.
 
+            // Then we assemble the actual request.
             true,                  // Start bit (always 1).
             port,                  // APnDP (0 for DP, 1 for AP).
             false,                  // RnW (0 for Write, 1 for Read).
@@ -629,17 +684,22 @@ impl DAPAccess for JLink {
             false,                 // Stop bit (always 0).
             true,                  // Park bit (always 1).
 
+            // Theoretically the spec says that there is a turnaround bit required here, where no clock is driven.
+            // This seems to not be the case in actual implementations. So we do not insert this bit either!
+            // false,                 // Turnaround bit.
+
             false, // ACK bit.
             false, // ACK bit.
             false, // ACK bit.
 
-
+            // Theoretically the spec says that there is only one turnaround bit required here, where no clock is driven.
+            // This seems to not be the case in actual implementations. So we insert two turnaround bits here!
             false,                 // Turnaround bit.
             false,                 // Turnaround bit.
         ];
 
+        // Now we add all the data bits to the sequence and in the same loop we also calculate the parity bit.
         let mut parity = false;
-
         for _ in 0..32 {
             let bit = value & 1 == 1;
             swd_io_sequence.push(bit);
@@ -647,46 +707,63 @@ impl DAPAccess for JLink {
             value >>= 1;
         }
 
-        swd_io_sequence.push(parity); // Parity bit.
+        // Then we add the parity bit just after the previously added data bits.
+        swd_io_sequence.push(parity);
 
-        let direction = iter::repeat(true)
-            .take(2 + 8)
-            .chain(iter::repeat(false).take(3 + 1 + 1)) // Ack, Trn, Trn
-            .chain(iter::repeat(true).take(32 + 1)); // Data, Parity
+        // Assemble the direction sequence.
+        let direction =
+            iter::repeat(true).take(2) // Transmit 2 Line idle bits.
+            .chain(iter::repeat(true).take(8)) // Transmit 8 Request bits
+            // Here *should* be a Trn bit, but since something with the spec is akward we leave it away.
+            // See comments above!
+            .chain(iter::repeat(false).take(3)) // Receive 3 Ack bits.
+            .chain(iter::repeat(false).take(2)) // Transmit 2 Turnaround bits.
+            .chain(iter::repeat(true).take(32)) // Transmit 32 Data bits.
+            .chain(iter::repeat(true).take(1)); // Transmit 1 Parity bit.
 
+        // Now we try to issue the request until it fails or succeeds.
+        // If we timeout we retry a maximum of 5 times.
         let mut retries = 0;
-        // We will timeout after 50 retries.
         while retries < 5 {
-            let result_sequence = self
+            // Transmit the sequence and record the line sequence for the ack and data bits.
+            let mut result_sequence = self
                 .handle
                 .get_mut()
                 .unwrap()
                 .swd_io(direction.clone(), swd_io_sequence.iter().copied())?;
 
+            // Throw away the two idle bits.
+            result_sequence.split_off(2);
+            // Throw away the request bits.
+            result_sequence.split_off(8);
+
             // Get the ack.
-            let ack = result_sequence
-                // Throw away the first 2 + 8 bits.
-                .skip(2 + 8)
-                // Get the 3 ack bits.
-                .take(3)
-                .collect::<Vec<_>>();
-            
+            let ack = result_sequence.by_ref().take(3).collect::<Vec<_>>();
             if ack[1] {
-                // If ack[1] is set the host must retry the request. So let's do that right awayt!
+                // If ack[1] is set the host must retry the request. So let's do that right away!
                 retries += 1;
+                log::debug!("DAP line busy, retries remaining {}.", 5 - retries);
                 continue;
             }
             if ack[2] {
+                // A fault happened during operation.
+
+                // To get a clue about the actual fault we read the ctrl register,
+                // which will have the fault status flags set.
                 let response = DAPAccess::read_register(self, PortType::DebugPort, Ctrl::ADDRESS as u16)?;
                 let ctrl = Ctrl::from(response);
-                log::error!("Writing  DAP register failed. Ctrl/Stat: {:#?}", ctrl);
-                // A fault happened during operation.
+                log::error!("Writing DAP register failed. Ctrl/Stat register value is: {:#?}", ctrl);
+
                 return Err(DebugProbeError::Unknown);
             }
-            // Don't care about Trn + Data + Parity bits.
+            
+            // Since this is a write request, we don't care about the part after the ack bits.
+            // So we just discard the Trn + Data + Parity bits.
+            log::trace!("DAP wrote {}.", value);
             return Ok(())
         }
 
+        // If we land here, the DAP operation timed out.
         log::error!("DAP write timeout.");
         Err(DebugProbeError::Timeout)
     }

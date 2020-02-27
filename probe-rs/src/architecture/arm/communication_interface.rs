@@ -289,19 +289,18 @@ impl InnerArmCommunicationInterface {
         );
 
         self.select_ap_and_ap_bank(port.get_port_number(), R::APBANKSEL)?;
-        println!("1");
 
         let interface = self
             .probe
             .get_interface_dap_mut()
             .ok_or_else(|| DebugProbeError::InterfaceNotAvailable("ARM"))?;
-        println!("2");
+        
         interface.read_block(
             PortType::AccessPort(u16::from(self.current_apsel)),
             u16::from(R::ADDRESS),
             values,
         )?;
-        println!("3");
+        
         Ok(())
     }
 
