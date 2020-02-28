@@ -33,29 +33,98 @@ impl From<u16> for CoreRegisterAddress {
         CoreRegisterAddress(value)
     }
 }
-
-#[allow(non_snake_case)]
-#[derive(Copy, Clone)]
-pub struct BasicRegisterAddresses {
-    pub R0: CoreRegisterAddress,
-    pub R1: CoreRegisterAddress,
-    pub R2: CoreRegisterAddress,
-    pub R3: CoreRegisterAddress,
-    pub R4: CoreRegisterAddress,
-    pub R5: CoreRegisterAddress,
-    pub R6: CoreRegisterAddress,
-    pub R7: CoreRegisterAddress,
-    pub R8: CoreRegisterAddress,
-    pub R9: CoreRegisterAddress,
-    pub PC: CoreRegisterAddress,
-    pub LR: CoreRegisterAddress,
-    pub SP: CoreRegisterAddress,
-    pub XPSR: CoreRegisterAddress,
-}
-
 #[derive(Debug, Clone)]
 pub struct CoreInformation {
     pub pc: u32,
+}
+
+#[derive(Debug, Clone)]
+pub struct RegisterDescription {
+    pub(crate) name: &'static str,
+    pub(crate) kind: RegisterKind,
+    pub(crate) address: CoreRegisterAddress,
+}
+
+impl RegisterDescription {
+    pub fn name(&self) -> &'static str {
+        self.name
+    }
+}
+
+impl From<RegisterDescription> for CoreRegisterAddress {
+    fn from(description: RegisterDescription) -> CoreRegisterAddress {
+        description.address
+    }
+}
+
+impl From<&RegisterDescription> for CoreRegisterAddress {
+    fn from(description: &RegisterDescription) -> CoreRegisterAddress {
+        description.address
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub(crate) enum RegisterKind {
+    General,
+    PC,
+}
+
+/// Register description for a core.
+
+#[derive(Debug)]
+pub struct RegisterFile {
+    pub(crate) platform_registers: &'static [RegisterDescription],
+
+    pub(crate) program_counter: &'static RegisterDescription,
+
+    pub(crate) stack_pointer: &'static RegisterDescription,
+
+    pub(crate) return_address: &'static RegisterDescription,
+
+    pub(crate) argument_registers: &'static [RegisterDescription],
+    pub(crate) result_registers: &'static [RegisterDescription],
+}
+
+impl RegisterFile {
+    pub fn registers(&self) -> impl Iterator<Item = &RegisterDescription> {
+        self.platform_registers.iter()
+    }
+
+    pub fn program_counter(&self) -> &RegisterDescription {
+        &self.program_counter
+    }
+
+    pub fn stack_pointer(&self) -> &RegisterDescription {
+        &self.stack_pointer
+    }
+
+    pub fn return_address(&self) -> &RegisterDescription {
+        &self.return_address
+    }
+
+    pub fn argument_register(&self, index: usize) -> &RegisterDescription {
+        &self.argument_registers[index]
+    }
+
+    pub fn get_argument_register(&self, index: usize) -> Option<&RegisterDescription> {
+        self.argument_registers.get(index)
+    }
+
+    pub fn result_register(&self, index: usize) -> &RegisterDescription {
+        &self.result_registers[index]
+    }
+
+    pub fn get_result_register(&self, index: usize) -> Option<&RegisterDescription> {
+        self.result_registers.get(index)
+    }
+
+    pub fn platform_register(&self, index: usize) -> &RegisterDescription {
+        &self.platform_registers[index]
+    }
+
+    pub fn get_platform_register(&self, index: usize) -> Option<&RegisterDescription> {
+        self.platform_registers.get(index)
+    }
 }
 
 pub trait CoreInterface {
@@ -106,7 +175,7 @@ pub trait CoreInterface {
 
     fn clear_breakpoint(&self, unit_index: usize) -> Result<(), error::Error>;
 
-    fn registers<'a>(&self) -> &'a BasicRegisterAddresses;
+    fn registers(&self) -> &'static RegisterFile;
 
     fn memory(&self) -> Memory;
     fn hw_breakpoints_enabled(&self) -> bool;
@@ -329,7 +398,7 @@ impl Core {
         self.inner.borrow_mut().enable_breakpoints(state)
     }
 
-    pub fn registers<'a>(&self) -> &'a BasicRegisterAddresses {
+    pub fn registers(&self) -> &'static RegisterFile {
         self.inner.borrow().registers()
     }
 

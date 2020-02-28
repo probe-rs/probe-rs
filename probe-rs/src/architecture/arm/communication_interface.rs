@@ -92,7 +92,7 @@ pub trait DAPAccess: DebugProbe {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct ArmCommunicationInterface {
     inner: Rc<RefCell<InnerArmCommunicationInterface>>,
 }
@@ -116,18 +116,17 @@ impl ArmCommunicationInterface {
         self.inner.borrow_mut().write_register_dp(offset, val)
     }
 
-    pub fn close(self) -> Probe {
+    pub fn close(self) -> Result<Probe, Self> {
         let inner = Rc::try_unwrap(self.inner);
 
         match inner {
-            Ok(inner) => inner.into_inner().probe,
-            Err(_) => {
-                panic!("Failed to close ArmCommunicationInterface");
-            }
+            Ok(inner) => Ok(inner.into_inner().probe),
+            Err(e) => Err(ArmCommunicationInterface { inner: e }),
         }
     }
 }
 
+#[derive(Debug)]
 struct InnerArmCommunicationInterface {
     probe: Probe,
     current_apsel: u8,
@@ -136,7 +135,7 @@ struct InnerArmCommunicationInterface {
 
 impl InnerArmCommunicationInterface {
     fn new(probe: Probe) -> Result<Self, DebugProbeError> {
-        // TODO: It would be nice if could store a DapInterface directly, so we don't have to get
+        // TODO: It would be nice if we could store a DapInterface directly, so we don't have to get
         //       it everytime we want to access it.
         if probe.get_interface_dap().is_none() {
             return Err(DebugProbeError::InterfaceNotAvailable("ARM"));

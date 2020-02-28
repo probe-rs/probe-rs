@@ -1,25 +1,25 @@
 //! Support for Cortex-M33
 //!
 
-use crate::core::Breakpoint;
 use crate::core::{
-    BasicRegisterAddresses, CoreInformation, CoreInterface, CoreRegister, CoreRegisterAddress,
+    CoreInformation, CoreInterface, CoreRegister, CoreRegisterAddress, RegisterFile,
 };
 use crate::error::Error;
 use crate::memory::Memory;
 use crate::DebugProbeError;
 
+use crate::architecture::arm::core::register;
+
 use bitfield::bitfield;
 
+use super::ARM_REGISTER_FILE;
 use crate::core::Architecture;
 use std::mem::size_of;
 
-#[derive(Clone)]
 pub struct M33 {
     memory: Memory,
 
     hw_breakpoints_enabled: bool,
-    active_breakpoints: Vec<Breakpoint>,
 }
 
 impl M33 {
@@ -27,7 +27,6 @@ impl M33 {
         Self {
             memory,
             hw_breakpoints_enabled: false,
-            active_breakpoints: vec![],
         }
     }
 
@@ -79,7 +78,7 @@ impl CoreInterface for M33 {
         self.wait_for_core_halted()?;
 
         // try to read the program counter
-        let pc_value = self.read_core_reg(REGISTERS.PC)?;
+        let pc_value = self.read_core_reg(register::PC.address)?;
 
         // get pc
         Ok(CoreInformation { pc: pc_value })
@@ -130,15 +129,15 @@ impl CoreInterface for M33 {
         self.wait_for_core_halted()?;
 
         const XPSR_THUMB: u32 = 1 << 24;
-        let xpsr_value = self.read_core_reg(REGISTERS.XPSR)?;
+        let xpsr_value = self.read_core_reg(register::XPSR.address)?;
         if xpsr_value & XPSR_THUMB == 0 {
-            self.write_core_reg(REGISTERS.XPSR, xpsr_value | XPSR_THUMB)?;
+            self.write_core_reg(register::XPSR.address, xpsr_value | XPSR_THUMB)?;
         }
 
         self.memory.write32(Demcr::ADDRESS, demcr_val.into())?;
 
         // try to read the program counter
-        let pc_value = self.read_core_reg(REGISTERS.PC)?;
+        let pc_value = self.read_core_reg(register::PC.address)?;
 
         // get pc
         Ok(CoreInformation { pc: pc_value })
@@ -159,7 +158,7 @@ impl CoreInterface for M33 {
         self.wait_for_core_halted()?;
 
         // try to read the program counter
-        let pc_value = self.read_core_reg(REGISTERS.PC)?;
+        let pc_value = self.read_core_reg(register::PC.address)?;
 
         // get pc
         Ok(CoreInformation { pc: pc_value })
@@ -230,8 +229,8 @@ impl CoreInterface for M33 {
         Ok(())
     }
 
-    fn registers<'a>(&self) -> &'a BasicRegisterAddresses {
-        &REGISTERS
+    fn registers(&self) -> &'static RegisterFile {
+        &ARM_REGISTER_FILE
     }
 
     fn clear_breakpoint(&self, bp_unit_index: usize) -> Result<(), Error> {
@@ -259,6 +258,7 @@ impl CoreInterface for M33 {
     }
 }
 
+/*
 pub const REGISTERS: BasicRegisterAddresses = BasicRegisterAddresses {
     R0: CoreRegisterAddress(0b0_0000),
     R1: CoreRegisterAddress(0b0_0001),
@@ -275,6 +275,7 @@ pub const REGISTERS: BasicRegisterAddresses = BasicRegisterAddresses {
     LR: CoreRegisterAddress(0b0_1110),
     XPSR: CoreRegisterAddress(0b1_0000),
 };
+*/
 
 bitfield! {
     #[derive(Copy, Clone)]

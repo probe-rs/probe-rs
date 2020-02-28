@@ -14,6 +14,7 @@ use scroll::{Pread, BE};
 use thiserror::Error;
 use usb_interface::TIMEOUT;
 
+#[derive(Debug)]
 pub struct STLink {
     device: STLinkUSBDevice,
     hw_version: u8,
@@ -48,8 +49,14 @@ impl DebugProbe for STLink {
         self.enter_idle()?;
 
         let param = match self.protocol {
-            WireProtocol::Jtag => commands::JTAG_ENTER_JTAG_NO_CORE_RESET,
-            WireProtocol::Swd => commands::JTAG_ENTER_SWD,
+            WireProtocol::Jtag => {
+                log::debug!("Switching protocol to JTAG");
+                commands::JTAG_ENTER_JTAG_NO_CORE_RESET
+            }
+            WireProtocol::Swd => {
+                log::debug!("Switching protocol to SWD");
+                commands::JTAG_ENTER_SWD
+            }
         };
         let protocol = self.protocol;
 

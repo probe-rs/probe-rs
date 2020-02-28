@@ -1,3 +1,9 @@
+use crate::core::RegisterDescription;
+use crate::{
+    core::{RegisterFile, RegisterKind},
+    CoreRegisterAddress,
+};
+
 macro_rules! data_register {
     ($i:ident, $addr:expr, $name:expr) => {
         struct $i(u32);
@@ -41,3 +47,165 @@ macro_rules! data_register {
         }
     };
 }
+
+static PC: RegisterDescription = RegisterDescription {
+    name: "pc",
+    kind: RegisterKind::PC,
+    /// This is a CSR register
+    address: CoreRegisterAddress(0x7b1),
+};
+
+static RA: RegisterDescription = RegisterDescription {
+    name: "ra",
+    kind: RegisterKind::General,
+    /// This is a CSR register
+    address: CoreRegisterAddress(0x1001),
+};
+
+static SP: RegisterDescription = RegisterDescription {
+    name: "sp",
+    kind: RegisterKind::General,
+    /// This is a CSR register
+    address: CoreRegisterAddress(0x1002),
+};
+
+pub static S0: RegisterDescription = RegisterDescription {
+    name: "s0",
+    kind: RegisterKind::General,
+    /// This is a CSR register
+    address: CoreRegisterAddress(0x1008),
+};
+
+pub static S1: RegisterDescription = RegisterDescription {
+    name: "s1",
+    kind: RegisterKind::General,
+    /// This is a CSR register
+    address: CoreRegisterAddress(0x1009),
+};
+
+pub(super) static RISCV_REGISTERS: RegisterFile = RegisterFile {
+    platform_registers: &[
+        RegisterDescription {
+            name: "x0",
+            kind: RegisterKind::General,
+            address: CoreRegisterAddress(0x1000),
+        },
+        RegisterDescription {
+            name: "x1",
+            kind: RegisterKind::General,
+            address: CoreRegisterAddress(0x1001),
+        },
+        RegisterDescription {
+            name: "x2",
+            kind: RegisterKind::General,
+            address: CoreRegisterAddress(0x1002),
+        },
+        RegisterDescription {
+            name: "x3",
+            kind: RegisterKind::General,
+            address: CoreRegisterAddress(0x1003),
+        },
+        RegisterDescription {
+            name: "x4",
+            kind: RegisterKind::General,
+            address: CoreRegisterAddress(0x1004),
+        },
+        RegisterDescription {
+            name: "x5",
+            kind: RegisterKind::General,
+            address: CoreRegisterAddress(0x1005),
+        },
+        RegisterDescription {
+            name: "x6",
+            kind: RegisterKind::General,
+            address: CoreRegisterAddress(0x1006),
+        },
+        RegisterDescription {
+            name: "x7",
+            kind: RegisterKind::General,
+            address: CoreRegisterAddress(0x1007),
+        },
+        RegisterDescription {
+            name: "x8",
+            kind: RegisterKind::General,
+            address: CoreRegisterAddress(0x1008),
+        },
+        RegisterDescription {
+            name: "x9",
+            kind: RegisterKind::General,
+            address: CoreRegisterAddress(0x1009),
+        },
+        RegisterDescription {
+            name: "x10",
+            kind: RegisterKind::General,
+            address: CoreRegisterAddress(0x1010),
+        },
+        RegisterDescription {
+            name: "x11",
+            kind: RegisterKind::General,
+            address: CoreRegisterAddress(0x1011),
+        },
+    ],
+
+    program_counter: &PC,
+
+    return_address: &RA,
+
+    stack_pointer: &SP,
+
+    argument_registers: &[
+        RegisterDescription {
+            name: "a0",
+            kind: RegisterKind::General,
+            address: CoreRegisterAddress(0x1010),
+        },
+        RegisterDescription {
+            name: "a1",
+            kind: RegisterKind::General,
+            address: CoreRegisterAddress(0x1011),
+        },
+        RegisterDescription {
+            name: "a2",
+            kind: RegisterKind::General,
+            address: CoreRegisterAddress(0x1012),
+        },
+        RegisterDescription {
+            name: "a3",
+            kind: RegisterKind::General,
+            address: CoreRegisterAddress(0x1013),
+        },
+        RegisterDescription {
+            name: "a4",
+            kind: RegisterKind::General,
+            address: CoreRegisterAddress(0x1014),
+        },
+        RegisterDescription {
+            name: "a5",
+            kind: RegisterKind::General,
+            address: CoreRegisterAddress(0x1015),
+        },
+        RegisterDescription {
+            name: "a6",
+            kind: RegisterKind::General,
+            address: CoreRegisterAddress(0x1016),
+        },
+        RegisterDescription {
+            name: "a7",
+            kind: RegisterKind::General,
+            address: CoreRegisterAddress(0x1017),
+        },
+    ],
+
+    result_registers: &[
+        RegisterDescription {
+            name: "a0",
+            kind: RegisterKind::General,
+            address: CoreRegisterAddress(0x1010),
+        },
+        RegisterDescription {
+            name: "a1",
+            kind: RegisterKind::General,
+            address: CoreRegisterAddress(0x1011),
+        },
+    ],
+};

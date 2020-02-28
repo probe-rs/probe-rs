@@ -46,17 +46,26 @@ impl Session {
                 if generic_probe.as_ref().unwrap().has_dap_interface() {
                     let mut arm_interface =
                         ArmCommunicationInterface::new(generic_probe.take().unwrap())?;
-                    found_chip = ArmChipInfo::read_from_rom_table(&mut arm_interface)
-                        .map(|option| option.map(ChipInfo::Arm))?;
 
-                    generic_probe = Some(arm_interface.close());
+                    found_chip = match ArmChipInfo::read_from_rom_table(&mut arm_interface)
+                        .map(|option| option.map(ChipInfo::Arm))
+                    {
+                        Ok(chip_info) => chip_info,
+                        Err(e) => {
+                            log::info!("Error during auto-detection of ARM chips: {}", e);
+                            None
+                        }
+                    };
+
+                    // This will always work, the interface is created and used only in this function
+                    generic_probe = Some(arm_interface.close().unwrap());
                 } else {
                     log::debug!("No DAP interface available on Probe");
                 }
 
-                if generic_probe.as_ref().unwrap().has_jtag_interface() {
+                if found_chip.is_none() && generic_probe.as_ref().unwrap().has_jtag_interface() {
                     let riscv_interface =
-                        RiscvCommunicationInterface::new(generic_probe.take().unwrap());
+                        RiscvCommunicationInterface::new(generic_probe.take().unwrap())?;
 
                     let idcode = riscv_interface.read_idcode();
 
@@ -64,7 +73,8 @@ impl Session {
 
                     // TODO: Implement autodetect for RISC-V
 
-                    generic_probe = Some(riscv_interface.close());
+                    // This will always work, the interface is created and used only in this function
+                    generic_probe = Some(riscv_interface.close().unwrap());
                 }
 
                 if let Some(chip) = found_chip {
@@ -82,7 +92,7 @@ impl Session {
                 ArchitectureSession::Arm(arm_interface)
             }
             Architecture::RISCV => {
-                let riscv_interface = RiscvCommunicationInterface::new(generic_probe.unwrap());
+                let riscv_interface = RiscvCommunicationInterface::new(generic_probe.unwrap())?;
                 ArchitectureSession::Riscv(riscv_interface)
             }
         };

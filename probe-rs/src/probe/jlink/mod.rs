@@ -16,6 +16,7 @@ use crate::{
     },
 };
 
+#[derive(Debug)]
 pub(crate) struct JLink {
     handle: Mutex<JayLink>,
 

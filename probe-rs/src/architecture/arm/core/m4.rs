@@ -1,12 +1,12 @@
-use crate::core::Breakpoint;
 use crate::core::{
-    BasicRegisterAddresses, CoreInformation, CoreInterface, CoreRegister, CoreRegisterAddress,
+    CoreInformation, CoreInterface, CoreRegister, CoreRegisterAddress, RegisterFile,
 };
 use crate::error::Error;
 use crate::memory::Memory;
 use crate::DebugProbeError;
 use bitfield::bitfield;
 
+use super::{register, ARM_REGISTER_FILE};
 use crate::core::Architecture;
 use std::mem::size_of;
 
@@ -280,32 +280,13 @@ impl FpCompX {
     }
 }
 
-pub const REGISTERS: BasicRegisterAddresses = BasicRegisterAddresses {
-    R0: CoreRegisterAddress(0b000_0000),
-    R1: CoreRegisterAddress(0b000_0001),
-    R2: CoreRegisterAddress(0b000_0010),
-    R3: CoreRegisterAddress(0b000_0011),
-    R4: CoreRegisterAddress(0b000_0100),
-    R5: CoreRegisterAddress(0b0_0101),
-    R6: CoreRegisterAddress(0b0_0110),
-    R7: CoreRegisterAddress(0b0_0111),
-    R8: CoreRegisterAddress(0b0_1000),
-    R9: CoreRegisterAddress(0b000_1001),
-    PC: CoreRegisterAddress(0b000_1111),
-    SP: CoreRegisterAddress(0b000_1101),
-    LR: CoreRegisterAddress(0b000_1110),
-    XPSR: CoreRegisterAddress(0b001_0000),
-};
-
 pub const MSP: CoreRegisterAddress = CoreRegisterAddress(0b000_1001);
 pub const PSP: CoreRegisterAddress = CoreRegisterAddress(0b000_1010);
 
-#[derive(Clone)]
 pub struct M4 {
     memory: Memory,
 
     hw_breakpoints_enabled: bool,
-    active_breakpoints: Vec<Breakpoint>,
 }
 
 impl M4 {
@@ -313,7 +294,6 @@ impl M4 {
         Self {
             memory,
             hw_breakpoints_enabled: false,
-            active_breakpoints: vec![],
         }
     }
 
@@ -397,7 +377,7 @@ impl CoreInterface for M4 {
         self.wait_for_core_halted()?;
 
         // try to read the program counter
-        let pc_value = self.read_core_reg(REGISTERS.PC)?;
+        let pc_value = self.read_core_reg(register::PC.address)?;
 
         // get pc
         Ok(CoreInformation { pc: pc_value })
@@ -429,7 +409,7 @@ impl CoreInterface for M4 {
         self.wait_for_core_halted()?;
 
         // try to read the program counter
-        let pc_value = self.read_core_reg(REGISTERS.PC)?;
+        let pc_value = self.read_core_reg(register::PC.address)?;
 
         // get pc
         Ok(CoreInformation { pc: pc_value })
@@ -470,15 +450,15 @@ impl CoreInterface for M4 {
         self.wait_for_core_halted()?;
 
         const XPSR_THUMB: u32 = 1 << 24;
-        let xpsr_value = self.read_core_reg(REGISTERS.XPSR)?;
+        let xpsr_value = self.read_core_reg(register::XPSR.address)?;
         if xpsr_value & XPSR_THUMB == 0 {
-            self.write_core_reg(REGISTERS.XPSR, xpsr_value | XPSR_THUMB)?;
+            self.write_core_reg(register::XPSR.address, xpsr_value | XPSR_THUMB)?;
         }
 
         self.memory.write32(Demcr::ADDRESS, demcr_val.into())?;
 
         // try to read the program counter
-        let pc_value = self.read_core_reg(REGISTERS.PC)?;
+        let pc_value = self.read_core_reg(register::PC.address)?;
 
         // get pc
         Ok(CoreInformation { pc: pc_value })
@@ -520,8 +500,8 @@ impl CoreInterface for M4 {
         Ok(())
     }
 
-    fn registers<'a>(&self) -> &'a BasicRegisterAddresses {
-        &REGISTERS
+    fn registers(&self) -> &'static RegisterFile {
+        &ARM_REGISTER_FILE
     }
 
     fn clear_breakpoint(&self, bp_unit_index: usize) -> Result<(), Error> {

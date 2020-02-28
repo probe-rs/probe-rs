@@ -40,6 +40,17 @@ pub struct DAPLink {
     packet_count: Option<u8>,
 }
 
+impl std::fmt::Debug for DAPLink {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        fmt.debug_struct("DAPLink")
+            .field("device", &"hidapi::HidDevice")
+            .field("protocol", &self.protocol)
+            .field("packet_size", &self.packet_size)
+            .field("packet_count", &self.packet_count)
+            .finish()
+    }
+}
+
 impl DAPLink {
     pub fn new_from_device(device: hidapi::HidDevice) -> Self {
         Self {

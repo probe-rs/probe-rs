@@ -7,9 +7,10 @@ use communication_interface::{
     RiscvError,
 };
 
-use crate::core::CoreInformation;
+use crate::core::{CoreInformation, RegisterFile};
 use crate::CoreRegisterAddress;
 use bitfield::bitfield;
+use register::RISCV_REGISTERS;
 
 #[macro_use]
 mod register;
@@ -27,8 +28,13 @@ impl Riscv32 {
     }
 
     fn read_csr(&self, address: u16) -> Result<u32, RiscvError> {
-        let s0 = self.interface.abstract_cmd_register_read(0x1008)?;
+        let s0 = self.interface.abstract_cmd_register_read(&register::S0)?;
 
+        // We need to perform the csrr instruction, which reads a CSR.
+        // This is a pseudo instruction, which actually is encoded as a
+        // csrrs instruction, with the rs1 register being x0,
+        // so no bits are changed in the CSR, but the CSR is read into rd, i.e. s0.
+        //
         // csrrs,
         // with rd  = s0
         //      rs1 = x0
@@ -50,28 +56,33 @@ impl Riscv32 {
 
         self.interface.execute_abstract_command(postexec_cmd.0)?;
 
-        // command: transfer, regno = 0x1008
-        let reg_value = self.interface.abstract_cmd_register_read(0x1008)?;
+        // read the s0 value
+        let reg_value = self.interface.abstract_cmd_register_read(&register::S0)?;
 
         // restore original value in s0
-        self.interface.abstract_cmd_register_write(0x1008, s0)?;
+        self.interface
+            .abstract_cmd_register_write(&register::S0, s0)?;
 
         Ok(reg_value)
     }
 
     fn write_csr(&self, address: u16, value: u32) -> Result<(), RiscvError> {
         // Backup register s0
-        let s0 = self.interface.abstract_cmd_register_read(0x1008)?;
+        let s0 = self.interface.abstract_cmd_register_read(&register::S0)?;
 
+        // We need to perform the csrw instruction, which writes a CSR.
+        // This is a pseudo instruction, which actually is encoded as a
+        // csrrw instruction, with the destination register being x0,
+        // so the read is ignored.
+        //
         // csrrw,
         // with rd  = x0
         //      rs1 = s0
         //      csr = address
 
-        // 0x7b041073
-
         // Write value into s0
-        self.interface.abstract_cmd_register_write(0x1008, value)?;
+        self.interface
+            .abstract_cmd_register_write(&register::S0, value)?;
 
         let mut csrrw_cmd: u32 = 0b_01000_001_00000_1110011;
         csrrw_cmd |= ((address as u32) & 0xfff) << 20;
@@ -91,7 +102,8 @@ impl Riscv32 {
 
         // command: transfer, regno = 0x1008
         // restore original value in s0
-        self.interface.abstract_cmd_register_write(0x1008, s0)?;
+        self.interface
+            .abstract_cmd_register_write(&register::S0, s0)?;
 
         Ok(())
     }
@@ -112,7 +124,7 @@ impl CoreInterface for Riscv32 {
             }
         }
 
-        todo!("Proper error for core halt timeout")
+        Err(RiscvError::Timeout.into())
     }
 
     fn core_halted(&self) -> Result<bool, crate::Error> {
@@ -151,7 +163,7 @@ impl CoreInterface for Riscv32 {
     }
 
     fn run(&self) -> Result<(), crate::Error> {
-        // test if core halted?
+        // TODO: test if core halted?
 
         // set resume request
         let mut dmcontrol = Dmcontrol(0);
@@ -164,7 +176,7 @@ impl CoreInterface for Riscv32 {
         let status: Dmstatus = self.interface.read_dm_register()?;
 
         if !status.allresumeack() {
-            todo!("Error, unable to resume")
+            return Err(RiscvError::RequestNotAcknowledged.into());
         };
 
         // clear resume request
@@ -221,7 +233,7 @@ impl CoreInterface for Riscv32 {
 
         if !readback.allhavereset() {
             log::warn!("Dmstatue: {:?}", readback);
-            todo!("Error: Not all harts have reset");
+            return Err(RiscvError::RequestNotAcknowledged.into());
         }
 
         // acknowledge the reset
@@ -281,7 +293,7 @@ impl CoreInterface for Riscv32 {
         let readback: Dmstatus = self.interface.read_dm_register()?;
 
         if !(readback.allhavereset() && readback.allhalted()) {
-            todo!("Error: Not all harts have reset and halted");
+            return Err(RiscvError::RequestNotAcknowledged.into());
         }
 
         // acknowledge the reset, clear the halt request
@@ -331,9 +343,7 @@ impl CoreInterface for Riscv32 {
         // if it is a gpr (general purpose register) read using an abstract command,
         // otherwise, use the program buffer
         if address.0 >= 0x1000 && address.0 <= 0x101f {
-            let value = self
-                .interface
-                .abstract_cmd_register_read(address.0 as u32)?;
+            let value = self.interface.abstract_cmd_register_read(address)?;
             Ok(value)
         } else {
             let reg_value = self.read_csr(address.0)?;
@@ -347,8 +357,7 @@ impl CoreInterface for Riscv32 {
         value: u32,
     ) -> Result<(), crate::Error> {
         if address.0 >= 0x1000 && address.0 <= 0x101f {
-            self.interface
-                .abstract_cmd_register_write(address.0 as u32, value)?;
+            self.interface.abstract_cmd_register_write(address, value)?;
         } else {
             self.write_csr(address.0, value)?;
         }
@@ -438,11 +447,14 @@ impl CoreInterface for Riscv32 {
 
         // verify the trigger has the correct type
 
-        let tdata_value = dbg!(Mcontrol(self.read_csr(tdata1)?));
+        let tdata_value = Mcontrol(self.read_csr(tdata1)?);
 
-        if tdata_value.type_() != 2 {
-            todo!("Error: Incorrect trigger type for address breakpoint");
-        }
+        // This should not happen
+        assert_eq!(
+            tdata_value.type_(),
+            2,
+            "Error: Incorrect trigger type for address breakpoint"
+        );
 
         // Setup the trigger
 
@@ -458,7 +470,7 @@ impl CoreInterface for Riscv32 {
 
         instruction_breakpoint.set_dmode(true);
 
-        self.write_csr(tdata1, dbg!(instruction_breakpoint).0)?;
+        self.write_csr(tdata1, instruction_breakpoint.0)?;
         self.write_csr(tdata2, addr)?;
 
         Ok(())
@@ -476,9 +488,10 @@ impl CoreInterface for Riscv32 {
         Ok(())
     }
 
-    fn registers<'a>(&self) -> &'a crate::core::BasicRegisterAddresses {
-        unimplemented!()
+    fn registers(&self) -> &'static RegisterFile {
+        &RISCV_REGISTERS
     }
+
     fn memory(&self) -> crate::Memory {
         self.interface.memory()
     }
