@@ -283,13 +283,6 @@ fn main_try() -> Result<(), failure::Error> {
     //     };
     // }
 
-    // TODO: Reenable once the ChipInfo API is fixed.
-    // let strategy = if let Some(identifier) = opt.chip.clone() {
-    //     SelectionStrategy::TargetIdentifier(identifier.into())
-    // } else {
-    //     SelectionStrategy::ChipInfo(ChipInfo::read_from_rom_table(&mut probe)?)
-    // };
-
     let session = probe.attach(chip)?;
     let core = session.attach_to_core(0)?;
 
