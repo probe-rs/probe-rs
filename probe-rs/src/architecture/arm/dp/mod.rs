@@ -60,6 +60,13 @@ bitfield! {
     pub _, set_dapabort: 1;
 }
 
+impl Default for Abort {
+    fn default() -> Self {
+        Abort(0)
+    }
+}
+
+
 impl From<u32> for Abort {
     fn from(raw: u32) -> Self {
         Abort(raw)
@@ -87,7 +94,7 @@ bitfield! {
     impl Debug;
     pub csyspwrupack, _: 31;
     pub csyspwrupreq, set_csyspwrupreq: 30;
-    pub cdbgpwrupack, _: 29;
+    pub cdbgpwrupack, set_cdbgpwrupack: 29;
     pub cdbgpwrupreq, set_cdbgpwrupreq: 28;
     pub cdbgrstack, _: 27;
     pub c_dbg_rst_req, set_c_dbg_rst_req: 26;
@@ -168,8 +175,8 @@ bitfield! {
     pub min, _: 16;
     pub u8, version, _: 15, 12;
     pub designer, _: 11, 1;
-    u8, jep_cc, _: 11, 8;
-    u8, jep_id, _: 7, 1;
+    pub u8, jep_cc, _: 11, 8;
+    pub u8, jep_id, _: 7, 1;
 }
 
 impl From<u32> for DPIDR {
