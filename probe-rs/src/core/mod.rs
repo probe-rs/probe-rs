@@ -9,8 +9,9 @@ use crate::{
         arm::{memory::ADIMemoryInterface, ArmCommunicationInterface},
         riscv::{communication_interface::RiscvCommunicationInterface, Riscv32},
     },
-    DebugProbeError, Error, Memory, MemoryInterface, Probe,
+    Error, MemoryInterface,
 };
+use crate::{DebugProbeError, Memory, Probe};
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -247,6 +248,7 @@ impl MemoryInterface for Core {
 
 #[derive(Copy, Clone)]
 pub enum CoreType {
+    M3,
     M4,
     M33,
     M0,
@@ -266,6 +268,10 @@ impl CoreType {
         };
 
         Ok(match self {
+            // TODO: Change this once the new archtecture structure for ARM hits.
+            // Cortex-M3 and M4 both use the Armv7[E]-M architecture and are
+            // identical for our purposes.
+            CoreType::M3 => Core::new(crate::architecture::arm::m4::M4::new(memory)),
             CoreType::M4 => Core::new(crate::architecture::arm::m4::M4::new(memory)),
             CoreType::M33 => Core::new(crate::architecture::arm::m33::M33::new(memory)),
             CoreType::M0 => Core::new(crate::architecture::arm::m0::M0::new(memory)),
