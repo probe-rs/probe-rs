@@ -312,16 +312,20 @@ impl InnerRiscvCommunicationInterface {
         Ok(value)
     }
 
-    pub(crate) fn read_dm_register<R: DebugRegister>(&mut self) -> Result<R, RiscvError> {
-        log::debug!("Reading DM register '{}' at {:#010x}", R::NAME, R::ADDRESS);
-
-        // TODO: parameter for this
+    /// Read or write the `dmi` register. If a busy value is rerurned, the access is
+    /// retried until the transfer either succeeds, or the tiemout expires.
+    fn dmi_register_access_with_timeout(
+        &mut self,
+        address: u64,
+        value: u32,
+        op: DmiOperation,
+        timeout: Duration,
+    ) -> Result<u32, RiscvError> {
         let start_time = Instant::now();
 
         loop {
-            // Prepare the read, answer will be read back in a second operation
-            match self.dmi_register_access(R::ADDRESS as u64, 0, DmiOperation::Read) {
-                Ok(_) => break,
+            match self.dmi_register_access(address, value, op) {
+                Ok(result) => return Ok(result),
                 Err(RiscvError::DmiTransfer(DmiOperationStatus::RequestInProgress)) => {
                     // Operation still in progress, reset dmi status and try again.
                     self.dmi_reset()?;
@@ -329,33 +333,26 @@ impl InnerRiscvCommunicationInterface {
                 Err(e) => return Err(e),
             }
 
-            if start_time.elapsed() > RISCV_TIMEOUT {
+            if start_time.elapsed() > timeout {
                 return Err(RiscvError::Timeout);
             }
         }
+    }
 
-        let response;
+    pub(crate) fn read_dm_register<R: DebugRegister>(&mut self) -> Result<R, RiscvError> {
+        log::debug!("Reading DM register '{}' at {:#010x}", R::NAME, R::ADDRESS);
 
-        loop {
-            // Perform the actual read
-            match self.dmi_register_access(0, 0, DmiOperation::NoOp) {
-                Ok(r) => {
-                    response = r;
-                    break;
-                }
-                Err(RiscvError::DmiTransfer(DmiOperationStatus::RequestInProgress)) => {
-                    // Operation still in progress, reset dmi status and try again.
-                    self.dmi_reset()?;
-                }
-                Err(e) => return Err(e),
-            }
+        // Prepare the read by sending a read request with the register address
+        self.dmi_register_access_with_timeout(
+            R::ADDRESS as u64,
+            0,
+            DmiOperation::Read,
+            RISCV_TIMEOUT,
+        )?;
 
-            if start_time.elapsed() > RISCV_TIMEOUT {
-                return Err(RiscvError::Timeout);
-            }
-        }
-
-        //let response = self.dmi_register_access(0, 0, DmiOperation::Read)?;
+        // Read back the response from the previous request.
+        let response =
+            self.dmi_register_access_with_timeout(0, 0, DmiOperation::NoOp, RISCV_TIMEOUT)?;
 
         log::debug!(
             "Read DM register '{}' at {:#010x} = {:#010x}",
@@ -382,7 +379,12 @@ impl InnerRiscvCommunicationInterface {
             data
         );
 
-        self.dmi_register_access(R::ADDRESS as u64, data, DmiOperation::Write)?;
+        self.dmi_register_access_with_timeout(
+            R::ADDRESS as u64,
+            data,
+            DmiOperation::Write,
+            RISCV_TIMEOUT,
+        )?;
 
         Ok(())
     }
@@ -911,6 +913,7 @@ impl DmiOperationStatus {
     }
 }
 
+#[derive(Copy, Clone, Debug)]
 enum DmiOperation {
     NoOp = 0,
     Read = 1,
