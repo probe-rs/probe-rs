@@ -101,12 +101,12 @@ pub struct RiscvCommunicationInterface {
 }
 
 impl RiscvCommunicationInterface {
-    pub fn new(probe: Probe) -> Self {
-        Self {
-            inner: Rc::new(RefCell::new(
-                InnerRiscvCommunicationInterface::build(probe).unwrap(),
-            )),
-        }
+    pub(crate) fn new(probe: Probe) -> Result<Self, RiscvError> {
+        Ok(Self {
+            inner: Rc::new(RefCell::new(InnerRiscvCommunicationInterface::build(
+                probe,
+            )?)),
+        })
     }
 
     pub(super) fn read_dm_register<R: DebugRegister>(&self) -> Result<R, RiscvError> {
@@ -213,6 +213,9 @@ impl InnerRiscvCommunicationInterface {
         jtag_interface.set_idle_cycles(idle_cycles as u8);
 
         let mut interface = InnerRiscvCommunicationInterface { probe, abits };
+
+        // Reset error bits from previous connections
+        interface.dmi_reset()?;
 
         // read the  version of the debug module
         let status: Dmstatus = interface.read_dm_register()?;

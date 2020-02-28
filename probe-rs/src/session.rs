@@ -65,7 +65,7 @@ impl Session {
 
                 if found_chip.is_none() && generic_probe.as_ref().unwrap().has_jtag_interface() {
                     let riscv_interface =
-                        RiscvCommunicationInterface::new(generic_probe.take().unwrap());
+                        RiscvCommunicationInterface::new(generic_probe.take().unwrap())?;
 
                     let idcode = riscv_interface.read_idcode();
 
@@ -92,7 +92,7 @@ impl Session {
                 ArchitectureSession::Arm(arm_interface)
             }
             Architecture::RISCV => {
-                let riscv_interface = RiscvCommunicationInterface::new(generic_probe.unwrap());
+                let riscv_interface = RiscvCommunicationInterface::new(generic_probe.unwrap())?;
                 ArchitectureSession::Riscv(riscv_interface)
             }
         };
