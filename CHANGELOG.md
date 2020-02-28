@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Flashing support for the STM32G0 series.
 - Flashing support for the STM32F0 series.
+- Added SWD support for the JLink.
 
 ### Changed
 
@@ -18,7 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   The core methods don't need a passed probe anymore. Instead it stores an Rc to the Session object internally. The Probe object is taken by the Session which then can attach to multiple cores.
   The modules have been cleaned up. Some heavily nested hierarchy has been flattened.$
 - More consistent and clean naming and reporting of errors in the stlink and daplink modules. Also the errorhandling for the probe has been improved.
-- Updated pretty_env_logger, gimly and goblin.
+- Updated pretty_env_logger, gimli and goblin
 
 ### Fixed
 
