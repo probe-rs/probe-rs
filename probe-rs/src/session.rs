@@ -36,7 +36,7 @@ impl Session {
             TargetSelector::Unspecified(name) => {
                 match crate::config::registry::get_target_by_name(name) {
                     Ok(target) => target,
-                    Err(err) => return Err(err)?,
+                    Err(err) => return Err(err.into()),
                 }
             }
             TargetSelector::Specified(target) => target,
@@ -106,7 +106,7 @@ impl Session {
     }
 
     pub fn list_cores(&self) -> CoreList {
-        CoreList::new(vec![self.inner.borrow().target.core_type.clone()])
+        CoreList::new(vec![self.inner.borrow().target.core_type])
     }
 
     pub fn attach_to_core(&self, n: usize) -> Result<Core, Error> {

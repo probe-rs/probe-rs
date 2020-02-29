@@ -32,6 +32,7 @@ pub fn run(input_dir: impl AsRef<Path>, output_file: impl AsRef<Path>) {
         quote::quote! {}
     } else {
         quote::quote! {
+            #[allow(unused_imports)]
             use jep106::JEP106Code;
             use crate::config::{Chip, RawFlashAlgorithm, FlashRegion, MemoryRegion, RamRegion, SectorDescription, FlashProperties};
             use maplit::hashmap;
