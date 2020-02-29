@@ -1,11 +1,16 @@
-use crate::common::open_probe;
-use crate::{common::CliError, SharedOptions};
-use probe_rs::architecture::arm::ap::{
-    valid_access_ports, APAccess, APClass, BaseaddrFormat, MemoryAP, BASE, BASE2, IDR,
+use crate::{
+    common::{open_probe, CliError},
+    SharedOptions,
 };
-use probe_rs::architecture::arm::memory::{ADIMemoryInterface, CSComponent};
-use probe_rs::architecture::arm::ArmCommunicationInterface;
-use probe_rs::Memory;
+
+use probe_rs::{
+    architecture::arm::{
+        ap::{valid_access_ports, APAccess, APClass, BaseaddrFormat, MemoryAP, BASE, BASE2, IDR},
+        memory::{ADIMemoryInterface, CSComponent},
+        ArmCommunicationInterface,
+    },
+    Memory,
+};
 
 pub(crate) fn show_info_of_device(shared_options: &SharedOptions) -> Result<(), CliError> {
     let probe = open_probe(shared_options.n)?;
@@ -44,6 +49,12 @@ pub(crate) fn show_info_of_device(shared_options: &SharedOptions) -> Result<(), 
 
             let base_register = interface.read_ap_register(access_port, BASE::default())?;
 
+            if !base_register.present {
+                // No debug entry present
+                println!("No debug entry present.");
+                continue;
+            }
+
             let mut baseaddr = if BaseaddrFormat::ADIv5 == base_register.Format {
                 let base2 = interface.read_ap_register(access_port, BASE2::default())?;
                 (u64::from(base2.BASEADDR) << 32)
@@ -54,7 +65,7 @@ pub(crate) fn show_info_of_device(shared_options: &SharedOptions) -> Result<(), 
 
             let memory = Memory::new(ADIMemoryInterface::<ArmCommunicationInterface>::new(
                 interface.clone(),
-                0,
+                access_port,
             ));
             let component_table = CSComponent::try_parse(memory, baseaddr as u64);
 

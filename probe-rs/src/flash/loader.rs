@@ -113,7 +113,7 @@ impl<'a, 'b> FlashLoader<'a, 'b> {
         // Iterate over builders we've created and program the data.
         for (region, builder) in &self.builders {
             log::debug!(
-                "Using builder for regioon (0x{:08x}..0x{:08x})",
+                "Using builder for region (0x{:08x}..0x{:08x})",
                 region.range.start,
                 region.range.end
             );

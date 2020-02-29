@@ -7,7 +7,6 @@ use self::usb_interface::STLinkUSBDevice;
 use super::{
     DAPAccess, DebugProbe, DebugProbeError, DebugProbeInfo, JTAGAccess, PortType, WireProtocol,
 };
-use crate::architecture::arm::{ap::AccessPort, dp::Ctrl, Register};
 use crate::Memory;
 use constants::{commands, JTagFrequencyToDivider, Mode, Status, SwdFrequencyToDelayCount};
 use scroll::{Pread, BE};
@@ -20,18 +19,20 @@ pub struct STLink {
     hw_version: u8,
     jtag_version: u8,
     protocol: WireProtocol,
+
+    /// Index of the AP which is currently open.
+    current_ap: Option<u16>,
 }
 
 impl DebugProbe for STLink {
-    fn new_from_probe_info(info: &DebugProbeInfo) -> Result<Box<Self>, DebugProbeError>
-    where
-        Self: Sized,
-    {
+    fn new_from_probe_info(info: &DebugProbeInfo) -> Result<Box<Self>, DebugProbeError> {
         let mut stlink = Self {
             device: STLinkUSBDevice::new_from_info(info)?,
             hw_version: 0,
             jtag_version: 0,
             protocol: WireProtocol::Swd,
+
+            current_ap: None,
         };
 
         stlink.init()?;
@@ -90,6 +91,7 @@ impl DebugProbe for STLink {
             &mut buf,
             TIMEOUT,
         )?;
+
         Self::check_status(&buf)
     }
 
@@ -126,6 +128,20 @@ impl DAPAccess for STLink {
     /// Reads the DAP register on the specified port and address.
     fn read_register(&mut self, port: PortType, addr: u16) -> Result<u32, DebugProbeError> {
         if (addr & 0xf0) == 0 || port != PortType::DebugPort {
+            if let PortType::AccessPort(port_number) = port {
+                if let Some(current_ap) = self.current_ap {
+                    if current_ap != port_number {
+                        self.close_ap(current_ap as u8)?;
+                        self.open_ap(port_number as u8)?;
+                    }
+                } else {
+                    // First time reading, open the AP
+                    self.open_ap(port_number as u8)?;
+                }
+
+                self.current_ap = Some(port_number);
+            }
+
             let port: u16 = port.into();
 
             let cmd = vec![
@@ -154,6 +170,20 @@ impl DAPAccess for STLink {
         value: u32,
     ) -> Result<(), DebugProbeError> {
         if (addr & 0xf0) == 0 || port != PortType::DebugPort {
+            if let PortType::AccessPort(port_number) = port {
+                if let Some(current_ap) = self.current_ap {
+                    if current_ap != port_number {
+                        self.close_ap(current_ap as u8)?;
+                        self.open_ap(port_number as u8)?;
+                    }
+                } else {
+                    // First time reading, open the AP
+                    self.open_ap(port_number as u8)?;
+                }
+
+                self.current_ap = Some(port_number);
+            }
+
             let port: u16 = port.into();
 
             let cmd = vec![
@@ -391,17 +421,18 @@ impl STLink {
         Self::check_status(&buf)
     }
 
-    pub fn open_ap(&mut self, apsel: impl AccessPort) -> Result<(), DebugProbeError> {
+    pub fn open_ap(&mut self, apsel: u8) -> Result<(), DebugProbeError> {
         if self.jtag_version < Self::MIN_JTAG_VERSION_MULTI_AP {
             Err(StlinkError::JTagDoesNotSupportMultipleAP.into())
         } else {
             let mut buf = [0; 2];
+            log::trace!("JTAG_INIT_AP {}", apsel);
             self.device.write(
                 vec![
                     commands::JTAG_COMMAND,
                     commands::JTAG_INIT_AP,
-                    apsel.get_port_number(),
-                    commands::JTAG_AP_NO_CORE,
+                    apsel,
+                    //                    commands::JTAG_AP_NO_CORE,
                 ],
                 &[],
                 &mut buf,
@@ -411,17 +442,14 @@ impl STLink {
         }
     }
 
-    pub fn close_ap(&mut self, apsel: impl AccessPort) -> Result<(), DebugProbeError> {
+    pub fn close_ap(&mut self, apsel: u8) -> Result<(), DebugProbeError> {
         if self.jtag_version < Self::MIN_JTAG_VERSION_MULTI_AP {
             Err(StlinkError::JTagDoesNotSupportMultipleAP.into())
         } else {
             let mut buf = [0; 2];
+            log::trace!("JTAG_CLOSE_AP {}", apsel);
             self.device.write(
-                vec![
-                    commands::JTAG_COMMAND,
-                    commands::JTAG_CLOSE_AP_DBG,
-                    apsel.get_port_number(),
-                ],
+                vec![commands::JTAG_COMMAND, commands::JTAG_CLOSE_AP_DBG, apsel],
                 &[],
                 &mut buf,
                 TIMEOUT,
@@ -449,14 +477,14 @@ impl STLink {
     }
 
     /// Validates the status given.
-    /// Returns an `Err(DebugProbeError::UnknownError)` if the status is not `Status::JtagOk`.
+    /// Returns an error if the status is not `Status::JtagOk`.
     /// Returns Ok(()) otherwise.
     /// This can be called on any status returned from the attached target.
     fn check_status(status: &[u8]) -> Result<(), DebugProbeError> {
         log::trace!("check_status({:?})", status);
         if status[0] != Status::JtagOk as u8 {
-            log::debug!("check_status failed: {:?}", status);
-            Err(DebugProbeError::Unknown)
+            log::warn!("check_status failed: {:?}", status);
+            Err(StlinkError::CommandFailed(status[0]).into())
         } else {
             Ok(())
         }
@@ -477,6 +505,8 @@ pub(crate) enum StlinkError {
     NotEnoughBytesRead,
     #[error("USB endpoint not found.")]
     EndpointNotFound,
+    #[error("Command failed with status {0}")]
+    CommandFailed(u8),
 }
 
 impl From<StlinkError> for DebugProbeError {

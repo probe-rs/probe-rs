@@ -22,7 +22,6 @@ where
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub enum DPBankSel {
-    Unknown,
     DontCare,
     Bank(u8),
 }
@@ -197,6 +196,36 @@ impl DPRegister<DPv1> for DPIDR {
 impl Register for DPIDR {
     const ADDRESS: u8 = 0x0;
     const NAME: &'static str = "DPIDR";
+}
+
+bitfield! {
+    #[derive(Clone)]
+    pub struct TARGETID(u32);
+    impl Debug;
+    pub u8, trevision, _: 31, 28;
+    pub u16, tpartno, _: 27, 12;
+    pub u16, tdesigner, _: 11, 1;
+}
+
+impl From<u32> for TARGETID {
+    fn from(raw: u32) -> Self {
+        Self(raw)
+    }
+}
+
+impl From<TARGETID> for u32 {
+    fn from(raw: TARGETID) -> Self {
+        raw.0
+    }
+}
+
+impl DPRegister<DPv2> for TARGETID {
+    const DP_BANK: DPBankSel = DPBankSel::Bank(2);
+}
+
+impl Register for TARGETID {
+    const ADDRESS: u8 = 0x4;
+    const NAME: &'static str = "TARGETID";
 }
 
 #[derive(Debug)]

@@ -133,7 +133,7 @@ where
 {
     (0..=255)
         .map(GenericAP::new)
-        .filter(|port| access_port_is_valid(debug_port, *port))
+        .take_while(|port| access_port_is_valid(debug_port, *port))
         .collect::<Vec<GenericAP>>()
 }
 
