@@ -7,9 +7,8 @@ use std::iter;
 use std::sync::Mutex;
 
 use crate::{
-    architecture::arm::dp::{Abort, Ctrl, DPIDR},
-    architecture::arm::PortType,
-    architecture::arm::Register,
+    architecture::arm::dp::{Ctrl},
+    architecture::arm::{DapError, PortType, Register},
     probe::{
         DAPAccess, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeType, JTAGAccess,
         WireProtocol,
@@ -410,43 +409,7 @@ impl DebugProbe for JLink {
                 // We don't actually care about the response here.
                 // A read on the DPIDR will finalize the init procedure and tell us if it worked.
                 jlink.swd_io(direction, swd_io_sequence)?;
-
-                // So we read the DPIDR to complete the init sequence.
-                let response = DAPAccess::read_register(self, PortType::DebugPort, 0x0000)?;
-
-                // If we get to here, the init worked.
-                let dpidr = DPIDR(response);
-                log::debug!("Successfully read DPIDR. SWD init successful.");
-                log::debug!(
-                    "Manufacturer is {} with part_no={} and revision={}",
-                    jep106::JEP106Code::new(dpidr.jep_cc(), dpidr.jep_id())
-                        .get()
-                        .unwrap_or("Unknown JEP106 code."),
-                    dpidr.part_no(),
-                    dpidr.revision(),
-                );
-
-                // Clear all error flags in the abort register.
-                let mut abort = Abort::default();
-                abort.set_orunerrclr(true);
-                abort.set_wderrclr(true);
-                DAPAccess::write_register(
-                    self,
-                    PortType::DebugPort,
-                    Abort::ADDRESS as u16,
-                    abort.into(),
-                )?;
-
-                // Enable & power up all debug facilities.
-                let mut ctrl = Ctrl::default();
-                ctrl.set_cdbgpwrupack(true);
-                ctrl.set_cdbgpwrupreq(true);
-                DAPAccess::write_register(
-                    self,
-                    PortType::DebugPort,
-                    Ctrl::ADDRESS as u16,
-                    ctrl.into(),
-                )?;
+                log::debug!("Sucessfully swapped to SWD.");
 
                 // We are ready to debug.
             }
@@ -628,7 +591,7 @@ impl DAPAccess for JLink {
                     ctrl
                 );
 
-                return Err(DebugProbeError::Unknown);
+                return Err(DapError::FaultResponse.into());
             }
 
             // If we are reading an AP register we only get the actual result in the next transaction.

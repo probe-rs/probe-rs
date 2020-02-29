@@ -32,17 +32,7 @@ pub(crate) fn show_info_of_device(shared_options: &SharedOptions) -> Result<(), 
 
     */
 
-    // Note: Temporary read to ensure the DP information is read at
-    //       least once before reading the ROM table
-    //       (necessary according to STM manual).
-    //
-    // TODO: Move to proper place somewhere in init code
-    //
-
     let mut interface = ArmCommunicationInterface::new(probe)?;
-    let target_info = interface.read_register_dp(0x0)?;
-    println!("DP info: {:#08x}", target_info);
-
     println!("\nAvailable Access Ports:");
 
     for access_port in valid_access_ports(&mut interface) {

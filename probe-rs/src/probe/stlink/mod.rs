@@ -58,7 +58,6 @@ impl DebugProbe for STLink {
                 commands::JTAG_ENTER_SWD
             }
         };
-        let protocol = self.protocol;
 
         let mut buf = [0; 2];
         self.device.write(
@@ -68,12 +67,7 @@ impl DebugProbe for STLink {
             TIMEOUT,
         )?;
         Self::check_status(&buf)?;
-        let mut ctrl_reg = Ctrl::default();
-        ctrl_reg.set_csyspwrupreq(true);
-        ctrl_reg.set_cdbgpwrupreq(true);
-        let value = ctrl_reg.into();
-        self.write_register(PortType::DebugPort, Ctrl::ADDRESS.into(), value)?;
-        self.protocol = protocol;
+        log::debug!("Successfully initialized SWD.");
         Ok(())
     }
 

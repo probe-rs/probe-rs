@@ -1,4 +1,4 @@
-use super::super::{Category, Error, Request, Response, Result};
+use super::super::{Category, CmsisDapError, Request, Response, Result};
 
 #[derive(Clone, Copy)]
 pub enum ConnectRequest {
@@ -28,7 +28,7 @@ impl Response for ConnectResponse {
             0 => Ok(ConnectResponse::InitFailed),
             1 => Ok(ConnectResponse::SuccessfulInitForSWD),
             2 => Ok(ConnectResponse::SuccessfulInitForJTAG),
-            _ => Err(Error::UnexpectedAnswer),
+            _ => Err(CmsisDapError::UnexpectedAnswer),
         }
     }
 }

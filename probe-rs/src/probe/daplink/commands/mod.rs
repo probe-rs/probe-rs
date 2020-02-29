@@ -3,12 +3,33 @@ pub mod swd;
 pub mod swj;
 pub mod transfer;
 
-use crate::probe::DebugProbeError;
+use crate::architecture::arm::DapError;
+use crate::DebugProbeError;
 use core::ops::Deref;
 
 use thiserror::Error;
 
-pub(crate) type Result<T> = std::result::Result<T, Error>;
+pub(crate) type Result<T> = std::result::Result<T, CmsisDapError>;
+
+#[derive(Debug, Error)]
+pub enum CmsisDapError {
+    #[error("Unexpected answer to command")]
+    UnexpectedAnswer,
+    #[error("CMSIS-DAP responded with an error")]
+    ErrorResponse,
+    #[error("Too much data provided for SWJ Sequence command")]
+    TooMuchData,
+    #[error("Error in the USB HID access")]
+    HidApi(#[from] hidapi::HidError),
+    #[error("An error with the DAP communication occured: {0}")]
+    Dap(#[from] DapError)
+}
+
+impl From<CmsisDapError> for DebugProbeError {
+    fn from(error: CmsisDapError) -> Self {
+        DebugProbeError::ProbeSpecific(Box::new(error))
+    }
+}
 
 #[derive(Debug)]
 pub(crate) enum Status {
@@ -21,7 +42,7 @@ impl Status {
         match value {
             0x00 => Ok(Status::DAPOk),
             0xFF => Ok(Status::DAPError),
-            _ => Err(Error::UnexpectedAnswer),
+            _ => Err(CmsisDapError::UnexpectedAnswer),
         }
     }
 }
@@ -46,34 +67,6 @@ pub(crate) trait Request {
 
 pub(crate) trait Response: Sized {
     fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self>;
-}
-
-#[derive(Debug, Error)]
-pub(crate) enum Error {
-    #[error("Unexpected answer to command")]
-    UnexpectedAnswer,
-    #[error("DAP Error")]
-    DAP,
-    #[error("Too much data provided for SWJ Sequence command")]
-    TooMuchData,
-    #[error("Error in the USB HID access")]
-    HidApi(#[from] hidapi::HidError),
-    #[error("An error occured in the SWD communication between DAPlink and device.")]
-    SwdProtocol,
-    #[error("Target device did not respond to request.")]
-    NoAcknowledge,
-    #[error("Target device responded with FAULT response to request.")]
-    DeviceFault,
-    #[error("Target device responded with WAIT response to request.")]
-    Wait,
-    #[error("Target power-up failed.")]
-    TargetPowerUpFailed,
-}
-
-impl From<Error> for DebugProbeError {
-    fn from(error: Error) -> Self {
-        DebugProbeError::ProbeSpecific(Box::new(error))
-    }
 }
 
 pub(crate) fn send_command<Req: Request, Res: Response>(
@@ -105,6 +98,6 @@ pub(crate) fn send_command<Req: Request, Res: Response>(
     if read_buffer[0] == *Req::CATEGORY {
         Res::from_bytes(&read_buffer, 1)
     } else {
-        Err(Error::UnexpectedAnswer)
+        Err(CmsisDapError::UnexpectedAnswer)
     }
 }
