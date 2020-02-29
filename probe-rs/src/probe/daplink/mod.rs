@@ -3,9 +3,7 @@ pub mod tools;
 
 use crate::architecture::arm::{
     dp::{DPAccess, DPRegister, DebugPort},
-    DAPAccess,
-    PortType,
-    DapError,
+    DAPAccess, DapError, PortType,
 };
 use crate::probe::daplink::commands::CmsisDapError;
 use crate::{DebugProbe, DebugProbeError, DebugProbeInfo, Memory, WireProtocol};
@@ -87,7 +85,10 @@ impl DAPLink {
         Ok(())
     }
 
-    fn configure_swd(&mut self, request: swd::configure::ConfigureRequest) -> Result<(), CmsisDapError> {
+    fn configure_swd(
+        &mut self,
+        request: swd::configure::ConfigureRequest,
+    ) -> Result<(), CmsisDapError> {
         commands::send_command::<swd::configure::ConfigureRequest, swd::configure::ConfigureResponse>(
             &mut self.device,
             request

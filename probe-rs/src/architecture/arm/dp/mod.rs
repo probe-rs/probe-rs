@@ -66,7 +66,6 @@ impl Default for Abort {
     }
 }
 
-
 impl From<u32> for Abort {
     fn from(raw: u32) -> Self {
         Abort(raw)

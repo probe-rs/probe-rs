@@ -7,7 +7,7 @@ use std::iter;
 use std::sync::Mutex;
 
 use crate::{
-    architecture::arm::dp::{Ctrl},
+    architecture::arm::dp::Ctrl,
     architecture::arm::{DapError, PortType, Register},
     probe::{
         DAPAccess, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeType, JTAGAccess,
