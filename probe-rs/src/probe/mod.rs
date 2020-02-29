@@ -45,7 +45,7 @@ pub enum DebugProbeError {
     // TODO: This is core specific, so should probably be moved there.
     #[error("Operation timed out.")]
     Timeout,
-    #[error("An error specific to the selected architecture occured: {0:?}")]
+    #[error("An error specific to the selected architecture occured: {0}")]
     ArchitectureSpecific(#[source] Box<dyn std::error::Error + Send + Sync>),
     #[error("The connected probe does not support the interface '{0}'")]
     InterfaceNotAvailable(&'static str),
