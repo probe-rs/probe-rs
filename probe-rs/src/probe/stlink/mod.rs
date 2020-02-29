@@ -1,5 +1,3 @@
-// TODO remove this when ST-Link cleanup by @tiwalun hits!
-#![allow(dead_code, unused_imports)]
 pub mod constants;
 pub mod memory_interface;
 pub mod tools;
