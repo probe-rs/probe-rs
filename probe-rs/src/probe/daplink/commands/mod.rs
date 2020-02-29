@@ -22,7 +22,7 @@ pub enum CmsisDapError {
     #[error("Error in the USB HID access")]
     HidApi(#[from] hidapi::HidError),
     #[error("An error with the DAP communication occured: {0}")]
-    Dap(#[from] DapError)
+    Dap(#[from] DapError),
 }
 
 impl From<CmsisDapError> for DebugProbeError {

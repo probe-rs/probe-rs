@@ -3,12 +3,14 @@ use super::{
         valid_access_ports, APAccess, APClass, APRegister, AccessPort, BaseaddrFormat, GenericAP,
         MemoryAP, BASE, BASE2, IDR,
     },
+    dp::{Abort, Ctrl, DPAccess, DPRegister, DPv1, DebugPort, DebugPortId, Select, DPIDR},
     memory::romtable::{CSComponent, CSComponentId, PeripheralID},
     memory::ADIMemoryInterface,
-    dp::{Abort, Ctrl, DPv1, DebugPortId, Select, DPIDR, DPAccess, DPRegister, DebugPort},
 };
 use crate::config::ChipInfo;
-use crate::{CommunicationInterface, DebugProbe, DebugProbeError, Error as ProbeRsError, Memory, Probe};
+use crate::{
+    CommunicationInterface, DebugProbe, DebugProbeError, Error as ProbeRsError, Memory, Probe,
+};
 use jep106::JEP106Code;
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -233,7 +235,8 @@ impl InnerArmCommunicationInterface {
 
             log::debug!(
                 "Changing AP to {}, AP_BANK_SEL to {}",
-                self.current_apsel, self.current_apbanksel
+                self.current_apsel,
+                self.current_apbanksel
             );
 
             select.set_ap_sel(self.current_apsel);
