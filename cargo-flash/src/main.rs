@@ -202,6 +202,14 @@ fn main_try() -> Result<(), failure::Error> {
         args.remove(index);
     }
 
+    // Remove possible `--probe-index` argument as cargo build does not understand it.
+    if let Some(index) = args
+        .iter()
+        .position(|x| x.starts_with("--probe-index"))
+    {
+        args.remove(index);
+    }
+
     let status = Command::new("cargo")
         .arg("build")
         .args(args)
