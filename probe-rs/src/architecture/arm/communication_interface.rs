@@ -3,7 +3,10 @@ use super::{
         valid_access_ports, APAccess, APClass, APRegister, AccessPort, BaseaddrFormat, GenericAP,
         MemoryAP, BASE, BASE2, IDR,
     },
-    dp::{Abort, Ctrl, DPAccess, DPRegister, DPv1, DebugPort, DebugPortId, Select, DPIDR},
+    dp::{
+        Abort, Ctrl, DPAccess, DPBankSel, DPRegister, DPv1, DebugPort, DebugPortId,
+        DebugPortVersion, Select, DPIDR,
+    },
     memory::romtable::{CSComponent, CSComponentId, PeripheralID},
     memory::ADIMemoryInterface,
 };
@@ -143,20 +146,32 @@ impl ArmCommunicationInterface {
 #[derive(Debug)]
 struct InnerArmCommunicationInterface {
     probe: Probe,
+    debug_port_version: DebugPortVersion,
+
+    current_dpbanksel: u8,
+
     current_apsel: u8,
     current_apbanksel: u8,
 }
 
 impl InnerArmCommunicationInterface {
     fn new(probe: Probe) -> Result<Self, DebugProbeError> {
-        // TODO: It would be nice if we could store a DapInterface directly, so we don't have to get
-        //       it everytime we want to access it.
-        if probe.get_interface_dap().is_none() {
-            return Err(DebugProbeError::InterfaceNotAvailable("ARM"));
-        }
+        let mut my_probe = probe;
+        // Check the version of debug port used
+        let interface = my_probe
+            .get_interface_dap_mut()
+            .ok_or_else(|| DebugProbeError::InterfaceNotAvailable("ARM"))?;
+
+        let dpidr = DPIDR(interface.read_register(PortType::DebugPort, 0)?);
+
+        let version = DebugPortVersion::from(dpidr.version());
+
+        log::debug!("Debug Port version: {:?}", version);
 
         let mut s = Self {
-            probe,
+            probe: my_probe,
+            debug_port_version: version,
+            current_dpbanksel: 0,
             current_apsel: 0,
             current_apbanksel: 0,
         };
@@ -231,17 +246,36 @@ impl InnerArmCommunicationInterface {
 
             select.set_ap_sel(self.current_apsel);
             select.set_ap_bank_sel(self.current_apbanksel);
+            select.set_dp_bank_sel(self.current_dpbanksel);
 
-            let interface = self
-                .probe
-                .get_interface_dap_mut()
-                .ok_or_else(|| DebugProbeError::InterfaceNotAvailable("ARM"))?;
+            let port = DPv1 {};
 
-            interface.write_register(
-                PortType::DebugPort,
-                u16::from(Select::ADDRESS),
-                select.into(),
-            )?;
+            self.write_dp_register(&port, select)?;
+        }
+
+        Ok(())
+    }
+
+    fn select_dp_bank(&mut self, dp_bank: DPBankSel) -> Result<(), DebugProbeError> {
+        match dp_bank {
+            DPBankSel::Bank(new_bank) => {
+                if new_bank != self.current_dpbanksel {
+                    self.current_dpbanksel = new_bank;
+
+                    let mut select = Select(0);
+
+                    log::debug!("Changing DP_BANK_SEL to {}", self.current_dpbanksel);
+
+                    select.set_ap_sel(self.current_apsel);
+                    select.set_ap_bank_sel(self.current_apbanksel);
+                    select.set_dp_bank_sel(self.current_dpbanksel);
+
+                    let port = DPv1 {};
+
+                    self.write_dp_register(&port, select)?;
+                }
+            }
+            DPBankSel::DontCare => (),
         }
 
         Ok(())
@@ -385,6 +419,8 @@ impl<P: DebugPort, R: DPRegister<P>> DPAccess<P, R> for InnerArmCommunicationInt
     type Error = DebugProbeError;
 
     fn read_dp_register(&mut self, _port: &P) -> Result<R, Self::Error> {
+        self.select_dp_bank(R::DP_BANK)?;
+
         let interface = self
             .probe
             .get_interface_dap_mut()
@@ -394,10 +430,13 @@ impl<P: DebugPort, R: DPRegister<P>> DPAccess<P, R> for InnerArmCommunicationInt
         let result = interface.read_register(PortType::DebugPort, u16::from(R::ADDRESS))?;
 
         log::debug!("Read    DP register {}, value=0x{:08x}", R::NAME, result);
+
         Ok(result.into())
     }
 
     fn write_dp_register(&mut self, _port: &P, register: R) -> Result<(), Self::Error> {
+        self.select_dp_bank(R::DP_BANK)?;
+
         let interface = self
             .probe
             .get_interface_dap_mut()
@@ -406,7 +445,9 @@ impl<P: DebugPort, R: DPRegister<P>> DPAccess<P, R> for InnerArmCommunicationInt
         let value = register.into();
 
         log::debug!("Writing DP register {}, value=0x{:08x}", R::NAME, value);
-        interface.write_register(PortType::DebugPort, u16::from(R::ADDRESS), value)
+        interface.write_register(PortType::DebugPort, R::ADDRESS as u16, value)?;
+
+        Ok(())
     }
 }
 
