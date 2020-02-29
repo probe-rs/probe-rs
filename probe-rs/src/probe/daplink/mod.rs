@@ -26,7 +26,7 @@ use commands::{
     },
     Status,
 };
-use log::{debug, info};
+use log::debug;
 
 use super::JTAGAccess;
 use std::sync::Mutex;

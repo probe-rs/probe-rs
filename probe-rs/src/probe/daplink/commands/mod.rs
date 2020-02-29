@@ -19,7 +19,7 @@ pub enum CmsisDapError {
     ErrorResponse,
     #[error("Too much data provided for SWJ Sequence command")]
     TooMuchData,
-    #[error("Error in the USB HID access")]
+    #[error("Error in the USB HID access: {0}")]
     HidApi(#[from] hidapi::HidError),
     #[error("An error with the DAP communication occured: {0}")]
     Dap(#[from] DapError),

@@ -18,16 +18,6 @@ use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum DapError {
-    #[error("Unexpected answer to command")]
-    UnexpectedAnswer,
-    #[error("DAP Error")]
-    DAP,
-    // TODO: Remove
-    #[error("Too much data provided for SWJ Sequence command")]
-    TooMuchData,
-    // TODO: Remove
-    #[error("Error in the USB HID access")]
-    HidApi(#[from] hidapi::HidError),
     #[error("An error occured in the SWD communication between DAPlink and device.")]
     SwdProtocol,
     #[error("Target device did not respond to request.")]
