@@ -50,7 +50,7 @@ pub fn open_probe(index: Option<usize>) -> Result<Probe, failure::Error> {
     let device = match index {
         Some(index) => available_probes
             .get(index)
-            .ok_or(failure::err_msg("Unable to open the specified probe. Use the 'list' subcommand to see all available probes."))?,
+            .ok_or_else(|| failure::err_msg("Unable to open the specified probe. Use the 'list' subcommand to see all available probes."))?,
         None => {
             // open the default probe, if only one probe was found
             if available_probes.len() == 1 {

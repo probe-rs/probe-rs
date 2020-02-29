@@ -1,3 +1,4 @@
+#![allow(dead_code, unused_imports)]
 pub mod constants;
 pub mod memory_interface;
 pub mod tools;

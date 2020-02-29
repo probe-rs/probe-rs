@@ -174,7 +174,7 @@ fn download_program_fast(shared_options: &SharedOptions, path: &str) -> Result<(
         // Start timer.
         // let instant = Instant::now();
 
-        let mm = session.memory_map().clone();
+        let mm = session.memory_map();
         download_file(&session, std::path::Path::new(&path), Format::Elf, &mm)?;
 
         Ok(())

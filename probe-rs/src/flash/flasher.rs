@@ -198,7 +198,7 @@ impl<'a> Flasher<'a> {
             flasher.double_buffering_supported
         );
         let mut flasher = ActiveFlasher {
-            core: core,
+            core,
             flash_algorithm: flasher.flash_algorithm,
             region: flasher.region,
             _double_buffering_supported: flasher.double_buffering_supported,
@@ -318,7 +318,7 @@ impl<'a, O: Operation> ActiveFlasher<'a, O> {
     //     &mut self.session
     // }
 
-    pub fn uninit<'b, 's: 'b>(&'s mut self) -> Result<(), FlasherError> {
+    pub fn uninit(&mut self) -> Result<(), FlasherError> {
         log::debug!("Running uninit routine.");
         let algo = &self.flash_algorithm;
 

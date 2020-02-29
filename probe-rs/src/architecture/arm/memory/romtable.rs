@@ -35,7 +35,7 @@ impl RomTableReader {
     }
 
     /// Iterate over all entries of the rom table, non-recursively
-    pub fn entries<'r>(&'r mut self) -> RomTableIterator<'r> {
+    pub fn entries(&mut self) -> RomTableIterator {
         RomTableIterator::new(self)
     }
 }

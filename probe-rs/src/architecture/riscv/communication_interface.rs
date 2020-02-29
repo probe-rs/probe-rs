@@ -409,6 +409,7 @@ impl InnerRiscvCommunicationInterface {
         //let d = 9; // dest register -> s0
         //let l = 0b11;
 
+        #[allow(clippy::redundant_field_names)]
         let mut lw_command: u32 = 0b000000000000_01000_000_01000_0000011;
 
         // verify the width is supported
@@ -419,6 +420,7 @@ impl InnerRiscvCommunicationInterface {
 
         lw_command |= (width as u32) << 12;
 
+        #[allow(clippy::redundant_field_names)]
         let ebreak_cmd = 0b000000000001_00000_000_00000_1110011;
 
         self.write_dm_register(Progbuf0(lw_command))?;
@@ -437,7 +439,7 @@ impl InnerRiscvCommunicationInterface {
         command.set_postexec(true);
 
         // register s0, ie. 0x1008
-        command.set_regno((&register::S0).address.0 as u32);
+        command.set_regno((register::S0).address.0 as u32);
 
         self.write_dm_register(command)?;
 
@@ -454,7 +456,7 @@ impl InnerRiscvCommunicationInterface {
 
         self.abstract_cmd_register_write(&register::S0, s0)?;
 
-        Ok(u32::from(value))
+        Ok(value)
     }
 
     /// Perform memory write to a single location using the program buffer.
@@ -479,6 +481,7 @@ impl InnerRiscvCommunicationInterface {
         //let l = 0b11;
 
         //let lw_command = bitpack!("oooooooooooobbbbb_www_ddddd_lllllll");
+        #[allow(clippy::redundant_field_names)]
         let mut sw_command: u32 = 0b0000000_01001_01000_000_00000_0100011;
 
         // sw command -> sb s1, 0(s0)
@@ -496,6 +499,7 @@ impl InnerRiscvCommunicationInterface {
         //    sw_command = 0xc004;
         //}
 
+        #[allow(clippy::redundant_field_names)]
         let ebreak_cmd = 0b000000000001_00000_000_00000_1110011;
 
         self.write_dm_register(Progbuf0(sw_command))?;
@@ -518,7 +522,7 @@ impl InnerRiscvCommunicationInterface {
         command.set_postexec(true);
 
         // register s0, ie. 0x1008
-        command.set_regno((&register::S1).address.0 as u32);
+        command.set_regno((register::S1).address.0 as u32);
 
         self.write_dm_register(command)?;
 

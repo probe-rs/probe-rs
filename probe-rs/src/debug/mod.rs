@@ -531,7 +531,7 @@ impl DebugInfo {
                 .as_ref()
                 .map(|dir| from_utf8(dir))
                 .transpose()?
-                .map(|p| PathBuf::from(p));
+                .map(PathBuf::from);
 
             if let Some(ref line_program) = unit.line_program {
                 let header = line_program.header();
@@ -949,7 +949,7 @@ fn get_piece_value(core: &Core, p: &gimli::Piece<DwarfReader>) -> Option<u32> {
     }
 }
 
-pub(crate) fn print_all_attributes(
+pub(crate) fn _print_all_attributes(
     core: Core,
     frame_base: Option<u32>,
     dwarf: &gimli::Dwarf<DwarfReader>,

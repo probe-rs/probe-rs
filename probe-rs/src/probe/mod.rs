@@ -2,7 +2,7 @@ pub(crate) mod daplink;
 pub(crate) mod jlink;
 pub(crate) mod stlink;
 
-use crate::architecture::arm::{ap::AccessPortError, DAPAccess, PortType};
+use crate::architecture::arm::{DAPAccess, PortType};
 use crate::config::{RegistryError, TargetSelector};
 use crate::error::Error;
 use crate::{Memory, Session};

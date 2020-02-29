@@ -51,14 +51,13 @@ impl JLink {
 
                 if handle
                     .read_available_interfaces()?
-                    .find(|interface| interface == &jlink_interface)
-                    .is_some()
+                    .any(|interface| interface == jlink_interface)
                 {
                     // We can select the desired interface
                     handle.select_interface(jlink_interface)?;
                     Ok(protocol)
                 } else {
-                    return Err(DebugProbeError::UnsupportedProtocol(protocol));
+                    Err(DebugProbeError::UnsupportedProtocol(protocol))
                 }
             } else {
                 // No special protocol request
@@ -538,10 +537,16 @@ impl DAPAccess for JLink {
             false, // ACK bit.
         ];
 
-        // Finally add the data + parity + turnaround bits to the SWDIO sequence.
-        for _ in 0..32 + 1 + 1 {
+        // Add the data bits to the SWDIO sequence.
+        for _ in 0..32 {
             swd_io_sequence.push(false);
         }
+
+        // Add the parity bit to the sequence.
+        swd_io_sequence.push(false);
+
+        // Finally add the turnaround bit to the sequence.
+        swd_io_sequence.push(false);
 
         // Assemble the direction sequence.
         let direction = iter::repeat(true)
