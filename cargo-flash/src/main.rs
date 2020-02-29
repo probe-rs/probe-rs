@@ -18,19 +18,14 @@ use probe_rs::{
     config::TargetSelector,
     flash::download::{download_file, download_file_with_progress_reporting, Format},
     flash::{FlashProgress, ProgressEvent},
-    DebugProbeError, Probe,
-    WireProtocol,
+    DebugProbeError, Probe, WireProtocol,
 };
 
 #[derive(Debug, StructOpt)]
 struct Opt {
     #[structopt(name = "chip", long = "chip")]
     chip: Option<String>,
-    #[structopt(
-        name = "chip description file path",
-        short = "c",
-        long = "chip-description-path"
-    )]
+    #[structopt(name = "chip description file path", long = "chip-description-path")]
     chip_description_path: Option<String>,
     // TODO: enable once the plugin architecture is here.
     // #[structopt(name = "nrf-recover", long = "nrf-recover")]
@@ -39,7 +34,8 @@ struct Opt {
     list_chips: bool,
     #[structopt(name = "disable-progressbars", long = "disable-progressbars")]
     disable_progressbars: bool,
-
+    #[structopt(name = "protocol", long = "protocol", default_value = "swd")]
+    protocol: WireProtocol,
     /// The number associated with the debug probe to use
     #[structopt(long = "probe-index")]
     n: Option<usize>,
@@ -89,6 +85,20 @@ struct Opt {
     features: Vec<String>,
 }
 
+const ARGUMENTS_TO_REMOVE: &'static [&'static str] = &[
+    "chip=",
+    "chip-description-path=",
+    "list-chips",
+    "disable-progressbars",
+    "protocol=",
+    "probe-index=",
+    "gdb",
+    "no-download",
+    "reset-halt",
+    "gdb-connection-string=",
+    "nrf-recover",
+];
+
 fn main() {
     pretty_env_logger::init();
     match main_try() {
@@ -130,85 +140,8 @@ fn main_try() -> Result<(), failure::Error> {
 
     args.remove(0); // Remove executable name
 
-    // Remove possible `--chip <chip>` arguments as cargo build does not understand it.
-    if let Some(index) = args.iter().position(|x| *x == "--chip") {
-        args.remove(index);
-        args.remove(index);
-    }
-
-    // Remove possible `--chip=<chip>` argument as cargo build does not understand it.
-    if let Some(index) = args.iter().position(|x| x.starts_with("--chip=")) {
-        args.remove(index);
-    }
-
-    // Remove possible `--chip-description-path <chip description path>` arguments as cargo build does not understand it.
-    if let Some(index) = args.iter().position(|x| *x == "--chip-description-path") {
-        args.remove(index);
-        args.remove(index);
-    }
-
-    // Remove possible `--chip-description-path=<chip description path>` arguments as cargo build does not understand it.
-    if let Some(index) = args
-        .iter()
-        .position(|x| x.starts_with("--chip-description-path="))
-    {
-        args.remove(index);
-    }
-
-    // Remove possible `-c <chip description path>` arguments as cargo build does not understand it.
-    if let Some(index) = args.iter().position(|x| *x == "-c") {
-        args.remove(index);
-        args.remove(index);
-    }
-
-    // Remove possible `-c=<chip description path>` arguments as cargo build does not understand it.
-    if let Some(index) = args.iter().position(|x| x.starts_with("-c=")) {
-        args.remove(index);
-    }
-
-    // Remove possible `--disable-progressbars` argument as cargo build does not understand it.
-    if let Some(index) = args
-        .iter()
-        .position(|x| x.starts_with("--disable-progressbars"))
-    {
-        args.remove(index);
-    }
-
-    // Remove possible `--nrf-recover` argument as cargo build does not understand it.
-    if let Some(index) = args.iter().position(|x| x.starts_with("--nrf-recover")) {
-        args.remove(index);
-    }
-
-    // Remove possible `--gdb` argument as cargo build does not understand it.
-    if let Some(index) = args.iter().position(|x| x.starts_with("--gdb")) {
-        args.remove(index);
-    }
-
-    // Remove possible `--no-download` argument as cargo build does not understand it.
-    if let Some(index) = args.iter().position(|x| x.starts_with("--no-download")) {
-        args.remove(index);
-    }
-
-    // Remove possible `--reset-halt` argument as cargo build does not understand it.
-    if let Some(index) = args.iter().position(|x| x.starts_with("--reset-halt")) {
-        args.remove(index);
-    }
-
-    // Remove possible `--gdb-connection-string` argument as cargo build does not understand it.
-    if let Some(index) = args
-        .iter()
-        .position(|x| x.starts_with("--gdb-connection-string"))
-    {
-        args.remove(index);
-    }
-
-    // Remove possible `--probe-index` argument as cargo build does not understand it.
-    if let Some(index) = args
-        .iter()
-        .position(|x| x.starts_with("--probe-index"))
-    {
-        args.remove(index);
-    }
+    // Remove all arguments that `cargo build` does not understand.
+    remove_arguments(ARGUMENTS_TO_REMOVE, &mut args);
 
     let status = Command::new("cargo")
         .arg("build")
@@ -276,7 +209,7 @@ fn main_try() -> Result<(), failure::Error> {
     };
 
     let mut probe = Probe::from_probe_info(&device)?;
-    probe.select_protocol(WireProtocol::Swd)?;
+    probe.select_protocol(opt.protocol)?;
 
     // Disabled for now
     // TODO: reenable once we got the plugin architecture working.
@@ -493,4 +426,98 @@ impl From<std::io::Error> for DownloadError {
     fn from(error: std::io::Error) -> Self {
         DownloadError::StdIO(error)
     }
+}
+
+/// Removes all arguments from the commandline input that `cargo build` does not understand.
+/// All the arguments are removed in place!
+/// It expects a list of arguments to be removed. If the argument can have a value it MUST contain a `=` at the end.
+/// E.g:
+/// ```rust
+/// let arguments_to_remove = [
+///     "foo", // Can be "--foo"
+///     "bar=", // Can be "--bar=value" and "--bar value"
+/// ];
+fn remove_arguments(arguments_to_remove: &[&'static str], arguments: &mut Vec<String>) {
+    // We iterate all arguments that possibly have to be removed
+    // and remove them if they occur to be in the input.
+    for argument in arguments_to_remove {
+        // Make sure the compared against arg does not contain an equal sign.
+        // If the original arg contained an equal sign we take this as a hint
+        // that the arg can be used as `--arg value` as well as `--arg=value`.
+        // In the prior case we need to remove two arguments. So remember this.
+        let (remove_two, clean_argument) = if argument.ends_with("=") {
+            (true, format!("--{}", &argument[..argument.len() - 1]))
+        } else {
+            (false, format!("--{}", argument))
+        };
+
+        // Iterate all args in the input and if we find one that matches, we remove it.
+        if let Some(index) = arguments
+            .iter()
+            .position(|x| x.starts_with(&format!("--{}", argument)))
+        {
+            // We remove the argument we found.
+            arguments.remove(index);
+        }
+
+        // If the argument requires a value we also need to check for the case where no
+        // = (equal sign) was present, in which case the value is a second argument
+        // which we need to remove as well.
+        if remove_two {
+            // Iterate all args in the input and if we find one that matches, we remove it.
+            if let Some(index) = arguments
+                .iter()
+                .position(|x| x.starts_with(&clean_argument))
+            {
+                // We remove the argument we found plus its value.
+                arguments.remove(index);
+                arguments.remove(index);
+            }
+        }
+    }
+}
+
+#[test]
+fn remove_arguments_test() {
+    let arguments_to_remove = [
+        "chip=",
+        "chip-description-path=",
+        "list-chips",
+        "disable-progressbars",
+        "protocol=",
+        "probe-index=",
+        "gdb",
+        "no-download",
+        "reset-halt",
+        "gdb-connection-string=",
+        "nrf-recover",
+    ];
+
+    let mut arguments = vec![
+        "--chip=kek".to_string(),
+        "--chip".to_string(),
+        "kek".to_string(),
+        "--chip-description-path=kek".to_string(),
+        "--chip-description-path".to_string(),
+        "kek".to_string(),
+        "--list-chips".to_string(),
+        "--disable-progressbars".to_string(),
+        "--protocol=kek".to_string(),
+        "--protocol".to_string(),
+        "kek".to_string(),
+        "--probe-index=kek".to_string(),
+        "--probe-index".to_string(),
+        "kek".to_string(),
+        "--gdb".to_string(),
+        "--no-download".to_string(),
+        "--reset-halt".to_string(),
+        "--gdb-connection-string=kek".to_string(),
+        "--gdb-connection-string".to_string(),
+        "kek".to_string(),
+        "--nrf-recover".to_string(),
+    ];
+
+    remove_arguments(&arguments_to_remove, &mut arguments);
+
+    assert!(arguments.len() == 0);
 }
