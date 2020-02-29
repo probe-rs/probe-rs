@@ -340,7 +340,7 @@ impl DebugProbe for JLink {
 
     fn attach(&mut self) -> Result<(), super::DebugProbeError> {
         let protocol = self.protocol.unwrap_or(WireProtocol::Jtag);
-        self.select_protocol(protocol.clone())?;
+        self.select_protocol(protocol)?;
 
         log::debug!("Attaching with protocol '{:?}'", protocol);
 
