@@ -1,5 +1,3 @@
-#![allow(unused_variables)]
-
 use async_std::{io::Write, net::TcpStream, prelude::*};
 use futures::channel::mpsc;
 use gdb_protocol::packet::{CheckedPacket, Kind as PacketKind};

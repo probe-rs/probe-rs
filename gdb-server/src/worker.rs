@@ -5,16 +5,15 @@ use futures::select;
 use gdb_protocol::packet::{CheckedPacket, Kind as PacketKind};
 use probe_rs::Core;
 use probe_rs::Session;
-use recap::Recap;
-use serde::Deserialize;
 use std::sync::{Arc, Mutex};
+
+use crate::handlers;
 
 type ServerResult<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 type Sender<T> = mpsc::UnboundedSender<T>;
 type Receiver<T> = mpsc::UnboundedReceiver<T>;
 
 #[allow(clippy::mutex_atomic)]
-#[allow(clippy::cognitive_complexity)]
 pub async fn worker(
     mut input_stream: Receiver<CheckedPacket>,
     output_stream: Sender<CheckedPacket>,
@@ -41,6 +40,7 @@ pub async fn worker(
     Ok(())
 }
 
+#[allow(clippy::cognitive_complexity)]
 pub async fn handler(
     core: &mut Core,
     output_stream: Sender<CheckedPacket>,
@@ -52,182 +52,61 @@ pub async fn handler(
         let packet_string = String::from_utf8_lossy(&packet.data).to_string();
         #[allow(clippy::if_same_then_else)]
         let response: Option<String> = if packet.data.starts_with(b"qSupported") {
-            Some("PacketSize=2048;swbreak-;hwbreak+;vContSupported+;qXfer:memory-map:read+".into())
+            handlers::q_supported()
         } else if packet.data.starts_with(b"vMustReplyEmpty") {
-            Some("".into())
+            handlers::reply_empty()
         } else if packet.data.starts_with(b"qTStatus") {
-            Some("".into())
+            handlers::reply_empty()
         } else if packet.data.starts_with(b"qTfV") {
-            Some("".into())
+            handlers::reply_empty()
         } else if packet.data.starts_with(b"qAttached") {
-            Some("1".into())
+            handlers::q_attached()
         } else if packet.data.starts_with(b"?") {
-            Some("S05".into())
+            handlers::halt_reason()
         } else if packet.data.starts_with(b"g") {
-            Some("xxxxxxxx".into())
+            handlers::read_general_registers()
         } else if packet.data.starts_with(b"p") {
-            #[derive(Debug, Deserialize, PartialEq, Recap)]
-            #[recap(regex = r#"p(?P<reg>\w+)"#)]
-            struct P {
-                reg: String,
-            }
-
-            let p = packet_string.parse::<P>().unwrap();
-
-            let _ = core.halt();
-            core.wait_for_core_halted().unwrap();
-
-            let value = core
-                .read_core_reg(u16::from_str_radix(&p.reg, 16).unwrap())
-                .unwrap();
-
-            format!(
-                "{}{}{}{}",
-                value as u8,
-                (value >> 8) as u8,
-                (value >> 16) as u8,
-                (value >> 24) as u8
-            );
-
-            Some(format!(
-                "{:02x}{:02x}{:02x}{:02x}",
-                value as u8,
-                (value >> 8) as u8,
-                (value >> 16) as u8,
-                (value >> 24) as u8
-            ))
+            handlers::read_register(packet_string, core)
         } else if packet.data.starts_with(b"qTsP") {
-            Some("".into())
+            handlers::reply_empty()
         } else if packet.data.starts_with(b"qfThreadInfo") {
-            Some("".into())
+            handlers::reply_empty()
         } else if packet.data.starts_with(b"m") {
-            #[derive(Debug, Deserialize, PartialEq, Recap)]
-            #[recap(regex = r#"m(?P<addr>\w+),(?P<length>\w+)"#)]
-            struct M {
-                addr: String,
-                length: String,
-            }
-
-            let m = packet_string.parse::<M>().unwrap();
-
-            let mut readback_data = vec![0u8; usize::from_str_radix(&m.length, 16).unwrap()];
-            core.memory()
-                .read_block8(
-                    u32::from_str_radix(&m.addr, 16).unwrap(),
-                    &mut readback_data,
-                )
-                .unwrap();
-
-            Some(
-                readback_data
-                    .iter()
-                    .map(|s| format!("{:02x?}", s))
-                    .collect::<Vec<String>>()
-                    .join(""),
-            )
+            handlers::read_memory(packet_string, core)
         } else if packet.data.starts_with(b"qL") {
-            Some("".into())
+            handlers::reply_empty()
         } else if packet.data.starts_with(b"qC") {
-            Some("".into())
+            handlers::reply_empty()
         } else if packet.data.starts_with(b"qOffsets") {
-            Some("".into())
+            handlers::reply_empty()
         } else if packet.data.starts_with(b"vCont?") {
-            Some("vCont;c;t;s".into())
+            handlers::vcont_supported()
         } else if packet.data.starts_with(b"vContb;c") || packet.data.starts_with(b"c") {
-            core.run().unwrap();
-            *awaits_halt = true;
-            None
+            handlers::run(&core, awaits_halt)
         } else if packet.data.starts_with(b"vContb;t") {
-            core.halt().unwrap();
-            core.wait_for_core_halted().unwrap();
-            *awaits_halt = false;
-            Some("OK".into())
+            handlers::stop(&core, awaits_halt)
         } else if packet.data.starts_with(b"vContb;s") || packet.data.starts_with(b"s") {
-            core.step().unwrap();
-            *awaits_halt = false;
-            Some("S05".into())
+            handlers::step(&core, awaits_halt)
         } else if packet.data.starts_with(b"Z0") {
-            Some("".into())
+            handlers::reply_empty()
         } else if packet.data.starts_with(b"Z1") {
-            #[derive(Debug, Deserialize, PartialEq, Recap)]
-            #[recap(regex = r#"Z1,(?P<addr>\w+),(?P<size>\w+)"#)]
-            struct Z1 {
-                addr: String,
-                size: String,
-            }
-
-            let z1 = packet_string.parse::<Z1>().unwrap();
-
-            let addr = u32::from_str_radix(&z1.addr, 16).unwrap();
-
-            core.reset_and_halt().unwrap();
-            core.wait_for_core_halted().unwrap();
-            core.set_hw_breakpoint(addr).unwrap();
-            core.run().unwrap();
-            Some("OK".into())
+            handlers::insert_hardware_break(packet_string, core)
         } else if packet.data.starts_with(b"z1") {
-            #[derive(Debug, Deserialize, PartialEq, Recap)]
-            #[recap(regex = r#"z1,(?P<addr>\w+),(?P<size>\w+)"#)]
-            struct Z1 {
-                addr: String,
-                size: String,
-            }
-
-            let z1 = packet_string.parse::<Z1>().unwrap();
-
-            let addr = u32::from_str_radix(&z1.addr, 16).unwrap();
-
-            core.reset_and_halt().unwrap();
-            core.wait_for_core_halted().unwrap();
-            core.clear_hw_breakpoint(addr).unwrap();
-            core.run().unwrap();
-            Some("OK".into())
+            handlers::remove_hardware_break(packet_string, core)
         } else if packet.data.starts_with(b"X") {
-            #[derive(Debug, Deserialize, PartialEq, Recap)]
-            #[recap(regex = r#"X(?P<addr>\w+),(?P<length>\w+):(?P<data>[01]*)"#)]
-            struct X {
-                addr: String,
-                length: String,
-                data: String,
-            }
-
-            let x = packet_string.parse::<X>().unwrap();
-
-            let length = usize::from_str_radix(&x.length, 16).unwrap();
-            let data = &packet.data[packet.data.len() - length..];
-
-            core.memory()
-                .write_block8(u32::from_str_radix(&x.addr, 16).unwrap(), data)
-                .unwrap();
-
-            Some("OK".into())
+            handlers::write_memory(packet_string, &packet.data, core)
         } else if packet.data.starts_with(b"qXfer:memory-mapb:read") {
-            let xml = r#"<?xml version="1.0"?>
-<!DOCTYPE memory-map PUBLIC "+//IDN gnu.org//DTD GDB Memory Map V1.0//EN" "http://sourceware.org/gdb/gdb-memory-map.dtd">
-<memory-map>
-<memory type="ram" start="0x20000000" length="0x4000"/>
-<memory type="rom" start="0x00000000" length="0x40000"/>
-</memory-map>"#;
-            Some(
-                std::str::from_utf8(&gdb_sanitize_file(xml.as_bytes().to_vec(), 0, 1000))
-                    .unwrap()
-                    .to_string(),
-            )
+            handlers::get_memory_map()
         } else if packet.data.starts_with(&[0x03]) {
-            let _ = core.halt();
-            core.wait_for_core_halted().unwrap();
-            Some("T05hwbreak:;".into())
+            handlers::user_halt(&core, awaits_halt)
         } else if packet.data.starts_with(b"D") {
-            break_due = true;
-            Some("OK".into())
+            handlers::detach(&mut break_due)
         } else if packet.data.starts_with(b"qRcmdb,7265736574") {
-            let _cpu_info = core.reset();
-            let _cpu_info = core.halt();
-            Some("OK".into())
+            handlers::reset_halt(&core)
         } else if packet.data.starts_with(b"qTfV") {
-            Some("".into())
+            handlers::reply_empty()
         } else if packet.data.starts_with(b"qTfV") {
-            Some("".into())
+            handlers::reply_empty()
         } else {
             Some("OK".into())
         };
@@ -254,26 +133,5 @@ pub async fn await_halt(core: &Core, output_stream: Sender<CheckedPacket>, await
         response.encode(&mut bytes).unwrap();
 
         let _ = output_stream.unbounded_send(response);
-    }
-}
-
-fn gdb_sanitize_file(mut data: Vec<u8>, offset: u32, len: u32) -> Vec<u8> {
-    let offset = offset as usize;
-    let len = len as usize;
-    let mut end = offset + len;
-    if offset > data.len() {
-        b"l".to_vec()
-    } else {
-        if end > data.len() {
-            end = data.len();
-        }
-        let mut trimmed_data: Vec<u8> = data.drain(offset..end).collect();
-        if trimmed_data.len() >= len {
-            // XXX should this be <= or < ?
-            trimmed_data.insert(0, b'm');
-        } else {
-            trimmed_data.insert(0, b'l');
-        }
-        trimmed_data
     }
 }
