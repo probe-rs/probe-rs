@@ -25,6 +25,21 @@ impl fmt::Display for WireProtocol {
     }
 }
 
+impl std::str::FromStr for WireProtocol {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match &s.to_ascii_lowercase()[..] {
+            "swd" => Ok(WireProtocol::Swd),
+            "jtag" => Ok(WireProtocol::Jtag),
+            _ => Err(format!(
+                "'{}' is not a valid protocol. Choose from [swd, jtag].",
+                s
+            )),
+        }
+    }
+}
+
 #[derive(Error, Debug)]
 pub enum DebugProbeError {
     #[error("USB Communication Error")]
