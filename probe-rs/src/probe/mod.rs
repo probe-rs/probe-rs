@@ -33,7 +33,7 @@ pub enum DebugProbeError {
     JTAGNotSupportedOnProbe,
     #[error("The firmware on the probe is outdated")]
     ProbeFirmwareOutdated,
-    #[error("Error specific to a probe type occured: {0}")]
+    #[error("An error specific to a probe type occured: {0}")]
     ProbeSpecific(#[source] Box<dyn std::error::Error + Send + Sync>),
     // TODO: Unknown errors are not very useful, this should be removed.
     #[error("An unknown error occured.")]
@@ -45,13 +45,13 @@ pub enum DebugProbeError {
     // TODO: This is core specific, so should probably be moved there.
     #[error("Operation timed out.")]
     Timeout,
-    #[error("Communication with access port failed: {0:?}")]
-    AccessPort(#[from] AccessPortError),
+    #[error("An error specific to the selected architecture occured: {0:?}")]
+    ArchitectureSpecific(#[source] Box<dyn std::error::Error + Send + Sync>),
     #[error("The connected probe does not support the interface '{0}'")]
     InterfaceNotAvailable(&'static str),
     #[error("An error occured while working with the registry occured: {0}")]
     Registry(#[from] RegistryError),
-    #[error("Tryied to close interface while it was still in use.")]
+    #[error("Tried to close interface while it was still in use.")]
     InterfaceInUse,
 }
 

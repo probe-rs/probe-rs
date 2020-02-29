@@ -1,10 +1,13 @@
 pub mod commands;
 pub mod tools;
 
-use crate::architecture::arm::dp::{DPAccess, DPRegister, DebugPort};
-use crate::architecture::arm::DAPAccess;
-use crate::architecture::arm::PortType;
-use crate::probe::daplink::commands::Error;
+use crate::architecture::arm::{
+    dp::{DPAccess, DPRegister, DebugPort},
+    DAPAccess,
+    PortType,
+    DapError,
+};
+use crate::probe::daplink::commands::CmsisDapError;
 use crate::{DebugProbe, DebugProbeError, DebugProbeInfo, Memory, WireProtocol};
 use commands::{
     general::{
@@ -25,7 +28,7 @@ use commands::{
     },
     Status,
 };
-use log::{debug, error, info};
+use log::{debug, info};
 
 use super::JTAGAccess;
 use std::sync::Mutex;
@@ -63,40 +66,40 @@ impl DAPLink {
         }
     }
 
-    fn set_swj_clock(&mut self, clock: u32) -> Result<(), Error> {
+    fn set_swj_clock(&mut self, clock: u32) -> Result<(), CmsisDapError> {
         commands::send_command::<SWJClockRequest, SWJClockResponse>(
             &mut self.device,
             SWJClockRequest(clock),
         )
         .and_then(|v| match v {
             SWJClockResponse(Status::DAPOk) => Ok(()),
-            SWJClockResponse(Status::DAPError) => Err(Error::DAP),
+            SWJClockResponse(Status::DAPError) => Err(CmsisDapError::ErrorResponse),
         })?;
         Ok(())
     }
 
-    fn transfer_configure(&mut self, request: ConfigureRequest) -> Result<(), Error> {
+    fn transfer_configure(&mut self, request: ConfigureRequest) -> Result<(), CmsisDapError> {
         commands::send_command::<ConfigureRequest, ConfigureResponse>(&mut self.device, request)
             .and_then(|v| match v {
                 ConfigureResponse(Status::DAPOk) => Ok(()),
-                ConfigureResponse(Status::DAPError) => Err(Error::DAP),
+                ConfigureResponse(Status::DAPError) => Err(CmsisDapError::ErrorResponse),
             })?;
         Ok(())
     }
 
-    fn configure_swd(&mut self, request: swd::configure::ConfigureRequest) -> Result<(), Error> {
+    fn configure_swd(&mut self, request: swd::configure::ConfigureRequest) -> Result<(), CmsisDapError> {
         commands::send_command::<swd::configure::ConfigureRequest, swd::configure::ConfigureResponse>(
             &mut self.device,
             request
         )
         .and_then(|v| match v {
             swd::configure::ConfigureResponse(Status::DAPOk) => Ok(()),
-            swd::configure::ConfigureResponse(Status::DAPError) => Err(Error::DAP),
+            swd::configure::ConfigureResponse(Status::DAPError) => Err(CmsisDapError::ErrorResponse),
         })?;
         Ok(())
     }
 
-    fn send_swj_sequences(&mut self, request: SequenceRequest) -> Result<(), Error> {
+    fn send_swj_sequences(&mut self, request: SequenceRequest) -> Result<(), CmsisDapError> {
         /* 12 38 FF FF FF FF FF FF FF -> 12 00 // SWJ Sequence
         12 10 9E E7 -> 12 00 // SWJ Sequence
         12 38 FF FF FF FF FF FF FF -> 12 00 // SWJ Sequence */
@@ -105,7 +108,7 @@ impl DAPLink {
         commands::send_command::<SequenceRequest, SequenceResponse>(&mut self.device, request)
             .and_then(|v| match v {
                 SequenceResponse(Status::DAPOk) => Ok(()),
-                SequenceResponse(Status::DAPError) => Err(Error::DAP),
+                SequenceResponse(Status::DAPError) => Err(CmsisDapError::ErrorResponse),
             })?;
         Ok(())
     }
@@ -170,7 +173,7 @@ impl DebugProbe for DAPLink {
 
         let clock = 1_000_000;
 
-        info!("Attaching to target system (clock = {})", clock);
+        debug!("Attaching to target system (clock = {})", clock);
         self.set_swj_clock(clock)?;
 
         let protocol = if let Some(protocol) = self.protocol {
@@ -185,7 +188,7 @@ impl DebugProbe for DAPLink {
         let _result = commands::send_command(&mut self.device, protocol).and_then(|v| match v {
             ConnectResponse::SuccessfulInitForSWD => Ok(WireProtocol::Swd),
             ConnectResponse::SuccessfulInitForJTAG => Ok(WireProtocol::Jtag),
-            ConnectResponse::InitFailed => Err(Error::DAP),
+            ConnectResponse::InitFailed => Err(CmsisDapError::ErrorResponse),
         })?;
 
         self.set_swj_clock(clock)?;
@@ -210,53 +213,7 @@ impl DebugProbe for DAPLink {
 
         self.send_swj_sequences(SequenceRequest::new(&[0x00]).unwrap())?;
 
-        use crate::architecture::arm::dp::{Abort, Ctrl, DPv1, DebugPortId, Select, DPIDR};
-
-        // assume a dpv1 port for now
-
-        let port = DPv1 {};
-
-        let dp_id: DPIDR = self.read_dp_register(&port)?;
-
-        let dp_id: DebugPortId = dp_id.into();
-
-        info!("Debug PortType Version:  {:x?}", dp_id.version);
-        info!(
-            "Debug PortType Designer: {}",
-            dp_id.designer.get().unwrap_or("Unknown")
-        );
-
-        let mut abort_reg = Abort(0);
-        abort_reg.set_orunerrclr(true);
-        abort_reg.set_wderrclr(true);
-        abort_reg.set_stkerrclr(true);
-        abort_reg.set_stkcmpclr(true);
-
-        self.write_dp_register(&port, abort_reg)?; // clear errors
-
-        let mut select_reg = Select(0);
-        select_reg.set_dp_bank_sel(0);
-
-        self.write_dp_register(&port, select_reg)?; // select DBPANK 0
-
-        let mut ctrl_reg = Ctrl::default();
-
-        ctrl_reg.set_csyspwrupreq(true);
-        ctrl_reg.set_cdbgpwrupreq(true);
-
-        debug!("Requesting debug power");
-
-        self.write_dp_register(&port, ctrl_reg)?; // CSYSPWRUPREQ, CDBGPWRUPREQ
-
-        // TODO: Check return value if power up was ok
-        let ctrl_reg: Ctrl = self.read_dp_register(&port)?;
-
-        if !(ctrl_reg.csyspwrupack() && ctrl_reg.cdbgpwrupack()) {
-            error!("Debug power request failed");
-            return Err(Error::TargetPowerUpFailed.into());
-        }
-
-        info!("Succesfully attached to system and entered debug mode");
+        debug!("Successfully changed to SDW.");
 
         Ok(())
     }
@@ -267,7 +224,7 @@ impl DebugProbe for DAPLink {
 
         match response {
             DisconnectResponse(Status::DAPOk) => Ok(()),
-            DisconnectResponse(Status::DAPError) => Err(Error::UnexpectedAnswer.into()),
+            DisconnectResponse(Status::DAPError) => Err(CmsisDapError::UnexpectedAnswer.into()),
         }
     }
 
@@ -317,17 +274,17 @@ impl DAPAccess for DAPLink {
         if response.transfer_count == 1 {
             if response.transfer_response.protocol_error {
                 // An SWD Protocol Error occured
-                Err(Error::SwdProtocol.into())
+                Err(DapError::SwdProtocol.into())
             } else {
                 match response.transfer_response.ack {
                     Ack::Ok => Ok(response.transfer_data),
-                    Ack::NoAck => Err(Error::NoAcknowledge.into()),
-                    Ack::Fault => Err(Error::DeviceFault.into()),
-                    Ack::Wait => Err(Error::Wait.into()),
+                    Ack::NoAck => Err(DapError::NoAcknowledge.into()),
+                    Ack::Fault => Err(DapError::FaultResponse.into()),
+                    Ack::Wait => Err(DapError::WaitResponse.into()),
                 }
             }
         } else {
-            Err(Error::UnexpectedAnswer.into())
+            Err(CmsisDapError::UnexpectedAnswer.into())
         }
     }
 

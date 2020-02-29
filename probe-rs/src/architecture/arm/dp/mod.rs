@@ -94,7 +94,7 @@ bitfield! {
     impl Debug;
     pub csyspwrupack, _: 31;
     pub csyspwrupreq, set_csyspwrupreq: 30;
-    pub cdbgpwrupack, set_cdbgpwrupack: 29;
+    pub cdbgpwrupack, _: 29;
     pub cdbgpwrupreq, set_cdbgpwrupreq: 28;
     pub cdbgrstack, _: 27;
     pub c_dbg_rst_req, set_c_dbg_rst_req: 26;
