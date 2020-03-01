@@ -10,7 +10,7 @@ use std::{
     },
 };
 
-static MAX_MODULE_WIDTH: AtomicUsize = AtomicUsize::new(0);
+static MAX_WINDOW_WIDTH: AtomicUsize = AtomicUsize::new(0);
 
 lazy_static::lazy_static! {
     /// Stores the progress bar for the logging facility.
@@ -29,9 +29,9 @@ impl<T: fmt::Display> fmt::Display for Padded<T> {
 }
 
 fn max_target_width(target: &str) -> usize {
-    let max_width = MAX_MODULE_WIDTH.load(Ordering::Relaxed);
+    let max_width = MAX_WINDOW_WIDTH.load(Ordering::Relaxed);
     if max_width < target.len() {
-        MAX_MODULE_WIDTH.store(target.len(), Ordering::Relaxed);
+        MAX_WINDOW_WIDTH.store(target.len(), Ordering::Relaxed);
         target.len()
     } else {
         max_width
@@ -94,7 +94,7 @@ pub fn set_progress_bar(progress: Arc<ProgressBar>) {
 
 /// Writes an error to the log.
 /// This can be used for unwraps/eprintlns/etc.
-pub fn write_error(message: impl AsRef<str>) {
+pub fn eprintln(message: impl AsRef<str>) {
     let guard = PROGRESS_BAR.write().unwrap();
     if let Some(pb) = &*guard {
         pb.println(message.as_ref());
@@ -105,7 +105,7 @@ pub fn write_error(message: impl AsRef<str>) {
 
 /// Writes an error to the log.
 /// This can be used for unwraps/eprintlns/etc.
-pub fn write_message(message: impl AsRef<str>) {
+pub fn println(message: impl AsRef<str>) {
     let guard = PROGRESS_BAR.write().unwrap();
     if let Some(pb) = &*guard {
         pb.println(message.as_ref());

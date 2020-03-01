@@ -113,7 +113,7 @@ fn main() {
     match main_try() {
         Ok(_) => (),
         Err(e) => {
-            logging::write_error(format!("{}: {}", "error".red().bold(), e));
+            logging::eprintln(format!("{}: {}", "error".red().bold(), e));
             process::exit(1);
         }
     }
@@ -199,7 +199,7 @@ fn main_try() -> Result<(), failure::Error> {
         None => panic!(),
     };
 
-    logging::write_message(format!("    {} {}", "Flashing".green().bold(), path_str));
+    logging::println(format!("    {} {}", "Flashing".green().bold(), path_str));
 
     let list = Probe::list_all();
 
@@ -330,7 +330,7 @@ fn main_try() -> Result<(), failure::Error> {
 
         // Stop timer.
         let elapsed = instant.elapsed();
-        logging::write_message(format!(
+        logging::println(format!(
             "    {} in {}s",
             "Finished".green().bold(),
             elapsed.as_millis() as f32 / 1000.0,
@@ -348,15 +348,15 @@ fn main_try() -> Result<(), failure::Error> {
             .gdb_connection_string
             .or_else(|| Some("localhost:1337".to_string()));
         // This next unwrap will always resolve as the connection string is always Some(T).
-        logging::write_message(format!(
+        logging::println(format!(
             "Firing up GDB stub at {}",
             gdb_connection_string.as_ref().unwrap(),
         ));
         if let Err(e) =
             probe_rs_gdb_server::run(gdb_connection_string, Arc::new(Mutex::new(session)))
         {
-            logging::write_error("During the execution of GDB an error was encountered:");
-            logging::write_error(format!("{:?}", e));
+            logging::eprintln("During the execution of GDB an error was encountered:");
+            logging::eprintln(format!("{:?}", e));
         }
     }
 
@@ -364,14 +364,14 @@ fn main_try() -> Result<(), failure::Error> {
 }
 
 fn print_families() -> Result<(), failure::Error> {
-    logging::write_message("Available chips:");
+    logging::println("Available chips:");
     for family in probe_rs::config::registry::families()
         .map_err(|e| format_err!("Families could not be read: {:?}", e))?
     {
-        logging::write_message(&family.name);
-        logging::write_message("    Variants:");
+        logging::println(&family.name);
+        logging::println("    Variants:");
         for variant in family.variants() {
-            logging::write_message(format!("        {}", variant.name));
+            logging::println(format!("        {}", variant.name));
         }
     }
     Ok(())
