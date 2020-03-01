@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Flashing support for the STM32G0 series.
 - Flashing support for the STM32F0 series.
+- Flashing support for the STM32WB55 series.
 - Support for RISCV debugging using a Jlink debug probe.
 - Support for SWD debugging using a Jlink debug probe.
 
