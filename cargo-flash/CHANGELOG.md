@@ -16,6 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Fix a bug where `--probe-index` would be handed to cargo build accidentially.
+- Logs are now always shown, even with progressbars enabled.
+  Before progressbars would behave weirdly and errors would not be shown.
+  Now this is handled properly and any output is shown above the progress bars.
 
 ## [0.4.0]
 

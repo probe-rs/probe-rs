@@ -169,7 +169,6 @@ dependencies = [
  "indicatif 0.14.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "lazy_static 1.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
- "pretty_env_logger 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "probe-rs 0.5.0 (git+https://github.com/probe-rs/probe-rs)",
  "structopt 0.3.11 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -944,15 +943,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pretty_env_logger"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-dependencies = [
- "env_logger 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "log 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
 name = "probe-rs"
 version = "0.5.0"
 source = "git+https://github.com/probe-rs/probe-rs#fff50190eab4973daa75c8a84a3425cb2d266c11"
@@ -1622,7 +1612,6 @@ dependencies = [
 "checksum pkg-config 0.3.17 (registry+https://github.com/rust-lang/crates.io-index)" = "05da548ad6865900e60eaba7f589cc0783590a92e940c26953ff81ddbab2d677"
 "checksum plain 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)" = "b4596b6d070b27117e987119b4dac604f3c58cfb0b191112e24771b2faeac1a6"
 "checksum pretty_env_logger 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)" = "717ee476b1690853d222af4634056d830b5197ffd747726a9a1eee6da9f49074"
-"checksum pretty_env_logger 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)" = "926d36b9553851b8b0005f1275891b392ee4d2d833852c417ed025477350fb9d"
 "checksum probe-rs 0.5.0 (git+https://github.com/probe-rs/probe-rs)" = "<none>"
 "checksum probe-rs-t2rust 0.5.0 (git+https://github.com/probe-rs/probe-rs)" = "<none>"
 "checksum proc-macro-error 0.4.10 (registry+https://github.com/rust-lang/crates.io-index)" = "8a857f7c61b149c868eb7e40311b48502fcc924744fb73191962748643336568"
