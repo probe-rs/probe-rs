@@ -8,9 +8,12 @@ use std::{
     fmt,
     path::{Path, PathBuf},
     process::{self, Command, Stdio},
-    sync::{Arc, Mutex},
+    sync::{Arc, Mutex, RwLock, atomic::{AtomicUsize, Ordering}},
     time::Instant,
 };
+use indicatif::{ProgressBar, MultiProgress, ProgressStyle};
+use env_logger::{fmt::{Color, Style, StyledValue}, Builder, Logger};
+use log::Level;
 use structopt::StructOpt;
 
 use probe_rs::{
@@ -20,6 +23,84 @@ use probe_rs::{
     flash::{FlashProgress, ProgressEvent},
     DebugProbeError, Probe, WireProtocol,
 };
+
+static MAX_MODULE_WIDTH: AtomicUsize = AtomicUsize::new(0);
+
+struct Padded<T> {
+    value: T,
+    width: usize,
+}
+
+impl<T: fmt::Display> fmt::Display for Padded<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{: <width$}", self.value, width=self.width)
+    }
+}
+
+fn max_target_width(target: &str) -> usize {
+    let max_width = MAX_MODULE_WIDTH.load(Ordering::Relaxed);
+    if max_width < target.len() {
+        MAX_MODULE_WIDTH.store(target.len(), Ordering::Relaxed);
+        target.len()
+    } else {
+        max_width
+    }
+}
+
+fn colored_level<'a>(style: &'a mut Style, level: Level) -> StyledValue<'a, &'static str> {
+    match level {
+        Level::Trace => style.set_color(Color::Magenta).value("TRACE"),
+        Level::Debug => style.set_color(Color::Blue).value("DEBUG"),
+        Level::Info => style.set_color(Color::Green).value("INFO "),
+        Level::Warn => style.set_color(Color::Yellow).value("WARN "),
+        Level::Error => style.set_color(Color::Red).value("ERROR"),
+    }
+}
+
+pub fn formatted_builder() -> Builder {
+    let mut builder = Builder::new();
+
+    if let Ok(s) = ::std::env::var("RUST_LOG") {
+        builder.parse_filters(&s);
+    }
+
+    builder.format(move |f, record| {
+        let target = record.target();
+        let max_width = max_target_width(target);
+
+        let mut style = f.style();
+        let level = colored_level(&mut style, record.level());
+
+        let mut style = f.style();
+        let target = style.set_bold(true).value(Padded {
+            value: target,
+            width: max_width,
+        });
+
+        println!("KEKE");
+
+        let guard = PROGRESS_BAR.write().unwrap();
+        if let Some(pb) = &*guard {
+            pb.println(format!(
+                " {} {} > {}",
+                level,
+                target,
+                record.args(),
+            ));
+        } else {
+            eprintln!("{}", record.args());
+        }
+
+        Ok(())
+    });
+
+    builder
+}
+
+lazy_static::lazy_static! {
+    static ref PROGRESS_BAR: RwLock<Option<Arc<ProgressBar>>> = RwLock::new(None);
+    static ref LOGGER: Logger = formatted_builder().build();
+}
 
 #[derive(Debug, StructOpt)]
 struct Opt {
@@ -100,7 +181,8 @@ const ARGUMENTS_TO_REMOVE: &[&str] = &[
 ];
 
 fn main() {
-    pretty_env_logger::init();
+    // pretty_env_logger::init();
+    log::set_logger(&*LOGGER).unwrap();
     match main_try() {
         Ok(_) => (),
         Err(e) => {
@@ -235,19 +317,21 @@ fn main_try() -> Result<(), failure::Error> {
     if !opt.no_download {
         if !opt.disable_progressbars {
             // Create progress bars.
-            let multi_progress = indicatif::MultiProgress::new(); //with_draw_target(indicatif::ProgressDrawTarget::stdout_nohz());
-            let style = indicatif::ProgressStyle::default_bar()
+            let multi_progress = MultiProgress::new(); //with_draw_target(indicatif::ProgressDrawTarget::stdout_nohz());
+            let style = ProgressStyle::default_bar()
                     .tick_chars("⠁⠁⠉⠙⠚⠒⠂⠂⠒⠲⠴⠤⠄⠄⠤⠠⠠⠤⠦⠖⠒⠐⠐⠒⠓⠋⠉⠈⠈✔")
                     .progress_chars("##-")
                     .template("    {msg:.green.bold} {spinner} [{elapsed_precise}] [{wide_bar}] {bytes:>8}/{total_bytes:>8} @ {bytes_per_sec:>10} (eta {eta:3})");
 
             // Create a new progress bar for the erase progress.
-            let erase_progress = multi_progress.add(indicatif::ProgressBar::new(0));
+            let erase_progress = Arc::new(multi_progress.add(ProgressBar::new(0)));
+            let mut guard = PROGRESS_BAR.write().unwrap();
+            *guard = Some(erase_progress.clone());
             erase_progress.set_style(style.clone());
             erase_progress.set_message("Erasing sectors  ");
 
             // Create a new progress bar for the program progress.
-            let program_progress = multi_progress.add(indicatif::ProgressBar::new(0));
+            let program_progress = multi_progress.add(ProgressBar::new(0));
             program_progress.set_style(style);
             program_progress.set_message("Programming pages");
 

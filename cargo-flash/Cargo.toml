@@ -21,3 +21,6 @@ colored = "1.8.0"
 probe-rs = { version = "0.5.0", git = "https://github.com/probe-rs/probe-rs" }
 gdb-server = { version = "0.5.0", git = "https://github.com/probe-rs/probe-rs" }
 indicatif = "0.14"
+env_logger = "0.7.1"
+log = "0.4.0"
+lazy_static = "1.4.0"
