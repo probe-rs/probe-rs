@@ -3,17 +3,16 @@ use crate::probe::{DebugProbeInfo, DebugProbeType};
 pub fn list_daplink_devices() -> Vec<DebugProbeInfo> {
     match hidapi::HidApi::new() {
         Ok(api) => api
-            .devices()
-            .iter()
+            .device_list()
             .cloned()
             .filter(|device| is_daplink_device(&device))
             .map(|v| {
                 DebugProbeInfo::new(
-                    v.product_string
-                        .unwrap_or_else(|| "Unknown CMSIS-DAP Probe".to_owned()),
-                    v.vendor_id,
-                    v.product_id,
-                    v.serial_number,
+                    v.product_string()
+                        .unwrap_or_else(|| "Unknown CMSIS-DAP Probe"),
+                    v.vendor_id(),
+                    v.product_id(),
+                    v.serial_number().map(|s| s.to_owned()),
                     DebugProbeType::DAPLink,
                 )
             })
@@ -22,8 +21,8 @@ pub fn list_daplink_devices() -> Vec<DebugProbeInfo> {
     }
 }
 
-pub fn is_daplink_device(device: &hidapi::HidDeviceInfo) -> bool {
-    if let Some(product_string) = device.product_string.as_ref() {
+pub fn is_daplink_device(device: &hidapi::DeviceInfo) -> bool {
+    if let Some(product_string) = device.product_string().as_ref() {
         product_string.contains("CMSIS-DAP")
     } else {
         false
