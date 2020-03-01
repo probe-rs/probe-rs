@@ -155,10 +155,9 @@ struct InnerArmCommunicationInterface {
 }
 
 impl InnerArmCommunicationInterface {
-    fn new(probe: Probe) -> Result<Self, DebugProbeError> {
-        let mut my_probe = probe;
+    fn new(mut probe: Probe) -> Result<Self, DebugProbeError> {
         // Check the version of debug port used
-        let interface = my_probe
+        let interface = probe
             .get_interface_dap_mut()
             .ok_or_else(|| DebugProbeError::InterfaceNotAvailable("ARM"))?;
 
@@ -169,7 +168,7 @@ impl InnerArmCommunicationInterface {
         log::debug!("Debug Port version: {:?}", version);
 
         let mut s = Self {
-            probe: my_probe,
+            probe,
             debug_port_version: version,
             current_dpbanksel: 0,
             current_apsel: 0,
