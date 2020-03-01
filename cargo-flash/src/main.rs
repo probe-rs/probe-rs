@@ -85,7 +85,7 @@ struct Opt {
     features: Vec<String>,
 }
 
-const ARGUMENTS_TO_REMOVE: &'static [&'static str] = &[
+const ARGUMENTS_TO_REMOVE: &[&str] = &[
     "chip=",
     "chip-description-path=",
     "list-chips",
@@ -445,7 +445,7 @@ fn remove_arguments(arguments_to_remove: &[&'static str], arguments: &mut Vec<St
         // If the original arg contained an equal sign we take this as a hint
         // that the arg can be used as `--arg value` as well as `--arg=value`.
         // In the prior case we need to remove two arguments. So remember this.
-        let (remove_two, clean_argument) = if argument.ends_with("=") {
+        let (remove_two, clean_argument) = if argument.ends_with('=') {
             (true, format!("--{}", &argument[..argument.len() - 1]))
         } else {
             (false, format!("--{}", argument))
