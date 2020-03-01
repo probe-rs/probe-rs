@@ -1,19 +1,19 @@
+mod logging;
+
 use structopt;
 
 use colored::*;
 use failure::format_err;
+use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use std::{
     env,
     error::Error,
     fmt,
     path::{Path, PathBuf},
     process::{self, Command, Stdio},
-    sync::{Arc, Mutex, RwLock, atomic::{AtomicUsize, Ordering}},
+    sync::{Arc, Mutex},
     time::Instant,
 };
-use indicatif::{ProgressBar, MultiProgress, ProgressStyle};
-use env_logger::{fmt::{Color, Style, StyledValue}, Builder, Logger};
-use log::Level;
 use structopt::StructOpt;
 
 use probe_rs::{
@@ -23,84 +23,6 @@ use probe_rs::{
     flash::{FlashProgress, ProgressEvent},
     DebugProbeError, Probe, WireProtocol,
 };
-
-static MAX_MODULE_WIDTH: AtomicUsize = AtomicUsize::new(0);
-
-struct Padded<T> {
-    value: T,
-    width: usize,
-}
-
-impl<T: fmt::Display> fmt::Display for Padded<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{: <width$}", self.value, width=self.width)
-    }
-}
-
-fn max_target_width(target: &str) -> usize {
-    let max_width = MAX_MODULE_WIDTH.load(Ordering::Relaxed);
-    if max_width < target.len() {
-        MAX_MODULE_WIDTH.store(target.len(), Ordering::Relaxed);
-        target.len()
-    } else {
-        max_width
-    }
-}
-
-fn colored_level<'a>(style: &'a mut Style, level: Level) -> StyledValue<'a, &'static str> {
-    match level {
-        Level::Trace => style.set_color(Color::Magenta).value("TRACE"),
-        Level::Debug => style.set_color(Color::Blue).value("DEBUG"),
-        Level::Info => style.set_color(Color::Green).value("INFO "),
-        Level::Warn => style.set_color(Color::Yellow).value("WARN "),
-        Level::Error => style.set_color(Color::Red).value("ERROR"),
-    }
-}
-
-pub fn formatted_builder() -> Builder {
-    let mut builder = Builder::new();
-
-    if let Ok(s) = ::std::env::var("RUST_LOG") {
-        builder.parse_filters(&s);
-    }
-
-    builder.format(move |f, record| {
-        let target = record.target();
-        let max_width = max_target_width(target);
-
-        let mut style = f.style();
-        let level = colored_level(&mut style, record.level());
-
-        let mut style = f.style();
-        let target = style.set_bold(true).value(Padded {
-            value: target,
-            width: max_width,
-        });
-
-        println!("KEKE");
-
-        let guard = PROGRESS_BAR.write().unwrap();
-        if let Some(pb) = &*guard {
-            pb.println(format!(
-                " {} {} > {}",
-                level,
-                target,
-                record.args(),
-            ));
-        } else {
-            eprintln!("{}", record.args());
-        }
-
-        Ok(())
-    });
-
-    builder
-}
-
-lazy_static::lazy_static! {
-    static ref PROGRESS_BAR: RwLock<Option<Arc<ProgressBar>>> = RwLock::new(None);
-    static ref LOGGER: Logger = formatted_builder().build();
-}
 
 #[derive(Debug, StructOpt)]
 struct Opt {
@@ -181,12 +103,11 @@ const ARGUMENTS_TO_REMOVE: &[&str] = &[
 ];
 
 fn main() {
-    // pretty_env_logger::init();
-    log::set_logger(&*LOGGER).unwrap();
+    logging::init();
     match main_try() {
         Ok(_) => (),
         Err(e) => {
-            eprintln!("{}: {}", "error".red().bold(), e);
+            logging::write_error(format!("{}: {}", "error".red().bold(), e));
             process::exit(1);
         }
     }
@@ -270,7 +191,7 @@ fn main_try() -> Result<(), failure::Error> {
         None => panic!(),
     };
 
-    println!("    {} {}", "Flashing".green().bold(), path_str);
+    logging::write_message(format!("    {} {}", "Flashing".green().bold(), path_str));
 
     let list = Probe::list_all();
 
@@ -325,8 +246,9 @@ fn main_try() -> Result<(), failure::Error> {
 
             // Create a new progress bar for the erase progress.
             let erase_progress = Arc::new(multi_progress.add(ProgressBar::new(0)));
-            let mut guard = PROGRESS_BAR.write().unwrap();
-            *guard = Some(erase_progress.clone());
+            {
+                logging::set_progress_bar(erase_progress.clone());
+            }
             erase_progress.set_style(style.clone());
             erase_progress.set_message("Erasing sectors  ");
 
@@ -400,11 +322,11 @@ fn main_try() -> Result<(), failure::Error> {
 
         // Stop timer.
         let elapsed = instant.elapsed();
-        println!(
+        logging::write_message(format!(
             "    {} in {}s",
             "Finished".green().bold(),
-            elapsed.as_millis() as f32 / 1000.0
-        );
+            elapsed.as_millis() as f32 / 1000.0,
+        ));
     }
 
     if opt.reset_halt {
@@ -418,15 +340,15 @@ fn main_try() -> Result<(), failure::Error> {
             .gdb_connection_string
             .or_else(|| Some("localhost:1337".to_string()));
         // This next unwrap will always resolve as the connection string is always Some(T).
-        println!(
+        logging::write_message(format!(
             "Firing up GDB stub at {}",
-            gdb_connection_string.as_ref().unwrap()
-        );
+            gdb_connection_string.as_ref().unwrap(),
+        ));
         if let Err(e) =
             probe_rs_gdb_server::run(gdb_connection_string, Arc::new(Mutex::new(session)))
         {
-            eprintln!("During the execution of GDB an error was encountered:");
-            eprintln!("{:?}", e);
+            logging::write_error("During the execution of GDB an error was encountered:");
+            logging::write_error(format!("{:?}", e));
         }
     }
 
@@ -434,14 +356,14 @@ fn main_try() -> Result<(), failure::Error> {
 }
 
 fn print_families() -> Result<(), failure::Error> {
-    println!("Available chips:");
+    logging::write_message("Available chips:");
     for family in probe_rs::config::registry::families()
         .map_err(|e| format_err!("Families could not be read: {:?}", e))?
     {
-        println!("{}", family.name);
-        println!("    Variants:");
+        logging::write_message(format!("{}", family.name));
+        logging::write_message("    Variants:");
         for variant in family.variants() {
-            println!("        {}", variant.name);
+            logging::write_message(format!("        {}", variant.name));
         }
     }
     Ok(())
