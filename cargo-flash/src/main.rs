@@ -61,13 +61,13 @@ struct Opt {
     )]
     reset_halt: bool,
     #[structopt(
-        name = "gdb-connection-string",
+        name = "host:port",
         long = "gdb-connection-string",
         help = "Use this flag to override the default GDB connection string (localhost:1337)."
     )]
     gdb_connection_string: Option<String>,
     #[structopt(
-        name = "log",
+        name = "level",
         long = "log",
         help = "Use this flag to set the log level. Default is `warning`. Possible choices are [error, warning, info, debug, trace]"
     )]
