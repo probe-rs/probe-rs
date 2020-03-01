@@ -163,9 +163,12 @@ version = "0.5.0"
 dependencies = [
  "cargo-project 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "colored 1.9.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "env_logger 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "failure 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "gdb-server 0.5.0 (git+https://github.com/probe-rs/probe-rs)",
  "indicatif 0.14.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "lazy_static 1.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "log 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "pretty_env_logger 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "probe-rs 0.5.0 (git+https://github.com/probe-rs/probe-rs)",
  "structopt 0.3.9 (registry+https://github.com/rust-lang/crates.io-index)",

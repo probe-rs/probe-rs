@@ -66,6 +66,12 @@ struct Opt {
         help = "Use this flag to override the default GDB connection string (localhost:1337)."
     )]
     gdb_connection_string: Option<String>,
+    #[structopt(
+        name = "log",
+        long = "log",
+        help = "Use this flag to set the log level. Default is `warning`. Possible choices are [error, warning, info, debug, trace]"
+    )]
+    log: Option<log::Level>,
 
     // `cargo build` arguments
     #[structopt(name = "binary", long = "bin")]
@@ -100,10 +106,10 @@ const ARGUMENTS_TO_REMOVE: &[&str] = &[
     "reset-halt",
     "gdb-connection-string=",
     "nrf-recover",
+    "log=",
 ];
 
 fn main() {
-    logging::init();
     match main_try() {
         Ok(_) => (),
         Err(e) => {
@@ -126,6 +132,8 @@ fn main_try() -> Result<(), failure::Error> {
 
     // Get commandline options.
     let opt = Opt::from_iter(&args);
+
+    logging::init(opt.log);
 
     // Make sure we load the config given in the cli parameters.
     if let Some(cdp) = opt.chip_description_path {

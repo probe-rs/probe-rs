@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Adds support for JLink and JTag based flashing.
 - Add the possibility to select the debug protocol (SWD/JTAG) with `--protocol`.
+- Added the possibility to set the log level via the `--log` argument.
 
 ### Changed
 

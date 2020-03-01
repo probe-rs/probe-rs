@@ -1,7 +1,7 @@
 use colored::*;
 use env_logger::Builder;
 use indicatif::ProgressBar;
-use log::Level;
+use log::{Level, LevelFilter};
 use std::{
     fmt,
     sync::{
@@ -48,11 +48,17 @@ fn colored_level<'a>(level: Level) -> ColoredString {
     }
 }
 
-pub fn init() {
+pub fn init(level: Option<Level>) {
     let mut builder = Builder::new();
+
+    builder.filter_level(LevelFilter::Warn);
 
     if let Ok(s) = ::std::env::var("RUST_LOG") {
         builder.parse_filters(&s);
+    }
+
+    if let Some(level) = level {
+        builder.filter_level(level.to_level_filter());
     }
 
     builder.format(move |f, record| {
