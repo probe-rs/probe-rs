@@ -428,11 +428,7 @@ impl STLink {
             let mut buf = [0; 2];
             log::trace!("JTAG_INIT_AP {}", apsel);
             self.device.write(
-                vec![
-                    commands::JTAG_COMMAND,
-                    commands::JTAG_INIT_AP,
-                    apsel,
-                ],
+                vec![commands::JTAG_COMMAND, commands::JTAG_INIT_AP, apsel],
                 &[],
                 &mut buf,
                 TIMEOUT,
