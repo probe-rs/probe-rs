@@ -432,7 +432,6 @@ impl STLink {
                     commands::JTAG_COMMAND,
                     commands::JTAG_INIT_AP,
                     apsel,
-                    //                    commands::JTAG_AP_NO_CORE,
                 ],
                 &[],
                 &mut buf,
