@@ -38,7 +38,7 @@ fn max_target_width(target: &str) -> usize {
     }
 }
 
-fn colored_level<'a>(level: Level) -> ColoredString {
+fn colored_level(level: Level) -> ColoredString {
     match level {
         Level::Trace => "TRACE".magenta().bold(),
         Level::Debug => "DEBUG".blue().bold(),
@@ -89,7 +89,7 @@ pub fn init(level: Option<Level>) {
 /// Sets the current progress bar in store for the logging facility.
 pub fn set_progress_bar(progress: Arc<ProgressBar>) {
     let mut guard = PROGRESS_BAR.write().unwrap();
-    *guard = Some(progress.clone());
+    *guard = Some(progress);
 }
 
 /// Writes an error to the log.

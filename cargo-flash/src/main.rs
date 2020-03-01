@@ -368,7 +368,7 @@ fn print_families() -> Result<(), failure::Error> {
     for family in probe_rs::config::registry::families()
         .map_err(|e| format_err!("Families could not be read: {:?}", e))?
     {
-        logging::write_message(format!("{}", family.name));
+        logging::write_message(&family.name);
         logging::write_message("    Variants:");
         for variant in family.variants() {
             logging::write_message(format!("        {}", variant.name));
