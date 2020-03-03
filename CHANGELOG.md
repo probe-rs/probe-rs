@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+### Changed
+
+### Fixed
+
+## [0.5.0]
+
+### Added
+
 - Flashing support for the STM32G0 series.
 - Flashing support for the STM32F0 series.
 - Flashing support for the STM32WB55 series.
@@ -23,6 +31,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - More consistent and clean naming and reporting of errors in the stlink and daplink modules. Also the errorhandling for the probe has been improved.
 
 ### Fixed
+
+- Various fixes
+
+### Known issues
+
+- Some chips do not reset automatically after flashing
+- The STM32L0 cores have issues with flashing.
 
 ## [0.4.0]
 
@@ -73,7 +88,8 @@ Initial release on crates.io
 - Working basic flash downloader with nRF51.
 - Introduce cargo-flash which can automatically build & flash the target elf file.
 
-[Unreleased]: https://github.com/probe-rs/probe-rs/compare/v0.4.0...master
+[Unreleased]: https://github.com/probe-rs/probe-rs/compare/v0.5.0...master
+[0.5.0]: https://github.com/probe-rs/probe-rs/releases/tag/v0.5.0
 [0.4.0]: https://github.com/probe-rs/probe-rs/releases/tag/v0.4.0
 [0.3.0]: https://github.com/probe-rs/probe-rs/releases/tag/v0.3.0
 [0.2.0]: https://github.com/probe-rs/probe-rs/releases/tag/v0.2.0
