@@ -89,7 +89,7 @@ where
 {
     let probe = open_probe(shared_options.n)?;
 
-    let target_selector = match &shared_options.target {
+    let target_selector = match &shared_options.chip {
         Some(identifier) => identifier.into(),
         None => TargetSelector::Auto,
     };
