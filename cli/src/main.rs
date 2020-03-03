@@ -98,7 +98,7 @@ struct SharedOptions {
 
     /// The target to be selected.
     #[structopt(short, long)]
-    target: Option<String>,
+    chip: Option<String>,
 }
 
 fn main() {
