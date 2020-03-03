@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+### Changed
+
+### Fixed
+
+## [0.5.0]
+
+### Added
+
 - Adds support for JLink and JTag based flashing.
 - Add the possibility to select the debug protocol (SWD/JTAG) with `--protocol`.
 - Added the possibility to set the log level via the `--log` argument.
@@ -19,6 +27,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Logs are now always shown, even with progressbars enabled.
   Before progressbars would behave weirdly and errors would not be shown.
   Now this is handled properly and any output is shown above the progress bars.
+
+### Known issues
+
+- Some chips do not reset automatically after flashing
+- The STM32L0 cores have issues with flashing.
 
 ## [0.4.0]
 
@@ -51,4 +64,5 @@ Improved flashing for `cargo-flash` considering speed and useability.
 - Introduce cargo-flash which can automatically build & flash the target elf file.
 
 [Unreleased]: https://github.com/probe-rs/probe-rs/compare/v0.5.0...master
+[0.5.0]: https://github.com/probe-rs/probe-rs/releases/tag/v0.5.0
 [0.4.0]: https://github.com/probe-rs/probe-rs/releases/tag/v0.4.0
