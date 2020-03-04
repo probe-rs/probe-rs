@@ -416,12 +416,24 @@ impl CoreInterface for M4 {
     }
 
     fn reset(&self) -> Result<(), Error> {
-        // Set THE AIRCR.SYSRESETREQ control bit to 1 to request a reset. (ARM V6 ARM, B1.5.16)
+        // Set THE AIRCR.SYSRESETREQ control bit to 1 to request a reset. (ARM V7 ARM, B1.5.16)
+
+        // The reset is done using the sysresetreq bit. Another option would be the
+        // vectreset bit, but for consistency with the other ARM architectures we use
+        // sysresetreq right now.
+
         let mut value = Aircr(0);
         value.vectkey();
         value.set_sysresetreq(true);
 
+        // Write the register. This will take the chip out of debug mode, so it should start
+        // running immediately.
         self.memory.write32(Aircr::ADDRESS, value.into())?;
+
+        self.run()?;
+
+        // TODO: We can check the DHCSR register to verify that the core has actually reset.
+        // See ARM V7 ARM, C1.6.2
 
         Ok(())
     }

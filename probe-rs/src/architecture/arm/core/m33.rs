@@ -94,13 +94,18 @@ impl CoreInterface for M33 {
             .map_err(Into::into)
     }
     fn reset(&self) -> Result<(), Error> {
-        // Set THE AIRCR.SYSRESETREQ control bit to 1 to request a reset. (ARM V6 ARM, B1.5.16)
+        // Set THE AIRCR.SYSRESETREQ control bit to 1 to request a reset. (ARM V8 ARM, D1.2.3)
 
         let mut value = Aircr(0);
         value.vectkey();
         value.set_sysresetreq(true);
 
         self.memory.write32(Aircr::ADDRESS, value.into())?;
+
+        self.run()?;
+
+        // TODO: We can check the DHCSR register to verify that the core has actually reset.
+        // See ARM V8 ARM, D1.2.38
 
         Ok(())
     }

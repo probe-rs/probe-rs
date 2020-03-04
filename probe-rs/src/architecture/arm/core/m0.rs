@@ -417,6 +417,14 @@ impl CoreInterface for M0 {
 
         self.memory.write32(Aircr::ADDRESS, value.into())?;
 
+        // The reset does not have to occur immediately.
+        // We start running the core again, so that the reset takes place.
+        // Here, we don't actually know if the core reset.
+        self.run()?;
+
+        // TODO: We can check the DHCSR register to verify that the core has actually reset.
+        // See ARM V6 ARM, C1.6.3
+
         Ok(())
     }
 
