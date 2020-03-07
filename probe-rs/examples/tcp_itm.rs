@@ -48,22 +48,22 @@ fn main() -> Result<(), Error> {
                     time_delta /= 16_000_000.0;
                     timestamp += time_delta;
                 }
-                TracePacket::DwtData { id, payload } => {
-                    log::warn!("Dwt: id={} payload={:?}", id, payload);
+                // TracePacket::DwtData { id, payload } => {
+                //     log::warn!("Dwt: id={} payload={:?}", id, payload);
 
-                    if id == 17 {
-                        let value: i32 = payload.pread(0).unwrap();
-                        log::trace!("VAL={}", value);
-                        // client.send_sample("a", timestamp, value as f64).unwrap();
-                    }
-                }
+                //     if id == 17 {
+                //         let value: i32 = payload.pread(0).unwrap();
+                //         log::trace!("VAL={}", value);
+                //         // client.send_sample("a", timestamp, value as f64).unwrap();
+                //     }
+                // }
                 TracePacket::ItmData { id, payload } => {
                     // First decode the string data from the stimuli.
                     stimuli[id].push_str(&String::from_utf8_lossy(&payload));
                     // Then collect all the lines we have gotten so far.
                     let data = stimuli[id].clone();
                     let mut lines: Vec<_> = data.lines().collect();
-                    
+
                     // If there is at least one char in the total of all received chars, look at the last one.
                     let last_char = stimuli[id].chars().last();
                     if let Some(last_char) = last_char {

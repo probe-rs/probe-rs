@@ -5,11 +5,13 @@
 //!
 //! Trace protocol for the SWO pin.
 //!
-//! Refer to appendix E in the ARMv7-M architecture reference manual.
+//! Refer to appendix D4 in the ARMv7-M architecture reference manual.
 //! Also a good reference is itmdump.c from openocd:
 //! https://github.com/arduino/OpenOCD/blob/master/contrib/itmdump.c
 
 use std::collections::VecDeque;
+
+use scroll::Pread;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum TracePacket {
@@ -22,17 +24,89 @@ pub enum TracePacket {
         tc: usize,
         ts: usize,
     },
-
     /// ITM trace data.
     ItmData {
         id: usize,
         payload: Vec<u8>,
     },
-
-    DwtData {
-        id: usize,
-        payload: Vec<u8>,
+    /// Signalizes that an event counter wrapped.
+    /// This can happen for underflowing or overflowing counters.
+    /// Multiple bits can be set.
+    /// If two wraps of the same counter happen in quick succession,
+    /// the core MUST generate two separate packets.
+    EventCounterWrapping {
+        /// POSTCNT wrap.
+        cyc: bool,
+        /// FOLDCNT wrap.
+        fold: bool,
+        /// LSUCNT wrap.
+        lsu: bool,
+        /// SLEEPCNT wrap.
+        sleep: bool,
+        /// EXCCNT wrap.
+        exc: bool,
+        /// CPICNT wrap.
+        cpi: bool,
     },
+    /// Signalizes that an exception(interrupt) happended.
+    ExceptionTrace {
+        exception: ExceptionType,
+        action: ExceptionAction,
+    },
+    /// Notifies about a new PC sample.
+    PcSample {
+        pc: u32,
+    },
+    /// Signalizes that a new data trace event was received.
+    PcTrace {
+        /// The id of the DWT unit.
+        id: usize,
+        value: u32,
+    },
+    /// Signalizes that a memory access happened.
+    /// This can contain an u8, u16 or u32 value.
+    MemoryTrace {
+        /// The id of the DWT unit.
+        id: usize,
+        access_type: MemoryAccessType,
+        value: u32,
+    },
+    AddressTrace {
+        /// The id of the DWT unit.
+        id: usize,
+        address: u16,
+    },
+}
+
+/// This enum denotes the exception action taken by the CPU and is explained in table D4-6.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum ExceptionAction {
+    Entered,
+    Exited,
+    Returned,
+}
+
+/// This enum denotes the type of exception(interrupt) table D4-6.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum ExceptionType {
+    Reset,
+    Nmi,
+    HardFault,
+    MemManage,
+    BusFault,
+    UsageFault,
+    SVCall,
+    DebugMonitor,
+    PendSV,
+    SysTick,
+    ExternalInterrupt(usize),
+}
+
+/// This enum denotes the type of memory access.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum MemoryAccessType {
+    Read,
+    Write,
 }
 
 /// Trace data decoder.
@@ -54,7 +128,7 @@ enum DecoderState {
         size: usize,
     },
     DwtData {
-        id: usize,
+        discriminant: usize,
         payload: Vec<u8>,
         size: usize,
     },
@@ -111,12 +185,18 @@ impl Decoder {
                 payload.push(b);
                 self.handle_itm(id, payload, size);
             }
-            DecoderState::DwtData { payload, size, id } => {
+            DecoderState::DwtData {
+                payload,
+                size,
+                discriminant,
+            } => {
                 let mut payload = payload.clone();
-                let id = *id;
+                let discriminant = *discriminant;
                 let size = *size;
                 payload.push(b);
-                self.handle_dwt(id, payload, size);
+                // We pad the discriminant wit three (3) zeroes to have the same alignment as inside the header.
+                // this way we can use the same numbers as the spec does when doing bitmatching.
+                self.handle_dwt(discriminant << 3, payload, size);
             }
             DecoderState::TimeStamp { tc, ts } => {
                 let tc = *tc;
@@ -134,7 +214,7 @@ impl Decoder {
         // let header: u8 = 0;
 
         // Figure out what we are dealing with!
-        // See table E-1
+        // See table D4-2.
         if header == 0x70 {
             log::debug!("Overflow!");
             self.emit(TracePacket::Overflow);
@@ -180,12 +260,12 @@ impl Decoder {
                             self.state = DecoderState::Header;
                         }
                         Ok(size) => {
-                            let id = (header >> 3) as usize;
+                            let discriminant = (header >> 3) as usize;
                             if x & 0x4 == 0x4 {
                                 // DWT source / hardware source
                                 log::trace!("DWT data! {:?} bytes", size);
                                 self.state = DecoderState::DwtData {
-                                    id,
+                                    discriminant,
                                     payload: vec![],
                                     size,
                                 };
@@ -193,7 +273,7 @@ impl Decoder {
                                 // ITM data
                                 log::trace!("Software ITM data {:?} bytes", size);
                                 self.state = DecoderState::ItmData {
-                                    id,
+                                    id: discriminant,
                                     payload: vec![],
                                     size,
                                 };
@@ -256,12 +336,119 @@ impl Decoder {
         }
     }
 
-    fn handle_dwt(&mut self, id: usize, payload: Vec<u8>, size: usize) {
+    fn handle_dwt(&mut self, header: usize, payload: Vec<u8>, size: usize) {
+        let discriminant = header >> 3;
+
         if payload.len() == size {
-            self.emit(TracePacket::DwtData { id, payload });
+            match discriminant {
+                0 => self.emit(TracePacket::EventCounterWrapping {
+                    cyc: (payload[0] >> 5) & 1 == 1,
+                    fold: (payload[0] >> 4) & 1 == 1,
+                    lsu: (payload[0] >> 3) & 1 == 1,
+                    sleep: (payload[0] >> 2) & 1 == 1,
+                    exc: (payload[0] >> 1) & 1 == 1,
+                    cpi: (payload[0] >> 0) & 1 == 1,
+                }),
+                1 => self.emit(TracePacket::ExceptionTrace {
+                    exception: match ((payload[1] as u16 & 1) << 8) | payload[0] as u16 {
+                        1 => ExceptionType::Reset,
+                        2 => ExceptionType::Nmi,
+                        3 => ExceptionType::HardFault,
+                        4 => ExceptionType::MemManage,
+                        5 => ExceptionType::BusFault,
+                        6 => ExceptionType::UsageFault,
+                        11 => ExceptionType::SVCall,
+                        12 => ExceptionType::DebugMonitor,
+                        14 => ExceptionType::PendSV,
+                        15 => ExceptionType::SysTick,
+                        0 | 7 | 8 | 9 | 10 | 13 => {
+                            log::error!(
+                                "A corrupt ITM packet was received and discarded: header={}, payload={:?}.",
+                                header,
+                                payload,
+                            );
+                            return;
+                        },
+                        n => ExceptionType::ExternalInterrupt(n as usize),
+                    },
+                    action: match (payload[1] >> 4) & 0b11 {
+                        0b01 => ExceptionAction::Entered,
+                        0b10 => ExceptionAction::Exited,
+                        0b11 => ExceptionAction::Returned,
+                        _ => {
+                            log::error!(
+                                "A corrupt ITM packet was received and discarded: header={}, payload={:?}.",
+                                header,
+                                payload,
+                            );
+                            return;
+                        },
+                    },
+                }),
+                2 => self.emit(TracePacket::PcSample {
+                    // This unwrap is okay, as the size was validated beforehand.
+                    pc: payload.pread(0).unwrap(),
+                }),
+                _ => {
+                    // Get the DWT unit id.
+                    let unit_id = header >> 4 & 0b11;
+
+                    // Get the packet type.
+                    let packet_type = header >> 6 & 0b11;
+
+                    let packet = if packet_type == 0b01 {
+                        if header >> 3 & 1 == 0 {
+                            // We got a PC value packet.
+                            TracePacket::PcTrace {
+                                id: unit_id,
+                                // This unwrap is okay, as the size was validated beforehand.
+                                value: payload.pread(0).unwrap(),
+                            }
+                        } else {
+                            // We got an address packet.
+                            TracePacket::AddressTrace {
+                                id: unit_id,
+                                // This unwrap is okay, as the size was validated beforehand.
+                                address: payload.pread(0).unwrap(),
+                            }
+                        }
+                    } else if packet_type == 0b10 {
+                        if header >> 3 & 1 == 0 {
+                            // We got a data value packet for read access.
+                            TracePacket::MemoryTrace {
+                                id: unit_id,
+                                access_type: MemoryAccessType::Read,
+                                // This unwrap is okay, as the size was validated beforehand.
+                                value: payload.pread(0).unwrap(),
+                            }
+                        } else {
+                            // We got a data value packet for write access.
+                            TracePacket::MemoryTrace {
+                                id: unit_id,
+                                access_type: MemoryAccessType::Write,
+                                // This unwrap is okay, as the size was validated beforehand.
+                                value: payload.pread(0).unwrap(),
+                            }
+                        }
+                    } else {
+                        log::error!(
+                            "A corrupt ITM packet was received and discarded: header={}, payload={:?}.",
+                            header,
+                            payload,
+                        );
+                        return;
+                    };
+
+                    self.emit(packet);
+                }
+            };
             self.state = DecoderState::Header;
         } else {
-            self.state = DecoderState::DwtData { id, payload, size }
+            self.state = DecoderState::DwtData {
+                discriminant,
+                payload,
+                size,
+            }
         }
     }
 }
@@ -277,7 +464,7 @@ fn extract_size(c: u8) -> Result<usize, String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{Decoder, TracePacket};
+    use super::{Decoder, MemoryAccessType, TracePacket};
 
     #[test]
     fn example_capture1() {
@@ -321,17 +508,18 @@ mod tests {
         );
         assert_eq!(Some(TracePacket::Overflow), decoder.pull());
         assert_eq!(
-            Some(TracePacket::DwtData {
-                id: 8,
-                payload: vec![86, 0, 0, 8]
+            Some(TracePacket::PcTrace {
+                id: 0,
+                value: 0x8000056,
             }),
             decoder.pull()
         );
         assert_eq!(Some(TracePacket::Overflow), decoder.pull());
         assert_eq!(
-            Some(TracePacket::DwtData {
-                id: 17,
-                payload: vec![226, 239, 127, 91]
+            Some(TracePacket::MemoryTrace {
+                id: 0,
+                access_type: MemoryAccessType::Write,
+                value: 0x5B7FEFE2,
             }),
             decoder.pull()
         );
@@ -354,16 +542,17 @@ mod tests {
 
         decoder.feed(trace_data);
         assert_eq!(
-            Some(TracePacket::DwtData {
-                id: 8,
-                payload: vec![68, 0, 0, 8]
+            Some(TracePacket::PcTrace {
+                id: 0,
+                value: 0x8000044,
             }),
             decoder.pull()
         );
         assert_eq!(
-            Some(TracePacket::DwtData {
-                id: 16,
-                payload: vec![215, 2, 0, 0]
+            Some(TracePacket::MemoryTrace {
+                id: 0,
+                access_type: MemoryAccessType::Read,
+                value: 727,
             }),
             decoder.pull()
         );
@@ -372,25 +561,26 @@ mod tests {
             decoder.pull()
         );
         assert_eq!(
-            Some(TracePacket::DwtData {
-                id: 8,
-                payload: vec![72, 0, 0, 8]
+            Some(TracePacket::PcTrace {
+                id: 0,
+                value: 0x8000048,
             }),
             decoder.pull()
         );
         assert_eq!(Some(TracePacket::Overflow), decoder.pull());
         assert_eq!(
-            Some(TracePacket::DwtData {
-                id: 8,
-                payload: vec![96, 0, 0, 8]
+            Some(TracePacket::PcTrace {
+                id: 0,
+                value: 0x8000060,
             }),
             decoder.pull()
         );
         assert_eq!(Some(TracePacket::Overflow), decoder.pull());
         assert_eq!(
-            Some(TracePacket::DwtData {
-                id: 17,
-                payload: vec![216, 2, 0, 0]
+            Some(TracePacket::MemoryTrace {
+                id: 0,
+                access_type: MemoryAccessType::Write,
+                value: 728,
             }),
             decoder.pull()
         );

@@ -61,7 +61,8 @@ impl<'c> Dwt<'c> {
                                // function |= 0b10 << 10; // COMP register contains word sized unit.
 
         let unit = ((unit + 2) << 4) as u32;
-        self.component.write_reg(self.core, unit | 0x00, var_address)?; // COMp value
+        self.component
+            .write_reg(self.core, unit | 0x00, var_address)?; // COMp value
         self.component.write_reg(self.core, unit | 0x04, mask)?; // mask
         self.component.write_reg(self.core, unit | 0x08, function)?; // function
         Ok(())
