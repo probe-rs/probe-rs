@@ -13,6 +13,24 @@ pub use tpiu::Tpiu;
 pub trait DebugRegister: Clone + From<u32> + Into<u32> + Sized + std::fmt::Debug {
     const ADDRESS: u32;
     const NAME: &'static str;
+
+    fn load(component: &Component, core: &mut Core) -> Result<Self, Error> {
+        Ok(Self::from(component.read_reg(core, Self::ADDRESS)?))
+    }
+
+    fn load_unit(component: &Component, core: &mut Core, unit: usize) -> Result<Self, Error> {
+        Ok(Self::from(
+            component.read_reg(core, Self::ADDRESS + 16 * unit as u32)?,
+        ))
+    }
+
+    fn store(&self, component: &Component, core: &mut Core) -> Result<(), Error> {
+        component.write_reg(core, Self::ADDRESS, self.clone().into())
+    }
+
+    fn store_unit(&self, component: &Component, core: &mut Core, unit: usize) -> Result<(), Error> {
+        component.write_reg(core, Self::ADDRESS + 16 * unit as u32, self.clone().into())
+    }
 }
 
 pub fn setup_tracing(core: &mut Core, component: &Component) -> Result<(), Error> {
@@ -36,24 +54,20 @@ pub fn setup_tracing(core: &mut Core, component: &Component) -> Result<(), Error
 
     // config dwt:
     let mut dwt = component.dwt(core).map_err(Error::architecture_specific)?;
-    dwt.setup_tracing()?;
+    dwt.enable()?;
 
     Ok(())
 }
 
-pub fn start_trace_memory_address(
+/// Starts tracing the data at given address.
+pub fn enable_data_trace(
     core: &mut Core,
     component: &Component,
     unit: usize,
-    addr: u32,
+    address: u32,
 ) -> Result<(), Error> {
-    // config dwt:
     let mut dwt = component.dwt(core).map_err(Error::architecture_specific)?;
-    // Future:
-    dwt.enable_trace(unit, addr)?;
-    // dwt.disable_memory_watch()?;
-
-    Ok(())
+    dwt.enable_data_trace(unit, address)
 }
 
 pub fn trace_enable(core: &mut Core) -> Result<(), Error> {
