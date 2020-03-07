@@ -11,6 +11,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+## [0.5.1]
+
+### Added
+
+### Changed
+
+### Fixed
+
 - Fix a bug where M3 targets would not be able to load the core.
 
 ## [0.5.0]
@@ -90,7 +98,8 @@ Initial release on crates.io
 - Working basic flash downloader with nRF51.
 - Introduce cargo-flash which can automatically build & flash the target elf file.
 
-[Unreleased]: https://github.com/probe-rs/probe-rs/compare/v0.5.0...master
+[Unreleased]: https://github.com/probe-rs/probe-rs/compare/v0.5.1...master
+[0.5.1]: https://github.com/probe-rs/probe-rs/releases/tag/v0.5.1
 [0.5.0]: https://github.com/probe-rs/probe-rs/releases/tag/v0.5.0
 [0.4.0]: https://github.com/probe-rs/probe-rs/releases/tag/v0.4.0
 [0.3.0]: https://github.com/probe-rs/probe-rs/releases/tag/v0.3.0
