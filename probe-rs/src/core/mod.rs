@@ -298,6 +298,7 @@ impl CoreType {
         match &name.as_ref().to_ascii_lowercase()[..] {
             "m0" => Some(CoreType::M0),
             "m4" => Some(CoreType::M4),
+            "m3" => Some(CoreType::M3),
             "m33" => Some(CoreType::M33),
             "riscv" => Some(CoreType::Riscv),
             _ => None,

@@ -44,7 +44,7 @@ impl<R> From<TryLockError<R>> for RegistryError {
 }
 
 lazy_static! {
-    static ref GENERIC_TARGETS: [ChipFamily; 4] = [
+    static ref GENERIC_TARGETS: [ChipFamily; 5] = [
         ChipFamily {
             name: "Generic Cortex-M0".to_owned(),
             manufacturer: None,
@@ -68,6 +68,18 @@ lazy_static! {
             }],
             flash_algorithms: HashMap::new(),
             core: "M4".to_owned(),
+        },
+        ChipFamily {
+            name: "Generic Cortex-M3".to_owned(),
+            manufacturer: None,
+            variants: vec![Chip {
+                name: "cortex-m3".to_owned(),
+                part: None,
+                memory_map: vec![],
+                flash_algorithms: vec![],
+            }],
+            flash_algorithms: HashMap::new(),
+            core: "M3".to_owned(),
         },
         ChipFamily {
             name: "Generic Cortex-M33".to_owned(),
