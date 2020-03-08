@@ -13,10 +13,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.5.1]
 
-### Added
-
-### Changed
-
 ### Fixed
 
 - Fix a bug where M3 targets would not be able to load the core.
