@@ -337,6 +337,14 @@ impl DebugProbe for JLink {
         "J-Link"
     }
 
+    fn speed(&self) -> u32 {
+        unimplemented!()
+    }
+
+    fn set_speed(&mut self, _speed_khz: u32) -> Result<u32, DebugProbeError> {
+        unimplemented!()
+    }
+
     fn attach(&mut self) -> Result<(), super::DebugProbeError> {
         let protocol = self.protocol.unwrap_or(WireProtocol::Jtag);
         self.select_protocol(protocol)?;

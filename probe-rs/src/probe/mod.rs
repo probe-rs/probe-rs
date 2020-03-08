@@ -68,6 +68,8 @@ pub enum DebugProbeError {
     Registry(#[from] RegistryError),
     #[error("Tried to close interface while it was still in use.")]
     InterfaceInUse,
+    #[error("The requested speed setting ({0} kHz) is not supported by the probe.")]
+    UnsupportedSpeed(u32),
 }
 
 /// The Probe struct is a generic wrapper over the different
@@ -225,6 +227,16 @@ impl Probe {
         self.inner.target_reset()
     }
 
+    /// Configure protocol speed to use in kHz
+    pub fn set_speed(&mut self, speed_khz: u32) -> Result<u32, DebugProbeError> {
+        self.inner.set_speed(speed_khz)
+    }
+
+    /// Configured protocol speed in kHz
+    pub fn speed_khz(&self) -> u32 {
+        self.inner.speed()
+    }
+
     /// Returns a probe specific memory interface if any is present for given probe.
     pub fn dedicated_memory_interface(&self) -> Option<Memory> {
         self.inner.dedicated_memory_interface()
@@ -262,6 +274,26 @@ pub trait DebugProbe: Send + Sync + fmt::Debug {
 
     /// Get human readable name for the probe
     fn get_name(&self) -> &str;
+
+    /// Get the currently used maximum speed for the debug protocol in kHz.
+    ///
+    /// Not all probes report which speed is used, meaning this value is not
+    /// always the actual speed used. However, the speed should not be any
+    /// higher than this value.
+    fn speed(&self) -> u32;
+
+    /// Set the speed in kHz used for communication with the target device.
+    ///
+    /// The desired speed might not be supported by the probe. If the desired
+    /// speed is not directly supported, a lower speed will be selected if possible.
+    ///
+    /// If possible, the actual speed used is returned by the function. Some probes
+    /// cannot report this, so the value may be inaccurate.
+    ///
+    /// If the requested speed is not supported,
+    /// `DebugProbeError::UnsupportedSpeed` will be returned.
+    ///
+    fn set_speed(&mut self, speed_khz: u32) -> Result<u32, DebugProbeError>;
 
     /// Enters debug mode
     fn attach(&mut self) -> Result<(), DebugProbeError>;
@@ -357,6 +389,14 @@ impl DebugProbe for FakeProbe {
     /// Get human readable name for the probe
     fn get_name(&self) -> &str {
         "Mock probe for testing"
+    }
+
+    fn speed(&self) -> u32 {
+        unimplemented!()
+    }
+
+    fn set_speed(&mut self, _speed_khz: u32) -> Result<u32, DebugProbeError> {
+        unimplemented!()
     }
 
     fn attach(&mut self) -> Result<(), DebugProbeError> {
