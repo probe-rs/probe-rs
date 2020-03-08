@@ -422,7 +422,7 @@ impl STLink {
     }
 
     pub fn open_ap(&mut self, apsel: u8) -> Result<(), DebugProbeError> {
-        if self.jtag_version < Self::MIN_JTAG_VERSION_MULTI_AP {
+        if self.hw_version < 3 && self.jtag_version < Self::MIN_JTAG_VERSION_MULTI_AP {
             Err(StlinkError::JTagDoesNotSupportMultipleAP.into())
         } else {
             let mut buf = [0; 2];
@@ -438,7 +438,7 @@ impl STLink {
     }
 
     pub fn close_ap(&mut self, apsel: u8) -> Result<(), DebugProbeError> {
-        if self.jtag_version < Self::MIN_JTAG_VERSION_MULTI_AP {
+        if self.hw_version < 3 && self.jtag_version < Self::MIN_JTAG_VERSION_MULTI_AP {
             Err(StlinkError::JTagDoesNotSupportMultipleAP.into())
         } else {
             let mut buf = [0; 2];
