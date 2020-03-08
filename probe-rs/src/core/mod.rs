@@ -12,8 +12,7 @@ use crate::{
     Error, MemoryInterface,
 };
 use crate::{DebugProbeError, Memory, Probe};
-use std::cell::RefCell;
-use std::rc::Rc;
+use std::{cell::RefCell, rc::Rc};
 
 pub trait CoreRegister: Clone + From<u32> + Into<u32> + Sized + std::fmt::Debug {
     const ADDRESS: u32;

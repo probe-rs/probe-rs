@@ -4,7 +4,8 @@ use crate::config::{FlashAlgorithm, FlashRegion, MemoryRange, SectorInfo};
 use crate::core::{Core, RegisterFile};
 use crate::error;
 use crate::memory::MemoryInterface;
-use crate::session::Session;
+use crate::{session::Session, DebugProbeError};
+use std::time::{Duration, Instant};
 use thiserror::Error;
 
 pub trait Operation {
@@ -51,9 +52,9 @@ pub enum FlasherError {
     NotSupported(&'static str),
     #[error("Buffer {n}/{max} does not exist")]
     InvalidBufferNumber { n: usize, max: usize },
-    #[error("Something during memory interaction went wrong")]
+    #[error("Something during memory interaction went wrong: {0}")]
     Memory(#[source] error::Error),
-    #[error("Something during memory interaction went wrong")]
+    #[error("Something during memory interaction went wrong: {0}")]
     Core(#[source] error::Error),
     #[error("{address} is not contained in {region:?}")]
     AddressNotInRegion { address: u32, region: FlashRegion },
@@ -352,7 +353,7 @@ impl<'a, O: Operation> ActiveFlasher<'a, O> {
         init: bool,
     ) -> Result<u32, FlasherError> {
         self.call_function(pc, r0, r1, r2, r3, init)?;
-        self.wait_for_completion()
+        self.wait_for_completion(Duration::from_secs(2))
     }
 
     fn call_function(
@@ -417,11 +418,26 @@ impl<'a, O: Operation> ActiveFlasher<'a, O> {
         Ok(())
     }
 
-    pub fn wait_for_completion(&mut self) -> Result<u32, FlasherError> {
+    pub fn wait_for_completion(&mut self, timeout: Duration) -> Result<u32, FlasherError> {
         log::debug!("Waiting for routine call completion.");
         let regs = self.core.registers();
 
-        while self.core.wait_for_core_halted().is_err() {}
+        let start = Instant::now();
+
+        loop {
+            match self.core.wait_for_core_halted() {
+                Ok(()) => break,
+                Err(e) => {
+                    log::warn!("Error while waiting for core halted: {}", e);
+                }
+            }
+
+            if start.elapsed() > timeout {
+                return Err(FlasherError::Core(
+                    crate::Error::Probe(DebugProbeError::Timeout).into(),
+                ));
+            }
+        }
 
         let r = self
             .core

@@ -2,6 +2,9 @@ use super::flasher::{Flasher, FlasherError};
 use super::FlashProgress;
 use crate::config::{PageInfo, SectorInfo};
 
+use std::time::Duration;
+use thiserror::Error;
+
 /// A struct to hold all the information about one page of flash.
 #[derive(Derivative, Clone)]
 #[derivative(Debug)]
@@ -62,10 +65,10 @@ impl FlashSector {
     pub fn add_page(&mut self, page: FlashPage) -> Result<(), FlashBuilderError> {
         // If the pages do not align nicely within the sector, return an error.
         if self.page_size != page.size {
-            return Err(FlashBuilderError::PageSizeDoesNotMatch(
-                page.size,
-                self.page_size,
-            ));
+            return Err(FlashBuilderError::PageSizeDoesNotMatch {
+                page_size: page.size,
+                sector_page_size: self.page_size,
+            });
         }
 
         // Determine the maximal amout of pages in the sector.
@@ -77,7 +80,10 @@ impl FlashSector {
             self.pages.push(page);
             self.pages.sort_by_key(|p| p.address);
         } else {
-            return Err(FlashBuilderError::MaxPageCountExceeded(max_page_count));
+            return Err(FlashBuilderError::MaxPageCountExceeded {
+                maximum_page_count: max_page_count,
+                sector_address: self.address,
+            });
         }
         Ok(())
     }
@@ -102,22 +108,28 @@ pub struct FlashBuilder<'a> {
     enable_double_buffering: bool,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum FlashBuilderError {
-    AddressBeforeFlashStart(u32),   // Contains faulty address.
-    DataOverlap(u32),               // Contains faulty address.
-    InvalidFlashAddress(u32),       // Contains faulty address.
-    DuplicateDataEntry(u32),        // There is two entries for data at the same address.
-    PageSizeDoesNotMatch(u32, u32), // The flash sector size is not a multiple of the flash page size.
-    MaxPageCountExceeded(usize),
-    ProgramPage(u32, u32),
-    Flasher(FlasherError),
-}
-
-impl From<FlasherError> for FlashBuilderError {
-    fn from(error: FlasherError) -> Self {
-        FlashBuilderError::Flasher(error)
-    }
+    #[error("Overlap in data, address {0:#010x} was already written earlier.")]
+    DataOverlap(u32),
+    #[error("Address {0:#010x} is not a valid address in the flash area.")]
+    InvalidFlashAddress(u32),
+    #[error("There is already an other entry for address {0:#010x}")]
+    DuplicateDataEntry(u32),
+    #[error("Internal error: The sector configuration is expection page size {sector_page_size}, but the actual  page size is {page_size}.")]
+    PageSizeDoesNotMatch {
+        sector_page_size: u32,
+        page_size: u32,
+    },
+    #[error("The maximum page count {maximum_page_count} for the sector at address {sector_address:#010x} was exceeded.")]
+    MaxPageCountExceeded {
+        maximum_page_count: usize,
+        sector_address: u32,
+    },
+    #[error("Error programming the page at address: {0:#010x}")]
+    ProgramPage(u32),
+    #[error("Flasher Error: {0}")]
+    Flasher(#[from] FlasherError),
 }
 
 type R = Result<(), FlashBuilderError>;
@@ -223,7 +235,6 @@ impl<'a> FlashBuilder<'a> {
         }
 
         // Flash all necessary pages.
-        progress.started_flashing();
 
         if flash.double_buffering_supported() && self.enable_double_buffering {
             self.program_double_buffer(&mut flash, &sectors, progress)?;
@@ -391,6 +402,8 @@ impl<'a> FlashBuilder<'a> {
         sectors: &[FlashSector],
         progress: &FlashProgress,
     ) -> Result<(), FlashBuilderError> {
+        progress.started_erasing();
+
         let mut t = std::time::Instant::now();
         let result = flash
             .run_erase(|active| active.erase_all())
@@ -399,7 +412,12 @@ impl<'a> FlashBuilder<'a> {
             progress.sector_erased(sector.page_size, t.elapsed().as_millis());
             t = std::time::Instant::now();
         }
-        progress.finished_erasing();
+
+        if result.is_ok() {
+            progress.finished_erasing();
+        } else {
+            progress.failed_erasing();
+        }
         result
     }
 
@@ -410,6 +428,8 @@ impl<'a> FlashBuilder<'a> {
         sectors: &[FlashSector],
         progress: &FlashProgress,
     ) -> Result<(), FlashBuilderError> {
+        progress.started_flashing();
+
         let mut t = std::time::Instant::now();
         let result = flash.run_program(|active| {
             for page in Self::pages(sectors) {
@@ -419,7 +439,13 @@ impl<'a> FlashBuilder<'a> {
             }
             Ok(())
         });
-        progress.finished_programming();
+
+        if result.is_ok() {
+            progress.finished_programming();
+        } else {
+            progress.failed_programming();
+        }
+
         result
     }
 
@@ -430,8 +456,10 @@ impl<'a> FlashBuilder<'a> {
         sectors: &[FlashSector],
         progress: &FlashProgress,
     ) -> Result<(), FlashBuilderError> {
+        progress.started_flashing();
+
         let mut t = std::time::Instant::now();
-        let r: R = flash.run_erase(|active| {
+        let result: R = flash.run_erase(|active| {
             for sector in sectors {
                 if !sector.pages.is_empty() {
                     active.erase_sector(sector.address)?;
@@ -441,9 +469,14 @@ impl<'a> FlashBuilder<'a> {
             }
             Ok(())
         });
-        r?;
-        progress.finished_erasing();
-        Ok(())
+
+        if result.is_ok() {
+            progress.finished_erasing();
+        } else {
+            progress.failed_erasing();
+        }
+
+        result
     }
 
     /// Flash a program using double buffering.
@@ -456,6 +489,9 @@ impl<'a> FlashBuilder<'a> {
         progress: &FlashProgress,
     ) -> Result<(), FlashBuilderError> {
         let mut current_buf = 0;
+
+        progress.started_flashing();
+
         let mut t = std::time::Instant::now();
         let result = flash.run_program(|active| {
             for page in Self::pages(sectors) {
@@ -464,12 +500,12 @@ impl<'a> FlashBuilder<'a> {
 
                 // Then wait for the active RAM -> Flash copy process to finish.
                 // Also check if it finished properly. If it didn't, return an error.
-                let result = active.wait_for_completion();
+                let result = active.wait_for_completion(Duration::from_secs(2));
                 progress.page_programmed(page.size, t.elapsed().as_millis());
                 t = std::time::Instant::now();
                 if let Ok(0) = result {
                 } else {
-                    return Err(FlashBuilderError::ProgramPage(page.address, 0));
+                    return Err(FlashBuilderError::ProgramPage(page.address));
                 }
 
                 // Start the next copy process.
@@ -485,7 +521,13 @@ impl<'a> FlashBuilder<'a> {
 
             Ok(())
         });
-        progress.finished_programming();
+
+        if result.is_ok() {
+            progress.finished_programming();
+        } else {
+            progress.failed_programming();
+        }
+
         result
     }
 }
