@@ -57,11 +57,13 @@ impl<'c> Dwt<'c> {
         mask.store_unit(self.component, self.core, unit)?;
 
         let mut function = Function::load_unit(self.component, self.core, unit)?;
-        // function.set_datavsize(0x10);
-        // function.set_emitrange(false);
-        // function.set_datavmatch(false);
-        // function.set_cycmatch(false);
-        function.set_function(0x11);
+        function.set_datavsize(0x10);
+        function.set_emitrange(false);
+        function.set_datavmatch(false);
+        function.set_cycmatch(false);
+        function.set_function(0b11);
+
+        println!("{:#?}", function);
         function.store_unit(self.component, self.core, unit)
     }
 
