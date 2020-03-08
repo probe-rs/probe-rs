@@ -92,6 +92,7 @@ pub enum Status {
 }
 
 /// Map from SWD frequency in Hertz to delay loop count.
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum SwdFrequencyToDelayCount {
     Hz4600000 = 0,
     Hz1800000 = 1, // Default
@@ -107,7 +108,58 @@ pub enum SwdFrequencyToDelayCount {
     Hz100000 = 40,
 }
 
+impl SwdFrequencyToDelayCount {
+    /// Try to find an appropriate setting for the given frequency in kHz.
+    ///
+    /// If a direct match is not found, return the setting for a lower frequency
+    /// if possible. If this is not possible, returns `None`.
+    pub(crate) fn find_setting(frequency: u32) -> Option<SwdFrequencyToDelayCount> {
+        use SwdFrequencyToDelayCount::*;
+
+        let setting = match frequency {
+            _ if frequency >= 4_600 => Hz4600000,
+            _ if frequency >= 1_800 => Hz1800000,
+            _ if frequency >= 1_200 => Hz1200000,
+            _ if frequency >= 950 => Hz950000,
+            _ if frequency >= 650 => Hz650000,
+            _ if frequency >= 480 => Hz480000,
+            _ if frequency >= 400 => Hz400000,
+            _ if frequency >= 360 => Hz360000,
+            _ if frequency >= 240 => Hz240000,
+            _ if frequency >= 150 => Hz150000,
+            _ if frequency >= 125 => Hz125000,
+            _ if frequency >= 100 => Hz100000,
+            _ => {
+                return None;
+            }
+        };
+
+        Some(setting)
+    }
+
+    /// Get the SWD frequency in kHz
+    pub(crate) fn to_khz(&self) -> u32 {
+        use SwdFrequencyToDelayCount::*;
+
+        match self {
+            Hz4600000 => 4600,
+            Hz1800000 => 1800,
+            Hz1200000 => 1200,
+            Hz950000 => 950,
+            Hz650000 => 650,
+            Hz480000 => 480,
+            Hz400000 => 400,
+            Hz360000 => 360,
+            Hz240000 => 240,
+            Hz150000 => 150,
+            Hz125000 => 125,
+            Hz100000 => 100,
+        }
+    }
+}
+
 /// Map from JTAG frequency in Hertz to frequency divider.
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum JTagFrequencyToDivider {
     Hz18000000 = 2,
     Hz9000000 = 4,
@@ -117,6 +169,48 @@ pub enum JTagFrequencyToDivider {
     Hz560000 = 64,
     Hz280000 = 128,
     Hz140000 = 256,
+}
+
+impl JTagFrequencyToDivider {
+    /// Try to find an appropriate setting for the given frequency in kHz.
+    ///
+    /// If a direct match is not found, return the setting for a higher frequency
+    /// if possible. If this is not possible, returns `None`.
+    pub(crate) fn find_setting(frequency: u32) -> Option<JTagFrequencyToDivider> {
+        use JTagFrequencyToDivider::*;
+
+        let setting = match frequency {
+            _ if frequency >= 18_000 => Hz18000000,
+            _ if frequency >= 9_000 => Hz9000000,
+            _ if frequency >= 4_500 => Hz4500000,
+            _ if frequency >= 2_225 => Hz2250000,
+            _ if frequency >= 1_120 => Hz1120000,
+            _ if frequency >= 560 => Hz560000,
+            _ if frequency >= 280 => Hz280000,
+            _ if frequency >= 140 => Hz140000,
+            _ => {
+                return None;
+            }
+        };
+
+        Some(setting)
+    }
+
+    /// Return the frequency in kHz
+    pub(crate) fn to_khz(&self) -> u32 {
+        use JTagFrequencyToDivider::*;
+
+        match self {
+            Hz18000000 => 18_000,
+            Hz9000000 => 9_000,
+            Hz4500000 => 4_500,
+            Hz2250000 => 2_250,
+            Hz1120000 => 1_120,
+            Hz560000 => 560,
+            Hz280000 => 280,
+            Hz140000 => 140,
+        }
+    }
 }
 
 /// Modes returned by GET_CURRENT_MODE.
@@ -130,4 +224,73 @@ pub(crate) enum Mode {
     Jtag = 0x02,
     /// Device is in SWIM (Single Wire Interface) mode
     Swim = 0x03,
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_too_low_swd_speed() {
+        assert!(SwdFrequencyToDelayCount::find_setting(0).is_none());
+        assert!(SwdFrequencyToDelayCount::find_setting(1).is_none());
+        assert!(SwdFrequencyToDelayCount::find_setting(99).is_none());
+    }
+
+    #[test]
+    fn test_swd_speed() {
+        assert_eq!(
+            SwdFrequencyToDelayCount::find_setting(100).unwrap(),
+            SwdFrequencyToDelayCount::Hz100000
+        );
+        assert_eq!(
+            SwdFrequencyToDelayCount::find_setting(124).unwrap(),
+            SwdFrequencyToDelayCount::Hz100000
+        );
+        assert_eq!(
+            SwdFrequencyToDelayCount::find_setting(125).unwrap(),
+            SwdFrequencyToDelayCount::Hz125000
+        );
+
+        assert_eq!(
+            SwdFrequencyToDelayCount::find_setting(46_000).unwrap(),
+            SwdFrequencyToDelayCount::Hz4600000
+        );
+        assert_eq!(
+            SwdFrequencyToDelayCount::find_setting(u32::max_value()).unwrap(),
+            SwdFrequencyToDelayCount::Hz4600000
+        );
+    }
+
+    #[test]
+    fn test_too_low_jtag_speed() {
+        assert!(JTagFrequencyToDivider::find_setting(0).is_none());
+        assert!(JTagFrequencyToDivider::find_setting(1).is_none());
+        assert!(JTagFrequencyToDivider::find_setting(139).is_none());
+    }
+
+    #[test]
+    fn test_jtag_speed() {
+        assert_eq!(
+            JTagFrequencyToDivider::find_setting(140).unwrap(),
+            JTagFrequencyToDivider::Hz140000
+        );
+        assert_eq!(
+            JTagFrequencyToDivider::find_setting(279).unwrap(),
+            JTagFrequencyToDivider::Hz140000
+        );
+        assert_eq!(
+            JTagFrequencyToDivider::find_setting(280).unwrap(),
+            JTagFrequencyToDivider::Hz280000
+        );
+
+        assert_eq!(
+            JTagFrequencyToDivider::find_setting(18_000).unwrap(),
+            JTagFrequencyToDivider::Hz18000000
+        );
+        assert_eq!(
+            JTagFrequencyToDivider::find_setting(u32::max_value()).unwrap(),
+            JTagFrequencyToDivider::Hz18000000
+        );
+    }
 }
