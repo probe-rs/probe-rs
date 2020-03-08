@@ -19,6 +19,7 @@ pub struct STLink {
     hw_version: u8,
     jtag_version: u8,
     protocol: WireProtocol,
+    speed: WireSpeed,
 
     /// Index of the AP which is currently open.
     current_ap: Option<u16>,
@@ -31,6 +32,7 @@ impl DebugProbe for STLink {
             hw_version: 0,
             jtag_version: 0,
             protocol: WireProtocol::Swd,
+            speed: WireSpeed::Swd(SwdFrequencyToDelayCount::Hz1800000),
 
             current_ap: None,
         };
@@ -45,11 +47,41 @@ impl DebugProbe for STLink {
     }
 
     fn speed(&self) -> u32 {
-        unimplemented!()
+        match self.speed {
+            WireSpeed::Jtag(speed) => speed.to_khz(),
+            WireSpeed::Swd(speed) => speed.to_khz(),
+        }
     }
 
-    fn set_speed(&mut self, _speed_khz: u32) -> Result<u32, DebugProbeError> {
-        unimplemented!()
+    fn set_speed(&mut self, speed_khz: u32) -> Result<u32, DebugProbeError> {
+        match self.protocol {
+            WireProtocol::Swd => {
+                let actual_speed = SwdFrequencyToDelayCount::find_setting(speed_khz);
+
+                if let Some(actual_speed) = actual_speed {
+                    self.set_swd_frequency(actual_speed)?;
+
+                    self.speed = WireSpeed::Swd(actual_speed);
+
+                    Ok(actual_speed.to_khz())
+                } else {
+                    Err(DebugProbeError::UnsupportedSpeed(speed_khz))
+                }
+            }
+            WireProtocol::Jtag => {
+                let actual_speed = JTagFrequencyToDivider::find_setting(speed_khz);
+
+                if let Some(actual_speed) = actual_speed {
+                    self.set_jtag_frequency(actual_speed)?;
+
+                    self.speed = WireSpeed::Jtag(actual_speed);
+
+                    Ok(actual_speed.to_khz())
+                } else {
+                    Err(DebugProbeError::UnsupportedSpeed(speed_khz))
+                }
+            }
+        }
     }
 
     /// Enters debug mode.
@@ -492,6 +524,12 @@ impl STLink {
             Ok(())
         }
     }
+}
+
+#[derive(Debug)]
+enum WireSpeed {
+    Jtag(JTagFrequencyToDivider),
+    Swd(SwdFrequencyToDelayCount),
 }
 
 #[derive(Error, Debug)]
