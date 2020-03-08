@@ -161,6 +161,14 @@ impl DebugProbe for DAPLink {
         "DAPLink"
     }
 
+    fn speed(&self) -> u32 {
+        unimplemented!()
+    }
+
+    fn set_speed(&mut self, _speed_khz: u32) -> Result<u32, DebugProbeError> {
+        unimplemented!()
+    }
+
     /// Enters debug mode.
     fn attach(&mut self) -> Result<(), DebugProbeError> {
         // get information about the daplink
