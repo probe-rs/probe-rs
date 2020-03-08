@@ -1,11 +1,11 @@
 use super::builder::FlashBuilder;
 use super::flasher::Flasher;
-use super::FlashProgress;
+use super::{FlashBuilderError, FlashProgress};
 use crate::config::{FlashRegion, MemoryRange, MemoryRegion};
 use crate::session::Session;
 use std::collections::HashMap;
-use std::error::Error;
-use std::fmt;
+
+use thiserror::Error;
 
 /// `FlashLoader` is a struct which manages the flashing of any chunks of data onto any sections of flash.
 /// Use `add_data()` to add a chunks of data.
@@ -18,25 +18,18 @@ pub struct FlashLoader<'a, 'b> {
     keep_unwritten: bool,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum FlashLoaderError {
-    NoSuitableFlash(u32),      // Contains the faulty address.
+    #[error("No flash memory was found at address {0:#08x}.")]
+    NoSuitableFlash(u32), // Contains the faulty address.
+    #[error(
+        "Trying to access flash at address {0:#08x}, which is not inside any defined flash region."
+    )]
     MemoryRegionNotFlash(u32), // Contains the faulty address.
+    #[error("Trying to write flash, but no flash loader algorithm is attached.")]
     NoFlashLoaderAlgorithmAttached,
-}
-
-impl Error for FlashLoaderError {}
-
-impl fmt::Display for FlashLoaderError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use FlashLoaderError::*;
-
-        match self {
-            NoSuitableFlash(addr) => write!(f, "No flash memory was found at address {:#08x}.", addr),
-            MemoryRegionNotFlash(addr) => write!(f, "Trying to access flash at address {:#08x}, which is not inside any defined flash region.", addr),
-            NoFlashLoaderAlgorithmAttached => write!(f, "Trying to write flash, but no flash loader algorithm is attached."),
-        }
-    }
+    #[error("Builder error: {0}")]
+    Builder(#[from] FlashBuilderError),
 }
 
 impl<'a, 'b> FlashLoader<'a, 'b> {
@@ -47,7 +40,7 @@ impl<'a, 'b> FlashLoader<'a, 'b> {
             keep_unwritten,
         }
     }
-    /// Stages a junk of data to be programmed.
+    /// Stages a chunk of data to be programmed.
     ///
     /// The chunk can cross flash boundaries as long as one flash region connects to another flash region.
     pub fn add_data(&mut self, mut address: u32, data: &'b [u8]) -> Result<(), FlashLoaderError> {
@@ -169,14 +162,12 @@ impl<'a, 'b> FlashLoader<'a, 'b> {
             let flash_algorithm = raw_flash_algorithm.assemble(unwrapped_ram);
 
             // Program the data.
-            builder
-                .program(
-                    Flasher::new(session.clone(), &flash_algorithm, region),
-                    do_chip_erase,
-                    self.keep_unwritten,
-                    progress,
-                )
-                .unwrap();
+            builder.program(
+                Flasher::new(session.clone(), &flash_algorithm, region),
+                do_chip_erase,
+                self.keep_unwritten,
+                progress,
+            )?
         }
 
         Ok(())

@@ -37,8 +37,16 @@ impl FlashProgress {
         self.emit(ProgressEvent::SectorErased { size, time });
     }
 
+    pub fn failed_programming(&self) {
+        self.emit(ProgressEvent::FailedProgramming);
+    }
+
     pub fn finished_programming(&self) {
         self.emit(ProgressEvent::FinishedProgramming);
+    }
+
+    pub fn failed_erasing(&self) {
+        self.emit(ProgressEvent::FailedErasing);
     }
 
     pub fn finished_erasing(&self) {
@@ -62,6 +70,8 @@ pub enum ProgressEvent {
         size: u32,
         time: u128,
     },
+    FailedProgramming,
     FinishedProgramming,
+    FailedErasing,
     FinishedErasing,
 }

@@ -1,14 +1,19 @@
-use crate::session::Session;
 use ihex;
 use ihex::record::Record::*;
-use std::error::Error;
-use std::fmt;
-use std::fs::File;
-use std::io::{Read, Seek, SeekFrom};
-use std::path::Path;
+
+use std::{
+    fs::File,
+    io::{Read, Seek, SeekFrom},
+    path::Path,
+};
 
 use super::*;
-use crate::config::{MemoryRange, MemoryRegion};
+use crate::{
+    config::{MemoryRange, MemoryRegion},
+    session::Session,
+};
+
+use thiserror::Error;
 
 pub struct BinOptions {
     /// The address in memory where the binary will be put at.
@@ -23,51 +28,16 @@ pub enum Format {
     Elf,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum FileDownloadError {
-    FlashLoader(FlashLoaderError),
-    IhexRead(ihex::reader::ReaderError),
-    IO(std::io::Error),
+    #[error("{0}")]
+    FlashLoader(#[from] FlashLoaderError),
+    #[error("{0}")]
+    IhexRead(#[from] ihex::reader::ReaderError),
+    #[error("{0}")]
+    IO(#[from] std::io::Error),
+    #[error("Object Error: {0}.")]
     Object(&'static str),
-}
-
-impl Error for FileDownloadError {}
-
-impl fmt::Display for FileDownloadError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use FileDownloadError::*;
-
-        match self {
-            FlashLoader(ref e) => e.fmt(f),
-            IhexRead(ref e) => e.fmt(f),
-            IO(ref e) => e.fmt(f),
-            Object(ref s) => write!(f, "Object Error: {}.", s),
-        }
-    }
-}
-
-impl From<FlashLoaderError> for FileDownloadError {
-    fn from(error: FlashLoaderError) -> FileDownloadError {
-        FileDownloadError::FlashLoader(error)
-    }
-}
-
-impl From<ihex::reader::ReaderError> for FileDownloadError {
-    fn from(error: ihex::reader::ReaderError) -> FileDownloadError {
-        FileDownloadError::IhexRead(error)
-    }
-}
-
-impl From<std::io::Error> for FileDownloadError {
-    fn from(error: std::io::Error) -> FileDownloadError {
-        FileDownloadError::IO(error)
-    }
-}
-
-impl From<&'static str> for FileDownloadError {
-    fn from(error: &'static str) -> FileDownloadError {
-        FileDownloadError::Object(error)
-    }
 }
 
 /// Downloads a file at `path` into flash.
