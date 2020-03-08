@@ -96,10 +96,14 @@ pub fn set_progress_bar(progress: Arc<ProgressBar>) {
 /// This can be used for unwraps/eprintlns/etc.
 pub fn eprintln(message: impl AsRef<str>) {
     let guard = PROGRESS_BAR.write().unwrap();
-    if let Some(pb) = &*guard {
-        pb.println(message.as_ref());
-    } else {
-        eprintln!("{}", message.as_ref());
+
+    match guard.as_ref() {
+        Some(pb) if !pb.is_finished() => {
+            pb.println(message.as_ref());
+        }
+        _ => {
+            eprintln!("{}", message.as_ref());
+        }
     }
 }
 

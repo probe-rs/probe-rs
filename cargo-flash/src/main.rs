@@ -9,6 +9,7 @@ use std::{
     env,
     error::Error,
     fmt,
+    io::Write,
     path::{Path, PathBuf},
     process::{self, Command, Stdio},
     sync::{Arc, Mutex},
@@ -113,7 +114,15 @@ fn main() {
     match main_try() {
         Ok(_) => (),
         Err(e) => {
-            logging::eprintln(format!("{}: {}", "error".red().bold(), e));
+            // Ensure stderr is flushed before calling proces::exit,
+            // otherwise the process might panic, because it tries
+            // to access stderr during shutdown.
+            //
+            // We ignore the errors, not much we can do anyway.
+            let mut stderr = std::io::stderr();
+            let _ = writeln!(stderr, "{}: {}", "error".red().bold(), e);
+            let _ = stderr.flush();
+
             process::exit(1);
         }
     }
@@ -291,8 +300,15 @@ fn main_try() -> Result<(), failure::Error> {
                     SectorErased { size, .. } => {
                         erase_progress.inc(size as u64);
                     }
+                    FailedErasing => {
+                        erase_progress.abandon();
+                        program_progress.abandon();
+                    }
                     FinishedErasing => {
                         erase_progress.finish();
+                    }
+                    FailedProgramming => {
+                        program_progress.abandon();
                     }
                     FinishedProgramming => {
                         program_progress.finish();
