@@ -39,6 +39,9 @@ pub struct DAPLink {
 
     packet_size: Option<u16>,
     packet_count: Option<u8>,
+
+    /// Speed in kHz
+    speed_khz: u32,
 }
 
 impl std::fmt::Debug for DAPLink {
@@ -61,13 +64,17 @@ impl DAPLink {
             protocol: None,
             packet_count: None,
             packet_size: None,
+            speed_khz: 1_000,
         }
     }
 
-    fn set_swj_clock(&mut self, clock: u32) -> Result<(), CmsisDapError> {
+    /// Set maximum JTAG/SWD clock frequency to use, in Hz.
+    ///
+    /// The actual clock frequency used by the device might be lower.
+    fn set_swj_clock(&mut self, clock_hz: u32) -> Result<(), CmsisDapError> {
         commands::send_command::<SWJClockRequest, SWJClockResponse>(
             &mut self.device,
-            SWJClockRequest(clock),
+            SWJClockRequest(clock_hz),
         )
         .and_then(|v| match v {
             SWJClockResponse(Status::DAPOk) => Ok(()),
@@ -161,12 +168,21 @@ impl DebugProbe for DAPLink {
         "DAPLink"
     }
 
+    /// Get the currently set maximum speed.
+    ///
+    /// CMSIS-DAP offers no possibility to get the actual speed used.
     fn speed(&self) -> u32 {
-        unimplemented!()
+        self.speed_khz
     }
 
-    fn set_speed(&mut self, _speed_khz: u32) -> Result<u32, DebugProbeError> {
-        unimplemented!()
+    /// For CMSIS-DAP, we can set the maximum speed. The actual speed
+    /// used by the probe cannot be determined, but it will not be
+    /// higher than this value.
+    fn set_speed(&mut self, speed_khz: u32) -> Result<u32, DebugProbeError> {
+        self.set_swj_clock(speed_khz * 1_000)?;
+        self.speed_khz = speed_khz;
+
+        Ok(speed_khz)
     }
 
     /// Enters debug mode.
