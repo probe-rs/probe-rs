@@ -131,7 +131,23 @@ impl DebugProbe for STLink {
             TIMEOUT,
         )?;
         Self::check_status(&buf)?;
+
         log::debug!("Successfully initialized SWD.");
+
+        // If the speed is not manually set, the probe will
+        // use whatever speed has been configured before.
+        //
+        // To ensure the default speed is used if not changed,
+        // we set the speed again here.
+        match self.protocol {
+            WireProtocol::Jtag => {
+                self.set_speed(self.jtag_speed_khz)?;
+            }
+            WireProtocol::Swd => {
+                self.set_speed(self.swd_speed_khz)?;
+            }
+        }
+
         Ok(())
     }
 
