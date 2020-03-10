@@ -30,7 +30,7 @@ hidapi = "1.2.0"
 gimli = "0.20.0"
 object = "0.17.0"
 bitfield = "0.13.2"
-derivative = "1.0.3"
+derivative = "2.0.0"
 serde = { version = "1.0.104", features = ["derive"] }
 serde_yaml = "0.8.11"
 ihex = "1.1.2"
