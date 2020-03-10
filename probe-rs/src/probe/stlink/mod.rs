@@ -629,7 +629,7 @@ impl STLink {
 
 #[derive(Error, Debug)]
 pub(crate) enum StlinkError {
-    #[error("Invalid voltage values retourned by probe.")]
+    #[error("Invalid voltage values returned by probe.")]
     VoltageDivisionByZero,
     #[error("Probe is an unknown mode.")]
     UnknownMode,
