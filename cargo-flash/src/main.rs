@@ -73,6 +73,8 @@ struct Opt {
         help = "Use this flag to set the log level. Default is `warning`. Possible choices are [error, warning, info, debug, trace]"
     )]
     log: Option<log::Level>,
+    #[structopt(name = "speed", long = "speed", help = "Protocol speed in kHz")]
+    speed: Option<u32>,
 
     // `cargo build` arguments
     #[structopt(name = "binary", long = "bin")]
@@ -97,6 +99,7 @@ struct Opt {
 
 const ARGUMENTS_TO_REMOVE: &[&str] = &[
     "chip=",
+    "speed=",
     "chip-description-path=",
     "list-chips",
     "disable-progressbars",
@@ -243,6 +246,24 @@ fn main_try() -> Result<(), failure::Error> {
     //         }
     //     };
     // }
+
+    let protocol_speed = if let Some(speed) = opt.speed {
+        let actual_speed = probe.set_speed(speed)?;
+
+        if actual_speed < speed {
+            log::warn!(
+                "Unable to use specified speed of {} kHz, actual speed used is {} kHz",
+                speed,
+                actual_speed
+            );
+        }
+
+        actual_speed
+    } else {
+        probe.speed_khz()
+    };
+
+    log::info!("Protocol speed {} kHz", protocol_speed);
 
     let session = probe.attach(chip)?;
     let core = session.attach_to_core(0)?;

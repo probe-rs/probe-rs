@@ -8,9 +8,9 @@ checksum = "5d2e7343e7fc9de883d1b0341e0b13970f764c14101234857d2ddafa1cb1cac2"
 
 [[package]]
 name = "aho-corasick"
-version = "0.7.9"
+version = "0.7.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d5e63fd144e18ba274ae7095c0197a870a7b9468abc801dd62f190d80817d2ec"
+checksum = "8716408b8bc624ed7f65d223ddb9ac2d044c0547b6fa4b0d554f3a9540496ada"
 dependencies = [
  "memchr",
 ]
@@ -97,9 +97,9 @@ dependencies = [
 
 [[package]]
 name = "backtrace-sys"
-version = "0.1.33"
+version = "0.1.34"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e17b52e737c40a7d75abca20b29a19a0eb7ba9fc72c5a72dd282a0a3c2c0dc35"
+checksum = "ca797db0057bae1a7aa2eef3283a874695455cecf08a43bfb8507ee0ebc1ed69"
 dependencies = [
  "cc",
  "libc",
@@ -107,9 +107,9 @@ dependencies = [
 
 [[package]]
 name = "base64"
-version = "0.11.0"
+version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b41b7ea54a0c9d92199de89e20e58d49f02f8e699814ef3fdf266f6f748d15c7"
+checksum = "7d5ca2cd0adc3f48f9e9ea5a6bbdf9ccc0bfade884847e484d452414c7ccffb3"
 
 [[package]]
 name = "bit-set"
@@ -340,13 +340,13 @@ dependencies = [
 
 [[package]]
 name = "derivative"
-version = "1.0.3"
+version = "2.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "942ca430eef7a3806595a6737bc388bf51adb888d3fc0dd1b50f1c170167ee3a"
+checksum = "40c1f2732657d77ebc4e52a04dcf529ffb72e46e78d2e113b9016d5c01598649"
 dependencies = [
- "proc-macro2 0.4.30",
- "quote 0.6.13",
- "syn 0.15.44",
+ "proc-macro2 1.0.9",
+ "quote 1.0.3",
+ "syn 1.0.16",
 ]
 
 [[package]]
@@ -646,9 +646,9 @@ dependencies = [
 
 [[package]]
 name = "hidapi"
-version = "1.2.0"
+version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1cfd6cd631a5f39abaabad541f0b64bfcb7e55fa5c7de9a1e5d5578cb86dd687"
+checksum = "e347988010cd7d98689c553ab3d32f53e62cabb0d876aed16d41a8f9c1760e54"
 dependencies = [
  "cc",
  "libc",
@@ -1002,7 +1002,7 @@ checksum = "b4596b6d070b27117e987119b4dac604f3c58cfb0b191112e24771b2faeac1a6"
 [[package]]
 name = "probe-rs"
 version = "0.5.1"
-source = "git+https://github.com/probe-rs/probe-rs#d6cade0e820ca721275224af76168c7b8ce313ba"
+source = "git+https://github.com/probe-rs/probe-rs#a39f7b64f323ea5626e6718d0a3d180563153613"
 dependencies = [
  "bitfield",
  "capstone",
@@ -1030,7 +1030,7 @@ dependencies = [
 [[package]]
 name = "probe-rs-t2rust"
 version = "0.5.0"
-source = "git+https://github.com/probe-rs/probe-rs#d6cade0e820ca721275224af76168c7b8ce313ba"
+source = "git+https://github.com/probe-rs/probe-rs#a39f7b64f323ea5626e6718d0a3d180563153613"
 dependencies = [
  "base64",
  "proc-macro2 1.0.9",
