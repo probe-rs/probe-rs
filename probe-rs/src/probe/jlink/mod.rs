@@ -1,6 +1,6 @@
 //! Support for J-Link Debug probes
 
-use jaylink::JayLink;
+use jaylink::{CommunicationSpeed, JayLink};
 
 use std::convert::TryInto;
 use std::iter;
@@ -27,6 +27,8 @@ pub(crate) struct JLink {
     protocol: Option<WireProtocol>,
 
     current_ir_reg: u32,
+
+    speed_khz: u32,
 }
 
 impl JLink {
@@ -316,6 +318,7 @@ impl DebugProbe for JLink {
             jtag_idle_cycles: 0,
             protocol: None,
             current_ir_reg: 1,
+            speed_khz: 0,
         }))
     }
 
@@ -338,11 +341,35 @@ impl DebugProbe for JLink {
     }
 
     fn speed(&self) -> u32 {
-        unimplemented!()
+        self.speed_khz
     }
 
-    fn set_speed(&mut self, _speed_khz: u32) -> Result<u32, DebugProbeError> {
-        unimplemented!()
+    fn set_speed(&mut self, speed_khz: u32) -> Result<u32, DebugProbeError> {
+        if speed_khz == 0 || speed_khz >= 0xffff {
+            return Err(DebugProbeError::UnsupportedSpeed(speed_khz));
+        }
+
+        let jlink = self.handle.get_mut().unwrap();
+
+        let actual_speed_khz;
+        if let Ok(speeds) = jlink.read_speeds() {
+            log::debug!("Supported speeds: {:?}", speeds);
+
+            let speed_hz = 1000 * speed_khz;
+            let div = (speeds.base_freq() + speed_hz - 1) / speed_hz;
+            log::debug!("Divider: {}", div);
+            let div = std::cmp::max(div, speeds.min_div() as u32);
+
+            actual_speed_khz = ((speeds.base_freq() / div) + 999) / 1000;
+            assert!(actual_speed_khz <= speed_khz);
+        } else {
+            actual_speed_khz = speed_khz;
+        }
+
+        jlink.set_speed(CommunicationSpeed::khz(actual_speed_khz as u16).unwrap())?;
+        self.speed_khz = actual_speed_khz;
+
+        Ok(actual_speed_khz)
     }
 
     fn attach(&mut self) -> Result<(), super::DebugProbeError> {
