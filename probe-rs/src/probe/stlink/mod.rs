@@ -88,7 +88,8 @@ impl DebugProbe for STLink {
         } else if self.hw_version == 3 {
             let (available, _) = self.get_communication_frequencies(self.protocol)?;
 
-            let actual_speed_khz = available.into_iter()
+            let actual_speed_khz = available
+                .into_iter()
                 .filter(|speed| *speed <= speed_khz)
                 .max()
                 .ok_or(DebugProbeError::UnsupportedSpeed(speed_khz))?;
@@ -505,28 +506,18 @@ impl STLink {
             WireProtocol::Jtag => 1,
         };
 
-        let mut command = vec![
-            commands::JTAG_COMMAND,
-            commands::SET_COM_FREQ,
-            cmd_proto,
-            0,
-        ];
+        let mut command = vec![commands::JTAG_COMMAND, commands::SET_COM_FREQ, cmd_proto, 0];
         command.extend_from_slice(&frequency_khz.to_le_bytes());
 
         let mut buf = [0; 8];
-        self.device.write(
-            command,
-            &[],
-            &mut buf,
-            TIMEOUT,
-        )?;
+        self.device.write(command, &[], &mut buf, TIMEOUT)?;
         Self::check_status(&buf)
     }
 
     /// Returns the current and available communication frequencies (V3 only)
     fn get_communication_frequencies(
         &mut self,
-        protocol: WireProtocol
+        protocol: WireProtocol,
     ) -> Result<(Vec<u32>, u32), DebugProbeError> {
         assert_eq!(self.hw_version, 3);
 
@@ -537,20 +528,17 @@ impl STLink {
 
         let mut buf = [0; 52];
         self.device.write(
-            vec![
-                commands::JTAG_COMMAND,
-                commands::GET_COM_FREQ,
-                cmd_proto,
-            ],
+            vec![commands::JTAG_COMMAND, commands::GET_COM_FREQ, cmd_proto],
             &[],
             &mut buf,
             TIMEOUT,
         )?;
         Self::check_status(&buf)?;
 
-        let mut values = (&buf).chunks(4).map(|chunk| {
-            chunk.pread_with::<u32>(0, LE).unwrap()
-        }).collect::<Vec<u32>>();
+        let mut values = (&buf)
+            .chunks(4)
+            .map(|chunk| chunk.pread_with::<u32>(0, LE).unwrap())
+            .collect::<Vec<u32>>();
 
         let current = values[1];
         let n = core::cmp::min(values[2], 10) as usize;
@@ -625,7 +613,6 @@ impl STLink {
         }
     }
 }
-
 
 #[derive(Error, Debug)]
 pub(crate) enum StlinkError {
