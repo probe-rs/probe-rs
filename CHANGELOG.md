@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fix a bug where parsing a `ChipFamily` from source would always fail.
+
 ## [0.5.1]
 
 ### Fixed
