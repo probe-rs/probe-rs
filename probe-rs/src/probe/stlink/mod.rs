@@ -9,7 +9,7 @@ use super::{
 };
 use crate::Memory;
 use constants::{commands, JTagFrequencyToDivider, Mode, Status, SwdFrequencyToDelayCount};
-use scroll::{Pread, BE};
+use scroll::{Pread, BE, LE};
 use thiserror::Error;
 use usb_interface::TIMEOUT;
 
@@ -19,7 +19,8 @@ pub struct STLink {
     hw_version: u8,
     jtag_version: u8,
     protocol: WireProtocol,
-    speed: WireSpeed,
+    swd_speed_khz: u32,
+    jtag_speed_khz: u32,
 
     /// Index of the AP which is currently open.
     current_ap: Option<u16>,
@@ -32,7 +33,8 @@ impl DebugProbe for STLink {
             hw_version: 0,
             jtag_version: 0,
             protocol: WireProtocol::Swd,
-            speed: WireSpeed::Swd(SwdFrequencyToDelayCount::Hz1800000),
+            swd_speed_khz: 1_800,
+            jtag_speed_khz: 1_120,
 
             current_ap: None,
         };
@@ -47,40 +49,60 @@ impl DebugProbe for STLink {
     }
 
     fn speed(&self) -> u32 {
-        match self.speed {
-            WireSpeed::Jtag(speed) => speed.to_khz(),
-            WireSpeed::Swd(speed) => speed.to_khz(),
+        match self.protocol {
+            WireProtocol::Swd => self.swd_speed_khz,
+            WireProtocol::Jtag => self.jtag_speed_khz,
         }
     }
 
     fn set_speed(&mut self, speed_khz: u32) -> Result<u32, DebugProbeError> {
-        match self.protocol {
-            WireProtocol::Swd => {
-                let actual_speed = SwdFrequencyToDelayCount::find_setting(speed_khz);
+        if self.hw_version < 3 {
+            match self.protocol {
+                WireProtocol::Swd => {
+                    let actual_speed = SwdFrequencyToDelayCount::find_setting(speed_khz);
 
-                if let Some(actual_speed) = actual_speed {
-                    self.set_swd_frequency(actual_speed)?;
+                    if let Some(actual_speed) = actual_speed {
+                        self.set_swd_frequency(actual_speed)?;
 
-                    self.speed = WireSpeed::Swd(actual_speed);
+                        self.swd_speed_khz = actual_speed.to_khz();
 
-                    Ok(actual_speed.to_khz())
-                } else {
-                    Err(DebugProbeError::UnsupportedSpeed(speed_khz))
+                        Ok(actual_speed.to_khz())
+                    } else {
+                        Err(DebugProbeError::UnsupportedSpeed(speed_khz))
+                    }
+                }
+                WireProtocol::Jtag => {
+                    let actual_speed = JTagFrequencyToDivider::find_setting(speed_khz);
+
+                    if let Some(actual_speed) = actual_speed {
+                        self.set_jtag_frequency(actual_speed)?;
+
+                        self.jtag_speed_khz = actual_speed.to_khz();
+
+                        Ok(actual_speed.to_khz())
+                    } else {
+                        Err(DebugProbeError::UnsupportedSpeed(speed_khz))
+                    }
                 }
             }
-            WireProtocol::Jtag => {
-                let actual_speed = JTagFrequencyToDivider::find_setting(speed_khz);
+        } else if self.hw_version == 3 {
+            let (available, _) = self.get_communication_frequencies(self.protocol)?;
 
-                if let Some(actual_speed) = actual_speed {
-                    self.set_jtag_frequency(actual_speed)?;
+            let actual_speed_khz = available.into_iter()
+                .filter(|speed| *speed <= speed_khz)
+                .max()
+                .ok_or(DebugProbeError::UnsupportedSpeed(speed_khz))?;
 
-                    self.speed = WireSpeed::Jtag(actual_speed);
+            self.set_communication_frequency(self.protocol, actual_speed_khz)?;
 
-                    Ok(actual_speed.to_khz())
-                } else {
-                    Err(DebugProbeError::UnsupportedSpeed(speed_khz))
-                }
+            match self.protocol {
+                WireProtocol::Swd => self.swd_speed_khz = actual_speed_khz,
+                WireProtocol::Jtag => self.jtag_speed_khz = actual_speed_khz,
             }
+
+            Ok(actual_speed_khz)
+        } else {
+            unimplemented!()
         }
     }
 
@@ -420,6 +442,15 @@ impl STLink {
 
         let version = self.get_version()?;
         log::debug!("STLink version: {:?}", version);
+
+        if self.hw_version == 3 {
+            let (_, current) = self.get_communication_frequencies(WireProtocol::Swd)?;
+            self.swd_speed_khz = current;
+
+            let (_, current) = self.get_communication_frequencies(WireProtocol::Jtag)?;
+            self.jtag_speed_khz = current;
+        }
+
         self.get_target_voltage().map(|_| ())
     }
 
@@ -459,6 +490,75 @@ impl STLink {
             TIMEOUT,
         )?;
         Self::check_status(&buf)
+    }
+
+    /// Sets the communication frequency (V3 only)
+    fn set_communication_frequency(
+        &mut self,
+        protocol: WireProtocol,
+        frequency_khz: u32,
+    ) -> Result<(), DebugProbeError> {
+        assert_eq!(self.hw_version, 3);
+
+        let cmd_proto = match protocol {
+            WireProtocol::Swd => 0,
+            WireProtocol::Jtag => 1,
+        };
+
+        let mut command = vec![
+            commands::JTAG_COMMAND,
+            commands::SET_COM_FREQ,
+            cmd_proto,
+            0,
+        ];
+        command.extend_from_slice(&frequency_khz.to_le_bytes());
+
+        let mut buf = [0; 8];
+        self.device.write(
+            command,
+            &[],
+            &mut buf,
+            TIMEOUT,
+        )?;
+        Self::check_status(&buf)
+    }
+
+    /// Returns the current and available communication frequencies (V3 only)
+    fn get_communication_frequencies(
+        &mut self,
+        protocol: WireProtocol
+    ) -> Result<(Vec<u32>, u32), DebugProbeError> {
+        assert_eq!(self.hw_version, 3);
+
+        let cmd_proto = match protocol {
+            WireProtocol::Swd => 0,
+            WireProtocol::Jtag => 1,
+        };
+
+        let mut buf = [0; 52];
+        self.device.write(
+            vec![
+                commands::JTAG_COMMAND,
+                commands::GET_COM_FREQ,
+                cmd_proto,
+            ],
+            &[],
+            &mut buf,
+            TIMEOUT,
+        )?;
+        Self::check_status(&buf)?;
+
+        let mut values = (&buf).chunks(4).map(|chunk| {
+            chunk.pread_with::<u32>(0, LE).unwrap()
+        }).collect::<Vec<u32>>();
+
+        let current = values[1];
+        let n = core::cmp::min(values[2], 10) as usize;
+
+        values.rotate_left(3);
+        values.truncate(n);
+
+        Ok((values, current))
     }
 
     pub fn open_ap(&mut self, apsel: u8) -> Result<(), DebugProbeError> {
@@ -526,11 +626,6 @@ impl STLink {
     }
 }
 
-#[derive(Debug)]
-enum WireSpeed {
-    Jtag(JTagFrequencyToDivider),
-    Swd(SwdFrequencyToDelayCount),
-}
 
 #[derive(Error, Debug)]
 pub(crate) enum StlinkError {
