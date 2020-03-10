@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Flashing support for the STM32L4 series.
+
 ### Changed
 
 ### Fixed
