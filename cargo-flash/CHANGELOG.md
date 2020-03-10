@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add `--speed` setting to configure protocol speed in kHz.
+
 ### Changed
 
 ### Fixed
