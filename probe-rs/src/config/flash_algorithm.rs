@@ -1,3 +1,5 @@
+use scroll::{Pread, Pwrite};
+
 use super::flash_properties::FlashProperties;
 use super::memory::{PageInfo, RamRegion, SectorInfo};
 
@@ -98,6 +100,8 @@ pub struct RawFlashAlgorithm {
     /// Whether this flash algorithm is the default one or not.
     pub default: bool,
     /// List of 32-bit words containing the position-independent code for the algo.
+    #[serde(deserialize_with = "deserialize")]
+    #[serde(serialize_with = "serialize")]
     pub instructions: Vec<u32>,
     /// Address of the `Init()` entry point. Optional.
     pub pc_init: Option<u32>,
@@ -113,6 +117,44 @@ pub struct RawFlashAlgorithm {
     pub data_section_offset: u32,
     /// The properties of the flash on the device.
     pub flash_properties: FlashProperties,
+}
+
+pub fn serialize<S>(bytes: &[u32], serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    let mut data = vec![0; bytes.len() * 4];
+    for (i, byte) in bytes.iter().enumerate() {
+        data.pwrite(*byte, i * 4)
+            .map_err(serde::ser::Error::custom)?;
+    }
+    serializer.serialize_str(&base64::encode(data))
+}
+
+pub fn deserialize<'de, D>(deserializer: D) -> Result<Vec<u32>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    struct Base64Visitor;
+
+    impl<'de> serde::de::Visitor<'de> for Base64Visitor {
+        type Value = Vec<u32>;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            write!(formatter, "base64 ASCII text")
+        }
+
+        fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            base64::decode(v)
+                .map(|d| d.chunks(4).map(|bytes| bytes.pread(0).unwrap()).collect())
+                .map_err(serde::de::Error::custom)
+        }
+    }
+
+    deserializer.deserialize_str(Base64Visitor)
 }
 
 impl RawFlashAlgorithm {
