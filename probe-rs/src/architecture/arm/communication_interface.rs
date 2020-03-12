@@ -551,7 +551,7 @@ impl ArmChipInfo {
                     let base2 = interface
                         .read_ap_register(access_port, BASE2::default())
                         .map_err(ProbeRsError::Probe)?;
-                    (u64::from(base2.BASEADDR) << 32)
+                    u64::from(base2.BASEADDR) << 32
                 } else {
                     0
                 };

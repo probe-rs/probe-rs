@@ -13,32 +13,44 @@ pub use memory_ap::{
 use super::Register;
 use thiserror::Error;
 
-#[derive(Debug, Error, PartialEq)]
+#[derive(Debug, Error)]
 pub enum AccessPortError {
-    #[error("Invalid Access PortType Number")]
-    InvalidAccessPortNumber,
-    #[error("Misaligned memory access")]
-    MemoryNotAligned,
+    #[error("Failed to access address 0x{0:08x} as it is not aligned to 4 bytes.")]
+    MemoryNotAligned(u32),
     #[error("Failed to read register {name}, address 0x{address:08x}")]
-    RegisterReadError { address: u8, name: &'static str },
+    RegisterReadError {
+        address: u8,
+        name: &'static str,
+        inner: Box<dyn std::error::Error + Send + Sync>,
+    },
     #[error("Failed to write register {name}, address 0x{address:08x}")]
-    RegisterWriteError { address: u8, name: &'static str },
+    RegisterWriteError {
+        address: u8,
+        name: &'static str,
+        inner: Box<dyn std::error::Error + Send + Sync>,
+    },
     #[error("Out of bounds access")]
     OutOfBoundsError,
 }
 
 impl AccessPortError {
-    pub fn register_read_error<R: Register>() -> AccessPortError {
+    pub fn register_read_error<R: Register, E: std::error::Error + Send + Sync + 'static>(
+        inner: E,
+    ) -> AccessPortError {
         AccessPortError::RegisterReadError {
             address: R::ADDRESS,
             name: R::NAME,
+            inner: Box::new(inner),
         }
     }
 
-    pub fn register_write_error<R: Register>() -> AccessPortError {
+    pub fn register_write_error<R: Register, E: std::error::Error + Send + Sync + 'static>(
+        inner: E,
+    ) -> AccessPortError {
         AccessPortError::RegisterWriteError {
             address: R::ADDRESS,
             name: R::NAME,
+            inner: Box::new(inner),
         }
     }
 }
@@ -56,7 +68,7 @@ where
     PORT: AccessPort,
     R: APRegister<PORT>,
 {
-    type Error: std::error::Error;
+    type Error: std::error::Error + Send + Sync + 'static;
     fn read_ap_register(&mut self, port: PORT, register: R) -> Result<R, Self::Error>;
 
     /// Read a register using a block transfer. This can be used

@@ -20,12 +20,10 @@ pub struct FlashLoader<'a, 'b> {
 
 #[derive(Debug, Error)]
 pub enum FlashLoaderError {
-    #[error("No flash memory was found at address {0:#08x}.")]
-    NoSuitableFlash(u32), // Contains the faulty address.
     #[error(
-        "Trying to access flash at address {0:#08x}, which is not inside any defined flash region."
+        "No flash memory contains the entire requested memory range {start:#08X}..{end:#08X}."
     )]
-    MemoryRegionNotFlash(u32), // Contains the faulty address.
+    NoSuitableFlash { start: u32, end: u32 },
     #[error("Trying to write flash, but no flash loader algorithm is attached.")]
     NoFlashLoaderAlgorithmAttached,
     #[error("Builder error: {0}")]
@@ -69,7 +67,10 @@ impl<'a, 'b> FlashLoader<'a, 'b> {
                 remaining -= program_length;
                 address += program_length as u32;
             } else {
-                return Err(FlashLoaderError::NoSuitableFlash(address));
+                return Err(FlashLoaderError::NoSuitableFlash {
+                    start: address,
+                    end: address + data.len() as u32,
+                });
             }
         }
         Ok(())
