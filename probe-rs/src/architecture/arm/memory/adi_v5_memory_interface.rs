@@ -94,7 +94,7 @@ where
     {
         self.interface
             .read_ap_register(self.access_port, register)
-            .or_else(|_| Err(AccessPortError::register_read_error::<R>()))
+            .map_err(AccessPortError::register_read_error::<R, _>)
     }
 
     /// Read multiple 32 bit values from the same
@@ -110,7 +110,7 @@ where
     {
         self.interface
             .read_ap_register_repeated(self.access_port, register, values)
-            .or_else(|_| Err(AccessPortError::register_read_error::<R>()))
+            .map_err(AccessPortError::register_read_error::<R, _>)
     }
 
     /// Write a 32 bit register on the given AP.
@@ -121,7 +121,7 @@ where
     {
         self.interface
             .write_ap_register(self.access_port, register)
-            .or_else(|_| Err(AccessPortError::register_write_error::<R>()))
+            .map_err(AccessPortError::register_write_error::<R, _>)
     }
 
     /// Write multiple 32 bit values to the same
@@ -137,7 +137,7 @@ where
     {
         self.interface
             .write_ap_register_repeated(self.access_port, register, values)
-            .or_else(|_| Err(AccessPortError::register_write_error::<R>()))
+            .map_err(AccessPortError::register_write_error::<R, _>)
     }
 
     /// Read a 32bit word at `addr`.
@@ -146,7 +146,7 @@ where
     /// Returns `AccessPortError::MemoryNotAligned` if this does not hold true.
     pub fn read32(&mut self, address: u32) -> Result<u32, AccessPortError> {
         if (address % 4) != 0 {
-            return Err(AccessPortError::MemoryNotAligned);
+            return Err(AccessPortError::MemoryNotAligned(address));
         }
 
         let csw = self.build_csw_register(DataSize::U32);
@@ -187,7 +187,7 @@ where
         }
 
         if (start_address % 4) != 0 {
-            return Err(AccessPortError::MemoryNotAligned);
+            return Err(AccessPortError::MemoryNotAligned(start_address));
         }
 
         // Second we read in 32 bit reads until we have less than 32 bits left to read.
@@ -291,7 +291,7 @@ where
     /// Returns `AccessPortError::MemoryNotAligned` if this does not hold true.
     pub fn write32(&mut self, address: u32, data: u32) -> Result<(), AccessPortError> {
         if (address % 4) != 0 {
-            return Err(AccessPortError::MemoryNotAligned);
+            return Err(AccessPortError::MemoryNotAligned(address));
         }
 
         let csw = self.build_csw_register(DataSize::U32);
@@ -341,7 +341,7 @@ where
         }
 
         if (start_address % 4) != 0 {
-            return Err(AccessPortError::MemoryNotAligned);
+            return Err(AccessPortError::MemoryNotAligned(start_address));
         }
 
         log::debug!(

@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Improved error handling for the flash download module.
+- Improved error messages for ARM register operations.
 
 ### Fixed
 

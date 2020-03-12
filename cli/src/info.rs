@@ -57,7 +57,7 @@ pub(crate) fn show_info_of_device(shared_options: &SharedOptions) -> Result<(), 
 
             let mut baseaddr = if BaseaddrFormat::ADIv5 == base_register.Format {
                 let base2 = interface.read_ap_register(access_port, BASE2::default())?;
-                (u64::from(base2.BASEADDR) << 32)
+                u64::from(base2.BASEADDR) << 32
             } else {
                 0
             };
