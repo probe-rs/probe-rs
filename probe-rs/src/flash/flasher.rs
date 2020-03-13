@@ -58,6 +58,10 @@ pub enum FlasherError {
     Core(#[source] error::Error),
     #[error("{address} is not contained in {region:?}")]
     AddressNotInRegion { address: u32, region: FlashRegion },
+    #[error(
+        "The RAM contents did not match the expected contents after loading the flash algorithm."
+    )]
+    FlashAlgorithmNotLoaded,
 }
 
 pub struct Flasher<'a> {
@@ -176,17 +180,17 @@ impl<'a> Flasher<'a> {
         for (offset, (original, read_back)) in algo.instructions.iter().zip(data.iter()).enumerate()
         {
             if original != read_back {
-                eprintln!(
+                log::error!(
                     "Failed to verify flash algorithm. Data mismatch at address {:#08x}",
                     algo.load_address + (4 * offset) as u32
                 );
-                eprintln!("Original instruction: {:#08x}", original);
-                eprintln!("Readback instruction: {:#08x}", read_back);
+                log::error!("Original instruction: {:#08x}", original);
+                log::error!("Readback instruction: {:#08x}", read_back);
 
-                eprintln!("Original: {:x?}", &algo.instructions);
-                eprintln!("Readback: {:x?}", &data);
+                log::error!("Original: {:x?}", &algo.instructions);
+                log::error!("Readback: {:x?}", &data);
 
-                panic!("Flash algorithm not written to flash correctly.");
+                return Err(FlasherError::FlashAlgorithmNotLoaded);
             }
         }
 
