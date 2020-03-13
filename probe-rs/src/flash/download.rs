@@ -31,7 +31,7 @@ pub enum Format {
 #[derive(Debug, Error)]
 pub enum FileDownloadError {
     #[error("{0}")]
-    FlashLoader(#[from] FlashLoaderError),
+    Flash(#[from] FlashError),
     #[error("{0}")]
     IhexRead(#[from] ihex::reader::ReaderError),
     #[error("{0}")]
@@ -93,7 +93,7 @@ fn download_file_internal(
     loader
         // TODO: hand out chip erase flag
         .commit(session, progress, false)
-        .map_err(FileDownloadError::FlashLoader)
+        .map_err(FileDownloadError::Flash)
 }
 
 /// Starts the download of a binary file.
