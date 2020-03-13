@@ -17,17 +17,19 @@ use thiserror::Error;
 pub enum AccessPortError {
     #[error("Failed to access address 0x{0:08x} as it is not aligned to 4 bytes.")]
     MemoryNotAligned(u32),
-    #[error("Failed to read register {name}, address 0x{address:08x}")]
+    #[error("Failed to read register {name} at address 0x{address:08x} because: {source}")]
     RegisterReadError {
         address: u8,
         name: &'static str,
-        inner: Box<dyn std::error::Error + Send + Sync>,
+        #[source]
+        source: Box<dyn std::error::Error + Send + Sync>,
     },
-    #[error("Failed to write register {name}, address 0x{address:08x}")]
+    #[error("Failed to write register {name} at address 0x{address:08x} because: {source}")]
     RegisterWriteError {
         address: u8,
         name: &'static str,
-        inner: Box<dyn std::error::Error + Send + Sync>,
+        #[source]
+        source: Box<dyn std::error::Error + Send + Sync>,
     },
     #[error("Out of bounds access")]
     OutOfBoundsError,
@@ -35,22 +37,22 @@ pub enum AccessPortError {
 
 impl AccessPortError {
     pub fn register_read_error<R: Register, E: std::error::Error + Send + Sync + 'static>(
-        inner: E,
+        source: E,
     ) -> AccessPortError {
         AccessPortError::RegisterReadError {
             address: R::ADDRESS,
             name: R::NAME,
-            inner: Box::new(inner),
+            source: Box::new(source),
         }
     }
 
     pub fn register_write_error<R: Register, E: std::error::Error + Send + Sync + 'static>(
-        inner: E,
+        source: E,
     ) -> AccessPortError {
         AccessPortError::RegisterWriteError {
             address: R::ADDRESS,
             name: R::NAME,
-            inner: Box::new(inner),
+            source: Box::new(source),
         }
     }
 }
