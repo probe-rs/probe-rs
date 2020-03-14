@@ -146,7 +146,7 @@ where
     /// Returns `AccessPortError::MemoryNotAligned` if this does not hold true.
     pub fn read32(&mut self, address: u32) -> Result<u32, AccessPortError> {
         if (address % 4) != 0 {
-            return Err(AccessPortError::MemoryNotAligned(address));
+            return Err(AccessPortError::alignment_error(address, 4));
         }
 
         let csw = self.build_csw_register(DataSize::U32);
@@ -187,7 +187,7 @@ where
         }
 
         if (start_address % 4) != 0 {
-            return Err(AccessPortError::MemoryNotAligned(start_address));
+            return Err(AccessPortError::alignment_error(start_address, 4));
         }
 
         // Second we read in 32 bit reads until we have less than 32 bits left to read.
@@ -291,7 +291,7 @@ where
     /// Returns `AccessPortError::MemoryNotAligned` if this does not hold true.
     pub fn write32(&mut self, address: u32, data: u32) -> Result<(), AccessPortError> {
         if (address % 4) != 0 {
-            return Err(AccessPortError::MemoryNotAligned(address));
+            return Err(AccessPortError::alignment_error(address, 4));
         }
 
         let csw = self.build_csw_register(DataSize::U32);
@@ -341,7 +341,7 @@ where
         }
 
         if (start_address % 4) != 0 {
-            return Err(AccessPortError::MemoryNotAligned(start_address));
+            return Err(AccessPortError::alignment_error(start_address, 4));
         }
 
         log::debug!(
