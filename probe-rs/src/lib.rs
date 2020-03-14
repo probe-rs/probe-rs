@@ -74,7 +74,7 @@ pub mod config;
 mod core;
 pub mod debug;
 mod error;
-pub mod flash;
+pub mod flashing;
 mod memory;
 mod probe;
 mod session;

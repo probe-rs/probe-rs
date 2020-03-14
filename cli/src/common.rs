@@ -2,7 +2,7 @@ use crate::SharedOptions;
 
 use probe_rs::{
     architecture::arm::ap::AccessPortError, config::TargetSelector,
-    flash::download::FileDownloadError, DebugProbeError, Error, Probe, Session,
+    flashing::FileDownloadError, DebugProbeError, Error, Probe, Session,
 };
 
 use std::fmt;

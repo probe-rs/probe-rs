@@ -7,7 +7,7 @@ use debugger::CliState;
 
 use probe_rs::{
     debug::DebugInfo,
-    flash::download::{download_file, Format},
+    flashing::{download_file, Format},
     MemoryInterface, Probe, Session,
 };
 

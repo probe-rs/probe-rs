@@ -222,7 +222,10 @@ impl<'a> Flasher<'a> {
         Ok(r)
     }
 
-    /// Writes a single block of data to the flash.
+    /// Writes a single block of data to a given address in the flash.
+    /// 
+    /// This will not check any boundaries. You have to make sure that the boundaries are correct.
+    /// Unexpected things may happen if this is not ensured.
     pub fn flash_block(
         &mut self,
         address: u32,
