@@ -27,7 +27,7 @@ fn fmt_hex<T: std::fmt::LowerHex>(
 }
 
 impl FlashPage {
-    pub(super) fn new(page_info: &PageInfo) -> Self {
+    fn new(page_info: &PageInfo) -> Self {
         Self {
             address: page_info.base_address,
             size: page_info.size,
@@ -45,56 +45,42 @@ pub(super) struct FlashSector {
     #[derivative(Debug(format_with = "fmt_hex"))]
     pub(super) size: u32,
     pub(super) page_size: u32,
-    pub(super) pages: Vec<FlashPage>,
 }
 
 impl FlashSector {
     /// Creates a new empty flash sector form a `SectorInfo`.
-    pub(super) fn new(sector_info: &SectorInfo) -> Self {
+    fn new(sector_info: &SectorInfo) -> Self {
         Self {
             address: sector_info.base_address,
             size: sector_info.size,
             page_size: sector_info.page_size,
-            pages: vec![],
         }
     }
+}
 
-    /// Adds a new `FlashPage` to the `FlashSector`.
-    pub(super) fn add_page(&mut self, page: FlashPage) -> Result<(), FlashError> {
-        // If the pages do not align nicely within the sector, return an error.
-        if self.page_size != page.size {
-            return Err(FlashError::PageSizeDoesNotMatch {
-                page_size: page.size,
-                sector_page_size: self.page_size,
-            });
-        }
+pub(super) struct FlashLayout {
+    sectors: Vec<FlashSector>,
+    pages: Vec<FlashPage>,
+}
 
-        // Determine the maximal amout of pages in the sector.
-        let max_page_count = (self.size / page.size) as usize;
+impl FlashLayout {
+    pub(super) fn sectors(&self) -> &[FlashSector] {
+        &self.sectors
+    }
 
-        // Make sure we haven't reached the sectors maximum capacity yet.
-        if self.pages.len() < max_page_count {
-            // Add a page and keep the pages sorted.
-            self.pages.push(page);
-            self.pages.sort_by_key(|p| p.address);
-        } else {
-            return Err(FlashError::MaxPageCountExceeded {
-                maximum_page_count: max_page_count,
-                sector_address: self.address,
-            });
-        }
-        Ok(())
+    pub(super) fn pages(&self) -> &[FlashPage] {
+        &self.pages
     }
 }
 
 #[derive(Clone, Copy)]
 struct FlashWriteData<'a> {
-    pub(super) address: u32,
-    pub(super) data: &'a [u8],
+    address: u32,
+    data: &'a [u8],
 }
 
 impl<'a> FlashWriteData<'a> {
-    pub(super) fn new(address: u32, data: &'a [u8]) -> Self {
+    fn new(address: u32, data: &'a [u8]) -> Self {
         Self { address, data }
     }
 }
@@ -112,11 +98,6 @@ impl<'a> FlashBuilder<'a> {
             flash_write_data: vec![],
             buffered_data_size: 0,
         }
-    }
-
-    /// Iterate over all pages in an array of `FlashSector`s.
-    pub(super) fn pages(sectors: &[FlashSector]) -> Vec<&FlashPage> {
-        sectors.iter().map(|s| &s.pages).flatten().collect()
     }
 
     /// Add a block of data to be programmed.
@@ -161,8 +142,9 @@ impl<'a> FlashBuilder<'a> {
         &self,
         flash: &mut Flasher,
         restore_unwritten_bytes: bool,
-    ) -> Result<Vec<FlashSector>, FlashError> {
+    ) -> Result<FlashLayout, FlashError> {
         let mut sectors: Vec<FlashSector> = Vec::new();
+        let mut pages: Vec<FlashPage> = Vec::new();
 
         for op in &self.flash_write_data {
             let mut pos = 0;
@@ -189,7 +171,7 @@ impl<'a> FlashBuilder<'a> {
                             return Err(FlashError::InvalidFlashAddress(flash_address));
                         }
                         continue;
-                    } else if let Some(page) = sector.pages.last_mut() {
+                    } else if let Some(page) = pages.last_mut() {
                         // If the current page does not contain the address.
                         if flash_address >= page.address + page.size {
                             // Fill any gap at the end of the current page before switching to a new page.
@@ -198,7 +180,7 @@ impl<'a> FlashBuilder<'a> {
                             let page_info = flash.flash_algorithm().page_info(flash_address);
                             if let Some(page_info) = page_info {
                                 let new_page = FlashPage::new(&page_info);
-                                sector.add_page(new_page)?;
+                                pages.push(new_page);
                                 log::trace!(
                                     "Added Page (0x{:08x}..0x{:08x})",
                                     page_info.base_address,
@@ -223,7 +205,7 @@ impl<'a> FlashBuilder<'a> {
                         let page_info = flash.flash_algorithm().page_info(flash_address);
                         if let Some(page_info) = page_info {
                             let new_page = FlashPage::new(&page_info);
-                            sector.add_page(new_page.clone())?;
+                            pages.push(new_page.clone());
                             log::trace!(
                                 "Added Page (0x{:08x}..0x{:08x})",
                                 page_info.base_address,
@@ -256,10 +238,8 @@ impl<'a> FlashBuilder<'a> {
         }
 
         // Fill the page gap if there is one.
-        if let Some(sector) = sectors.last_mut() {
-            if let Some(page) = sector.pages.last_mut() {
-                flash.fill_page(page, restore_unwritten_bytes)?;
-            }
+        if let Some(page) = pages.last_mut() {
+            flash.fill_page(page, restore_unwritten_bytes)?;
         }
 
         log::debug!("Sectors are:");
@@ -267,6 +247,11 @@ impl<'a> FlashBuilder<'a> {
             log::debug!("{:#?}", sector);
         }
 
-        Ok(sectors)
+        log::debug!("Pages are:");
+        for page in &pages {
+            log::debug!("{:#?}", pages);
+        }
+
+        Ok(FlashLayout { sectors, pages })
     }
 }

@@ -1,5 +1,5 @@
 use super::FlashProgress;
-use super::{FlashBuilder, FlashError, FlashPage, FlashSector};
+use super::{FlashBuilder, FlashError, FlashPage, FlashLayout};
 use crate::config::{FlashAlgorithm, FlashRegion, MemoryRange, SectorInfo};
 use crate::core::{Core, RegisterFile};
 use crate::error;
@@ -43,7 +43,7 @@ impl Operation for Verify {
     }
 }
 
-pub(super) struct Flasher<'a> {
+pub struct Flasher<'a> {
     session: Session,
     flash_algorithm: &'a FlashAlgorithm,
     region: &'a FlashRegion,
@@ -51,7 +51,7 @@ pub(super) struct Flasher<'a> {
 }
 
 impl<'a> Flasher<'a> {
-    pub(super) fn new(
+    pub fn new(
         session: Session,
         flash_algorithm: &'a FlashAlgorithm,
         region: &'a FlashRegion,
@@ -62,10 +62,6 @@ impl<'a> Flasher<'a> {
             region,
             double_buffering_supported: false,
         }
-    }
-
-    pub(super) fn region(&self) -> &FlashRegion {
-        &self.region
     }
 
     /// Returns the necessary information about the sector which `address` resides in
@@ -184,7 +180,6 @@ impl<'a> Flasher<'a> {
         let mut flasher = ActiveFlasher {
             core,
             flash_algorithm: flasher.flash_algorithm,
-            region: flasher.region,
             _double_buffering_supported: flasher.double_buffering_supported,
             _operation: core::marker::PhantomData,
         };
@@ -228,7 +223,7 @@ impl<'a> Flasher<'a> {
     }
 
     /// Writes a single block of data to the flash.
-    pub(super) fn flash_block(
+    pub fn flash_block(
         &mut self,
         address: u32,
         data: &[u8],
@@ -269,19 +264,13 @@ impl<'a> Flasher<'a> {
         progress: &FlashProgress,
     ) -> Result<(), FlashError> {
         // Convert the list of flash operations into flash sectors and pages.
-        let sectors = flash_builder.build_sectors_and_pages(self, restore_unwritten_bytes)?;
+        let flash_layout = flash_builder.build_sectors_and_pages(self, restore_unwritten_bytes)?;
 
-        let num_pages = sectors.iter().map(|s| s.pages.len()).sum();
+        let num_pages = flash_layout.pages().len();
         let page_size = self.flash_algorithm().flash_properties.page_size;
-        let sector_size: u32 = sectors.iter().map(|s| s.size).sum();
+        let sector_size: u32 = flash_layout.sectors().iter().map(|s| s.size).sum();
 
         progress.initialized(num_pages, sector_size as usize, page_size);
-
-        // Check if there is even sectors to flash.
-        if sectors.is_empty() || sectors[0].pages.is_empty() {
-            // Nothing to do.
-            return Ok(());
-        }
 
         // If the flash algo doesn't support erase all, disable chip erase.
         if self.flash_algorithm().pc_erase_all.is_none() {
@@ -295,17 +284,17 @@ impl<'a> Flasher<'a> {
         progress.started_erasing();
 
         if do_chip_erase {
-            self.chip_erase(&sectors, progress)?;
+            self.chip_erase(&flash_layout, progress)?;
         } else {
-            self.sector_erase(&sectors, progress)?;
+            self.sector_erase(&flash_layout, progress)?;
         }
 
         // Flash all necessary pages.
 
         if self.double_buffering_supported() && enable_double_buffering {
-            self.program_double_buffer(&sectors, progress)?;
+            self.program_double_buffer(&flash_layout, progress)?;
         } else {
-            self.program_simple(&sectors, progress)?;
+            self.program_simple(&flash_layout, progress)?;
         };
 
         Ok(())
@@ -349,14 +338,14 @@ impl<'a> Flasher<'a> {
     /// It does not indeed erase single sectors but erases the entire flash.
     fn chip_erase(
         &mut self,
-        sectors: &[FlashSector],
+        flash_layout: &FlashLayout,
         progress: &FlashProgress,
     ) -> Result<(), FlashError> {
         progress.started_erasing();
 
         let mut t = std::time::Instant::now();
         let result = self.run_erase(|active| active.erase_all());
-        for sector in sectors {
+        for sector in flash_layout.sectors() {
             progress.sector_erased(sector.page_size, t.elapsed().as_millis());
             t = std::time::Instant::now();
         }
@@ -372,14 +361,14 @@ impl<'a> Flasher<'a> {
     /// Programs all sectors contained in `sectors`.
     fn program_simple(
         &mut self,
-        sectors: &[FlashSector],
+        flash_layout: &FlashLayout,
         progress: &FlashProgress,
     ) -> Result<(), FlashError> {
         progress.started_flashing();
 
         let mut t = std::time::Instant::now();
         let result = self.run_program(|active| {
-            for page in FlashBuilder::pages(sectors) {
+            for page in flash_layout.pages() {
                 active.program_page(page.address, page.data.as_slice())?;
                 progress.page_programmed(page.size, t.elapsed().as_millis());
                 t = std::time::Instant::now();
@@ -399,19 +388,17 @@ impl<'a> Flasher<'a> {
     /// Perform an erase of all sectors given in `sectors` which actually contain any pages.
     fn sector_erase(
         &mut self,
-        sectors: &[FlashSector],
+        flash_layout: &FlashLayout,
         progress: &FlashProgress,
     ) -> Result<(), FlashError> {
         progress.started_flashing();
 
         let mut t = std::time::Instant::now();
         let result = self.run_erase(|active| {
-            for sector in sectors {
-                if !sector.pages.is_empty() {
-                    active.erase_sector(sector.address)?;
-                    progress.sector_erased(sector.size, t.elapsed().as_millis());
-                    t = std::time::Instant::now();
-                }
+            for sector in flash_layout.sectors() {
+                active.erase_sector(sector.address)?;
+                progress.sector_erased(sector.size, t.elapsed().as_millis());
+                t = std::time::Instant::now();
             }
             Ok(())
         });
@@ -430,7 +417,7 @@ impl<'a> Flasher<'a> {
     /// UNTESTED
     fn program_double_buffer(
         &mut self,
-        sectors: &[FlashSector],
+        flash_layout: &FlashLayout,
         progress: &FlashProgress,
     ) -> Result<(), FlashError> {
         let mut current_buf = 0;
@@ -439,7 +426,7 @@ impl<'a> Flasher<'a> {
 
         let mut t = std::time::Instant::now();
         let result = self.run_program(|active| {
-            for page in FlashBuilder::pages(sectors) {
+            for page in flash_layout.pages() {
                 // At the start of each loop cycle load the next page buffer into RAM.
                 active.load_page_buffer(page.address, page.data.as_slice(), current_buf)?;
 
@@ -482,7 +469,6 @@ impl<'a> Flasher<'a> {
 pub(super) struct ActiveFlasher<'a, O: Operation> {
     core: Core,
     flash_algorithm: &'a FlashAlgorithm,
-    region: &'a FlashRegion,
     _double_buffering_supported: bool,
     _operation: core::marker::PhantomData<O>,
 }
@@ -516,10 +502,6 @@ impl<'a, O: Operation> ActiveFlasher<'a, O> {
         }
 
         Ok(())
-    }
-
-    pub(super) fn region(&self) -> &FlashRegion {
-        &self.region
     }
 
     pub(super) fn flash_algorithm(&self) -> &FlashAlgorithm {
@@ -655,18 +637,6 @@ impl<'a, O: Operation> ActiveFlasher<'a, O> {
             .read_core_reg(regs.result_register(0).address)
             .map_err(FlashError::Core)?;
         Ok(r)
-    }
-
-    pub(super) fn read_block32(
-        &mut self,
-        address: u32,
-        data: &mut [u32],
-    ) -> Result<(), FlashError> {
-        self.core
-            .memory()
-            .read_block32(address, data)
-            .map_err(FlashError::Memory)?;
-        Ok(())
     }
 
     pub(super) fn read_block8(&mut self, address: u32, data: &mut [u8]) -> Result<(), FlashError> {

@@ -31,16 +31,6 @@ pub enum FlashError {
     InvalidFlashAddress(u32),
     #[error("There is already an other entry for address {0:#010x}")]
     DuplicateDataEntry(u32),
-    #[error("Internal error: The sector configuration is expecting page size {sector_page_size}, but the actual  page size is {page_size}.")]
-    PageSizeDoesNotMatch {
-        sector_page_size: u32,
-        page_size: u32,
-    },
-    #[error("The maximum page count {maximum_page_count} for the sector at address {sector_address:#010x} was exceeded.")]
-    MaxPageCountExceeded {
-        maximum_page_count: usize,
-        sector_address: u32,
-    },
     #[error(
         "No flash memory contains the entire requested memory range {start:#08X}..{end:#08X}."
     )]
