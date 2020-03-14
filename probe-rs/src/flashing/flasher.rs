@@ -272,7 +272,8 @@ impl<'a> Flasher<'a> {
         progress: &FlashProgress,
     ) -> Result<(), FlashError> {
         // Convert the list of flash operations into flash sectors and pages.
-        let flash_layout = flash_builder.build_sectors_and_pages(self, restore_unwritten_bytes)?;
+        let flash_layout = flash_builder.build_sectors_and_pages(
+            &self.flash_algorithm().clone(), |page| { self.fill_page(page, restore_unwritten_bytes) })?;
 
         let num_pages = flash_layout.pages().len();
         let page_size = self.flash_algorithm().flash_properties.page_size;

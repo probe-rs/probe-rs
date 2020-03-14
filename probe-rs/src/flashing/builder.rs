@@ -1,9 +1,9 @@
 use super::flasher::Flasher;
-use crate::config::{PageInfo, SectorInfo};
+use crate::config::{PageInfo, SectorInfo, FlashAlgorithm};
 
 use super::FlashError;
 
-/// A struct to hold all the information about one page of flash.
+/// A struct to hold all the information about one page of the  flash.
 #[derive(Derivative, Clone)]
 #[derivative(Debug)]
 pub(super) struct FlashPage {
@@ -36,7 +36,7 @@ impl FlashPage {
     }
 }
 
-/// A struct to hold all the information about one Sector in flash.
+/// A struct to hold all the information about one Sector in the flash.
 #[derive(Derivative)]
 #[derivative(Debug, Clone)]
 pub(super) struct FlashSector {
@@ -44,6 +44,7 @@ pub(super) struct FlashSector {
     pub(super) address: u32,
     #[derivative(Debug(format_with = "fmt_hex"))]
     pub(super) size: u32,
+    #[derivative(Debug(format_with = "fmt_hex"))]
     pub(super) page_size: u32,
 }
 
@@ -58,6 +59,7 @@ impl FlashSector {
     }
 }
 
+#[derive(Debug, Clone)]
 pub(super) struct FlashLayout {
     sectors: Vec<FlashSector>,
     pages: Vec<FlashPage>,
@@ -140,8 +142,8 @@ impl<'a> FlashBuilder<'a> {
     /// and written again once the sector is erased.
     pub(super) fn build_sectors_and_pages(
         &self,
-        flash: &mut Flasher,
-        restore_unwritten_bytes: bool,
+        flash_algorithm: &FlashAlgorithm,
+        mut fill_page: impl FnMut(&mut FlashPage) -> Result<(), FlashError>,
     ) -> Result<FlashLayout, FlashError> {
         let mut sectors: Vec<FlashSector> = Vec::new();
         let mut pages: Vec<FlashPage> = Vec::new();
@@ -158,7 +160,7 @@ impl<'a> FlashBuilder<'a> {
                 if let Some(sector) = sectors.last_mut() {
                     // If the address is not in the sector, add a new sector.
                     if flash_address >= sector.address + sector.size {
-                        let sector_info = flash.sector_info(flash_address);
+                        let sector_info = flash_algorithm.sector_info(flash_address);
                         if let Some(sector_info) = sector_info {
                             let new_sector = FlashSector::new(&sector_info);
                             sectors.push(new_sector);
@@ -175,9 +177,9 @@ impl<'a> FlashBuilder<'a> {
                         // If the current page does not contain the address.
                         if flash_address >= page.address + page.size {
                             // Fill any gap at the end of the current page before switching to a new page.
-                            flash.fill_page(page, restore_unwritten_bytes)?;
+                            fill_page(page)?;
 
-                            let page_info = flash.flash_algorithm().page_info(flash_address);
+                            let page_info = flash_algorithm.page_info(flash_address);
                             if let Some(page_info) = page_info {
                                 let new_page = FlashPage::new(&page_info);
                                 pages.push(new_page);
@@ -202,7 +204,7 @@ impl<'a> FlashBuilder<'a> {
                         }
                     } else {
                         // If no page is on the sector yet.
-                        let page_info = flash.flash_algorithm().page_info(flash_address);
+                        let page_info = flash_algorithm.page_info(flash_address);
                         if let Some(page_info) = page_info {
                             let new_page = FlashPage::new(&page_info);
                             pages.push(new_page.clone());
@@ -219,7 +221,7 @@ impl<'a> FlashBuilder<'a> {
                 } else {
                     // If no sector exists, create a new one.
                     log::trace!("Trying to create a new sector");
-                    let sector_info = flash.sector_info(flash_address);
+                    let sector_info = flash_algorithm.sector_info(flash_address);
 
                     if let Some(sector_info) = sector_info {
                         let new_sector = FlashSector::new(&sector_info);
@@ -239,7 +241,7 @@ impl<'a> FlashBuilder<'a> {
 
         // Fill the page gap if there is one.
         if let Some(page) = pages.last_mut() {
-            flash.fill_page(page, restore_unwritten_bytes)?;
+            fill_page(page)?;
         }
 
         log::debug!("Sectors are:");
@@ -253,5 +255,85 @@ impl<'a> FlashBuilder<'a> {
         }
 
         Ok(FlashLayout { sectors, pages })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use insta::*;
+
+    use crate::config::{FlashAlgorithm, FlashProperties, SectorDescription};
+    use super::FlashBuilder;
+
+    fn assemble_demo_flash1() -> FlashAlgorithm {
+        let sd = SectorDescription {
+            size: 4096,
+            address: 0,
+        };
+
+        let mut flash_algorithm = FlashAlgorithm::default();
+        flash_algorithm.flash_properties = FlashProperties {
+            address_range: 0..1<<16,
+            page_size: 1024,
+            erased_byte_value: 255,
+            program_page_timeout: 200,
+            erase_sector_timeout: 200,
+            sectors: vec![sd],
+        };
+
+        flash_algorithm
+    }
+    #[test]
+    fn test1() {
+        let flash_algorithm = assemble_demo_flash1();
+        let mut flash_builder = FlashBuilder::new();
+        flash_builder.add_data(0, &[42]).unwrap();
+        let flash_layout = flash_builder.build_sectors_and_pages(&flash_algorithm, |_| { Ok(()) }).unwrap();
+        assert_debug_snapshot!(flash_layout);
+    }
+
+    #[test]
+    fn test2() {
+        let flash_algorithm = assemble_demo_flash1();
+        let mut flash_builder = FlashBuilder::new();
+        flash_builder.add_data(0, &[42; 1024]).unwrap();
+        let flash_layout = flash_builder.build_sectors_and_pages(&flash_algorithm, |_| { Ok(()) }).unwrap();
+        assert_debug_snapshot!(flash_layout);
+    }
+
+    #[test]
+    fn test3() {
+        let flash_algorithm = assemble_demo_flash1();
+        let mut flash_builder = FlashBuilder::new();
+        flash_builder.add_data(0, &[42; 1025]).unwrap();
+        let flash_layout = flash_builder.build_sectors_and_pages(&flash_algorithm, |_| { Ok(()) }).unwrap();
+        assert_debug_snapshot!(flash_layout);
+    }
+
+    #[test]
+    fn test4() {
+        let flash_algorithm = assemble_demo_flash1();
+        let mut flash_builder = FlashBuilder::new();
+        flash_builder.add_data(42, &[42; 1024]).unwrap();
+        let flash_layout = flash_builder.build_sectors_and_pages(&flash_algorithm, |_| { Ok(()) }).unwrap();
+        assert_debug_snapshot!(flash_layout);
+    }
+
+    #[test]
+    fn test5() {
+        let flash_algorithm = assemble_demo_flash1();
+        let mut flash_builder = FlashBuilder::new();
+        flash_builder.add_data(40, &[42; 1024]).unwrap();
+        let flash_layout = flash_builder.build_sectors_and_pages(&flash_algorithm, |_| { Ok(()) }).unwrap();
+        assert_debug_snapshot!(flash_layout);
+    }
+
+    #[test]
+    fn test6() {
+        let flash_algorithm = assemble_demo_flash1();
+        let mut flash_builder = FlashBuilder::new();
+        flash_builder.add_data(0, &[42; 5024]).unwrap();
+        let flash_layout = flash_builder.build_sectors_and_pages(&flash_algorithm, |_| { Ok(()) }).unwrap();
+        assert_debug_snapshot!(flash_layout);
     }
 }
