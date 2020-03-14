@@ -15,8 +15,8 @@ use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum AccessPortError {
-    #[error("Failed to access address 0x{0:08x} as it is not aligned to 4 bytes.")]
-    MemoryNotAligned(u32),
+    #[error("Failed to access address 0x{address:08x} as it is not aligned to the requirement of {alignment} bytes.")]
+    MemoryNotAligned { address: u32, alignment: usize },
     #[error("Failed to read register {name} at address 0x{address:08x} because: {source}")]
     RegisterReadError {
         address: u8,
@@ -38,7 +38,7 @@ pub enum AccessPortError {
 impl AccessPortError {
     pub fn register_read_error<R: Register, E: std::error::Error + Send + Sync + 'static>(
         source: E,
-    ) -> AccessPortError {
+    ) -> Self {
         AccessPortError::RegisterReadError {
             address: R::ADDRESS,
             name: R::NAME,
@@ -48,12 +48,16 @@ impl AccessPortError {
 
     pub fn register_write_error<R: Register, E: std::error::Error + Send + Sync + 'static>(
         source: E,
-    ) -> AccessPortError {
+    ) -> Self {
         AccessPortError::RegisterWriteError {
             address: R::ADDRESS,
             name: R::NAME,
             source: Box::new(source),
         }
+    }
+
+    pub fn alignment_error(address: u32, alignment: usize) -> Self {
+        AccessPortError::MemoryNotAligned { address, alignment }
     }
 }
 
