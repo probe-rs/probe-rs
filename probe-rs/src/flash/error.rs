@@ -7,8 +7,8 @@ use crate::error;
 pub enum FlashError {
     #[error("The execution of '{name}' failed with code {errorcode}")]
     RoutineCallFailed { name: &'static str, errorcode: u32 },
-    #[error("'{0}' is not supported")]
-    NotSupported(&'static str),
+    #[error("The '{0}' routine is not supported with the given flash algorithm.")]
+    RoutineNotSupported(&'static str),
     #[error("Buffer {n}/{max} does not exist")]
     InvalidBufferNumber { n: usize, max: usize },
     #[error("Something during memory interaction went wrong: {0}")]
@@ -45,6 +45,6 @@ pub enum FlashError {
         "No flash memory contains the entire requested memory range {start:#08X}..{end:#08X}."
     )]
     NoSuitableFlash { start: u32, end: u32 },
-    #[error("Trying to write flash, but no flash loader algorithm is attached.")]
+    #[error("Trying to write flash, but no suitable flash loader algorithm is linked to the given target information.")]
     NoFlashLoaderAlgorithmAttached,
 }
