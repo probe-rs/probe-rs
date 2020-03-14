@@ -249,7 +249,7 @@ impl<'a> FlashBuilder<'a> {
 
         log::debug!("Pages are:");
         for page in &pages {
-            log::debug!("{:#?}", pages);
+            log::debug!("{:#?}", page);
         }
 
         Ok(FlashLayout { sectors, pages })

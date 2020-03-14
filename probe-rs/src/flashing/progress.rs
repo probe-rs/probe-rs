@@ -1,6 +1,9 @@
 use std::time::Duration;
 
-/// Worker for reporting flash progress
+/// A structure to manage the flashing procedure progress reporting.
+///
+/// This struct stores a handler closure which will be called everytime an event happens during the flashing process.
+/// Such an event can be start or finish of the flashing procedure or a progress report, as well as some more events.
 ///
 /// ```
 /// use probe_rs::flash::FlashProgress;
@@ -8,23 +11,26 @@ use std::time::Duration;
 /// // Print events
 /// let progress = FlashProgress::new(|event| println!("Event: {:#?}", event));
 /// ```
+
 pub struct FlashProgress {
     handler: Box<dyn Fn(ProgressEvent)>,
 }
 
 impl FlashProgress {
-    /// Create a new `FlashProgress` worker
+    /// Create a new `FlashProgress` structure with a given `handler` to be called on events.
     pub fn new(handler: impl Fn(ProgressEvent) + 'static) -> Self {
         Self {
             handler: Box::new(handler),
         }
     }
 
-    pub(crate) fn emit(&self, event: ProgressEvent) {
+    /// Emit a flashing progress event.
+    fn emit(&self, event: ProgressEvent) {
         (self.handler)(event);
     }
 
-    pub(crate) fn initialized(&self, total_pages: usize, total_sector_size: usize, page_size: u32) {
+    /// Signalize that the flashing algorithm was set up and is initialized.
+    pub(super) fn initialized(&self, total_pages: usize, total_sector_size: usize, page_size: u32) {
         self.emit(ProgressEvent::Initialized {
             total_pages,
             total_sector_size,
@@ -32,40 +38,48 @@ impl FlashProgress {
         });
     }
 
-    pub(crate) fn started_flashing(&self) {
+    /// Signalize that the entire flashing procedure started.
+    pub(super) fn started_flashing(&self) {
         self.emit(ProgressEvent::StartedFlashing);
     }
 
-    pub(crate) fn started_erasing(&self) {
+    /// Signalize that the erasing procedure started.
+    pub(super) fn started_erasing(&self) {
         self.emit(ProgressEvent::StartedErasing);
     }
 
-    pub(crate) fn page_programmed(&self, size: u32, time: Duration) {
+    /// Signalize that the page programming procedure started.
+    pub(super) fn page_programmed(&self, size: u32, time: Duration) {
         self.emit(ProgressEvent::PageFlashed { size, time });
     }
 
-    pub(crate) fn sector_erased(&self, size: u32, time: Duration) {
+    /// Signalize that the sector erasing procedure started.
+    pub(super) fn sector_erased(&self, size: u32, time: Duration) {
         self.emit(ProgressEvent::SectorErased { size, time });
     }
 
-    pub(crate) fn failed_programming(&self) {
+    /// Signalize that the programming procedure failed.
+    pub(super) fn failed_programming(&self) {
         self.emit(ProgressEvent::FailedProgramming);
     }
 
-    pub(crate) fn finished_programming(&self) {
+    /// Signalize that the programming procedure completed successfully.
+    pub(super) fn finished_programming(&self) {
         self.emit(ProgressEvent::FinishedProgramming);
     }
 
-    pub(crate) fn failed_erasing(&self) {
+    /// Signalize that the erasing procedure failed.
+    pub(super) fn failed_erasing(&self) {
         self.emit(ProgressEvent::FailedErasing);
     }
 
-    pub(crate) fn finished_erasing(&self) {
+    /// Signalize that the erasing procedure completed successfully.
+    pub(super) fn finished_erasing(&self) {
         self.emit(ProgressEvent::FinishedErasing);
     }
 }
 
-/// Possible events from the flashing process
+/// Possible events during the flashing process.
 #[derive(Debug)]
 pub enum ProgressEvent {
     /// Flashing process initialized

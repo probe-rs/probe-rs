@@ -43,6 +43,12 @@ impl Operation for Verify {
     }
 }
 
+/// A structure to control the flash of an attached microchip.
+/// 
+/// Once constructed it can be used to program date to the flash.
+/// This is mostly for internal use but can be used with `::flash_block()` for low, block level access to the flash.
+/// 
+/// If a higher level access to the flash is required, check out `flashing::download_file()`.
 pub struct Flasher<'a> {
     session: Session,
     flash_algorithm: &'a FlashAlgorithm,

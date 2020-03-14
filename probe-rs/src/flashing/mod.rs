@@ -1,6 +1,9 @@
-// Some parts of this file and subsequent module files might contain copyrighted code
-// which follows the logic of the [pyOCD debugger](https://github.com/mbedmicro/pyOCD) project.
-// Copyright (c) for that code 2015-2019 Arm Limited under the the Apache 2.0 license.
+//! Flash programming operations.
+//! 
+//! This modules provides a means to do flash unlocking, erasing and programming.
+//! 
+//! It provides a convenient highlevel interface that can flash an ELF, IHEX or BIN file
+//! as well as a lower level block based interface.
 
 mod builder;
 mod download;
