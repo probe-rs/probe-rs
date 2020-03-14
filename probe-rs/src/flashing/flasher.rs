@@ -1,6 +1,6 @@
 use super::FlashProgress;
 use super::{FlashBuilder, FlashError, FlashLayout, FlashPage};
-use crate::config::{FlashAlgorithm, FlashRegion, MemoryRange, SectorInfo};
+use crate::config::{FlashAlgorithm, FlashRegion, MemoryRange};
 use crate::core::{Core, RegisterFile};
 use crate::error;
 use crate::memory::MemoryInterface;
@@ -44,10 +44,10 @@ impl Operation for Verify {
 }
 
 /// A structure to control the flash of an attached microchip.
-/// 
+///
 /// Once constructed it can be used to program date to the flash.
 /// This is mostly for internal use but can be used with `::flash_block()` for low, block level access to the flash.
-/// 
+///
 /// If a higher level access to the flash is required, check out `flashing::download_file()`.
 pub struct Flasher<'a> {
     session: Session,
@@ -68,12 +68,6 @@ impl<'a> Flasher<'a> {
             region,
             double_buffering_supported: false,
         }
-    }
-
-    /// Returns the necessary information about the sector which `address` resides in
-    /// if the address is inside the flash region.
-    pub(super) fn sector_info(&self, address: u32) -> Option<SectorInfo> {
-        self.flash_algorithm.sector_info(address)
     }
 
     pub(super) fn flash_algorithm(&self) -> &FlashAlgorithm {
@@ -229,7 +223,7 @@ impl<'a> Flasher<'a> {
     }
 
     /// Writes a single block of data to a given address in the flash.
-    /// 
+    ///
     /// This will not check any boundaries. You have to make sure that the boundaries are correct.
     /// Unexpected things may happen if this is not ensured.
     pub fn flash_block(
@@ -272,8 +266,10 @@ impl<'a> Flasher<'a> {
         progress: &FlashProgress,
     ) -> Result<(), FlashError> {
         // Convert the list of flash operations into flash sectors and pages.
-        let flash_layout = flash_builder.build_sectors_and_pages(
-            &self.flash_algorithm().clone(), |page| { self.fill_page(page, restore_unwritten_bytes) })?;
+        let flash_layout = flash_builder
+            .build_sectors_and_pages(&self.flash_algorithm().clone(), |page| {
+                self.fill_page(page, restore_unwritten_bytes)
+            })?;
 
         let num_pages = flash_layout.pages().len();
         let page_size = self.flash_algorithm().flash_properties.page_size;

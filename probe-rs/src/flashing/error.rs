@@ -29,8 +29,6 @@ pub enum FlashError {
     DataOverlap(u32),
     #[error("Address {0:#010x} is not a valid address in the flash area.")]
     InvalidFlashAddress(u32),
-    #[error("There is already an other entry for address {0:#010x}")]
-    DuplicateDataEntry(u32),
     #[error(
         "No flash memory contains the entire requested memory range {start:#08X}..{end:#08X}."
     )]

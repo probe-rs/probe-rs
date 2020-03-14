@@ -1,5 +1,4 @@
-use super::flasher::Flasher;
-use crate::config::{PageInfo, SectorInfo, FlashAlgorithm};
+use crate::config::{FlashAlgorithm, MemoryRange, PageInfo, SectorInfo};
 
 use super::FlashError;
 
@@ -90,7 +89,6 @@ impl<'a> FlashWriteData<'a> {
 #[derive(Default)]
 pub(super) struct FlashBuilder<'a> {
     flash_write_data: Vec<FlashWriteData<'a>>,
-    buffered_data_size: usize,
 }
 
 impl<'a> FlashBuilder<'a> {
@@ -98,7 +96,6 @@ impl<'a> FlashBuilder<'a> {
     pub(super) fn new() -> Self {
         Self {
             flash_write_data: vec![],
-            buffered_data_size: 0,
         }
     }
 
@@ -112,26 +109,38 @@ impl<'a> FlashBuilder<'a> {
             .binary_search_by_key(&address, |&v| v.address)
         {
             // If it already is present in the list, return an error.
-            Ok(_) => return Err(FlashError::DuplicateDataEntry(address)),
+            Ok(_) => return Err(FlashError::DataOverlap(address)),
             // Add it to the list if it is not present yet.
-            Err(position) => self
-                .flash_write_data
-                .insert(position, FlashWriteData::new(address, data)),
-        }
-        self.buffered_data_size += data.len();
-
-        // Verify that the data list does not have overlapping addresses.
-        // We assume that we made sure the list of data write commands is always ordered by address.
-        // Thus we only have to check subsequent flash write commands for overlap.
-        let mut previous_operation: Option<&FlashWriteData> = None;
-        for operation in &self.flash_write_data {
-            if let Some(previous) = previous_operation {
-                if previous.address + previous.data.len() as u32 > operation.address {
-                    return Err(FlashError::DataOverlap(operation.address));
+            Err(position) => {
+                // If we have a prior block (prevent u32 underflow), check if it's range intersects
+                // the range of the block we are trying to insert. If so, return an error.
+                if position > 0 {
+                    if let Some(block) = self.flash_write_data.get(position - 1) {
+                        let range = block.address..block.address + block.data.len() as u32;
+                        if range.intersects_range(&(address..address + data.len() as u32)) {
+                            return Err(FlashError::DataOverlap(address));
+                        }
+                    }
                 }
+
+                // If we have a block after the one we are trying to insert,
+                // check if it's range intersects the range of the block we are trying to insert.
+                // If so, return an error.
+                // We don't add 1 to the position here, because we have not insert an element yet.
+                // So the ones on the right are not shifted yet!
+                if let Some(block) = self.flash_write_data.get(position) {
+                    let range = block.address..block.address + block.data.len() as u32;
+                    if range.intersects_range(&(address..address + data.len() as u32)) {
+                        return Err(FlashError::DataOverlap(address));
+                    }
+                }
+
+                // If we made it until here, it is safe to insert the block.
+                self.flash_write_data
+                    .insert(position, FlashWriteData::new(address, data))
             }
-            previous_operation = Some(operation);
         }
+
         Ok(())
     }
 
@@ -262,8 +271,8 @@ impl<'a> FlashBuilder<'a> {
 mod tests {
     use insta::*;
 
-    use crate::config::{FlashAlgorithm, FlashProperties, SectorDescription};
     use super::FlashBuilder;
+    use crate::config::{FlashAlgorithm, FlashProperties, SectorDescription};
 
     fn assemble_demo_flash1() -> FlashAlgorithm {
         let sd = SectorDescription {
@@ -273,7 +282,7 @@ mod tests {
 
         let mut flash_algorithm = FlashAlgorithm::default();
         flash_algorithm.flash_properties = FlashProperties {
-            address_range: 0..1<<16,
+            address_range: 0..1 << 16,
             page_size: 1024,
             erased_byte_value: 255,
             program_page_timeout: 200,
@@ -283,12 +292,29 @@ mod tests {
 
         flash_algorithm
     }
+
     #[test]
-    fn test1() {
+    fn add_overlapping_data() {
+        let mut flash_builder = FlashBuilder::new();
+        assert!(flash_builder.add_data(0, &[42]).is_ok());
+        assert!(flash_builder.add_data(0, &[42]).is_err());
+    }
+
+    #[test]
+    fn add_non_overlapping_data() {
+        let mut flash_builder = FlashBuilder::new();
+        assert!(flash_builder.add_data(0, &[42]).is_ok());
+        assert!(flash_builder.add_data(1, &[42]).is_ok());
+    }
+
+    #[test]
+    fn single_byte_in_single_page() {
         let flash_algorithm = assemble_demo_flash1();
         let mut flash_builder = FlashBuilder::new();
         flash_builder.add_data(0, &[42]).unwrap();
-        let flash_layout = flash_builder.build_sectors_and_pages(&flash_algorithm, |_| { Ok(()) }).unwrap();
+        let flash_layout = flash_builder
+            .build_sectors_and_pages(&flash_algorithm, |_| Ok(()))
+            .unwrap();
         assert_debug_snapshot!(flash_layout);
     }
 
@@ -297,7 +323,9 @@ mod tests {
         let flash_algorithm = assemble_demo_flash1();
         let mut flash_builder = FlashBuilder::new();
         flash_builder.add_data(0, &[42; 1024]).unwrap();
-        let flash_layout = flash_builder.build_sectors_and_pages(&flash_algorithm, |_| { Ok(()) }).unwrap();
+        let flash_layout = flash_builder
+            .build_sectors_and_pages(&flash_algorithm, |_| Ok(()))
+            .unwrap();
         assert_debug_snapshot!(flash_layout);
     }
 
@@ -306,7 +334,9 @@ mod tests {
         let flash_algorithm = assemble_demo_flash1();
         let mut flash_builder = FlashBuilder::new();
         flash_builder.add_data(0, &[42; 1025]).unwrap();
-        let flash_layout = flash_builder.build_sectors_and_pages(&flash_algorithm, |_| { Ok(()) }).unwrap();
+        let flash_layout = flash_builder
+            .build_sectors_and_pages(&flash_algorithm, |_| Ok(()))
+            .unwrap();
         assert_debug_snapshot!(flash_layout);
     }
 
@@ -315,7 +345,9 @@ mod tests {
         let flash_algorithm = assemble_demo_flash1();
         let mut flash_builder = FlashBuilder::new();
         flash_builder.add_data(42, &[42; 1024]).unwrap();
-        let flash_layout = flash_builder.build_sectors_and_pages(&flash_algorithm, |_| { Ok(()) }).unwrap();
+        let flash_layout = flash_builder
+            .build_sectors_and_pages(&flash_algorithm, |_| Ok(()))
+            .unwrap();
         assert_debug_snapshot!(flash_layout);
     }
 
@@ -324,7 +356,9 @@ mod tests {
         let flash_algorithm = assemble_demo_flash1();
         let mut flash_builder = FlashBuilder::new();
         flash_builder.add_data(40, &[42; 1024]).unwrap();
-        let flash_layout = flash_builder.build_sectors_and_pages(&flash_algorithm, |_| { Ok(()) }).unwrap();
+        let flash_layout = flash_builder
+            .build_sectors_and_pages(&flash_algorithm, |_| Ok(()))
+            .unwrap();
         assert_debug_snapshot!(flash_layout);
     }
 
@@ -333,7 +367,9 @@ mod tests {
         let flash_algorithm = assemble_demo_flash1();
         let mut flash_builder = FlashBuilder::new();
         flash_builder.add_data(0, &[42; 5024]).unwrap();
-        let flash_layout = flash_builder.build_sectors_and_pages(&flash_algorithm, |_| { Ok(()) }).unwrap();
+        let flash_layout = flash_builder
+            .build_sectors_and_pages(&flash_algorithm, |_| Ok(()))
+            .unwrap();
         assert_debug_snapshot!(flash_layout);
     }
 }
