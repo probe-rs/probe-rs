@@ -1,5 +1,5 @@
 use super::FlashProgress;
-use super::{FlashBuilder, FlashError, FlashPage, FlashLayout};
+use super::{FlashBuilder, FlashError, FlashLayout, FlashPage};
 use crate::config::{FlashAlgorithm, FlashRegion, MemoryRange, SectorInfo};
 use crate::core::{Core, RegisterFile};
 use crate::error;

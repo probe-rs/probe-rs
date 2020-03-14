@@ -9,9 +9,9 @@ mod flasher;
 mod loader;
 mod progress;
 
+use builder::*;
 pub use download::*;
 pub use error::*;
 pub use flasher::*;
-pub use progress::*;
-use builder::*;
 use loader::*;
+pub use progress::*;
