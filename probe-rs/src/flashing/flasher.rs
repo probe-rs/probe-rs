@@ -246,9 +246,8 @@ impl<'a> Flasher<'a> {
         }
 
         let mut fb = FlashBuilder::new();
-        fb.add_data(address, data).expect("Add Data failed");
-        self.program(&mut fb, do_chip_erase, true, false, progress)
-            .expect("Add Data failed");
+        fb.add_data(address, data)?;
+        self.program(&mut fb, do_chip_erase, true, false, progress)?;
 
         Ok(())
     }
