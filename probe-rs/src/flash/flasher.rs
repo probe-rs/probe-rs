@@ -697,7 +697,7 @@ impl<'a> ActiveFlasher<'a, Erase> {
                 Ok(())
             }
         } else {
-            Err(FlashError::NotSupported("erase_all"))
+            Err(FlashError::RoutineNotSupported("erase_all"))
         }
     }
 
