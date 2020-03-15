@@ -263,89 +263,29 @@ where
             return Ok(());
         }
 
-        let pre_bytes = ((4 - (address % 4)) % 4) as usize;
-
+        // Round start address down to the nearest multiple of 4
         let aligned_addr = address - (address % 4);
+
         let unaligned_end_addr = address
             .checked_add(data.len() as u32)
             .ok_or(AccessPortError::OutOfBoundsError)?;
 
-        let aligned_end_addr = if unaligned_end_addr % 4 != 0 {
-            (unaligned_end_addr - (unaligned_end_addr % 4)) + 4
-        } else {
-            unaligned_end_addr
-        };
+        // Round end address up to the nearest multiple of 4
+        let aligned_end_addr = unaligned_end_addr + ((4 - (unaligned_end_addr % 4)) % 4);
 
-        let post_bytes = ((4 - (aligned_end_addr - unaligned_end_addr)) % 4) as usize;
+        // Read aligned block of 32-bit words
+        let mut buf32 = vec![0u32; ((aligned_end_addr - aligned_addr) / 4) as usize];
+        self.read_block32(aligned_addr, &mut buf32)?;
 
-        let aligned_read_len = (aligned_end_addr - aligned_addr) as usize;
-
-        let mut aligned_data_len = aligned_read_len;
-
-        if pre_bytes > 0 {
-            aligned_data_len -= 4;
+        // Convert 32-bit words to bytes
+        let mut buf8 = vec![0u8; (aligned_end_addr - aligned_addr) as usize];
+        for i in 0..buf32.len() {
+            buf8[i*4..(i+1)*4].copy_from_slice(&buf32[i].to_le_bytes());
         }
 
-        if post_bytes > 0 {
-            aligned_data_len -= 4;
-        }
-
-        assert_eq!(pre_bytes + aligned_data_len + post_bytes, data.len());
-        // TODO: fix;
-        // assert_eq!(aligned_read_len - pre_bytes - post_bytes, data.len());
-
-        let mut buff = vec![0u32; (aligned_read_len / 4) as usize];
-
-        self.read_block32(aligned_addr, &mut buff)?;
-
-        match pre_bytes {
-            3 => {
-                data[0] = ((buff[0] >> 8) & 0xff) as u8;
-                data[1] = ((buff[0] >> 16) & 0xff) as u8;
-                data[2] = ((buff[0] >> 24) & 0xff) as u8;
-            }
-            2 => {
-                data[0] = ((buff[0] >> 16) & 0xff) as u8;
-                data[1] = ((buff[0] >> 24) & 0xff) as u8;
-            }
-            1 => {
-                data[0] = ((buff[0] >> 24) & 0xff) as u8;
-            }
-            _ => (),
-        };
-
-        if aligned_read_len > 0 {
-            let aligned_data =
-                &mut data[(pre_bytes as usize)..((pre_bytes + aligned_data_len) as usize)];
-
-            let word_offset_start = if pre_bytes > 0 { 1 } else { 0 } as usize;
-
-            for (i, word) in buff[word_offset_start..(word_offset_start + aligned_data_len / 4)]
-                .iter()
-                .enumerate()
-            {
-                aligned_data[i * 4] = (word & 0xff) as u8;
-                aligned_data[i * 4 + 1] = ((word >> 8) & 0xffu32) as u8;
-                aligned_data[i * 4 + 2] = ((word >> 16) & 0xffu32) as u8;
-                aligned_data[i * 4 + 3] = ((word >> 24) & 0xffu32) as u8;
-            }
-        }
-
-        match post_bytes {
-            1 => {
-                data[data.len() - 1] = (buff[buff.len() - 1] & 0xff) as u8;
-            }
-            2 => {
-                data[data.len() - 2] = (buff[buff.len() - 1] & 0xff) as u8;
-                data[data.len() - 1] = ((buff[buff.len() - 1] >> 8) & 0xff) as u8;
-            }
-            3 => {
-                data[data.len() - 3] = (buff[buff.len() - 1] & 0xff) as u8;
-                data[data.len() - 2] = ((buff[buff.len() - 1] >> 8) & 0xff) as u8;
-                data[data.len() - 1] = ((buff[buff.len() - 1] >> 16) & 0xff) as u8;
-            }
-            _ => (),
-        }
+        // Copy relevant part of aligned block to output data
+        let start = (address - aligned_addr) as usize;
+        data.copy_from_slice(&buf8[start..start+data.len()]);
 
         Ok(())
     }
