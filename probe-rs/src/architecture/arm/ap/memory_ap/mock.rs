@@ -194,13 +194,14 @@ impl DPAccess for MockMemoryAP {
     type Error = MockMemoryError;
 
     fn read_dp_register<R: DPRegister<P>, P: DebugPort>(&mut self) -> Result<R, Self::Error> {
-        unimplemented!()
+        // Ignore for Tests
+        Ok(0.into())
     }
 
     fn write_dp_register<R: DPRegister<P>, P: DebugPort>(
         &mut self,
         _register: R,
     ) -> Result<(), Self::Error> {
-        unimplemented!()
+        Ok(())
     }
 }
