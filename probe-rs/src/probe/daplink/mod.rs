@@ -122,10 +122,10 @@ impl DAPLink {
     }
 }
 
-impl<P: DebugPort, R: DPRegister<P>> DPAccess<P, R> for DAPLink {
+impl DPAccess for DAPLink {
     type Error = DebugProbeError;
 
-    fn read_dp_register(&mut self, _port: &P) -> Result<R, Self::Error> {
+    fn read_dp_register<R: DPRegister<P>, P: DebugPort>(&mut self) -> Result<R, Self::Error> {
         debug!("Reading DP register {}", R::NAME);
         let result = self.read_register(PortType::DebugPort, u16::from(R::ADDRESS))?;
 
@@ -134,7 +134,10 @@ impl<P: DebugPort, R: DPRegister<P>> DPAccess<P, R> for DAPLink {
         Ok(result.into())
     }
 
-    fn write_dp_register(&mut self, _port: &P, register: R) -> Result<(), Self::Error> {
+    fn write_dp_register<R: DPRegister<P>, P: DebugPort>(
+        &mut self,
+        register: R,
+    ) -> Result<(), Self::Error> {
         let value = register.into();
 
         debug!("Writing DP register {}, value=0x{:08x}", R::NAME, value);

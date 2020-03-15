@@ -2,7 +2,10 @@ use super::super::ap::{
     mock::MockMemoryAP, APAccess, APRegister, AccessPortError, AddressIncrement, DataSize,
     MemoryAP, CSW, DRW, TAR,
 };
-use crate::architecture::arm::ArmCommunicationInterface;
+use crate::architecture::arm::{
+    dp::{DPAccess, DPv1, RdBuff},
+    ArmCommunicationInterface,
+};
 use crate::{CommunicationInterface, Error, MemoryInterface};
 use scroll::Pread;
 
@@ -12,7 +15,8 @@ where
     AP: CommunicationInterface
         + APAccess<MemoryAP, CSW>
         + APAccess<MemoryAP, TAR>
-        + APAccess<MemoryAP, DRW>,
+        + APAccess<MemoryAP, DRW>
+        + DPAccess,
 {
     interface: AP,
     access_port: MemoryAP,
@@ -46,7 +50,8 @@ where
     AP: CommunicationInterface
         + APAccess<MemoryAP, CSW>
         + APAccess<MemoryAP, TAR>
-        + APAccess<MemoryAP, DRW>,
+        + APAccess<MemoryAP, DRW>
+        + DPAccess,
 {
     /// Build the correct CSW register for a memory access
     ///
@@ -365,6 +370,10 @@ where
         self.write_ap_register(csw)?;
         self.write_ap_register(tar)?;
         self.write_ap_register(drw)?;
+
+        // Ensure the write is actually performed
+        let _: RdBuff = self.interface.read_dp_register::<_, DPv1>().unwrap();
+
         Ok(())
     }
 
@@ -388,6 +397,10 @@ where
         self.write_ap_register(csw)?;
         self.write_ap_register(tar)?;
         self.write_ap_register(drw)?;
+
+        // Ensure the last write is actually performed
+        let _: RdBuff = self.interface.read_dp_register::<_, DPv1>().unwrap();
+
         Ok(())
     }
 
@@ -482,6 +495,9 @@ where
             data_offset += next_chunk_size_words;
         }
 
+        // Ensure the last write is actually performed
+        let _: RdBuff = self.interface.read_dp_register::<_, DPv1>().unwrap();
+
         log::debug!("Finished writing block");
 
         Ok(())
@@ -543,7 +559,8 @@ where
     AP: CommunicationInterface
         + APAccess<MemoryAP, CSW>
         + APAccess<MemoryAP, TAR>
-        + APAccess<MemoryAP, DRW>,
+        + APAccess<MemoryAP, DRW>
+        + DPAccess,
 {
     fn read32(&mut self, address: u32) -> Result<u32, Error> {
         ADIMemoryInterface::read32(self, address).map_err(Error::architecture_specific)
