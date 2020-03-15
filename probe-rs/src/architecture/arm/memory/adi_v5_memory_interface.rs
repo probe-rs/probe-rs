@@ -280,12 +280,12 @@ where
         // Convert 32-bit words to bytes
         let mut buf8 = vec![0u8; (aligned_end_addr - aligned_addr) as usize];
         for i in 0..buf32.len() {
-            buf8[i*4..(i+1)*4].copy_from_slice(&buf32[i].to_le_bytes());
+            buf8[i * 4..(i + 1) * 4].copy_from_slice(&buf32[i].to_le_bytes());
         }
 
         // Copy relevant part of aligned block to output data
         let start = (address - aligned_addr) as usize;
-        data.copy_from_slice(&buf8[start..start+data.len()]);
+        data.copy_from_slice(&buf8[start..start + data.len()]);
 
         Ok(())
     }
