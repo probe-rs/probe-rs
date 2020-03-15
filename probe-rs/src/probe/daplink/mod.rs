@@ -2,7 +2,7 @@ pub mod commands;
 pub mod tools;
 
 use crate::architecture::arm::{
-    dp::{DPAccess, DPRegister, DebugPort},
+    dp::{DPAccess, DPRegister, DebugPortError},
     DAPAccess, DapError, PortType,
 };
 use crate::probe::daplink::commands::CmsisDapError;
@@ -123,9 +123,7 @@ impl DAPLink {
 }
 
 impl DPAccess for DAPLink {
-    type Error = DebugProbeError;
-
-    fn read_dp_register<R: DPRegister<P>, P: DebugPort>(&mut self) -> Result<R, Self::Error> {
+    fn read_dp_register<R: DPRegister>(&mut self) -> Result<R, DebugPortError> {
         debug!("Reading DP register {}", R::NAME);
         let result = self.read_register(PortType::DebugPort, u16::from(R::ADDRESS))?;
 
@@ -134,14 +132,13 @@ impl DPAccess for DAPLink {
         Ok(result.into())
     }
 
-    fn write_dp_register<R: DPRegister<P>, P: DebugPort>(
-        &mut self,
-        register: R,
-    ) -> Result<(), Self::Error> {
+    fn write_dp_register<R: DPRegister>(&mut self, register: R) -> Result<(), DebugPortError> {
         let value = register.into();
 
         debug!("Writing DP register {}, value=0x{:08x}", R::NAME, value);
-        self.write_register(PortType::DebugPort, u16::from(R::ADDRESS), value)
+        self.write_register(PortType::DebugPort, u16::from(R::ADDRESS), value)?;
+
+        Ok(())
     }
 }
 

@@ -3,7 +3,7 @@ use super::super::ap::{
     MemoryAP, CSW, DRW, TAR,
 };
 use crate::architecture::arm::{
-    dp::{DPAccess, DPv1, RdBuff},
+    dp::{DPAccess, RdBuff},
     ArmCommunicationInterface,
 };
 use crate::{CommunicationInterface, Error, MemoryInterface};
@@ -372,7 +372,10 @@ where
         self.write_ap_register(drw)?;
 
         // Ensure the write is actually performed
-        let _: RdBuff = self.interface.read_dp_register::<_, DPv1>().unwrap();
+        let _: RdBuff = self
+            .interface
+            .read_dp_register()
+            .map_err(|_| AccessPortError::InvalidAccessPortNumber)?;
 
         Ok(())
     }
@@ -399,7 +402,7 @@ where
         self.write_ap_register(drw)?;
 
         // Ensure the last write is actually performed
-        let _: RdBuff = self.interface.read_dp_register::<_, DPv1>().unwrap();
+        let _: RdBuff = self.interface.read_dp_register()?;
 
         Ok(())
     }
@@ -496,7 +499,7 @@ where
         }
 
         // Ensure the last write is actually performed
-        let _: RdBuff = self.interface.read_dp_register::<_, DPv1>().unwrap();
+        let _: RdBuff = self.interface.read_dp_register()?;
 
         log::debug!("Finished writing block");
 

@@ -4,6 +4,8 @@ pub(crate) mod custom_ap;
 pub(crate) mod generic_ap;
 pub(crate) mod memory_ap;
 
+use crate::architecture::arm::dp::DebugPortError;
+
 pub use generic_ap::{APClass, GenericAP, IDR};
 pub(crate) use memory_ap::mock;
 pub use memory_ap::{
@@ -13,7 +15,7 @@ pub use memory_ap::{
 use super::Register;
 use thiserror::Error;
 
-#[derive(Debug, Error, PartialEq)]
+#[derive(Debug, Error)]
 pub enum AccessPortError {
     #[error("Invalid Access PortType Number")]
     InvalidAccessPortNumber,
@@ -25,6 +27,8 @@ pub enum AccessPortError {
     RegisterWriteError { address: u8, name: &'static str },
     #[error("Out of bounds access")]
     OutOfBoundsError,
+    #[error("Error while communicating with debug port: {0}")]
+    DebugPort(#[from] DebugPortError),
 }
 
 impl AccessPortError {

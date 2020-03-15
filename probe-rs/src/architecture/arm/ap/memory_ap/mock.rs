@@ -2,7 +2,7 @@ use super::super::{APAccess, Register};
 use super::{APRegister, AddressIncrement, DataSize, MemoryAP, CSW, DRW, TAR};
 use crate::config::ChipInfo;
 use crate::{
-    architecture::arm::dp::{DPAccess, DPRegister, DebugPort},
+    architecture::arm::dp::{DPAccess, DPRegister, DebugPortError},
     CommunicationInterface, Error,
 };
 use std::collections::HashMap;
@@ -191,17 +191,12 @@ where
 }
 
 impl DPAccess for MockMemoryAP {
-    type Error = MockMemoryError;
-
-    fn read_dp_register<R: DPRegister<P>, P: DebugPort>(&mut self) -> Result<R, Self::Error> {
+    fn read_dp_register<R: DPRegister>(&mut self) -> Result<R, DebugPortError> {
         // Ignore for Tests
         Ok(0.into())
     }
 
-    fn write_dp_register<R: DPRegister<P>, P: DebugPort>(
-        &mut self,
-        _register: R,
-    ) -> Result<(), Self::Error> {
+    fn write_dp_register<R: DPRegister>(&mut self, _register: R) -> Result<(), DebugPortError> {
         Ok(())
     }
 }
