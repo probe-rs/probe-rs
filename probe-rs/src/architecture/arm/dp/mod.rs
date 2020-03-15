@@ -7,17 +7,18 @@ use jep106::JEP106Code;
 
 pub trait DebugPort {
     fn version(&self) -> &'static str;
+
+    fn as_version() -> DebugPortVersion;
 }
 
-pub trait DPAccess<PORT, R>
-where
-    PORT: DebugPort,
-    R: DPRegister<PORT>,
-{
+pub trait DPAccess {
     type Error: std::fmt::Debug;
-    fn read_dp_register(&mut self, port: &PORT) -> Result<R, Self::Error>;
+    fn read_dp_register<R: DPRegister<P>, P: DebugPort>(&mut self) -> Result<R, Self::Error>;
 
-    fn write_dp_register(&mut self, port: &PORT, register: R) -> Result<(), Self::Error>;
+    fn write_dp_register<R: DPRegister<P>, P: DebugPort>(
+        &mut self,
+        register: R,
+    ) -> Result<(), Self::Error>;
 }
 
 #[derive(Debug, PartialEq, Copy, Clone)]
@@ -37,6 +38,10 @@ impl DebugPort for DPv1 {
     fn version(&self) -> &'static str {
         "DPv1"
     }
+
+    fn as_version() -> DebugPortVersion {
+        DebugPortVersion::DPv1
+    }
 }
 
 /// Debug PortType V2
@@ -45,6 +50,10 @@ pub struct DPv2 {}
 impl DebugPort for DPv2 {
     fn version(&self) -> &'static str {
         "DPv2"
+    }
+
+    fn as_version() -> DebugPortVersion {
+        DebugPortVersion::DPv2
     }
 }
 
@@ -247,6 +256,34 @@ impl From<DPIDR> for DebugPortId {
             designer: JEP106Code::new(dpidr.jep_cc(), dpidr.jep_id()),
         }
     }
+}
+
+#[derive(Debug, Clone)]
+pub struct RdBuff(pub u32);
+
+impl Register for RdBuff {
+    const ADDRESS: u8 = 0xc;
+    const NAME: &'static str = "RDBUFF";
+}
+
+impl From<u32> for RdBuff {
+    fn from(val: u32) -> Self {
+        RdBuff(val)
+    }
+}
+
+impl From<RdBuff> for u32 {
+    fn from(register: RdBuff) -> Self {
+        let RdBuff(val) = register;
+        val
+    }
+}
+
+impl<DP> DPRegister<DP> for RdBuff
+where
+    DP: DebugPort,
+{
+    const DP_BANK: DPBankSel = DPBankSel::DontCare;
 }
 
 #[derive(Debug, PartialEq)]
