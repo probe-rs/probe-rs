@@ -131,7 +131,7 @@ impl Registry {
     #[cfg(not(feature = "builtin-targets"))]
     fn from_builtin_families() -> Self {
         Self {
-            families: Vec::from(generic_targets),
+            families: GENERIC_TARGETS.iter().cloned().collect(),
         }
     }
 
