@@ -14,6 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Fixed a bug where reading a chip definition from a YAML file would always fail because parsing a `ChipFamily` from YAML was broken.
+- Fixed a bug in the ST-Link support, where some writes were not completed. This lead to problems when flashing a device, as the
+  final reset request was not properly executed.
 
 ## [0.5.1]
 
