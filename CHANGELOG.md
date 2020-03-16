@@ -7,12 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Flashing support for the STM32L4 series.
-
 ### Changed
 
 ### Fixed
 
+## [0.5.2]
+
+### Added
+
+- Flashing support for the STM32L4 series.
+- Added the possibility to set the speed on DebugProbes and also implemented it for all three supported probes (CMSIS-DAP, ST-Link and J-Link).
+- Make M3 cores selectable from built in targets.
+
+### Changed
+
+- Improved error handling for the flash download module.
+
+### Fixed
+
+- Fix the usage of ST-Link V3.
+- Removed an unwrap that could actually crash.
 - Fixed a bug where reading a chip definition from a YAML file would always fail because parsing a `ChipFamily` from YAML was broken.
 - Fixed a bug in the ST-Link support, where some writes were not completed. This lead to problems when flashing a device, as the
   final reset request was not properly executed.
