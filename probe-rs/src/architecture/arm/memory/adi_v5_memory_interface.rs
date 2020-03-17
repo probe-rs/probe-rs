@@ -7,6 +7,7 @@ use crate::architecture::arm::{
     ArmCommunicationInterface,
 };
 use crate::{CommunicationInterface, Error, MemoryInterface};
+use scroll::{Pread, Pwrite, LE};
 use std::convert::TryInto;
 use std::ops::Range;
 
@@ -274,7 +275,7 @@ where
         // Convert 32-bit words to bytes
         let mut buf8 = vec![0u8; aligned.len()];
         for i in 0..buf32.len() {
-            buf8[i * 4..(i + 1) * 4].copy_from_slice(&buf32[i].to_le_bytes());
+            buf8.pwrite_with(buf32[i], i * 4, LE).unwrap();
         }
 
         // Copy relevant part of aligned block to output data
@@ -439,12 +440,14 @@ where
 
         // If the start of the range isn't aligned, read the first word in to avoid clobbering
         if address != aligned.start {
-            buf8[..4].copy_from_slice(&self.read32(aligned.start)?.to_le_bytes());
+            buf8.pwrite_with(self.read32(aligned.start)?, 0, LE)
+                .unwrap();
         }
 
         // If the end of the range isn't aligned, read the last word in to avoid clobbering
         if address + data.len() as u32 != aligned.end {
-            buf8[aligned.len() - 4..].copy_from_slice(&self.read32(aligned.end - 4)?.to_le_bytes());
+            buf8.pwrite_with(self.read32(aligned.end - 4)?, aligned.len() - 4, LE)
+                .unwrap();
         }
 
         // Copy input data into buffer at the correct location
@@ -454,7 +457,7 @@ where
         // Convert buffer to 32-bit words
         let mut buf32 = vec![0u32; aligned.len() / 4];
         for i in 0..buf32.len() {
-            buf32[i] = u32::from_le_bytes(buf8[i * 4..(i + 1) * 4].try_into().unwrap());
+            buf32[i] = buf8.pread_with(i * 4, LE).unwrap();
         }
 
         // Write aligned block into memory
