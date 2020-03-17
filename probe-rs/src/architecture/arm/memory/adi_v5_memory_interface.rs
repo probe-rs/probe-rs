@@ -44,6 +44,10 @@ impl ADIMemoryInterface<MockMemoryAP> {
             access_port: access_port_number.into(),
         }
     }
+
+    pub fn mock_memory(&self) -> &[u8] {
+        &self.interface.memory
+    }
 }
 
 impl<AP> ADIMemoryInterface<AP>
@@ -523,343 +527,204 @@ mod tests {
     use super::super::super::ap::mock::MockMemoryAP;
     use super::ADIMemoryInterface;
 
+    // Visually obvious pattern used to test memory writes
+    const DATA8: &[u8] = &[
+        128, 129, 130, 131, 132, 133, 134, 135, 136, 137, 138, 139, 140, 141, 142, 143,
+    ];
+
+    // DATA8 interpreted as little endian 32-bit words
+    const DATA32: &[u32] = &[0x83828180, 0x87868584, 0x8b8a8988, 0x8f8e8d8c];
+
     #[test]
-    fn read_u32() {
-        let mut mock = MockMemoryAP::default();
-        mock.data[0] = 0xEF;
-        mock.data[1] = 0xBE;
-        mock.data[2] = 0xAD;
-        mock.data[3] = 0xDE;
+    fn read32() {
+        let mut mock = MockMemoryAP::with_pattern();
+        mock.memory[..8].copy_from_slice(&DATA8[..8]);
         let mut mi = ADIMemoryInterface::<MockMemoryAP>::new(mock, 0x0);
-        let read = mi.read32(0);
-        debug_assert!(read.is_ok());
-        debug_assert_eq!(read.unwrap(), 0xDEAD_BEEF);
+
+        for &address in &[0, 4] {
+            let value = mi.read32(address).expect("read32 failed");
+            assert_eq!(value, DATA32[address as usize / 4]);
+        }
     }
 
     #[test]
-    #[ignore]
-    fn read_u16() {
-        // let mut mock = MockMemoryAP::default();
-        // mock.data[0] = 0xEF;
-        // mock.data[1] = 0xBE;
-        // mock.data[2] = 0xAD;
-        // mock.data[3] = 0xDE;
-        // let mut mi = ADIMemoryInterface::<MockMemoryAP>::new(mock, 0x0);
-        // let read: Result<u16, _> = mi.read(0);
-        // let read2: Result<u16, _> = mi.read(2);
-        // debug_assert!(read.is_ok());
-        // debug_assert_eq!(read.unwrap(), 0xBEEF);
-        // debug_assert_eq!(read2.unwrap(), 0xDEAD);
-    }
-
-    #[test]
-    fn read_u8() {
-        let mut mock = MockMemoryAP::default();
-        mock.data[0] = 0xEF;
-        mock.data[1] = 0xBE;
-        mock.data[2] = 0xAD;
-        mock.data[3] = 0xDE;
+    fn read8() {
+        let mut mock = MockMemoryAP::with_pattern();
+        mock.memory[..8].copy_from_slice(&DATA8[..8]);
         let mut mi = ADIMemoryInterface::<MockMemoryAP>::new(mock, 0x0);
-        let read = mi.read8(0);
-        let read2 = mi.read8(1);
-        let read3 = mi.read8(2);
-        let read4 = mi.read8(3);
-        debug_assert!(read.is_ok());
-        debug_assert_eq!(read.unwrap(), 0xEF);
-        debug_assert_eq!(read2.unwrap(), 0xBE);
-        debug_assert_eq!(read3.unwrap(), 0xAD);
-        debug_assert_eq!(read4.unwrap(), 0xDE);
+
+        for address in 0..8 {
+            let value = mi
+                .read8(address)
+                .expect(&format!("read8 failed, address = {}", address));
+            assert_eq!(value, DATA8[address as usize], "address = {}", address);
+        }
     }
 
     #[test]
-    fn write_u32() {
-        let mock = MockMemoryAP::default();
+    fn write32() {
+        for &address in &[0, 4] {
+            let mock = MockMemoryAP::with_pattern();
+            let mut mi = ADIMemoryInterface::<MockMemoryAP>::new(mock, 0x0);
+
+            let mut expected = Vec::from(mi.mock_memory());
+            expected[(address as usize)..(address as usize) + 4].copy_from_slice(&DATA8[..4]);
+
+            mi.write32(address, DATA32[0])
+                .expect(&format!("write32 failed, address = {}", address));
+            assert_eq!(
+                mi.mock_memory(),
+                expected.as_slice(),
+                "address = {}",
+                address
+            );
+        }
+    }
+
+    #[test]
+    fn write8() {
+        for address in 0..8 {
+            let mock = MockMemoryAP::with_pattern();
+            let mut mi = ADIMemoryInterface::<MockMemoryAP>::new(mock, 0x0);
+
+            let mut expected = Vec::from(mi.mock_memory());
+            expected[address] = DATA8[0];
+
+            mi.write8(address as u32, DATA8[0])
+                .expect(&format!("write8 failed, address = {}", address));
+            assert_eq!(
+                mi.mock_memory(),
+                expected.as_slice(),
+                "address = {}",
+                address
+            );
+        }
+    }
+
+    #[test]
+    fn read_block32() {
+        let mut mock = MockMemoryAP::with_pattern();
+        mock.memory[..DATA8.len()].copy_from_slice(DATA8);
         let mut mi = ADIMemoryInterface::<MockMemoryAP>::new(mock, 0x0);
-        debug_assert!(mi.write32(0, 0xDEAD_BEEF as u32).is_ok());
-        let buf = &mut [0; 4];
-        debug_assert!(mi.read_block8(0, buf).is_ok());
-        debug_assert_eq!(buf, &[0xEF, 0xBE, 0xAD, 0xDE])
+
+        for &address in &[0, 4] {
+            for len in 0..3 {
+                let mut data = vec![0u32; len];
+                mi.read_block32(address, &mut data).expect(&format!(
+                    "read_block32 failed, address = {}, len = {}",
+                    address, len
+                ));
+
+                assert_eq!(
+                    data.as_slice(),
+                    &DATA32[(address / 4) as usize..(address / 4) as usize + len],
+                    "address = {}, len = {}",
+                    address,
+                    len
+                );
+            }
+        }
     }
 
     #[test]
-    #[ignore]
-    fn write_u16() {
-        // let mut mock = MockMemoryAP::default();
-        // let mut mi = ADIMemoryInterface::<MockMemoryAP>::new(mock, 0x0);
-        // debug_assert!(mi.write(0, 0xBEEF as u16).is_ok());
-        // debug_assert!(mi.write(2, 0xDEAD as u16).is_ok());
-        // debug_assert_eq!(mock.data[0..4], [0xEF, 0xBE, 0xAD, 0xDE]);
-    }
-
-    #[test]
-    fn write_u8() {
-        let mock = MockMemoryAP::default();
+    fn read_block32_unaligned_should_error() {
+        let mock = MockMemoryAP::with_pattern();
         let mut mi = ADIMemoryInterface::<MockMemoryAP>::new(mock, 0x0);
-        debug_assert!(mi.write8(0, 0xEF as u8).is_ok());
-        debug_assert!(mi.write8(1, 0xBE as u8).is_ok());
-        debug_assert!(mi.write8(2, 0xAD as u8).is_ok());
-        debug_assert!(mi.write8(3, 0xDE as u8).is_ok());
-        let buf = &mut [0; 4];
-        debug_assert!(mi.read_block8(0, buf).is_ok());
-        debug_assert_eq!(buf, &[0xEF, 0xBE, 0xAD, 0xDE])
+
+        for &address in &[1, 3, 127] {
+            assert!(mi.read_block32(address, &mut [0u32; 4]).is_err());
+        }
     }
 
     #[test]
-    fn read_block_u32() {
-        let mut mock = MockMemoryAP::default();
-        mock.data[0] = 0xEF;
-        mock.data[1] = 0xBE;
-        mock.data[2] = 0xAD;
-        mock.data[3] = 0xDE;
-        mock.data[4] = 0xBE;
-        mock.data[5] = 0xBA;
-        mock.data[6] = 0xBA;
-        mock.data[7] = 0xAB;
+    fn read_block8() {
+        let mut mock = MockMemoryAP::with_pattern();
+        mock.memory[..DATA8.len()].copy_from_slice(DATA8);
         let mut mi = ADIMemoryInterface::<MockMemoryAP>::new(mock, 0x0);
-        let mut data = [0 as u32; 2];
-        let read = mi.read_block32(0, &mut data);
-        debug_assert!(read.is_ok());
-        debug_assert_eq!(data, [0xDEAD_BEEF, 0xABBA_BABE]);
+
+        for address in 0..4 {
+            for len in 0..12 {
+                let mut data = vec![0u8; len];
+                mi.read_block8(address, &mut data).expect(&format!(
+                    "read_block8 failed, address = {}, len = {}",
+                    address, len
+                ));
+
+                assert_eq!(
+                    data.as_slice(),
+                    &DATA8[address as usize..address as usize + len],
+                    "address = {}, len = {}",
+                    address,
+                    len
+                );
+            }
+        }
     }
 
     #[test]
-    fn read_block_u32_only_1_word() {
-        let mut mock = MockMemoryAP::default();
-        mock.data[0] = 0xEF;
-        mock.data[1] = 0xBE;
-        mock.data[2] = 0xAD;
-        mock.data[3] = 0xDE;
-        let mut mi = ADIMemoryInterface::<MockMemoryAP>::new(mock, 0x0);
-        let mut data = [0 as u32; 1];
-        let read = mi.read_block32(0, &mut data);
-        debug_assert!(read.is_ok());
-        debug_assert_eq!(data, [0xDEAD_BEEF]);
-    }
+    fn write_block32() {
+        for &address in &[0, 4] {
+            for len in 0..3 {
+                let mock = MockMemoryAP::with_pattern();
+                let mut mi = ADIMemoryInterface::<MockMemoryAP>::new(mock, 0x0);
 
-    #[test]
-    fn read_block_u32_unaligned_should_error() {
-        let mock = MockMemoryAP::default();
-        let mut mi = ADIMemoryInterface::<MockMemoryAP>::new(mock, 0x0);
-        let mut data = [0 as u32; 4];
-        debug_assert!(mi.read_block32(1, &mut data).is_err());
-        debug_assert!(mi.read_block32(127, &mut data).is_err());
-        debug_assert!(mi.read_block32(3, &mut data).is_err());
-    }
+                let mut expected = Vec::from(mi.mock_memory());
+                expected[address as usize..(address as usize) + len * 4]
+                    .copy_from_slice(&DATA8[..len * 4]);
 
-    /*
+                let data = &DATA32[..len];
+                mi.write_block32(address, data).expect(&format!(
+                    "write_block32 failed, address = {}, len = {}",
+                    address, len
+                ));
 
-    #[test]
-    fn read_block_u16() {
-        let mut mock = MockMemoryAP::default();
-        mock.data[0] = 0xEF;
-        mock.data[1] = 0xBE;
-        mock.data[2] = 0xAD;
-        mock.data[3] = 0xDE;
-        mock.data[4] = 0xBE;
-        mock.data[5] = 0xBA;
-        mock.data[6] = 0xBA;
-        mock.data[7] = 0xAB;
-        let mut mi = ADIMemoryInterface::<MockMemoryAP>::new(mock, 0x0);
-        let mut data = [0 as u16; 4];
-        let read = mi.read_block32(0, &mut data);
-        debug_assert!(read.is_ok());
-        debug_assert_eq!(data, [0xBEEF, 0xDEAD, 0xBABE, 0xABBA]);
-    }
-
-    #[test]
-    fn read_block_u16_unaligned() {
-        let mut mock = MockMemoryAP::default();
-        mock.data[2] = 0xEF;
-        mock.data[3] = 0xBE;
-        mock.data[4] = 0xAD;
-        mock.data[5] = 0xDE;
-        mock.data[6] = 0xBE;
-        mock.data[7] = 0xBA;
-        mock.data[8] = 0xBA;
-        mock.data[9] = 0xAB;
-        let mut mi = ADIMemoryInterface::<MockMemoryAP>::new(mock, 0x0);
-        let mut data = [0 as u16; 4];
-        let read = mi.read_block32(2, &mut data);
-        debug_assert!(read.is_ok());
-        debug_assert_eq!(data, [0xBEEF, 0xDEAD, 0xBABE, 0xABBA]);
-    }
-
-    #[test]
-    fn read_block_u16_unaligned_should_error() {
-        let mut mock = MockMemoryAP::default();
-        let mut mi = ADIMemoryInterface::<MockMemoryAP>::new(mock, 0x0);
-        let mut data = [0 as u16; 4];
-        debug_assert!(mi.read_block32(1, &mut data).is_err());
-        debug_assert!(mi.read_block32(127, &mut data).is_err());
-        debug_assert!(mi.read_block32(3, &mut data).is_err());
-    }
-
-    */
-
-    #[test]
-    fn read_block_u8() {
-        let mut mock = MockMemoryAP::default();
-        mock.data[0] = 0xEF;
-        mock.data[1] = 0xBE;
-        mock.data[2] = 0xAD;
-        mock.data[3] = 0xDE;
-        mock.data[4] = 0xBE;
-        mock.data[5] = 0xBA;
-        mock.data[6] = 0xBA;
-        mock.data[7] = 0xAB;
-        let mut mi = ADIMemoryInterface::<MockMemoryAP>::new(mock, 0x0);
-        let mut data = [0 as u8; 8];
-        let read = mi.read_block8(0, &mut data);
-        debug_assert!(read.is_ok());
-        debug_assert_eq!(data, [0xEF, 0xBE, 0xAD, 0xDE, 0xBE, 0xBA, 0xBA, 0xAB]);
-    }
-
-    #[test]
-    fn read_block_u8_unaligned() {
-        let mut mock = MockMemoryAP::default();
-        mock.data[1] = 0xEF;
-        mock.data[2] = 0xBE;
-        mock.data[3] = 0xAD;
-        mock.data[4] = 0xDE;
-        mock.data[5] = 0xBE;
-        mock.data[6] = 0xBA;
-        mock.data[7] = 0xBA;
-        mock.data[8] = 0xAB;
-        let mut mi = ADIMemoryInterface::<MockMemoryAP>::new(mock, 0x0);
-        let mut data = [0 as u8; 8];
-        let read = mi.read_block8(1, &mut data);
-        debug_assert!(read.is_ok());
-        debug_assert_eq!(data, [0xEF, 0xBE, 0xAD, 0xDE, 0xBE, 0xBA, 0xBA, 0xAB]);
-    }
-
-    #[test]
-    fn read_block_u8_unaligned2() {
-        let mut mock = MockMemoryAP::default();
-        mock.data[3] = 0xEF;
-        mock.data[4] = 0xBE;
-        mock.data[5] = 0xAD;
-        mock.data[6] = 0xDE;
-        mock.data[7] = 0xBE;
-        mock.data[8] = 0xBA;
-        mock.data[9] = 0xBA;
-        mock.data[10] = 0xAB;
-        let mut mi = ADIMemoryInterface::<MockMemoryAP>::new(mock, 0x0);
-        let mut data = [0 as u8; 8];
-        let read = mi.read_block8(3, &mut data);
-        debug_assert!(read.is_ok());
-        debug_assert_eq!(data, [0xEF, 0xBE, 0xAD, 0xDE, 0xBE, 0xBA, 0xBA, 0xAB]);
-    }
-
-    #[test]
-    fn write_block_u32() {
-        let mock = MockMemoryAP::default();
-        let mut mi = ADIMemoryInterface::<MockMemoryAP>::new(mock, 0x0);
-        debug_assert!(mi
-            .write_block32(0, &([0xDEAD_BEEF, 0xABBA_BABE] as [u32; 2]))
-            .is_ok());
-        let buf = &mut [0; 8];
-        debug_assert!(mi.read_block8(0, buf).is_ok());
-        debug_assert_eq!(buf, &[0xEF, 0xBE, 0xAD, 0xDE, 0xBE, 0xBA, 0xBA, 0xAB])
-    }
-
-    #[test]
-    fn write_block_u32_only_1_word() {
-        let mock = MockMemoryAP::default();
-        let mut mi = ADIMemoryInterface::<MockMemoryAP>::new(mock, 0x0);
-        debug_assert!(mi.write_block32(0, &([0xDEAD_BEEF] as [u32; 1])).is_ok());
-        let buf = &mut [0; 1];
-        debug_assert!(mi.read_block32(0, buf).is_ok());
-        debug_assert_eq!(buf, &[0xDEAD_BEEFu32])
+                assert_eq!(
+                    mi.mock_memory(),
+                    expected.as_slice(),
+                    "address = {}, len = {}",
+                    address,
+                    len
+                );
+            }
+        }
     }
 
     #[test]
     fn write_block_u32_unaligned_should_error() {
-        let mock = MockMemoryAP::default();
+        let mock = MockMemoryAP::with_pattern();
         let mut mi = ADIMemoryInterface::<MockMemoryAP>::new(mock, 0x0);
-        debug_assert!(mi
-            .write_block32(1, &([0xDEAD_BEEF, 0xABBA_BABE] as [u32; 2]))
-            .is_err());
-        debug_assert!(mi
-            .write_block32(127, &([0xDEAD_BEEF, 0xABBA_BABE] as [u32; 2]))
-            .is_err());
-        debug_assert!(mi
-            .write_block32(3, &([0xDEAD_BEEF, 0xABBA_BABE] as [u32; 2]))
-            .is_err());
+
+        for &address in &[1, 3, 127] {
+            assert!(mi
+                .write_block32(address, &[0xDEAD_BEEF, 0xABBA_BABE])
+                .is_err());
+        }
     }
 
     #[test]
-    #[ignore]
-    fn write_block_u16() {
-        // let mut mock = MockMemoryAP::default();
-        // let mut mi = ADIMemoryInterface::<MockMemoryAP>::new(mock, 0x0);
-        // debug_assert!(mi.write_block(0, &([0xBEEF, 0xDEAD, 0xBABE, 0xABBA] as [u16; 4])).is_ok());
-        // debug_assert_eq!(mock.data[0..8], [0xEF, 0xBE, 0xAD, 0xDE, 0xBE, 0xBA, 0xBA ,0xAB]);
-    }
+    fn write_block8() {
+        for address in 0..4 {
+            for len in 0..12 {
+                let mock = MockMemoryAP::with_pattern();
+                let mut mi = ADIMemoryInterface::<MockMemoryAP>::new(mock, 0x0);
 
-    #[test]
-    #[ignore]
-    fn write_block_u16_unaligned2() {
-        // let mut mock = MockMemoryAP::default();
-        // let mut mi = ADIMemoryInterface::<MockMemoryAP>::new(mock, 0x0);
-        // debug_assert!(mi.write_block(2, &([0xBEEF, 0xDEAD, 0xBABE, 0xABBA] as [u16; 4])).is_ok());
-        // debug_assert_eq!(mock.data[0..10], [0x00, 0x00, 0xEF, 0xBE, 0xAD, 0xDE, 0xBE, 0xBA, 0xBA ,0xAB]);
-    }
+                let mut expected = Vec::from(mi.mock_memory());
+                expected[address as usize..(address as usize) + len].copy_from_slice(&DATA8[..len]);
 
-    #[test]
-    #[ignore]
-    fn write_block_u16_unaligned_should_error() {
-        // let mut mock = MockMemoryAP::default();
-        // let mut mi = ADIMemoryInterface::<MockMemoryAP>::new(mock, 0x0);
-        // debug_assert!(mi.write_block(1, &([0xBEEF, 0xDEAD, 0xBABE, 0xABBA] as [u16; 4])).is_err());
-        // debug_assert!(mi.write_block(127, &([0xBEEF, 0xDEAD, 0xBABE, 0xABBA] as [u16; 4])).is_err());
-        // debug_assert!(mi.write_block(3, &([0xBEEF, 0xDEAD, 0xBABE, 0xABBA] as [u16; 4])).is_err());
-    }
+                let data = &DATA8[..len];
+                mi.write_block8(address, data).expect(&format!(
+                    "write_block8 failed, address = {}, len = {}",
+                    address, len
+                ));
 
-    #[test]
-    fn write_block_u8() {
-        let mock = MockMemoryAP::default();
-        let mut mi = ADIMemoryInterface::<MockMemoryAP>::new(mock, 0x0);
-        debug_assert!(mi
-            .write_block8(
-                0,
-                &([0xEF, 0xBE, 0xAD, 0xDE, 0xBE, 0xBA, 0xBA, 0xAB] as [u8; 8])
-            )
-            .is_ok());
-        let buf = &mut [0; 8];
-        debug_assert!(mi.read_block8(0, buf).is_ok());
-        debug_assert_eq!(buf, &[0xEF, 0xBE, 0xAD, 0xDE, 0xBE, 0xBA, 0xBA, 0xAB])
-    }
-
-    #[test]
-    fn write_block_u8_unaligned() {
-        let mock = MockMemoryAP::default();
-        let mut mi = ADIMemoryInterface::<MockMemoryAP>::new(mock, 0x0);
-        debug_assert!(mi
-            .write_block8(
-                3,
-                &([0xEF, 0xBE, 0xAD, 0xDE, 0xBE, 0xBA, 0xBA, 0xAB] as [u8; 8])
-            )
-            .is_ok());
-        let buf = &mut [0; 11];
-        debug_assert!(mi.read_block8(0, buf).is_ok());
-        debug_assert_eq!(
-            buf,
-            &[0x00, 0x00, 0x00, 0xEF, 0xBE, 0xAD, 0xDE, 0xBE, 0xBA, 0xBA, 0xAB]
-        )
-    }
-
-    #[test]
-    fn write_block_u8_unaligned2() {
-        let mock = MockMemoryAP::default();
-        let mut mi = ADIMemoryInterface::<MockMemoryAP>::new(mock, 0x0);
-        debug_assert!(mi
-            .write_block8(
-                1,
-                &([0xEF, 0xBE, 0xAD, 0xDE, 0xBE, 0xBA, 0xBA, 0xAB] as [u8; 8])
-            )
-            .is_ok());
-        let buf = &mut [0; 9];
-        debug_assert!(mi.read_block8(0, buf).is_ok());
-        debug_assert_eq!(buf, &[0x00, 0xEF, 0xBE, 0xAD, 0xDE, 0xBE, 0xBA, 0xBA, 0xAB])
+                assert_eq!(
+                    mi.mock_memory(),
+                    expected.as_slice(),
+                    "address = {}, len = {}",
+                    address,
+                    len
+                );
+            }
+        }
     }
 }
