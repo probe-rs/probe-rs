@@ -7,7 +7,7 @@ use crate::architecture::arm::{
     ArmCommunicationInterface,
 };
 use crate::{CommunicationInterface, Error, MemoryInterface};
-use scroll::Pread;
+use scroll::{Pread, LE};
 
 /// A struct to give access to a targets memory using a certain DAP.
 pub struct ADIMemoryInterface<AP>
@@ -535,7 +535,10 @@ where
             aligned_address,
             data[pre_bytes..data.len() - post_bytes]
                 .chunks(4)
-                .map(|c| c.pread::<u32>(0).expect("This is a bug. Please report it."))
+                .map(|c| {
+                    c.pread_with::<u32>(0, LE)
+                        .expect("This is a bug. Please report it.")
+                })
                 .collect::<Vec<_>>()
                 .as_slice(),
         )?;

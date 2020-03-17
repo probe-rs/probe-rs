@@ -14,14 +14,14 @@ impl Request for ConfigureRequest {
     const CATEGORY: Category = Category(0x04);
 
     fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize> {
-        use scroll::Pwrite;
+        use scroll::{Pwrite, LE};
 
         buffer[offset] = self.idle_cycles;
         buffer
-            .pwrite(self.wait_retry, offset + 1)
+            .pwrite_with(self.wait_retry, offset + 1, LE)
             .expect("This is a bug. Please report it.");
         buffer
-            .pwrite(self.match_retry, offset + 3)
+            .pwrite_with(self.match_retry, offset + 3, LE)
             .expect("This is a bug. Please report it.");
         Ok(5)
     }

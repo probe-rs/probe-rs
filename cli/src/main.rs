@@ -193,7 +193,7 @@ fn reset_target_of_device(
 }
 
 fn trace_u32_on_target(shared_options: &SharedOptions, loc: u32) -> Result<(), CliError> {
-    use scroll::Pwrite;
+    use scroll::{Pwrite, LE};
     use std::io::prelude::*;
     use std::thread::sleep;
     use std::time::Duration;
@@ -221,8 +221,8 @@ fn trace_u32_on_target(shared_options: &SharedOptions, loc: u32) -> Result<(), C
             // Unwrap is safe as there is always an stdin in our case!
             let mut buf = [0 as u8; 8];
             // Unwrap is safe!
-            buf.pwrite(instant, 0).unwrap();
-            buf.pwrite(value, 4).unwrap();
+            buf.pwrite_with(instant, 0, LE).unwrap();
+            buf.pwrite_with(value, 4, LE).unwrap();
             std::io::stdout().write_all(&buf)?;
 
             std::io::stdout().flush()?;

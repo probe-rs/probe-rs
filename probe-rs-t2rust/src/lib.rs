@@ -1,4 +1,4 @@
-use scroll::Pread;
+use scroll::{Pread, LE};
 use std::fs;
 use std::fs::{read_dir, read_to_string};
 use std::io;
@@ -113,7 +113,7 @@ fn extract_algorithms(chip: &serde_yaml::Value) -> Vec<(String, proc_macro2::Tok
                 base64::decode(algorithm.get("instructions").unwrap().as_str().unwrap())
                     .unwrap()
                     .chunks(4)
-                    .map(|bytes| bytes.pread(0).unwrap())
+                    .map(|bytes| bytes.pread_with(0, LE).unwrap())
                     .collect();
             let pc_init =
                 quote_option(algorithm.get("pc_init").unwrap().as_u64().map(|v| v as u32));

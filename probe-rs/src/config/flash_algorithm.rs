@@ -1,4 +1,4 @@
-use scroll::{Pread, Pwrite};
+use scroll::{Pread, Pwrite, LE};
 
 use super::flash_properties::FlashProperties;
 use super::memory::{PageInfo, RamRegion, SectorInfo};
@@ -125,7 +125,7 @@ where
 {
     let mut data = vec![0; bytes.len() * 4];
     for (i, byte) in bytes.iter().enumerate() {
-        data.pwrite(*byte, i * 4)
+        data.pwrite_with(*byte, i * 4, LE)
             .map_err(serde::ser::Error::custom)?;
     }
     serializer.serialize_str(&base64::encode(data))
@@ -149,7 +149,11 @@ where
             E: serde::de::Error,
         {
             base64::decode(v)
-                .map(|d| d.chunks(4).map(|bytes| bytes.pread(0).unwrap()).collect())
+                .map(|d| {
+                    d.chunks(4)
+                        .map(|bytes| bytes.pread_with(0, LE).unwrap())
+                        .collect()
+                })
                 .map_err(serde::de::Error::custom)
         }
     }
