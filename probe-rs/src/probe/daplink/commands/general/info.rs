@@ -1,6 +1,6 @@
 use super::super::{Category, CmsisDapError, Request, Response, Result};
 
-use scroll::Pread;
+use scroll::{Pread, LE};
 
 #[allow(unused)]
 #[derive(Copy, Clone)]
@@ -118,7 +118,7 @@ impl Response for TestDomainTime {
     fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self> {
         if buffer[offset + 1] == 0x08 {
             let res = buffer
-                .pread::<u32>(offset + 2)
+                .pread_with::<u32>(offset + 2, LE)
                 .expect("This is a bug. Please report it.");
             Ok(TestDomainTime(res))
         } else {
@@ -133,7 +133,7 @@ impl Response for SWOTraceBufferSize {
     fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self> {
         if buffer[offset + 1] == 0x04 {
             let res = buffer
-                .pread::<u32>(offset + 2)
+                .pread_with::<u32>(offset + 2, LE)
                 .expect("This is a bug. Please report it.");
             Ok(SWOTraceBufferSize(res))
         } else {
@@ -149,7 +149,7 @@ impl Response for PacketCount {
     fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self> {
         if buffer[offset] == 0x01 {
             let res = buffer
-                .pread::<u8>(offset + 1)
+                .pread_with::<u8>(offset + 1, LE)
                 .expect("This is a bug. Please report it.");
             Ok(PacketCount(res))
         } else {
@@ -165,7 +165,7 @@ impl Response for PacketSize {
     fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self> {
         if buffer[offset] == 0x02 {
             let res = buffer
-                .pread::<u16>(offset + 1)
+                .pread_with::<u16>(offset + 1, LE)
                 .expect("This is a bug. Please report it.");
             Ok(PacketSize(res))
         } else {

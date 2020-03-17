@@ -235,7 +235,7 @@ impl DAPAccess for STLink {
             self.device.write(cmd, &[], &mut buf, TIMEOUT)?;
             Self::check_status(&buf)?;
             // Unwrap is ok!
-            Ok((&buf[4..8]).pread(0).unwrap())
+            Ok((&buf[4..8]).pread_with(0, LE).unwrap())
         } else {
             Err(StlinkError::BlanksNotAllowedOnDPRegister.into())
         }
@@ -319,8 +319,8 @@ impl STLink {
         {
             Ok(_) => {
                 // The next two unwraps are safe!
-                let a0 = (&buf[0..4]).pread::<u32>(0).unwrap() as f32;
-                let a1 = (&buf[4..8]).pread::<u32>(0).unwrap() as f32;
+                let a0 = (&buf[0..4]).pread_with::<u32>(0, LE).unwrap() as f32;
+                let a1 = (&buf[4..8]).pread_with::<u32>(0, LE).unwrap() as f32;
                 if a0 != 0.0 {
                     Ok((2.0 * a1 * 1.2 / a0) as f32)
                 } else {
@@ -421,7 +421,7 @@ impl STLink {
                 .write(vec![commands::GET_VERSION_EXT], &[], &mut buf, TIMEOUT)
             {
                 Ok(_) => {
-                    let version: u8 = (&buf[2..3]).pread(0).unwrap();
+                    let version: u8 = (&buf[2..3]).pread_with(0, LE).unwrap();
                     self.jtag_version = version;
                 }
                 Err(e) => return Err(e),

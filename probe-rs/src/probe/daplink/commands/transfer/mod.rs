@@ -2,6 +2,7 @@ pub mod configure;
 
 use super::{Category, Request, Response, Result};
 use crate::architecture::arm::PortType as ArmPortType;
+use scroll::{Pread, Pwrite, LE};
 
 #[derive(Copy, Clone, Debug)]
 pub enum PortType {
@@ -113,8 +114,6 @@ impl Request for TransferRequest {
     const CATEGORY: Category = Category(0x05);
 
     fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize> {
-        use scroll::Pwrite;
-
         let mut size = 0;
 
         buffer[offset] = self.dap_index;
@@ -126,7 +125,7 @@ impl Request for TransferRequest {
         size += self.transfer_request.to_bytes(buffer, offset + 2)?;
 
         buffer
-            .pwrite(self.transfer_data, offset + 3)
+            .pwrite_with(self.transfer_data, offset + 3, LE)
             .expect("This is a bug. Please report it.");
 
         size += 4;
@@ -164,7 +163,6 @@ pub struct TransferResponse {
 
 impl Response for TransferResponse {
     fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self> {
-        use scroll::Pread;
         Ok(TransferResponse {
             transfer_count: buffer[offset],
             transfer_response: InnerTransferResponse {
@@ -179,9 +177,9 @@ impl Response for TransferResponse {
                 value_missmatch: buffer[offset + 1] & 0x10 > 1,
             },
             // TODO: implement this properly.
-            td_timestamp: 0, // scroll::pread(buffer[offset + 2..offset + 2 + 4]),
+            td_timestamp: 0, // scroll::pread_with(buffer[offset + 2..offset + 2 + 4], LE),
             transfer_data: buffer
-                .pread(offset + 2)
+                .pread_with(offset + 2, LE)
                 .expect("This is a bug. Please report it."),
         })
     }
@@ -206,14 +204,12 @@ impl Request for TransferBlockRequest {
     const CATEGORY: Category = Category(0x06);
 
     fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize> {
-        use scroll::Pwrite;
-
         let mut size = 0;
         buffer[offset] = self.dap_index;
         size += 1;
 
         buffer
-            .pwrite(self.transfer_count, offset + 1)
+            .pwrite_with(self.transfer_count, offset + 1, LE)
             .expect("This is a bug. Please report it.");
         size += 2;
 
@@ -222,12 +218,14 @@ impl Request for TransferBlockRequest {
         let mut data_offset = offset + 4;
 
         for word in &self.transfer_data {
-            buffer.pwrite(word, data_offset).unwrap_or_else(|_| {
-                panic!(
-                    "Failed to write word at data_offset {}. This is a bug. Please report it.",
-                    data_offset
-                )
-            });
+            buffer
+                .pwrite_with(word, data_offset, LE)
+                .unwrap_or_else(|_| {
+                    panic!(
+                        "Failed to write word at data_offset {}. This is a bug. Please report it.",
+                        data_offset
+                    )
+                });
             data_offset += 4;
             size += 4;
         }
@@ -297,11 +295,11 @@ pub(crate) struct TransferBlockResponse {
 
 impl Response for TransferBlockResponse {
     fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self> {
-        use scroll::Pread;
-
-        let transfer_count = buffer.pread(offset).expect("Failed to read transfer count");
+        let transfer_count = buffer
+            .pread_with(offset, LE)
+            .expect("Failed to read transfer count");
         let transfer_response = buffer
-            .pread(offset + 2)
+            .pread_with(offset + 2, LE)
             .expect("Failed to read transfer response");
 
         let mut data = Vec::with_capacity(transfer_count as usize);
@@ -309,7 +307,7 @@ impl Response for TransferBlockResponse {
         for data_offset in 0..(transfer_count as usize) {
             data.push(
                 buffer
-                    .pread(offset + 3 + data_offset * 4)
+                    .pread_with(offset + 3 + data_offset * 4, LE)
                     .expect("Failed to read value.."),
             );
         }
