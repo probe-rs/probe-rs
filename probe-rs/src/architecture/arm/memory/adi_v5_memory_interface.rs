@@ -7,7 +7,8 @@ use crate::architecture::arm::{
     ArmCommunicationInterface,
 };
 use crate::{CommunicationInterface, Error, MemoryInterface};
-use scroll::{Pread, LE};
+use std::convert::TryInto;
+use std::ops::Range;
 
 /// A struct to give access to a targets memory using a certain DAP.
 pub struct ADIMemoryInterface<AP>
@@ -154,24 +155,16 @@ where
     }
 
     /// Read an 8bit word at `addr`.
-    ///
-    /// The address where the read should be performed at has to be word aligned.
-    /// Returns `AccessPortError::MemoryNotAligned` if this does not hold true.
     pub fn read8(&mut self, address: u32) -> Result<u8, AccessPortError> {
-        let pre_bytes = ((4 - (address % 4)) % 4) as usize;
-        let aligned_addr = address - (address % 4);
+        let aligned = aligned_range(address, 1)?;
 
-        let result = self.read32(aligned_addr)?;
+        // Offset of byte in word (little endian)
+        let bit_offset = (address - aligned.start) * 8;
 
-        dbg!(pre_bytes);
+        // Read 32-bit word and extract the correct byte
+        let result = ((self.read32(aligned.start)? >> bit_offset) & 0xFF) as u8;
 
-        Ok(match pre_bytes {
-            3 => ((result >> 8) & 0xff) as u8,
-            2 => ((result >> 16) & 0xff) as u8,
-            1 => ((result >> 24) & 0xff) as u8,
-            0 => (result & 0xff) as u8,
-            _ => panic!("This case cannot happen ever. This must be a bug. Please report it."),
-        })
+        Ok(result)
     }
 
     /// Read a block of words of the size defined by S at `addr`.
@@ -268,28 +261,20 @@ where
             return Ok(());
         }
 
-        // Round start address down to the nearest multiple of 4
-        let aligned_addr = address - (address % 4);
-
-        let unaligned_end_addr = address
-            .checked_add(data.len() as u32)
-            .ok_or(AccessPortError::OutOfBoundsError)?;
-
-        // Round end address up to the nearest multiple of 4
-        let aligned_end_addr = unaligned_end_addr + ((4 - (unaligned_end_addr % 4)) % 4);
+        let aligned = aligned_range(address, data.len())?;
 
         // Read aligned block of 32-bit words
-        let mut buf32 = vec![0u32; ((aligned_end_addr - aligned_addr) / 4) as usize];
-        self.read_block32(aligned_addr, &mut buf32)?;
+        let mut buf32 = vec![0u32; aligned.len() / 4];
+        self.read_block32(aligned.start, &mut buf32)?;
 
         // Convert 32-bit words to bytes
-        let mut buf8 = vec![0u8; (aligned_end_addr - aligned_addr) as usize];
+        let mut buf8 = vec![0u8; aligned.len()];
         for i in 0..buf32.len() {
             buf8[i * 4..(i + 1) * 4].copy_from_slice(&buf32[i].to_le_bytes());
         }
 
         // Copy relevant part of aligned block to output data
-        let start = (address - aligned_addr) as usize;
+        let start = (address - aligned.start) as usize;
         data.copy_from_slice(&buf8[start..start + data.len()]);
 
         Ok(())
@@ -321,28 +306,17 @@ where
     }
 
     /// Write an 8bit word at `addr`.
-    ///
-    /// The address where the write should be performed at has to be word aligned.
-    /// Returns `AccessPortError::MemoryNotAligned` if this does not hold true.
     pub fn write8(&mut self, address: u32, data: u8) -> Result<(), AccessPortError> {
-        let pre_bytes = (address % 4) as usize;
-        let aligned_addr = address - (address % 4);
+        let aligned = aligned_range(address, 1)?;
 
-        let before = self.read32(aligned_addr)?;
-        let data_t = before & !(0xFF << (pre_bytes * 8));
-        let data = data_t | (u32::from(data) << (pre_bytes * 8));
+        // Offset of byte in word (little endian)
+        let bit_offset = (address - aligned.start) * 8;
 
-        let csw = self.build_csw_register(DataSize::U32);
-        let drw = DRW { data };
-        let tar = TAR {
-            address: aligned_addr,
-        };
-        self.write_ap_register(csw)?;
-        self.write_ap_register(tar)?;
-        self.write_ap_register(drw)?;
+        // Read the existing 32-bit word and insert the byte at the correct bit offset
+        let word =
+            self.read32(aligned.start)? & !(0xFF << bit_offset) | (u32::from(data) << bit_offset);
 
-        // Ensure the last write is actually performed
-        let _: RdBuff = self.interface.read_dp_register()?;
+        self.write32(aligned.start, word)?;
 
         Ok(())
     }
@@ -449,55 +423,58 @@ where
     /// Write a block of 8bit words at `addr`.
     ///
     /// The number of words written is `data.len()`.
-    /// The address where the write should be performed at has to be word aligned.
-    /// Returns `AccessPortError::MemoryNotAligned` if this does not hold true.
     pub fn write_block8(&mut self, address: u32, data: &[u8]) -> Result<(), AccessPortError> {
         if data.is_empty() {
             return Ok(());
         }
 
-        let pre_bytes = usize::min(data.len(), ((4 - (address % 4)) % 4) as usize);
-        let aligned_address = address + pre_bytes as u32;
-        let post_bytes = (data.len() - pre_bytes) % 4;
+        let aligned = aligned_range(address, data.len())?;
 
-        if pre_bytes != 0 {
-            let pre_address = aligned_address - 4;
-            let mut pre_data = self.read32(pre_address)?;
-            for (i, shift) in (4 - pre_bytes..4).enumerate() {
-                pre_data &= !(0xFF << (shift * 8));
-                pre_data |= u32::from(data[i]) << (shift * 8);
-            }
+        // Create buffer with aligned size
+        let mut buf8 = vec![0u8; aligned.len()];
 
-            self.write32(pre_address, pre_data)?;
+        // If the start of the range isn't aligned, read the first word in to avoid clobbering
+        if address != aligned.start {
+            buf8[..4].copy_from_slice(&self.read32(aligned.start)?.to_le_bytes());
         }
 
-        self.write_block32(
-            aligned_address,
-            data[pre_bytes..data.len() - post_bytes]
-                .chunks(4)
-                .map(|c| {
-                    c.pread_with::<u32>(0, LE)
-                        .expect("This is a bug. Please report it.")
-                })
-                .collect::<Vec<_>>()
-                .as_slice(),
-        )?;
-
-        if post_bytes != 0 {
-            let post_address = address + (data.len() - post_bytes) as u32;
-            let mut post_data = self.read32(post_address)?;
-
-            dbg!(post_bytes);
-            for shift in 0..post_bytes {
-                post_data &= !(0xFF << (shift * 8));
-                post_data |= u32::from(data[data.len() - post_bytes + shift]) << (shift * 8);
-            }
-
-            self.write32(post_address, post_data)?;
+        // If the end of the range isn't aligned, read the last word in to avoid clobbering
+        if address + data.len() as u32 != aligned.end {
+            buf8[aligned.len() - 4..].copy_from_slice(&self.read32(aligned.end - 4)?.to_le_bytes());
         }
+
+        // Copy input data into buffer at the correct location
+        let start = (address - aligned.start) as usize;
+        buf8[start..start + data.len()].copy_from_slice(&data);
+
+        // Convert buffer to 32-bit words
+        let mut buf32 = vec![0u32; aligned.len() / 4];
+        for i in 0..buf32.len() {
+            buf32[i] = u32::from_le_bytes(buf8[i * 4..(i + 1) * 4].try_into().unwrap());
+        }
+
+        // Write aligned block into memory
+        self.write_block32(aligned.start, &buf32)?;
 
         Ok(())
     }
+}
+
+/// Calculates a 32-bit word aligned range from an address/length pair.
+fn aligned_range(address: u32, len: usize) -> Result<Range<u32>, AccessPortError> {
+    // Round start address down to the nearest multiple of 4
+    let start = address - (address % 4);
+
+    let unaligned_end = len
+        .try_into()
+        .ok()
+        .and_then(|len: u32| len.checked_add(address))
+        .ok_or(AccessPortError::OutOfBoundsError)?;
+
+    // Round end address up to the nearest multiple of 4
+    let end = unaligned_end + ((4 - (unaligned_end % 4)) % 4);
+
+    Ok(Range { start, end })
 }
 
 impl<AP> MemoryInterface for ADIMemoryInterface<AP>
