@@ -9,7 +9,7 @@ use std::collections::HashMap;
 use thiserror::Error;
 
 pub struct MockMemoryAP {
-    pub data: Vec<u8>,
+    pub memory: Vec<u8>,
     store: HashMap<(u8, u8), u32>,
 }
 
@@ -21,14 +21,18 @@ pub enum MockMemoryError {
     UnknownRegister,
 }
 
-impl Default for MockMemoryAP {
-    fn default() -> Self {
+impl MockMemoryAP {
+    /// Creates a MockMemoryAP with the memory filled with a pattern where each byte is equal to its
+    /// own address plus one (to avoid zeros). The pattern can be used as a canary pattern to ensure
+    /// writes do not clobber adjacent memory. The memory is also quite small so it can be feasibly
+    /// printed out for debugging.
+    pub fn with_pattern() -> Self {
         let mut store = HashMap::new();
         store.insert((CSW::ADDRESS, CSW::APBANKSEL), 0);
         store.insert((TAR::ADDRESS, TAR::APBANKSEL), 0);
         store.insert((DRW::ADDRESS, DRW::APBANKSEL), 0);
         Self {
-            data: vec![0; 256],
+            memory: (1..=16).into_iter().collect(),
             store,
         }
     }
@@ -59,16 +63,16 @@ where
 
                 let data = match csw.SIZE {
                     DataSize::U32 => Ok(R::from(
-                        u32::from(self.data[address as usize])
-                            | (u32::from(self.data[address as usize + 1]) << 8)
-                            | (u32::from(self.data[address as usize + 2]) << 16)
-                            | (u32::from(self.data[address as usize + 3]) << 24),
+                        u32::from(self.memory[address as usize])
+                            | (u32::from(self.memory[address as usize + 1]) << 8)
+                            | (u32::from(self.memory[address as usize + 2]) << 16)
+                            | (u32::from(self.memory[address as usize + 3]) << 24),
                     )),
                     DataSize::U16 => Ok(R::from(
-                        u32::from(self.data[address as usize])
-                            | (u32::from(self.data[address as usize + 1]) << 8),
+                        u32::from(self.memory[address as usize])
+                            | (u32::from(self.memory[address as usize + 1]) << 8),
                     )),
-                    DataSize::U8 => Ok(R::from(u32::from(self.data[address as usize]))),
+                    DataSize::U8 => Ok(R::from(u32::from(self.memory[address as usize]))),
                     _ => Err(MockMemoryError::UnknownWidth),
                 };
 
@@ -112,19 +116,19 @@ where
             (DRW::ADDRESS, DRW::APBANKSEL) => {
                 let result = match CSW::from(csw).SIZE {
                     DataSize::U32 => {
-                        self.data[address as usize] = value as u8;
-                        self.data[address as usize + 1] = (value >> 8) as u8;
-                        self.data[address as usize + 2] = (value >> 16) as u8;
-                        self.data[address as usize + 3] = (value >> 24) as u8;
+                        self.memory[address as usize] = value as u8;
+                        self.memory[address as usize + 1] = (value >> 8) as u8;
+                        self.memory[address as usize + 2] = (value >> 16) as u8;
+                        self.memory[address as usize + 3] = (value >> 24) as u8;
                         Ok(())
                     }
                     DataSize::U16 => {
-                        self.data[address as usize] = value as u8;
-                        self.data[address as usize + 1] = (value >> 8) as u8;
+                        self.memory[address as usize] = value as u8;
+                        self.memory[address as usize + 1] = (value >> 8) as u8;
                         Ok(())
                     }
                     DataSize::U8 => {
-                        self.data[address as usize] = value as u8;
+                        self.memory[address as usize] = value as u8;
                         Ok(())
                     }
                     _ => Err(MockMemoryError::UnknownWidth),
