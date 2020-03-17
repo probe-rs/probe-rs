@@ -318,23 +318,25 @@ impl<'a> FlashBuilder<'a> {
         let mut sectors: Vec<FlashSector> = Vec::new();
         let mut pages: Vec<FlashPage> = Vec::new();
 
-        let mut page_offset = 0;
-
         for block in &self.data_blocks {
-            let mut current_address = block.address;
+            let block_end_address = block.address + block.data.len() as u32;
+            let mut block_offset = 0usize;
 
-            while current_address < block.address + block.data.len() as u32 {
+            while block_offset < block.data.len() {
+                let current_block_address = block.address + block_offset as u32;
                 if let Some(sector) = sectors.last_mut() {
                     // If the address is not in the sector, add a new sector.
                     // We only ever need to check the last sector in the list, as all the blocks to be written
                     // are stored in the `flash_write_data` vector IN ORDER!
                     // This means if we are checking the last sector we already have checked previous ones
                     // in previous steps of the iteration.
-                    if current_address >= sector.address + sector.size {
-                        let _ = self.add_sector(flash_algorithm, current_address, &mut sectors)?;
+                    if current_block_address >= sector.address + sector.size {
+                        let _ =
+                            self.add_sector(flash_algorithm, current_block_address, &mut sectors)?;
                     }
                 } else {
-                    let _ = self.add_sector(flash_algorithm, current_address, &mut sectors)?;
+                    let _ =
+                        self.add_sector(flash_algorithm, current_block_address, &mut sectors)?;
                 }
 
                 let page = if let Some(page) = pages.last_mut() {
@@ -343,24 +345,23 @@ impl<'a> FlashBuilder<'a> {
                     // are stored in the `data_blocks` vector IN ORDER!
                     // This means if we are checking the last page we already have checked previous ones
                     // in previous steps of the iteration.
-                    if current_address >= page.address + page.size {
-                        page_offset = 0;
-                        self.add_page(flash_algorithm, current_address, &mut pages)?
+                    if current_block_address >= page.address + page.size {
+                        self.add_page(flash_algorithm, current_block_address, &mut pages)?
                     } else {
                         page
                     }
                 } else {
-                    self.add_page(flash_algorithm, current_address, &mut pages)?
+                    self.add_page(flash_algorithm, current_block_address, &mut pages)?
                 };
 
-                let block_end_address = block.address + block.data.len() as u32;
-                let size = (block_end_address - current_address).min(page.size) as usize;
+                let end_address = block_end_address.min(page.address + page.size) as usize;
+                let page_offset = (block.address + block_offset as u32 - page.address) as usize;
+                let size = end_address - page_offset - page.address as usize;
 
-                let block_offset = (current_address - block.address) as usize;
-                page.data[page_offset as usize..page_offset as usize + size]
+                page.data[page_offset..page_offset + size]
                     .copy_from_slice(&block.data[block_offset..block_offset + size]);
 
-                page_offset += size;
+                block_offset += size;
             }
         }
 
@@ -446,17 +447,6 @@ mod tests {
         let flash_algorithm = assemble_demo_flash1();
         let mut flash_builder = FlashBuilder::new();
         flash_builder.add_data(42, &[42; 1024]).unwrap();
-        let flash_layout = flash_builder
-            .build_sectors_and_pages(&flash_algorithm, |_| Ok(()))
-            .unwrap();
-        assert_debug_snapshot!(flash_layout);
-    }
-
-    #[test]
-    fn test5() {
-        let flash_algorithm = assemble_demo_flash1();
-        let mut flash_builder = FlashBuilder::new();
-        flash_builder.add_data(40, &[42; 1024]).unwrap();
         let flash_layout = flash_builder
             .build_sectors_and_pages(&flash_algorithm, |_| Ok(()))
             .unwrap();
