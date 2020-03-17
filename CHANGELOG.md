@@ -30,7 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed a bug where reading a chip definition from a YAML file would always fail because parsing a `ChipFamily` from YAML was broken.
 - Fixed a bug in the ST-Link support, where some writes were not completed. This lead to problems when flashing a device, as the
   final reset request was not properly executed.
-- Refactored 8-bit memory access in ADIMemoryInterface, fixing some edge case crashes in the process. Also rewrote all tests to be more through.
+- Refactored 8-bit memory access in ADIMemoryInterface, fixing some edge case crashes in the process. Also rewrote all tests to be more thorough.
 
 ## [0.5.1]
 

@@ -274,8 +274,8 @@ where
 
         // Convert 32-bit words to bytes
         let mut buf8 = vec![0u8; aligned.len()];
-        for i in 0..buf32.len() {
-            buf8.pwrite_with(buf32[i], i * 4, LE).unwrap();
+        for (i, word) in buf32.into_iter().enumerate() {
+            buf8.pwrite_with(word, i * 4, LE).unwrap();
         }
 
         // Copy relevant part of aligned block to output data
@@ -456,8 +456,8 @@ where
 
         // Convert buffer to 32-bit words
         let mut buf32 = vec![0u32; aligned.len() / 4];
-        for i in 0..buf32.len() {
-            buf32[i] = buf8.pread_with(i * 4, LE).unwrap();
+        for (i, word) in buf32.iter_mut().enumerate() {
+            *word = buf8.pread_with(i * 4, LE).unwrap();
         }
 
         // Write aligned block into memory

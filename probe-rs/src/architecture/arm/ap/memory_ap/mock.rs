@@ -32,7 +32,7 @@ impl MockMemoryAP {
         store.insert((TAR::ADDRESS, TAR::APBANKSEL), 0);
         store.insert((DRW::ADDRESS, DRW::APBANKSEL), 0);
         Self {
-            memory: (1..=16).into_iter().collect(),
+            memory: (1..=16).collect(),
             store,
         }
     }
