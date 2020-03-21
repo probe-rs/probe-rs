@@ -40,6 +40,7 @@ hexdump = { version = "0.1.0", optional = true }
 thiserror = "1.0.10"
 jaylink = "0.1.1"
 base64 = "0.12.0"
+svg = { version = "0.7.1", optional = false }
 
 [build-dependencies]
 probe-rs-t2rust  = { path = "../probe-rs-t2rust", version ="0.6.0" }

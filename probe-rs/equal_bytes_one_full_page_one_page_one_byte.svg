@@ -1,0 +1,40 @@
+<svg viewBox="0 -20 300 140" xmlns="http://www.w3.org/2000/svg">
+<g transform="scale(1, 1)">
+<g fill="CornflowerBlue">
+<rect height="100" width="50" x="50" y="0"/>
+<text fill="Black" font-family="Arial" font-size="5" x="51" y="98">
+0x000000
+</text>
+<text fill="Black" font-family="Arial" font-size="5" x="51" y="5">
+0x001000
+</text>
+</g>
+<g fill="Crimson">
+<rect height="25" width="50" x="100" y="75"/>
+<text fill="Black" font-family="Arial" font-size="5" x="101" y="98">
+0x000000
+</text>
+<text fill="Black" font-family="Arial" font-size="5" x="101" y="80">
+0x000400
+</text>
+</g>
+<g fill="Crimson">
+<rect height="25" width="50" x="100" y="50"/>
+<text fill="Black" font-family="Arial" font-size="5" x="101" y="73">
+0x000400
+</text>
+<text fill="Black" font-family="Arial" font-size="5" x="101" y="55">
+0x000800
+</text>
+</g>
+<g fill="MediumSeaGreen">
+<rect height="25.024414" width="50" x="150" y="74.975586"/>
+<text fill="Black" font-family="Arial" font-size="5" x="151" y="98">
+0x000000
+</text>
+<text fill="Black" font-family="Arial" font-size="5" x="151" y="79.975586">
+0x000401
+</text>
+</g>
+</g>
+</svg>

@@ -75,7 +75,7 @@ impl FlashLayout {
 }
 
 #[derive(Clone, Copy)]
-struct FlashDataBlock<'a> {
+pub(super) struct FlashDataBlock<'a> {
     address: u32,
     data: &'a [u8],
 }
@@ -83,6 +83,14 @@ struct FlashDataBlock<'a> {
 impl<'a> FlashDataBlock<'a> {
     fn new(address: u32, data: &'a [u8]) -> Self {
         Self { address, data }
+    }
+
+    pub(super) fn address(&self) -> u32 {
+        self.address
+    }
+
+    pub(super) fn size(&self) -> u32 {
+        self.data.len() as u32
     }
 }
 
@@ -97,6 +105,10 @@ impl<'a> FlashBuilder<'a> {
         Self {
             data_blocks: vec![],
         }
+    }
+
+    pub(super) fn data_blocks(&self) -> &[FlashDataBlock<'a>] {
+        &self.data_blocks
     }
 
     /// Add a block of data to be programmed.
@@ -399,6 +411,7 @@ impl<'a> FlashBuilder<'a> {
 mod tests {
     use insta::*;
 
+    use super::super::FlashVisualizer;
     use super::{FlashBuilder, FlashError, FlashPage};
     use crate::config::{FlashAlgorithm, FlashProperties, SectorDescription};
 
@@ -463,6 +476,8 @@ mod tests {
         let flash_layout = flash_builder
             .build_sectors_and_pages(&flash_algorithm, |_, _| Ok(()))
             .unwrap();
+        let _ = FlashVisualizer::new(&flash_layout, flash_builder.data_blocks())
+            .write_svg("single_byte_in_single_page.svg");
         assert_debug_snapshot!(flash_layout);
     }
 
@@ -474,6 +489,8 @@ mod tests {
         let flash_layout = flash_builder
             .build_sectors_and_pages(&flash_algorithm, |_, _| Ok(()))
             .unwrap();
+        let _ = FlashVisualizer::new(&flash_layout, flash_builder.data_blocks())
+            .write_svg("equal_bytes_full_single_page.svg");
         assert_debug_snapshot!(flash_layout);
     }
 
@@ -485,6 +502,8 @@ mod tests {
         let flash_layout = flash_builder
             .build_sectors_and_pages(&flash_algorithm, |_, _| Ok(()))
             .unwrap();
+        let _ = FlashVisualizer::new(&flash_layout, flash_builder.data_blocks())
+            .write_svg("equal_bytes_one_full_page_one_page_one_byte.svg");
         assert_debug_snapshot!(flash_layout);
     }
 
@@ -496,6 +515,8 @@ mod tests {
         let flash_layout = flash_builder
             .build_sectors_and_pages(&flash_algorithm, |_, _| Ok(()))
             .unwrap();
+        let _ = FlashVisualizer::new(&flash_layout, flash_builder.data_blocks())
+            .write_svg("equal_bytes_one_page_from_offset_span_two_pages.svg");
         assert_debug_snapshot!(flash_layout);
     }
 
@@ -507,6 +528,22 @@ mod tests {
         let flash_layout = flash_builder
             .build_sectors_and_pages(&flash_algorithm, |_, _| Ok(()))
             .unwrap();
+        let _ = FlashVisualizer::new(&flash_layout, flash_builder.data_blocks())
+            .write_svg("equal_bytes_four_and_a_half_pages_two_sectors.svg");
+        assert_debug_snapshot!(flash_layout);
+    }
+
+    #[test]
+    fn equal_bytes_in_two_data_chunks_multiple_sectors() {
+        let flash_algorithm = assemble_demo_flash1();
+        let mut flash_builder = FlashBuilder::new();
+        flash_builder.add_data(0, &[42; 5024]).unwrap();
+        flash_builder.add_data(7860, &[42; 5024]).unwrap();
+        let flash_layout = flash_builder
+            .build_sectors_and_pages(&flash_algorithm, |_, _| Ok(()))
+            .unwrap();
+        let _ = FlashVisualizer::new(&flash_layout, flash_builder.data_blocks())
+            .write_svg("equal_bytes_in_two_data_chunks_multiple_sectors.svg");
         assert_debug_snapshot!(flash_layout);
     }
 }
