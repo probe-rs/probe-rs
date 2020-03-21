@@ -58,10 +58,29 @@ impl FlashSector {
     }
 }
 
+/// A struct to hold all the information about one region
+/// in the flash that is erased during flashing and has to be restored to it's original value afterwards.
+#[derive(Derivative)]
+#[derivative(Debug, Clone)]
+pub(super) struct FlashFill {
+    #[derivative(Debug(format_with = "fmt_hex"))]
+    pub(super) address: u32,
+    #[derivative(Debug(format_with = "fmt_hex"))]
+    pub(super) size: u32,
+}
+
+impl FlashFill {
+    /// Creates a new empty flash fill.
+    fn new(address: u32, size: u32) -> Self {
+        Self { address, size }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub(super) struct FlashLayout {
     sectors: Vec<FlashSector>,
     pages: Vec<FlashPage>,
+    fills: Vec<FlashFill>,
 }
 
 impl FlashLayout {
@@ -71,6 +90,10 @@ impl FlashLayout {
 
     pub(super) fn pages(&self) -> &[FlashPage] {
         &self.pages
+    }
+
+    pub(super) fn fills(&self) -> &[FlashFill] {
+        &self.fills
     }
 }
 
@@ -275,7 +298,11 @@ impl<'a> FlashBuilder<'a> {
             log::debug!("{:#?}", page);
         }
 
-        Ok(FlashLayout { sectors, pages })
+        Ok(FlashLayout {
+            sectors,
+            pages,
+            fills: vec![],
+        })
     }
 
     pub(super) fn add_sector<'b>(
@@ -329,11 +356,11 @@ impl<'a> FlashBuilder<'a> {
     ) -> Result<FlashLayout, FlashError> {
         let mut sectors: Vec<FlashSector> = Vec::new();
         let mut pages: Vec<FlashPage> = Vec::new();
-        let mut last_address = 0;
+        let mut fills: Vec<FlashFill> = Vec::new();
 
-        let mut data_iter = self.data_blocks.iter();
+        let mut data_iter = self.data_blocks.iter().peekable();
         while let Some(block) = data_iter.next() {
-            let block_end_address = block.address + block.data.len() as u32;
+            let block_end_address = block.address + block.size() as u32;
             let mut block_offset = 0usize;
 
             while block_offset < block.data.len() {
@@ -372,38 +399,46 @@ impl<'a> FlashBuilder<'a> {
                 let page_offset = (block.address + block_offset as u32 - page.address) as usize;
                 let size = end_address - page_offset - page.address as usize;
 
-                // If we write the first block ever and the page_offset is non-zero,
-                // we do not write to the start of the page, meaning we have to fill the start of the page.
-                // We know that we are writing the first block ever if the `last_address` is still zero.
-                if last_address == 0 && page_offset != 0 {
+                // If we start working a new block (condition: block_offset == 0)
+                // and we don't start a new page (condition: page_offset == 0)
+                // We need to fill the start of the page up until the page offset where the new data will start.
+                if block_offset == 0 && page_offset != 0 {
                     fill_page(page, 0..page_offset)?;
-                }
-
-                // If the amount
-                if page_offset + size != page.size as usize
-                    && block_offset + size == block.data.len()
-                {
-                    fill_page(page, page_offset + size..page.size as usize)?;
-                }
-
-                // If the address inside the block we are writing from to the page does not match
-                // the last address we wrote to, we have to fill the start of the page until that offset
-                // where we are writing at.
-                if last_address != block.address + block_offset as u32 {
-                    fill_page(page, 0..page_offset)?;
+                    fills.push(FlashFill::new(page.address, page_offset as u32));
                 }
 
                 page.data[page_offset..page_offset + size]
                     .copy_from_slice(&block.data[block_offset..block_offset + size]);
 
-                block_offset += size;
+                // If we have finished writing our block (condition: block_offset + size == block_size)
+                // and we have not finished the page yet (condition: page_offset + size == page.size)
+                // we peek to the next block and see where it starts and fill the page
+                // up to a maximum of the next block start.
+                if block_offset + size == block.size() as usize
+                    && page_offset + size != page.size as usize
+                {
+                    let mut fill_end_address = (page.address + page.size) as usize;
+                    if let Some(next_block) = data_iter.peek() {
+                        fill_end_address = fill_end_address.min(next_block.address as usize);
+                    }
+                    let fill_start = page_offset + size;
+                    let fill_size = fill_end_address - (page.address as usize + fill_start);
+                    fill_page(page, fill_start..fill_start + fill_size)?;
+                    fills.push(FlashFill::new(
+                        page.address + fill_start as u32,
+                        fill_size as u32,
+                    ));
+                }
 
-                // Set the last visited address to the end of the currently written block of data.
-                last_address = block.address + (block_offset + size) as u32;
+                block_offset += size;
             }
         }
 
-        Ok(FlashLayout { sectors, pages })
+        Ok(FlashLayout {
+            sectors,
+            pages,
+            fills,
+        })
     }
 }
 

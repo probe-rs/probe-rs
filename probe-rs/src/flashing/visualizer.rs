@@ -100,6 +100,14 @@ impl<'a> FlashVisualizer<'a> {
             group.append(rectangle);
         }
 
+        for fill in self.flash_layout.fills() {
+            let rectangle = self
+                .memory_block(fill.address, fill.size, (150, 50))
+                .set("fill", "SandyBrown");
+
+            group.append(rectangle);
+        }
+
         document.append(group);
         document.assign("viewBox", (0, -20, 300, 140));
 

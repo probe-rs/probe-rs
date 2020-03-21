@@ -72,5 +72,14 @@
 0x0013A0
 </text>
 </g>
+<g fill="SandyBrown">
+<rect height="1.171875" width="50" x="150" y="37.5"/>
+<text fill="Black" font-family="Arial" font-size="5" x="151" y="36.671875">
+0x0013A0
+</text>
+<text fill="Black" font-family="Arial" font-size="5" x="151" y="42.5">
+0x001400
+</text>
+</g>
 </g>
 </svg>
