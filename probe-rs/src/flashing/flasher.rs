@@ -1,5 +1,5 @@
 use super::FlashProgress;
-use super::{FlashBuilder, FlashError, FlashLayout, FlashPage};
+use super::{FlashBuilder, FlashError, FlashFill, FlashLayout, FlashPage};
 use crate::config::{FlashAlgorithm, FlashRegion, MemoryRange};
 use crate::core::{Core, RegisterFile};
 use crate::error;
@@ -271,10 +271,10 @@ impl<'a> Flasher<'a> {
 
         let num_pages = flash_layout.pages().len();
         let page_size = self.flash_algorithm().flash_properties.page_size;
-        let sector_size: u32 = flash_layout.sectors().iter().map(|s| s.size).sum();
-        let fill_size: u32 = flash_layout.fills().iter().map(|s| s.size).sum();
+        let sector_size: u32 = flash_layout.sectors().iter().map(|s| s.size()).sum();
+        let fill_size: u32 = flash_layout.fills().iter().map(|s| s.size()).sum();
 
-        progress.initialized(num_pages, sector_size as usize, page_size, fill_size);
+        progress.initialized(flash_layout.clone());
 
         // If the flash algo doesn't support erase all, disable chip erase.
         if self.flash_algorithm().pc_erase_all.is_none() {
@@ -287,19 +287,21 @@ impl<'a> Flasher<'a> {
         // Read all fill areas from the flash.
         progress.started_filling();
 
-        let fills = flash_layout
-            .fills()
-            .into_iter()
-            .cloned()
-            .collect::<Vec<_>>();
-        for fill in fills {
-            let page = &mut flash_layout.pages_mut()[fill.page_index];
-            let result = self.fill_page(page, restore_unwritten_bytes);
+        if restore_unwritten_bytes {
+            let fills = flash_layout
+                .fills()
+                .into_iter()
+                .cloned()
+                .collect::<Vec<_>>();
+            for fill in fills {
+                let page = &mut flash_layout.pages_mut()[fill.page_index()];
+                let result = self.fill_page(page, &fill);
 
-            // If we encounter an error, catch it, gracefully report the failure and return the error.
-            if result.is_err() {
-                progress.failed_filling();
-                return result;
+                // If we encounter an error, catch it, gracefully report the failure and return the error.
+                if result.is_err() {
+                    progress.failed_filling();
+                    return result;
+                }
             }
         }
 
@@ -333,29 +335,12 @@ impl<'a> Flasher<'a> {
     /// and written again once the page is programmed.
     pub(super) fn fill_page(
         &mut self,
-        current_page: &mut FlashPage,
-        restore_unwritten_bytes: bool,
+        page: &mut FlashPage,
+        fill: &FlashFill,
     ) -> Result<(), FlashError> {
-        // The remaining bytes to be filled in at the end of the page.
-        let remaining_bytes = current_page.size as usize - current_page.data.len();
-        if current_page.data.len() != current_page.size as usize {
-            let address_remaining_start = current_page.address + current_page.data.len() as u32;
-
-            // Fill up the page with current page bytes until it's full.
-            let old_data = if restore_unwritten_bytes {
-                // Read all the remaining old bytes from flash to restore them later.
-                let mut data = vec![0; remaining_bytes];
-                self.run_verify(|active| {
-                    active.read_block8(address_remaining_start, data.as_mut_slice())
-                })?;
-                data
-            } else {
-                // Set all the remaining bytes to their default erased value.
-                vec![self.flash_algorithm().flash_properties.erased_byte_value; remaining_bytes]
-            };
-            current_page.data.extend(old_data);
-        }
-        Ok(())
+        let page_offset = (fill.address() - fill.address()) as usize;
+        let page_slice = &mut page.data_mut()[page_offset..page_offset + fill.size() as usize];
+        self.run_verify(|active| active.read_block8(fill.address(), page_slice))
     }
 
     /// Erase the entire flash of the chip.
@@ -372,7 +357,7 @@ impl<'a> Flasher<'a> {
         let mut t = std::time::Instant::now();
         let result = self.run_erase(|active| active.erase_all());
         for sector in flash_layout.sectors() {
-            progress.sector_erased(sector.size, t.elapsed());
+            progress.sector_erased(sector.size(), t.elapsed());
             t = std::time::Instant::now();
         }
 
@@ -395,8 +380,8 @@ impl<'a> Flasher<'a> {
         let mut t = std::time::Instant::now();
         let result = self.run_program(|active| {
             for page in flash_layout.pages() {
-                active.program_page(page.address, page.data.as_slice())?;
-                progress.page_programmed(page.size, t.elapsed());
+                active.program_page(page.address(), page.data())?;
+                progress.page_programmed(page.size(), t.elapsed());
                 t = std::time::Instant::now();
             }
             Ok(())
@@ -422,8 +407,8 @@ impl<'a> Flasher<'a> {
         let mut t = std::time::Instant::now();
         let result = self.run_erase(|active| {
             for sector in flash_layout.sectors() {
-                active.erase_sector(sector.address)?;
-                progress.sector_erased(sector.size, t.elapsed());
+                active.erase_sector(sector.address())?;
+                progress.sector_erased(sector.size(), t.elapsed());
                 t = std::time::Instant::now();
             }
             Ok(())
@@ -454,22 +439,22 @@ impl<'a> Flasher<'a> {
         let result = self.run_program(|active| {
             for page in flash_layout.pages() {
                 // At the start of each loop cycle load the next page buffer into RAM.
-                active.load_page_buffer(page.address, page.data.as_slice(), current_buf)?;
+                active.load_page_buffer(page.address(), page.data(), current_buf)?;
 
                 // Then wait for the active RAM -> Flash copy process to finish.
                 // Also check if it finished properly. If it didn't, return an error.
                 let result = active.wait_for_completion(Duration::from_secs(2))?;
-                progress.page_programmed(page.size, t.elapsed());
+                progress.page_programmed(page.size(), t.elapsed());
                 t = std::time::Instant::now();
                 if result != 0 {
                     return Err(FlashError::PageWrite {
-                        page_address: page.address,
+                        page_address: page.address(),
                         error_code: result,
                     });
                 }
 
                 // Start the next copy process.
-                active.start_program_page_with_buffer(page.address, current_buf)?;
+                active.start_program_page_with_buffer(page.address(), current_buf)?;
 
                 // Swap the buffers
                 if current_buf == 1 {

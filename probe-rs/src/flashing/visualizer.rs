@@ -6,7 +6,7 @@ use svg::{
 
 use super::*;
 
-pub(super) struct FlashVisualizer<'a> {
+pub struct FlashVisualizer<'a> {
     flash_layout: &'a FlashLayout,
     data_blocks: &'a [FlashDataBlock<'a>],
 }
@@ -29,7 +29,7 @@ impl<'a> FlashVisualizer<'a> {
             .flash_layout
             .sectors()
             .last()
-            .map_or(0, |s| s.address + s.size);
+            .map_or(0, |s| s.address() + s.size());
 
         address as f32 / top_sector_address as f32 * 100.0
     }
@@ -71,13 +71,13 @@ impl<'a> FlashVisualizer<'a> {
         group
     }
 
-    pub(super) fn generate_svg(&self) -> String {
+    pub fn generate_svg(&self) -> String {
         let mut document = Document::new();
         let mut group = Group::new().set("transform", "scale(1, 1)");
 
         for sector in self.flash_layout.sectors() {
             let rectangle = self
-                .memory_block(sector.address, sector.size, (50, 50))
+                .memory_block(sector.address(), sector.size(), (50, 50))
                 .set("fill", "CornflowerBlue");
 
             group.append(rectangle);
@@ -85,7 +85,7 @@ impl<'a> FlashVisualizer<'a> {
 
         for page in self.flash_layout.pages() {
             let rectangle = self
-                .memory_block(page.address, page.size, (100, 50))
+                .memory_block(page.address(), page.size(), (100, 50))
                 .set("fill", "Crimson");
             // .set("stroke", "Black")
             // .set("stroke-width", 1);
@@ -102,7 +102,7 @@ impl<'a> FlashVisualizer<'a> {
 
         for fill in self.flash_layout.fills() {
             let rectangle = self
-                .memory_block(fill.address, fill.size, (150, 50))
+                .memory_block(fill.address(), fill.size(), (150, 50))
                 .set("fill", "SandyBrown");
 
             group.append(rectangle);
@@ -114,7 +114,7 @@ impl<'a> FlashVisualizer<'a> {
         format!("{}", document)
     }
 
-    pub(super) fn write_svg(&self, name: impl AsRef<str>) -> std::io::Result<()> {
+    pub fn write_svg(&self, name: impl AsRef<str>) -> std::io::Result<()> {
         use std::fs::OpenOptions;
         use std::io::Write;
 

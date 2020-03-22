@@ -1,48 +1,69 @@
+use std::fmt::{Debug, Formatter, UpperHex};
+
 use crate::config::{FlashAlgorithm, MemoryRange, PageInfo, SectorInfo};
 
 use super::FlashError;
 
-/// A struct to hold all the information about one page of the  flash.
-#[derive(Derivative, Clone)]
-#[derivative(Debug)]
-pub(super) struct FlashPage {
-    #[derivative(Debug(format_with = "fmt_hex"))]
-    pub(super) address: u32,
-    #[derivative(Debug(format_with = "fmt_hex"))]
-    pub(super) size: u32,
-    #[derivative(Debug(format_with = "fmt"))]
-    pub(super) data: Vec<u8>,
+/// A local helper to print all flash location relevant data in hex.
+fn fmt_hex<T: UpperHex>(data: &T, f: &mut Formatter) -> std::fmt::Result {
+    write!(f, "0X{:08X}", data)
 }
 
-fn fmt(data: &[u8], f: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
-    write!(f, "{:?}", data)
+/// The description of a page in flash.
+#[derive(Clone)]
+pub struct FlashPage {
+    address: u32,
+    data: Vec<u8>,
 }
 
-fn fmt_hex<T: std::fmt::LowerHex>(
-    data: &T,
-    f: &mut std::fmt::Formatter,
-) -> Result<(), std::fmt::Error> {
-    write!(f, "0x{:08x}", data)
-}
-
-impl FlashPage {
-    fn new(page_info: &PageInfo) -> Self {
-        Self {
-            address: page_info.base_address,
-            size: page_info.size,
-            data: vec![0; page_info.size as usize],
-        }
+impl Debug for FlashPage {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "FlashPage {{")?;
+        writeln!(f, "    {:#08X}", self.address())?;
+        writeln!(f, "    {:#08X}", self.size())?;
+        writeln!(f, "    {:?}", self.data())?;
+        writeln!(f, "}}")
     }
 }
 
-/// A struct to hold all the information about one Sector in the flash.
+impl FlashPage {
+    /// Creates a new empty flash page form a `PageInfo`.
+    fn new(page_info: &PageInfo) -> Self {
+        Self {
+            address: page_info.base_address,
+            data: vec![0; page_info.size as usize],
+        }
+    }
+
+    /// Returns the start address of the page.
+    pub fn address(&self) -> u32 {
+        self.address
+    }
+
+    /// Returns the size of the page in bytes.
+    pub fn size(&self) -> u32 {
+        self.data.len() as u32
+    }
+
+    /// Returns the data slice of the page.
+    pub fn data(&self) -> &[u8] {
+        &self.data
+    }
+
+    /// Returns the mut data slice of the page.
+    pub(super) fn data_mut(&mut self) -> &mut [u8] {
+        &mut self.data
+    }
+}
+
+/// The description of a sector in flash.
 #[derive(Derivative)]
 #[derivative(Debug, Clone)]
-pub(super) struct FlashSector {
+pub struct FlashSector {
     #[derivative(Debug(format_with = "fmt_hex"))]
-    pub(super) address: u32,
+    address: u32,
     #[derivative(Debug(format_with = "fmt_hex"))]
-    pub(super) size: u32,
+    size: u32,
 }
 
 impl FlashSector {
@@ -53,18 +74,35 @@ impl FlashSector {
             size: sector_info.size,
         }
     }
+
+    /// Returns the start address of the sector.
+    pub fn address(&self) -> u32 {
+        self.address
+    }
+
+    /// Returns the size of the sector in bytes.
+    pub fn size(&self) -> u32 {
+        self.size
+    }
 }
 
 /// A struct to hold all the information about one region
 /// in the flash that is erased during flashing and has to be restored to it's original value afterwards.
-#[derive(Derivative)]
-#[derivative(Debug, Clone)]
-pub(super) struct FlashFill {
-    #[derivative(Debug(format_with = "fmt_hex"))]
-    pub(super) address: u32,
-    #[derivative(Debug(format_with = "fmt_hex"))]
-    pub(super) size: u32,
-    pub(super) page_index: usize,
+#[derive(Clone)]
+pub struct FlashFill {
+    address: u32,
+    size: u32,
+    page_index: usize,
+}
+
+impl Debug for FlashFill {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "FlashFill {{")?;
+        writeln!(f, "    {:#08X}", self.address())?;
+        writeln!(f, "    {:#08X}", self.size())?;
+        writeln!(f, "    {:?}", self.page_index)?;
+        writeln!(f, "}}")
+    }
 }
 
 impl FlashFill {
@@ -76,33 +114,54 @@ impl FlashFill {
             page_index,
         }
     }
+
+    /// Returns the start address of the fill.
+    pub fn address(&self) -> u32 {
+        self.address
+    }
+
+    /// Returns the size of the fill in bytes.
+    pub fn size(&self) -> u32 {
+        self.size
+    }
+
+    /// Returns the corresponding page index of the fill.
+    pub fn page_index(&self) -> usize {
+        self.page_index
+    }
 }
 
+/// The built layout of the data in flash.
 #[derive(Debug, Clone)]
-pub(super) struct FlashLayout {
+pub struct FlashLayout {
     sectors: Vec<FlashSector>,
     pages: Vec<FlashPage>,
     fills: Vec<FlashFill>,
 }
 
 impl FlashLayout {
-    pub(super) fn sectors(&self) -> &[FlashSector] {
+    /// Get the sectors of the flash layout.
+    pub fn sectors(&self) -> &[FlashSector] {
         &self.sectors
     }
 
-    pub(super) fn pages(&self) -> &[FlashPage] {
+    /// Get the pages of the flash layout.
+    pub fn pages(&self) -> &[FlashPage] {
         &self.pages
     }
 
+    /// Get the pages of the flash layout as mut.
     pub(super) fn pages_mut(&mut self) -> &mut [FlashPage] {
         &mut self.pages
     }
 
-    pub(super) fn fills(&self) -> &[FlashFill] {
+    /// Get the fills of the flash layout.
+    pub fn fills(&self) -> &[FlashFill] {
         &self.fills
     }
 }
 
+/// A block of data that is to be written to flash.
 #[derive(Clone, Copy)]
 pub(super) struct FlashDataBlock<'a> {
     address: u32,
@@ -110,19 +169,23 @@ pub(super) struct FlashDataBlock<'a> {
 }
 
 impl<'a> FlashDataBlock<'a> {
+    /// Create a new `FlashDataBlock`.
     fn new(address: u32, data: &'a [u8]) -> Self {
         Self { address, data }
     }
 
+    /// Get the start address of the block.
     pub(super) fn address(&self) -> u32 {
         self.address
     }
 
+    /// Returns the size of the block in bytes.
     pub(super) fn size(&self) -> u32 {
         self.data.len() as u32
     }
 }
 
+/// A helper structure to build a flash layout from a set of data blocks.
 #[derive(Default)]
 pub(super) struct FlashBuilder<'a> {
     data_blocks: Vec<FlashDataBlock<'a>>,
@@ -134,11 +197,6 @@ impl<'a> FlashBuilder<'a> {
         Self {
             data_blocks: vec![],
         }
-    }
-
-    #[cfg(test)]
-    pub(super) fn data_blocks(&self) -> &[FlashDataBlock<'a>] {
-        &self.data_blocks
     }
 
     /// Add a block of data to be programmed.
@@ -226,7 +284,7 @@ impl<'a> FlashBuilder<'a> {
                         continue;
                     } else if let Some(page) = pages.last_mut() {
                         // If the current page does not contain the address.
-                        if flash_address >= page.address + page.size {
+                        if flash_address >= page.address + page.size() {
                             // Fill any gap at the end of the current page before switching to a new page.
                             fill_page(page)?;
 
@@ -244,7 +302,7 @@ impl<'a> FlashBuilder<'a> {
                             }
                             continue;
                         } else {
-                            let space_left_in_page = page.size - page.data.len() as u32;
+                            let space_left_in_page = page.size() - page.data.len() as u32;
                             let space_left_in_data = op.data.len() - pos;
                             let amount =
                                 usize::min(space_left_in_page as usize, space_left_in_data);
@@ -403,7 +461,7 @@ impl<'a> FlashBuilder<'a> {
                     // are stored in the `data_blocks` vector IN ORDER!
                     // This means if we are checking the last page we already have checked previous ones
                     // in previous steps of the iteration.
-                    if current_block_address >= page.address + page.size {
+                    if current_block_address >= page.address + page.size() {
                         self.add_page(flash_algorithm, current_block_address, &mut pages)?
                     } else {
                         page
@@ -415,9 +473,9 @@ impl<'a> FlashBuilder<'a> {
                 // Add sectors for the whole page if the sector size is smaller than the page size!
                 let sector_size = sector.size;
                 let sector_address = sector.address;
-                if sector_size < page.size {
+                if sector_size < page.size() {
                     // Add as many sectors as there fit into one page.
-                    for i in 0..page.size / sector_size {
+                    for i in 0..page.size() / sector_size {
                         // Calculate the address of the sector.
                         let new_sector_address = page.address + i * sector_size;
 
@@ -429,10 +487,10 @@ impl<'a> FlashBuilder<'a> {
                     }
                 }
 
-                let end_address = block_end_address.min(page.address + page.size) as usize;
+                let end_address = block_end_address.min(page.address + page.size()) as usize;
                 let page_offset = (block.address + block_offset as u32 - page.address) as usize;
                 let size = end_address - page_offset - page.address as usize;
-                let page_size = page.size;
+                let page_size = page.size();
                 let page_address = page.address;
 
                 // Insert the actual data into the page!
@@ -504,7 +562,7 @@ impl<'a> FlashBuilder<'a> {
                             }
                         }
                         let page = self.add_page(flash_algorithm, page_address, &mut pages)?;
-                        self.add_fill(page.address, page.size, &mut fills, pages.len());
+                        self.add_fill(page.address, page.size(), &mut fills, pages.len());
                     }
                 }
 
@@ -526,7 +584,6 @@ impl<'a> FlashBuilder<'a> {
 mod tests {
     use insta::*;
 
-    use super::super::FlashVisualizer;
     use super::{FlashBuilder, FlashError, FlashPage};
     use crate::config::{FlashAlgorithm, FlashProperties, SectorDescription};
 
@@ -610,8 +667,6 @@ mod tests {
         let flash_layout = flash_builder
             .build_sectors_and_pages(&flash_algorithm)
             .unwrap();
-        let _ = FlashVisualizer::new(&flash_layout, flash_builder.data_blocks())
-            .write_svg("single_byte_in_single_page.svg");
         assert_debug_snapshot!(flash_layout);
     }
 
@@ -623,8 +678,6 @@ mod tests {
         let flash_layout = flash_builder
             .build_sectors_and_pages(&flash_algorithm)
             .unwrap();
-        let _ = FlashVisualizer::new(&flash_layout, flash_builder.data_blocks())
-            .write_svg("equal_bytes_full_single_page.svg");
         assert_debug_snapshot!(flash_layout);
     }
 
@@ -636,8 +689,6 @@ mod tests {
         let flash_layout = flash_builder
             .build_sectors_and_pages(&flash_algorithm)
             .unwrap();
-        let _ = FlashVisualizer::new(&flash_layout, flash_builder.data_blocks())
-            .write_svg("equal_bytes_one_full_page_one_page_one_byte.svg");
         assert_debug_snapshot!(flash_layout);
     }
 
@@ -649,8 +700,6 @@ mod tests {
         let flash_layout = flash_builder
             .build_sectors_and_pages(&flash_algorithm)
             .unwrap();
-        let _ = FlashVisualizer::new(&flash_layout, flash_builder.data_blocks())
-            .write_svg("equal_bytes_one_page_from_offset_span_two_pages.svg");
         assert_debug_snapshot!(flash_layout);
     }
 
@@ -662,8 +711,6 @@ mod tests {
         let flash_layout = flash_builder
             .build_sectors_and_pages(&flash_algorithm)
             .unwrap();
-        let _ = FlashVisualizer::new(&flash_layout, flash_builder.data_blocks())
-            .write_svg("equal_bytes_four_and_a_half_pages_two_sectors.svg");
         assert_debug_snapshot!(flash_layout);
     }
 
@@ -676,8 +723,6 @@ mod tests {
         let flash_layout = flash_builder
             .build_sectors_and_pages(&flash_algorithm)
             .unwrap();
-        let _ = FlashVisualizer::new(&flash_layout, flash_builder.data_blocks())
-            .write_svg("equal_bytes_in_two_data_chunks_multiple_sectors.svg");
         assert_debug_snapshot!(flash_layout);
     }
 
@@ -690,8 +735,6 @@ mod tests {
         let flash_layout = flash_builder
             .build_sectors_and_pages(&flash_algorithm)
             .unwrap();
-        let _ = FlashVisualizer::new(&flash_layout, flash_builder.data_blocks())
-            .write_svg("equal_bytes_in_two_data_chunks_multiple_sectors_smaller_than_page.svg");
         assert_debug_snapshot!(flash_layout);
     }
 }

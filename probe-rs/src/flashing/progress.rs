@@ -1,3 +1,4 @@
+use super::FlashLayout;
 use std::time::Duration;
 
 /// A structure to manage the flashing procedure progress reporting.
@@ -30,19 +31,8 @@ impl FlashProgress {
     }
 
     /// Signalize that the flashing algorithm was set up and is initialized.
-    pub(super) fn initialized(
-        &self,
-        total_pages: usize,
-        total_sector_size: usize,
-        page_size: u32,
-        fill_size: u32,
-    ) {
-        self.emit(ProgressEvent::Initialized {
-            total_pages,
-            total_sector_size,
-            page_size,
-            fill_size,
-        });
+    pub(super) fn initialized(&self, flash_layout: FlashLayout) {
+        self.emit(ProgressEvent::Initialized { flash_layout });
     }
 
     /// Signalize that the entire flashing procedure started.
@@ -109,12 +99,8 @@ impl FlashProgress {
 /// Possible events during the flashing process.
 #[derive(Debug)]
 pub enum ProgressEvent {
-    /// Flashing process has been initialized.
     Initialized {
-        total_pages: usize,
-        total_sector_size: usize,
-        page_size: u32,
-        fill_size: u32,
+        flash_layout: FlashLayout,
     },
     StartedFilling,
     /// Programming of flash has started.
