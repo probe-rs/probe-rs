@@ -5,7 +5,7 @@ use lazy_static::lazy_static;
 use std::fs::File;
 use std::path::Path;
 use std::{
-    collections::HashMap,
+    borrow::Cow,
     sync::{Arc, Mutex, TryLockError},
 };
 use thiserror::Error;
@@ -43,70 +43,68 @@ impl<R> From<TryLockError<R>> for RegistryError {
     }
 }
 
-lazy_static! {
-    static ref GENERIC_TARGETS: [ChipFamily; 5] = [
-        ChipFamily {
-            name: "Generic Cortex-M0".to_owned(),
-            manufacturer: None,
-            variants: vec![Chip {
-                name: "cortex-m0".into(),
-                part: None,
-                memory_map: vec![],
-                flash_algorithms: vec![],
-            }],
-            flash_algorithms: HashMap::new(),
-            core: "M0".to_owned(),
-        },
-        ChipFamily {
-            name: "Generic Cortex-M4".to_owned(),
-            manufacturer: None,
-            variants: vec![Chip {
-                name: "cortex-m4".to_owned(),
-                part: None,
-                memory_map: vec![],
-                flash_algorithms: vec![],
-            }],
-            flash_algorithms: HashMap::new(),
-            core: "M4".to_owned(),
-        },
-        ChipFamily {
-            name: "Generic Cortex-M3".to_owned(),
-            manufacturer: None,
-            variants: vec![Chip {
-                name: "cortex-m3".to_owned(),
-                part: None,
-                memory_map: vec![],
-                flash_algorithms: vec![],
-            }],
-            flash_algorithms: HashMap::new(),
-            core: "M3".to_owned(),
-        },
-        ChipFamily {
-            name: "Generic Cortex-M33".to_owned(),
-            manufacturer: None,
-            variants: vec![Chip {
-                name: "cortex-m33".to_owned(),
-                part: None,
-                memory_map: vec![],
-                flash_algorithms: vec![],
-            }],
-            flash_algorithms: HashMap::new(),
-            core: "M33".to_owned(),
-        },
-        ChipFamily {
-            name: "Generic Riscv".to_owned(),
-            manufacturer: None,
-            variants: vec![Chip {
-                name: "riscv".to_owned(),
-                part: None,
-                memory_map: vec![],
-                flash_algorithms: vec![],
-            }],
-            flash_algorithms: HashMap::new(),
-            core: "riscv".to_owned(),
-        },
-    ];
-}
+const GENERIC_TARGETS: [ChipFamily; 5] = [
+    ChipFamily {
+        name: Cow::Borrowed("Generic Cortex-M0"),
+        manufacturer: None,
+        variants: Cow::Borrowed(&[Chip {
+            name: Cow::Borrowed("cortex-m0"),
+            part: None,
+            memory_map: Cow::Borrowed(&[]),
+            flash_algorithms: Cow::Borrowed(&[]),
+        }]),
+        flash_algorithms: Cow::Borrowed(&[]),
+        core: Cow::Borrowed("M0"),
+    },
+    ChipFamily {
+        name: Cow::Borrowed("Generic Cortex-M4"),
+        manufacturer: None,
+        variants: Cow::Borrowed(&[Chip {
+            name: Cow::Borrowed("cortex-m4"),
+            part: None,
+            memory_map: Cow::Borrowed(&[]),
+            flash_algorithms: Cow::Borrowed(&[]),
+        }]),
+        flash_algorithms: Cow::Borrowed(&[]),
+        core: Cow::Borrowed("M4"),
+    },
+    ChipFamily {
+        name: Cow::Borrowed("Generic Cortex-M3"),
+        manufacturer: None,
+        variants: Cow::Borrowed(&[Chip {
+            name: Cow::Borrowed("cortex-m3"),
+            part: None,
+            memory_map: Cow::Borrowed(&[]),
+            flash_algorithms: Cow::Borrowed(&[]),
+        }]),
+        flash_algorithms: Cow::Borrowed(&[]),
+        core: Cow::Borrowed("M3"),
+    },
+    ChipFamily {
+        name: Cow::Borrowed("Generic Cortex-M33"),
+        manufacturer: None,
+        variants: Cow::Borrowed(&[Chip {
+            name: Cow::Borrowed("cortex-m33"),
+            part: None,
+            memory_map: Cow::Borrowed(&[]),
+            flash_algorithms: Cow::Borrowed(&[]),
+        }]),
+        flash_algorithms: Cow::Borrowed(&[]),
+        core: Cow::Borrowed("M33"),
+    },
+    ChipFamily {
+        name: Cow::Borrowed("Generic Riscv"),
+        manufacturer: None,
+        variants: Cow::Borrowed(&[Chip {
+            name: Cow::Borrowed("riscv"),
+            part: None,
+            memory_map: Cow::Borrowed(&[]),
+            flash_algorithms: Cow::Borrowed(&[]),
+        }]),
+        flash_algorithms: Cow::Borrowed(&[]),
+        core: Cow::Borrowed("riscv"),
+    },
+];
 
 pub struct Registry {
     /// All the available chips.
@@ -121,7 +119,7 @@ mod builtin {
 impl Registry {
     #[cfg(feature = "builtin-targets")]
     fn from_builtin_families() -> Self {
-        let mut families = builtin::get_targets();
+        let mut families = Vec::from(builtin::get_targets());
 
         families.extend(GENERIC_TARGETS.iter().cloned());
 
@@ -148,7 +146,7 @@ impl Registry {
             // Try get the corresponding chip.
             let mut selected_family_and_chip = None;
             for family in &self.families {
-                for variant in &family.variants {
+                for variant in family.variants.iter() {
                     if variant
                         .name
                         .to_ascii_lowercase()
@@ -185,7 +183,7 @@ impl Registry {
                             .map(|m| m == chip_info.manufacturer)
                             .unwrap_or(false)
                         {
-                            for variant in &family.variants {
+                            for variant in family.variants.iter() {
                                 if variant.part.map(|p| p == chip_info.part).unwrap_or(false) {
                                     selected_family_and_chip = Some((family, variant));
                                 }
@@ -207,14 +205,16 @@ impl Registry {
         let core = if let Some(core) = CoreType::from_string(&family.core) {
             core
         } else {
-            return Err(RegistryError::CoreNotFound(family.core.clone()));
+            return Err(RegistryError::CoreNotFound(
+                family.core.clone().into_owned(),
+            ));
         };
 
         // find relevant algorithms
         let chip_algorithms = chip
             .flash_algorithms
             .iter()
-            .filter_map(|fa| family.flash_algorithms.get(fa))
+            .filter_map(|fa| family.get_algorithm(fa))
             .cloned()
             .collect();
 

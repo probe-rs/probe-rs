@@ -2,7 +2,7 @@ use super::chip::Chip;
 use super::flash_algorithm::RawFlashAlgorithm;
 use crate::config::TargetParseError;
 use jep106::JEP106Code;
-use std::collections::HashMap;
+use std::borrow::Cow;
 
 use serde::{Deserialize, Serialize};
 
@@ -11,16 +11,16 @@ use serde::{Deserialize, Serialize};
 pub struct ChipFamily {
     /// This is the name of the chip family in base form.
     /// E.g. `nRF52832`.
-    pub name: String,
+    pub name: Cow<'static, str>,
     /// The JEP106 code of the manufacturer.
     pub manufacturer: Option<JEP106Code>,
     /// This vector holds all the variants of the family.
-    pub variants: Vec<Chip>,
+    pub variants: Cow<'static, [Chip]>,
     /// This vector holds all available algorithms.
-    pub flash_algorithms: HashMap<String, RawFlashAlgorithm>,
+    pub flash_algorithms: Cow<'static, [RawFlashAlgorithm]>,
     /// The name of the core type.
     /// E.g. `M0` or `M4`.
-    pub core: String,
+    pub core: Cow<'static, str>,
 }
 
 impl ChipFamily {
@@ -30,11 +30,16 @@ impl ChipFamily {
         serde_yaml::from_reader(definition_reader)
     }
 
-    pub fn variants(&self) -> &Vec<Chip> {
+    pub fn variants(&self) -> &[Chip] {
         &self.variants
     }
 
-    pub fn algorithms(&self) -> &HashMap<String, RawFlashAlgorithm> {
+    pub fn algorithms(&self) -> &[RawFlashAlgorithm] {
         &self.flash_algorithms
+    }
+
+    pub fn get_algorithm(&self, name: impl AsRef<str>) -> Option<&RawFlashAlgorithm> {
+        let name = name.as_ref();
+        self.flash_algorithms.iter().find(|elem| elem.name == name)
     }
 }
