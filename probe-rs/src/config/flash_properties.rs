@@ -1,6 +1,6 @@
 use super::memory::SectorDescription;
 use derivative::Derivative;
-use std::ops::Range;
+use std::{borrow::Cow, ops::Range};
 #[derive(Debug, Derivative, Clone, Serialize, Deserialize)]
 #[derivative(Default)]
 pub struct FlashProperties {
@@ -16,5 +16,5 @@ pub struct FlashProperties {
     /// The approximative time it takes to erase a sector.
     pub erase_sector_timeout: u32,
     /// The available sectors of the device flash.
-    pub sectors: Vec<SectorDescription>,
+    pub sectors: Cow<'static, [SectorDescription]>,
 }

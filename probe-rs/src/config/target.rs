@@ -41,11 +41,11 @@ impl Target {
     ) -> Target {
         Target {
             identifier: TargetIdentifier {
-                chip_name: chip.name.clone(),
+                chip_name: chip.name.clone().into_owned(),
             },
             flash_algorithms,
             core_type,
-            memory_map: chip.memory_map.clone(),
+            memory_map: chip.memory_map.clone().into_owned(),
         }
     }
 

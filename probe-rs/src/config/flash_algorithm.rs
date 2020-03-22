@@ -1,7 +1,6 @@
-use scroll::{Pread, Pwrite, LE};
-
 use super::flash_properties::FlashProperties;
 use super::memory::{PageInfo, RamRegion, SectorInfo};
+use std::{borrow::Cow, convert::TryInto};
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct FlashAlgorithm {
@@ -94,15 +93,15 @@ impl FlashAlgorithm {
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct RawFlashAlgorithm {
     /// The name of the flash algorithm.
-    pub name: String,
+    pub name: Cow<'static, str>,
     /// The description of the algorithm.
-    pub description: String,
+    pub description: Cow<'static, str>,
     /// Whether this flash algorithm is the default one or not.
     pub default: bool,
     /// List of 32-bit words containing the position-independent code for the algo.
     #[serde(deserialize_with = "deserialize")]
     #[serde(serialize_with = "serialize")]
-    pub instructions: Vec<u32>,
+    pub instructions: Cow<'static, [u8]>,
     /// Address of the `Init()` entry point. Optional.
     pub pc_init: Option<u32>,
     /// Address of the `UnInit()` entry point. Optional.
@@ -119,26 +118,21 @@ pub struct RawFlashAlgorithm {
     pub flash_properties: FlashProperties,
 }
 
-pub fn serialize<S>(bytes: &[u32], serializer: S) -> Result<S::Ok, S::Error>
+pub fn serialize<S>(bytes: &[u8], serializer: S) -> Result<S::Ok, S::Error>
 where
     S: serde::Serializer,
 {
-    let mut data = vec![0; bytes.len() * 4];
-    for (i, byte) in bytes.iter().enumerate() {
-        data.pwrite_with(*byte, i * 4, LE)
-            .map_err(serde::ser::Error::custom)?;
-    }
-    serializer.serialize_str(&base64::encode(data))
+    serializer.serialize_str(&base64::encode(bytes))
 }
 
-pub fn deserialize<'de, D>(deserializer: D) -> Result<Vec<u32>, D::Error>
+pub fn deserialize<'de, D>(deserializer: D) -> Result<Cow<'static, [u8]>, D::Error>
 where
     D: serde::Deserializer<'de>,
 {
     struct Base64Visitor;
 
     impl<'de> serde::de::Visitor<'de> for Base64Visitor {
-        type Value = Vec<u32>;
+        type Value = Cow<'static, [u8]>;
 
         fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
             write!(formatter, "base64 ASCII text")
@@ -149,11 +143,7 @@ where
             E: serde::de::Error,
         {
             base64::decode(v)
-                .map(|d| {
-                    d.chunks(4)
-                        .map(|bytes| bytes.pread_with(0, LE).unwrap())
-                        .collect()
-                })
+                .map(Cow::Owned)
                 .map_err(serde::de::Error::custom)
         }
     }
@@ -180,7 +170,11 @@ impl RawFlashAlgorithm {
     pub fn assemble(&self, ram_region: &RamRegion) -> FlashAlgorithm {
         let mut instructions = Self::FLASH_BLOB_HEADER.to_vec();
 
-        instructions.extend(&self.instructions);
+        let assembled_instructions = (&self.instructions)
+            .chunks(4)
+            .map(|bytes| u32::from_le_bytes(bytes.try_into().unwrap()));
+
+        instructions.extend(assembled_instructions);
 
         let mut offset = 0;
         let mut addr_stack = 0;
@@ -218,8 +212,10 @@ impl RawFlashAlgorithm {
 
         let code_start = addr_load + Self::FLASH_BLOB_HEADER_SIZE;
 
+        let name = self.name.clone().into_owned();
+
         FlashAlgorithm {
-            name: self.name.clone(),
+            name,
             default: self.default,
             load_address: addr_load,
             instructions,
@@ -242,10 +238,10 @@ fn flash_sector_single_size() {
     use crate::config::SectorDescription;
     let config = FlashAlgorithm {
         flash_properties: FlashProperties {
-            sectors: vec![SectorDescription {
+            sectors: Cow::Borrowed(&[SectorDescription {
                 size: 0x100,
                 address: 0x0,
-            }],
+            }]),
             address_range: 0x1000..0x1000 + 0x1000,
             page_size: 0x10,
             ..Default::default()
@@ -273,10 +269,10 @@ fn flash_sector_single_size_weird_sector_size() {
     use crate::config::SectorDescription;
     let config = FlashAlgorithm {
         flash_properties: FlashProperties {
-            sectors: vec![SectorDescription {
+            sectors: Cow::Borrowed(&[SectorDescription {
                 size: 258,
                 address: 0x0,
-            }],
+            }]),
             address_range: 0x800_0000..0x800_0000 + 258 * 10,
             page_size: 0x10,
             ..Default::default()
@@ -307,7 +303,7 @@ fn flash_sector_multiple_sizes() {
     use crate::config::SectorDescription;
     let config = FlashAlgorithm {
         flash_properties: FlashProperties {
-            sectors: vec![
+            sectors: Cow::Borrowed(&[
                 SectorDescription {
                     size: 0x4000,
                     address: 0x0,
@@ -320,7 +316,7 @@ fn flash_sector_multiple_sizes() {
                     size: 0x2_0000,
                     address: 0x2_0000,
                 },
-            ],
+            ]),
             address_range: 0x800_0000..0x800_0000 + 0x10_0000,
             page_size: 0x10,
             ..Default::default()
