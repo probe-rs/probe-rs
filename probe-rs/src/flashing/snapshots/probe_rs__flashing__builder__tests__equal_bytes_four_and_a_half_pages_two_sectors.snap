@@ -59,7 +59,7 @@ FlashLayout {
         FlashFill {
             address: 0x000013a0,
             size: 0x00000060,
-            page_index: 5,
+            page_index: 4,
         },
         FlashFill {
             address: 0x00001400,

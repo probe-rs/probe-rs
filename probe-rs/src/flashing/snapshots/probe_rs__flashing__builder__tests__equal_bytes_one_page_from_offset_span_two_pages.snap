@@ -40,7 +40,7 @@ FlashLayout {
         FlashFill {
             address: 0x0000042a,
             size: 0x000003d6,
-            page_index: 2,
+            page_index: 1,
         },
         FlashFill {
             address: 0x00000800,

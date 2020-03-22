@@ -107,7 +107,7 @@ FlashLayout {
         FlashFill {
             address: 0x000013a0,
             size: 0x00000060,
-            page_index: 5,
+            page_index: 4,
         },
         FlashFill {
             address: 0x00001c00,
@@ -127,7 +127,7 @@ FlashLayout {
         FlashFill {
             address: 0x00003254,
             size: 0x000001ac,
-            page_index: 13,
+            page_index: 12,
         },
         FlashFill {
             address: 0x00003400,

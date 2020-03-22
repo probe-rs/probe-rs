@@ -472,7 +472,7 @@ impl<'a> FlashBuilder<'a> {
                         page_address + fill_start as u32,
                         fill_size as u32,
                         &mut fills,
-                        pages.len(),
+                        pages.len() - 1,
                     );
                 }
 
