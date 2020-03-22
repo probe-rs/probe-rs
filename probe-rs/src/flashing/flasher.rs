@@ -351,7 +351,7 @@ impl<'a> Flasher<'a> {
         let mut t = std::time::Instant::now();
         let result = self.run_erase(|active| active.erase_all());
         for sector in flash_layout.sectors() {
-            progress.sector_erased(sector.page_size, t.elapsed().as_millis());
+            progress.sector_erased(sector.size, t.elapsed().as_millis());
             t = std::time::Instant::now();
         }
 

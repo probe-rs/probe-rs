@@ -43,8 +43,6 @@ pub(super) struct FlashSector {
     pub(super) address: u32,
     #[derivative(Debug(format_with = "fmt_hex"))]
     pub(super) size: u32,
-    #[derivative(Debug(format_with = "fmt_hex"))]
-    pub(super) page_size: u32,
 }
 
 impl FlashSector {
@@ -53,7 +51,6 @@ impl FlashSector {
         Self {
             address: sector_info.base_address,
             size: sector_info.size,
-            page_size: sector_info.page_size,
         }
     }
 }
@@ -130,6 +127,7 @@ impl<'a> FlashBuilder<'a> {
         }
     }
 
+    #[cfg(test)]
     pub(super) fn data_blocks(&self) -> &[FlashDataBlock<'a>] {
         &self.data_blocks
     }
@@ -358,27 +356,27 @@ impl<'a> FlashBuilder<'a> {
         let mut pages: Vec<FlashPage> = Vec::new();
         let mut fills: Vec<FlashFill> = Vec::new();
 
-        let mut data_iter = self.data_blocks.iter().peekable();
-        while let Some(block) = data_iter.next() {
+        let mut data_iter = self.data_blocks.iter().enumerate().peekable();
+        while let Some((n, block)) = data_iter.next() {
             let block_end_address = block.address + block.size() as u32;
             let mut block_offset = 0usize;
 
             while block_offset < block.data.len() {
                 let current_block_address = block.address + block_offset as u32;
-                if let Some(sector) = sectors.last_mut() {
+                let sector = if let Some(sector) = sectors.last_mut() {
                     // If the address is not in the sector, add a new sector.
                     // We only ever need to check the last sector in the list, as all the blocks to be written
                     // are stored in the `flash_write_data` vector IN ORDER!
                     // This means if we are checking the last sector we already have checked previous ones
                     // in previous steps of the iteration.
                     if current_block_address >= sector.address + sector.size {
-                        let _ =
-                            self.add_sector(flash_algorithm, current_block_address, &mut sectors)?;
+                        self.add_sector(flash_algorithm, current_block_address, &mut sectors)?
+                    } else {
+                        sector
                     }
                 } else {
-                    let _ =
-                        self.add_sector(flash_algorithm, current_block_address, &mut sectors)?;
-                }
+                    self.add_sector(flash_algorithm, current_block_address, &mut sectors)?
+                };
 
                 let page = if let Some(page) = pages.last_mut() {
                     // If the address is not in the last page, add a new page.
@@ -395,6 +393,23 @@ impl<'a> FlashBuilder<'a> {
                     self.add_page(flash_algorithm, current_block_address, &mut pages)?
                 };
 
+                // Add sectors for the whole page if the sector size is smaller than the page size!
+                let sector_size = sector.size;
+                let sector_address = sector.address;
+                if sector_size < page.size {
+                    // Add as many sectors as there fit into one page.
+                    for i in 0..page.size / sector_size {
+                        // Calculate the address of the sector.
+                        let new_sector_address = page.address + i * sector_size;
+
+                        // If the sector address does not match the address of the just added sector,
+                        // add a new sector at that addresss.
+                        if new_sector_address != sector_address {
+                            self.add_sector(flash_algorithm, new_sector_address, &mut sectors)?;
+                        }
+                    }
+                }
+
                 let end_address = block_end_address.min(page.address + page.size) as usize;
                 let page_offset = (block.address + block_offset as u32 - page.address) as usize;
                 let size = end_address - page_offset - page.address as usize;
@@ -407,6 +422,7 @@ impl<'a> FlashBuilder<'a> {
                     fills.push(FlashFill::new(page.address, page_offset as u32));
                 }
 
+                // Insert the actual data into the page!
                 page.data[page_offset..page_offset + size]
                     .copy_from_slice(&block.data[block_offset..block_offset + size]);
 
@@ -417,12 +433,21 @@ impl<'a> FlashBuilder<'a> {
                 if block_offset + size == block.size() as usize
                     && page_offset + size != page.size as usize
                 {
+                    // Where the fillup ends which is by default the end of the page.
                     let mut fill_end_address = (page.address + page.size) as usize;
-                    if let Some(next_block) = data_iter.peek() {
+
+                    // Try to get the address of the next block and adjust the address to it's start
+                    // if it is smaller than the end of the last page.
+                    if let Some((_, next_block)) = data_iter.peek() {
                         fill_end_address = fill_end_address.min(next_block.address as usize);
                     }
+
+                    // Calculate the start of the fill relative to the page.
                     let fill_start = page_offset + size;
+                    // Calculate the fill size.
                     let fill_size = fill_end_address - (page.address as usize + fill_start);
+
+                    // Actually fill the page and register a fill block within the stat tracker.
                     fill_page(page, fill_start..fill_start + fill_size)?;
                     fills.push(FlashFill::new(
                         page.address + fill_start as u32,
@@ -430,10 +455,45 @@ impl<'a> FlashBuilder<'a> {
                     ));
                 }
 
+                // Denotes whether a new sector will be done next iteration round.
+                let start_new_sector =
+                    current_block_address + size as u32 >= sector_address + sector_size;
+                // Denotes whether we are done with the flash building process now.
+                let last_bit_of_block = block_offset + size == block.size() as usize
+                    && self.data_blocks.len() > 0
+                    && n == self.data_blocks.len() - 1;
+
+                // If one of the two conditions resolves to true, we fill all remaining pages for the current sector.
+                if start_new_sector || last_bit_of_block {
+                    // Iterate all possible sector pages and see if they have been created yet.
+                    let pages_per_sector =
+                        (sector_size / flash_algorithm.flash_properties.page_size) as usize;
+                    'o: for i in 0..pages_per_sector {
+                        // Calculate the possible page address.
+                        let page_address =
+                            sector_address + i as u32 * flash_algorithm.flash_properties.page_size;
+                        // Get the maximum available already added pages up to a maximum of
+                        // the available pages per sector.
+                        let last_pages_num_max = pages_per_sector.min(pages.len());
+                        // Get those pages from the pages vector.
+                        let max_last_pages = &pages[pages.len() - last_pages_num_max..];
+                        for page in max_last_pages {
+                            if page.address == page_address {
+                                continue 'o;
+                            }
+                        }
+                        let page = self.add_page(flash_algorithm, page_address, &mut pages)?;
+                        fill_page(page, 0..page.size as usize)?;
+                        fills.push(FlashFill::new(page.address, page.size));
+                    }
+                }
+
+                // Make sure we advance the block offset by the amount we just wrote.
                 block_offset += size;
             }
         }
 
+        // Return the finished flash layout.
         Ok(FlashLayout {
             sectors,
             pages,
@@ -453,6 +513,25 @@ mod tests {
     fn assemble_demo_flash1() -> FlashAlgorithm {
         let sd = SectorDescription {
             size: 4096,
+            address: 0,
+        };
+
+        let mut flash_algorithm = FlashAlgorithm::default();
+        flash_algorithm.flash_properties = FlashProperties {
+            address_range: 0..1 << 16,
+            page_size: 1024,
+            erased_byte_value: 255,
+            program_page_timeout: 200,
+            erase_sector_timeout: 200,
+            sectors: vec![sd],
+        };
+
+        flash_algorithm
+    }
+
+    fn assemble_demo_flash2() -> FlashAlgorithm {
+        let sd = SectorDescription {
+            size: 128,
             address: 0,
         };
 
@@ -579,6 +658,20 @@ mod tests {
             .unwrap();
         let _ = FlashVisualizer::new(&flash_layout, flash_builder.data_blocks())
             .write_svg("equal_bytes_in_two_data_chunks_multiple_sectors.svg");
+        assert_debug_snapshot!(flash_layout);
+    }
+
+    #[test]
+    fn equal_bytes_in_two_data_chunks_multiple_sectors_smaller_than_page() {
+        let flash_algorithm = assemble_demo_flash2();
+        let mut flash_builder = FlashBuilder::new();
+        flash_builder.add_data(0, &[42; 5024]).unwrap();
+        flash_builder.add_data(7860, &[42; 5024]).unwrap();
+        let flash_layout = flash_builder
+            .build_sectors_and_pages(&flash_algorithm, |_, _| Ok(()))
+            .unwrap();
+        let _ = FlashVisualizer::new(&flash_layout, flash_builder.data_blocks())
+            .write_svg("equal_bytes_in_two_data_chunks_multiple_sectors_smaller_than_page.svg");
         assert_debug_snapshot!(flash_layout);
     }
 }

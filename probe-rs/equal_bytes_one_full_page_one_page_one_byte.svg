@@ -27,6 +27,24 @@
 0x000800
 </text>
 </g>
+<g fill="Crimson">
+<rect height="25" width="50" x="100" y="25"/>
+<text fill="Black" font-family="Arial" font-size="5" x="101" y="48">
+0x000800
+</text>
+<text fill="Black" font-family="Arial" font-size="5" x="101" y="30">
+0x000C00
+</text>
+</g>
+<g fill="Crimson">
+<rect height="25" width="50" x="100" y="0"/>
+<text fill="Black" font-family="Arial" font-size="5" x="101" y="23">
+0x000C00
+</text>
+<text fill="Black" font-family="Arial" font-size="5" x="101" y="5">
+0x001000
+</text>
+</g>
 <g fill="MediumSeaGreen">
 <rect height="25.024414" width="50" x="150" y="74.975586"/>
 <text fill="Black" font-family="Arial" font-size="5" x="151" y="98">
@@ -43,6 +61,24 @@
 </text>
 <text fill="Black" font-family="Arial" font-size="5" x="151" y="55">
 0x000800
+</text>
+</g>
+<g fill="SandyBrown">
+<rect height="25" width="50" x="150" y="25"/>
+<text fill="Black" font-family="Arial" font-size="5" x="151" y="48">
+0x000800
+</text>
+<text fill="Black" font-family="Arial" font-size="5" x="151" y="30">
+0x000C00
+</text>
+</g>
+<g fill="SandyBrown">
+<rect height="25" width="50" x="150" y="0"/>
+<text fill="Black" font-family="Arial" font-size="5" x="151" y="23">
+0x000C00
+</text>
+<text fill="Black" font-family="Arial" font-size="5" x="151" y="5">
+0x001000
 </text>
 </g>
 </g>
