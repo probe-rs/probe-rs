@@ -1,8 +1,8 @@
 use crate::SharedOptions;
 
 use probe_rs::{
-    architecture::arm::ap::AccessPortError, config::TargetSelector,
-    flashing::FileDownloadError, DebugProbeError, Error, Probe, Session,
+    architecture::arm::ap::AccessPortError, config::TargetSelector, flashing::FileDownloadError,
+    DebugProbeError, Error, Probe, Session,
 };
 
 use std::fmt;

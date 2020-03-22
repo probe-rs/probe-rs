@@ -41,9 +41,9 @@ pub enum FileDownloadError {
 }
 
 /// Downloads a file of given `format` at `path` to the flash with progress reporting.
-/// 
+///
 /// This will ensure that memory bounderies are honored and does unlocking, erasing and programming of the flash for you.
-/// 
+///
 /// If no progress reporting is desired, have a look at `flashing::download_file()`.
 pub fn download_file_with_progress_reporting(
     session: &Session,
@@ -56,9 +56,9 @@ pub fn download_file_with_progress_reporting(
 }
 
 /// Downloads a file of given `format` at `path` to the flash.
-/// 
+///
 /// This will ensure that memory bounderies are honored and does unlocking, erasing and programming of the flash for you.
-/// 
+///
 /// If progress reporting is desired, have a look at `flashing::download_file_with_progress_reporting()`.
 pub fn download_file(
     session: &Session,
