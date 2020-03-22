@@ -266,16 +266,15 @@ impl<'a> Flasher<'a> {
         progress: &FlashProgress,
     ) -> Result<(), FlashError> {
         // Convert the list of flash operations into flash sectors and pages.
-        let flash_layout = flash_builder
-            .build_sectors_and_pages(&self.flash_algorithm().clone(), |page, _| {
-                self.fill_page(page, restore_unwritten_bytes)
-            })?;
+        let mut flash_layout =
+            flash_builder.build_sectors_and_pages(&self.flash_algorithm().clone())?;
 
         let num_pages = flash_layout.pages().len();
         let page_size = self.flash_algorithm().flash_properties.page_size;
         let sector_size: u32 = flash_layout.sectors().iter().map(|s| s.size).sum();
+        let fill_size: u32 = flash_layout.fills().iter().map(|s| s.size).sum();
 
-        progress.initialized(num_pages, sector_size as usize, page_size);
+        progress.initialized(num_pages, sector_size as usize, page_size, fill_size);
 
         // If the flash algo doesn't support erase all, disable chip erase.
         if self.flash_algorithm().pc_erase_all.is_none() {
@@ -284,6 +283,28 @@ impl<'a> Flasher<'a> {
 
         log::debug!("Full Chip Erase enabled: {:?}", do_chip_erase);
         log::debug!("Double Buffering enabled: {:?}", enable_double_buffering);
+
+        // Read all fill areas from the flash.
+        progress.started_filling();
+
+        let fills = flash_layout
+            .fills()
+            .into_iter()
+            .cloned()
+            .collect::<Vec<_>>();
+        for fill in fills {
+            let page = &mut flash_layout.pages_mut()[fill.page_index];
+            let result = self.fill_page(page, restore_unwritten_bytes);
+
+            // If we encounter an error, catch it, gracefully report the failure and return the error.
+            if result.is_err() {
+                progress.failed_filling();
+                return result;
+            }
+        }
+
+        // We successfully finished filling.
+        progress.finished_filling();
 
         // Erase all necessary sectors.
         progress.started_erasing();
@@ -351,7 +372,7 @@ impl<'a> Flasher<'a> {
         let mut t = std::time::Instant::now();
         let result = self.run_erase(|active| active.erase_all());
         for sector in flash_layout.sectors() {
-            progress.sector_erased(sector.size, t.elapsed().as_millis());
+            progress.sector_erased(sector.size, t.elapsed());
             t = std::time::Instant::now();
         }
 
@@ -375,7 +396,7 @@ impl<'a> Flasher<'a> {
         let result = self.run_program(|active| {
             for page in flash_layout.pages() {
                 active.program_page(page.address, page.data.as_slice())?;
-                progress.page_programmed(page.size, t.elapsed().as_millis());
+                progress.page_programmed(page.size, t.elapsed());
                 t = std::time::Instant::now();
             }
             Ok(())
@@ -402,7 +423,7 @@ impl<'a> Flasher<'a> {
         let result = self.run_erase(|active| {
             for sector in flash_layout.sectors() {
                 active.erase_sector(sector.address)?;
-                progress.sector_erased(sector.size, t.elapsed().as_millis());
+                progress.sector_erased(sector.size, t.elapsed());
                 t = std::time::Instant::now();
             }
             Ok(())
@@ -438,7 +459,7 @@ impl<'a> Flasher<'a> {
                 // Then wait for the active RAM -> Flash copy process to finish.
                 // Also check if it finished properly. If it didn't, return an error.
                 let result = active.wait_for_completion(Duration::from_secs(2))?;
-                progress.page_programmed(page.size, t.elapsed().as_millis());
+                progress.page_programmed(page.size, t.elapsed());
                 t = std::time::Instant::now();
                 if result != 0 {
                     return Err(FlashError::PageWrite {

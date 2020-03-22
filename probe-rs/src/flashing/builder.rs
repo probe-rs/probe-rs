@@ -64,12 +64,17 @@ pub(super) struct FlashFill {
     pub(super) address: u32,
     #[derivative(Debug(format_with = "fmt_hex"))]
     pub(super) size: u32,
+    pub(super) page_index: usize,
 }
 
 impl FlashFill {
     /// Creates a new empty flash fill.
-    fn new(address: u32, size: u32) -> Self {
-        Self { address, size }
+    fn new(address: u32, size: u32, page_index: usize) -> Self {
+        Self {
+            address,
+            size,
+            page_index,
+        }
     }
 }
 
@@ -87,6 +92,10 @@ impl FlashLayout {
 
     pub(super) fn pages(&self) -> &[FlashPage] {
         &self.pages
+    }
+
+    pub(super) fn pages_mut(&mut self) -> &mut [FlashPage] {
+        &mut self.pages
     }
 
     pub(super) fn fills(&self) -> &[FlashFill] {
@@ -347,10 +356,20 @@ impl<'a> FlashBuilder<'a> {
         }
     }
 
+    /// Adds a new fill .
+    pub(super) fn add_fill<'b>(
+        &self,
+        address: u32,
+        size: u32,
+        fills: &'b mut Vec<FlashFill>,
+        page_index: usize,
+    ) {
+        fills.push(FlashFill::new(address, size, page_index));
+    }
+
     pub(super) fn build_sectors_and_pages(
         &self,
         flash_algorithm: &FlashAlgorithm,
-        mut fill_page: impl FnMut(&mut FlashPage, std::ops::Range<usize>) -> Result<(), FlashError>,
     ) -> Result<FlashLayout, FlashError> {
         let mut sectors: Vec<FlashSector> = Vec::new();
         let mut pages: Vec<FlashPage> = Vec::new();
@@ -413,28 +432,29 @@ impl<'a> FlashBuilder<'a> {
                 let end_address = block_end_address.min(page.address + page.size) as usize;
                 let page_offset = (block.address + block_offset as u32 - page.address) as usize;
                 let size = end_address - page_offset - page.address as usize;
-
-                // If we start working a new block (condition: block_offset == 0)
-                // and we don't start a new page (condition: page_offset == 0)
-                // We need to fill the start of the page up until the page offset where the new data will start.
-                if block_offset == 0 && page_offset != 0 {
-                    fill_page(page, 0..page_offset)?;
-                    fills.push(FlashFill::new(page.address, page_offset as u32));
-                }
+                let page_size = page.size;
+                let page_address = page.address;
 
                 // Insert the actual data into the page!
                 page.data[page_offset..page_offset + size]
                     .copy_from_slice(&block.data[block_offset..block_offset + size]);
 
+                // If we start working a new block (condition: block_offset == 0)
+                // and we don't start a new page (condition: page_offset == 0)
+                // We need to fill the start of the page up until the page offset where the new data will start.
+                if block_offset == 0 && page_offset != 0 {
+                    self.add_fill(page_address, page_offset as u32, &mut fills, pages.len());
+                }
+
                 // If we have finished writing our block (condition: block_offset + size == block_size)
-                // and we have not finished the page yet (condition: page_offset + size == page.size)
+                // and we have not finished the page yet (condition: page_offset + size == page_size)
                 // we peek to the next block and see where it starts and fill the page
                 // up to a maximum of the next block start.
                 if block_offset + size == block.size() as usize
-                    && page_offset + size != page.size as usize
+                    && page_offset + size != page_size as usize
                 {
                     // Where the fillup ends which is by default the end of the page.
-                    let mut fill_end_address = (page.address + page.size) as usize;
+                    let mut fill_end_address = (page_address + page_size) as usize;
 
                     // Try to get the address of the next block and adjust the address to it's start
                     // if it is smaller than the end of the last page.
@@ -445,14 +465,15 @@ impl<'a> FlashBuilder<'a> {
                     // Calculate the start of the fill relative to the page.
                     let fill_start = page_offset + size;
                     // Calculate the fill size.
-                    let fill_size = fill_end_address - (page.address as usize + fill_start);
+                    let fill_size = fill_end_address - (page_address as usize + fill_start);
 
                     // Actually fill the page and register a fill block within the stat tracker.
-                    fill_page(page, fill_start..fill_start + fill_size)?;
-                    fills.push(FlashFill::new(
-                        page.address + fill_start as u32,
+                    self.add_fill(
+                        page_address + fill_start as u32,
                         fill_size as u32,
-                    ));
+                        &mut fills,
+                        pages.len(),
+                    );
                 }
 
                 // Denotes whether a new sector will be done next iteration round.
@@ -483,8 +504,7 @@ impl<'a> FlashBuilder<'a> {
                             }
                         }
                         let page = self.add_page(flash_algorithm, page_address, &mut pages)?;
-                        fill_page(page, 0..page.size as usize)?;
-                        fills.push(FlashFill::new(page.address, page.size));
+                        self.add_fill(page.address, page.size, &mut fills, pages.len());
                     }
                 }
 
@@ -588,7 +608,7 @@ mod tests {
         let mut flash_builder = FlashBuilder::new();
         flash_builder.add_data(0, &[42]).unwrap();
         let flash_layout = flash_builder
-            .build_sectors_and_pages(&flash_algorithm, |_, _| Ok(()))
+            .build_sectors_and_pages(&flash_algorithm)
             .unwrap();
         let _ = FlashVisualizer::new(&flash_layout, flash_builder.data_blocks())
             .write_svg("single_byte_in_single_page.svg");
@@ -601,7 +621,7 @@ mod tests {
         let mut flash_builder = FlashBuilder::new();
         flash_builder.add_data(0, &[42; 1024]).unwrap();
         let flash_layout = flash_builder
-            .build_sectors_and_pages(&flash_algorithm, |_, _| Ok(()))
+            .build_sectors_and_pages(&flash_algorithm)
             .unwrap();
         let _ = FlashVisualizer::new(&flash_layout, flash_builder.data_blocks())
             .write_svg("equal_bytes_full_single_page.svg");
@@ -614,7 +634,7 @@ mod tests {
         let mut flash_builder = FlashBuilder::new();
         flash_builder.add_data(0, &[42; 1025]).unwrap();
         let flash_layout = flash_builder
-            .build_sectors_and_pages(&flash_algorithm, |_, _| Ok(()))
+            .build_sectors_and_pages(&flash_algorithm)
             .unwrap();
         let _ = FlashVisualizer::new(&flash_layout, flash_builder.data_blocks())
             .write_svg("equal_bytes_one_full_page_one_page_one_byte.svg");
@@ -627,7 +647,7 @@ mod tests {
         let mut flash_builder = FlashBuilder::new();
         flash_builder.add_data(42, &[42; 1024]).unwrap();
         let flash_layout = flash_builder
-            .build_sectors_and_pages(&flash_algorithm, |_, _| Ok(()))
+            .build_sectors_and_pages(&flash_algorithm)
             .unwrap();
         let _ = FlashVisualizer::new(&flash_layout, flash_builder.data_blocks())
             .write_svg("equal_bytes_one_page_from_offset_span_two_pages.svg");
@@ -640,7 +660,7 @@ mod tests {
         let mut flash_builder = FlashBuilder::new();
         flash_builder.add_data(0, &[42; 5024]).unwrap();
         let flash_layout = flash_builder
-            .build_sectors_and_pages(&flash_algorithm, |_, _| Ok(()))
+            .build_sectors_and_pages(&flash_algorithm)
             .unwrap();
         let _ = FlashVisualizer::new(&flash_layout, flash_builder.data_blocks())
             .write_svg("equal_bytes_four_and_a_half_pages_two_sectors.svg");
@@ -654,7 +674,7 @@ mod tests {
         flash_builder.add_data(0, &[42; 5024]).unwrap();
         flash_builder.add_data(7860, &[42; 5024]).unwrap();
         let flash_layout = flash_builder
-            .build_sectors_and_pages(&flash_algorithm, |_, _| Ok(()))
+            .build_sectors_and_pages(&flash_algorithm)
             .unwrap();
         let _ = FlashVisualizer::new(&flash_layout, flash_builder.data_blocks())
             .write_svg("equal_bytes_in_two_data_chunks_multiple_sectors.svg");
@@ -668,7 +688,7 @@ mod tests {
         flash_builder.add_data(0, &[42; 5024]).unwrap();
         flash_builder.add_data(7860, &[42; 5024]).unwrap();
         let flash_layout = flash_builder
-            .build_sectors_and_pages(&flash_algorithm, |_, _| Ok(()))
+            .build_sectors_and_pages(&flash_algorithm)
             .unwrap();
         let _ = FlashVisualizer::new(&flash_layout, flash_builder.data_blocks())
             .write_svg("equal_bytes_in_two_data_chunks_multiple_sectors_smaller_than_page.svg");
