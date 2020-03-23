@@ -301,10 +301,13 @@ fn main_try() -> Result<(), failure::Error> {
             let fill_progress = if opt.restore_unwritten {
                 let fill_progress = Arc::new(multi_progress.add(ProgressBar::new(0)));
                 fill_progress.set_style(style.clone());
-                fill_progress.set_message("Filling gaps     ");
+                fill_progress.set_message("Restoring erased ");
                 Some(fill_progress)
             } else {
-                logging::println(format!("    {} is disabled", "Filling".green().bold()));
+                logging::println(format!(
+                    "    {} of erased but unwritten flash portions is disabled",
+                    "Restoring".green().bold()
+                ));
                 None
             };
 
