@@ -7,7 +7,7 @@ use std::time::Duration;
 /// Such an event can be start or finish of the flashing procedure or a progress report, as well as some more events.
 ///
 /// ```
-/// use probe_rs::flash::FlashProgress;
+/// use probe_rs::flashing::FlashProgress;
 ///
 /// // Print events
 /// let progress = FlashProgress::new(|event| println!("Event: {:#?}", event));
