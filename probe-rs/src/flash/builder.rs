@@ -409,7 +409,7 @@ impl<'a> FlashBuilder<'a> {
             .run_erase(|active| active.erase_all())
             .map_err(From::from);
         for sector in sectors {
-            progress.sector_erased(sector.page_size, t.elapsed().as_millis());
+            progress.sector_erased(sector.page_size, t.elapsed());
             t = std::time::Instant::now();
         }
 
@@ -434,7 +434,7 @@ impl<'a> FlashBuilder<'a> {
         let result = flash.run_program(|active| {
             for page in Self::pages(sectors) {
                 active.program_page(page.address, page.data.as_slice())?;
-                progress.page_programmed(page.size, t.elapsed().as_millis());
+                progress.page_programmed(page.size, t.elapsed());
                 t = std::time::Instant::now();
             }
             Ok(())
@@ -463,7 +463,7 @@ impl<'a> FlashBuilder<'a> {
             for sector in sectors {
                 if !sector.pages.is_empty() {
                     active.erase_sector(sector.address)?;
-                    progress.sector_erased(sector.size, t.elapsed().as_millis());
+                    progress.sector_erased(sector.size, t.elapsed());
                     t = std::time::Instant::now();
                 }
             }
@@ -501,7 +501,7 @@ impl<'a> FlashBuilder<'a> {
                 // Then wait for the active RAM -> Flash copy process to finish.
                 // Also check if it finished properly. If it didn't, return an error.
                 let result = active.wait_for_completion(Duration::from_secs(2));
-                progress.page_programmed(page.size, t.elapsed().as_millis());
+                progress.page_programmed(page.size, t.elapsed());
                 t = std::time::Instant::now();
                 if let Ok(0) = result {
                 } else {
