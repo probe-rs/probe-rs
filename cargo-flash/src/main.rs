@@ -71,17 +71,23 @@ struct Opt {
     #[structopt(
         name = "level",
         long = "log",
-        help = "Use this flag to set the log level. Default is `warning`. Possible choices are [error, warning, info, debug, trace]"
+        help = "Use this flag to set the log level. Default is `warning`. Possible choices are [error, warning, info, debug, trace]."
     )]
     log: Option<log::Level>,
-    #[structopt(name = "speed", long = "speed", help = "Protocol speed in kHz")]
+    #[structopt(name = "speed", long = "speed", help = "The protocol speed in kHz.")]
     speed: Option<u32>,
     #[structopt(
         name = "restore-unwritten",
         long = "restore-unwritten",
-        help = "Enable this flag to restore all bytes erased in the sector erase but not overwritten by any page."
+        help = "Enable this flag to restore all bytes erased in the sector erase but not overwritten by any page. This option is only available with progressbars enabled."
     )]
     restore_unwritten: bool,
+    #[structopt(
+        name = "filename",
+        long = "flash-layout",
+        help = "Requests the flash builder to output the layout into the given file in SVG format."
+    )]
+    flash_layout_output_path: Option<String>,
 
     // `cargo build` arguments
     #[structopt(name = "binary", long = "bin")]
@@ -108,6 +114,7 @@ const ARGUMENTS_TO_REMOVE: &[&str] = &[
     "chip=",
     "speed=",
     "restore-unwritten",
+    "flash-layout=",
     "chip-description-path=",
     "list-chips",
     "disable-progressbars",
@@ -315,6 +322,7 @@ fn main_try() -> Result<(), failure::Error> {
             program_progress.set_message("Programming pages");
 
             // Register callback to update the progress.
+            let flash_layout_output_path = opt.flash_layout_output_path.clone();
             let progress = FlashProgress::new(move |event| {
                 use ProgressEvent::*;
                 match event {
@@ -325,9 +333,15 @@ fn main_try() -> Result<(), failure::Error> {
                             flash_layout.sectors().iter().map(|s| s.size()).sum();
                         let total_fill_size: u32 =
                             flash_layout.fills().iter().map(|s| s.size()).sum();
-                        erase_progress.set_length(total_fill_size as u64);
+                        fill_progress
+                            .as_ref()
+                            .map(|fp| fp.set_length(total_fill_size as u64));
                         erase_progress.set_length(total_sector_size as u64);
                         program_progress.set_length(total_page_size as u64);
+                        let visualizer = flash_layout.visualize();
+                        flash_layout_output_path
+                            .as_ref()
+                            .map(|path| visualizer.write_svg(path));
                     }
                     StartedFlashing => {
                         program_progress.enable_steady_tick(100);

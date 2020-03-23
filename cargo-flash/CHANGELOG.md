@@ -17,8 +17,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Add `--speed` setting to configure protocol speed in kHz.
+- Add a `--speed` setting to configure protocol speed in kHz.
 - Upgrade to probe-rs 0.6.0 which fixes some bugs that appeared within cargo-flash (see [CHANGELOG](https://github.com/probe-rs/probe-rs/blob/master/CHANGELOG.md))
+- Add a `--restore-unwritten` flag which makes the flashing procedure restore all bytes that have been erased in the sectore erase but are not actually in the writeable sections of the ELF data.
 
 ## [0.5.0]
 
