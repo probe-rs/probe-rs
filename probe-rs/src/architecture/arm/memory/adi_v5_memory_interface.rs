@@ -302,10 +302,7 @@ where
         self.write_ap_register(drw)?;
 
         // Ensure the write is actually performed
-        let _: RdBuff = self
-            .interface
-            .read_dp_register()
-            .map_err(|_| AccessPortError::InvalidAccessPortNumber)?;
+        let _: RdBuff = self.interface.read_dp_register()?;
 
         Ok(())
     }

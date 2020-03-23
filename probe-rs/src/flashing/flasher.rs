@@ -337,7 +337,7 @@ impl<'a> Flasher<'a> {
         page: &mut FlashPage,
         fill: &FlashFill,
     ) -> Result<(), FlashError> {
-        let page_offset = (fill.address() - fill.address()) as usize;
+        let page_offset = (fill.address() - page.address()) as usize;
         let page_slice = &mut page.data_mut()[page_offset..page_offset + fill.size() as usize];
         self.run_verify(|active| active.read_block8(fill.address(), page_slice))
     }
