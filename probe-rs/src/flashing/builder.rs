@@ -19,10 +19,10 @@ pub struct FlashPage {
 impl Debug for FlashPage {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "FlashPage {{")?;
-        writeln!(f, "    {:#08X}", self.address())?;
-        writeln!(f, "    {:#08X}", self.size())?;
-        writeln!(f, "    {:?}", self.data())?;
-        writeln!(f, "}}")
+        writeln!(f, "    address: {:#08X}", self.address())?;
+        writeln!(f, "    size: {:#08X}", self.size())?;
+        writeln!(f, "    data: {:?}", self.data())?;
+        write!(f, "}}")
     }
 }
 
@@ -98,10 +98,10 @@ pub struct FlashFill {
 impl Debug for FlashFill {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "FlashFill {{")?;
-        writeln!(f, "    {:#08X}", self.address())?;
-        writeln!(f, "    {:#08X}", self.size())?;
-        writeln!(f, "    {:?}", self.page_index)?;
-        writeln!(f, "}}")
+        writeln!(f, "    address: {:#08X}", self.address())?;
+        writeln!(f, "    size: {:#08X}", self.size())?;
+        writeln!(f, "    page_index: {:?}", self.page_index)?;
+        write!(f, "}}")
     }
 }
 

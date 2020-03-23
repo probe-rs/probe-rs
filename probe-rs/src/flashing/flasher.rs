@@ -269,11 +269,6 @@ impl<'a> Flasher<'a> {
         let mut flash_layout =
             flash_builder.build_sectors_and_pages(&self.flash_algorithm().clone())?;
 
-        let num_pages = flash_layout.pages().len();
-        let page_size = self.flash_algorithm().flash_properties.page_size;
-        let sector_size: u32 = flash_layout.sectors().iter().map(|s| s.size()).sum();
-        let fill_size: u32 = flash_layout.fills().iter().map(|s| s.size()).sum();
-
         progress.initialized(flash_layout.clone());
 
         // If the flash algo doesn't support erase all, disable chip erase.
@@ -294,6 +289,7 @@ impl<'a> Flasher<'a> {
                 .cloned()
                 .collect::<Vec<_>>();
             for fill in fills {
+                let t = std::time::Instant::now();
                 let page = &mut flash_layout.pages_mut()[fill.page_index()];
                 let result = self.fill_page(page, &fill);
 
@@ -301,6 +297,8 @@ impl<'a> Flasher<'a> {
                 if result.is_err() {
                     progress.failed_filling();
                     return result;
+                } else {
+                    progress.page_filled(fill.size(), t.elapsed().as_millis());
                 }
             }
         }
