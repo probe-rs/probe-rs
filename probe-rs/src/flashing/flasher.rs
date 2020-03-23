@@ -87,38 +87,6 @@ impl<'a> Flasher<'a> {
         let flasher = self;
         let algo = flasher.flash_algorithm;
 
-        use capstone::arch::*;
-        let cs = capstone::Capstone::new()
-            .arm()
-            .mode(arm::ArchMode::Thumb)
-            .endian(capstone::Endian::Little)
-            .build()
-            .unwrap();
-        let i = algo
-            .instructions
-            .iter()
-            .map(|i| {
-                [
-                    *i as u8,
-                    (*i >> 8) as u8,
-                    (*i >> 16) as u8,
-                    (*i >> 24) as u8,
-                ]
-            })
-            .collect::<Vec<[u8; 4]>>()
-            .iter()
-            .flatten()
-            .copied()
-            .collect::<Vec<u8>>();
-
-        let instructions = cs
-            .disasm_all(i.as_slice(), u64::from(algo.load_address))
-            .unwrap();
-
-        for instruction in instructions.iter() {
-            log::trace!("{}", instruction);
-        }
-
         if address.is_none() {
             address = Some(flasher.region.flash_info().rom_start);
         }
