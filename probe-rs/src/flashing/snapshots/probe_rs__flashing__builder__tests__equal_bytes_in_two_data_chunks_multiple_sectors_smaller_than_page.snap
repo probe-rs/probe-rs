@@ -431,4 +431,14 @@ FlashLayout {
             page_index: 10
         },
     ],
+    data_blocks: [
+        FlashDataBlockSpan {
+            address: 0,
+            size: 5024,
+        },
+        FlashDataBlockSpan {
+            address: 7860,
+            size: 5024,
+        },
+    ],
 }
