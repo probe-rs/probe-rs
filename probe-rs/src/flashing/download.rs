@@ -44,26 +44,41 @@ pub enum FileDownloadError {
 ///
 /// This will ensure that memory bounderies are honored and does unlocking, erasing and programming of the flash for you.
 ///
+/// If `keep_unwritten_bytes` is `true`, erased portions that are not overwritten by the ELF data
+/// are restored afterwards, such that the old contents are untouched.
+///
 /// If no progress reporting is desired, have a look at `flashing::download_file()`.
 pub fn download_file_with_progress_reporting(
     session: &Session,
     path: &Path,
     format: Format,
     memory_map: &[MemoryRegion],
+    keep_unwritten_bytes: bool,
     progress: &FlashProgress,
 ) -> Result<(), FileDownloadError> {
-    download_file_internal(session, path, format, memory_map, progress)
+    download_file_internal(
+        session,
+        path,
+        format,
+        memory_map,
+        keep_unwritten_bytes,
+        progress,
+    )
 }
 
 /// Downloads a file of given `format` at `path` to the flash.
 ///
 /// This will ensure that memory bounderies are honored and does unlocking, erasing and programming of the flash for you.
 ///
+/// If `keep_unwritten_bytes` is `true`, erased portions that are not overwritten by the ELF data
+/// are restored afterwards, such that the old contents are untouched.
+///
 /// If progress reporting is desired, have a look at `flashing::download_file_with_progress_reporting()`.
 pub fn download_file(
     session: &Session,
     path: &Path,
     format: Format,
+    keep_unwritten_bytes: bool,
     memory_map: &[MemoryRegion],
 ) -> Result<(), FileDownloadError> {
     download_file_internal(
@@ -71,16 +86,21 @@ pub fn download_file(
         path,
         format,
         memory_map,
+        keep_unwritten_bytes,
         &FlashProgress::new(|_| {}),
     )
 }
 
 /// Downloads a file at `path` into flash.
+///
+/// If `keep_unwritten_bytes` is `true`, erased portions that are not overwritten by the ELF data
+/// are restored afterwards, such that the old contents are untouched.
 fn download_file_internal(
     session: &Session,
     path: &Path,
     format: Format,
     memory_map: &[MemoryRegion],
+    keep_unwritten_bytes: bool,
     progress: &FlashProgress,
 ) -> Result<(), FileDownloadError> {
     let mut file = match File::open(path) {
