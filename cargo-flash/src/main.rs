@@ -20,8 +20,9 @@ use structopt::StructOpt;
 use probe_rs::{
     architecture::arm::ap::AccessPortError,
     config::TargetSelector,
-    flash::download::{download_file, download_file_with_progress_reporting, Format},
-    flash::{FlashProgress, ProgressEvent},
+    flashing::{
+        download_file, download_file_with_progress_reporting, FlashProgress, Format, ProgressEvent,
+    },
     DebugProbeError, Probe, WireProtocol,
 };
 
@@ -75,6 +76,12 @@ struct Opt {
     log: Option<log::Level>,
     #[structopt(name = "speed", long = "speed", help = "Protocol speed in kHz")]
     speed: Option<u32>,
+    #[structopt(
+        name = "restore-unwritten",
+        long = "restore-unwritten",
+        help = "Enable this flag to restore all bytes erased in the sector erase but not overwritten by any page."
+    )]
+    restore_unwritten: bool,
 
     // `cargo build` arguments
     #[structopt(name = "binary", long = "bin")]
@@ -100,6 +107,7 @@ struct Opt {
 const ARGUMENTS_TO_REMOVE: &[&str] = &[
     "chip=",
     "speed=",
+    "restore-unwritten",
     "chip-description-path=",
     "list-chips",
     "disable-progressbars",
@@ -276,11 +284,22 @@ fn main_try() -> Result<(), failure::Error> {
     if !opt.no_download {
         if !opt.disable_progressbars {
             // Create progress bars.
-            let multi_progress = MultiProgress::new(); //with_draw_target(indicatif::ProgressDrawTarget::stdout_nohz());
+            let multi_progress = MultiProgress::new();
             let style = ProgressStyle::default_bar()
                     .tick_chars("⠁⠁⠉⠙⠚⠒⠂⠂⠒⠲⠴⠤⠄⠄⠤⠠⠠⠤⠦⠖⠒⠐⠐⠒⠓⠋⠉⠈⠈✔")
                     .progress_chars("##-")
                     .template("    {msg:.green.bold} {spinner} [{elapsed_precise}] [{wide_bar}] {bytes:>8}/{total_bytes:>8} @ {bytes_per_sec:>10} (eta {eta:3})");
+
+            // Create a new progress bar for the fill progress if filling is enabled.
+            let fill_progress = if opt.restore_unwritten {
+                let fill_progress = Arc::new(multi_progress.add(ProgressBar::new(0)));
+                fill_progress.set_style(style.clone());
+                fill_progress.set_message("Filling gaps     ");
+                Some(fill_progress)
+            } else {
+                logging::println(format!("    {} is disabled", "Filling".green().bold()));
+                None
+            };
 
             // Create a new progress bar for the erase progress.
             let erase_progress = Arc::new(multi_progress.add(ProgressBar::new(0)));
@@ -299,13 +318,16 @@ fn main_try() -> Result<(), failure::Error> {
             let progress = FlashProgress::new(move |event| {
                 use ProgressEvent::*;
                 match event {
-                    Initialized {
-                        total_pages,
-                        total_sector_size,
-                        page_size,
-                    } => {
+                    Initialized { flash_layout } => {
+                        let total_page_size: u32 =
+                            flash_layout.pages().iter().map(|s| s.size()).sum();
+                        let total_sector_size: u32 =
+                            flash_layout.sectors().iter().map(|s| s.size()).sum();
+                        let total_fill_size: u32 =
+                            flash_layout.fills().iter().map(|s| s.size()).sum();
+                        erase_progress.set_length(total_fill_size as u64);
                         erase_progress.set_length(total_sector_size as u64);
-                        program_progress.set_length(total_pages as u64 * page_size as u64);
+                        program_progress.set_length(total_page_size as u64);
                     }
                     StartedFlashing => {
                         program_progress.enable_steady_tick(100);
@@ -315,11 +337,18 @@ fn main_try() -> Result<(), failure::Error> {
                         erase_progress.enable_steady_tick(100);
                         erase_progress.reset_elapsed();
                     }
+                    StartedFilling => {
+                        fill_progress.as_ref().map(|fp| fp.enable_steady_tick(100));
+                        fill_progress.as_ref().map(|fp| fp.reset_elapsed());
+                    }
                     PageFlashed { size, .. } => {
                         program_progress.inc(size as u64);
                     }
                     SectorErased { size, .. } => {
                         erase_progress.inc(size as u64);
+                    }
+                    PageFilled { size, .. } => {
+                        fill_progress.as_ref().map(|fp| fp.inc(size as u64));
                     }
                     FailedErasing => {
                         erase_progress.abandon();
@@ -333,6 +362,12 @@ fn main_try() -> Result<(), failure::Error> {
                     }
                     FinishedProgramming => {
                         program_progress.finish();
+                    }
+                    FailedFilling => {
+                        fill_progress.as_ref().map(|fp| fp.abandon());
+                    }
+                    FinishedFilling => {
+                        fill_progress.as_ref().map(|fp| fp.finish());
                     }
                 }
             });
@@ -349,6 +384,7 @@ fn main_try() -> Result<(), failure::Error> {
                 std::path::Path::new(&path_str.to_string().as_str()),
                 Format::Elf,
                 &mm,
+                opt.restore_unwritten,
                 &progress,
             )
             .map_err(|e| format_err!("failed to flash {}: {}", path_str, e))?;
@@ -360,6 +396,7 @@ fn main_try() -> Result<(), failure::Error> {
                 &session,
                 std::path::Path::new(&path_str.to_string().as_str()),
                 Format::Elf,
+                opt.restore_unwritten,
                 &mm,
             )
             .map_err(|e| format_err!("failed to flash {}: {}", path_str, e))?;
