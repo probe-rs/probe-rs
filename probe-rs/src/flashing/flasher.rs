@@ -299,7 +299,7 @@ impl<'a> Flasher<'a> {
                     progress.failed_filling();
                     return result;
                 } else {
-                    progress.page_filled(fill.size(), t.elapsed().as_millis());
+                    progress.page_filled(fill.size(), t.elapsed());
                 }
             }
         }
