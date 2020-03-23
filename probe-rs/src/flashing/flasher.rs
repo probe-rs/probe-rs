@@ -224,7 +224,8 @@ impl<'a> Flasher<'a> {
 
     /// Writes a single block of data to a given address in the flash.
     ///
-    /// This will not check any boundaries. You have to make sure that the boundaries are correct.
+    /// This will not check any physical flash boundaries.
+    /// You have to make sure that the data is within the flash boundaries.
     /// Unexpected things may happen if this is not ensured.
     pub fn flash_block(
         &mut self,
@@ -367,7 +368,7 @@ impl<'a> Flasher<'a> {
         result
     }
 
-    /// Programs all sectors contained in `sectors`.
+    /// Programs the pages given in `flash_layout` into the flash.
     fn program_simple(
         &mut self,
         flash_layout: &FlashLayout,
@@ -394,7 +395,7 @@ impl<'a> Flasher<'a> {
         result
     }
 
-    /// Perform an erase of all sectors given in `sectors` which actually contain any pages.
+    /// Perform an erase of all sectors given in `flash_layout`.
     fn sector_erase(
         &mut self,
         flash_layout: &FlashLayout,

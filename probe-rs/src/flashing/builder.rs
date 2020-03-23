@@ -251,187 +251,7 @@ impl<'a> FlashBuilder<'a> {
         Ok(())
     }
 
-    /// Layouts an entire flash memory.
-    ///
-    /// If `restore_unwritten_bytes` is `true`, all bytes of a sector,
-    /// that are not to be written during flashing will be read from the flash first
-    /// and written again once the sector is erased.
-    pub(super) fn _build_sectors_and_pages(
-        &self,
-        flash_algorithm: &FlashAlgorithm,
-        mut fill_page: impl FnMut(&mut FlashPage) -> Result<(), FlashError>,
-    ) -> Result<FlashLayout, FlashError> {
-        let mut sectors: Vec<FlashSector> = Vec::new();
-        let mut pages: Vec<FlashPage> = Vec::new();
-
-        for op in &self.data_blocks {
-            let mut pos = 0;
-
-            while pos < op.data.len() {
-                // Check if the operation is in another sector.
-                let flash_address = op.address + pos as u32;
-
-                log::trace!("Checking sector for address {:#08x}", flash_address);
-
-                if let Some(sector) = sectors.last_mut() {
-                    // If the address is not in the sector, add a new sector.
-                    if flash_address >= sector.address + sector.size {
-                        let sector_info = flash_algorithm.sector_info(flash_address);
-                        if let Some(sector_info) = sector_info {
-                            let new_sector = FlashSector::new(&sector_info);
-                            sectors.push(new_sector);
-                            log::trace!(
-                                "Added Sector (0x{:08x}..0x{:08x})",
-                                sector_info.base_address,
-                                sector_info.base_address + sector_info.size
-                            );
-                        } else {
-                            return Err(FlashError::InvalidFlashAddress(flash_address));
-                        }
-                        continue;
-                    } else if let Some(page) = pages.last_mut() {
-                        // If the current page does not contain the address.
-                        if flash_address >= page.address + page.size() {
-                            // Fill any gap at the end of the current page before switching to a new page.
-                            fill_page(page)?;
-
-                            let page_info = flash_algorithm.page_info(flash_address);
-                            if let Some(page_info) = page_info {
-                                let new_page = FlashPage::new(&page_info);
-                                pages.push(new_page);
-                                log::trace!(
-                                    "Added Page (0x{:08x}..0x{:08x})",
-                                    page_info.base_address,
-                                    page_info.base_address + page_info.size
-                                );
-                            } else {
-                                return Err(FlashError::InvalidFlashAddress(flash_address));
-                            }
-                            continue;
-                        } else {
-                            let space_left_in_page = page.size() - page.data.len() as u32;
-                            let space_left_in_data = op.data.len() - pos;
-                            let amount =
-                                usize::min(space_left_in_page as usize, space_left_in_data);
-
-                            page.data.extend(&op.data[pos..pos + amount]);
-                            log::trace!("Added {} bytes to current page", amount);
-                            pos += amount;
-                        }
-                    } else {
-                        // If no page is on the sector yet.
-                        let page_info = flash_algorithm.page_info(flash_address);
-                        if let Some(page_info) = page_info {
-                            let new_page = FlashPage::new(&page_info);
-                            pages.push(new_page.clone());
-                            log::trace!(
-                                "Added Page (0x{:08x}..0x{:08x})",
-                                page_info.base_address,
-                                page_info.base_address + page_info.size
-                            );
-                        } else {
-                            return Err(FlashError::InvalidFlashAddress(flash_address));
-                        }
-                        continue;
-                    }
-                } else {
-                    // If no sector exists, create a new one.
-                    log::trace!("Trying to create a new sector");
-                    let sector_info = flash_algorithm.sector_info(flash_address);
-
-                    if let Some(sector_info) = sector_info {
-                        let new_sector = FlashSector::new(&sector_info);
-                        sectors.push(new_sector);
-                        log::debug!(
-                            "Added Sector (0x{:08x}..0x{:08x})",
-                            sector_info.base_address,
-                            sector_info.base_address + sector_info.size
-                        );
-                    } else {
-                        return Err(FlashError::InvalidFlashAddress(flash_address));
-                    }
-                    continue;
-                }
-            }
-        }
-
-        // Fill the page gap if there is one.
-        if let Some(page) = pages.last_mut() {
-            fill_page(page)?;
-        }
-
-        log::debug!("Sectors are:");
-        for sector in &sectors {
-            log::debug!("{:#?}", sector);
-        }
-
-        log::debug!("Pages are:");
-        for page in &pages {
-            log::debug!("{:#?}", page);
-        }
-
-        Ok(FlashLayout {
-            sectors,
-            pages,
-            fills: vec![],
-        })
-    }
-
-    pub(super) fn add_sector<'b>(
-        &self,
-        flash_algorithm: &FlashAlgorithm,
-        address: u32,
-        sectors: &'b mut Vec<FlashSector>,
-    ) -> Result<&'b mut FlashSector, FlashError> {
-        let sector_info = flash_algorithm.sector_info(address);
-        if let Some(sector_info) = sector_info {
-            let new_sector = FlashSector::new(&sector_info);
-            sectors.push(new_sector);
-            log::trace!(
-                "Added Sector (0x{:08x}..0x{:08x})",
-                sector_info.base_address,
-                sector_info.base_address + sector_info.size
-            );
-            // We just added a sector, so this unwrap can never fail!
-            Ok(sectors.last_mut().unwrap())
-        } else {
-            Err(FlashError::InvalidFlashAddress(address))
-        }
-    }
-
-    pub(super) fn add_page<'b>(
-        &self,
-        flash_algorithm: &FlashAlgorithm,
-        address: u32,
-        pages: &'b mut Vec<FlashPage>,
-    ) -> Result<&'b mut FlashPage, FlashError> {
-        let page_info = flash_algorithm.page_info(address);
-        if let Some(page_info) = page_info {
-            let new_page = FlashPage::new(&page_info);
-            pages.push(new_page);
-            log::trace!(
-                "Added Page (0x{:08x}..0x{:08x})",
-                page_info.base_address,
-                page_info.base_address + page_info.size
-            );
-            // We just added a page, so this unwrap can never fail!
-            Ok(pages.last_mut().unwrap())
-        } else {
-            return Err(FlashError::InvalidFlashAddress(address));
-        }
-    }
-
-    /// Adds a new fill .
-    pub(super) fn add_fill<'b>(
-        &self,
-        address: u32,
-        size: u32,
-        fills: &'b mut Vec<FlashFill>,
-        page_index: usize,
-    ) {
-        fills.push(FlashFill::new(address, size, page_index));
-    }
-
+    /// Layouts the contents of a flash memory according to the contents of the flash builder.
     pub(super) fn build_sectors_and_pages(
         &self,
         flash_algorithm: &FlashAlgorithm,
@@ -454,12 +274,12 @@ impl<'a> FlashBuilder<'a> {
                     // This means if we are checking the last sector we already have checked previous ones
                     // in previous steps of the iteration.
                     if current_block_address >= sector.address + sector.size {
-                        self.add_sector(flash_algorithm, current_block_address, &mut sectors)?
+                        add_sector(flash_algorithm, current_block_address, &mut sectors)?
                     } else {
                         sector
                     }
                 } else {
-                    self.add_sector(flash_algorithm, current_block_address, &mut sectors)?
+                    add_sector(flash_algorithm, current_block_address, &mut sectors)?
                 };
 
                 let page = if let Some(page) = pages.last_mut() {
@@ -469,12 +289,12 @@ impl<'a> FlashBuilder<'a> {
                     // This means if we are checking the last page we already have checked previous ones
                     // in previous steps of the iteration.
                     if current_block_address >= page.address + page.size() {
-                        self.add_page(flash_algorithm, current_block_address, &mut pages)?
+                        add_page(flash_algorithm, current_block_address, &mut pages)?
                     } else {
                         page
                     }
                 } else {
-                    self.add_page(flash_algorithm, current_block_address, &mut pages)?
+                    add_page(flash_algorithm, current_block_address, &mut pages)?
                 };
 
                 // Add sectors for the whole page if the sector size is smaller than the page size!
@@ -489,7 +309,7 @@ impl<'a> FlashBuilder<'a> {
                         // If the sector address does not match the address of the just added sector,
                         // add a new sector at that addresss.
                         if new_sector_address != sector_address {
-                            self.add_sector(flash_algorithm, new_sector_address, &mut sectors)?;
+                            add_sector(flash_algorithm, new_sector_address, &mut sectors)?;
                         }
                     }
                 }
@@ -508,7 +328,7 @@ impl<'a> FlashBuilder<'a> {
                 // and we don't start a new page (condition: page_offset == 0)
                 // We need to fill the start of the page up until the page offset where the new data will start.
                 if block_offset == 0 && page_offset != 0 {
-                    self.add_fill(page_address, page_offset as u32, &mut fills, pages.len());
+                    add_fill(page_address, page_offset as u32, &mut fills, pages.len());
                 }
 
                 // If we have finished writing our block (condition: block_offset + size == block_size)
@@ -533,7 +353,7 @@ impl<'a> FlashBuilder<'a> {
                     let fill_size = fill_end_address - (page_address as usize + fill_start);
 
                     // Actually fill the page and register a fill block within the stat tracker.
-                    self.add_fill(
+                    add_fill(
                         page_address + fill_start as u32,
                         fill_size as u32,
                         &mut fills,
@@ -568,8 +388,8 @@ impl<'a> FlashBuilder<'a> {
                                 continue 'o;
                             }
                         }
-                        let page = self.add_page(flash_algorithm, page_address, &mut pages)?;
-                        self.add_fill(page.address, page.size(), &mut fills, pages.len());
+                        let page = add_page(flash_algorithm, page_address, &mut pages)?;
+                        add_fill(page.address, page.size(), &mut fills, pages.len());
                     }
                 }
 
@@ -585,6 +405,55 @@ impl<'a> FlashBuilder<'a> {
             fills,
         })
     }
+}
+
+/// Adds a new sector to the sectors.
+fn add_sector<'b>(
+    flash_algorithm: &FlashAlgorithm,
+    address: u32,
+    sectors: &'b mut Vec<FlashSector>,
+) -> Result<&'b mut FlashSector, FlashError> {
+    let sector_info = flash_algorithm.sector_info(address);
+    if let Some(sector_info) = sector_info {
+        let new_sector = FlashSector::new(&sector_info);
+        sectors.push(new_sector);
+        log::trace!(
+            "Added Sector (0x{:08x}..0x{:08x})",
+            sector_info.base_address,
+            sector_info.base_address + sector_info.size
+        );
+        // We just added a sector, so this unwrap can never fail!
+        Ok(sectors.last_mut().unwrap())
+    } else {
+        Err(FlashError::InvalidFlashAddress(address))
+    }
+}
+
+/// Adds a new page to the pages.
+fn add_page<'b>(
+    flash_algorithm: &FlashAlgorithm,
+    address: u32,
+    pages: &'b mut Vec<FlashPage>,
+) -> Result<&'b mut FlashPage, FlashError> {
+    let page_info = flash_algorithm.page_info(address);
+    if let Some(page_info) = page_info {
+        let new_page = FlashPage::new(&page_info);
+        pages.push(new_page);
+        log::trace!(
+            "Added Page (0x{:08x}..0x{:08x})",
+            page_info.base_address,
+            page_info.base_address + page_info.size
+        );
+        // We just added a page, so this unwrap can never fail!
+        Ok(pages.last_mut().unwrap())
+    } else {
+        return Err(FlashError::InvalidFlashAddress(address));
+    }
+}
+
+/// Adds a new fill to the fills.
+fn add_fill<'b>(address: u32, size: u32, fills: &'b mut Vec<FlashFill>, page_index: usize) {
+    fills.push(FlashFill::new(address, size, page_index));
 }
 
 #[cfg(test)]
