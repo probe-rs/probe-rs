@@ -5,20 +5,21 @@
 
 mod typ;
 mod variable;
-use object::read::Object;
 
 use crate::core::Core;
 use typ::Type;
 use variable::Variable;
 
-use std::borrow;
-use std::io;
-use std::path::{Path, PathBuf};
-use std::rc::Rc;
-use std::str::{from_utf8, Utf8Error};
+use std::{
+    borrow, io,
+    path::{Path, PathBuf},
+    rc::Rc,
+    str::{from_utf8, Utf8Error},
+};
 
 use gimli::{FileEntry, LineProgramHeader};
 use log::{debug, error, info};
+use object::read::{Object, ObjectSection};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -26,7 +27,7 @@ pub enum DebugError {
     #[error("IO Error while accessing debug data: {0}")]
     Io(#[from] io::Error),
     #[error("Error accessing debug data: {0}")]
-    DebugData(&'static str),
+    DebugData(#[from] object::read::Error),
     #[error("Error parsing debug data: {0}")]
     Parse(#[from] gimli::read::Error),
     #[error("Non-UTF8 data found in debug data: {0}")]
@@ -303,12 +304,13 @@ impl DebugInfo {
 
     /// Parse debug information directly from a buffer containing an ELF file.
     pub fn from_raw(data: &[u8]) -> Result<Self, DebugError> {
-        let object = object::File::parse(data).map_err(|e| DebugError::DebugData(e))?;
+        let object = object::File::parse(data)?;
 
         // Load a section and return as `Cow<[u8]>`.
         let load_section = |id: gimli::SectionId| -> Result<DwarfReader, gimli::Error> {
             let data = object
-                .section_data_by_name(id.name())
+                .section_by_name(id.name())
+                .and_then(|section| section.uncompressed_data().ok())
                 .unwrap_or_else(|| borrow::Cow::Borrowed(&[][..]));
 
             Ok(gimli::read::EndianRcSlice::new(
