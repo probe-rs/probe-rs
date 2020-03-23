@@ -1,8 +1,9 @@
 use std::fmt::{Debug, Formatter, UpperHex};
 
-use crate::config::{FlashAlgorithm, MemoryRange, PageInfo, SectorInfo};
-
 use super::FlashError;
+#[cfg(feature = "tools")]
+use super::FlashVisualizer;
+use crate::config::{FlashAlgorithm, MemoryRange, PageInfo, SectorInfo};
 
 /// A local helper to print all flash location relevant data in hex.
 fn fmt_hex<T: UpperHex>(data: &T, f: &mut Formatter) -> std::fmt::Result {
@@ -159,11 +160,16 @@ impl FlashLayout {
     pub fn fills(&self) -> &[FlashFill] {
         &self.fills
     }
+
+    #[cfg(feature = "tools")]
+    pub fn visualize<'a>(&'a self, data_blocks: &'a [FlashDataBlock<'a>]) -> FlashVisualizer<'a> {
+        FlashVisualizer::new(&self, data_blocks)
+    }
 }
 
 /// A block of data that is to be written to flash.
 #[derive(Clone, Copy)]
-pub(super) struct FlashDataBlock<'a> {
+pub struct FlashDataBlock<'a> {
     address: u32,
     data: &'a [u8],
 }
@@ -175,12 +181,13 @@ impl<'a> FlashDataBlock<'a> {
     }
 
     /// Get the start address of the block.
-    pub(super) fn address(&self) -> u32 {
+    #[cfg(feature = "tools")]
+    pub fn address(&self) -> u32 {
         self.address
     }
 
     /// Returns the size of the block in bytes.
-    pub(super) fn size(&self) -> u32 {
+    pub fn size(&self) -> u32 {
         self.data.len() as u32
     }
 }
@@ -584,7 +591,7 @@ impl<'a> FlashBuilder<'a> {
 mod tests {
     use insta::*;
 
-    use super::{FlashBuilder, FlashError, FlashPage};
+    use super::FlashBuilder;
     use crate::config::{FlashAlgorithm, FlashProperties, SectorDescription};
 
     fn assemble_demo_flash1() -> FlashAlgorithm {
@@ -623,26 +630,6 @@ mod tests {
         };
 
         flash_algorithm
-    }
-
-    fn fill_page_uniform(
-        flash_page: &mut FlashPage,
-        range: std::ops::Range<usize>,
-    ) -> Result<(), FlashError> {
-        for i in range {
-            flash_page.data[i] = 123;
-        }
-        Ok(())
-    }
-
-    fn fill_page_increment(
-        flash_page: &mut FlashPage,
-        range: std::ops::Range<usize>,
-    ) -> Result<(), FlashError> {
-        for i in range {
-            flash_page.data[i] = i as u8;
-        }
-        Ok(())
     }
 
     #[test]
