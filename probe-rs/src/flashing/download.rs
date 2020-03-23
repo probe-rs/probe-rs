@@ -15,6 +15,7 @@ use crate::{
 
 use thiserror::Error;
 
+/// Extended options for flashing a binary file.
 pub struct BinOptions {
     /// The address in memory where the binary will be put at.
     base_address: Option<u32>,
@@ -22,12 +23,17 @@ pub struct BinOptions {
     skip: u32,
 }
 
+/// A finite list of all the available binary formats probe-rs understands.
 pub enum Format {
     Bin(BinOptions),
     Hex,
     Elf,
 }
 
+/// A finite list of all the errors that can occur when flashing a given file.
+///
+/// This includes corrupt file issues,
+/// OS permission issues as well as chip connectivity and memory boundary issues.
 #[derive(Debug, Error)]
 pub enum FileDownloadError {
     #[error("{0}")]

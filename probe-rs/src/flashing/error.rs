@@ -3,6 +3,7 @@ use thiserror::Error;
 use crate::config::FlashRegion;
 use crate::error;
 
+/// Describes any error that happened during the or in preparation for the flashing procedure.
 #[derive(Error, Debug)]
 pub enum FlashError {
     #[error("The execution of '{name}' failed with code {errorcode}")]

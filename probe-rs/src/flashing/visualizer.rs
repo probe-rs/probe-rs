@@ -6,6 +6,7 @@ use svg::{
 
 use super::*;
 
+/// A structure which can be used to visualize the built contents of a flash.
 pub struct FlashVisualizer<'a> {
     flash_layout: &'a FlashLayout,
 }
@@ -64,6 +65,7 @@ impl<'a> FlashVisualizer<'a> {
         group
     }
 
+    /// Generates an SVG in string form which visualizes the given flash contents.
     pub fn generate_svg(&self) -> String {
         let mut document = Document::new();
         let mut group = Group::new().set("transform", "scale(1, 1)");
@@ -107,7 +109,9 @@ impl<'a> FlashVisualizer<'a> {
         format!("{}", document)
     }
 
-    pub fn write_svg(&self, name: impl AsRef<str>) -> std::io::Result<()> {
+    /// Generates an SVG which visualizes the given flash contents
+    /// and writes it into the file at the given `path`
+    pub fn write_svg(&self, path: impl AsRef<std::path::Path>) -> std::io::Result<()> {
         use std::fs::OpenOptions;
         use std::io::Write;
 
@@ -118,7 +122,7 @@ impl<'a> FlashVisualizer<'a> {
             .write(true)
             .create(true)
             .truncate(true)
-            .open(name.as_ref())?;
+            .open(path.as_ref())?;
 
         file.write_all(svg.as_bytes())
     }
