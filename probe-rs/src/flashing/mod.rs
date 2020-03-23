@@ -11,7 +11,6 @@ mod error;
 mod flasher;
 mod loader;
 mod progress;
-#[cfg(feature = "tools")]
 mod visualizer;
 
 use builder::*;
@@ -20,5 +19,4 @@ pub use error::*;
 pub use flasher::*;
 use loader::*;
 pub use progress::*;
-#[cfg(feature = "tools")]
 pub use visualizer::*;

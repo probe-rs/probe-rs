@@ -8,18 +8,11 @@ use super::*;
 
 pub struct FlashVisualizer<'a> {
     flash_layout: &'a FlashLayout,
-    data_blocks: &'a [FlashDataBlock<'a>],
 }
 
 impl<'a> FlashVisualizer<'a> {
-    pub(super) fn new(
-        flash_layout: &'a FlashLayout,
-        data_blocks: &'a [FlashDataBlock<'a>],
-    ) -> Self {
-        Self {
-            flash_layout,
-            data_blocks,
-        }
+    pub(super) fn new(flash_layout: &'a FlashLayout) -> Self {
+        Self { flash_layout }
     }
 
     /// Calculates the position in a [0, 100] range
@@ -92,7 +85,7 @@ impl<'a> FlashVisualizer<'a> {
             group.append(rectangle);
         }
 
-        for block in self.data_blocks {
+        for block in self.flash_layout.data_blocks() {
             let rectangle = self
                 .memory_block(block.address(), block.size(), (150, 50))
                 .set("fill", "MediumSeaGreen");

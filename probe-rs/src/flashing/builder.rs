@@ -1,8 +1,6 @@
 use std::fmt::{Debug, Formatter, UpperHex};
 
-use super::FlashError;
-#[cfg(feature = "tools")]
-use super::FlashVisualizer;
+use super::{FlashError, FlashVisualizer};
 use crate::config::{FlashAlgorithm, MemoryRange, PageInfo, SectorInfo};
 
 /// A local helper to print all flash location relevant data in hex.
@@ -138,6 +136,7 @@ pub struct FlashLayout {
     sectors: Vec<FlashSector>,
     pages: Vec<FlashPage>,
     fills: Vec<FlashFill>,
+    data_blocks: Vec<FlashDataBlockSpan>,
 }
 
 impl FlashLayout {
@@ -161,15 +160,19 @@ impl FlashLayout {
         &self.fills
     }
 
-    #[cfg(feature = "tools")]
-    pub fn visualize<'a>(&'a self, data_blocks: &'a [FlashDataBlock<'a>]) -> FlashVisualizer<'a> {
-        FlashVisualizer::new(&self, data_blocks)
+    /// Get the datablocks of the flash layout.
+    pub fn data_blocks(&self) -> &[FlashDataBlockSpan] {
+        &self.data_blocks
+    }
+
+    pub fn visualize(&self) -> FlashVisualizer {
+        FlashVisualizer::new(&self)
     }
 }
 
 /// A block of data that is to be written to flash.
 #[derive(Clone, Copy)]
-pub struct FlashDataBlock<'a> {
+pub(super) struct FlashDataBlock<'a> {
     address: u32,
     data: &'a [u8],
 }
@@ -181,14 +184,50 @@ impl<'a> FlashDataBlock<'a> {
     }
 
     /// Get the start address of the block.
-    #[cfg(feature = "tools")]
+    pub(super) fn address(&self) -> u32 {
+        self.address
+    }
+
+    /// Returns the size of the block in bytes.
+    pub(super) fn size(&self) -> u32 {
+        self.data.len() as u32
+    }
+}
+
+/// A block of data that is to be written to flash.
+#[derive(Clone, Copy, Debug)]
+pub struct FlashDataBlockSpan {
+    address: u32,
+    size: u32,
+}
+
+impl FlashDataBlockSpan {
+    /// Get the start address of the block.
     pub fn address(&self) -> u32 {
         self.address
     }
 
     /// Returns the size of the block in bytes.
     pub fn size(&self) -> u32 {
-        self.data.len() as u32
+        self.size
+    }
+}
+
+impl<'a> From<FlashDataBlock<'a>> for FlashDataBlockSpan {
+    fn from(block: FlashDataBlock) -> Self {
+        Self {
+            address: block.address(),
+            size: block.size(),
+        }
+    }
+}
+
+impl<'a> From<&FlashDataBlock<'a>> for FlashDataBlockSpan {
+    fn from(block: &FlashDataBlock) -> Self {
+        Self {
+            address: block.address(),
+            size: block.size(),
+        }
     }
 }
 
@@ -403,6 +442,7 @@ impl<'a> FlashBuilder<'a> {
             sectors,
             pages,
             fills,
+            data_blocks: self.data_blocks.iter().map(Into::into).collect(),
         })
     }
 }

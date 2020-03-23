@@ -175,7 +175,13 @@ fn download_program_fast(shared_options: &SharedOptions, path: &str) -> Result<(
         // let instant = Instant::now();
 
         let mm = session.memory_map();
-        download_file(&session, std::path::Path::new(&path), Format::Elf, &mm)?;
+        download_file(
+            &session,
+            std::path::Path::new(&path),
+            Format::Elf,
+            false,
+            &mm,
+        )?;
 
         Ok(())
     })

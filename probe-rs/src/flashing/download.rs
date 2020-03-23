@@ -110,7 +110,7 @@ fn download_file_internal(
     let mut buffer = vec![];
     let mut buffer_vec = vec![];
     // IMPORTANT: Change this to an actual memory map of a real chip
-    let mut loader = FlashLoader::new(memory_map, false);
+    let mut loader = FlashLoader::new(memory_map, keep_unwritten_bytes);
 
     match format {
         Format::Bin(options) => download_bin(&mut buffer, &mut file, &mut loader, options),
