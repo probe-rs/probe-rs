@@ -25,5 +25,5 @@ probe-rs = { version = "*" }
 gdb-server = { version = "*" }
 
 [patch.crates-io]
-probe-rs = { path = "../probe-rs/probe-rs" }
-gdb-server = { path = "../probe-rs/gdb-server" }
+probe-rs = { git = "https://github.com/probe-rs/probe-rs/", branch="flash-algo-fix" }
+gdb-server = { git = "https://github.com/probe-rs/probe-rs/", branch="flash-algo-fix" }

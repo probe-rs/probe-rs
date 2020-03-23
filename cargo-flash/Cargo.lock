@@ -571,6 +571,7 @@ dependencies = [
 [[package]]
 name = "gdb-server"
 version = "0.5.0"
+source = "git+https://github.com/probe-rs/probe-rs/?branch=flash-algo-fix#f9aab59358e7ba83c64288a737510751125ac02d"
 dependencies = [
  "async-std",
  "futures",
@@ -801,12 +802,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "maplit"
-version = "1.0.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3e2e65a1a2e43cfcb47a895c4c8b10d1f4a61097f9f254f183aee60cad9c651d"
-
-[[package]]
 name = "maybe-uninit"
 version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -999,7 +994,8 @@ checksum = "b4596b6d070b27117e987119b4dac604f3c58cfb0b191112e24771b2faeac1a6"
 
 [[package]]
 name = "probe-rs"
-version = "0.5.1"
+version = "0.5.2"
+source = "git+https://github.com/probe-rs/probe-rs/?branch=flash-algo-fix#f9aab59358e7ba83c64288a737510751125ac02d"
 dependencies = [
  "base64",
  "bitfield",
@@ -1014,7 +1010,6 @@ dependencies = [
  "jep106",
  "lazy_static",
  "log",
- "maplit",
  "num-traits 0.2.11",
  "object",
  "probe-rs-t2rust",
@@ -1028,7 +1023,8 @@ dependencies = [
 
 [[package]]
 name = "probe-rs-t2rust"
-version = "0.5.0"
+version = "0.6.0"
+source = "git+https://github.com/probe-rs/probe-rs/?branch=flash-algo-fix#f9aab59358e7ba83c64288a737510751125ac02d"
 dependencies = [
  "base64",
  "proc-macro2 1.0.9",
