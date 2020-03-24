@@ -37,7 +37,8 @@ pub(crate) fn show_info_of_device(shared_options: &SharedOptions) -> Result<(), 
 
     */
 
-    let mut interface = ArmCommunicationInterface::new(probe)?;
+    let mut interface = ArmCommunicationInterface::new(probe).map_err(|(_probe, error)| error)?;
+
     println!("\nAvailable Access Ports:");
 
     for access_port in valid_access_ports(&mut interface) {

@@ -41,27 +41,16 @@ impl Session {
             }
             TargetSelector::Specified(target) => target,
             TargetSelector::Auto => {
-                let mut found_chip = None;
+                let (returned_probe, found_chip) =
+                    try_arm_autodetect(generic_probe.take().unwrap());
 
-                if generic_probe.as_ref().unwrap().has_dap_interface() {
-                    let mut arm_interface =
-                        ArmCommunicationInterface::new(generic_probe.take().unwrap())?;
+                // Ignore errors during autodetect
+                let found_chip = found_chip.unwrap_or_else(|e| {
+                    log::debug!("Error during autodetect: {}", e);
+                    None
+                });
 
-                    found_chip = match ArmChipInfo::read_from_rom_table(&mut arm_interface)
-                        .map(|option| option.map(ChipInfo::Arm))
-                    {
-                        Ok(chip_info) => chip_info,
-                        Err(e) => {
-                            log::info!("Error during auto-detection of ARM chips: {}", e);
-                            None
-                        }
-                    };
-
-                    // This will always work, the interface is created and used only in this function
-                    generic_probe = Some(arm_interface.close().unwrap());
-                } else {
-                    log::debug!("No DAP interface available on Probe");
-                }
+                generic_probe = Some(returned_probe);
 
                 if found_chip.is_none() && generic_probe.as_ref().unwrap().has_jtag_interface() {
                     let riscv_interface =
@@ -88,7 +77,8 @@ impl Session {
 
         let session = match target.architecture() {
             Architecture::ARM => {
-                let arm_interface = ArmCommunicationInterface::new(generic_probe.unwrap())?;
+                let arm_interface = ArmCommunicationInterface::new(generic_probe.unwrap())
+                    .map_err(|(_probe, err)| err)?;
                 ArchitectureSession::Arm(arm_interface)
             }
             Architecture::RISCV => {
@@ -154,6 +144,36 @@ impl Session {
 
     pub fn memory_map(&self) -> Vec<MemoryRegion> {
         self.inner.borrow().target.memory_map.clone()
+    }
+}
+
+fn try_arm_autodetect(probe: Probe) -> (Probe, Result<Option<ChipInfo>, Error>) {
+    if probe.has_dap_interface() {
+        log::debug!("Autodetect: Trying DAP interface...");
+
+        let arm_interface = ArmCommunicationInterface::new(probe);
+
+        match arm_interface {
+            Ok(mut arm_interface) => {
+                let found_chip = ArmChipInfo::read_from_rom_table(&mut arm_interface)
+                    .unwrap_or_else(|e| {
+                        log::info!("Error during auto-detection of ARM chips: {}", e);
+                        None
+                    });
+
+                // This will always work, the interface is created and used only in this function
+                let probe = arm_interface.close().unwrap();
+
+                let found_chip = found_chip.map(ChipInfo::from);
+
+                (probe, Ok(found_chip))
+            }
+            Err((probe, error)) => (probe, Err(error.into())),
+        }
+    } else {
+        log::debug!("No DAP interface available on Probe");
+
+        (probe, Ok(None))
     }
 }
 
