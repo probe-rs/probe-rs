@@ -20,9 +20,7 @@ use structopt::StructOpt;
 use probe_rs::{
     architecture::arm::ap::AccessPortError,
     config::TargetSelector,
-    flashing::{
-        download_file, download_file_with_progress_reporting, FlashProgress, Format, ProgressEvent,
-    },
+    flashing::{download_file_with_options, DownloadOptions, FlashProgress, Format, ProgressEvent},
     DebugProbeError, Probe, WireProtocol,
 };
 
@@ -286,8 +284,6 @@ fn main_try() -> Result<(), failure::Error> {
     // Start timer.
     let instant = Instant::now();
 
-    let mm = session.memory_map();
-
     if !opt.no_download {
         if !opt.disable_progressbars {
             // Create progress bars.
@@ -396,25 +392,28 @@ fn main_try() -> Result<(), failure::Error> {
                 multi_progress.join().unwrap();
             });
 
-            download_file_with_progress_reporting(
+            download_file_with_options(
                 &session,
                 std::path::Path::new(&path_str.to_string().as_str()),
                 Format::Elf,
-                &mm,
-                opt.restore_unwritten,
-                &progress,
+                DownloadOptions {
+                    progress: Some(&progress),
+                    keep_unwritten_bytes: opt.restore_unwritten,
+                },
             )
             .map_err(|e| format_err!("failed to flash {}: {}", path_str, e))?;
 
             // We don't care if we cannot join this thread.
             let _ = progress_thread_handle.join();
         } else {
-            download_file(
+            download_file_with_options(
                 &session,
                 std::path::Path::new(&path_str.to_string().as_str()),
                 Format::Elf,
-                opt.restore_unwritten,
-                &mm,
+                DownloadOptions {
+                    progress: None,
+                    keep_unwritten_bytes: opt.restore_unwritten,
+                },
             )
             .map_err(|e| format_err!("failed to flash {}: {}", path_str, e))?;
         }
