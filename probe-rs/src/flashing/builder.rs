@@ -15,7 +15,7 @@ impl Debug for FlashPage {
         f.debug_struct("FlashPage")
             .field("address", &format!("{:#08X}", self.address()))
             .field("size", &format!("{:#08X}", self.size()))
-            .field("data", &self.data())
+            .field("data", &format!("{:?}", self.data()))
             .finish()
     }
 }
