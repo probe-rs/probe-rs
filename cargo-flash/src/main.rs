@@ -297,7 +297,7 @@ fn main_try() -> Result<(), failure::Error> {
             let fill_progress = if opt.restore_unwritten {
                 let fill_progress = Arc::new(multi_progress.add(ProgressBar::new(0)));
                 fill_progress.set_style(style.clone());
-                fill_progress.set_message("Restoring erased ");
+                fill_progress.set_message("Reading flash    ");
                 Some(fill_progress)
             } else {
                 None
