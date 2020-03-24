@@ -1,39 +1,21 @@
-use super::builder::FlashBuilder;
-use super::flasher::Flasher;
-use super::{FlashBuilderError, FlashProgress};
+use super::{FlashBuilder, FlashError, FlashProgress, Flasher};
 use crate::config::{FlashRegion, MemoryRange, MemoryRegion};
 use crate::session::Session;
 use std::collections::HashMap;
-
-use thiserror::Error;
 
 /// `FlashLoader` is a struct which manages the flashing of any chunks of data onto any sections of flash.
 /// Use `add_data()` to add a chunks of data.
 /// Once you are done adding all your data, use `commit()` to flash the data.
 /// The flash loader will make sure to select the appropriate flash region for the right data chunks.
 /// Region crossing data chunks are allowed as long as the regions are contiguous.
-pub struct FlashLoader<'a, 'b> {
+pub(super) struct FlashLoader<'a, 'b> {
     memory_map: &'a [MemoryRegion],
     builders: HashMap<FlashRegion, FlashBuilder<'b>>,
     keep_unwritten: bool,
 }
 
-#[derive(Debug, Error)]
-pub enum FlashLoaderError {
-    #[error("No flash memory was found at address {0:#08x}.")]
-    NoSuitableFlash(u32), // Contains the faulty address.
-    #[error(
-        "Trying to access flash at address {0:#08x}, which is not inside any defined flash region."
-    )]
-    MemoryRegionNotFlash(u32), // Contains the faulty address.
-    #[error("Trying to write flash, but no flash loader algorithm is attached.")]
-    NoFlashLoaderAlgorithmAttached,
-    #[error("Builder error: {0}")]
-    Builder(#[from] FlashBuilderError),
-}
-
 impl<'a, 'b> FlashLoader<'a, 'b> {
-    pub fn new(memory_map: &'a [MemoryRegion], keep_unwritten: bool) -> Self {
+    pub(super) fn new(memory_map: &'a [MemoryRegion], keep_unwritten: bool) -> Self {
         Self {
             memory_map,
             builders: HashMap::new(),
@@ -43,7 +25,7 @@ impl<'a, 'b> FlashLoader<'a, 'b> {
     /// Stages a chunk of data to be programmed.
     ///
     /// The chunk can cross flash boundaries as long as one flash region connects to another flash region.
-    pub fn add_data(&mut self, mut address: u32, data: &'b [u8]) -> Result<(), FlashLoaderError> {
+    pub(super) fn add_data(&mut self, mut address: u32, data: &'b [u8]) -> Result<(), FlashError> {
         let size = data.len();
         let mut remaining = size;
         while remaining > 0 {
@@ -69,13 +51,16 @@ impl<'a, 'b> FlashLoader<'a, 'b> {
                 remaining -= program_length;
                 address += program_length as u32;
             } else {
-                return Err(FlashLoaderError::NoSuitableFlash(address));
+                return Err(FlashError::NoSuitableFlash {
+                    start: address,
+                    end: address + data.len() as u32,
+                });
             }
         }
         Ok(())
     }
 
-    pub fn get_region_for_address(
+    pub(super) fn get_region_for_address(
         memory_map: &[MemoryRegion],
         address: u32,
     ) -> Option<&MemoryRegion> {
@@ -97,12 +82,12 @@ impl<'a, 'b> FlashLoader<'a, 'b> {
     /// Requires a session with an attached target that has a known flash algorithm.
     ///
     /// If `do_chip_erase` is `true` the entire flash will be erased.
-    pub fn commit(
+    pub(super) fn commit(
         &mut self,
         session: &Session,
         progress: &FlashProgress,
         do_chip_erase: bool,
-    ) -> Result<(), FlashLoaderError> {
+    ) -> Result<(), FlashError> {
         // Iterate over builders we've created and program the data.
         for (region, builder) in &self.builders {
             log::debug!(
@@ -136,13 +121,13 @@ impl<'a, 'b> FlashLoader<'a, 'b> {
 
             let raw_flash_algorithm = match algorithms.len() {
                 0 => {
-                    return Err(FlashLoaderError::NoFlashLoaderAlgorithmAttached);
+                    return Err(FlashError::NoFlashLoaderAlgorithmAttached);
                 }
                 1 => &algorithms[0],
                 _ => algorithms
                     .iter()
                     .find(|a| a.default)
-                    .ok_or(FlashLoaderError::NoFlashLoaderAlgorithmAttached)?,
+                    .ok_or(FlashError::NoFlashLoaderAlgorithmAttached)?,
             };
 
             let mm = session.memory_map();
@@ -162,12 +147,8 @@ impl<'a, 'b> FlashLoader<'a, 'b> {
             let flash_algorithm = raw_flash_algorithm.assemble(unwrapped_ram);
 
             // Program the data.
-            builder.program(
-                Flasher::new(session.clone(), &flash_algorithm, region),
-                do_chip_erase,
-                self.keep_unwritten,
-                progress,
-            )?
+            let mut flasher = Flasher::new(session.clone(), &flash_algorithm, region);
+            flasher.program(builder, do_chip_erase, self.keep_unwritten, false, progress)?
         }
 
         Ok(())

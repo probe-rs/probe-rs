@@ -17,14 +17,22 @@ use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum AccessPortError {
-    #[error("Invalid Access PortType Number")]
-    InvalidAccessPortNumber,
-    #[error("Misaligned memory access")]
-    MemoryNotAligned,
-    #[error("Failed to read register {name}, address 0x{address:08x}")]
-    RegisterReadError { address: u8, name: &'static str },
-    #[error("Failed to write register {name}, address 0x{address:08x}")]
-    RegisterWriteError { address: u8, name: &'static str },
+    #[error("Failed to access address 0x{address:08x} as it is not aligned to the requirement of {alignment} bytes.")]
+    MemoryNotAligned { address: u32, alignment: usize },
+    #[error("Failed to read register {name} at address 0x{address:08x} because: {source}")]
+    RegisterReadError {
+        address: u8,
+        name: &'static str,
+        #[source]
+        source: Box<dyn std::error::Error + Send + Sync>,
+    },
+    #[error("Failed to write register {name} at address 0x{address:08x} because: {source}")]
+    RegisterWriteError {
+        address: u8,
+        name: &'static str,
+        #[source]
+        source: Box<dyn std::error::Error + Send + Sync>,
+    },
     #[error("Out of bounds access")]
     OutOfBoundsError,
     #[error("Error while communicating with debug port: {0}")]
@@ -32,18 +40,28 @@ pub enum AccessPortError {
 }
 
 impl AccessPortError {
-    pub fn register_read_error<R: Register>() -> AccessPortError {
+    pub fn register_read_error<R: Register, E: std::error::Error + Send + Sync + 'static>(
+        source: E,
+    ) -> Self {
         AccessPortError::RegisterReadError {
             address: R::ADDRESS,
             name: R::NAME,
+            source: Box::new(source),
         }
     }
 
-    pub fn register_write_error<R: Register>() -> AccessPortError {
+    pub fn register_write_error<R: Register, E: std::error::Error + Send + Sync + 'static>(
+        source: E,
+    ) -> Self {
         AccessPortError::RegisterWriteError {
             address: R::ADDRESS,
             name: R::NAME,
+            source: Box::new(source),
         }
+    }
+
+    pub fn alignment_error(address: u32, alignment: usize) -> Self {
+        AccessPortError::MemoryNotAligned { address, alignment }
     }
 }
 
@@ -60,7 +78,7 @@ where
     PORT: AccessPort,
     R: APRegister<PORT>,
 {
-    type Error: std::error::Error;
+    type Error: std::error::Error + Send + Sync + 'static;
     fn read_ap_register(&mut self, port: PORT, register: R) -> Result<R, Self::Error>;
 
     /// Read a register using a block transfer. This can be used

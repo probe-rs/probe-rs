@@ -7,7 +7,7 @@ use debugger::CliState;
 
 use probe_rs::{
     debug::DebugInfo,
-    flash::download::{download_file, Format},
+    flashing::{download_file, Format},
     MemoryInterface, Probe, Session,
 };
 
@@ -171,11 +171,7 @@ fn dump_memory(shared_options: &SharedOptions, loc: u32, words: u32) -> Result<(
 
 fn download_program_fast(shared_options: &SharedOptions, path: &str) -> Result<(), CliError> {
     with_device(shared_options, |session| {
-        // Start timer.
-        // let instant = Instant::now();
-
-        let mm = session.memory_map();
-        download_file(&session, std::path::Path::new(&path), Format::Elf, &mm)?;
+        download_file(&session, std::path::Path::new(&path), Format::Elf)?;
 
         Ok(())
     })

@@ -8,13 +8,12 @@ use std::{
 };
 
 use super::*;
-use crate::{
-    config::{MemoryRange, MemoryRegion},
-    session::Session,
-};
+use crate::{config::MemoryRange, session::Session};
 
 use thiserror::Error;
 
+/// Extended options for flashing a binary file.
+#[derive(Debug)]
 pub struct BinOptions {
     /// The address in memory where the binary will be put at.
     base_address: Option<u32>,
@@ -22,16 +21,22 @@ pub struct BinOptions {
     skip: u32,
 }
 
+/// A finite list of all the available binary formats probe-rs understands.
+#[derive(Debug)]
 pub enum Format {
     Bin(BinOptions),
     Hex,
     Elf,
 }
 
+/// A finite list of all the errors that can occur when flashing a given file.
+///
+/// This includes corrupt file issues,
+/// OS permission issues as well as chip connectivity and memory boundary issues.
 #[derive(Debug, Error)]
 pub enum FileDownloadError {
     #[error("{0}")]
-    FlashLoader(#[from] FlashLoaderError),
+    Flash(#[from] FlashError),
     #[error("{0}")]
     IhexRead(#[from] ihex::reader::ReaderError),
     #[error("{0}")]
@@ -40,40 +45,37 @@ pub enum FileDownloadError {
     Object(&'static str),
 }
 
-/// Downloads a file at `path` into flash.
-pub fn download_file_with_progress_reporting(
-    session: &Session,
-    path: &Path,
-    format: Format,
-    memory_map: &[MemoryRegion],
-    progress: &FlashProgress,
-) -> Result<(), FileDownloadError> {
-    download_file_internal(session, path, format, memory_map, progress)
+/// Options for downloading a file onto a target chip.
+#[derive(Default)]
+pub struct DownloadOptions<'a> {
+    /// An optional progress reporter which is used if this argument is set to Some(...).
+    pub progress: Option<&'a FlashProgress>,
+    /// If `keep_unwritten_bytes` is `true`, erased portions that are not overwritten by the ELF data
+    /// are restored afterwards, such that the old contents are untouched.
+    pub keep_unwritten_bytes: bool,
 }
 
-/// Downloads a file at `path` into flash.
+/// Downloads a file of given `format` at `path` to the flash of the target given in `session`.
+///
+/// This will ensure that memory bounderies are honored and does unlocking, erasing and programming of the flash for you.
+///
+/// If you are looking for more options, have a look at `download_file_with_options`.
 pub fn download_file(
     session: &Session,
     path: &Path,
     format: Format,
-    memory_map: &[MemoryRegion],
 ) -> Result<(), FileDownloadError> {
-    download_file_internal(
-        session,
-        path,
-        format,
-        memory_map,
-        &FlashProgress::new(|_| {}),
-    )
+    download_file_with_options(session, path, format, DownloadOptions::default())
 }
 
-/// Downloads a file at `path` into flash.
-fn download_file_internal(
+/// Downloads a file of given `format` at `path` to the flash of the target given in `session`.
+///
+/// This will ensure that memory bounderies are honored and does unlocking, erasing and programming of the flash for you.
+pub fn download_file_with_options<'a>(
     session: &Session,
     path: &Path,
     format: Format,
-    memory_map: &[MemoryRegion],
-    progress: &FlashProgress,
+    options: DownloadOptions<'a>,
 ) -> Result<(), FileDownloadError> {
     let mut file = match File::open(path) {
         Ok(file) => file,
@@ -82,7 +84,8 @@ fn download_file_internal(
     let mut buffer = vec![];
     let mut buffer_vec = vec![];
     // IMPORTANT: Change this to an actual memory map of a real chip
-    let mut loader = FlashLoader::new(memory_map, false);
+    let memory_map = session.memory_map();
+    let mut loader = FlashLoader::new(&memory_map, options.keep_unwritten_bytes);
 
     match format {
         Format::Bin(options) => download_bin(&mut buffer, &mut file, &mut loader, options),
@@ -92,8 +95,12 @@ fn download_file_internal(
 
     loader
         // TODO: hand out chip erase flag
-        .commit(session, progress, false)
-        .map_err(FileDownloadError::FlashLoader)
+        .commit(
+            session,
+            options.progress.unwrap_or(&FlashProgress::new(|_| {})),
+            false,
+        )
+        .map_err(FileDownloadError::Flash)
 }
 
 /// Starts the download of a binary file.

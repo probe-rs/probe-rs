@@ -65,8 +65,6 @@
 #![allow(clippy::verbose_bit_mask)]
 
 #[macro_use]
-extern crate derivative;
-#[macro_use]
 extern crate serde;
 
 pub mod architecture;
@@ -74,7 +72,7 @@ pub mod config;
 mod core;
 pub mod debug;
 mod error;
-pub mod flash;
+pub mod flashing;
 mod memory;
 mod probe;
 mod session;

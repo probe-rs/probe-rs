@@ -20,10 +20,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Flashing support for the STM32L4 series.
 - Added the possibility to set the speed on DebugProbes and also implemented it for all three supported probes (CMSIS-DAP, ST-Link and J-Link).
 - Make M3 cores selectable from built in targets.
+- Make the filling of erased flash sectors with old contents possible. When flashing, the minimal erase unit is a sector. If the written contents do not span a sector, we would erase portions of the flash which are not written afterwards. Sometimes that is undesired and one wants to only replace relevant parts of the flash. Now the user can select whether they want to restore unwritten but erased parts to the previous contents. The flash builder now automatically reads to be erased and not written contents beforehand and adds them to the to be written contents.
+- Added a flash visualizer which can generate an SVG of the layouted flash contents.
 
 ### Changed
 
 - Improved error handling for the flash download module.
+- Improved error messages for ARM register operations.
+- The `flash` module has been renamed to `flashing`.
+- Downloading a file now has the possibility to add options instead of multiple parameters to clean up the interface.
 
 ### Fixed
 
