@@ -248,7 +248,7 @@ impl<'a> Flasher<'a> {
 
         let mut fb = FlashBuilder::new();
         fb.add_data(address, data)?;
-        self.program(&mut fb, do_chip_erase, true, false, progress)?;
+        self.program(&fb, do_chip_erase, true, false, progress)?;
 
         Ok(())
     }
@@ -284,11 +284,7 @@ impl<'a> Flasher<'a> {
         progress.started_filling();
 
         if restore_unwritten_bytes {
-            let fills = flash_layout
-                .fills()
-                .into_iter()
-                .cloned()
-                .collect::<Vec<_>>();
+            let fills = flash_layout.fills().to_vec();
             for fill in fills {
                 let t = std::time::Instant::now();
                 let page = &mut flash_layout.pages_mut()[fill.page_index()];
@@ -636,9 +632,9 @@ impl<'a, O: Operation> ActiveFlasher<'a, O> {
             }
 
             if start.elapsed() > timeout {
-                return Err(FlashError::Core(
-                    crate::Error::Probe(DebugProbeError::Timeout).into(),
-                ));
+                return Err(FlashError::Core(crate::Error::Probe(
+                    DebugProbeError::Timeout,
+                )));
             }
         }
 

@@ -49,10 +49,10 @@ pub enum FileDownloadError {
 #[derive(Default)]
 pub struct DownloadOptions<'a> {
     /// An optional progress reporter which is used if this argument is set to Some(...).
-    progress: Option<&'a FlashProgress>,
+    pub progress: Option<&'a FlashProgress>,
     /// If `keep_unwritten_bytes` is `true`, erased portions that are not overwritten by the ELF data
     /// are restored afterwards, such that the old contents are untouched.
-    keep_unwritten_bytes: bool,
+    pub keep_unwritten_bytes: bool,
 }
 
 /// Downloads a file of given `format` at `path` to the flash of the target given in `session`.
@@ -60,7 +60,7 @@ pub struct DownloadOptions<'a> {
 /// This will ensure that memory bounderies are honored and does unlocking, erasing and programming of the flash for you.
 ///
 /// If you are looking for more options, have a look at `download_file_with_options`.
-pub fn download_file<'a>(
+pub fn download_file(
     session: &Session,
     path: &Path,
     format: Format,

@@ -406,7 +406,7 @@ impl<'a> FlashBuilder<'a> {
                     current_block_address + size as u32 >= sector_address + sector_size;
                 // Denotes whether we are done with the flash building process now.
                 let last_bit_of_block = block_offset + size == block.size() as usize
-                    && self.data_blocks.len() > 0
+                    && !self.data_blocks.is_empty()
                     && n == self.data_blocks.len() - 1;
 
                 // If one of the two conditions resolves to true, we fill all remaining pages for the current sector.
@@ -488,12 +488,12 @@ fn add_page<'b>(
         // We just added a page, so this unwrap can never fail!
         Ok(pages.last_mut().unwrap())
     } else {
-        return Err(FlashError::InvalidFlashAddress(address));
+        Err(FlashError::InvalidFlashAddress(address))
     }
 }
 
 /// Adds a new fill to the fills.
-fn add_fill<'b>(address: u32, size: u32, fills: &'b mut Vec<FlashFill>, page_index: usize) {
+fn add_fill(address: u32, size: u32, fills: &mut Vec<FlashFill>, page_index: usize) {
     fills.push(FlashFill::new(address, size, page_index));
 }
 
