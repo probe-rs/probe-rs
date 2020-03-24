@@ -571,7 +571,7 @@ dependencies = [
 [[package]]
 name = "gdb-server"
 version = "0.5.0"
-source = "git+https://github.com/probe-rs/probe-rs/?branch=flash-algo-fix#4dfe0dae1300be336598b26859419bc0e84af1af"
+source = "git+https://github.com/probe-rs/probe-rs/#aa493e04ce376f695b8d76ae08195585b109b208"
 dependencies = [
  "async-std",
  "futures",
@@ -995,7 +995,7 @@ checksum = "b4596b6d070b27117e987119b4dac604f3c58cfb0b191112e24771b2faeac1a6"
 [[package]]
 name = "probe-rs"
 version = "0.5.2"
-source = "git+https://github.com/probe-rs/probe-rs/?branch=flash-algo-fix#4dfe0dae1300be336598b26859419bc0e84af1af"
+source = "git+https://github.com/probe-rs/probe-rs/#aa493e04ce376f695b8d76ae08195585b109b208"
 dependencies = [
  "base64",
  "bitfield",
@@ -1024,7 +1024,7 @@ dependencies = [
 [[package]]
 name = "probe-rs-t2rust"
 version = "0.6.0"
-source = "git+https://github.com/probe-rs/probe-rs/?branch=flash-algo-fix#4dfe0dae1300be336598b26859419bc0e84af1af"
+source = "git+https://github.com/probe-rs/probe-rs/#aa493e04ce376f695b8d76ae08195585b109b208"
 dependencies = [
  "base64",
  "proc-macro2 1.0.9",
