@@ -8,14 +8,12 @@ use std::{
 };
 
 use super::*;
-use crate::{
-    config::{MemoryRange, MemoryRegion},
-    session::Session,
-};
+use crate::{config::MemoryRange, session::Session};
 
 use thiserror::Error;
 
 /// Extended options for flashing a binary file.
+#[derive(Debug)]
 pub struct BinOptions {
     /// The address in memory where the binary will be put at.
     base_address: Option<u32>,
@@ -24,6 +22,7 @@ pub struct BinOptions {
 }
 
 /// A finite list of all the available binary formats probe-rs understands.
+#[derive(Debug)]
 pub enum Format {
     Bin(BinOptions),
     Hex,
@@ -46,68 +45,37 @@ pub enum FileDownloadError {
     Object(&'static str),
 }
 
-/// Downloads a file of given `format` at `path` to the flash with progress reporting.
+/// Options for downloading a file onto a target chip.
+#[derive(Default)]
+pub struct DownloadOptions<'a> {
+    /// An optional progress reporter which is used if this argument is set to Some(...).
+    progress: Option<&'a FlashProgress>,
+    /// If `keep_unwritten_bytes` is `true`, erased portions that are not overwritten by the ELF data
+    /// are restored afterwards, such that the old contents are untouched.
+    keep_unwritten_bytes: bool,
+}
+
+/// Downloads a file of given `format` at `path` to the flash of the target given in `session`.
 ///
 /// This will ensure that memory bounderies are honored and does unlocking, erasing and programming of the flash for you.
 ///
-/// If `keep_unwritten_bytes` is `true`, erased portions that are not overwritten by the ELF data
-/// are restored afterwards, such that the old contents are untouched.
-///
-/// If no progress reporting is desired, have a look at `flashing::download_file()`.
-pub fn download_file_with_progress_reporting(
+/// If you are looking for more options, have a look at `download_file_with_options`.
+pub fn download_file<'a>(
     session: &Session,
     path: &Path,
     format: Format,
-    memory_map: &[MemoryRegion],
-    keep_unwritten_bytes: bool,
-    progress: &FlashProgress,
 ) -> Result<(), FileDownloadError> {
-    download_file_internal(
-        session,
-        path,
-        format,
-        memory_map,
-        keep_unwritten_bytes,
-        progress,
-    )
+    download_file_with_options(session, path, format, DownloadOptions::default())
 }
 
-/// Downloads a file of given `format` at `path` to the flash.
+/// Downloads a file of given `format` at `path` to the flash of the target given in `session`.
 ///
 /// This will ensure that memory bounderies are honored and does unlocking, erasing and programming of the flash for you.
-///
-/// If `keep_unwritten_bytes` is `true`, erased portions that are not overwritten by the ELF data
-/// are restored afterwards, such that the old contents are untouched.
-///
-/// If progress reporting is desired, have a look at `flashing::download_file_with_progress_reporting()`.
-pub fn download_file(
+pub fn download_file_with_options<'a>(
     session: &Session,
     path: &Path,
     format: Format,
-    keep_unwritten_bytes: bool,
-    memory_map: &[MemoryRegion],
-) -> Result<(), FileDownloadError> {
-    download_file_internal(
-        session,
-        path,
-        format,
-        memory_map,
-        keep_unwritten_bytes,
-        &FlashProgress::new(|_| {}),
-    )
-}
-
-/// Downloads a file at `path` into flash.
-///
-/// If `keep_unwritten_bytes` is `true`, erased portions that are not overwritten by the ELF data
-/// are restored afterwards, such that the old contents are untouched.
-fn download_file_internal(
-    session: &Session,
-    path: &Path,
-    format: Format,
-    memory_map: &[MemoryRegion],
-    keep_unwritten_bytes: bool,
-    progress: &FlashProgress,
+    options: DownloadOptions<'a>,
 ) -> Result<(), FileDownloadError> {
     let mut file = match File::open(path) {
         Ok(file) => file,
@@ -116,7 +84,8 @@ fn download_file_internal(
     let mut buffer = vec![];
     let mut buffer_vec = vec![];
     // IMPORTANT: Change this to an actual memory map of a real chip
-    let mut loader = FlashLoader::new(memory_map, keep_unwritten_bytes);
+    let memory_map = session.memory_map();
+    let mut loader = FlashLoader::new(&memory_map, options.keep_unwritten_bytes);
 
     match format {
         Format::Bin(options) => download_bin(&mut buffer, &mut file, &mut loader, options),
@@ -126,7 +95,11 @@ fn download_file_internal(
 
     loader
         // TODO: hand out chip erase flag
-        .commit(session, progress, false)
+        .commit(
+            session,
+            options.progress.unwrap_or(&FlashProgress::new(|_| {})),
+            false,
+        )
         .map_err(FileDownloadError::Flash)
 }
 

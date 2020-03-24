@@ -1,12 +1,7 @@
-use std::fmt::{Debug, Formatter, UpperHex};
+use std::fmt::{Debug, Formatter};
 
 use super::{FlashError, FlashVisualizer};
 use crate::config::{FlashAlgorithm, MemoryRange, PageInfo, SectorInfo};
-
-/// A local helper to print all flash location relevant data in hex.
-fn fmt_hex<T: UpperHex>(data: &T, f: &mut Formatter) -> std::fmt::Result {
-    write!(f, "0X{:08X}", data)
-}
 
 /// The description of a page in flash.
 #[derive(Clone)]
@@ -17,11 +12,11 @@ pub struct FlashPage {
 
 impl Debug for FlashPage {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "FlashPage {{")?;
-        writeln!(f, "    address: {:#08X}", self.address())?;
-        writeln!(f, "    size: {:#08X}", self.size())?;
-        writeln!(f, "    data: {:?}", self.data())?;
-        write!(f, "}}")
+        f.debug_struct("FlashPage")
+            .field("address", &format!("{:#08X}", self.address()))
+            .field("size", &format!("{:#08X}", self.size()))
+            .field("data", &self.data())
+            .finish()
     }
 }
 
@@ -56,13 +51,19 @@ impl FlashPage {
 }
 
 /// The description of a sector in flash.
-#[derive(Derivative)]
-#[derivative(Debug, Clone)]
+#[derive(Clone)]
 pub struct FlashSector {
-    #[derivative(Debug(format_with = "fmt_hex"))]
     address: u32,
-    #[derivative(Debug(format_with = "fmt_hex"))]
     size: u32,
+}
+
+impl Debug for FlashSector {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("FlashSector")
+            .field("address", &format!("{:#08X}", self.address))
+            .field("size", &format!("{:#08X}", self.size))
+            .finish()
+    }
 }
 
 impl FlashSector {
@@ -96,11 +97,11 @@ pub struct FlashFill {
 
 impl Debug for FlashFill {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "FlashFill {{")?;
-        writeln!(f, "    address: {:#08X}", self.address())?;
-        writeln!(f, "    size: {:#08X}", self.size())?;
-        writeln!(f, "    page_index: {:?}", self.page_index)?;
-        write!(f, "}}")
+        f.debug_struct("FlashFill")
+            .field("address", &format!("{:#08X}", self.address()))
+            .field("size", &format!("{:#08X}", self.size()))
+            .field("page_index", &self.page_index)
+            .finish()
     }
 }
 

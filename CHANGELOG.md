@@ -27,6 +27,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Improved error handling for the flash download module.
 - Improved error messages for ARM register operations.
+- The `flash` module has been renamed to `flashing`.
+- Downloading a file now has the possibility to add options instead of multiple parameters to clean up the interface.
 
 ### Fixed
 

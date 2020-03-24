@@ -65,8 +65,6 @@
 #![allow(clippy::verbose_bit_mask)]
 
 #[macro_use]
-extern crate derivative;
-#[macro_use]
 extern crate serde;
 
 pub mod architecture;
