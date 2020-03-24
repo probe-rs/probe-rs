@@ -1,0 +1,6851 @@
+
+<html>
+<head>
+  <title>Cargo Build Timings — probe-rs 0.5.2</title>
+  <meta charset="utf-8">
+<style type="text/css">
+html {
+  font-family: sans-serif;
+}
+
+.canvas-container {
+  position: relative;
+  margin-top: 5px;
+  margin-bottom: 5px;
+}
+
+h1 {
+  border-bottom: 1px solid #c0c0c0;
+}
+
+.graph {
+  display: block;
+}
+
+.my-table {
+  margin-top: 20px;
+  margin-bottom: 20px;
+  border-collapse: collapse;
+  box-shadow: 0 5px 10px rgba(0, 0, 0, 0.1);
+}
+
+.my-table th {
+  color: #d5dde5;
+  background: #1b1e24;
+  border-bottom: 4px solid #9ea7af;
+  border-right: 1px solid #343a45;
+  font-size: 18px;
+  font-weight: 100;
+  padding: 12px;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.my-table th:first-child {
+  border-top-left-radius: 3px;
+}
+
+.my-table th:last-child {
+  border-top-right-radius: 3px;
+  border-right:none;
+}
+
+.my-table tr {
+  border-top: 1px solid #c1c3d1;
+  border-bottom: 1px solid #c1c3d1;
+  font-size: 16px;
+  font-weight: normal;
+}
+
+.my-table tr:first-child {
+  border-top:none;
+}
+
+.my-table tr:last-child {
+  border-bottom:none;
+}
+
+.my-table tr:nth-child(odd) td {
+  background: #ebebeb;
+}
+
+.my-table tr:last-child td:first-child {
+  border-bottom-left-radius:3px;
+}
+
+.my-table tr:last-child td:last-child {
+  border-bottom-right-radius:3px;
+}
+
+.my-table td {
+  background: #ffffff;
+  padding: 10px;
+  text-align: left;
+  vertical-align: middle;
+  font-weight: 300;
+  font-size: 14px;
+  border-right: 1px solid #C1C3D1;
+}
+
+.my-table td:last-child {
+  border-right: 0px;
+}
+
+.summary-table td:first-child {
+  vertical-align: top;
+  text-align: right;
+}
+
+.input-table td {
+  text-align: center;
+}
+
+.error-text {
+  color: #e80000;
+}
+
+</style>
+</head>
+<body>
+
+<h1>Cargo Build Timings</h1>
+
+<table class="my-table summary-table">
+  <tr>
+    <td>Targets:</td><td>probe-rs 0.5.2 (lib)</td>
+  </tr>
+  <tr>
+    <td>Profile:</td><td>release</td>
+  </tr>
+  <tr>
+    <td>Fresh units:</td><td>0</td>
+  </tr>
+  <tr>
+    <td>Dirty units:</td><td>96</td>
+  </tr>
+  <tr>
+    <td>Total units:</td><td>96</td>
+  </tr>
+  <tr>
+    <td>Max concurrency:</td><td>16 (jobs=16 ncpu=16)</td>
+  </tr>
+  <tr>
+    <td>Build start:</td><td>2020-03-23T20:11:02Z</td>
+  </tr>
+  <tr>
+    <td>Total time:</td><td>93.6s (1m 33.6s)</td>
+  </tr>
+  <tr>
+    <td>rustc:</td><td>rustc 1.44.0-nightly (38114ff16 2020-03-21)<br>Host: x86_64-unknown-linux-gnu<br>Target: x86_64-unknown-linux-gnu</td>
+  </tr>
+  <tr>
+    <td>Max (global) rustc threads concurrency:</td><td>0</td>
+  </tr>
+
+</table>
+
+<table class="input-table">
+  <tr>
+    <td><label for="min-unit-time">Min unit time:</label></td>
+    <td><label for="scale">Scale:</label></td>
+  </tr>
+  <tr>
+    <td><input type="range" min="0" max="30" step="0.1" value="0" id="min-unit-time"></td>
+    <td><input type="range" min="1" max="50" value="20" id="scale"></td>
+  </tr>
+  <tr>
+    <td><output for="min-unit-time" id="min-unit-time-output"></output></td>
+    <td><output for="scale" id="scale-output"></output></td>
+  </tr>
+</table>
+
+<div id="pipeline-container" class="canvas-container">
+ <canvas id="pipeline-graph" class="graph" style="position: absolute; left: 0; top: 0; z-index: 0;"></canvas>
+ <canvas id="pipeline-graph-lines" style="position: absolute; left: 0; top: 0; z-index: 1; pointer-events:none;"></canvas>
+</div>
+<div class="canvas-container">
+  <canvas id="timing-graph" class="graph"></canvas>
+</div>
+
+<table class="my-table">
+  <thead>
+    <tr>
+      <th></th>
+      <th>Unit</th>
+      <th>Total</th>
+      <th>Codegen</th>
+      <th>Features</th>
+    </tr>
+  </thead>
+  <tbody>
+
+<tr>
+  <td>1.</td>
+  <td>capstone-sys v0.10.0 custom-build (run)</td>
+  <td>55.7s</td>
+  <td>0.0s (0%)</td>
+  <td>default</td>
+</tr>
+
+<tr>
+  <td>2.</td>
+  <td>serde_derive v1.0.105</td>
+  <td>29.6s</td>
+  <td>0.0s (0%)</td>
+  <td>default</td>
+</tr>
+
+<tr>
+  <td>3.</td>
+  <td>syn v1.0.17</td>
+  <td>27.3s</td>
+  <td>13.7s (50%)</td>
+  <td>clone-impls, default, derive, extra-traits, full, parsing, printing, proc-macro, quote, visit</td>
+</tr>
+
+<tr>
+  <td>4.</td>
+  <td>goblin v0.2.1</td>
+  <td>23.1s</td>
+  <td>13.3s (58%)</td>
+  <td>alloc, archive, default, elf32, elf64, endian_fd, log, mach32, mach64, pe32, pe64, std</td>
+</tr>
+
+<tr>
+  <td>5.</td>
+  <td>gimli v0.20.0</td>
+  <td>16.3s</td>
+  <td>4.8s (30%)</td>
+  <td>arrayvec, default, fallible-iterator, indexmap, read, smallvec, stable_deref_trait, std, write</td>
+</tr>
+
+<tr>
+  <td>6.</td>
+  <td>derivative v2.0.2</td>
+  <td>15.8s</td>
+  <td>0.0s (0%)</td>
+  <td></td>
+</tr>
+
+<tr>
+  <td>7.</td>
+  <td>wasmparser v0.51.4</td>
+  <td>15.7s</td>
+  <td>10.3s (65%)</td>
+  <td></td>
+</tr>
+
+<tr>
+  <td>8.</td>
+  <td>object v0.18.0</td>
+  <td>14.6s</td>
+  <td>3.8s (26%)</td>
+  <td>coff, compression, default, elf, flate2, macho, pe, read, read_core, std, wasm, wasmparser</td>
+</tr>
+
+<tr>
+  <td>9.</td>
+  <td>probe-rs v0.5.2</td>
+  <td>14.3s</td>
+  <td>7.8s (54%)</td>
+  <td>builtin-targets, default</td>
+</tr>
+
+<tr>
+  <td>10.</td>
+  <td>cc v1.0.50</td>
+  <td>13.6s</td>
+  <td>12.4s (91%)</td>
+  <td></td>
+</tr>
+
+<tr>
+  <td>11.</td>
+  <td>yaml-rust v0.4.3</td>
+  <td>13.2s</td>
+  <td>11.6s (88%)</td>
+  <td></td>
+</tr>
+
+<tr>
+  <td>12.</td>
+  <td>syn v0.11.11</td>
+  <td>12.8s</td>
+  <td>9.3s (73%)</td>
+  <td>default, parsing, printing, quote, synom, unicode-xid</td>
+</tr>
+
+<tr>
+  <td>13.</td>
+  <td>capstone-sys v0.10.0</td>
+  <td>10.2s</td>
+  <td>4.7s (46%)</td>
+  <td>default</td>
+</tr>
+
+<tr>
+  <td>14.</td>
+  <td>proc-macro2 v1.0.9</td>
+  <td>9.7s</td>
+  <td>8.5s (88%)</td>
+  <td>default, proc-macro</td>
+</tr>
+
+<tr>
+  <td>15.</td>
+  <td>miniz_oxide v0.3.6</td>
+  <td>9.1s</td>
+  <td>7.5s (83%)</td>
+  <td></td>
+</tr>
+
+<tr>
+  <td>16.</td>
+  <td>serde v1.0.105</td>
+  <td>8.1s</td>
+  <td>0.3s (3%)</td>
+  <td>default, derive, serde_derive, std</td>
+</tr>
+
+<tr>
+  <td>17.</td>
+  <td>libflate v0.1.27</td>
+  <td>7.9s</td>
+  <td>5.2s (66%)</td>
+  <td></td>
+</tr>
+
+<tr>
+  <td>18.</td>
+  <td>pkg-config v0.3.17</td>
+  <td>7.4s</td>
+  <td>6.9s (94%)</td>
+  <td></td>
+</tr>
+
+<tr>
+  <td>19.</td>
+  <td>thiserror-impl v1.0.13</td>
+  <td>7.0s</td>
+  <td>0.0s (0%)</td>
+  <td></td>
+</tr>
+
+<tr>
+  <td>20.</td>
+  <td>tar v0.4.26</td>
+  <td>6.8s</td>
+  <td>5.2s (76%)</td>
+  <td>default, xattr</td>
+</tr>
+
+<tr>
+  <td>21.</td>
+  <td>scroll_derive v0.10.1</td>
+  <td>6.3s</td>
+  <td>0.0s (0%)</td>
+  <td></td>
+</tr>
+
+<tr>
+  <td>22.</td>
+  <td>quote v1.0.3</td>
+  <td>5.2s</td>
+  <td>4.6s (88%)</td>
+  <td>default, proc-macro</td>
+</tr>
+
+<tr>
+  <td>23.</td>
+  <td>target-lexicon v0.10.0 custom-build</td>
+  <td>5.0s</td>
+  <td>0.0s (0%)</td>
+  <td>default</td>
+</tr>
+
+<tr>
+  <td>24.</td>
+  <td>autocfg v1.0.0</td>
+  <td>4.9s</td>
+  <td>4.3s (88%)</td>
+  <td></td>
+</tr>
+
+<tr>
+  <td>25.</td>
+  <td>num-traits v0.2.11</td>
+  <td>3.8s</td>
+  <td>0.9s (25%)</td>
+  <td>default, std</td>
+</tr>
+
+<tr>
+  <td>26.</td>
+  <td>enum-primitive-derive v0.1.2</td>
+  <td>3.7s</td>
+  <td>0.0s (0%)</td>
+  <td></td>
+</tr>
+
+<tr>
+  <td>27.</td>
+  <td>byteorder v1.3.4 custom-build</td>
+  <td>3.7s</td>
+  <td>0.0s (0%)</td>
+  <td>default, std</td>
+</tr>
+
+<tr>
+  <td>28.</td>
+  <td>libc v0.2.68</td>
+  <td>3.2s</td>
+  <td>0.7s (22%)</td>
+  <td>default, std</td>
+</tr>
+
+<tr>
+  <td>29.</td>
+  <td>flate2 v1.0.14</td>
+  <td>3.1s</td>
+  <td>1.7s (56%)</td>
+  <td>default, miniz_oxide, rust_backend</td>
+</tr>
+
+<tr>
+  <td>30.</td>
+  <td>proc-macro2 v1.0.9 custom-build</td>
+  <td>3.1s</td>
+  <td>0.0s (0%)</td>
+  <td>default, proc-macro</td>
+</tr>
+
+<tr>
+  <td>31.</td>
+  <td>capstone-sys v0.10.0 custom-build</td>
+  <td>3.0s</td>
+  <td>0.0s (0%)</td>
+  <td>default</td>
+</tr>
+
+<tr>
+  <td>32.</td>
+  <td>target-lexicon v0.10.0</td>
+  <td>3.0s</td>
+  <td>2.4s (82%)</td>
+  <td>default</td>
+</tr>
+
+<tr>
+  <td>33.</td>
+  <td>libusb1-sys v0.3.5 custom-build</td>
+  <td>2.9s</td>
+  <td>0.0s (0%)</td>
+  <td></td>
+</tr>
+
+<tr>
+  <td>34.</td>
+  <td>quote v0.3.15</td>
+  <td>2.7s</td>
+  <td>2.1s (76%)</td>
+  <td></td>
+</tr>
+
+<tr>
+  <td>35.</td>
+  <td>serde_yaml v0.8.11</td>
+  <td>2.6s</td>
+  <td>1.6s (62%)</td>
+  <td></td>
+</tr>
+
+<tr>
+  <td>36.</td>
+  <td>libc v0.2.68 custom-build</td>
+  <td>2.5s</td>
+  <td>0.0s (0%)</td>
+  <td>default, std</td>
+</tr>
+
+<tr>
+  <td>37.</td>
+  <td>syn v1.0.17 custom-build</td>
+  <td>2.5s</td>
+  <td>0.0s (0%)</td>
+  <td>clone-impls, default, derive, extra-traits, full, parsing, printing, proc-macro, quote, visit</td>
+</tr>
+
+<tr>
+  <td>38.</td>
+  <td>ihex v1.1.2</td>
+  <td>2.5s</td>
+  <td>2.1s (84%)</td>
+  <td></td>
+</tr>
+
+<tr>
+  <td>39.</td>
+  <td>capstone v0.6.0</td>
+  <td>2.5s</td>
+  <td>1.2s (47%)</td>
+  <td>default</td>
+</tr>
+
+<tr>
+  <td>40.</td>
+  <td>probe-rs v0.5.2 custom-build</td>
+  <td>2.4s</td>
+  <td>0.0s (0%)</td>
+  <td>builtin-targets, default</td>
+</tr>
+
+<tr>
+  <td>41.</td>
+  <td>hidapi v1.2.1 custom-build</td>
+  <td>2.3s</td>
+  <td>0.0s (0%)</td>
+  <td>default, linux-static-libusb</td>
+</tr>
+
+<tr>
+  <td>42.</td>
+  <td>crc32fast v1.2.0 custom-build</td>
+  <td>2.3s</td>
+  <td>0.0s (0%)</td>
+  <td>default, std</td>
+</tr>
+
+<tr>
+  <td>43.</td>
+  <td>jaylink v0.1.1</td>
+  <td>2.3s</td>
+  <td>1.3s (57%)</td>
+  <td></td>
+</tr>
+
+<tr>
+  <td>44.</td>
+  <td>serde v1.0.105 custom-build</td>
+  <td>2.2s</td>
+  <td>0.0s (0%)</td>
+  <td>default, derive, serde_derive, std</td>
+</tr>
+
+<tr>
+  <td>45.</td>
+  <td>base64 v0.12.0</td>
+  <td>2.0s</td>
+  <td>1.4s (72%)</td>
+  <td>default, std</td>
+</tr>
+
+<tr>
+  <td>46.</td>
+  <td>fallible-iterator v0.2.0</td>
+  <td>2.0s</td>
+  <td>0.1s (3%)</td>
+  <td>std</td>
+</tr>
+
+<tr>
+  <td>47.</td>
+  <td>bitflags v1.2.1 custom-build</td>
+  <td>1.8s</td>
+  <td>0.0s (0%)</td>
+  <td>default</td>
+</tr>
+
+<tr>
+  <td>48.</td>
+  <td>xattr v0.2.2</td>
+  <td>1.8s</td>
+  <td>1.4s (78%)</td>
+  <td>default, unsupported</td>
+</tr>
+
+<tr>
+  <td>49.</td>
+  <td>indexmap v1.3.2</td>
+  <td>1.6s</td>
+  <td>0.1s (9%)</td>
+  <td></td>
+</tr>
+
+<tr>
+  <td>50.</td>
+  <td>probe-rs-t2rust v0.6.0</td>
+  <td>1.6s</td>
+  <td>1.3s (83%)</td>
+  <td></td>
+</tr>
+
+<tr>
+  <td>51.</td>
+  <td>hidapi v1.2.1</td>
+  <td>1.5s</td>
+  <td>1.3s (85%)</td>
+  <td>default, linux-static-libusb</td>
+</tr>
+
+<tr>
+  <td>52.</td>
+  <td>bit-vec v0.5.1</td>
+  <td>1.5s</td>
+  <td>0.7s (45%)</td>
+  <td>std</td>
+</tr>
+
+<tr>
+  <td>53.</td>
+  <td>byteorder v1.3.4</td>
+  <td>1.3s</td>
+  <td>0.2s (18%)</td>
+  <td>default, std</td>
+</tr>
+
+<tr>
+  <td>54.</td>
+  <td>rusb v0.5.5</td>
+  <td>1.2s</td>
+  <td>0.5s (41%)</td>
+  <td></td>
+</tr>
+
+<tr>
+  <td>55.</td>
+  <td>log v0.4.8</td>
+  <td>1.2s</td>
+  <td>0.7s (53%)</td>
+  <td>std</td>
+</tr>
+
+<tr>
+  <td>56.</td>
+  <td>scroll v0.10.1</td>
+  <td>1.1s</td>
+  <td>0.1s (12%)</td>
+  <td>default, derive, scroll_derive, std</td>
+</tr>
+
+<tr>
+  <td>57.</td>
+  <td>num-traits v0.2.11 custom-build</td>
+  <td>1.0s</td>
+  <td>0.0s (0%)</td>
+  <td>default, std</td>
+</tr>
+
+<tr>
+  <td>58.</td>
+  <td>crc32fast v1.2.0</td>
+  <td>1.0s</td>
+  <td>0.6s (63%)</td>
+  <td>default, std</td>
+</tr>
+
+<tr>
+  <td>59.</td>
+  <td>log v0.4.8 custom-build</td>
+  <td>0.9s</td>
+  <td>0.0s (0%)</td>
+  <td>std</td>
+</tr>
+
+<tr>
+  <td>60.</td>
+  <td>probe-rs v0.5.2 custom-build (run)</td>
+  <td>0.9s</td>
+  <td>0.0s (0%)</td>
+  <td>builtin-targets, default</td>
+</tr>
+
+<tr>
+  <td>61.</td>
+  <td>filetime v0.2.8</td>
+  <td>0.9s</td>
+  <td>0.6s (67%)</td>
+  <td></td>
+</tr>
+
+<tr>
+  <td>62.</td>
+  <td>arrayvec v0.5.1</td>
+  <td>0.9s</td>
+  <td>0.0s (5%)</td>
+  <td></td>
+</tr>
+
+<tr>
+  <td>63.</td>
+  <td>synom v0.11.3</td>
+  <td>0.8s</td>
+  <td>0.5s (61%)</td>
+  <td></td>
+</tr>
+
+<tr>
+  <td>64.</td>
+  <td>smallvec v1.2.0</td>
+  <td>0.8s</td>
+  <td>0.1s (9%)</td>
+  <td></td>
+</tr>
+
+<tr>
+  <td>65.</td>
+  <td>indexmap v1.3.2 custom-build</td>
+  <td>0.7s</td>
+  <td>0.0s (0%)</td>
+  <td></td>
+</tr>
+
+<tr>
+  <td>66.</td>
+  <td>dtoa v0.4.5</td>
+  <td>0.7s</td>
+  <td>0.1s (20%)</td>
+  <td></td>
+</tr>
+
+<tr>
+  <td>67.</td>
+  <td>linked-hash-map v0.5.2</td>
+  <td>0.7s</td>
+  <td>0.0s (7%)</td>
+  <td></td>
+</tr>
+
+<tr>
+  <td>68.</td>
+  <td>adler32 v1.0.4</td>
+  <td>0.7s</td>
+  <td>0.4s (61%)</td>
+  <td></td>
+</tr>
+
+<tr>
+  <td>69.</td>
+  <td>hidapi v1.2.1 custom-build (run)</td>
+  <td>0.7s</td>
+  <td>0.0s (0%)</td>
+  <td>default, linux-static-libusb</td>
+</tr>
+
+<tr>
+  <td>70.</td>
+  <td>jep106 v0.2.4</td>
+  <td>0.6s</td>
+  <td>0.1s (21%)</td>
+  <td></td>
+</tr>
+
+<tr>
+  <td>71.</td>
+  <td>bitfield v0.13.2</td>
+  <td>0.6s</td>
+  <td>0.0s (3%)</td>
+  <td></td>
+</tr>
+
+<tr>
+  <td>72.</td>
+  <td>rle-decode-fast v1.0.1</td>
+  <td>0.5s</td>
+  <td>0.3s (53%)</td>
+  <td></td>
+</tr>
+
+<tr>
+  <td>73.</td>
+  <td>unicode-xid v0.2.0</td>
+  <td>0.5s</td>
+  <td>0.2s (36%)</td>
+  <td>default</td>
+</tr>
+
+<tr>
+  <td>74.</td>
+  <td>bit-set v0.5.1</td>
+  <td>0.4s</td>
+  <td>0.1s (25%)</td>
+  <td>default, std</td>
+</tr>
+
+<tr>
+  <td>75.</td>
+  <td>unicode-xid v0.0.4</td>
+  <td>0.4s</td>
+  <td>0.1s (38%)</td>
+  <td>default</td>
+</tr>
+
+<tr>
+  <td>76.</td>
+  <td>indexmap v1.3.2 custom-build (run)</td>
+  <td>0.3s</td>
+  <td>0.0s (0%)</td>
+  <td></td>
+</tr>
+
+<tr>
+  <td>77.</td>
+  <td>take_mut v0.2.2</td>
+  <td>0.3s</td>
+  <td>0.1s (19%)</td>
+  <td></td>
+</tr>
+
+<tr>
+  <td>78.</td>
+  <td>lazy_static v1.4.0</td>
+  <td>0.3s</td>
+  <td>0.1s (29%)</td>
+  <td></td>
+</tr>
+
+<tr>
+  <td>79.</td>
+  <td>cfg-if v0.1.10</td>
+  <td>0.3s</td>
+  <td>0.1s (31%)</td>
+  <td></td>
+</tr>
+
+<tr>
+  <td>80.</td>
+  <td>num-traits v0.2.11 custom-build (run)</td>
+  <td>0.3s</td>
+  <td>0.0s (0%)</td>
+  <td>default, std</td>
+</tr>
+
+<tr>
+  <td>81.</td>
+  <td>plain v0.2.3</td>
+  <td>0.2s</td>
+  <td>0.1s (30%)</td>
+  <td></td>
+</tr>
+
+<tr>
+  <td>82.</td>
+  <td>num-traits v0.1.43</td>
+  <td>0.2s</td>
+  <td>0.1s (31%)</td>
+  <td></td>
+</tr>
+
+<tr>
+  <td>83.</td>
+  <td>libusb1-sys v0.3.5</td>
+  <td>0.2s</td>
+  <td>0.1s (28%)</td>
+  <td></td>
+</tr>
+
+<tr>
+  <td>84.</td>
+  <td>thiserror v1.0.13</td>
+  <td>0.2s</td>
+  <td>0.1s (37%)</td>
+  <td></td>
+</tr>
+
+<tr>
+  <td>85.</td>
+  <td>stable_deref_trait v1.1.1</td>
+  <td>0.1s</td>
+  <td>0.0s (16%)</td>
+  <td>std</td>
+</tr>
+
+<tr>
+  <td>86.</td>
+  <td>bitflags v1.2.1</td>
+  <td>0.1s</td>
+  <td>0.0s (29%)</td>
+  <td>default</td>
+</tr>
+
+<tr>
+  <td>87.</td>
+  <td>serde v1.0.105 custom-build (run)</td>
+  <td>0.1s</td>
+  <td>0.0s (0%)</td>
+  <td>default, derive, serde_derive, std</td>
+</tr>
+
+<tr>
+  <td>88.</td>
+  <td>crc32fast v1.2.0 custom-build (run)</td>
+  <td>0.1s</td>
+  <td>0.0s (0%)</td>
+  <td>default, std</td>
+</tr>
+
+<tr>
+  <td>89.</td>
+  <td>proc-macro2 v1.0.9 custom-build (run)</td>
+  <td>0.1s</td>
+  <td>0.0s (0%)</td>
+  <td>default, proc-macro</td>
+</tr>
+
+<tr>
+  <td>90.</td>
+  <td>syn v1.0.17 custom-build (run)</td>
+  <td>0.1s</td>
+  <td>0.0s (0%)</td>
+  <td>clone-impls, default, derive, extra-traits, full, parsing, printing, proc-macro, quote, visit</td>
+</tr>
+
+<tr>
+  <td>91.</td>
+  <td>bitflags v1.2.1 custom-build (run)</td>
+  <td>0.1s</td>
+  <td>0.0s (0%)</td>
+  <td>default</td>
+</tr>
+
+<tr>
+  <td>92.</td>
+  <td>libc v0.2.68 custom-build (run)</td>
+  <td>0.1s</td>
+  <td>0.0s (0%)</td>
+  <td>default, std</td>
+</tr>
+
+<tr>
+  <td>93.</td>
+  <td>byteorder v1.3.4 custom-build (run)</td>
+  <td>0.1s</td>
+  <td>0.0s (0%)</td>
+  <td>default, std</td>
+</tr>
+
+<tr>
+  <td>94.</td>
+  <td>libusb1-sys v0.3.5 custom-build (run)</td>
+  <td>0.0s</td>
+  <td>0.0s (0%)</td>
+  <td></td>
+</tr>
+
+<tr>
+  <td>95.</td>
+  <td>target-lexicon v0.10.0 custom-build (run)</td>
+  <td>0.0s</td>
+  <td>0.0s (0%)</td>
+  <td>default</td>
+</tr>
+
+<tr>
+  <td>96.</td>
+  <td>log v0.4.8 custom-build (run)</td>
+  <td>0.0s</td>
+  <td>0.0s (0%)</td>
+  <td>std</td>
+</tr>
+</tbody>
+</table>
+<script>
+DURATION = 94;
+const UNIT_DATA = [
+  {
+    "i": 0,
+    "name": "proc-macro2",
+    "version": "1.0.9",
+    "mode": "todo",
+    "target": " custom-build",
+    "start": 0.18,
+    "duration": 3.1,
+    "rmeta_time": 3.1,
+    "unlocked_units": [
+      47
+    ],
+    "unlocked_rmeta_units": []
+  },
+  {
+    "i": 1,
+    "name": "unicode-xid",
+    "version": "0.2.0",
+    "mode": "todo",
+    "target": "",
+    "start": 0.18,
+    "duration": 0.45,
+    "rmeta_time": 0.29,
+    "unlocked_units": [],
+    "unlocked_rmeta_units": []
+  },
+  {
+    "i": 2,
+    "name": "syn",
+    "version": "1.0.17",
+    "mode": "todo",
+    "target": " custom-build",
+    "start": 0.18,
+    "duration": 2.49,
+    "rmeta_time": 2.49,
+    "unlocked_units": [
+      41
+    ],
+    "unlocked_rmeta_units": []
+  },
+  {
+    "i": 3,
+    "name": "cfg-if",
+    "version": "0.1.10",
+    "mode": "todo",
+    "target": "",
+    "start": 0.18,
+    "duration": 0.25,
+    "rmeta_time": 0.18,
+    "unlocked_units": [],
+    "unlocked_rmeta_units": []
+  },
+  {
+    "i": 4,
+    "name": "libc",
+    "version": "0.2.68",
+    "mode": "todo",
+    "target": " custom-build",
+    "start": 0.18,
+    "duration": 2.52,
+    "rmeta_time": 2.52,
+    "unlocked_units": [
+      40
+    ],
+    "unlocked_rmeta_units": []
+  },
+  {
+    "i": 5,
+    "name": "cc",
+    "version": "1.0.50",
+    "mode": "todo",
+    "target": "",
+    "start": 0.18,
+    "duration": 13.59,
+    "rmeta_time": 1.2,
+    "unlocked_units": [
+      70,
+      69
+    ],
+    "unlocked_rmeta_units": []
+  },
+  {
+    "i": 6,
+    "name": "crc32fast",
+    "version": "1.2.0",
+    "mode": "todo",
+    "target": " custom-build",
+    "start": 0.18,
+    "duration": 2.29,
+    "rmeta_time": 2.29,
+    "unlocked_units": [
+      38
+    ],
+    "unlocked_rmeta_units": []
+  },
+  {
+    "i": 7,
+    "name": "autocfg",
+    "version": "1.0.0",
+    "mode": "todo",
+    "target": "",
+    "start": 0.18,
+    "duration": 4.93,
+    "rmeta_time": 0.6,
+    "unlocked_units": [
+      54,
+      53
+    ],
+    "unlocked_rmeta_units": []
+  },
+  {
+    "i": 8,
+    "name": "adler32",
+    "version": "1.0.4",
+    "mode": "todo",
+    "target": "",
+    "start": 0.18,
+    "duration": 0.66,
+    "rmeta_time": 0.26,
+    "unlocked_units": [],
+    "unlocked_rmeta_units": [
+      32
+    ]
+  },
+  {
+    "i": 9,
+    "name": "serde",
+    "version": "1.0.105",
+    "mode": "todo",
+    "target": " custom-build",
+    "start": 0.18,
+    "duration": 2.18,
+    "rmeta_time": 2.18,
+    "unlocked_units": [
+      37
+    ],
+    "unlocked_rmeta_units": []
+  },
+  {
+    "i": 10,
+    "name": "take_mut",
+    "version": "0.2.2",
+    "mode": "todo",
+    "target": "",
+    "start": 0.18,
+    "duration": 0.32,
+    "rmeta_time": 0.26,
+    "unlocked_units": [],
+    "unlocked_rmeta_units": []
+  },
+  {
+    "i": 11,
+    "name": "pkg-config",
+    "version": "0.3.17",
+    "mode": "todo",
+    "target": "",
+    "start": 0.18,
+    "duration": 7.36,
+    "rmeta_time": 0.42,
+    "unlocked_units": [],
+    "unlocked_rmeta_units": []
+  },
+  {
+    "i": 12,
+    "name": "linked-hash-map",
+    "version": "0.5.2",
+    "mode": "todo",
+    "target": "",
+    "start": 0.18,
+    "duration": 0.7,
+    "rmeta_time": 0.66,
+    "unlocked_units": [],
+    "unlocked_rmeta_units": [
+      33
+    ]
+  },
+  {
+    "i": 13,
+    "name": "dtoa",
+    "version": "0.4.5",
+    "mode": "todo",
+    "target": "",
+    "start": 0.18,
+    "duration": 0.72,
+    "rmeta_time": 0.58,
+    "unlocked_units": [],
+    "unlocked_rmeta_units": []
+  },
+  {
+    "i": 14,
+    "name": "rle-decode-fast",
+    "version": "1.0.1",
+    "mode": "todo",
+    "target": "",
+    "start": 0.18,
+    "duration": 0.51,
+    "rmeta_time": 0.24,
+    "unlocked_units": [],
+    "unlocked_rmeta_units": []
+  },
+  {
+    "i": 15,
+    "name": "byteorder",
+    "version": "1.3.4",
+    "mode": "todo",
+    "target": " custom-build",
+    "start": 0.19,
+    "duration": 3.7,
+    "rmeta_time": 3.7,
+    "unlocked_units": [
+      50
+    ],
+    "unlocked_rmeta_units": []
+  },
+  {
+    "i": 16,
+    "name": "log",
+    "version": "0.4.8",
+    "mode": "todo",
+    "target": " custom-build",
+    "start": 0.44,
+    "duration": 0.93,
+    "rmeta_time": 0.93,
+    "unlocked_units": [
+      35
+    ],
+    "unlocked_rmeta_units": []
+  },
+  {
+    "i": 17,
+    "name": "target-lexicon",
+    "version": "0.10.0",
+    "mode": "todo",
+    "target": " custom-build",
+    "start": 0.51,
+    "duration": 4.99,
+    "rmeta_time": 4.99,
+    "unlocked_units": [
+      55
+    ],
+    "unlocked_rmeta_units": []
+  },
+  {
+    "i": 18,
+    "name": "base64",
+    "version": "0.12.0",
+    "mode": "todo",
+    "target": "",
+    "start": 0.63,
+    "duration": 2.01,
+    "rmeta_time": 0.57,
+    "unlocked_units": [],
+    "unlocked_rmeta_units": []
+  },
+  {
+    "i": 19,
+    "name": "bitflags",
+    "version": "1.2.1",
+    "mode": "todo",
+    "target": " custom-build",
+    "start": 0.7,
+    "duration": 1.79,
+    "rmeta_time": 1.79,
+    "unlocked_units": [
+      39
+    ],
+    "unlocked_rmeta_units": []
+  },
+  {
+    "i": 20,
+    "name": "bit-vec",
+    "version": "0.5.1",
+    "mode": "todo",
+    "target": "",
+    "start": 0.86,
+    "duration": 1.47,
+    "rmeta_time": 0.8,
+    "unlocked_units": [],
+    "unlocked_rmeta_units": [
+      36
+    ]
+  },
+  {
+    "i": 21,
+    "name": "unicode-xid",
+    "version": "0.0.4",
+    "mode": "todo",
+    "target": "",
+    "start": 0.88,
+    "duration": 0.35,
+    "rmeta_time": 0.22,
+    "unlocked_units": [],
+    "unlocked_rmeta_units": [
+      34
+    ]
+  },
+  {
+    "i": 22,
+    "name": "quote",
+    "version": "0.3.15",
+    "mode": "todo",
+    "target": "",
+    "start": 0.9,
+    "duration": 2.72,
+    "rmeta_time": 0.65,
+    "unlocked_units": [],
+    "unlocked_rmeta_units": []
+  },
+  {
+    "i": 23,
+    "name": "arrayvec",
+    "version": "0.5.1",
+    "mode": "todo",
+    "target": "",
+    "start": 1.24,
+    "duration": 0.86,
+    "rmeta_time": 0.82,
+    "unlocked_units": [],
+    "unlocked_rmeta_units": []
+  },
+  {
+    "i": 24,
+    "name": "wasmparser",
+    "version": "0.51.4",
+    "mode": "todo",
+    "target": "",
+    "start": 1.37,
+    "duration": 15.71,
+    "rmeta_time": 5.44,
+    "unlocked_units": [],
+    "unlocked_rmeta_units": []
+  },
+  {
+    "i": 25,
+    "name": "stable_deref_trait",
+    "version": "1.1.1",
+    "mode": "todo",
+    "target": "",
+    "start": 2.12,
+    "duration": 0.15,
+    "rmeta_time": 0.13,
+    "unlocked_units": [],
+    "unlocked_rmeta_units": []
+  },
+  {
+    "i": 26,
+    "name": "plain",
+    "version": "0.2.3",
+    "mode": "todo",
+    "target": "",
+    "start": 2.27,
+    "duration": 0.24,
+    "rmeta_time": 0.17,
+    "unlocked_units": [],
+    "unlocked_rmeta_units": []
+  },
+  {
+    "i": 27,
+    "name": "smallvec",
+    "version": "1.2.0",
+    "mode": "todo",
+    "target": "",
+    "start": 2.35,
+    "duration": 0.76,
+    "rmeta_time": 0.69,
+    "unlocked_units": [],
+    "unlocked_rmeta_units": []
+  },
+  {
+    "i": 28,
+    "name": "fallible-iterator",
+    "version": "0.2.0",
+    "mode": "todo",
+    "target": "",
+    "start": 2.36,
+    "duration": 2.0,
+    "rmeta_time": 1.94,
+    "unlocked_units": [],
+    "unlocked_rmeta_units": []
+  },
+  {
+    "i": 29,
+    "name": "lazy_static",
+    "version": "1.4.0",
+    "mode": "todo",
+    "target": "",
+    "start": 2.49,
+    "duration": 0.28,
+    "rmeta_time": 0.2,
+    "unlocked_units": [],
+    "unlocked_rmeta_units": []
+  },
+  {
+    "i": 30,
+    "name": "bitfield",
+    "version": "0.13.2",
+    "mode": "todo",
+    "target": "",
+    "start": 2.51,
+    "duration": 0.58,
+    "rmeta_time": 0.56,
+    "unlocked_units": [],
+    "unlocked_rmeta_units": []
+  },
+  {
+    "i": 31,
+    "name": "ihex",
+    "version": "1.1.2",
+    "mode": "todo",
+    "target": "",
+    "start": 2.52,
+    "duration": 2.47,
+    "rmeta_time": 0.4,
+    "unlocked_units": [],
+    "unlocked_rmeta_units": []
+  },
+  {
+    "i": 32,
+    "name": "miniz_oxide",
+    "version": "0.3.6",
+    "mode": "todo",
+    "target": "",
+    "start": 2.65,
+    "duration": 9.11,
+    "rmeta_time": 1.58,
+    "unlocked_units": [],
+    "unlocked_rmeta_units": []
+  },
+  {
+    "i": 33,
+    "name": "yaml-rust",
+    "version": "0.4.3",
+    "mode": "todo",
+    "target": "",
+    "start": 2.67,
+    "duration": 13.22,
+    "rmeta_time": 1.59,
+    "unlocked_units": [],
+    "unlocked_rmeta_units": []
+  },
+  {
+    "i": 34,
+    "name": "synom",
+    "version": "0.11.3",
+    "mode": "todo",
+    "target": "",
+    "start": 2.71,
+    "duration": 0.81,
+    "rmeta_time": 0.31,
+    "unlocked_units": [],
+    "unlocked_rmeta_units": [
+      44
+    ]
+  },
+  {
+    "i": 35,
+    "name": "log",
+    "version": "0.4.8",
+    "mode": "run-custom-build",
+    "target": " custom-build (run)",
+    "start": 2.78,
+    "duration": 0.02,
+    "rmeta_time": 0.02,
+    "unlocked_units": [
+      42
+    ],
+    "unlocked_rmeta_units": []
+  },
+  {
+    "i": 36,
+    "name": "bit-set",
+    "version": "0.5.1",
+    "mode": "todo",
+    "target": "",
+    "start": 2.81,
+    "duration": 0.38,
+    "rmeta_time": 0.29,
+    "unlocked_units": [],
+    "unlocked_rmeta_units": []
+  },
+  {
+    "i": 37,
+    "name": "serde",
+    "version": "1.0.105",
+    "mode": "run-custom-build",
+    "target": " custom-build (run)",
+    "start": 3.1,
+    "duration": 0.11,
+    "rmeta_time": 0.11,
+    "unlocked_units": [],
+    "unlocked_rmeta_units": []
+  },
+  {
+    "i": 38,
+    "name": "crc32fast",
+    "version": "1.2.0",
+    "mode": "run-custom-build",
+    "target": " custom-build (run)",
+    "start": 3.11,
+    "duration": 0.08,
+    "rmeta_time": 0.08,
+    "unlocked_units": [
+      45
+    ],
+    "unlocked_rmeta_units": []
+  },
+  {
+    "i": 39,
+    "name": "bitflags",
+    "version": "1.2.1",
+    "mode": "run-custom-build",
+    "target": " custom-build (run)",
+    "start": 3.2,
+    "duration": 0.07,
+    "rmeta_time": 0.07,
+    "unlocked_units": [
+      43
+    ],
+    "unlocked_rmeta_units": []
+  },
+  {
+    "i": 40,
+    "name": "libc",
+    "version": "0.2.68",
+    "mode": "run-custom-build",
+    "target": " custom-build (run)",
+    "start": 3.2,
+    "duration": 0.07,
+    "rmeta_time": 0.07,
+    "unlocked_units": [
+      46
+    ],
+    "unlocked_rmeta_units": []
+  },
+  {
+    "i": 41,
+    "name": "syn",
+    "version": "1.0.17",
+    "mode": "run-custom-build",
+    "target": " custom-build (run)",
+    "start": 3.21,
+    "duration": 0.07,
+    "rmeta_time": 0.07,
+    "unlocked_units": [],
+    "unlocked_rmeta_units": []
+  },
+  {
+    "i": 42,
+    "name": "log",
+    "version": "0.4.8",
+    "mode": "todo",
+    "target": "",
+    "start": 3.27,
+    "duration": 1.23,
+    "rmeta_time": 0.57,
+    "unlocked_units": [],
+    "unlocked_rmeta_units": []
+  },
+  {
+    "i": 43,
+    "name": "bitflags",
+    "version": "1.2.1",
+    "mode": "todo",
+    "target": "",
+    "start": 3.29,
+    "duration": 0.14,
+    "rmeta_time": 0.1,
+    "unlocked_units": [],
+    "unlocked_rmeta_units": []
+  },
+  {
+    "i": 44,
+    "name": "syn",
+    "version": "0.11.11",
+    "mode": "todo",
+    "target": "",
+    "start": 3.29,
+    "duration": 12.77,
+    "rmeta_time": 3.5,
+    "unlocked_units": [
+      72
+    ],
+    "unlocked_rmeta_units": []
+  },
+  {
+    "i": 45,
+    "name": "crc32fast",
+    "version": "1.2.0",
+    "mode": "todo",
+    "target": "",
+    "start": 3.31,
+    "duration": 0.97,
+    "rmeta_time": 0.36,
+    "unlocked_units": [],
+    "unlocked_rmeta_units": [
+      49
+    ]
+  },
+  {
+    "i": 46,
+    "name": "libc",
+    "version": "0.2.68",
+    "mode": "todo",
+    "target": "",
+    "start": 3.43,
+    "duration": 3.19,
+    "rmeta_time": 2.49,
+    "unlocked_units": [],
+    "unlocked_rmeta_units": [
+      59,
+      58,
+      60
+    ]
+  },
+  {
+    "i": 47,
+    "name": "proc-macro2",
+    "version": "1.0.9",
+    "mode": "run-custom-build",
+    "target": " custom-build (run)",
+    "start": 3.51,
+    "duration": 0.08,
+    "rmeta_time": 0.08,
+    "unlocked_units": [
+      48
+    ],
+    "unlocked_rmeta_units": []
+  },
+  {
+    "i": 48,
+    "name": "proc-macro2",
+    "version": "1.0.9",
+    "mode": "todo",
+    "target": "",
+    "start": 3.62,
+    "duration": 9.69,
+    "rmeta_time": 1.15,
+    "unlocked_units": [],
+    "unlocked_rmeta_units": [
+      52
+    ]
+  },
+  {
+    "i": 49,
+    "name": "libflate",
+    "version": "0.1.27",
+    "mode": "todo",
+    "target": "",
+    "start": 3.89,
+    "duration": 7.95,
+    "rmeta_time": 2.73,
+    "unlocked_units": [],
+    "unlocked_rmeta_units": []
+  },
+  {
+    "i": 50,
+    "name": "byteorder",
+    "version": "1.3.4",
+    "mode": "run-custom-build",
+    "target": " custom-build (run)",
+    "start": 4.28,
+    "duration": 0.06,
+    "rmeta_time": 0.06,
+    "unlocked_units": [
+      51
+    ],
+    "unlocked_rmeta_units": []
+  },
+  {
+    "i": 51,
+    "name": "byteorder",
+    "version": "1.3.4",
+    "mode": "todo",
+    "target": "",
+    "start": 4.35,
+    "duration": 1.27,
+    "rmeta_time": 1.04,
+    "unlocked_units": [],
+    "unlocked_rmeta_units": []
+  },
+  {
+    "i": 52,
+    "name": "quote",
+    "version": "1.0.3",
+    "mode": "todo",
+    "target": "",
+    "start": 4.99,
+    "duration": 5.16,
+    "rmeta_time": 0.6,
+    "unlocked_units": [],
+    "unlocked_rmeta_units": [
+      56
+    ]
+  },
+  {
+    "i": 53,
+    "name": "num-traits",
+    "version": "0.2.11",
+    "mode": "todo",
+    "target": " custom-build",
+    "start": 5.13,
+    "duration": 0.99,
+    "rmeta_time": 0.99,
+    "unlocked_units": [
+      61
+    ],
+    "unlocked_rmeta_units": []
+  },
+  {
+    "i": 54,
+    "name": "indexmap",
+    "version": "1.3.2",
+    "mode": "todo",
+    "target": " custom-build",
+    "start": 5.49,
+    "duration": 0.73,
+    "rmeta_time": 0.73,
+    "unlocked_units": [
+      62
+    ],
+    "unlocked_rmeta_units": []
+  },
+  {
+    "i": 55,
+    "name": "target-lexicon",
+    "version": "0.10.0",
+    "mode": "run-custom-build",
+    "target": " custom-build (run)",
+    "start": 5.62,
+    "duration": 0.02,
+    "rmeta_time": 0.02,
+    "unlocked_units": [
+      57
+    ],
+    "unlocked_rmeta_units": []
+  },
+  {
+    "i": 56,
+    "name": "syn",
+    "version": "1.0.17",
+    "mode": "todo",
+    "target": "",
+    "start": 5.64,
+    "duration": 27.34,
+    "rmeta_time": 13.6,
+    "unlocked_units": [
+      80,
+      83,
+      82,
+      81
+    ],
+    "unlocked_rmeta_units": []
+  },
+  {
+    "i": 57,
+    "name": "target-lexicon",
+    "version": "0.10.0",
+    "mode": "todo",
+    "target": "",
+    "start": 6.15,
+    "duration": 2.96,
+    "rmeta_time": 0.53,
+    "unlocked_units": [],
+    "unlocked_rmeta_units": []
+  },
+  {
+    "i": 58,
+    "name": "xattr",
+    "version": "0.2.2",
+    "mode": "todo",
+    "target": "",
+    "start": 6.24,
+    "duration": 1.76,
+    "rmeta_time": 0.38,
+    "unlocked_units": [],
+    "unlocked_rmeta_units": []
+  },
+  {
+    "i": 59,
+    "name": "filetime",
+    "version": "0.2.8",
+    "mode": "todo",
+    "target": "",
+    "start": 6.63,
+    "duration": 0.86,
+    "rmeta_time": 0.28,
+    "unlocked_units": [],
+    "unlocked_rmeta_units": [
+      63
+    ]
+  },
+  {
+    "i": 60,
+    "name": "flate2",
+    "version": "1.0.14",
+    "mode": "todo",
+    "target": "",
+    "start": 7.49,
+    "duration": 3.13,
+    "rmeta_time": 1.38,
+    "unlocked_units": [],
+    "unlocked_rmeta_units": [
+      66
+    ]
+  },
+  {
+    "i": 61,
+    "name": "num-traits",
+    "version": "0.2.11",
+    "mode": "run-custom-build",
+    "target": " custom-build (run)",
+    "start": 7.55,
+    "duration": 0.25,
+    "rmeta_time": 0.25,
+    "unlocked_units": [
+      64
+    ],
+    "unlocked_rmeta_units": []
+  },
+  {
+    "i": 62,
+    "name": "indexmap",
+    "version": "1.3.2",
+    "mode": "run-custom-build",
+    "target": " custom-build (run)",
+    "start": 7.8,
+    "duration": 0.33,
+    "rmeta_time": 0.33,
+    "unlocked_units": [
+      65
+    ],
+    "unlocked_rmeta_units": []
+  },
+  {
+    "i": 63,
+    "name": "tar",
+    "version": "0.4.26",
+    "mode": "todo",
+    "target": "",
+    "start": 8.01,
+    "duration": 6.78,
+    "rmeta_time": 1.63,
+    "unlocked_units": [
+      71
+    ],
+    "unlocked_rmeta_units": []
+  },
+  {
+    "i": 64,
+    "name": "num-traits",
+    "version": "0.2.11",
+    "mode": "todo",
+    "target": "",
+    "start": 8.13,
+    "duration": 3.77,
+    "rmeta_time": 2.82,
+    "unlocked_units": [],
+    "unlocked_rmeta_units": [
+      68
+    ]
+  },
+  {
+    "i": 65,
+    "name": "indexmap",
+    "version": "1.3.2",
+    "mode": "todo",
+    "target": "",
+    "start": 9.11,
+    "duration": 1.62,
+    "rmeta_time": 1.49,
+    "unlocked_units": [],
+    "unlocked_rmeta_units": [
+      67
+    ]
+  },
+  {
+    "i": 66,
+    "name": "object",
+    "version": "0.18.0",
+    "mode": "todo",
+    "target": "",
+    "start": 9.47,
+    "duration": 14.63,
+    "rmeta_time": 10.88,
+    "unlocked_units": [],
+    "unlocked_rmeta_units": []
+  },
+  {
+    "i": 67,
+    "name": "gimli",
+    "version": "0.20.0",
+    "mode": "todo",
+    "target": "",
+    "start": 10.62,
+    "duration": 16.28,
+    "rmeta_time": 11.45,
+    "unlocked_units": [],
+    "unlocked_rmeta_units": []
+  },
+  {
+    "i": 68,
+    "name": "num-traits",
+    "version": "0.1.43",
+    "mode": "todo",
+    "target": "",
+    "start": 11.76,
+    "duration": 0.21,
+    "rmeta_time": 0.14,
+    "unlocked_units": [],
+    "unlocked_rmeta_units": []
+  },
+  {
+    "i": 69,
+    "name": "capstone-sys",
+    "version": "0.10.0",
+    "mode": "todo",
+    "target": " custom-build",
+    "start": 13.77,
+    "duration": 3.04,
+    "rmeta_time": 3.04,
+    "unlocked_units": [
+      73
+    ],
+    "unlocked_rmeta_units": []
+  },
+  {
+    "i": 70,
+    "name": "hidapi",
+    "version": "1.2.1",
+    "mode": "todo",
+    "target": " custom-build",
+    "start": 14.66,
+    "duration": 2.32,
+    "rmeta_time": 2.32,
+    "unlocked_units": [
+      74
+    ],
+    "unlocked_rmeta_units": []
+  },
+  {
+    "i": 71,
+    "name": "libusb1-sys",
+    "version": "0.3.5",
+    "mode": "todo",
+    "target": " custom-build",
+    "start": 14.79,
+    "duration": 2.85,
+    "rmeta_time": 2.85,
+    "unlocked_units": [
+      76
+    ],
+    "unlocked_rmeta_units": []
+  },
+  {
+    "i": 72,
+    "name": "enum-primitive-derive",
+    "version": "0.1.2",
+    "mode": "todo",
+    "target": "",
+    "start": 16.06,
+    "duration": 3.71,
+    "rmeta_time": 3.71,
+    "unlocked_units": [],
+    "unlocked_rmeta_units": []
+  },
+  {
+    "i": 73,
+    "name": "capstone-sys",
+    "version": "0.10.0",
+    "mode": "run-custom-build",
+    "target": " custom-build (run)",
+    "start": 16.83,
+    "duration": 55.66,
+    "rmeta_time": 55.66,
+    "unlocked_units": [
+      91
+    ],
+    "unlocked_rmeta_units": []
+  },
+  {
+    "i": 74,
+    "name": "hidapi",
+    "version": "1.2.1",
+    "mode": "run-custom-build",
+    "target": " custom-build (run)",
+    "start": 16.98,
+    "duration": 0.65,
+    "rmeta_time": 0.65,
+    "unlocked_units": [
+      75
+    ],
+    "unlocked_rmeta_units": []
+  },
+  {
+    "i": 75,
+    "name": "hidapi",
+    "version": "1.2.1",
+    "mode": "todo",
+    "target": "",
+    "start": 17.63,
+    "duration": 1.5,
+    "rmeta_time": 0.22,
+    "unlocked_units": [],
+    "unlocked_rmeta_units": []
+  },
+  {
+    "i": 76,
+    "name": "libusb1-sys",
+    "version": "0.3.5",
+    "mode": "run-custom-build",
+    "target": " custom-build (run)",
+    "start": 17.66,
+    "duration": 0.02,
+    "rmeta_time": 0.02,
+    "unlocked_units": [
+      77
+    ],
+    "unlocked_rmeta_units": []
+  },
+  {
+    "i": 77,
+    "name": "libusb1-sys",
+    "version": "0.3.5",
+    "mode": "todo",
+    "target": "",
+    "start": 17.69,
+    "duration": 0.18,
+    "rmeta_time": 0.13,
+    "unlocked_units": [],
+    "unlocked_rmeta_units": [
+      78
+    ]
+  },
+  {
+    "i": 78,
+    "name": "rusb",
+    "version": "0.5.5",
+    "mode": "todo",
+    "target": "",
+    "start": 17.83,
+    "duration": 1.24,
+    "rmeta_time": 0.72,
+    "unlocked_units": [],
+    "unlocked_rmeta_units": [
+      79
+    ]
+  },
+  {
+    "i": 79,
+    "name": "jaylink",
+    "version": "0.1.1",
+    "mode": "todo",
+    "target": "",
+    "start": 18.57,
+    "duration": 2.27,
+    "rmeta_time": 0.98,
+    "unlocked_units": [],
+    "unlocked_rmeta_units": []
+  },
+  {
+    "i": 80,
+    "name": "thiserror-impl",
+    "version": "1.0.13",
+    "mode": "todo",
+    "target": "",
+    "start": 32.99,
+    "duration": 6.95,
+    "rmeta_time": 6.95,
+    "unlocked_units": [
+      85
+    ],
+    "unlocked_rmeta_units": []
+  },
+  {
+    "i": 81,
+    "name": "serde_derive",
+    "version": "1.0.105",
+    "mode": "todo",
+    "target": "",
+    "start": 32.99,
+    "duration": 29.58,
+    "rmeta_time": 29.58,
+    "unlocked_units": [
+      87
+    ],
+    "unlocked_rmeta_units": []
+  },
+  {
+    "i": 82,
+    "name": "derivative",
+    "version": "2.0.2",
+    "mode": "todo",
+    "target": "",
+    "start": 32.99,
+    "duration": 15.81,
+    "rmeta_time": 15.81,
+    "unlocked_units": [],
+    "unlocked_rmeta_units": []
+  },
+  {
+    "i": 83,
+    "name": "scroll_derive",
+    "version": "0.10.1",
+    "mode": "todo",
+    "target": "",
+    "start": 32.99,
+    "duration": 6.27,
+    "rmeta_time": 6.27,
+    "unlocked_units": [
+      84
+    ],
+    "unlocked_rmeta_units": []
+  },
+  {
+    "i": 84,
+    "name": "scroll",
+    "version": "0.10.1",
+    "mode": "todo",
+    "target": "",
+    "start": 39.27,
+    "duration": 1.1,
+    "rmeta_time": 0.96,
+    "unlocked_units": [],
+    "unlocked_rmeta_units": [
+      86
+    ]
+  },
+  {
+    "i": 85,
+    "name": "thiserror",
+    "version": "1.0.13",
+    "mode": "todo",
+    "target": "",
+    "start": 39.94,
+    "duration": 0.18,
+    "rmeta_time": 0.12,
+    "unlocked_units": [],
+    "unlocked_rmeta_units": []
+  },
+  {
+    "i": 86,
+    "name": "goblin",
+    "version": "0.2.1",
+    "mode": "todo",
+    "target": "",
+    "start": 40.24,
+    "duration": 23.14,
+    "rmeta_time": 9.81,
+    "unlocked_units": [],
+    "unlocked_rmeta_units": []
+  },
+  {
+    "i": 87,
+    "name": "serde",
+    "version": "1.0.105",
+    "mode": "todo",
+    "target": "",
+    "start": 62.56,
+    "duration": 8.11,
+    "rmeta_time": 7.85,
+    "unlocked_units": [],
+    "unlocked_rmeta_units": [
+      89,
+      88
+    ]
+  },
+  {
+    "i": 88,
+    "name": "serde_yaml",
+    "version": "0.8.11",
+    "mode": "todo",
+    "target": "",
+    "start": 70.41,
+    "duration": 2.58,
+    "rmeta_time": 0.97,
+    "unlocked_units": [],
+    "unlocked_rmeta_units": [
+      90
+    ]
+  },
+  {
+    "i": 89,
+    "name": "jep106",
+    "version": "0.2.4",
+    "mode": "todo",
+    "target": "",
+    "start": 70.41,
+    "duration": 0.62,
+    "rmeta_time": 0.49,
+    "unlocked_units": [],
+    "unlocked_rmeta_units": []
+  },
+  {
+    "i": 90,
+    "name": "probe-rs-t2rust",
+    "version": "0.6.0",
+    "mode": "todo",
+    "target": "",
+    "start": 71.39,
+    "duration": 1.61,
+    "rmeta_time": 0.27,
+    "unlocked_units": [
+      92
+    ],
+    "unlocked_rmeta_units": []
+  },
+  {
+    "i": 91,
+    "name": "capstone-sys",
+    "version": "0.10.0",
+    "mode": "todo",
+    "target": "",
+    "start": 72.48,
+    "duration": 10.21,
+    "rmeta_time": 5.55,
+    "unlocked_units": [],
+    "unlocked_rmeta_units": [
+      94
+    ]
+  },
+  {
+    "i": 92,
+    "name": "probe-rs",
+    "version": "0.5.2",
+    "mode": "todo",
+    "target": " custom-build",
+    "start": 73.0,
+    "duration": 2.4,
+    "rmeta_time": 2.4,
+    "unlocked_units": [
+      93
+    ],
+    "unlocked_rmeta_units": []
+  },
+  {
+    "i": 93,
+    "name": "probe-rs",
+    "version": "0.5.2",
+    "mode": "run-custom-build",
+    "target": " custom-build (run)",
+    "start": 75.4,
+    "duration": 0.91,
+    "rmeta_time": 0.91,
+    "unlocked_units": [],
+    "unlocked_rmeta_units": []
+  },
+  {
+    "i": 94,
+    "name": "capstone",
+    "version": "0.6.0",
+    "mode": "todo",
+    "target": "",
+    "start": 78.04,
+    "duration": 2.47,
+    "rmeta_time": 1.32,
+    "unlocked_units": [],
+    "unlocked_rmeta_units": [
+      95
+    ]
+  },
+  {
+    "i": 95,
+    "name": "probe-rs",
+    "version": "0.5.2",
+    "mode": "todo",
+    "target": "",
+    "start": 79.35,
+    "duration": 14.27,
+    "rmeta_time": 6.52,
+    "unlocked_units": [],
+    "unlocked_rmeta_units": []
+  }
+];
+const CONCURRENCY_DATA = [
+  {
+    "t": 0.181290189,
+    "active": 16,
+    "waiting": 16,
+    "inactive": 64,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 0.183887333,
+    "active": 16,
+    "waiting": 16,
+    "inactive": 64,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 0.18534484,
+    "active": 16,
+    "waiting": 16,
+    "inactive": 64,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 0.356442464,
+    "active": 16,
+    "waiting": 16,
+    "inactive": 64,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 0.425421117,
+    "active": 16,
+    "waiting": 16,
+    "inactive": 64,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 0.434450244,
+    "active": 16,
+    "waiting": 15,
+    "inactive": 64,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 0.437346747,
+    "active": 16,
+    "waiting": 16,
+    "inactive": 63,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 0.441332548,
+    "active": 16,
+    "waiting": 16,
+    "inactive": 63,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 0.46925597,
+    "active": 16,
+    "waiting": 16,
+    "inactive": 63,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 0.499053578,
+    "active": 16,
+    "waiting": 15,
+    "inactive": 63,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 0.505300152,
+    "active": 16,
+    "waiting": 15,
+    "inactive": 63,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 0.600190142,
+    "active": 16,
+    "waiting": 15,
+    "inactive": 63,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 0.633614952,
+    "active": 16,
+    "waiting": 14,
+    "inactive": 63,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 0.633810361,
+    "active": 16,
+    "waiting": 14,
+    "inactive": 63,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 0.695880629,
+    "active": 16,
+    "waiting": 13,
+    "inactive": 63,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 0.695971599,
+    "active": 16,
+    "waiting": 13,
+    "inactive": 63,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 0.756840962,
+    "active": 16,
+    "waiting": 13,
+    "inactive": 63,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 0.781221573,
+    "active": 16,
+    "waiting": 13,
+    "inactive": 63,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 0.836824248,
+    "active": 16,
+    "waiting": 14,
+    "inactive": 62,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 0.844879767,
+    "active": 16,
+    "waiting": 13,
+    "inactive": 62,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 0.862778614,
+    "active": 16,
+    "waiting": 13,
+    "inactive": 62,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 0.884339492,
+    "active": 16,
+    "waiting": 12,
+    "inactive": 62,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 0.884619832,
+    "active": 16,
+    "waiting": 12,
+    "inactive": 62,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 0.899698254,
+    "active": 16,
+    "waiting": 11,
+    "inactive": 62,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 0.899869064,
+    "active": 16,
+    "waiting": 11,
+    "inactive": 62,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 1.102404062,
+    "active": 16,
+    "waiting": 12,
+    "inactive": 61,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 1.203446766,
+    "active": 16,
+    "waiting": 12,
+    "inactive": 61,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 1.235948766,
+    "active": 16,
+    "waiting": 11,
+    "inactive": 61,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 1.236228985,
+    "active": 16,
+    "waiting": 11,
+    "inactive": 61,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 1.3687250340000001,
+    "active": 16,
+    "waiting": 11,
+    "inactive": 60,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 1.368955833,
+    "active": 16,
+    "waiting": 11,
+    "inactive": 60,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 1.376334836,
+    "active": 16,
+    "waiting": 11,
+    "inactive": 60,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 1.545595254,
+    "active": 16,
+    "waiting": 11,
+    "inactive": 60,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 1.664936493,
+    "active": 16,
+    "waiting": 12,
+    "inactive": 59,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 2.05286446,
+    "active": 16,
+    "waiting": 12,
+    "inactive": 59,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 2.095526335,
+    "active": 16,
+    "waiting": 11,
+    "inactive": 59,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 2.115914385,
+    "active": 16,
+    "waiting": 11,
+    "inactive": 59,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 2.240926951,
+    "active": 16,
+    "waiting": 11,
+    "inactive": 59,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 2.265820041,
+    "active": 16,
+    "waiting": 10,
+    "inactive": 59,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 2.26594345,
+    "active": 16,
+    "waiting": 10,
+    "inactive": 59,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 2.329868095,
+    "active": 16,
+    "waiting": 9,
+    "inactive": 59,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 2.349047047,
+    "active": 16,
+    "waiting": 9,
+    "inactive": 59,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 2.363276362,
+    "active": 16,
+    "waiting": 9,
+    "inactive": 58,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 2.363533302,
+    "active": 16,
+    "waiting": 9,
+    "inactive": 58,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 2.4364301839999998,
+    "active": 16,
+    "waiting": 9,
+    "inactive": 58,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 2.473868314,
+    "active": 16,
+    "waiting": 9,
+    "inactive": 57,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 2.489397046,
+    "active": 16,
+    "waiting": 9,
+    "inactive": 56,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 2.50812217,
+    "active": 16,
+    "waiting": 8,
+    "inactive": 56,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 2.512570889,
+    "active": 16,
+    "waiting": 8,
+    "inactive": 56,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 2.515668002,
+    "active": 16,
+    "waiting": 8,
+    "inactive": 56,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 2.645935434,
+    "active": 16,
+    "waiting": 7,
+    "inactive": 56,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 2.646876852,
+    "active": 16,
+    "waiting": 7,
+    "inactive": 56,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 2.67219809,
+    "active": 16,
+    "waiting": 7,
+    "inactive": 55,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 2.6723081,
+    "active": 16,
+    "waiting": 7,
+    "inactive": 55,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 2.687916162,
+    "active": 16,
+    "waiting": 7,
+    "inactive": 55,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 2.705079531,
+    "active": 16,
+    "waiting": 7,
+    "inactive": 54,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 2.70518189,
+    "active": 16,
+    "waiting": 7,
+    "inactive": 54,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 2.77069682,
+    "active": 16,
+    "waiting": 6,
+    "inactive": 54,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 2.777269095,
+    "active": 16,
+    "waiting": 6,
+    "inactive": 54,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 2.795927989,
+    "active": 16,
+    "waiting": 6,
+    "inactive": 53,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 2.813309086,
+    "active": 16,
+    "waiting": 6,
+    "inactive": 53,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 2.917222864,
+    "active": 16,
+    "waiting": 6,
+    "inactive": 53,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 3.017238119,
+    "active": 16,
+    "waiting": 7,
+    "inactive": 52,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 3.034894686,
+    "active": 16,
+    "waiting": 7,
+    "inactive": 52,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 3.075879836,
+    "active": 16,
+    "waiting": 7,
+    "inactive": 52,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 3.09531402,
+    "active": 16,
+    "waiting": 6,
+    "inactive": 52,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 3.095592219,
+    "active": 16,
+    "waiting": 6,
+    "inactive": 52,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 3.099549618,
+    "active": 16,
+    "waiting": 6,
+    "inactive": 52,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 3.104751076,
+    "active": 16,
+    "waiting": 5,
+    "inactive": 52,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 3.11113608,
+    "active": 16,
+    "waiting": 5,
+    "inactive": 52,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 3.193873788,
+    "active": 16,
+    "waiting": 4,
+    "inactive": 51,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 3.200886292,
+    "active": 16,
+    "waiting": 4,
+    "inactive": 51,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 3.203074506,
+    "active": 16,
+    "waiting": 3,
+    "inactive": 51,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 3.203291216,
+    "active": 16,
+    "waiting": 3,
+    "inactive": 51,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 3.205453271,
+    "active": 16,
+    "waiting": 3,
+    "inactive": 51,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 3.2714897499999998,
+    "active": 16,
+    "waiting": 3,
+    "inactive": 50,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 3.271592799,
+    "active": 16,
+    "waiting": 3,
+    "inactive": 50,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 3.272631307,
+    "active": 16,
+    "waiting": 3,
+    "inactive": 50,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 3.272951436,
+    "active": 16,
+    "waiting": 3,
+    "inactive": 49,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 3.27941333,
+    "active": 16,
+    "waiting": 2,
+    "inactive": 49,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 3.285026946,
+    "active": 16,
+    "waiting": 2,
+    "inactive": 48,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 3.285129006,
+    "active": 16,
+    "waiting": 2,
+    "inactive": 48,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 3.286169703,
+    "active": 16,
+    "waiting": 2,
+    "inactive": 48,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 3.31236644,
+    "active": 16,
+    "waiting": 2,
+    "inactive": 48,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 3.38187516,
+    "active": 16,
+    "waiting": 2,
+    "inactive": 48,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 3.421701823,
+    "active": 16,
+    "waiting": 1,
+    "inactive": 48,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 3.429331445,
+    "active": 16,
+    "waiting": 1,
+    "inactive": 48,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 3.512241252,
+    "active": 16,
+    "waiting": 0,
+    "inactive": 48,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 3.512333902,
+    "active": 16,
+    "waiting": 0,
+    "inactive": 48,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 3.592131697,
+    "active": 16,
+    "waiting": 0,
+    "inactive": 47,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 3.6162977080000003,
+    "active": 16,
+    "waiting": 0,
+    "inactive": 47,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 3.620650167,
+    "active": 15,
+    "waiting": 0,
+    "inactive": 47,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 3.674648956,
+    "active": 15,
+    "waiting": 1,
+    "inactive": 46,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 3.843092785,
+    "active": 15,
+    "waiting": 1,
+    "inactive": 46,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 3.888110575,
+    "active": 15,
+    "waiting": 1,
+    "inactive": 46,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 3.888355804,
+    "active": 15,
+    "waiting": 1,
+    "inactive": 45,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 3.8885112040000003,
+    "active": 15,
+    "waiting": 1,
+    "inactive": 45,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 4.227925044,
+    "active": 15,
+    "waiting": 1,
+    "inactive": 45,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 4.261188624,
+    "active": 15,
+    "waiting": 1,
+    "inactive": 45,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 4.284471047,
+    "active": 15,
+    "waiting": 0,
+    "inactive": 45,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 4.284592627,
+    "active": 15,
+    "waiting": 0,
+    "inactive": 45,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 4.308500767,
+    "active": 15,
+    "waiting": 0,
+    "inactive": 45,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 4.347948422,
+    "active": 15,
+    "waiting": 0,
+    "inactive": 45,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 4.348280342,
+    "active": 15,
+    "waiting": 0,
+    "inactive": 44,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 4.348391371,
+    "active": 15,
+    "waiting": 0,
+    "inactive": 44,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 4.366931806,
+    "active": 14,
+    "waiting": 0,
+    "inactive": 44,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 4.396611022,
+    "active": 14,
+    "waiting": 0,
+    "inactive": 44,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 4.500691349,
+    "active": 13,
+    "waiting": 0,
+    "inactive": 44,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 4.617228354,
+    "active": 13,
+    "waiting": 0,
+    "inactive": 44,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 4.76618765,
+    "active": 13,
+    "waiting": 1,
+    "inactive": 43,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 4.985088386,
+    "active": 13,
+    "waiting": 0,
+    "inactive": 43,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 4.985509455,
+    "active": 13,
+    "waiting": 0,
+    "inactive": 43,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 5.115112216,
+    "active": 13,
+    "waiting": 1,
+    "inactive": 41,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 5.133303183,
+    "active": 13,
+    "waiting": 1,
+    "inactive": 41,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 5.388127569,
+    "active": 13,
+    "waiting": 1,
+    "inactive": 41,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 5.490793038,
+    "active": 13,
+    "waiting": 1,
+    "inactive": 40,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 5.491228587,
+    "active": 13,
+    "waiting": 1,
+    "inactive": 40,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 5.588806738,
+    "active": 13,
+    "waiting": 2,
+    "inactive": 39,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 5.61661614,
+    "active": 13,
+    "waiting": 1,
+    "inactive": 39,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 5.61678616,
+    "active": 13,
+    "waiting": 1,
+    "inactive": 39,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 5.639928283,
+    "active": 13,
+    "waiting": 1,
+    "inactive": 38,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 5.640017273,
+    "active": 13,
+    "waiting": 1,
+    "inactive": 38,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 5.921327135,
+    "active": 13,
+    "waiting": 4,
+    "inactive": 35,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 6.118542131,
+    "active": 13,
+    "waiting": 4,
+    "inactive": 35,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 6.11924464,
+    "active": 13,
+    "waiting": 4,
+    "inactive": 34,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 6.149393847,
+    "active": 13,
+    "waiting": 4,
+    "inactive": 34,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 6.222682267,
+    "active": 13,
+    "waiting": 4,
+    "inactive": 33,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 6.241516311,
+    "active": 13,
+    "waiting": 4,
+    "inactive": 33,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 6.6200464839999995,
+    "active": 13,
+    "waiting": 3,
+    "inactive": 33,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 6.620916141,
+    "active": 13,
+    "waiting": 3,
+    "inactive": 33,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 6.626183787,
+    "active": 13,
+    "waiting": 3,
+    "inactive": 33,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 6.6836839569999995,
+    "active": 13,
+    "waiting": 3,
+    "inactive": 33,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 6.783531872,
+    "active": 13,
+    "waiting": 3,
+    "inactive": 33,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 6.812942821,
+    "active": 13,
+    "waiting": 3,
+    "inactive": 33,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 6.910148332,
+    "active": 13,
+    "waiting": 4,
+    "inactive": 32,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 7.410351476,
+    "active": 13,
+    "waiting": 4,
+    "inactive": 32,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 7.491091117,
+    "active": 13,
+    "waiting": 3,
+    "inactive": 32,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 7.491197207,
+    "active": 13,
+    "waiting": 3,
+    "inactive": 32,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 7.543370589,
+    "active": 13,
+    "waiting": 2,
+    "inactive": 32,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 7.545092665,
+    "active": 13,
+    "waiting": 2,
+    "inactive": 32,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 7.796661937,
+    "active": 13,
+    "waiting": 2,
+    "inactive": 31,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 7.7968522270000005,
+    "active": 13,
+    "waiting": 2,
+    "inactive": 31,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 8.005515115,
+    "active": 13,
+    "waiting": 1,
+    "inactive": 31,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 8.005737404,
+    "active": 13,
+    "waiting": 1,
+    "inactive": 31,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 8.122869197,
+    "active": 13,
+    "waiting": 1,
+    "inactive": 30,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 8.12983082,
+    "active": 13,
+    "waiting": 1,
+    "inactive": 30,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 8.630995998,
+    "active": 13,
+    "waiting": 1,
+    "inactive": 30,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 8.875795977,
+    "active": 13,
+    "waiting": 2,
+    "inactive": 29,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 9.107414718,
+    "active": 13,
+    "waiting": 1,
+    "inactive": 29,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 9.107599217,
+    "active": 13,
+    "waiting": 1,
+    "inactive": 29,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 9.443195312,
+    "active": 14,
+    "waiting": 0,
+    "inactive": 29,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 9.465026338,
+    "active": 14,
+    "waiting": 0,
+    "inactive": 29,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 9.631073229,
+    "active": 14,
+    "waiting": 0,
+    "inactive": 29,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 10.131263938,
+    "active": 14,
+    "waiting": 0,
+    "inactive": 29,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 10.142267151,
+    "active": 13,
+    "waiting": 0,
+    "inactive": 29,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 10.592607712,
+    "active": 13,
+    "waiting": 1,
+    "inactive": 28,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 10.62171072,
+    "active": 13,
+    "waiting": 0,
+    "inactive": 28,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 10.622214839,
+    "active": 13,
+    "waiting": 0,
+    "inactive": 28,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 10.73141617,
+    "active": 12,
+    "waiting": 0,
+    "inactive": 28,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 10.954238221,
+    "active": 12,
+    "waiting": 1,
+    "inactive": 27,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 11.456219702,
+    "active": 12,
+    "waiting": 1,
+    "inactive": 27,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 11.752477161,
+    "active": 12,
+    "waiting": 0,
+    "inactive": 27,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 11.76127865,
+    "active": 12,
+    "waiting": 0,
+    "inactive": 27,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 11.8340484,
+    "active": 11,
+    "waiting": 0,
+    "inactive": 27,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 11.900000568,
+    "active": 10,
+    "waiting": 0,
+    "inactive": 27,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 11.903228909,
+    "active": 10,
+    "waiting": 0,
+    "inactive": 27,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 11.968548668,
+    "active": 9,
+    "waiting": 0,
+    "inactive": 27,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 12.309372607,
+    "active": 9,
+    "waiting": 0,
+    "inactive": 27,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 12.331603621,
+    "active": 9,
+    "waiting": 0,
+    "inactive": 27,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 12.831707226,
+    "active": 9,
+    "waiting": 0,
+    "inactive": 27,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 13.309593715,
+    "active": 8,
+    "waiting": 0,
+    "inactive": 27,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 13.610526101,
+    "active": 8,
+    "waiting": 0,
+    "inactive": 27,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 13.770798734,
+    "active": 8,
+    "waiting": 1,
+    "inactive": 25,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 13.771360463,
+    "active": 8,
+    "waiting": 1,
+    "inactive": 25,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 14.271453514,
+    "active": 8,
+    "waiting": 1,
+    "inactive": 25,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 14.645423618,
+    "active": 9,
+    "waiting": 0,
+    "inactive": 25,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 14.661301268999999,
+    "active": 9,
+    "waiting": 0,
+    "inactive": 25,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 14.790484628,
+    "active": 9,
+    "waiting": 0,
+    "inactive": 24,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 14.791603905,
+    "active": 9,
+    "waiting": 0,
+    "inactive": 24,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 15.291775355,
+    "active": 9,
+    "waiting": 0,
+    "inactive": 24,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 15.792006005,
+    "active": 9,
+    "waiting": 0,
+    "inactive": 24,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 15.893961853,
+    "active": 8,
+    "waiting": 0,
+    "inactive": 24,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 16.029901134,
+    "active": 8,
+    "waiting": 0,
+    "inactive": 24,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 16.030132224,
+    "active": 8,
+    "waiting": 0,
+    "inactive": 24,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 16.030165114,
+    "active": 8,
+    "waiting": 0,
+    "inactive": 24,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 16.030192954,
+    "active": 8,
+    "waiting": 0,
+    "inactive": 24,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 16.030220764,
+    "active": 8,
+    "waiting": 0,
+    "inactive": 24,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 16.030248304,
+    "active": 8,
+    "waiting": 0,
+    "inactive": 24,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 16.030273804,
+    "active": 8,
+    "waiting": 0,
+    "inactive": 24,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 16.030299443,
+    "active": 8,
+    "waiting": 0,
+    "inactive": 24,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 16.030325433,
+    "active": 8,
+    "waiting": 0,
+    "inactive": 24,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 16.030350113,
+    "active": 8,
+    "waiting": 0,
+    "inactive": 24,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 16.030374893,
+    "active": 8,
+    "waiting": 0,
+    "inactive": 24,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 16.030399993,
+    "active": 8,
+    "waiting": 0,
+    "inactive": 24,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 16.030424803,
+    "active": 8,
+    "waiting": 0,
+    "inactive": 24,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 16.030450523,
+    "active": 8,
+    "waiting": 0,
+    "inactive": 24,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 16.030474673,
+    "active": 8,
+    "waiting": 0,
+    "inactive": 24,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 16.030499323,
+    "active": 8,
+    "waiting": 0,
+    "inactive": 24,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 16.030523693,
+    "active": 8,
+    "waiting": 0,
+    "inactive": 24,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 16.030548713,
+    "active": 8,
+    "waiting": 0,
+    "inactive": 24,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 16.030573493,
+    "active": 8,
+    "waiting": 0,
+    "inactive": 24,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 16.030597593,
+    "active": 8,
+    "waiting": 0,
+    "inactive": 24,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 16.030622323,
+    "active": 8,
+    "waiting": 0,
+    "inactive": 24,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 16.030647133,
+    "active": 8,
+    "waiting": 0,
+    "inactive": 24,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 16.030671403,
+    "active": 8,
+    "waiting": 0,
+    "inactive": 24,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 16.030695733,
+    "active": 8,
+    "waiting": 0,
+    "inactive": 24,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 16.030720322,
+    "active": 8,
+    "waiting": 0,
+    "inactive": 24,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 16.030744872,
+    "active": 8,
+    "waiting": 0,
+    "inactive": 24,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 16.030769372,
+    "active": 8,
+    "waiting": 0,
+    "inactive": 24,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 16.030793942,
+    "active": 8,
+    "waiting": 0,
+    "inactive": 24,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 16.030818712,
+    "active": 8,
+    "waiting": 0,
+    "inactive": 24,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 16.030843702,
+    "active": 8,
+    "waiting": 0,
+    "inactive": 24,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 16.030868412,
+    "active": 8,
+    "waiting": 0,
+    "inactive": 24,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 16.030893142,
+    "active": 8,
+    "waiting": 0,
+    "inactive": 24,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 16.030917662,
+    "active": 8,
+    "waiting": 0,
+    "inactive": 24,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 16.030942482,
+    "active": 8,
+    "waiting": 0,
+    "inactive": 24,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 16.030966872,
+    "active": 8,
+    "waiting": 0,
+    "inactive": 24,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 16.030991842,
+    "active": 8,
+    "waiting": 0,
+    "inactive": 24,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 16.031017082,
+    "active": 8,
+    "waiting": 0,
+    "inactive": 24,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 16.031042792,
+    "active": 8,
+    "waiting": 0,
+    "inactive": 24,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 16.031067792,
+    "active": 8,
+    "waiting": 0,
+    "inactive": 24,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 16.031092622,
+    "active": 8,
+    "waiting": 0,
+    "inactive": 24,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 16.031117892,
+    "active": 8,
+    "waiting": 0,
+    "inactive": 24,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 16.031147151,
+    "active": 8,
+    "waiting": 0,
+    "inactive": 24,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 16.031171871,
+    "active": 8,
+    "waiting": 0,
+    "inactive": 24,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 16.031197491,
+    "active": 8,
+    "waiting": 0,
+    "inactive": 24,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 16.031222161,
+    "active": 8,
+    "waiting": 0,
+    "inactive": 24,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 16.031247221,
+    "active": 8,
+    "waiting": 0,
+    "inactive": 24,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 16.031272651,
+    "active": 8,
+    "waiting": 0,
+    "inactive": 24,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 16.031297241,
+    "active": 8,
+    "waiting": 0,
+    "inactive": 24,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 16.031322771,
+    "active": 8,
+    "waiting": 0,
+    "inactive": 24,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 16.055132931,
+    "active": 8,
+    "waiting": 0,
+    "inactive": 23,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 16.055432401,
+    "active": 8,
+    "waiting": 0,
+    "inactive": 23,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 16.240491181,
+    "active": 8,
+    "waiting": 0,
+    "inactive": 23,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 16.741768816,
+    "active": 8,
+    "waiting": 0,
+    "inactive": 23,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 16.813330738,
+    "active": 8,
+    "waiting": 0,
+    "inactive": 22,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 16.828057522,
+    "active": 8,
+    "waiting": 0,
+    "inactive": 22,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 16.853046251,
+    "active": 8,
+    "waiting": 0,
+    "inactive": 22,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 16.976785923,
+    "active": 8,
+    "waiting": 0,
+    "inactive": 21,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 16.976918803,
+    "active": 8,
+    "waiting": 0,
+    "inactive": 21,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 16.977002252,
+    "active": 8,
+    "waiting": 0,
+    "inactive": 21,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 17.078721179,
+    "active": 7,
+    "waiting": 0,
+    "inactive": 21,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 17.580301041,
+    "active": 7,
+    "waiting": 0,
+    "inactive": 21,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 17.628035343,
+    "active": 7,
+    "waiting": 0,
+    "inactive": 20,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 17.628283122,
+    "active": 7,
+    "waiting": 0,
+    "inactive": 20,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 17.62919071,
+    "active": 7,
+    "waiting": 0,
+    "inactive": 20,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 17.642816766,
+    "active": 7,
+    "waiting": 0,
+    "inactive": 19,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 17.642910396,
+    "active": 7,
+    "waiting": 0,
+    "inactive": 19,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 17.6573352,
+    "active": 7,
+    "waiting": 0,
+    "inactive": 19,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 17.681884149,
+    "active": 7,
+    "waiting": 0,
+    "inactive": 18,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 17.682075038,
+    "active": 7,
+    "waiting": 0,
+    "inactive": 18,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 17.690135279,
+    "active": 7,
+    "waiting": 0,
+    "inactive": 18,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 17.822778459,
+    "active": 7,
+    "waiting": 1,
+    "inactive": 17,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 17.825384732,
+    "active": 8,
+    "waiting": 0,
+    "inactive": 17,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 17.829275183,
+    "active": 8,
+    "waiting": 0,
+    "inactive": 17,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 17.851427467,
+    "active": 8,
+    "waiting": 0,
+    "inactive": 17,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 17.873212902,
+    "active": 7,
+    "waiting": 0,
+    "inactive": 17,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 18.376977828,
+    "active": 7,
+    "waiting": 0,
+    "inactive": 17,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 18.553092099,
+    "active": 7,
+    "waiting": 1,
+    "inactive": 16,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 18.553354199,
+    "active": 8,
+    "waiting": 0,
+    "inactive": 16,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 18.568571521,
+    "active": 8,
+    "waiting": 0,
+    "inactive": 16,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 19.065856512,
+    "active": 7,
+    "waiting": 0,
+    "inactive": 16,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 19.126866021,
+    "active": 6,
+    "waiting": 0,
+    "inactive": 16,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 19.241784984,
+    "active": 6,
+    "waiting": 0,
+    "inactive": 16,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 19.545919605,
+    "active": 6,
+    "waiting": 0,
+    "inactive": 16,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 19.763298734,
+    "active": 5,
+    "waiting": 0,
+    "inactive": 16,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 20.263490215,
+    "active": 5,
+    "waiting": 0,
+    "inactive": 16,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 20.344404073,
+    "active": 5,
+    "waiting": 0,
+    "inactive": 16,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 20.834815779,
+    "active": 4,
+    "waiting": 0,
+    "inactive": 16,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 21.335461247,
+    "active": 4,
+    "waiting": 0,
+    "inactive": 16,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 21.838913078,
+    "active": 4,
+    "waiting": 0,
+    "inactive": 16,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 22.068023955,
+    "active": 4,
+    "waiting": 0,
+    "inactive": 16,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 22.568192142,
+    "active": 4,
+    "waiting": 0,
+    "inactive": 16,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 23.071693521,
+    "active": 4,
+    "waiting": 0,
+    "inactive": 16,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 23.571865848,
+    "active": 4,
+    "waiting": 0,
+    "inactive": 16,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 24.072037034,
+    "active": 4,
+    "waiting": 0,
+    "inactive": 16,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 24.098851226,
+    "active": 3,
+    "waiting": 0,
+    "inactive": 16,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 24.59896492,
+    "active": 3,
+    "waiting": 0,
+    "inactive": 16,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 25.099154134,
+    "active": 3,
+    "waiting": 0,
+    "inactive": 16,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 25.601920051,
+    "active": 3,
+    "waiting": 0,
+    "inactive": 16,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 26.102095753,
+    "active": 3,
+    "waiting": 0,
+    "inactive": 16,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 26.602297333,
+    "active": 3,
+    "waiting": 0,
+    "inactive": 16,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 26.900454773,
+    "active": 2,
+    "waiting": 0,
+    "inactive": 16,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 27.401172362,
+    "active": 2,
+    "waiting": 0,
+    "inactive": 16,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 27.90136539,
+    "active": 2,
+    "waiting": 0,
+    "inactive": 16,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 28.40516424,
+    "active": 2,
+    "waiting": 0,
+    "inactive": 16,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 28.913165248,
+    "active": 2,
+    "waiting": 0,
+    "inactive": 16,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 29.413759413,
+    "active": 2,
+    "waiting": 0,
+    "inactive": 16,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 29.92516362,
+    "active": 2,
+    "waiting": 0,
+    "inactive": 16,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 30.425352165,
+    "active": 2,
+    "waiting": 0,
+    "inactive": 16,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 30.929165701,
+    "active": 2,
+    "waiting": 0,
+    "inactive": 16,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 31.429374184,
+    "active": 2,
+    "waiting": 0,
+    "inactive": 16,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 31.933164386,
+    "active": 2,
+    "waiting": 0,
+    "inactive": 16,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 32.433402118,
+    "active": 2,
+    "waiting": 0,
+    "inactive": 16,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 32.935799353,
+    "active": 2,
+    "waiting": 0,
+    "inactive": 16,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 32.985359768,
+    "active": 5,
+    "waiting": 0,
+    "inactive": 12,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 32.986302385,
+    "active": 5,
+    "waiting": 0,
+    "inactive": 12,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 32.989243878,
+    "active": 5,
+    "waiting": 0,
+    "inactive": 12,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 32.989357478,
+    "active": 5,
+    "waiting": 0,
+    "inactive": 12,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 33.489444388,
+    "active": 5,
+    "waiting": 0,
+    "inactive": 12,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 33.989691847,
+    "active": 5,
+    "waiting": 0,
+    "inactive": 12,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 34.489982615,
+    "active": 5,
+    "waiting": 0,
+    "inactive": 12,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 34.990159452,
+    "active": 5,
+    "waiting": 0,
+    "inactive": 12,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 35.490324319,
+    "active": 5,
+    "waiting": 0,
+    "inactive": 12,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 35.990492705,
+    "active": 5,
+    "waiting": 0,
+    "inactive": 12,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 36.493176174,
+    "active": 5,
+    "waiting": 0,
+    "inactive": 12,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 36.993408278,
+    "active": 5,
+    "waiting": 0,
+    "inactive": 12,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 37.49359361,
+    "active": 5,
+    "waiting": 0,
+    "inactive": 12,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 37.993774494,
+    "active": 5,
+    "waiting": 0,
+    "inactive": 12,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 38.493958415,
+    "active": 5,
+    "waiting": 0,
+    "inactive": 12,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 38.994129167,
+    "active": 5,
+    "waiting": 0,
+    "inactive": 12,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 39.257859612,
+    "active": 5,
+    "waiting": 0,
+    "inactive": 11,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 39.270974099,
+    "active": 5,
+    "waiting": 0,
+    "inactive": 11,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 39.771073288,
+    "active": 5,
+    "waiting": 0,
+    "inactive": 11,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 39.938703599,
+    "active": 5,
+    "waiting": 0,
+    "inactive": 10,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 39.939156288,
+    "active": 5,
+    "waiting": 0,
+    "inactive": 10,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 40.054447683,
+    "active": 5,
+    "waiting": 0,
+    "inactive": 10,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 40.12188026,
+    "active": 4,
+    "waiting": 0,
+    "inactive": 10,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 40.23471659,
+    "active": 4,
+    "waiting": 1,
+    "inactive": 9,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 40.235192179,
+    "active": 5,
+    "waiting": 0,
+    "inactive": 9,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 40.23903657,
+    "active": 5,
+    "waiting": 0,
+    "inactive": 9,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 40.368363079,
+    "active": 4,
+    "waiting": 0,
+    "inactive": 9,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 40.868579607,
+    "active": 4,
+    "waiting": 0,
+    "inactive": 9,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 41.368765094,
+    "active": 4,
+    "waiting": 0,
+    "inactive": 9,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 41.86894319,
+    "active": 4,
+    "waiting": 0,
+    "inactive": 9,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 42.37125104,
+    "active": 4,
+    "waiting": 0,
+    "inactive": 9,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 42.874615198,
+    "active": 4,
+    "waiting": 0,
+    "inactive": 9,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 43.374835151,
+    "active": 4,
+    "waiting": 0,
+    "inactive": 9,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 43.875041485,
+    "active": 4,
+    "waiting": 0,
+    "inactive": 9,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 44.37772628,
+    "active": 4,
+    "waiting": 0,
+    "inactive": 9,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 44.878243802,
+    "active": 4,
+    "waiting": 0,
+    "inactive": 9,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 45.382419602,
+    "active": 4,
+    "waiting": 0,
+    "inactive": 9,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 45.88334392,
+    "active": 4,
+    "waiting": 0,
+    "inactive": 9,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 46.383534589,
+    "active": 4,
+    "waiting": 0,
+    "inactive": 9,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 46.883755187,
+    "active": 4,
+    "waiting": 0,
+    "inactive": 9,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 47.385162902,
+    "active": 4,
+    "waiting": 0,
+    "inactive": 9,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 47.88918292,
+    "active": 4,
+    "waiting": 0,
+    "inactive": 9,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 48.389362584,
+    "active": 4,
+    "waiting": 0,
+    "inactive": 9,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 48.803298934,
+    "active": 3,
+    "waiting": 0,
+    "inactive": 9,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 49.303473588,
+    "active": 3,
+    "waiting": 0,
+    "inactive": 9,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 49.803645692,
+    "active": 3,
+    "waiting": 0,
+    "inactive": 9,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 50.045203757,
+    "active": 3,
+    "waiting": 0,
+    "inactive": 9,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 50.545396218,
+    "active": 3,
+    "waiting": 0,
+    "inactive": 9,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 51.047260826,
+    "active": 3,
+    "waiting": 0,
+    "inactive": 9,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 51.557179501,
+    "active": 3,
+    "waiting": 0,
+    "inactive": 9,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 52.057450232,
+    "active": 3,
+    "waiting": 0,
+    "inactive": 9,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 52.564132105,
+    "active": 3,
+    "waiting": 0,
+    "inactive": 9,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 53.064636832,
+    "active": 3,
+    "waiting": 0,
+    "inactive": 9,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 53.567394383999996,
+    "active": 3,
+    "waiting": 0,
+    "inactive": 9,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 54.067611561,
+    "active": 3,
+    "waiting": 0,
+    "inactive": 9,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 54.570860799,
+    "active": 3,
+    "waiting": 0,
+    "inactive": 9,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 55.073592677,
+    "active": 3,
+    "waiting": 0,
+    "inactive": 9,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 55.573759533,
+    "active": 3,
+    "waiting": 0,
+    "inactive": 9,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 56.073923457,
+    "active": 3,
+    "waiting": 0,
+    "inactive": 9,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 56.57410934,
+    "active": 3,
+    "waiting": 0,
+    "inactive": 9,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 57.074319122,
+    "active": 3,
+    "waiting": 0,
+    "inactive": 9,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 57.574598264,
+    "active": 3,
+    "waiting": 0,
+    "inactive": 9,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 58.077165789,
+    "active": 3,
+    "waiting": 0,
+    "inactive": 9,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 58.578045017,
+    "active": 3,
+    "waiting": 0,
+    "inactive": 9,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 59.081185498,
+    "active": 3,
+    "waiting": 0,
+    "inactive": 9,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 59.585175426,
+    "active": 3,
+    "waiting": 0,
+    "inactive": 9,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 60.085359215,
+    "active": 3,
+    "waiting": 0,
+    "inactive": 9,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 60.585526302,
+    "active": 3,
+    "waiting": 0,
+    "inactive": 9,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 61.08916425,
+    "active": 3,
+    "waiting": 0,
+    "inactive": 9,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 61.589738614,
+    "active": 3,
+    "waiting": 0,
+    "inactive": 9,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 62.09316979,
+    "active": 3,
+    "waiting": 0,
+    "inactive": 9,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 62.562954194,
+    "active": 3,
+    "waiting": 0,
+    "inactive": 8,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 62.563319373,
+    "active": 3,
+    "waiting": 0,
+    "inactive": 8,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 62.563405333,
+    "active": 3,
+    "waiting": 0,
+    "inactive": 8,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 63.063488517,
+    "active": 3,
+    "waiting": 0,
+    "inactive": 8,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 63.375998063,
+    "active": 2,
+    "waiting": 0,
+    "inactive": 8,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 63.876525265,
+    "active": 2,
+    "waiting": 0,
+    "inactive": 8,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 64.376710346,
+    "active": 2,
+    "waiting": 0,
+    "inactive": 8,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 64.876890487,
+    "active": 2,
+    "waiting": 0,
+    "inactive": 8,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 65.377123875,
+    "active": 2,
+    "waiting": 0,
+    "inactive": 8,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 65.877448445,
+    "active": 2,
+    "waiting": 0,
+    "inactive": 8,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 66.381162253,
+    "active": 2,
+    "waiting": 0,
+    "inactive": 8,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 66.881328241,
+    "active": 2,
+    "waiting": 0,
+    "inactive": 8,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 67.385159687,
+    "active": 2,
+    "waiting": 0,
+    "inactive": 8,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 67.889159813,
+    "active": 2,
+    "waiting": 0,
+    "inactive": 8,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 68.389325398,
+    "active": 2,
+    "waiting": 0,
+    "inactive": 8,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 68.893166074,
+    "active": 2,
+    "waiting": 0,
+    "inactive": 8,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 69.393332207,
+    "active": 2,
+    "waiting": 0,
+    "inactive": 8,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 69.894212428,
+    "active": 2,
+    "waiting": 0,
+    "inactive": 8,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 70.394434039,
+    "active": 2,
+    "waiting": 0,
+    "inactive": 8,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 70.409898469,
+    "active": 2,
+    "waiting": 2,
+    "inactive": 6,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 70.410090259,
+    "active": 4,
+    "waiting": 0,
+    "inactive": 6,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 70.410120758,
+    "active": 4,
+    "waiting": 0,
+    "inactive": 6,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 70.410205748,
+    "active": 4,
+    "waiting": 0,
+    "inactive": 6,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 70.675099715,
+    "active": 3,
+    "waiting": 0,
+    "inactive": 6,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 70.897311504,
+    "active": 3,
+    "waiting": 0,
+    "inactive": 6,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 71.025492053,
+    "active": 2,
+    "waiting": 0,
+    "inactive": 6,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 71.381199277,
+    "active": 2,
+    "waiting": 1,
+    "inactive": 5,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 71.389241807,
+    "active": 3,
+    "waiting": 0,
+    "inactive": 5,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 71.389340016,
+    "active": 3,
+    "waiting": 0,
+    "inactive": 5,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 71.660472276,
+    "active": 3,
+    "waiting": 0,
+    "inactive": 5,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 72.161252083,
+    "active": 3,
+    "waiting": 0,
+    "inactive": 5,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 72.483536726,
+    "active": 3,
+    "waiting": 0,
+    "inactive": 4,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 72.484913032,
+    "active": 3,
+    "waiting": 0,
+    "inactive": 4,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 72.571325832,
+    "active": 3,
+    "waiting": 0,
+    "inactive": 4,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 72.99288027,
+    "active": 2,
+    "waiting": 0,
+    "inactive": 4,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 73.000245039,
+    "active": 2,
+    "waiting": 0,
+    "inactive": 3,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 73.000471299,
+    "active": 2,
+    "waiting": 0,
+    "inactive": 3,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 73.500558587,
+    "active": 2,
+    "waiting": 0,
+    "inactive": 3,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 74.000789544,
+    "active": 2,
+    "waiting": 0,
+    "inactive": 3,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 74.501179317,
+    "active": 2,
+    "waiting": 0,
+    "inactive": 3,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 75.001421983,
+    "active": 2,
+    "waiting": 0,
+    "inactive": 3,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 75.404304217,
+    "active": 2,
+    "waiting": 0,
+    "inactive": 2,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 75.404429167,
+    "active": 2,
+    "waiting": 0,
+    "inactive": 2,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 75.404509737,
+    "active": 2,
+    "waiting": 0,
+    "inactive": 2,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 75.905461819,
+    "active": 2,
+    "waiting": 0,
+    "inactive": 2,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 76.310833025,
+    "active": 1,
+    "waiting": 0,
+    "inactive": 2,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 76.811172438,
+    "active": 1,
+    "waiting": 0,
+    "inactive": 2,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 77.311688727,
+    "active": 1,
+    "waiting": 0,
+    "inactive": 2,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 77.81187653,
+    "active": 1,
+    "waiting": 0,
+    "inactive": 2,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 78.037772844,
+    "active": 1,
+    "waiting": 1,
+    "inactive": 1,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 78.037989203,
+    "active": 2,
+    "waiting": 0,
+    "inactive": 1,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 78.038087143,
+    "active": 2,
+    "waiting": 0,
+    "inactive": 1,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 78.538168913,
+    "active": 2,
+    "waiting": 0,
+    "inactive": 1,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 79.038353633,
+    "active": 2,
+    "waiting": 0,
+    "inactive": 1,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 79.353587158,
+    "active": 2,
+    "waiting": 1,
+    "inactive": 0,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 79.353780567,
+    "active": 3,
+    "waiting": 0,
+    "inactive": 0,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 79.353888417,
+    "active": 3,
+    "waiting": 0,
+    "inactive": 0,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 79.854020054,
+    "active": 3,
+    "waiting": 0,
+    "inactive": 0,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 80.354236131,
+    "active": 3,
+    "waiting": 0,
+    "inactive": 0,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 80.505728964,
+    "active": 2,
+    "waiting": 0,
+    "inactive": 0,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 80.557178657,
+    "active": 2,
+    "waiting": 0,
+    "inactive": 0,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 81.057268793,
+    "active": 2,
+    "waiting": 0,
+    "inactive": 0,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 81.561163448,
+    "active": 2,
+    "waiting": 0,
+    "inactive": 0,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 82.065165572,
+    "active": 2,
+    "waiting": 0,
+    "inactive": 0,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 82.565341077,
+    "active": 2,
+    "waiting": 0,
+    "inactive": 0,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 82.699525675,
+    "active": 1,
+    "waiting": 0,
+    "inactive": 0,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 83.199723818,
+    "active": 1,
+    "waiting": 0,
+    "inactive": 0,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 83.699926661,
+    "active": 1,
+    "waiting": 0,
+    "inactive": 0,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 84.200182022,
+    "active": 1,
+    "waiting": 0,
+    "inactive": 0,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 84.700393942,
+    "active": 1,
+    "waiting": 0,
+    "inactive": 0,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 85.200602152,
+    "active": 1,
+    "waiting": 0,
+    "inactive": 0,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 85.284589205,
+    "active": 1,
+    "waiting": 0,
+    "inactive": 0,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 85.784698165,
+    "active": 1,
+    "waiting": 0,
+    "inactive": 0,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 85.869743846,
+    "active": 1,
+    "waiting": 0,
+    "inactive": 0,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 86.369828093,
+    "active": 1,
+    "waiting": 0,
+    "inactive": 0,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 86.871702267,
+    "active": 1,
+    "waiting": 0,
+    "inactive": 0,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 87.371933104,
+    "active": 1,
+    "waiting": 0,
+    "inactive": 0,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 87.87213885,
+    "active": 1,
+    "waiting": 0,
+    "inactive": 0,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 88.372331005,
+    "active": 1,
+    "waiting": 0,
+    "inactive": 0,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 88.874778433,
+    "active": 1,
+    "waiting": 0,
+    "inactive": 0,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 89.375687725,
+    "active": 1,
+    "waiting": 0,
+    "inactive": 0,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 89.876245288,
+    "active": 1,
+    "waiting": 0,
+    "inactive": 0,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 90.376573029,
+    "active": 1,
+    "waiting": 0,
+    "inactive": 0,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 90.87716234,
+    "active": 1,
+    "waiting": 0,
+    "inactive": 0,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 91.37779173,
+    "active": 1,
+    "waiting": 0,
+    "inactive": 0,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 91.87796403,
+    "active": 1,
+    "waiting": 0,
+    "inactive": 0,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 92.380517514,
+    "active": 1,
+    "waiting": 0,
+    "inactive": 0,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 92.880682002,
+    "active": 1,
+    "waiting": 0,
+    "inactive": 0,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 93.380855639,
+    "active": 1,
+    "waiting": 0,
+    "inactive": 0,
+    "rustc_parallelism": 0
+  },
+  {
+    "t": 93.621200275,
+    "active": 0,
+    "waiting": 0,
+    "inactive": 0,
+    "rustc_parallelism": 0
+  }
+];
+const CPU_USAGE = [
+  [
+    0.356443354,
+    100.0
+  ],
+  [
+    0.46926497,
+    100.0
+  ],
+  [
+    0.600191112,
+    100.0
+  ],
+  [
+    0.756880962,
+    100.0
+  ],
+  [
+    0.862779224,
+    100.0
+  ],
+  [
+    1.102405192,
+    100.0
+  ],
+  [
+    1.203447076,
+    100.0
+  ],
+  [
+    1.3687253639999999,
+    100.0
+  ],
+  [
+    1.545603324,
+    100.0
+  ],
+  [
+    1.664936813,
+    100.0
+  ],
+  [
+    2.05286482,
+    100.0
+  ],
+  [
+    2.240927451,
+    100.0
+  ],
+  [
+    2.349047587,
+    100.0
+  ],
+  [
+    2.473868614,
+    100.0
+  ],
+  [
+    2.6459378239999998,
+    100.0
+  ],
+  [
+    2.77069758,
+    100.0
+  ],
+  [
+    2.917223684,
+    100.0
+  ],
+  [
+    3.017238709,
+    100.0
+  ],
+  [
+    3.193874858,
+    100.0
+  ],
+  [
+    3.31236751,
+    100.0
+  ],
+  [
+    3.421702123,
+    100.0
+  ],
+  [
+    3.592131987,
+    100.0
+  ],
+  [
+    3.843093175,
+    100.0
+  ],
+  [
+    4.227926154,
+    100.0
+  ],
+  [
+    4.347949022,
+    100.0
+  ],
+  [
+    4.500691609,
+    100.0
+  ],
+  [
+    4.6172289840000005,
+    100.0
+  ],
+  [
+    4.76618804,
+    100.0
+  ],
+  [
+    4.985088696,
+    100.0
+  ],
+  [
+    5.115113116,
+    100.0
+  ],
+  [
+    5.3881283589999995,
+    100.0
+  ],
+  [
+    5.490793298,
+    100.0
+  ],
+  [
+    5.6166164,
+    100.0
+  ],
+  [
+    5.921330435,
+    100.0
+  ],
+  [
+    6.118542621,
+    100.0
+  ],
+  [
+    6.222683127,
+    100.0
+  ],
+  [
+    6.620069693,
+    100.0
+  ],
+  [
+    6.783532182,
+    100.0
+  ],
+  [
+    6.910148972,
+    100.0
+  ],
+  [
+    7.410352076,
+    100.0
+  ],
+  [
+    7.543371989,
+    100.0
+  ],
+  [
+    7.796662197,
+    100.0
+  ],
+  [
+    8.005520335,
+    100.0
+  ],
+  [
+    8.122869987,
+    100.0
+  ],
+  [
+    8.630998138,
+    100.0
+  ],
+  [
+    8.875796567,
+    100.0
+  ],
+  [
+    9.107415208,
+    100.0
+  ],
+  [
+    9.443196502,
+    99.81481481481481
+  ],
+  [
+    9.631073789,
+    100.0
+  ],
+  [
+    10.131264508,
+    100.0
+  ],
+  [
+    10.592608002,
+    100.0
+  ],
+  [
+    10.73141758,
+    100.0
+  ],
+  [
+    10.954238991,
+    100.0
+  ],
+  [
+    11.456220312,
+    100.0
+  ],
+  [
+    11.752477551,
+    100.0
+  ],
+  [
+    11.900001158,
+    100.0
+  ],
+  [
+    12.309373577,
+    100.0
+  ],
+  [
+    12.831707796,
+    100.0
+  ],
+  [
+    13.309594045,
+    100.0
+  ],
+  [
+    13.610526711,
+    100.0
+  ],
+  [
+    13.770799024,
+    100.0
+  ],
+  [
+    14.271455924,
+    100.0
+  ],
+  [
+    14.645424307999999,
+    100.0
+  ],
+  [
+    14.790485718,
+    100.0
+  ],
+  [
+    15.291775935,
+    100.0
+  ],
+  [
+    15.792006635,
+    100.0
+  ],
+  [
+    15.893962103,
+    100.0
+  ],
+  [
+    16.029901824,
+    100.0
+  ],
+  [
+    16.240492281,
+    100.0
+  ],
+  [
+    16.741770076,
+    100.0
+  ],
+  [
+    16.853047871,
+    100.0
+  ],
+  [
+    16.976786123,
+    100.0
+  ],
+  [
+    17.078722609,
+    100.0
+  ],
+  [
+    17.580301651,
+    100.0
+  ],
+  [
+    17.681884869,
+    99.39759036144578
+  ],
+  [
+    17.822779309,
+    100.0
+  ],
+  [
+    18.376978498,
+    100.0
+  ],
+  [
+    18.553092709,
+    100.0
+  ],
+  [
+    19.065857602,
+    100.0
+  ],
+  [
+    19.241785304,
+    100.0
+  ],
+  [
+    19.545919905,
+    99.79508196721312
+  ],
+  [
+    19.763299214,
+    100.0
+  ],
+  [
+    20.263490665,
+    100.0
+  ],
+  [
+    20.834816109,
+    99.89094874591058
+  ],
+  [
+    21.335461907,
+    100.0
+  ],
+  [
+    21.838914448,
+    100.0
+  ],
+  [
+    22.068024465,
+    100.0
+  ],
+  [
+    22.568192752,
+    100.0
+  ],
+  [
+    23.071694201,
+    100.0
+  ],
+  [
+    23.571866407999998,
+    100.0
+  ],
+  [
+    24.072037694,
+    100.0
+  ],
+  [
+    24.59896558,
+    100.0
+  ],
+  [
+    25.099154764,
+    99.87531172069825
+  ],
+  [
+    25.601920611,
+    100.0
+  ],
+  [
+    26.102096853,
+    100.0
+  ],
+  [
+    26.602297983,
+    100.0
+  ],
+  [
+    26.900455003,
+    100.0
+  ],
+  [
+    27.401173182,
+    100.0
+  ],
+  [
+    27.90136616,
+    100.0
+  ],
+  [
+    28.40516538,
+    100.0
+  ],
+  [
+    28.913166158,
+    100.0
+  ],
+  [
+    29.413761163,
+    100.0
+  ],
+  [
+    29.92516462,
+    100.0
+  ],
+  [
+    30.425353185,
+    99.875
+  ],
+  [
+    30.929166831,
+    100.0
+  ],
+  [
+    31.429374984,
+    99.87515605493134
+  ],
+  [
+    31.933165106,
+    99.87593052109182
+  ],
+  [
+    32.433402677,
+    99.87515605493134
+  ],
+  [
+    32.935799943,
+    99.87484355444306
+  ],
+  [
+    33.489446938,
+    99.88764044943821
+  ],
+  [
+    33.989692627,
+    100.0
+  ],
+  [
+    34.489983145,
+    100.0
+  ],
+  [
+    34.990159942,
+    99.87484355444306
+  ],
+  [
+    35.490324859,
+    100.0
+  ],
+  [
+    35.990493325,
+    100.0
+  ],
+  [
+    36.493176894,
+    100.0
+  ],
+  [
+    36.993408838,
+    100.0
+  ],
+  [
+    37.49359443,
+    100.0
+  ],
+  [
+    37.993775274,
+    100.0
+  ],
+  [
+    38.493959195,
+    100.0
+  ],
+  [
+    38.994130117,
+    100.0
+  ],
+  [
+    39.257859872,
+    100.0
+  ],
+  [
+    39.771075018,
+    100.0
+  ],
+  [
+    39.938703879,
+    100.0
+  ],
+  [
+    40.054448483,
+    100.0
+  ],
+  [
+    40.23471784,
+    100.0
+  ],
+  [
+    40.368363859,
+    100.0
+  ],
+  [
+    40.868580157,
+    99.625468164794
+  ],
+  [
+    41.368765744,
+    100.0
+  ],
+  [
+    41.86894366,
+    100.0
+  ],
+  [
+    42.37125176,
+    100.0
+  ],
+  [
+    42.874616278,
+    100.0
+  ],
+  [
+    43.374835891,
+    100.0
+  ],
+  [
+    43.875042195,
+    100.0
+  ],
+  [
+    44.37772703,
+    100.0
+  ],
+  [
+    44.878244302,
+    100.0
+  ],
+  [
+    45.382420602,
+    100.0
+  ],
+  [
+    45.88334457,
+    100.0
+  ],
+  [
+    46.383535649,
+    100.0
+  ],
+  [
+    46.883755767,
+    100.0
+  ],
+  [
+    47.385163972,
+    100.0
+  ],
+  [
+    47.889183919,
+    99.87608426270137
+  ],
+  [
+    48.389363244,
+    100.0
+  ],
+  [
+    48.803299134,
+    100.0
+  ],
+  [
+    49.303474158,
+    99.87515605493134
+  ],
+  [
+    49.803646302,
+    99.87484355444306
+  ],
+  [
+    50.045204497,
+    99.74424552429667
+  ],
+  [
+    50.545396968,
+    100.0
+  ],
+  [
+    51.047261406,
+    99.875
+  ],
+  [
+    51.557181241,
+    100.0
+  ],
+  [
+    52.057451022,
+    100.0
+  ],
+  [
+    52.564132725,
+    100.0
+  ],
+  [
+    53.064637352,
+    100.0
+  ],
+  [
+    53.567395684,
+    100.0
+  ],
+  [
+    54.067612211,
+    100.0
+  ],
+  [
+    54.570861669,
+    100.0
+  ],
+  [
+    55.073593347,
+    100.0
+  ],
+  [
+    55.573759983,
+    100.0
+  ],
+  [
+    56.073923957,
+    100.0
+  ],
+  [
+    56.57410995,
+    99.87515605493134
+  ],
+  [
+    57.074319912,
+    100.0
+  ],
+  [
+    57.574599914,
+    99.875
+  ],
+  [
+    58.077166969,
+    99.75216852540272
+  ],
+  [
+    58.578045627,
+    100.0
+  ],
+  [
+    59.081186288,
+    100.0
+  ],
+  [
+    59.585176576,
+    100.0
+  ],
+  [
+    60.085359865,
+    100.0
+  ],
+  [
+    60.585536032,
+    99.875
+  ],
+  [
+    61.08916525,
+    99.87608426270137
+  ],
+  [
+    61.589739464,
+    99.75031210986268
+  ],
+  [
+    62.09317055,
+    99.87623762376238
+  ],
+  [
+    62.562954664,
+    99.73297730307075
+  ],
+  [
+    63.063490447,
+    99.7496871088861
+  ],
+  [
+    63.375998313,
+    99.8
+  ],
+  [
+    63.876525875,
+    99.875
+  ],
+  [
+    64.376710935,
+    99.75031210986268
+  ],
+  [
+    64.876891227,
+    99.87531172069825
+  ],
+  [
+    65.377124475,
+    99.87593052109182
+  ],
+  [
+    65.877451875,
+    99.87484355444306
+  ],
+  [
+    66.381162813,
+    99.87623762376238
+  ],
+  [
+    66.881328791,
+    100.0
+  ],
+  [
+    67.385160757,
+    99.87608426270137
+  ],
+  [
+    67.889160373,
+    99.87608426270137
+  ],
+  [
+    68.389326068,
+    99.875
+  ],
+  [
+    68.893167014,
+    99.87593052109182
+  ],
+  [
+    69.393332837,
+    99.87531172069825
+  ],
+  [
+    69.894213138,
+    99.75
+  ],
+  [
+    70.394435699,
+    100.0
+  ],
+  [
+    70.675100515,
+    99.55456570155901
+  ],
+  [
+    70.897311914,
+    100.0
+  ],
+  [
+    71.025492303,
+    99.51456310679612
+  ],
+  [
+    71.381199607,
+    99.82425307557118
+  ],
+  [
+    71.660473376,
+    99.77426636568849
+  ],
+  [
+    72.161253493,
+    100.0
+  ],
+  [
+    72.483536996,
+    100.0
+  ],
+  [
+    72.99288049,
+    99.8769987699877
+  ],
+  [
+    73.500560777,
+    99.8768472906404
+  ],
+  [
+    74.000790124,
+    99.87515605493134
+  ],
+  [
+    74.501180557,
+    100.0
+  ],
+  [
+    75.001422713,
+    99.87468671679198
+  ],
+  [
+    75.404304457,
+    99.53198127925117
+  ],
+  [
+    75.905470479,
+    99.87593052109182
+  ],
+  [
+    76.310833495,
+    100.0
+  ],
+  [
+    76.811176818,
+    100.0
+  ],
+  [
+    77.311689487,
+    99.87531172069825
+  ],
+  [
+    77.81187716,
+    100.0
+  ],
+  [
+    78.037773324,
+    99.72527472527473
+  ],
+  [
+    78.538170983,
+    99.87515605493134
+  ],
+  [
+    79.038354173,
+    99.7496871088861
+  ],
+  [
+    79.353587458,
+    100.0
+  ],
+  [
+    79.854022724,
+    99.87484355444306
+  ],
+  [
+    80.354236771,
+    99.87515605493134
+  ],
+  [
+    80.505729174,
+    99.58677685950413
+  ],
+  [
+    81.057269173,
+    100.0
+  ],
+  [
+    81.561164578,
+    99.87608426270137
+  ],
+  [
+    82.065166292,
+    100.0
+  ],
+  [
+    82.565341657,
+    99.75062344139651
+  ],
+  [
+    82.699525875,
+    99.52830188679245
+  ],
+  [
+    83.199724428,
+    99.87484355444306
+  ],
+  [
+    83.699927861,
+    99.875
+  ],
+  [
+    84.200183172,
+    100.0
+  ],
+  [
+    84.700394622,
+    100.0
+  ],
+  [
+    85.200602912,
+    99.87515605493134
+  ],
+  [
+    85.784698725,
+    100.0
+  ],
+  [
+    86.369828773,
+    99.89373007438894
+  ],
+  [
+    86.871702997,
+    100.0
+  ],
+  [
+    87.371933804,
+    100.0
+  ],
+  [
+    87.87213956,
+    99.87515605493134
+  ],
+  [
+    88.372331765,
+    100.0
+  ],
+  [
+    88.874779003,
+    100.0
+  ],
+  [
+    89.375688445,
+    100.0
+  ],
+  [
+    89.876248368,
+    100.0
+  ],
+  [
+    90.376573739,
+    99.87484355444306
+  ],
+  [
+    90.87716358,
+    100.0
+  ],
+  [
+    91.37779245,
+    100.0
+  ],
+  [
+    91.87796473,
+    100.0
+  ],
+  [
+    92.380518154,
+    100.0
+  ],
+  [
+    92.880682592,
+    100.0
+  ],
+  [
+    93.380857729,
+    99.875
+  ]
+];
+// Position of the vertical axis.
+const X_LINE = 50;
+// General-use margin size.
+const MARGIN = 5;
+// Position of the horizontal axis, relative to the bottom.
+const Y_LINE = 35;
+// Minimum distance between time tick labels.
+const MIN_TICK_DIST = 50;
+// Radius for rounded rectangle corners.
+const RADIUS = 3;
+// Height of unit boxes.
+const BOX_HEIGHT = 25;
+// Distance between Y tick marks on the unit graph.
+const Y_TICK_DIST = BOX_HEIGHT + 2;
+// Rects used for mouseover detection.
+// Objects of {x, y, x2, y2, i} where `i` is the index into UNIT_DATA.
+let HIT_BOXES = [];
+// Index into UNIT_DATA of the last unit hovered over by mouse.
+let LAST_HOVER = null;
+// Key is unit index, value is {x, y, width, rmeta_x} of the box.
+let UNIT_COORDS = {};
+// Map of unit index to the index it was unlocked by.
+let REVERSE_UNIT_DEPS = {};
+let REVERSE_UNIT_RMETA_DEPS = {};
+for (let n=0; n<UNIT_DATA.length; n++) {
+  let unit = UNIT_DATA[n];
+  for (let unlocked of unit.unlocked_units) {
+    REVERSE_UNIT_DEPS[unlocked] = n;
+  }
+  for (let unlocked of unit.unlocked_rmeta_units) {
+    REVERSE_UNIT_RMETA_DEPS[unlocked] = n;
+  }
+}
+
+function render_pipeline_graph() {
+  if (UNIT_DATA.length == 0) {
+    return;
+  }
+  let g = document.getElementById('pipeline-graph');
+  HIT_BOXES.length = 0;
+  g.onmousemove = pipeline_mousemove;
+  const min_time = document.getElementById('min-unit-time').valueAsNumber;
+
+  const units = UNIT_DATA.filter(unit => unit.duration >= min_time);
+
+  const graph_height = Y_TICK_DIST * units.length;
+  const {ctx, graph_width, canvas_width, canvas_height, px_per_sec} = draw_graph_axes('pipeline-graph', graph_height);
+  const container = document.getElementById('pipeline-container');
+  container.style.width = canvas_width;
+  container.style.height = canvas_height;
+
+  // Canvas for hover highlights. This is a separate layer to improve performance.
+  const linectx = setup_canvas('pipeline-graph-lines', canvas_width, canvas_height);
+  linectx.clearRect(0, 0, canvas_width, canvas_height);
+
+  // Draw Y tick marks.
+  for (let n=1; n<units.length; n++) {
+    const y = graph_height - (n * Y_TICK_DIST);
+    ctx.beginPath();
+    ctx.moveTo(X_LINE, y);
+    ctx.lineTo(X_LINE-5, y);
+    ctx.stroke();
+  }
+
+  // Draw Y labels.
+  ctx.textAlign = 'end';
+  for (let n=0; n<units.length; n++) {
+    let y = MARGIN + (Y_TICK_DIST * (n + 1)) - 13;
+    ctx.fillText(n+1, X_LINE-4, y);
+  }
+
+  // Draw the graph.
+  ctx.save();
+  ctx.translate(X_LINE, MARGIN);
+
+  // Compute x,y coordinate of each block.
+  UNIT_COORDS = {};
+  for (i=0; i<units.length; i++) {
+    let unit = units[i];
+    let y = i * Y_TICK_DIST + 1;
+    let x = px_per_sec * unit.start;
+    let rmeta_x = null;
+    if (unit.rmeta_time != null) {
+      rmeta_x = x + px_per_sec * unit.rmeta_time;
+    }
+    let width = Math.max(px_per_sec * unit.duration, 1.0);
+    UNIT_COORDS[unit.i] = {x, y, width, rmeta_x};
+  }
+
+  // Draw the blocks.
+  for (i=0; i<units.length; i++) {
+    let unit = units[i];
+    let {x, y, width, rmeta_x} = UNIT_COORDS[unit.i];
+
+    HIT_BOXES.push({x: X_LINE+x, y:MARGIN+y, x2: X_LINE+x+width, y2: MARGIN+y+BOX_HEIGHT, i: unit.i});
+
+    ctx.beginPath();
+    ctx.fillStyle = unit.mode == 'run-custom-build' ? '#f0b165' : '#95cce8';
+    roundedRect(ctx, x, y, width, BOX_HEIGHT, RADIUS);
+    ctx.fill();
+
+    if (unit.rmeta_time != null) {
+      ctx.beginPath();
+      ctx.fillStyle = '#aa95e8';
+      let ctime = unit.duration - unit.rmeta_time;
+      roundedRect(ctx, rmeta_x, y, px_per_sec * ctime, BOX_HEIGHT, RADIUS);
+      ctx.fill();
+    }
+    ctx.fillStyle = "#000";
+    ctx.textAlign = 'start';
+    ctx.textBaseline = 'hanging';
+    ctx.font = '14px sans-serif';
+    const label = `${unit.name}${unit.target} ${unit.duration}s`;
+    const text_info = ctx.measureText(label);
+    const label_x = Math.min(x + 5.0, canvas_width - text_info.width - X_LINE);
+    ctx.fillText(label, label_x, y + BOX_HEIGHT / 2 - 6);
+    draw_dep_lines(ctx, unit.i, false);
+  }
+  ctx.restore();
+}
+
+// Draws lines from the given unit to the units it unlocks.
+function draw_dep_lines(ctx, unit_idx, highlighted) {
+  const unit = UNIT_DATA[unit_idx];
+  const {x, y, rmeta_x} = UNIT_COORDS[unit_idx];
+  ctx.save();
+  for (const unlocked of unit.unlocked_units) {
+    draw_one_dep_line(ctx, x, y, unlocked, highlighted);
+  }
+  for (const unlocked of unit.unlocked_rmeta_units) {
+    draw_one_dep_line(ctx, rmeta_x, y, unlocked, highlighted);
+  }
+  ctx.restore();
+}
+
+function draw_one_dep_line(ctx, from_x, from_y, to_unit, highlighted) {
+  if (to_unit in UNIT_COORDS) {
+    let {x: u_x, y: u_y} = UNIT_COORDS[to_unit];
+    ctx.strokeStyle = highlighted ? '#000' : '#ddd';
+    ctx.setLineDash([2]);
+    ctx.beginPath();
+    ctx.moveTo(from_x, from_y+BOX_HEIGHT/2);
+    ctx.lineTo(from_x-5, from_y+BOX_HEIGHT/2);
+    ctx.lineTo(from_x-5, u_y+BOX_HEIGHT/2);
+    ctx.lineTo(u_x, u_y+BOX_HEIGHT/2);
+    ctx.stroke();
+  }
+}
+
+function render_timing_graph() {
+  if (CONCURRENCY_DATA.length == 0) {
+    return;
+  }
+  const HEIGHT = 400;
+  const AXIS_HEIGHT = HEIGHT - MARGIN - Y_LINE;
+  const TOP_MARGIN = 10;
+  const GRAPH_HEIGHT = AXIS_HEIGHT - TOP_MARGIN;
+
+  const {canvas_width, graph_width, ctx} = draw_graph_axes('timing-graph', AXIS_HEIGHT);
+
+  // Draw Y tick marks and labels.
+  let max_v = 0;
+  for (c of CONCURRENCY_DATA) {
+    max_v = Math.max(max_v, c.active, c.waiting, c.inactive);
+  }
+  const px_per_v = GRAPH_HEIGHT / max_v;
+  const {step, tick_dist, num_ticks} = split_ticks(max_v, px_per_v, GRAPH_HEIGHT);
+  ctx.textAlign = 'end';
+  for (n=0; n<num_ticks; n++) {
+    let y = HEIGHT - Y_LINE - ((n + 1) * tick_dist);
+    ctx.beginPath();
+    ctx.moveTo(X_LINE, y);
+    ctx.lineTo(X_LINE-5, y);
+    ctx.stroke();
+    ctx.fillText((n+1) * step, X_LINE-10, y+5);
+  }
+
+  // Label the Y axis.
+  let label_y = (HEIGHT - Y_LINE) / 2;
+  ctx.save();
+  ctx.translate(15, label_y);
+  ctx.rotate(3*Math.PI/2);
+  ctx.textAlign = 'center';
+  ctx.fillText('# Units', 0, 0);
+  ctx.restore();
+
+  // Draw the graph.
+  ctx.save();
+  ctx.translate(X_LINE, MARGIN);
+
+  function coord(t, v) {
+    return {
+      x: graph_width * (t/DURATION),
+      y: TOP_MARGIN + GRAPH_HEIGHT * (1.0 - (v / max_v))
+    };
+  }
+
+  const cpuFillStyle = 'rgba(250, 119, 0, 0.2)';
+  if (CPU_USAGE.length > 1) {
+    ctx.beginPath();
+    ctx.fillStyle = cpuFillStyle;
+    let bottomLeft = coord(CPU_USAGE[0][0], 0);
+    ctx.moveTo(bottomLeft.x, bottomLeft.y);
+    for (let i=0; i < CPU_USAGE.length; i++) {
+      let [time, usage] = CPU_USAGE[i];
+      let {x, y} = coord(time, usage / 100.0 * max_v);
+      ctx.lineTo(x, y);
+    }
+    let bottomRight = coord(CPU_USAGE[CPU_USAGE.length - 1][0], 0);
+    ctx.lineTo(bottomRight.x, bottomRight.y);
+    ctx.fill();
+  }
+
+  function draw_line(style, key) {
+    let first = CONCURRENCY_DATA[0];
+    let last = coord(first.t, key(first));
+    ctx.strokeStyle = style;
+    ctx.beginPath();
+    ctx.moveTo(last.x, last.y);
+    for (let i=1; i<CONCURRENCY_DATA.length; i++) {
+      let c = CONCURRENCY_DATA[i];
+      let {x, y} = coord(c.t, key(c));
+      ctx.lineTo(x, last.y);
+      ctx.lineTo(x, y);
+      last = {x, y};
+    }
+    ctx.stroke();
+  }
+
+  draw_line('blue', function(c) {return c.inactive;});
+  draw_line('red', function(c) {return c.waiting;});
+  draw_line('green', function(c) {return c.active;});
+
+  // Draw a legend.
+  ctx.restore();
+  ctx.save();
+  ctx.translate(canvas_width-200, MARGIN);
+  // background
+  ctx.fillStyle = '#fff';
+  ctx.strokeStyle = '#000';
+  ctx.lineWidth = 1;
+  ctx.textBaseline = 'middle'
+  ctx.textAlign = 'start';
+  ctx.beginPath();
+  ctx.rect(0, 0, 150, 82);
+  ctx.stroke();
+  ctx.fill();
+
+  ctx.fillStyle = '#000'
+  ctx.beginPath();
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = 'red';
+  ctx.moveTo(5, 10);
+  ctx.lineTo(50, 10);
+  ctx.stroke();
+  ctx.fillText('Waiting', 54, 11);
+
+  ctx.beginPath();
+  ctx.strokeStyle = 'blue';
+  ctx.moveTo(5, 30);
+  ctx.lineTo(50, 30);
+  ctx.stroke();
+  ctx.fillText('Inactive', 54, 31);
+
+  ctx.beginPath();
+  ctx.strokeStyle = 'green';
+  ctx.moveTo(5, 50);
+  ctx.lineTo(50, 50);
+  ctx.stroke();
+  ctx.fillText('Active', 54, 51);
+
+  ctx.beginPath();
+  ctx.fillStyle = cpuFillStyle
+  ctx.fillRect(15, 60, 30, 15);
+  ctx.fill();
+  ctx.fillStyle = 'black';
+  ctx.fillText('CPU Usage', 54, 71);
+
+  ctx.restore();
+}
+
+function setup_canvas(id, width, height) {
+  let g = document.getElementById(id);
+  let dpr = window.devicePixelRatio || 1;
+  g.width = width * dpr;
+  g.height = height * dpr;
+  g.style.width = width;
+  g.style.height = height;
+  let ctx = g.getContext('2d');
+  ctx.scale(dpr, dpr);
+  return ctx;
+}
+
+function draw_graph_axes(id, graph_height) {
+  const scale = document.getElementById('scale').valueAsNumber;
+  // Cap the size of the graph. It is hard to view if it is too large, and
+  // browsers may not render a large graph because it takes too much memory.
+  // 4096 is still ridiculously large, and probably won't render on mobile
+  // browsers, but should be ok for many desktop environments.
+  const graph_width = Math.min(scale * DURATION, 4096);
+  const px_per_sec = graph_width / DURATION;
+  const canvas_width = Math.max(graph_width + X_LINE + 30, X_LINE + 250);
+  const canvas_height = graph_height + MARGIN + Y_LINE;
+  let ctx = setup_canvas(id, canvas_width, canvas_height);
+  ctx.fillStyle = '#f7f7f7';
+  ctx.fillRect(0, 0, canvas_width, canvas_height);
+
+  ctx.lineWidth = 2;
+  ctx.font = '16px sans-serif';
+  ctx.textAlign = 'center';
+
+  // Draw main axes.
+  ctx.beginPath();
+  ctx.moveTo(X_LINE, MARGIN);
+  ctx.lineTo(X_LINE, graph_height + MARGIN);
+  ctx.lineTo(X_LINE+graph_width+20, graph_height + MARGIN);
+  ctx.stroke();
+
+  // Draw X tick marks.
+  const {step, tick_dist, num_ticks} = split_ticks(DURATION, px_per_sec, graph_width);
+  ctx.fillStyle = '#303030';
+  for (let n=0; n<num_ticks; n++) {
+    const x = X_LINE + ((n + 1) * tick_dist);
+    ctx.beginPath();
+    ctx.moveTo(x, canvas_height-Y_LINE);
+    ctx.lineTo(x, canvas_height-Y_LINE+5);
+    ctx.stroke();
+
+    ctx.fillText(`${(n+1) * step}s`, x, canvas_height - Y_LINE + 20);
+  }
+
+  // Draw vertical lines.
+  ctx.strokeStyle = '#e6e6e6';
+  ctx.setLineDash([2, 4]);
+  for (n=0; n<num_ticks; n++) {
+    const x = X_LINE + ((n + 1) * tick_dist);
+    ctx.beginPath();
+    ctx.moveTo(x, MARGIN);
+    ctx.lineTo(x, MARGIN+graph_height);
+    ctx.stroke();
+  }
+  ctx.strokeStyle = '#000';
+  ctx.setLineDash([]);
+  return {canvas_width, canvas_height, graph_width, graph_height, ctx, px_per_sec};
+}
+
+// Determine the spacing and number of ticks along an axis.
+function split_ticks(max_value, px_per_v, max_px) {
+  const max_ticks = Math.floor(max_px / MIN_TICK_DIST);
+  if (max_ticks <= 1) {
+    // Graph is too small for even 1 tick.
+    return {step: max_value, tick_dist: max_px, num_ticks: 1};
+  }
+  let step;
+  if (max_value <= max_ticks) {
+    step = 1;
+  } else if (max_value <= max_ticks * 2) {
+    step = 2;
+  } else if (max_value <= max_ticks * 4) {
+    step = 4;
+  } else if (max_value <= max_ticks * 5) {
+    step = 5;
+  } else {
+    step = 10;
+    let count = 0;
+    while (true) {
+      if (count > 100) {
+        throw Error("tick loop too long");
+      }
+      count += 1;
+      if (max_value <= max_ticks * step) {
+        break;
+      }
+      step += 10;
+    }
+  }
+  const tick_dist = px_per_v * step;
+  const num_ticks = Math.floor(max_value / step);
+  return {step, tick_dist, num_ticks};
+}
+
+function codegen_time(unit) {
+  if (unit.rmeta_time == null) {
+    return null;
+  }
+  let ctime = unit.duration - unit.rmeta_time;
+  return [unit.rmeta_time, ctime];
+}
+
+function roundedRect(ctx, x, y, width, height, r) {
+  r = Math.min(r, width, height);
+  ctx.beginPath();
+  ctx.moveTo(x+r, y);
+  ctx.lineTo(x+width-r, y);
+  ctx.arc(x+width-r, y+r, r, 3*Math.PI/2, 0);
+  ctx.lineTo(x+width, y+height-r);
+  ctx.arc(x+width-r, y+height-r, r, 0, Math.PI/2);
+  ctx.lineTo(x+r, y+height);
+  ctx.arc(x+r, y+height-r, r, Math.PI/2, Math.PI);
+  ctx.lineTo(x, y-r);
+  ctx.arc(x+r, y+r, r, Math.PI, 3*Math.PI/2);
+  ctx.closePath();
+}
+
+function pipeline_mouse_hit(event) {
+  // This brute-force method can be optimized if needed.
+  for (let box of HIT_BOXES) {
+    if (event.offsetX >= box.x && event.offsetX <= box.x2 &&
+        event.offsetY >= box.y && event.offsetY <= box.y2) {
+      return box;
+    }
+  }
+}
+
+function pipeline_mousemove(event) {
+  // Highlight dependency lines on mouse hover.
+  let box = pipeline_mouse_hit(event);
+  if (box) {
+    if (box.i != LAST_HOVER) {
+      LAST_HOVER = box.i;
+      let g = document.getElementById('pipeline-graph-lines');
+      let ctx = g.getContext('2d');
+      ctx.clearRect(0, 0, g.width, g.height);
+      ctx.save();
+      ctx.translate(X_LINE, MARGIN);
+      ctx.lineWidth = 2;
+      draw_dep_lines(ctx, box.i, true);
+
+      if (box.i in REVERSE_UNIT_DEPS) {
+        const dep_unit = REVERSE_UNIT_DEPS[box.i];
+        if (dep_unit in UNIT_COORDS) {
+          const {x, y, rmeta_x} = UNIT_COORDS[dep_unit];
+          draw_one_dep_line(ctx, x, y, box.i, true);
+        }
+      }
+      if (box.i in REVERSE_UNIT_RMETA_DEPS) {
+        const dep_unit = REVERSE_UNIT_RMETA_DEPS[box.i];
+        if (dep_unit in UNIT_COORDS) {
+          const {x, y, rmeta_x} = UNIT_COORDS[dep_unit];
+          draw_one_dep_line(ctx, rmeta_x, y, box.i, true);
+        }
+      }
+      ctx.restore();
+    }
+  }
+}
+
+render_pipeline_graph();
+render_timing_graph();
+
+// Set up and handle controls.
+{
+  const range = document.getElementById('min-unit-time');
+  const time_output = document.getElementById('min-unit-time-output');
+  time_output.innerHTML = `${range.value}s`;
+  range.oninput = event => {
+    time_output.innerHTML = `${range.value}s`;
+    render_pipeline_graph();
+  };
+
+  const scale = document.getElementById('scale');
+  const scale_output = document.getElementById('scale-output');
+  scale_output.innerHTML = `${scale.value}`;
+  scale.oninput = event => {
+    scale_output.innerHTML = `${scale.value}`;
+    render_pipeline_graph();
+    render_timing_graph();
+  };
+}
+
+</script>
+</body>
+</html>

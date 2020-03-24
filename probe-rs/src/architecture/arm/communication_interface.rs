@@ -123,7 +123,7 @@ pub struct ArmCommunicationInterface {
 }
 
 impl ArmCommunicationInterface {
-    pub fn new(probe: Probe) -> Result<Self, DebugProbeError> {
+    pub fn new(probe: Probe) -> Result<Self, (Probe, DebugProbeError)> {
         Ok(Self {
             inner: Rc::new(RefCell::new(InnerArmCommunicationInterface::new(probe)?)),
         })
@@ -154,16 +154,23 @@ struct InnerArmCommunicationInterface {
     current_apbanksel: u8,
 }
 
+fn get_debug_port_version(probe: &mut Probe) -> Result<DebugPortVersion, DebugProbeError> {
+    let interface = probe
+        .get_interface_dap_mut()?
+        .ok_or_else(|| DebugProbeError::InterfaceNotAvailable("ARM"))?;
+
+    let dpidr = DPIDR(interface.read_register(PortType::DebugPort, 0)?);
+
+    Ok(DebugPortVersion::from(dpidr.version()))
+}
+
 impl InnerArmCommunicationInterface {
-    fn new(mut probe: Probe) -> Result<Self, DebugProbeError> {
+    fn new(mut probe: Probe) -> Result<Self, (Probe, DebugProbeError)> {
         // Check the version of debug port used
-        let interface = probe
-            .get_interface_dap_mut()?
-            .ok_or_else(|| DebugProbeError::InterfaceNotAvailable("ARM"))?;
-
-        let dpidr = DPIDR(interface.read_register(PortType::DebugPort, 0)?);
-
-        let version = DebugPortVersion::from(dpidr.version());
+        let version = match get_debug_port_version(&mut probe) {
+            Ok(version) => version,
+            Err(e) => return Err((probe, e)),
+        };
 
         log::debug!("Debug Port version: {:?}", version);
 
@@ -175,9 +182,11 @@ impl InnerArmCommunicationInterface {
             current_apbanksel: 0,
         };
 
-        s.enter_debug_mode()?;
-
-        Ok(s)
+        if let Err(e) = s.enter_debug_mode() {
+            Err((s.probe, e.into()))
+        } else {
+            Ok(s)
+        }
     }
 
     fn enter_debug_mode(&mut self) -> Result<(), DebugProbeError> {

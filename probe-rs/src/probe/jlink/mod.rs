@@ -449,6 +449,8 @@ impl DebugProbe for JLink {
             }
         }
 
+        log::debug!("Attached succesfully");
+
         Ok(())
     }
 
