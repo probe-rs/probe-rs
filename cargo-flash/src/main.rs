@@ -300,10 +300,6 @@ fn main_try() -> Result<(), failure::Error> {
                 fill_progress.set_message("Restoring erased ");
                 Some(fill_progress)
             } else {
-                logging::println(format!(
-                    "    {} of erased but unwritten flash portions is disabled",
-                    "Restoring".green().bold()
-                ));
                 None
             };
 
