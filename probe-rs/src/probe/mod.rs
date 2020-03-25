@@ -122,15 +122,15 @@ impl Probe {
     pub fn from_probe_info(info: &DebugProbeInfo) -> Result<Self, DebugProbeError> {
         let probe = match info.probe_type {
             DebugProbeType::DAPLink => {
-                let mut dap_link = daplink::DAPLink::new_from_probe_info(info)?;
+                let dap_link = daplink::DAPLink::new_from_probe_info(info)?;
                 Probe::from_specific_probe(dap_link)
             }
             DebugProbeType::STLink => {
-                let mut link = stlink::STLink::new_from_probe_info(info)?;
+                let link = stlink::STLink::new_from_probe_info(info)?;
                 Probe::from_specific_probe(link)
             }
             DebugProbeType::JLink => {
-                let mut link = jlink::JLink::new_from_probe_info(info)?;
+                let link = jlink::JLink::new_from_probe_info(info)?;
                 Probe::from_specific_probe(link)
             }
         };
