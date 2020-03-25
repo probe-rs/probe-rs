@@ -197,7 +197,7 @@ impl InnerRiscvCommunicationInterface {
         log::debug!("Building RISCV interface");
 
         let jtag_interface = probe
-            .get_interface_jtag_mut()
+            .get_interface_jtag_mut()?
             .ok_or(DebugProbeError::InterfaceNotAvailable("JTAG"))?;
 
         let dtmcs_raw = jtag_interface.read_register(DTMCS_ADDRESS, DTMCS_WIDTH)?;
@@ -249,7 +249,7 @@ impl InnerRiscvCommunicationInterface {
 
         let jtag_interface = self
             .probe
-            .get_interface_jtag_mut()
+            .get_interface_jtag_mut()?
             .ok_or(DebugProbeError::InterfaceNotAvailable("JTAG"))?;
 
         jtag_interface.write_register(DTMCS_ADDRESS, &bytes, DTMCS_WIDTH)?;
@@ -260,7 +260,7 @@ impl InnerRiscvCommunicationInterface {
     fn read_idcode(&mut self) -> Result<u32, DebugProbeError> {
         let jtag_interface = self
             .probe
-            .get_interface_jtag_mut()
+            .get_interface_jtag_mut()?
             .ok_or(DebugProbeError::InterfaceNotAvailable("JTAG"))?;
 
         let value = jtag_interface.read_register(0x1, 32)?;
@@ -288,7 +288,7 @@ impl InnerRiscvCommunicationInterface {
 
         let jtag_interface = self
             .probe
-            .get_interface_jtag_mut()
+            .get_interface_jtag_mut()?
             .ok_or(DebugProbeError::InterfaceNotAvailable("JTAG"))?;
 
         let response_bytes = jtag_interface.write_register(DMI_ADDRESS, &bytes, bit_size)?;

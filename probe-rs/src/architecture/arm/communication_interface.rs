@@ -129,7 +129,7 @@ impl ArmCommunicationInterface {
         })
     }
 
-    pub fn dedicated_memory_interface(&self) -> Option<Memory> {
+    pub fn dedicated_memory_interface(&self) -> Result<Option<Memory>, DebugProbeError> {
         self.inner.borrow().probe.dedicated_memory_interface()
     }
 
@@ -158,7 +158,7 @@ impl InnerArmCommunicationInterface {
     fn new(mut probe: Probe) -> Result<Self, DebugProbeError> {
         // Check the version of debug port used
         let interface = probe
-            .get_interface_dap_mut()
+            .get_interface_dap_mut()?
             .ok_or_else(|| DebugProbeError::InterfaceNotAvailable("ARM"))?;
 
         let dpidr = DPIDR(interface.read_register(PortType::DebugPort, 0)?);
@@ -292,7 +292,7 @@ impl InnerArmCommunicationInterface {
 
         let interface = self
             .probe
-            .get_interface_dap_mut()
+            .get_interface_dap_mut()?
             .ok_or_else(|| DebugProbeError::InterfaceNotAvailable("ARM"))?;
 
         interface.write_register(
@@ -324,7 +324,7 @@ impl InnerArmCommunicationInterface {
 
         let interface = self
             .probe
-            .get_interface_dap_mut()
+            .get_interface_dap_mut()?
             .ok_or_else(|| DebugProbeError::InterfaceNotAvailable("ARM"))?;
 
         interface.write_block(
@@ -345,7 +345,7 @@ impl InnerArmCommunicationInterface {
 
         let interface = self
             .probe
-            .get_interface_dap_mut()
+            .get_interface_dap_mut()?
             .ok_or_else(|| DebugProbeError::InterfaceNotAvailable("ARM"))?;
 
         let result = interface.read_register(
@@ -379,7 +379,7 @@ impl InnerArmCommunicationInterface {
 
         let interface = self
             .probe
-            .get_interface_dap_mut()
+            .get_interface_dap_mut()?
             .ok_or_else(|| DebugProbeError::InterfaceNotAvailable("ARM"))?;
 
         interface.read_block(
@@ -419,7 +419,7 @@ impl DPAccess for InnerArmCommunicationInterface {
         self.select_dp_bank(R::DP_BANK)?;
 
         // unwrap is safe, interface is check when creating the interface
-        let interface = self.probe.get_interface_dap_mut().unwrap();
+        let interface = self.probe.get_interface_dap_mut()?.unwrap();
 
         log::debug!("Reading DP register {}", R::NAME);
         let result = interface.read_register(PortType::DebugPort, u16::from(R::ADDRESS))?;
@@ -440,7 +440,7 @@ impl DPAccess for InnerArmCommunicationInterface {
         self.select_dp_bank(R::DP_BANK)?;
 
         // unwrap is safe, interface is check when creating the interface
-        let interface = self.probe.get_interface_dap_mut().unwrap();
+        let interface = self.probe.get_interface_dap_mut()?.unwrap();
 
         let value = register.into();
 

@@ -256,7 +256,7 @@ pub enum CoreType {
 
 impl CoreType {
     pub fn attach_arm(&self, interface: ArmCommunicationInterface) -> Result<Core, Error> {
-        let memory = if let Some(memory) = interface.dedicated_memory_interface() {
+        let memory = if let Some(memory) = interface.dedicated_memory_interface()? {
             memory
         } else {
             // TODO: Change this to actually grab the proper memory IF.

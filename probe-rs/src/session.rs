@@ -130,7 +130,7 @@ impl Session {
     pub fn attach_to_memory(&self, _id: usize) -> Result<Memory, Error> {
         match self.inner.borrow().architecture_session {
             ArchitectureSession::Arm(ref interface) => {
-                if let Some(memory) = interface.dedicated_memory_interface() {
+                if let Some(memory) = interface.dedicated_memory_interface()? {
                     Ok(memory)
                 } else {
                     // TODO: Change this to actually grab the proper memory IF.
