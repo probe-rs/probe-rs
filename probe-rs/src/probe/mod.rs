@@ -70,6 +70,8 @@ pub enum DebugProbeError {
     InterfaceInUse,
     #[error("The requested speed setting ({0} kHz) is not supported by the probe.")]
     UnsupportedSpeed(u32),
+    #[error("You need to be attached to the target to perform this action.")]
+    NotAttached,
 }
 
 /// The Probe struct is a generic wrapper over the different
@@ -91,12 +93,14 @@ pub enum DebugProbeError {
 #[derive(Debug)]
 pub struct Probe {
     inner: Box<dyn DebugProbe>,
+    attached: bool,
 }
 
 impl Probe {
     pub fn new(probe: impl DebugProbe + 'static) -> Self {
         Self {
             inner: Box::new(probe),
+            attached: false,
         }
     }
 
@@ -119,23 +123,14 @@ impl Probe {
         let probe = match info.probe_type {
             DebugProbeType::DAPLink => {
                 let mut dap_link = daplink::DAPLink::new_from_probe_info(info)?;
-
-                dap_link.attach()?;
-
                 Probe::from_specific_probe(dap_link)
             }
             DebugProbeType::STLink => {
                 let mut link = stlink::STLink::new_from_probe_info(info)?;
-
-                link.attach()?;
-
                 Probe::from_specific_probe(link)
             }
             DebugProbeType::JLink => {
                 let mut link = jlink::JLink::new_from_probe_info(info)?;
-
-                link.attach()?;
-
                 Probe::from_specific_probe(link)
             }
         };
@@ -144,7 +139,10 @@ impl Probe {
     }
 
     pub fn from_specific_probe(probe: Box<dyn DebugProbe>) -> Self {
-        Probe { inner: probe }
+        Probe {
+            inner: probe,
+            attached: false,
+        }
     }
 
     // /// Tries to mass erase a locked nRF52 chip, this process may timeout, if it does, the chip
@@ -208,6 +206,7 @@ impl Probe {
     /// Enters debug mode
     pub fn attach(mut self, target: impl Into<TargetSelector>) -> Result<Session, Error> {
         self.inner.attach()?;
+        self.attached = true;
 
         Session::new(self, target)
     }
@@ -219,7 +218,9 @@ impl Probe {
 
     /// Leave debug mode
     pub fn detach(&mut self) -> Result<(), DebugProbeError> {
-        self.inner.detach()
+        self.inner.detach()?;
+        self.attached = false;
+        Ok(())
     }
 
     /// Resets the target device.
@@ -238,32 +239,49 @@ impl Probe {
     }
 
     /// Returns a probe specific memory interface if any is present for given probe.
-    pub fn dedicated_memory_interface(&self) -> Option<Memory> {
-        self.inner.dedicated_memory_interface()
+    pub fn dedicated_memory_interface(&self) -> Result<Option<Memory>, DebugProbeError> {
+        if self.attached {
+            return Err(DebugProbeError::NotAttached);
+        }
+        Ok(self.inner.dedicated_memory_interface())
     }
 
     pub fn has_dap_interface(&self) -> bool {
         self.inner.get_interface_dap().is_some()
     }
 
-    pub fn get_interface_dap(&self) -> Option<&dyn DAPAccess> {
-        self.inner.get_interface_dap()
+    pub fn get_interface_dap(&self) -> Result<Option<&dyn DAPAccess>, DebugProbeError> {
+        if self.attached {
+            return Err(DebugProbeError::NotAttached);
+        }
+        Ok(self.inner.get_interface_dap())
     }
 
-    pub fn get_interface_dap_mut(&mut self) -> Option<&mut dyn DAPAccess> {
-        self.inner.get_interface_dap_mut()
+    pub fn get_interface_dap_mut(&mut self) -> Result<Option<&mut dyn DAPAccess>, DebugProbeError> {
+        if self.attached {
+            return Err(DebugProbeError::NotAttached);
+        }
+        Ok(self.inner.get_interface_dap_mut())
     }
 
     pub fn has_jtag_interface(&self) -> bool {
         self.inner.get_interface_jtag().is_some()
     }
 
-    pub fn get_interface_jtag(&self) -> Option<&dyn JTAGAccess> {
-        self.inner.get_interface_jtag()
+    pub fn get_interface_jtag(&self) -> Result<Option<&dyn JTAGAccess>, DebugProbeError> {
+        if self.attached {
+            return Err(DebugProbeError::NotAttached);
+        }
+        Ok(self.inner.get_interface_jtag())
     }
 
-    pub fn get_interface_jtag_mut(&mut self) -> Option<&mut dyn JTAGAccess> {
-        self.inner.get_interface_jtag_mut()
+    pub fn get_interface_jtag_mut(
+        &mut self,
+    ) -> Result<Option<&mut dyn JTAGAccess>, DebugProbeError> {
+        if self.attached {
+            return Err(DebugProbeError::NotAttached);
+        }
+        Ok(self.inner.get_interface_jtag_mut())
     }
 }
 
