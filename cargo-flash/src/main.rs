@@ -86,6 +86,12 @@ struct Opt {
         help = "Requests the flash builder to output the layout into the given file in SVG format."
     )]
     flash_layout_output_path: Option<String>,
+    #[structopt(
+        name = "elf file",
+        long = "elf",
+        help = "The path to the ELF file to be flashed."
+    )]
+    elf: Option<String>,
 
     // `cargo build` arguments
     #[structopt(name = "binary", long = "bin")]
@@ -115,6 +121,7 @@ const ARGUMENTS_TO_REMOVE: &[&str] = &[
     "flash-layout=",
     "chip-description-path=",
     "list-chips",
+    "elf=",
     "disable-progressbars",
     "protocol=",
     "probe-index=",
@@ -179,52 +186,55 @@ fn main_try() -> Result<(), failure::Error> {
     // Remove all arguments that `cargo build` does not understand.
     remove_arguments(ARGUMENTS_TO_REMOVE, &mut args);
 
-    let status = Command::new("cargo")
-        .arg("build")
-        .args(args)
-        .stdout(Stdio::inherit())
-        .stderr(Stdio::inherit())
-        .spawn()?
-        .wait()?;
-
-    if !status.success() {
-        handle_failed_command(status)
-    }
-
-    // Try and get the cargo project information.
-    let project = cargo_project::Project::query(".")
-        .map_err(|e| format_err!("failed to parse Cargo project information: {}", e))?;
-
-    // Decide what artifact to use.
-    let artifact = if let Some(bin) = &opt.bin {
-        cargo_project::Artifact::Bin(bin)
-    } else if let Some(example) = &opt.example {
-        cargo_project::Artifact::Example(example)
+    let path: PathBuf = if let Some(path) = opt.elf {
+        path.into()
     } else {
-        cargo_project::Artifact::Bin(project.name())
+        let status = Command::new("cargo")
+            .arg("build")
+            .args(args)
+            .stdout(Stdio::inherit())
+            .stderr(Stdio::inherit())
+            .spawn()?
+            .wait()?;
+
+        if !status.success() {
+            handle_failed_command(status)
+        }
+
+        // Try and get the cargo project information.
+        let project = cargo_project::Project::query(".")
+            .map_err(|e| format_err!("failed to parse Cargo project information: {}", e))?;
+
+        // Decide what artifact to use.
+        let artifact = if let Some(bin) = &opt.bin {
+            cargo_project::Artifact::Bin(bin)
+        } else if let Some(example) = &opt.example {
+            cargo_project::Artifact::Example(example)
+        } else {
+            cargo_project::Artifact::Bin(project.name())
+        };
+
+        // Decide what profile to use.
+        let profile = if opt.release {
+            cargo_project::Profile::Release
+        } else {
+            cargo_project::Profile::Dev
+        };
+
+        // Try and get the artifact path.
+        project.path(
+            artifact,
+            profile,
+            opt.target.as_ref().map(|t| &**t),
+            "x86_64-unknown-linux-gnu",
+        )?
     };
 
-    // Decide what profile to use.
-    let profile = if opt.release {
-        cargo_project::Profile::Release
-    } else {
-        cargo_project::Profile::Dev
-    };
-
-    // Try and get the artifact path.
-    let path = project.path(
-        artifact,
-        profile,
-        opt.target.as_ref().map(|t| &**t),
-        "x86_64-unknown-linux-gnu",
-    )?;
-
-    let path_str = match path.to_str() {
-        Some(s) => s,
-        None => panic!(),
-    };
-
-    logging::println(format!("    {} {}", "Flashing".green().bold(), path_str));
+    logging::println(format!(
+        "    {} {}",
+        "Flashing".green().bold(),
+        path.display()
+    ));
 
     let list = Probe::list_all();
 
@@ -400,28 +410,28 @@ fn main_try() -> Result<(), failure::Error> {
 
             download_file_with_options(
                 &session,
-                std::path::Path::new(&path_str.to_string().as_str()),
+                path.as_path(),
                 Format::Elf,
                 DownloadOptions {
                     progress: Some(&progress),
                     keep_unwritten_bytes: opt.restore_unwritten,
                 },
             )
-            .map_err(|e| format_err!("failed to flash {}: {}", path_str, e))?;
+            .map_err(|e| format_err!("failed to flash {}: {}", path.display(), e))?;
 
             // We don't care if we cannot join this thread.
             let _ = progress_thread_handle.join();
         } else {
             download_file_with_options(
                 &session,
-                std::path::Path::new(&path_str.to_string().as_str()),
+                path.as_path(),
                 Format::Elf,
                 DownloadOptions {
                     progress: None,
                     keep_unwritten_bytes: opt.restore_unwritten,
                 },
             )
-            .map_err(|e| format_err!("failed to flash {}: {}", path_str, e))?;
+            .map_err(|e| format_err!("failed to flash {}: {}", path.display(), e))?;
         }
 
         // Stop timer.
