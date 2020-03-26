@@ -328,9 +328,9 @@ fn main_try() -> Result<(), failure::Error> {
                             flash_layout.sectors().iter().map(|s| s.size()).sum();
                         let total_fill_size: u32 =
                             flash_layout.fills().iter().map(|s| s.size()).sum();
-                        fill_progress
-                            .as_ref()
-                            .map(|fp| fp.set_length(total_fill_size as u64));
+                        if let Some(fp) = fill_progress.as_ref() {
+                            fp.set_length(total_fill_size as u64)
+                        }
                         erase_progress.set_length(total_sector_size as u64);
                         program_progress.set_length(total_page_size as u64);
                         let visualizer = flash_layout.visualize();
@@ -347,8 +347,12 @@ fn main_try() -> Result<(), failure::Error> {
                         erase_progress.reset_elapsed();
                     }
                     StartedFilling => {
-                        fill_progress.as_ref().map(|fp| fp.enable_steady_tick(100));
-                        fill_progress.as_ref().map(|fp| fp.reset_elapsed());
+                        if let Some(fp) = fill_progress.as_ref() {
+                            fp.enable_steady_tick(100)
+                        };
+                        if let Some(fp) = fill_progress.as_ref() {
+                            fp.reset_elapsed()
+                        };
                     }
                     PageFlashed { size, .. } => {
                         program_progress.inc(size as u64);
@@ -357,7 +361,9 @@ fn main_try() -> Result<(), failure::Error> {
                         erase_progress.inc(size as u64);
                     }
                     PageFilled { size, .. } => {
-                        fill_progress.as_ref().map(|fp| fp.inc(size as u64));
+                        if let Some(fp) = fill_progress.as_ref() {
+                            fp.inc(size as u64)
+                        };
                     }
                     FailedErasing => {
                         erase_progress.abandon();
@@ -373,10 +379,14 @@ fn main_try() -> Result<(), failure::Error> {
                         program_progress.finish();
                     }
                     FailedFilling => {
-                        fill_progress.as_ref().map(|fp| fp.abandon());
+                        if let Some(fp) = fill_progress.as_ref() {
+                            fp.abandon()
+                        };
                     }
                     FinishedFilling => {
-                        fill_progress.as_ref().map(|fp| fp.finish());
+                        if let Some(fp) = fill_progress.as_ref() {
+                            fp.finish()
+                        };
                     }
                 }
             });
