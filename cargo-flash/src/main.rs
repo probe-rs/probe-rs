@@ -77,7 +77,7 @@ struct Opt {
     #[structopt(
         name = "restore-unwritten",
         long = "restore-unwritten",
-        help = "Enable this flag to restore all bytes erased in the sector erase but not overwritten by any page. This option is only available with progressbars enabled."
+        help = "Enable this flag to restore all bytes erased in the sector erase but not overwritten by any page."
     )]
     restore_unwritten: bool,
     #[structopt(

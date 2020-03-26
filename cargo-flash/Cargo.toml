@@ -21,8 +21,8 @@ env_logger = "0.7.1"
 log = "0.4.0"
 lazy_static = "1.4.0"
 colored = "1.8.3"
-probe-rs = { version = "*" }
-gdb-server = { version = "*" }
+probe-rs = { version = "0.6.0" }
+gdb-server = { version = "0.6.0" }
 
 [patch.crates-io]
 probe-rs = { git = "https://github.com/probe-rs/probe-rs/" }
