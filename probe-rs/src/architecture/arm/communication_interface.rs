@@ -558,10 +558,13 @@ impl ArmChipInfo {
                 };
                 baseaddr |= u64::from(base_register.BASEADDR << 12);
 
-                let memory = Memory::new(ADIMemoryInterface::<ArmCommunicationInterface>::new(
-                    interface.clone(),
-                    access_port,
-                ));
+                let memory = Memory::new(
+                    ADIMemoryInterface::<ArmCommunicationInterface>::new(
+                        interface.clone(),
+                        access_port,
+                    )
+                    .map_err(ProbeRsError::architecture_specific)?,
+                );
 
                 let component_table = CSComponent::try_parse(memory, baseaddr as u64)
                     .map_err(ProbeRsError::architecture_specific)?;

@@ -66,7 +66,7 @@ pub(crate) fn show_info_of_device(shared_options: &SharedOptions) -> Result<(), 
             let memory = Memory::new(ADIMemoryInterface::<ArmCommunicationInterface>::new(
                 interface.clone(),
                 access_port,
-            ));
+            )?);
             let component_table = CSComponent::try_parse(memory, baseaddr as u64);
 
             component_table

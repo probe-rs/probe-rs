@@ -261,9 +261,10 @@ impl CoreType {
         } else {
             // TODO: Change this to actually grab the proper memory IF.
             // For now always use the ARM IF.
-            Memory::new(ADIMemoryInterface::<ArmCommunicationInterface>::new(
-                interface, 0,
-            ))
+            Memory::new(
+                ADIMemoryInterface::<ArmCommunicationInterface>::new(interface, 0)
+                    .map_err(Error::architecture_specific)?,
+            )
         };
 
         Ok(match self {
