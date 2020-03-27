@@ -91,6 +91,14 @@ Any code contibutions are very welcome!
 
 Also have a look at [CONTRIBUTING.md](CONTRIBUTING.md).
 
+### Our company needs feature X and would pay for it's development
+
+Please reach out to [@Yatekii](https://github.com/Yatekii)
+
+## Sponsors
+
+[![Technokrat](https://technokrat.ch/static/img/svg_banner-light.svg)](https://technokrat.ch)
+
 ## License
 
 Licensed under either of
