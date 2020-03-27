@@ -145,6 +145,10 @@ where
             .map_err(AccessPortError::register_write_error::<R, _>)
     }
 
+    /// Check that target supports memory access with sizes different from 32 bits.
+    ///
+    /// If only 32-bit access is supported, the SIZE field will be read-only and changing it
+    /// will not have any effect.
     fn detect_data_size(&mut self) -> Result<(), AccessPortError> {
         let csw = self.build_csw_register(DataSize::U8);
         self.write_ap_register(csw)?;
