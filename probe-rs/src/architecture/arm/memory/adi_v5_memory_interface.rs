@@ -30,14 +30,14 @@ impl ADIMemoryInterface<ArmCommunicationInterface> {
     pub fn new(
         interface: ArmCommunicationInterface,
         access_port_number: impl Into<MemoryAP>,
-    ) -> Self {
+    ) -> Result<Self, AccessPortError> {
         let mut interface = Self {
             interface,
             access_port: access_port_number.into(),
             only_32bit_data_size: true,
         };
-        interface.detect_data_size().ok(); // Ignore errors
-        interface
+        interface.detect_data_size()?;
+        Ok(interface)
     }
 }
 

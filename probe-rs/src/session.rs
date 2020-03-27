@@ -136,7 +136,8 @@ impl Session {
                     // TODO: Change this to actually grab the proper memory IF.
                     // For now always use the ARM IF.
                     Ok(Memory::new(
-                        ADIMemoryInterface::<ArmCommunicationInterface>::new(interface.clone(), 0),
+                        ADIMemoryInterface::<ArmCommunicationInterface>::new(interface.clone(), 0)
+                            .map_err(Error::architecture_specific)?,
                     ))
                 }
             }
