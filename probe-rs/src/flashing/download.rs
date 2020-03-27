@@ -176,9 +176,10 @@ fn download_elf<'b, T: Read + Seek>(
     use goblin::elf::program_header::*;
 
     if let Ok(binary) = goblin::elf::Elf::parse(&buffer.as_slice()) {
+        let mut added_sections = vec![];
         for ph in &binary.program_headers {
             if ph.p_type == PT_LOAD && ph.p_filesz > 0 {
-                log::debug!("Found loadable segment containing:");
+                log::debug!("Found loadable segment.");
 
                 let sector: core::ops::Range<u32> =
                     ph.p_offset as u32..ph.p_offset as u32 + ph.p_filesz as u32;
@@ -187,13 +188,18 @@ fn download_elf<'b, T: Read + Seek>(
                     if sector.contains_range(
                         &(sh.sh_offset as u32..sh.sh_offset as u32 + sh.sh_size as u32),
                     ) {
-                        log::debug!("{:?}", &binary.shdr_strtab[sh.sh_name]);
                         #[cfg(feature = "hexdump")]
                         for line in hexdump::hexdump_iter(
                             &buffer[sh.sh_offset as usize..][..sh.sh_size as usize],
                         ) {
                             log::trace!("{}", line);
                         }
+
+                        added_sections.push((
+                            &binary.shdr_strtab[sh.sh_name],
+                            sh.sh_addr,
+                            sh.sh_size,
+                        ));
                     }
                 }
 
@@ -201,6 +207,20 @@ fn download_elf<'b, T: Read + Seek>(
                     ph.p_paddr as u32,
                     &buffer[ph.p_offset as usize..][..ph.p_filesz as usize],
                 )?;
+            }
+        }
+        if added_sections.is_empty() {
+            log::warn!("No loadable segments were found in the ELF file.");
+        } else {
+            log::info!("Found {} loadable sections:", added_sections.len());
+            for section in added_sections {
+                log::info!(
+                    "    {} at {:08X?} ({} byte{})",
+                    section.0,
+                    section.1,
+                    section.2,
+                    if section.2 == 1 { "" } else { "0" }
+                );
             }
         }
     }
