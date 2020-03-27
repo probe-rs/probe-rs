@@ -42,8 +42,8 @@ fn colored_level(level: Level) -> ColoredString {
     match level {
         Level::Trace => "TRACE".magenta().bold(),
         Level::Debug => "DEBUG".blue().bold(),
-        Level::Info => "INFO ".green().bold(),
-        Level::Warn => "WARN ".yellow().bold(),
+        Level::Info => " INFO".green().bold(),
+        Level::Warn => " WARN".yellow().bold(),
         Level::Error => "ERROR".red().bold(),
     }
 }
@@ -75,9 +75,9 @@ pub fn init(level: Option<Level>) {
 
         let guard = PROGRESS_BAR.write().unwrap();
         if let Some(pb) = &*guard {
-            pb.println(format!(" {} {} > {}", level, target, record.args()));
+            pb.println(format!("       {} {} > {}", level, target, record.args()));
         } else {
-            println!(" {} {} > {}", level, target, record.args());
+            println!("       {} {} > {}", level, target, record.args());
         }
 
         Ok(())

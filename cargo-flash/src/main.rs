@@ -143,7 +143,7 @@ fn main() {
             //
             // We ignore the errors, not much we can do anyway.
             let mut stderr = std::io::stderr();
-            let _ = writeln!(stderr, "{}: {}", "error".red().bold(), e);
+            let _ = writeln!(stderr, "       {} {}", "Error".red().bold(), e);
             let _ = stderr.flush();
 
             process::exit(1);
@@ -301,13 +301,13 @@ fn main_try() -> Result<(), failure::Error> {
             let style = ProgressStyle::default_bar()
                     .tick_chars("⠁⠁⠉⠙⠚⠒⠂⠂⠒⠲⠴⠤⠄⠄⠤⠠⠠⠤⠦⠖⠒⠐⠐⠒⠓⠋⠉⠈⠈✔")
                     .progress_chars("##-")
-                    .template("    {msg:.green.bold} {spinner} [{elapsed_precise}] [{wide_bar}] {bytes:>8}/{total_bytes:>8} @ {bytes_per_sec:>10} (eta {eta:3})");
+                    .template("{msg:.green.bold} {spinner} [{elapsed_precise}] [{wide_bar}] {bytes:>8}/{total_bytes:>8} @ {bytes_per_sec:>10} (eta {eta:3})");
 
             // Create a new progress bar for the fill progress if filling is enabled.
             let fill_progress = if opt.restore_unwritten {
                 let fill_progress = Arc::new(multi_progress.add(ProgressBar::new(0)));
                 fill_progress.set_style(style.clone());
-                fill_progress.set_message("Reading flash    ");
+                fill_progress.set_message("     Reading flash  ");
                 Some(fill_progress)
             } else {
                 None
@@ -319,12 +319,12 @@ fn main_try() -> Result<(), failure::Error> {
                 logging::set_progress_bar(erase_progress.clone());
             }
             erase_progress.set_style(style.clone());
-            erase_progress.set_message("Erasing sectors  ");
+            erase_progress.set_message("     Erasing sectors");
 
             // Create a new progress bar for the program progress.
             let program_progress = multi_progress.add(ProgressBar::new(0));
             program_progress.set_style(style);
-            program_progress.set_message("Programming pages");
+            program_progress.set_message(" Programming pages  ");
 
             // Register callback to update the progress.
             let flash_layout_output_path = opt.flash_layout_output_path.clone();
