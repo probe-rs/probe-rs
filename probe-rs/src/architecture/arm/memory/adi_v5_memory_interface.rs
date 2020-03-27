@@ -181,8 +181,19 @@ where
         // Offset of byte in word (little endian)
         let bit_offset = (address - aligned.start) * 8;
 
-        // Read 32-bit word and extract the correct byte
-        let result = ((self.read32(aligned.start)? >> bit_offset) & 0xFF) as u8;
+        let result = if self.only_32bit_data_size {
+            // Read 32-bit word and extract the correct byte
+            ((self.read32(aligned.start)? >> bit_offset) & 0xFF) as u8
+        } else {
+            let csw = self.build_csw_register(DataSize::U8);
+            let tar = TAR { address };
+            self.write_ap_register(csw)?;
+            self.write_ap_register(tar)?;
+            let result = self.read_ap_register(DRW::default())?;
+
+            // Extract the correct byte
+            ((result.data >> bit_offset) & 0xFF) as u8
+        };
 
         Ok(result)
     }
@@ -329,11 +340,22 @@ where
         // Offset of byte in word (little endian)
         let bit_offset = (address - aligned.start) * 8;
 
-        // Read the existing 32-bit word and insert the byte at the correct bit offset
-        let word =
-            self.read32(aligned.start)? & !(0xFF << bit_offset) | (u32::from(data) << bit_offset);
+        if self.only_32bit_data_size {
+            // Read the existing 32-bit word and insert the byte at the correct bit offset
+            let word = self.read32(aligned.start)?;
+            let word = word & !(0xFF << bit_offset) | (u32::from(data) << bit_offset);
 
-        self.write32(aligned.start, word)?;
+            self.write32(aligned.start, word)?;
+        } else {
+            let csw = self.build_csw_register(DataSize::U8);
+            let drw = DRW {
+                data: u32::from(data) << bit_offset,
+            };
+            let tar = TAR { address };
+            self.write_ap_register(csw)?;
+            self.write_ap_register(tar)?;
+            self.write_ap_register(drw)?;
+        }
 
         Ok(())
     }
