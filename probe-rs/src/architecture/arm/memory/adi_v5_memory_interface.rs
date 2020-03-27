@@ -22,6 +22,7 @@ where
 {
     interface: AP,
     access_port: MemoryAP,
+    only_32bit_data_size: bool,
 }
 
 impl ADIMemoryInterface<ArmCommunicationInterface> {
@@ -30,10 +31,13 @@ impl ADIMemoryInterface<ArmCommunicationInterface> {
         interface: ArmCommunicationInterface,
         access_port_number: impl Into<MemoryAP>,
     ) -> Self {
-        Self {
+        let mut interface = Self {
             interface,
             access_port: access_port_number.into(),
-        }
+            only_32bit_data_size: true,
+        };
+        interface.detect_data_size().ok(); // Ignore errors
+        interface
     }
 }
 
@@ -43,6 +47,7 @@ impl ADIMemoryInterface<MockMemoryAP> {
         Self {
             interface: mock,
             access_port: access_port_number.into(),
+            only_32bit_data_size: false,
         }
     }
 
@@ -138,6 +143,16 @@ where
         self.interface
             .write_ap_register_repeated(self.access_port, register, values)
             .map_err(AccessPortError::register_write_error::<R, _>)
+    }
+
+    fn detect_data_size(&mut self) -> Result<(), AccessPortError> {
+        let csw = self.build_csw_register(DataSize::U8);
+        self.write_ap_register(csw)?;
+        let csw = self.read_ap_register(CSW::default())?;
+
+        self.only_32bit_data_size = csw.SIZE != DataSize::U8;
+
+        Ok(())
     }
 
     /// Read a 32bit word at `addr`.
