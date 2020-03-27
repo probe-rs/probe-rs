@@ -10,9 +10,6 @@ pub trait MemoryInterface {
     fn read32(&mut self, address: u32) -> Result<u32, error::Error>;
 
     /// Read an 8bit word of at `addr`.
-    ///
-    /// The address where the read should be performed at has to be word aligned.
-    /// Returns `AccessPortError::MemoryNotAligned` if this does not hold true.
     fn read8(&mut self, address: u32) -> Result<u8, error::Error>;
 
     /// Read a block of 32bit words at `addr`.
@@ -23,10 +20,6 @@ pub trait MemoryInterface {
     fn read_block32(&mut self, address: u32, data: &mut [u32]) -> Result<(), error::Error>;
 
     /// Read a block of 8bit words at `addr`.
-    ///
-    /// The number of words read is `data.len()`.
-    /// The address where the read should be performed at has to be word aligned.
-    /// Returns `AccessPortError::MemoryNotAligned` if this does not hold true.
     fn read_block8(&mut self, address: u32, data: &mut [u8]) -> Result<(), error::Error>;
 
     /// Write a 32bit word at `addr`.
@@ -36,9 +29,6 @@ pub trait MemoryInterface {
     fn write32(&mut self, addr: u32, data: u32) -> Result<(), error::Error>;
 
     /// Write an 8bit word at `addr`.
-    ///
-    /// The address where the write should be performed at has to be word aligned.
-    /// Returns `AccessPortError::MemoryNotAligned` if this does not hold true.
     fn write8(&mut self, addr: u32, data: u8) -> Result<(), error::Error>;
 
     /// Write a block of 32bit words at `addr`.
@@ -49,10 +39,6 @@ pub trait MemoryInterface {
     fn write_block32(&mut self, addr: u32, data: &[u32]) -> Result<(), error::Error>;
 
     /// Write a block of 8bit words at `addr`.
-    ///
-    /// The number of words written is `data.len()`.
-    /// The address where the write should be performed at has to be word aligned.
-    /// Returns `AccessPortError::MemoryNotAligned` if this does not hold true.
     fn write_block8(&mut self, addr: u32, data: &[u8]) -> Result<(), error::Error>;
 }
 
