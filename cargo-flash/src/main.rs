@@ -92,6 +92,12 @@ struct Opt {
         help = "The path to the ELF file to be flashed."
     )]
     elf: Option<String>,
+    #[structopt(
+        name = "directory",
+        long = "work-dir",
+        help = "The work directory from which cargo-flash should operate from."
+    )]
+    work_dir: Option<String>,
 
     // `cargo build` arguments
     #[structopt(name = "binary", long = "bin")]
@@ -122,6 +128,7 @@ const ARGUMENTS_TO_REMOVE: &[&str] = &[
     "chip-description-path=",
     "list-chips",
     "elf=",
+    "work-dir=",
     "disable-progressbars",
     "protocol=",
     "probe-index=",
@@ -185,6 +192,11 @@ fn main_try() -> Result<(), failure::Error> {
 
     // Remove all arguments that `cargo build` does not understand.
     remove_arguments(ARGUMENTS_TO_REMOVE, &mut args);
+
+    // Change the work dir if the user asked to do so
+    if let Some(work_dir) = opt.work_dir {
+        std::env::set_current_dir(work_dir)?;
+    }
 
     let path: PathBuf = if let Some(path) = opt.elf {
         path.into()
