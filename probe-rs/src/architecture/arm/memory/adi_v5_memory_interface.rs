@@ -196,6 +196,7 @@ where
             let result = self.read_ap_register(DRW::default())?;
 
             // Extract the correct byte
+            // See "Arm Debug Interface Architecture Specification ADIv5.0 to ADIv5.2", C2.2.6
             ((result.data >> bit_offset) & 0xFF) as u8
         };
 
@@ -346,6 +347,7 @@ where
 
         if self.only_32bit_data_size {
             // Read the existing 32-bit word and insert the byte at the correct bit offset
+            // See "Arm Debug Interface Architecture Specification ADIv5.0 to ADIv5.2", C2.2.6
             let word = self.read32(aligned.start)?;
             let word = word & !(0xFF << bit_offset) | (u32::from(data) << bit_offset);
 
