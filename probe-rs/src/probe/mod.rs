@@ -72,6 +72,8 @@ pub enum DebugProbeError {
     UnsupportedSpeed(u32),
     #[error("You need to be attached to the target to perform this action.")]
     NotAttached,
+    #[error("You need to be detached from the target to perform this action.")]
+    Attached,
 }
 
 /// The Probe struct is a generic wrapper over the different
@@ -213,13 +215,17 @@ impl Probe {
 
     /// Selects the transport protocol to be used by the debug probe.
     pub fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError> {
-        self.inner.select_protocol(protocol)
+        if !self.attached {
+            self.inner.select_protocol(protocol)
+        } else {
+            Err(DebugProbeError::Attached)
+        }
     }
 
     /// Leave debug mode
     pub fn detach(&mut self) -> Result<(), DebugProbeError> {
-        self.inner.detach()?;
         self.attached = false;
+        self.inner.detach()?;
         Ok(())
     }
 
@@ -230,7 +236,11 @@ impl Probe {
 
     /// Configure protocol speed to use in kHz
     pub fn set_speed(&mut self, speed_khz: u32) -> Result<u32, DebugProbeError> {
-        self.inner.set_speed(speed_khz)
+        if !self.attached {
+            self.inner.set_speed(speed_khz)
+        } else {
+            Err(DebugProbeError::Attached)
+        }
     }
 
     /// Configured protocol speed in kHz
