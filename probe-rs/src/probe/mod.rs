@@ -250,10 +250,11 @@ impl Probe {
 
     /// Returns a probe specific memory interface if any is present for given probe.
     pub fn dedicated_memory_interface(&self) -> Result<Option<Memory>, DebugProbeError> {
-        if self.attached {
-            return Err(DebugProbeError::NotAttached);
+        if !self.attached {
+            Err(DebugProbeError::NotAttached)
+        } else {
+            Ok(self.inner.dedicated_memory_interface())
         }
-        Ok(self.inner.dedicated_memory_interface())
     }
 
     pub fn has_dap_interface(&self) -> bool {
@@ -261,17 +262,19 @@ impl Probe {
     }
 
     pub fn get_interface_dap(&self) -> Result<Option<&dyn DAPAccess>, DebugProbeError> {
-        if self.attached {
-            return Err(DebugProbeError::NotAttached);
+        if !self.attached {
+            Err(DebugProbeError::NotAttached)
+        } else {
+            Ok(self.inner.get_interface_dap())
         }
-        Ok(self.inner.get_interface_dap())
     }
 
     pub fn get_interface_dap_mut(&mut self) -> Result<Option<&mut dyn DAPAccess>, DebugProbeError> {
-        if self.attached {
-            return Err(DebugProbeError::NotAttached);
+        if !self.attached {
+            Err(DebugProbeError::NotAttached)
+        } else {
+            Ok(self.inner.get_interface_dap_mut())
         }
-        Ok(self.inner.get_interface_dap_mut())
     }
 
     pub fn has_jtag_interface(&self) -> bool {
@@ -279,19 +282,21 @@ impl Probe {
     }
 
     pub fn get_interface_jtag(&self) -> Result<Option<&dyn JTAGAccess>, DebugProbeError> {
-        if self.attached {
-            return Err(DebugProbeError::NotAttached);
+        if !self.attached {
+            Err(DebugProbeError::NotAttached)
+        } else {
+            Ok(self.inner.get_interface_jtag())
         }
-        Ok(self.inner.get_interface_jtag())
     }
 
     pub fn get_interface_jtag_mut(
         &mut self,
     ) -> Result<Option<&mut dyn JTAGAccess>, DebugProbeError> {
-        if self.attached {
-            return Err(DebugProbeError::NotAttached);
+        if !self.attached {
+            Err(DebugProbeError::NotAttached)
+        } else {
+            Ok(self.inner.get_interface_jtag_mut())
         }
-        Ok(self.inner.get_interface_jtag_mut())
     }
 }
 
