@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved error messages for ARM register operations.
 - The `flash` module has been renamed to `flashing`.
 - Downloading a file now has the possibility to add options instead of multiple parameters to clean up the interface.
+- `read8`/`write8` implement true 8-bit accesses if they are supported by target.
 
 ### Fixed
 
@@ -38,6 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed a bug in the ST-Link support, where some writes were not completed. This lead to problems when flashing a device, as the
   final reset request was not properly executed.
 - Refactored 8-bit memory access in ADIMemoryInterface, fixing some edge case crashes in the process. Also rewrote all tests to be more thorough.
+- Fixed 8/16-bit memory access processing in `MockMemoryAP`.
 
 ## [0.5.1]
 
