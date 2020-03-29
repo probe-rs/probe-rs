@@ -238,7 +238,7 @@ impl DebugProbe for DAPLink {
 
         self.send_swj_sequences(SequenceRequest::new(&[0x00]).unwrap())?;
 
-        debug!("Successfully changed to SDW.");
+        debug!("Successfully changed to SWD.");
 
         Ok(())
     }
@@ -255,10 +255,17 @@ impl DebugProbe for DAPLink {
 
     fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError> {
         match protocol {
-            WireProtocol::Jtag => self.protocol = Some(WireProtocol::Jtag),
-            WireProtocol::Swd => self.protocol = Some(WireProtocol::Swd),
+            WireProtocol::Jtag => {
+                log::warn!(
+                    "Support for JTAG protocol is not yet implemented for CMSIS-DAP based probes."
+                );
+                Err(DebugProbeError::UnsupportedProtocol(WireProtocol::Jtag))
+            }
+            WireProtocol::Swd => {
+                self.protocol = Some(WireProtocol::Swd);
+                Ok(())
+            }
         }
-        Ok(())
     }
 
     /// Asserts the nRESET pin.

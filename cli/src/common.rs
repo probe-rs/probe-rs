@@ -87,12 +87,20 @@ pub(crate) fn with_device<F>(shared_options: &SharedOptions, f: F) -> Result<(),
 where
     for<'a> F: FnOnce(Session) -> Result<(), CliError>,
 {
-    let probe = open_probe(shared_options.n)?;
+    let mut probe = open_probe(shared_options.n)?;
 
     let target_selector = match &shared_options.chip {
         Some(identifier) => identifier.into(),
         None => TargetSelector::Auto,
     };
+
+    if let Some(ref protocol) = shared_options.protocol {
+        probe.select_protocol(
+            protocol
+                .parse()
+                .map_err(|_e| CliError::UnableToOpenProbe(Some("Error while parsing protocol")))?,
+        )?;
+    }
 
     let session = probe.attach(target_selector)?;
 

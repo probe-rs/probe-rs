@@ -1,8 +1,9 @@
 //! Support for J-Link Debug probes
 
-use jaylink::{CommunicationSpeed, JayLink};
+use jaylink::{CommunicationSpeed, Interface, JayLink};
+use thiserror::Error;
 
-use std::convert::TryInto;
+use std::convert::{TryFrom, TryInto};
 use std::iter;
 use std::sync::Mutex;
 
@@ -25,6 +26,9 @@ pub(crate) struct JLink {
 
     /// Currently selected protocol
     protocol: Option<WireProtocol>,
+
+    /// Protocols supported by the connected J-Link probe.
+    supported_protocols: Vec<WireProtocol>,
 
     current_ir_reg: u32,
 
@@ -312,9 +316,47 @@ impl DebugProbe for JLink {
             // TODO: Add custom error
             return Err(DebugProbeError::ProbeCouldNotBeCreated);
         }
+        let jlink_handle = usb_devices.pop().unwrap().open()?;
+
+        // Check which protocols are supported by the J-Link.
+        //
+        // If the J-Link has the SELECT_IF capability, we can just ask
+        // it which interfaces it supports. If it doesn't have the capabilty,
+        // we assume that it justs support JTAG. In that case, we will also
+        // not be able to change protocols.
+
+        let supported_protocols: Vec<WireProtocol> = if jlink_handle
+            .read_capabilities()?
+            .contains(jaylink::Capabilities::SELECT_IF)
+        {
+            let interfaces = jlink_handle.read_available_interfaces()?;
+
+            let protocols: Vec<_> = interfaces.map(WireProtocol::try_from).collect();
+
+            protocols
+                .iter()
+                .filter(|p| p.is_err())
+                .for_each(|protocol| {
+                    if let Err(JlinkError::UnknownInterface(interface)) = protocol {
+                        log::warn!(
+                            "J-Link returned interface {:?}, which is not supported by probe-rs.",
+                            interface
+                        );
+                    }
+                });
+
+            // We ignore unknown protocols, the chance that this happens is pretty low,
+            // and we can just work with the ones we know and support.
+            protocols.into_iter().filter_map(Result::ok).collect()
+        } else {
+            // The J-Link cannot report which interfaces it supports, and cannot
+            // switch interfaces. We assume it just supports JTAG.
+            vec![WireProtocol::Jtag]
+        };
 
         Ok(Box::new(JLink {
-            handle: Mutex::new(usb_devices.pop().unwrap().open()?),
+            handle: Mutex::from(jlink_handle),
+            supported_protocols: supported_protocols,
             jtag_idle_cycles: 0,
             protocol: None,
             current_ir_reg: 1,
@@ -373,12 +415,29 @@ impl DebugProbe for JLink {
     }
 
     fn attach(&mut self) -> Result<(), super::DebugProbeError> {
-        let protocol = self.protocol.unwrap_or(WireProtocol::Swd);
-        self.select_protocol(protocol)?;
+        log::debug!("Attaching to J-Link");
 
-        log::debug!("Attaching with protocol '{:?}'", protocol);
+        let configured_protocol = match self.protocol {
+            Some(protocol) => protocol,
+            None => {
+                if self.supported_protocols.contains(&WireProtocol::Swd) {
+                    WireProtocol::Swd
+                } else {
+                    // At least one protocol is always supported
+                    *self.supported_protocols.first().unwrap()
+                }
+            }
+        };
 
-        match protocol {
+        let actual_protocol = self.select_interface(Some(configured_protocol))?;
+
+        if actual_protocol != configured_protocol {
+            log::warn!("Protocol {} is configured, but not supported by the probe. Using protocol {} instead", configured_protocol, actual_protocol);
+        }
+
+        log::debug!("Attaching with protocol '{}'", actual_protocol);
+
+        match actual_protocol {
             WireProtocol::Jtag => {
                 // try some JTAG stuff
                 let jlink = self.handle.get_mut().unwrap();
@@ -467,19 +526,39 @@ impl DebugProbe for JLink {
     }
 
     fn get_interface_dap(&self) -> Option<&dyn DAPAccess> {
-        Some(self as _)
+        // For now, we only support using SWD for ARM chips, but
+        // JTAG would be possible as well.
+        if self.supported_protocols.contains(&WireProtocol::Swd) {
+            Some(self as _)
+        } else {
+            None
+        }
     }
 
     fn get_interface_dap_mut(&mut self) -> Option<&mut dyn DAPAccess> {
-        Some(self as _)
+        // For now, we only support using SWD for ARM chips, but
+        // JTAG would be possible as well.
+        if self.supported_protocols.contains(&WireProtocol::Swd) {
+            Some(self as _)
+        } else {
+            None
+        }
     }
 
     fn get_interface_jtag(&self) -> Option<&dyn JTAGAccess> {
-        Some(self as _)
+        if self.supported_protocols.contains(&WireProtocol::Jtag) {
+            Some(self as _)
+        } else {
+            None
+        }
     }
 
     fn get_interface_jtag_mut(&mut self) -> Option<&mut dyn JTAGAccess> {
-        Some(self as _)
+        if self.supported_protocols.contains(&WireProtocol::Jtag) {
+            Some(self as _)
+        } else {
+            None
+        }
     }
 }
 
@@ -826,5 +905,23 @@ pub(crate) fn list_jlink_devices() -> Result<impl Iterator<Item = DebugProbeInfo
 impl From<jaylink::Error> for DebugProbeError {
     fn from(e: jaylink::Error) -> DebugProbeError {
         DebugProbeError::ProbeSpecific(Box::new(e))
+    }
+}
+
+#[derive(Debug, Error)]
+pub enum JlinkError {
+    #[error("Unknown interface reported by J-Link: {0:?}")]
+    UnknownInterface(jaylink::Interface),
+}
+
+impl TryFrom<jaylink::Interface> for WireProtocol {
+    type Error = JlinkError;
+
+    fn try_from(interface: Interface) -> Result<Self, Self::Error> {
+        match interface {
+            Interface::Jtag => Ok(WireProtocol::Jtag),
+            Interface::Swd => Ok(WireProtocol::Swd),
+            unknown_interface => Err(JlinkError::UnknownInterface(unknown_interface)),
+        }
     }
 }
