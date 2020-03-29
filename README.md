@@ -9,15 +9,16 @@ The goal of this library is to provide a toolset to interact with a variety of e
 
 Similar projects like OpenOCD, PyOCD, Segger Toolset, ST Tooling, etc. exist.
 They all implement the GDB protocol and their own protocol on top of it to enable GDB to communicate with the debug probe.
+Only Segger provides a closed source DLL which you can use for talking to the JLink.
 
-This project gets rid of the GDB layer (even tho we provide one you can use until [Microsoft DAP](https://code.visualstudio.com/blogs/2018/08/07/debug-adapter-protocol-website) support is fully implemented) and provides a direct interface to the debug probe,
+This project gets rid of the GDB layer and provides a direct interface to the debug probe,
 which then enables other software to use it's debug functionality.
 
 **The end goal of this project is to have a complete library toolset to enable other tools to communicate with embedded targets.**
 
 ## Functionality
 
-As of 27.03.2020 this lib can
+As of 0.6.0 this lib can
 
 - connect to a DAPLink, STLink or JLink
 - talk to ARM and Risc-V cores via SWD or JTAG
@@ -31,6 +32,15 @@ To see what new functionality was added have a look at the [CHANGELOG](CHANGELOG
 ## Downloading a file
 
 The `cargo-flash` utility can be used as a cargo subcommand to download a compiled Rust program onto a target device. It can also be used to download arbitrary ELF files that might come out of a C/C++ compiler. Have a look at [cargo-flash](https://github.com/probe-rs/cargo-flash) for more information.
+
+## GDB
+
+We provide a GDB stub you can use until [Microsoft DAP](https://code.visualstudio.com/blogs/2018/08/07/debug-adapter-protocol-website) support is fully implemented.
+You can find it [here](https://github.com/probe-rs/probe-rs/tree/master/gdb-server) and you can also use it from within `cargo-flash` with the `--gdb` flag.
+
+## VScode
+
+We are implementing [Microsoft DAP](https://code.visualstudio.com/blogs/2018/08/07/debug-adapter-protocol-website) to provide full probe-rs integration into modern debuggers such as the built in one of VSCode.
 
 ## Usage Examples
 ### Halting the attached chip
@@ -99,6 +109,10 @@ Please reach out to [@Yatekii](https://github.com/Yatekii)
 
 [![Technokrat](https://technokrat.ch/static/img/svg_banner-light.svg)](https://technokrat.ch)
 
+## Acknowledgements
+
+In early stages of this library, we profited invaluably from the pyOCD code to understand how flashing works. Also it's always a good reference to cross check how ARM specific things work. So, a big thank you to the team behind pyOCD!
+
 ## License
 
 Licensed under either of
@@ -108,7 +122,7 @@ Licensed under either of
  * MIT license ([LICENSE-MIT](LICENSE-MIT) or
    http://opensource.org/licenses/MIT) at your option.
 
-### Contributing
+## Contributing
 
 Unless you explicitly state otherwise, any contribution intentionally submitted
 for inclusion in the work by you, as defined in the Apache-2.0 license, shall
