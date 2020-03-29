@@ -99,6 +99,10 @@ struct SharedOptions {
     /// The target to be selected.
     #[structopt(short, long)]
     chip: Option<String>,
+
+    /// Protocol to use for target connection
+    #[structopt(short, long)]
+    protocol: Option<String>,
 }
 
 fn main() {
