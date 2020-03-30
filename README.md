@@ -38,9 +38,9 @@ The `cargo-flash` utility can be used as a cargo subcommand to download a compil
 We provide a GDB stub you can use until [Microsoft DAP](https://code.visualstudio.com/blogs/2018/08/07/debug-adapter-protocol-website) support is fully implemented.
 You can find it [here](https://github.com/probe-rs/probe-rs/tree/master/gdb-server) and you can also use it from within `cargo-flash` with the `--gdb` flag.
 
-## VScode
+## VSCode
 
-We are implementing [Microsoft DAP](https://code.visualstudio.com/blogs/2018/08/07/debug-adapter-protocol-website) to provide full probe-rs integration into modern debuggers such as the built in one of VSCode.
+We are implementing [Microsoft DAP](https://code.visualstudio.com/blogs/2018/08/07/debug-adapter-protocol-website). This makes embedded debugging via probe-rs available in moden code editors implementing the standard, such as VSCode.
 
 ## Usage Examples
 ### Halting the attached chip
@@ -97,7 +97,7 @@ Don't hesitate to [file an issue](https://github.com/probe-rs/probe-rs/issues/ne
 
 Please have a look at the issues or open one if you feel that something is needed.
 
-Any code contibutions are very welcome!
+Any contibutions are very welcome!
 
 Also have a look at [CONTRIBUTING.md](CONTRIBUTING.md).
 
