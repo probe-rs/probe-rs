@@ -25,7 +25,7 @@ As of version 0.6.0 this library can
 - read and write arbitrary memory of the target
 - halt, run, step, breakpoint and much more the core
 - download ELF, BIN and IHEX binaries using standard CMSIS-Pack flash algorithms to ARM cores
-- provide debug information about the target state (stacktrace, stackframe, etc)
+- provide debug information about the target state (stacktrace, stackframe, etc.)
 
 To see what new functionality was added have a look at the [CHANGELOG](CHANGELOG.md)
 
