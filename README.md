@@ -18,7 +18,7 @@ which then enables other software to use it's debug functionality.
 
 ## Functionality
 
-As of 0.6.0 this lib can
+As of version 0.6.0 this library can
 
 - connect to a DAPLink, STLink or JLink
 - talk to ARM and Risc-V cores via SWD or JTAG
