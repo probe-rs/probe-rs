@@ -9,8 +9,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Improved built times by changing code generation for targets. For more details, see [PR #191](https://github.com/probe-rs/probe-rs/pull/191).
-
 ### Fixed
 
 ## [0.6.0]
@@ -30,6 +28,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The `flash` module has been renamed to `flashing`.
 - Downloading a file now has the possibility to add options instead of multiple parameters to clean up the interface.
 - `read8`/`write8` implement true 8-bit accesses if they are supported by target.
+- Improved build times by changing code generation for targets. For more details, see [PR #191](https://github.com/probe-rs/probe-rs/pull/191).
+- Improved logging for ELF loading. If there was no loadable sections before, nothing would happen. Now it is properly reported, that there was no loadable sections.
 
 ### Fixed
 
@@ -40,6 +40,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   final reset request was not properly executed.
 - Refactored 8-bit memory access in ADIMemoryInterface, fixing some edge case crashes in the process. Also rewrote all tests to be more thorough.
 - Fixed 8/16-bit memory access processing in `MockMemoryAP`.
+- Protocol selection for JLink now will properly honor the actual capabilities of the JLink instead of crashing if the capability was missing.
+- Fix an issue where probes would double attach to a target, potentially leading to issues.
 
 ## [0.5.1]
 
@@ -124,7 +126,8 @@ Initial release on crates.io
 - Working basic flash downloader with nRF51.
 - Introduce cargo-flash which can automatically build & flash the target elf file.
 
-[Unreleased]: https://github.com/probe-rs/probe-rs/compare/v0.5.1...master
+[Unreleased]: https://github.com/probe-rs/probe-rs/compare/v0.6.0...master
+[0.6.0]: https://github.com/probe-rs/probe-rs/releases/tag/v0.6.0
 [0.5.1]: https://github.com/probe-rs/probe-rs/releases/tag/v0.5.1
 [0.5.0]: https://github.com/probe-rs/probe-rs/releases/tag/v0.5.0
 [0.4.0]: https://github.com/probe-rs/probe-rs/releases/tag/v0.4.0
