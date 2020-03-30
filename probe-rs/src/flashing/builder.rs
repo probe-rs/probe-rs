@@ -624,7 +624,7 @@ mod tests {
     }
 
     #[test]
-    fn equal_bytes_in_two_data_chunks_multiple_sectors_smaller_than_page() {
+    fn two_data_chunks_multiple_sectors_smaller_than_page() {
         let flash_algorithm = assemble_demo_flash2();
         let mut flash_builder = FlashBuilder::new();
         flash_builder.add_data(0, &[42; 5024]).unwrap();
