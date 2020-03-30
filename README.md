@@ -35,7 +35,7 @@ The `cargo-flash` utility can be used as a cargo subcommand to download a compil
 
 ## GDB
 
-We provide a GDB stub you can use until [Microsoft DAP](https://code.visualstudio.com/blogs/2018/08/07/debug-adapter-protocol-website) support is fully implemented.
+We provide a GDB stub so you can use all your usual tools.
 You can find it [here](https://github.com/probe-rs/probe-rs/tree/master/gdb-server) and you can also use it from within `cargo-flash` with the `--gdb` flag.
 
 ## VSCode
