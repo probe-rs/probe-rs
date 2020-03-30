@@ -97,7 +97,7 @@ Don't hesitate to [file an issue](https://github.com/probe-rs/probe-rs/issues/ne
 
 Please have a look at the issues or open one if you feel that something is needed.
 
-Any contibutions are very welcome!
+Any contributions are very welcome!
 
 Also have a look at [CONTRIBUTING.md](CONTRIBUTING.md).
 
