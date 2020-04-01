@@ -53,6 +53,13 @@ fn main() {
     let in_dir = options.input_dir;
     let out_dir = options.output_dir;
 
+    if !in_dir.exists() {
+        panic!("No such file or directory {:?}", in_dir);
+    }
+    else if !out_dir.exists() {
+        panic!("No such file or directory {:?}", out_dir);
+    }
+
     let mut families = Vec::<ChipFamily>::new();
     // Look for the .pdsc file in the given dir and it's child directories.
     let generation_result = visit_dirs(Path::new(&in_dir), &mut |pdsc, mut archive| {
