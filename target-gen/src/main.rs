@@ -124,6 +124,7 @@ fn main() {
                     Core::CortexM4 => "M4",
                     Core::CortexM3 => "M3",
                     Core::CortexM33 => "M33",
+                    Core::CortexM7 => "M7",
                     c => {
                         return Err(Error::Unsupported(format!(
                             "Core '{:?}' is not yet supported for target generation.",
