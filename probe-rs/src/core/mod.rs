@@ -252,6 +252,7 @@ pub enum CoreType {
     M33,
     M0,
     Riscv,
+    M7,
 }
 
 impl CoreType {
@@ -269,10 +270,11 @@ impl CoreType {
 
         Ok(match self {
             // TODO: Change this once the new archtecture structure for ARM hits.
-            // Cortex-M3 and M4 both use the Armv7[E]-M architecture and are
+            // Cortex-M3, M4 and M7 use the Armv7[E]-M architecture and are
             // identical for our purposes.
             CoreType::M3 => Core::new(crate::architecture::arm::m4::M4::new(memory)),
             CoreType::M4 => Core::new(crate::architecture::arm::m4::M4::new(memory)),
+            CoreType::M7 => Core::new(crate::architecture::arm::m4::M4::new(memory)),
             CoreType::M33 => Core::new(crate::architecture::arm::m33::M33::new(memory)),
             CoreType::M0 => Core::new(crate::architecture::arm::m0::M0::new(memory)),
             _ => {
@@ -301,6 +303,7 @@ impl CoreType {
             "m3" => Some(CoreType::M3),
             "m33" => Some(CoreType::M33),
             "riscv" => Some(CoreType::Riscv),
+            "m7" => Some(CoreType::M7),
             _ => None,
         }
     }

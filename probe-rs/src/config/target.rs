@@ -56,6 +56,7 @@ impl Target {
             CoreType::M33 => Architecture::ARM,
             CoreType::M4 => Architecture::ARM,
             CoreType::Riscv => Architecture::RISCV,
+            CoreType::M7 => Architecture::ARM,
         }
     }
 }
