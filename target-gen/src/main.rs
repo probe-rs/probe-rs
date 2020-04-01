@@ -55,8 +55,7 @@ fn main() {
 
     if !in_dir.exists() {
         panic!("No such file or directory {:?}", in_dir);
-    }
-    else if !out_dir.exists() {
+    } else if !out_dir.exists() {
         panic!("No such file or directory {:?}", out_dir);
     }
 
