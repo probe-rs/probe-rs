@@ -54,9 +54,11 @@ fn main() {
     let out_dir = options.output_dir;
 
     if !in_dir.exists() {
-        panic!("No such file or directory {:?}", in_dir);
+        eprintln!("No such file or directory {:?}", in_dir);
+        std::process::exit(1);
     } else if !out_dir.exists() {
-        panic!("No such file or directory {:?}", out_dir);
+        eprintln!("No such file or directory {:?}", out_dir);
+        std::process::exit(1);
     }
 
     let mut families = Vec::<ChipFamily>::new();
