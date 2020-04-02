@@ -8,11 +8,14 @@ Various chip families including but not limited to **nRF5x**, **STM32** and **LP
 
 ## Installation
 
-You can install this utility with cargo:
+You can install this utility with cargo, after installing the
+necessary [prerequisites](#prerequisites):
 
 ```bash
 cargo install cargo-flash
 ```
+
+Binary releases are not available.
 
 ## Usage
 
@@ -62,3 +65,31 @@ You can also reference to an already unziped `pack` directory instead of the `fi
 ## Add more chip definitions
 
 If you have a chip you want to flash, feel free to contribute to [probe-rs](https://github.com/probe-rs/probe-rs).
+
+
+## Building
+
+`cargo-flash` can be built using cargo, after installing the necessary prerequisites. See the list below for your operating
+system.
+
+### Prerequisites
+
+#### Linux
+
+For Linux systems, the [libusb](https://libusb.info/) library and [pkg-config](https://www.freedesktop.org/wiki/Software/pkg-config/) need to be installed.
+
+For Ubuntu, this means the following packages:
+
+- libusb-1.0 
+- libusb-dev
+- pkg-config
+
+
+
+#### Windows
+
+No prerequisites except Rust are necessary for building on Windows.
+
+#### macOS
+
+No prerequisites except Rust are necessary for building on macOS.
