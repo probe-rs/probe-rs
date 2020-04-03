@@ -240,6 +240,12 @@ impl Probe {
         Session::new(self, target)
     }
 
+    pub fn attach_to_unspecified(&mut self) -> Result<(), Error> {
+        self.inner.attach()?;
+        self.attached = true;
+        Ok(())
+    }
+
     /// Selects the transport protocol to be used by the debug probe.
     pub fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError> {
         if !self.attached {

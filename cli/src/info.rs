@@ -13,7 +13,8 @@ use probe_rs::{
 };
 
 pub(crate) fn show_info_of_device(shared_options: &SharedOptions) -> Result<(), CliError> {
-    let probe = open_probe(shared_options.n)?;
+    let mut probe = open_probe(shared_options.n)?;
+    probe.attach_to_unspecified()?;
 
     /*
         The following code only works with debug port v2,
