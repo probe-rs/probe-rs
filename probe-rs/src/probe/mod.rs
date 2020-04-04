@@ -74,6 +74,8 @@ pub enum DebugProbeError {
     NotAttached,
     #[error("You need to be detached from the target to perform this action.")]
     Attached,
+    #[error("Some functionality was not implemented yet")]
+    NotImplemented(&'static str),
 }
 
 /// The Probe struct is a generic wrapper over the different
@@ -334,7 +336,7 @@ pub trait DebugProbe: Send + Sync + fmt::Debug {
     /// Leave debug mode
     fn detach(&mut self) -> Result<(), DebugProbeError>;
 
-    /// Resets the target device.
+    /// Hard-resets the target device.
     fn target_reset(&mut self) -> Result<(), DebugProbeError>;
 
     /// Selects the transport protocol to be used by the debug probe.
