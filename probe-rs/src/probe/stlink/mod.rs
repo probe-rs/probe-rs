@@ -139,11 +139,22 @@ impl DebugProbe for STLink<STLinkUSBDevice> {
         )?;
         let result = Self::check_status(&buf);
 
+        // If the chip is not responding to the SWD reset sequence, we do a hard reset
+        // and try the sequence again while we are in reset.
         match result {
             Err(StlinkError::CommandFailed(Status::JtagGetIdcodeError))
             | Err(StlinkError::CommandFailed(Status::JtagNoDeviceConnected)) => {
                 self.target_reset_assert()?;
-                self.attach()?;
+                
+                let mut buf = [0; 2];
+                self.device.write(
+                    vec![commands::JTAG_COMMAND, commands::JTAG_ENTER2, param, 0],
+                    &[],
+                    &mut buf,
+                    TIMEOUT,
+                )?;
+                let result = Self::check_status(&buf);
+
                 self.target_reset_deassert()?;
                 Ok(())
             }
