@@ -140,7 +140,8 @@ impl DebugProbe for STLink<STLinkUSBDevice> {
         let result = Self::check_status(&buf);
 
         match result {
-            Err(StlinkError::CommandFailed(Status::JtagGetIdcodeError)) => {
+            Err(StlinkError::CommandFailed(Status::JtagGetIdcodeError))
+            | Err(StlinkError::CommandFailed(Status::JtagNoDeviceConnected)) => {
                 self.target_reset_assert()?;
                 self.attach()?;
                 self.target_reset_deassert()?;
