@@ -518,7 +518,7 @@ impl DebugProbe for JLink {
     }
 
     fn target_reset(&mut self) -> Result<(), super::DebugProbeError> {
-        unimplemented!()
+        Err(super::DebugProbeError::NotImplemented("target_reset"))
     }
 
     fn dedicated_memory_interface(&self) -> Option<crate::Memory> {
