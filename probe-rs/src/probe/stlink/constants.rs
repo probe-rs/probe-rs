@@ -1,5 +1,7 @@
 #![allow(unused)]
 
+use enum_primitive_derive::Primitive;
+
 pub mod commands {
     // Common commands.
     pub const GET_VERSION: u8 = 0xf1;
@@ -59,6 +61,7 @@ pub mod commands {
 }
 
 /// STLink status codes and messages.
+#[derive(Debug, Copy, Clone, Primitive, PartialEq)]
 pub enum Status {
     JtagOk = 0x80,
     JtagUnknownError = 0x01,
@@ -89,6 +92,7 @@ pub enum Status {
     SwvNotAvailable = 0x20,
     JtagFreqNotSupported = 0x41,
     JtagUnknownCmd = 0x42,
+    Unknown = 0xFF,
 }
 
 /// Map from SWD frequency in Hertz to delay loop count.

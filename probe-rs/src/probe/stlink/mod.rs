@@ -9,6 +9,7 @@ use super::{
 };
 use crate::Memory;
 use constants::{commands, JTagFrequencyToDivider, Mode, Status, SwdFrequencyToDelayCount};
+use num_traits::cast::FromPrimitive;
 use scroll::{Pread, BE, LE};
 use thiserror::Error;
 use usb_interface::TIMEOUT;
@@ -621,11 +622,15 @@ impl STLink {
     /// This can be called on any status returned from the attached target.
     fn check_status(status: &[u8]) -> Result<(), DebugProbeError> {
         log::trace!("check_status({:?})", status);
-        if status[0] != Status::JtagOk as u8 {
-            log::warn!("check_status failed: {:?}", status);
-            Err(StlinkError::CommandFailed(status[0]).into())
+        if let Some(status) = Status::from_u8(status[0]) {
+            if status != Status::JtagOk {
+                log::warn!("check_status failed: {:?}", status);
+                Err(StlinkError::CommandFailed(status).into())
+            } else {
+                Ok(())
+            }
         } else {
-            Ok(())
+            Err(StlinkError::CommandFailed(Status::Unknown).into())
         }
     }
 }
@@ -644,8 +649,8 @@ pub(crate) enum StlinkError {
     NotEnoughBytesRead,
     #[error("USB endpoint not found.")]
     EndpointNotFound,
-    #[error("Command failed with status {0}")]
-    CommandFailed(u8),
+    #[error("Command failed with status {0:?}")]
+    CommandFailed(Status),
 }
 
 impl From<StlinkError> for DebugProbeError {
