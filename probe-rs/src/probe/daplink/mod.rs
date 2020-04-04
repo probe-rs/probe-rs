@@ -18,6 +18,7 @@ use commands::{
     swj::{
         clock::{SWJClockRequest, SWJClockResponse},
         sequence::{SequenceRequest, SequenceResponse},
+        pins::{SWJPinsRequest, Pins, SWJPinsResponse},
     },
     transfer::{
         configure::{ConfigureRequest, ConfigureResponse},
@@ -353,6 +354,36 @@ impl DebugProbe for DAPLink {
     fn target_reset(&mut self) -> Result<(), DebugProbeError> {
         commands::send_command(&mut self.device, ResetRequest).map(|v: ResetResponse| {
             log::info!("Target reset response: {:?}", v);
+        })?;
+        Ok(())
+    }
+
+    fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
+        let mut mask = Pins(0);
+        mask.set_nreset(true);
+        mask.set_ntrst(true);
+        let request = SWJPinsRequest {
+            output: mask,
+            select: Pins(0x00),
+            wait: 0
+        };
+        commands::send_command(&mut self.device, request).map(|v: SWJPinsResponse| {
+            log::info!("Pin response: {:?}", v);
+        })?;
+        Ok(())
+    }
+
+    fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
+        let mut mask = Pins(0);
+        mask.set_nreset(true);
+        mask.set_ntrst(true);
+        let request = SWJPinsRequest {
+            output: mask,
+            select: Pins(0xFF),
+            wait: 0
+        };
+        commands::send_command(&mut self.device, request).map(|v: SWJPinsResponse| {
+            log::info!("Pin response: {:?}", v);
         })?;
         Ok(())
     }

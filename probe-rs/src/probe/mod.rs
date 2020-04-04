@@ -252,7 +252,11 @@ impl Probe {
         self.inner.get_name().to_string()
     }
 
-    /// Enters debug mode
+    /// Attach to the chip.
+    ///
+    /// This runs all the necessary protocol init routines.
+    ///
+    /// If this doesn't work, you might want to try `attach_under_reset`
     pub fn attach(mut self, target: impl Into<TargetSelector>) -> Result<Session, Error> {
         self.inner.attach()?;
         self.attached = true;
@@ -264,6 +268,23 @@ impl Probe {
         self.inner.attach()?;
         self.attached = true;
         Ok(())
+    }
+
+    /// Attach to the chip under hard-reset.
+    ///
+    /// This asserts the reset pin via the probe, plays the protocol init routines and deasserts the pin.
+    /// This is necessary if the chip is not responding to the SWD reset sequence.
+    /// For example this can happen if the chip has the SWDIO pin remapped.
+    pub fn attach_under_reset(
+        mut self,
+        target: impl Into<TargetSelector>,
+    ) -> Result<Session, Error> {
+        self.inner.target_reset_assert()?;
+        self.inner.attach()?;
+        self.inner.target_reset_deassert()?;
+        self.attached = true;
+
+        Session::new(self, target)
     }
 
     /// Selects the transport protocol to be used by the debug probe.
@@ -391,14 +412,24 @@ pub trait DebugProbe: Send + Sync + fmt::Debug {
     ///
     fn set_speed(&mut self, speed_khz: u32) -> Result<u32, DebugProbeError>;
 
-    /// Enters debug mode
+    /// Attach to the chip.
+    ///
+    /// This should run all the necessary protocol init routines.
     fn attach(&mut self) -> Result<(), DebugProbeError>;
 
-    /// Leave debug mode
+    /// Detach from the chip.
+    ///
+    /// This should run all the necessary protocol deinit routines.
     fn detach(&mut self) -> Result<(), DebugProbeError>;
 
-    /// Hard-resets the target device.
+    /// This should hard reset the target device.
     fn target_reset(&mut self) -> Result<(), DebugProbeError>;
+
+    /// This should assert the reset pin of the target via debug probe.
+    fn target_reset_assert(&mut self) -> Result<(), DebugProbeError>;
+
+    /// This should deassert the reset pin of the target via debug probe.
+    fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError>;
 
     /// Selects the transport protocol to be used by the debug probe.
     fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError>;
@@ -599,6 +630,14 @@ impl DebugProbe for FakeProbe {
     /// Resets the target device.
     fn target_reset(&mut self) -> Result<(), DebugProbeError> {
         Err(DebugProbeError::CommandNotSupportedByProbe)
+    }
+
+    fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
+        unimplemented!()
+    }
+
+    fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
+        unimplemented!()
     }
 
     fn dedicated_memory_interface(&self) -> Option<Memory> {

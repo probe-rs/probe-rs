@@ -115,7 +115,6 @@ impl DebugProbe for STLink<STLinkUSBDevice> {
         }
     }
 
-    /// Enters debug mode.
     fn attach(&mut self) -> Result<(), DebugProbeError> {
         log::debug!("attach({:?})", self.protocol);
         self.enter_idle()?;
@@ -138,29 +137,7 @@ impl DebugProbe for STLink<STLinkUSBDevice> {
             &mut buf,
             TIMEOUT,
         )?;
-        let result = Self::check_status(&buf);
-
-        // If the chip is not responding to the SWD reset sequence, we do a hard reset
-        // and try the sequence again while we are in reset.
-        match result {
-            Err(StlinkError::CommandFailed(Status::JtagGetIdcodeError))
-            | Err(StlinkError::CommandFailed(Status::JtagNoDeviceConnected)) => {
-                self.target_reset_assert()?;
-
-                let mut buf = [0; 2];
-                self.device.write(
-                    vec![commands::JTAG_COMMAND, commands::JTAG_ENTER2, param, 0],
-                    &[],
-                    &mut buf,
-                    TIMEOUT,
-                )?;
-                let result = Self::check_status(&buf);
-
-                self.target_reset_deassert()?;
-                Ok(())
-            }
-            result => result,
-        }?;
+        Self::check_status(&buf)?;
 
         log::debug!("Successfully initialized SWD.");
 
@@ -181,7 +158,6 @@ impl DebugProbe for STLink<STLinkUSBDevice> {
         Ok(())
     }
 
-    /// Leave debug mode.
     fn detach(&mut self) -> Result<(), DebugProbeError> {
         log::debug!("Detaching from STLink.");
         if self.swo_enabled {
@@ -198,6 +174,40 @@ impl DebugProbe for STLink<STLinkUSBDevice> {
                 commands::JTAG_COMMAND,
                 commands::JTAG_DRIVE_NRST,
                 commands::JTAG_DRIVE_NRST_PULSE,
+            ],
+            &[],
+            &mut buf,
+            TIMEOUT,
+        )?;
+
+        Self::check_status(&buf)?;
+        Ok(())
+    }
+
+    fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
+        let mut buf = [0; 2];
+        self.device.write(
+            vec![
+                commands::JTAG_COMMAND,
+                commands::JTAG_DRIVE_NRST,
+                commands::JTAG_DRIVE_NRST_LOW,
+            ],
+            &[],
+            &mut buf,
+            TIMEOUT,
+        )?;
+
+        Self::check_status(&buf)?;
+        Ok(())
+    }
+
+    fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
+        let mut buf = [0; 2];
+        self.device.write(
+            vec![
+                commands::JTAG_COMMAND,
+                commands::JTAG_DRIVE_NRST,
+                commands::JTAG_DRIVE_NRST_HIGH,
             ],
             &[],
             &mut buf,
@@ -497,42 +507,6 @@ impl<D: StLinkUsb> STLink<D> {
         }
 
         self.get_target_voltage().map(|_| ())
-    }
-
-    /// Asserts the nRESET pin.
-    fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
-        let mut buf = [0; 2];
-        self.device.write(
-            vec![
-                commands::JTAG_COMMAND,
-                commands::JTAG_DRIVE_NRST,
-                commands::JTAG_DRIVE_NRST_LOW,
-            ],
-            &[],
-            &mut buf,
-            TIMEOUT,
-        )?;
-
-        Self::check_status(&buf)?;
-        Ok(())
-    }
-
-    /// Deasserts the nRESET pin.
-    fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
-        let mut buf = [0; 2];
-        self.device.write(
-            vec![
-                commands::JTAG_COMMAND,
-                commands::JTAG_DRIVE_NRST,
-                commands::JTAG_DRIVE_NRST_HIGH,
-            ],
-            &[],
-            &mut buf,
-            TIMEOUT,
-        )?;
-
-        Self::check_status(&buf)?;
-        Ok(())
     }
 
     /// sets the SWD frequency.
