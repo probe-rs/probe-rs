@@ -199,7 +199,7 @@ impl JLink {
             }
         }
 
-        tdi.extend_from_slice(&tms_enter_idle);
+        tdi.extend_from_slice(&tdi_enter_idle);
 
         log::trace!("tms: {:?}", tms);
         log::trace!("tdi: {:?}", tdi);
