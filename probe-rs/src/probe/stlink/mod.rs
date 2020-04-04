@@ -11,7 +11,6 @@ use crate::{
     DebugProbeSelector, Error as ProbeRsError, Memory,
 };
 use constants::{commands, JTagFrequencyToDivider, Mode, Status, SwdFrequencyToDelayCount};
-use num_traits::FromPrimitive;
 use scroll::{Pread, BE, LE};
 use std::{cmp::Ordering, time::Duration};
 use thiserror::Error;
