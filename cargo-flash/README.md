@@ -4,7 +4,7 @@
 
 This crate provides a cargo subcommand to flash ELF binaries onto ARM chips.
 
-As of writing this, flashing works for the **nRF51822, nRF52832, nRF52840, STMF042, STMF429xI** using a **DAPLink** or an **ST-Link**.
+Various chip families including but not limited to **nRF5x, STM32 and LPC800** can be flashed using a **DAPLink** or an **ST-Link**. To check if your specific chip is supported, use `cargo flash --list-chips`
 
 ## Installation
 
