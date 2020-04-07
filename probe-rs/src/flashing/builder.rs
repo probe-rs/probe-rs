@@ -295,6 +295,7 @@ impl<'a> FlashBuilder<'a> {
     pub(super) fn build_sectors_and_pages(
         &self,
         flash_algorithm: &FlashAlgorithm,
+        include_empty_pages: bool,
     ) -> Result<FlashLayout, FlashError> {
         let mut sectors: Vec<FlashSector> = Vec::new();
         let mut pages: Vec<FlashPage> = Vec::new();
@@ -368,7 +369,12 @@ impl<'a> FlashBuilder<'a> {
                 // and we don't start a new page (condition: page_offset == 0)
                 // We need to fill the start of the page up until the page offset where the new data will start.
                 if block_offset == 0 && page_offset != 0 {
-                    add_fill(page_address, page_offset as u32, &mut fills, pages.len());
+                    add_fill(
+                        page_address,
+                        page_offset as u32,
+                        &mut fills,
+                        pages.len() - 1,
+                    );
                 }
 
                 // If we have finished writing our block (condition: block_offset + size == block_size)
@@ -409,8 +415,10 @@ impl<'a> FlashBuilder<'a> {
                     && !self.data_blocks.is_empty()
                     && n == self.data_blocks.len() - 1;
 
-                // If one of the two conditions resolves to true, we fill all remaining pages for the current sector.
-                if start_new_sector || last_bit_of_block {
+                // If one of the two conditions resolves to true, and we are including
+                // pages which will only contain fill, then we fill all remaining pages
+                // for the current sector.
+                if (start_new_sector || last_bit_of_block) && include_empty_pages {
                     // Iterate all possible sector pages and see if they have been created yet.
                     let pages_per_sector =
                         (sector_size / flash_algorithm.flash_properties.page_size) as usize;
@@ -429,7 +437,7 @@ impl<'a> FlashBuilder<'a> {
                             }
                         }
                         let page = add_page(flash_algorithm, page_address, &mut pages)?;
-                        add_fill(page.address, page.size(), &mut fills, pages.len());
+                        add_fill(page.address, page.size(), &mut fills, pages.len() - 1);
                     }
                 }
 
