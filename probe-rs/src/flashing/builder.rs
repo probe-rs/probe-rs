@@ -598,6 +598,17 @@ mod tests {
     }
 
     #[test]
+    fn equal_bytes_one_full_page_one_page_one_byte_skip_fill() {
+        let flash_algorithm = assemble_demo_flash1();
+        let mut flash_builder = FlashBuilder::new();
+        flash_builder.add_data(0, &[42; 1025]).unwrap();
+        let flash_layout = flash_builder
+            .build_sectors_and_pages(&flash_algorithm, false)
+            .unwrap();
+        assert_debug_snapshot!(flash_layout);
+    }
+
+    #[test]
     fn equal_bytes_one_page_from_offset_span_two_pages() {
         let flash_algorithm = assemble_demo_flash1();
         let mut flash_builder = FlashBuilder::new();
