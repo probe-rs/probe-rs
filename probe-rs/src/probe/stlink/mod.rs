@@ -439,7 +439,7 @@ impl STLink {
         Ok((self.hw_version, self.jtag_version))
     }
 
-    /// Opens the ST-Link USB device and tries to identify the ST-Links version and it's target voltage.
+    /// Opens the ST-Link USB device and tries to identify the ST-Links version and its target voltage.
     /// Internal helper.
     fn init(&mut self) -> Result<(), DebugProbeError> {
         log::debug!("Initializing STLink...");

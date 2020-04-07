@@ -87,7 +87,7 @@ impl FlashSector {
 }
 
 /// A struct to hold all the information about one region
-/// in the flash that is erased during flashing and has to be restored to it's original value afterwards.
+/// in the flash that is erased during flashing and has to be restored to its original value afterwards.
 #[derive(Clone)]
 pub struct FlashFill {
     address: u32,
@@ -259,7 +259,7 @@ impl<'a> FlashBuilder<'a> {
             Ok(_) => return Err(FlashError::DataOverlap(address)),
             // Add it to the list if it is not present yet.
             Err(position) => {
-                // If we have a prior block (prevent u32 underflow), check if it's range intersects
+                // If we have a prior block (prevent u32 underflow), check if its range intersects
                 // the range of the block we are trying to insert. If so, return an error.
                 if position > 0 {
                     if let Some(block) = self.data_blocks.get(position - 1) {
@@ -271,7 +271,7 @@ impl<'a> FlashBuilder<'a> {
                 }
 
                 // If we have a block after the one we are trying to insert,
-                // check if it's range intersects the range of the block we are trying to insert.
+                // check if its range intersects the range of the block we are trying to insert.
                 // If so, return an error.
                 // We don't add 1 to the position here, because we have not insert an element yet.
                 // So the ones on the right are not shifted yet!
@@ -381,7 +381,7 @@ impl<'a> FlashBuilder<'a> {
                     // Where the fillup ends which is by default the end of the page.
                     let mut fill_end_address = (page_address + page_size) as usize;
 
-                    // Try to get the address of the next block and adjust the address to it's start
+                    // Try to get the address of the next block and adjust the address to its start
                     // if it is smaller than the end of the last page.
                     if let Some((_, next_block)) = data_iter.peek() {
                         fill_end_address = fill_end_address.min(next_block.address as usize);

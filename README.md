@@ -12,7 +12,7 @@ They all implement the GDB protocol and their own protocol on top of it to enabl
 Only Segger provides a closed source DLL which you can use for talking to the JLink.
 
 This project gets rid of the GDB layer and provides a direct interface to the debug probe,
-which then enables other software to use it's debug functionality.
+which then enables other software to use its debug functionality.
 
 **The end goal of this project is to have a complete library toolset to enable other tools to communicate with embedded targets.**
 
@@ -101,7 +101,7 @@ Any contributions are very welcome!
 
 Also have a look at [CONTRIBUTING.md](CONTRIBUTING.md).
 
-### Our company needs feature X and would pay for it's development
+### Our company needs feature X and would pay for its development
 
 Please reach out to [@Yatekii](https://github.com/Yatekii)
 
