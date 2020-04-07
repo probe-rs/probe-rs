@@ -235,8 +235,8 @@ impl<'a> Flasher<'a> {
         progress: &FlashProgress,
     ) -> Result<(), FlashError> {
         // Convert the list of flash operations into flash sectors and pages.
-        let mut flash_layout =
-            flash_builder.build_sectors_and_pages(&self.flash_algorithm().clone())?;
+        let mut flash_layout = flash_builder
+            .build_sectors_and_pages(&self.flash_algorithm().clone(), restore_unwritten_bytes)?;
 
         progress.initialized(flash_layout.clone());
 
