@@ -570,7 +570,7 @@ mod tests {
         let mut flash_builder = FlashBuilder::new();
         flash_builder.add_data(0, &[42]).unwrap();
         let flash_layout = flash_builder
-            .build_sectors_and_pages(&flash_algorithm)
+            .build_sectors_and_pages(&flash_algorithm, true)
             .unwrap();
         assert_debug_snapshot!(flash_layout);
     }
@@ -581,7 +581,7 @@ mod tests {
         let mut flash_builder = FlashBuilder::new();
         flash_builder.add_data(0, &[42; 1024]).unwrap();
         let flash_layout = flash_builder
-            .build_sectors_and_pages(&flash_algorithm)
+            .build_sectors_and_pages(&flash_algorithm, true)
             .unwrap();
         assert_debug_snapshot!(flash_layout);
     }
@@ -592,7 +592,7 @@ mod tests {
         let mut flash_builder = FlashBuilder::new();
         flash_builder.add_data(0, &[42; 1025]).unwrap();
         let flash_layout = flash_builder
-            .build_sectors_and_pages(&flash_algorithm)
+            .build_sectors_and_pages(&flash_algorithm, true)
             .unwrap();
         assert_debug_snapshot!(flash_layout);
     }
@@ -603,7 +603,7 @@ mod tests {
         let mut flash_builder = FlashBuilder::new();
         flash_builder.add_data(42, &[42; 1024]).unwrap();
         let flash_layout = flash_builder
-            .build_sectors_and_pages(&flash_algorithm)
+            .build_sectors_and_pages(&flash_algorithm, true)
             .unwrap();
         assert_debug_snapshot!(flash_layout);
     }
@@ -614,7 +614,7 @@ mod tests {
         let mut flash_builder = FlashBuilder::new();
         flash_builder.add_data(0, &[42; 5024]).unwrap();
         let flash_layout = flash_builder
-            .build_sectors_and_pages(&flash_algorithm)
+            .build_sectors_and_pages(&flash_algorithm, true)
             .unwrap();
         assert_debug_snapshot!(flash_layout);
     }
@@ -626,7 +626,7 @@ mod tests {
         flash_builder.add_data(0, &[42; 5024]).unwrap();
         flash_builder.add_data(7860, &[42; 5024]).unwrap();
         let flash_layout = flash_builder
-            .build_sectors_and_pages(&flash_algorithm)
+            .build_sectors_and_pages(&flash_algorithm, true)
             .unwrap();
         assert_debug_snapshot!(flash_layout);
     }
@@ -638,7 +638,7 @@ mod tests {
         flash_builder.add_data(0, &[42; 5024]).unwrap();
         flash_builder.add_data(7860, &[42; 5024]).unwrap();
         let flash_layout = flash_builder
-            .build_sectors_and_pages(&flash_algorithm)
+            .build_sectors_and_pages(&flash_algorithm, true)
             .unwrap();
         assert_debug_snapshot!(flash_layout);
     }

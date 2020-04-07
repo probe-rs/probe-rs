@@ -64,17 +64,17 @@ FlashLayout {
         FlashFill {
             address: "0x001400",
             size: "0x000400",
-            page_index: 6,
+            page_index: 5,
         },
         FlashFill {
             address: "0x001800",
             size: "0x000400",
-            page_index: 7,
+            page_index: 6,
         },
         FlashFill {
             address: "0x001C00",
             size: "0x000400",
-            page_index: 8,
+            page_index: 7,
         },
     ],
     data_blocks: [

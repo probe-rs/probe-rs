@@ -40,12 +40,12 @@ FlashLayout {
         FlashFill {
             address: "0x000800",
             size: "0x000400",
-            page_index: 3,
+            page_index: 2,
         },
         FlashFill {
             address: "0x000C00",
             size: "0x000400",
-            page_index: 4,
+            page_index: 3,
         },
     ],
     data_blocks: [
