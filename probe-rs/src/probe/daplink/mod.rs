@@ -196,10 +196,7 @@ impl DebugProbe for DAPLink {
         self.packet_count = Some(packet_count);
         self.packet_size = Some(packet_size);
 
-        let clock = 1_000_000;
-
-        debug!("Attaching to target system (clock = {})", clock);
-        self.set_swj_clock(clock)?;
+        debug!("Attaching to target system (clock = {}kHz)", self.speed_khz);
 
         let protocol = if let Some(protocol) = self.protocol {
             match protocol {
@@ -216,7 +213,8 @@ impl DebugProbe for DAPLink {
             ConnectResponse::InitFailed => Err(CmsisDapError::ErrorResponse),
         })?;
 
-        self.set_swj_clock(clock)?;
+        // Set speed after connecting as it can be reset during protocol selection
+        self.set_speed(self.speed_khz)?;
 
         self.transfer_configure(ConfigureRequest {
             idle_cycles: 0,
