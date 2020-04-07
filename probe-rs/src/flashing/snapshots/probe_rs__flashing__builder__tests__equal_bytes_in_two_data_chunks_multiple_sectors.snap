@@ -112,17 +112,17 @@ FlashLayout {
         FlashFill {
             address: "0x001C00",
             size: "0x0002B4",
-            page_index: 6,
+            page_index: 5,
         },
         FlashFill {
             address: "0x001400",
             size: "0x000400",
-            page_index: 7,
+            page_index: 6,
         },
         FlashFill {
             address: "0x001800",
             size: "0x000400",
-            page_index: 8,
+            page_index: 7,
         },
         FlashFill {
             address: "0x003254",
@@ -132,17 +132,17 @@ FlashLayout {
         FlashFill {
             address: "0x003400",
             size: "0x000400",
-            page_index: 14,
+            page_index: 13,
         },
         FlashFill {
             address: "0x003800",
             size: "0x000400",
-            page_index: 15,
+            page_index: 14,
         },
         FlashFill {
             address: "0x003C00",
             size: "0x000400",
-            page_index: 16,
+            page_index: 15,
         },
     ],
     data_blocks: [
