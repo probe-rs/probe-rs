@@ -57,6 +57,16 @@ impl std::fmt::Debug for DAPLink {
 
 impl DAPLink {
     pub fn new_from_device(device: hidapi::HidDevice) -> Self {
+        // Discard anything left in buffer, as otherwise
+        // we'll get out of sync between requests and responses.
+        let mut discard_buffer = [0u8; 128];
+        loop {
+            match device.read_timeout(&mut discard_buffer, 1) {
+                Ok(n) if n != 0 => continue,
+                _ => break,
+            }
+        }
+
         Self {
             device: Mutex::new(device),
             _hw_version: 0,
