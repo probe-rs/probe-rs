@@ -197,64 +197,6 @@ impl DAPLink {
             _ => Ok(0),
         }
     }
-
-    /// Immediately sends a command to read the DAP register on the specified port and address
-    #[allow(unused)]
-    fn direct_read_register(&mut self, port: PortType, addr: u16) -> Result<u32, DebugProbeError> {
-        self.process_batch()?;
-        let response = commands::send_command::<TransferRequest, TransferResponse>(
-            &mut self.device,
-            TransferRequest::new(&[
-                InnerTransferRequest::new(port.into(), RW::R, addr as u8, None),
-            ]),
-        )?;
-
-        if response.transfer_count == 1 {
-            if response.transfer_response.protocol_error {
-                // An SWD Protocol Error occured
-                Err(DapError::SwdProtocol.into())
-            } else {
-                match response.transfer_response.ack {
-                    Ack::Ok => Ok(response.transfer_data),
-                    Ack::NoAck => Err(DapError::NoAcknowledge.into()),
-                    Ack::Fault => Err(DapError::FaultResponse.into()),
-                    Ack::Wait => Err(DapError::WaitResponse.into()),
-                }
-            }
-        } else {
-            Err(CmsisDapError::UnexpectedAnswer.into())
-        }
-    }
-
-    /// Immediately sends a command to write the DAP register on the specified port and address
-    #[allow(unused)]
-    fn direct_write_register(
-        &mut self,
-        port: PortType,
-        addr: u16,
-        value: u32,
-    ) -> Result<(), DebugProbeError> {
-        self.process_batch()?;
-        let response = commands::send_command::<TransferRequest, TransferResponse>(
-            &mut self.device,
-            TransferRequest::new(&[
-                InnerTransferRequest::new(port.into(), RW::W, addr as u8, Some(value)),
-            ]),
-        )?;
-
-        if response.transfer_count == 1 {
-            if response.transfer_response.protocol_error {
-                Err(DebugProbeError::USB(None))
-            } else {
-                match response.transfer_response.ack {
-                    Ack::Ok => Ok(()),
-                    _ => Err(DebugProbeError::Unknown),
-                }
-            }
-        } else {
-            Err(DebugProbeError::Unknown)
-        }
-    }
 }
 
 impl DPAccess for DAPLink {
