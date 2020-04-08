@@ -5,7 +5,7 @@ use crate::architecture::arm::{
     dp::{DPAccess, DPRegister, DebugPortError},
     DAPAccess, DapError, PortType,
 };
-use crate::probe::daplink::commands::CmsisDapError;
+use crate::probe::{BatchCommand, daplink::commands::CmsisDapError};
 use crate::{DebugProbe, DebugProbeError, DebugProbeInfo, Memory, WireProtocol};
 use commands::{
     general::{
@@ -42,6 +42,8 @@ pub struct DAPLink {
 
     /// Speed in kHz
     speed_khz: u32,
+
+    batch: Vec<BatchCommand>,
 }
 
 impl std::fmt::Debug for DAPLink {
@@ -75,6 +77,7 @@ impl DAPLink {
             packet_count: None,
             packet_size: None,
             speed_khz: 1_000,
+            batch: Vec::new(),
         }
     }
 
@@ -129,6 +132,128 @@ impl DAPLink {
                 SequenceResponse(Status::DAPError) => Err(CmsisDapError::ErrorResponse),
             })?;
         Ok(())
+    }
+
+    /// Immediately send whatever is in our batch if it is not empty.
+    ///
+    /// This will ensure any pending writes are processed and errors from them
+    /// raised if necessary.
+    fn process_batch(&mut self) -> Result<u32, DebugProbeError> {
+        if self.batch.is_empty() { return Ok(0) }
+        log::debug!("Processing batch of {} items", self.batch.len());
+
+        let batch = std::mem::replace(&mut self.batch, Vec::new());
+
+        let transfers: Vec<InnerTransferRequest> = batch.iter().map(|command|
+            match *command {
+                BatchCommand::Read(port, addr) =>
+                    InnerTransferRequest::new(port.into(), RW::R, addr as u8, None),
+                BatchCommand::Write(port, addr, data) =>
+                    InnerTransferRequest::new(port.into(), RW::W, addr as u8, Some(data)),
+            }
+        ).collect();
+
+        let response = commands::send_command::<TransferRequest, TransferResponse>(
+            &mut self.device, TransferRequest::new(&transfers))?;
+
+        let count = response.transfer_count as usize;
+
+        if count == batch.len() {
+            if response.transfer_response.protocol_error {
+                Err(DapError::SwdProtocol.into())
+            } else {
+                match response.transfer_response.ack {
+                    Ack::Ok => Ok(response.transfer_data),
+                    Ack::NoAck => Err(DapError::NoAcknowledge.into()),
+                    Ack::Fault => Err(DapError::FaultResponse.into()),
+                    Ack::Wait => Err(DapError::WaitResponse.into()),
+                }
+            }
+        } else if count < batch.len() {
+            Err(DebugProbeError::BatchError(batch[count - 1]))
+        } else {
+            Err(CmsisDapError::UnexpectedAnswer.into())
+        }
+    }
+
+    /// Add a BatchCommand to our current batch.
+    ///
+    /// If the BatchCommand is a Read, this will immediately process the batch
+    /// and return the read value. If the BatchCommand is a write, the write is
+    /// executed immediately if the batch is full, otherwise it is queued for
+    /// later execution.
+    fn batch_add(&mut self, command: BatchCommand) -> Result<u32, DebugProbeError> {
+        log::debug!("Adding command to batch: {}", command);
+
+        self.batch.push(command);
+
+        // We always immediately process any reads, which means there will never
+        // be more than one read in a batch. We also process whenever the batch
+        // is as long as can fit in one packet.
+        let max_writes = (self.packet_size.unwrap_or(32) as usize - 3) / (1 + 4);
+        match command {
+            BatchCommand::Read(_, _)            => self.process_batch(),
+            _ if self.batch.len() == max_writes => self.process_batch(),
+            _ => Ok(0),
+        }
+    }
+
+    /// Immediately sends a command to read the DAP register on the specified port and address
+    #[allow(unused)]
+    fn direct_read_register(&mut self, port: PortType, addr: u16) -> Result<u32, DebugProbeError> {
+        self.process_batch()?;
+        let response = commands::send_command::<TransferRequest, TransferResponse>(
+            &mut self.device,
+            TransferRequest::new(&[
+                InnerTransferRequest::new(port.into(), RW::R, addr as u8, None),
+            ]),
+        )?;
+
+        if response.transfer_count == 1 {
+            if response.transfer_response.protocol_error {
+                // An SWD Protocol Error occured
+                Err(DapError::SwdProtocol.into())
+            } else {
+                match response.transfer_response.ack {
+                    Ack::Ok => Ok(response.transfer_data),
+                    Ack::NoAck => Err(DapError::NoAcknowledge.into()),
+                    Ack::Fault => Err(DapError::FaultResponse.into()),
+                    Ack::Wait => Err(DapError::WaitResponse.into()),
+                }
+            }
+        } else {
+            Err(CmsisDapError::UnexpectedAnswer.into())
+        }
+    }
+
+    /// Immediately sends a command to write the DAP register on the specified port and address
+    #[allow(unused)]
+    fn direct_write_register(
+        &mut self,
+        port: PortType,
+        addr: u16,
+        value: u32,
+    ) -> Result<(), DebugProbeError> {
+        self.process_batch()?;
+        let response = commands::send_command::<TransferRequest, TransferResponse>(
+            &mut self.device,
+            TransferRequest::new(&[
+                InnerTransferRequest::new(port.into(), RW::W, addr as u8, Some(value)),
+            ]),
+        )?;
+
+        if response.transfer_count == 1 {
+            if response.transfer_response.protocol_error {
+                Err(DebugProbeError::USB(None))
+            } else {
+                match response.transfer_response.ack {
+                    Ack::Ok => Ok(()),
+                    _ => Err(DebugProbeError::Unknown),
+                }
+            }
+        } else {
+            Err(DebugProbeError::Unknown)
+        }
     }
 }
 
@@ -253,6 +378,7 @@ impl DebugProbe for DAPLink {
 
     /// Leave debug mode.
     fn detach(&mut self) -> Result<(), DebugProbeError> {
+        self.process_batch()?;
         let response = commands::send_command(&mut self.device, DisconnectRequest {})?;
 
         match response {
@@ -306,26 +432,7 @@ impl DebugProbe for DAPLink {
 impl DAPAccess for DAPLink {
     /// Reads the DAP register on the specified port and address.
     fn read_register(&mut self, port: PortType, addr: u16) -> Result<u32, DebugProbeError> {
-        let response = commands::send_command::<TransferRequest, TransferResponse>(
-            &mut self.device,
-            TransferRequest::new(InnerTransferRequest::new(port.into(), RW::R, addr as u8), 0),
-        )?;
-
-        if response.transfer_count == 1 {
-            if response.transfer_response.protocol_error {
-                // An SWD Protocol Error occured
-                Err(DapError::SwdProtocol.into())
-            } else {
-                match response.transfer_response.ack {
-                    Ack::Ok => Ok(response.transfer_data),
-                    Ack::NoAck => Err(DapError::NoAcknowledge.into()),
-                    Ack::Fault => Err(DapError::FaultResponse.into()),
-                    Ack::Wait => Err(DapError::WaitResponse.into()),
-                }
-            }
-        } else {
-            Err(CmsisDapError::UnexpectedAnswer.into())
-        }
+        self.batch_add(BatchCommand::Read(port, addr))
     }
 
     /// Writes a value to the DAP register on the specified port and address.
@@ -335,26 +442,7 @@ impl DAPAccess for DAPLink {
         addr: u16,
         value: u32,
     ) -> Result<(), DebugProbeError> {
-        let response = commands::send_command::<TransferRequest, TransferResponse>(
-            &mut self.device,
-            TransferRequest::new(
-                InnerTransferRequest::new(port.into(), RW::W, addr as u8),
-                value,
-            ),
-        )?;
-
-        if response.transfer_count == 1 {
-            if response.transfer_response.protocol_error {
-                Err(DebugProbeError::USB(None))
-            } else {
-                match response.transfer_response.ack {
-                    Ack::Ok => Ok(()),
-                    _ => Err(DebugProbeError::Unknown),
-                }
-            }
-        } else {
-            Err(DebugProbeError::Unknown)
-        }
+        self.batch_add(BatchCommand::Write(port, addr, value)).map(|_| ())
     }
 
     fn write_block(
@@ -363,6 +451,8 @@ impl DAPAccess for DAPLink {
         register_address: u16,
         values: &[u32],
     ) -> Result<(), DebugProbeError> {
+        self.process_batch()?;
+
         // the overhead for a single packet is 6 bytes
         //
         // [0]: HID overhead
@@ -401,6 +491,8 @@ impl DAPAccess for DAPLink {
         register_address: u16,
         values: &mut [u32],
     ) -> Result<(), DebugProbeError> {
+        self.process_batch()?;
+
         // the overhead for a single packet is 6 bytes
         //
         // [0]: HID overhead
@@ -440,6 +532,7 @@ impl Drop for DAPLink {
     fn drop(&mut self) {
         debug!("Detaching from DAPLink");
         // We ignore the error case as we can't do much about it anyways.
+        let _ = self.process_batch();
         let _ = self.detach();
     }
 }

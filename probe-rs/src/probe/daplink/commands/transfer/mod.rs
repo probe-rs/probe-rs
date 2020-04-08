@@ -27,7 +27,7 @@ pub enum RW {
 
 /// Contains information about requested access from host debugger.
 #[allow(non_snake_case)]
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
 pub struct InnerTransferRequest {
     /// 0 = Debug PortType (DP), 1 = Access PortType (AP).
     pub APnDP: PortType,
@@ -43,10 +43,14 @@ pub struct InnerTransferRequest {
     pub match_mask: bool,
     /// 0 = No time stamp, 1 = Include time stamp value from Test Domain Timer before every Transfer Data word (restrictions see note).
     pub td_timestamp_request: bool,
+
+    /// Contains the optional data word, only present
+    /// for register writes, match mask writes, or value match reads.
+    pub data: Option<u32>,
 }
 
 impl InnerTransferRequest {
-    pub fn new(port: PortType, rw: RW, address: u8) -> Self {
+    pub fn new(port: PortType, rw: RW, address: u8, data: Option<u32>) -> Self {
         Self {
             APnDP: port,
             RnW: rw,
@@ -55,13 +59,14 @@ impl InnerTransferRequest {
             value_match: false,
             match_mask: false,
             td_timestamp_request: false,
+            data,
         }
     }
 }
 
 #[test]
 fn creating_inner_transfer_request() {
-    let req = InnerTransferRequest::new(PortType::DP, RW::W, 0x8);
+    let req = InnerTransferRequest::new(PortType::DP, RW::W, 0x8, None);
 
     assert_eq!(true, req.A3);
     assert_eq!(false, req.A2);
@@ -76,7 +81,13 @@ impl InnerTransferRequest {
             | (if self.value_match { 1 } else { 0 }) << 4
             | (if self.match_mask { 1 } else { 0 }) << 5
             | (if self.td_timestamp_request { 1 } else { 0 }) << 7;
-        Ok(1)
+        if let Some(data) = self.data {
+            let data = data.to_le_bytes();
+            buffer[offset+1..offset+5].copy_from_slice(&data[..]);
+            Ok(5)
+        } else {
+            Ok(1)
+        }
     }
 }
 
@@ -94,18 +105,15 @@ pub struct TransferRequest {
     pub dap_index: u8,
     /// Number of transfers: 1 .. 255. For each transfer a Transfer Request BYTE is sent. Depending on the request an additional Transfer Data WORD is sent.
     pub transfer_count: u8,
-    /// Contains information about requested access from host debugger.
-    pub transfer_request: InnerTransferRequest,
-    pub transfer_data: u32,
+    pub transfers: Vec<InnerTransferRequest>,
 }
 
 impl TransferRequest {
-    pub fn new(transfer_request: InnerTransferRequest, data: u32) -> Self {
+    pub fn new(transfers: &[InnerTransferRequest]) -> Self {
         Self {
             dap_index: 0,
-            transfer_count: 1,
-            transfer_request,
-            transfer_data: data,
+            transfer_count: transfers.len() as u8,
+            transfers: transfers.into(),
         }
     }
 }
@@ -122,13 +130,10 @@ impl Request for TransferRequest {
         buffer[offset + 1] = self.transfer_count;
         size += 1;
 
-        size += self.transfer_request.to_bytes(buffer, offset + 2)?;
+        for transfer in self.transfers.iter() {
+            size += transfer.to_bytes(buffer, offset + size)?;
+        }
 
-        buffer
-            .pwrite_with(self.transfer_data, offset + 3, LE)
-            .expect("This is a bug. Please report it.");
-
-        size += 4;
         Ok(size)
     }
 }

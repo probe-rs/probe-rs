@@ -99,8 +99,8 @@ impl<'a> Flasher<'a> {
 
         // TODO: Halt & reset target.
         log::debug!("Halting core.");
-        let cpu_info = core.halt();
-        log::debug!("PC = 0x{:08x}", cpu_info.unwrap().pc);
+        let cpu_info = core.halt().map_err(FlashError::Core)?;
+        log::debug!("PC = 0x{:08x}", cpu_info.pc);
         core.wait_for_core_halted().map_err(FlashError::Core)?;
         log::debug!("Reset and halt");
         core.reset_and_halt().map_err(FlashError::Core)?;
@@ -594,6 +594,7 @@ impl<'a, O: Operation> ActiveFlasher<'a, O> {
         loop {
             match self.core.wait_for_core_halted() {
                 Ok(()) => break,
+                Err(error::Error::Probe(DebugProbeError::Timeout)) => (),
                 Err(e) => {
                     log::warn!("Error while waiting for core halted: {}", e);
                 }

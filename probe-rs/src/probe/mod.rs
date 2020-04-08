@@ -40,6 +40,28 @@ impl std::str::FromStr for WireProtocol {
     }
 }
 
+
+/// A command queued in a batch for later execution
+///
+/// Mostly used internally but returned in DebugProbeError to indicate
+/// which batched command actually encountered the error.
+#[derive(Copy, Clone, Debug)]
+pub enum BatchCommand {
+    Read(PortType, u16),
+    Write(PortType, u16, u32),
+}
+
+impl fmt::Display for BatchCommand {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            BatchCommand::Read(port, addr) =>
+                write!(f, "Read(port={:?}, addr={})", port, addr),
+            BatchCommand::Write(port, addr, data) =>
+                write!(f, "Write(port={:?}, addr={}, data=0x{:08x}", port, addr, data),
+        }
+    }
+}
+
 #[derive(Error, Debug)]
 pub enum DebugProbeError {
     #[error("USB Communication Error")]
@@ -76,6 +98,8 @@ pub enum DebugProbeError {
     Attached,
     #[error("Some functionality was not implemented yet")]
     NotImplemented(&'static str),
+    #[error("Error in previous batched command: {0}")]
+    BatchError(BatchCommand),
 }
 
 /// The Probe struct is a generic wrapper over the different
