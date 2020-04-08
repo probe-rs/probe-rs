@@ -83,7 +83,7 @@ impl InnerTransferRequest {
             | (if self.td_timestamp_request { 1 } else { 0 }) << 7;
         if let Some(data) = self.data {
             let data = data.to_le_bytes();
-            buffer[offset+1..offset+5].copy_from_slice(&data[..]);
+            buffer[offset + 1..offset + 5].copy_from_slice(&data[..]);
             Ok(5)
         } else {
             Ok(1)
