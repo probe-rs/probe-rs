@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- DAPlink implementation now batches `read_register` and `write_register`
+  commands, executing the entire batch when either the batch is full or a
+  `read_register` is requested, returning the read result or an error which
+  may indicate an error with a batched command. As a consequence,
+  `write_register` calls may return `Ok(())` even if they have not been
+  submitted to the probe yet, but any read will immediately execute the batch.
+  Operations such as device flashing see around 350% speedup.
+
 ### Fixed
 
 ## [0.6.0]
