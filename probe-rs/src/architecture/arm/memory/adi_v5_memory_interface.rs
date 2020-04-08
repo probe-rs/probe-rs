@@ -2,10 +2,7 @@ use super::super::ap::{
     mock::MockMemoryAP, APAccess, APRegister, AccessPortError, AddressIncrement, DataSize,
     MemoryAP, CSW, DRW, TAR,
 };
-use crate::architecture::arm::{
-    dp::{DPAccess, RdBuff},
-    ArmCommunicationInterface,
-};
+use crate::architecture::arm::{dp::DPAccess, ArmCommunicationInterface};
 use crate::{CommunicationInterface, Error, MemoryInterface};
 use scroll::{Pread, Pwrite, LE};
 use std::convert::TryInto;
@@ -332,8 +329,8 @@ where
         self.write_ap_register(tar)?;
         self.write_ap_register(drw)?;
 
-        // Ensure the write is actually performed
-        let _: RdBuff = self.interface.read_dp_register()?;
+        // Ensure the write is actually performed.
+        let _ = self.write_ap_register(csw);
 
         Ok(())
     }
@@ -458,7 +455,7 @@ where
         }
 
         // Ensure the last write is actually performed
-        let _: RdBuff = self.interface.read_dp_register()?;
+        self.write_ap_register(csw)?;
 
         log::debug!("Finished writing block");
 
