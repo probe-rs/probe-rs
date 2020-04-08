@@ -40,7 +40,6 @@ impl std::str::FromStr for WireProtocol {
     }
 }
 
-
 /// A command queued in a batch for later execution
 ///
 /// Mostly used internally but returned in DebugProbeError to indicate
@@ -54,10 +53,12 @@ pub enum BatchCommand {
 impl fmt::Display for BatchCommand {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            BatchCommand::Read(port, addr) =>
-                write!(f, "Read(port={:?}, addr={})", port, addr),
-            BatchCommand::Write(port, addr, data) =>
-                write!(f, "Write(port={:?}, addr={}, data=0x{:08x}", port, addr, data),
+            BatchCommand::Read(port, addr) => write!(f, "Read(port={:?}, addr={})", port, addr),
+            BatchCommand::Write(port, addr, data) => write!(
+                f,
+                "Write(port={:?}, addr={}, data=0x{:08x}",
+                port, addr, data
+            ),
         }
     }
 }

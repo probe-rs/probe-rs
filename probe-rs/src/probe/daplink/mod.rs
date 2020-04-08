@@ -5,7 +5,7 @@ use crate::architecture::arm::{
     dp::{DPAccess, DPRegister, DebugPortError},
     DAPAccess, DapError, PortType,
 };
-use crate::probe::{BatchCommand, daplink::commands::CmsisDapError};
+use crate::probe::{daplink::commands::CmsisDapError, BatchCommand};
 use crate::{DebugProbe, DebugProbeError, DebugProbeInfo, Memory, WireProtocol};
 use commands::{
     general::{
@@ -139,22 +139,29 @@ impl DAPLink {
     /// This will ensure any pending writes are processed and errors from them
     /// raised if necessary.
     fn process_batch(&mut self) -> Result<u32, DebugProbeError> {
-        if self.batch.is_empty() { return Ok(0) }
+        if self.batch.is_empty() {
+            return Ok(0);
+        }
         log::debug!("Processing batch of {} items", self.batch.len());
 
         let batch = std::mem::replace(&mut self.batch, Vec::new());
 
-        let transfers: Vec<InnerTransferRequest> = batch.iter().map(|command|
-            match *command {
-                BatchCommand::Read(port, addr) =>
-                    InnerTransferRequest::new(port.into(), RW::R, addr as u8, None),
-                BatchCommand::Write(port, addr, data) =>
-                    InnerTransferRequest::new(port.into(), RW::W, addr as u8, Some(data)),
-            }
-        ).collect();
+        let transfers: Vec<InnerTransferRequest> = batch
+            .iter()
+            .map(|command| match *command {
+                BatchCommand::Read(port, addr) => {
+                    InnerTransferRequest::new(port.into(), RW::R, addr as u8, None)
+                }
+                BatchCommand::Write(port, addr, data) => {
+                    InnerTransferRequest::new(port.into(), RW::W, addr as u8, Some(data))
+                }
+            })
+            .collect();
 
         let response = commands::send_command::<TransferRequest, TransferResponse>(
-            &mut self.device, TransferRequest::new(&transfers))?;
+            &mut self.device,
+            TransferRequest::new(&transfers),
+        )?;
 
         let count = response.transfer_count as usize;
 
@@ -192,7 +199,7 @@ impl DAPLink {
         // is as long as can fit in one packet.
         let max_writes = (self.packet_size.unwrap_or(32) as usize - 3) / (1 + 4);
         match command {
-            BatchCommand::Read(_, _)            => self.process_batch(),
+            BatchCommand::Read(_, _) => self.process_batch(),
             _ if self.batch.len() == max_writes => self.process_batch(),
             _ => Ok(0),
         }
@@ -384,7 +391,8 @@ impl DAPAccess for DAPLink {
         addr: u16,
         value: u32,
     ) -> Result<(), DebugProbeError> {
-        self.batch_add(BatchCommand::Write(port, addr, value)).map(|_| ())
+        self.batch_add(BatchCommand::Write(port, addr, value))
+            .map(|_| ())
     }
 
     fn write_block(
