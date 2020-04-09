@@ -1,17 +1,17 @@
-# cargo-flash
+# cargo-embed
 
-[![crates.io](https://meritbadge.herokuapp.com/cargo-flash)](https://crates.io/crates/cargo-flash) [![documentation](https://docs.rs/cargo-flash/badge.svg)](https://docs.rs/cargo-flash) [![Actions Status](https://github.com/probe-rs/cargo-flash/workflows/CI/badge.svg)](https://github.com/probe-rs/cargo-flash/actions) [![chat](https://img.shields.io/badge/chat-probe--rs%3Amatrix.org-brightgreen)](https://matrix.to/#/!vhKMWjizPZBgKeknOo:matrix.org)
+[![crates.io](https://meritbadge.herokuapp.com/cargo-embed)](https://crates.io/crates/cargo-embed) [![documentation](https://docs.rs/cargo-embed/badge.svg)](https://docs.rs/cargo-embed) [![Actions Status](https://github.com/probe-rs/cargo-embed/workflows/CI/badge.svg)](https://github.com/probe-rs/cargo-embed/actions) [![chat](https://img.shields.io/badge/chat-probe--rs%3Amatrix.org-brightgreen)](https://matrix.to/#/!vhKMWjizPZBgKeknOo:matrix.org)
 
-This crate provides a cargo subcommand to flash ELF binaries onto ARM chips.
+This crate provides a cargo subcommand to embed ELF binaries onto ARM chips.
 
-As of writing this, flashing works for the **nRF51822, nRF52832, nRF52840, STMF042, STMF429xI** using a **DAPLink** or an **ST-Link**.
+As of writing this, embeding works for the **nRF51822, nRF52832, nRF52840, STMF042, STMF429xI** using a **DAPLink** or an **ST-Link**.
 
 ## Installation
 
 You can install this utility with cargo:
 
 ```bash
-cargo install cargo-flash
+cargo install cargo-embed
 ```
 
 ## Usage
@@ -19,29 +19,29 @@ cargo install cargo-flash
 You can use it like any cargo command would be used
 
 ```bash
-cargo flash <args>
+cargo embed <args>
 ```
 
 which will then build your binary and download the contents onto the connected target.
 
 ### Examples
 
-#### Flash the debug version of the current crate
+#### embed the debug version of the current crate
 
 ```bash
-cargo flash --chip nrf58122
+cargo embed --chip nrf58122
 ```
 
 #### Specifying manually what options should be used
 
 ```bash
-cargo flash --release --chip nRF51822 --target thumbv6m-none-eabi --example gpio_hal_blinky
+cargo embed --release --chip nRF51822 --target thumbv6m-none-eabi --example gpio_hal_blinky
 ```
 
 #### Use a custom chip definition from a non-builtin file
 
 ```bash
-cargo flash --release --chip-description-path nRF51822.yaml --target thumbv6m-none-eabi --example gpio_hal_blinky
+cargo embed --release --chip-description-path nRF51822.yaml --target thumbv6m-none-eabi --example gpio_hal_blinky
 ```
 
 ### Manually selecting a chip
@@ -61,4 +61,4 @@ You can also reference to an already unziped `pack` directory instead of the `fi
 
 ## Add more chip definitions
 
-If you have a chip you want to flash, feel free to contribute to [probe-rs](https://github.com/probe-rs/probe-rs).
+If you have a chip you want to embed, feel free to contribute to [probe-rs](https://github.com/probe-rs/probe-rs).
