@@ -1,0 +1,23 @@
+[probe]
+probe_index = "None"
+protocol = "Swd"
+speed = "None"
+
+[flashing]
+enabled = true
+halt_afterwards = false
+restore_unwritten_bytes = false
+flash_layout_output_path = "None"
+
+[general]
+chip = "None"
+chip_descriptions = []
+log_level = "Warning"
+attach_under_reset = false
+
+[rtt]
+enabled = true
+
+[gdb]
+enabled = true
+gdb_connection_string = "None"
