@@ -10,7 +10,7 @@ use jlink::list_jlink_devices;
 use std::fmt;
 use thiserror::Error;
 
-#[derive(Copy, Clone, PartialEq, Debug)]
+#[derive(Copy, Clone, PartialEq, Debug, serde::Deserialize)]
 pub enum WireProtocol {
     Swd,
     Jtag,
