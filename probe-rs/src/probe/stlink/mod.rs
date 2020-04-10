@@ -23,7 +23,7 @@ pub struct STLink {
     jtag_speed_khz: u32,
 
     /// Index of the AP which is currently open.
-    current_ap: Option<u16>,
+    current_ap: Option<u8>,
 }
 
 impl DebugProbe for STLink {
@@ -171,7 +171,8 @@ impl DebugProbe for STLink {
             TIMEOUT,
         )?;
 
-        Self::check_status(&buf)
+        Self::check_status(&buf)?;
+        Ok(())
     }
 
     fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError> {
@@ -208,17 +209,7 @@ impl DAPAccess for STLink {
     fn read_register(&mut self, port: PortType, addr: u16) -> Result<u32, DebugProbeError> {
         if (addr & 0xf0) == 0 || port != PortType::DebugPort {
             if let PortType::AccessPort(port_number) = port {
-                if let Some(current_ap) = self.current_ap {
-                    if current_ap != port_number {
-                        self.close_ap(current_ap as u8)?;
-                        self.open_ap(port_number as u8)?;
-                    }
-                } else {
-                    // First time reading, open the AP
-                    self.open_ap(port_number as u8)?;
-                }
-
-                self.current_ap = Some(port_number);
+                self.select_ap(port_number as u8)?;
             }
 
             let port: u16 = port.into();
@@ -250,17 +241,7 @@ impl DAPAccess for STLink {
     ) -> Result<(), DebugProbeError> {
         if (addr & 0xf0) == 0 || port != PortType::DebugPort {
             if let PortType::AccessPort(port_number) = port {
-                if let Some(current_ap) = self.current_ap {
-                    if current_ap != port_number {
-                        self.close_ap(current_ap as u8)?;
-                        self.open_ap(port_number as u8)?;
-                    }
-                } else {
-                    // First time reading, open the AP
-                    self.open_ap(port_number as u8)?;
-                }
-
-                self.current_ap = Some(port_number);
+                self.select_ap(port_number as u8)?;
             }
 
             let port: u16 = port.into();
@@ -301,10 +282,10 @@ impl STLink {
     const _MAXIMUM_TRANSFER_SIZE: u32 = 1024;
 
     /// Minimum required STLink firmware version.
-    const MIN_JTAG_VERSION: u8 = 24;
+    const MIN_JTAG_VERSION: u8 = 26;
 
     /// Firmware version that adds 16-bit transfers.
-    const _MIN_JTAG_VERSION_16BIT_XFER: u8 = 26;
+    //const _MIN_JTAG_VERSION_16BIT_XFER: u8 = 26;
 
     /// Firmware version that adds multiple AP support.
     const MIN_JTAG_VERSION_MULTI_AP: u8 = 28;
@@ -487,7 +468,8 @@ impl STLink {
             &mut buf,
             TIMEOUT,
         )?;
-        Self::check_status(&buf)
+        Self::check_status(&buf)?;
+        Ok(())
     }
 
     /// Sets the JTAG frequency.
@@ -506,7 +488,8 @@ impl STLink {
             &mut buf,
             TIMEOUT,
         )?;
-        Self::check_status(&buf)
+        Self::check_status(&buf)?;
+        Ok(())
     }
 
     /// Sets the communication frequency (V3 only)
@@ -527,7 +510,8 @@ impl STLink {
 
         let mut buf = [0; 8];
         self.device.write(command, &[], &mut buf, TIMEOUT)?;
-        Self::check_status(&buf)
+        Self::check_status(&buf)?;
+        Ok(())
     }
 
     /// Returns the current and available communication frequencies (V3 only)
@@ -565,47 +549,87 @@ impl STLink {
         Ok((values, current))
     }
 
-    pub fn open_ap(&mut self, apsel: u8) -> Result<(), DebugProbeError> {
+    /// Select an AP to use
+    ///
+    /// On newer ST-Links (JTAG Version > 28), multiple APs are supported.
+    /// To switch between APs, dedicated commands have to be used. For older
+    /// ST-Links, we can only use AP 0. If an AP other than 0 is used on these
+    /// probes, an error is returned.
+    fn select_ap(&mut self, ap: u8) -> Result<(), DebugProbeError> {
+        // Check if we can use APs other an AP 0.
+        // Older versions of the ST-Link software don't support this.
         if self.hw_version < 3 && self.jtag_version < Self::MIN_JTAG_VERSION_MULTI_AP {
-            Err(StlinkError::JTagDoesNotSupportMultipleAP.into())
-        } else {
-            let mut buf = [0; 2];
-            log::trace!("JTAG_INIT_AP {}", apsel);
-            self.device.write(
-                vec![commands::JTAG_COMMAND, commands::JTAG_INIT_AP, apsel],
-                &[],
-                &mut buf,
-                TIMEOUT,
-            )?;
-            Self::check_status(&buf)
+            if ap == 0 {
+                return Ok(());
+            } else {
+                return Err(DebugProbeError::ProbeFirmwareOutdated);
+            }
         }
+
+        if let Some(current_ap) = self.current_ap {
+            if current_ap != ap {
+                self.close_ap(current_ap as u8)?;
+                self.open_ap(ap as u8)?;
+            }
+        } else {
+            // First time reading, open the AP
+            self.open_ap(ap as u8)?;
+        }
+
+        self.current_ap = Some(ap);
+
+        Ok(())
     }
 
-    pub fn close_ap(&mut self, apsel: u8) -> Result<(), DebugProbeError> {
-        if self.hw_version < 3 && self.jtag_version < Self::MIN_JTAG_VERSION_MULTI_AP {
-            Err(StlinkError::JTagDoesNotSupportMultipleAP.into())
-        } else {
-            let mut buf = [0; 2];
-            log::trace!("JTAG_CLOSE_AP {}", apsel);
-            self.device.write(
-                vec![commands::JTAG_COMMAND, commands::JTAG_CLOSE_AP_DBG, apsel],
-                &[],
-                &mut buf,
-                TIMEOUT,
-            )?;
-            Self::check_status(&buf)
-        }
+    /// Open a specific AP, which will be used for all future commands
+    ///
+    /// This is only supported on ST-Link V3, or older ST-Links with
+    /// a JTAG version > `MIN_JTAG_VERSION_MULTI_AP`.
+    fn open_ap(&mut self, apsel: u8) -> Result<(), DebugProbeError> {
+        // Ensure this command is actually supported
+        assert!(self.hw_version >= 3 || self.jtag_version > Self::MIN_JTAG_VERSION_MULTI_AP);
+
+        let mut buf = [0; 2];
+        log::trace!("JTAG_INIT_AP {}", apsel);
+        self.device.write(
+            vec![commands::JTAG_COMMAND, commands::JTAG_INIT_AP, apsel],
+            &[],
+            &mut buf,
+            TIMEOUT,
+        )?;
+        Self::check_status(&buf)?;
+        Ok(())
+    }
+
+    /// Close a specific AP, which was opened with `open_ap`.
+    ///
+    /// This is only supported on ST-Link V3, or older ST-Links with
+    /// a JTAG version > `MIN_JTAG_VERSION_MULTI_AP`.
+    fn close_ap(&mut self, apsel: u8) -> Result<(), DebugProbeError> {
+        // Ensure this command is actually supported
+        assert!(self.hw_version >= 3 || self.jtag_version > Self::MIN_JTAG_VERSION_MULTI_AP);
+
+        let mut buf = [0; 2];
+        log::trace!("JTAG_CLOSE_AP {}", apsel);
+        self.device.write(
+            vec![commands::JTAG_COMMAND, commands::JTAG_CLOSE_AP_DBG, apsel],
+            &[],
+            &mut buf,
+            TIMEOUT,
+        )?;
+        Self::check_status(&buf)?;
+        Ok(())
     }
 
     /// Validates the status given.
     /// Returns an error if the status is not `Status::JtagOk`.
     /// Returns Ok(()) otherwise.
     /// This can be called on any status returned from the attached target.
-    fn check_status(status: &[u8]) -> Result<(), DebugProbeError> {
+    fn check_status(status: &[u8]) -> Result<(), StlinkError> {
         let status = Status::from(status[0]);
         if status != Status::JtagOk {
             log::warn!("check_status failed: {:?}", status);
-            Err(StlinkError::CommandFailed(status).into())
+            Err(StlinkError::CommandFailed(status))
         } else {
             Ok(())
         }
@@ -618,8 +642,6 @@ pub(crate) enum StlinkError {
     VoltageDivisionByZero,
     #[error("Probe is an unknown mode.")]
     UnknownMode,
-    #[error("JTAG does not support multiple APs.")]
-    JTagDoesNotSupportMultipleAP,
     #[error("Blank values are not allowed on DebugPort writes.")]
     BlanksNotAllowedOnDPRegister,
     #[error("Not enough bytes read.")]
