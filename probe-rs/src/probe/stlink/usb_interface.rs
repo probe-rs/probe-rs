@@ -61,7 +61,7 @@ impl STLinkInfo {
     }
 }
 
-pub(super) struct STLinkUSBDevice {
+pub(crate) struct STLinkUSBDevice {
     device_handle: DeviceHandle<rusb::Context>,
     info: STLinkInfo,
 }
@@ -73,6 +73,20 @@ impl std::fmt::Debug for STLinkUSBDevice {
             .field("info", &self.info)
             .finish()
     }
+}
+
+pub trait StLinkUsb: std::fmt::Debug {
+    fn write(
+        &mut self,
+        cmd: Vec<u8>,
+        write_data: &[u8],
+        read_data: &mut [u8],
+        timeout: Duration,
+    ) -> Result<(), DebugProbeError>;
+
+    /// Reset the USB device. This can be used to recover when the
+    /// STLink does not respond to USB requests.
+    fn reset(&mut self) -> Result<(), DebugProbeError>;
 }
 
 impl STLinkUSBDevice {
@@ -162,11 +176,19 @@ impl STLinkUSBDevice {
         Ok(usb_stlink)
     }
 
+    /// Closes the USB interface gracefully.
+    /// Internal helper.
+    fn close(&mut self) -> Result<(), Error> {
+        self.device_handle.release_interface(0)
+    }
+}
+
+impl StLinkUsb for STLinkUSBDevice {
     /// Writes to the out EP and reads back data if needed.
     /// First the `cmd` is sent.
     /// In a second step `write_data` is transmitted.
     /// And lastly, data will be read back until `read_data` is filled.
-    pub fn write(
+    fn write(
         &mut self,
         mut cmd: Vec<u8>,
         write_data: &[u8],
@@ -220,17 +242,11 @@ impl STLinkUSBDevice {
 
     /// Reset the USB device. This can be used to recover when the
     /// STLink does not respond to USB requests.
-    pub(crate) fn reset(&mut self) -> Result<(), DebugProbeError> {
+    fn reset(&mut self) -> Result<(), DebugProbeError> {
         log::debug!("Resetting USB device of STLink");
         self.device_handle
             .reset()
             .map_err(|e| DebugProbeError::USB(Some(Box::new(e))))
-    }
-
-    /// Closes the USB interface gracefully.
-    /// Internal helper.
-    fn close(&mut self) -> Result<(), Error> {
-        self.device_handle.release_interface(0)
     }
 }
 

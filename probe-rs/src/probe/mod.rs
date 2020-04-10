@@ -67,8 +67,6 @@ impl fmt::Display for BatchCommand {
 pub enum DebugProbeError {
     #[error("USB Communication Error")]
     USB(#[source] Option<Box<dyn std::error::Error + Send + Sync>>),
-    #[error("JTAG not supported on probe")]
-    JTAGNotSupportedOnProbe,
     #[error("The firmware on the probe is outdated")]
     ProbeFirmwareOutdated,
     #[error("An error specific to a probe type occured: {0}")]
