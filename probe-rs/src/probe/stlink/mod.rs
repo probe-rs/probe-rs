@@ -3,7 +3,7 @@ pub mod memory_interface;
 pub mod tools;
 mod usb_interface;
 
-use self::usb_interface::STLinkUSBDevice;
+use self::usb_interface::{STLinkUSBDevice, StLinkUsb};
 use super::{
     DAPAccess, DebugProbe, DebugProbeError, DebugProbeInfo, JTAGAccess, PortType, WireProtocol,
 };
@@ -14,8 +14,8 @@ use thiserror::Error;
 use usb_interface::TIMEOUT;
 
 #[derive(Debug)]
-pub struct STLink {
-    device: STLinkUSBDevice,
+pub struct STLink<D: StLinkUsb> {
+    device: D,
     hw_version: u8,
     jtag_version: u8,
     protocol: WireProtocol,
@@ -26,7 +26,7 @@ pub struct STLink {
     current_ap: Option<u8>,
 }
 
-impl DebugProbe for STLink {
+impl DebugProbe for STLink<STLinkUSBDevice> {
     fn new_from_probe_info(info: &DebugProbeInfo) -> Result<Box<Self>, DebugProbeError> {
         let mut stlink = Self {
             device: STLinkUSBDevice::new_from_info(info)?,
@@ -204,7 +204,7 @@ impl DebugProbe for STLink {
     }
 }
 
-impl DAPAccess for STLink {
+impl DAPAccess for STLink<STLinkUSBDevice> {
     /// Reads the DAP register on the specified port and address.
     fn read_register(&mut self, port: PortType, addr: u16) -> Result<u32, DebugProbeError> {
         if (addr & 0xf0) == 0 || port != PortType::DebugPort {
@@ -268,14 +268,14 @@ impl DAPAccess for STLink {
     }
 }
 
-impl Drop for STLink {
+impl<D: StLinkUsb> Drop for STLink<D> {
     fn drop(&mut self) {
         // We ignore the error case as we can't do much about it anyways.
         let _ = self.enter_idle();
     }
 }
 
-impl STLink {
+impl<D: StLinkUsb> STLink<D> {
     /// Maximum number of bytes to send or receive for 32- and 16- bit transfers.
     ///
     /// 8-bit transfers have a maximum size of the maximum USB packet size (64 bytes for full speed).
@@ -411,7 +411,7 @@ impl STLink {
 
         // Make sure everything is okay with the firmware we use.
         if self.jtag_version == 0 {
-            return Err(DebugProbeError::JTAGNotSupportedOnProbe);
+            return Err(StlinkError::JTAGNotSupportedOnProbe.into());
         }
         if self.hw_version < 3 && self.jtag_version < Self::MIN_JTAG_VERSION {
             return Err(DebugProbeError::ProbeFirmwareOutdated);
@@ -650,10 +650,168 @@ pub(crate) enum StlinkError {
     EndpointNotFound,
     #[error("Command failed with status {0:?}")]
     CommandFailed(Status),
+    #[error("JTAG not supported on Probe")]
+    JTAGNotSupportedOnProbe,
 }
 
 impl From<StlinkError> for DebugProbeError {
     fn from(e: StlinkError) -> Self {
         DebugProbeError::ProbeSpecific(Box::new(e))
+    }
+}
+
+#[cfg(test)]
+mod test {
+
+    use super::{
+        constants::{commands, Status},
+        usb_interface::StLinkUsb,
+        STLink,
+    };
+    use crate::{DebugProbeError, WireProtocol};
+
+    use scroll::Pwrite;
+
+    #[derive(Debug)]
+    struct MockUsb {
+        hw_version: u8,
+        jtag_version: u8,
+        swim_version: u8,
+
+        target_voltage_a0: f32,
+        target_voltage_a1: f32,
+    }
+
+    impl MockUsb {
+        fn build(self) -> STLink<MockUsb> {
+            STLink {
+                device: self,
+                hw_version: 0,
+                protocol: WireProtocol::Swd,
+                jtag_version: 0,
+                swd_speed_khz: 0,
+                jtag_speed_khz: 0,
+                current_ap: None,
+            }
+        }
+    }
+
+    impl StLinkUsb for MockUsb {
+        fn write(
+            &mut self,
+            cmd: Vec<u8>,
+            write_data: &[u8],
+            read_data: &mut [u8],
+            timeout: std::time::Duration,
+        ) -> Result<(), crate::DebugProbeError> {
+            match cmd[0] {
+                commands::GET_VERSION => {
+                    // GET_VERSION response structure:
+                    //   Byte 0-1:
+                    //     [15:12] Major/HW version
+                    //     [11:6]  JTAG/SWD version
+                    //     [5:0]   SWIM or MSC version
+                    //   Byte 2-3: ST_VID
+                    //   Byte 4-5: STLINK_PID
+
+                    let version: u16 = ((self.hw_version as u16) << 12)
+                        | ((self.jtag_version as u16) << 6)
+                        | ((self.swim_version as u16) << 0);
+
+                    read_data[0] = (version >> 8) as u8;
+                    read_data[1] = version as u8;
+
+                    Ok(())
+                }
+                commands::GET_TARGET_VOLTAGE => {
+                    read_data.pwrite(self.target_voltage_a0, 0).unwrap();
+                    read_data.pwrite(self.target_voltage_a0, 4).unwrap();
+                    Ok(())
+                }
+                commands::JTAG_COMMAND => {
+                    // Return a status of OK for JTAG commands
+                    read_data[0] = 0x80;
+
+                    Ok(())
+                }
+                _ => Ok(()),
+            }
+        }
+        fn reset(&mut self) -> Result<(), crate::DebugProbeError> {
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn detect_old_firmware() {
+        // Test that the init function detects old, unsupported firmware.
+
+        let usb_mock = MockUsb {
+            hw_version: 2,
+            jtag_version: 20,
+            swim_version: 0,
+
+            target_voltage_a0: 1.0,
+            target_voltage_a1: 2.0,
+        };
+
+        let mut probe = usb_mock.build();
+
+        let init_result = probe.init();
+
+        match init_result.unwrap_err() {
+            DebugProbeError::ProbeFirmwareOutdated => (),
+            other => panic!("Expected firmware outdated error, got {}", other),
+        }
+    }
+
+    #[test]
+    fn firmware_without_multiple_ap_support() {
+        // Test that firmware with only support for a single AP works,
+        // as long as only AP 0 is selected
+
+        let usb_mock = MockUsb {
+            hw_version: 2,
+            jtag_version: 26,
+            swim_version: 0,
+            target_voltage_a0: 1.0,
+            target_voltage_a1: 2.0,
+        };
+
+        let mut probe = usb_mock.build();
+
+        probe.init().expect("Init function failed");
+
+        // Selecting AP 0 should still work
+        probe.select_ap(0).expect("Select AP 0 failed.");
+
+        probe
+            .select_ap(1)
+            .expect_err("Selecting AP other than AP 0 should fail");
+    }
+
+    #[test]
+    fn firmware_with_multiple_ap_support() {
+        // Test that firmware with only support for a single AP works,
+        // as long as only AP 0 is selected
+
+        let usb_mock = MockUsb {
+            hw_version: 2,
+            jtag_version: 30,
+            swim_version: 0,
+            target_voltage_a0: 1.0,
+            target_voltage_a1: 2.0,
+        };
+
+        let mut probe = usb_mock.build();
+
+        probe.init().expect("Init function failed");
+
+        // Selecting AP 0 should still work
+        probe.select_ap(0).expect("Select AP 0 failed.");
+
+        probe
+            .select_ap(1)
+            .expect("Selecting AP other than AP 0 should work");
     }
 }
