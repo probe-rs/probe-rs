@@ -229,9 +229,10 @@ impl From<FpCtrl> for u32 {
         value.0
     }
 }
+
 bitfield! {
     #[derive(Copy,Clone)]
-    pub struct FpCompX(u32);
+    pub struct FpRev1CompX(u32);
     impl Debug;
 
     pub replace, set_replace: 31, 30;
@@ -239,28 +240,28 @@ bitfield! {
     pub enable, set_enable: 0;
 }
 
-impl CoreRegister for FpCompX {
+impl CoreRegister for FpRev1CompX {
     const ADDRESS: u32 = 0xE000_2008;
     const NAME: &'static str = "FP_CTRL";
 }
 
-impl From<u32> for FpCompX {
+impl From<u32> for FpRev1CompX {
     fn from(value: u32) -> Self {
-        FpCompX(value)
+        FpRev1CompX(value)
     }
 }
 
-impl From<FpCompX> for u32 {
-    fn from(value: FpCompX) -> Self {
+impl From<FpRev1CompX> for u32 {
+    fn from(value: FpRev1CompX) -> Self {
         value.0
     }
 }
 
-impl FpCompX {
+impl FpRev1CompX {
     /// Get the correct register configuration which enables
     /// a hardware breakpoint at the given address.
     fn breakpoint_configuration(address: u32) -> Self {
-        let mut reg = FpCompX::from(0);
+        let mut reg = FpRev1CompX::from(0);
 
         let comp_val = (address & 0x1f_ff_ff_fc) >> 2;
 
@@ -274,6 +275,45 @@ impl FpCompX {
 
         reg.set_replace(replace_val);
         reg.set_comp(comp_val);
+        reg.set_enable(true);
+
+        reg
+    }
+}
+
+bitfield! {
+    #[derive(Copy,Clone)]
+    pub struct FpRev2CompX(u32);
+    impl Debug;
+
+    pub bpaddr, set_bpaddr: 31, 1;
+    pub enable, set_enable: 0;
+}
+
+impl CoreRegister for FpRev2CompX {
+    const ADDRESS: u32 = 0xE000_2008;
+    const NAME: &'static str = "FP_CTRL";
+}
+
+impl From<u32> for FpRev2CompX {
+    fn from(value: u32) -> Self {
+        FpRev2CompX(value)
+    }
+}
+
+impl From<FpRev2CompX> for u32 {
+    fn from(value: FpRev2CompX) -> Self {
+        value.0
+    }
+}
+
+impl FpRev2CompX {
+    /// Get the correct register configuration which enables
+    /// a hardware breakpoint at the given address.
+    fn breakpoint_configuration(address: u32) -> Self {
+        let mut reg = FpRev2CompX::from(0);
+
+        reg.set_bpaddr(address >> 1);
         reg.set_enable(true);
 
         reg
@@ -469,8 +509,7 @@ impl CoreInterface for M4 {
 
         let reg = FpCtrl::from(raw_val);
 
-        // We currently only support revision 0 of the FPBU, so we return an error
-        if reg.rev() == 0 {
+        if reg.rev() == 0 || reg.rev() == 1 {
             Ok(reg.num_code())
         } else {
             log::warn!("This chip uses FPBU revision {}, which is not yet supported. HW breakpoints are not available.", reg.rev());
@@ -491,11 +530,25 @@ impl CoreInterface for M4 {
     }
 
     fn set_breakpoint(&self, bp_unit_index: usize, addr: u32) -> Result<(), Error> {
-        let val = FpCompX::breakpoint_configuration(addr);
+        let raw_val = self.memory.read32(FpCtrl::ADDRESS)?;
+        let ctrl_reg = FpCtrl::from(raw_val);
 
-        let reg_addr = FpCompX::ADDRESS + (bp_unit_index * size_of::<u32>()) as u32;
+        let val: u32;
+        if ctrl_reg.rev() == 0 {
+            val = FpRev1CompX::breakpoint_configuration(addr).into();
+        } else if ctrl_reg.rev() == 1 {
+            val = FpRev2CompX::breakpoint_configuration(addr).into();
+        } else {
+            log::warn!("This chip uses FPBU revision {}, which is not yet supported. HW breakpoints are not available.", ctrl_reg.rev());
+            return Err(Error::Probe(DebugProbeError::Unknown));
+        }
 
-        self.memory.write32(reg_addr, val.into())?;
+        // This is fine as FpRev1CompX and Rev2CompX are just two different
+        // interpretations of the same memory region as Rev2 can handle bigger
+        // address spaces than Rev1.
+        let reg_addr = FpRev1CompX::ADDRESS + (bp_unit_index * size_of::<u32>()) as u32;
+
+        self.memory.write32(reg_addr, val)?;
 
         Ok(())
     }
@@ -505,10 +558,10 @@ impl CoreInterface for M4 {
     }
 
     fn clear_breakpoint(&self, bp_unit_index: usize) -> Result<(), Error> {
-        let mut val = FpCompX::from(0);
+        let mut val = FpRev1CompX::from(0);
         val.set_enable(false);
 
-        let reg_addr = FpCompX::ADDRESS + (bp_unit_index * size_of::<u32>()) as u32;
+        let reg_addr = FpRev1CompX::ADDRESS + (bp_unit_index * size_of::<u32>()) as u32;
 
         self.memory.write32(reg_addr, val.into())?;
 
@@ -536,7 +589,7 @@ fn breakpoint_register_value() {
     // See ARMv7 Architecture Reference Manual, Section C1.11.5
     let address: u32 = 0x0800_09A4;
 
-    let reg = FpCompX::breakpoint_configuration(address);
+    let reg = FpRev1CompX::breakpoint_configuration(address);
     let reg_val: u32 = reg.into();
 
     assert_eq!(0x4800_09A5, reg_val);
