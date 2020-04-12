@@ -4,7 +4,7 @@ use super::{FlashError, FlashVisualizer};
 use crate::config::{FlashAlgorithm, MemoryRange, PageInfo, SectorInfo};
 
 /// The description of a page in flash.
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct FlashPage {
     address: u32,
     data: Vec<u8>,
@@ -51,7 +51,7 @@ impl FlashPage {
 }
 
 /// The description of a sector in flash.
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct FlashSector {
     address: u32,
     size: u32,
@@ -88,7 +88,7 @@ impl FlashSector {
 
 /// A struct to hold all the information about one region
 /// in the flash that is erased during flashing and has to be restored to its original value afterwards.
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct FlashFill {
     address: u32,
     size: u32,
@@ -509,7 +509,7 @@ fn add_fill(address: u32, size: u32, fills: &mut Vec<FlashFill>, page_index: usi
 mod tests {
     use insta::*;
 
-    use super::FlashBuilder;
+    use super::*;
     use crate::config::{FlashAlgorithm, FlashProperties, SectorDescription};
 
     fn assemble_demo_flash1() -> FlashAlgorithm {
@@ -572,7 +572,60 @@ mod tests {
         let flash_layout = flash_builder
             .build_sectors_and_pages(&flash_algorithm, true)
             .unwrap();
+
         assert_debug_snapshot!(flash_layout);
+
+        assert_eq!(flash_layout.sectors.len(), 1);
+        assert_eq!(
+            flash_layout.sectors[0],
+            FlashSector {
+                address: 0x0000,
+                size: 0x1000,
+            }
+        );
+
+        let mut data = vec![0; 1024];
+        data[0] = 42;
+        assert_eq!(flash_layout.pages.len(), 4);
+        assert_eq!(
+            flash_layout.pages[0],
+            FlashPage {
+                address: 0x0000,
+                data,
+            }
+        );
+
+        let data = vec![0; 1024];
+        for i in 1..4 {
+            assert_eq!(
+                flash_layout.pages[i],
+                FlashPage {
+                    address: 0x0400 * i as u32,
+                    data: data.clone(),
+                }
+            );
+        }
+
+        assert_eq!(flash_layout.fills.len(), 4);
+        assert_eq!(
+            flash_layout.fills[0],
+            FlashFill {
+                address: 0x0001,
+                size: 0x03FF,
+                page_index: 0,
+            }
+        );
+
+        for i in 1..4 {
+            assert_eq!(
+                flash_layout.fills[i],
+                FlashFill {
+                    address: 0x0400 * i as u32,
+                    size: 0x0400,
+                    page_index: i,
+                }
+            );
+        }
     }
 
     #[test]
@@ -583,7 +636,51 @@ mod tests {
         let flash_layout = flash_builder
             .build_sectors_and_pages(&flash_algorithm, true)
             .unwrap();
+
         assert_debug_snapshot!(flash_layout);
+
+        assert_eq!(flash_layout.sectors.len(), 1);
+        assert_eq!(
+            flash_layout.sectors[0],
+            FlashSector {
+                address: 0x0000,
+                size: 0x1000,
+            }
+        );
+
+        let data = vec![42; 1024];
+        assert_eq!(flash_layout.pages.len(), 4);
+        assert_eq!(
+            flash_layout.pages[0],
+            FlashPage {
+                address: 0x0000,
+                data,
+            }
+        );
+
+        let data = vec![0; 1024];
+        for i in 1..4 {
+            assert_eq!(
+                flash_layout.pages[i],
+                FlashPage {
+                    address: 0x0400 * i as u32,
+                    data: data.clone(),
+                }
+            );
+        }
+
+        assert_eq!(flash_layout.fills.len(), 3);
+
+        for i in 1..4 {
+            assert_eq!(
+                flash_layout.fills[i - 1],
+                FlashFill {
+                    address: 0x0400 * i as u32,
+                    size: 0x0400,
+                    page_index: i,
+                }
+            );
+        }
     }
 
     #[test]
@@ -594,7 +691,71 @@ mod tests {
         let flash_layout = flash_builder
             .build_sectors_and_pages(&flash_algorithm, true)
             .unwrap();
+
         assert_debug_snapshot!(flash_layout);
+
+        assert_eq!(flash_layout.sectors.len(), 1);
+        assert_eq!(
+            flash_layout.sectors[0],
+            FlashSector {
+                address: 0x0000,
+                size: 0x1000,
+            }
+        );
+
+        assert_eq!(flash_layout.pages.len(), 4);
+
+        let data = vec![42; 1024];
+        assert_eq!(
+            flash_layout.pages[0],
+            FlashPage {
+                address: 0x0000,
+                data,
+            }
+        );
+
+        let mut data = vec![0; 1024];
+        data[0] = 42;
+        assert_eq!(
+            flash_layout.pages[1],
+            FlashPage {
+                address: 0x0400,
+                data,
+            }
+        );
+
+        let data = vec![0; 1024];
+        for i in 2..4 {
+            assert_eq!(
+                flash_layout.pages[i],
+                FlashPage {
+                    address: 0x0400 * i as u32,
+                    data: data.clone(),
+                }
+            );
+        }
+
+        assert_eq!(flash_layout.fills.len(), 3);
+
+        assert_eq!(
+            flash_layout.fills[0],
+            FlashFill {
+                address: 0x0401,
+                size: 0x03FF,
+                page_index: 1,
+            }
+        );
+
+        for i in 2..4 {
+            assert_eq!(
+                flash_layout.fills[i - 1],
+                FlashFill {
+                    address: 0x0400 * i as u32,
+                    size: 0x0400,
+                    page_index: i,
+                }
+            );
+        }
     }
 
     #[test]
