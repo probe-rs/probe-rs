@@ -13,9 +13,8 @@ pub struct FlashPage {
 impl Debug for FlashPage {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("FlashPage")
-            .field("address", &format!("{:#08X}", self.address()))
-            .field("size", &format!("{:#08X}", self.size()))
-            .field("data", &format!("{:?}", self.data()))
+            .field("address", &self.address())
+            .field("size", &self.size())
             .finish()
     }
 }
@@ -51,19 +50,10 @@ impl FlashPage {
 }
 
 /// The description of a sector in flash.
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct FlashSector {
     address: u32,
     size: u32,
-}
-
-impl Debug for FlashSector {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("FlashSector")
-            .field("address", &format!("{:#08X}", self.address))
-            .field("size", &format!("{:#08X}", self.size))
-            .finish()
-    }
 }
 
 impl FlashSector {
@@ -88,21 +78,11 @@ impl FlashSector {
 
 /// A struct to hold all the information about one region
 /// in the flash that is erased during flashing and has to be restored to its original value afterwards.
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct FlashFill {
     address: u32,
     size: u32,
     page_index: usize,
-}
-
-impl Debug for FlashFill {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("FlashFill")
-            .field("address", &format!("{:#08X}", self.address()))
-            .field("size", &format!("{:#08X}", self.size()))
-            .field("page_index", &self.page_index)
-            .finish()
-    }
 }
 
 impl FlashFill {
