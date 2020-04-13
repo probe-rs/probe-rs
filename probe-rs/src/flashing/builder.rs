@@ -132,7 +132,7 @@ impl FlashFill {
 }
 
 /// The built layout of the data in flash.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FlashLayout {
     sectors: Vec<FlashSector>,
     pages: Vec<FlashPage>,
@@ -196,7 +196,7 @@ impl<'a> FlashDataBlock<'a> {
 }
 
 /// A block of data that is to be written to flash.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct FlashDataBlockSpan {
     address: u32,
     size: u32,
@@ -446,6 +446,10 @@ impl<'a> FlashBuilder<'a> {
             }
         }
 
+        // This sort might be avoided if sectors are inserted in the correct order, but since performance
+        // is not an issue, this is the easiest way.
+        sectors.sort_by_key(|i| i.address);
+
         // Return the finished flash layout.
         Ok(FlashLayout {
             sectors,
@@ -507,8 +511,6 @@ fn add_fill(address: u32, size: u32, fills: &mut Vec<FlashFill>, page_index: usi
 
 #[cfg(test)]
 mod tests {
-    use insta::*;
-
     use super::*;
     use crate::config::{FlashAlgorithm, FlashProperties, SectorDescription};
 
@@ -573,59 +575,63 @@ mod tests {
             .build_sectors_and_pages(&flash_algorithm, true)
             .unwrap();
 
-        assert_debug_snapshot!(flash_layout);
-
-        assert_eq!(flash_layout.sectors.len(), 1);
         assert_eq!(
-            flash_layout.sectors[0],
-            FlashSector {
-                address: 0x0000,
-                size: 0x1000,
+            flash_layout,
+            FlashLayout {
+                sectors: vec![FlashSector {
+                    address: 0x0000,
+                    size: 0x1000,
+                },],
+                pages: vec![
+                    FlashPage {
+                        address: 0x0000,
+                        data: {
+                            let mut data = vec![0; 1024];
+                            data[0] = 42;
+                            data
+                        },
+                    },
+                    FlashPage {
+                        address: 0x0400,
+                        data: vec![0; 1024],
+                    },
+                    FlashPage {
+                        address: 0x0800,
+                        data: vec![0; 1024],
+                    },
+                    FlashPage {
+                        address: 0x0C00,
+                        data: vec![0; 1024],
+                    },
+                ],
+                fills: vec![
+                    FlashFill {
+                        address: 0x0001,
+                        size: 0x03FF,
+                        page_index: 0,
+                    },
+                    FlashFill {
+                        address: 0x0400,
+                        size: 0x0400,
+                        page_index: 1,
+                    },
+                    FlashFill {
+                        address: 0x0800,
+                        size: 0x0400,
+                        page_index: 2,
+                    },
+                    FlashFill {
+                        address: 0x0C00,
+                        size: 0x0400,
+                        page_index: 3,
+                    }
+                ],
+                data_blocks: vec![FlashDataBlockSpan {
+                    address: 0,
+                    size: 1,
+                }],
             }
-        );
-
-        let mut data = vec![0; 1024];
-        data[0] = 42;
-        assert_eq!(flash_layout.pages.len(), 4);
-        assert_eq!(
-            flash_layout.pages[0],
-            FlashPage {
-                address: 0x0000,
-                data,
-            }
-        );
-
-        let data = vec![0; 1024];
-        for i in 1..4 {
-            assert_eq!(
-                flash_layout.pages[i],
-                FlashPage {
-                    address: 0x0400 * i as u32,
-                    data: data.clone(),
-                }
-            );
-        }
-
-        assert_eq!(flash_layout.fills.len(), 4);
-        assert_eq!(
-            flash_layout.fills[0],
-            FlashFill {
-                address: 0x0001,
-                size: 0x03FF,
-                page_index: 0,
-            }
-        );
-
-        for i in 1..4 {
-            assert_eq!(
-                flash_layout.fills[i],
-                FlashFill {
-                    address: 0x0400 * i as u32,
-                    size: 0x0400,
-                    page_index: i,
-                }
-            );
-        }
+        )
     }
 
     #[test]
@@ -637,50 +643,54 @@ mod tests {
             .build_sectors_and_pages(&flash_algorithm, true)
             .unwrap();
 
-        assert_debug_snapshot!(flash_layout);
-
-        assert_eq!(flash_layout.sectors.len(), 1);
         assert_eq!(
-            flash_layout.sectors[0],
-            FlashSector {
-                address: 0x0000,
-                size: 0x1000,
+            flash_layout,
+            FlashLayout {
+                sectors: vec![FlashSector {
+                    address: 0x0000,
+                    size: 0x1000,
+                },],
+                pages: vec![
+                    FlashPage {
+                        address: 0x0000,
+                        data: vec![42; 1024],
+                    },
+                    FlashPage {
+                        address: 0x0400,
+                        data: vec![0; 1024],
+                    },
+                    FlashPage {
+                        address: 0x0800,
+                        data: vec![0; 1024],
+                    },
+                    FlashPage {
+                        address: 0x0C00,
+                        data: vec![0; 1024],
+                    },
+                ],
+                fills: vec![
+                    FlashFill {
+                        address: 0x0400,
+                        size: 0x0400,
+                        page_index: 1,
+                    },
+                    FlashFill {
+                        address: 0x0800,
+                        size: 0x0400,
+                        page_index: 2,
+                    },
+                    FlashFill {
+                        address: 0x0C00,
+                        size: 0x0400,
+                        page_index: 3,
+                    }
+                ],
+                data_blocks: vec![FlashDataBlockSpan {
+                    address: 0,
+                    size: 1024,
+                }],
             }
-        );
-
-        let data = vec![42; 1024];
-        assert_eq!(flash_layout.pages.len(), 4);
-        assert_eq!(
-            flash_layout.pages[0],
-            FlashPage {
-                address: 0x0000,
-                data,
-            }
-        );
-
-        let data = vec![0; 1024];
-        for i in 1..4 {
-            assert_eq!(
-                flash_layout.pages[i],
-                FlashPage {
-                    address: 0x0400 * i as u32,
-                    data: data.clone(),
-                }
-            );
-        }
-
-        assert_eq!(flash_layout.fills.len(), 3);
-
-        for i in 1..4 {
-            assert_eq!(
-                flash_layout.fills[i - 1],
-                FlashFill {
-                    address: 0x0400 * i as u32,
-                    size: 0x0400,
-                    page_index: i,
-                }
-            );
-        }
+        )
     }
 
     #[test]
@@ -692,70 +702,58 @@ mod tests {
             .build_sectors_and_pages(&flash_algorithm, true)
             .unwrap();
 
-        assert_debug_snapshot!(flash_layout);
-
-        assert_eq!(flash_layout.sectors.len(), 1);
         assert_eq!(
-            flash_layout.sectors[0],
-            FlashSector {
-                address: 0x0000,
-                size: 0x1000,
+            flash_layout,
+            FlashLayout {
+                sectors: vec![FlashSector {
+                    address: 0x0000,
+                    size: 0x1000,
+                },],
+                pages: vec![
+                    FlashPage {
+                        address: 0x0000,
+                        data: vec![42; 1024],
+                    },
+                    FlashPage {
+                        address: 0x0400,
+                        data: {
+                            let mut data = vec![0; 1024];
+                            data[0] = 42;
+                            data
+                        },
+                    },
+                    FlashPage {
+                        address: 0x0800,
+                        data: vec![0; 1024],
+                    },
+                    FlashPage {
+                        address: 0x0C00,
+                        data: vec![0; 1024],
+                    },
+                ],
+                fills: vec![
+                    FlashFill {
+                        address: 0x0401,
+                        size: 0x03FF,
+                        page_index: 1,
+                    },
+                    FlashFill {
+                        address: 0x0800,
+                        size: 0x0400,
+                        page_index: 2,
+                    },
+                    FlashFill {
+                        address: 0x0C00,
+                        size: 0x0400,
+                        page_index: 3,
+                    }
+                ],
+                data_blocks: vec![FlashDataBlockSpan {
+                    address: 0,
+                    size: 1025,
+                }],
             }
-        );
-
-        assert_eq!(flash_layout.pages.len(), 4);
-
-        let data = vec![42; 1024];
-        assert_eq!(
-            flash_layout.pages[0],
-            FlashPage {
-                address: 0x0000,
-                data,
-            }
-        );
-
-        let mut data = vec![0; 1024];
-        data[0] = 42;
-        assert_eq!(
-            flash_layout.pages[1],
-            FlashPage {
-                address: 0x0400,
-                data,
-            }
-        );
-
-        let data = vec![0; 1024];
-        for i in 2..4 {
-            assert_eq!(
-                flash_layout.pages[i],
-                FlashPage {
-                    address: 0x0400 * i as u32,
-                    data: data.clone(),
-                }
-            );
-        }
-
-        assert_eq!(flash_layout.fills.len(), 3);
-
-        assert_eq!(
-            flash_layout.fills[0],
-            FlashFill {
-                address: 0x0401,
-                size: 0x03FF,
-                page_index: 1,
-            }
-        );
-
-        for i in 2..4 {
-            assert_eq!(
-                flash_layout.fills[i - 1],
-                FlashFill {
-                    address: 0x0400 * i as u32,
-                    size: 0x0400,
-                    page_index: i,
-                }
-            );
-        }
+        )
     }
 
     #[test]
@@ -766,7 +764,39 @@ mod tests {
         let flash_layout = flash_builder
             .build_sectors_and_pages(&flash_algorithm, false)
             .unwrap();
-        assert_debug_snapshot!(flash_layout);
+
+        assert_eq!(
+            flash_layout,
+            FlashLayout {
+                sectors: vec![FlashSector {
+                    address: 0x0000,
+                    size: 0x1000,
+                },],
+                pages: vec![
+                    FlashPage {
+                        address: 0x0000,
+                        data: vec![42; 1024],
+                    },
+                    FlashPage {
+                        address: 0x0400,
+                        data: {
+                            let mut data = vec![0; 1024];
+                            data[0] = 42;
+                            data
+                        },
+                    },
+                ],
+                fills: vec![FlashFill {
+                    address: 0x0401,
+                    size: 0x03FF,
+                    page_index: 1,
+                },],
+                data_blocks: vec![FlashDataBlockSpan {
+                    address: 0,
+                    size: 1025,
+                }],
+            }
+        )
     }
 
     #[test]
@@ -777,7 +807,72 @@ mod tests {
         let flash_layout = flash_builder
             .build_sectors_and_pages(&flash_algorithm, true)
             .unwrap();
-        assert_debug_snapshot!(flash_layout);
+
+        assert_eq!(
+            flash_layout,
+            FlashLayout {
+                sectors: vec![FlashSector {
+                    address: 0x000000,
+                    size: 0x001000,
+                },],
+                pages: vec![
+                    FlashPage {
+                        address: 0x000000,
+                        data: {
+                            let mut data = vec![42; 1024];
+                            for i in 0..42 {
+                                data[i] = 0;
+                            }
+                            data
+                        },
+                    },
+                    FlashPage {
+                        address: 0x000400,
+                        data: {
+                            let mut data = vec![0; 1024];
+                            for i in 0..42 {
+                                data[i] = 42;
+                            }
+                            data
+                        },
+                    },
+                    FlashPage {
+                        address: 0x000800,
+                        data: vec![0; 1024],
+                    },
+                    FlashPage {
+                        address: 0x000C00,
+                        data: vec![0; 1024],
+                    },
+                ],
+                fills: vec![
+                    FlashFill {
+                        address: 0x000000,
+                        size: 0x00002A,
+                        page_index: 0,
+                    },
+                    FlashFill {
+                        address: 0x00042A,
+                        size: 0x0003D6,
+                        page_index: 1,
+                    },
+                    FlashFill {
+                        address: 0x000800,
+                        size: 0x000400,
+                        page_index: 2,
+                    },
+                    FlashFill {
+                        address: 0x000C00,
+                        size: 0x000400,
+                        page_index: 3,
+                    },
+                ],
+                data_blocks: vec![FlashDataBlockSpan {
+                    address: 42,
+                    size: 1024,
+                },],
+            }
+        )
     }
 
     #[test]
@@ -788,7 +883,88 @@ mod tests {
         let flash_layout = flash_builder
             .build_sectors_and_pages(&flash_algorithm, true)
             .unwrap();
-        assert_debug_snapshot!(flash_layout);
+
+        assert_eq!(
+            flash_layout,
+            FlashLayout {
+                sectors: vec![
+                    FlashSector {
+                        address: 0x000000,
+                        size: 0x001000,
+                    },
+                    FlashSector {
+                        address: 0x001000,
+                        size: 0x001000,
+                    },
+                ],
+                pages: vec![
+                    FlashPage {
+                        address: 0x000000,
+                        data: vec![42; 1024],
+                    },
+                    FlashPage {
+                        address: 0x000400,
+                        data: vec![42; 1024],
+                    },
+                    FlashPage {
+                        address: 0x000800,
+                        data: vec![42; 1024],
+                    },
+                    FlashPage {
+                        address: 0x000C00,
+                        data: vec![42; 1024],
+                    },
+                    FlashPage {
+                        address: 0x001000,
+                        data: {
+                            let mut data = vec![0; 1024];
+                            for i in 0..928 {
+                                data[i] = 42;
+                            }
+                            data
+                        },
+                    },
+                    FlashPage {
+                        address: 0x001400,
+                        data: vec![0; 1024],
+                    },
+                    FlashPage {
+                        address: 0x001800,
+                        data: vec![0; 1024],
+                    },
+                    FlashPage {
+                        address: 0x001C00,
+                        data: vec![0; 1024],
+                    },
+                ],
+                fills: vec![
+                    FlashFill {
+                        address: 0x0013A0,
+                        size: 0x000060,
+                        page_index: 4,
+                    },
+                    FlashFill {
+                        address: 0x001400,
+                        size: 0x000400,
+                        page_index: 5,
+                    },
+                    FlashFill {
+                        address: 0x001800,
+                        size: 0x000400,
+                        page_index: 6,
+                    },
+                    FlashFill {
+                        address: 0x001C00,
+                        size: 0x000400,
+                        page_index: 7,
+                    },
+                ],
+                data_blocks: vec![FlashDataBlockSpan {
+                    address: 0,
+                    size: 5024,
+                },],
+            }
+        )
     }
 
     #[test]
@@ -800,7 +976,166 @@ mod tests {
         let flash_layout = flash_builder
             .build_sectors_and_pages(&flash_algorithm, true)
             .unwrap();
-        assert_debug_snapshot!(flash_layout);
+
+        assert_eq!(
+            flash_layout,
+            FlashLayout {
+                sectors: vec![
+                    FlashSector {
+                        address: 0x000000,
+                        size: 0x001000,
+                    },
+                    FlashSector {
+                        address: 0x001000,
+                        size: 0x001000,
+                    },
+                    FlashSector {
+                        address: 0x002000,
+                        size: 0x001000,
+                    },
+                    FlashSector {
+                        address: 0x003000,
+                        size: 0x001000,
+                    },
+                ],
+                pages: vec![
+                    FlashPage {
+                        address: 0x000000,
+                        data: vec![42; 1024],
+                    },
+                    FlashPage {
+                        address: 0x000400,
+                        data: vec![42; 1024],
+                    },
+                    FlashPage {
+                        address: 0x000800,
+                        data: vec![42; 1024],
+                    },
+                    FlashPage {
+                        address: 0x000C00,
+                        data: vec![42; 1024],
+                    },
+                    FlashPage {
+                        address: 0x001000,
+                        data: {
+                            let mut data = vec![42; 1024];
+                            for i in 928..1024 {
+                                data[i] = 0;
+                            }
+                            data
+                        },
+                    },
+                    FlashPage {
+                        address: 0x001C00,
+                        data: {
+                            let mut data = vec![42; 1024];
+                            for i in 0..692 {
+                                data[i] = 0;
+                            }
+                            data
+                        },
+                    },
+                    FlashPage {
+                        address: 0x001400,
+                        data: vec![0; 1024],
+                    },
+                    FlashPage {
+                        address: 0x001800,
+                        data: vec![0; 1024],
+                    },
+                    FlashPage {
+                        address: 0x002000,
+                        data: vec![42; 1024],
+                    },
+                    FlashPage {
+                        address: 0x002400,
+                        data: vec![42; 1024],
+                    },
+                    FlashPage {
+                        address: 0x002800,
+                        data: vec![42; 1024],
+                    },
+                    FlashPage {
+                        address: 0x002C00,
+                        data: vec![42; 1024],
+                    },
+                    FlashPage {
+                        address: 0x003000,
+                        data: {
+                            let mut data = vec![42; 1024];
+                            for i in 596..1024 {
+                                data[i] = 0;
+                            }
+                            data
+                        },
+                    },
+                    FlashPage {
+                        address: 0x003400,
+                        data: vec![0; 1024],
+                    },
+                    FlashPage {
+                        address: 0x003800,
+                        data: vec![0; 1024],
+                    },
+                    FlashPage {
+                        address: 0x003C00,
+                        data: vec![0; 1024],
+                    },
+                ],
+                fills: vec![
+                    FlashFill {
+                        address: 0x0013A0,
+                        size: 0x000060,
+                        page_index: 4,
+                    },
+                    FlashFill {
+                        address: 0x001C00,
+                        size: 0x0002B4,
+                        page_index: 5,
+                    },
+                    FlashFill {
+                        address: 0x001400,
+                        size: 0x000400,
+                        page_index: 6,
+                    },
+                    FlashFill {
+                        address: 0x001800,
+                        size: 0x000400,
+                        page_index: 7,
+                    },
+                    FlashFill {
+                        address: 0x003254,
+                        size: 0x0001AC,
+                        page_index: 12,
+                    },
+                    FlashFill {
+                        address: 0x003400,
+                        size: 0x000400,
+                        page_index: 13,
+                    },
+                    FlashFill {
+                        address: 0x003800,
+                        size: 0x000400,
+                        page_index: 14,
+                    },
+                    FlashFill {
+                        address: 0x003C00,
+                        size: 0x000400,
+                        page_index: 15,
+                    },
+                ],
+                data_blocks: vec![
+                    FlashDataBlockSpan {
+                        address: 0,
+                        size: 5024,
+                    },
+                    FlashDataBlockSpan {
+                        address: 7860,
+                        size: 5024,
+                    },
+                ],
+            }
+        )
     }
 
     #[test]
@@ -812,6 +1147,120 @@ mod tests {
         let flash_layout = flash_builder
             .build_sectors_and_pages(&flash_algorithm, true)
             .unwrap();
-        assert_debug_snapshot!(flash_layout);
+
+        assert_eq!(
+            flash_layout,
+            FlashLayout {
+                sectors: {
+                    let mut sectors = Vec::with_capacity(88);
+                    for i in 0..40 {
+                        sectors.push(FlashSector {
+                            address: 128 * i as u32,
+                            size: 0x000080,
+                        });
+                    }
+
+                    for i in 56..104 {
+                        sectors.push(FlashSector {
+                            address: 128 * i as u32,
+                            size: 0x000080,
+                        });
+                    }
+
+                    sectors
+                },
+                pages: vec![
+                    FlashPage {
+                        address: 0x000000,
+                        data: vec![42; 1024],
+                    },
+                    FlashPage {
+                        address: 0x000400,
+                        data: vec![42; 1024],
+                    },
+                    FlashPage {
+                        address: 0x000800,
+                        data: vec![42; 1024],
+                    },
+                    FlashPage {
+                        address: 0x000C00,
+                        data: vec![42; 1024],
+                    },
+                    FlashPage {
+                        address: 0x001000,
+                        data: {
+                            let mut data = vec![42; 1024];
+                            for i in 928..1024 {
+                                data[i] = 0;
+                            }
+                            data
+                        },
+                    },
+                    FlashPage {
+                        address: 0x001C00,
+                        data: {
+                            let mut data = vec![42; 1024];
+                            for i in 0..692 {
+                                data[i] = 0;
+                            }
+                            data
+                        },
+                    },
+                    FlashPage {
+                        address: 0x002000,
+                        data: vec![42; 1024],
+                    },
+                    FlashPage {
+                        address: 0x002400,
+                        data: vec![42; 1024],
+                    },
+                    FlashPage {
+                        address: 0x002800,
+                        data: vec![42; 1024],
+                    },
+                    FlashPage {
+                        address: 0x002C00,
+                        data: vec![42; 1024],
+                    },
+                    FlashPage {
+                        address: 0x003000,
+                        data: {
+                            let mut data = vec![42; 1024];
+                            for i in 596..1024 {
+                                data[i] = 0;
+                            }
+                            data
+                        },
+                    },
+                ],
+                fills: vec![
+                    FlashFill {
+                        address: 0x0013A0,
+                        size: 0x000060,
+                        page_index: 4,
+                    },
+                    FlashFill {
+                        address: 0x001C00,
+                        size: 0x0002B4,
+                        page_index: 5,
+                    },
+                    FlashFill {
+                        address: 0x003254,
+                        size: 0x0001AC,
+                        page_index: 10,
+                    }
+                ],
+                data_blocks: vec![
+                    FlashDataBlockSpan {
+                        address: 0,
+                        size: 5024,
+                    },
+                    FlashDataBlockSpan {
+                        address: 7860,
+                        size: 5024,
+                    },
+                ],
+            }
+        )
     }
 }
