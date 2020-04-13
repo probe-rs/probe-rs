@@ -10,6 +10,7 @@ use super::{
 use crate::Memory;
 use constants::{commands, JTagFrequencyToDivider, Mode, Status, SwdFrequencyToDelayCount};
 use scroll::{Pread, BE, LE};
+use std::time::Duration;
 use thiserror::Error;
 use usb_interface::TIMEOUT;
 
@@ -124,13 +125,12 @@ impl DebugProbe for STLink<STLinkUSBDevice> {
         };
 
         let mut buf = [0; 2];
-        self.device.write(
+        self.send_jtag_command(
             vec![commands::JTAG_COMMAND, commands::JTAG_ENTER2, param, 0],
             &[],
             &mut buf,
             TIMEOUT,
         )?;
-        Self::check_status(&buf)?;
 
         log::debug!("Successfully initialized SWD.");
 
@@ -160,7 +160,7 @@ impl DebugProbe for STLink<STLinkUSBDevice> {
     /// Asserts the nRESET pin.
     fn target_reset(&mut self) -> Result<(), DebugProbeError> {
         let mut buf = [0; 2];
-        self.device.write(
+        self.send_jtag_command(
             vec![
                 commands::JTAG_COMMAND,
                 commands::JTAG_DRIVE_NRST,
@@ -169,10 +169,7 @@ impl DebugProbe for STLink<STLinkUSBDevice> {
             &[],
             &mut buf,
             TIMEOUT,
-        )?;
-
-        Self::check_status(&buf)?;
-        Ok(())
+        )
     }
 
     fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError> {
@@ -223,8 +220,7 @@ impl DAPAccess for STLink<STLinkUSBDevice> {
                 ((addr >> 8) & 0xFF) as u8,
             ];
             let mut buf = [0; 8];
-            self.device.write(cmd, &[], &mut buf, TIMEOUT)?;
-            Self::check_status(&buf)?;
+            self.send_jtag_command(cmd, &[], &mut buf, TIMEOUT)?;
             // Unwrap is ok!
             Ok((&buf[4..8]).pread_with(0, LE).unwrap())
         } else {
@@ -259,8 +255,7 @@ impl DAPAccess for STLink<STLinkUSBDevice> {
                 ((value >> 24) & 0xFF) as u8,
             ];
             let mut buf = [0; 2];
-            self.device.write(cmd, &[], &mut buf, TIMEOUT)?;
-            Self::check_status(&buf)?;
+            self.send_jtag_command(cmd, &[], &mut buf, TIMEOUT)?;
             Ok(())
         } else {
             Err(StlinkError::BlanksNotAllowedOnDPRegister.into())
@@ -283,9 +278,6 @@ impl<D: StLinkUsb> STLink<D> {
 
     /// Minimum required STLink firmware version.
     const MIN_JTAG_VERSION: u8 = 26;
-
-    /// Firmware version that adds 16-bit transfers.
-    //const _MIN_JTAG_VERSION_16BIT_XFER: u8 = 26;
 
     /// Firmware version that adds multiple AP support.
     const MIN_JTAG_VERSION_MULTI_AP: u8 = 28;
@@ -458,7 +450,7 @@ impl<D: StLinkUsb> STLink<D> {
         frequency: SwdFrequencyToDelayCount,
     ) -> Result<(), DebugProbeError> {
         let mut buf = [0; 2];
-        self.device.write(
+        self.send_jtag_command(
             vec![
                 commands::JTAG_COMMAND,
                 commands::SWD_SET_FREQ,
@@ -467,9 +459,7 @@ impl<D: StLinkUsb> STLink<D> {
             &[],
             &mut buf,
             TIMEOUT,
-        )?;
-        Self::check_status(&buf)?;
-        Ok(())
+        )
     }
 
     /// Sets the JTAG frequency.
@@ -478,7 +468,7 @@ impl<D: StLinkUsb> STLink<D> {
         frequency: JTagFrequencyToDivider,
     ) -> Result<(), DebugProbeError> {
         let mut buf = [0; 2];
-        self.device.write(
+        self.send_jtag_command(
             vec![
                 commands::JTAG_COMMAND,
                 commands::JTAG_SET_FREQ,
@@ -487,9 +477,7 @@ impl<D: StLinkUsb> STLink<D> {
             &[],
             &mut buf,
             TIMEOUT,
-        )?;
-        Self::check_status(&buf)?;
-        Ok(())
+        )
     }
 
     /// Sets the communication frequency (V3 only)
@@ -509,9 +497,7 @@ impl<D: StLinkUsb> STLink<D> {
         command.extend_from_slice(&frequency_khz.to_le_bytes());
 
         let mut buf = [0; 8];
-        self.device.write(command, &[], &mut buf, TIMEOUT)?;
-        Self::check_status(&buf)?;
-        Ok(())
+        self.send_jtag_command(command, &[], &mut buf, TIMEOUT)
     }
 
     /// Returns the current and available communication frequencies (V3 only)
@@ -527,13 +513,12 @@ impl<D: StLinkUsb> STLink<D> {
         };
 
         let mut buf = [0; 52];
-        self.device.write(
+        self.send_jtag_command(
             vec![commands::JTAG_COMMAND, commands::GET_COM_FREQ, cmd_proto],
             &[],
             &mut buf,
             TIMEOUT,
         )?;
-        Self::check_status(&buf)?;
 
         let mut values = (&buf)
             .chunks(4)
@@ -581,7 +566,7 @@ impl<D: StLinkUsb> STLink<D> {
         Ok(())
     }
 
-    /// Open a specific AP, which will be used for all future commands
+    /// Open a specific AP, which will be used for all future commands.
     ///
     /// This is only supported on ST-Link V3, or older ST-Links with
     /// a JTAG version > `MIN_JTAG_VERSION_MULTI_AP`.
@@ -591,14 +576,12 @@ impl<D: StLinkUsb> STLink<D> {
 
         let mut buf = [0; 2];
         log::trace!("JTAG_INIT_AP {}", apsel);
-        self.device.write(
+        self.send_jtag_command(
             vec![commands::JTAG_COMMAND, commands::JTAG_INIT_AP, apsel],
             &[],
             &mut buf,
             TIMEOUT,
-        )?;
-        Self::check_status(&buf)?;
-        Ok(())
+        )
     }
 
     /// Close a specific AP, which was opened with `open_ap`.
@@ -611,14 +594,12 @@ impl<D: StLinkUsb> STLink<D> {
 
         let mut buf = [0; 2];
         log::trace!("JTAG_CLOSE_AP {}", apsel);
-        self.device.write(
+        self.send_jtag_command(
             vec![commands::JTAG_COMMAND, commands::JTAG_CLOSE_AP_DBG, apsel],
             &[],
             &mut buf,
             TIMEOUT,
-        )?;
-        Self::check_status(&buf)?;
-        Ok(())
+        )
     }
 
     /// Validates the status given.
@@ -633,6 +614,19 @@ impl<D: StLinkUsb> STLink<D> {
         } else {
             Ok(())
         }
+    }
+
+    fn send_jtag_command(
+        &mut self,
+        cmd: Vec<u8>,
+        write_data: &[u8],
+        read_data: &mut [u8],
+        timeout: Duration,
+    ) -> Result<(), DebugProbeError> {
+        self.device.write(cmd, write_data, read_data, timeout)?;
+
+        Self::check_status(read_data)?;
+        Ok(())
     }
 }
 
@@ -663,11 +657,7 @@ impl From<StlinkError> for DebugProbeError {
 #[cfg(test)]
 mod test {
 
-    use super::{
-        constants::{commands, Status},
-        usb_interface::StLinkUsb,
-        STLink,
-    };
+    use super::{constants::commands, usb_interface::StLinkUsb, STLink};
     use crate::{DebugProbeError, WireProtocol};
 
     use scroll::Pwrite;
@@ -700,9 +690,9 @@ mod test {
         fn write(
             &mut self,
             cmd: Vec<u8>,
-            write_data: &[u8],
+            _write_data: &[u8],
             read_data: &mut [u8],
-            timeout: std::time::Duration,
+            _timeout: std::time::Duration,
         ) -> Result<(), crate::DebugProbeError> {
             match cmd[0] {
                 commands::GET_VERSION => {
