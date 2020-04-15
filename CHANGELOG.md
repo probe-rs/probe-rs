@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Support for STMF3 was added. Some M3's such as the STM32F103 are known to have reset issues. See [#216](https://github.com/probe-rs/probe-rs/pull/216)
+- Support for the STM32F3 family was added.
 - Added support for most Holtek ARM chips.
 - Added support for the STM32H7 and M7 cores.
 
