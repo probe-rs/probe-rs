@@ -10,7 +10,7 @@ use communication_interface::{
 };
 
 use crate::core::{CoreInformation, RegisterFile};
-use crate::CoreRegisterAddress;
+use crate::{CoreRegisterAddress, CoreStatus, HaltReason};
 use bitfield::bitfield;
 use register::RISCV_REGISTERS;
 
@@ -507,7 +507,38 @@ impl CoreInterface for Riscv32 {
         Architecture::RISCV
     }
     fn status(&mut self) -> Result<crate::core::CoreStatus, crate::Error> {
-        todo!()
+        // TODO: We should use hartsum to determine if any hart is halted
+        //       quickly
+
+        let status: Dmstatus = self.interface.read_dm_register()?;
+
+        if status.allhalted() {
+            // determine reason for halt
+            let dcsr = Dcsr(self.read_core_reg(CoreRegisterAddress::from(0x7b0))?);
+
+            let reason = match dcsr.cause() {
+                // An ebreak instruction was hit
+                1 => HaltReason::Breakpoint,
+                // Trigger module caused halt
+                2 => HaltReason::Breakpoint,
+                // Debugger requested a halt
+                3 => HaltReason::Request,
+                // Core halted after single step
+                4 => HaltReason::Step,
+                // Core halted directly after reset
+                5 => HaltReason::Exception,
+                // Reserved for future use in specification
+                _ => HaltReason::Unknown,
+            };
+
+            return Ok(CoreStatus::Halted(reason));
+        }
+
+        if status.allrunning() {
+            return Ok(CoreStatus::Running);
+        }
+
+        panic!("This should not happen")
     }
 }
 
