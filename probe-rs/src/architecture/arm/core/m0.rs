@@ -304,7 +304,7 @@ impl M0 {
 }
 
 impl CoreInterface for M0 {
-    fn wait_for_core_halted(&self) -> Result<(), Error> {
+    fn wait_for_core_halted(&mut self) -> Result<(), Error> {
         // Wait until halted state is active again.
         for _ in 0..100 {
             let dhcsr_val = Dhcsr(self.memory.read32(Dhcsr::ADDRESS)?);
@@ -357,7 +357,7 @@ impl CoreInterface for M0 {
         self.wait_for_core_register_transfer()
     }
 
-    fn halt(&self) -> Result<CoreInformation, Error> {
+    fn halt(&mut self) -> Result<CoreInformation, Error> {
         // TODO: Generic halt support
 
         let mut value = Dhcsr(0);
@@ -376,7 +376,7 @@ impl CoreInterface for M0 {
         Ok(CoreInformation { pc: pc_value })
     }
 
-    fn run(&self) -> Result<(), Error> {
+    fn run(&mut self) -> Result<(), Error> {
         let mut value = Dhcsr(0);
         value.set_c_halt(false);
         value.set_c_debugen(true);
@@ -387,7 +387,7 @@ impl CoreInterface for M0 {
             .map_err(Into::into)
     }
 
-    fn step(&self) -> Result<CoreInformation, Error> {
+    fn step(&mut self) -> Result<CoreInformation, Error> {
         let mut value = Dhcsr(0);
         // Leave halted state.
         // Step one instruction.
@@ -420,7 +420,7 @@ impl CoreInterface for M0 {
         Ok(())
     }
 
-    fn reset_and_halt(&self) -> Result<CoreInformation, Error> {
+    fn reset_and_halt(&mut self) -> Result<CoreInformation, Error> {
         // Ensure debug mode is enabled
         let dhcsr_val = Dhcsr(self.memory.read32(Dhcsr::ADDRESS)?);
         if !dhcsr_val.c_debugen() {
@@ -518,5 +518,8 @@ impl CoreInterface for M0 {
 
     fn architecture(&self) -> Architecture {
         Architecture::ARM
+    }
+    fn status(&mut self) -> Result<crate::core::CoreStatus, Error> {
+        todo!()
     }
 }

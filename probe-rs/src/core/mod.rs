@@ -132,7 +132,7 @@ pub trait CoreInterface {
     /// a [`DebugProbeError::Timeout`] error will be returned.
     ///
     /// [`DebugProbeError::Timeout`]: ../probe/debug_probe/enum.DebugProbeError.html#variant.Timeout
-    fn wait_for_core_halted(&self) -> Result<(), error::Error>;
+    fn wait_for_core_halted(&mut self) -> Result<(), error::Error>;
 
     /// Check if the core is halted. If the core does not halt on its own,
     /// a [`CoreError::Timeout`] error will be returned.
@@ -140,13 +140,15 @@ pub trait CoreInterface {
     /// [`CoreError::Timeout`]: ../probe/debug_probe/enum.CoreError.html#variant.Timeout
     fn core_halted(&self) -> Result<bool, error::Error>;
 
+    fn status(&mut self) -> Result<CoreStatus, error::Error>;
+
     /// Try to halt the core. This function ensures the core is actually halted, and
     /// returns a [`CoreError::Timeout`] otherwise.
     ///
     /// [`CoreError::Timeout`]: ../probe/debug_probe/enum.CoreError.html#variant.Timeout
-    fn halt(&self) -> Result<CoreInformation, error::Error>;
+    fn halt(&mut self) -> Result<CoreInformation, error::Error>;
 
-    fn run(&self) -> Result<(), error::Error>;
+    fn run(&mut self) -> Result<(), error::Error>;
 
     /// Reset the core, and then continue to execute instructions. If the core
     /// should be halted after reset, use the [`reset_and_halt`] function.
@@ -158,10 +160,10 @@ pub trait CoreInterface {
     /// reset, use the [`reset`] function.
     ///
     /// [`reset`]: trait.Core.html#tymethod.reset
-    fn reset_and_halt(&self) -> Result<CoreInformation, error::Error>;
+    fn reset_and_halt(&mut self) -> Result<CoreInformation, error::Error>;
 
     /// Steps one instruction and then enters halted state again.
-    fn step(&self) -> Result<CoreInformation, error::Error>;
+    fn step(&mut self) -> Result<CoreInformation, error::Error>;
 
     fn read_core_reg(&self, address: CoreRegisterAddress) -> Result<u32, error::Error>;
 
@@ -272,9 +274,9 @@ impl CoreType {
             // TODO: Change this once the new archtecture structure for ARM hits.
             // Cortex-M3, M4 and M7 use the Armv7[E]-M architecture and are
             // identical for our purposes.
-            CoreType::M3 => Core::new(crate::architecture::arm::m4::M4::new(memory)),
-            CoreType::M4 => Core::new(crate::architecture::arm::m4::M4::new(memory)),
-            CoreType::M7 => Core::new(crate::architecture::arm::m4::M4::new(memory)),
+            CoreType::M3 => Core::new(crate::architecture::arm::m4::M4::new(memory)?),
+            CoreType::M4 => Core::new(crate::architecture::arm::m4::M4::new(memory)?),
+            CoreType::M7 => Core::new(crate::architecture::arm::m4::M4::new(memory)?),
             CoreType::M33 => Core::new(crate::architecture::arm::m33::M33::new(memory)),
             CoreType::M0 => Core::new(crate::architecture::arm::m0::M0::new(memory)),
             _ => {
@@ -341,7 +343,7 @@ impl Core {
     ///
     /// [`DebugProbeError::Timeout`]: ../probe/debug_probe/enum.DebugProbeError.html#variant.Timeout
     pub fn wait_for_core_halted(&self) -> Result<(), error::Error> {
-        self.inner.borrow().wait_for_core_halted()
+        self.inner.borrow_mut().wait_for_core_halted()
     }
 
     /// Check if the core is halted. If the core does not halt on its own,
@@ -357,11 +359,11 @@ impl Core {
     ///
     /// [`CoreError::Timeout`]: ../probe/debug_probe/enum.CoreError.html#variant.Timeout
     pub fn halt(&self) -> Result<CoreInformation, error::Error> {
-        self.inner.borrow().halt()
+        self.inner.borrow_mut().halt()
     }
 
     pub fn run(&self) -> Result<(), error::Error> {
-        self.inner.borrow().run()
+        self.inner.borrow_mut().run()
     }
 
     /// Reset the core, and then continue to execute instructions. If the core
@@ -377,12 +379,16 @@ impl Core {
     ///
     /// [`reset`]: trait.Core.html#tymethod.reset
     pub fn reset_and_halt(&self) -> Result<CoreInformation, error::Error> {
-        self.inner.borrow().reset_and_halt()
+        self.inner.borrow_mut().reset_and_halt()
     }
 
     /// Steps one instruction and then enters halted state again.
     pub fn step(&self) -> Result<CoreInformation, error::Error> {
-        self.inner.borrow().step()
+        self.inner.borrow_mut().step()
+    }
+
+    pub fn status(&self) -> Result<CoreStatus, error::Error> {
+        self.inner.borrow_mut().status()
     }
 
     pub fn read_core_reg(
@@ -554,4 +560,41 @@ pub struct Breakpoint {
 pub enum Architecture {
     ARM,
     RISCV,
+}
+
+#[derive(Debug, PartialEq, Copy, Clone)]
+pub enum CoreStatus {
+    Running,
+    Halted(HaltReason),
+    Sleeping,
+}
+
+impl CoreStatus {
+    pub fn is_halted(&self) -> bool {
+        match self {
+            CoreStatus::Halted(_) => true,
+            _ => false,
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Copy, Clone)]
+pub enum HaltReason {
+    /// Core halted due to a breakpoint, either
+    /// a *soft* or a *hard* breakpoint.
+    Breakpoint,
+    /// Core halted due to an exception, e.g. an
+    /// an interrupt.
+    Exception,
+    /// Core halted due to a data watchpoint
+    Watchpoint,
+    /// Core halted after single step
+    Step,
+    /// Core halted because of a debugger request
+    Request,
+    /// External halt request
+    External,
+    /// Unknown reason for halt. This can happen for
+    /// example when the core is already halted when we connect.
+    Unknown,
 }
