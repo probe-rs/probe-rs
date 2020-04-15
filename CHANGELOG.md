@@ -37,7 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Known issues
 
-- Some ST M3's such as the STM32F103 are known to have reset issues. See [#216](https://github.com/probe-rs/probe-rs/pull/216)
+- Some ST M3s such as the STM32F103 are known to have reset issues. See [#216](https://github.com/probe-rs/probe-rs/pull/216).
 
 ## [0.6.0]
 
