@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+### Fixed
+
+## [0.6.1]
+
+### Added
+
+- Support for the STM32F3 family was added.
+- Added support for most Holtek ARM chips.
+- Added support for the STM32H7 and M7 cores.
+
+### Changed
+
 - DAPlink implementation now batches `read_register` and `write_register`
   commands, executing the entire batch when either the batch is full or a
   `read_register` is requested, returning the read result or an error which
@@ -16,8 +28,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `write_register` calls may return `Ok(())` even if they have not been
   submitted to the probe yet, but any read will immediately execute the batch.
   Operations such as device flashing see around 350% speedup.
+- Improved error handling for STLinks that have an older firmware which doesn't support multiple APs.
+- The flash layout reporting struct is less verbose now.
 
 ### Fixed
+
+- Fix a bug in the CLI where it would always be unable to attach to the probe.
+
+### Known issues
+
+- Some ST M3s such as the STM32F103 are known to have reset issues. See [#216](https://github.com/probe-rs/probe-rs/pull/216).
 
 ## [0.6.0]
 
@@ -134,7 +154,8 @@ Initial release on crates.io
 - Working basic flash downloader with nRF51.
 - Introduce cargo-flash which can automatically build & flash the target elf file.
 
-[Unreleased]: https://github.com/probe-rs/probe-rs/compare/v0.6.0...master
+[Unreleased]: https://github.com/probe-rs/probe-rs/compare/v0.6.1...master
+[0.6.1]: https://github.com/probe-rs/probe-rs/releases/tag/v0.6.1
 [0.6.0]: https://github.com/probe-rs/probe-rs/releases/tag/v0.6.0
 [0.5.1]: https://github.com/probe-rs/probe-rs/releases/tag/v0.5.1
 [0.5.0]: https://github.com/probe-rs/probe-rs/releases/tag/v0.5.0
