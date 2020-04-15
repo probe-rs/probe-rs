@@ -25,6 +25,29 @@ impl Dfsr {
     fn clear_all() -> Self {
         Dfsr(0b11111)
     }
+
+    fn halt_reason(&self) -> HaltReason {
+        if self.0.count_ones() != 1 {
+            // We cannot identify why the chip halted,
+            // it could be for multiple reasons.
+            HaltReason::Unknown
+        } else {
+            if self.bkpt() {
+                HaltReason::Breakpoint
+            } else if self.external() {
+                HaltReason::External
+            } else if self.dwttrap() {
+                HaltReason::Watchpoint
+            } else if self.halted() {
+                HaltReason::Request
+            } else if self.vcatch() {
+                HaltReason::Exception
+            } else {
+                // We check that exactly one bit is set, so we should hit one of the cases above.
+                panic!("This should not happen. Please open a bug report.")
+            }
+        }
+    }
 }
 
 impl From<u32> for Dfsr {
@@ -380,36 +403,18 @@ impl M4 {
 
             let dfsr = Dfsr(memory.read32(Dfsr::ADDRESS)?);
 
-            // If there is more than one bit set, we cannot really tell what
-            // the reason for the halt was
-            let reason = if dfsr.0.count_ones() != 1 {
-                log::warn!("Unable to determine reason for halt");
-                HaltReason::Unknown
-            } else {
-                if dfsr.bkpt() {
-                    HaltReason::Breakpoint
-                } else if dfsr.external() {
-                    HaltReason::External
-                } else if dfsr.dwttrap() {
-                    HaltReason::Watchpoint
-                } else if dfsr.halted() {
-                    HaltReason::Request
-                } else if dfsr.vcatch() {
-                    HaltReason::Exception
-                } else {
-                    // We check that exactly one bit is set, so we should hit one of the cases above.
-                    panic!("This should not happen. Please open a bug report.")
-                }
-            };
-
-            // clear DFSR
-            let dfsr_clear = Dfsr::clear_all();
-            memory.write32(Dfsr::ADDRESS, dfsr_clear.into())?;
+            let reason = dfsr.halt_reason();
 
             CoreStatus::Halted(reason)
         } else {
             CoreStatus::Running
         };
+
+        // Clear DFSR register. The bits in the register are sticky,
+        // so we clear them here to ensure that that none are set.
+        let dfsr_clear = Dfsr::clear_all();
+
+        memory.write32(Dfsr::ADDRESS, dfsr_clear.into())?;
 
         Ok(Self {
             memory,
@@ -477,47 +482,28 @@ impl CoreInterface for M4 {
         if dhcsr.s_halt() {
             let dfsr = Dfsr(self.memory.read32(Dfsr::ADDRESS)?);
 
-            // If the core was halted before, we cannot read the halt reason from the chip,
-            // because we clear it directly after reading.
-            if self.current_state.is_halted()
-                && self.current_state != CoreStatus::Halted(HaltReason::Unknown)
-            {
-                // there shouldn't be any bits set
-                if dfsr.0 != 0 {
-                    log::warn!("Reason for halt has changed, new DFSR: {:?}", &dfsr);
-                    self.memory
-                        .write32(Dfsr::ADDRESS, Dfsr::clear_all().into())?;
-                }
-                return Ok(self.current_state);
-            }
-
-            let reason = {
-                if dfsr.0.count_ones() != 1 {
-                    // more than one bit set, should not happen.
-                    log::warn!("Multiple bits set in DFSR: {:?}", &dfsr);
-                    HaltReason::Unknown
-                } else {
-                    if dfsr.halted() {
-                        // TODO: Determine if due to step request or not?
-                        HaltReason::Request
-                    } else if dfsr.bkpt() {
-                        HaltReason::Breakpoint
-                    } else if dfsr.dwttrap() {
-                        HaltReason::Watchpoint
-                    } else if dfsr.vcatch() {
-                        HaltReason::Exception
-                    } else if dfsr.external() {
-                        HaltReason::External
-                    } else {
-                        // Should not happen..
-                        panic!("Unknown halt reason");
-                    }
-                }
-            };
+            let reason = dfsr.halt_reason();
 
             // Clear bits from Dfsr register
             self.memory
                 .write32(Dfsr::ADDRESS, Dfsr::clear_all().into())?;
+
+            // If the core was halted before, we cannot read the halt reason from the chip,
+            // because we clear it directly after reading.
+            if self.current_state.is_halted() {
+                // There shouldn't be any bits set, otherwise it means
+                // that the reason for the halt has changed. No bits set
+                // means that we have an unkown HaltReason.
+                if reason == HaltReason::Unknown {
+                    return Ok(self.current_state);
+                }
+
+                log::warn!(
+                    "Reason for halt has changed, old reason was {:?}, new reason is {:?}",
+                    &self.current_state,
+                    &reason
+                );
+            }
 
             self.current_state = CoreStatus::Halted(reason);
 
