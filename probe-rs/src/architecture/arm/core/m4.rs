@@ -7,8 +7,45 @@ use crate::DebugProbeError;
 use bitfield::bitfield;
 
 use super::{register, ARM_REGISTER_FILE};
-use crate::core::Architecture;
+use crate::core::{Architecture, CoreStatus, HaltReason};
 use std::mem::size_of;
+
+bitfield! {
+    #[derive(Copy, Clone)]
+    pub struct Dfsr(u32);
+    impl Debug;
+    pub external, set_external: 4;
+    pub vcatch, set_vcatch: 3;
+    pub dwttrap, set_dwttrap: 2;
+    pub bkpt, set_bkpt: 1;
+    pub halted, set_halted: 0;
+}
+
+impl Dfsr {
+    fn clear_all() -> Self {
+        Dfsr(0b11111)
+    }
+}
+
+impl From<u32> for Dfsr {
+    fn from(val: u32) -> Self {
+        // Ensure that all unused bits are set to zero
+        // This makes it possible to check the number of
+        // set bits using count_ones().
+        Dfsr(val & 0b11111)
+    }
+}
+
+impl From<Dfsr> for u32 {
+    fn from(register: Dfsr) -> Self {
+        register.0
+    }
+}
+
+impl CoreRegister for Dfsr {
+    const ADDRESS: u32 = 0xE000ED30;
+    const NAME: &'static str = "DFSR";
+}
 
 bitfield! {
     #[derive(Copy, Clone)]
@@ -327,14 +364,58 @@ pub struct M4 {
     memory: Memory,
 
     hw_breakpoints_enabled: bool,
+
+    current_state: CoreStatus,
 }
 
 impl M4 {
-    pub fn new(memory: Memory) -> Self {
-        Self {
+    pub fn new(memory: Memory) -> Result<Self, Error> {
+        // determine current state
+        let dhcsr = Dhcsr(memory.read32(Dhcsr::ADDRESS)?);
+
+        let state = if dhcsr.s_sleep() {
+            CoreStatus::Sleeping
+        } else if dhcsr.s_halt() {
+            log::debug!("Core was halted when connecting");
+
+            let dfsr = Dfsr(memory.read32(Dfsr::ADDRESS)?);
+
+            // If there is more than one bit set, we cannot really tell what
+            // the reason for the halt was
+            let reason = if dfsr.0.count_ones() != 1 {
+                log::warn!("Unable to determine reason for halt");
+                HaltReason::Unknown
+            } else {
+                if dfsr.bkpt() {
+                    HaltReason::Breakpoint
+                } else if dfsr.external() {
+                    HaltReason::External
+                } else if dfsr.dwttrap() {
+                    HaltReason::Watchpoint
+                } else if dfsr.halted() {
+                    HaltReason::Request
+                } else if dfsr.vcatch() {
+                    HaltReason::Exception
+                } else {
+                    // We check that exactly one bit is set, so we should hit one of the cases above.
+                    panic!("This should not happen. Please open a bug report.")
+                }
+            };
+
+            // clear DFSR
+            let dfsr_clear = Dfsr::clear_all();
+            memory.write32(Dfsr::ADDRESS, dfsr_clear.into())?;
+
+            CoreStatus::Halted(reason)
+        } else {
+            CoreStatus::Running
+        };
+
+        Ok(Self {
             memory,
             hw_breakpoints_enabled: false,
-        }
+            current_state: state,
+        })
     }
 
     fn wait_for_core_register_transfer(&self) -> Result<(), Error> {
@@ -352,11 +433,14 @@ impl M4 {
 }
 
 impl CoreInterface for M4 {
-    fn wait_for_core_halted(&self) -> Result<(), Error> {
+    fn wait_for_core_halted(&mut self) -> Result<(), Error> {
         // Wait until halted state is active again.
         for _ in 0..100 {
             let dhcsr_val = Dhcsr(self.memory.read32(Dhcsr::ADDRESS)?);
             if dhcsr_val.s_halt() {
+                // update halted state
+                self.status()?;
+
                 return Ok(());
             }
         }
@@ -372,6 +456,82 @@ impl CoreInterface for M4 {
         } else {
             Ok(false)
         }
+    }
+
+    fn status(&mut self) -> Result<CoreStatus, Error> {
+        let dhcsr = Dhcsr(self.memory.read32(Dhcsr::ADDRESS)?);
+
+        if dhcsr.s_sleep() {
+            // Check if we assumed the core to be halted
+            if self.current_state.is_halted() {
+                log::warn!("Expected core to be halted, but core is running");
+            }
+
+            self.current_state = CoreStatus::Sleeping;
+
+            return Ok(CoreStatus::Sleeping);
+        }
+
+        // TODO: Handle lockup
+
+        if dhcsr.s_halt() {
+            let dfsr = Dfsr(self.memory.read32(Dfsr::ADDRESS)?);
+
+            // If the core was halted before, we cannot read the halt reason from the chip,
+            // because we clear it directly after reading.
+            if self.current_state.is_halted()
+                && self.current_state != CoreStatus::Halted(HaltReason::Unknown)
+            {
+                // there shouldn't be any bits set
+                if dfsr.0 != 0 {
+                    log::warn!("Reason for halt has changed, new DFSR: {:?}", &dfsr);
+                    self.memory
+                        .write32(Dfsr::ADDRESS, Dfsr::clear_all().into())?;
+                }
+                return Ok(self.current_state);
+            }
+
+            let reason = {
+                if dfsr.0.count_ones() != 1 {
+                    // more than one bit set, should not happen.
+                    log::warn!("Multiple bits set in DFSR: {:?}", &dfsr);
+                    HaltReason::Unknown
+                } else {
+                    if dfsr.halted() {
+                        // TODO: Determine if due to step request or not?
+                        HaltReason::Request
+                    } else if dfsr.bkpt() {
+                        HaltReason::Breakpoint
+                    } else if dfsr.dwttrap() {
+                        HaltReason::Watchpoint
+                    } else if dfsr.vcatch() {
+                        HaltReason::Exception
+                    } else if dfsr.external() {
+                        HaltReason::External
+                    } else {
+                        // Should not happen..
+                        panic!("Unknown halt reason");
+                    }
+                }
+            };
+
+            // Clear bits from Dfsr register
+            self.memory
+                .write32(Dfsr::ADDRESS, Dfsr::clear_all().into())?;
+
+            self.current_state = CoreStatus::Halted(reason);
+
+            return Ok(CoreStatus::Halted(reason));
+        }
+
+        // Core is neither halted nor sleeping, so we assume it is running.
+        if self.current_state.is_halted() {
+            log::warn!("Core is running, but we expected it to be halted");
+        }
+
+        self.current_state = CoreStatus::Running;
+
+        Ok(CoreStatus::Running)
     }
 
     fn read_core_reg(&self, addr: CoreRegisterAddress) -> Result<u32, Error> {
@@ -404,7 +564,7 @@ impl CoreInterface for M4 {
         self.wait_for_core_register_transfer()
     }
 
-    fn halt(&self) -> Result<CoreInformation, Error> {
+    fn halt(&mut self) -> Result<CoreInformation, Error> {
         // TODO: Generic halt support
 
         let mut value = Dhcsr(0);
@@ -423,18 +583,21 @@ impl CoreInterface for M4 {
         Ok(CoreInformation { pc: pc_value })
     }
 
-    fn run(&self) -> Result<(), Error> {
+    fn run(&mut self) -> Result<(), Error> {
         let mut value = Dhcsr(0);
         value.set_c_halt(false);
         value.set_c_debugen(true);
         value.enable_write();
 
-        self.memory
-            .write32(Dhcsr::ADDRESS, value.into())
-            .map_err(Into::into)
+        self.memory.write32(Dhcsr::ADDRESS, value.into())?;
+
+        // We assume that the core is running now
+        self.current_state = CoreStatus::Running;
+
+        Ok(())
     }
 
-    fn step(&self) -> Result<CoreInformation, Error> {
+    fn step(&mut self) -> Result<CoreInformation, Error> {
         let mut value = Dhcsr(0);
         // Leave halted state.
         // Step one instruction.
@@ -466,7 +629,7 @@ impl CoreInterface for M4 {
         Ok(())
     }
 
-    fn reset_and_halt(&self) -> Result<CoreInformation, Error> {
+    fn reset_and_halt(&mut self) -> Result<CoreInformation, Error> {
         // Ensure debug mode is enabled
         let dhcsr_val = Dhcsr(self.memory.read32(Dhcsr::ADDRESS)?);
         if !dhcsr_val.c_debugen() {

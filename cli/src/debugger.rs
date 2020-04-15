@@ -3,7 +3,7 @@ use crate::common::CliError;
 use capstone::Capstone;
 use probe_rs::architecture::arm::CortexDump;
 use probe_rs::debug::DebugInfo;
-use probe_rs::{Core, CoreRegisterAddress};
+use probe_rs::{Core, CoreRegisterAddress, CoreStatus, HaltReason};
 use std::fs::File;
 use std::io::prelude::*;
 
@@ -58,6 +58,31 @@ impl DebugCli {
                         cpu_info.pc + offset as u32,
                         instruction
                     );
+                }
+
+                Ok(CliState::Continue)
+            },
+        });
+
+        cli.add_command(Command {
+            name: "status",
+            help_text: "Show current status of CPU",
+
+            function: |cli_data, _args| {
+                let status = cli_data.core.status()?;
+
+                println!("Status: {:?}", &status);
+
+                if let CoreStatus::Halted(reason) = status {
+                    match reason {
+                        HaltReason::Breakpoint => {
+                            let pc = cli_data
+                                .core
+                                .read_core_reg(cli_data.core.registers().program_counter())?;
+                            println!("Hit breakpoint at address {:#010x}", pc);
+                        }
+                        _ => (),
+                    }
                 }
 
                 Ok(CliState::Continue)

@@ -112,7 +112,7 @@ impl Riscv32 {
 }
 
 impl CoreInterface for Riscv32 {
-    fn wait_for_core_halted(&self) -> Result<(), crate::Error> {
+    fn wait_for_core_halted(&mut self) -> Result<(), crate::Error> {
         // poll the
         let num_retries = 10;
 
@@ -135,7 +135,7 @@ impl CoreInterface for Riscv32 {
         Ok(dmstatus.allhalted())
     }
 
-    fn halt(&self) -> Result<CoreInformation, crate::Error> {
+    fn halt(&mut self) -> Result<CoreInformation, crate::Error> {
         // write 1 to the haltreq register, which is part
         // of the dmcontrol register
 
@@ -164,7 +164,7 @@ impl CoreInterface for Riscv32 {
         Ok(CoreInformation { pc })
     }
 
-    fn run(&self) -> Result<(), crate::Error> {
+    fn run(&mut self) -> Result<(), crate::Error> {
         // TODO: test if core halted?
 
         // set resume request
@@ -248,7 +248,7 @@ impl CoreInterface for Riscv32 {
         Ok(())
     }
 
-    fn reset_and_halt(&self) -> Result<crate::core::CoreInformation, crate::Error> {
+    fn reset_and_halt(&mut self) -> Result<crate::core::CoreInformation, crate::Error> {
         log::debug!("Resetting core, setting hartreset bit");
 
         let mut dmcontrol = Dmcontrol(0);
@@ -310,7 +310,7 @@ impl CoreInterface for Riscv32 {
         Ok(CoreInformation { pc })
     }
 
-    fn step(&self) -> Result<crate::core::CoreInformation, crate::Error> {
+    fn step(&mut self) -> Result<crate::core::CoreInformation, crate::Error> {
         let mut dcsr = Dcsr(self.read_core_reg(CoreRegisterAddress(0x7b0))?);
 
         dcsr.set_step(true);
@@ -505,6 +505,9 @@ impl CoreInterface for Riscv32 {
 
     fn architecture(&self) -> Architecture {
         Architecture::RISCV
+    }
+    fn status(&mut self) -> Result<crate::core::CoreStatus, crate::Error> {
+        todo!()
     }
 }
 
