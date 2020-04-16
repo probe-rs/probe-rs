@@ -31,21 +31,19 @@ impl Dfsr {
             // We cannot identify why the chip halted,
             // it could be for multiple reasons.
             HaltReason::Unknown
+        } else if self.bkpt() {
+            HaltReason::Breakpoint
+        } else if self.external() {
+            HaltReason::External
+        } else if self.dwttrap() {
+            HaltReason::Watchpoint
+        } else if self.halted() {
+            HaltReason::Request
+        } else if self.vcatch() {
+            HaltReason::Exception
         } else {
-            if self.bkpt() {
-                HaltReason::Breakpoint
-            } else if self.external() {
-                HaltReason::External
-            } else if self.dwttrap() {
-                HaltReason::Watchpoint
-            } else if self.halted() {
-                HaltReason::Request
-            } else if self.vcatch() {
-                HaltReason::Exception
-            } else {
-                // We check that exactly one bit is set, so we should hit one of the cases above.
-                panic!("This should not happen. Please open a bug report.")
-            }
+            // We check that exactly one bit is set, so we should hit one of the cases above.
+            panic!("This should not happen. Please open a bug report.")
         }
     }
 }
@@ -66,7 +64,7 @@ impl From<Dfsr> for u32 {
 }
 
 impl CoreRegister for Dfsr {
-    const ADDRESS: u32 = 0xE000ED30;
+    const ADDRESS: u32 = 0xE000_ED30;
     const NAME: &'static str = "DFSR";
 }
 
