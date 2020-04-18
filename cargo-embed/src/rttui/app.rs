@@ -1,4 +1,6 @@
-use std::io::Write;
+use std::{
+    io::{Read, Seek, Write},
+};
 use termion::{
     cursor::Goto,
     event::Key,
@@ -82,6 +84,24 @@ impl App {
             terminal,
             events,
         }
+    }
+
+    pub fn get_rtt_symbol<'b, T: Read + Seek>(file: &'b mut T) -> Option<u64> {
+        let mut buffer = Vec::new();
+        if let Ok(_) = file.read_to_end(&mut buffer) {
+            if let Ok(binary) = goblin::elf::Elf::parse(&buffer.as_slice()) {
+                for sym in &binary.syms {
+                    if let Some(Ok(name)) = binary.strtab.get(sym.st_name) {
+                        if name == "_SEGGER_RTT" {
+                            return Some(sym.st_value);
+                        }
+                    }
+                }
+            }
+        }
+
+        log::warn!("No RTT header info was present in the ELF file. Does your firmware run RTT?");
+        None
     }
 
     pub fn render(&mut self) {

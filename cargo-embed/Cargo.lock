@@ -168,6 +168,7 @@ dependencies = [
  "env_logger",
  "failure",
  "gdb-server",
+ "goblin",
  "indicatif",
  "lazy_static 1.4.0",
  "log",
@@ -1069,6 +1070,7 @@ dependencies = [
 [[package]]
 name = "probe-rs-rtt"
 version = "0.1.0"
+source = "git+https://github.com/mvirkkunen/probe-rs-rtt#1c84dad7e07829fd177b8433c99fd0545ef6798d"
 dependencies = [
  "probe-rs",
  "scroll",

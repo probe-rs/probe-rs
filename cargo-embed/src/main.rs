@@ -16,6 +16,7 @@ use std::{
     process::{self, Command, Stdio},
     sync::{Arc, Mutex},
     time::Instant,
+    fs::File,
 };
 use structopt::StructOpt;
 
@@ -23,6 +24,9 @@ use probe_rs::{
     config::TargetSelector,
     flashing::{download_file_with_options, DownloadOptions, FlashProgress, Format, ProgressEvent},
     Probe,
+};
+use probe_rs_rtt::{
+    Rtt, ScanRegion,
 };
 
 use crate::config::CONFIG;
@@ -384,7 +388,17 @@ fn main_try() -> Result<(), failure::Error> {
         let mut error = None;
         let core = std::rc::Rc::new(core);
         while (t.elapsed().as_millis() as usize) < CONFIG.rtt.timeout {
-            match probe_rs_rtt::Rtt::attach(core.clone(), &session) {
+            let rtt_header_address = if let Ok(mut file) = File::open(path.as_path()) {
+                if let Some(address) = rttui::app::App::get_rtt_symbol(&mut file) {
+                    ScanRegion::Exact(address as u32)
+                } else {
+                    ScanRegion::Ram
+                }
+            } else {
+                ScanRegion::Ram
+            };
+
+            match Rtt::attach_region(core.clone(), &session, &rtt_header_address) {
                 Ok(rtt) => {
                     let mut app = rttui::app::App::new(rtt);
                     loop {
