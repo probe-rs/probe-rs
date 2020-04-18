@@ -69,7 +69,7 @@ impl Config {
 
         // Merge in the local configuration file
         // This file shouldn't be checked in to git
-        s.merge(config::File::with_name("config/Embed").required(false))?;
+        s.merge(config::File::with_name("Embed").required(false))?;
 
         // You can deserialize (and thus freeze) the entire configuration as
         s.try_into()

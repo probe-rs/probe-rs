@@ -161,6 +161,7 @@ fn main_try() -> Result<(), failure::Error> {
     ));
 
     let list = Probe::list_all();
+    println!("{:?}", list);
 
     let device = match CONFIG.probe.probe_index {
         Some(index) => list.get(index).ok_or_else(|| {
@@ -174,7 +175,7 @@ fn main_try() -> Result<(), failure::Error> {
             }
 
             list.first()
-                .ok_or_else(|| format_err!("no supported probe was found"))?
+                .ok_or_else(|| format_err!("no supported probe was found. If you are on Linux, you might want to check your UDEV rules."))?
         }
     };
 

@@ -16,11 +16,11 @@ log_level = "Error"
 attach_under_reset = false
 
 [rtt]
-enabled = true
+enabled = false
 channels = [
     # { up = 0, down = 1 }
 ]
 
 [gdb]
-enabled = true
+enabled = false
 # gdb_connection_string

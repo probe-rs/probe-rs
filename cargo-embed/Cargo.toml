@@ -24,8 +24,8 @@ colored = "1.8.3"
 probe-rs = { version = "0.6.0" }
 gdb-server = { version = "0.6.0" }
 serde = { version = "1.0", features = ["derive"] }
-config = { version = "0.10.0" }
-probe-rs-rtt = { git = "https://github.com/Yatekii/probe-rs-rtt" }
+config = { version = "0.9.0" }
+probe-rs-rtt = { git = "https://github.com/mvirkkunen/probe-rs-rtt" }
 
 tui = "0.8.0"
 termion = "1.5.0"
