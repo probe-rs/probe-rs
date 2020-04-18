@@ -1069,7 +1069,6 @@ dependencies = [
 [[package]]
 name = "probe-rs-rtt"
 version = "0.1.0"
-source = "git+https://github.com/Yatekii/probe-rs-rtt#8af873cd17e4a14ef5e3bbff98ac4ed7153e789b"
 dependencies = [
  "probe-rs",
  "scroll",

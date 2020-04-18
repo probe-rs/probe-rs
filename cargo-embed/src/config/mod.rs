@@ -48,6 +48,8 @@ pub struct General {
 pub struct Rtt {
     pub enabled: bool,
     pub channels: Vec<ChannelConfig>,
+    /// Connection timeout in ms.
+    pub timeout: usize,
 }
 
 /// The gdb config struct holding all the possible gdb options.

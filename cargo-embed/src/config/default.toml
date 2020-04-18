@@ -20,6 +20,7 @@ enabled = false
 channels = [
     # { up = 0, down = 1 }
 ]
+timeout = 3000
 
 [gdb]
 enabled = false

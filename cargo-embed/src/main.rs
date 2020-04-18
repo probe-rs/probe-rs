@@ -380,21 +380,29 @@ fn main_try() -> Result<(), failure::Error> {
         }
     }
     else if CONFIG.rtt.enabled {
-        let rtt = match probe_rs_rtt::Rtt::attach(core, &session) {
-            Ok(rtt) => rtt,
-            Err(err) => {
-                return Err(format_err!("Error attaching to RTT: {}", err));
-            }
-        };
-
-        let mut app = rttui::app::App::new(rtt);
-        loop {
-            app.poll_rtt();
-            app.render();
-            if app.handle_event() {
-                logging::println("Shutting down.");
-                return Ok(())
+        let t = std::time::Instant::now();
+        let mut error = None;
+        let core = std::rc::Rc::new(core);
+        while (t.elapsed().as_millis() as usize) < CONFIG.rtt.timeout {
+            match probe_rs_rtt::Rtt::attach(core.clone(), &session) {
+                Ok(rtt) => {
+                    let mut app = rttui::app::App::new(rtt);
+                    loop {
+                        app.poll_rtt();
+                        app.render();
+                        if app.handle_event() {
+                            logging::println("Shutting down.");
+                            return Ok(())
+                        };
+                    }
+                },
+                Err(err) => {
+                    error = Some(format_err!("Error attaching to RTT: {}", err));
+                }
             };
+        }
+        if let Some(error) = error {
+            return Err(error);
         }
     }
 
