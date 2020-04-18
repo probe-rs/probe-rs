@@ -66,20 +66,21 @@ pub(crate) fn read_memory(packet_string: String, core: &Core) -> Option<String> 
     let m = packet_string.parse::<M>().unwrap();
 
     let mut readback_data = vec![0u8; usize::from_str_radix(&m.length, 16).unwrap()];
-    core.memory()
+    println!("{:?}", u32::from_str_radix(&m.addr, 16));
+    match core.memory()
         .read_block8(
             u32::from_str_radix(&m.addr, 16).unwrap(),
             &mut readback_data,
-        )
-        .unwrap();
-
-    Some(
-        readback_data
-            .iter()
-            .map(|s| format!("{:02x?}", s))
-            .collect::<Vec<String>>()
-            .join(""),
-    )
+        ) {
+            Ok(data) => Some(
+                readback_data
+                    .iter()
+                    .map(|s| format!("{:02x?}", s))
+                    .collect::<Vec<String>>()
+                    .join(""),
+            ),
+            Err(_e) => Some("E79".to_string())
+        }
 }
 
 pub(crate) fn vcont_supported() -> Option<String> {
