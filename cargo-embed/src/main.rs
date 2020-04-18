@@ -2,6 +2,7 @@ mod config;
 mod error;
 mod helpers;
 mod logging;
+mod rttui;
 
 use structopt;
 
@@ -79,7 +80,7 @@ fn main_try() -> Result<(), failure::Error> {
 
     // When called by Cargo, the first argument after the binary name will be `flash`. If that's the
     // case, remove one argument (`Opt::from_iter` will remove the binary name by itself).
-    if env::args().nth(1) == Some("flash".to_string()) {
+    if env::args().nth(1) == Some("embed".to_string()) {
         args.next();
     }
 
@@ -88,7 +89,7 @@ fn main_try() -> Result<(), failure::Error> {
     // Get commandline options.
     let opt = Opt::from_iter(&args);
 
-    logging::init(CONFIG.general.log_level);
+    logging::init(Some(CONFIG.general.log_level));
 
     // Make sure we load the config given in the cli parameters.
     for cdp in &CONFIG.general.chip_descriptions {
@@ -355,6 +356,10 @@ fn main_try() -> Result<(), failure::Error> {
         core.reset()?;
     }
 
+    if CONFIG.gdb.enabled && CONFIG.rtt.enabled {
+        return Err(format_err!("Unfortunately, at the moment, only GDB OR RTT are possible."));
+    }
+
     if CONFIG.gdb.enabled {
         let gdb_connection_string = CONFIG
             .gdb
@@ -363,7 +368,7 @@ fn main_try() -> Result<(), failure::Error> {
             .or_else(|| Some("localhost:1337"));
         // This next unwrap will always resolve as the connection string is always Some(T).
         logging::println(format!(
-            "Firing up GDB stub at {}",
+            "Firing up GDB stub at {}.",
             gdb_connection_string.as_ref().unwrap(),
         ));
         if let Err(e) =
@@ -371,6 +376,24 @@ fn main_try() -> Result<(), failure::Error> {
         {
             logging::eprintln("During the execution of GDB an error was encountered:");
             logging::eprintln(format!("{:?}", e));
+        }
+    }
+    else if CONFIG.rtt.enabled {
+        let rtt = match probe_rs_rtt::Rtt::attach(core, &session) {
+            Ok(rtt) => rtt,
+            Err(err) => {
+                return Err(format_err!("Error attaching to RTT: {}", err));
+            }
+        };
+
+        let mut app = rttui::app::App::new(rtt);
+        loop {
+            app.poll_rtt();
+            app.render();
+            if app.handle_event() {
+                logging::println("Shutting down.");
+                return Ok(())
+            };
         }
     }
 

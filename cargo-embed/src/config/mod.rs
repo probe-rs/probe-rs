@@ -1,5 +1,6 @@
 use probe_rs::WireProtocol;
 use serde::Deserialize;
+use crate::rttui::channel::ChannelConfig;
 
 lazy_static::lazy_static! {
     /// This is an example for using doc comment attributes
@@ -38,7 +39,7 @@ pub struct Flashing {
 pub struct General {
     pub chip: Option<String>,
     pub chip_descriptions: Vec<String>,
-    pub log_level: Option<log::Level>,
+    pub log_level: log::Level,
     pub attach_under_reset: bool,
 }
 
@@ -46,6 +47,7 @@ pub struct General {
 #[derive(Debug, Deserialize)]
 pub struct Rtt {
     pub enabled: bool,
+    pub channels: Vec<ChannelConfig>,
 }
 
 /// The gdb config struct holding all the possible gdb options.

@@ -1,23 +1,26 @@
 [probe]
-probe_index = "None"
+# probe_index
 protocol = "Swd"
-speed = "None"
+# speed
 
 [flashing]
 enabled = true
 halt_afterwards = false
 restore_unwritten_bytes = false
-flash_layout_output_path = "None"
+# flash_layout_output_path
 
 [general]
-chip = "None"
+# chip
 chip_descriptions = []
-log_level = "Warning"
+log_level = "Error"
 attach_under_reset = false
 
 [rtt]
 enabled = true
+channels = [
+    # { up = 0, down = 1 }
+]
 
 [gdb]
 enabled = true
-gdb_connection_string = "None"
+# gdb_connection_string

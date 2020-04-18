@@ -21,7 +21,12 @@ env_logger = "0.7.1"
 log = { version = "0.4.0", features = ["serde"] }
 lazy_static = "1.4.0"
 colored = "1.8.3"
-probe-rs = { version = "0.6.0", git = "https://github.com/probe-rs/probe-rs", branch = "cargo-embed-changes" }
-gdb-server = { version = "0.6.0", git = "https://github.com/probe-rs/probe-rs", branch = "cargo-embed-changes" }
+probe-rs = { version = "0.6.0" }
+gdb-server = { version = "0.6.0" }
 serde = { version = "1.0", features = ["derive"] }
 config = { version = "0.10.0" }
+probe-rs-rtt = { git = "https://github.com/Yatekii/probe-rs-rtt" }
+
+tui = "0.8.0"
+termion = "1.5.0"
+unicode-width = "0.1.7"
