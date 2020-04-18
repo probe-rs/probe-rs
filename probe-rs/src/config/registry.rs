@@ -140,7 +140,7 @@ impl Registry {
     fn get_target_by_name(&self, name: impl AsRef<str>) -> Result<Target, RegistryError> {
         let name = name.as_ref();
 
-        log::trace!("Searching registry for chip with name {}", name);
+        log::debug!("Searching registry for chip with name {}", name);
 
         let (family, chip) = {
             // Try get the corresponding chip.
@@ -223,7 +223,7 @@ impl Registry {
 
     fn add_target_from_yaml(&mut self, path_to_yaml: &Path) -> Result<(), RegistryError> {
         let file = File::open(path_to_yaml)?;
-        let chip = ChipFamily::from_yaml_reader(file)?;
+        let chip = dbg!(ChipFamily::from_yaml_reader(file)?);
 
         let index = self
             .families

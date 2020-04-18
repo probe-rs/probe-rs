@@ -509,6 +509,10 @@ impl Core {
         }
     }
 
+    pub fn architecture(&self) -> Architecture {
+        self.inner.borrow().architecture()
+    }
+
     fn find_free_breakpoint_unit(&self) -> usize {
         let mut used_bp: Vec<_> = self.breakpoints.iter().map(|bp| bp.register_hw).collect();
         used_bp.sort();
@@ -557,6 +561,7 @@ pub struct Breakpoint {
     register_hw: usize,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Architecture {
     ARM,
     RISCV,
