@@ -117,7 +117,7 @@ impl<'a, 'b> FlashLoader<'a, 'b> {
                 })
                 .collect::<Vec<_>>();
 
-            //log::debug!("Algorithms: {:?}", &algorithms);
+            log::debug!("Algorithms: {:?}", &algorithms);
 
             let raw_flash_algorithm = match algorithms.len() {
                 0 => {
@@ -144,7 +144,8 @@ impl<'a, 'b> FlashLoader<'a, 'b> {
                 _ => unreachable!(),
             };
 
-            let flash_algorithm = raw_flash_algorithm.assemble(unwrapped_ram);
+            let flash_algorithm =
+                raw_flash_algorithm.assemble(unwrapped_ram, session.architecture());
 
             // Program the data.
             let mut flasher = Flasher::new(session.clone(), &flash_algorithm, region);

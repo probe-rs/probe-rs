@@ -15,6 +15,8 @@ struct CLI {
     address: u32,
     #[structopt(long = "size")]
     size: usize,
+    #[structopt(long = "protocol")]
+    protocol: Option<String>,
 }
 
 fn parse_hex(src: &str) -> Result<u32, ParseIntError> {
@@ -33,8 +35,13 @@ fn main() -> Result<(), &'static str> {
         None => TargetSelector::Auto,
     };
 
+    let protocol = match matches.protocol {
+        Some(protocol) => protocol.parse().map_err(|_| "Unknown protocol")?,
+        None => WireProtocol::Swd,
+    };
+
     probe
-        .select_protocol(WireProtocol::Swd)
+        .select_protocol(protocol)
         .map_err(|_| "Failed to select SWD as the transport protocol")?;
     let session = probe
         .attach(target_selector)
@@ -52,6 +59,8 @@ fn main() -> Result<(), &'static str> {
     let mut sample_data = vec![0u32; data_size_words];
 
     rng.fill(&mut sample_data[..]);
+
+    core.halt().unwrap();
 
     let write_start = Instant::now();
     core.write_32(matches.address, &sample_data).unwrap();

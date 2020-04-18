@@ -145,6 +145,10 @@ impl Session {
     pub fn memory_map(&self) -> Vec<MemoryRegion> {
         self.inner.borrow().target.memory_map.clone()
     }
+
+    pub fn architecture(&self) -> Architecture {
+        self.inner.borrow().architecture()
+    }
 }
 
 fn try_arm_autodetect(probe: Probe) -> (Probe, Result<Option<ChipInfo>, Error>) {
@@ -174,6 +178,17 @@ fn try_arm_autodetect(probe: Probe) -> (Probe, Result<Option<ChipInfo>, Error>) 
         log::debug!("No DAP interface available on Probe");
 
         (probe, Ok(None))
+    }
+}
+
+impl InnerSession {
+    fn architecture(&self) -> Architecture {
+        use ArchitectureSession::*;
+
+        match self.architecture_session {
+            Arm(_) => Architecture::ARM,
+            Riscv(_) => Architecture::RISCV,
+        }
     }
 }
 
