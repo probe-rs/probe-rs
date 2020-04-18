@@ -274,11 +274,11 @@ impl CoreType {
             // TODO: Change this once the new archtecture structure for ARM hits.
             // Cortex-M3, M4 and M7 use the Armv7[E]-M architecture and are
             // identical for our purposes.
-            CoreType::M3 => Core::new(crate::architecture::arm::m4::M4::new(memory)?),
-            CoreType::M4 => Core::new(crate::architecture::arm::m4::M4::new(memory)?),
-            CoreType::M7 => Core::new(crate::architecture::arm::m4::M4::new(memory)?),
-            CoreType::M33 => Core::new(crate::architecture::arm::m33::M33::new(memory)),
-            CoreType::M0 => Core::new(crate::architecture::arm::m0::M0::new(memory)),
+            CoreType::M3 | CoreType::M4 | CoreType::M7 => {
+                Core::new(crate::architecture::arm::m4::M4::new(memory)?)
+            }
+            CoreType::M33 => Core::new(crate::architecture::arm::m33::M33::new(memory)?),
+            CoreType::M0 => Core::new(crate::architecture::arm::m0::M0::new(memory)?),
             _ => {
                 return Err(Error::UnableToOpenProbe(
                     "Core architecture and Probe mismatch.",
