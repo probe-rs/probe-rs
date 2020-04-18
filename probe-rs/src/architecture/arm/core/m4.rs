@@ -4,69 +4,12 @@ use crate::core::{
 use crate::error::Error;
 use crate::memory::Memory;
 use crate::DebugProbeError;
-use bitfield::bitfield;
 
-use super::{register, ARM_REGISTER_FILE};
+use super::{register, Dfsr, ARM_REGISTER_FILE};
 use crate::core::{Architecture, CoreStatus, HaltReason};
+
+use bitfield::bitfield;
 use std::mem::size_of;
-
-bitfield! {
-    #[derive(Copy, Clone)]
-    pub struct Dfsr(u32);
-    impl Debug;
-    pub external, set_external: 4;
-    pub vcatch, set_vcatch: 3;
-    pub dwttrap, set_dwttrap: 2;
-    pub bkpt, set_bkpt: 1;
-    pub halted, set_halted: 0;
-}
-
-impl Dfsr {
-    fn clear_all() -> Self {
-        Dfsr(0b11111)
-    }
-
-    fn halt_reason(&self) -> HaltReason {
-        if self.0.count_ones() != 1 {
-            // We cannot identify why the chip halted,
-            // it could be for multiple reasons.
-            HaltReason::Unknown
-        } else if self.bkpt() {
-            HaltReason::Breakpoint
-        } else if self.external() {
-            HaltReason::External
-        } else if self.dwttrap() {
-            HaltReason::Watchpoint
-        } else if self.halted() {
-            HaltReason::Request
-        } else if self.vcatch() {
-            HaltReason::Exception
-        } else {
-            // We check that exactly one bit is set, so we should hit one of the cases above.
-            panic!("This should not happen. Please open a bug report.")
-        }
-    }
-}
-
-impl From<u32> for Dfsr {
-    fn from(val: u32) -> Self {
-        // Ensure that all unused bits are set to zero
-        // This makes it possible to check the number of
-        // set bits using count_ones().
-        Dfsr(val & 0b11111)
-    }
-}
-
-impl From<Dfsr> for u32 {
-    fn from(register: Dfsr) -> Self {
-        register.0
-    }
-}
-
-impl CoreRegister for Dfsr {
-    const ADDRESS: u32 = 0xE000_ED30;
-    const NAME: &'static str = "DFSR";
-}
 
 bitfield! {
     #[derive(Copy, Clone)]
