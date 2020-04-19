@@ -21,6 +21,8 @@ pub enum CmsisDapError {
     TooMuchData,
     #[error("Error in the USB HID access: {0}")]
     HidApi(#[from] hidapi::HidError),
+    #[error("Error in the USB access: {0}")]
+    USBError(#[from] rusb::Error),
     #[error("An error with the DAP communication occured: {0}")]
     Dap(#[from] DapError),
 }
