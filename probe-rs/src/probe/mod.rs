@@ -403,7 +403,7 @@ impl std::fmt::Debug for DebugProbeInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(
             f,
-            "{} (VID: {}, PID: {}, {}{:?})",
+            "{} (VID: {:04x}, PID: {:04x}, {}{:?})",
             self.identifier,
             self.vendor_id,
             self.product_id,
