@@ -32,4 +32,6 @@ which will then build your binary and download the contents onto the connected t
 You can configure `cargo-embed` with a file called `Embed.toml` in your project directory.
 Instead of a TOML file, you can also use a YAML or a JSON file. Choose what suits you best!
 
+Configuring via a config file is nice to have a persistent config for your project which always targets the same core.
+
 You can find all available options in the [default.toml](src/config/default.toml). Commented out options are the ones that are `None` by default.
