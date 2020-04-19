@@ -1,4 +1,4 @@
-use chrono::{Local, SecondsFormat};
+use chrono::Local;
 use probe_rs_rtt::{DownChannel, UpChannel};
 
 #[derive(Debug, serde::Serialize, serde::Deserialize, Clone)]
@@ -124,8 +124,8 @@ impl ChannelState {
         // Then split the entire new contents.
         for (i, line) in incoming.split_terminator('\n').enumerate() {
             if self.show_timestamps && (last_line_done || i > 0) {
-                let ts = now.to_rfc3339_opts(SecondsFormat::Millis, true);
-                self.messages.push(format!("[{}] {}", ts, line));
+                let ts = now.format("%H:%M:%S%.3f");
+                self.messages.push(format!("{} {}", ts, line));
             } else {
                 self.messages.push(line.to_string());
             }
