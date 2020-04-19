@@ -4,7 +4,6 @@ use std::{
 use termion::{
     cursor::Goto,
     event::Key,
-    input::MouseTerminal,
     raw::{IntoRawMode, RawTerminal},
     screen::AlternateScreen,
 };
@@ -29,7 +28,7 @@ pub struct App {
     current_tab: usize,
 
     terminal:
-        Terminal<TermionBackend<AlternateScreen<MouseTerminal<RawTerminal<std::io::Stdout>>>>>,
+        Terminal<TermionBackend<AlternateScreen<RawTerminal<std::io::Stdout>>>>,
     events: Events,
 }
 
@@ -48,7 +47,6 @@ fn pull_channel<C: RttChannel>(channels: &mut Vec<C>, n: usize) -> Option<C> {
 impl App {
     pub fn new(mut rtt: probe_rs_rtt::Rtt) -> Self {
         let stdout = std::io::stdout().into_raw_mode().unwrap();
-        let stdout = MouseTerminal::from(stdout);
         let stdout = AlternateScreen::from(stdout);
         let backend = TermionBackend::new(stdout);
         let terminal = Terminal::new(backend).unwrap();

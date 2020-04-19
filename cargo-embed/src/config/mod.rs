@@ -40,7 +40,6 @@ pub struct General {
     pub chip: Option<String>,
     pub chip_descriptions: Vec<String>,
     pub log_level: log::Level,
-    pub attach_under_reset: bool,
 }
 
 /// The rtt config struct holding all the possible rtt options.
