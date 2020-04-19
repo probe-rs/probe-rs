@@ -1,4 +1,4 @@
-use probe_rs_rtt::{UpChannel, DownChannel};
+use probe_rs_rtt::{DownChannel, UpChannel};
 
 #[derive(Debug, serde::Serialize, serde::Deserialize, Clone)]
 pub struct ChannelConfig {
@@ -19,13 +19,19 @@ pub struct ChannelState {
 }
 
 impl ChannelState {
-    pub fn new(up_channel: Option<UpChannel>, down_channel: Option<DownChannel>, name: Option<String>) -> Self {
+    pub fn new(
+        up_channel: Option<UpChannel>,
+        down_channel: Option<DownChannel>,
+        name: Option<String>,
+    ) -> Self {
         let name = name
             .clone()
             .or(up_channel.as_ref().and_then(|up| up.name().map(Into::into)))
-            .or(down_channel.as_ref().and_then(|down| down.name().map(Into::into)))
+            .or(down_channel
+                .as_ref()
+                .and_then(|down| down.name().map(Into::into)))
             .unwrap_or("Unnamed channel".to_owned());
-        
+
         Self {
             up_channel,
             down_channel,

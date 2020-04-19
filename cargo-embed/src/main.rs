@@ -11,12 +11,12 @@ use failure::format_err;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use std::{
     env,
+    fs::File,
     io::Write,
     path::{Path, PathBuf},
     process::{self, Command, Stdio},
     sync::{Arc, Mutex},
     time::Instant,
-    fs::File,
 };
 use structopt::StructOpt;
 
@@ -25,9 +25,7 @@ use probe_rs::{
     flashing::{download_file_with_options, DownloadOptions, FlashProgress, Format, ProgressEvent},
     Probe,
 };
-use probe_rs_rtt::{
-    Rtt, ScanRegion,
-};
+use probe_rs_rtt::{Rtt, ScanRegion};
 
 use crate::config::CONFIG;
 
@@ -362,7 +360,9 @@ fn main_try() -> Result<(), failure::Error> {
     }
 
     if CONFIG.gdb.enabled && CONFIG.rtt.enabled {
-        return Err(format_err!("Unfortunately, at the moment, only GDB OR RTT are possible."));
+        return Err(format_err!(
+            "Unfortunately, at the moment, only GDB OR RTT are possible."
+        ));
     }
 
     if CONFIG.gdb.enabled {
@@ -382,8 +382,7 @@ fn main_try() -> Result<(), failure::Error> {
             logging::eprintln("During the execution of GDB an error was encountered:");
             logging::eprintln(format!("{:?}", e));
         }
-    }
-    else if CONFIG.rtt.enabled {
+    } else if CONFIG.rtt.enabled {
         let t = std::time::Instant::now();
         let mut error = None;
         let core = std::rc::Rc::new(core);
@@ -406,10 +405,10 @@ fn main_try() -> Result<(), failure::Error> {
                         app.render();
                         if app.handle_event() {
                             logging::println("Shutting down.");
-                            return Ok(())
+                            return Ok(());
                         };
                     }
-                },
+                }
                 Err(err) => {
                     error = Some(format_err!("Error attaching to RTT: {}", err));
                 }

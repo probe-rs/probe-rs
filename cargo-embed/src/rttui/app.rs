@@ -1,6 +1,5 @@
-use std::{
-    io::{Read, Seek, Write},
-};
+use probe_rs_rtt::RttChannel;
+use std::io::{Read, Seek, Write};
 use termion::{
     cursor::Goto,
     event::Key,
@@ -14,11 +13,10 @@ use tui::{
     widgets::{Block, Borders, List, Paragraph, Tabs, Text},
     Terminal,
 };
-use probe_rs_rtt::{RttChannel};
 use unicode_width::UnicodeWidthStr;
 
-use super::event::{Event, Events};
 use super::channel::ChannelState;
+use super::event::{Event, Events};
 
 use crate::config::CONFIG;
 
@@ -27,19 +25,16 @@ pub struct App {
     tabs: Vec<ChannelState>,
     current_tab: usize,
 
-    terminal:
-        Terminal<TermionBackend<AlternateScreen<RawTerminal<std::io::Stdout>>>>,
+    terminal: Terminal<TermionBackend<AlternateScreen<RawTerminal<std::io::Stdout>>>>,
     events: Events,
 }
 
 fn pull_channel<C: RttChannel>(channels: &mut Vec<C>, n: usize) -> Option<C> {
-    let c = channels.iter().enumerate().find_map(|(i, c)| {
-        if c.number() == n {
-            Some(i)
-        } else {
-            None
-        }
-    });
+    let c =
+        channels
+            .iter()
+            .enumerate()
+            .find_map(|(i, c)| if c.number() == n { Some(i) } else { None });
 
     c.map(|c| channels.remove(c))
 }
@@ -59,15 +54,21 @@ impl App {
         if !CONFIG.rtt.channels.is_empty() {
             for channel in &CONFIG.rtt.channels {
                 tabs.push(ChannelState::new(
-                    channel.up.and_then(|up| pull_channel(&mut up_channels, up)), 
-                    channel.down.and_then(|down| pull_channel(&mut down_channels, down)),
+                    channel.up.and_then(|up| pull_channel(&mut up_channels, up)),
+                    channel
+                        .down
+                        .and_then(|down| pull_channel(&mut down_channels, down)),
                     channel.name.clone(),
                 ))
             }
         } else {
             for channel in up_channels.into_iter() {
                 let number = channel.number();
-                tabs.push(ChannelState::new(Some(channel), pull_channel(&mut down_channels, number), None));
+                tabs.push(ChannelState::new(
+                    Some(channel),
+                    pull_channel(&mut down_channels, number),
+                    None,
+                ));
             }
 
             for channel in down_channels {
@@ -128,10 +129,7 @@ impl App {
                     .constraints(constraints)
                     .split(f.size());
 
-                let tab_names = tabs
-                    .iter()
-                    .map(|t| t.name())
-                    .collect::<Vec<_>>();
+                let tab_names = tabs.iter().map(|t| t.name()).collect::<Vec<_>>();
                 let mut tabs = Tabs::default()
                     .titles(&tab_names.as_slice())
                     .select(current_tab)
@@ -167,7 +165,8 @@ impl App {
         let message_num = self.tabs[self.current_tab].messages().len();
         let scroll_offset = self.tabs[self.current_tab].scroll_offset();
         if message_num < height + scroll_offset {
-            self.current_tab_mut().set_scroll_offset(message_num - height.min(message_num));
+            self.current_tab_mut()
+                .set_scroll_offset(message_num - height.min(message_num));
         }
 
         if has_down_channel {

@@ -1,6 +1,6 @@
+use crate::rttui::channel::ChannelConfig;
 use probe_rs::WireProtocol;
 use serde::Deserialize;
-use crate::rttui::channel::ChannelConfig;
 
 lazy_static::lazy_static! {
     /// This is an example for using doc comment attributes
