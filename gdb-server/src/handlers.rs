@@ -66,20 +66,22 @@ pub(crate) fn read_memory(packet_string: String, core: &Core) -> Option<String> 
     let m = packet_string.parse::<M>().unwrap();
 
     let mut readback_data = vec![0u8; usize::from_str_radix(&m.length, 16).unwrap()];
-    core.memory()
-        .read_block8(
-            u32::from_str_radix(&m.addr, 16).unwrap(),
-            &mut readback_data,
-        )
-        .unwrap();
-
-    Some(
-        readback_data
-            .iter()
-            .map(|s| format!("{:02x?}", s))
-            .collect::<Vec<String>>()
-            .join(""),
-    )
+    match core.memory().read_block8(
+        u32::from_str_radix(&m.addr, 16).unwrap(),
+        &mut readback_data,
+    ) {
+        Ok(_) => Some(
+            readback_data
+                .iter()
+                .map(|s| format!("{:02x?}", s))
+                .collect::<Vec<String>>()
+                .join(""),
+        ),
+        // We have no clue if this is the right error code since GDB doesn't feel like docs.
+        // We just assume Linux ERRNOs and pick a fitting one: https://gist.github.com/greggyNapalm/2413028#file-gistfile1-txt-L138
+        // This seems to work in practice and seems to be the way to do stuff around GDB.
+        Err(_e) => Some("E79".to_string()),
+    }
 }
 
 pub(crate) fn vcont_supported() -> Option<String> {
