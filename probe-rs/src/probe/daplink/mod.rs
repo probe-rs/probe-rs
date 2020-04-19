@@ -31,8 +31,10 @@ use log::debug;
 use super::JTAGAccess;
 use std::sync::Mutex;
 
+use commands::DAPLinkDevice;
+
 pub struct DAPLink {
-    pub device: Mutex<hidapi::HidDevice>,
+    pub device: Mutex<DAPLinkDevice>,
     _hw_version: u8,
     _jtag_version: u8,
     protocol: Option<WireProtocol>,
@@ -58,15 +60,20 @@ impl std::fmt::Debug for DAPLink {
 }
 
 impl DAPLink {
-    pub fn new_from_device(device: hidapi::HidDevice) -> Self {
+    pub fn new_from_device(device: DAPLinkDevice) -> Self {
         // Discard anything left in buffer, as otherwise
         // we'll get out of sync between requests and responses.
-        let mut discard_buffer = [0u8; 128];
-        loop {
-            match device.read_timeout(&mut discard_buffer, 1) {
-                Ok(n) if n != 0 => continue,
-                _ => break,
-            }
+        match &device {
+            DAPLinkDevice::V1(hid_device) => {
+                let mut discard_buffer = [0u8; 128];
+                loop {
+                    match hid_device.read_timeout(&mut discard_buffer, 1) {
+                        Ok(n) if n != 0 => continue,
+                        _ => break,
+                    }
+                }
+            },
+            _ => (),
         }
 
         Self {
@@ -231,21 +238,9 @@ impl DebugProbe for DAPLink {
     where
         Self: Sized,
     {
-        if let Some(serial_number) = &info.serial_number {
-            Ok(Box::new(Self::new_from_device(
-                hidapi::HidApi::new()
-                    .map_err(|_| DebugProbeError::ProbeCouldNotBeCreated)?
-                    .open_serial(info.vendor_id, info.product_id, &serial_number)
-                    .map_err(|_| DebugProbeError::ProbeCouldNotBeCreated)?,
-            )))
-        } else {
-            Ok(Box::new(Self::new_from_device(
-                hidapi::HidApi::new()
-                    .map_err(|_| DebugProbeError::ProbeCouldNotBeCreated)?
-                    .open(info.vendor_id, info.product_id)
-                    .map_err(|_| DebugProbeError::ProbeCouldNotBeCreated)?,
-            )))
-        }
+        Ok(Box::new(Self::new_from_device(
+            tools::open_device_from_info(info)
+                   .ok_or(DebugProbeError::ProbeCouldNotBeCreated)?)))
     }
 
     fn get_name(&self) -> &str {
