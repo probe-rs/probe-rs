@@ -69,13 +69,6 @@ pub fn open_device(device: Device<rusb::Context>) -> Option<DAPLinkDevice> {
     let language = handle.read_languages(timeout).ok()?[0];
     let sn_str = handle.read_serial_number_string(language, &d_desc, timeout).ok();
 
-    // Try opening in v1 (HID) mode if possible.
-    // We'll only use this if we can't open in v2 mode.
-    let hid_device = match sn_str {
-        Some(sn) => hidapi::HidApi::new().and_then(|api| api.open_serial(vid, pid, &sn)),
-        None     => hidapi::HidApi::new().and_then(|api| api.open(vid, pid)),
-    }.map(|device| DAPLinkDevice::V1(device)).ok();
-
     // Go through interfaces to try and find a v2 interface.
     // The CMSIS-DAPv2 spec says that v2 interfaces should use a specific
     // WinUSB interface GUID, but in addition to being hard to read, the
@@ -120,14 +113,22 @@ pub fn open_device(device: Device<rusb::Context>) -> Option<DAPLinkDevice> {
 
             // Attempt to claim this interface
             match handle.claim_interface(interface.number()) {
-                Ok(()) => return Some(DAPLinkDevice::V2 {handle, out_ep, in_ep}),
+                Ok(()) => {
+                    log::debug!("Opening {:04x}:{:04x} in CMSIS-DAPv2 mode", vid, pid);
+                    return Some(DAPLinkDevice::V2 {handle, out_ep, in_ep});
+                },
                 Err(_) => continue,
             }
         }
     }
 
-    // If we didn't detect a v2 interface, return a v1 interface if we got one.
-    hid_device
+    // Try opening in v1 (HID) mode if possible.
+    // We'll only use this if we can't open in v2 mode.
+    log::debug!("Couldn't open {:04x}:{:04x} in CMSIS-DAP v2 mode, trying v1", vid, pid);
+    match sn_str {
+        Some(sn) => hidapi::HidApi::new().and_then(|api| api.open_serial(vid, pid, &sn)),
+        None     => hidapi::HidApi::new().and_then(|api| api.open(vid, pid)),
+    }.map(|device| DAPLinkDevice::V1(device)).ok()
 }
 
 /// Attempt to open the given DebugProbeInfo in either CMSIS-DAP v1 or v2 mode
