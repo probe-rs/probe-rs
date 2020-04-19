@@ -1,3 +1,4 @@
+use chrono::Local;
 use probe_rs_rtt::{DownChannel, UpChannel};
 
 #[derive(Debug, serde::Serialize, serde::Deserialize, Clone)]
@@ -16,6 +17,7 @@ pub struct ChannelState {
     input: String,
     scroll_offset: usize,
     rtt_buffer: [u8; 1024],
+    show_timestamps: bool,
 }
 
 impl ChannelState {
@@ -23,6 +25,7 @@ impl ChannelState {
         up_channel: Option<UpChannel>,
         down_channel: Option<DownChannel>,
         name: Option<String>,
+        show_timestamps: bool,
     ) -> Self {
         let name = name
             .clone()
@@ -37,10 +40,11 @@ impl ChannelState {
             down_channel,
             name,
             messages: Vec::new(),
-            last_line_done: false,
+            last_line_done: true,
             input: String::new(),
             scroll_offset: 0,
             rtt_buffer: [0u8; 1024],
+            show_timestamps,
         }
     }
 
@@ -86,6 +90,8 @@ impl ChannelState {
     ///
     /// Processes all the new data and adds it to the linebuffer of the respective channel.
     pub fn poll_rtt(&mut self) {
+        let now = Local::now();
+
         // TODO: Proper error handling.
         let count = if let Some(channel) = self.up_channel.as_mut() {
             match channel.read(self.rtt_buffer.as_mut()) {
@@ -103,25 +109,29 @@ impl ChannelState {
             return;
         }
 
-        // First, convert the incomming bytes to UTF8.
-        let mut incomming = String::from_utf8_lossy(&self.rtt_buffer[..count]).to_string();
+        // First, convert the incoming bytes to UTF8.
+        let mut incoming = String::from_utf8_lossy(&self.rtt_buffer[..count]).to_string();
 
         // Then pop the last stored line from our line buffer if possible and append our new line.
-        if !self.last_line_done {
+        let last_line_done = self.last_line_done;
+        if !last_line_done {
             if let Some(last_line) = self.messages.pop() {
-                incomming = last_line + &incomming;
+                incoming = last_line + &incoming;
             }
         }
-        self.last_line_done = incomming.chars().last().unwrap() == '\n';
+        self.last_line_done = incoming.chars().last().unwrap() == '\n';
 
         // Then split the entire new contents.
-        let split = incomming.split_terminator('\n');
-
-        // Then add all the splits to the linebuffer.
-        self.messages.extend(split.clone().map(|s| s.to_string()));
-
-        if self.scroll_offset != 0 {
-            self.scroll_offset += split.count();
+        for (i, line) in incoming.split_terminator('\n').enumerate() {
+            if self.show_timestamps && (last_line_done || i > 0) {
+                let ts = now.format("%H:%M:%S%.3f");
+                self.messages.push(format!("{} {}", ts, line));
+            } else {
+                self.messages.push(line.to_string());
+            }
+            if self.scroll_offset != 0 {
+                self.scroll_offset += 1;
+            }
         }
     }
 

@@ -49,6 +49,8 @@ pub struct Rtt {
     pub channels: Vec<ChannelConfig>,
     /// Connection timeout in ms.
     pub timeout: usize,
+    /// Whether to show timestamps in RTTUI
+    pub show_timestamps: bool,
 }
 
 /// The gdb config struct holding all the possible gdb options.
