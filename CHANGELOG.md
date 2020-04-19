@@ -11,6 +11,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+## [0.6.2]
+
+### Added
+
+- `WireProtocol` now implements `Serialize`.
+
+### Fixed
+
+- The GDB stub will no longer crash when GDB tries to access invalid memory.
+
+### Known issues
+
+- Some ST M3s such as the STM32F103 are known to have reset issues. See [#216](https://github.com/probe-rs/probe-rs/pull/216).
+
 ## [0.6.1]
 
 ### Added
@@ -154,7 +168,8 @@ Initial release on crates.io
 - Working basic flash downloader with nRF51.
 - Introduce cargo-flash which can automatically build & flash the target elf file.
 
-[Unreleased]: https://github.com/probe-rs/probe-rs/compare/v0.6.1...master
+[Unreleased]: https://github.com/probe-rs/probe-rs/compare/v0.6.2...master
+[0.6.2]: https://github.com/probe-rs/probe-rs/releases/tag/v0.6.2
 [0.6.1]: https://github.com/probe-rs/probe-rs/releases/tag/v0.6.1
 [0.6.0]: https://github.com/probe-rs/probe-rs/releases/tag/v0.6.0
 [0.5.1]: https://github.com/probe-rs/probe-rs/releases/tag/v0.5.1
