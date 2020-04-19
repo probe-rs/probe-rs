@@ -103,19 +103,19 @@ impl ChannelState {
             return;
         }
 
-        // First, convert the incomming bytes to UTF8.
-        let mut incomming = String::from_utf8_lossy(&self.rtt_buffer[..count]).to_string();
+        // First, convert the incoming bytes to UTF8.
+        let mut incoming = String::from_utf8_lossy(&self.rtt_buffer[..count]).to_string();
 
         // Then pop the last stored line from our line buffer if possible and append our new line.
         if !self.last_line_done {
             if let Some(last_line) = self.messages.pop() {
-                incomming = last_line + &incomming;
+                incoming = last_line + &incoming;
             }
         }
-        self.last_line_done = incomming.chars().last().unwrap() == '\n';
+        self.last_line_done = incoming.chars().last().unwrap() == '\n';
 
         // Then split the entire new contents.
-        let split = incomming.split_terminator('\n');
+        let split = incoming.split_terminator('\n');
 
         // Then add all the splits to the linebuffer.
         self.messages.extend(split.clone().map(|s| s.to_string()));
