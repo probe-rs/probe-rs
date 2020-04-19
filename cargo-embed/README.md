@@ -29,9 +29,18 @@ which will then build your binary and download the contents onto the connected t
 
 ## Configuration
 
-You can configure `cargo-embed` with a file called `Embed.toml` in your project directory.
-Instead of a TOML file, you can also use a YAML or a JSON file. Choose what suits you best!
+You can configure `cargo-embed` with a file called `Embed.toml` (or `.embed.toml`) in your project directory. That file should be added to your git history.
 
-Configuring via a config file is nice to have a persistent config for your project which always targets the same core.
+For local-only configuration overrides, you can create an `Embed.local.toml` (or `.embed.local.toml`) file and add that to your `.gitignore`.
+
+Config file precedence:
+
+1. `Embed.local.*`
+2. `.embed.local.*`
+3. `Embed.*`
+4. `.embed.*`
+5. Default configuration
+
+Instead of a TOML file, you can also use a INI/JSON/HJSON/YAML file. Choose what suits you best!
 
 You can find all available options in the [default.toml](src/config/default.toml). Commented out options are the ones that are `None` by default.
