@@ -68,11 +68,17 @@ impl Config {
             config::FileFormat::Toml,
         ))?;
 
-        // Merge in the local configuration file
-        // This file shouldn't be checked in to git
+        // Merge in the project-specific configuration files.
+        // These files may be added to your git repo.
+        s.merge(config::File::with_name(".embed").required(false))?;
         s.merge(config::File::with_name("Embed").required(false))?;
 
-        // You can deserialize (and thus freeze) the entire configuration as
+        // Merge in the local configuration files.
+        // These files should not be added to your git repo.
+        s.merge(config::File::with_name(".embed.local").required(false))?;
+        s.merge(config::File::with_name("Embed.local").required(false))?;
+
+        // You can deserialize (and thus freeze) the entire configuration
         s.try_into()
     }
 }
