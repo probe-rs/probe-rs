@@ -114,28 +114,36 @@ pub(crate) fn send_command<Req: Request, Res: Response>(
     device: &mut std::sync::Mutex<DAPLinkDevice>,
     request: Req,
 ) -> Result<Res> {
-    const BUFFER_LEN: usize = 100;
+    // On CMSIS-DAP v2 USB HS devices, a single request might be up to 512 bytes,
+    // plus we need one extra byte for the always-written HID report ID.
+    const BUFFER_LEN: usize = 513;
+
     // Write the command & request to the buffer.
-    // TODO: Error handling & real USB writing.
-    // TODO: Use proper buffer size based on the HID
-    //       report count.
     let mut write_buffer = [0; BUFFER_LEN];
     write_buffer[1] = *Req::CATEGORY;
     let mut size = request.to_bytes(&mut write_buffer, 1 + 1)?;
     size += 2;
 
-    // ensure size of packet is at least 64
-    // this should be read from the USB HID Record
-    size = std::cmp::max(size, 64);
+    // On Windows, HID writes must write exactly the size of the
+    // largest report for the device, but there's no way to query
+    // this in hidapi. All known CMSIS-DAP devices use 64-byte
+    // HID reports (the maximum permitted), so ensure we always
+    // write exactly 64 (+1 for report ID) bytes for HID.
+    // For v2 devices, we can write the precise request size.
+    match device.get_mut().unwrap() {
+        DAPLinkDevice::V1(_) => { size = 65; },
+        _ => (),
+    }
 
+    // Send buffer to the device.
     device.get_mut().unwrap().write(&write_buffer[..size])?;
     log::trace!("Send buffer: {:02X?}", &write_buffer[..size]);
 
     // Read back resonse.
-    // TODO: Error handling & real USB reading.
     let mut read_buffer = [0; BUFFER_LEN];
     device.get_mut().unwrap().read(&mut read_buffer)?;
     log::trace!("Receive buffer: {:02X?}", &read_buffer[..]);
+
     if read_buffer[0] == *Req::CATEGORY {
         Res::from_bytes(&read_buffer, 1)
     } else {
