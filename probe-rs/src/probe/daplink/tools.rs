@@ -1,7 +1,7 @@
-use std::time::Duration;
-use rusb::{Device, UsbContext};
-use crate::probe::{DebugProbeInfo, DebugProbeType};
 use super::DAPLinkDevice;
+use crate::probe::{DebugProbeInfo, DebugProbeType};
+use rusb::{Device, UsbContext};
+use std::time::Duration;
 
 /// Finds all CMSIS-DAP devices, either v1 (HID) or v2 (WinUSB Bulk).
 ///
@@ -25,8 +25,12 @@ fn get_daplink_info(device: Device<rusb::Context>) -> Option<DebugProbeInfo> {
     let d_desc = device.device_descriptor().ok()?;
     let handle = device.open().ok()?;
     let language = handle.read_languages(timeout).ok()?[0];
-    let prod_str = handle.read_product_string(language, &d_desc, timeout).ok()?;
-    let sn_str = handle.read_serial_number_string(language, &d_desc, timeout).ok();
+    let prod_str = handle
+        .read_product_string(language, &d_desc, timeout)
+        .ok()?;
+    let sn_str = handle
+        .read_serial_number_string(language, &d_desc, timeout)
+        .ok();
 
     // All CMSIS-DAP probes must have "CMSIS-DAP" in their product string.
     if prod_str.contains("CMSIS-DAP") {
@@ -93,15 +97,15 @@ pub fn open_v2_device(device: Device<rusb::Context>) -> Option<DAPLinkDevice> {
             let eps: Vec<_> = i_desc.endpoint_descriptors().collect();
 
             // Check the first interface is bulk out
-            if eps[0].transfer_type() != rusb::TransferType::Bulk ||
-               eps[0].direction()     != rusb::Direction::Out
+            if eps[0].transfer_type() != rusb::TransferType::Bulk
+                || eps[0].direction() != rusb::Direction::Out
             {
                 continue;
             }
 
             // Check the second interface is bulk in
-            if eps[1].transfer_type() != rusb::TransferType::Bulk ||
-               eps[1].direction()     != rusb::Direction::In
+            if eps[1].transfer_type() != rusb::TransferType::Bulk
+                || eps[1].direction() != rusb::Direction::In
             {
                 continue;
             }
@@ -114,15 +118,23 @@ pub fn open_v2_device(device: Device<rusb::Context>) -> Option<DAPLinkDevice> {
             match handle.claim_interface(interface.number()) {
                 Ok(()) => {
                     log::debug!("Opening {:04x}:{:04x} in CMSIS-DAPv2 mode", vid, pid);
-                    return Some(DAPLinkDevice::V2 {handle, out_ep, in_ep});
-                },
+                    return Some(DAPLinkDevice::V2 {
+                        handle,
+                        out_ep,
+                        in_ep,
+                    });
+                }
                 Err(_) => continue,
             }
         }
     }
 
     // Could not open in v2
-    log::debug!("Could not open {:04x}:{:04x} in CMSIS-DAP v2 mode", vid, pid);
+    log::debug!(
+        "Could not open {:04x}:{:04x} in CMSIS-DAP v2 mode",
+        vid,
+        pid
+    );
     None
 }
 
@@ -143,9 +155,9 @@ pub fn open_device_from_info(info: &DebugProbeInfo) -> Option<DAPLinkDevice> {
                 Err(_) => continue,
             };
             let sn_str = handle.read_serial_number_string_ascii(&d_desc).ok();
-            if d_desc.vendor_id() == info.vendor_id &&
-               d_desc.product_id() == info.product_id &&
-               sn_str == info.serial_number
+            if d_desc.vendor_id() == info.vendor_id
+                && d_desc.product_id() == info.product_id
+                && sn_str == info.serial_number
             {
                 // If the VID, PID, and potentially SN all match,
                 // attempt to open the device in v2 mode.
@@ -161,9 +173,15 @@ pub fn open_device_from_info(info: &DebugProbeInfo) -> Option<DAPLinkDevice> {
     let vid = info.vendor_id;
     let pid = info.product_id;
     let sn = &info.serial_number;
-    log::debug!("Attempting to open {:04x}:{:04x} in CMSIS-DAP v1 mode", vid, pid);
+    log::debug!(
+        "Attempting to open {:04x}:{:04x} in CMSIS-DAP v1 mode",
+        vid,
+        pid
+    );
     match sn {
         Some(sn) => hidapi::HidApi::new().and_then(|api| api.open_serial(vid, pid, &sn)),
-        None     => hidapi::HidApi::new().and_then(|api| api.open(vid, pid)),
-    }.map(|device| DAPLinkDevice::V1(device)).ok()
+        None => hidapi::HidApi::new().and_then(|api| api.open(vid, pid)),
+    }
+    .map(|device| DAPLinkDevice::V1(device))
+    .ok()
 }
