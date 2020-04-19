@@ -4,18 +4,17 @@ use crate::probe::{DebugProbeInfo, DebugProbeType};
 use super::DAPLinkDevice;
 
 /// Finds all CMSIS-DAP devices, either v1 (HID) or v2 (WinUSB Bulk).
+///
+/// This method uses rusb to read device strings, which might fail due
+/// to permission or driver errors, so it falls back to listing only
+/// HID devices if it does not find any suitable devices.
 pub fn list_daplink_devices() -> Vec<DebugProbeInfo> {
-    if let Ok(context) = rusb::Context::new() {
-        if let Ok(devices) = context.devices() {
-            devices
-                .iter()
-                .filter_map(get_daplink_info)
-                .collect::<Vec<_>>()
-        } else {
-            vec![]
-        }
-    } else {
-        vec![]
+    match rusb::Context::new().and_then(|ctx| ctx.devices()) {
+        Ok(devices) => devices.iter().filter_map(get_daplink_info).collect(),
+        Err(_) => match hidapi::HidApi::new() {
+            Ok(api) => api.device_list().filter_map(get_daplink_hid_info).collect(),
+            Err(_) => vec![],
+        },
     }
 }
 
@@ -43,6 +42,22 @@ fn get_daplink_info(device: Device<rusb::Context>) -> Option<DebugProbeInfo> {
     }
 }
 
+/// Checks if a given HID device is a CMSIS-DAP v1 probe, returning Some(DebugProbeInfo) if so.
+fn get_daplink_hid_info(device: &hidapi::DeviceInfo) -> Option<DebugProbeInfo> {
+    if let Some(prod_str) = device.product_string() {
+        if prod_str.contains("CMSIS-DAP") {
+            return Some(DebugProbeInfo {
+                identifier: prod_str.to_owned(),
+                vendor_id: device.vendor_id(),
+                product_id: device.product_id(),
+                serial_number: device.serial_number().map(|s| s.to_owned()),
+                probe_type: DebugProbeType::DAPLink,
+            });
+        }
+    }
+    None
+}
+
 /// Attempt to open the given device in either CMSIS-DAP v1 or v2 mode
 pub fn open_device(device: Device<rusb::Context>) -> Option<DAPLinkDevice> {
     // Open device handle and read basic information
@@ -61,9 +76,14 @@ pub fn open_device(device: Device<rusb::Context>) -> Option<DAPLinkDevice> {
         None     => hidapi::HidApi::new().and_then(|api| api.open(vid, pid)),
     }.map(|device| DAPLinkDevice::V1(device)).ok();
 
-    // Go through interfaces to try and find a v2 interface
+    // Go through interfaces to try and find a v2 interface.
+    // The CMSIS-DAPv2 spec says that v2 interfaces should use a specific
+    // WinUSB interface GUID, but in addition to being hard to read, the
+    // official DAPlink firmware doesn't use it. Instead, we scan for an
+    // interface whose string contains "CMSIS-DAP" and has two or three
+    // endpoints of the correct type and direction.
     let c_desc = device.config_descriptor(0).ok()?;
-    'interfaces: for interface in c_desc.interfaces() {
+    for interface in c_desc.interfaces() {
         for i_desc in interface.descriptors() {
             // Skip interfaces without "CMSIS-DAP" in their string
             match handle.read_interface_string(language, &i_desc, timeout) {
@@ -94,14 +114,14 @@ pub fn open_device(device: Device<rusb::Context>) -> Option<DAPLinkDevice> {
                 continue;
             }
 
-            // Store EP address of the in and out EPs
+            // Store EP addresses of the in and out EPs
             let out_ep = eps[0].address();
             let in_ep = eps[1].address();
 
             // Attempt to claim this interface
             match handle.claim_interface(interface.number()) {
                 Ok(()) => return Some(DAPLinkDevice::V2 {handle, out_ep, in_ep}),
-                Err(_) => break 'interfaces,
+                Err(_) => continue,
             }
         }
     }
@@ -113,38 +133,33 @@ pub fn open_device(device: Device<rusb::Context>) -> Option<DAPLinkDevice> {
 /// Attempt to open the given DebugProbeInfo in either CMSIS-DAP v1 or v2 mode
 pub fn open_device_from_info(info: &DebugProbeInfo) -> Option<DAPLinkDevice> {
     let timeout = Duration::from_millis(100);
-    if let Ok(context) = rusb::Context::new() {
-        if let Ok(devices) = context.devices() {
-            for device in devices.iter() {
-                let d_desc = match device.device_descriptor() {
-                    Ok(d_desc) => d_desc,
-                    Err(_) => continue,
-                };
-                let vid = d_desc.vendor_id();
-                let pid = d_desc.product_id();
-                let handle = match device.open() {
-                    Ok(handle) => handle,
-                    Err(_) => continue,
-                };
-                let language = match handle.read_languages(timeout) {
-                    Ok(languages) => languages[0],
-                    Err(_) => continue,
-                };
-                let sn_str = handle.read_serial_number_string(language, &d_desc, timeout).ok();
-                if vid == info.vendor_id &&
-                   pid == info.product_id &&
-                   sn_str == info.serial_number
-                {
-                    // If the VID, PID, and potentially SN all match,
-                    // attempt to open the device in either v1 or v2 mode.
-                    return open_device(device);
-                }
+    match rusb::Context::new().and_then(|ctx| ctx.devices()) {
+        Ok(devices) => for device in devices.iter() {
+            let d_desc = match device.device_descriptor() {
+                Ok(d_desc) => d_desc,
+                Err(_) => continue,
+            };
+            let vid = d_desc.vendor_id();
+            let pid = d_desc.product_id();
+            let handle = match device.open() {
+                Ok(handle) => handle,
+                Err(_) => continue,
+            };
+            let language = match handle.read_languages(timeout) {
+                Ok(languages) => languages[0],
+                Err(_) => continue,
+            };
+            let sn_str = handle.read_serial_number_string(language, &d_desc, timeout).ok();
+            if vid == info.vendor_id &&
+               pid == info.product_id &&
+               sn_str == info.serial_number
+            {
+                // If the VID, PID, and potentially SN all match,
+                // attempt to open the device in either v1 or v2 mode.
+                return open_device(device);
             }
-            None
-        } else {
-            None
-        }
-    } else {
-        None
+        },
+        Err(_) => (),
     }
+    None
 }
