@@ -41,6 +41,6 @@ Config file precedence:
 4. `.embed.*`
 5. Default configuration
 
-Instead of a TOML file, you can also use a INI/JSON/HJSON/YAML file. Choose what suits you best!
+Instead of a TOML file, you can also use a JSON or YAML file. Choose what suits you best!
 
 You can find all available options in the [default.toml](src/config/default.toml). Commented out options are the ones that are `None` by default.

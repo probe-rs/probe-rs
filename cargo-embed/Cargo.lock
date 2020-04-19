@@ -170,11 +170,11 @@ dependencies = [
  "gdb-server",
  "goblin",
  "indicatif",
- "lazy_static 1.4.0",
+ "lazy_static",
  "log",
  "probe-rs",
  "probe-rs-rtt",
- "serde 1.0.106",
+ "serde",
  "structopt",
  "termion",
  "tui",
@@ -191,7 +191,7 @@ dependencies = [
  "glob",
  "log",
  "rustc-cfg",
- "serde 1.0.106",
+ "serde",
  "serde_derive",
  "toml",
 ]
@@ -236,7 +236,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "90082ee5dcdd64dc4e9e0d37fbf3ee325419e39c0092191e0393df65518f741e"
 dependencies = [
  "atty",
- "lazy_static 1.4.0",
+ "lazy_static",
  "libc",
  "winapi 0.3.8",
 ]
@@ -257,7 +257,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f4ffc801dacf156c5854b9df4f425a626539c3a6ef7893cc0c5084a23f0b6c59"
 dependencies = [
  "atty",
- "lazy_static 1.4.0",
+ "lazy_static",
  "winapi 0.3.8",
 ]
 
@@ -267,11 +267,9 @@ version = "0.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f9107d78ed62b3fa5a86e7d18e647abed48cfd8f8fab6c72f4cdb982d196f7e6"
 dependencies = [
- "lazy_static 1.4.0",
+ "lazy_static",
  "nom",
- "rust-ini",
- "serde 1.0.106",
- "serde-hjson",
+ "serde",
  "serde_json",
  "toml",
  "yaml-rust",
@@ -285,7 +283,7 @@ checksum = "6728a28023f207181b193262711102bfbaf47cc9d13bc71d0736607ef8efe88c"
 dependencies = [
  "clicolors-control",
  "encode_unicode",
- "lazy_static 1.4.0",
+ "lazy_static",
  "libc",
  "regex",
  "termios",
@@ -332,7 +330,7 @@ dependencies = [
  "autocfg",
  "cfg-if",
  "crossbeam-utils",
- "lazy_static 1.4.0",
+ "lazy_static",
  "maybe-uninit",
  "memoffset",
  "scopeguard",
@@ -346,7 +344,7 @@ checksum = "c3c7c73a2d1e9fc0886a08b93e98eb643461230d5f1925e4036204d5f2e261a8"
 dependencies = [
  "autocfg",
  "cfg-if",
- "lazy_static 1.4.0",
+ "lazy_static",
 ]
 
 [[package]]
@@ -408,7 +406,7 @@ version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f938a4abd5b75fe3737902dbc2e79ca142cc1526827a9e40b829a086758531a9"
 dependencies = [
- "serde 1.0.106",
+ "serde",
 ]
 
 [[package]]
@@ -598,7 +596,7 @@ dependencies = [
  "memchr",
  "probe-rs",
  "recap",
- "serde 1.0.106",
+ "serde",
 ]
 
 [[package]]
@@ -692,7 +690,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "49a68371cf417889c9d7f98235b7102ea7c54fc59bcbd22f3dea785be9d27e40"
 dependencies = [
  "console",
- "lazy_static 1.4.0",
+ "lazy_static",
  "number_prefix",
  "regex",
 ]
@@ -739,7 +737,7 @@ version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f57cd08ee4fbc8043949150a59e34ea5f2afeb172f875db9607689e48600c653"
 dependencies = [
- "serde 1.0.106",
+ "serde",
 ]
 
 [[package]]
@@ -760,12 +758,6 @@ checksum = "8c54d9f465d530a752e6ebdc217e081a7a614b48cb200f6f0aee21ba6bc9aabb"
 dependencies = [
  "log",
 ]
-
-[[package]]
-name = "lazy_static"
-version = "0.2.11"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "76f033c7ad61445c5b347c7382dd1237847eb1bce590fe50365dcb33d546be73"
 
 [[package]]
 name = "lazy_static"
@@ -807,16 +799,6 @@ dependencies = [
 
 [[package]]
 name = "linked-hash-map"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6d262045c5b87c0861b3f004610afd0e2c851e2908d08b6c870cbb9d5f494ecd"
-dependencies = [
- "serde 0.8.23",
- "serde_test",
-]
-
-[[package]]
-name = "linked-hash-map"
 version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ae91b68aebc4ddb91978b11a1b02ddd8602a05ec19002801c5666000e05e0f83"
@@ -837,7 +819,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "14b6052be84e6b71ab17edffc2eeabf5c2c3ae1fdb464aae35ac50c67a44e1f7"
 dependencies = [
  "cfg-if",
- "serde 1.0.106",
+ "serde",
 ]
 
 [[package]]
@@ -1054,14 +1036,14 @@ dependencies = [
  "ihex",
  "jaylink",
  "jep106",
- "lazy_static 1.4.0",
+ "lazy_static",
  "log",
  "num-traits 0.2.11",
  "object",
  "probe-rs-t2rust",
  "rusb",
  "scroll",
- "serde 1.0.106",
+ "serde",
  "serde_yaml",
  "svg",
  "thiserror",
@@ -1184,10 +1166,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dba89936adb9982869375a49c5e0b798a43d84b2cc3484860c7db38cae02ef2f"
 dependencies = [
  "envy",
- "lazy_static 1.4.0",
+ "lazy_static",
  "recap-derive",
  "regex",
- "serde 1.0.106",
+ "serde",
 ]
 
 [[package]]
@@ -1253,12 +1235,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rust-ini"
-version = "0.13.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3e52c148ef37f8c375d49d5a73aa70713125b7f19095948a923f80afdeb22ec2"
-
-[[package]]
 name = "rustc-cfg"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1307,30 +1283,11 @@ dependencies = [
 
 [[package]]
 name = "serde"
-version = "0.8.23"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9dad3f759919b92c3068c696c15c3d17238234498bbdcc80f2c469606f948ac8"
-
-[[package]]
-name = "serde"
 version = "1.0.106"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "36df6ac6412072f67cf767ebbde4133a5b2e88e76dc6187fa7104cd16f783399"
 dependencies = [
  "serde_derive",
-]
-
-[[package]]
-name = "serde-hjson"
-version = "0.8.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0b833c5ad67d52ced5f5938b2980f32a9c1c5ef047f0b4fb3127e7a423c76153"
-dependencies = [
- "lazy_static 0.2.11",
- "linked-hash-map 0.3.0",
- "num-traits 0.1.43",
- "regex",
- "serde 0.8.23",
 ]
 
 [[package]]
@@ -1352,16 +1309,7 @@ checksum = "da07b57ee2623368351e9a0488bb0b261322a15a6e0ae53e243cbdc0f4208da9"
 dependencies = [
  "itoa",
  "ryu",
- "serde 1.0.106",
-]
-
-[[package]]
-name = "serde_test"
-version = "0.8.23"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "110b3dbdf8607ec493c22d5d947753282f3bae73c0f56d322af1e8c78e4c23d5"
-dependencies = [
- "serde 0.8.23",
+ "serde",
 ]
 
 [[package]]
@@ -1371,8 +1319,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "691b17f19fc1ec9d94ec0b5864859290dff279dbd7b03f017afda54eb36c3c35"
 dependencies = [
  "dtoa",
- "linked-hash-map 0.5.2",
- "serde 1.0.106",
+ "linked-hash-map",
+ "serde",
  "yaml-rust",
 ]
 
@@ -1407,7 +1355,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ff6da2e8d107dfd7b74df5ef4d205c6aebee0706c647f6bc6a2d5789905c00fb"
 dependencies = [
  "clap",
- "lazy_static 1.4.0",
+ "lazy_static",
  "structopt-derive",
 ]
 
@@ -1584,7 +1532,7 @@ version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d40c6d1b69745a6ec6fb1ca717914848da4b44ae29d9b3080cbee91d72a69b14"
 dependencies = [
- "lazy_static 1.4.0",
+ "lazy_static",
 ]
 
 [[package]]
@@ -1593,7 +1541,7 @@ version = "0.4.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "758664fc71a3a69038656bee8b6be6477d2a6c315a6b81f7081f591bffa4111f"
 dependencies = [
- "serde 1.0.106",
+ "serde",
 ]
 
 [[package]]
@@ -1740,5 +1688,5 @@ version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "65923dd1784f44da1d2c3dbbc5e822045628c590ba72123e1c73d3c230c4434d"
 dependencies = [
- "linked-hash-map 0.5.2",
+ "linked-hash-map",
 ]
