@@ -5,8 +5,8 @@ pub mod transfer;
 
 use crate::architecture::arm::DapError;
 use crate::DebugProbeError;
-use std::time::Duration;
 use core::ops::Deref;
+use std::time::Duration;
 
 use thiserror::Error;
 
@@ -39,38 +39,45 @@ pub enum DAPLinkDevice {
     V1(hidapi::HidDevice),
 
     /// CMSIS-DAP v2 over WinUSB/Bulk. Stores an rusb device handle and out/in EP addresses.
-    V2 { handle: rusb::DeviceHandle<rusb::Context>, out_ep: u8, in_ep: u8 },
+    V2 {
+        handle: rusb::DeviceHandle<rusb::Context>,
+        out_ep: u8,
+        in_ep: u8,
+    },
 }
 
 impl DAPLinkDevice {
     /// Read from the probe into `buf`, returning the number of bytes read on success.
     fn read(&self, buf: &mut [u8]) -> Result<usize> {
         match self {
-            DAPLinkDevice::V1(device) => {
-                Ok(device.read(buf)?)
-            },
-            DAPLinkDevice::V2 { handle, out_ep: _, in_ep } => {
+            DAPLinkDevice::V1(device) => Ok(device.read(buf)?),
+            DAPLinkDevice::V2 {
+                handle,
+                out_ep: _,
+                in_ep,
+            } => {
                 let timeout = Duration::from_millis(100);
                 Ok(handle.read_bulk(*in_ep, buf, timeout)?)
-            },
+            }
         }
     }
 
     /// Write `buf` to the probe, returning the number of bytes written on success.
     fn write(&self, buf: &[u8]) -> Result<usize> {
         match self {
-            DAPLinkDevice::V1(device) => {
-                Ok(device.write(buf)?)
-            },
-            DAPLinkDevice::V2 { handle, out_ep, in_ep: _ } => {
+            DAPLinkDevice::V1(device) => Ok(device.write(buf)?),
+            DAPLinkDevice::V2 {
+                handle,
+                out_ep,
+                in_ep: _,
+            } => {
                 let timeout = Duration::from_millis(100);
                 // Skip first byte as it's set to 0 for HID transfers
                 Ok(handle.write_bulk(*out_ep, &buf[1..], timeout)?)
-            },
+            }
         }
     }
 }
-
 
 #[derive(Debug)]
 pub(crate) enum Status {
@@ -131,7 +138,9 @@ pub(crate) fn send_command<Req: Request, Res: Response>(
     // write exactly 64 (+1 for report ID) bytes for HID.
     // For v2 devices, we can write the precise request size.
     match device.get_mut().unwrap() {
-        DAPLinkDevice::V1(_) => { size = 65; },
+        DAPLinkDevice::V1(_) => {
+            size = 65;
+        }
         _ => (),
     }
 

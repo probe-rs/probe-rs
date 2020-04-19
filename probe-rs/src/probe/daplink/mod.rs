@@ -72,7 +72,7 @@ impl DAPLink {
                         _ => break,
                     }
                 }
-            },
+            }
             _ => (),
         }
 
@@ -239,8 +239,8 @@ impl DebugProbe for DAPLink {
         Self: Sized,
     {
         Ok(Box::new(Self::new_from_device(
-            tools::open_device_from_info(info)
-                   .ok_or(DebugProbeError::ProbeCouldNotBeCreated)?)))
+            tools::open_device_from_info(info).ok_or(DebugProbeError::ProbeCouldNotBeCreated)?,
+        )))
     }
 
     fn get_name(&self) -> &str {
