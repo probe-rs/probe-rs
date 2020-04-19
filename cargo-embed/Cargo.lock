@@ -1070,7 +1070,8 @@ dependencies = [
 [[package]]
 name = "probe-rs-rtt"
 version = "0.1.0"
-source = "git+https://github.com/mvirkkunen/probe-rs-rtt#1c84dad7e07829fd177b8433c99fd0545ef6798d"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "823c43c9553ebea43672d38c4756fe360305225f2b649b0e0bf28319354ca01d"
 dependencies = [
  "probe-rs",
  "scroll",

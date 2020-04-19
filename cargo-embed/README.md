@@ -3,6 +3,7 @@
 [![crates.io](https://meritbadge.herokuapp.com/cargo-embed)](https://crates.io/crates/cargo-embed) [![documentation](https://docs.rs/cargo-embed/badge.svg)](https://docs.rs/cargo-embed) [![Actions Status](https://github.com/probe-rs/cargo-embed/workflows/CI/badge.svg)](https://github.com/probe-rs/cargo-embed/actions) [![chat](https://img.shields.io/badge/chat-probe--rs%3Amatrix.org-brightgreen)](https://matrix.to/#/!vhKMWjizPZBgKeknOo:matrix.org)
 
 This crate provides a cargo subcommand to work with embedded targets.
+Various chip families including but not limited to nRF5x, STM32 and LPC800 can be worked with using DAPLink, ST-Link or J-Link. 
 It supports all the targets & probes [probe-rs](https://github.com/probe-rs/probe-rs) supports.
 
 ## Installation
