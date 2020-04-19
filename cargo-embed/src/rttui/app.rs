@@ -30,11 +30,10 @@ pub struct App {
 }
 
 fn pull_channel<C: RttChannel>(channels: &mut Vec<C>, n: usize) -> Option<C> {
-    let c =
-        channels
-            .iter()
-            .enumerate()
-            .find_map(|(i, c)| if c.number() == n { Some(i) } else { None });
+    let c = channels
+        .iter()
+        .enumerate()
+        .find_map(|(i, c)| if c.number() == n { Some(i) } else { None });
 
     c.map(|c| channels.remove(c))
 }
@@ -59,6 +58,7 @@ impl App {
                         .down
                         .and_then(|down| pull_channel(&mut down_channels, down)),
                     channel.name.clone(),
+                    CONFIG.rtt.show_timestamps,
                 ))
             }
         } else {
@@ -68,11 +68,17 @@ impl App {
                     Some(channel),
                     pull_channel(&mut down_channels, number),
                     None,
+                    CONFIG.rtt.show_timestamps,
                 ));
             }
 
             for channel in down_channels {
-                tabs.push(ChannelState::new(None, Some(channel), None));
+                tabs.push(ChannelState::new(
+                    None,
+                    Some(channel),
+                    None,
+                    CONFIG.rtt.show_timestamps,
+                ));
             }
         }
 
