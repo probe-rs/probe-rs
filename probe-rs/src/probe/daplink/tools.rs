@@ -155,6 +155,11 @@ pub fn open_device_from_info(info: &DebugProbeInfo) -> Option<DAPLinkDevice> {
                 Err(_) => continue,
             };
             let sn_str = handle.read_serial_number_string_ascii(&d_desc).ok();
+
+            // We have to ensure the handle gets closed after reading the serial number,
+            // multiple open handles are not allowed on Windows.
+            drop(handle);
+
             if d_desc.vendor_id() == info.vendor_id
                 && d_desc.product_id() == info.product_id
                 && sn_str == info.serial_number
