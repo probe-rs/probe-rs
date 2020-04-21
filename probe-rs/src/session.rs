@@ -12,7 +12,7 @@ use crate::config::{
     ChipInfo, MemoryRegion, RawFlashAlgorithm, RegistryError, Target, TargetSelector,
 };
 use crate::core::{Architecture, CoreState, SpecificCoreState};
-use crate::{Core, CoreType, Error, Memory, Probe};
+use crate::{AttachMethod, Core, CoreType, Error, Memory, Probe};
 use anyhow::anyhow;
 
 #[derive(Debug)]
@@ -62,7 +62,13 @@ impl ArchitectureInterfaceState {
 
 impl Session {
     /// Open a new session with a given debug target
-    pub fn new(mut probe: Probe, target: impl Into<TargetSelector>) -> Result<Self, Error> {
+    pub fn new(
+        mut probe: Probe,
+        target: impl Into<TargetSelector>,
+        attach_method: AttachMethod,
+    ) -> Result<Self, Error> {
+        // TODO: Handle different architectures
+
         let target = match target.into() {
             TargetSelector::Unspecified(name) => {
                 match crate::config::registry::get_target_by_name(name) {
@@ -74,7 +80,7 @@ impl Session {
             TargetSelector::Auto => {
                 let mut found_chip = None;
 
-                let mut state = ArmCommunicationInterfaceState::new();
+                let mut state = ArmCommunicationInterfaceState::new(attach_method);
                 let interface = ArmCommunicationInterface::new(&mut probe, &mut state)?;
                 if let Some(mut interface) = interface {
                     let chip_result = try_arm_autodetect(&mut interface);
@@ -113,7 +119,7 @@ impl Session {
 
         let data = match target.architecture() {
             Architecture::Arm => {
-                let state = ArmCommunicationInterfaceState::new();
+                let state = ArmCommunicationInterfaceState::new(attach_method);
                 (
                     (
                         SpecificCoreState::from_core_type(target.core_type),

@@ -107,7 +107,11 @@ where
         )?;
     }
 
-    let session = probe.attach(target_selector)?;
+    let session = if shared_options.connect_under_reset {
+        probe.attach_under_reset(target_selector)?
+    } else {
+        probe.attach(target_selector)?
+    };
 
     f(session)
 }

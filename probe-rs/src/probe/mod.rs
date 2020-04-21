@@ -261,7 +261,7 @@ impl Probe {
         self.inner.attach()?;
         self.attached = true;
 
-        Session::new(self, target)
+        Session::new(self, target, AttachMethod::Normal)
     }
 
     pub fn attach_to_unspecified(&mut self) -> Result<(), Error> {
@@ -279,12 +279,16 @@ impl Probe {
         mut self,
         target: impl Into<TargetSelector>,
     ) -> Result<Session, Error> {
+        log::debug!("Asserting reset");
         self.inner.target_reset_assert()?;
+
         self.inner.attach()?;
-        self.inner.target_reset_deassert()?;
+
+        //log::debug!("Deasserting reset");
+        //self.inner.target_reset_deassert()?;
         self.attached = true;
 
-        Session::new(self, target)
+        Session::new(self, target, AttachMethod::UnderReset)
     }
 
     /// Selects the transport protocol to be used by the debug probe.
@@ -306,6 +310,11 @@ impl Probe {
     /// Resets the target device.
     pub fn target_reset(&mut self) -> Result<(), DebugProbeError> {
         self.inner.target_reset()
+    }
+
+    pub fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
+        log::debug!("Deasserting target reset");
+        self.inner.target_reset_deassert()
     }
 
     /// Configure protocol speed to use in kHz
@@ -710,4 +719,10 @@ pub trait JTAGAccess {
         data: &[u8],
         len: u32,
     ) -> Result<Vec<u8>, DebugProbeError>;
+}
+
+#[derive(PartialEq, Debug, Copy, Clone)]
+pub enum AttachMethod {
+    Normal,
+    UnderReset,
 }
