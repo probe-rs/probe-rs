@@ -1,4 +1,4 @@
-[probe]
+[default.probe]
 # The index of the probe in the connected probe list.
 # probe_index = 0
 # The protocol to be used for communicating with the target.
@@ -6,7 +6,7 @@ protocol = "Swd"
 # The speed in kHz of the data link to the target.
 # speed = 1337
 
-[flashing]
+[default.flashing]
 # Whether or not the target should be flashed.
 enabled = true
 # Whether or not the target should be halted after flashing.
@@ -17,7 +17,7 @@ restore_unwritten_bytes = false
 # The path where an SVG of the assembled flash layout should be written to.
 # flash_layout_output_path = "out.svg"
 
-[general]
+[default.general]
 # The chip name of the chip to be debugged.
 # chip = "name"
 # A list of chip descriptions to be loaded during runtime.
@@ -25,7 +25,7 @@ chip_descriptions = []
 # The default log level to be used.
 log_level = "Warn"
 
-[rtt]
+[default.rtt]
 # Whether or not an RTTUI should be opened after flashing.
 # This is exclusive and cannot be used with GDB at the moment.
 enabled = false
@@ -38,7 +38,7 @@ timeout = 3000
 # Whether timestamps in the RTTUI are enabled
 show_timestamps = true
 
-[gdb]
+[default.gdb]
 # Whether or not a GDB server should be opened after flashing.
 # This is exclusive and cannot be used with RTT at the moment.
 enabled = false

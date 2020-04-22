@@ -160,6 +160,7 @@ dependencies = [
  "colored",
  "config",
  "crossterm",
+ "derivative",
  "env_logger",
  "gdb-server",
  "goblin",
@@ -169,6 +170,7 @@ dependencies = [
  "probe-rs",
  "probe-rs-rtt",
  "serde",
+ "serde_json",
  "structopt",
  "tui",
 ]

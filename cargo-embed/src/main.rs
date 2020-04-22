@@ -28,10 +28,10 @@ use probe_rs::{
 };
 use probe_rs_rtt::{Rtt, ScanRegion};
 
-use crate::config::CONFIG;
-
 #[derive(Debug, StructOpt)]
 struct Opt {
+    #[structopt(name = "config")]
+    config: Option<String>,
     #[structopt(name = "list-chips", long = "list-chips")]
     list_chips: bool,
     #[structopt(name = "disable-progressbars", long = "disable-progressbars")]
@@ -92,10 +92,15 @@ fn main_try() -> Result<()> {
     // Get commandline options.
     let opt = Opt::from_iter(&args);
 
-    logging::init(Some(CONFIG.general.log_level));
+    // Get the config.
+    let config_name = opt.config.as_deref().unwrap_or_else(|| "default");
+    let config = config::Configs::new(config_name)
+        .map_err(|e| anyhow!("The config could not be loaded: {}", e))?;
+
+    logging::init(Some(config.general.log_level));
 
     // Make sure we load the config given in the cli parameters.
-    for cdp in &CONFIG.general.chip_descriptions {
+    for cdp in &config.general.chip_descriptions {
         probe_rs::config::registry::add_target_from_yaml(&Path::new(cdp))
             .with_context(|| format!("failed to load the chip description from {}", cdp))?;
     }
@@ -104,7 +109,7 @@ fn main_try() -> Result<()> {
         print_families()?;
         std::process::exit(0);
     } else {
-        CONFIG
+        config
             .general
             .chip
             .as_ref()
@@ -117,6 +122,11 @@ fn main_try() -> Result<()> {
 
     // Remove all arguments that `cargo build` does not understand.
     helpers::remove_arguments(ARGUMENTS_TO_REMOVE, &mut args);
+
+    if let Some(index) = args.iter().position(|x| x == config_name) {
+        // We remove the argument we found.
+        args.remove(index);
+    }
 
     let status = Command::new("cargo")
         .arg("build")
@@ -167,7 +177,7 @@ fn main_try() -> Result<()> {
     ));
 
     // If we got a probe selector in the config, open the probe matching the selector if possible.
-    let mut probe = match CONFIG.probe.probe_selector.as_deref() {
+    let mut probe = match config.probe.probe_selector.as_deref() {
         Some(selector) => Probe::open(DebugProbeSelector::try_from(selector)?)?,
         None => {
             // Only automatically select a probe if there is only
@@ -185,10 +195,10 @@ fn main_try() -> Result<()> {
     };
 
     probe
-        .select_protocol(CONFIG.probe.protocol)
+        .select_protocol(config.probe.protocol)
         .context("failed to select protocol")?;
 
-    let protocol_speed = if let Some(speed) = CONFIG.probe.speed {
+    let protocol_speed = if let Some(speed) = config.probe.speed {
         let actual_speed = probe.set_speed(speed).context("failed to set speed")?;
 
         if actual_speed < speed {
@@ -208,7 +218,7 @@ fn main_try() -> Result<()> {
 
     let mut session = probe.attach(chip).context("failed attaching to target")?;
 
-    if CONFIG.flashing.enabled {
+    if config.flashing.enabled {
         // Start timer.
         let instant = Instant::now();
 
@@ -221,7 +231,7 @@ fn main_try() -> Result<()> {
                 .template("{msg:.green.bold} {spinner} [{elapsed_precise}] [{wide_bar}] {bytes:>8}/{total_bytes:>8} @ {bytes_per_sec:>10} (eta {eta:3})");
 
             // Create a new progress bar for the fill progress if filling is enabled.
-            let fill_progress = if CONFIG.flashing.restore_unwritten_bytes {
+            let fill_progress = if config.flashing.restore_unwritten_bytes {
                 let fill_progress = Arc::new(multi_progress.add(ProgressBar::new(0)));
                 fill_progress.set_style(style.clone());
                 fill_progress.set_message("     Reading flash  ");
@@ -243,7 +253,7 @@ fn main_try() -> Result<()> {
             program_progress.set_style(style);
             program_progress.set_message(" Programming pages  ");
 
-            let flash_layout_output_path = CONFIG.flashing.flash_layout_output_path.clone();
+            let flash_layout_output_path = config.flashing.flash_layout_output_path.clone();
             // Register callback to update the progress.
             let progress = FlashProgress::new(move |event| {
                 use ProgressEvent::*;
@@ -331,7 +341,7 @@ fn main_try() -> Result<()> {
                 Format::Elf,
                 DownloadOptions {
                     progress: Some(&progress),
-                    keep_unwritten_bytes: CONFIG.flashing.restore_unwritten_bytes,
+                    keep_unwritten_bytes: config.flashing.restore_unwritten_bytes,
                 },
             )
             .with_context(|| format!("failed to flash {}", path.display()))?;
@@ -345,7 +355,7 @@ fn main_try() -> Result<()> {
                 Format::Elf,
                 DownloadOptions {
                     progress: None,
-                    keep_unwritten_bytes: CONFIG.flashing.restore_unwritten_bytes,
+                    keep_unwritten_bytes: config.flashing.restore_unwritten_bytes,
                 },
             )
             .with_context(|| format!("failed to flash {}", path.display()))?;
@@ -360,21 +370,21 @@ fn main_try() -> Result<()> {
         ));
 
         let mut core = session.core(0)?;
-        if CONFIG.flashing.halt_afterwards {
+        if config.flashing.halt_afterwards {
             core.reset_and_halt()?;
         } else {
             core.reset()?;
         }
     }
 
-    if CONFIG.gdb.enabled && CONFIG.rtt.enabled {
+    if config.gdb.enabled && config.rtt.enabled {
         return Err(anyhow!(
             "Unfortunately, at the moment, only GDB OR RTT are possible."
         ));
     }
 
-    if CONFIG.gdb.enabled {
-        let gdb_connection_string = CONFIG
+    if config.gdb.enabled {
+        let gdb_connection_string = config
             .gdb
             .gdb_connection_string
             .as_deref()
@@ -388,11 +398,11 @@ fn main_try() -> Result<()> {
             logging::eprintln("During the execution of GDB an error was encountered:");
             logging::eprintln(format!("{:?}", e));
         }
-    } else if CONFIG.rtt.enabled {
+    } else if config.rtt.enabled {
         let session = Arc::new(Mutex::new(session));
         let t = std::time::Instant::now();
         let mut error = None;
-        while (t.elapsed().as_millis() as usize) < CONFIG.rtt.timeout {
+        while (t.elapsed().as_millis() as usize) < config.rtt.timeout {
             let rtt_header_address = if let Ok(mut file) = File::open(path.as_path()) {
                 if let Some(address) = rttui::app::App::get_rtt_symbol(&mut file) {
                     ScanRegion::Exact(address as u32)
@@ -405,7 +415,7 @@ fn main_try() -> Result<()> {
 
             match Rtt::attach_region(session.clone(), &rtt_header_address) {
                 Ok(rtt) => {
-                    let mut app = rttui::app::App::new(rtt);
+                    let mut app = rttui::app::App::new(rtt, &config);
                     loop {
                         app.poll_rtt();
                         app.render();

@@ -11,7 +11,7 @@
 pub fn remove_arguments(arguments_to_remove: &[&'static str], arguments: &mut Vec<String>) {
     // We iterate all arguments that possibly have to be removed
     // and remove them if they occur to be in the input.
-    for argument in arguments_to_remove {
+    for argument in arguments_to_remove.iter() {
         // Make sure the compared against arg does not contain an equal sign.
         // If the original arg contained an equal sign we take this as a hint
         // that the arg can be used as `--arg value` as well as `--arg=value`.

@@ -16,7 +16,6 @@ use tui::{
 use super::channel::ChannelState;
 use super::event::{Event, Events};
 
-use crate::config::CONFIG;
 use event::{DisableMouseCapture, KeyModifiers};
 
 /// App holds the state of the application
@@ -38,7 +37,7 @@ fn pull_channel<C: RttChannel>(channels: &mut Vec<C>, n: usize) -> Option<C> {
 }
 
 impl App {
-    pub fn new(mut rtt: probe_rs_rtt::Rtt) -> Self {
+    pub fn new(mut rtt: probe_rs_rtt::Rtt, config: &crate::config::Config) -> Self {
         enable_raw_mode().unwrap();
         let mut stdout = std::io::stdout();
         execute!(stdout, EnterAlternateScreen, EnableMouseCapture).unwrap();
@@ -51,15 +50,15 @@ impl App {
         let mut tabs = Vec::new();
         let mut up_channels = rtt.up_channels().drain().collect::<Vec<_>>();
         let mut down_channels = rtt.down_channels().drain().collect::<Vec<_>>();
-        if !CONFIG.rtt.channels.is_empty() {
-            for channel in &CONFIG.rtt.channels {
+        if !config.rtt.channels.is_empty() {
+            for channel in &config.rtt.channels {
                 tabs.push(ChannelState::new(
                     channel.up.and_then(|up| pull_channel(&mut up_channels, up)),
                     channel
                         .down
                         .and_then(|down| pull_channel(&mut down_channels, down)),
                     channel.name.clone(),
-                    CONFIG.rtt.show_timestamps,
+                    config.rtt.show_timestamps,
                 ))
             }
         } else {
@@ -69,7 +68,7 @@ impl App {
                     Some(channel),
                     pull_channel(&mut down_channels, number),
                     None,
-                    CONFIG.rtt.show_timestamps,
+                    config.rtt.show_timestamps,
                 ));
             }
 
@@ -78,7 +77,7 @@ impl App {
                     None,
                     Some(channel),
                     None,
-                    CONFIG.rtt.show_timestamps,
+                    config.rtt.show_timestamps,
                 ));
             }
         }
