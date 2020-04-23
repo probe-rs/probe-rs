@@ -97,6 +97,8 @@ fn main_try() -> Result<()> {
     let config = config::Configs::new(config_name)
         .map_err(|e| anyhow!("The config could not be loaded: {}", e))?;
 
+    println!("{:#?}", config);
+
     logging::init(Some(config.general.log_level));
 
     // Make sure we load the config given in the cli parameters.
