@@ -1,0 +1,1411 @@
+---
+name: STM32F3 Series
+variants:
+  - name: STM32F301C6Tx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536883200
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_256
+      - stm32f3xx_opt
+  - name: STM32F301C8Tx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536887296
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_256
+      - stm32f3xx_opt
+  - name: STM32F301C8Yx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536887296
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_256
+      - stm32f3xx_opt
+  - name: STM32F301K6Ux
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536883200
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_256
+      - stm32f3xx_opt
+  - name: STM32F301K8Tx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536887296
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_256
+      - stm32f3xx_opt
+  - name: STM32F301K8Ux
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536887296
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_256
+      - stm32f3xx_opt
+  - name: STM32F301R6Tx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536883200
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_256
+      - stm32f3xx_opt
+  - name: STM32F301R8Tx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536887296
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_256
+      - stm32f3xx_opt
+  - name: STM32F302C6Tx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536883200
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_256
+      - stm32f3xx_opt
+  - name: STM32F302C8Tx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536887296
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_256
+      - stm32f3xx_opt
+  - name: STM32F302C8Yx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536887296
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_256
+      - stm32f3xx_opt
+  - name: STM32F302CBTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536895488
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_256
+      - stm32f3xx_opt
+  - name: STM32F302CCTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_256
+      - stm32f3xx_opt
+  - name: STM32F302K6Ux
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536883200
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_256
+      - stm32f3xx_opt
+  - name: STM32F302K8Ux
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536887296
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_256
+      - stm32f3xx_opt
+  - name: STM32F302R6Tx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536883200
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_256
+      - stm32f3xx_opt
+  - name: STM32F302R8Tx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536887296
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_256
+      - stm32f3xx_opt
+  - name: STM32F302RBTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536895488
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_256
+      - stm32f3xx_opt
+  - name: STM32F302RCTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_256
+      - stm32f3xx_opt
+  - name: STM32F302RDTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536936448
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134610944
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_512
+      - stm32f3xx_opt
+  - name: STM32F302RETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536936448
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_512
+      - stm32f3xx_opt
+  - name: STM32F302VBTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536895488
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_256
+      - stm32f3xx_opt
+  - name: STM32F302VCTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_256
+      - stm32f3xx_opt
+  - name: STM32F302VCYx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_256
+      - stm32f3xx_opt
+  - name: STM32F302VDHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536936448
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134610944
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_512
+      - stm32f3xx_opt
+  - name: STM32F302VDTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536936448
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134610944
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_512
+      - stm32f3xx_opt
+  - name: STM32F302VEHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536936448
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_512
+      - stm32f3xx_opt
+  - name: STM32F302VETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536936448
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_512
+      - stm32f3xx_opt
+  - name: STM32F302ZDTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536936448
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134610944
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_512
+      - stm32f3xx_opt
+  - name: STM32F302ZETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536936448
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_512
+      - stm32f3xx_opt
+  - name: STM32F303C6Tx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536883200
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_256
+      - stm32f3xx_opt
+  - name: STM32F303C8Tx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536883200
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_256
+      - stm32f3xx_opt
+  - name: STM32F303CBTx
+    memory_map:
+      - Ram:
+          range:
+            start: 268435456
+            end: 268443648
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_256
+      - stm32f3xx_opt
+  - name: STM32F303CCTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536920064
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_256
+      - stm32f3xx_opt
+  - name: STM32F303K6Tx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536883200
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_256
+      - stm32f3xx_opt
+  - name: STM32F303K6Ux
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536883200
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_256
+      - stm32f3xx_opt
+  - name: STM32F303K8Tx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536883200
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_256
+      - stm32f3xx_opt
+  - name: STM32F303K8Ux
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536883200
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_256
+      - stm32f3xx_opt
+  - name: STM32F303R6Tx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536883200
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_256
+      - stm32f3xx_opt
+  - name: STM32F303R8Tx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536883200
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_256
+      - stm32f3xx_opt
+  - name: STM32F303RBTx
+    memory_map:
+      - Ram:
+          range:
+            start: 268435456
+            end: 268443648
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_256
+      - stm32f3xx_opt
+  - name: STM32F303RCTx
+    memory_map:
+      - Ram:
+          range:
+            start: 268435456
+            end: 268443648
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_256
+      - stm32f3xx_opt
+  - name: STM32F303RDTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536936448
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134610944
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_512
+      - stm32f3xx_opt
+  - name: STM32F303RETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536936448
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_512
+      - stm32f3xx_opt
+  - name: STM32F303VBTx
+    memory_map:
+      - Ram:
+          range:
+            start: 268435456
+            end: 268443648
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_256
+      - stm32f3xx_opt
+  - name: STM32F303VCTx
+    memory_map:
+      - Ram:
+          range:
+            start: 268435456
+            end: 268443648
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_256
+      - stm32f3xx_opt
+  - name: STM32F303VCYx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536920064
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_256
+      - stm32f3xx_opt
+  - name: STM32F303VDHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536936448
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134610944
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_512
+      - stm32f3xx_opt
+  - name: STM32F303VDTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536936448
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134610944
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_512
+      - stm32f3xx_opt
+  - name: STM32F303VEHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536936448
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_512
+      - stm32f3xx_opt
+  - name: STM32F303VETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536936448
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_512
+      - stm32f3xx_opt
+  - name: STM32F303VEYx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536936448
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_512
+      - stm32f3xx_opt
+  - name: STM32F303ZDTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536936448
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134610944
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_512
+      - stm32f3xx_opt
+  - name: STM32F303ZETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536936448
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_512
+      - stm32f3xx_opt
+  - name: STM32F318C8Tx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536887296
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_256
+      - stm32f3xx_opt
+  - name: STM32F318C8Yx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536887296
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_256
+      - stm32f3xx_opt
+  - name: STM32F318K8Ux
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536887296
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_256
+      - stm32f3xx_opt
+  - name: STM32F328C8Tx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536887296
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_256
+      - stm32f3xx_opt
+  - name: STM32F334C4Tx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536887296
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134234112
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_256
+      - stm32f3xx_opt
+  - name: STM32F334C6Tx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536887296
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_256
+      - stm32f3xx_opt
+  - name: STM32F334C8Tx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536887296
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_256
+      - stm32f3xx_opt
+  - name: STM32F334C8Yx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536887296
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_256
+      - stm32f3xx_opt
+  - name: STM32F334K4Tx
+    memory_map:
+      - Flash:
+          range:
+            start: 134217728
+            end: 134234112
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_256
+      - stm32f3xx_opt
+  - name: STM32F334K4Ux
+    memory_map:
+      - Flash:
+          range:
+            start: 134217728
+            end: 134234112
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_256
+      - stm32f3xx_opt
+  - name: STM32F334K6Tx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536887296
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_256
+      - stm32f3xx_opt
+  - name: STM32F334K6Ux
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536887296
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_256
+      - stm32f3xx_opt
+  - name: STM32F334K8Tx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536887296
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_256
+      - stm32f3xx_opt
+  - name: STM32F334K8Ux
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536887296
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_256
+      - stm32f3xx_opt
+  - name: STM32F334R6Tx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536887296
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_256
+      - stm32f3xx_opt
+  - name: STM32F334R8Tx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536887296
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_256
+      - stm32f3xx_opt
+  - name: STM32F358CCTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536911872
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_256
+      - stm32f3xx_opt
+  - name: STM32F358RCTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536911872
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_256
+      - stm32f3xx_opt
+  - name: STM32F358VCTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536911872
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_256
+      - stm32f3xx_opt
+  - name: STM32F373C8Tx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536887296
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_256
+      - stm32f3xx_opt
+  - name: STM32F373CBTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536895488
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_256
+      - stm32f3xx_opt
+  - name: STM32F373CCTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_256
+      - stm32f3xx_opt
+  - name: STM32F373R8Tx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536887296
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_256
+      - stm32f3xx_opt
+  - name: STM32F373RBTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536895488
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_256
+      - stm32f3xx_opt
+  - name: STM32F373RCTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_256
+      - stm32f3xx_opt
+  - name: STM32F373V8Hx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536887296
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_256
+      - stm32f3xx_opt
+  - name: STM32F373V8Tx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536887296
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_256
+      - stm32f3xx_opt
+  - name: STM32F373VBHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536895488
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_256
+      - stm32f3xx_opt
+  - name: STM32F373VBTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536895488
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_256
+      - stm32f3xx_opt
+  - name: STM32F373VCHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_256
+      - stm32f3xx_opt
+  - name: STM32F373VCTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_256
+      - stm32f3xx_opt
+  - name: STM32F378CCTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_256
+      - stm32f3xx_opt
+  - name: STM32F378RCTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_256
+      - stm32f3xx_opt
+  - name: STM32F378RCYx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_256
+      - stm32f3xx_opt
+  - name: STM32F378VCTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_256
+      - stm32f3xx_opt
+  - name: STM32F398VETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536936448
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f3xx_512
+      - stm32f3xx_opt
+flash_algorithms:
+  STM32F3xx_256:
+    name: STM32F3xx_256
+    description: STM32F3xx Flash
+    default: true
+    instructions: N0g2SUFgN0lBYAAhAWDBaBQiEUPBYMBpwAUG1DNIMkkBYAYhQWAySYFgACBwRyxIAWmAIhFDAWEAIHBHELUoSAFpBCQhQwFhAWlAIhFDAWEoSSZKAOARYMNo2wf70QFpoUMBYQAgEL0QtR1JCmkCJCJDCmFIYQhpQCIQQwhhHUgaSgDgEGDLaNsH+9EIaaBDCGEAIBC9cLVJHEkISQAUJg9NASMW4CxpHEMsYRSIBIDsaOQH/NEsaWQIZAAsYexoNEIE0OhoMEPoYAEgcL2AHJIciR4AKebRACBwvSMBZ0UAIAJAq4nvzVVVAAAAMABA/w8AAKqqAAAAAAAA
+    pc_init: 1
+    pc_uninit: 47
+    pc_program_page: 151
+    pc_erase_sector: 105
+    pc_erase_all: 61
+    data_section_offset: 248
+    flash_properties:
+      address_range:
+        start: 134217728
+        end: 134479872
+      page_size: 1024
+      erased_byte_value: 255
+      program_page_timeout: 100
+      erase_sector_timeout: 6000
+      sectors:
+        - size: 2048
+          address: 0
+  STM32F3xx_512:
+    name: STM32F3xx_512
+    description: STM32F3xx 512KB Flash
+    default: true
+    instructions: N0g2SUFgN0lBYAAhAWDBaBQiEUPBYMBpwAUG1DNIMkkBYAYhQWAySYFgACBwRyxIAWmAIhFDAWEAIHBHELUoSAFpBCQhQwFhAWlAIhFDAWEoSSZKAOARYMNo2wf70QFpoUMBYQAgEL0QtR1JCmkCJCJDCmFIYQhpQCIQQwhhHUgaSgDgEGDLaNsH+9EIaaBDCGEAIBC9cLVJHEkISQAUJg9NASMW4CxpHEMsYRSIBIDsaOQH/NEsaWQIZAAsYexoNEIE0OhoMEPoYAEgcL2AHIkekhwAKebRACBwvSMBZ0UAIAJAq4nvzVVVAAAAMABA/w8AAKqqAAAAAAAA
+    pc_init: 1
+    pc_uninit: 47
+    pc_program_page: 151
+    pc_erase_sector: 105
+    pc_erase_all: 61
+    data_section_offset: 248
+    flash_properties:
+      address_range:
+        start: 134217728
+        end: 134742016
+      page_size: 1024
+      erased_byte_value: 255
+      program_page_timeout: 100
+      erase_sector_timeout: 6000
+      sectors:
+        - size: 2048
+          address: 0
+  STM32F3xx_OPT:
+    name: STM32F3xx_OPT
+    description: STM32F3xx Flash Options
+    default: false
+    instructions: S0hKSkJgS0lBYIJggWAAIQFgwWgUIhFDwWDAacAFBtRGSEVJAWAGIUFgRUmBYAAgcEc/SAFpQhWRQwFhAWmAIhFDAWEAIHBHcLU5SMFoFCMZQ8FgAWkgJCFDAWEBaUAiEUMBYTdJNUoA4BFgxWjtB/vRBWmlQwVhBWkQJCVDBWEtTTFOVTU1gADgEWDFaO0H+9EBaaFDAWHBaBlCBNDBaBlDwWABIHC9ACBwvRC1IEgBaSAkIUMBYQFpQCIRQwFhIEkeSgDgEWDDaNsH+9EBaaFDAWEAIBC9ASBwR/C1SRxJCEkAEk0QJhZLGuAsaTRDLGEUiASAEUwA4CNg72j/B/vRLGm0Qyxh7GgUJzxCBdDpaBQgAUPpYAEg8L2AHJIciR4AKeLRACDwvQAAIwFnRQAgAkCrie/NVVUAAAAwAED/DwAAqqoAAAD4/x8AAAAA
+    pc_init: 1
+    pc_uninit: 51
+    pc_program_page: 221
+    pc_erase_sector: 173
+    pc_erase_all: 73
+    data_section_offset: 332
+    flash_properties:
+      address_range:
+        start: 536868864
+        end: 536868880
+      page_size: 16
+      erased_byte_value: 255
+      program_page_timeout: 3000
+      erase_sector_timeout: 3000
+      sectors:
+        - size: 16
+          address: 0
+core: M4

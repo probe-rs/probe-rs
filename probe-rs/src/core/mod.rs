@@ -4,9 +4,15 @@ pub use communication_interface::CommunicationInterface;
 
 use crate::config::TargetSelector;
 use crate::error;
-use crate::{DebugProbeError, Memory, Probe, Session};
-use std::cell::RefCell;
-use std::rc::Rc;
+use crate::{
+    architecture::{
+        arm::{memory::ADIMemoryInterface, ArmCommunicationInterface},
+        riscv::{communication_interface::RiscvCommunicationInterface, Riscv32},
+    },
+    Error, MemoryInterface,
+};
+use crate::{DebugProbeError, Memory, Probe};
+use std::{cell::RefCell, rc::Rc};
 
 pub trait CoreRegister: Clone + From<u32> + Into<u32> + Sized + std::fmt::Debug {
     const ADDRESS: u32;
@@ -14,7 +20,7 @@ pub trait CoreRegister: Clone + From<u32> + Into<u32> + Sized + std::fmt::Debug 
 }
 
 #[derive(Debug, Copy, Clone)]
-pub struct CoreRegisterAddress(pub u8);
+pub struct CoreRegisterAddress(pub u16);
 
 impl From<CoreRegisterAddress> for u32 {
     fn from(value: CoreRegisterAddress) -> Self {
@@ -22,34 +28,103 @@ impl From<CoreRegisterAddress> for u32 {
     }
 }
 
-impl From<u8> for CoreRegisterAddress {
-    fn from(value: u8) -> Self {
+impl From<u16> for CoreRegisterAddress {
+    fn from(value: u16) -> Self {
         CoreRegisterAddress(value)
     }
 }
-
-#[allow(non_snake_case)]
-#[derive(Copy, Clone)]
-pub struct BasicRegisterAddresses {
-    pub R0: CoreRegisterAddress,
-    pub R1: CoreRegisterAddress,
-    pub R2: CoreRegisterAddress,
-    pub R3: CoreRegisterAddress,
-    pub R4: CoreRegisterAddress,
-    pub R5: CoreRegisterAddress,
-    pub R6: CoreRegisterAddress,
-    pub R7: CoreRegisterAddress,
-    pub R8: CoreRegisterAddress,
-    pub R9: CoreRegisterAddress,
-    pub PC: CoreRegisterAddress,
-    pub LR: CoreRegisterAddress,
-    pub SP: CoreRegisterAddress,
-    pub XPSR: CoreRegisterAddress,
-}
-
 #[derive(Debug, Clone)]
 pub struct CoreInformation {
     pub pc: u32,
+}
+
+#[derive(Debug, Clone)]
+pub struct RegisterDescription {
+    pub(crate) name: &'static str,
+    pub(crate) kind: RegisterKind,
+    pub(crate) address: CoreRegisterAddress,
+}
+
+impl RegisterDescription {
+    pub fn name(&self) -> &'static str {
+        self.name
+    }
+}
+
+impl From<RegisterDescription> for CoreRegisterAddress {
+    fn from(description: RegisterDescription) -> CoreRegisterAddress {
+        description.address
+    }
+}
+
+impl From<&RegisterDescription> for CoreRegisterAddress {
+    fn from(description: &RegisterDescription) -> CoreRegisterAddress {
+        description.address
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub(crate) enum RegisterKind {
+    General,
+    PC,
+}
+
+/// Register description for a core.
+
+#[derive(Debug)]
+pub struct RegisterFile {
+    pub(crate) platform_registers: &'static [RegisterDescription],
+
+    pub(crate) program_counter: &'static RegisterDescription,
+
+    pub(crate) stack_pointer: &'static RegisterDescription,
+
+    pub(crate) return_address: &'static RegisterDescription,
+
+    pub(crate) argument_registers: &'static [RegisterDescription],
+    pub(crate) result_registers: &'static [RegisterDescription],
+}
+
+impl RegisterFile {
+    pub fn registers(&self) -> impl Iterator<Item = &RegisterDescription> {
+        self.platform_registers.iter()
+    }
+
+    pub fn program_counter(&self) -> &RegisterDescription {
+        &self.program_counter
+    }
+
+    pub fn stack_pointer(&self) -> &RegisterDescription {
+        &self.stack_pointer
+    }
+
+    pub fn return_address(&self) -> &RegisterDescription {
+        &self.return_address
+    }
+
+    pub fn argument_register(&self, index: usize) -> &RegisterDescription {
+        &self.argument_registers[index]
+    }
+
+    pub fn get_argument_register(&self, index: usize) -> Option<&RegisterDescription> {
+        self.argument_registers.get(index)
+    }
+
+    pub fn result_register(&self, index: usize) -> &RegisterDescription {
+        &self.result_registers[index]
+    }
+
+    pub fn get_result_register(&self, index: usize) -> Option<&RegisterDescription> {
+        self.result_registers.get(index)
+    }
+
+    pub fn platform_register(&self, index: usize) -> &RegisterDescription {
+        &self.platform_registers[index]
+    }
+
+    pub fn get_platform_register(&self, index: usize) -> Option<&RegisterDescription> {
+        self.platform_registers.get(index)
+    }
 }
 
 pub trait CoreInterface {
@@ -57,7 +132,7 @@ pub trait CoreInterface {
     /// a [`DebugProbeError::Timeout`] error will be returned.
     ///
     /// [`DebugProbeError::Timeout`]: ../probe/debug_probe/enum.DebugProbeError.html#variant.Timeout
-    fn wait_for_core_halted(&self) -> Result<(), error::Error>;
+    fn wait_for_core_halted(&mut self) -> Result<(), error::Error>;
 
     /// Check if the core is halted. If the core does not halt on its own,
     /// a [`CoreError::Timeout`] error will be returned.
@@ -65,13 +140,15 @@ pub trait CoreInterface {
     /// [`CoreError::Timeout`]: ../probe/debug_probe/enum.CoreError.html#variant.Timeout
     fn core_halted(&self) -> Result<bool, error::Error>;
 
+    fn status(&mut self) -> Result<CoreStatus, error::Error>;
+
     /// Try to halt the core. This function ensures the core is actually halted, and
     /// returns a [`CoreError::Timeout`] otherwise.
     ///
     /// [`CoreError::Timeout`]: ../probe/debug_probe/enum.CoreError.html#variant.Timeout
-    fn halt(&self) -> Result<CoreInformation, error::Error>;
+    fn halt(&mut self) -> Result<CoreInformation, error::Error>;
 
-    fn run(&self) -> Result<(), error::Error>;
+    fn run(&mut self) -> Result<(), error::Error>;
 
     /// Reset the core, and then continue to execute instructions. If the core
     /// should be halted after reset, use the [`reset_and_halt`] function.
@@ -83,10 +160,10 @@ pub trait CoreInterface {
     /// reset, use the [`reset`] function.
     ///
     /// [`reset`]: trait.Core.html#tymethod.reset
-    fn reset_and_halt(&self) -> Result<CoreInformation, error::Error>;
+    fn reset_and_halt(&mut self) -> Result<CoreInformation, error::Error>;
 
     /// Steps one instruction and then enters halted state again.
-    fn step(&self) -> Result<CoreInformation, error::Error>;
+    fn step(&mut self) -> Result<CoreInformation, error::Error>;
 
     fn read_core_reg(&self, address: CoreRegisterAddress) -> Result<u32, error::Error>;
 
@@ -100,10 +177,42 @@ pub trait CoreInterface {
 
     fn clear_breakpoint(&self, unit_index: usize) -> Result<(), error::Error>;
 
-    fn registers<'a>(&self) -> &'a BasicRegisterAddresses;
+    fn registers(&self) -> &'static RegisterFile;
 
     fn memory(&self) -> Memory;
     fn hw_breakpoints_enabled(&self) -> bool;
+
+    fn architecture(&self) -> Architecture;
+}
+
+impl MemoryInterface for Core {
+    fn read32(&mut self, address: u32) -> Result<u32, Error> {
+        self.memory().read32(address)
+    }
+
+    fn read8(&mut self, address: u32) -> Result<u8, Error> {
+        self.memory().read8(address)
+    }
+
+    fn read_block32(&mut self, address: u32, data: &mut [u32]) -> Result<(), Error> {
+        self.memory().read_block32(address, data)
+    }
+    fn read_block8(&mut self, address: u32, data: &mut [u8]) -> Result<(), Error> {
+        self.memory().read_block8(address, data)
+    }
+
+    fn write32(&mut self, addr: u32, data: u32) -> Result<(), Error> {
+        self.memory().write32(addr, data)
+    }
+    fn write8(&mut self, addr: u32, data: u8) -> Result<(), Error> {
+        self.memory().write8(addr, data)
+    }
+    fn write_block32(&mut self, addr: u32, data: &[u32]) -> Result<(), Error> {
+        self.memory().write_block32(addr, data)
+    }
+    fn write_block8(&mut self, addr: u32, data: &[u8]) -> Result<(), Error> {
+        self.memory().write_block8(addr, data)
+    }
 }
 
 // dyn_clone::clone_trait_object!(CoreInterface);
@@ -138,21 +247,72 @@ pub trait CoreInterface {
 //     }
 // }
 
-#[derive(Clone)]
+#[derive(Copy, Clone)]
 pub enum CoreType {
+    M3,
     M4,
     M33,
     M0,
+    Riscv,
+    M7,
 }
 
 impl CoreType {
-    pub fn attach(&self, session: Session, memory: Memory, id: usize) -> Core {
-        match self {
-            CoreType::M4 => Core::new(id, crate::architecture::arm::m4::M4::new(session, memory)),
-            CoreType::M33 => {
-                Core::new(id, crate::architecture::arm::m33::M33::new(session, memory))
+    pub fn attach_arm(
+        &self,
+        interface: ArmCommunicationInterface,
+        id: usize,
+    ) -> Result<Core, Error> {
+        let memory = if let Some(memory) = interface.dedicated_memory_interface()? {
+            memory
+        } else {
+            Memory::new(
+                ADIMemoryInterface::<ArmCommunicationInterface>::new(interface, 0)
+                    .map_err(|(_i, e)| Error::architecture_specific(e))?,
+            )
+        };
+
+        Ok(match self {
+            // TODO: Change this once the new archtecture structure for ARM hits.
+            // Cortex-M3, M4 and M7 use the Armv7[E]-M architecture and are
+            // identical for our purposes.
+            CoreType::M3 | CoreType::M4 | CoreType::M7 => {
+                Core::new(id, crate::architecture::arm::m4::M4::new(memory)?)
             }
-            CoreType::M0 => Core::new(id, crate::architecture::arm::m0::M0::new(session, memory)),
+            CoreType::M33 => Core::new(id, crate::architecture::arm::m33::M33::new(memory)?),
+            CoreType::M0 => Core::new(id, crate::architecture::arm::m0::M0::new(memory)?),
+            _ => {
+                return Err(Error::UnableToOpenProbe(
+                    "Core architecture and Probe mismatch.",
+                ))
+            }
+        })
+    }
+
+    pub fn attach_riscv(
+        &self,
+        interface: RiscvCommunicationInterface,
+        id: usize,
+    ) -> Result<Core, Error> {
+        Ok(match self {
+            CoreType::Riscv => Core::new(id, Riscv32::new(interface)),
+            _ => {
+                return Err(Error::UnableToOpenProbe(
+                    "Core architecture and Probe mismatch.",
+                ))
+            }
+        })
+    }
+
+    pub(crate) fn from_string(name: impl AsRef<str>) -> Option<Self> {
+        match &name.as_ref().to_ascii_lowercase()[..] {
+            "m0" => Some(CoreType::M0),
+            "m4" => Some(CoreType::M4),
+            "m3" => Some(CoreType::M3),
+            "m33" => Some(CoreType::M33),
+            "riscv" => Some(CoreType::Riscv),
+            "m7" => Some(CoreType::M7),
+            _ => None,
         }
     }
 }
@@ -195,7 +355,7 @@ impl Core {
     ///
     /// [`DebugProbeError::Timeout`]: ../probe/debug_probe/enum.DebugProbeError.html#variant.Timeout
     pub fn wait_for_core_halted(&self) -> Result<(), error::Error> {
-        self.inner.borrow().wait_for_core_halted()
+        self.inner.borrow_mut().wait_for_core_halted()
     }
 
     /// Check if the core is halted. If the core does not halt on its own,
@@ -211,11 +371,11 @@ impl Core {
     ///
     /// [`CoreError::Timeout`]: ../probe/debug_probe/enum.CoreError.html#variant.Timeout
     pub fn halt(&self) -> Result<CoreInformation, error::Error> {
-        self.inner.borrow().halt()
+        self.inner.borrow_mut().halt()
     }
 
     pub fn run(&self) -> Result<(), error::Error> {
-        self.inner.borrow().run()
+        self.inner.borrow_mut().run()
     }
 
     /// Reset the core, and then continue to execute instructions. If the core
@@ -231,12 +391,16 @@ impl Core {
     ///
     /// [`reset`]: trait.Core.html#tymethod.reset
     pub fn reset_and_halt(&self) -> Result<CoreInformation, error::Error> {
-        self.inner.borrow().reset_and_halt()
+        self.inner.borrow_mut().reset_and_halt()
     }
 
     /// Steps one instruction and then enters halted state again.
     pub fn step(&self) -> Result<CoreInformation, error::Error> {
-        self.inner.borrow().step()
+        self.inner.borrow_mut().step()
+    }
+
+    pub fn status(&self) -> Result<CoreStatus, error::Error> {
+        self.inner.borrow_mut().status()
     }
 
     pub fn read_core_reg(
@@ -262,7 +426,7 @@ impl Core {
         self.inner.borrow_mut().enable_breakpoints(state)
     }
 
-    pub fn registers<'a>(&self) -> &'a BasicRegisterAddresses {
+    pub fn registers(&self) -> &'static RegisterFile {
         self.inner.borrow().registers()
     }
 
@@ -375,15 +539,6 @@ impl Core {
     }
 }
 
-pub(crate) fn get_core(name: impl AsRef<str>) -> Option<CoreType> {
-    match &name.as_ref().to_ascii_lowercase()[..] {
-        "m0" => Some(CoreType::M0),
-        "m4" => Some(CoreType::M4),
-        "m33" => Some(CoreType::M33),
-        _ => None,
-    }
-}
-
 pub struct CoreList(Vec<CoreType>);
 
 impl CoreList {
@@ -412,4 +567,46 @@ impl BreakpointId {
 pub struct Breakpoint {
     address: u32,
     register_hw: usize,
+}
+
+pub enum Architecture {
+    ARM,
+    RISCV,
+}
+
+#[derive(Debug, PartialEq, Copy, Clone)]
+pub enum CoreStatus {
+    Running,
+    Halted(HaltReason),
+    Sleeping,
+}
+
+impl CoreStatus {
+    pub fn is_halted(&self) -> bool {
+        match self {
+            CoreStatus::Halted(_) => true,
+            _ => false,
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Copy, Clone)]
+pub enum HaltReason {
+    /// Core halted due to a breakpoint, either
+    /// a *soft* or a *hard* breakpoint.
+    Breakpoint,
+    /// Core halted due to an exception, e.g. an
+    /// an interrupt.
+    Exception,
+    /// Core halted due to a data watchpoint
+    Watchpoint,
+    /// Core halted after single step
+    Step,
+    /// Core halted because of a debugger request
+    Request,
+    /// External halt request
+    External,
+    /// Unknown reason for halt. This can happen for
+    /// example when the core is already halted when we connect.
+    Unknown,
 }

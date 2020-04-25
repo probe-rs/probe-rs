@@ -2,33 +2,42 @@ pub mod constants;
 pub mod tools;
 mod usb_interface;
 
-use self::usb_interface::STLinkUSBDevice;
-use super::{DAPAccess, DebugProbe, DebugProbeError, DebugProbeInfo, PortType, WireProtocol};
-use crate::architecture::arm::{ap::AccessPort, dp::Ctrl, Register};
+use self::usb_interface::{STLinkUSBDevice, StLinkUsb};
+use super::{
+    DAPAccess, DebugProbe, DebugProbeError, DebugProbeInfo, JTAGAccess, PortType, WireProtocol,
+};
 use crate::itm::SwvReader;
 use crate::{Error, Memory};
 use constants::{commands, JTagFrequencyToDivider, Mode, Status, SwdFrequencyToDelayCount};
-use scroll::{Pread, BE};
+use scroll::{Pread, BE, LE};
+use std::time::Duration;
 use thiserror::Error;
 use usb_interface::TIMEOUT;
 
-pub struct STLink {
-    device: STLinkUSBDevice,
+#[derive(Debug)]
+pub struct STLink<D: StLinkUsb> {
+    device: D,
     hw_version: u8,
     jtag_version: u8,
     protocol: WireProtocol,
+    swd_speed_khz: u32,
+    jtag_speed_khz: u32,
+
+    /// Index of the AP which is currently open.
+    current_ap: Option<u8>,
 }
 
-impl DebugProbe for STLink {
-    fn new_from_probe_info(info: &DebugProbeInfo) -> Result<Box<Self>, DebugProbeError>
-    where
-        Self: Sized,
-    {
+impl DebugProbe for STLink<STLinkUSBDevice> {
+    fn new_from_probe_info(info: &DebugProbeInfo) -> Result<Box<Self>, DebugProbeError> {
         let mut stlink = Self {
             device: STLinkUSBDevice::new_from_info(info)?,
             hw_version: 0,
             jtag_version: 0,
             protocol: WireProtocol::Swd,
+            swd_speed_khz: 1_800,
+            jtag_speed_khz: 1_120,
+
+            current_ap: None,
         };
 
         stlink.init()?;
@@ -40,34 +49,107 @@ impl DebugProbe for STLink {
         "ST-Link"
     }
 
+    fn speed(&self) -> u32 {
+        match self.protocol {
+            WireProtocol::Swd => self.swd_speed_khz,
+            WireProtocol::Jtag => self.jtag_speed_khz,
+        }
+    }
+
+    fn set_speed(&mut self, speed_khz: u32) -> Result<u32, DebugProbeError> {
+        if self.hw_version < 3 {
+            match self.protocol {
+                WireProtocol::Swd => {
+                    let actual_speed = SwdFrequencyToDelayCount::find_setting(speed_khz);
+
+                    if let Some(actual_speed) = actual_speed {
+                        self.set_swd_frequency(actual_speed)?;
+
+                        self.swd_speed_khz = actual_speed.to_khz();
+
+                        Ok(actual_speed.to_khz())
+                    } else {
+                        Err(DebugProbeError::UnsupportedSpeed(speed_khz))
+                    }
+                }
+                WireProtocol::Jtag => {
+                    let actual_speed = JTagFrequencyToDivider::find_setting(speed_khz);
+
+                    if let Some(actual_speed) = actual_speed {
+                        self.set_jtag_frequency(actual_speed)?;
+
+                        self.jtag_speed_khz = actual_speed.to_khz();
+
+                        Ok(actual_speed.to_khz())
+                    } else {
+                        Err(DebugProbeError::UnsupportedSpeed(speed_khz))
+                    }
+                }
+            }
+        } else if self.hw_version == 3 {
+            let (available, _) = self.get_communication_frequencies(self.protocol)?;
+
+            let actual_speed_khz = available
+                .into_iter()
+                .filter(|speed| *speed <= speed_khz)
+                .max()
+                .ok_or(DebugProbeError::UnsupportedSpeed(speed_khz))?;
+
+            self.set_communication_frequency(self.protocol, actual_speed_khz)?;
+
+            match self.protocol {
+                WireProtocol::Swd => self.swd_speed_khz = actual_speed_khz,
+                WireProtocol::Jtag => self.jtag_speed_khz = actual_speed_khz,
+            }
+
+            Ok(actual_speed_khz)
+        } else {
+            unimplemented!()
+        }
+    }
+
     /// Enters debug mode.
     fn attach(&mut self) -> Result<(), DebugProbeError> {
         log::debug!("attach({:?})", self.protocol);
         self.enter_idle()?;
 
         let param = match self.protocol {
-            WireProtocol::Jtag => commands::JTAG_ENTER_JTAG_NO_CORE_RESET,
-            WireProtocol::Swd => commands::JTAG_ENTER_SWD,
+            WireProtocol::Jtag => {
+                log::debug!("Switching protocol to JTAG");
+                commands::JTAG_ENTER_JTAG_NO_CORE_RESET
+            }
+            WireProtocol::Swd => {
+                log::debug!("Switching protocol to SWD");
+                commands::JTAG_ENTER_SWD
+            }
         };
-        let protocol = self.protocol;
 
         let mut buf = [0; 2];
-        self.device.write(
+        self.send_jtag_command(
             vec![commands::JTAG_COMMAND, commands::JTAG_ENTER2, param, 0],
             &[],
             &mut buf,
             TIMEOUT,
         )?;
 
-        Self::check_status(&buf)?;
-        let mut ctrl_reg = Ctrl::default();
-        ctrl_reg.set_csyspwrupreq(true);
-        ctrl_reg.set_cdbgpwrupreq(true);
-        let value = ctrl_reg.into();
-        self.write_register(PortType::DebugPort, Ctrl::ADDRESS.into(), value)?;
-        self.protocol = protocol;
+        log::debug!("Successfully initialized SWD.");
+
+        // If the speed is not manually set, the probe will
+        // use whatever speed has been configured before.
+        //
+        // To ensure the default speed is used if not changed,
+        // we set the speed again here.
+        match self.protocol {
+            WireProtocol::Jtag => {
+                self.set_speed(self.jtag_speed_khz)?;
+            }
+            WireProtocol::Swd => {
+                self.set_speed(self.swd_speed_khz)?;
+            }
+        }
 
         self.start_trace_reception()?;
+
         Ok(())
     }
 
@@ -80,7 +162,7 @@ impl DebugProbe for STLink {
     /// Asserts the nRESET pin.
     fn target_reset(&mut self) -> Result<(), DebugProbeError> {
         let mut buf = [0; 2];
-        self.device.write(
+        self.send_jtag_command(
             vec![
                 commands::JTAG_COMMAND,
                 commands::JTAG_DRIVE_NRST,
@@ -89,8 +171,7 @@ impl DebugProbe for STLink {
             &[],
             &mut buf,
             TIMEOUT,
-        )?;
-        Self::check_status(&buf)
+        )
     }
 
     fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError> {
@@ -113,6 +194,14 @@ impl DebugProbe for STLink {
         Some(self as _)
     }
 
+    fn get_interface_jtag(&self) -> Option<&dyn JTAGAccess> {
+        None
+    }
+
+    fn get_interface_jtag_mut(&mut self) -> Option<&mut dyn JTAGAccess> {
+        None
+    }
+
     fn get_interface_itm(&self) -> Option<&dyn SwvReader> {
         Some(self as _)
     }
@@ -122,10 +211,14 @@ impl DebugProbe for STLink {
     }
 }
 
-impl DAPAccess for STLink {
+impl DAPAccess for STLink<STLinkUSBDevice> {
     /// Reads the DAP register on the specified port and address.
     fn read_register(&mut self, port: PortType, addr: u16) -> Result<u32, DebugProbeError> {
         if (addr & 0xf0) == 0 || port != PortType::DebugPort {
+            if let PortType::AccessPort(port_number) = port {
+                self.select_ap(port_number as u8)?;
+            }
+
             let port: u16 = port.into();
 
             let cmd = vec![
@@ -137,10 +230,9 @@ impl DAPAccess for STLink {
                 ((addr >> 8) & 0xFF) as u8,
             ];
             let mut buf = [0; 8];
-            self.device.write(cmd, &[], &mut buf, TIMEOUT)?;
-            Self::check_status(&buf)?;
+            self.send_jtag_command(cmd, &[], &mut buf, TIMEOUT)?;
             // Unwrap is ok!
-            Ok((&buf[4..8]).pread(0).unwrap())
+            Ok((&buf[4..8]).pread_with(0, LE).unwrap())
         } else {
             Err(StlinkError::BlanksNotAllowedOnDPRegister.into())
         }
@@ -154,6 +246,10 @@ impl DAPAccess for STLink {
         value: u32,
     ) -> Result<(), DebugProbeError> {
         if (addr & 0xf0) == 0 || port != PortType::DebugPort {
+            if let PortType::AccessPort(port_number) = port {
+                self.select_ap(port_number as u8)?;
+            }
+
             let port: u16 = port.into();
 
             let cmd = vec![
@@ -169,8 +265,7 @@ impl DAPAccess for STLink {
                 ((value >> 24) & 0xFF) as u8,
             ];
             let mut buf = [0; 2];
-            self.device.write(cmd, &[], &mut buf, TIMEOUT)?;
-            Self::check_status(&buf)?;
+            self.send_jtag_command(cmd, &[], &mut buf, TIMEOUT)?;
             Ok(())
         } else {
             Err(StlinkError::BlanksNotAllowedOnDPRegister.into())
@@ -178,24 +273,21 @@ impl DAPAccess for STLink {
     }
 }
 
-impl Drop for STLink {
+impl<D: StLinkUsb> Drop for STLink<D> {
     fn drop(&mut self) {
         // We ignore the error case as we can't do much about it anyways.
         let _ = self.enter_idle();
     }
 }
 
-impl STLink {
+impl<D: StLinkUsb> STLink<D> {
     /// Maximum number of bytes to send or receive for 32- and 16- bit transfers.
     ///
     /// 8-bit transfers have a maximum size of the maximum USB packet size (64 bytes for full speed).
     const _MAXIMUM_TRANSFER_SIZE: u32 = 1024;
 
     /// Minimum required STLink firmware version.
-    const MIN_JTAG_VERSION: u8 = 24;
-
-    /// Firmware version that adds 16-bit transfers.
-    const _MIN_JTAG_VERSION_16BIT_XFER: u8 = 26;
+    const MIN_JTAG_VERSION: u8 = 26;
 
     /// Firmware version that adds multiple AP support.
     const MIN_JTAG_VERSION_MULTI_AP: u8 = 28;
@@ -210,8 +302,8 @@ impl STLink {
         {
             Ok(_) => {
                 // The next two unwraps are safe!
-                let a0 = (&buf[0..4]).pread::<u32>(0).unwrap() as f32;
-                let a1 = (&buf[4..8]).pread::<u32>(0).unwrap() as f32;
+                let a0 = (&buf[0..4]).pread_with::<u32>(0, LE).unwrap() as f32;
+                let a1 = (&buf[4..8]).pread_with::<u32>(0, LE).unwrap() as f32;
                 if a0 != 0.0 {
                     Ok((2.0 * a1 * 1.2 / a0) as f32)
                 } else {
@@ -312,7 +404,7 @@ impl STLink {
                 .write(vec![commands::GET_VERSION_EXT], &[], &mut buf, TIMEOUT)
             {
                 Ok(_) => {
-                    let version: u8 = (&buf[2..3]).pread(0).unwrap();
+                    let version: u8 = (&buf[2..3]).pread_with(0, LE).unwrap();
                     self.jtag_version = version;
                 }
                 Err(e) => return Err(e),
@@ -321,7 +413,7 @@ impl STLink {
 
         // Make sure everything is okay with the firmware we use.
         if self.jtag_version == 0 {
-            return Err(DebugProbeError::JTAGNotSupportedOnProbe);
+            return Err(StlinkError::JTAGNotSupportedOnProbe.into());
         }
         if self.hw_version < 3 && self.jtag_version < Self::MIN_JTAG_VERSION {
             return Err(DebugProbeError::ProbeFirmwareOutdated);
@@ -330,7 +422,7 @@ impl STLink {
         Ok((self.hw_version, self.jtag_version))
     }
 
-    /// Opens the ST-Link USB device and tries to identify the ST-Links version and it's target voltage.
+    /// Opens the ST-Link USB device and tries to identify the ST-Links version and its target voltage.
     /// Internal helper.
     fn init(&mut self) -> Result<(), DebugProbeError> {
         log::debug!("Initializing STLink...");
@@ -350,16 +442,25 @@ impl STLink {
 
         let version = self.get_version()?;
         log::debug!("STLink version: {:?}", version);
+
+        if self.hw_version == 3 {
+            let (_, current) = self.get_communication_frequencies(WireProtocol::Swd)?;
+            self.swd_speed_khz = current;
+
+            let (_, current) = self.get_communication_frequencies(WireProtocol::Jtag)?;
+            self.jtag_speed_khz = current;
+        }
+
         self.get_target_voltage().map(|_| ())
     }
 
     /// sets the SWD frequency.
-    pub fn _set_swd_frequency(
+    pub fn set_swd_frequency(
         &mut self,
         frequency: SwdFrequencyToDelayCount,
     ) -> Result<(), DebugProbeError> {
         let mut buf = [0; 2];
-        self.device.write(
+        self.send_jtag_command(
             vec![
                 commands::JTAG_COMMAND,
                 commands::SWD_SET_FREQ,
@@ -368,17 +469,16 @@ impl STLink {
             &[],
             &mut buf,
             TIMEOUT,
-        )?;
-        Self::check_status(&buf)
+        )
     }
 
     /// Sets the JTAG frequency.
-    pub fn _set_jtag_frequency(
+    pub fn set_jtag_frequency(
         &mut self,
         frequency: JTagFrequencyToDivider,
     ) -> Result<(), DebugProbeError> {
         let mut buf = [0; 2];
-        self.device.write(
+        self.send_jtag_command(
             vec![
                 commands::JTAG_COMMAND,
                 commands::JTAG_SET_FREQ,
@@ -387,79 +487,156 @@ impl STLink {
             &[],
             &mut buf,
             TIMEOUT,
-        )?;
-        Self::check_status(&buf)
+        )
     }
 
-    pub fn _open_ap(&mut self, apsel: impl AccessPort) -> Result<(), DebugProbeError> {
-        if self.jtag_version < Self::MIN_JTAG_VERSION_MULTI_AP {
-            Err(StlinkError::JTagDoesNotSupportMultipleAP.into())
-        } else {
-            let mut buf = [0; 2];
-            self.device.write(
-                vec![
-                    commands::JTAG_COMMAND,
-                    commands::JTAG_INIT_AP,
-                    apsel.port_number(),
-                    commands::JTAG_AP_NO_CORE,
-                ],
-                &[],
-                &mut buf,
-                TIMEOUT,
-            )?;
-            Self::check_status(&buf)
-        }
-    }
+    /// Sets the communication frequency (V3 only)
+    fn set_communication_frequency(
+        &mut self,
+        protocol: WireProtocol,
+        frequency_khz: u32,
+    ) -> Result<(), DebugProbeError> {
+        assert_eq!(self.hw_version, 3);
 
-    pub fn _close_ap(&mut self, apsel: impl AccessPort) -> Result<(), DebugProbeError> {
-        if self.jtag_version < Self::MIN_JTAG_VERSION_MULTI_AP {
-            Err(StlinkError::JTagDoesNotSupportMultipleAP.into())
-        } else {
-            let mut buf = [0; 2];
-            self.device.write(
-                vec![
-                    commands::JTAG_COMMAND,
-                    commands::JTAG_CLOSE_AP_DBG,
-                    apsel.port_number(),
-                ],
-                &[],
-                &mut buf,
-                TIMEOUT,
-            )?;
-            Self::check_status(&buf)
-        }
-    }
-
-    /// Drives the nRESET pin.
-    /// `is_asserted` tells wheter the reset should be asserted or deasserted.
-    pub fn _drive_nreset(&mut self, is_asserted: bool) -> Result<(), DebugProbeError> {
-        let state = if is_asserted {
-            commands::JTAG_DRIVE_NRST_LOW
-        } else {
-            commands::JTAG_DRIVE_NRST_HIGH
+        let cmd_proto = match protocol {
+            WireProtocol::Swd => 0,
+            WireProtocol::Jtag => 1,
         };
-        let mut buf = [0; 2];
-        self.device.write(
-            vec![commands::JTAG_COMMAND, commands::JTAG_DRIVE_NRST, state],
+
+        let mut command = vec![commands::JTAG_COMMAND, commands::SET_COM_FREQ, cmd_proto, 0];
+        command.extend_from_slice(&frequency_khz.to_le_bytes());
+
+        let mut buf = [0; 8];
+        self.send_jtag_command(command, &[], &mut buf, TIMEOUT)
+    }
+
+    /// Returns the current and available communication frequencies (V3 only)
+    fn get_communication_frequencies(
+        &mut self,
+        protocol: WireProtocol,
+    ) -> Result<(Vec<u32>, u32), DebugProbeError> {
+        assert_eq!(self.hw_version, 3);
+
+        let cmd_proto = match protocol {
+            WireProtocol::Swd => 0,
+            WireProtocol::Jtag => 1,
+        };
+
+        let mut buf = [0; 52];
+        self.send_jtag_command(
+            vec![commands::JTAG_COMMAND, commands::GET_COM_FREQ, cmd_proto],
             &[],
             &mut buf,
             TIMEOUT,
         )?;
-        Self::check_status(&buf)
+
+        let mut values = (&buf)
+            .chunks(4)
+            .map(|chunk| chunk.pread_with::<u32>(0, LE).unwrap())
+            .collect::<Vec<u32>>();
+
+        let current = values[1];
+        let n = core::cmp::min(values[2], 10) as usize;
+
+        values.rotate_left(3);
+        values.truncate(n);
+
+        Ok((values, current))
+    }
+
+    /// Select an AP to use
+    ///
+    /// On newer ST-Links (JTAG Version > 28), multiple APs are supported.
+    /// To switch between APs, dedicated commands have to be used. For older
+    /// ST-Links, we can only use AP 0. If an AP other than 0 is used on these
+    /// probes, an error is returned.
+    fn select_ap(&mut self, ap: u8) -> Result<(), DebugProbeError> {
+        // Check if we can use APs other an AP 0.
+        // Older versions of the ST-Link software don't support this.
+        if self.hw_version < 3 && self.jtag_version < Self::MIN_JTAG_VERSION_MULTI_AP {
+            if ap == 0 {
+                return Ok(());
+            } else {
+                return Err(DebugProbeError::ProbeFirmwareOutdated);
+            }
+        }
+
+        if let Some(current_ap) = self.current_ap {
+            if current_ap != ap {
+                self.close_ap(current_ap as u8)?;
+                self.open_ap(ap as u8)?;
+            }
+        } else {
+            // First time reading, open the AP
+            self.open_ap(ap as u8)?;
+        }
+
+        self.current_ap = Some(ap);
+
+        Ok(())
+    }
+
+    /// Open a specific AP, which will be used for all future commands.
+    ///
+    /// This is only supported on ST-Link V3, or older ST-Links with
+    /// a JTAG version > `MIN_JTAG_VERSION_MULTI_AP`.
+    fn open_ap(&mut self, apsel: u8) -> Result<(), DebugProbeError> {
+        // Ensure this command is actually supported
+        assert!(self.hw_version >= 3 || self.jtag_version > Self::MIN_JTAG_VERSION_MULTI_AP);
+
+        let mut buf = [0; 2];
+        log::trace!("JTAG_INIT_AP {}", apsel);
+        self.send_jtag_command(
+            vec![commands::JTAG_COMMAND, commands::JTAG_INIT_AP, apsel],
+            &[],
+            &mut buf,
+            TIMEOUT,
+        )
+    }
+
+    /// Close a specific AP, which was opened with `open_ap`.
+    ///
+    /// This is only supported on ST-Link V3, or older ST-Links with
+    /// a JTAG version > `MIN_JTAG_VERSION_MULTI_AP`.
+    fn close_ap(&mut self, apsel: u8) -> Result<(), DebugProbeError> {
+        // Ensure this command is actually supported
+        assert!(self.hw_version >= 3 || self.jtag_version > Self::MIN_JTAG_VERSION_MULTI_AP);
+
+        let mut buf = [0; 2];
+        log::trace!("JTAG_CLOSE_AP {}", apsel);
+        self.send_jtag_command(
+            vec![commands::JTAG_COMMAND, commands::JTAG_CLOSE_AP_DBG, apsel],
+            &[],
+            &mut buf,
+            TIMEOUT,
+        )
     }
 
     /// Validates the status given.
-    /// Returns an `Err(DebugProbeError::UnknownError)` if the status is not `Status::JtagOk`.
+    /// Returns an error if the status is not `Status::JtagOk`.
     /// Returns Ok(()) otherwise.
     /// This can be called on any status returned from the attached target.
-    fn check_status(status: &[u8]) -> Result<(), DebugProbeError> {
-        log::trace!("check_status({:?})", status);
-        if status.len() > 0 && status[0] != Status::JtagOk as u8 {
-            log::debug!("check_status failed: {:?}", status);
-            Err(DebugProbeError::Unknown)
+    fn check_status(status: &[u8]) -> Result<(), StlinkError> {
+        let status = Status::from(status[0]);
+        if status != Status::JtagOk {
+            log::warn!("check_status failed: {:?}", status);
+            Err(StlinkError::CommandFailed(status))
         } else {
             Ok(())
         }
+    }
+
+    fn send_jtag_command(
+        &mut self,
+        cmd: Vec<u8>,
+        write_data: &[u8],
+        read_data: &mut [u8],
+        timeout: Duration,
+    ) -> Result<(), DebugProbeError> {
+        self.device.write(cmd, write_data, read_data, timeout)?;
+
+        Self::check_status(read_data)?;
+        Ok(())
     }
 
     pub fn start_trace_reception(&mut self) -> Result<(), DebugProbeError> {
@@ -504,7 +681,7 @@ impl STLink {
     }
 }
 
-impl SwvReader for STLink {
+impl<D: StLinkUsb> SwvReader for STLink<D> {
     fn read(&mut self) -> Result<Vec<u8>, Error> {
         let data = self.read_swv_data()?;
         Ok(data)
@@ -513,22 +690,184 @@ impl SwvReader for STLink {
 
 #[derive(Error, Debug)]
 pub(crate) enum StlinkError {
-    #[error("Invalid voltage values retourned by probe.")]
+    #[error("Invalid voltage values returned by probe.")]
     VoltageDivisionByZero,
     #[error("Probe is an unknown mode.")]
     UnknownMode,
-    #[error("JTAG does not support multiple APs.")]
-    JTagDoesNotSupportMultipleAP,
     #[error("Blank values are not allowed on DebugPort writes.")]
     BlanksNotAllowedOnDPRegister,
     #[error("Not enough bytes read.")]
     NotEnoughBytesRead { is: usize, should: usize },
     #[error("USB endpoint not found.")]
     EndpointNotFound,
+    #[error("Command failed with status {0:?}")]
+    CommandFailed(Status),
+    #[error("JTAG not supported on Probe")]
+    JTAGNotSupportedOnProbe,
 }
 
 impl From<StlinkError> for DebugProbeError {
     fn from(e: StlinkError) -> Self {
         DebugProbeError::ProbeSpecific(Box::new(e))
+    }
+}
+
+#[cfg(test)]
+mod test {
+
+    use super::{constants::commands, usb_interface::StLinkUsb, STLink};
+    use crate::{DebugProbeError, WireProtocol};
+
+    use scroll::Pwrite;
+
+    #[derive(Debug)]
+    struct MockUsb {
+        hw_version: u8,
+        jtag_version: u8,
+        swim_version: u8,
+
+        target_voltage_a0: f32,
+        target_voltage_a1: f32,
+    }
+
+    impl MockUsb {
+        fn build(self) -> STLink<MockUsb> {
+            STLink {
+                device: self,
+                hw_version: 0,
+                protocol: WireProtocol::Swd,
+                jtag_version: 0,
+                swd_speed_khz: 0,
+                jtag_speed_khz: 0,
+                current_ap: None,
+            }
+        }
+    }
+
+    impl StLinkUsb for MockUsb {
+        fn write(
+            &mut self,
+            cmd: Vec<u8>,
+            _write_data: &[u8],
+            read_data: &mut [u8],
+            _timeout: std::time::Duration,
+        ) -> Result<(), crate::DebugProbeError> {
+            match cmd[0] {
+                commands::GET_VERSION => {
+                    // GET_VERSION response structure:
+                    //   Byte 0-1:
+                    //     [15:12] Major/HW version
+                    //     [11:6]  JTAG/SWD version
+                    //     [5:0]   SWIM or MSC version
+                    //   Byte 2-3: ST_VID
+                    //   Byte 4-5: STLINK_PID
+
+                    let version: u16 = ((self.hw_version as u16) << 12)
+                        | ((self.jtag_version as u16) << 6)
+                        | ((self.swim_version as u16) << 0);
+
+                    read_data[0] = (version >> 8) as u8;
+                    read_data[1] = version as u8;
+
+                    Ok(())
+                }
+                commands::GET_TARGET_VOLTAGE => {
+                    read_data.pwrite(self.target_voltage_a0, 0).unwrap();
+                    read_data.pwrite(self.target_voltage_a0, 4).unwrap();
+                    Ok(())
+                }
+                commands::JTAG_COMMAND => {
+                    // Return a status of OK for JTAG commands
+                    read_data[0] = 0x80;
+
+                    Ok(())
+                }
+                _ => Ok(()),
+            }
+        }
+        fn reset(&mut self) -> Result<(), crate::DebugProbeError> {
+            Ok(())
+        }
+
+        fn read_swv(
+            &mut self,
+            read_data: &mut [u8],
+            timeout: std::time::Duration,
+        ) -> Result<(), DebugProbeError> {
+            todo!()
+        }
+    }
+
+    #[test]
+    fn detect_old_firmware() {
+        // Test that the init function detects old, unsupported firmware.
+
+        let usb_mock = MockUsb {
+            hw_version: 2,
+            jtag_version: 20,
+            swim_version: 0,
+
+            target_voltage_a0: 1.0,
+            target_voltage_a1: 2.0,
+        };
+
+        let mut probe = usb_mock.build();
+
+        let init_result = probe.init();
+
+        match init_result.unwrap_err() {
+            DebugProbeError::ProbeFirmwareOutdated => (),
+            other => panic!("Expected firmware outdated error, got {}", other),
+        }
+    }
+
+    #[test]
+    fn firmware_without_multiple_ap_support() {
+        // Test that firmware with only support for a single AP works,
+        // as long as only AP 0 is selected
+
+        let usb_mock = MockUsb {
+            hw_version: 2,
+            jtag_version: 26,
+            swim_version: 0,
+            target_voltage_a0: 1.0,
+            target_voltage_a1: 2.0,
+        };
+
+        let mut probe = usb_mock.build();
+
+        probe.init().expect("Init function failed");
+
+        // Selecting AP 0 should still work
+        probe.select_ap(0).expect("Select AP 0 failed.");
+
+        probe
+            .select_ap(1)
+            .expect_err("Selecting AP other than AP 0 should fail");
+    }
+
+    #[test]
+    fn firmware_with_multiple_ap_support() {
+        // Test that firmware with only support for a single AP works,
+        // as long as only AP 0 is selected
+
+        let usb_mock = MockUsb {
+            hw_version: 2,
+            jtag_version: 30,
+            swim_version: 0,
+            target_voltage_a0: 1.0,
+            target_voltage_a1: 2.0,
+        };
+
+        let mut probe = usb_mock.build();
+
+        probe.init().expect("Init function failed");
+
+        // Selecting AP 0 should still work
+        probe.select_ap(0).expect("Select AP 0 failed.");
+
+        probe
+            .select_ap(1)
+            .expect("Selecting AP other than AP 0 should work");
     }
 }

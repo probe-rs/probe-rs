@@ -49,7 +49,7 @@ macro_rules! define_ap_register {
 #[macro_export]
 macro_rules! define_ap {
     ($name:ident) => {
-        #[derive(Clone, Copy)]
+        #[derive(Clone, Copy, Debug)]
         pub struct $name {
             port_number: u8,
         }

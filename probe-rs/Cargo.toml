@@ -1,6 +1,6 @@
 [package]
 name = "probe-rs"
-version = "0.5.0"
+version = "0.6.2"
 authors = ["Noah Hüsser <yatekii@yatekii.ch>", "Dominik Boehi <dominik.boehi@gmail.ch>"]
 edition = "2018"
 description = "A collection of on chip debugging tools to comminicate with microchips."
@@ -26,22 +26,23 @@ jep106 = "0.2.4"
 scroll = "0.10.1"
 rusb = "0.5.5"
 lazy_static = "1.4.0"
-hidapi = "1.1.1"
+hidapi = "1.2.0"
 gimli = "0.20.0"
-object = "0.17.0"
+object = "0.18.0"
 bitfield = "0.13.2"
-derivative = "1.0.3"
+derivative = "2.0.0"
 serde = { version = "1.0.104", features = ["derive"] }
 serde_yaml = "0.8.11"
 ihex = "1.1.2"
-capstone = "0.6.0"
 goblin = "0.2.0"
-maplit = "1.0.2"
 hexdump = { version = "0.1.0", optional = true }
 thiserror = "1.0.10"
+jaylink = "0.1.1"
+base64 = "0.12.0"
+svg = "0.7.1"
 
 [build-dependencies]
-probe-rs-t2rust  = { path = "../probe-rs-t2rust", version ="0.5.0" }
+probe-rs-t2rust  = { path = "../probe-rs-t2rust", version ="0.6.0" }
 
 [dev-dependencies]
 rand = "0.7.2"

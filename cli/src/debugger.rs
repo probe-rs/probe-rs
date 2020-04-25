@@ -41,6 +41,7 @@ impl DebugCli {
 
                 cli_data.core.memory().read_block8(cpu_info.pc, &mut code)?;
 
+                /*
                 let instructions = cli_data
                     .capstone
                     .disasm_all(&code, u64::from(cpu_info.pc))
@@ -48,6 +49,35 @@ impl DebugCli {
 
                 for i in instructions.iter() {
                     println!("{}", i);
+                }
+                 */
+
+                for (offset, instruction) in code.iter().enumerate() {
+                    println!(
+                        "{:#010x}: {:010x}",
+                        cpu_info.pc + offset as u32,
+                        instruction
+                    );
+                }
+
+                Ok(CliState::Continue)
+            },
+        });
+
+        cli.add_command(Command {
+            name: "status",
+            help_text: "Show current status of CPU",
+
+            function: |cli_data, _args| {
+                let status = cli_data.core.status()?;
+
+                println!("Status: {:?}", &status);
+
+                if status.is_halted() {
+                    let pc = cli_data
+                        .core
+                        .read_core_reg(cli_data.core.registers().program_counter())?;
+                    println!("Core halted at address {:#010x}", pc);
                 }
 
                 Ok(CliState::Continue)
@@ -80,7 +110,6 @@ impl DebugCli {
                 let address_str = args.get(0).ok_or(CliError::MissingArgument)?;
 
                 let address = u32::from_str_radix(address_str, 16).unwrap();
-                //println!("Would read from address 0x{:08x}", address);
 
                 let num_words = args
                     .get(1)
@@ -100,13 +129,29 @@ impl DebugCli {
         });
 
         cli.add_command(Command {
+            name: "write",
+            help_text: "Write a 32bit value to memory",
+
+            function: |cli_data, args| {
+                let address_str = args.get(0).ok_or(CliError::MissingArgument)?;
+                let address = u32::from_str_radix(address_str, 16).unwrap();
+
+                let data_str = args.get(1).ok_or(CliError::MissingArgument)?;
+                let data = u32::from_str_radix(data_str, 16).unwrap();
+
+                cli_data.core.memory().write32(address, data)?;
+
+                Ok(CliState::Continue)
+            },
+        });
+
+        cli.add_command(Command {
             name: "break",
             help_text: "Set a breakpoint at a specifc address",
 
             function: |cli_data, args| {
                 let address_str = args.get(0).ok_or(CliError::MissingArgument)?;
                 let address = u32::from_str_radix(address_str, 16).unwrap();
-                //println!("Would read from address 0x{:08x}", address);
 
                 cli_data.core.set_hw_breakpoint(address)?;
 
@@ -123,7 +168,6 @@ impl DebugCli {
             function: |cli_data, args| {
                 let address_str = args.get(0).ok_or(CliError::MissingArgument)?;
                 let address = u32::from_str_radix(address_str, 16).unwrap();
-                //println!("Would read from address 0x{:08x}", address);
 
                 cli_data.core.clear_hw_breakpoint(address)?;
 
@@ -136,8 +180,8 @@ impl DebugCli {
             help_text: "Show backtrace",
 
             function: |cli_data, _args| {
-                let regs = cli_data.core.registers().clone();
-                let program_counter = cli_data.core.read_core_reg(regs.PC)?;
+                let regs = cli_data.core.registers();
+                let program_counter = cli_data.core.read_core_reg(regs.program_counter())?;
 
                 if let Some(di) = &cli_data.debug_info {
                     let frames = di.try_unwind(&cli_data.core, u64::from(program_counter));
@@ -156,16 +200,12 @@ impl DebugCli {
             help_text: "Show CPU register values",
 
             function: |cli_data, _args| {
-                let mut regs = [0u32; 15];
+                let register_file = cli_data.core.registers();
 
-                for i in 0..15 {
-                    regs[i as usize] = cli_data
-                        .core
-                        .read_core_reg(Into::<CoreRegisterAddress>::into(i))?;
-                }
+                for register in register_file.registers() {
+                    let value = cli_data.core.read_core_reg(register)?;
 
-                for (i, val) in regs.iter().enumerate() {
-                    println!("Register {}: {:#08x}", i, val);
+                    println!("{}: {:#010x}", register.name(), value)
                 }
 
                 Ok(CliState::Continue)
@@ -185,8 +225,8 @@ impl DebugCli {
 
                 let regs = cli_data.core.registers();
 
-                let stack_bot: u32 = cli_data.core.read_core_reg(regs.SP)?;
-                let pc: u32 = cli_data.core.read_core_reg(regs.PC)?;
+                let stack_bot: u32 = cli_data.core.read_core_reg(regs.stack_pointer())?;
+                let pc: u32 = cli_data.core.read_core_reg(regs.program_counter())?;
 
                 let mut stack = vec![0u8; (stack_top - stack_bot) as usize];
 
@@ -205,7 +245,7 @@ impl DebugCli {
                 }
 
                 dump.regs[13] = stack_bot;
-                dump.regs[14] = cli_data.core.read_core_reg(regs.LR)?;
+                dump.regs[14] = cli_data.core.read_core_reg(regs.return_address())?;
                 dump.regs[15] = pc;
 
                 let serialized = ron::ser::to_string(&dump).expect("Failed to serialize dump");
@@ -228,9 +268,7 @@ impl DebugCli {
             function: |cli_data, _args| {
                 cli_data.core.halt()?;
 
-                // Enable vector catch after reset (set bit 1 in DEMCR register)
-                cli_data.core.memory().write32(0xE000_EDFC, 1)?;
-                cli_data.core.reset()?;
+                cli_data.core.reset_and_halt()?;
 
                 Ok(CliState::Continue)
             },

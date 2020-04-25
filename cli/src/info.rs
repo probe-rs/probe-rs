@@ -1,10 +1,20 @@
-use crate::common::open_probe;
-use crate::{common::CliError, SharedOptions};
-use probe_rs::architecture::arm::ap::{valid_access_ports, APAccess, APClass, IDR};
-use probe_rs::architecture::arm::ArmCommunicationInterface;
+use crate::{
+    common::{open_probe, CliError},
+    SharedOptions,
+};
+
+use probe_rs::{
+    architecture::arm::{
+        ap::{valid_access_ports, APAccess, APClass, BaseaddrFormat, MemoryAP, BASE, BASE2, IDR},
+        memory::{ADIMemoryInterface, Component},
+        ArmCommunicationInterface,
+    },
+    Memory,
+};
 
 pub(crate) fn show_info_of_device(shared_options: &SharedOptions) -> Result<(), CliError> {
-    let probe = open_probe(shared_options.n)?;
+    let mut probe = open_probe(shared_options.n)?;
+    probe.attach_to_unspecified()?;
 
     /*
         The following code only works with debug port v2,
@@ -28,16 +38,7 @@ pub(crate) fn show_info_of_device(shared_options: &SharedOptions) -> Result<(), 
 
     */
 
-    // Note: Temporary read to ensure the DP information is read at
-    //       least once before reading the ROM table
-    //       (necessary according to STM manual).
-    //
-    // TODO: Move to proper place somewhere in init code
-    //
-
-    let mut interface = ArmCommunicationInterface::new(probe);
-    let target_info = interface.read_register_dp(0x0)?;
-    println!("DP info: {:#08x}", target_info);
+    let mut interface = ArmCommunicationInterface::new(probe).map_err(|(_probe, error)| error)?;
 
     println!("\nAvailable Access Ports:");
 
@@ -46,26 +47,43 @@ pub(crate) fn show_info_of_device(shared_options: &SharedOptions) -> Result<(), 
         println!("{:#x?}", idr);
 
         if idr.CLASS == APClass::MEMAP {
-            // let access_port: MemoryAP = access_port.into();
+            let access_port: MemoryAP = access_port.into();
 
-            // let base_register = interface.read_ap_register(access_port, BASE::default())?;
+            let base_register = interface.read_ap_register(access_port, BASE::default())?;
 
-            // let mut baseaddr = if BaseaddrFormat::ADIv5 == base_register.Format {
-            //     let base2 = interface.read_ap_register(access_port, BASE2::default())?;
-            //     (u64::from(base2.BASEADDR) << 32)
-            // } else {
-            //     0
-            // };
-            // baseaddr |= u64::from(base_register.BASEADDR << 12);
+            if !base_register.present {
+                // No debug entry present
+                println!("No debug entry present.");
+                continue;
+            }
 
-            // let rom_table = RomTable::try_parse(core, baseaddr as u64)
-            //         .map_err(Error::architecture_specific)?;
+            let mut baseaddr = if BaseaddrFormat::ADIv5 == base_register.Format {
+                let base2 = interface.read_ap_register(access_port, BASE2::default())?;
+                u64::from(base2.BASEADDR) << 32
+            } else {
+                0
+            };
+            baseaddr |= u64::from(base_register.BASEADDR << 12);
 
-            // for e in rom_table.entries() {
-            //     println!(
-            //         "ROM Table Entry: Component @ 0x{:08x}",
-            //         e.component_id.component_address()
-            //     );
+            let mut memory = Memory::new(
+                ADIMemoryInterface::<ArmCommunicationInterface>::new(
+                    interface.clone(),
+                    access_port,
+                )
+                .or_else(|(_i, e)| Err(e))?,
+            );
+            let component_table = Component::try_parse(&mut memory, baseaddr as u64);
+
+            component_table
+                .iter()
+                .for_each(|entry| println!("{:#08x?}", entry));
+
+            // let mut reader = crate::memory::romtable::RomTableReader::new(&link_ref, baseaddr as u64);
+
+            // for e in reader.entries() {
+            //     if let Ok(e) = e {
+            //         println!("ROM Table Entry: Component @ 0x{:08x}", e.component_addr());
+            //     }
             // }
         }
     }

@@ -1,4 +1,4 @@
-use super::super::{Category, Error, Request, Response, Result, Status};
+use super::super::{Category, CmsisDapError, Request, Response, Result, Status};
 
 #[derive(Debug)]
 pub struct ResetRequest;
@@ -23,7 +23,7 @@ impl Execute {
         match byte {
             0 => Ok(Execute::NoDeviceSpecificResetSequenceImplemented),
             1 => Ok(Execute::DeviceSpecificResetSequenceImplemented),
-            _ => Err(Error::UnexpectedAnswer),
+            _ => Err(CmsisDapError::UnexpectedAnswer),
         }
     }
 }

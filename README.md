@@ -1,52 +1,49 @@
 # probe-rs
-[![crates.io](https://meritbadge.herokuapp.com/probe-rs)](https://crates.io/crates/probe-rs) [![documentation](https://docs.rs/probe-rs/badge.svg)](https://docs.rs/probe-rs) [![Actions Status](https://github.com/probe-rs/probe-rs/workflows/CI/badge.svg)](https://github.com/probe-rs/probe-rs/actions) [![chat](https://img.shields.io/badge/chat-probe--rs%3Amatrix.org-brightgreen)](https://matrix.to/#/!vhKMWjizPZBgKeknOo:matrix.org)
 
-A debugging toolset and library for debugging microchips on a separate host.
+a modern, embedded debugging toolkit,
+written in Rust
 
-## Motivation
+[![crates.io](https://meritbadge.herokuapp.com/probe-rs)](https://crates.io/crates/probe-rs) [![documentation](https://docs.rs/probe-rs/badge.svg)](https://docs.rs/probe-rs) [![Actions Status](https://github.com/probe-rs/probe-rs/workflows/CI/badge.svg)](https://github.com/probe-rs/probe-rs/actions) [![chat](https://img.shields.io/badge/chat-probe--rs%3Amatrix.org-brightgreen)](https://matrix.to/#/#probe-rs:matrix.org)
 
 The goal of this library is to provide a toolset to interact with a variety of embedded MCUs and debug probes.
-For starters, ARM cores will be supported through use of the CoreSight protocol.
-If there is high demand and more contributors, it is intended to add support for other architectures.
 
 Similar projects like OpenOCD, PyOCD, Segger Toolset, ST Tooling, etc. exist.
 They all implement the GDB protocol and their own protocol on top of it to enable GDB to communicate with the debug probe.
-This is not standardized and also little bit unstable sometimes. For every tool the commands are different and so on.
+Only Segger provides a closed source DLL which you can use for talking to the JLink.
 
 This project gets rid of the GDB layer and provides a direct interface to the debug probe,
-which then enables other software, for example [VisualStudio](https://code.visualstudio.com/blogs/2018/08/07/debug-adapter-protocol-website) to use it's debug functionality.
+which then enables other software to use its debug functionality.
 
-What's more is that we can use CoreSight to its full extent. We can trace and modify memory as well as registers in real time.
-
-**The end goal is a complete library toolset to enable other tools to use the functionality of CoreSight.**
+**The end goal of this project is to have a complete library toolset to enable other tools to communicate with embedded targets.**
 
 ## Functionality
 
-- The lib can connect to a DAPLink or an STLink and read and write memory.
-- It can read ROM tables and thus extract CoreSight component information.
-- It can download ELF binaries using standard ARM flash blobs.
-- Basic debugging (attach, reset, halt, step, show stacktrace, add breakpoint, halt on breakpoint) works.
+As of version 0.6.0 this library can
 
-Focus of the development is having a full implementation (CoreSight, Flashing, Debugging) working for the DAPLink and go from there.
+- connect to a DAPLink, STLink or JLink
+- talk to ARM and Risc-V cores via SWD or JTAG
+- read and write arbitrary memory of the target
+- halt, run, step, breakpoint and much more the core
+- download ELF, BIN and IHEX binaries using standard CMSIS-Pack flash algorithms to ARM cores
+- provide debug information about the target state (stacktrace, stackframe, etc.)
 
-### Downloading a file
+To see what new functionality was added have a look at the [CHANGELOG](CHANGELOG.md)
 
-The `cargo-flash` utility can be used as a cargo subcommand to download a compiled Rust program onto a target device. See https://github.com/probe-rs/cargo-flash for more information.
+## Downloading a file
 
+The `cargo-flash` utility can be used as a cargo subcommand to download a compiled Rust program onto a target device. It can also be used to download arbitrary ELF files that might come out of a C/C++ compiler. Have a look at [cargo-flash](https://github.com/probe-rs/cargo-flash) for more information.
 
-### CLI
+## GDB
 
-To demonstrate the functionality a small cli was written.
-Fire it up with
+We provide a GDB stub so you can use all your usual tools.
+You can find it [here](https://github.com/probe-rs/probe-rs/tree/master/gdb-server) and you can also use it from within `cargo-flash` with the `--gdb` flag.
 
-```
-cargo run -p probe-rs-cli -- help
-```
+## VSCode
 
-The help dialog should then tell you how to use the CLI.
+We are implementing [Microsoft DAP](https://code.visualstudio.com/blogs/2018/08/07/debug-adapter-protocol-website). This makes embedded debugging via probe-rs available in moden code editors implementing the standard, such as VSCode.
 
-# Usage Examples
-## Halting the attached chip
+## Usage Examples
+### Halting the attached chip
 
 ```rust
 use probe_rs::Probe;
@@ -67,7 +64,7 @@ let core = session.attach_to_core(0)?;
 core.halt()?;
 ```
 
-## Reading from RAM
+### Reading from RAM
 
 ```rust
 use probe_rs::Core;
@@ -94,15 +91,27 @@ core.write_8(0x2000_0000, &buff)?;
 
 ### I need help!
 
-Don't hesitate to [file an issue](https://github.com/probe-rs/probe-rs/issues/new), ask questions on [matrix](https://matrix.to/#/!vhKMWjizPZBgKeknOo:matrix.org?via=matrix.org&via=spodeli.org), or contact [@Yatekii](https://github.com/Yatekii) by e-mail.
+Don't hesitate to [file an issue](https://github.com/probe-rs/probe-rs/issues/new), ask questions on [Matrix](https://matrix.to/#/#probe-rs:matrix.org), or contact [@Yatekii](https://github.com/Yatekii) via e-mail.
 
 ### How can I help?
 
 Please have a look at the issues or open one if you feel that something is needed.
 
-Any contibutions are very welcome!
+Any contributions are very welcome!
 
-Also have a look at [CONTRIBUTING.md](https://github.com/Yatekii/probe-rs/blob/master/CONTRIBUTING.md).
+Also have a look at [CONTRIBUTING.md](CONTRIBUTING.md).
+
+### Our company needs feature X and would pay for its development
+
+Please reach out to [@Yatekii](https://github.com/Yatekii)
+
+## Sponsors
+
+[![Technokrat](https://technokrat.ch/static/img/svg_banner-light.svg)](https://technokrat.ch)
+
+## Acknowledgements
+
+In early stages of this library, we profited invaluably from the pyOCD code to understand how flashing works. Also it's always a good reference to cross check how ARM specific things work. So, a big thank you to the team behind pyOCD!
 
 ## License
 
@@ -113,12 +122,7 @@ Licensed under either of
  * MIT license ([LICENSE-MIT](LICENSE-MIT) or
    http://opensource.org/licenses/MIT) at your option.
 
-### Acknowledgements
-
-This crate contains code (the flash algorithms) that's highly based on the code of the [pyOCD](https://github.com/mbedmicro/pyOCD) project.
-Some of this code might reside in the `ocd::probe::flash` module and is subject to the Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0) terms.
-
-### Contributing
+## Contributing
 
 Unless you explicitly state otherwise, any contribution intentionally submitted
 for inclusion in the work by you, as defined in the Apache-2.0 license, shall

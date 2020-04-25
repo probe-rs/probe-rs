@@ -3,15 +3,40 @@ use super::{
         valid_access_ports, APAccess, APClass, APRegister, AccessPort, BaseaddrFormat, GenericAP,
         MemoryAP, BASE, BASE2, IDR,
     },
-    dp::Select,
-    memory::romtable::{Component, ComponentId},
+    dp::{
+        Abort, Ctrl, DPAccess, DPBankSel, DPRegister, DebugPortError, DebugPortId,
+        DebugPortVersion, Select, DPIDR,
+    },
+    memory::{ADIMemoryInterface, Component},
+    SwvAccess,
 };
-use crate::config::ChipInfo;
-use crate::{CommunicationInterface, Core, DebugProbe, DebugProbeError, Error, Memory, Probe};
+use crate::{
+    CommunicationInterface, DebugProbe, DebugProbeError, Error as ProbeRsError, Memory, Probe,
+};
 use jep106::JEP106Code;
-use log::debug;
 use std::cell::RefCell;
 use std::rc::Rc;
+use thiserror::Error;
+
+#[derive(Debug, Error)]
+pub enum DapError {
+    #[error("An error occured in the SWD communication between DAPlink and device.")]
+    SwdProtocol,
+    #[error("Target device did not respond to request.")]
+    NoAcknowledge,
+    #[error("Target device responded with FAULT response to request.")]
+    FaultResponse,
+    #[error("Target device responded with WAIT response to request.")]
+    WaitResponse,
+    #[error("Target power-up failed.")]
+    TargetPowerUpFailed,
+}
+
+impl From<DapError> for DebugProbeError {
+    fn from(error: DapError) -> Self {
+        DebugProbeError::ArchitectureSpecific(Box::new(error))
+    }
+}
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum PortType {
@@ -91,56 +116,56 @@ pub trait DAPAccess: DebugProbe {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct ArmCommunicationInterface {
     inner: Rc<RefCell<InnerArmCommunicationInterface>>,
 }
 
 impl ArmCommunicationInterface {
-    pub fn new(probe: Probe) -> Self {
-        Self {
-            inner: Rc::new(RefCell::new(InnerArmCommunicationInterface::new(probe))),
-        }
+    pub fn new(probe: Probe) -> Result<Self, (Probe, DebugProbeError)> {
+        Ok(Self {
+            inner: Rc::new(RefCell::new(InnerArmCommunicationInterface::new(probe)?)),
+        })
     }
 
-    pub fn dedicated_memory_interface(&self) -> Option<Memory> {
+    pub fn dedicated_memory_interface(&self) -> Result<Option<Memory>, DebugProbeError> {
         self.inner.borrow().probe.dedicated_memory_interface()
     }
 
-    pub fn read_register_dp(&mut self, offset: u16) -> Result<u32, DebugProbeError> {
-        self.inner.borrow_mut().read_register_dp(offset)
-    }
+    pub fn close(self) -> Result<Probe, Self> {
+        let inner = Rc::try_unwrap(self.inner);
 
-    pub fn write_register_dp(&mut self, offset: u16, val: u32) -> Result<(), DebugProbeError> {
-        self.inner.borrow_mut().write_register_dp(offset, val)
-    }
-
-    pub fn read_swv(&mut self) -> Result<Vec<u8>, Error> {
-        self.inner.borrow_mut().read_swv()
+        match inner {
+            Ok(inner) => Ok(inner.into_inner().probe),
+            Err(e) => Err(ArmCommunicationInterface { inner: e }),
+        }
     }
 
     /// This function should be called once when initializing the object.
     /// It stores all the memory AP IDs and BASEADDRs in a Vec.
-    pub(crate) fn memory_access_ports(&mut self) -> Result<Vec<MemoryAccessPortData>, Error> {
+    pub(crate) fn memory_access_ports(
+        &mut self,
+    ) -> Result<Vec<MemoryAccessPortData>, ProbeRsError> {
         if self.inner.borrow().memory_access_ports.is_empty() {
             let mut memory_access_ports = vec![];
             for access_port in valid_access_ports(self) {
                 let idr = self
                     .read_ap_register(access_port, IDR::default())
-                    .map_err(Error::Probe)?;
+                    .map_err(ProbeRsError::Probe)?;
 
                 if idr.CLASS == APClass::MEMAP {
                     let access_port: MemoryAP = access_port.into();
 
                     let base_register = self
                         .read_ap_register(access_port, BASE::default())
-                        .map_err(Error::Probe)?;
+                        .map_err(ProbeRsError::Probe)?;
 
                     let mut base_address = if BaseaddrFormat::ADIv5 == base_register.Format {
                         let base2 = self
                             .read_ap_register(access_port, BASE2::default())
-                            .map_err(Error::Probe)?;
-                        (u64::from(base2.BASEADDR) << 32)
+                            .map_err(ProbeRsError::Probe)?;
+
+                        u64::from(base2.BASEADDR) << 32
                     } else {
                         0
                     };
@@ -160,22 +185,92 @@ impl ArmCommunicationInterface {
     }
 }
 
+#[derive(Debug)]
 struct InnerArmCommunicationInterface {
     probe: Probe,
     memory_access_ports: Vec<MemoryAccessPortData>,
+    debug_port_version: DebugPortVersion,
+
+    current_dpbanksel: u8,
+
     current_apsel: u8,
     current_apbanksel: u8,
 }
 
+fn get_debug_port_version(probe: &mut Probe) -> Result<DebugPortVersion, DebugProbeError> {
+    let interface = probe
+        .get_interface_dap_mut()?
+        .ok_or_else(|| DebugProbeError::InterfaceNotAvailable("ARM"))?;
+
+    let dpidr = DPIDR(interface.read_register(PortType::DebugPort, 0)?);
+
+    Ok(DebugPortVersion::from(dpidr.version()))
+}
+
 impl InnerArmCommunicationInterface {
-    fn new(probe: Probe) -> Self {
-        let interface = Self {
+    fn new(mut probe: Probe) -> Result<Self, (Probe, DebugProbeError)> {
+        // Check the version of debug port used
+        let version = match get_debug_port_version(&mut probe) {
+            Ok(version) => version,
+            Err(e) => return Err((probe, e)),
+        };
+
+        log::debug!("Debug Port version: {:?}", version);
+
+        let mut s = Self {
             probe,
             memory_access_ports: vec![],
+            debug_port_version: version,
+            current_dpbanksel: 0,
             current_apsel: 0,
             current_apbanksel: 0,
         };
-        interface
+
+        if let Err(e) = s.enter_debug_mode() {
+            Err((s.probe, e.into()))
+        } else {
+            Ok(s)
+        }
+    }
+
+    fn enter_debug_mode(&mut self) -> Result<(), DebugProbeError> {
+        // Assume that we have DebugPort v1 Interface!
+        // Maybe change this in the future when other versions are released.
+
+        // Read the DP ID.
+        let dp_id: DPIDR = self.read_dp_register()?;
+        let dp_id: DebugPortId = dp_id.into();
+        log::debug!("DebugPort ID:  {:#x?}", dp_id);
+
+        // Clear all existing sticky errors.
+        let mut abort_reg = Abort(0);
+        abort_reg.set_orunerrclr(true);
+        abort_reg.set_wderrclr(true);
+        abort_reg.set_stkerrclr(true);
+        abort_reg.set_stkcmpclr(true);
+        self.write_dp_register(abort_reg)?;
+
+        // Select the DPBANK[0].
+        // This is most likely not required but still good practice.
+        let mut select_reg = Select(0);
+        select_reg.set_dp_bank_sel(0);
+        self.write_dp_register(select_reg)?; // select DBPANK 0
+
+        // Power up the system, such that we can actually work with it!
+        log::debug!("Requesting debug power");
+        let mut ctrl_reg = Ctrl::default();
+        ctrl_reg.set_csyspwrupreq(true);
+        ctrl_reg.set_cdbgpwrupreq(true);
+        self.write_dp_register(ctrl_reg)?;
+
+        // Check the return value to see whether power up was ok.
+        let ctrl_reg: Ctrl = self.read_dp_register()?;
+        if !(ctrl_reg.csyspwrupack() && ctrl_reg.cdbgpwrupack()) {
+            log::error!("Debug power request failed");
+            return Err(DapError::TargetPowerUpFailed.into());
+        }
+
+        Ok(())
     }
 
     fn select_ap_and_ap_bank(&mut self, port: u8, ap_bank: u8) -> Result<(), DebugProbeError> {
@@ -194,24 +289,40 @@ impl InnerArmCommunicationInterface {
         if cache_changed {
             let mut select = Select(0);
 
-            debug!(
+            log::debug!(
                 "Changing AP to {}, AP_BANK_SEL to {}",
-                self.current_apsel, self.current_apbanksel
+                self.current_apsel,
+                self.current_apbanksel
             );
 
             select.set_ap_sel(self.current_apsel);
             select.set_ap_bank_sel(self.current_apbanksel);
+            select.set_dp_bank_sel(self.current_dpbanksel);
 
-            let interface = self
-                .probe
-                .get_interface_dap_mut()
-                .ok_or_else(|| DebugProbeError::InterfaceNotAvailable("ARM"))?;
+            self.write_dp_register(select)?;
+        }
 
-            interface.write_register(
-                PortType::DebugPort,
-                u16::from(Select::ADDRESS),
-                select.into(),
-            )?;
+        Ok(())
+    }
+
+    fn select_dp_bank(&mut self, dp_bank: DPBankSel) -> Result<(), DebugPortError> {
+        match dp_bank {
+            DPBankSel::Bank(new_bank) => {
+                if new_bank != self.current_dpbanksel {
+                    self.current_dpbanksel = new_bank;
+
+                    let mut select = Select(0);
+
+                    log::debug!("Changing DP_BANK_SEL to {}", self.current_dpbanksel);
+
+                    select.set_ap_sel(self.current_apsel);
+                    select.set_ap_bank_sel(self.current_apbanksel);
+                    select.set_dp_bank_sel(self.current_dpbanksel);
+
+                    self.write_dp_register(select)?;
+                }
+            }
+            DPBankSel::DontCare => (),
         }
 
         Ok(())
@@ -228,7 +339,7 @@ impl InnerArmCommunicationInterface {
     {
         let register_value = register.into();
 
-        debug!(
+        log::debug!(
             "Writing register {}, value=0x{:08X}",
             R::NAME,
             register_value
@@ -238,7 +349,7 @@ impl InnerArmCommunicationInterface {
 
         let interface = self
             .probe
-            .get_interface_dap_mut()
+            .get_interface_dap_mut()?
             .ok_or_else(|| DebugProbeError::InterfaceNotAvailable("ARM"))?;
 
         interface.write_register(
@@ -260,7 +371,7 @@ impl InnerArmCommunicationInterface {
         AP: AccessPort,
         R: APRegister<AP>,
     {
-        debug!(
+        log::debug!(
             "Writing register {}, block with len={} words",
             R::NAME,
             values.len(),
@@ -270,7 +381,7 @@ impl InnerArmCommunicationInterface {
 
         let interface = self
             .probe
-            .get_interface_dap_mut()
+            .get_interface_dap_mut()?
             .ok_or_else(|| DebugProbeError::InterfaceNotAvailable("ARM"))?;
 
         interface.write_block(
@@ -290,12 +401,12 @@ impl InnerArmCommunicationInterface {
         AP: AccessPort,
         R: APRegister<AP>,
     {
-        debug!("Reading register {}", R::NAME);
+        log::debug!("Reading register {}", R::NAME);
         self.select_ap_and_ap_bank(port.into().port_number(), R::APBANKSEL)?;
 
         let interface = self
             .probe
-            .get_interface_dap_mut()
+            .get_interface_dap_mut()?
             .ok_or_else(|| DebugProbeError::InterfaceNotAvailable("ARM"))?;
 
         let result = interface.read_register(
@@ -303,7 +414,7 @@ impl InnerArmCommunicationInterface {
             u16::from(R::ADDRESS),
         )?;
 
-        debug!("Read register    {}, value=0x{:08x}", R::NAME, result);
+        log::debug!("Read register    {}, value=0x{:08x}", R::NAME, result);
 
         Ok(R::from(result))
     }
@@ -319,7 +430,7 @@ impl InnerArmCommunicationInterface {
         AP: AccessPort,
         R: APRegister<AP>,
     {
-        debug!(
+        log::debug!(
             "Reading register {}, block with len={} words",
             R::NAME,
             values.len(),
@@ -329,7 +440,7 @@ impl InnerArmCommunicationInterface {
 
         let interface = self
             .probe
-            .get_interface_dap_mut()
+            .get_interface_dap_mut()?
             .ok_or_else(|| DebugProbeError::InterfaceNotAvailable("ARM"))?;
 
         interface.read_block(
@@ -339,29 +450,27 @@ impl InnerArmCommunicationInterface {
         )?;
         Ok(())
     }
+}
 
-    fn read_register_dp(&mut self, offset: u16) -> Result<u32, DebugProbeError> {
-        let interface = self
-            .probe
-            .get_interface_dap_mut()
-            .ok_or_else(|| DebugProbeError::InterfaceNotAvailable("ARM"))?;
+impl CommunicationInterface for ArmCommunicationInterface {}
 
-        interface.read_register(PortType::DebugPort, offset)
+impl CommunicationInterface for &ArmCommunicationInterface {}
+
+impl DPAccess for ArmCommunicationInterface {
+    fn read_dp_register<R: DPRegister>(&mut self) -> Result<R, DebugPortError> {
+        self.inner.borrow_mut().read_dp_register()
     }
 
-    fn write_register_dp(&mut self, offset: u16, val: u32) -> Result<(), DebugProbeError> {
-        let interface = self
-            .probe
-            .get_interface_dap_mut()
-            .ok_or_else(|| DebugProbeError::InterfaceNotAvailable("ARM"))?;
-
-        interface.write_register(PortType::DebugPort, offset, val)
+    fn write_dp_register<R: DPRegister>(&mut self, register: R) -> Result<(), DebugPortError> {
+        self.inner.borrow_mut().write_dp_register(register)
     }
+}
 
-    fn read_swv(&mut self) -> Result<Vec<u8>, Error> {
-        match self.probe.get_interface_itm_mut() {
+impl SwvAccess for ArmCommunicationInterface {
+    fn read_swv(&mut self) -> Result<Vec<u8>, ProbeRsError> {
+        match self.inner.borrow_mut().probe.get_interface_itm_mut() {
             Some(interface) => interface.read(),
-            None => Err(Error::WouldBlock),
+            None => Err(ProbeRsError::ArchitectureRequired(&["ARMv7", "ARMv8"])),
         }
     }
 }
@@ -382,9 +491,47 @@ impl MemoryAccessPortData {
     }
 }
 
-impl CommunicationInterface for ArmCommunicationInterface {
-    fn probe_for_chip_info(mut self, core: &mut Core) -> Result<Option<ChipInfo>, Error> {
-        ArmChipInfo::read_from_rom_table(core, &mut self).map(|option| option.map(ChipInfo::Arm))
+impl DPAccess for InnerArmCommunicationInterface {
+    fn read_dp_register<R: DPRegister>(&mut self) -> Result<R, DebugPortError> {
+        if R::VERSION > self.debug_port_version {
+            return Err(DebugPortError::UnsupportedRegister {
+                register: R::NAME,
+                version: self.debug_port_version,
+            });
+        }
+
+        self.select_dp_bank(R::DP_BANK)?;
+
+        // unwrap is safe, interface is check when creating the interface
+        let interface = self.probe.get_interface_dap_mut()?.unwrap();
+
+        log::debug!("Reading DP register {}", R::NAME);
+        let result = interface.read_register(PortType::DebugPort, u16::from(R::ADDRESS))?;
+
+        log::debug!("Read    DP register {}, value=0x{:08x}", R::NAME, result);
+
+        Ok(result.into())
+    }
+
+    fn write_dp_register<R: DPRegister>(&mut self, register: R) -> Result<(), DebugPortError> {
+        if R::VERSION > self.debug_port_version {
+            return Err(DebugPortError::UnsupportedRegister {
+                register: R::NAME,
+                version: self.debug_port_version,
+            });
+        }
+
+        self.select_dp_bank(R::DP_BANK)?;
+
+        // unwrap is safe, interface is check when creating the interface
+        let interface = self.probe.get_interface_dap_mut()?.unwrap();
+
+        let value = register.into();
+
+        log::debug!("Writing DP register {}, value=0x{:08x}", R::NAME, value);
+        interface.write_register(PortType::DebugPort, R::ADDRESS as u16, value)?;
+
+        Ok(())
     }
 }
 
@@ -486,28 +633,57 @@ pub struct ArmChipInfo {
 
 impl ArmChipInfo {
     pub fn read_from_rom_table(
-        core: &mut Core,
-        interface: &mut ArmCommunicationInterface,
-    ) -> Result<Option<Self>, Error> {
-        for access_port in valid_access_ports(interface) {
-            let idr = interface
+        mut interface: ArmCommunicationInterface,
+    ) -> (
+        ArmCommunicationInterface,
+        Result<Option<Self>, ProbeRsError>,
+    ) {
+        for access_port in valid_access_ports(&mut interface) {
+            let idr = match interface
                 .read_ap_register(access_port, IDR::default())
-                .map_err(Error::Probe)?;
-            debug!("{:#x?}", idr);
+                .map_err(ProbeRsError::Probe)
+            {
+                Ok(idr) => idr,
+                Err(e) => return (interface, Err(e)),
+            };
+            log::debug!("{:#x?}", idr);
 
             if idr.CLASS == APClass::MEMAP {
                 let access_port: MemoryAP = access_port.into();
 
-                let baseaddr = access_port.base_address(interface)?;
-                let component =
-                    Component::try_parse(core, baseaddr).map_err(Error::architecture_specific)?;
+                let baseaddr = match access_port.base_address(&mut interface).map_err(From::from) {
+                    Ok(memory) => memory,
+                    Err(e) => return (interface, Err(e)),
+                };
+
+                let mut memory =
+                    match ADIMemoryInterface::<ArmCommunicationInterface>::new(interface, 0) {
+                        Ok(memory) => memory,
+                        Err((interface, e)) => {
+                            return (
+                                interface,
+                                Err(e).map_err(ProbeRsError::architecture_specific),
+                            )
+                        }
+                    };
+                let component = match Component::try_parse(&mut memory, baseaddr)
+                    .map_err(ProbeRsError::architecture_specific)
+                {
+                    Ok(component) => component,
+                    Err(e) => return (memory.recycle_interface(), Err(e)),
+                };
+
+                interface = memory.recycle_interface();
 
                 if let Component::Class1RomTable(component_id, _) = component {
                     if let Some(jep106) = component_id.peripheral_id().jep106() {
-                        return Ok(Some(ArmChipInfo {
-                            manufacturer: jep106,
-                            part: component_id.peripheral_id().part(),
-                        }));
+                        return (
+                            interface,
+                            Ok(Some(ArmChipInfo {
+                                manufacturer: jep106,
+                                part: component_id.peripheral_id().part(),
+                            })),
+                        );
                     }
                 }
             }
@@ -520,7 +696,7 @@ impl ArmChipInfo {
         //     "flash and UICR area of the device, in addition to the entire RAM".yellow()
         // );
 
-        Ok(None)
+        (interface, Ok(None))
     }
 }
 

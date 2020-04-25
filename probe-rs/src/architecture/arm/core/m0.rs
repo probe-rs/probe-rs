@@ -1,11 +1,11 @@
+use super::{Dfsr, ARM_REGISTER_FILE};
 use crate::core::{
-    BasicRegisterAddresses, Breakpoint, CoreInformation, CoreInterface, CoreRegister,
-    CoreRegisterAddress,
+    Architecture, CoreInformation, CoreInterface, CoreRegister, CoreRegisterAddress,
+    RegisterDescription, RegisterFile, RegisterKind,
 };
 use crate::error::Error;
 use crate::memory::Memory;
-use crate::DebugProbeError;
-use crate::Session;
+use crate::{CoreStatus, DebugProbeError, HaltReason};
 use bitfield::bitfield;
 use log::debug;
 use std::mem::size_of;
@@ -244,7 +244,9 @@ impl CoreRegister for Demcr {
     const NAME: &'static str = "DEMCR";
 }
 
-pub const REGISTERS: BasicRegisterAddresses = BasicRegisterAddresses {
+/*
+const REGISTERS: RegisterFile = RegisterFile {
+    registers:
     R0: CoreRegisterAddress(0b0_0000),
     R1: CoreRegisterAddress(0b0_0001),
     R2: CoreRegisterAddress(0b0_0010),
@@ -260,27 +262,61 @@ pub const REGISTERS: BasicRegisterAddresses = BasicRegisterAddresses {
     LR: CoreRegisterAddress(0b0_1110),
     XPSR: CoreRegisterAddress(0b1_0000),
 };
+*/
 
 pub const MSP: CoreRegisterAddress = CoreRegisterAddress(0b01001);
 pub const PSP: CoreRegisterAddress = CoreRegisterAddress(0b01010);
 
-#[derive(Clone)]
+const PC: RegisterDescription = RegisterDescription {
+    name: "PC",
+    kind: RegisterKind::PC,
+    address: CoreRegisterAddress(0b0_1111),
+};
+
+const XPSR: RegisterDescription = RegisterDescription {
+    name: "XPSR",
+    kind: RegisterKind::General,
+    address: CoreRegisterAddress(0b1_0000),
+};
+
 pub struct M0 {
     memory: Memory,
-    session: Session,
 
     hw_breakpoints_enabled: bool,
-    active_breakpoints: Vec<Breakpoint>,
+
+    current_state: CoreStatus,
 }
 
 impl M0 {
-    pub fn new(session: Session, memory: Memory) -> Self {
-        Self {
-            session,
+    pub fn new(memory: Memory) -> Result<Self, Error> {
+        // determine current state
+        let dhcsr = Dhcsr(memory.read32(Dhcsr::ADDRESS)?);
+
+        let state = if dhcsr.s_sleep() {
+            CoreStatus::Sleeping
+        } else if dhcsr.s_halt() {
+            log::debug!("Core was halted when connecting");
+
+            let dfsr = Dfsr(memory.read32(Dfsr::ADDRESS)?);
+
+            let reason = dfsr.halt_reason();
+
+            CoreStatus::Halted(reason)
+        } else {
+            CoreStatus::Running
+        };
+
+        // Clear DFSR register. The bits in the register are sticky,
+        // so we clear them here to ensure that that none are set.
+        let dfsr_clear = Dfsr::clear_all();
+
+        memory.write32(Dfsr::ADDRESS, dfsr_clear.into())?;
+
+        Ok(Self {
             memory,
             hw_breakpoints_enabled: false,
-            active_breakpoints: vec![],
-        }
+            current_state: state,
+        })
     }
 
     fn wait_for_core_register_transfer(&self) -> Result<(), Error> {
@@ -298,7 +334,7 @@ impl M0 {
 }
 
 impl CoreInterface for M0 {
-    fn wait_for_core_halted(&self) -> Result<(), Error> {
+    fn wait_for_core_halted(&mut self) -> Result<(), Error> {
         // Wait until halted state is active again.
         for _ in 0..100 {
             let dhcsr_val = Dhcsr(self.memory.read32(Dhcsr::ADDRESS)?);
@@ -351,7 +387,7 @@ impl CoreInterface for M0 {
         self.wait_for_core_register_transfer()
     }
 
-    fn halt(&self) -> Result<CoreInformation, Error> {
+    fn halt(&mut self) -> Result<CoreInformation, Error> {
         // TODO: Generic halt support
 
         let mut value = Dhcsr(0);
@@ -364,13 +400,13 @@ impl CoreInterface for M0 {
         self.wait_for_core_halted()?;
 
         // try to read the program counter
-        let pc_value = self.read_core_reg(REGISTERS.PC)?;
+        let pc_value = self.read_core_reg(PC.address)?;
 
         // get pc
         Ok(CoreInformation { pc: pc_value })
     }
 
-    fn run(&self) -> Result<(), Error> {
+    fn run(&mut self) -> Result<(), Error> {
         let mut value = Dhcsr(0);
         value.set_c_halt(false);
         value.set_c_debugen(true);
@@ -381,7 +417,7 @@ impl CoreInterface for M0 {
             .map_err(Into::into)
     }
 
-    fn step(&self) -> Result<CoreInformation, Error> {
+    fn step(&mut self) -> Result<CoreInformation, Error> {
         let mut value = Dhcsr(0);
         // Leave halted state.
         // Step one instruction.
@@ -396,7 +432,7 @@ impl CoreInterface for M0 {
         self.wait_for_core_halted()?;
 
         // try to read the program counter
-        let pc_value = self.read_core_reg(REGISTERS.PC)?;
+        let pc_value = self.read_core_reg(PC.address)?;
 
         // get pc
         Ok(CoreInformation { pc: pc_value })
@@ -414,7 +450,7 @@ impl CoreInterface for M0 {
         Ok(())
     }
 
-    fn reset_and_halt(&self) -> Result<CoreInformation, Error> {
+    fn reset_and_halt(&mut self) -> Result<CoreInformation, Error> {
         // Ensure debug mode is enabled
         let dhcsr_val = Dhcsr(self.memory.read32(Dhcsr::ADDRESS)?);
         if !dhcsr_val.c_debugen() {
@@ -438,15 +474,15 @@ impl CoreInterface for M0 {
         self.wait_for_core_halted()?;
 
         const XPSR_THUMB: u32 = 1 << 24;
-        let xpsr_value = self.read_core_reg(REGISTERS.XPSR)?;
+        let xpsr_value = self.read_core_reg(XPSR.address)?;
         if xpsr_value & XPSR_THUMB == 0 {
-            self.write_core_reg(REGISTERS.XPSR, xpsr_value | XPSR_THUMB)?;
+            self.write_core_reg(XPSR.address, xpsr_value | XPSR_THUMB)?;
         }
 
         self.memory.write32(Demcr::ADDRESS, demcr_val.into())?;
 
         // try to read the program counter
-        let pc_value = self.read_core_reg(REGISTERS.PC)?;
+        let pc_value = self.read_core_reg(PC.address)?;
 
         // get pc
         Ok(CoreInformation { pc: pc_value })
@@ -487,8 +523,8 @@ impl CoreInterface for M0 {
         Ok(())
     }
 
-    fn registers<'a>(&self) -> &'a BasicRegisterAddresses {
-        &REGISTERS
+    fn registers(&self) -> &'static RegisterFile {
+        &ARM_REGISTER_FILE
     }
 
     fn clear_breakpoint(&self, bp_unit_index: usize) -> Result<(), Error> {
@@ -508,5 +544,65 @@ impl CoreInterface for M0 {
 
     fn hw_breakpoints_enabled(&self) -> bool {
         self.hw_breakpoints_enabled
+    }
+
+    fn architecture(&self) -> Architecture {
+        Architecture::ARM
+    }
+    fn status(&mut self) -> Result<crate::core::CoreStatus, Error> {
+        let dhcsr = Dhcsr(self.memory.read32(Dhcsr::ADDRESS)?);
+
+        if dhcsr.s_sleep() {
+            // Check if we assumed the core to be halted
+            if self.current_state.is_halted() {
+                log::warn!("Expected core to be halted, but core is running");
+            }
+
+            self.current_state = CoreStatus::Sleeping;
+
+            return Ok(CoreStatus::Sleeping);
+        }
+
+        // TODO: Handle lockup
+
+        if dhcsr.s_halt() {
+            let dfsr = Dfsr(self.memory.read32(Dfsr::ADDRESS)?);
+
+            let reason = dfsr.halt_reason();
+
+            // Clear bits from Dfsr register
+            self.memory
+                .write32(Dfsr::ADDRESS, Dfsr::clear_all().into())?;
+
+            // If the core was halted before, we cannot read the halt reason from the chip,
+            // because we clear it directly after reading.
+            if self.current_state.is_halted() {
+                // There shouldn't be any bits set, otherwise it means
+                // that the reason for the halt has changed. No bits set
+                // means that we have an unkown HaltReason.
+                if reason == HaltReason::Unknown {
+                    return Ok(self.current_state);
+                }
+
+                log::warn!(
+                    "Reason for halt has changed, old reason was {:?}, new reason is {:?}",
+                    &self.current_state,
+                    &reason
+                );
+            }
+
+            self.current_state = CoreStatus::Halted(reason);
+
+            return Ok(CoreStatus::Halted(reason));
+        }
+
+        // Core is neither halted nor sleeping, so we assume it is running.
+        if self.current_state.is_halted() {
+            log::warn!("Core is running, but we expected it to be halted");
+        }
+
+        self.current_state = CoreStatus::Running;
+
+        Ok(CoreStatus::Running)
     }
 }

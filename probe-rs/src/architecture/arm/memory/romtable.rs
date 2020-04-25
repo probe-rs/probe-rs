@@ -1,6 +1,6 @@
 use super::super::component::{Dwt, Itm, Tpiu};
 use super::AccessPortError;
-use crate::{Core, Error};
+use crate::{Core, Error, MemoryInterface};
 use enum_primitive_derive::Primitive;
 use num_traits::cast::FromPrimitive;
 use thiserror::Error;
@@ -25,19 +25,22 @@ pub enum RomTableError {
 }
 
 /// A lazy romtable reader that is used to create an iterator over all romtable entries.
-struct RomTableReader<'c> {
+struct RomTableReader<'c, MI: MemoryInterface> {
     base_address: u64,
-    core: &'c mut Core,
+    memory: &'c mut MI,
 }
 
 /// Iterates over a ROM table non recursively.
-impl<'c> RomTableReader<'c> {
-    pub fn new(core: &'c mut Core, base_address: u64) -> Self {
-        RomTableReader { base_address, core }
+impl<'c, MI: MemoryInterface> RomTableReader<'c, MI> {
+    pub fn new(memory: &'c mut MI, base_address: u64) -> Self {
+        RomTableReader {
+            base_address,
+            memory,
+        }
     }
 
     /// Iterate over all entries of the rom table, non-recursively
-    pub fn entries<'r>(&'r mut self) -> RomTableIterator<'r, 'c> {
+    pub fn entries<'r>(&'r mut self) -> RomTableIterator<'r, 'c, MI> {
         RomTableIterator::new(self)
     }
 }
@@ -45,14 +48,14 @@ impl<'c> RomTableReader<'c> {
 /// An iterator to lazily iterate over all the romtable entries in memory.
 ///
 /// For internal use only.
-struct RomTableIterator<'r, 'c> {
-    rom_table_reader: &'r mut RomTableReader<'c>,
+struct RomTableIterator<'r, 'c, MI: MemoryInterface> {
+    rom_table_reader: &'r mut RomTableReader<'c, MI>,
     offset: u64,
 }
 
-impl<'r, 'c> RomTableIterator<'r, 'c> {
+impl<'r, 'c, MI: MemoryInterface> RomTableIterator<'r, 'c, MI> {
     /// Creates a new lazy romtable iterator.
-    pub fn new(reader: &'r mut RomTableReader<'c>) -> Self {
+    pub fn new(reader: &'r mut RomTableReader<'c, MI>) -> Self {
         RomTableIterator {
             rom_table_reader: reader,
             offset: 0,
@@ -60,20 +63,22 @@ impl<'r, 'c> RomTableIterator<'r, 'c> {
     }
 }
 
-impl<'r, 'c> Iterator for RomTableIterator<'r, 'c> {
+impl<'r, 'c, MI: MemoryInterface> Iterator for RomTableIterator<'r, 'c, MI> {
     type Item = Result<RomTableEntryRaw, RomTableError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let component_address = self.rom_table_reader.base_address + self.offset;
         log::info!("Reading rom table entry at {:08x}", component_address);
 
-        let core = &self.rom_table_reader.core;
-
         self.offset += 4;
 
         let mut entry_data = [0u32; 1];
 
-        if let Err(e) = core.read_32(component_address as u32, &mut entry_data) {
+        if let Err(e) = MemoryInterface::read_block32(
+            self.rom_table_reader.memory,
+            component_address as u32,
+            &mut entry_data,
+        ) {
             return Some(Err(RomTableError::Memory(e)));
         }
 
@@ -110,7 +115,10 @@ impl RomTable {
     ///
     /// This does not check whether the data actually signalizes
     /// to contain a ROM table but assumes this was checked beforehand.
-    fn try_parse(core: &mut Core, base_address: u64) -> Result<RomTable, RomTableError> {
+    fn try_parse(
+        memory: &mut impl MemoryInterface,
+        base_address: u64,
+    ) -> Result<RomTable, RomTableError> {
         let mut entries = vec![];
         let mut tpiu = None;
         let mut dwt = None;
@@ -119,7 +127,7 @@ impl RomTable {
         log::info!("Parsing romtable at base_address {:x?}", base_address);
 
         // Read all the raw romtable entries and flatten them.
-        let reader = RomTableReader::new(core, base_address)
+        let reader = RomTableReader::new(memory, base_address)
             .entries()
             .filter_map(Result::ok)
             .collect::<Vec<RomTableEntryRaw>>();
@@ -131,7 +139,7 @@ impl RomTable {
             log::info!("Parsing entry at {:x?}", entry_base_addr);
 
             if raw_entry.entry_present {
-                let component = Component::try_parse(core, u64::from(entry_base_addr))?;
+                let component = Component::try_parse(memory, u64::from(entry_base_addr))?;
                 let component_id = component.id();
 
                 // Make sure we store known component locations so we can easily access them lateron.
@@ -262,15 +270,18 @@ impl ComponentId {
 /// A reader to extract infromation from a CoreSight component table.
 ///
 /// This reader is meant for internal use only.
-struct ComponentInformationReader<'c> {
+struct ComponentInformationReader<'c, MI: MemoryInterface> {
     base_address: u64,
-    core: &'c mut Core,
+    memory: &'c mut MI,
 }
 
-impl<'c> ComponentInformationReader<'c> {
+impl<'c, MI: MemoryInterface> ComponentInformationReader<'c, MI> {
     /// Creates a new `ComponentInformationReader` which can be used to extract the data from a component information table in memory.
-    fn new(base_address: u64, core: &'c mut Core) -> Self {
-        ComponentInformationReader { base_address, core }
+    fn new(base_address: u64, memory: &'c mut MI) -> Self {
+        ComponentInformationReader {
+            base_address,
+            memory,
+        }
     }
 
     /// Reads the component class from a component information table.
@@ -280,9 +291,12 @@ impl<'c> ComponentInformationReader<'c> {
         #![allow(clippy::verbose_bit_mask)]
         let mut cidr = [0u32; 4];
 
-        self.core
-            .read_32(self.base_address as u32 + 0xFF0, &mut cidr)
-            .map_err(RomTableError::Memory)?;
+        MemoryInterface::read_block32(
+            &mut self.memory,
+            self.base_address as u32 + 0xFF0,
+            &mut cidr,
+        )
+        .map_err(RomTableError::Memory)?;
 
         log::debug!("CIDR: {:x?}", cidr);
 
@@ -322,12 +336,18 @@ impl<'c> ComponentInformationReader<'c> {
             peripheral_id_address
         );
 
-        self.core
-            .read_32(self.base_address as u32 + 0xFD0, &mut data[4..])
-            .map_err(RomTableError::Memory)?;
-        self.core
-            .read_32(self.base_address as u32 + 0xFE0, &mut data[..4])
-            .map_err(RomTableError::Memory)?;
+        MemoryInterface::read_block32(
+            &mut self.memory,
+            self.base_address as u32 + 0xFD0,
+            &mut data[4..],
+        )
+        .map_err(RomTableError::Memory)?;
+        MemoryInterface::read_block32(
+            &mut self.memory,
+            self.base_address as u32 + 0xFE0,
+            &mut data[..4],
+        )
+        .map_err(RomTableError::Memory)?;
 
         log::debug!("Raw peripheral id: {:x?}", data);
 
@@ -377,10 +397,13 @@ pub enum Component {
 
 impl Component {
     /// Tries to parse a CoreSight component table from memory.
-    pub fn try_parse<'c>(core: &'c mut Core, baseaddr: u64) -> Result<Component, RomTableError> {
+    pub fn try_parse<'c>(
+        memory: &'c mut impl MemoryInterface,
+        baseaddr: u64,
+    ) -> Result<Component, RomTableError> {
         log::info!("\tReading component data at: {:08x}", baseaddr);
 
-        let component_id = ComponentInformationReader::new(baseaddr, core).read_all()?;
+        let component_id = ComponentInformationReader::new(baseaddr, memory).read_all()?;
 
         // Determine the component class to find out what component we are dealing with.
         log::info!("\tComponent class: {:x?}", component_id.class);
@@ -396,7 +419,7 @@ impl Component {
                 Component::GenericVerificationComponent(component_id)
             }
             RawComponent::RomTable => {
-                let rom_table = RomTable::try_parse(core, component_id.component_address)?;
+                let rom_table = RomTable::try_parse(memory, component_id.component_address)?;
 
                 Component::Class1RomTable(component_id, rom_table)
             }

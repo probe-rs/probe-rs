@@ -5,48 +5,42 @@ use super::Register;
 use bitfield::bitfield;
 use jep106::JEP106Code;
 
-pub trait DebugPort {
-    fn version(&self) -> &'static str;
+use crate::DebugProbeError;
+use std::fmt::Display;
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+pub enum DebugPortError {
+    #[error("Register {register} not supported by debug port version {version}")]
+    UnsupportedRegister {
+        register: &'static str,
+        version: DebugPortVersion,
+    },
+    #[error("A Debug Probe Error occured: {0}")]
+    DebugProbe(#[from] DebugProbeError),
 }
 
-pub trait DPAccess<PORT, R>
-where
-    PORT: DebugPort,
-    R: DPRegister<PORT>,
-{
-    type Error: std::fmt::Debug;
-    fn read_dp_register(&mut self, port: &PORT) -> Result<R, Self::Error>;
+impl From<DebugPortError> for DebugProbeError {
+    fn from(error: DebugPortError) -> Self {
+        DebugProbeError::ArchitectureSpecific(Box::new(error))
+    }
+}
 
-    fn write_dp_register(&mut self, port: &PORT, register: R) -> Result<(), Self::Error>;
+pub trait DPAccess {
+    fn read_dp_register<R: DPRegister>(&mut self) -> Result<R, DebugPortError>;
+
+    fn write_dp_register<R: DPRegister>(&mut self, register: R) -> Result<(), DebugPortError>;
 }
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub enum DPBankSel {
-    Unknown,
     DontCare,
     Bank(u8),
 }
 
-pub trait DPRegister<PortType: DebugPort>: Register {
+pub trait DPRegister: Register {
     const DP_BANK: DPBankSel;
-}
-
-/// Debug PortType V1
-pub struct DPv1 {}
-
-impl DebugPort for DPv1 {
-    fn version(&self) -> &'static str {
-        "DPv1"
-    }
-}
-
-/// Debug PortType V2
-pub struct DPv2 {}
-
-impl DebugPort for DPv2 {
-    fn version(&self) -> &'static str {
-        "DPv2"
-    }
+    const VERSION: DebugPortVersion;
 }
 
 bitfield! {
@@ -58,6 +52,12 @@ bitfield! {
     pub _, set_stkerrclr: 3;
     pub _, set_stkcmpclr: 2;
     pub _, set_dapabort: 1;
+}
+
+impl Default for Abort {
+    fn default() -> Self {
+        Abort(0)
+    }
 }
 
 impl From<u32> for Abort {
@@ -72,8 +72,9 @@ impl From<Abort> for u32 {
     }
 }
 
-impl DPRegister<DPv1> for Abort {
+impl DPRegister for Abort {
     const DP_BANK: DPBankSel = DPBankSel::DontCare;
+    const VERSION: DebugPortVersion = DebugPortVersion::DPv1;
 }
 
 impl Register for Abort {
@@ -120,8 +121,9 @@ impl From<Ctrl> for u32 {
     }
 }
 
-impl DPRegister<DPv1> for Ctrl {
+impl DPRegister for Ctrl {
     const DP_BANK: DPBankSel = DPBankSel::Bank(0);
+    const VERSION: DebugPortVersion = DebugPortVersion::DPv1;
 }
 
 impl Register for Ctrl {
@@ -150,8 +152,9 @@ impl From<Select> for u32 {
     }
 }
 
-impl DPRegister<DPv1> for Select {
+impl DPRegister for Select {
     const DP_BANK: DPBankSel = DPBankSel::DontCare;
+    const VERSION: DebugPortVersion = DebugPortVersion::DPv1;
 }
 
 impl Register for Select {
@@ -168,8 +171,8 @@ bitfield! {
     pub min, _: 16;
     pub u8, version, _: 15, 12;
     pub designer, _: 11, 1;
-    u8, jep_cc, _: 11, 8;
-    u8, jep_id, _: 7, 1;
+    pub u8, jep_cc, _: 11, 8;
+    pub u8, jep_id, _: 7, 1;
 }
 
 impl From<u32> for DPIDR {
@@ -184,13 +187,45 @@ impl From<DPIDR> for u32 {
     }
 }
 
-impl DPRegister<DPv1> for DPIDR {
+impl DPRegister for DPIDR {
     const DP_BANK: DPBankSel = DPBankSel::DontCare;
+    const VERSION: DebugPortVersion = DebugPortVersion::DPv1;
 }
 
 impl Register for DPIDR {
     const ADDRESS: u8 = 0x0;
     const NAME: &'static str = "DPIDR";
+}
+
+bitfield! {
+    #[derive(Clone)]
+    pub struct TARGETID(u32);
+    impl Debug;
+    pub u8, trevision, _: 31, 28;
+    pub u16, tpartno, _: 27, 12;
+    pub u16, tdesigner, _: 11, 1;
+}
+
+impl From<u32> for TARGETID {
+    fn from(raw: u32) -> Self {
+        Self(raw)
+    }
+}
+
+impl From<TARGETID> for u32 {
+    fn from(raw: TARGETID) -> Self {
+        raw.0
+    }
+}
+
+impl DPRegister for TARGETID {
+    const DP_BANK: DPBankSel = DPBankSel::Bank(2);
+    const VERSION: DebugPortVersion = DebugPortVersion::DPv2;
+}
+
+impl Register for TARGETID {
+    const ADDRESS: u8 = 0x4;
+    const NAME: &'static str = "TARGETID";
 }
 
 #[derive(Debug)]
@@ -214,6 +249,32 @@ impl From<DPIDR> for DebugPortId {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct RdBuff(pub u32);
+
+impl Register for RdBuff {
+    const ADDRESS: u8 = 0xc;
+    const NAME: &'static str = "RDBUFF";
+}
+
+impl From<u32> for RdBuff {
+    fn from(val: u32) -> Self {
+        RdBuff(val)
+    }
+}
+
+impl From<RdBuff> for u32 {
+    fn from(register: RdBuff) -> Self {
+        let RdBuff(val) = register;
+        val
+    }
+}
+
+impl DPRegister for RdBuff {
+    const DP_BANK: DPBankSel = DPBankSel::DontCare;
+    const VERSION: DebugPortVersion = DebugPortVersion::DPv1;
+}
+
 #[derive(Debug, PartialEq)]
 pub enum MinDpSupport {
     NotImplemented,
@@ -230,12 +291,47 @@ impl From<bool> for MinDpSupport {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Copy, Clone)]
 pub enum DebugPortVersion {
     DPv0,
     DPv1,
     DPv2,
-    Unsupported,
+    Unsupported(u8),
+}
+
+impl From<DebugPortVersion> for u8 {
+    fn from(version: DebugPortVersion) -> Self {
+        use DebugPortVersion::*;
+
+        match version {
+            DPv0 => 0,
+            DPv1 => 1,
+            DPv2 => 2,
+            Unsupported(val) => val,
+        }
+    }
+}
+
+impl PartialOrd for DebugPortVersion {
+    fn partial_cmp(&self, other: &DebugPortVersion) -> Option<std::cmp::Ordering> {
+        let self_value = u8::from(*self);
+        let other_value = u8::from(*other);
+
+        self_value.partial_cmp(&other_value)
+    }
+}
+
+impl Display for DebugPortVersion {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        use DebugPortVersion::*;
+
+        match self {
+            DPv0 => write!(f, "DPv0"),
+            DPv1 => write!(f, "DPv1"),
+            DPv2 => write!(f, "DPv2"),
+            Unsupported(version) => write!(f, "<unsupported Debugport Version {}>", version),
+        }
+    }
 }
 
 impl From<u8> for DebugPortVersion {
@@ -244,7 +340,7 @@ impl From<u8> for DebugPortVersion {
             0 => DebugPortVersion::DPv0,
             1 => DebugPortVersion::DPv1,
             2 => DebugPortVersion::DPv2,
-            _ => DebugPortVersion::Unsupported,
+            value => DebugPortVersion::Unsupported(value),
         }
     }
 }

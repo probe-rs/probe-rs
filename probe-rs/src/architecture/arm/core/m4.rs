@@ -1,12 +1,14 @@
-use crate::core::Breakpoint;
 use crate::core::{
-    BasicRegisterAddresses, CoreInformation, CoreInterface, CoreRegister, CoreRegisterAddress,
+    CoreInformation, CoreInterface, CoreRegister, CoreRegisterAddress, RegisterFile,
 };
 use crate::error::Error;
 use crate::memory::Memory;
-use crate::{DebugProbeError, Session};
-use bitfield::bitfield;
+use crate::DebugProbeError;
 
+use super::{register, Dfsr, ARM_REGISTER_FILE};
+use crate::core::{Architecture, CoreStatus, HaltReason};
+
+use bitfield::bitfield;
 use std::mem::size_of;
 
 bitfield! {
@@ -228,9 +230,10 @@ impl From<FpCtrl> for u32 {
         value.0
     }
 }
+
 bitfield! {
     #[derive(Copy,Clone)]
-    pub struct FpCompX(u32);
+    pub struct FpRev1CompX(u32);
     impl Debug;
 
     pub replace, set_replace: 31, 30;
@@ -238,28 +241,28 @@ bitfield! {
     pub enable, set_enable: 0;
 }
 
-impl CoreRegister for FpCompX {
+impl CoreRegister for FpRev1CompX {
     const ADDRESS: u32 = 0xE000_2008;
     const NAME: &'static str = "FP_CTRL";
 }
 
-impl From<u32> for FpCompX {
+impl From<u32> for FpRev1CompX {
     fn from(value: u32) -> Self {
-        FpCompX(value)
+        FpRev1CompX(value)
     }
 }
 
-impl From<FpCompX> for u32 {
-    fn from(value: FpCompX) -> Self {
+impl From<FpRev1CompX> for u32 {
+    fn from(value: FpRev1CompX) -> Self {
         value.0
     }
 }
 
-impl FpCompX {
+impl FpRev1CompX {
     /// Get the correct register configuration which enables
     /// a hardware breakpoint at the given address.
     fn breakpoint_configuration(address: u32) -> Self {
-        let mut reg = FpCompX::from(0);
+        let mut reg = FpRev1CompX::from(0);
 
         let comp_val = (address & 0x1f_ff_ff_fc) >> 2;
 
@@ -279,43 +282,86 @@ impl FpCompX {
     }
 }
 
-pub const REGISTERS: BasicRegisterAddresses = BasicRegisterAddresses {
-    R0: CoreRegisterAddress(0b000_0000),
-    R1: CoreRegisterAddress(0b000_0001),
-    R2: CoreRegisterAddress(0b000_0010),
-    R3: CoreRegisterAddress(0b000_0011),
-    R4: CoreRegisterAddress(0b000_0100),
-    R5: CoreRegisterAddress(0b0_0101),
-    R6: CoreRegisterAddress(0b0_0110),
-    R7: CoreRegisterAddress(0b0_0111),
-    R8: CoreRegisterAddress(0b0_1000),
-    R9: CoreRegisterAddress(0b000_1001),
-    PC: CoreRegisterAddress(0b000_1111),
-    SP: CoreRegisterAddress(0b000_1101),
-    LR: CoreRegisterAddress(0b000_1110),
-    XPSR: CoreRegisterAddress(0b001_0000),
-};
+bitfield! {
+    #[derive(Copy,Clone)]
+    pub struct FpRev2CompX(u32);
+    impl Debug;
+
+    pub bpaddr, set_bpaddr: 31, 1;
+    pub enable, set_enable: 0;
+}
+
+impl CoreRegister for FpRev2CompX {
+    const ADDRESS: u32 = 0xE000_2008;
+    const NAME: &'static str = "FP_CTRL";
+}
+
+impl From<u32> for FpRev2CompX {
+    fn from(value: u32) -> Self {
+        FpRev2CompX(value)
+    }
+}
+
+impl From<FpRev2CompX> for u32 {
+    fn from(value: FpRev2CompX) -> Self {
+        value.0
+    }
+}
+
+impl FpRev2CompX {
+    /// Get the correct register configuration which enables
+    /// a hardware breakpoint at the given address.
+    fn breakpoint_configuration(address: u32) -> Self {
+        let mut reg = FpRev2CompX::from(0);
+
+        reg.set_bpaddr(address >> 1);
+        reg.set_enable(true);
+
+        reg
+    }
+}
 
 pub const MSP: CoreRegisterAddress = CoreRegisterAddress(0b000_1001);
 pub const PSP: CoreRegisterAddress = CoreRegisterAddress(0b000_1010);
 
-#[derive(Clone)]
 pub struct M4 {
     memory: Memory,
-    session: Session,
 
     hw_breakpoints_enabled: bool,
-    active_breakpoints: Vec<Breakpoint>,
+
+    current_state: CoreStatus,
 }
 
 impl M4 {
-    pub fn new(session: Session, memory: Memory) -> Self {
-        Self {
-            session,
+    pub fn new(memory: Memory) -> Result<Self, Error> {
+        // determine current state
+        let dhcsr = Dhcsr(memory.read32(Dhcsr::ADDRESS)?);
+
+        let state = if dhcsr.s_sleep() {
+            CoreStatus::Sleeping
+        } else if dhcsr.s_halt() {
+            log::debug!("Core was halted when connecting");
+
+            let dfsr = Dfsr(memory.read32(Dfsr::ADDRESS)?);
+
+            let reason = dfsr.halt_reason();
+
+            CoreStatus::Halted(reason)
+        } else {
+            CoreStatus::Running
+        };
+
+        // Clear DFSR register. The bits in the register are sticky,
+        // so we clear them here to ensure that that none are set.
+        let dfsr_clear = Dfsr::clear_all();
+
+        memory.write32(Dfsr::ADDRESS, dfsr_clear.into())?;
+
+        Ok(Self {
             memory,
             hw_breakpoints_enabled: false,
-            active_breakpoints: vec![],
-        }
+            current_state: state,
+        })
     }
 
     fn wait_for_core_register_transfer(&self) -> Result<(), Error> {
@@ -333,11 +379,14 @@ impl M4 {
 }
 
 impl CoreInterface for M4 {
-    fn wait_for_core_halted(&self) -> Result<(), Error> {
+    fn wait_for_core_halted(&mut self) -> Result<(), Error> {
         // Wait until halted state is active again.
         for _ in 0..100 {
             let dhcsr_val = Dhcsr(self.memory.read32(Dhcsr::ADDRESS)?);
             if dhcsr_val.s_halt() {
+                // update halted state
+                self.status()?;
+
                 return Ok(());
             }
         }
@@ -353,6 +402,63 @@ impl CoreInterface for M4 {
         } else {
             Ok(false)
         }
+    }
+
+    fn status(&mut self) -> Result<CoreStatus, Error> {
+        let dhcsr = Dhcsr(self.memory.read32(Dhcsr::ADDRESS)?);
+
+        if dhcsr.s_sleep() {
+            // Check if we assumed the core to be halted
+            if self.current_state.is_halted() {
+                log::warn!("Expected core to be halted, but core is running");
+            }
+
+            self.current_state = CoreStatus::Sleeping;
+
+            return Ok(CoreStatus::Sleeping);
+        }
+
+        // TODO: Handle lockup
+
+        if dhcsr.s_halt() {
+            let dfsr = Dfsr(self.memory.read32(Dfsr::ADDRESS)?);
+
+            let reason = dfsr.halt_reason();
+
+            // Clear bits from Dfsr register
+            self.memory
+                .write32(Dfsr::ADDRESS, Dfsr::clear_all().into())?;
+
+            // If the core was halted before, we cannot read the halt reason from the chip,
+            // because we clear it directly after reading.
+            if self.current_state.is_halted() {
+                // There shouldn't be any bits set, otherwise it means
+                // that the reason for the halt has changed. No bits set
+                // means that we have an unkown HaltReason.
+                if reason == HaltReason::Unknown {
+                    return Ok(self.current_state);
+                }
+
+                log::warn!(
+                    "Reason for halt has changed, old reason was {:?}, new reason is {:?}",
+                    &self.current_state,
+                    &reason
+                );
+            }
+
+            self.current_state = CoreStatus::Halted(reason);
+
+            return Ok(CoreStatus::Halted(reason));
+        }
+
+        // Core is neither halted nor sleeping, so we assume it is running.
+        if self.current_state.is_halted() {
+            log::warn!("Core is running, but we expected it to be halted");
+        }
+
+        self.current_state = CoreStatus::Running;
+
+        Ok(CoreStatus::Running)
     }
 
     fn read_core_reg(&self, addr: CoreRegisterAddress) -> Result<u32, Error> {
@@ -385,7 +491,7 @@ impl CoreInterface for M4 {
         self.wait_for_core_register_transfer()
     }
 
-    fn halt(&self) -> Result<CoreInformation, Error> {
+    fn halt(&mut self) -> Result<CoreInformation, Error> {
         // TODO: Generic halt support
 
         let mut value = Dhcsr(0);
@@ -398,24 +504,27 @@ impl CoreInterface for M4 {
         self.wait_for_core_halted()?;
 
         // try to read the program counter
-        let pc_value = self.read_core_reg(REGISTERS.PC)?;
+        let pc_value = self.read_core_reg(register::PC.address)?;
 
         // get pc
         Ok(CoreInformation { pc: pc_value })
     }
 
-    fn run(&self) -> Result<(), Error> {
+    fn run(&mut self) -> Result<(), Error> {
         let mut value = Dhcsr(0);
         value.set_c_halt(false);
         value.set_c_debugen(true);
         value.enable_write();
 
-        self.memory
-            .write32(Dhcsr::ADDRESS, value.into())
-            .map_err(Into::into)
+        self.memory.write32(Dhcsr::ADDRESS, value.into())?;
+
+        // We assume that the core is running now
+        self.current_state = CoreStatus::Running;
+
+        Ok(())
     }
 
-    fn step(&self) -> Result<CoreInformation, Error> {
+    fn step(&mut self) -> Result<CoreInformation, Error> {
         let mut value = Dhcsr(0);
         // Leave halted state.
         // Step one instruction.
@@ -430,7 +539,7 @@ impl CoreInterface for M4 {
         self.wait_for_core_halted()?;
 
         // try to read the program counter
-        let pc_value = self.read_core_reg(REGISTERS.PC)?;
+        let pc_value = self.read_core_reg(register::PC.address)?;
 
         // get pc
         Ok(CoreInformation { pc: pc_value })
@@ -447,7 +556,7 @@ impl CoreInterface for M4 {
         Ok(())
     }
 
-    fn reset_and_halt(&self) -> Result<CoreInformation, Error> {
+    fn reset_and_halt(&mut self) -> Result<CoreInformation, Error> {
         // Ensure debug mode is enabled
         let dhcsr_val = Dhcsr(self.memory.read32(Dhcsr::ADDRESS)?);
         if !dhcsr_val.c_debugen() {
@@ -471,15 +580,15 @@ impl CoreInterface for M4 {
         self.wait_for_core_halted()?;
 
         const XPSR_THUMB: u32 = 1 << 24;
-        let xpsr_value = self.read_core_reg(REGISTERS.XPSR)?;
+        let xpsr_value = self.read_core_reg(register::XPSR.address)?;
         if xpsr_value & XPSR_THUMB == 0 {
-            self.write_core_reg(REGISTERS.XPSR, xpsr_value | XPSR_THUMB)?;
+            self.write_core_reg(register::XPSR.address, xpsr_value | XPSR_THUMB)?;
         }
 
         self.memory.write32(Demcr::ADDRESS, demcr_val.into())?;
 
         // try to read the program counter
-        let pc_value = self.read_core_reg(REGISTERS.PC)?;
+        let pc_value = self.read_core_reg(register::PC.address)?;
 
         // get pc
         Ok(CoreInformation { pc: pc_value })
@@ -490,8 +599,7 @@ impl CoreInterface for M4 {
 
         let reg = FpCtrl::from(raw_val);
 
-        // We currently only support revision 0 of the FPBU, so we return an error
-        if reg.rev() == 0 {
+        if reg.rev() == 0 || reg.rev() == 1 {
             Ok(reg.num_code())
         } else {
             log::warn!("This chip uses FPBU revision {}, which is not yet supported. HW breakpoints are not available.", reg.rev());
@@ -512,24 +620,38 @@ impl CoreInterface for M4 {
     }
 
     fn set_breakpoint(&self, bp_unit_index: usize, addr: u32) -> Result<(), Error> {
-        let val = FpCompX::breakpoint_configuration(addr);
+        let raw_val = self.memory.read32(FpCtrl::ADDRESS)?;
+        let ctrl_reg = FpCtrl::from(raw_val);
 
-        let reg_addr = FpCompX::ADDRESS + (bp_unit_index * size_of::<u32>()) as u32;
+        let val: u32;
+        if ctrl_reg.rev() == 0 {
+            val = FpRev1CompX::breakpoint_configuration(addr).into();
+        } else if ctrl_reg.rev() == 1 {
+            val = FpRev2CompX::breakpoint_configuration(addr).into();
+        } else {
+            log::warn!("This chip uses FPBU revision {}, which is not yet supported. HW breakpoints are not available.", ctrl_reg.rev());
+            return Err(Error::Probe(DebugProbeError::Unknown));
+        }
 
-        self.memory.write32(reg_addr, val.into())?;
+        // This is fine as FpRev1CompX and Rev2CompX are just two different
+        // interpretations of the same memory region as Rev2 can handle bigger
+        // address spaces than Rev1.
+        let reg_addr = FpRev1CompX::ADDRESS + (bp_unit_index * size_of::<u32>()) as u32;
+
+        self.memory.write32(reg_addr, val)?;
 
         Ok(())
     }
 
-    fn registers<'a>(&self) -> &'a BasicRegisterAddresses {
-        &REGISTERS
+    fn registers(&self) -> &'static RegisterFile {
+        &ARM_REGISTER_FILE
     }
 
     fn clear_breakpoint(&self, bp_unit_index: usize) -> Result<(), Error> {
-        let mut val = FpCompX::from(0);
+        let mut val = FpRev1CompX::from(0);
         val.set_enable(false);
 
-        let reg_addr = FpCompX::ADDRESS + (bp_unit_index * size_of::<u32>()) as u32;
+        let reg_addr = FpRev1CompX::ADDRESS + (bp_unit_index * size_of::<u32>()) as u32;
 
         self.memory.write32(reg_addr, val.into())?;
 
@@ -543,6 +665,10 @@ impl CoreInterface for M4 {
     fn hw_breakpoints_enabled(&self) -> bool {
         self.hw_breakpoints_enabled
     }
+
+    fn architecture(&self) -> Architecture {
+        Architecture::ARM
+    }
 }
 
 #[test]
@@ -553,7 +679,7 @@ fn breakpoint_register_value() {
     // See ARMv7 Architecture Reference Manual, Section C1.11.5
     let address: u32 = 0x0800_09A4;
 
-    let reg = FpCompX::breakpoint_configuration(address);
+    let reg = FpRev1CompX::breakpoint_configuration(address);
     let reg_val: u32 = reg.into();
 
     assert_eq!(0x4800_09A5, reg_val);

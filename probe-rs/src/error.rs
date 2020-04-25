@@ -4,18 +4,18 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum Error {
-    #[error("An error with the usage of the probe occured")]
+    #[error("An error with the usage of the probe occured: {0}")]
     Probe(#[from] DebugProbeError),
-    #[error("A core architecture specific error occured")]
+    #[error("A core architecture specific error occured: {0}")]
     ArchitectureSpecific(#[from] Box<dyn std::error::Error + Send + Sync>),
     #[error("Probe could not be opened: {0}")]
     UnableToOpenProbe(&'static str),
     #[error("Core {0} does not exist")]
     CoreNotFound(usize),
-    #[error("Chip does not exist: {0:?}")]
+    #[error("Unable to load specification for chip: {0}")]
     ChipNotFound(#[from] RegistryError),
-    #[error("THe routine would have blocked")]
-    WouldBlock,
+    #[error("This feature requires one of the following architectures: {0:?}")]
+    ArchitectureRequired(&'static [&'static str]),
 }
 
 impl Error {

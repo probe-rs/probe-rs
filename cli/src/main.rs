@@ -7,16 +7,14 @@ use debugger::CliState;
 
 use probe_rs::{
     debug::DebugInfo,
-    flash::download::{download_file, Format},
-    Probe, Session,
+    flashing::{download_file, Format},
+    MemoryInterface, Probe, Session,
 };
 
 use capstone::{arch::arm::ArchMode, prelude::*, Capstone, Endian};
-use memmap;
 use rustyline::Editor;
 use structopt::StructOpt;
 
-use std::fs;
 use std::num::ParseIntError;
 use std::path::PathBuf;
 use std::time::Instant;
@@ -100,7 +98,11 @@ struct SharedOptions {
 
     /// The target to be selected.
     #[structopt(short, long)]
-    target: Option<String>,
+    chip: Option<String>,
+
+    /// Protocol to use for target connection
+    #[structopt(short, long)]
+    protocol: Option<String>,
 }
 
 fn main() {
@@ -150,9 +152,9 @@ fn dump_memory(shared_options: &SharedOptions, loc: u32, words: u32) -> Result<(
 
         // let loc = 220 * 1024;
 
-        session
-            .attach_to_best_memory()?
-            .read_block32(loc, &mut data.as_mut_slice())?;
+        let mut core = session.attach_to_core(0)?;
+
+        core.read_block32(loc, &mut data.as_mut_slice())?;
         // Stop timer.
         let elapsed = instant.elapsed();
 
@@ -173,11 +175,7 @@ fn dump_memory(shared_options: &SharedOptions, loc: u32, words: u32) -> Result<(
 
 fn download_program_fast(shared_options: &SharedOptions, path: &str) -> Result<(), CliError> {
     with_device(shared_options, |session| {
-        // Start timer.
-        // let instant = Instant::now();
-
-        let mm = session.memory_map().clone();
-        download_file(&session, std::path::Path::new(&path), Format::Elf, &mm)?;
+        download_file(&session, std::path::Path::new(&path), Format::Elf)?;
 
         Ok(())
     })
@@ -195,7 +193,7 @@ fn reset_target_of_device(
 }
 
 fn trace_u32_on_target(shared_options: &SharedOptions, loc: u32) -> Result<(), CliError> {
-    use scroll::Pwrite;
+    use scroll::{Pwrite, LE};
     use std::io::prelude::*;
     use std::thread::sleep;
     use std::time::Duration;
@@ -206,13 +204,15 @@ fn trace_u32_on_target(shared_options: &SharedOptions, loc: u32) -> Result<(), C
     let start = Instant::now();
 
     with_device(shared_options, |session| {
+        let mut core = session.attach_to_core(0)?;
+
         loop {
             // Prepare read.
             let elapsed = start.elapsed();
             let instant = elapsed.as_secs() * 1000 + u64::from(elapsed.subsec_millis());
 
             // Read data.
-            let value: u32 = session.attach_to_best_memory()?.read32(loc)?;
+            let value: u32 = core.read32(loc)?;
 
             xs.push(instant);
             ys.push(value);
@@ -221,8 +221,8 @@ fn trace_u32_on_target(shared_options: &SharedOptions, loc: u32) -> Result<(), C
             // Unwrap is safe as there is always an stdin in our case!
             let mut buf = [0 as u8; 8];
             // Unwrap is safe!
-            buf.pwrite(instant, 0).unwrap();
-            buf.pwrite(value, 4).unwrap();
+            buf.pwrite_with(instant, 0, LE).unwrap();
+            buf.pwrite_with(value, 4, LE).unwrap();
             std::io::stdout().write_all(&buf)?;
 
             std::io::stdout().flush()?;
@@ -238,11 +238,6 @@ fn trace_u32_on_target(shared_options: &SharedOptions, loc: u32) -> Result<(), C
 }
 
 fn debug(shared_options: &SharedOptions, exe: Option<PathBuf>) -> Result<(), CliError> {
-    // try to load debug information
-    let debug_data = exe
-        .and_then(|p| fs::File::open(&p).ok())
-        .and_then(|file| unsafe { memmap::Mmap::map(&file).ok() });
-
     let runner = |session: Session| {
         let cs = Capstone::new()
             .arm()
@@ -251,7 +246,9 @@ fn debug(shared_options: &SharedOptions, exe: Option<PathBuf>) -> Result<(), Cli
             .build()
             .unwrap();
 
-        let di = debug_data.as_ref().map(|mmap| DebugInfo::from_raw(&*mmap));
+        let di = exe
+            .as_ref()
+            .and_then(|path| DebugInfo::from_file(path).ok());
 
         let cli = debugger::DebugCli::new();
 

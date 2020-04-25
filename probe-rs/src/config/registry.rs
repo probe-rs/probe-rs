@@ -1,13 +1,18 @@
 use super::target::Target;
 use crate::config::{Chip, ChipFamily, ChipInfo};
-use crate::core::get_core;
+use crate::core::CoreType;
+use lazy_static::lazy_static;
 use std::fs::File;
 use std::path::Path;
-use std::sync::{Arc, Mutex, TryLockError};
+use std::{
+    borrow::Cow,
+    sync::{Arc, Mutex, TryLockError},
+};
 use thiserror::Error;
 
-lazy_static::lazy_static! {
-    static ref REGISTRY: Arc<Mutex<Registry>> = Arc::new(Mutex::new(Registry::from_builtin_families()));
+lazy_static! {
+    static ref REGISTRY: Arc<Mutex<Registry>> =
+        Arc::new(Mutex::new(Registry::from_builtin_families()));
 }
 
 #[derive(Debug, Error)]
@@ -18,8 +23,8 @@ pub enum RegistryError {
     ChipAutodetectFailed,
     #[error("The requested algorithm was not found.")]
     AlgorithmNotFound,
-    #[error("The requested core was not found.")]
-    CoreNotFound,
+    #[error("The requested core '{0}' was not found.")]
+    CoreNotFound(String),
     #[error("No RAM description was found.")]
     RamMissing,
     #[error("No flash description was found.")]
@@ -38,6 +43,69 @@ impl<R> From<TryLockError<R>> for RegistryError {
     }
 }
 
+const GENERIC_TARGETS: [ChipFamily; 5] = [
+    ChipFamily {
+        name: Cow::Borrowed("Generic Cortex-M0"),
+        manufacturer: None,
+        variants: Cow::Borrowed(&[Chip {
+            name: Cow::Borrowed("cortex-m0"),
+            part: None,
+            memory_map: Cow::Borrowed(&[]),
+            flash_algorithms: Cow::Borrowed(&[]),
+        }]),
+        flash_algorithms: Cow::Borrowed(&[]),
+        core: Cow::Borrowed("M0"),
+    },
+    ChipFamily {
+        name: Cow::Borrowed("Generic Cortex-M4"),
+        manufacturer: None,
+        variants: Cow::Borrowed(&[Chip {
+            name: Cow::Borrowed("cortex-m4"),
+            part: None,
+            memory_map: Cow::Borrowed(&[]),
+            flash_algorithms: Cow::Borrowed(&[]),
+        }]),
+        flash_algorithms: Cow::Borrowed(&[]),
+        core: Cow::Borrowed("M4"),
+    },
+    ChipFamily {
+        name: Cow::Borrowed("Generic Cortex-M3"),
+        manufacturer: None,
+        variants: Cow::Borrowed(&[Chip {
+            name: Cow::Borrowed("cortex-m3"),
+            part: None,
+            memory_map: Cow::Borrowed(&[]),
+            flash_algorithms: Cow::Borrowed(&[]),
+        }]),
+        flash_algorithms: Cow::Borrowed(&[]),
+        core: Cow::Borrowed("M3"),
+    },
+    ChipFamily {
+        name: Cow::Borrowed("Generic Cortex-M33"),
+        manufacturer: None,
+        variants: Cow::Borrowed(&[Chip {
+            name: Cow::Borrowed("cortex-m33"),
+            part: None,
+            memory_map: Cow::Borrowed(&[]),
+            flash_algorithms: Cow::Borrowed(&[]),
+        }]),
+        flash_algorithms: Cow::Borrowed(&[]),
+        core: Cow::Borrowed("M33"),
+    },
+    ChipFamily {
+        name: Cow::Borrowed("Generic Riscv"),
+        manufacturer: None,
+        variants: Cow::Borrowed(&[Chip {
+            name: Cow::Borrowed("riscv"),
+            part: None,
+            memory_map: Cow::Borrowed(&[]),
+            flash_algorithms: Cow::Borrowed(&[]),
+        }]),
+        flash_algorithms: Cow::Borrowed(&[]),
+        core: Cow::Borrowed("riscv"),
+    },
+];
+
 pub struct Registry {
     /// All the available chips.
     families: Vec<ChipFamily>,
@@ -51,15 +119,17 @@ mod builtin {
 impl Registry {
     #[cfg(feature = "builtin-targets")]
     fn from_builtin_families() -> Self {
-        Self {
-            families: builtin::get_targets(),
-        }
+        let mut families = Vec::from(builtin::get_targets());
+
+        families.extend(GENERIC_TARGETS.iter().cloned());
+
+        Self { families }
     }
 
     #[cfg(not(feature = "builtin-targets"))]
     fn from_builtin_families() -> Self {
         Self {
-            families: Vec::new(),
+            families: GENERIC_TARGETS.iter().cloned().collect(),
         }
     }
 
@@ -68,21 +138,25 @@ impl Registry {
     }
 
     fn get_target_by_name(&self, name: impl AsRef<str>) -> Result<Target, RegistryError> {
+        let name = name.as_ref();
+
+        log::trace!("Searching registry for chip with name {}", name);
+
         let (family, chip) = {
             // Try get the corresponding chip.
             let mut selected_family_and_chip = None;
             for family in &self.families {
-                for variant in &family.variants {
+                for variant in family.variants.iter() {
                     if variant
                         .name
                         .to_ascii_lowercase()
-                        .starts_with(&name.as_ref().to_ascii_lowercase())
+                        .starts_with(&name.to_ascii_lowercase())
                     {
-                        if variant.name.to_ascii_lowercase() != name.as_ref().to_ascii_lowercase() {
+                        if variant.name.to_ascii_lowercase() != name.to_ascii_lowercase() {
                             log::warn!(
-                                "Found chip {} which matches given partial name {}. Consider specifying it's full name.",
+                                "Found chip {} which matches given partial name {}. Consider specifying its full name.",
                                 variant.name,
-                                name.as_ref(),
+                                name,
                             )
                         }
                         selected_family_and_chip = Some((family, variant));
@@ -109,7 +183,7 @@ impl Registry {
                             .map(|m| m == chip_info.manufacturer)
                             .unwrap_or(false)
                         {
-                            for variant in &family.variants {
+                            for variant in family.variants.iter() {
                                 if variant.part.map(|p| p == chip_info.part).unwrap_or(false) {
                                     selected_family_and_chip = Some((family, variant));
                                 }
@@ -128,17 +202,19 @@ impl Registry {
 
     fn get_target(&self, family: &ChipFamily, chip: &Chip) -> Result<Target, RegistryError> {
         // Try get the corresponding chip.
-        let core = if let Some(core) = get_core(&family.core) {
+        let core = if let Some(core) = CoreType::from_string(&family.core) {
             core
         } else {
-            return Err(RegistryError::CoreNotFound);
+            return Err(RegistryError::CoreNotFound(
+                family.core.clone().into_owned(),
+            ));
         };
 
         // find relevant algorithms
         let chip_algorithms = chip
             .flash_algorithms
             .iter()
-            .filter_map(|fa| family.flash_algorithms.get(fa))
+            .filter_map(|fa| family.get_algorithm(fa))
             .cloned()
             .collect();
 

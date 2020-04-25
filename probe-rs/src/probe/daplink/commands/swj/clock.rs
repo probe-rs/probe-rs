@@ -7,10 +7,10 @@ impl Request for SWJClockRequest {
     const CATEGORY: Category = Category(0x11);
 
     fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize> {
-        use scroll::Pwrite;
+        use scroll::{Pwrite, LE};
 
         buffer
-            .pwrite(self.0, offset)
+            .pwrite_with(self.0, offset, LE)
             .expect("This is a bug. Please report it.");
         Ok(4)
     }

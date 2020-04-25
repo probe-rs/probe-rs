@@ -1,0 +1,79 @@
+---
+name: HT32F590xx Series
+variants:
+  - name: HT32F59041
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 0
+            end: 65536
+          is_boot_memory: true
+    flash_algorithms:
+      - ht32f
+      - ht32f_opt
+  - name: HT32F59041_48LQFP
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 0
+            end: 65536
+          is_boot_memory: true
+    flash_algorithms:
+      - ht32f
+      - ht32f_opt
+flash_algorithms:
+  HT32F:
+    name: HT32F
+    description: HT32 Series Flash
+    default: true
+    instructions: SUkBIAhgSUkDIAhgHiDJAkhhiGFFSYAxCGhFSoMYRUoAIEpE0GCIaAArUGBJaADRSR5BQwAgEWBwRz9IDCEBYQAhwWAIRnBHOkhIRMFoOkgBYAohwWAUIQFhAOAAvwFpyQYJDw4p+dGBaTRKEUID0B4hgWEBIHBHACBwRy1KSkRRaEkeiEORaIhCAdEAIHBHE2jRaMkYgUIB2AEgcEcmSQhgCCPLYBQjC2GQYADgAL8IacAGAA8OKPnRiGkfShBA7NAeIIhh6OdwtRpLyRxLRIkIgAjdaIkAgAAbaEQY6xgkH5xCAdMBIHC9E0sEJNxgFCUSThPgGGAUaFxgHWEA4AC/HGnkBiQPDiz50ZxpNEIC0B4gmGHm5wAdCR8SHQAp6dEAIHC9AAAAgwhAAAEIQK7qifwIAAAAAAAIQB4AAgAAAAAAAAAAAAAAAAAAAAAA/////wAAAAA=
+    pc_init: 1
+    pc_uninit: 59
+    pc_program_page: 201
+    pc_erase_sector: 125
+    pc_erase_all: 73
+    data_section_offset: 320
+    flash_properties:
+      address_range:
+        start: 0
+        end: 1048576
+      page_size: 512
+      erased_byte_value: 255
+      program_page_timeout: 100
+      erase_sector_timeout: 500
+      sectors:
+        - size: 512
+          address: 0
+  HT32F_OPT:
+    name: HT32F_OPT
+    description: HT32 Series Flash Options
+    default: true
+    instructions: RUkBIAhgRUkDIAhgREgeIUFhgWFESUNISUTIYD9IgDCAaEhgCGAAIHBHPUgMIQFhACHBYAhGcEc7SEhEwWg4SAFgCiHBYBQhAWEA4AC/AWnJBgkPDin50YFpNEoRQgPQHiGBYQEgcEcAIHBHLkpKRFFoSR6IQ5FoiEIB0QAgcEcTaNFoyRiBQgHYASBwRyRJCGAII8tgFCMLYZBgAOAAvwhpwAYADw4o+dGIaR9KEEDs0B4giGHo53C1G0vJHEtEiQiACN1oiQCAABtoRBjrGCQfnEIB0wEgcL0RSwQk3GAUJRJOE+AYYBRoXGAdYQDgAL8caeQGJA8OLPnRnGk0QgLQHiCYYebnAB0JHxIdACnp0QAgcL0AAACDCEAAAQhAAAAIQAAA8B8IAAAAHgACAAAAAAAAAAAAAAAAAAAAAAD/////AAAAAA==
+    pc_init: 1
+    pc_uninit: 43
+    pc_program_page: 185
+    pc_erase_sector: 109
+    pc_erase_all: 57
+    data_section_offset: 304
+    flash_properties:
+      address_range:
+        start: 535822336
+        end: 535826432
+      page_size: 512
+      erased_byte_value: 255
+      program_page_timeout: 100
+      erase_sector_timeout: 500
+      sectors:
+        - size: 512
+          address: 0
+core: M0

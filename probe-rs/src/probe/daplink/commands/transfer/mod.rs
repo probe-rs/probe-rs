@@ -2,6 +2,7 @@ pub mod configure;
 
 use super::{Category, Request, Response, Result};
 use crate::architecture::arm::PortType as ArmPortType;
+use scroll::{Pread, Pwrite, LE};
 
 #[derive(Copy, Clone, Debug)]
 pub enum PortType {
@@ -26,7 +27,7 @@ pub enum RW {
 
 /// Contains information about requested access from host debugger.
 #[allow(non_snake_case)]
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
 pub struct InnerTransferRequest {
     /// 0 = Debug PortType (DP), 1 = Access PortType (AP).
     pub APnDP: PortType,
@@ -42,10 +43,14 @@ pub struct InnerTransferRequest {
     pub match_mask: bool,
     /// 0 = No time stamp, 1 = Include time stamp value from Test Domain Timer before every Transfer Data word (restrictions see note).
     pub td_timestamp_request: bool,
+
+    /// Contains the optional data word, only present
+    /// for register writes, match mask writes, or value match reads.
+    pub data: Option<u32>,
 }
 
 impl InnerTransferRequest {
-    pub fn new(port: PortType, rw: RW, address: u8) -> Self {
+    pub fn new(port: PortType, rw: RW, address: u8, data: Option<u32>) -> Self {
         Self {
             APnDP: port,
             RnW: rw,
@@ -54,13 +59,14 @@ impl InnerTransferRequest {
             value_match: false,
             match_mask: false,
             td_timestamp_request: false,
+            data,
         }
     }
 }
 
 #[test]
 fn creating_inner_transfer_request() {
-    let req = InnerTransferRequest::new(PortType::DP, RW::W, 0x8);
+    let req = InnerTransferRequest::new(PortType::DP, RW::W, 0x8, None);
 
     assert_eq!(true, req.A3);
     assert_eq!(false, req.A2);
@@ -75,7 +81,13 @@ impl InnerTransferRequest {
             | (if self.value_match { 1 } else { 0 }) << 4
             | (if self.match_mask { 1 } else { 0 }) << 5
             | (if self.td_timestamp_request { 1 } else { 0 }) << 7;
-        Ok(1)
+        if let Some(data) = self.data {
+            let data = data.to_le_bytes();
+            buffer[offset + 1..offset + 5].copy_from_slice(&data[..]);
+            Ok(5)
+        } else {
+            Ok(1)
+        }
     }
 }
 
@@ -93,18 +105,15 @@ pub struct TransferRequest {
     pub dap_index: u8,
     /// Number of transfers: 1 .. 255. For each transfer a Transfer Request BYTE is sent. Depending on the request an additional Transfer Data WORD is sent.
     pub transfer_count: u8,
-    /// Contains information about requested access from host debugger.
-    pub transfer_request: InnerTransferRequest,
-    pub transfer_data: u32,
+    pub transfers: Vec<InnerTransferRequest>,
 }
 
 impl TransferRequest {
-    pub fn new(transfer_request: InnerTransferRequest, data: u32) -> Self {
+    pub fn new(transfers: &[InnerTransferRequest]) -> Self {
         Self {
             dap_index: 0,
-            transfer_count: 1,
-            transfer_request,
-            transfer_data: data,
+            transfer_count: transfers.len() as u8,
+            transfers: transfers.into(),
         }
     }
 }
@@ -113,8 +122,6 @@ impl Request for TransferRequest {
     const CATEGORY: Category = Category(0x05);
 
     fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize> {
-        use scroll::Pwrite;
-
         let mut size = 0;
 
         buffer[offset] = self.dap_index;
@@ -123,13 +130,10 @@ impl Request for TransferRequest {
         buffer[offset + 1] = self.transfer_count;
         size += 1;
 
-        size += self.transfer_request.to_bytes(buffer, offset + 2)?;
+        for transfer in self.transfers.iter() {
+            size += transfer.to_bytes(buffer, offset + size)?;
+        }
 
-        buffer
-            .pwrite(self.transfer_data, offset + 3)
-            .expect("This is a bug. Please report it.");
-
-        size += 4;
         Ok(size)
     }
 }
@@ -164,7 +168,6 @@ pub struct TransferResponse {
 
 impl Response for TransferResponse {
     fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self> {
-        use scroll::Pread;
         Ok(TransferResponse {
             transfer_count: buffer[offset],
             transfer_response: InnerTransferResponse {
@@ -179,9 +182,9 @@ impl Response for TransferResponse {
                 value_missmatch: buffer[offset + 1] & 0x10 > 1,
             },
             // TODO: implement this properly.
-            td_timestamp: 0, // scroll::pread(buffer[offset + 2..offset + 2 + 4]),
+            td_timestamp: 0, // scroll::pread_with(buffer[offset + 2..offset + 2 + 4], LE),
             transfer_data: buffer
-                .pread(offset + 2)
+                .pread_with(offset + 2, LE)
                 .expect("This is a bug. Please report it."),
         })
     }
@@ -206,14 +209,12 @@ impl Request for TransferBlockRequest {
     const CATEGORY: Category = Category(0x06);
 
     fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize> {
-        use scroll::Pwrite;
-
         let mut size = 0;
         buffer[offset] = self.dap_index;
         size += 1;
 
         buffer
-            .pwrite(self.transfer_count, offset + 1)
+            .pwrite_with(self.transfer_count, offset + 1, LE)
             .expect("This is a bug. Please report it.");
         size += 2;
 
@@ -222,12 +223,14 @@ impl Request for TransferBlockRequest {
         let mut data_offset = offset + 4;
 
         for word in &self.transfer_data {
-            buffer.pwrite(word, data_offset).unwrap_or_else(|_| {
-                panic!(
-                    "Failed to write word at data_offset {}. This is a bug. Please report it.",
-                    data_offset
-                )
-            });
+            buffer
+                .pwrite_with(word, data_offset, LE)
+                .unwrap_or_else(|_| {
+                    panic!(
+                        "Failed to write word at data_offset {}. This is a bug. Please report it.",
+                        data_offset
+                    )
+                });
             data_offset += 4;
             size += 4;
         }
@@ -297,11 +300,11 @@ pub(crate) struct TransferBlockResponse {
 
 impl Response for TransferBlockResponse {
     fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self> {
-        use scroll::Pread;
-
-        let transfer_count = buffer.pread(offset).expect("Failed to read transfer count");
+        let transfer_count = buffer
+            .pread_with(offset, LE)
+            .expect("Failed to read transfer count");
         let transfer_response = buffer
-            .pread(offset + 2)
+            .pread_with(offset + 2, LE)
             .expect("Failed to read transfer response");
 
         let mut data = Vec::with_capacity(transfer_count as usize);
@@ -309,7 +312,7 @@ impl Response for TransferBlockResponse {
         for data_offset in 0..(transfer_count as usize) {
             data.push(
                 buffer
-                    .pread(offset + 3 + data_offset * 4)
+                    .pread_with(offset + 3 + data_offset * 4, LE)
                     .expect("Failed to read value.."),
             );
         }

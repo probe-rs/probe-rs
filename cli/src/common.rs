@@ -1,8 +1,8 @@
 use crate::SharedOptions;
 
 use probe_rs::{
-    architecture::arm::ap::AccessPortError, config::TargetSelector,
-    flash::download::FileDownloadError, DebugProbeError, Error, Probe, Session,
+    architecture::arm::ap::AccessPortError, config::TargetSelector, flashing::FileDownloadError,
+    DebugProbeError, Error, Probe, Session,
 };
 
 use std::fmt;
@@ -67,16 +67,19 @@ pub(crate) fn open_probe(index: Option<usize>) -> Result<Probe, CliError> {
             .ok_or(CliError::UnableToOpenProbe(Some("Unable to open the specified probe. Use the 'list' subcommand to see all available probes.")))?,
         None => {
             // open the default probe, if only one probe was found
-            if available_probes.len() == 1 {
-                &available_probes[0]
-            } else {
-                return Err(CliError::UnableToOpenProbe(Some("Multiple probes found. Please specify which probe to use using the -n parameter.")));
+            match available_probes.len() {
+                0 => {
+                    return Err(CliError::UnableToOpenProbe(Some("No probe detected.")));
+                }
+                1 => &available_probes[0],
+                _ =>  {
+                    return Err(CliError::UnableToOpenProbe(Some("Multiple probes found. Please specify which probe to use using the -n parameter.")));
+                }
             }
         }
     };
 
-    let probe = Probe::from_probe_info(&device)?;
-
+    let probe = device.open()?;
     Ok(probe)
 }
 
@@ -87,12 +90,20 @@ pub(crate) fn with_device<F>(shared_options: &SharedOptions, f: F) -> Result<(),
 where
     for<'a> F: FnOnce(Session) -> Result<(), CliError>,
 {
-    let probe = open_probe(shared_options.n)?;
+    let mut probe = open_probe(shared_options.n)?;
 
-    let target_selector = match &shared_options.target {
+    let target_selector = match &shared_options.chip {
         Some(identifier) => identifier.into(),
         None => TargetSelector::Auto,
     };
+
+    if let Some(ref protocol) = shared_options.protocol {
+        probe.select_protocol(
+            protocol
+                .parse()
+                .map_err(|_e| CliError::UnableToOpenProbe(Some("Error while parsing protocol")))?,
+        )?;
+    }
 
     let session = probe.attach(target_selector)?;
 

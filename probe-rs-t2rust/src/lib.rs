@@ -1,4 +1,3 @@
-use scroll::Pread;
 use std::fs;
 use std::fs::{read_dir, read_to_string};
 use std::io;
@@ -8,6 +7,10 @@ pub fn run(input_dir: impl AsRef<Path>, output_file: impl AsRef<Path>) {
     // Determine all config files to parse.
     let mut files = vec![];
     visit_dirs(input_dir.as_ref(), &mut files).unwrap();
+
+    let output_file = output_file.as_ref();
+
+    let output_dir = output_file.parent().unwrap();
 
     let mut configs: Vec<proc_macro2::TokenStream> = vec![];
     for file in files {
@@ -19,7 +22,7 @@ pub fn run(input_dir: impl AsRef<Path>, output_file: impl AsRef<Path>) {
 
         match yaml {
             Ok(chip) => {
-                let chip = extract_chip_family(&chip);
+                let chip = extract_chip_family(&chip, output_dir);
                 configs.push(chip);
             }
             Err(e) => {
@@ -32,21 +35,27 @@ pub fn run(input_dir: impl AsRef<Path>, output_file: impl AsRef<Path>) {
         quote::quote! {}
     } else {
         quote::quote! {
+            #[allow(unused_imports)]
             use jep106::JEP106Code;
             use crate::config::{Chip, RawFlashAlgorithm, FlashRegion, MemoryRegion, RamRegion, SectorDescription, FlashProperties};
-            use maplit::hashmap;
+
+            use std::borrow::Cow;
         }
     };
+
+    let target_count = configs.len();
 
     let stream = quote::quote! {
         #include_stream
         use crate::config::ChipFamily;
 
-        #[allow(clippy::all)]
-        pub fn get_targets() -> Vec<ChipFamily> {
-            vec![
-                #(#configs,)*
-            ]
+        #[allow(clippy::unreadable_literal)]
+        pub const TARGETS: [ChipFamily;#target_count] = [
+            #(#configs,)*
+        ];
+
+        pub fn get_targets() -> &'static [ChipFamily] {
+            &TARGETS
         }
     };
 
@@ -83,7 +92,10 @@ fn quote_option<T: quote::ToTokens>(option: Option<T>) -> proc_macro2::TokenStre
 }
 
 /// Extracts a list of algorithm token streams from a yaml value.
-fn extract_algorithms(chip: &serde_yaml::Value) -> Vec<(String, proc_macro2::TokenStream)> {
+fn extract_algorithms(
+    chip: &serde_yaml::Value,
+    output_dir: &Path,
+) -> Vec<proc_macro2::TokenStream> {
     // Get an iterator over all the algorithms contained in the chip value obtained from the yaml file.
     let algorithm_iter = chip
         .get("flash_algorithms")
@@ -108,12 +120,8 @@ fn extract_algorithms(chip: &serde_yaml::Value) -> Vec<(String, proc_macro2::Tok
                 .unwrap()
                 .to_ascii_lowercase();
             let default = algorithm.get("default").unwrap().as_bool().unwrap();
-            let instructions: Vec<u32> =
-                base64::decode(algorithm.get("instructions").unwrap().as_str().unwrap())
-                    .unwrap()
-                    .chunks(4)
-                    .map(|bytes| bytes.pread(0).unwrap())
-                    .collect();
+            let instructions: Vec<u8> =
+                base64::decode(algorithm.get("instructions").unwrap().as_str().unwrap()).unwrap();
             let pc_init =
                 quote_option(algorithm.get("pc_init").unwrap().as_u64().map(|v| v as u32));
             let pc_uninit = quote_option(
@@ -165,15 +173,23 @@ fn extract_algorithms(chip: &serde_yaml::Value) -> Vec<(String, proc_macro2::Tok
             // get all sectors
             let sectors = extract_sectors(&flash_properties);
 
+            // write flash algorithm into separate file
+
+            let mut algorithm_file_name = name.replace(" ", "_");
+
+            algorithm_file_name.push_str(".bin");
+
+            let algorithm_path = output_dir.join(&algorithm_file_name);
+
+            fs::write(&algorithm_path, &instructions).unwrap();
+
             // Quote the algorithm struct.
             let algorithm = quote::quote! {
                 RawFlashAlgorithm {
-                    name: #name.to_owned(),
-                    description: #description.to_owned(),
+                    name: Cow::Borrowed(#name),
+                    description: Cow::Borrowed(#description),
                     default: #default,
-                    instructions: vec![
-                        #(#instructions,)*
-                    ],
+                    instructions: Cow::Borrowed(include_bytes!(#algorithm_file_name)),
                     pc_init: #pc_init,
                     pc_uninit: #pc_uninit,
                     pc_program_page: #pc_program_page,
@@ -186,14 +202,14 @@ fn extract_algorithms(chip: &serde_yaml::Value) -> Vec<(String, proc_macro2::Tok
                         erased_byte_value: #erased_byte_value,
                         program_page_timeout: #program_page_timeout,
                         erase_sector_timeout: #erase_sector_timeout,
-                        sectors: vec![
+                        sectors: Cow::Borrowed(&[
                             #(#sectors,)*
-                        ]
+                        ])
                     },
                 }
             };
 
-            (name, algorithm)
+            algorithm
         })
         .collect()
 }
@@ -300,14 +316,14 @@ fn extract_variants(chip_family: &serde_yaml::Value) -> Vec<proc_macro2::TokenSt
             let flash_algorithm_names = flash_algorithms.iter().map(|a| a.as_str().unwrap());
             quote::quote! {
                 Chip {
-                    name: #name.to_owned(),
+                    name: Cow::Borrowed(#name),
                     part: #part,
-                    memory_map: vec![
+                    memory_map: Cow::Borrowed(&[
                         #(#memory_map,)*
-                    ],
-                    flash_algorithms: vec![
-                        #(#flash_algorithm_names.to_owned(),)*
-                    ],
+                    ]),
+                    flash_algorithms: Cow::Borrowed(&[
+                        #(Cow::Borrowed(#flash_algorithm_names),)*
+                    ]),
                 }
             }
         })
@@ -315,10 +331,12 @@ fn extract_variants(chip_family: &serde_yaml::Value) -> Vec<proc_macro2::TokenSt
 }
 
 /// Extracts a chip family token stream from a yaml value.
-fn extract_chip_family(chip_family: &serde_yaml::Value) -> proc_macro2::TokenStream {
+fn extract_chip_family(
+    chip_family: &serde_yaml::Value,
+    output_dir: &Path,
+) -> proc_macro2::TokenStream {
     // Extract all the algorithms into a Vec of TokenStreams.
-    let (algorithm_names, algorithms): (Vec<_>, Vec<_>) =
-        extract_algorithms(&chip_family).into_iter().unzip();
+    let algorithms = extract_algorithms(&chip_family, output_dir);
 
     // Extract all the available variants into a Vec of TokenStreams.
     let variants = extract_variants(&chip_family);
@@ -340,15 +358,15 @@ fn extract_chip_family(chip_family: &serde_yaml::Value) -> proc_macro2::TokenStr
     // Quote the chip.
     let chip_family = quote::quote! {
         ChipFamily {
-            name: #name.to_owned(),
+            name: Cow::Borrowed(#name),
             manufacturer: #manufacturer,
-            flash_algorithms: hashmap![
-                #(#algorithm_names.to_owned() => #algorithms,)*
-            ],
-            variants: vec![
+            flash_algorithms: Cow::Borrowed(&[
+                #(#algorithms,)*
+            ]),
+            variants: Cow::Borrowed(&[
                 #(#variants,)*
-            ],
-            core: #core.to_owned(),
+            ]),
+            core: Cow::Borrowed(#core),
         }
     };
 

@@ -65,8 +65,6 @@
 #![allow(clippy::verbose_bit_mask)]
 
 #[macro_use]
-extern crate derivative;
-#[macro_use]
 extern crate serde;
 
 pub mod architecture;
@@ -74,16 +72,17 @@ pub mod config;
 mod core;
 pub mod debug;
 mod error;
-pub mod flash;
+pub mod flashing;
 pub mod itm;
 mod memory;
 mod probe;
 mod session;
 
 pub use crate::config::Target;
+pub use crate::core::CoreType;
 pub use crate::core::{
     Breakpoint, BreakpointId, CommunicationInterface, Core, CoreInterface, CoreList,
-    CoreRegisterAddress,
+    CoreRegisterAddress, CoreStatus, HaltReason,
 };
 pub use crate::error::Error;
 pub use crate::memory::{Memory, MemoryInterface, MemoryList};

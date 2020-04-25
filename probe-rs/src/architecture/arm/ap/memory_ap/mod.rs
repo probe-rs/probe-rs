@@ -24,7 +24,8 @@ impl MemoryAP {
 
         let mut base_address = if BaseaddrFormat::ADIv5 == base_register.Format {
             let base2 = interface.read_ap_register(self.port_number(), BASE2::default())?;
-            (u64::from(base2.BASEADDR) << 32)
+
+            u64::from(base2.BASEADDR) << 32
         } else {
             0
         };
@@ -124,7 +125,7 @@ define_ap_register!(
         (BASEADDR: u32),
         (_RES0: u8),
         (Format: BaseaddrFormat),
-        (P: DebugEntryState),
+        (present: bool),
     ],
     value,
     BASE {
@@ -135,16 +136,16 @@ define_ap_register!(
             1 => BaseaddrFormat::ADIv5,
             _ => panic!("This is a bug. Please report it."),
         },
-        P: match (value & 0x01) as u8 {
-            0 => DebugEntryState::NotPresent,
-            1 => DebugEntryState::Present,
+        present: match (value & 0x01) as u8 {
+            0 => false,
+            1 => true,
             _ => panic!("This is a bug. Please report it."),
         },
     },
     (value.BASEADDR << 12)
     // _RES0
     | (u32::from(value.Format as u8   ) << 1)
-    | (u32::from(value.P as u8))
+    | (if value.present { 1 } else { 0 })
 );
 
 define_ap_register!(
