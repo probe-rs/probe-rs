@@ -10,10 +10,7 @@ use crate::error::Error;
 use crate::raw_flash_algorithm::RawFlashAlgorithm;
 use chip::Chip;
 use chip_family::ChipFamily;
-use cmsis_pack::pdsc::Core;
-use cmsis_pack::pdsc::Device;
-use cmsis_pack::pdsc::Package;
-use cmsis_pack::pdsc::Processors;
+use cmsis_pack::pdsc::{Core, Device, Package, Processors};
 use cmsis_pack::utils::FromElem;
 use pretty_env_logger;
 use probe_rs::config::{FlashRegion, MemoryRegion, RamRegion};
@@ -26,23 +23,18 @@ use log;
 
 #[derive(StructOpt)]
 struct Options {
-    #[structopt(name = "INPUT_DIR", parse(from_os_str))]
-    input_dir: PathBuf,
-    #[structopt(name = "OUTPUT_DIR", parse(from_os_str))]
+    #[structopt(
+        name = "INPUT",
+        parse(from_os_str),
+        help = "A Pack file or the unziped Pack directory."
+    )]
+    input: PathBuf,
+    #[structopt(
+        name = "OUTPUT",
+        parse(from_os_str),
+        help = "An output directory where all the generated .yaml files are put in. It has to exist already."
+    )]
     output_dir: PathBuf,
-}
-
-fn get_ram(device: &Device) -> Option<RamRegion> {
-    for memory in device.memories.0.values() {
-        if memory.default && memory.access.read && memory.access.write {
-            return Some(RamRegion {
-                range: memory.start as u32..memory.start as u32 + memory.size as u32,
-                is_boot_memory: memory.startup,
-            });
-        }
-    }
-
-    None
 }
 
 fn main() {
@@ -50,11 +42,11 @@ fn main() {
 
     let options = Options::from_args();
     // The directory in which to look for the .pdsc file.
-    let in_dir = options.input_dir;
+    let input = options.input;
     let out_dir = options.output_dir;
 
-    if !in_dir.exists() {
-        eprintln!("No such file or directory {:?}", in_dir);
+    if !input.exists() {
+        eprintln!("No such file or directory {:?}", input);
         std::process::exit(1);
     } else if !out_dir.exists() {
         eprintln!("No such file or directory {:?}", out_dir);
@@ -63,7 +55,7 @@ fn main() {
 
     let mut families = Vec::<ChipFamily>::new();
     // Look for the .pdsc file in the given dir and it's child directories.
-    let generation_result = visit_dirs(Path::new(&in_dir), &mut |pdsc, mut archive| {
+    let generation_result = visit_dirs(Path::new(&input), &mut |pdsc, mut archive| {
         // Forge a definition file for each device in the .pdsc file.
         let mut devices = pdsc.devices.0.into_iter().collect::<Vec<_>>();
         devices.sort_by(|a, b| a.0.cmp(&b.0));
@@ -87,7 +79,7 @@ fn main() {
                         )
                     } else {
                         crate::parser::extract_flash_algo(
-                            std::fs::File::open(in_dir.join(&flash_algorithm.file_name).as_path())
+                            std::fs::File::open(input.join(&flash_algorithm.file_name).as_path())
                                 .unwrap(),
                             flash_algorithm.file_name.as_path(),
                             flash_algorithm.default,
@@ -222,30 +214,28 @@ fn visit_dirs<T>(
                 }
             }
         }
-    } else if let Some(extension) = path.extension() {
-        if extension == "pack" {
-            log::info!("Found .pack file: {}", path.display());
-            // If we get a file, try to unpack it.
-            let file = fs::File::open(&path).unwrap();
+    } else if let Some(_extension) = path.extension() {
+        log::info!("Trying to open pack file: {}.", path.display());
+        // If we get a file, try to unpack it.
+        let file = fs::File::open(&path)?;
 
-            match zip::ZipArchive::new(file) {
-                Ok(mut archive) => {
-                    let pdsc =
-                        find_pdsc_in_archive(&mut archive).map_or_else(String::new, |mut pdsc| {
-                            let mut pdsc_string = String::new();
-                            use std::io::Read;
-                            pdsc.read_to_string(&mut pdsc_string).unwrap();
-                            pdsc_string
-                        });
-                    cb(Package::from_string(&pdsc).unwrap(), Some(&mut archive))?;
-                }
-                Err(e) => {
-                    log::error!("Zip file could not be read. Reason:");
-                    log::error!("{:?}", e);
-                    std::process::exit(1);
-                }
-            };
-        }
+        match zip::ZipArchive::new(file) {
+            Ok(mut archive) => {
+                let pdsc =
+                    find_pdsc_in_archive(&mut archive).map_or_else(String::new, |mut pdsc| {
+                        let mut pdsc_string = String::new();
+                        use std::io::Read;
+                        pdsc.read_to_string(&mut pdsc_string).unwrap();
+                        pdsc_string
+                    });
+                cb(Package::from_string(&pdsc).unwrap(), Some(&mut archive))?;
+            }
+            Err(e) => {
+                log::error!("Zip file could not be read. Reason:");
+                log::error!("{:?}", e);
+                std::process::exit(1);
+            }
+        };
     }
     Ok(())
 }
@@ -269,4 +259,17 @@ fn find_pdsc_in_archive(archive: &mut zip::ZipArchive<File>) -> Option<zip::read
     } else {
         None
     }
+}
+
+fn get_ram(device: &Device) -> Option<RamRegion> {
+    for memory in device.memories.0.values() {
+        if memory.default && memory.access.read && memory.access.write {
+            return Some(RamRegion {
+                range: memory.start as u32..memory.start as u32 + memory.size as u32,
+                is_boot_memory: memory.startup,
+            });
+        }
+    }
+
+    None
 }
