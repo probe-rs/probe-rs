@@ -87,3 +87,13 @@ impl ChipFamily {
         self.flash_algorithms.iter().find(|elem| elem.name == name)
     }
 }
+
+#[test]
+fn map_to_list_deserialize() {
+    let result: Result<ChipFamily, _> =
+        serde_yaml::from_str(include_str!("../../targets/STM32F4 Series.yaml"));
+    assert!(result.is_ok());
+
+    let chip_family = result.unwrap();
+    assert_eq!(chip_family.algorithms().len(), 18);
+}
