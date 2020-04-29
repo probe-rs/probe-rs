@@ -1,5 +1,7 @@
 use scroll::Pread;
 
+use anyhow::Result;
+
 /// A struct to describe one sector in Flash.
 #[derive(Clone, Debug)]
 pub(crate) struct SectorInfo {
@@ -62,7 +64,7 @@ impl FlashDevice {
     const MAX_ID_STRING_LENGTH: usize = 128;
 
     /// Parses the `FlashDevice` struct from ELF binary data.
-    pub(crate) fn new(elf: &goblin::elf::Elf<'_>, buffer: &[u8], address: u32) -> Self {
+    pub(crate) fn new(elf: &goblin::elf::Elf<'_>, buffer: &[u8], address: u32) -> Result<Self> {
         // Extract all the sector data from the ELF blob.
         let sectors = Self::parse_sectors(elf, buffer, address);
 
@@ -77,7 +79,7 @@ impl FlashDevice {
         let sanitized_length = Self::MAX_ID_STRING_LENGTH.min(hypothetical_length);
 
         // Finally parse the struct data and return the struct.
-        Self {
+        Ok(Self {
             driver_version: data.pread(0).unwrap(),
             name: String::from_utf8_lossy(&data[2..2 + sanitized_length]).to_string(),
             typ: data.pread(130).unwrap(),
@@ -89,7 +91,7 @@ impl FlashDevice {
             program_page_timeout: data.pread(152).unwrap(),
             erase_sector_timeout: data.pread(156).unwrap(),
             sectors,
-        }
+        })
     }
 
     /// Parse the sector infos in the device struct.

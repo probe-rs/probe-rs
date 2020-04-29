@@ -1,8 +1,9 @@
-use crate::error::Error;
 use goblin::elf::program_header::PT_LOAD;
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
 use probe_rs::config::MemoryRange;
+
+use anyhow::{anyhow, Result};
 
 const CODE_SECTION_KEY: (&str, Option<SectionType>) = ("PrgCode", Some(SectionType::SHT_PROGBITS));
 const DATA_SECTION_KEY: (&str, Option<SectionType>) = ("PrgData", Some(SectionType::SHT_PROGBITS));
@@ -35,7 +36,7 @@ pub(crate) struct AlgorithmBinary {
 
 impl AlgorithmBinary {
     /// Extract a new flash algorithm binary blob from an ELF data blob.
-    pub(crate) fn new(elf: &goblin::elf::Elf<'_>, buffer: &[u8]) -> Result<Self, Error> {
+    pub(crate) fn new(elf: &goblin::elf::Elf<'_>, buffer: &[u8]) -> Result<Self> {
         let mut code_section = None;
         let mut data_section = None;
         let mut bss_section = None;
@@ -76,8 +77,11 @@ impl AlgorithmBinary {
         }
 
         // Check all the sections for validity and return the binary blob if possible.
-        let code_section = code_section.ok_or_else(|| Error::SectionNotFound("code"))?;
-        let data_section = data_section.ok_or_else(|| Error::SectionNotFound("data"))?;
+        let code_section = code_section
+            .ok_or_else(|| anyhow!("Section 'code' not found, which is required to be present."))?;
+        let data_section = data_section
+            .ok_or_else(|| anyhow!("Section 'data' not found, which is required to be present."))?;
+
         let zi_start = data_section.start + data_section.length;
 
         Ok(Self {

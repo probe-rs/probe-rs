@@ -1,7 +1,8 @@
-use crate::error::Error;
 use crate::flash_device::FlashDevice;
 use crate::raw_flash_algorithm::RawFlashAlgorithm;
 use probe_rs::config::{FlashProperties, SectorDescription};
+
+use anyhow::{anyhow, Context, Result};
 
 /// Extract a chunk of data from an ELF binary.
 ///
@@ -38,7 +39,7 @@ pub(crate) fn read_elf_bin_data<'a>(
     None
 }
 
-fn extract_flash_device(elf: &goblin::elf::Elf, buffer: &[u8]) -> Option<FlashDevice> {
+fn extract_flash_device(elf: &goblin::elf::Elf, buffer: &[u8]) -> Result<FlashDevice> {
     // Extract the flash device info.
     for sym in elf.syms.iter() {
         let name = &elf.strtab[sym.st_name];
@@ -46,11 +47,12 @@ fn extract_flash_device(elf: &goblin::elf::Elf, buffer: &[u8]) -> Option<FlashDe
         if let "FlashDevice" = name {
             // This struct contains information about the FLM file structure.
             let address = sym.st_value as u32;
-            return Some(FlashDevice::new(&elf, buffer, address));
+            return FlashDevice::new(&elf, buffer, address);
         }
     }
 
-    None
+    // Failed to find flash device
+    Err(anyhow!("Failed to find 'FlashDevice' symbol in ELF file."))
 }
 
 /// Extracts a position & memory independent flash algorithm blob from the proveided ELF file.
@@ -58,17 +60,18 @@ pub fn extract_flash_algo(
     mut file: impl std::io::Read,
     file_name: &std::path::Path,
     default: bool,
-) -> Result<RawFlashAlgorithm, Error> {
+) -> Result<RawFlashAlgorithm> {
     let mut buffer = vec![];
-    file.read_to_end(&mut buffer).unwrap();
+    file.read_to_end(&mut buffer)?;
 
     let mut algo = RawFlashAlgorithm::default();
 
-    let elf =
-        goblin::elf::Elf::parse(&buffer.as_slice()).map_err(|e| Error::IoError(e.to_string()))?;
+    let elf = goblin::elf::Elf::parse(&buffer.as_slice())?;
 
-    let flash_device = extract_flash_device(&elf, &buffer)
-        .ok_or_else(|| Error::IoError("Failed to read flash device".to_owned()))?;
+    let flash_device = extract_flash_device(&elf, &buffer).context(format!(
+        "Failed to extract flash information from ELF file '{}'.",
+        file_name.display()
+    ))?;
 
     // Extract binary blob.
     let algorithm_binary = crate::algorithm_binary::AlgorithmBinary::new(&elf, &buffer)?;
