@@ -51,7 +51,6 @@ pub async fn handler(
 ) -> ServerResult<bool> {
     let mut break_due = false;
     if packet.is_valid() {
-        log::warn!("Another packet handled");
         let packet_string = String::from_utf8_lossy(&packet.data).to_string();
         #[allow(clippy::if_same_then_else)]
         let response: Option<String> = if packet.data.starts_with(b"qSupported") {
