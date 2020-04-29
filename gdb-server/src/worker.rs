@@ -1,4 +1,5 @@
 use async_std::prelude::*;
+use async_std::task;
 use futures::channel::mpsc;
 use futures::future::FutureExt;
 use futures::select;
@@ -6,6 +7,7 @@ use gdb_protocol::packet::{CheckedPacket, Kind as PacketKind};
 use probe_rs::Core;
 use probe_rs::Session;
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
 use crate::handlers;
 
@@ -34,7 +36,7 @@ pub async fn worker(
                     break
                 }
             },
-            _ = await_halt(&core, output_stream.clone(), awaits_halt).fuse() => {}
+            _ = await_halt(&core, output_stream.clone(), &mut awaits_halt).fuse() => {}
         }
     }
     Ok(())
@@ -49,6 +51,7 @@ pub async fn handler(
 ) -> ServerResult<bool> {
     let mut break_due = false;
     if packet.is_valid() {
+        log::warn!("Another packet handled");
         let packet_string = String::from_utf8_lossy(&packet.data).to_string();
         #[allow(clippy::if_same_then_else)]
         let response: Option<String> = if packet.data.starts_with(b"qSupported") {
@@ -124,13 +127,15 @@ pub async fn handler(
     Ok(break_due)
 }
 
-pub async fn await_halt(core: &Core, output_stream: Sender<CheckedPacket>, await_halt: bool) {
-    if await_halt && core.core_halted().unwrap() {
+pub async fn await_halt(core: &Core, output_stream: Sender<CheckedPacket>, await_halt: &mut bool) {
+    task::sleep(Duration::from_millis(10)).await;
+    if *await_halt && core.core_halted().unwrap() {
         let response =
             CheckedPacket::from_data(PacketKind::Packet, "T05hwbreak:;".to_string().into_bytes());
 
         let mut bytes = Vec::new();
         response.encode(&mut bytes).unwrap();
+        *await_halt = false;
 
         let _ = output_stream.unbounded_send(response);
     }

@@ -184,7 +184,7 @@ pub(crate) fn user_halt(core: &Core, awaits_halt: &mut bool) -> Option<String> {
     let _ = core.halt();
     core.wait_for_core_halted().unwrap();
     *awaits_halt = false;
-    Some("T05hwbreak:;".into())
+    Some("T02".into())
 }
 
 pub(crate) fn detach(break_due: &mut bool) -> Option<String> {
