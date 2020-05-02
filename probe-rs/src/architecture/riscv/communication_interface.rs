@@ -95,103 +95,17 @@ enum DebugModuleVersion {
     NonConforming = 15,
 }
 
-#[derive(Clone, Debug)]
-pub struct RiscvCommunicationInterface {
-    inner: Rc<RefCell<InnerRiscvCommunicationInterface>>,
-}
-
-impl RiscvCommunicationInterface {
-    pub(crate) fn new(probe: Probe) -> Result<Self, RiscvError> {
-        Ok(Self {
-            inner: Rc::new(RefCell::new(InnerRiscvCommunicationInterface::build(
-                probe,
-            )?)),
-        })
-    }
-
-    pub(super) fn read_dm_register<R: DebugRegister>(&self) -> Result<R, RiscvError> {
-        self.inner.borrow_mut().read_dm_register()
-    }
-
-    pub(super) fn write_dm_register(&self, register: impl DebugRegister) -> Result<(), RiscvError> {
-        self.inner.borrow_mut().write_dm_register(register)
-    }
-
-    pub(crate) fn execute_abstract_command(&self, command: u32) -> Result<(), RiscvError> {
-        self.inner.borrow_mut().execute_abstract_command(command)
-    }
-
-    pub(crate) fn abstract_cmd_register_read(
-        &self,
-        regno: impl Into<CoreRegisterAddress>,
-    ) -> Result<u32, RiscvError> {
-        self.inner.borrow_mut().abstract_cmd_register_read(regno)
-    }
-
-    pub(crate) fn abstract_cmd_register_write(
-        &self,
-        regno: impl Into<CoreRegisterAddress>,
-        value: u32,
-    ) -> Result<(), RiscvError> {
-        self.inner
-            .borrow_mut()
-            .abstract_cmd_register_write(regno, value)
-    }
-
-    /// Read the IDCODE register
-    pub fn read_idcode(&self) -> Result<u32, DebugProbeError> {
-        self.inner.borrow_mut().read_idcode()
-    }
-
-    pub fn close(self) -> Result<Probe, Self> {
-        Rc::try_unwrap(self.inner)
-            .map(|cell| cell.into_inner().probe)
-            .map_err(|e| RiscvCommunicationInterface { inner: e })
-    }
-
-    pub fn memory(&self) -> Memory {
-        Memory::new(self.clone())
-    }
-}
-
-impl MemoryInterface for RiscvCommunicationInterface {
-    fn read32(&mut self, address: u32) -> Result<u32, crate::Error> {
-        self.inner.borrow_mut().read32(address)
-    }
-    fn read8(&mut self, address: u32) -> Result<u8, crate::Error> {
-        self.inner.borrow_mut().read8(address)
-    }
-    fn read_block32(&mut self, address: u32, data: &mut [u32]) -> Result<(), crate::Error> {
-        self.inner.borrow_mut().read_block32(address, data)
-    }
-    fn read_block8(&mut self, address: u32, data: &mut [u8]) -> Result<(), crate::Error> {
-        self.inner.borrow_mut().read_block8(address, data)
-    }
-    fn write32(&mut self, addr: u32, data: u32) -> Result<(), crate::Error> {
-        self.inner.borrow_mut().write32(addr, data)
-    }
-    fn write8(&mut self, addr: u32, data: u8) -> Result<(), crate::Error> {
-        self.inner.borrow_mut().write8(addr, data)
-    }
-    fn write_block32(&mut self, addr: u32, data: &[u32]) -> Result<(), crate::Error> {
-        self.inner.borrow_mut().write_block32(addr, data)
-    }
-    fn write_block8(&mut self, addr: u32, data: &[u8]) -> Result<(), crate::Error> {
-        self.inner.borrow_mut().write_block8(addr, data)
-    }
-}
-
 #[derive(Debug)]
-struct InnerRiscvCommunicationInterface {
-    probe: Probe,
+pub struct RiscvCommunicationInterfaceState {
+    initialized: bool,
     abits: u32,
 }
 
 /// Timeout for RISCV operations.
 const RISCV_TIMEOUT: Duration = Duration::from_secs(5);
 
-impl InnerRiscvCommunicationInterface {
-    pub fn build(mut probe: Probe) -> Result<Self, RiscvError> {
+impl RiscvCommunicationInterfaceState {
+    pub(crate) fn new(probe: &mut Probe) -> Result<Self, RiscvError> {
         // We need a jtag interface
 
         log::debug!("Building RISCV interface");
@@ -212,13 +126,56 @@ impl InnerRiscvCommunicationInterface {
         // Setup the number of idle cycles between JTAG accesses
         jtag_interface.set_idle_cycles(idle_cycles as u8);
 
-        let mut interface = InnerRiscvCommunicationInterface { probe, abits };
+        let state = RiscvCommunicationInterfaceState {
+            initialized: false,
+            abits,
+        };
 
+        Ok(state)
+    }
+
+    pub(crate) fn initialize(&mut self) {
+        self.initialized = true;
+    }
+
+    pub(crate) fn initialized(&self) -> bool {
+        self.initialized
+    }
+}
+
+pub struct RiscvCommunicationInterface<'a> {
+    probe: &'a mut Probe,
+    state: &'a mut RiscvCommunicationInterfaceState,
+}
+
+impl<'a> RiscvCommunicationInterface<'a> {
+    pub(crate) fn new(
+        probe: &'a mut Probe,
+        state: &'a mut RiscvCommunicationInterfaceState,
+    ) -> Result<Option<Self>, RiscvError> {
+        if probe.has_jtag_interface() {
+            let mut s = Self { probe, state };
+
+            if s.state.initialized() {
+                s.enter_debug_mode()?;
+                s.state.initialize();
+            }
+
+            Ok(Some(s))
+        } else {
+            log::debug!("No JTAG interface available on Probe");
+
+            Ok(None)
+        }
+    }
+
+    // TODO: N
+    fn enter_debug_mode(&mut self) -> Result<(), RiscvError> {
         // Reset error bits from previous connections
-        interface.dmi_reset()?;
+        self.dmi_reset()?;
 
         // read the  version of the debug module
-        let status: Dmstatus = interface.read_dm_register()?;
+        let status: Dmstatus = self.read_dm_register()?;
 
         // Only version of 0.13 of the debug specification is currently supported.
         if status.version() != DebugModuleVersion::Version0_13 as u32 {
@@ -233,9 +190,7 @@ impl InnerRiscvCommunicationInterface {
         let mut control = Dmcontrol(0);
         control.set_dmactive(true);
 
-        interface.write_dm_register(control)?;
-
-        Ok(interface)
+        self.write_dm_register(control)
     }
 
     fn dmi_reset(&mut self) -> Result<(), RiscvError> {
@@ -257,7 +212,7 @@ impl InnerRiscvCommunicationInterface {
         Ok(())
     }
 
-    fn read_idcode(&mut self) -> Result<u32, DebugProbeError> {
+    pub(crate) fn read_idcode(&mut self) -> Result<u32, DebugProbeError> {
         let jtag_interface = self
             .probe
             .get_interface_jtag_mut()?
@@ -284,7 +239,7 @@ impl InnerRiscvCommunicationInterface {
 
         let bytes = register_value.to_le_bytes();
 
-        let bit_size = self.abits + DMI_ADDRESS_BIT_OFFSET;
+        let bit_size = self.state.abits + DMI_ADDRESS_BIT_OFFSET;
 
         let jtag_interface = self
             .probe
@@ -339,7 +294,7 @@ impl InnerRiscvCommunicationInterface {
         }
     }
 
-    pub(crate) fn read_dm_register<R: DebugRegister>(&mut self) -> Result<R, RiscvError> {
+    pub(super) fn read_dm_register<R: DebugRegister>(&mut self) -> Result<R, RiscvError> {
         log::debug!("Reading DM register '{}' at {:#010x}", R::NAME, R::ADDRESS);
 
         // Prepare the read by sending a read request with the register address
@@ -364,7 +319,7 @@ impl InnerRiscvCommunicationInterface {
         Ok(response.into())
     }
 
-    pub(crate) fn write_dm_register<R: DebugRegister>(
+    pub(super) fn write_dm_register<R: DebugRegister>(
         &mut self,
         register: R,
     ) -> Result<(), RiscvError> {
@@ -641,7 +596,7 @@ impl InnerRiscvCommunicationInterface {
     }
 }
 
-impl MemoryInterface for InnerRiscvCommunicationInterface {
+impl<'a> MemoryInterface for RiscvCommunicationInterface<'a> {
     fn read32(&mut self, address: u32) -> Result<u32, crate::Error> {
         let result = self.perform_memory_read(address, RiscvBusAccess::A32)?;
 

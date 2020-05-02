@@ -49,18 +49,18 @@ impl Operation for Verify {
 /// This is mostly for internal use but can be used with `::flash_block()` for low, block level access to the flash.
 ///
 /// If a higher level access to the flash is required, check out `flashing::download_file()`.
-pub struct Flasher<'a> {
-    session: Session,
-    flash_algorithm: &'a FlashAlgorithm,
-    region: &'a FlashRegion,
+pub struct Flasher<'s> {
+    session: &'s mut Session,
+    flash_algorithm: FlashAlgorithm,
+    region: FlashRegion,
     double_buffering_supported: bool,
 }
 
-impl<'a> Flasher<'a> {
+impl<'s> Flasher<'s> {
     pub fn new(
-        session: Session,
-        flash_algorithm: &'a FlashAlgorithm,
-        region: &'a FlashRegion,
+        session: &'s mut Session,
+        flash_algorithm: FlashAlgorithm,
+        region: FlashRegion,
     ) -> Self {
         Self {
             session,
@@ -78,23 +78,26 @@ impl<'a> Flasher<'a> {
         self.double_buffering_supported
     }
 
-    pub(super) fn init<'b, 's: 'b, O: Operation>(
-        &'s mut self,
+    pub(super) fn init<'a, 'p, O: Operation>(
+        &'a mut self,
         mut address: Option<u32>,
         clock: Option<u32>,
-    ) -> Result<ActiveFlasher<'b, O>, FlashError> {
+    ) -> Result<ActiveFlasher<'p, O>, FlashError>
+    where
+        's: 'a,
+        'a: 'p,
+    {
         log::debug!("Initializing the flash algorithm.");
-        let flasher = self;
-        let algo = flasher.flash_algorithm;
+        let algo = &mut self.flash_algorithm;
 
         if address.is_none() {
-            address = Some(flasher.region.flash_info().rom_start);
+            address = Some(self.region.flash_info().rom_start);
         }
 
         // Attach to memory and core.
-        let mut core = flasher
+        let mut core = self
             .session
-            .attach_to_core(0)
+            .attach_to_core::<'_, 'p>(0)
             .map_err(FlashError::Memory)?;
 
         // TODO: Halt & reset target.
@@ -140,15 +143,15 @@ impl<'a> Flasher<'a> {
         log::debug!("RAM contents match flashing algo blob.");
 
         log::debug!("Preparing Flasher for region:");
-        log::debug!("{:#?}", &flasher.region);
+        log::debug!("{:#?}", &self.region);
         log::debug!(
             "Double buffering enabled: {}",
-            flasher.double_buffering_supported
+            self.double_buffering_supported
         );
-        let mut flasher = ActiveFlasher {
+        let mut flasher = ActiveFlasher::<O> {
             core,
-            flash_algorithm: flasher.flash_algorithm,
-            _double_buffering_supported: flasher.double_buffering_supported,
+            flash_algorithm: self.flash_algorithm.clone(),
+            _double_buffering_supported: self.double_buffering_supported,
             _operation: core::marker::PhantomData,
         };
 
@@ -157,10 +160,21 @@ impl<'a> Flasher<'a> {
         Ok(flasher)
     }
 
-    pub(super) fn run_erase<T, E: From<FlashError>>(
-        &mut self,
-        f: impl FnOnce(&mut ActiveFlasher<Erase>) -> Result<T, E> + Sized,
-    ) -> Result<T, E> {
+    pub(super) fn run_erase<T, F, E: From<FlashError>>(&mut self, f: F) -> Result<T, E>
+    where
+        F: FnOnce(&'_ mut ActiveFlasher<'_, Erase>) -> Result<T, E> + Sized,
+    {
+        // TODO: Fix those values (None, None).
+        let mut active = self.init(None, None).unwrap();
+        let r = f(&mut active)?;
+        active.uninit()?;
+        Ok(r)
+    }
+
+    pub(super) fn run_program<T, F, E: From<FlashError>>(&mut self, f: F) -> Result<T, E>
+    where
+        F: FnOnce(&'_ mut ActiveFlasher<'_, Program>) -> Result<T, E> + Sized,
+    {
         // TODO: Fix those values (None, None).
         let mut active = self.init(None, None)?;
         let r = f(&mut active)?;
@@ -168,21 +182,10 @@ impl<'a> Flasher<'a> {
         Ok(r)
     }
 
-    pub(super) fn run_program<T, E: From<FlashError>>(
-        &mut self,
-        f: impl FnOnce(&mut ActiveFlasher<Program>) -> Result<T, E> + Sized,
-    ) -> Result<T, E> {
-        // TODO: Fix those values (None, None).
-        let mut active = self.init(None, None)?;
-        let r = f(&mut active)?;
-        active.uninit()?;
-        Ok(r)
-    }
-
-    pub(super) fn run_verify<T, E: From<FlashError>>(
-        &mut self,
-        f: impl FnOnce(&mut ActiveFlasher<Verify>) -> Result<T, E> + Sized,
-    ) -> Result<T, E> {
+    pub(super) fn run_verify<T, F, E: From<FlashError>>(&mut self, f: F) -> Result<T, E>
+    where
+        F: FnOnce(&'_ mut ActiveFlasher<'_, Verify>) -> Result<T, E> + Sized,
+    {
         // TODO: Fix those values (None, None).
         let mut active = self.init(None, None)?;
         let r = f(&mut active)?;
@@ -195,14 +198,17 @@ impl<'a> Flasher<'a> {
     /// This will not check any physical flash boundaries.
     /// You have to make sure that the data is within the flash boundaries.
     /// Unexpected things may happen if this is not ensured.
-    pub fn flash_block(
-        &mut self,
+    pub fn flash_block<'a>(
+        &'a mut self,
         address: u32,
         data: &[u8],
         progress: &FlashProgress,
         do_chip_erase: bool,
         _fast_verify: bool,
-    ) -> Result<(), FlashError> {
+    ) -> Result<(), FlashError>
+    where
+        's: 'a,
+    {
         if !self
             .region
             .range
@@ -226,14 +232,17 @@ impl<'a> Flasher<'a> {
     /// If `restore_unwritten_bytes` is `true`, all bytes of a sector,
     /// that are not to be written during flashing will be read from the flash first
     /// and written again once the sector is erased.
-    pub(super) fn program(
-        &mut self,
+    pub(super) fn program<'a>(
+        &'a mut self,
         flash_builder: &FlashBuilder,
         mut do_chip_erase: bool,
         restore_unwritten_bytes: bool,
         enable_double_buffering: bool,
         progress: &FlashProgress,
-    ) -> Result<(), FlashError> {
+    ) -> Result<(), FlashError>
+    where
+        's: 'a,
+    {
         // Convert the list of flash operations into flash sectors and pages.
         let mut flash_layout = flash_builder
             .build_sectors_and_pages(&self.flash_algorithm().clone(), restore_unwritten_bytes)?;
@@ -296,11 +305,14 @@ impl<'a> Flasher<'a> {
     /// If `restore_unwritten_bytes` is `true`, all bytes of the page,
     /// that are not to be written during flashing will be read from the flash first
     /// and written again once the page is programmed.
-    pub(super) fn fill_page(
-        &mut self,
+    pub(super) fn fill_page<'a>(
+        &'a mut self,
         page: &mut FlashPage,
         fill: &FlashFill,
-    ) -> Result<(), FlashError> {
+    ) -> Result<(), FlashError>
+    where
+        's: 'a,
+    {
         let page_offset = (fill.address() - page.address()) as usize;
         let page_slice = &mut page.data_mut()[page_offset..page_offset + fill.size() as usize];
         self.run_verify(|active| active.read_block8(fill.address(), page_slice))
@@ -310,11 +322,14 @@ impl<'a> Flasher<'a> {
     ///
     /// This takes the list of available sectors only for progress reporting reasons.
     /// It does not indeed erase single sectors but erases the entire flash.
-    fn chip_erase(
-        &mut self,
+    fn chip_erase<'a>(
+        &'a mut self,
         flash_layout: &FlashLayout,
         progress: &FlashProgress,
-    ) -> Result<(), FlashError> {
+    ) -> Result<(), FlashError>
+    where
+        's: 'a,
+    {
         progress.started_erasing();
 
         let mut t = std::time::Instant::now();
@@ -333,11 +348,14 @@ impl<'a> Flasher<'a> {
     }
 
     /// Programs the pages given in `flash_layout` into the flash.
-    fn program_simple(
-        &mut self,
+    fn program_simple<'a>(
+        &'a mut self,
         flash_layout: &FlashLayout,
         progress: &FlashProgress,
-    ) -> Result<(), FlashError> {
+    ) -> Result<(), FlashError>
+    where
+        's: 'a,
+    {
         progress.started_flashing();
 
         let mut t = std::time::Instant::now();
@@ -360,11 +378,14 @@ impl<'a> Flasher<'a> {
     }
 
     /// Perform an erase of all sectors given in `flash_layout`.
-    fn sector_erase(
-        &mut self,
+    fn sector_erase<'a>(
+        &'a mut self,
         flash_layout: &FlashLayout,
         progress: &FlashProgress,
-    ) -> Result<(), FlashError> {
+    ) -> Result<(), FlashError>
+    where
+        's: 'a,
+    {
         progress.started_flashing();
 
         let mut t = std::time::Instant::now();
@@ -389,11 +410,14 @@ impl<'a> Flasher<'a> {
     /// Flash a program using double buffering.
     ///
     /// UNTESTED
-    fn program_double_buffer(
-        &mut self,
+    fn program_double_buffer<'a>(
+        &'a mut self,
         flash_layout: &FlashLayout,
         progress: &FlashProgress,
-    ) -> Result<(), FlashError> {
+    ) -> Result<(), FlashError>
+    where
+        's: 'a,
+    {
         let mut current_buf = 0;
 
         progress.started_flashing();
@@ -440,19 +464,22 @@ impl<'a> Flasher<'a> {
     }
 }
 
-pub(super) struct ActiveFlasher<'a, O: Operation> {
-    core: Core,
-    flash_algorithm: &'a FlashAlgorithm,
+pub(super) struct ActiveFlasher<'p, O: Operation> {
+    core: Core<'p>,
+    flash_algorithm: FlashAlgorithm,
     _double_buffering_supported: bool,
     _operation: core::marker::PhantomData<O>,
 }
 
-impl<'a, O: Operation> ActiveFlasher<'a, O> {
-    pub(super) fn init(
-        &mut self,
+impl<'p, O: Operation> ActiveFlasher<'p, O> {
+    pub(super) fn init<'a>(
+        &'a mut self,
         address: Option<u32>,
         clock: Option<u32>,
-    ) -> Result<(), FlashError> {
+    ) -> Result<(), FlashError>
+    where
+        'p: 'a,
+    {
         let algo = &self.flash_algorithm;
         log::debug!("Running init routine.");
 
@@ -479,14 +506,17 @@ impl<'a, O: Operation> ActiveFlasher<'a, O> {
     }
 
     pub(super) fn flash_algorithm(&self) -> &FlashAlgorithm {
-        &&self.flash_algorithm
+        &self.flash_algorithm
     }
 
     // pub(super) fn session_mut(&mut self) -> &mut Session {
     //     &mut self.session
     // }
 
-    pub(super) fn uninit(&mut self) -> Result<(), FlashError> {
+    pub(super) fn uninit<'a>(&'a mut self) -> Result<(), FlashError>
+    where
+        'p: 'a,
+    {
         log::debug!("Running uninit routine.");
         let algo = &self.flash_algorithm;
 
@@ -510,28 +540,34 @@ impl<'a, O: Operation> ActiveFlasher<'a, O> {
         Ok(())
     }
 
-    fn call_function_and_wait(
-        &mut self,
+    fn call_function_and_wait<'a>(
+        &'a mut self,
         pc: u32,
         r0: Option<u32>,
         r1: Option<u32>,
         r2: Option<u32>,
         r3: Option<u32>,
         init: bool,
-    ) -> Result<u32, FlashError> {
+    ) -> Result<u32, FlashError>
+    where
+        'p: 'a,
+    {
         self.call_function(pc, r0, r1, r2, r3, init)?;
         self.wait_for_completion(Duration::from_secs(2))
     }
 
-    fn call_function(
-        &mut self,
+    fn call_function<'a>(
+        &'a mut self,
         pc: u32,
         r0: Option<u32>,
         r1: Option<u32>,
         r2: Option<u32>,
         r3: Option<u32>,
         init: bool,
-    ) -> Result<(), FlashError> {
+    ) -> Result<(), FlashError>
+    where
+        'p: 'a,
+    {
         log::debug!(
             "Calling routine {:08x}({:?}, {:?}, {:?}, {:?}, init={})",
             pc,
@@ -585,7 +621,13 @@ impl<'a, O: Operation> ActiveFlasher<'a, O> {
         Ok(())
     }
 
-    pub(super) fn wait_for_completion(&mut self, timeout: Duration) -> Result<u32, FlashError> {
+    pub(super) fn wait_for_completion<'a>(
+        &'a mut self,
+        timeout: Duration,
+    ) -> Result<u32, FlashError>
+    where
+        'p: 'a,
+    {
         log::debug!("Waiting for routine call completion.");
         let regs = self.core.registers();
 
@@ -614,20 +656,29 @@ impl<'a, O: Operation> ActiveFlasher<'a, O> {
         Ok(r)
     }
 
-    pub(super) fn read_block8(&mut self, address: u32, data: &mut [u8]) -> Result<(), FlashError> {
+    pub(super) fn read_block8<'a>(
+        &'a mut self,
+        address: u32,
+        data: &mut [u8],
+    ) -> Result<(), FlashError>
+    where
+        'p: 'a,
+    {
         self.core
-            .memory()
             .read_block8(address, data)
             .map_err(FlashError::Memory)?;
         Ok(())
     }
 }
 
-impl<'a> ActiveFlasher<'a, Erase> {
-    pub(super) fn erase_all(&mut self) -> Result<(), FlashError> {
+impl<'p> ActiveFlasher<'p, Erase> {
+    pub(super) fn erase_all<'a>(&'a mut self) -> Result<(), FlashError>
+    where
+        'p: 'a,
+    {
         log::debug!("Erasing entire chip.");
         let flasher = self;
-        let algo = flasher.flash_algorithm;
+        let algo = &flasher.flash_algorithm;
 
         if let Some(pc_erase_all) = algo.pc_erase_all {
             let result =
@@ -646,11 +697,14 @@ impl<'a> ActiveFlasher<'a, Erase> {
         }
     }
 
-    pub(super) fn erase_sector(&mut self, address: u32) -> Result<(), FlashError> {
+    pub(super) fn erase_sector<'a>(&'a mut self, address: u32) -> Result<(), FlashError>
+    where
+        'p: 'a,
+    {
         log::info!("Erasing sector at address 0x{:08x}", address);
         let t1 = std::time::Instant::now();
         let flasher = self;
-        let algo = flasher.flash_algorithm;
+        let algo = &flasher.flash_algorithm;
 
         let result = flasher.call_function_and_wait(
             algo.pc_erase_sector,
@@ -677,11 +731,18 @@ impl<'a> ActiveFlasher<'a, Erase> {
     }
 }
 
-impl<'a> ActiveFlasher<'a, Program> {
-    pub(super) fn program_page(&mut self, address: u32, bytes: &[u8]) -> Result<(), FlashError> {
+impl<'p> ActiveFlasher<'p, Program> {
+    pub(super) fn program_page<'a>(
+        &'a mut self,
+        address: u32,
+        bytes: &[u8],
+    ) -> Result<(), FlashError>
+    where
+        'p: 'a,
+    {
         let t1 = std::time::Instant::now();
         let flasher = self;
-        let algo = flasher.flash_algorithm;
+        let algo = &flasher.flash_algorithm;
 
         log::info!(
             "Flashing page at address {:#08x} with size: {}",
@@ -692,7 +753,6 @@ impl<'a> ActiveFlasher<'a, Program> {
         // Transfer the bytes to RAM.
         flasher
             .core
-            .memory()
             .write_block8(algo.begin_data, bytes)
             .map_err(FlashError::Memory)?;
         let result = flasher.call_function_and_wait(
@@ -715,13 +775,16 @@ impl<'a> ActiveFlasher<'a, Program> {
         }
     }
 
-    pub(super) fn start_program_page_with_buffer(
-        &mut self,
+    pub(super) fn start_program_page_with_buffer<'a>(
+        &'a mut self,
         address: u32,
         buffer_number: usize,
-    ) -> Result<(), FlashError> {
+    ) -> Result<(), FlashError>
+    where
+        'p: 'a,
+    {
         let flasher = self;
-        let algo = flasher.flash_algorithm;
+        let algo = &flasher.flash_algorithm;
 
         // Check the buffer number.
         if buffer_number < algo.page_buffers.len() {
@@ -743,14 +806,17 @@ impl<'a> ActiveFlasher<'a, Program> {
         Ok(())
     }
 
-    pub(super) fn load_page_buffer(
-        &mut self,
+    pub(super) fn load_page_buffer<'a>(
+        &'a mut self,
         _address: u32,
         bytes: &[u8],
         buffer_number: usize,
-    ) -> Result<(), FlashError> {
+    ) -> Result<(), FlashError>
+    where
+        'p: 'a,
+    {
         let flasher = self;
-        let algo = flasher.flash_algorithm;
+        let algo = &flasher.flash_algorithm;
 
         // Check the buffer number.
         if buffer_number < algo.page_buffers.len() {
@@ -765,7 +831,6 @@ impl<'a> ActiveFlasher<'a, Program> {
         // Transfer the buffer bytes to RAM.
         flasher
             .core
-            .memory()
             .write_block8(algo.page_buffers[buffer_number as usize], bytes)
             .map_err(FlashError::Memory)?;
 

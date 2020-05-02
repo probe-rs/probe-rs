@@ -3,7 +3,7 @@ use super::super::ap::{
     MemoryAP, CSW, DRW, TAR,
 };
 use crate::architecture::arm::{dp::DPAccess, ArmCommunicationInterface};
-use crate::{CommunicationInterface, Error, MemoryInterface};
+use crate::{CommunicationInterface, Core, Error, MemoryInterface};
 use scroll::{Pread, Pwrite, LE};
 use std::convert::TryInto;
 use std::ops::Range;
@@ -22,12 +22,12 @@ where
     only_32bit_data_size: bool,
 }
 
-impl ADIMemoryInterface<ArmCommunicationInterface> {
+impl<'a> ADIMemoryInterface<ArmCommunicationInterface<'a>> {
     /// Creates a new MemoryInterface for given AccessPort.
     pub fn new(
-        interface: ArmCommunicationInterface,
+        interface: ArmCommunicationInterface<'a>,
         access_port_number: impl Into<MemoryAP>,
-    ) -> Result<Self, AccessPortError> {
+    ) -> Result<ADIMemoryInterface<ArmCommunicationInterface<'a>>, AccessPortError> {
         let mut interface = Self {
             interface,
             access_port: access_port_number.into(),
@@ -40,7 +40,10 @@ impl ADIMemoryInterface<ArmCommunicationInterface> {
 
 impl ADIMemoryInterface<MockMemoryAP> {
     /// Creates a new MemoryInterface for given AccessPort.
-    pub fn new(mock: MockMemoryAP, access_port_number: impl Into<MemoryAP>) -> Self {
+    pub fn new(
+        mock: MockMemoryAP,
+        access_port_number: impl Into<MemoryAP>,
+    ) -> ADIMemoryInterface<MockMemoryAP> {
         Self {
             interface: mock,
             access_port: access_port_number.into(),

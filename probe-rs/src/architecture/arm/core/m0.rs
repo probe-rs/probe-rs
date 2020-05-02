@@ -5,7 +5,7 @@ use crate::core::{
 };
 use crate::error::Error;
 use crate::memory::Memory;
-use crate::{CoreStatus, DebugProbeError, HaltReason};
+use crate::{CoreStatus, DebugProbeError, HaltReason, MemoryInterface};
 use bitfield::bitfield;
 use log::debug;
 use std::mem::size_of;
@@ -274,16 +274,16 @@ const XPSR: RegisterDescription = RegisterDescription {
     address: CoreRegisterAddress(0b1_0000),
 };
 
-pub struct M0 {
-    memory: Memory,
+pub struct M0<'a> {
+    memory: Memory<'a>,
 
     hw_breakpoints_enabled: bool,
 
     current_state: CoreStatus,
 }
 
-impl M0 {
-    pub fn new(memory: Memory) -> Result<Self, Error> {
+impl<'a> M0<'a> {
+    pub fn new(mut memory: Memory<'a>) -> Result<Self, Error> {
         // determine current state
         let dhcsr = Dhcsr(memory.read32(Dhcsr::ADDRESS)?);
 
@@ -314,7 +314,7 @@ impl M0 {
         })
     }
 
-    fn wait_for_core_register_transfer(&self) -> Result<(), Error> {
+    fn wait_for_core_register_transfer(&mut self) -> Result<(), Error> {
         // now we have to poll the dhcsr register, until the dhcsr.s_regrdy bit is set
         // (see C1-292, cortex m0 arm)
         for _ in 0..100 {
@@ -328,7 +328,7 @@ impl M0 {
     }
 }
 
-impl CoreInterface for M0 {
+impl<'a> CoreInterface<'a> for M0<'a> {
     fn wait_for_core_halted(&mut self) -> Result<(), Error> {
         // Wait until halted state is active again.
         for _ in 0..100 {
@@ -341,7 +341,7 @@ impl CoreInterface for M0 {
         Err(Error::Probe(DebugProbeError::Timeout))
     }
 
-    fn core_halted(&self) -> Result<bool, Error> {
+    fn core_halted(&mut self) -> Result<bool, Error> {
         // Wait until halted state is active again.
         let dhcsr_val = Dhcsr(self.memory.read32(Dhcsr::ADDRESS)?);
 
@@ -352,7 +352,7 @@ impl CoreInterface for M0 {
         }
     }
 
-    fn read_core_reg(&self, addr: CoreRegisterAddress) -> Result<u32, Error> {
+    fn read_core_reg(&mut self, addr: CoreRegisterAddress) -> Result<u32, Error> {
         // Write the DCRSR value to select the register we want to read.
         let mut dcrsr_val = Dcrsr(0);
         dcrsr_val.set_regwnr(false); // Perform a read.
@@ -365,7 +365,7 @@ impl CoreInterface for M0 {
         self.memory.read32(Dcrdr::ADDRESS).map_err(From::from)
     }
 
-    fn write_core_reg(&self, addr: CoreRegisterAddress, value: u32) -> Result<(), Error> {
+    fn write_core_reg(&mut self, addr: CoreRegisterAddress, value: u32) -> Result<(), Error> {
         let result: Result<(), Error> = self
             .memory
             .write32(Dcrdr::ADDRESS, value)
@@ -433,7 +433,7 @@ impl CoreInterface for M0 {
         Ok(CoreInformation { pc: pc_value })
     }
 
-    fn reset(&self) -> Result<(), Error> {
+    fn reset(&mut self) -> Result<(), Error> {
         // Set THE AIRCR.SYSRESETREQ control bit to 1 to request a reset. (ARM V6 ARM, B1.5.16)
 
         let mut value = Aircr(0);
@@ -483,7 +483,7 @@ impl CoreInterface for M0 {
         Ok(CoreInformation { pc: pc_value })
     }
 
-    fn get_available_breakpoint_units(&self) -> Result<u32, Error> {
+    fn get_available_breakpoint_units(&mut self) -> Result<u32, Error> {
         let result = self.memory.read32(BpCtrl::ADDRESS)?;
 
         let register = BpCtrl::from(result);
@@ -504,7 +504,7 @@ impl CoreInterface for M0 {
         Ok(())
     }
 
-    fn set_breakpoint(&self, bp_register_index: usize, addr: u32) -> Result<(), Error> {
+    fn set_breakpoint(&mut self, bp_register_index: usize, addr: u32) -> Result<(), Error> {
         debug!("Setting breakpoint on address 0x{:08x}", addr);
         let mut value = BpCompx(0);
         value.set_bp_match(0b11);
@@ -522,7 +522,7 @@ impl CoreInterface for M0 {
         &ARM_REGISTER_FILE
     }
 
-    fn clear_breakpoint(&self, bp_unit_index: usize) -> Result<(), Error> {
+    fn clear_breakpoint(&mut self, bp_unit_index: usize) -> Result<(), Error> {
         let register_addr = BpCompx::ADDRESS + (bp_unit_index * size_of::<u32>()) as u32;
 
         let mut value = BpCompx::from(0);
@@ -531,10 +531,6 @@ impl CoreInterface for M0 {
         self.memory.write32(register_addr, value.into())?;
 
         Ok(())
-    }
-
-    fn memory(&self) -> Memory {
-        self.memory.clone()
     }
 
     fn hw_breakpoints_enabled(&self) -> bool {
@@ -599,5 +595,32 @@ impl CoreInterface for M0 {
         self.current_state = CoreStatus::Running;
 
         Ok(CoreStatus::Running)
+    }
+}
+
+impl<'a> MemoryInterface for M0<'a> {
+    fn read32(&mut self, address: u32) -> Result<u32, Error> {
+        self.memory.read32(address)
+    }
+    fn read8(&mut self, address: u32) -> Result<u8, Error> {
+        self.memory.read8(address)
+    }
+    fn read_block32(&mut self, address: u32, data: &mut [u32]) -> Result<(), Error> {
+        self.memory.read_block32(address, data)
+    }
+    fn read_block8(&mut self, address: u32, data: &mut [u8]) -> Result<(), Error> {
+        self.memory.read_block8(address, data)
+    }
+    fn write32(&mut self, address: u32, data: u32) -> Result<(), Error> {
+        self.memory.write32(address, data)
+    }
+    fn write8(&mut self, address: u32, data: u8) -> Result<(), Error> {
+        self.memory.write8(address, data)
+    }
+    fn write_block32(&mut self, address: u32, data: &[u32]) -> Result<(), Error> {
+        self.memory.write_block32(address, data)
+    }
+    fn write_block8(&mut self, address: u32, data: &[u8]) -> Result<(), Error> {
+        self.memory.write_block8(address, data)
     }
 }

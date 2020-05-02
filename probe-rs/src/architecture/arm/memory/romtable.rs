@@ -20,14 +20,14 @@ pub enum RomTableError {
     Memory(#[source] Error),
 }
 
-pub struct RomTableReader {
+pub struct RomTableReader<'a: 'b, 'b> {
     base_address: u64,
-    memory: Memory,
+    memory: &'b mut Memory<'a>,
 }
 
 /// Iterates over a ROM table non recursively.
-impl RomTableReader {
-    pub fn new(memory: Memory, base_address: u64) -> Self {
+impl<'a: 'b, 'b> RomTableReader<'a, 'b> {
+    pub fn new(memory: &'b mut Memory<'a>, base_address: u64) -> Self {
         RomTableReader {
             base_address,
             memory,
@@ -35,18 +35,21 @@ impl RomTableReader {
     }
 
     /// Iterate over all entries of the rom table, non-recursively
-    pub fn entries(&mut self) -> RomTableIterator {
+    pub fn entries<'c>(&'c mut self) -> RomTableIterator<'b, 'a, 'c>
+    where
+        'b: 'c,
+    {
         RomTableIterator::new(self)
     }
 }
 
-pub struct RomTableIterator<'r> {
-    rom_table_reader: &'r mut RomTableReader,
+pub struct RomTableIterator<'r: 'c, 'a: 'r, 'c> {
+    rom_table_reader: &'c mut RomTableReader<'a, 'r>,
     offset: u64,
 }
 
-impl<'r> RomTableIterator<'r> {
-    pub fn new(reader: &'r mut RomTableReader) -> Self {
+impl<'r: 'c, 'a: 'r, 'c> RomTableIterator<'r, 'a, 'c> {
+    pub fn new(reader: &'c mut RomTableReader<'a, 'r>) -> Self {
         RomTableIterator {
             rom_table_reader: reader,
             offset: 0,
@@ -54,20 +57,24 @@ impl<'r> RomTableIterator<'r> {
     }
 }
 
-impl<'r> Iterator for RomTableIterator<'r> {
+impl<'r, 'a, 'c> Iterator for RomTableIterator<'r, 'a, 'c> {
     type Item = Result<RomTableEntryRaw, RomTableError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let component_address = self.rom_table_reader.base_address + self.offset;
         log::info!("Reading rom table entry at {:08x}", component_address);
 
-        let memory = self.rom_table_reader.memory.clone();
+        // let memory = &mut self.rom_table_reader.memory;
 
         self.offset += 4;
 
         let mut entry_data = [0u32; 1];
 
-        if let Err(e) = memory.read_block32(component_address as u32, &mut entry_data) {
+        if let Err(e) = self
+            .rom_table_reader
+            .memory
+            .read_block32(component_address as u32, &mut entry_data)
+        {
             return Some(Err(RomTableError::Memory(e)));
         }
 
@@ -96,11 +103,13 @@ impl RomTable {
     ///
     /// This does not check whether the data actually signalizes
     /// to contain a ROM table but assumes this was checked beforehand.
-    pub fn try_parse(memory: Memory, base_address: u64) -> RomTable {
+    pub fn try_parse<'a: 'b, 'b>(memory: &'b mut Memory<'a>, base_address: u64) -> RomTable {
+        let mut entries = RomTableReader::new(memory, base_address);
+        let entries = entries.entries().filter_map(Result::ok).collect::<Vec<_>>();
+
         RomTable {
-            entries: RomTableReader::new(memory.clone(), base_address)
-                .entries()
-                .filter_map(Result::ok)
+            entries: entries
+                .iter()
                 .filter_map(|raw_entry| {
                     let entry_base_addr = raw_entry.component_addr();
                     if !raw_entry.entry_present {
@@ -108,7 +117,7 @@ impl RomTable {
                     }
 
                     if let Ok(component_data) =
-                        CSComponent::try_parse(memory.clone(), u64::from(entry_base_addr))
+                        CSComponent::try_parse(memory, u64::from(entry_base_addr))
                     {
                         Some(RomTableEntry {
                             format: raw_entry.format,
@@ -197,14 +206,14 @@ pub struct CSComponentId {
 }
 
 /// A reader to extract infromation from a CoreSight component table.
-pub struct ComponentInformationReader {
+pub struct ComponentInformationReader<'a: 'b, 'b> {
     base_address: u64,
-    memory: Memory,
+    memory: &'b mut Memory<'a>,
 }
 
-impl ComponentInformationReader {
+impl<'a: 'b, 'b> ComponentInformationReader<'a, 'b> {
     /// Creates a new `ComponentInformationReader`.
-    pub fn new(base_address: u64, memory: Memory) -> Self {
+    pub fn new(base_address: u64, memory: &'b mut Memory<'a>) -> Self {
         ComponentInformationReader {
             base_address,
             memory,
@@ -212,7 +221,10 @@ impl ComponentInformationReader {
     }
 
     /// Reads the component class from a component info table.
-    pub fn component_class(&mut self) -> Result<CSComponentClass, RomTableError> {
+    pub fn component_class<'c>(&'c mut self) -> Result<CSComponentClass, RomTableError>
+    where
+        'b: 'c,
+    {
         #![allow(clippy::verbose_bit_mask)]
         let mut cidr = [0u32; 4];
 
@@ -246,7 +258,7 @@ impl ComponentInformationReader {
     }
 
     /// Reads the peripheral ID from a component info table.
-    pub fn peripheral_id(&mut self) -> Result<PeripheralID, RomTableError> {
+    pub fn peripheral_id(&'b mut self) -> Result<PeripheralID, RomTableError> {
         let mut data = [0u32; 8];
 
         let peripheral_id_address = self.base_address + 0xFD0;
@@ -269,7 +281,7 @@ impl ComponentInformationReader {
     }
 
     /// Reads all component properties from a component info table
-    pub fn read_all(&mut self) -> Result<CSComponentId, RomTableError> {
+    pub fn read_all(&'b mut self) -> Result<CSComponentId, RomTableError> {
         Ok(CSComponentId {
             base_address: self.base_address,
             class: self.component_class()?,
@@ -334,10 +346,13 @@ pub enum CSComponent {
 
 impl CSComponent {
     /// Tries to parse a CoreSight component table.
-    pub fn try_parse(memory: Memory, baseaddr: u64) -> Result<CSComponent, RomTableError> {
+    pub fn try_parse<'a: 'b, 'b>(
+        memory: &'b mut Memory<'a>,
+        baseaddr: u64,
+    ) -> Result<CSComponent, RomTableError> {
         log::info!("\tReading component data at: {:08x}", baseaddr);
 
-        let component_id = ComponentInformationReader::new(baseaddr, memory.clone()).read_all()?;
+        let component_id = ComponentInformationReader::new(baseaddr, memory).read_all()?;
 
         // Determine the component class to find out what component we are dealing with.
         log::info!("\tComponent class: {:x?}", component_id.class);

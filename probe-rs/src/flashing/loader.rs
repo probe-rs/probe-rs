@@ -84,7 +84,7 @@ impl<'a, 'b> FlashLoader<'a, 'b> {
     /// If `do_chip_erase` is `true` the entire flash will be erased.
     pub(super) fn commit(
         &mut self,
-        session: &Session,
+        session: &mut Session,
         progress: &FlashProgress,
         do_chip_erase: bool,
     ) -> Result<(), FlashError> {
@@ -107,7 +107,7 @@ impl<'a, 'b> FlashLoader<'a, 'b> {
                 );
             }
 
-            let algorithms: Vec<_> = session.flash_algorithms();
+            let algorithms = session.flash_algorithms();
             let algorithms = algorithms
                 .iter()
                 .filter(|fa| {
@@ -147,7 +147,7 @@ impl<'a, 'b> FlashLoader<'a, 'b> {
             let flash_algorithm = raw_flash_algorithm.assemble(unwrapped_ram);
 
             // Program the data.
-            let mut flasher = Flasher::new(session.clone(), &flash_algorithm, region);
+            let mut flasher = Flasher::new(session, flash_algorithm, region.clone());
             flasher.program(builder, do_chip_erase, self.keep_unwritten, false, progress)?
         }
 

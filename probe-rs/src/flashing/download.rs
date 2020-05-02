@@ -65,7 +65,7 @@ pub struct DownloadOptions<'a> {
 ///
 /// If you are looking for more options, have a look at `download_file_with_options`.
 pub fn download_file(
-    session: &Session,
+    session: &mut Session,
     path: &Path,
     format: Format,
 ) -> Result<(), FileDownloadError> {
@@ -76,7 +76,7 @@ pub fn download_file(
 ///
 /// This will ensure that memory bounderies are honored and does unlocking, erasing and programming of the flash for you.
 pub fn download_file_with_options<'a>(
-    session: &Session,
+    session: &mut Session,
     path: &Path,
     format: Format,
     options: DownloadOptions<'a>,
@@ -88,7 +88,7 @@ pub fn download_file_with_options<'a>(
     let mut buffer = vec![];
     let mut buffer_vec = vec![];
     // IMPORTANT: Change this to an actual memory map of a real chip
-    let memory_map = session.memory_map();
+    let memory_map = session.memory_map().clone();
     let mut loader = FlashLoader::new(&memory_map, options.keep_unwritten_bytes);
 
     match format {

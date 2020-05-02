@@ -11,23 +11,23 @@ use crate::{
     CoreStatus, DebugProbeError, HaltReason,
 };
 
-use crate::architecture::arm::core::register;
+use crate::{architecture::arm::core::register, MemoryInterface};
 
 use bitfield::bitfield;
 
 use super::{Dfsr, ARM_REGISTER_FILE};
 use std::mem::size_of;
 
-pub struct M33 {
-    memory: Memory,
+pub struct M33<'a> {
+    memory: Memory<'a>,
 
     hw_breakpoints_enabled: bool,
 
     current_state: CoreStatus,
 }
 
-impl M33 {
-    pub fn new(memory: Memory) -> Result<Self, Error> {
+impl<'a> M33<'a> {
+    pub fn new(mut memory: Memory<'a>) -> Result<Self, Error> {
         // determine current state
         let dhcsr = Dhcsr(memory.read32(Dhcsr::ADDRESS)?);
 
@@ -58,7 +58,7 @@ impl M33 {
         })
     }
 
-    fn wait_for_core_register_transfer(&self) -> Result<(), Error> {
+    fn wait_for_core_register_transfer(&mut self) -> Result<(), Error> {
         // now we have to poll the dhcsr register, until the dhcsr.s_regrdy bit is set
         // (see C1-292, cortex m0 arm)
         for _ in 0..100 {
@@ -72,7 +72,7 @@ impl M33 {
     }
 }
 
-impl CoreInterface for M33 {
+impl<'a> CoreInterface<'a> for M33<'a> {
     fn wait_for_core_halted(&mut self) -> Result<(), Error> {
         // Wait until halted state is active again.
         for _ in 0..100 {
@@ -84,7 +84,7 @@ impl CoreInterface for M33 {
         Err(Error::Probe(DebugProbeError::Timeout))
     }
 
-    fn core_halted(&self) -> Result<bool, Error> {
+    fn core_halted(&mut self) -> Result<bool, Error> {
         // Wait until halted state is active again.
         let dhcsr_val = Dhcsr(self.memory.read32(Dhcsr::ADDRESS)?);
 
@@ -121,7 +121,7 @@ impl CoreInterface for M33 {
             .write32(Dhcsr::ADDRESS, value.into())
             .map_err(Into::into)
     }
-    fn reset(&self) -> Result<(), Error> {
+    fn reset(&mut self) -> Result<(), Error> {
         // Set THE AIRCR.SYSRESETREQ control bit to 1 to request a reset. (ARM V6 ARM, B1.5.16)
 
         let mut value = Aircr(0);
@@ -192,7 +192,7 @@ impl CoreInterface for M33 {
         Ok(CoreInformation { pc: pc_value })
     }
 
-    fn read_core_reg(&self, addr: CoreRegisterAddress) -> Result<u32, Error> {
+    fn read_core_reg(&mut self, addr: CoreRegisterAddress) -> Result<u32, Error> {
         // Write the DCRSR value to select the register we want to read.
         let mut dcrsr_val = Dcrsr(0);
         dcrsr_val.set_regwnr(false); // Perform a read.
@@ -204,7 +204,7 @@ impl CoreInterface for M33 {
 
         self.memory.read32(Dcrdr::ADDRESS).map_err(From::from)
     }
-    fn write_core_reg(&self, addr: CoreRegisterAddress, value: u32) -> Result<(), Error> {
+    fn write_core_reg(&mut self, addr: CoreRegisterAddress, value: u32) -> Result<(), Error> {
         let result: Result<(), Error> = self
             .memory
             .write32(Dcrdr::ADDRESS, value)
@@ -221,7 +221,7 @@ impl CoreInterface for M33 {
         self.wait_for_core_register_transfer()
     }
 
-    fn get_available_breakpoint_units(&self) -> Result<u32, Error> {
+    fn get_available_breakpoint_units(&mut self) -> Result<u32, Error> {
         let raw_val = self.memory.read32(FpCtrl::ADDRESS)?;
 
         let reg = FpCtrl::from(raw_val);
@@ -241,7 +241,7 @@ impl CoreInterface for M33 {
         Ok(())
     }
 
-    fn set_breakpoint(&self, bp_unit_index: usize, addr: u32) -> Result<(), Error> {
+    fn set_breakpoint(&mut self, bp_unit_index: usize, addr: u32) -> Result<(), Error> {
         let mut val = FpCompX::from(0);
 
         // clear bits which cannot be set
@@ -261,7 +261,7 @@ impl CoreInterface for M33 {
         &ARM_REGISTER_FILE
     }
 
-    fn clear_breakpoint(&self, bp_unit_index: usize) -> Result<(), Error> {
+    fn clear_breakpoint(&mut self, bp_unit_index: usize) -> Result<(), Error> {
         let mut val = FpCompX::from(0);
         val.set_enable(false);
         val.set_bp_addr(0);
@@ -271,10 +271,6 @@ impl CoreInterface for M33 {
         self.memory.write32(reg_addr, val.into())?;
 
         Ok(())
-    }
-
-    fn memory(&self) -> Memory {
-        self.memory.clone()
     }
 
     fn hw_breakpoints_enabled(&self) -> bool {
@@ -340,6 +336,33 @@ impl CoreInterface for M33 {
         self.current_state = CoreStatus::Running;
 
         Ok(CoreStatus::Running)
+    }
+}
+
+impl<'a> MemoryInterface for M33<'a> {
+    fn read32(&mut self, address: u32) -> Result<u32, Error> {
+        self.memory.read32(address)
+    }
+    fn read8(&mut self, address: u32) -> Result<u8, Error> {
+        self.memory.read8(address)
+    }
+    fn read_block32(&mut self, address: u32, data: &mut [u32]) -> Result<(), Error> {
+        self.memory.read_block32(address, data)
+    }
+    fn read_block8(&mut self, address: u32, data: &mut [u8]) -> Result<(), Error> {
+        self.memory.read_block8(address, data)
+    }
+    fn write32(&mut self, address: u32, data: u32) -> Result<(), Error> {
+        self.memory.write32(address, data)
+    }
+    fn write8(&mut self, address: u32, data: u8) -> Result<(), Error> {
+        self.memory.write8(address, data)
+    }
+    fn write_block32(&mut self, address: u32, data: &[u32]) -> Result<(), Error> {
+        self.memory.write_block32(address, data)
+    }
+    fn write_block8(&mut self, address: u32, data: &[u8]) -> Result<(), Error> {
+        self.memory.write_block8(address, data)
     }
 }
 

@@ -7,7 +7,7 @@ use crate::error;
 use crate::{
     architecture::{
         arm::{memory::ADIMemoryInterface, ArmCommunicationInterface},
-        riscv::{communication_interface::RiscvCommunicationInterface, Riscv32},
+        riscv::communication_interface::RiscvCommunicationInterface,
     },
     Error, MemoryInterface,
 };
@@ -127,7 +127,7 @@ impl RegisterFile {
     }
 }
 
-pub trait CoreInterface {
+pub trait CoreInterface<'a>: MemoryInterface {
     /// Wait until the core is halted. If the core does not halt on its own,
     /// a [`DebugProbeError::Timeout`] error will be returned.
     ///
@@ -138,7 +138,7 @@ pub trait CoreInterface {
     /// a [`CoreError::Timeout`] error will be returned.
     ///
     /// [`CoreError::Timeout`]: ../probe/debug_probe/enum.CoreError.html#variant.Timeout
-    fn core_halted(&self) -> Result<bool, error::Error>;
+    fn core_halted(&mut self) -> Result<bool, error::Error>;
 
     fn status(&mut self) -> Result<CoreStatus, error::Error>;
 
@@ -154,7 +154,7 @@ pub trait CoreInterface {
     /// should be halted after reset, use the [`reset_and_halt`] function.
     ///
     /// [`reset_and_halt`]: trait.Core.html#tymethod.reset_and_halt
-    fn reset(&self) -> Result<(), error::Error>;
+    fn reset(&mut self) -> Result<(), error::Error>;
 
     /// Reset the core, and then immediately halt. To continue execution after
     /// reset, use the [`reset`] function.
@@ -165,87 +165,62 @@ pub trait CoreInterface {
     /// Steps one instruction and then enters halted state again.
     fn step(&mut self) -> Result<CoreInformation, error::Error>;
 
-    fn read_core_reg(&self, address: CoreRegisterAddress) -> Result<u32, error::Error>;
+    fn read_core_reg(&mut self, address: CoreRegisterAddress) -> Result<u32, error::Error>;
 
-    fn write_core_reg(&self, address: CoreRegisterAddress, value: u32) -> Result<(), error::Error>;
+    fn write_core_reg(
+        &mut self,
+        address: CoreRegisterAddress,
+        value: u32,
+    ) -> Result<(), error::Error>;
 
-    fn get_available_breakpoint_units(&self) -> Result<u32, error::Error>;
+    fn get_available_breakpoint_units(&mut self) -> Result<u32, error::Error>;
 
     fn enable_breakpoints(&mut self, state: bool) -> Result<(), error::Error>;
 
-    fn set_breakpoint(&self, bp_unit_index: usize, addr: u32) -> Result<(), error::Error>;
+    fn set_breakpoint(&mut self, bp_unit_index: usize, addr: u32) -> Result<(), error::Error>;
 
-    fn clear_breakpoint(&self, unit_index: usize) -> Result<(), error::Error>;
+    fn clear_breakpoint(&mut self, unit_index: usize) -> Result<(), error::Error>;
 
     fn registers(&self) -> &'static RegisterFile;
 
-    fn memory(&self) -> Memory;
     fn hw_breakpoints_enabled(&self) -> bool;
 
     fn architecture(&self) -> Architecture;
 }
 
-impl MemoryInterface for Core {
+impl<'a> MemoryInterface for Core<'a> {
     fn read32(&mut self, address: u32) -> Result<u32, Error> {
-        self.memory().read32(address)
+        self.read32(address)
     }
 
     fn read8(&mut self, address: u32) -> Result<u8, Error> {
-        self.memory().read8(address)
+        self.read8(address)
     }
 
     fn read_block32(&mut self, address: u32, data: &mut [u32]) -> Result<(), Error> {
-        self.memory().read_block32(address, data)
+        self.read_block32(address, data)
     }
+
     fn read_block8(&mut self, address: u32, data: &mut [u8]) -> Result<(), Error> {
-        self.memory().read_block8(address, data)
+        self.read_block8(address, data)
     }
 
     fn write32(&mut self, addr: u32, data: u32) -> Result<(), Error> {
-        self.memory().write32(addr, data)
+        self.write32(addr, data)
     }
+
     fn write8(&mut self, addr: u32, data: u8) -> Result<(), Error> {
-        self.memory().write8(addr, data)
+        self.write8(addr, data)
     }
+
     fn write_block32(&mut self, addr: u32, data: &[u32]) -> Result<(), Error> {
-        self.memory().write_block32(addr, data)
+        self.write_block32(addr, data)
     }
+
     fn write_block8(&mut self, addr: u32, data: &[u8]) -> Result<(), Error> {
-        self.memory().write_block8(addr, data)
+        self.write_block8(addr, data)
     }
 }
-
-// dyn_clone::clone_trait_object!(CoreInterface);
-
-// struct CoreVisitor;
-
-// impl<'de> serde::de::Visitor<'de> for CoreVisitor {
-//     type Value = Core;
-
-//     fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-//         write!(formatter, "an existing core name")
-//     }
-
-//     fn visit_str<E>(self, s: &str) -> Result<Self::Value, E>
-//     where
-//         E: serde::de::Error,
-//     {
-//         if let Some(core) = get_core(s) {
-//             Ok(core)
-//         } else {
-//             Err(Error::invalid_value(
-//                 Unexpected::Other(&format!("Core {} does not exist.", s)),
-//                 &self,
-//             ))
-//         }
-//     }
-// }
-
-// impl<'de> serde::Deserialize<'de> for Box<dyn CoreInterface> {
-//     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-//         deserializer.deserialize_identifier(CoreVisitor)
-//     }
-// }
 
 #[derive(Copy, Clone)]
 pub enum CoreType {
@@ -258,17 +233,14 @@ pub enum CoreType {
 }
 
 impl CoreType {
-    pub fn attach_arm(&self, interface: ArmCommunicationInterface) -> Result<Core, Error> {
-        let memory = if let Some(memory) = interface.dedicated_memory_interface()? {
-            memory
-        } else {
-            // TODO: Change this to actually grab the proper memory IF.
-            // For now always use the ARM IF.
-            Memory::new(
-                ADIMemoryInterface::<ArmCommunicationInterface>::new(interface, 0)
-                    .map_err(Error::architecture_specific)?,
-            )
-        };
+    pub fn attach_arm<'a>(
+        &self,
+        interface: ArmCommunicationInterface<'a>,
+    ) -> Result<Core<'a>, Error> {
+        let memory = Memory::new(
+            ADIMemoryInterface::<ArmCommunicationInterface>::new(interface, 0)
+                .map_err(Error::architecture_specific)?,
+        );
 
         Ok(match self {
             // TODO: Change this once the new archtecture structure for ARM hits.
@@ -287,9 +259,12 @@ impl CoreType {
         })
     }
 
-    pub fn attach_riscv(&self, interface: RiscvCommunicationInterface) -> Result<Core, Error> {
+    pub fn attach_riscv<'a>(
+        &self,
+        interface: RiscvCommunicationInterface<'a>,
+    ) -> Result<Core<'a>, Error> {
         Ok(match self {
-            CoreType::Riscv => Core::new(Riscv32::new(interface)),
+            CoreType::Riscv => Core::new(crate::architecture::riscv::Riscv32::new(interface)),
             _ => {
                 return Err(Error::UnableToOpenProbe(
                     "Core architecture and Probe mismatch.",
@@ -311,147 +286,143 @@ impl CoreType {
     }
 }
 
-pub struct Core {
-    inner: Rc<RefCell<dyn CoreInterface>>,
+pub struct Core<'a> {
+    inner: Box<dyn CoreInterface<'a> + 'a>,
     breakpoints: Vec<Breakpoint>,
 }
 
-impl Core {
-    pub fn new(core: impl CoreInterface + 'static) -> Self {
+impl<'a> Core<'a> {
+    pub fn new(core: impl CoreInterface<'a> + 'a) -> Core<'a> {
         Self {
-            inner: Rc::new(RefCell::new(core)),
+            inner: Box::new(core),
             breakpoints: Vec::new(),
         }
     }
 
-    pub fn auto_attach(target: impl Into<TargetSelector>) -> Result<Core, error::Error> {
-        // Get a list of all available debug probes.
-        let probes = Probe::list_all();
+    // pub fn auto_attach(target: impl Into<TargetSelector>) -> Result<Core<'a>, error::Error> {
+    //     // Get a list of all available debug probes.
+    //     let probes = Probe::list_all();
 
-        // Use the first probe found.
-        let probe = probes[0].open()?;
+    //     // Use the first probe found.
+    //     let probe = probes[0].open()?;
 
-        // Attach to a chip.
-        let session = probe.attach(target)?;
+    //     // Attach to a chip.
+    //     let session = probe.attach(target)?;
 
-        // Select a core.
-        session.attach_to_core(0)
-    }
+    //     // Select a core.
+    //     session.attach_to_core(0)
+    // }
 
     /// Wait until the core is halted. If the core does not halt on its own,
     /// a [`DebugProbeError::Timeout`] error will be returned.
     ///
     /// [`DebugProbeError::Timeout`]: ../probe/debug_probe/enum.DebugProbeError.html#variant.Timeout
-    pub fn wait_for_core_halted(&self) -> Result<(), error::Error> {
-        self.inner.borrow_mut().wait_for_core_halted()
+    pub fn wait_for_core_halted(&mut self) -> Result<(), error::Error> {
+        self.inner.wait_for_core_halted()
     }
 
     /// Check if the core is halted. If the core does not halt on its own,
     /// a [`CoreError::Timeout`] error will be returned.
     ///
     /// [`CoreError::Timeout`]: ../probe/debug_probe/enum.CoreError.html#variant.Timeout
-    pub fn core_halted(&self) -> Result<bool, error::Error> {
-        self.inner.borrow().core_halted()
+    pub fn core_halted(&mut self) -> Result<bool, error::Error> {
+        self.inner.core_halted()
     }
 
     /// Try to halt the core. This function ensures the core is actually halted, and
     /// returns a [`CoreError::Timeout`] otherwise.
     ///
     /// [`CoreError::Timeout`]: ../probe/debug_probe/enum.CoreError.html#variant.Timeout
-    pub fn halt(&self) -> Result<CoreInformation, error::Error> {
-        self.inner.borrow_mut().halt()
+    pub fn halt(&mut self) -> Result<CoreInformation, error::Error> {
+        self.inner.halt()
     }
 
-    pub fn run(&self) -> Result<(), error::Error> {
-        self.inner.borrow_mut().run()
+    pub fn run(&mut self) -> Result<(), error::Error> {
+        self.inner.run()
     }
 
     /// Reset the core, and then continue to execute instructions. If the core
     /// should be halted after reset, use the [`reset_and_halt`] function.
     ///
     /// [`reset_and_halt`]: trait.Core.html#tymethod.reset_and_halt
-    pub fn reset(&self) -> Result<(), error::Error> {
-        self.inner.borrow().reset()
+    pub fn reset(&mut self) -> Result<(), error::Error> {
+        self.inner.reset()
     }
 
     /// Reset the core, and then immediately halt. To continue execution after
     /// reset, use the [`reset`] function.
     ///
     /// [`reset`]: trait.Core.html#tymethod.reset
-    pub fn reset_and_halt(&self) -> Result<CoreInformation, error::Error> {
-        self.inner.borrow_mut().reset_and_halt()
+    pub fn reset_and_halt(&mut self) -> Result<CoreInformation, error::Error> {
+        self.inner.reset_and_halt()
     }
 
     /// Steps one instruction and then enters halted state again.
-    pub fn step(&self) -> Result<CoreInformation, error::Error> {
-        self.inner.borrow_mut().step()
+    pub fn step(&mut self) -> Result<CoreInformation, error::Error> {
+        self.inner.step()
     }
 
-    pub fn status(&self) -> Result<CoreStatus, error::Error> {
-        self.inner.borrow_mut().status()
+    pub fn status(&mut self) -> Result<CoreStatus, error::Error> {
+        self.inner.status()
     }
 
     pub fn read_core_reg(
-        &self,
+        &mut self,
         address: impl Into<CoreRegisterAddress>,
     ) -> Result<u32, error::Error> {
-        self.inner.borrow().read_core_reg(address.into())
+        self.inner.read_core_reg(address.into())
     }
 
     pub fn write_core_reg(
-        &self,
+        &mut self,
         address: CoreRegisterAddress,
         value: u32,
     ) -> Result<(), error::Error> {
-        self.inner.borrow().write_core_reg(address, value)
+        self.inner.write_core_reg(address, value)
     }
 
-    pub fn get_available_breakpoint_units(&self) -> Result<u32, error::Error> {
-        self.inner.borrow().get_available_breakpoint_units()
+    pub fn get_available_breakpoint_units(&mut self) -> Result<u32, error::Error> {
+        self.inner.get_available_breakpoint_units()
     }
 
-    fn enable_breakpoints(&self, state: bool) -> Result<(), error::Error> {
-        self.inner.borrow_mut().enable_breakpoints(state)
+    fn enable_breakpoints(&mut self, state: bool) -> Result<(), error::Error> {
+        self.inner.enable_breakpoints(state)
     }
 
     pub fn registers(&self) -> &'static RegisterFile {
-        self.inner.borrow().registers()
+        self.inner.registers()
     }
 
-    pub fn memory(&self) -> Memory {
-        self.inner.borrow().memory()
+    pub fn read_word_32(&mut self, address: u32) -> Result<u32, error::Error> {
+        self.read32(address)
     }
 
-    pub fn read_word_32(&self, address: u32) -> Result<u32, error::Error> {
-        self.inner.borrow_mut().memory().read32(address)
+    pub fn read_word_8(&mut self, address: u32) -> Result<u8, error::Error> {
+        self.read8(address)
     }
 
-    pub fn read_word_8(&self, address: u32) -> Result<u8, error::Error> {
-        self.inner.borrow_mut().memory().read8(address)
+    pub fn read_32(&mut self, address: u32, data: &mut [u32]) -> Result<(), error::Error> {
+        self.read_block32(address, data)
     }
 
-    pub fn read_32(&self, address: u32, data: &mut [u32]) -> Result<(), error::Error> {
-        self.inner.borrow_mut().memory().read_block32(address, data)
+    pub fn read_8(&mut self, address: u32, data: &mut [u8]) -> Result<(), error::Error> {
+        self.read_block8(address, data)
     }
 
-    pub fn read_8(&self, address: u32, data: &mut [u8]) -> Result<(), error::Error> {
-        self.inner.borrow_mut().memory().read_block8(address, data)
+    pub fn write_word_32(&mut self, addr: u32, data: u32) -> Result<(), error::Error> {
+        self.write32(addr, data)
     }
 
-    pub fn write_word_32(&self, addr: u32, data: u32) -> Result<(), error::Error> {
-        self.inner.borrow_mut().memory().write32(addr, data)
+    pub fn write_word_8(&mut self, addr: u32, data: u8) -> Result<(), error::Error> {
+        self.write8(addr, data)
     }
 
-    pub fn write_word_8(&self, addr: u32, data: u8) -> Result<(), error::Error> {
-        self.inner.borrow_mut().memory().write8(addr, data)
+    pub fn write_32(&mut self, addr: u32, data: &[u32]) -> Result<(), error::Error> {
+        self.write_block32(addr, data)
     }
 
-    pub fn write_32(&self, addr: u32, data: &[u32]) -> Result<(), error::Error> {
-        self.inner.borrow_mut().memory().write_block32(addr, data)
-    }
-
-    pub fn write_8(&self, addr: u32, data: &[u8]) -> Result<(), error::Error> {
-        self.inner.borrow_mut().memory().write_block8(addr, data)
+    pub fn write_8(&mut self, addr: u32, data: &[u8]) -> Result<(), error::Error> {
+        self.write_block8(addr, data)
     }
 
     /// Set a hardware breakpoint
@@ -459,7 +430,7 @@ impl Core {
     /// This function will try to set a hardware breakpoint. The amount
     /// of hardware breakpoints which are supported is chip specific,
     /// and can be queried using the `get_available_breakpoint_units` function.
-    pub fn set_hw_breakpoint(&mut self, address: u32) -> Result<(), error::Error> {
+    pub fn set_hw_breakpoint(&'a mut self, address: u32) -> Result<(), error::Error> {
         log::debug!("Trying to set HW breakpoint at address {:#08x}", address);
 
         // Get the number of HW breakpoints available
@@ -475,7 +446,7 @@ impl Core {
             return Err(error::Error::Probe(DebugProbeError::Unknown));
         }
 
-        if !self.inner.borrow().hw_breakpoints_enabled() {
+        if !self.inner.hw_breakpoints_enabled() {
             self.enable_breakpoints(true)?;
         }
 
@@ -483,7 +454,7 @@ impl Core {
 
         log::debug!("Using comparator {} of breakpoint unit", bp_unit);
         // actually set the breakpoint
-        self.inner.borrow_mut().set_breakpoint(bp_unit, address)?;
+        self.inner.set_breakpoint(bp_unit, address)?;
 
         self.breakpoints.push(Breakpoint {
             address,
@@ -493,13 +464,13 @@ impl Core {
         Ok(())
     }
 
-    pub fn clear_hw_breakpoint(&mut self, address: u32) -> Result<(), error::Error> {
+    pub fn clear_hw_breakpoint(&'a mut self, address: u32) -> Result<(), error::Error> {
         let bp_position = self.breakpoints.iter().position(|bp| bp.address == address);
 
         match bp_position {
             Some(bp_position) => {
                 let bp = &self.breakpoints[bp_position];
-                self.inner.borrow_mut().clear_breakpoint(bp.register_hw)?;
+                self.inner.clear_breakpoint(bp.register_hw)?;
 
                 // We only remove the breakpoint if we have actually managed to clear it.
                 self.breakpoints.swap_remove(bp_position);
@@ -527,15 +498,15 @@ impl Core {
     }
 }
 
-pub struct CoreList(Vec<CoreType>);
+pub struct CoreList<'a>(&'a Vec<CoreType>);
 
-impl CoreList {
-    pub fn new(cores: Vec<CoreType>) -> Self {
+impl<'a> CoreList<'a> {
+    pub fn new(cores: &'a Vec<CoreType>) -> Self {
         Self(cores)
     }
 }
 
-impl std::ops::Deref for CoreList {
+impl<'a> std::ops::Deref for CoreList<'a> {
     type Target = Vec<CoreType>;
     fn deref(&self) -> &Self::Target {
         &self.0

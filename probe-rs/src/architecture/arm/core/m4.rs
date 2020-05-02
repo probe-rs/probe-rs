@@ -6,7 +6,10 @@ use crate::memory::Memory;
 use crate::DebugProbeError;
 
 use super::{register, Dfsr, ARM_REGISTER_FILE};
-use crate::core::{Architecture, CoreStatus, HaltReason};
+use crate::{
+    core::{Architecture, CoreStatus, HaltReason},
+    MemoryInterface,
+};
 
 use bitfield::bitfield;
 use std::mem::size_of;
@@ -324,16 +327,19 @@ impl FpRev2CompX {
 pub const MSP: CoreRegisterAddress = CoreRegisterAddress(0b000_1001);
 pub const PSP: CoreRegisterAddress = CoreRegisterAddress(0b000_1010);
 
-pub struct M4 {
-    memory: Memory,
+pub struct M4<'a> {
+    memory: Memory<'a>,
 
     hw_breakpoints_enabled: bool,
 
     current_state: CoreStatus,
 }
 
-impl M4 {
-    pub fn new(memory: Memory) -> Result<Self, Error> {
+impl<'a> M4<'a> {
+    pub fn new<'b>(mut memory: Memory<'a>) -> Result<M4<'a>, Error>
+    where
+        'a: 'b,
+    {
         // determine current state
         let dhcsr = Dhcsr(memory.read32(Dhcsr::ADDRESS)?);
 
@@ -364,7 +370,7 @@ impl M4 {
         })
     }
 
-    fn wait_for_core_register_transfer(&self) -> Result<(), Error> {
+    fn wait_for_core_register_transfer(&mut self) -> Result<(), Error> {
         // now we have to poll the dhcsr register, until the dhcsr.s_regrdy bit is set
         // (see C1-292, cortex m0 arm)
         for _ in 0..100 {
@@ -378,7 +384,7 @@ impl M4 {
     }
 }
 
-impl CoreInterface for M4 {
+impl<'a> CoreInterface<'a> for M4<'a> {
     fn wait_for_core_halted(&mut self) -> Result<(), Error> {
         // Wait until halted state is active again.
         for _ in 0..100 {
@@ -393,7 +399,7 @@ impl CoreInterface for M4 {
         Err(Error::Probe(DebugProbeError::Timeout))
     }
 
-    fn core_halted(&self) -> Result<bool, Error> {
+    fn core_halted(&mut self) -> Result<bool, Error> {
         // Wait until halted state is active again.
         let dhcsr_val = Dhcsr(self.memory.read32(Dhcsr::ADDRESS)?);
 
@@ -461,7 +467,7 @@ impl CoreInterface for M4 {
         Ok(CoreStatus::Running)
     }
 
-    fn read_core_reg(&self, addr: CoreRegisterAddress) -> Result<u32, Error> {
+    fn read_core_reg(&mut self, addr: CoreRegisterAddress) -> Result<u32, Error> {
         // Write the DCRSR value to select the register we want to read.
         let mut dcrsr_val = Dcrsr(0);
         dcrsr_val.set_regwnr(false); // Perform a read.
@@ -474,7 +480,7 @@ impl CoreInterface for M4 {
         self.memory.read32(Dcrdr::ADDRESS).map_err(From::from)
     }
 
-    fn write_core_reg(&self, addr: CoreRegisterAddress, value: u32) -> Result<(), Error> {
+    fn write_core_reg(&mut self, addr: CoreRegisterAddress, value: u32) -> Result<(), Error> {
         let result: Result<(), Error> = self
             .memory
             .write32(Dcrdr::ADDRESS, value)
@@ -545,7 +551,7 @@ impl CoreInterface for M4 {
         Ok(CoreInformation { pc: pc_value })
     }
 
-    fn reset(&self) -> Result<(), Error> {
+    fn reset(&mut self) -> Result<(), Error> {
         // Set THE AIRCR.SYSRESETREQ control bit to 1 to request a reset. (ARM V6 ARM, B1.5.16)
         let mut value = Aircr(0);
         value.vectkey();
@@ -594,7 +600,7 @@ impl CoreInterface for M4 {
         Ok(CoreInformation { pc: pc_value })
     }
 
-    fn get_available_breakpoint_units(&self) -> Result<u32, Error> {
+    fn get_available_breakpoint_units(&mut self) -> Result<u32, Error> {
         let raw_val = self.memory.read32(FpCtrl::ADDRESS)?;
 
         let reg = FpCtrl::from(raw_val);
@@ -619,7 +625,7 @@ impl CoreInterface for M4 {
         Ok(())
     }
 
-    fn set_breakpoint(&self, bp_unit_index: usize, addr: u32) -> Result<(), Error> {
+    fn set_breakpoint(&mut self, bp_unit_index: usize, addr: u32) -> Result<(), Error> {
         let raw_val = self.memory.read32(FpCtrl::ADDRESS)?;
         let ctrl_reg = FpCtrl::from(raw_val);
 
@@ -647,7 +653,7 @@ impl CoreInterface for M4 {
         &ARM_REGISTER_FILE
     }
 
-    fn clear_breakpoint(&self, bp_unit_index: usize) -> Result<(), Error> {
+    fn clear_breakpoint(&mut self, bp_unit_index: usize) -> Result<(), Error> {
         let mut val = FpRev1CompX::from(0);
         val.set_enable(false);
 
@@ -658,16 +664,39 @@ impl CoreInterface for M4 {
         Ok(())
     }
 
-    fn memory(&self) -> Memory {
-        self.memory.clone()
-    }
-
     fn hw_breakpoints_enabled(&self) -> bool {
         self.hw_breakpoints_enabled
     }
 
     fn architecture(&self) -> Architecture {
         Architecture::ARM
+    }
+}
+
+impl<'a> MemoryInterface for M4<'a> {
+    fn read32(&mut self, address: u32) -> Result<u32, Error> {
+        self.memory.read32(address)
+    }
+    fn read8(&mut self, address: u32) -> Result<u8, Error> {
+        self.memory.read8(address)
+    }
+    fn read_block32(&mut self, address: u32, data: &mut [u32]) -> Result<(), Error> {
+        self.memory.read_block32(address, data)
+    }
+    fn read_block8(&mut self, address: u32, data: &mut [u8]) -> Result<(), Error> {
+        self.memory.read_block8(address, data)
+    }
+    fn write32(&mut self, address: u32, data: u32) -> Result<(), Error> {
+        self.memory.write32(address, data)
+    }
+    fn write8(&mut self, address: u32, data: u8) -> Result<(), Error> {
+        self.memory.write8(address, data)
+    }
+    fn write_block32(&mut self, address: u32, data: &[u32]) -> Result<(), Error> {
+        self.memory.write_block32(address, data)
+    }
+    fn write_block8(&mut self, address: u32, data: &[u8]) -> Result<(), Error> {
+        self.memory.write_block8(address, data)
     }
 }
 

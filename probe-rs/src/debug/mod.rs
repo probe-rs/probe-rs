@@ -6,7 +6,7 @@
 mod typ;
 mod variable;
 
-use crate::core::Core;
+use crate::{core::Core, MemoryInterface};
 use typ::Type;
 use variable::Variable;
 
@@ -100,7 +100,7 @@ impl std::fmt::Display for StackFrame {
 struct Registers([Option<u32>; 16]);
 
 impl Registers {
-    pub fn from_core(core: &Core) -> Self {
+    pub fn from_core(core: &mut Core) -> Self {
         let mut registers = Registers([None; 16]);
         for i in 0..16 {
             registers[i as usize] = Some(core.read_core_reg(i).unwrap());
@@ -154,16 +154,16 @@ pub struct SourceLocation {
     pub directory: Option<PathBuf>,
 }
 
-pub struct StackFrameIterator<'a, 'b> {
+pub struct StackFrameIterator<'a, 'b, 'c> {
     debug_info: &'a DebugInfo,
-    core: &'b Core,
+    core: &'c mut Core<'b>,
     frame_count: u64,
     pc: Option<u64>,
     registers: Registers,
 }
 
-impl<'a, 'b> StackFrameIterator<'a, 'b> {
-    pub fn new(debug_info: &'a DebugInfo, core: &'b Core, address: u64) -> Self {
+impl<'a, 'b, 'c> StackFrameIterator<'a, 'b, 'c> {
+    pub fn new(debug_info: &'a DebugInfo, core: &'c mut Core<'b>, address: u64) -> Self {
         let registers = Registers::from_core(core);
         let pc = address;
 
@@ -177,7 +177,7 @@ impl<'a, 'b> StackFrameIterator<'a, 'b> {
     }
 }
 
-impl<'a, 'b> Iterator for StackFrameIterator<'a, 'b> {
+impl<'a, 'b, 'c> Iterator for StackFrameIterator<'a, 'b, 'c> {
     type Item = StackFrame;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -253,7 +253,7 @@ impl<'a, 'b> Iterator for StackFrameIterator<'a, 'b> {
         self.registers.set_call_frame_address(current_cfa);
 
         let return_frame = match self.debug_info.get_stackframe_info(
-            &self.core,
+            &mut self.core,
             pc,
             self.frame_count,
             self.registers.clone(),
@@ -454,7 +454,7 @@ impl DebugInfo {
 
     fn get_stackframe_info(
         &self,
-        core: &Core,
+        core: &mut Core<'_>,
         address: u64,
         frame_count: u64,
         registers: Registers,
@@ -496,11 +496,11 @@ impl DebugInfo {
         })
     }
 
-    pub fn try_unwind<'a, 'b>(
-        &'a self,
-        core: &'b Core,
+    pub fn try_unwind<'b, 'c>(
+        &self,
+        core: &'c mut Core<'b>,
         address: u64,
-    ) -> StackFrameIterator<'a, 'b> {
+    ) -> StackFrameIterator<'_, 'b, 'c> {
         StackFrameIterator::new(&self, core, address)
     }
 
@@ -702,7 +702,7 @@ impl<'a> UnitInfo<'a> {
 
     fn expr_to_piece(
         &self,
-        core: &Core,
+        core: &mut Core<'_>,
         expression: gimli::Expression<R>,
         frame_base: u64,
     ) -> Result<Vec<gimli::Piece<R, usize>>, DebugError> {
@@ -718,8 +718,7 @@ impl<'a> UnitInfo<'a> {
                 Complete => break,
                 RequiresMemory { address, size, .. } => {
                     let mut buff = vec![0u8; size as usize];
-                    core.memory()
-                        .read_block8(address as u32, &mut buff)
+                    core.read_block8(address as u32, &mut buff)
                         .expect("Failed to read memory");
                     match size {
                         1 => evaluation.resume_with_memory(gimli::Value::U8(buff[0]))?,
@@ -770,7 +769,7 @@ impl<'a> UnitInfo<'a> {
 
     fn get_variables(
         &self,
-        core: &Core,
+        core: &mut Core<'_>,
         die_cursor_state: &mut DieCursorState,
         frame_base: u64,
     ) -> Result<Vec<Variable>, DebugError> {
@@ -830,7 +829,7 @@ impl<'a> UnitInfo<'a> {
 
 fn extract_location(
     unit_info: &UnitInfo,
-    core: &Core,
+    core: &mut Core<'_>,
     frame_base: u64,
     attribute_value: gimli::AttributeValue<R>,
 ) -> Result<Option<u64>, DebugError> {
@@ -934,7 +933,7 @@ fn extract_name(
     }
 }
 
-fn get_piece_value(core: &Core, p: &gimli::Piece<DwarfReader>) -> Option<u32> {
+fn get_piece_value(core: &mut Core<'_>, p: &gimli::Piece<DwarfReader>) -> Option<u32> {
     use gimli::Location;
 
     match &p.location {
@@ -952,7 +951,7 @@ fn get_piece_value(core: &Core, p: &gimli::Piece<DwarfReader>) -> Option<u32> {
 }
 
 pub(crate) fn _print_all_attributes(
-    core: Core,
+    core: &mut Core<'_>,
     frame_base: Option<u32>,
     dwarf: &gimli::Dwarf<DwarfReader>,
     unit: &gimli::Unit<DwarfReader>,
