@@ -173,11 +173,7 @@ pub(crate) fn get_memory_map() -> Option<String> {
 <memory type="ram" start="0x20000000" length="0x4000"/>
 <memory type="rom" start="0x00000000" length="0x40000"/>
 </memory-map>"#;
-    Some(
-        std::str::from_utf8(&gdb_sanitize_file(xml.as_bytes().to_vec(), 0, 1000))
-            .unwrap()
-            .to_string(),
-    )
+    Some(String::from_utf8(gdb_sanitize_file(xml.as_bytes(), 0, 1000)).unwrap())
 }
 
 pub(crate) fn user_halt(core: &Core, awaits_halt: &mut bool) -> Option<String> {
@@ -198,7 +194,7 @@ pub(crate) fn reset_halt(core: &Core) -> Option<String> {
     Some("OK".into())
 }
 
-fn gdb_sanitize_file(mut data: Vec<u8>, offset: u32, len: u32) -> Vec<u8> {
+fn gdb_sanitize_file(data: &[u8], offset: u32, len: u32) -> Vec<u8> {
     let offset = offset as usize;
     let len = len as usize;
     let mut end = offset + len;
@@ -208,7 +204,7 @@ fn gdb_sanitize_file(mut data: Vec<u8>, offset: u32, len: u32) -> Vec<u8> {
         if end > data.len() {
             end = data.len();
         }
-        let mut trimmed_data: Vec<u8> = data.drain(offset..end).collect();
+        let mut trimmed_data = Vec::from(&data[offset..end]);
         if trimmed_data.len() >= len {
             // XXX should this be <= or < ?
             trimmed_data.insert(0, b'm');
