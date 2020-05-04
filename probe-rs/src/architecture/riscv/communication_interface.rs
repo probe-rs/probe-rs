@@ -105,7 +105,7 @@ pub struct RiscvCommunicationInterfaceState {
 const RISCV_TIMEOUT: Duration = Duration::from_secs(5);
 
 impl RiscvCommunicationInterfaceState {
-    pub(crate) fn new(probe: &mut Probe) -> Result<Self, RiscvError> {
+    fn new(probe: &mut Probe) -> Result<Self, RiscvError> {
         // We need a jtag interface
 
         log::debug!("Building RISCV interface");
@@ -149,10 +149,10 @@ pub struct RiscvCommunicationInterface<'a> {
 }
 
 impl<'a> RiscvCommunicationInterface<'a> {
-    pub(crate) fn new(
+    pub fn new(
         probe: &'a mut Probe,
         state: &'a mut RiscvCommunicationInterfaceState,
-    ) -> Result<Option<Self>, RiscvError> {
+    ) -> Result<Option<Self>, ProbeRsError> {
         if probe.has_jtag_interface() {
             let mut s = Self { probe, state };
 
@@ -167,6 +167,12 @@ impl<'a> RiscvCommunicationInterface<'a> {
 
             Ok(None)
         }
+    }
+
+    pub fn create_state(
+        probe: &mut Probe,
+    ) -> Result<RiscvCommunicationInterfaceState, ProbeRsError> {
+        Ok(RiscvCommunicationInterfaceState::new(probe)?)
     }
 
     // TODO: N

@@ -128,7 +128,7 @@ pub struct ArmCommunicationInterfaceState {
 }
 
 impl ArmCommunicationInterfaceState {
-    pub(crate) fn new(probe: &mut Probe) -> Result<Self, DebugProbeError> {
+    fn new(probe: &mut Probe) -> Result<Self, DebugProbeError> {
         // Check the version of debug port used
         let debug_port_version = get_debug_port_version(probe)?;
 
@@ -187,6 +187,18 @@ impl<'a> ArmCommunicationInterface<'a> {
 
             Ok(None)
         }
+    }
+
+    pub fn create_state(
+        probe: &mut Probe,
+    ) -> Result<ArmCommunicationInterfaceState, DebugProbeError> {
+        ArmCommunicationInterfaceState::new(probe)
+    }
+
+    pub fn borrow(&mut self) -> ArmCommunicationInterface<'_> {
+        ArmCommunicationInterface::new(self.probe, self.state)
+            .unwrap()
+            .unwrap()
     }
 
     pub fn dedicated_memory_interface(&'a self) -> Result<Option<Memory<'a>>, DebugProbeError> {
@@ -406,10 +418,7 @@ impl<'a> ArmCommunicationInterface<'a> {
 
 impl<'a> CommunicationInterface for ArmCommunicationInterface<'a> {
     fn probe_for_chip_info(mut self) -> Result<Option<ChipInfo>, ProbeRsError> {
-        ArmChipInfo::read_from_rom_table(
-            ArmCommunicationInterface::new(self.probe, self.state)?.unwrap(),
-        )
-        .map(|option| option.map(ChipInfo::Arm))
+        ArmChipInfo::read_from_rom_table(self.borrow()).map(|option| option.map(ChipInfo::Arm))
     }
 }
 
@@ -533,9 +542,7 @@ impl ArmChipInfo {
     pub fn read_from_rom_table(
         mut interface: ArmCommunicationInterface,
     ) -> Result<Option<Self>, ProbeRsError> {
-        for access_port in valid_access_ports(
-            &mut ArmCommunicationInterface::new(interface.probe, interface.state)?.unwrap(),
-        ) {
+        for access_port in valid_access_ports(&mut interface.borrow()) {
             let idr = interface
                 .read_ap_register(access_port, IDR::default())
                 .map_err(ProbeRsError::Probe)?;
@@ -560,7 +567,7 @@ impl ArmChipInfo {
 
                 let mut memory = Memory::new(
                     ADIMemoryInterface::<ArmCommunicationInterface>::new(
-                        ArmCommunicationInterface::new(interface.probe, interface.state)?.unwrap(),
+                        interface.borrow(),
                         access_port,
                     )
                     .map_err(ProbeRsError::architecture_specific)?,

@@ -144,7 +144,7 @@ fn list_connected_devices() -> Result<(), CliError> {
 }
 
 fn dump_memory(shared_options: &SharedOptions, loc: u32, words: u32) -> Result<(), CliError> {
-    with_device(shared_options, |session| {
+    with_device(shared_options, |mut session| {
         let mut data = vec![0 as u32; words as usize];
 
         // Start timer.
@@ -174,8 +174,8 @@ fn dump_memory(shared_options: &SharedOptions, loc: u32, words: u32) -> Result<(
 }
 
 fn download_program_fast(shared_options: &SharedOptions, path: &str) -> Result<(), CliError> {
-    with_device(shared_options, |session| {
-        download_file(&session, std::path::Path::new(&path), Format::Elf)?;
+    with_device(shared_options, |mut session| {
+        download_file(&mut session, std::path::Path::new(&path), Format::Elf)?;
 
         Ok(())
     })
@@ -185,7 +185,7 @@ fn reset_target_of_device(
     shared_options: &SharedOptions,
     _assert: Option<bool>,
 ) -> Result<(), CliError> {
-    with_device(shared_options, |session| {
+    with_device(shared_options, |mut session| {
         session.attach_to_core(0)?.reset()?;
 
         Ok(())
@@ -203,7 +203,7 @@ fn trace_u32_on_target(shared_options: &SharedOptions, loc: u32) -> Result<(), C
 
     let start = Instant::now();
 
-    with_device(shared_options, |session| {
+    with_device(shared_options, |mut session| {
         let mut core = session.attach_to_core(0)?;
 
         loop {
@@ -238,7 +238,7 @@ fn trace_u32_on_target(shared_options: &SharedOptions, loc: u32) -> Result<(), C
 }
 
 fn debug(shared_options: &SharedOptions, exe: Option<PathBuf>) -> Result<(), CliError> {
-    let runner = |session: Session| {
+    let runner = |mut session: Session| {
         let cs = Capstone::new()
             .arm()
             .mode(ArchMode::Thumb)

@@ -7,13 +7,13 @@ use crate::architecture::{
 use crate::config::{
     ChipInfo, MemoryRegion, RawFlashAlgorithm, RegistryError, Target, TargetSelector,
 };
-use crate::core::Architecture;
+use crate::core::{Architecture, CoreState};
 use crate::{Core, CoreType, DebugProbeError, Error, Probe};
 
 pub struct Session {
     target: Target,
     probe: Probe,
-    cores: Vec<(CoreType, ArchitectureState)>,
+    cores: Vec<(CoreType, CoreState, ArchitectureState)>,
 }
 
 pub enum ArchitectureState {
@@ -35,7 +35,7 @@ impl Session {
             TargetSelector::Auto => {
                 let mut found_chip = None;
 
-                let state = &mut ArmCommunicationInterfaceState::new(&mut probe)?;
+                let state = &mut ArmCommunicationInterface::create_state(&mut probe)?;
                 let interface = ArmCommunicationInterface::new(&mut probe, state)?;
                 if let Some(interface) = interface {
                     let chip_result = try_arm_autodetect(interface);
@@ -50,7 +50,7 @@ impl Session {
                 }
 
                 if found_chip.is_none() && probe.has_jtag_interface() {
-                    let state = &mut RiscvCommunicationInterfaceState::new(&mut probe)?;
+                    let state = &mut RiscvCommunicationInterface::create_state(&mut probe)?;
                     let interface = RiscvCommunicationInterface::new(&mut probe, state)?;
 
                     if let Some(mut interface) = interface {
@@ -74,12 +74,21 @@ impl Session {
 
         let core = match target.architecture() {
             Architecture::ARM => {
-                let arm_interface = ArmCommunicationInterfaceState::new(&mut probe)?;
-                (target.core_type, ArchitectureState::Arm(arm_interface))
-            } // Architecture::RISCV => {
-            //     let riscv_interface = RiscvCommunicationInterface::new(generic_probe.unwrap())?;
-            //     ArchitectureState::Riscv(riscv_interface)
-            // }
+                let arm_interface = ArmCommunicationInterface::create_state(&mut probe)?;
+                (
+                    target.core_type,
+                    Core::create_state(),
+                    ArchitectureState::Arm(arm_interface),
+                )
+            }
+            Architecture::RISCV => {
+                let riscv_interface = RiscvCommunicationInterface::create_state(&mut probe)?;
+                (
+                    target.core_type,
+                    Core::create_state(),
+                    ArchitectureState::Riscv(riscv_interface),
+                )
+            }
             _ => unimplemented!(),
         };
 
@@ -90,27 +99,31 @@ impl Session {
         })
     }
 
-    pub fn list_cores<'a>(&'a self) -> &'a Vec<(CoreType, ArchitectureState)> {
+    pub fn list_cores<'a>(&'a self) -> &'a Vec<(CoreType, CoreState, ArchitectureState)> {
         &self.cores
     }
 
-    pub fn list_cores_mut<'a>(&'a mut self) -> &'a mut Vec<(CoreType, ArchitectureState)> {
+    pub fn list_cores_mut<'a>(
+        &'a mut self,
+    ) -> &'a mut Vec<(CoreType, CoreState, ArchitectureState)> {
         &mut self.cores
     }
 
     pub fn attach_to_core<'a: 'p, 'p>(&'a mut self, n: usize) -> Result<Core<'p>, Error> {
-        let (core, state) = self
+        let (core, core_state, architecture_state) = self
             .cores
             .get_mut(n)
             .ok_or_else(|| Error::CoreNotFound(n))?;
 
-        match state {
-            ArchitectureState::Arm(state) => core.attach_arm(
-                ArmCommunicationInterface::new(&mut self.probe, state)?
+        match architecture_state {
+            ArchitectureState::Arm(architecture_state) => core.attach_arm(
+                core_state,
+                ArmCommunicationInterface::new(&mut self.probe, architecture_state)?
                     .ok_or_else(|| DebugProbeError::InterfaceNotAvailable("DAP"))?,
             ),
-            ArchitectureState::Riscv(state) => core.attach_riscv(
-                RiscvCommunicationInterface::new(&mut self.probe, state)?
+            ArchitectureState::Riscv(architecture_state) => core.attach_riscv(
+                core_state,
+                RiscvCommunicationInterface::new(&mut self.probe, architecture_state)?
                     .ok_or_else(|| DebugProbeError::InterfaceNotAvailable("DAP"))?,
             ),
         }

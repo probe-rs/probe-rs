@@ -235,6 +235,7 @@ pub enum CoreType {
 impl CoreType {
     pub fn attach_arm<'a>(
         &self,
+        state: &'a mut CoreState,
         interface: ArmCommunicationInterface<'a>,
     ) -> Result<Core<'a>, Error> {
         let memory = Memory::new(
@@ -247,10 +248,10 @@ impl CoreType {
             // Cortex-M3, M4 and M7 use the Armv7[E]-M architecture and are
             // identical for our purposes.
             CoreType::M3 | CoreType::M4 | CoreType::M7 => {
-                Core::new(crate::architecture::arm::m4::M4::new(memory)?)
+                Core::new(crate::architecture::arm::m4::M4::new(memory)?, state)
             }
-            CoreType::M33 => Core::new(crate::architecture::arm::m33::M33::new(memory)?),
-            CoreType::M0 => Core::new(crate::architecture::arm::m0::M0::new(memory)?),
+            CoreType::M33 => Core::new(crate::architecture::arm::m33::M33::new(memory)?, state),
+            CoreType::M0 => Core::new(crate::architecture::arm::m0::M0::new(memory)?, state),
             _ => {
                 return Err(Error::UnableToOpenProbe(
                     "Core architecture and Probe mismatch.",
@@ -261,10 +262,13 @@ impl CoreType {
 
     pub fn attach_riscv<'a>(
         &self,
+        state: &'a mut CoreState,
         interface: RiscvCommunicationInterface<'a>,
     ) -> Result<Core<'a>, Error> {
         Ok(match self {
-            CoreType::Riscv => Core::new(crate::architecture::riscv::Riscv32::new(interface)),
+            CoreType::Riscv => {
+                Core::new(crate::architecture::riscv::Riscv32::new(interface), state)
+            }
             _ => {
                 return Err(Error::UnableToOpenProbe(
                     "Core architecture and Probe mismatch.",
@@ -286,19 +290,36 @@ impl CoreType {
     }
 }
 
-pub struct Core<'a> {
-    inner: Box<dyn CoreInterface<'a> + 'a>,
+pub struct CoreState {
     breakpoints: Vec<Breakpoint>,
 }
 
+impl CoreState {
+    fn new() -> Self {
+        Self {
+            breakpoints: vec![],
+        }
+    }
+}
+
+pub struct Core<'a> {
+    inner: Box<dyn CoreInterface<'a> + 'a>,
+    state: &'a mut CoreState,
+}
+
 impl<'a> Core<'a> {
-    pub fn new(core: impl CoreInterface<'a> + 'a) -> Core<'a> {
+    pub fn new(core: impl CoreInterface<'a> + 'a, state: &'a mut CoreState) -> Core<'a> {
         Self {
             inner: Box::new(core),
-            breakpoints: Vec::new(),
+            state,
         }
     }
 
+    pub fn create_state() -> CoreState {
+        CoreState::new()
+    }
+
+    // TODO: N
     // pub fn auto_attach(target: impl Into<TargetSelector>) -> Result<Core<'a>, error::Error> {
     //     // Get a list of all available debug probes.
     //     let probes = Probe::list_all();
@@ -430,7 +451,7 @@ impl<'a> Core<'a> {
     /// This function will try to set a hardware breakpoint. The amount
     /// of hardware breakpoints which are supported is chip specific,
     /// and can be queried using the `get_available_breakpoint_units` function.
-    pub fn set_hw_breakpoint(&'a mut self, address: u32) -> Result<(), error::Error> {
+    pub fn set_hw_breakpoint(&mut self, address: u32) -> Result<(), error::Error> {
         log::debug!("Trying to set HW breakpoint at address {:#08x}", address);
 
         // Get the number of HW breakpoints available
@@ -438,7 +459,7 @@ impl<'a> Core<'a> {
 
         log::debug!("{} HW breakpoints are supported.", num_hw_breakpoints);
 
-        if num_hw_breakpoints <= self.breakpoints.len() {
+        if num_hw_breakpoints <= self.state.breakpoints.len() {
             // We cannot set additional breakpoints
             log::warn!("Maximum number of breakpoints ({}) reached, unable to set additional HW breakpoint.", num_hw_breakpoints);
 
@@ -456,7 +477,7 @@ impl<'a> Core<'a> {
         // actually set the breakpoint
         self.inner.set_breakpoint(bp_unit, address)?;
 
-        self.breakpoints.push(Breakpoint {
+        self.state.breakpoints.push(Breakpoint {
             address,
             register_hw: bp_unit,
         });
@@ -464,16 +485,20 @@ impl<'a> Core<'a> {
         Ok(())
     }
 
-    pub fn clear_hw_breakpoint(&'a mut self, address: u32) -> Result<(), error::Error> {
-        let bp_position = self.breakpoints.iter().position(|bp| bp.address == address);
+    pub fn clear_hw_breakpoint(&mut self, address: u32) -> Result<(), error::Error> {
+        let bp_position = self
+            .state
+            .breakpoints
+            .iter()
+            .position(|bp| bp.address == address);
 
         match bp_position {
             Some(bp_position) => {
-                let bp = &self.breakpoints[bp_position];
+                let bp = &self.state.breakpoints[bp_position];
                 self.inner.clear_breakpoint(bp.register_hw)?;
 
                 // We only remove the breakpoint if we have actually managed to clear it.
-                self.breakpoints.swap_remove(bp_position);
+                self.state.breakpoints.swap_remove(bp_position);
                 Ok(())
             }
             None => Err(error::Error::Probe(DebugProbeError::Unknown)),
@@ -481,7 +506,12 @@ impl<'a> Core<'a> {
     }
 
     fn find_free_breakpoint_unit(&self) -> usize {
-        let mut used_bp: Vec<_> = self.breakpoints.iter().map(|bp| bp.register_hw).collect();
+        let mut used_bp: Vec<_> = self
+            .state
+            .breakpoints
+            .iter()
+            .map(|bp| bp.register_hw)
+            .collect();
         used_bp.sort();
 
         let mut free_bp = 0;
