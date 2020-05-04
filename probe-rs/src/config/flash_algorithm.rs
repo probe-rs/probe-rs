@@ -1,5 +1,6 @@
 use super::flash_properties::FlashProperties;
 use super::memory::{PageInfo, RamRegion, SectorInfo};
+use crate::architecture::riscv;
 use crate::core::Architecture;
 use std::{borrow::Cow, convert::TryInto};
 
@@ -157,10 +158,7 @@ impl RawFlashAlgorithm {
     const FLASH_ALGO_STACK_DECREMENT: u32 = 64;
 
     // Header for RISCV Flash Algorithms
-    const RISCV_FLASH_BLOB_HEADER: [u32; 2] = [
-        0b000000000001_00000_000_00000_1110011, // ebreak
-        0b000000000001_00000_000_00000_1110011, // ebreak
-    ];
+    const RISCV_FLASH_BLOB_HEADER: [u32; 2] = [riscv::assembly::EBREAK, riscv::assembly::EBREAK];
 
     const ARM_FLASH_BLOB_HEADER: [u32; 8] = [
         0xE00A_BE00,

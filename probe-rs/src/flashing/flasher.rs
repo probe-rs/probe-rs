@@ -575,14 +575,14 @@ impl<'a, O: Operation> ActiveFlasher<'a, O> {
             if let Some(v) = value {
                 self.core
                     .write_core_reg(description.address, *v)
-                    .map_err(|e| FlashError::Core(e))?;
+                    .map_err(FlashError::Core)?;
                 log::debug!(
                     "content of {} {:#x}: 0x{:08x} should be: 0x{:08x}",
                     description.name,
                     description.address.0,
                     self.core
                         .read_core_reg(description.address)
-                        .map_err(|e| FlashError::Core(e))?,
+                        .map_err(FlashError::Core)?,
                     *v
                 );
             }
@@ -593,14 +593,14 @@ impl<'a, O: Operation> ActiveFlasher<'a, O> {
             let dcsr = self
                 .core
                 .read_core_reg(CoreRegisterAddress::from(0x7b0))
-                .map_err(|e| FlashError::Core(e))?;
+                .map_err(FlashError::Core)?;
 
             self.core
                 .write_core_reg(
                     CoreRegisterAddress::from(0x7b0),
                     dcsr | (1 << 15) | (1 << 13) | (1 << 12),
                 )
-                .map_err(|e| FlashError::Core(e))?;
+                .map_err(FlashError::Core)?;
         }
 
         // Resume target operation.
