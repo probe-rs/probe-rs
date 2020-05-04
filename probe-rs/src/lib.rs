@@ -18,13 +18,13 @@
 //! let probes = Probe::list_all();
 //!
 //! // Use the first probe found.
-//! let probe = probes[0].open()?;
+//! let mut probe = probes[0].open()?;
 //!
 //! // Attach to a chip.
-//! let session = probe.attach("nrf52")?;
+//! let mut session = probe.attach("nrf52")?;
 //!
 //! // Select a core.
-//! let core = session.attach_to_core(0)?;
+//! let mut core = session.attach_to_core(0)?;
 //!
 //! // Halt the attached core.
 //! core.halt()?;
