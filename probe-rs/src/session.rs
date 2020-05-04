@@ -146,6 +146,7 @@ impl Session {
         self.inner.borrow().target.memory_map.clone()
     }
 
+    /// Return the `Architecture` of the currently connected chip.
     pub fn architecture(&self) -> Architecture {
         self.inner.borrow().architecture()
     }

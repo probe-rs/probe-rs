@@ -17,7 +17,7 @@ use register::RISCV_REGISTERS;
 #[macro_use]
 mod register;
 
-mod assembly;
+pub(crate) mod assembly;
 
 pub mod communication_interface;
 

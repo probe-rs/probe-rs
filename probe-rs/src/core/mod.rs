@@ -182,6 +182,7 @@ pub trait CoreInterface {
     fn memory(&self) -> Memory;
     fn hw_breakpoints_enabled(&self) -> bool;
 
+    /// Get the `Architecture` of the Core.
     fn architecture(&self) -> Architecture;
 }
 
