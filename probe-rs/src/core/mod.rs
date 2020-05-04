@@ -187,36 +187,36 @@ pub trait CoreInterface<'a>: MemoryInterface {
 }
 
 impl<'a> MemoryInterface for Core<'a> {
-    fn read32(&mut self, address: u32) -> Result<u32, Error> {
-        self.read_word_32(address)
+    fn read_word_32(&mut self, address: u32) -> Result<u32, Error> {
+        self.inner.read_word_32(address)
     }
 
-    fn read8(&mut self, address: u32) -> Result<u8, Error> {
-        self.read_word_8(address)
+    fn read_word_8(&mut self, address: u32) -> Result<u8, Error> {
+        self.inner.read_word_8(address)
     }
 
-    fn read_block32(&mut self, address: u32, data: &mut [u32]) -> Result<(), Error> {
-        self.read_32(address, data)
+    fn read_32(&mut self, address: u32, data: &mut [u32]) -> Result<(), Error> {
+        self.inner.read_32(address, data)
     }
 
-    fn read_block8(&mut self, address: u32, data: &mut [u8]) -> Result<(), Error> {
-        self.read_8(address, data)
+    fn read_8(&mut self, address: u32, data: &mut [u8]) -> Result<(), Error> {
+        self.inner.read_8(address, data)
     }
 
-    fn write32(&mut self, addr: u32, data: u32) -> Result<(), Error> {
-        self.write_word_32(addr, data)
+    fn write_word_32(&mut self, addr: u32, data: u32) -> Result<(), Error> {
+        self.inner.write_word_32(addr, data)
     }
 
-    fn write8(&mut self, addr: u32, data: u8) -> Result<(), Error> {
-        self.write_word_8(addr, data)
+    fn write_word_8(&mut self, addr: u32, data: u8) -> Result<(), Error> {
+        self.inner.write_word_8(addr, data)
     }
 
-    fn write_block32(&mut self, addr: u32, data: &[u32]) -> Result<(), Error> {
-        self.write_32(addr, data)
+    fn write_32(&mut self, addr: u32, data: &[u32]) -> Result<(), Error> {
+        self.inner.write_32(addr, data)
     }
 
-    fn write_block8(&mut self, addr: u32, data: &[u8]) -> Result<(), Error> {
-        self.write_8(addr, data)
+    fn write_8(&mut self, addr: u32, data: &[u8]) -> Result<(), Error> {
+        self.inner.write_8(addr, data)
     }
 }
 
@@ -410,38 +410,6 @@ impl<'a> Core<'a> {
 
     pub fn registers(&self) -> &'static RegisterFile {
         self.inner.registers()
-    }
-
-    pub fn read_word_32(&mut self, address: u32) -> Result<u32, error::Error> {
-        self.read32(address)
-    }
-
-    pub fn read_word_8(&mut self, address: u32) -> Result<u8, error::Error> {
-        self.read8(address)
-    }
-
-    pub fn read_32(&mut self, address: u32, data: &mut [u32]) -> Result<(), error::Error> {
-        self.read_block32(address, data)
-    }
-
-    pub fn read_8(&mut self, address: u32, data: &mut [u8]) -> Result<(), error::Error> {
-        self.read_block8(address, data)
-    }
-
-    pub fn write_word_32(&mut self, addr: u32, data: u32) -> Result<(), error::Error> {
-        self.write32(addr, data)
-    }
-
-    pub fn write_word_8(&mut self, addr: u32, data: u8) -> Result<(), error::Error> {
-        self.write8(addr, data)
-    }
-
-    pub fn write_32(&mut self, addr: u32, data: &[u32]) -> Result<(), error::Error> {
-        self.write_block32(addr, data)
-    }
-
-    pub fn write_8(&mut self, addr: u32, data: &[u8]) -> Result<(), error::Error> {
-        self.write_block8(addr, data)
     }
 
     /// Set a hardware breakpoint

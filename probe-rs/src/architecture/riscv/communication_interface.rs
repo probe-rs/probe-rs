@@ -600,55 +600,56 @@ impl<'a> RiscvCommunicationInterface<'a> {
 }
 
 impl<'a> MemoryInterface for RiscvCommunicationInterface<'a> {
-    fn read32(&mut self, address: u32) -> Result<u32, crate::Error> {
+    fn read_word_32(&mut self, address: u32) -> Result<u32, crate::Error> {
         let result = self.perform_memory_read(address, RiscvBusAccess::A32)?;
 
         Ok(result)
     }
 
-    fn read8(&mut self, address: u32) -> Result<u8, crate::Error> {
+    fn read_word_8(&mut self, address: u32) -> Result<u8, crate::Error> {
         let value = self.perform_memory_read(address, RiscvBusAccess::A8)?;
 
         Ok((value & 0xff) as u8)
     }
 
-    fn read_block32(&mut self, address: u32, data: &mut [u32]) -> Result<(), crate::Error> {
+    fn read_32(&mut self, address: u32, data: &mut [u32]) -> Result<(), crate::Error> {
         for (offset, word) in data.iter_mut().enumerate() {
-            *word = self.read32(address + ((offset * 4) as u32))?;
+            *word = self.read_word_32(address + ((offset * 4) as u32))?;
         }
 
         Ok(())
     }
 
-    fn read_block8(&mut self, address: u32, data: &mut [u8]) -> Result<(), crate::Error> {
+    fn read_8(&mut self, address: u32, data: &mut [u8]) -> Result<(), crate::Error> {
         for (offset, byte) in data.iter_mut().enumerate() {
-            *byte = self.read8(address + (offset as u32))?;
+            *byte = self.read_word_8(address + (offset as u32))?;
         }
 
         Ok(())
     }
 
-    fn write32(&mut self, address: u32, data: u32) -> Result<(), crate::Error> {
+    fn write_word_32(&mut self, address: u32, data: u32) -> Result<(), crate::Error> {
         self.perform_memory_write(address, RiscvBusAccess::A32, data)?;
 
         Ok(())
     }
 
-    fn write8(&mut self, address: u32, data: u8) -> Result<(), crate::Error> {
+    fn write_word_8(&mut self, address: u32, data: u8) -> Result<(), crate::Error> {
         self.perform_memory_write(address, RiscvBusAccess::A8, data as u32)?;
 
         Ok(())
     }
-    fn write_block32(&mut self, address: u32, data: &[u32]) -> Result<(), crate::Error> {
+
+    fn write_32(&mut self, address: u32, data: &[u32]) -> Result<(), crate::Error> {
         for (offset, word) in data.iter().enumerate() {
-            self.write32(address + ((offset * 4) as u32), *word)?;
+            self.write_word_32(address + ((offset * 4) as u32), *word)?;
         }
 
         Ok(())
     }
-    fn write_block8(&mut self, address: u32, data: &[u8]) -> Result<(), crate::Error> {
+    fn write_8(&mut self, address: u32, data: &[u8]) -> Result<(), crate::Error> {
         for (offset, byte) in data.iter().enumerate() {
-            self.write8(address + (offset as u32), *byte)?;
+            self.write_word_8(address + (offset as u32), *byte)?;
         }
 
         Ok(())

@@ -154,7 +154,7 @@ fn dump_memory(shared_options: &SharedOptions, loc: u32, words: u32) -> Result<(
 
         let mut core = session.attach_to_core(0)?;
 
-        core.read_block32(loc, &mut data.as_mut_slice())?;
+        core.read_32(loc, &mut data.as_mut_slice())?;
         // Stop timer.
         let elapsed = instant.elapsed();
 
@@ -212,7 +212,7 @@ fn trace_u32_on_target(shared_options: &SharedOptions, loc: u32) -> Result<(), C
             let instant = elapsed.as_secs() * 1000 + u64::from(elapsed.subsec_millis());
 
             // Read data.
-            let value: u32 = core.read32(loc)?;
+            let value: u32 = core.read_word_32(loc)?;
 
             xs.push(instant);
             ys.push(value);

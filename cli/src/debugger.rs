@@ -39,7 +39,7 @@ impl DebugCli {
 
                 let mut code = [0u8; 16 * 2];
 
-                cli_data.core.read_block8(cpu_info.pc, &mut code)?;
+                cli_data.core.read_8(cpu_info.pc, &mut code)?;
 
                 /*
                 let instructions = cli_data
@@ -118,7 +118,7 @@ impl DebugCli {
 
                 let mut buff = vec![0u32; num_words];
 
-                cli_data.core.read_block32(address, &mut buff)?;
+                cli_data.core.read_32(address, &mut buff)?;
 
                 for (offset, word) in buff.iter().enumerate() {
                     println!("0x{:08x} = 0x{:08x}", address + (offset * 4) as u32, word);
@@ -139,7 +139,7 @@ impl DebugCli {
                 let data_str = args.get(1).ok_or(CliError::MissingArgument)?;
                 let data = u32::from_str_radix(data_str, 16).unwrap();
 
-                cli_data.core.write32(address, data)?;
+                cli_data.core.write_word_32(address, data)?;
 
                 Ok(CliState::Continue)
             },
@@ -230,7 +230,7 @@ impl DebugCli {
 
                 let mut stack = vec![0u8; (stack_top - stack_bot) as usize];
 
-                cli_data.core.read_block8(stack_bot, &mut stack[..])?;
+                cli_data.core.read_8(stack_bot, &mut stack[..])?;
 
                 let mut dump = CortexDump::new(stack_bot, stack);
 

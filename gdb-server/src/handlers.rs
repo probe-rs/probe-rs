@@ -66,7 +66,7 @@ pub(crate) fn read_memory(packet_string: String, core: &mut Core) -> Option<Stri
     let m = packet_string.parse::<M>().unwrap();
 
     let mut readback_data = vec![0u8; usize::from_str_radix(&m.length, 16).unwrap()];
-    match core.read_block8(
+    match core.read_8(
         u32::from_str_radix(&m.addr, 16).unwrap(),
         &mut readback_data,
     ) {
@@ -159,7 +159,7 @@ pub(crate) fn write_memory(packet_string: String, data: &[u8], core: &mut Core) 
     let length = usize::from_str_radix(&x.length, 16).unwrap();
     let data = &data[data.len() - length..];
 
-    core.write_block8(u32::from_str_radix(&x.addr, 16).unwrap(), data)
+    core.write_8(u32::from_str_radix(&x.addr, 16).unwrap(), data)
         .unwrap();
 
     Some("OK".into())

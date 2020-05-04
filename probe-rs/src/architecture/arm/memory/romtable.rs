@@ -73,7 +73,7 @@ impl<'r, 'a, 'c> Iterator for RomTableIterator<'r, 'a, 'c> {
         if let Err(e) = self
             .rom_table_reader
             .memory
-            .read_block32(component_address as u32, &mut entry_data)
+            .read_32(component_address as u32, &mut entry_data)
         {
             return Some(Err(RomTableError::Memory(e)));
         }
@@ -229,7 +229,7 @@ impl<'a: 'b, 'b> ComponentInformationReader<'a, 'b> {
         let mut cidr = [0u32; 4];
 
         self.memory
-            .read_block32(self.base_address as u32 + 0xFF0, &mut cidr)
+            .read_32(self.base_address as u32 + 0xFF0, &mut cidr)
             .map_err(RomTableError::Memory)?;
 
         log::debug!("CIDR: {:x?}", cidr);
@@ -269,10 +269,10 @@ impl<'a: 'b, 'b> ComponentInformationReader<'a, 'b> {
         );
 
         self.memory
-            .read_block32(self.base_address as u32 + 0xFD0, &mut data[4..])
+            .read_32(self.base_address as u32 + 0xFD0, &mut data[4..])
             .map_err(RomTableError::Memory)?;
         self.memory
-            .read_block32(self.base_address as u32 + 0xFE0, &mut data[..4])
+            .read_32(self.base_address as u32 + 0xFE0, &mut data[..4])
             .map_err(RomTableError::Memory)?;
 
         log::debug!("Raw peripheral id: {:x?}", data);

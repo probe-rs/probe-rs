@@ -538,29 +538,29 @@ impl<'a> CoreInterface<'a> for Riscv32<'a> {
 }
 
 impl<'a> MemoryInterface for Riscv32<'a> {
-    fn read32(&mut self, address: u32) -> Result<u32, Error> {
-        self.interface.read32(address)
+    fn read_word_32(&mut self, address: u32) -> Result<u32, Error> {
+        self.interface.read_word_32(address)
     }
-    fn read8(&mut self, address: u32) -> Result<u8, Error> {
-        self.interface.read8(address)
+    fn read_word_8(&mut self, address: u32) -> Result<u8, Error> {
+        self.interface.read_word_8(address)
     }
-    fn read_block32(&mut self, address: u32, data: &mut [u32]) -> Result<(), Error> {
-        self.interface.read_block32(address, data)
+    fn read_32(&mut self, address: u32, data: &mut [u32]) -> Result<(), Error> {
+        self.interface.read_32(address, data)
     }
-    fn read_block8(&mut self, address: u32, data: &mut [u8]) -> Result<(), Error> {
-        self.interface.read_block8(address, data)
+    fn read_8(&mut self, address: u32, data: &mut [u8]) -> Result<(), Error> {
+        self.interface.read_8(address, data)
     }
-    fn write32(&mut self, address: u32, data: u32) -> Result<(), Error> {
-        self.interface.write32(address, data)
+    fn write_word_32(&mut self, address: u32, data: u32) -> Result<(), Error> {
+        self.interface.write_word_32(address, data)
     }
-    fn write8(&mut self, address: u32, data: u8) -> Result<(), Error> {
-        self.interface.write8(address, data)
+    fn write_word_8(&mut self, address: u32, data: u8) -> Result<(), Error> {
+        self.interface.write_word_8(address, data)
     }
-    fn write_block32(&mut self, address: u32, data: &[u32]) -> Result<(), Error> {
-        self.interface.write_block32(address, data)
+    fn write_32(&mut self, address: u32, data: &[u32]) -> Result<(), Error> {
+        self.interface.write_32(address, data)
     }
-    fn write_block8(&mut self, address: u32, data: &[u8]) -> Result<(), Error> {
-        self.interface.write_block8(address, data)
+    fn write_8(&mut self, address: u32, data: &[u8]) -> Result<(), Error> {
+        self.interface.write_8(address, data)
     }
 }
 

@@ -116,11 +116,11 @@ impl<'s> Flasher<'s> {
             algo.load_address
         );
 
-        core.write_block32(algo.load_address, algo.instructions.as_slice())
+        core.write_32(algo.load_address, algo.instructions.as_slice())
             .map_err(FlashError::Memory)?;
 
         let mut data = vec![0; algo.instructions.len()];
-        core.read_block32(algo.load_address, &mut data)
+        core.read_32(algo.load_address, &mut data)
             .map_err(FlashError::Memory)?;
 
         for (offset, (original, read_back)) in algo.instructions.iter().zip(data.iter()).enumerate()
@@ -661,7 +661,7 @@ impl<'p, O: Operation> ActiveFlasher<'p, O> {
         'p: 'a,
     {
         self.core
-            .read_block8(address, data)
+            .read_8(address, data)
             .map_err(FlashError::Memory)?;
         Ok(())
     }
@@ -744,7 +744,7 @@ impl<'p> ActiveFlasher<'p, Program> {
 
         // Transfer the bytes to RAM.
         self.core
-            .write_block8(self.flash_algorithm.begin_data, bytes)
+            .write_8(self.flash_algorithm.begin_data, bytes)
             .map_err(FlashError::Memory)?;
 
         let result = self.call_function_and_wait(
@@ -820,7 +820,7 @@ impl<'p> ActiveFlasher<'p, Program> {
         // Transfer the buffer bytes to RAM.
         flasher
             .core
-            .write_block8(algo.page_buffers[buffer_number as usize], bytes)
+            .write_8(algo.page_buffers[buffer_number as usize], bytes)
             .map_err(FlashError::Memory)?;
 
         Ok(())
