@@ -300,8 +300,7 @@ fn main_try() -> Result<(), failure::Error> {
 
     log::info!("Protocol speed {} kHz", protocol_speed);
 
-    let session = probe.attach(chip)?;
-    let core = session.attach_to_core(0)?;
+    let mut session = probe.attach(chip)?;
 
     // Start timer.
     let instant = Instant::now();
@@ -421,7 +420,7 @@ fn main_try() -> Result<(), failure::Error> {
             });
 
             download_file_with_options(
-                &session,
+                &mut session,
                 path.as_path(),
                 Format::Elf,
                 DownloadOptions {
@@ -435,7 +434,7 @@ fn main_try() -> Result<(), failure::Error> {
             let _ = progress_thread_handle.join();
         } else {
             download_file_with_options(
-                &session,
+                &mut session,
                 path.as_path(),
                 Format::Elf,
                 DownloadOptions {
@@ -455,10 +454,13 @@ fn main_try() -> Result<(), failure::Error> {
         ));
     }
 
-    if opt.reset_halt {
-        core.reset_and_halt()?;
-    } else {
-        core.reset()?;
+    {
+        let mut core = session.core(0)?;
+        if opt.reset_halt {
+            core.reset_and_halt()?;
+        } else {
+            core.reset()?;
+        }
     }
 
     if opt.gdb {
