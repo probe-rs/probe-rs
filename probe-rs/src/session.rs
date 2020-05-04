@@ -89,7 +89,6 @@ impl Session {
                     ArchitectureState::Riscv(riscv_interface),
                 )
             }
-            _ => unimplemented!(),
         };
 
         Ok(Self {

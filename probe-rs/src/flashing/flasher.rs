@@ -505,10 +505,6 @@ impl<'p, O: Operation> ActiveFlasher<'p, O> {
         Ok(())
     }
 
-    pub(super) fn flash_algorithm(&self) -> &FlashAlgorithm {
-        &self.flash_algorithm
-    }
-
     // pub(super) fn session_mut(&mut self) -> &mut Session {
     //     &mut self.session
     // }
@@ -703,11 +699,9 @@ impl<'p> ActiveFlasher<'p, Erase> {
     {
         log::info!("Erasing sector at address 0x{:08x}", address);
         let t1 = std::time::Instant::now();
-        let flasher = self;
-        let algo = &flasher.flash_algorithm;
 
-        let result = flasher.call_function_and_wait(
-            algo.pc_erase_sector,
+        let result = self.call_function_and_wait(
+            self.flash_algorithm.pc_erase_sector,
             Some(address),
             None,
             None,
@@ -741,8 +735,6 @@ impl<'p> ActiveFlasher<'p, Program> {
         'p: 'a,
     {
         let t1 = std::time::Instant::now();
-        let flasher = self;
-        let algo = &flasher.flash_algorithm;
 
         log::info!(
             "Flashing page at address {:#08x} with size: {}",
@@ -751,15 +743,15 @@ impl<'p> ActiveFlasher<'p, Program> {
         );
 
         // Transfer the bytes to RAM.
-        flasher
-            .core
-            .write_block8(algo.begin_data, bytes)
+        self.core
+            .write_block8(self.flash_algorithm.begin_data, bytes)
             .map_err(FlashError::Memory)?;
-        let result = flasher.call_function_and_wait(
-            algo.pc_program_page,
+
+        let result = self.call_function_and_wait(
+            self.flash_algorithm.pc_program_page,
             Some(address),
             Some(bytes.len() as u32),
-            Some(algo.begin_data),
+            Some(self.flash_algorithm.begin_data),
             None,
             false,
         )?;
@@ -783,22 +775,19 @@ impl<'p> ActiveFlasher<'p, Program> {
     where
         'p: 'a,
     {
-        let flasher = self;
-        let algo = &flasher.flash_algorithm;
-
         // Check the buffer number.
-        if buffer_number < algo.page_buffers.len() {
+        if buffer_number < self.flash_algorithm.page_buffers.len() {
             return Err(FlashError::InvalidBufferNumber {
                 n: buffer_number,
-                max: algo.page_buffers.len(),
+                max: self.flash_algorithm.page_buffers.len(),
             });
         }
 
-        flasher.call_function(
-            algo.pc_program_page,
+        self.call_function(
+            self.flash_algorithm.pc_program_page,
             Some(address),
-            Some(flasher.flash_algorithm().flash_properties.page_size),
-            Some(algo.page_buffers[buffer_number as usize]),
+            Some(self.flash_algorithm.flash_properties.page_size),
+            Some(self.flash_algorithm.page_buffers[buffer_number as usize]),
             None,
             false,
         )?;

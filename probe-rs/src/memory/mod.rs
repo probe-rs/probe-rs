@@ -1,6 +1,4 @@
 use crate::error;
-use std::cell::{Ref, RefCell, RefMut};
-use std::rc::Rc;
 
 pub trait MemoryInterface {
     /// Read a 32bit word of at `address`.

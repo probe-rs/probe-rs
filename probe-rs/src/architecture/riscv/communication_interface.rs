@@ -7,12 +7,9 @@
 use super::{register, Dmcontrol, Dmstatus};
 use crate::architecture::riscv::{Abstractcs, Command, Data0, Progbuf0, Progbuf1};
 use crate::DebugProbeError;
-use crate::{Memory, MemoryInterface, Probe};
+use crate::{MemoryInterface, Probe};
 
 use crate::{CoreRegisterAddress, Error as ProbeRsError};
-
-use std::cell::RefCell;
-use std::rc::Rc;
 
 use std::{
     convert::TryInto,

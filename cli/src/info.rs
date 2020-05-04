@@ -7,7 +7,7 @@ use probe_rs::{
     architecture::arm::{
         ap::{valid_access_ports, APAccess, APClass, BaseaddrFormat, MemoryAP, BASE, BASE2, IDR},
         memory::{ADIMemoryInterface, CSComponent},
-        ArmCommunicationInterface, ArmCommunicationInterfaceState,
+        ArmCommunicationInterface,
     },
     Memory,
 };

@@ -2,7 +2,6 @@ pub(crate) mod communication_interface;
 
 pub use communication_interface::CommunicationInterface;
 
-use crate::config::TargetSelector;
 use crate::error;
 use crate::{
     architecture::{
@@ -11,8 +10,7 @@ use crate::{
     },
     Error, MemoryInterface,
 };
-use crate::{DebugProbeError, Memory, Probe};
-use std::{cell::RefCell, rc::Rc};
+use crate::{DebugProbeError, Memory};
 
 pub trait CoreRegister: Clone + From<u32> + Into<u32> + Sized + std::fmt::Debug {
     const ADDRESS: u32;
@@ -190,35 +188,35 @@ pub trait CoreInterface<'a>: MemoryInterface {
 
 impl<'a> MemoryInterface for Core<'a> {
     fn read32(&mut self, address: u32) -> Result<u32, Error> {
-        self.read32(address)
+        self.read_word_32(address)
     }
 
     fn read8(&mut self, address: u32) -> Result<u8, Error> {
-        self.read8(address)
+        self.read_word_8(address)
     }
 
     fn read_block32(&mut self, address: u32, data: &mut [u32]) -> Result<(), Error> {
-        self.read_block32(address, data)
+        self.read_32(address, data)
     }
 
     fn read_block8(&mut self, address: u32, data: &mut [u8]) -> Result<(), Error> {
-        self.read_block8(address, data)
+        self.read_8(address, data)
     }
 
     fn write32(&mut self, addr: u32, data: u32) -> Result<(), Error> {
-        self.write32(addr, data)
+        self.write_word_32(addr, data)
     }
 
     fn write8(&mut self, addr: u32, data: u8) -> Result<(), Error> {
-        self.write8(addr, data)
+        self.write_word_8(addr, data)
     }
 
     fn write_block32(&mut self, addr: u32, data: &[u32]) -> Result<(), Error> {
-        self.write_block32(addr, data)
+        self.write_32(addr, data)
     }
 
     fn write_block8(&mut self, addr: u32, data: &[u8]) -> Result<(), Error> {
-        self.write_block8(addr, data)
+        self.write_8(addr, data)
     }
 }
 

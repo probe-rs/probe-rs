@@ -3,7 +3,7 @@ use super::super::ap::{
     MemoryAP, CSW, DRW, TAR,
 };
 use crate::architecture::arm::{dp::DPAccess, ArmCommunicationInterface};
-use crate::{CommunicationInterface, Core, Error, MemoryInterface};
+use crate::{CommunicationInterface, Error, MemoryInterface};
 use scroll::{Pread, Pwrite, LE};
 use std::convert::TryInto;
 use std::ops::Range;
