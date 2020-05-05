@@ -354,21 +354,6 @@ impl<'probe> Core<'probe> {
         CoreState::new()
     }
 
-    // TODO: N
-    // pub fn auto_attach(target: impl Into<TargetSelector>) -> Result<Core<'probe>, error::Error> {
-    //     // Get a list of all available debug probes.
-    //     let probes = Probe::list_all();
-
-    //     // Use the first probe found.
-    //     let probe = probes[0].open()?;
-
-    //     // Attach to a chip.
-    //     let session = probe.attach(target)?;
-
-    //     // Select a core.
-    //     session.attach_to_core(0)
-    // }
-
     /// Wait until the core is halted. If the core does not halt on its own,
     /// a [`DebugProbeError::Timeout`] error will be returned.
     ///

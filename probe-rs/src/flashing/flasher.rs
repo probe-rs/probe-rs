@@ -91,7 +91,7 @@ impl<'session> Flasher<'session> {
         }
 
         // Attach to memory and core.
-        let mut core = self.session.attach_to_core(0).map_err(FlashError::Memory)?;
+        let mut core = self.session.core(0).map_err(FlashError::Memory)?;
 
         // TODO: Halt & reset target.
         log::debug!("Halting core.");

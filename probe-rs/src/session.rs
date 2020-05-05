@@ -133,6 +133,21 @@ impl Session {
         })
     }
 
+    /// Automatically creates a session from a single attached probe.
+    ///
+    /// This will fail to attach if there is not exactly one probe discovered.
+    pub fn auto(target: impl Into<TargetSelector>) -> Result<Session, Error> {
+        // Get a list of all available debug probes.
+        let probes = Probe::list_all();
+
+        // Use the first probe found.
+        let probe = probes[0].open()?;
+
+        // Attach to a chip.
+        probe.attach(target)
+    }
+
+    /// Lists the available cores with their number and their type.
     pub fn list_cores(&self) -> Vec<(usize, CoreType)> {
         self.cores
             .iter()
@@ -141,7 +156,8 @@ impl Session {
             .collect()
     }
 
-    pub fn attach_to_core(&mut self, n: usize) -> Result<Core<'_>, Error> {
+    /// Attaches to the core with the given number.
+    pub fn core(&mut self, n: usize) -> Result<Core<'_>, Error> {
         let (core, core_state) = self
             .cores
             .get_mut(n)
@@ -151,11 +167,13 @@ impl Session {
             .attach(&mut self.probe, core, core_state)
     }
 
-    pub fn flash_algorithms(&self) -> &[RawFlashAlgorithm] {
+    /// Returns a list of the flash algotithms on the target.
+    pub(crate) fn flash_algorithms(&self) -> &[RawFlashAlgorithm] {
         &self.target.flash_algorithms
     }
 
-    pub fn memory_map(&self) -> &[MemoryRegion] {
+    /// Returns the memory map of the target.
+    pub(crate) fn memory_map(&self) -> &[MemoryRegion] {
         &self.target.memory_map
     }
 }

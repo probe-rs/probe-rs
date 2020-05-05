@@ -20,7 +20,7 @@ pub async fn worker(
     session: Arc<Mutex<Session>>,
 ) -> ServerResult<()> {
     let mut session = session.lock().unwrap();
-    let mut core = session.attach_to_core(0).unwrap();
+    let mut core = session.core(0).unwrap();
     let mut awaits_halt = false;
 
     loop {

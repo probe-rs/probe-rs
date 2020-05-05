@@ -39,9 +39,7 @@ fn main() -> Result<(), &'static str> {
     let mut session = probe
         .attach(target_selector)
         .map_err(|_| "Failed to attach probe to target")?;
-    let mut core = session
-        .attach_to_core(0)
-        .map_err(|_| "Failed to attach to core")?;
+    let mut core = session.core(0).map_err(|_| "Failed to attach to core")?;
 
     let data_size_words = matches.size;
 

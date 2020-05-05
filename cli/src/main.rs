@@ -152,7 +152,7 @@ fn dump_memory(shared_options: &SharedOptions, loc: u32, words: u32) -> Result<(
 
         // let loc = 220 * 1024;
 
-        let mut core = session.attach_to_core(0)?;
+        let mut core = session.core(0)?;
 
         core.read_32(loc, &mut data.as_mut_slice())?;
         // Stop timer.
@@ -186,7 +186,7 @@ fn reset_target_of_device(
     _assert: Option<bool>,
 ) -> Result<(), CliError> {
     with_device(shared_options, |mut session| {
-        session.attach_to_core(0)?.reset()?;
+        session.core(0)?.reset()?;
 
         Ok(())
     })
@@ -204,7 +204,7 @@ fn trace_u32_on_target(shared_options: &SharedOptions, loc: u32) -> Result<(), C
     let start = Instant::now();
 
     with_device(shared_options, |mut session| {
-        let mut core = session.attach_to_core(0)?;
+        let mut core = session.core(0)?;
 
         loop {
             // Prepare read.
@@ -252,7 +252,7 @@ fn debug(shared_options: &SharedOptions, exe: Option<PathBuf>) -> Result<(), Cli
 
         let cli = debugger::DebugCli::new();
 
-        let core = session.attach_to_core(0)?;
+        let core = session.core(0)?;
 
         let mut cli_data = debugger::CliData {
             core,
