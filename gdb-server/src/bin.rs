@@ -1,10 +1,5 @@
-use structopt;
-
 use colored::*;
-use std::{
-    process::{self},
-    sync::{Arc, Mutex},
-};
+use std::process::{self};
 use structopt::StructOpt;
 
 use probe_rs::{config::TargetSelector, Probe};
@@ -86,7 +81,7 @@ fn main_try() -> Result<(), failure::Error> {
         "Firing up GDB stub at {}",
         gdb_connection_string.as_ref().unwrap()
     );
-    if let Err(e) = probe_rs_gdb_server::run(gdb_connection_string, Arc::new(Mutex::new(session))) {
+    if let Err(e) = probe_rs_gdb_server::run(gdb_connection_string, session) {
         eprintln!("During the execution of GDB an error was encountered:");
         eprintln!("{:?}", e);
     }
