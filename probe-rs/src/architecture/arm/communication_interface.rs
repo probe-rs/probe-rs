@@ -128,19 +128,14 @@ pub struct ArmCommunicationInterfaceState {
 }
 
 impl ArmCommunicationInterfaceState {
-    fn new(probe: &mut Probe) -> Result<Self, DebugProbeError> {
-        // Check the version of debug port used
-        let debug_port_version = get_debug_port_version(probe)?;
-
-        log::debug!("Debug Port version: {:?}", debug_port_version);
-
-        Ok(Self {
+    pub fn new() -> Self {
+        Self {
             initialized: false,
-            debug_port_version,
+            debug_port_version: DebugPortVersion::Unsupported(0xFF),
             current_dpbanksel: 0,
             current_apsel: 0,
             current_apbanksel: 0,
-        })
+        }
     }
 
     pub(crate) fn initialize(&mut self) {
@@ -189,13 +184,11 @@ impl<'probe> ArmCommunicationInterface<'probe> {
         }
     }
 
-    pub fn create_state(
-        probe: &mut Probe,
-    ) -> Result<ArmCommunicationInterfaceState, DebugProbeError> {
-        ArmCommunicationInterfaceState::new(probe)
-    }
-
-    pub fn borrow(&mut self) -> ArmCommunicationInterface<'_> {
+    /// Reborrows the `ArmCommunicationInterface` at hand.
+    /// This borrows the references inside the interface and hands them out with a new interface.
+    /// This method replaces the normally called `::clone()` method which consumes the object,
+    /// which is not what we want.
+    pub fn reborrow(&mut self) -> ArmCommunicationInterface<'_> {
         ArmCommunicationInterface::new(self.probe, self.state)
             .unwrap()
             .unwrap()
@@ -208,6 +201,11 @@ impl<'probe> ArmCommunicationInterface<'probe> {
     fn enter_debug_mode(&mut self) -> Result<(), DebugProbeError> {
         // Assume that we have DebugPort v1 Interface!
         // Maybe change this in the future when other versions are released.
+
+        // Check the version of debug port used
+        let debug_port_version = get_debug_port_version(&mut self.probe)?;
+        self.state.debug_port_version = debug_port_version;
+        log::debug!("Debug Port version: {:?}", debug_port_version);
 
         // Read the DP ID.
         let dp_id: DPIDR = self.read_dp_register()?;
@@ -418,7 +416,7 @@ impl<'probe> ArmCommunicationInterface<'probe> {
 
 impl<'probe> CommunicationInterface for ArmCommunicationInterface<'probe> {
     fn probe_for_chip_info(mut self) -> Result<Option<ChipInfo>, ProbeRsError> {
-        ArmChipInfo::read_from_rom_table(self.borrow()).map(|option| option.map(ChipInfo::Arm))
+        ArmChipInfo::read_from_rom_table(&mut self).map(|option| option.map(ChipInfo::Arm))
     }
 }
 
@@ -540,9 +538,9 @@ pub struct ArmChipInfo {
 
 impl ArmChipInfo {
     pub fn read_from_rom_table(
-        mut interface: ArmCommunicationInterface,
+        interface: &mut ArmCommunicationInterface,
     ) -> Result<Option<Self>, ProbeRsError> {
-        for access_port in valid_access_ports(&mut interface.borrow()) {
+        for access_port in valid_access_ports(interface) {
             let idr = interface
                 .read_ap_register(access_port, IDR::default())
                 .map_err(ProbeRsError::Probe)?;
@@ -567,7 +565,7 @@ impl ArmChipInfo {
 
                 let mut memory = Memory::new(
                     ADIMemoryInterface::<ArmCommunicationInterface>::new(
-                        interface.borrow(),
+                        interface.reborrow(),
                         access_port,
                     )
                     .map_err(ProbeRsError::architecture_specific)?,

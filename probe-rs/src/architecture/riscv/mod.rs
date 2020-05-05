@@ -110,7 +110,7 @@ impl<'probe> Riscv32<'probe> {
     }
 }
 
-impl<'probe> CoreInterface<'probe> for Riscv32<'probe> {
+impl<'probe> CoreInterface for Riscv32<'probe> {
     fn wait_for_core_halted(&mut self) -> Result<(), crate::Error> {
         // poll the
         let num_retries = 10;
@@ -499,8 +499,9 @@ impl<'probe> CoreInterface<'probe> for Riscv32<'probe> {
     }
 
     fn architecture(&self) -> Architecture {
-        Architecture::RISCV
+        Architecture::Riscv
     }
+
     fn status(&mut self) -> Result<crate::core::CoreStatus, crate::Error> {
         // TODO: We should use hartsum to determine if any hart is halted
         //       quickly

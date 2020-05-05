@@ -7,7 +7,7 @@ use probe_rs::{
     architecture::arm::{
         ap::{valid_access_ports, APAccess, APClass, BaseaddrFormat, MemoryAP, BASE, BASE2, IDR},
         memory::{ADIMemoryInterface, CSComponent},
-        ArmCommunicationInterface,
+        ArmCommunicationInterface, ArmCommunicationInterfaceState,
     },
     Memory,
 };
@@ -38,7 +38,7 @@ pub(crate) fn show_info_of_device(shared_options: &SharedOptions) -> Result<(), 
 
     */
 
-    let mut state = ArmCommunicationInterface::create_state(&mut probe)?;
+    let mut state = ArmCommunicationInterfaceState::new();
     let interface = ArmCommunicationInterface::new(&mut probe, &mut state)?;
 
     if let Some(mut interface) = interface {
@@ -68,7 +68,7 @@ pub(crate) fn show_info_of_device(shared_options: &SharedOptions) -> Result<(), 
                 baseaddr |= u64::from(base_register.BASEADDR << 12);
 
                 let mut memory = Memory::new(ADIMemoryInterface::<ArmCommunicationInterface>::new(
-                    interface.borrow(),
+                    interface.reborrow(),
                     access_port,
                 )?);
                 let component_table = CSComponent::try_parse(&mut memory, baseaddr as u64);

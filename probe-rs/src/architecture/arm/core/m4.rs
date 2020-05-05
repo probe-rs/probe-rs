@@ -381,7 +381,7 @@ impl<'probe> M4<'probe> {
     }
 }
 
-impl<'probe> CoreInterface<'probe> for M4<'probe> {
+impl<'probe> CoreInterface for M4<'probe> {
     fn wait_for_core_halted(&mut self) -> Result<(), Error> {
         // Wait until halted state is active again.
         for _ in 0..100 {
@@ -670,7 +670,7 @@ impl<'probe> CoreInterface<'probe> for M4<'probe> {
     }
 
     fn architecture(&self) -> Architecture {
-        Architecture::ARM
+        Architecture::Arm
     }
 }
 

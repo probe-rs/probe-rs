@@ -13,12 +13,42 @@ use crate::{Core, CoreType, DebugProbeError, Error, Probe};
 pub struct Session {
     target: Target,
     probe: Probe,
-    cores: Vec<(CoreType, CoreState, ArchitectureState)>,
+    interface_state: ArchitectureInterfaceState,
+    cores: Vec<(CoreType, CoreState)>,
 }
 
-pub enum ArchitectureState {
+pub enum ArchitectureInterfaceState {
     Arm(ArmCommunicationInterfaceState),
     Riscv(RiscvCommunicationInterfaceState),
+}
+
+impl From<ArchitectureInterfaceState> for Architecture {
+    fn from(value: ArchitectureInterfaceState) -> Self {
+        match value {
+            ArchitectureInterfaceState::Arm(_) => Architecture::Arm,
+            ArchitectureInterfaceState::Riscv(_) => Architecture::Riscv,
+        }
+    }
+}
+
+impl ArchitectureInterfaceState {
+    pub fn attach<'probe>(
+        &'probe mut self,
+        probe: &'probe mut Probe,
+        core: &CoreType,
+        core_state: &'probe mut CoreState,
+    ) -> Result<Core<'probe>, Error> {
+        match self {
+            ArchitectureInterfaceState::Arm(state) => core.attach_arm(
+                core_state,
+                ArmCommunicationInterface::new(probe, state)?.unwrap(),
+            ),
+            ArchitectureInterfaceState::Riscv(state) => core.attach_riscv(
+                core_state,
+                RiscvCommunicationInterface::new(probe, state)?.unwrap(),
+            ),
+        }
+    }
 }
 
 impl Session {
@@ -35,10 +65,10 @@ impl Session {
             TargetSelector::Auto => {
                 let mut found_chip = None;
 
-                let state = &mut ArmCommunicationInterface::create_state(&mut probe)?;
-                let interface = ArmCommunicationInterface::new(&mut probe, state)?;
-                if let Some(interface) = interface {
-                    let chip_result = try_arm_autodetect(interface);
+                let mut state = ArmCommunicationInterfaceState::new();
+                let interface = ArmCommunicationInterface::new(&mut probe, &mut state)?;
+                if let Some(mut interface) = interface {
+                    let chip_result = try_arm_autodetect(&mut interface);
 
                     // Ignore errors during autodetect
                     found_chip = chip_result.unwrap_or_else(|e| {
@@ -50,8 +80,8 @@ impl Session {
                 }
 
                 if found_chip.is_none() && probe.has_jtag_interface() {
-                    let state = &mut RiscvCommunicationInterface::create_state(&mut probe)?;
-                    let interface = RiscvCommunicationInterface::new(&mut probe, state)?;
+                    let mut state = RiscvCommunicationInterfaceState::new();
+                    let interface = RiscvCommunicationInterface::new(&mut probe, &mut state)?;
 
                     if let Some(mut interface) = interface {
                         let idcode = interface.read_idcode();
@@ -72,21 +102,19 @@ impl Session {
             }
         };
 
-        let core = match target.architecture() {
-            Architecture::ARM => {
-                let arm_interface = ArmCommunicationInterface::create_state(&mut probe)?;
+        let data = match target.architecture() {
+            Architecture::Arm => {
+                let mut state = ArmCommunicationInterfaceState::new();
                 (
-                    target.core_type,
-                    Core::create_state(),
-                    ArchitectureState::Arm(arm_interface),
+                    (target.core_type, Core::create_state()),
+                    ArchitectureInterfaceState::Arm(state),
                 )
             }
-            Architecture::RISCV => {
-                let riscv_interface = RiscvCommunicationInterface::create_state(&mut probe)?;
+            Architecture::Riscv => {
+                let mut state = RiscvCommunicationInterfaceState::new();
                 (
-                    target.core_type,
-                    Core::create_state(),
-                    ArchitectureState::Riscv(riscv_interface),
+                    (target.core_type, Core::create_state()),
+                    ArchitectureInterfaceState::Riscv(state),
                 )
             }
         };
@@ -94,48 +122,41 @@ impl Session {
         Ok(Self {
             target,
             probe,
-            cores: vec![core],
+            interface_state: data.1,
+            cores: vec![data.0],
         })
     }
 
-    pub fn list_cores(&self) -> &Vec<(CoreType, CoreState, ArchitectureState)> {
+    pub fn list_cores(&self) -> &Vec<(CoreType, CoreState)> {
         &self.cores
     }
 
-    pub fn list_cores_mut(&mut self) -> &mut Vec<(CoreType, CoreState, ArchitectureState)> {
+    pub fn list_cores_mut(&mut self) -> &mut Vec<(CoreType, CoreState)> {
         &mut self.cores
     }
 
     pub fn attach_to_core(&mut self, n: usize) -> Result<Core<'_>, Error> {
-        let (core, core_state, architecture_state) = self
+        let (core, core_state) = self
             .cores
             .get_mut(n)
             .ok_or_else(|| Error::CoreNotFound(n))?;
 
-        match architecture_state {
-            ArchitectureState::Arm(architecture_state) => core.attach_arm(
-                core_state,
-                ArmCommunicationInterface::new(&mut self.probe, architecture_state)?
-                    .ok_or_else(|| DebugProbeError::InterfaceNotAvailable("DAP"))?,
-            ),
-            ArchitectureState::Riscv(architecture_state) => core.attach_riscv(
-                core_state,
-                RiscvCommunicationInterface::new(&mut self.probe, architecture_state)?
-                    .ok_or_else(|| DebugProbeError::InterfaceNotAvailable("DAP"))?,
-            ),
-        }
+        self.interface_state
+            .attach(&mut self.probe, core, core_state)
     }
 
-    pub fn flash_algorithms(&self) -> &Vec<RawFlashAlgorithm> {
+    pub fn flash_algorithms(&self) -> &[RawFlashAlgorithm] {
         &self.target.flash_algorithms
     }
 
-    pub fn memory_map(&self) -> &Vec<MemoryRegion> {
+    pub fn memory_map(&self) -> &[MemoryRegion] {
         &self.target.memory_map
     }
 }
 
-fn try_arm_autodetect(arm_interface: ArmCommunicationInterface) -> Result<Option<ChipInfo>, Error> {
+fn try_arm_autodetect(
+    arm_interface: &mut ArmCommunicationInterface,
+) -> Result<Option<ChipInfo>, Error> {
     log::debug!("Autodetect: Trying DAP interface...");
 
     let found_chip = ArmChipInfo::read_from_rom_table(arm_interface).unwrap_or_else(|e| {

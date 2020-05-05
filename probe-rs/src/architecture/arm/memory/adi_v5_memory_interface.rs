@@ -27,7 +27,7 @@ impl<'probe> ADIMemoryInterface<ArmCommunicationInterface<'probe>> {
     pub fn new(
         interface: ArmCommunicationInterface<'probe>,
         access_port_number: impl Into<MemoryAP>,
-    ) -> Result<ADIMemoryInterface<ArmCommunicationInterface<'probe>>, AccessPortError> {
+    ) -> Result<ADIMemoryInterface<ArmCommunicationInterface>, AccessPortError> {
         let mut interface = Self {
             interface,
             access_port: access_port_number.into(),

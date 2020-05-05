@@ -102,33 +102,11 @@ pub struct RiscvCommunicationInterfaceState {
 const RISCV_TIMEOUT: Duration = Duration::from_secs(5);
 
 impl RiscvCommunicationInterfaceState {
-    fn new(probe: &mut Probe) -> Result<Self, RiscvError> {
-        // We need a jtag interface
-
-        log::debug!("Building RISCV interface");
-
-        let jtag_interface = probe
-            .get_interface_jtag_mut()?
-            .ok_or(DebugProbeError::InterfaceNotAvailable("JTAG"))?;
-
-        let dtmcs_raw = jtag_interface.read_register(DTMCS_ADDRESS, DTMCS_WIDTH)?;
-
-        let dtmcs = Dtmcs(u32::from_le_bytes((&dtmcs_raw[..]).try_into().unwrap()));
-
-        log::debug!("Dtmcs: {:?}", dtmcs);
-
-        let abits = dtmcs.abits();
-        let idle_cycles = dtmcs.idle();
-
-        // Setup the number of idle cycles between JTAG accesses
-        jtag_interface.set_idle_cycles(idle_cycles as u8);
-
-        let state = RiscvCommunicationInterfaceState {
+    pub fn new() -> Self {
+        RiscvCommunicationInterfaceState {
             initialized: false,
-            abits,
-        };
-
-        Ok(state)
+            abits: 0,
+        }
     }
 
     pub(crate) fn initialize(&mut self) {
@@ -166,14 +144,39 @@ impl<'probe> RiscvCommunicationInterface<'probe> {
         }
     }
 
-    pub fn create_state(
-        probe: &mut Probe,
-    ) -> Result<RiscvCommunicationInterfaceState, ProbeRsError> {
-        Ok(RiscvCommunicationInterfaceState::new(probe)?)
+    /// Reborrows the `RiscvCommunicationInterface` at hand.
+    /// This borrows the references inside the interface and hands them out with a new interface.
+    /// This method replaces the normally called `::clone()` method which consumes the object,
+    /// which is not what we want.
+    pub fn reborrow(&mut self) -> RiscvCommunicationInterface<'_> {
+        RiscvCommunicationInterface::new(self.probe, self.state)
+            .unwrap()
+            .unwrap()
     }
 
-    // TODO: N
     fn enter_debug_mode(&mut self) -> Result<(), RiscvError> {
+        // We need a jtag interface
+
+        log::debug!("Building RISCV interface");
+
+        let jtag_interface = self
+            .probe
+            .get_interface_jtag_mut()?
+            .ok_or(DebugProbeError::InterfaceNotAvailable("JTAG"))?;
+
+        let dtmcs_raw = jtag_interface.read_register(DTMCS_ADDRESS, DTMCS_WIDTH)?;
+
+        let dtmcs = Dtmcs(u32::from_le_bytes((&dtmcs_raw[..]).try_into().unwrap()));
+
+        log::debug!("Dtmcs: {:?}", dtmcs);
+
+        let abits = dtmcs.abits();
+        self.state.abits = abits;
+        let idle_cycles = dtmcs.idle();
+
+        // Setup the number of idle cycles between JTAG accesses
+        jtag_interface.set_idle_cycles(idle_cycles as u8);
+
         // Reset error bits from previous connections
         self.dmi_reset()?;
 

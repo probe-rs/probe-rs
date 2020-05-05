@@ -125,7 +125,7 @@ impl RegisterFile {
     }
 }
 
-pub trait CoreInterface<'probe>: MemoryInterface {
+pub trait CoreInterface: MemoryInterface {
     /// Wait until the core is halted. If the core does not halt on its own,
     /// a [`DebugProbeError::Timeout`] error will be returned.
     ///
@@ -301,15 +301,12 @@ impl CoreState {
 }
 
 pub struct Core<'probe> {
-    inner: Box<dyn CoreInterface<'probe> + 'probe>,
+    inner: Box<dyn CoreInterface + 'probe>,
     state: &'probe mut CoreState,
 }
 
 impl<'probe> Core<'probe> {
-    pub fn new(
-        core: impl CoreInterface<'probe> + 'probe,
-        state: &'probe mut CoreState,
-    ) -> Core<'probe> {
+    pub fn new(core: impl CoreInterface + 'probe, state: &'probe mut CoreState) -> Core<'probe> {
         Self {
             inner: Box::new(core),
             state,
@@ -528,8 +525,8 @@ pub struct Breakpoint {
 }
 
 pub enum Architecture {
-    ARM,
-    RISCV,
+    Arm,
+    Riscv,
 }
 
 #[derive(Debug, PartialEq, Copy, Clone)]

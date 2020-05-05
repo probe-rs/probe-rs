@@ -51,12 +51,12 @@ impl Target {
 
     pub fn architecture(&self) -> Architecture {
         match &self.core_type {
-            CoreType::M0 => Architecture::ARM,
-            CoreType::M3 => Architecture::ARM,
-            CoreType::M33 => Architecture::ARM,
-            CoreType::M4 => Architecture::ARM,
-            CoreType::Riscv => Architecture::RISCV,
-            CoreType::M7 => Architecture::ARM,
+            CoreType::M0 => Architecture::Arm,
+            CoreType::M3 => Architecture::Arm,
+            CoreType::M33 => Architecture::Arm,
+            CoreType::M4 => Architecture::Arm,
+            CoreType::M7 => Architecture::Arm,
+            CoreType::Riscv => Architecture::Riscv,
         }
     }
 }

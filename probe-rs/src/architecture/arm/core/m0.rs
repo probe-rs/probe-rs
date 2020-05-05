@@ -328,7 +328,7 @@ impl<'probe> M0<'probe> {
     }
 }
 
-impl<'probe> CoreInterface<'probe> for M0<'probe> {
+impl<'probe> CoreInterface for M0<'probe> {
     fn wait_for_core_halted(&mut self) -> Result<(), Error> {
         // Wait until halted state is active again.
         for _ in 0..100 {
@@ -542,7 +542,7 @@ impl<'probe> CoreInterface<'probe> for M0<'probe> {
     }
 
     fn architecture(&self) -> Architecture {
-        Architecture::ARM
+        Architecture::Arm
     }
     fn status(&mut self) -> Result<crate::core::CoreStatus, Error> {
         let dhcsr = Dhcsr(self.memory.read_word_32(Dhcsr::ADDRESS)?);
