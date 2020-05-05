@@ -140,7 +140,7 @@ impl std::ops::Index<std::ops::Range<usize>> for Registers {
 }
 
 impl std::ops::IndexMut<std::ops::Range<usize>> for Registers {
-    fn index_mut<'a>(&'a mut self, index: std::ops::Range<usize>) -> &'a mut Self::Output {
+    fn index_mut(&mut self, index: std::ops::Range<usize>) -> &mut Self::Output {
         &mut self.0[index]
     }
 }
@@ -154,16 +154,20 @@ pub struct SourceLocation {
     pub directory: Option<PathBuf>,
 }
 
-pub struct StackFrameIterator<'a, 'b, 'c> {
-    debug_info: &'a DebugInfo,
-    core: &'c mut Core<'b>,
+pub struct StackFrameIterator<'debuginfo, 'probe, 'core> {
+    debug_info: &'debuginfo DebugInfo,
+    core: &'core mut Core<'probe>,
     frame_count: u64,
     pc: Option<u64>,
     registers: Registers,
 }
 
-impl<'a, 'b, 'c> StackFrameIterator<'a, 'b, 'c> {
-    pub fn new(debug_info: &'a DebugInfo, core: &'c mut Core<'b>, address: u64) -> Self {
+impl<'debuginfo, 'probe, 'core> StackFrameIterator<'debuginfo, 'probe, 'core> {
+    pub fn new(
+        debug_info: &'debuginfo DebugInfo,
+        core: &'core mut Core<'probe>,
+        address: u64,
+    ) -> Self {
         let registers = Registers::from_core(core);
         let pc = address;
 
@@ -177,7 +181,7 @@ impl<'a, 'b, 'c> StackFrameIterator<'a, 'b, 'c> {
     }
 }
 
-impl<'a, 'b, 'c> Iterator for StackFrameIterator<'a, 'b, 'c> {
+impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'probe, 'core> {
     type Item = StackFrame;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -277,14 +281,17 @@ impl<'a, 'b, 'c> Iterator for StackFrameIterator<'a, 'b, 'c> {
 
 type R = gimli::EndianReader<gimli::LittleEndian, std::rc::Rc<[u8]>>;
 type DwarfReader = gimli::read::EndianRcSlice<gimli::LittleEndian>;
-type FunctionDie<'a, 'u> = gimli::DebuggingInformationEntry<
-    'a,
-    'u,
+type FunctionDie<'abbrev, 'unit> = gimli::DebuggingInformationEntry<
+    'abbrev,
+    'unit,
     gimli::EndianReader<gimli::LittleEndian, std::rc::Rc<[u8]>>,
     usize,
 >;
-type EntriesCursor<'a, 'u> =
-    gimli::EntriesCursor<'a, 'u, gimli::EndianReader<gimli::LittleEndian, std::rc::Rc<[u8]>>>;
+type EntriesCursor<'abbrev, 'unit> = gimli::EntriesCursor<
+    'abbrev,
+    'unit,
+    gimli::EndianReader<gimli::LittleEndian, std::rc::Rc<[u8]>>,
+>;
 type UnitIter =
     gimli::CompilationUnitHeadersIter<gimli::EndianReader<gimli::LittleEndian, std::rc::Rc<[u8]>>>;
 
@@ -496,11 +503,11 @@ impl DebugInfo {
         })
     }
 
-    pub fn try_unwind<'b, 'c>(
+    pub fn try_unwind<'probe, 'core>(
         &self,
-        core: &'c mut Core<'b>,
+        core: &'core mut Core<'probe>,
         address: u64,
-    ) -> StackFrameIterator<'_, 'b, 'c> {
+    ) -> StackFrameIterator<'_, 'probe, 'core> {
         StackFrameIterator::new(&self, core, address)
     }
 
@@ -645,18 +652,18 @@ impl DebugInfo {
     }
 }
 
-struct DieCursorState<'a, 'u> {
-    entries_cursor: EntriesCursor<'a, 'u>,
+struct DieCursorState<'abbrev, 'unit> {
+    entries_cursor: EntriesCursor<'abbrev, 'unit>,
     _depth: isize,
-    function_die: FunctionDie<'a, 'u>,
+    function_die: FunctionDie<'abbrev, 'unit>,
 }
 
-struct UnitInfo<'a> {
-    debug_info: &'a DebugInfo,
+struct UnitInfo<'debuginfo> {
+    debug_info: &'debuginfo DebugInfo,
     unit: gimli::Unit<gimli::EndianReader<gimli::LittleEndian, std::rc::Rc<[u8]>>, usize>,
 }
 
-impl<'a> UnitInfo<'a> {
+impl<'debuginfo> UnitInfo<'debuginfo> {
     fn get_function_die(&self, address: u64) -> Option<DieCursorState> {
         let mut entries_cursor = self.unit.entries();
 

@@ -125,7 +125,7 @@ impl RegisterFile {
     }
 }
 
-pub trait CoreInterface<'a>: MemoryInterface {
+pub trait CoreInterface<'probe>: MemoryInterface {
     /// Wait until the core is halted. If the core does not halt on its own,
     /// a [`DebugProbeError::Timeout`] error will be returned.
     ///
@@ -186,7 +186,7 @@ pub trait CoreInterface<'a>: MemoryInterface {
     fn architecture(&self) -> Architecture;
 }
 
-impl<'a> MemoryInterface for Core<'a> {
+impl<'probe> MemoryInterface for Core<'probe> {
     fn read_word_32(&mut self, address: u32) -> Result<u32, Error> {
         self.inner.read_word_32(address)
     }
@@ -231,11 +231,11 @@ pub enum CoreType {
 }
 
 impl CoreType {
-    pub fn attach_arm<'a>(
+    pub fn attach_arm<'probe>(
         &self,
-        state: &'a mut CoreState,
-        interface: ArmCommunicationInterface<'a>,
-    ) -> Result<Core<'a>, Error> {
+        state: &'probe mut CoreState,
+        interface: ArmCommunicationInterface<'probe>,
+    ) -> Result<Core<'probe>, Error> {
         let memory = Memory::new(
             ADIMemoryInterface::<ArmCommunicationInterface>::new(interface, 0)
                 .map_err(Error::architecture_specific)?,
@@ -258,11 +258,11 @@ impl CoreType {
         })
     }
 
-    pub fn attach_riscv<'a>(
+    pub fn attach_riscv<'probe>(
         &self,
-        state: &'a mut CoreState,
-        interface: RiscvCommunicationInterface<'a>,
-    ) -> Result<Core<'a>, Error> {
+        state: &'probe mut CoreState,
+        interface: RiscvCommunicationInterface<'probe>,
+    ) -> Result<Core<'probe>, Error> {
         Ok(match self {
             CoreType::Riscv => {
                 Core::new(crate::architecture::riscv::Riscv32::new(interface), state)
@@ -300,13 +300,16 @@ impl CoreState {
     }
 }
 
-pub struct Core<'a> {
-    inner: Box<dyn CoreInterface<'a> + 'a>,
-    state: &'a mut CoreState,
+pub struct Core<'probe> {
+    inner: Box<dyn CoreInterface<'probe> + 'probe>,
+    state: &'probe mut CoreState,
 }
 
-impl<'a> Core<'a> {
-    pub fn new(core: impl CoreInterface<'a> + 'a, state: &'a mut CoreState) -> Core<'a> {
+impl<'probe> Core<'probe> {
+    pub fn new(
+        core: impl CoreInterface<'probe> + 'probe,
+        state: &'probe mut CoreState,
+    ) -> Core<'probe> {
         Self {
             inner: Box::new(core),
             state,
@@ -318,7 +321,7 @@ impl<'a> Core<'a> {
     }
 
     // TODO: N
-    // pub fn auto_attach(target: impl Into<TargetSelector>) -> Result<Core<'a>, error::Error> {
+    // pub fn auto_attach(target: impl Into<TargetSelector>) -> Result<Core<'probe>, error::Error> {
     //     // Get a list of all available debug probes.
     //     let probes = Probe::list_all();
 
@@ -494,15 +497,15 @@ impl<'a> Core<'a> {
     }
 }
 
-pub struct CoreList<'a>(&'a Vec<CoreType>);
+pub struct CoreList<'probe>(&'probe Vec<CoreType>);
 
-impl<'a> CoreList<'a> {
-    pub fn new(cores: &'a Vec<CoreType>) -> Self {
+impl<'probe> CoreList<'probe> {
+    pub fn new(cores: &'probe Vec<CoreType>) -> Self {
         Self(cores)
     }
 }
 
-impl<'a> std::ops::Deref for CoreList<'a> {
+impl<'probe> std::ops::Deref for CoreList<'probe> {
     type Target = Vec<CoreType>;
     fn deref(&self) -> &Self::Target {
         &self.0

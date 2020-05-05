@@ -274,16 +274,16 @@ const XPSR: RegisterDescription = RegisterDescription {
     address: CoreRegisterAddress(0b1_0000),
 };
 
-pub struct M0<'a> {
-    memory: Memory<'a>,
+pub struct M0<'probe> {
+    memory: Memory<'probe>,
 
     hw_breakpoints_enabled: bool,
 
     current_state: CoreStatus,
 }
 
-impl<'a> M0<'a> {
-    pub fn new(mut memory: Memory<'a>) -> Result<Self, Error> {
+impl<'probe> M0<'probe> {
+    pub fn new(mut memory: Memory<'probe>) -> Result<Self, Error> {
         // determine current state
         let dhcsr = Dhcsr(memory.read_word_32(Dhcsr::ADDRESS)?);
 
@@ -328,7 +328,7 @@ impl<'a> M0<'a> {
     }
 }
 
-impl<'a> CoreInterface<'a> for M0<'a> {
+impl<'probe> CoreInterface<'probe> for M0<'probe> {
     fn wait_for_core_halted(&mut self) -> Result<(), Error> {
         // Wait until halted state is active again.
         for _ in 0..100 {
@@ -602,7 +602,7 @@ impl<'a> CoreInterface<'a> for M0<'a> {
     }
 }
 
-impl<'a> MemoryInterface for M0<'a> {
+impl<'probe> MemoryInterface for M0<'probe> {
     fn read_word_32(&mut self, address: u32) -> Result<u32, Error> {
         self.memory.read_word_32(address)
     }

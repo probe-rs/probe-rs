@@ -153,14 +153,14 @@ impl FlashLayout {
 
 /// A block of data that is to be written to flash.
 #[derive(Clone, Copy)]
-pub(super) struct FlashDataBlock<'a> {
+pub(super) struct FlashDataBlock<'data> {
     address: u32,
-    data: &'a [u8],
+    data: &'data [u8],
 }
 
-impl<'a> FlashDataBlock<'a> {
+impl<'data> FlashDataBlock<'data> {
     /// Create a new `FlashDataBlock`.
-    fn new(address: u32, data: &'a [u8]) -> Self {
+    fn new(address: u32, data: &'data [u8]) -> Self {
         Self { address, data }
     }
 
@@ -194,7 +194,7 @@ impl FlashDataBlockSpan {
     }
 }
 
-impl<'a> From<FlashDataBlock<'a>> for FlashDataBlockSpan {
+impl<'data> From<FlashDataBlock<'data>> for FlashDataBlockSpan {
     fn from(block: FlashDataBlock) -> Self {
         Self {
             address: block.address(),
@@ -203,7 +203,7 @@ impl<'a> From<FlashDataBlock<'a>> for FlashDataBlockSpan {
     }
 }
 
-impl<'a> From<&FlashDataBlock<'a>> for FlashDataBlockSpan {
+impl<'data> From<&FlashDataBlock<'data>> for FlashDataBlockSpan {
     fn from(block: &FlashDataBlock) -> Self {
         Self {
             address: block.address(),
@@ -214,11 +214,11 @@ impl<'a> From<&FlashDataBlock<'a>> for FlashDataBlockSpan {
 
 /// A helper structure to build a flash layout from a set of data blocks.
 #[derive(Default)]
-pub(super) struct FlashBuilder<'a> {
-    data_blocks: Vec<FlashDataBlock<'a>>,
+pub(super) struct FlashBuilder<'data> {
+    data_blocks: Vec<FlashDataBlock<'data>>,
 }
 
-impl<'a> FlashBuilder<'a> {
+impl<'data> FlashBuilder<'data> {
     /// Creates a new `FlashBuilder` with empty data.
     pub(super) fn new() -> Self {
         Self {
@@ -229,7 +229,7 @@ impl<'a> FlashBuilder<'a> {
     /// Add a block of data to be programmed.
     ///
     /// Programming does not start until the `program` method is called.
-    pub(super) fn add_data(&mut self, address: u32, data: &'a [u8]) -> Result<(), FlashError> {
+    pub(super) fn add_data(&mut self, address: u32, data: &'data [u8]) -> Result<(), FlashError> {
         // Add the operation to the sorted data list.
         match self
             .data_blocks

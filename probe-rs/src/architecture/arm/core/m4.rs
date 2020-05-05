@@ -327,19 +327,16 @@ impl FpRev2CompX {
 pub const MSP: CoreRegisterAddress = CoreRegisterAddress(0b000_1001);
 pub const PSP: CoreRegisterAddress = CoreRegisterAddress(0b000_1010);
 
-pub struct M4<'a> {
-    memory: Memory<'a>,
+pub struct M4<'probe> {
+    memory: Memory<'probe>,
 
     hw_breakpoints_enabled: bool,
 
     current_state: CoreStatus,
 }
 
-impl<'a> M4<'a> {
-    pub fn new<'b>(mut memory: Memory<'a>) -> Result<M4<'a>, Error>
-    where
-        'a: 'b,
-    {
+impl<'probe> M4<'probe> {
+    pub fn new(mut memory: Memory<'probe>) -> Result<M4<'probe>, Error> {
         // determine current state
         let dhcsr = Dhcsr(memory.read_word_32(Dhcsr::ADDRESS)?);
 
@@ -384,7 +381,7 @@ impl<'a> M4<'a> {
     }
 }
 
-impl<'a> CoreInterface<'a> for M4<'a> {
+impl<'probe> CoreInterface<'probe> for M4<'probe> {
     fn wait_for_core_halted(&mut self) -> Result<(), Error> {
         // Wait until halted state is active again.
         for _ in 0..100 {
@@ -677,7 +674,7 @@ impl<'a> CoreInterface<'a> for M4<'a> {
     }
 }
 
-impl<'a> MemoryInterface for M4<'a> {
+impl<'probe> MemoryInterface for M4<'probe> {
     fn read_word_32(&mut self, address: u32) -> Result<u32, Error> {
         self.memory.read_word_32(address)
     }

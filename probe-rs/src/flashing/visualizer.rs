@@ -7,12 +7,12 @@ use svg::{
 use super::*;
 
 /// A structure which can be used to visualize the built contents of a flash.
-pub struct FlashVisualizer<'a> {
-    flash_layout: &'a FlashLayout,
+pub struct FlashVisualizer<'layout> {
+    flash_layout: &'layout FlashLayout,
 }
 
-impl<'a> FlashVisualizer<'a> {
-    pub(super) fn new(flash_layout: &'a FlashLayout) -> Self {
+impl<'layout> FlashVisualizer<'layout> {
+    pub(super) fn new(flash_layout: &'layout FlashLayout) -> Self {
         Self { flash_layout }
     }
 

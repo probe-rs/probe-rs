@@ -68,14 +68,14 @@ pub enum TargetSelector {
     Auto,
 }
 
-impl<'a> From<&'a str> for TargetSelector {
-    fn from(value: &'a str) -> Self {
+impl From<&str> for TargetSelector {
+    fn from(value: &str) -> Self {
         TargetSelector::Unspecified(value.into())
     }
 }
 
-impl<'a> From<&'a String> for TargetSelector {
-    fn from(value: &'a String) -> Self {
+impl From<&String> for TargetSelector {
+    fn from(value: &String) -> Self {
         TargetSelector::Unspecified(value.into())
     }
 }

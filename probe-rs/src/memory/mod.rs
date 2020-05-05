@@ -79,7 +79,7 @@ where
 
 pub struct MemoryDummy;
 
-impl<'a> MemoryInterface for MemoryDummy {
+impl<'probe> MemoryInterface for MemoryDummy {
     fn read_word_32(&mut self, _address: u32) -> Result<u32, error::Error> {
         unimplemented!()
     }
@@ -106,12 +106,12 @@ impl<'a> MemoryInterface for MemoryDummy {
     }
 }
 
-pub struct Memory<'a> {
-    inner: Box<dyn MemoryInterface + 'a>,
+pub struct Memory<'probe> {
+    inner: Box<dyn MemoryInterface + 'probe>,
 }
 
-impl<'a> Memory<'a> {
-    pub fn new(memory: impl MemoryInterface + 'a + Sized) -> Memory<'a> {
+impl<'probe> Memory<'probe> {
+    pub fn new(memory: impl MemoryInterface + 'probe + Sized) -> Memory<'probe> {
         Self {
             inner: Box::new(memory),
         }
@@ -162,16 +162,16 @@ impl<'a> Memory<'a> {
     }
 }
 
-pub struct MemoryList<'a>(Vec<Memory<'a>>);
+pub struct MemoryList<'probe>(Vec<Memory<'probe>>);
 
-impl<'a> MemoryList<'a> {
-    pub fn new(memories: Vec<Memory<'a>>) -> Self {
+impl<'probe> MemoryList<'probe> {
+    pub fn new(memories: Vec<Memory<'probe>>) -> Self {
         Self(memories)
     }
 }
 
-impl<'a> std::ops::Deref for MemoryList<'a> {
-    type Target = Vec<Memory<'a>>;
+impl<'probe> std::ops::Deref for MemoryList<'probe> {
+    type Target = Vec<Memory<'probe>>;
     fn deref(&self) -> &Self::Target {
         &self.0
     }

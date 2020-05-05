@@ -19,12 +19,12 @@ mod register;
 
 pub mod communication_interface;
 
-pub struct Riscv32<'a> {
-    interface: RiscvCommunicationInterface<'a>,
+pub struct Riscv32<'probe> {
+    interface: RiscvCommunicationInterface<'probe>,
 }
 
-impl<'a> Riscv32<'a> {
-    pub fn new(interface: RiscvCommunicationInterface<'a>) -> Self {
+impl<'probe> Riscv32<'probe> {
+    pub fn new(interface: RiscvCommunicationInterface<'probe>) -> Self {
         Self { interface }
     }
 
@@ -110,7 +110,7 @@ impl<'a> Riscv32<'a> {
     }
 }
 
-impl<'a> CoreInterface<'a> for Riscv32<'a> {
+impl<'probe> CoreInterface<'probe> for Riscv32<'probe> {
     fn wait_for_core_halted(&mut self) -> Result<(), crate::Error> {
         // poll the
         let num_retries = 10;
@@ -537,7 +537,7 @@ impl<'a> CoreInterface<'a> for Riscv32<'a> {
     }
 }
 
-impl<'a> MemoryInterface for Riscv32<'a> {
+impl<'probe> MemoryInterface for Riscv32<'probe> {
     fn read_word_32(&mut self, address: u32) -> Result<u32, Error> {
         self.interface.read_word_32(address)
     }

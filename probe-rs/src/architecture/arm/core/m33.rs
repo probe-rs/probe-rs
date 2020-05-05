@@ -18,16 +18,16 @@ use bitfield::bitfield;
 use super::{Dfsr, ARM_REGISTER_FILE};
 use std::mem::size_of;
 
-pub struct M33<'a> {
-    memory: Memory<'a>,
+pub struct M33<'probe> {
+    memory: Memory<'probe>,
 
     hw_breakpoints_enabled: bool,
 
     current_state: CoreStatus,
 }
 
-impl<'a> M33<'a> {
-    pub fn new(mut memory: Memory<'a>) -> Result<Self, Error> {
+impl<'probe> M33<'probe> {
+    pub fn new(mut memory: Memory<'probe>) -> Result<Self, Error> {
         // determine current state
         let dhcsr = Dhcsr(memory.read_word_32(Dhcsr::ADDRESS)?);
 
@@ -72,7 +72,7 @@ impl<'a> M33<'a> {
     }
 }
 
-impl<'a> CoreInterface<'a> for M33<'a> {
+impl<'probe> CoreInterface<'probe> for M33<'probe> {
     fn wait_for_core_halted(&mut self) -> Result<(), Error> {
         // Wait until halted state is active again.
         for _ in 0..100 {
@@ -343,7 +343,7 @@ impl<'a> CoreInterface<'a> for M33<'a> {
     }
 }
 
-impl<'a> MemoryInterface for M33<'a> {
+impl<'probe> MemoryInterface for M33<'probe> {
     fn read_word_32(&mut self, address: u32) -> Result<u32, Error> {
         self.memory.read_word_32(address)
     }

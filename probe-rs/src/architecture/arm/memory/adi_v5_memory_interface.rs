@@ -22,12 +22,12 @@ where
     only_32bit_data_size: bool,
 }
 
-impl<'a> ADIMemoryInterface<ArmCommunicationInterface<'a>> {
+impl<'probe> ADIMemoryInterface<ArmCommunicationInterface<'probe>> {
     /// Creates a new MemoryInterface for given AccessPort.
     pub fn new(
-        interface: ArmCommunicationInterface<'a>,
+        interface: ArmCommunicationInterface<'probe>,
         access_port_number: impl Into<MemoryAP>,
-    ) -> Result<ADIMemoryInterface<ArmCommunicationInterface<'a>>, AccessPortError> {
+    ) -> Result<ADIMemoryInterface<ArmCommunicationInterface<'probe>>, AccessPortError> {
         let mut interface = Self {
             interface,
             access_port: access_port_number.into(),

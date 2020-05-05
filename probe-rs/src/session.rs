@@ -98,17 +98,15 @@ impl Session {
         })
     }
 
-    pub fn list_cores<'a>(&'a self) -> &'a Vec<(CoreType, CoreState, ArchitectureState)> {
+    pub fn list_cores(&self) -> &Vec<(CoreType, CoreState, ArchitectureState)> {
         &self.cores
     }
 
-    pub fn list_cores_mut<'a>(
-        &'a mut self,
-    ) -> &'a mut Vec<(CoreType, CoreState, ArchitectureState)> {
+    pub fn list_cores_mut(&mut self) -> &mut Vec<(CoreType, CoreState, ArchitectureState)> {
         &mut self.cores
     }
 
-    pub fn attach_to_core<'a: 'p, 'p>(&'a mut self, n: usize) -> Result<Core<'p>, Error> {
+    pub fn attach_to_core(&mut self, n: usize) -> Result<Core<'_>, Error> {
         let (core, core_state, architecture_state) = self
             .cores
             .get_mut(n)

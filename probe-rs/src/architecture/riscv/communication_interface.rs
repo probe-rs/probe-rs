@@ -140,15 +140,15 @@ impl RiscvCommunicationInterfaceState {
     }
 }
 
-pub struct RiscvCommunicationInterface<'a> {
-    probe: &'a mut Probe,
-    state: &'a mut RiscvCommunicationInterfaceState,
+pub struct RiscvCommunicationInterface<'probe> {
+    probe: &'probe mut Probe,
+    state: &'probe mut RiscvCommunicationInterfaceState,
 }
 
-impl<'a> RiscvCommunicationInterface<'a> {
+impl<'probe> RiscvCommunicationInterface<'probe> {
     pub fn new(
-        probe: &'a mut Probe,
-        state: &'a mut RiscvCommunicationInterfaceState,
+        probe: &'probe mut Probe,
+        state: &'probe mut RiscvCommunicationInterfaceState,
     ) -> Result<Option<Self>, ProbeRsError> {
         if probe.has_jtag_interface() {
             let mut s = Self { probe, state };
@@ -599,7 +599,7 @@ impl<'a> RiscvCommunicationInterface<'a> {
     }
 }
 
-impl<'a> MemoryInterface for RiscvCommunicationInterface<'a> {
+impl<'probe> MemoryInterface for RiscvCommunicationInterface<'probe> {
     fn read_word_32(&mut self, address: u32) -> Result<u32, crate::Error> {
         let result = self.perform_memory_read(address, RiscvBusAccess::A32)?;
 

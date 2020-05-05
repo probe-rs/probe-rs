@@ -153,9 +153,9 @@ impl ArmCommunicationInterfaceState {
 }
 
 #[derive(Debug)]
-pub struct ArmCommunicationInterface<'a> {
-    probe: &'a mut Probe,
-    state: &'a mut ArmCommunicationInterfaceState,
+pub struct ArmCommunicationInterface<'probe> {
+    probe: &'probe mut Probe,
+    state: &'probe mut ArmCommunicationInterfaceState,
 }
 
 fn get_debug_port_version(probe: &mut Probe) -> Result<DebugPortVersion, DebugProbeError> {
@@ -168,10 +168,10 @@ fn get_debug_port_version(probe: &mut Probe) -> Result<DebugPortVersion, DebugPr
     Ok(DebugPortVersion::from(dpidr.version()))
 }
 
-impl<'a> ArmCommunicationInterface<'a> {
+impl<'probe> ArmCommunicationInterface<'probe> {
     pub fn new(
-        probe: &'a mut Probe,
-        state: &'a mut ArmCommunicationInterfaceState,
+        probe: &'probe mut Probe,
+        state: &'probe mut ArmCommunicationInterfaceState,
     ) -> Result<Option<Self>, DebugProbeError> {
         if probe.has_dap_interface() {
             let mut s = Self { probe, state };
@@ -201,7 +201,7 @@ impl<'a> ArmCommunicationInterface<'a> {
             .unwrap()
     }
 
-    pub fn dedicated_memory_interface(&'a self) -> Result<Option<Memory<'a>>, DebugProbeError> {
+    pub fn dedicated_memory_interface(&self) -> Result<Option<Memory<'_>>, DebugProbeError> {
         self.probe.dedicated_memory_interface()
     }
 
@@ -416,13 +416,13 @@ impl<'a> ArmCommunicationInterface<'a> {
     }
 }
 
-impl<'a> CommunicationInterface for ArmCommunicationInterface<'a> {
+impl<'probe> CommunicationInterface for ArmCommunicationInterface<'probe> {
     fn probe_for_chip_info(mut self) -> Result<Option<ChipInfo>, ProbeRsError> {
         ArmChipInfo::read_from_rom_table(self.borrow()).map(|option| option.map(ChipInfo::Arm))
     }
 }
 
-impl<'a> DPAccess for ArmCommunicationInterface<'a> {
+impl<'probe> DPAccess for ArmCommunicationInterface<'probe> {
     fn read_dp_register<R: DPRegister>(&mut self) -> Result<R, DebugPortError> {
         if R::VERSION > self.state.debug_port_version {
             return Err(DebugPortError::UnsupportedRegister {
@@ -466,7 +466,7 @@ impl<'a> DPAccess for ArmCommunicationInterface<'a> {
     }
 }
 
-impl<'a, R> APAccess<MemoryAP, R> for ArmCommunicationInterface<'a>
+impl<'probe, R> APAccess<MemoryAP, R> for ArmCommunicationInterface<'probe>
 where
     R: APRegister<MemoryAP>,
 {
@@ -499,7 +499,7 @@ where
     }
 }
 
-impl<'a, R> APAccess<GenericAP, R> for ArmCommunicationInterface<'a>
+impl<'probe, R> APAccess<GenericAP, R> for ArmCommunicationInterface<'probe>
 where
     R: APRegister<GenericAP>,
 {
