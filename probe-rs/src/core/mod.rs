@@ -5,7 +5,7 @@ pub use communication_interface::CommunicationInterface;
 use crate::error;
 use crate::{
     architecture::{
-        arm::{memory::ADIMemoryInterface, ArmCommunicationInterface},
+        arm::{core::CortexState, memory::ADIMemoryInterface, ArmCommunicationInterface},
         riscv::communication_interface::RiscvCommunicationInterface,
     },
     Error, MemoryInterface,
@@ -226,55 +226,11 @@ pub enum CoreType {
     M4,
     M33,
     M0,
-    Riscv,
     M7,
+    Riscv,
 }
 
 impl CoreType {
-    pub fn attach_arm<'probe>(
-        &self,
-        state: &'probe mut CoreState,
-        interface: ArmCommunicationInterface<'probe>,
-    ) -> Result<Core<'probe>, Error> {
-        let memory = Memory::new(
-            ADIMemoryInterface::<ArmCommunicationInterface>::new(interface, 0)
-                .map_err(Error::architecture_specific)?,
-        );
-
-        Ok(match self {
-            // TODO: Change this once the new archtecture structure for ARM hits.
-            // Cortex-M3, M4 and M7 use the Armv7[E]-M architecture and are
-            // identical for our purposes.
-            CoreType::M3 | CoreType::M4 | CoreType::M7 => {
-                Core::new(crate::architecture::arm::m4::M4::new(memory)?, state)
-            }
-            CoreType::M33 => Core::new(crate::architecture::arm::m33::M33::new(memory)?, state),
-            CoreType::M0 => Core::new(crate::architecture::arm::m0::M0::new(memory)?, state),
-            _ => {
-                return Err(Error::UnableToOpenProbe(
-                    "Core architecture and Probe mismatch.",
-                ))
-            }
-        })
-    }
-
-    pub fn attach_riscv<'probe>(
-        &self,
-        state: &'probe mut CoreState,
-        interface: RiscvCommunicationInterface<'probe>,
-    ) -> Result<Core<'probe>, Error> {
-        Ok(match self {
-            CoreType::Riscv => {
-                Core::new(crate::architecture::riscv::Riscv32::new(interface), state)
-            }
-            _ => {
-                return Err(Error::UnableToOpenProbe(
-                    "Core architecture and Probe mismatch.",
-                ))
-            }
-        })
-    }
-
     pub(crate) fn from_string(name: impl AsRef<str>) -> Option<Self> {
         match &name.as_ref().to_ascii_lowercase()[..] {
             "m0" => Some(CoreType::M0),
@@ -284,6 +240,17 @@ impl CoreType {
             "riscv" => Some(CoreType::Riscv),
             "m7" => Some(CoreType::M7),
             _ => None,
+        }
+    }
+
+    pub(crate) fn from(value: &SpecificCoreState) -> Self {
+        match value {
+            SpecificCoreState::M0(_) => CoreType::M0,
+            SpecificCoreState::M3(_) => CoreType::M3,
+            SpecificCoreState::M33(_) => CoreType::M33,
+            SpecificCoreState::M4(_) => CoreType::M4,
+            SpecificCoreState::M7(_) => CoreType::M7,
+            SpecificCoreState::Riscv => CoreType::Riscv,
         }
     }
 }
@@ -297,6 +264,76 @@ impl CoreState {
         Self {
             breakpoints: vec![],
         }
+    }
+}
+
+pub(crate) enum SpecificCoreState {
+    M3(CortexState),
+    M4(CortexState),
+    M33(CortexState),
+    M0(CortexState),
+    M7(CortexState),
+    Riscv,
+}
+
+impl SpecificCoreState {
+    pub(crate) fn from_core_type(typ: CoreType) -> Self {
+        match typ {
+            CoreType::M0 => SpecificCoreState::M0(CortexState::new()),
+            CoreType::M3 => SpecificCoreState::M3(CortexState::new()),
+            CoreType::M33 => SpecificCoreState::M33(CortexState::new()),
+            CoreType::M4 => SpecificCoreState::M4(CortexState::new()),
+            CoreType::M7 => SpecificCoreState::M7(CortexState::new()),
+            CoreType::Riscv => SpecificCoreState::Riscv,
+        }
+    }
+
+    pub(crate) fn attach_arm<'probe>(
+        &'probe mut self,
+        state: &'probe mut CoreState,
+        interface: ArmCommunicationInterface<'probe>,
+    ) -> Result<Core<'probe>, Error> {
+        let memory = Memory::new(
+            ADIMemoryInterface::<ArmCommunicationInterface>::new(interface, 0)
+                .map_err(Error::architecture_specific)?,
+        );
+
+        Ok(match self {
+            // TODO: Change this once the new archtecture structure for ARM hits.
+            // Cortex-M3, M4 and M7 use the Armv7[E]-M architecture and are
+            // identical for our purposes.
+            SpecificCoreState::M3(s) | SpecificCoreState::M4(s) | SpecificCoreState::M7(s) => {
+                Core::new(crate::architecture::arm::m4::M4::new(memory, s)?, state)
+            }
+            SpecificCoreState::M33(s) => {
+                Core::new(crate::architecture::arm::m33::M33::new(memory, s)?, state)
+            }
+            SpecificCoreState::M0(s) => {
+                Core::new(crate::architecture::arm::m0::M0::new(memory, s)?, state)
+            }
+            _ => {
+                return Err(Error::UnableToOpenProbe(
+                    "Core architecture and Probe mismatch.",
+                ))
+            }
+        })
+    }
+
+    pub(crate) fn attach_riscv<'probe>(
+        &self,
+        state: &'probe mut CoreState,
+        interface: RiscvCommunicationInterface<'probe>,
+    ) -> Result<Core<'probe>, Error> {
+        Ok(match self {
+            SpecificCoreState::Riscv => {
+                Core::new(crate::architecture::riscv::Riscv32::new(interface), state)
+            }
+            _ => {
+                return Err(Error::UnableToOpenProbe(
+                    "Core architecture and Probe mismatch.",
+                ))
+            }
+        })
     }
 }
 
@@ -534,6 +571,7 @@ pub enum CoreStatus {
     Running,
     Halted(HaltReason),
     Sleeping,
+    Unknown,
 }
 
 impl CoreStatus {

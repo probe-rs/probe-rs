@@ -7,14 +7,14 @@ use crate::architecture::{
 use crate::config::{
     ChipInfo, MemoryRegion, RawFlashAlgorithm, RegistryError, Target, TargetSelector,
 };
-use crate::core::{Architecture, CoreState};
-use crate::{Core, CoreType, DebugProbeError, Error, Probe};
+use crate::core::{Architecture, CoreState, SpecificCoreState};
+use crate::{Core, CoreType, Error, Probe};
 
 pub struct Session {
     target: Target,
     probe: Probe,
     interface_state: ArchitectureInterfaceState,
-    cores: Vec<(CoreType, CoreState)>,
+    cores: Vec<(SpecificCoreState, CoreState)>,
 }
 
 pub enum ArchitectureInterfaceState {
@@ -32,10 +32,10 @@ impl From<ArchitectureInterfaceState> for Architecture {
 }
 
 impl ArchitectureInterfaceState {
-    pub fn attach<'probe>(
+    fn attach<'probe>(
         &'probe mut self,
         probe: &'probe mut Probe,
-        core: &CoreType,
+        core: &'probe mut SpecificCoreState,
         core_state: &'probe mut CoreState,
     ) -> Result<Core<'probe>, Error> {
         match self {
@@ -104,16 +104,22 @@ impl Session {
 
         let data = match target.architecture() {
             Architecture::Arm => {
-                let mut state = ArmCommunicationInterfaceState::new();
+                let state = ArmCommunicationInterfaceState::new();
                 (
-                    (target.core_type, Core::create_state()),
+                    (
+                        SpecificCoreState::from_core_type(target.core_type),
+                        Core::create_state(),
+                    ),
                     ArchitectureInterfaceState::Arm(state),
                 )
             }
             Architecture::Riscv => {
-                let mut state = RiscvCommunicationInterfaceState::new();
+                let state = RiscvCommunicationInterfaceState::new();
                 (
-                    (target.core_type, Core::create_state()),
+                    (
+                        SpecificCoreState::from_core_type(target.core_type),
+                        Core::create_state(),
+                    ),
                     ArchitectureInterfaceState::Riscv(state),
                 )
             }
@@ -127,12 +133,12 @@ impl Session {
         })
     }
 
-    pub fn list_cores(&self) -> &Vec<(CoreType, CoreState)> {
-        &self.cores
-    }
-
-    pub fn list_cores_mut(&mut self) -> &mut Vec<(CoreType, CoreState)> {
-        &mut self.cores
+    pub fn list_cores(&self) -> Vec<(usize, CoreType)> {
+        self.cores
+            .iter()
+            .map(|(t, _)| CoreType::from(t))
+            .enumerate()
+            .collect()
     }
 
     pub fn attach_to_core(&mut self, n: usize) -> Result<Core<'_>, Error> {

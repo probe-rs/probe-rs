@@ -5,7 +5,7 @@ use crate::error::Error;
 use crate::memory::Memory;
 use crate::DebugProbeError;
 
-use super::{register, Dfsr, ARM_REGISTER_FILE};
+use super::{register, CortexState, Dfsr, ARM_REGISTER_FILE};
 use crate::{
     core::{Architecture, CoreStatus, HaltReason},
     MemoryInterface,
@@ -330,17 +330,18 @@ pub const PSP: CoreRegisterAddress = CoreRegisterAddress(0b000_1010);
 pub struct M4<'probe> {
     memory: Memory<'probe>,
 
-    hw_breakpoints_enabled: bool,
-
-    current_state: CoreStatus,
+    state: &'probe mut CortexState,
 }
 
 impl<'probe> M4<'probe> {
-    pub fn new(mut memory: Memory<'probe>) -> Result<M4<'probe>, Error> {
+    pub(crate) fn new(
+        mut memory: Memory<'probe>,
+        state: &'probe mut CortexState,
+    ) -> Result<M4<'probe>, Error> {
         // determine current state
         let dhcsr = Dhcsr(memory.read_word_32(Dhcsr::ADDRESS)?);
 
-        let state = if dhcsr.s_sleep() {
+        let core_state = if dhcsr.s_sleep() {
             CoreStatus::Sleeping
         } else if dhcsr.s_halt() {
             log::debug!("Core was halted when connecting");
@@ -354,17 +355,18 @@ impl<'probe> M4<'probe> {
             CoreStatus::Running
         };
 
+        if !state.initialized() {
+            state.current_state = core_state;
+            state.initialize();
+        }
+
         // Clear DFSR register. The bits in the register are sticky,
         // so we clear them here to ensure that that none are set.
         let dfsr_clear = Dfsr::clear_all();
 
         memory.write_word_32(Dfsr::ADDRESS, dfsr_clear.into())?;
 
-        Ok(Self {
-            memory,
-            hw_breakpoints_enabled: false,
-            current_state: state,
-        })
+        Ok(Self { memory, state })
     }
 
     fn wait_for_core_register_transfer(&mut self) -> Result<(), Error> {
@@ -412,11 +414,11 @@ impl<'probe> CoreInterface for M4<'probe> {
 
         if dhcsr.s_sleep() {
             // Check if we assumed the core to be halted
-            if self.current_state.is_halted() {
+            if self.state.current_state.is_halted() {
                 log::warn!("Expected core to be halted, but core is running");
             }
 
-            self.current_state = CoreStatus::Sleeping;
+            self.state.current_state = CoreStatus::Sleeping;
 
             return Ok(CoreStatus::Sleeping);
         }
@@ -434,32 +436,32 @@ impl<'probe> CoreInterface for M4<'probe> {
 
             // If the core was halted before, we cannot read the halt reason from the chip,
             // because we clear it directly after reading.
-            if self.current_state.is_halted() {
+            if self.state.current_state.is_halted() {
                 // There shouldn't be any bits set, otherwise it means
                 // that the reason for the halt has changed. No bits set
                 // means that we have an unkown HaltReason.
                 if reason == HaltReason::Unknown {
-                    return Ok(self.current_state);
+                    return Ok(self.state.current_state);
                 }
 
                 log::warn!(
                     "Reason for halt has changed, old reason was {:?}, new reason is {:?}",
-                    &self.current_state,
+                    &self.state.current_state,
                     &reason
                 );
             }
 
-            self.current_state = CoreStatus::Halted(reason);
+            self.state.current_state = CoreStatus::Halted(reason);
 
             return Ok(CoreStatus::Halted(reason));
         }
 
         // Core is neither halted nor sleeping, so we assume it is running.
-        if self.current_state.is_halted() {
+        if self.state.current_state.is_halted() {
             log::warn!("Core is running, but we expected it to be halted");
         }
 
-        self.current_state = CoreStatus::Running;
+        self.state.current_state = CoreStatus::Running;
 
         Ok(CoreStatus::Running)
     }
@@ -524,7 +526,7 @@ impl<'probe> CoreInterface for M4<'probe> {
         self.memory.write_word_32(Dhcsr::ADDRESS, value.into())?;
 
         // We assume that the core is running now
-        self.current_state = CoreStatus::Running;
+        self.state.current_state = CoreStatus::Running;
 
         Ok(())
     }
@@ -621,7 +623,7 @@ impl<'probe> CoreInterface for M4<'probe> {
 
         self.memory.write_word_32(FpCtrl::ADDRESS, val.into())?;
 
-        self.hw_breakpoints_enabled = true;
+        self.state.hw_breakpoints_enabled = true;
 
         Ok(())
     }
@@ -666,7 +668,7 @@ impl<'probe> CoreInterface for M4<'probe> {
     }
 
     fn hw_breakpoints_enabled(&self) -> bool {
-        self.hw_breakpoints_enabled
+        self.state.hw_breakpoints_enabled
     }
 
     fn architecture(&self) -> Architecture {
