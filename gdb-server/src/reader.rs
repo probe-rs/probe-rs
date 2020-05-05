@@ -1,19 +1,16 @@
-#![allow(unused_variables)]
-
 use async_std::{net::TcpStream, prelude::*};
 use futures::channel::mpsc;
 use gdb_protocol::{
     packet::{CheckedPacket, Kind as PacketKind},
     parser::Parser,
 };
-use std::sync::Arc;
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 type Sender<T> = mpsc::UnboundedSender<T>;
 
 pub async fn reader(
-    stream: Arc<TcpStream>,
-    packet_stream: Sender<CheckedPacket>,
+    stream: &mut TcpStream,
+    packet_stream: &Sender<CheckedPacket>,
     buffer: &mut Vec<u8>,
 ) -> Result<()> {
     log::debug!("READ WIN");
@@ -40,7 +37,7 @@ pub async fn reader(
                 PacketKind::Packet => match packet.check() {
                     Some(checked) => {
                         log::debug!("Sending ACK");
-                        (&*stream).write_all(&[b'+']).await?;
+                        stream.write_all(&[b'+']).await?;
                         packet_stream.unbounded_send(checked)?;
                     }
                     None => {
