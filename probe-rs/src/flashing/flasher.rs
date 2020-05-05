@@ -1,10 +1,10 @@
 use super::FlashProgress;
 use super::{FlashBuilder, FlashError, FlashFill, FlashLayout, FlashPage};
 use crate::config::{FlashAlgorithm, FlashRegion, MemoryRange};
-use crate::core::{Core, RegisterFile};
+use crate::core::{Architecture, Core, RegisterFile};
 use crate::error;
 use crate::memory::MemoryInterface;
-use crate::{session::Session, DebugProbeError};
+use crate::{session::Session, CoreRegisterAddress, DebugProbeError};
 use std::time::{Duration, Instant};
 
 pub(super) trait Operation {
@@ -537,7 +537,7 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
         let algo = &self.flash_algorithm;
         let regs: &'static RegisterFile = self.core.registers();
 
-        [
+        let registers = [
             (regs.program_counter(), Some(pc)),
             (regs.argument_register(0), r0),
             (regs.argument_register(1), r1),
@@ -551,25 +551,49 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
                 regs.stack_pointer(),
                 if init { Some(algo.begin_stack) } else { None },
             ),
-            (regs.return_address(), Some(algo.load_address + 1)),
-        ]
-        .iter()
-        .map(|(description, value)| {
+            (
+                regs.return_address(),
+                // For ARM Cortex-M cores, we have to add 1 to the return address,
+                // to ensure that we stay in Thumb mode.
+                if self.core.architecture() == Architecture::Arm {
+                    Some(algo.load_address + 1)
+                } else {
+                    Some(algo.load_address)
+                },
+            ),
+        ];
+
+        for (description, value) in &registers {
             if let Some(v) = value {
-                self.core.write_core_reg(description.address, *v)?;
+                self.core
+                    .write_core_reg(description.address, *v)
+                    .map_err(FlashError::Core)?;
                 log::debug!(
-                    "content of {:#x}: 0x{:08x} should be: 0x{:08x}",
+                    "content of {} {:#x}: 0x{:08x} should be: 0x{:08x}",
+                    description.name,
                     description.address.0,
-                    self.core.read_core_reg(description.address)?,
+                    self.core
+                        .read_core_reg(description.address)
+                        .map_err(FlashError::Core)?,
                     *v
                 );
-                Ok(())
-            } else {
-                Ok(())
             }
-        })
-        .collect::<Result<Vec<()>, error::Error>>()
-        .map_err(FlashError::Core)?;
+        }
+
+        if self.core.architecture() == Architecture::Riscv {
+            // Ensure ebreak enters debug mode, this is necessary for soft breakpoints to work.
+            let dcsr = self
+                .core
+                .read_core_reg(CoreRegisterAddress::from(0x7b0))
+                .map_err(FlashError::Core)?;
+
+            self.core
+                .write_core_reg(
+                    CoreRegisterAddress::from(0x7b0),
+                    dcsr | (1 << 15) | (1 << 13) | (1 << 12),
+                )
+                .map_err(FlashError::Core)?;
+        }
 
         // Resume target operation.
         self.core.run().map_err(FlashError::Core)?;

@@ -183,6 +183,7 @@ pub trait CoreInterface: MemoryInterface {
 
     fn hw_breakpoints_enabled(&self) -> bool;
 
+    /// Get the `Architecture` of the Core.
     fn architecture(&self) -> Architecture;
 }
 
@@ -493,6 +494,10 @@ impl<'probe> Core<'probe> {
         }
     }
 
+    pub fn architecture(&self) -> Architecture {
+        self.inner.architecture()
+    }
+
     fn find_free_breakpoint_unit(&self) -> usize {
         let mut used_bp: Vec<_> = self
             .state
@@ -546,6 +551,7 @@ pub struct Breakpoint {
     register_hw: usize,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Architecture {
     Arm,
     Riscv,

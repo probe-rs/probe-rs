@@ -176,6 +176,14 @@ impl Session {
     pub(crate) fn memory_map(&self) -> &[MemoryRegion] {
         &self.target.memory_map
     }
+
+    /// Return the `Architecture` of the currently connected chip.
+    pub fn architecture(&self) -> Architecture {
+        match self.interface_state {
+            ArchitectureInterfaceState::Arm(_) => Architecture::Arm,
+            ArchitectureInterfaceState::Riscv(_) => Architecture::Riscv,
+        }
+    }
 }
 
 fn try_arm_autodetect(

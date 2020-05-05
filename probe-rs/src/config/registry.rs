@@ -140,7 +140,7 @@ impl Registry {
     fn get_target_by_name(&self, name: impl AsRef<str>) -> Result<Target, RegistryError> {
         let name = name.as_ref();
 
-        log::trace!("Searching registry for chip with name {}", name);
+        log::debug!("Searching registry for chip with name {}", name);
 
         let (family, chip) = {
             // Try get the corresponding chip.

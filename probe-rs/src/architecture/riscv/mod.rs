@@ -17,6 +17,8 @@ use register::RISCV_REGISTERS;
 #[macro_use]
 mod register;
 
+pub(crate) mod assembly;
+
 pub mod communication_interface;
 
 pub struct Riscv32<'probe> {
@@ -43,13 +45,9 @@ impl<'probe> Riscv32<'probe> {
 
         let mut csrrs_cmd: u32 = 0b_00000_010_01000_1110011;
         csrrs_cmd |= ((address as u32) & 0xfff) << 20;
-        let ebreak_cmd = 0b000000000001_00000_000_00000_1110011;
 
-        // write progbuf0: csrr xxxxxx s0, (address) // lookup correct command
-        self.interface.write_dm_register(Progbuf0(csrrs_cmd))?;
-
-        // write progbuf1: ebreak
-        self.interface.write_dm_register(Progbuf1(ebreak_cmd))?;
+        self.interface
+            .setup_program_buffer(&[csrrs_cmd, assembly::EBREAK])?;
 
         // command: postexec
         let mut postexec_cmd = AccessRegisterCommand(0);
@@ -87,13 +85,10 @@ impl<'probe> Riscv32<'probe> {
 
         let mut csrrw_cmd: u32 = 0b_01000_001_00000_1110011;
         csrrw_cmd |= ((address as u32) & 0xfff) << 20;
-        let ebreak_cmd = 0b000000000001_00000_000_00000_1110011;
 
         // write progbuf0: csrr xxxxxx s0, (address) // lookup correct command
-        self.interface.write_dm_register(Progbuf0(csrrw_cmd))?;
-
-        // write progbuf1: ebreak
-        self.interface.write_dm_register(Progbuf1(ebreak_cmd))?;
+        self.interface
+            .setup_program_buffer(&[csrrw_cmd, assembly::EBREAK])?;
 
         // command: postexec
         let mut postexec_cmd = AccessRegisterCommand(0);
@@ -494,7 +489,8 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
     }
 
     fn hw_breakpoints_enabled(&self) -> bool {
-        // No special enable on RISCV
+        // No special enable on RISC
+
         true
     }
 
@@ -690,23 +686,64 @@ impl From<u32> for Abstractcs {
     }
 }
 
+bitfield! {
+    pub struct Hartinfo(u32);
+    impl Debug;
+
+    nscratch, _: 23, 20;
+    dataaccess, _: 16;
+    datasize, _: 15, 12;
+    dataaddr, _: 11, 0;
+}
+
+impl DebugRegister for Hartinfo {
+    const ADDRESS: u8 = 0x12;
+    const NAME: &'static str = "hartinfo";
+}
+
+impl From<Hartinfo> for u32 {
+    fn from(register: Hartinfo) -> Self {
+        register.0
+    }
+}
+
+impl From<u32> for Hartinfo {
+    fn from(value: u32) -> Self {
+        Self(value)
+    }
+}
+
 data_register! { pub Data0, 0x04, "data0" }
 data_register! { pub Data1, 0x05, "data1" }
-data_register! { pub Data2, 0x05, "data2" }
-data_register! { pub Data3, 0x05, "data3" }
-data_register! { pub Data4, 0x05, "data4" }
-data_register! { pub Data5, 0x05, "data5" }
-data_register! { pub Data6, 0x05, "data6" }
-data_register! { pub Data7, 0x05, "data7" }
-data_register! { pub Data8, 0x05, "data8" }
-data_register! { pub Data9, 0x05, "data9" }
-data_register! { pub Data10, 0x05, "data10" }
+data_register! { pub Data2, 0x06, "data2" }
+data_register! { pub Data3, 0x07, "data3" }
+data_register! { pub Data4, 0x08, "data4" }
+data_register! { pub Data5, 0x09, "data5" }
+data_register! { pub Data6, 0x0A, "data6" }
+data_register! { pub Data7, 0x0B, "data7" }
+data_register! { pub Data8, 0x0C, "data8" }
+data_register! { pub Data9, 0x0D, "data9" }
+data_register! { pub Data10, 0x0E, "data10" }
 data_register! { pub Data11, 0x0f, "data11" }
 
 data_register! { Command, 0x17, "command" }
 
 data_register! { pub Progbuf0, 0x20, "progbuf0" }
 data_register! { pub Progbuf1, 0x21, "progbuf1" }
+data_register! { pub Progbuf2, 0x22, "progbuf2" }
+data_register! { pub Progbuf3, 0x23, "progbuf3" }
+data_register! { pub Progbuf4, 0x24, "progbuf4" }
+data_register! { pub Progbuf5, 0x25, "progbuf5" }
+data_register! { pub Progbuf6, 0x26, "progbuf6" }
+data_register! { pub Progbuf7, 0x27, "progbuf7" }
+data_register! { pub Progbuf8, 0x28, "progbuf8" }
+data_register! { pub Progbuf9, 0x29, "progbuf9" }
+data_register! { pub Progbuf10, 0x2A, "progbuf10" }
+data_register! { pub Progbuf11, 0x2B, "progbuf11" }
+data_register! { pub Progbuf12, 0x2C, "progbuf12" }
+data_register! { pub Progbuf13, 0x2D, "progbuf13" }
+data_register! { pub Progbuf14, 0x2E, "progbuf14" }
+data_register! { pub Progbuf15, 0x2F, "progbuf15" }
 
 bitfield! {
     struct Mcontrol(u32);

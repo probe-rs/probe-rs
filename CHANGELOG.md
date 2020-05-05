@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+ - Fixed a bug in the gdb-server that causes it to never halt after a continue.
+ - Fixed an issue where the gdb-server would always use 100 % cpu time of the core it's running on.
+
 ## [0.6.2]
 
 ### Added
