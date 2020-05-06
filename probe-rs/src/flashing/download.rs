@@ -107,10 +107,10 @@ pub fn download_file_with_options(
 }
 
 /// Starts the download of a binary file.
-fn download_bin<'b, T: Read + Seek>(
-    buffer: &'b mut Vec<u8>,
-    file: &'b mut T,
-    loader: &mut FlashLoader<'_, 'b>,
+fn download_bin<'buffer, T: Read + Seek>(
+    buffer: &'buffer mut Vec<u8>,
+    file: &'buffer mut T,
+    loader: &mut FlashLoader<'_, 'buffer>,
     options: BinOptions,
 ) -> Result<(), FileDownloadError> {
     // Skip the specified bytes.
@@ -133,10 +133,10 @@ fn download_bin<'b, T: Read + Seek>(
 }
 
 /// Starts the download of a hex file.
-fn download_hex<'b, T: Read + Seek>(
-    buffer: &'b mut Vec<(u32, Vec<u8>)>,
+fn download_hex<'buffer, T: Read + Seek>(
+    buffer: &'buffer mut Vec<(u32, Vec<u8>)>,
     file: &mut T,
-    loader: &mut FlashLoader<'_, 'b>,
+    loader: &mut FlashLoader<'_, 'buffer>,
 ) -> Result<(), FileDownloadError> {
     let mut _extended_segment_address = 0;
     let mut extended_linear_address = 0;
@@ -169,10 +169,10 @@ fn download_hex<'b, T: Read + Seek>(
 }
 
 /// Starts the download of a elf file.
-fn download_elf<'b, T: Read + Seek>(
-    buffer: &'b mut Vec<u8>,
-    file: &'b mut T,
-    loader: &mut FlashLoader<'_, 'b>,
+fn download_elf<'buffer, T: Read + Seek>(
+    buffer: &'buffer mut Vec<u8>,
+    file: &'buffer mut T,
+    loader: &mut FlashLoader<'_, 'buffer>,
 ) -> Result<(), FileDownloadError> {
     use goblin::elf::program_header::*;
 

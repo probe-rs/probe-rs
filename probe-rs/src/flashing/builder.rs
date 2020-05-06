@@ -441,11 +441,11 @@ impl<'data> FlashBuilder<'data> {
 }
 
 /// Adds a new sector to the sectors.
-fn add_sector<'b>(
+fn add_sector<'sector>(
     flash_algorithm: &FlashAlgorithm,
     address: u32,
-    sectors: &'b mut Vec<FlashSector>,
-) -> Result<&'b mut FlashSector, FlashError> {
+    sectors: &'sector mut Vec<FlashSector>,
+) -> Result<&'sector mut FlashSector, FlashError> {
     let sector_info = flash_algorithm.sector_info(address);
     if let Some(sector_info) = sector_info {
         let new_sector = FlashSector::new(&sector_info);
@@ -463,11 +463,11 @@ fn add_sector<'b>(
 }
 
 /// Adds a new page to the pages.
-fn add_page<'b>(
+fn add_page<'page>(
     flash_algorithm: &FlashAlgorithm,
     address: u32,
-    pages: &'b mut Vec<FlashPage>,
-) -> Result<&'b mut FlashPage, FlashError> {
+    pages: &'page mut Vec<FlashPage>,
+) -> Result<&'page mut FlashPage, FlashError> {
     let page_info = flash_algorithm.page_info(address);
     if let Some(page_info) = page_info {
         let new_page = FlashPage::new(&page_info);
