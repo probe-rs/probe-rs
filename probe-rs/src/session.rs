@@ -133,9 +133,7 @@ impl Session {
         })
     }
 
-    /// Automatically creates a session from a single attached probe.
-    ///
-    /// This will fail to attach if there is not exactly one probe discovered.
+    /// Automatically creates a session with the first connected probe found.
     pub fn auto_attach(target: impl Into<TargetSelector>) -> Result<Session, Error> {
         // Get a list of all available debug probes.
         let probes = Probe::list_all();
