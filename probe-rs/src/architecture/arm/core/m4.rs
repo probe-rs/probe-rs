@@ -338,33 +338,33 @@ impl<'probe> M4<'probe> {
         mut memory: Memory<'probe>,
         state: &'probe mut CortexState,
     ) -> Result<M4<'probe>, Error> {
-        // determine current state
-        let dhcsr = Dhcsr(memory.read_word_32(Dhcsr::ADDRESS)?);
-
-        let core_state = if dhcsr.s_sleep() {
-            CoreStatus::Sleeping
-        } else if dhcsr.s_halt() {
-            log::debug!("Core was halted when connecting");
-
-            let dfsr = Dfsr(memory.read_word_32(Dfsr::ADDRESS)?);
-
-            let reason = dfsr.halt_reason();
-
-            CoreStatus::Halted(reason)
-        } else {
-            CoreStatus::Running
-        };
-
         if !state.initialized() {
+            // determine current state
+            let dhcsr = Dhcsr(memory.read_word_32(Dhcsr::ADDRESS)?);
+
+            let core_state = if dhcsr.s_sleep() {
+                CoreStatus::Sleeping
+            } else if dhcsr.s_halt() {
+                log::debug!("Core was halted when connecting");
+
+                let dfsr = Dfsr(memory.read_word_32(Dfsr::ADDRESS)?);
+
+                let reason = dfsr.halt_reason();
+
+                CoreStatus::Halted(reason)
+            } else {
+                CoreStatus::Running
+            };
+
+            // Clear DFSR register. The bits in the register are sticky,
+            // so we clear them here to ensure that that none are set.
+            let dfsr_clear = Dfsr::clear_all();
+
+            memory.write_word_32(Dfsr::ADDRESS, dfsr_clear.into())?;
+
             state.current_state = core_state;
             state.initialize();
         }
-
-        // Clear DFSR register. The bits in the register are sticky,
-        // so we clear them here to ensure that that none are set.
-        let dfsr_clear = Dfsr::clear_all();
-
-        memory.write_word_32(Dfsr::ADDRESS, dfsr_clear.into())?;
 
         Ok(Self { memory, state })
     }
