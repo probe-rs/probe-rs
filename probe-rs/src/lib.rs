@@ -38,7 +38,7 @@
 //! use probe_rs::Session;
 //! use probe_rs::MemoryInterface;
 //!
-//! let mut session = Session::auto("nrf52")?;
+//! let mut session = Session::auto_attach("nrf52")?;
 //! let mut core = session.core(0)?;
 //!
 //! // Read a block of 50 32 bit words.
