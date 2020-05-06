@@ -521,16 +521,16 @@ impl<'probe> Core<'probe> {
     }
 }
 
-pub struct CoreList<'probe>(&'probe Vec<CoreType>);
+pub struct CoreList<'probe>(&'probe [CoreType]);
 
 impl<'probe> CoreList<'probe> {
-    pub fn new(cores: &'probe Vec<CoreType>) -> Self {
+    pub fn new(cores: &'probe [CoreType]) -> Self {
         Self(cores)
     }
 }
 
 impl<'probe> std::ops::Deref for CoreList<'probe> {
-    type Target = Vec<CoreType>;
+    type Target = [CoreType];
     fn deref(&self) -> &Self::Target {
         &self.0
     }

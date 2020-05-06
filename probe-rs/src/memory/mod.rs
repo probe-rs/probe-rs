@@ -125,39 +125,39 @@ impl<'probe> Memory<'probe> {
         self.inner.as_ref()
     }
 
-    pub fn memory_interface_mut<'b>(&'b mut self) -> &mut dyn MemoryInterface {
+    pub fn memory_interface_mut(&mut self) -> &mut dyn MemoryInterface {
         self.inner.as_mut()
     }
 
-    pub fn read_word_32<'b>(&'b mut self, address: u32) -> Result<u32, error::Error> {
+    pub fn read_word_32(&mut self, address: u32) -> Result<u32, error::Error> {
         self.inner.read_word_32(address)
     }
 
-    pub fn read_word_8<'b>(&'b mut self, address: u32) -> Result<u8, error::Error> {
+    pub fn read_word_8(&mut self, address: u32) -> Result<u8, error::Error> {
         self.inner.read_word_8(address)
     }
 
-    pub fn read_32<'b>(&'b mut self, address: u32, data: &mut [u32]) -> Result<(), error::Error> {
+    pub fn read_32(&mut self, address: u32, data: &mut [u32]) -> Result<(), error::Error> {
         self.inner.read_32(address, data)
     }
 
-    pub fn read_8<'b>(&'b mut self, address: u32, data: &mut [u8]) -> Result<(), error::Error> {
+    pub fn read_8(&mut self, address: u32, data: &mut [u8]) -> Result<(), error::Error> {
         self.inner.read_8(address, data)
     }
 
-    pub fn write_word_32<'b>(&'b mut self, addr: u32, data: u32) -> Result<(), error::Error> {
+    pub fn write_word_32(&mut self, addr: u32, data: u32) -> Result<(), error::Error> {
         self.inner.write_word_32(addr, data)
     }
 
-    pub fn write_word_8<'b>(&'b mut self, addr: u32, data: u8) -> Result<(), error::Error> {
+    pub fn write_word_8(&mut self, addr: u32, data: u8) -> Result<(), error::Error> {
         self.inner.write_word_8(addr, data)
     }
 
-    pub fn write_32<'b>(&'b mut self, addr: u32, data: &[u32]) -> Result<(), error::Error> {
+    pub fn write_32(&mut self, addr: u32, data: &[u32]) -> Result<(), error::Error> {
         self.inner.write_32(addr, data)
     }
 
-    pub fn write_8<'b>(&'b mut self, addr: u32, data: &[u8]) -> Result<(), error::Error> {
+    pub fn write_8(&mut self, addr: u32, data: &[u8]) -> Result<(), error::Error> {
         self.inner.write_8(addr, data)
     }
 }

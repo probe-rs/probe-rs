@@ -1,4 +1,3 @@
-use ihex;
 use ihex::record::Record::*;
 
 use std::{
@@ -88,7 +87,7 @@ pub fn download_file_with_options(
     let mut buffer = vec![];
     let mut buffer_vec = vec![];
     // IMPORTANT: Change this to an actual memory map of a real chip
-    let memory_map = session.memory_map().iter().cloned().collect::<Vec<_>>();
+    let memory_map = session.memory_map().to_vec();
     let mut loader = FlashLoader::new(&memory_map, options.keep_unwritten_bytes);
 
     match format {
