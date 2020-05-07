@@ -10,7 +10,7 @@ use communication_interface::{
 };
 
 use crate::core::{CoreInformation, RegisterFile};
-use crate::{CoreRegisterAddress, CoreStatus, HaltReason};
+use crate::{CoreRegisterAddress, CoreStatus, Error, HaltReason, MemoryInterface};
 use bitfield::bitfield;
 use register::RISCV_REGISTERS;
 
@@ -21,17 +21,16 @@ pub(crate) mod assembly;
 
 pub mod communication_interface;
 
-#[derive(Clone)]
-pub struct Riscv32 {
-    interface: RiscvCommunicationInterface,
+pub struct Riscv32<'probe> {
+    interface: RiscvCommunicationInterface<'probe>,
 }
 
-impl Riscv32 {
-    pub fn new(interface: RiscvCommunicationInterface) -> Self {
+impl<'probe> Riscv32<'probe> {
+    pub fn new(interface: RiscvCommunicationInterface<'probe>) -> Self {
         Self { interface }
     }
 
-    fn read_csr(&self, address: u16) -> Result<u32, RiscvError> {
+    fn read_csr(&mut self, address: u16) -> Result<u32, RiscvError> {
         let s0 = self.interface.abstract_cmd_register_read(&register::S0)?;
 
         // We need to perform the csrr instruction, which reads a CSR.
@@ -66,7 +65,7 @@ impl Riscv32 {
         Ok(reg_value)
     }
 
-    fn write_csr(&self, address: u16, value: u32) -> Result<(), RiscvError> {
+    fn write_csr(&mut self, address: u16, value: u32) -> Result<(), RiscvError> {
         // Backup register s0
         let s0 = self.interface.abstract_cmd_register_read(&register::S0)?;
 
@@ -106,7 +105,7 @@ impl Riscv32 {
     }
 }
 
-impl CoreInterface for Riscv32 {
+impl<'probe> CoreInterface for Riscv32<'probe> {
     fn wait_for_core_halted(&mut self) -> Result<(), crate::Error> {
         // poll the
         let num_retries = 10;
@@ -124,7 +123,7 @@ impl CoreInterface for Riscv32 {
         Err(RiscvError::Timeout.into())
     }
 
-    fn core_halted(&self) -> Result<bool, crate::Error> {
+    fn core_halted(&mut self) -> Result<bool, crate::Error> {
         let dmstatus: Dmstatus = self.interface.read_dm_register()?;
 
         Ok(dmstatus.allhalted())
@@ -185,7 +184,7 @@ impl CoreInterface for Riscv32 {
         Ok(())
     }
 
-    fn reset(&self) -> Result<(), crate::Error> {
+    fn reset(&mut self) -> Result<(), crate::Error> {
         log::debug!("Resetting core, setting hartreset bit");
 
         let mut dmcontrol = Dmcontrol(0);
@@ -328,7 +327,7 @@ impl CoreInterface for Riscv32 {
         Ok(CoreInformation { pc })
     }
 
-    fn read_core_reg(&self, address: crate::CoreRegisterAddress) -> Result<u32, crate::Error> {
+    fn read_core_reg(&mut self, address: crate::CoreRegisterAddress) -> Result<u32, crate::Error> {
         // We need to sue the "Access Register Command",
         // which has cmdtype 0
 
@@ -349,7 +348,7 @@ impl CoreInterface for Riscv32 {
     }
 
     fn write_core_reg(
-        &self,
+        &mut self,
         address: crate::CoreRegisterAddress,
         value: u32,
     ) -> Result<(), crate::Error> {
@@ -361,7 +360,7 @@ impl CoreInterface for Riscv32 {
         Ok(())
     }
 
-    fn get_available_breakpoint_units(&self) -> Result<u32, crate::Error> {
+    fn get_available_breakpoint_units(&mut self) -> Result<u32, crate::Error> {
         // TODO: This should probably only be done once, when initialising
 
         log::debug!("Determining number of HW breakpoints supported");
@@ -434,7 +433,7 @@ impl CoreInterface for Riscv32 {
         Ok(())
     }
 
-    fn set_breakpoint(&self, bp_unit_index: usize, addr: u32) -> Result<(), crate::Error> {
+    fn set_breakpoint(&mut self, bp_unit_index: usize, addr: u32) -> Result<(), crate::Error> {
         // select requested trigger
         let tselect = 0x7a0;
         let tdata1 = 0x7a1;
@@ -473,7 +472,7 @@ impl CoreInterface for Riscv32 {
         Ok(())
     }
 
-    fn clear_breakpoint(&self, unit_index: usize) -> Result<(), crate::Error> {
+    fn clear_breakpoint(&mut self, unit_index: usize) -> Result<(), crate::Error> {
         let tselect = 0x7a0;
         let tdata1 = 0x7a1;
         let tdata2 = 0x7a2;
@@ -489,10 +488,6 @@ impl CoreInterface for Riscv32 {
         &RISCV_REGISTERS
     }
 
-    fn memory(&self) -> crate::Memory {
-        self.interface.memory()
-    }
-
     fn hw_breakpoints_enabled(&self) -> bool {
         // No special enable on RISC
 
@@ -500,8 +495,9 @@ impl CoreInterface for Riscv32 {
     }
 
     fn architecture(&self) -> Architecture {
-        Architecture::RISCV
+        Architecture::Riscv
     }
+
     fn status(&mut self) -> Result<crate::core::CoreStatus, crate::Error> {
         // TODO: We should use hartsum to determine if any hart is halted
         //       quickly
@@ -535,6 +531,33 @@ impl CoreInterface for Riscv32 {
         }
 
         panic!("This should not happen")
+    }
+}
+
+impl<'probe> MemoryInterface for Riscv32<'probe> {
+    fn read_word_32(&mut self, address: u32) -> Result<u32, Error> {
+        self.interface.read_word_32(address)
+    }
+    fn read_word_8(&mut self, address: u32) -> Result<u8, Error> {
+        self.interface.read_word_8(address)
+    }
+    fn read_32(&mut self, address: u32, data: &mut [u32]) -> Result<(), Error> {
+        self.interface.read_32(address, data)
+    }
+    fn read_8(&mut self, address: u32, data: &mut [u8]) -> Result<(), Error> {
+        self.interface.read_8(address, data)
+    }
+    fn write_word_32(&mut self, address: u32, data: u32) -> Result<(), Error> {
+        self.interface.write_word_32(address, data)
+    }
+    fn write_word_8(&mut self, address: u32, data: u8) -> Result<(), Error> {
+        self.interface.write_word_8(address, data)
+    }
+    fn write_32(&mut self, address: u32, data: &[u32]) -> Result<(), Error> {
+        self.interface.write_32(address, data)
+    }
+    fn write_8(&mut self, address: u32, data: &[u8]) -> Result<(), Error> {
+        self.interface.write_8(address, data)
     }
 }
 

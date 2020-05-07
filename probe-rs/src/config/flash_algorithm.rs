@@ -173,8 +173,8 @@ impl RawFlashAlgorithm {
 
     fn get_algorithm_header(&self, architecture: Architecture) -> &[u32] {
         match architecture {
-            Architecture::ARM => &Self::ARM_FLASH_BLOB_HEADER,
-            Architecture::RISCV => &Self::RISCV_FLASH_BLOB_HEADER,
+            Architecture::Arm => &Self::ARM_FLASH_BLOB_HEADER,
+            Architecture::Riscv => &Self::RISCV_FLASH_BLOB_HEADER,
         }
     }
 

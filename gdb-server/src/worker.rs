@@ -21,7 +21,8 @@ pub async fn worker(
     output_stream: Sender<CheckedPacket>,
     session: Arc<Mutex<Session>>,
 ) -> ServerResult<()> {
-    let mut core = session.lock().unwrap().attach_to_core(0).unwrap();
+    let mut session = session.lock().unwrap();
+    let mut core = session.core(0).unwrap();
     let mut awaits_halt = false;
 
     loop {
@@ -36,7 +37,7 @@ pub async fn worker(
                     break
                 }
             },
-            _ = await_halt(&core, output_stream.clone(), &mut awaits_halt).fuse() => {}
+            _ = await_halt(&mut core, output_stream.clone(), &mut awaits_halt).fuse() => {}
         }
     }
     Ok(())
@@ -44,7 +45,7 @@ pub async fn worker(
 
 #[allow(clippy::cognitive_complexity)]
 pub async fn handler(
-    core: &mut Core,
+    core: &mut Core<'_>,
     output_stream: Sender<CheckedPacket>,
     awaits_halt: &mut bool,
     packet: CheckedPacket,
@@ -61,11 +62,11 @@ pub async fn handler(
         } else if packet.data.starts_with(b"vCont?") {
             handlers::vcont_supported()
         } else if packet.data.starts_with(b"vCont;c") || packet.data.starts_with(b"c") {
-            handlers::run(&core, awaits_halt)
+            handlers::run(core, awaits_halt)
         } else if packet.data.starts_with(b"vCont;t") {
-            handlers::stop(&core, awaits_halt)
+            handlers::stop(core, awaits_halt)
         } else if packet.data.starts_with(b"vCont;s") || packet.data.starts_with(b"s") {
-            handlers::step(&core, awaits_halt)
+            handlers::step(core, awaits_halt)
         } else if packet.data.starts_with(b"qTStatus") {
             handlers::reply_empty()
         } else if packet.data.starts_with(b"qTfV") {
@@ -113,11 +114,11 @@ pub async fn handler(
         } else if packet.data.starts_with(b"qXfer:memory-map:read") {
             handlers::get_memory_map()
         } else if packet.data.starts_with(&[0x03]) {
-            handlers::user_halt(&core, awaits_halt)
+            handlers::user_halt(core, awaits_halt)
         } else if packet.data.starts_with(b"D") {
             handlers::detach(&mut break_due)
         } else if packet.data.starts_with(b"qRcmdb,7265736574") {
-            handlers::reset_halt(&core)
+            handlers::reset_halt(core)
         } else if packet.data.starts_with(b"qTfV") {
             handlers::reply_empty()
         } else {
@@ -150,7 +151,11 @@ pub async fn handler(
     Ok(break_due)
 }
 
-pub async fn await_halt(core: &Core, output_stream: Sender<CheckedPacket>, await_halt: &mut bool) {
+pub async fn await_halt(
+    core: &mut Core<'_>,
+    output_stream: Sender<CheckedPacket>,
+    await_halt: &mut bool,
+) {
     task::sleep(Duration::from_millis(10)).await;
     if *await_halt && core.core_halted().unwrap() {
         let response =

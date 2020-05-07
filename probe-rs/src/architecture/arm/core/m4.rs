@@ -5,8 +5,11 @@ use crate::error::Error;
 use crate::memory::Memory;
 use crate::DebugProbeError;
 
-use super::{register, Dfsr, ARM_REGISTER_FILE};
-use crate::core::{Architecture, CoreStatus, HaltReason};
+use super::{register, CortexState, Dfsr, ARM_REGISTER_FILE};
+use crate::{
+    core::{Architecture, CoreStatus, HaltReason},
+    MemoryInterface,
+};
 
 use bitfield::bitfield;
 use std::mem::size_of;
@@ -324,51 +327,53 @@ impl FpRev2CompX {
 pub const MSP: CoreRegisterAddress = CoreRegisterAddress(0b000_1001);
 pub const PSP: CoreRegisterAddress = CoreRegisterAddress(0b000_1010);
 
-pub struct M4 {
-    memory: Memory,
+pub struct M4<'probe> {
+    memory: Memory<'probe>,
 
-    hw_breakpoints_enabled: bool,
-
-    current_state: CoreStatus,
+    state: &'probe mut CortexState,
 }
 
-impl M4 {
-    pub fn new(memory: Memory) -> Result<Self, Error> {
-        // determine current state
-        let dhcsr = Dhcsr(memory.read32(Dhcsr::ADDRESS)?);
+impl<'probe> M4<'probe> {
+    pub(crate) fn new(
+        mut memory: Memory<'probe>,
+        state: &'probe mut CortexState,
+    ) -> Result<M4<'probe>, Error> {
+        if !state.initialized() {
+            // determine current state
+            let dhcsr = Dhcsr(memory.read_word_32(Dhcsr::ADDRESS)?);
 
-        let state = if dhcsr.s_sleep() {
-            CoreStatus::Sleeping
-        } else if dhcsr.s_halt() {
-            log::debug!("Core was halted when connecting");
+            let core_state = if dhcsr.s_sleep() {
+                CoreStatus::Sleeping
+            } else if dhcsr.s_halt() {
+                log::debug!("Core was halted when connecting");
 
-            let dfsr = Dfsr(memory.read32(Dfsr::ADDRESS)?);
+                let dfsr = Dfsr(memory.read_word_32(Dfsr::ADDRESS)?);
 
-            let reason = dfsr.halt_reason();
+                let reason = dfsr.halt_reason();
 
-            CoreStatus::Halted(reason)
-        } else {
-            CoreStatus::Running
-        };
+                CoreStatus::Halted(reason)
+            } else {
+                CoreStatus::Running
+            };
 
-        // Clear DFSR register. The bits in the register are sticky,
-        // so we clear them here to ensure that that none are set.
-        let dfsr_clear = Dfsr::clear_all();
+            // Clear DFSR register. The bits in the register are sticky,
+            // so we clear them here to ensure that that none are set.
+            let dfsr_clear = Dfsr::clear_all();
 
-        memory.write32(Dfsr::ADDRESS, dfsr_clear.into())?;
+            memory.write_word_32(Dfsr::ADDRESS, dfsr_clear.into())?;
 
-        Ok(Self {
-            memory,
-            hw_breakpoints_enabled: false,
-            current_state: state,
-        })
+            state.current_state = core_state;
+            state.initialize();
+        }
+
+        Ok(Self { memory, state })
     }
 
-    fn wait_for_core_register_transfer(&self) -> Result<(), Error> {
+    fn wait_for_core_register_transfer(&mut self) -> Result<(), Error> {
         // now we have to poll the dhcsr register, until the dhcsr.s_regrdy bit is set
         // (see C1-292, cortex m0 arm)
         for _ in 0..100 {
-            let dhcsr_val = Dhcsr(self.memory.read32(Dhcsr::ADDRESS)?);
+            let dhcsr_val = Dhcsr(self.memory.read_word_32(Dhcsr::ADDRESS)?);
 
             if dhcsr_val.s_regrdy() {
                 return Ok(());
@@ -378,11 +383,11 @@ impl M4 {
     }
 }
 
-impl CoreInterface for M4 {
+impl<'probe> CoreInterface for M4<'probe> {
     fn wait_for_core_halted(&mut self) -> Result<(), Error> {
         // Wait until halted state is active again.
         for _ in 0..100 {
-            let dhcsr_val = Dhcsr(self.memory.read32(Dhcsr::ADDRESS)?);
+            let dhcsr_val = Dhcsr(self.memory.read_word_32(Dhcsr::ADDRESS)?);
             if dhcsr_val.s_halt() {
                 // update halted state
                 self.status()?;
@@ -393,9 +398,9 @@ impl CoreInterface for M4 {
         Err(Error::Probe(DebugProbeError::Timeout))
     }
 
-    fn core_halted(&self) -> Result<bool, Error> {
+    fn core_halted(&mut self) -> Result<bool, Error> {
         // Wait until halted state is active again.
-        let dhcsr_val = Dhcsr(self.memory.read32(Dhcsr::ADDRESS)?);
+        let dhcsr_val = Dhcsr(self.memory.read_word_32(Dhcsr::ADDRESS)?);
 
         if dhcsr_val.s_halt() {
             Ok(true)
@@ -405,15 +410,15 @@ impl CoreInterface for M4 {
     }
 
     fn status(&mut self) -> Result<CoreStatus, Error> {
-        let dhcsr = Dhcsr(self.memory.read32(Dhcsr::ADDRESS)?);
+        let dhcsr = Dhcsr(self.memory.read_word_32(Dhcsr::ADDRESS)?);
 
         if dhcsr.s_sleep() {
             // Check if we assumed the core to be halted
-            if self.current_state.is_halted() {
+            if self.state.current_state.is_halted() {
                 log::warn!("Expected core to be halted, but core is running");
             }
 
-            self.current_state = CoreStatus::Sleeping;
+            self.state.current_state = CoreStatus::Sleeping;
 
             return Ok(CoreStatus::Sleeping);
         }
@@ -421,63 +426,64 @@ impl CoreInterface for M4 {
         // TODO: Handle lockup
 
         if dhcsr.s_halt() {
-            let dfsr = Dfsr(self.memory.read32(Dfsr::ADDRESS)?);
+            let dfsr = Dfsr(self.memory.read_word_32(Dfsr::ADDRESS)?);
 
             let reason = dfsr.halt_reason();
 
             // Clear bits from Dfsr register
             self.memory
-                .write32(Dfsr::ADDRESS, Dfsr::clear_all().into())?;
+                .write_word_32(Dfsr::ADDRESS, Dfsr::clear_all().into())?;
 
             // If the core was halted before, we cannot read the halt reason from the chip,
             // because we clear it directly after reading.
-            if self.current_state.is_halted() {
+            if self.state.current_state.is_halted() {
                 // There shouldn't be any bits set, otherwise it means
                 // that the reason for the halt has changed. No bits set
                 // means that we have an unkown HaltReason.
                 if reason == HaltReason::Unknown {
-                    return Ok(self.current_state);
+                    return Ok(self.state.current_state);
                 }
 
                 log::warn!(
                     "Reason for halt has changed, old reason was {:?}, new reason is {:?}",
-                    &self.current_state,
+                    &self.state.current_state,
                     &reason
                 );
             }
 
-            self.current_state = CoreStatus::Halted(reason);
+            self.state.current_state = CoreStatus::Halted(reason);
 
             return Ok(CoreStatus::Halted(reason));
         }
 
         // Core is neither halted nor sleeping, so we assume it is running.
-        if self.current_state.is_halted() {
+        if self.state.current_state.is_halted() {
             log::warn!("Core is running, but we expected it to be halted");
         }
 
-        self.current_state = CoreStatus::Running;
+        self.state.current_state = CoreStatus::Running;
 
         Ok(CoreStatus::Running)
     }
 
-    fn read_core_reg(&self, addr: CoreRegisterAddress) -> Result<u32, Error> {
+    fn read_core_reg(&mut self, addr: CoreRegisterAddress) -> Result<u32, Error> {
         // Write the DCRSR value to select the register we want to read.
         let mut dcrsr_val = Dcrsr(0);
         dcrsr_val.set_regwnr(false); // Perform a read.
         dcrsr_val.set_regsel(addr.into()); // The address of the register to read.
 
-        self.memory.write32(Dcrsr::ADDRESS, dcrsr_val.into())?;
+        self.memory
+            .write_word_32(Dcrsr::ADDRESS, dcrsr_val.into())?;
 
         self.wait_for_core_register_transfer()?;
 
-        self.memory.read32(Dcrdr::ADDRESS).map_err(From::from)
+        self.memory.read_word_32(Dcrdr::ADDRESS).map_err(From::from)
     }
 
-    fn write_core_reg(&self, addr: CoreRegisterAddress, value: u32) -> Result<(), Error> {
+    fn write_core_reg(&mut self, addr: CoreRegisterAddress, value: u32) -> Result<(), Error> {
         let result: Result<(), Error> = self
             .memory
-            .write32(Dcrdr::ADDRESS, value)
+            .write_word_32(Dcrdr::ADDRESS, value)
             .map_err(From::from);
         result?;
 
@@ -486,7 +492,8 @@ impl CoreInterface for M4 {
         dcrsr_val.set_regwnr(true); // Perform a write.
         dcrsr_val.set_regsel(addr.into()); // The address of the register to write.
 
-        self.memory.write32(Dcrsr::ADDRESS, dcrsr_val.into())?;
+        self.memory
+            .write_word_32(Dcrsr::ADDRESS, dcrsr_val.into())?;
 
         self.wait_for_core_register_transfer()
     }
@@ -499,7 +506,7 @@ impl CoreInterface for M4 {
         value.set_c_debugen(true);
         value.enable_write();
 
-        self.memory.write32(Dhcsr::ADDRESS, value.into())?;
+        self.memory.write_word_32(Dhcsr::ADDRESS, value.into())?;
 
         self.wait_for_core_halted()?;
 
@@ -516,10 +523,10 @@ impl CoreInterface for M4 {
         value.set_c_debugen(true);
         value.enable_write();
 
-        self.memory.write32(Dhcsr::ADDRESS, value.into())?;
+        self.memory.write_word_32(Dhcsr::ADDRESS, value.into())?;
 
         // We assume that the core is running now
-        self.current_state = CoreStatus::Running;
+        self.state.current_state = CoreStatus::Running;
 
         Ok(())
     }
@@ -534,7 +541,7 @@ impl CoreInterface for M4 {
         value.set_c_maskints(true);
         value.enable_write();
 
-        self.memory.write32(Dhcsr::ADDRESS, value.into())?;
+        self.memory.write_word_32(Dhcsr::ADDRESS, value.into())?;
 
         self.wait_for_core_halted()?;
 
@@ -545,34 +552,35 @@ impl CoreInterface for M4 {
         Ok(CoreInformation { pc: pc_value })
     }
 
-    fn reset(&self) -> Result<(), Error> {
+    fn reset(&mut self) -> Result<(), Error> {
         // Set THE AIRCR.SYSRESETREQ control bit to 1 to request a reset. (ARM V6 ARM, B1.5.16)
         let mut value = Aircr(0);
         value.vectkey();
         value.set_sysresetreq(true);
 
-        self.memory.write32(Aircr::ADDRESS, value.into())?;
+        self.memory.write_word_32(Aircr::ADDRESS, value.into())?;
 
         Ok(())
     }
 
     fn reset_and_halt(&mut self) -> Result<CoreInformation, Error> {
         // Ensure debug mode is enabled
-        let dhcsr_val = Dhcsr(self.memory.read32(Dhcsr::ADDRESS)?);
+        let dhcsr_val = Dhcsr(self.memory.read_word_32(Dhcsr::ADDRESS)?);
         if !dhcsr_val.c_debugen() {
             let mut dhcsr = Dhcsr(0);
             dhcsr.set_c_debugen(true);
             dhcsr.enable_write();
-            self.memory.write32(Dhcsr::ADDRESS, dhcsr.into())?;
+            self.memory.write_word_32(Dhcsr::ADDRESS, dhcsr.into())?;
         }
 
         // Set the vc_corereset bit in the DEMCR register.
         // This will halt the core after reset.
-        let demcr_val = Demcr(self.memory.read32(Demcr::ADDRESS)?);
+        let demcr_val = Demcr(self.memory.read_word_32(Demcr::ADDRESS)?);
         if !demcr_val.vc_corereset() {
             let mut demcr_enabled = demcr_val;
             demcr_enabled.set_vc_corereset(true);
-            self.memory.write32(Demcr::ADDRESS, demcr_enabled.into())?;
+            self.memory
+                .write_word_32(Demcr::ADDRESS, demcr_enabled.into())?;
         }
 
         self.reset()?;
@@ -585,7 +593,8 @@ impl CoreInterface for M4 {
             self.write_core_reg(register::XPSR.address, xpsr_value | XPSR_THUMB)?;
         }
 
-        self.memory.write32(Demcr::ADDRESS, demcr_val.into())?;
+        self.memory
+            .write_word_32(Demcr::ADDRESS, demcr_val.into())?;
 
         // try to read the program counter
         let pc_value = self.read_core_reg(register::PC.address)?;
@@ -594,8 +603,8 @@ impl CoreInterface for M4 {
         Ok(CoreInformation { pc: pc_value })
     }
 
-    fn get_available_breakpoint_units(&self) -> Result<u32, Error> {
-        let raw_val = self.memory.read32(FpCtrl::ADDRESS)?;
+    fn get_available_breakpoint_units(&mut self) -> Result<u32, Error> {
+        let raw_val = self.memory.read_word_32(FpCtrl::ADDRESS)?;
 
         let reg = FpCtrl::from(raw_val);
 
@@ -612,15 +621,15 @@ impl CoreInterface for M4 {
         val.set_key(true);
         val.set_enable(state);
 
-        self.memory.write32(FpCtrl::ADDRESS, val.into())?;
+        self.memory.write_word_32(FpCtrl::ADDRESS, val.into())?;
 
-        self.hw_breakpoints_enabled = true;
+        self.state.hw_breakpoints_enabled = true;
 
         Ok(())
     }
 
-    fn set_breakpoint(&self, bp_unit_index: usize, addr: u32) -> Result<(), Error> {
-        let raw_val = self.memory.read32(FpCtrl::ADDRESS)?;
+    fn set_breakpoint(&mut self, bp_unit_index: usize, addr: u32) -> Result<(), Error> {
+        let raw_val = self.memory.read_word_32(FpCtrl::ADDRESS)?;
         let ctrl_reg = FpCtrl::from(raw_val);
 
         let val: u32;
@@ -638,7 +647,7 @@ impl CoreInterface for M4 {
         // address spaces than Rev1.
         let reg_addr = FpRev1CompX::ADDRESS + (bp_unit_index * size_of::<u32>()) as u32;
 
-        self.memory.write32(reg_addr, val)?;
+        self.memory.write_word_32(reg_addr, val)?;
 
         Ok(())
     }
@@ -647,27 +656,50 @@ impl CoreInterface for M4 {
         &ARM_REGISTER_FILE
     }
 
-    fn clear_breakpoint(&self, bp_unit_index: usize) -> Result<(), Error> {
+    fn clear_breakpoint(&mut self, bp_unit_index: usize) -> Result<(), Error> {
         let mut val = FpRev1CompX::from(0);
         val.set_enable(false);
 
         let reg_addr = FpRev1CompX::ADDRESS + (bp_unit_index * size_of::<u32>()) as u32;
 
-        self.memory.write32(reg_addr, val.into())?;
+        self.memory.write_word_32(reg_addr, val.into())?;
 
         Ok(())
     }
 
-    fn memory(&self) -> Memory {
-        self.memory.clone()
-    }
-
     fn hw_breakpoints_enabled(&self) -> bool {
-        self.hw_breakpoints_enabled
+        self.state.hw_breakpoints_enabled
     }
 
     fn architecture(&self) -> Architecture {
-        Architecture::ARM
+        Architecture::Arm
+    }
+}
+
+impl<'probe> MemoryInterface for M4<'probe> {
+    fn read_word_32(&mut self, address: u32) -> Result<u32, Error> {
+        self.memory.read_word_32(address)
+    }
+    fn read_word_8(&mut self, address: u32) -> Result<u8, Error> {
+        self.memory.read_word_8(address)
+    }
+    fn read_32(&mut self, address: u32, data: &mut [u32]) -> Result<(), Error> {
+        self.memory.read_32(address, data)
+    }
+    fn read_8(&mut self, address: u32, data: &mut [u8]) -> Result<(), Error> {
+        self.memory.read_8(address, data)
+    }
+    fn write_word_32(&mut self, address: u32, data: u32) -> Result<(), Error> {
+        self.memory.write_word_32(address, data)
+    }
+    fn write_word_8(&mut self, address: u32, data: u8) -> Result<(), Error> {
+        self.memory.write_word_8(address, data)
+    }
+    fn write_32(&mut self, address: u32, data: &[u32]) -> Result<(), Error> {
+        self.memory.write_32(address, data)
+    }
+    fn write_8(&mut self, address: u32, data: &[u8]) -> Result<(), Error> {
+        self.memory.write_8(address, data)
     }
 }
 

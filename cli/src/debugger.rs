@@ -3,7 +3,7 @@ use crate::common::CliError;
 use capstone::Capstone;
 use probe_rs::architecture::arm::CortexDump;
 use probe_rs::debug::DebugInfo;
-use probe_rs::{Core, CoreRegisterAddress};
+use probe_rs::{Core, CoreRegisterAddress, MemoryInterface};
 use std::fs::File;
 use std::io::prelude::*;
 
@@ -39,7 +39,7 @@ impl DebugCli {
 
                 let mut code = [0u8; 16 * 2];
 
-                cli_data.core.memory().read_block8(cpu_info.pc, &mut code)?;
+                cli_data.core.read_8(cpu_info.pc, &mut code)?;
 
                 /*
                 let instructions = cli_data
@@ -118,7 +118,7 @@ impl DebugCli {
 
                 let mut buff = vec![0u32; num_words];
 
-                cli_data.core.memory().read_block32(address, &mut buff)?;
+                cli_data.core.read_32(address, &mut buff)?;
 
                 for (offset, word) in buff.iter().enumerate() {
                     println!("0x{:08x} = 0x{:08x}", address + (offset * 4) as u32, word);
@@ -139,7 +139,7 @@ impl DebugCli {
                 let data_str = args.get(1).ok_or(CliError::MissingArgument)?;
                 let data = u32::from_str_radix(data_str, 16).unwrap();
 
-                cli_data.core.memory().write32(address, data)?;
+                cli_data.core.write_word_32(address, data)?;
 
                 Ok(CliState::Continue)
             },
@@ -184,7 +184,7 @@ impl DebugCli {
                 let program_counter = cli_data.core.read_core_reg(regs.program_counter())?;
 
                 if let Some(di) = &cli_data.debug_info {
-                    let frames = di.try_unwind(&cli_data.core, u64::from(program_counter));
+                    let frames = di.try_unwind(&mut cli_data.core, u64::from(program_counter));
 
                     for frame in frames {
                         println!("{}", frame);
@@ -230,10 +230,7 @@ impl DebugCli {
 
                 let mut stack = vec![0u8; (stack_top - stack_bot) as usize];
 
-                cli_data
-                    .core
-                    .memory()
-                    .read_block8(stack_bot, &mut stack[..])?;
+                cli_data.core.read_8(stack_bot, &mut stack[..])?;
 
                 let mut dump = CortexDump::new(stack_bot, stack);
 
@@ -315,8 +312,8 @@ impl DebugCli {
     }
 }
 
-pub struct CliData {
-    pub core: Core,
+pub struct CliData<'p> {
+    pub core: Core<'p>,
     pub debug_info: Option<DebugInfo>,
     pub capstone: Capstone,
 }

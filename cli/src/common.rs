@@ -88,7 +88,7 @@ pub(crate) fn open_probe(index: Option<usize>) -> Result<Probe, CliError> {
 /// even in an error case inside the closure!
 pub(crate) fn with_device<F>(shared_options: &SharedOptions, f: F) -> Result<(), CliError>
 where
-    for<'a> F: FnOnce(Session) -> Result<(), CliError>,
+    F: FnOnce(Session) -> Result<(), CliError>,
 {
     let mut probe = open_probe(shared_options.n)?;
 

@@ -102,7 +102,7 @@ where
     ) -> Result<(), Self::Error>;
 }
 
-impl<'a, T, PORT, R> APAccess<PORT, R> for &'a mut T
+impl<T, PORT, R> APAccess<PORT, R> for &mut T
 where
     T: APAccess<PORT, R>,
     PORT: AccessPort,

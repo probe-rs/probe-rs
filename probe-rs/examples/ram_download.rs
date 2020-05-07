@@ -1,4 +1,4 @@
-use probe_rs::{config::TargetSelector, Probe, WireProtocol};
+use probe_rs::{config::TargetSelector, MemoryInterface, Probe, WireProtocol};
 
 use std::num::ParseIntError;
 use std::time::Instant;
@@ -43,12 +43,10 @@ fn main() -> Result<(), &'static str> {
     probe
         .select_protocol(protocol)
         .map_err(|_| "Failed to select SWD as the transport protocol")?;
-    let session = probe
+    let mut session = probe
         .attach(target_selector)
         .map_err(|_| "Failed to attach probe to target")?;
-    let core = session
-        .attach_to_core(0)
-        .map_err(|_| "Failed to attach to core")?;
+    let mut core = session.core(0).map_err(|_| "Failed to attach to core")?;
 
     let data_size_words = matches.size;
 

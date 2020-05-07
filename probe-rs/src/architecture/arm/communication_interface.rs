@@ -15,8 +15,6 @@ use crate::{
     CommunicationInterface, DebugProbe, DebugProbeError, Error as ProbeRsError, Memory, Probe,
 };
 use jep106::JEP106Code;
-use std::cell::RefCell;
-use std::rc::Rc;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -117,41 +115,42 @@ pub trait DAPAccess: DebugProbe {
     }
 }
 
-#[derive(Clone, Debug)]
-pub struct ArmCommunicationInterface {
-    inner: Rc<RefCell<InnerArmCommunicationInterface>>,
-}
-
-impl ArmCommunicationInterface {
-    pub fn new(probe: Probe) -> Result<Self, (Probe, DebugProbeError)> {
-        Ok(Self {
-            inner: Rc::new(RefCell::new(InnerArmCommunicationInterface::new(probe)?)),
-        })
-    }
-
-    pub fn dedicated_memory_interface(&self) -> Result<Option<Memory>, DebugProbeError> {
-        self.inner.borrow().probe.dedicated_memory_interface()
-    }
-
-    pub fn close(self) -> Result<Probe, Self> {
-        let inner = Rc::try_unwrap(self.inner);
-
-        match inner {
-            Ok(inner) => Ok(inner.into_inner().probe),
-            Err(e) => Err(ArmCommunicationInterface { inner: e }),
-        }
-    }
-}
-
 #[derive(Debug)]
-struct InnerArmCommunicationInterface {
-    probe: Probe,
+pub struct ArmCommunicationInterfaceState {
+    initialized: bool,
+
     debug_port_version: DebugPortVersion,
 
     current_dpbanksel: u8,
 
     current_apsel: u8,
     current_apbanksel: u8,
+}
+
+impl ArmCommunicationInterfaceState {
+    pub fn new() -> Self {
+        Self {
+            initialized: false,
+            debug_port_version: DebugPortVersion::Unsupported(0xFF),
+            current_dpbanksel: 0,
+            current_apsel: 0,
+            current_apbanksel: 0,
+        }
+    }
+
+    pub(crate) fn initialize(&mut self) {
+        self.initialized = true;
+    }
+
+    pub(crate) fn initialized(&self) -> bool {
+        self.initialized
+    }
+}
+
+#[derive(Debug)]
+pub struct ArmCommunicationInterface<'probe> {
+    probe: &'probe mut Probe,
+    state: &'probe mut ArmCommunicationInterfaceState,
 }
 
 fn get_debug_port_version(probe: &mut Probe) -> Result<DebugPortVersion, DebugProbeError> {
@@ -164,34 +163,49 @@ fn get_debug_port_version(probe: &mut Probe) -> Result<DebugPortVersion, DebugPr
     Ok(DebugPortVersion::from(dpidr.version()))
 }
 
-impl InnerArmCommunicationInterface {
-    fn new(mut probe: Probe) -> Result<Self, (Probe, DebugProbeError)> {
-        // Check the version of debug port used
-        let version = match get_debug_port_version(&mut probe) {
-            Ok(version) => version,
-            Err(e) => return Err((probe, e)),
-        };
+impl<'probe> ArmCommunicationInterface<'probe> {
+    pub fn new(
+        probe: &'probe mut Probe,
+        state: &'probe mut ArmCommunicationInterfaceState,
+    ) -> Result<Option<Self>, DebugProbeError> {
+        if probe.has_dap_interface() {
+            let mut s = Self { probe, state };
 
-        log::debug!("Debug Port version: {:?}", version);
+            if !s.state.initialized() {
+                s.enter_debug_mode()?;
+                s.state.initialize();
+            }
 
-        let mut s = Self {
-            probe,
-            debug_port_version: version,
-            current_dpbanksel: 0,
-            current_apsel: 0,
-            current_apbanksel: 0,
-        };
-
-        if let Err(e) = s.enter_debug_mode() {
-            Err((s.probe, e.into()))
+            Ok(Some(s))
         } else {
-            Ok(s)
+            log::debug!("No DAP interface available on Probe");
+
+            Ok(None)
         }
+    }
+
+    /// Reborrows the `ArmCommunicationInterface` at hand.
+    /// This borrows the references inside the interface and hands them out with a new interface.
+    /// This method replaces the normally called `::clone()` method which consumes the object,
+    /// which is not what we want.
+    pub fn reborrow(&mut self) -> ArmCommunicationInterface<'_> {
+        ArmCommunicationInterface::new(self.probe, self.state)
+            .unwrap()
+            .unwrap()
+    }
+
+    pub fn dedicated_memory_interface(&self) -> Result<Option<Memory<'_>>, DebugProbeError> {
+        self.probe.dedicated_memory_interface()
     }
 
     fn enter_debug_mode(&mut self) -> Result<(), DebugProbeError> {
         // Assume that we have DebugPort v1 Interface!
         // Maybe change this in the future when other versions are released.
+
+        // Check the version of debug port used
+        let debug_port_version = get_debug_port_version(&mut self.probe)?;
+        self.state.debug_port_version = debug_port_version;
+        log::debug!("Debug Port version: {:?}", debug_port_version);
 
         // Read the DP ID.
         let dp_id: DPIDR = self.read_dp_register()?;
@@ -230,15 +244,15 @@ impl InnerArmCommunicationInterface {
     }
 
     fn select_ap_and_ap_bank(&mut self, port: u8, ap_bank: u8) -> Result<(), DebugProbeError> {
-        let mut cache_changed = if self.current_apsel != port {
-            self.current_apsel = port;
+        let mut cache_changed = if self.state.current_apsel != port {
+            self.state.current_apsel = port;
             true
         } else {
             false
         };
 
-        if self.current_apbanksel != ap_bank {
-            self.current_apbanksel = ap_bank;
+        if self.state.current_apbanksel != ap_bank {
+            self.state.current_apbanksel = ap_bank;
             cache_changed = true;
         }
 
@@ -247,13 +261,13 @@ impl InnerArmCommunicationInterface {
 
             log::debug!(
                 "Changing AP to {}, AP_BANK_SEL to {}",
-                self.current_apsel,
-                self.current_apbanksel
+                self.state.current_apsel,
+                self.state.current_apbanksel
             );
 
-            select.set_ap_sel(self.current_apsel);
-            select.set_ap_bank_sel(self.current_apbanksel);
-            select.set_dp_bank_sel(self.current_dpbanksel);
+            select.set_ap_sel(self.state.current_apsel);
+            select.set_ap_bank_sel(self.state.current_apbanksel);
+            select.set_dp_bank_sel(self.state.current_dpbanksel);
 
             self.write_dp_register(select)?;
         }
@@ -264,16 +278,16 @@ impl InnerArmCommunicationInterface {
     fn select_dp_bank(&mut self, dp_bank: DPBankSel) -> Result<(), DebugPortError> {
         match dp_bank {
             DPBankSel::Bank(new_bank) => {
-                if new_bank != self.current_dpbanksel {
-                    self.current_dpbanksel = new_bank;
+                if new_bank != self.state.current_dpbanksel {
+                    self.state.current_dpbanksel = new_bank;
 
                     let mut select = Select(0);
 
-                    log::debug!("Changing DP_BANK_SEL to {}", self.current_dpbanksel);
+                    log::debug!("Changing DP_BANK_SEL to {}", self.state.current_dpbanksel);
 
-                    select.set_ap_sel(self.current_apsel);
-                    select.set_ap_bank_sel(self.current_apbanksel);
-                    select.set_dp_bank_sel(self.current_dpbanksel);
+                    select.set_ap_sel(self.state.current_apsel);
+                    select.set_ap_bank_sel(self.state.current_apbanksel);
+                    select.set_dp_bank_sel(self.state.current_dpbanksel);
 
                     self.write_dp_register(select)?;
                 }
@@ -305,7 +319,7 @@ impl InnerArmCommunicationInterface {
             .ok_or_else(|| DebugProbeError::InterfaceNotAvailable("ARM"))?;
 
         interface.write_register(
-            PortType::AccessPort(u16::from(self.current_apsel)),
+            PortType::AccessPort(u16::from(self.state.current_apsel)),
             u16::from(R::ADDRESS),
             register_value,
         )?;
@@ -337,7 +351,7 @@ impl InnerArmCommunicationInterface {
             .ok_or_else(|| DebugProbeError::InterfaceNotAvailable("ARM"))?;
 
         interface.write_block(
-            PortType::AccessPort(u16::from(self.current_apsel)),
+            PortType::AccessPort(u16::from(self.state.current_apsel)),
             u16::from(R::ADDRESS),
             values,
         )?;
@@ -358,7 +372,7 @@ impl InnerArmCommunicationInterface {
             .ok_or_else(|| DebugProbeError::InterfaceNotAvailable("ARM"))?;
 
         let result = interface.read_register(
-            PortType::AccessPort(u16::from(self.current_apsel)),
+            PortType::AccessPort(u16::from(self.state.current_apsel)),
             u16::from(R::ADDRESS),
         )?;
 
@@ -392,7 +406,7 @@ impl InnerArmCommunicationInterface {
             .ok_or_else(|| DebugProbeError::InterfaceNotAvailable("ARM"))?;
 
         interface.read_block(
-            PortType::AccessPort(u16::from(self.current_apsel)),
+            PortType::AccessPort(u16::from(self.state.current_apsel)),
             u16::from(R::ADDRESS),
             values,
         )?;
@@ -400,28 +414,18 @@ impl InnerArmCommunicationInterface {
     }
 }
 
-impl CommunicationInterface for ArmCommunicationInterface {
+impl<'probe> CommunicationInterface for ArmCommunicationInterface<'probe> {
     fn probe_for_chip_info(mut self) -> Result<Option<ChipInfo>, ProbeRsError> {
         ArmChipInfo::read_from_rom_table(&mut self).map(|option| option.map(ChipInfo::Arm))
     }
 }
 
-impl DPAccess for ArmCommunicationInterface {
+impl<'probe> DPAccess for ArmCommunicationInterface<'probe> {
     fn read_dp_register<R: DPRegister>(&mut self) -> Result<R, DebugPortError> {
-        self.inner.borrow_mut().read_dp_register()
-    }
-
-    fn write_dp_register<R: DPRegister>(&mut self, register: R) -> Result<(), DebugPortError> {
-        self.inner.borrow_mut().write_dp_register(register)
-    }
-}
-
-impl DPAccess for InnerArmCommunicationInterface {
-    fn read_dp_register<R: DPRegister>(&mut self) -> Result<R, DebugPortError> {
-        if R::VERSION > self.debug_port_version {
+        if R::VERSION > self.state.debug_port_version {
             return Err(DebugPortError::UnsupportedRegister {
                 register: R::NAME,
-                version: self.debug_port_version,
+                version: self.state.debug_port_version,
             });
         }
 
@@ -439,10 +443,10 @@ impl DPAccess for InnerArmCommunicationInterface {
     }
 
     fn write_dp_register<R: DPRegister>(&mut self, register: R) -> Result<(), DebugPortError> {
-        if R::VERSION > self.debug_port_version {
+        if R::VERSION > self.state.debug_port_version {
             return Err(DebugPortError::UnsupportedRegister {
                 register: R::NAME,
-                version: self.debug_port_version,
+                version: self.state.debug_port_version,
             });
         }
 
@@ -460,18 +464,18 @@ impl DPAccess for InnerArmCommunicationInterface {
     }
 }
 
-impl<R> APAccess<MemoryAP, R> for ArmCommunicationInterface
+impl<'probe, R> APAccess<MemoryAP, R> for ArmCommunicationInterface<'probe>
 where
     R: APRegister<MemoryAP>,
 {
     type Error = DebugProbeError;
 
     fn read_ap_register(&mut self, port: MemoryAP, register: R) -> Result<R, Self::Error> {
-        self.inner.borrow_mut().read_ap_register(port, register)
+        self.read_ap_register(port, register)
     }
 
     fn write_ap_register(&mut self, port: MemoryAP, register: R) -> Result<(), Self::Error> {
-        self.inner.borrow_mut().write_ap_register(port, register)
+        self.write_ap_register(port, register)
     }
 
     fn write_ap_register_repeated(
@@ -480,9 +484,7 @@ where
         register: R,
         values: &[u32],
     ) -> Result<(), Self::Error> {
-        self.inner
-            .borrow_mut()
-            .write_ap_register_repeated(port, register, values)
+        self.write_ap_register_repeated(port, register, values)
     }
 
     fn read_ap_register_repeated(
@@ -491,24 +493,22 @@ where
         register: R,
         values: &mut [u32],
     ) -> Result<(), Self::Error> {
-        self.inner
-            .borrow_mut()
-            .read_ap_register_repeated(port, register, values)
+        self.read_ap_register_repeated(port, register, values)
     }
 }
 
-impl<R> APAccess<GenericAP, R> for ArmCommunicationInterface
+impl<'probe, R> APAccess<GenericAP, R> for ArmCommunicationInterface<'probe>
 where
     R: APRegister<GenericAP>,
 {
     type Error = DebugProbeError;
 
     fn read_ap_register(&mut self, port: GenericAP, register: R) -> Result<R, Self::Error> {
-        self.inner.borrow_mut().read_ap_register(port, register)
+        self.read_ap_register(port, register)
     }
 
     fn write_ap_register(&mut self, port: GenericAP, register: R) -> Result<(), Self::Error> {
-        self.inner.borrow_mut().write_ap_register(port, register)
+        self.write_ap_register(port, register)
     }
 
     fn write_ap_register_repeated(
@@ -517,9 +517,7 @@ where
         register: R,
         values: &[u32],
     ) -> Result<(), Self::Error> {
-        self.inner
-            .borrow_mut()
-            .write_ap_register_repeated(port, register, values)
+        self.write_ap_register_repeated(port, register, values)
     }
 
     fn read_ap_register_repeated(
@@ -528,9 +526,7 @@ where
         register: R,
         values: &mut [u32],
     ) -> Result<(), Self::Error> {
-        self.inner
-            .borrow_mut()
-            .read_ap_register_repeated(port, register, values)
+        self.read_ap_register_repeated(port, register, values)
     }
 }
 
@@ -567,15 +563,15 @@ impl ArmChipInfo {
                 };
                 baseaddr |= u64::from(base_register.BASEADDR << 12);
 
-                let memory = Memory::new(
+                let mut memory = Memory::new(
                     ADIMemoryInterface::<ArmCommunicationInterface>::new(
-                        interface.clone(),
+                        interface.reborrow(),
                         access_port,
                     )
                     .map_err(ProbeRsError::architecture_specific)?,
                 );
 
-                let component_table = CSComponent::try_parse(memory, baseaddr as u64)
+                let component_table = CSComponent::try_parse(&mut memory, baseaddr as u64)
                     .map_err(ProbeRsError::architecture_specific)?;
 
                 match component_table {
