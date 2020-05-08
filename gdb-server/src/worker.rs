@@ -112,7 +112,11 @@ pub async fn handler(
     Ok(break_due)
 }
 
-pub async fn await_halt(core: &mut Core<'_>, output_stream: &Sender<CheckedPacket>, await_halt: &mut bool) {
+pub async fn await_halt(
+    core: &mut Core<'_>,
+    output_stream: &Sender<CheckedPacket>,
+    await_halt: &mut bool,
+) {
     task::sleep(Duration::from_millis(10)).await;
     if *await_halt && core.core_halted().unwrap() {
         let response = CheckedPacket::from_data(PacketKind::Packet, b"T05hwbreak:;".to_vec());
