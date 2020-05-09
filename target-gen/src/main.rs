@@ -1,53 +1,172 @@
 pub mod algorithm_binary;
-pub mod chip;
-pub mod chip_family;
 pub mod flash_device;
 pub mod parser;
-pub mod raw_flash_algorithm;
-
-use crate::chip::Chip;
-use crate::chip_family::ChipFamily;
-use crate::raw_flash_algorithm::RawFlashAlgorithm;
 
 use anyhow::{anyhow, bail, ensure, Context, Result};
 use cmsis_pack::pdsc::{Core, Device, Package, Processors};
 use cmsis_pack::utils::FromElem;
 use log;
 use pretty_env_logger;
-use probe_rs::config::{FlashRegion, MemoryRegion, RamRegion};
+use probe_rs::config::{Chip, ChipFamily, FlashRegion, MemoryRegion, RamRegion, RawFlashAlgorithm};
 use structopt::StructOpt;
 
-use fs::create_dir;
-use std::collections::HashMap;
-use std::fs::{self, File};
-use std::io::Read;
-use std::path::{Path, PathBuf};
+use parser::extract_flash_algo;
+use std::{
+    borrow::Cow,
+    fs::{self, create_dir, File, OpenOptions},
+    io::{Read, Write},
+    path::{Path, PathBuf},
+};
 
 #[derive(StructOpt)]
-struct Options {
-    #[structopt(
-        name = "INPUT",
-        parse(from_os_str),
-        help = "A Pack file or the unziped Pack directory."
-    )]
-    input: PathBuf,
-    #[structopt(
-        name = "OUTPUT",
-        parse(from_os_str),
-        help = "An output directory where all the generated .yaml files are put in."
-    )]
-    output_dir: PathBuf,
+enum TargetGen {
+    /// Generate target description from ARM CMSIS-Packs
+    Pack {
+        #[structopt(
+            name = "INPUT",
+            parse(from_os_str),
+            help = "A Pack file or the unziped Pack directory."
+        )]
+        input: PathBuf,
+        #[structopt(
+            name = "OUTPUT",
+            parse(from_os_str),
+            help = "An output directory where all the generated .yaml files are put in."
+        )]
+        output_dir: PathBuf,
+    },
+    /// Extract a flash algorithm from an ELF file
+    Extract {
+        /// ELF file containing a flash algorithm
+        #[structopt(parse(from_os_str))]
+        elf: PathBuf,
+        /// Name of the extracted flash algorithm
+        #[structopt(long = "name", short = "n")]
+        name: Option<String>,
+        /// Update an existing flash algorithm
+        #[structopt(long = "update", short = "u", requires = "output")]
+        update: bool,
+        /// Output file, if provided, the generated target description will be written to this file.
+        #[structopt(parse(from_os_str))]
+        output: Option<PathBuf>,
+    },
 }
 
 fn main() -> Result<()> {
     pretty_env_logger::init();
 
-    let options = Options::from_args();
+    let options = TargetGen::from_args();
 
-    // The directory in which to look for the .pdsc file.
-    let input = options.input;
-    let out_dir = options.output_dir;
+    match options {
+        TargetGen::Pack { input, output_dir } => cmd_pack(&input, &output_dir)?,
+        TargetGen::Extract {
+            elf,
+            output,
+            update,
+            name,
+        } => cmd_extract(elf, output, update, name)?,
+    }
 
+    Ok(())
+}
+
+/// Prepare a target config based on an ELF file containing a flash algorithm.
+fn cmd_extract(
+    file: PathBuf,
+    output: Option<PathBuf>,
+    update: bool,
+    name: Option<String>,
+) -> Result<()> {
+    let elf_file = File::open(&file)?;
+
+    let mut algorithm = extract_flash_algo(elf_file, &file, true)?;
+
+    if let Some(name) = name {
+        algorithm.name = Cow::Owned(name);
+    }
+
+    if update {
+        // Update an existing target file
+
+        let target_description_file = output.unwrap(); // Argument is checked by structopt, so we now its present.
+
+        let target_description = File::open(&target_description_file).context(format!(
+            "Unable to open target specification '{}'",
+            target_description_file.display()
+        ))?;
+
+        let mut family = probe_rs::config::ChipFamily::from_yaml_reader(&target_description)?;
+
+        // Close target description file, we want to overwrite it later
+        drop(target_description);
+
+        let algorithm_to_update = family
+            .flash_algorithms
+            .iter()
+            .position(|old_algorithm| old_algorithm.name == algorithm.name);
+
+        match algorithm_to_update {
+            None => bail!("Unable to update flash algorithm in target description file '{}'. Did not find an existing algorithm with name '{}'", target_description_file.display(), &algorithm.name),
+            Some(index) => family.flash_algorithms.to_mut()[index] = algorithm,
+        }
+
+        let target_description = File::create(&target_description_file)?;
+
+        serde_yaml::to_writer(&target_description, &family)?;
+    } else {
+        // Create a complete target specification, with place holder values
+        let algorithm_name = algorithm.name.clone();
+
+        let chip_family = ChipFamily {
+            name: Cow::Borrowed("<family name>"),
+            manufacturer: None,
+            variants: Cow::Owned(vec![Chip {
+                part: None,
+                name: Cow::Borrowed("<chip name>"),
+                memory_map: Cow::Borrowed(&[
+                    MemoryRegion::Flash(FlashRegion {
+                        is_boot_memory: false,
+                        range: 0..0x2000,
+                    }),
+                    MemoryRegion::Ram(RamRegion {
+                        is_boot_memory: true,
+                        range: 0x1_0000..0x2_0000,
+                    }),
+                ]),
+                flash_algorithms: Cow::Owned(vec![algorithm_name]),
+            }]),
+            flash_algorithms: Cow::Owned(vec![algorithm]),
+            core: Cow::Borrowed("<mcu core>"),
+        };
+
+        let serialized = serde_yaml::to_string(&chip_family)?;
+
+        match output {
+            Some(output) => {
+                // Ensure we don't overwrite an existing file
+                let mut file = OpenOptions::new()
+                    .write(true)
+                    .create_new(true)
+                    .open(&output)
+                    .context(format!(
+                        "Failed to create target file '{}'.",
+                        output.display()
+                    ))?;
+
+                file.write_all(serialized.as_bytes())?;
+            }
+            None => println!("{}", serialized),
+        }
+    }
+
+    Ok(())
+}
+
+/// Handle the pack subcommand. `input` is either the path
+/// to a CMSIS-Pack file, or a directory containing at least one .pdsc file.
+///
+/// Generated target description will be placed in `out_dir`.
+fn cmd_pack(input: &Path, out_dir: &Path) -> Result<()> {
     ensure!(
         input.exists(),
         "No such file or directory: {}",
@@ -80,7 +199,7 @@ fn main() -> Result<()> {
     let mut generated_files = Vec::with_capacity(families.len());
 
     for family in &families {
-        let path = out_dir.join(family.name.clone() + ".yaml");
+        let path = out_dir.join(family.name.clone().into_owned() + ".yaml");
         let file = std::fs::File::create(&path)
             .context(format!("Failed to create file '{}'.", path.display()))?;
         serde_yaml::to_writer(file, &family)?;
@@ -183,11 +302,22 @@ fn handle_package(
         let family = if let Some(ref mut family) = potential_family {
             family
         } else {
-            families.push(ChipFamily::new(
-                device.family,
-                HashMap::new(),
-                core.to_owned(),
-            ));
+            families.push(
+                /*
+                    ChipFamily::new(
+                    device.family,
+                    HashMap::new(),
+                    core.to_owned(),
+                )
+                */
+                ChipFamily {
+                    name: device.family.into(),
+                    manufacturer: None,
+                    variants: Cow::Owned(Vec::new()),
+                    core: core.into(),
+                    flash_algorithms: Cow::Borrowed(&[]),
+                },
+            );
             // This unwrap is always safe as we insert at least one item previously.
             families.last_mut().unwrap()
         };
@@ -198,7 +328,7 @@ fn handle_package(
             .collect();
 
         for fa in variant_flash_algorithms {
-            family.flash_algorithms.insert(fa.name.clone(), fa);
+            family.flash_algorithms.to_mut().push(fa);
         }
 
         let mut memory_map: Vec<MemoryRegion> = Vec::new();
@@ -209,10 +339,13 @@ fn handle_package(
             memory_map.push(MemoryRegion::Flash(mem));
         }
 
-        family.variants.push(Chip {
-            name: device_name,
-            memory_map,
-            flash_algorithms: flash_algorithm_names,
+        family.variants.to_mut().push(Chip {
+            name: Cow::Owned(device_name),
+            part: None,
+            memory_map: Cow::Owned(memory_map),
+            flash_algorithms: Cow::Owned(
+                flash_algorithm_names.into_iter().map(Cow::Owned).collect(),
+            ),
         });
     }
 

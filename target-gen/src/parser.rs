@@ -1,6 +1,5 @@
 use crate::flash_device::FlashDevice;
-use crate::raw_flash_algorithm::RawFlashAlgorithm;
-use probe_rs::config::{FlashProperties, SectorDescription};
+use probe_rs::config::{FlashProperties, RawFlashAlgorithm, SectorDescription};
 
 use anyhow::{anyhow, Context, Result};
 
@@ -18,6 +17,9 @@ pub(crate) fn read_elf_bin_data<'a>(
     for ph in &elf.program_headers {
         let segment_address = ph.p_paddr as u32;
         let segment_size = ph.p_memsz.min(ph.p_filesz) as u32;
+
+        log::debug!("Segment address: {:#010x}", segment_address);
+        log::debug!("Segment size:    {} bytes", segment_size);
 
         // If the requested data is above the current segment, skip the segment.
         if address > segment_address + segment_size {
@@ -75,24 +77,32 @@ pub fn extract_flash_algo(
 
     // Extract binary blob.
     let algorithm_binary = crate::algorithm_binary::AlgorithmBinary::new(&elf, &buffer)?;
-    algo.instructions = base64::encode(&algorithm_binary.blob());
+    algo.instructions = Vec::from(base64::encode(&algorithm_binary.blob()).as_bytes()).into();
+
+    let code_section_offset = algorithm_binary.code_section.start;
 
     // Extract the function pointers.
     for sym in elf.syms.iter() {
         let name = &elf.strtab[sym.st_name];
 
         match name {
-            "Init" => algo.pc_init = Some(sym.st_value as u32),
-            "UnInit" => algo.pc_uninit = Some(sym.st_value as u32),
-            "EraseChip" => algo.pc_erase_all = Some(sym.st_value as u32),
-            "EraseSector" => algo.pc_erase_sector = sym.st_value as u32,
-            "ProgramPage" => algo.pc_program_page = sym.st_value as u32,
+            "Init" => algo.pc_init = Some(sym.st_value as u32 - code_section_offset),
+            "UnInit" => algo.pc_uninit = Some(sym.st_value as u32 - code_section_offset),
+            "EraseChip" => algo.pc_erase_all = Some(sym.st_value as u32 - code_section_offset),
+            "EraseSector" => algo.pc_erase_sector = sym.st_value as u32 - code_section_offset,
+            "ProgramPage" => algo.pc_program_page = sym.st_value as u32 - code_section_offset,
             _ => {}
         }
     }
 
-    algo.description = flash_device.name;
-    algo.name = file_name.file_stem().unwrap().to_str().unwrap().to_owned();
+    algo.description = flash_device.name.into();
+    algo.name = file_name
+        .file_stem()
+        .unwrap()
+        .to_str()
+        .unwrap()
+        .to_owned()
+        .into();
     algo.default = default;
     algo.data_section_offset = algorithm_binary.data_section.start;
 

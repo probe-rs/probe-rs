@@ -1,6 +1,6 @@
 use scroll::Pread;
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 
 /// A struct to describe one sector in Flash.
 #[derive(Clone, Debug)]
@@ -69,7 +69,8 @@ impl FlashDevice {
         let sectors = Self::parse_sectors(elf, buffer, address);
 
         // Get the rest of the data stored in the struct.
-        let data = crate::parser::read_elf_bin_data(elf, buffer, address, Self::INFO_SIZE).unwrap();
+        let data = crate::parser::read_elf_bin_data(elf, buffer, address, Self::INFO_SIZE)
+            .ok_or_else(|| anyhow!("Failed to read binary data for flash device. Read address: {:#010x}, size: {} bytes", address, Self::INFO_SIZE))?;
 
         // Get the string length of the name
         let hypothetical_length = data[2..2 + Self::MAX_ID_STRING_LENGTH]
