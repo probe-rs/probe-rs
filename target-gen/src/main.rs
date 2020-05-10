@@ -181,7 +181,7 @@ fn cmd_elf(
 /// Handle the pack subcommand. `input` is either the path
 /// to a CMSIS-Pack file, or a directory containing at least one .pdsc file.
 ///
-/// Generated target description will be placed in `out_dir`.
+/// The generated target description will be placed in `out_dir`.
 fn cmd_pack(input: &Path, out_dir: &Path) -> Result<()> {
     ensure!(
         input.exists(),
@@ -233,10 +233,8 @@ fn cmd_pack(input: &Path, out_dir: &Path) -> Result<()> {
     Ok(())
 }
 
-/// Handle the pack subcommand. `input` is either the path
-/// to a CMSIS-Pack file, or a directory containing at least one .pdsc file.
-///
-/// Generated target description will be placed in `out_dir`.
+/// Handle the arm subcommand.
+/// Generated target descriptions will be placed in `out_dir`.
 fn cmd_arm(out_dir: &Path) -> Result<()> {
     if !out_dir.exists() {
         create_dir(&out_dir).context(format!(
