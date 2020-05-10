@@ -4,11 +4,9 @@ use std::{borrow::Cow, path::Path};
 
 use anyhow::{anyhow, bail, Context, Result};
 use cmsis_pack::pdsc::{Core, Device, Package, Processors};
-use cmsis_pack::utils::FromElem;
+use cmsis_pack::{pack_index::PdscRef, utils::FromElem};
 use log;
 use probe_rs::config::{Chip, ChipFamily, FlashRegion, MemoryRegion, RamRegion, RawFlashAlgorithm};
-
-use crate::fetch::Pack;
 
 pub(crate) enum Kind<'a, T>
 where
@@ -203,21 +201,24 @@ pub(crate) fn visit_file(path: &Path, families: &mut Vec<ChipFamily>) -> Result<
 }
 
 pub(crate) fn visit_arm_files(families: &mut Vec<ChipFamily>) -> Result<()> {
-    let packs = crate::fetch::list_packs()?;
+    let packs = crate::fetch::get_vidx()?;
 
-    for (i, pack) in packs.iter().enumerate() {
-        log::info!("Working PACK {}/{} ...", i, packs.len());
+    for (i, pack) in packs.pdsc_index.iter().enumerate() {
+        log::info!("Working PACK {}/{} ...", i, packs.pdsc_index.len());
         visit_arm_file(families, &pack);
     }
 
     Ok(())
 }
 
-pub(crate) fn visit_arm_file(families: &mut Vec<ChipFamily>, pack: &Pack) {
-    let mut url = pack.PackUrl.clone();
-    if !url.starts_with("http") {
-        url = format!("https://keilpack.azureedge.net/pack/{}", url);
-    }
+pub(crate) fn visit_arm_file(families: &mut Vec<ChipFamily>, pack: &PdscRef) {
+    let url = format!(
+        "{url}/{vendor}.{name}.{version}.pack",
+        url = pack.url,
+        vendor = pack.vendor,
+        name = pack.name,
+        version = pack.version
+    );
 
     log::info!("Downloading {}", url);
 
