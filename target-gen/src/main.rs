@@ -4,18 +4,19 @@ pub mod flash_device;
 pub mod generate;
 pub mod parser;
 
-use anyhow::{bail, ensure, Context, Result};
-use pretty_env_logger;
-use probe_rs::config::{Chip, ChipFamily, FlashRegion, MemoryRegion, RamRegion};
-use structopt::StructOpt;
-
-use parser::extract_flash_algo;
 use std::{
     borrow::Cow,
     fs::{create_dir, File, OpenOptions},
     io::Write,
     path::{Path, PathBuf},
 };
+
+use anyhow::{bail, ensure, Context, Result};
+use probe_rs::config::{Chip, ChipFamily, FlashRegion, MemoryRegion, RamRegion};
+use simplelog::*;
+use structopt::StructOpt;
+
+use parser::extract_flash_algo;
 
 #[derive(StructOpt)]
 enum TargetGen {
@@ -61,7 +62,13 @@ enum TargetGen {
 }
 
 fn main() -> Result<()> {
-    pretty_env_logger::init();
+    CombinedLogger::init(vec![TermLogger::new(
+        LevelFilter::Info,
+        Config::default(),
+        TerminalMode::Mixed,
+    )
+    .unwrap()])
+    .unwrap();
 
     let options = TargetGen::from_args();
 
