@@ -35,7 +35,7 @@ enum TargetGen {
         )]
         output_dir: PathBuf,
     },
-    /// Generate target description from ARM CMSIS-Packs
+    /// Generates all the target descriptions from the entries listed in the ARM root VIDX/PIDX at https://www.keil.com/pack/Keil.pidx.
     Arm {
         #[structopt(
             name = "OUTPUT",
