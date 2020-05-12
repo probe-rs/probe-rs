@@ -204,8 +204,12 @@ pub(crate) fn visit_arm_files(families: &mut Vec<ChipFamily>) -> Result<()> {
     let packs = crate::fetch::get_vidx()?;
 
     for (i, pack) in packs.pdsc_index.iter().enumerate() {
-        log::info!("Working PACK {}/{} ...", i, packs.pdsc_index.len());
-        visit_arm_file(families, &pack);
+        if pack.deprecated.is_none() {
+            log::info!("Working PACK {}/{} ...", i, packs.pdsc_index.len());
+            visit_arm_file(families, &pack);
+        } else {
+            log::warn!("Pack {} is deprecated. Skipping ...", pack.name);
+        }
     }
 
     Ok(())
