@@ -62,13 +62,10 @@ enum TargetGen {
 }
 
 fn main() -> Result<()> {
-    CombinedLogger::init(vec![TermLogger::new(
-        LevelFilter::Info,
-        Config::default(),
-        TerminalMode::Mixed,
-    )
-    .unwrap()])
-    .unwrap();
+    let logger = TermLogger::init(LevelFilter::Info, Config::default(), TerminalMode::Mixed);
+    if logger.is_err() {
+        eprintln!("Logging backend could not be initialized.");
+    }
 
     let options = TargetGen::from_args();
 
