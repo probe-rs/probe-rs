@@ -890,7 +890,7 @@ pub(crate) fn list_jlink_devices() -> Result<impl Iterator<Item = DebugProbeInfo
     Ok(jaylink::scan_usb()?.map(|device_info| {
         let vid = device_info.vid();
         let pid = device_info.pid();
-        let (serial, product) = if let device = device_info.open().unwrap() {
+        let (serial, product) = if let Ok(device) = device_info.open() {
             let serial = device.serial_string();
             let serial = if serial.is_empty() {
                 None
