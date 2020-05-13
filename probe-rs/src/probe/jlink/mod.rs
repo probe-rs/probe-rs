@@ -306,17 +306,20 @@ impl JLink {
 
 impl DebugProbe for JLink {
     fn new_from_probe_info(info: &super::DebugProbeInfo) -> Result<Box<Self>, DebugProbeError> {
-        let mut usb_devices: Vec<_> = jaylink::scan_usb()?
-            .filter(|usb_info| {
-                usb_info.vid() == info.vendor_id && usb_info.pid() == info.product_id
-            })
-            .collect();
-
-        if usb_devices.len() != 1 {
-            // TODO: Add custom error
-            return Err(DebugProbeError::ProbeCouldNotBeCreated);
-        }
-        let jlink_handle = usb_devices.pop().unwrap().open()?;
+        let jlink_handle = if let Some(serial) = &info.serial_number {
+            jaylink::JayLink::open_by_serial(Some(serial))?
+        } else {
+            let mut usb_devices = jaylink::scan_usb()?
+                .filter(|usb_info| {
+                    usb_info.vid() == info.vendor_id && usb_info.pid() == info.product_id
+                })
+                .collect::<Vec<_>>();
+            if usb_devices.len() != 1 {
+                // TODO: Add custom error
+                return Err(DebugProbeError::ProbeCouldNotBeCreated);
+            }
+            usb_devices.pop().unwrap().open()?
+        };
 
         // Check which protocols are supported by the J-Link.
         //
