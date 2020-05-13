@@ -888,15 +888,35 @@ fn bits_to_byte(bits: impl IntoIterator<Item = bool>) -> u32 {
 pub(crate) fn list_jlink_devices() -> Result<impl Iterator<Item = DebugProbeInfo>, DebugProbeError>
 {
     Ok(jaylink::scan_usb()?.map(|device_info| {
+        let vid = device_info.vid();
+        let pid = device_info.pid();
+        let (serial, product) = if let device = device_info.open().unwrap() {
+            let serial = device.serial_string();
+            let serial = if serial.is_empty() {
+                None
+            } else {
+                Some(serial.to_owned())
+            };
+            let product = device.product_string();
+            let product = if product.is_empty() {
+                None
+            } else {
+                Some(product.to_owned())
+            };
+            (serial, product)
+        } else {
+            (None, None)
+        };
         DebugProbeInfo::new(
             format!(
-                "J-Link (VID: {:#06x}, PID: {:#06x})",
-                device_info.vid(),
-                device_info.pid()
+                "J-Link{}",
+                product
+                    .map(|p| format!(" ({})", p))
+                    .unwrap_or("".to_string())
             ),
-            device_info.vid(),
-            device_info.pid(),
-            None,
+            vid,
+            pid,
+            serial,
             DebugProbeType::JLink,
         )
     }))
