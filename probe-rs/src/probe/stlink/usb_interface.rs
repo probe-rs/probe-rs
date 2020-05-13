@@ -100,12 +100,32 @@ impl STLinkUSBDevice {
             .devices()
             .map_err(|_| DebugProbeError::ProbeCouldNotBeCreated)?
             .iter()
-            .find(|device| {
-                if let Ok(descriptor) = device.device_descriptor() {
-                    probe_info.vendor_id == descriptor.vendor_id()
-                        && probe_info.product_id == descriptor.product_id()
+            .find_map(|device| {
+                if let Some(serial) = &probe_info.serial_number {
+                    let timeout = Duration::from_millis(100);
+                    let descriptor = device.device_descriptor().ok()?;
+                    let handle = device.open().ok()?;
+                    let language = handle.read_languages(timeout).ok()?[0];
+                    let sn_str = handle
+                        .read_serial_number_string(language, &descriptor, timeout)
+                        .ok();
+                    if sn_str.as_ref() == Some(serial) {
+                        Some(device)
+                    } else {
+                        None
+                    }
                 } else {
-                    false
+                    if let Ok(descriptor) = device.device_descriptor() {
+                        if probe_info.vendor_id == descriptor.vendor_id()
+                            && probe_info.product_id == descriptor.product_id()
+                        {
+                            Some(device)
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    }
                 }
             })
             .map_or(Err(DebugProbeError::ProbeCouldNotBeCreated), Ok)?;
