@@ -12,7 +12,7 @@ use std::{
     io::Write,
     path::{Path, PathBuf},
     process::{self, Command, Stdio},
-    sync::{Arc, Mutex},
+    sync::Arc,
     time::Instant,
 };
 use structopt::StructOpt;
@@ -472,9 +472,7 @@ fn main_try() -> Result<(), failure::Error> {
             "Firing up GDB stub at {}",
             gdb_connection_string.as_ref().unwrap(),
         ));
-        if let Err(e) =
-            probe_rs_gdb_server::run(gdb_connection_string, Arc::new(Mutex::new(session)))
-        {
+        if let Err(e) = probe_rs_gdb_server::run(gdb_connection_string, session) {
             logging::eprintln("During the execution of GDB an error was encountered:");
             logging::eprintln(format!("{:?}", e));
         }
