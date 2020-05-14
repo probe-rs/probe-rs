@@ -115,7 +115,7 @@ pub enum DebugProbeError {
 /// use probe_rs::Probe;
 ///
 /// let probe_list = Probe::list_all();
-/// let probe = Probe::from_probe_info(&probe_list[0]);
+/// let probe = Probe::open(&probe_list[0]);
 /// ```
 #[derive(Debug)]
 pub struct Probe {
@@ -450,15 +450,24 @@ pub enum DebugProbeSelectorParseError {
     Format,
 }
 
+/// A struct to describe the way a probe should be selected.
+///
+/// Construct this from a set of info or from a string.
+///
+/// Example:
+/// ```
+/// use std::convert::TryInto;
+/// let selector: probe_rs::DebugProbeSelector = "1337:1337:SERIAL".try_into().unwrap();
+/// ```
 pub struct DebugProbeSelector {
     pub vendor_id: u16,
     pub product_id: u16,
     pub serial_number: Option<String>,
 }
 
-impl TryFrom<String> for DebugProbeSelector {
+impl TryFrom<&str> for DebugProbeSelector {
     type Error = DebugProbeSelectorParseError;
-    fn try_from(value: String) -> Result<Self, Self::Error> {
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
         let split = value.split(":").collect::<Vec<_>>();
         let mut selector = if split.len() > 1 {
             DebugProbeSelector {
@@ -475,6 +484,13 @@ impl TryFrom<String> for DebugProbeSelector {
         }
 
         Ok(selector)
+    }
+}
+
+impl TryFrom<String> for DebugProbeSelector {
+    type Error = DebugProbeSelectorParseError;
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        TryFrom::<&str>::try_from(&value)
     }
 }
 
