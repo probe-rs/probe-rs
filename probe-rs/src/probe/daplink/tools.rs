@@ -1,5 +1,8 @@
 use super::DAPLinkDevice;
-use crate::probe::{DebugProbeInfo, DebugProbeType};
+use crate::{
+    probe::{DebugProbeInfo, DebugProbeType},
+    DebugProbeSelector,
+};
 use rusb::{Device, UsbContext};
 use std::time::Duration;
 
@@ -140,7 +143,8 @@ pub fn open_v2_device(device: Device<rusb::Context>) -> Option<DAPLinkDevice> {
 
 /// Attempt to open the given DebugProbeInfo in CMSIS-DAP v2 mode if possible,
 /// otherwise in v1 mode.
-pub fn open_device_from_info(info: &DebugProbeInfo) -> Option<DAPLinkDevice> {
+pub fn open_device_from_selector(selector: impl Into<DebugProbeSelector>) -> Option<DAPLinkDevice> {
+    let selector = selector.into();
     // Try using rusb to open a v2 device. This might fail if
     // the device does not support v2 operation or due to driver
     // or permission issues with opening bulk devices.
@@ -160,9 +164,9 @@ pub fn open_device_from_info(info: &DebugProbeInfo) -> Option<DAPLinkDevice> {
             // multiple open handles are not allowed on Windows.
             drop(handle);
 
-            if d_desc.vendor_id() == info.vendor_id
-                && d_desc.product_id() == info.product_id
-                && sn_str == info.serial_number
+            if d_desc.vendor_id() == selector.vendor_id
+                && d_desc.product_id() == selector.product_id
+                && sn_str == selector.serial_number
             {
                 // If the VID, PID, and potentially SN all match,
                 // attempt to open the device in v2 mode.
@@ -175,9 +179,9 @@ pub fn open_device_from_info(info: &DebugProbeInfo) -> Option<DAPLinkDevice> {
 
     // If rusb failed or the device didn't support v2, try using hidapi to open in v1 mode.
     // If this doesn't work we give up and return None.
-    let vid = info.vendor_id;
-    let pid = info.product_id;
-    let sn = &info.serial_number;
+    let vid = selector.vendor_id;
+    let pid = selector.product_id;
+    let sn = &selector.serial_number;
     log::debug!(
         "Attempting to open {:04x}:{:04x} in CMSIS-DAP v1 mode",
         vid,

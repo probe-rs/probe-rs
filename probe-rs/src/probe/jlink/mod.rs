@@ -14,6 +14,7 @@ use crate::{
         DAPAccess, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeType, JTAGAccess,
         WireProtocol,
     },
+    DebugProbeSelector,
 };
 
 #[derive(Debug)]
@@ -305,13 +306,18 @@ impl JLink {
 }
 
 impl DebugProbe for JLink {
-    fn new_from_probe_info(info: &super::DebugProbeInfo) -> Result<Box<Self>, DebugProbeError> {
-        let jlink_handle = if let Some(serial) = &info.serial_number {
+    fn new_from_selector(
+        selector: impl Into<DebugProbeSelector>,
+    ) -> Result<Box<Self>, DebugProbeError> {
+        let selector = selector.into();
+        // TODO: At the moment we only either match the serial or the VID & PID.
+        // This will most likely never be a problem. If it becomes one, the jaylink lib will need some adaptions.
+        let jlink_handle = if let Some(serial) = &selector.serial_number {
             jaylink::JayLink::open_by_serial(Some(serial))?
         } else {
             let mut usb_devices = jaylink::scan_usb()?
                 .filter(|usb_info| {
-                    usb_info.vid() == info.vendor_id && usb_info.pid() == info.product_id
+                    usb_info.vid() == selector.vendor_id && usb_info.pid() == selector.product_id
                 })
                 .collect::<Vec<_>>();
             if usb_devices.len() != 1 {

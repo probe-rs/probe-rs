@@ -6,7 +6,7 @@ use crate::architecture::arm::{
     DAPAccess, DapError, PortType,
 };
 use crate::probe::{daplink::commands::CmsisDapError, BatchCommand};
-use crate::{DebugProbe, DebugProbeError, DebugProbeInfo, Memory, WireProtocol};
+use crate::{DebugProbe, DebugProbeError, DebugProbeSelector, Memory, WireProtocol};
 use commands::{
     general::{
         connect::{ConnectRequest, ConnectResponse},
@@ -234,12 +234,15 @@ impl DPAccess for DAPLink {
 }
 
 impl DebugProbe for DAPLink {
-    fn new_from_probe_info(info: &DebugProbeInfo) -> Result<Box<Self>, DebugProbeError>
+    fn new_from_selector(
+        selector: impl Into<DebugProbeSelector>,
+    ) -> Result<Box<Self>, DebugProbeError>
     where
         Self: Sized,
     {
         Ok(Box::new(Self::new_from_device(
-            tools::open_device_from_info(info).ok_or(DebugProbeError::ProbeCouldNotBeCreated)?,
+            tools::open_device_from_selector(selector)
+                .ok_or(DebugProbeError::ProbeCouldNotBeCreated)?,
         )))
     }
 

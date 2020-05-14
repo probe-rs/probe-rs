@@ -7,7 +7,7 @@ use crate::config::{RegistryError, TargetSelector};
 use crate::error::Error;
 use crate::{Memory, Session};
 use jlink::list_jlink_devices;
-use std::fmt;
+use std::{convert::TryFrom, fmt};
 use thiserror::Error;
 
 #[derive(Copy, Clone, PartialEq, Debug, serde::Serialize, serde::Deserialize)]
@@ -146,23 +146,24 @@ impl Probe {
     /// Create a `Probe` from `DebugProbeInfo`. Use the
     /// `Probe::list_all()` function to get the information
     /// about all probes available.
-    pub fn from_probe_info(info: &DebugProbeInfo) -> Result<Self, DebugProbeError> {
-        let probe = match info.probe_type {
-            DebugProbeType::DAPLink => {
-                let dap_link = daplink::DAPLink::new_from_probe_info(info)?;
-                Probe::from_specific_probe(dap_link)
-            }
-            DebugProbeType::STLink => {
-                let link = stlink::STLink::new_from_probe_info(info)?;
-                Probe::from_specific_probe(link)
-            }
-            DebugProbeType::JLink => {
-                let link = jlink::JLink::new_from_probe_info(info)?;
-                Probe::from_specific_probe(link)
-            }
+    pub fn open(selector: impl Into<DebugProbeSelector> + Clone) -> Result<Self, DebugProbeError> {
+        match daplink::DAPLink::new_from_selector(selector.clone()) {
+            Ok(link) => return Ok(Probe::from_specific_probe(link)),
+            Err(DebugProbeError::ProbeCouldNotBeCreated) => (),
+            Err(e) => return Err(e),
+        };
+        match stlink::STLink::new_from_selector(selector.clone()) {
+            Ok(link) => return Ok(Probe::from_specific_probe(link)),
+            Err(DebugProbeError::ProbeCouldNotBeCreated) => (),
+            Err(e) => return Err(e),
+        };
+        match jlink::JLink::new_from_selector(selector.clone()) {
+            Ok(link) => return Ok(Probe::from_specific_probe(link)),
+            Err(DebugProbeError::ProbeCouldNotBeCreated) => (),
+            Err(e) => return Err(e),
         };
 
-        Ok(probe)
+        Err(DebugProbeError::ProbeCouldNotBeCreated)
     }
 
     pub fn from_specific_probe(probe: Box<dyn DebugProbe>) -> Self {
@@ -332,7 +333,9 @@ impl Probe {
 }
 
 pub trait DebugProbe: Send + Sync + fmt::Debug {
-    fn new_from_probe_info(info: &DebugProbeInfo) -> Result<Box<Self>, DebugProbeError>
+    fn new_from_selector(
+        selector: impl Into<DebugProbeSelector>,
+    ) -> Result<Box<Self>, DebugProbeError>
     where
         Self: Sized;
 
@@ -435,7 +438,63 @@ impl DebugProbeInfo {
 
     /// Open the probe described by this `DebugProbeInfo`.
     pub fn open(&self) -> Result<Probe, DebugProbeError> {
-        Probe::from_probe_info(&self)
+        Probe::open(self)
+    }
+}
+
+#[derive(Error, Debug)]
+pub enum DebugProbeSelectorParseError {
+    #[error("{0}")]
+    ParseInt(#[from] std::num::ParseIntError),
+    #[error("Please use a string in the form `VID:PID:<Serial>` where Serial is optional.")]
+    Format,
+}
+
+pub struct DebugProbeSelector {
+    pub vendor_id: u16,
+    pub product_id: u16,
+    pub serial_number: Option<String>,
+}
+
+impl TryFrom<String> for DebugProbeSelector {
+    type Error = DebugProbeSelectorParseError;
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        let split = value.split(":").collect::<Vec<_>>();
+        let mut selector = if split.len() > 1 {
+            DebugProbeSelector {
+                vendor_id: split[0].parse()?,
+                product_id: split[1].parse()?,
+                serial_number: None,
+            }
+        } else {
+            return Err(DebugProbeSelectorParseError::Format);
+        };
+
+        if split.len() == 3 {
+            selector.serial_number = Some(split[2].to_string());
+        }
+
+        Ok(selector)
+    }
+}
+
+impl From<DebugProbeInfo> for DebugProbeSelector {
+    fn from(selector: DebugProbeInfo) -> Self {
+        DebugProbeSelector {
+            vendor_id: selector.vendor_id,
+            product_id: selector.product_id,
+            serial_number: selector.serial_number,
+        }
+    }
+}
+
+impl From<&DebugProbeInfo> for DebugProbeSelector {
+    fn from(selector: &DebugProbeInfo) -> Self {
+        DebugProbeSelector {
+            vendor_id: selector.vendor_id,
+            product_id: selector.product_id,
+            serial_number: selector.serial_number.clone(),
+        }
     }
 }
 
@@ -443,7 +502,9 @@ impl DebugProbeInfo {
 pub struct FakeProbe;
 
 impl DebugProbe for FakeProbe {
-    fn new_from_probe_info(_info: &DebugProbeInfo) -> Result<Box<Self>, DebugProbeError>
+    fn new_from_selector(
+        _selector: impl Into<DebugProbeSelector>,
+    ) -> Result<Box<Self>, DebugProbeError>
     where
         Self: Sized,
     {

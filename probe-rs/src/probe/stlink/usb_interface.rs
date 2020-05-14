@@ -1,4 +1,3 @@
-use crate::probe::DebugProbeInfo;
 use lazy_static::lazy_static;
 use rusb::{Context, DeviceHandle, Error, UsbContext};
 use std::time::Duration;
@@ -7,7 +6,7 @@ use crate::probe::stlink::StlinkError;
 
 use std::collections::HashMap;
 
-use crate::probe::DebugProbeError;
+use crate::{probe::DebugProbeError, DebugProbeSelector};
 
 /// The USB Command packet size.
 const CMD_LEN: usize = 16;
@@ -91,7 +90,10 @@ pub trait StLinkUsb: std::fmt::Debug {
 
 impl STLinkUSBDevice {
     /// Creates and initializes a new USB device.
-    pub fn new_from_info(probe_info: &DebugProbeInfo) -> Result<Self, DebugProbeError> {
+    pub fn new_from_selector(
+        selector: impl Into<DebugProbeSelector>,
+    ) -> Result<Self, DebugProbeError> {
+        let selector = selector.into();
         let context = Context::new().map_err(|e| DebugProbeError::USB(Some(Box::new(e))))?;
 
         log::debug!("Acquired libusb context.");
@@ -101,31 +103,31 @@ impl STLinkUSBDevice {
             .map_err(|_| DebugProbeError::ProbeCouldNotBeCreated)?
             .iter()
             .find_map(|device| {
-                if let Some(serial) = &probe_info.serial_number {
-                    let timeout = Duration::from_millis(100);
-                    let descriptor = device.device_descriptor().ok()?;
-                    let handle = device.open().ok()?;
-                    let language = handle.read_languages(timeout).ok()?[0];
-                    let sn_str = handle
-                        .read_serial_number_string(language, &descriptor, timeout)
-                        .ok();
-                    if sn_str.as_ref() == Some(serial) {
-                        Some(device)
-                    } else {
-                        None
-                    }
-                } else {
-                    if let Ok(descriptor) = device.device_descriptor() {
-                        if probe_info.vendor_id == descriptor.vendor_id()
-                            && probe_info.product_id == descriptor.product_id()
-                        {
+                let descriptor = device.device_descriptor().ok()?;
+                // First match the VID & PID.
+                if selector.vendor_id == descriptor.vendor_id()
+                    && selector.product_id == descriptor.product_id()
+                {
+                    // If the VID & PID match, match the serial if one was given.
+                    if let Some(serial) = &selector.serial_number {
+                        let timeout = Duration::from_millis(100);
+                        let handle = device.open().ok()?;
+                        let language = handle.read_languages(timeout).ok()?[0];
+                        let sn_str = handle
+                            .read_serial_number_string(language, &descriptor, timeout)
+                            .ok();
+                        // If the serial matches, return the device.
+                        if sn_str.as_ref() == Some(serial) {
                             Some(device)
                         } else {
                             None
                         }
                     } else {
-                        None
+                        // If no serial was given, the VID & PID match is enough; return the device.
+                        Some(device)
                     }
+                } else {
+                    None
                 }
             })
             .map_or(Err(DebugProbeError::ProbeCouldNotBeCreated), Ok)?;
