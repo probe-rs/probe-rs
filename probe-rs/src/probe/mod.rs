@@ -444,7 +444,7 @@ impl DebugProbeInfo {
 
 #[derive(Error, Debug)]
 pub enum DebugProbeSelectorParseError {
-    #[error("{0}")]
+    #[error("The VID or PID could not be parsed: {0}")]
     ParseInt(#[from] std::num::ParseIntError),
     #[error("Please use a string in the form `VID:PID:<Serial>` where Serial is optional.")]
     Format,
@@ -459,6 +459,7 @@ pub enum DebugProbeSelectorParseError {
 /// use std::convert::TryInto;
 /// let selector: probe_rs::DebugProbeSelector = "1337:1337:SERIAL".try_into().unwrap();
 /// ```
+#[derive(Debug, Clone)]
 pub struct DebugProbeSelector {
     pub vendor_id: u16,
     pub product_id: u16,
@@ -471,8 +472,8 @@ impl TryFrom<&str> for DebugProbeSelector {
         let split = value.split(":").collect::<Vec<_>>();
         let mut selector = if split.len() > 1 {
             DebugProbeSelector {
-                vendor_id: split[0].parse()?,
-                product_id: split[1].parse()?,
+                vendor_id: u16::from_str_radix(split[0], 16)?,
+                product_id: u16::from_str_radix(split[1], 16)?,
                 serial_number: None,
             }
         } else {
@@ -491,6 +492,13 @@ impl TryFrom<String> for DebugProbeSelector {
     type Error = DebugProbeSelectorParseError;
     fn try_from(value: String) -> Result<Self, Self::Error> {
         TryFrom::<&str>::try_from(&value)
+    }
+}
+
+impl std::str::FromStr for DebugProbeSelector {
+    type Err = DebugProbeSelectorParseError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Self::try_from(s)
     }
 }
 
