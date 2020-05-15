@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fixed a bug where cargo-embed would always flash the attached chip no matter if enabled or not.
+
 ## [0.6.1]
 
 ### Added
