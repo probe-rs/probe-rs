@@ -1,5 +1,5 @@
 use crate::config::RegistryError;
-use crate::{DebugProbeError, DebugProbeSelector};
+use crate::DebugProbeError;
 use thiserror::Error;
 
 #[derive(Error, Debug)]

@@ -171,7 +171,7 @@ impl Session {
     }
 
     /// Returns the memory map of the target.
-    pub(crate) fn memory_map(&self) -> &[MemoryRegion] {
+    pub fn memory_map(&self) -> &[MemoryRegion] {
         &self.target.memory_map
     }
 
