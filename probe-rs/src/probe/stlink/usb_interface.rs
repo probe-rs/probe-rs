@@ -107,6 +107,7 @@ impl STLinkUSBDevice {
             .find_map(|device| {
                 let descriptor = device.device_descriptor().ok()?;
                 // First match the VID & PID.
+                println!("{}:{}", descriptor.vendor_id(), descriptor.product_id());
                 if selector.vendor_id == descriptor.vendor_id()
                     && selector.product_id == descriptor.product_id()
                 {
