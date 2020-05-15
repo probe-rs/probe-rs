@@ -10,6 +10,7 @@ use colored::*;
 use failure::format_err;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use std::{
+    convert::TryFrom,
     env,
     fs::File,
     io::Write,
@@ -23,7 +24,7 @@ use structopt::StructOpt;
 use probe_rs::{
     config::TargetSelector,
     flashing::{download_file_with_options, DownloadOptions, FlashProgress, Format, ProgressEvent},
-    Probe,
+    DebugProbeSelector, Probe,
 };
 use probe_rs_rtt::{Rtt, ScanRegion};
 
@@ -162,26 +163,24 @@ fn main_try() -> Result<(), failure::Error> {
         path.display()
     ));
 
-    let list = Probe::list_all();
-    println!("{:?}", list);
-
-    let device = match CONFIG.probe.probe_index {
-        Some(index) => list.get(index).ok_or_else(|| {
-            format_err!("Unable to open probe with index {}: Probe not found", index)
-        })?,
+    // If we got a probe selector in the config, open the probe matching the selector if possible.
+    let mut probe = match CONFIG.probe.probe_selector.as_deref() {
+        Some(selector) => Probe::open(DebugProbeSelector::try_from(selector)?)?,
         None => {
             // Only automatically select a probe if there is only
             // a single probe detected.
+            let list = Probe::list_all();
             if list.len() > 1 {
-                return Err(format_err!("More than a single probe detected. Use the --probe-index argument to select which probe to use."));
+                return Err(format_err!("More than a single probe detected. Use the --probe-selector argument to select which probe to use."));
             }
 
-            list.first()
-                .ok_or_else(|| format_err!("no supported probe was found. If you are on Linux, you might want to check your UDEV rules."))?
+            Probe::open(
+                list.first()
+                    .ok_or_else(|| format_err!("No supported probe was found"))?,
+            )?
         }
     };
 
-    let mut probe = Probe::from_probe_info(&device)?;
     probe.select_protocol(CONFIG.probe.protocol)?;
 
     let protocol_speed = if let Some(speed) = CONFIG.probe.speed {
@@ -202,8 +201,7 @@ fn main_try() -> Result<(), failure::Error> {
 
     log::info!("Protocol speed {} kHz", protocol_speed);
 
-    let session = probe.attach(chip)?;
-    let core = session.attach_to_core(0)?;
+    let mut session = probe.attach(chip)?;
 
     if CONFIG.flashing.enabled {
         // Start timer.
@@ -323,7 +321,7 @@ fn main_try() -> Result<(), failure::Error> {
             });
 
             download_file_with_options(
-                &session,
+                &mut session,
                 path.as_path(),
                 Format::Elf,
                 DownloadOptions {
@@ -337,7 +335,7 @@ fn main_try() -> Result<(), failure::Error> {
             let _ = progress_thread_handle.join();
         } else {
             download_file_with_options(
-                &session,
+                &mut session,
                 path.as_path(),
                 Format::Elf,
                 DownloadOptions {
@@ -356,6 +354,7 @@ fn main_try() -> Result<(), failure::Error> {
             elapsed.as_millis() as f32 / 1000.0,
         ));
 
+        let mut core = session.core(0)?;
         if CONFIG.flashing.halt_afterwards {
             core.reset_and_halt()?;
         } else {
@@ -380,16 +379,14 @@ fn main_try() -> Result<(), failure::Error> {
             "Firing up GDB stub at {}.",
             gdb_connection_string.as_ref().unwrap(),
         ));
-        if let Err(e) =
-            probe_rs_gdb_server::run(gdb_connection_string, Arc::new(Mutex::new(session)))
-        {
+        if let Err(e) = probe_rs_gdb_server::run(gdb_connection_string, session) {
             logging::eprintln("During the execution of GDB an error was encountered:");
             logging::eprintln(format!("{:?}", e));
         }
     } else if CONFIG.rtt.enabled {
+        let session = Arc::new(Mutex::new(session));
         let t = std::time::Instant::now();
         let mut error = None;
-        let core = std::rc::Rc::new(core);
         while (t.elapsed().as_millis() as usize) < CONFIG.rtt.timeout {
             let rtt_header_address = if let Ok(mut file) = File::open(path.as_path()) {
                 if let Some(address) = rttui::app::App::get_rtt_symbol(&mut file) {
@@ -401,7 +398,7 @@ fn main_try() -> Result<(), failure::Error> {
                 ScanRegion::Ram
             };
 
-            match Rtt::attach_region(core.clone(), &session, &rtt_header_address) {
+            match Rtt::attach_region(session.clone(), &rtt_header_address) {
                 Ok(rtt) => {
                     let mut app = rttui::app::App::new(rtt);
                     loop {
