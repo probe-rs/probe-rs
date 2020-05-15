@@ -1,6 +1,6 @@
 [package]
 name = "cargo-flash"
-version = "0.6.0"
+version = "0.7.0"
 authors = ["Noah Hüsser <yatekii@yatekii.ch>", "Dominik Boehi <dominik.boehi@gmail.com>"]
 edition = "2018"
 description = "A utility to flash ARM cores with ELFs directly from within cargo."
@@ -21,7 +21,7 @@ env_logger = "0.7.1"
 log = "0.4.0"
 lazy_static = "1.4.0"
 colored = "1.8.3"
-probe-rs = { version = "0.6.2", git = "https://github.com/probe-rs/probe-rs" }
-gdb-server = { version = "0.6.1", git = "https://github.com/probe-rs/probe-rs" }
+probe-rs = { version = "0.7.0" }
+gdb-server = { version = "0.7.0" }
 cargo_toml = "0.8.0"
 serde = { version = "1.0.110", features = [ "derive" ] }
