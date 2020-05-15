@@ -4,7 +4,9 @@ pub mod tools;
 mod usb_interface;
 
 use self::usb_interface::{STLinkUSBDevice, StLinkUsb};
-use super::{DAPAccess, DebugProbe, DebugProbeError, JTAGAccess, PortType, WireProtocol};
+use super::{
+    DAPAccess, DebugProbe, DebugProbeError, JTAGAccess, PortType, ProbeCreationError, WireProtocol,
+};
 use crate::{DebugProbeSelector, Memory};
 use constants::{commands, JTagFrequencyToDivider, Mode, Status, SwdFrequencyToDelayCount};
 use scroll::{Pread, BE, LE};
@@ -651,6 +653,12 @@ pub(crate) enum StlinkError {
 impl From<StlinkError> for DebugProbeError {
     fn from(e: StlinkError) -> Self {
         DebugProbeError::ProbeSpecific(Box::new(e))
+    }
+}
+
+impl From<StlinkError> for ProbeCreationError {
+    fn from(e: StlinkError) -> Self {
+        ProbeCreationError::ProbeSpecific(Box::new(e))
     }
 }
 

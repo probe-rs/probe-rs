@@ -74,8 +74,8 @@ pub enum DebugProbeError {
     // TODO: Unknown errors are not very useful, this should be removed.
     #[error("An unknown error occured.")]
     Unknown,
-    #[error("Probe could not be created.")]
-    ProbeCouldNotBeCreated,
+    #[error("Probe could not be created: {0}")]
+    ProbeCouldNotBeCreated(#[from] ProbeCreationError),
     #[error("Probe does not support protocol {0}.")]
     UnsupportedProtocol(WireProtocol),
     // TODO: This is core specific, so should probably be moved there.
@@ -95,10 +95,26 @@ pub enum DebugProbeError {
     NotAttached,
     #[error("You need to be detached from the target to perform this action.")]
     Attached,
-    #[error("Some functionality was not implemented yet")]
+    #[error("Some functionality was not implemented yet: {0}")]
     NotImplemented(&'static str),
     #[error("Error in previous batched command: {0}")]
     BatchError(BatchCommand),
+}
+
+#[derive(Error, Debug)]
+pub enum ProbeCreationError {
+    #[error("Probe was not found.")]
+    NotFound,
+    #[error("USB device could not be opened. Please check the permissions.")]
+    CouldNotOpen,
+    #[error("{0}")]
+    HidApi(#[from] hidapi::HidError),
+    #[error("{0}")]
+    Rusb(#[from] rusb::Error),
+    #[error("An error specific to a probe type occured: {0}")]
+    ProbeSpecific(#[source] Box<dyn std::error::Error + Send + Sync>),
+    #[error("{0}")]
+    Other(&'static str),
 }
 
 /// The Probe struct is a generic wrapper over the different
@@ -149,21 +165,23 @@ impl Probe {
     pub fn open(selector: impl Into<DebugProbeSelector> + Clone) -> Result<Self, DebugProbeError> {
         match daplink::DAPLink::new_from_selector(selector.clone()) {
             Ok(link) => return Ok(Probe::from_specific_probe(link)),
-            Err(DebugProbeError::ProbeCouldNotBeCreated) => (),
+            Err(DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::NotFound)) => {}
             Err(e) => return Err(e),
         };
         match stlink::STLink::new_from_selector(selector.clone()) {
             Ok(link) => return Ok(Probe::from_specific_probe(link)),
-            Err(DebugProbeError::ProbeCouldNotBeCreated) => (),
+            Err(DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::NotFound)) => {}
             Err(e) => return Err(e),
         };
         match jlink::JLink::new_from_selector(selector.clone()) {
             Ok(link) => return Ok(Probe::from_specific_probe(link)),
-            Err(DebugProbeError::ProbeCouldNotBeCreated) => (),
+            Err(DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::NotFound)) => {}
             Err(e) => return Err(e),
         };
 
-        Err(DebugProbeError::ProbeCouldNotBeCreated)
+        Err(DebugProbeError::ProbeCouldNotBeCreated(
+            ProbeCreationError::NotFound,
+        ))
     }
 
     pub fn from_specific_probe(probe: Box<dyn DebugProbe>) -> Self {
@@ -532,7 +550,9 @@ impl DebugProbe for FakeProbe {
     where
         Self: Sized,
     {
-        Err(DebugProbeError::ProbeCouldNotBeCreated)
+        Err(DebugProbeError::ProbeCouldNotBeCreated(
+            ProbeCreationError::Other("This is a fake probe."),
+        ))
     }
 
     /// Get human readable name for the probe

@@ -1,6 +1,6 @@
 use super::DAPLinkDevice;
 use crate::{
-    probe::{DebugProbeInfo, DebugProbeType},
+    probe::{DebugProbeInfo, DebugProbeType, ProbeCreationError},
     DebugProbeSelector,
 };
 use rusb::{Device, UsbContext};
@@ -143,7 +143,9 @@ pub fn open_v2_device(device: Device<rusb::Context>) -> Option<DAPLinkDevice> {
 
 /// Attempt to open the given DebugProbeInfo in CMSIS-DAP v2 mode if possible,
 /// otherwise in v1 mode.
-pub fn open_device_from_selector(selector: impl Into<DebugProbeSelector>) -> Option<DAPLinkDevice> {
+pub fn open_device_from_selector(
+    selector: impl Into<DebugProbeSelector>,
+) -> Result<DAPLinkDevice, ProbeCreationError> {
     let selector = selector.into();
     // Try using rusb to open a v2 device. This might fail if
     // the device does not support v2 operation or due to driver
@@ -171,26 +173,51 @@ pub fn open_device_from_selector(selector: impl Into<DebugProbeSelector>) -> Opt
                 // If the VID, PID, and potentially SN all match,
                 // attempt to open the device in v2 mode.
                 if let Some(device) = open_v2_device(device) {
-                    return Some(device);
+                    return Ok(device);
+                } else {
+                    // If we are here the device didn't support v2, try using hidapi to open in v1 mode.
+                    // If this doesn't work we give up and return None.
+                    log::debug!(
+                        "Attempting to open {:04x}:{:04x} in CMSIS-DAP v1 mode",
+                        selector.vendor_id,
+                        selector.product_id
+                    );
+
+                    return match sn_str {
+                        Some(sn) => hidapi::HidApi::new().and_then(|api| {
+                            api.open_serial(selector.vendor_id, selector.product_id, &sn)
+                        }),
+                        None => hidapi::HidApi::new()
+                            .and_then(|api| api.open(selector.vendor_id, selector.product_id)),
+                    }
+                    .map(|device| DAPLinkDevice::V1(device))
+                    .map_err(From::from);
                 }
             }
         }
-    }
 
-    // If rusb failed or the device didn't support v2, try using hidapi to open in v1 mode.
-    // If this doesn't work we give up and return None.
-    let vid = selector.vendor_id;
-    let pid = selector.product_id;
-    let sn = &selector.serial_number;
-    log::debug!(
-        "Attempting to open {:04x}:{:04x} in CMSIS-DAP v1 mode",
-        vid,
-        pid
-    );
-    match sn {
-        Some(sn) => hidapi::HidApi::new().and_then(|api| api.open_serial(vid, pid, &sn)),
-        None => hidapi::HidApi::new().and_then(|api| api.open(vid, pid)),
+        // No device was found matching the credentials or the matching device could not be opened.
+        Err(ProbeCreationError::NotFound)
+    } else {
+        // If rusb failed or the device didn't support v2, try using hidapi to open in v1 mode.
+        // If this doesn't work we give up and return None.
+        let vid = selector.vendor_id;
+        let pid = selector.product_id;
+        let sn = &selector.serial_number;
+
+        log::debug!(
+            "Attempting to open {:04x}:{:04x} in CMSIS-DAP v1 mode",
+            vid,
+            pid
+        );
+
+        println!("FUCK MORE");
+
+        return match sn {
+            Some(sn) => hidapi::HidApi::new().and_then(|api| api.open_serial(vid, pid, &sn)),
+            None => hidapi::HidApi::new().and_then(|api| api.open(vid, pid)),
+        }
+        .map(|device| DAPLinkDevice::V1(device))
+        .map_err(From::from);
     }
-    .map(|device| DAPLinkDevice::V1(device))
-    .ok()
 }

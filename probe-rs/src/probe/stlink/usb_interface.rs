@@ -6,7 +6,10 @@ use crate::probe::stlink::StlinkError;
 
 use std::collections::HashMap;
 
-use crate::{probe::DebugProbeError, DebugProbeSelector};
+use crate::{
+    probe::{DebugProbeError, ProbeCreationError},
+    DebugProbeSelector,
+};
 
 /// The USB Command packet size.
 const CMD_LEN: usize = 16;
@@ -92,15 +95,14 @@ impl STLinkUSBDevice {
     /// Creates and initializes a new USB device.
     pub fn new_from_selector(
         selector: impl Into<DebugProbeSelector>,
-    ) -> Result<Self, DebugProbeError> {
+    ) -> Result<Self, ProbeCreationError> {
         let selector = selector.into();
-        let context = Context::new().map_err(|e| DebugProbeError::USB(Some(Box::new(e))))?;
+        let context = Context::new()?;
 
         log::debug!("Acquired libusb context.");
 
         let device = context
-            .devices()
-            .map_err(|_| DebugProbeError::ProbeCouldNotBeCreated)?
+            .devices()?
             .iter()
             .find_map(|device| {
                 let descriptor = device.device_descriptor().ok()?;
@@ -130,31 +132,23 @@ impl STLinkUSBDevice {
                     None
                 }
             })
-            .map_or(Err(DebugProbeError::ProbeCouldNotBeCreated), Ok)?;
+            .map_or(Err(ProbeCreationError::NotFound), Ok)?;
 
-        let mut device_handle = device
-            .open()
-            .map_err(|e| DebugProbeError::USB(Some(Box::new(e))))?;
+        let mut device_handle = device.open()?;
 
         log::debug!("Aquired handle for probe");
 
-        let config = device
-            .active_config_descriptor()
-            .map_err(|e| DebugProbeError::USB(Some(Box::new(e))))?;
+        let config = device.active_config_descriptor()?;
 
         log::debug!("Active config descriptor: {:?}", &config);
 
-        let descriptor = device
-            .device_descriptor()
-            .map_err(|e| DebugProbeError::USB(Some(Box::new(e))))?;
+        let descriptor = device.device_descriptor()?;
 
         log::debug!("Device descriptor: {:?}", &descriptor);
 
         let info = USB_PID_EP_MAP[&descriptor.product_id()].clone();
 
-        device_handle
-            .claim_interface(0)
-            .map_err(|e| DebugProbeError::USB(Some(Box::new(e))))?;
+        device_handle.claim_interface(0)?;
 
         log::debug!("Claimed interface 0 of USB device.");
 

@@ -310,22 +310,35 @@ impl DebugProbe for JLink {
         selector: impl Into<DebugProbeSelector>,
     ) -> Result<Box<Self>, DebugProbeError> {
         let selector = selector.into();
-        // TODO: At the moment we only either match the serial or the VID & PID.
-        // This will most likely never be a problem. If it becomes one, the jaylink lib will need some adaptions.
-        let jlink_handle = if let Some(serial) = &selector.serial_number {
-            jaylink::JayLink::open_by_serial(Some(serial))?
-        } else {
-            let mut usb_devices = jaylink::scan_usb()?
-                .filter(|usb_info| {
-                    usb_info.vid() == selector.vendor_id && usb_info.pid() == selector.product_id
-                })
-                .collect::<Vec<_>>();
-            if usb_devices.len() != 1 {
-                // TODO: Add custom error
-                return Err(DebugProbeError::ProbeCouldNotBeCreated);
-            }
-            usb_devices.pop().unwrap().open()?
-        };
+        let mut jlinks = jaylink::scan_usb()?
+            .filter_map(|usb_info| {
+                if usb_info.vid() == selector.vendor_id && usb_info.pid() == selector.product_id {
+                    let device = usb_info.open();
+                    if device
+                        .as_ref()
+                        .map(|d| {
+                            d.serial_string() == selector.serial_number.as_deref().unwrap_or("")
+                        })
+                        .unwrap_or(false)
+                    {
+                        Some(device)
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>();
+
+        if jlinks.len() == 0 {
+            return Err(DebugProbeError::ProbeCouldNotBeCreated(
+                super::ProbeCreationError::NotFound,
+            ));
+        } else if jlinks.len() > 1 {
+            log::warn!("More than one matching JLink was found. Opening the first one.")
+        }
+        let jlink_handle = jlinks.pop().unwrap()?;
 
         // Check which protocols are supported by the J-Link.
         //
