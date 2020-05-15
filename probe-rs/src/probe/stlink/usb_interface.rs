@@ -97,6 +97,7 @@ impl STLinkUSBDevice {
         selector: impl Into<DebugProbeSelector>,
     ) -> Result<Self, ProbeCreationError> {
         let selector = selector.into();
+
         let context = Context::new()?;
 
         log::debug!("Acquired libusb context.");
@@ -104,10 +105,10 @@ impl STLinkUSBDevice {
         let device = context
             .devices()?
             .iter()
+            .filter(super::tools::is_stlink_device)
             .find_map(|device| {
                 let descriptor = device.device_descriptor().ok()?;
                 // First match the VID & PID.
-                println!("{}:{}", descriptor.vendor_id(), descriptor.product_id());
                 if selector.vendor_id == descriptor.vendor_id()
                     && selector.product_id == descriptor.product_id()
                 {

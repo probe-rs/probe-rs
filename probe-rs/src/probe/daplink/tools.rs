@@ -13,7 +13,10 @@ use std::time::Duration;
 /// HID devices if it does not find any suitable devices.
 pub fn list_daplink_devices() -> Vec<DebugProbeInfo> {
     match rusb::Context::new().and_then(|ctx| ctx.devices()) {
-        Ok(devices) => devices.iter().filter_map(get_daplink_info).collect(),
+        Ok(devices) => devices
+            .iter()
+            .filter_map(|device| get_daplink_info(&device))
+            .collect(),
         Err(_) => match hidapi::HidApi::new() {
             Ok(api) => api.device_list().filter_map(get_daplink_hid_info).collect(),
             Err(_) => vec![],
@@ -22,7 +25,7 @@ pub fn list_daplink_devices() -> Vec<DebugProbeInfo> {
 }
 
 /// Checks if a given Device is a CMSIS-DAP probe, returning Some(DebugProbeInfo) if so.
-fn get_daplink_info(device: Device<rusb::Context>) -> Option<DebugProbeInfo> {
+fn get_daplink_info(device: &Device<rusb::Context>) -> Option<DebugProbeInfo> {
     // Open device handle and read basic information
     let timeout = Duration::from_millis(100);
     let d_desc = device.device_descriptor().ok()?;
@@ -151,7 +154,10 @@ pub fn open_device_from_selector(
     // the device does not support v2 operation or due to driver
     // or permission issues with opening bulk devices.
     if let Ok(devices) = rusb::Context::new().and_then(|ctx| ctx.devices()) {
-        for device in devices.iter() {
+        for device in devices
+            .iter()
+            .filter(|device| get_daplink_info(device).is_some())
+        {
             let d_desc = match device.device_descriptor() {
                 Ok(d_desc) => d_desc,
                 Err(_) => continue,
@@ -210,8 +216,6 @@ pub fn open_device_from_selector(
             vid,
             pid
         );
-
-        println!("FUCK MORE");
 
         return match sn {
             Some(sn) => hidapi::HidApi::new().and_then(|api| api.open_serial(vid, pid, &sn)),

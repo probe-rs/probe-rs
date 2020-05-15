@@ -7,7 +7,7 @@ use super::usb_interface::USB_PID_EP_MAP;
 use super::usb_interface::USB_VID;
 use std::time::Duration;
 
-fn is_stlink_device<T: UsbContext>(device: &Device<T>) -> bool {
+pub(super) fn is_stlink_device<T: UsbContext>(device: &Device<T>) -> bool {
     // Check the VID/PID.
     if let Ok(descriptor) = device.device_descriptor() {
         (descriptor.vendor_id() == USB_VID)
