@@ -182,11 +182,12 @@ fn main_try() -> Result<(), failure::Error> {
 
     logging::init(opt.log);
 
-    // Load cargo manifest
+    // Load cargo manifest if available and parse out meta object
     // TODO: should we pull out a relative path here?
-    let m: Manifest<Meta> = Manifest::from_path_with_metadata("Cargo.toml")?;
-
-    println!("Package: {:?}", m.package);
+    let meta = match Manifest::<Meta>::from_path_with_metadata("Cargo.toml") {
+        Ok(m) => m.package.map(|p| p.metadata ).flatten(),
+        Err(_e) => None,
+    };
 
     // Make sure we load the config given in the cli parameters.
     if let Some(cdp) = opt.chip_description_path {
@@ -198,7 +199,7 @@ fn main_try() -> Result<(), failure::Error> {
         std::process::exit(0);
     } else {
         // First use command line, then manifest, then default to auto
-        match (opt.chip, m.package.map(|p| p.metadata ).flatten().map(|m| m.chip).flatten()) {
+        match (opt.chip, meta.map(|m| m.chip ).flatten()) {
             (Some(c), _) => c.into(),
             (_, Some(c)) => c.into(),
             _ => TargetSelector::Auto
