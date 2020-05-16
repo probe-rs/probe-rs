@@ -142,6 +142,7 @@ name = "cargo-flash"
 version = "0.6.0"
 dependencies = [
  "cargo-project",
+ "cargo_toml",
  "colored",
  "env_logger",
  "failure",
@@ -150,6 +151,7 @@ dependencies = [
  "lazy_static",
  "log",
  "probe-rs",
+ "serde",
  "structopt",
 ]
 
@@ -165,7 +167,18 @@ dependencies = [
  "rustc-cfg",
  "serde",
  "serde_derive",
- "toml",
+ "toml 0.4.10",
+]
+
+[[package]]
+name = "cargo_toml"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e7877b00aaf997d7ed66a81281d3a8b9f9da5361df05b72785b985349979a0f3"
+dependencies = [
+ "serde",
+ "serde_derive",
+ "toml 0.5.6",
 ]
 
 [[package]]
@@ -1112,18 +1125,18 @@ dependencies = [
 
 [[package]]
 name = "serde"
-version = "1.0.106"
+version = "1.0.110"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "36df6ac6412072f67cf767ebbde4133a5b2e88e76dc6187fa7104cd16f783399"
+checksum = "99e7b308464d16b56eba9964e4972a3eee817760ab60d88c3f86e1fecb08204c"
 dependencies = [
  "serde_derive",
 ]
 
 [[package]]
 name = "serde_derive"
-version = "1.0.106"
+version = "1.0.110"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9e549e3abf4fb8621bd1609f11dfc9f5e50320802273b12f3811a67e6716ea6c"
+checksum = "818fbf6bfa9a42d3bfcaca148547aa00c7b915bec71d1757aa2d44ca68771984"
 dependencies = [
  "proc-macro2 1.0.10",
  "quote 1.0.3",
@@ -1350,6 +1363,15 @@ name = "toml"
 version = "0.4.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "758664fc71a3a69038656bee8b6be6477d2a6c315a6b81f7081f591bffa4111f"
+dependencies = [
+ "serde",
+]
+
+[[package]]
+name = "toml"
+version = "0.5.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ffc92d160b1eef40665be3a05630d003936a3bc7da7421277846c2613e92c71a"
 dependencies = [
  "serde",
 ]

@@ -16,6 +16,9 @@ use std::{
     time::Instant,
 };
 use structopt::StructOpt;
+use cargo_toml::Manifest;
+
+use serde::Deserialize;
 
 use probe_rs::{
     architecture::arm::ap::AccessPortError,
@@ -140,6 +143,11 @@ const ARGUMENTS_TO_REMOVE: &[&str] = &[
     "log=",
 ];
 
+#[derive(Clone, Debug, PartialEq, Deserialize)]
+pub struct Meta {
+    pub chip: Option<String>,
+}
+
 fn main() {
     match main_try() {
         Ok(_) => (),
@@ -174,6 +182,12 @@ fn main_try() -> Result<(), failure::Error> {
 
     logging::init(opt.log);
 
+    // Load cargo manifest
+    // TODO: should we pull out a relative path here?
+    let m: Manifest<Meta> = Manifest::from_path_with_metadata("Cargo.toml")?;
+
+    println!("Package: {:?}", m.package);
+
     // Make sure we load the config given in the cli parameters.
     if let Some(cdp) = opt.chip_description_path {
         probe_rs::config::registry::add_target_from_yaml(&Path::new(&cdp))?;
@@ -183,9 +197,12 @@ fn main_try() -> Result<(), failure::Error> {
         print_families()?;
         std::process::exit(0);
     } else {
-        opt.chip
-            .map(|chip| chip.into())
-            .unwrap_or(TargetSelector::Auto)
+        // First use command line, then manifest, then default to auto
+        match (opt.chip, m.package.map(|p| p.metadata ).flatten().map(|m| m.chip).flatten()) {
+            (Some(c), _) => c.into(),
+            (_, Some(c)) => c.into(),
+            _ => TargetSelector::Auto
+        }
     };
 
     args.remove(0); // Remove executable name
