@@ -2,6 +2,7 @@ mod logging;
 
 use structopt;
 
+use cargo_toml::Manifest;
 use colored::*;
 use failure::format_err;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
@@ -16,7 +17,6 @@ use std::{
     time::Instant,
 };
 use structopt::StructOpt;
-use cargo_toml::Manifest;
 
 use serde::Deserialize;
 
@@ -185,7 +185,7 @@ fn main_try() -> Result<(), failure::Error> {
     // Load cargo manifest if available and parse out meta object
     // TODO: should we pull out a relative path here?
     let meta = match Manifest::<Meta>::from_path_with_metadata("Cargo.toml") {
-        Ok(m) => m.package.map(|p| p.metadata ).flatten(),
+        Ok(m) => m.package.map(|p| p.metadata).flatten(),
         Err(_e) => None,
     };
 
@@ -199,10 +199,10 @@ fn main_try() -> Result<(), failure::Error> {
         std::process::exit(0);
     } else {
         // First use command line, then manifest, then default to auto
-        match (opt.chip, meta.map(|m| m.chip ).flatten()) {
+        match (opt.chip, meta.map(|m| m.chip).flatten()) {
             (Some(c), _) => c.into(),
             (_, Some(c)) => c.into(),
-            _ => TargetSelector::Auto
+            _ => TargetSelector::Auto,
         }
     };
 
