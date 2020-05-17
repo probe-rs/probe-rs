@@ -41,7 +41,7 @@ struct Opt {
     #[structopt(
         name = "list-probes",
         long = "list-probes",
-        help = "Lists all the connected probes that can be seen. \
+        help = "Lists all the connected probes that can be seen.\n\
         If udev rules or permissions are wrong, some probes might not be listed."
     )]
     list_probes: bool,
@@ -51,7 +51,7 @@ struct Opt {
     protocol: WireProtocol,
     #[structopt(
         long = "probe",
-        help = "Use this flag to select a specific probe in the list. \
+        help = "Use this flag to select a specific probe in the list.\n\
         Use '--probe VID:PID' or '--probe VID:PID:Serial' if you have more than one probe with the same VID:PID."
     )]
     probe_selector: Option<DebugProbeSelector>,
@@ -82,7 +82,7 @@ struct Opt {
     #[structopt(
         name = "level",
         long = "log",
-        help = "Use this flag to set the log level. \
+        help = "Use this flag to set the log level.\n\
         Default is `warning`. Possible choices are [error, warning, info, debug, trace]."
     )]
     log: Option<log::Level>,
