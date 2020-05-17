@@ -41,14 +41,19 @@ struct Opt {
     #[structopt(
         name = "list-probes",
         long = "list-probes",
-        help = "Lists all the connected probes that can be seen. If udev rules or permissions are wrong, some probes might not be listed."
+        help = "Lists all the connected probes that can be seen. \
+        If udev rules or permissions are wrong, some probes might not be listed."
     )]
     list_probes: bool,
     #[structopt(name = "disable-progressbars", long = "disable-progressbars")]
     disable_progressbars: bool,
     #[structopt(name = "protocol", long = "protocol", default_value = "swd")]
     protocol: WireProtocol,
-    #[structopt(long = "probe-selector")]
+    #[structopt(
+        long = "probe",
+        help = "Use this flag to select a specific probe in the list. \
+        Use '--probe VID:PID' or '--probe VID:PID:Serial' if you have more than one probe with the same VID:PID."
+    )]
     probe_selector: Option<DebugProbeSelector>,
     #[structopt(
         name = "gdb",
@@ -77,7 +82,8 @@ struct Opt {
     #[structopt(
         name = "level",
         long = "log",
-        help = "Use this flag to set the log level. Default is `warning`. Possible choices are [error, warning, info, debug, trace]."
+        help = "Use this flag to set the log level. \
+        Default is `warning`. Possible choices are [error, warning, info, debug, trace]."
     )]
     log: Option<log::Level>,
     #[structopt(name = "speed", long = "speed", help = "The protocol speed in kHz.")]
@@ -136,7 +142,7 @@ const ARGUMENTS_TO_REMOVE: &[&str] = &[
     "chip-description-path=",
     "list-chips",
     "list-probes",
-    "probe-selector=",
+    "probe=",
     "elf=",
     "work-dir=",
     "disable-progressbars",
@@ -198,7 +204,7 @@ fn main_try() -> Result<()> {
     // If someone wants to list the connected probes, just do that and exit.
     if opt.list_probes {
         list_connected_devices()?;
-        std::process::exit(0);
+        return Ok(());
     }
 
     // Make sure we load the config given in the cli parameters.
@@ -208,7 +214,7 @@ fn main_try() -> Result<()> {
 
     let chip = if opt.list_chips {
         print_families()?;
-        std::process::exit(0);
+        return Ok(());
     } else {
         // First use command line, then manifest, then default to auto
         match (opt.chip, meta.map(|m| m.chip).flatten()) {
@@ -289,7 +295,7 @@ fn main_try() -> Result<()> {
             // Only automatically select a probe if there is only
             // a single probe detected.
             if list.len() > 1 {
-                return Err(anyhow!("More than a single probe detected. Use the --probe-selector argument to select which probe to use."));
+                return Err(anyhow!("More than a single probe detected. Use the --probe argument to select which probe to use."));
             }
 
             Probe::open(
@@ -690,11 +696,11 @@ fn remove_arguments_test() {
 
 /// Lists all connected devices
 fn list_connected_devices() -> Result<(), DebugProbeError> {
-    let links = Probe::list_all();
+    let probes = Probe::list_all();
 
-    if !links.is_empty() {
+    if !probes.is_empty() {
         println!("The following devices were found:");
-        links
+        probes
             .iter()
             .enumerate()
             .for_each(|(num, link)| println!("[{}]: {:?}", num, link));
