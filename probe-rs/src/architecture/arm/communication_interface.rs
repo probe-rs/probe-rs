@@ -1,7 +1,7 @@
 use super::{
     ap::{
-        valid_access_ports, APAccess, APClass, APRegister, AccessPort, BaseaddrFormat, GenericAP,
-        MemoryAP, BASE, BASE2, IDR,
+        custom_ap::CtrlAP, valid_access_ports, APAccess, APClass, APRegister, AccessPort,
+        BaseaddrFormat, GenericAP, MemoryAP, BASE, BASE2, IDR,
     },
     dp::{
         Abort, Ctrl, DPAccess, DPBankSel, DPRegister, DebugPortError, DebugPortId,
@@ -523,6 +523,39 @@ where
     fn read_ap_register_repeated(
         &mut self,
         port: GenericAP,
+        register: R,
+        values: &mut [u32],
+    ) -> Result<(), Self::Error> {
+        self.read_ap_register_repeated(port, register, values)
+    }
+}
+
+impl<'probe, R> APAccess<CtrlAP, R> for ArmCommunicationInterface<'probe>
+where
+    R: APRegister<CtrlAP>,
+{
+    type Error = DebugProbeError;
+
+    fn read_ap_register(&mut self, port: CtrlAP, register: R) -> Result<R, Self::Error> {
+        self.read_ap_register(port, register)
+    }
+
+    fn write_ap_register(&mut self, port: CtrlAP, register: R) -> Result<(), Self::Error> {
+        self.write_ap_register(port, register)
+    }
+
+    fn write_ap_register_repeated(
+        &mut self,
+        port: CtrlAP,
+        register: R,
+        values: &[u32],
+    ) -> Result<(), Self::Error> {
+        self.write_ap_register_repeated(port, register, values)
+    }
+
+    fn read_ap_register_repeated(
+        &mut self,
+        port: CtrlAP,
         register: R,
         values: &mut [u32],
     ) -> Result<(), Self::Error> {
