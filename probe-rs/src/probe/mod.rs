@@ -383,7 +383,7 @@ pub trait DebugProbe: Send + Sync + fmt::Debug {
     fn get_interface_jtag_mut(&mut self) -> Option<&mut dyn JTAGAccess>;
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum DebugProbeType {
     DAPLink,
     STLink,
