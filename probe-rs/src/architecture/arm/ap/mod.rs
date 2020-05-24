@@ -1,12 +1,12 @@
 #[macro_use]
 mod register_generation;
-pub(crate) mod custom_ap;
+pub mod custom_ap;
 pub(crate) mod generic_ap;
 pub(crate) mod memory_ap;
 
 use crate::architecture::arm::dp::DebugPortError;
 
-pub use generic_ap::{APClass, GenericAP, IDR};
+pub use generic_ap::{APClass, APType, GenericAP, IDR};
 pub(crate) use memory_ap::mock;
 pub use memory_ap::{
     AddressIncrement, BaseaddrFormat, DataSize, MemoryAP, BASE, BASE2, CSW, DRW, TAR,

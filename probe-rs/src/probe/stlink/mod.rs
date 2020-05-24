@@ -538,7 +538,7 @@ impl<D: StLinkUsb> STLink<D> {
 
     /// Select an AP to use
     ///
-    /// On newer ST-Links (JTAG Version > 28), multiple APs are supported.
+    /// On newer ST-Links (JTAG Version >= 28), multiple APs are supported.
     /// To switch between APs, dedicated commands have to be used. For older
     /// ST-Links, we can only use AP 0. If an AP other than 0 is used on these
     /// probes, an error is returned.
@@ -571,10 +571,10 @@ impl<D: StLinkUsb> STLink<D> {
     /// Open a specific AP, which will be used for all future commands.
     ///
     /// This is only supported on ST-Link V3, or older ST-Links with
-    /// a JTAG version > `MIN_JTAG_VERSION_MULTI_AP`.
+    /// a JTAG version >= `MIN_JTAG_VERSION_MULTI_AP`.
     fn open_ap(&mut self, apsel: u8) -> Result<(), DebugProbeError> {
         // Ensure this command is actually supported
-        assert!(self.hw_version >= 3 || self.jtag_version > Self::MIN_JTAG_VERSION_MULTI_AP);
+        assert!(self.hw_version >= 3 || self.jtag_version >= Self::MIN_JTAG_VERSION_MULTI_AP);
 
         let mut buf = [0; 2];
         log::trace!("JTAG_INIT_AP {}", apsel);
@@ -589,10 +589,10 @@ impl<D: StLinkUsb> STLink<D> {
     /// Close a specific AP, which was opened with `open_ap`.
     ///
     /// This is only supported on ST-Link V3, or older ST-Links with
-    /// a JTAG version > `MIN_JTAG_VERSION_MULTI_AP`.
+    /// a JTAG version >= `MIN_JTAG_VERSION_MULTI_AP`.
     fn close_ap(&mut self, apsel: u8) -> Result<(), DebugProbeError> {
         // Ensure this command is actually supported
-        assert!(self.hw_version >= 3 || self.jtag_version > Self::MIN_JTAG_VERSION_MULTI_AP);
+        assert!(self.hw_version >= 3 || self.jtag_version >= Self::MIN_JTAG_VERSION_MULTI_AP);
 
         let mut buf = [0; 2];
         log::trace!("JTAG_CLOSE_AP {}", apsel);
