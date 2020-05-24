@@ -205,15 +205,15 @@ pub fn open_device_from_selector(
     match hid_device {
         Ok(device) => {
             match device.get_product_string() {
-                Ok(Some(s)) if s.contains("CMSIS-DAP") =>
-                    Ok(DAPLinkDevice::V1(device)),
-                _ =>
+                Ok(Some(s)) if s.contains("CMSIS-DAP") => Ok(DAPLinkDevice::V1(device)),
+                _ => {
                     // Return NotFound if this VID:PID was not a valid CMSIS-DAP probe,
                     // or if it couldn't be opened, so that other probe modules can
                     // attempt to open it instead.
-                    Err(ProbeCreationError::NotFound),
+                    Err(ProbeCreationError::NotFound)
+                }
             }
-        },
+        }
 
         // If hidapi couldn't open the device, it may be because this is not
         // a HID device at all and some other probe module should try to load
