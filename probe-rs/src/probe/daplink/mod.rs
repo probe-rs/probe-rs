@@ -183,7 +183,7 @@ impl DAPLink {
                     Ack::Wait => Err(DapError::WaitResponse.into()),
                 }
             }
-        } else if count < batch.len() {
+        } else if count > 0 && count < batch.len() {
             Err(DebugProbeError::BatchError(batch[count - 1]))
         } else {
             Err(CmsisDapError::UnexpectedAnswer.into())
