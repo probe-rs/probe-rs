@@ -1,6 +1,5 @@
 #[macro_use]
-mod register_generation;
-pub mod custom_ap;
+pub mod register_generation;
 pub(crate) mod generic_ap;
 pub(crate) mod memory_ap;
 
