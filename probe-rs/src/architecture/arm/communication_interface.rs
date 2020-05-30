@@ -431,8 +431,11 @@ impl<'probe> DPAccess for ArmCommunicationInterface<'probe> {
 
         self.select_dp_bank(R::DP_BANK)?;
 
-        // unwrap is safe, interface is check when creating the interface
-        let interface = self.probe.get_interface_dap_mut()?.unwrap();
+        // unwrap is safe, interface is checked when creating the interface
+        let interface = self
+            .probe
+            .get_interface_dap_mut()?
+            .expect("Could not get interface DAP");
 
         log::debug!("Reading DP register {}", R::NAME);
         let result = interface.read_register(PortType::DebugPort, u16::from(R::ADDRESS))?;
@@ -453,7 +456,10 @@ impl<'probe> DPAccess for ArmCommunicationInterface<'probe> {
         self.select_dp_bank(R::DP_BANK)?;
 
         // unwrap is safe, interface is check when creating the interface
-        let interface = self.probe.get_interface_dap_mut()?.unwrap();
+        let interface = self
+            .probe
+            .get_interface_dap_mut()?
+            .expect("Could not get interface DAP");
 
         let value = register.into();
 

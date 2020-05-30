@@ -74,10 +74,10 @@ impl std::fmt::Display for StackFrame {
                 si.file.as_ref().unwrap_or(&"<unknown file>".to_owned())
             )?;
 
-            if si.column.is_some() && si.line.is_some() {
-                match si.column.unwrap() {
-                    ColumnType::Column(c) => write!(f, ":{}:{}", si.line.unwrap(), c)?,
-                    ColumnType::LeftEdge => write!(f, ":{}", si.line.unwrap())?,
+            if let (Some(column), Some(line)) = (si.column, si.line) {
+                match column {
+                    ColumnType::Column(c) => write!(f, ":{}:{}", line, c)?,
+                    ColumnType::LeftEdge => write!(f, ":{}", line)?,
                 }
             }
         }
@@ -103,7 +103,7 @@ impl Registers {
     pub fn from_core(core: &mut Core) -> Self {
         let mut registers = Registers([None; 16]);
         for i in 0..16 {
-            registers[i as usize] = Some(core.read_core_reg(i).unwrap());
+            registers[i as usize] = core.read_core_reg(i).ok();
         }
         registers
     }
@@ -335,11 +335,11 @@ impl DebugInfo {
         };
 
         // Load all of the sections.
-        let dwarf_cow = gimli::Dwarf::load(&load_section, &load_section_sup).unwrap();
+        let dwarf_cow = gimli::Dwarf::load(&load_section, &load_section_sup)?;
 
         use gimli::Section;
 
-        let frame_section = gimli::DebugFrame::load(load_section).unwrap();
+        let frame_section = gimli::DebugFrame::load(load_section)?;
 
         Ok(DebugInfo {
             //object,
@@ -351,7 +351,7 @@ impl DebugInfo {
     pub fn get_source_location(&self, address: u64) -> Option<SourceLocation> {
         let mut units = self.dwarf.units();
 
-        while let Some(header) = units.next().unwrap() {
+        while let Ok(Some(header)) = units.next() {
             let unit = match self.dwarf.unit(header) {
                 Ok(unit) => unit,
                 Err(_) => continue,
@@ -359,7 +359,7 @@ impl DebugInfo {
 
             let mut ranges = self.dwarf.unit_ranges(&unit).unwrap();
 
-            while let Some(range) = ranges.next().unwrap() {
+            while let Ok(Some(range)) = ranges.next() {
                 if (range.begin <= address) && (address < range.end) {
                     //debug!("Unit: {:?}", unit.name.as_ref().and_then(|raw_name| std::str::from_utf8(&raw_name).ok()).unwrap_or("<unknown>") );
 
@@ -390,7 +390,7 @@ impl DebugInfo {
                     let mut rows =
                         program.resume_from(target_seq.as_ref().expect("Sequence not found"));
 
-                    while let Some((header, row)) = rows.next_row().unwrap() {
+                    while let Ok(Some((header, row))) = rows.next_row() {
                         //println!("Row address: 0x{:08x}", row.address());
                         if row.address() == address {
                             let file = row.file(header).unwrap().path_name();
@@ -667,7 +667,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
     fn get_function_die(&self, address: u64) -> Option<DieCursorState> {
         let mut entries_cursor = self.unit.entries();
 
-        while let Some((depth, current)) = entries_cursor.next_dfs().unwrap() {
+        while let Ok(Some((depth, current))) = entries_cursor.next_dfs() {
             match current.tag() {
                 gimli::DW_TAG_subprogram | gimli::DW_TAG_inlined_subroutine => {
                     let mut ranges = self
@@ -676,7 +676,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         .die_ranges(&self.unit, &current)
                         .unwrap();
 
-                    while let Some(ranges) = ranges.next().unwrap() {
+                    while let Ok(Some(ranges)) = ranges.next() {
                         if (ranges.begin <= address) && (address < ranges.end) {
                             return Some(DieCursorState {
                                 _depth: depth,
