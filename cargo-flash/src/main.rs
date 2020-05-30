@@ -2,9 +2,9 @@ mod logging;
 
 use structopt;
 
+use anyhow::{anyhow, Context, Result};
 use cargo_toml::Manifest;
 use colored::*;
-use failure::format_err;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use std::{
     env,
@@ -158,7 +158,7 @@ fn main() {
             //
             // We ignore the errors, not much we can do anyway.
             let mut stderr = std::io::stderr();
-            let _ = writeln!(stderr, "       {} {}", "Error".red().bold(), e);
+            let _ = writeln!(stderr, "       {} {:?}", "Error".red().bold(), e);
             let _ = stderr.flush();
 
             process::exit(1);
@@ -166,7 +166,7 @@ fn main() {
     }
 }
 
-fn main_try() -> Result<(), failure::Error> {
+fn main_try() -> Result<()> {
     let mut args = std::env::args();
 
     // When called by Cargo, the first argument after the binary name will be `flash`. If that's the
@@ -233,7 +233,7 @@ fn main_try() -> Result<(), failure::Error> {
 
         // Try and get the cargo project information.
         let project = cargo_project::Project::query(".")
-            .map_err(|e| format_err!("failed to parse Cargo project information: {}", e))?;
+            .map_err(|e| anyhow!("failed to parse Cargo project information: {}", e))?;
 
         // Decide what artifact to use.
         let artifact = if let Some(bin) = &opt.bin {
@@ -252,12 +252,14 @@ fn main_try() -> Result<(), failure::Error> {
         };
 
         // Try and get the artifact path.
-        project.path(
-            artifact,
-            profile,
-            opt.target.as_ref().map(|t| &**t),
-            "x86_64-unknown-linux-gnu",
-        )?
+        project
+            .path(
+                artifact,
+                profile,
+                opt.target.as_ref().map(|t| &**t),
+                "x86_64-unknown-linux-gnu",
+            )
+            .map_err(|e| anyhow!("Couldn't get artifact path: {}", e))?
     };
 
     logging::println(format!(
@@ -269,18 +271,18 @@ fn main_try() -> Result<(), failure::Error> {
     let list = Probe::list_all();
 
     let device = match opt.n {
-        Some(index) => list.get(index).ok_or_else(|| {
-            format_err!("Unable to open probe with index {}: Probe not found", index)
-        })?,
+        Some(index) => list
+            .get(index)
+            .ok_or_else(|| anyhow!("Unable to open probe with index {}: Probe not found", index))?,
         None => {
             // Only automatically select a probe if there is only
             // a single probe detected.
             if list.len() > 1 {
-                return Err(format_err!("More than a single probe detected. Use the --probe-index argument to select which probe to use."));
+                return Err(anyhow!("More than a single probe detected. Use the --probe-index argument to select which probe to use."));
             }
 
             list.first()
-                .ok_or_else(|| format_err!("no supported probe was found"))?
+                .ok_or_else(|| anyhow!("no supported probe was found"))?
         }
     };
 
@@ -446,7 +448,7 @@ fn main_try() -> Result<(), failure::Error> {
                     keep_unwritten_bytes: opt.restore_unwritten,
                 },
             )
-            .map_err(|e| format_err!("failed to flash {}: {}", path.display(), e))?;
+            .with_context(|| format!("failed to flash {}", path.display()))?;
 
             // We don't care if we cannot join this thread.
             let _ = progress_thread_handle.join();
@@ -460,7 +462,7 @@ fn main_try() -> Result<(), failure::Error> {
                     keep_unwritten_bytes: opt.restore_unwritten,
                 },
             )
-            .map_err(|e| format_err!("failed to flash {}: {}", path.display(), e))?;
+            .with_context(|| format!("failed to flash {}", path.display()))?;
         }
 
         // Stop timer.
@@ -499,10 +501,10 @@ fn main_try() -> Result<(), failure::Error> {
     Ok(())
 }
 
-fn print_families() -> Result<(), failure::Error> {
+fn print_families() -> Result<()> {
     logging::println("Available chips:");
     for family in probe_rs::config::registry::families()
-        .map_err(|e| format_err!("Families could not be read: {:?}", e))?
+        .with_context(|| format!("Families could not be read"))?
     {
         logging::println(&family.name);
         logging::println("    Variants:");
