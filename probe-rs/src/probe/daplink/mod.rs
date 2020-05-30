@@ -303,17 +303,17 @@ impl DebugProbe for DAPLink {
 
         self.configure_swd(swd::configure::ConfigureRequest {})?;
 
-        self.send_swj_sequences(
-            SequenceRequest::new(&[0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff]).unwrap(),
-        )?;
+        self.send_swj_sequences(SequenceRequest::new(&[
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+        ])?)?;
 
-        self.send_swj_sequences(SequenceRequest::new(&[0x9e, 0xe7]).unwrap())?;
+        self.send_swj_sequences(SequenceRequest::new(&[0x9e, 0xe7])?)?;
 
-        self.send_swj_sequences(
-            SequenceRequest::new(&[0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff]).unwrap(),
-        )?;
+        self.send_swj_sequences(SequenceRequest::new(&[
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+        ])?)?;
 
-        self.send_swj_sequences(SequenceRequest::new(&[0x00]).unwrap())?;
+        self.send_swj_sequences(SequenceRequest::new(&[0x00])?)?;
 
         debug!("Successfully changed to SWD.");
 
