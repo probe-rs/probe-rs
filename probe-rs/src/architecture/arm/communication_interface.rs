@@ -298,6 +298,8 @@ impl<'probe> ArmCommunicationInterface<'probe> {
         Ok(())
     }
 
+    /// Write the given register `R` of the given `AP`, where the to be written register value
+    /// is wrapped in the given `register` parameter.
     pub fn write_ap_register<AP, R>(&mut self, port: AP, register: R) -> Result<(), DebugProbeError>
     where
         AP: AccessPort,
@@ -327,6 +329,9 @@ impl<'probe> ArmCommunicationInterface<'probe> {
     }
 
     // TODO: Fix this ugly: _register: R, values: &[u32]
+    /// Write the given register `R` of the given `AP` repeatedly, where the to be written register
+    /// values are stored in the `values` array. The values are written in the exact order they are
+    /// stored in the array.
     pub fn write_ap_register_repeated<AP, R>(
         &mut self,
         port: AP,
@@ -358,6 +363,8 @@ impl<'probe> ArmCommunicationInterface<'probe> {
         Ok(())
     }
 
+    /// Read the given register `R` of the given `AP`, where the read register value is wrapped in
+    /// the given `register` parameter.
     pub fn read_ap_register<AP, R>(&mut self, port: AP, _register: R) -> Result<R, DebugProbeError>
     where
         AP: AccessPort,
@@ -382,6 +389,9 @@ impl<'probe> ArmCommunicationInterface<'probe> {
     }
 
     // TODO: fix types, see above!
+    /// Read the given register `R` of the given `AP` repeatedly, where the read register values
+    /// are stored in the `values` array. The values are read in the exact order they are stored in
+    /// the array.
     pub fn read_ap_register_repeated<AP, R>(
         &mut self,
         port: AP,
