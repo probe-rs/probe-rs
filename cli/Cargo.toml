@@ -1,6 +1,6 @@
 [package]
 name = "probe-rs-cli"
-version = "0.6.1"
+version = "0.7.0"
 authors = ["Noah Hüsser <yatekii@yatekii.ch>", "Dominik Boehi <dominik.boehi@gmail.ch>"]
 edition = "2018"
 description = "A cli for on chip debugging and flashing of ARM chips."

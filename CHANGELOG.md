@@ -11,8 +11,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
- - Fixed a bug in the gdb-server that causes it to never halt after a continue.
- - Fixed an issue where the gdb-server would always use 100 % cpu time of the core it's running on.
+## [0.7.0]
+
+### Added
+
+- Added support for RISV flashloaders! An example how to write one can be found here: https://github.com/Tiwalun/hifive-flashloader.
+- Added support for LLDB (works better than GDB in most cases; try it!).
+- Added support for specifying a probe via VID, PID and serial number.
+
+### Changed
+
+- The probe-rs API was changed that no internal `Rc<RefCell<T>>`s are present anymore to enable multithreading and make the API cleaner (see https://github.com/probe-rs/probe-rs/pull/240 for the changes).
+- Cleaned up the gernal GDB server code.
+- Make some parts of the API public such that custom APs can be implemented and used for ARM targets (see https://github.com/probe-rs/probe-rs/pull/249, https://github.com/probe-rs/probe-rs/pull/253)
+- Removed a great deal of (non-panicking) unwraps inside the code.
+- Improved erroring by a great deal. Removed error stacking and started using anyhow for upper-level errors. This allows for nicer error printing!
+
+### Fixed
+
+- Fixed a bug where an empty DAP-Link batch would just crash without a proper error message.
+- Fixed a check where the serial number of the stlink which would be supported at a minimum was too low (off by one).
+- Fixed the broken vCont & memory-map commands in the GDB stub.
+- Fixed deserialization of flash algorithm descriptions which enables to load target descriptions during runtime.
+- Fixed an issue where the error message would say that more than one probe was found when no probe was detected at all.
+- Fixed a bug in the gdb-server that causes it to never halt after a continue.
+- Fixed an issue where the gdb-server would always use 100 % cpu time of the core it's running on.
 
 ## [0.6.2]
 
@@ -171,7 +194,8 @@ Initial release on crates.io
 - Working basic flash downloader with nRF51.
 - Introduce cargo-flash which can automatically build & flash the target elf file.
 
-[Unreleased]: https://github.com/probe-rs/probe-rs/compare/v0.6.2...master
+[Unreleased]: https://github.com/probe-rs/probe-rs/compare/v0.7.0...master
+[0.7.0]: https://github.com/probe-rs/probe-rs/releases/tag/v0.7.0
 [0.6.2]: https://github.com/probe-rs/probe-rs/releases/tag/v0.6.2
 [0.6.1]: https://github.com/probe-rs/probe-rs/releases/tag/v0.6.1
 [0.6.0]: https://github.com/probe-rs/probe-rs/releases/tag/v0.6.0
