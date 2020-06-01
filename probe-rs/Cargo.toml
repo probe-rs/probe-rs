@@ -21,7 +21,7 @@ builtin-targets = []
 [dependencies]
 log = "0.4.8"
 num-traits = "0.2.11"
-enum-primitive-derive = "0.1.2"
+enum-primitive-derive = "0.2.1"
 jep106 = "0.2.4"
 scroll = "0.10.1"
 rusb = "0.5.5"

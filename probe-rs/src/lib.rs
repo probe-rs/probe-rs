@@ -89,6 +89,6 @@ pub use crate::core::{
 pub use crate::error::Error;
 pub use crate::memory::{Memory, MemoryInterface, MemoryList};
 pub use crate::probe::{
-    DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeType, Probe, WireProtocol,
+    DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, Probe, WireProtocol,
 };
 pub use crate::session::Session;

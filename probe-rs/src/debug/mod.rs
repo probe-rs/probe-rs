@@ -219,7 +219,16 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
             gimli::CfaRule::RegisterAndOffset { register, offset } => {
                 let reg_val = self.registers[register.0 as usize];
 
-                Some((i64::from(reg_val.unwrap()) + offset) as u32)
+                match reg_val {
+                    Some(reg_val) => Some((i64::from(reg_val) + offset) as u32),
+                    None => {
+                        log::warn!(
+                            "Unable to calculate CFA: Missing value of register {}",
+                            register.0
+                        );
+                        return None;
+                    }
+                }
             }
             gimli::CfaRule::Expression(_) => unimplemented!(),
         };
@@ -236,8 +245,22 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
 
             use gimli::read::RegisterRule::*;
 
-            self.registers[i] = match unwind_info.register(gimli::Register(i as u16)) {
-                Undefined => None,
+            let register_rule = unwind_info.register(gimli::Register(i as u16));
+
+            log::trace!("Register {}: {:?}", i, &register_rule);
+
+            self.registers[i] = match register_rule {
+                Undefined => {
+                    // If we get undefined for the LR register (register 14) or any callee saved register,
+                    // we assume that it is unchanged. Gimli doesn't allow us
+                    // to distinguish if  a rule is not present or actually set to Undefined
+                    // in the call frame information.
+
+                    match i {
+                        4 | 5 | 6 | 7 | 8 | 10 | 11 | 14 => self.registers[i],
+                        _ => None,
+                    }
+                }
                 SameValue => self.registers[i],
                 Offset(o) => {
                     let addr = i64::from(current_cfa.unwrap()) + o;
@@ -273,7 +296,10 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
 
         // Next function is where our current return register is pointing to.
         // We just have to remove the lowest bit (indicator for Thumb mode).
-        self.pc = self.registers[14].map(|pc| u64::from(pc & !1));
+        //
+        // We also have to subtract one, as we want the calling instruction for
+        // a backtrace, not the next instruction to be executed.
+        self.pc = self.registers[14].map(|pc| u64::from(pc & !1) - 1);
 
         return_frame
     }
@@ -338,8 +364,11 @@ impl DebugInfo {
         let dwarf_cow = gimli::Dwarf::load(&load_section, &load_section_sup)?;
 
         use gimli::Section;
+        let mut frame_section = gimli::DebugFrame::load(load_section)?;
 
-        let frame_section = gimli::DebugFrame::load(load_section)?;
+        // To support DWARF v2, where the address size is not encoded in the .debug_frame section,
+        // we have to set the address size here.
+        frame_section.set_address_size(4);
 
         Ok(DebugInfo {
             //object,

@@ -5,9 +5,9 @@ mod usb_interface;
 
 use self::usb_interface::{STLinkUSBDevice, StLinkUsb};
 use super::{
-    DAPAccess, DebugProbe, DebugProbeError, DebugProbeInfo, JTAGAccess, PortType, WireProtocol,
+    DAPAccess, DebugProbe, DebugProbeError, JTAGAccess, PortType, ProbeCreationError, WireProtocol,
 };
-use crate::Memory;
+use crate::{DebugProbeSelector, Memory};
 use constants::{commands, JTagFrequencyToDivider, Mode, Status, SwdFrequencyToDelayCount};
 use scroll::{Pread, BE, LE};
 use std::time::Duration;
@@ -28,9 +28,11 @@ pub struct STLink<D: StLinkUsb> {
 }
 
 impl DebugProbe for STLink<STLinkUSBDevice> {
-    fn new_from_probe_info(info: &DebugProbeInfo) -> Result<Box<Self>, DebugProbeError> {
+    fn new_from_selector(
+        selector: impl Into<DebugProbeSelector>,
+    ) -> Result<Box<Self>, DebugProbeError> {
         let mut stlink = Self {
-            device: STLinkUSBDevice::new_from_info(info)?,
+            device: STLinkUSBDevice::new_from_selector(selector)?,
             hw_version: 0,
             jtag_version: 0,
             protocol: WireProtocol::Swd,
@@ -651,6 +653,12 @@ pub(crate) enum StlinkError {
 impl From<StlinkError> for DebugProbeError {
     fn from(e: StlinkError) -> Self {
         DebugProbeError::ProbeSpecific(Box::new(e))
+    }
+}
+
+impl From<StlinkError> for ProbeCreationError {
+    fn from(e: StlinkError) -> Self {
+        ProbeCreationError::ProbeSpecific(Box::new(e))
     }
 }
 
