@@ -1,5 +1,8 @@
 use super::DAPLinkDevice;
-use crate::probe::{DebugProbeInfo, DebugProbeType};
+use crate::{
+    probe::{DebugProbeInfo, DebugProbeType, ProbeCreationError},
+    DebugProbeSelector,
+};
 use rusb::{Device, UsbContext};
 use std::time::Duration;
 
@@ -10,7 +13,10 @@ use std::time::Duration;
 /// HID devices if it does not find any suitable devices.
 pub fn list_daplink_devices() -> Vec<DebugProbeInfo> {
     match rusb::Context::new().and_then(|ctx| ctx.devices()) {
-        Ok(devices) => devices.iter().filter_map(get_daplink_info).collect(),
+        Ok(devices) => devices
+            .iter()
+            .filter_map(|device| get_daplink_info(&device))
+            .collect(),
         Err(_) => match hidapi::HidApi::new() {
             Ok(api) => api.device_list().filter_map(get_daplink_hid_info).collect(),
             Err(_) => vec![],
@@ -19,7 +25,7 @@ pub fn list_daplink_devices() -> Vec<DebugProbeInfo> {
 }
 
 /// Checks if a given Device is a CMSIS-DAP probe, returning Some(DebugProbeInfo) if so.
-fn get_daplink_info(device: Device<rusb::Context>) -> Option<DebugProbeInfo> {
+fn get_daplink_info(device: &Device<rusb::Context>) -> Option<DebugProbeInfo> {
     // Open device handle and read basic information
     let timeout = Duration::from_millis(100);
     let d_desc = device.device_descriptor().ok()?;
@@ -140,7 +146,11 @@ pub fn open_v2_device(device: Device<rusb::Context>) -> Option<DAPLinkDevice> {
 
 /// Attempt to open the given DebugProbeInfo in CMSIS-DAP v2 mode if possible,
 /// otherwise in v1 mode.
-pub fn open_device_from_info(info: &DebugProbeInfo) -> Option<DAPLinkDevice> {
+pub fn open_device_from_selector(
+    selector: impl Into<DebugProbeSelector>,
+) -> Result<DAPLinkDevice, ProbeCreationError> {
+    let selector = selector.into();
+
     // Try using rusb to open a v2 device. This might fail if
     // the device does not support v2 operation or due to driver
     // or permission issues with opening bulk devices.
@@ -160,33 +170,54 @@ pub fn open_device_from_info(info: &DebugProbeInfo) -> Option<DAPLinkDevice> {
             // multiple open handles are not allowed on Windows.
             drop(handle);
 
-            if d_desc.vendor_id() == info.vendor_id
-                && d_desc.product_id() == info.product_id
-                && sn_str == info.serial_number
+            if d_desc.vendor_id() == selector.vendor_id
+                && d_desc.product_id() == selector.product_id
+                && sn_str == selector.serial_number
+                && get_daplink_info(&device).is_some()
             {
                 // If the VID, PID, and potentially SN all match,
+                // and the device is a valid CMSIS-DAP probe,
                 // attempt to open the device in v2 mode.
                 if let Some(device) = open_v2_device(device) {
-                    return Some(device);
+                    return Ok(device);
                 }
             }
         }
     }
 
     // If rusb failed or the device didn't support v2, try using hidapi to open in v1 mode.
-    // If this doesn't work we give up and return None.
-    let vid = info.vendor_id;
-    let pid = info.product_id;
-    let sn = &info.serial_number;
+    let vid = selector.vendor_id;
+    let pid = selector.product_id;
+    let sn = &selector.serial_number;
+
     log::debug!(
         "Attempting to open {:04x}:{:04x} in CMSIS-DAP v1 mode",
         vid,
         pid
     );
-    match sn {
+
+    // Attempt to open provided VID/PID/SN with hidapi
+    let hid_device = match sn {
         Some(sn) => hidapi::HidApi::new().and_then(|api| api.open_serial(vid, pid, &sn)),
         None => hidapi::HidApi::new().and_then(|api| api.open(vid, pid)),
+    };
+
+    match hid_device {
+        Ok(device) => {
+            match device.get_product_string() {
+                Ok(Some(s)) if s.contains("CMSIS-DAP") => Ok(DAPLinkDevice::V1(device)),
+                _ => {
+                    // Return NotFound if this VID:PID was not a valid CMSIS-DAP probe,
+                    // or if it couldn't be opened, so that other probe modules can
+                    // attempt to open it instead.
+                    Err(ProbeCreationError::NotFound)
+                }
+            }
+        }
+
+        // If hidapi couldn't open the device, it may be because this is not
+        // a HID device at all and some other probe module should try to load
+        // it instead.
+        Err(_) => Err(ProbeCreationError::NotFound),
     }
-    .map(|device| DAPLinkDevice::V1(device))
-    .ok()
 }
