@@ -58,10 +58,11 @@ fn main() -> Result<(), &'static str> {
 
     rng.fill(&mut sample_data[..]);
 
-    core.halt().unwrap();
+    core.halt().expect("Halting failed");
 
     let write_start = Instant::now();
-    core.write_32(matches.address, &sample_data).unwrap();
+    core.write_32(matches.address, &sample_data)
+        .expect("Writing the sample data failed");
 
     let write_duration = write_start.elapsed();
 
@@ -79,7 +80,8 @@ fn main() -> Result<(), &'static str> {
     let mut readback_data = vec![0u32; data_size_words];
 
     let read_start = Instant::now();
-    core.read_32(matches.address, &mut readback_data).unwrap();
+    core.read_32(matches.address, &mut readback_data)
+        .expect("Reading the sample data failed");
     let read_duration = read_start.elapsed();
 
     let read_throughput = (data_size_bytes as f32) / read_duration.as_secs_f32();

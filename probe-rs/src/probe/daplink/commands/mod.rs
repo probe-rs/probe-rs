@@ -131,31 +131,35 @@ pub(crate) fn send_command<Req: Request, Res: Response>(
     let mut size = request.to_bytes(&mut write_buffer, 1 + 1)?;
     size += 2;
 
-    // On Windows, HID writes must write exactly the size of the
-    // largest report for the device, but there's no way to query
-    // this in hidapi. All known CMSIS-DAP devices use 64-byte
-    // HID reports (the maximum permitted), so ensure we always
-    // write exactly 64 (+1 for report ID) bytes for HID.
-    // For v2 devices, we can write the precise request size.
-    match device.get_mut().unwrap() {
-        DAPLinkDevice::V1(_) => {
-            size = 65;
+    if let Ok(device) = device.get_mut() {
+        // On Windows, HID writes must write exactly the size of the
+        // largest report for the device, but there's no way to query
+        // this in hidapi. All known CMSIS-DAP devices use 64-byte
+        // HID reports (the maximum permitted), so ensure we always
+        // write exactly 64 (+1 for report ID) bytes for HID.
+        // For v2 devices, we can write the precise request size.
+        match device {
+            DAPLinkDevice::V1(_) => {
+                size = 65;
+            }
+            _ => (),
         }
-        _ => (),
-    }
 
-    // Send buffer to the device.
-    device.get_mut().unwrap().write(&write_buffer[..size])?;
-    log::trace!("Send buffer: {:02X?}", &write_buffer[..size]);
+        // Send buffer to the device.
+        device.write(&write_buffer[..size])?;
+        log::trace!("Send buffer: {:02X?}", &write_buffer[..size]);
 
-    // Read back resonse.
-    let mut read_buffer = [0; BUFFER_LEN];
-    device.get_mut().unwrap().read(&mut read_buffer)?;
-    log::trace!("Receive buffer: {:02X?}", &read_buffer[..]);
+        // Read back resonse.
+        let mut read_buffer = [0; BUFFER_LEN];
+        device.read(&mut read_buffer)?;
+        log::trace!("Receive buffer: {:02X?}", &read_buffer[..]);
 
-    if read_buffer[0] == *Req::CATEGORY {
-        Res::from_bytes(&read_buffer, 1)
+        if read_buffer[0] == *Req::CATEGORY {
+            Res::from_bytes(&read_buffer, 1)
+        } else {
+            Err(CmsisDapError::UnexpectedAnswer)
+        }
     } else {
-        Err(CmsisDapError::UnexpectedAnswer)
+        Err(CmsisDapError::ErrorResponse)
     }
 }

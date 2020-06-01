@@ -6,7 +6,7 @@ use crate::architecture::arm::{
     DAPAccess, DapError, PortType,
 };
 use crate::probe::{daplink::commands::CmsisDapError, BatchCommand};
-use crate::{DebugProbe, DebugProbeError, DebugProbeInfo, Memory, WireProtocol};
+use crate::{DebugProbe, DebugProbeError, DebugProbeSelector, Memory, WireProtocol};
 use commands::{
     general::{
         connect::{ConnectRequest, ConnectResponse},
@@ -183,7 +183,7 @@ impl DAPLink {
                     Ack::Wait => Err(DapError::WaitResponse.into()),
                 }
             }
-        } else if count < batch.len() {
+        } else if count > 0 && count < batch.len() {
             Err(DebugProbeError::BatchError(batch[count - 1]))
         } else {
             Err(CmsisDapError::UnexpectedAnswer.into())
@@ -234,12 +234,14 @@ impl DPAccess for DAPLink {
 }
 
 impl DebugProbe for DAPLink {
-    fn new_from_probe_info(info: &DebugProbeInfo) -> Result<Box<Self>, DebugProbeError>
+    fn new_from_selector(
+        selector: impl Into<DebugProbeSelector>,
+    ) -> Result<Box<Self>, DebugProbeError>
     where
         Self: Sized,
     {
         Ok(Box::new(Self::new_from_device(
-            tools::open_device_from_info(info).ok_or(DebugProbeError::ProbeCouldNotBeCreated)?,
+            tools::open_device_from_selector(selector)?,
         )))
     }
 
@@ -303,17 +305,17 @@ impl DebugProbe for DAPLink {
 
         self.configure_swd(swd::configure::ConfigureRequest {})?;
 
-        self.send_swj_sequences(
-            SequenceRequest::new(&[0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff]).unwrap(),
-        )?;
+        self.send_swj_sequences(SequenceRequest::new(&[
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+        ])?)?;
 
-        self.send_swj_sequences(SequenceRequest::new(&[0x9e, 0xe7]).unwrap())?;
+        self.send_swj_sequences(SequenceRequest::new(&[0x9e, 0xe7])?)?;
 
-        self.send_swj_sequences(
-            SequenceRequest::new(&[0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff]).unwrap(),
-        )?;
+        self.send_swj_sequences(SequenceRequest::new(&[
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+        ])?)?;
 
-        self.send_swj_sequences(SequenceRequest::new(&[0x00]).unwrap())?;
+        self.send_swj_sequences(SequenceRequest::new(&[0x00])?)?;
 
         debug!("Successfully changed to SWD.");
 

@@ -56,7 +56,7 @@ pub fn open_probe(index: Option<usize>) -> Result<Probe, failure::Error> {
         }
     };
 
-    let probe = Probe::from_probe_info(&device)?;
+    let probe = Probe::open(device)?;
 
     Ok(probe)
 }

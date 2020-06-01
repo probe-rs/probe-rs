@@ -21,14 +21,14 @@ builtin-targets = []
 [dependencies]
 log = "0.4.8"
 num-traits = "0.2.11"
-enum-primitive-derive = "0.1.2"
+enum-primitive-derive = "0.2.1"
 jep106 = "0.2.4"
 scroll = "0.10.1"
 rusb = "0.5.5"
 lazy_static = "1.4.0"
 hidapi = "1.2.0"
-gimli = "0.20.0"
-object = "0.18.0"
+gimli = "0.21.0"
+object = "0.19.0"
 bitfield = "0.13.2"
 derivative = "2.0.0"
 serde = { version = "1.0.104", features = ["derive"] }

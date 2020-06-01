@@ -298,7 +298,9 @@ impl<'probe> ArmCommunicationInterface<'probe> {
         Ok(())
     }
 
-    fn write_ap_register<AP, R>(&mut self, port: AP, register: R) -> Result<(), DebugProbeError>
+    /// Write the given register `R` of the given `AP`, where the to be written register value
+    /// is wrapped in the given `register` parameter.
+    pub fn write_ap_register<AP, R>(&mut self, port: AP, register: R) -> Result<(), DebugProbeError>
     where
         AP: AccessPort,
         R: APRegister<AP>,
@@ -326,8 +328,11 @@ impl<'probe> ArmCommunicationInterface<'probe> {
         Ok(())
     }
 
-    /// TODO: Fix this ugly: _register: R, values: &[u32]
-    fn write_ap_register_repeated<AP, R>(
+    // TODO: Fix this ugly: _register: R, values: &[u32]
+    /// Write the given register `R` of the given `AP` repeatedly, where the to be written register
+    /// values are stored in the `values` array. The values are written in the exact order they are
+    /// stored in the array.
+    pub fn write_ap_register_repeated<AP, R>(
         &mut self,
         port: AP,
         _register: R,
@@ -358,7 +363,9 @@ impl<'probe> ArmCommunicationInterface<'probe> {
         Ok(())
     }
 
-    fn read_ap_register<AP, R>(&mut self, port: AP, _register: R) -> Result<R, DebugProbeError>
+    /// Read the given register `R` of the given `AP`, where the read register value is wrapped in
+    /// the given `register` parameter.
+    pub fn read_ap_register<AP, R>(&mut self, port: AP, _register: R) -> Result<R, DebugProbeError>
     where
         AP: AccessPort,
         R: APRegister<AP>,
@@ -381,8 +388,11 @@ impl<'probe> ArmCommunicationInterface<'probe> {
         Ok(R::from(result))
     }
 
-    /// TODO: fix types, see above!
-    fn read_ap_register_repeated<AP, R>(
+    // TODO: fix types, see above!
+    /// Read the given register `R` of the given `AP` repeatedly, where the read register values
+    /// are stored in the `values` array. The values are read in the exact order they are stored in
+    /// the array.
+    pub fn read_ap_register_repeated<AP, R>(
         &mut self,
         port: AP,
         _register: R,
@@ -431,8 +441,11 @@ impl<'probe> DPAccess for ArmCommunicationInterface<'probe> {
 
         self.select_dp_bank(R::DP_BANK)?;
 
-        // unwrap is safe, interface is check when creating the interface
-        let interface = self.probe.get_interface_dap_mut()?.unwrap();
+        // unwrap is safe, interface is checked when creating the interface
+        let interface = self
+            .probe
+            .get_interface_dap_mut()?
+            .expect("Could not get interface DAP");
 
         log::debug!("Reading DP register {}", R::NAME);
         let result = interface.read_register(PortType::DebugPort, u16::from(R::ADDRESS))?;
@@ -453,7 +466,10 @@ impl<'probe> DPAccess for ArmCommunicationInterface<'probe> {
         self.select_dp_bank(R::DP_BANK)?;
 
         // unwrap is safe, interface is check when creating the interface
-        let interface = self.probe.get_interface_dap_mut()?.unwrap();
+        let interface = self
+            .probe
+            .get_interface_dap_mut()?
+            .expect("Could not get interface DAP");
 
         let value = register.into();
 

@@ -11,6 +11,10 @@ pub struct DebugCli {
     commands: Vec<Command>,
 }
 
+fn parse_u32_hex(s: &str) -> u32 {
+    u32::from_str_radix(s, 16).expect("Couldn't parse hex number")
+}
+
 impl DebugCli {
     pub fn new() -> DebugCli {
         let mut cli = DebugCli {
@@ -109,11 +113,11 @@ impl DebugCli {
             function: |cli_data, args| {
                 let address_str = args.get(0).ok_or(CliError::MissingArgument)?;
 
-                let address = u32::from_str_radix(address_str, 16).unwrap();
+                let address = parse_u32_hex(address_str);
 
                 let num_words = args
                     .get(1)
-                    .map(|c| c.parse::<usize>().unwrap())
+                    .map(|c| c.parse::<usize>().expect("Couldn't parse number of words"))
                     .unwrap_or(1);
 
                 let mut buff = vec![0u32; num_words];
@@ -134,10 +138,10 @@ impl DebugCli {
 
             function: |cli_data, args| {
                 let address_str = args.get(0).ok_or(CliError::MissingArgument)?;
-                let address = u32::from_str_radix(address_str, 16).unwrap();
+                let address = parse_u32_hex(address_str);
 
                 let data_str = args.get(1).ok_or(CliError::MissingArgument)?;
-                let data = u32::from_str_radix(data_str, 16).unwrap();
+                let data = parse_u32_hex(data_str);
 
                 cli_data.core.write_word_32(address, data)?;
 
@@ -151,7 +155,7 @@ impl DebugCli {
 
             function: |cli_data, args| {
                 let address_str = args.get(0).ok_or(CliError::MissingArgument)?;
-                let address = u32::from_str_radix(address_str, 16).unwrap();
+                let address = parse_u32_hex(address_str);
 
                 cli_data.core.set_hw_breakpoint(address)?;
 
@@ -167,7 +171,7 @@ impl DebugCli {
 
             function: |cli_data, args| {
                 let address_str = args.get(0).ok_or(CliError::MissingArgument)?;
-                let address = u32::from_str_radix(address_str, 16).unwrap();
+                let address = parse_u32_hex(address_str);
 
                 cli_data.core.clear_hw_breakpoint(address)?;
 
