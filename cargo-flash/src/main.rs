@@ -8,8 +8,6 @@ use colored::*;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use std::{
     env,
-    error::Error,
-    fmt,
     io::Write,
     path::{Path, PathBuf},
     process::{self, Command, Stdio},
@@ -21,7 +19,6 @@ use structopt::StructOpt;
 use serde::Deserialize;
 
 use probe_rs::{
-    architecture::arm::ap::AccessPortError,
     config::TargetSelector,
     flashing::{download_file_with_options, DownloadOptions, FlashProgress, Format, ProgressEvent},
     DebugProbeError, DebugProbeSelector, Probe, WireProtocol,
@@ -231,7 +228,7 @@ fn main_try() -> Result<()> {
 
     // Change the work dir if the user asked to do so
     if let Some(work_dir) = opt.work_dir {
-        std::env::set_current_dir(work_dir)?;
+        std::env::set_current_dir(work_dir).context("failed to change the working directory")?;
     }
 
     let path: PathBuf = if let Some(path) = opt.elf {
@@ -305,8 +302,9 @@ fn main_try() -> Result<()> {
         }
     };
 
-    // Select the protocol if any was passed as an argument.
-    probe.select_protocol(opt.protocol)?;
+    probe
+        .select_protocol(opt.protocol)
+        .context("failed to select protocol")?;
 
     // Disabled for now
     // TODO: reenable once we got the plugin architecture working.
@@ -322,7 +320,7 @@ fn main_try() -> Result<()> {
     // }
 
     let protocol_speed = if let Some(speed) = opt.speed {
-        let actual_speed = probe.set_speed(speed)?;
+        let actual_speed = probe.set_speed(speed).context("failed to set speed")?;
 
         if actual_speed < speed {
             log::warn!(
@@ -339,7 +337,7 @@ fn main_try() -> Result<()> {
 
     log::info!("Protocol speed {} kHz", protocol_speed);
 
-    let mut session = probe.attach(chip)?;
+    let mut session = probe.attach(chip).context("failed attaching to target")?;
 
     // Start timer.
     let instant = Instant::now();
@@ -496,9 +494,9 @@ fn main_try() -> Result<()> {
     {
         let mut core = session.core(0)?;
         if opt.reset_halt {
-            core.reset_and_halt()?;
+            core.reset_and_halt().context("failed to reset and halt")?;
         } else {
-            core.reset()?;
+            core.reset().context("failed to reset")?;
         }
     }
 
@@ -522,9 +520,7 @@ fn main_try() -> Result<()> {
 
 fn print_families() -> Result<()> {
     logging::println("Available chips:");
-    for family in probe_rs::config::registry::families()
-        .with_context(|| format!("Families could not be read"))?
-    {
+    for family in probe_rs::config::registry::families().context("failed to read families")? {
         logging::println(&family.name);
         logging::println("    Variants:");
         for variant in family.variants() {
@@ -545,58 +541,6 @@ fn handle_failed_command(status: std::process::ExitStatus) -> ! {
 fn handle_failed_command(status: std::process::ExitStatus) -> ! {
     let status = status.code().unwrap_or(1);
     std::process::exit(status)
-}
-
-#[derive(Debug)]
-pub enum DownloadError {
-    DebugProbe(DebugProbeError),
-    AccessPort(AccessPortError),
-    StdIO(std::io::Error),
-    Quit,
-}
-
-impl Error for DownloadError {
-    fn source(&self) -> Option<&(dyn Error + 'static)> {
-        use crate::DownloadError::*;
-
-        match self {
-            DebugProbe(ref e) => Some(e),
-            AccessPort(ref e) => Some(e),
-            StdIO(ref e) => Some(e),
-            Quit => None,
-        }
-    }
-}
-
-impl fmt::Display for DownloadError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use crate::DownloadError::*;
-
-        match self {
-            DebugProbe(ref e) => e.fmt(f),
-            AccessPort(ref e) => e.fmt(f),
-            StdIO(ref e) => e.fmt(f),
-            Quit => write!(f, "Quit error..."),
-        }
-    }
-}
-
-impl From<AccessPortError> for DownloadError {
-    fn from(error: AccessPortError) -> Self {
-        DownloadError::AccessPort(error)
-    }
-}
-
-impl From<DebugProbeError> for DownloadError {
-    fn from(error: DebugProbeError) -> Self {
-        DownloadError::DebugProbe(error)
-    }
-}
-
-impl From<std::io::Error> for DownloadError {
-    fn from(error: std::io::Error) -> Self {
-        DownloadError::StdIO(error)
-    }
 }
 
 /// Removes all arguments from the commandline input that `cargo build` does not understand.
