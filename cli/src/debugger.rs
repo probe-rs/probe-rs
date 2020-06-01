@@ -193,6 +193,8 @@ impl DebugCli {
                     for frame in frames {
                         println!("{}", frame);
                     }
+                } else {
+                    println!("No debug information present!");
                 }
 
                 Ok(CliState::Continue)
