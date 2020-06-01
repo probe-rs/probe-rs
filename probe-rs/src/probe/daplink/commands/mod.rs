@@ -8,9 +8,8 @@ use crate::DebugProbeError;
 use core::ops::Deref;
 use std::time::Duration;
 
+use anyhow::{anyhow, Context, Result};
 use thiserror::Error;
-
-pub(crate) type Result<T> = std::result::Result<T, CmsisDapError>;
 
 #[derive(Debug, Error)]
 pub enum CmsisDapError {
@@ -20,12 +19,14 @@ pub enum CmsisDapError {
     ErrorResponse,
     #[error("Too much data provided for SWJ Sequence command")]
     TooMuchData,
-    #[error("Error in the USB HID access: {0}")]
+    #[error("Error in the USB HID access")]
     HidApi(#[from] hidapi::HidError),
-    #[error("Error in the USB access: {0}")]
+    #[error("Error in the USB access")]
     USBError(#[from] rusb::Error),
-    #[error("An error with the DAP communication occured: {0}")]
+    #[error("An error with the DAP communication occured")]
     Dap(#[from] DapError),
+    #[error(transparent)]
+    Other(#[from] anyhow::Error),
 }
 
 impl From<CmsisDapError> for DebugProbeError {
@@ -90,7 +91,7 @@ impl Status {
         match value {
             0x00 => Ok(Status::DAPOk),
             0xFF => Ok(Status::DAPError),
-            _ => Err(CmsisDapError::UnexpectedAnswer),
+            _ => Err(CmsisDapError::UnexpectedAnswer).context("Status can only be 0x00 or 0xFF"),
         }
     }
 }
@@ -157,9 +158,10 @@ pub(crate) fn send_command<Req: Request, Res: Response>(
         if read_buffer[0] == *Req::CATEGORY {
             Res::from_bytes(&read_buffer, 1)
         } else {
-            Err(CmsisDapError::UnexpectedAnswer)
+            Err(anyhow!(CmsisDapError::UnexpectedAnswer))
+                .with_context(|| format!("Received invalid data for {:?}", *Req::CATEGORY))
         }
     } else {
-        Err(CmsisDapError::ErrorResponse)
+        Err(anyhow!(CmsisDapError::ErrorResponse)).context("failed while sending command")
     }
 }

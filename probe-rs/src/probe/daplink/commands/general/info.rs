@@ -1,5 +1,6 @@
 use super::super::{Category, CmsisDapError, Request, Response, Result};
 
+use anyhow::anyhow;
 use scroll::{Pread, LE};
 
 #[allow(unused)]
@@ -107,7 +108,7 @@ impl Response for Capabilities {
                 swo_streaming_trace_implemented: buffer[offset + 2] & 0x40 > 0,
             })
         } else {
-            Err(CmsisDapError::UnexpectedAnswer)
+            Err(anyhow!(CmsisDapError::UnexpectedAnswer))
         }
     }
 }
@@ -122,7 +123,7 @@ impl Response for TestDomainTime {
                 .expect("This is a bug. Please report it.");
             Ok(TestDomainTime(res))
         } else {
-            Err(CmsisDapError::UnexpectedAnswer)
+            Err(anyhow!(CmsisDapError::UnexpectedAnswer))
         }
     }
 }
@@ -137,7 +138,7 @@ impl Response for SWOTraceBufferSize {
                 .expect("This is a bug. Please report it.");
             Ok(SWOTraceBufferSize(res))
         } else {
-            Err(CmsisDapError::UnexpectedAnswer)
+            Err(anyhow!(CmsisDapError::UnexpectedAnswer))
         }
     }
 }
@@ -153,7 +154,7 @@ impl Response for PacketCount {
                 .expect("This is a bug. Please report it.");
             Ok(PacketCount(res))
         } else {
-            Err(CmsisDapError::UnexpectedAnswer)
+            Err(anyhow!(CmsisDapError::UnexpectedAnswer))
         }
     }
 }
@@ -169,7 +170,7 @@ impl Response for PacketSize {
                 .expect("This is a bug. Please report it.");
             Ok(PacketSize(res))
         } else {
-            Err(CmsisDapError::UnexpectedAnswer)
+            Err(anyhow!(CmsisDapError::UnexpectedAnswer))
         }
     }
 }

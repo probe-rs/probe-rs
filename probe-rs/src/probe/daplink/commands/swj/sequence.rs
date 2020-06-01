@@ -1,6 +1,7 @@
 /// Implementation of the DAP_SWJ_SEQUENCE command
 ///
 use super::super::{Category, CmsisDapError, Request, Response, Result, Status};
+use anyhow::anyhow;
 
 #[derive(Clone, Copy)]
 pub struct SequenceRequest {
@@ -37,7 +38,7 @@ impl Request for SequenceRequest {
 impl SequenceRequest {
     pub(crate) fn new(data: &[u8]) -> Result<SequenceRequest> {
         if data.len() > 32 {
-            return Err(CmsisDapError::TooMuchData);
+            return Err(anyhow!(CmsisDapError::TooMuchData));
         }
 
         let bit_count = match data.len() {

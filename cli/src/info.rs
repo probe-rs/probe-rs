@@ -5,7 +5,7 @@ use crate::{
 
 use probe_rs::{
     architecture::arm::{
-        ap::{valid_access_ports, APAccess, APClass, BaseaddrFormat, MemoryAP, BASE, BASE2, IDR},
+        ap::{valid_access_ports, APClass, BaseaddrFormat, MemoryAP, BASE, BASE2, IDR},
         memory::{ADIMemoryInterface, CSComponent},
         ArmCommunicationInterface, ArmCommunicationInterfaceState,
     },

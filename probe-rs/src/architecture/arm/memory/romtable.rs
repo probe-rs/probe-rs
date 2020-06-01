@@ -16,7 +16,7 @@ pub enum RomTableError {
     ),
     #[error("The CoreSight Component could not be identified")]
     CSComponentIdentification,
-    #[error("Something during memory interaction went wrong")]
+    #[error("Could not access romtable")]
     Memory(#[source] Error),
 }
 

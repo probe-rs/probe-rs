@@ -12,9 +12,9 @@ pub enum FlashError {
     RoutineNotSupported(&'static str),
     #[error("Buffer {n}/{max} does not exist")]
     InvalidBufferNumber { n: usize, max: usize },
-    #[error("Something during memory interaction went wrong: {0}")]
+    #[error("Something during memory interaction went wrong")]
     Memory(#[source] error::Error),
-    #[error("Something during the interaction with the core went wrong: {0}")]
+    #[error("Something during the interaction with the core went wrong")]
     Core(#[source] error::Error),
     #[error("{address} is not contained in {region:?}")]
     AddressNotInRegion { address: u32, region: FlashRegion },
@@ -36,4 +36,6 @@ pub enum FlashError {
     NoSuitableFlash { start: u32, end: u32 },
     #[error("Trying to write flash, but no suitable flash loader algorithm is linked to the given target information.")]
     NoFlashLoaderAlgorithmAttached,
+    #[error(transparent)]
+    Other(#[from] anyhow::Error),
 }
