@@ -29,9 +29,9 @@ pub enum RegistryError {
     RamMissing,
     #[error("No flash description was found.")]
     FlashMissing,
-    #[error("An IO error was encountered: {0}")]
+    #[error("An IO error was encountered")]
     Io(#[from] std::io::Error),
-    #[error("Deserializing the yaml encountered an error: {0}")]
+    #[error("Deserializing the yaml encountered an error")]
     Yaml(#[from] serde_yaml::Error),
     #[error("Unable to lock registry")]
     LockUnavailable,

@@ -23,7 +23,7 @@ use thiserror::Error;
 pub(crate) enum RiscvError {
     #[error("Error during read/write to the DMI register: {0:?}")]
     DmiTransfer(DmiOperationStatus),
-    #[error("Debug Probe Error: {0}")]
+    #[error("Debug Probe Error")]
     DebugProbe(#[from] DebugProbeError),
     #[error("Timeout during JTAG register access.")]
     Timeout,

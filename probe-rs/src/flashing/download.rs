@@ -34,15 +34,15 @@ pub enum Format {
 /// OS permission issues as well as chip connectivity and memory boundary issues.
 #[derive(Debug, Error)]
 pub enum FileDownloadError {
-    #[error("{0}")]
+    #[error("Error while flashing")]
     Flash(#[from] FlashError),
-    #[error("{0}")]
+    #[error("Could not read ihex format")]
     IhexRead(#[from] ihex::reader::ReaderError),
-    #[error("{0}")]
+    #[error("I/O error")]
     IO(#[from] std::io::Error),
     #[error("Object Error: {0}.")]
     Object(&'static str),
-    #[error("{0}")]
+    #[error("Could not read ELF file")]
     Elf(#[from] goblin::error::Error),
     #[error("No loadable ELF sections were found.")]
     NoLoadableSegments,

@@ -31,6 +31,7 @@ use log::debug;
 use super::JTAGAccess;
 use std::sync::Mutex;
 
+use anyhow::anyhow;
 use commands::DAPLinkDevice;
 
 pub struct DAPLink {
@@ -98,7 +99,7 @@ impl DAPLink {
         )
         .and_then(|v| match v {
             SWJClockResponse(Status::DAPOk) => Ok(()),
-            SWJClockResponse(Status::DAPError) => Err(CmsisDapError::ErrorResponse),
+            SWJClockResponse(Status::DAPError) => Err(anyhow!(CmsisDapError::ErrorResponse)),
         })?;
         Ok(())
     }
@@ -107,7 +108,7 @@ impl DAPLink {
         commands::send_command::<ConfigureRequest, ConfigureResponse>(&mut self.device, request)
             .and_then(|v| match v {
                 ConfigureResponse(Status::DAPOk) => Ok(()),
-                ConfigureResponse(Status::DAPError) => Err(CmsisDapError::ErrorResponse),
+                ConfigureResponse(Status::DAPError) => Err(anyhow!(CmsisDapError::ErrorResponse)),
             })?;
         Ok(())
     }
@@ -122,7 +123,7 @@ impl DAPLink {
         )
         .and_then(|v| match v {
             swd::configure::ConfigureResponse(Status::DAPOk) => Ok(()),
-            swd::configure::ConfigureResponse(Status::DAPError) => Err(CmsisDapError::ErrorResponse),
+            swd::configure::ConfigureResponse(Status::DAPError) => Err(anyhow!(CmsisDapError::ErrorResponse)),
         })?;
         Ok(())
     }
@@ -136,7 +137,7 @@ impl DAPLink {
         commands::send_command::<SequenceRequest, SequenceResponse>(&mut self.device, request)
             .and_then(|v| match v {
                 SequenceResponse(Status::DAPOk) => Ok(()),
-                SequenceResponse(Status::DAPError) => Err(CmsisDapError::ErrorResponse),
+                SequenceResponse(Status::DAPError) => Err(anyhow!(CmsisDapError::ErrorResponse)),
             })?;
         Ok(())
     }
@@ -172,21 +173,24 @@ impl DAPLink {
 
         let count = response.transfer_count as usize;
 
-        if count == batch.len() {
-            if response.transfer_response.protocol_error {
-                Err(DapError::SwdProtocol.into())
-            } else {
-                match response.transfer_response.ack {
-                    Ack::Ok => Ok(response.transfer_data),
-                    Ack::NoAck => Err(DapError::NoAcknowledge.into()),
-                    Ack::Fault => Err(DapError::FaultResponse.into()),
-                    Ack::Wait => Err(DapError::WaitResponse.into()),
+        match count {
+            _ if count == batch.len() => {
+                if response.transfer_response.protocol_error {
+                    Err(DapError::SwdProtocol.into())
+                } else {
+                    match response.transfer_response.ack {
+                        Ack::Ok => Ok(response.transfer_data),
+                        Ack::NoAck => Err(DapError::NoAcknowledge.into()),
+                        Ack::Fault => Err(DapError::FaultResponse.into()),
+                        Ack::Wait => Err(DapError::WaitResponse.into()),
+                    }
                 }
             }
-        } else if count > 0 && count < batch.len() {
-            Err(DebugProbeError::BatchError(batch[count - 1]))
-        } else {
-            Err(CmsisDapError::UnexpectedAnswer.into())
+            0 => Err(DebugProbeError::Other(anyhow!(
+                "Didn't receive any answer during batch processing: {:?}",
+                batch
+            ))),
+            _ => Err(DebugProbeError::BatchError(batch[count - 1])),
         }
     }
 
@@ -291,7 +295,7 @@ impl DebugProbe for DAPLink {
         let _result = commands::send_command(&mut self.device, protocol).and_then(|v| match v {
             ConnectResponse::SuccessfulInitForSWD => Ok(WireProtocol::Swd),
             ConnectResponse::SuccessfulInitForJTAG => Ok(WireProtocol::Jtag),
-            ConnectResponse::InitFailed => Err(CmsisDapError::ErrorResponse),
+            ConnectResponse::InitFailed => Err(anyhow!(CmsisDapError::ErrorResponse)),
         })?;
 
         // Set speed after connecting as it can be reset during protocol selection

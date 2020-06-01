@@ -69,36 +69,38 @@ pub enum DebugProbeError {
     USB(#[source] Option<Box<dyn std::error::Error + Send + Sync>>),
     #[error("The firmware on the probe is outdated")]
     ProbeFirmwareOutdated,
-    #[error("An error specific to a probe type occured: {0}")]
+    #[error("An error specific to a probe type occured")]
     ProbeSpecific(#[source] Box<dyn std::error::Error + Send + Sync>),
     // TODO: Unknown errors are not very useful, this should be removed.
-    #[error("An unknown error occured.")]
+    #[error("An unknown error occured")]
     Unknown,
-    #[error("Probe could not be created: {0}")]
+    #[error("Probe could not be created")]
     ProbeCouldNotBeCreated(#[from] ProbeCreationError),
-    #[error("Probe does not support protocol {0}.")]
+    #[error("Probe does not support protocol")]
     UnsupportedProtocol(WireProtocol),
     // TODO: This is core specific, so should probably be moved there.
-    #[error("Operation timed out.")]
+    #[error("Operation timed out")]
     Timeout,
-    #[error("An error specific to the selected architecture occured: {0}")]
+    #[error("An error specific to the selected architecture occured")]
     ArchitectureSpecific(#[source] Box<dyn std::error::Error + Send + Sync>),
     #[error("The connected probe does not support the interface '{0}'")]
     InterfaceNotAvailable(&'static str),
-    #[error("An error occured while working with the registry occured: {0}")]
+    #[error("An error occured while working with the registry occured")]
     Registry(#[from] RegistryError),
-    #[error("Tried to close interface while it was still in use.")]
+    #[error("Tried to close interface while it was still in use")]
     InterfaceInUse,
-    #[error("The requested speed setting ({0} kHz) is not supported by the probe.")]
+    #[error("The requested speed setting ({0} kHz) is not supported by the probe")]
     UnsupportedSpeed(u32),
-    #[error("You need to be attached to the target to perform this action.")]
+    #[error("You need to be attached to the target to perform this action")]
     NotAttached,
-    #[error("You need to be detached from the target to perform this action.")]
+    #[error("You need to be detached from the target to perform this action")]
     Attached,
     #[error("Some functionality was not implemented yet: {0}")]
     NotImplemented(&'static str),
-    #[error("Error in previous batched command: {0}")]
+    #[error("Error in previous batched command")]
     BatchError(BatchCommand),
+    #[error(transparent)]
+    Other(#[from] anyhow::Error),
 }
 
 #[derive(Error, Debug)]

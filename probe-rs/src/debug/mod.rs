@@ -24,15 +24,15 @@ use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum DebugError {
-    #[error("IO Error while accessing debug data: {0}")]
+    #[error("IO Error while accessing debug data")]
     Io(#[from] io::Error),
-    #[error("Error accessing debug data: {0}")]
+    #[error("Error accessing debug data")]
     DebugData(#[from] object::read::Error),
-    #[error("Error parsing debug data: {0}")]
+    #[error("Error parsing debug data")]
     Parse(#[from] gimli::read::Error),
-    #[error("Non-UTF8 data found in debug data: {0}")]
+    #[error("Non-UTF8 data found in debug data")]
     NonUtf8(#[from] Utf8Error),
-    #[error("Error using the probe: {0}")]
+    #[error("Error using the probe")]
     Probe(#[from] crate::Error),
 }
 #[derive(Debug, Copy, Clone, PartialEq)]

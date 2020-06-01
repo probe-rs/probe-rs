@@ -34,7 +34,7 @@ pub enum AccessPortError {
     },
     #[error("Out of bounds access")]
     OutOfBoundsError,
-    #[error("Error while communicating with debug port: {0}")]
+    #[error("Error while communicating with debug port")]
     DebugPort(#[from] DebugPortError),
 }
 
