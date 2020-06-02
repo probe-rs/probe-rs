@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Improved error logging by a large marging!
+- Improved error logging by a large margin!
 - Cleaned up some of the logging output. Mostly beauty stuff.
 
 ### Fixed
