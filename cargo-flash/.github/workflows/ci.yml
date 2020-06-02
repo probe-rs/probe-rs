@@ -3,8 +3,9 @@
 # Currently only builds on Linux
 
 on:
-  - push
-  - pull_request
+  push:
+    branches: [ master ]
+  pull_request:
 
 name: CI
 
