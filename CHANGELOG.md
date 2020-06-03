@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Added support for RISV flashloaders! An example how to write one can be found here: https://github.com/Tiwalun/hifive-flashloader.
+- Added support for RISC-V flashloaders! An example how to write one can be found here: https://github.com/Tiwalun/hifive-flashloader.
 - Added support for LLDB (works better than GDB in most cases; try it!).
 - Added support for specifying a probe via VID, PID and serial number.
 
