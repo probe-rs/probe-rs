@@ -81,7 +81,7 @@ where
         let core_type = match &device.processor {
             Processors::Symmetric(c) => Some(c.core.clone()),
             Processors::Asymmetric(c) => {
-                let cores: Vec<Core> = c.values().map(|p| { p.core.clone() }).collect();
+                let cores: Vec<Core> = c.values().map(|p| p.core.clone()).collect();
                 if cores.len() > 0 {
                     let mut c: Option<Core> = Some(cores[0].clone());
                     for i in 1..cores.len() {
@@ -109,7 +109,10 @@ where
                 }
             }
         } else {
-            log::warn!("Asymmetric core types are not supported yet: {:?}", &device.processor);
+            log::warn!(
+                "Asymmetric core types are not supported yet: {:?}",
+                &device.processor
+            );
             ""
         };
 
