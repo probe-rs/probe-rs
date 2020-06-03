@@ -9,9 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+### Fixed
+
+## [0.7.1]
+
+### Changed
+
 - `DebugProbeType` is now public.
+- Update LPC55S66/LPC55S69 targets.
 
 ### Fixed
+
+- Add missing core value for LPC55S66 and LPC55S69.
 
 ## [0.7.0]
 
@@ -196,7 +205,8 @@ Initial release on crates.io
 - Working basic flash downloader with nRF51.
 - Introduce cargo-flash which can automatically build & flash the target elf file.
 
-[Unreleased]: https://github.com/probe-rs/probe-rs/compare/v0.7.0...master
+[Unreleased]: https://github.com/probe-rs/probe-rs/compare/v0.7.1...master
+[0.7.1]: https://github.com/probe-rs/probe-rs/releases/tag/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/probe-rs/probe-rs/releases/tag/v0.6.2...v0.7.0
 [0.6.2]: https://github.com/probe-rs/probe-rs/releases/tag/v0.6.1...v0.6.2
 [0.6.1]: https://github.com/probe-rs/probe-rs/releases/tag/v0.6.0...v0.6.1
