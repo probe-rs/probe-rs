@@ -338,14 +338,41 @@ where
 }
 
 pub(crate) fn get_ram(device: &Device) -> Option<RamRegion> {
+    let mut regions: Vec<RamRegion> = Vec::new();
     for memory in device.memories.0.values() {
         if memory.default && memory.access.read && memory.access.write {
-            return Some(RamRegion {
+            regions.push(RamRegion {
                 range: memory.start as u32..memory.start as u32 + memory.size as u32,
                 is_boot_memory: memory.startup,
             });
         }
     }
+    if regions.len() > 1 {
+        // Sort by start address
+        regions.sort_by_key(|r| r.range.start);
+        let mut merged: Vec<RamRegion> = Vec::new();
+        let mut cur = regions.first().cloned().unwrap();
+        for i in 1..regions.len() {
+            if regions[i].is_boot_memory == cur.is_boot_memory
+                && regions[i].range.start == cur.range.end
+            {
+                // Merge with previous region
+                cur.range.end = regions[i].range.end;
+            } else {
+                merged.push(cur);
+                cur = regions[i].clone();
+            }
+        }
+        merged.push(cur);
+        regions = merged;
 
-    None
+        // Sort by region size
+        regions.sort_by_key(|r| r.range.end - r.range.start)
+    }
+
+    if regions.len() == 0 {
+        None
+    } else {
+        regions.last().cloned()
+    }
 }
