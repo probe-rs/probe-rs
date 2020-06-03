@@ -78,8 +78,26 @@ where
         }
 
         // Get the core type.
-        let core = if let Processors::Symmetric(processor) = &device.processor {
-            match &processor.core {
+        let core_type = match &device.processor {
+            Processors::Symmetric(c) => Some(c.core.clone()),
+            Processors::Asymmetric(c) => {
+                let cores: Vec<Core> = c.values().map(|p| { p.core.clone() }).collect();
+                if cores.len() > 0 {
+                    let mut c: Option<Core> = Some(cores[0].clone());
+                    for i in 1..cores.len() {
+                        if std::mem::discriminant(&cores[i]) != std::mem::discriminant(&cores[0]) {
+                            c = None;
+                        }
+                    }
+                    c
+                } else {
+                    None
+                }
+            }
+        };
+
+        let core = if let Some(ct) = core_type {
+            match ct {
                 Core::CortexM0 => "M0",
                 Core::CortexM0Plus => "M0",
                 Core::CortexM4 => "M4",
@@ -91,7 +109,7 @@ where
                 }
             }
         } else {
-            log::warn!("Asymmetric cores are not supported yet.");
+            log::warn!("Asymmetric core types are not supported yet: {:?}", &device.processor);
             ""
         };
 
