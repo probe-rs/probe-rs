@@ -14,6 +14,7 @@ use crate::core::{CoreInformation, RegisterFile};
 use crate::{CoreRegisterAddress, CoreStatus, Error, HaltReason, MemoryInterface};
 use bitfield::bitfield;
 use register::RISCV_REGISTERS;
+use std::time::{Duration, Instant};
 
 #[macro_use]
 mod register;
@@ -107,11 +108,10 @@ impl<'probe> Riscv32<'probe> {
 }
 
 impl<'probe> CoreInterface for Riscv32<'probe> {
-    fn wait_for_core_halted(&mut self) -> Result<()> {
-        // poll the
-        let num_retries = 10;
+    fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), crate::Error> {
+        let start = Instant::now();
 
-        for _ in 0..num_retries {
+        while start.elapsed() < timeout {
             let dmstatus: Dmstatus = self.interface.read_dm_register()?;
 
             log::trace!("{:?}", dmstatus);
@@ -130,7 +130,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         Ok(dmstatus.allhalted())
     }
 
-    fn halt(&mut self) -> Result<CoreInformation, crate::Error> {
+    fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, crate::Error> {
         // write 1 to the haltreq register, which is part
         // of the dmcontrol register
 
@@ -145,7 +145,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
 
         self.interface.write_dm_register(dmcontrol)?;
 
-        self.wait_for_core_halted()?;
+        self.wait_for_core_halted(timeout)?;
 
         // clear the halt request
         let mut dmcontrol = Dmcontrol(0);
@@ -243,7 +243,10 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         Ok(())
     }
 
-    fn reset_and_halt(&mut self) -> Result<crate::core::CoreInformation, crate::Error> {
+    fn reset_and_halt(
+        &mut self,
+        _timeout: Duration,
+    ) -> Result<crate::core::CoreInformation, crate::Error> {
         log::debug!("Resetting core, setting hartreset bit");
 
         let mut dmcontrol = Dmcontrol(0);
@@ -314,7 +317,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
 
         self.run()?;
 
-        self.wait_for_core_halted()?;
+        self.wait_for_core_halted(Duration::from_millis(100))?;
 
         let pc = self.read_core_reg(CoreRegisterAddress(0x7b1))?;
 

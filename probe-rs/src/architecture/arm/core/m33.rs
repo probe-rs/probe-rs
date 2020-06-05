@@ -10,14 +10,17 @@ use crate::{
     },
     CoreStatus, DebugProbeError, HaltReason,
 };
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 
 use crate::{architecture::arm::core::register, MemoryInterface};
 
 use bitfield::bitfield;
 
 use super::{CortexState, Dfsr, ARM_REGISTER_FILE};
-use std::mem::size_of;
+use std::{
+    mem::size_of,
+    time::{Duration, Instant},
+};
 
 pub struct M33<'probe> {
     memory: Memory<'probe>,
@@ -76,15 +79,17 @@ impl<'probe> M33<'probe> {
 }
 
 impl<'probe> CoreInterface for M33<'probe> {
-    fn wait_for_core_halted(&mut self) -> Result<()> {
+    fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), Error> {
         // Wait until halted state is active again.
-        for _ in 0..100 {
+        let start = Instant::now();
+
+        while start.elapsed() < timeout {
             let dhcsr_val = Dhcsr(self.memory.read_word_32(Dhcsr::ADDRESS)?);
             if dhcsr_val.s_halt() {
                 return Ok(());
             }
         }
-        Err(anyhow!(Error::Probe(DebugProbeError::Timeout)))
+        Err(Error::Probe(DebugProbeError::Timeout))
     }
 
     fn core_halted(&mut self) -> Result<bool, Error> {
@@ -98,7 +103,7 @@ impl<'probe> CoreInterface for M33<'probe> {
         }
     }
 
-    fn halt(&mut self) -> Result<CoreInformation, Error> {
+    fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
         let mut value = Dhcsr(0);
         value.set_c_halt(true);
         value.set_c_debugen(true);
@@ -106,7 +111,7 @@ impl<'probe> CoreInterface for M33<'probe> {
 
         self.memory.write_word_32(Dhcsr::ADDRESS, value.into())?;
 
-        self.wait_for_core_halted()?;
+        self.wait_for_core_halted(timeout)?;
 
         // try to read the program counter
         let pc_value = self.read_core_reg(register::PC.address)?;
@@ -136,7 +141,7 @@ impl<'probe> CoreInterface for M33<'probe> {
         Ok(())
     }
 
-    fn reset_and_halt(&mut self) -> Result<CoreInformation, Error> {
+    fn reset_and_halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
         // Ensure debug mode is enabled
         let dhcsr_val = Dhcsr(self.memory.read_word_32(Dhcsr::ADDRESS)?);
         if !dhcsr_val.c_debugen() {
@@ -158,7 +163,7 @@ impl<'probe> CoreInterface for M33<'probe> {
 
         self.reset()?;
 
-        self.wait_for_core_halted()?;
+        self.wait_for_core_halted(timeout)?;
 
         const XPSR_THUMB: u32 = 1 << 24;
         let xpsr_value = self.read_core_reg(register::XPSR.address)?;
@@ -188,7 +193,7 @@ impl<'probe> CoreInterface for M33<'probe> {
 
         self.memory.write_word_32(Dhcsr::ADDRESS, value.into())?;
 
-        self.wait_for_core_halted()?;
+        self.wait_for_core_halted(Duration::from_millis(100))?;
 
         // try to read the program counter
         let pc_value = self.read_core_reg(register::PC.address)?;

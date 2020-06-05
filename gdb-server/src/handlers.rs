@@ -1,6 +1,7 @@
 use probe_rs::{Core, MemoryInterface};
 use recap::Recap;
 use serde::Deserialize;
+use std::time::Duration;
 
 pub(crate) fn q_supported() -> Option<String> {
     Some("PacketSize=2048;swbreak-;hwbreak+;vContSupported+;qXfer:memory-map:read+".into())
@@ -31,8 +32,9 @@ pub(crate) fn read_register(packet_string: String, core: &mut Core) -> Option<St
 
     let p = packet_string.parse::<P>().unwrap();
 
-    let _ = core.halt();
-    core.wait_for_core_halted().unwrap();
+    let _ = core.halt(Duration::from_millis(500));
+    core.wait_for_core_halted(Duration::from_millis(100))
+        .unwrap();
 
     let value = core
         .read_core_reg(u16::from_str_radix(&p.reg, 16).unwrap())
@@ -95,8 +97,7 @@ pub(crate) fn run(core: &mut Core, awaits_halt: &mut bool) -> Option<String> {
 }
 
 pub(crate) fn stop(core: &mut Core, awaits_halt: &mut bool) -> Option<String> {
-    core.halt().unwrap();
-    core.wait_for_core_halted().unwrap();
+    core.halt(Duration::from_millis(100)).unwrap();
     *awaits_halt = false;
     Some("OK".into())
 }
@@ -119,8 +120,7 @@ pub(crate) fn insert_hardware_break(packet_string: String, core: &mut Core) -> O
 
     let addr = u32::from_str_radix(&z1.addr, 16).unwrap();
 
-    core.reset_and_halt().unwrap();
-    core.wait_for_core_halted().unwrap();
+    core.reset_and_halt(Duration::from_millis(100)).unwrap();
     core.set_hw_breakpoint(addr).unwrap();
     core.run().unwrap();
     Some("OK".into())
@@ -138,8 +138,7 @@ pub(crate) fn remove_hardware_break(packet_string: String, core: &mut Core) -> O
 
     let addr = u32::from_str_radix(&z1.addr, 16).unwrap();
 
-    core.reset_and_halt().unwrap();
-    core.wait_for_core_halted().unwrap();
+    core.reset_and_halt(Duration::from_millis(100)).unwrap();
     core.clear_hw_breakpoint(addr).unwrap();
     core.run().unwrap();
     Some("OK".into())
@@ -176,8 +175,7 @@ pub(crate) fn get_memory_map() -> Option<String> {
 }
 
 pub(crate) fn user_halt(core: &mut Core, awaits_halt: &mut bool) -> Option<String> {
-    let _ = core.halt();
-    core.wait_for_core_halted().unwrap();
+    let _ = core.halt(Duration::from_millis(100));
     *awaits_halt = false;
     Some("T02".into())
 }
@@ -189,7 +187,7 @@ pub(crate) fn detach(break_due: &mut bool) -> Option<String> {
 
 pub(crate) fn reset_halt(core: &mut Core) -> Option<String> {
     let _cpu_info = core.reset();
-    let _cpu_info = core.halt();
+    let _cpu_info = core.halt(Duration::from_millis(100));
     Some("OK".into())
 }
 

@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Made the timeout for core halt configurable by the caller.
+
 ### Fixed
 
 ## [0.7.1]

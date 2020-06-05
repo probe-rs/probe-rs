@@ -5,7 +5,7 @@ use probe_rs::architecture::arm::CortexDump;
 use probe_rs::debug::DebugInfo;
 use probe_rs::{Core, CoreRegisterAddress, MemoryInterface};
 use std::fs::File;
-use std::io::prelude::*;
+use std::{io::prelude::*, time::Duration};
 
 pub struct DebugCli {
     commands: Vec<Command>,
@@ -38,7 +38,7 @@ impl DebugCli {
             help_text: "Stop the CPU",
 
             function: |cli_data, _args| {
-                let cpu_info = cli_data.core.halt()?;
+                let cpu_info = cli_data.core.halt(Duration::from_millis(100))?;
                 println!("Core stopped at address 0x{:08x}", cpu_info.pc);
 
                 let mut code = [0u8; 16 * 2];
@@ -269,9 +269,8 @@ impl DebugCli {
             help_text: "Reset the CPU",
 
             function: |cli_data, _args| {
-                cli_data.core.halt()?;
-
-                cli_data.core.reset_and_halt()?;
+                cli_data.core.halt(Duration::from_millis(100))?;
+                cli_data.core.reset_and_halt(Duration::from_millis(100))?;
 
                 Ok(CliState::Continue)
             },
