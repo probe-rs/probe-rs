@@ -453,6 +453,7 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
                 Some(O::operation()),
                 None,
                 true,
+                Duration::from_secs(2),
             )?;
 
             if result != 0 {
@@ -482,6 +483,7 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
                 None,
                 None,
                 false,
+                Duration::from_secs(2),
             )?;
 
             if result != 0 {
@@ -502,9 +504,10 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
         r2: Option<u32>,
         r3: Option<u32>,
         init: bool,
+        duration: Duration,
     ) -> Result<u32> {
         self.call_function(pc, r0, r1, r2, r3, init)?;
-        self.wait_for_completion(Duration::from_secs(2))
+        self.wait_for_completion(duration)
     }
 
     fn call_function(
@@ -623,8 +626,15 @@ impl<'probe> ActiveFlasher<'probe, Erase> {
         let algo = &flasher.flash_algorithm;
 
         if let Some(pc_erase_all) = algo.pc_erase_all {
-            let result =
-                flasher.call_function_and_wait(pc_erase_all, None, None, None, None, false)?;
+            let result = flasher.call_function_and_wait(
+                pc_erase_all,
+                None,
+                None,
+                None,
+                None,
+                false,
+                Duration::from_secs(5),
+            )?;
 
             if result != 0 {
                 Err(anyhow!(FlashError::RoutineCallFailed {
@@ -650,6 +660,7 @@ impl<'probe> ActiveFlasher<'probe, Erase> {
             None,
             None,
             false,
+            Duration::from_secs(5),
         )?;
         log::info!(
             "Done erasing sector. Result is {}. This took {:?}",
@@ -690,6 +701,7 @@ impl<'p> ActiveFlasher<'p, Program> {
             Some(self.flash_algorithm.begin_data),
             None,
             false,
+            Duration::from_secs(2),
         )?;
         log::info!("Flashing took: {:?}", t1.elapsed());
 
