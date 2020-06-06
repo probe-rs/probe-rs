@@ -14,6 +14,8 @@ pub enum Error {
     CoreNotFound(usize),
     #[error("Unable to load specification for chip")]
     ChipNotFound(#[from] RegistryError),
+    #[error(transparent)]
+    Other(#[from] anyhow::Error),
 }
 
 impl Error {
