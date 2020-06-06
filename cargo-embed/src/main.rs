@@ -6,8 +6,8 @@ mod rttui;
 
 use structopt;
 
+use anyhow::{anyhow, Context, Result};
 use colored::*;
-use failure::format_err;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use std::{
     convert::TryFrom,
@@ -70,7 +70,7 @@ fn main() {
             //
             // We ignore the errors, not much we can do anyway.
             let mut stderr = std::io::stderr();
-            let _ = writeln!(stderr, "       {} {}", "Error".red().bold(), e);
+            let _ = writeln!(stderr, "       {} {:?}", "Error".red().bold(), e);
             let _ = stderr.flush();
 
             process::exit(1);
@@ -78,7 +78,7 @@ fn main() {
     }
 }
 
-fn main_try() -> Result<(), failure::Error> {
+fn main_try() -> Result<()> {
     let mut args = std::env::args();
 
     // When called by Cargo, the first argument after the binary name will be `flash`. If that's the
@@ -96,7 +96,8 @@ fn main_try() -> Result<(), failure::Error> {
 
     // Make sure we load the config given in the cli parameters.
     for cdp in &CONFIG.general.chip_descriptions {
-        probe_rs::config::registry::add_target_from_yaml(&Path::new(cdp))?;
+        probe_rs::config::registry::add_target_from_yaml(&Path::new(cdp))
+            .with_context(|| format!("failed to load the chip description from {}", cdp))?;
     }
 
     let chip = if opt.list_chips {
@@ -131,7 +132,7 @@ fn main_try() -> Result<(), failure::Error> {
 
     // Try and get the cargo project information.
     let project = cargo_project::Project::query(".")
-        .map_err(|e| format_err!("failed to parse Cargo project information: {}", e))?;
+        .map_err(|e| anyhow!("failed to parse Cargo project information: {}", e))?;
 
     // Decide what artifact to use.
     let artifact = if let Some(bin) = &opt.bin {
@@ -150,12 +151,14 @@ fn main_try() -> Result<(), failure::Error> {
     };
 
     // Try and get the artifact path.
-    let path = project.path(
-        artifact,
-        profile,
-        opt.target.as_ref().map(|t| &**t),
-        "x86_64-unknown-linux-gnu",
-    )?;
+    let path = project
+        .path(
+            artifact,
+            profile,
+            opt.target.as_ref().map(|t| &**t),
+            "x86_64-unknown-linux-gnu",
+        )
+        .map_err(|e| anyhow!("Couldn't get artifact path: {}", e))?;
 
     logging::println(format!(
         "    {} {}",
@@ -171,20 +174,22 @@ fn main_try() -> Result<(), failure::Error> {
             // a single probe detected.
             let list = Probe::list_all();
             if list.len() > 1 {
-                return Err(format_err!("More than a single probe detected. Use the --probe-selector argument to select which probe to use."));
+                return Err(anyhow!("More than a single probe detected. Use the --probe-selector argument to select which probe to use."));
             }
 
             Probe::open(
                 list.first()
-                    .ok_or_else(|| format_err!("No supported probe was found"))?,
+                    .ok_or_else(|| anyhow!("No supported probe was found"))?,
             )?
         }
     };
 
-    probe.select_protocol(CONFIG.probe.protocol)?;
+    probe
+        .select_protocol(CONFIG.probe.protocol)
+        .context("failed to select protocol")?;
 
     let protocol_speed = if let Some(speed) = CONFIG.probe.speed {
-        let actual_speed = probe.set_speed(speed)?;
+        let actual_speed = probe.set_speed(speed).context("failed to set speed")?;
 
         if actual_speed < speed {
             log::warn!(
@@ -201,7 +206,7 @@ fn main_try() -> Result<(), failure::Error> {
 
     log::info!("Protocol speed {} kHz", protocol_speed);
 
-    let mut session = probe.attach(chip)?;
+    let mut session = probe.attach(chip).context("failed attaching to target")?;
 
     if CONFIG.flashing.enabled {
         // Start timer.
@@ -329,7 +334,7 @@ fn main_try() -> Result<(), failure::Error> {
                     keep_unwritten_bytes: CONFIG.flashing.restore_unwritten_bytes,
                 },
             )
-            .map_err(|e| format_err!("failed to flash {}: {}", path.display(), e))?;
+            .with_context(|| format!("failed to flash {}", path.display()))?;
 
             // We don't care if we cannot join this thread.
             let _ = progress_thread_handle.join();
@@ -343,7 +348,7 @@ fn main_try() -> Result<(), failure::Error> {
                     keep_unwritten_bytes: CONFIG.flashing.restore_unwritten_bytes,
                 },
             )
-            .map_err(|e| format_err!("failed to flash {}: {}", path.display(), e))?;
+            .with_context(|| format!("failed to flash {}", path.display()))?;
         }
 
         // Stop timer.
@@ -363,7 +368,7 @@ fn main_try() -> Result<(), failure::Error> {
     }
 
     if CONFIG.gdb.enabled && CONFIG.rtt.enabled {
-        return Err(format_err!(
+        return Err(anyhow!(
             "Unfortunately, at the moment, only GDB OR RTT are possible."
         ));
     }
@@ -411,7 +416,7 @@ fn main_try() -> Result<(), failure::Error> {
                     }
                 }
                 Err(err) => {
-                    error = Some(format_err!("Error attaching to RTT: {}", err));
+                    error = Some(anyhow!("Error attaching to RTT: {}", err));
                 }
             };
         }
@@ -423,10 +428,10 @@ fn main_try() -> Result<(), failure::Error> {
     Ok(())
 }
 
-fn print_families() -> Result<(), failure::Error> {
+fn print_families() -> Result<()> {
     logging::println("Available chips:");
     for family in probe_rs::config::registry::families()
-        .map_err(|e| format_err!("Families could not be read: {:?}", e))?
+        .map_err(|e| anyhow!("Families could not be read: {:?}", e))?
     {
         logging::println(&family.name);
         logging::println("    Variants:");

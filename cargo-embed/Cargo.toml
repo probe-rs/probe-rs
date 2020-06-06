@@ -15,7 +15,6 @@ license = "MIT OR Apache-2.0"
 [dependencies]
 structopt = "0.3.2"
 cargo-project = "0.2.3"
-failure = "0.1.5"
 indicatif = "0.14.0"
 env_logger = "0.7.1"
 log = { version = "0.4.0", features = ["serde"] }
@@ -32,3 +31,4 @@ goblin = "0.2.0"
 tui = "0.8.0"
 termion = "1.5.0"
 unicode-width = "0.1.7"
+anyhow = "1.0.31"
