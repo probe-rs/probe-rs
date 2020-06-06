@@ -11,6 +11,7 @@ use crate::{
     Error, MemoryInterface,
 };
 use crate::{DebugProbeError, Memory};
+use anyhow::Result;
 
 pub trait CoreRegister: Clone + From<u32> + Into<u32> + Sized + std::fmt::Debug {
     const ADDRESS: u32;
@@ -130,7 +131,7 @@ pub trait CoreInterface: MemoryInterface {
     /// a [`DebugProbeError::Timeout`] error will be returned.
     ///
     /// [`DebugProbeError::Timeout`]: ../probe/debug_probe/enum.DebugProbeError.html#variant.Timeout
-    fn wait_for_core_halted(&mut self) -> Result<(), error::Error>;
+    fn wait_for_core_halted(&mut self) -> Result<()>;
 
     /// Check if the core is halted. If the core does not halt on its own,
     /// a [`CoreError::Timeout`] error will be returned.
@@ -165,11 +166,7 @@ pub trait CoreInterface: MemoryInterface {
 
     fn read_core_reg(&mut self, address: CoreRegisterAddress) -> Result<u32, error::Error>;
 
-    fn write_core_reg(
-        &mut self,
-        address: CoreRegisterAddress,
-        value: u32,
-    ) -> Result<(), error::Error>;
+    fn write_core_reg(&mut self, address: CoreRegisterAddress, value: u32) -> Result<()>;
 
     fn get_available_breakpoint_units(&mut self) -> Result<u32, error::Error>;
 
@@ -359,7 +356,7 @@ impl<'probe> Core<'probe> {
     /// a [`DebugProbeError::Timeout`] error will be returned.
     ///
     /// [`DebugProbeError::Timeout`]: ../probe/debug_probe/enum.DebugProbeError.html#variant.Timeout
-    pub fn wait_for_core_halted(&mut self) -> Result<(), error::Error> {
+    pub fn wait_for_core_halted(&mut self) -> Result<()> {
         self.inner.wait_for_core_halted()
     }
 
@@ -420,7 +417,7 @@ impl<'probe> Core<'probe> {
         address: CoreRegisterAddress,
         value: u32,
     ) -> Result<(), error::Error> {
-        self.inner.write_core_reg(address, value)
+        Ok(self.inner.write_core_reg(address, value)?)
     }
 
     pub fn get_available_breakpoint_units(&mut self) -> Result<u32, error::Error> {

@@ -2,10 +2,9 @@ use super::FlashProgress;
 use super::{FlashBuilder, FlashError, FlashFill, FlashLayout, FlashPage};
 use crate::config::{FlashAlgorithm, FlashRegion, MemoryRange};
 use crate::core::{Architecture, Core, RegisterFile};
-use crate::error;
 use crate::memory::MemoryInterface;
 use crate::{session::Session, CoreRegisterAddress, DebugProbeError};
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
 use std::time::{Duration, Instant};
 
 pub(super) trait Operation {
@@ -98,7 +97,7 @@ impl<'session> Flasher<'session> {
         log::debug!("Halting core.");
         let cpu_info = core.halt().map_err(FlashError::Core)?;
         log::debug!("PC = 0x{:08x}", cpu_info.pc);
-        core.wait_for_core_halted().map_err(FlashError::Core)?;
+        core.wait_for_core_halted()?;
         log::debug!("Reset and halt");
         core.reset_and_halt().map_err(FlashError::Core)?;
 
@@ -598,16 +597,22 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
         loop {
             match self.core.wait_for_core_halted() {
                 Ok(()) => break,
-                Err(error::Error::Probe(DebugProbeError::Timeout)) => (),
-                Err(e) => {
-                    log::warn!("Error while waiting for core halted: {}", e);
-                }
+                Err(e) => match e.downcast_ref::<DebugProbeError>() {
+                    Some(DebugProbeError::Timeout) => (),
+                    _ => log::warn!("Error while waiting for core halted: {}", e),
+                },
             }
 
             if start.elapsed() > timeout {
                 return Err(anyhow!(FlashError::Core(crate::Error::Probe(
                     DebugProbeError::Timeout,
-                ))));
+                ))))
+                .with_context(|| {
+                    format!(
+                        "Timeout while waiting for completion, elapsed: {:?}",
+                        start.elapsed()
+                    )
+                });
             }
         }
 

@@ -10,6 +10,7 @@ use crate::{
     core::{Architecture, CoreStatus, HaltReason},
     MemoryInterface,
 };
+use anyhow::{anyhow, Context, Result};
 
 use bitfield::bitfield;
 use std::mem::size_of;
@@ -369,7 +370,7 @@ impl<'probe> M4<'probe> {
         Ok(Self { memory, state })
     }
 
-    fn wait_for_core_register_transfer(&mut self) -> Result<(), Error> {
+    fn wait_for_core_register_transfer(&mut self) -> Result<()> {
         // now we have to poll the dhcsr register, until the dhcsr.s_regrdy bit is set
         // (see C1-292, cortex m0 arm)
         for _ in 0..100 {
@@ -379,12 +380,13 @@ impl<'probe> M4<'probe> {
                 return Ok(());
             }
         }
-        Err(Error::Probe(DebugProbeError::Timeout))
+        Err(anyhow!(Error::Probe(DebugProbeError::Timeout)))
+            .context("Waiting for core register transfer")
     }
 }
 
 impl<'probe> CoreInterface for M4<'probe> {
-    fn wait_for_core_halted(&mut self) -> Result<(), Error> {
+    fn wait_for_core_halted(&mut self) -> Result<()> {
         // Wait until halted state is active again.
         for _ in 0..100 {
             let dhcsr_val = Dhcsr(self.memory.read_word_32(Dhcsr::ADDRESS)?);
@@ -395,7 +397,7 @@ impl<'probe> CoreInterface for M4<'probe> {
                 return Ok(());
             }
         }
-        Err(Error::Probe(DebugProbeError::Timeout))
+        Err(anyhow!(Error::Probe(DebugProbeError::Timeout))).context("Waiting for halted core")
     }
 
     fn core_halted(&mut self) -> Result<bool, Error> {
@@ -480,7 +482,7 @@ impl<'probe> CoreInterface for M4<'probe> {
         self.memory.read_word_32(Dcrdr::ADDRESS).map_err(From::from)
     }
 
-    fn write_core_reg(&mut self, addr: CoreRegisterAddress, value: u32) -> Result<(), Error> {
+    fn write_core_reg(&mut self, addr: CoreRegisterAddress, value: u32) -> Result<()> {
         let result: Result<(), Error> = self
             .memory
             .write_word_32(Dcrdr::ADDRESS, value)
@@ -495,7 +497,7 @@ impl<'probe> CoreInterface for M4<'probe> {
         self.memory
             .write_word_32(Dcrsr::ADDRESS, dcrsr_val.into())?;
 
-        self.wait_for_core_register_transfer()
+        Ok(self.wait_for_core_register_transfer()?)
     }
 
     fn halt(&mut self) -> Result<CoreInformation, Error> {
@@ -508,7 +510,8 @@ impl<'probe> CoreInterface for M4<'probe> {
 
         self.memory.write_word_32(Dhcsr::ADDRESS, value.into())?;
 
-        self.wait_for_core_halted()?;
+        self.wait_for_core_halted()
+            .context("While trying to halt")?;
 
         // try to read the program counter
         let pc_value = self.read_core_reg(register::PC.address)?;
@@ -543,7 +546,8 @@ impl<'probe> CoreInterface for M4<'probe> {
 
         self.memory.write_word_32(Dhcsr::ADDRESS, value.into())?;
 
-        self.wait_for_core_halted()?;
+        self.wait_for_core_halted()
+            .context("While trying to step")?;
 
         // try to read the program counter
         let pc_value = self.read_core_reg(register::PC.address)?;
@@ -585,7 +589,8 @@ impl<'probe> CoreInterface for M4<'probe> {
 
         self.reset()?;
 
-        self.wait_for_core_halted()?;
+        self.wait_for_core_halted()
+            .context("While trying to reset and halt")?;
 
         const XPSR_THUMB: u32 = 1 << 24;
         let xpsr_value = self.read_core_reg(register::XPSR.address)?;

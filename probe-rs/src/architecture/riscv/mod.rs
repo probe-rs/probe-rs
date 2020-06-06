@@ -4,6 +4,7 @@
 
 use crate::core::Architecture;
 use crate::CoreInterface;
+use anyhow::Result;
 use communication_interface::{
     AbstractCommandErrorKind, AccessRegisterCommand, DebugRegister, RiscvCommunicationInterface,
     RiscvError,
@@ -106,7 +107,7 @@ impl<'probe> Riscv32<'probe> {
 }
 
 impl<'probe> CoreInterface for Riscv32<'probe> {
-    fn wait_for_core_halted(&mut self) -> Result<(), crate::Error> {
+    fn wait_for_core_halted(&mut self) -> Result<()> {
         // poll the
         let num_retries = 10;
 
@@ -347,11 +348,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         }
     }
 
-    fn write_core_reg(
-        &mut self,
-        address: crate::CoreRegisterAddress,
-        value: u32,
-    ) -> Result<(), crate::Error> {
+    fn write_core_reg(&mut self, address: crate::CoreRegisterAddress, value: u32) -> Result<()> {
         if address.0 >= 0x1000 && address.0 <= 0x101f {
             self.interface.abstract_cmd_register_write(address, value)?;
         } else {
