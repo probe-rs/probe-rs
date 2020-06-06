@@ -77,7 +77,7 @@ pub fn extract_flash_algo(
 
     // Extract binary blob.
     let algorithm_binary = crate::algorithm_binary::AlgorithmBinary::new(&elf, &buffer)?;
-    algo.instructions = Vec::from(base64::encode(&algorithm_binary.blob()).as_bytes()).into();
+    algo.instructions = algorithm_binary.blob().into();
 
     let code_section_offset = algorithm_binary.code_section.start;
 
