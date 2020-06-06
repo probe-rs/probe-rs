@@ -10,6 +10,7 @@ use crate::{
     },
     CoreStatus, DebugProbeError, HaltReason,
 };
+use anyhow::{anyhow, Result};
 
 use crate::{architecture::arm::core::register, MemoryInterface};
 
@@ -75,7 +76,7 @@ impl<'probe> M33<'probe> {
 }
 
 impl<'probe> CoreInterface for M33<'probe> {
-    fn wait_for_core_halted(&mut self) -> Result<(), Error> {
+    fn wait_for_core_halted(&mut self) -> Result<()> {
         // Wait until halted state is active again.
         for _ in 0..100 {
             let dhcsr_val = Dhcsr(self.memory.read_word_32(Dhcsr::ADDRESS)?);
@@ -83,7 +84,7 @@ impl<'probe> CoreInterface for M33<'probe> {
                 return Ok(());
             }
         }
-        Err(Error::Probe(DebugProbeError::Timeout))
+        Err(anyhow!(Error::Probe(DebugProbeError::Timeout)))
     }
 
     fn core_halted(&mut self) -> Result<bool, Error> {
@@ -209,7 +210,7 @@ impl<'probe> CoreInterface for M33<'probe> {
 
         self.memory.read_word_32(Dcrdr::ADDRESS).map_err(From::from)
     }
-    fn write_core_reg(&mut self, addr: CoreRegisterAddress, value: u32) -> Result<(), Error> {
+    fn write_core_reg(&mut self, addr: CoreRegisterAddress, value: u32) -> Result<()> {
         let result: Result<(), Error> = self
             .memory
             .write_word_32(Dcrdr::ADDRESS, value)
@@ -224,7 +225,7 @@ impl<'probe> CoreInterface for M33<'probe> {
         self.memory
             .write_word_32(Dcrsr::ADDRESS, dcrsr_val.into())?;
 
-        self.wait_for_core_register_transfer()
+        Ok(self.wait_for_core_register_transfer()?)
     }
 
     fn get_available_breakpoint_units(&mut self) -> Result<u32, Error> {

@@ -6,6 +6,7 @@ use crate::core::{
 use crate::error::Error;
 use crate::memory::Memory;
 use crate::{CoreStatus, DebugProbeError, HaltReason, MemoryInterface};
+use anyhow::{anyhow, Result};
 use bitfield::bitfield;
 use log::debug;
 use std::mem::size_of;
@@ -316,7 +317,7 @@ impl<'probe> M0<'probe> {
         Ok(Self { memory, state })
     }
 
-    fn wait_for_core_register_transfer(&mut self) -> Result<(), Error> {
+    fn wait_for_core_register_transfer(&mut self) -> Result<()> {
         // now we have to poll the dhcsr register, until the dhcsr.s_regrdy bit is set
         // (see C1-292, cortex m0 arm)
         for _ in 0..100 {
@@ -326,12 +327,12 @@ impl<'probe> M0<'probe> {
                 return Ok(());
             }
         }
-        Err(Error::Probe(DebugProbeError::Timeout))
+        Err(anyhow!(Error::Probe(DebugProbeError::Timeout)))
     }
 }
 
 impl<'probe> CoreInterface for M0<'probe> {
-    fn wait_for_core_halted(&mut self) -> Result<(), Error> {
+    fn wait_for_core_halted(&mut self) -> Result<()> {
         // Wait until halted state is active again.
         for _ in 0..100 {
             let dhcsr_val = Dhcsr(self.memory.read_word_32(Dhcsr::ADDRESS)?);
@@ -340,7 +341,7 @@ impl<'probe> CoreInterface for M0<'probe> {
                 return Ok(());
             }
         }
-        Err(Error::Probe(DebugProbeError::Timeout))
+        Err(anyhow!(Error::Probe(DebugProbeError::Timeout)))
     }
 
     fn core_halted(&mut self) -> Result<bool, Error> {
@@ -368,7 +369,7 @@ impl<'probe> CoreInterface for M0<'probe> {
         self.memory.read_word_32(Dcrdr::ADDRESS).map_err(From::from)
     }
 
-    fn write_core_reg(&mut self, addr: CoreRegisterAddress, value: u32) -> Result<(), Error> {
+    fn write_core_reg(&mut self, addr: CoreRegisterAddress, value: u32) -> Result<()> {
         let result: Result<(), Error> = self
             .memory
             .write_word_32(Dcrdr::ADDRESS, value)
