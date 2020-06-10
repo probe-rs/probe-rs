@@ -51,7 +51,7 @@ impl DAPLinkDevice {
     /// Read from the probe into `buf`, returning the number of bytes read on success.
     fn read(&self, buf: &mut [u8]) -> Result<usize> {
         match self {
-            DAPLinkDevice::V1(device) => Ok(device.read(buf)?),
+            DAPLinkDevice::V1(device) => Ok(device.read_timeout(buf, 100)?),
             DAPLinkDevice::V2 {
                 handle,
                 out_ep: _,
