@@ -43,7 +43,7 @@ impl<R> From<TryLockError<R>> for RegistryError {
     }
 }
 
-const GENERIC_TARGETS: [ChipFamily; 5] = [
+const GENERIC_TARGETS: [ChipFamily; 6] = [
     ChipFamily {
         name: Cow::Borrowed("Generic Cortex-M0"),
         manufacturer: None,
@@ -91,6 +91,18 @@ const GENERIC_TARGETS: [ChipFamily; 5] = [
         }]),
         flash_algorithms: Cow::Borrowed(&[]),
         core: Cow::Borrowed("M33"),
+    },
+    ChipFamily {
+        name: Cow::Borrowed("Generic Cortex-M7"),
+        manufacturer: None,
+        variants: Cow::Borrowed(&[Chip {
+            name: Cow::Borrowed("cortex-m7"),
+            part: None,
+            memory_map: Cow::Borrowed(&[]),
+            flash_algorithms: Cow::Borrowed(&[]),
+        }]),
+        flash_algorithms: Cow::Borrowed(&[]),
+        core: Cow::Borrowed("M7"),
     },
     ChipFamily {
         name: Cow::Borrowed("Generic Riscv"),
