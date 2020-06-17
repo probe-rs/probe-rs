@@ -104,6 +104,7 @@ impl Configs {
         if let Some(derives) = config
             .get("general")
             .and_then(|g| g.get("derives").and_then(|d| d.as_str()))
+            .or(Some("default"))
         {
             if let Some(dconfig) = map.get(derives) {
                 Self::apply(s, dconfig, map)?;
