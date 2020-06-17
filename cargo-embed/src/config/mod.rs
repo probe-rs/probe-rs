@@ -88,13 +88,14 @@ impl Configs {
 
         let mut s = config::Config::new();
 
-        Self::apply(&mut s, config, &map)?;
+        Self::apply(name.as_ref(), &mut s, config, &map)?;
 
         // You can deserialize (and thus freeze) the entire configuration
         s.try_into()
     }
 
     pub fn apply(
+        name: &str,
         s: &mut config::Config,
         config: &serde_json::value::Value,
         map: &HashMap<String, serde_json::value::Value>,
@@ -106,8 +107,10 @@ impl Configs {
             .and_then(|g| g.get("derives").and_then(|d| d.as_str()))
             .or(Some("default"))
         {
-            if let Some(dconfig) = map.get(derives) {
-                Self::apply(s, dconfig, map)?;
+            if derives == name {
+                log::warn!("Endless recursion within the {} config.", derives);
+            } else if let Some(dconfig) = map.get(derives) {
+                Self::apply(derives, s, dconfig, map)?;
             }
         }
 
