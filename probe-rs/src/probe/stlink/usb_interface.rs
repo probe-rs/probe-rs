@@ -6,6 +6,7 @@ use crate::probe::stlink::StlinkError;
 
 use std::collections::HashMap;
 
+use super::tools::{is_stlink_device, read_serial_number};
 use crate::{
     probe::{DebugProbeError, ProbeCreationError},
     DebugProbeSelector,
@@ -105,7 +106,7 @@ impl STLinkUSBDevice {
         let device = context
             .devices()?
             .iter()
-            .filter(super::tools::is_stlink_device)
+            .filter(is_stlink_device)
             .find_map(|device| {
                 let descriptor = device.device_descriptor().ok()?;
                 // First match the VID & PID.
@@ -114,13 +115,7 @@ impl STLinkUSBDevice {
                 {
                     // If the VID & PID match, match the serial if one was given.
                     if let Some(serial) = &selector.serial_number {
-                        let timeout = Duration::from_millis(100);
-                        let handle = device.open().ok()?;
-                        let language = handle.read_languages(timeout).ok()?[0];
-                        let sn_str = handle
-                            .read_serial_number_string(language, &descriptor, timeout)
-                            .ok();
-                        // If the serial matches, return the device.
+                        let sn_str = read_serial_number(&device, &descriptor).ok();
                         if sn_str.as_ref() == Some(serial) {
                             Some(device)
                         } else {
