@@ -1,5 +1,7 @@
 use super::flash_properties::FlashProperties;
 use super::memory::{PageInfo, RamRegion, SectorInfo};
+use crate::architecture::riscv;
+use crate::core::Architecture;
 use std::{borrow::Cow, convert::TryInto};
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
@@ -152,10 +154,13 @@ where
 }
 
 impl RawFlashAlgorithm {
-    const FLASH_BLOB_HEADER_SIZE: u32 = 8 * 4;
     const FLASH_ALGO_STACK_SIZE: u32 = 512;
     const FLASH_ALGO_STACK_DECREMENT: u32 = 64;
-    const FLASH_BLOB_HEADER: [u32; Self::FLASH_BLOB_HEADER_SIZE as usize / 4] = [
+
+    // Header for RISCV Flash Algorithms
+    const RISCV_FLASH_BLOB_HEADER: [u32; 2] = [riscv::assembly::EBREAK, riscv::assembly::EBREAK];
+
+    const ARM_FLASH_BLOB_HEADER: [u32; 8] = [
         0xE00A_BE00,
         0x062D_780D,
         0x2408_4068,
@@ -166,9 +171,18 @@ impl RawFlashAlgorithm {
         0x0477_0D1F,
     ];
 
+    fn get_algorithm_header(&self, architecture: Architecture) -> &[u32] {
+        match architecture {
+            Architecture::Arm => &Self::ARM_FLASH_BLOB_HEADER,
+            Architecture::Riscv => &Self::RISCV_FLASH_BLOB_HEADER,
+        }
+    }
+
     /// Constructs a complete flash algorithm, tailored to the flash and RAM sizes given.
-    pub fn assemble(&self, ram_region: &RamRegion) -> FlashAlgorithm {
-        let mut instructions = Self::FLASH_BLOB_HEADER.to_vec();
+    pub fn assemble(&self, ram_region: &RamRegion, architecture: Architecture) -> FlashAlgorithm {
+        let mut instructions = self.get_algorithm_header(architecture).to_vec();
+
+        assert_eq!(self.instructions.len() % 4, 0);
 
         let assembled_instructions = (&self.instructions)
             .chunks(4)
@@ -210,7 +224,7 @@ impl RawFlashAlgorithm {
             vec![addr_data]
         };
 
-        let code_start = addr_load + Self::FLASH_BLOB_HEADER_SIZE;
+        let code_start = addr_load + (self.get_algorithm_header(architecture).len() as u32) * 4;
 
         let name = self.name.clone().into_owned();
 
@@ -257,11 +271,11 @@ fn flash_sector_single_size() {
 
     assert!(config.sector_info(0x1000 - 1).is_none());
 
-    assert_eq!(expected_first, config.sector_info(0x1000).unwrap());
-    assert_eq!(expected_first, config.sector_info(0x10ff).unwrap());
+    assert_eq!(Some(expected_first), config.sector_info(0x1000));
+    assert_eq!(Some(expected_first), config.sector_info(0x10ff));
 
-    assert_eq!(expected_first, config.sector_info(0x100b).unwrap());
-    assert_eq!(expected_first, config.sector_info(0x10ea).unwrap());
+    assert_eq!(Some(expected_first), config.sector_info(0x100b));
+    assert_eq!(Some(expected_first), config.sector_info(0x10ea));
 }
 
 #[test]
@@ -288,14 +302,11 @@ fn flash_sector_single_size_weird_sector_size() {
 
     assert!(config.sector_info(0x800_0000 - 1).is_none());
 
-    assert_eq!(expected_first, config.sector_info(0x800_0000).unwrap());
-    assert_eq!(
-        expected_first,
-        config.sector_info(0x800_0000 + 257).unwrap()
-    );
+    assert_eq!(Some(expected_first), config.sector_info(0x800_0000));
+    assert_eq!(Some(expected_first), config.sector_info(0x800_0000 + 257));
 
-    assert_eq!(expected_first, config.sector_info(0x800_000b).unwrap());
-    assert_eq!(expected_first, config.sector_info(0x800_00e0).unwrap());
+    assert_eq!(Some(expected_first), config.sector_info(0x800_000b));
+    assert_eq!(Some(expected_first), config.sector_info(0x800_00e0));
 }
 
 #[test]
@@ -342,7 +353,7 @@ fn flash_sector_multiple_sizes() {
         size: 0x2_0000,
     };
 
-    assert_eq!(expected_a, config.sector_info(0x800_4000).unwrap());
-    assert_eq!(expected_b, config.sector_info(0x801_0000).unwrap());
-    assert_eq!(expected_c, config.sector_info(0x80A_0000).unwrap());
+    assert_eq!(Some(expected_a), config.sector_info(0x800_4000));
+    assert_eq!(Some(expected_b), config.sector_info(0x801_0000));
+    assert_eq!(Some(expected_c), config.sector_info(0x80A_0000));
 }

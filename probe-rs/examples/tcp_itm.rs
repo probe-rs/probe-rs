@@ -1,5 +1,5 @@
 use probe_rs::itm::{Decoder, ItmPublisher, TracePacket, UpdaterChannel};
-use probe_rs::Error;
+use probe_rs::{Error, Session};
 use scroll::Pread;
 use serde::{Deserialize, Serialize};
 use std::io::prelude::*;
@@ -21,11 +21,8 @@ fn main() -> Result<(), Error> {
     // Attach to a chip.
     let mut session = probe.attach("stm32f407")?;
 
-    let mut core = session.attach_to_core(0)?;
-
-    session.trace_enable(&mut core).unwrap();
-
-    session.setup_tracing(&mut core).unwrap();
+    session.setup_tracing().unwrap();
+    session.trace_enable().unwrap();
 
     let mut timestamp: f64 = 0.0;
 

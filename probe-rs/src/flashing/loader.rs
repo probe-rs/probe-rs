@@ -8,14 +8,14 @@ use std::collections::HashMap;
 /// Once you are done adding all your data, use `commit()` to flash the data.
 /// The flash loader will make sure to select the appropriate flash region for the right data chunks.
 /// Region crossing data chunks are allowed as long as the regions are contiguous.
-pub(super) struct FlashLoader<'a, 'b> {
-    memory_map: &'a [MemoryRegion],
-    builders: HashMap<FlashRegion, FlashBuilder<'b>>,
+pub(super) struct FlashLoader<'mmap, 'data> {
+    memory_map: &'mmap [MemoryRegion],
+    builders: HashMap<FlashRegion, FlashBuilder<'data>>,
     keep_unwritten: bool,
 }
 
-impl<'a, 'b> FlashLoader<'a, 'b> {
-    pub(super) fn new(memory_map: &'a [MemoryRegion], keep_unwritten: bool) -> Self {
+impl<'mmap, 'data> FlashLoader<'mmap, 'data> {
+    pub(super) fn new(memory_map: &'mmap [MemoryRegion], keep_unwritten: bool) -> Self {
         Self {
             memory_map,
             builders: HashMap::new(),
@@ -25,7 +25,11 @@ impl<'a, 'b> FlashLoader<'a, 'b> {
     /// Stages a chunk of data to be programmed.
     ///
     /// The chunk can cross flash boundaries as long as one flash region connects to another flash region.
-    pub(super) fn add_data(&mut self, mut address: u32, data: &'b [u8]) -> Result<(), FlashError> {
+    pub(super) fn add_data(
+        &mut self,
+        mut address: u32,
+        data: &'data [u8],
+    ) -> Result<(), FlashError> {
         let size = data.len();
         let mut remaining = size;
         while remaining > 0 {
@@ -84,7 +88,7 @@ impl<'a, 'b> FlashLoader<'a, 'b> {
     /// If `do_chip_erase` is `true` the entire flash will be erased.
     pub(super) fn commit(
         &mut self,
-        session: &Session,
+        session: &mut Session,
         progress: &FlashProgress,
         do_chip_erase: bool,
     ) -> Result<(), FlashError> {
@@ -107,7 +111,7 @@ impl<'a, 'b> FlashLoader<'a, 'b> {
                 );
             }
 
-            let algorithms: Vec<_> = session.flash_algorithms();
+            let algorithms = session.flash_algorithms();
             let algorithms = algorithms
                 .iter()
                 .filter(|fa| {
@@ -117,7 +121,7 @@ impl<'a, 'b> FlashLoader<'a, 'b> {
                 })
                 .collect::<Vec<_>>();
 
-            //log::debug!("Algorithms: {:?}", &algorithms);
+            log::debug!("Algorithms: {:?}", &algorithms);
 
             let raw_flash_algorithm = match algorithms.len() {
                 0 => {
@@ -144,10 +148,11 @@ impl<'a, 'b> FlashLoader<'a, 'b> {
                 _ => unreachable!(),
             };
 
-            let flash_algorithm = raw_flash_algorithm.assemble(unwrapped_ram);
+            let flash_algorithm =
+                raw_flash_algorithm.assemble(unwrapped_ram, session.architecture());
 
             // Program the data.
-            let mut flasher = Flasher::new(session.clone(), &flash_algorithm, region);
+            let mut flasher = Flasher::new(session, flash_algorithm, region.clone());
             flasher.program(builder, do_chip_erase, self.keep_unwritten, false, progress)?
         }
 

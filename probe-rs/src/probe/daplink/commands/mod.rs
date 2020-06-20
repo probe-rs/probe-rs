@@ -8,9 +8,8 @@ use crate::DebugProbeError;
 use core::ops::Deref;
 use std::time::Duration;
 
+use anyhow::{anyhow, Context, Result};
 use thiserror::Error;
-
-pub(crate) type Result<T> = std::result::Result<T, CmsisDapError>;
 
 #[derive(Debug, Error)]
 pub enum CmsisDapError {
@@ -20,12 +19,14 @@ pub enum CmsisDapError {
     ErrorResponse,
     #[error("Too much data provided for SWJ Sequence command")]
     TooMuchData,
-    #[error("Error in the USB HID access: {0}")]
+    #[error("Error in the USB HID access")]
     HidApi(#[from] hidapi::HidError),
-    #[error("Error in the USB access: {0}")]
+    #[error("Error in the USB access")]
     USBError(#[from] rusb::Error),
-    #[error("An error with the DAP communication occured: {0}")]
+    #[error("An error with the DAP communication occured")]
     Dap(#[from] DapError),
+    #[error(transparent)]
+    Other(#[from] anyhow::Error),
 }
 
 impl From<CmsisDapError> for DebugProbeError {
@@ -50,7 +51,7 @@ impl DAPLinkDevice {
     /// Read from the probe into `buf`, returning the number of bytes read on success.
     fn read(&self, buf: &mut [u8]) -> Result<usize> {
         match self {
-            DAPLinkDevice::V1(device) => Ok(device.read(buf)?),
+            DAPLinkDevice::V1(device) => Ok(device.read_timeout(buf, 100)?),
             DAPLinkDevice::V2 {
                 handle,
                 out_ep: _,
@@ -90,7 +91,7 @@ impl Status {
         match value {
             0x00 => Ok(Status::DAPOk),
             0xFF => Ok(Status::DAPError),
-            _ => Err(CmsisDapError::UnexpectedAnswer),
+            _ => Err(CmsisDapError::UnexpectedAnswer).context("Status can only be 0x00 or 0xFF"),
         }
     }
 }
@@ -131,31 +132,36 @@ pub(crate) fn send_command<Req: Request, Res: Response>(
     let mut size = request.to_bytes(&mut write_buffer, 1 + 1)?;
     size += 2;
 
-    // On Windows, HID writes must write exactly the size of the
-    // largest report for the device, but there's no way to query
-    // this in hidapi. All known CMSIS-DAP devices use 64-byte
-    // HID reports (the maximum permitted), so ensure we always
-    // write exactly 64 (+1 for report ID) bytes for HID.
-    // For v2 devices, we can write the precise request size.
-    match device.get_mut().unwrap() {
-        DAPLinkDevice::V1(_) => {
-            size = 65;
+    if let Ok(device) = device.get_mut() {
+        // On Windows, HID writes must write exactly the size of the
+        // largest report for the device, but there's no way to query
+        // this in hidapi. All known CMSIS-DAP devices use 64-byte
+        // HID reports (the maximum permitted), so ensure we always
+        // write exactly 64 (+1 for report ID) bytes for HID.
+        // For v2 devices, we can write the precise request size.
+        match device {
+            DAPLinkDevice::V1(_) => {
+                size = 65;
+            }
+            _ => (),
         }
-        _ => (),
-    }
 
-    // Send buffer to the device.
-    device.get_mut().unwrap().write(&write_buffer[..size])?;
-    log::trace!("Send buffer: {:02X?}", &write_buffer[..size]);
+        // Send buffer to the device.
+        device.write(&write_buffer[..size])?;
+        log::trace!("Send buffer: {:02X?}", &write_buffer[..size]);
 
-    // Read back resonse.
-    let mut read_buffer = [0; BUFFER_LEN];
-    device.get_mut().unwrap().read(&mut read_buffer)?;
-    log::trace!("Receive buffer: {:02X?}", &read_buffer[..]);
+        // Read back resonse.
+        let mut read_buffer = [0; BUFFER_LEN];
+        device.read(&mut read_buffer)?;
+        log::trace!("Receive buffer: {:02X?}", &read_buffer[..]);
 
-    if read_buffer[0] == *Req::CATEGORY {
-        Res::from_bytes(&read_buffer, 1)
+        if read_buffer[0] == *Req::CATEGORY {
+            Res::from_bytes(&read_buffer, 1)
+        } else {
+            Err(anyhow!(CmsisDapError::UnexpectedAnswer))
+                .with_context(|| format!("Received invalid data for {:?}", *Req::CATEGORY))
+        }
     } else {
-        Err(CmsisDapError::UnexpectedAnswer)
+        Err(anyhow!(CmsisDapError::ErrorResponse)).context("failed while sending command")
     }
 }

@@ -1,6 +1,6 @@
 use crate::{
     core::{CoreRegister, CoreRegisterAddress, RegisterDescription, RegisterFile, RegisterKind},
-    HaltReason,
+    CoreStatus, HaltReason,
 };
 
 use bitfield::bitfield;
@@ -238,4 +238,30 @@ impl From<Dfsr> for u32 {
 impl CoreRegister for Dfsr {
     const ADDRESS: u32 = 0xE000_ED30;
     const NAME: &'static str = "DFSR";
+}
+
+pub(crate) struct CortexState {
+    initialized: bool,
+
+    hw_breakpoints_enabled: bool,
+
+    current_state: CoreStatus,
+}
+
+impl CortexState {
+    pub(crate) fn new() -> Self {
+        Self {
+            initialized: false,
+            hw_breakpoints_enabled: false,
+            current_state: CoreStatus::Unknown,
+        }
+    }
+
+    fn initialize(&mut self) {
+        self.initialized = true;
+    }
+
+    fn initialized(&self) -> bool {
+        self.initialized
+    }
 }

@@ -138,12 +138,27 @@ pub(super) static RISCV_REGISTERS: RegisterFile = RegisterFile {
         RegisterDescription {
             name: "x10",
             kind: RegisterKind::General,
-            address: CoreRegisterAddress(0x1010),
+            address: CoreRegisterAddress(0x100A),
         },
         RegisterDescription {
             name: "x11",
             kind: RegisterKind::General,
-            address: CoreRegisterAddress(0x1011),
+            address: CoreRegisterAddress(0x100B),
+        },
+        RegisterDescription {
+            name: "x12",
+            kind: RegisterKind::General,
+            address: CoreRegisterAddress(0x100C),
+        },
+        RegisterDescription {
+            name: "x13",
+            kind: RegisterKind::General,
+            address: CoreRegisterAddress(0x100D),
+        },
+        RegisterDescription {
+            name: "x14",
+            kind: RegisterKind::General,
+            address: CoreRegisterAddress(0x100E),
         },
     ],
 
@@ -157,42 +172,42 @@ pub(super) static RISCV_REGISTERS: RegisterFile = RegisterFile {
         RegisterDescription {
             name: "a0",
             kind: RegisterKind::General,
-            address: CoreRegisterAddress(0x1010),
+            address: CoreRegisterAddress(0x100A),
         },
         RegisterDescription {
             name: "a1",
             kind: RegisterKind::General,
-            address: CoreRegisterAddress(0x1011),
+            address: CoreRegisterAddress(0x100B),
         },
         RegisterDescription {
             name: "a2",
             kind: RegisterKind::General,
-            address: CoreRegisterAddress(0x1012),
+            address: CoreRegisterAddress(0x100C),
         },
         RegisterDescription {
             name: "a3",
             kind: RegisterKind::General,
-            address: CoreRegisterAddress(0x1013),
+            address: CoreRegisterAddress(0x100D),
         },
         RegisterDescription {
             name: "a4",
             kind: RegisterKind::General,
-            address: CoreRegisterAddress(0x1014),
+            address: CoreRegisterAddress(0x100E),
         },
         RegisterDescription {
             name: "a5",
             kind: RegisterKind::General,
-            address: CoreRegisterAddress(0x1015),
+            address: CoreRegisterAddress(0x100F),
         },
         RegisterDescription {
             name: "a6",
             kind: RegisterKind::General,
-            address: CoreRegisterAddress(0x1016),
+            address: CoreRegisterAddress(0x1010),
         },
         RegisterDescription {
             name: "a7",
             kind: RegisterKind::General,
-            address: CoreRegisterAddress(0x1017),
+            address: CoreRegisterAddress(0x1011),
         },
     ],
 
@@ -200,12 +215,12 @@ pub(super) static RISCV_REGISTERS: RegisterFile = RegisterFile {
         RegisterDescription {
             name: "a0",
             kind: RegisterKind::General,
-            address: CoreRegisterAddress(0x1010),
+            address: CoreRegisterAddress(0x100A),
         },
         RegisterDescription {
             name: "a1",
             kind: RegisterKind::General,
-            address: CoreRegisterAddress(0x1011),
+            address: CoreRegisterAddress(0x100B),
         },
     ],
 };

@@ -1,6 +1,6 @@
 [package]
 name = "probe-rs"
-version = "0.6.2"
+version = "0.7.1"
 authors = ["Noah Hüsser <yatekii@yatekii.ch>", "Dominik Boehi <dominik.boehi@gmail.ch>"]
 edition = "2018"
 description = "A collection of on chip debugging tools to comminicate with microchips."
@@ -21,14 +21,14 @@ builtin-targets = []
 [dependencies]
 log = "0.4.8"
 num-traits = "0.2.11"
-enum-primitive-derive = "0.1.2"
+enum-primitive-derive = "0.2.1"
 jep106 = "0.2.4"
 scroll = "0.10.1"
-rusb = "0.5.5"
+rusb = "0.6.0"
 lazy_static = "1.4.0"
 hidapi = "1.2.0"
-gimli = "0.20.0"
-object = "0.18.0"
+gimli = "0.21.0"
+object = "0.20.0"
 bitfield = "0.13.2"
 derivative = "2.0.0"
 serde = { version = "1.0.104", features = ["derive"] }
@@ -40,6 +40,7 @@ thiserror = "1.0.10"
 jaylink = "0.1.1"
 base64 = "0.12.0"
 svg = "0.7.1"
+anyhow = "1.0.31"
 
 [build-dependencies]
 probe-rs-t2rust  = { path = "../probe-rs-t2rust", version ="0.6.0" }

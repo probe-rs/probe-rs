@@ -4,32 +4,34 @@
 
 use crate::core::Architecture;
 use crate::CoreInterface;
+use anyhow::Result;
 use communication_interface::{
     AbstractCommandErrorKind, AccessRegisterCommand, DebugRegister, RiscvCommunicationInterface,
     RiscvError,
 };
 
 use crate::core::{CoreInformation, RegisterFile};
-use crate::{CoreRegisterAddress, CoreStatus, HaltReason};
+use crate::{CoreRegisterAddress, CoreStatus, Error, HaltReason, MemoryInterface};
 use bitfield::bitfield;
 use register::RISCV_REGISTERS;
 
 #[macro_use]
 mod register;
 
+pub(crate) mod assembly;
+
 pub mod communication_interface;
 
-#[derive(Clone)]
-pub struct Riscv32 {
-    interface: RiscvCommunicationInterface,
+pub struct Riscv32<'probe> {
+    interface: RiscvCommunicationInterface<'probe>,
 }
 
-impl Riscv32 {
-    pub fn new(interface: RiscvCommunicationInterface) -> Self {
+impl<'probe> Riscv32<'probe> {
+    pub fn new(interface: RiscvCommunicationInterface<'probe>) -> Self {
         Self { interface }
     }
 
-    fn read_csr(&self, address: u16) -> Result<u32, RiscvError> {
+    fn read_csr(&mut self, address: u16) -> Result<u32, RiscvError> {
         let s0 = self.interface.abstract_cmd_register_read(&register::S0)?;
 
         // We need to perform the csrr instruction, which reads a CSR.
@@ -44,13 +46,9 @@ impl Riscv32 {
 
         let mut csrrs_cmd: u32 = 0b_00000_010_01000_1110011;
         csrrs_cmd |= ((address as u32) & 0xfff) << 20;
-        let ebreak_cmd = 0b000000000001_00000_000_00000_1110011;
 
-        // write progbuf0: csrr xxxxxx s0, (address) // lookup correct command
-        self.interface.write_dm_register(Progbuf0(csrrs_cmd))?;
-
-        // write progbuf1: ebreak
-        self.interface.write_dm_register(Progbuf1(ebreak_cmd))?;
+        self.interface
+            .setup_program_buffer(&[csrrs_cmd, assembly::EBREAK])?;
 
         // command: postexec
         let mut postexec_cmd = AccessRegisterCommand(0);
@@ -68,7 +66,7 @@ impl Riscv32 {
         Ok(reg_value)
     }
 
-    fn write_csr(&self, address: u16, value: u32) -> Result<(), RiscvError> {
+    fn write_csr(&mut self, address: u16, value: u32) -> Result<(), RiscvError> {
         // Backup register s0
         let s0 = self.interface.abstract_cmd_register_read(&register::S0)?;
 
@@ -88,13 +86,10 @@ impl Riscv32 {
 
         let mut csrrw_cmd: u32 = 0b_01000_001_00000_1110011;
         csrrw_cmd |= ((address as u32) & 0xfff) << 20;
-        let ebreak_cmd = 0b000000000001_00000_000_00000_1110011;
 
         // write progbuf0: csrr xxxxxx s0, (address) // lookup correct command
-        self.interface.write_dm_register(Progbuf0(csrrw_cmd))?;
-
-        // write progbuf1: ebreak
-        self.interface.write_dm_register(Progbuf1(ebreak_cmd))?;
+        self.interface
+            .setup_program_buffer(&[csrrw_cmd, assembly::EBREAK])?;
 
         // command: postexec
         let mut postexec_cmd = AccessRegisterCommand(0);
@@ -111,8 +106,8 @@ impl Riscv32 {
     }
 }
 
-impl CoreInterface for Riscv32 {
-    fn wait_for_core_halted(&mut self) -> Result<(), crate::Error> {
+impl<'probe> CoreInterface for Riscv32<'probe> {
+    fn wait_for_core_halted(&mut self) -> Result<()> {
         // poll the
         let num_retries = 10;
 
@@ -129,7 +124,7 @@ impl CoreInterface for Riscv32 {
         Err(RiscvError::Timeout.into())
     }
 
-    fn core_halted(&self) -> Result<bool, crate::Error> {
+    fn core_halted(&mut self) -> Result<bool, crate::Error> {
         let dmstatus: Dmstatus = self.interface.read_dm_register()?;
 
         Ok(dmstatus.allhalted())
@@ -190,7 +185,7 @@ impl CoreInterface for Riscv32 {
         Ok(())
     }
 
-    fn reset(&self) -> Result<(), crate::Error> {
+    fn reset(&mut self) -> Result<(), crate::Error> {
         log::debug!("Resetting core, setting hartreset bit");
 
         let mut dmcontrol = Dmcontrol(0);
@@ -333,7 +328,7 @@ impl CoreInterface for Riscv32 {
         Ok(CoreInformation { pc })
     }
 
-    fn read_core_reg(&self, address: crate::CoreRegisterAddress) -> Result<u32, crate::Error> {
+    fn read_core_reg(&mut self, address: crate::CoreRegisterAddress) -> Result<u32, crate::Error> {
         // We need to sue the "Access Register Command",
         // which has cmdtype 0
 
@@ -353,11 +348,7 @@ impl CoreInterface for Riscv32 {
         }
     }
 
-    fn write_core_reg(
-        &self,
-        address: crate::CoreRegisterAddress,
-        value: u32,
-    ) -> Result<(), crate::Error> {
+    fn write_core_reg(&mut self, address: crate::CoreRegisterAddress, value: u32) -> Result<()> {
         if address.0 >= 0x1000 && address.0 <= 0x101f {
             self.interface.abstract_cmd_register_write(address, value)?;
         } else {
@@ -366,7 +357,7 @@ impl CoreInterface for Riscv32 {
         Ok(())
     }
 
-    fn get_available_breakpoint_units(&self) -> Result<u32, crate::Error> {
+    fn get_available_breakpoint_units(&mut self) -> Result<u32, crate::Error> {
         // TODO: This should probably only be done once, when initialising
 
         log::debug!("Determining number of HW breakpoints supported");
@@ -439,7 +430,7 @@ impl CoreInterface for Riscv32 {
         Ok(())
     }
 
-    fn set_breakpoint(&self, bp_unit_index: usize, addr: u32) -> Result<(), crate::Error> {
+    fn set_breakpoint(&mut self, bp_unit_index: usize, addr: u32) -> Result<(), crate::Error> {
         // select requested trigger
         let tselect = 0x7a0;
         let tdata1 = 0x7a1;
@@ -478,7 +469,7 @@ impl CoreInterface for Riscv32 {
         Ok(())
     }
 
-    fn clear_breakpoint(&self, unit_index: usize) -> Result<(), crate::Error> {
+    fn clear_breakpoint(&mut self, unit_index: usize) -> Result<(), crate::Error> {
         let tselect = 0x7a0;
         let tdata1 = 0x7a1;
         let tdata2 = 0x7a2;
@@ -494,18 +485,16 @@ impl CoreInterface for Riscv32 {
         &RISCV_REGISTERS
     }
 
-    fn memory(&self) -> crate::Memory {
-        self.interface.memory()
-    }
-
     fn hw_breakpoints_enabled(&self) -> bool {
-        // No special enable on RISCV
+        // No special enable on RISC
+
         true
     }
 
     fn architecture(&self) -> Architecture {
-        Architecture::RISCV
+        Architecture::Riscv
     }
+
     fn status(&mut self) -> Result<crate::core::CoreStatus, crate::Error> {
         // TODO: We should use hartsum to determine if any hart is halted
         //       quickly
@@ -539,6 +528,33 @@ impl CoreInterface for Riscv32 {
         }
 
         panic!("This should not happen")
+    }
+}
+
+impl<'probe> MemoryInterface for Riscv32<'probe> {
+    fn read_word_32(&mut self, address: u32) -> Result<u32, Error> {
+        self.interface.read_word_32(address)
+    }
+    fn read_word_8(&mut self, address: u32) -> Result<u8, Error> {
+        self.interface.read_word_8(address)
+    }
+    fn read_32(&mut self, address: u32, data: &mut [u32]) -> Result<(), Error> {
+        self.interface.read_32(address, data)
+    }
+    fn read_8(&mut self, address: u32, data: &mut [u8]) -> Result<(), Error> {
+        self.interface.read_8(address, data)
+    }
+    fn write_word_32(&mut self, address: u32, data: u32) -> Result<(), Error> {
+        self.interface.write_word_32(address, data)
+    }
+    fn write_word_8(&mut self, address: u32, data: u8) -> Result<(), Error> {
+        self.interface.write_word_8(address, data)
+    }
+    fn write_32(&mut self, address: u32, data: &[u32]) -> Result<(), Error> {
+        self.interface.write_32(address, data)
+    }
+    fn write_8(&mut self, address: u32, data: &[u8]) -> Result<(), Error> {
+        self.interface.write_8(address, data)
     }
 }
 
@@ -667,23 +683,64 @@ impl From<u32> for Abstractcs {
     }
 }
 
+bitfield! {
+    pub struct Hartinfo(u32);
+    impl Debug;
+
+    nscratch, _: 23, 20;
+    dataaccess, _: 16;
+    datasize, _: 15, 12;
+    dataaddr, _: 11, 0;
+}
+
+impl DebugRegister for Hartinfo {
+    const ADDRESS: u8 = 0x12;
+    const NAME: &'static str = "hartinfo";
+}
+
+impl From<Hartinfo> for u32 {
+    fn from(register: Hartinfo) -> Self {
+        register.0
+    }
+}
+
+impl From<u32> for Hartinfo {
+    fn from(value: u32) -> Self {
+        Self(value)
+    }
+}
+
 data_register! { pub Data0, 0x04, "data0" }
 data_register! { pub Data1, 0x05, "data1" }
-data_register! { pub Data2, 0x05, "data2" }
-data_register! { pub Data3, 0x05, "data3" }
-data_register! { pub Data4, 0x05, "data4" }
-data_register! { pub Data5, 0x05, "data5" }
-data_register! { pub Data6, 0x05, "data6" }
-data_register! { pub Data7, 0x05, "data7" }
-data_register! { pub Data8, 0x05, "data8" }
-data_register! { pub Data9, 0x05, "data9" }
-data_register! { pub Data10, 0x05, "data10" }
+data_register! { pub Data2, 0x06, "data2" }
+data_register! { pub Data3, 0x07, "data3" }
+data_register! { pub Data4, 0x08, "data4" }
+data_register! { pub Data5, 0x09, "data5" }
+data_register! { pub Data6, 0x0A, "data6" }
+data_register! { pub Data7, 0x0B, "data7" }
+data_register! { pub Data8, 0x0C, "data8" }
+data_register! { pub Data9, 0x0D, "data9" }
+data_register! { pub Data10, 0x0E, "data10" }
 data_register! { pub Data11, 0x0f, "data11" }
 
 data_register! { Command, 0x17, "command" }
 
 data_register! { pub Progbuf0, 0x20, "progbuf0" }
 data_register! { pub Progbuf1, 0x21, "progbuf1" }
+data_register! { pub Progbuf2, 0x22, "progbuf2" }
+data_register! { pub Progbuf3, 0x23, "progbuf3" }
+data_register! { pub Progbuf4, 0x24, "progbuf4" }
+data_register! { pub Progbuf5, 0x25, "progbuf5" }
+data_register! { pub Progbuf6, 0x26, "progbuf6" }
+data_register! { pub Progbuf7, 0x27, "progbuf7" }
+data_register! { pub Progbuf8, 0x28, "progbuf8" }
+data_register! { pub Progbuf9, 0x29, "progbuf9" }
+data_register! { pub Progbuf10, 0x2A, "progbuf10" }
+data_register! { pub Progbuf11, 0x2B, "progbuf11" }
+data_register! { pub Progbuf12, 0x2C, "progbuf12" }
+data_register! { pub Progbuf13, 0x2D, "progbuf13" }
+data_register! { pub Progbuf14, 0x2E, "progbuf14" }
+data_register! { pub Progbuf15, 0x2F, "progbuf15" }
 
 bitfield! {
     struct Mcontrol(u32);

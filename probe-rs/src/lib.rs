@@ -18,13 +18,13 @@
 //! let probes = Probe::list_all();
 //!
 //! // Use the first probe found.
-//! let probe = probes[0].open()?;
+//! let mut probe = probes[0].open()?;
 //!
 //! // Attach to a chip.
-//! let session = probe.attach("nrf52")?;
+//! let mut session = probe.attach("nrf52")?;
 //!
 //! // Select a core.
-//! let core = session.attach_to_core(0)?;
+//! let mut core = session.core(0)?;
 //!
 //! // Halt the attached core.
 //! core.halt()?;
@@ -35,8 +35,11 @@
 //!
 //! ```no_run
 //! # use probe_rs::Error;
-//! use probe_rs::Core;
-//! let core = Core::auto_attach("nrf52")?;
+//! use probe_rs::Session;
+//! use probe_rs::MemoryInterface;
+//!
+//! let mut session = Session::auto_attach("nrf52")?;
+//! let mut core = session.core(0)?;
 //!
 //! // Read a block of 50 32 bit words.
 //! let mut buff = [0u32;50];
@@ -86,5 +89,8 @@ pub use crate::core::{
 };
 pub use crate::error::Error;
 pub use crate::memory::{Memory, MemoryInterface, MemoryList};
-pub use crate::probe::{DebugProbe, DebugProbeError, DebugProbeInfo, Probe, WireProtocol};
+pub use crate::probe::{
+    DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, DebugProbeType, Probe,
+    WireProtocol,
+};
 pub use crate::session::Session;

@@ -1,4 +1,5 @@
 use super::super::{Category, CmsisDapError, Request, Response, Result};
+use anyhow::{anyhow, Context};
 
 #[derive(Clone, Copy)]
 pub enum ConnectRequest {
@@ -28,7 +29,12 @@ impl Response for ConnectResponse {
             0 => Ok(ConnectResponse::InitFailed),
             1 => Ok(ConnectResponse::SuccessfulInitForSWD),
             2 => Ok(ConnectResponse::SuccessfulInitForJTAG),
-            _ => Err(CmsisDapError::UnexpectedAnswer),
+            _ => Err(anyhow!(CmsisDapError::UnexpectedAnswer)).with_context(|| {
+                format!(
+                    "Connecting to target failed, received: {:x}",
+                    buffer[offset]
+                )
+            }),
         }
     }
 }

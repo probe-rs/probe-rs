@@ -8,12 +8,13 @@ use std::iter;
 use std::sync::Mutex;
 
 use crate::{
-    architecture::arm::dp::Ctrl,
+    architecture::arm::{dp::Ctrl, SwvAccess},
     architecture::arm::{DapError, PortType, Register},
     probe::{
         DAPAccess, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeType, JTAGAccess,
         WireProtocol,
     },
+    DebugProbeSelector,
 };
 
 #[derive(Debug)]
@@ -305,18 +306,39 @@ impl JLink {
 }
 
 impl DebugProbe for JLink {
-    fn new_from_probe_info(info: &super::DebugProbeInfo) -> Result<Box<Self>, DebugProbeError> {
-        let mut usb_devices: Vec<_> = jaylink::scan_usb()?
-            .filter(|usb_info| {
-                usb_info.vid() == info.vendor_id && usb_info.pid() == info.product_id
+    fn new_from_selector(
+        selector: impl Into<DebugProbeSelector>,
+    ) -> Result<Box<Self>, DebugProbeError> {
+        let selector = selector.into();
+        let mut jlinks = jaylink::scan_usb()?
+            .filter_map(|usb_info| {
+                if usb_info.vid() == selector.vendor_id && usb_info.pid() == selector.product_id {
+                    let device = usb_info.open();
+                    if device
+                        .as_ref()
+                        .map(|d| {
+                            d.serial_string() == selector.serial_number.as_deref().unwrap_or("")
+                        })
+                        .unwrap_or(false)
+                    {
+                        Some(device)
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
             })
-            .collect();
+            .collect::<Vec<_>>();
 
-        if usb_devices.len() != 1 {
-            // TODO: Add custom error
-            return Err(DebugProbeError::ProbeCouldNotBeCreated);
+        if jlinks.len() == 0 {
+            return Err(DebugProbeError::ProbeCouldNotBeCreated(
+                super::ProbeCreationError::NotFound,
+            ));
+        } else if jlinks.len() > 1 {
+            log::warn!("More than one matching JLink was found. Opening the first one.")
         }
-        let jlink_handle = usb_devices.pop().unwrap().open()?;
+        let jlink_handle = jlinks.pop().unwrap()?;
 
         // Check which protocols are supported by the J-Link.
         //
@@ -561,11 +583,11 @@ impl DebugProbe for JLink {
         }
     }
 
-    fn get_interface_itm(&self) -> Option<&dyn crate::itm::SwvReader> {
+    fn get_interface_itm(&self) -> Option<&dyn SwvAccess> {
         None
     }
 
-    fn get_interface_itm_mut(&mut self) -> Option<&mut dyn crate::itm::SwvReader> {
+    fn get_interface_itm_mut(&mut self) -> Option<&mut dyn SwvAccess> {
         None
     }
 }
@@ -896,15 +918,35 @@ fn bits_to_byte(bits: impl IntoIterator<Item = bool>) -> u32 {
 pub(crate) fn list_jlink_devices() -> Result<impl Iterator<Item = DebugProbeInfo>, DebugProbeError>
 {
     Ok(jaylink::scan_usb()?.map(|device_info| {
+        let vid = device_info.vid();
+        let pid = device_info.pid();
+        let (serial, product) = if let Ok(device) = device_info.open() {
+            let serial = device.serial_string();
+            let serial = if serial.is_empty() {
+                None
+            } else {
+                Some(serial.to_owned())
+            };
+            let product = device.product_string();
+            let product = if product.is_empty() {
+                None
+            } else {
+                Some(product.to_owned())
+            };
+            (serial, product)
+        } else {
+            (None, None)
+        };
         DebugProbeInfo::new(
             format!(
-                "J-Link (VID: {:#06x}, PID: {:#06x})",
-                device_info.vid(),
-                device_info.pid()
+                "J-Link{}",
+                product
+                    .map(|p| format!(" ({})", p))
+                    .unwrap_or("".to_string())
             ),
-            device_info.vid(),
-            device_info.pid(),
-            None,
+            vid,
+            pid,
+            serial,
             DebugProbeType::JLink,
         )
     }))

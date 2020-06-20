@@ -1,6 +1,6 @@
 use super::super::component::{Dwt, Itm, Tpiu};
 use super::AccessPortError;
-use crate::{Core, Error, MemoryInterface};
+use crate::{Core, Error, Memory, MemoryInterface};
 use enum_primitive_derive::Primitive;
 use num_traits::cast::FromPrimitive;
 use thiserror::Error;
@@ -18,21 +18,21 @@ pub enum RomTableError {
     ),
     #[error("The CoreSight Component could not be identified")]
     CSComponentIdentification,
-    #[error("Something during memory interaction went wrong")]
+    #[error("Could not access romtable")]
     Memory(#[source] Error),
     #[error("The requested component '{0}' was not found")]
     ComponentNotFound(String),
 }
 
 /// A lazy romtable reader that is used to create an iterator over all romtable entries.
-struct RomTableReader<'c, MI: MemoryInterface> {
+struct RomTableReader<'probe: 'memory, 'memory> {
     base_address: u64,
-    memory: &'c mut MI,
+    memory: &'memory mut Memory<'probe>,
 }
 
 /// Iterates over a ROM table non recursively.
-impl<'c, MI: MemoryInterface> RomTableReader<'c, MI> {
-    pub fn new(memory: &'c mut MI, base_address: u64) -> Self {
+impl<'probe: 'memory, 'memory> RomTableReader<'probe, 'memory> {
+    fn new(memory: &'memory mut Memory<'probe>, base_address: u64) -> Self {
         RomTableReader {
             base_address,
             memory,
@@ -40,7 +40,7 @@ impl<'c, MI: MemoryInterface> RomTableReader<'c, MI> {
     }
 
     /// Iterate over all entries of the rom table, non-recursively
-    pub fn entries<'r>(&'r mut self) -> RomTableIterator<'r, 'c, MI> {
+    fn entries(&mut self) -> RomTableIterator<'probe, 'memory, '_> {
         RomTableIterator::new(self)
     }
 }
@@ -48,14 +48,14 @@ impl<'c, MI: MemoryInterface> RomTableReader<'c, MI> {
 /// An iterator to lazily iterate over all the romtable entries in memory.
 ///
 /// For internal use only.
-struct RomTableIterator<'r, 'c, MI: MemoryInterface> {
-    rom_table_reader: &'r mut RomTableReader<'c, MI>,
+struct RomTableIterator<'probe: 'memory, 'memory: 'reader, 'reader> {
+    rom_table_reader: &'reader mut RomTableReader<'probe, 'memory>,
     offset: u64,
 }
 
-impl<'r, 'c, MI: MemoryInterface> RomTableIterator<'r, 'c, MI> {
+impl<'probe: 'memory, 'memory: 'reader, 'reader> RomTableIterator<'probe, 'memory, 'reader> {
     /// Creates a new lazy romtable iterator.
-    pub fn new(reader: &'r mut RomTableReader<'c, MI>) -> Self {
+    fn new(reader: &'reader mut RomTableReader<'probe, 'memory>) -> Self {
         RomTableIterator {
             rom_table_reader: reader,
             offset: 0,
@@ -63,7 +63,7 @@ impl<'r, 'c, MI: MemoryInterface> RomTableIterator<'r, 'c, MI> {
     }
 }
 
-impl<'r, 'c, MI: MemoryInterface> Iterator for RomTableIterator<'r, 'c, MI> {
+impl<'probe, 'memory, 'reader> Iterator for RomTableIterator<'probe, 'memory, 'reader> {
     type Item = Result<RomTableEntryRaw, RomTableError>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -74,11 +74,11 @@ impl<'r, 'c, MI: MemoryInterface> Iterator for RomTableIterator<'r, 'c, MI> {
 
         let mut entry_data = [0u32; 1];
 
-        if let Err(e) = MemoryInterface::read_block32(
-            self.rom_table_reader.memory,
-            component_address as u32,
-            &mut entry_data,
-        ) {
+        if let Err(e) = self
+            .rom_table_reader
+            .memory
+            .read_32(component_address as u32, &mut entry_data)
+        {
             return Some(Err(RomTableError::Memory(e)));
         }
 
@@ -115,10 +115,7 @@ impl RomTable {
     ///
     /// This does not check whether the data actually signalizes
     /// to contain a ROM table but assumes this was checked beforehand.
-    fn try_parse(
-        memory: &mut impl MemoryInterface,
-        base_address: u64,
-    ) -> Result<RomTable, RomTableError> {
+    fn try_parse(memory: &mut Memory<'_>, base_address: u64) -> Result<RomTable, RomTableError> {
         let mut entries = vec![];
         let mut tpiu = None;
         let mut dwt = None;
@@ -270,14 +267,14 @@ impl ComponentId {
 /// A reader to extract infromation from a CoreSight component table.
 ///
 /// This reader is meant for internal use only.
-struct ComponentInformationReader<'c, MI: MemoryInterface> {
+pub struct ComponentInformationReader<'probe: 'memory, 'memory> {
     base_address: u64,
-    memory: &'c mut MI,
+    memory: &'memory mut Memory<'probe>,
 }
 
-impl<'c, MI: MemoryInterface> ComponentInformationReader<'c, MI> {
+impl<'probe: 'memory, 'memory> ComponentInformationReader<'probe, 'memory> {
     /// Creates a new `ComponentInformationReader` which can be used to extract the data from a component information table in memory.
-    fn new(base_address: u64, memory: &'c mut MI) -> Self {
+    pub fn new(base_address: u64, memory: &'memory mut Memory<'probe>) -> Self {
         ComponentInformationReader {
             base_address,
             memory,
@@ -291,12 +288,9 @@ impl<'c, MI: MemoryInterface> ComponentInformationReader<'c, MI> {
         #![allow(clippy::verbose_bit_mask)]
         let mut cidr = [0u32; 4];
 
-        MemoryInterface::read_block32(
-            &mut self.memory,
-            self.base_address as u32 + 0xFF0,
-            &mut cidr,
-        )
-        .map_err(RomTableError::Memory)?;
+        self.memory
+            .read_32(self.base_address as u32 + 0xFF0, &mut cidr)
+            .map_err(RomTableError::Memory)?;
 
         log::debug!("CIDR: {:x?}", cidr);
 
@@ -336,18 +330,12 @@ impl<'c, MI: MemoryInterface> ComponentInformationReader<'c, MI> {
             peripheral_id_address
         );
 
-        MemoryInterface::read_block32(
-            &mut self.memory,
-            self.base_address as u32 + 0xFD0,
-            &mut data[4..],
-        )
-        .map_err(RomTableError::Memory)?;
-        MemoryInterface::read_block32(
-            &mut self.memory,
-            self.base_address as u32 + 0xFE0,
-            &mut data[..4],
-        )
-        .map_err(RomTableError::Memory)?;
+        self.memory
+            .read_32(self.base_address as u32 + 0xFD0, &mut data[4..])
+            .map_err(RomTableError::Memory)?;
+        self.memory
+            .read_32(self.base_address as u32 + 0xFE0, &mut data[..4])
+            .map_err(RomTableError::Memory)?;
 
         log::debug!("Raw peripheral id: {:x?}", data);
 
@@ -396,9 +384,9 @@ pub enum Component {
 }
 
 impl Component {
-    /// Tries to parse a CoreSight component table from memory.
-    pub fn try_parse<'c>(
-        memory: &'c mut impl MemoryInterface,
+    /// Tries to parse a CoreSight component table.
+    pub fn try_parse<'probe: 'memory, 'memory>(
+        memory: &'memory mut Memory<'probe>,
         baseaddr: u64,
     ) -> Result<Component, RomTableError> {
         log::info!("\tReading component data at: {:08x}", baseaddr);
@@ -468,7 +456,10 @@ impl Component {
     }
 
     /// Returns the TPIU component if there is any.
-    pub fn tpiu<'c>(&'c self, core: &'c mut Core) -> Result<Tpiu<'c>, RomTableError> {
+    pub fn tpiu<'probe: 'core, 'core>(
+        &'core self,
+        core: &'core mut Core<'probe>,
+    ) -> Result<Tpiu<'probe, 'core>, RomTableError> {
         for component in self.iter() {
             if component.id().peripheral_id.is_tpiu() {
                 return Ok(Tpiu::new(core, component));
@@ -478,7 +469,10 @@ impl Component {
     }
 
     /// Returns the DWT component if there is any.
-    pub fn dwt<'c>(&'c self, core: &'c mut Core) -> Result<Dwt<'c>, RomTableError> {
+    pub fn dwt<'probe: 'core, 'core>(
+        &'core self,
+        core: &'core mut Core<'probe>,
+    ) -> Result<Dwt<'probe, 'core>, RomTableError> {
         for component in self.iter() {
             if component.id().peripheral_id.is_dwt() {
                 return Ok(Dwt::new(core, component));
@@ -488,7 +482,10 @@ impl Component {
     }
 
     /// Returns the ITM component if there is any.
-    pub fn itm<'c>(&'c self, core: &'c mut Core) -> Result<Itm<'c>, RomTableError> {
+    pub fn itm<'probe: 'core, 'core>(
+        &'core self,
+        core: &'core mut Core<'probe>,
+    ) -> Result<Itm<'probe, 'core>, RomTableError> {
         for component in self.iter() {
             if component.id().peripheral_id.is_itm() {
                 return Ok(Itm::new(core, component));

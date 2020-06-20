@@ -3,12 +3,16 @@ use crate::common::CliError;
 use capstone::Capstone;
 use probe_rs::architecture::arm::CortexDump;
 use probe_rs::debug::DebugInfo;
-use probe_rs::{Core, CoreRegisterAddress};
+use probe_rs::{Core, CoreRegisterAddress, MemoryInterface};
 use std::fs::File;
 use std::io::prelude::*;
 
 pub struct DebugCli {
     commands: Vec<Command>,
+}
+
+fn parse_u32_hex(s: &str) -> u32 {
+    u32::from_str_radix(s, 16).expect("Couldn't parse hex number")
 }
 
 impl DebugCli {
@@ -39,7 +43,7 @@ impl DebugCli {
 
                 let mut code = [0u8; 16 * 2];
 
-                cli_data.core.memory().read_block8(cpu_info.pc, &mut code)?;
+                cli_data.core.read_8(cpu_info.pc, &mut code)?;
 
                 /*
                 let instructions = cli_data
@@ -109,16 +113,16 @@ impl DebugCli {
             function: |cli_data, args| {
                 let address_str = args.get(0).ok_or(CliError::MissingArgument)?;
 
-                let address = u32::from_str_radix(address_str, 16).unwrap();
+                let address = parse_u32_hex(address_str);
 
                 let num_words = args
                     .get(1)
-                    .map(|c| c.parse::<usize>().unwrap())
+                    .map(|c| c.parse::<usize>().expect("Couldn't parse number of words"))
                     .unwrap_or(1);
 
                 let mut buff = vec![0u32; num_words];
 
-                cli_data.core.memory().read_block32(address, &mut buff)?;
+                cli_data.core.read_32(address, &mut buff)?;
 
                 for (offset, word) in buff.iter().enumerate() {
                     println!("0x{:08x} = 0x{:08x}", address + (offset * 4) as u32, word);
@@ -134,12 +138,12 @@ impl DebugCli {
 
             function: |cli_data, args| {
                 let address_str = args.get(0).ok_or(CliError::MissingArgument)?;
-                let address = u32::from_str_radix(address_str, 16).unwrap();
+                let address = parse_u32_hex(address_str);
 
                 let data_str = args.get(1).ok_or(CliError::MissingArgument)?;
-                let data = u32::from_str_radix(data_str, 16).unwrap();
+                let data = parse_u32_hex(data_str);
 
-                cli_data.core.memory().write32(address, data)?;
+                cli_data.core.write_word_32(address, data)?;
 
                 Ok(CliState::Continue)
             },
@@ -151,7 +155,7 @@ impl DebugCli {
 
             function: |cli_data, args| {
                 let address_str = args.get(0).ok_or(CliError::MissingArgument)?;
-                let address = u32::from_str_radix(address_str, 16).unwrap();
+                let address = parse_u32_hex(address_str);
 
                 cli_data.core.set_hw_breakpoint(address)?;
 
@@ -167,7 +171,7 @@ impl DebugCli {
 
             function: |cli_data, args| {
                 let address_str = args.get(0).ok_or(CliError::MissingArgument)?;
-                let address = u32::from_str_radix(address_str, 16).unwrap();
+                let address = parse_u32_hex(address_str);
 
                 cli_data.core.clear_hw_breakpoint(address)?;
 
@@ -184,11 +188,13 @@ impl DebugCli {
                 let program_counter = cli_data.core.read_core_reg(regs.program_counter())?;
 
                 if let Some(di) = &cli_data.debug_info {
-                    let frames = di.try_unwind(&cli_data.core, u64::from(program_counter));
+                    let frames = di.try_unwind(&mut cli_data.core, u64::from(program_counter));
 
                     for frame in frames {
                         println!("{}", frame);
                     }
+                } else {
+                    println!("No debug information present!");
                 }
 
                 Ok(CliState::Continue)
@@ -230,10 +236,7 @@ impl DebugCli {
 
                 let mut stack = vec![0u8; (stack_top - stack_bot) as usize];
 
-                cli_data
-                    .core
-                    .memory()
-                    .read_block8(stack_bot, &mut stack[..])?;
+                cli_data.core.read_8(stack_bot, &mut stack[..])?;
 
                 let mut dump = CortexDump::new(stack_bot, stack);
 
@@ -315,8 +318,8 @@ impl DebugCli {
     }
 }
 
-pub struct CliData {
-    pub core: Core,
+pub struct CliData<'p> {
+    pub core: Core<'p>,
     pub debug_info: Option<DebugInfo>,
     pub capstone: Capstone,
 }

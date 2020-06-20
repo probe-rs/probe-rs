@@ -3,11 +3,10 @@ pub mod tools;
 
 use crate::architecture::arm::{
     dp::{DPAccess, DPRegister, DebugPortError},
-    DAPAccess, DapError, PortType,
+    DAPAccess, DapError, PortType, SwvAccess,
 };
-use crate::itm::SwvReader;
 use crate::probe::{daplink::commands::CmsisDapError, BatchCommand};
-use crate::{DebugProbe, DebugProbeError, DebugProbeInfo, Memory, WireProtocol};
+use crate::{DebugProbe, DebugProbeError, DebugProbeSelector, Memory, WireProtocol};
 use commands::{
     general::{
         connect::{ConnectRequest, ConnectResponse},
@@ -32,6 +31,7 @@ use log::debug;
 use super::JTAGAccess;
 use std::sync::Mutex;
 
+use anyhow::anyhow;
 use commands::DAPLinkDevice;
 
 pub struct DAPLink {
@@ -99,7 +99,7 @@ impl DAPLink {
         )
         .and_then(|v| match v {
             SWJClockResponse(Status::DAPOk) => Ok(()),
-            SWJClockResponse(Status::DAPError) => Err(CmsisDapError::ErrorResponse),
+            SWJClockResponse(Status::DAPError) => Err(anyhow!(CmsisDapError::ErrorResponse)),
         })?;
         Ok(())
     }
@@ -108,7 +108,7 @@ impl DAPLink {
         commands::send_command::<ConfigureRequest, ConfigureResponse>(&mut self.device, request)
             .and_then(|v| match v {
                 ConfigureResponse(Status::DAPOk) => Ok(()),
-                ConfigureResponse(Status::DAPError) => Err(CmsisDapError::ErrorResponse),
+                ConfigureResponse(Status::DAPError) => Err(anyhow!(CmsisDapError::ErrorResponse)),
             })?;
         Ok(())
     }
@@ -123,7 +123,7 @@ impl DAPLink {
         )
         .and_then(|v| match v {
             swd::configure::ConfigureResponse(Status::DAPOk) => Ok(()),
-            swd::configure::ConfigureResponse(Status::DAPError) => Err(CmsisDapError::ErrorResponse),
+            swd::configure::ConfigureResponse(Status::DAPError) => Err(anyhow!(CmsisDapError::ErrorResponse)),
         })?;
         Ok(())
     }
@@ -137,7 +137,7 @@ impl DAPLink {
         commands::send_command::<SequenceRequest, SequenceResponse>(&mut self.device, request)
             .and_then(|v| match v {
                 SequenceResponse(Status::DAPOk) => Ok(()),
-                SequenceResponse(Status::DAPError) => Err(CmsisDapError::ErrorResponse),
+                SequenceResponse(Status::DAPError) => Err(anyhow!(CmsisDapError::ErrorResponse)),
             })?;
         Ok(())
     }
@@ -173,21 +173,24 @@ impl DAPLink {
 
         let count = response.transfer_count as usize;
 
-        if count == batch.len() {
-            if response.transfer_response.protocol_error {
-                Err(DapError::SwdProtocol.into())
-            } else {
-                match response.transfer_response.ack {
-                    Ack::Ok => Ok(response.transfer_data),
-                    Ack::NoAck => Err(DapError::NoAcknowledge.into()),
-                    Ack::Fault => Err(DapError::FaultResponse.into()),
-                    Ack::Wait => Err(DapError::WaitResponse.into()),
+        match count {
+            _ if count == batch.len() => {
+                if response.transfer_response.protocol_error {
+                    Err(DapError::SwdProtocol.into())
+                } else {
+                    match response.transfer_response.ack {
+                        Ack::Ok => Ok(response.transfer_data),
+                        Ack::NoAck => Err(DapError::NoAcknowledge.into()),
+                        Ack::Fault => Err(DapError::FaultResponse.into()),
+                        Ack::Wait => Err(DapError::WaitResponse.into()),
+                    }
                 }
             }
-        } else if count < batch.len() {
-            Err(DebugProbeError::BatchError(batch[count - 1]))
-        } else {
-            Err(CmsisDapError::UnexpectedAnswer.into())
+            0 => Err(DebugProbeError::Other(anyhow!(
+                "Didn't receive any answer during batch processing: {:?}",
+                batch
+            ))),
+            _ => Err(DebugProbeError::BatchError(batch[count - 1])),
         }
     }
 
@@ -235,12 +238,14 @@ impl DPAccess for DAPLink {
 }
 
 impl DebugProbe for DAPLink {
-    fn new_from_probe_info(info: &DebugProbeInfo) -> Result<Box<Self>, DebugProbeError>
+    fn new_from_selector(
+        selector: impl Into<DebugProbeSelector>,
+    ) -> Result<Box<Self>, DebugProbeError>
     where
         Self: Sized,
     {
         Ok(Box::new(Self::new_from_device(
-            tools::open_device_from_info(info).ok_or(DebugProbeError::ProbeCouldNotBeCreated)?,
+            tools::open_device_from_selector(selector)?,
         )))
     }
 
@@ -290,7 +295,7 @@ impl DebugProbe for DAPLink {
         let _result = commands::send_command(&mut self.device, protocol).and_then(|v| match v {
             ConnectResponse::SuccessfulInitForSWD => Ok(WireProtocol::Swd),
             ConnectResponse::SuccessfulInitForJTAG => Ok(WireProtocol::Jtag),
-            ConnectResponse::InitFailed => Err(CmsisDapError::ErrorResponse),
+            ConnectResponse::InitFailed => Err(anyhow!(CmsisDapError::ErrorResponse)),
         })?;
 
         // Set speed after connecting as it can be reset during protocol selection
@@ -304,17 +309,17 @@ impl DebugProbe for DAPLink {
 
         self.configure_swd(swd::configure::ConfigureRequest {})?;
 
-        self.send_swj_sequences(
-            SequenceRequest::new(&[0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff]).unwrap(),
-        )?;
+        self.send_swj_sequences(SequenceRequest::new(&[
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+        ])?)?;
 
-        self.send_swj_sequences(SequenceRequest::new(&[0x9e, 0xe7]).unwrap())?;
+        self.send_swj_sequences(SequenceRequest::new(&[0x9e, 0xe7])?)?;
 
-        self.send_swj_sequences(
-            SequenceRequest::new(&[0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff]).unwrap(),
-        )?;
+        self.send_swj_sequences(SequenceRequest::new(&[
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+        ])?)?;
 
-        self.send_swj_sequences(SequenceRequest::new(&[0x00]).unwrap())?;
+        self.send_swj_sequences(SequenceRequest::new(&[0x00])?)?;
 
         debug!("Successfully changed to SWD.");
 
@@ -375,11 +380,11 @@ impl DebugProbe for DAPLink {
         None
     }
 
-    fn get_interface_itm(&self) -> Option<&dyn SwvReader> {
+    fn get_interface_itm(&self) -> Option<&dyn SwvAccess> {
         None
     }
 
-    fn get_interface_itm_mut(&mut self) -> Option<&mut dyn SwvReader> {
+    fn get_interface_itm_mut(&mut self) -> Option<&mut dyn SwvAccess> {
         None
     }
 }

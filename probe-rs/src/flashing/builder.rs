@@ -153,14 +153,14 @@ impl FlashLayout {
 
 /// A block of data that is to be written to flash.
 #[derive(Clone, Copy)]
-pub(super) struct FlashDataBlock<'a> {
+pub(super) struct FlashDataBlock<'data> {
     address: u32,
-    data: &'a [u8],
+    data: &'data [u8],
 }
 
-impl<'a> FlashDataBlock<'a> {
+impl<'data> FlashDataBlock<'data> {
     /// Create a new `FlashDataBlock`.
-    fn new(address: u32, data: &'a [u8]) -> Self {
+    fn new(address: u32, data: &'data [u8]) -> Self {
         Self { address, data }
     }
 
@@ -194,7 +194,7 @@ impl FlashDataBlockSpan {
     }
 }
 
-impl<'a> From<FlashDataBlock<'a>> for FlashDataBlockSpan {
+impl<'data> From<FlashDataBlock<'data>> for FlashDataBlockSpan {
     fn from(block: FlashDataBlock) -> Self {
         Self {
             address: block.address(),
@@ -203,7 +203,7 @@ impl<'a> From<FlashDataBlock<'a>> for FlashDataBlockSpan {
     }
 }
 
-impl<'a> From<&FlashDataBlock<'a>> for FlashDataBlockSpan {
+impl<'data> From<&FlashDataBlock<'data>> for FlashDataBlockSpan {
     fn from(block: &FlashDataBlock) -> Self {
         Self {
             address: block.address(),
@@ -214,11 +214,11 @@ impl<'a> From<&FlashDataBlock<'a>> for FlashDataBlockSpan {
 
 /// A helper structure to build a flash layout from a set of data blocks.
 #[derive(Default)]
-pub(super) struct FlashBuilder<'a> {
-    data_blocks: Vec<FlashDataBlock<'a>>,
+pub(super) struct FlashBuilder<'data> {
+    data_blocks: Vec<FlashDataBlock<'data>>,
 }
 
-impl<'a> FlashBuilder<'a> {
+impl<'data> FlashBuilder<'data> {
     /// Creates a new `FlashBuilder` with empty data.
     pub(super) fn new() -> Self {
         Self {
@@ -229,7 +229,7 @@ impl<'a> FlashBuilder<'a> {
     /// Add a block of data to be programmed.
     ///
     /// Programming does not start until the `program` method is called.
-    pub(super) fn add_data(&mut self, address: u32, data: &'a [u8]) -> Result<(), FlashError> {
+    pub(super) fn add_data(&mut self, address: u32, data: &'data [u8]) -> Result<(), FlashError> {
         // Add the operation to the sorted data list.
         match self
             .data_blocks
@@ -441,11 +441,11 @@ impl<'a> FlashBuilder<'a> {
 }
 
 /// Adds a new sector to the sectors.
-fn add_sector<'b>(
+fn add_sector<'sector>(
     flash_algorithm: &FlashAlgorithm,
     address: u32,
-    sectors: &'b mut Vec<FlashSector>,
-) -> Result<&'b mut FlashSector, FlashError> {
+    sectors: &'sector mut Vec<FlashSector>,
+) -> Result<&'sector mut FlashSector, FlashError> {
     let sector_info = flash_algorithm.sector_info(address);
     if let Some(sector_info) = sector_info {
         let new_sector = FlashSector::new(&sector_info);
@@ -463,11 +463,11 @@ fn add_sector<'b>(
 }
 
 /// Adds a new page to the pages.
-fn add_page<'b>(
+fn add_page<'page>(
     flash_algorithm: &FlashAlgorithm,
     address: u32,
-    pages: &'b mut Vec<FlashPage>,
-) -> Result<&'b mut FlashPage, FlashError> {
+    pages: &'page mut Vec<FlashPage>,
+) -> Result<&'page mut FlashPage, FlashError> {
     let page_info = flash_algorithm.page_info(address);
     if let Some(page_info) = page_info {
         let new_page = FlashPage::new(&page_info);

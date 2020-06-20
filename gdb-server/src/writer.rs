@@ -1,58 +1,57 @@
 use async_std::{io::Write, net::TcpStream, prelude::*};
 use futures::channel::mpsc;
 use gdb_protocol::packet::{CheckedPacket, Kind as PacketKind};
-use std::sync::Arc;
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 type Sender<T> = mpsc::UnboundedSender<T>;
 
 pub async fn writer(
     packet: CheckedPacket,
-    stream: Arc<TcpStream>,
-    packet_stream: Sender<CheckedPacket>,
+    stream: &mut TcpStream,
+    packet_stream: &Sender<CheckedPacket>,
     buffer: &mut Vec<u8>,
 ) -> Result<()> {
     let mut tmp_buf = [0; 128];
     log::debug!("WRITE WIN");
-    if packet.is_valid() {
-        encode(&packet, &*stream).await?;
-        (&*stream).flush().await?;
-        log::debug!("Request ACK for {}", String::from_utf8_lossy(&packet.data));
-        'ack: loop {
-            log::debug!("Reading");
-            let n = (&*stream).read(&mut tmp_buf).await?;
-            log::debug!("Done Reading ({})", String::from_utf8_lossy(&buffer));
-            if n > 0 {
-                buffer.extend(&tmp_buf[0..n]);
-                // glob.extend(&tmp_buf[0..n]);
-                log::info!("Current buf {}", String::from_utf8_lossy(&buffer));
-            }
-            for (i, byte) in buffer.iter().enumerate() {
-                match byte {
-                    b'+' => {
-                        log::debug!("Ack received.");
-                        buffer.remove(i);
-                        break 'ack;
-                    }
-                    b'-' => {
-                        log::debug!("Nack received. Retrying.");
-                        buffer.remove(i);
-                        continue 'ack;
-                    }
-                    // This should never happen.
-                    // And if it does, GDB fucked up, so we might as well stop.
-                    _ => (),
-                }
-            }
-            log::debug!("Done checking ACK");
+
+    encode(&packet, stream).await?;
+    stream.flush().await?;
+
+    log::debug!("Request ACK for {}", String::from_utf8_lossy(&packet.data));
+    'ack: loop {
+        log::debug!("Reading");
+        let n = stream.read(&mut tmp_buf).await?;
+        log::debug!("Done Reading ({})", String::from_utf8_lossy(&buffer));
+        if n > 0 {
+            buffer.extend(&tmp_buf[0..n]);
+            // glob.extend(&tmp_buf[0..n]);
+            log::info!("Current buf {}", String::from_utf8_lossy(&buffer));
         }
-    } else {
-        log::warn!("Broken packet! It will not be sent.");
+
+        for (i, byte) in buffer.iter().enumerate() {
+            match byte {
+                b'+' => {
+                    log::debug!("Ack received.");
+                    buffer.remove(i);
+                    break 'ack;
+                }
+                b'-' => {
+                    log::debug!("Nack received. Retrying.");
+                    buffer.remove(i);
+                    continue 'ack;
+                }
+                // This should never happen.
+                // And if it does, GDB fucked up, so we might as well stop.
+                _ => (),
+            }
+        }
+        log::debug!("Done checking ACK");
     }
-    super::reader::reader(stream.clone(), packet_stream.clone(), buffer).await
+
+    super::reader::reader(stream, packet_stream, buffer).await
 }
 
-pub async fn encode<W>(packet: &CheckedPacket, mut w: W) -> Result<()>
+pub async fn encode<W>(packet: &CheckedPacket, w: &mut W) -> Result<()>
 where
     W: Write + Unpin,
 {

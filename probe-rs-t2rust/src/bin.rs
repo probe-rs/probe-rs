@@ -1,4 +1,3 @@
-use probe_rs_t2rust;
 use std::env;
 fn main() {
     let args: Vec<String> = env::args().collect();

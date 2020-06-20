@@ -51,12 +51,12 @@ impl Target {
 
     pub fn architecture(&self) -> Architecture {
         match &self.core_type {
-            CoreType::M0 => Architecture::ARM,
-            CoreType::M3 => Architecture::ARM,
-            CoreType::M33 => Architecture::ARM,
-            CoreType::M4 => Architecture::ARM,
-            CoreType::Riscv => Architecture::RISCV,
-            CoreType::M7 => Architecture::ARM,
+            CoreType::M0 => Architecture::Arm,
+            CoreType::M3 => Architecture::Arm,
+            CoreType::M33 => Architecture::Arm,
+            CoreType::M4 => Architecture::Arm,
+            CoreType::M7 => Architecture::Arm,
+            CoreType::Riscv => Architecture::Riscv,
         }
     }
 }
@@ -68,14 +68,14 @@ pub enum TargetSelector {
     Auto,
 }
 
-impl<'a> From<&'a str> for TargetSelector {
-    fn from(value: &'a str) -> Self {
+impl From<&str> for TargetSelector {
+    fn from(value: &str) -> Self {
         TargetSelector::Unspecified(value.into())
     }
 }
 
-impl<'a> From<&'a String> for TargetSelector {
-    fn from(value: &'a String) -> Self {
+impl From<&String> for TargetSelector {
+    fn from(value: &String) -> Self {
         TargetSelector::Unspecified(value.into())
     }
 }

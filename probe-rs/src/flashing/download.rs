@@ -1,4 +1,3 @@
-use ihex;
 use ihex::record::Record::*;
 
 use std::{
@@ -35,15 +34,15 @@ pub enum Format {
 /// OS permission issues as well as chip connectivity and memory boundary issues.
 #[derive(Debug, Error)]
 pub enum FileDownloadError {
-    #[error("{0}")]
+    #[error("Error while flashing")]
     Flash(#[from] FlashError),
-    #[error("{0}")]
+    #[error("Could not read ihex format")]
     IhexRead(#[from] ihex::reader::ReaderError),
-    #[error("{0}")]
+    #[error("I/O error")]
     IO(#[from] std::io::Error),
     #[error("Object Error: {0}.")]
     Object(&'static str),
-    #[error("{0}")]
+    #[error("Could not read ELF file")]
     Elf(#[from] goblin::error::Error),
     #[error("No loadable ELF sections were found.")]
     NoLoadableSegments,
@@ -51,9 +50,9 @@ pub enum FileDownloadError {
 
 /// Options for downloading a file onto a target chip.
 #[derive(Default)]
-pub struct DownloadOptions<'a> {
+pub struct DownloadOptions<'progress> {
     /// An optional progress reporter which is used if this argument is set to Some(...).
-    pub progress: Option<&'a FlashProgress>,
+    pub progress: Option<&'progress FlashProgress>,
     /// If `keep_unwritten_bytes` is `true`, erased portions that are not overwritten by the ELF data
     /// are restored afterwards, such that the old contents are untouched.
     pub keep_unwritten_bytes: bool,
@@ -65,7 +64,7 @@ pub struct DownloadOptions<'a> {
 ///
 /// If you are looking for more options, have a look at `download_file_with_options`.
 pub fn download_file(
-    session: &Session,
+    session: &mut Session,
     path: &Path,
     format: Format,
 ) -> Result<(), FileDownloadError> {
@@ -75,11 +74,11 @@ pub fn download_file(
 /// Downloads a file of given `format` at `path` to the flash of the target given in `session`.
 ///
 /// This will ensure that memory bounderies are honored and does unlocking, erasing and programming of the flash for you.
-pub fn download_file_with_options<'a>(
-    session: &Session,
+pub fn download_file_with_options(
+    session: &mut Session,
     path: &Path,
     format: Format,
-    options: DownloadOptions<'a>,
+    options: DownloadOptions<'_>,
 ) -> Result<(), FileDownloadError> {
     let mut file = match File::open(path) {
         Ok(file) => file,
@@ -88,7 +87,7 @@ pub fn download_file_with_options<'a>(
     let mut buffer = vec![];
     let mut buffer_vec = vec![];
     // IMPORTANT: Change this to an actual memory map of a real chip
-    let memory_map = session.memory_map();
+    let memory_map = session.memory_map().to_vec();
     let mut loader = FlashLoader::new(&memory_map, options.keep_unwritten_bytes);
 
     match format {
@@ -108,10 +107,10 @@ pub fn download_file_with_options<'a>(
 }
 
 /// Starts the download of a binary file.
-fn download_bin<'b, T: Read + Seek>(
-    buffer: &'b mut Vec<u8>,
-    file: &'b mut T,
-    loader: &mut FlashLoader<'_, 'b>,
+fn download_bin<'buffer, T: Read + Seek>(
+    buffer: &'buffer mut Vec<u8>,
+    file: &'buffer mut T,
+    loader: &mut FlashLoader<'_, 'buffer>,
     options: BinOptions,
 ) -> Result<(), FileDownloadError> {
     // Skip the specified bytes.
@@ -134,10 +133,10 @@ fn download_bin<'b, T: Read + Seek>(
 }
 
 /// Starts the download of a hex file.
-fn download_hex<'b, T: Read + Seek>(
-    buffer: &'b mut Vec<(u32, Vec<u8>)>,
+fn download_hex<'buffer, T: Read + Seek>(
+    buffer: &'buffer mut Vec<(u32, Vec<u8>)>,
     file: &mut T,
-    loader: &mut FlashLoader<'_, 'b>,
+    loader: &mut FlashLoader<'_, 'buffer>,
 ) -> Result<(), FileDownloadError> {
     let mut _extended_segment_address = 0;
     let mut extended_linear_address = 0;
@@ -170,10 +169,10 @@ fn download_hex<'b, T: Read + Seek>(
 }
 
 /// Starts the download of a elf file.
-fn download_elf<'b, T: Read + Seek>(
-    buffer: &'b mut Vec<u8>,
-    file: &'b mut T,
-    loader: &mut FlashLoader<'_, 'b>,
+fn download_elf<'buffer, T: Read + Seek>(
+    buffer: &'buffer mut Vec<u8>,
+    file: &'buffer mut T,
+    loader: &mut FlashLoader<'_, 'buffer>,
 ) -> Result<(), FileDownloadError> {
     use goblin::elf::program_header::*;
 

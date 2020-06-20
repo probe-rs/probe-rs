@@ -1,4 +1,3 @@
-use crate::probe::DebugProbeInfo;
 use lazy_static::lazy_static;
 use rusb::{Context, DeviceHandle, Error, UsbContext};
 use std::time::Duration;
@@ -7,7 +6,10 @@ use crate::probe::stlink::StlinkError;
 
 use std::collections::HashMap;
 
-use crate::probe::DebugProbeError;
+use crate::{
+    probe::{DebugProbeError, ProbeCreationError},
+    DebugProbeSelector,
+};
 
 /// The USB Command packet size.
 const CMD_LEN: usize = 16;
@@ -93,48 +95,64 @@ pub trait StLinkUsb: std::fmt::Debug {
 
 impl STLinkUSBDevice {
     /// Creates and initializes a new USB device.
-    pub fn new_from_info(probe_info: &DebugProbeInfo) -> Result<Self, DebugProbeError> {
-        let context = Context::new().map_err(|e| DebugProbeError::USB(Some(Box::new(e))))?;
+    pub fn new_from_selector(
+        selector: impl Into<DebugProbeSelector>,
+    ) -> Result<Self, ProbeCreationError> {
+        let selector = selector.into();
+
+        let context = Context::new()?;
 
         log::debug!("Acquired libusb context.");
 
         let device = context
-            .devices()
-            .map_err(|_| DebugProbeError::ProbeCouldNotBeCreated)?
+            .devices()?
             .iter()
-            .find(|device| {
-                if let Ok(descriptor) = device.device_descriptor() {
-                    probe_info.vendor_id == descriptor.vendor_id()
-                        && probe_info.product_id == descriptor.product_id()
+            .filter(super::tools::is_stlink_device)
+            .find_map(|device| {
+                let descriptor = device.device_descriptor().ok()?;
+                // First match the VID & PID.
+                if selector.vendor_id == descriptor.vendor_id()
+                    && selector.product_id == descriptor.product_id()
+                {
+                    // If the VID & PID match, match the serial if one was given.
+                    if let Some(serial) = &selector.serial_number {
+                        let timeout = Duration::from_millis(100);
+                        let handle = device.open().ok()?;
+                        let language = handle.read_languages(timeout).ok()?[0];
+                        let sn_str = handle
+                            .read_serial_number_string(language, &descriptor, timeout)
+                            .ok();
+                        // If the serial matches, return the device.
+                        if sn_str.as_ref() == Some(serial) {
+                            Some(device)
+                        } else {
+                            None
+                        }
+                    } else {
+                        // If no serial was given, the VID & PID match is enough; return the device.
+                        Some(device)
+                    }
                 } else {
-                    false
+                    None
                 }
             })
-            .map_or(Err(DebugProbeError::ProbeCouldNotBeCreated), Ok)?;
+            .map_or(Err(ProbeCreationError::NotFound), Ok)?;
 
-        let mut device_handle = device
-            .open()
-            .map_err(|e| DebugProbeError::USB(Some(Box::new(e))))?;
+        let mut device_handle = device.open()?;
 
         log::debug!("Aquired handle for probe");
 
-        let config = device
-            .active_config_descriptor()
-            .map_err(|e| DebugProbeError::USB(Some(Box::new(e))))?;
+        let config = device.active_config_descriptor()?;
 
         log::debug!("Active config descriptor: {:?}", &config);
 
-        let descriptor = device
-            .device_descriptor()
-            .map_err(|e| DebugProbeError::USB(Some(Box::new(e))))?;
+        let descriptor = device.device_descriptor()?;
 
         log::debug!("Device descriptor: {:?}", &descriptor);
 
         let info = USB_PID_EP_MAP[&descriptor.product_id()].clone();
 
-        device_handle
-            .claim_interface(0)
-            .map_err(|e| DebugProbeError::USB(Some(Box::new(e))))?;
+        device_handle.claim_interface(0)?;
 
         log::debug!("Claimed interface 0 of USB device.");
 

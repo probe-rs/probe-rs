@@ -8,17 +8,17 @@ use crate::{Core, Error};
 
 pub const _ITM_PID: [u8; 8] = [0x1, 0xB0, 0x3b, 0x0, 0x4, 0x0, 0x0, 0x0];
 
-pub struct Itm<'c> {
-    component: &'c Component,
-    core: &'c mut Core,
+pub struct Itm<'probe: 'core, 'core> {
+    component: &'core Component,
+    core: &'core mut Core<'probe>,
 }
 
 const _REGISTER_OFFSET_ITM_TPR: u32 = 0xE40;
 const REGISTER_OFFSET_ITM_TCR: u32 = 0xE80;
 const REGISTER_OFFSET_ACCESS: u32 = 0xFB0;
 
-impl<'c> Itm<'c> {
-    pub fn new(core: &'c mut Core, component: &'c Component) -> Self {
+impl<'probe: 'core, 'core> Itm<'probe, 'core> {
+    pub fn new(core: &'core mut Core<'probe>, component: &'core Component) -> Self {
         Itm { core, component }
     }
 

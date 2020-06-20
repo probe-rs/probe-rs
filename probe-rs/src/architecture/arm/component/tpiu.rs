@@ -12,13 +12,13 @@ const REGISTER_OFFSET_TPIU_FFCR: u32 = 0x304;
 /// TPIU unit
 ///
 /// Trace port interface unit unit.
-pub struct Tpiu<'c> {
-    component: &'c Component,
-    core: &'c mut Core,
+pub struct Tpiu<'probe: 'core, 'core> {
+    component: &'core Component,
+    core: &'core mut Core<'probe>,
 }
 
-impl<'c> Tpiu<'c> {
-    pub fn new(core: &'c mut Core, component: &'c Component) -> Self {
+impl<'probe: 'core, 'core> Tpiu<'probe, 'core> {
+    pub fn new(core: &'core mut Core<'probe>, component: &'core Component) -> Self {
         Tpiu { core, component }
     }
 

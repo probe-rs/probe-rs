@@ -1,12 +1,11 @@
 #[macro_use]
-mod register_generation;
-pub(crate) mod custom_ap;
+pub mod register_generation;
 pub(crate) mod generic_ap;
 pub(crate) mod memory_ap;
 
 use crate::architecture::arm::dp::DebugPortError;
 
-pub use generic_ap::{APClass, GenericAP, IDR};
+pub use generic_ap::{APClass, APType, GenericAP, IDR};
 pub(crate) use memory_ap::mock;
 pub use memory_ap::{
     AddressIncrement, BaseaddrFormat, DataSize, MemoryAP, BASE, BASE2, CSW, DRW, TAR,
@@ -35,7 +34,7 @@ pub enum AccessPortError {
     },
     #[error("Out of bounds access")]
     OutOfBoundsError,
-    #[error("Error while communicating with debug port: {0}")]
+    #[error("Error while communicating with debug port")]
     DebugPort(#[from] DebugPortError),
 }
 
@@ -102,7 +101,7 @@ where
     ) -> Result<(), Self::Error>;
 }
 
-impl<'a, T, PORT, R> APAccess<PORT, R> for &'a mut T
+impl<T, PORT, R> APAccess<PORT, R> for &mut T
 where
     T: APAccess<PORT, R>,
     PORT: AccessPort,

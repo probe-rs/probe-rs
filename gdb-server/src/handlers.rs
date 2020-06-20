@@ -1,4 +1,4 @@
-use probe_rs::Core;
+use probe_rs::{Core, MemoryInterface};
 use recap::Recap;
 use serde::Deserialize;
 
@@ -22,7 +22,7 @@ pub(crate) fn read_general_registers() -> Option<String> {
     Some("xxxxxxxx".into())
 }
 
-pub(crate) fn read_register(packet_string: String, core: &Core) -> Option<String> {
+pub(crate) fn read_register(packet_string: String, core: &mut Core) -> Option<String> {
     #[derive(Debug, Deserialize, PartialEq, Recap)]
     #[recap(regex = r#"p(?P<reg>\w+)"#)]
     struct P {
@@ -55,7 +55,7 @@ pub(crate) fn read_register(packet_string: String, core: &Core) -> Option<String
     ))
 }
 
-pub(crate) fn read_memory(packet_string: String, core: &Core) -> Option<String> {
+pub(crate) fn read_memory(packet_string: String, core: &mut Core) -> Option<String> {
     #[derive(Debug, Deserialize, PartialEq, Recap)]
     #[recap(regex = r#"m(?P<addr>\w+),(?P<length>\w+)"#)]
     struct M {
@@ -66,7 +66,7 @@ pub(crate) fn read_memory(packet_string: String, core: &Core) -> Option<String> 
     let m = packet_string.parse::<M>().unwrap();
 
     let mut readback_data = vec![0u8; usize::from_str_radix(&m.length, 16).unwrap()];
-    match core.memory().read_block8(
+    match core.read_8(
         u32::from_str_radix(&m.addr, 16).unwrap(),
         &mut readback_data,
     ) {
@@ -88,20 +88,20 @@ pub(crate) fn vcont_supported() -> Option<String> {
     Some("vCont;c;t;s".into())
 }
 
-pub(crate) fn run(core: &Core, awaits_halt: &mut bool) -> Option<String> {
+pub(crate) fn run(core: &mut Core, awaits_halt: &mut bool) -> Option<String> {
     core.run().unwrap();
     *awaits_halt = true;
     None
 }
 
-pub(crate) fn stop(core: &Core, awaits_halt: &mut bool) -> Option<String> {
+pub(crate) fn stop(core: &mut Core, awaits_halt: &mut bool) -> Option<String> {
     core.halt().unwrap();
     core.wait_for_core_halted().unwrap();
     *awaits_halt = false;
     Some("OK".into())
 }
 
-pub(crate) fn step(core: &Core, awaits_halt: &mut bool) -> Option<String> {
+pub(crate) fn step(core: &mut Core, awaits_halt: &mut bool) -> Option<String> {
     core.step().unwrap();
     *awaits_halt = false;
     Some("S05".into())
@@ -145,7 +145,7 @@ pub(crate) fn remove_hardware_break(packet_string: String, core: &mut Core) -> O
     Some("OK".into())
 }
 
-pub(crate) fn write_memory(packet_string: String, data: &[u8], core: &Core) -> Option<String> {
+pub(crate) fn write_memory(packet_string: String, data: &[u8], core: &mut Core) -> Option<String> {
     #[derive(Debug, Deserialize, PartialEq, Recap)]
     #[recap(regex = r#"X(?P<addr>\w+),(?P<length>\w+):(?P<data>[01]*)"#)]
     struct X {
@@ -159,8 +159,7 @@ pub(crate) fn write_memory(packet_string: String, data: &[u8], core: &Core) -> O
     let length = usize::from_str_radix(&x.length, 16).unwrap();
     let data = &data[data.len() - length..];
 
-    core.memory()
-        .write_block8(u32::from_str_radix(&x.addr, 16).unwrap(), data)
+    core.write_8(u32::from_str_radix(&x.addr, 16).unwrap(), data)
         .unwrap();
 
     Some("OK".into())
@@ -173,18 +172,14 @@ pub(crate) fn get_memory_map() -> Option<String> {
 <memory type="ram" start="0x20000000" length="0x4000"/>
 <memory type="rom" start="0x00000000" length="0x40000"/>
 </memory-map>"#;
-    Some(
-        std::str::from_utf8(&gdb_sanitize_file(xml.as_bytes().to_vec(), 0, 1000))
-            .unwrap()
-            .to_string(),
-    )
+    Some(String::from_utf8(gdb_sanitize_file(xml.as_bytes(), 0, 1000)).unwrap())
 }
 
-pub(crate) fn user_halt(core: &Core, awaits_halt: &mut bool) -> Option<String> {
+pub(crate) fn user_halt(core: &mut Core, awaits_halt: &mut bool) -> Option<String> {
     let _ = core.halt();
     core.wait_for_core_halted().unwrap();
     *awaits_halt = false;
-    Some("T05hwbreak:;".into())
+    Some("T02".into())
 }
 
 pub(crate) fn detach(break_due: &mut bool) -> Option<String> {
@@ -192,13 +187,13 @@ pub(crate) fn detach(break_due: &mut bool) -> Option<String> {
     Some("OK".into())
 }
 
-pub(crate) fn reset_halt(core: &Core) -> Option<String> {
+pub(crate) fn reset_halt(core: &mut Core) -> Option<String> {
     let _cpu_info = core.reset();
     let _cpu_info = core.halt();
     Some("OK".into())
 }
 
-fn gdb_sanitize_file(mut data: Vec<u8>, offset: u32, len: u32) -> Vec<u8> {
+fn gdb_sanitize_file(data: &[u8], offset: u32, len: u32) -> Vec<u8> {
     let offset = offset as usize;
     let len = len as usize;
     let mut end = offset + len;
@@ -208,7 +203,7 @@ fn gdb_sanitize_file(mut data: Vec<u8>, offset: u32, len: u32) -> Vec<u8> {
         if end > data.len() {
             end = data.len();
         }
-        let mut trimmed_data: Vec<u8> = data.drain(offset..end).collect();
+        let mut trimmed_data = Vec::from(&data[offset..end]);
         if trimmed_data.len() >= len {
             // XXX should this be <= or < ?
             trimmed_data.insert(0, b'm');

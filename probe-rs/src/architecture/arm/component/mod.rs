@@ -5,7 +5,7 @@ mod tpiu;
 use super::memory::romtable::Component;
 use crate::architecture::arm::core::m0::Demcr;
 use crate::core::CoreRegister;
-use crate::{Core, Error};
+use crate::{Core, Error, MemoryInterface};
 pub use dwt::Dwt;
 pub use itm::Itm;
 pub use tpiu::Tpiu;

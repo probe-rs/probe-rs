@@ -13,14 +13,14 @@ use super::DebugRegister;
 use crate::{Core, Error};
 
 /// A struct representing a DWT unit on target.
-pub struct Dwt<'c> {
-    component: &'c Component,
-    core: &'c mut Core,
+pub struct Dwt<'probe: 'core, 'core> {
+    component: &'core Component,
+    core: &'core mut Core<'probe>,
 }
 
-impl<'c> Dwt<'c> {
+impl<'probe: 'core, 'core> Dwt<'probe, 'core> {
     /// Creates a new DWT component representation.
-    pub fn new(core: &'c mut Core, component: &'c Component) -> Self {
+    pub fn new(core: &'core mut Core<'probe>, component: &'core Component) -> Self {
         Dwt { core, component }
     }
 

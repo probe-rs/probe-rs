@@ -29,9 +29,9 @@ pub enum RegistryError {
     RamMissing,
     #[error("No flash description was found.")]
     FlashMissing,
-    #[error("An IO error was encountered: {0}")]
+    #[error("An IO error was encountered")]
     Io(#[from] std::io::Error),
-    #[error("Deserializing the yaml encountered an error: {0}")]
+    #[error("Deserializing the yaml encountered an error")]
     Yaml(#[from] serde_yaml::Error),
     #[error("Unable to lock registry")]
     LockUnavailable,
@@ -43,7 +43,7 @@ impl<R> From<TryLockError<R>> for RegistryError {
     }
 }
 
-const GENERIC_TARGETS: [ChipFamily; 5] = [
+const GENERIC_TARGETS: [ChipFamily; 6] = [
     ChipFamily {
         name: Cow::Borrowed("Generic Cortex-M0"),
         manufacturer: None,
@@ -93,6 +93,18 @@ const GENERIC_TARGETS: [ChipFamily; 5] = [
         core: Cow::Borrowed("M33"),
     },
     ChipFamily {
+        name: Cow::Borrowed("Generic Cortex-M7"),
+        manufacturer: None,
+        variants: Cow::Borrowed(&[Chip {
+            name: Cow::Borrowed("cortex-m7"),
+            part: None,
+            memory_map: Cow::Borrowed(&[]),
+            flash_algorithms: Cow::Borrowed(&[]),
+        }]),
+        flash_algorithms: Cow::Borrowed(&[]),
+        core: Cow::Borrowed("M7"),
+    },
+    ChipFamily {
         name: Cow::Borrowed("Generic Riscv"),
         manufacturer: None,
         variants: Cow::Borrowed(&[Chip {
@@ -140,7 +152,7 @@ impl Registry {
     fn get_target_by_name(&self, name: impl AsRef<str>) -> Result<Target, RegistryError> {
         let name = name.as_ref();
 
-        log::trace!("Searching registry for chip with name {}", name);
+        log::debug!("Searching registry for chip with name {}", name);
 
         let (family, chip) = {
             // Try get the corresponding chip.

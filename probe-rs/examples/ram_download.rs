@@ -1,4 +1,4 @@
-use probe_rs::{config::TargetSelector, Probe, WireProtocol};
+use probe_rs::{config::TargetSelector, MemoryInterface, Probe, WireProtocol};
 
 use std::num::ParseIntError;
 use std::time::Instant;
@@ -15,6 +15,8 @@ struct CLI {
     address: u32,
     #[structopt(long = "size")]
     size: usize,
+    #[structopt(long = "protocol")]
+    protocol: Option<String>,
 }
 
 fn parse_hex(src: &str) -> Result<u32, ParseIntError> {
@@ -33,15 +35,18 @@ fn main() -> Result<(), &'static str> {
         None => TargetSelector::Auto,
     };
 
+    let protocol = match matches.protocol {
+        Some(protocol) => protocol.parse().map_err(|_| "Unknown protocol")?,
+        None => WireProtocol::Swd,
+    };
+
     probe
-        .select_protocol(WireProtocol::Swd)
+        .select_protocol(protocol)
         .map_err(|_| "Failed to select SWD as the transport protocol")?;
-    let session = probe
+    let mut session = probe
         .attach(target_selector)
         .map_err(|_| "Failed to attach probe to target")?;
-    let core = session
-        .attach_to_core(0)
-        .map_err(|_| "Failed to attach to core")?;
+    let mut core = session.core(0).map_err(|_| "Failed to attach to core")?;
 
     let data_size_words = matches.size;
 
@@ -53,8 +58,11 @@ fn main() -> Result<(), &'static str> {
 
     rng.fill(&mut sample_data[..]);
 
+    core.halt().expect("Halting failed");
+
     let write_start = Instant::now();
-    core.write_32(matches.address, &sample_data).unwrap();
+    core.write_32(matches.address, &sample_data)
+        .expect("Writing the sample data failed");
 
     let write_duration = write_start.elapsed();
 
@@ -72,7 +80,8 @@ fn main() -> Result<(), &'static str> {
     let mut readback_data = vec![0u32; data_size_words];
 
     let read_start = Instant::now();
-    core.read_32(matches.address, &mut readback_data).unwrap();
+    core.read_32(matches.address, &mut readback_data)
+        .expect("Reading the sample data failed");
     let read_duration = read_start.elapsed();
 
     let read_throughput = (data_size_bytes as f32) / read_duration.as_secs_f32();

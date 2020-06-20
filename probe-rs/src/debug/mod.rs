@@ -6,7 +6,7 @@
 mod typ;
 mod variable;
 
-use crate::core::Core;
+use crate::{core::Core, MemoryInterface};
 use typ::Type;
 use variable::Variable;
 
@@ -24,15 +24,15 @@ use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum DebugError {
-    #[error("IO Error while accessing debug data: {0}")]
+    #[error("IO Error while accessing debug data")]
     Io(#[from] io::Error),
-    #[error("Error accessing debug data: {0}")]
+    #[error("Error accessing debug data")]
     DebugData(#[from] object::read::Error),
-    #[error("Error parsing debug data: {0}")]
+    #[error("Error parsing debug data")]
     Parse(#[from] gimli::read::Error),
-    #[error("Non-UTF8 data found in debug data: {0}")]
+    #[error("Non-UTF8 data found in debug data")]
     NonUtf8(#[from] Utf8Error),
-    #[error("Error using the probe: {0}")]
+    #[error("Error using the probe")]
     Probe(#[from] crate::Error),
 }
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -74,10 +74,10 @@ impl std::fmt::Display for StackFrame {
                 si.file.as_ref().unwrap_or(&"<unknown file>".to_owned())
             )?;
 
-            if si.column.is_some() && si.line.is_some() {
-                match si.column.unwrap() {
-                    ColumnType::Column(c) => write!(f, ":{}:{}", si.line.unwrap(), c)?,
-                    ColumnType::LeftEdge => write!(f, ":{}", si.line.unwrap())?,
+            if let (Some(column), Some(line)) = (si.column, si.line) {
+                match column {
+                    ColumnType::Column(c) => write!(f, ":{}:{}", line, c)?,
+                    ColumnType::LeftEdge => write!(f, ":{}", line)?,
                 }
             }
         }
@@ -100,10 +100,10 @@ impl std::fmt::Display for StackFrame {
 struct Registers([Option<u32>; 16]);
 
 impl Registers {
-    pub fn from_core(core: &Core) -> Self {
+    pub fn from_core(core: &mut Core) -> Self {
         let mut registers = Registers([None; 16]);
         for i in 0..16 {
-            registers[i as usize] = Some(core.read_core_reg(i).unwrap());
+            registers[i as usize] = core.read_core_reg(i).ok();
         }
         registers
     }
@@ -140,7 +140,7 @@ impl std::ops::Index<std::ops::Range<usize>> for Registers {
 }
 
 impl std::ops::IndexMut<std::ops::Range<usize>> for Registers {
-    fn index_mut<'a>(&'a mut self, index: std::ops::Range<usize>) -> &'a mut Self::Output {
+    fn index_mut(&mut self, index: std::ops::Range<usize>) -> &mut Self::Output {
         &mut self.0[index]
     }
 }
@@ -154,16 +154,20 @@ pub struct SourceLocation {
     pub directory: Option<PathBuf>,
 }
 
-pub struct StackFrameIterator<'a, 'b> {
-    debug_info: &'a DebugInfo,
-    core: &'b Core,
+pub struct StackFrameIterator<'debuginfo, 'probe, 'core> {
+    debug_info: &'debuginfo DebugInfo,
+    core: &'core mut Core<'probe>,
     frame_count: u64,
     pc: Option<u64>,
     registers: Registers,
 }
 
-impl<'a, 'b> StackFrameIterator<'a, 'b> {
-    pub fn new(debug_info: &'a DebugInfo, core: &'b Core, address: u64) -> Self {
+impl<'debuginfo, 'probe, 'core> StackFrameIterator<'debuginfo, 'probe, 'core> {
+    pub fn new(
+        debug_info: &'debuginfo DebugInfo,
+        core: &'core mut Core<'probe>,
+        address: u64,
+    ) -> Self {
         let registers = Registers::from_core(core);
         let pc = address;
 
@@ -177,7 +181,7 @@ impl<'a, 'b> StackFrameIterator<'a, 'b> {
     }
 }
 
-impl<'a, 'b> Iterator for StackFrameIterator<'a, 'b> {
+impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'probe, 'core> {
     type Item = StackFrame;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -215,7 +219,16 @@ impl<'a, 'b> Iterator for StackFrameIterator<'a, 'b> {
             gimli::CfaRule::RegisterAndOffset { register, offset } => {
                 let reg_val = self.registers[register.0 as usize];
 
-                Some((i64::from(reg_val.unwrap()) + offset) as u32)
+                match reg_val {
+                    Some(reg_val) => Some((i64::from(reg_val) + offset) as u32),
+                    None => {
+                        log::warn!(
+                            "Unable to calculate CFA: Missing value of register {}",
+                            register.0
+                        );
+                        return None;
+                    }
+                }
             }
             gimli::CfaRule::Expression(_) => unimplemented!(),
         };
@@ -232,8 +245,22 @@ impl<'a, 'b> Iterator for StackFrameIterator<'a, 'b> {
 
             use gimli::read::RegisterRule::*;
 
-            self.registers[i] = match unwind_info.register(gimli::Register(i as u16)) {
-                Undefined => None,
+            let register_rule = unwind_info.register(gimli::Register(i as u16));
+
+            log::trace!("Register {}: {:?}", i, &register_rule);
+
+            self.registers[i] = match register_rule {
+                Undefined => {
+                    // If we get undefined for the LR register (register 14) or any callee saved register,
+                    // we assume that it is unchanged. Gimli doesn't allow us
+                    // to distinguish if  a rule is not present or actually set to Undefined
+                    // in the call frame information.
+
+                    match i {
+                        4 | 5 | 6 | 7 | 8 | 10 | 11 | 14 => self.registers[i],
+                        _ => None,
+                    }
+                }
                 SameValue => self.registers[i],
                 Offset(o) => {
                     let addr = i64::from(current_cfa.unwrap()) + o;
@@ -253,7 +280,7 @@ impl<'a, 'b> Iterator for StackFrameIterator<'a, 'b> {
         self.registers.set_call_frame_address(current_cfa);
 
         let return_frame = match self.debug_info.get_stackframe_info(
-            &self.core,
+            &mut self.core,
             pc,
             self.frame_count,
             self.registers.clone(),
@@ -269,7 +296,10 @@ impl<'a, 'b> Iterator for StackFrameIterator<'a, 'b> {
 
         // Next function is where our current return register is pointing to.
         // We just have to remove the lowest bit (indicator for Thumb mode).
-        self.pc = self.registers[14].map(|pc| u64::from(pc & !1));
+        //
+        // We also have to subtract one, as we want the calling instruction for
+        // a backtrace, not the next instruction to be executed.
+        self.pc = self.registers[14].map(|pc| u64::from(pc & !1) - 1);
 
         return_frame
     }
@@ -277,14 +307,17 @@ impl<'a, 'b> Iterator for StackFrameIterator<'a, 'b> {
 
 type R = gimli::EndianReader<gimli::LittleEndian, std::rc::Rc<[u8]>>;
 type DwarfReader = gimli::read::EndianRcSlice<gimli::LittleEndian>;
-type FunctionDie<'a, 'u> = gimli::DebuggingInformationEntry<
-    'a,
-    'u,
+type FunctionDie<'abbrev, 'unit> = gimli::DebuggingInformationEntry<
+    'abbrev,
+    'unit,
     gimli::EndianReader<gimli::LittleEndian, std::rc::Rc<[u8]>>,
     usize,
 >;
-type EntriesCursor<'a, 'u> =
-    gimli::EntriesCursor<'a, 'u, gimli::EndianReader<gimli::LittleEndian, std::rc::Rc<[u8]>>>;
+type EntriesCursor<'abbrev, 'unit> = gimli::EntriesCursor<
+    'abbrev,
+    'unit,
+    gimli::EndianReader<gimli::LittleEndian, std::rc::Rc<[u8]>>,
+>;
 type UnitIter =
     gimli::CompilationUnitHeadersIter<gimli::EndianReader<gimli::LittleEndian, std::rc::Rc<[u8]>>>;
 
@@ -328,11 +361,14 @@ impl DebugInfo {
         };
 
         // Load all of the sections.
-        let dwarf_cow = gimli::Dwarf::load(&load_section, &load_section_sup).unwrap();
+        let dwarf_cow = gimli::Dwarf::load(&load_section, &load_section_sup)?;
 
         use gimli::Section;
+        let mut frame_section = gimli::DebugFrame::load(load_section)?;
 
-        let frame_section = gimli::DebugFrame::load(load_section).unwrap();
+        // To support DWARF v2, where the address size is not encoded in the .debug_frame section,
+        // we have to set the address size here.
+        frame_section.set_address_size(4);
 
         Ok(DebugInfo {
             //object,
@@ -344,7 +380,7 @@ impl DebugInfo {
     pub fn get_source_location(&self, address: u64) -> Option<SourceLocation> {
         let mut units = self.dwarf.units();
 
-        while let Some(header) = units.next().unwrap() {
+        while let Ok(Some(header)) = units.next() {
             let unit = match self.dwarf.unit(header) {
                 Ok(unit) => unit,
                 Err(_) => continue,
@@ -352,7 +388,7 @@ impl DebugInfo {
 
             let mut ranges = self.dwarf.unit_ranges(&unit).unwrap();
 
-            while let Some(range) = ranges.next().unwrap() {
+            while let Ok(Some(range)) = ranges.next() {
                 if (range.begin <= address) && (address < range.end) {
                     //debug!("Unit: {:?}", unit.name.as_ref().and_then(|raw_name| std::str::from_utf8(&raw_name).ok()).unwrap_or("<unknown>") );
 
@@ -383,7 +419,7 @@ impl DebugInfo {
                     let mut rows =
                         program.resume_from(target_seq.as_ref().expect("Sequence not found"));
 
-                    while let Some((header, row)) = rows.next_row().unwrap() {
+                    while let Ok(Some((header, row))) = rows.next_row() {
                         //println!("Row address: 0x{:08x}", row.address());
                         if row.address() == address {
                             let file = row.file(header).unwrap().path_name();
@@ -454,7 +490,7 @@ impl DebugInfo {
 
     fn get_stackframe_info(
         &self,
-        core: &Core,
+        core: &mut Core<'_>,
         address: u64,
         frame_count: u64,
         registers: Registers,
@@ -496,11 +532,11 @@ impl DebugInfo {
         })
     }
 
-    pub fn try_unwind<'a, 'b>(
-        &'a self,
-        core: &'b Core,
+    pub fn try_unwind<'probe, 'core>(
+        &self,
+        core: &'core mut Core<'probe>,
         address: u64,
-    ) -> StackFrameIterator<'a, 'b> {
+    ) -> StackFrameIterator<'_, 'probe, 'core> {
         StackFrameIterator::new(&self, core, address)
     }
 
@@ -645,22 +681,22 @@ impl DebugInfo {
     }
 }
 
-struct DieCursorState<'a, 'u> {
-    entries_cursor: EntriesCursor<'a, 'u>,
+struct DieCursorState<'abbrev, 'unit> {
+    entries_cursor: EntriesCursor<'abbrev, 'unit>,
     _depth: isize,
-    function_die: FunctionDie<'a, 'u>,
+    function_die: FunctionDie<'abbrev, 'unit>,
 }
 
-struct UnitInfo<'a> {
-    debug_info: &'a DebugInfo,
+struct UnitInfo<'debuginfo> {
+    debug_info: &'debuginfo DebugInfo,
     unit: gimli::Unit<gimli::EndianReader<gimli::LittleEndian, std::rc::Rc<[u8]>>, usize>,
 }
 
-impl<'a> UnitInfo<'a> {
+impl<'debuginfo> UnitInfo<'debuginfo> {
     fn get_function_die(&self, address: u64) -> Option<DieCursorState> {
         let mut entries_cursor = self.unit.entries();
 
-        while let Some((depth, current)) = entries_cursor.next_dfs().unwrap() {
+        while let Ok(Some((depth, current))) = entries_cursor.next_dfs() {
             match current.tag() {
                 gimli::DW_TAG_subprogram | gimli::DW_TAG_inlined_subroutine => {
                     let mut ranges = self
@@ -669,7 +705,7 @@ impl<'a> UnitInfo<'a> {
                         .die_ranges(&self.unit, &current)
                         .unwrap();
 
-                    while let Some(ranges) = ranges.next().unwrap() {
+                    while let Ok(Some(ranges)) = ranges.next() {
                         if (ranges.begin <= address) && (address < ranges.end) {
                             return Some(DieCursorState {
                                 _depth: depth,
@@ -702,7 +738,7 @@ impl<'a> UnitInfo<'a> {
 
     fn expr_to_piece(
         &self,
-        core: &Core,
+        core: &mut Core<'_>,
         expression: gimli::Expression<R>,
         frame_base: u64,
     ) -> Result<Vec<gimli::Piece<R, usize>>, DebugError> {
@@ -718,8 +754,7 @@ impl<'a> UnitInfo<'a> {
                 Complete => break,
                 RequiresMemory { address, size, .. } => {
                     let mut buff = vec![0u8; size as usize];
-                    core.memory()
-                        .read_block8(address as u32, &mut buff)
+                    core.read_8(address as u32, &mut buff)
                         .expect("Failed to read memory");
                     match size {
                         1 => evaluation.resume_with_memory(gimli::Value::U8(buff[0]))?,
@@ -770,7 +805,7 @@ impl<'a> UnitInfo<'a> {
 
     fn get_variables(
         &self,
-        core: &Core,
+        core: &mut Core<'_>,
         die_cursor_state: &mut DieCursorState,
         frame_base: u64,
     ) -> Result<Vec<Variable>, DebugError> {
@@ -830,7 +865,7 @@ impl<'a> UnitInfo<'a> {
 
 fn extract_location(
     unit_info: &UnitInfo,
-    core: &Core,
+    core: &mut Core<'_>,
     frame_base: u64,
     attribute_value: gimli::AttributeValue<R>,
 ) -> Result<Option<u64>, DebugError> {
@@ -934,7 +969,7 @@ fn extract_name(
     }
 }
 
-fn get_piece_value(core: &Core, p: &gimli::Piece<DwarfReader>) -> Option<u32> {
+fn get_piece_value(core: &mut Core<'_>, p: &gimli::Piece<DwarfReader>) -> Option<u32> {
     use gimli::Location;
 
     match &p.location {
@@ -952,7 +987,7 @@ fn get_piece_value(core: &Core, p: &gimli::Piece<DwarfReader>) -> Option<u32> {
 }
 
 pub(crate) fn _print_all_attributes(
-    core: Core,
+    core: &mut Core<'_>,
     frame_base: Option<u32>,
     dwarf: &gimli::Dwarf<DwarfReader>,
     unit: &gimli::Unit<DwarfReader>,

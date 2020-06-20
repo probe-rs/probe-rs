@@ -5,7 +5,9 @@ pub(crate) mod core;
 pub mod dp;
 pub mod memory;
 
-pub use communication_interface::{ArmChipInfo, ArmCommunicationInterface, DAPAccess, DapError};
+pub use communication_interface::{
+    ArmChipInfo, ArmCommunicationInterface, ArmCommunicationInterfaceState, DAPAccess, DapError,
+};
 pub use communication_interface::{PortType, Register};
 
 pub use self::core::m0;

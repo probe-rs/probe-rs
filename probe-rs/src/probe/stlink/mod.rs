@@ -4,10 +4,9 @@ mod usb_interface;
 
 use self::usb_interface::{STLinkUSBDevice, StLinkUsb};
 use super::{
-    DAPAccess, DebugProbe, DebugProbeError, DebugProbeInfo, JTAGAccess, PortType, WireProtocol,
+    DAPAccess, DebugProbe, DebugProbeError, JTAGAccess, PortType, ProbeCreationError, WireProtocol,
 };
-use crate::itm::SwvReader;
-use crate::{Error, Memory};
+use crate::{architecture::arm::SwvAccess, DebugProbeSelector, Error as ProbeRsError, Memory};
 use constants::{commands, JTagFrequencyToDivider, Mode, Status, SwdFrequencyToDelayCount};
 use scroll::{Pread, BE, LE};
 use std::time::Duration;
@@ -28,9 +27,11 @@ pub struct STLink<D: StLinkUsb> {
 }
 
 impl DebugProbe for STLink<STLinkUSBDevice> {
-    fn new_from_probe_info(info: &DebugProbeInfo) -> Result<Box<Self>, DebugProbeError> {
+    fn new_from_selector(
+        selector: impl Into<DebugProbeSelector>,
+    ) -> Result<Box<Self>, DebugProbeError> {
         let mut stlink = Self {
-            device: STLinkUSBDevice::new_from_info(info)?,
+            device: STLinkUSBDevice::new_from_selector(selector)?,
             hw_version: 0,
             jtag_version: 0,
             protocol: WireProtocol::Swd,
@@ -202,11 +203,11 @@ impl DebugProbe for STLink<STLinkUSBDevice> {
         None
     }
 
-    fn get_interface_itm(&self) -> Option<&dyn SwvReader> {
+    fn get_interface_itm(&self) -> Option<&dyn SwvAccess> {
         Some(self as _)
     }
 
-    fn get_interface_itm_mut(&mut self) -> Option<&mut dyn SwvReader> {
+    fn get_interface_itm_mut(&mut self) -> Option<&mut dyn SwvAccess> {
         Some(self as _)
     }
 }
@@ -546,7 +547,7 @@ impl<D: StLinkUsb> STLink<D> {
 
     /// Select an AP to use
     ///
-    /// On newer ST-Links (JTAG Version > 28), multiple APs are supported.
+    /// On newer ST-Links (JTAG Version >= 28), multiple APs are supported.
     /// To switch between APs, dedicated commands have to be used. For older
     /// ST-Links, we can only use AP 0. If an AP other than 0 is used on these
     /// probes, an error is returned.
@@ -579,10 +580,10 @@ impl<D: StLinkUsb> STLink<D> {
     /// Open a specific AP, which will be used for all future commands.
     ///
     /// This is only supported on ST-Link V3, or older ST-Links with
-    /// a JTAG version > `MIN_JTAG_VERSION_MULTI_AP`.
+    /// a JTAG version >= `MIN_JTAG_VERSION_MULTI_AP`.
     fn open_ap(&mut self, apsel: u8) -> Result<(), DebugProbeError> {
         // Ensure this command is actually supported
-        assert!(self.hw_version >= 3 || self.jtag_version > Self::MIN_JTAG_VERSION_MULTI_AP);
+        assert!(self.hw_version >= 3 || self.jtag_version >= Self::MIN_JTAG_VERSION_MULTI_AP);
 
         let mut buf = [0; 2];
         log::trace!("JTAG_INIT_AP {}", apsel);
@@ -597,10 +598,10 @@ impl<D: StLinkUsb> STLink<D> {
     /// Close a specific AP, which was opened with `open_ap`.
     ///
     /// This is only supported on ST-Link V3, or older ST-Links with
-    /// a JTAG version > `MIN_JTAG_VERSION_MULTI_AP`.
+    /// a JTAG version >= `MIN_JTAG_VERSION_MULTI_AP`.
     fn close_ap(&mut self, apsel: u8) -> Result<(), DebugProbeError> {
         // Ensure this command is actually supported
-        assert!(self.hw_version >= 3 || self.jtag_version > Self::MIN_JTAG_VERSION_MULTI_AP);
+        assert!(self.hw_version >= 3 || self.jtag_version >= Self::MIN_JTAG_VERSION_MULTI_AP);
 
         let mut buf = [0; 2];
         log::trace!("JTAG_CLOSE_AP {}", apsel);
@@ -681,8 +682,8 @@ impl<D: StLinkUsb> STLink<D> {
     }
 }
 
-impl<D: StLinkUsb> SwvReader for STLink<D> {
-    fn read(&mut self) -> Result<Vec<u8>, Error> {
+impl<D: StLinkUsb> SwvAccess for STLink<D> {
+    fn read_swv(&mut self) -> Result<Vec<u8>, ProbeRsError> {
         let data = self.read_swv_data()?;
         Ok(data)
     }
@@ -709,6 +710,12 @@ pub(crate) enum StlinkError {
 impl From<StlinkError> for DebugProbeError {
     fn from(e: StlinkError) -> Self {
         DebugProbeError::ProbeSpecific(Box::new(e))
+    }
+}
+
+impl From<StlinkError> for ProbeCreationError {
+    fn from(e: StlinkError) -> Self {
+        ProbeCreationError::ProbeSpecific(Box::new(e))
     }
 }
 
