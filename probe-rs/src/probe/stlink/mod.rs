@@ -798,8 +798,8 @@ mod test {
 
         fn read_swv(
             &mut self,
-            read_data: &mut [u8],
-            timeout: std::time::Duration,
+            _read_data: &mut [u8],
+            _timeout: std::time::Duration,
         ) -> Result<(), DebugProbeError> {
             todo!()
         }

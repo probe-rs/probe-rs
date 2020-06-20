@@ -1,6 +1,5 @@
 use probe_rs::itm::{Decoder, ItmPublisher, TracePacket, UpdaterChannel};
-use probe_rs::{Error, Session};
-use scroll::Pread;
+use probe_rs::Error;
 use serde::{Deserialize, Serialize};
 use std::io::prelude::*;
 use std::net::{SocketAddr, TcpListener, TcpStream};

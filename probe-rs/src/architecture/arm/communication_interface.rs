@@ -169,13 +169,13 @@ impl<'probe> ArmCommunicationInterface<'probe> {
     pub fn new(
         probe: &'probe mut Probe,
         state: &'probe mut ArmCommunicationInterfaceState,
-    ) -> Result<Option<Self>, DebugProbeError> {
+    ) -> Result<Option<Self>, ProbeRsError> {
         if probe.has_dap_interface() {
             let mut s = Self { probe, state };
 
             if !s.state.initialized() {
                 s.enter_debug_mode()?;
-                s.read_memory_access_ports();
+                s.read_memory_access_ports()?;
                 s.state.initialize();
             }
 
