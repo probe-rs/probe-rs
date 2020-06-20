@@ -27,7 +27,7 @@
 //! let mut core = session.core(0)?;
 //!
 //! // Halt the attached core.
-//! core.halt()?;
+//! core.halt(std::time::Duration::from_millis(10))?;
 //! # Ok::<(), Error>(())
 //! ```
 //!
