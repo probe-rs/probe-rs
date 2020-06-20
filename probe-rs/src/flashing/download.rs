@@ -1,4 +1,4 @@
-use ihex::record::Record::*;
+use ihex::Record::*;
 
 use std::{
     fs::File,
@@ -37,7 +37,7 @@ pub enum FileDownloadError {
     #[error("Error while flashing")]
     Flash(#[from] FlashError),
     #[error("Could not read ihex format")]
-    IhexRead(#[from] ihex::reader::ReaderError),
+    IhexRead(#[from] ihex::ReaderError),
     #[error("I/O error")]
     IO(#[from] std::io::Error),
     #[error("Object Error: {0}.")]
@@ -144,7 +144,7 @@ fn download_hex<'buffer, T: Read + Seek>(
     let mut data = String::new();
     file.read_to_string(&mut data)?;
 
-    for record in ihex::reader::Reader::new(&data) {
+    for record in ihex::Reader::new(&data) {
         let record = record?;
         match record {
             Data { offset, value } => {
