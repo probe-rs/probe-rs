@@ -181,19 +181,20 @@ impl<'probe> ArmCommunicationInterface<'probe> {
             let mut interface = Self { probe, state };
 
             if !interface.state.initialized() {
-                if interface.state.attach_method == AttachMethod::UnderReset {
-                    // we need to halt the chip here
+                match interface.state.attach_method {
+                    AttachMethod::UnderReset => {
+                        interface.enter_debug_mode()?;
 
-                    {
+                        // we need to halt the chip here
+
                         use crate::architecture::arm::core::m4::{Demcr, Dhcsr};
                         use crate::core::CoreRegister;
 
-                        let mut memory = ADIMemoryInterface::<ArmCommunicationInterface>::new(
-                            interface.reborrow(),
-                            0,
-                        )
-                        .unwrap();
+                        let mut memory =
+                            ADIMemoryInterface::<ArmCommunicationInterface>::new(interface, 0)
+                                .unwrap();
 
+                        // ensure that the target is halted after reset
                         let mut dhcsr = Dhcsr(0);
                         dhcsr.set_c_halt(true);
                         dhcsr.set_c_debugen(true);
@@ -205,12 +206,48 @@ impl<'probe> ArmCommunicationInterface<'probe> {
                         demcr.set_vc_corereset(true);
 
                         memory.write_word_32(Demcr::ADDRESS, demcr.into()).unwrap();
-                    }
 
-                    interface.probe.target_reset_deassert().unwrap();
+                        // Close down the memory interface to get back the interface
+                        interface = memory.close();
+
+                        interface.probe.target_reset_deassert().unwrap();
+
+                        // Wait until the core is halted
+                        let mut memory =
+                            ADIMemoryInterface::<ArmCommunicationInterface>::new(interface, 0)
+                                .unwrap();
+
+                        let mut core_halted = false;
+
+                        for _ in 0..100 {
+                            let dhcsr_val = Dhcsr(memory.read_word_32(Dhcsr::ADDRESS).unwrap());
+
+                            if dhcsr_val.s_halt() {
+                                core_halted = true;
+                            }
+                        }
+
+                        // Core did not stop in time
+                        if !core_halted {
+                            return Err(DebugProbeError::Timeout.into());
+                        }
+
+                        // Clear DEMCR
+                        let demcr = Demcr(0);
+
+                        memory.write_word_32(Demcr::ADDRESS, demcr.into()).unwrap();
+
+                        // Clear DHCSR
+                        let dhcsr = Dhcsr(0);
+                        memory.write_word_32(Dhcsr::ADDRESS, dhcsr.into()).unwrap();
+
+                        interface = memory.close();
+                    }
+                    AttachMethod::Normal => {
+                        interface.enter_debug_mode()?;
+                    }
                 }
 
-                interface.enter_debug_mode()?;
                 interface.read_memory_access_ports()?;
                 interface.state.initialize();
             }
