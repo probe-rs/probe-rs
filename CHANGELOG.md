@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Added support for new devices in the nRF52 family. nRF52805, nRF52820 and nRF52833.
+- Added support for the STM32F7 family.
 
 ### Changed
 
