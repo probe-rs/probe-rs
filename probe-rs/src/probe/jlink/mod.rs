@@ -314,16 +314,18 @@ impl DebugProbe for JLink {
             .filter_map(|usb_info| {
                 if usb_info.vid() == selector.vendor_id && usb_info.pid() == selector.product_id {
                     let device = usb_info.open();
-                    if device
-                        .as_ref()
-                        .map(|d| {
-                            d.serial_string() == selector.serial_number.as_deref().unwrap_or("")
-                        })
-                        .unwrap_or(false)
-                    {
-                        Some(device)
+                    if let Some(serial_number) = selector.serial_number.as_deref() {
+                        if device
+                            .as_ref()
+                            .map(|d| d.serial_string() == serial_number)
+                            .unwrap_or(false)
+                        {
+                            Some(device)
+                        } else {
+                            None
+                        }
                     } else {
-                        None
+                        Some(device)
                     }
                 } else {
                     None
