@@ -16,6 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fixed a bug where a probe-selector would not work for the JLink if only VID & PID were specified but no serial number.
+
 ## [0.7.1]
 
 ### Changed
