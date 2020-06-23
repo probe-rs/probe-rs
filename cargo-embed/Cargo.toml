@@ -1,6 +1,6 @@
 [package]
 name = "cargo-embed"
-version = "0.7.0"
+version = "0.8.0"
 authors = ["Noah Hüsser <yatekii@yatekii.ch>"]
 edition = "2018"
 description = "A utility to develop software for embedded ARM and RISC-V cores."
