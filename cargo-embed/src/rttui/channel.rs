@@ -121,7 +121,12 @@ impl ChannelState {
         }
         self.last_line_done = incoming.chars().last().unwrap() == '\n';
 
-        // Then split the entire new contents.
+        // Then split the incoming buffer discarding newlines and if necessary
+        // add a timestamp at start of each.
+        // Note: this means if you print a newline in the middle of your debug
+        // you get a timestamp there too..
+        // Note: we timestamp at receipt of newline, not first char received if that
+        // matters.
         for (i, line) in incoming.split_terminator('\n').enumerate() {
             if self.show_timestamps && (last_line_done || i > 0) {
                 let ts = now.format("%H:%M:%S%.3f");

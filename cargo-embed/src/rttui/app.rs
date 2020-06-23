@@ -6,6 +6,7 @@ use crossterm::{
 };
 use probe_rs_rtt::RttChannel;
 use std::io::{Read, Seek, Write};
+use textwrap::wrap_iter;
 use tui::{
     backend::CrosstermBackend,
     layout::{Constraint, Direction, Layout},
@@ -122,8 +123,8 @@ impl App {
         let input = self.current_tab().input().to_owned();
         let has_down_channel = self.current_tab().has_down_channel();
         let scroll_offset = self.current_tab().scroll_offset();
-        let message_num = self.current_tab().messages().len();
         let messages = self.current_tab().messages().clone();
+        let mut messages_wrapped: Vec<String> = Vec::new();
         let tabs = &self.tabs;
         let current_tab = self.current_tab;
         let mut height = 0;
@@ -159,12 +160,24 @@ impl App {
 
                 height = chunks[1].height as usize;
 
-                let messages = messages
+                // We need to collect to generate message_num :(
+                messages_wrapped = messages
                     .iter()
-                    .map(|m| Text::raw(m))
+                    .map(|m| wrap_iter(m, chunks[1].width as usize).map(|cow| cow.into_owned()))
+                    .flatten()
+                    .collect();
+
+                let message_num = messages_wrapped.len();
+
+                let messages: Vec<Text> = messages_wrapped
+                    .iter()
                     .skip(message_num - (height + scroll_offset).min(message_num))
-                    .take(height);
-                let messages = List::new(messages).block(Block::default().borders(Borders::NONE));
+                    .take(height)
+                    .map(|m| Text::raw(m))
+                    .collect();
+
+                let messages = List::new(messages.iter().cloned())
+                    .block(Block::default().borders(Borders::NONE));
                 f.render_widget(messages, chunks[1]);
 
                 if has_down_channel {
@@ -176,7 +189,7 @@ impl App {
             })
             .unwrap();
 
-        let message_num = self.tabs[self.current_tab].messages().len();
+        let message_num = messages_wrapped.len();
         let scroll_offset = self.tabs[self.current_tab].scroll_offset();
         if message_num < height + scroll_offset {
             self.current_tab_mut()
