@@ -1,7 +1,7 @@
 use probe_rs::{config::TargetSelector, MemoryInterface, Probe, WireProtocol};
 
 use std::num::ParseIntError;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use pretty_env_logger;
 use rand::prelude::*;
@@ -58,7 +58,8 @@ fn main() -> Result<(), &'static str> {
 
     rng.fill(&mut sample_data[..]);
 
-    core.halt().expect("Halting failed");
+    core.halt(Duration::from_millis(100))
+        .expect("Halting failed");
 
     let write_start = Instant::now();
     core.write_32(matches.address, &sample_data)

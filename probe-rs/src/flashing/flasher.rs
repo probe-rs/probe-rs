@@ -1,11 +1,14 @@
 use super::FlashProgress;
 use super::{FlashBuilder, FlashError, FlashFill, FlashLayout, FlashPage};
 use crate::config::{FlashAlgorithm, FlashRegion, MemoryRange};
-use crate::core::{Architecture, Core, RegisterFile};
 use crate::memory::MemoryInterface;
-use crate::{session::Session, CoreRegisterAddress, DebugProbeError};
-use anyhow::{anyhow, Context, Result};
-use std::time::{Duration, Instant};
+use crate::{
+    core::{Architecture, RegisterFile},
+    session::Session,
+    Core, CoreRegisterAddress,
+};
+use anyhow::{anyhow, Result};
+use std::time::Duration;
 
 pub(super) trait Operation {
     fn operation() -> u32;
@@ -95,11 +98,13 @@ impl<'session> Flasher<'session> {
 
         // TODO: Halt & reset target.
         log::debug!("Halting core.");
-        let cpu_info = core.halt().map_err(FlashError::Core)?;
+        let cpu_info = core
+            .halt(Duration::from_millis(100))
+            .map_err(FlashError::Core)?;
         log::debug!("PC = 0x{:08x}", cpu_info.pc);
-        core.wait_for_core_halted()?;
         log::debug!("Reset and halt");
-        core.reset_and_halt().map_err(FlashError::Core)?;
+        core.reset_and_halt(Duration::from_millis(500))
+            .map_err(FlashError::Core)?;
 
         // TODO: Possible special preparation of the target such as enabling faster clocks for the flash e.g.
 
@@ -448,6 +453,7 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
                 Some(O::operation()),
                 None,
                 true,
+                Duration::from_secs(2),
             )?;
 
             if result != 0 {
@@ -477,6 +483,7 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
                 None,
                 None,
                 false,
+                Duration::from_secs(2),
             )?;
 
             if result != 0 {
@@ -497,9 +504,10 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
         r2: Option<u32>,
         r3: Option<u32>,
         init: bool,
+        duration: Duration,
     ) -> Result<u32> {
         self.call_function(pc, r0, r1, r2, r3, init)?;
-        self.wait_for_completion(Duration::from_secs(2))
+        self.wait_for_completion(duration)
     }
 
     fn call_function(
@@ -592,29 +600,9 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
         log::debug!("Waiting for routine call completion.");
         let regs = self.core.registers();
 
-        let start = Instant::now();
-
-        loop {
-            match self.core.wait_for_core_halted() {
-                Ok(()) => break,
-                Err(e) => match e.downcast_ref::<DebugProbeError>() {
-                    Some(DebugProbeError::Timeout) => (),
-                    _ => log::warn!("Error while waiting for core halted: {}", e),
-                },
-            }
-
-            if start.elapsed() > timeout {
-                return Err(anyhow!(FlashError::Core(crate::Error::Probe(
-                    DebugProbeError::Timeout,
-                ))))
-                .with_context(|| {
-                    format!(
-                        "Timeout while waiting for completion, elapsed: {:?}",
-                        start.elapsed()
-                    )
-                });
-            }
-        }
+        self.core
+            .wait_for_core_halted(timeout)
+            .map_err(FlashError::Core)?;
 
         let r = self
             .core
@@ -638,8 +626,15 @@ impl<'probe> ActiveFlasher<'probe, Erase> {
         let algo = &flasher.flash_algorithm;
 
         if let Some(pc_erase_all) = algo.pc_erase_all {
-            let result =
-                flasher.call_function_and_wait(pc_erase_all, None, None, None, None, false)?;
+            let result = flasher.call_function_and_wait(
+                pc_erase_all,
+                None,
+                None,
+                None,
+                None,
+                false,
+                Duration::from_secs(5),
+            )?;
 
             if result != 0 {
                 Err(anyhow!(FlashError::RoutineCallFailed {
@@ -665,6 +660,7 @@ impl<'probe> ActiveFlasher<'probe, Erase> {
             None,
             None,
             false,
+            Duration::from_secs(5),
         )?;
         log::info!(
             "Done erasing sector. Result is {}. This took {:?}",
@@ -705,6 +701,7 @@ impl<'p> ActiveFlasher<'p, Program> {
             Some(self.flash_algorithm.begin_data),
             None,
             false,
+            Duration::from_secs(2),
         )?;
         log::info!("Flashing took: {:?}", t1.elapsed());
 
