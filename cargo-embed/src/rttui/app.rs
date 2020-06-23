@@ -1,7 +1,7 @@
 use crossterm::{
     event::{self, EnableMouseCapture, KeyCode},
     execute,
-    terminal::{enable_raw_mode, EnterAlternateScreen},
+    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use probe_rs_rtt::RttChannel;
 use std::io::{Read, Seek, Write};
@@ -17,7 +17,7 @@ use super::channel::ChannelState;
 use super::event::{Event, Events};
 
 use crate::config::CONFIG;
-use event::KeyModifiers;
+use event::{DisableMouseCapture, KeyModifiers};
 
 /// App holds the state of the application
 pub struct App {
@@ -180,7 +180,16 @@ impl App {
     pub fn handle_event(&mut self) -> bool {
         match self.events.next().unwrap() {
             Event::Input(event) => match event.code {
-                KeyCode::Char('c') if event.modifiers.contains(KeyModifiers::CONTROL) => true,
+                KeyCode::Char('c') if event.modifiers.contains(KeyModifiers::CONTROL) => {
+                    let _ = disable_raw_mode();
+                    let _ = execute!(
+                        self.terminal.backend_mut(),
+                        LeaveAlternateScreen,
+                        DisableMouseCapture
+                    );
+                    let _ = self.terminal.show_cursor();
+                    true
+                }
                 KeyCode::F(n) => {
                     let n = n as usize - 1;
                     if n < self.tabs.len() {
