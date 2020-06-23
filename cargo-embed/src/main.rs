@@ -177,7 +177,7 @@ fn main_try() -> Result<()> {
     ));
 
     // If we got a probe selector in the config, open the probe matching the selector if possible.
-    let mut probe = match config.probe.probe_selector.as_deref() {
+    let mut probe = match config.probe.selector.as_deref() {
         Some(selector) => Probe::open(DebugProbeSelector::try_from(selector)?)?,
         None => {
             // Only automatically select a probe if there is only

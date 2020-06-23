@@ -7,7 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Introduced deriveable configs. With deriveable configs it is possible to create multible configs and derive parts of a config from another.
+An example is this config:
+
+    ```toml
+    [rtt.rtt]
+    enabled = true
+
+    [rtt.gdb]
+    enabled = false
+
+    [gdb.rtt]
+    enabled = false
+
+    [gdb.gdb]
+    enabled = true
+    ```
+
+    This creates a config which has three configs:
+    - The default one with the prefix "default" as found in [default.toml](src/config/default.toml)
+    - A config with the prefix "rtt" which inherits from "default" implicitely (use general.derives = "prefix" to derive from a specific config) which has RTT enabled but GDB disabled.
+    - A config with the prefix "gdb" which inherits from "default" implicitely (use general.derives = "prefix" to derive from a specific config) which has GDB enabled but RTT disabled.
+    To use a specific config, call `cargo-embed prefix`.
+    NOTE: This is a congig breaking change! You must update your `Embed.toml` configs!
+
 ### Changed
+
+- Renamed the `probe.probe_selector` property to just `probe.selector`.
 
 ### Fixed
 

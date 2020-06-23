@@ -21,7 +21,7 @@ pub struct Config {
 /// The probe config struct holding all the possible probe options.
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Probe {
-    pub probe_selector: Option<String>,
+    pub selector: Option<String>,
     pub protocol: WireProtocol,
     pub speed: Option<u32>,
 }

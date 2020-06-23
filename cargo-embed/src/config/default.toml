@@ -1,6 +1,7 @@
 [default.probe]
-# The index of the probe in the connected probe list.
-# probe_index = 0
+# The VID:PID:[SerialNo] pair/tripple of the probe in the connected probe list.
+# VID & PID are expected to be hexadecimal integers.
+# selector = "1337:1337"
 # The protocol to be used for communicating with the target.
 protocol = "Swd"
 # The speed in kHz of the data link to the target.
