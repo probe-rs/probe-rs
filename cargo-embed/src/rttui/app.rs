@@ -1,31 +1,30 @@
+use crossterm::{
+    event::{self, EnableMouseCapture, KeyCode},
+    execute,
+    terminal::{enable_raw_mode, EnterAlternateScreen},
+};
 use probe_rs_rtt::RttChannel;
 use std::io::{Read, Seek, Write};
-use termion::{
-    cursor::Goto,
-    event::Key,
-    raw::{IntoRawMode, RawTerminal},
-    screen::AlternateScreen,
-};
 use tui::{
-    backend::TermionBackend,
+    backend::CrosstermBackend,
     layout::{Constraint, Direction, Layout},
     style::{Color, Modifier, Style},
     widgets::{Block, Borders, List, Paragraph, Tabs, Text},
     Terminal,
 };
-use unicode_width::UnicodeWidthStr;
 
 use super::channel::ChannelState;
 use super::event::{Event, Events};
 
 use crate::config::CONFIG;
+use event::KeyModifiers;
 
 /// App holds the state of the application
 pub struct App {
     tabs: Vec<ChannelState>,
     current_tab: usize,
 
-    terminal: Terminal<TermionBackend<AlternateScreen<RawTerminal<std::io::Stdout>>>>,
+    terminal: Terminal<CrosstermBackend<std::io::Stdout>>,
     events: Events,
 }
 
@@ -40,10 +39,12 @@ fn pull_channel<C: RttChannel>(channels: &mut Vec<C>, n: usize) -> Option<C> {
 
 impl App {
     pub fn new(mut rtt: probe_rs_rtt::Rtt) -> Self {
-        let stdout = std::io::stdout().into_raw_mode().unwrap();
-        let stdout = AlternateScreen::from(stdout);
-        let backend = TermionBackend::new(stdout);
-        let terminal = Terminal::new(backend).unwrap();
+        enable_raw_mode().unwrap();
+        let mut stdout = std::io::stdout();
+        execute!(stdout, EnterAlternateScreen, EnableMouseCapture).unwrap();
+        let backend = CrosstermBackend::new(stdout);
+        let mut terminal = Terminal::new(backend).unwrap();
+        let _ = terminal.hide_cursor();
 
         let events = Events::new();
 
@@ -136,7 +137,7 @@ impl App {
                     .split(f.size());
 
                 let tab_names = tabs.iter().map(|t| t.name()).collect::<Vec<_>>();
-                let mut tabs = Tabs::default()
+                let tabs = Tabs::default()
                     .titles(&tab_names.as_slice())
                     .select(current_tab)
                     .style(Style::default().fg(Color::Black).bg(Color::Yellow))
@@ -146,7 +147,7 @@ impl App {
                             .bg(Color::Yellow)
                             .modifier(Modifier::BOLD),
                     );
-                f.render(&mut tabs, chunks[0]);
+                f.render_widget(tabs, chunks[0]);
 
                 height = chunks[1].height as usize;
 
@@ -155,15 +156,14 @@ impl App {
                     .map(|m| Text::raw(m))
                     .skip(message_num - (height + scroll_offset).min(message_num))
                     .take(height);
-                let mut messages =
-                    List::new(messages).block(Block::default().borders(Borders::NONE));
-                f.render(&mut messages, chunks[1]);
+                let messages = List::new(messages).block(Block::default().borders(Borders::NONE));
+                f.render_widget(messages, chunks[1]);
 
                 if has_down_channel {
                     let text = [Text::raw(input.clone())];
-                    let mut input = Paragraph::new(text.iter())
+                    let input = Paragraph::new(text.iter())
                         .style(Style::default().fg(Color::Yellow).bg(Color::Blue));
-                    f.render(&mut input, chunks[2]);
+                    f.render_widget(input, chunks[2]);
                 }
             })
             .unwrap();
@@ -174,50 +174,37 @@ impl App {
             self.current_tab_mut()
                 .set_scroll_offset(message_num - height.min(message_num));
         }
-
-        if has_down_channel {
-            // Put the cursor back inside the input box
-            let height = self.terminal.size().map(|s| s.height).unwrap_or(1);
-            write!(
-                self.terminal.backend_mut(),
-                "{}",
-                Goto(input.width() as u16 + 1, height)
-            )
-            .unwrap();
-            // stdout is buffered, flush it to see the effect immediately when hitting backspace
-            std::io::stdout().flush().ok();
-        }
     }
 
     /// Returns true if the application should exit.
     pub fn handle_event(&mut self) -> bool {
         match self.events.next().unwrap() {
-            Event::Input(input) => match input {
-                Key::Ctrl('c') => true,
-                Key::F(n) => {
+            Event::Input(event) => match event.code {
+                KeyCode::Char('c') if event.modifiers.contains(KeyModifiers::CONTROL) => true,
+                KeyCode::F(n) => {
                     let n = n as usize - 1;
                     if n < self.tabs.len() {
                         self.current_tab = n as usize;
                     }
                     false
                 }
-                Key::Char('\n') => {
+                KeyCode::Char('\n') => {
                     self.push_rtt();
                     false
                 }
-                Key::Char(c) => {
+                KeyCode::Char(c) => {
                     self.current_tab_mut().input_mut().push(c);
                     false
                 }
-                Key::Backspace => {
+                KeyCode::Backspace => {
                     self.current_tab_mut().input_mut().pop();
                     false
                 }
-                Key::PageUp => {
+                KeyCode::PageUp => {
                     self.current_tab_mut().scroll_up();
                     false
                 }
-                Key::PageDown => {
+                KeyCode::PageDown => {
                     self.current_tab_mut().scroll_down();
                     false
                 }

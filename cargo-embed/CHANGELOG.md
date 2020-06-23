@@ -11,7 +11,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+### Known issues
+
+- Content that is longer than one line will not wrap when printed to the RTTUI unless it contains proper newlines itself.
+
+## [0.8.0]
+
+### Added
+
+- Add Windows support with the help of crossterm instead of termion.
+
+### Changed
+
+### Fixed
+
+### Known issues
+
+- Content that is longer than one line will not wrap when printed to the RTTUI unless it contains proper newlines itself.
+
+## [0.7.0]
+
+### Changed
+
+- Improve error handling a lot. We now print the complete stack of errors with anyhow/thiserror.
+- Update to the probe-rs 0.7.0 API.
+
+### Fixed
+
 - Fixed a bug where cargo-embed would always flash the attached chip no matter if enabled or not.
+
+### Known issues
+
+- Content that is longer than one line will not wrap when printed to the RTTUI unless it contains proper newlines itself.
 
 ## [0.6.1]
 
@@ -24,6 +55,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.6.0]
 - Initial release
 
-[Unreleased]: https://github.com/probe-rs/probe-rs/compare/v0.6.1...master
-[0.6.1]: https://github.com/probe-rs/probe-rs/releases/tag/v0.6.1
+[Unreleased]: https://github.com/probe-rs/probe-rs/compare/v0.8.0...master
+[0.8.0]: https://github.com/probe-rs/probe-rs/releases/tag/v0.8.0..v0.7.0
+[0.7.0]: https://github.com/probe-rs/probe-rs/releases/tag/v0.7.0..v0.6.1
+[0.6.1]: https://github.com/probe-rs/probe-rs/releases/tag/v0.6.1..v0.6.0
 [0.6.0]: https://github.com/probe-rs/probe-rs/releases/tag/v0.6.0
