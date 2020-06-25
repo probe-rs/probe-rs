@@ -10,6 +10,7 @@ use crate::config::{
 use crate::core::{Architecture, CoreState, SpecificCoreState};
 use crate::{Core, CoreType, Error, Probe};
 
+#[derive(Debug)]
 pub struct Session {
     target: Target,
     probe: Probe,
@@ -17,6 +18,7 @@ pub struct Session {
     cores: Vec<(SpecificCoreState, CoreState)>,
 }
 
+#[derive(Debug)]
 pub enum ArchitectureInterfaceState {
     Arm(ArmCommunicationInterfaceState),
     Riscv(RiscvCommunicationInterfaceState),
