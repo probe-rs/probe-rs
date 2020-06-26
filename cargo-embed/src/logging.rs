@@ -48,19 +48,32 @@ fn colored_level(level: Level) -> ColoredString {
     }
 }
 
+/// Initialize the logger.
+///
+/// There are two sources of log level configuration:
+///
+/// - The config file can define the default log level through `general.log_level`
+/// - The user can set the `RUST_LOG` env var, which overrides the log level from the config
+///
+/// The config file only accepts a log level, while the `RUST_LOG` variable
+/// supports the full `env_logger` syntax, including filtering by crate and
+/// module.
 pub fn init(level: Option<Level>) {
     let mut builder = Builder::new();
 
-    builder.filter_level(LevelFilter::Warn);
+    // First, apply log level from the config
+    if let Some(level) = level {
+        builder.filter_level(level.to_level_filter());
+    } else {
+        builder.filter_level(LevelFilter::Warn);
+    }
 
+    // Then override that with the `RUST_LOG` env var, if set
     if let Ok(s) = ::std::env::var("RUST_LOG") {
         builder.parse_filters(&s);
     }
 
-    if let Some(level) = level {
-        builder.filter_level(level.to_level_filter());
-    }
-
+    // Custom log format
     builder.format(move |f, record| {
         let target = record.target();
         let max_width = max_target_width(target);
@@ -83,7 +96,7 @@ pub fn init(level: Option<Level>) {
         Ok(())
     });
 
-    builder.try_init().unwrap();
+    builder.init();
 }
 
 /// Sets the current progress bar in store for the logging facility.
