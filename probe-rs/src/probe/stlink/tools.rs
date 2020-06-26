@@ -38,6 +38,7 @@ pub fn list_stlink_devices() -> Vec<DebugProbeInfo> {
                                 descriptor.vendor_id(),
                                 e
                             );
+                            log::debug!("This might be happening because of a missing driver.");
                             None
                         }
                     };
