@@ -336,7 +336,7 @@ impl DebugProbe for JLink {
                 super::ProbeCreationError::NotFound,
             ));
         } else if jlinks.len() > 1 {
-            log::warn!("More than one matching JLink was found. Opening the first one.")
+            log::warn!("More than one matching J-Link was found. Opening the first one.")
         }
         let jlink_handle = jlinks.pop().unwrap()?;
 
@@ -459,7 +459,20 @@ impl DebugProbe for JLink {
 
         log::debug!("Attaching with protocol '{}'", actual_protocol);
 
-        let jlink = self.handle.get_mut().unwrap();
+        // Get reference to JayLink instance
+        let jlink: &mut JayLink = self.handle.get_mut().unwrap();
+        let capabilities = jlink.read_capabilities()?;
+
+        // Log some information about the probe
+        let serial = jlink.serial_string().trim_start_matches('0');
+        log::info!("J-Link: S/N: {}", serial);
+        log::debug!("J-Link: Capabilities: {:?}", capabilities);
+        let fw_version = jlink.read_firmware_version().unwrap_or_else(|_| "?".into());
+        log::info!("J-Link: Firmware version: {}", fw_version);
+        match jlink.read_hardware_version() {
+            Ok(hw_version) => log::info!("J-Link: Hardware version: {}", hw_version),
+            Err(_) => log::info!("J-Link: Hardware version: ?"),
+        };
 
         // Verify target voltage (VTref pin, mV). If this is 0, the device is not powered.
         let target_voltage = jlink.read_target_voltage()?;
