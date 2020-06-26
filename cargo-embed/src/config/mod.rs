@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use crate::rttui::channel::ChannelConfig;
+use anyhow::bail;
 use probe_rs::WireProtocol;
 use serde::{Deserialize, Serialize};
 
@@ -65,7 +66,7 @@ pub struct Gdb {
 }
 
 impl Configs {
-    pub fn new(name: impl AsRef<str>) -> Result<Config, config::ConfigError> {
+    pub fn new(name: impl AsRef<str>) -> anyhow::Result<Config> {
         let mut s = config::Config::new();
 
         // Start off by merging in the default configuration file.
@@ -86,14 +87,21 @@ impl Configs {
 
         let map: HashMap<String, serde_json::value::Value> = s.try_into()?;
 
-        let config = &map[name.as_ref()];
+        let config = match map.get(name.as_ref()) {
+            Some(c) => c,
+            None => bail!(
+                "Cannot find config \"{}\" (available configs: {})",
+                name.as_ref(),
+                map.keys().cloned().collect::<Vec<String>>().join(", "),
+            ),
+        };
 
         let mut s = config::Config::new();
 
         Self::apply(name.as_ref(), &mut s, config, &map)?;
 
         // You can deserialize (and thus freeze) the entire configuration
-        s.try_into()
+        Ok(s.try_into()?)
     }
 
     pub fn apply(
