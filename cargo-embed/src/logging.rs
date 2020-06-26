@@ -52,8 +52,8 @@ fn colored_level(level: Level) -> ColoredString {
 ///
 /// There are two sources of log level configuration:
 ///
-/// - The config file can define the default log level through `general.log_level`
-/// - The user can set the `RUST_LOG` env var, which overrides the log level from the config
+/// - The config file can define the default log level through `general.log_level`.
+/// - The user can set the `RUST_LOG` env var, which overrides the log level from the config.
 ///
 /// The config file only accepts a log level, while the `RUST_LOG` variable
 /// supports the full `env_logger` syntax, including filtering by crate and
