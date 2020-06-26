@@ -180,12 +180,7 @@ impl App {
         match self.events.next().unwrap() {
             Event::Input(event) => match event.code {
                 KeyCode::Char('c') if event.modifiers.contains(KeyModifiers::CONTROL) => {
-                    let _ = disable_raw_mode();
-                    let _ = execute!(
-                        self.terminal.backend_mut(),
-                        LeaveAlternateScreen,
-                        DisableMouseCapture
-                    );
+                    clean_up_terminal();
                     let _ = self.terminal.show_cursor();
                     true
                 }
@@ -240,4 +235,9 @@ impl App {
     pub fn push_rtt(&mut self) {
         self.tabs[self.current_tab].push_rtt();
     }
+}
+
+pub fn clean_up_terminal() {
+    let _ = disable_raw_mode();
+    let _ = execute!(std::io::stdout(), LeaveAlternateScreen, DisableMouseCapture);
 }
