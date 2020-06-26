@@ -10,7 +10,6 @@ use anyhow::{anyhow, Context, Result};
 use colored::*;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use std::{
-    convert::TryFrom,
     env,
     fs::File,
     io::Write,
@@ -178,9 +177,23 @@ fn main_try() -> Result<()> {
     ));
 
     // If we got a probe selector in the config, open the probe matching the selector if possible.
-    let mut probe = match config.probe.selector.as_deref() {
-        Some(selector) => Probe::open(DebugProbeSelector::try_from(selector)?)?,
-        None => {
+    let mut probe = match (config.probe.usb_vid.as_ref(), config.probe.usb_pid.as_ref()) {
+        (Some(vid), Some(pid)) => {
+            let selector = DebugProbeSelector {
+                vendor_id: u16::from_str_radix(vid, 16)?,
+                product_id: u16::from_str_radix(pid, 16)?,
+                serial_number: config.probe.serial.clone(),
+            };
+            Probe::open(selector)?
+        }
+        _ => {
+            if let Some(_) = config.probe.usb_vid {
+                logging::println("Warning: USB VID ignored, because PID is not specified.");
+            }
+            if let Some(_) = config.probe.usb_pid {
+                logging::println("Warning: USB PID ignored, because VID is not specified.");
+            }
+
             // Only automatically select a probe if there is only
             // a single probe detected.
             let list = Probe::list_all();
