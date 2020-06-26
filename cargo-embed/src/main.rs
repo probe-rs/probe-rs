@@ -14,6 +14,7 @@ use std::{
     env,
     fs::File,
     io::Write,
+    panic,
     path::{Path, PathBuf},
     process::{self, Command, Stdio},
     sync::{Arc, Mutex},
@@ -415,6 +416,22 @@ fn main_try() -> Result<()> {
 
             match Rtt::attach_region(session.clone(), &rtt_header_address) {
                 Ok(rtt) => {
+                    // `App` puts the terminal into a special state, as required
+                    // by the text-based UI. If a panic happens while the
+                    // terminal is in that state, this will completely mess up
+                    // the user's terminal (misformatted panic message, newlines
+                    // being ignored, input characters not being echoed, ...).
+                    //
+                    // The following panic hook cleans up the terminal, while
+                    // otherwise preserving the behavior of the default panic
+                    // hook (or whichever custom hook might have been registered
+                    // before).
+                    let previous_panic_hook = panic::take_hook();
+                    panic::set_hook(Box::new(move |panic_info| {
+                        rttui::app::clean_up_terminal();
+                        previous_panic_hook(panic_info);
+                    }));
+
                     let mut app = rttui::app::App::new(rtt, &config);
                     loop {
                         app.poll_rtt();
