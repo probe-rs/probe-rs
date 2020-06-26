@@ -1,7 +1,10 @@
 [default.probe]
-# The VID:PID:[SerialNo] pair/tripple of the probe in the connected probe list.
-# VID & PID are expected to be hexadecimal integers.
-# selector = "1337:1337"
+# USB vendor ID
+# usb_vid = "1337"
+# USB product ID
+# usb_pid = "1337"
+# Serial number
+# serial = "12345678"
 # The protocol to be used for communicating with the target.
 protocol = "Swd"
 # The speed in kHz of the data link to the target.
