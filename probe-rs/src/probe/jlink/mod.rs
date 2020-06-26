@@ -459,15 +459,22 @@ impl DebugProbe for JLink {
 
         log::debug!("Attaching with protocol '{}'", actual_protocol);
 
+        let jlink = self.handle.get_mut().unwrap();
+
+        // Verify target voltage (VTref pin, mV). If this is 0, the device is not powered.
+        let target_voltage = jlink.read_target_voltage()?;
+        if target_voltage == 0 {
+            log::warn!("J-Link: Target voltage (VTref) is 0 V. Is your target device powered?");
+        } else {
+            log::info!(
+                "J-Link: Target voltage: {:2.2} V",
+                target_voltage as f32 / 1000f32
+            );
+        }
+
         match actual_protocol {
             WireProtocol::Jtag => {
                 // try some JTAG stuff
-                let jlink = self.handle.get_mut().unwrap();
-
-                log::info!(
-                    "Target voltage: {:2.2} V",
-                    jlink.read_target_voltage()? as f32 / 1000f32
-                );
 
                 log::debug!("Resetting JTAG chain using trst");
                 jlink.reset_trst()?;
@@ -489,9 +496,6 @@ impl DebugProbe for JLink {
                 log::debug!("IDCODE: {:#010x}", idcode);
             }
             WireProtocol::Swd => {
-                // Get the JLink device handle.
-                let jlink = self.handle.get_mut().unwrap();
-
                 // Construct the JTAG to SWD sequence.
                 let jtag_to_swd_sequence = [
                     false, true, true, true, true, false, false, true, true, true, true, false,
@@ -524,7 +528,7 @@ impl DebugProbe for JLink {
                 // We don't actually care about the response here.
                 // A read on the DPIDR will finalize the init procedure and tell us if it worked.
                 jlink.swd_io(direction, swd_io_sequence)?;
-                log::debug!("Sucessfully swapped to SWD.");
+                log::debug!("Sucessfully switched to SWD");
 
                 // We are ready to debug.
             }
