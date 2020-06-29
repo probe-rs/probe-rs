@@ -1,3 +1,5 @@
+use std::fmt;
+
 use chrono::Local;
 use probe_rs_rtt::{DownChannel, UpChannel};
 
@@ -8,6 +10,7 @@ pub struct ChannelConfig {
     pub name: Option<String>,
 }
 
+#[derive(Debug)]
 pub struct ChannelState {
     up_channel: Option<UpChannel>,
     down_channel: Option<DownChannel>,
@@ -16,7 +19,7 @@ pub struct ChannelState {
     last_line_done: bool,
     input: String,
     scroll_offset: usize,
-    rtt_buffer: [u8; 1024],
+    rtt_buffer: RttBuffer,
     show_timestamps: bool,
 }
 
@@ -43,7 +46,7 @@ impl ChannelState {
             last_line_done: true,
             input: String::new(),
             scroll_offset: 0,
-            rtt_buffer: [0u8; 1024],
+            rtt_buffer: RttBuffer([0u8; 1024]),
             show_timestamps,
         }
     }
@@ -94,7 +97,7 @@ impl ChannelState {
 
         // TODO: Proper error handling.
         let count = if let Some(channel) = self.up_channel.as_mut() {
-            match channel.read(self.rtt_buffer.as_mut()) {
+            match channel.read(self.rtt_buffer.0.as_mut()) {
                 Ok(count) => count,
                 Err(err) => {
                     eprintln!("\nError reading from RTT: {}", err);
@@ -110,7 +113,7 @@ impl ChannelState {
         }
 
         // First, convert the incoming bytes to UTF8.
-        let mut incoming = String::from_utf8_lossy(&self.rtt_buffer[..count]).to_string();
+        let mut incoming = String::from_utf8_lossy(&self.rtt_buffer.0[..count]).to_string();
 
         // Then pop the last stored line from our line buffer if possible and append our new line.
         let last_line_done = self.last_line_done;
@@ -146,5 +149,13 @@ impl ChannelState {
             down_channel.write(&self.input.as_bytes()).unwrap();
             self.input.clear();
         }
+    }
+}
+
+struct RttBuffer([u8; 1024]);
+
+impl fmt::Debug for RttBuffer {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.0.fmt(f)
     }
 }
