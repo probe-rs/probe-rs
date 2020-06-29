@@ -38,15 +38,6 @@ fn pull_channel<C: RttChannel>(channels: &mut Vec<C>, n: usize) -> Option<C> {
 
 impl App {
     pub fn new(mut rtt: probe_rs_rtt::Rtt, config: &crate::config::Config) -> Self {
-        enable_raw_mode().unwrap();
-        let mut stdout = std::io::stdout();
-        execute!(stdout, EnterAlternateScreen, EnableMouseCapture).unwrap();
-        let backend = CrosstermBackend::new(stdout);
-        let mut terminal = Terminal::new(backend).unwrap();
-        let _ = terminal.hide_cursor();
-
-        let events = Events::new();
-
         let mut tabs = Vec::new();
         let mut up_channels = rtt.up_channels().drain().collect::<Vec<_>>();
         let mut down_channels = rtt.down_channels().drain().collect::<Vec<_>>();
@@ -81,6 +72,15 @@ impl App {
                 ));
             }
         }
+
+        let events = Events::new();
+
+        enable_raw_mode().unwrap();
+        let mut stdout = std::io::stdout();
+        execute!(stdout, EnterAlternateScreen, EnableMouseCapture).unwrap();
+        let backend = CrosstermBackend::new(stdout);
+        let mut terminal = Terminal::new(backend).unwrap();
+        let _ = terminal.hide_cursor();
 
         Self {
             tabs,
