@@ -494,7 +494,8 @@ fn main_try() -> Result<()> {
     {
         let mut core = session.core(0)?;
         if opt.reset_halt {
-            core.reset_and_halt().context("failed to reset and halt")?;
+            core.reset_and_halt(std::time::Duration::from_millis(500))
+                .context("failed to reset and halt")?;
         } else {
             core.reset().context("failed to reset")?;
         }
