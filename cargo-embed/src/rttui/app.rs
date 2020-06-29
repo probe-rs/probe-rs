@@ -1,3 +1,4 @@
+use anyhow::{anyhow, Result};
 use crossterm::{
     event::{self, EnableMouseCapture, KeyCode},
     execute,
@@ -37,7 +38,7 @@ fn pull_channel<C: RttChannel>(channels: &mut Vec<C>, n: usize) -> Option<C> {
 }
 
 impl App {
-    pub fn new(mut rtt: probe_rs_rtt::Rtt, config: &crate::config::Config) -> Self {
+    pub fn new(mut rtt: probe_rs_rtt::Rtt, config: &crate::config::Config) -> Result<Self> {
         let mut tabs = Vec::new();
         let mut up_channels = rtt.up_channels().drain().collect::<Vec<_>>();
         let mut down_channels = rtt.down_channels().drain().collect::<Vec<_>>();
@@ -73,6 +74,14 @@ impl App {
             }
         }
 
+        // Code farther down relies on tabs being configured and might panic
+        // otherwise.
+        if tabs.len() == 0 {
+            return Err(anyhow!(
+                "Failed to initialize RTT UI: No RTT channels configured"
+            ));
+        }
+
         let events = Events::new();
 
         enable_raw_mode().unwrap();
@@ -82,13 +91,13 @@ impl App {
         let mut terminal = Terminal::new(backend).unwrap();
         let _ = terminal.hide_cursor();
 
-        Self {
+        Ok(Self {
             tabs,
             current_tab: 0,
 
             terminal,
             events,
-        }
+        })
     }
 
     pub fn get_rtt_symbol<'b, T: Read + Seek>(file: &'b mut T) -> Option<u64> {

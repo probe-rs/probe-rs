@@ -449,7 +449,7 @@ fn main_try() -> Result<()> {
                         previous_panic_hook(panic_info);
                     }));
 
-                    let mut app = rttui::app::App::new(rtt, &config);
+                    let mut app = rttui::app::App::new(rtt, &config)?;
                     loop {
                         app.poll_rtt();
                         app.render();
