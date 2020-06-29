@@ -107,7 +107,7 @@ dependencies = [
  "cfg-if",
  "libc",
  "miniz_oxide 0.3.7",
- "object 0.20.0",
+ "object",
  "rustc-demangle",
 ]
 
@@ -607,9 +607,9 @@ dependencies = [
 
 [[package]]
 name = "gdb-server"
-version = "0.7.0"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4ffce3200725b5af32349da1053cbe6b1275356cbf0b7a0260c6af4f3d090465"
+checksum = "8fb4a1043aa73e8646e229b717ded055edf8fba68f295801525d5c2f41e1f718"
 dependencies = [
  "async-std",
  "futures",
@@ -689,9 +689,9 @@ dependencies = [
 
 [[package]]
 name = "ihex"
-version = "1.1.2"
+version = "3.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9394ec1fbc3afbdfb357ba267a7fffdc39f6e3d8ba88c0af6d9476e6d3c889d5"
+checksum = "365a784774bb381e8c19edb91190a90d7f2625e057b55de2bc0f6b57bc779ff2"
 
 [[package]]
 name = "indexmap"
@@ -747,7 +747,7 @@ dependencies = [
  "bitflags",
  "byteorder",
  "log",
- "rusb",
+ "rusb 0.5.5",
 ]
 
 [[package]]
@@ -963,19 +963,13 @@ checksum = "17b02fc0ff9a9e4b35b3342880f48e896ebf69f2967921fe8646bf5b7125956a"
 
 [[package]]
 name = "object"
-version = "0.19.0"
+version = "0.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9cbca9424c482ee628fa549d9c812e2cd22f1180b9222c9200fdfa6eb31aecb2"
+checksum = "1ab52be62400ca80aa00285d25253d7f7c437b7375c4de678f5405d3afe82ca5"
 dependencies = [
  "flate2",
  "wasmparser",
 ]
-
-[[package]]
-name = "object"
-version = "0.20.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1ab52be62400ca80aa00285d25253d7f7c437b7375c4de678f5405d3afe82ca5"
 
 [[package]]
 name = "once_cell"
@@ -1059,9 +1053,9 @@ checksum = "b4596b6d070b27117e987119b4dac604f3c58cfb0b191112e24771b2faeac1a6"
 
 [[package]]
 name = "probe-rs"
-version = "0.7.1"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8b9ca8181dafcbef60926cf8ba5584dfa01ce59caf552aae8d7ea0545e6e8ee6"
+checksum = "ede5b4a775f2d77fb049a045683ad23ba2ac8901945825ef004551695322e09a"
 dependencies = [
  "anyhow",
  "base64",
@@ -1077,9 +1071,9 @@ dependencies = [
  "lazy_static",
  "log",
  "num-traits",
- "object 0.19.0",
+ "object",
  "probe-rs-t2rust",
- "rusb",
+ "rusb 0.6.0",
  "scroll",
  "serde",
  "serde_yaml",
@@ -1089,10 +1083,11 @@ dependencies = [
 
 [[package]]
 name = "probe-rs-rtt"
-version = "0.2.0"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4a7b2046174d1c8ae9e3773436b9a8ad99e09717e4b11a7723322da500367ff0"
+checksum = "c45be9a80d981475a5e982adf0890949fcfbe60fb2b47ba38d4bd7cc82541193"
 dependencies = [
+ "log",
  "probe-rs",
  "scroll",
  "thiserror",
@@ -1251,6 +1246,17 @@ name = "rusb"
 version = "0.5.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d10caa3e5fc7ad1879a679bf16d3304ea10614b8f2f1a1386be4ec942d44062a"
+dependencies = [
+ "bit-set",
+ "libc",
+ "libusb1-sys",
+]
+
+[[package]]
+name = "rusb"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "884a9ee2c66cdb5ca6c5243ea91cdbba9865506792c3d175d1ad8de8bb0ea64a"
 dependencies = [
  "bit-set",
  "libc",
@@ -1746,9 +1752,9 @@ checksum = "7f7b90ea6c632dd06fd765d44542e234d5e63d9bb917ecd64d79778a13bd79ae"
 
 [[package]]
 name = "wasmparser"
-version = "0.54.0"
+version = "0.57.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "747467da102640806cf6643e032a70174e7768839bcac7e71a0a9aaa54761d59"
+checksum = "32fddd575d477c6e9702484139cf9f23dcd554b06d185ed0f56c857dd3a47aa6"
 
 [[package]]
 name = "web-sys"

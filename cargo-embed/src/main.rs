@@ -17,7 +17,7 @@ use std::{
     path::{Path, PathBuf},
     process::{self, Command, Stdio},
     sync::{Arc, Mutex},
-    time::Instant,
+    time::{Duration, Instant},
 };
 use structopt::StructOpt;
 
@@ -389,7 +389,7 @@ fn main_try() -> Result<()> {
 
         let mut core = session.core(0)?;
         if config.flashing.halt_afterwards {
-            core.reset_and_halt()?;
+            core.reset_and_halt(Duration::from_millis(500))?;
         } else {
             core.reset()?;
         }
