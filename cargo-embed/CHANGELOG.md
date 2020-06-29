@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+### Changed
+
+### Fixed
+
+## [0.8.0]
+
+### Added
+
+- Add Windows support with the help of crossterm instead of termion.
 - Introduced deriveable configs. With deriveable configs it is possible to create multible configs and derive parts of a config from another.
 An example is this config:
 
@@ -31,25 +40,21 @@ An example is this config:
     To use a specific config, call `cargo-embed prefix`.
     NOTE: This is a congig breaking change! You must update your `Embed.toml` configs!
 
-### Changed
-
-- Renamed the `probe.probe_selector` property to just `probe.selector`.
-
-### Fixed
-
-### Known issues
-
-- Content that is longer than one line will not wrap when printed to the RTTUI unless it contains proper newlines itself.
-
-## [0.8.0]
-
-### Added
-
-- Add Windows support with the help of crossterm instead of termion.
 
 ### Changed
 
+- The `probe.probe_selector` property is now split into three properties:
+    - usb_vid
+    - usb_pid
+    - serial
+- The `RUST_LOG` environment variable can now override the log level set in the config.
+- Improved errors by a large margin by properly displaying the stacked errors with the help of anyhow.
+
 ### Fixed
+
+- Panics in app that could occur due to a bug will no longer mess up the users terminal.
+- Fixed a bug where the progress bars from the flashing procedure would swallow all log messages.
+- Fixed a bug where the RTT UI would panic if no channels were configured.
 
 ### Known issues
 
