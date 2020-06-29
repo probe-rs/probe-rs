@@ -18,7 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added support for new devices in the nRF52 family - nRF52805, nRF52820 and nRF52833.
 - Added support for the STM32F7 family.
 - The `Session` struct and dependants now implement `Debug`.
-- The J-Link driver now displays a warning if no proper target voltage is measured.
+- The J-Link driver now logs a warning if no proper target voltage is measured.
 - The J-Link driver now logs some more information about the connected probe on the `INFO` and `DEBUG` levels.
 
 ### Changed
