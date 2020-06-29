@@ -31,7 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed a bug where a probe-selector would not work for the JLink if only VID & PID were specified but no serial number.
 - Fixed a bug where chip descriptions would fail to parse because of a changed behavior in a newer version of serde_yaml.
 - Fixed the LPC55S66 and LPS55S69 targets.
-- CMSIS-DAPv1 read operations now properly timeout instead of blocking forever, thus giving the user proper feedback.
+- CMSIS-DAPv1 read operations now properly time out instead of blocking forever, thus giving the user proper feedback.
 - Even if an ST-Link cannot be opened (for example on Windows due to a missing driver) it will now be listed properly, just without a serial number.
 - Fixed a bug where the J-Link would not be selected properly if no serial number was provided in the selector even if there was a VID:PID pair that matched.
 
