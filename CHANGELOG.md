@@ -24,7 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Improved error handling by a great deal. Errors now can be unwound properly and thus displayed nicely in UI tooling.
-- `Core::halt() now requires a timeout to be specified such that procedures such as flashing wont timeout if erasing a sector for example takes longer.
+- `Core::halt()` now requires a timeout to be specified. This ensures that procedures such as flashing wont time out when certain tasks (like erasing a sector) take longer.
 
 ### Fixed
 
