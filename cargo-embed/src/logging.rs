@@ -105,6 +105,12 @@ pub fn set_progress_bar(progress: Arc<ProgressBar>) {
     *guard = Some(progress);
 }
 
+/// Clears current progress bar in store for the logging facility.
+pub fn clear_progress_bar() {
+    let mut guard = PROGRESS_BAR.write().unwrap();
+    *guard = None;
+}
+
 /// Writes an error to the log.
 /// This can be used for unwraps/eprintlns/etc.
 pub fn eprintln(message: impl AsRef<str>) {

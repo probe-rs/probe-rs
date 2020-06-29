@@ -362,6 +362,10 @@ fn main_try() -> Result<()> {
 
             // We don't care if we cannot join this thread.
             let _ = progress_thread_handle.join();
+
+            // If we don't do this, the inactive progress bars will swallow log
+            // messages, so they'll never be printed anywhere.
+            logging::clear_progress_bar();
         } else {
             download_file_with_options(
                 &mut session,
