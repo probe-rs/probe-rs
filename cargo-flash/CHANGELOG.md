@@ -7,11 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+### Changed
+
+### Fixed
+
+## [0.8.0]
+
+### Added
+
 - Added `Cargo.toml` metadata parsing for specifying the chip (see https://github.com/probe-rs/cargo-flash/pull/31).
+- Probes can now be selected via the VID:PID:[SerialNo] triplet.
 
 ### Changed
 
-- Improved error logging by a large margin!
+- Improved error logging by a large margin! Errors are now displayed properly in stacked fashion and are easier to read.
 - Cleaned up some of the logging output. Mostly beauty stuff.
 
 ### Fixed
@@ -86,7 +95,8 @@ Improved flashing for `cargo-flash` considering speed and useability.
 ## [0.2.0]
 - Introduce cargo-flash which can automatically build & flash the target elf file.
 
-[Unreleased]: https://github.com/probe-rs/probe-rs/compare/v0.7.0...master
+[Unreleased]: https://github.com/probe-rs/probe-rs/compare/v0.8.0...master
+[0.8.0]: https://github.com/probe-rs/probe-rs/releases/tag/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/probe-rs/probe-rs/releases/tag/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/probe-rs/probe-rs/releases/tag/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/probe-rs/probe-rs/releases/tag/v0.4.0...v0.5.0
