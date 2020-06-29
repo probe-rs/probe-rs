@@ -52,7 +52,7 @@ An example is this config:
 
 ### Fixed
 
-- Panics in app that could occur due to a bug will no longer mess up the users terminal.
+- Panics in app that could occur due to a bug will no longer mess up the user's terminal.
 - Fixed a bug where the progress bars from the flashing procedure would swallow all log messages.
 - Fixed a bug where the RTT UI would panic if no channels were configured.
 
