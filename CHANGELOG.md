@@ -7,16 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Added support for new devices in the nRF52 family. nRF52805, nRF52820 and nRF52833.
+- Added support for new devices in the nRF52 family - nRF52805, nRF52820 and nRF52833.
 - Added support for the STM32F7 family.
+- The `Session` struct and dependants now implement `Debug`.
+- The J-Link driver now displays a warning if no proper target voltage is measured.
+- The J-Link driver now logs some more information about the connected probe on the `INFO` and `DEBUG` levels.
 
 ### Changed
 
-- Made the timeout for core halt configurable by the caller.
+- Improved error handling by a great deal. Errors now can be unwound properly and thus displayed nicely in UI tooling.
+- `Core::halt() now requires a timeout to be specified such that procedures such as flashing wont timeout if erasing a sector for example takes longer.
 
 ### Fixed
 
 - Fixed a bug where a probe-selector would not work for the JLink if only VID & PID were specified but no serial number.
+- Fixed a bug where chip descriptions would fail to parse because of a changed behavior in a newer version of serde_yaml.
+- Fixed the LPC55S66 and LPS55S69 targets.
+- CMSIS-DAPv1 read operations now properly timeout instead of blocking forever, thus giving the user proper feedback.
+- Even if an ST-Link cannot be opened (for example on Windows due to a missing driver) it will now be listed properly, just without a serial number.
+- Fixed a bug where the J-Link would not be selected properly if no serial number was provided in the selector even if there was a VID:PID pair that matched.
 
 ## [0.7.1]
 
