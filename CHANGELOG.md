@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+### Changed
+
+### Fixed
+
+## [0.8.0]
+
+### Added
+
 - Added support for new devices in the nRF52 family - nRF52805, nRF52820 and nRF52833.
 - Added support for the STM32F7 family.
 - The `Session` struct and dependants now implement `Debug`.
@@ -221,7 +229,8 @@ Initial release on crates.io
 - Working basic flash downloader with nRF51.
 - Introduce cargo-flash which can automatically build & flash the target elf file.
 
-[Unreleased]: https://github.com/probe-rs/probe-rs/compare/v0.7.1...master
+[Unreleased]: https://github.com/probe-rs/probe-rs/compare/v0.8.0...master
+[0.8.0]: https://github.com/probe-rs/probe-rs/releases/tag/v0.7.1...v0.8.0
 [0.7.1]: https://github.com/probe-rs/probe-rs/releases/tag/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/probe-rs/probe-rs/releases/tag/v0.6.2...v0.7.0
 [0.6.2]: https://github.com/probe-rs/probe-rs/releases/tag/v0.6.1...v0.6.2
