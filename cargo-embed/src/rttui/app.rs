@@ -1,6 +1,6 @@
 use anyhow::{anyhow, Result};
 use crossterm::{
-    event::{self, EnableMouseCapture, KeyCode},
+    event::{self, KeyCode},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
@@ -87,7 +87,7 @@ impl App {
 
         enable_raw_mode().unwrap();
         let mut stdout = std::io::stdout();
-        execute!(stdout, EnterAlternateScreen, EnableMouseCapture).unwrap();
+        execute!(stdout, EnterAlternateScreen).unwrap();
         let backend = CrosstermBackend::new(stdout);
         let mut terminal = Terminal::new(backend).unwrap();
         let _ = terminal.hide_cursor();
