@@ -213,7 +213,7 @@ impl App {
                     }
                     false
                 }
-                KeyCode::Char('\n') => {
+                KeyCode::Enter => {
                     self.push_rtt();
                     false
                 }
