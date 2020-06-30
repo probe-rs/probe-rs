@@ -188,10 +188,10 @@ fn main_try() -> Result<()> {
         }
         _ => {
             if let Some(_) = config.probe.usb_vid {
-                logging::println("Warning: USB VID ignored, because PID is not specified.");
+                log::warn!("USB VID ignored, because PID is not specified.");
             }
             if let Some(_) = config.probe.usb_pid {
-                logging::println("Warning: USB PID ignored, because VID is not specified.");
+                log::warn!("USB PID ignored, because VID is not specified.");
             }
 
             // Only automatically select a probe if there is only
