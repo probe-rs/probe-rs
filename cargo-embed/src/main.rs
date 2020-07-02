@@ -420,7 +420,13 @@ fn main_try() -> Result<()> {
         let session = Arc::new(Mutex::new(session));
         let t = std::time::Instant::now();
         let mut error = None;
+
+        let mut i = 0;
+
         while (t.elapsed().as_millis() as usize) < config.rtt.timeout {
+            log::info!("Initializing RTT (attempt {})...", i);
+            i += 1;
+
             let rtt_header_address = if let Ok(mut file) = File::open(path.as_path()) {
                 if let Some(address) = rttui::app::App::get_rtt_symbol(&mut file) {
                     ScanRegion::Exact(address as u32)
@@ -433,6 +439,8 @@ fn main_try() -> Result<()> {
 
             match Rtt::attach_region(session.clone(), &rtt_header_address) {
                 Ok(rtt) => {
+                    log::info!("RTT initialized.");
+
                     // `App` puts the terminal into a special state, as required
                     // by the text-based UI. If a panic happens while the
                     // terminal is in that state, this will completely mess up
@@ -463,6 +471,8 @@ fn main_try() -> Result<()> {
                     error = Some(anyhow!("Error attaching to RTT: {}", err));
                 }
             };
+
+            log::debug!("Failed to initialize RTT. Retrying until timeout.");
         }
         if let Some(error) = error {
             return Err(error);
