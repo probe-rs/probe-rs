@@ -421,7 +421,7 @@ fn main_try() -> Result<()> {
         let t = std::time::Instant::now();
         let mut error = None;
 
-        let mut i = 0;
+        let mut i = 1;
 
         while (t.elapsed().as_millis() as usize) < config.rtt.timeout {
             log::info!("Initializing RTT (attempt {})...", i);
