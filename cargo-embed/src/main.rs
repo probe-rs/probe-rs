@@ -13,7 +13,7 @@ use std::{
     env,
     fs::File,
     io::Write,
-    panic,
+    iter, panic,
     path::{Path, PathBuf},
     process::{self, Command, Stdio},
     sync::{Arc, Mutex},
@@ -69,8 +69,28 @@ fn main() {
             // to access stderr during shutdown.
             //
             // We ignore the errors, not much we can do anyway.
+
             let mut stderr = std::io::stderr();
-            let _ = writeln!(stderr, "       {} {:?}", "Error".red().bold(), e);
+
+            let first_line_prefix = "Error".red().bold();
+            let other_line_prefix: String = iter::repeat(" ")
+                .take(first_line_prefix.chars().count())
+                .collect();
+
+            let error = format!("{:?}", e);
+
+            for (i, line) in error.lines().enumerate() {
+                let _ = write!(stderr, "       ");
+
+                if i == 0 {
+                    let _ = write!(stderr, "{}", first_line_prefix);
+                } else {
+                    let _ = write!(stderr, "{}", other_line_prefix);
+                };
+
+                let _ = writeln!(stderr, " {}", line);
+            }
+
             let _ = stderr.flush();
 
             process::exit(1);
