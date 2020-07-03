@@ -2,7 +2,7 @@ mod common;
 mod debugger;
 mod info;
 
-use common::{with_device, CliError};
+use common::with_device;
 use debugger::CliState;
 
 use probe_rs::{
@@ -14,6 +14,8 @@ use probe_rs::{
 use capstone::{arch::arm::ArchMode, prelude::*, Capstone, Endian};
 use rustyline::Editor;
 use structopt::StructOpt;
+
+use anyhow::Result;
 
 use std::num::ParseIntError;
 use std::path::PathBuf;
@@ -105,13 +107,13 @@ struct SharedOptions {
     protocol: Option<String>,
 }
 
-fn main() {
+fn main() -> Result<()> {
     // Initialize the logging backend.
     pretty_env_logger::init();
 
     let matches = CLI::from_args();
 
-    let cli_result = match matches {
+    match matches {
         CLI::List {} => list_connected_devices(),
         CLI::Info { shared } => crate::info::show_info_of_device(&shared),
         CLI::Reset { shared, assert } => reset_target_of_device(&shared, assert),
@@ -119,15 +121,10 @@ fn main() {
         CLI::Dump { shared, loc, words } => dump_memory(&shared, loc, words),
         CLI::Download { shared, path } => download_program_fast(&shared, &path),
         CLI::Trace { shared, loc } => trace_u32_on_target(&shared, loc),
-    };
-
-    if let Err(e) = cli_result {
-        eprintln!("Error processing command: {}", e);
-        std::process::exit(1);
     }
 }
 
-fn list_connected_devices() -> Result<(), CliError> {
+fn list_connected_devices() -> Result<()> {
     let links = Probe::list_all();
 
     if !links.is_empty() {
@@ -143,7 +140,7 @@ fn list_connected_devices() -> Result<(), CliError> {
     Ok(())
 }
 
-fn dump_memory(shared_options: &SharedOptions, loc: u32, words: u32) -> Result<(), CliError> {
+fn dump_memory(shared_options: &SharedOptions, loc: u32, words: u32) -> Result<()> {
     with_device(shared_options, |mut session| {
         let mut data = vec![0 as u32; words as usize];
 
@@ -173,7 +170,7 @@ fn dump_memory(shared_options: &SharedOptions, loc: u32, words: u32) -> Result<(
     })
 }
 
-fn download_program_fast(shared_options: &SharedOptions, path: &str) -> Result<(), CliError> {
+fn download_program_fast(shared_options: &SharedOptions, path: &str) -> Result<()> {
     with_device(shared_options, |mut session| {
         download_file(&mut session, std::path::Path::new(&path), Format::Elf)?;
 
@@ -181,10 +178,7 @@ fn download_program_fast(shared_options: &SharedOptions, path: &str) -> Result<(
     })
 }
 
-fn reset_target_of_device(
-    shared_options: &SharedOptions,
-    _assert: Option<bool>,
-) -> Result<(), CliError> {
+fn reset_target_of_device(shared_options: &SharedOptions, _assert: Option<bool>) -> Result<()> {
     with_device(shared_options, |mut session| {
         session.core(0)?.reset()?;
 
@@ -192,7 +186,7 @@ fn reset_target_of_device(
     })
 }
 
-fn trace_u32_on_target(shared_options: &SharedOptions, loc: u32) -> Result<(), CliError> {
+fn trace_u32_on_target(shared_options: &SharedOptions, loc: u32) -> Result<()> {
     use scroll::{Pwrite, LE};
     use std::io::prelude::*;
     use std::thread::sleep;
@@ -237,7 +231,7 @@ fn trace_u32_on_target(shared_options: &SharedOptions, loc: u32) -> Result<(), C
     })
 }
 
-fn debug(shared_options: &SharedOptions, exe: Option<PathBuf>) -> Result<(), CliError> {
+fn debug(shared_options: &SharedOptions, exe: Option<PathBuf>) -> Result<()> {
     let runner = |mut session: Session| {
         let cs = Capstone::new()
             .arm()

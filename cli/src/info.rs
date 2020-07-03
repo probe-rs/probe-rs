@@ -1,7 +1,4 @@
-use crate::{
-    common::{open_probe, CliError},
-    SharedOptions,
-};
+use crate::{common::open_probe, SharedOptions};
 
 use probe_rs::{
     architecture::arm::{
@@ -12,7 +9,9 @@ use probe_rs::{
     Memory,
 };
 
-pub(crate) fn show_info_of_device(shared_options: &SharedOptions) -> Result<(), CliError> {
+use anyhow::Result;
+
+pub(crate) fn show_info_of_device(shared_options: &SharedOptions) -> Result<()> {
     let mut probe = open_probe(shared_options.n)?;
     probe.attach_to_unspecified()?;
 
