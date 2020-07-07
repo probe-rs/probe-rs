@@ -282,6 +282,8 @@ impl<D: StLinkUsb> STLink<D> {
     const MIN_JTAG_VERSION: u8 = 26;
 
     /// Minimum required STLink V3 firmware version.
+    ///
+    /// Version 2 of the firmware (V3J2M1) has problems switching communication protocols.
     const MIN_JTAG_VERSION_V3: u8 = 3;
 
     /// Firmware version that adds multiple AP support.
