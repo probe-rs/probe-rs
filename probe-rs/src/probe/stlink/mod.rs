@@ -281,6 +281,9 @@ impl<D: StLinkUsb> STLink<D> {
     /// Minimum required STLink firmware version.
     const MIN_JTAG_VERSION: u8 = 26;
 
+    /// Minimum required STLink V3 firmware version.
+    const MIN_JTAG_VERSION_V3: u8 = 3;
+
     /// Firmware version that adds multiple AP support.
     const MIN_JTAG_VERSION_MULTI_AP: u8 = 28;
 
@@ -408,6 +411,9 @@ impl<D: StLinkUsb> STLink<D> {
             return Err(StlinkError::JTAGNotSupportedOnProbe.into());
         }
         if self.hw_version < 3 && self.jtag_version < Self::MIN_JTAG_VERSION {
+            return Err(DebugProbeError::ProbeFirmwareOutdated);
+        }
+        if self.hw_version == 3 && self.jtag_version < Self::MIN_JTAG_VERSION_V3 {
             return Err(DebugProbeError::ProbeFirmwareOutdated);
         }
 
