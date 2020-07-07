@@ -38,12 +38,6 @@ impl<'probe> ADIMemoryInterface<ArmCommunicationInterface<'probe>> {
 
         Ok(interface)
     }
-
-    /// Close the MemoryInterface, so that we can get back the
-    /// interface.
-    pub(crate) fn close(self) -> ArmCommunicationInterface<'probe> {
-        self.interface
-    }
 }
 
 impl ADIMemoryInterface<MockMemoryAP> {

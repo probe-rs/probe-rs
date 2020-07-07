@@ -7,7 +7,7 @@ use probe_rs::{
         memory::{ADIMemoryInterface, Component},
         ArmCommunicationInterface, ArmCommunicationInterfaceState,
     },
-    AttachMethod, CoreRegister, Memory,
+    CoreRegister, Memory,
 };
 
 use anyhow::Result;
@@ -38,7 +38,7 @@ pub(crate) fn show_info_of_device(shared_options: &SharedOptions) -> Result<()> 
 
     */
 
-    let mut state = ArmCommunicationInterfaceState::new(AttachMethod::Normal);
+    let mut state = ArmCommunicationInterfaceState::new();
     let mut interface = ArmCommunicationInterface::new(&mut probe, &mut state)?;
 
     if let Some(interface) = &mut interface {
