@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "probe-rs",
+    "probe-rs-server",
     "probe-rs-t2rust",
     "cli",
     "gdb-server",
