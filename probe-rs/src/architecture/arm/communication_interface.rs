@@ -15,6 +15,7 @@ use crate::{
     CommunicationInterface, DebugProbe, DebugProbeError, Error as ProbeRsError, Memory, Probe,
 };
 use jep106::JEP106Code;
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -37,7 +38,7 @@ impl From<DapError> for DebugProbeError {
     }
 }
 
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Clone, Copy, Serialize, Deserialize)]
 pub enum PortType {
     DebugPort,
     AccessPort(u16),

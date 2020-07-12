@@ -7,10 +7,11 @@ use crate::config::{RegistryError, TargetSelector};
 use crate::error::Error;
 use crate::{Memory, Session};
 use jlink::list_jlink_devices;
+use serde::{Deserialize, Serialize};
 use std::{convert::TryFrom, fmt};
 use thiserror::Error;
 
-#[derive(Copy, Clone, PartialEq, Debug, serde::Serialize, serde::Deserialize)]
+#[derive(Copy, Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub enum WireProtocol {
     Swd,
     Jtag,
@@ -406,14 +407,14 @@ pub trait DebugProbe: Send + Sync + fmt::Debug {
     fn get_interface_jtag_mut(&mut self) -> Option<&mut dyn JTAGAccess>;
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum DebugProbeType {
     DAPLink,
     STLink,
     JLink,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct DebugProbeInfo {
     pub identifier: String,
     pub vendor_id: u16,

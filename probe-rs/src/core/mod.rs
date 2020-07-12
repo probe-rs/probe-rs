@@ -12,6 +12,7 @@ use crate::{
 };
 use crate::{DebugProbeError, Memory};
 use anyhow::Result;
+use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
 pub trait CoreRegister: Clone + From<u32> + Into<u32> + Sized + std::fmt::Debug {
@@ -19,7 +20,7 @@ pub trait CoreRegister: Clone + From<u32> + Into<u32> + Sized + std::fmt::Debug 
     const NAME: &'static str;
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Serialize, Deserialize)]
 pub struct CoreRegisterAddress(pub u16);
 
 impl From<CoreRegisterAddress> for u32 {
@@ -33,7 +34,7 @@ impl From<u16> for CoreRegisterAddress {
         CoreRegisterAddress(value)
     }
 }
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CoreInformation {
     pub pc: u32,
 }
@@ -219,7 +220,7 @@ impl<'probe> MemoryInterface for Core<'probe> {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Serialize, Deserialize)]
 pub enum CoreType {
     M3,
     M4,
@@ -551,13 +552,13 @@ pub struct Breakpoint {
     register_hw: usize,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub enum Architecture {
     Arm,
     Riscv,
 }
 
-#[derive(Debug, PartialEq, Copy, Clone)]
+#[derive(Debug, PartialEq, Copy, Clone, Serialize, Deserialize)]
 pub enum CoreStatus {
     Running,
     Halted(HaltReason),
@@ -574,7 +575,7 @@ impl CoreStatus {
     }
 }
 
-#[derive(Debug, PartialEq, Copy, Clone)]
+#[derive(Debug, PartialEq, Copy, Clone, Serialize, Deserialize)]
 pub enum HaltReason {
     /// Core halted due to a breakpoint, either
     /// a *soft* or a *hard* breakpoint.
