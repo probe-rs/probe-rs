@@ -190,9 +190,10 @@ fn main_try() -> Result<()> {
         )
         .map_err(|e| anyhow!("Couldn't get artifact path: {}", e))?;
 
+    logging::println(format!("      {} {}", "Config".green().bold(), config_name));
     logging::println(format!(
-        "    {} {}",
-        "Flashing".green().bold(),
+        "      {} {}",
+        "Target".green().bold(),
         path.display()
     ));
 
@@ -402,7 +403,7 @@ fn main_try() -> Result<()> {
         // Stop timer.
         let elapsed = instant.elapsed();
         logging::println(format!(
-            "    {} in {}s",
+            "    {} flashing in {}s",
             "Finished".green().bold(),
             elapsed.as_millis() as f32 / 1000.0,
         ));
@@ -413,7 +414,10 @@ fn main_try() -> Result<()> {
         let halt_timeout = Duration::from_millis(500);
         #[allow(deprecated)] // Remove in 0.10
         if config.flashing.halt_afterwards {
-            logging::eprintln("Warning: The 'flashing.halt_afterwards' option in the config has moved to the 'reset' section");
+            logging::eprintln(format!(
+                "     {} The 'flashing.halt_afterwards' option in the config has moved to the 'reset' section",
+                "Warning".yellow().bold()
+            ));
             core.reset_and_halt(halt_timeout)?;
         } else if config.reset.halt_afterwards {
             core.reset_and_halt(halt_timeout)?;
@@ -505,6 +509,12 @@ fn main_try() -> Result<()> {
             return Err(error);
         }
     }
+
+    logging::println(format!(
+        "        {} processing config {}",
+        "Done".green().bold(),
+        config_name
+    ));
 
     Ok(())
 }
