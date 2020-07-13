@@ -1,7 +1,8 @@
 use jsonrpc_core::Result;
 use jsonrpc_derive::rpc;
 use probe_rs::{
-    Architecture, CoreInformation, CoreRegisterAddress, CoreStatus, CoreType, config::MemoryRegion
+    config::MemoryRegion, Architecture, CoreInformation, CoreRegisterAddress, CoreStatus, CoreType,
+    DebugProbeInfo,
 };
 use std::time::Duration;
 
@@ -13,6 +14,12 @@ pub use self::rpc_impl_ProbeRsServer::gen_server::ProbeRsServer as ProbeRsGenSer
 // how to do that properly with jsonrpc_derive though.
 #[rpc]
 pub trait ProbeRsServer {
+    #[rpc(name = "attach")]
+    fn attach(&self, probe: DebugProbeInfo, chip: String) -> Result<()>;
+    #[rpc(name = "listProbes")]
+    fn list_probes(&self) -> Result<Vec<DebugProbeInfo>>;
+    #[rpc(name = "hasSession")]
+    fn has_session(&self) -> Result<bool>;
     #[rpc(name = "listCores")]
     fn list_cores(&self) -> Result<Vec<(usize, CoreType)>>;
     #[rpc(name = "memoryMap")]
@@ -66,5 +73,4 @@ pub trait ProbeRsServer {
     fn write_32(&self, core_index: usize, addr: u32, data: Vec<u32>) -> Result<()>;
     #[rpc(name = "write8")]
     fn write_8(&self, core_index: usize, addr: u32, data: Vec<u8>) -> Result<()>;
-
 }
