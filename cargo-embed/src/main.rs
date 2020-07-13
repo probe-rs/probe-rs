@@ -406,10 +406,17 @@ fn main_try() -> Result<()> {
             "Finished".green().bold(),
             elapsed.as_millis() as f32 / 1000.0,
         ));
+    }
 
+    if config.reset.enabled {
         let mut core = session.core(0)?;
+        let halt_timeout = Duration::from_millis(500);
+        #[allow(deprecated)] // Remove in 0.10
         if config.flashing.halt_afterwards {
-            core.reset_and_halt(Duration::from_millis(500))?;
+            logging::eprintln("Warning: The 'flashing.halt_afterwards' option in the config has moved to the 'reset' section");
+            core.reset_and_halt(halt_timeout)?;
+        } else if config.reset.halt_afterwards {
+            core.reset_and_halt(halt_timeout)?;
         } else {
             core.reset()?;
         }

@@ -14,6 +14,7 @@ pub struct Configs(HashMap<String, Config>);
 pub struct Config {
     pub general: General,
     pub flashing: Flashing,
+    pub reset: Reset,
     pub probe: Probe,
     pub rtt: Rtt,
     pub gdb: Gdb,
@@ -33,9 +34,20 @@ pub struct Probe {
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Flashing {
     pub enabled: bool,
+    #[deprecated(
+        since = "0.9.0",
+        note = "The 'halt_afterwards' key has moved to the 'reset' section"
+    )]
     pub halt_afterwards: bool,
     pub restore_unwritten_bytes: bool,
     pub flash_layout_output_path: Option<String>,
+}
+
+/// The reset config struct holding all the possible reset options.
+#[derive(Debug, Deserialize, Serialize)]
+pub struct Reset {
+    pub enabled: bool,
+    pub halt_afterwards: bool,
 }
 
 /// The general config struct holding all the possible general options.

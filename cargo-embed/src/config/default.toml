@@ -13,13 +13,21 @@ protocol = "Swd"
 [default.flashing]
 # Whether or not the target should be flashed.
 enabled = true
-# Whether or not the target should be halted after flashing.
+# Whether or not the target should be halted after reset.
+# DEPRECATED, moved to reset section
 halt_afterwards = false
 # Whether or not bytes erased but not rewritten with data from the ELF
 # should be restored with their contents before erasing.
 restore_unwritten_bytes = false
 # The path where an SVG of the assembled flash layout should be written to.
 # flash_layout_output_path = "out.svg"
+
+[default.reset]
+# Whether or not the target should be reset.
+# When flashing is enabled as well, the target will be reset after flashing.
+enabled = true
+# Whether or not the target should be halted after reset.
+halt_afterwards = false
 
 [default.general]
 # The chip name of the chip to be debugged.

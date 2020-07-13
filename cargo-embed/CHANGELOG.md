@@ -7,7 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- The config supports a new section called `reset`. It controls whether the target is reset. Default config:
+
+    ```toml
+    [default.reset]
+    # Whether or not the target should be reset.
+    # When flashing is enabled as well, the target will be reset after flashing.
+    enabled = true
+    # Whether or not the target should be halted after reset.
+    halt_afterwards = false
+    ```
+
+  This way, you can add a `cargo embed` target that allows resetting and
+  optionally halting without flashing. Useful for debugging.
+
 ### Changed
+
+- The config option `flashing.halt_afterwards` has moved to `reset.halt_afterwards`
 
 ### Fixed
 
