@@ -1,10 +1,10 @@
 pub mod definitions;
 pub mod server;
 
-use jsonrpc_core::IoHandler;
-use jsonrpc_ws_server::*;
 use crate::definitions::ProbeRsGenServer;
 use crate::server::Server;
+use jsonrpc_core::IoHandler;
+use jsonrpc_ws_server::*;
 
 pub fn run(host: String, port: u16) {
     let mut io = IoHandler::new();
