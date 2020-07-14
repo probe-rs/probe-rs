@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fixed a bug where a J-Link would only be opened if the VID, PID AND Serial No. would match. As the Serial is optional, only VID/PID have to match now.
+- Fixed a bug with the readout of the serial string that could fail for DAP devices and lead to weird behavior.
+
 ## [0.8.0]
 
 ### Added
