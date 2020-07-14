@@ -122,7 +122,10 @@ fn open_probe(index: Option<usize>) -> Result<Probe, &'static str> {
         }
     };
 
-    let probe = device.open().map_err(|_| "Failed to open probe")?;
+    let probe = device.open().map_err(|e| {
+        println!("{}", e);
+        "Failed to open probe"
+    })?;
 
     Ok(probe)
 }
