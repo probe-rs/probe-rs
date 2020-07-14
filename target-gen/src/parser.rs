@@ -101,7 +101,7 @@ pub fn extract_flash_algo(
         .unwrap()
         .to_str()
         .unwrap()
-        .to_owned()
+        .to_lowercase()
         .into();
     algo.default = default;
     algo.data_section_offset = algorithm_binary.data_section.start;

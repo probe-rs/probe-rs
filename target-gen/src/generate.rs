@@ -137,7 +137,7 @@ where
 
         let flash_algorithm_names: Vec<_> = variant_flash_algorithms
             .iter()
-            .map(|fa| fa.name.clone().to_lowercase())
+            .map(|fa| fa.name.to_string())
             .collect();
 
         for fa in variant_flash_algorithms {
