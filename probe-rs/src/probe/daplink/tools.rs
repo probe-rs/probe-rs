@@ -3,7 +3,7 @@ use crate::{
     probe::{DebugProbeInfo, DebugProbeType, ProbeCreationError},
     DebugProbeSelector,
 };
-use rusb::{Device, UsbContext};
+use rusb::{Device, DeviceDescriptor, UsbContext};
 use std::time::Duration;
 
 /// Finds all CMSIS-DAP devices, either v1 (HID) or v2 (WinUSB Bulk).
@@ -144,6 +144,32 @@ pub fn open_v2_device(device: Device<rusb::Context>) -> Option<DAPLinkDevice> {
     None
 }
 
+fn device_matches(
+    device_descriptor: DeviceDescriptor,
+    selector: &DebugProbeSelector,
+    serial_str: Option<String>,
+) -> bool {
+    if device_descriptor.vendor_id() == selector.vendor_id
+        && device_descriptor.product_id() == selector.product_id
+    {
+        if let Some(serial) = selector.serial_number.as_ref() {
+            if let Some(serial_str) = serial_str {
+                if serial == &serial_str {
+                    true
+                } else {
+                    false
+                }
+            } else {
+                false
+            }
+        } else {
+            true
+        }
+    } else {
+        false
+    }
+}
+
 /// Attempt to open the given DebugProbeInfo in CMSIS-DAP v2 mode if possible,
 /// otherwise in v1 mode.
 pub fn open_device_from_selector(
@@ -170,11 +196,7 @@ pub fn open_device_from_selector(
             // multiple open handles are not allowed on Windows.
             drop(handle);
 
-            if d_desc.vendor_id() == selector.vendor_id
-                && d_desc.product_id() == selector.product_id
-                && sn_str == selector.serial_number
-                && get_daplink_info(&device).is_some()
-            {
+            if device_matches(d_desc, &selector, sn_str) && get_daplink_info(&device).is_some() {
                 // If the VID, PID, and potentially SN all match,
                 // and the device is a valid CMSIS-DAP probe,
                 // attempt to open the device in v2 mode.
