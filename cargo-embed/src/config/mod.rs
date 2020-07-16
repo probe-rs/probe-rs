@@ -56,6 +56,8 @@ pub struct Rtt {
     pub timeout: usize,
     /// Whether to show timestamps in RTTUI
     pub show_timestamps: bool,
+    /// Whether to save rtt history buffer on exit to file named history.txt
+    pub history_log: bool,
 }
 
 /// The gdb config struct holding all the possible gdb options.

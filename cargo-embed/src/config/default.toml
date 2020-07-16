@@ -41,6 +41,8 @@ channels = [
 timeout = 3000
 # Whether timestamps in the RTTUI are enabled
 show_timestamps = true
+# Whether to save rtt history buffer on exit to file named history.txt
+history_log = false
 
 [default.gdb]
 # Whether or not a GDB server should be opened after flashing.

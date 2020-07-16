@@ -27,6 +27,7 @@ pub struct App {
 
     terminal: Terminal<CrosstermBackend<std::io::Stdout>>,
     events: Events,
+    history: bool,
 }
 
 fn pull_channel<C: RttChannel>(channels: &mut Vec<C>, n: usize) -> Option<C> {
@@ -98,6 +99,7 @@ impl App {
 
             terminal,
             events,
+            history: config.rtt.history_log,
         })
     }
 
@@ -204,6 +206,21 @@ impl App {
                 KeyCode::Char('c') if event.modifiers.contains(KeyModifiers::CONTROL) => {
                     clean_up_terminal();
                     let _ = self.terminal.show_cursor();
+
+                    if self.history {
+                        for (i, tab) in self.tabs.iter().enumerate() {
+                            let name = format!("history.{}.txt", i);
+
+                            if let Ok(mut file) = std::fs::File::create(name) {
+                                for line in tab.messages() {
+                                    match writeln!(file, "{}", line) {
+                                        Ok(_) => {}
+                                        Err(_) => continue,
+                                    }
+                                }
+                            }
+                        }
+                    }
                     true
                 }
                 KeyCode::F(n) => {
