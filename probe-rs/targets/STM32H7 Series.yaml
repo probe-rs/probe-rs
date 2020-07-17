@@ -442,7 +442,7 @@ variants:
           is_boot_memory: false
       - Flash:
           range:
-            start: 135266304
+            start: 134217728
             end: 136314880
           is_boot_memory: true
     flash_algorithms:
