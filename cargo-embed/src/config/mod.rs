@@ -84,6 +84,11 @@ impl Configs {
         // These files should not be added to your git repo.
         s.merge(config::File::with_name(".embed.local").required(false))?;
         s.merge(config::File::with_name("Embed.local").required(false))?;
+        // As described in https://github.com/mehcode/config-rs/issues/101
+        // the above lines will not work unless that bug is fiexd, until
+        // then, we add ".ext" to be replaced with a valid format name
+        s.merge(config::File::with_name(".embed.local.ext").required(false))?;
+        s.merge(config::File::with_name("Embed.local.ext").required(false))?;
 
         let map: HashMap<String, serde_json::value::Value> = s.try_into()?;
 
