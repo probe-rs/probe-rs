@@ -175,7 +175,7 @@ impl Probe {
             Err(DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::NotFound)) => {}
             Err(e) => return Err(e),
         };
-        match jlink::JLink::new_from_selector(selector.clone()) {
+        match jlink::JLink::new_from_selector(selector) {
             Ok(link) => return Ok(Probe::from_specific_probe(link)),
             Err(DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::NotFound)) => {}
             Err(e) => return Err(e),
@@ -489,7 +489,7 @@ pub struct DebugProbeSelector {
 impl TryFrom<&str> for DebugProbeSelector {
     type Error = DebugProbeSelectorParseError;
     fn try_from(value: &str) -> Result<Self, Self::Error> {
-        let split = value.split(":").collect::<Vec<_>>();
+        let split = value.split(':').collect::<Vec<_>>();
         let mut selector = if split.len() > 1 {
             DebugProbeSelector {
                 vendor_id: u16::from_str_radix(split[0], 16)?,

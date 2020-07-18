@@ -10,7 +10,7 @@ use super::{
 use crate::{DebugProbeSelector, Memory};
 use constants::{commands, JTagFrequencyToDivider, Mode, Status, SwdFrequencyToDelayCount};
 use scroll::{Pread, BE, LE};
-use std::time::Duration;
+use std::{cmp::Ordering, time::Duration};
 use thiserror::Error;
 use usb_interface::TIMEOUT;
 
@@ -59,8 +59,8 @@ impl DebugProbe for STLink<STLinkUSBDevice> {
     }
 
     fn set_speed(&mut self, speed_khz: u32) -> Result<u32, DebugProbeError> {
-        if self.hw_version < 3 {
-            match self.protocol {
+        match self.hw_version.cmp(&3) {
+            Ordering::Less => match self.protocol {
                 WireProtocol::Swd => {
                     let actual_speed = SwdFrequencyToDelayCount::find_setting(speed_khz);
 
@@ -87,26 +87,26 @@ impl DebugProbe for STLink<STLinkUSBDevice> {
                         Err(DebugProbeError::UnsupportedSpeed(speed_khz))
                     }
                 }
+            },
+            Ordering::Equal => {
+                let (available, _) = self.get_communication_frequencies(self.protocol)?;
+
+                let actual_speed_khz = available
+                    .into_iter()
+                    .filter(|speed| *speed <= speed_khz)
+                    .max()
+                    .ok_or(DebugProbeError::UnsupportedSpeed(speed_khz))?;
+
+                self.set_communication_frequency(self.protocol, actual_speed_khz)?;
+
+                match self.protocol {
+                    WireProtocol::Swd => self.swd_speed_khz = actual_speed_khz,
+                    WireProtocol::Jtag => self.jtag_speed_khz = actual_speed_khz,
+                }
+
+                Ok(actual_speed_khz)
             }
-        } else if self.hw_version == 3 {
-            let (available, _) = self.get_communication_frequencies(self.protocol)?;
-
-            let actual_speed_khz = available
-                .into_iter()
-                .filter(|speed| *speed <= speed_khz)
-                .max()
-                .ok_or(DebugProbeError::UnsupportedSpeed(speed_khz))?;
-
-            self.set_communication_frequency(self.protocol, actual_speed_khz)?;
-
-            match self.protocol {
-                WireProtocol::Swd => self.swd_speed_khz = actual_speed_khz,
-                WireProtocol::Jtag => self.jtag_speed_khz = actual_speed_khz,
-            }
-
-            Ok(actual_speed_khz)
-        } else {
-            unimplemented!()
+            Ordering::Greater => unimplemented!(),
         }
     }
 

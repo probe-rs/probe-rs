@@ -2,8 +2,6 @@ use std::env;
 use std::path::Path;
 use std::process::Command;
 
-use probe_rs_t2rust;
-
 fn main() {
     // Test if we have to generate built-in targets
 
