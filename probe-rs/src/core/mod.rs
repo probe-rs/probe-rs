@@ -5,13 +5,19 @@ pub use communication_interface::CommunicationInterface;
 use crate::error;
 use crate::{
     architecture::{
-        arm::{core::CortexState, memory::ADIMemoryInterface, ArmCommunicationInterface},
+        arm::{
+            ap::{AccessPort, GenericAP},
+            communication_interface::ApInformation,
+            core::CortexState,
+            memory::ADIMemoryInterface,
+            ArmCommunicationInterface,
+        },
         riscv::communication_interface::RiscvCommunicationInterface,
     },
     Error, MemoryInterface,
 };
 use crate::{DebugProbeError, Memory};
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use std::time::Duration;
 
 pub trait CoreRegister: Clone + From<u32> + Into<u32> + Sized + std::fmt::Debug {
@@ -292,10 +298,30 @@ impl SpecificCoreState {
     pub(crate) fn attach_arm<'probe>(
         &'probe mut self,
         state: &'probe mut CoreState,
-        interface: ArmCommunicationInterface<'probe>,
+        mut interface: ArmCommunicationInterface<'probe>,
     ) -> Result<Core<'probe>, Error> {
+        // TODO: This should support multiple APs
+        let ap = GenericAP::new(0);
+
+        let ap_information = interface.get_ap_information(ap)?;
+
+        let only_32bit_data = match ap_information {
+            ApInformation::MemoryAp {
+                only_32_bit_data_size,
+                ..
+            } => only_32_bit_data_size,
+            ApInformation::Other { .. } => {
+                /* unable to attach to an AP which is not a MemoryAP */
+                return Err(anyhow!(
+                    "Unable to attach, AP {} is not a MemoryAP",
+                    ap.get_port_number()
+                )
+                .into());
+            }
+        };
+
         let memory = Memory::new(
-            ADIMemoryInterface::<ArmCommunicationInterface>::new(interface, 0)
+            ADIMemoryInterface::<ArmCommunicationInterface>::new(interface, 0, only_32bit_data)
                 .map_err(Error::architecture_specific)?,
         );
 

@@ -1,7 +1,7 @@
 use super::{
     ap::{
-        valid_access_ports, APAccess, APClass, APRegister, AccessPort, BaseaddrFormat, GenericAP,
-        MemoryAP, BASE, BASE2, IDR,
+        valid_access_ports, APAccess, APClass, APRegister, AccessPort, BaseaddrFormat, DataSize,
+        GenericAP, MemoryAP, BASE, BASE2, CSW, IDR,
     },
     dp::{
         Abort, Ctrl, DPAccess, DPBankSel, DPRegister, DebugPortError, DebugPortId,
@@ -125,6 +125,19 @@ pub struct ArmCommunicationInterfaceState {
 
     current_apsel: u8,
     current_apbanksel: u8,
+
+    ap_information: Vec<ApInformation>,
+}
+
+#[derive(Debug)]
+pub enum ApInformation {
+    MemoryAp {
+        index: u8,
+        only_32_bit_data_size: bool,
+    },
+    Other {
+        index: u8,
+    },
 }
 
 impl ArmCommunicationInterfaceState {
@@ -135,6 +148,7 @@ impl ArmCommunicationInterfaceState {
             current_dpbanksel: 0,
             current_apsel: 0,
             current_apbanksel: 0,
+            ap_information: Vec::new(),
         }
     }
 
@@ -173,6 +187,15 @@ impl<'probe> ArmCommunicationInterface<'probe> {
 
             if !s.state.initialized() {
                 s.enter_debug_mode()?;
+
+                /* determine the number and type of available APs */
+
+                for ap in valid_access_ports(&mut s) {
+                    let ap_state = s.get_ap_information(ap)?;
+
+                    s.state.ap_information.push(ap_state);
+                }
+
                 s.state.initialize();
             }
 
@@ -422,6 +445,27 @@ impl<'probe> ArmCommunicationInterface<'probe> {
         )?;
         Ok(())
     }
+
+    pub(crate) fn get_ap_information(
+        &mut self,
+        access_port: GenericAP,
+    ) -> Result<ApInformation, DebugProbeError> {
+        let idr = self.read_ap_register(access_port, IDR::default())?;
+
+        if idr.CLASS == APClass::MEMAP {
+            let access_port: MemoryAP = access_port.into();
+
+            let data_size = detect_data_size(self, access_port)?;
+            Ok(ApInformation::MemoryAp {
+                index: access_port.get_port_number(),
+                only_32_bit_data_size: data_size,
+            })
+        } else {
+            Ok(ApInformation::Other {
+                index: access_port.get_port_number(),
+            })
+        }
+    }
 }
 
 impl<'probe> CommunicationInterface for ArmCommunicationInterface<'probe> {
@@ -546,6 +590,21 @@ where
     }
 }
 
+/// Check that target supports memory access with sizes different from 32 bits.
+///
+/// If only 32-bit access is supported, the SIZE field will be read-only and changing it
+/// will not have any effect.
+fn detect_data_size(
+    interface: &mut ArmCommunicationInterface,
+    ap: MemoryAP,
+) -> Result<bool, DebugProbeError> {
+    let csw = ADIMemoryInterface::<ArmCommunicationInterface>::build_csw_register(DataSize::U8);
+    interface.write_ap_register(ap, csw)?;
+    let csw = interface.read_ap_register(ap, CSW::default())?;
+
+    Ok(csw.SIZE != DataSize::U8)
+}
+
 #[derive(Debug)]
 pub struct ArmChipInfo {
     pub manufacturer: JEP106Code,
@@ -579,10 +638,13 @@ impl ArmChipInfo {
                 };
                 baseaddr |= u64::from(base_register.BASEADDR << 12);
 
+                let data_size = detect_data_size(interface, access_port)?;
+
                 let mut memory = Memory::new(
                     ADIMemoryInterface::<ArmCommunicationInterface>::new(
                         interface.reborrow(),
                         access_port,
+                        data_size,
                     )
                     .map_err(ProbeRsError::architecture_specific)?,
                 );
