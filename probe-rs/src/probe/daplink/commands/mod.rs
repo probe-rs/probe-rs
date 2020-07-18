@@ -139,11 +139,8 @@ pub(crate) fn send_command<Req: Request, Res: Response>(
         // HID reports (the maximum permitted), so ensure we always
         // write exactly 64 (+1 for report ID) bytes for HID.
         // For v2 devices, we can write the precise request size.
-        match device {
-            DAPLinkDevice::V1(_) => {
-                size = 65;
-            }
-            _ => (),
+        if let DAPLinkDevice::V1(_) = device {
+            size = 65;
         }
 
         // Send buffer to the device.

@@ -152,19 +152,7 @@ fn device_matches(
     if device_descriptor.vendor_id() == selector.vendor_id
         && device_descriptor.product_id() == selector.product_id
     {
-        if let Some(serial) = selector.serial_number.as_ref() {
-            if let Some(serial_str) = serial_str {
-                if serial == &serial_str {
-                    true
-                } else {
-                    false
-                }
-            } else {
-                false
-            }
-        } else {
-            true
-        }
+        serial_str == selector.serial_number
     } else {
         false
     }

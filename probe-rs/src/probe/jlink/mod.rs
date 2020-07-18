@@ -333,7 +333,7 @@ impl DebugProbe for JLink {
             })
             .collect::<Vec<_>>();
 
-        if jlinks.len() == 0 {
+        if jlinks.is_empty() {
             return Err(DebugProbeError::ProbeCouldNotBeCreated(
                 super::ProbeCreationError::NotFound,
             ));
@@ -380,7 +380,7 @@ impl DebugProbe for JLink {
 
         Ok(Box::new(JLink {
             handle: Mutex::from(jlink_handle),
-            supported_protocols: supported_protocols,
+            supported_protocols,
             jtag_idle_cycles: 0,
             protocol: None,
             current_ir_reg: 1,
@@ -951,9 +951,7 @@ pub(crate) fn list_jlink_devices() -> Result<impl Iterator<Item = DebugProbeInfo
         DebugProbeInfo::new(
             format!(
                 "J-Link{}",
-                product
-                    .map(|p| format!(" ({})", p))
-                    .unwrap_or("".to_string())
+                product.map(|p| format!(" ({})", p)).unwrap_or_default()
             ),
             vid,
             pid,
