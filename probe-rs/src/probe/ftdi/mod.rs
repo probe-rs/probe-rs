@@ -206,14 +206,6 @@ impl JtagAdapter {
     }
 
     /// Shift to DR and return to IDLE
-    pub fn shift_dr(&mut self, data: &[u8], bits: usize) -> io::Result<()> {
-        self.shift_tms(&[0b001], 3)?;
-        self.shift_tdi(data, bits)?;
-        self.shift_tms(&[0b01], 2)?;
-        Ok(())
-    }
-
-    /// Shift to DR and return to IDLE
     pub fn transfer_dr(&mut self, data: &[u8], bits: usize) -> io::Result<Vec<u8>> {
         self.shift_tms(&[0b001], 3)?;
         let r = self.tranfer_tdi(data, bits)?;
