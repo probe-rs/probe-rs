@@ -30,7 +30,7 @@ fn get_daplink_info(device: &Device<rusb::Context>) -> Option<DebugProbeInfo> {
     let timeout = Duration::from_millis(100);
     let d_desc = device.device_descriptor().ok()?;
     let handle = device.open().ok()?;
-    let language = handle.read_languages(timeout).ok()?[0];
+    let language = handle.read_languages(timeout).ok()?.get(0).cloned()?;
     let prod_str = handle
         .read_product_string(language, &d_desc, timeout)
         .ok()?;
@@ -76,7 +76,7 @@ pub fn open_v2_device(device: Device<rusb::Context>) -> Option<DAPLinkDevice> {
     let vid = d_desc.vendor_id();
     let pid = d_desc.product_id();
     let mut handle = device.open().ok()?;
-    let language = handle.read_languages(timeout).ok()?[0];
+    let language = handle.read_languages(timeout).ok()?.get(0).cloned()?;
 
     // Go through interfaces to try and find a v2 interface.
     // The CMSIS-DAPv2 spec says that v2 interfaces should use a specific
@@ -180,7 +180,11 @@ pub fn open_device_from_selector(
             };
 
             let timeout = Duration::from_millis(100);
-            let language = handle.read_languages(timeout)?[0];
+            let language = match handle.read_languages(timeout)?.get(0) {
+                Some(lang) => lang.clone(),
+                None => continue,
+            };
+
             let sn_str = handle
                 .read_serial_number_string(language, &d_desc, timeout)
                 .ok();
