@@ -1,4 +1,5 @@
 #![allow(unused)]
+// Ported from https://github.com/tanriol/ftdi-rs
 
 use libftdi1_sys as ffi;
 
