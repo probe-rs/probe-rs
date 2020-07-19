@@ -33,6 +33,14 @@ pub(crate) enum RiscvError {
     RequestNotAcknowledged,
     #[error("The version '{0}' of the debug module is currently not supported.")]
     UnsupportedDebugModuleVersion(u8),
+    #[error("Program buffer register '{0}' is currently not supported.")]
+    UnsupportedProgramBufferRegister(usize),
+    #[error("Program buffer is too small for supplied program.")]
+    ProgramBufferTooSmall,
+    #[error("Memory width larger than 32 bits is not supported yet.")]
+    UnsupportedBusAccessWidth(RiscvBusAccess),
+    #[error("Unexpected trigger type {0} for address breakpoint.")]
+    UnexpectedTriggerType(u32),
 }
 
 impl From<RiscvError> for ProbeRsError {
@@ -161,7 +169,7 @@ impl<'probe> RiscvCommunicationInterface<'probe> {
 
             Ok(Some(s))
         } else {
-            log::debug!("No JTAG interface available on Probe");
+            log::debug!("No JTAG interface available on probe");
 
             Ok(None)
         }
@@ -407,11 +415,6 @@ impl<'probe> RiscvCommunicationInterface<'probe> {
     }
 
     fn write_progbuf(&mut self, index: usize, value: u32) -> Result<(), RiscvError> {
-        assert!(
-            index < 16,
-            "Trying to write unsupported program buffer register"
-        );
-
         match index {
             0 => self.write_dm_register(Progbuf0(value)),
             1 => self.write_dm_register(Progbuf1(value)),
@@ -429,13 +432,13 @@ impl<'probe> RiscvCommunicationInterface<'probe> {
             13 => self.write_dm_register(Progbuf13(value)),
             14 => self.write_dm_register(Progbuf14(value)),
             15 => self.write_dm_register(Progbuf15(value)),
-            _ => unreachable!(),
+            e => Err(RiscvError::UnsupportedProgramBufferRegister(e)),
         }
     }
 
     pub(crate) fn setup_program_buffer(&mut self, data: &[u32]) -> Result<(), RiscvError> {
         if data.len() > self.state.progbuf_size as usize {
-            panic!("Program buffer is too small for supplied program.")
+            return Err(RiscvError::ProgramBufferTooSmall);
         }
 
         if data == &self.state.progbuf_cache[..data.len()] {
@@ -468,7 +471,9 @@ impl<'probe> RiscvCommunicationInterface<'probe> {
         // Backup register s0
         let s0 = self.abstract_cmd_register_read(&register::S0)?;
 
-        assert!((width as u32) < 3, "Width larger than 3 not supported yet");
+        if width > RiscvBusAccess::A32 {
+            return Err(RiscvError::UnsupportedBusAccessWidth(width));
+        }
 
         let lw_command: u32 = assembly::lw(0, 8, width as u32, 8);
 
@@ -520,7 +525,9 @@ impl<'probe> RiscvCommunicationInterface<'probe> {
         let s0 = self.abstract_cmd_register_read(&register::S0)?;
         let s1 = self.abstract_cmd_register_read(&register::S1)?;
 
-        assert!((width as u32) < 3, "Width larger than 3 not supported yet");
+        if width > RiscvBusAccess::A32 {
+            return Err(RiscvError::UnsupportedBusAccessWidth(width));
+        }
 
         let sw_command = assembly::sw(0, 8, width as u32, 9);
 
@@ -940,7 +947,7 @@ impl<'probe> MemoryInterface for RiscvCommunicationInterface<'probe> {
 /// Access width for bus access.
 /// This is used both for system bus access (`sbcs` register),
 /// as well for abstract commands.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, PartialEq, PartialOrd, Debug)]
 pub enum RiscvBusAccess {
     A8 = 0,
     A16 = 1,

@@ -210,10 +210,11 @@ impl JLink {
 
         log::trace!("Response: {:?}", response);
 
-        assert!(
-            len < 8,
-            "Not yet implemented for IR registers larger than 8 bit"
-        );
+        if len >= 8 {
+            return Err(DebugProbeError::NotImplemented(
+                "Not yet implemented for IR registers larger than 8 bit",
+            ));
+        }
 
         self.current_ir_reg = data[0] as u32;
 
@@ -427,7 +428,9 @@ impl DebugProbe for JLink {
             let div = std::cmp::max(div, speeds.min_div() as u32);
 
             actual_speed_khz = ((speeds.base_freq() / div) + 999) / 1000;
-            assert!(actual_speed_khz <= speed_khz);
+            if actual_speed_khz > speed_khz {
+                return Err(DebugProbeError::UnsupportedSpeed(speed_khz));
+            }
         } else {
             actual_speed_khz = speed_khz;
         }
@@ -609,10 +612,11 @@ impl JTAGAccess for JLink {
         let address_bits = address.to_le_bytes();
 
         // TODO: This is limited to 5 bit addresses for now
-        assert!(
-            address <= 0x1f,
-            "JTAG Register addresses are fixed to 5 bits"
-        );
+        if address > 0x1f {
+            return Err(DebugProbeError::NotImplemented(
+                "JTAG Register addresses are fixed to 5 bits",
+            ));
+        }
 
         if self.current_ir_reg != address {
             // Write IR register
@@ -633,10 +637,11 @@ impl JTAGAccess for JLink {
         let address_bits = address.to_le_bytes();
 
         // TODO: This is limited to 5 bit addresses for now
-        assert!(
-            address <= 0x1f,
-            "JTAG Register addresses are fixed to 5 bits"
-        );
+        if address > 0x1f {
+            return Err(DebugProbeError::NotImplemented(
+                "JTAG Register addresses are fixed to 5 bits",
+            ));
+        }
 
         if self.current_ir_reg != address {
             // Write IR register
@@ -768,18 +773,20 @@ impl DAPAccess for JLink {
                 let value = bits_to_byte(register_val);
 
                 // Make sure the parity is correct.
-                return if let Some(parity) = result_sequence.next() {
-                    if (value.count_ones() % 2 == 1) == parity {
-                        log::trace!("DAP read {}.", value);
-                        Ok(value)
-                    } else {
+                return result_sequence
+                    .next()
+                    .and_then(|parity| {
+                        if (value.count_ones() % 2 == 1) == parity {
+                            log::trace!("DAP read {}.", value);
+                            Some(value)
+                        } else {
+                            None
+                        }
+                    })
+                    .ok_or_else(|| {
                         log::error!("DAP read fault.");
-                        Err(DebugProbeError::Unknown)
-                    }
-                } else {
-                    log::error!("DAP read fault.");
-                    Err(DebugProbeError::Unknown)
-                };
+                        DapError::IncorrectParity.into()
+                    });
 
                 // Don't care about the Trn bit at the end.
             }
@@ -899,7 +906,7 @@ impl DAPAccess for JLink {
                     ctrl
                 );
 
-                return Err(DebugProbeError::Unknown);
+                return Err(DapError::FaultResponse.into());
             }
 
             // Since this is a write request, we don't care about the part after the ack bits.

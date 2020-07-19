@@ -496,7 +496,9 @@ impl<D: StLinkUsb> STLink<D> {
         protocol: WireProtocol,
         frequency_khz: u32,
     ) -> Result<(), DebugProbeError> {
-        assert_eq!(self.hw_version, 3);
+        if self.hw_version != 3 {
+            return Err(DebugProbeError::CommandNotSupportedByProbe);
+        }
 
         let cmd_proto = match protocol {
             WireProtocol::Swd => 0,
@@ -515,7 +517,9 @@ impl<D: StLinkUsb> STLink<D> {
         &mut self,
         protocol: WireProtocol,
     ) -> Result<(Vec<u32>, u32), DebugProbeError> {
-        assert_eq!(self.hw_version, 3);
+        if self.hw_version != 3 {
+            return Err(DebugProbeError::CommandNotSupportedByProbe);
+        }
 
         let cmd_proto = match protocol {
             WireProtocol::Swd => 0,
@@ -582,7 +586,9 @@ impl<D: StLinkUsb> STLink<D> {
     /// a JTAG version >= `MIN_JTAG_VERSION_MULTI_AP`.
     fn open_ap(&mut self, apsel: u8) -> Result<(), DebugProbeError> {
         // Ensure this command is actually supported
-        assert!(self.hw_version >= 3 || self.jtag_version >= Self::MIN_JTAG_VERSION_MULTI_AP);
+        if self.hw_version < 3 && self.jtag_version < Self::MIN_JTAG_VERSION_MULTI_AP {
+            return Err(DebugProbeError::CommandNotSupportedByProbe);
+        }
 
         let mut buf = [0; 2];
         log::trace!("JTAG_INIT_AP {}", apsel);
@@ -600,7 +606,9 @@ impl<D: StLinkUsb> STLink<D> {
     /// a JTAG version >= `MIN_JTAG_VERSION_MULTI_AP`.
     fn close_ap(&mut self, apsel: u8) -> Result<(), DebugProbeError> {
         // Ensure this command is actually supported
-        assert!(self.hw_version >= 3 || self.jtag_version >= Self::MIN_JTAG_VERSION_MULTI_AP);
+        if self.hw_version < 3 && self.jtag_version < Self::MIN_JTAG_VERSION_MULTI_AP {
+            return Err(DebugProbeError::CommandNotSupportedByProbe);
+        }
 
         let mut buf = [0; 2];
         log::trace!("JTAG_CLOSE_AP {}", apsel);

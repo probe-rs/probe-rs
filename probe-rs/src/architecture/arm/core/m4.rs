@@ -619,7 +619,7 @@ impl<'probe> CoreInterface for M4<'probe> {
             Ok(reg.num_code())
         } else {
             log::warn!("This chip uses FPBU revision {}, which is not yet supported. HW breakpoints are not available.", reg.rev());
-            Err(Error::Probe(DebugProbeError::Unknown))
+            Err(Error::Probe(DebugProbeError::CommandNotSupportedByProbe))
         }
     }
 
@@ -646,7 +646,7 @@ impl<'probe> CoreInterface for M4<'probe> {
             val = FpRev2CompX::breakpoint_configuration(addr).into();
         } else {
             log::warn!("This chip uses FPBU revision {}, which is not yet supported. HW breakpoints are not available.", ctrl_reg.rev());
-            return Err(Error::Probe(DebugProbeError::Unknown));
+            return Err(Error::Probe(DebugProbeError::CommandNotSupportedByProbe));
         }
 
         // This is fine as FpRev1CompX and Rev2CompX are just two different
