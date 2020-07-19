@@ -180,14 +180,11 @@ pub fn open_device_from_selector(
             };
 
             let timeout = Duration::from_millis(100);
-            let language = match handle.read_languages(timeout)?.get(0) {
-                Some(lang) => lang.clone(),
-                None => continue,
-            };
-
             let sn_str = handle
-                .read_serial_number_string(language, &d_desc, timeout)
-                .ok();
+                .read_languages(timeout)?
+                .get(0)
+                .map(|lang| handle.read_serial_number_string(*lang, &d_desc, timeout))
+                .transpose()?;
 
             // We have to ensure the handle gets closed after reading the serial number,
             // multiple open handles are not allowed on Windows.
