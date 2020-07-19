@@ -1,12 +1,15 @@
-use std::io::{self, Read, Write};
-use std::convert::TryInto;
-use bitvec::vec::BitVec;
-use bitvec::order::Lsb0;
-use crate::probe::{JTAGAccess, ProbeCreationError};
-use crate::{DebugProbe, DebugProbeError, Memory, WireProtocol, DebugProbeSelector, DebugProbeInfo, DebugProbeType};
 use crate::architecture::arm::DAPAccess;
-use std::sync::Mutex;
+use crate::probe::{JTAGAccess, ProbeCreationError};
+use crate::{
+    DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, DebugProbeType, Memory,
+    WireProtocol,
+};
+use bitvec::order::Lsb0;
+use bitvec::vec::BitVec;
 use rusb::UsbContext;
+use std::convert::TryInto;
+use std::io::{self, Read, Write};
+use std::sync::Mutex;
 
 mod ftdi;
 
@@ -55,8 +58,10 @@ impl JtagAdapter {
         // Minimal values, may not work with all probes
         let output: u16 = 0x0008;
         let direction: u16 = 0x000b;
-        self.device.write_all(&[0x80, output as u8, direction as u8])?;
-        self.device.write_all(&[0x82, (output>>8) as u8, (direction>>8) as u8])?;
+        self.device
+            .write_all(&[0x80, output as u8, direction as u8])?;
+        self.device
+            .write_all(&[0x82, (output >> 8) as u8, (direction >> 8) as u8])?;
 
         // Disable loopback
         self.device.write_all(&[0x85])?;
@@ -221,17 +226,14 @@ impl JtagAdapter {
 
         self.reset()?;
 
-        let cmd = vec![0xff; max_device_count*4];
-        let r = self.transfer_dr(&cmd, cmd.len()*8)?;
+        let cmd = vec![0xff; max_device_count * 4];
+        let r = self.transfer_dr(&cmd, cmd.len() * 8)?;
         let mut targets = vec![];
         for i in 0..max_device_count {
-            let idcode = u32::from_le_bytes(r[i*4..(i+1)*4].try_into().unwrap());
+            let idcode = u32::from_le_bytes(r[i * 4..(i + 1) * 4].try_into().unwrap());
             if idcode != 0xffffffff {
                 log::debug!("tap found: {:08x}", idcode);
-                let target = JtagChainItem {
-                    idcode,
-                    irlen: 0
-                };
+                let target = JtagChainItem { idcode, irlen: 0 };
                 targets.push(target);
             } else {
                 break;
@@ -240,7 +242,7 @@ impl JtagAdapter {
 
         self.reset()?;
         let cmd = vec![0xff; max_device_count];
-        let mut r = self.transfer_ir(&cmd, cmd.len()*8)?;
+        let mut r = self.transfer_ir(&cmd, cmd.len() * 8)?;
 
         let mut ir = 0;
         let mut irbits = 0;
@@ -262,7 +264,7 @@ impl JtagAdapter {
                 log::debug!("invalid irlen for tap {}", i);
                 return Err(io::Error::new(
                     io::ErrorKind::InvalidData,
-                    "Invalid IR sequence during the chain scan"
+                    "Invalid IR sequence during the chain scan",
                 ));
             }
         }
@@ -279,7 +281,7 @@ impl JtagAdapter {
             irpost: 0,
             drpre: 0,
             drpost: 0,
-            irlen: 0
+            irlen: 0,
         };
         for tap in taps {
             if tap.idcode == idcode {
@@ -306,22 +308,25 @@ impl JtagAdapter {
     fn get_chain_params(&self) -> io::Result<ChainParams> {
         match &self.chain_params {
             Some(params) => Ok(params.clone()),
-            None => {
-                Err(io::Error::new(
-                    io::ErrorKind::Other,
-                    "target is not selected"
-                ))
-            }
+            None => Err(io::Error::new(
+                io::ErrorKind::Other,
+                "target is not selected",
+            )),
         }
     }
 
-    fn target_transfer(&mut self, address: u32, data: Option<&[u8]>, len_bits: usize) -> io::Result<Vec<u8>> {
+    fn target_transfer(
+        &mut self,
+        address: u32,
+        data: Option<&[u8]>,
+        len_bits: usize,
+    ) -> io::Result<Vec<u8>> {
         let params = self.get_chain_params()?;
         let max_address = (1 << params.irlen) - 1;
         if address > max_address {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidInput,
-                "invalid register address"
+                "invalid register address",
             ));
         }
 
@@ -369,14 +374,19 @@ pub struct FtdiProbe {
 }
 
 impl DebugProbe for FtdiProbe {
-    fn new_from_selector(selector: impl Into<DebugProbeSelector>) -> Result<Box<Self>, DebugProbeError>
-        where Self: Sized
+    fn new_from_selector(
+        selector: impl Into<DebugProbeSelector>,
+    ) -> Result<Box<Self>, DebugProbeError>
+    where
+        Self: Sized,
     {
         let selector = selector.into();
 
         // Only open FTDI probes
         if selector.vendor_id != 0x0403 {
-            return Err(DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::NotFound));
+            return Err(DebugProbeError::ProbeCouldNotBeCreated(
+                ProbeCreationError::NotFound,
+            ));
         }
 
         let adapter = JtagAdapter::open(selector.vendor_id, selector.product_id)
@@ -385,7 +395,7 @@ impl DebugProbe for FtdiProbe {
         let probe = FtdiProbe {
             adapter: Mutex::new(adapter),
             speed_khz: 0,
-            idle_cycles: 0
+            idle_cycles: 0,
         };
         log::debug!("opened probe: {:?}", probe);
         Ok(Box::new(probe))
@@ -409,29 +419,32 @@ impl DebugProbe for FtdiProbe {
         log::debug!("attaching...");
         let adapter = self.adapter.get_mut().unwrap();
 
-        adapter.attach()
+        adapter
+            .attach()
             .map_err(|e| DebugProbeError::ProbeSpecific(Box::new(e)))?;
 
-        let taps = adapter.scan()
+        let taps = adapter
+            .scan()
             .map_err(|e| DebugProbeError::ProbeSpecific(Box::new(e)))?;
         if taps.is_empty() {
             log::warn!("no JTAG taps detected");
             return Err(DebugProbeError::TargetNotFound);
         }
         if taps.len() == 1 {
-            adapter.select_target(taps[0].idcode)
+            adapter
+                .select_target(taps[0].idcode)
                 .map_err(|e| DebugProbeError::ProbeSpecific(Box::new(e)))?;
         } else {
             let known_idcodes = [
                 0x1000563d, // GD32VF103
             ];
-            let idcode = taps.iter()
+            let idcode = taps
+                .iter()
                 .map(|tap| tap.idcode)
-                .find(|idcode| {
-                    known_idcodes.iter().find(|v| *v == idcode).is_some()
-                });
+                .find(|idcode| known_idcodes.iter().find(|v| *v == idcode).is_some());
             if let Some(idcode) = idcode {
-                adapter.select_target(idcode)
+                adapter
+                    .select_target(idcode)
                     .map_err(|e| DebugProbeError::ProbeSpecific(Box::new(e)))?;
             } else {
                 return Err(DebugProbeError::TargetNotFound);
@@ -482,12 +495,14 @@ impl JTAGAccess for FtdiProbe {
     fn read_register(&mut self, address: u32, len: u32) -> Result<Vec<u8>, DebugProbeError> {
         log::debug!("read_register({:#x}, {})", address, len);
         let adapter = self.adapter.get_mut().unwrap();
-        let r = adapter.target_transfer(address, None, len as usize)
+        let r = adapter
+            .target_transfer(address, None, len as usize)
             .map_err(|e| {
                 log::debug!("target_transfer error: {:?}", e);
                 DebugProbeError::ProbeSpecific(Box::new(e))
             })?;
-        adapter.idle(self.idle_cycles as usize)
+        adapter
+            .idle(self.idle_cycles as usize)
             .map_err(|e| DebugProbeError::ProbeSpecific(Box::new(e)))?;
         log::debug!("read_register result: {:?})", r);
         Ok(r)
@@ -498,21 +513,27 @@ impl JTAGAccess for FtdiProbe {
         self.idle_cycles = idle_cycles;
     }
 
-    fn write_register(&mut self, address: u32, data: &[u8], len: u32) -> Result<Vec<u8>, DebugProbeError> {
+    fn write_register(
+        &mut self,
+        address: u32,
+        data: &[u8],
+        len: u32,
+    ) -> Result<Vec<u8>, DebugProbeError> {
         log::debug!("write_register({:#x}, {:?}, {})", address, data, len);
         let adapter = self.adapter.get_mut().unwrap();
-        let r = adapter.target_transfer(address, Some(data), len as usize)
+        let r = adapter
+            .target_transfer(address, Some(data), len as usize)
             .map_err(|e| {
                 log::debug!("target_transfer error: {:?}", e);
                 DebugProbeError::ProbeSpecific(Box::new(e))
             })?;
-        adapter.idle(self.idle_cycles as usize)
+        adapter
+            .idle(self.idle_cycles as usize)
             .map_err(|e| DebugProbeError::ProbeSpecific(Box::new(e)))?;
         log::debug!("write_register result: {:?})", r);
         Ok(r)
     }
 }
-
 
 fn get_device_info(device: &rusb::Device<rusb::Context>) -> Option<DebugProbeInfo> {
     let d_desc = device.device_descriptor().ok()?;

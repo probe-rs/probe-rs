@@ -3,11 +3,11 @@
 use libftdi1_sys as ffi;
 
 use std::convert::TryInto;
-use std::io::{self, Read, Write, ErrorKind};
+use std::io::{self, ErrorKind, Read, Write};
 
-use thiserror::Error;
 use std::ffi::CStr;
-use std::{ptr, mem};
+use std::{mem, ptr};
+use thiserror::Error;
 
 /// The target interface
 pub enum Interface {
@@ -85,11 +85,9 @@ impl Builder {
     pub fn usb_open(mut self, vendor: u16, product: u16) -> Result<Device> {
         let result = unsafe { ffi::ftdi_usb_open(self.context, vendor as i32, product as i32) };
         match result {
-            0 => {
-                Ok(Device {
-                    context: mem::replace(&mut self.context, ptr::null_mut()),
-                })
-            },
+            0 => Ok(Device {
+                context: mem::replace(&mut self.context, ptr::null_mut()),
+            }),
             -1 => Err(Error::EnumerationFailed), // usb_find_busses() failed
             -2 => Err(Error::EnumerationFailed), // usb_find_devices() failed
             -3 => Err(Error::DeviceNotFound),    // usb device not found
@@ -208,7 +206,10 @@ impl Device {
             -1 => Err(io::Error::new(ErrorKind::InvalidInput, "invalid baudrate")),
             -2 => Err(io::Error::new(ErrorKind::Other, "setting baudrate failed")),
             -3 => Err(io::Error::new(ErrorKind::Other, "USB device unavailable")),
-            _ => Err(io::Error::new(ErrorKind::Other, "unknown set baudrate error")),
+            _ => Err(io::Error::new(
+                ErrorKind::Other,
+                "unknown set baudrate error",
+            )),
         }
     }
 
@@ -217,9 +218,15 @@ impl Device {
         let result = unsafe { ffi::ftdi_set_bitmode(self.context, bitmask, mode.0 as u8) };
         match result {
             0 => Ok(()),
-            -1 => Err(io::Error::new(ErrorKind::Other, "can't enable bitbang mode")),
+            -1 => Err(io::Error::new(
+                ErrorKind::Other,
+                "can't enable bitbang mode",
+            )),
             -2 => Err(io::Error::new(ErrorKind::Other, "USB device unavailable")),
-            _ => Err(io::Error::new(ErrorKind::Other, "unknown set bitmode error")),
+            _ => Err(io::Error::new(
+                ErrorKind::Other,
+                "unknown set bitmode error",
+            )),
         }
     }
 
@@ -227,9 +234,15 @@ impl Device {
         let result = unsafe { ffi::ftdi_disable_bitbang(self.context) };
         match result {
             0 => Ok(()),
-            -1 => Err(io::Error::new(ErrorKind::Other, "can't disable bitbang mode")),
+            -1 => Err(io::Error::new(
+                ErrorKind::Other,
+                "can't disable bitbang mode",
+            )),
             -2 => Err(io::Error::new(ErrorKind::Other, "USB device unavailable")),
-            _ => Err(io::Error::new(ErrorKind::Other, "unknown disable bitbang error")),
+            _ => Err(io::Error::new(
+                ErrorKind::Other,
+                "unknown disable bitbang error",
+            )),
         }
     }
 }
@@ -245,7 +258,9 @@ impl Drop for Device {
             -3 => unreachable!("uninitialized context"),
             _ => panic!("undocumented ftdi_usb_close return value"),
         };
-        unsafe { ffi::ftdi_free(self.context); }
+        unsafe {
+            ffi::ftdi_free(self.context);
+        }
     }
 }
 
@@ -276,7 +291,6 @@ impl Write for Device {
         Ok(())
     }
 }
-
 
 #[derive(Debug, Error)]
 pub enum Error {
