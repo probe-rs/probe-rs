@@ -126,13 +126,21 @@ pub struct ArmCommunicationInterfaceState {
     current_apsel: u8,
     current_apbanksel: u8,
 
+    /// Information about the APs of the target.
+    /// APs are identified by a number, starting from zero.
     ap_information: Vec<ApInformation>,
 }
 
 #[derive(Debug)]
 pub enum ApInformation {
+    /// AP is a Memory AP which allows access to target memory. See Chapter C2 in the [ARM Debug Interface Architecture Specification].
+    ///
+    /// [ARM Debug Interface Architecture Specification]: https://developer.arm.com/documentation/ihi0031/d/
     MemoryAp {
         index: u8,
+        /// Some Memory APs only support 32 bit wide access to data, while others
+        /// also support other widths. Based on this, 8 bit data access can either
+        /// be performed directly, or has to be done as a 32 bit access.
         only_32_bit_data_size: bool,
     },
     Other {
@@ -192,6 +200,8 @@ impl<'probe> ArmCommunicationInterface<'probe> {
 
                 for ap in valid_access_ports(&mut s) {
                     let ap_state = s.get_ap_information(ap)?;
+
+                    log::debug!("AP {}: {:?}", ap.get_port_number(), ap_state);
 
                     s.state.ap_information.push(ap_state);
                 }
@@ -446,6 +456,7 @@ impl<'probe> ArmCommunicationInterface<'probe> {
         Ok(())
     }
 
+    /// Determine the type and additional information about a AP
     pub(crate) fn get_ap_information(
         &mut self,
         access_port: GenericAP,
@@ -455,10 +466,10 @@ impl<'probe> ArmCommunicationInterface<'probe> {
         if idr.CLASS == APClass::MEMAP {
             let access_port: MemoryAP = access_port.into();
 
-            let data_size = detect_data_size(self, access_port)?;
+            let only_32_bit_data_size = ap_supports_only_32bit_access(self, access_port)?;
             Ok(ApInformation::MemoryAp {
                 index: access_port.get_port_number(),
-                only_32_bit_data_size: data_size,
+                only_32_bit_data_size,
             })
         } else {
             Ok(ApInformation::Other {
@@ -594,7 +605,7 @@ where
 ///
 /// If only 32-bit access is supported, the SIZE field will be read-only and changing it
 /// will not have any effect.
-fn detect_data_size(
+fn ap_supports_only_32bit_access(
     interface: &mut ArmCommunicationInterface,
     ap: MemoryAP,
 ) -> Result<bool, DebugProbeError> {
@@ -638,7 +649,7 @@ impl ArmChipInfo {
                 };
                 baseaddr |= u64::from(base_register.BASEADDR << 12);
 
-                let data_size = detect_data_size(interface, access_port)?;
+                let data_size = ap_supports_only_32bit_access(interface, access_port)?;
 
                 let mut memory = Memory::new(
                     ADIMemoryInterface::<ArmCommunicationInterface>::new(

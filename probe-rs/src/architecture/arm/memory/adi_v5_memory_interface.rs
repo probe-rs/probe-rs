@@ -29,13 +29,11 @@ impl<'probe> ADIMemoryInterface<ArmCommunicationInterface<'probe>> {
         access_port_number: impl Into<MemoryAP>,
         only_32bit_data_size: bool,
     ) -> Result<ADIMemoryInterface<ArmCommunicationInterface>, AccessPortError> {
-        let interface = Self {
+        Ok(Self {
             interface,
             access_port: access_port_number.into(),
             only_32bit_data_size,
-        };
-        // interface.detect_data_size()?;
-        Ok(interface)
+        })
     }
 }
 
