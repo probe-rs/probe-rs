@@ -494,6 +494,14 @@ impl<'probe> Core<'probe> {
         }
     }
 
+    pub fn clear_all_hw_breakpoints(&mut self) -> Result<(), error::Error> {
+        let num_hw_breakpoints = self.get_available_breakpoint_units()? as usize;
+
+        { 0..num_hw_breakpoints }
+            .map(|unit_index| self.inner.clear_breakpoint(unit_index))
+            .collect()
+    }
+
     pub fn architecture(&self) -> Architecture {
         self.inner.architecture()
     }

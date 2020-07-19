@@ -50,6 +50,7 @@ impl ArchitectureInterfaceState {
                 RiscvCommunicationInterface::new(probe, state)?.unwrap(),
             ),
         }
+        .and_then(|mut core| core.clear_all_hw_breakpoints().map(|_| core))
     }
 }
 
