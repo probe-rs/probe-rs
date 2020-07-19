@@ -154,7 +154,7 @@ impl<'probe> RiscvCommunicationInterface<'probe> {
         if probe.has_jtag_interface() {
             let mut s = Self { probe, state };
 
-            if s.state.initialized() {
+            if !s.state.initialized() {
                 s.enter_debug_mode()?;
                 s.state.initialize();
             }
