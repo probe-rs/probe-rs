@@ -53,6 +53,7 @@ impl ArchitectureInterfaceState {
                     .ok_or_else(|| anyhow!("No JTAG interface available on probe"))?,
             ),
         }
+        .and_then(|mut core| core.clear_all_hw_breakpoints().map(|_| core))
     }
 }
 
