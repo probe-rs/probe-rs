@@ -50,7 +50,6 @@ impl ArchitectureInterfaceState {
                 RiscvCommunicationInterface::new(probe, state)?.unwrap(),
             ),
         }
-        .and_then(|mut core| core.clear_all_hw_breakpoints().map(|_| core))
     }
 }
 
@@ -128,12 +127,16 @@ impl Session {
             }
         };
 
-        Ok(Self {
+        let mut session = Self {
             target,
             probe,
             interface_state: data.1,
             cores: vec![data.0],
-        })
+        };
+
+        session.clear_all_hw_breakpoints()?;
+
+        Ok(session)
     }
 
     /// Automatically creates a session with the first connected probe found.
@@ -185,6 +188,17 @@ impl Session {
             ArchitectureInterfaceState::Riscv(_) => Architecture::Riscv,
         }
     }
+
+    /// Clears all hardware breakpoints on all cores
+    pub fn clear_all_hw_breakpoints(&mut self) -> Result<(), Error> {
+        { 0..self.cores.len() }
+            .map(|n| {
+                self.core(n)
+                    .and_then(|mut core| core.clear_all_hw_breakpoints())
+            })
+            .collect::<Result<Vec<_>, _>>()
+            .map(|_| ())
+    }
 }
 
 fn try_arm_autodetect(
@@ -200,4 +214,12 @@ fn try_arm_autodetect(
     let found_chip = found_chip.map(ChipInfo::from);
 
     Ok(found_chip)
+}
+
+impl Drop for Session {
+    fn drop(&mut self) {
+        if let Err(err) = self.clear_all_hw_breakpoints() {
+            log::warn!("Could not clear all hardware breakpoints: {:?}", err);
+        }
+    }
 }
