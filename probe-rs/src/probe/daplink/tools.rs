@@ -3,8 +3,37 @@ use crate::{
     probe::{DebugProbeInfo, DebugProbeType, ProbeCreationError},
     DebugProbeSelector,
 };
+use lazy_static::lazy_static;
 use rusb::{Device, DeviceDescriptor, UsbContext};
+use std::collections::HashMap;
 use std::time::Duration;
+
+// Most CMSIS-DAP v1 devices use a 64 byte report size. So this should be a sane default
+const DAP_V1_DEFAULT_REPORT_SIZE: usize = 64;
+
+lazy_static! {
+    /// Map of known CMSIS-DAP devices with non-standard report sizes.
+    static ref DAP_V1_REPORT_SIZE_MAP: HashMap<(u16, u16), usize> = {
+        let mut m = HashMap::new();
+        // Atmel-ICE
+        m.insert((0x03eb,0x2141), 512);
+        // Atmel Power Debugger
+        m.insert((0x03eb,0x2144), 512);
+        // Atmel EDBG
+        m.insert((0x03eb,0x2111), 512);
+        m
+    };
+}
+
+/// Get a suitable HID report size for the DAP device.
+///
+/// Looks up the device in the table of known non-standard
+/// report sizes. Returns the DAP_V1_DEFAULT_REPORT_SIZE otherwise.
+fn get_hid_report_size(vid: u16, pid: u16) -> usize {
+    *DAP_V1_REPORT_SIZE_MAP
+        .get(&(vid, pid))
+        .unwrap_or(&DAP_V1_DEFAULT_REPORT_SIZE)
+}
 
 /// Finds all CMSIS-DAP devices, either v1 (HID) or v2 (WinUSB Bulk).
 ///
@@ -233,7 +262,9 @@ pub fn open_device_from_selector(
     match hid_device {
         Ok(device) => {
             match device.get_product_string() {
-                Ok(Some(s)) if s.contains("CMSIS-DAP") => Ok(DAPLinkDevice::V1(device)),
+                Ok(Some(s)) if s.contains("CMSIS-DAP") => {
+                    Ok(DAPLinkDevice::V1(device, get_hid_report_size(vid, pid)))
+                }
                 _ => {
                     // Return NotFound if this VID:PID was not a valid CMSIS-DAP probe,
                     // or if it couldn't be opened, so that other probe modules can
