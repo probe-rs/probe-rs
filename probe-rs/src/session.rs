@@ -9,6 +9,7 @@ use crate::config::{
 };
 use crate::core::{Architecture, CoreState, SpecificCoreState};
 use crate::{Core, CoreType, Error, Probe};
+use anyhow::anyhow;
 
 #[derive(Debug)]
 pub struct Session {
@@ -43,11 +44,13 @@ impl ArchitectureInterfaceState {
         match self {
             ArchitectureInterfaceState::Arm(state) => core.attach_arm(
                 core_state,
-                ArmCommunicationInterface::new(probe, state)?.unwrap(),
+                ArmCommunicationInterface::new(probe, state)?
+                    .ok_or_else(|| anyhow!("No DAP interface available on probe"))?,
             ),
             ArchitectureInterfaceState::Riscv(state) => core.attach_riscv(
                 core_state,
-                RiscvCommunicationInterface::new(probe, state)?.unwrap(),
+                RiscvCommunicationInterface::new(probe, state)?
+                    .ok_or_else(|| anyhow!("No JTAG interface available on probe"))?,
             ),
         }
     }

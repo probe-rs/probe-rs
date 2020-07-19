@@ -11,7 +11,7 @@ use crate::{
     Error, MemoryInterface,
 };
 use crate::{DebugProbeError, Memory};
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use std::time::Duration;
 
 pub trait CoreRegister: Clone + From<u32> + Into<u32> + Sized + std::fmt::Debug {
@@ -452,8 +452,9 @@ impl<'probe> Core<'probe> {
             // We cannot set additional breakpoints
             log::warn!("Maximum number of breakpoints ({}) reached, unable to set additional HW breakpoint.", num_hw_breakpoints);
 
-            // TODO: Better error here
-            return Err(error::Error::Probe(DebugProbeError::Unknown));
+            return Err(error::Error::Probe(
+                DebugProbeError::BreakpointUnitsExceeded,
+            ));
         }
 
         if !self.inner.hw_breakpoints_enabled() {
@@ -490,7 +491,10 @@ impl<'probe> Core<'probe> {
                 self.state.breakpoints.swap_remove(bp_position);
                 Ok(())
             }
-            None => Err(error::Error::Probe(DebugProbeError::Unknown)),
+            None => Err(error::Error::Other(anyhow!(
+                "No breakpoint found at address {}",
+                address
+            ))),
         }
     }
 

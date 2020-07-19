@@ -71,9 +71,6 @@ pub enum DebugProbeError {
     ProbeFirmwareOutdated,
     #[error("An error specific to a probe type occured")]
     ProbeSpecific(#[source] Box<dyn std::error::Error + Send + Sync>),
-    // TODO: Unknown errors are not very useful, this should be removed.
-    #[error("An unknown error occured")]
-    Unknown,
     #[error("Probe could not be created")]
     ProbeCouldNotBeCreated(#[from] ProbeCreationError),
     #[error("Probe does not support protocol")]
@@ -99,6 +96,10 @@ pub enum DebugProbeError {
     NotImplemented(&'static str),
     #[error("Error in previous batched command")]
     BatchError(BatchCommand),
+    #[error("Command not supported by probe")]
+    CommandNotSupportedByProbe,
+    #[error("Unable to set hardware breakpoint, all available breakpoint units are in use.")]
+    BreakpointUnitsExceeded,
     #[error(transparent)]
     Other(#[from] anyhow::Error),
 }
@@ -585,7 +586,7 @@ impl DebugProbe for FakeProbe {
 
     /// Resets the target device.
     fn target_reset(&mut self) -> Result<(), DebugProbeError> {
-        Err(DebugProbeError::Unknown)
+        Err(DebugProbeError::CommandNotSupportedByProbe)
     }
 
     fn dedicated_memory_interface(&self) -> Option<Memory> {
@@ -612,7 +613,7 @@ impl DebugProbe for FakeProbe {
 impl DAPAccess for FakeProbe {
     /// Reads the DAP register on the specified port and address
     fn read_register(&mut self, _port: PortType, _addr: u16) -> Result<u32, DebugProbeError> {
-        Err(DebugProbeError::Unknown)
+        Err(DebugProbeError::CommandNotSupportedByProbe)
     }
 
     /// Writes a value to the DAP register on the specified port and address
@@ -622,7 +623,7 @@ impl DAPAccess for FakeProbe {
         _addr: u16,
         _value: u32,
     ) -> Result<(), DebugProbeError> {
-        Err(DebugProbeError::Unknown)
+        Err(DebugProbeError::CommandNotSupportedByProbe)
     }
 }
 

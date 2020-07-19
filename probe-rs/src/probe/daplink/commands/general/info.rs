@@ -120,7 +120,7 @@ impl Response for TestDomainTime {
         if buffer[offset + 1] == 0x08 {
             let res = buffer
                 .pread_with::<u32>(offset + 2, LE)
-                .expect("This is a bug. Please report it.");
+                .map_err(|_| anyhow!("This is a bug. Please report it."))?;
             Ok(TestDomainTime(res))
         } else {
             Err(anyhow!(CmsisDapError::UnexpectedAnswer))
@@ -135,7 +135,7 @@ impl Response for SWOTraceBufferSize {
         if buffer[offset + 1] == 0x04 {
             let res = buffer
                 .pread_with::<u32>(offset + 2, LE)
-                .expect("This is a bug. Please report it.");
+                .map_err(|_| anyhow!("This is a bug. Please report it."))?;
             Ok(SWOTraceBufferSize(res))
         } else {
             Err(anyhow!(CmsisDapError::UnexpectedAnswer))
@@ -151,7 +151,7 @@ impl Response for PacketCount {
         if buffer[offset] == 0x01 {
             let res = buffer
                 .pread_with::<u8>(offset + 1, LE)
-                .expect("This is a bug. Please report it.");
+                .map_err(|_| anyhow!("This is a bug. Please report it."))?;
             Ok(PacketCount(res))
         } else {
             Err(anyhow!(CmsisDapError::UnexpectedAnswer))
@@ -167,7 +167,7 @@ impl Response for PacketSize {
         if buffer[offset] == 0x02 {
             let res = buffer
                 .pread_with::<u16>(offset + 1, LE)
-                .expect("This is a bug. Please report it.");
+                .map_err(|_| anyhow!("This is a bug. Please report it."))?;
             Ok(PacketSize(res))
         } else {
             Err(anyhow!(CmsisDapError::UnexpectedAnswer))
@@ -190,6 +190,6 @@ fn string_from_bytes<R, F: Fn(String) -> R>(
     let string_end = string_start + string_len;
 
     let res = std::str::from_utf8(&buffer[string_start..string_end])
-        .expect("This is a bug. Please report it.");
+        .map_err(|_| anyhow!("This is a bug. Please report it."))?;
     Ok(constructor(res.to_owned()))
 }

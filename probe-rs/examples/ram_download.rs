@@ -3,7 +3,6 @@ use probe_rs::{config::TargetSelector, MemoryInterface, Probe, WireProtocol};
 use std::num::ParseIntError;
 use std::time::{Duration, Instant};
 
-use pretty_env_logger;
 use rand::prelude::*;
 use structopt::StructOpt;
 

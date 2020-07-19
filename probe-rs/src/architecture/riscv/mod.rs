@@ -4,7 +4,7 @@
 
 use crate::core::Architecture;
 use crate::CoreInterface;
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use communication_interface::{
     AbstractCommandErrorKind, AccessRegisterCommand, DebugRegister, RiscvCommunicationInterface,
     RiscvError,
@@ -446,11 +446,10 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         let tdata_value = Mcontrol(self.read_csr(tdata1)?);
 
         // This should not happen
-        assert_eq!(
-            tdata_value.type_(),
-            2,
-            "Error: Incorrect trigger type for address breakpoint"
-        );
+        let trigger_type = tdata_value.type_();
+        if trigger_type != 0b10 {
+            return Err(RiscvError::UnexpectedTriggerType(trigger_type).into());
+        }
 
         // Setup the trigger
 
@@ -523,14 +522,15 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
                 _ => HaltReason::Unknown,
             };
 
-            return Ok(CoreStatus::Halted(reason));
+            Ok(CoreStatus::Halted(reason))
+        } else if status.allrunning() {
+            Ok(CoreStatus::Running)
+        } else {
+            Err(
+                anyhow!("Some cores are running while some are halted, this should not happen.")
+                    .into(),
+            )
         }
-
-        if status.allrunning() {
-            return Ok(CoreStatus::Running);
-        }
-
-        panic!("This should not happen")
     }
 }
 
