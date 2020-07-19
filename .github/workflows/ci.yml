@@ -24,12 +24,19 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v2
 
-      - name: Install libusb
+      - name: Install libusb (linux)
         run: |
           sudo apt update
           sudo apt install -y libusb-dev libusb-1.0
         # Only install on Ubuntu
         if: matrix.os == 'ubuntu-latest'
+
+      - name: Install libusb (windows)
+        uses: lukka/run-vcpkg@v3
+        with:
+          vcpkgArguments: 'libftdi1:x64-windows'
+          vcpkgGitCommitId: '7aebb48' # 2020.01
+        if: matrix.os == 'windows-latest'
 
       - name: Install stable toolchain
         uses: actions-rs/toolchain@v1
