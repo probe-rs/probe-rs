@@ -1,0 +1,207 @@
+---
+name: SAMD51
+manufacturer: ~
+variants:
+  - name: ATSAMD51G18A
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 0
+            end: 262144
+          is_boot_memory: true
+    flash_algorithms:
+      - atsamd51_256
+  - name: ATSAMD51G19A
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 0
+            end: 524288
+          is_boot_memory: true
+    flash_algorithms:
+      - atsamd51_512
+  - name: ATSAMD51J18A
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 0
+            end: 262144
+          is_boot_memory: true
+    flash_algorithms:
+      - atsamd51_256
+  - name: ATSAMD51J19A
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 0
+            end: 524288
+          is_boot_memory: true
+    flash_algorithms:
+      - atsamd51_512
+  - name: ATSAMD51J20A
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537133056
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 0
+            end: 1048576
+          is_boot_memory: true
+    flash_algorithms:
+      - atsamd51_1024
+  - name: ATSAMD51N19A
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 0
+            end: 524288
+          is_boot_memory: true
+    flash_algorithms:
+      - atsamd51_512
+  - name: ATSAMD51N20A
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537133056
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 0
+            end: 1048576
+          is_boot_memory: true
+    flash_algorithms:
+      - atsamd51_1024
+  - name: ATSAMD51P19A
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 0
+            end: 524288
+          is_boot_memory: true
+    flash_algorithms:
+      - atsamd51_512
+  - name: ATSAMD51P20A
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537133056
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 0
+            end: 1048576
+          is_boot_memory: true
+    flash_algorithms:
+      - atsamd51_1024
+flash_algorithms:
+  atsamd51_256:
+    name: atsamd51_256
+    description: ATSAMD51 256kB Flash
+    default: true
+    instructions: ASGJB4prUgcB1SFKCmDPIiBJEgIKgE4iCoIfSUlECGAAIHBHACBwRxpJSGEbSoqASorSB/zQSGEYSBE4iIBIisAH/NAIik4hCEAA0AEgcEcwtRJLD0zbHKOAY4rbB/zQyRyJCANGiQAC4CDKCR8gwwAp+tFgYQlIDziggGCKwAf80CCKTiEIQADQASAwvQAAIgABAABAAEEEAAAAEqUAAAAAAAAAAAAA
+    pc_init: 1
+    pc_uninit: 37
+    pc_program_page: 81
+    pc_erase_sector: 41
+    pc_erase_all: ~
+    data_section_offset: 160
+    flash_properties:
+      address_range:
+        start: 0
+        end: 262144
+      page_size: 512
+      erased_byte_value: 255
+      program_page_timeout: 100
+      erase_sector_timeout: 1000
+      sectors:
+        - size: 8192
+          address: 0
+  atsamd51_512:
+    name: atsamd51_512
+    description: ATSAMD51 512kB Flash
+    default: true
+    instructions: ASGJB4prUgcB1SFKCmDPIiBJEgIKgE4iCoIfSUlECGAAIHBHACBwRxpJSGEbSoqASorSB/zQSGEYSBE4iIBIisAH/NAIik4hCEAA0AEgcEcwtRJLD0zbHKOAY4rbB/zQyRyJCANGiQAC4CDKCR8gwwAp+tFgYQlIDziggGCKwAf80CCKTiEIQADQASAwvQAAIgABAABAAEEEAAAAEqUAAAAAAAAAAAAA
+    pc_init: 1
+    pc_uninit: 37
+    pc_program_page: 81
+    pc_erase_sector: 41
+    pc_erase_all: ~
+    data_section_offset: 160
+    flash_properties:
+      address_range:
+        start: 0
+        end: 524288
+      page_size: 512
+      erased_byte_value: 255
+      program_page_timeout: 100
+      erase_sector_timeout: 1000
+      sectors:
+        - size: 8192
+          address: 0
+  atsamd51_1024:
+    name: atsamd51_1024
+    description: ATSAMD51 1024kB Flash
+    default: true
+    instructions: ASGJB4prUgcB1SFKCmDPIiBJEgIKgE4iCoIfSUlECGAAIHBHACBwRxpJSGEbSoqASorSB/zQSGEYSBE4iIBIisAH/NAIik4hCEAA0AEgcEcwtRJLD0zbHKOAY4rbB/zQyRyJCANGiQAC4CDKCR8gwwAp+tFgYQlIDziggGCKwAf80CCKTiEIQADQASAwvQAAIgABAABAAEEEAAAAEqUAAAAAAAAAAAAA
+    pc_init: 1
+    pc_uninit: 37
+    pc_program_page: 81
+    pc_erase_sector: 41
+    pc_erase_all: ~
+    data_section_offset: 160
+    flash_properties:
+      address_range:
+        start: 0
+        end: 1048576
+      page_size: 512
+      erased_byte_value: 255
+      program_page_timeout: 100
+      erase_sector_timeout: 1000
+      sectors:
+        - size: 8192
+          address: 0
+core: M4
