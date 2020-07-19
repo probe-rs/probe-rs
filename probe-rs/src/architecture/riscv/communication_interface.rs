@@ -151,9 +151,6 @@ impl<'probe> RiscvCommunicationInterface<'probe> {
         probe: &'probe mut Probe,
         state: &'probe mut RiscvCommunicationInterfaceState,
     ) -> Result<Option<Self>, ProbeRsError> {
-        log::debug!("Creating RISCV communication interface...");
-        log::debug!("State: {:?}", state);
-
         if probe.has_jtag_interface() {
             let mut s = Self { probe, state };
 
