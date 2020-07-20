@@ -360,14 +360,11 @@ pub(crate) fn get_ram(device: &Device) -> Option<RamRegion> {
         regions.sort_by_key(|r| r.range.end - r.range.start)
     }
 
-    if regions.len() == 0 {
-        None
-    } else {
-        regions.last().cloned()
-    }
+    regions.last().cloned()
 }
 
 pub(crate) fn get_flash(device: &Device) -> Option<FlashRegion> {
+    // Make a Vec of all memories which are flash-like
     let mut regions = Vec::new();
     for memory in device.memories.0.values() {
         if memory.default && memory.access.read && memory.access.execute && !memory.access.write {
@@ -377,6 +374,26 @@ pub(crate) fn get_flash(device: &Device) -> Option<FlashRegion> {
             });
         }
     }
-    regions.sort_by_key(|r| r.range.start);
-    regions.get(0).cloned()
+
+    if regions.len() > 1 {
+        // Sort by start address
+        regions.sort_by_key(|r| r.range.start);
+
+        // Merge contiguous flash regions
+        let mut merged = Vec::new();
+        let mut cur = regions.first().cloned().unwrap();
+        for i in 1..regions.len() {
+            if regions[i].range.start == cur.range.end {
+                cur.range.end = regions[i].range.end;
+            } else {
+                merged.push(cur);
+                cur = regions[i].clone();
+            }
+        }
+        merged.push(cur);
+        regions = merged;
+    }
+
+    // Return lowest-addressed region
+    regions.first().cloned()
 }
