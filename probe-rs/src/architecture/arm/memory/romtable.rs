@@ -309,7 +309,7 @@ impl<'probe: 'memory, 'memory> ComponentInformationReader<'probe, 'memory> {
                     "Component at 0x{:x}: CIDR{} has invalid preamble (expected 0x{:x}, got 0x{:x})",
                     self.base_address, i, expected[i], preambles[i],
                 );
-                return Err(RomTableError::CSComponentIdentification);
+                // return Err(RomTableError::CSComponentIdentification);
             }
         }
 
