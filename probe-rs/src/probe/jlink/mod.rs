@@ -8,7 +8,7 @@ use std::iter;
 use std::sync::Mutex;
 
 use crate::{
-    architecture::arm::{dp::Ctrl, SwvAccess},
+    architecture::arm::{dp::Ctrl, SwoAccess},
     architecture::arm::{DapError, PortType, Register},
     probe::{
         DAPAccess, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeType, JTAGAccess,
@@ -605,11 +605,11 @@ impl DebugProbe for JLink {
         }
     }
 
-    fn get_interface_swo(&self) -> Option<&dyn SwvAccess> {
+    fn get_interface_swo(&self) -> Option<&dyn SwoAccess> {
         None
     }
 
-    fn get_interface_swo_mut(&mut self) -> Option<&mut dyn SwvAccess> {
+    fn get_interface_swo_mut(&mut self) -> Option<&mut dyn SwoAccess> {
         None
     }
 }

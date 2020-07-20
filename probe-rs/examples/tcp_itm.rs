@@ -32,7 +32,7 @@ fn main() -> Result<(), Error> {
     println!("Starting ITM trace ...");
 
     loop {
-        let bytes = session.read_swv().unwrap();
+        let bytes = session.read_swo().unwrap();
 
         decoder.feed(bytes);
         while let Some(packet) = decoder.pull() {

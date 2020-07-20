@@ -3,7 +3,7 @@ pub mod tools;
 
 use crate::architecture::arm::{
     dp::{DPAccess, DPRegister, DebugPortError},
-    DAPAccess, DapError, PortType, SwvAccess,
+    DAPAccess, DapError, PortType, SwoAccess,
 };
 use crate::probe::{daplink::commands::CmsisDapError, BatchCommand};
 use crate::{DebugProbe, DebugProbeError, DebugProbeSelector, Memory, WireProtocol};
@@ -377,11 +377,11 @@ impl DebugProbe for DAPLink {
         None
     }
 
-    fn get_interface_swo(&self) -> Option<&dyn SwvAccess> {
+    fn get_interface_swo(&self) -> Option<&dyn SwoAccess> {
         None
     }
 
-    fn get_interface_swo_mut(&mut self) -> Option<&mut dyn SwvAccess> {
+    fn get_interface_swo_mut(&mut self) -> Option<&mut dyn SwoAccess> {
         None
     }
 }

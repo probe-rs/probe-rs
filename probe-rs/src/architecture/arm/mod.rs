@@ -16,6 +16,6 @@ pub use self::core::m4;
 pub use self::core::CortexDump;
 use crate::Error;
 
-pub trait SwvAccess {
-    fn read_swv(&mut self) -> Result<Vec<u8>, Error>;
+pub trait SwoAccess {
+    fn read_swo(&mut self) -> Result<Vec<u8>, Error>;
 }

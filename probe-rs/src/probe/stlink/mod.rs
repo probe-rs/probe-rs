@@ -6,7 +6,7 @@ use self::usb_interface::{STLinkUSBDevice, StLinkUsb};
 use super::{
     DAPAccess, DebugProbe, DebugProbeError, JTAGAccess, PortType, ProbeCreationError, WireProtocol,
 };
-use crate::{architecture::arm::SwvAccess, DebugProbeSelector, Error as ProbeRsError, Memory};
+use crate::{architecture::arm::SwoAccess, DebugProbeSelector, Error as ProbeRsError, Memory};
 use constants::{commands, JTagFrequencyToDivider, Mode, Status, SwdFrequencyToDelayCount};
 use scroll::{Pread, BE, LE};
 use std::{cmp::Ordering, time::Duration};
@@ -203,11 +203,11 @@ impl DebugProbe for STLink<STLinkUSBDevice> {
         None
     }
 
-    fn get_interface_swo(&self) -> Option<&dyn SwvAccess> {
+    fn get_interface_swo(&self) -> Option<&dyn SwoAccess> {
         Some(self as _)
     }
 
-    fn get_interface_swo_mut(&mut self) -> Option<&mut dyn SwvAccess> {
+    fn get_interface_swo_mut(&mut self) -> Option<&mut dyn SwoAccess> {
         Some(self as _)
     }
 }
@@ -661,7 +661,7 @@ impl<D: StLinkUsb> STLink<D> {
         self.device.write(
             vec![
                 commands::JTAG_COMMAND,
-                commands::SWV_START_TRACE_RECEPTION,
+                commands::SWO_START_TRACE_RECEPTION,
                 commands::JTAG_STLINK_SWD_COM,
                 0x10,
                 0x80,
@@ -677,12 +677,12 @@ impl<D: StLinkUsb> STLink<D> {
         Ok(())
     }
 
-    fn read_swv_available_byte_count(&mut self) -> Result<usize, DebugProbeError> {
+    fn read_swo_available_byte_count(&mut self) -> Result<usize, DebugProbeError> {
         let mut buf = [0; 2];
         self.device.write(
             vec![
                 commands::JTAG_COMMAND,
-                commands::SWV_GET_TRACE_NEW_RECORD_NB,
+                commands::SWO_GET_TRACE_NEW_RECORD_NB,
             ],
             &[],
             &mut buf,
@@ -691,16 +691,16 @@ impl<D: StLinkUsb> STLink<D> {
         Ok(buf.pread::<u16>(0).unwrap() as usize)
     }
 
-    fn read_swv_data(&mut self) -> Result<Vec<u8>, DebugProbeError> {
-        let mut buf = vec![0; self.read_swv_available_byte_count()?];
-        self.device.read_swv(&mut buf, TIMEOUT)?;
+    fn read_swo_data(&mut self) -> Result<Vec<u8>, DebugProbeError> {
+        let mut buf = vec![0; self.read_swo_available_byte_count()?];
+        self.device.read_swo(&mut buf, TIMEOUT)?;
         Ok(buf)
     }
 }
 
-impl<D: StLinkUsb> SwvAccess for STLink<D> {
-    fn read_swv(&mut self) -> Result<Vec<u8>, ProbeRsError> {
-        let data = self.read_swv_data()?;
+impl<D: StLinkUsb> SwoAccess for STLink<D> {
+    fn read_swo(&mut self) -> Result<Vec<u8>, ProbeRsError> {
+        let data = self.read_swo_data()?;
         Ok(data)
     }
 }
@@ -812,7 +812,7 @@ mod test {
             Ok(())
         }
 
-        fn read_swv(
+        fn read_swo(
             &mut self,
             _read_data: &mut [u8],
             _timeout: std::time::Duration,

@@ -1,7 +1,7 @@
 use crate::architecture::{
     arm::{
         memory::{ADIMemoryInterface, Component},
-        ArmChipInfo, ArmCommunicationInterface, ArmCommunicationInterfaceState, SwvAccess,
+        ArmChipInfo, ArmCommunicationInterface, ArmCommunicationInterfaceState, SwoAccess,
     },
     riscv::communication_interface::{
         RiscvCommunicationInterface, RiscvCommunicationInterfaceState,
@@ -182,14 +182,14 @@ impl Session {
         &self.target.flash_algorithms
     }
 
-    pub fn read_swv(&mut self) -> Result<Vec<u8>, Error> {
+    pub fn read_swo(&mut self) -> Result<Vec<u8>, Error> {
         let state = match &mut self.interface_state {
             ArchitectureInterfaceState::Arm(state) => state,
             _ => return Err(Error::ArchitectureRequired(&["ARMv7", "ARMv8"])),
         };
         let mut interface = ArmCommunicationInterface::new(&mut self.probe, state)?.unwrap();
 
-        interface.read_swv()
+        interface.read_swo()
     }
 
     pub fn setup_tracing(&mut self) -> Result<(), Error> {

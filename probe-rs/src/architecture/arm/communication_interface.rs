@@ -8,7 +8,7 @@ use super::{
         DebugPortVersion, Select, DPIDR,
     },
     memory::{ADIMemoryInterface, Component},
-    SwvAccess,
+    SwoAccess,
 };
 use crate::{
     CommunicationInterface, DebugProbe, DebugProbeError, Error as ProbeRsError, Memory, Probe,
@@ -523,10 +523,10 @@ impl<'probe> DPAccess for ArmCommunicationInterface<'probe> {
     }
 }
 
-impl<'probe> SwvAccess for ArmCommunicationInterface<'probe> {
-    fn read_swv(&mut self) -> Result<Vec<u8>, ProbeRsError> {
+impl<'probe> SwoAccess for ArmCommunicationInterface<'probe> {
+    fn read_swo(&mut self) -> Result<Vec<u8>, ProbeRsError> {
         match self.probe.get_interface_swo_mut() {
-            Some(interface) => interface.read_swv(),
+            Some(interface) => interface.read_swo(),
             None => Err(ProbeRsError::ArchitectureRequired(&["ARMv7", "ARMv8"])),
         }
     }

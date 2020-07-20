@@ -43,7 +43,7 @@ pub struct STLinkInfo {
     pub usb_pid: u16,
     ep_out: u8,
     ep_in: u8,
-    ep_swv: u8,
+    ep_swo: u8,
 }
 
 impl STLinkInfo {
@@ -52,14 +52,14 @@ impl STLinkInfo {
         usb_pid: u16,
         ep_out: u8,
         ep_in: u8,
-        ep_swv: u8,
+        ep_swo: u8,
     ) -> Self {
         Self {
             version_name: version_name.into(),
             usb_pid,
             ep_out,
             ep_in,
-            ep_swv,
+            ep_swo,
         }
     }
 }
@@ -91,7 +91,7 @@ pub trait StLinkUsb: std::fmt::Debug {
     /// STLink does not respond to USB requests.
     fn reset(&mut self) -> Result<(), DebugProbeError>;
 
-    fn read_swv(&mut self, read_data: &mut [u8], timeout: Duration) -> Result<(), DebugProbeError>;
+    fn read_swo(&mut self, read_data: &mut [u8], timeout: Duration) -> Result<(), DebugProbeError>;
 }
 
 impl STLinkUSBDevice {
@@ -153,7 +153,7 @@ impl STLinkUSBDevice {
 
         let mut endpoint_out = false;
         let mut endpoint_in = false;
-        let mut endpoint_swv = false;
+        let mut endpoint_swo = false;
 
         if let Some(interface) = config.interfaces().next() {
             if let Some(descriptor) = interface.descriptors().next() {
@@ -162,8 +162,8 @@ impl STLinkUSBDevice {
                         endpoint_out = true;
                     } else if endpoint.address() == info.ep_in {
                         endpoint_in = true;
-                    } else if endpoint.address() == info.ep_swv {
-                        endpoint_swv = true;
+                    } else if endpoint.address() == info.ep_swo {
+                        endpoint_swo = true;
                     }
                 }
             }
@@ -177,7 +177,7 @@ impl STLinkUSBDevice {
             return Err(StlinkError::EndpointNotFound.into());
         }
 
-        if !endpoint_swv {
+        if !endpoint_swo {
             return Err(StlinkError::EndpointNotFound.into());
         }
 
@@ -267,20 +267,20 @@ impl StLinkUsb for STLinkUSBDevice {
         Ok(())
     }
 
-    fn read_swv(&mut self, read_data: &mut [u8], timeout: Duration) -> Result<(), DebugProbeError> {
+    fn read_swo(&mut self, read_data: &mut [u8], timeout: Duration) -> Result<(), DebugProbeError> {
         log::trace!(
-            "Reading {:?} SWV bytes to STLink, timeout: {:?}",
+            "Reading {:?} SWO bytes to STLink, timeout: {:?}",
             read_data.len(),
             timeout
         );
 
-        let ep_swv = self.info.ep_swv;
+        let ep_swo = self.info.ep_swo;
 
         // Optional data in phase.
         if !read_data.is_empty() {
             let read_bytes = self
                 .device_handle
-                .read_bulk(ep_swv, read_data, timeout)
+                .read_bulk(ep_swo, read_data, timeout)
                 .map_err(|e| DebugProbeError::USB(Some(Box::new(e))))?;
             if read_bytes != read_data.len() {
                 return Err(StlinkError::NotEnoughBytesRead {
