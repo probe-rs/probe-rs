@@ -247,6 +247,13 @@ impl Session {
         crate::architecture::arm::component::add_swv_data_trace(&mut core, &component, unit, address)
     }
 
+    /// Stop tracing from a given SWV unit
+    pub fn remove_swv_data_trace(&mut self, unit: usize) -> Result<(), Error> {
+        let component = self.get_arm_component()?;
+        let mut core = self.core(0)?;
+        crate::architecture::arm::component::remove_swv_data_trace(&mut core, &component, unit)
+    }
+
     /// Returns the memory map of the target.
     pub fn memory_map(&self) -> &[MemoryRegion] {
         &self.target.memory_map

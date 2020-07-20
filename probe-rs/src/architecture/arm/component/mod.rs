@@ -70,6 +70,11 @@ pub fn add_swv_data_trace(
     dwt.enable_data_trace(unit, address)
 }
 
+pub fn remove_swv_data_trace(core: &mut Core, component: &Component, unit: usize) -> Result<(), Error> {
+    let mut dwt = component.dwt(core).map_err(Error::architecture_specific)?;
+    dwt.disable_data_trace(unit)
+}
+
 /// Sets TRCENA in DEMCR to begin trace generation.
 pub fn enable_swv(core: &mut Core) -> Result<(), Error> {
     let mut demcr = Demcr(core.read_word_32(Demcr::ADDRESS)?);
