@@ -942,6 +942,10 @@ impl<'probe> MemoryInterface for RiscvCommunicationInterface<'probe> {
 
         Ok(())
     }
+
+    fn flush(&mut self) -> Result<(), crate::Error> {
+        Ok(())
+    }
 }
 
 /// Access width for bus access.

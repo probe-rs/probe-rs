@@ -115,6 +115,14 @@ pub trait DAPAccess: DebugProbe {
 
         Ok(())
     }
+
+    /// Flush any outstanding writes.
+    ///
+    /// By default, this does nothing -- but in probes that implement write
+    /// batching, this needs to flush any pending writes.
+    fn flush(&mut self) -> Result<(), DebugProbeError> {
+        Ok(())
+    }
 }
 
 #[derive(Debug)]
@@ -524,7 +532,16 @@ impl<'probe> ArmCommunicationInterface<'probe> {
     }
 }
 
-impl<'probe> CommunicationInterface for ArmCommunicationInterface<'probe> {}
+impl<'probe> CommunicationInterface for ArmCommunicationInterface<'probe> {
+    fn flush(&mut self) -> Result<(), DebugProbeError> {
+        let interface = self
+            .probe
+            .get_interface_dap_mut()?
+            .ok_or_else(|| DebugProbeError::InterfaceNotAvailable("ARM"))?;
+
+        interface.flush()
+    }
+}
 
 impl<'probe> DPAccess for ArmCommunicationInterface<'probe> {
     fn read_dp_register<R: DPRegister>(&mut self) -> Result<R, DebugPortError> {

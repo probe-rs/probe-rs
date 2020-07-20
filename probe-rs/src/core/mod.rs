@@ -223,6 +223,10 @@ impl<'probe> MemoryInterface for Core<'probe> {
     fn write_8(&mut self, addr: u32, data: &[u8]) -> Result<(), Error> {
         self.inner.write_8(addr, data)
     }
+
+    fn flush(&mut self) -> Result<(), Error> {
+        self.inner.flush()
+    }
 }
 
 #[derive(Copy, Clone)]

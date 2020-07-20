@@ -125,9 +125,8 @@ impl<'probe> CoreInterface for M33<'probe> {
         value.set_c_debugen(true);
         value.enable_write();
 
-        self.memory
-            .write_word_32(Dhcsr::ADDRESS, value.into())
-            .map_err(Into::into)
+        self.memory.write_word_32(Dhcsr::ADDRESS, value.into())?;
+        self.memory.flush()
     }
     fn reset(&mut self) -> Result<(), Error> {
         // Set THE AIRCR.SYSRESETREQ control bit to 1 to request a reset. (ARM V6 ARM, B1.5.16)
@@ -359,6 +358,9 @@ impl<'probe> MemoryInterface for M33<'probe> {
     }
     fn write_8(&mut self, address: u32, data: &[u8]) -> Result<(), Error> {
         self.memory.write_8(address, data)
+    }
+    fn flush(&mut self) -> Result<(), Error> {
+        self.memory.flush()
     }
 }
 
