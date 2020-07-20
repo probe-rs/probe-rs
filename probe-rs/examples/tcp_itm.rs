@@ -20,8 +20,8 @@ fn main() -> Result<(), Error> {
     // Attach to a chip.
     let mut session = probe.attach("stm32f407")?;
 
-    session.setup_tracing().unwrap();
     session.trace_enable().unwrap();
+    session.setup_tracing().unwrap();
 
     let mut timestamp: f64 = 0.0;
 
