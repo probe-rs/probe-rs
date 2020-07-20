@@ -67,7 +67,7 @@ impl<'probe: 'core, 'core> Dwt<'probe, 'core> {
     }
 
     /// Disables data tracing on the given unit.
-    pub fn disable_memory_watch(&mut self, unit: usize) -> Result<(), Error> {
+    pub fn disable_data_trace(&mut self, unit: usize) -> Result<(), Error> {
         let mut function = Function::load_unit(self.component, self.core, unit)?;
         function.set_function(0x0);
         function.store_unit(self.component, self.core, unit)
