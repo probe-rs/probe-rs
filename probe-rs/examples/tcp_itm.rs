@@ -1,4 +1,4 @@
-use probe_rs::itm::{Decoder, ItmPublisher, TracePacket, UpdaterChannel};
+use probe_rs::architecture::arm::swo::{Decoder, SwoPublisher, TracePacket, UpdaterChannel};
 use probe_rs::Error;
 use serde::{Deserialize, Serialize};
 use std::io::prelude::*;
@@ -29,7 +29,7 @@ fn main() -> Result<(), Error> {
 
     let mut stimuli = vec![String::new(); 32];
 
-    println!("Starting ITM trace ...");
+    println!("Starting SWO trace ...");
 
     loop {
         let bytes = session.read_swo().unwrap();
@@ -125,7 +125,7 @@ impl TcpPublisher {
     }
 }
 
-impl ItmPublisher for TcpPublisher {
+impl SwoPublisher for TcpPublisher {
     fn start<
         I: Serialize + Send + Sync + 'static,
         O: Deserialize<'static> + Send + Sync + 'static,

@@ -4,6 +4,7 @@ pub mod component;
 pub(crate) mod core;
 pub mod dp;
 pub mod memory;
+pub mod swo;
 
 pub use communication_interface::{
     ArmChipInfo, ArmCommunicationInterface, ArmCommunicationInterfaceState, DAPAccess, DapError,

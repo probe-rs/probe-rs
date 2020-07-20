@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
 use std::sync::mpsc::{Receiver, Sender};
 
-pub trait ItmPublisher {
-    /// Starts the `ItmPublisher`.
+pub trait SwoPublisher {
+    /// Starts the `SwoPublisher`.
     /// This should never block and run the `Updater` asynchronously.
     fn start<
         I: Serialize + Send + Sync + 'static,
@@ -10,9 +10,9 @@ pub trait ItmPublisher {
     >(
         &mut self,
     ) -> UpdaterChannel<I, O>;
-    /// Stops the `ItmPublisher` if currently running.
-    /// Returns `Ok` if everything went smooth during the run of the `ItmPublisher`.
-    /// Returns `Err` if something went wrong during the run of the `ItmPublisher`.
+    /// Stops the `SwoPublisher` if currently running.
+    /// Returns `Ok` if everything went smooth during the run of the `SwoPublisher`.
+    /// Returns `Err` if something went wrong during the run of the `SwoPublisher`.
     fn stop(&mut self) -> Result<(), ()>;
 }
 
