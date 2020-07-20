@@ -6,6 +6,7 @@ use crossterm::{
 };
 use probe_rs_rtt::RttChannel;
 use std::io::{Read, Seek, Write};
+use std::path::PathBuf;
 use textwrap::wrap_iter;
 use tui::{
     backend::CrosstermBackend,
@@ -27,7 +28,7 @@ pub struct App {
 
     terminal: Terminal<CrosstermBackend<std::io::Stdout>>,
     events: Events,
-    history: bool,
+    history_path: Option<PathBuf>,
 }
 
 fn pull_channel<C: RttChannel>(channels: &mut Vec<C>, n: usize) -> Option<C> {
@@ -93,13 +94,24 @@ impl App {
         let mut terminal = Terminal::new(backend).unwrap();
         let _ = terminal.hide_cursor();
 
+        let history_path = {
+            if !config.rtt.log_enabled {
+                None
+            } else {
+                match std::fs::create_dir_all(&config.rtt.log_path) {
+                    Ok(_) => Some(config.rtt.log_path.clone()),
+                    Err(_) => None,
+                }
+            }
+        };
+
         Ok(Self {
             tabs,
             current_tab: 0,
 
             terminal,
             events,
-            history: config.rtt.history_log,
+            history_path,
         })
     }
 
@@ -207,11 +219,11 @@ impl App {
                     clean_up_terminal();
                     let _ = self.terminal.show_cursor();
 
-                    if self.history {
+                    if let Some(path) = &self.history_path {
                         for (i, tab) in self.tabs.iter().enumerate() {
                             let name = format!("history.{}.txt", i);
 
-                            if let Ok(mut file) = std::fs::File::create(name) {
+                            if let Ok(mut file) = std::fs::File::create(path.join(name)) {
                                 for line in tab.messages() {
                                     match writeln!(file, "{}", line) {
                                         Ok(_) => {}

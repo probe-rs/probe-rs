@@ -4,6 +4,7 @@ use crate::rttui::channel::ChannelConfig;
 use anyhow::bail;
 use probe_rs::WireProtocol;
 use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
 
 /// A struct which holds all configs.
 #[derive(Debug, Deserialize, Serialize)]
@@ -57,7 +58,9 @@ pub struct Rtt {
     /// Whether to show timestamps in RTTUI
     pub show_timestamps: bool,
     /// Whether to save rtt history buffer on exit to file named history.txt
-    pub history_log: bool,
+    pub log_enabled: bool,
+    /// Where to save rtt history buffer relative to manifest path.
+    pub log_path: PathBuf,
 }
 
 /// The gdb config struct holding all the possible gdb options.
