@@ -38,6 +38,14 @@ pub trait MemoryInterface {
 
     /// Write a block of 8bit words at `address`.
     fn write_8(&mut self, address: u32, data: &[u8]) -> Result<(), error::Error>;
+
+    /// Flush any outstanding operations.
+    ///
+    /// For performance, debug probe implementations may choose to batch writes;
+    /// to assure that any such batched writes have in fact been issued, `flush`
+    /// can be called.  Takes no arguments, but may return failure if a batched
+    /// operation fails.
+    fn flush(&mut self) -> Result<(), error::Error>;
 }
 
 impl<T> MemoryInterface for &mut T
@@ -75,6 +83,10 @@ where
     fn write_8(&mut self, addr: u32, data: &[u8]) -> Result<(), error::Error> {
         (*self).write_8(addr, data)
     }
+
+    fn flush(&mut self) -> Result<(), error::Error> {
+        (*self).flush()
+    }
 }
 
 pub struct MemoryDummy;
@@ -102,6 +114,10 @@ impl<'probe> MemoryInterface for MemoryDummy {
         unimplemented!()
     }
     fn write_8(&mut self, _address: u32, _data: &[u8]) -> Result<(), error::Error> {
+        unimplemented!()
+    }
+
+    fn flush(&mut self) -> Result<(), error::Error> {
         unimplemented!()
     }
 }
@@ -159,6 +175,10 @@ impl<'probe> Memory<'probe> {
 
     pub fn write_8(&mut self, addr: u32, data: &[u8]) -> Result<(), error::Error> {
         self.inner.write_8(addr, data)
+    }
+
+    pub fn flush(&mut self) -> Result<(), error::Error> {
+        self.inner.flush()
     }
 }
 

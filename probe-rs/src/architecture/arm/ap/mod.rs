@@ -4,6 +4,7 @@ pub(crate) mod generic_ap;
 pub(crate) mod memory_ap;
 
 use crate::architecture::arm::dp::DebugPortError;
+use crate::DebugProbeError;
 
 pub use generic_ap::{APClass, APType, GenericAP, IDR};
 pub(crate) use memory_ap::mock;
@@ -36,6 +37,8 @@ pub enum AccessPortError {
     OutOfBoundsError,
     #[error("Error while communicating with debug port")]
     DebugPort(#[from] DebugPortError),
+    #[error("Failed to flush batched writes")]
+    FlushError(#[from] DebugProbeError),
 }
 
 impl AccessPortError {

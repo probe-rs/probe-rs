@@ -507,6 +507,11 @@ impl DAPAccess for DAPLink {
 
         Ok(())
     }
+
+    fn flush(&mut self) -> Result<(), DebugProbeError> {
+        self.process_batch()?;
+        Ok(())
+    }
 }
 
 impl Drop for DAPLink {

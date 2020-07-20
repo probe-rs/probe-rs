@@ -2,7 +2,7 @@ use super::super::{APAccess, Register};
 use super::{APRegister, AddressIncrement, DataSize, MemoryAP, CSW, DRW, TAR};
 use crate::{
     architecture::arm::dp::{DPAccess, DPRegister, DebugPortError},
-    CommunicationInterface,
+    CommunicationInterface, DebugProbeError,
 };
 use std::collections::HashMap;
 use std::convert::TryInto;
@@ -38,7 +38,11 @@ impl MockMemoryAP {
     }
 }
 
-impl CommunicationInterface for MockMemoryAP {}
+impl CommunicationInterface for MockMemoryAP {
+    fn flush(&mut self) -> Result<(), DebugProbeError> {
+        Ok(())
+    }
+}
 
 impl<R> APAccess<MemoryAP, R> for MockMemoryAP
 where

@@ -531,6 +531,7 @@ impl<'probe> CoreInterface for M4<'probe> {
         value.enable_write();
 
         self.memory.write_word_32(Dhcsr::ADDRESS, value.into())?;
+        self.memory.flush()?;
 
         // We assume that the core is running now
         self.state.current_state = CoreStatus::Running;
@@ -691,6 +692,9 @@ impl<'probe> MemoryInterface for M4<'probe> {
     }
     fn write_8(&mut self, address: u32, data: &[u8]) -> Result<(), Error> {
         self.memory.write_8(address, data)
+    }
+    fn flush(&mut self) -> Result<(), Error> {
+        self.memory.flush()
     }
 }
 
