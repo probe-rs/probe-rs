@@ -10,6 +10,7 @@ use rusb::UsbContext;
 use std::convert::TryInto;
 use std::io::{self, Read, Write};
 use std::sync::Mutex;
+use std::time::Duration;
 
 mod ftdi;
 
@@ -48,7 +49,7 @@ impl JtagAdapter {
 
     pub fn attach(&mut self) -> Result<(), ftdi::Error> {
         self.device.usb_reset()?;
-        self.device.set_latency_timer(20)?;
+        self.device.set_latency_timer(1)?;
         self.device.set_bitmode(0x0b, ftdi::BitMode::Mpsse)?;
         self.device.usb_purge_buffers()?;
 
@@ -67,6 +68,29 @@ impl JtagAdapter {
         self.device.write_all(&[0x85])?;
 
         Ok(())
+    }
+
+    fn read_response(&mut self, size: usize) -> io::Result<Vec<u8>> {
+        let timeout = Duration::from_millis(10);
+        let mut result = Vec::new();
+
+        let t0 = std::time::Instant::now();
+        while result.len() < size {
+            if t0.elapsed() > timeout {
+                return Err(io::Error::from(io::ErrorKind::TimedOut));
+            }
+
+            self.device.read_to_end(&mut result)?;
+        }
+
+        if result.len() > size {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "Read more data than expected",
+            ));
+        }
+
+        Ok(result)
     }
 
     fn shift_tms(&mut self, mut data: &[u8], mut bits: usize) -> io::Result<()> {
@@ -159,9 +183,8 @@ impl JtagAdapter {
         if bits > 1 {
             expect_bytes += 1;
         }
-        let mut reply = vec![];
-        reply.resize(expect_bytes, 0);
-        self.device.read_exact(&mut reply)?;
+
+        let mut reply = self.read_response(expect_bytes)?;
 
         let mut last_byte = reply[reply.len() - 1] & 0x01;
         if bits > 1 {
