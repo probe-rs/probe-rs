@@ -9,7 +9,7 @@ use super::{
 use crate::{architecture::arm::SwvAccess, DebugProbeSelector, Error as ProbeRsError, Memory};
 use constants::{commands, JTagFrequencyToDivider, Mode, Status, SwdFrequencyToDelayCount};
 use scroll::{Pread, BE, LE};
-use std::time::Duration;
+use std::{cmp::Ordering, time::Duration};
 use thiserror::Error;
 use usb_interface::TIMEOUT;
 
@@ -58,8 +58,8 @@ impl DebugProbe for STLink<STLinkUSBDevice> {
     }
 
     fn set_speed(&mut self, speed_khz: u32) -> Result<u32, DebugProbeError> {
-        if self.hw_version < 3 {
-            match self.protocol {
+        match self.hw_version.cmp(&3) {
+            Ordering::Less => match self.protocol {
                 WireProtocol::Swd => {
                     let actual_speed = SwdFrequencyToDelayCount::find_setting(speed_khz);
 
@@ -86,26 +86,26 @@ impl DebugProbe for STLink<STLinkUSBDevice> {
                         Err(DebugProbeError::UnsupportedSpeed(speed_khz))
                     }
                 }
+            },
+            Ordering::Equal => {
+                let (available, _) = self.get_communication_frequencies(self.protocol)?;
+
+                let actual_speed_khz = available
+                    .into_iter()
+                    .filter(|speed| *speed <= speed_khz)
+                    .max()
+                    .ok_or(DebugProbeError::UnsupportedSpeed(speed_khz))?;
+
+                self.set_communication_frequency(self.protocol, actual_speed_khz)?;
+
+                match self.protocol {
+                    WireProtocol::Swd => self.swd_speed_khz = actual_speed_khz,
+                    WireProtocol::Jtag => self.jtag_speed_khz = actual_speed_khz,
+                }
+
+                Ok(actual_speed_khz)
             }
-        } else if self.hw_version == 3 {
-            let (available, _) = self.get_communication_frequencies(self.protocol)?;
-
-            let actual_speed_khz = available
-                .into_iter()
-                .filter(|speed| *speed <= speed_khz)
-                .max()
-                .ok_or(DebugProbeError::UnsupportedSpeed(speed_khz))?;
-
-            self.set_communication_frequency(self.protocol, actual_speed_khz)?;
-
-            match self.protocol {
-                WireProtocol::Swd => self.swd_speed_khz = actual_speed_khz,
-                WireProtocol::Jtag => self.jtag_speed_khz = actual_speed_khz,
-            }
-
-            Ok(actual_speed_khz)
-        } else {
-            unimplemented!()
+            Ordering::Greater => unimplemented!(),
         }
     }
 
@@ -290,6 +290,11 @@ impl<D: StLinkUsb> STLink<D> {
     /// Minimum required STLink firmware version.
     const MIN_JTAG_VERSION: u8 = 26;
 
+    /// Minimum required STLink V3 firmware version.
+    ///
+    /// Version 2 of the firmware (V3J2M1) has problems switching communication protocols.
+    const MIN_JTAG_VERSION_V3: u8 = 3;
+
     /// Firmware version that adds multiple AP support.
     const MIN_JTAG_VERSION_MULTI_AP: u8 = 28;
 
@@ -419,6 +424,9 @@ impl<D: StLinkUsb> STLink<D> {
         if self.hw_version < 3 && self.jtag_version < Self::MIN_JTAG_VERSION {
             return Err(DebugProbeError::ProbeFirmwareOutdated);
         }
+        if self.hw_version == 3 && self.jtag_version < Self::MIN_JTAG_VERSION_V3 {
+            return Err(DebugProbeError::ProbeFirmwareOutdated);
+        }
 
         Ok((self.hw_version, self.jtag_version))
     }
@@ -497,7 +505,9 @@ impl<D: StLinkUsb> STLink<D> {
         protocol: WireProtocol,
         frequency_khz: u32,
     ) -> Result<(), DebugProbeError> {
-        assert_eq!(self.hw_version, 3);
+        if self.hw_version != 3 {
+            return Err(DebugProbeError::CommandNotSupportedByProbe);
+        }
 
         let cmd_proto = match protocol {
             WireProtocol::Swd => 0,
@@ -516,7 +526,9 @@ impl<D: StLinkUsb> STLink<D> {
         &mut self,
         protocol: WireProtocol,
     ) -> Result<(Vec<u32>, u32), DebugProbeError> {
-        assert_eq!(self.hw_version, 3);
+        if self.hw_version != 3 {
+            return Err(DebugProbeError::CommandNotSupportedByProbe);
+        }
 
         let cmd_proto = match protocol {
             WireProtocol::Swd => 0,
@@ -583,7 +595,9 @@ impl<D: StLinkUsb> STLink<D> {
     /// a JTAG version >= `MIN_JTAG_VERSION_MULTI_AP`.
     fn open_ap(&mut self, apsel: u8) -> Result<(), DebugProbeError> {
         // Ensure this command is actually supported
-        assert!(self.hw_version >= 3 || self.jtag_version >= Self::MIN_JTAG_VERSION_MULTI_AP);
+        if self.hw_version < 3 && self.jtag_version < Self::MIN_JTAG_VERSION_MULTI_AP {
+            return Err(DebugProbeError::CommandNotSupportedByProbe);
+        }
 
         let mut buf = [0; 2];
         log::trace!("JTAG_INIT_AP {}", apsel);
@@ -601,7 +615,9 @@ impl<D: StLinkUsb> STLink<D> {
     /// a JTAG version >= `MIN_JTAG_VERSION_MULTI_AP`.
     fn close_ap(&mut self, apsel: u8) -> Result<(), DebugProbeError> {
         // Ensure this command is actually supported
-        assert!(self.hw_version >= 3 || self.jtag_version >= Self::MIN_JTAG_VERSION_MULTI_AP);
+        if self.hw_version < 3 && self.jtag_version < Self::MIN_JTAG_VERSION_MULTI_AP {
+            return Err(DebugProbeError::CommandNotSupportedByProbe);
+        }
 
         let mut buf = [0; 2];
         log::trace!("JTAG_CLOSE_AP {}", apsel);

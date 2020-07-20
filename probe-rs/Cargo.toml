@@ -1,6 +1,6 @@
 [package]
 name = "probe-rs"
-version = "0.7.1"
+version = "0.8.0"
 authors = ["Noah Hüsser <yatekii@yatekii.ch>", "Dominik Boehi <dominik.boehi@gmail.ch>"]
 edition = "2018"
 description = "A collection of on chip debugging tools to comminicate with microchips."
@@ -27,17 +27,16 @@ scroll = "0.10.1"
 rusb = "0.6.0"
 lazy_static = "1.4.0"
 hidapi = "1.2.0"
-gimli = "0.21.0"
+gimli = "0.22.0"
 object = "0.20.0"
 bitfield = "0.13.2"
-derivative = "2.0.0"
 serde = { version = "1.0.104", features = ["derive"] }
 serde_yaml = "0.8.11"
-ihex = "1.1.2"
+ihex = "3.0.0"
 goblin = "0.2.0"
 hexdump = { version = "0.1.0", optional = true }
 thiserror = "1.0.10"
-jaylink = "0.1.1"
+jaylink = "0.1.2"
 base64 = "0.12.0"
 svg = "0.7.1"
 anyhow = "1.0.31"

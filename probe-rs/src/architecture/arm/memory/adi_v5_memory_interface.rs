@@ -593,7 +593,7 @@ mod tests {
         for address in 0..8 {
             let value = mi
                 .read_word_8(address)
-                .expect(&format!("read_word_8 failed, address = {}", address));
+                .unwrap_or_else(|_| panic!("read_word_8 failed, address = {}", address));
             assert_eq!(value, DATA8[address as usize], "address = {}", address);
         }
     }
@@ -608,7 +608,7 @@ mod tests {
             expected[(address as usize)..(address as usize) + 4].copy_from_slice(&DATA8[..4]);
 
             mi.write_word_32(address, DATA32[0])
-                .expect(&format!("write_word_32 failed, address = {}", address));
+                .unwrap_or_else(|_| panic!("write_word_32 failed, address = {}", address));
             assert_eq!(
                 mi.mock_memory(),
                 expected.as_slice(),
@@ -628,7 +628,7 @@ mod tests {
             expected[address] = DATA8[0];
 
             mi.write_word_8(address as u32, DATA8[0])
-                .expect(&format!("write_word_8 failed, address = {}", address));
+                .unwrap_or_else(|_| panic!("write_word_8 failed, address = {}", address));
             assert_eq!(
                 mi.mock_memory(),
                 expected.as_slice(),
@@ -647,10 +647,9 @@ mod tests {
         for &address in &[0, 4] {
             for len in 0..3 {
                 let mut data = vec![0u32; len];
-                mi.read_32(address, &mut data).expect(&format!(
-                    "read_32 failed, address = {}, len = {}",
-                    address, len
-                ));
+                mi.read_32(address, &mut data).unwrap_or_else(|_| {
+                    panic!("read_32 failed, address = {}, len = {}", address, len)
+                });
 
                 assert_eq!(
                     data.as_slice(),
@@ -682,10 +681,9 @@ mod tests {
         for address in 0..4 {
             for len in 0..12 {
                 let mut data = vec![0u8; len];
-                mi.read_8(address, &mut data).expect(&format!(
-                    "read_8 failed, address = {}, len = {}",
-                    address, len
-                ));
+                mi.read_8(address, &mut data).unwrap_or_else(|_| {
+                    panic!("read_8 failed, address = {}, len = {}", address, len)
+                });
 
                 assert_eq!(
                     data.as_slice(),
@@ -710,10 +708,9 @@ mod tests {
                     .copy_from_slice(&DATA8[..len * 4]);
 
                 let data = &DATA32[..len];
-                mi.write_32(address, data).expect(&format!(
-                    "write_32 failed, address = {}, len = {}",
-                    address, len
-                ));
+                mi.write_32(address, data).unwrap_or_else(|_| {
+                    panic!("write_32 failed, address = {}, len = {}", address, len)
+                });
 
                 assert_eq!(
                     mi.mock_memory(),
@@ -747,10 +744,9 @@ mod tests {
                 expected[address as usize..(address as usize) + len].copy_from_slice(&DATA8[..len]);
 
                 let data = &DATA8[..len];
-                mi.write_8(address, data).expect(&format!(
-                    "write_8 failed, address = {}, len = {}",
-                    address, len
-                ));
+                mi.write_8(address, data).unwrap_or_else(|_| {
+                    panic!("write_8 failed, address = {}, len = {}", address, len)
+                });
 
                 assert_eq!(
                     mi.mock_memory(),

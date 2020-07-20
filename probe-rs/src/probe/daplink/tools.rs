@@ -3,7 +3,7 @@ use crate::{
     probe::{DebugProbeInfo, DebugProbeType, ProbeCreationError},
     DebugProbeSelector,
 };
-use rusb::{Device, UsbContext};
+use rusb::{Device, DeviceDescriptor, UsbContext};
 use std::time::Duration;
 
 /// Finds all CMSIS-DAP devices, either v1 (HID) or v2 (WinUSB Bulk).
@@ -30,7 +30,7 @@ fn get_daplink_info(device: &Device<rusb::Context>) -> Option<DebugProbeInfo> {
     let timeout = Duration::from_millis(100);
     let d_desc = device.device_descriptor().ok()?;
     let handle = device.open().ok()?;
-    let language = handle.read_languages(timeout).ok()?[0];
+    let language = handle.read_languages(timeout).ok()?.get(0).cloned()?;
     let prod_str = handle
         .read_product_string(language, &d_desc, timeout)
         .ok()?;
@@ -76,7 +76,7 @@ pub fn open_v2_device(device: Device<rusb::Context>) -> Option<DAPLinkDevice> {
     let vid = d_desc.vendor_id();
     let pid = d_desc.product_id();
     let mut handle = device.open().ok()?;
-    let language = handle.read_languages(timeout).ok()?[0];
+    let language = handle.read_languages(timeout).ok()?.get(0).cloned()?;
 
     // Go through interfaces to try and find a v2 interface.
     // The CMSIS-DAPv2 spec says that v2 interfaces should use a specific
@@ -144,6 +144,20 @@ pub fn open_v2_device(device: Device<rusb::Context>) -> Option<DAPLinkDevice> {
     None
 }
 
+fn device_matches(
+    device_descriptor: DeviceDescriptor,
+    selector: &DebugProbeSelector,
+    serial_str: Option<String>,
+) -> bool {
+    if device_descriptor.vendor_id() == selector.vendor_id
+        && device_descriptor.product_id() == selector.product_id
+    {
+        serial_str == selector.serial_number
+    } else {
+        false
+    }
+}
+
 /// Attempt to open the given DebugProbeInfo in CMSIS-DAP v2 mode if possible,
 /// otherwise in v1 mode.
 pub fn open_device_from_selector(
@@ -164,17 +178,19 @@ pub fn open_device_from_selector(
                 Ok(handle) => handle,
                 Err(_) => continue,
             };
-            let sn_str = handle.read_serial_number_string_ascii(&d_desc).ok();
+
+            let timeout = Duration::from_millis(100);
+            let sn_str = handle.read_languages(timeout)?.get(0).and_then(|lang| {
+                handle
+                    .read_serial_number_string(*lang, &d_desc, timeout)
+                    .ok()
+            });
 
             // We have to ensure the handle gets closed after reading the serial number,
             // multiple open handles are not allowed on Windows.
             drop(handle);
 
-            if d_desc.vendor_id() == selector.vendor_id
-                && d_desc.product_id() == selector.product_id
-                && sn_str == selector.serial_number
-                && get_daplink_info(&device).is_some()
-            {
+            if device_matches(d_desc, &selector, sn_str) && get_daplink_info(&device).is_some() {
                 // If the VID, PID, and potentially SN all match,
                 // and the device is a valid CMSIS-DAP probe,
                 // attempt to open the device in v2 mode.

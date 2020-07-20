@@ -7,11 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Added support for new devices in the nRF52 family. nRF52805, nRF52820 and nRF52833.
-
 ### Changed
 
 ### Fixed
+
+- Fixed a bug where a J-Link would only be opened if the VID, PID AND Serial No. would match. As the Serial is optional, only VID/PID have to match now.
+- Fixed a bug with the readout of the serial string that could fail for DAP devices and lead to weird behavior.
+
+## [0.8.0]
+
+### Added
+
+- Added support for new devices in the nRF52 family - nRF52805, nRF52820 and nRF52833.
+- Added support for the STM32F7 family.
+- The `Session` struct and dependants now implement `Debug`.
+- The J-Link driver now logs a warning if no proper target voltage is measured.
+- The J-Link driver now logs some more information about the connected probe on the `INFO` and `DEBUG` levels.
+
+### Changed
+
+- Improved error handling by a great deal. Errors now can be unwound properly and thus displayed nicely in UI tooling.
+- `Core::halt()` now requires a timeout to be specified. This ensures that procedures such as flashing wont time out when certain tasks (like erasing a sector) take longer.
+
+### Fixed
+
+- Fixed a bug where a probe-selector would not work for the JLink if only VID & PID were specified but no serial number.
+- Fixed a bug where chip descriptions would fail to parse because of a changed behavior in a newer version of serde_yaml.
+- Fixed the LPC55S66 and LPS55S69 targets.
+- CMSIS-DAPv1 read operations now properly time out instead of blocking forever, thus giving the user proper feedback.
+- Even if an ST-Link cannot be opened (for example on Windows due to a missing driver) it will now be listed properly, just without a serial number.
+- Fixed a bug where the J-Link would not be selected properly if no serial number was provided in the selector even if there was a VID:PID pair that matched.
 
 ## [0.7.1]
 
@@ -207,7 +232,8 @@ Initial release on crates.io
 - Working basic flash downloader with nRF51.
 - Introduce cargo-flash which can automatically build & flash the target elf file.
 
-[Unreleased]: https://github.com/probe-rs/probe-rs/compare/v0.7.1...master
+[Unreleased]: https://github.com/probe-rs/probe-rs/compare/v0.8.0...master
+[0.8.0]: https://github.com/probe-rs/probe-rs/releases/tag/v0.7.1...v0.8.0
 [0.7.1]: https://github.com/probe-rs/probe-rs/releases/tag/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/probe-rs/probe-rs/releases/tag/v0.6.2...v0.7.0
 [0.6.2]: https://github.com/probe-rs/probe-rs/releases/tag/v0.6.1...v0.6.2

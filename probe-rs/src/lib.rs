@@ -27,7 +27,7 @@
 //! let mut core = session.core(0)?;
 //!
 //! // Halt the attached core.
-//! core.halt()?;
+//! core.halt(std::time::Duration::from_millis(10))?;
 //! # Ok::<(), Error>(())
 //! ```
 //!
@@ -84,8 +84,8 @@ mod session;
 pub use crate::config::Target;
 pub use crate::core::CoreType;
 pub use crate::core::{
-    Breakpoint, BreakpointId, CommunicationInterface, Core, CoreInterface, CoreList,
-    CoreRegisterAddress, CoreStatus, HaltReason,
+    Architecture, Breakpoint, BreakpointId, CommunicationInterface, Core, CoreInformation,
+    CoreInterface, CoreList, CoreRegisterAddress, CoreStatus, HaltReason,
 };
 pub use crate::error::Error;
 pub use crate::memory::{Memory, MemoryInterface, MemoryList};

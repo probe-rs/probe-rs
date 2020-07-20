@@ -11,7 +11,8 @@ use crate::{
     Error, MemoryInterface,
 };
 use crate::{DebugProbeError, Memory};
-use anyhow::Result;
+use anyhow::{anyhow, Result};
+use std::time::Duration;
 
 pub trait CoreRegister: Clone + From<u32> + Into<u32> + Sized + std::fmt::Debug {
     const ADDRESS: u32;
@@ -131,7 +132,7 @@ pub trait CoreInterface: MemoryInterface {
     /// a [`DebugProbeError::Timeout`] error will be returned.
     ///
     /// [`DebugProbeError::Timeout`]: ../probe/debug_probe/enum.DebugProbeError.html#variant.Timeout
-    fn wait_for_core_halted(&mut self) -> Result<()>;
+    fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), error::Error>;
 
     /// Check if the core is halted. If the core does not halt on its own,
     /// a [`CoreError::Timeout`] error will be returned.
@@ -145,7 +146,7 @@ pub trait CoreInterface: MemoryInterface {
     /// returns a [`CoreError::Timeout`] otherwise.
     ///
     /// [`CoreError::Timeout`]: ../probe/debug_probe/enum.CoreError.html#variant.Timeout
-    fn halt(&mut self) -> Result<CoreInformation, error::Error>;
+    fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, error::Error>;
 
     fn run(&mut self) -> Result<(), error::Error>;
 
@@ -159,7 +160,7 @@ pub trait CoreInterface: MemoryInterface {
     /// reset, use the [`reset`] function.
     ///
     /// [`reset`]: trait.Core.html#tymethod.reset
-    fn reset_and_halt(&mut self) -> Result<CoreInformation, error::Error>;
+    fn reset_and_halt(&mut self, timeout: Duration) -> Result<CoreInformation, error::Error>;
 
     /// Steps one instruction and then enters halted state again.
     fn step(&mut self) -> Result<CoreInformation, error::Error>;
@@ -253,6 +254,7 @@ impl CoreType {
     }
 }
 
+#[derive(Debug)]
 pub struct CoreState {
     id: usize,
     breakpoints: Vec<Breakpoint>,
@@ -267,6 +269,7 @@ impl CoreState {
     }
 }
 
+#[derive(Debug)]
 pub(crate) enum SpecificCoreState {
     M3(CortexState),
     M4(CortexState),
@@ -362,8 +365,8 @@ impl<'probe> Core<'probe> {
     /// a [`DebugProbeError::Timeout`] error will be returned.
     ///
     /// [`DebugProbeError::Timeout`]: ../probe/debug_probe/enum.DebugProbeError.html#variant.Timeout
-    pub fn wait_for_core_halted(&mut self) -> Result<()> {
-        self.inner.wait_for_core_halted()
+    pub fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), error::Error> {
+        self.inner.wait_for_core_halted(timeout)
     }
 
     /// Check if the core is halted. If the core does not halt on its own,
@@ -378,8 +381,8 @@ impl<'probe> Core<'probe> {
     /// returns a [`CoreError::Timeout`] otherwise.
     ///
     /// [`CoreError::Timeout`]: ../probe/debug_probe/enum.CoreError.html#variant.Timeout
-    pub fn halt(&mut self) -> Result<CoreInformation, error::Error> {
-        self.inner.halt()
+    pub fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, error::Error> {
+        self.inner.halt(timeout)
     }
 
     pub fn run(&mut self) -> Result<(), error::Error> {
@@ -398,8 +401,8 @@ impl<'probe> Core<'probe> {
     /// reset, use the [`reset`] function.
     ///
     /// [`reset`]: trait.Core.html#tymethod.reset
-    pub fn reset_and_halt(&mut self) -> Result<CoreInformation, error::Error> {
-        self.inner.reset_and_halt()
+    pub fn reset_and_halt(&mut self, timeout: Duration) -> Result<CoreInformation, error::Error> {
+        self.inner.reset_and_halt(timeout)
     }
 
     /// Steps one instruction and then enters halted state again.
@@ -455,8 +458,9 @@ impl<'probe> Core<'probe> {
             // We cannot set additional breakpoints
             log::warn!("Maximum number of breakpoints ({}) reached, unable to set additional HW breakpoint.", num_hw_breakpoints);
 
-            // TODO: Better error here
-            return Err(error::Error::Probe(DebugProbeError::Unknown));
+            return Err(error::Error::Probe(
+                DebugProbeError::BreakpointUnitsExceeded,
+            ));
         }
 
         if !self.inner.hw_breakpoints_enabled() {
@@ -493,8 +497,19 @@ impl<'probe> Core<'probe> {
                 self.state.breakpoints.swap_remove(bp_position);
                 Ok(())
             }
-            None => Err(error::Error::Probe(DebugProbeError::Unknown)),
+            None => Err(error::Error::Other(anyhow!(
+                "No breakpoint found at address {}",
+                address
+            ))),
         }
+    }
+
+    pub fn clear_all_hw_breakpoints(&mut self) -> Result<(), error::Error> {
+        let num_hw_breakpoints = self.get_available_breakpoint_units()? as usize;
+
+        { 0..num_hw_breakpoints }
+            .map(|unit_index| self.inner.clear_breakpoint(unit_index))
+            .collect()
     }
 
     pub fn architecture(&self) -> Architecture {
@@ -548,7 +563,7 @@ impl BreakpointId {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Breakpoint {
     address: u32,
     register_hw: usize,

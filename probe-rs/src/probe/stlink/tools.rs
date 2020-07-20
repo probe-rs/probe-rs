@@ -24,13 +24,25 @@ pub fn list_stlink_devices() -> Vec<DebugProbeInfo> {
                 .iter()
                 .filter(is_stlink_device)
                 .filter_map(|device| {
-                    let timeout = Duration::from_millis(100);
                     let descriptor = device.device_descriptor().ok()?;
-                    let handle = device.open().ok()?;
-                    let language = handle.read_languages(timeout).ok()?[0];
-                    let sn_str = handle
-                        .read_serial_number_string(language, &descriptor, timeout)
-                        .ok();
+
+                    let sn_str = match read_serial_number(&device, &descriptor) {
+                        Ok(serial_number) => Some(serial_number),
+                        Err(e) => {
+                            // Reading the serial number can fail, e.g. if the driver for the probe
+                            // is not installed. In this case we can still list the probe,
+                            // just without serial number.
+                            log::debug!(
+                                "Failed to read serial number of device {:#06x}:{:#06x} : {}",
+                                descriptor.product_id(),
+                                descriptor.vendor_id(),
+                                e
+                            );
+                            log::debug!("This might be happening because of a missing driver.");
+                            None
+                        }
+                    };
+
                     Some(DebugProbeInfo::new(
                         format!(
                             "STLink {}",
@@ -49,4 +61,20 @@ pub fn list_stlink_devices() -> Vec<DebugProbeInfo> {
     } else {
         vec![]
     }
+}
+
+/// Try to read the serial number of a USB device.
+pub(super) fn read_serial_number<T: rusb::UsbContext>(
+    device: &rusb::Device<T>,
+    descriptor: &rusb::DeviceDescriptor,
+) -> Result<String, rusb::Error> {
+    let timeout = Duration::from_millis(100);
+
+    let handle = device.open()?;
+    let language = handle
+        .read_languages(timeout)?
+        .get(0)
+        .cloned()
+        .ok_or(rusb::Error::BadDescriptor)?;
+    handle.read_serial_number_string(language, &descriptor, timeout)
 }

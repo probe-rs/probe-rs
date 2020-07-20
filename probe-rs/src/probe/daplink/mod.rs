@@ -64,17 +64,14 @@ impl DAPLink {
     pub fn new_from_device(device: DAPLinkDevice) -> Self {
         // Discard anything left in buffer, as otherwise
         // we'll get out of sync between requests and responses.
-        match &device {
-            DAPLinkDevice::V1(hid_device) => {
-                let mut discard_buffer = [0u8; 128];
-                loop {
-                    match hid_device.read_timeout(&mut discard_buffer, 1) {
-                        Ok(n) if n != 0 => continue,
-                        _ => break,
-                    }
+        if let DAPLinkDevice::V1(ref hid_device) = device {
+            let mut discard_buffer = [0u8; 128];
+            loop {
+                match hid_device.read_timeout(&mut discard_buffer, 1) {
+                    Ok(n) if n != 0 => continue,
+                    _ => break,
                 }
             }
-            _ => (),
         }
 
         Self {
@@ -437,10 +434,12 @@ impl DAPAccess for DAPLink {
 
             debug!("Transfer block: chunk={}, len={} bytes", i, chunk.len() * 4);
 
-            let resp: TransferBlockResponse = commands::send_command(&mut self.device, request)
-                .map_err(|_| DebugProbeError::Unknown)?;
+            let resp: TransferBlockResponse =
+                commands::send_command(&mut self.device, request).map_err(DebugProbeError::from)?;
 
-            assert_eq!(resp.transfer_response, 1);
+            if resp.transfer_response != 1 {
+                return Err(CmsisDapError::ErrorResponse.into());
+            }
         }
 
         Ok(())
@@ -477,10 +476,12 @@ impl DAPAccess for DAPLink {
 
             debug!("Transfer block: chunk={}, len={} bytes", i, chunk.len() * 4);
 
-            let resp: TransferBlockResponse = commands::send_command(&mut self.device, request)
-                .map_err(|_| DebugProbeError::Unknown)?;
+            let resp: TransferBlockResponse =
+                commands::send_command(&mut self.device, request).map_err(DebugProbeError::from)?;
 
-            assert_eq!(resp.transfer_response, 1);
+            if resp.transfer_response != 1 {
+                return Err(CmsisDapError::ErrorResponse.into());
+            }
 
             chunk.clone_from_slice(&resp.transfer_data[..]);
         }

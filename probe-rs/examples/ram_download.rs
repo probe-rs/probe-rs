@@ -1,9 +1,8 @@
 use probe_rs::{config::TargetSelector, MemoryInterface, Probe, WireProtocol};
 
 use std::num::ParseIntError;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
-use pretty_env_logger;
 use rand::prelude::*;
 use structopt::StructOpt;
 
@@ -58,7 +57,8 @@ fn main() -> Result<(), &'static str> {
 
     rng.fill(&mut sample_data[..]);
 
-    core.halt().expect("Halting failed");
+    core.halt(Duration::from_millis(100))
+        .expect("Halting failed");
 
     let write_start = Instant::now();
     core.write_32(matches.address, &sample_data)
@@ -121,7 +121,10 @@ fn open_probe(index: Option<usize>) -> Result<Probe, &'static str> {
         }
     };
 
-    let probe = device.open().map_err(|_| "Failed to open probe")?;
+    let probe = device.open().map_err(|e| {
+        println!("{}", e);
+        "Failed to open probe"
+    })?;
 
     Ok(probe)
 }

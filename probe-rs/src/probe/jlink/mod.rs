@@ -210,10 +210,11 @@ impl JLink {
 
         log::trace!("Response: {:?}", response);
 
-        assert!(
-            len < 8,
-            "Not yet implemented for IR registers larger than 8 bit"
-        );
+        if len >= 8 {
+            return Err(DebugProbeError::NotImplemented(
+                "Not yet implemented for IR registers larger than 8 bit",
+            ));
+        }
 
         self.current_ir_reg = data[0] as u32;
 
@@ -314,16 +315,18 @@ impl DebugProbe for JLink {
             .filter_map(|usb_info| {
                 if usb_info.vid() == selector.vendor_id && usb_info.pid() == selector.product_id {
                     let device = usb_info.open();
-                    if device
-                        .as_ref()
-                        .map(|d| {
-                            d.serial_string() == selector.serial_number.as_deref().unwrap_or("")
-                        })
-                        .unwrap_or(false)
-                    {
-                        Some(device)
+                    if let Some(serial_number) = selector.serial_number.as_deref() {
+                        if device
+                            .as_ref()
+                            .map(|d| d.serial_string() == serial_number)
+                            .unwrap_or(false)
+                        {
+                            Some(device)
+                        } else {
+                            None
+                        }
                     } else {
-                        None
+                        Some(device)
                     }
                 } else {
                     None
@@ -331,12 +334,12 @@ impl DebugProbe for JLink {
             })
             .collect::<Vec<_>>();
 
-        if jlinks.len() == 0 {
+        if jlinks.is_empty() {
             return Err(DebugProbeError::ProbeCouldNotBeCreated(
                 super::ProbeCreationError::NotFound,
             ));
         } else if jlinks.len() > 1 {
-            log::warn!("More than one matching JLink was found. Opening the first one.")
+            log::warn!("More than one matching J-Link was found. Opening the first one.")
         }
         let jlink_handle = jlinks.pop().unwrap()?;
 
@@ -378,7 +381,7 @@ impl DebugProbe for JLink {
 
         Ok(Box::new(JLink {
             handle: Mutex::from(jlink_handle),
-            supported_protocols: supported_protocols,
+            supported_protocols,
             jtag_idle_cycles: 0,
             protocol: None,
             current_ir_reg: 1,
@@ -425,7 +428,9 @@ impl DebugProbe for JLink {
             let div = std::cmp::max(div, speeds.min_div() as u32);
 
             actual_speed_khz = ((speeds.base_freq() / div) + 999) / 1000;
-            assert!(actual_speed_khz <= speed_khz);
+            if actual_speed_khz > speed_khz {
+                return Err(DebugProbeError::UnsupportedSpeed(speed_khz));
+            }
         } else {
             actual_speed_khz = speed_khz;
         }
@@ -459,15 +464,35 @@ impl DebugProbe for JLink {
 
         log::debug!("Attaching with protocol '{}'", actual_protocol);
 
+        // Get reference to JayLink instance
+        let jlink: &mut JayLink = self.handle.get_mut().unwrap();
+        let capabilities = jlink.read_capabilities()?;
+
+        // Log some information about the probe
+        let serial = jlink.serial_string().trim_start_matches('0');
+        log::info!("J-Link: S/N: {}", serial);
+        log::debug!("J-Link: Capabilities: {:?}", capabilities);
+        let fw_version = jlink.read_firmware_version().unwrap_or_else(|_| "?".into());
+        log::info!("J-Link: Firmware version: {}", fw_version);
+        match jlink.read_hardware_version() {
+            Ok(hw_version) => log::info!("J-Link: Hardware version: {}", hw_version),
+            Err(_) => log::info!("J-Link: Hardware version: ?"),
+        };
+
+        // Verify target voltage (VTref pin, mV). If this is 0, the device is not powered.
+        let target_voltage = jlink.read_target_voltage()?;
+        if target_voltage == 0 {
+            log::warn!("J-Link: Target voltage (VTref) is 0 V. Is your target device powered?");
+        } else {
+            log::info!(
+                "J-Link: Target voltage: {:2.2} V",
+                target_voltage as f32 / 1000f32
+            );
+        }
+
         match actual_protocol {
             WireProtocol::Jtag => {
                 // try some JTAG stuff
-                let jlink = self.handle.get_mut().unwrap();
-
-                log::info!(
-                    "Target voltage: {:2.2} V",
-                    jlink.read_target_voltage()? as f32 / 1000f32
-                );
 
                 log::debug!("Resetting JTAG chain using trst");
                 jlink.reset_trst()?;
@@ -489,9 +514,6 @@ impl DebugProbe for JLink {
                 log::debug!("IDCODE: {:#010x}", idcode);
             }
             WireProtocol::Swd => {
-                // Get the JLink device handle.
-                let jlink = self.handle.get_mut().unwrap();
-
                 // Construct the JTAG to SWD sequence.
                 let jtag_to_swd_sequence = [
                     false, true, true, true, true, false, false, true, true, true, true, false,
@@ -524,7 +546,7 @@ impl DebugProbe for JLink {
                 // We don't actually care about the response here.
                 // A read on the DPIDR will finalize the init procedure and tell us if it worked.
                 jlink.swd_io(direction, swd_io_sequence)?;
-                log::debug!("Sucessfully swapped to SWD.");
+                log::debug!("Sucessfully switched to SWD");
 
                 // We are ready to debug.
             }
@@ -598,10 +620,11 @@ impl JTAGAccess for JLink {
         let address_bits = address.to_le_bytes();
 
         // TODO: This is limited to 5 bit addresses for now
-        assert!(
-            address <= 0x1f,
-            "JTAG Register addresses are fixed to 5 bits"
-        );
+        if address > 0x1f {
+            return Err(DebugProbeError::NotImplemented(
+                "JTAG Register addresses are fixed to 5 bits",
+            ));
+        }
 
         if self.current_ir_reg != address {
             // Write IR register
@@ -622,10 +645,11 @@ impl JTAGAccess for JLink {
         let address_bits = address.to_le_bytes();
 
         // TODO: This is limited to 5 bit addresses for now
-        assert!(
-            address <= 0x1f,
-            "JTAG Register addresses are fixed to 5 bits"
-        );
+        if address > 0x1f {
+            return Err(DebugProbeError::NotImplemented(
+                "JTAG Register addresses are fixed to 5 bits",
+            ));
+        }
 
         if self.current_ir_reg != address {
             // Write IR register
@@ -757,18 +781,20 @@ impl DAPAccess for JLink {
                 let value = bits_to_byte(register_val);
 
                 // Make sure the parity is correct.
-                return if let Some(parity) = result_sequence.next() {
-                    if (value.count_ones() % 2 == 1) == parity {
-                        log::trace!("DAP read {}.", value);
-                        Ok(value)
-                    } else {
+                return result_sequence
+                    .next()
+                    .and_then(|parity| {
+                        if (value.count_ones() % 2 == 1) == parity {
+                            log::trace!("DAP read {}.", value);
+                            Some(value)
+                        } else {
+                            None
+                        }
+                    })
+                    .ok_or_else(|| {
                         log::error!("DAP read fault.");
-                        Err(DebugProbeError::Unknown)
-                    }
-                } else {
-                    log::error!("DAP read fault.");
-                    Err(DebugProbeError::Unknown)
-                };
+                        DapError::IncorrectParity.into()
+                    });
 
                 // Don't care about the Trn bit at the end.
             }
@@ -888,7 +914,7 @@ impl DAPAccess for JLink {
                     ctrl
                 );
 
-                return Err(DebugProbeError::Unknown);
+                return Err(DapError::FaultResponse.into());
             }
 
             // Since this is a write request, we don't care about the part after the ack bits.
@@ -940,9 +966,7 @@ pub(crate) fn list_jlink_devices() -> Result<impl Iterator<Item = DebugProbeInfo
         DebugProbeInfo::new(
             format!(
                 "J-Link{}",
-                product
-                    .map(|p| format!(" ({})", p))
-                    .unwrap_or("".to_string())
+                product.map(|p| format!(" ({})", p)).unwrap_or_default()
             ),
             vid,
             pid,

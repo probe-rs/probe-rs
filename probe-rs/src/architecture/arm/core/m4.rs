@@ -10,10 +10,11 @@ use crate::{
     core::{Architecture, CoreStatus, HaltReason},
     MemoryInterface,
 };
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result};
 
 use bitfield::bitfield;
 use std::mem::size_of;
+use std::time::{Duration, Instant};
 
 bitfield! {
     #[derive(Copy, Clone)]
@@ -370,25 +371,28 @@ impl<'probe> M4<'probe> {
         Ok(Self { memory, state })
     }
 
-    fn wait_for_core_register_transfer(&mut self) -> Result<()> {
+    fn wait_for_core_register_transfer(&mut self, timeout: Duration) -> Result<(), Error> {
         // now we have to poll the dhcsr register, until the dhcsr.s_regrdy bit is set
         // (see C1-292, cortex m0 arm)
-        for _ in 0..100 {
+        let start = Instant::now();
+
+        while start.elapsed() < timeout {
             let dhcsr_val = Dhcsr(self.memory.read_word_32(Dhcsr::ADDRESS)?);
 
             if dhcsr_val.s_regrdy() {
                 return Ok(());
             }
         }
-        Err(anyhow!(Error::Probe(DebugProbeError::Timeout)))
-            .context("Waiting for core register transfer")
+        Err(Error::Probe(DebugProbeError::Timeout))
     }
 }
 
 impl<'probe> CoreInterface for M4<'probe> {
-    fn wait_for_core_halted(&mut self) -> Result<()> {
+    fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), Error> {
         // Wait until halted state is active again.
-        for _ in 0..100 {
+        let start = Instant::now();
+
+        while start.elapsed() < timeout {
             let dhcsr_val = Dhcsr(self.memory.read_word_32(Dhcsr::ADDRESS)?);
             if dhcsr_val.s_halt() {
                 // update halted state
@@ -397,7 +401,7 @@ impl<'probe> CoreInterface for M4<'probe> {
                 return Ok(());
             }
         }
-        Err(anyhow!(Error::Probe(DebugProbeError::Timeout))).context("Waiting for halted core")
+        Err(Error::Probe(DebugProbeError::Timeout))
     }
 
     fn core_halted(&mut self) -> Result<bool, Error> {
@@ -477,7 +481,7 @@ impl<'probe> CoreInterface for M4<'probe> {
         self.memory
             .write_word_32(Dcrsr::ADDRESS, dcrsr_val.into())?;
 
-        self.wait_for_core_register_transfer()?;
+        self.wait_for_core_register_transfer(Duration::from_millis(100))?;
 
         self.memory.read_word_32(Dcrdr::ADDRESS).map_err(From::from)
     }
@@ -497,10 +501,11 @@ impl<'probe> CoreInterface for M4<'probe> {
         self.memory
             .write_word_32(Dcrsr::ADDRESS, dcrsr_val.into())?;
 
-        Ok(self.wait_for_core_register_transfer()?)
+        self.wait_for_core_register_transfer(Duration::from_millis(100))
+            .context("Waiting for core register transfer")
     }
 
-    fn halt(&mut self) -> Result<CoreInformation, Error> {
+    fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
         // TODO: Generic halt support
 
         let mut value = Dhcsr(0);
@@ -510,8 +515,7 @@ impl<'probe> CoreInterface for M4<'probe> {
 
         self.memory.write_word_32(Dhcsr::ADDRESS, value.into())?;
 
-        self.wait_for_core_halted()
-            .context("While trying to halt")?;
+        self.wait_for_core_halted(timeout)?;
 
         // try to read the program counter
         let pc_value = self.read_core_reg(register::PC.address)?;
@@ -546,8 +550,7 @@ impl<'probe> CoreInterface for M4<'probe> {
 
         self.memory.write_word_32(Dhcsr::ADDRESS, value.into())?;
 
-        self.wait_for_core_halted()
-            .context("While trying to step")?;
+        self.wait_for_core_halted(Duration::from_millis(100))?;
 
         // try to read the program counter
         let pc_value = self.read_core_reg(register::PC.address)?;
@@ -567,7 +570,7 @@ impl<'probe> CoreInterface for M4<'probe> {
         Ok(())
     }
 
-    fn reset_and_halt(&mut self) -> Result<CoreInformation, Error> {
+    fn reset_and_halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
         // Ensure debug mode is enabled
         let dhcsr_val = Dhcsr(self.memory.read_word_32(Dhcsr::ADDRESS)?);
         if !dhcsr_val.c_debugen() {
@@ -589,8 +592,7 @@ impl<'probe> CoreInterface for M4<'probe> {
 
         self.reset()?;
 
-        self.wait_for_core_halted()
-            .context("While trying to reset and halt")?;
+        self.wait_for_core_halted(timeout)?;
 
         const XPSR_THUMB: u32 = 1 << 24;
         let xpsr_value = self.read_core_reg(register::XPSR.address)?;
@@ -617,7 +619,7 @@ impl<'probe> CoreInterface for M4<'probe> {
             Ok(reg.num_code())
         } else {
             log::warn!("This chip uses FPBU revision {}, which is not yet supported. HW breakpoints are not available.", reg.rev());
-            Err(Error::Probe(DebugProbeError::Unknown))
+            Err(Error::Probe(DebugProbeError::CommandNotSupportedByProbe))
         }
     }
 
@@ -644,7 +646,7 @@ impl<'probe> CoreInterface for M4<'probe> {
             val = FpRev2CompX::breakpoint_configuration(addr).into();
         } else {
             log::warn!("This chip uses FPBU revision {}, which is not yet supported. HW breakpoints are not available.", ctrl_reg.rev());
-            return Err(Error::Probe(DebugProbeError::Unknown));
+            return Err(Error::Probe(DebugProbeError::CommandNotSupportedByProbe));
         }
 
         // This is fine as FpRev1CompX and Rev2CompX are just two different

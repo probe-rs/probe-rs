@@ -8,6 +8,8 @@ use probe_rs::{
 use std::fmt;
 use thiserror::Error;
 
+use anyhow::Result;
+
 #[derive(Debug, Error)]
 pub enum CliError {
     DebugProbe(
@@ -86,9 +88,9 @@ pub(crate) fn open_probe(index: Option<usize>) -> Result<Probe, CliError> {
 /// Takes a closure that is handed an `DAPLink` instance and then executed.
 /// After the closure is done, the USB device is always closed,
 /// even in an error case inside the closure!
-pub(crate) fn with_device<F>(shared_options: &SharedOptions, f: F) -> Result<(), CliError>
+pub(crate) fn with_device<F>(shared_options: &SharedOptions, f: F) -> Result<()>
 where
-    F: FnOnce(Session) -> Result<(), CliError>,
+    F: FnOnce(Session) -> Result<()>,
 {
     let mut probe = open_probe(shared_options.n)?;
 

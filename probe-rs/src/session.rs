@@ -12,7 +12,9 @@ use crate::config::{
 };
 use crate::core::{Architecture, CoreState, SpecificCoreState};
 use crate::{Core, CoreType, Error, Memory, Probe};
+use anyhow::anyhow;
 
+#[derive(Debug)]
 pub struct Session {
     target: Target,
     probe: Probe,
@@ -20,6 +22,7 @@ pub struct Session {
     cores: Vec<(SpecificCoreState, CoreState)>,
 }
 
+#[derive(Debug)]
 pub enum ArchitectureInterfaceState {
     Arm(ArmCommunicationInterfaceState),
     Riscv(RiscvCommunicationInterfaceState),
@@ -44,11 +47,13 @@ impl ArchitectureInterfaceState {
         match self {
             ArchitectureInterfaceState::Arm(state) => core.attach_arm(
                 core_state,
-                ArmCommunicationInterface::new(probe, state)?.unwrap(),
+                ArmCommunicationInterface::new(probe, state)?
+                    .ok_or_else(|| anyhow!("No DAP interface available on probe"))?,
             ),
             ArchitectureInterfaceState::Riscv(state) => core.attach_riscv(
                 core_state,
-                RiscvCommunicationInterface::new(probe, state)?.unwrap(),
+                RiscvCommunicationInterface::new(probe, state)?
+                    .ok_or_else(|| anyhow!("No JTAG interface available on probe"))?,
             ),
         }
     }
@@ -128,12 +133,16 @@ impl Session {
             }
         };
 
-        Ok(Self {
+        let mut session = Self {
             target,
             probe,
             interface_state: data.1,
             cores: vec![data.0],
-        })
+        };
+
+        session.clear_all_hw_breakpoints()?;
+
+        Ok(session)
     }
 
     /// Automatically creates a session with the first connected probe found.
@@ -247,6 +256,17 @@ impl Session {
             ArchitectureInterfaceState::Riscv(_) => Architecture::Riscv,
         }
     }
+
+    /// Clears all hardware breakpoints on all cores
+    pub fn clear_all_hw_breakpoints(&mut self) -> Result<(), Error> {
+        { 0..self.cores.len() }
+            .map(|n| {
+                self.core(n)
+                    .and_then(|mut core| core.clear_all_hw_breakpoints())
+            })
+            .collect::<Result<Vec<_>, _>>()
+            .map(|_| ())
+    }
 }
 
 fn try_arm_autodetect(
@@ -262,4 +282,12 @@ fn try_arm_autodetect(
     let found_chip = found_chip.map(ChipInfo::from);
 
     Ok(found_chip)
+}
+
+impl Drop for Session {
+    fn drop(&mut self) {
+        if let Err(err) = self.clear_all_hw_breakpoints() {
+            log::warn!("Could not clear all hardware breakpoints: {:?}", err);
+        }
+    }
 }

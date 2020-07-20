@@ -13,6 +13,7 @@ use super::{
 use crate::{
     CommunicationInterface, DebugProbe, DebugProbeError, Error as ProbeRsError, Memory, Probe,
 };
+use anyhow::anyhow;
 use jep106::JEP106Code;
 use thiserror::Error;
 
@@ -28,6 +29,8 @@ pub enum DapError {
     WaitResponse,
     #[error("Target power-up failed.")]
     TargetPowerUpFailed,
+    #[error("Incorrect parity on READ request.")]
+    IncorrectParity,
 }
 
 impl From<DapError> for DebugProbeError {
@@ -181,7 +184,7 @@ impl<'probe> ArmCommunicationInterface<'probe> {
 
             Ok(Some(s))
         } else {
-            log::debug!("No DAP interface available on Probe");
+            log::debug!("No DAP interface available on probe");
 
             Ok(None)
         }
@@ -485,11 +488,9 @@ impl<'probe> DPAccess for ArmCommunicationInterface<'probe> {
 
         self.select_dp_bank(R::DP_BANK)?;
 
-        // unwrap is safe, interface is checked when creating the interface
-        let interface = self
-            .probe
-            .get_interface_dap_mut()?
-            .expect("Could not get interface DAP");
+        let interface = self.probe.get_interface_dap_mut()?.ok_or_else(|| {
+            DebugPortError::DebugProbe(anyhow!("Could not get interface DAP").into())
+        })?;
 
         log::debug!("Reading DP register {}", R::NAME);
         let result = interface.read_register(PortType::DebugPort, u16::from(R::ADDRESS))?;
@@ -509,11 +510,9 @@ impl<'probe> DPAccess for ArmCommunicationInterface<'probe> {
 
         self.select_dp_bank(R::DP_BANK)?;
 
-        // unwrap is safe, interface is check when creating the interface
-        let interface = self
-            .probe
-            .get_interface_dap_mut()?
-            .expect("Could not get interface DAP");
+        let interface = self.probe.get_interface_dap_mut()?.ok_or_else(|| {
+            DebugPortError::DebugProbe(anyhow!("Could not get interface DAP").into())
+        })?;
 
         let value = register.into();
 

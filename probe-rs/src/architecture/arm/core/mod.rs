@@ -240,6 +240,7 @@ impl CoreRegister for Dfsr {
     const NAME: &'static str = "DFSR";
 }
 
+#[derive(Debug)]
 pub(crate) struct CortexState {
     initialized: bool,
 
