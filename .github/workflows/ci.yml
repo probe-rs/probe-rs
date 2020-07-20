@@ -19,6 +19,9 @@ jobs:
           - windows-latest
 
     runs-on: ${{ matrix.os }}
+    
+    env:
+      VCPKGRS_DYNAMIC: 1
 
     steps:
       - name: Checkout sources
