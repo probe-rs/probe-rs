@@ -370,8 +370,7 @@ pub(crate) fn get_ram(device: &Device) -> Option<RamRegion> {
 pub(crate) fn get_flash(device: &Device) -> Option<FlashRegion> {
     let mut regions = Vec::new();
     for memory in device.memories.0.values() {
-        if memory.default && memory.access.read && memory.access.execute && !memory.access.write
-        {
+        if memory.default && memory.access.read && memory.access.execute && !memory.access.write {
             regions.push(FlashRegion {
                 range: memory.start as u32..memory.start as u32 + memory.size as u32,
                 is_boot_memory: memory.startup,
