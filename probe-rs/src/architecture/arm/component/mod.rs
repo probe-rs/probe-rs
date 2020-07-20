@@ -4,6 +4,7 @@ mod tpiu;
 
 use super::memory::romtable::Component;
 use crate::architecture::arm::core::m0::Demcr;
+use crate::architecture::arm::{SwoConfig, SwoMode};
 use crate::core::CoreRegister;
 use crate::{Core, Error, MemoryInterface};
 pub use dwt::Dwt;
@@ -33,34 +34,33 @@ pub trait DebugRegister: Clone + From<u32> + Into<u32> + Sized + std::fmt::Debug
     }
 }
 
-pub fn setup_tracing(core: &mut Core, component: &Component) -> Result<(), Error> {
-    // stm32 specific reg (DBGMCU_CR):
-    core.write_word_32(0xE004_2004, 0x27)?;
-
-    // Config tpiu:
+pub fn setup_swv(core: &mut Core, component: &Component, config: &SwoConfig) -> Result<(), Error> {
+    // Configure TPIU
     let mut tpiu = component.tpiu(core).map_err(Error::architecture_specific)?;
     tpiu.set_port_size(1)?;
-    let uc_freq = 16; // MHz (HSI frequency)
-    let swo_freq = 2; // MHz
-    let prescaler = (uc_freq / swo_freq) - 1;
+    let prescaler = (config.tpiu_clk / config.baud) - 1;
     tpiu.set_prescaler(prescaler)?;
-    tpiu.set_pin_protocol(2)?;
+    match config.mode {
+        SwoMode::Manchester => tpiu.set_pin_protocol(1)?,
+        SwoMode::UART => tpiu.set_pin_protocol(2)?,
+    }
+    // Formatter: TrigIn enabled, continuous formatting disabled (aka bypass mode)
     tpiu.set_formatter(0x100)?;
 
-    // Config itm:
+    // Configure ITM
     let mut itm = component.itm(core).map_err(Error::architecture_specific)?;
     itm.unlock()?;
     itm.tx_enable()?;
 
-    // config dwt:
+    // Configure DWT
     let mut dwt = component.dwt(core).map_err(Error::architecture_specific)?;
     dwt.enable()?;
 
     Ok(())
 }
 
-/// Starts tracing the data at given address.
-pub fn enable_data_trace(
+/// Configures DWT trace unit `unit` to begin tracing `address`.
+pub fn add_swv_data_trace(
     core: &mut Core,
     component: &Component,
     unit: usize,
@@ -70,14 +70,18 @@ pub fn enable_data_trace(
     dwt.enable_data_trace(unit, address)
 }
 
-pub fn trace_enable(core: &mut Core) -> Result<(), Error> {
-    // Enable
-    // - Data Watchpoint and Trace (DWT)
-    // - Instrumentation Trace Macrocell (ITM)
-    // - Embedded Trace Macrocell (ETM)
-    // - Trace Port Interface Unit (TPIU).
+/// Sets TRCENA in DEMCR to begin trace generation.
+pub fn enable_swv(core: &mut Core) -> Result<(), Error> {
     let mut demcr = Demcr(core.read_word_32(Demcr::ADDRESS)?);
     demcr.set_dwtena(true);
+    core.write_word_32(Demcr::ADDRESS, demcr.into())?;
+    Ok(())
+}
+
+/// Disables TRCENA in DEMCR to disable trace generation.
+pub fn disable_swv(core: &mut Core) -> Result<(), Error> {
+    let mut demcr = Demcr(core.read_word_32(Demcr::ADDRESS)?);
+    demcr.set_dwtena(false);
     core.write_word_32(Demcr::ADDRESS, demcr.into())?;
     Ok(())
 }

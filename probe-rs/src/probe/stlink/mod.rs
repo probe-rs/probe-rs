@@ -6,7 +6,8 @@ use self::usb_interface::{STLinkUSBDevice, StLinkUsb};
 use super::{
     DAPAccess, DebugProbe, DebugProbeError, JTAGAccess, PortType, ProbeCreationError, WireProtocol,
 };
-use crate::{architecture::arm::SwoAccess, DebugProbeSelector, Error as ProbeRsError, Memory};
+use crate::{
+    architecture::arm::{SwoAccess, SwoConfig}, DebugProbeSelector, Error as ProbeRsError, Memory};
 use constants::{commands, JTagFrequencyToDivider, Mode, Status, SwdFrequencyToDelayCount};
 use scroll::{Pread, BE, LE};
 use std::{cmp::Ordering, time::Duration};
@@ -148,8 +149,6 @@ impl DebugProbe for STLink<STLinkUSBDevice> {
                 self.set_speed(self.swd_speed_khz)?;
             }
         }
-
-        self.start_trace_reception()?;
 
         Ok(())
     }
@@ -656,8 +655,11 @@ impl<D: StLinkUsb> STLink<D> {
         Ok(())
     }
 
-    pub fn start_trace_reception(&mut self) -> Result<(), DebugProbeError> {
+    pub fn start_trace_reception(&mut self, _config: &SwoConfig) -> Result<(), DebugProbeError> {
         let mut buf = [0; 2];
+
+        // TODO: Use config to set correct mode and baud rate
+
         self.device.write(
             vec![
                 commands::JTAG_COMMAND,
@@ -677,6 +679,10 @@ impl<D: StLinkUsb> STLink<D> {
         Ok(())
     }
 
+    pub fn stop_trace_reception(&mut self) -> Result<(), DebugProbeError> {
+        todo!();
+    }
+
     /// Gets the SWO count from the ST-Link probe.
     fn read_swo_available_byte_count(&mut self) -> Result<usize, DebugProbeError> {
         let mut buf = [0; 2];
@@ -694,14 +700,26 @@ impl<D: StLinkUsb> STLink<D> {
 
     /// Reads the actual data from the SWO buffer on the ST-Link.
     fn read_swo_data(&mut self, timeout: Duration) -> Result<Vec<u8>, DebugProbeError> {
-        // The byte count always needs to be polled first. Otherwise the ST-Link wont return any data!
+        // The byte count always needs to be polled first, otherwise
+        // the ST-Link won't return any data.
         let mut buf = vec![0; self.read_swo_available_byte_count()?];
-        self.device.read_swo(&mut buf, timeout)?;
+        let bytes_read = self.device.read_swo(&mut buf, timeout)?;
+        buf.truncate(bytes_read);
         Ok(buf)
     }
 }
 
 impl<D: StLinkUsb> SwoAccess for STLink<D> {
+    fn enable_swo(&mut self, config: &SwoConfig) -> Result<(), ProbeRsError> {
+        self.start_trace_reception(config)?;
+        Ok(())
+    }
+
+    fn disable_swo(&mut self) -> Result<(), ProbeRsError> {
+        self.stop_trace_reception()?;
+        Ok(())
+    }
+
     fn read_swo_timeout(&mut self, timeout: Duration) -> Result<Vec<u8>, ProbeRsError> {
         let data = self.read_swo_data(timeout)?;
         Ok(data)
