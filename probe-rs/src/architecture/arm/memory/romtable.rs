@@ -436,21 +436,11 @@ impl Component {
     /// Reads a register of the component pointed to by this romtable entry.
     pub fn read_reg(&self, core: &mut Core, offset: u32) -> Result<u32, Error> {
         let value = core.read_word_32(self.id().component_address as u32 + offset)?;
-        log::error!(
-            "Read reg: {:x?} = {:x?}",
-            self.id().component_address as u32 + offset,
-            value
-        );
         Ok(value)
     }
 
     /// Writes a register of the component pointed to by this romtable entry.
     pub fn write_reg(&self, core: &mut Core, offset: u32, value: u32) -> Result<(), Error> {
-        log::error!(
-            "Writing reg: {:x?} = {:x?}",
-            self.id().component_address as u32 + offset,
-            value
-        );
         core.write_word_32(self.id().component_address as u32 + offset, value)?;
         Ok(())
     }

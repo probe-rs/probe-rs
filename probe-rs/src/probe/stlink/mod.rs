@@ -678,10 +678,7 @@ impl<D: StLinkUsb> STLink<D> {
     }
 
     /// Gets the SWO count from the ST-Link probe.
-    ///
-    /// This function is not used currently because it is just faster to always read all bytes.
-    /// Nevertheless it might come in handy later on, which is why it has been left in the code.
-    fn _read_swo_available_byte_count(&mut self) -> Result<usize, DebugProbeError> {
+    fn read_swo_available_byte_count(&mut self) -> Result<usize, DebugProbeError> {
         let mut buf = [0; 2];
         self.device.write(
             vec![
@@ -695,8 +692,10 @@ impl<D: StLinkUsb> STLink<D> {
         Ok(buf.pread::<u16>(0).unwrap() as usize)
     }
 
+    /// Reads the actual data from the SWO buffer on the ST-Link.
     fn read_swo_data(&mut self, timeout: Duration) -> Result<Vec<u8>, DebugProbeError> {
-        let mut buf = vec![0; 8 * 1024];
+        // The byte count always needs to be polled first. Otherwise the ST-Link wont return any data!
+        let mut buf = vec![0; self.read_swo_available_byte_count()?];
         self.device.read_swo(&mut buf, timeout)?;
         Ok(buf)
     }
