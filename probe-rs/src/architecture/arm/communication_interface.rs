@@ -63,7 +63,7 @@ impl From<PortType> for u16 {
         }
     }
 }
-use std::fmt::Debug;
+use std::{fmt::Debug, time::Duration};
 
 pub trait Register: Clone + From<u32> + Into<u32> + Sized + Debug {
     const ADDRESS: u8;
@@ -524,9 +524,9 @@ impl<'probe> DPAccess for ArmCommunicationInterface<'probe> {
 }
 
 impl<'probe> SwoAccess for ArmCommunicationInterface<'probe> {
-    fn read_swo(&mut self) -> Result<Vec<u8>, ProbeRsError> {
+    fn read_swo_timeout(&mut self, timeout: Duration) -> Result<Vec<u8>, ProbeRsError> {
         match self.probe.get_interface_swo_mut() {
-            Some(interface) => interface.read_swo(),
+            Some(interface) => interface.read_swo_timeout(timeout),
             None => Err(ProbeRsError::ArchitectureRequired(&["ARMv7", "ARMv8"])),
         }
     }
