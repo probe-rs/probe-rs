@@ -29,6 +29,7 @@ pub struct App {
     terminal: Terminal<CrosstermBackend<std::io::Stdout>>,
     events: Events,
     history_path: Option<PathBuf>,
+    logname: String,
 }
 
 fn pull_channel<C: RttChannel>(channels: &mut Vec<C>, n: usize) -> Option<C> {
@@ -41,7 +42,11 @@ fn pull_channel<C: RttChannel>(channels: &mut Vec<C>, n: usize) -> Option<C> {
 }
 
 impl App {
-    pub fn new(mut rtt: probe_rs_rtt::Rtt, config: &crate::config::Config) -> Result<Self> {
+    pub fn new(
+        mut rtt: probe_rs_rtt::Rtt,
+        config: &crate::config::Config,
+        logname: String,
+    ) -> Result<Self> {
         let mut tabs = Vec::new();
         let mut up_channels = rtt.up_channels().drain().collect::<Vec<_>>();
         let mut down_channels = rtt.down_channels().drain().collect::<Vec<_>>();
@@ -112,6 +117,7 @@ impl App {
             terminal,
             events,
             history_path,
+            logname,
         })
     }
 
@@ -221,7 +227,7 @@ impl App {
 
                     if let Some(path) = &self.history_path {
                         for (i, tab) in self.tabs.iter().enumerate() {
-                            let name = format!("history.{}.txt", i);
+                            let name = format!("{}_{}.txt", self.logname, i);
 
                             if let Ok(mut file) = std::fs::File::create(path.join(name)) {
                                 for line in tab.messages() {
