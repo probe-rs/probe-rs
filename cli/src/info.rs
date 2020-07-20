@@ -3,10 +3,11 @@ use crate::{common::open_probe, SharedOptions};
 use probe_rs::{
     architecture::arm::{
         ap::{valid_access_ports, APClass, BaseaddrFormat, MemoryAP, BASE, BASE2, IDR},
+        m0::Demcr,
         memory::{ADIMemoryInterface, Component},
         ArmCommunicationInterface, ArmCommunicationInterfaceState,
     },
-    Memory,
+    CoreRegister, Memory,
 };
 
 use anyhow::Result;
@@ -70,6 +71,16 @@ pub(crate) fn show_info_of_device(shared_options: &SharedOptions) -> Result<()> 
                     interface.reborrow(),
                     access_port,
                 )?);
+
+                // Enable
+                // - Data Watchpoint and Trace (DWT)
+                // - Instrumentation Trace Macrocell (ITM)
+                // - Embedded Trace Macrocell (ETM)
+                // - Trace Port Interface Unit (TPIU).
+                let mut demcr = Demcr(memory.read_word_32(Demcr::ADDRESS)?);
+                demcr.set_dwtena(true);
+                memory.write_word_32(Demcr::ADDRESS, demcr.into())?;
+
                 let component_table = Component::try_parse(&mut memory, baseaddr as u64);
 
                 component_table
