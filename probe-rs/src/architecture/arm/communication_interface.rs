@@ -525,7 +525,7 @@ impl<'probe> DPAccess for ArmCommunicationInterface<'probe> {
 
 impl<'probe> SwvAccess for ArmCommunicationInterface<'probe> {
     fn read_swv(&mut self) -> Result<Vec<u8>, ProbeRsError> {
-        match self.probe.get_interface_itm_mut() {
+        match self.probe.get_interface_swo_mut() {
             Some(interface) => interface.read_swv(),
             None => Err(ProbeRsError::ArchitectureRequired(&["ARMv7", "ARMv8"])),
         }

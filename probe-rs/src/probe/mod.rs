@@ -352,12 +352,12 @@ impl Probe {
         }
     }
 
-    pub fn get_interface_itm(&self) -> Option<&dyn SwvAccess> {
-        self.inner.get_interface_itm()
+    pub fn get_interface_swo(&self) -> Option<&dyn SwvAccess> {
+        self.inner.get_interface_swo()
     }
 
-    pub fn get_interface_itm_mut(&mut self) -> Option<&mut dyn SwvAccess> {
-        self.inner.get_interface_itm_mut()
+    pub fn get_interface_swo_mut(&mut self) -> Option<&mut dyn SwvAccess> {
+        self.inner.get_interface_swo_mut()
     }
 }
 
@@ -414,9 +414,9 @@ pub trait DebugProbe: Send + Sync + fmt::Debug {
 
     fn get_interface_jtag_mut(&mut self) -> Option<&mut dyn JTAGAccess>;
 
-    fn get_interface_itm(&self) -> Option<&dyn SwvAccess>;
+    fn get_interface_swo(&self) -> Option<&dyn SwvAccess>;
 
-    fn get_interface_itm_mut(&mut self) -> Option<&mut dyn SwvAccess>;
+    fn get_interface_swo_mut(&mut self) -> Option<&mut dyn SwvAccess>;
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -621,11 +621,11 @@ impl DebugProbe for FakeProbe {
         None
     }
 
-    fn get_interface_itm(&self) -> Option<&dyn SwvAccess> {
+    fn get_interface_swo(&self) -> Option<&dyn SwvAccess> {
         None
     }
 
-    fn get_interface_itm_mut(&mut self) -> Option<&mut dyn SwvAccess> {
+    fn get_interface_swo_mut(&mut self) -> Option<&mut dyn SwvAccess> {
         None
     }
 }

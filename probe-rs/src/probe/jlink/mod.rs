@@ -605,11 +605,11 @@ impl DebugProbe for JLink {
         }
     }
 
-    fn get_interface_itm(&self) -> Option<&dyn SwvAccess> {
+    fn get_interface_swo(&self) -> Option<&dyn SwvAccess> {
         None
     }
 
-    fn get_interface_itm_mut(&mut self) -> Option<&mut dyn SwvAccess> {
+    fn get_interface_swo_mut(&mut self) -> Option<&mut dyn SwvAccess> {
         None
     }
 }
