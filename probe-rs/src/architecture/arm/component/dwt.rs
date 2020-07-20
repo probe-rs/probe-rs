@@ -63,7 +63,6 @@ impl<'probe: 'core, 'core> Dwt<'probe, 'core> {
         function.set_cycmatch(false);
         function.set_function(0b11);
 
-        println!("{:#?}", function);
         function.store_unit(self.component, self.core, unit)
     }
 

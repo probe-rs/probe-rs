@@ -91,7 +91,7 @@ pub trait StLinkUsb: std::fmt::Debug {
     /// STLink does not respond to USB requests.
     fn reset(&mut self) -> Result<(), DebugProbeError>;
 
-    fn read_swo(&mut self, read_data: &mut [u8], timeout: Duration) -> Result<(), DebugProbeError>;
+    fn read_swo(&mut self, read_data: &mut [u8], timeout: Duration) -> Result<usize, DebugProbeError>;
 }
 
 impl STLinkUSBDevice {
@@ -267,7 +267,7 @@ impl StLinkUsb for STLinkUSBDevice {
         Ok(())
     }
 
-    fn read_swo(&mut self, read_data: &mut [u8], timeout: Duration) -> Result<(), DebugProbeError> {
+    fn read_swo(&mut self, read_data: &mut [u8], timeout: Duration) -> Result<usize, DebugProbeError> {
         log::trace!(
             "Reading {:?} SWO bytes to STLink, timeout: {:?}",
             read_data.len(),
@@ -276,21 +276,15 @@ impl StLinkUsb for STLinkUSBDevice {
 
         let ep_swo = self.info.ep_swo;
 
-        // Optional data in phase.
-        if !read_data.is_empty() {
+        if read_data.is_empty() {
+            Ok(0)
+        } else {
             let read_bytes = self
                 .device_handle
                 .read_bulk(ep_swo, read_data, timeout)
                 .map_err(|e| DebugProbeError::USB(Some(Box::new(e))))?;
-            if read_bytes != read_data.len() {
-                return Err(StlinkError::NotEnoughBytesRead {
-                    is: read_bytes,
-                    should: read_data.len(),
-                }
-                .into());
-            }
+            Ok(read_bytes)
         }
-        Ok(())
     }
 
     /// Reset the USB device. This can be used to recover when the

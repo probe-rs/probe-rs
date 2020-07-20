@@ -8,7 +8,7 @@ use super::{
         DebugPortVersion, Select, DPIDR,
     },
     memory::{ADIMemoryInterface, Component},
-    SwoAccess,
+    SwoAccess, SwoConfig,
 };
 use crate::{
     CommunicationInterface, DebugProbe, DebugProbeError, Error as ProbeRsError, Memory, Probe,
@@ -524,6 +524,20 @@ impl<'probe> DPAccess for ArmCommunicationInterface<'probe> {
 }
 
 impl<'probe> SwoAccess for ArmCommunicationInterface<'probe> {
+    fn enable_swo(&mut self, config: &SwoConfig) -> Result<(), ProbeRsError> {
+        match self.probe.get_interface_swo_mut() {
+            Some(interface) => interface.enable_swo(config),
+            None => Err(ProbeRsError::ArchitectureRequired(&["ARMv7", "ARMv8"])),
+        }
+    }
+
+    fn disable_swo(&mut self) -> Result<(), ProbeRsError> {
+        match self.probe.get_interface_swo_mut() {
+            Some(interface) => interface.disable_swo(),
+            None => Err(ProbeRsError::ArchitectureRequired(&["ARMv7", "ARMv8"])),
+        }
+    }
+
     fn read_swo_timeout(&mut self, timeout: Duration) -> Result<Vec<u8>, ProbeRsError> {
         match self.probe.get_interface_swo_mut() {
             Some(interface) => interface.read_swo_timeout(timeout),
