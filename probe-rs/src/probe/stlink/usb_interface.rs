@@ -91,7 +91,11 @@ pub trait StLinkUsb: std::fmt::Debug {
     /// STLink does not respond to USB requests.
     fn reset(&mut self) -> Result<(), DebugProbeError>;
 
-    fn read_swo(&mut self, read_data: &mut [u8], timeout: Duration) -> Result<usize, DebugProbeError>;
+    fn read_swo(
+        &mut self,
+        read_data: &mut [u8],
+        timeout: Duration,
+    ) -> Result<usize, DebugProbeError>;
 }
 
 impl STLinkUSBDevice {
@@ -267,7 +271,11 @@ impl StLinkUsb for STLinkUSBDevice {
         Ok(())
     }
 
-    fn read_swo(&mut self, read_data: &mut [u8], timeout: Duration) -> Result<usize, DebugProbeError> {
+    fn read_swo(
+        &mut self,
+        read_data: &mut [u8],
+        timeout: Duration,
+    ) -> Result<usize, DebugProbeError> {
         log::trace!(
             "Reading {:?} SWO bytes to STLink, timeout: {:?}",
             read_data.len(),

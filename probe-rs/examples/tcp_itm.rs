@@ -1,4 +1,6 @@
-use probe_rs::architecture::arm::swo::{Decoder, SwoPublisher, SwoConfig, SwoMode, TracePacket, UpdaterChannel};
+use probe_rs::architecture::arm::swo::{
+    Decoder, SwoConfig, SwoMode, SwoPublisher, TracePacket, UpdaterChannel,
+};
 use probe_rs::Error;
 use serde::{Deserialize, Serialize};
 use std::io::prelude::*;

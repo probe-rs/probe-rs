@@ -10,7 +10,7 @@ pub use communication_interface::{
     ArmChipInfo, ArmCommunicationInterface, ArmCommunicationInterfaceState, DAPAccess, DapError,
 };
 pub use communication_interface::{PortType, Register};
-pub use swo::{SwoConfig, SwoAccess, SwoMode};
+pub use swo::{SwoAccess, SwoConfig, SwoMode};
 
 pub use self::core::m0;
 pub use self::core::m33;

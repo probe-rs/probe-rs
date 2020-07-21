@@ -241,7 +241,9 @@ impl Session {
     pub fn add_swv_data_trace(&mut self, unit: usize, address: u32) -> Result<(), Error> {
         let component = self.get_arm_component()?;
         let mut core = self.core(0)?;
-        crate::architecture::arm::component::add_swv_data_trace(&mut core, &component, unit, address)
+        crate::architecture::arm::component::add_swv_data_trace(
+            &mut core, &component, unit, address,
+        )
     }
 
     /// Stop tracing from a given SWV unit
