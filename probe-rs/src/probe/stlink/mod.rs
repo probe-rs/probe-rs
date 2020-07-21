@@ -808,6 +808,7 @@ mod test {
                 jtag_version: 0,
                 swd_speed_khz: 0,
                 jtag_speed_khz: 0,
+                swo_enabled: false,
                 current_ap: None,
             }
         }
@@ -862,7 +863,7 @@ mod test {
             &mut self,
             _read_data: &mut [u8],
             _timeout: std::time::Duration,
-        ) -> Result<(), DebugProbeError> {
+        ) -> Result<usize, DebugProbeError> {
             todo!()
         }
     }
