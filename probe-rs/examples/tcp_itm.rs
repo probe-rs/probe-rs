@@ -1,4 +1,4 @@
-use probe_rs::architecture::arm::swo::{Decoder, SwoPublisher, TracePacket, UpdaterChannel};
+use probe_rs::architecture::arm::swo::{Decoder, SwoPublisher, SwoConfig, SwoMode, TracePacket, UpdaterChannel};
 use probe_rs::Error;
 use serde::{Deserialize, Serialize};
 use std::io::prelude::*;
@@ -18,10 +18,16 @@ fn main() -> Result<(), Error> {
     let probe = probes[0].open()?;
 
     // Attach to a chip.
-    let mut session = probe.attach("stm32f407")?;
+    let mut session = probe.attach("STM32F401RETx")?;
 
-    session.trace_enable().unwrap();
-    session.setup_tracing().unwrap();
+    let cfg = SwoConfig {
+        mode: SwoMode::UART,
+        baud: 1000000,
+        tpiu_clk: 16000000,
+    };
+
+    session.enable_swv().unwrap();
+    session.setup_swv(&cfg).unwrap();
 
     let mut timestamp: f64 = 0.0;
 
