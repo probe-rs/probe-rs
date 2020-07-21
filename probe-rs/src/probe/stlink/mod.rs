@@ -7,7 +7,9 @@ use super::{
     DAPAccess, DebugProbe, DebugProbeError, JTAGAccess, PortType, ProbeCreationError, WireProtocol,
 };
 use crate::{
-    architecture::arm::{SwoAccess, SwoConfig, SwoMode}, DebugProbeSelector, Error as ProbeRsError, Memory};
+    architecture::arm::{SwoAccess, SwoConfig, SwoMode},
+    DebugProbeSelector, Error as ProbeRsError, Memory,
+};
 use constants::{commands, JTagFrequencyToDivider, Mode, Status, SwdFrequencyToDelayCount};
 use scroll::{Pread, BE, LE};
 use std::{cmp::Ordering, time::Duration};
@@ -159,7 +161,8 @@ impl DebugProbe for STLink<STLinkUSBDevice> {
     fn detach(&mut self) -> Result<(), DebugProbeError> {
         log::debug!("Detaching from STLink.");
         if self.swo_enabled {
-            self.disable_swo().map_err(|e| DebugProbeError::ProbeSpecific(e.into()))?;
+            self.disable_swo()
+                .map_err(|e| DebugProbeError::ProbeSpecific(e.into()))?;
         }
         self.enter_idle()
     }
@@ -671,12 +674,7 @@ impl<D: StLinkUsb> STLink<D> {
         command.extend_from_slice(&bufsize);
         command.extend_from_slice(&baud);
 
-        self.device.write(
-            command,
-            &[],
-            &mut buf,
-            TIMEOUT,
-        )?;
+        self.device.write(command, &[], &mut buf, TIMEOUT)?;
         Self::check_status(&buf)?;
 
         self.swo_enabled = true;
@@ -688,10 +686,7 @@ impl<D: StLinkUsb> STLink<D> {
         let mut buf = [0; 2];
 
         self.device.write(
-            vec![
-                commands::JTAG_COMMAND,
-                commands::SWO_STOP_TRACE_RECEPTION,
-            ],
+            vec![commands::JTAG_COMMAND, commands::SWO_STOP_TRACE_RECEPTION],
             &[],
             &mut buf,
             TIMEOUT,
@@ -732,9 +727,14 @@ impl<D: StLinkUsb> STLink<D> {
 impl<D: StLinkUsb> SwoAccess for STLink<D> {
     fn enable_swo(&mut self, config: &SwoConfig) -> Result<(), ProbeRsError> {
         match config.mode {
-            SwoMode::UART => { self.start_trace_reception(config)?; Ok(()) },
+            SwoMode::UART => {
+                self.start_trace_reception(config)?;
+                Ok(())
+            }
             SwoMode::Manchester => Err(DebugProbeError::ProbeSpecific(
-                StlinkError::ManchesterSwoNotSupported.into()).into()),
+                StlinkError::ManchesterSwoNotSupported.into(),
+            )
+            .into()),
         }
     }
 

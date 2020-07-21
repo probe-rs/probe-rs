@@ -65,7 +65,11 @@ pub fn setup_swv(core: &mut Core, component: &Component, config: &SwoConfig) -> 
     Ok(())
 }
 
-fn setup_swv_vendor(core: &mut Core, component: &Component, _config: &SwoConfig) -> Result<(), Error> {
+fn setup_swv_vendor(
+    core: &mut Core,
+    component: &Component,
+    _config: &SwoConfig,
+) -> Result<(), Error> {
     match component.id().peripheral_id().jep106() {
         Some(id) if id == jep106::JEP106Code::new(0x00, 0x20) => {
             // STMicroelectronics:
@@ -76,7 +80,7 @@ fn setup_swv_vendor(core: &mut Core, component: &Component, _config: &SwoConfig)
             dbgmcu |= 1 << 5;
             dbgmcu &= !(0b00 << 6);
             core.write_word_32(DBGMCU, dbgmcu)
-        },
+        }
         _ => Ok(()),
     }
 }
@@ -92,7 +96,11 @@ pub fn add_swv_data_trace(
     dwt.enable_data_trace(unit, address)
 }
 
-pub fn remove_swv_data_trace(core: &mut Core, component: &Component, unit: usize) -> Result<(), Error> {
+pub fn remove_swv_data_trace(
+    core: &mut Core,
+    component: &Component,
+    unit: usize,
+) -> Result<(), Error> {
     let mut dwt = component.dwt(core).map_err(Error::architecture_specific)?;
     dwt.disable_data_trace(unit)
 }
