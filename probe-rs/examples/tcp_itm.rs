@@ -18,15 +18,15 @@ fn main() -> Result<(), Error> {
     let probe = probes[0].open()?;
 
     // Attach to a chip.
-    let mut session = probe.attach("STM32F401RETx")?;
+    let mut session = probe.attach("stm32f407")?;
 
     let cfg = SwoConfig {
         mode: SwoMode::UART,
-        baud: 1000000,
+        baud: 2000000,
         tpiu_clk: 16000000,
     };
 
-    session.setup_swv(&cfg).unwrap();
+    session.setup_swv(&cfg)?;
 
     let mut timestamp: f64 = 0.0;
 
@@ -37,7 +37,7 @@ fn main() -> Result<(), Error> {
     println!("Starting SWO trace ...");
 
     loop {
-        let bytes = session.read_swo().unwrap();
+        let bytes = session.read_swo()?;
 
         decoder.feed(bytes);
         while let Some(packet) = decoder.pull() {
