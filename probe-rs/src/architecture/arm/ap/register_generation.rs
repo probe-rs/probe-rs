@@ -60,8 +60,14 @@ macro_rules! define_ap {
             }
         }
 
+        impl From<u8> for $name {
+            fn from(value: u8) -> Self {
+                $name { port_number: value }
+            }
+        }
+
         impl AccessPort for $name {
-            fn get_port_number(&self) -> u8 {
+            fn port_number(&self) -> u8 {
                 self.port_number
             }
         }

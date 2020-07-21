@@ -2,6 +2,7 @@ use super::flash_properties::FlashProperties;
 use super::memory::{PageInfo, RamRegion, SectorInfo};
 use crate::architecture::riscv;
 use crate::core::Architecture;
+use crate::flashing::FlashError;
 use std::{borrow::Cow, convert::TryInto};
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
@@ -179,16 +180,27 @@ impl RawFlashAlgorithm {
     }
 
     /// Constructs a complete flash algorithm, tailored to the flash and RAM sizes given.
-    pub fn assemble(&self, ram_region: &RamRegion, architecture: Architecture) -> FlashAlgorithm {
-        let mut instructions = self.get_algorithm_header(architecture).to_vec();
+    pub fn assemble(
+        &self,
+        ram_region: &RamRegion,
+        architecture: Architecture,
+    ) -> Result<FlashAlgorithm, FlashError> {
+        use std::mem::size_of;
 
-        assert_eq!(self.instructions.len() % 4, 0);
+        let assembled_instructions = self.instructions.chunks_exact(size_of::<u32>());
 
-        let assembled_instructions = (&self.instructions)
-            .chunks(4)
-            .map(|bytes| u32::from_le_bytes(bytes.try_into().unwrap()));
+        if !assembled_instructions.remainder().is_empty() {
+            return Err(FlashError::InvalidFlashAlgorithmLength);
+        }
 
-        instructions.extend(assembled_instructions);
+        let header = self.get_algorithm_header(architecture);
+        let instructions: Vec<u32> = header
+            .iter()
+            .copied()
+            .chain(
+                assembled_instructions.map(|bytes| u32::from_le_bytes(bytes.try_into().unwrap())),
+            )
+            .collect();
 
         let mut offset = 0;
         let mut addr_stack = 0;
@@ -202,7 +214,7 @@ impl RawFlashAlgorithm {
             addr_stack = ram_region.range.start + offset;
             // Load address
             addr_load = addr_stack;
-            offset += instructions.len() as u32 * 4;
+            offset += (instructions.len() * size_of::<u32>()) as u32;
 
             // Data buffer 1
             addr_data = ram_region.range.start + offset;
@@ -224,11 +236,11 @@ impl RawFlashAlgorithm {
             vec![addr_data]
         };
 
-        let code_start = addr_load + (self.get_algorithm_header(architecture).len() as u32) * 4;
+        let code_start = addr_load + (header.len() * size_of::<u32>()) as u32;
 
         let name = self.name.clone().into_owned();
 
-        FlashAlgorithm {
+        Ok(FlashAlgorithm {
             name,
             default: self.default,
             load_address: addr_load,
@@ -243,7 +255,7 @@ impl RawFlashAlgorithm {
             begin_data: page_buffers[0],
             page_buffers: page_buffers.clone(),
             flash_properties: self.flash_properties.clone(),
-        }
+        })
     }
 }
 

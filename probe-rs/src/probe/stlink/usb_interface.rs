@@ -43,7 +43,7 @@ pub struct STLinkInfo {
     pub usb_pid: u16,
     ep_out: u8,
     ep_in: u8,
-    ep_swv: u8,
+    ep_swo: u8,
 }
 
 impl STLinkInfo {
@@ -52,14 +52,14 @@ impl STLinkInfo {
         usb_pid: u16,
         ep_out: u8,
         ep_in: u8,
-        ep_swv: u8,
+        ep_swo: u8,
     ) -> Self {
         Self {
             version_name: version_name.into(),
             usb_pid,
             ep_out,
             ep_in,
-            ep_swv,
+            ep_swo,
         }
     }
 }
@@ -90,6 +90,12 @@ pub trait StLinkUsb: std::fmt::Debug {
     /// Reset the USB device. This can be used to recover when the
     /// STLink does not respond to USB requests.
     fn reset(&mut self) -> Result<(), DebugProbeError>;
+
+    fn read_swo(
+        &mut self,
+        read_data: &mut [u8],
+        timeout: Duration,
+    ) -> Result<usize, DebugProbeError>;
 }
 
 impl STLinkUSBDevice {
@@ -151,7 +157,7 @@ impl STLinkUSBDevice {
 
         let mut endpoint_out = false;
         let mut endpoint_in = false;
-        let mut endpoint_swv = false;
+        let mut endpoint_swo = false;
 
         if let Some(interface) = config.interfaces().next() {
             if let Some(descriptor) = interface.descriptors().next() {
@@ -160,8 +166,8 @@ impl STLinkUSBDevice {
                         endpoint_out = true;
                     } else if endpoint.address() == info.ep_in {
                         endpoint_in = true;
-                    } else if endpoint.address() == info.ep_swv {
-                        endpoint_swv = true;
+                    } else if endpoint.address() == info.ep_swo {
+                        endpoint_swo = true;
                     }
                 }
             }
@@ -175,7 +181,7 @@ impl STLinkUSBDevice {
             return Err(StlinkError::EndpointNotFound.into());
         }
 
-        if !endpoint_swv {
+        if !endpoint_swo {
             return Err(StlinkError::EndpointNotFound.into());
         }
 
@@ -228,7 +234,11 @@ impl StLinkUsb for STLinkUSBDevice {
             .map_err(|e| DebugProbeError::USB(Some(Box::new(e))))?;
 
         if written_bytes != CMD_LEN {
-            return Err(StlinkError::NotEnoughBytesRead.into());
+            return Err(StlinkError::NotEnoughBytesRead {
+                is: written_bytes,
+                should: CMD_LEN,
+            }
+            .into());
         }
         // Optional data out phase.
         if !write_data.is_empty() {
@@ -237,7 +247,11 @@ impl StLinkUsb for STLinkUSBDevice {
                 .write_bulk(ep_out, write_data, timeout)
                 .map_err(|e| DebugProbeError::USB(Some(Box::new(e))))?;
             if written_bytes != write_data.len() {
-                return Err(StlinkError::NotEnoughBytesRead.into());
+                return Err(StlinkError::NotEnoughBytesRead {
+                    is: written_bytes,
+                    should: write_data.len(),
+                }
+                .into());
             }
         }
         // Optional data in phase.
@@ -247,10 +261,38 @@ impl StLinkUsb for STLinkUSBDevice {
                 .read_bulk(ep_in, read_data, timeout)
                 .map_err(|e| DebugProbeError::USB(Some(Box::new(e))))?;
             if read_bytes != read_data.len() {
-                return Err(StlinkError::NotEnoughBytesRead.into());
+                return Err(StlinkError::NotEnoughBytesRead {
+                    is: read_bytes,
+                    should: read_data.len(),
+                }
+                .into());
             }
         }
         Ok(())
+    }
+
+    fn read_swo(
+        &mut self,
+        read_data: &mut [u8],
+        timeout: Duration,
+    ) -> Result<usize, DebugProbeError> {
+        log::trace!(
+            "Reading {:?} SWO bytes to STLink, timeout: {:?}",
+            read_data.len(),
+            timeout
+        );
+
+        let ep_swo = self.info.ep_swo;
+
+        if read_data.is_empty() {
+            Ok(0)
+        } else {
+            let read_bytes = self
+                .device_handle
+                .read_bulk(ep_swo, read_data, timeout)
+                .map_err(|e| DebugProbeError::USB(Some(Box::new(e))))?;
+            Ok(read_bytes)
+        }
     }
 
     /// Reset the USB device. This can be used to recover when the

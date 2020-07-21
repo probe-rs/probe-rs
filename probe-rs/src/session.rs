@@ -1,5 +1,10 @@
 use crate::architecture::{
-    arm::{ArmChipInfo, ArmCommunicationInterface, ArmCommunicationInterfaceState},
+    arm::{
+        communication_interface::ApInformation::{MemoryAp, Other},
+        memory::{ADIMemoryInterface, Component},
+        ArmChipInfo, ArmCommunicationInterface, ArmCommunicationInterfaceState, SwoAccess,
+        SwoConfig,
+    },
     riscv::communication_interface::{
         RiscvCommunicationInterface, RiscvCommunicationInterfaceState,
     },
@@ -8,7 +13,8 @@ use crate::config::{
     ChipInfo, MemoryRegion, RawFlashAlgorithm, RegistryError, Target, TargetSelector,
 };
 use crate::core::{Architecture, CoreState, SpecificCoreState};
-use crate::{Core, CoreType, Error, Probe};
+use crate::{Core, CoreType, Error, Memory, Probe};
+use anyhow::anyhow;
 
 #[derive(Debug)]
 pub struct Session {
@@ -43,11 +49,13 @@ impl ArchitectureInterfaceState {
         match self {
             ArchitectureInterfaceState::Arm(state) => core.attach_arm(
                 core_state,
-                ArmCommunicationInterface::new(probe, state)?.unwrap(),
+                ArmCommunicationInterface::new(probe, state)?
+                    .ok_or_else(|| anyhow!("No DAP interface available on probe"))?,
             ),
             ArchitectureInterfaceState::Riscv(state) => core.attach_riscv(
                 core_state,
-                RiscvCommunicationInterface::new(probe, state)?.unwrap(),
+                RiscvCommunicationInterface::new(probe, state)?
+                    .ok_or_else(|| anyhow!("No JTAG interface available on probe"))?,
             ),
         }
     }
@@ -110,7 +118,7 @@ impl Session {
                 (
                     (
                         SpecificCoreState::from_core_type(target.core_type),
-                        Core::create_state(),
+                        Core::create_state(0),
                     ),
                     ArchitectureInterfaceState::Arm(state),
                 )
@@ -120,19 +128,23 @@ impl Session {
                 (
                     (
                         SpecificCoreState::from_core_type(target.core_type),
-                        Core::create_state(),
+                        Core::create_state(0),
                     ),
                     ArchitectureInterfaceState::Riscv(state),
                 )
             }
         };
 
-        Ok(Self {
+        let mut session = Self {
             target,
             probe,
             interface_state: data.1,
             cores: vec![data.0],
-        })
+        };
+
+        session.clear_all_hw_breakpoints()?;
+
+        Ok(session)
     }
 
     /// Automatically creates a session with the first connected probe found.
@@ -172,6 +184,102 @@ impl Session {
         &self.target.flash_algorithms
     }
 
+    pub fn read_swo(&mut self) -> Result<Vec<u8>, Error> {
+        let state = match &mut self.interface_state {
+            ArchitectureInterfaceState::Arm(state) => state,
+            _ => return Err(Error::ArchitectureRequired(&["ARMv7", "ARMv8"])),
+        };
+        let mut interface = ArmCommunicationInterface::new(&mut self.probe, state)?.unwrap();
+
+        interface.read_swo()
+    }
+
+    pub fn get_arm_interface(&mut self) -> Result<ArmCommunicationInterface, Error> {
+        let state = match &mut self.interface_state {
+            ArchitectureInterfaceState::Arm(state) => state,
+            _ => return Err(Error::ArchitectureRequired(&["ARMv7", "ARMv8"])),
+        };
+        Ok(ArmCommunicationInterface::new(&mut self.probe, state)?.unwrap())
+    }
+
+    pub fn get_arm_component(&mut self) -> Result<Component, Error> {
+        let interface = self.get_arm_interface()?;
+
+        let ap_index = 0;
+
+        let ap_information = interface.get_ap_information(ap_index.into())?;
+
+        match ap_information {
+            MemoryAp {
+                index,
+                only_32_bit_data_size,
+                base_address,
+            } => {
+                let access_port_number = *index;
+                let only_32_bit_data_size = *only_32_bit_data_size;
+                let base_address = *base_address;
+
+                let mut memory = Memory::new(
+                    ADIMemoryInterface::<ArmCommunicationInterface>::new(
+                        interface,
+                        access_port_number,
+                        only_32_bit_data_size,
+                    )
+                    .map_err(Error::architecture_specific)?,
+                );
+
+                Component::try_parse(&mut memory, base_address)
+                    .map_err(Error::architecture_specific)
+            }
+            Other { index } => {
+                // Return an error, only possible to get Component from MemoryAP
+                Err(Error::Other(anyhow!(
+                    "AP {} is not a MemoryAP, unable to get ARM component.",
+                    index
+                )))
+            }
+        }
+    }
+
+    /// Configure the target and probe for serial wire view (SWV) tracing.
+    pub fn setup_swv(&mut self, config: &SwoConfig) -> Result<(), Error> {
+        // Configure SWO on the probe
+        let mut interface = self.get_arm_interface()?;
+        interface.enable_swo(config)?;
+
+        // Enable tracing on the target
+        {
+            let mut core = self.core(0)?;
+            crate::architecture::arm::component::enable_tracing(&mut core)?;
+        }
+
+        // Configure SWV on the target
+        let component = self.get_arm_component()?;
+        let mut core = self.core(0)?;
+        crate::architecture::arm::component::setup_swv(&mut core, &component, config)
+    }
+
+    /// Configure the target to stop emitting SWV trace data.
+    pub fn disable_swv(&mut self) -> Result<(), Error> {
+        crate::architecture::arm::component::disable_swv(&mut self.core(0)?)
+    }
+
+    /// Begin tracing a memory address over SWV.
+    pub fn add_swv_data_trace(&mut self, unit: usize, address: u32) -> Result<(), Error> {
+        let component = self.get_arm_component()?;
+        let mut core = self.core(0)?;
+        crate::architecture::arm::component::add_swv_data_trace(
+            &mut core, &component, unit, address,
+        )
+    }
+
+    /// Stop tracing from a given SWV unit
+    pub fn remove_swv_data_trace(&mut self, unit: usize) -> Result<(), Error> {
+        let component = self.get_arm_component()?;
+        let mut core = self.core(0)?;
+        crate::architecture::arm::component::remove_swv_data_trace(&mut core, &component, unit)
+    }
+
     /// Returns the memory map of the target.
     pub fn memory_map(&self) -> &[MemoryRegion] {
         &self.target.memory_map
@@ -183,6 +291,17 @@ impl Session {
             ArchitectureInterfaceState::Arm(_) => Architecture::Arm,
             ArchitectureInterfaceState::Riscv(_) => Architecture::Riscv,
         }
+    }
+
+    /// Clears all hardware breakpoints on all cores
+    pub fn clear_all_hw_breakpoints(&mut self) -> Result<(), Error> {
+        { 0..self.cores.len() }
+            .map(|n| {
+                self.core(n)
+                    .and_then(|mut core| core.clear_all_hw_breakpoints())
+            })
+            .collect::<Result<Vec<_>, _>>()
+            .map(|_| ())
     }
 }
 
@@ -199,4 +318,12 @@ fn try_arm_autodetect(
     let found_chip = found_chip.map(ChipInfo::from);
 
     Ok(found_chip)
+}
+
+impl Drop for Session {
+    fn drop(&mut self) {
+        if let Err(err) = self.clear_all_hw_breakpoints() {
+            log::warn!("Could not clear all hardware breakpoints: {:?}", err);
+        }
+    }
 }

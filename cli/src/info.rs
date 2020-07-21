@@ -3,10 +3,11 @@ use crate::{common::open_probe, SharedOptions};
 use probe_rs::{
     architecture::arm::{
         ap::{valid_access_ports, APClass, BaseaddrFormat, MemoryAP, BASE, BASE2, IDR},
-        memory::{ADIMemoryInterface, CSComponent},
+        m0::Demcr,
+        memory::{ADIMemoryInterface, Component},
         ArmCommunicationInterface, ArmCommunicationInterfaceState,
     },
-    Memory,
+    CoreRegister, Memory,
 };
 
 use anyhow::Result;
@@ -38,12 +39,12 @@ pub(crate) fn show_info_of_device(shared_options: &SharedOptions) -> Result<()> 
     */
 
     let mut state = ArmCommunicationInterfaceState::new();
-    let interface = ArmCommunicationInterface::new(&mut probe, &mut state)?;
+    let mut interface = ArmCommunicationInterface::new(&mut probe, &mut state)?;
 
-    if let Some(mut interface) = interface {
+    if let Some(interface) = &mut interface {
         println!("\nAvailable Access Ports:");
 
-        for access_port in valid_access_ports(&mut interface) {
+        for access_port in valid_access_ports(interface) {
             let idr = interface.read_ap_register(access_port, IDR::default())?;
             println!("{:#x?}", idr);
 
@@ -72,7 +73,17 @@ pub(crate) fn show_info_of_device(shared_options: &SharedOptions) -> Result<()> 
                     access_port,
                     true,
                 )?);
-                let component_table = CSComponent::try_parse(&mut memory, baseaddr as u64);
+
+                // Enable
+                // - Data Watchpoint and Trace (DWT)
+                // - Instrumentation Trace Macrocell (ITM)
+                // - Embedded Trace Macrocell (ETM)
+                // - Trace Port Interface Unit (TPIU).
+                let mut demcr = Demcr(memory.read_word_32(Demcr::ADDRESS)?);
+                demcr.set_dwtena(true);
+                memory.write_word_32(Demcr::ADDRESS, demcr.into())?;
+
+                let component_table = Component::try_parse(&mut memory, baseaddr as u64);
 
                 component_table
                     .iter()

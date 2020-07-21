@@ -262,12 +262,14 @@ impl CoreType {
 
 #[derive(Debug)]
 pub struct CoreState {
+    id: usize,
     breakpoints: Vec<Breakpoint>,
 }
 
 impl CoreState {
-    fn new() -> Self {
+    fn new(id: usize) -> Self {
         Self {
+            id,
             breakpoints: vec![],
         }
     }
@@ -298,7 +300,7 @@ impl SpecificCoreState {
     pub(crate) fn attach_arm<'probe>(
         &'probe mut self,
         state: &'probe mut CoreState,
-        mut interface: ArmCommunicationInterface<'probe>,
+        interface: ArmCommunicationInterface<'probe>,
     ) -> Result<Core<'probe>, Error> {
         // TODO: This should support multiple APs
         let ap = GenericAP::new(0);
@@ -309,12 +311,12 @@ impl SpecificCoreState {
             ApInformation::MemoryAp {
                 only_32_bit_data_size,
                 ..
-            } => only_32_bit_data_size,
+            } => *only_32_bit_data_size,
             ApInformation::Other { .. } => {
                 /* unable to attach to an AP which is not a MemoryAP */
                 return Err(anyhow!(
                     "Unable to attach, AP {} is not a MemoryAP",
-                    ap.get_port_number()
+                    ap.port_number()
                 )
                 .into());
             }
@@ -377,8 +379,12 @@ impl<'probe> Core<'probe> {
         }
     }
 
-    pub fn create_state() -> CoreState {
-        CoreState::new()
+    pub fn create_state(id: usize) -> CoreState {
+        CoreState::new(id)
+    }
+
+    pub fn id(&self) -> usize {
+        self.state.id
     }
 
     /// Wait until the core is halted. If the core does not halt on its own,
@@ -478,8 +484,9 @@ impl<'probe> Core<'probe> {
             // We cannot set additional breakpoints
             log::warn!("Maximum number of breakpoints ({}) reached, unable to set additional HW breakpoint.", num_hw_breakpoints);
 
-            // TODO: Better error here
-            return Err(error::Error::Probe(DebugProbeError::Unknown));
+            return Err(error::Error::Probe(
+                DebugProbeError::BreakpointUnitsExceeded,
+            ));
         }
 
         if !self.inner.hw_breakpoints_enabled() {
@@ -516,8 +523,19 @@ impl<'probe> Core<'probe> {
                 self.state.breakpoints.swap_remove(bp_position);
                 Ok(())
             }
-            None => Err(error::Error::Probe(DebugProbeError::Unknown)),
+            None => Err(error::Error::Other(anyhow!(
+                "No breakpoint found at address {}",
+                address
+            ))),
         }
+    }
+
+    pub fn clear_all_hw_breakpoints(&mut self) -> Result<(), error::Error> {
+        let num_hw_breakpoints = self.get_available_breakpoint_units()? as usize;
+
+        { 0..num_hw_breakpoints }
+            .map(|unit_index| self.inner.clear_breakpoint(unit_index))
+            .collect()
     }
 
     pub fn architecture(&self) -> Architecture {

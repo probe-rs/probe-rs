@@ -3,7 +3,7 @@ pub mod tools;
 
 use crate::architecture::arm::{
     dp::{DPAccess, DPRegister, DebugPortError},
-    DAPAccess, DapError, PortType,
+    DAPAccess, DapError, PortType, SwoAccess,
 };
 use crate::probe::{daplink::commands::CmsisDapError, BatchCommand};
 use crate::{DebugProbe, DebugProbeError, DebugProbeSelector, Memory, WireProtocol};
@@ -368,10 +368,20 @@ impl DebugProbe for DAPLink {
     fn get_interface_dap_mut(&mut self) -> Option<&mut dyn DAPAccess> {
         Some(self as _)
     }
+
     fn get_interface_jtag(&self) -> Option<&dyn JTAGAccess> {
         None
     }
+
     fn get_interface_jtag_mut(&mut self) -> Option<&mut dyn JTAGAccess> {
+        None
+    }
+
+    fn get_interface_swo(&self) -> Option<&dyn SwoAccess> {
+        None
+    }
+
+    fn get_interface_swo_mut(&mut self) -> Option<&mut dyn SwoAccess> {
         None
     }
 }
@@ -424,10 +434,12 @@ impl DAPAccess for DAPLink {
 
             debug!("Transfer block: chunk={}, len={} bytes", i, chunk.len() * 4);
 
-            let resp: TransferBlockResponse = commands::send_command(&mut self.device, request)
-                .map_err(|_| DebugProbeError::Unknown)?;
+            let resp: TransferBlockResponse =
+                commands::send_command(&mut self.device, request).map_err(DebugProbeError::from)?;
 
-            assert_eq!(resp.transfer_response, 1);
+            if resp.transfer_response != 1 {
+                return Err(CmsisDapError::ErrorResponse.into());
+            }
         }
 
         Ok(())
@@ -464,10 +476,12 @@ impl DAPAccess for DAPLink {
 
             debug!("Transfer block: chunk={}, len={} bytes", i, chunk.len() * 4);
 
-            let resp: TransferBlockResponse = commands::send_command(&mut self.device, request)
-                .map_err(|_| DebugProbeError::Unknown)?;
+            let resp: TransferBlockResponse =
+                commands::send_command(&mut self.device, request).map_err(DebugProbeError::from)?;
 
-            assert_eq!(resp.transfer_response, 1);
+            if resp.transfer_response != 1 {
+                return Err(CmsisDapError::ErrorResponse.into());
+            }
 
             chunk.clone_from_slice(&resp.transfer_data[..]);
         }

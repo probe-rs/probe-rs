@@ -1,4 +1,5 @@
 use super::super::{Category, Request, Response, Result, Status};
+use anyhow::anyhow;
 
 #[derive(Debug)]
 pub struct SWJClockRequest(pub(crate) u32);
@@ -11,7 +12,7 @@ impl Request for SWJClockRequest {
 
         buffer
             .pwrite_with(self.0, offset, LE)
-            .expect("This is a bug. Please report it.");
+            .map_err(|_| anyhow!("This is a bug. Please report it."))?;
         Ok(4)
     }
 }

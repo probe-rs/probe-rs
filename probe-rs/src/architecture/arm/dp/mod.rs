@@ -16,6 +16,8 @@ pub enum DebugPortError {
         register: &'static str,
         version: DebugPortVersion,
     },
+    #[error("Access port {0} doesn't exist on target system.")]
+    NonExistingAccessPort(u8),
     #[error("A Debug Probe Error occured")]
     DebugProbe(#[from] DebugProbeError),
 }

@@ -2,7 +2,7 @@ pub(crate) mod daplink;
 pub(crate) mod jlink;
 pub(crate) mod stlink;
 
-use crate::architecture::arm::{DAPAccess, PortType};
+use crate::architecture::arm::{DAPAccess, PortType, SwoAccess};
 use crate::config::{RegistryError, TargetSelector};
 use crate::error::Error;
 use crate::{Memory, Session};
@@ -71,9 +71,6 @@ pub enum DebugProbeError {
     ProbeFirmwareOutdated,
     #[error("An error specific to a probe type occured")]
     ProbeSpecific(#[source] Box<dyn std::error::Error + Send + Sync>),
-    // TODO: Unknown errors are not very useful, this should be removed.
-    #[error("An unknown error occured")]
-    Unknown,
     #[error("Probe could not be created")]
     ProbeCouldNotBeCreated(#[from] ProbeCreationError),
     #[error("Probe does not support protocol")]
@@ -99,6 +96,10 @@ pub enum DebugProbeError {
     NotImplemented(&'static str),
     #[error("Error in previous batched command")]
     BatchError(BatchCommand),
+    #[error("Command not supported by probe")]
+    CommandNotSupportedByProbe,
+    #[error("Unable to set hardware breakpoint, all available breakpoint units are in use.")]
+    BreakpointUnitsExceeded,
     #[error(transparent)]
     Other(#[from] anyhow::Error),
 }
@@ -350,6 +351,14 @@ impl Probe {
             Ok(self.inner.get_interface_jtag_mut())
         }
     }
+
+    pub fn get_interface_swo(&self) -> Option<&dyn SwoAccess> {
+        self.inner.get_interface_swo()
+    }
+
+    pub fn get_interface_swo_mut(&mut self) -> Option<&mut dyn SwoAccess> {
+        self.inner.get_interface_swo_mut()
+    }
 }
 
 pub trait DebugProbe: Send + Sync + fmt::Debug {
@@ -404,6 +413,10 @@ pub trait DebugProbe: Send + Sync + fmt::Debug {
     fn get_interface_jtag(&self) -> Option<&dyn JTAGAccess>;
 
     fn get_interface_jtag_mut(&mut self) -> Option<&mut dyn JTAGAccess>;
+
+    fn get_interface_swo(&self) -> Option<&dyn SwoAccess>;
+
+    fn get_interface_swo_mut(&mut self) -> Option<&mut dyn SwoAccess>;
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -585,7 +598,7 @@ impl DebugProbe for FakeProbe {
 
     /// Resets the target device.
     fn target_reset(&mut self) -> Result<(), DebugProbeError> {
-        Err(DebugProbeError::Unknown)
+        Err(DebugProbeError::CommandNotSupportedByProbe)
     }
 
     fn dedicated_memory_interface(&self) -> Option<Memory> {
@@ -607,12 +620,20 @@ impl DebugProbe for FakeProbe {
     fn get_interface_jtag_mut(&mut self) -> Option<&mut dyn JTAGAccess> {
         None
     }
+
+    fn get_interface_swo(&self) -> Option<&dyn SwoAccess> {
+        None
+    }
+
+    fn get_interface_swo_mut(&mut self) -> Option<&mut dyn SwoAccess> {
+        None
+    }
 }
 
 impl DAPAccess for FakeProbe {
     /// Reads the DAP register on the specified port and address
     fn read_register(&mut self, _port: PortType, _addr: u16) -> Result<u32, DebugProbeError> {
-        Err(DebugProbeError::Unknown)
+        Err(DebugProbeError::CommandNotSupportedByProbe)
     }
 
     /// Writes a value to the DAP register on the specified port and address
@@ -622,7 +643,7 @@ impl DAPAccess for FakeProbe {
         _addr: u16,
         _value: u32,
     ) -> Result<(), DebugProbeError> {
-        Err(DebugProbeError::Unknown)
+        Err(DebugProbeError::CommandNotSupportedByProbe)
     }
 }
 

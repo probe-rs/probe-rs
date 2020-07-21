@@ -15,7 +15,7 @@ use capstone::{arch::arm::ArchMode, prelude::*, Capstone, Endian};
 use rustyline::Editor;
 use structopt::StructOpt;
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 
 use std::num::ParseIntError;
 use std::path::PathBuf;
@@ -212,7 +212,6 @@ fn trace_u32_on_target(shared_options: &SharedOptions, loc: u32) -> Result<()> {
             ys.push(value);
 
             // Send value to plot.py.
-            // Unwrap is safe as there is always an stdin in our case!
             let mut buf = [0 as u8; 8];
             // Unwrap is safe!
             buf.pwrite_with(instant, 0, LE).unwrap();
@@ -238,7 +237,7 @@ fn debug(shared_options: &SharedOptions, exe: Option<PathBuf>) -> Result<()> {
             .mode(ArchMode::Thumb)
             .endian(Endian::Little)
             .build()
-            .unwrap();
+            .map_err(|err| anyhow!("Error creating capstone: {:?}", err))?;
 
         let di = exe
             .as_ref()
