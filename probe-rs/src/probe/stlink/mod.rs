@@ -7,7 +7,7 @@ use super::{
     DAPAccess, DebugProbe, DebugProbeError, JTAGAccess, PortType, ProbeCreationError, WireProtocol,
 };
 use crate::{
-    architecture::arm::{SwoAccess, SwoConfig}, DebugProbeSelector, Error as ProbeRsError, Memory};
+    architecture::arm::{SwoAccess, SwoConfig, SwoMode}, DebugProbeSelector, Error as ProbeRsError, Memory};
 use constants::{commands, JTagFrequencyToDivider, Mode, Status, SwdFrequencyToDelayCount};
 use scroll::{Pread, BE, LE};
 use std::{cmp::Ordering, time::Duration};
@@ -22,6 +22,7 @@ pub struct STLink<D: StLinkUsb> {
     protocol: WireProtocol,
     swd_speed_khz: u32,
     jtag_speed_khz: u32,
+    swo_enabled: bool,
 
     /// Index of the AP which is currently open.
     current_ap: Option<u8>,
@@ -38,6 +39,7 @@ impl DebugProbe for STLink<STLinkUSBDevice> {
             protocol: WireProtocol::Swd,
             swd_speed_khz: 1_800,
             jtag_speed_khz: 1_120,
+            swo_enabled: false,
 
             current_ap: None,
         };
@@ -156,6 +158,9 @@ impl DebugProbe for STLink<STLinkUSBDevice> {
     /// Leave debug mode.
     fn detach(&mut self) -> Result<(), DebugProbeError> {
         log::debug!("Detaching from STLink.");
+        if self.swo_enabled {
+            self.disable_swo().map_err(|e| DebugProbeError::ProbeSpecific(e.into()))?;
+        }
         self.enter_idle()
     }
 
@@ -275,7 +280,10 @@ impl DAPAccess for STLink<STLinkUSBDevice> {
 
 impl<D: StLinkUsb> Drop for STLink<D> {
     fn drop(&mut self) {
-        // We ignore the error case as we can't do much about it anyways.
+        // We ignore the error cases as we can't do much about it anyways.
+        if self.swo_enabled {
+            let _ = self.disable_swo();
+        }
         let _ = self.enter_idle();
     }
 }
@@ -655,20 +663,34 @@ impl<D: StLinkUsb> STLink<D> {
         Ok(())
     }
 
-    pub fn start_trace_reception(&mut self, _config: &SwoConfig) -> Result<(), DebugProbeError> {
+    pub fn start_trace_reception(&mut self, config: &SwoConfig) -> Result<(), DebugProbeError> {
         let mut buf = [0; 2];
+        let bufsize = 4096u16.to_le_bytes();
+        let baud = config.baud.to_le_bytes();
+        let mut command = vec![commands::JTAG_COMMAND, commands::SWO_START_TRACE_RECEPTION];
+        command.extend_from_slice(&bufsize);
+        command.extend_from_slice(&baud);
 
-        // TODO: Use config to set correct mode and baud rate
+        self.device.write(
+            command,
+            &[],
+            &mut buf,
+            TIMEOUT,
+        )?;
+        Self::check_status(&buf)?;
+
+        self.swo_enabled = true;
+
+        Ok(())
+    }
+
+    pub fn stop_trace_reception(&mut self) -> Result<(), DebugProbeError> {
+        let mut buf = [0; 2];
 
         self.device.write(
             vec![
                 commands::JTAG_COMMAND,
-                commands::SWO_START_TRACE_RECEPTION,
-                commands::JTAG_STLINK_SWD_COM,
-                0x10,
-                0x80,
-                0x84,
-                0x1e,
+                commands::SWO_STOP_TRACE_RECEPTION,
             ],
             &[],
             &mut buf,
@@ -676,11 +698,9 @@ impl<D: StLinkUsb> STLink<D> {
         )?;
         Self::check_status(&buf)?;
 
-        Ok(())
-    }
+        self.swo_enabled = false;
 
-    pub fn stop_trace_reception(&mut self) -> Result<(), DebugProbeError> {
-        todo!();
+        Ok(())
     }
 
     /// Gets the SWO count from the ST-Link probe.
@@ -711,8 +731,11 @@ impl<D: StLinkUsb> STLink<D> {
 
 impl<D: StLinkUsb> SwoAccess for STLink<D> {
     fn enable_swo(&mut self, config: &SwoConfig) -> Result<(), ProbeRsError> {
-        self.start_trace_reception(config)?;
-        Ok(())
+        match config.mode {
+            SwoMode::UART => { self.start_trace_reception(config)?; Ok(()) },
+            SwoMode::Manchester => Err(DebugProbeError::ProbeSpecific(
+                StlinkError::ManchesterSwoNotSupported.into()).into()),
+        }
     }
 
     fn disable_swo(&mut self) -> Result<(), ProbeRsError> {
@@ -742,6 +765,8 @@ pub(crate) enum StlinkError {
     CommandFailed(Status),
     #[error("JTAG not supported on Probe")]
     JTAGNotSupportedOnProbe,
+    #[error("Mancehster-coded SWO mode not supported")]
+    ManchesterSwoNotSupported,
 }
 
 impl From<StlinkError> for DebugProbeError {
