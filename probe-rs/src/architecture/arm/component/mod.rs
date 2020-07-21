@@ -38,6 +38,9 @@ pub fn setup_swv(core: &mut Core, component: &Component, config: &SwoConfig) -> 
     // Enable tracing
     enable_tracing(core)?;
 
+    // Perform vendor-specific SWV setup
+    setup_swv_vendor(core, component, config)?;
+
     // Configure TPIU
     let mut tpiu = component.tpiu(core).map_err(Error::architecture_specific)?;
     tpiu.set_port_size(1)?;
@@ -60,6 +63,22 @@ pub fn setup_swv(core: &mut Core, component: &Component, config: &SwoConfig) -> 
     dwt.enable()?;
 
     Ok(())
+}
+
+fn setup_swv_vendor(core: &mut Core, component: &Component, _config: &SwoConfig) -> Result<(), Error> {
+    match component.id().peripheral_id().jep106() {
+        Some(id) if id == jep106::JEP106Code::new(0x00, 0x20) => {
+            // STMicroelectronics:
+            // STM32 parts need TRACE_IOEN set to 1 and TRACE_MODE set to 00.
+            log::debug!("STMicroelectronics part detected, configuring DBGMCU");
+            const DBGMCU: u32 = 0xE004_2004;
+            let mut dbgmcu = core.read_word_32(DBGMCU)?;
+            dbgmcu |= 1 << 5;
+            dbgmcu &= !(0b00 << 6);
+            core.write_word_32(DBGMCU, dbgmcu)
+        },
+        _ => Ok(()),
+    }
 }
 
 /// Configures DWT trace unit `unit` to begin tracing `address`.
