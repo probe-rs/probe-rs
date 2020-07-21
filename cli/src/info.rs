@@ -67,9 +67,11 @@ pub(crate) fn show_info_of_device(shared_options: &SharedOptions) -> Result<()> 
                 };
                 baseaddr |= u64::from(base_register.BASEADDR << 12);
 
+                // We assume that only 32bit accesses work here, speed is not really an issue
                 let mut memory = Memory::new(ADIMemoryInterface::<ArmCommunicationInterface>::new(
                     interface.reborrow(),
                     access_port,
+                    true,
                 )?);
 
                 // Enable
