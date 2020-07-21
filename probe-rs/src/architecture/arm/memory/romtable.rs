@@ -309,7 +309,9 @@ impl<'probe: 'memory, 'memory> ComponentInformationReader<'probe, 'memory> {
                     "Component at 0x{:x}: CIDR{} has invalid preamble (expected 0x{:x}, got 0x{:x})",
                     self.base_address, i, expected[i], preambles[i],
                 );
-                // return Err(RomTableError::CSComponentIdentification);
+                // Technically invalid preambles are a no-go.
+                // We are not sure if we need to abort earlier or if just emitting a warning is okay.
+                // For now this works, so we emit a warning and continue on.
             }
         }
 
