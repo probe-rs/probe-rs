@@ -7,10 +7,9 @@ use super::{
         Abort, Ctrl, DPAccess, DPBankSel, DPRegister, DebugPortError, DebugPortId,
         DebugPortVersion, Select, DPIDR,
     },
-    memory::romtable::{CSComponent, CSComponentId, PeripheralID},
-    memory::ADIMemoryInterface,
+    memory::{ADIMemoryInterface, Component},
+    SwoAccess, SwoConfig,
 };
-use crate::config::ChipInfo;
 use crate::{
     CommunicationInterface, DebugProbe, DebugProbeError, Error as ProbeRsError, Memory, Probe,
 };
@@ -64,7 +63,7 @@ impl From<PortType> for u16 {
         }
     }
 }
-use std::fmt::Debug;
+use std::{fmt::Debug, time::Duration};
 
 pub trait Register: Clone + From<u32> + Into<u32> + Sized + Debug {
     const ADDRESS: u8;
@@ -128,6 +127,8 @@ pub struct ArmCommunicationInterfaceState {
 
     current_apsel: u8,
     current_apbanksel: u8,
+
+    memory_access_ports: Vec<MemoryAccessPortData>,
 }
 
 impl ArmCommunicationInterfaceState {
@@ -138,6 +139,7 @@ impl ArmCommunicationInterfaceState {
             current_dpbanksel: 0,
             current_apsel: 0,
             current_apbanksel: 0,
+            memory_access_ports: vec![],
         }
     }
 
@@ -170,12 +172,13 @@ impl<'probe> ArmCommunicationInterface<'probe> {
     pub fn new(
         probe: &'probe mut Probe,
         state: &'probe mut ArmCommunicationInterfaceState,
-    ) -> Result<Option<Self>, DebugProbeError> {
+    ) -> Result<Option<Self>, ProbeRsError> {
         if probe.has_dap_interface() {
             let mut s = Self { probe, state };
 
             if !s.state.initialized() {
                 s.enter_debug_mode()?;
+                s.read_memory_access_ports()?;
                 s.state.initialize();
             }
 
@@ -185,6 +188,43 @@ impl<'probe> ArmCommunicationInterface<'probe> {
 
             Ok(None)
         }
+    }
+
+    pub(crate) fn memory_access_ports(&mut self) -> &Vec<MemoryAccessPortData> {
+        &self.state.memory_access_ports
+    }
+
+    fn read_memory_access_ports(&mut self) -> Result<(), ProbeRsError> {
+        for access_port in valid_access_ports(self) {
+            let idr = self
+                .read_ap_register(access_port, IDR::default())
+                .map_err(ProbeRsError::Probe)?;
+
+            if idr.CLASS == APClass::MEMAP {
+                let access_port: MemoryAP = access_port.into();
+
+                let base_register = self
+                    .read_ap_register(access_port, BASE::default())
+                    .map_err(ProbeRsError::Probe)?;
+
+                let mut base_address = if BaseaddrFormat::ADIv5 == base_register.Format {
+                    let base2 = self
+                        .read_ap_register(access_port, BASE2::default())
+                        .map_err(ProbeRsError::Probe)?;
+
+                    u64::from(base2.BASEADDR) << 32
+                } else {
+                    0
+                };
+                base_address |= u64::from(base_register.BASEADDR << 12);
+
+                self.state.memory_access_ports.push(MemoryAccessPortData {
+                    id: access_port.port_number(),
+                    base_address,
+                })
+            }
+        }
+        Ok(())
     }
 
     /// Reborrows the `ArmCommunicationInterface` at hand.
@@ -303,7 +343,11 @@ impl<'probe> ArmCommunicationInterface<'probe> {
 
     /// Write the given register `R` of the given `AP`, where the to be written register value
     /// is wrapped in the given `register` parameter.
-    pub fn write_ap_register<AP, R>(&mut self, port: AP, register: R) -> Result<(), DebugProbeError>
+    pub fn write_ap_register<AP, R>(
+        &mut self,
+        port: impl Into<AP>,
+        register: R,
+    ) -> Result<(), DebugProbeError>
     where
         AP: AccessPort,
         R: APRegister<AP>,
@@ -316,7 +360,7 @@ impl<'probe> ArmCommunicationInterface<'probe> {
             register_value
         );
 
-        self.select_ap_and_ap_bank(port.get_port_number(), R::APBANKSEL)?;
+        self.select_ap_and_ap_bank(port.into().port_number(), R::APBANKSEL)?;
 
         let interface = self
             .probe
@@ -337,7 +381,7 @@ impl<'probe> ArmCommunicationInterface<'probe> {
     /// stored in the array.
     pub fn write_ap_register_repeated<AP, R>(
         &mut self,
-        port: AP,
+        port: impl Into<AP>,
         _register: R,
         values: &[u32],
     ) -> Result<(), DebugProbeError>
@@ -351,7 +395,7 @@ impl<'probe> ArmCommunicationInterface<'probe> {
             values.len(),
         );
 
-        self.select_ap_and_ap_bank(port.get_port_number(), R::APBANKSEL)?;
+        self.select_ap_and_ap_bank(port.into().port_number(), R::APBANKSEL)?;
 
         let interface = self
             .probe
@@ -368,13 +412,17 @@ impl<'probe> ArmCommunicationInterface<'probe> {
 
     /// Read the given register `R` of the given `AP`, where the read register value is wrapped in
     /// the given `register` parameter.
-    pub fn read_ap_register<AP, R>(&mut self, port: AP, _register: R) -> Result<R, DebugProbeError>
+    pub fn read_ap_register<AP, R>(
+        &mut self,
+        port: impl Into<AP>,
+        _register: R,
+    ) -> Result<R, DebugProbeError>
     where
         AP: AccessPort,
         R: APRegister<AP>,
     {
         log::debug!("Reading register {}", R::NAME);
-        self.select_ap_and_ap_bank(port.get_port_number(), R::APBANKSEL)?;
+        self.select_ap_and_ap_bank(port.into().port_number(), R::APBANKSEL)?;
 
         let interface = self
             .probe
@@ -397,7 +445,7 @@ impl<'probe> ArmCommunicationInterface<'probe> {
     /// the array.
     pub fn read_ap_register_repeated<AP, R>(
         &mut self,
-        port: AP,
+        port: impl Into<AP>,
         _register: R,
         values: &mut [u32],
     ) -> Result<(), DebugProbeError>
@@ -411,7 +459,7 @@ impl<'probe> ArmCommunicationInterface<'probe> {
             values.len(),
         );
 
-        self.select_ap_and_ap_bank(port.get_port_number(), R::APBANKSEL)?;
+        self.select_ap_and_ap_bank(port.into().port_number(), R::APBANKSEL)?;
 
         let interface = self
             .probe
@@ -427,11 +475,7 @@ impl<'probe> ArmCommunicationInterface<'probe> {
     }
 }
 
-impl<'probe> CommunicationInterface for ArmCommunicationInterface<'probe> {
-    fn probe_for_chip_info(mut self) -> Result<Option<ChipInfo>, ProbeRsError> {
-        ArmChipInfo::read_from_rom_table(&mut self).map(|option| option.map(ChipInfo::Arm))
-    }
-}
+impl<'probe> CommunicationInterface for ArmCommunicationInterface<'probe> {}
 
 impl<'probe> DPAccess for ArmCommunicationInterface<'probe> {
     fn read_dp_register<R: DPRegister>(&mut self) -> Result<R, DebugPortError> {
@@ -479,23 +523,70 @@ impl<'probe> DPAccess for ArmCommunicationInterface<'probe> {
     }
 }
 
+impl<'probe> SwoAccess for ArmCommunicationInterface<'probe> {
+    fn enable_swo(&mut self, config: &SwoConfig) -> Result<(), ProbeRsError> {
+        match self.probe.get_interface_swo_mut() {
+            Some(interface) => interface.enable_swo(config),
+            None => Err(ProbeRsError::ArchitectureRequired(&["ARMv7", "ARMv8"])),
+        }
+    }
+
+    fn disable_swo(&mut self) -> Result<(), ProbeRsError> {
+        match self.probe.get_interface_swo_mut() {
+            Some(interface) => interface.disable_swo(),
+            None => Err(ProbeRsError::ArchitectureRequired(&["ARMv7", "ARMv8"])),
+        }
+    }
+
+    fn read_swo_timeout(&mut self, timeout: Duration) -> Result<Vec<u8>, ProbeRsError> {
+        match self.probe.get_interface_swo_mut() {
+            Some(interface) => interface.read_swo_timeout(timeout),
+            None => Err(ProbeRsError::ArchitectureRequired(&["ARMv7", "ARMv8"])),
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct MemoryAccessPortData {
+    id: u8,
+    base_address: u64,
+}
+
+impl MemoryAccessPortData {
+    pub fn id(&self) -> u8 {
+        self.id
+    }
+
+    pub fn base_address(&self) -> u64 {
+        self.base_address
+    }
+}
+
 impl<'probe, R> APAccess<MemoryAP, R> for ArmCommunicationInterface<'probe>
 where
     R: APRegister<MemoryAP>,
 {
     type Error = DebugProbeError;
 
-    fn read_ap_register(&mut self, port: MemoryAP, register: R) -> Result<R, Self::Error> {
+    fn read_ap_register(
+        &mut self,
+        port: impl Into<MemoryAP>,
+        register: R,
+    ) -> Result<R, Self::Error> {
         self.read_ap_register(port, register)
     }
 
-    fn write_ap_register(&mut self, port: MemoryAP, register: R) -> Result<(), Self::Error> {
+    fn write_ap_register(
+        &mut self,
+        port: impl Into<MemoryAP>,
+        register: R,
+    ) -> Result<(), Self::Error> {
         self.write_ap_register(port, register)
     }
 
     fn write_ap_register_repeated(
         &mut self,
-        port: MemoryAP,
+        port: impl Into<MemoryAP>,
         register: R,
         values: &[u32],
     ) -> Result<(), Self::Error> {
@@ -504,7 +595,7 @@ where
 
     fn read_ap_register_repeated(
         &mut self,
-        port: MemoryAP,
+        port: impl Into<MemoryAP>,
         register: R,
         values: &mut [u32],
     ) -> Result<(), Self::Error> {
@@ -518,17 +609,25 @@ where
 {
     type Error = DebugProbeError;
 
-    fn read_ap_register(&mut self, port: GenericAP, register: R) -> Result<R, Self::Error> {
+    fn read_ap_register(
+        &mut self,
+        port: impl Into<GenericAP>,
+        register: R,
+    ) -> Result<R, Self::Error> {
         self.read_ap_register(port, register)
     }
 
-    fn write_ap_register(&mut self, port: GenericAP, register: R) -> Result<(), Self::Error> {
+    fn write_ap_register(
+        &mut self,
+        port: impl Into<GenericAP>,
+        register: R,
+    ) -> Result<(), Self::Error> {
         self.write_ap_register(port, register)
     }
 
     fn write_ap_register_repeated(
         &mut self,
-        port: GenericAP,
+        port: impl Into<GenericAP>,
         register: R,
         values: &[u32],
     ) -> Result<(), Self::Error> {
@@ -537,7 +636,7 @@ where
 
     fn read_ap_register_repeated(
         &mut self,
-        port: GenericAP,
+        port: impl Into<GenericAP>,
         register: R,
         values: &mut [u32],
     ) -> Result<(), Self::Error> {
@@ -564,19 +663,7 @@ impl ArmChipInfo {
             if idr.CLASS == APClass::MEMAP {
                 let access_port: MemoryAP = access_port.into();
 
-                let base_register = interface
-                    .read_ap_register(access_port, BASE::default())
-                    .map_err(ProbeRsError::Probe)?;
-
-                let mut baseaddr = if BaseaddrFormat::ADIv5 == base_register.Format {
-                    let base2 = interface
-                        .read_ap_register(access_port, BASE2::default())
-                        .map_err(ProbeRsError::Probe)?;
-                    u64::from(base2.BASEADDR) << 32
-                } else {
-                    0
-                };
-                baseaddr |= u64::from(base_register.BASEADDR << 12);
+                let baseaddr = access_port.base_address(interface)?;
 
                 let mut memory = Memory::new(
                     ADIMemoryInterface::<ArmCommunicationInterface>::new(
@@ -586,28 +673,16 @@ impl ArmChipInfo {
                     .map_err(ProbeRsError::architecture_specific)?,
                 );
 
-                let component_table = CSComponent::try_parse(&mut memory, baseaddr as u64)
+                let component = Component::try_parse(&mut memory, baseaddr)
                     .map_err(ProbeRsError::architecture_specific)?;
 
-                match component_table {
-                    CSComponent::Class1RomTable(
-                        CSComponentId {
-                            peripheral_id:
-                                PeripheralID {
-                                    JEP106: Some(jep106),
-                                    PART: part,
-                                    ..
-                                },
-                            ..
-                        },
-                        ..,
-                    ) => {
+                if let Component::Class1RomTable(component_id, _) = component {
+                    if let Some(jep106) = component_id.peripheral_id().jep106() {
                         return Ok(Some(ArmChipInfo {
                             manufacturer: jep106,
-                            part,
+                            part: component_id.peripheral_id().part(),
                         }));
                     }
-                    _ => continue,
                 }
             }
         }

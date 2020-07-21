@@ -2,7 +2,7 @@ pub(crate) mod daplink;
 pub(crate) mod jlink;
 pub(crate) mod stlink;
 
-use crate::architecture::arm::{DAPAccess, PortType};
+use crate::architecture::arm::{DAPAccess, PortType, SwoAccess};
 use crate::config::{RegistryError, TargetSelector};
 use crate::error::Error;
 use crate::{Memory, Session};
@@ -351,6 +351,14 @@ impl Probe {
             Ok(self.inner.get_interface_jtag_mut())
         }
     }
+
+    pub fn get_interface_swo(&self) -> Option<&dyn SwoAccess> {
+        self.inner.get_interface_swo()
+    }
+
+    pub fn get_interface_swo_mut(&mut self) -> Option<&mut dyn SwoAccess> {
+        self.inner.get_interface_swo_mut()
+    }
 }
 
 pub trait DebugProbe: Send + Sync + fmt::Debug {
@@ -405,6 +413,10 @@ pub trait DebugProbe: Send + Sync + fmt::Debug {
     fn get_interface_jtag(&self) -> Option<&dyn JTAGAccess>;
 
     fn get_interface_jtag_mut(&mut self) -> Option<&mut dyn JTAGAccess>;
+
+    fn get_interface_swo(&self) -> Option<&dyn SwoAccess>;
+
+    fn get_interface_swo_mut(&mut self) -> Option<&mut dyn SwoAccess>;
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -606,6 +618,14 @@ impl DebugProbe for FakeProbe {
     }
 
     fn get_interface_jtag_mut(&mut self) -> Option<&mut dyn JTAGAccess> {
+        None
+    }
+
+    fn get_interface_swo(&self) -> Option<&dyn SwoAccess> {
+        None
+    }
+
+    fn get_interface_swo_mut(&mut self) -> Option<&mut dyn SwoAccess> {
         None
     }
 }

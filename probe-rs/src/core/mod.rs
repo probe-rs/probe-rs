@@ -256,12 +256,14 @@ impl CoreType {
 
 #[derive(Debug)]
 pub struct CoreState {
+    id: usize,
     breakpoints: Vec<Breakpoint>,
 }
 
 impl CoreState {
-    fn new() -> Self {
+    fn new(id: usize) -> Self {
         Self {
+            id,
             breakpoints: vec![],
         }
     }
@@ -351,8 +353,12 @@ impl<'probe> Core<'probe> {
         }
     }
 
-    pub fn create_state() -> CoreState {
-        CoreState::new()
+    pub fn create_state(id: usize) -> CoreState {
+        CoreState::new(id)
+    }
+
+    pub fn id(&self) -> usize {
+        self.state.id
     }
 
     /// Wait until the core is halted. If the core does not halt on its own,

@@ -22,15 +22,16 @@ pub mod commands {
     pub const JTAG_READMEM_8BIT: u8 = 0x0c;
     pub const JTAG_WRITEMEM_8BIT: u8 = 0x0d;
     pub const JTAG_EXIT: u8 = 0x21;
+    pub const JTAG_ENTER: u8 = 0x20;
 
     // The following commands are from Version 2 of the API,
     // supported
     pub const JTAG_ENTER2: u8 = 0x30;
     pub const JTAG_GETLASTRWSTATUS2: u8 = 0x3e; // From V2J15
     pub const JTAG_DRIVE_NRST: u8 = 0x3c;
-    pub const SWV_START_TRACE_RECEPTION: u8 = 0x40;
-    pub const SWV_STOP_TRACE_RECEPTION: u8 = 0x41;
-    pub const SWV_GET_TRACE_NEW_RECORD_NB: u8 = 0x42;
+    pub const SWO_START_TRACE_RECEPTION: u8 = 0x40;
+    pub const SWO_STOP_TRACE_RECEPTION: u8 = 0x41;
+    pub const SWO_GET_TRACE_NEW_RECORD_NB: u8 = 0x42;
     pub const SWD_SET_FREQ: u8 = 0x43; // From V2J20
     pub const JTAG_SET_FREQ: u8 = 0x44; // From V2J24
     pub const JTAG_READ_DAP_REG: u8 = 0x45; // From V2J24
@@ -89,7 +90,7 @@ pub enum Status {
     SwdApWdataError,
     SwdApStickyError,
     SwdApStickyorunError,
-    SwvNotAvailable,
+    SwoNotAvailable,
     JtagFreqNotSupported,
     JtagUnknownCmd,
     Other(u8),
@@ -125,7 +126,7 @@ impl From<u8> for Status {
             0x18 => SwdApWdataError,
             0x19 => SwdApStickyError,
             0x1A => SwdApStickyorunError,
-            0x20 => SwvNotAvailable,
+            0x20 => SwoNotAvailable,
             0x41 => JtagFreqNotSupported,
             0x42 => JtagUnknownCmd,
             v => Other(v),

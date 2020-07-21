@@ -1,5 +1,9 @@
 use crate::architecture::{
-    arm::{ArmChipInfo, ArmCommunicationInterface, ArmCommunicationInterfaceState},
+    arm::{
+        memory::{ADIMemoryInterface, Component},
+        ArmChipInfo, ArmCommunicationInterface, ArmCommunicationInterfaceState, SwoAccess,
+        SwoConfig,
+    },
     riscv::communication_interface::{
         RiscvCommunicationInterface, RiscvCommunicationInterfaceState,
     },
@@ -8,7 +12,7 @@ use crate::config::{
     ChipInfo, MemoryRegion, RawFlashAlgorithm, RegistryError, Target, TargetSelector,
 };
 use crate::core::{Architecture, CoreState, SpecificCoreState};
-use crate::{Core, CoreType, Error, Probe};
+use crate::{Core, CoreType, Error, Memory, Probe};
 use anyhow::anyhow;
 
 #[derive(Debug)]
@@ -113,7 +117,7 @@ impl Session {
                 (
                     (
                         SpecificCoreState::from_core_type(target.core_type),
-                        Core::create_state(),
+                        Core::create_state(0),
                     ),
                     ArchitectureInterfaceState::Arm(state),
                 )
@@ -123,7 +127,7 @@ impl Session {
                 (
                     (
                         SpecificCoreState::from_core_type(target.core_type),
-                        Core::create_state(),
+                        Core::create_state(0),
                     ),
                     ArchitectureInterfaceState::Riscv(state),
                 )
@@ -177,6 +181,76 @@ impl Session {
     /// Returns a list of the flash algotithms on the target.
     pub(crate) fn flash_algorithms(&self) -> &[RawFlashAlgorithm] {
         &self.target.flash_algorithms
+    }
+
+    pub fn read_swo(&mut self) -> Result<Vec<u8>, Error> {
+        let state = match &mut self.interface_state {
+            ArchitectureInterfaceState::Arm(state) => state,
+            _ => return Err(Error::ArchitectureRequired(&["ARMv7", "ARMv8"])),
+        };
+        let mut interface = ArmCommunicationInterface::new(&mut self.probe, state)?.unwrap();
+
+        interface.read_swo()
+    }
+
+    pub fn get_arm_interface(&mut self) -> Result<ArmCommunicationInterface, Error> {
+        let state = match &mut self.interface_state {
+            ArchitectureInterfaceState::Arm(state) => state,
+            _ => return Err(Error::ArchitectureRequired(&["ARMv7", "ARMv8"])),
+        };
+        Ok(ArmCommunicationInterface::new(&mut self.probe, state)?.unwrap())
+    }
+
+    pub fn get_arm_component(&mut self) -> Result<Component, Error> {
+        let mut interface = self.get_arm_interface()?;
+
+        let ap = interface.memory_access_ports()[0].id();
+        let baseaddr = interface.memory_access_ports()[0].base_address();
+
+        let mut memory = Memory::new(
+            ADIMemoryInterface::<ArmCommunicationInterface>::new(interface.reborrow(), ap)
+                .map_err(Error::architecture_specific)?,
+        );
+        Component::try_parse(&mut memory, baseaddr as u64).map_err(Error::architecture_specific)
+    }
+
+    /// Configure the target and probe for serial wire view (SWV) tracing.
+    pub fn setup_swv(&mut self, config: &SwoConfig) -> Result<(), Error> {
+        // Configure SWO on the probe
+        let mut interface = self.get_arm_interface()?;
+        interface.enable_swo(config)?;
+
+        // Enable tracing on the target
+        {
+            let mut core = self.core(0)?;
+            crate::architecture::arm::component::enable_tracing(&mut core)?;
+        }
+
+        // Configure SWV on the target
+        let component = self.get_arm_component()?;
+        let mut core = self.core(0)?;
+        crate::architecture::arm::component::setup_swv(&mut core, &component, config)
+    }
+
+    /// Configure the target to stop emitting SWV trace data.
+    pub fn disable_swv(&mut self) -> Result<(), Error> {
+        crate::architecture::arm::component::disable_swv(&mut self.core(0)?)
+    }
+
+    /// Begin tracing a memory address over SWV.
+    pub fn add_swv_data_trace(&mut self, unit: usize, address: u32) -> Result<(), Error> {
+        let component = self.get_arm_component()?;
+        let mut core = self.core(0)?;
+        crate::architecture::arm::component::add_swv_data_trace(
+            &mut core, &component, unit, address,
+        )
+    }
+
+    /// Stop tracing from a given SWV unit
+    pub fn remove_swv_data_trace(&mut self, unit: usize) -> Result<(), Error> {
+        let component = self.get_arm_component()?;
+        let mut core = self.core(0)?;
+        crate::architecture::arm::component::remove_swv_data_trace(&mut core, &component, unit)
     }
 
     /// Returns the memory map of the target.

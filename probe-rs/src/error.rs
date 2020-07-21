@@ -14,6 +14,8 @@ pub enum Error {
     CoreNotFound(usize),
     #[error("Unable to load specification for chip")]
     ChipNotFound(#[from] RegistryError),
+    #[error("This feature requires one of the following architectures: {0:?}")]
+    ArchitectureRequired(&'static [&'static str]),
     #[error(transparent)]
     Other(#[from] anyhow::Error),
 }

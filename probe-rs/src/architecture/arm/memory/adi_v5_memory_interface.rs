@@ -33,7 +33,9 @@ impl<'probe> ADIMemoryInterface<ArmCommunicationInterface<'probe>> {
             access_port: access_port_number.into(),
             only_32bit_data_size: true,
         };
+
         interface.detect_data_size()?;
+
         Ok(interface)
     }
 }
