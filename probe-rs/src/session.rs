@@ -215,24 +215,21 @@ impl Session {
     }
 
     /// Configure the target and probe for serial wire view (SWV) tracing.
-    ///
-    /// After configuration, call `enable_swv()` to begin trace generation.
     pub fn setup_swv(&mut self, config: &SwoConfig) -> Result<(), Error> {
         // Configure SWO on the probe
         let mut interface = self.get_arm_interface()?;
         interface.enable_swo(config)?;
 
+        // Enable tracing on the target
+        {
+            let mut core = self.core(0)?;
+            crate::architecture::arm::component::enable_tracing(&mut core)?;
+        }
+
         // Configure SWV on the target
         let component = self.get_arm_component()?;
         let mut core = self.core(0)?;
         crate::architecture::arm::component::setup_swv(&mut core, &component, config)
-    }
-
-    /// Configure the target to begin emitting SWV trace data.
-    ///
-    /// Call `setup_swv` first.
-    pub fn enable_swv(&mut self) -> Result<(), Error> {
-        crate::architecture::arm::component::enable_swv(&mut self.core(0)?)
     }
 
     /// Configure the target to stop emitting SWV trace data.

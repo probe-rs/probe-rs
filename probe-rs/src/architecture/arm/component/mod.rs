@@ -35,6 +35,9 @@ pub trait DebugRegister: Clone + From<u32> + Into<u32> + Sized + std::fmt::Debug
 }
 
 pub fn setup_swv(core: &mut Core, component: &Component, config: &SwoConfig) -> Result<(), Error> {
+    // Enable tracing
+    enable_tracing(core)?;
+
     // Configure TPIU
     let mut tpiu = component.tpiu(core).map_err(Error::architecture_specific)?;
     tpiu.set_port_size(1)?;
@@ -76,7 +79,7 @@ pub fn remove_swv_data_trace(core: &mut Core, component: &Component, unit: usize
 }
 
 /// Sets TRCENA in DEMCR to begin trace generation.
-pub fn enable_swv(core: &mut Core) -> Result<(), Error> {
+pub fn enable_tracing(core: &mut Core) -> Result<(), Error> {
     let mut demcr = Demcr(core.read_word_32(Demcr::ADDRESS)?);
     demcr.set_dwtena(true);
     core.write_word_32(Demcr::ADDRESS, demcr.into())?;

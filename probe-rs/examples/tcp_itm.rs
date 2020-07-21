@@ -26,7 +26,6 @@ fn main() -> Result<(), Error> {
         tpiu_clk: 16000000,
     };
 
-    session.enable_swv().unwrap();
     session.setup_swv(&cfg).unwrap();
 
     let mut timestamp: f64 = 0.0;
