@@ -207,23 +207,25 @@ impl Session {
 
         let ap_index = 0;
 
-        let ap_information = interface.get_ap_information(ap_index.into())?;
+        let ap_information = interface
+            .ap_information(ap_index.into())
+            .ok_or_else(|| anyhow!("AP {} does not exist on chip.", ap_index))?;
 
         match ap_information {
             MemoryAp {
-                index,
-                only_32_bit_data_size,
-                base_address,
+                port_number,
+                only_32bit_data_size,
+                debug_base_address,
             } => {
-                let access_port_number = *index;
-                let only_32_bit_data_size = *only_32_bit_data_size;
-                let base_address = *base_address;
+                let access_port_number = *port_number;
+                let only_32bit_data_size = *only_32bit_data_size;
+                let base_address = *debug_base_address;
 
                 let mut memory = Memory::new(
                     ADIMemoryInterface::<ArmCommunicationInterface>::new(
                         interface,
                         access_port_number,
-                        only_32_bit_data_size,
+                        only_32bit_data_size,
                     )
                     .map_err(Error::architecture_specific)?,
                 );
@@ -231,11 +233,11 @@ impl Session {
                 Component::try_parse(&mut memory, base_address)
                     .map_err(Error::architecture_specific)
             }
-            Other { index } => {
+            Other { port_number } => {
                 // Return an error, only possible to get Component from MemoryAP
                 Err(Error::Other(anyhow!(
                     "AP {} is not a MemoryAP, unable to get ARM component.",
-                    index
+                    port_number
                 )))
             }
         }

@@ -135,20 +135,28 @@ pub struct ArmCommunicationInterfaceState {
 
 #[derive(Debug)]
 pub enum ApInformation {
-    /// AP is a Memory AP which allows access to target memory. See Chapter C2 in the [ARM Debug Interface Architecture Specification].
+    /// Information about a Memory AP, which allows access to target memory. See Chapter C2 in the [ARM Debug Interface Architecture Specification].
     ///
     /// [ARM Debug Interface Architecture Specification]: https://developer.arm.com/documentation/ihi0031/d/
     MemoryAp {
-        index: u8,
+        /// Zero-based port number of the access port. This is used in the debug port to select an AP.
+        port_number: u8,
         /// Some Memory APs only support 32 bit wide access to data, while others
         /// also support other widths. Based on this, 8 bit data access can either
         /// be performed directly, or has to be done as a 32 bit access.
-        only_32_bit_data_size: bool,
-
-        base_address: u64,
+        only_32bit_data_size: bool,
+        /// The Debug Base Address points to either the start of a set of debug register,
+        /// or a ROM table which describes the connected debug components.
+        ///
+        /// See chapter C2.6, [ARM Debug Interface Architecture Specification].
+        ///
+        /// [ARM Debug Interface Architecture Specification]: https://developer.arm.com/documentation/ihi0031/d/
+        debug_base_address: u64,
     },
+    /// Information about an AP with an unknown class.
     Other {
-        index: u8,
+        /// Zero-based port number of the access port. This is used in the debug port to select an AP.
+        port_number: u8,
     },
 }
 
@@ -193,7 +201,7 @@ impl<'probe> ArmCommunicationInterface<'probe> {
     pub fn new(
         probe: &'probe mut Probe,
         state: &'probe mut ArmCommunicationInterfaceState,
-    ) -> Result<Option<Self>, ProbeRsError> {
+    ) -> Result<Option<Self>, DebugProbeError> {
         if probe.has_dap_interface() {
             let mut s = Self { probe, state };
 
@@ -203,7 +211,7 @@ impl<'probe> ArmCommunicationInterface<'probe> {
                 /* determine the number and type of available APs */
 
                 for ap in valid_access_ports(&mut s) {
-                    let ap_state = s.get_ap_information_private(ap)?;
+                    let ap_state = s.read_ap_information(ap)?;
 
                     log::debug!("AP {}: {:?}", ap.port_number(), ap_state);
 
@@ -469,21 +477,19 @@ impl<'probe> ArmCommunicationInterface<'probe> {
     }
 
     /// Determine the type and additional information about a AP
-    pub(crate) fn get_ap_information(
-        &self,
-        access_port: GenericAP,
-    ) -> Result<&ApInformation, DebugProbeError> {
+    pub(crate) fn ap_information(&self, access_port: GenericAP) -> Option<&ApInformation> {
         self.state
             .ap_information
             .get(access_port.port_number() as usize)
-            .ok_or(DebugProbeError::Other(anyhow!(
-                "AP {} does not exist on this chip. ({} APs detect)",
-                access_port.port_number(),
-                self.state.ap_information.len()
-            )))
     }
 
-    fn get_ap_information_private(
+    /// Read information about an AP from its registers.
+    ///
+    /// This reads the IDR register of the AP, and parses
+    /// further AP specific information based on its class.
+    ///
+    /// Currently, AP specific information is read for Memory APs.
+    fn read_ap_information(
         &mut self,
         access_port: GenericAP,
     ) -> Result<ApInformation, DebugProbeError> {
@@ -503,15 +509,16 @@ impl<'probe> ArmCommunicationInterface<'probe> {
             };
             base_address |= u64::from(base_register.BASEADDR << 12);
 
-            let only_32_bit_data_size = ap_supports_only_32bit_access(self, access_port)?;
+            let only_32bit_data_size = ap_supports_only_32bit_access(self, access_port)?;
+
             Ok(ApInformation::MemoryAp {
-                index: access_port.port_number(),
-                only_32_bit_data_size,
-                base_address,
+                port_number: access_port.port_number(),
+                only_32bit_data_size,
+                debug_base_address: base_address,
             })
         } else {
             Ok(ApInformation::Other {
-                index: access_port.port_number(),
+                port_number: access_port.port_number(),
             })
         }
     }

@@ -305,13 +305,15 @@ impl SpecificCoreState {
         // TODO: This should support multiple APs
         let ap = GenericAP::new(0);
 
-        let ap_information = interface.get_ap_information(ap)?;
+        let ap_information = interface
+            .ap_information(ap)
+            .ok_or_else(|| anyhow!("AP {} does not exist on chip.", ap.port_number()))?;
 
         let only_32bit_data = match ap_information {
             ApInformation::MemoryAp {
-                only_32_bit_data_size,
+                only_32bit_data_size,
                 ..
-            } => *only_32_bit_data_size,
+            } => *only_32bit_data_size,
             ApInformation::Other { .. } => {
                 /* unable to attach to an AP which is not a MemoryAP */
                 return Err(anyhow!(
