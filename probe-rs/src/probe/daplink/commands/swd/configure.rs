@@ -1,5 +1,6 @@
 use super::super::{Category, Request, Response, Result, Status};
 
+#[derive(Debug)]
 pub struct ConfigureRequest;
 
 impl Request for ConfigureRequest {
@@ -12,6 +13,7 @@ impl Request for ConfigureRequest {
     }
 }
 
+#[derive(Debug)]
 pub struct ConfigureResponse(pub(crate) Status);
 
 impl Response for ConfigureResponse {
