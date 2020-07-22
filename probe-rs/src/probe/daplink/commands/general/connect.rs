@@ -1,7 +1,7 @@
 use super::super::{Category, CmsisDapError, Request, Response, Result};
 use anyhow::{anyhow, Context};
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum ConnectRequest {
     UseDefaultPort = 0x00,
     UseSWD = 0x01,
@@ -17,6 +17,7 @@ impl Request for ConnectRequest {
     }
 }
 
+#[derive(Clone, Copy, Debug)]
 pub enum ConnectResponse {
     InitFailed = 0x00,
     SuccessfulInitForSWD = 0x01,

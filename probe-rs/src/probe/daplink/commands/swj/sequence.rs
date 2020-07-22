@@ -3,7 +3,7 @@
 use super::super::{Category, CmsisDapError, Request, Response, Result, Status};
 use anyhow::anyhow;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct SequenceRequest {
     bit_count: u8,
     data: [u8; 32],
@@ -57,6 +57,7 @@ impl SequenceRequest {
     }
 }
 
+#[derive(Debug)]
 pub struct SequenceResponse(pub(crate) Status);
 
 impl Response for SequenceResponse {
