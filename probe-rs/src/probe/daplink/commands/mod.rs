@@ -1,6 +1,7 @@
 pub mod general;
 pub mod swd;
 pub mod swj;
+pub mod swo;
 pub mod transfer;
 
 use crate::architecture::arm::DapError;
@@ -19,6 +20,8 @@ pub enum CmsisDapError {
     ErrorResponse,
     #[error("Too much data provided for SWJ Sequence command")]
     TooMuchData,
+    #[error("Not enough data in response from probe")]
+    NotEnoughData,
     #[error("Error in the USB HID access")]
     HidApi(#[from] hidapi::HidError),
     #[error("Error in the USB access")]
@@ -80,7 +83,7 @@ impl DAPLinkDevice {
     }
 }
 
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
 pub(crate) enum Status {
     DAPOk = 0x00,
     DAPError = 0xFF,
