@@ -25,3 +25,8 @@ probe-rs = { version = "0.8.0" }
 gdb-server = { version = "0.8.0" }
 cargo_toml = "0.8.0"
 serde = { version = "1.0.110", features = [ "derive" ] }
+
+[patch.crates-io]
+
+probe-rs = { git = "https://github.com/probe-rs/probe-rs" }
+gdb-server = { git = "https://github.com/probe-rs/probe-rs" }

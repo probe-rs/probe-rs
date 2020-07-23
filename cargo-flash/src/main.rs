@@ -396,7 +396,7 @@ fn main_try() -> Result<()> {
                             .as_ref()
                             .map(|path| visualizer.write_svg(path));
                     }
-                    StartedFlashing => {
+                    StartedProgramming => {
                         program_progress.enable_steady_tick(100);
                         program_progress.reset_elapsed();
                     }
@@ -412,7 +412,7 @@ fn main_try() -> Result<()> {
                             fp.reset_elapsed()
                         };
                     }
-                    PageFlashed { size, .. } => {
+                    PageProgrammed { size, .. } => {
                         program_progress.inc(size as u64);
                     }
                     SectorErased { size, .. } => {
