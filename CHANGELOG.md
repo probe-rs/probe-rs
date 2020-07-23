@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Renamed `ProgressEvent::StartFlashing` to `ProgressEvent::StartProgramming` and `ProgressEvent::PageFlashed` to `ProgressEvent::PageProgrammed` to make naming of events more consistent.
+
 ### Fixed
 
 - Fixed a bug where a J-Link would only be opened if the VID, PID AND Serial No. would match. As the Serial is optional, only VID/PID have to match now.
