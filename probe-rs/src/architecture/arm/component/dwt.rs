@@ -30,10 +30,10 @@ impl<'probe: 'core, 'core> Dwt<'probe, 'core> {
 
         log::info!("DWT info:");
         log::info!("  number of comparators available: {}", ctrl.numcomp());
-        log::info!("  trace sampling support: {}", ctrl.notrcpkt());
-        log::info!("  compare match support: {}", ctrl.noexttrig());
-        log::info!("  cyccnt support: {}", ctrl.nocyccnt());
-        log::info!("  performance counter support: {}", ctrl.noprfcnt());
+        log::info!("  trace sampling support: {}", !ctrl.notrcpkt());
+        log::info!("  compare match support: {}", !ctrl.noexttrig());
+        log::info!("  cyccnt support: {}", !ctrl.nocyccnt());
+        log::info!("  performance counter support: {}", !ctrl.noprfcnt());
 
         Ok(())
     }
@@ -71,6 +71,20 @@ impl<'probe: 'core, 'core> Dwt<'probe, 'core> {
         let mut function = Function::load_unit(self.component, self.core, unit)?;
         function.set_function(0x0);
         function.store_unit(self.component, self.core, unit)
+    }
+
+    /// Enable exception tracing.
+    pub fn enable_exception_trace(&mut self) -> Result<(), Error> {
+        let mut ctrl = Ctrl::load(self.component, self.core)?;
+        ctrl.set_exctrcena(true);
+        ctrl.store(self.component, self.core)
+    }
+
+    /// Disable exception tracing.
+    pub fn disable_exception_trace(&mut self) -> Result<(), Error> {
+        let mut ctrl = Ctrl::load(self.component, self.core)?;
+        ctrl.set_exctrcena(false);
+        ctrl.store(self.component, self.core)
     }
 }
 
