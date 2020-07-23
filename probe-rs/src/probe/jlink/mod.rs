@@ -568,14 +568,12 @@ impl DebugProbe for JLink {
     fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
         let jlink = self.handle.get_mut().unwrap();
         jlink.set_reset(false)?;
-        jlink.set_trst(false)?;
         Ok(())
     }
 
     fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
         let jlink = self.handle.get_mut().unwrap();
         jlink.set_reset(true)?;
-        jlink.set_trst(true)?;
         Ok(())
     }
 
