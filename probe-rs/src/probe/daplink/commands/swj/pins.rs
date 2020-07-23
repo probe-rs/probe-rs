@@ -126,7 +126,7 @@ impl Request for SWJPinsRequest {
         buffer
             .pwrite_with(self.wait, offset + 2, LE)
             .expect("This is a bug. Please report it.");
-        Ok(4)
+        Ok(6)
     }
 }
 
