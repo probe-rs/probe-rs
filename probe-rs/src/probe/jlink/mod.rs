@@ -565,6 +565,18 @@ impl DebugProbe for JLink {
         Err(super::DebugProbeError::NotImplemented("target_reset"))
     }
 
+    fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
+        let jlink = self.handle.get_mut().unwrap();
+        jlink.set_reset(false)?;
+        Ok(())
+    }
+
+    fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
+        let jlink = self.handle.get_mut().unwrap();
+        jlink.set_reset(true)?;
+        Ok(())
+    }
+
     fn dedicated_memory_interface(&self) -> Option<crate::Memory> {
         None
     }

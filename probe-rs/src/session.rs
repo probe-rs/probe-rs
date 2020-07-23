@@ -1,6 +1,7 @@
 use crate::architecture::{
     arm::{
         communication_interface::ApInformation::{MemoryAp, Other},
+        core::{debug_core_start, reset_catch_clear, reset_catch_set},
         memory::{ADIMemoryInterface, Component},
         ArmChipInfo, ArmCommunicationInterface, ArmCommunicationInterfaceState, SwoAccess,
         SwoConfig,
@@ -13,8 +14,9 @@ use crate::config::{
     ChipInfo, MemoryRegion, RawFlashAlgorithm, RegistryError, Target, TargetSelector,
 };
 use crate::core::{Architecture, CoreState, SpecificCoreState};
-use crate::{Core, CoreType, Error, Memory, Probe};
+use crate::{AttachMethod, Core, CoreType, Error, Memory, Probe};
 use anyhow::anyhow;
+use std::time::Duration;
 
 #[derive(Debug)]
 pub struct Session {
@@ -63,56 +65,16 @@ impl ArchitectureInterfaceState {
 
 impl Session {
     /// Open a new session with a given debug target
-    pub fn new(mut probe: Probe, target: impl Into<TargetSelector>) -> Result<Self, Error> {
-        let target = match target.into() {
-            TargetSelector::Unspecified(name) => {
-                match crate::config::registry::get_target_by_name(name) {
-                    Ok(target) => target,
-                    Err(err) => return Err(err.into()),
-                }
-            }
-            TargetSelector::Specified(target) => target,
-            TargetSelector::Auto => {
-                let mut found_chip = None;
+    pub fn new(
+        mut probe: Probe,
+        target: impl Into<TargetSelector>,
+        attach_method: AttachMethod,
+    ) -> Result<Self, Error> {
+        // TODO: Handle different architectures
 
-                let mut state = ArmCommunicationInterfaceState::new();
-                let interface = ArmCommunicationInterface::new(&mut probe, &mut state)?;
-                if let Some(mut interface) = interface {
-                    let chip_result = try_arm_autodetect(&mut interface);
+        let target = get_target_from_selector(target, &mut probe)?;
 
-                    // Ignore errors during autodetect
-                    found_chip = chip_result.unwrap_or_else(|e| {
-                        log::debug!("An error occured during ARM autodetect: {}", e);
-                        None
-                    });
-                } else {
-                    log::debug!("No DAP interface was present. This is not an ARM core. Skipping ARM autodetect.");
-                }
-
-                if found_chip.is_none() && probe.has_jtag_interface() {
-                    let mut state = RiscvCommunicationInterfaceState::new();
-                    let interface = RiscvCommunicationInterface::new(&mut probe, &mut state)?;
-
-                    if let Some(mut interface) = interface {
-                        let idcode = interface.read_idcode();
-
-                        log::debug!("ID Code read over JTAG: {:x?}", idcode);
-                    } else {
-                        log::debug!("No JTAG interface was present. Skipping Riscv autodetect.");
-                    }
-
-                    // TODO: Implement autodetect for RISC-V
-                }
-
-                if let Some(chip) = found_chip {
-                    crate::config::registry::get_target_by_chip_info(chip)?
-                } else {
-                    return Err(Error::ChipNotFound(RegistryError::ChipAutodetectFailed));
-                }
-            }
-        };
-
-        let data = match target.architecture() {
+        let (core, interface_state) = match target.architecture() {
             Architecture::Arm => {
                 let state = ArmCommunicationInterfaceState::new();
                 (
@@ -138,9 +100,27 @@ impl Session {
         let mut session = Self {
             target,
             probe,
-            interface_state: data.1,
-            cores: vec![data.0],
+            interface_state,
+            cores: vec![core],
         };
+
+        if attach_method == AttachMethod::UnderReset {
+            // Enable debug mode
+            debug_core_start(&mut session.core(0)?)?;
+
+            // we need to halt the chip here
+            reset_catch_set(&mut session.core(0)?)?;
+
+            // Deassert the reset pin
+            session.probe.target_reset_deassert()?;
+
+            // Wait for the core to be halted
+            let mut core = session.core(0)?;
+
+            core.wait_for_core_halted(Duration::from_millis(100))?;
+
+            reset_catch_clear(&mut core)?;
+        }
 
         session.clear_all_hw_breakpoints()?;
 
@@ -328,4 +308,58 @@ impl Drop for Session {
             log::warn!("Could not clear all hardware breakpoints: {:?}", err);
         }
     }
+}
+/// Determine the ```Target``` from a ```TargetSelector```.
+///
+/// If the selector is ```Unspecified```, the target will be looked up in the registry.
+/// If it its ```Auto```, probe-rs will try to determine the target automatically, based on
+/// information read from the chip.
+fn get_target_from_selector(
+    target: impl Into<TargetSelector>,
+    probe: &mut Probe,
+) -> Result<Target, Error> {
+    let target = match target.into() {
+        TargetSelector::Unspecified(name) => crate::config::registry::get_target_by_name(name)?,
+        TargetSelector::Specified(target) => target,
+        TargetSelector::Auto => {
+            let mut found_chip = None;
+
+            let mut state = ArmCommunicationInterfaceState::new();
+            let interface = ArmCommunicationInterface::new(probe, &mut state)?;
+            if let Some(mut interface) = interface {
+                let chip_result = try_arm_autodetect(&mut interface);
+
+                // Ignore errors during autodetect
+                found_chip = chip_result.unwrap_or_else(|e| {
+                    log::debug!("An error occured during ARM autodetect: {}", e);
+                    None
+                });
+            } else {
+                log::debug!("No DAP interface was present. This is not an ARM core. Skipping ARM autodetect.");
+            }
+
+            if found_chip.is_none() && probe.has_jtag_interface() {
+                let mut state = RiscvCommunicationInterfaceState::new();
+                let interface = RiscvCommunicationInterface::new(probe, &mut state)?;
+
+                if let Some(mut interface) = interface {
+                    let idcode = interface.read_idcode();
+
+                    log::debug!("ID Code read over JTAG: {:x?}", idcode);
+                } else {
+                    log::debug!("No JTAG interface was present. Skipping Riscv autodetect.");
+                }
+
+                // TODO: Implement autodetect for RISC-V
+            }
+
+            if let Some(chip) = found_chip {
+                crate::config::registry::get_target_by_chip_info(chip)?
+            } else {
+                return Err(Error::ChipNotFound(RegistryError::ChipAutodetectFailed));
+            }
+        }
+    };
+
+    Ok(target)
 }

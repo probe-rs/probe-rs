@@ -252,18 +252,42 @@ impl Probe {
         self.inner.get_name().to_string()
     }
 
-    /// Enters debug mode
+    /// Attach to the chip.
+    ///
+    /// This runs all the necessary protocol init routines.
+    ///
+    /// If this doesn't work, you might want to try `attach_under_reset`
     pub fn attach(mut self, target: impl Into<TargetSelector>) -> Result<Session, Error> {
         self.inner.attach()?;
         self.attached = true;
 
-        Session::new(self, target)
+        Session::new(self, target, AttachMethod::Normal)
     }
 
     pub fn attach_to_unspecified(&mut self) -> Result<(), Error> {
         self.inner.attach()?;
         self.attached = true;
         Ok(())
+    }
+
+    /// Attach to the chip under hard-reset.
+    ///
+    /// This asserts the reset pin via the probe, plays the protocol init routines and deasserts the pin.
+    /// This is necessary if the chip is not responding to the SWD reset sequence.
+    /// For example this can happen if the chip has the SWDIO pin remapped.
+    pub fn attach_under_reset(
+        mut self,
+        target: impl Into<TargetSelector>,
+    ) -> Result<Session, Error> {
+        log::debug!("Asserting reset");
+        self.inner.target_reset_assert()?;
+
+        self.inner.attach()?;
+
+        self.attached = true;
+
+        // The session will de-assert reset after connecting to the debug interface.
+        Session::new(self, target, AttachMethod::UnderReset)
     }
 
     /// Selects the transport protocol to be used by the debug probe.
@@ -285,6 +309,11 @@ impl Probe {
     /// Resets the target device.
     pub fn target_reset(&mut self) -> Result<(), DebugProbeError> {
         self.inner.target_reset()
+    }
+
+    pub fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
+        log::debug!("Deasserting target reset");
+        self.inner.target_reset_deassert()
     }
 
     /// Configure protocol speed to use in kHz
@@ -391,14 +420,24 @@ pub trait DebugProbe: Send + Sync + fmt::Debug {
     ///
     fn set_speed(&mut self, speed_khz: u32) -> Result<u32, DebugProbeError>;
 
-    /// Enters debug mode
+    /// Attach to the chip.
+    ///
+    /// This should run all the necessary protocol init routines.
     fn attach(&mut self) -> Result<(), DebugProbeError>;
 
-    /// Leave debug mode
+    /// Detach from the chip.
+    ///
+    /// This should run all the necessary protocol deinit routines.
     fn detach(&mut self) -> Result<(), DebugProbeError>;
 
-    /// Hard-resets the target device.
+    /// This should hard reset the target device.
     fn target_reset(&mut self) -> Result<(), DebugProbeError>;
+
+    /// This should assert the reset pin of the target via debug probe.
+    fn target_reset_assert(&mut self) -> Result<(), DebugProbeError>;
+
+    /// This should deassert the reset pin of the target via debug probe.
+    fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError>;
 
     /// Selects the transport protocol to be used by the debug probe.
     fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError>;
@@ -601,6 +640,14 @@ impl DebugProbe for FakeProbe {
         Err(DebugProbeError::CommandNotSupportedByProbe)
     }
 
+    fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
+        unimplemented!()
+    }
+
+    fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
+        unimplemented!()
+    }
+
     fn dedicated_memory_interface(&self) -> Option<Memory> {
         None
     }
@@ -671,4 +718,10 @@ pub trait JTAGAccess {
         data: &[u8],
         len: u32,
     ) -> Result<Vec<u8>, DebugProbeError>;
+}
+
+#[derive(PartialEq, Debug, Copy, Clone)]
+pub enum AttachMethod {
+    Normal,
+    UnderReset,
 }

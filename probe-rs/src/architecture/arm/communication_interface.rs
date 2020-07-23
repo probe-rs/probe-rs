@@ -203,25 +203,25 @@ impl<'probe> ArmCommunicationInterface<'probe> {
         state: &'probe mut ArmCommunicationInterfaceState,
     ) -> Result<Option<Self>, DebugProbeError> {
         if probe.has_dap_interface() {
-            let mut s = Self { probe, state };
+            let mut interface = Self { probe, state };
 
-            if !s.state.initialized() {
-                s.enter_debug_mode()?;
+            if !interface.state.initialized() {
+                interface.enter_debug_mode()?;
 
                 /* determine the number and type of available APs */
 
-                for ap in valid_access_ports(&mut s) {
-                    let ap_state = s.read_ap_information(ap)?;
+                for ap in valid_access_ports(&mut interface) {
+                    let ap_state = interface.read_ap_information(ap)?;
 
                     log::debug!("AP {}: {:?}", ap.port_number(), ap_state);
 
-                    s.state.ap_information.push(ap_state);
+                    interface.state.ap_information.push(ap_state);
                 }
 
-                s.state.initialize();
+                interface.state.initialize();
             }
 
-            Ok(Some(s))
+            Ok(Some(interface))
         } else {
             log::debug!("No DAP interface available on probe");
 

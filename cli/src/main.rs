@@ -105,6 +105,9 @@ struct SharedOptions {
     /// Protocol to use for target connection
     #[structopt(short, long)]
     protocol: Option<String>,
+
+    #[structopt(long)]
+    connect_under_reset: bool,
 }
 
 fn main() -> Result<()> {
