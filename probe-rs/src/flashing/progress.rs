@@ -35,11 +35,6 @@ impl FlashProgress {
         self.emit(ProgressEvent::Initialized { flash_layout });
     }
 
-    /// Signalize that the entire flashing procedure started.
-    pub(super) fn started_flashing(&self) {
-        self.emit(ProgressEvent::StartedFlashing);
-    }
-
     /// Signalize that the erasing procedure started.
     pub(super) fn started_erasing(&self) {
         self.emit(ProgressEvent::StartedErasing);
@@ -50,9 +45,14 @@ impl FlashProgress {
         self.emit(ProgressEvent::StartedFilling);
     }
 
+    /// Signalize that the programing procedure started.
+    pub(super) fn started_programming(&self) {
+        self.emit(ProgressEvent::StartedProgramming);
+    }
+
     /// Signalize that the page programming procedure has made progress.
     pub(super) fn page_programmed(&self, size: u32, time: Duration) {
-        self.emit(ProgressEvent::PageFlashed { size, time });
+        self.emit(ProgressEvent::PageProgrammed { size, time });
     }
 
     /// Signalize that the sector erasing procedure has made progress.
@@ -97,28 +97,54 @@ impl FlashProgress {
 }
 
 /// Possible events during the flashing process.
+///
+/// If flashing works without problems, the events will arrive in the
+/// following order:
+///
+/// * `Initialized`
+/// * `StartedFilling`
+/// * `PageFilled` for every page
+/// * `FinishedFilling`
+/// * `StartedErasing`
+/// * `SectorErased` for every sector
+/// * `FinishedErasing`
+/// * `StartedProgramming`
+/// * `PageProgrammed` for every page
+/// * `FinishedProgramming`
+///
+/// If an erorr occurs in any stage, one of the `Failed*` event will be returned,
+/// and no further events will be returned.
 #[derive(Debug)]
 pub enum ProgressEvent {
     Initialized {
         flash_layout: FlashLayout,
     },
+    /// Filling of flash pages has started.
     StartedFilling,
-    /// Programming of flash has started.
-    StartedFlashing,
-    /// Erasing of flash has started.
-    StartedErasing,
-    /// A flash page has been programmed successfully.
-    PageFlashed {
+    /// A page has been filled successfully.
+    PageFilled {
         size: u32,
         time: Duration,
     },
+    /// Filling of the pages has failed.
+    FailedFilling,
+    /// Filling of the pages has finished successfully.
+    FinishedFilling,
+    /// Erasing of flash has started.
+    StartedErasing,
     /// A sector has been erased successfully.
     SectorErased {
         size: u32,
         time: Duration,
     },
-    /// A page has been filled successfully.
-    PageFilled {
+    /// Erasing of the flash has failed.
+    FailedErasing,
+    /// Erasing of the flash has finished successfully.
+    FinishedErasing,
+    /// Programming of the flash has started.
+    StartedProgramming,
+    /// A flash page has been programmed successfully.
+    PageProgrammed {
         size: u32,
         time: Duration,
     },
@@ -126,12 +152,4 @@ pub enum ProgressEvent {
     FailedProgramming,
     /// Programming of the flash has finished successfully.
     FinishedProgramming,
-    /// Erasing of the flash has failed.
-    FailedErasing,
-    /// Erasing of the flash has finished successfully.
-    FinishedErasing,
-    /// Filling of the pages has failed.
-    FailedFilling,
-    /// Filling of the pages has finished successfully.
-    FinishedFilling,
 }

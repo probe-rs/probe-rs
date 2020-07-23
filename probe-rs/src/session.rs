@@ -1,5 +1,6 @@
 use crate::architecture::{
     arm::{
+        communication_interface::ApInformation::{MemoryAp, Other},
         core::{debug_core_start, reset_catch_clear, reset_catch_set},
         memory::{ADIMemoryInterface, Component},
         ArmChipInfo, ArmCommunicationInterface, ArmCommunicationInterfaceState, SwoAccess,
@@ -182,16 +183,44 @@ impl Session {
     }
 
     pub fn get_arm_component(&mut self) -> Result<Component, Error> {
-        let mut interface = self.get_arm_interface()?;
+        let interface = self.get_arm_interface()?;
 
-        let ap = interface.memory_access_ports()[0].id();
-        let baseaddr = interface.memory_access_ports()[0].base_address();
+        let ap_index = 0;
 
-        let mut memory = Memory::new(
-            ADIMemoryInterface::<ArmCommunicationInterface>::new(interface.reborrow(), ap)
-                .map_err(Error::architecture_specific)?,
-        );
-        Component::try_parse(&mut memory, baseaddr as u64).map_err(Error::architecture_specific)
+        let ap_information = interface
+            .ap_information(ap_index.into())
+            .ok_or_else(|| anyhow!("AP {} does not exist on chip.", ap_index))?;
+
+        match ap_information {
+            MemoryAp {
+                port_number,
+                only_32bit_data_size,
+                debug_base_address,
+            } => {
+                let access_port_number = *port_number;
+                let only_32bit_data_size = *only_32bit_data_size;
+                let base_address = *debug_base_address;
+
+                let mut memory = Memory::new(
+                    ADIMemoryInterface::<ArmCommunicationInterface>::new(
+                        interface,
+                        access_port_number,
+                        only_32bit_data_size,
+                    )
+                    .map_err(Error::architecture_specific)?,
+                );
+
+                Component::try_parse(&mut memory, base_address)
+                    .map_err(Error::architecture_specific)
+            }
+            Other { port_number } => {
+                // Return an error, only possible to get Component from MemoryAP
+                Err(Error::Other(anyhow!(
+                    "AP {} is not a MemoryAP, unable to get ARM component.",
+                    port_number
+                )))
+            }
+        }
     }
 
     /// Configure the target and probe for serial wire view (SWV) tracing.

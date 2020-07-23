@@ -1,7 +1,7 @@
 use super::{
     ap::{
-        valid_access_ports, APAccess, APClass, APRegister, AccessPort, BaseaddrFormat, GenericAP,
-        MemoryAP, BASE, BASE2, IDR,
+        valid_access_ports, APAccess, APClass, APRegister, AccessPort, BaseaddrFormat, DataSize,
+        GenericAP, MemoryAP, BASE, BASE2, CSW, IDR,
     },
     dp::{
         Abort, Ctrl, DPAccess, DPBankSel, DPRegister, DebugPortError, DebugPortId,
@@ -128,7 +128,36 @@ pub struct ArmCommunicationInterfaceState {
     current_apsel: u8,
     current_apbanksel: u8,
 
-    memory_access_ports: Vec<MemoryAccessPortData>,
+    /// Information about the APs of the target.
+    /// APs are identified by a number, starting from zero.
+    ap_information: Vec<ApInformation>,
+}
+
+#[derive(Debug)]
+pub enum ApInformation {
+    /// Information about a Memory AP, which allows access to target memory. See Chapter C2 in the [ARM Debug Interface Architecture Specification].
+    ///
+    /// [ARM Debug Interface Architecture Specification]: https://developer.arm.com/documentation/ihi0031/d/
+    MemoryAp {
+        /// Zero-based port number of the access port. This is used in the debug port to select an AP.
+        port_number: u8,
+        /// Some Memory APs only support 32 bit wide access to data, while others
+        /// also support other widths. Based on this, 8 bit data access can either
+        /// be performed directly, or has to be done as a 32 bit access.
+        only_32bit_data_size: bool,
+        /// The Debug Base Address points to either the start of a set of debug register,
+        /// or a ROM table which describes the connected debug components.
+        ///
+        /// See chapter C2.6, [ARM Debug Interface Architecture Specification].
+        ///
+        /// [ARM Debug Interface Architecture Specification]: https://developer.arm.com/documentation/ihi0031/d/
+        debug_base_address: u64,
+    },
+    /// Information about an AP with an unknown class.
+    Other {
+        /// Zero-based port number of the access port. This is used in the debug port to select an AP.
+        port_number: u8,
+    },
 }
 
 impl ArmCommunicationInterfaceState {
@@ -139,7 +168,7 @@ impl ArmCommunicationInterfaceState {
             current_dpbanksel: 0,
             current_apsel: 0,
             current_apbanksel: 0,
-            memory_access_ports: vec![],
+            ap_information: Vec::new(),
         }
     }
 
@@ -172,14 +201,23 @@ impl<'probe> ArmCommunicationInterface<'probe> {
     pub fn new(
         probe: &'probe mut Probe,
         state: &'probe mut ArmCommunicationInterfaceState,
-    ) -> Result<Option<Self>, ProbeRsError> {
+    ) -> Result<Option<Self>, DebugProbeError> {
         if probe.has_dap_interface() {
             let mut interface = Self { probe, state };
 
             if !interface.state.initialized() {
                 interface.enter_debug_mode()?;
 
-                interface.read_memory_access_ports()?;
+                /* determine the number and type of available APs */
+
+                for ap in valid_access_ports(&mut interface) {
+                    let ap_state = interface.read_ap_information(ap)?;
+
+                    log::debug!("AP {}: {:?}", ap.port_number(), ap_state);
+
+                    interface.state.ap_information.push(ap_state);
+                }
+
                 interface.state.initialize();
             }
 
@@ -189,43 +227,6 @@ impl<'probe> ArmCommunicationInterface<'probe> {
 
             Ok(None)
         }
-    }
-
-    pub(crate) fn memory_access_ports(&mut self) -> &Vec<MemoryAccessPortData> {
-        &self.state.memory_access_ports
-    }
-
-    fn read_memory_access_ports(&mut self) -> Result<(), ProbeRsError> {
-        for access_port in valid_access_ports(self) {
-            let idr = self
-                .read_ap_register(access_port, IDR::default())
-                .map_err(ProbeRsError::Probe)?;
-
-            if idr.CLASS == APClass::MEMAP {
-                let access_port: MemoryAP = access_port.into();
-
-                let base_register = self
-                    .read_ap_register(access_port, BASE::default())
-                    .map_err(ProbeRsError::Probe)?;
-
-                let mut base_address = if BaseaddrFormat::ADIv5 == base_register.Format {
-                    let base2 = self
-                        .read_ap_register(access_port, BASE2::default())
-                        .map_err(ProbeRsError::Probe)?;
-
-                    u64::from(base2.BASEADDR) << 32
-                } else {
-                    0
-                };
-                base_address |= u64::from(base_register.BASEADDR << 12);
-
-                self.state.memory_access_ports.push(MemoryAccessPortData {
-                    id: access_port.port_number(),
-                    base_address,
-                })
-            }
-        }
-        Ok(())
     }
 
     /// Reborrows the `ArmCommunicationInterface` at hand.
@@ -474,6 +475,53 @@ impl<'probe> ArmCommunicationInterface<'probe> {
         )?;
         Ok(())
     }
+
+    /// Determine the type and additional information about a AP
+    pub(crate) fn ap_information(&self, access_port: GenericAP) -> Option<&ApInformation> {
+        self.state
+            .ap_information
+            .get(access_port.port_number() as usize)
+    }
+
+    /// Read information about an AP from its registers.
+    ///
+    /// This reads the IDR register of the AP, and parses
+    /// further AP specific information based on its class.
+    ///
+    /// Currently, AP specific information is read for Memory APs.
+    fn read_ap_information(
+        &mut self,
+        access_port: GenericAP,
+    ) -> Result<ApInformation, DebugProbeError> {
+        let idr = self.read_ap_register(access_port, IDR::default())?;
+
+        if idr.CLASS == APClass::MEMAP {
+            let access_port: MemoryAP = access_port.into();
+
+            let base_register = self.read_ap_register(access_port, BASE::default())?;
+
+            let mut base_address = if BaseaddrFormat::ADIv5 == base_register.Format {
+                let base2 = self.read_ap_register(access_port, BASE2::default())?;
+
+                u64::from(base2.BASEADDR) << 32
+            } else {
+                0
+            };
+            base_address |= u64::from(base_register.BASEADDR << 12);
+
+            let only_32bit_data_size = ap_supports_only_32bit_access(self, access_port)?;
+
+            Ok(ApInformation::MemoryAp {
+                port_number: access_port.port_number(),
+                only_32bit_data_size,
+                debug_base_address: base_address,
+            })
+        } else {
+            Ok(ApInformation::Other {
+                port_number: access_port.port_number(),
+            })
+        }
+    }
 }
 
 impl<'probe> CommunicationInterface for ArmCommunicationInterface<'probe> {}
@@ -544,22 +592,6 @@ impl<'probe> SwoAccess for ArmCommunicationInterface<'probe> {
             Some(interface) => interface.read_swo_timeout(timeout),
             None => Err(ProbeRsError::ArchitectureRequired(&["ARMv7", "ARMv8"])),
         }
-    }
-}
-
-#[derive(Clone, Debug)]
-pub(crate) struct MemoryAccessPortData {
-    id: u8,
-    base_address: u64,
-}
-
-impl MemoryAccessPortData {
-    pub fn id(&self) -> u8 {
-        self.id
-    }
-
-    pub fn base_address(&self) -> u64 {
-        self.base_address
     }
 }
 
@@ -645,6 +677,21 @@ where
     }
 }
 
+/// Check that target supports memory access with sizes different from 32 bits.
+///
+/// If only 32-bit access is supported, the SIZE field will be read-only and changing it
+/// will not have any effect.
+fn ap_supports_only_32bit_access(
+    interface: &mut ArmCommunicationInterface,
+    ap: MemoryAP,
+) -> Result<bool, DebugProbeError> {
+    let csw = ADIMemoryInterface::<ArmCommunicationInterface>::build_csw_register(DataSize::U8);
+    interface.write_ap_register(ap, csw)?;
+    let csw = interface.read_ap_register(ap, CSW::default())?;
+
+    Ok(csw.SIZE != DataSize::U8)
+}
+
 #[derive(Debug)]
 pub struct ArmChipInfo {
     pub manufacturer: JEP106Code,
@@ -666,10 +713,13 @@ impl ArmChipInfo {
 
                 let baseaddr = access_port.base_address(interface)?;
 
+                let data_size = ap_supports_only_32bit_access(interface, access_port)?;
+
                 let mut memory = Memory::new(
                     ADIMemoryInterface::<ArmCommunicationInterface>::new(
                         interface.reborrow(),
                         access_port,
+                        data_size,
                     )
                     .map_err(ProbeRsError::architecture_specific)?,
                 );
