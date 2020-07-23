@@ -284,10 +284,9 @@ impl Probe {
 
         self.inner.attach()?;
 
-        //log::debug!("Deasserting reset");
-        //self.inner.target_reset_deassert()?;
         self.attached = true;
 
+        // The session will de-assert reset after connecting to the debug interface.
         Session::new(self, target, AttachMethod::UnderReset)
     }
 

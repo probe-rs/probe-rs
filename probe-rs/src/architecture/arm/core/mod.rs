@@ -17,7 +17,6 @@ pub(crate) fn debug_core_start(core: &mut impl MemoryInterface) -> Result<(), Er
     use crate::architecture::arm::core::m4::Dhcsr;
 
     let mut dhcsr = Dhcsr(0);
-    // dhcsr.set_c_halt(true);
     dhcsr.set_c_debugen(true);
     dhcsr.enable_write();
 
