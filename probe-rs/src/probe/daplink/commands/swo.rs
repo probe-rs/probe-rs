@@ -56,7 +56,7 @@ impl Response for ModeResponse {
     }
 }
 
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
 pub struct BaudrateRequest(pub(crate) u32);
 
 impl Request for BaudrateRequest {
@@ -72,23 +72,26 @@ impl Request for BaudrateRequest {
     }
 }
 
-#[derive(Debug)]
-pub struct BaudrateResponse(pub(crate) Status, pub(crate) u32);
+#[derive(Copy, Clone, Debug)]
+pub struct BaudrateResponse(pub(crate) u32);
 
 impl Response for BaudrateResponse {
     fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self> {
+        if buffer.len() - offset < 4 {
+            return Err(anyhow!(CmsisDapError::NotEnoughData));
+        }
+
         let baud = u32::from_le_bytes(
-            buffer[offset + 1..offset + 5]
+            buffer[offset..offset + 4]
                 .try_into()
                 .expect("This is a bug. Please report it."),
         );
-        let status = Status::from_byte(buffer[offset])?;
-        Ok(BaudrateResponse(status, baud))
+
+        Ok(BaudrateResponse(baud))
     }
 }
 
 #[repr(u8)]
-#[allow(unused)]
 #[derive(Copy, Clone, Debug)]
 pub enum ControlRequest {
     Stop = 0,
@@ -126,9 +129,9 @@ impl Request for StatusRequest {
 
 #[derive(Copy, Clone, Debug)]
 pub struct TraceStatus {
-    pub active: bool,
-    pub error: bool,
-    pub overrun: bool,
+    pub(crate) active: bool,
+    pub(crate) error: bool,
+    pub(crate) overrun: bool,
 }
 
 impl From<u8> for TraceStatus {
@@ -143,8 +146,8 @@ impl From<u8> for TraceStatus {
 
 #[derive(Debug)]
 pub struct StatusResponse {
-    pub status: TraceStatus,
-    pub count: u32,
+    pub(crate) status: TraceStatus,
+    pub(crate) count: u32,
 }
 
 impl Response for StatusResponse {
@@ -161,9 +164,9 @@ impl Response for StatusResponse {
 
 #[derive(Debug)]
 pub struct ExtendedStatusRequest {
-    pub request_status: bool,
-    pub request_count: bool,
-    pub request_index_timestamp: bool,
+    pub(crate) request_status: bool,
+    pub(crate) request_count: bool,
+    pub(crate) request_index_timestamp: bool,
 }
 
 impl Request for ExtendedStatusRequest {
@@ -180,10 +183,10 @@ impl Request for ExtendedStatusRequest {
 
 #[derive(Debug)]
 pub struct ExtendedStatusResponse {
-    pub status: TraceStatus,
-    pub count: u32,
-    pub index: u32,
-    pub timestamp: u32,
+    pub(crate) status: TraceStatus,
+    pub(crate) count: u32,
+    pub(crate) index: u32,
+    pub(crate) timestamp: u32,
 }
 
 impl Response for ExtendedStatusResponse {
@@ -219,7 +222,7 @@ impl Response for ExtendedStatusResponse {
 
 #[derive(Debug)]
 pub struct DataRequest {
-    max_count: u16,
+    pub(crate) max_count: u16,
 }
 
 impl Request for DataRequest {
@@ -237,8 +240,8 @@ impl Request for DataRequest {
 
 #[derive(Debug)]
 pub struct DataResponse {
-    status: TraceStatus,
-    data: Vec<u8>,
+    pub(crate) status: TraceStatus,
+    pub(crate) data: Vec<u8>,
 }
 
 impl Response for DataResponse {
