@@ -116,6 +116,14 @@ pub fn open_v2_device(device: Device<rusb::Context>) -> Option<DAPLinkDevice> {
                 continue;
             }
 
+            // Detect a third bulk EP which will be for SWO streaming
+            let mut swo_ep = None;
+            if eps[2].transfer_type() == rusb::TransferType::Bulk
+                && eps[2].direction() == rusb::Direction::In
+            {
+                swo_ep = Some(eps[2].address());
+            }
+
             // Store EP addresses of the in and out EPs
             let out_ep = eps[0].address();
             let in_ep = eps[1].address();
@@ -128,6 +136,7 @@ pub fn open_v2_device(device: Device<rusb::Context>) -> Option<DAPLinkDevice> {
                         handle,
                         out_ep,
                         in_ep,
+                        swo_ep,
                     });
                 }
                 Err(_) => continue,

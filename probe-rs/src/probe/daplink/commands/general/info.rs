@@ -29,7 +29,7 @@ impl Request for Command {
 }
 
 #[derive(Clone, Default, Debug)]
-pub struct VendorID(pub String);
+pub struct VendorID(pub(crate) String);
 
 impl Response for VendorID {
     fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self> {
@@ -38,7 +38,7 @@ impl Response for VendorID {
 }
 
 #[derive(Clone, Default, Debug)]
-pub struct ProductID(pub String);
+pub struct ProductID(pub(crate) String);
 
 impl Response for ProductID {
     fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self> {
@@ -47,7 +47,7 @@ impl Response for ProductID {
 }
 
 #[derive(Clone, Default, Debug)]
-pub struct SerialNumber(pub String);
+pub struct SerialNumber(pub(crate) String);
 
 impl Response for SerialNumber {
     fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self> {
@@ -56,7 +56,7 @@ impl Response for SerialNumber {
 }
 
 #[derive(Clone, Default, Debug)]
-pub struct FirmwareVersion(pub String);
+pub struct FirmwareVersion(pub(crate) String);
 
 impl Response for FirmwareVersion {
     fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self> {
@@ -65,7 +65,7 @@ impl Response for FirmwareVersion {
 }
 
 #[derive(Clone, Default, Debug)]
-pub struct TargetDeviceVendor(pub String);
+pub struct TargetDeviceVendor(pub(crate) String);
 
 impl Response for TargetDeviceVendor {
     fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self> {
@@ -74,7 +74,7 @@ impl Response for TargetDeviceVendor {
 }
 
 #[derive(Clone, Default, Debug)]
-pub struct TargetDeviceName(pub String);
+pub struct TargetDeviceName(pub(crate) String);
 
 impl Response for TargetDeviceName {
     fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self> {
@@ -82,15 +82,15 @@ impl Response for TargetDeviceName {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Copy, Clone, Debug)]
 pub struct Capabilities {
-    pub swd_implemented: bool,
-    pub jtag_implemented: bool,
-    pub swo_uart_implemented: bool,
-    pub swo_manchester_implemented: bool,
-    pub atomic_commands_implemented: bool,
-    pub test_domain_timer_implemented: bool,
-    pub swo_streaming_trace_implemented: bool,
+    pub(crate) swd_implemented: bool,
+    pub(crate) jtag_implemented: bool,
+    pub(crate) swo_uart_implemented: bool,
+    pub(crate) swo_manchester_implemented: bool,
+    pub(crate) atomic_commands_implemented: bool,
+    pub(crate) test_domain_timer_implemented: bool,
+    pub(crate) swo_streaming_trace_implemented: bool,
 }
 
 impl Response for Capabilities {
@@ -113,8 +113,8 @@ impl Response for Capabilities {
     }
 }
 
-#[derive(Clone, Debug)]
-pub struct TestDomainTime(u32);
+#[derive(Copy, Clone, Debug)]
+pub struct TestDomainTime(pub(crate) u32);
 
 impl Response for TestDomainTime {
     fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self> {
@@ -129,8 +129,8 @@ impl Response for TestDomainTime {
     }
 }
 
-#[derive(Clone, Debug)]
-pub struct SWOTraceBufferSize(u32);
+#[derive(Copy, Clone, Debug)]
+pub struct SWOTraceBufferSize(pub(crate) u32);
 
 impl Response for SWOTraceBufferSize {
     fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self> {
@@ -145,8 +145,8 @@ impl Response for SWOTraceBufferSize {
     }
 }
 
-#[derive(Debug)]
-pub struct PacketCount(pub u8);
+#[derive(Copy, Clone, Debug)]
+pub struct PacketCount(pub(crate) u8);
 
 impl Response for PacketCount {
     fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self> {
@@ -161,8 +161,8 @@ impl Response for PacketCount {
     }
 }
 
-#[derive(Debug)]
-pub struct PacketSize(pub u16);
+#[derive(Copy, Clone, Debug)]
+pub struct PacketSize(pub(crate) u16);
 
 impl Response for PacketSize {
     fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self> {
