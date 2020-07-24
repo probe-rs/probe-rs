@@ -16,7 +16,11 @@ pub mod m4;
 pub(crate) fn debug_core_start(core: &mut impl MemoryInterface) -> Result<(), Error> {
     use crate::architecture::arm::core::m4::Dhcsr;
 
-    let mut dhcsr = Dhcsr(0);
+    // Set C_DEBUGEN while leaving C_HALT unchanged.
+    // We clear C_MASKINTS as its power-on-reset value is UNKNOWN.
+    let mut dhcsr = Dhcsr(core.read_word_32(Dhcsr::ADDRESS)?);
+    dhcsr.set_c_step(false);
+    dhcsr.set_c_halt(dhcsr.s_halt());
     dhcsr.set_c_debugen(true);
     dhcsr.enable_write();
 
