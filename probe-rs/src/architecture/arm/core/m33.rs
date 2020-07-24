@@ -16,9 +16,7 @@ use crate::{architecture::arm::core::register, MemoryInterface};
 
 use bitfield::bitfield;
 
-use super::{
-    debug_core_start, reset_catch_clear, reset_catch_set, CortexState, Dfsr, ARM_REGISTER_FILE,
-};
+use super::{reset_catch_clear, reset_catch_set, CortexState, Dfsr, ARM_REGISTER_FILE};
 use std::{
     mem::size_of,
     time::{Duration, Instant},
@@ -144,9 +142,6 @@ impl<'probe> CoreInterface for M33<'probe> {
     }
 
     fn reset_and_halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
-        // Ensure debug mode is enabled
-        debug_core_start(self)?;
-
         // Set the vc_corereset bit in the DEMCR register.
         // This will halt the core after reset.
         reset_catch_set(self)?;
