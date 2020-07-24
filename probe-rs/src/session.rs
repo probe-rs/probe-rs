@@ -169,12 +169,7 @@ impl Session {
     }
 
     pub fn read_swo(&mut self) -> Result<Vec<u8>, Error> {
-        let state = match &mut self.interface_state {
-            ArchitectureInterfaceState::Arm(state) => state,
-            _ => return Err(Error::ArchitectureRequired(&["ARMv7", "ARMv8"])),
-        };
-        let mut interface = ArmCommunicationInterface::new(&mut self.probe, state)?.unwrap();
-
+        let mut interface = self.get_arm_interface()?;
         interface.read_swo()
     }
 
