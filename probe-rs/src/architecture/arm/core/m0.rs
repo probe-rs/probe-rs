@@ -1,6 +1,4 @@
-use super::{
-    debug_core_start, reset_catch_clear, reset_catch_set, CortexState, Dfsr, ARM_REGISTER_FILE,
-};
+use super::{reset_catch_clear, reset_catch_set, CortexState, Dfsr, ARM_REGISTER_FILE};
 use crate::core::{
     Architecture, CoreInformation, CoreInterface, CoreRegister, CoreRegisterAddress,
     RegisterDescription, RegisterFile, RegisterKind,
@@ -463,9 +461,6 @@ impl<'probe> CoreInterface for M0<'probe> {
     }
 
     fn reset_and_halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
-        // Ensure debug mode is enabled
-        debug_core_start(self)?;
-
         reset_catch_set(self)?;
 
         self.reset()?;

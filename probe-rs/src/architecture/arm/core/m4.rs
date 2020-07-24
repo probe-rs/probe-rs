@@ -5,10 +5,7 @@ use crate::error::Error;
 use crate::memory::Memory;
 use crate::DebugProbeError;
 
-use super::{
-    debug_core_start, register, reset_catch_clear, reset_catch_set, CortexState, Dfsr,
-    ARM_REGISTER_FILE,
-};
+use super::{register, reset_catch_clear, reset_catch_set, CortexState, Dfsr, ARM_REGISTER_FILE};
 use crate::{
     core::{Architecture, CoreStatus, HaltReason},
     MemoryInterface,
@@ -574,9 +571,6 @@ impl<'probe> CoreInterface for M4<'probe> {
     }
 
     fn reset_and_halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
-        // Ensure debug mode is enabled
-        debug_core_start(self)?;
-
         // Set the vc_corereset bit in the DEMCR register.
         // This will halt the core after reset.
         reset_catch_set(self)?;
