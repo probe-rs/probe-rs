@@ -70,57 +70,61 @@ impl Session {
         target: impl Into<TargetSelector>,
         attach_method: AttachMethod,
     ) -> Result<Self, Error> {
-        // TODO: Handle different architectures
-
         let target = get_target_from_selector(target, &mut probe)?;
 
-        let (core, interface_state) = match target.architecture() {
+        let mut session = match target.architecture() {
             Architecture::Arm => {
                 let state = ArmCommunicationInterfaceState::new();
-                (
-                    (
-                        SpecificCoreState::from_core_type(target.core_type),
-                        Core::create_state(0),
-                    ),
-                    ArchitectureInterfaceState::Arm(state),
-                )
+                let core = (
+                    SpecificCoreState::from_core_type(target.core_type),
+                    Core::create_state(0),
+                );
+
+                let mut session = Session {
+                    target,
+                    probe,
+                    interface_state: ArchitectureInterfaceState::Arm(state),
+                    cores: vec![core],
+                };
+
+                // Enable debug mode
+                debug_core_start(&mut session.core(0)?)?;
+
+                if attach_method == AttachMethod::UnderReset {
+                    // we need to halt the chip here
+                    reset_catch_set(&mut session.core(0)?)?;
+
+                    // Deassert the reset pin
+                    session.probe.target_reset_deassert()?;
+
+                    // Wait for the core to be halted
+                    let mut core = session.core(0)?;
+
+                    core.wait_for_core_halted(Duration::from_millis(100))?;
+
+                    reset_catch_clear(&mut core)?;
+                }
+
+                session
             }
             Architecture::Riscv => {
+                // TODO: Handle attach under reset
+
                 let state = RiscvCommunicationInterfaceState::new();
-                (
-                    (
-                        SpecificCoreState::from_core_type(target.core_type),
-                        Core::create_state(0),
-                    ),
-                    ArchitectureInterfaceState::Riscv(state),
-                )
+
+                let core = (
+                    SpecificCoreState::from_core_type(target.core_type),
+                    Core::create_state(0),
+                );
+
+                Session {
+                    target,
+                    probe,
+                    interface_state: ArchitectureInterfaceState::Riscv(state),
+                    cores: vec![core],
+                }
             }
         };
-
-        let mut session = Self {
-            target,
-            probe,
-            interface_state,
-            cores: vec![core],
-        };
-
-        if attach_method == AttachMethod::UnderReset {
-            // Enable debug mode
-            debug_core_start(&mut session.core(0)?)?;
-
-            // we need to halt the chip here
-            reset_catch_set(&mut session.core(0)?)?;
-
-            // Deassert the reset pin
-            session.probe.target_reset_deassert()?;
-
-            // Wait for the core to be halted
-            let mut core = session.core(0)?;
-
-            core.wait_for_core_halted(Duration::from_millis(100))?;
-
-            reset_catch_clear(&mut core)?;
-        }
 
         session.clear_all_hw_breakpoints()?;
 
