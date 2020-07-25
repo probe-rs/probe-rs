@@ -12,19 +12,67 @@ pub enum SwoMode {
     Manchester,
 }
 
+#[derive(Debug)]
 pub struct SwoConfig {
     /// SWO mode: either UART or Manchester.
-    pub mode: SwoMode,
+    mode: SwoMode,
 
     /// Baud rate of SWO, in Hz.
     ///
     /// This value is used to configure what baud rate the target
     /// generates and to configure what baud rate the probe receives,
     /// so must be a baud rate supported by both target and probe.
-    pub baud: u32,
+    baud: u32,
 
     /// Clock input to TPIU in Hz. This is often the system clock (HCLK/SYSCLK etc).
-    pub tpiu_clk: u32,
+    tpiu_clk: u32,
+
+    /// Whether to enable TPIU formatting.
+    /// This is required to use ETM over SWO, but otherwise
+    /// adds overhead if only DWT/ITM data is used.
+    tpiu_continuous_formatting: bool,
+}
+
+impl SwoConfig {
+    /// Create a new SwoConfig using the specified TPIU clock and SWO baud rate,
+    /// both in Hz. By default the UART mode is used and
+    /// TPIU continuous formatting is disabled (DWT/ITM only).
+    pub fn new(tpiu_clk: u32, baud: u32) -> Self {
+        SwoConfig {
+            mode: SwoMode::UART,
+            baud: baud,
+            tpiu_clk: tpiu_clk,
+            tpiu_continuous_formatting: false,
+        }
+    }
+
+    /// Change the mode in this SwoConfig.
+    pub fn set_mode(&mut self, mode: SwoMode) -> &Self {
+        self.mode = mode;
+        self
+    }
+
+    /// Change the TPIU bypass setting.
+    pub fn set_continuous_formatting(&mut self, enabled: bool) -> &Self {
+        self.tpiu_continuous_formatting = enabled;
+        self
+    }
+
+    pub fn mode(&self) -> SwoMode {
+        self.mode
+    }
+
+    pub fn baud(&self) -> u32 {
+        self.baud
+    }
+
+    pub fn tpiu_clk(&self) -> u32 {
+        self.tpiu_clk
+    }
+
+    pub fn tpiu_continuous_formatting(&self) -> bool {
+        self.tpiu_continuous_formatting
+    }
 }
 
 pub trait SwoAccess {
@@ -47,4 +95,16 @@ pub trait SwoAccess {
     /// If no data is received before the timeout, returns an empty Vec.
     /// May return earlier than `timeout` if the receive buffer fills up.
     fn read_swo_timeout(&mut self, timeout: std::time::Duration) -> Result<Vec<u8>, Error>;
+
+    /// Request an estimated best time to wait between polls of `read_swo`.
+    ///
+    /// A probe can implement this if it can work out a sensible time to
+    /// wait between polls, for example using the probe's internal buffer
+    /// size and SWO baud rate, or a 0s duration if reads can block for
+    /// new data.
+    ///
+    /// The default implementation returns None.
+    fn poll_interval_hint(&self) -> Option<std::time::Duration> {
+        None
+    }
 }
