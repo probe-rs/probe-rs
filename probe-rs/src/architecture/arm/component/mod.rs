@@ -69,7 +69,7 @@ pub fn setup_swv(core: &mut Core, component: &Component, config: &SwoConfig) -> 
     let mut dwt = component.dwt(core).map_err(Error::architecture_specific)?;
     dwt.enable()?;
 
-    Ok(())
+    core.flush()
 }
 
 fn setup_swv_vendor(
