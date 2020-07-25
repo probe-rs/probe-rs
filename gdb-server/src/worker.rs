@@ -8,6 +8,8 @@ use probe_rs::Core;
 use probe_rs::Session;
 use std::time::Duration;
 
+use crate::parser::parse_packet;
+
 use crate::handlers;
 
 type ServerResult<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
@@ -47,81 +49,86 @@ pub async fn handler(
     awaits_halt: &mut bool,
     packet: CheckedPacket,
 ) -> ServerResult<bool> {
+    let parsed_packet = parse_packet(&packet.data)?;
     let mut break_due = false;
-    let packet_string = String::from_utf8_lossy(&packet.data).to_string();
 
-    let response: Option<String> = if packet.data.starts_with(b"qSupported") {
-        handlers::q_supported()
-    } else if packet.data.starts_with(b"vMustReplyEmpty") {
-        handlers::reply_empty()
-    } else if packet.data.starts_with(b"vCont?") {
-        handlers::vcont_supported()
-    } else if packet.data.starts_with(b"vCont;c") || packet.data.starts_with(b"c") {
-        handlers::run(core, awaits_halt)
-    } else if packet.data.starts_with(b"vCont;t") {
-        handlers::stop(core, awaits_halt)
-    } else if packet.data.starts_with(b"vCont;s") || packet.data.starts_with(b"s") {
-        handlers::step(core, awaits_halt)
-    } else if packet.data.starts_with(b"qAttached") {
-        handlers::q_attached()
-    } else if packet.data.starts_with(b"?") {
-        handlers::halt_reason()
-    } else if packet.data.starts_with(b"g") {
-        handlers::read_general_registers()
-    } else if packet.data.starts_with(b"p") {
-        handlers::read_register(packet_string, core)
-    } else if packet.data.starts_with(b"m") {
-        handlers::read_memory(packet_string, core)
-    } else if packet.data.starts_with(b"Z1") {
-        handlers::insert_hardware_break(packet_string, core)
-    } else if packet.data.starts_with(b"z1") {
-        handlers::remove_hardware_break(packet_string, core)
-    } else if packet.data.starts_with(b"X") {
-        handlers::write_memory(packet_string, &packet.data, core)
-    } else if packet.data.starts_with(b"qXfer:memory-map:read") {
-        handlers::get_memory_map()
-    } else if packet.data.starts_with(&[0x03]) {
-        handlers::user_halt(core, awaits_halt)
-    } else if packet.data.starts_with(b"D") {
-        handlers::detach(&mut break_due)
-    } else if packet.data.starts_with(b"qRcmd,") {
-        // handle remote command (monitor xxx)
+    use crate::parser::v_packet::Action;
+    use crate::parser::BreakpointType;
+    use crate::parser::Packet::*;
+    use crate::parser::QueryPacket;
+    use crate::parser::VPacket;
 
-        // command = 7265736574
-
-        let hex_data = &packet.data[b"qRcmd,".len()..];
-
-        match hex::decode(hex_data) {
-            Ok(data) => match std::str::from_utf8(&data) {
-                Ok(command) => {
-                    log::debug!("Received monitor command '{:?}'", command);
-
-                    match command {
-                        "reset" => handlers::reset_halt(core),
-                        other => {
-                            log::debug!("Unknown monitor command: '{}'", other);
-                            None
-                        }
-                    }
-                }
-                Err(e) => {
-                    log::warn!("Failed to parse monitor command at UTF-8: {}", e);
-                    None
-                }
-            },
-            Err(e) => {
-                log::warn!("Failed to parse monitor command: {}", e);
-                None
+    let response: Option<String> = match parsed_packet {
+        HaltReason => handlers::halt_reason(),
+        Query(QueryPacket::Supported) => handlers::q_supported(),
+        Query(QueryPacket::Attached { .. }) => handlers::q_attached(),
+        Query(QueryPacket::Command(cmd)) => {
+            if cmd == b"reset" {
+                handlers::reset_halt(core)
+            } else {
+                log::debug!("Unknown monitor command: '{:?}'", cmd);
+                handlers::reply_empty()
             }
         }
-    } else {
-        log::warn!(
-            "Unknown command: '{}'",
-            String::from_utf8_lossy(&packet.data)
-        );
+        ReadGeneralRegister => handlers::read_general_registers(),
+        ReadRegisterHex(register) => handlers::read_register(register, core),
+        ReadMemory { address, length } => handlers::read_memory(address, length, core),
+        Detach => handlers::detach(&mut break_due),
+        V(VPacket::Continue(action)) => match action {
+            Action::Continue => handlers::run(core, awaits_halt),
+            Action::Stop => handlers::stop(core, awaits_halt),
+            Action::Step => handlers::step(core, awaits_halt),
+            other => {
+                log::warn!("vCont with action {:?} not supported", other);
+                handlers::reply_empty()
+            }
+        },
+        InsertBreakpoint {
+            breakpoint_type,
+            address,
+            kind,
+        } => match breakpoint_type {
+            BreakpointType::Hardware => handlers::insert_hardware_break(address, kind, core),
+            other => {
+                log::warn!("Breakpoint type {:?} is not supported.", other);
+                handlers::reply_empty()
+            }
+        },
+        RemoveBreakpoint {
+            breakpoint_type,
+            address,
+            kind,
+        } => match breakpoint_type {
+            BreakpointType::Hardware => handlers::remove_hardware_break(address, kind, core),
+            other => {
+                log::warn!("Breakpoint type {:?} is not supported.", other);
+                handlers::reply_empty()
+            }
+        },
+        WriteMemoryBinary { address, data } => handlers::write_memory(address, &data, core),
+        Query(QueryPacket::Transfer { object, operation }) => {
+            use crate::parser::query::TransferOperation;
 
-        // respond with an empty response to indicate that we don't suport the command
-        handlers::reply_empty()
+            if object == b"memory-map" {
+                match operation {
+                    TransferOperation::Read { .. } => handlers::get_memory_map(),
+                    TransferOperation::Write { .. } => {
+                        // not supported
+                        handlers::reply_empty()
+                    }
+                }
+            } else {
+                log::warn!("Object '{:?}' not supported for qXfer command", object);
+                handlers::reply_empty()
+            }
+        }
+        Interrupt => handlers::user_halt(core, awaits_halt),
+        other => {
+            log::warn!("Unknown command: '{:?}'", other);
+
+            // respond with an empty response to indicate that we don't suport the command
+            handlers::reply_empty()
+        }
     };
 
     if let Some(response) = response {

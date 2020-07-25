@@ -2,12 +2,12 @@
 //!
 //! GDB packets have the format `$packet-data#checksum`. This parser is
 //! focused on the actual packet-data.
-mod query;
-mod v_packet;
+pub(crate) mod query;
+pub(crate) mod v_packet;
 
 use nom::{
     branch::alt,
-    bytes::complete::take,
+    bytes::complete::{take, tag},
     character::complete::char,
     combinator::{all_consuming, cut, value},
     dbg_dmp, map, named,
@@ -23,7 +23,7 @@ pub use query::{Pid, QueryPacket};
 pub use v_packet::VPacket;
 
 #[derive(Debug, PartialEq, Clone)]
-enum Packet {
+pub enum Packet {
     /// Packet `!`
     EnableExtendedMode,
     /// Packet `?`
@@ -102,6 +102,7 @@ enum Packet {
     RemoveBreakpoint {
         breakpoint_type: BreakpointType,
         address: u32,
+        kind: u32,
     },
     // Packet 'Z'
     InsertBreakpoint {
@@ -109,10 +110,12 @@ enum Packet {
         address: u32,
         kind: u32,
     },
+    // Byte 0x03
+    Interrupt,
 }
 
 #[derive(Debug, PartialEq, Clone)]
-enum BreakpointType {
+pub enum BreakpointType {
     Software,
     Hardware,
     WriteWatchpoint,
@@ -120,7 +123,7 @@ enum BreakpointType {
     AccessWatchpoint,
 }
 
-fn parse_packet(input: &[u8]) -> Result<Packet> {
+pub fn parse_packet(input: &[u8]) -> Result<Packet> {
     let parse_result = dbg_dmp(
         all_consuming(alt((
             extended_mode,
@@ -134,6 +137,7 @@ fn parse_packet(input: &[u8]) -> Result<Packet> {
             insert_breakpoint,
             remove_breakpoint,
             write_memory_binary,
+            ctrl_c_interrupt,
         ))),
         "Parsing packet",
     )(input);
@@ -240,6 +244,7 @@ fn remove_breakpoint(input: &[u8]) -> IResult<&[u8], Packet> {
         Packet::RemoveBreakpoint {
             breakpoint_type,
             address,
+            kind,
         },
     ))
 }
@@ -261,6 +266,13 @@ fn write_memory_binary(input: &[u8]) -> IResult<&[u8], Packet> {
             data: data.to_owned(),
         },
     ))
+}
+
+fn ctrl_c_interrupt(input: &[u8]) -> IResult<&[u8], Packet> {
+    let (input, _) = tag([0x03])(input)?;
+
+    Ok((input, Packet::Interrupt))
+
 }
 
 #[cfg(test)]
@@ -363,6 +375,7 @@ mod test {
             Packet::RemoveBreakpoint {
                 breakpoint_type: BreakpointType::Hardware,
                 address: 0x274,
+                kind: 0,
             }
         );
     }
@@ -376,5 +389,10 @@ mod test {
                 data: b".sd223!".to_vec()
             }
         );
+    }
+
+    #[test]
+    fn parse_interrupt() {
+        assert_eq!(parse_packet(&[0x03]).unwrap(), Packet::Interrupt);
     }
 }
