@@ -2,9 +2,9 @@ use nom::{
     branch::alt,
     bytes::complete::{tag, take_until, take_while_m_n},
     character::{complete::char, is_hex_digit},
-    combinator::{map_res, opt},
+    combinator::{map_res, opt, peek},
     map,
-    multi::many1,
+    multi::{many1, separated_nonempty_list},
     named,
     number::complete::hex_u32,
     recognize,
@@ -17,7 +17,7 @@ pub enum QueryPacket {
     ThreadId,
     Attached(Option<Pid>),
     Command(Vec<u8>),
-    Supported,
+    Supported(Vec<Vec<u8>>),
     /// qXfer command
     Transfer {
         object: Vec<u8>,
@@ -80,7 +80,24 @@ fn query_attached(input: &[u8]) -> IResult<&[u8], QueryPacket> {
 fn query_supported(input: &[u8]) -> IResult<&[u8], QueryPacket> {
     let (input, _) = tag("Supported")(input)?;
 
-    Ok((input, QueryPacket::Supported))
+    let (input, next_char) = peek(char(':'))(input)?;
+
+    // Could also be an empty list
+    let (input, features) = if next_char == ':' {
+        let (input, _) = char(':')(input)?;
+
+        separated_nonempty_list(tag(";"), gdb_feature)(input)?
+    } else {
+        (input, vec![])
+    };
+
+    Ok((input, QueryPacket::Supported(features)))
+}
+
+fn gdb_feature(input: &[u8]) -> IResult<&[u8], Vec<u8>> {
+    let (input, data) = take_until(";")(input)?;
+
+    Ok((input, data.to_owned()))
 }
 
 fn query_transfer(input: &[u8]) -> IResult<&[u8], QueryPacket> {
@@ -183,6 +200,17 @@ mod test {
                     }
                 }
             )
+        );
+    }
+
+    #[test]
+    fn parse_query_supported_example() {
+        // Note: Initial q of packet removed
+        let packet = b"Supported:multiprocess+;swbreak+;hwbreak+;qRelocInsn+;fork-events+;vfork-events+;exec-events+;vContSupported+;QThreadEvents+;no-resumed+;xmlRegisters=i386";
+
+        assert_eq!(
+            query_packet(packet).unwrap(),
+            (EMPTY, QueryPacket::Supported(vec![]))
         );
     }
 
