@@ -23,7 +23,9 @@ fn main() -> Result<(), Error> {
     let mut session = probe.attach("stm32f407")?;
 
     // Create a new SwoConfig with a system clock frequency of 16MHz
-    let cfg = SwoConfig::new(16_000_000);
+    let cfg = SwoConfig::new(16_000_000)
+        .set_baud(2_000_000)
+        .set_continuous_formatting(false);
 
     session.setup_swv(&cfg)?;
 

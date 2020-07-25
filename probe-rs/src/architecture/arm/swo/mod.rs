@@ -48,19 +48,31 @@ impl SwoConfig {
     }
 
     /// Set the baud rate in Hz.
-    pub fn set_baud(&mut self, baud: u32) -> &Self {
+    pub fn set_baud(mut self, baud: u32) -> Self {
         self.baud = baud;
         self
     }
 
     /// Set the mode in this SwoConfig.
-    pub fn set_mode(&mut self, mode: SwoMode) -> &Self {
+    pub fn set_mode(mut self, mode: SwoMode) -> Self {
         self.mode = mode;
         self
     }
 
+    /// Set the mode to UART
+    pub fn set_mode_uart(mut self) -> Self {
+        self.mode = SwoMode::UART;
+        self
+    }
+
+    /// Set the mode to Manchester
+    pub fn set_mode_manchester(mut self) -> Self {
+        self.mode = SwoMode::Manchester;
+        self
+    }
+
     /// Set the TPIU continuous formatting setting.
-    pub fn set_continuous_formatting(&mut self, enabled: bool) -> &Self {
+    pub fn set_continuous_formatting(mut self, enabled: bool) -> Self {
         self.tpiu_continuous_formatting = enabled;
         self
     }
