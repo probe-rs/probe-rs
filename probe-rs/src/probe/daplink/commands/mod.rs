@@ -95,10 +95,7 @@ impl DAPLinkDevice {
     pub(super) fn swo_streaming_supported(&self) -> bool {
         match self {
             DAPLinkDevice::V1(_) => false,
-            DAPLinkDevice::V2 {
-                swo_ep,
-                ..
-            } => swo_ep.is_some(),
+            DAPLinkDevice::V2 { swo_ep, .. } => swo_ep.is_some(),
         }
     }
 
@@ -110,11 +107,7 @@ impl DAPLinkDevice {
     pub(super) fn read_swo_stream(&self, buf: &mut [u8], timeout: Duration) -> Result<usize> {
         match self {
             DAPLinkDevice::V1(_) => Err(CmsisDapError::SWOModeNotAvailable.into()),
-            DAPLinkDevice::V2 {
-                handle,
-                swo_ep,
-                ..
-            } => match swo_ep {
+            DAPLinkDevice::V2 { handle, swo_ep, .. } => match swo_ep {
                 Some(ep) => match handle.read_bulk(*ep, buf, timeout) {
                     Ok(n) => Ok(n),
                     Err(rusb::Error::Timeout) => Ok(0),
