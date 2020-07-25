@@ -84,8 +84,36 @@ pub async fn handler(
         handlers::user_halt(core, awaits_halt)
     } else if packet.data.starts_with(b"D") {
         handlers::detach(&mut break_due)
-    } else if packet.data.starts_with(b"qRcmdb,7265736574") {
-        handlers::reset_halt(core)
+    } else if packet.data.starts_with(b"qRcmd,") {
+        // handle remote command (monitor xxx)
+
+        // command = 7265736574
+
+        let hex_data = &packet.data[b"qRcmd,".len()..];
+
+        match hex::decode(hex_data) {
+            Ok(data) => match std::str::from_utf8(&data) {
+                Ok(command) => {
+                    log::debug!("Received monitor command '{:?}'", command);
+
+                    match command {
+                        "reset" => handlers::reset_halt(core),
+                        other => {
+                            log::debug!("Unknown monitor command: '{}'", other);
+                            None
+                        }
+                    }
+                }
+                Err(e) => {
+                    log::warn!("Failed to parse monitor command at UTF-8: {}", e);
+                    None
+                }
+            },
+            Err(e) => {
+                log::warn!("Failed to parse monitor command: {}", e);
+                None
+            }
+        }
     } else {
         log::warn!(
             "Unknown command: '{}'",

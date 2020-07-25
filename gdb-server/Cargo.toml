@@ -37,3 +37,6 @@ async-std = { version = "1.5.0" }
 futures = "0.3.1"
 log = "0.4.0"
 memchr = "2.2.1"
+hex = "0.4.2"
+nom = "5.1.2"
+anyhow = "1.0.31"
