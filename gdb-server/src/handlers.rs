@@ -1,6 +1,4 @@
 use probe_rs::{Core, MemoryInterface};
-use recap::Recap;
-use serde::Deserialize;
 use std::time::Duration;
 
 pub(crate) fn q_supported() -> Option<String> {
@@ -23,22 +21,12 @@ pub(crate) fn read_general_registers() -> Option<String> {
     Some("xxxxxxxx".into())
 }
 
-pub(crate) fn read_register(packet_string: String, core: &mut Core) -> Option<String> {
-    #[derive(Debug, Deserialize, PartialEq, Recap)]
-    #[recap(regex = r#"p(?P<reg>\w+)"#)]
-    struct P {
-        reg: String,
-    }
-
-    let p = packet_string.parse::<P>().unwrap();
-
+pub(crate) fn read_register(register: u32, core: &mut Core) -> Option<String> {
     let _ = core.halt(Duration::from_millis(500));
     core.wait_for_core_halted(Duration::from_millis(100))
         .unwrap();
 
-    let value = core
-        .read_core_reg(u16::from_str_radix(&p.reg, 16).unwrap())
-        .unwrap();
+    let value = core.read_core_reg(register as u16).unwrap();
 
     format!(
         "{}{}{}{}",
@@ -57,21 +45,9 @@ pub(crate) fn read_register(packet_string: String, core: &mut Core) -> Option<St
     ))
 }
 
-pub(crate) fn read_memory(packet_string: String, core: &mut Core) -> Option<String> {
-    #[derive(Debug, Deserialize, PartialEq, Recap)]
-    #[recap(regex = r#"m(?P<addr>\w+),(?P<length>\w+)"#)]
-    struct M {
-        addr: String,
-        length: String,
-    }
-
-    let m = packet_string.parse::<M>().unwrap();
-
-    let mut readback_data = vec![0u8; usize::from_str_radix(&m.length, 16).unwrap()];
-    match core.read_8(
-        u32::from_str_radix(&m.addr, 16).unwrap(),
-        &mut readback_data,
-    ) {
+pub(crate) fn read_memory(address: u32, length: u32, core: &mut Core) -> Option<String> {
+    let mut readback_data = vec![0u8; length as usize];
+    match core.read_8(address, &mut readback_data) {
         Ok(_) => Some(
             readback_data
                 .iter()
@@ -108,58 +84,22 @@ pub(crate) fn step(core: &mut Core, awaits_halt: &mut bool) -> Option<String> {
     Some("S05".into())
 }
 
-pub(crate) fn insert_hardware_break(packet_string: String, core: &mut Core) -> Option<String> {
-    #[derive(Debug, Deserialize, PartialEq, Recap)]
-    #[recap(regex = r#"Z1,(?P<addr>\w+),(?P<size>\w+)"#)]
-    struct Z1 {
-        addr: String,
-        size: String,
-    }
-
-    let z1 = packet_string.parse::<Z1>().unwrap();
-
-    let addr = u32::from_str_radix(&z1.addr, 16).unwrap();
-
+pub(crate) fn insert_hardware_break(address: u32, kind: u32, core: &mut Core) -> Option<String> {
     core.reset_and_halt(Duration::from_millis(100)).unwrap();
-    core.set_hw_breakpoint(addr).unwrap();
+    core.set_hw_breakpoint(address).unwrap();
     core.run().unwrap();
     Some("OK".into())
 }
 
-pub(crate) fn remove_hardware_break(packet_string: String, core: &mut Core) -> Option<String> {
-    #[derive(Debug, Deserialize, PartialEq, Recap)]
-    #[recap(regex = r#"z1,(?P<addr>\w+),(?P<size>\w+)"#)]
-    struct Z1 {
-        addr: String,
-        size: String,
-    }
-
-    let z1 = packet_string.parse::<Z1>().unwrap();
-
-    let addr = u32::from_str_radix(&z1.addr, 16).unwrap();
-
+pub(crate) fn remove_hardware_break(address: u32, kind: u32, core: &mut Core) -> Option<String> {
     core.reset_and_halt(Duration::from_millis(100)).unwrap();
-    core.clear_hw_breakpoint(addr).unwrap();
+    core.clear_hw_breakpoint(address).unwrap();
     core.run().unwrap();
     Some("OK".into())
 }
 
-pub(crate) fn write_memory(packet_string: String, data: &[u8], core: &mut Core) -> Option<String> {
-    #[derive(Debug, Deserialize, PartialEq, Recap)]
-    #[recap(regex = r#"X(?P<addr>\w+),(?P<length>\w+):(?P<data>[01]*)"#)]
-    struct X {
-        addr: String,
-        length: String,
-        data: String,
-    }
-
-    let x = packet_string.parse::<X>().unwrap();
-
-    let length = usize::from_str_radix(&x.length, 16).unwrap();
-    let data = &data[data.len() - length..];
-
-    core.write_8(u32::from_str_radix(&x.addr, 16).unwrap(), data)
-        .unwrap();
+pub(crate) fn write_memory(address: u32, data: &[u8], core: &mut Core) -> Option<String> {
+    core.write_8(address, data).unwrap();
 
     Some("OK".into())
 }
