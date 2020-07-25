@@ -7,7 +7,7 @@ pub(crate) mod v_packet;
 
 use nom::{
     branch::alt,
-    bytes::complete::{take, tag},
+    bytes::complete::{tag, take},
     character::complete::char,
     combinator::{all_consuming, cut, value},
     dbg_dmp, map, named,
@@ -272,7 +272,6 @@ fn ctrl_c_interrupt(input: &[u8]) -> IResult<&[u8], Packet> {
     let (input, _) = tag([0x03])(input)?;
 
     Ok((input, Packet::Interrupt))
-
 }
 
 #[cfg(test)]
@@ -288,7 +287,7 @@ mod test {
             ("?", Packet::HaltReason),
             ("g", Packet::ReadGeneralRegister),
             ("D", Packet::Detach),
-            ("qSupported", Packet::Query(QueryPacket::Supported)),
+            ("qSupported", Packet::Query(QueryPacket::Supported(vec![]))),
             ("vCont?", Packet::V(VPacket::QueryContSupport)),
             (
                 "vMustReplyEmpty",

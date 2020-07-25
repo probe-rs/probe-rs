@@ -60,7 +60,7 @@ pub async fn handler(
 
     let response: Option<String> = match parsed_packet {
         HaltReason => handlers::halt_reason(),
-        Query(QueryPacket::Supported) => handlers::q_supported(),
+        Query(QueryPacket::Supported { .. }) => handlers::q_supported(),
         Query(QueryPacket::Attached { .. }) => handlers::q_attached(),
         Query(QueryPacket::Command(cmd)) => {
             if cmd == b"reset" {
