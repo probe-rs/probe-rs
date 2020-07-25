@@ -34,25 +34,32 @@ pub struct SwoConfig {
 }
 
 impl SwoConfig {
-    /// Create a new SwoConfig using the specified TPIU clock and SWO baud rate,
-    /// both in Hz. By default the UART mode is used and
+    /// Create a new SwoConfig using the specified TPIU clock in Hz.
+    ///
+    /// By default the UART mode is used at 1MBd and
     /// TPIU continuous formatting is disabled (DWT/ITM only).
-    pub fn new(tpiu_clk: u32, baud: u32) -> Self {
+    pub fn new(tpiu_clk: u32) -> Self {
         SwoConfig {
             mode: SwoMode::UART,
-            baud: baud,
+            baud: 1_000_000,
             tpiu_clk: tpiu_clk,
             tpiu_continuous_formatting: false,
         }
     }
 
-    /// Change the mode in this SwoConfig.
+    /// Set the baud rate in Hz.
+    pub fn set_baud(&mut self, baud: u32) -> &Self {
+        self.baud = baud;
+        self
+    }
+
+    /// Set the mode in this SwoConfig.
     pub fn set_mode(&mut self, mode: SwoMode) -> &Self {
         self.mode = mode;
         self
     }
 
-    /// Change the TPIU bypass setting.
+    /// Set the TPIU continuous formatting setting.
     pub fn set_continuous_formatting(&mut self, enabled: bool) -> &Self {
         self.tpiu_continuous_formatting = enabled;
         self
