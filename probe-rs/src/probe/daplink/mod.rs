@@ -3,6 +3,7 @@ pub mod tools;
 
 use crate::architecture::arm::{
     dp::{DPAccess, DPRegister, DebugPortError},
+    swo::poll_interval_from_buf_size,
     DAPAccess, DapError, PortType, SwoAccess, SwoConfig, SwoMode,
 };
 use crate::probe::{daplink::commands::CmsisDapError, BatchCommand};
@@ -654,7 +655,7 @@ impl SwoAccess for DAPLink {
         let caps = self.capabilities.expect("This is a bug. Please report it.");
 
         // Check requested mode is available in probe capabilities
-        match config.mode {
+        match config.mode() {
             SwoMode::UART if !caps.swo_uart_implemented => {
                 return Err(DebugProbeError::ProbeSpecific(
                     CmsisDapError::SWOModeNotAvailable.into(),
@@ -689,17 +690,17 @@ impl SwoAccess for DAPLink {
         }
 
         // Set mode. We've already checked that the requested mode is listed as supported.
-        match config.mode {
+        match config.mode() {
             SwoMode::UART => self.set_swo_mode(swo::ModeRequest::Uart)?,
             SwoMode::Manchester => self.set_swo_mode(swo::ModeRequest::Manchester)?,
         }
 
         // Set baud rate.
-        let baud = self.set_swo_baudrate(swo::BaudrateRequest(config.baud))?;
-        if baud != config.baud {
+        let baud = self.set_swo_baudrate(swo::BaudrateRequest(config.baud()))?;
+        if baud != config.baud() {
             log::warn!(
                 "Target SWO baud rate not met: requested {}, got {}",
-                config.baud,
+                config.baud(),
                 baud
             );
         }
@@ -737,6 +738,28 @@ impl SwoAccess for DAPLink {
         } else {
             Ok(Vec::new())
         }
+    }
+
+    fn swo_poll_interval_hint(&mut self, config: &SwoConfig) -> Option<std::time::Duration> {
+        let caps = self.capabilities.expect("This is a bug. Please report it.");
+        if caps.swo_streaming_trace_implemented
+            && self.device.get_mut().unwrap().swo_streaming_supported()
+        {
+            // Streaming reads block waiting for new data so any polling interval is fine
+            Some(std::time::Duration::from_secs(0))
+        } else {
+            match self.swo_buffer_size {
+                // Given the buffer size and SWO baud rate we can estimate a poll rate.
+                Some(buf_size) => poll_interval_from_buf_size(config, buf_size),
+
+                // If we don't know the buffer size, we can't give a meaningful hint.
+                None => None,
+            }
+        }
+    }
+
+    fn swo_buffer_size(&mut self) -> Option<usize> {
+        self.swo_buffer_size
     }
 }
 
