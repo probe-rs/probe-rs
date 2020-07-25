@@ -1,5 +1,5 @@
 use probe_rs::architecture::arm::swo::{
-    Decoder, SwoConfig, SwoMode, SwoPublisher, TracePacket, UpdaterChannel,
+    Decoder, SwoConfig, SwoPublisher, TracePacket, UpdaterChannel,
 };
 use probe_rs::Error;
 use serde::{Deserialize, Serialize};
@@ -22,11 +22,8 @@ fn main() -> Result<(), Error> {
     // Attach to a chip.
     let mut session = probe.attach("stm32f407")?;
 
-    let cfg = SwoConfig {
-        mode: SwoMode::UART,
-        baud: 2000000,
-        tpiu_clk: 16000000,
-    };
+    // Create a new SwoConfig with a system clock frequency of 16MHz
+    let cfg = SwoConfig::new(16_000_000);
 
     session.setup_swv(&cfg)?;
 
