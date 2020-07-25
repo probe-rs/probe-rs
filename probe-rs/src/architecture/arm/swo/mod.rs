@@ -122,8 +122,35 @@ pub trait SwoAccess {
     /// size and SWO baud rate, or a 0s duration if reads can block for
     /// new data.
     ///
-    /// The default implementation returns None.
-    fn poll_interval_hint(&self) -> Option<std::time::Duration> {
+    /// The default implementation computes an estimated interval based on the buffer
+    /// size, mode, and baud rate.
+    fn swo_poll_interval_hint(&mut self, config: &SwoConfig) -> Option<std::time::Duration> {
+        match self.swo_buffer_size() {
+            Some(size) => poll_interval_from_buf_size(config, size),
+            None => None,
+        }
+    }
+
+    /// Request the probe SWO buffer size, if known.
+    fn swo_buffer_size(&mut self) -> Option<usize> {
         None
     }
+}
+
+/// Helper function to compute a poll interval from a SwoConfig and SWO buffer size.
+pub(crate) fn poll_interval_from_buf_size(
+    config: &SwoConfig,
+    buf_size: usize,
+) -> Option<std::time::Duration> {
+    let time_to_full_ms = match config.mode() {
+        // In UART, the output data is at the baud rate with 10 clocks per byte.
+        SwoMode::UART => (1000 * buf_size as u32) / (config.baud() / 10),
+
+        // In Manchester, the output data is at half the baud rate with
+        // between 8.25 and 10 clocks per byte, so use a conservative 8 clocks/byte.
+        SwoMode::Manchester => (500 * buf_size as u32) / (config.baud() / 8),
+    };
+
+    // Poll frequently enough to catch the buffer at 1/4 full
+    Some(std::time::Duration::from_millis(time_to_full_ms as u64 / 4))
 }
