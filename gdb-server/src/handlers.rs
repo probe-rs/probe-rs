@@ -186,8 +186,7 @@ pub(crate) fn detach(break_due: &mut bool) -> Option<String> {
 }
 
 pub(crate) fn reset_halt(core: &mut Core) -> Option<String> {
-    let _cpu_info = core.reset();
-    let _cpu_info = core.halt(Duration::from_millis(100));
+    let _cpu_info = core.reset_and_halt(Duration::from_millis(400));
     Some("OK".into())
 }
 
