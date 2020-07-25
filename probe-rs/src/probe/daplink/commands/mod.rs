@@ -96,10 +96,8 @@ impl DAPLinkDevice {
         match self {
             DAPLinkDevice::V1(_) => false,
             DAPLinkDevice::V2 {
-                handle: _,
-                out_ep: _,
-                in_ep: _,
                 swo_ep,
+                ..
             } => swo_ep.is_some(),
         }
     }
@@ -114,9 +112,8 @@ impl DAPLinkDevice {
             DAPLinkDevice::V1(_) => Err(CmsisDapError::SWOModeNotAvailable.into()),
             DAPLinkDevice::V2 {
                 handle,
-                out_ep: _,
-                in_ep: _,
                 swo_ep,
+                ..
             } => match swo_ep {
                 Some(ep) => match handle.read_bulk(*ep, buf, timeout) {
                     Ok(n) => Ok(n),

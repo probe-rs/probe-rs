@@ -295,7 +295,7 @@ impl DAPLink {
     fn get_swo_status(&mut self) -> Result<swo::StatusResponse, DebugProbeError> {
         Ok(commands::send_command(
             &mut self.device,
-            swo::StatusRequest {},
+            swo::StatusRequest,
         )?)
     }
 
