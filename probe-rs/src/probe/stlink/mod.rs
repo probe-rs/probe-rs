@@ -703,7 +703,7 @@ impl<D: StLinkUsb> STLink<D> {
     pub fn start_trace_reception(&mut self, config: &SwoConfig) -> Result<(), DebugProbeError> {
         let mut buf = [0; 2];
         let bufsize = 4096u16.to_le_bytes();
-        let baud = config.baud.to_le_bytes();
+        let baud = config.baud().to_le_bytes();
         let mut command = vec![commands::JTAG_COMMAND, commands::SWO_START_TRACE_RECEPTION];
         command.extend_from_slice(&bufsize);
         command.extend_from_slice(&baud);
@@ -760,7 +760,7 @@ impl<D: StLinkUsb> STLink<D> {
 
 impl<D: StLinkUsb> SwoAccess for STLink<D> {
     fn enable_swo(&mut self, config: &SwoConfig) -> Result<(), ProbeRsError> {
-        match config.mode {
+        match config.mode() {
             SwoMode::UART => {
                 self.start_trace_reception(config)?;
                 Ok(())

@@ -44,14 +44,21 @@ pub fn setup_swv(core: &mut Core, component: &Component, config: &SwoConfig) -> 
     // Configure TPIU
     let mut tpiu = component.tpiu(core).map_err(Error::architecture_specific)?;
     tpiu.set_port_size(1)?;
-    let prescaler = (config.tpiu_clk / config.baud) - 1;
+    let prescaler = (config.tpiu_clk() / config.baud()) - 1;
     tpiu.set_prescaler(prescaler)?;
-    match config.mode {
+    match config.mode() {
         SwoMode::Manchester => tpiu.set_pin_protocol(1)?,
         SwoMode::UART => tpiu.set_pin_protocol(2)?,
     }
-    // Formatter: TrigIn enabled, continuous formatting disabled (aka bypass mode)
-    tpiu.set_formatter(0x100)?;
+
+    // Formatter: TrigIn enabled, bypass optional
+    if config.tpiu_continuous_formatting() {
+        // Set EnFCont for continuous formatting even over SWO.
+        tpiu.set_formatter(0x102)?;
+    } else {
+        // Clear EnFCont to only pass through raw ITM/DWT data.
+        tpiu.set_formatter(0x100)?;
+    }
 
     // Configure ITM
     let mut itm = component.itm(core).map_err(Error::architecture_specific)?;
