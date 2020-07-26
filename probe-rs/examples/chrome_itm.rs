@@ -7,8 +7,8 @@ use probe_rs::{
     Probe,
 };
 use serde::{Deserialize, Serialize};
-use std::fs::OpenOptions;
-use std::io::{BufReader, BufWriter, Write};
+use std::fs::{File, OpenOptions};
+use std::io::{BufReader, BufWriter, Read, Write};
 use std::{
     collections::HashMap,
     path::PathBuf,
@@ -17,6 +17,8 @@ use std::{
         Arc,
     },
 };
+use svd::{Device, Interrupt};
+use svd_parser as svd;
 
 #[derive(Deserialize)]
 #[allow(unused)]
@@ -25,6 +27,7 @@ struct Config {
     duration: Option<u64>,
     baud: Option<u32>,
     isr_mapping: HashMap<usize, String>,
+    svd: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -45,14 +48,15 @@ enum TraceEvent {
     #[serde(rename = "B")]
     DurationEventBegin {
         pid: usize,
-        tid: usize,
+        tid: String,
         ts: f64,
         name: String,
+        args: Option<HashMap<String, String>>,
     },
     #[serde(rename = "E")]
     DurationEventEnd {
         pid: usize,
-        tid: usize,
+        tid: String,
         ts: f64,
         name: String,
     },
@@ -85,6 +89,15 @@ fn main() -> Result<()> {
 
     let reader = BufReader::new(OpenOptions::new().read(true).open("trace_config.json")?);
     let config: Config = serde_json::from_reader(reader)?;
+
+    let xml = &mut String::new();
+    let svd = config
+        .svd
+        .map(|f| {
+            File::open(f)?.read_to_string(xml)?;
+            svd::parse(xml)
+        })
+        .transpose()?;
 
     let running = Arc::new(AtomicBool::new(true));
     let r = running.clone();
@@ -153,29 +166,36 @@ fn main() -> Result<()> {
                             ExceptionType::Main => {
                                 trace_events.push(TraceEvent::DurationEventBegin {
                                     pid: 1,
-                                    tid: 0,
+                                    tid: "0".to_string(),
                                     ts: timestamp * 1000.0,
                                     name: "Main".to_string(),
+                                    args: None,
                                 });
                             }
                             ExceptionType::ExternalInterrupt(n) => {
-                                let name = config
-                                    .isr_mapping
-                                    .get(&n)
-                                    .map(|s| s.clone())
-                                    .unwrap_or_else(|| "unknown ISR".to_string());
+                                let isr = get_isr(&svd, n as u32 - 16);
+                                let mut args = HashMap::new();
+                                let name = isr
+                                    .map(|i| {
+                                        i.description.as_ref().map(|d| {
+                                            args.insert("description".to_string(), d.clone())
+                                        });
+                                        i.name.clone()
+                                    })
+                                    .unwrap_or_else(|| "Unknown ISR".to_string());
                                 match action {
                                     ExceptionAction::Entered => {
                                         trace_events.push(TraceEvent::DurationEventBegin {
                                             pid: 1,
-                                            tid: n,
+                                            tid: format!("{}", n),
                                             ts: timestamp * 1000.0,
                                             name,
+                                            args: Some(args),
                                         });
                                         // Interrupt main.
                                         trace_events.push(TraceEvent::DurationEventEnd {
                                             pid: 1,
-                                            tid: 0,
+                                            tid: "0".to_string(),
                                             ts: timestamp * 1000.0,
                                             name: "Main".to_string(),
                                         });
@@ -183,7 +203,7 @@ fn main() -> Result<()> {
                                     ExceptionAction::Exited => {
                                         trace_events.push(TraceEvent::DurationEventEnd {
                                             pid: 1,
-                                            tid: n,
+                                            tid: format!("{}", n),
                                             ts: timestamp * 1000.0,
                                             name,
                                         });
@@ -231,4 +251,17 @@ fn main() -> Result<()> {
     writer.flush()?;
 
     Ok(())
+}
+
+fn get_isr(device: &Option<Device>, number: u32) -> Option<&Interrupt> {
+    device.as_ref().and_then(|device| {
+        for peripheral in &device.peripherals {
+            for interrupt in &peripheral.interrupt {
+                if interrupt.value == number {
+                    return Some(interrupt);
+                }
+            }
+        }
+        return None;
+    })
 }
