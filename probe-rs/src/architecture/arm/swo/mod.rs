@@ -1,7 +1,10 @@
 mod decoder;
 mod publisher;
 
-pub use decoder::{Decoder, ExceptionAction, ExceptionType, TracePacket};
+pub use decoder::{
+    Decoder, ExceptionAction, ExceptionType, TimeStamp, TimestampCorrelation, TracePacket,
+    TracePackets,
+};
 pub use publisher::{SwoPublisher, UpdaterChannel};
 
 use crate::Error;

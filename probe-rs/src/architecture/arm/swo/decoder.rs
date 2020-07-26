@@ -13,17 +13,47 @@ use std::collections::VecDeque;
 
 use scroll::Pread;
 
+#[derive(Debug, Copy, Clone, PartialEq, Serialize, Deserialize)]
+pub enum TimestampCorrelation {
+    /// The local timestamp value is synchronous to the corresponding ITM or DWT data.
+    /// The value in the TS field is the timestamp counter value when the ITM or DWT packet is generated.
+    DataSynchronous,
+    /// The local timestamp value is delayed relative to the ITM or DWT data.
+    /// The value in the TS field is the timestamp counter value when the Local timestamp packet is generated.
+    ///
+    /// NOTE: The local timestamp value corresponding to the previous ITM or DWT packet is UNKNOWN,
+    /// but must be between the previous and current local timestamp values.
+    DataAsynchronousSelfReferencing,
+    /// Output of the ITM or DWT packet corresponding to this Local timestamp packet
+    /// is delayed relative to the associated event.
+    /// The value in the TS field is the timestamp counter value when the ITM or DWT packets is generated.
+    /// This encoding indicates that the ITM or DWT packet was delayed relative to other trace output packets.
+    DataSynchronousDelayedRelative,
+    /// Output of the ITM or DWT packet corresponding to this Local timestamp packet
+    /// is delayed relative to the associated event, and this Local timestamp packet
+    /// is delayed relative to the ITM or DWT data.
+    /// This is a combination of the conditions indicated by values 0b01 and 0b10.
+    DataAsynchronousDelayedRelative,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct TimeStamp {
+    pub tc: TimestampCorrelation,
+    pub ts: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct TracePackets {
+    pub packets: Vec<TracePacket>,
+    pub timestamp: TimeStamp,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum TracePacket {
     /// A sync package to enable synchronization in the byte stream.
     Sync,
 
     Overflow,
-
-    TimeStamp {
-        tc: usize,
-        ts: usize,
-    },
     /// ITM trace data.
     ItmData {
         id: usize,
@@ -115,7 +145,9 @@ pub enum MemoryAccessType {
 /// See also: https://sans-io.readthedocs.io/how-to-sans-io.html
 pub struct Decoder {
     incoming: VecDeque<u8>,
-    packets: VecDeque<TracePacket>,
+    bundled_packets: Vec<TracePacket>,
+    last_timestamp: TimeStamp,
+    packets: VecDeque<TracePackets>,
     state: DecoderState,
 }
 
@@ -133,7 +165,7 @@ enum DecoderState {
         size: usize,
     },
     TimeStamp {
-        tc: usize,
+        tc: TimestampCorrelation,
         ts: Vec<u8>,
     },
 }
@@ -142,6 +174,11 @@ impl Decoder {
     pub fn new() -> Self {
         Decoder {
             incoming: VecDeque::new(),
+            bundled_packets: Vec::new(),
+            last_timestamp: TimeStamp {
+                tc: TimestampCorrelation::DataSynchronous,
+                ts: 0,
+            },
             packets: VecDeque::new(),
             state: DecoderState::Header,
         }
@@ -157,10 +194,22 @@ impl Decoder {
     }
 
     /// Pull the next item from the decoder.
-    pub fn pull(&mut self) -> Option<TracePacket> {
+    pub fn pull(&mut self) -> Option<TracePackets> {
         // Process any bytes:
         self.process_incoming();
         self.packets.pop_front()
+    }
+
+    /// Pulls the next packet from the decoder.
+    /// If there is an unfinished packet and no finished ones, the unfinished packet is returned.
+    /// This is intended to be called at the end of a tracing procedure to finish up.
+    pub fn force_pull(&mut self) -> Option<TracePackets> {
+        self.pull().or_else(|| {
+            if !self.bundled_packets.is_empty() {
+                self.timestamp(self.last_timestamp.clone());
+            }
+            self.packets.pop_front()
+        })
     }
 
     fn process_incoming(&mut self) {
@@ -206,8 +255,47 @@ impl Decoder {
         }
     }
 
+    /// Stores a new packed in the to be emitted packes vector.
+    /// The stored packets are only actually emitted when `timestamp()` is called
+    /// or `force_pull()` is used.
+    ///
+    /// This method tries to join packets of the same type at the same timestamp.
     fn emit(&mut self, packet: TracePacket) {
-        self.packets.push_back(packet);
+        // If we are working on an ITM data packet, we try to fuse it with the last one
+        // if they match.
+        if let TracePacket::ItmData {
+            id: new_id,
+            payload: add_payload,
+        } = packet
+        {
+            if let Some(last) = self.bundled_packets.last_mut() {
+                if let TracePacket::ItmData { id, payload } = last {
+                    if *id == new_id {
+                        // We have an existing packet in the queue which also matches the old packet
+                        // so we extend the existing packet.
+                        payload.extend(add_payload);
+                        return;
+                    }
+                }
+            }
+
+            // If we can run until here, we could not extend our existing packet,
+            // so we add a new one.
+            self.bundled_packets.push(TracePacket::ItmData {
+                id: new_id,
+                payload: add_payload,
+            });
+        } else {
+            self.bundled_packets.push(packet);
+        }
+    }
+
+    fn timestamp(&mut self, timestamp: TimeStamp) {
+        self.packets.push_back(TracePackets {
+            packets: self.bundled_packets.drain(..).collect(),
+            timestamp: timestamp.clone(),
+        });
+        self.last_timestamp = timestamp;
     }
 
     fn decode_first_byte(&mut self, header: u8) {
@@ -232,16 +320,25 @@ impl Decoder {
                     if header & 0x80 == 0 {
                         // Short form timestamp
                         let ts = ((header >> 4) & 0x7) as usize;
-                        let tc = 0;
                         if ts == 0 {
                             log::warn!("Invalid short timestamp!");
                         } else {
-                            self.emit(TracePacket::TimeStamp { tc, ts });
+                            self.timestamp(TimeStamp {
+                                tc: TimestampCorrelation::DataSynchronous,
+                                ts,
+                            });
                         }
                         self.state = DecoderState::Header;
                     } else {
                         assert!(header & 0xc0 == 0xc0);
                         let tc = ((header >> 4) & 0x3) as usize;
+                        let tc = match tc {
+                            0b00 => TimestampCorrelation::DataSynchronous,
+                            0b01 => TimestampCorrelation::DataAsynchronousSelfReferencing,
+                            0b10 => TimestampCorrelation::DataSynchronousDelayedRelative,
+                            0b11 => TimestampCorrelation::DataAsynchronousDelayedRelative,
+                            _ => unreachable!(),
+                        };
                         self.state = DecoderState::TimeStamp { tc, ts: vec![] };
                     }
                 }
@@ -310,7 +407,7 @@ impl Decoder {
         }
     }
 
-    fn handle_timestamp(&mut self, b: u8, tc: usize, mut ts_bytes: Vec<u8>) {
+    fn handle_timestamp(&mut self, b: u8, tc: TimestampCorrelation, mut ts_bytes: Vec<u8>) {
         let continuation = (b & 0x80) > 0;
         ts_bytes.push(b & 0x7f);
         if continuation {
@@ -322,7 +419,7 @@ impl Decoder {
                 ts <<= 7;
                 ts |= ts_byte as usize;
             }
-            self.emit(TracePacket::TimeStamp { tc, ts });
+            self.timestamp(TimeStamp { tc, ts });
             self.state = DecoderState::Header;
         }
     }
@@ -467,7 +564,9 @@ fn extract_size(c: u8) -> Result<usize, String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{Decoder, MemoryAccessType, TracePacket};
+    use super::{
+        Decoder, MemoryAccessType, TimeStamp, TimestampCorrelation, TracePacket, TracePackets,
+    };
 
     #[test]
     fn example_capture1() {
@@ -481,53 +580,55 @@ mod tests {
 
         decoder.feed(trace_data);
         assert_eq!(
-            Some(TracePacket::ItmData {
-                id: 0,
-                payload: vec![65, 0, 0, 0]
+            Some(TracePackets {
+                packets: vec![TracePacket::ItmData {
+                    id: 0,
+                    payload: vec![65, 0, 0, 0]
+                }],
+                timestamp: TimeStamp {
+                    tc: TimestampCorrelation::DataSynchronous,
+                    ts: 1800780
+                }
             }),
             decoder.pull()
         );
         assert_eq!(
-            Some(TracePacket::TimeStamp { tc: 0, ts: 1800780 }),
-            decoder.pull()
-        );
-        assert_eq!(
-            Some(TracePacket::ItmData {
-                id: 0,
-                payload: vec![66, 0, 0, 0]
+            Some(TracePackets {
+                packets: vec![TracePacket::ItmData {
+                    id: 0,
+                    payload: vec![66, 0, 0, 0]
+                }],
+                timestamp: TimeStamp {
+                    tc: TimestampCorrelation::DataSynchronous,
+                    ts: 29
+                }
             }),
             decoder.pull()
         );
         assert_eq!(
-            Some(TracePacket::TimeStamp { tc: 0, ts: 29 }),
-            decoder.pull()
-        );
-        assert_eq!(
-            Some(TracePacket::ItmData {
-                id: 0,
-                payload: vec![67, 0, 0, 0]
+            Some(TracePackets {
+                packets: vec![
+                    TracePacket::ItmData {
+                        id: 0,
+                        payload: vec![67, 0, 0, 0]
+                    },
+                    TracePacket::Overflow,
+                    TracePacket::PcTrace {
+                        id: 0,
+                        value: 0x8000056,
+                    },
+                    TracePacket::Overflow,
+                    TracePacket::MemoryTrace {
+                        id: 0,
+                        access_type: MemoryAccessType::Write,
+                        value: 0x5B7FEFE2,
+                    },
+                ],
+                timestamp: TimeStamp {
+                    tc: TimestampCorrelation::DataAsynchronousDelayedRelative,
+                    ts: 1092
+                }
             }),
-            decoder.pull()
-        );
-        assert_eq!(Some(TracePacket::Overflow), decoder.pull());
-        assert_eq!(
-            Some(TracePacket::PcTrace {
-                id: 0,
-                value: 0x8000056,
-            }),
-            decoder.pull()
-        );
-        assert_eq!(Some(TracePacket::Overflow), decoder.pull());
-        assert_eq!(
-            Some(TracePacket::MemoryTrace {
-                id: 0,
-                access_type: MemoryAccessType::Write,
-                value: 0x5B7FEFE2,
-            }),
-            decoder.pull()
-        );
-        assert_eq!(
-            Some(TracePacket::TimeStamp { tc: 3, ts: 1092 }),
             decoder.pull()
         );
         assert_eq!(None, decoder.pull());
@@ -545,48 +646,51 @@ mod tests {
 
         decoder.feed(trace_data);
         assert_eq!(
-            Some(TracePacket::PcTrace {
-                id: 0,
-                value: 0x8000044,
+            Some(TracePackets {
+                packets: vec![
+                    TracePacket::PcTrace {
+                        id: 0,
+                        value: 0x8000044,
+                    },
+                    TracePacket::MemoryTrace {
+                        id: 0,
+                        access_type: MemoryAccessType::Read,
+                        value: 727,
+                    },
+                ],
+                timestamp: TimeStamp {
+                    tc: TimestampCorrelation::DataSynchronous,
+                    ts: 1800865
+                }
             }),
             decoder.pull()
         );
         assert_eq!(
-            Some(TracePacket::MemoryTrace {
-                id: 0,
-                access_type: MemoryAccessType::Read,
-                value: 727,
+            Some(TracePackets {
+                packets: vec![
+                    TracePacket::PcTrace {
+                        id: 0,
+                        value: 0x8000048,
+                    },
+                    TracePacket::Overflow,
+                    TracePacket::PcTrace {
+                        id: 0,
+                        value: 0x8000060,
+                    },
+                    TracePacket::Overflow,
+                    TracePacket::MemoryTrace {
+                        id: 0,
+                        access_type: MemoryAccessType::Write,
+                        value: 728,
+                    }
+                ],
+                timestamp: TimeStamp {
+                    tc: TimestampCorrelation::DataSynchronous,
+                    ts: 1800865
+                }
             }),
-            decoder.pull()
+            decoder.force_pull()
         );
-        assert_eq!(
-            Some(TracePacket::TimeStamp { tc: 0, ts: 1800865 }),
-            decoder.pull()
-        );
-        assert_eq!(
-            Some(TracePacket::PcTrace {
-                id: 0,
-                value: 0x8000048,
-            }),
-            decoder.pull()
-        );
-        assert_eq!(Some(TracePacket::Overflow), decoder.pull());
-        assert_eq!(
-            Some(TracePacket::PcTrace {
-                id: 0,
-                value: 0x8000060,
-            }),
-            decoder.pull()
-        );
-        assert_eq!(Some(TracePacket::Overflow), decoder.pull());
-        assert_eq!(
-            Some(TracePacket::MemoryTrace {
-                id: 0,
-                access_type: MemoryAccessType::Write,
-                value: 728,
-            }),
-            decoder.pull()
-        );
-        assert_eq!(None, decoder.pull());
+        assert_eq!(None, decoder.force_pull());
     }
 }
