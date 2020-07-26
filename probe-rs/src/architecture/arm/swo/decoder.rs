@@ -119,6 +119,7 @@ pub enum ExceptionAction {
 /// This enum denotes the type of exception(interrupt) table D4-6.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum ExceptionType {
+    Main,
     Reset,
     Nmi,
     HardFault,
@@ -448,6 +449,7 @@ impl Decoder {
                 }),
                 1 => self.emit(TracePacket::ExceptionTrace {
                     exception: match ((payload[1] as u16 & 1) << 8) | payload[0] as u16 {
+                        0 => ExceptionType::Main,
                         1 => ExceptionType::Reset,
                         2 => ExceptionType::Nmi,
                         3 => ExceptionType::HardFault,
@@ -458,7 +460,7 @@ impl Decoder {
                         12 => ExceptionType::DebugMonitor,
                         14 => ExceptionType::PendSV,
                         15 => ExceptionType::SysTick,
-                        0 | 7 | 8 | 9 | 10 | 13 => {
+                        7 | 8 | 9 | 10 | 13 => {
                             log::error!(
                                 "A corrupt ITM packet was received and discarded: (ExceptionType) header={}, payload={:?}.",
                                 header,

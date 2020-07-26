@@ -150,6 +150,14 @@ fn main() -> Result<()> {
                     TracePacket::ExceptionTrace { exception, action } => {
                         println!("{:?} {:?}", action, exception);
                         match exception {
+                            ExceptionType::Main => {
+                                trace_events.push(TraceEvent::DurationEventBegin {
+                                    pid: 1,
+                                    tid: 0,
+                                    ts: timestamp * 1000.0,
+                                    name: "Main".to_string(),
+                                });
+                            }
                             ExceptionType::ExternalInterrupt(n) => {
                                 let name = config
                                     .isr_mapping
@@ -163,6 +171,13 @@ fn main() -> Result<()> {
                                             tid: n,
                                             ts: timestamp * 1000.0,
                                             name,
+                                        });
+                                        // Interrupt main.
+                                        trace_events.push(TraceEvent::DurationEventEnd {
+                                            pid: 1,
+                                            tid: 0,
+                                            ts: timestamp * 1000.0,
+                                            name: "Main".to_string(),
                                         });
                                     }
                                     ExceptionAction::Exited => {
