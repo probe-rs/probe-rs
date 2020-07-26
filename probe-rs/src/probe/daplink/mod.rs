@@ -14,6 +14,7 @@ use commands::{
     general::{
         connect::{ConnectRequest, ConnectResponse},
         disconnect::{DisconnectRequest, DisconnectResponse},
+        host_status::{HostStatusRequest, HostStatusResponse},
         info::{Capabilities, Command, PacketCount, PacketSize, SWOTraceBufferSize},
         reset::{ResetRequest, ResetResponse},
     },
@@ -455,6 +456,10 @@ impl DebugProbe for DAPLink {
 
         debug!("Successfully changed to SWD.");
 
+        // Tell the probe we are connected so it can turn on an LED.
+        let _: Result<HostStatusResponse, _> =
+            commands::send_command(&mut self.device, HostStatusRequest::connected(true));
+
         Ok(())
     }
 
@@ -468,6 +473,10 @@ impl DebugProbe for DAPLink {
         }
 
         let response = commands::send_command(&mut self.device, DisconnectRequest {})?;
+
+        // Tell probe we are disconnected so it can turn off its LED.
+        let _: Result<HostStatusResponse, _> =
+            commands::send_command(&mut self.device, HostStatusRequest::connected(false));
 
         match response {
             DisconnectResponse(Status::DAPOk) => Ok(()),
