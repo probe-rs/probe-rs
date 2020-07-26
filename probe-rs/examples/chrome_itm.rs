@@ -4,7 +4,7 @@ use probe_rs::{
         swo::{Decoder, ExceptionAction, ExceptionType, TimeStamp, TracePacket, TracePackets},
         SwoConfig,
     },
-    Probe,
+    MemoryInterface, Probe,
 };
 use serde::{Deserialize, Serialize};
 use std::fs::{File, OpenOptions};
@@ -166,14 +166,15 @@ fn main() -> Result<()> {
                             ExceptionType::Main => {
                                 trace_events.push(TraceEvent::DurationEventBegin {
                                     pid: 1,
-                                    tid: "0".to_string(),
+                                    tid: "Priority 999".to_string(),
                                     ts: timestamp * 1000.0,
                                     name: "Main".to_string(),
                                     args: None,
                                 });
                             }
                             ExceptionType::ExternalInterrupt(n) => {
-                                let isr = get_isr(&svd, n as u32 - 16);
+                                let n = n as u32 - 16;
+                                let isr = get_isr(&svd, n);
                                 let mut args = HashMap::new();
                                 let name = isr
                                     .map(|i| {
@@ -183,27 +184,30 @@ fn main() -> Result<()> {
                                         i.name.clone()
                                     })
                                     .unwrap_or_else(|| "Unknown ISR".to_string());
+                                let mut core = session.core(0)?;
+                                let priority =
+                                    core.read_word_8(0xE000E400 + ((n / 4) * 4) + 3 - (n % 4))?;
                                 match action {
                                     ExceptionAction::Entered => {
-                                        trace_events.push(TraceEvent::DurationEventBegin {
-                                            pid: 1,
-                                            tid: format!("{}", n),
-                                            ts: timestamp * 1000.0,
-                                            name,
-                                            args: Some(args),
-                                        });
                                         // Interrupt main.
                                         trace_events.push(TraceEvent::DurationEventEnd {
                                             pid: 1,
-                                            tid: "0".to_string(),
+                                            tid: "Priority 999".to_string(),
                                             ts: timestamp * 1000.0,
                                             name: "Main".to_string(),
+                                        });
+                                        trace_events.push(TraceEvent::DurationEventBegin {
+                                            pid: 1,
+                                            tid: format!("Priority {}", priority),
+                                            ts: timestamp * 1000.0,
+                                            name,
+                                            args: Some(args),
                                         });
                                     }
                                     ExceptionAction::Exited => {
                                         trace_events.push(TraceEvent::DurationEventEnd {
                                             pid: 1,
-                                            tid: format!("{}", n),
+                                            tid: format!("Priority {}", priority),
                                             ts: timestamp * 1000.0,
                                             name,
                                         });
