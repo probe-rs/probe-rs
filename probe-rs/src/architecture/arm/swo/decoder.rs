@@ -363,10 +363,11 @@ impl Decoder {
                         15 => ExceptionType::SysTick,
                         0 | 7 | 8 | 9 | 10 | 13 => {
                             log::error!(
-                                "A corrupt ITM packet was received and discarded: header={}, payload={:?}.",
+                                "A corrupt ITM packet was received and discarded: (ExceptionType) header={}, payload={:?}.",
                                 header,
                                 payload,
                             );
+                            self.state = DecoderState::Header;
                             return;
                         },
                         n => ExceptionType::ExternalInterrupt(n as usize),
@@ -377,10 +378,11 @@ impl Decoder {
                         0b11 => ExceptionAction::Returned,
                         _ => {
                             log::error!(
-                                "A corrupt ITM packet was received and discarded: header={}, payload={:?}.",
+                                "A corrupt ITM packet was received and discarded: (ExceptionAction) header={}, payload={:?}.",
                                 header,
                                 payload,
                             );
+                            self.state = DecoderState::Header;
                             return;
                         },
                     },
@@ -432,10 +434,11 @@ impl Decoder {
                         }
                     } else {
                         log::error!(
-                            "A corrupt ITM packet was received and discarded: header={}, payload={:?}.",
+                            "A corrupt ITM packet was received and discarded: (General) header={}, payload={:?}.",
                             header,
                             payload,
                         );
+                        self.state = DecoderState::Header;
                         return;
                     };
 

@@ -80,7 +80,7 @@ fn main() -> Result<()> {
 
     // Create a new SwoConfig with a system clock frequency of 16MHz
     let cfg = SwoConfig::new(16_000_000)
-        .set_baud(1_000_000)
+        .set_baud(2_000_000)
         .set_continuous_formatting(false);
 
     session.setup_swv(&cfg)?;
@@ -174,6 +174,8 @@ fn main() -> Result<()> {
             .truncate(true)
             .open(opt.output_file)?,
     );
+
+    // writer.write_all(format!("{:02X?}", &bytes).as_bytes())?;
 
     let trace = Trace {
         traceEvents: trace_events,

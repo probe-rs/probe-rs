@@ -7,6 +7,22 @@
         {
             "type": "lldb",
             "request": "launch",
+            "name": "Chrome ITM Example",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--example",
+                    "chrome_itm"
+                ]
+            },
+            "program": "${cargo:program}",
+            "args": [
+                "trace.json"
+            ]
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
             "name": "Debug unit tests in library 'coresight'",
             "cargo": {
                 "args": [
