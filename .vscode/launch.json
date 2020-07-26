@@ -16,9 +16,7 @@
                 ]
             },
             "program": "${cargo:program}",
-            "args": [
-                "trace.json"
-            ]
+            "args": []
         },
         {
             "type": "lldb",

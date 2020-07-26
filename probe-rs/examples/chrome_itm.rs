@@ -6,28 +6,25 @@ use probe_rs::{
     },
     Probe,
 };
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::fs::OpenOptions;
-use std::io::{BufWriter, Write};
+use std::io::{BufReader, BufWriter, Write};
 use std::{
+    collections::HashMap,
     path::PathBuf,
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc,
     },
 };
-use structopt::StructOpt;
 
-#[derive(Debug, StructOpt)]
-#[structopt(name = "example", about = "An example of StructOpt usage.")]
-struct Opt {
-    /// Output file, stdout if not present
-    #[structopt(parse(from_os_str))]
+#[derive(Deserialize)]
+#[allow(unused)]
+struct Config {
     output_file: PathBuf,
-    #[structopt(short = "d", long = "duration")]
     duration: Option<u64>,
-    #[structopt(short = "b", long = "baud")]
     baud: Option<u32>,
+    isr_mapping: HashMap<usize, String>,
 }
 
 #[derive(Serialize)]
@@ -86,7 +83,8 @@ struct Trace {
 fn main() -> Result<()> {
     pretty_env_logger::init();
 
-    let opt = Opt::from_args();
+    let reader = BufReader::new(OpenOptions::new().read(true).open("trace_config.json")?);
+    let config: Config = serde_json::from_reader(reader)?;
 
     let running = Arc::new(AtomicBool::new(true));
     let r = running.clone();
@@ -96,7 +94,7 @@ fn main() -> Result<()> {
     })
     .expect("Error setting Ctrl-C handler");
 
-    let duration = std::time::Duration::from_millis(opt.duration.unwrap_or(u64::MAX));
+    let duration = std::time::Duration::from_millis(config.duration.unwrap_or(u64::MAX));
     let t = std::time::Instant::now();
 
     // Get a list of all available debug probes.
@@ -109,7 +107,7 @@ fn main() -> Result<()> {
     let mut session = probe.attach("stm32f407")?;
 
     // Create a new SwoConfig with a system clock frequency of 16MHz
-    let baud = opt.baud.unwrap_or(1_000_000);
+    let baud = config.baud.unwrap_or(1_000_000);
     println!("Using {} baud.", baud);
     let cfg = SwoConfig::new(16_000_000)
         .set_baud(baud)
@@ -152,25 +150,32 @@ fn main() -> Result<()> {
                     TracePacket::ExceptionTrace { exception, action } => {
                         println!("{:?} {:?}", action, exception);
                         match exception {
-                            ExceptionType::ExternalInterrupt(n) => match action {
-                                ExceptionAction::Entered => {
-                                    trace_events.push(TraceEvent::DurationEventBegin {
-                                        pid: 1,
-                                        tid: n,
-                                        ts: timestamp * 1000.0,
-                                        name: "KEK".to_string(),
-                                    });
+                            ExceptionType::ExternalInterrupt(n) => {
+                                let name = config
+                                    .isr_mapping
+                                    .get(&n)
+                                    .map(|s| s.clone())
+                                    .unwrap_or_else(|| "unknown ISR".to_string());
+                                match action {
+                                    ExceptionAction::Entered => {
+                                        trace_events.push(TraceEvent::DurationEventBegin {
+                                            pid: 1,
+                                            tid: n,
+                                            ts: timestamp * 1000.0,
+                                            name,
+                                        });
+                                    }
+                                    ExceptionAction::Exited => {
+                                        trace_events.push(TraceEvent::DurationEventEnd {
+                                            pid: 1,
+                                            tid: n,
+                                            ts: timestamp * 1000.0,
+                                            name,
+                                        });
+                                    }
+                                    ExceptionAction::Returned => continue,
                                 }
-                                ExceptionAction::Exited => {
-                                    trace_events.push(TraceEvent::DurationEventEnd {
-                                        pid: 1,
-                                        tid: n,
-                                        ts: timestamp * 1000.0,
-                                        name: "KEK".to_string(),
-                                    });
-                                }
-                                ExceptionAction::Returned => continue,
-                            },
+                            }
                             _ => (),
                         }
                     }
@@ -200,7 +205,7 @@ fn main() -> Result<()> {
             .create(true)
             .write(true)
             .truncate(true)
-            .open(opt.output_file)?,
+            .open(config.output_file)?,
     );
 
     let trace = Trace {

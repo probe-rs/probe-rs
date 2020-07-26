@@ -9,3 +9,4 @@ cargo-flash/target
 
 # ITM tracing
 trace.json
+trace_config.json
