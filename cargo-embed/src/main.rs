@@ -138,8 +138,6 @@ fn main_try() -> Result<()> {
             .unwrap_or(TargetSelector::Auto)
     };
 
-    let name = args[3].clone();
-
     // Remove executable name from the arguments list.
     args.remove(0);
 
@@ -168,12 +166,18 @@ fn main_try() -> Result<()> {
         .map_err(|e| anyhow!("failed to parse Cargo project information: {}", e))?;
 
     // Decide what artifact to use.
-    let artifact = if let Some(bin) = &opt.bin {
-        cargo_project::Artifact::Bin(bin)
+    let (artifact, name) = if let Some(bin) = &opt.bin {
+        (cargo_project::Artifact::Bin(bin), bin.to_owned())
     } else if let Some(example) = &opt.example {
-        cargo_project::Artifact::Example(example)
+        (
+            cargo_project::Artifact::Example(example),
+            example.to_owned(),
+        )
     } else {
-        cargo_project::Artifact::Bin(project.name())
+        (
+            cargo_project::Artifact::Bin(project.name()),
+            project.name().to_owned(),
+        )
     };
 
     // Decide what profile to use.
@@ -480,8 +484,8 @@ fn main_try() -> Result<()> {
                         previous_panic_hook(panic_info);
                     }));
 
-                    let logname = format!("{}_{}", name, Local::now().to_rfc3339());
-
+                    let chip_name = config.general.chip.as_deref().unwrap_or_default();
+                    let logname = format!("{}_{}_{}", name, chip_name, Local::now().to_rfc3339());
                     let mut app = rttui::app::App::new(rtt, &config, logname)?;
                     loop {
                         app.poll_rtt();

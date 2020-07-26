@@ -227,7 +227,7 @@ impl App {
 
                     if let Some(path) = &self.history_path {
                         for (i, tab) in self.tabs.iter().enumerate() {
-                            let name = format!("{}_{}.txt", self.logname, i);
+                            let name = format!("{}_channel{}.txt", self.logname, i);
 
                             if let Ok(mut file) = std::fs::File::create(path.join(name)) {
                                 for line in tab.messages() {
