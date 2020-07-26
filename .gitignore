@@ -6,3 +6,6 @@ Cargo.lock
 probe-rs/target
 cli/target
 cargo-flash/target
+
+# ITM tracing
+trace.json
