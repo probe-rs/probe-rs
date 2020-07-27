@@ -14,6 +14,7 @@ impl HostStatusRequest {
         }
     }
 
+    #[allow(dead_code)]
     pub fn running(running: bool) -> Self {
         HostStatusRequest {
             status_type: 1,
@@ -28,7 +29,7 @@ impl Request for HostStatusRequest {
     fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize> {
         buffer[offset] = self.status_type;
         buffer[offset + 1] = self.status;
-        return Ok(2);
+        Ok(2)
     }
 }
 
@@ -36,7 +37,7 @@ impl Request for HostStatusRequest {
 pub struct HostStatusResponse;
 
 impl Response for HostStatusResponse {
-    fn from_bytes(_buffer: &[u8], offset: usize) -> Result<Self> {
+    fn from_bytes(_buffer: &[u8], _offset: usize) -> Result<Self> {
         Ok(HostStatusResponse)
     }
 }
