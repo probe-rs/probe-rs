@@ -308,10 +308,11 @@ impl JLink {
     }
 
     fn read_swo_data(&mut self) -> Result<Vec<u8>, DebugProbeError> {
-        // TODO: Return ProbeRsErrors
         let jlink = self.handle.get_mut().unwrap();
         let mut buf = vec![0; SWO_BUFFER_SIZE.into()];
-        jlink.swo_read(&mut buf).unwrap();
+        jlink
+            .swo_read(&mut buf)
+            .map_err(|e| ProbeRsError::Probe(DebugProbeError::ArchitectureSpecific(Box::new(e))))?;
         Ok(buf)
     }
 }
@@ -953,23 +954,22 @@ impl DAPAccess for JLink {
 
 impl SwoAccess for JLink {
     fn enable_swo(&mut self, config: &SwoConfig) -> Result<(), ProbeRsError> {
-        // TODO: Return ProbeRsErrors
         let jlink = self.handle.get_mut().unwrap();
         jlink
             .swo_start_uart(config.baud(), SWO_BUFFER_SIZE.into())
-            .unwrap();
+            .map_err(|e| ProbeRsError::Probe(DebugProbeError::ArchitectureSpecific(Box::new(e))))?;
         Ok(())
     }
 
     fn disable_swo(&mut self) -> Result<(), ProbeRsError> {
-        // TODO: Return ProbeRsErrors
         let jlink = self.handle.get_mut().unwrap();
-        jlink.swo_stop().unwrap();
+        jlink
+            .swo_stop()
+            .map_err(|e| ProbeRsError::Probe(DebugProbeError::ArchitectureSpecific(Box::new(e))))?;
         Ok(())
     }
 
     fn read_swo_timeout(&mut self, _timeout: std::time::Duration) -> Result<Vec<u8>, ProbeRsError> {
-        // TODO: Return ProbeRsErrors
         // TODO: consider timeout
         let data = self.read_swo_data()?;
         Ok(data)
