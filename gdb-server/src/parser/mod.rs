@@ -3,13 +3,14 @@
 //! GDB packets have the format `$packet-data#checksum`. This parser is
 //! focused on the actual packet-data.
 pub(crate) mod query;
+mod util;
 pub(crate) mod v_packet;
 
 use nom::{
     branch::alt,
     bytes::complete::{tag, take},
     character::complete::char,
-    combinator::{all_consuming, cut, value},
+    combinator::value,
     dbg_dmp, map, named,
     number::complete::hex_u32,
     IResult,
@@ -20,6 +21,7 @@ use query::query_packet;
 use v_packet::v_packet;
 
 pub use query::{Pid, QueryPacket};
+use util::hex_u64;
 pub use v_packet::VPacket;
 
 #[derive(Debug, PartialEq, Clone)]
@@ -66,7 +68,7 @@ pub enum Packet {
     KillRequest,
     /// Packet 'm'
     ReadMemory {
-        address: u32,
+        address: u64,
         length: u32,
     },
     /// Packet 'M'
@@ -125,7 +127,7 @@ pub enum BreakpointType {
 
 pub fn parse_packet(input: &[u8]) -> Result<Packet> {
     let parse_result = dbg_dmp(
-        all_consuming(alt((
+        alt((
             extended_mode,
             detach,
             halt_reason,
@@ -138,7 +140,8 @@ pub fn parse_packet(input: &[u8]) -> Result<Packet> {
             remove_breakpoint,
             write_memory_binary,
             ctrl_c_interrupt,
-        ))),
+            continue_packet,
+        )),
         "Parsing packet",
     )(input);
 
@@ -151,6 +154,12 @@ pub fn parse_packet(input: &[u8]) -> Result<Packet> {
 named!(extended_mode<&[u8], Packet>, map!(char('!'), |_| Packet::EnableExtendedMode));
 
 named!(halt_reason<&[u8], Packet>, map!(char('?'), |_| Packet::HaltReason));
+
+fn continue_packet(input: &[u8]) -> IResult<&[u8], Packet> {
+    let (input, _) = char('c')(input)?;
+
+    Ok((input, Packet::Continue))
+}
 
 fn detach(input: &[u8]) -> IResult<&[u8], Packet> {
     value(Packet::Detach, char('D'))(input)
@@ -188,7 +197,7 @@ fn v(input: &[u8]) -> IResult<&[u8], Packet> {
 fn read_memory(input: &[u8]) -> IResult<&[u8], Packet> {
     let (input, _) = char('m')(input)?;
 
-    let (input, address) = hex_u32(input)?;
+    let (input, address) = hex_u64(input)?;
     let (input, _) = char(',')(input)?;
     let (input, length) = hex_u32(input)?;
 
@@ -277,6 +286,7 @@ fn ctrl_c_interrupt(input: &[u8]) -> IResult<&[u8], Packet> {
 #[cfg(test)]
 mod test {
     use super::*;
+    use query::TransferOperation;
 
     const EMPTY: &[u8] = &[];
 
@@ -285,9 +295,11 @@ mod test {
         let test_data = [
             ("!", Packet::EnableExtendedMode),
             ("?", Packet::HaltReason),
+            ("c", Packet::Continue),
             ("g", Packet::ReadGeneralRegister),
             ("D", Packet::Detach),
             ("qSupported", Packet::Query(QueryPacket::Supported(vec![]))),
+            ("qHostInfo", Packet::Query(QueryPacket::HostInfo)),
             ("vCont?", Packet::V(VPacket::QueryContSupport)),
             (
                 "vMustReplyEmpty",
@@ -356,6 +368,17 @@ mod test {
     }
 
     #[test]
+    fn parse_read_memory_long_address() {
+        assert_eq!(
+            parse_packet(b"mffffff8000002010,8").unwrap(),
+            Packet::ReadMemory {
+                address: 0xffffff8000002010,
+                length: 0x8,
+            }
+        );
+    }
+
+    #[test]
     fn parse_insert_breakpoint() {
         assert_eq!(
             parse_packet(b"Z0,3456,2").unwrap(),
@@ -393,5 +416,20 @@ mod test {
     #[test]
     fn parse_interrupt() {
         assert_eq!(parse_packet(&[0x03]).unwrap(), Packet::Interrupt);
+    }
+
+    #[test]
+    fn parse_memory_map_read() {
+        assert_eq!(
+            parse_packet(b"qXfer:memory-map:read::0,2047").unwrap(),
+            Packet::Query(QueryPacket::Transfer {
+                object: b"memory-map".to_vec(),
+                operation: TransferOperation::Read {
+                    annex: vec![],
+                    offset: 0,
+                    length: 0x2047,
+                }
+            })
+        );
     }
 }

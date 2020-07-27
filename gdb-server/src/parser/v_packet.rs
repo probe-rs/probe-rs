@@ -1,14 +1,11 @@
+use super::{query::pid, Pid};
 use nom::{
-    branch::alt,
-    bytes::complete::tag,
-    character::complete::char,
-    combinator::{map, value},
-    IResult,
+    branch::alt, bytes::complete::tag, character::complete::char, combinator::value, IResult,
 };
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum VPacket {
-    Attach,
+    Attach(Pid),
     Continue(Action),
     Unknown(Vec<u8>),
     QueryContSupport,
@@ -25,7 +22,7 @@ pub enum Action {
 }
 
 pub fn v_packet(input: &[u8]) -> IResult<&[u8], VPacket> {
-    let parse_result = alt((v_cont_support, v_cont))(input);
+    let parse_result = alt((v_attach, v_cont_support, v_cont))(input);
 
     match parse_result {
         Ok((input, packet)) => Ok((input, packet)),
@@ -36,6 +33,14 @@ pub fn v_packet(input: &[u8]) -> IResult<&[u8], VPacket> {
         }
         Err(other) => Err(other),
     }
+}
+
+fn v_attach(input: &[u8]) -> IResult<&[u8], VPacket> {
+    let (input, _) = tag("Attach;")(input)?;
+
+    let (input, pid) = pid(input)?;
+
+    Ok((input, VPacket::Attach(pid)))
 }
 
 fn v_cont_support(input: &[u8]) -> IResult<&[u8], VPacket> {
@@ -65,6 +70,11 @@ mod test {
     use super::*;
 
     const EMPTY: &[u8] = &[];
+
+    #[test]
+    fn parse_v_attach() {
+        assert_eq!(v_packet(b"Attach;7").unwrap(), (EMPTY, VPacket::Attach(7)));
+    }
 
     #[test]
     fn parse_v_cont_support() {
