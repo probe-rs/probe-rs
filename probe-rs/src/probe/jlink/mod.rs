@@ -8,14 +8,16 @@ use std::iter;
 use std::sync::Mutex;
 
 use crate::{
-    architecture::arm::{dp::Ctrl, SwoAccess},
+    architecture::arm::{dp::Ctrl, swo::SwoConfig, SwoAccess},
     architecture::arm::{DapError, PortType, Register},
     probe::{
         DAPAccess, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeType, JTAGAccess,
         WireProtocol,
     },
-    DebugProbeSelector,
+    DebugProbeSelector, Error as ProbeRsError,
 };
+
+const SWO_BUFFER_SIZE: u16 = 128;
 
 #[derive(Debug)]
 pub(crate) struct JLink {
@@ -303,6 +305,14 @@ impl JLink {
         log::trace!("result: {:?}", result);
 
         Ok(result)
+    }
+
+    fn read_swo_data(&mut self) -> Result<Vec<u8>, DebugProbeError> {
+        // TODO: Return ProbeRsErrors
+        let jlink = self.handle.get_mut().unwrap();
+        let mut buf = vec![0; SWO_BUFFER_SIZE.into()];
+        jlink.swo_read(&mut buf).unwrap();
+        Ok(buf)
     }
 }
 
@@ -618,11 +628,11 @@ impl DebugProbe for JLink {
     }
 
     fn get_interface_swo(&self) -> Option<&dyn SwoAccess> {
-        None
+        Some(self as _)
     }
 
     fn get_interface_swo_mut(&mut self) -> Option<&mut dyn SwoAccess> {
-        None
+        Some(self as _)
     }
 }
 
@@ -938,6 +948,37 @@ impl DAPAccess for JLink {
         // If we land here, the DAP operation timed out.
         log::error!("DAP write timeout.");
         Err(DebugProbeError::Timeout)
+    }
+}
+
+impl SwoAccess for JLink {
+    fn enable_swo(&mut self, config: &SwoConfig) -> Result<(), ProbeRsError> {
+        // TODO: Return ProbeRsErrors
+        let jlink = self.handle.get_mut().unwrap();
+        jlink
+            .swo_start_uart(config.baud(), SWO_BUFFER_SIZE.into())
+            .unwrap();
+        Ok(())
+    }
+
+    fn disable_swo(&mut self) -> Result<(), ProbeRsError> {
+        // TODO: Return ProbeRsErrors
+        let jlink = self.handle.get_mut().unwrap();
+        jlink.swo_stop().unwrap();
+        Ok(())
+    }
+
+    fn read_swo_timeout(&mut self, _timeout: std::time::Duration) -> Result<Vec<u8>, ProbeRsError> {
+        // TODO: Return ProbeRsErrors
+        // TODO: consider timeout
+        let data = self.read_swo_data()?;
+        Ok(data)
+    }
+
+    fn read_swo(&mut self) -> Result<Vec<u8>, ProbeRsError> {
+        // TODO: Return ProbeRsErrors
+        let data = self.read_swo_data()?;
+        Ok(data)
     }
 }
 
