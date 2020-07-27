@@ -307,12 +307,12 @@ impl JLink {
         Ok(result)
     }
 
-    fn read_swo_data(&mut self) -> Result<Vec<u8>, DebugProbeError> {
+    fn read_swo_data(&mut self) -> Result<Vec<u8>, ProbeRsError> {
         let jlink = self.handle.get_mut().unwrap();
         let mut buf = vec![0; SWO_BUFFER_SIZE.into()];
         jlink
             .swo_read(&mut buf)
-            .map_err(|e| DebugProbeError::ArchitectureSpecific(Box::new(e)))?;
+            .map_err(|e| ProbeRsError::Probe(DebugProbeError::ArchitectureSpecific(Box::new(e))))?;
         Ok(buf)
     }
 }
@@ -969,10 +969,21 @@ impl SwoAccess for JLink {
         Ok(())
     }
 
-    fn read_swo_timeout(&mut self, _timeout: std::time::Duration) -> Result<Vec<u8>, ProbeRsError> {
-        Err(ProbeRsError::Probe(DebugProbeError::NotImplemented(
-            "Timeout not supported",
-        )))
+    fn read_swo_timeout(&mut self, timeout: std::time::Duration) -> Result<Vec<u8>, ProbeRsError> {
+        let poll_interval = timeout / 5;
+        let end = std::time::Instant::now() + timeout;
+
+        let mut buffer = vec![];
+        loop {
+            let now = std::time::Instant::now();
+            buffer.extend(self.read_swo_data()?);
+            if now + poll_interval < end {
+                std::thread::sleep(poll_interval);
+            } else {
+                break;
+            }
+        }
+        Ok(buffer)
     }
 }
 
