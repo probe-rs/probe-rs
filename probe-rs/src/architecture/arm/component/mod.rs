@@ -101,7 +101,7 @@ fn setup_swv_vendor(
             log::debug!("Nordic part detected, configuring CLOCK TRACECONFIG");
             const CLOCK_TRACECONFIG: u32 = 0x4000_055C;
             let mut traceconfig: u32 = 0;
-            traceconfig |= match config.tpiu_clk {
+            traceconfig |= match config.tpiu_clk() {
                 4_000_000 => 3,
                 8_000_000 => 2,
                 16_000_000 => 1,
