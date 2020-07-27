@@ -66,6 +66,13 @@ pub(crate) fn vcont_supported() -> Option<String> {
     Some("vCont;c;t;s".into())
 }
 
+pub(crate) fn host_info() -> Option<String> {
+    // cputype    12 = arm
+    // cpusubtype 14 = v6m
+    // See https://llvm.org/doxygen/Support_2MachO_8h_source.html
+    Some("cputype:12;cpusubtype:14;triple:armv6m--none-eabi;endian:litte;ptrsize:4".to_string())
+}
+
 pub(crate) fn run(core: &mut Core, awaits_halt: &mut bool) -> Option<String> {
     core.run().unwrap();
     *awaits_halt = true;
@@ -84,14 +91,14 @@ pub(crate) fn step(core: &mut Core, awaits_halt: &mut bool) -> Option<String> {
     Some("S05".into())
 }
 
-pub(crate) fn insert_hardware_break(address: u32, kind: u32, core: &mut Core) -> Option<String> {
+pub(crate) fn insert_hardware_break(address: u32, _kind: u32, core: &mut Core) -> Option<String> {
     core.reset_and_halt(Duration::from_millis(100)).unwrap();
     core.set_hw_breakpoint(address).unwrap();
     core.run().unwrap();
     Some("OK".into())
 }
 
-pub(crate) fn remove_hardware_break(address: u32, kind: u32, core: &mut Core) -> Option<String> {
+pub(crate) fn remove_hardware_break(address: u32, _kind: u32, core: &mut Core) -> Option<String> {
     core.reset_and_halt(Duration::from_millis(100)).unwrap();
     core.clear_hw_breakpoint(address).unwrap();
     core.run().unwrap();
