@@ -11,6 +11,14 @@ pub use dwt::Dwt;
 pub use itm::Itm;
 pub use tpiu::Tpiu;
 
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+pub enum ComponentError {
+    #[error("Nordic does not support TPIU CLK value of {0}")]
+    NordicUnsupportedTPUICLKValue(u32),
+}
+
 pub trait DebugRegister: Clone + From<u32> + Into<u32> + Sized + std::fmt::Debug {
     const ADDRESS: u32;
     const NAME: &'static str;
@@ -75,7 +83,7 @@ pub fn setup_swv(core: &mut Core, component: &Component, config: &SwoConfig) -> 
 fn setup_swv_vendor(
     core: &mut Core,
     component: &Component,
-    _config: &SwoConfig,
+    config: &SwoConfig,
 ) -> Result<(), Error> {
     match component.id().peripheral_id().jep106() {
         Some(id) if id == jep106::JEP106Code::new(0x00, 0x20) => {
@@ -87,6 +95,24 @@ fn setup_swv_vendor(
             dbgmcu |= 1 << 5;
             dbgmcu &= !(0b00 << 6);
             core.write_word_32(DBGMCU, dbgmcu)
+        }
+        Some(id) if id == jep106::JEP106Code::new(0x02, 0x44) => {
+            // Nordic VLSI ASA
+            log::debug!("Nordic part detected, configuring CLOCK TRACECONFIG");
+            const CLOCK_TRACECONFIG: u32 = 0x4000_055C;
+            let mut traceconfig: u32 = 0;
+            traceconfig |= match config.tpiu_clk {
+                4_000_000 => 3,
+                8_000_000 => 2,
+                16_000_000 => 1,
+                32_000_000 => 0,
+                tpiu_clk => {
+                    let e = ComponentError::NordicUnsupportedTPUICLKValue(tpiu_clk);
+                    return Err(Error::architecture_specific(e));
+                }
+            };
+            traceconfig |= 1 << 16; // tracemux : serial = 1
+            core.write_word_32(CLOCK_TRACECONFIG, traceconfig)
         }
         _ => Ok(()),
     }
