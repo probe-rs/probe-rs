@@ -312,7 +312,7 @@ impl JLink {
         let mut buf = vec![0; SWO_BUFFER_SIZE.into()];
         jlink
             .swo_read(&mut buf)
-            .map_err(|e| ProbeRsError::Probe(DebugProbeError::ArchitectureSpecific(Box::new(e))))?;
+            .map_err(|e| DebugProbeError::ArchitectureSpecific(Box::new(e)))?;
         Ok(buf)
     }
 }
@@ -970,9 +970,9 @@ impl SwoAccess for JLink {
     }
 
     fn read_swo_timeout(&mut self, _timeout: std::time::Duration) -> Result<Vec<u8>, ProbeRsError> {
-        // TODO: consider timeout
-        let data = self.read_swo_data()?;
-        Ok(data)
+        Err(ProbeRsError::Probe(DebugProbeError::NotImplemented(
+            "Timeout not supported",
+        )))
     }
 }
 
