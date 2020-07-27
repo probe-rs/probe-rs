@@ -173,7 +173,7 @@ impl Request for ExtendedStatusRequest {
     const CATEGORY: Category = Category(0x1e);
 
     fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize> {
-        let control = ((self.request_status as u8) << 0)
+        let control = (self.request_status as u8)
             | ((self.request_count as u8) << 1)
             | ((self.request_index_timestamp as u8) << 2);
         buffer[offset] = control;

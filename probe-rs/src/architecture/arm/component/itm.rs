@@ -83,16 +83,16 @@ mod register {
         pub stim12, set_stim12: 12;
         pub stim11, set_stim11: 11;
         pub stim10, set_stim10: 10;
-        pub stim09, set_stim09: 09;
-        pub stim08, set_stim08: 08;
-        pub stim07, set_stim07: 07;
-        pub stim06, set_stim06: 06;
-        pub stim05, set_stim05: 05;
-        pub stim04, set_stim04: 04;
-        pub stim03, set_stim03: 03;
-        pub stim02, set_stim02: 02;
-        pub stim01, set_stim01: 01;
-        pub stim00, set_stim00: 00;
+        pub stim09, set_stim09: 9;
+        pub stim08, set_stim08: 8;
+        pub stim07, set_stim07: 7;
+        pub stim06, set_stim06: 6;
+        pub stim05, set_stim05: 5;
+        pub stim04, set_stim04: 4;
+        pub stim03, set_stim03: 3;
+        pub stim02, set_stim02: 2;
+        pub stim01, set_stim01: 1;
+        pub stim00, set_stim00: 0;
     }
 
     impl ITM_TER {

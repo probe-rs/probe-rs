@@ -42,7 +42,7 @@ impl SwoConfig {
         SwoConfig {
             mode: SwoMode::UART,
             baud: 1_000_000,
-            tpiu_clk: tpiu_clk,
+            tpiu_clk,
             tpiu_continuous_formatting: false,
         }
     }

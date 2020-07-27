@@ -347,7 +347,7 @@ impl Decoder {
                     lsu: (payload[0] >> 3) & 1 == 1,
                     sleep: (payload[0] >> 2) & 1 == 1,
                     exc: (payload[0] >> 1) & 1 == 1,
-                    cpi: (payload[0] >> 0) & 1 == 1,
+                    cpi: payload[0] & 1 == 1,
                 }),
                 1 => self.emit(TracePacket::ExceptionTrace {
                     exception: match ((payload[1] as u16 & 1) << 8) | payload[0] as u16 {
