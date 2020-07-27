@@ -975,8 +975,8 @@ impl SwoAccess for JLink {
 
         let mut buffer = vec![];
         loop {
-            let now = std::time::Instant::now();
             buffer.extend(self.read_swo_data()?);
+            let now = std::time::Instant::now();
             if now + poll_interval < end {
                 std::thread::sleep(poll_interval);
             } else {
