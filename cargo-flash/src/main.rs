@@ -199,9 +199,12 @@ fn main_try() -> Result<()> {
     logging::init(opt.log);
 
     // Load cargo manifest if available and parse out meta object
-    let meta = match Manifest::<Meta>::from_path_with_metadata("Cargo.toml") {
-        Ok(m) => m.package.map(|p| p.metadata).flatten(),
-        Err(_e) => None,
+    let meta = match std::fs::read("Cargo.toml") {
+        Ok(buffer) => match Manifest::<Meta>::from_slice_with_metadata(&buffer) {
+            Ok(m) => m.package.map(|p| p.metadata).flatten(),
+            Err(_e) => None,
+        },
+        Err(_) => None,
     };
 
     // If someone wants to list the connected probes, just do that and exit.
