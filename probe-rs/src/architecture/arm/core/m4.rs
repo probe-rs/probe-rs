@@ -450,7 +450,7 @@ impl<'probe> CoreInterface for M4<'probe> {
                     return Ok(self.state.current_state);
                 }
 
-                log::warn!(
+                log::debug!(
                     "Reason for halt has changed, old reason was {:?}, new reason is {:?}",
                     &self.state.current_state,
                     &reason
