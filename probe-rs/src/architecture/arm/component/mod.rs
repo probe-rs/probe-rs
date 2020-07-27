@@ -108,6 +108,7 @@ fn setup_swv_vendor(
                 32_000_000 => 0,
                 tpiu_clk => {
                     let e = ComponentError::NordicUnsupportedTPUICLKValue(tpiu_clk);
+                    log::error!("{:?}", e);
                     return Err(Error::architecture_specific(e));
                 }
             };
