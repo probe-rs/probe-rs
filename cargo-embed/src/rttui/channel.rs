@@ -1,5 +1,6 @@
 use std::fmt;
 
+use super::DataFormat;
 use chrono::Local;
 use probe_rs_rtt::{DownChannel, UpChannel};
 
@@ -16,6 +17,7 @@ pub struct ChannelState {
     down_channel: Option<DownChannel>,
     name: String,
     messages: Vec<String>,
+    data: Vec<u8>,
     last_line_done: bool,
     input: String,
     scroll_offset: usize,
@@ -48,6 +50,7 @@ impl ChannelState {
             scroll_offset: 0,
             rtt_buffer: RttBuffer([0u8; 1024]),
             show_timestamps,
+            data: Vec::new(),
         }
     }
 
@@ -89,12 +92,14 @@ impl ChannelState {
         self.scroll_offset = value;
     }
 
+    pub fn data(&self) -> &Vec<u8> {
+        &self.data
+    }
+
     /// Polls the RTT target for new data on the specified channel.
     ///
     /// Processes all the new data and adds it to the linebuffer of the respective channel.
-    pub fn poll_rtt(&mut self) {
-        let now = Local::now();
-
+    pub fn poll_rtt(&mut self, fmt: DataFormat) {
         // TODO: Proper error handling.
         let count = if let Some(channel) = self.up_channel.as_mut() {
             match channel.read(self.rtt_buffer.0.as_mut()) {
@@ -112,35 +117,44 @@ impl ChannelState {
             return;
         }
 
-        // First, convert the incoming bytes to UTF8.
-        let mut incoming = String::from_utf8_lossy(&self.rtt_buffer.0[..count]).to_string();
+        match fmt {
+            DataFormat::String => {
+                let now = Local::now();
 
-        // Then pop the last stored line from our line buffer if possible and append our new line.
-        let last_line_done = self.last_line_done;
-        if !last_line_done {
-            if let Some(last_line) = self.messages.pop() {
-                incoming = last_line + &incoming;
-            }
-        }
-        self.last_line_done = incoming.chars().last().unwrap() == '\n';
+                // First, convert the incoming bytes to UTF8.
+                let mut incoming = String::from_utf8_lossy(&self.rtt_buffer.0[..count]).to_string();
 
-        // Then split the incoming buffer discarding newlines and if necessary
-        // add a timestamp at start of each.
-        // Note: this means if you print a newline in the middle of your debug
-        // you get a timestamp there too..
-        // Note: we timestamp at receipt of newline, not first char received if that
-        // matters.
-        for (i, line) in incoming.split_terminator('\n').enumerate() {
-            if self.show_timestamps && (last_line_done || i > 0) {
-                let ts = now.format("%H:%M:%S%.3f");
-                self.messages.push(format!("{} {}", ts, line));
-            } else {
-                self.messages.push(line.to_string());
+                // Then pop the last stored line from our line buffer if possible and append our new line.
+                let last_line_done = self.last_line_done;
+                if !last_line_done {
+                    if let Some(last_line) = self.messages.pop() {
+                        incoming = last_line + &incoming;
+                    }
+                }
+                self.last_line_done = incoming.chars().last().unwrap() == '\n';
+
+                // Then split the incoming buffer discarding newlines and if necessary
+                // add a timestamp at start of each.
+                // Note: this means if you print a newline in the middle of your debug
+                // you get a timestamp there too..
+                // Note: we timestamp at receipt of newline, not first char received if that
+                // matters.
+                for (i, line) in incoming.split_terminator('\n').enumerate() {
+                    if self.show_timestamps && (last_line_done || i > 0) {
+                        let ts = now.format("%H:%M:%S%.3f");
+                        self.messages.push(format!("{} {}", ts, line));
+                    } else {
+                        self.messages.push(line.to_string());
+                    }
+                    if self.scroll_offset != 0 {
+                        self.scroll_offset += 1;
+                    }
+                }
             }
-            if self.scroll_offset != 0 {
-                self.scroll_offset += 1;
+            DataFormat::BinaryLE => {
+                self.data.extend_from_slice(&self.rtt_buffer.0[..count]);
             }
-        }
+        };
     }
 
     pub fn push_rtt(&mut self) {
