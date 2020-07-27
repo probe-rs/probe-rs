@@ -974,12 +974,6 @@ impl SwoAccess for JLink {
         let data = self.read_swo_data()?;
         Ok(data)
     }
-
-    fn read_swo(&mut self) -> Result<Vec<u8>, ProbeRsError> {
-        // TODO: Return ProbeRsErrors
-        let data = self.read_swo_data()?;
-        Ok(data)
-    }
 }
 
 fn bits_to_byte(bits: impl IntoIterator<Item = bool>) -> u32 {
