@@ -22,6 +22,7 @@ const SWO_BUFFER_SIZE: u16 = 128;
 #[derive(Debug)]
 pub(crate) struct JLink {
     handle: Mutex<JayLink>,
+    swo_baud: Option<u32>,
 
     /// Idle cycles necessary between consecutive
     /// accesses to the DMI register
@@ -306,15 +307,6 @@ impl JLink {
 
         Ok(result)
     }
-
-    fn read_swo_data(&mut self) -> Result<Vec<u8>, ProbeRsError> {
-        let jlink = self.handle.get_mut().unwrap();
-        let mut buf = vec![0; SWO_BUFFER_SIZE.into()];
-        jlink
-            .swo_read(&mut buf)
-            .map_err(|e| ProbeRsError::Probe(DebugProbeError::ArchitectureSpecific(Box::new(e))))?;
-        Ok(buf)
-    }
 }
 
 impl DebugProbe for JLink {
@@ -392,6 +384,7 @@ impl DebugProbe for JLink {
 
         Ok(Box::new(JLink {
             handle: Mutex::from(jlink_handle),
+            swo_baud: None,
             supported_protocols,
             jtag_idle_cycles: 0,
             protocol: None,
@@ -955,6 +948,7 @@ impl DAPAccess for JLink {
 impl SwoAccess for JLink {
     fn enable_swo(&mut self, config: &SwoConfig) -> Result<(), ProbeRsError> {
         let jlink = self.handle.get_mut().unwrap();
+        self.swo_baud = Some(config.baud());
         jlink
             .swo_start_uart(config.baud(), SWO_BUFFER_SIZE.into())
             .map_err(|e| ProbeRsError::Probe(DebugProbeError::ArchitectureSpecific(Box::new(e))))?;
@@ -963,6 +957,7 @@ impl SwoAccess for JLink {
 
     fn disable_swo(&mut self) -> Result<(), ProbeRsError> {
         let jlink = self.handle.get_mut().unwrap();
+        self.swo_baud = None;
         jlink
             .swo_stop()
             .map_err(|e| ProbeRsError::Probe(DebugProbeError::ArchitectureSpecific(Box::new(e))))?;
@@ -970,12 +965,24 @@ impl SwoAccess for JLink {
     }
 
     fn read_swo_timeout(&mut self, timeout: std::time::Duration) -> Result<Vec<u8>, ProbeRsError> {
-        let poll_interval = timeout / 5;
-        let end = std::time::Instant::now() + timeout;
+        const MULTIPLIER: u32 = 2;
 
-        let mut buffer = vec![];
+        let end = std::time::Instant::now() + timeout;
+        let mut buf = vec![0; SWO_BUFFER_SIZE.into()];
+
+        let bytes_per_sec = self.swo_baud.unwrap() / 8;
+        let buffers_per_sec = std::cmp::max(1, bytes_per_sec / (buf.len() as u32)) * MULTIPLIER;
+        let poll_interval =
+            std::time::Duration::from_micros(1_000_000 / u64::from(buffers_per_sec));
+
+        let jlink = self.handle.get_mut().unwrap();
+
+        let mut bytes = vec![];
         loop {
-            buffer.extend(self.read_swo_data()?);
+            let data = jlink.swo_read(&mut buf).map_err(|e| {
+                ProbeRsError::Probe(DebugProbeError::ArchitectureSpecific(Box::new(e)))
+            })?;
+            bytes.extend(data.as_ref());
             let now = std::time::Instant::now();
             if now + poll_interval < end {
                 std::thread::sleep(poll_interval);
@@ -983,7 +990,7 @@ impl SwoAccess for JLink {
                 break;
             }
         }
-        Ok(buffer)
+        Ok(bytes)
     }
 }
 
