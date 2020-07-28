@@ -8,18 +8,21 @@ use std::iter;
 use std::sync::Mutex;
 
 use crate::{
-    architecture::arm::{dp::Ctrl, SwoAccess},
+    architecture::arm::{dp::Ctrl, swo::SwoConfig, SwoAccess},
     architecture::arm::{DapError, PortType, Register},
     probe::{
         DAPAccess, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeType, JTAGAccess,
         WireProtocol,
     },
-    DebugProbeSelector,
+    DebugProbeSelector, Error as ProbeRsError,
 };
+
+const SWO_BUFFER_SIZE: u16 = 128;
 
 #[derive(Debug)]
 pub(crate) struct JLink {
     handle: Mutex<JayLink>,
+    swo_baud: Option<u32>,
 
     /// Idle cycles necessary between consecutive
     /// accesses to the DMI register
@@ -381,6 +384,7 @@ impl DebugProbe for JLink {
 
         Ok(Box::new(JLink {
             handle: Mutex::from(jlink_handle),
+            swo_baud: None,
             supported_protocols,
             jtag_idle_cycles: 0,
             protocol: None,
@@ -618,11 +622,11 @@ impl DebugProbe for JLink {
     }
 
     fn get_interface_swo(&self) -> Option<&dyn SwoAccess> {
-        None
+        Some(self as _)
     }
 
     fn get_interface_swo_mut(&mut self) -> Option<&mut dyn SwoAccess> {
-        None
+        Some(self as _)
     }
 }
 
@@ -938,6 +942,55 @@ impl DAPAccess for JLink {
         // If we land here, the DAP operation timed out.
         log::error!("DAP write timeout.");
         Err(DebugProbeError::Timeout)
+    }
+}
+
+impl SwoAccess for JLink {
+    fn enable_swo(&mut self, config: &SwoConfig) -> Result<(), ProbeRsError> {
+        let jlink = self.handle.get_mut().unwrap();
+        self.swo_baud = Some(config.baud());
+        jlink
+            .swo_start_uart(config.baud(), SWO_BUFFER_SIZE.into())
+            .map_err(|e| ProbeRsError::Probe(DebugProbeError::ArchitectureSpecific(Box::new(e))))?;
+        Ok(())
+    }
+
+    fn disable_swo(&mut self) -> Result<(), ProbeRsError> {
+        let jlink = self.handle.get_mut().unwrap();
+        self.swo_baud = None;
+        jlink
+            .swo_stop()
+            .map_err(|e| ProbeRsError::Probe(DebugProbeError::ArchitectureSpecific(Box::new(e))))?;
+        Ok(())
+    }
+
+    fn read_swo_timeout(&mut self, timeout: std::time::Duration) -> Result<Vec<u8>, ProbeRsError> {
+        const MULTIPLIER: u32 = 2;
+
+        let end = std::time::Instant::now() + timeout;
+        let mut buf = vec![0; SWO_BUFFER_SIZE.into()];
+
+        let bytes_per_sec = self.swo_baud.unwrap() / 8;
+        let buffers_per_sec = std::cmp::max(1, bytes_per_sec / (buf.len() as u32)) * MULTIPLIER;
+        let poll_interval =
+            std::time::Duration::from_micros(1_000_000 / u64::from(buffers_per_sec));
+
+        let jlink = self.handle.get_mut().unwrap();
+
+        let mut bytes = vec![];
+        loop {
+            let data = jlink.swo_read(&mut buf).map_err(|e| {
+                ProbeRsError::Probe(DebugProbeError::ArchitectureSpecific(Box::new(e)))
+            })?;
+            bytes.extend(data.as_ref());
+            let now = std::time::Instant::now();
+            if now + poll_interval < end {
+                std::thread::sleep(poll_interval);
+            } else {
+                break;
+            }
+        }
+        Ok(bytes)
     }
 }
 
