@@ -432,4 +432,15 @@ mod test {
             })
         );
     }
+
+    #[test]
+    fn parse_query_crc_packet() {
+        assert_eq!(
+            parse_packet(b"qCRC:8000000,13c").unwrap(),
+            Packet::Query(QueryPacket::Crc {
+                address: 0x8000000,
+                length: 0x13c,
+            })
+        );
+    }
 }

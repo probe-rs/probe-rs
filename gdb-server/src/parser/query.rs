@@ -3,7 +3,7 @@ use nom::{
     branch::alt,
     bytes::complete::{tag, take_until, take_while},
     character::complete::char,
-    combinator::{opt, peek},
+    combinator::{all_consuming, opt, peek},
     error::ErrorKind,
     multi::separated_nonempty_list,
     number::complete::hex_u32,
@@ -23,6 +23,10 @@ pub enum QueryPacket {
         operation: TransferOperation,
     },
     HostInfo,
+    Crc {
+        address: u32,
+        length: u32,
+    },
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -51,6 +55,7 @@ pub fn query_packet(input: &[u8]) -> IResult<&[u8], QueryPacket> {
         query_thread_id,
         query_attached,
         query_command,
+        query_crc,
         query_supported,
         query_transfer,
         query_hostinfo,
@@ -60,7 +65,11 @@ pub fn query_packet(input: &[u8]) -> IResult<&[u8], QueryPacket> {
 }
 
 fn query_thread_id(input: &[u8]) -> IResult<&[u8], QueryPacket> {
-    let (input, _) = char('C')(input)?;
+    // This can overlap with the qCRC packet,
+    // so we have to ensure here that we only match if the packet
+    // only consists of 'C'
+    let (input, _) = all_consuming(char('C'))(input)?;
+
     Ok((input, QueryPacket::ThreadId))
 }
 
@@ -174,6 +183,20 @@ fn transfer_operation_write(input: &[u8]) -> IResult<&[u8], TransferOperation> {
             data: input.to_owned(),
         },
     ))
+}
+
+fn query_crc(input: &[u8]) -> IResult<&[u8], QueryPacket> {
+    let (input, _) = tag("CRC")(input)?;
+
+    let (input, _) = char(':')(input)?;
+
+    let (input, address) = hex_u32(input)?;
+
+    let (input, _) = char(',')(input)?;
+
+    let (input, length) = hex_u32(input)?;
+
+    Ok((input, QueryPacket::Crc { address, length }))
 }
 
 #[cfg(test)]
