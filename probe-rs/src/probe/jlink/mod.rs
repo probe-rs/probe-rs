@@ -22,7 +22,7 @@ const SWO_BUFFER_SIZE: u16 = 128;
 #[derive(Debug)]
 pub(crate) struct JLink {
     handle: Mutex<JayLink>,
-    swo_baud: Option<u32>,
+    swo_config: Option<SwoConfig>,
 
     /// Idle cycles necessary between consecutive
     /// accesses to the DMI register
@@ -384,7 +384,7 @@ impl DebugProbe for JLink {
 
         Ok(Box::new(JLink {
             handle: Mutex::from(jlink_handle),
-            swo_baud: None,
+            swo_config: None,
             supported_protocols,
             jtag_idle_cycles: 0,
             protocol: None,
@@ -948,7 +948,7 @@ impl DAPAccess for JLink {
 impl SwoAccess for JLink {
     fn enable_swo(&mut self, config: &SwoConfig) -> Result<(), ProbeRsError> {
         let jlink = self.handle.get_mut().unwrap();
-        self.swo_baud = Some(config.baud());
+        self.swo_config = Some(*config);
         jlink
             .swo_start_uart(config.baud(), SWO_BUFFER_SIZE.into())
             .map_err(|e| ProbeRsError::Probe(DebugProbeError::ArchitectureSpecific(Box::new(e))))?;
@@ -957,23 +957,24 @@ impl SwoAccess for JLink {
 
     fn disable_swo(&mut self) -> Result<(), ProbeRsError> {
         let jlink = self.handle.get_mut().unwrap();
-        self.swo_baud = None;
+        self.swo_config = None;
         jlink
             .swo_stop()
             .map_err(|e| ProbeRsError::Probe(DebugProbeError::ArchitectureSpecific(Box::new(e))))?;
         Ok(())
     }
 
-    fn read_swo_timeout(&mut self, timeout: std::time::Duration) -> Result<Vec<u8>, ProbeRsError> {
-        const MULTIPLIER: u32 = 2;
+    fn swo_buffer_size(&mut self) -> Option<usize> {
+        Some(SWO_BUFFER_SIZE.into())
+    }
 
+    fn read_swo_timeout(&mut self, timeout: std::time::Duration) -> Result<Vec<u8>, ProbeRsError> {
         let end = std::time::Instant::now() + timeout;
         let mut buf = vec![0; SWO_BUFFER_SIZE.into()];
 
-        let bytes_per_sec = self.swo_baud.unwrap() / 8;
-        let buffers_per_sec = std::cmp::max(1, bytes_per_sec / (buf.len() as u32)) * MULTIPLIER;
-        let poll_interval =
-            std::time::Duration::from_micros(1_000_000 / u64::from(buffers_per_sec));
+        let poll_interval = self
+            .swo_poll_interval_hint(&self.swo_config.unwrap())
+            .unwrap();
 
         let jlink = self.handle.get_mut().unwrap();
 
