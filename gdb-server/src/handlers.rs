@@ -1,4 +1,4 @@
-use probe_rs::{Core, MemoryInterface};
+use probe_rs::{config::MemoryRegion, Core, MemoryInterface, Session};
 use std::time::Duration;
 
 pub(crate) fn q_supported() -> Option<String> {
@@ -21,7 +21,7 @@ pub(crate) fn read_general_registers() -> Option<String> {
     Some("xxxxxxxx".into())
 }
 
-pub(crate) fn read_register(register: u32, core: &mut Core) -> Option<String> {
+pub(crate) fn read_register(register: u32, mut core: Core) -> Option<String> {
     let _ = core.halt(Duration::from_millis(500));
     core.wait_for_core_halted(Duration::from_millis(100))
         .unwrap();
@@ -45,7 +45,7 @@ pub(crate) fn read_register(register: u32, core: &mut Core) -> Option<String> {
     ))
 }
 
-pub(crate) fn read_memory(address: u32, length: u32, core: &mut Core) -> Option<String> {
+pub(crate) fn read_memory(address: u32, length: u32, mut core: Core) -> Option<String> {
     let mut readback_data = vec![0u8; length as usize];
     match core.read_8(address, &mut readback_data) {
         Ok(_) => Some(
@@ -73,55 +73,80 @@ pub(crate) fn host_info() -> Option<String> {
     Some("cputype:12;cpusubtype:14;triple:armv6m--none-eabi;endian:litte;ptrsize:4".to_string())
 }
 
-pub(crate) fn run(core: &mut Core, awaits_halt: &mut bool) -> Option<String> {
+pub(crate) fn run(mut core: Core, awaits_halt: &mut bool) -> Option<String> {
     core.run().unwrap();
     *awaits_halt = true;
     None
 }
 
-pub(crate) fn stop(core: &mut Core, awaits_halt: &mut bool) -> Option<String> {
+pub(crate) fn stop(mut core: Core, awaits_halt: &mut bool) -> Option<String> {
     core.halt(Duration::from_millis(100)).unwrap();
     *awaits_halt = false;
     Some("OK".into())
 }
 
-pub(crate) fn step(core: &mut Core, awaits_halt: &mut bool) -> Option<String> {
+pub(crate) fn step(mut core: Core, awaits_halt: &mut bool) -> Option<String> {
     core.step().unwrap();
     *awaits_halt = false;
     Some("S05".into())
 }
 
-pub(crate) fn insert_hardware_break(address: u32, _kind: u32, core: &mut Core) -> Option<String> {
+pub(crate) fn insert_hardware_break(address: u32, _kind: u32, mut core: Core) -> Option<String> {
     core.reset_and_halt(Duration::from_millis(100)).unwrap();
     core.set_hw_breakpoint(address).unwrap();
     core.run().unwrap();
     Some("OK".into())
 }
 
-pub(crate) fn remove_hardware_break(address: u32, _kind: u32, core: &mut Core) -> Option<String> {
+pub(crate) fn remove_hardware_break(address: u32, _kind: u32, mut core: Core) -> Option<String> {
     core.reset_and_halt(Duration::from_millis(100)).unwrap();
     core.clear_hw_breakpoint(address).unwrap();
     core.run().unwrap();
     Some("OK".into())
 }
 
-pub(crate) fn write_memory(address: u32, data: &[u8], core: &mut Core) -> Option<String> {
+pub(crate) fn write_memory(address: u32, data: &[u8], mut core: Core) -> Option<String> {
     core.write_8(address, data).unwrap();
 
     Some("OK".into())
 }
 
-pub(crate) fn get_memory_map() -> Option<String> {
-    let xml = r#"<?xml version="1.0"?>
+pub(crate) fn get_memory_map(session: &Session) -> Option<String> {
+    let mut xml_map = r#"<?xml version="1.0"?>
 <!DOCTYPE memory-map PUBLIC "+//IDN gnu.org//DTD GDB Memory Map V1.0//EN" "http://sourceware.org/gdb/gdb-memory-map.dtd">
 <memory-map>
-<memory type="ram" start="0x20000000" length="0x4000"/>
-<memory type="rom" start="0x00000000" length="0x40000"/>
-</memory-map>"#;
-    Some(String::from_utf8(gdb_sanitize_file(xml.as_bytes(), 0, 1000)).unwrap())
+"#.to_owned();
+
+    for region in session.memory_map() {
+        let region_entry = match region {
+            MemoryRegion::Ram(ram) => format!(
+                r#"<memory type="ram" start="{:#x}" length="{:#x}"/>\n"#,
+                ram.range.start,
+                ram.range.end - ram.range.start
+            ),
+            MemoryRegion::Generic(region) => format!(
+                r#"<memory type="rom" start="{:#x}" length="{:#x}"/>\n"#,
+                region.range.start,
+                region.range.end - region.range.start
+            ),
+            MemoryRegion::Flash(region) => {
+                // TODO: Use flash with block size
+                format!(
+                    r#"<memory type="rom" start="{:#x}" length="{:#x}"/>\n"#,
+                    region.range.start,
+                    region.range.end - region.range.start
+                )
+            }
+        };
+
+        xml_map.push_str(&region_entry);
+    }
+
+    xml_map.push_str(r#"</memory-map>"#);
+    Some(String::from_utf8(gdb_sanitize_file(xml_map.as_bytes(), 0, 1000)).unwrap())
 }
 
-pub(crate) fn user_halt(core: &mut Core, awaits_halt: &mut bool) -> Option<String> {
+pub(crate) fn user_halt(mut core: Core, awaits_halt: &mut bool) -> Option<String> {
     let _ = core.halt(Duration::from_millis(100));
     *awaits_halt = false;
     Some("T02".into())
@@ -132,7 +157,7 @@ pub(crate) fn detach(break_due: &mut bool) -> Option<String> {
     Some("OK".into())
 }
 
-pub(crate) fn reset_halt(core: &mut Core) -> Option<String> {
+pub(crate) fn reset_halt(mut core: Core) -> Option<String> {
     let _cpu_info = core.reset_and_halt(Duration::from_millis(400));
     Some("OK".into())
 }
