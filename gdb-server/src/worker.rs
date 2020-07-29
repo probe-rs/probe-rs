@@ -22,7 +22,6 @@ pub async fn worker(
     output_stream: Sender<CheckedPacket>,
     session: &mut Session,
 ) -> ServerResult<()> {
-    let mut core = session.core(0).unwrap();
     let mut awaits_halt = false;
 
     loop {
@@ -30,22 +29,21 @@ pub async fn worker(
             potential_packet = input_stream.next().fuse() => {
                 if let Some(packet) = potential_packet {
                     log::warn!("WORKING {}", String::from_utf8_lossy(&packet.data));
-                    if handler(&mut core, &output_stream, &mut awaits_halt, packet).await? {
+                    if handler(session, &output_stream, &mut awaits_halt, packet).await? {
                         break;
                     }
                 } else {
                     break
                 }
             },
-            _ = await_halt(&mut core, &output_stream, &mut awaits_halt).fuse() => {}
+            _ = await_halt(session, &output_stream, &mut awaits_halt).fuse() => {}
         }
     }
     Ok(())
 }
 
-#[allow(clippy::cognitive_complexity)]
 pub async fn handler(
-    core: &mut Core<'_>,
+    session: &mut Session,
     output_stream: &Sender<CheckedPacket>,
     awaits_halt: &mut bool,
     packet: CheckedPacket,
@@ -64,27 +62,30 @@ pub async fn handler(
             log::debug!("Parsed packet: {:?}", parsed_packet);
             match parsed_packet {
                 HaltReason => handlers::halt_reason(),
-                Continue => handlers::run(core, awaits_halt),
+                Continue => handlers::run(session.core(0)?, awaits_halt),
                 V(VPacket::QueryContSupport) => handlers::vcont_supported(),
                 Query(QueryPacket::Supported { .. }) => handlers::q_supported(),
                 Query(QueryPacket::Attached { .. }) => handlers::q_attached(),
                 Query(QueryPacket::Command(cmd)) => {
                     if cmd == b"reset" {
-                        handlers::reset_halt(core)
+                        handlers::reset_halt(session.core(0)?)
                     } else {
                         log::debug!("Unknown monitor command: '{:?}'", cmd);
-                        handlers::reply_empty()
+                        Some(hex::encode(
+                            "Unknown monitor command\nOnly 'reset' is currently supported\n"
+                                .as_bytes(),
+                        ))
                     }
                 }
                 Query(QueryPacket::HostInfo) => handlers::host_info(),
                 ReadGeneralRegister => handlers::read_general_registers(),
-                ReadRegisterHex(register) => handlers::read_register(register, core),
+                ReadRegisterHex(register) => handlers::read_register(register, session.core(0)?),
                 ReadMemory { address, length } => {
                     // LLDB will send 64 bit addresses, which are not supported by probe-rs
                     // yet.
 
                     if let Ok(address) = u32::try_from(address) {
-                        handlers::read_memory(address, length, core)
+                        handlers::read_memory(address, length, session.core(0)?)
                     } else {
                         //
                         handlers::reply_empty()
@@ -92,9 +93,9 @@ pub async fn handler(
                 }
                 Detach => handlers::detach(&mut break_due),
                 V(VPacket::Continue(action)) => match action {
-                    Action::Continue => handlers::run(core, awaits_halt),
-                    Action::Stop => handlers::stop(core, awaits_halt),
-                    Action::Step => handlers::step(core, awaits_halt),
+                    Action::Continue => handlers::run(session.core(0)?, awaits_halt),
+                    Action::Stop => handlers::stop(session.core(0)?, awaits_halt),
+                    Action::Step => handlers::step(session.core(0)?, awaits_halt),
                     other => {
                         log::warn!("vCont with action {:?} not supported", other);
                         handlers::reply_empty()
@@ -106,7 +107,7 @@ pub async fn handler(
                     kind,
                 } => match breakpoint_type {
                     BreakpointType::Hardware => {
-                        handlers::insert_hardware_break(address, kind, core)
+                        handlers::insert_hardware_break(address, kind, session.core(0)?)
                     }
                     other => {
                         log::warn!("Breakpoint type {:?} is not supported.", other);
@@ -119,20 +120,22 @@ pub async fn handler(
                     kind,
                 } => match breakpoint_type {
                     BreakpointType::Hardware => {
-                        handlers::remove_hardware_break(address, kind, core)
+                        handlers::remove_hardware_break(address, kind, session.core(0)?)
                     }
                     other => {
                         log::warn!("Breakpoint type {:?} is not supported.", other);
                         handlers::reply_empty()
                     }
                 },
-                WriteMemoryBinary { address, data } => handlers::write_memory(address, &data, core),
+                WriteMemoryBinary { address, data } => {
+                    handlers::write_memory(address, &data, session.core(0)?)
+                }
                 Query(QueryPacket::Transfer { object, operation }) => {
                     use crate::parser::query::TransferOperation;
 
                     if object == b"memory-map" {
                         match operation {
-                            TransferOperation::Read { .. } => handlers::get_memory_map(),
+                            TransferOperation::Read { .. } => handlers::get_memory_map(session),
                             TransferOperation::Write { .. } => {
                                 // not supported
                                 handlers::reply_empty()
@@ -143,7 +146,7 @@ pub async fn handler(
                         handlers::reply_empty()
                     }
                 }
-                Interrupt => handlers::user_halt(core, awaits_halt),
+                Interrupt => handlers::user_halt(session.core(0)?, awaits_halt),
                 other => {
                     log::warn!("Unknown command: '{:?}'", other);
 
@@ -175,12 +178,12 @@ pub async fn handler(
 }
 
 pub async fn await_halt(
-    core: &mut Core<'_>,
+    session: &mut Session,
     output_stream: &Sender<CheckedPacket>,
     await_halt: &mut bool,
-) {
+) -> ServerResult<()> {
     task::sleep(Duration::from_millis(10)).await;
-    if *await_halt && core.core_halted().unwrap() {
+    if *await_halt && session.core(0)?.core_halted().unwrap() {
         let response = CheckedPacket::from_data(PacketKind::Packet, b"T05hwbreak:;".to_vec());
 
         let mut bytes = Vec::new();
@@ -189,4 +192,6 @@ pub async fn await_halt(
 
         let _ = output_stream.unbounded_send(response);
     }
+
+    Ok(())
 }
