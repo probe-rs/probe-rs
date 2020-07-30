@@ -17,32 +17,55 @@ pub(crate) fn halt_reason() -> Option<String> {
     Some("S05".into())
 }
 
-pub(crate) fn read_general_registers() -> Option<String> {
-    Some("xxxxxxxx".into())
+pub(crate) fn read_general_registers(mut core: Core) -> Option<String> {
+    // The format of this packet is determined by the register number
+    // used by GDB. Just sending register 0 seems to be sufficient,
+    // the other registers are then requested using 'p' packets.
+    let register_0 = core.read_core_reg(0).unwrap();
+    Some(format!("{:08x}", register_0))
 }
 
 pub(crate) fn read_register(register: u32, mut core: Core) -> Option<String> {
-    let _ = core.halt(Duration::from_millis(500));
-    core.wait_for_core_halted(Duration::from_millis(100))
-        .unwrap();
+    // We have to translate from the GDB register number to the probe-rs register
+    // number.
+    //
+    // The GDB register numbers can be looked up in the target description xml,
+    // which can be found in gdb/features/arm or gdb/features/riscv in the GDB
+    // source code.
 
-    let value = core.read_core_reg(register as u16).unwrap();
+    let (probe_rs_number, bytesize) = match register {
+        // Default ARM register (arm-m-profile.xml)
+        // Register 0 to 15
+        x @ 0..=15 => (x, 4),
+        // CPSR register has number 16 in probe-rs
+        // See REGSEL bits, DCRSR register, ARM Reference Manual
+        25 => (16, 4),
+        // Floating Point registers (arm-m-profile-with-fpa.xml)
+        // f0 -f7 start at offset 0x40
+        // See REGSEL bits, DCRSR register, ARM Reference Manual
+        reg @ 16..=23 => ((reg - 16 + 0x40), 12),
+        // FPSCR has number 0x21 in probe-rs
+        // See REGSEL bits, DCRSR register, ARM Reference Manual
+        24 => (0x21, 4),
+        // Other registers are currently not supported,
+        // they are not listed in the xml files in GDB
+        other => {
+            log::warn!("Request for unsupported register with number {}", other);
+            return None;
+        }
+    };
 
-    format!(
-        "{}{}{}{}",
-        value as u8,
-        (value >> 8) as u8,
-        (value >> 16) as u8,
-        (value >> 24) as u8
-    );
+    let mut value = core.read_core_reg(probe_rs_number as u16).unwrap();
 
-    Some(format!(
-        "{:02x}{:02x}{:02x}{:02x}",
-        value as u8,
-        (value >> 8) as u8,
-        (value >> 16) as u8,
-        (value >> 24) as u8
-    ))
+    let mut register_value = String::new();
+
+    for _ in 0..bytesize {
+        let byte = value as u8;
+        register_value.push_str(&format!("{:02x}", byte));
+        value >>= 8;
+    }
+
+    Some(register_value)
 }
 
 pub(crate) fn read_memory(address: u32, length: u32, mut core: Core) -> Option<String> {
@@ -63,7 +86,11 @@ pub(crate) fn read_memory(address: u32, length: u32, mut core: Core) -> Option<S
 }
 
 pub(crate) fn vcont_supported() -> Option<String> {
-    Some("vCont;c;t;s".into())
+    // It is important to announce support for both
+    // the variants with and without signal support,
+    // i.e. both c and C, otherwise GDB will not use
+    // the command.
+    Some("vCont;c;C;t;s;S".into())
 }
 
 pub(crate) fn host_info() -> Option<String> {
@@ -92,16 +119,12 @@ pub(crate) fn step(mut core: Core, awaits_halt: &mut bool) -> Option<String> {
 }
 
 pub(crate) fn insert_hardware_break(address: u32, _kind: u32, mut core: Core) -> Option<String> {
-    core.reset_and_halt(Duration::from_millis(100)).unwrap();
     core.set_hw_breakpoint(address).unwrap();
-    core.run().unwrap();
     Some("OK".into())
 }
 
 pub(crate) fn remove_hardware_break(address: u32, _kind: u32, mut core: Core) -> Option<String> {
-    core.reset_and_halt(Duration::from_millis(100)).unwrap();
     core.clear_hw_breakpoint(address).unwrap();
-    core.run().unwrap();
     Some("OK".into())
 }
 
