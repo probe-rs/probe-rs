@@ -78,7 +78,7 @@ pub async fn handler(
                     }
                 }
                 Query(QueryPacket::HostInfo) => handlers::host_info(),
-                ReadGeneralRegister => handlers::read_general_registers(),
+                ReadGeneralRegister => handlers::read_general_registers(session.core(0)?),
                 ReadRegisterHex(register) => handlers::read_register(register, session.core(0)?),
                 ReadMemory { address, length } => {
                     // LLDB will send 64 bit addresses, which are not supported by probe-rs
