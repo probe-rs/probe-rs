@@ -3,6 +3,9 @@ use std::fs::{read_dir, read_to_string};
 use std::io;
 use std::path::{Path, PathBuf};
 
+/// Parse all target description files in the input directory and create
+/// a single output file with the Rust source code
+/// for all targets.
 pub fn run(input_dir: impl AsRef<Path>, output_file: impl AsRef<Path>) {
     // Determine all config files to parse.
     let mut files = vec![];
@@ -375,15 +378,20 @@ fn extract_chip_family(
 
 /// Extracts the jep code token stream from a yaml value.
 fn extract_manufacturer(chip: &serde_yaml::Value) -> Option<proc_macro2::TokenStream> {
-    chip.get("manufacturer").map(|manufacturer| {
+    chip.get("manufacturer").and_then(|manufacturer| {
         let cc = manufacturer.get("cc").map(|v| v.as_u64().unwrap() as u8);
         let id = manufacturer.get("id").map(|v| v.as_u64().unwrap() as u8);
 
-        quote::quote! {
-            JEP106Code {
-                cc: #cc,
-                id: #id,
-            }
+        // For a valid JEP106 Code we need both cc and id
+        if cc.is_some() && id.is_some() {
+            Some(quote::quote! {
+                JEP106Code {
+                    cc: #cc,
+                    id: #id,
+                }
+            })
+        } else {
+            None
         }
     })
 }
