@@ -1,0 +1,22 @@
+[package]
+name = "probe-run"
+version = "0.1.0"
+authors = ["Jorge Aparicio <jorge.aparicio@ferrous-systems.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "1.0.32"
+arrayref = "0.3.6"
+ctrlc = "3.1.6"
+env_logger = "0.7.1"
+gimli = "0.22.0"
+log = "0.4.11"
+probe-rs = "0.6.0"
+probe-rs-rtt = "0.1.0"
+rustc-demangle = "0.1.16"
+xmas-elf = "0.7.0"
+structopt = "0.3.15"
+elf2table = { path = "../elf2table" }
+decoder = { path = "../decoder" }
