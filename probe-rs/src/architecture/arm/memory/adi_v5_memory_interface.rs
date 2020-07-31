@@ -503,7 +503,9 @@ fn aligned_range(address: u32, len: usize) -> Result<Range<u32>, AccessPortError
         .ok_or(AccessPortError::OutOfBoundsError)?;
 
     // Round end address up to the nearest multiple of 4
-    let end = unaligned_end + ((4 - (unaligned_end % 4)) % 4);
+    let end = unaligned_end
+        .checked_add((4 - (unaligned_end % 4)) % 4)
+        .ok_or(AccessPortError::OutOfBoundsError)?;
 
     Ok(Range { start, end })
 }
@@ -751,5 +753,18 @@ mod tests {
                 );
             }
         }
+    }
+
+    use super::aligned_range;
+
+    #[test]
+    fn aligned_range_at_limit_does_not_panic() {
+        // The aligned range for address 0xfffffff9 with length
+        // 4 should not panic.
+
+        // Not sure what the best behaviour to handle this is, but
+        // for sure no panic
+
+        let _ = aligned_range(0xfffffff9, 4);
     }
 }
