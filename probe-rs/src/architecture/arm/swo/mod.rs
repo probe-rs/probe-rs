@@ -12,7 +12,7 @@ pub enum SwoMode {
     Manchester,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub struct SwoConfig {
     /// SWO mode: either UART or Manchester.
     mode: SwoMode,
