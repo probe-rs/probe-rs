@@ -284,11 +284,23 @@ fn notmain() -> Result<i32, anyhow::Error> {
     let range_names = range_names.ok_or_else(|| anyhow!("`.symtab` section not found"))?;
 
     // print backtrace
-    backtrace(&core, pc, debug_frame, &range_names)?;
+    let top_exception = backtrace(&core, pc, debug_frame, &range_names)?;
 
     core.reset_and_halt()?;
 
-    Ok(0)
+    Ok(if top_exception == Some(TopException::HardFault) {
+        SIGABRT
+    } else {
+        0
+    })
+}
+
+const SIGABRT: i32 = 134;
+
+#[derive(Debug, PartialEq)]
+enum TopException {
+    HardFault,
+    Other,
 }
 
 fn backtrace(
@@ -296,7 +308,7 @@ fn backtrace(
     mut pc: u32,
     debug_frame: &[u8],
     range_names: &RangeNames,
-) -> Result<(), anyhow::Error> {
+) -> Result<Option<TopException>, anyhow::Error> {
     fn gimli2probe(reg: &gimli::Register) -> CoreRegisterAddress {
         CoreRegisterAddress(reg.0)
     }
@@ -374,25 +386,24 @@ fn backtrace(
     let bases = &BaseAddresses::default();
     let ctx = &mut UninitializedUnwindContext::new();
 
+    let mut top_exception = None;
     let mut frame = 0;
     let mut registers = Registers::new(lr, sp, core);
     println!("stack backtrace:");
     loop {
-        println!(
-            "{:>4}: {:#010x} - {}",
-            frame,
-            pc,
-            range_names
-                .binary_search_by(|rn| if rn.0.contains(&pc) {
+        let name = range_names
+            .binary_search_by(|rn| {
+                if rn.0.contains(&pc) {
                     cmp::Ordering::Equal
                 } else if pc < rn.0.start {
                     cmp::Ordering::Greater
                 } else {
                     cmp::Ordering::Less
-                })
-                .map(|idx| &*range_names[idx].1)
-                .unwrap_or("<unknown>")
-        );
+                }
+            })
+            .map(|idx| &*range_names[idx].1)
+            .unwrap_or("<unknown>");
+        println!("{:>4}: {:#010x} - {}", frame, pc, name);
 
         let fde = debug_frame.fde_for_address(bases, pc.into(), DebugFrame::cie_from_offset)?;
         let uwt_row = fde.unwind_info_for_address(&debug_frame, bases, ctx, pc.into())?;
@@ -410,10 +421,19 @@ fn backtrace(
 
         if !cfa_changed && lr == pc {
             println!("error: the stack appears to be corrupted beyond this point");
-            return Ok(());
+            return Ok(top_exception);
         }
 
         if lr > 0xffff_fff0 {
+            // we walk the stack from top (most recent frame) to bottom (oldest frame) so the first
+            // exception we see is the top one
+            if top_exception.is_none() {
+                top_exception = Some(if name == "HardFault" {
+                    TopException::HardFault
+                } else {
+                    TopException::Other
+                });
+            }
             println!("      <exception entry>");
 
             let sp = registers.get(SP)?;
@@ -433,7 +453,7 @@ fn backtrace(
         frame += 1;
     }
 
-    Ok(())
+    Ok(top_exception)
 }
 
 /// Registers stacked on exception entry
