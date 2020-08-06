@@ -1,9 +1,6 @@
-mod logging;
-
 use structopt;
 
 use anyhow::{anyhow, Context, Result};
-use cargo_toml::Manifest;
 use colored::*;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use std::{
@@ -16,13 +13,13 @@ use std::{
 };
 use structopt::StructOpt;
 
-use serde::Deserialize;
-
 use probe_rs::{
     config::TargetSelector,
     flashing::{download_file_with_options, DownloadOptions, FlashProgress, Format, ProgressEvent},
     DebugProbeError, DebugProbeSelector, Probe, WireProtocol,
 };
+
+use cargo_flash::logging;
 
 #[derive(Debug, StructOpt)]
 struct Opt {
@@ -159,11 +156,6 @@ const ARGUMENTS_TO_REMOVE: &[&str] = &[
     "connect-under-reset",
 ];
 
-#[derive(Clone, Debug, PartialEq, Deserialize)]
-pub struct Meta {
-    pub chip: Option<String>,
-}
-
 fn main() {
     match main_try() {
         Ok(_) => (),
@@ -199,13 +191,7 @@ fn main_try() -> Result<()> {
     logging::init(opt.log);
 
     // Load cargo manifest if available and parse out meta object
-    let meta = match std::fs::read("Cargo.toml") {
-        Ok(buffer) => match Manifest::<Meta>::from_slice_with_metadata(&buffer) {
-            Ok(m) => m.package.map(|p| p.metadata).flatten(),
-            Err(_e) => None,
-        },
-        Err(_) => None,
-    };
+    let meta = cargo_flash::read_metadata(Path::new(".")).ok();
 
     // If someone wants to list the connected probes, just do that and exit.
     if opt.list_probes {

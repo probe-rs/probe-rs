@@ -1,0 +1,2 @@
+# Ignore build output of test projects
+**/target/
