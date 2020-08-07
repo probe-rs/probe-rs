@@ -87,7 +87,7 @@ struct Trace {
 fn main() -> Result<()> {
     pretty_env_logger::init();
 
-    let reader = BufReader::new(OpenOptions::new().read(true).open("trace_config.json")?);
+    let reader = BufReader::new(OpenOptions::new().read(true).open("probe-rs/examples/trace_config.json")?);
     let config: Config = serde_json::from_reader(reader)?;
 
     let xml = &mut String::new();

@@ -1,0 +1,10 @@
+{
+    "output_file": "trace.json",
+    "duration": 10000,
+    "baud": 1000000,
+    "isr_mapping": {
+        "44": "TIM2",
+        "45": "TIM3"
+    },
+    "svd": "probe-rs/examples/stm32f407.svd"
+}
