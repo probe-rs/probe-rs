@@ -17,7 +17,8 @@ fn read_chip_metadata() {
 #[test]
 fn get_binary_artifact() {
     let work_dir = test_project_dir("binary_project");
-    let expected_path = work_dir.join("target/debug/binary_project");
+    let mut expected_path = work_dir.join("target/debug/");
+    expected_path.push(host_binary_name("binary_project"));
 
     let args = [];
 
@@ -75,9 +76,10 @@ fn workspace_root() {
 
     let work_dir = test_project_dir("workspace_project");
 
-    let expected_path = work_dir.join("target/release/workspace_bin");
+    let mut expected_path = work_dir.join("target/release");
+    expected_path.push(host_binary_name("workspace_bin"));
 
-    let args = ["--release".to_owned()];
+    let args = owned_args(&["--release"]);
 
     let binary_path =
         cargo_flash::build_artifact(&work_dir, &args).expect("Failed to read artifact path.");
@@ -93,7 +95,8 @@ fn workspace_binary_package() {
     let workspace_dir = test_project_dir("workspace_project");
     let work_dir = workspace_dir.join("workspace_bin");
 
-    let expected_path = workspace_dir.join("target/release/workspace_bin");
+    let mut expected_path = workspace_dir.join("target/release");
+    expected_path.push(host_binary_name("workspace_bin"));
 
     let args = ["--release".to_owned()];
 
@@ -143,7 +146,8 @@ fn multiple_binaries_in_crate_select_binary() {
     // With multiple binaries in a crate,
     // we should show an error message if no binary is specified
     let work_dir = test_project_dir("multiple_binary_project");
-    let expected_path = work_dir.join("target/debug/bin_a");
+    let mut expected_path = work_dir.join("target/debug");
+    expected_path.push(host_binary_name("bin_a"));
 
     let args = ["--bin".to_owned(), "bin_a".to_owned()];
 
@@ -170,7 +174,8 @@ fn library_with_example() {
 fn library_with_example_specified() {
     // When the example flag is specified, we should flash that example
     let work_dir = test_project_dir("library_with_example_project");
-    let expected_path = work_dir.join("target/debug/examples/example");
+    let mut expected_path = work_dir.join("target/debug/examples");
+    expected_path.push(host_binary_name("example"));
 
     let args = owned_args(&["--example", "example"]);
 
@@ -193,4 +198,14 @@ fn test_project_dir(test_name: &str) -> PathBuf {
 
 fn owned_args(args: &[&str]) -> Vec<String> {
     args.iter().map(|s| (*s).to_owned()).collect()
+}
+
+#[cfg(not(windows))]
+fn host_binary_name(name: &str) -> String {
+    name.to_string() + ".exe"
+}
+
+#[cfg(windows)]
+fn host_binary_name(name: &str) -> String {
+    name.to_string() + ".exe"
 }

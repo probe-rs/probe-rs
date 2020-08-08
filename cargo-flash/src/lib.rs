@@ -6,7 +6,6 @@ use serde::Deserialize;
 
 use cargo_metadata::Message;
 use std::{
-    io::BufReader,
     path::{Path, PathBuf},
     process::{Command, Stdio},
 };
@@ -48,7 +47,7 @@ pub fn build_artifact(work_dir: &Path, args: &[String]) -> Result<PathBuf> {
     let cargo_executable = std::env::var("CARGO").unwrap_or("cargo".to_owned());
 
     // Build the project
-    let mut cargo_command = Command::new(cargo_executable)
+    let cargo_command = Command::new(cargo_executable)
         .current_dir(work_dir)
         .arg("build")
         .args(args)
@@ -56,19 +55,17 @@ pub fn build_artifact(work_dir: &Path, args: &[String]) -> Result<PathBuf> {
         .stdout(Stdio::piped())
         .spawn()?;
 
-    let status = cargo_command.wait()?;
+    let output = cargo_command.wait_with_output()?;
 
-    if !status.success() {
+    if !output.status.success() {
         return Err(anyhow!(
             "Failed to run cargo build: exit code = {:?}",
-            status.code()
+            output.status.code()
         ));
     }
 
-    let reader = BufReader::new(cargo_command.stdout.unwrap());
-
     // parse build output
-    let messages = Message::parse_stream(reader);
+    let messages = Message::parse_stream(&output.stdout[..]);
 
     // find artifacts
     let mut target_artifact = None;
