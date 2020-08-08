@@ -202,7 +202,7 @@ fn owned_args(args: &[&str]) -> Vec<String> {
 
 #[cfg(not(windows))]
 fn host_binary_name(name: &str) -> String {
-    name.to_string() + ".exe"
+    name.to_string()
 }
 
 #[cfg(windows)]
