@@ -22,7 +22,7 @@ fn get_binary_artifact() {
     let args = [];
 
     let binary_path =
-        cargo_flash::get_artifact_path(&work_dir, &args).expect("Failed to read artifact path.");
+        cargo_flash::build_artifact(&work_dir, &args).expect("Failed to read artifact path.");
 
     assert_eq!(binary_path, expected_path);
 }
@@ -35,7 +35,7 @@ fn get_binary_artifact_with_cargo_config() {
     let args = [];
 
     let binary_path =
-        cargo_flash::get_artifact_path(&work_dir, &args).expect("Failed to read artifact path.");
+        cargo_flash::build_artifact(&work_dir, &args).expect("Failed to read artifact path.");
 
     assert_eq!(binary_path, expected_path);
 }
@@ -48,7 +48,7 @@ fn get_binary_artifact_with_cargo_config_toml() {
     let args = [];
 
     let binary_path =
-        cargo_flash::get_artifact_path(&work_dir, &args).expect("Failed to read artifact path.");
+        cargo_flash::build_artifact(&work_dir, &args).expect("Failed to read artifact path.");
 
     assert_eq!(binary_path, expected_path);
 }
@@ -59,7 +59,7 @@ fn get_library_artifact_fails() {
 
     let args = ["--release".to_owned()];
 
-    let binary_path = cargo_flash::get_artifact_path(&work_dir, &args);
+    let binary_path = cargo_flash::build_artifact(&work_dir, &args);
 
     assert!(
         binary_path.is_err(),
@@ -80,7 +80,7 @@ fn workspace_root() {
     let args = ["--release".to_owned()];
 
     let binary_path =
-        cargo_flash::get_artifact_path(&work_dir, &args).expect("Failed to read artifact path.");
+        cargo_flash::build_artifact(&work_dir, &args).expect("Failed to read artifact path.");
 
     assert_eq!(binary_path, expected_path);
 }
@@ -98,7 +98,7 @@ fn workspace_binary_package() {
     let args = ["--release".to_owned()];
 
     let binary_path =
-        cargo_flash::get_artifact_path(&work_dir, &args).expect("Failed to read artifact path.");
+        cargo_flash::build_artifact(&work_dir, &args).expect("Failed to read artifact path.");
 
     assert_eq!(binary_path, expected_path);
 }
@@ -112,7 +112,7 @@ fn workspace_library_package() {
 
     let args = ["--release".to_owned()];
 
-    let binary_path = cargo_flash::get_artifact_path(&work_dir, &args);
+    let binary_path = cargo_flash::build_artifact(&work_dir, &args);
 
     assert!(
         binary_path.is_err(),
@@ -129,7 +129,7 @@ fn multiple_binaries_in_crate() {
 
     let args = [];
 
-    let binary_path = cargo_flash::get_artifact_path(&work_dir, &args);
+    let binary_path = cargo_flash::build_artifact(&work_dir, &args);
 
     assert!(
         binary_path.is_err(),
@@ -148,7 +148,7 @@ fn multiple_binaries_in_crate_select_binary() {
     let args = ["--bin".to_owned(), "bin_a".to_owned()];
 
     let binary_path =
-        cargo_flash::get_artifact_path(&work_dir, &args).expect("Failed to get artifact path.");
+        cargo_flash::build_artifact(&work_dir, &args).expect("Failed to get artifact path.");
 
     assert_eq!(binary_path, expected_path);
 }
@@ -161,7 +161,7 @@ fn library_with_example() {
 
     let args = [];
 
-    let binary_path = cargo_flash::get_artifact_path(&work_dir, &args);
+    let binary_path = cargo_flash::build_artifact(&work_dir, &args);
 
     assert!(binary_path.is_err())
 }
@@ -175,7 +175,7 @@ fn library_with_example_specified() {
     let args = owned_args(&["--example", "example"]);
 
     let binary_path =
-        cargo_flash::get_artifact_path(&work_dir, &args).expect("Failed to get artifact path.");
+        cargo_flash::build_artifact(&work_dir, &args).expect("Failed to get artifact path.");
 
     assert_eq!(binary_path, expected_path);
 }

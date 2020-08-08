@@ -37,7 +37,14 @@ pub fn read_metadata(work_dir: &Path) -> Result<Metadata> {
     })
 }
 
-pub fn get_artifact_path(work_dir: &Path, args: &[String]) -> Result<PathBuf> {
+/// Run `cargo build` and return the path to the generated binary artifact.
+///
+/// `args` will be passed to cargo build, and `--message-format json` will be
+/// added to the list of arguments.
+///
+/// The output of `cargo build` is parsed to detect the path to the generated binary artifact.
+/// If either no artifact, or more than a single artifact are created, an error is returned.
+pub fn build_artifact(work_dir: &Path, args: &[String]) -> Result<PathBuf> {
     let cargo_executable = std::env::var("CARGO").unwrap_or("cargo".to_owned());
 
     // Build the project
@@ -52,7 +59,10 @@ pub fn get_artifact_path(work_dir: &Path, args: &[String]) -> Result<PathBuf> {
     let status = cargo_command.wait()?;
 
     if !status.success() {
-        handle_failed_command(status)
+        return Err(anyhow!(
+            "Failed to run cargo build: exit code = {:?}",
+            status.code()
+        ));
     }
 
     let reader = BufReader::new(cargo_command.stdout.unwrap());
@@ -70,7 +80,10 @@ pub fn get_artifact_path(work_dir: &Path, args: &[String]) -> Result<PathBuf> {
                     if target_artifact.is_some() {
                         // We found multiple binary artifacts,
                         // so we don't know which one to use.
-                        return Err(anyhow!("Multiple binary artifacts found."));
+                        return Err(anyhow!(
+                            "Multiple binary artifacts found. \
+                             Use '--bin' to specify which binary to flash."
+                        ));
                     } else {
                         target_artifact = Some(artifact);
                     }
@@ -91,19 +104,10 @@ pub fn get_artifact_path(work_dir: &Path, args: &[String]) -> Result<PathBuf> {
         Ok(artifact.executable.unwrap())
     } else {
         // We did not find a binary, so we should return an error
-        Err(anyhow!("Unable to find binary artifact."))
+        Err(anyhow!(
+            "Unable to find any binary artifacts. \
+                     Use '--example' to specify an example to flash, \
+                     or '--package' to specify which package to flash in a workspace."
+        ))
     }
-}
-
-#[cfg(unix)]
-fn handle_failed_command(status: std::process::ExitStatus) -> ! {
-    use std::os::unix::process::ExitStatusExt;
-    let status = status.code().or_else(|| status.signal()).unwrap_or(1);
-    std::process::exit(status)
-}
-
-#[cfg(not(unix))]
-fn handle_failed_command(status: std::process::ExitStatus) -> ! {
-    let status = status.code().unwrap_or(1);
-    std::process::exit(status)
 }

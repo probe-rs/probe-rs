@@ -190,14 +190,16 @@ fn main_try() -> Result<()> {
 
     logging::init(opt.log);
 
-    // Load cargo manifest if available and parse out meta object
-    let meta = cargo_flash::read_metadata(Path::new(".")).ok();
+    let work_dir = PathBuf::from(opt.work_dir.unwrap_or_else(|| ".".to_owned()));
 
     // If someone wants to list the connected probes, just do that and exit.
     if opt.list_probes {
         list_connected_devices()?;
         return Ok(());
     }
+
+    // Load cargo manifest if available and parse out meta object
+    let meta = cargo_flash::read_metadata(&work_dir).ok();
 
     // Make sure we load the config given in the cli parameters.
     if let Some(cdp) = opt.chip_description_path {
@@ -222,16 +224,12 @@ fn main_try() -> Result<()> {
     remove_arguments(ARGUMENTS_TO_REMOVE, &mut args);
 
     // Change the work dir if the user asked to do so
-    if let Some(ref work_dir) = opt.work_dir {
-        std::env::set_current_dir(work_dir).context("failed to change the working directory")?;
-    }
+    std::env::set_current_dir(&work_dir).context("failed to change the working directory")?;
 
     let path: PathBuf = if let Some(path) = opt.elf {
         path.into()
     } else {
-        let work_dir = PathBuf::from(opt.work_dir.unwrap_or_else(|| ".".to_owned()));
-
-        cargo_flash::get_artifact_path(&work_dir, &args)?
+        cargo_flash::build_artifact(&work_dir, &args)?
     };
 
     logging::println(format!(
