@@ -7,7 +7,7 @@ use std::{
     env,
     io::Write,
     path::{Path, PathBuf},
-    process::{self, Command, Stdio},
+    process,
     sync::Arc,
     time::Instant,
 };
@@ -222,54 +222,38 @@ fn main_try() -> Result<()> {
     remove_arguments(ARGUMENTS_TO_REMOVE, &mut args);
 
     // Change the work dir if the user asked to do so
-    if let Some(work_dir) = opt.work_dir {
+    if let Some(ref work_dir) = opt.work_dir {
         std::env::set_current_dir(work_dir).context("failed to change the working directory")?;
     }
 
     let path: PathBuf = if let Some(path) = opt.elf {
         path.into()
     } else {
-        let status = Command::new("cargo")
-            .arg("build")
-            .args(args)
-            .stdout(Stdio::inherit())
-            .stderr(Stdio::inherit())
-            .spawn()?
-            .wait()?;
-
-        if !status.success() {
-            handle_failed_command(status)
-        }
-
-        // Try and get the cargo project information.
-        let project = cargo_project::Project::query(".")
-            .map_err(|e| anyhow!("failed to parse Cargo project information: {}", e))?;
-
         // Decide what artifact to use.
         let artifact = if let Some(bin) = &opt.bin {
-            cargo_project::Artifact::Bin(bin)
+            cargo_flash::ArtifactType::Binary(bin.to_owned())
         } else if let Some(example) = &opt.example {
-            cargo_project::Artifact::Example(example)
+            cargo_flash::ArtifactType::Example(example.to_owned())
         } else {
-            cargo_project::Artifact::Bin(project.name())
+            cargo_flash::ArtifactType::Unspecified
         };
 
         // Decide what profile to use.
         let profile = if opt.release {
-            cargo_project::Profile::Release
+            cargo_flash::BuildType::Release
         } else {
-            cargo_project::Profile::Dev
+            cargo_flash::BuildType::Debug
         };
 
-        // Try and get the artifact path.
-        project
-            .path(
-                artifact,
-                profile,
-                opt.target.as_ref().map(|t| &**t),
-                "x86_64-unknown-linux-gnu",
-            )
-            .map_err(|e| anyhow!("Couldn't get artifact path: {}", e))?
+        let work_dir = PathBuf::from(opt.work_dir.unwrap_or_else(|| ".".to_owned()));
+
+        cargo_flash::get_artifact_path(
+            &work_dir,
+            &args,
+            profile,
+            opt.target.as_ref().map(|s| s.as_ref()),
+            artifact,
+        )?
     };
 
     logging::println(format!(
@@ -541,19 +525,6 @@ fn print_families() -> Result<()> {
         }
     }
     Ok(())
-}
-
-#[cfg(unix)]
-fn handle_failed_command(status: std::process::ExitStatus) -> ! {
-    use std::os::unix::process::ExitStatusExt;
-    let status = status.code().or_else(|| status.signal()).unwrap_or(1);
-    std::process::exit(status)
-}
-
-#[cfg(not(unix))]
-fn handle_failed_command(status: std::process::ExitStatus) -> ! {
-    let status = status.code().unwrap_or(1);
-    std::process::exit(status)
 }
 
 /// Removes all arguments from the commandline input that `cargo build` does not understand.
