@@ -37,24 +37,7 @@ pub fn read_metadata(work_dir: &Path) -> Result<Metadata> {
     })
 }
 
-pub enum BuildType {
-    Debug,
-    Release,
-}
-
-pub enum ArtifactType {
-    Binary(String),
-    Example(String),
-    Unspecified,
-}
-
-pub fn get_artifact_path(
-    work_dir: &Path,
-    args: &[String],
-    build_type: BuildType,
-    target: Option<&str>,
-    artifact_type: ArtifactType,
-) -> Result<PathBuf> {
+pub fn get_artifact_path(work_dir: &Path, args: &[String]) -> Result<PathBuf> {
     let cargo_executable = std::env::var("CARGO").unwrap_or("cargo".to_owned());
 
     // Build the project

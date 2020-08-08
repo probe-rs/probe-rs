@@ -229,31 +229,9 @@ fn main_try() -> Result<()> {
     let path: PathBuf = if let Some(path) = opt.elf {
         path.into()
     } else {
-        // Decide what artifact to use.
-        let artifact = if let Some(bin) = &opt.bin {
-            cargo_flash::ArtifactType::Binary(bin.to_owned())
-        } else if let Some(example) = &opt.example {
-            cargo_flash::ArtifactType::Example(example.to_owned())
-        } else {
-            cargo_flash::ArtifactType::Unspecified
-        };
-
-        // Decide what profile to use.
-        let profile = if opt.release {
-            cargo_flash::BuildType::Release
-        } else {
-            cargo_flash::BuildType::Debug
-        };
-
         let work_dir = PathBuf::from(opt.work_dir.unwrap_or_else(|| ".".to_owned()));
 
-        cargo_flash::get_artifact_path(
-            &work_dir,
-            &args,
-            profile,
-            opt.target.as_ref().map(|s| s.as_ref()),
-            artifact,
-        )?
+        cargo_flash::get_artifact_path(&work_dir, &args)?
     };
 
     logging::println(format!(

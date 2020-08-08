@@ -14,7 +14,6 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 structopt = "0.3.2"
-cargo-project = "0.2.3"
 anyhow = "1.0"
 indicatif = "0.14.0"
 env_logger = "0.7.1"
