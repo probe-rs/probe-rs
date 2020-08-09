@@ -4,7 +4,6 @@ use futures::channel::mpsc;
 use futures::future::FutureExt;
 use futures::select;
 use gdb_protocol::packet::{CheckedPacket, Kind as PacketKind};
-use probe_rs::Core;
 use probe_rs::Session;
 use std::convert::TryFrom;
 use std::time::Duration;

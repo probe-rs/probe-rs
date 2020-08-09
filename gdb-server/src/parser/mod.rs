@@ -24,6 +24,7 @@ pub use query::{Pid, QueryPacket};
 use util::hex_u64;
 pub use v_packet::VPacket;
 
+#[allow(dead_code)]
 #[derive(Debug, PartialEq, Clone)]
 pub enum Packet {
     /// Packet `!`
