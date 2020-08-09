@@ -11,6 +11,7 @@ pub enum VPacket {
     QueryContSupport,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, PartialEq, Clone)]
 pub enum Action {
     Continue,
