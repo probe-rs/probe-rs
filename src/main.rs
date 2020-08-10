@@ -29,7 +29,11 @@ use probe_rs::{
 };
 use probe_rs_rtt::{Rtt, ScanRegion};
 use structopt::StructOpt;
-use xmas_elf::{program::Type, sections::SectionData, symbol_table::Entry, ElfFile};
+use xmas_elf::{
+    header::HeaderPt2, program::Type, sections::SectionData, symbol_table::Entry, ElfFile,
+};
+
+const EF_ARM_ABI_FLOAT_HARD: u32 = 0x00000400;
 
 fn main() -> Result<(), anyhow::Error> {
     notmain().map(|code| process::exit(code))
@@ -69,6 +73,15 @@ fn notmain() -> Result<i32, anyhow::Error> {
             }
         })
         .next();
+
+    let flags = match elf.header.pt2 {
+        HeaderPt2::Header32(p32) => p32.flags,
+        HeaderPt2::Header64(p64) => p64.flags,
+    };
+
+    if flags & EF_ARM_ABI_FLOAT_HARD != 0 {
+        bail!("the hard-float ABI is not supported");
+    }
 
     let mut debug_frame = None;
     let mut range_names = None;
