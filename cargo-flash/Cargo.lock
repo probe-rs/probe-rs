@@ -180,9 +180,9 @@ dependencies = [
 
 [[package]]
 name = "cargo_toml"
-version = "0.8.0"
+version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e7877b00aaf997d7ed66a81281d3a8b9f9da5361df05b72785b985349979a0f3"
+checksum = "513d17226888c7b8283ac02a1c1b0d8a9d4cbf6db65dfadb79f598f5d7966fe9"
 dependencies = [
  "serde",
  "serde_derive",
