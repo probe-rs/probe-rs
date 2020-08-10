@@ -1,28 +1,23 @@
-mod logging;
-
-use structopt;
-
 use anyhow::{anyhow, Context, Result};
-use cargo_toml::Manifest;
 use colored::*;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use std::{
     env,
     io::Write,
     path::{Path, PathBuf},
-    process::{self, Command, Stdio},
+    process,
     sync::Arc,
     time::Instant,
 };
 use structopt::StructOpt;
-
-use serde::Deserialize;
 
 use probe_rs::{
     config::TargetSelector,
     flashing::{download_file_with_options, DownloadOptions, FlashProgress, Format, ProgressEvent},
     DebugProbeError, DebugProbeSelector, Probe, WireProtocol,
 };
+
+use cargo_flash::logging;
 
 #[derive(Debug, StructOpt)]
 struct Opt {
@@ -159,11 +154,6 @@ const ARGUMENTS_TO_REMOVE: &[&str] = &[
     "connect-under-reset",
 ];
 
-#[derive(Clone, Debug, PartialEq, Deserialize)]
-pub struct Meta {
-    pub chip: Option<String>,
-}
-
 fn main() {
     match main_try() {
         Ok(_) => (),
@@ -198,20 +188,16 @@ fn main_try() -> Result<()> {
 
     logging::init(opt.log);
 
-    // Load cargo manifest if available and parse out meta object
-    let meta = match std::fs::read("Cargo.toml") {
-        Ok(buffer) => match Manifest::<Meta>::from_slice_with_metadata(&buffer) {
-            Ok(m) => m.package.map(|p| p.metadata).flatten(),
-            Err(_e) => None,
-        },
-        Err(_) => None,
-    };
+    let work_dir = PathBuf::from(opt.work_dir.unwrap_or_else(|| ".".to_owned()));
 
     // If someone wants to list the connected probes, just do that and exit.
     if opt.list_probes {
         list_connected_devices()?;
         return Ok(());
     }
+
+    // Load cargo manifest if available and parse out meta object
+    let meta = cargo_flash::read_metadata(&work_dir).ok();
 
     // Make sure we load the config given in the cli parameters.
     if let Some(cdp) = opt.chip_description_path {
@@ -236,54 +222,12 @@ fn main_try() -> Result<()> {
     remove_arguments(ARGUMENTS_TO_REMOVE, &mut args);
 
     // Change the work dir if the user asked to do so
-    if let Some(work_dir) = opt.work_dir {
-        std::env::set_current_dir(work_dir).context("failed to change the working directory")?;
-    }
+    std::env::set_current_dir(&work_dir).context("failed to change the working directory")?;
 
     let path: PathBuf = if let Some(path) = opt.elf {
         path.into()
     } else {
-        let status = Command::new("cargo")
-            .arg("build")
-            .args(args)
-            .stdout(Stdio::inherit())
-            .stderr(Stdio::inherit())
-            .spawn()?
-            .wait()?;
-
-        if !status.success() {
-            handle_failed_command(status)
-        }
-
-        // Try and get the cargo project information.
-        let project = cargo_project::Project::query(".")
-            .map_err(|e| anyhow!("failed to parse Cargo project information: {}", e))?;
-
-        // Decide what artifact to use.
-        let artifact = if let Some(bin) = &opt.bin {
-            cargo_project::Artifact::Bin(bin)
-        } else if let Some(example) = &opt.example {
-            cargo_project::Artifact::Example(example)
-        } else {
-            cargo_project::Artifact::Bin(project.name())
-        };
-
-        // Decide what profile to use.
-        let profile = if opt.release {
-            cargo_project::Profile::Release
-        } else {
-            cargo_project::Profile::Dev
-        };
-
-        // Try and get the artifact path.
-        project
-            .path(
-                artifact,
-                profile,
-                opt.target.as_ref().map(|t| &**t),
-                "x86_64-unknown-linux-gnu",
-            )
-            .map_err(|e| anyhow!("Couldn't get artifact path: {}", e))?
+        cargo_flash::build_artifact(&work_dir, &args)?
     };
 
     logging::println(format!(
@@ -557,19 +501,6 @@ fn print_families() -> Result<()> {
     Ok(())
 }
 
-#[cfg(unix)]
-fn handle_failed_command(status: std::process::ExitStatus) -> ! {
-    use std::os::unix::process::ExitStatusExt;
-    let status = status.code().or_else(|| status.signal()).unwrap_or(1);
-    std::process::exit(status)
-}
-
-#[cfg(not(unix))]
-fn handle_failed_command(status: std::process::ExitStatus) -> ! {
-    let status = status.code().unwrap_or(1);
-    std::process::exit(status)
-}
-
 /// Removes all arguments from the commandline input that `cargo build` does not understand.
 /// All the arguments are removed in place!
 /// It expects a list of arguments to be removed. If the argument can have a value it MUST contain a `=` at the end.
@@ -662,7 +593,7 @@ fn remove_arguments_test() {
 
     remove_arguments(&arguments_to_remove, &mut arguments);
 
-    assert!(arguments.len() == 0);
+    assert!(arguments.is_empty());
 }
 
 /// Lists all connected devices

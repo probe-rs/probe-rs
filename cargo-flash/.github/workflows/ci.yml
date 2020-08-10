@@ -43,19 +43,29 @@ jobs:
 
   test:
     name: Test Suite
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+
+    runs-on: ${{ matrix.os }} 
     steps:
       - name: Checkout sources
         uses: actions/checkout@v1
 
       - name: Install libusb
         run: sudo apt install -y libusb-dev libusb-1.0
+        # Only install on Ubuntu
+        if: matrix.os == 'ubuntu-latest'
 
       - name: Install stable toolchain
         uses: actions-rs/toolchain@v1
         with:
+          profile: minimal
           toolchain: stable
           override: true
+          target: thumbv7m-none-eabi
 
       - name: Run cargo test
         uses: actions-rs/cargo@v1
