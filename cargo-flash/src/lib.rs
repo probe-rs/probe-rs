@@ -46,7 +46,7 @@ pub fn read_metadata(work_dir: &Path) -> Result<Metadata> {
 pub fn build_artifact(work_dir: &Path, args: &[String]) -> Result<PathBuf> {
     let cargo_executable = std::env::var("CARGO").unwrap_or("cargo".to_owned());
 
-    // Build the project
+    // Build the project.
     let cargo_command = Command::new(cargo_executable)
         .current_dir(work_dir)
         .arg("build")
@@ -64,10 +64,10 @@ pub fn build_artifact(work_dir: &Path, args: &[String]) -> Result<PathBuf> {
         ));
     }
 
-    // parse build output
+    // Parse build output.
     let messages = Message::parse_stream(&output.stdout[..]);
 
-    // find artifacts
+    // Find artifacts.
     let mut target_artifact = None;
 
     for message in messages {
@@ -91,16 +91,16 @@ pub fn build_artifact(work_dir: &Path, args: &[String]) -> Result<PathBuf> {
                     print!("{}", rendered);
                 }
             }
-            // Ignore other messages
+            // Ignore other messages.
             _ => (),
         }
     }
 
     if let Some(artifact) = target_artifact {
-        // Unwrap is safe, we only store artifacts with an executable
+        // Unwrap is safe, we only store artifacts with an executable.
         Ok(artifact.executable.unwrap())
     } else {
-        // We did not find a binary, so we should return an error
+        // We did not find a binary, so we should return an error.
         Err(anyhow!(
             "Unable to find any binary artifacts. \
                      Use '--example' to specify an example to flash, \
