@@ -1,5 +1,3 @@
-use structopt;
-
 use anyhow::{anyhow, Context, Result};
 use colored::*;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
@@ -595,7 +593,7 @@ fn remove_arguments_test() {
 
     remove_arguments(&arguments_to_remove, &mut arguments);
 
-    assert!(arguments.len() == 0);
+    assert!(arguments.is_empty());
 }
 
 /// Lists all connected devices

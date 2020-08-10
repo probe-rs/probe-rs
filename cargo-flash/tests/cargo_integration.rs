@@ -1,5 +1,3 @@
-use cargo_flash;
-
 use std::path::PathBuf;
 
 // Test reading metadata from
