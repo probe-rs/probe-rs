@@ -33,3 +33,6 @@ goblin = "0.2.0"
 tui = { version = "0.9.0", default-features = false, features = ["crossterm"] }
 anyhow = "1.0.31"
 textwrap = "0.11.0"
+
+[patch.crates-io]
+probe-rs = { git = "https://github.com/probe-rs/probe-rs" }
