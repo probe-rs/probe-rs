@@ -15,7 +15,7 @@ license = "MIT OR Apache-2.0"
 [dependencies]
 structopt = "0.3.2"
 cargo-project = "0.2.3"
-indicatif = "0.14.0"
+indicatif = "0.15.0"
 env_logger = "0.7.1"
 log = { version = "0.4.0", features = ["serde"] }
 lazy_static = "1.4.0"
