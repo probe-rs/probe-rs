@@ -4,7 +4,7 @@
 
 on:
   push:
-    branches: [ master ]
+    branches: [master, staging, trying]
   pull_request:
 
 name: CI
@@ -18,17 +18,16 @@ jobs:
           - ubuntu-latest
           - windows-latest
 
-    runs-on: ${{ matrix.os }} 
+    runs-on: ${{ matrix.os }}
 
     steps:
       - name: Checkout sources
         uses: actions/checkout@v1
-      
+
       - name: Install libusb
         run: sudo apt install -y libusb-dev libusb-1.0
         # Only install on Ubuntu
         if: matrix.os == 'ubuntu-latest'
-
 
       - name: Install stable toolchain
         uses: actions-rs/toolchain@v1
@@ -107,4 +106,4 @@ jobs:
         uses: actions-rs/clippy-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          args: --all-features 
+          args: --all-features
