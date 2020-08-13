@@ -46,6 +46,7 @@ fn main() -> Result<(), anyhow::Error> {
 struct Opts {
     #[structopt(long)]
     list_chips: bool,
+    #[cfg(feature = "binfmt")]
     #[structopt(long)]
     binfmt: bool,
     // note: default_value is a hacky way to avoid errors when --list_chips is passed –
@@ -68,13 +69,18 @@ fn notmain() -> Result<i32, anyhow::Error> {
     let bytes = fs::read(&opts.elf)?;
     let elf = ElfFile::new(&bytes).map_err(|s| anyhow!("{}", s))?;
 
-    let table = elf2table::parse(&elf)?;
+    #[cfg(feature = "binfmt")]
+    let table = {
+        let table = elf2table::parse(&elf)?;
 
-    if table.is_none() && opts.binfmt {
-        bail!(".`.binfmt` section not found")
-    } else if table.is_some() && !opts.binfmt {
-        eprintln!("warning: application may be using `binfmt` but `--binfmt` flag was not used");
-    }
+        if table.is_none() && opts.binfmt {
+            bail!(".`.binfmt` section not found")
+        } else if table.is_some() && !opts.binfmt {
+            eprintln!("warning: application may be using `binfmt` but `--binfmt` flag was not used");
+        }
+
+        table
+    };
 
     // sections used in cortex-m-rt
     // NOTE we won't load `.uninit` so it is not included here
@@ -250,6 +256,7 @@ fn notmain() -> Result<i32, anyhow::Error> {
     let stdout = io::stdout();
     let mut stdout = stdout.lock();
     let mut read_buf = [0; 1024];
+    #[cfg(feature = "binfmt")]
     let mut frames = vec![];
     let mut was_halted = false;
     while CONTINUE.load(Ordering::Relaxed) {
@@ -257,19 +264,28 @@ fn notmain() -> Result<i32, anyhow::Error> {
             let num_bytes_read = logging_channel.read(&mut read_buf)?;
 
             if num_bytes_read != 0 {
-                if opts.binfmt {
-                    frames.extend_from_slice(&read_buf[..num_bytes_read]);
+                match () {
+                    #[cfg(feature = "binfmt")]
+                    () => {
+                        if opts.binfmt {
+                            frames.extend_from_slice(&read_buf[..num_bytes_read]);
 
-                    while let Ok((frame, consumed)) =
-                        decoder::decode(&frames, table.as_ref().unwrap())
-                    {
-                        writeln!(stdout, "{}", frame.display(true))?;
-                        let num_frames = frames.len();
-                        frames.rotate_left(consumed);
-                        frames.truncate(num_frames - consumed);
+                            while let Ok((frame, consumed)) =
+                                decoder::decode(&frames, table.as_ref().unwrap())
+                            {
+                                writeln!(stdout, "{}", frame.display(true))?;
+                                let num_frames = frames.len();
+                                frames.rotate_left(consumed);
+                                frames.truncate(num_frames - consumed);
+                            }
+                        } else {
+                            stdout.write_all(&read_buf[..num_bytes_read])?;
+                        }
                     }
-                } else {
-                    stdout.write_all(&read_buf[..num_bytes_read])?;
+                    #[cfg(not(feature = "binfmt"))]
+                    () => {
+                        stdout.write_all(&read_buf[..num_bytes_read])?;
+                    }
                 }
             }
         }

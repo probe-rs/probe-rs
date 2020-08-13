@@ -18,5 +18,8 @@ probe-rs-rtt = "0.1.0"
 rustc-demangle = "0.1.16"
 xmas-elf = "0.7.0"
 structopt = "0.3.15"
-elf2table = { path = "../elf2table" }
-decoder = { path = "../decoder" }
+elf2table = { path = "../elf2table", optional = true }
+decoder = { path = "../decoder", optional = true }
+
+[features]
+binfmt = ["elf2table", "decoder"]
