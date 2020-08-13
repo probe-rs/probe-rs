@@ -27,7 +27,7 @@ use gimli::{
 use probe_rs::config::registry;
 use probe_rs::{
     flashing::{self, Format},
-    Core, CoreRegisterAddress, Probe, Session
+    Core, CoreRegisterAddress, Probe, Session,
 };
 use probe_rs_rtt::{Rtt, ScanRegion, UpChannel};
 use structopt::StructOpt;
@@ -46,6 +46,8 @@ fn main() -> Result<(), anyhow::Error> {
 struct Opts {
     #[structopt(long)]
     list_chips: bool,
+    #[structopt(long)]
+    binfmt: bool,
     // note: default_value is a hacky way to avoid errors when --list_chips is passed –
     // `required_if("list_chips", "true")` does not kick in for some reason
     #[structopt(long, default_value = "nop")]
@@ -67,6 +69,12 @@ fn notmain() -> Result<i32, anyhow::Error> {
     let elf = ElfFile::new(&bytes).map_err(|s| anyhow!("{}", s))?;
 
     let table = elf2table::parse(&elf)?;
+
+    if table.is_none() && opts.binfmt {
+        bail!(".`.binfmt` section not found")
+    } else if table.is_some() && !opts.binfmt {
+        eprintln!("warning: application may be using `binfmt` but `--binfmt` flag was not used");
+    }
 
     // sections used in cortex-m-rt
     // NOTE we won't load `.uninit` so it is not included here
@@ -249,13 +257,19 @@ fn notmain() -> Result<i32, anyhow::Error> {
             let num_bytes_read = logging_channel.read(&mut read_buf)?;
 
             if num_bytes_read != 0 {
-                frames.extend_from_slice(&read_buf[..num_bytes_read]);
+                if opts.binfmt {
+                    frames.extend_from_slice(&read_buf[..num_bytes_read]);
 
-                while let Ok((frame, consumed)) = decoder::decode(&frames, &table) {
-                    writeln!(stdout, "{}", frame.display(true))?;
-                    let num_frames = frames.len();
-                    frames.rotate_left(consumed);
-                    frames.truncate(num_frames - consumed);
+                    while let Ok((frame, consumed)) =
+                        decoder::decode(&frames, table.as_ref().unwrap())
+                    {
+                        writeln!(stdout, "{}", frame.display(true))?;
+                        let num_frames = frames.len();
+                        frames.rotate_left(consumed);
+                        frames.truncate(num_frames - consumed);
+                    }
+                } else {
+                    stdout.write_all(&read_buf[..num_bytes_read])?;
                 }
             }
         }
@@ -304,10 +318,15 @@ enum TopException {
     Other,
 }
 
-fn setup_logging_channel(rtt_addr: Option<u32>, core: &Rc<Core>, sess: &Session) -> Result<UpChannel, anyhow::Error> {
+fn setup_logging_channel(
+    rtt_addr: Option<u32>,
+    core: &Rc<Core>,
+    sess: &Session,
+) -> Result<UpChannel, anyhow::Error> {
     if let Some(rtt_addr_res) = rtt_addr {
         const NUM_RETRIES: usize = 5; // picked at random, increase if necessary
-        let mut rtt_res: Result<Rtt, probe_rs_rtt::Error> = Err(probe_rs_rtt::Error::ControlBlockNotFound);
+        let mut rtt_res: Result<Rtt, probe_rs_rtt::Error> =
+            Err(probe_rs_rtt::Error::ControlBlockNotFound);
 
         for try_index in 0..=NUM_RETRIES {
             rtt_res = Rtt::attach_region(core.clone(), sess, &ScanRegion::Exact(rtt_addr_res));
@@ -337,7 +356,9 @@ fn setup_logging_channel(rtt_addr: Option<u32>, core: &Rc<Core>, sess: &Session)
             .ok_or_else(|| anyhow!("RTT up channel 0 not found"))?;
         Ok(channel)
     } else {
-        Err(anyhow!("No log messages to print, waited for device to halt"))
+        Err(anyhow!(
+            "No log messages to print, waited for device to halt"
+        ))
     }
 }
 
