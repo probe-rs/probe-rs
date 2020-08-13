@@ -28,7 +28,7 @@ rusb = "0.6.0"
 lazy_static = "1.4.0"
 hidapi = "1.2.0"
 gimli = "0.22.0"
-object = "0.20.0"
+object = "0.21.0"
 bitfield = "0.13.2"
 serde = { version = "1.0.104", features = ["derive"] }
 serde_yaml = "0.8.11"
