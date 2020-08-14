@@ -1,5 +1,5 @@
 // `lib.rs` is used only for documentation purposes
-//! Run embedded programs natively
+//! Run embedded programs just like native ones
 //!
 //! `probe-run` is a custom Cargo runner that transparently runs Rust firmware on a remote device.
 //!
