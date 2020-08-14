@@ -77,7 +77,7 @@
 //!
 //! #[exception]
 //! fn PendSV() {
-//!     binfmt::info!("PendSV");
+//!     defmt::info!("PendSV");
 //!     asm::bkpt()
 //! }
 //! ```
