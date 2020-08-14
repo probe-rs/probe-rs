@@ -102,7 +102,10 @@ fn notmain() -> Result<i32, anyhow::Error> {
     };
 
     if flags & EF_ARM_ABI_FLOAT_HARD != 0 {
-        bail!("the hard-float ABI is not supported");
+        bail!(
+            "the hard-float ABI is not supported.\n\
+workaround: use the `thumbv7em-none-eabi` target (note: no `hf`)"
+        );
     }
 
     let mut debug_frame = None;
