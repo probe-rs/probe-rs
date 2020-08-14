@@ -1,15 +1,21 @@
 [package]
-name = "probe-run"
-version = "0.1.0"
 authors = ["Jorge Aparicio <jorge.aparicio@ferrous-systems.com>"]
+categories = ["command-line-utilities", "embedded", "no-std"]
+description = "Runs embedded programs just like native ones"
 edition = "2018"
+keywords = ["knurling", "cargo-runner"]
+license = "MIT OR Apache-2.0"
+name = "probe-run"
+readme = "README.md"
+repository = "https://github.com/knurling-rs/probe-run"
+version = "0.1.0"
 
 [dependencies]
 anyhow = "1.0.32"
 arrayref = "0.3.6"
 ctrlc = "3.1.6"
-decoder = { git = "https://github.com/ferrous-systems/binfmt", branch = "main", optional = true }
-elf2table = { git = "https://github.com/ferrous-systems/binfmt", branch = "main", optional = true }
+decoder = { git = "https://github.com/knurling-rs/defmt", branch = "main", optional = true }
+elf2table = { git = "https://github.com/knurling-rs/defmt", branch = "main", optional = true }
 env_logger = "0.7.1"
 gimli = "0.22.0"
 log = "0.4.11"
@@ -20,4 +26,4 @@ structopt = "0.3.15"
 xmas-elf = "0.7.0"
 
 [features]
-binfmt = ["elf2table", "decoder"]
+defmt = ["elf2table", "decoder"]

@@ -72,11 +72,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3441f0f7b02788e948e47f457ca01f1d7e6d92c693bc132c22b087d3141c03ff"
 
 [[package]]
-name = "binfmt-parser"
-version = "0.1.0"
-source = "git+https://github.com/ferrous-systems/binfmt?branch=main#124e3dc12464a3b7112a04d11561444ff938901d"
-
-[[package]]
 name = "bit-set"
 version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -150,7 +145,7 @@ dependencies = [
 [[package]]
 name = "common"
 version = "0.1.0"
-source = "git+https://github.com/ferrous-systems/binfmt?branch=main#124e3dc12464a3b7112a04d11561444ff938901d"
+source = "git+https://github.com/knurling-rs/defmt?branch=main#2da48689719ed2ab6bffc43b48129fc6d5e1790f"
 
 [[package]]
 name = "crc32fast"
@@ -174,15 +169,20 @@ dependencies = [
 [[package]]
 name = "decoder"
 version = "0.1.0"
-source = "git+https://github.com/ferrous-systems/binfmt?branch=main#124e3dc12464a3b7112a04d11561444ff938901d"
+source = "git+https://github.com/knurling-rs/defmt?branch=main#2da48689719ed2ab6bffc43b48129fc6d5e1790f"
 dependencies = [
- "binfmt-parser",
  "byteorder",
  "colored",
  "common",
+ "defmt-parser",
  "leb128",
  "ryu",
 ]
+
+[[package]]
+name = "defmt-parser"
+version = "0.1.0"
+source = "git+https://github.com/knurling-rs/defmt?branch=main#2da48689719ed2ab6bffc43b48129fc6d5e1790f"
 
 [[package]]
 name = "derivative"
@@ -204,7 +204,7 @@ checksum = "134951f4028bdadb9b84baf4232681efbf277da25144b9b0ad65df75946c422b"
 [[package]]
 name = "elf2table"
 version = "0.1.0"
-source = "git+https://github.com/ferrous-systems/binfmt?branch=main#124e3dc12464a3b7112a04d11561444ff938901d"
+source = "git+https://github.com/knurling-rs/defmt?branch=main#2da48689719ed2ab6bffc43b48129fc6d5e1790f"
 dependencies = [
  "anyhow",
  "decoder",

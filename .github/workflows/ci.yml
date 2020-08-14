@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, staging, trying ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: "--deny warnings"
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        rust:
+          - stable
+          #- nightly
+        os:
+          - ubuntu-latest
+          #- macOS-latest
+          #- windows-latest
+          # FIXME: Reenable macOS, Windows, and nightly once binfmt is open-sourced.
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: ${{ matrix.rust }}
+        override: true
+    - name: Install C libraries for tooling
+      if: matrix.os == 'ubuntu-latest'
+      run: sudo apt-get update && sudo apt-get install libudev-dev libusb-1.0-0-dev
+    - name: Build
+      run: cargo build
+      # NOTE order is important; running `mdbook` at the end = duplicate crate errors

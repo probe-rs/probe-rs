@@ -8,6 +8,10 @@
 //!
 //! [`probe-rs`]: https://probe.rs/
 //!
+//! `probe-run` does not currently support the `thumbv7em-none-eabihf` target. As a workaround
+//! compile your program for to the `thumbv7em-none-eabi` target. For more details see [issue
+//! #1](https://github.com/knurling-rs/probe-run/issues/1).
+//!
 //! # Setup
 //!
 //! The recommend way to use `probe-run` is to set as the Cargo runner of your application.
@@ -77,7 +81,7 @@
 //!
 //! #[exception]
 //! fn PendSV() {
-//!     binfmt::info!("PendSV");
+//!     defmt::info!("PendSV");
 //!     asm::bkpt()
 //! }
 //! ```
@@ -93,3 +97,5 @@
 //! 2: 0x00000408 - main
 //! 3: 0x000005ee - Reset
 //! ```
+
+#![doc(html_root_url = "https://docs.rs/probe-run/0.1.0")]
