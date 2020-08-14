@@ -1,8 +1,14 @@
 [package]
-name = "probe-run"
-version = "0.1.0"
 authors = ["Jorge Aparicio <jorge.aparicio@ferrous-systems.com>"]
+categories = ["command-line-utilities", "embedded", "no-std"]
+description = "Runs embedded programs just like native ones"
 edition = "2018"
+keywords = ["knurling", "cargo-runner"]
+license = "MIT OR Apache-2.0"
+name = "probe-run"
+readme = "README.md"
+repository = "https://github.com/knurling-rs/probe-run"
+version = "0.1.0"
 
 [dependencies]
 anyhow = "1.0.32"

@@ -97,3 +97,5 @@
 //! 2: 0x00000408 - main
 //! 3: 0x000005ee - Reset
 //! ```
+
+#![doc(html_root_url = "https://docs.rs/probe-run/0.1.0")]
