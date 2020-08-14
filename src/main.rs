@@ -1,6 +1,3 @@
-// fork of dk-run with binfmt support
-// (https://github.com/ferrous-systems/embedded-trainings-2020 @ 8ada5dc5d8a0befdc4169088b0a0868c1536a56e)
-
 use core::{
     cmp,
     convert::{TryFrom, TryInto},
