@@ -191,7 +191,11 @@ fn test_project_dir(test_name: &str) -> PathBuf {
     manifest_dir.push("tests");
     manifest_dir.push("data");
 
-    manifest_dir.join(test_name)
+    manifest_dir.push(test_name);
+
+    manifest_dir
+        .canonicalize()
+        .expect("Failed to build canonicalized test_project_dir")
 }
 
 fn owned_args(args: &[&str]) -> Vec<String> {
