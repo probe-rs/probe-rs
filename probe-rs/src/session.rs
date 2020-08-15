@@ -1,8 +1,8 @@
 use crate::architecture::{
     arm::{
         communication_interface::ApInformation::{MemoryAp, Other},
-        core::{debug_core_start, reset_catch_clear, reset_catch_set},
-        memory::{ADIMemoryInterface, Component},
+        core::{debug_core_start, reset_catch_clear, reset_catch_set, CortexState},
+        memory::Component,
         ArmChipInfo, ArmCommunicationInterface, ArmCommunicationInterfaceState, SwoAccess,
         SwoConfig,
     },
@@ -14,7 +14,7 @@ use crate::config::{
     ChipInfo, MemoryRegion, RawFlashAlgorithm, RegistryError, Target, TargetSelector,
 };
 use crate::core::{Architecture, CoreState, SpecificCoreState};
-use crate::{AttachMethod, Core, CoreType, Error, Memory, Probe};
+use crate::{AttachMethod, Core, CoreType, Error, Probe};
 use anyhow::anyhow;
 use std::time::Duration;
 
@@ -76,7 +76,15 @@ impl Session {
             Architecture::Arm => {
                 let state = ArmCommunicationInterfaceState::new();
                 let core = (
-                    SpecificCoreState::from_core_type(target.core_type),
+                    match target.core_type {
+                        // TODO: Change the memory ap of each core to the proper one. For now, as we only support one core, 0 is good.
+                        CoreType::M0 => SpecificCoreState::M0(CortexState::new(0)),
+                        CoreType::M3 => SpecificCoreState::M3(CortexState::new(0)),
+                        CoreType::M33 => SpecificCoreState::M33(CortexState::new(0)),
+                        CoreType::M4 => SpecificCoreState::M4(CortexState::new(0)),
+                        CoreType::M7 => SpecificCoreState::M7(CortexState::new(0)),
+                        CoreType::Riscv => SpecificCoreState::Riscv,
+                    },
                     Core::create_state(0),
                 );
 
@@ -112,10 +120,7 @@ impl Session {
 
                 let state = RiscvCommunicationInterfaceState::new();
 
-                let core = (
-                    SpecificCoreState::from_core_type(target.core_type),
-                    Core::create_state(0),
-                );
+                let core = (SpecificCoreState::Riscv, Core::create_state(0));
 
                 Session {
                     target,
@@ -182,34 +187,21 @@ impl Session {
     }
 
     pub fn get_arm_component(&mut self) -> Result<Component, Error> {
-        let interface = self.get_arm_interface()?;
+        let mut interface = self.get_arm_interface()?;
 
         let ap_index = 0;
 
         let ap_information = interface
-            .ap_information(ap_index.into())
+            .ap_information(ap_index)
             .ok_or_else(|| anyhow!("AP {} does not exist on chip.", ap_index))?;
 
         match ap_information {
             MemoryAp {
-                port_number,
-                only_32bit_data_size,
-                debug_base_address,
+                debug_base_address, ..
             } => {
-                let access_port_number = *port_number;
-                let only_32bit_data_size = *only_32bit_data_size;
                 let base_address = *debug_base_address;
 
-                let mut memory = Memory::new(
-                    ADIMemoryInterface::<ArmCommunicationInterface>::new(
-                        interface,
-                        access_port_number,
-                        only_32bit_data_size,
-                    )
-                    .map_err(Error::architecture_specific)?,
-                );
-
-                Component::try_parse(&mut memory, base_address)
+                Component::try_parse(interface.reborrow(), base_address)
                     .map_err(Error::architecture_specific)
             }
             Other { port_number } => {
@@ -308,6 +300,7 @@ impl Drop for Session {
         }
     }
 }
+
 /// Determine the ```Target``` from a ```TargetSelector```.
 ///
 /// If the selector is ```Unspecified```, the target will be looked up in the registry.

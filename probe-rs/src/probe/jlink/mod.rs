@@ -14,7 +14,7 @@ use crate::{
         DAPAccess, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeType, JTAGAccess,
         WireProtocol,
     },
-    DebugProbeSelector, Error as ProbeRsError,
+    DebugProbeSelector, Error as ProbeRsError, MemoryInterface,
 };
 
 const SWO_BUFFER_SIZE: u16 = 128;
@@ -581,7 +581,7 @@ impl DebugProbe for JLink {
         Ok(())
     }
 
-    fn dedicated_memory_interface(&self) -> Option<crate::Memory> {
+    fn dedicated_memory_interface(&mut self) -> Option<&mut dyn MemoryInterface> {
         None
     }
 

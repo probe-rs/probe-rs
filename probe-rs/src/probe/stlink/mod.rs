@@ -8,7 +8,7 @@ use super::{
 };
 use crate::{
     architecture::arm::{SwoAccess, SwoConfig, SwoMode},
-    DebugProbeSelector, Error as ProbeRsError, Memory,
+    DebugProbeSelector, Error as ProbeRsError, MemoryInterface,
 };
 use constants::{commands, JTagFrequencyToDivider, Mode, Status, SwdFrequencyToDelayCount};
 use scroll::{Pread, BE, LE};
@@ -222,7 +222,7 @@ impl DebugProbe for STLink<STLinkUSBDevice> {
         Ok(())
     }
 
-    fn dedicated_memory_interface(&self) -> Option<Memory> {
+    fn dedicated_memory_interface(&mut self) -> Option<&mut dyn MemoryInterface> {
         None
     }
 

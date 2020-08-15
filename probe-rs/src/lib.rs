@@ -87,7 +87,7 @@ pub use crate::core::{
     CoreInterface, CoreList, CoreRegister, CoreRegisterAddress, CoreStatus, HaltReason,
 };
 pub use crate::error::Error;
-pub use crate::memory::{Memory, MemoryInterface, MemoryList};
+pub use crate::memory::MemoryInterface;
 pub use crate::probe::{
     AttachMethod, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, DebugProbeType,
     Probe, WireProtocol,

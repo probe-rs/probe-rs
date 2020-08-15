@@ -3,20 +3,14 @@ pub(crate) mod communication_interface;
 pub use communication_interface::CommunicationInterface;
 
 use crate::error;
+use crate::DebugProbeError;
 use crate::{
     architecture::{
-        arm::{
-            ap::{AccessPort, GenericAP},
-            communication_interface::ApInformation,
-            core::CortexState,
-            memory::ADIMemoryInterface,
-            ArmCommunicationInterface,
-        },
+        arm::{core::CortexState, ArmCommunicationInterface},
         riscv::communication_interface::RiscvCommunicationInterface,
     },
     Error, MemoryInterface,
 };
-use crate::{DebugProbeError, Memory};
 use anyhow::{anyhow, Result};
 use std::time::Duration;
 
@@ -290,61 +284,24 @@ pub(crate) enum SpecificCoreState {
 }
 
 impl SpecificCoreState {
-    pub(crate) fn from_core_type(typ: CoreType) -> Self {
-        match typ {
-            CoreType::M0 => SpecificCoreState::M0(CortexState::new()),
-            CoreType::M3 => SpecificCoreState::M3(CortexState::new()),
-            CoreType::M33 => SpecificCoreState::M33(CortexState::new()),
-            CoreType::M4 => SpecificCoreState::M4(CortexState::new()),
-            CoreType::M7 => SpecificCoreState::M7(CortexState::new()),
-            CoreType::Riscv => SpecificCoreState::Riscv,
-        }
-    }
-
     pub(crate) fn attach_arm<'probe>(
         &'probe mut self,
         state: &'probe mut CoreState,
         interface: ArmCommunicationInterface<'probe>,
     ) -> Result<Core<'probe>, Error> {
-        // TODO: This should support multiple APs
-        let ap = GenericAP::new(0);
-
-        let ap_information = interface
-            .ap_information(ap)
-            .ok_or_else(|| anyhow!("AP {} does not exist on chip.", ap.port_number()))?;
-
-        let only_32bit_data = match ap_information {
-            ApInformation::MemoryAp {
-                only_32bit_data_size,
-                ..
-            } => *only_32bit_data_size,
-            ApInformation::Other { .. } => {
-                /* unable to attach to an AP which is not a MemoryAP */
-                return Err(anyhow!(
-                    "Unable to attach, AP {} is not a MemoryAP",
-                    ap.port_number()
-                )
-                .into());
-            }
-        };
-
-        let memory = Memory::new(
-            ADIMemoryInterface::<ArmCommunicationInterface>::new(interface, 0, only_32bit_data)
-                .map_err(Error::architecture_specific)?,
-        );
-
         Ok(match self {
             // TODO: Change this once the new archtecture structure for ARM hits.
             // Cortex-M3, M4 and M7 use the Armv7[E]-M architecture and are
             // identical for our purposes.
             SpecificCoreState::M3(s) | SpecificCoreState::M4(s) | SpecificCoreState::M7(s) => {
-                Core::new(crate::architecture::arm::m4::M4::new(memory, s)?, state)
+                Core::new(crate::architecture::arm::m4::M4::new(interface, s)?, state)
             }
-            SpecificCoreState::M33(s) => {
-                Core::new(crate::architecture::arm::m33::M33::new(memory, s)?, state)
-            }
+            SpecificCoreState::M33(s) => Core::new(
+                crate::architecture::arm::m33::M33::new(interface, s)?,
+                state,
+            ),
             SpecificCoreState::M0(s) => {
-                Core::new(crate::architecture::arm::m0::M0::new(memory, s)?, state)
+                Core::new(crate::architecture::arm::m0::M0::new(interface, s)?, state)
             }
             _ => {
                 return Err(Error::UnableToOpenProbe(

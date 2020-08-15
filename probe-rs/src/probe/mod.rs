@@ -5,7 +5,7 @@ pub(crate) mod stlink;
 use crate::architecture::arm::{DAPAccess, PortType, SwoAccess};
 use crate::config::{RegistryError, TargetSelector};
 use crate::error::Error;
-use crate::{Memory, Session};
+use crate::{MemoryInterface, Session};
 use jlink::list_jlink_devices;
 use std::{convert::TryFrom, fmt};
 use thiserror::Error;
@@ -330,8 +330,9 @@ impl Probe {
         self.inner.speed()
     }
 
-    /// Returns a probe specific memory interface if any is present for given probe.
-    pub fn dedicated_memory_interface(&self) -> Result<Option<Memory>, DebugProbeError> {
+    pub fn dedicated_memory_interface(
+        &mut self,
+    ) -> Result<Option<&mut dyn MemoryInterface>, DebugProbeError> {
         if !self.attached {
             Err(DebugProbeError::NotAttached)
         } else {
@@ -443,7 +444,7 @@ pub trait DebugProbe: Send + Sync + fmt::Debug {
     fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError>;
 
     /// Returns a probe specific memory interface if any is present for given probe.
-    fn dedicated_memory_interface(&self) -> Option<Memory>;
+    fn dedicated_memory_interface(&mut self) -> Option<&mut dyn MemoryInterface>;
 
     fn get_interface_dap(&self) -> Option<&dyn DAPAccess>;
 
@@ -630,6 +631,10 @@ impl DebugProbe for FakeProbe {
         unimplemented!()
     }
 
+    fn dedicated_memory_interface(&mut self) -> Option<&mut dyn MemoryInterface> {
+        unimplemented!()
+    }
+
     /// Leave debug mode
     fn detach(&mut self) -> Result<(), DebugProbeError> {
         Ok(())
@@ -646,10 +651,6 @@ impl DebugProbe for FakeProbe {
 
     fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
         unimplemented!()
-    }
-
-    fn dedicated_memory_interface(&self) -> Option<Memory> {
-        None
     }
 
     fn get_interface_dap(&self) -> Option<&dyn DAPAccess> {

@@ -1,5 +1,5 @@
 use crate::config::RegistryError;
-use crate::DebugProbeError;
+use crate::{architecture::arm::ap::AccessPortError, DebugProbeError};
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -23,5 +23,11 @@ pub enum Error {
 impl Error {
     pub fn architecture_specific(e: impl std::error::Error + Send + Sync + 'static) -> Self {
         Self::ArchitectureSpecific(Box::new(e))
+    }
+}
+
+impl From<AccessPortError> for Error {
+    fn from(value: AccessPortError) -> Self {
+        Self::architecture_specific(value)
     }
 }

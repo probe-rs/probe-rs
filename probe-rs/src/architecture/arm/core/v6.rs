@@ -1,5 +1,4 @@
 use super::{reset_catch_clear, reset_catch_set, CortexState, Dfsr, ARM_REGISTER_FILE};
-use crate::architecture::arm::{memory::adi, ArmCommunicationInterface};
 use crate::core::{
     Architecture, CoreInformation, CoreInterface, CoreRegister, CoreRegisterAddress,
     RegisterDescription, RegisterFile, RegisterKind,
@@ -284,34 +283,26 @@ const XPSR: RegisterDescription = RegisterDescription {
 };
 
 pub struct M0<'probe> {
-    interface: ArmCommunicationInterface<'probe>,
+    memory: Memory<'probe>,
 
     state: &'probe mut CortexState,
 }
 
 impl<'probe> M0<'probe> {
     pub(crate) fn new(
-        mut interface: ArmCommunicationInterface<'probe>,
+        mut memory: Memory<'probe>,
         state: &'probe mut CortexState,
     ) -> Result<Self, Error> {
         if !state.initialized() {
             // determine current state
-            let dhcsr = Dhcsr(adi::read_word_32(
-                &mut interface,
-                state.memory_ap,
-                Dhcsr::ADDRESS,
-            )?);
+            let dhcsr = Dhcsr(memory.read_word_32(Dhcsr::ADDRESS)?);
 
             let core_state = if dhcsr.s_sleep() {
                 CoreStatus::Sleeping
             } else if dhcsr.s_halt() {
                 log::debug!("Core was halted when connecting");
 
-                let dfsr = Dfsr(adi::read_word_32(
-                    &mut interface,
-                    state.memory_ap,
-                    Dfsr::ADDRESS,
-                )?);
+                let dfsr = Dfsr(memory.read_word_32(Dfsr::ADDRESS)?);
 
                 let reason = dfsr.halt_reason();
 
@@ -324,25 +315,20 @@ impl<'probe> M0<'probe> {
             // so we clear them here to ensure that that none are set.
             let dfsr_clear = Dfsr::clear_all();
 
-            adi::write_word_32(
-                &mut interface,
-                state.memory_ap,
-                Dfsr::ADDRESS,
-                dfsr_clear.into(),
-            )?;
+            memory.write_word_32(Dfsr::ADDRESS, dfsr_clear.into())?;
 
             state.current_state = core_state;
-            state.initialize(&mut interface)?;
+            state.initialize();
         }
 
-        Ok(Self { interface, state })
+        Ok(Self { memory, state })
     }
 
     fn wait_for_core_register_transfer(&mut self) -> Result<()> {
         // now we have to poll the dhcsr register, until the dhcsr.s_regrdy bit is set
         // (see C1-292, cortex m0 arm)
         for _ in 0..100 {
-            let dhcsr_val = Dhcsr(self.read_word_32(Dhcsr::ADDRESS)?);
+            let dhcsr_val = Dhcsr(self.memory.read_word_32(Dhcsr::ADDRESS)?);
 
             if dhcsr_val.s_regrdy() {
                 return Ok(());
@@ -358,7 +344,7 @@ impl<'probe> CoreInterface for M0<'probe> {
         let start = Instant::now();
 
         while start.elapsed() < timeout {
-            let dhcsr_val = Dhcsr(self.read_word_32(Dhcsr::ADDRESS)?);
+            let dhcsr_val = Dhcsr(self.memory.read_word_32(Dhcsr::ADDRESS)?);
 
             if dhcsr_val.s_halt() {
                 return Ok(());
@@ -369,7 +355,7 @@ impl<'probe> CoreInterface for M0<'probe> {
 
     fn core_halted(&mut self) -> Result<bool, Error> {
         // Wait until halted state is active again.
-        let dhcsr_val = Dhcsr(self.read_word_32(Dhcsr::ADDRESS)?);
+        let dhcsr_val = Dhcsr(self.memory.read_word_32(Dhcsr::ADDRESS)?);
 
         if dhcsr_val.s_halt() {
             Ok(true)
@@ -384,15 +370,17 @@ impl<'probe> CoreInterface for M0<'probe> {
         dcrsr_val.set_regwnr(false); // Perform a read.
         dcrsr_val.set_regsel(addr.into()); // The address of the register to read.
 
-        self.write_word_32(Dcrsr::ADDRESS, dcrsr_val.into())?;
+        self.memory
+            .write_word_32(Dcrsr::ADDRESS, dcrsr_val.into())?;
 
         self.wait_for_core_register_transfer()?;
 
-        self.read_word_32(Dcrdr::ADDRESS).map_err(From::from)
+        self.memory.read_word_32(Dcrdr::ADDRESS).map_err(From::from)
     }
 
     fn write_core_reg(&mut self, addr: CoreRegisterAddress, value: u32) -> Result<()> {
         let result: Result<(), Error> = self
+            .memory
             .write_word_32(Dcrdr::ADDRESS, value)
             .map_err(From::from);
         result?;
@@ -402,7 +390,8 @@ impl<'probe> CoreInterface for M0<'probe> {
         dcrsr_val.set_regwnr(true); // Perform a write.
         dcrsr_val.set_regsel(addr.into()); // The address of the register to write.
 
-        self.write_word_32(Dcrsr::ADDRESS, dcrsr_val.into())?;
+        self.memory
+            .write_word_32(Dcrsr::ADDRESS, dcrsr_val.into())?;
 
         self.wait_for_core_register_transfer()
     }
@@ -415,7 +404,7 @@ impl<'probe> CoreInterface for M0<'probe> {
         value.set_c_debugen(true);
         value.enable_write();
 
-        self.write_word_32(Dhcsr::ADDRESS, value.into())?;
+        self.memory.write_word_32(Dhcsr::ADDRESS, value.into())?;
 
         self.wait_for_core_halted(timeout)?;
 
@@ -432,9 +421,8 @@ impl<'probe> CoreInterface for M0<'probe> {
         value.set_c_debugen(true);
         value.enable_write();
 
-        self.write_word_32(Dhcsr::ADDRESS, value.into())?;
-        self.flush()?;
-        Ok(())
+        self.memory.write_word_32(Dhcsr::ADDRESS, value.into())?;
+        self.memory.flush()
     }
 
     fn step(&mut self) -> Result<CoreInformation, Error> {
@@ -447,7 +435,7 @@ impl<'probe> CoreInterface for M0<'probe> {
         value.set_c_maskints(true);
         value.enable_write();
 
-        self.write_word_32(Dhcsr::ADDRESS, value.into())?;
+        self.memory.write_word_32(Dhcsr::ADDRESS, value.into())?;
 
         self.wait_for_core_halted(Duration::from_millis(100))?;
 
@@ -465,7 +453,7 @@ impl<'probe> CoreInterface for M0<'probe> {
         value.vectkey();
         value.set_sysresetreq(true);
 
-        self.write_word_32(Aircr::ADDRESS, value.into())?;
+        self.memory.write_word_32(Aircr::ADDRESS, value.into())?;
 
         Ok(())
     }
@@ -493,7 +481,7 @@ impl<'probe> CoreInterface for M0<'probe> {
     }
 
     fn get_available_breakpoint_units(&mut self) -> Result<u32, Error> {
-        let result = self.read_word_32(BpCtrl::ADDRESS)?;
+        let result = self.memory.read_word_32(BpCtrl::ADDRESS)?;
 
         let register = BpCtrl::from(result);
 
@@ -506,7 +494,7 @@ impl<'probe> CoreInterface for M0<'probe> {
         value.set_key(true);
         value.set_enable(state);
 
-        self.write_word_32(BpCtrl::ADDRESS, value.into())?;
+        self.memory.write_word_32(BpCtrl::ADDRESS, value.into())?;
 
         self.state.hw_breakpoints_enabled = true;
 
@@ -522,7 +510,7 @@ impl<'probe> CoreInterface for M0<'probe> {
 
         let register_addr = BpCompx::ADDRESS + (bp_register_index * size_of::<u32>()) as u32;
 
-        self.write_word_32(register_addr, value.into())?;
+        self.memory.write_word_32(register_addr, value.into())?;
 
         Ok(())
     }
@@ -537,7 +525,7 @@ impl<'probe> CoreInterface for M0<'probe> {
         let mut value = BpCompx::from(0);
         value.set_enable(false);
 
-        self.write_word_32(register_addr, value.into())?;
+        self.memory.write_word_32(register_addr, value.into())?;
 
         Ok(())
     }
@@ -549,9 +537,8 @@ impl<'probe> CoreInterface for M0<'probe> {
     fn architecture(&self) -> Architecture {
         Architecture::Arm
     }
-
     fn status(&mut self) -> Result<crate::core::CoreStatus, Error> {
-        let dhcsr = Dhcsr(self.read_word_32(Dhcsr::ADDRESS)?);
+        let dhcsr = Dhcsr(self.memory.read_word_32(Dhcsr::ADDRESS)?);
 
         if dhcsr.s_sleep() {
             // Check if we assumed the core to be halted
@@ -567,12 +554,13 @@ impl<'probe> CoreInterface for M0<'probe> {
         // TODO: Handle lockup
 
         if dhcsr.s_halt() {
-            let dfsr = Dfsr(self.read_word_32(Dfsr::ADDRESS)?);
+            let dfsr = Dfsr(self.memory.read_word_32(Dfsr::ADDRESS)?);
 
             let reason = dfsr.halt_reason();
 
             // Clear bits from Dfsr register
-            self.write_word_32(Dfsr::ADDRESS, Dfsr::clear_all().into())?;
+            self.memory
+                .write_word_32(Dfsr::ADDRESS, Dfsr::clear_all().into())?;
 
             // If the core was halted before, we cannot read the halt reason from the chip,
             // because we clear it directly after reading.
@@ -609,50 +597,30 @@ impl<'probe> CoreInterface for M0<'probe> {
 
 impl<'probe> MemoryInterface for M0<'probe> {
     fn read_word_32(&mut self, address: u32) -> Result<u32, Error> {
-        adi::read_word_32(&mut self.interface, self.state.memory_ap, address).map_err(From::from)
+        self.memory.read_word_32(address)
     }
-
     fn read_word_8(&mut self, address: u32) -> Result<u8, Error> {
-        if self.state.supports_only_32bit_access {
-            adi::read_word_8(&mut self.interface, self.state.memory_ap, address).map_err(From::from)
-        } else {
-            adi::read_word_8_true(&mut self.interface, self.state.memory_ap, address)
-                .map_err(From::from)
-        }
+        self.memory.read_word_8(address)
     }
-
     fn read_32(&mut self, address: u32, data: &mut [u32]) -> Result<(), Error> {
-        adi::read_32(&mut self.interface, self.state.memory_ap, address, data).map_err(From::from)
+        self.memory.read_32(address, data)
     }
-
     fn read_8(&mut self, address: u32, data: &mut [u8]) -> Result<(), Error> {
-        adi::read_8(&mut self.interface, self.state.memory_ap, address, data).map_err(From::from)
+        self.memory.read_8(address, data)
     }
-
     fn write_word_32(&mut self, address: u32, data: u32) -> Result<(), Error> {
-        adi::write_word_32(&mut self.interface, self.state.memory_ap, address, data)
-            .map_err(From::from)
+        self.memory.write_word_32(address, data)
     }
-
     fn write_word_8(&mut self, address: u32, data: u8) -> Result<(), Error> {
-        if self.state.supports_only_32bit_access {
-            adi::write_word_8(&mut self.interface, self.state.memory_ap, address, data)
-                .map_err(From::from)
-        } else {
-            adi::write_word_8_true(&mut self.interface, self.state.memory_ap, address, data)
-                .map_err(From::from)
-        }
+        self.memory.write_word_8(address, data)
     }
-
     fn write_32(&mut self, address: u32, data: &[u32]) -> Result<(), Error> {
-        adi::write_32(&mut self.interface, self.state.memory_ap, address, data).map_err(From::from)
+        self.memory.write_32(address, data)
     }
-
     fn write_8(&mut self, address: u32, data: &[u8]) -> Result<(), Error> {
-        adi::write_8(&mut self.interface, self.state.memory_ap, address, data).map_err(From::from)
+        self.memory.write_8(address, data)
     }
-
     fn flush(&mut self) -> Result<(), Error> {
-        adi::flush(&mut self.interface).map_err(From::from)
+        self.memory.flush()
     }
 }

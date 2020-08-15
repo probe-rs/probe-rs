@@ -1,6 +1,7 @@
 //! Memory access port
 
 #[doc(hidden)]
+#[cfg(test)]
 pub(crate) mod mock;
 
 use super::{APAccess, APRegister, AccessPort, GenericAP, Register};

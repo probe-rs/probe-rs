@@ -1,8 +1,11 @@
 use crate::{
+    architecture::arm::ap::{AccessPort, GenericAP, MemoryAP},
     core::{CoreRegister, CoreRegisterAddress, RegisterDescription, RegisterFile, RegisterKind},
     CoreStatus, Error, HaltReason, MemoryInterface,
 };
+use anyhow::anyhow;
 
+use super::{communication_interface::ApInformation, ArmCommunicationInterface};
 use bitfield::bitfield;
 
 pub mod m0;
@@ -295,23 +298,49 @@ impl CoreRegister for Dfsr {
 #[derive(Debug)]
 pub(crate) struct CortexState {
     initialized: bool,
-
     hw_breakpoints_enabled: bool,
-
     current_state: CoreStatus,
+    memory_ap: MemoryAP,
+    supports_only_32bit_access: bool,
 }
 
 impl CortexState {
-    pub(crate) fn new() -> Self {
+    pub(crate) fn new(memory_ap: impl Into<MemoryAP>) -> Self {
         Self {
             initialized: false,
             hw_breakpoints_enabled: false,
             current_state: CoreStatus::Unknown,
+            memory_ap: memory_ap.into(),
+            supports_only_32bit_access: true,
         }
     }
 
-    fn initialize(&mut self) {
+    fn initialize(&mut self, interface: &mut ArmCommunicationInterface<'_>) -> Result<(), Error> {
+        // TODO: This should support multiple APs
+        let ap = GenericAP::new(0);
+
+        let ap_information = interface
+            .ap_information(ap)
+            .ok_or_else(|| anyhow!("AP {} does not exist on chip.", ap.port_number()))?;
+
+        self.supports_only_32bit_access = match ap_information {
+            ApInformation::MemoryAp {
+                only_32bit_data_size,
+                ..
+            } => *only_32bit_data_size,
+            ApInformation::Other { .. } => {
+                /* unable to attach to an AP which is not a MemoryAP */
+                return Err(anyhow!(
+                    "Unable to attach, AP {} is not a MemoryAP",
+                    ap.port_number()
+                )
+                .into());
+            }
+        };
+
         self.initialized = true;
+
+        Ok(())
     }
 
     fn initialized(&self) -> bool {

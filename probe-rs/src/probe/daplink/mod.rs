@@ -8,7 +8,8 @@ use crate::architecture::arm::{
 };
 use crate::probe::{daplink::commands::CmsisDapError, BatchCommand};
 use crate::{
-    DebugProbe, DebugProbeError, DebugProbeSelector, Error as ProbeRsError, Memory, WireProtocol,
+    DebugProbe, DebugProbeError, DebugProbeSelector, Error as ProbeRsError, MemoryInterface,
+    WireProtocol,
 };
 use commands::{
     general::{
@@ -499,6 +500,10 @@ impl DebugProbe for DAPLink {
         }
     }
 
+    fn dedicated_memory_interface(&mut self) -> Option<&mut dyn MemoryInterface> {
+        None
+    }
+
     /// Asserts the nRESET pin.
     fn target_reset(&mut self) -> Result<(), DebugProbeError> {
         commands::send_command(&mut self.device, ResetRequest).map(|v: ResetResponse| {
@@ -523,10 +528,6 @@ impl DebugProbe for DAPLink {
             log::info!("Pin response: {:?}", v);
         })?;
         Ok(())
-    }
-
-    fn dedicated_memory_interface(&self) -> Option<Memory> {
-        None
     }
 
     fn get_interface_dap(&self) -> Option<&dyn DAPAccess> {

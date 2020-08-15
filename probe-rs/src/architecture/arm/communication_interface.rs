@@ -7,12 +7,10 @@ use super::{
         Abort, Ctrl, DPAccess, DPBankSel, DPRegister, DebugPortError, DebugPortId,
         DebugPortVersion, Select, DPIDR,
     },
-    memory::{ADIMemoryInterface, Component},
+    memory::{adi, Component},
     SwoAccess, SwoConfig,
 };
-use crate::{
-    CommunicationInterface, DebugProbe, DebugProbeError, Error as ProbeRsError, Memory, Probe,
-};
+use crate::{CommunicationInterface, DebugProbe, DebugProbeError, Error as ProbeRsError, Probe};
 use anyhow::anyhow;
 use jep106::JEP106Code;
 use thiserror::Error;
@@ -245,10 +243,6 @@ impl<'probe> ArmCommunicationInterface<'probe> {
         ArmCommunicationInterface::new(self.probe, self.state)
             .unwrap()
             .unwrap()
-    }
-
-    pub fn dedicated_memory_interface(&self) -> Result<Option<Memory<'_>>, DebugProbeError> {
-        self.probe.dedicated_memory_interface()
     }
 
     fn enter_debug_mode(&mut self) -> Result<(), DebugProbeError> {
@@ -485,10 +479,13 @@ impl<'probe> ArmCommunicationInterface<'probe> {
     }
 
     /// Determine the type and additional information about a AP
-    pub(crate) fn ap_information(&self, access_port: GenericAP) -> Option<&ApInformation> {
+    pub(crate) fn ap_information(
+        &self,
+        access_port: impl Into<GenericAP> + Copy,
+    ) -> Option<&ApInformation> {
         self.state
             .ap_information
-            .get(access_port.port_number() as usize)
+            .get(access_port.into().port_number() as usize)
     }
 
     /// Read information about an AP from its registers.
@@ -499,12 +496,12 @@ impl<'probe> ArmCommunicationInterface<'probe> {
     /// Currently, AP specific information is read for Memory APs.
     fn read_ap_information(
         &mut self,
-        access_port: GenericAP,
+        access_port: impl Into<GenericAP> + Copy,
     ) -> Result<ApInformation, DebugProbeError> {
         let idr = self.read_ap_register(access_port, IDR::default())?;
 
         if idr.CLASS == APClass::MEMAP {
-            let access_port: MemoryAP = access_port.into();
+            let access_port: MemoryAP = access_port.into().into();
 
             let base_register = self.read_ap_register(access_port, BASE::default())?;
 
@@ -526,7 +523,7 @@ impl<'probe> ArmCommunicationInterface<'probe> {
             })
         } else {
             Ok(ApInformation::Other {
-                port_number: access_port.port_number(),
+                port_number: access_port.into().port_number(),
             })
         }
     }
@@ -702,7 +699,7 @@ fn ap_supports_only_32bit_access(
     interface: &mut ArmCommunicationInterface,
     ap: MemoryAP,
 ) -> Result<bool, DebugProbeError> {
-    let csw = ADIMemoryInterface::<ArmCommunicationInterface>::build_csw_register(DataSize::U8);
+    let csw = adi::build_csw_register(DataSize::U8);
     interface.write_ap_register(ap, csw)?;
     let csw = interface.read_ap_register(ap, CSW::default())?;
 
@@ -730,18 +727,7 @@ impl ArmChipInfo {
 
                 let baseaddr = access_port.base_address(interface)?;
 
-                let data_size = ap_supports_only_32bit_access(interface, access_port)?;
-
-                let mut memory = Memory::new(
-                    ADIMemoryInterface::<ArmCommunicationInterface>::new(
-                        interface.reborrow(),
-                        access_port,
-                        data_size,
-                    )
-                    .map_err(ProbeRsError::architecture_specific)?,
-                );
-
-                let component = Component::try_parse(&mut memory, baseaddr)
+                let component = Component::try_parse(interface.reborrow(), baseaddr)
                     .map_err(ProbeRsError::architecture_specific)?;
 
                 if let Component::Class1RomTable(component_id, _) = component {
