@@ -16,7 +16,7 @@ fn read_chip_metadata() {
 fn get_binary_artifact() {
     let work_dir = test_project_dir("binary_project");
     let mut expected_path = work_dir.join("target");
-    expected_path.push(host_binary_name("debug"));
+    expected_path.push("debug");
     expected_path.push(host_binary_name("binary_project"));
 
     let args = [];
