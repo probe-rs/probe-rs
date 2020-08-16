@@ -15,7 +15,8 @@ fn read_chip_metadata() {
 #[test]
 fn get_binary_artifact() {
     let work_dir = test_project_dir("binary_project");
-    let mut expected_path = work_dir.join("target/debug/");
+    let mut expected_path = work_dir.join("target");
+    expected_path.push(host_binary_name("debug"));
     expected_path.push(host_binary_name("binary_project"));
 
     let args = [];
@@ -29,7 +30,13 @@ fn get_binary_artifact() {
 #[test]
 fn get_binary_artifact_with_cargo_config() {
     let work_dir = test_project_dir("binary_cargo_config");
-    let expected_path = work_dir.join("target/thumbv7m-none-eabi/debug/binary_cargo_config");
+
+    let mut expected_path = work_dir.join("target");
+    expected_path.push("thumbv7m-none-eabi");
+    expected_path.push("debug");
+    expected_path.push("binary_cargo_config");
+
+    let expected_path = expected_path.canonicalize().unwrap();
 
     let args = [];
 
@@ -42,7 +49,12 @@ fn get_binary_artifact_with_cargo_config() {
 #[test]
 fn get_binary_artifact_with_cargo_config_toml() {
     let work_dir = test_project_dir("binary_cargo_config_toml");
-    let expected_path = work_dir.join("target/thumbv7m-none-eabi/debug/binary_cargo_config_toml");
+    let mut expected_path = work_dir.join("target");
+    expected_path.push("thumbv7m-none-eabi");
+    expected_path.push("debug");
+    expected_path.push("binary_cargo_config_toml");
+
+    let expected_path = expected_path.canonicalize().unwrap();
 
     let args = [];
 
@@ -74,7 +86,8 @@ fn workspace_root() {
 
     let work_dir = test_project_dir("workspace_project");
 
-    let mut expected_path = work_dir.join("target/release");
+    let mut expected_path = work_dir.join("target");
+    expected_path.push("release");
     expected_path.push(host_binary_name("workspace_bin"));
 
     let args = owned_args(&["--release"]);
@@ -93,7 +106,8 @@ fn workspace_binary_package() {
     let workspace_dir = test_project_dir("workspace_project");
     let work_dir = workspace_dir.join("workspace_bin");
 
-    let mut expected_path = workspace_dir.join("target/release");
+    let mut expected_path = workspace_dir.join("target");
+    expected_path.push("release");
     expected_path.push(host_binary_name("workspace_bin"));
 
     let args = ["--release".to_owned()];
@@ -144,7 +158,8 @@ fn multiple_binaries_in_crate_select_binary() {
     // With multiple binaries in a crate,
     // we should show an error message if no binary is specified
     let work_dir = test_project_dir("multiple_binary_project");
-    let mut expected_path = work_dir.join("target/debug");
+    let mut expected_path = work_dir.join("target");
+    expected_path.push("debug");
     expected_path.push(host_binary_name("bin_a"));
 
     let args = ["--bin".to_owned(), "bin_a".to_owned()];
@@ -172,7 +187,9 @@ fn library_with_example() {
 fn library_with_example_specified() {
     // When the example flag is specified, we should flash that example
     let work_dir = test_project_dir("library_with_example_project");
-    let mut expected_path = work_dir.join("target/debug/examples");
+    let mut expected_path = work_dir.join("target");
+    expected_path.push("debug");
+    expected_path.push("examples");
     expected_path.push(host_binary_name("example"));
 
     let args = owned_args(&["--example", "example"]);
