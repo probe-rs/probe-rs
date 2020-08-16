@@ -44,7 +44,15 @@ pub fn read_metadata(work_dir: &Path) -> Result<Metadata> {
 /// The output of `cargo build` is parsed to detect the path to the generated binary artifact.
 /// If either no artifact, or more than a single artifact are created, an error is returned.
 pub fn build_artifact(work_dir: &Path, args: &[String]) -> Result<PathBuf> {
+    let work_dir = work_dir.canonicalize()?;
+
     let cargo_executable = std::env::var("CARGO").unwrap_or_else(|_| "cargo".to_owned());
+
+    log::debug!(
+        "Running '{}' in directory {}",
+        cargo_executable,
+        work_dir.display()
+    );
 
     // Build the project.
     let cargo_command = Command::new(cargo_executable)
@@ -56,13 +64,6 @@ pub fn build_artifact(work_dir: &Path, args: &[String]) -> Result<PathBuf> {
         .spawn()?;
 
     let output = cargo_command.wait_with_output()?;
-
-    if !output.status.success() {
-        return Err(anyhow!(
-            "Failed to run cargo build: exit code = {:?}",
-            output.status.code()
-        ));
-    }
 
     // Parse build output.
     let messages = Message::parse_stream(&output.stdout[..]);
@@ -94,6 +95,17 @@ pub fn build_artifact(work_dir: &Path, args: &[String]) -> Result<PathBuf> {
             // Ignore other messages.
             _ => (),
         }
+    }
+
+    // Check if the command succeeded, otherwise return an error.
+    // Any error messages occuring during the build are shown above,
+    // when the compiler messages are rendered.
+    if !output.status.success() {
+        // Show error output
+        return Err(anyhow!(
+            "Failed to run cargo build: exit code = {:?}",
+            output.status.code()
+        ));
     }
 
     if let Some(artifact) = target_artifact {
