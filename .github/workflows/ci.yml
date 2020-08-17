@@ -71,7 +71,7 @@ jobs:
         with:
           toolchain: stable
           override: true
-          target: thumbv7em-none-eabi
+          target: thumbv7m-none-eabi
 
       - name: Run cargo test
         uses: actions-rs/cargo@v1
