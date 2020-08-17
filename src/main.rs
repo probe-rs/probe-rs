@@ -15,7 +15,7 @@ use std::{
     rc::Rc,
 };
 
-use anyhow::{anyhow, bail};
+use anyhow::{anyhow, bail, Context};
 use arrayref::array_ref;
 use gimli::{
     read::{CfaRule, DebugFrame, UnwindSection},
@@ -190,8 +190,7 @@ workaround: use the `thumbv7em-none-eabi` compilation target (note: no `hf`)"
 
     let probes = Probe::list_all();
     if probes.is_empty() {
-        // TODO improve error message
-        bail!("nRF52840 Development Kit appears to not be connected")
+        bail!("no probe was found")
     }
     log::debug!("found {} probes", probes.len());
     let probe = probes[0].open()?;
@@ -480,7 +479,12 @@ fn backtrace(
             .unwrap_or("<unknown>");
         println!("{:>4}: {:#010x} - {}", frame, pc, name);
 
-        let fde = debug_frame.fde_for_address(bases, pc.into(), DebugFrame::cie_from_offset)?;
+        let fde = debug_frame.fde_for_address(bases, pc.into(), DebugFrame::cie_from_offset).with_context(|| {
+            "debug information is missing. Likely fixes:
+1. compile the Rust code with `debug = 1` or higher. This is configured in the `profile.*` section of Cargo.toml
+2. use a recent version of the `cortex-m` crates (e.g. cortex-m 0.6.3 or newer). Check versions in Cargo.lock
+3. if linking to C code, compile the C code with the `-g` flag"
+        })?;
         let uwt_row = fde.unwind_info_for_address(&debug_frame, bases, ctx, pc.into())?;
 
         let cfa_changed = registers.update_cfa(uwt_row.cfa())?;

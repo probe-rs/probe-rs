@@ -29,6 +29,8 @@ manager before installing `probe-run`.
 
 ## Setup
 
+1. Set the Cargo runner
+
 The recommend way to use `probe-run` is to set as the Cargo runner of your application.
 Add this line to your Cargo configuration (`.cargo/config`) file:
 
@@ -41,6 +43,30 @@ runner = "probe-run --chip $CHIP"
 Instead of `$CHIP` you'll need to write the name of your microcontroller.
 For example, one would use `nRF52840_xxAA` for the nRF52840 microcontroller.
 To list all supported chips run `probe-run --list-chips`.
+
+2. Enable debug info
+
+Next check that debug info is enabled for all profiles.
+If you are using the `cortex-m-quickstart` template then this is already the case.
+If not check or add these lines to `Cargo.toml`.
+
+``` toml
+# Cargo.toml
+[profile.dev]
+debug = 1 # default is `true`; not needed if not already overridden
+
+[profile.release]
+debug = 1 # default is `false`; using `true` is also OK
+```
+
+3. Look out for old dependencies
+
+The `cortex-m` dependency must be version 0.6.3 or newer.
+Older versions are not supported.
+Check your `Cargo.lock` for old versions.
+Run `cargo update` to update the `cortex-m` dependency if an older one appears in `Cargo.lock`.
+
+4. Run
 
 You are all set.
 You can now run your firmware using `cargo run`.
