@@ -190,8 +190,7 @@ workaround: use the `thumbv7em-none-eabi` compilation target (note: no `hf`)"
 
     let probes = Probe::list_all();
     if probes.is_empty() {
-        // TODO improve error message
-        bail!("nRF52840 Development Kit appears to not be connected")
+        bail!("no probe was found")
     }
     log::debug!("found {} probes", probes.len());
     let probe = probes[0].open()?;
