@@ -4,7 +4,7 @@
 
 on:
   push:
-    branches: [ master, staging, trying ]
+    branches: [master, staging, trying]
   pull_request:
 
 name: CI
@@ -44,7 +44,17 @@ jobs:
 
   test:
     name: Test Suite
-    runs-on: ubuntu-latest
+
+    # Run the test suite on both Linux and Windows,
+    # to ensure the path handling code works on both.
+    strategy:
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+
+    runs-on: ${{ matrix.os }}
+
     steps:
       - name: Checkout sources
         uses: actions/checkout@v2
@@ -53,12 +63,15 @@ jobs:
         run: |
           sudo apt update
           sudo apt install -y libusb-dev libusb-1.0
+        # Only install on Ubuntu
+        if: matrix.os == 'ubuntu-latest'
 
       - name: Install stable toolchain
         uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
           override: true
+          target: thumbv7em-none-eabi
 
       - name: Run cargo test
         uses: actions-rs/cargo@v1
