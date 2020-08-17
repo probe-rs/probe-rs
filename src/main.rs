@@ -12,7 +12,8 @@ use std::{
     io::{self, Write as _},
     path::PathBuf,
     process,
-    rc::Rc,
+    sync::{Arc, Mutex},
+    time::Duration,
 };
 
 use anyhow::{anyhow, bail, Context};
@@ -24,7 +25,7 @@ use gimli::{
 use probe_rs::config::registry;
 use probe_rs::{
     flashing::{self, Format},
-    Core, CoreRegisterAddress, Probe, Session,
+    Core, CoreRegisterAddress, MemoryInterface, Probe, Session,
 };
 use probe_rs_rtt::{Rtt, ScanRegion, UpChannel};
 use structopt::StructOpt;
@@ -33,6 +34,8 @@ use xmas_elf::{
 };
 
 const EF_ARM_ABI_FLOAT_HARD: u32 = 0x00000400;
+
+const TIMEOUT: Duration = Duration::from_secs(1);
 
 fn main() -> Result<(), anyhow::Error> {
     notmain().map(|code| process::exit(code))
@@ -146,7 +149,7 @@ workaround: use the `thumbv7em-none-eabi` compilation target (note: no `hf`)"
                     .collect::<Vec<_>>();
 
                 if name == ".vector_table" {
-                    registers = Some(Registers {
+                    registers = Some(InitialRegisters {
                         vtor: start,
                         // Initial stack pointer
                         sp: data[0],
@@ -195,13 +198,8 @@ workaround: use the `thumbv7em-none-eabi` compilation target (note: no `hf`)"
     log::debug!("found {} probes", probes.len());
     let probe = probes[0].open()?;
     log::info!("opened probe");
-    let sess = probe.attach(&opts.chip)?;
+    let mut sess = probe.attach(&opts.chip)?;
     log::info!("started session");
-    let core = sess.attach_to_core(0)?;
-    log::info!("attached to core");
-
-    core.reset_and_halt()?;
-    log::info!("reset and halted the core");
 
     eprintln!("flashing program ..");
 
@@ -210,6 +208,12 @@ workaround: use the `thumbv7em-none-eabi` compilation target (note: no `hf`)"
     // this is the link register reset value; it indicates the end of the call stack
     if registers.vtor >= 0x2000_0000 {
         // program lives in RAM
+
+        let mut core = sess.core(0)?;
+        log::info!("attached to core");
+
+        core.reset_and_halt(TIMEOUT)?;
+        log::info!("reset and halted the core");
 
         for section in &sections {
             core.write_32(section.start, &section.data)?;
@@ -230,18 +234,18 @@ workaround: use the `thumbv7em-none-eabi` compilation target (note: no `hf`)"
         core.run()?;
     } else {
         // program lives in Flash
-        flashing::download_file(&sess, &opts.elf, Format::Elf)?;
+        flashing::download_file(&mut sess, &opts.elf, Format::Elf)?;
 
         log::info!("flashed program");
 
-        eprintln!("DONE");
+        let mut core = sess.core(0)?;
+        log::info!("attached to core");
 
+        eprintln!("DONE");
         core.reset()?;
     }
 
     eprintln!("resetting device");
-
-    let core = Rc::new(core);
 
     static CONTINUE: AtomicBool = AtomicBool::new(true);
 
@@ -249,7 +253,8 @@ workaround: use the `thumbv7em-none-eabi` compilation target (note: no `hf`)"
         CONTINUE.store(false, Ordering::Relaxed);
     })?;
 
-    let mut logging_channel = setup_logging_channel(rtt_addr, &core, &sess);
+    let sess = Arc::new(Mutex::new(sess));
+    let mut logging_channel = setup_logging_channel(rtt_addr, sess.clone());
 
     // wait for breakpoint
     let stdout = io::stdout();
@@ -289,6 +294,8 @@ workaround: use the `thumbv7em-none-eabi` compilation target (note: no `hf`)"
             }
         }
 
+        let mut sess = sess.lock().unwrap();
+        let mut core = sess.core(0)?;
         let is_halted = core.core_halted()?;
 
         if is_halted && was_halted {
@@ -298,9 +305,12 @@ workaround: use the `thumbv7em-none-eabi` compilation target (note: no `hf`)"
     }
     drop(stdout);
 
+    let mut sess = sess.lock().unwrap();
+    let mut core = sess.core(0)?;
+
     // Ctrl-C was pressed; stop the microcontroller
     if !CONTINUE.load(Ordering::Relaxed) {
-        core.halt()?;
+        core.halt(TIMEOUT)?;
     }
 
     let pc = core.read_core_reg(PC)?;
@@ -310,9 +320,9 @@ workaround: use the `thumbv7em-none-eabi` compilation target (note: no `hf`)"
     let range_names = range_names.ok_or_else(|| anyhow!("`.symtab` section not found"))?;
 
     // print backtrace
-    let top_exception = backtrace(&core, pc, debug_frame, &range_names)?;
+    let top_exception = backtrace(&mut core, pc, debug_frame, &range_names)?;
 
-    core.reset_and_halt()?;
+    core.reset_and_halt(TIMEOUT)?;
 
     if let Err(err) = logging_channel {
         return Err(err);
@@ -335,8 +345,7 @@ enum TopException {
 
 fn setup_logging_channel(
     rtt_addr: Option<u32>,
-    core: &Rc<Core>,
-    sess: &Session,
+    sess: Arc<Mutex<Session>>,
 ) -> Result<UpChannel, anyhow::Error> {
     if let Some(rtt_addr_res) = rtt_addr {
         const NUM_RETRIES: usize = 5; // picked at random, increase if necessary
@@ -344,7 +353,7 @@ fn setup_logging_channel(
             Err(probe_rs_rtt::Error::ControlBlockNotFound);
 
         for try_index in 0..=NUM_RETRIES {
-            rtt_res = Rtt::attach_region(core.clone(), sess, &ScanRegion::Exact(rtt_addr_res));
+            rtt_res = Rtt::attach_region(sess.clone(), &ScanRegion::Exact(rtt_addr_res));
             match rtt_res {
                 Ok(_) => {
                     log::info!("Successfully attached RTT");
@@ -377,78 +386,78 @@ fn setup_logging_channel(
     }
 }
 
+fn gimli2probe(reg: &gimli::Register) -> CoreRegisterAddress {
+    CoreRegisterAddress(reg.0)
+}
+
+struct Registers<'c, 'probe> {
+    cache: BTreeMap<u16, u32>,
+    core: &'c mut Core<'probe>,
+}
+
+impl<'c, 'probe> Registers<'c, 'probe> {
+    fn new(lr: u32, sp: u32, core: &'c mut Core<'probe>) -> Self {
+        let mut cache = BTreeMap::new();
+        cache.insert(LR.0, lr);
+        cache.insert(SP.0, sp);
+        Self { cache, core }
+    }
+
+    fn get(&mut self, reg: CoreRegisterAddress) -> Result<u32, anyhow::Error> {
+        Ok(match self.cache.entry(reg.0) {
+            btree_map::Entry::Occupied(entry) => *entry.get(),
+            btree_map::Entry::Vacant(entry) => *entry.insert(self.core.read_core_reg(reg)?),
+        })
+    }
+
+    fn insert(&mut self, reg: CoreRegisterAddress, val: u32) {
+        self.cache.insert(reg.0, val);
+    }
+
+    fn update_cfa(
+        &mut self,
+        rule: &CfaRule<EndianSlice<LittleEndian>>,
+    ) -> Result</* cfa_changed: */ bool, anyhow::Error> {
+        match rule {
+            CfaRule::RegisterAndOffset { register, offset } => {
+                let cfa = (i64::from(self.get(gimli2probe(register))?) + offset) as u32;
+                let ok = self.cache.get(&SP.0) != Some(&cfa);
+                self.cache.insert(SP.0, cfa);
+                Ok(ok)
+            }
+
+            // NOTE not encountered in practice so far
+            CfaRule::Expression(_) => todo!("CfaRule::Expression"),
+        }
+    }
+
+    fn update(
+        &mut self,
+        reg: &gimli::Register,
+        rule: &RegisterRule<EndianSlice<LittleEndian>>,
+    ) -> Result<(), anyhow::Error> {
+        match rule {
+            RegisterRule::Undefined => unreachable!(),
+
+            RegisterRule::Offset(offset) => {
+                let cfa = self.get(SP)?;
+                let addr = (i64::from(cfa) + offset) as u32;
+                self.cache.insert(reg.0, self.core.read_word_32(addr)?);
+            }
+
+            _ => unimplemented!(),
+        }
+
+        Ok(())
+    }
+}
+
 fn backtrace(
-    core: &Core,
+    core: &mut Core<'_>,
     mut pc: u32,
     debug_frame: &[u8],
     range_names: &RangeNames,
 ) -> Result<Option<TopException>, anyhow::Error> {
-    fn gimli2probe(reg: &gimli::Register) -> CoreRegisterAddress {
-        CoreRegisterAddress(reg.0)
-    }
-
-    struct Registers<'c> {
-        cache: BTreeMap<u16, u32>,
-        core: &'c Core,
-    }
-
-    impl<'c> Registers<'c> {
-        fn new(lr: u32, sp: u32, core: &'c Core) -> Self {
-            let mut cache = BTreeMap::new();
-            cache.insert(LR.0, lr);
-            cache.insert(SP.0, sp);
-            Self { cache, core }
-        }
-
-        fn get(&mut self, reg: CoreRegisterAddress) -> Result<u32, anyhow::Error> {
-            Ok(match self.cache.entry(reg.0) {
-                btree_map::Entry::Occupied(entry) => *entry.get(),
-                btree_map::Entry::Vacant(entry) => *entry.insert(self.core.read_core_reg(reg)?),
-            })
-        }
-
-        fn insert(&mut self, reg: CoreRegisterAddress, val: u32) {
-            self.cache.insert(reg.0, val);
-        }
-
-        fn update_cfa(
-            &mut self,
-            rule: &CfaRule<EndianSlice<LittleEndian>>,
-        ) -> Result</* cfa_changed: */ bool, anyhow::Error> {
-            match rule {
-                CfaRule::RegisterAndOffset { register, offset } => {
-                    let cfa = (i64::from(self.get(gimli2probe(register))?) + offset) as u32;
-                    let ok = self.cache.get(&SP.0) != Some(&cfa);
-                    self.cache.insert(SP.0, cfa);
-                    Ok(ok)
-                }
-
-                // NOTE not encountered in practice so far
-                CfaRule::Expression(_) => todo!("CfaRule::Expression"),
-            }
-        }
-
-        fn update(
-            &mut self,
-            reg: &gimli::Register,
-            rule: &RegisterRule<EndianSlice<LittleEndian>>,
-        ) -> Result<(), anyhow::Error> {
-            match rule {
-                RegisterRule::Undefined => unreachable!(),
-
-                RegisterRule::Offset(offset) => {
-                    let cfa = self.get(SP)?;
-                    let addr = (i64::from(cfa) + offset) as u32;
-                    self.cache.insert(reg.0, self.core.read_word_32(addr)?);
-                }
-
-                _ => unimplemented!(),
-            }
-
-            Ok(())
-        }
-    }
-
     let mut debug_frame = DebugFrame::new(debug_frame, LittleEndian);
     // 32-bit ARM -- this defaults to the host's address size which is likely going to be 8
     debug_frame.set_address_size(mem::size_of::<u32>() as u8);
@@ -516,7 +525,7 @@ fn backtrace(
             println!("      <exception entry>");
 
             let sp = registers.get(SP)?;
-            let stacked = Stacked::read(core, sp)?;
+            let stacked = Stacked::read(registers.core, sp)?;
 
             registers.insert(LR, stacked.lr);
             // adjust the stack pointer for stacked registers
@@ -570,7 +579,7 @@ struct Stacked {
 }
 
 impl Stacked {
-    fn read(core: &Core, sp: u32) -> Result<Self, anyhow::Error> {
+    fn read(core: &mut Core<'_>, sp: u32) -> Result<Self, anyhow::Error> {
         let mut registers = [0; 8];
         core.read_32(sp, &mut registers)?;
 
@@ -657,7 +666,7 @@ struct Data {
 }
 
 /// Registers to update before running the program
-struct Registers {
+struct InitialRegisters {
     sp: u32,
     pc: u32,
     vtor: u32,
