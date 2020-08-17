@@ -68,7 +68,7 @@ fn notmain() -> Result<i32, anyhow::Error> {
 
     #[cfg(feature = "defmt")]
     let table = {
-        let table = elf2table::parse(&elf)?;
+        let table = elf2table::parse(&bytes)?;
 
         if table.is_none() && opts.defmt {
             bail!(".`.defmt` section not found")
