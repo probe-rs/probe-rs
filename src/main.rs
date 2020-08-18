@@ -574,9 +574,7 @@ struct StackedFpuRegs {
     fpscr: u32,
 }
 
-/// Registers stacked on exception entry
-// XXX assumes that the floating pointer registers are NOT stacked (which may not be the case for HF
-// targets)
+/// Registers stacked on exception entry.
 #[derive(Debug)]
 struct Stacked {
     r0: u32,
