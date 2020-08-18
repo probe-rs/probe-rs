@@ -34,8 +34,9 @@ halt_afterwards = false
 # chip = "name"
 # A list of chip descriptions to be loaded during runtime.
 chip_descriptions = []
-# The default log level to be used.
-log_level = "Warn"
+# The default log level to be used. Possible values are one of:
+#   "OFF", "ERROR", "WARN", "INFO", "DEBUG", "TRACE" 
+log_level = "WARN"
 
 [default.rtt]
 # Whether or not an RTTUI should be opened after flashing.

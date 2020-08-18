@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::rttui::channel::ChannelConfig;
-use anyhow::bail;
+use anyhow::{bail, Context};
 use probe_rs::WireProtocol;
 use serde::{Deserialize, Serialize};
 
@@ -87,20 +87,27 @@ impl Configs {
             config::FileFormat::Toml,
         ))?;
 
-        // Merge in the project-specific configuration files.
-        // These files may be added to your git repo.
-        s.merge(config::File::with_name(".embed").required(false))?;
-        s.merge(config::File::with_name("Embed").required(false))?;
+        // Ordered list of config files, which are handled in the order specified here.
+        let config_files = [
+            // Merge in the project-specific configuration files.
+            // These files may be added to your git repo.
+            ".embed",
+            "Embed",
+            // Merge in the local configuration files.
+            // These files should not be added to your git repo.
+            ".embed.local",
+            "Embed.local",
+            // As described in https://github.com/mehcode/config-rs/issues/101
+            // the above lines will not work unless that bug is fixed, until
+            // then, we add ".ext" to be replaced with a valid format name.
+            ".embed.local.ext",
+            "Embed.local.ext",
+        ];
 
-        // Merge in the local configuration files.
-        // These files should not be added to your git repo.
-        s.merge(config::File::with_name(".embed.local").required(false))?;
-        s.merge(config::File::with_name("Embed.local").required(false))?;
-        // As described in https://github.com/mehcode/config-rs/issues/101
-        // the above lines will not work unless that bug is fiexd, until
-        // then, we add ".ext" to be replaced with a valid format name
-        s.merge(config::File::with_name(".embed.local.ext").required(false))?;
-        s.merge(config::File::with_name("Embed.local.ext").required(false))?;
+        for file in &config_files {
+            s.merge(config::File::with_name(file).required(false))
+                .with_context(|| format!("Failed to merge config file '{}", file))?;
+        }
 
         let map: HashMap<String, serde_json::value::Value> = s.try_into()?;
 
@@ -148,5 +155,17 @@ impl Configs {
             config::FileFormat::Json,
         ))
         .map(|_| ())
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::Configs;
+
+    #[test]
+    fn default_config() {
+        // Ensure the default config can be parsed.
+
+        let _config = Configs::new("default").unwrap();
     }
 }

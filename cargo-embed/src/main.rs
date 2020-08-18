@@ -115,7 +115,7 @@ fn main_try() -> Result<()> {
     // Get the config.
     let config_name = opt.config.as_deref().unwrap_or_else(|| "default");
     let config = config::Configs::new(config_name)
-        .map_err(|e| anyhow!("The config could not be loaded: {}", e))?;
+        .with_context(|| format!("The config '{}' could not be loaded.", config_name))?;
 
     logging::init(Some(config.general.log_level));
 
