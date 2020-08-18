@@ -591,9 +591,19 @@ struct Stacked {
 }
 
 impl Stacked {
+    /// Number of 32-bit words stacked in a basic frame.
+    const WORDS_BASIC: usize = 8;
+
+    /// Number of 32-bit words stacked in an extended frame.
+    const WORDS_EXTENDED: usize = Self::WORDS_BASIC + 17; // 16 FPU regs + 1 status word
+
     fn read(core: &mut Core<'_>, sp: u32, fpu: bool) -> Result<Self, anyhow::Error> {
-        let mut storage = [0; 8 + 17];
-        let registers: &mut [_] = if fpu { &mut storage } else { &mut storage[..8] };
+        let mut storage = [0; Self::WORDS_EXTENDED];
+        let registers: &mut [_] = if fpu {
+            &mut storage
+        } else {
+            &mut storage[..Self::WORDS_BASIC]
+        };
         core.read_32(sp, registers)?;
 
         Ok(Stacked {
@@ -633,9 +643,13 @@ impl Stacked {
 
     /// Returns the in-memory size of these stacked registers, in Bytes.
     fn size(&self) -> u32 {
-        let num_words = if self.fpu_regs.is_none() { 8 } else { 8 + 17 };
+        let num_words = if self.fpu_regs.is_none() {
+            Self::WORDS_BASIC
+        } else {
+            Self::WORDS_EXTENDED
+        };
 
-        num_words * 4
+        num_words as u32 * 4
     }
 }
 // FIXME this might already exist in the DWARF data; we should just use that
