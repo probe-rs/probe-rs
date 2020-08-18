@@ -29,11 +29,7 @@ use probe_rs::{
 };
 use probe_rs_rtt::{Rtt, ScanRegion, UpChannel};
 use structopt::StructOpt;
-use xmas_elf::{
-    header::HeaderPt2, program::Type, sections::SectionData, symbol_table::Entry, ElfFile,
-};
-
-const EF_ARM_ABI_FLOAT_HARD: u32 = 0x00000400;
+use xmas_elf::{program::Type, sections::SectionData, symbol_table::Entry, ElfFile};
 
 const TIMEOUT: Duration = Duration::from_secs(1);
 
@@ -98,18 +94,6 @@ fn notmain() -> Result<i32, anyhow::Error> {
             }
         })
         .next();
-
-    let flags = match elf.header.pt2 {
-        HeaderPt2::Header32(p32) => p32.flags,
-        HeaderPt2::Header64(p64) => p64.flags,
-    };
-
-    if flags & EF_ARM_ABI_FLOAT_HARD != 0 {
-        bail!(
-            "the hard-float ABI is not supported.\n\
-workaround: use the `thumbv7em-none-eabi` compilation target (note: no `hf`)"
-        );
-    }
 
     let mut debug_frame = None;
     let mut range_names = None;
@@ -512,7 +496,13 @@ fn backtrace(
             return Ok(top_exception);
         }
 
-        if lr > 0xffff_fff0 {
+        if lr > 0xffff_ffe0 {
+            let fpu = match lr {
+                0xFFFFFFF1 | 0xFFFFFFF9 | 0xFFFFFFFD => false,
+                0xFFFFFFE1 | 0xFFFFFFE9 | 0xFFFFFFED => true,
+                _ => bail!("LR contains invalid EXC_RETURN value 0x{:08X}", lr),
+            };
+
             // we walk the stack from top (most recent frame) to bottom (oldest frame) so the first
             // exception we see is the top one
             if top_exception.is_none() {
@@ -525,11 +515,11 @@ fn backtrace(
             println!("      <exception entry>");
 
             let sp = registers.get(SP)?;
-            let stacked = Stacked::read(registers.core, sp)?;
+            let stacked = Stacked::read(registers.core, sp, fpu)?;
 
             registers.insert(LR, stacked.lr);
             // adjust the stack pointer for stacked registers
-            registers.insert(SP, sp + mem::size_of::<Stacked>() as u32);
+            registers.insert(SP, sp + stacked.size());
             pc = stacked.pc;
         } else {
             if lr & 1 == 0 {
@@ -563,6 +553,27 @@ fn print_chips() -> Result<i32, anyhow::Error> {
     Ok(0)
 }
 
+#[derive(Debug)]
+struct StackedFpuRegs {
+    s0: f32,
+    s1: f32,
+    s2: f32,
+    s3: f32,
+    s4: f32,
+    s5: f32,
+    s6: f32,
+    s7: f32,
+    s8: f32,
+    s9: f32,
+    s10: f32,
+    s11: f32,
+    s12: f32,
+    s13: f32,
+    s14: f32,
+    s15: f32,
+    fpscr: u32,
+}
+
 /// Registers stacked on exception entry
 // XXX assumes that the floating pointer registers are NOT stacked (which may not be the case for HF
 // targets)
@@ -576,12 +587,14 @@ struct Stacked {
     lr: u32,
     pc: u32,
     xpsr: u32,
+    fpu_regs: Option<StackedFpuRegs>,
 }
 
 impl Stacked {
-    fn read(core: &mut Core<'_>, sp: u32) -> Result<Self, anyhow::Error> {
-        let mut registers = [0; 8];
-        core.read_32(sp, &mut registers)?;
+    fn read(core: &mut Core<'_>, sp: u32, fpu: bool) -> Result<Self, anyhow::Error> {
+        let mut storage = [0; 8 + 17];
+        let registers: &mut [_] = if fpu { &mut storage } else { &mut storage[..8] };
+        core.read_32(sp, registers)?;
 
         Ok(Stacked {
             r0: registers[0],
@@ -592,7 +605,37 @@ impl Stacked {
             lr: registers[5],
             pc: registers[6],
             xpsr: registers[7],
+            fpu_regs: if fpu {
+                Some(StackedFpuRegs {
+                    s0: f32::from_bits(registers[8]),
+                    s1: f32::from_bits(registers[9]),
+                    s2: f32::from_bits(registers[10]),
+                    s3: f32::from_bits(registers[11]),
+                    s4: f32::from_bits(registers[12]),
+                    s5: f32::from_bits(registers[13]),
+                    s6: f32::from_bits(registers[14]),
+                    s7: f32::from_bits(registers[15]),
+                    s8: f32::from_bits(registers[16]),
+                    s9: f32::from_bits(registers[17]),
+                    s10: f32::from_bits(registers[18]),
+                    s11: f32::from_bits(registers[19]),
+                    s12: f32::from_bits(registers[20]),
+                    s13: f32::from_bits(registers[21]),
+                    s14: f32::from_bits(registers[22]),
+                    s15: f32::from_bits(registers[23]),
+                    fpscr: registers[24],
+                })
+            } else {
+                None
+            },
         })
+    }
+
+    /// Returns the in-memory size of these stacked registers, in Bytes.
+    fn size(&self) -> u32 {
+        let num_words = if self.fpu_regs.is_none() { 8 } else { 8 + 17 };
+
+        num_words * 4
     }
 }
 // FIXME this might already exist in the DWARF data; we should just use that
