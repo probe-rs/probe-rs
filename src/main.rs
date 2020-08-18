@@ -6,7 +6,6 @@ use core::{
     sync::atomic::{AtomicBool, Ordering},
 };
 use std::{
-    borrow::Cow,
     collections::{btree_map, BTreeMap},
     fs,
     io::{self, Write as _},
@@ -547,16 +546,10 @@ fn backtrace(
 fn print_chips() -> Result<i32, anyhow::Error> {
     let registry = registry::families().expect("Could not retrieve chip family registry");
     for chip_family in registry {
-        let cf_variants = chip_family
-            .variants
-            .iter()
-            .map(|chip| Cow::Borrowed(&chip.name))
-            .collect::<Vec<_>>();
-
         println!("{}", chip_family.name);
         println!("    Variants:");
-        for variant in cf_variants {
-            println!("        {}", Cow::Borrowed(&variant));
+        for variant in chip_family.variants.iter() {
+            println!("        {}", variant.name);
         }
     }
 
