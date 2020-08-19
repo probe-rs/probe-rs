@@ -1,0 +1,10 @@
+[package]
+name = "panic-probe"
+version = "0.1.0"
+authors = ["Jorge Aparicio <jorge.aparicio@ferrous-systems.com>"]
+edition = "2018"
+description = "Panic handler that exits `probe-run` with an error code"
+
+[dependencies]
+cortex-m = "0.6.3"
+cortex-m-rt = "0.6.12"

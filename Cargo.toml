@@ -27,3 +27,6 @@ xmas-elf = "0.7.0"
 
 [features]
 defmt = ["elf2table", "decoder"]
+
+[workspace]
+members = ["panic-probe"]
