@@ -111,22 +111,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "colored"
-version = "2.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b3616f750b84d8f0de8a58bda93e08e2a81ad3f523089b05f1dffecab48c6cbd"
-dependencies = [
- "atty",
- "lazy_static",
- "winapi",
-]
-
-[[package]]
-name = "common"
-version = "0.1.0"
-source = "git+https://github.com/knurling-rs/defmt?branch=main#ef8046ae3f41b76d3ce8d26a0173451491324cfd"
-
-[[package]]
 name = "crc32fast"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -146,24 +130,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "decoder"
-version = "0.1.0"
-source = "git+https://github.com/knurling-rs/defmt?branch=main#ef8046ae3f41b76d3ce8d26a0173451491324cfd"
-dependencies = [
- "byteorder",
- "colored",
- "common",
- "defmt-parser",
- "leb128",
- "ryu",
-]
-
-[[package]]
-name = "defmt-parser"
-version = "0.1.0"
-source = "git+https://github.com/knurling-rs/defmt?branch=main#ef8046ae3f41b76d3ce8d26a0173451491324cfd"
-
-[[package]]
 name = "derivative"
 version = "2.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -179,16 +145,6 @@ name = "dtoa"
 version = "0.4.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "134951f4028bdadb9b84baf4232681efbf277da25144b9b0ad65df75946c422b"
-
-[[package]]
-name = "elf2table"
-version = "0.1.0"
-source = "git+https://github.com/knurling-rs/defmt?branch=main#ef8046ae3f41b76d3ce8d26a0173451491324cfd"
-dependencies = [
- "anyhow",
- "decoder",
- "object 0.21.1",
-]
 
 [[package]]
 name = "enum-primitive-derive"
@@ -368,12 +324,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
 
 [[package]]
-name = "leb128"
-version = "0.2.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3576a87f2ba00f6f106fdfcd16db1d698d648a26ad8e0573cad8537c3c362d2a"
-
-[[package]]
 name = "libc"
 version = "0.2.74"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -468,12 +418,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "object"
-version = "0.21.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "37fd5004feb2ce328a52b0b3d01dbf4ffff72583493900ed15f22d4111c51693"
-
-[[package]]
 name = "pkg-config"
 version = "0.3.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -505,7 +449,7 @@ dependencies = [
  "lazy_static",
  "log",
  "num-traits",
- "object 0.20.0",
+ "object",
  "probe-rs-t2rust",
  "rusb",
  "scroll",
@@ -542,13 +486,11 @@ dependencies = [
 
 [[package]]
 name = "probe-run"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "anyhow",
  "arrayref",
  "ctrlc",
- "decoder",
- "elf2table",
  "env_logger",
  "gimli 0.22.0",
  "log",
@@ -652,12 +594,6 @@ name = "rustc-demangle"
 version = "0.1.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4c691c0e608126e00913e33f0ccf3727d5fc84573623b8d65b2df340b5201783"
-
-[[package]]
-name = "ryu"
-version = "1.0.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "71d301d4193d031abdd79ff7e3dd721168a9572ef3fe51a1517aba235bd8f86e"
 
 [[package]]
 name = "scroll"

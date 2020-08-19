@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [v0.1.3] - 2020-08-19
+
+### Changed
+
+- Fixed outdated comment in readme
+
 ## [v0.1.2] - 2020-08-19
 
 ### Added
@@ -32,6 +38,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 Initial release
 
-[Unreleased]: https://github.com/knurling-rs/probe-run/compare/v0.1.2...main
+[Unreleased]: https://github.com/knurling-rs/probe-run/compare/v0.1.3...main
+[v0.1.3]: https://github.com/knurling-rs/probe-run/compare/v0.1.2...v0.1.3
 [v0.1.2]: https://github.com/knurling-rs/probe-run/compare/v0.1.1...v0.1.2
 [v0.1.1]: https://github.com/knurling-rs/probe-run/compare/v0.1.0...v0.1.1
