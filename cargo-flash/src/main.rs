@@ -17,7 +17,9 @@ use probe_rs::{
     DebugProbeError, DebugProbeSelector, Probe, WireProtocol,
 };
 
-use cargo_flash::logging;
+mod logging;
+
+use probe_rs_cli_util::{build_artifact, read_metadata};
 
 #[derive(Debug, StructOpt)]
 struct Opt {
@@ -197,7 +199,7 @@ fn main_try() -> Result<()> {
     }
 
     // Load cargo manifest if available and parse out meta object
-    let meta = cargo_flash::read_metadata(&work_dir).ok();
+    let meta = read_metadata(&work_dir).ok();
 
     // Make sure we load the config given in the cli parameters.
     if let Some(cdp) = opt.chip_description_path {
@@ -227,7 +229,8 @@ fn main_try() -> Result<()> {
     let path: PathBuf = if let Some(path) = opt.elf {
         path.into()
     } else {
-        cargo_flash::build_artifact(&work_dir, &args)?
+        // Build the project, and extract the path of the built artifact.
+        build_artifact(&work_dir, &args)?
     };
 
     logging::println(format!(

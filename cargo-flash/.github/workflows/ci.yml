@@ -4,7 +4,7 @@
 
 on:
   push:
-    branches: [ master, staging, trying ]
+    branches: [master, staging, trying]
   pull_request:
 
 name: CI
@@ -18,17 +18,16 @@ jobs:
           - ubuntu-latest
           - windows-latest
 
-    runs-on: ${{ matrix.os }} 
+    runs-on: ${{ matrix.os }}
 
     steps:
       - name: Checkout sources
         uses: actions/checkout@v2.3.2
-      
+
       - name: Install libusb
         run: sudo apt install -y libusb-dev libusb-1.0
         # Only install on Ubuntu
         if: matrix.os == 'ubuntu-latest'
-
 
       - name: Install stable toolchain
         uses: actions-rs/toolchain@v1
@@ -43,21 +42,14 @@ jobs:
 
   test:
     name: Test Suite
-    strategy:
-      matrix:
-        os:
-          - ubuntu-latest
-          - windows-latest
 
-    runs-on: ${{ matrix.os }} 
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout sources
         uses: actions/checkout@v2.3.2
 
       - name: Install libusb
         run: sudo apt install -y libusb-dev libusb-1.0
-        # Only install on Ubuntu
-        if: matrix.os == 'ubuntu-latest'
 
       - name: Install stable toolchain
         uses: actions-rs/toolchain@v1
@@ -65,7 +57,6 @@ jobs:
           profile: minimal
           toolchain: stable
           override: true
-          target: thumbv7m-none-eabi
 
       - name: Run cargo test
         uses: actions-rs/cargo@v1
@@ -117,4 +108,4 @@ jobs:
         uses: actions-rs/clippy-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          args: --all-features 
+          args: --all-features
