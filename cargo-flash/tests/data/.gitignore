@@ -1,5 +1,0 @@
-# Ignore build output of test projects
-**/target/
-
-# Ignore Cargo.lock files
-**/Cargo.lock
