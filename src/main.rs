@@ -331,7 +331,7 @@ fn setup_logging_channel(
     sess: Arc<Mutex<Session>>,
 ) -> Result<UpChannel, anyhow::Error> {
     if let Some(rtt_addr_res) = rtt_addr {
-        const NUM_RETRIES: usize = 5; // picked at random, increase if necessary
+        const NUM_RETRIES: usize = 10; // picked at random, increase if necessary
         let mut rtt_res: Result<Rtt, probe_rs_rtt::Error> =
             Err(probe_rs_rtt::Error::ControlBlockNotFound);
 
