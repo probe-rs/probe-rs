@@ -16,10 +16,6 @@ remote device.
 * Displays program output streamed from the device via RTT.
 * Exits the firmware and prints a stack backtrace on breakpoints.
 
-> `probe-run` does not currently support the `thumbv7em-none-eabihf` target. As a workaround
-compile your program for to the `thumbv7em-none-eabi` target. For more details see [issue
-#1](https://github.com/knurling-rs/probe-run/issues/1).
-
 ## Installation
 
 To install `probe-run`, use `cargo install probe-run`.
