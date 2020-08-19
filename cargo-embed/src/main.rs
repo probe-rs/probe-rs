@@ -16,7 +16,7 @@ use std::{
     io::Write,
     iter, panic,
     path::{Path, PathBuf},
-    process::{self, Command, Stdio},
+    process,
     sync::{Arc, Mutex},
     time::{Duration, Instant},
 };
@@ -27,6 +27,7 @@ use probe_rs::{
     flashing::{download_file_with_options, DownloadOptions, FlashProgress, Format, ProgressEvent},
     DebugProbeSelector, Probe,
 };
+use probe_rs_cli_util::build_artifact;
 use probe_rs_rtt::{Rtt, ScanRegion};
 
 #[derive(Debug, StructOpt)]
@@ -113,6 +114,8 @@ fn main_try() -> Result<()> {
     // Get commandline options.
     let opt = Opt::from_iter(&args);
 
+    let work_dir = std::env::current_dir()?;
+
     // Get the config.
     let config_name = opt.config.as_deref().unwrap_or_else(|| "default");
     let config = config::Configs::new(config_name)
@@ -149,53 +152,13 @@ fn main_try() -> Result<()> {
         args.remove(index);
     }
 
-    let status = Command::new("cargo")
-        .arg("build")
-        .args(args)
-        .stdout(Stdio::inherit())
-        .stderr(Stdio::inherit())
-        .spawn()?
-        .wait()?;
+    let path = build_artifact(&work_dir, &args)?;
 
-    if !status.success() {
-        handle_failed_command(status)
-    }
-
-    // Try and get the cargo project information.
-    let project = cargo_project::Project::query(".")
-        .map_err(|e| anyhow!("failed to parse Cargo project information: {}", e))?;
-
-    // Decide what artifact to use.
-    let (artifact, name) = if let Some(bin) = &opt.bin {
-        (cargo_project::Artifact::Bin(bin), bin.to_owned())
-    } else if let Some(example) = &opt.example {
-        (
-            cargo_project::Artifact::Example(example),
-            example.to_owned(),
-        )
-    } else {
-        (
-            cargo_project::Artifact::Bin(project.name()),
-            project.name().to_owned(),
-        )
-    };
-
-    // Decide what profile to use.
-    let profile = if opt.release {
-        cargo_project::Profile::Release
-    } else {
-        cargo_project::Profile::Dev
-    };
-
-    // Try and get the artifact path.
-    let path = project
-        .path(
-            artifact,
-            profile,
-            opt.target.as_ref().map(|t| &**t),
-            "x86_64-unknown-linux-gnu",
-        )
-        .map_err(|e| anyhow!("Couldn't get artifact path: {}", e))?;
+    // Get the binary name (without extension) from the build artifact path
+    let name = path.file_stem().and_then(|f| f.to_str()).ok_or(anyhow!(
+        "Unable to determine binary file name from path {}",
+        path.display()
+    ))?;
 
     logging::println(format!("      {} {}", "Config".green().bold(), config_name));
     logging::println(format!(
@@ -540,17 +503,4 @@ fn print_families() -> Result<()> {
         }
     }
     Ok(())
-}
-
-#[cfg(unix)]
-fn handle_failed_command(status: std::process::ExitStatus) -> ! {
-    use std::os::unix::process::ExitStatusExt;
-    let status = status.code().or_else(|| status.signal()).unwrap_or(1);
-    std::process::exit(status)
-}
-
-#[cfg(not(unix))]
-fn handle_failed_command(status: std::process::ExitStatus) -> ! {
-    let status = status.code().unwrap_or(1);
-    std::process::exit(status)
 }
