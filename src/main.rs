@@ -44,24 +44,24 @@ struct Opts {
     #[cfg(feature = "defmt")]
     #[structopt(long)]
     defmt: bool,
-    // note: default_value is a hacky way to avoid errors when --list_chips is passed –
-    // `required_if("list_chips", "true")` does not kick in for some reason
-    #[structopt(long, default_value = "nop")]
-    chip: String,
-    #[structopt(name = "ELF", parse(from_os_str), default_value = "nop")]
-    elf: PathBuf,
+    #[structopt(long, required_unless("list-chips"))]
+    chip: Option<String>,
+    #[structopt(name = "ELF", parse(from_os_str), required_unless("list-chips"))]
+    elf: Option<PathBuf>,
 }
 
 fn notmain() -> Result<i32, anyhow::Error> {
     env_logger::init();
 
-    let opts = Opts::from_args();
+    let opts: Opts = Opts::from_args();
 
     if opts.list_chips {
         return print_chips();
     }
 
-    let bytes = fs::read(&opts.elf)?;
+    let elf_path = opts.elf.as_deref().unwrap();
+    let chip = opts.chip.as_deref().unwrap();
+    let bytes = fs::read(elf_path)?;
     let elf = ElfFile::new(&bytes).map_err(|s| anyhow!("{}", s))?;
 
     #[cfg(feature = "defmt")]
@@ -181,7 +181,7 @@ fn notmain() -> Result<i32, anyhow::Error> {
     log::debug!("found {} probes", probes.len());
     let probe = probes[0].open()?;
     log::info!("opened probe");
-    let mut sess = probe.attach(&opts.chip)?;
+    let mut sess = probe.attach(chip)?;
     log::info!("started session");
 
     eprintln!("flashing program ..");
@@ -217,7 +217,7 @@ fn notmain() -> Result<i32, anyhow::Error> {
         core.run()?;
     } else {
         // program lives in Flash
-        flashing::download_file(&mut sess, &opts.elf, Format::Elf)?;
+        flashing::download_file(&mut sess, elf_path, Format::Elf)?;
 
         log::info!("flashed program");
 
