@@ -55,9 +55,9 @@ dependencies = [
 
 [[package]]
 name = "autocfg"
-version = "1.0.0"
+version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f8aac770f1885fd7e387acedd76065302551364496e46b3dd00860b2f8359b9d"
+checksum = "cdb031dd78e28731d87d56cc8ffef4a8f36ca26c38fe2de700543e627f8a464a"
 
 [[package]]
 name = "base64"
@@ -85,9 +85,9 @@ checksum = "08c48aae112d48ed9f069b33538ea9e3e90aa263cfa3d1c24309612b1f7472de"
 
 [[package]]
 name = "cc"
-version = "1.0.58"
+version = "1.0.59"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f9a06fb2e53271d7c279ec1efea6ab691c35a2ae67ec0d91d7acec0caf13b518"
+checksum = "66120af515773fb005778dc07c261bd201ec8ce50bd6e7144c927753fe013381"
 
 [[package]]
 name = "cfg-if"
@@ -124,7 +124,7 @@ dependencies = [
 [[package]]
 name = "common"
 version = "0.1.0"
-source = "git+https://github.com/knurling-rs/defmt?branch=main#ef8046ae3f41b76d3ce8d26a0173451491324cfd"
+source = "git+https://github.com/knurling-rs/defmt?branch=main#41e229f94d7314f38d5bb2170310fee6b5409782"
 
 [[package]]
 name = "crc32fast"
@@ -148,7 +148,7 @@ dependencies = [
 [[package]]
 name = "decoder"
 version = "0.1.0"
-source = "git+https://github.com/knurling-rs/defmt?branch=main#ef8046ae3f41b76d3ce8d26a0173451491324cfd"
+source = "git+https://github.com/knurling-rs/defmt?branch=main#41e229f94d7314f38d5bb2170310fee6b5409782"
 dependencies = [
  "byteorder",
  "colored",
@@ -161,7 +161,7 @@ dependencies = [
 [[package]]
 name = "defmt-parser"
 version = "0.1.0"
-source = "git+https://github.com/knurling-rs/defmt?branch=main#ef8046ae3f41b76d3ce8d26a0173451491324cfd"
+source = "git+https://github.com/knurling-rs/defmt?branch=main#41e229f94d7314f38d5bb2170310fee6b5409782"
 
 [[package]]
 name = "derivative"
@@ -183,7 +183,7 @@ checksum = "134951f4028bdadb9b84baf4232681efbf277da25144b9b0ad65df75946c422b"
 [[package]]
 name = "elf2table"
 version = "0.1.0"
-source = "git+https://github.com/knurling-rs/defmt?branch=main#ef8046ae3f41b76d3ce8d26a0173451491324cfd"
+source = "git+https://github.com/knurling-rs/defmt?branch=main#41e229f94d7314f38d5bb2170310fee6b5409782"
 dependencies = [
  "anyhow",
  "decoder",
@@ -234,9 +234,9 @@ dependencies = [
 
 [[package]]
 name = "flate2"
-version = "1.0.16"
+version = "1.0.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "68c90b0fc46cf89d227cc78b40e494ff81287a92dd07631e5af0d06fe3cf885e"
+checksum = "766d0e77a2c1502169d4a93ff3b8c15a71fd946cd0126309752104e5f3c46d94"
 dependencies = [
  "cfg-if",
  "crc32fast",
@@ -375,9 +375,9 @@ checksum = "3576a87f2ba00f6f106fdfcd16db1d698d648a26ad8e0573cad8537c3c362d2a"
 
 [[package]]
 name = "libc"
-version = "0.2.74"
+version = "0.2.76"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a2f02823cf78b754822df5f7f268fb59822e7296276d3e069d8e8cb26a14bd10"
+checksum = "755456fae044e6fa1ebbbd1b3e902ae19e73097ed4ed87bb79934a867c007bc3"
 
 [[package]]
 name = "libflate"

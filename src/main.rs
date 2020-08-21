@@ -237,7 +237,7 @@ fn notmain() -> Result<i32, anyhow::Error> {
     })?;
 
     let sess = Arc::new(Mutex::new(sess));
-    let mut logging_channel = setup_logging_channel(rtt_addr, sess.clone());
+    let mut logging_channel = setup_logging_channel(rtt_addr, sess.clone())?;
 
     // wait for breakpoint
     let stdout = io::stdout();
@@ -247,7 +247,7 @@ fn notmain() -> Result<i32, anyhow::Error> {
     let mut frames = vec![];
     let mut was_halted = false;
     while CONTINUE.load(Ordering::Relaxed) {
-        if let Ok(logging_channel) = &mut logging_channel {
+        if let Some(logging_channel) = &mut logging_channel {
             let num_bytes_read = logging_channel.read(&mut read_buf)?;
 
             if num_bytes_read != 0 {
@@ -307,10 +307,6 @@ fn notmain() -> Result<i32, anyhow::Error> {
 
     core.reset_and_halt(TIMEOUT)?;
 
-    if let Err(err) = logging_channel {
-        return Err(err);
-    }
-
     Ok(if top_exception == Some(TopException::HardFault) {
         SIGABRT
     } else {
@@ -329,7 +325,7 @@ enum TopException {
 fn setup_logging_channel(
     rtt_addr: Option<u32>,
     sess: Arc<Mutex<Session>>,
-) -> Result<UpChannel, anyhow::Error> {
+) -> Result<Option<UpChannel>, anyhow::Error> {
     if let Some(rtt_addr_res) = rtt_addr {
         const NUM_RETRIES: usize = 10; // picked at random, increase if necessary
         let mut rtt_res: Result<Rtt, probe_rs_rtt::Error> =
@@ -346,7 +342,7 @@ fn setup_logging_channel(
                     if try_index < NUM_RETRIES {
                         log::info!("Could not attach because the target's RTT control block isn't initialized (yet). retrying");
                     } else {
-                        log::info!("Max number of RTT attach retries exceeded. Did you call dk::init() first thing in your program?");
+                        log::info!("Max number of RTT attach retries exceeded.");
                         return Err(anyhow!(probe_rs_rtt::Error::ControlBlockNotFound));
                     }
                 }
@@ -361,11 +357,10 @@ fn setup_logging_channel(
             .up_channels()
             .take(0)
             .ok_or_else(|| anyhow!("RTT up channel 0 not found"))?;
-        Ok(channel)
+        Ok(Some(channel))
     } else {
-        Err(anyhow!(
-            "No log messages to print, waited for device to halt"
-        ))
+        eprintln!("RTT logs not available; blocking until the device halts..");
+        Ok(None)
     }
 }
 
