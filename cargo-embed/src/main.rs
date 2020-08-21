@@ -189,7 +189,9 @@ fn main_try() -> Result<()> {
             // a single probe detected.
             let list = Probe::list_all();
             if list.len() > 1 {
-                return Err(anyhow!("More than a single probe detected. Use the --probe-selector argument to select which probe to use."));
+                return Err(anyhow!("More than a single probe was detected. Use the [default.probe] config attribute \
+                                    (in your Embed.toml) to select which probe to use. \
+                                    For usage examples see https://github.com/probe-rs/cargo-embed/blob/master/src/config/default.toml ."));
             }
 
             Probe::open(
