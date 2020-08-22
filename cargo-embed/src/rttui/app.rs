@@ -12,7 +12,8 @@ use tui::{
     backend::CrosstermBackend,
     layout::{Constraint, Direction, Layout},
     style::{Color, Modifier, Style},
-    widgets::{Block, Borders, List, Paragraph, Tabs, Text},
+    text::{Span, Spans},
+    widgets::{Block, Borders, List, ListItem, Paragraph, Tabs},
     Terminal,
 };
 
@@ -160,7 +161,7 @@ impl App {
             //String todo deal with enums instead
             0 => {
                 self.terminal
-                    .draw(|mut f| {
+                    .draw(|f| {
                         let constraints = if has_down_channel {
                             &[
                                 Constraint::Length(1),
@@ -176,16 +177,18 @@ impl App {
                             .constraints(constraints)
                             .split(f.size());
 
-                        let tab_names = tabs.iter().map(|t| t.name()).collect::<Vec<_>>();
-                        let tabs = Tabs::default()
-                            .titles(&tab_names.as_slice())
+                        let tab_names = tabs
+                            .iter()
+                            .map(|t| Spans::from(t.name()))
+                            .collect::<Vec<_>>();
+                        let tabs = Tabs::new(tab_names)
                             .select(current_tab)
                             .style(Style::default().fg(Color::Black).bg(Color::Yellow))
                             .highlight_style(
                                 Style::default()
                                     .fg(Color::Green)
                                     .bg(Color::Yellow)
-                                    .modifier(Modifier::BOLD),
+                                    .add_modifier(Modifier::BOLD),
                             );
                         f.render_widget(tabs, chunks[0]);
 
@@ -202,20 +205,19 @@ impl App {
 
                         let message_num = messages_wrapped.len();
 
-                        let messages: Vec<Text> = messages_wrapped
+                        let messages: Vec<ListItem> = messages_wrapped
                             .iter()
                             .skip(message_num - (height + scroll_offset).min(message_num))
                             .take(height)
-                            .map(Text::raw)
+                            .map(|s| ListItem::new(vec![Spans::from(Span::raw(s))]))
                             .collect();
 
-                        let messages = List::new(messages.iter().cloned())
+                        let messages = List::new(messages.as_slice())
                             .block(Block::default().borders(Borders::NONE));
                         f.render_widget(messages, chunks[1]);
 
                         if has_down_channel {
-                            let text = [Text::raw(input.clone())];
-                            let input = Paragraph::new(text.iter())
+                            let input = Paragraph::new(Spans::from(vec![Span::raw(input.clone())]))
                                 .style(Style::default().fg(Color::Yellow).bg(Color::Blue));
                             f.render_widget(input, chunks[2]);
                         }
@@ -232,7 +234,7 @@ impl App {
             //binary
             _ => {
                 self.terminal
-                    .draw(|mut f| {
+                    .draw(|f| {
                         let constraints = if has_down_channel {
                             &[
                                 Constraint::Length(1),
@@ -248,16 +250,18 @@ impl App {
                             .constraints(constraints)
                             .split(f.size());
 
-                        let tab_names = tabs.iter().map(|t| t.name()).collect::<Vec<_>>();
-                        let tabs = Tabs::default()
-                            .titles(&tab_names.as_slice())
+                        let tab_names = tabs
+                            .iter()
+                            .map(|t| Spans::from(t.name()))
+                            .collect::<Vec<_>>();
+                        let tabs = Tabs::new(tab_names)
                             .select(current_tab)
                             .style(Style::default().fg(Color::Black).bg(Color::Yellow))
                             .highlight_style(
                                 Style::default()
                                     .fg(Color::Green)
                                     .bg(Color::Yellow)
-                                    .modifier(Modifier::BOLD),
+                                    .add_modifier(Modifier::BOLD),
                             );
                         f.render_widget(tabs, chunks[0]);
 
@@ -279,20 +283,19 @@ impl App {
 
                         let message_num = messages_wrapped.len();
 
-                        let messages: Vec<Text> = messages_wrapped
+                        let messages: Vec<ListItem> = messages_wrapped
                             .iter()
                             .skip(message_num - (height + scroll_offset).min(message_num))
                             .take(height)
-                            .map(Text::raw)
+                            .map(|s| ListItem::new(vec![Spans::from(Span::raw(s))]))
                             .collect();
 
-                        let messages = List::new(messages.iter().cloned())
+                        let messages = List::new(messages.as_slice())
                             .block(Block::default().borders(Borders::NONE));
                         f.render_widget(messages, chunks[1]);
 
                         if has_down_channel {
-                            let text = [Text::raw(input.clone())];
-                            let input = Paragraph::new(text.iter())
+                            let input = Paragraph::new(Spans::from(vec![Span::raw(input.clone())]))
                                 .style(Style::default().fg(Color::Yellow).bg(Color::Blue));
                             f.render_widget(input, chunks[2]);
                         }
