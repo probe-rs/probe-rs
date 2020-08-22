@@ -48,6 +48,9 @@ struct Opts {
     chip: Option<String>,
     #[structopt(name = "ELF", parse(from_os_str), required_unless("list-chips"))]
     elf: Option<PathBuf>,
+    #[structopt(long)]
+    /// Skip writing the application binary to flash
+    no_flash: bool,
 }
 
 fn notmain() -> Result<i32, anyhow::Error> {
@@ -216,10 +219,13 @@ fn notmain() -> Result<i32, anyhow::Error> {
 
         core.run()?;
     } else {
-        // program lives in Flash
-        flashing::download_file(&mut sess, elf_path, Format::Elf)?;
-
-        log::info!("flashed program");
+        if opts.no_flash {
+            log::info!("skipped flashing");
+        } else {
+            // program lives in Flash
+            flashing::download_file(&mut sess, elf_path, Format::Elf)?;
+            log::info!("flashed program");
+        }
 
         let mut core = sess.core(0)?;
         log::info!("attached to core");
