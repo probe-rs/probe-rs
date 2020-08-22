@@ -33,12 +33,13 @@ impl ChannelState {
         show_timestamps: bool,
     ) -> Self {
         let name = name
-            .clone()
-            .or(up_channel.as_ref().and_then(|up| up.name().map(Into::into)))
-            .or(down_channel
-                .as_ref()
-                .and_then(|down| down.name().map(Into::into)))
-            .unwrap_or("Unnamed channel".to_owned());
+            .or_else(|| up_channel.as_ref().and_then(|up| up.name().map(Into::into)))
+            .or_else(|| {
+                down_channel
+                    .as_ref()
+                    .and_then(|down| down.name().map(Into::into))
+            })
+            .unwrap_or_else(|| "Unnamed channel".to_owned());
 
         Self {
             up_channel,
@@ -131,7 +132,7 @@ impl ChannelState {
                         incoming = last_line + &incoming;
                     }
                 }
-                self.last_line_done = incoming.chars().last().unwrap() == '\n';
+                self.last_line_done = incoming.ends_with('\n');
 
                 // Then split the incoming buffer discarding newlines and if necessary
                 // add a timestamp at start of each.

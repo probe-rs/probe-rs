@@ -90,5 +90,5 @@ fn remove_arguments_test() {
 
     remove_arguments(&arguments_to_remove, &mut arguments);
 
-    assert!(arguments.len() == 0);
+    assert!(arguments.is_empty());
 }
