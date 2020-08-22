@@ -4,8 +4,6 @@ mod helpers;
 mod logging;
 mod rttui;
 
-use structopt;
-
 use anyhow::{anyhow, Context, Result};
 use chrono::Local;
 use colored::*;
@@ -155,10 +153,12 @@ fn main_try() -> Result<()> {
     let path = build_artifact(&work_dir, &args)?;
 
     // Get the binary name (without extension) from the build artifact path
-    let name = path.file_stem().and_then(|f| f.to_str()).ok_or(anyhow!(
-        "Unable to determine binary file name from path {}",
-        path.display()
-    ))?;
+    let name = path.file_stem().and_then(|f| f.to_str()).ok_or_else(|| {
+        anyhow!(
+            "Unable to determine binary file name from path {}",
+            path.display()
+        )
+    })?;
 
     logging::println(format!("      {} {}", "Config".green().bold(), config_name));
     logging::println(format!(
@@ -178,10 +178,10 @@ fn main_try() -> Result<()> {
             Probe::open(selector)?
         }
         _ => {
-            if let Some(_) = config.probe.usb_vid {
+            if config.probe.usb_vid.is_some() {
                 log::warn!("USB VID ignored, because PID is not specified.");
             }
-            if let Some(_) = config.probe.usb_pid {
+            if config.probe.usb_pid.is_some() {
                 log::warn!("USB PID ignored, because VID is not specified.");
             }
 

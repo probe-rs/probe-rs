@@ -85,7 +85,7 @@ impl App {
 
         // Code farther down relies on tabs being configured and might panic
         // otherwise.
-        if tabs.len() == 0 {
+        if tabs.is_empty() {
             return Err(anyhow!(
                 "Failed to initialize RTT UI: No RTT channels configured"
             ));
@@ -129,7 +129,7 @@ impl App {
 
     pub fn get_rtt_symbol<'b, T: Read + Seek>(file: &'b mut T) -> Option<u64> {
         let mut buffer = Vec::new();
-        if let Ok(_) = file.read_to_end(&mut buffer) {
+        if file.read_to_end(&mut buffer).is_ok() {
             if let Ok(binary) = goblin::elf::Elf::parse(&buffer.as_slice()) {
                 for sym in &binary.syms {
                     if let Some(Ok(name)) = binary.strtab.get(sym.st_name) {
@@ -206,7 +206,7 @@ impl App {
                             .iter()
                             .skip(message_num - (height + scroll_offset).min(message_num))
                             .take(height)
-                            .map(|m| Text::raw(m))
+                            .map(Text::raw)
                             .collect();
 
                         let messages = List::new(messages.iter().cloned())
@@ -283,7 +283,7 @@ impl App {
                             .iter()
                             .skip(message_num - (height + scroll_offset).min(message_num))
                             .take(height)
-                            .map(|m| Text::raw(m))
+                            .map(Text::raw)
                             .collect();
 
                         let messages = List::new(messages.iter().cloned())
