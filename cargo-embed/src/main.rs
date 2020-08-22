@@ -32,6 +32,8 @@ use probe_rs_rtt::{Rtt, ScanRegion};
 struct Opt {
     #[structopt(name = "config")]
     config: Option<String>,
+    #[structopt(name = "chip", long = "chip")]
+    chip: Option<String>,
     #[structopt(name = "list-chips", long = "list-chips")]
     list_chips: bool,
     #[structopt(name = "disable-progressbars", long = "disable-progressbars")]
@@ -58,7 +60,7 @@ struct Opt {
     features: Vec<String>,
 }
 
-const ARGUMENTS_TO_REMOVE: &[&str] = &["list-chips", "disable-progressbars"];
+const ARGUMENTS_TO_REMOVE: &[&str] = &["list-chips", "disable-progressbars", "chip="];
 
 fn main() {
     match main_try() {
@@ -131,10 +133,8 @@ fn main_try() -> Result<()> {
         print_families()?;
         std::process::exit(0);
     } else {
-        config
-            .general
-            .chip
-            .as_ref()
+        opt.chip
+            .or_else(|| config.general.chip.clone())
             .map(|chip| chip.into())
             .unwrap_or(TargetSelector::Auto)
     };
