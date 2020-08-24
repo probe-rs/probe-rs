@@ -3,20 +3,14 @@ pub(crate) mod communication_interface;
 pub use communication_interface::CommunicationInterface;
 
 use crate::error;
+use crate::DebugProbeError;
 use crate::{
     architecture::{
-        arm::{
-            ap::{AccessPort, GenericAP},
-            communication_interface::ApInformation,
-            core::CortexState,
-            memory::ADIMemoryInterface,
-            ArmCommunicationInterface,
-        },
+        arm::{ap::MemoryAP, core::CortexState, ArmCommunicationInterface},
         riscv::communication_interface::RiscvCommunicationInterface,
     },
     Error, MemoryInterface,
 };
-use crate::{DebugProbeError, Memory};
 use anyhow::{anyhow, Result};
 use std::time::Duration;
 
@@ -307,31 +301,9 @@ impl SpecificCoreState {
         interface: ArmCommunicationInterface<'probe>,
     ) -> Result<Core<'probe>, Error> {
         // TODO: This should support multiple APs
-        let ap = GenericAP::new(0);
+        let ap = MemoryAP::new(0);
 
-        let ap_information = interface
-            .ap_information(ap)
-            .ok_or_else(|| anyhow!("AP {} does not exist on chip.", ap.port_number()))?;
-
-        let only_32bit_data = match ap_information {
-            ApInformation::MemoryAp {
-                only_32bit_data_size,
-                ..
-            } => *only_32bit_data_size,
-            ApInformation::Other { .. } => {
-                /* unable to attach to an AP which is not a MemoryAP */
-                return Err(anyhow!(
-                    "Unable to attach, AP {} is not a MemoryAP",
-                    ap.port_number()
-                )
-                .into());
-            }
-        };
-
-        let memory = Memory::new(
-            ADIMemoryInterface::<ArmCommunicationInterface>::new(interface, 0, only_32bit_data)
-                .map_err(Error::architecture_specific)?,
-        );
+        let memory = interface.memory_interface(ap)?;
 
         Ok(match self {
             // TODO: Change this once the new archtecture structure for ARM hits.

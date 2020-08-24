@@ -7,7 +7,6 @@ use crate::architecture::arm::dp::DebugPortError;
 use crate::DebugProbeError;
 
 pub use generic_ap::{APClass, APType, GenericAP, IDR};
-pub(crate) use memory_ap::mock;
 pub use memory_ap::{
     AddressIncrement, BaseaddrFormat, DataSize, MemoryAP, BASE, BASE2, CSW, DRW, TAR,
 };

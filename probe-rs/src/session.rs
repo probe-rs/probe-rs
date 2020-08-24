@@ -1,8 +1,9 @@
 use crate::architecture::{
     arm::{
+        ap::MemoryAP,
         communication_interface::ApInformation::{MemoryAp, Other},
         core::{debug_core_start, reset_catch_clear, reset_catch_set},
-        memory::{ADIMemoryInterface, Component},
+        memory::Component,
         ArmChipInfo, ArmCommunicationInterface, ArmCommunicationInterfaceState, SwoAccess,
         SwoConfig,
     },
@@ -14,7 +15,7 @@ use crate::config::{
     ChipInfo, MemoryRegion, RawFlashAlgorithm, RegistryError, Target, TargetSelector,
 };
 use crate::core::{Architecture, CoreState, SpecificCoreState};
-use crate::{AttachMethod, Core, CoreType, Error, Memory, Probe};
+use crate::{AttachMethod, Core, CoreType, Error, Probe};
 use anyhow::anyhow;
 use std::time::Duration;
 
@@ -192,30 +193,22 @@ impl Session {
     pub fn get_arm_component(&mut self) -> Result<Component, Error> {
         let interface = self.get_arm_interface()?;
 
-        let ap_index = 0;
+        let ap_index = MemoryAP::from(0);
 
         let ap_information = interface
-            .ap_information(ap_index.into())
-            .ok_or_else(|| anyhow!("AP {} does not exist on chip.", ap_index))?;
+            .ap_information(ap_index)
+            .ok_or_else(|| anyhow!("AP {:?} does not exist on chip.", ap_index))?;
 
         match ap_information {
             MemoryAp {
                 port_number,
-                only_32bit_data_size,
+                only_32bit_data_size: _,
                 debug_base_address,
             } => {
                 let access_port_number = *port_number;
-                let only_32bit_data_size = *only_32bit_data_size;
                 let base_address = *debug_base_address;
 
-                let mut memory = Memory::new(
-                    ADIMemoryInterface::<ArmCommunicationInterface>::new(
-                        interface,
-                        access_port_number,
-                        only_32bit_data_size,
-                    )
-                    .map_err(Error::architecture_specific)?,
-                );
+                let mut memory = interface.memory_interface(access_port_number.into())?;
 
                 Component::try_parse(&mut memory, base_address)
                     .map_err(Error::architecture_specific)

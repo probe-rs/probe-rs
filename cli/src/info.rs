@@ -4,10 +4,10 @@ use probe_rs::{
     architecture::arm::{
         ap::{valid_access_ports, APClass, BaseaddrFormat, MemoryAP, BASE, BASE2, IDR},
         m0::Demcr,
-        memory::{ADIMemoryInterface, Component},
+        memory::Component,
         ArmCommunicationInterface, ArmCommunicationInterfaceState,
     },
-    CoreRegister, Memory,
+    CoreRegister,
 };
 
 use anyhow::Result;
@@ -67,12 +67,7 @@ pub(crate) fn show_info_of_device(shared_options: &SharedOptions) -> Result<()> 
                 };
                 baseaddr |= u64::from(base_register.BASEADDR << 12);
 
-                // We assume that only 32bit accesses work here, speed is not really an issue
-                let mut memory = Memory::new(ADIMemoryInterface::<ArmCommunicationInterface>::new(
-                    interface.reborrow(),
-                    access_port,
-                    true,
-                )?);
+                let mut memory = interface.reborrow().memory_interface(access_port)?;
 
                 // Enable
                 // - Data Watchpoint and Trace (DWT)

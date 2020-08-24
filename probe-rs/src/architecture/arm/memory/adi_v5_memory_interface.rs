@@ -1,6 +1,5 @@
 use super::super::ap::{
-    mock::MockMemoryAP, APAccess, APRegister, AccessPortError, AddressIncrement, DataSize,
-    MemoryAP, CSW, DRW, TAR,
+    APAccess, APRegister, AccessPortError, AddressIncrement, DataSize, MemoryAP, CSW, DRW, TAR,
 };
 use crate::architecture::arm::{dp::DPAccess, ArmCommunicationInterface};
 use crate::{CommunicationInterface, Error, MemoryInterface};
@@ -9,7 +8,7 @@ use std::convert::TryInto;
 use std::ops::Range;
 
 /// A struct to give access to a targets memory using a certain DAP.
-pub struct ADIMemoryInterface<AP>
+pub(in crate::architecture::arm) struct ADIMemoryInterface<AP>
 where
     AP: CommunicationInterface
         + APAccess<MemoryAP, CSW>
@@ -34,24 +33,6 @@ impl<'probe> ADIMemoryInterface<ArmCommunicationInterface<'probe>> {
             access_port: access_port_number.into(),
             only_32bit_data_size,
         })
-    }
-}
-
-impl ADIMemoryInterface<MockMemoryAP> {
-    /// Creates a new MemoryInterface for given AccessPort.
-    pub fn new(
-        mock: MockMemoryAP,
-        access_port_number: impl Into<MemoryAP>,
-    ) -> ADIMemoryInterface<MockMemoryAP> {
-        Self {
-            interface: mock,
-            access_port: access_port_number.into(),
-            only_32bit_data_size: false,
-        }
-    }
-
-    pub fn mock_memory(&self) -> &[u8] {
-        &self.interface.memory
     }
 }
 
@@ -557,8 +538,26 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::super::super::ap::mock::MockMemoryAP;
+    use super::super::super::ap::{memory_ap::mock::MockMemoryAP, MemoryAP};
     use super::ADIMemoryInterface;
+
+    impl ADIMemoryInterface<MockMemoryAP> {
+        /// Creates a new MemoryInterface for given AccessPort.
+        fn new(
+            mock: MockMemoryAP,
+            access_port_number: impl Into<MemoryAP>,
+        ) -> ADIMemoryInterface<MockMemoryAP> {
+            Self {
+                interface: mock,
+                access_port: access_port_number.into(),
+                only_32bit_data_size: false,
+            }
+        }
+
+        fn mock_memory(&self) -> &[u8] {
+            &self.interface.memory
+        }
+    }
 
     // Visually obvious pattern used to test memory writes
     const DATA8: &[u8] = &[

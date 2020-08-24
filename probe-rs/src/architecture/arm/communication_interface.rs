@@ -7,7 +7,7 @@ use super::{
         Abort, Ctrl, DPAccess, DPBankSel, DPRegister, DebugPortError, DebugPortId,
         DebugPortVersion, Select, DPIDR,
     },
-    memory::{ADIMemoryInterface, Component},
+    memory::{adi_v5_memory_interface::ADIMemoryInterface, Component},
     SwoAccess, SwoConfig,
 };
 use crate::{
@@ -247,8 +247,33 @@ impl<'probe> ArmCommunicationInterface<'probe> {
             .unwrap()
     }
 
-    pub fn dedicated_memory_interface(&self) -> Result<Option<Memory<'_>>, DebugProbeError> {
-        self.probe.dedicated_memory_interface()
+    pub fn memory_interface(self, access_port: MemoryAP) -> Result<Memory<'probe>, ProbeRsError> {
+        let info = self
+            .ap_information(access_port)
+            .expect("Failed to get information for AP");
+
+        match info {
+            ApInformation::MemoryAp {
+                port_number: _,
+                only_32bit_data_size,
+                debug_base_address: _,
+            } => {
+                let only_32bit_data_size = *only_32bit_data_size;
+                let adi_v5_memory_interface =
+                    ADIMemoryInterface::<ArmCommunicationInterface<'_>>::new(
+                        self,
+                        access_port,
+                        only_32bit_data_size,
+                    )
+                    .map_err(ProbeRsError::architecture_specific)?;
+
+                Ok(Memory::new(adi_v5_memory_interface))
+            }
+            ApInformation::Other { port_number } => Err(ProbeRsError::Other(anyhow!(format!(
+                "AP {} is not a memory AP",
+                port_number
+            )))),
+        }
     }
 
     fn enter_debug_mode(&mut self) -> Result<(), DebugProbeError> {
@@ -485,7 +510,7 @@ impl<'probe> ArmCommunicationInterface<'probe> {
     }
 
     /// Determine the type and additional information about a AP
-    pub(crate) fn ap_information(&self, access_port: GenericAP) -> Option<&ApInformation> {
+    pub(crate) fn ap_information(&self, access_port: impl AccessPort) -> Option<&ApInformation> {
         self.state
             .ap_information
             .get(access_port.port_number() as usize)
