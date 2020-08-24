@@ -11,6 +11,9 @@
 
 #![no_std]
 
+#[cfg(not(cortex_m))]
+compile_error!("`panic-probe` only supports Cortex-M targets (thumbvN-none-eabi[hf])");
+
 // Functionality `cfg`d out on platforms with OS/libstd.
 #[cfg(target_os = "none")]
 mod imp {
@@ -21,8 +24,22 @@ mod imp {
 
     #[panic_handler]
     fn panic(_: &PanicInfo) -> ! {
-        // Trigger a `HardFault`.
-        // FIXME: This will actually cause a `UsageFault` if that's enabled!
+        // Trigger a `HardFault` via `udf` instruction.
+
+        // If `UsageFault` is enabled, we disable that first, since otherwise `udf` will cause that
+        // exception instead of `HardFault`.
+        #[cfg(not(any(armv6m, armv8m_base)))]
+        {
+            const SHCSR: *mut u32 = 0xE000ED24usize as _;
+            const USGFAULTENA: usize = 18;
+
+            unsafe {
+                let mut shcsr = core::ptr::read_volatile(SHCSR);
+                shcsr &= !(1 << USGFAULTENA);
+                core::ptr::write_volatile(SHCSR, shcsr);
+            }
+        }
+
         asm::udf();
     }
 
