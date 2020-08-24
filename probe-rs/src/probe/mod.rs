@@ -3,7 +3,9 @@ pub(crate) mod ftdi;
 pub(crate) mod jlink;
 pub(crate) mod stlink;
 
-use crate::architecture::arm::{DAPAccess, PortType, SwoAccess};
+use crate::architecture::arm::{
+    ArmCommunicationInterface, ArmCommunicationInterfaceState, DAPAccess, PortType, SwoAccess,
+};
 use crate::config::{RegistryError, TargetSelector};
 use crate::error::Error;
 use crate::{Memory, Session};
@@ -339,25 +341,19 @@ impl Probe {
         self.inner.speed()
     }
 
-    /// Returns a probe specific memory interface if any is present for given probe.
-    pub fn dedicated_memory_interface(&self) -> Result<Option<Memory>, DebugProbeError> {
+    pub fn get_arm_interface<'probe>(
+        &'probe mut self,
+        state: &'probe mut ArmCommunicationInterfaceState,
+    ) -> Result<Option<ArmCommunicationInterface<'_>>, DebugProbeError> {
         if !self.attached {
             Err(DebugProbeError::NotAttached)
         } else {
-            Ok(self.inner.dedicated_memory_interface())
+            ArmCommunicationInterface::new(self, state)
         }
     }
 
     pub fn has_dap_interface(&self) -> bool {
         self.inner.get_interface_dap().is_some()
-    }
-
-    pub fn get_interface_dap(&self) -> Result<Option<&dyn DAPAccess>, DebugProbeError> {
-        if !self.attached {
-            Err(DebugProbeError::NotAttached)
-        } else {
-            Ok(self.inner.get_interface_dap())
-        }
     }
 
     pub fn get_interface_dap_mut(&mut self) -> Result<Option<&mut dyn DAPAccess>, DebugProbeError> {

@@ -39,7 +39,7 @@ pub(crate) fn show_info_of_device(shared_options: &SharedOptions) -> Result<()> 
     */
 
     let mut state = ArmCommunicationInterfaceState::new();
-    let mut interface = ArmCommunicationInterface::new(&mut probe, &mut state)?;
+    let mut interface = probe.get_arm_interface(&mut state)?;
 
     if let Some(interface) = &mut interface {
         println!("\nAvailable Access Ports:");

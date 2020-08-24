@@ -52,7 +52,8 @@ impl ArchitectureInterfaceState {
         match self {
             ArchitectureInterfaceState::Arm(state) => core.attach_arm(
                 core_state,
-                ArmCommunicationInterface::new(probe, state)?
+                probe
+                    .get_arm_interface(state)?
                     .ok_or_else(|| anyhow!("No DAP interface available on probe"))?,
             ),
             ArchitectureInterfaceState::Riscv(state) => core.attach_riscv(
@@ -187,7 +188,8 @@ impl Session {
             ArchitectureInterfaceState::Arm(state) => state,
             _ => return Err(Error::ArchitectureRequired(&["ARMv7", "ARMv8"])),
         };
-        Ok(ArmCommunicationInterface::new(&mut self.probe, state)?.unwrap())
+
+        Ok(self.probe.get_arm_interface(state)?.unwrap())
     }
 
     pub fn get_arm_component(&mut self) -> Result<Component, Error> {
@@ -329,7 +331,7 @@ fn get_target_from_selector(
             let mut found_chip = None;
 
             let mut state = ArmCommunicationInterfaceState::new();
-            let interface = ArmCommunicationInterface::new(probe, &mut state)?;
+            let interface = probe.get_arm_interface(&mut state)?;
             if let Some(mut interface) = interface {
                 let chip_result = try_arm_autodetect(&mut interface);
 

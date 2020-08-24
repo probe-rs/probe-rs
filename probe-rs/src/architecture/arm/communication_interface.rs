@@ -206,7 +206,7 @@ fn get_debug_port_version(probe: &mut Probe) -> Result<DebugPortVersion, DebugPr
 }
 
 impl<'probe> ArmCommunicationInterface<'probe> {
-    pub fn new(
+    pub(crate) fn new(
         probe: &'probe mut Probe,
         state: &'probe mut ArmCommunicationInterfaceState,
     ) -> Result<Option<Self>, DebugProbeError> {
