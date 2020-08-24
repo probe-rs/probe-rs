@@ -348,7 +348,10 @@ impl Probe {
         if !self.attached {
             Err(DebugProbeError::NotAttached)
         } else {
-            ArmCommunicationInterface::new(self, state)
+            match self.inner.get_interface_dap_mut() {
+                Some(interface) => ArmCommunicationInterface::new(interface, state),
+                None => Ok(None),
+            }
         }
     }
 

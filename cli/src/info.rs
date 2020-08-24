@@ -5,7 +5,7 @@ use probe_rs::{
         ap::{valid_access_ports, APClass, BaseaddrFormat, MemoryAP, BASE, BASE2, IDR},
         m0::Demcr,
         memory::Component,
-        ArmCommunicationInterface, ArmCommunicationInterfaceState,
+        ArmCommunicationInterfaceState,
     },
     CoreRegister,
 };
