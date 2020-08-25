@@ -30,6 +30,7 @@ jobs:
         profile: minimal
         toolchain: ${{ matrix.rust }}
         override: true
+        target: thumbv6m-none-eabi
     - name: Install C libraries for tooling
       if: matrix.os == 'ubuntu-latest'
       run: sudo apt-get update && sudo apt-get install libudev-dev libusb-1.0-0-dev
