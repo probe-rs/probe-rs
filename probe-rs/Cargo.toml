@@ -41,7 +41,7 @@ base64 = "0.12.0"
 svg = "0.7.1"
 anyhow = "1.0.31"
 bitvec = "0.17.4"
-libftdi1-sys = { version = "1.0.0-alpha3", features = ["vendored"] }
+libftdi1-sys = { version = "1.0.0-alpha3" }
 
 [build-dependencies]
 probe-rs-t2rust  = { path = "../probe-rs-t2rust", version ="0.6.0" }
