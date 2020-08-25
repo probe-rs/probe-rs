@@ -124,7 +124,7 @@ dependencies = [
 [[package]]
 name = "common"
 version = "0.1.0"
-source = "git+https://github.com/knurling-rs/defmt?branch=main#41e229f94d7314f38d5bb2170310fee6b5409782"
+source = "git+https://github.com/knurling-rs/defmt?branch=main#5a1047ba740398184fbe26b58fe504c0b918c6bb"
 
 [[package]]
 name = "crc32fast"
@@ -148,7 +148,7 @@ dependencies = [
 [[package]]
 name = "decoder"
 version = "0.1.0"
-source = "git+https://github.com/knurling-rs/defmt?branch=main#41e229f94d7314f38d5bb2170310fee6b5409782"
+source = "git+https://github.com/knurling-rs/defmt?branch=main#5a1047ba740398184fbe26b58fe504c0b918c6bb"
 dependencies = [
  "byteorder",
  "colored",
@@ -161,7 +161,7 @@ dependencies = [
 [[package]]
 name = "defmt-parser"
 version = "0.1.0"
-source = "git+https://github.com/knurling-rs/defmt?branch=main#41e229f94d7314f38d5bb2170310fee6b5409782"
+source = "git+https://github.com/knurling-rs/defmt?branch=main#5a1047ba740398184fbe26b58fe504c0b918c6bb"
 
 [[package]]
 name = "derivative"
@@ -183,7 +183,7 @@ checksum = "134951f4028bdadb9b84baf4232681efbf277da25144b9b0ad65df75946c422b"
 [[package]]
 name = "elf2table"
 version = "0.1.0"
-source = "git+https://github.com/knurling-rs/defmt?branch=main#41e229f94d7314f38d5bb2170310fee6b5409782"
+source = "git+https://github.com/knurling-rs/defmt?branch=main#5a1047ba740398184fbe26b58fe504c0b918c6bb"
 dependencies = [
  "anyhow",
  "decoder",

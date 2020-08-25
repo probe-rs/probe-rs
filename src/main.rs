@@ -21,7 +21,7 @@ use gimli::{
     read::{CfaRule, DebugFrame, UnwindSection},
     BaseAddresses, EndianSlice, LittleEndian, RegisterRule, UninitializedUnwindContext,
 };
-use probe_rs::config::registry;
+use probe_rs::config::{registry, MemoryRegion};
 use probe_rs::{
     flashing::{self, Format},
     Core, CoreRegisterAddress, MemoryInterface, Probe, Session,
@@ -31,6 +31,7 @@ use structopt::StructOpt;
 use xmas_elf::{program::Type, sections::SectionData, symbol_table::Entry, ElfFile};
 
 const TIMEOUT: Duration = Duration::from_secs(1);
+const STACK_CANARY: u8 = 0xAA;
 
 fn main() -> Result<(), anyhow::Error> {
     notmain().map(|code| process::exit(code))
@@ -67,6 +68,30 @@ fn notmain() -> Result<i32, anyhow::Error> {
     let bytes = fs::read(elf_path)?;
     let elf = ElfFile::new(&bytes).map_err(|s| anyhow!("{}", s))?;
 
+    let target = probe_rs::config::registry::get_target_by_name(chip)?;
+
+    let mut ram_region = None;
+    for region in &target.memory_map {
+        match region {
+            MemoryRegion::Ram(ram) => {
+                if let Some(old) = &ram_region {
+                    log::debug!("multiple RAM regions found ({:?} and {:?}), stack canary will not be available", old, ram);
+                } else {
+                    ram_region = Some(ram.clone());
+                }
+            }
+            _ => {}
+        }
+    }
+
+    if let Some(ram) = &ram_region {
+        log::debug!(
+            "RAM region: 0x{:08X}-0x{:08X}",
+            ram.range.start,
+            ram.range.end - 1
+        );
+    }
+
     #[cfg(feature = "defmt")]
     let table = {
         let table = elf2table::parse(&bytes)?;
@@ -97,6 +122,8 @@ fn notmain() -> Result<i32, anyhow::Error> {
         })
         .next();
 
+    let mut highest_ram_addr_in_use = 0;
+    let mut uses_heap = false;
     let mut debug_frame = None;
     let mut range_names = None;
     let mut rtt_addr = None;
@@ -104,6 +131,23 @@ fn notmain() -> Result<i32, anyhow::Error> {
     let mut dotdata = None;
     let mut registers = None;
     for sect in elf.section_iter() {
+        // If this section resides in RAM, track the highest RAM address in use.
+        if let Some(ram) = &ram_region {
+            if sect.size() != 0 {
+                let last_addr = sect.address() + sect.size() - 1;
+                let last_addr = last_addr.try_into()?;
+                if ram.range.contains(&last_addr) {
+                    log::debug!(
+                        "section `{}` is in RAM at 0x{:08X}-0x{:08X}",
+                        sect.get_name(&elf).unwrap_or("<unknown>"),
+                        sect.address(),
+                        last_addr,
+                    );
+                    highest_ram_addr_in_use = highest_ram_addr_in_use.max(last_addr);
+                }
+            }
+        }
+
         if let Ok(name) = sect.get_name(&elf) {
             if name == ".debug_frame" {
                 debug_frame = Some(sect.raw_data(&elf));
@@ -112,9 +156,10 @@ fn notmain() -> Result<i32, anyhow::Error> {
 
             if name == ".symtab" {
                 if let Ok(symtab) = sect.get_data(&elf) {
-                    let (rn, rtt_addr_) = range_names_from(&elf, symtab, text)?;
+                    let (rn, rtt_addr_, uses_heap_) = range_names_from(&elf, symtab, text)?;
                     range_names = Some(rn);
                     rtt_addr = rtt_addr_;
+                    uses_heap = uses_heap_;
                 }
             }
 
@@ -176,6 +221,7 @@ fn notmain() -> Result<i32, anyhow::Error> {
     }
 
     let registers = registers.ok_or_else(|| anyhow!("`.vector_table` section is missing"))?;
+    log::debug!("initial registers: {:x?}", registers);
 
     let probes = Probe::list_all();
     if probes.is_empty() {
@@ -184,7 +230,7 @@ fn notmain() -> Result<i32, anyhow::Error> {
     log::debug!("found {} probes", probes.len());
     let probe = probes[0].open()?;
     log::info!("opened probe");
-    let mut sess = probe.attach(chip)?;
+    let mut sess = probe.attach(target)?;
     log::info!("started session");
 
     eprintln!("flashing program ..");
@@ -216,8 +262,6 @@ fn notmain() -> Result<i32, anyhow::Error> {
         log::info!("loaded program into RAM");
 
         eprintln!("DONE");
-
-        core.run()?;
     } else {
         if opts.no_flash {
             log::info!("skipped flashing");
@@ -227,14 +271,46 @@ fn notmain() -> Result<i32, anyhow::Error> {
             log::info!("flashed program");
         }
 
-        let mut core = sess.core(0)?;
-        log::info!("attached to core");
-
         eprintln!("DONE");
-        core.reset()?;
     }
 
-    eprintln!("resetting device");
+    let mut canary = None;
+    {
+        let mut core = sess.core(0)?;
+        core.reset_and_halt(TIMEOUT)?;
+
+        // Decide if and where to place the stack canary.
+        if let Some(ram) = &ram_region {
+            // Initial SP must be past canary location.
+            let initial_sp_makes_sense =
+                ram.range.contains(&(registers.sp - 1)) && highest_ram_addr_in_use < registers.sp;
+            if highest_ram_addr_in_use != 0 && !uses_heap && initial_sp_makes_sense {
+                let stack_available = registers.sp - highest_ram_addr_in_use - 1;
+
+                // We consider >90% stack usage a potential stack overflow, but don't go beyond 1 kb
+                // since filling a lot of RAM is slow (and 1 kb should be "good enough" for what
+                // we're doing).
+                let canary_size = cmp::min(stack_available / 10, 1024);
+
+                log::info!(
+                    "{} bytes of stack available (0x{:08X}-0x{:08X}), using {} byte canary to detect overflows",
+                    stack_available,
+                    highest_ram_addr_in_use + 1,
+                    registers.sp,
+                    canary_size,
+                );
+
+                // Canary starts right after `highest_ram_addr_in_use`.
+                let canary_addr = highest_ram_addr_in_use + 1;
+                canary = Some((canary_addr, canary_size));
+                let data = vec![STACK_CANARY; canary_size as usize];
+                core.write_8(canary_addr, &data)?;
+            }
+        }
+
+        eprintln!("resetting device");
+        core.run()?;
+    }
 
     static CONTINUE: AtomicBool = AtomicBool::new(true);
 
@@ -254,7 +330,13 @@ fn notmain() -> Result<i32, anyhow::Error> {
     let mut was_halted = false;
     while CONTINUE.load(Ordering::Relaxed) {
         if let Some(logging_channel) = &mut logging_channel {
-            let num_bytes_read = logging_channel.read(&mut read_buf)?;
+            let num_bytes_read = match logging_channel.read(&mut read_buf) {
+                Ok(n) => n,
+                Err(e) => {
+                    eprintln!("RTT error: {}", e);
+                    break;
+                }
+            };
 
             if num_bytes_read != 0 {
                 match () {
@@ -300,6 +382,25 @@ fn notmain() -> Result<i32, anyhow::Error> {
     // Ctrl-C was pressed; stop the microcontroller
     if !CONTINUE.load(Ordering::Relaxed) {
         core.halt(TIMEOUT)?;
+    }
+
+    if let Some((addr, len)) = canary {
+        let mut buf = vec![0; len as usize];
+        core.read_8(addr as u32, &mut buf)?;
+
+        if let Some(pos) = buf.iter().position(|b| *b != STACK_CANARY) {
+            let touched_addr = addr + pos as u32;
+            log::debug!("canary was touched at 0x{:08X}", touched_addr);
+
+            let min_stack_usage = registers.sp - touched_addr;
+            eprintln!(
+                "program has used at least {} bytes of stack space, data segments \
+                may be corrupted due to stack overflow",
+                min_stack_usage,
+            );
+        } else {
+            log::debug!("stack canary intact");
+        }
     }
 
     let pc = core.read_core_reg(PC)?;
@@ -652,14 +753,20 @@ fn range_names_from(
     elf: &ElfFile,
     sd: SectionData,
     text: Option<Shndx>,
-) -> Result<(RangeNames, Option<u32>), anyhow::Error> {
+) -> Result<(RangeNames, Option<u32>, bool /* uses heap */), anyhow::Error> {
     let mut range_names = vec![];
     let mut rtt = None;
+    let mut uses_heap = false;
     if let SectionData::SymbolTable32(entries) = sd {
         for entry in entries {
             if let Ok(name) = entry.get_name(elf) {
-                if name == "_SEGGER_RTT" {
-                    rtt = Some(entry.value() as u32);
+                match name {
+                    "_SEGGER_RTT" => rtt = Some(entry.value() as u32),
+                    "__rust_alloc" | "__rg_alloc" | "__rdl_alloc" | "malloc" if !uses_heap => {
+                        log::debug!("symbol `{}` indicates heap is in use", name);
+                        uses_heap = true;
+                    }
+                    _ => {}
                 }
 
                 if Some(entry.shndx()) == text && entry.size() != 0 {
@@ -685,7 +792,7 @@ fn range_names_from(
 
     range_names.sort_unstable_by(|a, b| a.0.start.cmp(&b.0.start));
 
-    Ok((range_names, rtt))
+    Ok((range_names, rtt, uses_heap))
 }
 
 const LR: CoreRegisterAddress = CoreRegisterAddress(14);
@@ -714,6 +821,7 @@ struct Data {
 }
 
 /// Registers to update before running the program
+#[derive(Debug)]
 struct InitialRegisters {
     sp: u32,
     pc: u32,
