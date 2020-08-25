@@ -1,4 +1,4 @@
-use crate::architecture::arm::DAPAccess;
+use crate::architecture::arm::{DAPAccess, SwoAccess};
 use crate::probe::{JTAGAccess, ProbeCreationError};
 use crate::{
     DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, DebugProbeType, Memory,
@@ -477,6 +477,16 @@ impl DebugProbe for FtdiProbe {
         unimplemented!()
     }
 
+    fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
+        log::error!("FTDI target_reset_assert");
+        unimplemented!()
+    }
+
+    fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
+        log::error!("FTDI target_reset_deassert");
+        unimplemented!()
+    }
+
     fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError> {
         if protocol != WireProtocol::Jtag {
             Err(DebugProbeError::UnsupportedProtocol(protocol))
@@ -503,6 +513,14 @@ impl DebugProbe for FtdiProbe {
 
     fn get_interface_jtag_mut(&mut self) -> Option<&mut dyn JTAGAccess> {
         Some(self as _)
+    }
+
+    fn get_interface_swo(&self) -> Option<&dyn SwoAccess> {
+        None
+    }
+
+    fn get_interface_swo_mut(&mut self) -> Option<&mut dyn SwoAccess> {
+        None
     }
 }
 
