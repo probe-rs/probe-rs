@@ -4,7 +4,8 @@ pub(crate) mod jlink;
 pub(crate) mod stlink;
 
 use crate::architecture::arm::{
-    ArmCommunicationInterface, ArmCommunicationInterfaceState, DAPAccess, PortType, SwoAccess,
+    communication_interface::ArmProbeInterface, ArmCommunicationInterface,
+    ArmCommunicationInterfaceState, DAPAccess, PortType, SwoAccess,
 };
 use crate::config::{RegistryError, TargetSelector};
 use crate::error::Error;
@@ -344,26 +345,11 @@ impl Probe {
     pub fn get_arm_interface<'probe>(
         &'probe mut self,
         state: &'probe mut ArmCommunicationInterfaceState,
-    ) -> Result<Option<ArmCommunicationInterface<'_>>, DebugProbeError> {
+    ) -> Result<Option<Box<dyn ArmProbeInterface + 'probe>>, DebugProbeError> {
         if !self.attached {
             Err(DebugProbeError::NotAttached)
         } else {
-            match self.inner.get_interface_dap_mut() {
-                Some(interface) => ArmCommunicationInterface::new(interface, state),
-                None => Ok(None),
-            }
-        }
-    }
-
-    pub fn has_dap_interface(&self) -> bool {
-        self.inner.get_interface_dap().is_some()
-    }
-
-    pub fn get_interface_dap_mut(&mut self) -> Result<Option<&mut dyn DAPAccess>, DebugProbeError> {
-        if !self.attached {
-            Err(DebugProbeError::NotAttached)
-        } else {
-            Ok(self.inner.get_interface_dap_mut())
+            self.inner.get_arm_interface(state)
         }
     }
 
@@ -450,12 +436,12 @@ pub trait DebugProbe: Send + Sync + fmt::Debug {
     /// Selects the transport protocol to be used by the debug probe.
     fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError>;
 
-    /// Returns a probe specific memory interface if any is present for given probe.
-    fn dedicated_memory_interface(&self) -> Option<Memory>;
+    //fn get_interface_dap_mut(&'probe mut self) -> Option<&mut dyn DAPAccess>;
 
-    fn get_interface_dap(&self) -> Option<&dyn DAPAccess>;
-
-    fn get_interface_dap_mut(&mut self) -> Option<&mut dyn DAPAccess>;
+    fn get_arm_interface<'probe>(
+        &'probe mut self,
+        state: &'probe mut ArmCommunicationInterfaceState,
+    ) -> Result<Option<Box<dyn ArmProbeInterface + 'probe>>, DebugProbeError>;
 
     fn get_interface_jtag(&self) -> Option<&dyn JTAGAccess>;
 
@@ -657,18 +643,6 @@ impl DebugProbe for FakeProbe {
         unimplemented!()
     }
 
-    fn dedicated_memory_interface(&self) -> Option<Memory> {
-        None
-    }
-
-    fn get_interface_dap(&self) -> Option<&dyn DAPAccess> {
-        None
-    }
-
-    fn get_interface_dap_mut(&mut self) -> Option<&mut dyn DAPAccess> {
-        None
-    }
-
     fn get_interface_jtag(&self) -> Option<&dyn JTAGAccess> {
         None
     }
@@ -683,6 +657,13 @@ impl DebugProbe for FakeProbe {
 
     fn get_interface_swo_mut(&mut self) -> Option<&mut dyn SwoAccess> {
         None
+    }
+
+    fn get_arm_interface<'probe>(
+        &'probe mut self,
+        _state: &'probe mut ArmCommunicationInterfaceState,
+    ) -> Result<Option<Box<dyn ArmProbeInterface + 'probe>>, DebugProbeError> {
+        Ok(None)
     }
 }
 

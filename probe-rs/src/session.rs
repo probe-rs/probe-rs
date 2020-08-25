@@ -1,7 +1,10 @@
 use crate::architecture::{
     arm::{
         ap::MemoryAP,
-        communication_interface::ApInformation::{MemoryAp, Other},
+        communication_interface::{
+            ApInformation::{MemoryAp, Other},
+            ArmProbeInterface,
+        },
         core::{debug_core_start, reset_catch_clear, reset_catch_set},
         memory::Component,
         ArmChipInfo, ArmCommunicationInterface, ArmCommunicationInterfaceState, SwoAccess,
@@ -15,7 +18,7 @@ use crate::config::{
     ChipInfo, MemoryRegion, RawFlashAlgorithm, RegistryError, Target, TargetSelector,
 };
 use crate::core::{Architecture, CoreState, SpecificCoreState};
-use crate::{AttachMethod, Core, CoreType, Error, Probe};
+use crate::{AttachMethod, Core, CoreType, Error, Memory, Probe};
 use anyhow::anyhow;
 use std::time::Duration;
 
@@ -50,12 +53,15 @@ impl ArchitectureInterfaceState {
         core_state: &'probe mut CoreState,
     ) -> Result<Core<'probe>, Error> {
         match self {
-            ArchitectureInterfaceState::Arm(state) => core.attach_arm(
-                core_state,
-                probe
+            ArchitectureInterfaceState::Arm(state) => {
+                let interface = probe
                     .get_arm_interface(state)?
-                    .ok_or_else(|| anyhow!("No DAP interface available on probe"))?,
-            ),
+                    .ok_or_else(|| anyhow!("No DAP interface available on probe"))?;
+
+                let memory = interface.memory_interface(0.into())?;
+
+                core.attach_arm(core_state, memory)
+            }
             ArchitectureInterfaceState::Riscv(state) => core.attach_riscv(
                 core_state,
                 RiscvCommunicationInterface::new(probe, state)?
@@ -183,7 +189,9 @@ impl Session {
         interface.read_swo()
     }
 
-    pub fn get_arm_interface(&mut self) -> Result<ArmCommunicationInterface, Error> {
+    pub fn get_arm_interface<'session>(
+        &'session mut self,
+    ) -> Result<Box<dyn ArmProbeInterface + 'session>, Error> {
         let state = match &mut self.interface_state {
             ArchitectureInterfaceState::Arm(state) => state,
             _ => return Err(Error::ArchitectureRequired(&["ARMv7", "ARMv8"])),
@@ -195,11 +203,11 @@ impl Session {
     pub fn get_arm_component(&mut self) -> Result<Component, Error> {
         let interface = self.get_arm_interface()?;
 
-        let ap_index = MemoryAP::from(0);
+        let ap_index = 0;
 
         let ap_information = interface
-            .ap_information(ap_index)
-            .ok_or_else(|| anyhow!("AP {:?} does not exist on chip.", ap_index))?;
+            .ap_information(ap_index.into())
+            .ok_or_else(|| anyhow!("AP {} does not exist on chip.", ap_index))?;
 
         match ap_information {
             MemoryAp {
@@ -228,8 +236,10 @@ impl Session {
     /// Configure the target and probe for serial wire view (SWV) tracing.
     pub fn setup_swv(&mut self, config: &SwoConfig) -> Result<(), Error> {
         // Configure SWO on the probe
-        let mut interface = self.get_arm_interface()?;
-        interface.enable_swo(config)?;
+        {
+            let mut interface = self.get_arm_interface()?;
+            interface.enable_swo(config)?;
+        }
 
         // Enable tracing on the target
         {
@@ -290,11 +300,11 @@ impl Session {
 }
 
 fn try_arm_autodetect(
-    arm_interface: &mut ArmCommunicationInterface,
+    mut arm_interface: Box<dyn ArmProbeInterface>,
 ) -> Result<Option<ChipInfo>, Error> {
     log::debug!("Autodetect: Trying DAP interface...");
 
-    let found_chip = ArmChipInfo::read_from_rom_table(arm_interface).unwrap_or_else(|e| {
+    let found_chip = arm_interface.read_from_rom_table().unwrap_or_else(|e| {
         log::info!("Error during auto-detection of ARM chips: {}", e);
         None
     });
@@ -330,18 +340,31 @@ fn get_target_from_selector(
         TargetSelector::Auto => {
             let mut found_chip = None;
 
-            let mut state = ArmCommunicationInterfaceState::new();
-            let interface = probe.get_arm_interface(&mut state)?;
-            if let Some(mut interface) = interface {
-                let chip_result = try_arm_autodetect(&mut interface);
+            {
+                let mut state = ArmCommunicationInterfaceState::new();
+                let interface = probe.get_arm_interface(&mut state)?;
+
+                if let Some(mut interface) = interface {
+                    //let chip_result = try_arm_autodetect(interface);
+                    log::debug!("Autodetect: Trying DAP interface...");
+
+                    let found_arm_chip = interface.read_from_rom_table().unwrap_or_else(|e| {
+                        log::info!("Error during auto-detection of ARM chips: {}", e);
+                        None
+                    });
+
+                    found_chip = found_arm_chip.map(ChipInfo::from);
+
+                //Ok(found_chip)
 
                 // Ignore errors during autodetect
-                found_chip = chip_result.unwrap_or_else(|e| {
-                    log::debug!("An error occured during ARM autodetect: {}", e);
-                    None
-                });
-            } else {
-                log::debug!("No DAP interface was present. This is not an ARM core. Skipping ARM autodetect.");
+                // found_chip = chip_result.unwrap_or_else(|e| {
+                //     log::debug!("An error occured during ARM autodetect: {}", e);
+                //     None
+                // });
+                } else {
+                    log::debug!("No DAP interface was present. This is not an ARM core. Skipping ARM autodetect.");
+                }
             }
 
             if found_chip.is_none() && probe.has_jtag_interface() {

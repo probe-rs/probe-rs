@@ -8,7 +8,10 @@ use std::iter;
 use std::sync::Mutex;
 
 use crate::{
-    architecture::arm::{dp::Ctrl, swo::SwoConfig, SwoAccess},
+    architecture::arm::{
+        communication_interface::ArmProbeInterface, dp::Ctrl, swo::SwoConfig,
+        ArmCommunicationInterface, ArmCommunicationInterfaceState, SwoAccess,
+    },
     architecture::arm::{DapError, PortType, Register},
     probe::{
         DAPAccess, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeType, JTAGAccess,
@@ -581,30 +584,6 @@ impl DebugProbe for JLink {
         Ok(())
     }
 
-    fn dedicated_memory_interface(&self) -> Option<crate::Memory> {
-        None
-    }
-
-    fn get_interface_dap(&self) -> Option<&dyn DAPAccess> {
-        // For now, we only support using SWD for ARM chips, but
-        // JTAG would be possible as well.
-        if self.supported_protocols.contains(&WireProtocol::Swd) {
-            Some(self as _)
-        } else {
-            None
-        }
-    }
-
-    fn get_interface_dap_mut(&mut self) -> Option<&mut dyn DAPAccess> {
-        // For now, we only support using SWD for ARM chips, but
-        // JTAG would be possible as well.
-        if self.supported_protocols.contains(&WireProtocol::Swd) {
-            Some(self as _)
-        } else {
-            None
-        }
-    }
-
     fn get_interface_jtag(&self) -> Option<&dyn JTAGAccess> {
         if self.supported_protocols.contains(&WireProtocol::Jtag) {
             Some(self as _)
@@ -627,6 +606,19 @@ impl DebugProbe for JLink {
 
     fn get_interface_swo_mut(&mut self) -> Option<&mut dyn SwoAccess> {
         Some(self as _)
+    }
+
+    fn get_arm_interface<'probe>(
+        &'probe mut self,
+        state: &'probe mut ArmCommunicationInterfaceState,
+    ) -> Result<Option<Box<dyn ArmProbeInterface + 'probe>>, DebugProbeError> {
+        if self.supported_protocols.contains(&WireProtocol::Swd) {
+            let interface = ArmCommunicationInterface::new(self, state)?;
+
+            Ok(Some(Box::new(interface)))
+        } else {
+            Ok(None)
+        }
     }
 }
 

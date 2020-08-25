@@ -1,10 +1,13 @@
 pub mod commands;
 pub mod tools;
 
-use crate::architecture::arm::{
-    dp::{DPAccess, DPRegister, DebugPortError},
-    swo::poll_interval_from_buf_size,
-    DAPAccess, DapError, PortType, SwoAccess, SwoConfig, SwoMode,
+use crate::architecture::{
+    self,
+    arm::{
+        dp::{DPAccess, DPRegister, DebugPortError},
+        swo::poll_interval_from_buf_size,
+        DAPAccess, DapError, PortType, SwoAccess, SwoConfig, SwoMode,
+    },
 };
 use crate::probe::{daplink::commands::CmsisDapError, BatchCommand};
 use crate::{
@@ -39,6 +42,10 @@ use std::sync::Mutex;
 use std::time::Duration;
 
 use anyhow::anyhow;
+use architecture::arm::{
+    communication_interface::ArmProbeInterface, ArmCommunicationInterface,
+    ArmCommunicationInterfaceState,
+};
 use commands::DAPLinkDevice;
 
 pub struct DAPLink {
@@ -525,18 +532,6 @@ impl DebugProbe for DAPLink {
         Ok(())
     }
 
-    fn dedicated_memory_interface(&self) -> Option<Memory> {
-        None
-    }
-
-    fn get_interface_dap(&self) -> Option<&dyn DAPAccess> {
-        Some(self as _)
-    }
-
-    fn get_interface_dap_mut(&mut self) -> Option<&mut dyn DAPAccess> {
-        Some(self as _)
-    }
-
     fn get_interface_jtag(&self) -> Option<&dyn JTAGAccess> {
         None
     }
@@ -551,6 +546,15 @@ impl DebugProbe for DAPLink {
 
     fn get_interface_swo_mut(&mut self) -> Option<&mut dyn SwoAccess> {
         Some(self as _)
+    }
+
+    fn get_arm_interface<'probe>(
+        &'probe mut self,
+        state: &'probe mut ArmCommunicationInterfaceState,
+    ) -> Result<Option<Box<dyn ArmProbeInterface + 'probe>>, DebugProbeError> {
+        let interface = ArmCommunicationInterface::new(self, state)?;
+
+        Ok(Some(Box::new(interface)))
     }
 }
 

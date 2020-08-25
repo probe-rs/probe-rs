@@ -9,7 +9,7 @@ use crate::{
         arm::{ap::MemoryAP, core::CortexState, ArmCommunicationInterface},
         riscv::communication_interface::RiscvCommunicationInterface,
     },
-    Error, MemoryInterface,
+    Error, Memory, MemoryInterface,
 };
 use anyhow::{anyhow, Result};
 use std::time::Duration;
@@ -298,13 +298,8 @@ impl SpecificCoreState {
     pub(crate) fn attach_arm<'probe>(
         &'probe mut self,
         state: &'probe mut CoreState,
-        interface: ArmCommunicationInterface<'probe>,
+        memory: Memory<'probe>,
     ) -> Result<Core<'probe>, Error> {
-        // TODO: This should support multiple APs
-        let ap = MemoryAP::new(0);
-
-        let memory = interface.memory_interface(ap)?;
-
         Ok(match self {
             // TODO: Change this once the new archtecture structure for ARM hits.
             // Cortex-M3, M4 and M7 use the Armv7[E]-M architecture and are

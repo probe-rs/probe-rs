@@ -38,6 +38,8 @@ pub(crate) fn show_info_of_device(shared_options: &SharedOptions) -> Result<()> 
 
     */
 
+    /*
+
     let mut state = ArmCommunicationInterfaceState::new();
     let mut interface = probe.get_arm_interface(&mut state)?;
 
@@ -98,6 +100,8 @@ pub(crate) fn show_info_of_device(shared_options: &SharedOptions) -> Result<()> 
             "No DAP interface was found on the connected probe. Thus, ARM info cannot be printed."
         )
     }
+
+    */
 
     Ok(())
 }

@@ -7,7 +7,10 @@ use super::{
     DAPAccess, DebugProbe, DebugProbeError, JTAGAccess, PortType, ProbeCreationError, WireProtocol,
 };
 use crate::{
-    architecture::arm::{SwoAccess, SwoConfig, SwoMode},
+    architecture::arm::{
+        communication_interface::ArmProbeInterface, ArmCommunicationInterface,
+        ArmCommunicationInterfaceState, SwoAccess, SwoConfig, SwoMode,
+    },
     DebugProbeSelector, Error as ProbeRsError, Memory,
 };
 use constants::{commands, JTagFrequencyToDivider, Mode, Status, SwdFrequencyToDelayCount};
@@ -222,18 +225,6 @@ impl DebugProbe for STLink<STLinkUSBDevice> {
         Ok(())
     }
 
-    fn dedicated_memory_interface(&self) -> Option<Memory> {
-        None
-    }
-
-    fn get_interface_dap(&self) -> Option<&dyn DAPAccess> {
-        Some(self as _)
-    }
-
-    fn get_interface_dap_mut(&mut self) -> Option<&mut dyn DAPAccess> {
-        Some(self as _)
-    }
-
     fn get_interface_jtag(&self) -> Option<&dyn JTAGAccess> {
         None
     }
@@ -248,6 +239,15 @@ impl DebugProbe for STLink<STLinkUSBDevice> {
 
     fn get_interface_swo_mut(&mut self) -> Option<&mut dyn SwoAccess> {
         Some(self as _)
+    }
+
+    fn get_arm_interface<'probe>(
+        &'probe mut self,
+        state: &'probe mut ArmCommunicationInterfaceState,
+    ) -> Result<Option<Box<dyn ArmProbeInterface + 'probe>>, DebugProbeError> {
+        let interface = ArmCommunicationInterface::new(self, state)?;
+
+        Ok(Some(Box::new(interface)))
     }
 }
 
