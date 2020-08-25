@@ -5,7 +5,13 @@ pub use communication_interface::CommunicationInterface;
 use crate::error;
 use crate::{
     architecture::{
-        arm::{core::CortexState, memory::ADIMemoryInterface, ArmCommunicationInterface},
+        arm::{
+            ap::{AccessPort, GenericAP},
+            communication_interface::ApInformation,
+            core::CortexState,
+            memory::ADIMemoryInterface,
+            ArmCommunicationInterface,
+        },
         riscv::communication_interface::RiscvCommunicationInterface,
     },
     Error, MemoryInterface,
@@ -217,6 +223,10 @@ impl<'probe> MemoryInterface for Core<'probe> {
     fn write_8(&mut self, addr: u32, data: &[u8]) -> Result<(), Error> {
         self.inner.write_8(addr, data)
     }
+
+    fn flush(&mut self) -> Result<(), Error> {
+        self.inner.flush()
+    }
 }
 
 #[derive(Copy, Clone)]
@@ -256,12 +266,14 @@ impl CoreType {
 
 #[derive(Debug)]
 pub struct CoreState {
+    id: usize,
     breakpoints: Vec<Breakpoint>,
 }
 
 impl CoreState {
-    fn new() -> Self {
+    fn new(id: usize) -> Self {
         Self {
+            id,
             breakpoints: vec![],
         }
     }
@@ -294,8 +306,30 @@ impl SpecificCoreState {
         state: &'probe mut CoreState,
         interface: ArmCommunicationInterface<'probe>,
     ) -> Result<Core<'probe>, Error> {
+        // TODO: This should support multiple APs
+        let ap = GenericAP::new(0);
+
+        let ap_information = interface
+            .ap_information(ap)
+            .ok_or_else(|| anyhow!("AP {} does not exist on chip.", ap.port_number()))?;
+
+        let only_32bit_data = match ap_information {
+            ApInformation::MemoryAp {
+                only_32bit_data_size,
+                ..
+            } => *only_32bit_data_size,
+            ApInformation::Other { .. } => {
+                /* unable to attach to an AP which is not a MemoryAP */
+                return Err(anyhow!(
+                    "Unable to attach, AP {} is not a MemoryAP",
+                    ap.port_number()
+                )
+                .into());
+            }
+        };
+
         let memory = Memory::new(
-            ADIMemoryInterface::<ArmCommunicationInterface>::new(interface, 0)
+            ADIMemoryInterface::<ArmCommunicationInterface>::new(interface, 0, only_32bit_data)
                 .map_err(Error::architecture_specific)?,
         );
 
@@ -351,8 +385,12 @@ impl<'probe> Core<'probe> {
         }
     }
 
-    pub fn create_state() -> CoreState {
-        CoreState::new()
+    pub fn create_state(id: usize) -> CoreState {
+        CoreState::new(id)
+    }
+
+    pub fn id(&self) -> usize {
+        self.state.id
     }
 
     /// Wait until the core is halted. If the core does not halt on its own,
@@ -496,6 +534,14 @@ impl<'probe> Core<'probe> {
                 address
             ))),
         }
+    }
+
+    pub fn clear_all_hw_breakpoints(&mut self) -> Result<(), error::Error> {
+        let num_hw_breakpoints = self.get_available_breakpoint_units()? as usize;
+
+        { 0..num_hw_breakpoints }
+            .map(|unit_index| self.inner.clear_breakpoint(unit_index))
+            .collect()
     }
 
     pub fn architecture(&self) -> Architecture {

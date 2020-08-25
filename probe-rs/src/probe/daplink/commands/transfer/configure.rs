@@ -2,6 +2,7 @@ use super::super::{Category, Request, Response, Result, Status};
 use anyhow::anyhow;
 
 /// The DAP_TransferConfigure Command sets parameters for DAP_Transfer and DAP_TransferBlock.
+#[derive(Debug)]
 pub struct ConfigureRequest {
     /// Number of extra idle cycles after each transfer.
     pub idle_cycles: u8,
@@ -28,6 +29,7 @@ impl Request for ConfigureRequest {
     }
 }
 
+#[derive(Debug)]
 pub struct ConfigureResponse(pub(crate) Status);
 
 impl Response for ConfigureResponse {

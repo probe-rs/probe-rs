@@ -1,6 +1,7 @@
 pub mod general;
 pub mod swd;
 pub mod swj;
+pub mod swo;
 pub mod transfer;
 
 use crate::architecture::arm::DapError;
@@ -19,6 +20,14 @@ pub enum CmsisDapError {
     ErrorResponse,
     #[error("Too much data provided for SWJ Sequence command")]
     TooMuchData,
+    #[error("Not enough data in response from probe")]
+    NotEnoughData,
+    #[error("Requested SWO baud rate could not be configured")]
+    SWOBaudrateNotConfigured,
+    #[error("Probe reported an error while streaming SWO")]
+    SWOTraceStreamError,
+    #[error("Requested SWO mode is not available on this probe")]
+    SWOModeNotAvailable,
     #[error("Error in the USB HID access")]
     HidApi(#[from] hidapi::HidError),
     #[error("Error in the USB access")]
@@ -44,6 +53,7 @@ pub enum DAPLinkDevice {
         handle: rusb::DeviceHandle<rusb::Context>,
         out_ep: u8,
         in_ep: u8,
+        swo_ep: Option<u8>,
     },
 }
 
@@ -56,6 +66,7 @@ impl DAPLinkDevice {
                 handle,
                 out_ep: _,
                 in_ep,
+                swo_ep: _,
             } => {
                 let timeout = Duration::from_millis(100);
                 Ok(handle.read_bulk(*in_ep, buf, timeout)?)
@@ -71,6 +82,7 @@ impl DAPLinkDevice {
                 handle,
                 out_ep,
                 in_ep: _,
+                swo_ep: _,
             } => {
                 let timeout = Duration::from_millis(100);
                 // Skip first byte as it's set to 0 for HID transfers
@@ -78,9 +90,36 @@ impl DAPLinkDevice {
             }
         }
     }
+
+    /// Check if SWO streaming is supported by this device.
+    pub(super) fn swo_streaming_supported(&self) -> bool {
+        match self {
+            DAPLinkDevice::V1(_) => false,
+            DAPLinkDevice::V2 { swo_ep, .. } => swo_ep.is_some(),
+        }
+    }
+
+    /// Read into `buf` from the SWO streaming endpoint.
+    ///
+    /// Returns SWOModeNotAvailable if this device does not support SWO streaming.
+    ///
+    /// On timeout, returns Ok(0).
+    pub(super) fn read_swo_stream(&self, buf: &mut [u8], timeout: Duration) -> Result<usize> {
+        match self {
+            DAPLinkDevice::V1(_) => Err(CmsisDapError::SWOModeNotAvailable.into()),
+            DAPLinkDevice::V2 { handle, swo_ep, .. } => match swo_ep {
+                Some(ep) => match handle.read_bulk(*ep, buf, timeout) {
+                    Ok(n) => Ok(n),
+                    Err(rusb::Error::Timeout) => Ok(0),
+                    Err(e) => Err(e.into()),
+                },
+                None => Err(CmsisDapError::SWOModeNotAvailable.into()),
+            },
+        }
+    }
 }
 
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
 pub(crate) enum Status {
     DAPOk = 0x00,
     DAPError = 0xFF,
@@ -122,9 +161,9 @@ pub(crate) fn send_command<Req: Request, Res: Response>(
     device: &mut std::sync::Mutex<DAPLinkDevice>,
     request: Req,
 ) -> Result<Res> {
-    // On CMSIS-DAP v2 USB HS devices, a single request might be up to 512 bytes,
+    // On CMSIS-DAP v2 USB HS devices, a single request might be up to 1024 bytes,
     // plus we need one extra byte for the always-written HID report ID.
-    const BUFFER_LEN: usize = 513;
+    const BUFFER_LEN: usize = 1025;
 
     // Write the command & request to the buffer.
     let mut write_buffer = [0; BUFFER_LEN];
@@ -135,7 +174,7 @@ pub(crate) fn send_command<Req: Request, Res: Response>(
     if let Ok(device) = device.get_mut() {
         // On Windows, HID writes must write exactly the size of the
         // largest report for the device, but there's no way to query
-        // this in hidapi. All known CMSIS-DAP devices use 64-byte
+        // this in hidapi. Almost all known CMSIS-DAP devices use 64-byte
         // HID reports (the maximum permitted), so ensure we always
         // write exactly 64 (+1 for report ID) bytes for HID.
         // For v2 devices, we can write the precise request size.

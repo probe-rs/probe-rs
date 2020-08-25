@@ -1,5 +1,4 @@
 pub mod constants;
-pub mod memory_interface;
 pub mod tools;
 mod usb_interface;
 
@@ -7,7 +6,10 @@ use self::usb_interface::{STLinkUSBDevice, StLinkUsb};
 use super::{
     DAPAccess, DebugProbe, DebugProbeError, JTAGAccess, PortType, ProbeCreationError, WireProtocol,
 };
-use crate::{DebugProbeSelector, Memory};
+use crate::{
+    architecture::arm::{SwoAccess, SwoConfig, SwoMode},
+    DebugProbeSelector, Error as ProbeRsError, Memory,
+};
 use constants::{commands, JTagFrequencyToDivider, Mode, Status, SwdFrequencyToDelayCount};
 use scroll::{Pread, BE, LE};
 use std::{cmp::Ordering, time::Duration};
@@ -22,6 +24,7 @@ pub struct STLink<D: StLinkUsb> {
     protocol: WireProtocol,
     swd_speed_khz: u32,
     jtag_speed_khz: u32,
+    swo_enabled: bool,
 
     /// Index of the AP which is currently open.
     current_ap: Option<u8>,
@@ -38,6 +41,7 @@ impl DebugProbe for STLink<STLinkUSBDevice> {
             protocol: WireProtocol::Swd,
             swd_speed_khz: 1_800,
             jtag_speed_khz: 1_120,
+            swo_enabled: false,
 
             current_ap: None,
         };
@@ -110,7 +114,6 @@ impl DebugProbe for STLink<STLinkUSBDevice> {
         }
     }
 
-    /// Enters debug mode.
     fn attach(&mut self) -> Result<(), DebugProbeError> {
         log::debug!("attach({:?})", self.protocol);
         self.enter_idle()?;
@@ -133,6 +136,7 @@ impl DebugProbe for STLink<STLinkUSBDevice> {
             &mut buf,
             TIMEOUT,
         )?;
+        Self::check_status(&buf)?;
 
         log::debug!("Successfully initialized SWD.");
 
@@ -153,13 +157,15 @@ impl DebugProbe for STLink<STLinkUSBDevice> {
         Ok(())
     }
 
-    /// Leave debug mode.
     fn detach(&mut self) -> Result<(), DebugProbeError> {
         log::debug!("Detaching from STLink.");
+        if self.swo_enabled {
+            self.disable_swo()
+                .map_err(|e| DebugProbeError::ProbeSpecific(e.into()))?;
+        }
         self.enter_idle()
     }
 
-    /// Asserts the nRESET pin.
     fn target_reset(&mut self) -> Result<(), DebugProbeError> {
         let mut buf = [0; 2];
         self.send_jtag_command(
@@ -171,7 +177,41 @@ impl DebugProbe for STLink<STLinkUSBDevice> {
             &[],
             &mut buf,
             TIMEOUT,
-        )
+        )?;
+
+        Self::check_status(&buf)
+    }
+
+    fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
+        let mut buf = [0; 2];
+        self.device.write(
+            vec![
+                commands::JTAG_COMMAND,
+                commands::JTAG_DRIVE_NRST,
+                commands::JTAG_DRIVE_NRST_LOW,
+            ],
+            &[],
+            &mut buf,
+            TIMEOUT,
+        )?;
+
+        Self::check_status(&buf)
+    }
+
+    fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
+        let mut buf = [0; 2];
+        self.device.write(
+            vec![
+                commands::JTAG_COMMAND,
+                commands::JTAG_DRIVE_NRST,
+                commands::JTAG_DRIVE_NRST_HIGH,
+            ],
+            &[],
+            &mut buf,
+            TIMEOUT,
+        )?;
+
+        Self::check_status(&buf)
     }
 
     fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError> {
@@ -200,6 +240,14 @@ impl DebugProbe for STLink<STLinkUSBDevice> {
 
     fn get_interface_jtag_mut(&mut self) -> Option<&mut dyn JTAGAccess> {
         None
+    }
+
+    fn get_interface_swo(&self) -> Option<&dyn SwoAccess> {
+        Some(self as _)
+    }
+
+    fn get_interface_swo_mut(&mut self) -> Option<&mut dyn SwoAccess> {
+        Some(self as _)
     }
 }
 
@@ -267,7 +315,10 @@ impl DAPAccess for STLink<STLinkUSBDevice> {
 
 impl<D: StLinkUsb> Drop for STLink<D> {
     fn drop(&mut self) {
-        // We ignore the error case as we can't do much about it anyways.
+        // We ignore the error cases as we can't do much about it anyways.
+        if self.swo_enabled {
+            let _ = self.disable_swo();
+        }
         let _ = self.enter_idle();
     }
 }
@@ -469,7 +520,8 @@ impl<D: StLinkUsb> STLink<D> {
             &[],
             &mut buf,
             TIMEOUT,
-        )
+        )?;
+        Self::check_status(&buf)
     }
 
     /// Sets the JTAG frequency.
@@ -487,7 +539,8 @@ impl<D: StLinkUsb> STLink<D> {
             &[],
             &mut buf,
             TIMEOUT,
-        )
+        )?;
+        Self::check_status(&buf)
     }
 
     /// Sets the communication frequency (V3 only)
@@ -624,11 +677,11 @@ impl<D: StLinkUsb> STLink<D> {
     /// Returns an error if the status is not `Status::JtagOk`.
     /// Returns Ok(()) otherwise.
     /// This can be called on any status returned from the attached target.
-    fn check_status(status: &[u8]) -> Result<(), StlinkError> {
+    fn check_status(status: &[u8]) -> Result<(), DebugProbeError> {
         let status = Status::from(status[0]);
         if status != Status::JtagOk {
             log::warn!("check_status failed: {:?}", status);
-            Err(StlinkError::CommandFailed(status))
+            Err(From::from(StlinkError::CommandFailed(status)))
         } else {
             Ok(())
         }
@@ -646,6 +699,88 @@ impl<D: StLinkUsb> STLink<D> {
         Self::check_status(read_data)?;
         Ok(())
     }
+
+    pub fn start_trace_reception(&mut self, config: &SwoConfig) -> Result<(), DebugProbeError> {
+        let mut buf = [0; 2];
+        let bufsize = 4096u16.to_le_bytes();
+        let baud = config.baud().to_le_bytes();
+        let mut command = vec![commands::JTAG_COMMAND, commands::SWO_START_TRACE_RECEPTION];
+        command.extend_from_slice(&bufsize);
+        command.extend_from_slice(&baud);
+
+        self.device.write(command, &[], &mut buf, TIMEOUT)?;
+        Self::check_status(&buf)?;
+
+        self.swo_enabled = true;
+
+        Ok(())
+    }
+
+    pub fn stop_trace_reception(&mut self) -> Result<(), DebugProbeError> {
+        let mut buf = [0; 2];
+
+        self.device.write(
+            vec![commands::JTAG_COMMAND, commands::SWO_STOP_TRACE_RECEPTION],
+            &[],
+            &mut buf,
+            TIMEOUT,
+        )?;
+        Self::check_status(&buf)?;
+
+        self.swo_enabled = false;
+
+        Ok(())
+    }
+
+    /// Gets the SWO count from the ST-Link probe.
+    fn read_swo_available_byte_count(&mut self) -> Result<usize, DebugProbeError> {
+        let mut buf = [0; 2];
+        self.device.write(
+            vec![
+                commands::JTAG_COMMAND,
+                commands::SWO_GET_TRACE_NEW_RECORD_NB,
+            ],
+            &[],
+            &mut buf,
+            TIMEOUT,
+        )?;
+        Ok(buf.pread::<u16>(0).unwrap() as usize)
+    }
+
+    /// Reads the actual data from the SWO buffer on the ST-Link.
+    fn read_swo_data(&mut self, timeout: Duration) -> Result<Vec<u8>, DebugProbeError> {
+        // The byte count always needs to be polled first, otherwise
+        // the ST-Link won't return any data.
+        let mut buf = vec![0; self.read_swo_available_byte_count()?];
+        let bytes_read = self.device.read_swo(&mut buf, timeout)?;
+        buf.truncate(bytes_read);
+        Ok(buf)
+    }
+}
+
+impl<D: StLinkUsb> SwoAccess for STLink<D> {
+    fn enable_swo(&mut self, config: &SwoConfig) -> Result<(), ProbeRsError> {
+        match config.mode() {
+            SwoMode::UART => {
+                self.start_trace_reception(config)?;
+                Ok(())
+            }
+            SwoMode::Manchester => Err(DebugProbeError::ProbeSpecific(
+                StlinkError::ManchesterSwoNotSupported.into(),
+            )
+            .into()),
+        }
+    }
+
+    fn disable_swo(&mut self) -> Result<(), ProbeRsError> {
+        self.stop_trace_reception()?;
+        Ok(())
+    }
+
+    fn read_swo_timeout(&mut self, timeout: Duration) -> Result<Vec<u8>, ProbeRsError> {
+        let data = self.read_swo_data(timeout)?;
+        Ok(data)
+    }
 }
 
 #[derive(Error, Debug)]
@@ -657,13 +792,15 @@ pub(crate) enum StlinkError {
     #[error("Blank values are not allowed on DebugPort writes.")]
     BlanksNotAllowedOnDPRegister,
     #[error("Not enough bytes read.")]
-    NotEnoughBytesRead,
+    NotEnoughBytesRead { is: usize, should: usize },
     #[error("USB endpoint not found.")]
     EndpointNotFound,
     #[error("Command failed with status {0:?}")]
     CommandFailed(Status),
     #[error("JTAG not supported on Probe")]
     JTAGNotSupportedOnProbe,
+    #[error("Mancehster-coded SWO mode not supported")]
+    ManchesterSwoNotSupported,
 }
 
 impl From<StlinkError> for DebugProbeError {
@@ -705,6 +842,7 @@ mod test {
                 jtag_version: 0,
                 swd_speed_khz: 0,
                 jtag_speed_khz: 0,
+                swo_enabled: false,
                 current_ap: None,
             }
         }
@@ -753,6 +891,14 @@ mod test {
         }
         fn reset(&mut self) -> Result<(), crate::DebugProbeError> {
             Ok(())
+        }
+
+        fn read_swo(
+            &mut self,
+            _read_data: &mut [u8],
+            _timeout: std::time::Duration,
+        ) -> Result<usize, DebugProbeError> {
+            todo!()
         }
     }
 

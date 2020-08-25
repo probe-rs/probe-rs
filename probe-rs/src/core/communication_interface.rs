@@ -1,6 +1,5 @@
-use crate::config::ChipInfo;
-use crate::error::Error;
+use crate::DebugProbeError;
 
 pub trait CommunicationInterface {
-    fn probe_for_chip_info(self) -> Result<Option<ChipInfo>, Error>;
+    fn flush(&mut self) -> Result<(), DebugProbeError>;
 }

@@ -27,14 +27,13 @@ impl<'probe> ADIMemoryInterface<ArmCommunicationInterface<'probe>> {
     pub fn new(
         interface: ArmCommunicationInterface<'probe>,
         access_port_number: impl Into<MemoryAP>,
+        only_32bit_data_size: bool,
     ) -> Result<ADIMemoryInterface<ArmCommunicationInterface>, AccessPortError> {
-        let mut interface = Self {
+        Ok(Self {
             interface,
             access_port: access_port_number.into(),
-            only_32bit_data_size: true,
-        };
-        interface.detect_data_size()?;
-        Ok(interface)
+            only_32bit_data_size,
+        })
     }
 }
 
@@ -67,7 +66,7 @@ where
     /// Build the correct CSW register for a memory access
     ///
     /// Currently, only AMBA AHB Access is supported.
-    fn build_csw_register(&self, data_size: DataSize) -> CSW {
+    pub fn build_csw_register(data_size: DataSize) -> CSW {
         // The CSW Register is set for an AMBA AHB Acccess, according to
         // the ARM Debug Interface Architecture Specification.
         //
@@ -145,20 +144,6 @@ where
             .map_err(AccessPortError::register_write_error::<R, _>)
     }
 
-    /// Check that target supports memory access with sizes different from 32 bits.
-    ///
-    /// If only 32-bit access is supported, the SIZE field will be read-only and changing it
-    /// will not have any effect.
-    fn detect_data_size(&mut self) -> Result<(), AccessPortError> {
-        let csw = self.build_csw_register(DataSize::U8);
-        self.write_ap_register(csw)?;
-        let csw = self.read_ap_register(CSW::default())?;
-
-        self.only_32bit_data_size = csw.SIZE != DataSize::U8;
-
-        Ok(())
-    }
-
     /// Read a 32bit word at `addr`.
     ///
     /// The address where the read should be performed at has to be word aligned.
@@ -168,7 +153,7 @@ where
             return Err(AccessPortError::alignment_error(address, 4));
         }
 
-        let csw = self.build_csw_register(DataSize::U32);
+        let csw = Self::build_csw_register(DataSize::U32);
 
         let tar = TAR { address };
         self.write_ap_register(csw)?;
@@ -189,7 +174,7 @@ where
             // Read 32-bit word and extract the correct byte
             ((self.read_word_32(aligned.start)? >> bit_offset) & 0xFF) as u8
         } else {
-            let csw = self.build_csw_register(DataSize::U8);
+            let csw = Self::build_csw_register(DataSize::U8);
             let tar = TAR { address };
             self.write_ap_register(csw)?;
             self.write_ap_register(tar)?;
@@ -218,7 +203,7 @@ where
         }
 
         // Second we read in 32 bit reads until we have less than 32 bits left to read.
-        let csw = self.build_csw_register(DataSize::U32);
+        let csw = Self::build_csw_register(DataSize::U32);
         self.write_ap_register(csw)?;
 
         let mut address = start_address;
@@ -321,7 +306,7 @@ where
             return Err(AccessPortError::alignment_error(address, 4));
         }
 
-        let csw = self.build_csw_register(DataSize::U32);
+        let csw = Self::build_csw_register(DataSize::U32);
         let drw = DRW { data };
         let tar = TAR { address };
         self.write_ap_register(csw)?;
@@ -349,7 +334,7 @@ where
 
             self.write_word_32(aligned.start, word)?;
         } else {
-            let csw = self.build_csw_register(DataSize::U8);
+            let csw = Self::build_csw_register(DataSize::U8);
             let drw = DRW {
                 data: u32::from(data) << bit_offset,
             };
@@ -383,7 +368,7 @@ where
         );
 
         // Second we write in 32 bit reads until we have less than 32 bits left to write.
-        let csw = self.build_csw_register(DataSize::U32);
+        let csw = Self::build_csw_register(DataSize::U32);
 
         self.write_ap_register(csw)?;
 
@@ -497,6 +482,13 @@ where
 
         Ok(())
     }
+
+    pub fn flush(&mut self) -> Result<(), AccessPortError> {
+        match self.interface.flush() {
+            Ok(_) => Ok(()),
+            Err(e) => Err(AccessPortError::FlushError(e)),
+        }
+    }
 }
 
 /// Calculates a 32-bit word aligned range from an address/length pair.
@@ -511,7 +503,9 @@ fn aligned_range(address: u32, len: usize) -> Result<Range<u32>, AccessPortError
         .ok_or(AccessPortError::OutOfBoundsError)?;
 
     // Round end address up to the nearest multiple of 4
-    let end = unaligned_end + ((4 - (unaligned_end % 4)) % 4);
+    let end = unaligned_end
+        .checked_add((4 - (unaligned_end % 4)) % 4)
+        .ok_or(AccessPortError::OutOfBoundsError)?;
 
     Ok(Range { start, end })
 }
@@ -554,6 +548,10 @@ where
 
     fn write_8(&mut self, address: u32, data: &[u8]) -> Result<(), Error> {
         ADIMemoryInterface::write_8(self, address, data).map_err(Error::architecture_specific)
+    }
+
+    fn flush(&mut self) -> Result<(), Error> {
+        ADIMemoryInterface::flush(self).map_err(Error::architecture_specific)
     }
 }
 
@@ -755,5 +753,18 @@ mod tests {
                 );
             }
         }
+    }
+
+    use super::aligned_range;
+
+    #[test]
+    fn aligned_range_at_limit_does_not_panic() {
+        // The aligned range for address 0xfffffff9 with length
+        // 4 should not panic.
+
+        // Not sure what the best behaviour to handle this is, but
+        // for sure no panic
+
+        let _ = aligned_range(0xfffffff9, 4);
     }
 }

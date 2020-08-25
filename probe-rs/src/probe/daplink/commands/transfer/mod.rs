@@ -139,6 +139,7 @@ impl Request for TransferRequest {
     }
 }
 
+#[derive(Debug)]
 pub enum Ack {
     /// TODO: ??????????????????????? Docs are weird?
     /// OK (for SWD protocol), OK or FAULT (for JTAG protocol),
@@ -148,12 +149,14 @@ pub enum Ack {
     NoAck = 7,
 }
 
+#[derive(Debug)]
 pub struct InnerTransferResponse {
     pub ack: Ack,
     pub protocol_error: bool,
     pub value_missmatch: bool,
 }
 
+#[derive(Debug)]
 pub struct TransferResponse {
     /// Number of transfers: 1 .. 255 that are executed.
     pub transfer_count: u8,

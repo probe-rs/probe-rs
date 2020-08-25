@@ -16,7 +16,7 @@ use crate::{architecture::arm::core::register, MemoryInterface};
 
 use bitfield::bitfield;
 
-use super::{CortexState, Dfsr, ARM_REGISTER_FILE};
+use super::{reset_catch_clear, reset_catch_set, CortexState, Dfsr, ARM_REGISTER_FILE};
 use std::{
     mem::size_of,
     time::{Duration, Instant},
@@ -125,9 +125,8 @@ impl<'probe> CoreInterface for M33<'probe> {
         value.set_c_debugen(true);
         value.enable_write();
 
-        self.memory
-            .write_word_32(Dhcsr::ADDRESS, value.into())
-            .map_err(Into::into)
+        self.memory.write_word_32(Dhcsr::ADDRESS, value.into())?;
+        self.memory.flush()
     }
     fn reset(&mut self) -> Result<(), Error> {
         // Set THE AIRCR.SYSRESETREQ control bit to 1 to request a reset. (ARM V6 ARM, B1.5.16)
@@ -142,24 +141,9 @@ impl<'probe> CoreInterface for M33<'probe> {
     }
 
     fn reset_and_halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
-        // Ensure debug mode is enabled
-        let dhcsr_val = Dhcsr(self.memory.read_word_32(Dhcsr::ADDRESS)?);
-        if !dhcsr_val.c_debugen() {
-            let mut dhcsr = Dhcsr(0);
-            dhcsr.set_c_debugen(true);
-            dhcsr.enable_write();
-            self.memory.write_word_32(Dhcsr::ADDRESS, dhcsr.into())?;
-        }
-
         // Set the vc_corereset bit in the DEMCR register.
         // This will halt the core after reset.
-        let demcr_val = Demcr(self.memory.read_word_32(Demcr::ADDRESS)?);
-        if !demcr_val.vc_corereset() {
-            let mut demcr_enabled = demcr_val;
-            demcr_enabled.set_vc_corereset(true);
-            self.memory
-                .write_word_32(Demcr::ADDRESS, demcr_enabled.into())?;
-        }
+        reset_catch_set(self)?;
 
         self.reset()?;
 
@@ -171,8 +155,7 @@ impl<'probe> CoreInterface for M33<'probe> {
             self.write_core_reg(register::XPSR.address, xpsr_value | XPSR_THUMB)?;
         }
 
-        self.memory
-            .write_word_32(Demcr::ADDRESS, demcr_val.into())?;
+        reset_catch_clear(self)?;
 
         // try to read the program counter
         let pc_value = self.read_core_reg(register::PC.address)?;
@@ -328,7 +311,7 @@ impl<'probe> CoreInterface for M33<'probe> {
                     return Ok(self.state.current_state);
                 }
 
-                log::warn!(
+                log::debug!(
                     "Reason for halt has changed, old reason was {:?}, new reason is {:?}",
                     &self.state.current_state,
                     &reason
@@ -375,6 +358,9 @@ impl<'probe> MemoryInterface for M33<'probe> {
     }
     fn write_8(&mut self, address: u32, data: &[u8]) -> Result<(), Error> {
         self.memory.write_8(address, data)
+    }
+    fn flush(&mut self) -> Result<(), Error> {
+        self.memory.flush()
     }
 }
 

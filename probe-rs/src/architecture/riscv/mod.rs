@@ -559,6 +559,9 @@ impl<'probe> MemoryInterface for Riscv32<'probe> {
     fn write_8(&mut self, address: u32, data: &[u8]) -> Result<(), Error> {
         self.interface.write_8(address, data)
     }
+    fn flush(&mut self) -> Result<(), Error> {
+        self.interface.flush()
+    }
 }
 
 bitfield! {

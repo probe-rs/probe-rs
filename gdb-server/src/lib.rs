@@ -2,6 +2,7 @@
 
 mod gdb_server_async;
 mod handlers;
+mod parser;
 mod reader;
 mod worker;
 mod writer;

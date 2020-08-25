@@ -1,6 +1,4 @@
-use probe_rs::{Core, MemoryInterface};
-use recap::Recap;
-use serde::Deserialize;
+use probe_rs::{config::MemoryRegion, Core, MemoryInterface, Session};
 use std::time::Duration;
 
 pub(crate) fn q_supported() -> Option<String> {
@@ -19,59 +17,60 @@ pub(crate) fn halt_reason() -> Option<String> {
     Some("S05".into())
 }
 
-pub(crate) fn read_general_registers() -> Option<String> {
-    Some("xxxxxxxx".into())
+pub(crate) fn read_general_registers(mut core: Core) -> Option<String> {
+    // The format of this packet is determined by the register number
+    // used by GDB. Just sending register 0 seems to be sufficient,
+    // the other registers are then requested using 'p' packets.
+    let register_0 = core.read_core_reg(0).unwrap();
+    Some(format!("{:08x}", register_0))
 }
 
-pub(crate) fn read_register(packet_string: String, core: &mut Core) -> Option<String> {
-    #[derive(Debug, Deserialize, PartialEq, Recap)]
-    #[recap(regex = r#"p(?P<reg>\w+)"#)]
-    struct P {
-        reg: String,
+pub(crate) fn read_register(register: u32, mut core: Core) -> Option<String> {
+    // We have to translate from the GDB register number to the probe-rs register
+    // number.
+    //
+    // The GDB register numbers can be looked up in the target description xml,
+    // which can be found in gdb/features/arm or gdb/features/riscv in the GDB
+    // source code.
+
+    let (probe_rs_number, bytesize) = match register {
+        // Default ARM register (arm-m-profile.xml)
+        // Register 0 to 15
+        x @ 0..=15 => (x, 4),
+        // CPSR register has number 16 in probe-rs
+        // See REGSEL bits, DCRSR register, ARM Reference Manual
+        25 => (16, 4),
+        // Floating Point registers (arm-m-profile-with-fpa.xml)
+        // f0 -f7 start at offset 0x40
+        // See REGSEL bits, DCRSR register, ARM Reference Manual
+        reg @ 16..=23 => ((reg - 16 + 0x40), 12),
+        // FPSCR has number 0x21 in probe-rs
+        // See REGSEL bits, DCRSR register, ARM Reference Manual
+        24 => (0x21, 4),
+        // Other registers are currently not supported,
+        // they are not listed in the xml files in GDB
+        other => {
+            log::warn!("Request for unsupported register with number {}", other);
+            return None;
+        }
+    };
+
+    let mut value = core.read_core_reg(probe_rs_number as u16).unwrap();
+
+    let mut register_value = String::new();
+
+    for _ in 0..bytesize {
+        let byte = value as u8;
+        register_value.push_str(&format!("{:02x}", byte));
+        value >>= 8;
     }
 
-    let p = packet_string.parse::<P>().unwrap();
-
-    let _ = core.halt(Duration::from_millis(500));
-    core.wait_for_core_halted(Duration::from_millis(100))
-        .unwrap();
-
-    let value = core
-        .read_core_reg(u16::from_str_radix(&p.reg, 16).unwrap())
-        .unwrap();
-
-    format!(
-        "{}{}{}{}",
-        value as u8,
-        (value >> 8) as u8,
-        (value >> 16) as u8,
-        (value >> 24) as u8
-    );
-
-    Some(format!(
-        "{:02x}{:02x}{:02x}{:02x}",
-        value as u8,
-        (value >> 8) as u8,
-        (value >> 16) as u8,
-        (value >> 24) as u8
-    ))
+    Some(register_value)
 }
 
-pub(crate) fn read_memory(packet_string: String, core: &mut Core) -> Option<String> {
-    #[derive(Debug, Deserialize, PartialEq, Recap)]
-    #[recap(regex = r#"m(?P<addr>\w+),(?P<length>\w+)"#)]
-    struct M {
-        addr: String,
-        length: String,
-    }
-
-    let m = packet_string.parse::<M>().unwrap();
-
-    let mut readback_data = vec![0u8; usize::from_str_radix(&m.length, 16).unwrap()];
-    match core.read_8(
-        u32::from_str_radix(&m.addr, 16).unwrap(),
-        &mut readback_data,
-    ) {
+pub(crate) fn read_memory(address: u32, length: u32, mut core: Core) -> Option<String> {
+    let mut readback_data = vec![0u8; length as usize];
+    match core.read_8(address, &mut readback_data) {
         Ok(_) => Some(
             readback_data
                 .iter()
@@ -87,94 +86,90 @@ pub(crate) fn read_memory(packet_string: String, core: &mut Core) -> Option<Stri
 }
 
 pub(crate) fn vcont_supported() -> Option<String> {
-    Some("vCont;c;t;s".into())
+    // It is important to announce support for both
+    // the variants with and without signal support,
+    // i.e. both c and C, otherwise GDB will not use
+    // the command.
+    Some("vCont;c;C;t;s;S".into())
 }
 
-pub(crate) fn run(core: &mut Core, awaits_halt: &mut bool) -> Option<String> {
+pub(crate) fn host_info() -> Option<String> {
+    // cputype    12 = arm
+    // cpusubtype 14 = v6m
+    // See https://llvm.org/doxygen/Support_2MachO_8h_source.html
+    Some("cputype:12;cpusubtype:14;triple:armv6m--none-eabi;endian:litte;ptrsize:4".to_string())
+}
+
+pub(crate) fn run(mut core: Core, awaits_halt: &mut bool) -> Option<String> {
     core.run().unwrap();
     *awaits_halt = true;
     None
 }
 
-pub(crate) fn stop(core: &mut Core, awaits_halt: &mut bool) -> Option<String> {
+pub(crate) fn stop(mut core: Core, awaits_halt: &mut bool) -> Option<String> {
     core.halt(Duration::from_millis(100)).unwrap();
     *awaits_halt = false;
     Some("OK".into())
 }
 
-pub(crate) fn step(core: &mut Core, awaits_halt: &mut bool) -> Option<String> {
+pub(crate) fn step(mut core: Core, awaits_halt: &mut bool) -> Option<String> {
     core.step().unwrap();
     *awaits_halt = false;
     Some("S05".into())
 }
 
-pub(crate) fn insert_hardware_break(packet_string: String, core: &mut Core) -> Option<String> {
-    #[derive(Debug, Deserialize, PartialEq, Recap)]
-    #[recap(regex = r#"Z1,(?P<addr>\w+),(?P<size>\w+)"#)]
-    struct Z1 {
-        addr: String,
-        size: String,
-    }
-
-    let z1 = packet_string.parse::<Z1>().unwrap();
-
-    let addr = u32::from_str_radix(&z1.addr, 16).unwrap();
-
-    core.reset_and_halt(Duration::from_millis(100)).unwrap();
-    core.set_hw_breakpoint(addr).unwrap();
-    core.run().unwrap();
+pub(crate) fn insert_hardware_break(address: u32, _kind: u32, mut core: Core) -> Option<String> {
+    core.set_hw_breakpoint(address).unwrap();
     Some("OK".into())
 }
 
-pub(crate) fn remove_hardware_break(packet_string: String, core: &mut Core) -> Option<String> {
-    #[derive(Debug, Deserialize, PartialEq, Recap)]
-    #[recap(regex = r#"z1,(?P<addr>\w+),(?P<size>\w+)"#)]
-    struct Z1 {
-        addr: String,
-        size: String,
-    }
-
-    let z1 = packet_string.parse::<Z1>().unwrap();
-
-    let addr = u32::from_str_radix(&z1.addr, 16).unwrap();
-
-    core.reset_and_halt(Duration::from_millis(100)).unwrap();
-    core.clear_hw_breakpoint(addr).unwrap();
-    core.run().unwrap();
+pub(crate) fn remove_hardware_break(address: u32, _kind: u32, mut core: Core) -> Option<String> {
+    core.clear_hw_breakpoint(address).unwrap();
     Some("OK".into())
 }
 
-pub(crate) fn write_memory(packet_string: String, data: &[u8], core: &mut Core) -> Option<String> {
-    #[derive(Debug, Deserialize, PartialEq, Recap)]
-    #[recap(regex = r#"X(?P<addr>\w+),(?P<length>\w+):(?P<data>[01]*)"#)]
-    struct X {
-        addr: String,
-        length: String,
-        data: String,
-    }
-
-    let x = packet_string.parse::<X>().unwrap();
-
-    let length = usize::from_str_radix(&x.length, 16).unwrap();
-    let data = &data[data.len() - length..];
-
-    core.write_8(u32::from_str_radix(&x.addr, 16).unwrap(), data)
-        .unwrap();
+pub(crate) fn write_memory(address: u32, data: &[u8], mut core: Core) -> Option<String> {
+    core.write_8(address, data).unwrap();
 
     Some("OK".into())
 }
 
-pub(crate) fn get_memory_map() -> Option<String> {
-    let xml = r#"<?xml version="1.0"?>
+pub(crate) fn get_memory_map(session: &Session) -> Option<String> {
+    let mut xml_map = r#"<?xml version="1.0"?>
 <!DOCTYPE memory-map PUBLIC "+//IDN gnu.org//DTD GDB Memory Map V1.0//EN" "http://sourceware.org/gdb/gdb-memory-map.dtd">
 <memory-map>
-<memory type="ram" start="0x20000000" length="0x4000"/>
-<memory type="rom" start="0x00000000" length="0x40000"/>
-</memory-map>"#;
-    Some(String::from_utf8(gdb_sanitize_file(xml.as_bytes(), 0, 1000)).unwrap())
+"#.to_owned();
+
+    for region in session.memory_map() {
+        let region_entry = match region {
+            MemoryRegion::Ram(ram) => format!(
+                r#"<memory type="ram" start="{:#x}" length="{:#x}"/>\n"#,
+                ram.range.start,
+                ram.range.end - ram.range.start
+            ),
+            MemoryRegion::Generic(region) => format!(
+                r#"<memory type="rom" start="{:#x}" length="{:#x}"/>\n"#,
+                region.range.start,
+                region.range.end - region.range.start
+            ),
+            MemoryRegion::Flash(region) => {
+                // TODO: Use flash with block size
+                format!(
+                    r#"<memory type="rom" start="{:#x}" length="{:#x}"/>\n"#,
+                    region.range.start,
+                    region.range.end - region.range.start
+                )
+            }
+        };
+
+        xml_map.push_str(&region_entry);
+    }
+
+    xml_map.push_str(r#"</memory-map>"#);
+    Some(String::from_utf8(gdb_sanitize_file(xml_map.as_bytes(), 0, 1000)).unwrap())
 }
 
-pub(crate) fn user_halt(core: &mut Core, awaits_halt: &mut bool) -> Option<String> {
+pub(crate) fn user_halt(mut core: Core, awaits_halt: &mut bool) -> Option<String> {
     let _ = core.halt(Duration::from_millis(100));
     *awaits_halt = false;
     Some("T02".into())
@@ -185,9 +180,8 @@ pub(crate) fn detach(break_due: &mut bool) -> Option<String> {
     Some("OK".into())
 }
 
-pub(crate) fn reset_halt(core: &mut Core) -> Option<String> {
-    let _cpu_info = core.reset();
-    let _cpu_info = core.halt(Duration::from_millis(100));
+pub(crate) fn reset_halt(mut core: Core) -> Option<String> {
+    let _cpu_info = core.reset_and_halt(Duration::from_millis(400));
     Some("OK".into())
 }
 
