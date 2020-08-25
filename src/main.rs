@@ -42,13 +42,13 @@ struct Opts {
     #[structopt(long)]
     list_chips: bool,
     #[cfg(feature = "defmt")]
-    #[structopt(long)]
+    #[structopt(long, conflicts_with = "no_flash")]
     defmt: bool,
     #[structopt(long, required_unless("list-chips"))]
     chip: Option<String>,
     #[structopt(name = "ELF", parse(from_os_str), required_unless("list-chips"))]
     elf: Option<PathBuf>,
-    #[structopt(long)]
+    #[structopt(long, conflicts_with = "defmt")]
     /// Skip writing the application binary to flash
     no_flash: bool,
 }
