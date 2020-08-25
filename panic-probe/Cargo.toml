@@ -8,3 +8,20 @@ description = "Panic handler that exits `probe-run` with an error code"
 [dependencies]
 cortex-m = "0.6.3"
 cortex-m-rt = "0.6.12"
+
+[dependencies.rtt-target]
+version = "0.2.2"
+optional = true
+
+[dependencies.defmt]
+git = "https://github.com/knurling-rs/defmt.git"
+branch = "main"
+optional = true
+
+[features]
+# Print the panic message using `rtt-target`.
+print-rtt = ["rtt-target"]
+# Print the panic message using `defmt`.
+print-defmt = ["defmt", "defmt-error"]
+
+defmt-error = [] # internal feature, do not use
