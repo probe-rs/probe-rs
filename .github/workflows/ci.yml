@@ -17,19 +17,37 @@ jobs:
         os:
           - ubuntu-latest
           - windows-latest
+          - macos-latest
 
     runs-on: ${{ matrix.os }}
+
+    env:
+      VCPKGRS_DYNAMIC: 1 # Use dynamic linking on Windows build (vcpkg)
 
     steps:
       - name: Checkout sources
         uses: actions/checkout@v2
 
-      - name: Install libusb
+      - name: Install libusb and libftdi (linux)
         run: |
           sudo apt update
-          sudo apt install -y libusb-dev libusb-1.0
+          sudo apt install -y libusb-dev libusb-1.0 libftdi1-dev
         # Only install on Ubuntu
         if: matrix.os == 'ubuntu-latest'
+
+      - name: Install libftdi (windows)
+        uses: lukka/run-vcpkg@v3
+        with:
+          vcpkgArguments: "libftdi1:x64-windows"
+          # Version including bugfix for libusb (see https://github.com/microsoft/vcpkg/issues/12642)
+          vcpkgGitCommitId: "6ed0bc982bf9bdca25439d538f7f272786a7af4d"
+          vcpkgTriplet: x64-windows
+        if: matrix.os == 'windows-latest'
+
+      - name: Install libftdi (macos)
+        run: brew install libftdi
+        # Only install on macos
+        if: matrix.os == 'macos-latest'
 
       - name: Install stable toolchain
         uses: actions-rs/toolchain@v1
@@ -55,16 +73,28 @@ jobs:
 
     runs-on: ${{ matrix.os }}
 
+    env:
+      VCPKGRS_DYNAMIC: 1 # Use dynamic linking on Windows build (vcpkg)
+
     steps:
       - name: Checkout sources
         uses: actions/checkout@v2
 
-      - name: Install libusb
+      - name: Install libusb and libftdi (linux)
         run: |
           sudo apt update
-          sudo apt install -y libusb-dev libusb-1.0
+          sudo apt install -y libusb-dev libusb-1.0 libftdi1-dev
         # Only install on Ubuntu
         if: matrix.os == 'ubuntu-latest'
+
+      - name: Install libftdi (windows)
+        uses: lukka/run-vcpkg@v3
+        with:
+          vcpkgArguments: "libftdi1:x64-windows"
+          # Version including bugfix for libusb (see https://github.com/microsoft/vcpkg/issues/12642)
+          vcpkgGitCommitId: "6ed0bc982bf9bdca25439d538f7f272786a7af4d"
+          vcpkgTriplet: x64-windows
+        if: matrix.os == 'windows-latest'
 
       - name: Install stable toolchain
         uses: actions-rs/toolchain@v1
@@ -110,7 +140,7 @@ jobs:
       - name: Install libusb
         run: |
           sudo apt update
-          sudo apt install -y libusb-dev libusb-1.0
+          sudo apt install -y libusb-dev libusb-1.0 libftdi1-dev
 
       - name: Install stable toolchain
         uses: actions-rs/toolchain@v1
