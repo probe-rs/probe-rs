@@ -186,9 +186,9 @@ impl JtagAdapter {
 
         let mut reply = self.read_response(expect_bytes)?;
 
-        let mut last_byte = reply[reply.len() - 1] & 0x01;
+        let mut last_byte = reply[reply.len() - 1] >> 7;
         if bits > 1 {
-            let byte = reply[reply.len() - 2];
+            let byte = reply[reply.len() - 2] >> (8 - (bits - 1));
             last_byte = byte | (last_byte << (bits - 1));
         }
         reply[full_bytes] = last_byte;
