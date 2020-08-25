@@ -41,4 +41,3 @@ jobs:
         cargo build --target thumbv6m-none-eabi
         cargo build --target thumbv6m-none-eabi --features print-rtt
         cargo build --target thumbv6m-none-eabi --features print-defmt
-      # NOTE order is important; running `mdbook` at the end = duplicate crate errors
