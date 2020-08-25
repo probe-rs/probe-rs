@@ -33,6 +33,12 @@ jobs:
     - name: Install C libraries for tooling
       if: matrix.os == 'ubuntu-latest'
       run: sudo apt-get update && sudo apt-get install libudev-dev libusb-1.0-0-dev
-    - name: Build
+    - name: Build host tooling
       run: cargo build
+    - name: Build embedded tooling
+      working-directory: panic-probe
+      run: |
+        cargo build --target thumbv6m-none-eabi
+        cargo build --target thumbv6m-none-eabi --features print-rtt
+        cargo build --target thumbv6m-none-eabi --features print-defmt
       # NOTE order is important; running `mdbook` at the end = duplicate crate errors
