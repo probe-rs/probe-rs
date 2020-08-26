@@ -176,6 +176,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cf1de2fe8c75bc145a2f577add951f8134889b4795d47466a54a5c846d691693"
 
 [[package]]
+name = "bitvec"
+version = "0.17.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "41262f11d771fd4a61aa3ce019fca363b4b6c282fca9da2a31186d3965a47a5c"
+dependencies = [
+ "either",
+ "radium",
+]
+
+[[package]]
 name = "blocking"
 version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -828,6 +838,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "libftdi1-sys"
+version = "1.0.0-alpha3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1b362baf5161887215d5c66fc697ff94528fba8d80518deab2fe3a75817c408e"
+dependencies = [
+ "cfg-if",
+ "libc",
+ "pkg-config",
+ "vcpkg",
+]
+
+[[package]]
 name = "libusb1-sys"
 version = "0.3.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1082,11 +1104,12 @@ dependencies = [
 [[package]]
 name = "probe-rs"
 version = "0.8.0"
-source = "git+https://github.com/probe-rs/probe-rs#0f3a2856365304dd6c04fc8c28dc82f8ac06e8bb"
+source = "git+https://github.com/probe-rs/probe-rs#79a91c1f5e11090a8344546e7b0db97f32963d98"
 dependencies = [
  "anyhow",
  "base64",
  "bitfield",
+ "bitvec",
  "enum-primitive-derive",
  "gimli",
  "goblin",
@@ -1095,6 +1118,7 @@ dependencies = [
  "jaylink",
  "jep106",
  "lazy_static",
+ "libftdi1-sys",
  "log",
  "num-traits",
  "object",
@@ -1136,7 +1160,7 @@ dependencies = [
 [[package]]
 name = "probe-rs-t2rust"
 version = "0.6.0"
-source = "git+https://github.com/probe-rs/probe-rs#0f3a2856365304dd6c04fc8c28dc82f8ac06e8bb"
+source = "git+https://github.com/probe-rs/probe-rs#79a91c1f5e11090a8344546e7b0db97f32963d98"
 dependencies = [
  "base64",
  "proc-macro2",
@@ -1204,6 +1228,12 @@ checksum = "aa563d17ecb180e500da1cfd2b028310ac758de548efdd203e18f283af693f37"
 dependencies = [
  "proc-macro2",
 ]
+
+[[package]]
+name = "radium"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "def50a86306165861203e7f84ecffbbdfdea79f0e51039b33de1e952358c47ac"
 
 [[package]]
 name = "redox_syscall"
@@ -1407,9 +1437,9 @@ checksum = "8ea5119cdb4c55b55d432abb513a0429384878c15dde60cc77b1c99de1a95a6a"
 
 [[package]]
 name = "structopt"
-version = "0.3.16"
+version = "0.3.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "de5472fb24d7e80ae84a7801b7978f95a19ec32cb1876faea59ab711eb901976"
+checksum = "6cc388d94ffabf39b5ed5fadddc40147cb21e605f53db6f8f36a625d27489ac5"
 dependencies = [
  "clap",
  "lazy_static",
@@ -1418,9 +1448,9 @@ dependencies = [
 
 [[package]]
 name = "structopt-derive"
-version = "0.4.9"
+version = "0.4.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1e0eb37335aeeebe51be42e2dc07f031163fbabfa6ac67d7ea68b5c2f68d5f99"
+checksum = "5e2513111825077552a6751dfad9e11ce0fba07d7276a3943a037d7e93e64c5f"
 dependencies = [
  "heck",
  "proc-macro-error",
