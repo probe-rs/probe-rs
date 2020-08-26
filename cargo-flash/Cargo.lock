@@ -170,6 +170,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cf1de2fe8c75bc145a2f577add951f8134889b4795d47466a54a5c846d691693"
 
 [[package]]
+name = "bitvec"
+version = "0.17.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "41262f11d771fd4a61aa3ce019fca363b4b6c282fca9da2a31186d3965a47a5c"
+dependencies = [
+ "either",
+ "radium",
+]
+
+[[package]]
 name = "blocking"
 version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -327,6 +337,12 @@ name = "dtoa"
 version = "0.4.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "134951f4028bdadb9b84baf4232681efbf277da25144b9b0ad65df75946c422b"
+
+[[package]]
+name = "either"
+version = "1.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cd56b59865bce947ac5958779cfa508f6c3b9497cc762b7e24a12d11ccde2c4f"
 
 [[package]]
 name = "encode_unicode"
@@ -522,7 +538,7 @@ dependencies = [
 [[package]]
 name = "gdb-server"
 version = "0.8.0"
-source = "git+https://github.com/probe-rs/probe-rs#0f3a2856365304dd6c04fc8c28dc82f8ac06e8bb"
+source = "git+https://github.com/probe-rs/probe-rs#79a91c1f5e11090a8344546e7b0db97f32963d98"
 dependencies = [
  "anyhow",
  "async-std",
@@ -721,6 +737,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "libftdi1-sys"
+version = "1.0.0-alpha3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1b362baf5161887215d5c66fc697ff94528fba8d80518deab2fe3a75817c408e"
+dependencies = [
+ "cfg-if",
+ "libc",
+ "pkg-config",
+ "vcpkg",
+]
+
+[[package]]
 name = "libusb1-sys"
 version = "0.3.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -898,11 +926,12 @@ dependencies = [
 [[package]]
 name = "probe-rs"
 version = "0.8.0"
-source = "git+https://github.com/probe-rs/probe-rs#0f3a2856365304dd6c04fc8c28dc82f8ac06e8bb"
+source = "git+https://github.com/probe-rs/probe-rs#79a91c1f5e11090a8344546e7b0db97f32963d98"
 dependencies = [
  "anyhow",
  "base64",
  "bitfield",
+ "bitvec",
  "enum-primitive-derive",
  "gimli",
  "goblin",
@@ -911,6 +940,7 @@ dependencies = [
  "jaylink",
  "jep106",
  "lazy_static",
+ "libftdi1-sys",
  "log",
  "num-traits",
  "object",
@@ -926,7 +956,7 @@ dependencies = [
 [[package]]
 name = "probe-rs-cli-util"
 version = "0.8.0"
-source = "git+https://github.com/probe-rs/probe-rs#0f3a2856365304dd6c04fc8c28dc82f8ac06e8bb"
+source = "git+https://github.com/probe-rs/probe-rs#79a91c1f5e11090a8344546e7b0db97f32963d98"
 dependencies = [
  "anyhow",
  "cargo_metadata",
@@ -940,7 +970,7 @@ dependencies = [
 [[package]]
 name = "probe-rs-t2rust"
 version = "0.6.0"
-source = "git+https://github.com/probe-rs/probe-rs#0f3a2856365304dd6c04fc8c28dc82f8ac06e8bb"
+source = "git+https://github.com/probe-rs/probe-rs#79a91c1f5e11090a8344546e7b0db97f32963d98"
 dependencies = [
  "base64",
  "proc-macro2",
@@ -1008,6 +1038,12 @@ checksum = "aa563d17ecb180e500da1cfd2b028310ac758de548efdd203e18f283af693f37"
 dependencies = [
  "proc-macro2",
 ]
+
+[[package]]
+name = "radium"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "def50a86306165861203e7f84ecffbbdfdea79f0e51039b33de1e952358c47ac"
 
 [[package]]
 name = "redox_syscall"
