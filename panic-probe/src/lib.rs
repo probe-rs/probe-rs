@@ -148,6 +148,6 @@ mod print_defmt {
 
         let msg = str::from_utf8(&sink.buf[..sink.pos]).unwrap_or("<utf-8 error>");
         let overflow = if sink.overflowed { OVERFLOW_MARK } else { "" };
-        defmt::error!("panic-probe: {:str}{:str}", msg, overflow);
+        defmt::error!("{:str}{:str}", msg, overflow);
     }
 }
