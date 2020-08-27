@@ -46,6 +46,8 @@ mod imp {
     fn panic(info: &PanicInfo) -> ! {
         static PANICKED: AtomicBool = AtomicBool::new(false);
 
+        cortex_m::interrupt::disable();
+
         // Guard against infinite recursion, just in case.
         if PANICKED.load(Ordering::Relaxed) {
             loop {
