@@ -117,6 +117,26 @@ Also have a look at [CONTRIBUTING.md](CONTRIBUTING.md).
 
 Please reach out to [@Yatekii](https://github.com/Yatekii)
 
+### Building
+
+Building requires Rust and Cargo which can be installed [using rustup](https://rustup.rs/). probe-rs also depends on libusb and libftdi. On linux these can be installed with your package manager:
+
+```
+# Ubuntu
+> sudo apt install -y libusb-dev libusb-1.0 libftdi1-dev
+```
+
+On Windows you can use [vcpkg](https://github.com/microsoft/vcpkg#quick-start-windows):
+
+```
+# dynamic linking 64-bit
+> vcpkg install libftdi1:x64-windows libusb:x64-windows
+> set VCPKGRS_DYNAMIC=1
+
+# static linking 64-bit
+> vcpkg install libftdi1:x64-windows-static-md libusb:x64-windows-static-md
+```
+
 ## Sponsors
 
 [![Technokrat](https://technokrat.ch/static/img/svg_banner-light.svg)](https://technokrat.ch)
