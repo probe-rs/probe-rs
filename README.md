@@ -137,6 +137,8 @@ On Windows you can use [vcpkg](https://github.com/microsoft/vcpkg#quick-start-wi
 > vcpkg install libftdi1:x64-windows-static-md libusb:x64-windows-static-md
 ```
 
+See [the vcpkg crate documentation](https://docs.rs/vcpkg/) for more information about configuring vcpkg with rust.
+
 ## Sponsors
 
 [![Technokrat](https://technokrat.ch/static/img/svg_banner-light.svg)](https://technokrat.ch)
