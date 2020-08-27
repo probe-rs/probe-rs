@@ -7,7 +7,7 @@ use core::{
 };
 use std::{
     collections::{btree_map, BTreeMap},
-    fs,
+    env, fs,
     io::{self, Write as _},
     path::PathBuf,
     process,
@@ -17,6 +17,7 @@ use std::{
 
 use anyhow::{anyhow, bail, Context};
 use arrayref::array_ref;
+use colored::Colorize;
 use gimli::{
     read::{CfaRule, DebugFrame, UnwindSection},
     BaseAddresses, EndianSlice, LittleEndian, RegisterRule, UninitializedUnwindContext,
@@ -75,6 +76,7 @@ fn notmain() -> Result<i32, anyhow::Error> {
     let elf_path = opts.elf.as_deref().unwrap();
     let chip = opts.chip.as_deref().unwrap();
     let bytes = fs::read(elf_path)?;
+    // TODO switch this line from xmas-elf to object
     let elf = ElfFile::new(&bytes).map_err(|s| anyhow!("{}", s))?;
 
     let target = probe_rs::config::registry::get_target_by_name(chip)?;
@@ -102,7 +104,7 @@ fn notmain() -> Result<i32, anyhow::Error> {
     }
 
     #[cfg(feature = "defmt")]
-    let table = {
+    let (table, locs) = {
         let table = elf2table::parse(&bytes)?;
 
         if table.is_none() && opts.defmt {
@@ -111,7 +113,18 @@ fn notmain() -> Result<i32, anyhow::Error> {
             eprintln!("warning: application may be using `defmt` but `--defmt` flag was not used");
         }
 
-        table
+        let locs = if opts.defmt {
+            let locs = elf2table::get_locations(&bytes)?;
+
+            if !table.as_ref().unwrap().is_empty() && locs.is_empty() {
+                bail!("DWARF file location info not found; compile your program with `debug = 2`")
+            }
+            Some(locs)
+        } else {
+            None
+        };
+
+        (table, locs)
     };
 
     // sections used in cortex-m-rt
@@ -337,6 +350,9 @@ fn notmain() -> Result<i32, anyhow::Error> {
     #[cfg(feature = "defmt")]
     let mut frames = vec![];
     let mut was_halted = false;
+    #[cfg(feature = "defmt")]
+    let current_dir = env::current_dir()?;
+    // TODO strip prefix from crates-io paths (?)
     while CONTINUE.load(Ordering::Relaxed) {
         if let Some(logging_channel) = &mut logging_channel {
             let num_bytes_read = match logging_channel.read(&mut read_buf) {
@@ -352,12 +368,34 @@ fn notmain() -> Result<i32, anyhow::Error> {
                     #[cfg(feature = "defmt")]
                     () => {
                         if opts.defmt {
+                            let locs = locs.as_ref().unwrap();
                             frames.extend_from_slice(&read_buf[..num_bytes_read]);
 
                             while let Ok((frame, consumed)) =
                                 decoder::decode(&frames, table.as_ref().unwrap())
                             {
+                                let loc = locs.get(&frame.index()).ok_or_else(|| {
+                                    anyhow!(
+                                        "no location information from log frame #{}",
+                                        frame.index()
+                                    )
+                                })?;
+
+                                let relpath =
+                                    if let Ok(relpath) = loc.file.strip_prefix(&current_dir) {
+                                        relpath
+                                    } else {
+                                        // not relative; use full path
+                                        &loc.file
+                                    };
+
                                 writeln!(stdout, "{}", frame.display(true))?;
+                                writeln!(
+                                    stdout,
+                                    "└─ {}",
+                                    &format!("{}:{}", relpath.display(), loc.line).dimmed()
+                                )?;
+
                                 let num_frames = frames.len();
                                 frames.rotate_left(consumed);
                                 frames.truncate(num_frames - consumed);
