@@ -342,9 +342,9 @@ dependencies = [
 
 [[package]]
 name = "jaylink"
-version = "0.1.4"
+version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "84c644d34eb760b59cf044d12de3965501c8824f353779fe61b05fd3bf5e5d29"
+checksum = "e04098e968466cf76f8e5f34f890a3dfde1571aa9df80a3b229c3b002425c859"
 dependencies = [
  "bitflags",
  "byteorder",
