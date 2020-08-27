@@ -17,7 +17,7 @@ probe-rs = { version = "0.8.0", git = "https://github.com/probe-rs/probe-rs" }
 gdb-server = { version = "0.8.0", git = "https://github.com/probe-rs/probe-rs"  }
 probe-rs-cli-util = { version = "0.8.0", git = "https://github.com/probe-rs/probe-rs" }
 
-structopt = "0.3.2"
+structopt = "0.3.17"
 indicatif = "0.15.0"
 env_logger = "0.7.1"
 log = { version = "0.4.0", features = ["serde"] }
