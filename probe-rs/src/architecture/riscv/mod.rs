@@ -425,6 +425,8 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
             tselect_index += 1;
         }
 
+        log::debug!("Target supports {} breakpoints.", tselect_index);
+
         Ok(tselect_index)
     }
 
