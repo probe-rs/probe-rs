@@ -117,12 +117,20 @@ impl Session {
                     Core::create_state(0),
                 );
 
-                Session {
+                let mut session = Session {
                     target,
                     probe,
                     interface_state: ArchitectureInterfaceState::Riscv(state),
                     cores: vec![core],
+                };
+
+                {
+                    let mut core = session.core(0)?;
+
+                    core.halt(Duration::from_millis(100))?;
                 }
+
+                session
             }
         };
 
