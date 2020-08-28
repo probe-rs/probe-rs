@@ -36,20 +36,29 @@ fn main() -> Result<(), anyhow::Error> {
     notmain().map(|code| process::exit(code))
 }
 
+/// A Cargo runner for microcontrollers.
 #[derive(StructOpt)]
 #[structopt(name = "probe-run")]
 struct Opts {
+    /// List supported chips and exit.
     #[structopt(long)]
     list_chips: bool,
+
+    /// Enable defmt decoding.
     #[cfg(feature = "defmt")]
     #[structopt(long, conflicts_with = "no_flash")]
     defmt: bool,
+
+    /// The chip to program.
     #[structopt(long, required_unless("list-chips"))]
     chip: Option<String>,
+
+    /// Path to an ELF firmware file.
     #[structopt(name = "ELF", parse(from_os_str), required_unless("list-chips"))]
     elf: Option<PathBuf>,
+
+    /// Skip writing the application binary to flash.
     #[structopt(long, conflicts_with = "defmt")]
-    /// Skip writing the application binary to flash
     no_flash: bool,
 }
 
