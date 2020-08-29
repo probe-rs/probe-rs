@@ -33,12 +33,16 @@ Add this line to your Cargo configuration (`.cargo/config`) file:
 
 ``` toml
 [target.'cfg(all(target_arch = "arm", target_os = "none"))']
-runner = "probe-run --chip $CHIP"
+runner = "probe-run --chip ${PROBE_RUN_CHIP}"
 ```
 
-Instead of `$CHIP` you'll need to write the name of your microcontroller.
+Instead of `${PROBE_RUN_CHIP}` you can write the name of your microcontroller.
 For example, one would use `nRF52840_xxAA` for the nRF52840 microcontroller.
 To list all supported chips run `probe-run --list-chips`.
+
+To support multiple devices, or permit overriding default behavior, you may prefer to set the
+`${PROBE_RUN_CHIP}` environment variable, and set `runner` (or
+`CARGO_TARGET_${TARGET_ARCH}_RUNNER`) to `probe-run`.
 
 2. Enable debug info
 
