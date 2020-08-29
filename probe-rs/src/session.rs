@@ -54,7 +54,7 @@ impl ArchitectureInterfaceState {
     ) -> Result<Core<'probe>, Error> {
         match self {
             ArchitectureInterfaceState::Arm(state) => {
-                let interface = probe
+                let mut interface = probe
                     .get_arm_interface(state)?
                     .ok_or_else(|| anyhow!("No DAP interface available on probe"))?;
 
@@ -201,7 +201,7 @@ impl Session {
     }
 
     pub fn get_arm_component(&mut self) -> Result<Component, Error> {
-        let interface = self.get_arm_interface()?;
+        let mut interface = self.get_arm_interface()?;
 
         let ap_index = 0;
 

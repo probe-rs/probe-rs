@@ -8,7 +8,7 @@ use std::convert::TryInto;
 use std::ops::Range;
 
 /// A struct to give access to a targets memory using a certain DAP.
-pub(in crate::architecture::arm) struct ADIMemoryInterface<AP>
+pub(in crate::architecture::arm) struct ADIMemoryInterface<'interface, AP>
 where
     AP: CommunicationInterface
         + APAccess<MemoryAP, CSW>
@@ -16,18 +16,21 @@ where
         + APAccess<MemoryAP, DRW>
         + DPAccess,
 {
-    interface: AP,
+    interface: &'interface mut AP,
     access_port: MemoryAP,
     only_32bit_data_size: bool,
 }
 
-impl<'probe> ADIMemoryInterface<ArmCommunicationInterface<'probe>> {
+impl<'probe: 'interface, 'interface>
+    ADIMemoryInterface<'interface, ArmCommunicationInterface<'probe>>
+{
     /// Creates a new MemoryInterface for given AccessPort.
     pub fn new(
-        interface: ArmCommunicationInterface<'probe>,
+        interface: &'interface mut ArmCommunicationInterface<'probe>,
         access_port_number: impl Into<MemoryAP>,
         only_32bit_data_size: bool,
-    ) -> Result<ADIMemoryInterface<ArmCommunicationInterface>, AccessPortError> {
+    ) -> Result<ADIMemoryInterface<'interface, ArmCommunicationInterface<'probe>>, AccessPortError>
+    {
         Ok(Self {
             interface,
             access_port: access_port_number.into(),
@@ -36,7 +39,7 @@ impl<'probe> ADIMemoryInterface<ArmCommunicationInterface<'probe>> {
     }
 }
 
-impl<AP> ADIMemoryInterface<AP>
+impl<AP> ADIMemoryInterface<'_, AP>
 where
     AP: CommunicationInterface
         + APAccess<MemoryAP, CSW>
@@ -491,7 +494,7 @@ fn aligned_range(address: u32, len: usize) -> Result<Range<u32>, AccessPortError
     Ok(Range { start, end })
 }
 
-impl<AP> MemoryInterface for ADIMemoryInterface<AP>
+impl<AP> MemoryInterface for ADIMemoryInterface<'_, AP>
 where
     AP: CommunicationInterface
         + APAccess<MemoryAP, CSW>
@@ -541,12 +544,12 @@ mod tests {
     use super::super::super::ap::{memory_ap::mock::MockMemoryAP, MemoryAP};
     use super::ADIMemoryInterface;
 
-    impl ADIMemoryInterface<MockMemoryAP> {
+    impl<'interface> ADIMemoryInterface<'interface, MockMemoryAP> {
         /// Creates a new MemoryInterface for given AccessPort.
         fn new(
-            mock: MockMemoryAP,
+            mock: &'interface mut MockMemoryAP,
             access_port_number: impl Into<MemoryAP>,
-        ) -> ADIMemoryInterface<MockMemoryAP> {
+        ) -> ADIMemoryInterface<'interface, MockMemoryAP> {
             Self {
                 interface: mock,
                 access_port: access_port_number.into(),
@@ -571,7 +574,7 @@ mod tests {
     fn read_word_32() {
         let mut mock = MockMemoryAP::with_pattern();
         mock.memory[..8].copy_from_slice(&DATA8[..8]);
-        let mut mi = ADIMemoryInterface::<MockMemoryAP>::new(mock, 0x0);
+        let mut mi = ADIMemoryInterface::<MockMemoryAP>::new(&mut mock, 0x0);
 
         for &address in &[0, 4] {
             let value = mi.read_word_32(address).expect("read_word_32 failed");
@@ -583,7 +586,7 @@ mod tests {
     fn read_word_8() {
         let mut mock = MockMemoryAP::with_pattern();
         mock.memory[..8].copy_from_slice(&DATA8[..8]);
-        let mut mi = ADIMemoryInterface::<MockMemoryAP>::new(mock, 0x0);
+        let mut mi = ADIMemoryInterface::<MockMemoryAP>::new(&mut mock, 0x0);
 
         for address in 0..8 {
             let value = mi
@@ -596,8 +599,8 @@ mod tests {
     #[test]
     fn write_word_32() {
         for &address in &[0, 4] {
-            let mock = MockMemoryAP::with_pattern();
-            let mut mi = ADIMemoryInterface::<MockMemoryAP>::new(mock, 0x0);
+            let mut mock = MockMemoryAP::with_pattern();
+            let mut mi = ADIMemoryInterface::<MockMemoryAP>::new(&mut mock, 0x0);
 
             let mut expected = Vec::from(mi.mock_memory());
             expected[(address as usize)..(address as usize) + 4].copy_from_slice(&DATA8[..4]);
@@ -616,8 +619,8 @@ mod tests {
     #[test]
     fn write_word_8() {
         for address in 0..8 {
-            let mock = MockMemoryAP::with_pattern();
-            let mut mi = ADIMemoryInterface::<MockMemoryAP>::new(mock, 0x0);
+            let mut mock = MockMemoryAP::with_pattern();
+            let mut mi = ADIMemoryInterface::<MockMemoryAP>::new(&mut mock, 0x0);
 
             let mut expected = Vec::from(mi.mock_memory());
             expected[address] = DATA8[0];
@@ -637,7 +640,7 @@ mod tests {
     fn read_32() {
         let mut mock = MockMemoryAP::with_pattern();
         mock.memory[..DATA8.len()].copy_from_slice(DATA8);
-        let mut mi = ADIMemoryInterface::<MockMemoryAP>::new(mock, 0x0);
+        let mut mi = ADIMemoryInterface::<MockMemoryAP>::new(&mut mock, 0x0);
 
         for &address in &[0, 4] {
             for len in 0..3 {
@@ -659,8 +662,8 @@ mod tests {
 
     #[test]
     fn read_32_unaligned_should_error() {
-        let mock = MockMemoryAP::with_pattern();
-        let mut mi = ADIMemoryInterface::<MockMemoryAP>::new(mock, 0x0);
+        let mut mock = MockMemoryAP::with_pattern();
+        let mut mi = ADIMemoryInterface::<MockMemoryAP>::new(&mut mock, 0x0);
 
         for &address in &[1, 3, 127] {
             assert!(mi.read_32(address, &mut [0u32; 4]).is_err());
@@ -671,7 +674,7 @@ mod tests {
     fn read_8() {
         let mut mock = MockMemoryAP::with_pattern();
         mock.memory[..DATA8.len()].copy_from_slice(DATA8);
-        let mut mi = ADIMemoryInterface::<MockMemoryAP>::new(mock, 0x0);
+        let mut mi = ADIMemoryInterface::<MockMemoryAP>::new(&mut mock, 0x0);
 
         for address in 0..4 {
             for len in 0..12 {
@@ -695,8 +698,8 @@ mod tests {
     fn write_32() {
         for &address in &[0, 4] {
             for len in 0..3 {
-                let mock = MockMemoryAP::with_pattern();
-                let mut mi = ADIMemoryInterface::<MockMemoryAP>::new(mock, 0x0);
+                let mut mock = MockMemoryAP::with_pattern();
+                let mut mi = ADIMemoryInterface::<MockMemoryAP>::new(&mut mock, 0x0);
 
                 let mut expected = Vec::from(mi.mock_memory());
                 expected[address as usize..(address as usize) + len * 4]
@@ -720,8 +723,8 @@ mod tests {
 
     #[test]
     fn write_block_u32_unaligned_should_error() {
-        let mock = MockMemoryAP::with_pattern();
-        let mut mi = ADIMemoryInterface::<MockMemoryAP>::new(mock, 0x0);
+        let mut mock = MockMemoryAP::with_pattern();
+        let mut mi = ADIMemoryInterface::<MockMemoryAP>::new(&mut mock, 0x0);
 
         for &address in &[1, 3, 127] {
             assert!(mi.write_32(address, &[0xDEAD_BEEF, 0xABBA_BABE]).is_err());
@@ -732,8 +735,8 @@ mod tests {
     fn write_8() {
         for address in 0..4 {
             for len in 0..12 {
-                let mock = MockMemoryAP::with_pattern();
-                let mut mi = ADIMemoryInterface::<MockMemoryAP>::new(mock, 0x0);
+                let mut mock = MockMemoryAP::with_pattern();
+                let mut mi = ADIMemoryInterface::<MockMemoryAP>::new(&mut mock, 0x0);
 
                 let mut expected = Vec::from(mi.mock_memory());
                 expected[address as usize..(address as usize) + len].copy_from_slice(&DATA8[..len]);

@@ -124,12 +124,14 @@ pub trait DAPAccess: DebugProbe {
 }
 
 pub trait ArmProbeInterface<'probe>: SwoAccess {
-    fn memory_interface(
-        self: Box<Self>,
+    fn memory_interface<'interface>(
+        &'interface mut self,
         access_port: MemoryAP,
-    ) -> Result<Memory<'probe>, ProbeRsError>;
+    ) -> Result<Memory<'interface>, ProbeRsError>;
 
     fn ap_information(&self, access_port: GenericAP) -> Option<&ApInformation>;
+
+    fn num_access_ports(&self) -> usize;
 
     fn read_from_rom_table(&mut self) -> Result<Option<ArmChipInfo>, ProbeRsError>;
 }
@@ -205,11 +207,11 @@ pub struct ArmCommunicationInterface<'probe> {
 }
 
 impl<'probe> ArmProbeInterface<'probe> for ArmCommunicationInterface<'probe> {
-    fn memory_interface(
-        self: Box<Self>,
+    fn memory_interface<'interface>(
+        &'interface mut self,
         access_port: MemoryAP,
-    ) -> Result<Memory<'probe>, ProbeRsError> {
-        ArmCommunicationInterface::memory_interface(*self, access_port)
+    ) -> Result<Memory<'interface>, ProbeRsError> {
+        ArmCommunicationInterface::memory_interface(self, access_port)
     }
 
     fn ap_information(&self, access_port: GenericAP) -> Option<&ApInformation> {
@@ -218,6 +220,10 @@ impl<'probe> ArmProbeInterface<'probe> for ArmCommunicationInterface<'probe> {
 
     fn read_from_rom_table(&mut self) -> Result<Option<ArmChipInfo>, ProbeRsError> {
         ArmCommunicationInterface::read_from_rom_table(self)
+    }
+
+    fn num_access_ports(&self) -> usize {
+        self.state.ap_information.len()
     }
 }
 
@@ -229,7 +235,7 @@ fn get_debug_port_version(
     Ok(DebugPortVersion::from(dpidr.version()))
 }
 
-impl<'probe> ArmCommunicationInterface<'probe> {
+impl<'probe: 'interface, 'interface> ArmCommunicationInterface<'probe> {
     pub(crate) fn new(
         probe: &'probe mut dyn DAPAccess,
         state: &'probe mut ArmCommunicationInterfaceState,
@@ -263,7 +269,10 @@ impl<'probe> ArmCommunicationInterface<'probe> {
         ArmCommunicationInterface::new(self.probe, self.state).unwrap()
     }
 
-    pub fn memory_interface(self, access_port: MemoryAP) -> Result<Memory<'probe>, ProbeRsError> {
+    pub fn memory_interface(
+        &'interface mut self,
+        access_port: MemoryAP,
+    ) -> Result<Memory<'interface>, ProbeRsError> {
         let info = self
             .ap_information(access_port)
             .expect("Failed to get information for AP");
@@ -275,13 +284,13 @@ impl<'probe> ArmCommunicationInterface<'probe> {
                 debug_base_address: _,
             } => {
                 let only_32bit_data_size = *only_32bit_data_size;
-                let adi_v5_memory_interface =
-                    ADIMemoryInterface::<ArmCommunicationInterface<'probe>>::new(
-                        self,
-                        access_port,
-                        only_32bit_data_size,
-                    )
-                    .map_err(ProbeRsError::architecture_specific)?;
+                let adi_v5_memory_interface = ADIMemoryInterface::<
+                    'interface,
+                    ArmCommunicationInterface<'probe>,
+                >::new(
+                    self, access_port, only_32bit_data_size
+                )
+                .map_err(ProbeRsError::architecture_specific)?;
 
                 Ok(Memory::new(adi_v5_memory_interface))
             }
@@ -742,7 +751,6 @@ impl<'probe> ArmCommunicationInterface<'probe> {
                 let data_size = ap_supports_only_32bit_access(self, access_port)?;
 
                 let mut memory = self
-                    .reborrow()
                     .memory_interface(access_port)
                     .map_err(ProbeRsError::architecture_specific)?;
 
