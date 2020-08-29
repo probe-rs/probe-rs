@@ -549,8 +549,8 @@ impl DebugProbe for DAPLink {
     }
 
     fn get_arm_interface<'probe>(
-        &'probe mut self,
-        state: &'probe mut ArmCommunicationInterfaceState,
+        self: Box<Self>,
+        state: ArmCommunicationInterfaceState,
     ) -> Result<Option<Box<dyn ArmProbeInterface + 'probe>>, DebugProbeError> {
         let interface = ArmCommunicationInterface::new(self, state)?;
 
@@ -664,6 +664,10 @@ impl DAPAccess for DAPLink {
     fn flush(&mut self) -> Result<(), DebugProbeError> {
         self.process_batch()?;
         Ok(())
+    }
+
+    fn as_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
+        self
     }
 }
 

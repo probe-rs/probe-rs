@@ -242,8 +242,8 @@ impl DebugProbe for STLink<STLinkUSBDevice> {
     }
 
     fn get_arm_interface<'probe>(
-        &'probe mut self,
-        state: &'probe mut ArmCommunicationInterfaceState,
+        self: Box<Self>,
+        state: ArmCommunicationInterfaceState,
     ) -> Result<Option<Box<dyn ArmProbeInterface + 'probe>>, DebugProbeError> {
         let interface = ArmCommunicationInterface::new(self, state)?;
 
@@ -310,6 +310,10 @@ impl DAPAccess for STLink<STLinkUSBDevice> {
         } else {
             Err(StlinkError::BlanksNotAllowedOnDPRegister.into())
         }
+    }
+
+    fn as_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
+        self
     }
 }
 

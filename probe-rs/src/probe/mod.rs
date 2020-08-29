@@ -156,6 +156,13 @@ impl Probe {
         }
     }
 
+    fn from_specific(probe: Box<dyn DebugProbe>) -> Self {
+        Self {
+            inner: probe,
+            attached: true,
+        }
+    }
+
     /// Get a list of all debug probes found.
     /// This can be used to select the debug probe which
     /// should be used.
@@ -343,10 +350,11 @@ impl Probe {
     }
 
     pub fn get_arm_interface<'probe>(
-        &'probe mut self,
-        state: &'probe mut ArmCommunicationInterfaceState,
+        self,
+        state: ArmCommunicationInterfaceState,
     ) -> Result<Option<Box<dyn ArmProbeInterface + 'probe>>, DebugProbeError> {
         if !self.attached {
+            // TODO: Return self here
             Err(DebugProbeError::NotAttached)
         } else {
             self.inner.get_arm_interface(state)
@@ -439,8 +447,8 @@ pub trait DebugProbe: Send + Sync + fmt::Debug {
     //fn get_interface_dap_mut(&'probe mut self) -> Option<&mut dyn DAPAccess>;
 
     fn get_arm_interface<'probe>(
-        &'probe mut self,
-        state: &'probe mut ArmCommunicationInterfaceState,
+        self: Box<Self>,
+        state: ArmCommunicationInterfaceState,
     ) -> Result<Option<Box<dyn ArmProbeInterface + 'probe>>, DebugProbeError>;
 
     fn get_interface_jtag(&self) -> Option<&dyn JTAGAccess>;
@@ -660,8 +668,8 @@ impl DebugProbe for FakeProbe {
     }
 
     fn get_arm_interface<'probe>(
-        &'probe mut self,
-        _state: &'probe mut ArmCommunicationInterfaceState,
+        self: Box<Self>,
+        _state: ArmCommunicationInterfaceState,
     ) -> Result<Option<Box<dyn ArmProbeInterface + 'probe>>, DebugProbeError> {
         Ok(None)
     }
@@ -681,6 +689,10 @@ impl DAPAccess for FakeProbe {
         _value: u32,
     ) -> Result<(), DebugProbeError> {
         Err(DebugProbeError::CommandNotSupportedByProbe)
+    }
+
+    fn as_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
+        self
     }
 }
 

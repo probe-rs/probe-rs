@@ -609,8 +609,8 @@ impl DebugProbe for JLink {
     }
 
     fn get_arm_interface<'probe>(
-        &'probe mut self,
-        state: &'probe mut ArmCommunicationInterfaceState,
+        self: Box<Self>,
+        state: ArmCommunicationInterfaceState,
     ) -> Result<Option<Box<dyn ArmProbeInterface + 'probe>>, DebugProbeError> {
         if self.supported_protocols.contains(&WireProtocol::Swd) {
             let interface = ArmCommunicationInterface::new(self, state)?;
@@ -934,6 +934,10 @@ impl DAPAccess for JLink {
         // If we land here, the DAP operation timed out.
         log::error!("DAP write timeout.");
         Err(DebugProbeError::Timeout)
+    }
+
+    fn as_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
+        self
     }
 }
 
