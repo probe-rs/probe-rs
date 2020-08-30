@@ -24,11 +24,11 @@ pub(crate) mod assembly;
 pub mod communication_interface;
 
 pub struct Riscv32<'probe> {
-    interface: RiscvCommunicationInterface<'probe>,
+    interface: &'probe mut RiscvCommunicationInterface,
 }
 
 impl<'probe> Riscv32<'probe> {
-    pub fn new(interface: RiscvCommunicationInterface<'probe>) -> Self {
+    pub fn new(interface: &'probe mut RiscvCommunicationInterface) -> Self {
         Self { interface }
     }
 

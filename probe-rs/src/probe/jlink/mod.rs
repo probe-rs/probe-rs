@@ -8,11 +8,14 @@ use std::iter;
 use std::sync::Mutex;
 
 use crate::{
-    architecture::arm::{
-        communication_interface::ArmProbeInterface, dp::Ctrl, swo::SwoConfig,
-        ArmCommunicationInterface, ArmCommunicationInterfaceState, SwoAccess,
-    },
     architecture::arm::{DapError, PortType, Register},
+    architecture::{
+        arm::{
+            communication_interface::ArmProbeInterface, dp::Ctrl, swo::SwoConfig,
+            ArmCommunicationInterface, SwoAccess,
+        },
+        riscv::communication_interface::RiscvCommunicationInterface,
+    },
     probe::{
         DAPAccess, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeType, JTAGAccess,
         WireProtocol,
@@ -584,19 +587,13 @@ impl DebugProbe for JLink {
         Ok(())
     }
 
-    fn get_interface_jtag(&self) -> Option<&dyn JTAGAccess> {
+    fn get_interface_jtag(
+        self: Box<Self>,
+    ) -> Result<Option<RiscvCommunicationInterface>, DebugProbeError> {
         if self.supported_protocols.contains(&WireProtocol::Jtag) {
-            Some(self as _)
+            Ok(Some(RiscvCommunicationInterface::new(self)?))
         } else {
-            None
-        }
-    }
-
-    fn get_interface_jtag_mut(&mut self) -> Option<&mut dyn JTAGAccess> {
-        if self.supported_protocols.contains(&WireProtocol::Jtag) {
-            Some(self as _)
-        } else {
-            None
+            Ok(None)
         }
     }
 
@@ -610,15 +607,22 @@ impl DebugProbe for JLink {
 
     fn get_arm_interface<'probe>(
         self: Box<Self>,
-        state: ArmCommunicationInterfaceState,
     ) -> Result<Option<Box<dyn ArmProbeInterface + 'probe>>, DebugProbeError> {
         if self.supported_protocols.contains(&WireProtocol::Swd) {
-            let interface = ArmCommunicationInterface::new(self, state)?;
+            let interface = ArmCommunicationInterface::new(self)?;
 
             Ok(Some(Box::new(interface)))
         } else {
             Ok(None)
         }
+    }
+
+    fn has_arm_interface(&self) -> bool {
+        self.supported_protocols.contains(&WireProtocol::Swd)
+    }
+
+    fn has_jtag_interface(&self) -> bool {
+        self.supported_protocols.contains(&WireProtocol::Jtag)
     }
 }
 
@@ -670,6 +674,10 @@ impl JTAGAccess for JLink {
 
     fn set_idle_cycles(&mut self, idle_cycles: u8) {
         self.jtag_idle_cycles = idle_cycles;
+    }
+
+    fn as_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
+        self
     }
 }
 

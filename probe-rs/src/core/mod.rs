@@ -6,8 +6,7 @@ use crate::error;
 use crate::DebugProbeError;
 use crate::{
     architecture::{
-        arm::{ap::MemoryAP, core::CortexState, ArmCommunicationInterface},
-        riscv::communication_interface::RiscvCommunicationInterface,
+        arm::core::CortexState, riscv::communication_interface::RiscvCommunicationInterface,
     },
     Error, Memory, MemoryInterface,
 };
@@ -324,7 +323,7 @@ impl SpecificCoreState {
     pub(crate) fn attach_riscv<'probe>(
         &self,
         state: &'probe mut CoreState,
-        interface: RiscvCommunicationInterface<'probe>,
+        interface: &'probe mut RiscvCommunicationInterface,
     ) -> Result<Core<'probe>, Error> {
         Ok(match self {
             SpecificCoreState::Riscv => {

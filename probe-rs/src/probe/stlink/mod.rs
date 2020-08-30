@@ -3,15 +3,16 @@ pub mod tools;
 mod usb_interface;
 
 use self::usb_interface::{STLinkUSBDevice, StLinkUsb};
-use super::{
-    DAPAccess, DebugProbe, DebugProbeError, JTAGAccess, PortType, ProbeCreationError, WireProtocol,
-};
+use super::{DAPAccess, DebugProbe, DebugProbeError, PortType, ProbeCreationError, WireProtocol};
 use crate::{
-    architecture::arm::{
-        communication_interface::ArmProbeInterface, ArmCommunicationInterface,
-        ArmCommunicationInterfaceState, SwoAccess, SwoConfig, SwoMode,
+    architecture::{
+        arm::{
+            communication_interface::ArmProbeInterface, ArmCommunicationInterface, SwoAccess,
+            SwoConfig, SwoMode,
+        },
+        riscv::communication_interface::RiscvCommunicationInterface,
     },
-    DebugProbeSelector, Error as ProbeRsError, Memory,
+    DebugProbeSelector, Error as ProbeRsError,
 };
 use constants::{commands, JTagFrequencyToDivider, Mode, Status, SwdFrequencyToDelayCount};
 use scroll::{Pread, BE, LE};
@@ -225,12 +226,10 @@ impl DebugProbe for STLink<STLinkUSBDevice> {
         Ok(())
     }
 
-    fn get_interface_jtag(&self) -> Option<&dyn JTAGAccess> {
-        None
-    }
-
-    fn get_interface_jtag_mut(&mut self) -> Option<&mut dyn JTAGAccess> {
-        None
+    fn get_interface_jtag(
+        self: Box<Self>,
+    ) -> Result<Option<RiscvCommunicationInterface>, DebugProbeError> {
+        Ok(None)
     }
 
     fn get_interface_swo(&self) -> Option<&dyn SwoAccess> {
@@ -243,11 +242,18 @@ impl DebugProbe for STLink<STLinkUSBDevice> {
 
     fn get_arm_interface<'probe>(
         self: Box<Self>,
-        state: ArmCommunicationInterfaceState,
     ) -> Result<Option<Box<dyn ArmProbeInterface + 'probe>>, DebugProbeError> {
-        let interface = ArmCommunicationInterface::new(self, state)?;
+        let interface = ArmCommunicationInterface::new(self)?;
 
         Ok(Some(Box::new(interface)))
+    }
+
+    fn has_arm_interface(&self) -> bool {
+        true
+    }
+
+    fn has_jtag_interface(&self) -> bool {
+        false
     }
 }
 

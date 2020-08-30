@@ -3,13 +3,13 @@ pub(crate) mod ftdi;
 pub(crate) mod jlink;
 pub(crate) mod stlink;
 
-use crate::architecture::arm::{
-    communication_interface::ArmProbeInterface, ArmCommunicationInterface,
-    ArmCommunicationInterfaceState, DAPAccess, PortType, SwoAccess,
+use crate::architecture::{
+    arm::{communication_interface::ArmProbeInterface, DAPAccess, PortType, SwoAccess},
+    riscv::communication_interface::RiscvCommunicationInterface,
 };
 use crate::config::{RegistryError, TargetSelector};
 use crate::error::Error;
-use crate::{Memory, Session};
+use crate::Session;
 use jlink::list_jlink_devices;
 use std::{convert::TryFrom, fmt};
 use thiserror::Error;
@@ -156,7 +156,7 @@ impl Probe {
         }
     }
 
-    fn from_specific(probe: Box<dyn DebugProbe>) -> Self {
+    pub(crate) fn from_attached_probe(probe: Box<dyn DebugProbe>) -> Self {
         Self {
             inner: probe,
             attached: true,
@@ -349,37 +349,32 @@ impl Probe {
         self.inner.speed()
     }
 
-    pub fn get_arm_interface<'probe>(
+    pub fn has_arm_interface(&self) -> bool {
+        self.inner.has_arm_interface()
+    }
+
+    pub fn into_arm_interface<'probe>(
         self,
-        state: ArmCommunicationInterfaceState,
     ) -> Result<Option<Box<dyn ArmProbeInterface + 'probe>>, DebugProbeError> {
         if !self.attached {
             // TODO: Return self here
             Err(DebugProbeError::NotAttached)
         } else {
-            self.inner.get_arm_interface(state)
+            self.inner.get_arm_interface()
         }
     }
 
     pub fn has_jtag_interface(&self) -> bool {
-        self.inner.get_interface_jtag().is_some()
+        self.inner.has_jtag_interface()
     }
 
-    pub fn get_interface_jtag(&self) -> Result<Option<&dyn JTAGAccess>, DebugProbeError> {
+    pub fn into_riscv_interface(
+        self,
+    ) -> Result<Option<RiscvCommunicationInterface>, DebugProbeError> {
         if !self.attached {
             Err(DebugProbeError::NotAttached)
         } else {
-            Ok(self.inner.get_interface_jtag())
-        }
-    }
-
-    pub fn get_interface_jtag_mut(
-        &mut self,
-    ) -> Result<Option<&mut dyn JTAGAccess>, DebugProbeError> {
-        if !self.attached {
-            Err(DebugProbeError::NotAttached)
-        } else {
-            Ok(self.inner.get_interface_jtag_mut())
+            self.inner.get_interface_jtag()
         }
     }
 
@@ -444,16 +439,17 @@ pub trait DebugProbe: Send + Sync + fmt::Debug {
     /// Selects the transport protocol to be used by the debug probe.
     fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError>;
 
-    //fn get_interface_dap_mut(&'probe mut self) -> Option<&mut dyn DAPAccess>;
+    fn has_arm_interface(&self) -> bool;
 
     fn get_arm_interface<'probe>(
         self: Box<Self>,
-        state: ArmCommunicationInterfaceState,
     ) -> Result<Option<Box<dyn ArmProbeInterface + 'probe>>, DebugProbeError>;
 
-    fn get_interface_jtag(&self) -> Option<&dyn JTAGAccess>;
+    fn get_interface_jtag(
+        self: Box<Self>,
+    ) -> Result<Option<RiscvCommunicationInterface>, DebugProbeError>;
 
-    fn get_interface_jtag_mut(&mut self) -> Option<&mut dyn JTAGAccess>;
+    fn has_jtag_interface(&self) -> bool;
 
     fn get_interface_swo(&self) -> Option<&dyn SwoAccess>;
 
@@ -651,12 +647,10 @@ impl DebugProbe for FakeProbe {
         unimplemented!()
     }
 
-    fn get_interface_jtag(&self) -> Option<&dyn JTAGAccess> {
-        None
-    }
-
-    fn get_interface_jtag_mut(&mut self) -> Option<&mut dyn JTAGAccess> {
-        None
+    fn get_interface_jtag(
+        self: Box<Self>,
+    ) -> Result<Option<RiscvCommunicationInterface>, DebugProbeError> {
+        Ok(None)
     }
 
     fn get_interface_swo(&self) -> Option<&dyn SwoAccess> {
@@ -669,9 +663,16 @@ impl DebugProbe for FakeProbe {
 
     fn get_arm_interface<'probe>(
         self: Box<Self>,
-        _state: ArmCommunicationInterfaceState,
     ) -> Result<Option<Box<dyn ArmProbeInterface + 'probe>>, DebugProbeError> {
         Ok(None)
+    }
+
+    fn has_arm_interface(&self) -> bool {
+        false
+    }
+
+    fn has_jtag_interface(&self) -> bool {
+        false
     }
 }
 
@@ -700,7 +701,7 @@ impl DAPAccess for FakeProbe {
 ///
 /// This trait should be implemented by all probes which offer low-level access to
 /// the JTAG protocol, i.e. directo control over the bytes sent and received.
-pub trait JTAGAccess {
+pub trait JTAGAccess: std::fmt::Debug {
     fn read_register(&mut self, address: u32, len: u32) -> Result<Vec<u8>, DebugProbeError>;
 
     /// For Riscv, and possibly other interfaces, the JTAG interface has to remain in
@@ -720,6 +721,8 @@ pub trait JTAGAccess {
         data: &[u8],
         len: u32,
     ) -> Result<Vec<u8>, DebugProbeError>;
+
+    fn as_probe(self: Box<Self>) -> Box<dyn DebugProbe>;
 }
 
 #[derive(PartialEq, Debug, Copy, Clone)]

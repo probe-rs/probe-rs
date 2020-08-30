@@ -143,9 +143,7 @@ pub trait ArmProbeInterface: SwoAccess + Debug {
 }
 
 #[derive(Debug)]
-pub struct ArmCommunicationInterfaceState {
-    initialized: bool,
-
+struct ArmCommunicationInterfaceState {
     debug_port_version: DebugPortVersion,
 
     current_dpbanksel: u8,
@@ -188,21 +186,12 @@ pub enum ApInformation {
 impl ArmCommunicationInterfaceState {
     pub fn new() -> Self {
         Self {
-            initialized: false,
             debug_port_version: DebugPortVersion::Unsupported(0xFF),
             current_dpbanksel: 0,
             current_apsel: 0,
             current_apbanksel: 0,
             ap_information: Vec::new(),
         }
-    }
-
-    pub(crate) fn initialize(&mut self) {
-        self.initialized = true;
-    }
-
-    pub(crate) fn initialized(&self) -> bool {
-        self.initialized
     }
 }
 
@@ -233,31 +222,26 @@ impl ArmProbeInterface for ArmCommunicationInterface {
     }
 
     fn close(self: Box<Self>) -> Probe {
-        Probe::from_specific_probe(self.probe.as_probe())
+        Probe::from_attached_probe(self.probe.as_probe())
     }
 }
 
 impl<'interface> ArmCommunicationInterface {
-    pub(crate) fn new(
-        probe: Box<dyn DAPAccess>,
-        state: ArmCommunicationInterfaceState,
-    ) -> Result<Self, DebugProbeError> {
+    pub(crate) fn new(probe: Box<dyn DAPAccess>) -> Result<Self, DebugProbeError> {
+        let state = ArmCommunicationInterfaceState::new();
+
         let mut interface = Self { probe, state };
 
-        if !interface.state.initialized() {
-            interface.enter_debug_mode()?;
+        interface.enter_debug_mode()?;
 
-            /* determine the number and type of available APs */
+        /* determine the number and type of available APs */
 
-            for ap in valid_access_ports(&mut interface) {
-                let ap_state = interface.read_ap_information(ap)?;
+        for ap in valid_access_ports(&mut interface) {
+            let ap_state = interface.read_ap_information(ap)?;
 
-                log::debug!("AP {}: {:?}", ap.port_number(), ap_state);
+            log::debug!("AP {}: {:?}", ap.port_number(), ap_state);
 
-                interface.state.ap_information.push(ap_state);
-            }
-
-            interface.state.initialize();
+            interface.state.ap_information.push(ap_state);
         }
 
         Ok(interface)
@@ -747,8 +731,6 @@ impl ArmCommunicationInterface {
                 let access_port: MemoryAP = access_port.into();
 
                 let baseaddr = access_port.base_address(self)?;
-
-                let data_size = ap_supports_only_32bit_access(self, access_port)?;
 
                 let mut memory = self
                     .memory_interface(access_port)

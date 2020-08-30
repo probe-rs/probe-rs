@@ -150,7 +150,7 @@ where
 }
 
 /// Return a Vec of all valid access ports found that the target connected to the debug_probe
-pub fn valid_access_ports<AP>(debug_port: &mut AP) -> Vec<GenericAP>
+pub(crate) fn valid_access_ports<AP>(debug_port: &mut AP) -> Vec<GenericAP>
 where
     AP: APAccess<GenericAP, IDR>,
 {

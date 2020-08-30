@@ -2,10 +2,9 @@ use crate::{common::open_probe, SharedOptions};
 
 use probe_rs::{
     architecture::arm::{
-        ap::{valid_access_ports, APClass, BaseaddrFormat, MemoryAP, BASE, BASE2, IDR},
+        ap::{APClass, BaseaddrFormat, MemoryAP, BASE, BASE2, IDR},
         m0::Demcr,
         memory::Component,
-        ArmCommunicationInterfaceState,
     },
     CoreRegister,
 };

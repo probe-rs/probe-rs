@@ -10,9 +10,7 @@ use crate::architecture::{
     },
 };
 use crate::probe::{daplink::commands::CmsisDapError, BatchCommand};
-use crate::{
-    DebugProbe, DebugProbeError, DebugProbeSelector, Error as ProbeRsError, Memory, WireProtocol,
-};
+use crate::{DebugProbe, DebugProbeError, DebugProbeSelector, Error as ProbeRsError, WireProtocol};
 use commands::{
     general::{
         connect::{ConnectRequest, ConnectResponse},
@@ -37,14 +35,13 @@ use commands::{
 };
 use log::debug;
 
-use super::JTAGAccess;
 use std::sync::Mutex;
 use std::time::Duration;
 
 use anyhow::anyhow;
-use architecture::arm::{
-    communication_interface::ArmProbeInterface, ArmCommunicationInterface,
-    ArmCommunicationInterfaceState,
+use architecture::{
+    arm::{communication_interface::ArmProbeInterface, ArmCommunicationInterface},
+    riscv::communication_interface::RiscvCommunicationInterface,
 };
 use commands::DAPLinkDevice;
 
@@ -532,12 +529,10 @@ impl DebugProbe for DAPLink {
         Ok(())
     }
 
-    fn get_interface_jtag(&self) -> Option<&dyn JTAGAccess> {
-        None
-    }
-
-    fn get_interface_jtag_mut(&mut self) -> Option<&mut dyn JTAGAccess> {
-        None
+    fn get_interface_jtag(
+        self: Box<Self>,
+    ) -> Result<Option<RiscvCommunicationInterface>, DebugProbeError> {
+        Ok(None)
     }
 
     fn get_interface_swo(&self) -> Option<&dyn SwoAccess> {
@@ -550,11 +545,18 @@ impl DebugProbe for DAPLink {
 
     fn get_arm_interface<'probe>(
         self: Box<Self>,
-        state: ArmCommunicationInterfaceState,
     ) -> Result<Option<Box<dyn ArmProbeInterface + 'probe>>, DebugProbeError> {
-        let interface = ArmCommunicationInterface::new(self, state)?;
+        let interface = ArmCommunicationInterface::new(self)?;
 
         Ok(Some(Box::new(interface)))
+    }
+
+    fn has_arm_interface(&self) -> bool {
+        true
+    }
+
+    fn has_jtag_interface(&self) -> bool {
+        false
     }
 }
 

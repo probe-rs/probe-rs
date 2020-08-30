@@ -1,73 +1,58 @@
 use crate::architecture::{
     arm::{
-        ap::MemoryAP,
         communication_interface::{
             ApInformation::{MemoryAp, Other},
             ArmProbeInterface,
         },
         core::{debug_core_start, reset_catch_clear, reset_catch_set},
         memory::Component,
-        ArmChipInfo, ArmCommunicationInterface, ArmCommunicationInterfaceState, SwoAccess,
         SwoConfig,
     },
-    riscv::communication_interface::{
-        RiscvCommunicationInterface, RiscvCommunicationInterfaceState,
-    },
+    riscv::communication_interface::RiscvCommunicationInterface,
 };
 use crate::config::{
     ChipInfo, MemoryRegion, RawFlashAlgorithm, RegistryError, Target, TargetSelector,
 };
 use crate::core::{Architecture, CoreState, SpecificCoreState};
-use crate::{AttachMethod, Core, CoreType, Error, Memory, Probe};
+use crate::{AttachMethod, Core, CoreType, Error, Probe};
 use anyhow::anyhow;
 use std::time::Duration;
 
 #[derive(Debug)]
 pub struct Session {
     target: Target,
-    interface_state: ArchitectureInterfaceState,
+    interface_state: ArchitectureInterface,
     cores: Vec<(SpecificCoreState, CoreState)>,
 }
 
 #[derive(Debug)]
-pub enum ArchitectureInterfaceState {
+enum ArchitectureInterface {
     Arm(Box<dyn ArmProbeInterface>),
-    Riscv(RiscvCommunicationInterfaceState),
+    Riscv(RiscvCommunicationInterface),
 }
 
-impl From<ArchitectureInterfaceState> for Architecture {
-    fn from(value: ArchitectureInterfaceState) -> Self {
+impl From<ArchitectureInterface> for Architecture {
+    fn from(value: ArchitectureInterface) -> Self {
         match value {
-            ArchitectureInterfaceState::Arm(_) => Architecture::Arm,
-            ArchitectureInterfaceState::Riscv(_) => Architecture::Riscv,
+            ArchitectureInterface::Arm(_) => Architecture::Arm,
+            ArchitectureInterface::Riscv(_) => Architecture::Riscv,
         }
     }
 }
 
-impl ArchitectureInterfaceState {
+impl ArchitectureInterface {
     fn attach<'probe>(
         &'probe mut self,
         core: &'probe mut SpecificCoreState,
         core_state: &'probe mut CoreState,
     ) -> Result<Core<'probe>, Error> {
         match self {
-            ArchitectureInterfaceState::Arm(state) => {
+            ArchitectureInterface::Arm(state) => {
                 let memory = state.memory_interface(0.into())?;
 
                 core.attach_arm(core_state, memory)
             }
-            ArchitectureInterfaceState::Riscv(state) => {
-                todo!("Move probe into RiscvCommunicationInterface");
-
-                /*
-                core.attach_riscv(
-                    core_state,
-                    RiscvCommunicationInterface::new(probe, state)?
-                        .ok_or_else(|| anyhow!("No JTAG interface available on probe"))?,
-                )
-
-                */
-            }
+            ArchitectureInterface::Riscv(state) => core.attach_riscv(core_state, state),
         }
     }
 
@@ -83,7 +68,7 @@ impl ArchitectureInterfaceState {
 impl Session {
     /// Open a new session with a given debug target
     pub fn new(
-        mut probe: Probe,
+        probe: Probe,
         target: impl Into<TargetSelector>,
         attach_method: AttachMethod,
     ) -> Result<Self, Error> {
@@ -91,17 +76,16 @@ impl Session {
 
         let mut session = match target.architecture() {
             Architecture::Arm => {
-                let state = ArmCommunicationInterfaceState::new();
                 let core = (
                     SpecificCoreState::from_core_type(target.core_type),
                     Core::create_state(0),
                 );
 
-                let interface = probe.get_arm_interface(state)?;
+                let interface = probe.into_arm_interface()?;
 
                 let mut session = Session {
                     target,
-                    interface_state: ArchitectureInterfaceState::Arm(interface.unwrap()),
+                    interface_state: ArchitectureInterface::Arm(interface.unwrap()),
                     cores: vec![core],
                 };
 
@@ -131,16 +115,16 @@ impl Session {
             Architecture::Riscv => {
                 // TODO: Handle attach under reset
 
-                let state = RiscvCommunicationInterfaceState::new();
-
                 let core = (
                     SpecificCoreState::from_core_type(target.core_type),
                     Core::create_state(0),
                 );
 
+                let interface = probe.into_riscv_interface()?;
+
                 let mut session = Session {
                     target,
-                    interface_state: ArchitectureInterfaceState::Riscv(state),
+                    interface_state: ArchitectureInterface::Riscv(interface.unwrap()),
                     cores: vec![core],
                 };
 
@@ -196,7 +180,7 @@ impl Session {
     }
 
     pub fn read_swo(&mut self) -> Result<Vec<u8>, Error> {
-        let mut interface = self.get_arm_interface()?;
+        let interface = self.get_arm_interface()?;
         interface.read_swo()
     }
 
@@ -204,7 +188,7 @@ impl Session {
         &'session mut self,
     ) -> Result<&'session mut Box<dyn ArmProbeInterface>, Error> {
         let interface = match &mut self.interface_state {
-            ArchitectureInterfaceState::Arm(state) => state,
+            ArchitectureInterface::Arm(state) => state,
             _ => return Err(Error::ArchitectureRequired(&["ARMv7", "ARMv8"])),
         };
 
@@ -212,7 +196,7 @@ impl Session {
     }
 
     pub fn get_arm_component(&mut self) -> Result<Component, Error> {
-        let mut interface = self.get_arm_interface()?;
+        let interface = self.get_arm_interface()?;
 
         let ap_index = 0;
 
@@ -248,7 +232,7 @@ impl Session {
     pub fn setup_swv(&mut self, config: &SwoConfig) -> Result<(), Error> {
         // Configure SWO on the probe
         {
-            let mut interface = self.get_arm_interface()?;
+            let interface = self.get_arm_interface()?;
             interface.enable_swo(config)?;
         }
 
@@ -293,8 +277,8 @@ impl Session {
     /// Return the `Architecture` of the currently connected chip.
     pub fn architecture(&self) -> Architecture {
         match self.interface_state {
-            ArchitectureInterfaceState::Arm(_) => Architecture::Arm,
-            ArchitectureInterfaceState::Riscv(_) => Architecture::Riscv,
+            ArchitectureInterface::Arm(_) => Architecture::Arm,
+            ArchitectureInterface::Riscv(_) => Architecture::Riscv,
         }
     }
 
@@ -308,25 +292,6 @@ impl Session {
             .collect::<Result<Vec<_>, _>>()
             .map(|_| ())
     }
-}
-
-fn try_arm_autodetect(
-    mut arm_interface: Box<dyn ArmProbeInterface>,
-) -> Result<Option<ChipInfo>, Error> {
-    log::debug!("Autodetect: Trying DAP interface...");
-
-    let found_chip = arm_interface.read_from_rom_table().unwrap_or_else(|e| {
-        log::info!("Error during auto-detection of ARM chips: {}", e);
-        None
-    });
-
-    if let Some(found_chip) = &found_chip {
-        log::debug!("Autodect: Found information {:?}", found_chip);
-    }
-
-    let found_chip = found_chip.map(ChipInfo::from);
-
-    Ok(found_chip)
 }
 
 impl Drop for Session {
@@ -354,51 +319,40 @@ fn get_target_from_selector(
             let mut found_chip = None;
 
             {
-                let state = ArmCommunicationInterfaceState::new();
-                let interface = probe.take().unwrap().get_arm_interface(state)?;
+                if probe.as_ref().unwrap().has_arm_interface() {
+                    let interface = probe.take().unwrap().into_arm_interface()?;
 
-                if let Some(mut interface) = interface {
-                    //let chip_result = try_arm_autodetect(interface);
-                    log::debug!("Autodetect: Trying DAP interface...");
+                    if let Some(mut interface) = interface {
+                        //let chip_result = try_arm_autodetect(interface);
+                        log::debug!("Autodetect: Trying DAP interface...");
 
-                    let found_arm_chip = interface.read_from_rom_table().unwrap_or_else(|e| {
-                        log::info!("Error during auto-detection of ARM chips: {}", e);
-                        None
-                    });
+                        let found_arm_chip = interface.read_from_rom_table().unwrap_or_else(|e| {
+                            log::info!("Error during auto-detection of ARM chips: {}", e);
+                            None
+                        });
 
-                    found_chip = found_arm_chip.map(ChipInfo::from);
+                        found_chip = found_arm_chip.map(ChipInfo::from);
 
-                    probe = Some(interface.close());
-
-                //Ok(found_chip)
-
-                // Ignore errors during autodetect
-                // found_chip = chip_result.unwrap_or_else(|e| {
-                //     log::debug!("An error occured during ARM autodetect: {}", e);
-                //     None
-                // });
-                } else {
-                    //TODO: Handle this case, we still need the probe here!
-                    log::debug!("No DAP interface was present. This is not an ARM core. Skipping ARM autodetect.");
+                        probe = Some(interface.close());
+                    } else {
+                        //TODO: Handle this case, we still need the probe here!
+                        log::debug!("No DAP interface was present. This is not an ARM core. Skipping ARM autodetect.");
+                    }
                 }
             }
 
             if found_chip.is_none() && probe.as_ref().unwrap().has_jtag_interface() {
-                todo!("Move Probe to RiscvCommunicationInterface");
-                /*
-                let mut state = RiscvCommunicationInterfaceState::new();
-                let interface = RiscvCommunicationInterface::new(probe, &mut state)?;
+                let interface = probe.take().unwrap().into_riscv_interface()?;
 
                 if let Some(mut interface) = interface {
                     let idcode = interface.read_idcode();
 
                     log::debug!("ID Code read over JTAG: {:x?}", idcode);
+
+                    probe = Some(interface.close());
                 } else {
                     log::debug!("No JTAG interface was present. Skipping Riscv autodetect.");
                 }
-                */
-
-                // TODO: Implement autodetect for RISC-V
             }
 
             if let Some(chip) = found_chip {
