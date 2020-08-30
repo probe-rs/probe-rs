@@ -163,6 +163,13 @@ impl Probe {
         }
     }
 
+    pub fn from_specific_probe(probe: Box<dyn DebugProbe>) -> Self {
+        Probe {
+            inner: probe,
+            attached: false,
+        }
+    }
+
     /// Get a list of all debug probes found.
     /// This can be used to select the debug probe which
     /// should be used.
@@ -204,13 +211,6 @@ impl Probe {
         Err(DebugProbeError::ProbeCouldNotBeCreated(
             ProbeCreationError::NotFound,
         ))
-    }
-
-    pub fn from_specific_probe(probe: Box<dyn DebugProbe>) -> Self {
-        Probe {
-            inner: probe,
-            attached: false,
-        }
     }
 
     // /// Tries to mass erase a locked nRF52 chip, this process may timeout, if it does, the chip
@@ -349,6 +349,8 @@ impl Probe {
         self.inner.speed()
     }
 
+    /// Check if the probe has an interface to
+    /// debug ARM chips.
     pub fn has_arm_interface(&self) -> bool {
         self.inner.has_arm_interface()
     }
@@ -364,8 +366,10 @@ impl Probe {
         }
     }
 
-    pub fn has_jtag_interface(&self) -> bool {
-        self.inner.has_jtag_interface()
+    /// Check if the probe has an interface to
+    /// debug RISCV chips.
+    pub fn has_riscv_interface(&self) -> bool {
+        self.inner.has_riscv_interface()
     }
 
     pub fn into_riscv_interface(
@@ -439,6 +443,7 @@ pub trait DebugProbe: Send + Sync + fmt::Debug {
     /// Selects the transport protocol to be used by the debug probe.
     fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError>;
 
+    /// Check if the proble offers an interface to debug ARM chips.
     fn has_arm_interface(&self) -> bool;
 
     fn get_arm_interface<'probe>(
@@ -449,7 +454,7 @@ pub trait DebugProbe: Send + Sync + fmt::Debug {
         self: Box<Self>,
     ) -> Result<Option<RiscvCommunicationInterface>, DebugProbeError>;
 
-    fn has_jtag_interface(&self) -> bool;
+    fn has_riscv_interface(&self) -> bool;
 
     fn get_interface_swo(&self) -> Option<&dyn SwoAccess>;
 
@@ -671,7 +676,7 @@ impl DebugProbe for FakeProbe {
         false
     }
 
-    fn has_jtag_interface(&self) -> bool {
+    fn has_riscv_interface(&self) -> bool {
         false
     }
 }
@@ -692,7 +697,19 @@ impl DAPAccess for FakeProbe {
         Err(DebugProbeError::CommandNotSupportedByProbe)
     }
 
-    fn as_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
+    fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
+        self
+    }
+}
+
+impl<'a> AsRef<dyn DebugProbe + 'a> for FakeProbe {
+    fn as_ref(&self) -> &(dyn DebugProbe + 'a) {
+        self
+    }
+}
+
+impl<'a> AsMut<dyn DebugProbe + 'a> for FakeProbe {
+    fn as_mut(&mut self) -> &mut (dyn DebugProbe + 'a) {
         self
     }
 }
@@ -701,7 +718,7 @@ impl DAPAccess for FakeProbe {
 ///
 /// This trait should be implemented by all probes which offer low-level access to
 /// the JTAG protocol, i.e. directo control over the bytes sent and received.
-pub trait JTAGAccess: std::fmt::Debug {
+pub trait JTAGAccess: DebugProbe + AsRef<dyn DebugProbe> + AsMut<dyn DebugProbe> {
     fn read_register(&mut self, address: u32, len: u32) -> Result<Vec<u8>, DebugProbeError>;
 
     /// For Riscv, and possibly other interfaces, the JTAG interface has to remain in
@@ -722,7 +739,7 @@ pub trait JTAGAccess: std::fmt::Debug {
         len: u32,
     ) -> Result<Vec<u8>, DebugProbeError>;
 
-    fn as_probe(self: Box<Self>) -> Box<dyn DebugProbe>;
+    fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe>;
 }
 
 #[derive(PartialEq, Debug, Copy, Clone)]

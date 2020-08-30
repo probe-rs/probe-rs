@@ -14,14 +14,14 @@ use crate::config::{
     ChipInfo, MemoryRegion, RawFlashAlgorithm, RegistryError, Target, TargetSelector,
 };
 use crate::core::{Architecture, CoreState, SpecificCoreState};
-use crate::{AttachMethod, Core, CoreType, Error, Probe};
+use crate::{AttachMethod, Core, CoreType, DebugProbe, Error, Probe};
 use anyhow::anyhow;
 use std::time::Duration;
 
 #[derive(Debug)]
 pub struct Session {
     target: Target,
-    interface_state: ArchitectureInterface,
+    interface: ArchitectureInterface,
     cores: Vec<(SpecificCoreState, CoreState)>,
 }
 
@@ -55,13 +55,14 @@ impl ArchitectureInterface {
             ArchitectureInterface::Riscv(state) => core.attach_riscv(core_state, state),
         }
     }
+}
 
-    fn get_probe(&self) -> &Probe {
-        todo!()
-    }
-
-    fn get_probe_mut(&mut self) -> &mut Probe {
-        todo!()
+impl<'a> AsMut<dyn DebugProbe + 'a> for ArchitectureInterface {
+    fn as_mut(&mut self) -> &mut (dyn DebugProbe + 'a) {
+        match self {
+            ArchitectureInterface::Arm(interface) => interface.as_mut().as_mut(),
+            ArchitectureInterface::Riscv(interface) => interface.as_mut(),
+        }
     }
 }
 
@@ -85,7 +86,7 @@ impl Session {
 
                 let mut session = Session {
                     target,
-                    interface_state: ArchitectureInterface::Arm(interface.unwrap()),
+                    interface: ArchitectureInterface::Arm(interface.unwrap()),
                     cores: vec![core],
                 };
 
@@ -97,10 +98,7 @@ impl Session {
                     reset_catch_set(&mut session.core(0)?)?;
 
                     // Deassert the reset pin
-                    session
-                        .interface_state
-                        .get_probe_mut()
-                        .target_reset_deassert()?;
+                    session.interface.as_mut().target_reset_deassert()?;
 
                     // Wait for the core to be halted
                     let mut core = session.core(0)?;
@@ -124,7 +122,7 @@ impl Session {
 
                 let mut session = Session {
                     target,
-                    interface_state: ArchitectureInterface::Riscv(interface.unwrap()),
+                    interface: ArchitectureInterface::Riscv(interface.unwrap()),
                     cores: vec![core],
                 };
 
@@ -171,7 +169,7 @@ impl Session {
             .get_mut(n)
             .ok_or_else(|| Error::CoreNotFound(n))?;
 
-        self.interface_state.attach(core, core_state)
+        self.interface.attach(core, core_state)
     }
 
     /// Returns a list of the flash algotithms on the target.
@@ -187,7 +185,7 @@ impl Session {
     pub fn get_arm_interface<'session>(
         &'session mut self,
     ) -> Result<&'session mut Box<dyn ArmProbeInterface>, Error> {
-        let interface = match &mut self.interface_state {
+        let interface = match &mut self.interface {
             ArchitectureInterface::Arm(state) => state,
             _ => return Err(Error::ArchitectureRequired(&["ARMv7", "ARMv8"])),
         };
@@ -276,7 +274,7 @@ impl Session {
 
     /// Return the `Architecture` of the currently connected chip.
     pub fn architecture(&self) -> Architecture {
-        match self.interface_state {
+        match self.interface {
             ArchitectureInterface::Arm(_) => Architecture::Arm,
             ArchitectureInterface::Riscv(_) => Architecture::Riscv,
         }
@@ -341,7 +339,7 @@ fn get_target_from_selector(
                 }
             }
 
-            if found_chip.is_none() && probe.as_ref().unwrap().has_jtag_interface() {
+            if found_chip.is_none() && probe.as_ref().unwrap().has_riscv_interface() {
                 let interface = probe.take().unwrap().into_riscv_interface()?;
 
                 if let Some(mut interface) = interface {

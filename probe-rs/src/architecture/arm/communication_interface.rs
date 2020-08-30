@@ -70,7 +70,7 @@ pub trait Register: Clone + From<u32> + Into<u32> + Sized + Debug {
     const NAME: &'static str;
 }
 
-pub trait DAPAccess: DebugProbe {
+pub trait DAPAccess: DebugProbe + AsRef<dyn DebugProbe> + AsMut<dyn DebugProbe> {
     /// Reads the DAP register on the specified port and address
     fn read_register(&mut self, port: PortType, addr: u16) -> Result<u32, DebugProbeError>;
 
@@ -124,10 +124,12 @@ pub trait DAPAccess: DebugProbe {
         Ok(())
     }
 
-    fn as_probe(self: Box<Self>) -> Box<dyn DebugProbe>;
+    fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe>;
 }
 
-pub trait ArmProbeInterface: SwoAccess + Debug {
+pub trait ArmProbeInterface:
+    SwoAccess + AsRef<dyn DebugProbe> + AsMut<dyn DebugProbe> + Debug
+{
     fn memory_interface<'interface>(
         &'interface mut self,
         access_port: MemoryAP,
@@ -222,7 +224,19 @@ impl ArmProbeInterface for ArmCommunicationInterface {
     }
 
     fn close(self: Box<Self>) -> Probe {
-        Probe::from_attached_probe(self.probe.as_probe())
+        Probe::from_attached_probe(self.probe.into_probe())
+    }
+}
+
+impl<'a> AsRef<dyn DebugProbe + 'a> for ArmCommunicationInterface {
+    fn as_ref(&self) -> &(dyn DebugProbe + 'a) {
+        self.probe.as_ref().as_ref()
+    }
+}
+
+impl<'a> AsMut<dyn DebugProbe + 'a> for ArmCommunicationInterface {
+    fn as_mut(&mut self) -> &mut (dyn DebugProbe + 'a) {
+        self.probe.as_mut().as_mut()
     }
 }
 

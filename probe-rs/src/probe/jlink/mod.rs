@@ -621,7 +621,7 @@ impl DebugProbe for JLink {
         self.supported_protocols.contains(&WireProtocol::Swd)
     }
 
-    fn has_jtag_interface(&self) -> bool {
+    fn has_riscv_interface(&self) -> bool {
         self.supported_protocols.contains(&WireProtocol::Jtag)
     }
 }
@@ -676,7 +676,19 @@ impl JTAGAccess for JLink {
         self.jtag_idle_cycles = idle_cycles;
     }
 
-    fn as_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
+    fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
+        self
+    }
+}
+
+impl<'a> AsRef<dyn DebugProbe + 'a> for JLink {
+    fn as_ref(&self) -> &(dyn DebugProbe + 'a) {
+        self
+    }
+}
+
+impl<'a> AsMut<dyn DebugProbe + 'a> for JLink {
+    fn as_mut(&mut self) -> &mut (dyn DebugProbe + 'a) {
         self
     }
 }
@@ -944,7 +956,7 @@ impl DAPAccess for JLink {
         Err(DebugProbeError::Timeout)
     }
 
-    fn as_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
+    fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
         self
     }
 }

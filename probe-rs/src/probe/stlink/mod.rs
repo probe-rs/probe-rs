@@ -252,7 +252,7 @@ impl DebugProbe for STLink<STLinkUSBDevice> {
         true
     }
 
-    fn has_jtag_interface(&self) -> bool {
+    fn has_riscv_interface(&self) -> bool {
         false
     }
 }
@@ -318,7 +318,19 @@ impl DAPAccess for STLink<STLinkUSBDevice> {
         }
     }
 
-    fn as_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
+    fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
+        self
+    }
+}
+
+impl<'a> AsRef<dyn DebugProbe + 'a> for STLink<STLinkUSBDevice> {
+    fn as_ref(&self) -> &(dyn DebugProbe + 'a) {
+        self
+    }
+}
+
+impl<'a> AsMut<dyn DebugProbe + 'a> for STLink<STLinkUSBDevice> {
+    fn as_mut(&mut self) -> &mut (dyn DebugProbe + 'a) {
         self
     }
 }
@@ -908,7 +920,7 @@ mod test {
             _read_data: &mut [u8],
             _timeout: std::time::Duration,
         ) -> Result<usize, DebugProbeError> {
-            todo!()
+            unimplemented!("Not implemented for MockUSB")
         }
     }
 

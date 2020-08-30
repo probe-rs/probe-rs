@@ -1,11 +1,9 @@
 use crate::architecture::{
-    arm::{DAPAccess, SwoAccess},
-    riscv::communication_interface::RiscvCommunicationInterface,
+    arm::SwoAccess, riscv::communication_interface::RiscvCommunicationInterface,
 };
 use crate::probe::{JTAGAccess, ProbeCreationError};
 use crate::{
-    DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, DebugProbeType, Memory,
-    WireProtocol,
+    DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, DebugProbeType, WireProtocol,
 };
 use bitvec::order::Lsb0;
 use bitvec::vec::BitVec;
@@ -527,7 +525,7 @@ impl DebugProbe for FtdiProbe {
         Ok(None)
     }
 
-    fn has_jtag_interface(&self) -> bool {
+    fn has_riscv_interface(&self) -> bool {
         true
     }
 }
@@ -575,7 +573,19 @@ impl JTAGAccess for FtdiProbe {
         Ok(r)
     }
 
-    fn as_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
+    fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
+        self
+    }
+}
+
+impl AsRef<dyn DebugProbe> for FtdiProbe {
+    fn as_ref(&self) -> &(dyn DebugProbe + 'static) {
+        self
+    }
+}
+
+impl AsMut<dyn DebugProbe> for FtdiProbe {
+    fn as_mut(&mut self) -> &mut (dyn DebugProbe + 'static) {
         self
     }
 }

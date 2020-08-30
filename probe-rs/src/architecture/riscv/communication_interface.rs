@@ -9,7 +9,7 @@ use crate::architecture::riscv::*;
 use crate::DebugProbeError;
 use crate::{MemoryInterface, Probe};
 
-use crate::{probe::JTAGAccess, CoreRegisterAddress, Error as ProbeRsError};
+use crate::{probe::JTAGAccess, CoreRegisterAddress, DebugProbe, Error as ProbeRsError};
 
 use std::{
     convert::TryInto,
@@ -624,7 +624,19 @@ impl<'probe> RiscvCommunicationInterface {
     }
 
     pub fn close(self) -> Probe {
-        Probe::from_attached_probe(self.probe.as_probe())
+        Probe::from_attached_probe(self.probe.into_probe())
+    }
+}
+
+impl<'a> AsRef<dyn DebugProbe + 'a> for RiscvCommunicationInterface {
+    fn as_ref(&self) -> &(dyn DebugProbe + 'a) {
+        self.probe.as_ref().as_ref()
+    }
+}
+
+impl<'a> AsMut<dyn DebugProbe + 'a> for RiscvCommunicationInterface {
+    fn as_mut(&mut self) -> &mut (dyn DebugProbe + 'a) {
+        self.probe.as_mut().as_mut()
     }
 }
 
