@@ -1,7 +1,11 @@
 ---
 name: STM32WB Series
+manufacturer:
+  id: 0x20
+  cc: 0x00
 variants:
   - name: STM32WB55CCUx
+    part: 0x495
     memory_map:
       - Ram:
           range:
@@ -16,6 +20,7 @@ variants:
     flash_algorithms:
       - stm32wb_m4
   - name: STM32WB55CEUx
+    part: 0x495
     memory_map:
       - Ram:
           range:
@@ -30,6 +35,7 @@ variants:
     flash_algorithms:
       - stm32wb_m4
   - name: STM32WB55CGUx
+    part: 0x495
     memory_map:
       - Ram:
           range:
@@ -44,6 +50,7 @@ variants:
     flash_algorithms:
       - stm32wb_m4
   - name: STM32WB55RCVx
+    part: 0x495
     memory_map:
       - Ram:
           range:
@@ -58,6 +65,7 @@ variants:
     flash_algorithms:
       - stm32wb_m4
   - name: STM32WB55REVx
+    part: 0x495
     memory_map:
       - Ram:
           range:
@@ -72,6 +80,7 @@ variants:
     flash_algorithms:
       - stm32wb_m4
   - name: STM32WB55RGVx
+    part: 0x495
     memory_map:
       - Ram:
           range:
@@ -86,6 +95,7 @@ variants:
     flash_algorithms:
       - stm32wb_m4
   - name: STM32WB55VCYx
+    part: 0x495
     memory_map:
       - Ram:
           range:
@@ -100,6 +110,7 @@ variants:
     flash_algorithms:
       - stm32wb_m4
   - name: STM32WB55VEYx
+    part: 0x495
     memory_map:
       - Ram:
           range:
@@ -114,6 +125,7 @@ variants:
     flash_algorithms:
       - stm32wb_m4
   - name: STM32WB55VGYx
+    part: 0x495
     memory_map:
       - Ram:
           range:
