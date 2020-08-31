@@ -1,6 +1,6 @@
 use core::{
     cmp,
-    convert::{TryFrom, TryInto},
+    convert::TryInto,
     mem,
     ops::Range,
     sync::atomic::{AtomicBool, Ordering},
@@ -23,6 +23,10 @@ use gimli::{
     read::{CfaRule, DebugFrame, UnwindSection},
     BaseAddresses, EndianSlice, LittleEndian, RegisterRule, UninitializedUnwindContext,
 };
+use object::{
+    read::{File as ElfFile, Object as _, ObjectSection as _},
+    SectionIndex,
+};
 use probe_rs::config::{registry, MemoryRegion};
 use probe_rs::{
     flashing::{self, Format},
@@ -30,7 +34,6 @@ use probe_rs::{
 };
 use probe_rs_rtt::{Rtt, ScanRegion, UpChannel};
 use structopt::StructOpt;
-use xmas_elf::{program::Type, sections::SectionData, symbol_table::Entry, ElfFile};
 
 const TIMEOUT: Duration = Duration::from_secs(1);
 const STACK_CANARY: u8 = 0xAA;
@@ -77,8 +80,7 @@ fn notmain() -> Result<i32, anyhow::Error> {
     let elf_path = opts.elf.as_deref().unwrap();
     let chip = opts.chip.as_deref().unwrap();
     let bytes = fs::read(elf_path)?;
-    // TODO switch this line from xmas-elf to object
-    let elf = ElfFile::new(&bytes).map_err(|s| anyhow!("{}", s))?;
+    let elf = ElfFile::parse(&bytes)?;
 
     let target = probe_rs::config::registry::get_target_by_name(chip)?;
 
@@ -104,7 +106,7 @@ fn notmain() -> Result<i32, anyhow::Error> {
         );
     }
 
-    elf.find_section_by_name(".text").ok_or_else(|| {
+    let text = elf.section_by_name(".text").ok_or_else(|| {
         anyhow!(
             "`.text` section is missing, please make sure that the linker script was passed to the \
             linker (check `.cargo/config.toml` and the `RUSTFLAGS` variable)"
@@ -148,29 +150,13 @@ fn notmain() -> Result<i32, anyhow::Error> {
     // sections used in cortex-m-rt
     // NOTE we won't load `.uninit` so it is not included here
     // NOTE we don't load `.bss` because the app (cortex-m-rt) will zero it
-    let candidates = [".vector_table", ".text", ".rodata"];
-
-    let text = elf
-        .section_iter()
-        .zip(0..)
-        .filter_map(|(sect, shndx)| {
-            if sect.get_name(&elf) == Ok(".text") {
-                Some(shndx)
-            } else {
-                None
-            }
-        })
-        .next();
+    let candidates = [".vector_table", ".text", ".rodata", ".data"];
 
     let mut highest_ram_addr_in_use = 0;
-    let mut uses_heap = false;
     let mut debug_frame = None;
-    let mut range_names = None;
-    let mut rtt_addr = None;
     let mut sections = vec![];
-    let mut dotdata = None;
     let mut registers = None;
-    for sect in elf.section_iter() {
+    for sect in elf.sections() {
         // If this section resides in RAM, track the highest RAM address in use.
         if let Some(ram) = &ram_region {
             if sect.size() != 0 {
@@ -179,7 +165,7 @@ fn notmain() -> Result<i32, anyhow::Error> {
                 if ram.range.contains(&last_addr) {
                     log::debug!(
                         "section `{}` is in RAM at 0x{:08X}-0x{:08X}",
-                        sect.get_name(&elf).unwrap_or("<unknown>"),
+                        sect.name().unwrap_or("<unknown>"),
                         sect.address(),
                         last_addr,
                     );
@@ -188,19 +174,10 @@ fn notmain() -> Result<i32, anyhow::Error> {
             }
         }
 
-        if let Ok(name) = sect.get_name(&elf) {
+        if let Ok(name) = sect.name() {
             if name == ".debug_frame" {
-                debug_frame = Some(sect.raw_data(&elf));
+                debug_frame = Some(sect.data()?);
                 continue;
-            }
-
-            if name == ".symtab" {
-                if let Ok(symtab) = sect.get_data(&elf) {
-                    let (rn, rtt_addr_, uses_heap_) = range_names_from(&elf, symtab, text)?;
-                    range_names = Some(rn);
-                    rtt_addr = rtt_addr_;
-                    uses_heap = uses_heap_;
-                }
             }
 
             let size = sect.size();
@@ -214,7 +191,7 @@ fn notmain() -> Result<i32, anyhow::Error> {
 
                 let start = start.try_into()?;
                 let data = sect
-                    .raw_data(&elf)
+                    .data()?
                     .chunks_exact(4)
                     .map(|chunk| u32::from_le_bytes(*array_ref!(chunk, 0, 4)))
                     .collect::<Vec<_>>();
@@ -227,14 +204,6 @@ fn notmain() -> Result<i32, anyhow::Error> {
                         // Reset handler
                         pc: data[1],
                     });
-                } else if name == ".data" {
-                    // don't put .data in the `sections` variable; it is specially handled
-                    dotdata = Some(Data {
-                        phys: start,
-                        virt: start,
-                        data,
-                    });
-                    continue;
                 }
 
                 sections.push(Section { start, data });
@@ -242,23 +211,7 @@ fn notmain() -> Result<i32, anyhow::Error> {
         }
     }
 
-    if let Some(data) = dotdata.as_mut() {
-        // patch up `.data` physical address
-        let mut patched = false;
-        for ph in elf.program_iter() {
-            if ph.get_type() == Ok(Type::Load) {
-                if u32::try_from(ph.virtual_addr())? == data.virt {
-                    patched = true;
-                    data.phys = ph.physical_addr().try_into()?;
-                    break;
-                }
-            }
-        }
-
-        if !patched {
-            bail!("couldn't extract `.data` physical address from the ELF");
-        }
-    }
+    let (range_names, rtt_addr, uses_heap) = range_names_from(&elf, text.index())?;
 
     let registers = registers.ok_or_else(|| anyhow!("`.vector_table` section is missing"))?;
     log::debug!("initial registers: {:x?}", registers);
@@ -275,44 +228,15 @@ fn notmain() -> Result<i32, anyhow::Error> {
 
     eprintln!("flashing program ..");
 
-    // load program into memory
-    // adjust registers
-    // this is the link register reset value; it indicates the end of the call stack
-    if registers.vtor >= 0x2000_0000 {
-        // program lives in RAM
-
-        let mut core = sess.core(0)?;
-        log::info!("attached to core");
-
-        core.reset_and_halt(TIMEOUT)?;
-        log::info!("reset and halted the core");
-
-        for section in &sections {
-            core.write_32(section.start, &section.data)?;
-        }
-        if let Some(section) = dotdata {
-            core.write_32(section.phys, &section.data)?;
-        }
-
-        core.write_core_reg(LR, LR_END)?;
-        core.write_core_reg(SP, registers.sp)?;
-        core.write_core_reg(PC, registers.pc)?;
-        core.write_word_32(VTOR, registers.vtor)?;
-
-        log::info!("loaded program into RAM");
-
-        eprintln!("DONE");
+    if opts.no_flash {
+        log::info!("skipped flashing");
     } else {
-        if opts.no_flash {
-            log::info!("skipped flashing");
-        } else {
-            // program lives in Flash
-            flashing::download_file(&mut sess, elf_path, Format::Elf)?;
-            log::info!("flashed program");
-        }
-
-        eprintln!("DONE");
+        // program lives in Flash
+        flashing::download_file(&mut sess, elf_path, Format::Elf)?;
+        log::info!("flashed program");
     }
+
+    eprintln!("DONE");
 
     let mut canary = None;
     {
@@ -469,8 +393,6 @@ fn notmain() -> Result<i32, anyhow::Error> {
     let pc = core.read_core_reg(PC)?;
 
     let debug_frame = debug_frame.ok_or_else(|| anyhow!("`.debug_frame` section not found"))?;
-
-    let range_names = range_names.ok_or_else(|| anyhow!("`.symtab` section not found"))?;
 
     // print backtrace
     let top_exception = backtrace(&mut core, pc, debug_frame, &range_names)?;
@@ -810,46 +732,46 @@ impl Stacked {
 // FIXME this might already exist in the DWARF data; we should just use that
 /// Map from PC ranges to demangled Rust names
 type RangeNames = Vec<(Range<u32>, String)>;
-type Shndx = u16;
 
 fn range_names_from(
     elf: &ElfFile,
-    sd: SectionData,
-    text: Option<Shndx>,
+    text: SectionIndex,
 ) -> Result<(RangeNames, Option<u32>, bool /* uses heap */), anyhow::Error> {
     let mut range_names = vec![];
     let mut rtt = None;
     let mut uses_heap = false;
-    if let SectionData::SymbolTable32(entries) = sd {
-        for entry in entries {
-            if let Ok(name) = entry.get_name(elf) {
-                match name {
-                    "_SEGGER_RTT" => rtt = Some(entry.value() as u32),
-                    "__rust_alloc" | "__rg_alloc" | "__rdl_alloc" | "malloc" if !uses_heap => {
-                        log::debug!("symbol `{}` indicates heap is in use", name);
-                        uses_heap = true;
-                    }
-                    _ => {}
-                }
 
-                if Some(entry.shndx()) == text && entry.size() != 0 {
-                    let mut name = rustc_demangle::demangle(name).to_string();
-                    // clear the thumb bit
-                    let start = entry.value() as u32 & !1;
+    for (_, symbol) in elf.symbols() {
+        let name = match symbol.name() {
+            Some(name) => name,
+            None => continue,
+        };
 
-                    // strip the hash (e.g. `::hd881d91ced85c2b0`)
-                    let hash_len = "::hd881d91ced85c2b0".len();
-                    if let Some(pos) = name.len().checked_sub(hash_len) {
-                        let maybe_hash = &name[pos..];
-                        if maybe_hash.starts_with("::h") {
-                            // FIXME avoid this allocation
-                            name = name[..pos].to_string();
-                        }
-                    }
+        match name {
+            "_SEGGER_RTT" => rtt = Some(symbol.address() as u32),
+            "__rust_alloc" | "__rg_alloc" | "__rdl_alloc" | "malloc" if !uses_heap => {
+                log::debug!("symbol `{}` indicates heap is in use", name);
+                uses_heap = true;
+            }
+            _ => {}
+        }
 
-                    range_names.push((start..start + entry.size() as u32, name));
+        if symbol.section_index() == Some(text) && symbol.size() > 0 {
+            let mut name = rustc_demangle::demangle(name).to_string();
+            // clear the thumb bit
+            let start = symbol.address() as u32 & !1;
+
+            // strip the hash (e.g. `::hd881d91ced85c2b0`)
+            let hash_len = "::hd881d91ced85c2b0".len();
+            if let Some(pos) = name.len().checked_sub(hash_len) {
+                let maybe_hash = &name[pos..];
+                if maybe_hash.starts_with("::h") {
+                    // FIXME avoid this allocation
+                    name = name[..pos].to_string();
                 }
             }
+
+            range_names.push((start..start + symbol.size() as u32, name));
         }
     }
 
@@ -861,7 +783,6 @@ fn range_names_from(
 const LR: CoreRegisterAddress = CoreRegisterAddress(14);
 const PC: CoreRegisterAddress = CoreRegisterAddress(15);
 const SP: CoreRegisterAddress = CoreRegisterAddress(13);
-const VTOR: u32 = 0xE000_ED08;
 
 const LR_END: u32 = 0xFFFF_FFFF;
 
@@ -869,17 +790,6 @@ const LR_END: u32 = 0xFFFF_FFFF;
 #[derive(Debug)]
 struct Section {
     start: u32,
-    data: Vec<u32>,
-}
-
-/// The .data section has a physical address different that its virtual address; we want to load the
-/// data into the physical address (which would normally be in FLASH) so that cortex-m-rt doesn't
-/// corrupt the variables in .data during initialization -- it would be best if we could disable
-/// cortex-m-rt's `init_data` call but there's no such feature
-#[derive(Debug)]
-struct Data {
-    phys: u32,
-    virt: u32,
     data: Vec<u32>,
 }
 
