@@ -114,12 +114,22 @@ fn notmain() -> Result<i32, anyhow::Error> {
         }
 
         let locs = if opts.defmt {
+            let table = table.as_ref().unwrap();
             let locs = elf2table::get_locations(&bytes)?;
 
-            if !table.as_ref().unwrap().is_empty() && locs.is_empty() {
-                bail!("DWARF file location info not found; compile your program with `debug = 2`")
+            if !table.is_empty() && locs.is_empty() {
+                eprintln!("warning: insufficient DWARF info; compile your program with `debug = 2` to enable location info");
+                None
+            } else {
+                if table.indices().all(|idx| locs.contains_key(&(idx as u64))) {
+                    Some(locs)
+                } else {
+                    eprintln!(
+                        "warning: (BUG) location info is incomplete; it will be omitted from the output "
+                    );
+                    None
+                }
             }
-            Some(locs)
         } else {
             None
         };
@@ -368,33 +378,31 @@ fn notmain() -> Result<i32, anyhow::Error> {
                     #[cfg(feature = "defmt")]
                     () => {
                         if opts.defmt {
-                            let locs = locs.as_ref().unwrap();
                             frames.extend_from_slice(&read_buf[..num_bytes_read]);
 
                             while let Ok((frame, consumed)) =
                                 decoder::decode(&frames, table.as_ref().unwrap())
                             {
-                                let loc = locs.get(&frame.index()).ok_or_else(|| {
-                                    anyhow!(
-                                        "no location information from log frame #{}",
-                                        frame.index()
-                                    )
-                                })?;
-
-                                let relpath =
-                                    if let Ok(relpath) = loc.file.strip_prefix(&current_dir) {
-                                        relpath
-                                    } else {
-                                        // not relative; use full path
-                                        &loc.file
-                                    };
+                                // NOTE(`[]` indexing) all indices in `table` have already been
+                                // verified to exist in the `locs` map
+                                let loc = locs.as_ref().map(|locs| &locs[&frame.index()]);
 
                                 writeln!(stdout, "{}", frame.display(true))?;
-                                writeln!(
-                                    stdout,
-                                    "└─ {}",
-                                    &format!("{}:{}", relpath.display(), loc.line).dimmed()
-                                )?;
+                                if let Some(loc) = loc {
+                                    let relpath =
+                                        if let Ok(relpath) = loc.file.strip_prefix(&current_dir) {
+                                            relpath
+                                        } else {
+                                            // not relative; use full path
+                                            &loc.file
+                                        };
+
+                                    writeln!(
+                                        stdout,
+                                        "└─ {}",
+                                        &format!("{}:{}", relpath.display(), loc.line).dimmed()
+                                    )?;
+                                }
 
                                 let num_frames = frames.len();
                                 frames.rotate_left(consumed);
