@@ -17,6 +17,8 @@ use std::{
 
 use anyhow::{anyhow, bail, Context};
 use arrayref::array_ref;
+#[cfg(feature = "defmt")]
+use colored::Colorize as _;
 use gimli::{
     read::{CfaRule, DebugFrame, UnwindSection},
     BaseAddresses, EndianSlice, LittleEndian, RegisterRule, UninitializedUnwindContext,
@@ -75,6 +77,7 @@ fn notmain() -> Result<i32, anyhow::Error> {
     let elf_path = opts.elf.as_deref().unwrap();
     let chip = opts.chip.as_deref().unwrap();
     let bytes = fs::read(elf_path)?;
+    // TODO switch this line from xmas-elf to object
     let elf = ElfFile::new(&bytes).map_err(|s| anyhow!("{}", s))?;
 
     let target = probe_rs::config::registry::get_target_by_name(chip)?;
@@ -102,7 +105,7 @@ fn notmain() -> Result<i32, anyhow::Error> {
     }
 
     #[cfg(feature = "defmt")]
-    let table = {
+    let (table, locs) = {
         let table = elf2table::parse(&bytes)?;
 
         if table.is_none() && opts.defmt {
@@ -111,7 +114,28 @@ fn notmain() -> Result<i32, anyhow::Error> {
             eprintln!("warning: application may be using `defmt` but `--defmt` flag was not used");
         }
 
-        table
+        let locs = if opts.defmt {
+            let table = table.as_ref().unwrap();
+            let locs = elf2table::get_locations(&bytes)?;
+
+            if !table.is_empty() && locs.is_empty() {
+                eprintln!("warning: insufficient DWARF info; compile your program with `debug = 2` to enable location info");
+                None
+            } else {
+                if table.indices().all(|idx| locs.contains_key(&(idx as u64))) {
+                    Some(locs)
+                } else {
+                    eprintln!(
+                        "warning: (BUG) location info is incomplete; it will be omitted from the output "
+                    );
+                    None
+                }
+            }
+        } else {
+            None
+        };
+
+        (table, locs)
     };
 
     // sections used in cortex-m-rt
@@ -337,6 +361,9 @@ fn notmain() -> Result<i32, anyhow::Error> {
     #[cfg(feature = "defmt")]
     let mut frames = vec![];
     let mut was_halted = false;
+    #[cfg(feature = "defmt")]
+    let current_dir = std::env::current_dir()?;
+    // TODO strip prefix from crates-io paths (?)
     while CONTINUE.load(Ordering::Relaxed) {
         if let Some(logging_channel) = &mut logging_channel {
             let num_bytes_read = match logging_channel.read(&mut read_buf) {
@@ -357,7 +384,27 @@ fn notmain() -> Result<i32, anyhow::Error> {
                             while let Ok((frame, consumed)) =
                                 decoder::decode(&frames, table.as_ref().unwrap())
                             {
+                                // NOTE(`[]` indexing) all indices in `table` have already been
+                                // verified to exist in the `locs` map
+                                let loc = locs.as_ref().map(|locs| &locs[&frame.index()]);
+
                                 writeln!(stdout, "{}", frame.display(true))?;
+                                if let Some(loc) = loc {
+                                    let relpath =
+                                        if let Ok(relpath) = loc.file.strip_prefix(&current_dir) {
+                                            relpath
+                                        } else {
+                                            // not relative; use full path
+                                            &loc.file
+                                        };
+
+                                    writeln!(
+                                        stdout,
+                                        "└─ {}",
+                                        &format!("{}:{}", relpath.display(), loc.line).dimmed()
+                                    )?;
+                                }
+
                                 let num_frames = frames.len();
                                 frames.rotate_left(consumed);
                                 frames.truncate(num_frames - consumed);
