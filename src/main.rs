@@ -7,7 +7,7 @@ use core::{
 };
 use std::{
     collections::{btree_map, BTreeMap},
-    env, fs,
+    fs,
     io::{self, Write as _},
     path::PathBuf,
     process,
@@ -17,7 +17,8 @@ use std::{
 
 use anyhow::{anyhow, bail, Context};
 use arrayref::array_ref;
-use colored::Colorize;
+#[cfg(feature = "defmt")]
+use colored::Colorize as _;
 use gimli::{
     read::{CfaRule, DebugFrame, UnwindSection},
     BaseAddresses, EndianSlice, LittleEndian, RegisterRule, UninitializedUnwindContext,
@@ -361,7 +362,7 @@ fn notmain() -> Result<i32, anyhow::Error> {
     let mut frames = vec![];
     let mut was_halted = false;
     #[cfg(feature = "defmt")]
-    let current_dir = env::current_dir()?;
+    let current_dir = std::env::current_dir()?;
     // TODO strip prefix from crates-io paths (?)
     while CONTINUE.load(Ordering::Relaxed) {
         if let Some(logging_channel) = &mut logging_channel {
