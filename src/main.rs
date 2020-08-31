@@ -55,7 +55,7 @@ struct Opts {
     chip: Option<String>,
 
     /// Path to an ELF firmware file.
-    #[structopt(name = "ELF", parse(from_os_str), required_unless("list-chips"), env = "PROBE_RUN_ELF")]
+    #[structopt(name = "ELF", parse(from_os_str), required_unless("list-chips"))]
     elf: Option<PathBuf>,
 
     /// Skip writing the application binary to flash.
