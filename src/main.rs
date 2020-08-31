@@ -106,8 +106,8 @@ fn notmain() -> Result<i32, anyhow::Error> {
 
     elf.find_section_by_name(".text").ok_or_else(|| {
         anyhow!(
-            "`.text` section is missing, please make sure that the linker script \
-            was passed to the linker"
+            "`.text` section is missing, please make sure that the linker script was passed to the \
+            linker (check `.cargo/config.toml` and the `RUSTFLAGS` variable)"
         )
     })?;
 
