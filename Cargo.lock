@@ -153,12 +153,7 @@ dependencies = [
 [[package]]
 name = "common"
 version = "0.1.0"
-source = "git+https://github.com/knurling-rs/defmt?branch=indices#a6489476434c37da79d53c5cc56f48fbf5282de3"
-
-[[package]]
-name = "common"
-version = "0.1.0"
-source = "git+https://github.com/knurling-rs/defmt.git?branch=main#a62fe2f6a810c419ce9b7e3a6990eddebba94a78"
+source = "git+https://github.com/knurling-rs/defmt.git?branch=main#0af5bd2ccc70bcfb88fc9cbcc06be402a08baef1"
 
 [[package]]
 name = "cortex-m"
@@ -215,12 +210,12 @@ dependencies = [
 [[package]]
 name = "decoder"
 version = "0.1.0"
-source = "git+https://github.com/knurling-rs/defmt?branch=indices#a6489476434c37da79d53c5cc56f48fbf5282de3"
+source = "git+https://github.com/knurling-rs/defmt.git?branch=main#0af5bd2ccc70bcfb88fc9cbcc06be402a08baef1"
 dependencies = [
  "byteorder",
  "colored",
- "common 0.1.0 (git+https://github.com/knurling-rs/defmt?branch=indices)",
- "defmt-parser 0.1.0 (git+https://github.com/knurling-rs/defmt?branch=indices)",
+ "common",
+ "defmt-parser",
  "leb128",
  "ryu",
 ]
@@ -228,18 +223,18 @@ dependencies = [
 [[package]]
 name = "defmt"
 version = "0.1.0"
-source = "git+https://github.com/knurling-rs/defmt.git?branch=main#a62fe2f6a810c419ce9b7e3a6990eddebba94a78"
+source = "git+https://github.com/knurling-rs/defmt.git?branch=main#0af5bd2ccc70bcfb88fc9cbcc06be402a08baef1"
 dependencies = [
- "common 0.1.0 (git+https://github.com/knurling-rs/defmt.git?branch=main)",
+ "common",
  "defmt-macros",
 ]
 
 [[package]]
 name = "defmt-macros"
 version = "0.1.0"
-source = "git+https://github.com/knurling-rs/defmt.git?branch=main#a62fe2f6a810c419ce9b7e3a6990eddebba94a78"
+source = "git+https://github.com/knurling-rs/defmt.git?branch=main#0af5bd2ccc70bcfb88fc9cbcc06be402a08baef1"
 dependencies = [
- "defmt-parser 0.1.0 (git+https://github.com/knurling-rs/defmt.git?branch=main)",
+ "defmt-parser",
  "proc-macro2",
  "quote",
  "syn",
@@ -248,12 +243,7 @@ dependencies = [
 [[package]]
 name = "defmt-parser"
 version = "0.1.0"
-source = "git+https://github.com/knurling-rs/defmt?branch=indices#a6489476434c37da79d53c5cc56f48fbf5282de3"
-
-[[package]]
-name = "defmt-parser"
-version = "0.1.0"
-source = "git+https://github.com/knurling-rs/defmt.git?branch=main#a62fe2f6a810c419ce9b7e3a6990eddebba94a78"
+source = "git+https://github.com/knurling-rs/defmt.git?branch=main#0af5bd2ccc70bcfb88fc9cbcc06be402a08baef1"
 
 [[package]]
 name = "derivative"
@@ -275,7 +265,7 @@ checksum = "134951f4028bdadb9b84baf4232681efbf277da25144b9b0ad65df75946c422b"
 [[package]]
 name = "elf2table"
 version = "0.1.0"
-source = "git+https://github.com/knurling-rs/defmt?branch=indices#a6489476434c37da79d53c5cc56f48fbf5282de3"
+source = "git+https://github.com/knurling-rs/defmt.git?branch=main#0af5bd2ccc70bcfb88fc9cbcc06be402a08baef1"
 dependencies = [
  "anyhow",
  "decoder",
