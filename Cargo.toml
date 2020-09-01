@@ -14,7 +14,7 @@ version = "0.1.3"
 anyhow = "1.0.32"
 arrayref = "0.3.6"
 colored = "2.0.0"
-ctrlc = "3.1.6"
+signal-hook = "0.1.16"
 decoder = { git = "https://github.com/knurling-rs/defmt", branch = "main", optional = true }
 elf2table = { git = "https://github.com/knurling-rs/defmt", branch = "main", optional = true }
 env_logger = "0.7.1"

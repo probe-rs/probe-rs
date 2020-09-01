@@ -276,11 +276,8 @@ fn notmain() -> Result<i32, anyhow::Error> {
         core.run()?;
     }
 
-    static CONTINUE: AtomicBool = AtomicBool::new(true);
-
-    ctrlc::set_handler(|| {
-        CONTINUE.store(false, Ordering::Relaxed);
-    })?;
+    let exit = Arc::new(AtomicBool::new(false));
+    let sig_id = signal_hook::flag::register(signal_hook::SIGINT, exit.clone())?;
 
     let sess = Arc::new(Mutex::new(sess));
     let mut logging_channel = setup_logging_channel(rtt_addr, sess.clone())?;
@@ -295,7 +292,7 @@ fn notmain() -> Result<i32, anyhow::Error> {
     #[cfg(feature = "defmt")]
     let current_dir = std::env::current_dir()?;
     // TODO strip prefix from crates-io paths (?)
-    while CONTINUE.load(Ordering::Relaxed) {
+    while !exit.load(Ordering::Relaxed) {
         if let Some(logging_channel) = &mut logging_channel {
             let num_bytes_read = match logging_channel.read(&mut read_buf) {
                 Ok(n) => n,
@@ -363,11 +360,14 @@ fn notmain() -> Result<i32, anyhow::Error> {
     }
     drop(stdout);
 
+    // Restore default Ctrl+C behavior.
+    signal_hook::unregister(sig_id);
+
     let mut sess = sess.lock().unwrap();
     let mut core = sess.core(0)?;
 
-    // Ctrl-C was pressed; stop the microcontroller
-    if !CONTINUE.load(Ordering::Relaxed) {
+    if exit.load(Ordering::Relaxed) {
+        // Ctrl-C was pressed; stop the microcontroller.
         core.halt(TIMEOUT)?;
     }
 
