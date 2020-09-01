@@ -56,7 +56,7 @@ struct Opts {
     defmt: bool,
 
     /// The chip to program.
-    #[structopt(long, required_unless("list-chips"))]
+    #[structopt(long, required_unless("list-chips"), env = "PROBE_RUN_CHIP")]
     chip: Option<String>,
 
     /// Path to an ELF firmware file.
