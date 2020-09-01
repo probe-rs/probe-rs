@@ -573,6 +573,10 @@ name = "object"
 version = "0.21.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "37fd5004feb2ce328a52b0b3d01dbf4ffff72583493900ed15f22d4111c51693"
+dependencies = [
+ "flate2",
+ "wasmparser",
+]
 
 [[package]]
 name = "panic-probe"
@@ -664,11 +668,11 @@ dependencies = [
  "env_logger",
  "gimli 0.22.0",
  "log",
+ "object 0.21.1",
  "probe-rs",
  "probe-rs-rtt",
  "rustc-demangle",
  "structopt",
- "xmas-elf",
 ]
 
 [[package]]
@@ -1096,15 +1100,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "xmas-elf"
-version = "0.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e74de9a366f6ab8c405fa6b371d9ac24943921fa14b3d64afcb202065c405f11"
-dependencies = [
- "zero",
-]
-
-[[package]]
 name = "yaml-rust"
 version = "0.4.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1112,9 +1107,3 @@ checksum = "39f0c922f1a334134dc2f7a8b67dc5d25f0735263feec974345ff706bcf20b0d"
 dependencies = [
  "linked-hash-map",
 ]
-
-[[package]]
-name = "zero"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5f1bc8a6b2005884962297587045002d8cfb8dcec9db332f4ca216ddc5de82c5"

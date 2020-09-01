@@ -24,7 +24,7 @@ probe-rs = "0.8.0"
 probe-rs-rtt = "0.3.0"
 rustc-demangle = "0.1.16"
 structopt = "0.3.15"
-xmas-elf = "0.7.0"
+object = "0.21.1"
 
 [features]
 defmt = ["elf2table", "decoder"]
