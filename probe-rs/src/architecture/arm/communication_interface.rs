@@ -10,12 +10,11 @@ use super::{
     memory::{adi, Component},
     SwoAccess, SwoConfig,
 };
-use crate::{CommunicationInterface, DebugProbe, DebugProbeError, Error as ProbeRsError, Probe};
+use crate::{CommunicationInterface, DebugProbe, DebugProbeError, Error, MemoryInterface, Probe};
 use anyhow::anyhow;
 use jep106::JEP106Code;
-use thiserror::Error;
 
-#[derive(Debug, Error)]
+#[derive(Debug, thiserror::Error)]
 pub enum DapError {
     #[error("An error occured in the SWD communication between DAPlink and device.")]
     SwdProtocol,
@@ -587,24 +586,24 @@ impl<'probe> DPAccess for ArmCommunicationInterface<'probe> {
 }
 
 impl<'probe> SwoAccess for ArmCommunicationInterface<'probe> {
-    fn enable_swo(&mut self, config: &SwoConfig) -> Result<(), ProbeRsError> {
+    fn enable_swo(&mut self, config: &SwoConfig) -> Result<(), Error> {
         match self.probe.get_interface_swo_mut() {
             Some(interface) => interface.enable_swo(config),
-            None => Err(ProbeRsError::ArchitectureRequired(&["ARMv7", "ARMv8"])),
+            None => Err(Error::ArchitectureRequired(&["ARMv7", "ARMv8"])),
         }
     }
 
-    fn disable_swo(&mut self) -> Result<(), ProbeRsError> {
+    fn disable_swo(&mut self) -> Result<(), Error> {
         match self.probe.get_interface_swo_mut() {
             Some(interface) => interface.disable_swo(),
-            None => Err(ProbeRsError::ArchitectureRequired(&["ARMv7", "ARMv8"])),
+            None => Err(Error::ArchitectureRequired(&["ARMv7", "ARMv8"])),
         }
     }
 
-    fn read_swo_timeout(&mut self, timeout: Duration) -> Result<Vec<u8>, ProbeRsError> {
+    fn read_swo_timeout(&mut self, timeout: Duration) -> Result<Vec<u8>, Error> {
         match self.probe.get_interface_swo_mut() {
             Some(interface) => interface.read_swo_timeout(timeout),
-            None => Err(ProbeRsError::ArchitectureRequired(&["ARMv7", "ARMv8"])),
+            None => Err(Error::ArchitectureRequired(&["ARMv7", "ARMv8"])),
         }
     }
 }
@@ -715,11 +714,11 @@ pub struct ArmChipInfo {
 impl ArmChipInfo {
     pub fn read_from_rom_table(
         interface: &mut ArmCommunicationInterface,
-    ) -> Result<Option<Self>, ProbeRsError> {
+    ) -> Result<Option<Self>, Error> {
         for access_port in valid_access_ports(interface) {
             let idr = interface
                 .read_ap_register(access_port, IDR::default())
-                .map_err(ProbeRsError::Probe)?;
+                .map_err(Error::Probe)?;
             log::debug!("{:#x?}", idr);
 
             if idr.CLASS == APClass::MEMAP {
@@ -728,7 +727,7 @@ impl ArmChipInfo {
                 let baseaddr = access_port.base_address(interface)?;
 
                 let component = Component::try_parse(interface.reborrow(), baseaddr)
-                    .map_err(ProbeRsError::architecture_specific)?;
+                    .map_err(Error::architecture_specific)?;
 
                 if let Component::Class1RomTable(component_id, _) = component {
                     if let Some(jep106) = component_id.peripheral_id().jep106() {
