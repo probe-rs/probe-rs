@@ -491,9 +491,13 @@ impl<'c, 'probe> Registers<'c, 'probe> {
         match rule {
             CfaRule::RegisterAndOffset { register, offset } => {
                 let cfa = (i64::from(self.get(gimli2probe(register))?) + offset) as u32;
-                let ok = self.cache.get(&SP.0) != Some(&cfa);
+                let old_cfa = self.cache.get(&SP.0);
+                let changed = old_cfa != Some(&cfa);
+                if changed {
+                    log::debug!("update_cfa: CFA changed {:8x?} -> {:8x}", old_cfa, cfa);
+                }
                 self.cache.insert(SP.0, cfa);
-                Ok(ok)
+                Ok(changed)
             }
 
             // NOTE not encountered in practice so far
@@ -572,6 +576,7 @@ fn backtrace(
         }
 
         let lr = registers.get(LR)?;
+        log::debug!("lr=0x{:08x} pc=0x{:08x}", lr, pc);
         if lr == LR_END {
             break;
         }
