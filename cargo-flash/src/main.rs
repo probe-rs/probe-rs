@@ -543,7 +543,6 @@ fn remove_arguments_test() {
         "--probe-index".to_string(),
         "kek".to_string(),
         "--reset-halt".to_string(),
-        "kek".to_string(),
         "--nrf-recover".to_string(),
     ];
 
