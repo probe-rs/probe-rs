@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+### Changed
+
+### Fixed
+
+## [0.9.0]
+
+### Added
+
 - The config supports a new section called `reset`. It controls whether the target is reset. Default config:
 
     ```toml
@@ -21,11 +29,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   This way, you can add a `cargo embed` target that allows resetting and
   optionally halting without flashing. Useful for debugging.
 
+- Improved logging on different levels.
+- Added the possibility to save logs (#28).
+- Added support for cargo workspaces with the replacement of `cargo-project` with `cargo-metadata`.
+- Added a flag to override the selected chip with `--chip`.
+- Added a flag to override the selected probe with `--probe`.
+
 ### Changed
 
 - The config option `flashing.halt_afterwards` has moved to `reset.halt_afterwards`
 
 ### Fixed
+
+- Fixed the enter key for text input in the RTT terminal.
+- Fixed loading of local config files.
+- Fixed the default.toml.
+- Fixed the error message when multiple probes are detected.
 
 ## [0.8.0]
 
@@ -102,7 +121,8 @@ An example is this config:
 ## [0.6.0]
 - Initial release
 
-[Unreleased]: https://github.com/probe-rs/probe-rs/compare/v0.8.0...master
+[Unreleased]: https://github.com/probe-rs/probe-rs/compare/v0.9.0...master
+[0.9.0]: https://github.com/probe-rs/probe-rs/releases/tag/v0.9.0..v0.8.0
 [0.8.0]: https://github.com/probe-rs/probe-rs/releases/tag/v0.8.0..v0.7.0
 [0.7.0]: https://github.com/probe-rs/probe-rs/releases/tag/v0.7.0..v0.6.1
 [0.6.1]: https://github.com/probe-rs/probe-rs/releases/tag/v0.6.1..v0.6.0
