@@ -9,13 +9,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-### Removed
-
-- The option to start a GDB server after flashing is removed. It is recommended to use [cargo-embed](https://github.com/probe-rs/cargo-embed)
-  to start a GDB server. The following options are removed:
-  - `--gdb`
-  - `--no-download`
-  - `--gdb-connection-string`
 
 ### Fixed
 
@@ -29,6 +22,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 ### Fixed
+
+### Removed
+
+- The option to start a GDB server after flashing is removed. It is recommended to use [cargo-embed](https://github.com/probe-rs/cargo-embed)
+  to start a GDB server. The following options are removed:
+  - `--gdb`
+  - `--no-download`
+  - `--gdb-connection-string`
 
 ## [0.8.0]
 
