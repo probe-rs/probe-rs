@@ -362,6 +362,7 @@ fn notmain() -> Result<i32, anyhow::Error> {
 
     // Restore default Ctrl+C behavior.
     signal_hook::unregister(sig_id);
+    signal_hook::cleanup::cleanup_signal(signal_hook::SIGINT)?;
 
     let mut sess = sess.lock().unwrap();
     let mut core = sess.core(0)?;
