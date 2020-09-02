@@ -3,9 +3,15 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.9.0]
 
 ### Added
+
+- Added initial support for FTDI based probes.
+- Added support for the STM32L5 family.
+- Added support for the STM32G4 family.
+- Added support for ITM tracing over SWO for CMSIS-DAP and J-Link probes.
+- The status LED on CMSIS-DAP probes is now used by probe-rs.
 
 ### Changed
 
@@ -15,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Fixed a bug where a J-Link would only be opened if the VID, PID AND Serial No. would match. As the Serial is optional, only VID/PID have to match now.
 - Fixed a bug with the readout of the serial string that could fail for DAP devices and lead to weird behavior.
+- Fixed a bug where the serial number was not printed correctly for some ST-Links.
 
 ## [0.8.0]
 

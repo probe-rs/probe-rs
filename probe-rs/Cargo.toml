@@ -1,6 +1,6 @@
 [package]
 name = "probe-rs"
-version = "0.8.0"
+version = "0.9.0"
 authors = ["Noah Hüsser <yatekii@yatekii.ch>", "Dominik Boehi <dominik.boehi@gmail.ch>"]
 edition = "2018"
 description = "A collection of on chip debugging tools to communicate with microchips."
