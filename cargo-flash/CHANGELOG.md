@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+
+### Fixed
+
+## [0.9.0]
+
+### Added
+
+- Support for cargo workspaces was added with the integration of `cargo-metadata` instead of `cargo-project` (in #39 by @Tiwalun)
+- Show the compiler output in `cargo flash` if the called `cargo build` command fails (in #53 by @Tiwalun).
+
+### Changed
+
+### Fixed
+
 ### Removed
 
 - The option to start a GDB server after flashing is removed. It is recommended to use [cargo-embed](https://github.com/probe-rs/cargo-embed)
@@ -16,8 +30,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `--gdb`
   - `--no-download`
   - `--gdb-connection-string`
-
-### Fixed
 
 ## [0.8.0]
 
@@ -103,7 +115,8 @@ Improved flashing for `cargo-flash` considering speed and useability.
 ## [0.2.0]
 - Introduce cargo-flash which can automatically build & flash the target elf file.
 
-[Unreleased]: https://github.com/probe-rs/probe-rs/compare/v0.8.0...master
+[Unreleased]: https://github.com/probe-rs/probe-rs/compare/v0.9.0...master
+[0.9.0]: https://github.com/probe-rs/probe-rs/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/probe-rs/probe-rs/releases/tag/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/probe-rs/probe-rs/releases/tag/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/probe-rs/probe-rs/releases/tag/v0.5.0...v0.6.0

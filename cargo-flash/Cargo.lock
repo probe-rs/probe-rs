@@ -89,7 +89,7 @@ checksum = "08c48aae112d48ed9f069b33538ea9e3e90aa263cfa3d1c24309612b1f7472de"
 
 [[package]]
 name = "cargo-flash"
-version = "0.8.0"
+version = "0.9.0"
 dependencies = [
  "anyhow",
  "colored",
@@ -503,8 +503,8 @@ checksum = "b4596b6d070b27117e987119b4dac604f3c58cfb0b191112e24771b2faeac1a6"
 
 [[package]]
 name = "probe-rs"
-version = "0.8.0"
-source = "git+https://github.com/probe-rs/probe-rs#abb611591d11d4a25bb05ed1dcdf9e2e53f5d89a"
+version = "0.9.0"
+source = "git+https://github.com/probe-rs/probe-rs#45d254027ac2aa91d66d6939c7cb6c613e572a72"
 dependencies = [
  "anyhow",
  "base64",
@@ -533,8 +533,8 @@ dependencies = [
 
 [[package]]
 name = "probe-rs-cli-util"
-version = "0.8.0"
-source = "git+https://github.com/probe-rs/probe-rs#abb611591d11d4a25bb05ed1dcdf9e2e53f5d89a"
+version = "0.9.0"
+source = "git+https://github.com/probe-rs/probe-rs#45d254027ac2aa91d66d6939c7cb6c613e572a72"
 dependencies = [
  "anyhow",
  "cargo_metadata",
@@ -548,7 +548,7 @@ dependencies = [
 [[package]]
 name = "probe-rs-t2rust"
 version = "0.6.0"
-source = "git+https://github.com/probe-rs/probe-rs#abb611591d11d4a25bb05ed1dcdf9e2e53f5d89a"
+source = "git+https://github.com/probe-rs/probe-rs#45d254027ac2aa91d66d6939c7cb6c613e572a72"
 dependencies = [
  "base64",
  "proc-macro2",
