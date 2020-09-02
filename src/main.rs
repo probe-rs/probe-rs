@@ -37,6 +37,7 @@ use structopt::StructOpt;
 
 const TIMEOUT: Duration = Duration::from_secs(1);
 const STACK_CANARY: u8 = 0xAA;
+const THUMB_BIT: u32 = 1;
 
 fn main() -> Result<(), anyhow::Error> {
     notmain().map(|code| process::exit(code))
@@ -582,7 +583,10 @@ fn backtrace(
             break;
         }
 
-        if !cfa_changed && lr == pc {
+        // If the frame didn't move, and the program counter didn't change, bail out (otherwise we
+        // might print the same frame over and over).
+        // Since we strip the thumb bit from `pc`, ignore it in this comparison.
+        if !cfa_changed && lr & !THUMB_BIT == pc & !THUMB_BIT {
             println!("error: the stack appears to be corrupted beyond this point");
             return Ok(top_exception);
         }
@@ -616,7 +620,7 @@ fn backtrace(
             if lr & 1 == 0 {
                 bail!("bug? LR ({:#010x}) didn't have the Thumb bit set", lr)
             }
-            pc = lr & !1;
+            pc = lr & !THUMB_BIT;
         }
 
         frame += 1;
