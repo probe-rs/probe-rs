@@ -9,12 +9,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+### Fixed
+
+
+## [0.9.0]
+
+### Added
+
+- Added initial support for FTDI based probes.
+- Added support for the STM32L5 family.
+- Added support for the STM32G4 family.
+- Added support for ITM tracing over SWO in general and drivers for all probes.
+- The staktus LED on CMSIS-DAP probes is now used by probe-rs.
+
+### Changed
+
 - Renamed `ProgressEvent::StartFlashing` to `ProgressEvent::StartProgramming` and `ProgressEvent::PageFlashed` to `ProgressEvent::PageProgrammed` to make naming of events more consistent.
 
 ### Fixed
 
 - Fixed a bug where a J-Link would only be opened if the VID, PID AND Serial No. would match. As the Serial is optional, only VID/PID have to match now.
 - Fixed a bug with the readout of the serial string that could fail for DAP devices and lead to weird behavior.
+- Fixed a bug where the serial number was not printed correctly for some ST-Links.
 
 ## [0.8.0]
 
@@ -234,7 +250,8 @@ Initial release on crates.io
 - Working basic flash downloader with nRF51.
 - Introduce cargo-flash which can automatically build & flash the target elf file.
 
-[Unreleased]: https://github.com/probe-rs/probe-rs/compare/v0.8.0...master
+[Unreleased]: https://github.com/probe-rs/probe-rs/compare/v0.9.0...master
+[0.9.0]: https://github.com/probe-rs/probe-rs/releases/tag/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/probe-rs/probe-rs/releases/tag/v0.7.1...v0.8.0
 [0.7.1]: https://github.com/probe-rs/probe-rs/releases/tag/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/probe-rs/probe-rs/releases/tag/v0.6.2...v0.7.0
