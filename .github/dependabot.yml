@@ -1,26 +1,30 @@
 version: 2
 updates:
-- package-ecosystem: "github-actions"
-  directory: "/"
-  schedule:
-    interval: "daily"
-- package-ecosystem: cargo
-  directory: "/cli"
-  schedule:
-    interval: daily
-  open-pull-requests-limit: 10
-- package-ecosystem: cargo
-  directory: "/probe-rs-t2rust"
-  schedule:
-    interval: daily
-  open-pull-requests-limit: 10
-- package-ecosystem: cargo
-  directory: "/probe-rs"
-  schedule:
-    interval: daily
-  open-pull-requests-limit: 10
-- package-ecosystem: cargo
-  directory: "/gdb-server"
-  schedule:
-    interval: daily
-  open-pull-requests-limit: 10
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "daily"
+  - package-ecosystem: cargo
+    directory: "/cli"
+    schedule:
+      interval: daily
+    open-pull-requests-limit: 10
+  - package-ecosystem: cargo
+    directory: "/probe-rs-t2rust"
+    schedule:
+      interval: daily
+    open-pull-requests-limit: 10
+  - package-ecosystem: cargo
+    directory: "/probe-rs"
+    schedule:
+      interval: daily
+    open-pull-requests-limit: 10
+  - package-ecosystem: cargo
+    directory: "/gdb-server"
+    schedule:
+      interval: daily
+  - package-ecosystem: cargo
+    directory: "/probe-rs-cli-util"
+    schedule:
+      interval: daily
+    open-pull-requests-limit: 10
