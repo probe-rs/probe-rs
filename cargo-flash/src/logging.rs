@@ -94,21 +94,6 @@ pub fn set_progress_bar(progress: Arc<ProgressBar>) {
 
 /// Writes an error to the log.
 /// This can be used for unwraps/eprintlns/etc.
-pub fn eprintln(message: impl AsRef<str>) {
-    let guard = PROGRESS_BAR.write().unwrap();
-
-    match guard.as_ref() {
-        Some(pb) if !pb.is_finished() => {
-            pb.println(message.as_ref());
-        }
-        _ => {
-            eprintln!("{}", message.as_ref());
-        }
-    }
-}
-
-/// Writes an error to the log.
-/// This can be used for unwraps/eprintlns/etc.
 pub fn println(message: impl AsRef<str>) {
     let guard = PROGRESS_BAR.write().unwrap();
     if let Some(pb) = &*guard {
