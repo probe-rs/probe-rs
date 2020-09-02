@@ -304,6 +304,10 @@ fn try_arm_autodetect(
         None
     });
 
+    if let Some(found_chip) = &found_chip {
+        log::debug!("Autodect: Found information {:?}", found_chip);
+    }
+
     let found_chip = found_chip.map(ChipInfo::from);
 
     Ok(found_chip)

@@ -188,24 +188,37 @@ impl Registry {
             match chip_info {
                 ChipInfo::Arm(chip_info) => {
                     // Try get the corresponding chip.
-                    let mut selected_family_and_chip = None;
-                    for family in &self.families {
-                        if family
-                            .manufacturer
+
+                    let families = self.families.iter().filter(|f| {
+                        f.manufacturer
                             .map(|m| m == chip_info.manufacturer)
                             .unwrap_or(false)
-                        {
-                            for variant in family.variants.iter() {
-                                if variant.part.map(|p| p == chip_info.part).unwrap_or(false) {
-                                    selected_family_and_chip = Some((family, variant));
-                                }
-                            }
-                        }
-                    }
-                    let (family, chip) =
-                        selected_family_and_chip.ok_or(RegistryError::ChipAutodetectFailed)?;
+                    });
 
-                    (family, chip)
+                    let mut identified_chips = Vec::new();
+
+                    for family in families {
+                        log::debug!("Checking family {}", family.name);
+
+                        let chips = family
+                            .variants()
+                            .iter()
+                            .filter(|v| v.part.map(|p| p == chip_info.part).unwrap_or(false))
+                            .map(|c| (family, c));
+
+                        identified_chips.extend(chips)
+                    }
+
+                    if identified_chips.len() == 1 {
+                        identified_chips.pop().unwrap()
+                    } else {
+                        log::debug!(
+                        "Found {} matching chips for information {:?}, unable to determine chip",
+                        identified_chips.len(),
+                        chip_info
+                    );
+                        return Err(RegistryError::ChipAutodetectFailed);
+                    }
                 }
             }
         };
