@@ -4,6 +4,7 @@ Currently the probe-rs project includes the following maintained & to be release
 - probe-rs (main release cycle)
 - gdb-server (main release cycle)
 - probe-rs-cli (main release cycle)
+- probe-rs-cli-util (main release cycle)
 - probe-rs-t2rust (released optionally when changes are made)
 - probe-rs-rtt (main release cycle)
 - rtt-target (separate rtt-target release cycle)
