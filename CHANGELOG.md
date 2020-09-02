@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added initial support for FTDI based probes.
 - Added support for the STM32L5 family.
 - Added support for the STM32G4 family.
-- Added support for ITM tracing over SWO for CMSIS-DAP and J-Link probes.
+- Added support for ITM tracing over SWO in general and drivers for all probes.
 - The status LED on CMSIS-DAP probes is now used by probe-rs.
 
 ### Changed
