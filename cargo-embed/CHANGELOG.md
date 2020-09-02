@@ -30,8 +30,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   optionally halting without flashing. Useful for debugging.
 
 - Improved logging on different levels.
-- Added the possibility to save logs if needbe (#28).
-- Add support for cargo workspaces with the replacement of `cargo-project` with `cargo-metadata`.
+- Added the possibility to save logs (#28).
+- Added support for cargo workspaces with the replacement of `cargo-project` with `cargo-metadata`.
 - Added a flag to override the selected chip with `--chip`.
 - Added a flag to override the selected probe with `--probe`.
 
