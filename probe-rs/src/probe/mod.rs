@@ -3,10 +3,13 @@ pub(crate) mod ftdi;
 pub(crate) mod jlink;
 pub(crate) mod stlink;
 
-use crate::architecture::arm::{DAPAccess, PortType, SwoAccess};
+use crate::architecture::{
+    arm::{communication_interface::ArmProbeInterface, DAPAccess, PortType, SwoAccess},
+    riscv::communication_interface::RiscvCommunicationInterface,
+};
 use crate::config::{RegistryError, TargetSelector};
 use crate::error::Error;
-use crate::{Memory, Session};
+use crate::Session;
 use jlink::list_jlink_devices;
 use std::{convert::TryFrom, fmt};
 use thiserror::Error;
@@ -153,6 +156,20 @@ impl Probe {
         }
     }
 
+    pub(crate) fn from_attached_probe(probe: Box<dyn DebugProbe>) -> Self {
+        Self {
+            inner: probe,
+            attached: true,
+        }
+    }
+
+    pub fn from_specific_probe(probe: Box<dyn DebugProbe>) -> Self {
+        Probe {
+            inner: probe,
+            attached: false,
+        }
+    }
+
     /// Get a list of all debug probes found.
     /// This can be used to select the debug probe which
     /// should be used.
@@ -194,13 +211,6 @@ impl Probe {
         Err(DebugProbeError::ProbeCouldNotBeCreated(
             ProbeCreationError::NotFound,
         ))
-    }
-
-    pub fn from_specific_probe(probe: Box<dyn DebugProbe>) -> Self {
-        Probe {
-            inner: probe,
-            attached: false,
-        }
     }
 
     // /// Tries to mass erase a locked nRF52 chip, this process may timeout, if it does, the chip
@@ -339,54 +349,36 @@ impl Probe {
         self.inner.speed()
     }
 
-    /// Returns a probe specific memory interface if any is present for given probe.
-    pub fn dedicated_memory_interface(&self) -> Result<Option<Memory>, DebugProbeError> {
+    /// Check if the probe has an interface to
+    /// debug ARM chips.
+    pub fn has_arm_interface(&self) -> bool {
+        self.inner.has_arm_interface()
+    }
+
+    pub fn into_arm_interface<'probe>(
+        self,
+    ) -> Result<Option<Box<dyn ArmProbeInterface + 'probe>>, DebugProbeError> {
         if !self.attached {
+            // TODO: Return self here
             Err(DebugProbeError::NotAttached)
         } else {
-            Ok(self.inner.dedicated_memory_interface())
+            self.inner.get_arm_interface()
         }
     }
 
-    pub fn has_dap_interface(&self) -> bool {
-        self.inner.get_interface_dap().is_some()
+    /// Check if the probe has an interface to
+    /// debug RISCV chips.
+    pub fn has_riscv_interface(&self) -> bool {
+        self.inner.has_riscv_interface()
     }
 
-    pub fn get_interface_dap(&self) -> Result<Option<&dyn DAPAccess>, DebugProbeError> {
+    pub fn into_riscv_interface(
+        self,
+    ) -> Result<Option<RiscvCommunicationInterface>, DebugProbeError> {
         if !self.attached {
             Err(DebugProbeError::NotAttached)
         } else {
-            Ok(self.inner.get_interface_dap())
-        }
-    }
-
-    pub fn get_interface_dap_mut(&mut self) -> Result<Option<&mut dyn DAPAccess>, DebugProbeError> {
-        if !self.attached {
-            Err(DebugProbeError::NotAttached)
-        } else {
-            Ok(self.inner.get_interface_dap_mut())
-        }
-    }
-
-    pub fn has_jtag_interface(&self) -> bool {
-        self.inner.get_interface_jtag().is_some()
-    }
-
-    pub fn get_interface_jtag(&self) -> Result<Option<&dyn JTAGAccess>, DebugProbeError> {
-        if !self.attached {
-            Err(DebugProbeError::NotAttached)
-        } else {
-            Ok(self.inner.get_interface_jtag())
-        }
-    }
-
-    pub fn get_interface_jtag_mut(
-        &mut self,
-    ) -> Result<Option<&mut dyn JTAGAccess>, DebugProbeError> {
-        if !self.attached {
-            Err(DebugProbeError::NotAttached)
-        } else {
-            Ok(self.inner.get_interface_jtag_mut())
+            self.inner.get_interface_jtag()
         }
     }
 
@@ -451,16 +443,18 @@ pub trait DebugProbe: Send + Sync + fmt::Debug {
     /// Selects the transport protocol to be used by the debug probe.
     fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError>;
 
-    /// Returns a probe specific memory interface if any is present for given probe.
-    fn dedicated_memory_interface(&self) -> Option<Memory>;
+    /// Check if the proble offers an interface to debug ARM chips.
+    fn has_arm_interface(&self) -> bool;
 
-    fn get_interface_dap(&self) -> Option<&dyn DAPAccess>;
+    fn get_arm_interface<'probe>(
+        self: Box<Self>,
+    ) -> Result<Option<Box<dyn ArmProbeInterface + 'probe>>, DebugProbeError>;
 
-    fn get_interface_dap_mut(&mut self) -> Option<&mut dyn DAPAccess>;
+    fn get_interface_jtag(
+        self: Box<Self>,
+    ) -> Result<Option<RiscvCommunicationInterface>, DebugProbeError>;
 
-    fn get_interface_jtag(&self) -> Option<&dyn JTAGAccess>;
-
-    fn get_interface_jtag_mut(&mut self) -> Option<&mut dyn JTAGAccess>;
+    fn has_riscv_interface(&self) -> bool;
 
     fn get_interface_swo(&self) -> Option<&dyn SwoAccess>;
 
@@ -658,24 +652,10 @@ impl DebugProbe for FakeProbe {
         unimplemented!()
     }
 
-    fn dedicated_memory_interface(&self) -> Option<Memory> {
-        None
-    }
-
-    fn get_interface_dap(&self) -> Option<&dyn DAPAccess> {
-        None
-    }
-
-    fn get_interface_dap_mut(&mut self) -> Option<&mut dyn DAPAccess> {
-        None
-    }
-
-    fn get_interface_jtag(&self) -> Option<&dyn JTAGAccess> {
-        None
-    }
-
-    fn get_interface_jtag_mut(&mut self) -> Option<&mut dyn JTAGAccess> {
-        None
+    fn get_interface_jtag(
+        self: Box<Self>,
+    ) -> Result<Option<RiscvCommunicationInterface>, DebugProbeError> {
+        Ok(None)
     }
 
     fn get_interface_swo(&self) -> Option<&dyn SwoAccess> {
@@ -684,6 +664,20 @@ impl DebugProbe for FakeProbe {
 
     fn get_interface_swo_mut(&mut self) -> Option<&mut dyn SwoAccess> {
         None
+    }
+
+    fn get_arm_interface<'probe>(
+        self: Box<Self>,
+    ) -> Result<Option<Box<dyn ArmProbeInterface + 'probe>>, DebugProbeError> {
+        Ok(None)
+    }
+
+    fn has_arm_interface(&self) -> bool {
+        false
+    }
+
+    fn has_riscv_interface(&self) -> bool {
+        false
     }
 }
 
@@ -702,13 +696,29 @@ impl DAPAccess for FakeProbe {
     ) -> Result<(), DebugProbeError> {
         Err(DebugProbeError::CommandNotSupportedByProbe)
     }
+
+    fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
+        self
+    }
+}
+
+impl<'a> AsRef<dyn DebugProbe + 'a> for FakeProbe {
+    fn as_ref(&self) -> &(dyn DebugProbe + 'a) {
+        self
+    }
+}
+
+impl<'a> AsMut<dyn DebugProbe + 'a> for FakeProbe {
+    fn as_mut(&mut self) -> &mut (dyn DebugProbe + 'a) {
+        self
+    }
 }
 
 /// Low-Level Access to the JTAG protocol
 ///
 /// This trait should be implemented by all probes which offer low-level access to
 /// the JTAG protocol, i.e. directo control over the bytes sent and received.
-pub trait JTAGAccess {
+pub trait JTAGAccess: DebugProbe + AsRef<dyn DebugProbe> + AsMut<dyn DebugProbe> {
     fn read_register(&mut self, address: u32, len: u32) -> Result<Vec<u8>, DebugProbeError>;
 
     /// For Riscv, and possibly other interfaces, the JTAG interface has to remain in
@@ -728,6 +738,8 @@ pub trait JTAGAccess {
         data: &[u8],
         len: u32,
     ) -> Result<Vec<u8>, DebugProbeError>;
+
+    fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe>;
 }
 
 #[derive(PartialEq, Debug, Copy, Clone)]

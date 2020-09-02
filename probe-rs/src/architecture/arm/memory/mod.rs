@@ -2,7 +2,6 @@ pub(crate) mod adi_v5_memory_interface;
 pub(crate) mod romtable;
 
 use super::ap::AccessPortError;
-pub use adi_v5_memory_interface::ADIMemoryInterface;
 pub use romtable::Component;
 
 pub trait ToMemoryReadSize: Into<u32> + Copy {

@@ -1,8 +1,9 @@
-use crate::architecture::arm::{DAPAccess, SwoAccess};
+use crate::architecture::{
+    arm::SwoAccess, riscv::communication_interface::RiscvCommunicationInterface,
+};
 use crate::probe::{JTAGAccess, ProbeCreationError};
 use crate::{
-    DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, DebugProbeType, Memory,
-    WireProtocol,
+    DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, DebugProbeType, WireProtocol,
 };
 use bitvec::order::Lsb0;
 use bitvec::vec::BitVec;
@@ -495,24 +496,10 @@ impl DebugProbe for FtdiProbe {
         }
     }
 
-    fn dedicated_memory_interface(&self) -> Option<Memory> {
-        None
-    }
-
-    fn get_interface_dap(&self) -> Option<&dyn DAPAccess> {
-        None
-    }
-
-    fn get_interface_dap_mut(&mut self) -> Option<&mut dyn DAPAccess> {
-        None
-    }
-
-    fn get_interface_jtag(&self) -> Option<&dyn JTAGAccess> {
-        Some(self as _)
-    }
-
-    fn get_interface_jtag_mut(&mut self) -> Option<&mut dyn JTAGAccess> {
-        Some(self as _)
+    fn get_interface_jtag(
+        self: Box<Self>,
+    ) -> Result<Option<RiscvCommunicationInterface>, DebugProbeError> {
+        Ok(Some(RiscvCommunicationInterface::new(self)?))
     }
 
     fn get_interface_swo(&self) -> Option<&dyn SwoAccess> {
@@ -521,6 +508,25 @@ impl DebugProbe for FtdiProbe {
 
     fn get_interface_swo_mut(&mut self) -> Option<&mut dyn SwoAccess> {
         None
+    }
+
+    fn has_arm_interface(&self) -> bool {
+        false
+    }
+
+    fn get_arm_interface<'probe>(
+        self: Box<Self>,
+    ) -> Result<
+        Option<
+            Box<dyn crate::architecture::arm::communication_interface::ArmProbeInterface + 'probe>,
+        >,
+        DebugProbeError,
+    > {
+        Ok(None)
+    }
+
+    fn has_riscv_interface(&self) -> bool {
+        true
     }
 }
 
@@ -565,6 +571,22 @@ impl JTAGAccess for FtdiProbe {
             .map_err(|e| DebugProbeError::ProbeSpecific(Box::new(e)))?;
         log::debug!("write_register result: {:?})", r);
         Ok(r)
+    }
+
+    fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
+        self
+    }
+}
+
+impl AsRef<dyn DebugProbe> for FtdiProbe {
+    fn as_ref(&self) -> &(dyn DebugProbe + 'static) {
+        self
+    }
+}
+
+impl AsMut<dyn DebugProbe> for FtdiProbe {
+    fn as_mut(&mut self) -> &mut (dyn DebugProbe + 'static) {
+        self
     }
 }
 

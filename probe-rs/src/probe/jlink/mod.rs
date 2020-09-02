@@ -8,8 +8,14 @@ use std::iter;
 use std::sync::Mutex;
 
 use crate::{
-    architecture::arm::{dp::Ctrl, swo::SwoConfig, SwoAccess},
     architecture::arm::{DapError, PortType, Register},
+    architecture::{
+        arm::{
+            communication_interface::ArmProbeInterface, dp::Ctrl, swo::SwoConfig,
+            ArmCommunicationInterface, SwoAccess,
+        },
+        riscv::communication_interface::RiscvCommunicationInterface,
+    },
     probe::{
         DAPAccess, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeType, JTAGAccess,
         WireProtocol,
@@ -581,43 +587,13 @@ impl DebugProbe for JLink {
         Ok(())
     }
 
-    fn dedicated_memory_interface(&self) -> Option<crate::Memory> {
-        None
-    }
-
-    fn get_interface_dap(&self) -> Option<&dyn DAPAccess> {
-        // For now, we only support using SWD for ARM chips, but
-        // JTAG would be possible as well.
-        if self.supported_protocols.contains(&WireProtocol::Swd) {
-            Some(self as _)
-        } else {
-            None
-        }
-    }
-
-    fn get_interface_dap_mut(&mut self) -> Option<&mut dyn DAPAccess> {
-        // For now, we only support using SWD for ARM chips, but
-        // JTAG would be possible as well.
-        if self.supported_protocols.contains(&WireProtocol::Swd) {
-            Some(self as _)
-        } else {
-            None
-        }
-    }
-
-    fn get_interface_jtag(&self) -> Option<&dyn JTAGAccess> {
+    fn get_interface_jtag(
+        self: Box<Self>,
+    ) -> Result<Option<RiscvCommunicationInterface>, DebugProbeError> {
         if self.supported_protocols.contains(&WireProtocol::Jtag) {
-            Some(self as _)
+            Ok(Some(RiscvCommunicationInterface::new(self)?))
         } else {
-            None
-        }
-    }
-
-    fn get_interface_jtag_mut(&mut self) -> Option<&mut dyn JTAGAccess> {
-        if self.supported_protocols.contains(&WireProtocol::Jtag) {
-            Some(self as _)
-        } else {
-            None
+            Ok(None)
         }
     }
 
@@ -627,6 +603,26 @@ impl DebugProbe for JLink {
 
     fn get_interface_swo_mut(&mut self) -> Option<&mut dyn SwoAccess> {
         Some(self as _)
+    }
+
+    fn get_arm_interface<'probe>(
+        self: Box<Self>,
+    ) -> Result<Option<Box<dyn ArmProbeInterface + 'probe>>, DebugProbeError> {
+        if self.supported_protocols.contains(&WireProtocol::Swd) {
+            let interface = ArmCommunicationInterface::new(self)?;
+
+            Ok(Some(Box::new(interface)))
+        } else {
+            Ok(None)
+        }
+    }
+
+    fn has_arm_interface(&self) -> bool {
+        self.supported_protocols.contains(&WireProtocol::Swd)
+    }
+
+    fn has_riscv_interface(&self) -> bool {
+        self.supported_protocols.contains(&WireProtocol::Jtag)
     }
 }
 
@@ -678,6 +674,22 @@ impl JTAGAccess for JLink {
 
     fn set_idle_cycles(&mut self, idle_cycles: u8) {
         self.jtag_idle_cycles = idle_cycles;
+    }
+
+    fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
+        self
+    }
+}
+
+impl<'a> AsRef<dyn DebugProbe + 'a> for JLink {
+    fn as_ref(&self) -> &(dyn DebugProbe + 'a) {
+        self
+    }
+}
+
+impl<'a> AsMut<dyn DebugProbe + 'a> for JLink {
+    fn as_mut(&mut self) -> &mut (dyn DebugProbe + 'a) {
+        self
     }
 }
 
@@ -942,6 +954,10 @@ impl DAPAccess for JLink {
         // If we land here, the DAP operation timed out.
         log::error!("DAP write timeout.");
         Err(DebugProbeError::Timeout)
+    }
+
+    fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
+        self
     }
 }
 

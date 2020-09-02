@@ -3,12 +3,16 @@ pub mod tools;
 mod usb_interface;
 
 use self::usb_interface::{STLinkUSBDevice, StLinkUsb};
-use super::{
-    DAPAccess, DebugProbe, DebugProbeError, JTAGAccess, PortType, ProbeCreationError, WireProtocol,
-};
+use super::{DAPAccess, DebugProbe, DebugProbeError, PortType, ProbeCreationError, WireProtocol};
 use crate::{
-    architecture::arm::{SwoAccess, SwoConfig, SwoMode},
-    DebugProbeSelector, Error as ProbeRsError, Memory,
+    architecture::{
+        arm::{
+            communication_interface::ArmProbeInterface, ArmCommunicationInterface, SwoAccess,
+            SwoConfig, SwoMode,
+        },
+        riscv::communication_interface::RiscvCommunicationInterface,
+    },
+    DebugProbeSelector, Error as ProbeRsError,
 };
 use constants::{commands, JTagFrequencyToDivider, Mode, Status, SwdFrequencyToDelayCount};
 use scroll::{Pread, BE, LE};
@@ -222,24 +226,10 @@ impl DebugProbe for STLink<STLinkUSBDevice> {
         Ok(())
     }
 
-    fn dedicated_memory_interface(&self) -> Option<Memory> {
-        None
-    }
-
-    fn get_interface_dap(&self) -> Option<&dyn DAPAccess> {
-        Some(self as _)
-    }
-
-    fn get_interface_dap_mut(&mut self) -> Option<&mut dyn DAPAccess> {
-        Some(self as _)
-    }
-
-    fn get_interface_jtag(&self) -> Option<&dyn JTAGAccess> {
-        None
-    }
-
-    fn get_interface_jtag_mut(&mut self) -> Option<&mut dyn JTAGAccess> {
-        None
+    fn get_interface_jtag(
+        self: Box<Self>,
+    ) -> Result<Option<RiscvCommunicationInterface>, DebugProbeError> {
+        Ok(None)
     }
 
     fn get_interface_swo(&self) -> Option<&dyn SwoAccess> {
@@ -248,6 +238,22 @@ impl DebugProbe for STLink<STLinkUSBDevice> {
 
     fn get_interface_swo_mut(&mut self) -> Option<&mut dyn SwoAccess> {
         Some(self as _)
+    }
+
+    fn get_arm_interface<'probe>(
+        self: Box<Self>,
+    ) -> Result<Option<Box<dyn ArmProbeInterface + 'probe>>, DebugProbeError> {
+        let interface = ArmCommunicationInterface::new(self)?;
+
+        Ok(Some(Box::new(interface)))
+    }
+
+    fn has_arm_interface(&self) -> bool {
+        true
+    }
+
+    fn has_riscv_interface(&self) -> bool {
+        false
     }
 }
 
@@ -310,6 +316,22 @@ impl DAPAccess for STLink<STLinkUSBDevice> {
         } else {
             Err(StlinkError::BlanksNotAllowedOnDPRegister.into())
         }
+    }
+
+    fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
+        self
+    }
+}
+
+impl<'a> AsRef<dyn DebugProbe + 'a> for STLink<STLinkUSBDevice> {
+    fn as_ref(&self) -> &(dyn DebugProbe + 'a) {
+        self
+    }
+}
+
+impl<'a> AsMut<dyn DebugProbe + 'a> for STLink<STLinkUSBDevice> {
+    fn as_mut(&mut self) -> &mut (dyn DebugProbe + 'a) {
+        self
     }
 }
 
@@ -898,7 +920,7 @@ mod test {
             _read_data: &mut [u8],
             _timeout: std::time::Duration,
         ) -> Result<usize, DebugProbeError> {
-            todo!()
+            unimplemented!("Not implemented for MockUSB")
         }
     }
 

@@ -9,7 +9,7 @@ use crate::architecture::riscv::*;
 use crate::DebugProbeError;
 use crate::{MemoryInterface, Probe};
 
-use crate::{CoreRegisterAddress, Error as ProbeRsError};
+use crate::{probe::JTAGAccess, CoreRegisterAddress, DebugProbe, Error as ProbeRsError};
 
 use std::{
     convert::TryInto,
@@ -102,7 +102,6 @@ enum DebugModuleVersion {
 
 #[derive(Debug)]
 pub struct RiscvCommunicationInterfaceState {
-    initialized: bool,
     abits: u32,
 
     /// Size of the program buffer, in 32-bit words
@@ -125,8 +124,6 @@ const RISCV_TIMEOUT: Duration = Duration::from_secs(5);
 impl RiscvCommunicationInterfaceState {
     pub fn new() -> Self {
         RiscvCommunicationInterfaceState {
-            initialized: false,
-
             abits: 0,
             // Set to the minimum here, will be set to the correct value below
             progbuf_size: 0,
@@ -139,50 +136,23 @@ impl RiscvCommunicationInterfaceState {
             supports_autoexec: false,
         }
     }
-
-    pub(crate) fn initialize(&mut self) {
-        self.initialized = true;
-    }
-
-    pub(crate) fn initialized(&self) -> bool {
-        self.initialized
-    }
 }
 
-pub struct RiscvCommunicationInterface<'probe> {
-    probe: &'probe mut Probe,
-    state: &'probe mut RiscvCommunicationInterfaceState,
+#[derive(Debug)]
+pub struct RiscvCommunicationInterface {
+    probe: Box<dyn JTAGAccess>,
+    state: RiscvCommunicationInterfaceState,
 }
 
-impl<'probe> RiscvCommunicationInterface<'probe> {
-    pub fn new(
-        probe: &'probe mut Probe,
-        state: &'probe mut RiscvCommunicationInterfaceState,
-    ) -> Result<Option<Self>, ProbeRsError> {
-        if probe.has_jtag_interface() {
-            let mut s = Self { probe, state };
+impl<'probe> RiscvCommunicationInterface {
+    pub fn new(probe: Box<dyn JTAGAccess>) -> Result<Self, DebugProbeError> {
+        let state = RiscvCommunicationInterfaceState::new();
+        let mut s = Self { probe, state };
 
-            if !s.state.initialized() {
-                s.enter_debug_mode()?;
-                s.state.initialize();
-            }
+        s.enter_debug_mode()
+            .map_err(|e| DebugProbeError::Other(anyhow!(e)))?;
 
-            Ok(Some(s))
-        } else {
-            log::debug!("No JTAG interface available on probe");
-
-            Ok(None)
-        }
-    }
-
-    /// Reborrows the `RiscvCommunicationInterface` at hand.
-    /// This borrows the references inside the interface and hands them out with a new interface.
-    /// This method replaces the normally called `::clone()` method which consumes the object,
-    /// which is not what we want.
-    pub fn reborrow(&mut self) -> RiscvCommunicationInterface<'_> {
-        RiscvCommunicationInterface::new(self.probe, self.state)
-            .unwrap()
-            .unwrap()
+        Ok(s)
     }
 
     fn enter_debug_mode(&mut self) -> Result<(), RiscvError> {
@@ -190,12 +160,7 @@ impl<'probe> RiscvCommunicationInterface<'probe> {
 
         log::debug!("Building RISCV interface");
 
-        let jtag_interface = self
-            .probe
-            .get_interface_jtag_mut()?
-            .ok_or(DebugProbeError::InterfaceNotAvailable("JTAG"))?;
-
-        let dtmcs_raw = jtag_interface.read_register(DTMCS_ADDRESS, DTMCS_WIDTH)?;
+        let dtmcs_raw = self.probe.read_register(DTMCS_ADDRESS, DTMCS_WIDTH)?;
 
         let dtmcs = Dtmcs(u32::from_le_bytes((&dtmcs_raw[..]).try_into().unwrap()));
 
@@ -206,7 +171,7 @@ impl<'probe> RiscvCommunicationInterface<'probe> {
         let idle_cycles = dtmcs.idle();
 
         // Setup the number of idle cycles between JTAG accesses
-        jtag_interface.set_idle_cycles(idle_cycles as u8);
+        self.probe.set_idle_cycles(idle_cycles as u8);
 
         // Reset error bits from previous connections
         self.dmi_reset()?;
@@ -272,23 +237,14 @@ impl<'probe> RiscvCommunicationInterface<'probe> {
 
         let bytes = reg_value.to_le_bytes();
 
-        let jtag_interface = self
-            .probe
-            .get_interface_jtag_mut()?
-            .ok_or(DebugProbeError::InterfaceNotAvailable("JTAG"))?;
-
-        jtag_interface.write_register(DTMCS_ADDRESS, &bytes, DTMCS_WIDTH)?;
+        self.probe
+            .write_register(DTMCS_ADDRESS, &bytes, DTMCS_WIDTH)?;
 
         Ok(())
     }
 
     pub(crate) fn read_idcode(&mut self) -> Result<u32, DebugProbeError> {
-        let jtag_interface = self
-            .probe
-            .get_interface_jtag_mut()?
-            .ok_or(DebugProbeError::InterfaceNotAvailable("JTAG"))?;
-
-        let value = jtag_interface.read_register(0x1, 32)?;
+        let value = self.probe.read_register(0x1, 32)?;
 
         Ok(u32::from_le_bytes((&value[..]).try_into().unwrap()))
     }
@@ -311,12 +267,7 @@ impl<'probe> RiscvCommunicationInterface<'probe> {
 
         let bit_size = self.state.abits + DMI_ADDRESS_BIT_OFFSET;
 
-        let jtag_interface = self
-            .probe
-            .get_interface_jtag_mut()?
-            .ok_or(DebugProbeError::InterfaceNotAvailable("JTAG"))?;
-
-        let response_bytes = jtag_interface.write_register(DMI_ADDRESS, &bytes, bit_size)?;
+        let response_bytes = self.probe.write_register(DMI_ADDRESS, &bytes, bit_size)?;
 
         let response_value: u128 = response_bytes.iter().enumerate().fold(0, |acc, elem| {
             let (byte_offset, value) = elem;
@@ -671,9 +622,25 @@ impl<'probe> RiscvCommunicationInterface<'probe> {
 
         Ok(())
     }
+
+    pub fn close(self) -> Probe {
+        Probe::from_attached_probe(self.probe.into_probe())
+    }
 }
 
-impl<'probe> MemoryInterface for RiscvCommunicationInterface<'probe> {
+impl<'a> AsRef<dyn DebugProbe + 'a> for RiscvCommunicationInterface {
+    fn as_ref(&self) -> &(dyn DebugProbe + 'a) {
+        self.probe.as_ref().as_ref()
+    }
+}
+
+impl<'a> AsMut<dyn DebugProbe + 'a> for RiscvCommunicationInterface {
+    fn as_mut(&mut self) -> &mut (dyn DebugProbe + 'a) {
+        self.probe.as_mut().as_mut()
+    }
+}
+
+impl MemoryInterface for RiscvCommunicationInterface {
     fn read_word_32(&mut self, address: u32) -> Result<u32, crate::Error> {
         let result = self.perform_memory_read(address, RiscvBusAccess::A32)?;
 
