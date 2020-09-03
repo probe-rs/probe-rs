@@ -1,3 +1,5 @@
+mod logger;
+
 use core::{
     cmp,
     convert::TryInto,
@@ -17,7 +19,6 @@ use std::{
 
 use anyhow::{anyhow, bail, Context};
 use arrayref::array_ref;
-#[cfg(feature = "defmt")]
 use colored::Colorize as _;
 use gimli::{
     read::{CfaRule, DebugFrame, UnwindSection},
@@ -75,12 +76,15 @@ struct Opts {
     /// Skip writing the application binary to flash.
     #[structopt(long, conflicts_with = "defmt")]
     no_flash: bool,
+
+    /// Enable more verbose logging.
+    #[structopt(short, long)]
+    verbose: bool,
 }
 
 fn notmain() -> Result<i32, anyhow::Error> {
-    env_logger::init();
-
     let opts: Opts = Opts::from_args();
+    logger::init(opts.verbose);
 
     if opts.list_probes {
         return print_probes();
@@ -131,9 +135,9 @@ fn notmain() -> Result<i32, anyhow::Error> {
         let table = elf2table::parse(&bytes)?;
 
         if table.is_none() && opts.defmt {
-            bail!(".`.defmt` section not found")
+            bail!("`.defmt` section not found")
         } else if table.is_some() && !opts.defmt {
-            eprintln!("warning: application may be using `defmt` but `--defmt` flag was not used");
+            log::warn!("application may be using `defmt` but `--defmt` flag was not used");
         }
 
         let locs = if opts.defmt {
@@ -141,14 +145,14 @@ fn notmain() -> Result<i32, anyhow::Error> {
             let locs = elf2table::get_locations(&bytes)?;
 
             if !table.is_empty() && locs.is_empty() {
-                eprintln!("warning: insufficient DWARF info; compile your program with `debug = 2` to enable location info");
+                log::warn!("insufficient DWARF info; compile your program with `debug = 2` to enable location info");
                 None
             } else {
                 if table.indices().all(|idx| locs.contains_key(&(idx as u64))) {
                     Some(locs)
                 } else {
-                    eprintln!(
-                        "warning: (BUG) location info is incomplete; it will be omitted from the output "
+                    log::warn!(
+                        "(BUG) location info is incomplete; it will be omitted from the output"
                     );
                     None
                 }
@@ -244,21 +248,18 @@ fn notmain() -> Result<i32, anyhow::Error> {
         bail!("more than one probe found; use --probe to specify which one to use");
     }
     let probe = probes[0].open()?;
-    log::info!("opened probe");
+    log::debug!("opened probe");
     let mut sess = probe.attach(target)?;
-    log::info!("started session");
-
-    eprintln!("flashing program ..");
+    log::debug!("started session");
 
     if opts.no_flash {
         log::info!("skipped flashing");
     } else {
         // program lives in Flash
+        log::info!("flashing program");
         flashing::download_file(&mut sess, elf_path, Format::Elf)?;
-        log::info!("flashed program");
+        log::info!("success!");
     }
-
-    eprintln!("DONE");
 
     let mut canary = None;
     {
@@ -278,7 +279,7 @@ fn notmain() -> Result<i32, anyhow::Error> {
                 // we're doing).
                 let canary_size = cmp::min(stack_available / 10, 1024);
 
-                log::info!(
+                log::debug!(
                     "{} bytes of stack available (0x{:08X}-0x{:08X}), using {} byte canary to detect overflows",
                     stack_available,
                     highest_ram_addr_in_use + 1,
@@ -294,9 +295,12 @@ fn notmain() -> Result<i32, anyhow::Error> {
             }
         }
 
-        eprintln!("resetting device");
+        log::debug!("starting device");
         core.run()?;
     }
+
+    // Print a separator before the device messages start.
+    eprintln!("{}", "─".repeat(80).dimmed());
 
     let exit = Arc::new(AtomicBool::new(false));
     let sig_id = signal_hook::flag::register(signal_hook::SIGINT, exit.clone())?;
@@ -338,7 +342,7 @@ fn notmain() -> Result<i32, anyhow::Error> {
                                 // verified to exist in the `locs` map
                                 let loc = locs.as_ref().map(|locs| &locs[&frame.index()]);
 
-                                writeln!(stdout, "{}", frame.display(true))?;
+                                let (mut file, mut line) = (None, None);
                                 if let Some(loc) = loc {
                                     let relpath =
                                         if let Ok(relpath) = loc.file.strip_prefix(&current_dir) {
@@ -347,13 +351,12 @@ fn notmain() -> Result<i32, anyhow::Error> {
                                             // not relative; use full path
                                             &loc.file
                                         };
-
-                                    writeln!(
-                                        stdout,
-                                        "└─ {}",
-                                        &format!("{}:{}", relpath.display(), loc.line).dimmed()
-                                    )?;
+                                    file = Some(relpath.display().to_string());
+                                    line = Some(loc.line as u32);
                                 }
+
+                                // Forward the defmt frame to our logger.
+                                logger::log_defmt(&frame, file.as_deref(), line, None);
 
                                 let num_frames = frames.len();
                                 frames.rotate_left(consumed);
@@ -403,7 +406,7 @@ fn notmain() -> Result<i32, anyhow::Error> {
             log::debug!("canary was touched at 0x{:08X}", touched_addr);
 
             let min_stack_usage = registers.sp - touched_addr;
-            eprintln!(
+            log::warn!(
                 "program has used at least {} bytes of stack space, data segments \
                 may be corrupted due to stack overflow",
                 min_stack_usage,
@@ -450,14 +453,14 @@ fn setup_logging_channel(
             rtt_res = Rtt::attach_region(sess.clone(), &ScanRegion::Exact(rtt_addr_res));
             match rtt_res {
                 Ok(_) => {
-                    log::info!("Successfully attached RTT");
+                    log::debug!("Successfully attached RTT");
                     break;
                 }
                 Err(probe_rs_rtt::Error::ControlBlockNotFound) => {
                     if try_index < NUM_RETRIES {
-                        log::info!("Could not attach because the target's RTT control block isn't initialized (yet). retrying");
+                        log::trace!("Could not attach because the target's RTT control block isn't initialized (yet). retrying");
                     } else {
-                        log::info!("Max number of RTT attach retries exceeded.");
+                        log::error!("Max number of RTT attach retries exceeded.");
                         return Err(anyhow!(probe_rs_rtt::Error::ControlBlockNotFound));
                     }
                 }
