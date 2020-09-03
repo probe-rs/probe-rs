@@ -2,6 +2,7 @@ pub(crate) mod communication_interface;
 
 pub use communication_interface::CommunicationInterface;
 
+use crate::config::core_info::{ArmCore, ArmCoreKind, CoreInfo};
 use crate::error;
 use crate::DebugProbeError;
 use crate::{
@@ -283,15 +284,21 @@ pub(crate) enum SpecificCoreState {
 }
 
 impl SpecificCoreState {
-    pub(crate) fn from_core_type(typ: CoreType) -> Self {
-        match typ {
-            CoreType::M0 => SpecificCoreState::M0(CortexState::new()),
-            CoreType::M3 => SpecificCoreState::M3(CortexState::new()),
-            CoreType::M33 => SpecificCoreState::M33(CortexState::new()),
-            CoreType::M4 => SpecificCoreState::M4(CortexState::new()),
-            CoreType::M7 => SpecificCoreState::M7(CortexState::new()),
-            CoreType::Riscv => SpecificCoreState::Riscv,
+    pub(crate) fn from_arm_core(core: ArmCore) -> Self {
+        match core.kind {
+            ArmCoreKind::CortexM0 => SpecificCoreState::M0(CortexState::new()),
+            ArmCoreKind::CortexM3 => SpecificCoreState::M3(CortexState::new()),
+            ArmCoreKind::CortexM33 => SpecificCoreState::M33(CortexState::new()),
+            ArmCoreKind::CortexM4 => SpecificCoreState::M4(CortexState::new()),
+            ArmCoreKind::CortexM7 => SpecificCoreState::M7(CortexState::new()),
+            // TODO: This bit is indeed unreachable but it is not nice to handle it like this.
+            // Find a proper way!
+            _ => unreachable!(),
         }
+    }
+
+    pub(crate) fn from_riscv_core(typ: ()) -> Self {
+        SpecificCoreState::Riscv
     }
 
     pub(crate) fn attach_arm<'probe>(
@@ -567,7 +574,7 @@ pub struct Breakpoint {
     register_hw: usize,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub enum Architecture {
     Arm,
     Riscv,

@@ -1,4 +1,5 @@
-use super::memory::MemoryRegion;
+use super::{core_info::CoreInfo, memory::MemoryRegion};
+use crate::Architecture;
 use std::borrow::Cow;
 
 /// This describes a single chip model.
@@ -15,6 +16,11 @@ pub struct Chip {
     pub part: Option<u16>,
     /// The memory regions available on the chip.
     pub memory_map: Cow<'static, [MemoryRegion]>,
-
+    /// This vector holds all the available flash algorithms for this specific target.
     pub flash_algorithms: Cow<'static, [Cow<'static, str>]>,
+    /// The name of the core type.
+    /// E.g. `M0` or `M4`.
+    pub cores: Cow<'static, [Cow<'static, CoreInfo>]>,
+    /// The architecture of this chip.
+    pub architecture: Architecture,
 }
