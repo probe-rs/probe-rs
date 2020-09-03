@@ -1,7 +1,6 @@
 mod chip;
 mod chip_family;
 mod chip_info;
-pub(crate) mod core_info;
 mod flash_algorithm;
 mod flash_properties;
 mod memory;

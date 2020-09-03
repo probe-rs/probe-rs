@@ -1,8 +1,8 @@
 use super::chip::Chip;
 use super::flash_algorithm::RawFlashAlgorithm;
 use super::memory::MemoryRegion;
-use super::{core_info::CoreInfo, registry::TargetIdentifier};
-use crate::core::Architecture;
+use super::registry::TargetIdentifier;
+use crate::core::{Architecture, CoreType};
 
 /// This describes a complete target with a fixed chip model and variant.
 #[derive(Clone)]
@@ -11,12 +11,10 @@ pub struct Target {
     pub identifier: TargetIdentifier,
     /// The name of the flash algorithm.
     pub flash_algorithms: Vec<RawFlashAlgorithm>,
-    /// The mdetadata about all the cores.
-    pub cores: Vec<CoreInfo>,
+    /// The core type.
+    pub core_type: CoreType,
     /// The memory map of the target.
     pub memory_map: Vec<MemoryRegion>,
-    // The architecture of the core.
-    pub architecture: Architecture,
 }
 
 impl std::fmt::Debug for Target {
@@ -36,19 +34,29 @@ impl std::fmt::Debug for Target {
 pub type TargetParseError = serde_yaml::Error;
 
 impl Target {
-    pub fn new(chip: &Chip, flash_algorithms: Vec<RawFlashAlgorithm>) -> Target {
+    pub fn new(
+        chip: &Chip,
+        flash_algorithms: Vec<RawFlashAlgorithm>,
+        core_type: CoreType,
+    ) -> Target {
         Target {
             identifier: TargetIdentifier {
                 chip_name: chip.name.clone().into_owned(),
             },
             flash_algorithms,
-            cores: chip
-                .cores
-                .iter()
-                .map::<CoreInfo, _>(|c| c.into_owned())
-                .collect(),
+            core_type,
             memory_map: chip.memory_map.clone().into_owned(),
-            architecture: chip.architecture,
+        }
+    }
+
+    pub fn architecture(&self) -> Architecture {
+        match &self.core_type {
+            CoreType::M0 => Architecture::Arm,
+            CoreType::M3 => Architecture::Arm,
+            CoreType::M33 => Architecture::Arm,
+            CoreType::M4 => Architecture::Arm,
+            CoreType::M7 => Architecture::Arm,
+            CoreType::Riscv => Architecture::Riscv,
         }
     }
 }
