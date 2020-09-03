@@ -11,7 +11,8 @@ use crate::architecture::{
     riscv::communication_interface::RiscvCommunicationInterface,
 };
 use crate::config::{
-    ChipInfo, MemoryRegion, RawFlashAlgorithm, RegistryError, Target, TargetSelector,
+    core_info::CoreInfo, ChipInfo, MemoryRegion, RawFlashAlgorithm, RegistryError, Target,
+    TargetSelector,
 };
 use crate::core::{Architecture, CoreState, SpecificCoreState};
 use crate::{AttachMethod, Core, CoreType, DebugProbe, Error, Probe};
@@ -75,10 +76,10 @@ impl Session {
     ) -> Result<Self, Error> {
         let (probe, target) = get_target_from_selector(target, probe)?;
 
-        let mut session = match target.architecture() {
-            Architecture::Arm => {
+        let mut session = match target.cores[0] {
+            CoreInfo::Arm(arm_core) => {
                 let core = (
-                    SpecificCoreState::from_core_type(target.core_type),
+                    SpecificCoreState::from_arm_core(arm_core),
                     Core::create_state(0),
                 );
 
@@ -110,11 +111,11 @@ impl Session {
 
                 session
             }
-            Architecture::Riscv => {
+            CoreInfo::RiscV(riscv_core) => {
                 // TODO: Handle attach under reset
 
                 let core = (
-                    SpecificCoreState::from_core_type(target.core_type),
+                    SpecificCoreState::from_riscv_core(riscv_core),
                     Core::create_state(0),
                 );
 

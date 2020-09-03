@@ -1,11 +1,15 @@
-use super::target::Target;
+use super::{
+    core_info::{ArmCore, ArmCoreKind, CoreInfo, RiscVCore},
+    target::Target,
+};
 use crate::config::{Chip, ChipFamily, ChipInfo};
-use crate::core::CoreType;
+use crate::{core::CoreType, Architecture};
 use lazy_static::lazy_static;
 use std::fs::File;
 use std::path::Path;
 use std::{
     borrow::Cow,
+    convert::TryFrom,
     sync::{Arc, Mutex, TryLockError},
 };
 use thiserror::Error;
@@ -46,75 +50,111 @@ impl<R> From<TryLockError<R>> for RegistryError {
 const GENERIC_TARGETS: [ChipFamily; 6] = [
     ChipFamily {
         name: Cow::Borrowed("Generic Cortex-M0"),
-        manufacturer: None,
+        vendor: jep106::JEP106Code::new(4, 59),
         variants: Cow::Borrowed(&[Chip {
             name: Cow::Borrowed("cortex-m0"),
             part: None,
             memory_map: Cow::Borrowed(&[]),
             flash_algorithms: Cow::Borrowed(&[]),
+            cores: Cow::Borrowed(&[Cow::Owned(CoreInfo::Arm(ArmCore {
+                name: Cow::Borrowed("M0"),
+                kind: ArmCoreKind::CortexM0,
+                dp: 0,
+                ap: 0,
+                base_address: None,
+            }))]),
+            architecture: Architecture::Arm,
         }]),
         flash_algorithms: Cow::Borrowed(&[]),
-        core: Cow::Borrowed("M0"),
     },
     ChipFamily {
         name: Cow::Borrowed("Generic Cortex-M4"),
-        manufacturer: None,
+        vendor: jep106::JEP106Code::new(4, 59),
         variants: Cow::Borrowed(&[Chip {
             name: Cow::Borrowed("cortex-m4"),
             part: None,
             memory_map: Cow::Borrowed(&[]),
             flash_algorithms: Cow::Borrowed(&[]),
+            cores: Cow::Borrowed(&[Cow::Owned(CoreInfo::Arm(ArmCore {
+                name: Cow::Borrowed("M4"),
+                kind: ArmCoreKind::CortexM4,
+                dp: 0,
+                ap: 0,
+                base_address: None,
+            }))]),
+            architecture: Architecture::Arm,
         }]),
         flash_algorithms: Cow::Borrowed(&[]),
-        core: Cow::Borrowed("M4"),
     },
     ChipFamily {
         name: Cow::Borrowed("Generic Cortex-M3"),
-        manufacturer: None,
+        vendor: jep106::JEP106Code::new(4, 59),
         variants: Cow::Borrowed(&[Chip {
             name: Cow::Borrowed("cortex-m3"),
             part: None,
             memory_map: Cow::Borrowed(&[]),
             flash_algorithms: Cow::Borrowed(&[]),
+            cores: Cow::Borrowed(&[Cow::Owned(CoreInfo::Arm(ArmCore {
+                name: Cow::Borrowed("M3"),
+                kind: ArmCoreKind::CortexM3,
+                dp: 0,
+                ap: 0,
+                base_address: None,
+            }))]),
+            architecture: Architecture::Arm,
         }]),
         flash_algorithms: Cow::Borrowed(&[]),
-        core: Cow::Borrowed("M3"),
     },
     ChipFamily {
         name: Cow::Borrowed("Generic Cortex-M33"),
-        manufacturer: None,
+        vendor: jep106::JEP106Code::new(4, 59),
         variants: Cow::Borrowed(&[Chip {
             name: Cow::Borrowed("cortex-m33"),
             part: None,
             memory_map: Cow::Borrowed(&[]),
             flash_algorithms: Cow::Borrowed(&[]),
+            cores: Cow::Borrowed(&[Cow::Owned(CoreInfo::Arm(ArmCore {
+                name: Cow::Borrowed("M33"),
+                kind: ArmCoreKind::CortexM33,
+                dp: 0,
+                ap: 0,
+                base_address: None,
+            }))]),
+            architecture: Architecture::Arm,
         }]),
         flash_algorithms: Cow::Borrowed(&[]),
-        core: Cow::Borrowed("M33"),
     },
     ChipFamily {
         name: Cow::Borrowed("Generic Cortex-M7"),
-        manufacturer: None,
+        vendor: jep106::JEP106Code::new(4, 59),
         variants: Cow::Borrowed(&[Chip {
             name: Cow::Borrowed("cortex-m7"),
             part: None,
             memory_map: Cow::Borrowed(&[]),
             flash_algorithms: Cow::Borrowed(&[]),
+            cores: Cow::Borrowed(&[Cow::Owned(CoreInfo::Arm(ArmCore {
+                name: Cow::Borrowed("M7"),
+                kind: ArmCoreKind::CortexM7,
+                dp: 0,
+                ap: 0,
+                base_address: None,
+            }))]),
+            architecture: Architecture::Arm,
         }]),
         flash_algorithms: Cow::Borrowed(&[]),
-        core: Cow::Borrowed("M7"),
     },
     ChipFamily {
         name: Cow::Borrowed("Generic Riscv"),
-        manufacturer: None,
+        vendor: jep106::JEP106Code::new(4, 59),
         variants: Cow::Borrowed(&[Chip {
             name: Cow::Borrowed("riscv"),
             part: None,
             memory_map: Cow::Borrowed(&[]),
             flash_algorithms: Cow::Borrowed(&[]),
+            cores: Cow::Borrowed(&[Cow::Owned(CoreInfo::RiscV(RiscVCore {}))]),
+            architecture: Architecture::Riscv,
         }]),
         flash_algorithms: Cow::Borrowed(&[]),
-        core: Cow::Borrowed("riscv"),
     },
 ];
 
@@ -189,11 +229,10 @@ impl Registry {
                 ChipInfo::Arm(chip_info) => {
                     // Try get the corresponding chip.
 
-                    let families = self.families.iter().filter(|f| {
-                        f.manufacturer
-                            .map(|m| m == chip_info.manufacturer)
-                            .unwrap_or(false)
-                    });
+                    let families = self
+                        .families
+                        .iter()
+                        .filter(|f| f.vendor == chip_info.manufacturer);
 
                     let mut identified_chips = Vec::new();
 
@@ -226,15 +265,6 @@ impl Registry {
     }
 
     fn get_target(&self, family: &ChipFamily, chip: &Chip) -> Result<Target, RegistryError> {
-        // Try get the corresponding chip.
-        let core = if let Some(core) = CoreType::from_string(&family.core) {
-            core
-        } else {
-            return Err(RegistryError::CoreNotFound(
-                family.core.clone().into_owned(),
-            ));
-        };
-
         // find relevant algorithms
         let chip_algorithms = chip
             .flash_algorithms
@@ -243,7 +273,7 @@ impl Registry {
             .cloned()
             .collect();
 
-        Ok(Target::new(chip, chip_algorithms, core))
+        Ok(Target::new(chip, chip_algorithms))
     }
 
     fn add_target_from_yaml(&mut self, path_to_yaml: &Path) -> Result<(), RegistryError> {

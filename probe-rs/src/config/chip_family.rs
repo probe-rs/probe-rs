@@ -13,17 +13,13 @@ pub struct ChipFamily {
     /// E.g. `nRF52832`.
     pub name: Cow<'static, str>,
     /// The JEP106 code of the manufacturer.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub manufacturer: Option<JEP106Code>,
+    pub vendor: JEP106Code,
     /// This vector holds all the variants of the family.
     pub variants: Cow<'static, [Chip]>,
     /// This vector holds all available algorithms.
     #[serde(deserialize_with = "deserialize")]
     #[serde(serialize_with = "serialize")]
     pub flash_algorithms: Cow<'static, [RawFlashAlgorithm]>,
-    /// The name of the core type.
-    /// E.g. `M0` or `M4`.
-    pub core: Cow<'static, str>,
 }
 
 pub fn serialize<S>(raw_algorithms: &[RawFlashAlgorithm], serializer: S) -> Result<S::Ok, S::Error>
