@@ -44,6 +44,17 @@ To support multiple devices, or permit overriding default behavior, you may pref
 `${PROBE_RUN_CHIP}` environment variable, and set `runner` (or
 `CARGO_TARGET_${TARGET_ARCH}_RUNNER`) to `probe-run`.
 
+If you have several probes connected, you can specify which one to use by adding
+the --probe option to the `runner` or setting the `${PROBE_RUN_PROBE}` environment
+variable with a value containing either `${VID}:${PID}` or `${VID}:${PID}:${SERIAL}`:
+
+```console
+probe-run --probe '0483:3748' --chip ${PROBE_RUN_CHIP}
+PROBE_RUN_PROBE='1366:0101:123456' cargo run
+```
+
+To list all connected probes, run `probe-run --list-probes`.
+
 2. Enable debug info
 
 Next check that debug info is enabled for all profiles.

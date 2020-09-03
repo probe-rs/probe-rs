@@ -30,7 +30,7 @@ use object::{
 use probe_rs::config::{registry, MemoryRegion};
 use probe_rs::{
     flashing::{self, Format},
-    Core, CoreRegisterAddress, MemoryInterface, Probe, Session,
+    Core, CoreRegisterAddress, DebugProbeInfo, DebugProbeSelector, MemoryInterface, Probe, Session,
 };
 use probe_rs_rtt::{Rtt, ScanRegion, UpChannel};
 use structopt::StructOpt;
@@ -51,17 +51,25 @@ struct Opts {
     #[structopt(long)]
     list_chips: bool,
 
+    /// Lists all the connected probes and exit.
+    #[structopt(long)]
+    list_probes: bool,
+
     /// Enable defmt decoding.
     #[cfg(feature = "defmt")]
     #[structopt(long, conflicts_with = "no_flash")]
     defmt: bool,
 
     /// The chip to program.
-    #[structopt(long, required_unless("list-chips"), env = "PROBE_RUN_CHIP")]
+    #[structopt(long, required_unless_one(&["list-chips", "list-probes"]), env = "PROBE_RUN_CHIP")]
     chip: Option<String>,
 
+    /// The probe to use (eg. VID:PID or VID:PID:Serial).
+    #[structopt(long, env = "PROBE_RUN_PROBE")]
+    probe: Option<String>,
+
     /// Path to an ELF firmware file.
-    #[structopt(name = "ELF", parse(from_os_str), required_unless("list-chips"))]
+    #[structopt(name = "ELF", parse(from_os_str), required_unless_one(&["list-chips", "list-probes"]))]
     elf: Option<PathBuf>,
 
     /// Skip writing the application binary to flash.
@@ -73,6 +81,10 @@ fn notmain() -> Result<i32, anyhow::Error> {
     env_logger::init();
 
     let opts: Opts = Opts::from_args();
+
+    if opts.list_probes {
+        return print_probes();
+    }
 
     if opts.list_chips {
         return print_chips();
@@ -218,10 +230,19 @@ fn notmain() -> Result<i32, anyhow::Error> {
     log::debug!("initial registers: {:x?}", registers);
 
     let probes = Probe::list_all();
+    let probes = if let Some(probe_opt) = opts.probe.as_deref() {
+        let selector = probe_opt.try_into()?;
+        probes_filter(&probes, &selector)
+    } else {
+        probes
+    };
     if probes.is_empty() {
         bail!("no probe was found")
     }
     log::debug!("found {} probes", probes.len());
+    if probes.len() > 1 {
+        bail!("more than one probe found; use --probe to specify which one to use");
+    }
     let probe = probes[0].open()?;
     log::info!("opened probe");
     let mut sess = probe.attach(target)?;
@@ -627,6 +648,34 @@ fn backtrace(
     }
 
     Ok(top_exception)
+}
+
+fn probes_filter(probes: &[DebugProbeInfo], selector: &DebugProbeSelector) -> Vec<DebugProbeInfo> {
+    probes
+        .iter()
+        .filter(|&p| {
+            p.vendor_id == selector.vendor_id
+                && p.product_id == selector.product_id
+                && (selector.serial_number == None || p.serial_number == selector.serial_number)
+        })
+        .map(|p| p.clone())
+        .collect()
+}
+
+fn print_probes() -> Result<i32, anyhow::Error> {
+    let probes = Probe::list_all();
+
+    if !probes.is_empty() {
+        println!("The following devices were found:");
+        probes
+            .iter()
+            .enumerate()
+            .for_each(|(num, link)| println!("[{}]: {:?}", num, link));
+    } else {
+        println!("No devices were found.");
+    }
+
+    Ok(0)
 }
 
 fn print_chips() -> Result<i32, anyhow::Error> {
