@@ -74,22 +74,37 @@ system.
 
 ### Prerequisites
 
+cargo-flash depends on the [libusb](https://libusb.info/) and [libftdi](https://www.intra2net.com/en/developer/libftdi/) libraries, which need
+to be installed to build cargo-flash.
+
+
 #### Linux
 
-For Linux systems, the [libusb](https://libusb.info/) library and [pkg-config](https://www.freedesktop.org/wiki/Software/pkg-config/) need to be installed.
+On Ubuntu, the following packages need to be installed:
 
-For Ubuntu, this means the following packages:
-
-- libusb-1.0 
-- libusb-dev
-- pkg-config
-
-
+```
+> sudo apt install -y pkg-config libusb-dev libusb-1.0 libftdi1-dev
+```
 
 #### Windows
 
-No prerequisites except Rust are necessary for building on Windows.
+On Windows you can use [vcpkg](https://github.com/microsoft/vcpkg#quick-start-windows) to install the prerequisites:
+
+```
+# dynamic linking 64-bit
+> vcpkg install libftdi1:x64-windows libusb:x64-windows
+> set VCPKGRS_DYNAMIC=1
+
+# static linking 64-bit
+> vcpkg install libftdi1:x64-windows-static-md libusb:x64-windows-static-md
+```
 
 #### macOS
 
-No prerequisites except Rust are necessary for building on macOS.
+On macOS, [homebrew](https://brew.sh/) is the suggested method to install libftdi:
+
+```
+> brew install libftdi
+```
+
+
