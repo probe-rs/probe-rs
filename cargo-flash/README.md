@@ -8,11 +8,14 @@ Various chip families including but not limited to **nRF5x**, **STM32** and **LP
 
 ## Installation
 
-You can install this utility with cargo:
+You can install this utility with cargo, after installing the
+necessary [prerequisites](#prerequisites):
 
 ```bash
 cargo install cargo-flash
 ```
+
+Binary releases are not available.
 
 ## Usage
 
@@ -62,3 +65,46 @@ You can also reference to an already unziped `pack` directory instead of the `fi
 ## Add more chip definitions
 
 If you have a chip you want to flash, feel free to contribute to [probe-rs](https://github.com/probe-rs/probe-rs).
+
+
+## Building
+
+`cargo-flash` can be built using cargo, after installing the necessary prerequisites. See the list below for your operating
+system.
+
+### Prerequisites
+
+cargo-flash depends on the [libusb](https://libusb.info/) and [libftdi](https://www.intra2net.com/en/developer/libftdi/) libraries, which need
+to be installed to build cargo-flash.
+
+
+#### Linux
+
+On Ubuntu, the following packages need to be installed:
+
+```
+> sudo apt install -y pkg-config libusb-dev libusb-1.0 libftdi1-dev
+```
+
+#### Windows
+
+On Windows you can use [vcpkg](https://github.com/microsoft/vcpkg#quick-start-windows) to install the prerequisites:
+
+```
+# dynamic linking 64-bit
+> vcpkg install libftdi1:x64-windows libusb:x64-windows
+> set VCPKGRS_DYNAMIC=1
+
+# static linking 64-bit
+> vcpkg install libftdi1:x64-windows-static-md libusb:x64-windows-static-md
+```
+
+#### macOS
+
+On macOS, [homebrew](https://brew.sh/) is the suggested method to install libftdi:
+
+```
+> brew install libftdi
+```
+
+
