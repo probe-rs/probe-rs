@@ -35,7 +35,9 @@ jobs:
       if: matrix.os == 'ubuntu-latest'
       run: sudo apt-get update && sudo apt-get install libudev-dev libusb-1.0-0-dev
     - name: Build host tooling
-      run: cargo build
+      run: |
+        cargo build
+        cargo build --features defmt
     - name: Build embedded tooling
       working-directory: panic-probe
       run: |
