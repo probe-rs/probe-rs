@@ -27,6 +27,13 @@ pub mod commands {
     // The following commands are from Version 2 of the API,
     // supported
     pub const JTAG_ENTER2: u8 = 0x30;
+
+    pub const JTAG_READ_CORE_REG: u8 = 0x33;
+    pub const JTAG_WRITE_CORE_REG: u8 = 0x34;
+
+    pub const JTAG_WRITE_DEBUG_REG: u8 = 0x35;
+    pub const JTAG_READ_DEBUG_REG: u8 = 0x36;
+
     pub const JTAG_GETLASTRWSTATUS2: u8 = 0x3e; // From V2J15
     pub const JTAG_DRIVE_NRST: u8 = 0x3c;
     pub const SWO_START_TRACE_RECEPTION: u8 = 0x40;

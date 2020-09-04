@@ -145,17 +145,17 @@ pub trait ArmProbeInterface:
 }
 
 #[derive(Debug)]
-struct ArmCommunicationInterfaceState {
-    debug_port_version: DebugPortVersion,
+pub(crate) struct ArmCommunicationInterfaceState {
+    pub debug_port_version: DebugPortVersion,
 
-    current_dpbanksel: u8,
+    pub current_dpbanksel: u8,
 
-    current_apsel: u8,
-    current_apbanksel: u8,
+    pub current_apsel: u8,
+    pub current_apbanksel: u8,
 
     /// Information about the APs of the target.
     /// APs are identified by a number, starting from zero.
-    ap_information: Vec<ApInformation>,
+    pub ap_information: Vec<ApInformation>,
 }
 
 #[derive(Debug)]
