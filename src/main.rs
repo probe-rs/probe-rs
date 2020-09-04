@@ -28,7 +28,7 @@ use object::{
     read::{File as ElfFile, Object as _, ObjectSection as _},
     SectionIndex,
 };
-use probe_rs::config::{registry, MemoryRegion};
+use probe_rs::config::{registry, MemoryRegion, RamRegion};
 use probe_rs::{
     flashing::{self, Format},
     Core, CoreRegisterAddress, DebugProbeInfo, DebugProbeSelector, MemoryInterface, Probe, Session,
@@ -232,6 +232,17 @@ fn notmain() -> Result<i32, anyhow::Error> {
 
     let vector_table = vector_table.ok_or_else(|| anyhow!("`.vector_table` section is missing"))?;
     log::debug!("vector table: {:x?}", vector_table);
+    let sp_ram_region = target
+        .memory_map
+        .iter()
+        .filter_map(|region| match region {
+            MemoryRegion::Ram(region) if region.range.contains(&vector_table.initial_sp) => {
+                Some(region)
+            }
+            _ => None,
+        })
+        .next()
+        .cloned();
 
     let probes = Probe::list_all();
     let probes = if let Some(probe_opt) = opts.probe.as_deref() {
@@ -426,22 +437,35 @@ fn notmain() -> Result<i32, anyhow::Error> {
     let debug_frame = debug_frame.ok_or_else(|| anyhow!("`.debug_frame` section not found"))?;
 
     // print backtrace
-    let top_exception = backtrace(&mut core, pc, debug_frame, &range_names, &vector_table)?;
+    let top_exception = backtrace(
+        &mut core,
+        pc,
+        debug_frame,
+        &range_names,
+        &vector_table,
+        &sp_ram_region,
+    )?;
 
     core.reset_and_halt(TIMEOUT)?;
 
-    Ok(if top_exception == Some(TopException::HardFault) {
-        SIGABRT
-    } else {
-        0
-    })
+    Ok(
+        if let Some(TopException::HardFault { stack_overflow }) = top_exception {
+            if stack_overflow {
+                println!("{}", "!!!! STACK OVERFLOW DETECTED !!!!".red().bold());
+            }
+
+            SIGABRT
+        } else {
+            0
+        },
+    )
 }
 
 const SIGABRT: i32 = 134;
 
 #[derive(Debug, PartialEq)]
 enum TopException {
-    HardFault,
+    HardFault { stack_overflow: bool },
     Other,
 }
 
@@ -563,6 +587,7 @@ fn backtrace(
     debug_frame: &[u8],
     range_names: &RangeNames,
     vector_table: &VectorTable,
+    sp_ram_region: &Option<RamRegion>,
 ) -> Result<Option<TopException>, anyhow::Error> {
     let mut debug_frame = DebugFrame::new(debug_frame, LittleEndian);
     // 32-bit ARM -- this defaults to the host's address size which is likely going to be 8
@@ -593,6 +618,30 @@ fn backtrace(
             .map(|idx| &*range_names[idx].1)
             .unwrap_or("<unknown>");
         println!("{:>4}: {:#010x} - {}", frame, pc, name);
+
+        // on hard fault exception entry we hit the breakpoint before the subroutine prelude (`push
+        // lr`) is executed so special handling is required
+        // also note that hard fault will always be the first frame we unwind
+        if top_exception.is_none() {
+            top_exception = Some(if pc & !THUMB_BIT == vector_table.hard_fault & !THUMB_BIT {
+                // HardFaultTrampoline
+                println!("      <exception entry>");
+
+                let stack_overflow = if let Some(sp_ram_region) = sp_ram_region {
+                    !sp_ram_region.range.contains(&sp)
+                } else {
+                    log::warn!(
+                        "no RAM region appears to contain the stack; cannot determine if this was a stack overflow"
+                    );
+
+                    false
+                };
+
+                TopException::HardFault { stack_overflow }
+            } else {
+                TopException::Other
+            });
+        }
 
         let uwt_row = debug_frame.unwind_info_for_address(bases, ctx, pc.into(), DebugFrame::cie_from_offset).with_context(|| {
             "debug information is missing. Likely fixes:
@@ -628,15 +677,6 @@ fn backtrace(
                 _ => bail!("LR contains invalid EXC_RETURN value 0x{:08X}", lr),
             };
 
-            // we walk the stack from top (most recent frame) to bottom (oldest frame) so the first
-            // exception we see is the top one
-            if top_exception.is_none() {
-                top_exception = Some(if pc & !THUMB_BIT == vector_table.hard_fault & !THUMB_BIT {
-                    TopException::HardFault
-                } else {
-                    TopException::Other
-                });
-            }
             println!("      <exception entry>");
 
             let sp = registers.get(SP)?;
