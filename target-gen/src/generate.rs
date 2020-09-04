@@ -5,8 +5,10 @@ use std::{borrow::Cow, path::Path};
 use anyhow::{anyhow, bail, Context, Result};
 use cmsis_pack::pdsc::{Core, Device, Package, Processors};
 use cmsis_pack::{pack_index::PdscRef, utils::FromElem};
+use futures::StreamExt;
 use log;
 use probe_rs::config::{Chip, ChipFamily, FlashRegion, MemoryRegion, RamRegion, RawFlashAlgorithm};
+use tokio::runtime::Builder;
 
 pub(crate) enum Kind<'a, T>
 where
@@ -213,20 +215,32 @@ pub(crate) fn visit_file(path: &Path, families: &mut Vec<ChipFamily>) -> Result<
 
 pub(crate) fn visit_arm_files(families: &mut Vec<ChipFamily>) -> Result<()> {
     let packs = crate::fetch::get_vidx()?;
+    Builder::new()
+        .threaded_scheduler()
+        .enable_all()
+        .build()
+        .unwrap()
+        .block_on(async move {
+            let mut stream =
+                tokio::stream::iter(packs.pdsc_index.iter().enumerate().filter_map(|(i, pack)| {
+                    if pack.deprecated.is_none() {
+                        log::info!("Working PACK {}/{} ...", i, packs.pdsc_index.len());
+                        Some(visit_arm_file(&pack))
+                    } else {
+                        log::warn!("Pack {} is deprecated. Skipping ...", pack.name);
+                        None
+                    }
+                }))
+                .buffer_unordered(32);
+            while let Some(result) = stream.next().await {
+                families.extend(result);
+            }
 
-    for (i, pack) in packs.pdsc_index.iter().enumerate() {
-        if pack.deprecated.is_none() {
-            log::info!("Working PACK {}/{} ...", i, packs.pdsc_index.len());
-            visit_arm_file(families, &pack);
-        } else {
-            log::warn!("Pack {} is deprecated. Skipping ...", pack.name);
-        }
-    }
-
-    Ok(())
+            Ok(())
+        })
 }
 
-pub(crate) fn visit_arm_file(families: &mut Vec<ChipFamily>, pack: &PdscRef) {
+pub(crate) async fn visit_arm_file(pack: &PdscRef) -> Vec<ChipFamily> {
     let url = format!(
         "{url}/{vendor}.{name}.{version}.pack",
         url = pack.url,
@@ -237,18 +251,18 @@ pub(crate) fn visit_arm_file(families: &mut Vec<ChipFamily>, pack: &PdscRef) {
 
     log::info!("Downloading {}", url);
 
-    let response = match reqwest::blocking::get(&url) {
+    let response = match reqwest::get(&url).await {
         Ok(response) => response,
         Err(error) => {
             log::error!("Failed to download pack '{}': {}", url, error);
-            return;
+            return vec![];
         }
     };
-    let bytes = match response.bytes() {
+    let bytes = match response.bytes().await {
         Ok(bytes) => bytes,
         Err(error) => {
             log::error!("Failed to get bytes from pack '{}': {}", url, error);
-            return;
+            return vec![];
         }
     };
 
@@ -258,7 +272,7 @@ pub(crate) fn visit_arm_file(families: &mut Vec<ChipFamily>, pack: &PdscRef) {
         Ok(archive) => archive,
         Err(error) => {
             log::error!("Failed to open pack '{}': {}", url, error);
-            return;
+            return vec![];
         }
     };
 
@@ -266,7 +280,7 @@ pub(crate) fn visit_arm_file(families: &mut Vec<ChipFamily>, pack: &PdscRef) {
         Some(file) => file,
         None => {
             log::error!("Failed to find .pdsc file in archive {}", &url);
-            return;
+            return vec![];
         }
     };
 
@@ -276,7 +290,7 @@ pub(crate) fn visit_arm_file(families: &mut Vec<ChipFamily>, pack: &PdscRef) {
         Ok(_) => {}
         Err(_) => {
             log::error!("Failed to read .pdsc file {}", &url);
-            return;
+            return vec![];
         }
     };
 
@@ -289,16 +303,20 @@ pub(crate) fn visit_arm_file(families: &mut Vec<ChipFamily>, pack: &PdscRef) {
                 &url,
                 e
             );
-            return;
+            return vec![];
         }
     };
 
     drop(pdsc_file);
 
-    match handle_package(package, Kind::Archive(&mut archive), families) {
+    let mut families = vec![];
+
+    match handle_package(package, Kind::Archive(&mut archive), &mut families) {
         Ok(_) => {}
         Err(err) => log::error!("Something went wrong while handling pack {}: {}", url, err),
-    }
+    };
+
+    families
 }
 
 /// Extracts the pdsc out of a ZIP archive.

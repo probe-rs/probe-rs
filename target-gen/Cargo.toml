@@ -18,13 +18,14 @@ serde_yaml = "0.8.11"
 log = "0.4.8"
 zip = "0.5.3"
 structopt = "0.3.2"
-base64 = "0.11.0"
-simplelog = "0.7.6"
+base64 = "0.12.3"
+simplelog = "0.8.0"
 anyhow = "1.0.28"
 reqwest = { version = "0.10.4", features = ["json", "blocking"] }
-tokio = { version = "0.2.5", default-features = false, features = ["rt-core", "macros"] }
 serde = { version = "1.0.106", features = ["derive"] }
 chrono = { version = "0.4.0", features = ["serde"] }
+futures = "0.3.5"
+tokio = { version = "0.2.22", features = ["rt-core", "macros", "rt-threaded", "blocking"] }
 
 [dev-dependencies]
 assert_cmd = "1.0.1"
