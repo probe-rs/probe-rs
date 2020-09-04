@@ -28,7 +28,6 @@ mod imp {
     use core::sync::atomic::{AtomicBool, Ordering};
 
     use cortex_m::asm;
-    use cortex_m_rt::{exception, ExceptionFrame};
 
     #[cfg(feature = "print-rtt")]
     use crate::print_rtt::print;
