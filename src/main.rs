@@ -296,7 +296,11 @@ fn notmain() -> Result<i32, anyhow::Error> {
         }
 
         log::debug!("starting device");
-        core.set_hw_breakpoint(vector_table.hard_fault)?;
+        if core.get_available_breakpoint_units()? == 0 {
+            log::warn!("device doesn't support HW breakpoints; HardFault will NOT make `probe-run` exit with an error code");
+        } else {
+            core.set_hw_breakpoint(vector_table.hard_fault)?;
+        }
         core.run()?;
     }
 
