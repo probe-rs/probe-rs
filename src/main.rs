@@ -172,7 +172,7 @@ fn notmain() -> Result<i32, anyhow::Error> {
     let mut highest_ram_addr_in_use = 0;
     let mut debug_frame = None;
     let mut sections = vec![];
-    let mut registers = None;
+    let mut vector_table = None;
     for sect in elf.sections() {
         // If this section resides in RAM, track the highest RAM address in use.
         if let Some(ram) = &ram_region {
@@ -214,12 +214,12 @@ fn notmain() -> Result<i32, anyhow::Error> {
                     .collect::<Vec<_>>();
 
                 if name == ".vector_table" {
-                    registers = Some(InitialRegisters {
-                        vtor: start,
+                    vector_table = Some(VectorTable {
+                        location: start,
                         // Initial stack pointer
-                        sp: data[0],
-                        // Reset handler
-                        pc: data[1],
+                        initial_sp: data[0],
+                        reset: data[1],
+                        hard_fault: data[3],
                     });
                 }
 
@@ -230,8 +230,8 @@ fn notmain() -> Result<i32, anyhow::Error> {
 
     let (range_names, rtt_addr, uses_heap) = range_names_from(&elf, text.index())?;
 
-    let registers = registers.ok_or_else(|| anyhow!("`.vector_table` section is missing"))?;
-    log::debug!("initial registers: {:x?}", registers);
+    let vector_table = vector_table.ok_or_else(|| anyhow!("`.vector_table` section is missing"))?;
+    log::debug!("vector table: {:x?}", vector_table);
 
     let probes = Probe::list_all();
     let probes = if let Some(probe_opt) = opts.probe.as_deref() {
@@ -269,10 +269,10 @@ fn notmain() -> Result<i32, anyhow::Error> {
         // Decide if and where to place the stack canary.
         if let Some(ram) = &ram_region {
             // Initial SP must be past canary location.
-            let initial_sp_makes_sense =
-                ram.range.contains(&(registers.sp - 1)) && highest_ram_addr_in_use < registers.sp;
+            let initial_sp_makes_sense = ram.range.contains(&(vector_table.initial_sp - 1))
+                && highest_ram_addr_in_use < vector_table.initial_sp;
             if highest_ram_addr_in_use != 0 && !uses_heap && initial_sp_makes_sense {
-                let stack_available = registers.sp - highest_ram_addr_in_use - 1;
+                let stack_available = vector_table.initial_sp - highest_ram_addr_in_use - 1;
 
                 // We consider >90% stack usage a potential stack overflow, but don't go beyond 1 kb
                 // since filling a lot of RAM is slow (and 1 kb should be "good enough" for what
@@ -283,7 +283,7 @@ fn notmain() -> Result<i32, anyhow::Error> {
                     "{} bytes of stack available (0x{:08X}-0x{:08X}), using {} byte canary to detect overflows",
                     stack_available,
                     highest_ram_addr_in_use + 1,
-                    registers.sp,
+                    vector_table.initial_sp,
                     canary_size,
                 );
 
@@ -296,6 +296,7 @@ fn notmain() -> Result<i32, anyhow::Error> {
         }
 
         log::debug!("starting device");
+        core.set_hw_breakpoint(vector_table.hard_fault)?;
         core.run()?;
     }
 
@@ -405,7 +406,7 @@ fn notmain() -> Result<i32, anyhow::Error> {
             let touched_addr = addr + pos as u32;
             log::debug!("canary was touched at 0x{:08X}", touched_addr);
 
-            let min_stack_usage = registers.sp - touched_addr;
+            let min_stack_usage = vector_table.initial_sp - touched_addr;
             log::warn!(
                 "program has used at least {} bytes of stack space, data segments \
                 may be corrupted due to stack overflow",
@@ -855,10 +856,14 @@ struct Section {
     data: Vec<u32>,
 }
 
-/// Registers to update before running the program
+/// The contents of the vector table
 #[derive(Debug)]
-struct InitialRegisters {
-    sp: u32,
-    pc: u32,
-    vtor: u32,
+struct VectorTable {
+    location: u32,
+    // entry 0
+    initial_sp: u32,
+    // entry 1: Reset handler
+    reset: u32,
+    // entry 3: HardFault handler
+    hard_fault: u32,
 }
