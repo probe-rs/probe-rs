@@ -426,7 +426,7 @@ fn notmain() -> Result<i32, anyhow::Error> {
     let debug_frame = debug_frame.ok_or_else(|| anyhow!("`.debug_frame` section not found"))?;
 
     // print backtrace
-    let top_exception = backtrace(&mut core, pc, debug_frame, &range_names)?;
+    let top_exception = backtrace(&mut core, pc, debug_frame, &range_names, &vector_table)?;
 
     core.reset_and_halt(TIMEOUT)?;
 
@@ -562,6 +562,7 @@ fn backtrace(
     mut pc: u32,
     debug_frame: &[u8],
     range_names: &RangeNames,
+    vector_table: &VectorTable,
 ) -> Result<Option<TopException>, anyhow::Error> {
     let mut debug_frame = DebugFrame::new(debug_frame, LittleEndian);
     // 32-bit ARM -- this defaults to the host's address size which is likely going to be 8
@@ -630,7 +631,7 @@ fn backtrace(
             // we walk the stack from top (most recent frame) to bottom (oldest frame) so the first
             // exception we see is the top one
             if top_exception.is_none() {
-                top_exception = Some(if name == "HardFault" {
+                top_exception = Some(if pc & !THUMB_BIT == vector_table.hard_fault & !THUMB_BIT {
                     TopException::HardFault
                 } else {
                     TopException::Other
