@@ -130,10 +130,7 @@ pub trait DAPAccess: DebugProbe + AsRef<dyn DebugProbe> + AsMut<dyn DebugProbe> 
 pub trait ArmProbeInterface:
     SwoAccess + AsRef<dyn DebugProbe> + AsMut<dyn DebugProbe> + Debug
 {
-    fn memory_interface<'interface>(
-        &'interface mut self,
-        access_port: MemoryAP,
-    ) -> Result<Memory<'interface>, ProbeRsError>;
+    fn memory_interface(&mut self, access_port: MemoryAP) -> Result<Memory<'_>, ProbeRsError>;
 
     fn ap_information(&self, access_port: GenericAP) -> Option<&ApInformation>;
 
@@ -204,10 +201,7 @@ pub struct ArmCommunicationInterface {
 }
 
 impl ArmProbeInterface for ArmCommunicationInterface {
-    fn memory_interface<'interface>(
-        &'interface mut self,
-        access_port: MemoryAP,
-    ) -> Result<Memory<'interface>, ProbeRsError> {
+    fn memory_interface(&mut self, access_port: MemoryAP) -> Result<Memory<'_>, ProbeRsError> {
         ArmCommunicationInterface::memory_interface(self, access_port)
     }
 
