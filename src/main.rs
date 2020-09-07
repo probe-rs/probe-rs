@@ -358,7 +358,7 @@ fn notmain() -> Result<i32, anyhow::Error> {
                                 // verified to exist in the `locs` map
                                 let loc = locs.as_ref().map(|locs| &locs[&frame.index()]);
 
-                                let (mut file, mut line) = (None, None);
+                                let (mut file, mut line, mut mod_path) = (None, None, None);
                                 if let Some(loc) = loc {
                                     let relpath =
                                         if let Ok(relpath) = loc.file.strip_prefix(&current_dir) {
@@ -369,10 +369,16 @@ fn notmain() -> Result<i32, anyhow::Error> {
                                         };
                                     file = Some(relpath.display().to_string());
                                     line = Some(loc.line as u32);
+                                    mod_path = Some(loc.module.clone());
                                 }
 
                                 // Forward the defmt frame to our logger.
-                                logger::log_defmt(&frame, file.as_deref(), line, None);
+                                logger::log_defmt(
+                                    &frame,
+                                    file.as_deref(),
+                                    line,
+                                    mod_path.as_ref().map(|s| &**s),
+                                );
 
                                 let num_frames = frames.len();
                                 frames.rotate_left(consumed);
