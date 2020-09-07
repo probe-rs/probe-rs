@@ -149,6 +149,38 @@ stack backtrace:
 3: 0x000005ee - Reset
 ```
 
+## Non-zero exit code
+
+When the device raises a hard fault exception `probe-run` will print a backtrace
+and exit with non-zero exit code.
+
+You can trigger a hard fault exception with the UDF instruction.
+
+``` rust
+use cortex_m::asm;
+#[entry]
+fn main() -> ! {
+    asm::udf()
+}
+```
+
+``` console
+$ cargo run --bin hard-fault
+stack backtrace:
+   0: 0x000003e0 - HardFaultTrampoline
+      <exception entry>
+   1: 0x00000140 - __udf
+   2: 0x00000118 - cortex_m::asm::udf
+   3: 0x0000012c - hard_fault::__cortex_m_rt_main
+   4: 0x00000122 - main
+   5: 0x000000fa - Reset
+
+$ echo $?
+134
+```
+
+**NOTE** when you run your application with `probe-run` the `HardFault` handler,
+default or user-defined one, will *NOT* be executed.
 
 ## Support
 

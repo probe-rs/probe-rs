@@ -4,9 +4,6 @@
 //! non-zero status code, indicating failure. This building block can be used to run on-device
 //! tests.
 //!
-//! This crate also overrides the Cortex-M HardFault handler: Any HardFault will also cause
-//! `probe-run` to exit with an error code.
-//!
 //! # Panic Messages
 //!
 //! By default, `panic-probe` *ignores* the panic message. You can enable one of the following
@@ -31,7 +28,6 @@ mod imp {
     use core::sync::atomic::{AtomicBool, Ordering};
 
     use cortex_m::asm;
-    use cortex_m_rt::{exception, ExceptionFrame};
 
     #[cfg(feature = "print-rtt")]
     use crate::print_rtt::print;
@@ -76,14 +72,6 @@ mod imp {
         }
 
         asm::udf();
-    }
-
-    #[exception]
-    fn HardFault(_: &ExceptionFrame) -> ! {
-        loop {
-            // Make `probe-run` print the backtrace and exit.
-            asm::bkpt();
-        }
     }
 }
 

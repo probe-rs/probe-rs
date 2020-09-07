@@ -28,7 +28,7 @@ use object::{
     read::{File as ElfFile, Object as _, ObjectSection as _},
     SectionIndex,
 };
-use probe_rs::config::{registry, MemoryRegion};
+use probe_rs::config::{registry, MemoryRegion, RamRegion};
 use probe_rs::{
     flashing::{self, Format},
     Core, CoreRegisterAddress, DebugProbeInfo, DebugProbeSelector, MemoryInterface, Probe, Session,
@@ -172,7 +172,7 @@ fn notmain() -> Result<i32, anyhow::Error> {
     let mut highest_ram_addr_in_use = 0;
     let mut debug_frame = None;
     let mut sections = vec![];
-    let mut registers = None;
+    let mut vector_table = None;
     for sect in elf.sections() {
         // If this section resides in RAM, track the highest RAM address in use.
         if let Some(ram) = &ram_region {
@@ -214,12 +214,12 @@ fn notmain() -> Result<i32, anyhow::Error> {
                     .collect::<Vec<_>>();
 
                 if name == ".vector_table" {
-                    registers = Some(InitialRegisters {
-                        vtor: start,
+                    vector_table = Some(VectorTable {
+                        location: start,
                         // Initial stack pointer
-                        sp: data[0],
-                        // Reset handler
-                        pc: data[1],
+                        initial_sp: data[0],
+                        reset: data[1],
+                        hard_fault: data[3],
                     });
                 }
 
@@ -230,8 +230,19 @@ fn notmain() -> Result<i32, anyhow::Error> {
 
     let (range_names, rtt_addr, uses_heap) = range_names_from(&elf, text.index())?;
 
-    let registers = registers.ok_or_else(|| anyhow!("`.vector_table` section is missing"))?;
-    log::debug!("initial registers: {:x?}", registers);
+    let vector_table = vector_table.ok_or_else(|| anyhow!("`.vector_table` section is missing"))?;
+    log::debug!("vector table: {:x?}", vector_table);
+    let sp_ram_region = target
+        .memory_map
+        .iter()
+        .filter_map(|region| match region {
+            MemoryRegion::Ram(region) if region.range.contains(&vector_table.initial_sp) => {
+                Some(region)
+            }
+            _ => None,
+        })
+        .next()
+        .cloned();
 
     let probes = Probe::list_all();
     let probes = if let Some(probe_opt) = opts.probe.as_deref() {
@@ -269,10 +280,10 @@ fn notmain() -> Result<i32, anyhow::Error> {
         // Decide if and where to place the stack canary.
         if let Some(ram) = &ram_region {
             // Initial SP must be past canary location.
-            let initial_sp_makes_sense =
-                ram.range.contains(&(registers.sp - 1)) && highest_ram_addr_in_use < registers.sp;
+            let initial_sp_makes_sense = ram.range.contains(&(vector_table.initial_sp - 1))
+                && highest_ram_addr_in_use < vector_table.initial_sp;
             if highest_ram_addr_in_use != 0 && !uses_heap && initial_sp_makes_sense {
-                let stack_available = registers.sp - highest_ram_addr_in_use - 1;
+                let stack_available = vector_table.initial_sp - highest_ram_addr_in_use - 1;
 
                 // We consider >90% stack usage a potential stack overflow, but don't go beyond 1 kb
                 // since filling a lot of RAM is slow (and 1 kb should be "good enough" for what
@@ -283,7 +294,7 @@ fn notmain() -> Result<i32, anyhow::Error> {
                     "{} bytes of stack available (0x{:08X}-0x{:08X}), using {} byte canary to detect overflows",
                     stack_available,
                     highest_ram_addr_in_use + 1,
-                    registers.sp,
+                    vector_table.initial_sp,
                     canary_size,
                 );
 
@@ -296,6 +307,11 @@ fn notmain() -> Result<i32, anyhow::Error> {
         }
 
         log::debug!("starting device");
+        if core.get_available_breakpoint_units()? == 0 {
+            log::warn!("device doesn't support HW breakpoints; HardFault will NOT make `probe-run` exit with an error code");
+        } else {
+            core.set_hw_breakpoint(vector_table.hard_fault)?;
+        }
         core.run()?;
     }
 
@@ -405,7 +421,7 @@ fn notmain() -> Result<i32, anyhow::Error> {
             let touched_addr = addr + pos as u32;
             log::debug!("canary was touched at 0x{:08X}", touched_addr);
 
-            let min_stack_usage = registers.sp - touched_addr;
+            let min_stack_usage = vector_table.initial_sp - touched_addr;
             log::warn!(
                 "program has used at least {} bytes of stack space, data segments \
                 may be corrupted due to stack overflow",
@@ -421,22 +437,35 @@ fn notmain() -> Result<i32, anyhow::Error> {
     let debug_frame = debug_frame.ok_or_else(|| anyhow!("`.debug_frame` section not found"))?;
 
     // print backtrace
-    let top_exception = backtrace(&mut core, pc, debug_frame, &range_names)?;
+    let top_exception = backtrace(
+        &mut core,
+        pc,
+        debug_frame,
+        &range_names,
+        &vector_table,
+        &sp_ram_region,
+    )?;
 
     core.reset_and_halt(TIMEOUT)?;
 
-    Ok(if top_exception == Some(TopException::HardFault) {
-        SIGABRT
-    } else {
-        0
-    })
+    Ok(
+        if let Some(TopException::HardFault { stack_overflow }) = top_exception {
+            if stack_overflow {
+                log::error!("the program has overflowed its stack");
+            }
+
+            SIGABRT
+        } else {
+            0
+        },
+    )
 }
 
 const SIGABRT: i32 = 134;
 
 #[derive(Debug, PartialEq)]
 enum TopException {
-    HardFault,
+    HardFault { stack_overflow: bool },
     Other,
 }
 
@@ -557,6 +586,8 @@ fn backtrace(
     mut pc: u32,
     debug_frame: &[u8],
     range_names: &RangeNames,
+    vector_table: &VectorTable,
+    sp_ram_region: &Option<RamRegion>,
 ) -> Result<Option<TopException>, anyhow::Error> {
     let mut debug_frame = DebugFrame::new(debug_frame, LittleEndian);
     // 32-bit ARM -- this defaults to the host's address size which is likely going to be 8
@@ -587,6 +618,30 @@ fn backtrace(
             .map(|idx| &*range_names[idx].1)
             .unwrap_or("<unknown>");
         println!("{:>4}: {:#010x} - {}", frame, pc, name);
+
+        // on hard fault exception entry we hit the breakpoint before the subroutine prelude (`push
+        // lr`) is executed so special handling is required
+        // also note that hard fault will always be the first frame we unwind
+        if top_exception.is_none() {
+            top_exception = Some(if pc & !THUMB_BIT == vector_table.hard_fault & !THUMB_BIT {
+                // HardFaultTrampoline
+                println!("      <exception entry>");
+
+                let stack_overflow = if let Some(sp_ram_region) = sp_ram_region {
+                    !sp_ram_region.range.contains(&sp)
+                } else {
+                    log::warn!(
+                        "no RAM region appears to contain the stack; cannot determine if this was a stack overflow"
+                    );
+
+                    false
+                };
+
+                TopException::HardFault { stack_overflow }
+            } else {
+                TopException::Other
+            });
+        }
 
         let uwt_row = debug_frame.unwind_info_for_address(bases, ctx, pc.into(), DebugFrame::cie_from_offset).with_context(|| {
             "debug information is missing. Likely fixes:
@@ -622,15 +677,6 @@ fn backtrace(
                 _ => bail!("LR contains invalid EXC_RETURN value 0x{:08X}", lr),
             };
 
-            // we walk the stack from top (most recent frame) to bottom (oldest frame) so the first
-            // exception we see is the top one
-            if top_exception.is_none() {
-                top_exception = Some(if name == "HardFault" {
-                    TopException::HardFault
-                } else {
-                    TopException::Other
-                });
-            }
             println!("      <exception entry>");
 
             let sp = registers.get(SP)?;
@@ -855,10 +901,14 @@ struct Section {
     data: Vec<u32>,
 }
 
-/// Registers to update before running the program
+/// The contents of the vector table
 #[derive(Debug)]
-struct InitialRegisters {
-    sp: u32,
-    pc: u32,
-    vtor: u32,
+struct VectorTable {
+    location: u32,
+    // entry 0
+    initial_sp: u32,
+    // entry 1: Reset handler
+    reset: u32,
+    // entry 3: HardFault handler
+    hard_fault: u32,
 }
