@@ -157,11 +157,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "common"
-version = "0.1.0"
-source = "git+https://github.com/knurling-rs/defmt.git?branch=main#0af5bd2ccc70bcfb88fc9cbcc06be402a08baef1"
-
-[[package]]
 name = "cortex-m"
 version = "0.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -204,31 +199,47 @@ dependencies = [
 ]
 
 [[package]]
-name = "decoder"
+name = "defmt"
 version = "0.1.0"
-source = "git+https://github.com/knurling-rs/defmt.git?branch=main#0af5bd2ccc70bcfb88fc9cbcc06be402a08baef1"
+source = "git+https://github.com/knurling-rs/defmt.git?branch=main#8a16c2c3080c0f11ddd4bb52cffe2deb037363a5"
+dependencies = [
+ "defmt-common",
+ "defmt-macros",
+]
+
+[[package]]
+name = "defmt-common"
+version = "0.1.0"
+source = "git+https://github.com/knurling-rs/defmt.git?branch=main#8a16c2c3080c0f11ddd4bb52cffe2deb037363a5"
+
+[[package]]
+name = "defmt-decoder"
+version = "0.1.0"
+source = "git+https://github.com/knurling-rs/defmt.git?branch=main#8a16c2c3080c0f11ddd4bb52cffe2deb037363a5"
 dependencies = [
  "byteorder",
  "colored",
- "common",
+ "defmt-common",
  "defmt-parser",
  "leb128",
  "ryu",
 ]
 
 [[package]]
-name = "defmt"
+name = "defmt-elf2table"
 version = "0.1.0"
-source = "git+https://github.com/knurling-rs/defmt.git?branch=main#0af5bd2ccc70bcfb88fc9cbcc06be402a08baef1"
+source = "git+https://github.com/knurling-rs/defmt.git?branch=main#8a16c2c3080c0f11ddd4bb52cffe2deb037363a5"
 dependencies = [
- "common",
- "defmt-macros",
+ "anyhow",
+ "defmt-decoder",
+ "gimli 0.22.0",
+ "object 0.21.1",
 ]
 
 [[package]]
 name = "defmt-macros"
 version = "0.1.0"
-source = "git+https://github.com/knurling-rs/defmt.git?branch=main#0af5bd2ccc70bcfb88fc9cbcc06be402a08baef1"
+source = "git+https://github.com/knurling-rs/defmt.git?branch=main#8a16c2c3080c0f11ddd4bb52cffe2deb037363a5"
 dependencies = [
  "defmt-parser",
  "proc-macro2",
@@ -239,7 +250,7 @@ dependencies = [
 [[package]]
 name = "defmt-parser"
 version = "0.1.0"
-source = "git+https://github.com/knurling-rs/defmt.git?branch=main#0af5bd2ccc70bcfb88fc9cbcc06be402a08baef1"
+source = "git+https://github.com/knurling-rs/defmt.git?branch=main#8a16c2c3080c0f11ddd4bb52cffe2deb037363a5"
 
 [[package]]
 name = "derivative"
@@ -257,17 +268,6 @@ name = "dtoa"
 version = "0.4.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "134951f4028bdadb9b84baf4232681efbf277da25144b9b0ad65df75946c422b"
-
-[[package]]
-name = "elf2table"
-version = "0.1.0"
-source = "git+https://github.com/knurling-rs/defmt.git?branch=main#0af5bd2ccc70bcfb88fc9cbcc06be402a08baef1"
-dependencies = [
- "anyhow",
- "decoder",
- "gimli 0.22.0",
- "object 0.21.1",
-]
 
 [[package]]
 name = "enum-primitive-derive"
@@ -645,8 +645,8 @@ dependencies = [
  "anyhow",
  "arrayref",
  "colored",
- "decoder",
- "elf2table",
+ "defmt-decoder",
+ "defmt-elf2table",
  "env_logger",
  "gimli 0.22.0",
  "log",

@@ -15,8 +15,8 @@ anyhow = "1.0.32"
 arrayref = "0.3.6"
 colored = "2.0.0"
 signal-hook = "0.1.16"
-decoder = { git = "https://github.com/knurling-rs/defmt", branch = "main", optional = true }
-elf2table = { git = "https://github.com/knurling-rs/defmt", branch = "main", optional = true }
+defmt-decoder = { git = "https://github.com/knurling-rs/defmt", branch = "main", optional = true }
+defmt-elf2table = { git = "https://github.com/knurling-rs/defmt", branch = "main", optional = true }
 env_logger = "0.7.1"
 gimli = "0.22.0"
 log = "0.4.11"
@@ -27,7 +27,7 @@ structopt = "0.3.15"
 object = "0.21.1"
 
 [features]
-defmt = ["elf2table", "decoder"]
+defmt = ["defmt-elf2table", "defmt-decoder"]
 
 [workspace]
 members = ["panic-probe"]
