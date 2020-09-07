@@ -451,7 +451,7 @@ fn notmain() -> Result<i32, anyhow::Error> {
     Ok(
         if let Some(TopException::HardFault { stack_overflow }) = top_exception {
             if stack_overflow {
-                println!("{}", "!!!! STACK OVERFLOW DETECTED !!!!".red().bold());
+                log::error!("the program has overflowed its stack");
             }
 
             SIGABRT
