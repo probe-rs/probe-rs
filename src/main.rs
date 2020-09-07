@@ -132,7 +132,7 @@ fn notmain() -> Result<i32, anyhow::Error> {
 
     #[cfg(feature = "defmt")]
     let (table, locs) = {
-        let table = elf2table::parse(&bytes)?;
+        let table = defmt_elf2table::parse(&bytes)?;
 
         if table.is_none() && opts.defmt {
             bail!("`.defmt` section not found")
@@ -142,7 +142,7 @@ fn notmain() -> Result<i32, anyhow::Error> {
 
         let locs = if opts.defmt {
             let table = table.as_ref().unwrap();
-            let locs = elf2table::get_locations(&bytes)?;
+            let locs = defmt_elf2table::get_locations(&bytes)?;
 
             if !table.is_empty() && locs.is_empty() {
                 log::warn!("insufficient DWARF info; compile your program with `debug = 2` to enable location info");
@@ -336,7 +336,7 @@ fn notmain() -> Result<i32, anyhow::Error> {
                             frames.extend_from_slice(&read_buf[..num_bytes_read]);
 
                             while let Ok((frame, consumed)) =
-                                decoder::decode(&frames, table.as_ref().unwrap())
+                                defmt_decoder::decode(&frames, table.as_ref().unwrap())
                             {
                                 // NOTE(`[]` indexing) all indices in `table` have already been
                                 // verified to exist in the `locs` map

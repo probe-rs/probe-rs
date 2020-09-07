@@ -1,6 +1,6 @@
 use colored::{Color, Colorize};
 #[cfg(feature = "defmt")]
-use decoder::Frame;
+use defmt_decoder::Frame;
 use io::Write;
 use log::{Level, Log, Metadata, Record};
 use std::{
@@ -29,11 +29,11 @@ pub fn log_defmt(
     module_path: Option<&str>,
 ) {
     let level = match frame.level() {
-        decoder::Level::Trace => Level::Trace,
-        decoder::Level::Debug => Level::Debug,
-        decoder::Level::Info => Level::Info,
-        decoder::Level::Warn => Level::Warn,
-        decoder::Level::Error => Level::Error,
+        defmt_decoder::Level::Trace => Level::Trace,
+        defmt_decoder::Level::Debug => Level::Debug,
+        defmt_decoder::Level::Info => Level::Info,
+        defmt_decoder::Level::Warn => Level::Warn,
+        defmt_decoder::Level::Error => Level::Error,
     };
 
     let target = format!("{}{}", DEFMT_TARGET_MARKER, frame.timestamp());
