@@ -17,9 +17,8 @@ colored = "2.0.0"
 signal-hook = "0.1.16"
 defmt-decoder = { git = "https://github.com/knurling-rs/defmt", branch = "main", optional = true }
 defmt-elf2table = { git = "https://github.com/knurling-rs/defmt", branch = "main", optional = true }
-env_logger = "0.7.1"
 gimli = "0.22.0"
-log = "0.4.11"
+log = { version = "0.4.11", features = ["std"] }
 probe-rs = "0.8.0"
 probe-rs-rtt = "0.3.0"
 rustc-demangle = "0.1.16"
