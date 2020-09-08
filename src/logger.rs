@@ -102,8 +102,6 @@ impl Log for Logger {
             format!("(HOST)")
         };
 
-        let mod_path = record.module_path().unwrap_or("");
-
         self.timing_align
             .fetch_max(timestamp.len(), Ordering::Relaxed);
 
@@ -122,23 +120,24 @@ impl Log for Logger {
 
         writeln!(
             sink,
-            "{timestamp:>0$} {level:5} {module:9} | {args}",
+            "{timestamp:>0$} {level:5} {args}",
             self.timing_align.load(Ordering::Relaxed),
             timestamp = timestamp,
             level = record.level().to_string().color(level_color),
-            module = mod_path,
-            args = record.args(),
+            args = record.args().to_string().bold(),
         )
         .ok();
 
         if let Some(file) = record.file() {
+            // NOTE will be `Some` if `file` is `Some`
+            let mod_path = record.module_path().unwrap();
             // Always include location info for defmt output.
             if is_defmt || self.verbose {
                 let mut loc = file.to_string();
                 if let Some(line) = record.line() {
                     loc.push_str(&format!(":{}", line));
                 }
-                writeln!(sink, "└─ {}", loc.dimmed()).ok();
+                writeln!(sink, "{}", format!("└─ {} @ {}", mod_path, loc).dimmed()).ok();
             }
         }
     }
