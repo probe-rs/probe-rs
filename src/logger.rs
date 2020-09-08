@@ -137,14 +137,7 @@ impl Log for Logger {
                 if let Some(line) = record.line() {
                     loc.push_str(&format!(":{}", line));
                 }
-                writeln!(
-                    sink,
-                    "└─ {} {} {}",
-                    mod_path.dimmed(),
-                    "@".dimmed(),
-                    loc.dimmed()
-                )
-                .ok();
+                writeln!(sink, "{}", format!("└─ {} @ {}", mod_path, loc).dimmed()).ok();
             }
         }
     }
