@@ -505,7 +505,13 @@ impl<'probe> CoreInterface for M0<'probe> {
     fn set_breakpoint(&mut self, bp_register_index: usize, addr: u32) -> Result<(), Error> {
         debug!("Setting breakpoint on address 0x{:08x}", addr);
         let mut value = BpCompx(0);
-        value.set_bp_match(0b11);
+        if addr % 4 < 2 {
+            // match lower halfword
+            value.set_bp_match(0b01);
+        } else {
+            // match higher halfword
+            value.set_bp_match(0b10);
+        }
         value.set_comp((addr >> 2) & 0x00FF_FFFF);
         value.set_enable(true);
 
