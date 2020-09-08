@@ -236,8 +236,15 @@ fn notmain() -> Result<i32, anyhow::Error> {
         .memory_map
         .iter()
         .filter_map(|region| match region {
-            MemoryRegion::Ram(region) if region.range.contains(&vector_table.initial_sp) => {
-                Some(region)
+            MemoryRegion::Ram(region) => {
+                // NOTE stack is full descending; meaning the stack point can be `ORIGIN(RAM) +
+                // LENGTH(RAM)`
+                let range = region.range.start..=region.range.end;
+                if range.contains(&vector_table.initial_sp) {
+                    Some(region)
+                } else {
+                    None
+                }
             }
             _ => None,
         })
@@ -628,7 +635,10 @@ fn backtrace(
                 println!("      <exception entry>");
 
                 let stack_overflow = if let Some(sp_ram_region) = sp_ram_region {
-                    !sp_ram_region.range.contains(&sp)
+                    // NOTE stack is full descending; meaning the stack point can be `ORIGIN(RAM) +
+                    // LENGTH(RAM)`
+                    let range = sp_ram_region.range.start..=sp_ram_region.range.end;
+                    !range.contains(&sp)
                 } else {
                     log::warn!(
                         "no RAM region appears to contain the stack; cannot determine if this was a stack overflow"
