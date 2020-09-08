@@ -237,7 +237,7 @@ fn notmain() -> Result<i32, anyhow::Error> {
         .iter()
         .filter_map(|region| match region {
             MemoryRegion::Ram(region) => {
-                // NOTE stack is full descending; meaning the stack point can be `ORIGIN(RAM) +
+                // NOTE stack is full descending; meaning the stack pointer can be `ORIGIN(RAM) +
                 // LENGTH(RAM)`
                 let range = region.range.start..=region.range.end;
                 if range.contains(&vector_table.initial_sp) {
@@ -635,7 +635,7 @@ fn backtrace(
                 println!("      <exception entry>");
 
                 let stack_overflow = if let Some(sp_ram_region) = sp_ram_region {
-                    // NOTE stack is full descending; meaning the stack point can be `ORIGIN(RAM) +
+                    // NOTE stack is full descending; meaning the stack pointer can be `ORIGIN(RAM) +
                     // LENGTH(RAM)`
                     let range = sp_ram_region.range.start..=sp_ram_region.range.end;
                     !range.contains(&sp)
