@@ -142,7 +142,7 @@ fn notmain() -> Result<i32, anyhow::Error> {
 
         let locs = if opts.defmt {
             let table = table.as_ref().unwrap();
-            let locs = defmt_elf2table::get_locations(&bytes)?;
+            let locs = defmt_elf2table::get_locations(&bytes, table)?;
 
             if !table.is_empty() && locs.is_empty() {
                 log::warn!("insufficient DWARF info; compile your program with `debug = 2` to enable location info");

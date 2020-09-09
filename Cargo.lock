@@ -192,7 +192,7 @@ dependencies = [
 [[package]]
 name = "defmt"
 version = "0.1.0"
-source = "git+https://github.com/knurling-rs/defmt.git?branch=main#15bf1e65bcb38c476765da5cdecdd315d26ff41b"
+source = "git+https://github.com/knurling-rs/defmt.git?branch=main#be7f4a7cbe8a61e005f55fed1a41b11f85cb8ed6"
 dependencies = [
  "defmt-common",
  "defmt-macros",
@@ -201,12 +201,12 @@ dependencies = [
 [[package]]
 name = "defmt-common"
 version = "0.1.0"
-source = "git+https://github.com/knurling-rs/defmt.git?branch=main#15bf1e65bcb38c476765da5cdecdd315d26ff41b"
+source = "git+https://github.com/knurling-rs/defmt.git?branch=main#be7f4a7cbe8a61e005f55fed1a41b11f85cb8ed6"
 
 [[package]]
 name = "defmt-decoder"
 version = "0.1.0"
-source = "git+https://github.com/knurling-rs/defmt.git?branch=main#15bf1e65bcb38c476765da5cdecdd315d26ff41b"
+source = "git+https://github.com/knurling-rs/defmt.git?branch=main#be7f4a7cbe8a61e005f55fed1a41b11f85cb8ed6"
 dependencies = [
  "byteorder",
  "colored",
@@ -219,7 +219,7 @@ dependencies = [
 [[package]]
 name = "defmt-elf2table"
 version = "0.1.0"
-source = "git+https://github.com/knurling-rs/defmt.git?branch=main#15bf1e65bcb38c476765da5cdecdd315d26ff41b"
+source = "git+https://github.com/knurling-rs/defmt.git?branch=main#be7f4a7cbe8a61e005f55fed1a41b11f85cb8ed6"
 dependencies = [
  "anyhow",
  "defmt-decoder",
@@ -230,7 +230,7 @@ dependencies = [
 [[package]]
 name = "defmt-macros"
 version = "0.1.0"
-source = "git+https://github.com/knurling-rs/defmt.git?branch=main#15bf1e65bcb38c476765da5cdecdd315d26ff41b"
+source = "git+https://github.com/knurling-rs/defmt.git?branch=main#be7f4a7cbe8a61e005f55fed1a41b11f85cb8ed6"
 dependencies = [
  "defmt-parser",
  "proc-macro2",
@@ -241,7 +241,7 @@ dependencies = [
 [[package]]
 name = "defmt-parser"
 version = "0.1.0"
-source = "git+https://github.com/knurling-rs/defmt.git?branch=main#15bf1e65bcb38c476765da5cdecdd315d26ff41b"
+source = "git+https://github.com/knurling-rs/defmt.git?branch=main#be7f4a7cbe8a61e005f55fed1a41b11f85cb8ed6"
 
 [[package]]
 name = "derivative"
