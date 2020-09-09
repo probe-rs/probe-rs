@@ -18,14 +18,14 @@ use thiserror::Error;
 pub enum AccessPortError {
     #[error("Failed to access address 0x{address:08x} as it is not aligned to the requirement of {alignment} bytes.")]
     MemoryNotAligned { address: u32, alignment: usize },
-    #[error("Failed to read register {name} at address 0x{address:08x} because: {source}")]
+    #[error("Failed to read register {name} at address 0x{address:08x}")]
     RegisterReadError {
         address: u8,
         name: &'static str,
         #[source]
         source: Box<dyn std::error::Error + Send + Sync>,
     },
-    #[error("Failed to write register {name} at address 0x{address:08x} because: {source}")]
+    #[error("Failed to write register {name} at address 0x{address:08x}")]
     RegisterWriteError {
         address: u8,
         name: &'static str,

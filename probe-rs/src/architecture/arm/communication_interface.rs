@@ -273,12 +273,10 @@ impl<'interface> ArmCommunicationInterface {
                 let adi_v5_memory_interface = ADIMemoryInterface::<
                     'interface,
                     ArmCommunicationInterface,
-                >::new(
-                    self, access_port, only_32bit_data_size
-                )
+                >::new(self, only_32bit_data_size)
                 .map_err(ProbeRsError::architecture_specific)?;
 
-                Ok(Memory::new(adi_v5_memory_interface))
+                Ok(Memory::new(adi_v5_memory_interface, access_port))
             }
             ApInformation::Other { port_number } => Err(ProbeRsError::Other(anyhow!(format!(
                 "AP {} is not a memory AP",
