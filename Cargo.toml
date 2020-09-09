@@ -15,8 +15,8 @@ anyhow = "1.0.32"
 arrayref = "0.3.6"
 colored = "2.0.0"
 signal-hook = "0.1.16"
-defmt-decoder = { git = "https://github.com/knurling-rs/defmt", branch = "gh156", optional = true }
-defmt-elf2table = { git = "https://github.com/knurling-rs/defmt", branch = "gh156", optional = true }
+defmt-decoder = { git = "https://github.com/knurling-rs/defmt", branch = "main", optional = true }
+defmt-elf2table = { git = "https://github.com/knurling-rs/defmt", branch = "main", optional = true }
 gimli = "0.22.0"
 log = { version = "0.4.11", features = ["std"] }
 probe-rs = "0.8.0"
