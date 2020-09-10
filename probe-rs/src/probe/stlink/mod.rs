@@ -686,20 +686,6 @@ impl<D: StLinkUsb> STLink<D> {
         )
     }
 
-    /// Validates the status given.
-    /// Returns an error if the status is not `Status::JtagOk`.
-    /// Returns Ok(()) otherwise.
-    /// This can be called on any status returned from the attached target.
-    fn check_status(status: &[u8]) -> Result<(), DebugProbeError> {
-        let status = Status::from(status[0]);
-        if status != Status::JtagOk {
-            log::warn!("check_status failed: {:?}", status);
-            Err(From::from(StlinkError::CommandFailed(status)))
-        } else {
-            Ok(())
-        }
-    }
-
     fn send_jtag_command(
         &mut self,
         cmd: &[u8],
@@ -707,10 +693,32 @@ impl<D: StLinkUsb> STLink<D> {
         read_data: &mut [u8],
         timeout: Duration,
     ) -> Result<(), DebugProbeError> {
-        self.device.write(cmd, write_data, read_data, timeout)?;
+        for attempt in 0..13 {
+            self.device.write(cmd, write_data, read_data, timeout)?;
 
-        Self::check_status(read_data)?;
-        Ok(())
+            match Status::from(read_data[0]) {
+                Status::JtagOk => return Ok(()),
+                Status::SwdDpWait => {
+                    log::warn!("send_jtag_command {} got SwdDpWait, retrying", cmd[0])
+                }
+                Status::SwdApWait => {
+                    log::warn!("send_jtag_command {} got SwdApWait, retrying", cmd[0])
+                }
+                status => {
+                    log::warn!("send_jtag_command {} failed: {:?}", cmd[0], status);
+                    return Err(From::from(StlinkError::CommandFailed(status)));
+                }
+            }
+
+            // Sleep with exponential backoff.
+            std::thread::sleep(Duration::from_micros(100 << attempt));
+        }
+
+        log::warn!("too many retries, giving up");
+
+        // Return the last error (will be SwdDpWait or SwdApWait)
+        let status = Status::from(read_data[0]);
+        return Err(From::from(StlinkError::CommandFailed(status)));
     }
 
     pub fn start_trace_reception(&mut self, config: &SwoConfig) -> Result<(), DebugProbeError> {
