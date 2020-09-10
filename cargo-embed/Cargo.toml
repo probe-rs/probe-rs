@@ -28,7 +28,9 @@ serde_json = { version = "1.0.51" }
 config = { version = "0.10.1", features = ["toml", "json", "yaml"], default-features = false }
 probe-rs-rtt = { version = "0.4.0" }
 chrono = "0.4"
-crossterm = "0.17.0"
+
+# Version 0.17.8 doesn't compile on Windows
+crossterm = "<= 0.17.7"
 derivative = "2.1.0"
 goblin = "0.2.0"
 tui = { version = "0.10.0", default-features = false, features = ["crossterm"] }
