@@ -140,7 +140,6 @@ impl DebugProbe for STLink<STLinkUSBDevice> {
             &mut buf,
             TIMEOUT,
         )?;
-        Self::check_status(&buf)?;
 
         log::debug!("Successfully initialized SWD.");
 
@@ -181,14 +180,12 @@ impl DebugProbe for STLink<STLinkUSBDevice> {
             &[],
             &mut buf,
             TIMEOUT,
-        )?;
-
-        Self::check_status(&buf)
+        )
     }
 
     fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
         let mut buf = [0; 2];
-        self.device.write(
+        self.send_jtag_command(
             &[
                 commands::JTAG_COMMAND,
                 commands::JTAG_DRIVE_NRST,
@@ -197,14 +194,12 @@ impl DebugProbe for STLink<STLinkUSBDevice> {
             &[],
             &mut buf,
             TIMEOUT,
-        )?;
-
-        Self::check_status(&buf)
+        )
     }
 
     fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
         let mut buf = [0; 2];
-        self.device.write(
+        self.send_jtag_command(
             &[
                 commands::JTAG_COMMAND,
                 commands::JTAG_DRIVE_NRST,
@@ -213,9 +208,7 @@ impl DebugProbe for STLink<STLinkUSBDevice> {
             &[],
             &mut buf,
             TIMEOUT,
-        )?;
-
-        Self::check_status(&buf)
+        )
     }
 
     fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError> {
@@ -542,8 +535,7 @@ impl<D: StLinkUsb> STLink<D> {
             &[],
             &mut buf,
             TIMEOUT,
-        )?;
-        Self::check_status(&buf)
+        )
     }
 
     /// Sets the JTAG frequency.
@@ -561,8 +553,7 @@ impl<D: StLinkUsb> STLink<D> {
             &[],
             &mut buf,
             TIMEOUT,
-        )?;
-        Self::check_status(&buf)
+        )
     }
 
     /// Sets the communication frequency (V3 only)
@@ -730,8 +721,7 @@ impl<D: StLinkUsb> STLink<D> {
         command.extend_from_slice(&bufsize);
         command.extend_from_slice(&baud);
 
-        self.device.write(&command, &[], &mut buf, TIMEOUT)?;
-        Self::check_status(&buf)?;
+        self.send_jtag_command(&command, &[], &mut buf, TIMEOUT)?;
 
         self.swo_enabled = true;
 
@@ -741,13 +731,12 @@ impl<D: StLinkUsb> STLink<D> {
     pub fn stop_trace_reception(&mut self) -> Result<(), DebugProbeError> {
         let mut buf = [0; 2];
 
-        self.device.write(
+        self.send_jtag_command(
             &[commands::JTAG_COMMAND, commands::SWO_STOP_TRACE_RECEPTION],
             &[],
             &mut buf,
             TIMEOUT,
         )?;
-        Self::check_status(&buf)?;
 
         self.swo_enabled = false;
 
