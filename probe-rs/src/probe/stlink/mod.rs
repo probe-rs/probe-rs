@@ -135,7 +135,7 @@ impl DebugProbe for STLink<STLinkUSBDevice> {
 
         let mut buf = [0; 2];
         self.send_jtag_command(
-            vec![commands::JTAG_COMMAND, commands::JTAG_ENTER2, param, 0],
+            &[commands::JTAG_COMMAND, commands::JTAG_ENTER2, param, 0],
             &[],
             &mut buf,
             TIMEOUT,
@@ -173,7 +173,7 @@ impl DebugProbe for STLink<STLinkUSBDevice> {
     fn target_reset(&mut self) -> Result<(), DebugProbeError> {
         let mut buf = [0; 2];
         self.send_jtag_command(
-            vec![
+            &[
                 commands::JTAG_COMMAND,
                 commands::JTAG_DRIVE_NRST,
                 commands::JTAG_DRIVE_NRST_PULSE,
@@ -189,7 +189,7 @@ impl DebugProbe for STLink<STLinkUSBDevice> {
     fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
         let mut buf = [0; 2];
         self.device.write(
-            vec![
+            &[
                 commands::JTAG_COMMAND,
                 commands::JTAG_DRIVE_NRST,
                 commands::JTAG_DRIVE_NRST_LOW,
@@ -205,7 +205,7 @@ impl DebugProbe for STLink<STLinkUSBDevice> {
     fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
         let mut buf = [0; 2];
         self.device.write(
-            vec![
+            &[
                 commands::JTAG_COMMAND,
                 commands::JTAG_DRIVE_NRST,
                 commands::JTAG_DRIVE_NRST_HIGH,
@@ -267,7 +267,7 @@ impl DAPAccess for STLink<STLinkUSBDevice> {
 
             let port: u16 = port.into();
 
-            let cmd = vec![
+            let cmd = &[
                 commands::JTAG_COMMAND,
                 commands::JTAG_READ_DAP_REG,
                 (port & 0xFF) as u8,
@@ -298,7 +298,7 @@ impl DAPAccess for STLink<STLinkUSBDevice> {
 
             let port: u16 = port.into();
 
-            let cmd = vec![
+            let cmd = &[
                 commands::JTAG_COMMAND,
                 commands::JTAG_WRITE_DAP_REG,
                 (port & 0xFF) as u8,
@@ -368,7 +368,7 @@ impl<D: StLinkUsb> STLink<D> {
         let mut buf = [0; 8];
         match self
             .device
-            .write(vec![commands::GET_TARGET_VOLTAGE], &[], &mut buf, TIMEOUT)
+            .write(&[commands::GET_TARGET_VOLTAGE], &[], &mut buf, TIMEOUT)
         {
             Ok(_) => {
                 // The next two unwraps are safe!
@@ -390,7 +390,7 @@ impl<D: StLinkUsb> STLink<D> {
         log::trace!("Getting current mode of device...");
         let mut buf = [0; 2];
         self.device
-            .write(vec![commands::GET_CURRENT_MODE], &[], &mut buf, TIMEOUT)?;
+            .write(&[commands::GET_CURRENT_MODE], &[], &mut buf, TIMEOUT)?;
 
         use Mode::*;
 
@@ -414,13 +414,13 @@ impl<D: StLinkUsb> STLink<D> {
 
         match mode {
             Mode::Dfu => self.device.write(
-                vec![commands::DFU_COMMAND, commands::DFU_EXIT],
+                &[commands::DFU_COMMAND, commands::DFU_EXIT],
                 &[],
                 &mut [],
                 TIMEOUT,
             ),
             Mode::Swim => self.device.write(
-                vec![commands::SWIM_COMMAND, commands::SWIM_EXIT],
+                &[commands::SWIM_COMMAND, commands::SWIM_EXIT],
                 &[],
                 &mut [],
                 TIMEOUT,
@@ -447,7 +447,7 @@ impl<D: StLinkUsb> STLink<D> {
         let mut buf = [0; 6];
         match self
             .device
-            .write(vec![commands::GET_VERSION], &[], &mut buf, TIMEOUT)
+            .write(&[commands::GET_VERSION], &[], &mut buf, TIMEOUT)
         {
             Ok(_) => {
                 let version: u16 = (&buf[0..2]).pread_with(0, BE).unwrap();
@@ -471,7 +471,7 @@ impl<D: StLinkUsb> STLink<D> {
             let mut buf = [0; 12];
             match self
                 .device
-                .write(vec![commands::GET_VERSION_EXT], &[], &mut buf, TIMEOUT)
+                .write(&[commands::GET_VERSION_EXT], &[], &mut buf, TIMEOUT)
             {
                 Ok(_) => {
                     let version: u8 = (&buf[2..3]).pread_with(0, LE).unwrap();
@@ -534,7 +534,7 @@ impl<D: StLinkUsb> STLink<D> {
     ) -> Result<(), DebugProbeError> {
         let mut buf = [0; 2];
         self.send_jtag_command(
-            vec![
+            &[
                 commands::JTAG_COMMAND,
                 commands::SWD_SET_FREQ,
                 frequency as u8,
@@ -553,7 +553,7 @@ impl<D: StLinkUsb> STLink<D> {
     ) -> Result<(), DebugProbeError> {
         let mut buf = [0; 2];
         self.send_jtag_command(
-            vec![
+            &[
                 commands::JTAG_COMMAND,
                 commands::JTAG_SET_FREQ,
                 frequency as u8,
@@ -584,7 +584,7 @@ impl<D: StLinkUsb> STLink<D> {
         command.extend_from_slice(&frequency_khz.to_le_bytes());
 
         let mut buf = [0; 8];
-        self.send_jtag_command(command, &[], &mut buf, TIMEOUT)
+        self.send_jtag_command(&command, &[], &mut buf, TIMEOUT)
     }
 
     /// Returns the current and available communication frequencies (V3 only)
@@ -603,7 +603,7 @@ impl<D: StLinkUsb> STLink<D> {
 
         let mut buf = [0; 52];
         self.send_jtag_command(
-            vec![commands::JTAG_COMMAND, commands::GET_COM_FREQ, cmd_proto],
+            &[commands::JTAG_COMMAND, commands::GET_COM_FREQ, cmd_proto],
             &[],
             &mut buf,
             TIMEOUT,
@@ -668,7 +668,7 @@ impl<D: StLinkUsb> STLink<D> {
         let mut buf = [0; 2];
         log::trace!("JTAG_INIT_AP {}", apsel);
         self.send_jtag_command(
-            vec![commands::JTAG_COMMAND, commands::JTAG_INIT_AP, apsel],
+            &[commands::JTAG_COMMAND, commands::JTAG_INIT_AP, apsel],
             &[],
             &mut buf,
             TIMEOUT,
@@ -688,7 +688,7 @@ impl<D: StLinkUsb> STLink<D> {
         let mut buf = [0; 2];
         log::trace!("JTAG_CLOSE_AP {}", apsel);
         self.send_jtag_command(
-            vec![commands::JTAG_COMMAND, commands::JTAG_CLOSE_AP_DBG, apsel],
+            &[commands::JTAG_COMMAND, commands::JTAG_CLOSE_AP_DBG, apsel],
             &[],
             &mut buf,
             TIMEOUT,
@@ -711,7 +711,7 @@ impl<D: StLinkUsb> STLink<D> {
 
     fn send_jtag_command(
         &mut self,
-        cmd: Vec<u8>,
+        cmd: &[u8],
         write_data: &[u8],
         read_data: &mut [u8],
         timeout: Duration,
@@ -730,7 +730,7 @@ impl<D: StLinkUsb> STLink<D> {
         command.extend_from_slice(&bufsize);
         command.extend_from_slice(&baud);
 
-        self.device.write(command, &[], &mut buf, TIMEOUT)?;
+        self.device.write(&command, &[], &mut buf, TIMEOUT)?;
         Self::check_status(&buf)?;
 
         self.swo_enabled = true;
@@ -742,7 +742,7 @@ impl<D: StLinkUsb> STLink<D> {
         let mut buf = [0; 2];
 
         self.device.write(
-            vec![commands::JTAG_COMMAND, commands::SWO_STOP_TRACE_RECEPTION],
+            &[commands::JTAG_COMMAND, commands::SWO_STOP_TRACE_RECEPTION],
             &[],
             &mut buf,
             TIMEOUT,
@@ -758,7 +758,7 @@ impl<D: StLinkUsb> STLink<D> {
     fn read_swo_available_byte_count(&mut self) -> Result<usize, DebugProbeError> {
         let mut buf = [0; 2];
         self.device.write(
-            vec![
+            &[
                 commands::JTAG_COMMAND,
                 commands::SWO_GET_TRACE_NEW_RECORD_NB,
             ],
@@ -873,7 +873,7 @@ mod test {
     impl StLinkUsb for MockUsb {
         fn write(
             &mut self,
-            cmd: Vec<u8>,
+            cmd: &[u8],
             _write_data: &[u8],
             read_data: &mut [u8],
             _timeout: std::time::Duration,

@@ -81,7 +81,7 @@ impl std::fmt::Debug for STLinkUSBDevice {
 pub trait StLinkUsb: std::fmt::Debug {
     fn write(
         &mut self,
-        cmd: Vec<u8>,
+        cmd: &[u8],
         write_data: &[u8],
         read_data: &mut [u8],
         timeout: Duration,
@@ -209,7 +209,7 @@ impl StLinkUsb for STLinkUSBDevice {
     /// And lastly, data will be read back until `read_data` is filled.
     fn write(
         &mut self,
-        mut cmd: Vec<u8>,
+        cmd: &[u8],
         write_data: &[u8],
         read_data: &mut [u8],
         timeout: Duration,
@@ -221,16 +221,16 @@ impl StLinkUsb for STLinkUSBDevice {
         );
 
         // Command phase.
-        for _ in 0..(CMD_LEN - cmd.len()) {
-            cmd.push(0);
-        }
+        assert!(cmd.len() <= CMD_LEN);
+        let mut padded_cmd = [0u8; CMD_LEN];
+        padded_cmd[..cmd.len()].copy_from_slice(cmd);
 
         let ep_out = self.info.ep_out;
         let ep_in = self.info.ep_in;
 
         let written_bytes = self
             .device_handle
-            .write_bulk(ep_out, &cmd, timeout)
+            .write_bulk(ep_out, &padded_cmd, timeout)
             .map_err(|e| DebugProbeError::USB(Some(Box::new(e))))?;
 
         if written_bytes != CMD_LEN {
