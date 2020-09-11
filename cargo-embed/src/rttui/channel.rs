@@ -1,14 +1,20 @@
 use std::fmt;
 
-use super::DataFormat;
 use chrono::Local;
 use probe_rs_rtt::{DownChannel, UpChannel};
 
-#[derive(Debug, serde::Serialize, serde::Deserialize, Clone)]
+#[derive(Debug, Copy, Clone, serde::Serialize, serde::Deserialize)]
+pub enum DataFormat {
+    String,
+    BinaryLE,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ChannelConfig {
     pub up: Option<usize>,
     pub down: Option<usize>,
     pub name: Option<String>,
+    pub format: DataFormat,
 }
 
 #[derive(Debug)]
@@ -16,6 +22,7 @@ pub struct ChannelState {
     up_channel: Option<UpChannel>,
     down_channel: Option<DownChannel>,
     name: String,
+    format: DataFormat,
     messages: Vec<String>,
     data: Vec<u8>,
     last_line_done: bool,
@@ -31,6 +38,7 @@ impl ChannelState {
         down_channel: Option<DownChannel>,
         name: Option<String>,
         show_timestamps: bool,
+        format: DataFormat,
     ) -> Self {
         let name = name
             .or_else(|| up_channel.as_ref().and_then(|up| up.name().map(Into::into)))
@@ -45,6 +53,7 @@ impl ChannelState {
             up_channel,
             down_channel,
             name,
+            format,
             messages: Vec::new(),
             last_line_done: true,
             input: String::new(),
@@ -89,6 +98,10 @@ impl ChannelState {
         &self.name
     }
 
+    pub fn format(&self) -> DataFormat {
+        self.format
+    }
+
     pub fn set_scroll_offset(&mut self, value: usize) {
         self.scroll_offset = value;
     }
@@ -100,7 +113,7 @@ impl ChannelState {
     /// Polls the RTT target for new data on the specified channel.
     ///
     /// Processes all the new data and adds it to the linebuffer of the respective channel.
-    pub fn poll_rtt(&mut self, fmt: DataFormat) {
+    pub fn poll_rtt(&mut self) {
         // TODO: Proper error handling.
         let count = if let Some(channel) = self.up_channel.as_mut() {
             match channel.read(self.rtt_buffer.0.as_mut()) {
@@ -118,7 +131,7 @@ impl ChannelState {
             return;
         }
 
-        match fmt {
+        match self.format {
             DataFormat::String => {
                 let now = Local::now();
 

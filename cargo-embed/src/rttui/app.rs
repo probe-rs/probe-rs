@@ -17,9 +17,8 @@ use tui::{
     Terminal,
 };
 
-use super::channel::ChannelState;
+use super::channel::{ChannelState, DataFormat};
 use super::event::{Event, Events};
-use super::DataFormat;
 
 use event::{DisableMouseCapture, KeyModifiers};
 
@@ -61,6 +60,7 @@ impl App {
                         .and_then(|down| pull_channel(&mut down_channels, down)),
                     channel.name.clone(),
                     config.rtt.show_timestamps,
+                    channel.format,
                 ))
             }
         } else {
@@ -71,6 +71,7 @@ impl App {
                     pull_channel(&mut down_channels, number),
                     None,
                     config.rtt.show_timestamps,
+                    DataFormat::String,
                 ));
             }
 
@@ -80,6 +81,7 @@ impl App {
                     Some(channel),
                     None,
                     config.rtt.show_timestamps,
+                    DataFormat::String,
                 ));
             }
         }
@@ -120,7 +122,6 @@ impl App {
         Ok(Self {
             tabs,
             current_tab: 0,
-
             terminal,
             events,
             history_path,
@@ -157,9 +158,8 @@ impl App {
         let mut height = 0;
         let mut messages_wrapped: Vec<String> = Vec::new();
 
-        match current_tab {
-            //String todo deal with enums instead
-            0 => {
+        match tabs[current_tab].format() {
+            DataFormat::String => {
                 self.terminal
                     .draw(|f| {
                         let constraints = if has_down_channel {
@@ -231,8 +231,7 @@ impl App {
                         .set_scroll_offset(message_num - height.min(message_num));
                 }
             }
-            //binary
-            _ => {
+            DataFormat::BinaryLE => {
                 self.terminal
                     .draw(|f| {
                         let constraints = if has_down_channel {
@@ -322,10 +321,9 @@ impl App {
 
                     if let Some(path) = &self.history_path {
                         for (i, tab) in self.tabs.iter().enumerate() {
-                            // todo dont hardcode DataFormat, take from config
-                            let extension = match i {
-                                0 => "txt",
-                                _ => "dat",
+                            let extension = match tab.format() {
+                                DataFormat::String => "txt",
+                                DataFormat::BinaryLE => "dat",
                             };
 
                             let name = format!("{}_channel{}.{}", self.logname, i, extension);
@@ -333,9 +331,8 @@ impl App {
 
                             match std::fs::File::create(final_path.clone()) {
                                 Ok(mut file) => {
-                                    match i {
-                                        //string, take from config and store and match the enum
-                                        0 => {
+                                    match tab.format() {
+                                        DataFormat::String => {
                                             for line in tab.messages() {
                                                 match writeln!(file, "{}", line) {
                                                     Ok(_) => {}
@@ -349,10 +346,7 @@ impl App {
                                                 }
                                             }
                                         }
-                                        //binary
-                                        //todo formatting into like f32s and then back to u8?
-                                        //to presuambly maintian endianness?
-                                        _ => match file.write(&tab.data()) {
+                                        DataFormat::BinaryLE => match file.write(&tab.data()) {
                                             Ok(_) => {}
                                             Err(e) => {
                                                 eprintln!(
@@ -419,13 +413,8 @@ impl App {
 
     /// Polls the RTT target for new data on all channels.
     pub fn poll_rtt(&mut self) {
-        for (i, channel) in self.tabs.iter_mut().enumerate() {
-            //for now, just assume 0 is string everything else is binaryle
-            let fmt = match i {
-                0 => DataFormat::String,
-                _ => DataFormat::BinaryLE,
-            };
-            channel.poll_rtt(fmt);
+        for channel in self.tabs.iter_mut() {
+            channel.poll_rtt();
         }
     }
 
