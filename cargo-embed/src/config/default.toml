@@ -44,7 +44,7 @@ log_level = "WARN"
 enabled = false
 # A list of channel associations to be displayed. If left empty, all channels are displayed.
 channels = [
-    # { up = 0, down = 0, name = "name" }
+    # { up = 0, down = 0, name = "name", format = "String" }
 ]
 # The duration in ms for which the logger should retry to attach to RTT.
 timeout = 3000
