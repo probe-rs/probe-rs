@@ -76,7 +76,7 @@ impl Session {
     ) -> Result<Self, Error> {
         let (probe, target) = get_target_from_selector(target, probe)?;
 
-        let mut session = match target.cores[0] {
+        let mut session = match &target.cores[0] {
             CoreInfo::Arm(arm_core) => {
                 let core = (
                     SpecificCoreState::from_arm_core(arm_core),

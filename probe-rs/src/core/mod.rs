@@ -284,7 +284,7 @@ pub(crate) enum SpecificCoreState {
 }
 
 impl SpecificCoreState {
-    pub(crate) fn from_arm_core(core: ArmCore) -> Self {
+    pub(crate) fn from_arm_core(core: &ArmCore) -> Self {
         match core.kind {
             ArmCoreKind::CortexM0 => SpecificCoreState::M0(CortexState::new()),
             ArmCoreKind::CortexM3 => SpecificCoreState::M3(CortexState::new()),
@@ -297,7 +297,7 @@ impl SpecificCoreState {
         }
     }
 
-    pub(crate) fn from_riscv_core(typ: RiscVCore) -> Self {
+    pub(crate) fn from_riscv_core(typ: &RiscVCore) -> Self {
         SpecificCoreState::Riscv
     }
 

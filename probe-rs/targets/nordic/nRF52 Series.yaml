@@ -1,0 +1,199 @@
+---
+name: nRF52 Series
+variants:
+  - name: nRF52805_xxAA
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536895488
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 0
+            end: 196608
+          is_boot_memory: true
+    flash_algorithms:
+      - nrf52xxx
+      - nrf52xxx_uicr
+      - nrf52xxx_sde
+  - name: nRF52810_xxAA
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536895488
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 0
+            end: 196608
+          is_boot_memory: true
+    flash_algorithms:
+      - nrf52xxx
+      - nrf52xxx_uicr
+      - nrf52xxx_sde
+  - name: nRF52811_xxAA
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536895488
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 0
+            end: 196608
+          is_boot_memory: true
+    flash_algorithms:
+      - nrf52xxx
+      - nrf52xxx_uicr
+      - nrf52xxx_sde
+  - name: nRF52820_xxAA
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 0
+            end: 262144
+          is_boot_memory: true
+    flash_algorithms:
+      - nrf52xxx
+      - nrf52xxx_uicr
+      - nrf52xxx_sde
+  - name: nRF52832_xxAA
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536936448
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 0
+            end: 524288
+          is_boot_memory: true
+    flash_algorithms:
+      - nrf52xxx
+      - nrf52xxx_uicr
+      - nrf52xxx_sde
+  - name: nRF52832_xxAB
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 0
+            end: 262144
+          is_boot_memory: true
+    flash_algorithms:
+      - nrf52xxx
+      - nrf52xxx_uicr
+      - nrf52xxx_sde
+  - name: nRF52833_xxAA
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 0
+            end: 524288
+          is_boot_memory: true
+    flash_algorithms:
+      - nrf52xxx
+      - nrf52xxx_uicr
+      - nrf52xxx_sde
+  - name: nRF52840_xxAA
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537133056
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 0
+            end: 1048576
+          is_boot_memory: true
+    flash_algorithms:
+      - nrf52xxx
+      - nrf52xxx_uicr
+      - nrf52xxx_sde
+flash_algorithms:
+  nrf52xxx:
+    name: nrf52xxx
+    description: nRF52xxx
+    default: false
+    instructions: sLUURkDyBAXA8gAFACBJ+AUACesFAcHpAQDIYNCyAPBV+gAoHr8J6wUBwekCBLC9CesFAAEhQWAA8B76ACCwvRC1BEYAIADwQfo4sUDyBAHA8gABSUTB6QIEEL1A8gQAwPIAAAnrAAGJaAApBL8AIBC9RPIAAcLyAAEBIgpgWfgAIEpgSERCaIpggmjKYMBoCGEAIBC9AL9A8gQAwPIAAAEhSfgAEEhEACHA6QERwWAA8Ey6sLUERkDyBAXA8gAFAiBJ+AUACesFAAAhwOkBEcFgAPCf+bT78PEB+xBAMLEJ6wUAAyHA6QIUZSCwvQnrBQABIUFgAPCj+aBCE9gA8KH5oEIP2QnrBQACIUFgIEYA8Mj5Aygcv2cgsL0gRgDw//kAILC9CesFAAQhwOkCFGYgsL0t6fBBFUYORgRGQPIEB8DyAAcDIEn4BwAJ6wcBACLB6QEiymChBwbQCesHAcHpAgRlIL3o8IEJ6wcAASFBYADwZfmgQhXYAPBj+aBCEdkJ6wcAAyFBYAbrBAgA8Fn5gEUP2QnrBwAEIcDpAhhmIL3o8IEJ6wcABCHA6QIUZiC96PCBCesHAAQhQWAA8G/5MLEJ6wcAAiGBYGcgvejwgQnrBwAFIUFgIEYA8GL5AigH0gnrBwACIcDpAhRnIL3o8IEP0SBGMUb/IgDwNPhIsQMgSfgHAAnrBwAFIUFgZyC96PCBAyBJ+AcACesHAAYhQWAAILDrlg8Iv73o8IFP6pYIACZU+CYAATAL0VX4JgBE+CYAAPBb+QE2ACBGRfHTvejwgQnrBwChGQUiwOkCIWggvejwgS3p8EEWRg1GBEZA8gQHwPIABwUgSfgHAAnrBwAAIcDpARHBYKgHB9AJ6wcAAyHA6QIVZSC96PCBCesHAAIhQWAA8Mr4oEIV2ADwyPigQhHZCesHAAMhQWAF6wQIAPC++IBFD9kJ6wcABCHA6QIYZiC96PCBCesHAAQhwOkCFGYgvejwgQnrBwAEIUFgAC0EvwAgvejwgQAhBuAAvwExACCpQii/vejwgWBcsEL20AnrBwAhRAUiwOkCIQEgvejwgS3p8EGQRg9GBEZA8gQFwPIABQQgSfgFAAnrBQAAIcDpARHBYKAHCNAJ6wUAAyHA6QIUZSYwRr3o8IEJ6wUAASFBYADwafigQhLYAPBn+KBCDtkJ6wUAAyFBYD4ZAPBe+IZCDtkJ6wUABCHA6QIWBOAJ6wUABCHA6QIUZiYwRr3o8IEJ6wUABCFBYAAgsOuXDwvQuAgAIQC/WPghICNok0IK0QExBDSBQvbTCesFAAUhQWAwRr3o8IEJ6wUABiHA6QIUIEa96PCBQPIwEMHyAAABaAExHL8AaHBHQPbgcM/yAABBaAB4YfMLIHBHECDB8gAAAWgBMRS/AGhP9IBQcEcUIMHyAAABaAExFL8AaE/0AHBwRwAgcEcAIHBHELX/9+X/BEb/9+z/YEMQvQFEgUKcvwEgcEcD4IhCJL8BIHBHUPgEKwEyHL8AIHBH9OcAv4C1//e5/w8oiL+AvQEhAfoA8EzyQEIQQh6/QPIIYMTyAAABYIC9AL8AIHBHQ/IEAQloTvLbUsXysRKRQhy/AyBwR0PyCAEKaAMhgkKIvwIhCEZwRwMohL9pIHBHgLVAsgWhUfggAE7yBFHE8gEBCGAA8Ar4ACCAvQAAAAACAAAAAQAAAAAAAABO8gBAxPIBAAFoACn80HBHTvIMUMTyAQABIQFg8OcAv4GwAJAAmE7yCFHE8gEBCGABsOXngLVO8hRQxPIBAAEhAWD/993/ACCAvQC/cLX/93n/BEYAJQAg//ek/wIoBdA4uQEmACWlQgbTDeBD8ggABWgAJqVCB9IoRv/30f//90n/BUSlQvfTAC4Yv//30v8AIHC9AAAAAAAAAAAAAAAAAAAAAAAAAAA=
+    pc_init: 1
+    pc_uninit: 65
+    pc_program_page: 309
+    pc_erase_sector: 181
+    pc_erase_all: 153
+    data_section_offset: 1428
+    flash_properties:
+      address_range:
+        start: 0
+        end: 2097152
+      page_size: 4096
+      erased_byte_value: 255
+      program_page_timeout: 1000
+      erase_sector_timeout: 3000
+      sectors:
+        - size: 4096
+          address: 0
+  nrf52xxx_uicr:
+    name: nrf52xxx_uicr
+    description: nRF52xxx UICR Erase
+    default: true
+    instructions: cLUURkDyBAbA8gAGACVJ+AZQCesGAMDpAVXFYNCyAPD7+QAoHr8J6wYBwekCBAVGKEZwvRC1BEYAIADw7flA8gQBwPIAAUlEELHB6QIEA+CJaAApCL8QvUTyAAHC8gABASIKYEDyBALA8gACWfgCMEtgSkRTaItgk2jLYNJoCmEQvQC/QPIEAMDyAAABIUn4ABBIRAAhwOkBEcFgAPDwuRC1QPIEAMDyAAACIUn4ABBIRAAkwOkBRMRgAPBR+QFGT/AQIP8iAPAP+DixAPDY+QRGaSgE0AAsCL8AJCBGEL0AJCBGEL0Av7C1QPIEDMDyAAwFI0n4DDAJ6wwDT/AADsPpAe7D+AzggwcF0AnrDAEDIsHpAiAL4AnrDA4BI874BDCLBwjQCesMAAMiwOkCIU/wZQ5wRrC9CesMDgIjzvgEMEH2/3XB8gAFqEIF2QnrDAEEIsHpAiAN4AnrDAMDJFxgAesADmscnkUI2QnrDAAEIcDpAh5P8GYOcEawvVGxACNP8AAOAL/FXJVCB9EBM4tC+dML4E/wAA5wRrC9CesMARhEBSLB6QIgT/ABDnBGsL0Avy3p8EEVRgRGQPIEBsDyAAYDIEn4BgAJ6wYCACPC6QEz02CKBwbQCesGAsLpAgFlIL3o8IEJ6wYAAiJCYEH2/3LB8gAClEIH2QnrBgAEIcDpAhRmIL3o8IEJ6wYAAyNDYAgZATKQQgfZCesGAQQiwekCIGYgvejwgQAgsOuRDxrQT+qRCAAnC+BV+CcARPgnAADwAvkBNwAgR0Uov73o8IFU+CcAATDv0AnrBgDhGQUiwOkCIWggvejwgQC/sLVA8gQFwPIABQQjSfgFMAnrBQMAJMPpAUTcYIMHBtAJ6wUBAyLB6QIgZSCwvQnrBQMBJFxgiwcG0AnrBQADIsDpAiFlILC9CesFAwIkXGBB9v9+wfIADnBFBtkJ6wUBBCLB6QIgZiCwvQnrBQMDJFxgAesADA7xAQOcRQbZCesFAAQhwOkCHGYgsL0J6wUDBCRcYAAjs+uRDwS/YEawvU/qkQ4AIQXgATEEMHFFJL9gRrC9UvghMARonEL00AnrBQEGIsHpAiCwvQAAQPIwEMHyAAABaAExHL8AaHBHQPbgcM/yAABBaAB4YfMLIHBHECDB8gAAAWgBMRS/AGhP9IBQcEcUIMHyAAABaAExFL8AaE/0AHBwRwAgcEcAIHBHELX/9+X/BEb/9+z/YEMQvQFEgUKcvwEgcEcD4IhCJL8BIHBHUPgEKwEyHL8AIHBH9OcAv4C1//e5/w8oiL+AvQEhAfoA8EzyQEIQQh6/QPIIYMTyAAABYIC9AL8AIHBHQ/IEAQloTvLbUsXysRKRQhy/AyBwR0PyCAEKaAMhgkKIvwIhCEZwRwMohL9pIHBHgLVAsgWhUfggAE7yBFHE8gEBCGAA8Ar4ACCAvQAAAAACAAAAAQAAAAAAAABO8gBAxPIBAAFoACn80HBHTvIMUMTyAQABIQFg8OcAv4GwAJAAmE7yCFHE8gEBCGABsOXngLVO8hRQxPIBAAEhAWD/993/ACCAvQC/cLX/93n/BEYAJQAg//ek/wIoBdA4uQEmACWlQgbTDeBD8ggABWgAJqVCB9IoRv/30f//90n/BUSlQvfTAC4Yv//30v8AIHC9AAAAAAAAAAAAAAAAAAAAAAAAAAA=
+    pc_init: 1
+    pc_uninit: 53
+    pc_program_page: 437
+    pc_erase_sector: 161
+    pc_erase_all: 133
+    data_section_offset: 1248
+    flash_properties:
+      address_range:
+        start: 268439552
+        end: 268443648
+      page_size: 4096
+      erased_byte_value: 255
+      program_page_timeout: 1000
+      erase_sector_timeout: 3000
+      sectors:
+        - size: 4096
+          address: 0
+  nrf52xxx_sde:
+    name: nrf52xxx_sde
+    description: nRF52xxx SoftDevice Erase
+    default: true
+    instructions: sLUURkDyBAXA8gAFACBJ+AUACesFAcHpAQDIYNCyAPBd+gAoHr8J6wUBwekCBLC9CesFAAEhQWAA8Cb6ACCwvRC1BEYAIADwSfpA8gQBwPIAAUlEELHB6QIEA+CJaAApCL8QvUTyAAHC8gABASIKYEDyBALA8gACWfgCMEtgSkRTaItgk2jLYNJoCmEQvQC/sLVA8gQAwPIAAAEhSfgAEEhEACHA6QERwWAA8Lv5BEYA8ML5YEN4sQAkAL8gRgDwN/oA8K/5BEQA8Kz5BUYA8LP5aEOEQvHTACCwvXC1BEZA8gQGwPIABgIgSfgGAAnrBgAAIcDpARHBYADwk/m0+/DxAfsQQDCxCesGAAMhwOkCFGUgcL0J6wYAASFBYADwgfkFRgDwiPloQ6BCCNkJ6wYAAiFBYCBGAPD6+QAgcL0J6wYABCHA6QIUZiBwvQC/LenwRYGwFUYORgRGQPIEB8DyAAcDIEn4BwAJ6wcBACLB6QEiymChBwTQCesHAcHpAgQK4AnrBwABIUFgsAcI0AnrBwADIcDpAhZlIAGwvejwhQnrBwACIUFgAPA7+YBGAPBC+QD7CPCgQhTZCesHAAMhQWAG6wQKAPAs+YBGAPAz+QD7CPCCRQ7ZCesHAAQhwOkCGgTgCesHAAQhwOkCFGYgAbC96PCFCesHAAQhQWAAILDrlg8Z0E/qlggAJgC/VPgmAAEwCtFV+CYARPgmAADwdvkBNgAgRkXx0wbgCesHAKEZBSLA6QIhaCABsL3o8IUAvy3p8EWBsJJGD0YERkDyBAXA8gAFBCBJ+AUACesFAAAhwOkBEcFgoAcB0GUmTuC4BwbQCesFAAMhwOkCFGUmReAJ6wUAASFBYADwyvgGRgDw0fhwQ6BCFNkJ6wUAAiFBYD4ZAPC9+IBGAPDE+AD7CPCGQg3ZCesFAAQhwOkCFmYmJOAJ6wUAAyHA6QIXZiYd4AnrBQAEIUFgACCw65cPCtC4CAAhWvghICNok0II0QExBDSBQvbTCesFAAUhQWAF4AnrBQAGIcDpAhQmRjBGAbC96PCFLenwTRZGDUYERkDyBAfA8gAHBSBJ+AcACesHAAAhwOkBEcFgoAcH0AnrBwADIcDpAhRlIL3o8I0J6wcAASFBYKgHB9AJ6wcAAyHA6QIVZSC96PCNCesHAAMhQWAA8Fb4gEYA8F34APsI8KBCF9kJ6wcAT/AECsD4BKAF6wQLAPBF+IBGAPBM+AD7CPCDRQ7ZCesHAMDpAqtmIL3o8I0J6wcABCHA6QIUZiC96PCNCesHAMD4BKAALQS/ACC96PCNACEF4AExACCpQii/vejwjWBcsEL20AnrBwAhRAUiwOkCIQEgvejwjUDyMBDB8gAAAWgBMRy/AGhwR0D24HDP8gAAQWgAeGHzCyBwRxAgwfIAAAFoATEUvwBoT/SAUHBHFCDB8gAAAWgBMRS/AGhP9ABwcEcAIHBHACBwRxC1//fl/wRG//fs/2BDEL0BRIFCnL8BIHBHA+CIQiS/ASBwR1D4BCsBMhy/ACBwR/TnAL+Atf/3uf8PKIi/gL0BIQH6APBM8kBCEEIev0DyCGDE8gAAAWCAvQC/ACBwR0PyBAEJaE7y21LF8rESkUIcvwMgcEdD8ggBCmgDIYJCiL8CIQhGcEcDKIS/aSBwR4C1QLIFoVH4IABO8gRRxPIBAQhgAPAK+AAggL0AAAAAAgAAAAEAAAAAAAAATvIAQMTyAQABaAAp/NBwR07yDFDE8gEAASEBYPDnAL+BsACQAJhO8ghRxPIBAQhgAbDl54C1TvIUUMTyAQABIQFg//fd/wAggL0Av3C1//d5/wRGACUAIP/3pP8CKAXQOLkBJgAlpUIG0w3gQ/IIAAVoACalQgfSKEb/99H///dJ/wVEpUL30wAuGL//99L/ACBwvQAAAAAAAAAAAAAAAAAAAAAAAAAA
+    pc_init: 1
+    pc_uninit: 65
+    pc_program_page: 337
+    pc_erase_sector: 221
+    pc_erase_all: 145
+    data_section_offset: 1444
+    flash_properties:
+      address_range:
+        start: 0
+        end: 2097152
+      page_size: 4096
+      erased_byte_value: 255
+      program_page_timeout: 1000
+      erase_sector_timeout: 3000
+      sectors:
+        - size: 4096
+          address: 0
+core: M4

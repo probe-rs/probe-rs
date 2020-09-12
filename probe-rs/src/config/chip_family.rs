@@ -13,7 +13,7 @@ pub struct ChipFamily {
     /// E.g. `nRF52832`.
     pub name: Cow<'static, str>,
     /// The JEP106 code of the manufacturer.
-    pub vendor: JEP106Code,
+    pub vendor: Option<JEP106Code>,
     /// This vector holds all the variants of the family.
     pub variants: Cow<'static, [Chip]>,
     /// This vector holds all available algorithms.

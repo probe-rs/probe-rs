@@ -1,7 +1,7 @@
-use std::fs;
 use std::fs::{read_dir, read_to_string};
 use std::io;
 use std::path::{Path, PathBuf};
+use std::{ffi::OsStr, fs};
 
 /// Parse all target description files in the input directory and create
 /// a single output file with the Rust source code
@@ -10,6 +10,8 @@ pub fn run(input_dir: impl AsRef<Path>, output_file: impl AsRef<Path>) {
     // Determine all config files to parse.
     let mut files = vec![];
     visit_dirs(input_dir.as_ref(), &mut files).unwrap();
+
+    println!("{:?} - {:?}", input_dir.as_ref(), files);
 
     let output_file = output_file.as_ref();
 
@@ -25,7 +27,7 @@ pub fn run(input_dir: impl AsRef<Path>, output_file: impl AsRef<Path>) {
 
         match yaml {
             Ok(chip) => {
-                let chip = extract_chip_family(&chip, output_dir);
+                let chip = extract_chip_family(&chip, file.parent().unwrap(), output_dir);
                 configs.push(chip);
             }
             Err(e) => {
@@ -74,7 +76,9 @@ fn visit_dirs(dir: &Path, targets: &mut Vec<PathBuf>) -> io::Result<()> {
             if path.is_dir() {
                 visit_dirs(&path, targets)?;
             } else {
-                targets.push(path.to_owned());
+                if path.extension() == Some(OsStr::new("yaml")) {
+                    targets.push(path.to_owned());
+                }
             }
         }
     }
@@ -97,6 +101,7 @@ fn quote_option<T: quote::ToTokens>(option: Option<T>) -> proc_macro2::TokenStre
 /// Extracts a list of algorithm token streams from a yaml value.
 fn extract_algorithms(
     chip: &serde_yaml::Value,
+    algorithm_dir: &Path,
     output_dir: &Path,
 ) -> Vec<proc_macro2::TokenStream> {
     // Get an iterator over all the algorithms contained in the chip value obtained from the yaml file.
@@ -179,12 +184,15 @@ fn extract_algorithms(
             // write flash algorithm into separate file
 
             let mut algorithm_file_name = name.replace(" ", "_");
+            algorithm_file_name.push_str(".elf");
 
-            algorithm_file_name.push_str(".bin");
-
-            let algorithm_path = output_dir.join(&algorithm_file_name);
+            let algorithm_path = &PathBuf::from(std::env::current_dir().unwrap())
+                .join(algorithm_dir)
+                .join(&algorithm_file_name);
 
             fs::write(&algorithm_path, &instructions).unwrap();
+
+            let algorithm_path = algorithm_path.to_str().unwrap();
 
             // Quote the algorithm struct.
             let algorithm = quote::quote! {
@@ -192,7 +200,7 @@ fn extract_algorithms(
                     name: Cow::Borrowed(#name),
                     description: Cow::Borrowed(#description),
                     default: #default,
-                    instructions: Cow::Borrowed(include_bytes!(#algorithm_file_name)),
+                    instructions: Cow::Borrowed(include_bytes!(#algorithm_path)),
                     pc_init: #pc_init,
                     pc_uninit: #pc_uninit,
                     pc_program_page: #pc_program_page,
@@ -336,10 +344,11 @@ fn extract_variants(chip_family: &serde_yaml::Value) -> Vec<proc_macro2::TokenSt
 /// Extracts a chip family token stream from a yaml value.
 fn extract_chip_family(
     chip_family: &serde_yaml::Value,
+    algorithm_dir: &Path,
     output_dir: &Path,
 ) -> proc_macro2::TokenStream {
     // Extract all the algorithms into a Vec of TokenStreams.
-    let algorithms = extract_algorithms(&chip_family, output_dir);
+    let algorithms = extract_algorithms(&chip_family, algorithm_dir, output_dir);
 
     // Extract all the available variants into a Vec of TokenStreams.
     let variants = extract_variants(&chip_family);

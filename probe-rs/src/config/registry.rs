@@ -50,7 +50,7 @@ impl<R> From<TryLockError<R>> for RegistryError {
 const GENERIC_TARGETS: [ChipFamily; 6] = [
     ChipFamily {
         name: Cow::Borrowed("Generic Cortex-M0"),
-        vendor: jep106::JEP106Code::new(4, 59),
+        vendor: Some(jep106::JEP106Code::new(4, 59)),
         variants: Cow::Borrowed(&[Chip {
             name: Cow::Borrowed("cortex-m0"),
             part: None,
@@ -69,7 +69,7 @@ const GENERIC_TARGETS: [ChipFamily; 6] = [
     },
     ChipFamily {
         name: Cow::Borrowed("Generic Cortex-M4"),
-        vendor: jep106::JEP106Code::new(4, 59),
+        vendor: Some(jep106::JEP106Code::new(4, 59)),
         variants: Cow::Borrowed(&[Chip {
             name: Cow::Borrowed("cortex-m4"),
             part: None,
@@ -88,7 +88,7 @@ const GENERIC_TARGETS: [ChipFamily; 6] = [
     },
     ChipFamily {
         name: Cow::Borrowed("Generic Cortex-M3"),
-        vendor: jep106::JEP106Code::new(4, 59),
+        vendor: Some(jep106::JEP106Code::new(4, 59)),
         variants: Cow::Borrowed(&[Chip {
             name: Cow::Borrowed("cortex-m3"),
             part: None,
@@ -107,7 +107,7 @@ const GENERIC_TARGETS: [ChipFamily; 6] = [
     },
     ChipFamily {
         name: Cow::Borrowed("Generic Cortex-M33"),
-        vendor: jep106::JEP106Code::new(4, 59),
+        vendor: Some(jep106::JEP106Code::new(4, 59)),
         variants: Cow::Borrowed(&[Chip {
             name: Cow::Borrowed("cortex-m33"),
             part: None,
@@ -126,7 +126,7 @@ const GENERIC_TARGETS: [ChipFamily; 6] = [
     },
     ChipFamily {
         name: Cow::Borrowed("Generic Cortex-M7"),
-        vendor: jep106::JEP106Code::new(4, 59),
+        vendor: Some(jep106::JEP106Code::new(4, 59)),
         variants: Cow::Borrowed(&[Chip {
             name: Cow::Borrowed("cortex-m7"),
             part: None,
@@ -145,7 +145,7 @@ const GENERIC_TARGETS: [ChipFamily; 6] = [
     },
     ChipFamily {
         name: Cow::Borrowed("Generic Riscv"),
-        vendor: jep106::JEP106Code::new(4, 59),
+        vendor: Some(jep106::JEP106Code::new(4, 59)),
         variants: Cow::Borrowed(&[Chip {
             name: Cow::Borrowed("riscv"),
             part: None,
@@ -232,7 +232,7 @@ impl Registry {
                     let families = self
                         .families
                         .iter()
-                        .filter(|f| f.vendor == chip_info.manufacturer);
+                        .filter(|f| f.vendor == Some(chip_info.manufacturer));
 
                     let mut identified_chips = Vec::new();
 

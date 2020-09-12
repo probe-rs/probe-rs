@@ -45,7 +45,7 @@ impl Target {
             cores: chip
                 .cores
                 .iter()
-                .map::<CoreInfo, _>(|c| c.into_owned())
+                .map::<CoreInfo, _>(|c| c.clone().into_owned())
                 .collect(),
             memory_map: chip.memory_map.clone().into_owned(),
             architecture: chip.architecture,
