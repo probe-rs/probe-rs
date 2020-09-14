@@ -587,7 +587,7 @@ impl DebugProbe for JLink {
         Ok(())
     }
 
-    fn get_interface_jtag(
+    fn get_riscv_interface(
         self: Box<Self>,
     ) -> Result<Option<RiscvCommunicationInterface>, DebugProbeError> {
         if self.supported_protocols.contains(&WireProtocol::Jtag) {

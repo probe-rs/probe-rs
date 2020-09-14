@@ -1,16 +1,17 @@
 pub mod commands;
 pub mod tools;
 
-use crate::architecture::{
-    self,
-    arm::{
+use crate::{
+    architecture::arm::{
+        communication_interface::ArmProbeInterface,
         dp::{DPAccess, DPRegister, DebugPortError},
         swo::poll_interval_from_buf_size,
-        DAPAccess, DapError, PortType, SwoAccess, SwoConfig, SwoMode,
+        ArmCommunicationInterface, DAPAccess, DapError, PortType, SwoAccess, SwoConfig, SwoMode,
     },
+    probe::{daplink::commands::CmsisDapError, BatchCommand},
+    DebugProbe, DebugProbeError, DebugProbeSelector, Error as ProbeRsError, WireProtocol,
 };
-use crate::probe::{daplink::commands::CmsisDapError, BatchCommand};
-use crate::{DebugProbe, DebugProbeError, DebugProbeSelector, Error as ProbeRsError, WireProtocol};
+
 use commands::{
     general::{
         connect::{ConnectRequest, ConnectResponse},
@@ -31,19 +32,15 @@ use commands::{
         Ack, InnerTransferRequest, TransferBlockRequest, TransferBlockResponse, TransferRequest,
         TransferResponse, RW,
     },
-    Status,
+    DAPLinkDevice, Status,
 };
+
 use log::debug;
 
 use std::sync::Mutex;
 use std::time::Duration;
 
 use anyhow::anyhow;
-use architecture::{
-    arm::{communication_interface::ArmProbeInterface, ArmCommunicationInterface},
-    riscv::communication_interface::RiscvCommunicationInterface,
-};
-use commands::DAPLinkDevice;
 
 pub struct DAPLink {
     pub device: Mutex<DAPLinkDevice>,
@@ -529,12 +526,6 @@ impl DebugProbe for DAPLink {
         Ok(())
     }
 
-    fn get_interface_jtag(
-        self: Box<Self>,
-    ) -> Result<Option<RiscvCommunicationInterface>, DebugProbeError> {
-        Ok(None)
-    }
-
     fn get_interface_swo(&self) -> Option<&dyn SwoAccess> {
         Some(self as _)
     }
@@ -553,10 +544,6 @@ impl DebugProbe for DAPLink {
 
     fn has_arm_interface(&self) -> bool {
         true
-    }
-
-    fn has_riscv_interface(&self) -> bool {
-        false
     }
 }
 

@@ -378,7 +378,7 @@ impl Probe {
         if !self.attached {
             Err(DebugProbeError::NotAttached)
         } else {
-            self.inner.get_interface_jtag()
+            self.inner.get_riscv_interface()
         }
     }
 
@@ -444,21 +444,38 @@ pub trait DebugProbe: Send + Sync + fmt::Debug {
     fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError>;
 
     /// Check if the proble offers an interface to debug ARM chips.
-    fn has_arm_interface(&self) -> bool;
+    fn has_arm_interface(&self) -> bool {
+        false
+    }
 
+    /// Get the dedicated interface to debug ARM chips. Ensure that the
+    /// probe actually supports this by calling `has_arm_interface` first.
     fn get_arm_interface<'probe>(
         self: Box<Self>,
-    ) -> Result<Option<Box<dyn ArmProbeInterface + 'probe>>, DebugProbeError>;
+    ) -> Result<Option<Box<dyn ArmProbeInterface + 'probe>>, DebugProbeError> {
+        Ok(None)
+    }
 
-    fn get_interface_jtag(
+    /// Get the dedicated interface to debug RISCV chips. Ensure that the
+    /// probe actually supports this by calling `get_riscv_interface` first.
+    fn get_riscv_interface(
         self: Box<Self>,
-    ) -> Result<Option<RiscvCommunicationInterface>, DebugProbeError>;
+    ) -> Result<Option<RiscvCommunicationInterface>, DebugProbeError> {
+        Ok(None)
+    }
 
-    fn has_riscv_interface(&self) -> bool;
+    /// Check if the proble offers an interface to debug RISCV chips.
+    fn has_riscv_interface(&self) -> bool {
+        false
+    }
 
-    fn get_interface_swo(&self) -> Option<&dyn SwoAccess>;
+    fn get_interface_swo(&self) -> Option<&dyn SwoAccess> {
+        None
+    }
 
-    fn get_interface_swo_mut(&mut self) -> Option<&mut dyn SwoAccess>;
+    fn get_interface_swo_mut(&mut self) -> Option<&mut dyn SwoAccess> {
+        None
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -650,34 +667,6 @@ impl DebugProbe for FakeProbe {
 
     fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
         unimplemented!()
-    }
-
-    fn get_interface_jtag(
-        self: Box<Self>,
-    ) -> Result<Option<RiscvCommunicationInterface>, DebugProbeError> {
-        Ok(None)
-    }
-
-    fn get_interface_swo(&self) -> Option<&dyn SwoAccess> {
-        None
-    }
-
-    fn get_interface_swo_mut(&mut self) -> Option<&mut dyn SwoAccess> {
-        None
-    }
-
-    fn get_arm_interface<'probe>(
-        self: Box<Self>,
-    ) -> Result<Option<Box<dyn ArmProbeInterface + 'probe>>, DebugProbeError> {
-        Ok(None)
-    }
-
-    fn has_arm_interface(&self) -> bool {
-        false
-    }
-
-    fn has_riscv_interface(&self) -> bool {
-        false
     }
 }
 

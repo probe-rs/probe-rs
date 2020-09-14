@@ -5,18 +5,15 @@ mod usb_interface;
 use self::usb_interface::{STLinkUSBDevice, StLinkUsb};
 use super::{DAPAccess, DebugProbe, DebugProbeError, PortType, ProbeCreationError, WireProtocol};
 use crate::{
-    architecture::{
-        arm::{
-            ap::{
-                valid_access_ports, APAccess, APClass, APRegister, AccessPort, BaseaddrFormat,
-                GenericAP, MemoryAP, BASE, BASE2, CSW, IDR,
-            },
-            communication_interface::{ArmCommunicationInterfaceState, ArmProbeInterface},
-            dp::{DPAccess, DPBankSel, DPRegister, DebugPortError, Select},
-            memory::Component,
-            ApInformation, ArmChipInfo, SwoAccess, SwoConfig, SwoMode,
+    architecture::arm::{
+        ap::{
+            valid_access_ports, APAccess, APClass, APRegister, AccessPort, BaseaddrFormat,
+            GenericAP, MemoryAP, BASE, BASE2, CSW, IDR,
         },
-        riscv::communication_interface::RiscvCommunicationInterface,
+        communication_interface::{ArmCommunicationInterfaceState, ArmProbeInterface},
+        dp::{DPAccess, DPBankSel, DPRegister, DebugPortError, Select},
+        memory::Component,
+        ApInformation, ArmChipInfo, SwoAccess, SwoConfig, SwoMode,
     },
     DebugProbeSelector, Error as ProbeRsError, Memory, MemoryInterface, Probe,
 };
@@ -225,12 +222,6 @@ impl DebugProbe for STLink<STLinkUSBDevice> {
         Ok(())
     }
 
-    fn get_interface_jtag(
-        self: Box<Self>,
-    ) -> Result<Option<RiscvCommunicationInterface>, DebugProbeError> {
-        Ok(None)
-    }
-
     fn get_interface_swo(&self) -> Option<&dyn SwoAccess> {
         Some(self as _)
     }
@@ -249,10 +240,6 @@ impl DebugProbe for STLink<STLinkUSBDevice> {
 
     fn has_arm_interface(&self) -> bool {
         true
-    }
-
-    fn has_riscv_interface(&self) -> bool {
-        false
     }
 }
 

@@ -1,6 +1,4 @@
-use crate::architecture::{
-    arm::SwoAccess, riscv::communication_interface::RiscvCommunicationInterface,
-};
+use crate::architecture::riscv::communication_interface::RiscvCommunicationInterface;
 use crate::probe::{JTAGAccess, ProbeCreationError};
 use crate::{
     DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, DebugProbeType, WireProtocol,
@@ -496,33 +494,10 @@ impl DebugProbe for FtdiProbe {
         }
     }
 
-    fn get_interface_jtag(
+    fn get_riscv_interface(
         self: Box<Self>,
     ) -> Result<Option<RiscvCommunicationInterface>, DebugProbeError> {
         Ok(Some(RiscvCommunicationInterface::new(self)?))
-    }
-
-    fn get_interface_swo(&self) -> Option<&dyn SwoAccess> {
-        None
-    }
-
-    fn get_interface_swo_mut(&mut self) -> Option<&mut dyn SwoAccess> {
-        None
-    }
-
-    fn has_arm_interface(&self) -> bool {
-        false
-    }
-
-    fn get_arm_interface<'probe>(
-        self: Box<Self>,
-    ) -> Result<
-        Option<
-            Box<dyn crate::architecture::arm::communication_interface::ArmProbeInterface + 'probe>,
-        >,
-        DebugProbeError,
-    > {
-        Ok(None)
     }
 
     fn has_riscv_interface(&self) -> bool {
