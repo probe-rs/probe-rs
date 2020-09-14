@@ -14,6 +14,8 @@ struct CLI {
     address: u32,
     #[structopt(long = "size")]
     size: usize,
+    #[structopt(long = "speed")]
+    speed: Option<u32>,
     #[structopt(long = "protocol")]
     protocol: Option<String>,
 }
@@ -42,6 +44,13 @@ fn main() -> Result<(), &'static str> {
     probe
         .select_protocol(protocol)
         .map_err(|_| "Failed to select SWD as the transport protocol")?;
+
+    if let Some(speed) = matches.speed {
+        probe
+            .set_speed(speed)
+            .map_err(|_| "Failed to set probe speed")?;
+    }
+
     let mut session = probe
         .attach(target_selector)
         .map_err(|_| "Failed to attach probe to target")?;
@@ -94,9 +103,19 @@ fn main() -> Result<(), &'static str> {
     );
 
     if sample_data != readback_data {
+        let mismatch = sample_data
+            .iter()
+            .zip(readback_data.iter())
+            .position(|(sample, readback)| sample != readback);
+
         eprintln!("Verification failed!");
-        eprintln!("Wrote: {:?}", &sample_data[..]);
-        eprintln!("Read: {:?}", &readback_data[..]);
+
+        if let Some(mismatch) = mismatch {
+            eprintln!(
+                "Readback data differs at address {:08x}: expected word {:08x}, got word {:08x}",
+                matches.address, sample_data[mismatch], readback_data[mismatch]
+            );
+        }
     } else {
         println!("Verification succesful.");
     }
