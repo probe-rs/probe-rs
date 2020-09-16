@@ -313,7 +313,7 @@ impl DAPAccess for STLink<STLinkUSBDevice> {
             let mut buf = [0; 2];
             self.send_jtag_command(cmd, &[], &mut buf, TIMEOUT)?;
 
-            // Ensure the write is actually performed
+            // Ensure the write is actually performed.
             self.flush()?;
 
             Ok(())
@@ -808,7 +808,7 @@ impl<D: StLinkUsb> STLink<D> {
             address,
             length
         );
-        // Maximum supported read length is 2^16 bytes
+        // Maximum supported read length is 2^16 bytes.
         assert!(
             length < (u16::MAX / 4),
             "Maximum read length for STLink is 16'384 words"
@@ -839,7 +839,6 @@ impl<D: StLinkUsb> STLink<D> {
             TIMEOUT,
         )?;
 
-        // get last RW status
         self.get_last_rw_status()?;
 
         let words: Vec<u32> = receive_buffer
@@ -876,7 +875,6 @@ impl<D: StLinkUsb> STLink<D> {
             TIMEOUT,
         )?;
 
-        // get last RW status
         self.get_last_rw_status()?;
 
         Ok(receive_buffer)
@@ -891,7 +889,7 @@ impl<D: StLinkUsb> STLink<D> {
         log::trace!("write_mem_32bit");
         let length = data.len();
 
-        // Maximum supported read length is 2^16 bytes
+        // Maximum supported read length is 2^16 bytes.
         assert!(
             length < (u16::MAX / 4) as usize,
             "Maximum write length for STLink is 16'384 words"
@@ -930,7 +928,6 @@ impl<D: StLinkUsb> STLink<D> {
             TIMEOUT,
         )?;
 
-        // get last RW status
         self.get_last_rw_status()?;
 
         Ok(())
@@ -964,7 +961,6 @@ impl<D: StLinkUsb> STLink<D> {
             TIMEOUT,
         )?;
 
-        // get last RW status
         self.get_last_rw_status()?;
 
         Ok(())
@@ -1111,7 +1107,7 @@ impl StlinkArmDebug {
     fn new(probe: Box<STLink<STLinkUSBDevice>>) -> Result<Self, DebugProbeError> {
         let state = ArmCommunicationInterfaceState::new();
 
-        /* determine the number and type of available APs */
+        // Determine the number and type of available APs.
 
         let mut interface = Self { probe, state };
 
@@ -1158,7 +1154,7 @@ impl StlinkArmDebug {
                 base_address
             );
 
-            // Ensure if we can access this AP
+            // Ensure that we can access this AP.
             let status = self.read_ap_register(access_port, CSW::default())?;
 
             log::debug!("AP {} - {:?}", access_port.port_number(), status);
@@ -1260,7 +1256,7 @@ impl StlinkArmDebug {
     }
 
     fn select_ap(&mut self, port: impl AccessPort) -> Result<(), DebugProbeError> {
-        // Change AP, leave ap_bank_sel the same
+        // Change AP, leave ap_bank_sel the same.
         self.probe.select_ap(port.port_number())?;
 
         // if self.state.current_apsel != port.port_number() {
@@ -1467,13 +1463,6 @@ impl<'probe> ArmProbeInterface for StlinkArmDebug {
                 }
             }
         }
-        // log::info!(
-        //     "{}\n{}\n{}\n{}",
-        //     "If you are using a Nordic chip, it might be locked to debug access".yellow(),
-        //     "Run cargo flash with --nrf-recover to unlock".yellow(),
-        //     "WARNING: --nrf-recover will erase the entire code".yellow(),
-        //     "flash and UICR area of the device, in addition to the entire RAM".yellow()
-        // );
 
         Ok(None)
     }
@@ -1557,7 +1546,6 @@ impl MemoryInterface for StLinkMemoryInterface<'_> {
     fn read_word_32(&mut self, address: u32) -> Result<u32, ProbeRsError> {
         self.probe.select_ap(self.access_port)?;
 
-        //let value = self.probe.probe.read_debug_reg(address)?;
         let mut buff = [0];
         self.read_32(address, &mut buff)?;
 
@@ -1636,7 +1624,7 @@ impl MemoryInterface for StLinkMemoryInterface<'_> {
                 .probe
                 .write_mem_8bit(address, data, self.access_port.port_number())?;
         } else {
-            // Handle unaligned data in the beginning
+            // Handle unaligned data in the beginning.
             let bytes_beginning = if address % 4 == 0 {
                 0
             } else {
@@ -1660,7 +1648,7 @@ impl MemoryInterface for StLinkMemoryInterface<'_> {
                 current_address += bytes_beginning as u32;
             }
 
-            // Address has to be aligned here
+            // Address has to be aligned here.
             assert!(current_address % 4 == 0);
 
             // Convert bytes to u32
@@ -1698,7 +1686,6 @@ impl MemoryInterface for StLinkMemoryInterface<'_> {
                     self.access_port.port_number(),
                 )?;
 
-                // current_address += bytes_beginning as u32;
             }
         }
         Ok(())
@@ -1710,21 +1697,6 @@ impl MemoryInterface for StLinkMemoryInterface<'_> {
         Ok(())
     }
 
-    /*
-
-    fn read_core_reg(&mut self, index: u32) -> Result<u32, ProbeRsError> {
-        let val = self.probe.probe.read_core_reg(index)?;
-
-        Ok(val)
-    }
-
-    fn write_core_reg(&mut self, index: u32, value: u32) -> Result<(), ProbeRsError> {
-        self.probe.probe.write_core_reg(index, value)?;
-
-        Ok(())
-    }
-
-    */
 }
 
 #[cfg(test)]
