@@ -603,21 +603,21 @@ impl DPAccess for ArmCommunicationInterface {
 
 impl SwoAccess for ArmCommunicationInterface {
     fn enable_swo(&mut self, config: &SwoConfig) -> Result<(), ProbeRsError> {
-        match self.probe.get_interface_swo_mut() {
+        match self.probe.get_swo_interface_mut() {
             Some(interface) => interface.enable_swo(config),
             None => Err(ProbeRsError::ArchitectureRequired(&["ARMv7", "ARMv8"])),
         }
     }
 
     fn disable_swo(&mut self) -> Result<(), ProbeRsError> {
-        match self.probe.get_interface_swo_mut() {
+        match self.probe.get_swo_interface_mut() {
             Some(interface) => interface.disable_swo(),
             None => Err(ProbeRsError::ArchitectureRequired(&["ARMv7", "ARMv8"])),
         }
     }
 
     fn read_swo_timeout(&mut self, timeout: Duration) -> Result<Vec<u8>, ProbeRsError> {
-        match self.probe.get_interface_swo_mut() {
+        match self.probe.get_swo_interface_mut() {
             Some(interface) => interface.read_swo_timeout(timeout),
             None => Err(ProbeRsError::ArchitectureRequired(&["ARMv7", "ARMv8"])),
         }

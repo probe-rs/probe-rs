@@ -597,11 +597,11 @@ impl DebugProbe for JLink {
         }
     }
 
-    fn get_interface_swo(&self) -> Option<&dyn SwoAccess> {
+    fn get_swo_interface(&self) -> Option<&dyn SwoAccess> {
         Some(self as _)
     }
 
-    fn get_interface_swo_mut(&mut self) -> Option<&mut dyn SwoAccess> {
+    fn get_swo_interface_mut(&mut self) -> Option<&mut dyn SwoAccess> {
         Some(self as _)
     }
 

@@ -382,12 +382,12 @@ impl Probe {
         }
     }
 
-    pub fn get_interface_swo(&self) -> Option<&dyn SwoAccess> {
-        self.inner.get_interface_swo()
+    pub fn get_swo_interface(&self) -> Option<&dyn SwoAccess> {
+        self.inner.get_swo_interface()
     }
 
-    pub fn get_interface_swo_mut(&mut self) -> Option<&mut dyn SwoAccess> {
-        self.inner.get_interface_swo_mut()
+    pub fn get_swo_interface_mut(&mut self) -> Option<&mut dyn SwoAccess> {
+        self.inner.get_swo_interface_mut()
     }
 }
 
@@ -469,11 +469,11 @@ pub trait DebugProbe: Send + Sync + fmt::Debug {
         false
     }
 
-    fn get_interface_swo(&self) -> Option<&dyn SwoAccess> {
+    fn get_swo_interface(&self) -> Option<&dyn SwoAccess> {
         None
     }
 
-    fn get_interface_swo_mut(&mut self) -> Option<&mut dyn SwoAccess> {
+    fn get_swo_interface_mut(&mut self) -> Option<&mut dyn SwoAccess> {
         None
     }
 }
