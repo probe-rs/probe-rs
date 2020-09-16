@@ -646,7 +646,10 @@ fn backtrace(
             // this means there was no DWARF info associated to this PC; the PC could point into
             // external assembly or external C code. Fall back to a symtab lookup
             let map = elf.symbol_map();
-            if let Some(name) = map.get(pc as u64).and_then(|symbol| symbol.name()) {
+            // confusingly enough the addresses in the `.symtab` do have their thumb bit set to 1
+            // so set it back before the lookup
+            let addr = (pc | THUMB_BIT) as u64;
+            if let Some(name) = map.get(addr).and_then(|symbol| symbol.name()) {
                 println!("{:>4}: {}", frame_index, name);
             } else {
                 println!("{:>4}: <unknown> @ {:#012x}", frame_index, pc);
