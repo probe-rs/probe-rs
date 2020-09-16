@@ -243,7 +243,6 @@ impl DebugProbe for STLink<STLinkUSBDevice> {
         self: Box<Self>,
     ) -> Result<Option<Box<dyn ArmProbeInterface + 'probe>>, DebugProbeError> {
         let interface = StlinkArmDebug::new(self)?;
-        //let interface = ArmCommunicationInterface::new(self, state)?;
 
         Ok(Some(Box::new(interface)))
     }
@@ -942,7 +941,17 @@ impl<D: StLinkUsb> STLink<D> {
         log::trace!("write_mem_8bit");
         let byte_length = data.len();
 
-        assert!(byte_length <= 64); // 64 byte for stlinkv2, 512 for stlinkv3
+        if self.hw_version < 3 {
+            assert!(
+                byte_length <= 64,
+                "8-Bit writes are limited to 64 bytes on ST-Link v2"
+            );
+        } else {
+            assert!(
+                byte_length <= 512,
+                "8-Bit writes are limited to 512 bytes on ST-Link v3"
+            );
+        }
 
         self.device.write(
             &[
@@ -1258,24 +1267,6 @@ impl StlinkArmDebug {
     fn select_ap(&mut self, port: impl AccessPort) -> Result<(), DebugProbeError> {
         // Change AP, leave ap_bank_sel the same.
         self.probe.select_ap(port.port_number())?;
-
-        // if self.state.current_apsel != port.port_number() {
-        //     self.state.current_apsel = port.port_number();
-
-        //     let mut select = Select(0);
-
-        //     log::debug!(
-        //         "Changing AP to {}, AP_BANK_SEL to {}",
-        //         self.state.current_apsel,
-        //         self.state.current_apbanksel
-        //     );
-
-        //     select.set_ap_sel(self.state.current_apsel);
-        //     select.set_ap_bank_sel(self.state.current_apbanksel);
-        //     select.set_dp_bank_sel(self.state.current_dpbanksel);
-
-        //     self.write_dp_register(select)?;
-        // }
 
         Ok(())
     }
@@ -1615,7 +1606,11 @@ impl MemoryInterface for StLinkMemoryInterface<'_> {
     fn write_8(&mut self, address: u32, data: &[u8]) -> Result<(), ProbeRsError> {
         self.probe.select_ap(self.access_port)?;
 
-        let chunk_size = 64;
+        let chunk_size = if self.probe.probe.hw_version < 3 {
+            64
+        } else {
+            512
+        };
 
         // If we write less than 64 bytes, just write it directly
         if data.len() < chunk_size {
@@ -1685,7 +1680,6 @@ impl MemoryInterface for StLinkMemoryInterface<'_> {
                     remaining_bytes,
                     self.access_port.port_number(),
                 )?;
-
             }
         }
         Ok(())
@@ -1696,7 +1690,6 @@ impl MemoryInterface for StLinkMemoryInterface<'_> {
 
         Ok(())
     }
-
 }
 
 #[cfg(test)]
@@ -1782,7 +1775,7 @@ mod test {
             _read_data: &mut [u8],
             _timeout: std::time::Duration,
         ) -> Result<usize, DebugProbeError> {
-            todo!()
+            unimplemented!("Not implemented for MockUSB")
         }
     }
 
