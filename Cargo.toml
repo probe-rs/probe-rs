@@ -24,6 +24,7 @@ probe-rs-rtt = "0.3.0"
 rustc-demangle = "0.1.16"
 structopt = "0.3.15"
 object = "0.21.1"
+intervaltree = "0.2.6"
 
 [features]
 defmt = ["defmt-elf2table", "defmt-decoder"]

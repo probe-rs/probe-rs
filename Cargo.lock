@@ -404,6 +404,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "intervaltree"
+version = "0.2.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "566d5aa3b5cc5c5809cc1a9c9588d917a634248bfc58f7ea14e354e71595a32c"
+dependencies = [
+ "smallvec",
+]
+
+[[package]]
 name = "jaylink"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -608,6 +617,7 @@ dependencies = [
  "defmt-decoder",
  "defmt-elf2table",
  "gimli 0.22.0",
+ "intervaltree",
  "log",
  "object 0.21.1",
  "probe-rs",
@@ -803,6 +813,12 @@ dependencies = [
  "arc-swap",
  "libc",
 ]
+
+[[package]]
+name = "smallvec"
+version = "1.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fbee7696b84bbf3d89a1c2eccff0850e3047ed46bfcd2e92c29a2d074d57e252"
 
 [[package]]
 name = "stable_deref_trait"

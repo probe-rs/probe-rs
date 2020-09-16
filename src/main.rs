@@ -1,14 +1,14 @@
 mod logger;
+mod pc2frames;
 
 use core::{
     cmp,
     convert::TryInto,
     mem,
-    ops::Range,
     sync::atomic::{AtomicBool, Ordering},
 };
 use std::{
-    collections::{btree_map, BTreeMap},
+    collections::{btree_map, BTreeMap, HashSet},
     fs,
     io::{self, Write as _},
     path::PathBuf,
@@ -26,7 +26,7 @@ use gimli::{
 };
 use object::{
     read::{File as ElfFile, Object as _, ObjectSection as _},
-    SectionIndex,
+    SymbolSection,
 };
 use probe_rs::config::{registry, MemoryRegion, RamRegion};
 use probe_rs::{
@@ -122,13 +122,6 @@ fn notmain() -> Result<i32, anyhow::Error> {
             ram.range.end - 1
         );
     }
-
-    let text = elf.section_by_name(".text").ok_or_else(|| {
-        anyhow!(
-            "`.text` section is missing, please make sure that the linker script was passed to the \
-            linker (check `.cargo/config.toml` and the `RUSTFLAGS` variable)"
-        )
-    })?;
 
     #[cfg(feature = "defmt")]
     let (table, locs) = {
@@ -228,7 +221,31 @@ fn notmain() -> Result<i32, anyhow::Error> {
         }
     }
 
-    let (range_names, rtt_addr, uses_heap) = range_names_from(&elf, text.index())?;
+    let text = elf
+        .section_by_name(".text")
+        .map(|section| section.index())
+        .ok_or_else(|| {
+            anyhow!(
+            "`.text` section is missing, please make sure that the linker script was passed to the \
+            linker (check `.cargo/config.toml` and the `RUSTFLAGS` variable)"
+        )
+        })?;
+
+    let live_functions = elf
+        .symbol_map()
+        .symbols()
+        .iter()
+        .filter_map(|sym| {
+            if sym.section() == SymbolSection::Section(text) {
+                sym.name()
+            } else {
+                None
+            }
+        })
+        .collect::<HashSet<_>>();
+
+    let pc2frames = pc2frames::from(&elf, &live_functions)?;
+    let (rtt_addr, uses_heap) = rtt_and_heap_info_from(&elf)?;
 
     let vector_table = vector_table.ok_or_else(|| anyhow!("`.vector_table` section is missing"))?;
     log::debug!("vector table: {:x?}", vector_table);
@@ -454,7 +471,8 @@ fn notmain() -> Result<i32, anyhow::Error> {
         &mut core,
         pc,
         debug_frame,
-        &range_names,
+        &elf,
+        &pc2frames,
         &vector_table,
         &sp_ram_region,
     )?;
@@ -598,7 +616,8 @@ fn backtrace(
     core: &mut Core<'_>,
     mut pc: u32,
     debug_frame: &[u8],
-    range_names: &RangeNames,
+    elf: &ElfFile,
+    pc2frames: &pc2frames::Map,
     vector_table: &VectorTable,
     sp_ram_region: &Option<RamRegion>,
 ) -> Result<Option<TopException>, anyhow::Error> {
@@ -614,23 +633,31 @@ fn backtrace(
     let ctx = &mut UninitializedUnwindContext::new();
 
     let mut top_exception = None;
-    let mut frame = 0;
+    let mut frame_index = 0;
     let mut registers = Registers::new(lr, sp, core);
     println!("stack backtrace:");
     loop {
-        let name = range_names
-            .binary_search_by(|rn| {
-                if rn.0.contains(&pc) {
-                    cmp::Ordering::Equal
-                } else if pc < rn.0.start {
-                    cmp::Ordering::Greater
-                } else {
-                    cmp::Ordering::Less
-                }
-            })
-            .map(|idx| &*range_names[idx].1)
-            .unwrap_or("<unknown>");
-        println!("{:>4}: {:#010x} - {}", frame, pc, name);
+        let mut frames = pc2frames.query_point(pc as u64).collect::<Vec<_>>();
+        // `IntervalTree` docs don't specify the order of the elements returned by `query_point` so
+        // we sort them by depth before printing
+        frames.sort_by_key(|frame| -frame.value.depth);
+
+        if frames.is_empty() {
+            // this means there was no DWARF info associated to this PC; the PC could point into
+            // external assembly or external C code. Fall back to a symtab lookup
+            let map = elf.symbol_map();
+            if let Some(name) = map.get(pc as u64).and_then(|symbol| symbol.name()) {
+                println!("{:>4}: {}", frame_index, name);
+            } else {
+                println!("{:>4}: <unknown> @ {:#012x}", frame_index, pc);
+            }
+            frame_index += 1;
+        } else {
+            for frame in frames {
+                println!("{:>4}: {}", frame_index, frame.value.name);
+                frame_index += 1;
+            }
+        }
 
         // on hard fault exception entry we hit the breakpoint before the subroutine prelude (`push
         // lr`) is executed so special handling is required
@@ -708,8 +735,6 @@ fn backtrace(
             }
             pc = lr & !THUMB_BIT;
         }
-
-        frame += 1;
     }
 
     Ok(top_exception)
@@ -853,15 +878,10 @@ impl Stacked {
         num_words as u32 * 4
     }
 }
-// FIXME this might already exist in the DWARF data; we should just use that
-/// Map from PC ranges to demangled Rust names
-type RangeNames = Vec<(Range<u32>, String)>;
 
-fn range_names_from(
+fn rtt_and_heap_info_from(
     elf: &ElfFile,
-    text: SectionIndex,
-) -> Result<(RangeNames, Option<u32>, bool /* uses heap */), anyhow::Error> {
-    let mut range_names = vec![];
+) -> Result<(Option<u32>, bool /* uses heap */), anyhow::Error> {
     let mut rtt = None;
     let mut uses_heap = false;
 
@@ -879,29 +899,9 @@ fn range_names_from(
             }
             _ => {}
         }
-
-        if symbol.section_index() == Some(text) && symbol.size() > 0 {
-            let mut name = rustc_demangle::demangle(name).to_string();
-            // clear the thumb bit
-            let start = symbol.address() as u32 & !1;
-
-            // strip the hash (e.g. `::hd881d91ced85c2b0`)
-            let hash_len = "::hd881d91ced85c2b0".len();
-            if let Some(pos) = name.len().checked_sub(hash_len) {
-                let maybe_hash = &name[pos..];
-                if maybe_hash.starts_with("::h") {
-                    // FIXME avoid this allocation
-                    name = name[..pos].to_string();
-                }
-            }
-
-            range_names.push((start..start + symbol.size() as u32, name));
-        }
     }
 
-    range_names.sort_unstable_by(|a, b| a.0.start.cmp(&b.0.start));
-
-    Ok((range_names, rtt, uses_heap))
+    Ok((rtt, uses_heap))
 }
 
 const LR: CoreRegisterAddress = CoreRegisterAddress(14);
