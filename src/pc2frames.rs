@@ -8,8 +8,6 @@ use object::{Object as _, ObjectSection as _};
 
 pub type Map = IntervalTree<u64, Frame>;
 
-// output - locations
-// <PC range> -> [{ Option<name>, file-line }]
 pub fn from(object: &object::File, live_functions: &HashSet<&str>) -> Result<Map, anyhow::Error> {
     let endian = if object.is_little_endian() {
         gimli::RunTimeEndian::Little
@@ -95,6 +93,10 @@ pub fn from(object: &object::File, live_functions: &HashSet<&str>) -> Result<Map
                             depth,
                         },
                     })
+                } else if entry.tag() == gimli::constants::DW_TAG_lexical_block
+                    || entry.tag() == gimli::constants::DW_TAG_variable
+                {
+                    // TODO extract more fine grained (statement-level) location information
                 }
             }
         }
