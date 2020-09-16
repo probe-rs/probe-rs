@@ -11,7 +11,7 @@ use std::{
     collections::{btree_map, BTreeMap, HashSet},
     fs,
     io::{self, Write as _},
-    path::PathBuf,
+    path::{Path, PathBuf},
     process,
     sync::{Arc, Mutex},
     time::Duration,
@@ -355,7 +355,6 @@ fn notmain() -> Result<i32, anyhow::Error> {
     #[cfg(feature = "defmt")]
     let mut frames = vec![];
     let mut was_halted = false;
-    #[cfg(feature = "defmt")]
     let current_dir = std::env::current_dir()?;
     // TODO strip prefix from crates-io paths (?)
     while !exit.load(Ordering::Relaxed) {
@@ -475,6 +474,7 @@ fn notmain() -> Result<i32, anyhow::Error> {
         &pc2frames,
         &vector_table,
         &sp_ram_region,
+        &current_dir,
     )?;
 
     core.reset_and_halt(TIMEOUT)?;
@@ -620,6 +620,7 @@ fn backtrace(
     pc2frames: &pc2frames::Map,
     vector_table: &VectorTable,
     sp_ram_region: &Option<RamRegion>,
+    current_dir: &Path,
 ) -> Result<Option<TopException>, anyhow::Error> {
     let mut debug_frame = DebugFrame::new(debug_frame, LittleEndian);
     // 32-bit ARM -- this defaults to the host's address size which is likely going to be 8
@@ -654,10 +655,30 @@ fn backtrace(
             } else {
                 println!("{:>4}: <unknown> @ {:#012x}", frame_index, pc);
             }
+            // XXX is there no location info for external assembly?
+            println!("        at ???");
             frame_index += 1;
         } else {
+            let mut call_loc: Option<&pc2frames::Location> = None;
+            // this iterates in the "callee to caller" direction
             for frame in frames {
                 println!("{:>4}: {}", frame_index, frame.value.name);
+                
+                // call location is more precise; prefer that
+                let loc = call_loc.unwrap_or_else(|| {
+                    &frame.value.decl_loc
+                });
+
+                let relpath = if let Ok(relpath) = loc.file.strip_prefix(&current_dir) {
+                    relpath
+                } else {
+                    // not relative; use full path
+                    &loc.file
+                };
+                println!("        at {}:{}", relpath.display(), loc.line);
+
+                // this is from where the caller (next iteration) called the callee (current iteration)
+                call_loc = frame.value.call_loc.as_ref();
                 frame_index += 1;
             }
         }

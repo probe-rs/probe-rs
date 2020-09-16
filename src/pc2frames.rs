@@ -1,7 +1,11 @@
 use core::{iter::FromIterator, ops::Range};
-use std::{borrow::Cow, collections::HashSet};
+use std::{
+    borrow::Cow,
+    collections::HashSet,
+    path::{Path, PathBuf},
+};
 
-use anyhow::ensure;
+use anyhow::{bail, ensure};
 use gimli::{read::Reader, DebuggingInformationEntry, Dwarf, Unit};
 use intervaltree::{Element, IntervalTree};
 use object::{Object as _, ObjectSection as _};
@@ -70,7 +74,15 @@ pub fn from(object: &object::File, live_functions: &HashSet<&str>) -> Result<Map
                             let name = demangle(&sub.name);
                             elements.push(Element {
                                 range,
-                                value: Frame { name, depth },
+                                value: Frame {
+                                    name,
+                                    depth,
+                                    call_loc: None,
+                                    decl_loc: Location {
+                                        file: file_index_to_path(sub.decl_file, &unit, &dwarf)?,
+                                        line: sub.decl_line,
+                                    },
+                                },
                             });
                         } else {
                             // we won't walk into subprograms that are were GC-ed by the linker
@@ -91,6 +103,18 @@ pub fn from(object: &object::File, live_functions: &HashSet<&str>) -> Result<Map
                         value: Frame {
                             name: demangle(&inline_sub.origin.name),
                             depth,
+                            call_loc: Some(Location {
+                                file: file_index_to_path(inline_sub.call_file, &unit, &dwarf)?,
+                                line: inline_sub.call_line,
+                            }),
+                            decl_loc: Location {
+                                file: file_index_to_path(
+                                    inline_sub.origin.decl_file,
+                                    &unit,
+                                    &dwarf,
+                                )?,
+                                line: inline_sub.origin.decl_line,
+                            },
                         },
                     })
                 } else if entry.tag() == gimli::constants::DW_TAG_lexical_block
@@ -111,7 +135,14 @@ pub struct Frame {
     pub name: String,
     // depth in the DIE tree
     pub depth: isize,
-    // TODO add file location
+    pub call_loc: Option<Location>,
+    pub decl_loc: Location,
+}
+
+#[derive(Debug)]
+pub struct Location {
+    pub file: PathBuf,
+    pub line: u64,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -126,9 +157,8 @@ struct Subprogram {
     depth: isize,
     name: String,
     span: Span,
-    // NOTE the DIE contains `decl_file` and `decl_line` info but those points into
-    // the *declaration* of the function, e.g. `fn foo() {`, which is not particularly useful.
-    // We are more interested in the location of the statements within the function
+    decl_file: u64,
+    decl_line: u64,
 }
 
 impl Subprogram {
@@ -150,6 +180,8 @@ impl Subprogram {
         let mut low_pc = None;
         let mut name = None;
         let mut pc_offset = None;
+        let mut decl_file = None;
+        let mut decl_line = None;
         while let Some(attr) = attrs.next()? {
             match attr.name() {
                 gimli::constants::DW_AT_low_pc => {
@@ -188,12 +220,26 @@ impl Subprogram {
                     }
                 }
 
+                gimli::constants::DW_AT_decl_file => {
+                    if let gimli::AttributeValue::FileIndex(idx) = attr.value() {
+                        decl_file = Some(idx);
+                    }
+                }
+
+                gimli::constants::DW_AT_decl_line => {
+                    if let gimli::AttributeValue::Udata(line) = attr.value() {
+                        decl_line = Some(line);
+                    }
+                }
+
                 _ => {}
             }
         }
 
         if let Some(off) = linkage_name.or(name) {
             let name = dwarf.string(off)?.to_string()?.into_owned();
+            let decl_file = decl_file.expect("no `decl_file`");
+            let decl_line = decl_line.expect("no `decl_line`");
 
             Ok(Some(Subprogram {
                 depth,
@@ -205,6 +251,8 @@ impl Subprogram {
                     Span::Pc(low_pc..(low_pc + pc_off))
                 },
                 name,
+                decl_file,
+                decl_line,
             }))
         } else {
             // TODO what are these nameless subroutines? They seem to have "abstract origin" info
@@ -322,4 +370,50 @@ fn demangle(function: &str) -> String {
     }
 
     demangled
+}
+
+// XXX copy-pasted from defmt/elf2table :sadface:
+fn file_index_to_path<R>(
+    index: u64,
+    unit: &gimli::Unit<R>,
+    dwarf: &gimli::Dwarf<R>,
+) -> Result<PathBuf, anyhow::Error>
+where
+    R: gimli::read::Reader,
+{
+    ensure!(index != 0, "`FileIndex` was zero");
+
+    let header = if let Some(program) = &unit.line_program {
+        program.header()
+    } else {
+        bail!("no `LineProgram`");
+    };
+
+    let file = if let Some(file) = header.file(index) {
+        file
+    } else {
+        bail!("no `FileEntry` for index {}", index)
+    };
+
+    let mut p = PathBuf::new();
+    if let Some(dir) = file.directory(header) {
+        let dir = dwarf.attr_string(unit, dir)?;
+        let dir_s = dir.to_string_lossy()?;
+        let dir = Path::new(&dir_s[..]);
+
+        if !dir.is_absolute() {
+            if let Some(ref comp_dir) = unit.comp_dir {
+                p.push(&comp_dir.to_string_lossy()?[..]);
+            }
+        }
+        p.push(&dir);
+    }
+
+    p.push(
+        &dwarf
+            .attr_string(unit, file.path_name())?
+            .to_string_lossy()?[..],
+    );
+
+    Ok(p)
 }
