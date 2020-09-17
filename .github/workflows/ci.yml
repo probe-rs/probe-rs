@@ -107,6 +107,12 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
+          args: --all-features
+      
+      - name: Build with default features
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
 
   fmt:
     name: Rustfmt
