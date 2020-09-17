@@ -687,8 +687,10 @@ fn backtrace(
             }
         } else {
             // .symtab fallback
-            // confusingly enough the addresses in the `.symtab` do have their thumb bit set to 1
-            // so set it back before the lookup
+            // the .symtab appears to use address ranges that have their thumb bits set (e.g.
+            // `0x101..0x200`). Passing the `pc` with the thumb bit cleared (e.g. `0x100`) to the
+            // lookup function sometimes returns the *previous* symbol. Work around the issue by
+            // setting `pc`'s thumb bit before looking it up
             let address = (pc | THUMB_BIT) as u64;
             let name = symtab
                 .get(address)
