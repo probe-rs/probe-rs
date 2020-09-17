@@ -124,6 +124,17 @@ fn notmain() -> Result<i32, anyhow::Error> {
         );
     }
 
+    // NOTE we want to raise the linking error before calling `defmt_elf2table::parse`
+    let text = elf
+        .section_by_name(".text")
+        .map(|section| section.index())
+        .ok_or_else(|| {
+            anyhow!(
+            "`.text` section is missing, please make sure that the linker script was passed to the \
+            linker (check `.cargo/config.toml` and the `RUSTFLAGS` variable)"
+        )
+        })?;
+
     #[cfg(feature = "defmt")]
     let (table, locs) = {
         let table = defmt_elf2table::parse(&bytes)?;
@@ -221,16 +232,6 @@ fn notmain() -> Result<i32, anyhow::Error> {
             }
         }
     }
-
-    let text = elf
-        .section_by_name(".text")
-        .map(|section| section.index())
-        .ok_or_else(|| {
-            anyhow!(
-            "`.text` section is missing, please make sure that the linker script was passed to the \
-            linker (check `.cargo/config.toml` and the `RUSTFLAGS` variable)"
-        )
-        })?;
 
     let live_functions = elf
         .symbol_map()
