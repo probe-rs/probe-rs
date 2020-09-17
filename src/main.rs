@@ -1,5 +1,4 @@
 mod logger;
-mod pc2frames;
 
 use core::{
     cmp,
@@ -8,6 +7,7 @@ use core::{
     sync::atomic::{AtomicBool, Ordering},
 };
 use std::{
+    borrow::Cow,
     collections::{btree_map, BTreeMap, HashSet},
     fs,
     io::{self, Write as _},
@@ -17,6 +17,7 @@ use std::{
     time::Duration,
 };
 
+use addr2line::fallible_iterator::FallibleIterator as _;
 use anyhow::{anyhow, bail, Context};
 use arrayref::array_ref;
 use colored::Colorize as _;
@@ -244,7 +245,6 @@ fn notmain() -> Result<i32, anyhow::Error> {
         })
         .collect::<HashSet<_>>();
 
-    let pc2frames = pc2frames::from(&elf, &live_functions)?;
     let (rtt_addr, uses_heap) = rtt_and_heap_info_from(&elf)?;
 
     let vector_table = vector_table.ok_or_else(|| anyhow!("`.vector_table` section is missing"))?;
@@ -471,9 +471,9 @@ fn notmain() -> Result<i32, anyhow::Error> {
         pc,
         debug_frame,
         &elf,
-        &pc2frames,
         &vector_table,
         &sp_ram_region,
+        &live_functions,
         &current_dir,
     )?;
 
@@ -617,9 +617,9 @@ fn backtrace(
     mut pc: u32,
     debug_frame: &[u8],
     elf: &ElfFile,
-    pc2frames: &pc2frames::Map,
     vector_table: &VectorTable,
     sp_ram_region: &Option<RamRegion>,
+    live_functions: &HashSet<&str>,
     current_dir: &Path,
 ) -> Result<Option<TopException>, anyhow::Error> {
     let mut debug_frame = DebugFrame::new(debug_frame, LittleEndian);
@@ -633,54 +633,68 @@ fn backtrace(
     let bases = &BaseAddresses::default();
     let ctx = &mut UninitializedUnwindContext::new();
 
+    let addr2line = addr2line::Context::new(elf)?;
     let mut top_exception = None;
     let mut frame_index = 0;
     let mut registers = Registers::new(lr, sp, core);
+    let symtab = elf.symbol_map();
     println!("stack backtrace:");
     loop {
-        let mut frames = pc2frames.query_point(pc as u64).collect::<Vec<_>>();
-        // `IntervalTree` docs don't specify the order of the elements returned by `query_point` so
-        // we sort them by depth before printing
-        frames.sort_by_key(|frame| -frame.value.depth);
+        let frames = addr2line.find_frames(pc as u64)?.collect::<Vec<_>>()?;
 
-        if frames.is_empty() {
-            // this means there was no DWARF info associated to this PC; the PC could point into
-            // external assembly or external C code. Fall back to a symtab lookup
-            let map = elf.symbol_map();
+        // `find_frames` returns a wrong answer, instead of an `Err`or, when the input is the PC of
+        // a subroutine that has no debug information (e.g. external assembly). The wrong answer is
+        // one of the subroutines GC-ed by the linker so we check that the last frame
+        // (the non-inline one) is actually "live" (exists in the final binary). If it doesn't then
+        // we probably asked about something with no debug info. In that scenario we fallback to
+        // the symtab to at least provide the function name that contains the PC.
+        let subroutine = frames
+            .last()
+            .expect("BUG: `addr2line::FrameIter` was empty");
+        let has_valid_debuginfo = if let Some(function) = subroutine.function.as_ref() {
+            live_functions.contains(&*function.raw_name()?)
+        } else {
+            false
+        };
+
+        if has_valid_debuginfo {
+            for frame in &frames {
+                let name = frame
+                    .function
+                    .as_ref()
+                    .map(|function| function.demangle())
+                    .transpose()?
+                    .unwrap_or(Cow::Borrowed("???"));
+
+                println!("{:>4}: {}", frame_index, name);
+                frame_index += 1;
+
+                if let Some((file, line)) = frame
+                    .location
+                    .as_ref()
+                    .and_then(|loc| loc.file.and_then(|file| loc.line.map(|line| (file, line))))
+                {
+                    let file = Path::new(file);
+                    let relpath = if let Ok(relpath) = file.strip_prefix(&current_dir) {
+                        relpath
+                    } else {
+                        // not within current directory; use full path
+                        file
+                    };
+                    println!("        at {}:{}", relpath.display(), line);
+                }
+            }
+        } else {
+            // .symtab fallback
             // confusingly enough the addresses in the `.symtab` do have their thumb bit set to 1
             // so set it back before the lookup
-            let addr = (pc | THUMB_BIT) as u64;
-            if let Some(name) = map.get(addr).and_then(|symbol| symbol.name()) {
-                println!("{:>4}: {}", frame_index, name);
-            } else {
-                println!("{:>4}: <unknown> @ {:#012x}", frame_index, pc);
-            }
-            // XXX is there no location info for external assembly?
-            println!("        at ???");
+            let address = (pc | THUMB_BIT) as u64;
+            let name = symtab
+                .get(address)
+                .and_then(|symbol| symbol.name())
+                .unwrap_or("???");
+            println!("{:>4}: {}", frame_index, name);
             frame_index += 1;
-        } else {
-            let mut call_loc: Option<&pc2frames::Location> = None;
-            // this iterates in the "callee to caller" direction
-            for frame in frames {
-                println!("{:>4}: {}", frame_index, frame.value.name);
-                
-                // call location is more precise; prefer that
-                let loc = call_loc.unwrap_or_else(|| {
-                    &frame.value.decl_loc
-                });
-
-                let relpath = if let Ok(relpath) = loc.file.strip_prefix(&current_dir) {
-                    relpath
-                } else {
-                    // not relative; use full path
-                    &loc.file
-                };
-                println!("        at {}:{}", relpath.display(), loc.line);
-
-                // this is from where the caller (next iteration) called the callee (current iteration)
-                call_loc = frame.value.call_loc.as_ref();
-                frame_index += 1;
-            }
         }
 
         // on hard fault exception entry we hit the breakpoint before the subroutine prelude (`push

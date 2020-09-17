@@ -11,20 +11,21 @@ repository = "https://github.com/knurling-rs/probe-run"
 version = "0.1.3"
 
 [dependencies]
+addr2line = "0.13.0"
 anyhow = "1.0.32"
 arrayref = "0.3.6"
 colored = "2.0.0"
-signal-hook = "0.1.16"
 defmt-decoder = { git = "https://github.com/knurling-rs/defmt", branch = "main", optional = true }
 defmt-elf2table = { git = "https://github.com/knurling-rs/defmt", branch = "main", optional = true }
 gimli = "0.22.0"
 log = { version = "0.4.11", features = ["std"] }
+# an addr2line trait is implement for a type in this particular version
+object = "0.20.0"
 probe-rs = "0.8.0"
 probe-rs-rtt = "0.3.0"
 rustc-demangle = "0.1.16"
+signal-hook = "0.1.16"
 structopt = "0.3.15"
-object = "0.21.1"
-intervaltree = "0.2.6"
 
 [features]
 defmt = ["defmt-elf2table", "defmt-decoder"]
