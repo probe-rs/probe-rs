@@ -4,19 +4,20 @@ use core::{
     cmp,
     convert::TryInto,
     mem,
-    ops::Range,
     sync::atomic::{AtomicBool, Ordering},
 };
 use std::{
-    collections::{btree_map, BTreeMap},
+    borrow::Cow,
+    collections::{btree_map, BTreeMap, HashSet},
     fs,
     io::{self, Write as _},
-    path::PathBuf,
+    path::{Path, PathBuf},
     process,
     sync::{Arc, Mutex},
     time::Duration,
 };
 
+use addr2line::fallible_iterator::FallibleIterator as _;
 use anyhow::{anyhow, bail, Context};
 use arrayref::array_ref;
 use colored::Colorize as _;
@@ -26,7 +27,7 @@ use gimli::{
 };
 use object::{
     read::{File as ElfFile, Object as _, ObjectSection as _},
-    SectionIndex,
+    SymbolSection,
 };
 use probe_rs::config::{registry, MemoryRegion, RamRegion};
 use probe_rs::{
@@ -123,12 +124,16 @@ fn notmain() -> Result<i32, anyhow::Error> {
         );
     }
 
-    let text = elf.section_by_name(".text").ok_or_else(|| {
-        anyhow!(
+    // NOTE we want to raise the linking error before calling `defmt_elf2table::parse`
+    let text = elf
+        .section_by_name(".text")
+        .map(|section| section.index())
+        .ok_or_else(|| {
+            anyhow!(
             "`.text` section is missing, please make sure that the linker script was passed to the \
             linker (check `.cargo/config.toml` and the `RUSTFLAGS` variable)"
         )
-    })?;
+        })?;
 
     #[cfg(feature = "defmt")]
     let (table, locs) = {
@@ -228,7 +233,20 @@ fn notmain() -> Result<i32, anyhow::Error> {
         }
     }
 
-    let (range_names, rtt_addr, uses_heap) = range_names_from(&elf, text.index())?;
+    let live_functions = elf
+        .symbol_map()
+        .symbols()
+        .iter()
+        .filter_map(|sym| {
+            if sym.section() == SymbolSection::Section(text) {
+                sym.name()
+            } else {
+                None
+            }
+        })
+        .collect::<HashSet<_>>();
+
+    let (rtt_addr, uses_heap) = rtt_and_heap_info_from(&elf)?;
 
     let vector_table = vector_table.ok_or_else(|| anyhow!("`.vector_table` section is missing"))?;
     log::debug!("vector table: {:x?}", vector_table);
@@ -338,7 +356,6 @@ fn notmain() -> Result<i32, anyhow::Error> {
     #[cfg(feature = "defmt")]
     let mut frames = vec![];
     let mut was_halted = false;
-    #[cfg(feature = "defmt")]
     let current_dir = std::env::current_dir()?;
     // TODO strip prefix from crates-io paths (?)
     while !exit.load(Ordering::Relaxed) {
@@ -454,9 +471,11 @@ fn notmain() -> Result<i32, anyhow::Error> {
         &mut core,
         pc,
         debug_frame,
-        &range_names,
+        &elf,
         &vector_table,
         &sp_ram_region,
+        &live_functions,
+        &current_dir,
     )?;
 
     core.reset_and_halt(TIMEOUT)?;
@@ -598,9 +617,11 @@ fn backtrace(
     core: &mut Core<'_>,
     mut pc: u32,
     debug_frame: &[u8],
-    range_names: &RangeNames,
+    elf: &ElfFile,
     vector_table: &VectorTable,
     sp_ram_region: &Option<RamRegion>,
+    live_functions: &HashSet<&str>,
+    current_dir: &Path,
 ) -> Result<Option<TopException>, anyhow::Error> {
     let mut debug_frame = DebugFrame::new(debug_frame, LittleEndian);
     // 32-bit ARM -- this defaults to the host's address size which is likely going to be 8
@@ -613,24 +634,71 @@ fn backtrace(
     let bases = &BaseAddresses::default();
     let ctx = &mut UninitializedUnwindContext::new();
 
+    let addr2line = addr2line::Context::new(elf)?;
     let mut top_exception = None;
-    let mut frame = 0;
+    let mut frame_index = 0;
     let mut registers = Registers::new(lr, sp, core);
+    let symtab = elf.symbol_map();
     println!("stack backtrace:");
     loop {
-        let name = range_names
-            .binary_search_by(|rn| {
-                if rn.0.contains(&pc) {
-                    cmp::Ordering::Equal
-                } else if pc < rn.0.start {
-                    cmp::Ordering::Greater
-                } else {
-                    cmp::Ordering::Less
+        let frames = addr2line.find_frames(pc as u64)?.collect::<Vec<_>>()?;
+
+        // `find_frames` returns a wrong answer, instead of an `Err`or, when the input is the PC of
+        // a subroutine that has no debug information (e.g. external assembly). The wrong answer is
+        // one of the subroutines GC-ed by the linker so we check that the last frame
+        // (the non-inline one) is actually "live" (exists in the final binary). If it doesn't then
+        // we probably asked about something with no debug info. In that scenario we fallback to
+        // the symtab to at least provide the function name that contains the PC.
+        let subroutine = frames
+            .last()
+            .expect("BUG: `addr2line::FrameIter` was empty");
+        let has_valid_debuginfo = if let Some(function) = subroutine.function.as_ref() {
+            live_functions.contains(&*function.raw_name()?)
+        } else {
+            false
+        };
+
+        if has_valid_debuginfo {
+            for frame in &frames {
+                let name = frame
+                    .function
+                    .as_ref()
+                    .map(|function| function.demangle())
+                    .transpose()?
+                    .unwrap_or(Cow::Borrowed("???"));
+
+                println!("{:>4}: {}", frame_index, name);
+                frame_index += 1;
+
+                if let Some((file, line)) = frame
+                    .location
+                    .as_ref()
+                    .and_then(|loc| loc.file.and_then(|file| loc.line.map(|line| (file, line))))
+                {
+                    let file = Path::new(file);
+                    let relpath = if let Ok(relpath) = file.strip_prefix(&current_dir) {
+                        relpath
+                    } else {
+                        // not within current directory; use full path
+                        file
+                    };
+                    println!("        at {}:{}", relpath.display(), line);
                 }
-            })
-            .map(|idx| &*range_names[idx].1)
-            .unwrap_or("<unknown>");
-        println!("{:>4}: {:#010x} - {}", frame, pc, name);
+            }
+        } else {
+            // .symtab fallback
+            // the .symtab appears to use address ranges that have their thumb bits set (e.g.
+            // `0x101..0x200`). Passing the `pc` with the thumb bit cleared (e.g. `0x100`) to the
+            // lookup function sometimes returns the *previous* symbol. Work around the issue by
+            // setting `pc`'s thumb bit before looking it up
+            let address = (pc | THUMB_BIT) as u64;
+            let name = symtab
+                .get(address)
+                .and_then(|symbol| symbol.name())
+                .unwrap_or("???");
+            println!("{:>4}: {}", frame_index, name);
+            frame_index += 1;
+        }
 
         // on hard fault exception entry we hit the breakpoint before the subroutine prelude (`push
         // lr`) is executed so special handling is required
@@ -708,8 +776,6 @@ fn backtrace(
             }
             pc = lr & !THUMB_BIT;
         }
-
-        frame += 1;
     }
 
     Ok(top_exception)
@@ -853,15 +919,10 @@ impl Stacked {
         num_words as u32 * 4
     }
 }
-// FIXME this might already exist in the DWARF data; we should just use that
-/// Map from PC ranges to demangled Rust names
-type RangeNames = Vec<(Range<u32>, String)>;
 
-fn range_names_from(
+fn rtt_and_heap_info_from(
     elf: &ElfFile,
-    text: SectionIndex,
-) -> Result<(RangeNames, Option<u32>, bool /* uses heap */), anyhow::Error> {
-    let mut range_names = vec![];
+) -> Result<(Option<u32>, bool /* uses heap */), anyhow::Error> {
     let mut rtt = None;
     let mut uses_heap = false;
 
@@ -879,29 +940,9 @@ fn range_names_from(
             }
             _ => {}
         }
-
-        if symbol.section_index() == Some(text) && symbol.size() > 0 {
-            let mut name = rustc_demangle::demangle(name).to_string();
-            // clear the thumb bit
-            let start = symbol.address() as u32 & !1;
-
-            // strip the hash (e.g. `::hd881d91ced85c2b0`)
-            let hash_len = "::hd881d91ced85c2b0".len();
-            if let Some(pos) = name.len().checked_sub(hash_len) {
-                let maybe_hash = &name[pos..];
-                if maybe_hash.starts_with("::h") {
-                    // FIXME avoid this allocation
-                    name = name[..pos].to_string();
-                }
-            }
-
-            range_names.push((start..start + symbol.size() as u32, name));
-        }
     }
 
-    range_names.sort_unstable_by(|a, b| a.0.start.cmp(&b.0.start));
-
-    Ok((range_names, rtt, uses_heap))
+    Ok((rtt, uses_heap))
 }
 
 const LR: CoreRegisterAddress = CoreRegisterAddress(14);
