@@ -18,6 +18,8 @@ default = ["builtin-targets"]
 # Enable all built in targets.
 builtin-targets = []
 
+ftdi = ["libftdi1-sys"]
+
 [dependencies]
 log = "0.4.8"
 num-traits = "0.2.11"
@@ -41,7 +43,7 @@ base64 = "0.12.0"
 svg = "0.8.0"
 anyhow = "1.0.31"
 bitvec = "0.17.4"
-libftdi1-sys = { version = "1.0.0-alpha3" }
+libftdi1-sys = { version = "1.0.0-alpha3", optional = true }
 
 [build-dependencies]
 probe-rs-t2rust  = { path = "../probe-rs-t2rust", version ="0.6.0" }

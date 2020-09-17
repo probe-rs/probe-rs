@@ -1,4 +1,5 @@
 pub(crate) mod daplink;
+#[cfg(feature = "ftdi")]
 pub(crate) mod ftdi;
 pub(crate) mod jlink;
 pub(crate) mod stlink;
@@ -175,7 +176,10 @@ impl Probe {
     /// should be used.
     pub fn list_all() -> Vec<DebugProbeInfo> {
         let mut list = daplink::tools::list_daplink_devices();
-        list.extend(ftdi::list_ftdi_devices());
+        #[cfg(feature = "ftdi")]
+        {
+            list.extend(ftdi::list_ftdi_devices());
+        }
         list.extend(stlink::tools::list_stlink_devices());
 
         list.extend(list_jlink_devices().expect("Failed to list J-Link devices."));
@@ -192,6 +196,7 @@ impl Probe {
             Err(DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::NotFound)) => {}
             Err(e) => return Err(e),
         };
+        #[cfg(feature = "ftdi")]
         match ftdi::FtdiProbe::new_from_selector(selector.clone()) {
             Ok(link) => return Ok(Probe::from_specific_probe(link)),
             Err(DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::NotFound)) => {}
