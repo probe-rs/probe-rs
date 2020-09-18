@@ -642,17 +642,17 @@ fn backtrace(
     println!("stack backtrace:");
     loop {
         let frames = addr2line.find_frames(pc as u64)?.collect::<Vec<_>>()?;
-
-        // `find_frames` returns a wrong answer, instead of an `Err`or, when the input is the PC of
-        // a subroutine that has no debug information (e.g. external assembly). The wrong answer is
-        // one of the subroutines GC-ed by the linker so we check that the last frame
-        // (the non-inline one) is actually "live" (exists in the final binary). If it doesn't then
-        // we probably asked about something with no debug info. In that scenario we fallback to
-        // the symtab to at least provide the function name that contains the PC.
-        let subroutine = frames
-            .last()
-            .expect("BUG: `addr2line::FrameIter` was empty");
-        let has_valid_debuginfo = if let Some(function) = subroutine.function.as_ref() {
+        // when the input of `find_frames` is the PC of a subroutine that has no debug information
+        // (e.g. external assembly), it will either return an empty `FrameIter` OR the frames that
+        // correspond to a subroutine GC-ed by the linker, instead of an `Err`or.
+        // To detect the second failure mode we check that the last frame (the non-inline one) is
+        // actually "live" (exists in the final binary).
+        // When there's no debuginfo we fallback to a symtab lookup to at least provide the name of
+        // the function that contains the PC.
+        let subroutine = frames.last();
+        let has_valid_debuginfo = if let Some(function) =
+            subroutine.and_then(|subroutine| subroutine.function.as_ref())
+        {
             live_functions.contains(&*function.raw_name()?)
         } else {
             false
