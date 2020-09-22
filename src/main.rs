@@ -246,7 +246,7 @@ fn notmain() -> Result<i32, anyhow::Error> {
         })
         .collect::<HashSet<_>>();
 
-    let (rtt_addr, uses_heap) = rtt_and_heap_info_from(&elf)?;
+    let (rtt_addr, uses_heap, main) = get_rtt_heap_main_from(&elf)?;
 
     let vector_table = vector_table.ok_or_else(|| anyhow!("`.vector_table` section is missing"))?;
     log::debug!("vector table: {:x?}", vector_table);
@@ -333,10 +333,23 @@ fn notmain() -> Result<i32, anyhow::Error> {
 
         log::debug!("starting device");
         if core.get_available_breakpoint_units()? == 0 {
-            log::warn!("device doesn't support HW breakpoints; HardFault will NOT make `probe-run` exit with an error code");
-        } else {
-            core.set_hw_breakpoint(vector_table.hard_fault & !THUMB_BIT)?;
+            if rtt_addr.is_some() {
+                bail!("RTT not supported on device without HW breakpoints");
+            } else {
+                log::warn!("device doesn't support HW breakpoints; HardFault will NOT make `probe-run` exit with an error code");
+            }
         }
+
+        if let Some(rtt) = rtt_addr {
+            core.set_hw_breakpoint(main)?;
+            core.run()?;
+            const OFFSET: u32 = 44;
+            const FLAG: u32 = 2; // BLOCK_IF_FULL
+            core.write_word_32(rtt + OFFSET, FLAG)?;
+            core.clear_hw_breakpoint(main)?;
+        }
+
+        core.set_hw_breakpoint(vector_table.hard_fault & !THUMB_BIT)?;
         core.run()?;
     }
 
@@ -920,11 +933,12 @@ impl Stacked {
     }
 }
 
-fn rtt_and_heap_info_from(
+fn get_rtt_heap_main_from(
     elf: &ElfFile,
-) -> Result<(Option<u32>, bool /* uses heap */), anyhow::Error> {
+) -> Result<(Option<u32>, bool /* uses heap */, u32), anyhow::Error> {
     let mut rtt = None;
     let mut uses_heap = false;
+    let mut main = None;
 
     for (_, symbol) in elf.symbols() {
         let name = match symbol.name() {
@@ -933,6 +947,7 @@ fn rtt_and_heap_info_from(
         };
 
         match name {
+            "main" => main = Some(symbol.address() as u32 & !THUMB_BIT),
             "_SEGGER_RTT" => rtt = Some(symbol.address() as u32),
             "__rust_alloc" | "__rg_alloc" | "__rdl_alloc" | "malloc" if !uses_heap => {
                 log::debug!("symbol `{}` indicates heap is in use", name);
@@ -942,7 +957,11 @@ fn rtt_and_heap_info_from(
         }
     }
 
-    Ok((rtt, uses_heap))
+    Ok((
+        rtt,
+        uses_heap,
+        main.ok_or_else(|| anyhow!("`main` symbol not found"))?,
+    ))
 }
 
 const LR: CoreRegisterAddress = CoreRegisterAddress(14);
