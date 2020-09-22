@@ -333,7 +333,11 @@ fn notmain() -> Result<i32, anyhow::Error> {
 
         log::debug!("starting device");
         if core.get_available_breakpoint_units()? == 0 {
-            bail!("device without HW breakpoints are not supported");
+            if rtt_addr.is_some() {
+                bail!("RTT not supported on device without HW breakpoints");
+            } else {
+                log::warn!("device doesn't support HW breakpoints; HardFault will NOT make `probe-run` exit with an error code");
+            }
         }
 
         if let Some(rtt) = rtt_addr {
