@@ -139,6 +139,11 @@ On Windows you can use [vcpkg](https://github.com/microsoft/vcpkg#quick-start-wi
 
 See [the vcpkg crate documentation](https://docs.rs/vcpkg/) for more information about configuring vcpkg with rust.
 
+### Adding Targets
+
+Target files are generated using [probe-rs/target-gen](https://github.com/probe-rs/target-gen) from CMSIS packs provided [here](https://developer.arm.com/tools-and-software/embedded/cmsis/cmsis-search).
+Generated files are then placed in `probe-rs/targets` for inclusion in the probe-rs project.
+
 ## Sponsors
 
 [![Technokrat](https://technokrat.ch/static/img/svg_banner-light.svg)](https://technokrat.ch)
