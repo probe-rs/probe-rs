@@ -10,6 +10,7 @@ use core::ops::Deref;
 use std::time::Duration;
 
 use anyhow::{anyhow, Context, Result};
+use log::log_enabled;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -184,12 +185,38 @@ pub(crate) fn send_command<Req: Request, Res: Response>(
 
         // Send buffer to the device.
         device.write(&write_buffer[..size])?;
-        log::trace!("Send buffer: {:02X?}", &write_buffer[..size]);
+        if log_enabled!(log::Level::Trace) {
+            // The write buffer is rounded up to 65 bytes when using HID writes,
+            // but most of them are 0 which makes trace output harder to read.
+            // Truncate to only show data up to the first trailing 0.
+            let cut = &write_buffer[..]
+                .iter()
+                .rev()
+                .position(|&x| x != 0)
+                .unwrap_or(BUFFER_LEN);
+            log::trace!(
+                "Send buffer: {:02X?}...",
+                &write_buffer[..BUFFER_LEN - cut + 1]
+            );
+        }
 
         // Read back resonse.
         let mut read_buffer = [0; BUFFER_LEN];
         device.read(&mut read_buffer)?;
-        log::trace!("Receive buffer: {:02X?}", &read_buffer[..]);
+        if log_enabled!(log::Level::Trace) {
+            // The read buffer is very long and mostly filled with zeros, which makes
+            // the trace output almost unreadable.
+            // Truncate to only show data up to the first trailing 0.
+            let cut = &read_buffer[..]
+                .iter()
+                .rev()
+                .position(|&x| x != 0)
+                .unwrap_or(BUFFER_LEN);
+            log::trace!(
+                "Receive buffer: {:02X?}...",
+                &read_buffer[..BUFFER_LEN - cut + 1]
+            );
+        }
 
         if read_buffer[0] == *Req::CATEGORY {
             Res::from_bytes(&read_buffer, 1)
