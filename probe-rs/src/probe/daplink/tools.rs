@@ -164,7 +164,11 @@ fn device_matches(
     if device_descriptor.vendor_id() == selector.vendor_id
         && device_descriptor.product_id() == selector.product_id
     {
-        serial_str == selector.serial_number
+        if selector.serial_number.is_some() {
+            serial_str == selector.serial_number
+        } else {
+            true
+        }
     } else {
         false
     }
