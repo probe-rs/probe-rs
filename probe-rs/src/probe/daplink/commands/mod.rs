@@ -185,38 +185,12 @@ pub(crate) fn send_command<Req: Request, Res: Response>(
 
         // Send buffer to the device.
         device.write(&write_buffer[..size])?;
-        if log_enabled!(log::Level::Trace) {
-            // The write buffer is rounded up to 65 bytes when using HID writes,
-            // but most of them are 0 which makes trace output harder to read.
-            // Truncate to only show data up to the first trailing 0.
-            let cut = &write_buffer[..]
-                .iter()
-                .rev()
-                .position(|&x| x != 0)
-                .unwrap_or(BUFFER_LEN);
-            log::trace!(
-                "Send buffer: {:02X?}...",
-                &write_buffer[..BUFFER_LEN - cut + 1]
-            );
-        }
+        trace_buffer("Transmit buffer", &write_buffer[..size]);
 
         // Read back resonse.
         let mut read_buffer = [0; BUFFER_LEN];
         device.read(&mut read_buffer)?;
-        if log_enabled!(log::Level::Trace) {
-            // The read buffer is very long and mostly filled with zeros, which makes
-            // the trace output almost unreadable.
-            // Truncate to only show data up to the first trailing 0.
-            let cut = &read_buffer[..]
-                .iter()
-                .rev()
-                .position(|&x| x != 0)
-                .unwrap_or(BUFFER_LEN);
-            log::trace!(
-                "Receive buffer: {:02X?}...",
-                &read_buffer[..BUFFER_LEN - cut + 1]
-            );
-        }
+        trace_buffer("Receive buffer", &read_buffer[..]);
 
         if read_buffer[0] == *Req::CATEGORY {
             Res::from_bytes(&read_buffer, 1)
@@ -226,5 +200,19 @@ pub(crate) fn send_command<Req: Request, Res: Response>(
         }
     } else {
         Err(anyhow!(CmsisDapError::ErrorResponse)).context("failed while sending command")
+    }
+}
+
+/// Trace log a buffer, including only the first trailing zero.
+///
+/// This is useful for the CMSIS-DAP USB buffers, which often contain many trailing
+/// zeros required for the various USB APIs, but make the trace output very long and
+/// difficult to read.
+fn trace_buffer(name: &str, buf: &[u8]) {
+    if log_enabled!(log::Level::Trace) {
+        let len = buf.len();
+        let cut = len + 1 - buf.iter().rev().position(|&x| x != 0).unwrap_or(len);
+        let end = std::cmp::min(len, std::cmp::max(1, cut));
+        log::trace!("{}: {:02X?}...", name, &buf[..end]);
     }
 }
