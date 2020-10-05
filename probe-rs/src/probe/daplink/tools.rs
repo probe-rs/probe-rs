@@ -186,21 +186,36 @@ pub fn open_device_from_selector(
     // or permission issues with opening bulk devices.
     if let Ok(devices) = rusb::Context::new().and_then(|ctx| ctx.devices()) {
         for device in devices.iter() {
+            log::debug!("Device {:?}", device);
+
             let d_desc = match device.device_descriptor() {
                 Ok(d_desc) => d_desc,
-                Err(_) => continue,
+                Err(err) => {
+                    log::debug!("Device descriptor error {:?}", err);
+                    continue;
+                }
             };
+
             let handle = match device.open() {
                 Ok(handle) => handle,
-                Err(_) => continue,
+                Err(err) => {
+                    log::debug!("Device open error {:?}", err);
+                    continue;
+                }
             };
 
             let timeout = Duration::from_millis(100);
-            let sn_str = handle.read_languages(timeout)?.get(0).and_then(|lang| {
-                handle
-                    .read_serial_number_string(*lang, &d_desc, timeout)
-                    .ok()
-            });
+            let sn_str = match handle.read_languages(timeout) {
+                Ok(langs) => langs.get(0).and_then(|lang| {
+                    handle
+                        .read_serial_number_string(*lang, &d_desc, timeout)
+                        .ok()
+                }),
+                Err(err) => {
+                    log::debug!("Error getting DeviceHandle::read_languages, {:?}", err);
+                    continue;
+                }
+            };
 
             // We have to ensure the handle gets closed after reading the serial number,
             // multiple open handles are not allowed on Windows.
@@ -212,9 +227,15 @@ pub fn open_device_from_selector(
                 // attempt to open the device in v2 mode.
                 if let Some(device) = open_v2_device(device) {
                     return Ok(device);
+                } else {
+                    log::debug!("No device returned from open_v2_device");
                 }
+            } else {
+                log::debug!("No device matches");
             }
         }
+    } else {
+        log::debug!("No devices from rusb context");
     }
 
     // If rusb failed or the device didn't support v2, try using hidapi to open in v1 mode.
