@@ -4,7 +4,7 @@
 
 use crate::core::Architecture;
 use crate::CoreInterface;
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use communication_interface::{
     AbstractCommandErrorKind, AccessRegisterCommand, DebugRegister, RiscvCommunicationInterface,
     RiscvError,
@@ -24,11 +24,11 @@ pub(crate) mod assembly;
 pub mod communication_interface;
 
 pub struct Riscv32<'probe> {
-    interface: RiscvCommunicationInterface<'probe>,
+    interface: &'probe mut RiscvCommunicationInterface,
 }
 
 impl<'probe> Riscv32<'probe> {
-    pub fn new(interface: RiscvCommunicationInterface<'probe>) -> Self {
+    pub fn new(interface: &'probe mut RiscvCommunicationInterface) -> Self {
         Self { interface }
     }
 
@@ -425,6 +425,8 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
             tselect_index += 1;
         }
 
+        log::debug!("Target supports {} breakpoints.", tselect_index);
+
         Ok(tselect_index)
     }
 
@@ -446,11 +448,10 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         let tdata_value = Mcontrol(self.read_csr(tdata1)?);
 
         // This should not happen
-        assert_eq!(
-            tdata_value.type_(),
-            2,
-            "Error: Incorrect trigger type for address breakpoint"
-        );
+        let trigger_type = tdata_value.type_();
+        if trigger_type != 0b10 {
+            return Err(RiscvError::UnexpectedTriggerType(trigger_type).into());
+        }
 
         // Setup the trigger
 
@@ -523,14 +524,15 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
                 _ => HaltReason::Unknown,
             };
 
-            return Ok(CoreStatus::Halted(reason));
+            Ok(CoreStatus::Halted(reason))
+        } else if status.allrunning() {
+            Ok(CoreStatus::Running)
+        } else {
+            Err(
+                anyhow!("Some cores are running while some are halted, this should not happen.")
+                    .into(),
+            )
         }
-
-        if status.allrunning() {
-            return Ok(CoreStatus::Running);
-        }
-
-        panic!("This should not happen")
     }
 }
 
@@ -558,6 +560,9 @@ impl<'probe> MemoryInterface for Riscv32<'probe> {
     }
     fn write_8(&mut self, address: u32, data: &[u8]) -> Result<(), Error> {
         self.interface.write_8(address, data)
+    }
+    fn flush(&mut self) -> Result<(), Error> {
+        self.interface.flush()
     }
 }
 

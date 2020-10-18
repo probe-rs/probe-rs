@@ -1,38 +1,46 @@
 pub mod commands;
 pub mod tools;
 
-use crate::architecture::arm::{
-    dp::{DPAccess, DPRegister, DebugPortError},
-    DAPAccess, DapError, PortType,
+use crate::{
+    architecture::arm::{
+        communication_interface::ArmProbeInterface,
+        dp::{DPAccess, DPRegister, DebugPortError},
+        swo::poll_interval_from_buf_size,
+        ArmCommunicationInterface, DAPAccess, DapError, PortType, SwoAccess, SwoConfig, SwoMode,
+    },
+    probe::{daplink::commands::CmsisDapError, BatchCommand},
+    DebugProbe, DebugProbeError, DebugProbeSelector, Error as ProbeRsError, WireProtocol,
 };
-use crate::probe::{daplink::commands::CmsisDapError, BatchCommand};
-use crate::{DebugProbe, DebugProbeError, DebugProbeSelector, Memory, WireProtocol};
+
 use commands::{
     general::{
         connect::{ConnectRequest, ConnectResponse},
         disconnect::{DisconnectRequest, DisconnectResponse},
-        info::{Command, PacketCount, PacketSize},
+        host_status::{HostStatusRequest, HostStatusResponse},
+        info::{Capabilities, Command, PacketCount, PacketSize, SWOTraceBufferSize},
         reset::{ResetRequest, ResetResponse},
     },
     swd,
     swj::{
         clock::{SWJClockRequest, SWJClockResponse},
+        pins::{SWJPinsRequestBuilder, SWJPinsResponse},
         sequence::{SequenceRequest, SequenceResponse},
     },
+    swo,
     transfer::{
         configure::{ConfigureRequest, ConfigureResponse},
         Ack, InnerTransferRequest, TransferBlockRequest, TransferBlockResponse, TransferRequest,
         TransferResponse, RW,
     },
-    Status,
+    DAPLinkDevice, Status,
 };
+
 use log::debug;
 
-use super::JTAGAccess;
 use std::sync::Mutex;
+use std::time::Duration;
 
 use anyhow::anyhow;
-use commands::DAPLinkDevice;
 
 pub struct DAPLink {
     pub device: Mutex<DAPLinkDevice>,
@@ -42,6 +50,10 @@ pub struct DAPLink {
 
     packet_size: Option<u16>,
     packet_count: Option<u8>,
+    capabilities: Option<Capabilities>,
+    swo_buffer_size: Option<usize>,
+    swo_active: bool,
+    swo_streaming: bool,
 
     /// Speed in kHz
     speed_khz: u32,
@@ -52,10 +64,14 @@ pub struct DAPLink {
 impl std::fmt::Debug for DAPLink {
     fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         fmt.debug_struct("DAPLink")
-            .field("device", &"hidapi::HidDevice")
             .field("protocol", &self.protocol)
             .field("packet_size", &self.packet_size)
             .field("packet_count", &self.packet_count)
+            .field("capabilities", &self.capabilities)
+            .field("swo_buffer_size", &self.swo_buffer_size)
+            .field("swo_active", &self.swo_active)
+            .field("swo_streaming", &self.swo_streaming)
+            .field("speed_khz", &self.speed_khz)
             .finish()
     }
 }
@@ -64,17 +80,14 @@ impl DAPLink {
     pub fn new_from_device(device: DAPLinkDevice) -> Self {
         // Discard anything left in buffer, as otherwise
         // we'll get out of sync between requests and responses.
-        match &device {
-            DAPLinkDevice::V1(hid_device) => {
-                let mut discard_buffer = [0u8; 128];
-                loop {
-                    match hid_device.read_timeout(&mut discard_buffer, 1) {
-                        Ok(n) if n != 0 => continue,
-                        _ => break,
-                    }
+        if let DAPLinkDevice::V1(ref hid_device) = device {
+            let mut discard_buffer = [0u8; 128];
+            loop {
+                match hid_device.read_timeout(&mut discard_buffer, 1) {
+                    Ok(n) if n != 0 => continue,
+                    _ => break,
                 }
             }
-            _ => (),
         }
 
         Self {
@@ -84,6 +97,10 @@ impl DAPLink {
             protocol: None,
             packet_count: None,
             packet_size: None,
+            capabilities: None,
+            swo_buffer_size: None,
+            swo_active: false,
+            swo_streaming: false,
             speed_khz: 1_000,
             batch: Vec::new(),
         }
@@ -150,7 +167,7 @@ impl DAPLink {
         if self.batch.is_empty() {
             return Ok(0);
         }
-        log::debug!("Processing batch of {} items", self.batch.len());
+        debug!("Processing batch of {} items", self.batch.len());
 
         let batch = std::mem::replace(&mut self.batch, Vec::new());
 
@@ -201,7 +218,7 @@ impl DAPLink {
     /// executed immediately if the batch is full, otherwise it is queued for
     /// later execution.
     fn batch_add(&mut self, command: BatchCommand) -> Result<u32, DebugProbeError> {
-        log::debug!("Adding command to batch: {}", command);
+        debug!("Adding command to batch: {}", command);
 
         self.batch.push(command);
 
@@ -213,6 +230,112 @@ impl DAPLink {
             BatchCommand::Read(_, _) => self.process_batch(),
             _ if self.batch.len() == max_writes => self.process_batch(),
             _ => Ok(0),
+        }
+    }
+
+    /// Set SWO port to use requested transport.
+    ///
+    /// Check the probe capabilities to determine which transports are available.
+    fn set_swo_transport(
+        &mut self,
+        transport: swo::TransportRequest,
+    ) -> Result<(), DebugProbeError> {
+        let response = commands::send_command(&mut self.device, transport)?;
+        match response {
+            swo::TransportResponse(Status::DAPOk) => Ok(()),
+            swo::TransportResponse(Status::DAPError) => Err(CmsisDapError::UnexpectedAnswer.into()),
+        }
+    }
+
+    /// Set SWO port to specified mode.
+    ///
+    /// Check the probe capabilities to determine which modes are available.
+    fn set_swo_mode(&mut self, mode: swo::ModeRequest) -> Result<(), DebugProbeError> {
+        let response = commands::send_command(&mut self.device, mode)?;
+        match response {
+            swo::ModeResponse(Status::DAPOk) => Ok(()),
+            swo::ModeResponse(Status::DAPError) => Err(CmsisDapError::UnexpectedAnswer.into()),
+        }
+    }
+
+    /// Set SWO port to specified baud rate.
+    ///
+    /// Returns `SWOBaudrateNotConfigured` if the probe returns 0,
+    /// indicating the requested baud rate was not configured,
+    /// and returns the configured baud rate on success (which
+    /// may differ from the requested baud rate).
+    fn set_swo_baudrate(&mut self, baud: swo::BaudrateRequest) -> Result<u32, DebugProbeError> {
+        let response: swo::BaudrateResponse = commands::send_command(&mut self.device, baud)?;
+        debug!("Requested baud {}, got {}", baud.0, response.0);
+        if response.0 == 0 {
+            Err(CmsisDapError::SWOBaudrateNotConfigured.into())
+        } else {
+            Ok(response.0)
+        }
+    }
+
+    /// Start SWO trace data capture.
+    fn start_swo_capture(&mut self) -> Result<(), DebugProbeError> {
+        let response = commands::send_command(&mut self.device, swo::ControlRequest::Start)?;
+        match response {
+            swo::ControlResponse(Status::DAPOk) => Ok(()),
+            swo::ControlResponse(Status::DAPError) => Err(CmsisDapError::UnexpectedAnswer.into()),
+        }
+    }
+
+    /// Stop SWO trace data capture.
+    fn stop_swo_capture(&mut self) -> Result<(), DebugProbeError> {
+        let response = commands::send_command(&mut self.device, swo::ControlRequest::Stop)?;
+        match response {
+            swo::ControlResponse(Status::DAPOk) => Ok(()),
+            swo::ControlResponse(Status::DAPError) => Err(CmsisDapError::UnexpectedAnswer.into()),
+        }
+    }
+
+    /// Fetch current SWO trace status.
+    #[allow(dead_code)]
+    fn get_swo_status(&mut self) -> Result<swo::StatusResponse, DebugProbeError> {
+        Ok(commands::send_command(
+            &mut self.device,
+            swo::StatusRequest,
+        )?)
+    }
+
+    /// Fetch extended SWO trace status.
+    ///
+    /// request.request_status: request trace status
+    /// request.request_count: request remaining bytes in trace buffer
+    /// request.request_index: request sequence number and timestamp of next trace sequence
+    #[allow(dead_code)]
+    fn get_swo_extended_status(
+        &mut self,
+        request: swo::ExtendedStatusRequest,
+    ) -> Result<swo::ExtendedStatusResponse, DebugProbeError> {
+        Ok(commands::send_command(&mut self.device, request)?)
+    }
+
+    /// Fetch latest SWO trace data by sending a DAP_SWO_Data request.
+    fn get_swo_data(&mut self) -> Result<Vec<u8>, DebugProbeError> {
+        match self.swo_buffer_size {
+            Some(swo_buffer_size) => {
+                // We'll request the smaller of the probe's SWO buffer and
+                // its maximum packet size. If the probe has less data to
+                // send it will respond with as much as it can.
+                let n = if let Some(packet_size) = self.packet_size {
+                    usize::min(swo_buffer_size, packet_size as usize) as u16
+                } else {
+                    usize::min(swo_buffer_size, u16::MAX as usize) as u16
+                };
+
+                let response: swo::DataResponse =
+                    commands::send_command(&mut self.device, swo::DataRequest { max_count: n })?;
+                if response.status.error {
+                    Err(CmsisDapError::SWOTraceStreamError.into())
+                } else {
+                    Ok(response.data)
+                }
+            }
+            None => Ok(Vec::new()),
         }
     }
 }
@@ -281,6 +404,17 @@ impl DebugProbe for DAPLink {
         self.packet_count = Some(packet_count);
         self.packet_size = Some(packet_size);
 
+        let caps = commands::send_command(&mut self.device, Command::Capabilities)?;
+        self.capabilities = Some(caps);
+        debug!("Detected probe capabilities: {:?}", caps);
+
+        if caps.swo_uart_implemented || caps.swo_manchester_implemented {
+            let swo_size: SWOTraceBufferSize =
+                commands::send_command(&mut self.device, Command::SWOTraceBufferSize)?;
+            self.swo_buffer_size = Some(swo_size.0 as usize);
+            debug!("Probe SWO buffer size: {}", swo_size.0);
+        }
+
         debug!("Attaching to target system (clock = {}kHz)", self.speed_khz);
 
         let protocol = if let Some(protocol) = self.protocol {
@@ -323,13 +457,27 @@ impl DebugProbe for DAPLink {
 
         debug!("Successfully changed to SWD.");
 
+        // Tell the probe we are connected so it can turn on an LED.
+        let _: Result<HostStatusResponse, _> =
+            commands::send_command(&mut self.device, HostStatusRequest::connected(true));
+
         Ok(())
     }
 
     /// Leave debug mode.
     fn detach(&mut self) -> Result<(), DebugProbeError> {
         self.process_batch()?;
+
+        if self.swo_active {
+            self.disable_swo()
+                .map_err(|e| DebugProbeError::ProbeSpecific(e.into()))?;
+        }
+
         let response = commands::send_command(&mut self.device, DisconnectRequest {})?;
+
+        // Tell probe we are disconnected so it can turn off its LED.
+        let _: Result<HostStatusResponse, _> =
+            commands::send_command(&mut self.device, HostStatusRequest::connected(false));
 
         match response {
             DisconnectResponse(Status::DAPOk) => Ok(()),
@@ -360,22 +508,54 @@ impl DebugProbe for DAPLink {
         Ok(())
     }
 
-    fn dedicated_memory_interface(&self) -> Option<Memory> {
-        None
+    fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
+        let request = SWJPinsRequestBuilder::new().nreset(false).build();
+
+        commands::send_command(&mut self.device, request).map(|v: SWJPinsResponse| {
+            log::info!("Pin response: {:?}", v);
+        })?;
+        Ok(())
     }
 
-    fn get_interface_dap(&self) -> Option<&dyn DAPAccess> {
+    fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
+        let request = SWJPinsRequestBuilder::new().nreset(true).build();
+
+        commands::send_command(&mut self.device, request).map(|v: SWJPinsResponse| {
+            log::info!("Pin response: {:?}", v);
+        })?;
+        Ok(())
+    }
+
+    fn get_swo_interface(&self) -> Option<&dyn SwoAccess> {
         Some(self as _)
     }
 
-    fn get_interface_dap_mut(&mut self) -> Option<&mut dyn DAPAccess> {
+    fn get_swo_interface_mut(&mut self) -> Option<&mut dyn SwoAccess> {
         Some(self as _)
     }
-    fn get_interface_jtag(&self) -> Option<&dyn JTAGAccess> {
-        None
+
+    fn get_arm_interface<'probe>(
+        self: Box<Self>,
+    ) -> Result<Option<Box<dyn ArmProbeInterface + 'probe>>, DebugProbeError> {
+        let interface = ArmCommunicationInterface::new(self)?;
+
+        Ok(Some(Box::new(interface)))
     }
-    fn get_interface_jtag_mut(&mut self) -> Option<&mut dyn JTAGAccess> {
-        None
+
+    fn has_arm_interface(&self) -> bool {
+        true
+    }
+}
+
+impl<'a> AsRef<dyn DebugProbe + 'a> for DAPLink {
+    fn as_ref(&self) -> &(dyn DebugProbe + 'a) {
+        self
+    }
+}
+
+impl<'a> AsMut<dyn DebugProbe + 'a> for DAPLink {
+    fn as_mut(&mut self) -> &mut (dyn DebugProbe + 'a) {
+        self
     }
 }
 
@@ -427,10 +607,12 @@ impl DAPAccess for DAPLink {
 
             debug!("Transfer block: chunk={}, len={} bytes", i, chunk.len() * 4);
 
-            let resp: TransferBlockResponse = commands::send_command(&mut self.device, request)
-                .map_err(|_| DebugProbeError::Unknown)?;
+            let resp: TransferBlockResponse =
+                commands::send_command(&mut self.device, request).map_err(DebugProbeError::from)?;
 
-            assert_eq!(resp.transfer_response, 1);
+            if resp.transfer_response != 1 {
+                return Err(CmsisDapError::ErrorResponse.into());
+            }
         }
 
         Ok(())
@@ -467,23 +649,155 @@ impl DAPAccess for DAPLink {
 
             debug!("Transfer block: chunk={}, len={} bytes", i, chunk.len() * 4);
 
-            let resp: TransferBlockResponse = commands::send_command(&mut self.device, request)
-                .map_err(|_| DebugProbeError::Unknown)?;
+            let resp: TransferBlockResponse =
+                commands::send_command(&mut self.device, request).map_err(DebugProbeError::from)?;
 
-            assert_eq!(resp.transfer_response, 1);
+            if resp.transfer_response != 1 {
+                return Err(CmsisDapError::ErrorResponse.into());
+            }
 
             chunk.clone_from_slice(&resp.transfer_data[..]);
         }
 
         Ok(())
     }
+
+    fn flush(&mut self) -> Result<(), DebugProbeError> {
+        self.process_batch()?;
+        Ok(())
+    }
+
+    fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
+        self
+    }
+}
+
+impl SwoAccess for DAPLink {
+    fn enable_swo(&mut self, config: &SwoConfig) -> Result<(), ProbeRsError> {
+        // We read capabilities on initialisation so it should not be None.
+        let caps = self.capabilities.expect("This is a bug. Please report it.");
+
+        // Check requested mode is available in probe capabilities
+        match config.mode() {
+            SwoMode::UART if !caps.swo_uart_implemented => {
+                return Err(DebugProbeError::ProbeSpecific(
+                    CmsisDapError::SWOModeNotAvailable.into(),
+                )
+                .into())
+            }
+            SwoMode::Manchester if !caps.swo_manchester_implemented => {
+                return Err(DebugProbeError::ProbeSpecific(
+                    CmsisDapError::SWOModeNotAvailable.into(),
+                )
+                .into())
+            }
+            _ => (),
+        }
+
+        // Stop any ongoing trace
+        self.stop_swo_capture()?;
+
+        // Set transport. If the dedicated endpoint is available and we have opened
+        // the probe in V2 mode and it has an SWO endpoint, request that, otherwise
+        // request the DAP_SWO_Data polling mode.
+        if caps.swo_streaming_trace_implemented
+            && self.device.get_mut().unwrap().swo_streaming_supported()
+        {
+            debug!("Starting SWO capture with WinUSB transport");
+            self.set_swo_transport(swo::TransportRequest::WinUsbEndpoint)?;
+            self.swo_streaming = true;
+        } else {
+            debug!("Starting SWO capture with polled transport");
+            self.set_swo_transport(swo::TransportRequest::DataCommand)?;
+            self.swo_streaming = false;
+        }
+
+        // Set mode. We've already checked that the requested mode is listed as supported.
+        match config.mode() {
+            SwoMode::UART => self.set_swo_mode(swo::ModeRequest::Uart)?,
+            SwoMode::Manchester => self.set_swo_mode(swo::ModeRequest::Manchester)?,
+        }
+
+        // Set baud rate.
+        let baud = self.set_swo_baudrate(swo::BaudrateRequest(config.baud()))?;
+        if baud != config.baud() {
+            log::warn!(
+                "Target SWO baud rate not met: requested {}, got {}",
+                config.baud(),
+                baud
+            );
+        }
+
+        self.start_swo_capture()?;
+
+        self.swo_active = true;
+        Ok(())
+    }
+
+    fn disable_swo(&mut self) -> Result<(), ProbeRsError> {
+        debug!("Stopping SWO capture");
+        self.stop_swo_capture()?;
+        self.swo_active = false;
+        Ok(())
+    }
+
+    fn read_swo_timeout(&mut self, timeout: Duration) -> Result<Vec<u8>, ProbeRsError> {
+        if self.swo_active {
+            if self.swo_streaming {
+                let device = self
+                    .device
+                    .get_mut()
+                    .expect("This is a bug. Please report it.");
+                let mut buffer = vec![0u8; 1024];
+                let n = device.read_swo_stream(&mut buffer, timeout)?;
+                buffer.truncate(n);
+                log::trace!("SWO streaming buffer: {:?}", buffer);
+                Ok(buffer)
+            } else {
+                let data = self.get_swo_data()?;
+                log::trace!("SWO polled data: {:?}", data);
+                Ok(data)
+            }
+        } else {
+            Ok(Vec::new())
+        }
+    }
+
+    fn swo_poll_interval_hint(&mut self, config: &SwoConfig) -> Option<std::time::Duration> {
+        let caps = self.capabilities.expect("This is a bug. Please report it.");
+        if caps.swo_streaming_trace_implemented
+            && self.device.get_mut().unwrap().swo_streaming_supported()
+        {
+            // Streaming reads block waiting for new data so any polling interval is fine
+            Some(std::time::Duration::from_secs(0))
+        } else {
+            match self.swo_buffer_size {
+                // Given the buffer size and SWO baud rate we can estimate a poll rate.
+                Some(buf_size) => poll_interval_from_buf_size(config, buf_size),
+
+                // If we don't know the buffer size, we can't give a meaningful hint.
+                None => None,
+            }
+        }
+    }
+
+    fn swo_buffer_size(&mut self) -> Option<usize> {
+        self.swo_buffer_size
+    }
 }
 
 impl Drop for DAPLink {
     fn drop(&mut self) {
         debug!("Detaching from DAPLink");
-        // We ignore the error case as we can't do much about it anyways.
+        // We ignore the error cases as we can't do much about it anyways.
         let _ = self.process_batch();
+
+        // If SWO is active, disable it before calling detach,
+        // which ensures detach won't error on disabling SWO.
+        if self.swo_active {
+            let _ = self.disable_swo();
+        }
+
         let _ = self.detach();
     }
 }

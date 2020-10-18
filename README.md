@@ -48,43 +48,55 @@ We are implementing [Microsoft DAP](https://code.visualstudio.com/blogs/2018/08/
 ```rust
 use probe_rs::Probe;
 
-// Get a list of all available debug probes.
-let probes = Probe::list_all();
+fn main() -> Result<(), probe_rs::Error> {
+    // Get a list of all available debug probes.
+    let probes = Probe::list_all();
 
-// Use the first probe found.
-let probe = probes[0].open()?;
+    // Use the first probe found.
+    let probe = probes[0].open()?;
 
-// Attach to a chip.
-let session = probe.attach("nrf52")?;
+    // Attach to a chip.
+    let mut session = probe.attach("nrf52")?;
 
-// Select a core.
-let core = session.attach_to_core(0)?;
+    // Select a core.
+    let mut core = session.core(0)?;
 
-// Halt the attached core.
-core.halt()?;
+    // Halt the attached core.
+    core.halt(std::time::Duration::from_millis(300))?;
+
+    Ok(())
+}
 ```
 
 ### Reading from RAM
 
 ```rust
-use probe_rs::Core;
+use probe_rs::{MemoryInterface, Session};
 
-let core = Core::auto_attach("nrf52")?;
+fn main() -> Result<(), probe_rs::Error> {
+    // Attach to a chip.
+    let mut session = Session::auto_attach("nrf52")?;
 
-// Read a block of 50 32 bit words.
-let mut buff = [0u32;50];
-core.read_32(0x2000_0000, &mut buff)?;
+    // Select a core.
+    let mut core = session.core(0)?;
 
-// Read a single 32 bit word.
-let word = core.read_word_32(0x2000_0000)?;
+    // Read a block of 50 32 bit words.
+    let mut buff = [0u32; 50];
+    core.read_32(0x2000_0000, &mut buff)?;
 
-// Writing is just as simple.
-let buff = [0u32;50];
-core.write_32(0x2000_0000, &buff)?;
+    // Read a single 32 bit word.
+    let word = core.read_word_32(0x2000_0000)?;
 
-// of course we can also write 8bit words.
-let buff = [0u8;50];
-core.write_8(0x2000_0000, &buff)?;
+    // Writing is just as simple.
+    let buff = [0u32; 50];
+    core.write_32(0x2000_0000, &buff)?;
+
+    // of course we can also write 8bit words.
+    let buff = [0u8; 50];
+    core.write_8(0x2000_0000, &buff)?;
+
+    Ok(())
+}
 ```
 
 ## FAQ
@@ -104,6 +116,33 @@ Also have a look at [CONTRIBUTING.md](CONTRIBUTING.md).
 ### Our company needs feature X and would pay for its development
 
 Please reach out to [@Yatekii](https://github.com/Yatekii)
+
+### Building
+
+Building requires Rust and Cargo which can be installed [using rustup](https://rustup.rs/). probe-rs also depends on libusb and libftdi. On linux these can be installed with your package manager:
+
+```
+# Ubuntu
+> sudo apt install -y libusb-dev libusb-1.0 libftdi1-dev
+```
+
+On Windows you can use [vcpkg](https://github.com/microsoft/vcpkg#quick-start-windows):
+
+```
+# dynamic linking 64-bit
+> vcpkg install libftdi1:x64-windows libusb:x64-windows
+> set VCPKGRS_DYNAMIC=1
+
+# static linking 64-bit
+> vcpkg install libftdi1:x64-windows-static-md libusb:x64-windows-static-md
+```
+
+See [the vcpkg crate documentation](https://docs.rs/vcpkg/) for more information about configuring vcpkg with rust.
+
+### Adding Targets
+
+Target files are generated using [probe-rs/target-gen](https://github.com/probe-rs/target-gen) from CMSIS packs provided [here](https://developer.arm.com/tools-and-software/embedded/cmsis/cmsis-search).
+Generated files are then placed in `probe-rs/targets` for inclusion in the probe-rs project.
 
 ## Sponsors
 

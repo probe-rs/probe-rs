@@ -1,6 +1,6 @@
 [package]
 name = "probe-rs-cli"
-version = "0.8.0"
+version = "0.9.0"
 authors = ["Noah Hüsser <yatekii@yatekii.ch>", "Dominik Boehi <dominik.boehi@gmail.ch>"]
 edition = "2018"
 description = "A cli for on chip debugging and flashing of ARM chips."
@@ -13,7 +13,7 @@ keywords = ["embedded"]
 license = "MIT OR Apache-2.0"
 
 [dependencies]
-probe-rs = { path = "../probe-rs", version = "0.8.0" }
+probe-rs = { path = "../probe-rs", version = "0.9.0" }
 
 pretty_env_logger = "0.4.0"
 log = "0.4.6"
@@ -23,6 +23,6 @@ rustyline = "6.0.0"
 capstone = "0.7.0"
 ron = "0.6.0"
 ihex = "3.0.0"
-colored = "1.8.0"
+colored = "2.0.0"
 thiserror = "1.0"
 anyhow = "1.0.31"

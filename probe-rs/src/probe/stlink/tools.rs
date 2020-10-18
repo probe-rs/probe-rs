@@ -71,6 +71,21 @@ pub(super) fn read_serial_number<T: rusb::UsbContext>(
     let timeout = Duration::from_millis(100);
 
     let handle = device.open()?;
-    let language = handle.read_languages(timeout)?[0];
-    handle.read_serial_number_string(language, &descriptor, timeout)
+    let language = handle
+        .read_languages(timeout)?
+        .get(0)
+        .cloned()
+        .ok_or(rusb::Error::BadDescriptor)?;
+    let sn = handle.read_serial_number_string(language, &descriptor, timeout);
+    sn.map(|s| {
+        if s.len() < 24 {
+            // Some STLink (especially V2) have their serial number stored as a 12 bytes binary string
+            // containing non printable characters, so convert to a hex string to make them printable.
+            s.as_bytes().iter().map(|b| format!("{:02X}", b)).collect()
+        } else {
+            // Other STlink (especially V2-1) have their serial number already stored as a 24 characters
+            // hex string so they don't need to ba converted
+            s
+        }
+    })
 }

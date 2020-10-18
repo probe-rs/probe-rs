@@ -1,0 +1,117 @@
+---
+name: STM32WL Series
+manufacturer: ~
+variants:
+  - name: STM32WLE5J8Ix
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536891392
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32wlexx_64
+  - name: STM32WLE5JBIx
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536920064
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32wlexx_128
+  - name: STM32WLE5JCIx
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536936448
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32wlxx_cm4
+flash_algorithms:
+  stm32wlexx_64:
+    name: stm32wlexx_64
+    description: STM32WLE4x Flash
+    default: true
+    instructions: ikhBaQApA9qJSYFgiUmBYAAgcEeFSEFpQfAAQUFhACBwR4JISvaqIYNKAOARYANp2wP71EDy/xICYQFpyQP81AFpCQP81AFpSQP81AFpEUMBYUFpQfAEAUFhQWlB9IAxQWEBackD/NQBaUkD/NQBaQkD/NRBaSHwBAFBYQAgcEdqSUDy/xIKYQphSmlB9vhzmkNKYfgiAuoQIghpwAP81AhpQAP81AhpAAP81EhpQvACAhBDSGFIaUD0gDBIYQC/AL8IacAD/NQIaUAD/NQIaQAD/NRIaSDwAgBIYU/wAGAAaEAcA9EIaED0gDAIYAAgcEct6fxN3/g0gUDy/xsA8AcDyPgQsNj4FEBE8AEEyPgUQG5GdOAIKULTyPgQsFuzxRqqRgAkA+AV+AF7N1VkHJxC+dMAJMPxCAUG4ATrAwwS+AF7BvgMcGQcpUL22FNG2PgQQOQD+9TY+BBAZAP71Nj4EEAkA/vUAJwcYFxgAL8Av0kbKEQAI9j4EEDkA/vU2PgQQGQD+9TY+BBAJAP71BDKEMAQyhDACDkAvwC/I+AAJAPgEvgBWzVVZByMQvnTACT/JcHxCAcE4ATrAQxkHAb4DFCnQvjY2PgQEMkD+9TY+BAQSQP71Nj4EBAJA/vUAJkBYEFgACHY+BBA5AP71Nj4EEBkA/vU2PgQQCQD+9QAKYjR2PgUACDwAQDI+BQAT/AAYABoQBwF0Nj4AAAg9IAwyPgAAAAgvej8jQBAAFgjAWdFq4nvzQAwAEAAAAAA
+    pc_init: 1
+    pc_uninit: 21
+    pc_program_page: 243
+    pc_erase_sector: 129
+    pc_erase_all: 35
+    data_section_offset: 572
+    flash_properties:
+      address_range:
+        start: 134217728
+        end: 134283264
+      page_size: 1024
+      erased_byte_value: 255
+      program_page_timeout: 400
+      erase_sector_timeout: 400
+      sectors:
+        - size: 2048
+          address: 0
+  stm32wlexx_128:
+    name: stm32wlexx_128
+    description: STM32WLE5x Flash
+    default: true
+    instructions: ikhBaQApA9qJSYFgiUmBYAAgcEeFSEFpQfAAQUFhACBwR4JISvaqIYNKAOARYANp2wP71EDy/xICYQFpyQP81AFpCQP81AFpSQP81AFpEUMBYUFpQfAEAUFhQWlB9IAxQWEBackD/NQBaUkD/NQBaQkD/NRBaSHwBAFBYQAgcEdqSUDy/xIKYQphSmlB9vhzmkNKYfgiAuoQIghpwAP81AhpQAP81AhpAAP81EhpQvACAhBDSGFIaUD0gDBIYQC/AL8IacAD/NQIaUAD/NQIaQAD/NRIaSDwAgBIYU/wAGAAaEAcA9EIaED0gDAIYAAgcEct6fxN3/g0gUDy/xsA8AcDyPgQsNj4FEBE8AEEyPgUQG5GdOAIKULTyPgQsFuzxRqqRgAkA+AV+AF7N1VkHJxC+dMAJMPxCAUG4ATrAwwS+AF7BvgMcGQcpUL22FNG2PgQQOQD+9TY+BBAZAP71Nj4EEAkA/vUAJwcYFxgAL8Av0kbKEQAI9j4EEDkA/vU2PgQQGQD+9TY+BBAJAP71BDKEMAQyhDACDkAvwC/I+AAJAPgEvgBWzVVZByMQvnTACT/JcHxCAcE4ATrAQxkHAb4DFCnQvjY2PgQEMkD+9TY+BAQSQP71Nj4EBAJA/vUAJkBYEFgACHY+BBA5AP71Nj4EEBkA/vU2PgQQCQD+9QAKYjR2PgUACDwAQDI+BQAT/AAYABoQBwF0Nj4AAAg9IAwyPgAAAAgvej8jQBAAFgjAWdFq4nvzQAwAEAAAAAA
+    pc_init: 1
+    pc_uninit: 21
+    pc_program_page: 243
+    pc_erase_sector: 129
+    pc_erase_all: 35
+    data_section_offset: 572
+    flash_properties:
+      address_range:
+        start: 134217728
+        end: 134348800
+      page_size: 1024
+      erased_byte_value: 255
+      program_page_timeout: 400
+      erase_sector_timeout: 400
+      sectors:
+        - size: 2048
+          address: 0
+  stm32wlxx_cm4:
+    name: stm32wlxx_cm4
+    description: STM32WLxx_CM4 Flash
+    default: true
+    instructions: ikhBaQApA9qJSYFgiUmBYAAgcEeFSEFpQfAAQUFhACBwR4JISvaqIYNKAOARYANp2wP71EDy/xICYQFpyQP81AFpCQP81AFpSQP81AFpEUMBYUFpQfAEAUFhQWlB9IAxQWEBackD/NQBaUkD/NQBaQkD/NRBaSHwBAFBYQAgcEdqSUDy/xIKYQphSmlB9vhzmkNKYfgiAuoQIghpwAP81AhpQAP81AhpAAP81EhpQvACAhBDSGFIaUD0gDBIYQC/AL8IacAD/NQIaUAD/NQIaQAD/NRIaSDwAgBIYU/wAGAAaEAcA9EIaED0gDAIYAAgcEct6fxN3/g0gUDy/xsA8AcDyPgQsNj4FEBE8AEEyPgUQG5GdOAIKULTyPgQsFuzxRqqRgAkA+AV+AF7N1VkHJxC+dMAJMPxCAUG4ATrAwwS+AF7BvgMcGQcpUL22FNG2PgQQOQD+9TY+BBAZAP71Nj4EEAkA/vUAJwcYFxgAL8Av0kbKEQAI9j4EEDkA/vU2PgQQGQD+9TY+BBAJAP71BDKEMAQyhDACDkAvwC/I+AAJAPgEvgBWzVVZByMQvnTACT/JcHxCAcE4ATrAQxkHAb4DFCnQvjY2PgQEMkD+9TY+BAQSQP71Nj4EBAJA/vUAJkBYEFgACHY+BBA5AP71Nj4EEBkA/vU2PgQQCQD+9QAKYjR2PgUACDwAQDI+BQAT/AAYABoQBwF0Nj4AAAg9IAwyPgAAAAgvej8jQBAAFgjAWdFq4nvzQAwAEAAAAAA
+    pc_init: 1
+    pc_uninit: 21
+    pc_program_page: 243
+    pc_erase_sector: 129
+    pc_erase_all: 35
+    data_section_offset: 572
+    flash_properties:
+      address_range:
+        start: 134217728
+        end: 134479872
+      page_size: 1024
+      erased_byte_value: 255
+      program_page_timeout: 400
+      erase_sector_timeout: 400
+      sectors:
+        - size: 2048
+          address: 0
+core: M4

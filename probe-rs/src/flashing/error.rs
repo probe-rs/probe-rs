@@ -18,6 +18,8 @@ pub enum FlashError {
     Core(#[source] error::Error),
     #[error("{address} is not contained in {region:?}")]
     AddressNotInRegion { address: u32, region: FlashRegion },
+    #[error("Flash algorithm length is not 32 bit aligned.")]
+    InvalidFlashAlgorithmLength,
     #[error(
         "The RAM contents did not match the expected contents after loading the flash algorithm."
     )]

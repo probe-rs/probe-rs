@@ -30,7 +30,7 @@ fn get_daplink_info(device: &Device<rusb::Context>) -> Option<DebugProbeInfo> {
     let timeout = Duration::from_millis(100);
     let d_desc = device.device_descriptor().ok()?;
     let handle = device.open().ok()?;
-    let language = handle.read_languages(timeout).ok()?[0];
+    let language = handle.read_languages(timeout).ok()?.get(0).cloned()?;
     let prod_str = handle
         .read_product_string(language, &d_desc, timeout)
         .ok()?;
@@ -76,7 +76,7 @@ pub fn open_v2_device(device: Device<rusb::Context>) -> Option<DAPLinkDevice> {
     let vid = d_desc.vendor_id();
     let pid = d_desc.product_id();
     let mut handle = device.open().ok()?;
-    let language = handle.read_languages(timeout).ok()?[0];
+    let language = handle.read_languages(timeout).ok()?.get(0).cloned()?;
 
     // Go through interfaces to try and find a v2 interface.
     // The CMSIS-DAPv2 spec says that v2 interfaces should use a specific
@@ -116,6 +116,17 @@ pub fn open_v2_device(device: Device<rusb::Context>) -> Option<DAPLinkDevice> {
                 continue;
             }
 
+            // Detect a third bulk EP which will be for SWO streaming
+            let mut swo_ep = None;
+
+            if eps.len() > 2 {
+                if eps[2].transfer_type() == rusb::TransferType::Bulk
+                    && eps[2].direction() == rusb::Direction::In
+                {
+                    swo_ep = Some(eps[2].address());
+                }
+            }
+
             // Store EP addresses of the in and out EPs
             let out_ep = eps[0].address();
             let in_ep = eps[1].address();
@@ -128,6 +139,7 @@ pub fn open_v2_device(device: Device<rusb::Context>) -> Option<DAPLinkDevice> {
                         handle,
                         out_ep,
                         in_ep,
+                        swo_ep,
                     });
                 }
                 Err(_) => continue,
@@ -152,16 +164,8 @@ fn device_matches(
     if device_descriptor.vendor_id() == selector.vendor_id
         && device_descriptor.product_id() == selector.product_id
     {
-        if let Some(serial) = selector.serial_number.as_ref() {
-            if let Some(serial_str) = serial_str {
-                if serial == &serial_str {
-                    true
-                } else {
-                    false
-                }
-            } else {
-                false
-            }
+        if selector.serial_number.is_some() {
+            serial_str == selector.serial_number
         } else {
             true
         }
@@ -182,20 +186,36 @@ pub fn open_device_from_selector(
     // or permission issues with opening bulk devices.
     if let Ok(devices) = rusb::Context::new().and_then(|ctx| ctx.devices()) {
         for device in devices.iter() {
+            log::debug!("Device {:?}", device);
+
             let d_desc = match device.device_descriptor() {
                 Ok(d_desc) => d_desc,
-                Err(_) => continue,
+                Err(err) => {
+                    log::debug!("Device descriptor error {:?}", err);
+                    continue;
+                }
             };
+
             let handle = match device.open() {
                 Ok(handle) => handle,
-                Err(_) => continue,
+                Err(err) => {
+                    log::debug!("Device open error {:?}", err);
+                    continue;
+                }
             };
 
             let timeout = Duration::from_millis(100);
-            let language = handle.read_languages(timeout)?[0];
-            let sn_str = handle
-                .read_serial_number_string(language, &d_desc, timeout)
-                .ok();
+            let sn_str = match handle.read_languages(timeout) {
+                Ok(langs) => langs.get(0).and_then(|lang| {
+                    handle
+                        .read_serial_number_string(*lang, &d_desc, timeout)
+                        .ok()
+                }),
+                Err(err) => {
+                    log::debug!("Error getting DeviceHandle::read_languages, {:?}", err);
+                    continue;
+                }
+            };
 
             // We have to ensure the handle gets closed after reading the serial number,
             // multiple open handles are not allowed on Windows.
@@ -207,9 +227,15 @@ pub fn open_device_from_selector(
                 // attempt to open the device in v2 mode.
                 if let Some(device) = open_v2_device(device) {
                     return Ok(device);
+                } else {
+                    log::debug!("No device returned from open_v2_device");
                 }
+            } else {
+                log::debug!("No device matches");
             }
         }
+    } else {
+        log::debug!("No devices from rusb context");
     }
 
     // If rusb failed or the device didn't support v2, try using hidapi to open in v1 mode.

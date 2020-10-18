@@ -1,16 +1,25 @@
 pub mod constants;
-pub mod memory_interface;
 pub mod tools;
 mod usb_interface;
 
 use self::usb_interface::{STLinkUSBDevice, StLinkUsb};
-use super::{
-    DAPAccess, DebugProbe, DebugProbeError, JTAGAccess, PortType, ProbeCreationError, WireProtocol,
+use super::{DAPAccess, DebugProbe, DebugProbeError, PortType, ProbeCreationError, WireProtocol};
+use crate::{
+    architecture::arm::{
+        ap::{
+            valid_access_ports, APAccess, APClass, APRegister, AccessPort, BaseaddrFormat,
+            GenericAP, MemoryAP, BASE, BASE2, CSW, IDR,
+        },
+        communication_interface::{ArmCommunicationInterfaceState, ArmProbeInterface},
+        dp::{DPAccess, DPBankSel, DPRegister, DebugPortError, Select},
+        memory::Component,
+        ApInformation, ArmChipInfo, SwoAccess, SwoConfig, SwoMode,
+    },
+    DebugProbeSelector, Error as ProbeRsError, Memory, MemoryInterface, Probe,
 };
-use crate::{DebugProbeSelector, Memory};
 use constants::{commands, JTagFrequencyToDivider, Mode, Status, SwdFrequencyToDelayCount};
-use scroll::{Pread, BE, LE};
-use std::time::Duration;
+use scroll::{Pread, Pwrite, BE, LE};
+use std::{cmp::Ordering, convert::TryInto, time::Duration};
 use thiserror::Error;
 use usb_interface::TIMEOUT;
 
@@ -22,9 +31,10 @@ pub struct STLink<D: StLinkUsb> {
     protocol: WireProtocol,
     swd_speed_khz: u32,
     jtag_speed_khz: u32,
+    swo_enabled: bool,
 
-    /// Index of the AP which is currently open.
-    current_ap: Option<u8>,
+    /// List of opened APs
+    openend_aps: Vec<u8>,
 }
 
 impl DebugProbe for STLink<STLinkUSBDevice> {
@@ -38,8 +48,9 @@ impl DebugProbe for STLink<STLinkUSBDevice> {
             protocol: WireProtocol::Swd,
             swd_speed_khz: 1_800,
             jtag_speed_khz: 1_120,
+            swo_enabled: false,
 
-            current_ap: None,
+            openend_aps: vec![],
         };
 
         stlink.init()?;
@@ -59,8 +70,8 @@ impl DebugProbe for STLink<STLinkUSBDevice> {
     }
 
     fn set_speed(&mut self, speed_khz: u32) -> Result<u32, DebugProbeError> {
-        if self.hw_version < 3 {
-            match self.protocol {
+        match self.hw_version.cmp(&3) {
+            Ordering::Less => match self.protocol {
                 WireProtocol::Swd => {
                     let actual_speed = SwdFrequencyToDelayCount::find_setting(speed_khz);
 
@@ -87,30 +98,29 @@ impl DebugProbe for STLink<STLinkUSBDevice> {
                         Err(DebugProbeError::UnsupportedSpeed(speed_khz))
                     }
                 }
+            },
+            Ordering::Equal => {
+                let (available, _) = self.get_communication_frequencies(self.protocol)?;
+
+                let actual_speed_khz = available
+                    .into_iter()
+                    .filter(|speed| *speed <= speed_khz)
+                    .max()
+                    .ok_or(DebugProbeError::UnsupportedSpeed(speed_khz))?;
+
+                self.set_communication_frequency(self.protocol, actual_speed_khz)?;
+
+                match self.protocol {
+                    WireProtocol::Swd => self.swd_speed_khz = actual_speed_khz,
+                    WireProtocol::Jtag => self.jtag_speed_khz = actual_speed_khz,
+                }
+
+                Ok(actual_speed_khz)
             }
-        } else if self.hw_version == 3 {
-            let (available, _) = self.get_communication_frequencies(self.protocol)?;
-
-            let actual_speed_khz = available
-                .into_iter()
-                .filter(|speed| *speed <= speed_khz)
-                .max()
-                .ok_or(DebugProbeError::UnsupportedSpeed(speed_khz))?;
-
-            self.set_communication_frequency(self.protocol, actual_speed_khz)?;
-
-            match self.protocol {
-                WireProtocol::Swd => self.swd_speed_khz = actual_speed_khz,
-                WireProtocol::Jtag => self.jtag_speed_khz = actual_speed_khz,
-            }
-
-            Ok(actual_speed_khz)
-        } else {
-            unimplemented!()
+            Ordering::Greater => unimplemented!(),
         }
     }
 
-    /// Enters debug mode.
     fn attach(&mut self) -> Result<(), DebugProbeError> {
         log::debug!("attach({:?})", self.protocol);
         self.enter_idle()?;
@@ -128,7 +138,7 @@ impl DebugProbe for STLink<STLinkUSBDevice> {
 
         let mut buf = [0; 2];
         self.send_jtag_command(
-            vec![commands::JTAG_COMMAND, commands::JTAG_ENTER2, param, 0],
+            &[commands::JTAG_COMMAND, commands::JTAG_ENTER2, param, 0],
             &[],
             &mut buf,
             TIMEOUT,
@@ -153,20 +163,50 @@ impl DebugProbe for STLink<STLinkUSBDevice> {
         Ok(())
     }
 
-    /// Leave debug mode.
     fn detach(&mut self) -> Result<(), DebugProbeError> {
         log::debug!("Detaching from STLink.");
+        if self.swo_enabled {
+            self.disable_swo()
+                .map_err(|e| DebugProbeError::ProbeSpecific(e.into()))?;
+        }
         self.enter_idle()
     }
 
-    /// Asserts the nRESET pin.
     fn target_reset(&mut self) -> Result<(), DebugProbeError> {
         let mut buf = [0; 2];
         self.send_jtag_command(
-            vec![
+            &[
                 commands::JTAG_COMMAND,
                 commands::JTAG_DRIVE_NRST,
                 commands::JTAG_DRIVE_NRST_PULSE,
+            ],
+            &[],
+            &mut buf,
+            TIMEOUT,
+        )
+    }
+
+    fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
+        let mut buf = [0; 2];
+        self.send_jtag_command(
+            &[
+                commands::JTAG_COMMAND,
+                commands::JTAG_DRIVE_NRST,
+                commands::JTAG_DRIVE_NRST_LOW,
+            ],
+            &[],
+            &mut buf,
+            TIMEOUT,
+        )
+    }
+
+    fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
+        let mut buf = [0; 2];
+        self.send_jtag_command(
+            &[
+                commands::JTAG_COMMAND,
+                commands::JTAG_DRIVE_NRST,
+                commands::JTAG_DRIVE_NRST_HIGH,
             ],
             &[],
             &mut buf,
@@ -182,24 +222,24 @@ impl DebugProbe for STLink<STLinkUSBDevice> {
         Ok(())
     }
 
-    fn dedicated_memory_interface(&self) -> Option<Memory> {
-        None
-    }
-
-    fn get_interface_dap(&self) -> Option<&dyn DAPAccess> {
+    fn get_swo_interface(&self) -> Option<&dyn SwoAccess> {
         Some(self as _)
     }
 
-    fn get_interface_dap_mut(&mut self) -> Option<&mut dyn DAPAccess> {
+    fn get_swo_interface_mut(&mut self) -> Option<&mut dyn SwoAccess> {
         Some(self as _)
     }
 
-    fn get_interface_jtag(&self) -> Option<&dyn JTAGAccess> {
-        None
+    fn get_arm_interface<'probe>(
+        self: Box<Self>,
+    ) -> Result<Option<Box<dyn ArmProbeInterface + 'probe>>, DebugProbeError> {
+        let interface = StlinkArmDebug::new(self)?;
+
+        Ok(Some(Box::new(interface)))
     }
 
-    fn get_interface_jtag_mut(&mut self) -> Option<&mut dyn JTAGAccess> {
-        None
+    fn has_arm_interface(&self) -> bool {
+        true
     }
 }
 
@@ -213,7 +253,7 @@ impl DAPAccess for STLink<STLinkUSBDevice> {
 
             let port: u16 = port.into();
 
-            let cmd = vec![
+            let cmd = &[
                 commands::JTAG_COMMAND,
                 commands::JTAG_READ_DAP_REG,
                 (port & 0xFF) as u8,
@@ -244,7 +284,7 @@ impl DAPAccess for STLink<STLinkUSBDevice> {
 
             let port: u16 = port.into();
 
-            let cmd = vec![
+            let cmd = &[
                 commands::JTAG_COMMAND,
                 commands::JTAG_WRITE_DAP_REG,
                 (port & 0xFF) as u8,
@@ -258,16 +298,45 @@ impl DAPAccess for STLink<STLinkUSBDevice> {
             ];
             let mut buf = [0; 2];
             self.send_jtag_command(cmd, &[], &mut buf, TIMEOUT)?;
+
+            // Ensure the write is actually performed.
+            self.flush()?;
+
             Ok(())
         } else {
             Err(StlinkError::BlanksNotAllowedOnDPRegister.into())
         }
     }
+
+    fn flush(&mut self) -> Result<(), DebugProbeError> {
+        self.read_register(PortType::DebugPort, 0xc)?;
+
+        Ok(())
+    }
+
+    fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
+        self
+    }
+}
+
+impl<'a> AsRef<dyn DebugProbe + 'a> for STLink<STLinkUSBDevice> {
+    fn as_ref(&self) -> &(dyn DebugProbe + 'a) {
+        self
+    }
+}
+
+impl<'a> AsMut<dyn DebugProbe + 'a> for STLink<STLinkUSBDevice> {
+    fn as_mut(&mut self) -> &mut (dyn DebugProbe + 'a) {
+        self
+    }
 }
 
 impl<D: StLinkUsb> Drop for STLink<D> {
     fn drop(&mut self) {
-        // We ignore the error case as we can't do much about it anyways.
+        // We ignore the error cases as we can't do much about it anyways.
+        if self.swo_enabled {
+            let _ = self.disable_swo();
+        }
         let _ = self.enter_idle();
     }
 }
@@ -295,7 +364,7 @@ impl<D: StLinkUsb> STLink<D> {
         let mut buf = [0; 8];
         match self
             .device
-            .write(vec![commands::GET_TARGET_VOLTAGE], &[], &mut buf, TIMEOUT)
+            .write(&[commands::GET_TARGET_VOLTAGE], &[], &mut buf, TIMEOUT)
         {
             Ok(_) => {
                 // The next two unwraps are safe!
@@ -317,7 +386,7 @@ impl<D: StLinkUsb> STLink<D> {
         log::trace!("Getting current mode of device...");
         let mut buf = [0; 2];
         self.device
-            .write(vec![commands::GET_CURRENT_MODE], &[], &mut buf, TIMEOUT)?;
+            .write(&[commands::GET_CURRENT_MODE], &[], &mut buf, TIMEOUT)?;
 
         use Mode::*;
 
@@ -341,13 +410,13 @@ impl<D: StLinkUsb> STLink<D> {
 
         match mode {
             Mode::Dfu => self.device.write(
-                vec![commands::DFU_COMMAND, commands::DFU_EXIT],
+                &[commands::DFU_COMMAND, commands::DFU_EXIT],
                 &[],
                 &mut [],
                 TIMEOUT,
             ),
             Mode::Swim => self.device.write(
-                vec![commands::SWIM_COMMAND, commands::SWIM_EXIT],
+                &[commands::SWIM_COMMAND, commands::SWIM_EXIT],
                 &[],
                 &mut [],
                 TIMEOUT,
@@ -374,7 +443,7 @@ impl<D: StLinkUsb> STLink<D> {
         let mut buf = [0; 6];
         match self
             .device
-            .write(vec![commands::GET_VERSION], &[], &mut buf, TIMEOUT)
+            .write(&[commands::GET_VERSION], &[], &mut buf, TIMEOUT)
         {
             Ok(_) => {
                 let version: u16 = (&buf[0..2]).pread_with(0, BE).unwrap();
@@ -398,7 +467,7 @@ impl<D: StLinkUsb> STLink<D> {
             let mut buf = [0; 12];
             match self
                 .device
-                .write(vec![commands::GET_VERSION_EXT], &[], &mut buf, TIMEOUT)
+                .write(&[commands::GET_VERSION_EXT], &[], &mut buf, TIMEOUT)
             {
                 Ok(_) => {
                     let version: u8 = (&buf[2..3]).pread_with(0, LE).unwrap();
@@ -461,7 +530,7 @@ impl<D: StLinkUsb> STLink<D> {
     ) -> Result<(), DebugProbeError> {
         let mut buf = [0; 2];
         self.send_jtag_command(
-            vec![
+            &[
                 commands::JTAG_COMMAND,
                 commands::SWD_SET_FREQ,
                 frequency as u8,
@@ -479,7 +548,7 @@ impl<D: StLinkUsb> STLink<D> {
     ) -> Result<(), DebugProbeError> {
         let mut buf = [0; 2];
         self.send_jtag_command(
-            vec![
+            &[
                 commands::JTAG_COMMAND,
                 commands::JTAG_SET_FREQ,
                 frequency as u8,
@@ -496,7 +565,9 @@ impl<D: StLinkUsb> STLink<D> {
         protocol: WireProtocol,
         frequency_khz: u32,
     ) -> Result<(), DebugProbeError> {
-        assert_eq!(self.hw_version, 3);
+        if self.hw_version != 3 {
+            return Err(DebugProbeError::CommandNotSupportedByProbe);
+        }
 
         let cmd_proto = match protocol {
             WireProtocol::Swd => 0,
@@ -507,7 +578,7 @@ impl<D: StLinkUsb> STLink<D> {
         command.extend_from_slice(&frequency_khz.to_le_bytes());
 
         let mut buf = [0; 8];
-        self.send_jtag_command(command, &[], &mut buf, TIMEOUT)
+        self.send_jtag_command(&command, &[], &mut buf, TIMEOUT)
     }
 
     /// Returns the current and available communication frequencies (V3 only)
@@ -515,7 +586,9 @@ impl<D: StLinkUsb> STLink<D> {
         &mut self,
         protocol: WireProtocol,
     ) -> Result<(Vec<u32>, u32), DebugProbeError> {
-        assert_eq!(self.hw_version, 3);
+        if self.hw_version != 3 {
+            return Err(DebugProbeError::CommandNotSupportedByProbe);
+        }
 
         let cmd_proto = match protocol {
             WireProtocol::Swd => 0,
@@ -524,7 +597,7 @@ impl<D: StLinkUsb> STLink<D> {
 
         let mut buf = [0; 52];
         self.send_jtag_command(
-            vec![commands::JTAG_COMMAND, commands::GET_COM_FREQ, cmd_proto],
+            &[commands::JTAG_COMMAND, commands::GET_COM_FREQ, cmd_proto],
             &[],
             &mut buf,
             TIMEOUT,
@@ -561,17 +634,11 @@ impl<D: StLinkUsb> STLink<D> {
             }
         }
 
-        if let Some(current_ap) = self.current_ap {
-            if current_ap != ap {
-                self.close_ap(current_ap as u8)?;
-                self.open_ap(ap as u8)?;
-            }
-        } else {
-            // First time reading, open the AP
-            self.open_ap(ap as u8)?;
+        if !self.openend_aps.contains(&ap) {
+            log::debug!("Opening AP {}", ap);
+            self.open_ap(ap)?;
+            self.openend_aps.push(ap)
         }
-
-        self.current_ap = Some(ap);
 
         Ok(())
     }
@@ -582,12 +649,14 @@ impl<D: StLinkUsb> STLink<D> {
     /// a JTAG version >= `MIN_JTAG_VERSION_MULTI_AP`.
     fn open_ap(&mut self, apsel: u8) -> Result<(), DebugProbeError> {
         // Ensure this command is actually supported
-        assert!(self.hw_version >= 3 || self.jtag_version >= Self::MIN_JTAG_VERSION_MULTI_AP);
+        if self.hw_version < 3 && self.jtag_version < Self::MIN_JTAG_VERSION_MULTI_AP {
+            return Err(DebugProbeError::CommandNotSupportedByProbe);
+        }
 
         let mut buf = [0; 2];
         log::trace!("JTAG_INIT_AP {}", apsel);
         self.send_jtag_command(
-            vec![commands::JTAG_COMMAND, commands::JTAG_INIT_AP, apsel],
+            &[commands::JTAG_COMMAND, commands::JTAG_INIT_AP, apsel],
             &[],
             &mut buf,
             TIMEOUT,
@@ -598,45 +667,397 @@ impl<D: StLinkUsb> STLink<D> {
     ///
     /// This is only supported on ST-Link V3, or older ST-Links with
     /// a JTAG version >= `MIN_JTAG_VERSION_MULTI_AP`.
-    fn close_ap(&mut self, apsel: u8) -> Result<(), DebugProbeError> {
+    fn _close_ap(&mut self, apsel: u8) -> Result<(), DebugProbeError> {
         // Ensure this command is actually supported
-        assert!(self.hw_version >= 3 || self.jtag_version >= Self::MIN_JTAG_VERSION_MULTI_AP);
+        if self.hw_version < 3 && self.jtag_version < Self::MIN_JTAG_VERSION_MULTI_AP {
+            return Err(DebugProbeError::CommandNotSupportedByProbe);
+        }
 
         let mut buf = [0; 2];
         log::trace!("JTAG_CLOSE_AP {}", apsel);
         self.send_jtag_command(
-            vec![commands::JTAG_COMMAND, commands::JTAG_CLOSE_AP_DBG, apsel],
+            &[commands::JTAG_COMMAND, commands::JTAG_CLOSE_AP_DBG, apsel],
             &[],
             &mut buf,
             TIMEOUT,
         )
     }
 
-    /// Validates the status given.
-    /// Returns an error if the status is not `Status::JtagOk`.
-    /// Returns Ok(()) otherwise.
-    /// This can be called on any status returned from the attached target.
-    fn check_status(status: &[u8]) -> Result<(), StlinkError> {
-        let status = Status::from(status[0]);
-        if status != Status::JtagOk {
-            log::warn!("check_status failed: {:?}", status);
-            Err(StlinkError::CommandFailed(status))
-        } else {
-            Ok(())
-        }
-    }
-
     fn send_jtag_command(
         &mut self,
-        cmd: Vec<u8>,
+        cmd: &[u8],
         write_data: &[u8],
         read_data: &mut [u8],
         timeout: Duration,
     ) -> Result<(), DebugProbeError> {
-        self.device.write(cmd, write_data, read_data, timeout)?;
+        for attempt in 0..13 {
+            self.device.write(cmd, write_data, read_data, timeout)?;
 
-        Self::check_status(read_data)?;
+            match Status::from(read_data[0]) {
+                Status::JtagOk => return Ok(()),
+                Status::SwdDpWait => {
+                    log::warn!("send_jtag_command {} got SwdDpWait, retrying", cmd[0])
+                }
+                Status::SwdApWait => {
+                    log::warn!("send_jtag_command {} got SwdApWait, retrying", cmd[0])
+                }
+                status => {
+                    log::warn!("send_jtag_command {} failed: {:?}", cmd[0], status);
+                    return Err(From::from(StlinkError::CommandFailed(status)));
+                }
+            }
+
+            // Sleep with exponential backoff.
+            std::thread::sleep(Duration::from_micros(100 << attempt));
+        }
+
+        log::warn!("too many retries, giving up");
+
+        // Return the last error (will be SwdDpWait or SwdApWait)
+        let status = Status::from(read_data[0]);
+        return Err(From::from(StlinkError::CommandFailed(status)));
+    }
+
+    pub fn start_trace_reception(&mut self, config: &SwoConfig) -> Result<(), DebugProbeError> {
+        let mut buf = [0; 2];
+        let bufsize = 4096u16.to_le_bytes();
+        let baud = config.baud().to_le_bytes();
+        let mut command = vec![commands::JTAG_COMMAND, commands::SWO_START_TRACE_RECEPTION];
+        command.extend_from_slice(&bufsize);
+        command.extend_from_slice(&baud);
+
+        self.send_jtag_command(&command, &[], &mut buf, TIMEOUT)?;
+
+        self.swo_enabled = true;
+
         Ok(())
+    }
+
+    pub fn stop_trace_reception(&mut self) -> Result<(), DebugProbeError> {
+        let mut buf = [0; 2];
+
+        self.send_jtag_command(
+            &[commands::JTAG_COMMAND, commands::SWO_STOP_TRACE_RECEPTION],
+            &[],
+            &mut buf,
+            TIMEOUT,
+        )?;
+
+        self.swo_enabled = false;
+
+        Ok(())
+    }
+
+    /// Gets the SWO count from the ST-Link probe.
+    fn read_swo_available_byte_count(&mut self) -> Result<usize, DebugProbeError> {
+        let mut buf = [0; 2];
+        self.device.write(
+            &[
+                commands::JTAG_COMMAND,
+                commands::SWO_GET_TRACE_NEW_RECORD_NB,
+            ],
+            &[],
+            &mut buf,
+            TIMEOUT,
+        )?;
+        Ok(buf.pread::<u16>(0).unwrap() as usize)
+    }
+
+    /// Reads the actual data from the SWO buffer on the ST-Link.
+    fn read_swo_data(&mut self, timeout: Duration) -> Result<Vec<u8>, DebugProbeError> {
+        // The byte count always needs to be polled first, otherwise
+        // the ST-Link won't return any data.
+        let mut buf = vec![0; self.read_swo_available_byte_count()?];
+        let bytes_read = self.device.read_swo(&mut buf, timeout)?;
+        buf.truncate(bytes_read);
+        Ok(buf)
+    }
+
+    fn get_last_rw_status(&mut self) -> Result<(), DebugProbeError> {
+        let mut receive_buffer = [0u8; 12];
+        self.send_jtag_command(
+            &[commands::JTAG_COMMAND, commands::JTAG_GETLASTRWSTATUS2],
+            &[],
+            &mut receive_buffer,
+            TIMEOUT,
+        )
+    }
+
+    fn read_mem_32bit(
+        &mut self,
+        address: u32,
+        length: u16,
+        apsel: u8,
+    ) -> Result<Vec<u32>, DebugProbeError> {
+        log::debug!(
+            "Read mem 32 bit, address={:08x}, length={}",
+            address,
+            length
+        );
+        // Maximum supported read length is 2^16 bytes.
+        assert!(
+            length < (u16::MAX / 4),
+            "Maximum read length for STLink is 16'384 words"
+        );
+
+        if address % 4 != 0 {
+            todo!("Should return an error here");
+        }
+
+        let byte_length = length * 4;
+
+        let mut receive_buffer = vec![0u8; byte_length as usize];
+
+        self.device.write(
+            &[
+                commands::JTAG_COMMAND,
+                commands::JTAG_READMEM_32BIT,
+                address as u8,
+                (address >> 8) as u8,
+                (address >> 16) as u8,
+                (address >> 24) as u8,
+                byte_length as u8,
+                (byte_length >> 8) as u8,
+                apsel,
+            ],
+            &[],
+            &mut receive_buffer,
+            TIMEOUT,
+        )?;
+
+        self.get_last_rw_status()?;
+
+        let words: Vec<u32> = receive_buffer
+            .chunks_exact(4)
+            .map(|chunk| u32::from_le_bytes(chunk.try_into().unwrap()))
+            .collect();
+
+        Ok(words)
+    }
+
+    fn read_mem_8bit(
+        &mut self,
+        address: u32,
+        length: u16,
+        apsel: u8,
+    ) -> Result<Vec<u8>, DebugProbeError> {
+        log::debug!("Read mem 8 bit, address={:08x}, length={}", address, length);
+        let mut receive_buffer = vec![0u8; length as usize];
+
+        self.device.write(
+            &[
+                commands::JTAG_COMMAND,
+                commands::JTAG_READMEM_8BIT,
+                address as u8,
+                (address >> 8) as u8,
+                (address >> 16) as u8,
+                (address >> 24) as u8,
+                length as u8,
+                (length >> 8) as u8,
+                apsel,
+            ],
+            &[],
+            &mut receive_buffer,
+            TIMEOUT,
+        )?;
+
+        self.get_last_rw_status()?;
+
+        Ok(receive_buffer)
+    }
+
+    fn write_mem_32bit(
+        &mut self,
+        address: u32,
+        data: &[u32],
+        apsel: u8,
+    ) -> Result<(), DebugProbeError> {
+        log::trace!("write_mem_32bit");
+        let length = data.len();
+
+        // Maximum supported read length is 2^16 bytes.
+        assert!(
+            length < (u16::MAX / 4) as usize,
+            "Maximum write length for STLink is 16'384 words"
+        );
+
+        if address % 4 != 0 {
+            todo!("Should return an error here");
+        }
+
+        let byte_length = length * 4;
+
+        let mut tx_buffer = vec![0u8; byte_length];
+
+        let mut offset = 0;
+
+        for word in data {
+            tx_buffer
+                .gwrite(word, &mut offset)
+                .expect("Failed to write into tx_buffer");
+        }
+
+        self.device.write(
+            &[
+                commands::JTAG_COMMAND,
+                commands::JTAG_WRITEMEM_32BIT,
+                address as u8,
+                (address >> 8) as u8,
+                (address >> 16) as u8,
+                (address >> 24) as u8,
+                byte_length as u8,
+                (byte_length >> 8) as u8,
+                apsel,
+            ],
+            &tx_buffer,
+            &mut [],
+            TIMEOUT,
+        )?;
+
+        self.get_last_rw_status()?;
+
+        Ok(())
+    }
+
+    fn write_mem_8bit(
+        &mut self,
+        address: u32,
+        data: &[u8],
+        apsel: u8,
+    ) -> Result<(), DebugProbeError> {
+        log::trace!("write_mem_8bit");
+        let byte_length = data.len();
+
+        if self.hw_version < 3 {
+            assert!(
+                byte_length <= 64,
+                "8-Bit writes are limited to 64 bytes on ST-Link v2"
+            );
+        } else {
+            assert!(
+                byte_length <= 512,
+                "8-Bit writes are limited to 512 bytes on ST-Link v3"
+            );
+        }
+
+        self.device.write(
+            &[
+                commands::JTAG_COMMAND,
+                commands::JTAG_WRITEMEM_8BIT,
+                address as u8,
+                (address >> 8) as u8,
+                (address >> 16) as u8,
+                (address >> 24) as u8,
+                byte_length as u8,
+                (byte_length >> 8) as u8,
+                apsel,
+            ],
+            data,
+            &mut [],
+            TIMEOUT,
+        )?;
+
+        self.get_last_rw_status()?;
+
+        Ok(())
+    }
+
+    fn _read_debug_reg(&mut self, address: u32) -> Result<u32, DebugProbeError> {
+        log::trace!("Read debug reg {:08x}", address);
+        let mut buff = [0u8; 8];
+
+        self.send_jtag_command(
+            &[
+                commands::JTAG_COMMAND,
+                commands::JTAG_READ_DEBUG_REG,
+                address as u8,
+                (address >> 8) as u8,
+                (address >> 16) as u8,
+                (address >> 24) as u8,
+            ],
+            &[],
+            &mut buff,
+            TIMEOUT,
+        )?;
+
+        let response_val: u32 = buff.pread(4).unwrap();
+
+        Ok(response_val)
+    }
+
+    fn _write_debug_reg(&mut self, address: u32, value: u32) -> Result<(), DebugProbeError> {
+        log::trace!("Write debug reg {:08x}", address);
+        let mut buff = [0u8; 2];
+
+        let mut cmd = [0u8; 2 + 4 + 4];
+        cmd[0] = commands::JTAG_COMMAND;
+        cmd[1] = commands::JTAG_WRITE_DEBUG_REG;
+
+        cmd.pwrite_with(address, 2, LE).unwrap();
+        cmd.pwrite_with(value, 6, LE).unwrap();
+
+        self.send_jtag_command(&cmd, &[], &mut buff, TIMEOUT)
+    }
+
+    fn _read_core_reg(&mut self, index: u32) -> Result<u32, DebugProbeError> {
+        log::trace!("Read core reg {:08x}", index);
+        let mut buff = [0u8; 8];
+
+        let mut cmd = [0u8; 2 + 1];
+        cmd[0] = commands::JTAG_COMMAND;
+        cmd[1] = commands::JTAG_READ_CORE_REG;
+
+        assert!(index < (u8::MAX as u32));
+
+        cmd[2] = index as u8;
+
+        self.send_jtag_command(&cmd, &[], &mut buff, TIMEOUT)?;
+
+        let response = buff.pread_with(4, LE).unwrap();
+
+        Ok(response)
+    }
+
+    fn _write_core_reg(&mut self, index: u32, value: u32) -> Result<(), DebugProbeError> {
+        log::trace!("Write core reg {:08x}", index);
+        let mut buff = [0u8; 2];
+
+        let mut cmd = [0u8; 2 + 1 + 4];
+        cmd[0] = commands::JTAG_COMMAND;
+        cmd[1] = commands::JTAG_WRITE_CORE_REG;
+
+        assert!(index < (u8::MAX as u32));
+
+        cmd[2] = index as u8;
+
+        cmd.pwrite_with(value, 3, LE).unwrap();
+
+        self.send_jtag_command(&cmd, &[], &mut buff, TIMEOUT)
+    }
+}
+
+impl<D: StLinkUsb> SwoAccess for STLink<D> {
+    fn enable_swo(&mut self, config: &SwoConfig) -> Result<(), ProbeRsError> {
+        match config.mode() {
+            SwoMode::UART => {
+                self.start_trace_reception(config)?;
+                Ok(())
+            }
+            SwoMode::Manchester => Err(DebugProbeError::ProbeSpecific(
+                StlinkError::ManchesterSwoNotSupported.into(),
+            )
+            .into()),
+        }
+    }
+
+    fn disable_swo(&mut self) -> Result<(), ProbeRsError> {
+        self.stop_trace_reception()?;
+        Ok(())
+    }
+
+    fn read_swo_timeout(&mut self, timeout: Duration) -> Result<Vec<u8>, ProbeRsError> {
+        let data = self.read_swo_data(timeout)?;
+        Ok(data)
     }
 }
 
@@ -649,13 +1070,15 @@ pub(crate) enum StlinkError {
     #[error("Blank values are not allowed on DebugPort writes.")]
     BlanksNotAllowedOnDPRegister,
     #[error("Not enough bytes read.")]
-    NotEnoughBytesRead,
+    NotEnoughBytesRead { is: usize, should: usize },
     #[error("USB endpoint not found.")]
     EndpointNotFound,
     #[error("Command failed with status {0:?}")]
     CommandFailed(Status),
     #[error("JTAG not supported on Probe")]
     JTAGNotSupportedOnProbe,
+    #[error("Mancehster-coded SWO mode not supported")]
+    ManchesterSwoNotSupported,
 }
 
 impl From<StlinkError> for DebugProbeError {
@@ -667,6 +1090,592 @@ impl From<StlinkError> for DebugProbeError {
 impl From<StlinkError> for ProbeCreationError {
     fn from(e: StlinkError) -> Self {
         ProbeCreationError::ProbeSpecific(Box::new(e))
+    }
+}
+
+#[derive(Debug)]
+struct StlinkArmDebug {
+    probe: Box<STLink<STLinkUSBDevice>>,
+    state: ArmCommunicationInterfaceState,
+}
+
+impl StlinkArmDebug {
+    fn new(probe: Box<STLink<STLinkUSBDevice>>) -> Result<Self, DebugProbeError> {
+        let state = ArmCommunicationInterfaceState::new();
+
+        // Determine the number and type of available APs.
+
+        let mut interface = Self { probe, state };
+
+        for ap in valid_access_ports(&mut interface) {
+            let ap_state = interface.read_ap_information(ap)?;
+
+            log::debug!("AP {}: {:?}", ap.port_number(), ap_state);
+
+            interface.state.ap_information.push(ap_state);
+        }
+
+        Ok(interface)
+    }
+
+    /// Read information about an AP from its registers.
+    ///
+    /// This reads the IDR register of the AP, and parses
+    /// further AP specific information based on its class.
+    ///
+    /// Currently, AP specific information is read for Memory APs.
+    fn read_ap_information(
+        &mut self,
+        access_port: GenericAP,
+    ) -> Result<ApInformation, DebugProbeError> {
+        let idr = self.read_ap_register(access_port, IDR::default())?;
+
+        if idr.CLASS == APClass::MEMAP {
+            let access_port: MemoryAP = access_port.into();
+
+            let base_register = self.read_ap_register(access_port, BASE::default())?;
+
+            let mut base_address = if BaseaddrFormat::ADIv5 == base_register.Format {
+                let base2 = self.read_ap_register(access_port, BASE2::default())?;
+
+                u64::from(base2.BASEADDR) << 32
+            } else {
+                0
+            };
+            base_address |= u64::from(base_register.BASEADDR << 12);
+
+            log::debug!(
+                "AP {} - BaseAddress: {:#08x}",
+                access_port.port_number(),
+                base_address
+            );
+
+            // Ensure that we can access this AP.
+            let status = self.read_ap_register(access_port, CSW::default())?;
+
+            log::debug!("AP {} - {:?}", access_port.port_number(), status);
+
+            // TODO: Figure out how to handle this for STM32,
+            //       it is not clear how the memory accesses work
+            //       with the dedicated API
+            let only_32bit_data_size = false;
+
+            Ok(ApInformation::MemoryAp {
+                port_number: access_port.port_number(),
+                only_32bit_data_size,
+                debug_base_address: base_address,
+            })
+        } else {
+            Ok(ApInformation::Other {
+                port_number: access_port.port_number(),
+            })
+        }
+    }
+
+    /// Read the given register `R` of the given `AP`, where the read register value is wrapped in
+    /// the given `register` parameter.
+    pub fn read_ap_register<AP, R>(
+        &mut self,
+        port: impl Into<AP>,
+        _register: R,
+    ) -> Result<R, DebugProbeError>
+    where
+        AP: AccessPort,
+        R: APRegister<AP>,
+    {
+        log::debug!("Reading register {}", R::NAME);
+        self.select_ap_and_ap_bank(port.into().port_number(), R::APBANKSEL)?;
+
+        let result = self.probe.read_register(
+            PortType::AccessPort(u16::from(self.state.current_apsel)),
+            u16::from(R::ADDRESS),
+        )?;
+
+        log::debug!("Read register    {}, value=0x{:08x}", R::NAME, result);
+
+        Ok(R::from(result))
+    }
+
+    fn select_dp_bank(&mut self, dp_bank: DPBankSel) -> Result<(), DebugPortError> {
+        match dp_bank {
+            DPBankSel::Bank(new_bank) => {
+                if new_bank != self.state.current_dpbanksel {
+                    self.state.current_dpbanksel = new_bank;
+
+                    let mut select = Select(0);
+
+                    log::debug!("Changing DP_BANK_SEL to {}", self.state.current_dpbanksel);
+
+                    select.set_ap_sel(self.state.current_apsel);
+                    select.set_ap_bank_sel(self.state.current_apbanksel);
+                    select.set_dp_bank_sel(self.state.current_dpbanksel);
+
+                    self.write_dp_register(select)?;
+                }
+            }
+            DPBankSel::DontCare => (),
+        }
+
+        Ok(())
+    }
+
+    fn select_ap_and_ap_bank(&mut self, port: u8, ap_bank: u8) -> Result<(), DebugProbeError> {
+        let mut cache_changed = if self.state.current_apsel != port {
+            self.state.current_apsel = port;
+            true
+        } else {
+            false
+        };
+
+        if self.state.current_apbanksel != ap_bank {
+            self.state.current_apbanksel = ap_bank;
+            cache_changed = true;
+        }
+
+        if cache_changed {
+            let mut select = Select(0);
+
+            log::debug!(
+                "Changing AP to {}, AP_BANK_SEL to {}",
+                self.state.current_apsel,
+                self.state.current_apbanksel
+            );
+
+            select.set_ap_sel(self.state.current_apsel);
+            select.set_ap_bank_sel(self.state.current_apbanksel);
+            select.set_dp_bank_sel(self.state.current_dpbanksel);
+
+            self.write_dp_register(select)?;
+        }
+
+        Ok(())
+    }
+
+    fn select_ap(&mut self, port: impl AccessPort) -> Result<(), DebugProbeError> {
+        // Change AP, leave ap_bank_sel the same.
+        self.probe.select_ap(port.port_number())?;
+
+        Ok(())
+    }
+
+    /// Write the given register `R` of the given `AP`, where the to be written register value
+    /// is wrapped in the given `register` parameter.
+    pub fn write_ap_register<AP, R>(
+        &mut self,
+        port: impl Into<AP>,
+        register: R,
+    ) -> Result<(), DebugProbeError>
+    where
+        AP: AccessPort,
+        R: APRegister<AP>,
+    {
+        let register_value = register.into();
+
+        log::debug!(
+            "Writing register {}, value=0x{:08X}",
+            R::NAME,
+            register_value
+        );
+
+        self.select_ap_and_ap_bank(port.into().port_number(), R::APBANKSEL)?;
+
+        self.probe.write_register(
+            PortType::AccessPort(u16::from(self.state.current_apsel)),
+            u16::from(R::ADDRESS),
+            register_value,
+        )?;
+
+        // Read from AP register
+        Ok(())
+    }
+
+    // TODO: Fix this ugly: _register: R, values: &[u32]
+    /// Write the given register `R` of the given `AP` repeatedly, where the to be written register
+    /// values are stored in the `values` array. The values are written in the exact order they are
+    /// stored in the array.
+    pub fn write_ap_register_repeated<AP, R>(
+        &mut self,
+        port: impl Into<AP>,
+        _register: R,
+        values: &[u32],
+    ) -> Result<(), DebugProbeError>
+    where
+        AP: AccessPort,
+        R: APRegister<AP>,
+    {
+        log::debug!(
+            "Writing register {}, block with len={} words",
+            R::NAME,
+            values.len(),
+        );
+
+        self.select_ap_and_ap_bank(port.into().port_number(), R::APBANKSEL)?;
+
+        self.probe.write_block(
+            PortType::AccessPort(u16::from(self.state.current_apsel)),
+            u16::from(R::ADDRESS),
+            values,
+        )?;
+        Ok(())
+    }
+
+    // TODO: fix types, see above!
+    /// Read the given register `R` of the given `AP` repeatedly, where the read register values
+    /// are stored in the `values` array. The values are read in the exact order they are stored in
+    /// the array.
+    pub fn read_ap_register_repeated<AP, R>(
+        &mut self,
+        port: impl Into<AP>,
+        _register: R,
+        values: &mut [u32],
+    ) -> Result<(), DebugProbeError>
+    where
+        AP: AccessPort,
+        R: APRegister<AP>,
+    {
+        log::debug!(
+            "Reading register {}, block with len={} words",
+            R::NAME,
+            values.len(),
+        );
+
+        self.select_ap_and_ap_bank(port.into().port_number(), R::APBANKSEL)?;
+
+        self.probe.read_block(
+            PortType::AccessPort(u16::from(self.state.current_apsel)),
+            u16::from(R::ADDRESS),
+            values,
+        )?;
+        Ok(())
+    }
+}
+
+impl DPAccess for StlinkArmDebug {
+    fn read_dp_register<R: DPRegister>(&mut self) -> Result<R, DebugPortError> {
+        if R::VERSION > self.state.debug_port_version {
+            return Err(DebugPortError::UnsupportedRegister {
+                register: R::NAME,
+                version: self.state.debug_port_version,
+            });
+        }
+
+        self.select_dp_bank(R::DP_BANK)?;
+
+        log::debug!("Reading DP register {}", R::NAME);
+        let result = self
+            .probe
+            .read_register(PortType::DebugPort, u16::from(R::ADDRESS))?;
+
+        log::debug!("Read    DP register {}, value=0x{:08x}", R::NAME, result);
+
+        Ok(result.into())
+    }
+
+    fn write_dp_register<R: DPRegister>(&mut self, register: R) -> Result<(), DebugPortError> {
+        if R::VERSION > self.state.debug_port_version {
+            return Err(DebugPortError::UnsupportedRegister {
+                register: R::NAME,
+                version: self.state.debug_port_version,
+            });
+        }
+
+        self.select_dp_bank(R::DP_BANK)?;
+
+        let value = register.into();
+
+        log::debug!("Writing DP register {}, value=0x{:08x}", R::NAME, value);
+        self.probe
+            .write_register(PortType::DebugPort, R::ADDRESS as u16, value)?;
+
+        Ok(())
+    }
+}
+
+impl<'probe> ArmProbeInterface for StlinkArmDebug {
+    fn memory_interface(&mut self, access_port: MemoryAP) -> Result<Memory<'_>, ProbeRsError> {
+        let interface = StLinkMemoryInterface {
+            probe: self,
+            access_port,
+        };
+
+        Ok(Memory::new(interface))
+    }
+
+    fn ap_information(
+        &self,
+        access_port: crate::architecture::arm::ap::GenericAP,
+    ) -> Option<&crate::architecture::arm::communication_interface::ApInformation> {
+        self.state
+            .ap_information
+            .get(access_port.port_number() as usize)
+    }
+
+    fn read_from_rom_table(
+        &mut self,
+    ) -> Result<Option<crate::architecture::arm::ArmChipInfo>, ProbeRsError> {
+        for access_port in valid_access_ports(self) {
+            let idr = self
+                .read_ap_register(access_port, IDR::default())
+                .map_err(ProbeRsError::Probe)?;
+            log::debug!("{:#x?}", idr);
+
+            if idr.CLASS == APClass::MEMAP {
+                let access_port: MemoryAP = access_port.into();
+
+                let baseaddr = access_port.base_address(self)?;
+
+                let mut memory = self
+                    .memory_interface(access_port)
+                    .map_err(ProbeRsError::architecture_specific)?;
+
+                let component = Component::try_parse(&mut memory, baseaddr)
+                    .map_err(ProbeRsError::architecture_specific)?;
+
+                if let Component::Class1RomTable(component_id, _) = component {
+                    if let Some(jep106) = component_id.peripheral_id().jep106() {
+                        return Ok(Some(ArmChipInfo {
+                            manufacturer: jep106,
+                            part: component_id.peripheral_id().part(),
+                        }));
+                    }
+                }
+            }
+        }
+
+        Ok(None)
+    }
+
+    fn num_access_ports(&self) -> usize {
+        self.state.ap_information.len()
+    }
+
+    fn close(self: Box<Self>) -> Probe {
+        Probe::from_attached_probe(self.probe)
+    }
+}
+
+impl<AP, R> APAccess<AP, R> for StlinkArmDebug
+where
+    R: APRegister<AP> + Clone,
+    AP: AccessPort,
+{
+    type Error = DebugProbeError;
+
+    fn read_ap_register(&mut self, port: impl Into<AP>, register: R) -> Result<R, Self::Error> {
+        self.read_ap_register(port, register)
+    }
+
+    fn write_ap_register(&mut self, port: impl Into<AP>, register: R) -> Result<(), Self::Error> {
+        self.write_ap_register(port, register)
+    }
+
+    fn write_ap_register_repeated(
+        &mut self,
+        port: impl Into<AP> + Clone,
+        register: R,
+        values: &[u32],
+    ) -> Result<(), Self::Error> {
+        self.write_ap_register_repeated(port, register, values)
+    }
+
+    fn read_ap_register_repeated(
+        &mut self,
+        port: impl Into<AP> + Clone,
+        register: R,
+        values: &mut [u32],
+    ) -> Result<(), Self::Error> {
+        self.read_ap_register_repeated(port, register, values)
+    }
+}
+
+impl<'a> AsRef<dyn DebugProbe + 'a> for StlinkArmDebug {
+    fn as_ref(&self) -> &(dyn DebugProbe + 'a) {
+        self.probe.as_ref()
+    }
+}
+
+impl<'a> AsMut<dyn DebugProbe + 'a> for StlinkArmDebug {
+    fn as_mut(&mut self) -> &mut (dyn DebugProbe + 'a) {
+        self.probe.as_mut()
+    }
+}
+
+impl SwoAccess for StlinkArmDebug {
+    fn enable_swo(&mut self, config: &SwoConfig) -> Result<(), ProbeRsError> {
+        self.probe.enable_swo(config)
+    }
+
+    fn disable_swo(&mut self) -> Result<(), ProbeRsError> {
+        self.probe.disable_swo()
+    }
+
+    fn read_swo_timeout(&mut self, timeout: Duration) -> Result<Vec<u8>, ProbeRsError> {
+        self.probe.read_swo_timeout(timeout)
+    }
+}
+
+#[derive(Debug)]
+struct StLinkMemoryInterface<'probe> {
+    probe: &'probe mut StlinkArmDebug,
+    access_port: MemoryAP,
+}
+
+impl MemoryInterface for StLinkMemoryInterface<'_> {
+    fn read_word_32(&mut self, address: u32) -> Result<u32, ProbeRsError> {
+        self.probe.select_ap(self.access_port)?;
+
+        let mut buff = [0];
+        self.read_32(address, &mut buff)?;
+
+        Ok(buff[0])
+    }
+
+    fn read_word_8(&mut self, address: u32) -> Result<u8, ProbeRsError> {
+        self.probe.select_ap(self.access_port)?;
+
+        let mut buff = [0u8];
+        self.read_8(address, &mut buff)?;
+
+        Ok(buff[0])
+    }
+
+    fn read_32(&mut self, address: u32, data: &mut [u32]) -> Result<(), ProbeRsError> {
+        self.probe.select_ap(self.access_port)?;
+
+        let received_words = self.probe.probe.read_mem_32bit(
+            address,
+            data.len() as u16,
+            self.access_port.port_number(),
+        )?;
+
+        data.copy_from_slice(&received_words);
+
+        Ok(())
+    }
+
+    fn read_8(&mut self, address: u32, data: &mut [u8]) -> Result<(), ProbeRsError> {
+        self.probe.select_ap(self.access_port)?;
+
+        let received_words = self.probe.probe.read_mem_8bit(
+            address,
+            data.len() as u16,
+            self.access_port.port_number(),
+        )?;
+
+        data.copy_from_slice(&received_words);
+
+        Ok(())
+    }
+
+    fn write_word_32(&mut self, address: u32, data: u32) -> Result<(), ProbeRsError> {
+        self.probe.select_ap(self.access_port)?;
+
+        self.write_32(address, &[data])?;
+
+        Ok(())
+    }
+
+    fn write_word_8(&mut self, address: u32, data: u8) -> Result<(), ProbeRsError> {
+        self.probe.select_ap(self.access_port)?;
+
+        self.write_8(address, &[data])
+    }
+
+    fn write_32(&mut self, address: u32, data: &[u32]) -> Result<(), ProbeRsError> {
+        self.probe.select_ap(self.access_port)?;
+
+        self.probe
+            .probe
+            .write_mem_32bit(address, data, self.access_port.port_number())?;
+        Ok(())
+    }
+
+    fn write_8(&mut self, address: u32, data: &[u8]) -> Result<(), ProbeRsError> {
+        self.probe.select_ap(self.access_port)?;
+
+        let chunk_size = if self.probe.probe.hw_version < 3 {
+            64
+        } else {
+            512
+        };
+
+        // If we write less than 64 bytes, just write it directly
+        if data.len() < chunk_size {
+            log::trace!("write_8: small - direct 8 bit write to {:08x}", address);
+            self.probe
+                .probe
+                .write_mem_8bit(address, data, self.access_port.port_number())?;
+        } else {
+            // Handle unaligned data in the beginning.
+            let bytes_beginning = if address % 4 == 0 {
+                0
+            } else {
+                (4 - address % 4) as usize
+            };
+
+            let mut current_address = address;
+
+            if bytes_beginning > 0 {
+                log::warn!(
+                    "write_8: at_begin - unaligned write of {} bytes to address {:08x}",
+                    bytes_beginning,
+                    current_address,
+                );
+                self.probe.probe.write_mem_8bit(
+                    current_address,
+                    &data[..bytes_beginning],
+                    self.access_port.port_number(),
+                )?;
+
+                current_address += bytes_beginning as u32;
+            }
+
+            // Address has to be aligned here.
+            assert!(current_address % 4 == 0);
+
+            // Convert bytes to u32
+            let mut chunks_iter = (&data[bytes_beginning..]).chunks_exact(4);
+
+            let words: Vec<u32> = (&mut chunks_iter)
+                .map(|c| u32::from_le_bytes(c.try_into().unwrap()))
+                .collect();
+
+            log::trace!(
+                "write_8: aligned write of {} bytes to address {:08x}",
+                words.len() * 4,
+                current_address,
+            );
+
+            self.probe.probe.write_mem_32bit(
+                current_address,
+                &words,
+                self.access_port.port_number(),
+            )?;
+
+            current_address += (words.len() * 4) as u32;
+
+            let remaining_bytes = chunks_iter.remainder();
+
+            if !remaining_bytes.is_empty() {
+                log::trace!(
+                    "write_8: at_end -unaligned write of {} bytes to address {:08x}",
+                    bytes_beginning,
+                    current_address,
+                );
+                self.probe.probe.write_mem_8bit(
+                    current_address,
+                    remaining_bytes,
+                    self.access_port.port_number(),
+                )?;
+            }
+        }
+        Ok(())
+    }
+
+    fn flush(&mut self) -> Result<(), ProbeRsError> {
+        self.probe.probe.flush()?;
+
+        Ok(())
     }
 }
 
@@ -697,7 +1706,8 @@ mod test {
                 jtag_version: 0,
                 swd_speed_khz: 0,
                 jtag_speed_khz: 0,
-                current_ap: None,
+                swo_enabled: false,
+                openend_aps: vec![],
             }
         }
     }
@@ -705,7 +1715,7 @@ mod test {
     impl StLinkUsb for MockUsb {
         fn write(
             &mut self,
-            cmd: Vec<u8>,
+            cmd: &[u8],
             _write_data: &[u8],
             read_data: &mut [u8],
             _timeout: std::time::Duration,
@@ -745,6 +1755,14 @@ mod test {
         }
         fn reset(&mut self) -> Result<(), crate::DebugProbeError> {
             Ok(())
+        }
+
+        fn read_swo(
+            &mut self,
+            _read_data: &mut [u8],
+            _timeout: std::time::Duration,
+        ) -> Result<usize, DebugProbeError> {
+            unimplemented!("Not implemented for MockUSB")
         }
     }
 

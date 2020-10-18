@@ -276,8 +276,6 @@ impl<'session> Flasher<'session> {
         progress.finished_filling();
 
         // Erase all necessary sectors.
-        progress.started_erasing();
-
         if do_chip_erase {
             self.chip_erase(&flash_layout, progress)?;
         } else {
@@ -334,7 +332,7 @@ impl<'session> Flasher<'session> {
         flash_layout: &FlashLayout,
         progress: &FlashProgress,
     ) -> Result<()> {
-        progress.started_flashing();
+        progress.started_programming();
 
         let mut t = std::time::Instant::now();
         let result = self.run_program(|active| {
@@ -357,7 +355,7 @@ impl<'session> Flasher<'session> {
 
     /// Perform an erase of all sectors given in `flash_layout`.
     fn sector_erase(&mut self, flash_layout: &FlashLayout, progress: &FlashProgress) -> Result<()> {
-        progress.started_flashing();
+        progress.started_erasing();
 
         let mut t = std::time::Instant::now();
         let result = self.run_erase(|active| {
@@ -388,7 +386,7 @@ impl<'session> Flasher<'session> {
     ) -> Result<()> {
         let mut current_buf = 0;
 
-        progress.started_flashing();
+        progress.started_programming();
 
         let mut t = std::time::Instant::now();
         let result = self.run_program(|active| {

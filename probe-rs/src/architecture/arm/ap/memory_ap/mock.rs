@@ -1,9 +1,8 @@
 use super::super::{APAccess, Register};
 use super::{APRegister, AddressIncrement, DataSize, MemoryAP, CSW, DRW, TAR};
-use crate::config::ChipInfo;
 use crate::{
     architecture::arm::dp::{DPAccess, DPRegister, DebugPortError},
-    CommunicationInterface, Error,
+    CommunicationInterface, DebugProbeError,
 };
 use std::collections::HashMap;
 use std::convert::TryInto;
@@ -22,6 +21,7 @@ pub enum MockMemoryError {
     UnknownRegister,
 }
 
+#[cfg(test)]
 impl MockMemoryAP {
     /// Creates a MockMemoryAP with the memory filled with a pattern where each byte is equal to its
     /// own address plus one (to avoid zeros). The pattern can be used as a canary pattern to ensure
@@ -40,8 +40,8 @@ impl MockMemoryAP {
 }
 
 impl CommunicationInterface for MockMemoryAP {
-    fn probe_for_chip_info(self) -> Result<Option<ChipInfo>, Error> {
-        unimplemented!()
+    fn flush(&mut self) -> Result<(), DebugProbeError> {
+        Ok(())
     }
 }
 
@@ -54,7 +54,11 @@ where
     /// Mocks the read_register method of a AP.
     ///
     /// Returns an Error if any bad instructions or values are chosen.
-    fn read_ap_register(&mut self, _port: MemoryAP, _register: R) -> Result<R, Self::Error> {
+    fn read_ap_register(
+        &mut self,
+        _port: impl Into<MemoryAP>,
+        _register: R,
+    ) -> Result<R, Self::Error> {
         let csw = self.store[&(CSW::ADDRESS, CSW::APBANKSEL)];
         let address = self.store[&(TAR::ADDRESS, TAR::APBANKSEL)];
 
@@ -68,8 +72,7 @@ where
                 let new_drw = match csw.SIZE {
                     DataSize::U32 => {
                         let bytes = self.memory[offset..offset + 4].try_into().unwrap();
-                        let value = u32::from_le_bytes(bytes);
-                        value
+                        u32::from_le_bytes(bytes)
                     }
                     DataSize::U16 => {
                         let bytes = self.memory[offset..offset + 2].try_into().unwrap();
@@ -114,7 +117,11 @@ where
     /// Mocks the write_register method of a AP.
     ///
     /// Returns an Error if any bad instructions or values are chosen.
-    fn write_ap_register(&mut self, _port: MemoryAP, register: R) -> Result<(), Self::Error> {
+    fn write_ap_register(
+        &mut self,
+        _port: impl Into<MemoryAP>,
+        register: R,
+    ) -> Result<(), Self::Error> {
         let value = register.into();
         self.store.insert((R::ADDRESS, R::APBANKSEL), value);
         let csw = self.store[&(CSW::ADDRESS, CSW::APBANKSEL)];
@@ -180,24 +187,26 @@ where
 
     fn write_ap_register_repeated(
         &mut self,
-        port: MemoryAP,
+        port: impl Into<MemoryAP> + Clone,
         _register: R,
         values: &[u32],
     ) -> Result<(), Self::Error> {
         for value in values {
-            self.write_ap_register(port, R::from(*value))?
+            self.write_ap_register(port.clone(), R::from(*value))?
         }
 
         Ok(())
     }
     fn read_ap_register_repeated(
         &mut self,
-        port: MemoryAP,
+        port: impl Into<MemoryAP> + Clone,
         register: R,
         values: &mut [u32],
     ) -> Result<(), Self::Error> {
         for value in values {
-            *value = self.read_ap_register(port, register.clone())?.into()
+            *value = self
+                .read_ap_register(port.clone(), register.clone())?
+                .into()
         }
 
         Ok(())

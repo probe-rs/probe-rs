@@ -2,11 +2,12 @@ use crate::{common::open_probe, SharedOptions};
 
 use probe_rs::{
     architecture::arm::{
-        ap::{valid_access_ports, APClass, BaseaddrFormat, MemoryAP, BASE, BASE2, IDR},
-        memory::{ADIMemoryInterface, CSComponent},
-        ArmCommunicationInterface, ArmCommunicationInterfaceState,
+        ap::{GenericAP, MemoryAP},
+        m0::Demcr,
+        memory::Component,
+        ApInformation,
     },
-    Memory,
+    CoreRegister,
 };
 
 use anyhow::Result;
@@ -37,52 +38,55 @@ pub(crate) fn show_info_of_device(shared_options: &SharedOptions) -> Result<()> 
 
     */
 
-    let mut state = ArmCommunicationInterfaceState::new();
-    let interface = ArmCommunicationInterface::new(&mut probe, &mut state)?;
+    let mut interface = probe.into_arm_interface()?;
 
-    if let Some(mut interface) = interface {
+    if let Some(interface) = &mut interface {
         println!("\nAvailable Access Ports:");
 
-        for access_port in valid_access_ports(&mut interface) {
-            let idr = interface.read_ap_register(access_port, IDR::default())?;
-            println!("{:#x?}", idr);
+        let num_access_ports = interface.num_access_ports();
 
-            if idr.CLASS == APClass::MEMAP {
-                let access_port: MemoryAP = access_port.into();
+        for ap_index in 0..num_access_ports {
+            let access_port = GenericAP::from(ap_index as u8);
 
-                let base_register = interface.read_ap_register(access_port, BASE::default())?;
+            let ap_information = interface.ap_information(access_port).unwrap();
 
-                if !base_register.present {
-                    // No debug entry present
-                    println!("No debug entry present.");
-                    continue;
+            //let idr = interface.read_ap_register(access_port, IDR::default())?;
+            //println!("{:#x?}", idr);
+
+            match ap_information {
+                ApInformation::MemoryAp {
+                    debug_base_address, ..
+                } => {
+                    let access_port: MemoryAP = access_port.into();
+
+                    let base_address = *debug_base_address;
+
+                    let mut memory = interface.memory_interface(access_port)?;
+
+                    // Enable
+                    // - Data Watchpoint and Trace (DWT)
+                    // - Instrumentation Trace Macrocell (ITM)
+                    // - Embedded Trace Macrocell (ETM)
+                    // - Trace Port Interface Unit (TPIU).
+                    let mut demcr = Demcr(memory.read_word_32(Demcr::ADDRESS)?);
+                    demcr.set_dwtena(true);
+                    memory.write_word_32(Demcr::ADDRESS, demcr.into())?;
+
+                    let component_table = Component::try_parse(&mut memory, base_address);
+
+                    component_table
+                        .iter()
+                        .for_each(|entry| println!("{:#08x?}", entry));
+
+                    // let mut reader = crate::memory::romtable::RomTableReader::new(&link_ref, baseaddr as u64);
+
+                    // for e in reader.entries() {
+                    //     if let Ok(e) = e {
+                    //         println!("ROM Table Entry: Component @ 0x{:08x}", e.component_addr());
+                    //     }
+                    // }
                 }
-
-                let mut baseaddr = if BaseaddrFormat::ADIv5 == base_register.Format {
-                    let base2 = interface.read_ap_register(access_port, BASE2::default())?;
-                    u64::from(base2.BASEADDR) << 32
-                } else {
-                    0
-                };
-                baseaddr |= u64::from(base_register.BASEADDR << 12);
-
-                let mut memory = Memory::new(ADIMemoryInterface::<ArmCommunicationInterface>::new(
-                    interface.reborrow(),
-                    access_port,
-                )?);
-                let component_table = CSComponent::try_parse(&mut memory, baseaddr as u64);
-
-                component_table
-                    .iter()
-                    .for_each(|entry| println!("{:#08x?}", entry));
-
-                // let mut reader = crate::memory::romtable::RomTableReader::new(&link_ref, baseaddr as u64);
-
-                // for e in reader.entries() {
-                //     if let Ok(e) = e {
-                //         println!("ROM Table Entry: Component @ 0x{:08x}", e.component_addr());
-                //     }
-                // }
+                ApInformation::Other { .. } => println!("Unknown Type of access port"),
             }
         }
     } else {

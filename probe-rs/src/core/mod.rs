@@ -3,15 +3,14 @@ pub(crate) mod communication_interface;
 pub use communication_interface::CommunicationInterface;
 
 use crate::error;
+use crate::DebugProbeError;
 use crate::{
     architecture::{
-        arm::{core::CortexState, memory::ADIMemoryInterface, ArmCommunicationInterface},
-        riscv::communication_interface::RiscvCommunicationInterface,
+        arm::core::CortexState, riscv::communication_interface::RiscvCommunicationInterface,
     },
-    Error, MemoryInterface,
+    Error, Memory, MemoryInterface,
 };
-use crate::{DebugProbeError, Memory};
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use std::time::Duration;
 
 pub trait CoreRegister: Clone + From<u32> + Into<u32> + Sized + std::fmt::Debug {
@@ -217,6 +216,10 @@ impl<'probe> MemoryInterface for Core<'probe> {
     fn write_8(&mut self, addr: u32, data: &[u8]) -> Result<(), Error> {
         self.inner.write_8(addr, data)
     }
+
+    fn flush(&mut self) -> Result<(), Error> {
+        self.inner.flush()
+    }
 }
 
 #[derive(Copy, Clone)]
@@ -256,12 +259,14 @@ impl CoreType {
 
 #[derive(Debug)]
 pub struct CoreState {
+    id: usize,
     breakpoints: Vec<Breakpoint>,
 }
 
 impl CoreState {
-    fn new() -> Self {
+    fn new(id: usize) -> Self {
         Self {
+            id,
             breakpoints: vec![],
         }
     }
@@ -292,13 +297,8 @@ impl SpecificCoreState {
     pub(crate) fn attach_arm<'probe>(
         &'probe mut self,
         state: &'probe mut CoreState,
-        interface: ArmCommunicationInterface<'probe>,
+        memory: Memory<'probe>,
     ) -> Result<Core<'probe>, Error> {
-        let memory = Memory::new(
-            ADIMemoryInterface::<ArmCommunicationInterface>::new(interface, 0)
-                .map_err(Error::architecture_specific)?,
-        );
-
         Ok(match self {
             // TODO: Change this once the new archtecture structure for ARM hits.
             // Cortex-M3, M4 and M7 use the Armv7[E]-M architecture and are
@@ -323,7 +323,7 @@ impl SpecificCoreState {
     pub(crate) fn attach_riscv<'probe>(
         &self,
         state: &'probe mut CoreState,
-        interface: RiscvCommunicationInterface<'probe>,
+        interface: &'probe mut RiscvCommunicationInterface,
     ) -> Result<Core<'probe>, Error> {
         Ok(match self {
             SpecificCoreState::Riscv => {
@@ -351,8 +351,12 @@ impl<'probe> Core<'probe> {
         }
     }
 
-    pub fn create_state() -> CoreState {
-        CoreState::new()
+    pub fn create_state(id: usize) -> CoreState {
+        CoreState::new(id)
+    }
+
+    pub fn id(&self) -> usize {
+        self.state.id
     }
 
     /// Wait until the core is halted. If the core does not halt on its own,
@@ -452,8 +456,9 @@ impl<'probe> Core<'probe> {
             // We cannot set additional breakpoints
             log::warn!("Maximum number of breakpoints ({}) reached, unable to set additional HW breakpoint.", num_hw_breakpoints);
 
-            // TODO: Better error here
-            return Err(error::Error::Probe(DebugProbeError::Unknown));
+            return Err(error::Error::Probe(
+                DebugProbeError::BreakpointUnitsExceeded,
+            ));
         }
 
         if !self.inner.hw_breakpoints_enabled() {
@@ -490,8 +495,19 @@ impl<'probe> Core<'probe> {
                 self.state.breakpoints.swap_remove(bp_position);
                 Ok(())
             }
-            None => Err(error::Error::Probe(DebugProbeError::Unknown)),
+            None => Err(error::Error::Other(anyhow!(
+                "No breakpoint found at address {}",
+                address
+            ))),
         }
+    }
+
+    pub fn clear_all_hw_breakpoints(&mut self) -> Result<(), error::Error> {
+        let num_hw_breakpoints = self.get_available_breakpoint_units()? as usize;
+
+        { 0..num_hw_breakpoints }
+            .map(|unit_index| self.inner.clear_breakpoint(unit_index))
+            .collect()
     }
 
     pub fn architecture(&self) -> Architecture {

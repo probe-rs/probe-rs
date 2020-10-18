@@ -8,18 +8,27 @@ use std::iter;
 use std::sync::Mutex;
 
 use crate::{
-    architecture::arm::dp::Ctrl,
     architecture::arm::{DapError, PortType, Register},
+    architecture::{
+        arm::{
+            communication_interface::ArmProbeInterface, dp::Ctrl, swo::SwoConfig,
+            ArmCommunicationInterface, SwoAccess,
+        },
+        riscv::communication_interface::RiscvCommunicationInterface,
+    },
     probe::{
         DAPAccess, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeType, JTAGAccess,
         WireProtocol,
     },
-    DebugProbeSelector,
+    DebugProbeSelector, Error as ProbeRsError,
 };
+
+const SWO_BUFFER_SIZE: u16 = 128;
 
 #[derive(Debug)]
 pub(crate) struct JLink {
     handle: Mutex<JayLink>,
+    swo_config: Option<SwoConfig>,
 
     /// Idle cycles necessary between consecutive
     /// accesses to the DMI register
@@ -210,10 +219,11 @@ impl JLink {
 
         log::trace!("Response: {:?}", response);
 
-        assert!(
-            len < 8,
-            "Not yet implemented for IR registers larger than 8 bit"
-        );
+        if len >= 8 {
+            return Err(DebugProbeError::NotImplemented(
+                "Not yet implemented for IR registers larger than 8 bit",
+            ));
+        }
 
         self.current_ir_reg = data[0] as u32;
 
@@ -333,7 +343,7 @@ impl DebugProbe for JLink {
             })
             .collect::<Vec<_>>();
 
-        if jlinks.len() == 0 {
+        if jlinks.is_empty() {
             return Err(DebugProbeError::ProbeCouldNotBeCreated(
                 super::ProbeCreationError::NotFound,
             ));
@@ -380,7 +390,8 @@ impl DebugProbe for JLink {
 
         Ok(Box::new(JLink {
             handle: Mutex::from(jlink_handle),
-            supported_protocols: supported_protocols,
+            swo_config: None,
+            supported_protocols,
             jtag_idle_cycles: 0,
             protocol: None,
             current_ir_reg: 1,
@@ -427,7 +438,9 @@ impl DebugProbe for JLink {
             let div = std::cmp::max(div, speeds.min_div() as u32);
 
             actual_speed_khz = ((speeds.base_freq() / div) + 999) / 1000;
-            assert!(actual_speed_khz <= speed_khz);
+            if actual_speed_khz > speed_khz {
+                return Err(DebugProbeError::UnsupportedSpeed(speed_khz));
+            }
         } else {
             actual_speed_khz = speed_khz;
         }
@@ -562,44 +575,54 @@ impl DebugProbe for JLink {
         Err(super::DebugProbeError::NotImplemented("target_reset"))
     }
 
-    fn dedicated_memory_interface(&self) -> Option<crate::Memory> {
-        None
+    fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
+        let jlink = self.handle.get_mut().unwrap();
+        jlink.set_reset(false)?;
+        Ok(())
     }
 
-    fn get_interface_dap(&self) -> Option<&dyn DAPAccess> {
-        // For now, we only support using SWD for ARM chips, but
-        // JTAG would be possible as well.
-        if self.supported_protocols.contains(&WireProtocol::Swd) {
-            Some(self as _)
-        } else {
-            None
-        }
+    fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
+        let jlink = self.handle.get_mut().unwrap();
+        jlink.set_reset(true)?;
+        Ok(())
     }
 
-    fn get_interface_dap_mut(&mut self) -> Option<&mut dyn DAPAccess> {
-        // For now, we only support using SWD for ARM chips, but
-        // JTAG would be possible as well.
-        if self.supported_protocols.contains(&WireProtocol::Swd) {
-            Some(self as _)
-        } else {
-            None
-        }
-    }
-
-    fn get_interface_jtag(&self) -> Option<&dyn JTAGAccess> {
+    fn get_riscv_interface(
+        self: Box<Self>,
+    ) -> Result<Option<RiscvCommunicationInterface>, DebugProbeError> {
         if self.supported_protocols.contains(&WireProtocol::Jtag) {
-            Some(self as _)
+            Ok(Some(RiscvCommunicationInterface::new(self)?))
         } else {
-            None
+            Ok(None)
         }
     }
 
-    fn get_interface_jtag_mut(&mut self) -> Option<&mut dyn JTAGAccess> {
-        if self.supported_protocols.contains(&WireProtocol::Jtag) {
-            Some(self as _)
+    fn get_swo_interface(&self) -> Option<&dyn SwoAccess> {
+        Some(self as _)
+    }
+
+    fn get_swo_interface_mut(&mut self) -> Option<&mut dyn SwoAccess> {
+        Some(self as _)
+    }
+
+    fn get_arm_interface<'probe>(
+        self: Box<Self>,
+    ) -> Result<Option<Box<dyn ArmProbeInterface + 'probe>>, DebugProbeError> {
+        if self.supported_protocols.contains(&WireProtocol::Swd) {
+            let interface = ArmCommunicationInterface::new(self)?;
+
+            Ok(Some(Box::new(interface)))
         } else {
-            None
+            Ok(None)
         }
+    }
+
+    fn has_arm_interface(&self) -> bool {
+        self.supported_protocols.contains(&WireProtocol::Swd)
+    }
+
+    fn has_riscv_interface(&self) -> bool {
+        self.supported_protocols.contains(&WireProtocol::Jtag)
     }
 }
 
@@ -609,10 +632,11 @@ impl JTAGAccess for JLink {
         let address_bits = address.to_le_bytes();
 
         // TODO: This is limited to 5 bit addresses for now
-        assert!(
-            address <= 0x1f,
-            "JTAG Register addresses are fixed to 5 bits"
-        );
+        if address > 0x1f {
+            return Err(DebugProbeError::NotImplemented(
+                "JTAG Register addresses are fixed to 5 bits",
+            ));
+        }
 
         if self.current_ir_reg != address {
             // Write IR register
@@ -633,10 +657,11 @@ impl JTAGAccess for JLink {
         let address_bits = address.to_le_bytes();
 
         // TODO: This is limited to 5 bit addresses for now
-        assert!(
-            address <= 0x1f,
-            "JTAG Register addresses are fixed to 5 bits"
-        );
+        if address > 0x1f {
+            return Err(DebugProbeError::NotImplemented(
+                "JTAG Register addresses are fixed to 5 bits",
+            ));
+        }
 
         if self.current_ir_reg != address {
             // Write IR register
@@ -649,6 +674,22 @@ impl JTAGAccess for JLink {
 
     fn set_idle_cycles(&mut self, idle_cycles: u8) {
         self.jtag_idle_cycles = idle_cycles;
+    }
+
+    fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
+        self
+    }
+}
+
+impl<'a> AsRef<dyn DebugProbe + 'a> for JLink {
+    fn as_ref(&self) -> &(dyn DebugProbe + 'a) {
+        self
+    }
+}
+
+impl<'a> AsMut<dyn DebugProbe + 'a> for JLink {
+    fn as_mut(&mut self) -> &mut (dyn DebugProbe + 'a) {
+        self
     }
 }
 
@@ -768,18 +809,20 @@ impl DAPAccess for JLink {
                 let value = bits_to_byte(register_val);
 
                 // Make sure the parity is correct.
-                return if let Some(parity) = result_sequence.next() {
-                    if (value.count_ones() % 2 == 1) == parity {
-                        log::trace!("DAP read {}.", value);
-                        Ok(value)
-                    } else {
+                return result_sequence
+                    .next()
+                    .and_then(|parity| {
+                        if (value.count_ones() % 2 == 1) == parity {
+                            log::trace!("DAP read {}.", value);
+                            Some(value)
+                        } else {
+                            None
+                        }
+                    })
+                    .ok_or_else(|| {
                         log::error!("DAP read fault.");
-                        Err(DebugProbeError::Unknown)
-                    }
-                } else {
-                    log::error!("DAP read fault.");
-                    Err(DebugProbeError::Unknown)
-                };
+                        DapError::IncorrectParity.into()
+                    });
 
                 // Don't care about the Trn bit at the end.
             }
@@ -899,7 +942,7 @@ impl DAPAccess for JLink {
                     ctrl
                 );
 
-                return Err(DebugProbeError::Unknown);
+                return Err(DapError::FaultResponse.into());
             }
 
             // Since this is a write request, we don't care about the part after the ack bits.
@@ -911,6 +954,60 @@ impl DAPAccess for JLink {
         // If we land here, the DAP operation timed out.
         log::error!("DAP write timeout.");
         Err(DebugProbeError::Timeout)
+    }
+
+    fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
+        self
+    }
+}
+
+impl SwoAccess for JLink {
+    fn enable_swo(&mut self, config: &SwoConfig) -> Result<(), ProbeRsError> {
+        let jlink = self.handle.get_mut().unwrap();
+        self.swo_config = Some(*config);
+        jlink
+            .swo_start_uart(config.baud(), SWO_BUFFER_SIZE.into())
+            .map_err(|e| ProbeRsError::Probe(DebugProbeError::ArchitectureSpecific(Box::new(e))))?;
+        Ok(())
+    }
+
+    fn disable_swo(&mut self) -> Result<(), ProbeRsError> {
+        let jlink = self.handle.get_mut().unwrap();
+        self.swo_config = None;
+        jlink
+            .swo_stop()
+            .map_err(|e| ProbeRsError::Probe(DebugProbeError::ArchitectureSpecific(Box::new(e))))?;
+        Ok(())
+    }
+
+    fn swo_buffer_size(&mut self) -> Option<usize> {
+        Some(SWO_BUFFER_SIZE.into())
+    }
+
+    fn read_swo_timeout(&mut self, timeout: std::time::Duration) -> Result<Vec<u8>, ProbeRsError> {
+        let end = std::time::Instant::now() + timeout;
+        let mut buf = vec![0; SWO_BUFFER_SIZE.into()];
+
+        let poll_interval = self
+            .swo_poll_interval_hint(&self.swo_config.unwrap())
+            .unwrap();
+
+        let jlink = self.handle.get_mut().unwrap();
+
+        let mut bytes = vec![];
+        loop {
+            let data = jlink.swo_read(&mut buf).map_err(|e| {
+                ProbeRsError::Probe(DebugProbeError::ArchitectureSpecific(Box::new(e)))
+            })?;
+            bytes.extend(data.as_ref());
+            let now = std::time::Instant::now();
+            if now + poll_interval < end {
+                std::thread::sleep(poll_interval);
+            } else {
+                break;
+            }
+        }
+        Ok(bytes)
     }
 }
 
@@ -951,9 +1048,7 @@ pub(crate) fn list_jlink_devices() -> Result<impl Iterator<Item = DebugProbeInfo
         DebugProbeInfo::new(
             format!(
                 "J-Link{}",
-                product
-                    .map(|p| format!(" ({})", p))
-                    .unwrap_or("".to_string())
+                product.map(|p| format!(" ({})", p)).unwrap_or_default()
             ),
             vid,
             pid,

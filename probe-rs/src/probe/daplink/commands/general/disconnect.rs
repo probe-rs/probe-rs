@@ -1,5 +1,6 @@
 use super::super::{Category, Request, Response, Result, Status};
 
+#[derive(Clone, Copy, Debug)]
 pub struct DisconnectRequest;
 
 impl Request for DisconnectRequest {
@@ -10,6 +11,7 @@ impl Request for DisconnectRequest {
     }
 }
 
+#[derive(Clone, Copy, Debug)]
 pub struct DisconnectResponse(pub(crate) Status);
 
 impl Response for DisconnectResponse {

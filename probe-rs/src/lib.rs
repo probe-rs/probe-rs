@@ -84,12 +84,12 @@ pub use crate::config::Target;
 pub use crate::core::CoreType;
 pub use crate::core::{
     Architecture, Breakpoint, BreakpointId, CommunicationInterface, Core, CoreInformation,
-    CoreInterface, CoreList, CoreRegisterAddress, CoreStatus, HaltReason,
+    CoreInterface, CoreList, CoreRegister, CoreRegisterAddress, CoreStatus, HaltReason,
 };
 pub use crate::error::Error;
 pub use crate::memory::{Memory, MemoryInterface, MemoryList};
 pub use crate::probe::{
-    DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, DebugProbeType, Probe,
-    WireProtocol,
+    AttachMethod, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, DebugProbeType,
+    Probe, WireProtocol,
 };
 pub use crate::session::Session;

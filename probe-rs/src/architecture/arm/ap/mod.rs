@@ -4,9 +4,9 @@ pub(crate) mod generic_ap;
 pub(crate) mod memory_ap;
 
 use crate::architecture::arm::dp::DebugPortError;
+use crate::DebugProbeError;
 
 pub use generic_ap::{APClass, APType, GenericAP, IDR};
-pub(crate) use memory_ap::mock;
 pub use memory_ap::{
     AddressIncrement, BaseaddrFormat, DataSize, MemoryAP, BASE, BASE2, CSW, DRW, TAR,
 };
@@ -36,6 +36,8 @@ pub enum AccessPortError {
     OutOfBoundsError,
     #[error("Error while communicating with debug port")]
     DebugPort(#[from] DebugPortError),
+    #[error("Failed to flush batched writes")]
+    FlushError(#[from] DebugProbeError),
 }
 
 impl AccessPortError {
@@ -69,7 +71,7 @@ pub trait APRegister<PORT: AccessPort>: Register + Sized {
 }
 
 pub trait AccessPort {
-    fn get_port_number(&self) -> u8;
+    fn port_number(&self) -> u8;
 }
 
 pub trait APAccess<PORT, R>
@@ -78,24 +80,24 @@ where
     R: APRegister<PORT>,
 {
     type Error: std::error::Error + Send + Sync + 'static;
-    fn read_ap_register(&mut self, port: PORT, register: R) -> Result<R, Self::Error>;
+    fn read_ap_register(&mut self, port: impl Into<PORT>, register: R) -> Result<R, Self::Error>;
 
     /// Read a register using a block transfer. This can be used
     /// to read multiple values from the same register.
     fn read_ap_register_repeated(
         &mut self,
-        port: PORT,
+        port: impl Into<PORT> + Clone,
         register: R,
         values: &mut [u32],
     ) -> Result<(), Self::Error>;
 
-    fn write_ap_register(&mut self, port: PORT, register: R) -> Result<(), Self::Error>;
+    fn write_ap_register(&mut self, port: impl Into<PORT>, register: R) -> Result<(), Self::Error>;
 
     /// Write a register using a block transfer. This can be used
     /// to write multiple values to the same register.
     fn write_ap_register_repeated(
         &mut self,
-        port: PORT,
+        port: impl Into<PORT> + Clone,
         register: R,
         values: &[u32],
     ) -> Result<(), Self::Error>;
@@ -109,17 +111,17 @@ where
 {
     type Error = T::Error;
 
-    fn read_ap_register(&mut self, port: PORT, register: R) -> Result<R, Self::Error> {
+    fn read_ap_register(&mut self, port: impl Into<PORT>, register: R) -> Result<R, Self::Error> {
         (*self).read_ap_register(port, register)
     }
 
-    fn write_ap_register(&mut self, port: PORT, register: R) -> Result<(), Self::Error> {
+    fn write_ap_register(&mut self, port: impl Into<PORT>, register: R) -> Result<(), Self::Error> {
         (*self).write_ap_register(port, register)
     }
 
     fn write_ap_register_repeated(
         &mut self,
-        port: PORT,
+        port: impl Into<PORT> + Clone,
         register: R,
         values: &[u32],
     ) -> Result<(), Self::Error> {
@@ -127,7 +129,7 @@ where
     }
     fn read_ap_register_repeated(
         &mut self,
-        port: PORT,
+        port: impl Into<PORT> + Clone,
         register: R,
         values: &mut [u32],
     ) -> Result<(), Self::Error> {
@@ -148,7 +150,7 @@ where
 }
 
 /// Return a Vec of all valid access ports found that the target connected to the debug_probe
-pub fn valid_access_ports<AP>(debug_port: &mut AP) -> Vec<GenericAP>
+pub(crate) fn valid_access_ports<AP>(debug_port: &mut AP) -> Vec<GenericAP>
 where
     AP: APAccess<GenericAP, IDR>,
 {

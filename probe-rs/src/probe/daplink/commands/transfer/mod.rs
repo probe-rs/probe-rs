@@ -2,6 +2,7 @@ pub mod configure;
 
 use super::{Category, Request, Response, Result};
 use crate::architecture::arm::PortType as ArmPortType;
+use anyhow::anyhow;
 use scroll::{Pread, Pwrite, LE};
 
 #[derive(Copy, Clone, Debug)]
@@ -138,6 +139,7 @@ impl Request for TransferRequest {
     }
 }
 
+#[derive(Debug)]
 pub enum Ack {
     /// TODO: ??????????????????????? Docs are weird?
     /// OK (for SWD protocol), OK or FAULT (for JTAG protocol),
@@ -147,12 +149,14 @@ pub enum Ack {
     NoAck = 7,
 }
 
+#[derive(Debug)]
 pub struct InnerTransferResponse {
     pub ack: Ack,
     pub protocol_error: bool,
     pub value_missmatch: bool,
 }
 
+#[derive(Debug)]
 pub struct TransferResponse {
     /// Number of transfers: 1 .. 255 that are executed.
     pub transfer_count: u8,
@@ -185,7 +189,7 @@ impl Response for TransferResponse {
             td_timestamp: 0, // scroll::pread_with(buffer[offset + 2..offset + 2 + 4], LE),
             transfer_data: buffer
                 .pread_with(offset + 2, LE)
-                .expect("This is a bug. Please report it."),
+                .map_err(|_| anyhow!("This is a bug. Please report it."))?,
         })
     }
 }
@@ -215,7 +219,7 @@ impl Request for TransferBlockRequest {
 
         buffer
             .pwrite_with(self.transfer_count, offset + 1, LE)
-            .expect("This is a bug. Please report it.");
+            .map_err(|_| anyhow!("This is a bug. Please report it."))?;
         size += 2;
 
         size += self.transfer_request.to_bytes(buffer, offset + 3)?;
@@ -223,14 +227,12 @@ impl Request for TransferBlockRequest {
         let mut data_offset = offset + 4;
 
         for word in &self.transfer_data {
-            buffer
-                .pwrite_with(word, data_offset, LE)
-                .unwrap_or_else(|_| {
-                    panic!(
-                        "Failed to write word at data_offset {}. This is a bug. Please report it.",
-                        data_offset
-                    )
-                });
+            buffer.pwrite_with(word, data_offset, LE).map_err(|_| {
+                anyhow!(
+                    "Failed to write word at data_offset {}. This is a bug. Please report it.",
+                    data_offset
+                )
+            })?;
             data_offset += 4;
             size += 4;
         }
@@ -313,7 +315,7 @@ impl Response for TransferBlockResponse {
             data.push(
                 buffer
                     .pread_with(offset + 3 + data_offset * 4, LE)
-                    .expect("Failed to read value.."),
+                    .map_err(|_| anyhow!("Failed to read value.."))?,
             );
         }
 

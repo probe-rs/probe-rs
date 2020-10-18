@@ -1,11 +1,16 @@
 pub(crate) mod daplink;
+#[cfg(feature = "ftdi")]
+pub(crate) mod ftdi;
 pub(crate) mod jlink;
 pub(crate) mod stlink;
 
-use crate::architecture::arm::{DAPAccess, PortType};
+use crate::architecture::{
+    arm::{communication_interface::ArmProbeInterface, DAPAccess, PortType, SwoAccess},
+    riscv::communication_interface::RiscvCommunicationInterface,
+};
 use crate::config::{RegistryError, TargetSelector};
 use crate::error::Error;
-use crate::{Memory, Session};
+use crate::Session;
 use jlink::list_jlink_devices;
 use std::{convert::TryFrom, fmt};
 use thiserror::Error;
@@ -71,9 +76,6 @@ pub enum DebugProbeError {
     ProbeFirmwareOutdated,
     #[error("An error specific to a probe type occured")]
     ProbeSpecific(#[source] Box<dyn std::error::Error + Send + Sync>),
-    // TODO: Unknown errors are not very useful, this should be removed.
-    #[error("An unknown error occured")]
-    Unknown,
     #[error("Probe could not be created")]
     ProbeCouldNotBeCreated(#[from] ProbeCreationError),
     #[error("Probe does not support protocol")]
@@ -95,10 +97,16 @@ pub enum DebugProbeError {
     NotAttached,
     #[error("You need to be detached from the target to perform this action")]
     Attached,
+    #[error("Failed to find the target or attach to the target")]
+    TargetNotFound,
     #[error("Some functionality was not implemented yet: {0}")]
     NotImplemented(&'static str),
     #[error("Error in previous batched command")]
     BatchError(BatchCommand),
+    #[error("Command not supported by probe")]
+    CommandNotSupportedByProbe,
+    #[error("Unable to set hardware breakpoint, all available breakpoint units are in use.")]
+    BreakpointUnitsExceeded,
     #[error(transparent)]
     Other(#[from] anyhow::Error),
 }
@@ -149,11 +157,29 @@ impl Probe {
         }
     }
 
+    pub(crate) fn from_attached_probe(probe: Box<dyn DebugProbe>) -> Self {
+        Self {
+            inner: probe,
+            attached: true,
+        }
+    }
+
+    pub fn from_specific_probe(probe: Box<dyn DebugProbe>) -> Self {
+        Probe {
+            inner: probe,
+            attached: false,
+        }
+    }
+
     /// Get a list of all debug probes found.
     /// This can be used to select the debug probe which
     /// should be used.
     pub fn list_all() -> Vec<DebugProbeInfo> {
         let mut list = daplink::tools::list_daplink_devices();
+        #[cfg(feature = "ftdi")]
+        {
+            list.extend(ftdi::list_ftdi_devices());
+        }
         list.extend(stlink::tools::list_stlink_devices());
 
         list.extend(list_jlink_devices().expect("Failed to list J-Link devices."));
@@ -170,12 +196,18 @@ impl Probe {
             Err(DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::NotFound)) => {}
             Err(e) => return Err(e),
         };
+        #[cfg(feature = "ftdi")]
+        match ftdi::FtdiProbe::new_from_selector(selector.clone()) {
+            Ok(link) => return Ok(Probe::from_specific_probe(link)),
+            Err(DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::NotFound)) => {}
+            Err(e) => return Err(e),
+        };
         match stlink::STLink::new_from_selector(selector.clone()) {
             Ok(link) => return Ok(Probe::from_specific_probe(link)),
             Err(DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::NotFound)) => {}
             Err(e) => return Err(e),
         };
-        match jlink::JLink::new_from_selector(selector.clone()) {
+        match jlink::JLink::new_from_selector(selector) {
             Ok(link) => return Ok(Probe::from_specific_probe(link)),
             Err(DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::NotFound)) => {}
             Err(e) => return Err(e),
@@ -184,13 +216,6 @@ impl Probe {
         Err(DebugProbeError::ProbeCouldNotBeCreated(
             ProbeCreationError::NotFound,
         ))
-    }
-
-    pub fn from_specific_probe(probe: Box<dyn DebugProbe>) -> Self {
-        Probe {
-            inner: probe,
-            attached: false,
-        }
     }
 
     // /// Tries to mass erase a locked nRF52 chip, this process may timeout, if it does, the chip
@@ -251,18 +276,42 @@ impl Probe {
         self.inner.get_name().to_string()
     }
 
-    /// Enters debug mode
+    /// Attach to the chip.
+    ///
+    /// This runs all the necessary protocol init routines.
+    ///
+    /// If this doesn't work, you might want to try `attach_under_reset`
     pub fn attach(mut self, target: impl Into<TargetSelector>) -> Result<Session, Error> {
         self.inner.attach()?;
         self.attached = true;
 
-        Session::new(self, target)
+        Session::new(self, target, AttachMethod::Normal)
     }
 
     pub fn attach_to_unspecified(&mut self) -> Result<(), Error> {
         self.inner.attach()?;
         self.attached = true;
         Ok(())
+    }
+
+    /// Attach to the chip under hard-reset.
+    ///
+    /// This asserts the reset pin via the probe, plays the protocol init routines and deasserts the pin.
+    /// This is necessary if the chip is not responding to the SWD reset sequence.
+    /// For example this can happen if the chip has the SWDIO pin remapped.
+    pub fn attach_under_reset(
+        mut self,
+        target: impl Into<TargetSelector>,
+    ) -> Result<Session, Error> {
+        log::debug!("Asserting reset");
+        self.inner.target_reset_assert()?;
+
+        self.inner.attach()?;
+
+        self.attached = true;
+
+        // The session will de-assert reset after connecting to the debug interface.
+        Session::new(self, target, AttachMethod::UnderReset)
     }
 
     /// Selects the transport protocol to be used by the debug probe.
@@ -286,6 +335,11 @@ impl Probe {
         self.inner.target_reset()
     }
 
+    pub fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
+        log::debug!("Deasserting target reset");
+        self.inner.target_reset_deassert()
+    }
+
     /// Configure protocol speed to use in kHz
     pub fn set_speed(&mut self, speed_khz: u32) -> Result<u32, DebugProbeError> {
         if !self.attached {
@@ -300,55 +354,45 @@ impl Probe {
         self.inner.speed()
     }
 
-    /// Returns a probe specific memory interface if any is present for given probe.
-    pub fn dedicated_memory_interface(&self) -> Result<Option<Memory>, DebugProbeError> {
+    /// Check if the probe has an interface to
+    /// debug ARM chips.
+    pub fn has_arm_interface(&self) -> bool {
+        self.inner.has_arm_interface()
+    }
+
+    pub fn into_arm_interface<'probe>(
+        self,
+    ) -> Result<Option<Box<dyn ArmProbeInterface + 'probe>>, DebugProbeError> {
         if !self.attached {
+            // TODO: Return self here
             Err(DebugProbeError::NotAttached)
         } else {
-            Ok(self.inner.dedicated_memory_interface())
+            self.inner.get_arm_interface()
         }
     }
 
-    pub fn has_dap_interface(&self) -> bool {
-        self.inner.get_interface_dap().is_some()
+    /// Check if the probe has an interface to
+    /// debug RISCV chips.
+    pub fn has_riscv_interface(&self) -> bool {
+        self.inner.has_riscv_interface()
     }
 
-    pub fn get_interface_dap(&self) -> Result<Option<&dyn DAPAccess>, DebugProbeError> {
+    pub fn into_riscv_interface(
+        self,
+    ) -> Result<Option<RiscvCommunicationInterface>, DebugProbeError> {
         if !self.attached {
             Err(DebugProbeError::NotAttached)
         } else {
-            Ok(self.inner.get_interface_dap())
+            self.inner.get_riscv_interface()
         }
     }
 
-    pub fn get_interface_dap_mut(&mut self) -> Result<Option<&mut dyn DAPAccess>, DebugProbeError> {
-        if !self.attached {
-            Err(DebugProbeError::NotAttached)
-        } else {
-            Ok(self.inner.get_interface_dap_mut())
-        }
+    pub fn get_swo_interface(&self) -> Option<&dyn SwoAccess> {
+        self.inner.get_swo_interface()
     }
 
-    pub fn has_jtag_interface(&self) -> bool {
-        self.inner.get_interface_jtag().is_some()
-    }
-
-    pub fn get_interface_jtag(&self) -> Result<Option<&dyn JTAGAccess>, DebugProbeError> {
-        if !self.attached {
-            Err(DebugProbeError::NotAttached)
-        } else {
-            Ok(self.inner.get_interface_jtag())
-        }
-    }
-
-    pub fn get_interface_jtag_mut(
-        &mut self,
-    ) -> Result<Option<&mut dyn JTAGAccess>, DebugProbeError> {
-        if !self.attached {
-            Err(DebugProbeError::NotAttached)
-        } else {
-            Ok(self.inner.get_interface_jtag_mut())
-        }
+    pub fn get_swo_interface_mut(&mut self) -> Option<&mut dyn SwoAccess> {
+        self.inner.get_swo_interface_mut()
     }
 }
 
@@ -382,33 +426,67 @@ pub trait DebugProbe: Send + Sync + fmt::Debug {
     ///
     fn set_speed(&mut self, speed_khz: u32) -> Result<u32, DebugProbeError>;
 
-    /// Enters debug mode
+    /// Attach to the chip.
+    ///
+    /// This should run all the necessary protocol init routines.
     fn attach(&mut self) -> Result<(), DebugProbeError>;
 
-    /// Leave debug mode
+    /// Detach from the chip.
+    ///
+    /// This should run all the necessary protocol deinit routines.
     fn detach(&mut self) -> Result<(), DebugProbeError>;
 
-    /// Hard-resets the target device.
+    /// This should hard reset the target device.
     fn target_reset(&mut self) -> Result<(), DebugProbeError>;
+
+    /// This should assert the reset pin of the target via debug probe.
+    fn target_reset_assert(&mut self) -> Result<(), DebugProbeError>;
+
+    /// This should deassert the reset pin of the target via debug probe.
+    fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError>;
 
     /// Selects the transport protocol to be used by the debug probe.
     fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError>;
 
-    /// Returns a probe specific memory interface if any is present for given probe.
-    fn dedicated_memory_interface(&self) -> Option<Memory>;
+    /// Check if the proble offers an interface to debug ARM chips.
+    fn has_arm_interface(&self) -> bool {
+        false
+    }
 
-    fn get_interface_dap(&self) -> Option<&dyn DAPAccess>;
+    /// Get the dedicated interface to debug ARM chips. Ensure that the
+    /// probe actually supports this by calling `has_arm_interface` first.
+    fn get_arm_interface<'probe>(
+        self: Box<Self>,
+    ) -> Result<Option<Box<dyn ArmProbeInterface + 'probe>>, DebugProbeError> {
+        Ok(None)
+    }
 
-    fn get_interface_dap_mut(&mut self) -> Option<&mut dyn DAPAccess>;
+    /// Get the dedicated interface to debug RISCV chips. Ensure that the
+    /// probe actually supports this by calling `get_riscv_interface` first.
+    fn get_riscv_interface(
+        self: Box<Self>,
+    ) -> Result<Option<RiscvCommunicationInterface>, DebugProbeError> {
+        Ok(None)
+    }
 
-    fn get_interface_jtag(&self) -> Option<&dyn JTAGAccess>;
+    /// Check if the proble offers an interface to debug RISCV chips.
+    fn has_riscv_interface(&self) -> bool {
+        false
+    }
 
-    fn get_interface_jtag_mut(&mut self) -> Option<&mut dyn JTAGAccess>;
+    fn get_swo_interface(&self) -> Option<&dyn SwoAccess> {
+        None
+    }
+
+    fn get_swo_interface_mut(&mut self) -> Option<&mut dyn SwoAccess> {
+        None
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum DebugProbeType {
     DAPLink,
+    FTDI,
     STLink,
     JLink,
 }
@@ -489,7 +567,7 @@ pub struct DebugProbeSelector {
 impl TryFrom<&str> for DebugProbeSelector {
     type Error = DebugProbeSelectorParseError;
     fn try_from(value: &str) -> Result<Self, Self::Error> {
-        let split = value.split(":").collect::<Vec<_>>();
+        let split = value.split(':').collect::<Vec<_>>();
         let mut selector = if split.len() > 1 {
             DebugProbeSelector {
                 vendor_id: u16::from_str_radix(split[0], 16)?,
@@ -585,34 +663,22 @@ impl DebugProbe for FakeProbe {
 
     /// Resets the target device.
     fn target_reset(&mut self) -> Result<(), DebugProbeError> {
-        Err(DebugProbeError::Unknown)
+        Err(DebugProbeError::CommandNotSupportedByProbe)
     }
 
-    fn dedicated_memory_interface(&self) -> Option<Memory> {
-        None
+    fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
+        unimplemented!()
     }
 
-    fn get_interface_dap(&self) -> Option<&dyn DAPAccess> {
-        None
-    }
-
-    fn get_interface_dap_mut(&mut self) -> Option<&mut dyn DAPAccess> {
-        None
-    }
-
-    fn get_interface_jtag(&self) -> Option<&dyn JTAGAccess> {
-        None
-    }
-
-    fn get_interface_jtag_mut(&mut self) -> Option<&mut dyn JTAGAccess> {
-        None
+    fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
+        unimplemented!()
     }
 }
 
 impl DAPAccess for FakeProbe {
     /// Reads the DAP register on the specified port and address
     fn read_register(&mut self, _port: PortType, _addr: u16) -> Result<u32, DebugProbeError> {
-        Err(DebugProbeError::Unknown)
+        Err(DebugProbeError::CommandNotSupportedByProbe)
     }
 
     /// Writes a value to the DAP register on the specified port and address
@@ -622,7 +688,23 @@ impl DAPAccess for FakeProbe {
         _addr: u16,
         _value: u32,
     ) -> Result<(), DebugProbeError> {
-        Err(DebugProbeError::Unknown)
+        Err(DebugProbeError::CommandNotSupportedByProbe)
+    }
+
+    fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
+        self
+    }
+}
+
+impl<'a> AsRef<dyn DebugProbe + 'a> for FakeProbe {
+    fn as_ref(&self) -> &(dyn DebugProbe + 'a) {
+        self
+    }
+}
+
+impl<'a> AsMut<dyn DebugProbe + 'a> for FakeProbe {
+    fn as_mut(&mut self) -> &mut (dyn DebugProbe + 'a) {
+        self
     }
 }
 
@@ -630,7 +712,7 @@ impl DAPAccess for FakeProbe {
 ///
 /// This trait should be implemented by all probes which offer low-level access to
 /// the JTAG protocol, i.e. directo control over the bytes sent and received.
-pub trait JTAGAccess {
+pub trait JTAGAccess: DebugProbe + AsRef<dyn DebugProbe> + AsMut<dyn DebugProbe> {
     fn read_register(&mut self, address: u32, len: u32) -> Result<Vec<u8>, DebugProbeError>;
 
     /// For Riscv, and possibly other interfaces, the JTAG interface has to remain in
@@ -650,4 +732,12 @@ pub trait JTAGAccess {
         data: &[u8],
         len: u32,
     ) -> Result<Vec<u8>, DebugProbeError>;
+
+    fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe>;
+}
+
+#[derive(PartialEq, Debug, Copy, Clone)]
+pub enum AttachMethod {
+    Normal,
+    UnderReset,
 }

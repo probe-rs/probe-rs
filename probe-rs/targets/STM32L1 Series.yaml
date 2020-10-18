@@ -1,0 +1,1647 @@
+---
+name: STM32L1 Series
+manufacturer: ~
+variants:
+  - name: STM32L100C6
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536875008
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l1xx_128
+      - stm32l1xx_128_eeprom
+      - stm32l1xx_128_opt
+  - name: STM32L100C6xxA
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536875008
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l1xx_128
+      - stm32l1xx_128_eeprom
+      - stm32l1xx_128_opt
+  - name: STM32L100R8
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l1xx_128
+      - stm32l1xx_128_eeprom
+      - stm32l1xx_128_opt
+  - name: STM32L100R8xxA
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l1xx_128
+      - stm32l1xx_128_eeprom
+      - stm32l1xx_128_opt
+  - name: STM32L100RB
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536881152
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l1xx_128
+      - stm32l1xx_128_eeprom
+      - stm32l1xx_128_opt
+  - name: STM32L100RBxxA
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536881152
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l1xx_128
+      - stm32l1xx_128_eeprom
+      - stm32l1xx_128_opt
+  - name: STM32L100RC
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536887296
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l1xx_256
+      - stm32l1xx_256_eeprom
+      - stm32l1xx_256_opt
+  - name: STM32L151C6
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536881152
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l1xx_128
+      - stm32l1xx_128_eeprom
+      - stm32l1xx_128_opt
+  - name: STM32L151C6xxA
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536887296
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l1xx_128
+      - stm32l1xx_128_eeprom
+      - stm32l1xx_128_opt
+  - name: STM32L151C8
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536881152
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l1xx_128
+      - stm32l1xx_128_eeprom
+      - stm32l1xx_128_opt
+  - name: STM32L151C8xxA
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l1xx_128
+      - stm32l1xx_128_eeprom
+      - stm32l1xx_128_opt
+  - name: STM32L151CB
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536887296
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l1xx_128
+      - stm32l1xx_128_eeprom
+      - stm32l1xx_128_opt
+  - name: STM32L151CBxxA
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l1xx_128
+      - stm32l1xx_128_eeprom
+      - stm32l1xx_128_opt
+  - name: STM32L151CC
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l1xx_256
+      - stm32l1xx_256_eeprom
+      - stm32l1xx_256_opt
+  - name: STM32L151QC
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l1xx_256
+      - stm32l1xx_256_eeprom
+      - stm32l1xx_256_opt
+  - name: STM32L151QD
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536920064
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134610944
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l1xx_384
+      - stm32l1xx_384_eeprom
+      - stm32l1xx_384_opt
+  - name: STM32L151QE
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536952832
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l1xx_512
+      - stm32l1xx_512_eeprom
+      - stm32l1xx_512_opt
+  - name: STM32L151R6
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536881152
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l1xx_128
+      - stm32l1xx_128_eeprom
+      - stm32l1xx_128_opt
+  - name: STM32L151R6xxA
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536887296
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l1xx_128
+      - stm32l1xx_128_eeprom
+      - stm32l1xx_128_opt
+  - name: STM32L151R8
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536881152
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l1xx_128
+      - stm32l1xx_128_eeprom
+      - stm32l1xx_128_opt
+  - name: STM32L151R8xxA
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l1xx_128
+      - stm32l1xx_128_eeprom
+      - stm32l1xx_128_opt
+  - name: STM32L151RB
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536887296
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l1xx_128
+      - stm32l1xx_128_eeprom
+      - stm32l1xx_128_opt
+  - name: STM32L151RBxxA
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l1xx_128
+      - stm32l1xx_128_eeprom
+      - stm32l1xx_128_opt
+  - name: STM32L151RC
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l1xx_256
+      - stm32l1xx_256_eeprom
+      - stm32l1xx_256_opt
+  - name: STM32L151RCxxA
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l1xx_256
+      - stm32l1xx_256_eeprom
+      - stm32l1xx_256_opt
+  - name: STM32L151RD
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536920064
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134610944
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l1xx_384
+      - stm32l1xx_384_eeprom
+      - stm32l1xx_384_opt
+  - name: STM32L151RE
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536952832
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l1xx_512
+      - stm32l1xx_512_eeprom
+      - stm32l1xx_512_opt
+  - name: STM32L151UC
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l1xx_256
+      - stm32l1xx_256_eeprom
+      - stm32l1xx_256_opt
+  - name: STM32L151V8
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536881152
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l1xx_128
+      - stm32l1xx_128_eeprom
+      - stm32l1xx_128_opt
+  - name: STM32L151V8xxA
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l1xx_128
+      - stm32l1xx_128_eeprom
+      - stm32l1xx_128_opt
+  - name: STM32L151VB
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536887296
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l1xx_128
+      - stm32l1xx_128_eeprom
+      - stm32l1xx_128_opt
+  - name: STM32L151VBxxA
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l1xx_128
+      - stm32l1xx_128_eeprom
+      - stm32l1xx_128_opt
+  - name: STM32L151VC
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l1xx_256
+      - stm32l1xx_256_eeprom
+      - stm32l1xx_256_opt
+  - name: STM32L151VCxxA
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l1xx_256
+      - stm32l1xx_256_eeprom
+      - stm32l1xx_256_opt
+  - name: STM32L151VD
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536920064
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134610944
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l1xx_384
+      - stm32l1xx_384_eeprom
+      - stm32l1xx_384_opt
+  - name: STM32L151VE
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536952832
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l1xx_512
+      - stm32l1xx_512_eeprom
+      - stm32l1xx_512_opt
+  - name: STM32L151ZC
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l1xx_256
+      - stm32l1xx_256_eeprom
+      - stm32l1xx_256_opt
+  - name: STM32L151ZD
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536920064
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134610944
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l1xx_384
+      - stm32l1xx_384_eeprom
+      - stm32l1xx_384_opt
+  - name: STM32L151ZE
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536952832
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l1xx_512
+      - stm32l1xx_512_eeprom
+      - stm32l1xx_512_opt
+  - name: STM32L152C6
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536881152
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l1xx_128
+      - stm32l1xx_128_eeprom
+      - stm32l1xx_128_opt
+  - name: STM32L152C6xxA
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536887296
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l1xx_128
+      - stm32l1xx_128_eeprom
+      - stm32l1xx_128_opt
+  - name: STM32L152C8
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536881152
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l1xx_128
+      - stm32l1xx_128_eeprom
+      - stm32l1xx_128_opt
+  - name: STM32L152C8xxA
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l1xx_128
+      - stm32l1xx_128_eeprom
+      - stm32l1xx_128_opt
+  - name: STM32L152CB
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536887296
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l1xx_128
+      - stm32l1xx_128_eeprom
+      - stm32l1xx_128_opt
+  - name: STM32L152CBxxA
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l1xx_128
+      - stm32l1xx_128_eeprom
+      - stm32l1xx_128_opt
+  - name: STM32L152CC
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l1xx_256
+      - stm32l1xx_256_eeprom
+      - stm32l1xx_256_opt
+  - name: STM32L152QC
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l1xx_256
+      - stm32l1xx_256_eeprom
+      - stm32l1xx_256_opt
+  - name: STM32L152QD
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536920064
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134610944
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l1xx_384
+      - stm32l1xx_384_eeprom
+      - stm32l1xx_384_opt
+  - name: STM32L152QE
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536952832
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l1xx_512
+      - stm32l1xx_512_eeprom
+      - stm32l1xx_512_opt
+  - name: STM32L152R6
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536881152
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l1xx_128
+      - stm32l1xx_128_eeprom
+      - stm32l1xx_128_opt
+  - name: STM32L152R6xxA
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536887296
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l1xx_128
+      - stm32l1xx_128_eeprom
+      - stm32l1xx_128_opt
+  - name: STM32L152R8
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536881152
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l1xx_128
+      - stm32l1xx_128_eeprom
+      - stm32l1xx_128_opt
+  - name: STM32L152R8xxA
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l1xx_128
+      - stm32l1xx_128_eeprom
+      - stm32l1xx_128_opt
+  - name: STM32L152RB
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536887296
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l1xx_128
+      - stm32l1xx_128_eeprom
+      - stm32l1xx_128_opt
+  - name: STM32L152RBxxA
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l1xx_128
+      - stm32l1xx_128_eeprom
+      - stm32l1xx_128_opt
+  - name: STM32L152RC
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l1xx_256
+      - stm32l1xx_256_eeprom
+      - stm32l1xx_256_opt
+  - name: STM32L152RCxxA
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l1xx_256
+      - stm32l1xx_256_eeprom
+      - stm32l1xx_256_opt
+  - name: STM32L152RD
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536920064
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134610944
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l1xx_384
+      - stm32l1xx_384_eeprom
+      - stm32l1xx_384_opt
+  - name: STM32L152RE
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536952832
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l1xx_512
+      - stm32l1xx_512_eeprom
+      - stm32l1xx_512_opt
+  - name: STM32L152V8
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536881152
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l1xx_128
+      - stm32l1xx_128_eeprom
+      - stm32l1xx_128_opt
+  - name: STM32L152V8xxA
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l1xx_128
+      - stm32l1xx_128_eeprom
+      - stm32l1xx_128_opt
+  - name: STM32L152VB
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536887296
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l1xx_128
+      - stm32l1xx_128_eeprom
+      - stm32l1xx_128_opt
+  - name: STM32L152VBxxA
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l1xx_128
+      - stm32l1xx_128_eeprom
+      - stm32l1xx_128_opt
+  - name: STM32L152VC
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l1xx_256
+      - stm32l1xx_256_eeprom
+      - stm32l1xx_256_opt
+  - name: STM32L152VCxxA
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l1xx_256
+      - stm32l1xx_256_eeprom
+      - stm32l1xx_256_opt
+  - name: STM32L152VD
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536920064
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134610944
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l1xx_384
+      - stm32l1xx_384_eeprom
+      - stm32l1xx_384_opt
+  - name: STM32L152VE
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536952832
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l1xx_512
+      - stm32l1xx_512_eeprom
+      - stm32l1xx_512_opt
+  - name: STM32L152ZC
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l1xx_256
+      - stm32l1xx_256_eeprom
+      - stm32l1xx_256_opt
+  - name: STM32L152ZD
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536920064
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134610944
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l1xx_384
+      - stm32l1xx_384_eeprom
+      - stm32l1xx_384_opt
+  - name: STM32L152ZE
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536952832
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l1xx_512
+      - stm32l1xx_512_eeprom
+      - stm32l1xx_512_opt
+  - name: STM32L162QD
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536920064
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134610944
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l1xx_384
+      - stm32l1xx_384_eeprom
+      - stm32l1xx_384_opt
+  - name: STM32L162RC
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l1xx_256
+      - stm32l1xx_256_eeprom
+      - stm32l1xx_256_opt
+  - name: STM32L162RCxxA
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l1xx_256
+      - stm32l1xx_256_eeprom
+      - stm32l1xx_256_opt
+  - name: STM32L162RD
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536920064
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134610944
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l1xx_384
+      - stm32l1xx_384_eeprom
+      - stm32l1xx_384_opt
+  - name: STM32L162RE
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536952832
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l1xx_512
+      - stm32l1xx_512_eeprom
+      - stm32l1xx_512_opt
+  - name: STM32L162VC
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l1xx_256
+      - stm32l1xx_256_eeprom
+      - stm32l1xx_256_opt
+  - name: STM32L162VCxxA
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l1xx_256
+      - stm32l1xx_256_eeprom
+      - stm32l1xx_256_opt
+  - name: STM32L162VD
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536920064
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134610944
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l1xx_384
+      - stm32l1xx_384_eeprom
+      - stm32l1xx_384_opt
+  - name: STM32L162VE
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536952832
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l1xx_512
+      - stm32l1xx_512_eeprom
+      - stm32l1xx_512_opt
+  - name: STM32L162ZD
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536920064
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134610944
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l1xx_384
+      - stm32l1xx_384_eeprom
+      - stm32l1xx_384_opt
+  - name: STM32L162ZE
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536952832
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32l1xx_512
+      - stm32l1xx_512_eeprom
+      - stm32l1xx_512_opt
+flash_algorithms:
+  stm32l1xx_128:
+    name: stm32l1xx_128
+    description: STM32L1xx Med-density Flash
+    default: true
+    instructions: ELUDRgEqAtACKiLRAOAAv3JIAGhA9HBgcEwgYHBIb0wMPCBgb0ggYG9IJB0gYG9IIGBqSAAdAGgQ9IAfCNFF8lVQa0wgYAYgYGBA9v9woGAAvwC/ACAQvQFGASkC0AIpD9EA4AC/XUgUOABoQPACAFpKFDoQYBBGAGhA8AEAEGAAvwC/ACBwRwFGVEgUOABoQPQAcFFKFDoQYBBGAGhA8AgAEGAAIAhgA+BK9qogUEoQYEpIAGgQ8AEP9tFHSBQ4AGgg9ABwRUoUOhBgEEYAaCDwCAAQYAAgcEcDRgEgcEcwtQNGgCQB8f8AIPD/ATtIFDgAaED0gGA4TRQ9KGAoRgBoQPAIAChgAL8F4BBoGGAbHRIdCR8kHwmxACz20QPgSvaqIDJNKGAsSABoEPABD/bRKkgAaBD0cG8H0CdIAGhA9HBgJU0oYAEgML0jSBQ4AGgg9IBgIU0UPShgKEYAaCDwCAAoYChGAGhA9IBgKGAoRgBoQPAIAChggCQF4BBoGGAbHRIdCR8kHwmxACz20QPgSvaqIBZNKGAQSABoEPABD/bRDUgAaBD0cG8H0AtIAGhA9HBgCU0oYAEgxecHSBQ4AGgg9IBgBE0UPShgKEYAaCDwCAAoYAAgtucYPAJA782riQUEAwK/rp2MFhUUEwAwAEAAAAAA
+    pc_init: 1
+    pc_uninit: 89
+    pc_program_page: 225
+    pc_erase_sector: 137
+    pc_erase_all: ~
+    data_section_offset: 500
+    flash_properties:
+      address_range:
+        start: 134217728
+        end: 134348800
+      page_size: 256
+      erased_byte_value: 0
+      program_page_timeout: 500
+      erase_sector_timeout: 500
+      sectors:
+        - size: 256
+          address: 0
+  stm32l1xx_128_eeprom:
+    name: stm32l1xx_128_eeprom
+    description: STM32L1xx Mid-density Data EEPROM
+    default: false
+    instructions: ELUDRgEqAtACKh3RAOAAv0RIAGhA9HBgQkwgYEJIQUwMPCBgQUggYD5IAB0AaBD0gB8I0UXyVVA9TCBgBiBgYED2/3CgYAC/AL8AIBC9AUYBKQLQAikK0QDgAL8xSBQ4AGhA8AEAL0oUOhBgAL8AvwAgcEcBRk/0gHIB8f8AIPD/AQPgSvaqIClLGGAlSABoEPABD/bRDeAAIAhgA+BK9qogI0sYYB9IAGgQ8AEP9tEJHRIfACrv0QAgcEcDRgEgcEcwtQNGT/SAdAHx/wAg8P8BA+BK9qogFU0oYBFIAGgQ8AEP9tEX4A5IFDgAaCD0gHAMTRQ9KGAQaBhgA+BK9qogC00oYAdIAGgQ8AEP9tEbHRIdCR8kHwmxACzk0QAgML0AABg8AkDvzauJBQQDAgAwAEAAAAAA
+    pc_init: 1
+    pc_uninit: 79
+    pc_program_page: 195
+    pc_erase_sector: 117
+    pc_erase_all: ~
+    data_section_offset: 308
+    flash_properties:
+      address_range:
+        start: 134742016
+        end: 134746112
+      page_size: 256
+      erased_byte_value: 0
+      program_page_timeout: 500
+      erase_sector_timeout: 500
+      sectors:
+        - size: 256
+          address: 0
+  stm32l1xx_128_opt:
+    name: stm32l1xx_128_opt
+    description: STM32L1xx Mid-density Options
+    default: false
+    instructions: ELUDRgEqAtACKiPRAOAAv0dIAGhA9HBgRUwgYEVIREwMPCBgREggYERIQUwkHyBgQ0ggYD5IAB0AaBD0gB8I0UXyVVA/TCBgBiBgYED2/3CgYAC/AL8AIBC9AUYBKQLQAikP0QDgAL8xSBQ4AGhA8AQAL0oUOhBgEEYAaEDwAQAQYAC/AL8AIHBHL0gvSQhgL0hIYC9IiGDIYAPgSvaqIChJCGAiSABoEPABD/bRIEgAaBD0cG8H0B1IAGhA9HBgG0kIYAEgcEcAIPznAUYAIHBHA0YBIHBHELUDRgHxDwAg8A8BH+AYaBRooEIB0BBoGGAD4Er2qiASTCBgDEgAaBDwAQ/20QpIAGgQ9HBvB9AHSABoQPRwYAVMIGABIBC9Gx0SHQkfACnd0QAg9+cAABg8AkDvzauJBQQDAsjZ6vsnJiUkADAAQKoAVf8AAPgfeACH/wAA//8AAAAA
+    pc_init: 1
+    pc_uninit: 91
+    pc_program_page: 217
+    pc_erase_sector: 205
+    pc_erase_all: 139
+    data_section_offset: 344
+    flash_properties:
+      address_range:
+        start: 536346624
+        end: 536346640
+      page_size: 16
+      erased_byte_value: 0
+      program_page_timeout: 3000
+      erase_sector_timeout: 3000
+      sectors:
+        - size: 16
+          address: 0
+  stm32l1xx_256:
+    name: stm32l1xx_256
+    description: STM32L1xx Med+-density Flash
+    default: true
+    instructions: ELUDRgEqAtACKiLRAOAAv3JIAGhA9HBgcEwgYHBIb0wMPCBgb0ggYG9IJB0gYG9IIGBqSAAdAGgQ9IAfCNFF8lVQa0wgYAYgYGBA9v9woGAAvwC/ACAQvQFGASkC0AIpD9EA4AC/XUgUOABoQPACAFpKFDoQYBBGAGhA8AEAEGAAvwC/ACBwRwFGVEgUOABoQPQAcFFKFDoQYBBGAGhA8AgAEGAAIAhgA+BK9qogUEoQYEpIAGgQ8AEP9tFHSBQ4AGgg9ABwRUoUOhBgEEYAaCDwCAAQYAAgcEcDRgEgcEcwtQNGgCQB8f8AIPD/ATtIFDgAaED0gGA4TRQ9KGAoRgBoQPAIAChgAL8F4BBoGGAbHRIdCR8kHwmxACz20QPgSvaqIDJNKGAsSABoEPABD/bRKkgAaBD0cG8H0CdIAGhA9HBgJU0oYAEgML0jSBQ4AGgg9IBgIU0UPShgKEYAaCDwCAAoYChGAGhA9IBgKGAoRgBoQPAIAChggCQF4BBoGGAbHRIdCR8kHwmxACz20QPgSvaqIBZNKGAQSABoEPABD/bRDUgAaBD0cG8H0AtIAGhA9HBgCU0oYAEgxecHSBQ4AGgg9IBgBE0UPShgKEYAaCDwCAAoYAAgtucYPAJA782riQUEAwK/rp2MFhUUEwAwAEAAAAAA
+    pc_init: 1
+    pc_uninit: 89
+    pc_program_page: 225
+    pc_erase_sector: 137
+    pc_erase_all: ~
+    data_section_offset: 500
+    flash_properties:
+      address_range:
+        start: 134217728
+        end: 134479872
+      page_size: 256
+      erased_byte_value: 0
+      program_page_timeout: 500
+      erase_sector_timeout: 500
+      sectors:
+        - size: 256
+          address: 0
+  stm32l1xx_256_eeprom:
+    name: stm32l1xx_256_eeprom
+    description: STM32L1xx Mid+-density Data EEPROM
+    default: false
+    instructions: ELUDRgEqAtACKh3RAOAAv0RIAGhA9HBgQkwgYEJIQUwMPCBgQUggYD5IAB0AaBD0gB8I0UXyVVA9TCBgBiBgYED2/3CgYAC/AL8AIBC9AUYBKQLQAikK0QDgAL8xSBQ4AGhA8AEAL0oUOhBgAL8AvwAgcEcBRk/0gHIB8f8AIPD/AQPgSvaqIClLGGAlSABoEPABD/bRDeAAIAhgA+BK9qogI0sYYB9IAGgQ8AEP9tEJHRIfACrv0QAgcEcDRgEgcEcwtQNGT/SAdAHx/wAg8P8BA+BK9qogFU0oYBFIAGgQ8AEP9tEX4A5IFDgAaCD0gHAMTRQ9KGAQaBhgA+BK9qogC00oYAdIAGgQ8AEP9tEbHRIdCR8kHwmxACzk0QAgML0AABg8AkDvzauJBQQDAgAwAEAAAAAA
+    pc_init: 1
+    pc_uninit: 79
+    pc_program_page: 195
+    pc_erase_sector: 117
+    pc_erase_all: ~
+    data_section_offset: 308
+    flash_properties:
+      address_range:
+        start: 134742016
+        end: 134750208
+      page_size: 256
+      erased_byte_value: 0
+      program_page_timeout: 500
+      erase_sector_timeout: 500
+      sectors:
+        - size: 256
+          address: 0
+  stm32l1xx_256_opt:
+    name: stm32l1xx_256_opt
+    description: STM32L1xx Mid+-density Options
+    default: false
+    instructions: ELUDRgEqAtACKiPRAOAAv0hIAGhA9HBgRkwgYEZIRUwMPCBgRUggYEVIQkwkHyBgREggYD9IAB0AaBD0gB8I0UXyVVBATCBgBiBgYED2/3CgYAC/AL8AIBC9AUYBKQLQAikP0QDgAL8ySBQ4AGhA8AQAMEoUOhBgEEYAaEDwAQAQYAC/AL8AIHBHMEgwSQhgMEhIYDBIiGDIYAhhSGED4Er2qiAoSQhgIkgAaBDwAQ/20SBIAGgQ9HBvB9AdSABoQPRwYBtJCGABIHBHACD85wFGACBwRwNGASBwRxC1A0YB8RcAIPAXAR/gGGgUaKBCAdAQaBhgA+BK9qogEkwgYAxIAGgQ8AEP9tEKSABoEPRwbwfQB0gAaED0cGAFTCBgASAQvRsdEh0JHwAp3dEAIPfnAAAYPAJA782riQUEAwLI2er7JyYlJAAwAECqAFX/AAD4H3gAh/8AAP//AAAAAA==
+    pc_init: 1
+    pc_uninit: 91
+    pc_program_page: 221
+    pc_erase_sector: 209
+    pc_erase_all: 139
+    data_section_offset: 348
+    flash_properties:
+      address_range:
+        start: 536346624
+        end: 536346640
+      page_size: 24
+      erased_byte_value: 0
+      program_page_timeout: 3000
+      erase_sector_timeout: 3000
+      sectors:
+        - size: 24
+          address: 0
+  stm32l1xx_384:
+    name: stm32l1xx_384
+    description: STM32L1xx High-density Flash
+    default: true
+    instructions: ELUDRgEqAtACKiLRAOAAv3JIAGhA9HBgcEwgYHBIb0wMPCBgb0ggYG9IJB0gYG9IIGBqSAAdAGgQ9IAfCNFF8lVQa0wgYAYgYGBA9v9woGAAvwC/ACAQvQFGASkC0AIpD9EA4AC/XUgUOABoQPACAFpKFDoQYBBGAGhA8AEAEGAAvwC/ACBwRwFGVEgUOABoQPQAcFFKFDoQYBBGAGhA8AgAEGAAIAhgA+BK9qogUEoQYEpIAGgQ8AEP9tFHSBQ4AGgg9ABwRUoUOhBgEEYAaCDwCAAQYAAgcEcDRgEgcEcwtQNGgCQB8f8AIPD/ATtIFDgAaED0gGA4TRQ9KGAoRgBoQPAIAChgAL8F4BBoGGAbHRIdCR8kHwmxACz20QPgSvaqIDJNKGAsSABoEPABD/bRKkgAaBD0cG8H0CdIAGhA9HBgJU0oYAEgML0jSBQ4AGgg9IBgIU0UPShgKEYAaCDwCAAoYChGAGhA9IBgKGAoRgBoQPAIAChggCQF4BBoGGAbHRIdCR8kHwmxACz20QPgSvaqIBZNKGAQSABoEPABD/bRDUgAaBD0cG8H0AtIAGhA9HBgCU0oYAEgxecHSBQ4AGgg9IBgBE0UPShgKEYAaCDwCAAoYAAgtucYPAJA782riQUEAwK/rp2MFhUUEwAwAEAAAAAA
+    pc_init: 1
+    pc_uninit: 89
+    pc_program_page: 225
+    pc_erase_sector: 137
+    pc_erase_all: ~
+    data_section_offset: 500
+    flash_properties:
+      address_range:
+        start: 134217728
+        end: 134610944
+      page_size: 256
+      erased_byte_value: 0
+      program_page_timeout: 500
+      erase_sector_timeout: 500
+      sectors:
+        - size: 256
+          address: 0
+  stm32l1xx_384_eeprom:
+    name: stm32l1xx_384_eeprom
+    description: STM32L1xx High-density Data EEPROM
+    default: false
+    instructions: ELUDRgEqAtACKh3RAOAAv0RIAGhA9HBgQkwgYEJIQUwMPCBgQUggYD5IAB0AaBD0gB8I0UXyVVA9TCBgBiBgYED2/3CgYAC/AL8AIBC9AUYBKQLQAikK0QDgAL8xSBQ4AGhA8AEAL0oUOhBgAL8AvwAgcEcBRk/0gHIB8f8AIPD/AQPgSvaqIClLGGAlSABoEPABD/bRDeAAIAhgA+BK9qogI0sYYB9IAGgQ8AEP9tEJHRIfACrv0QAgcEcDRgEgcEcwtQNGT/SAdAHx/wAg8P8BA+BK9qogFU0oYBFIAGgQ8AEP9tEX4A5IFDgAaCD0gHAMTRQ9KGAQaBhgA+BK9qogC00oYAdIAGgQ8AEP9tEbHRIdCR8kHwmxACzk0QAgML0AABg8AkDvzauJBQQDAgAwAEAAAAAA
+    pc_init: 1
+    pc_uninit: 79
+    pc_program_page: 195
+    pc_erase_sector: 117
+    pc_erase_all: ~
+    data_section_offset: 308
+    flash_properties:
+      address_range:
+        start: 134742016
+        end: 134754304
+      page_size: 256
+      erased_byte_value: 0
+      program_page_timeout: 500
+      erase_sector_timeout: 500
+      sectors:
+        - size: 256
+          address: 0
+  stm32l1xx_384_opt:
+    name: stm32l1xx_384_opt
+    description: STM32L1xx High-density Options
+    default: false
+    instructions: ELUDRgEqAtACKiPRAOAAv0lIAGhA9HBgR0wgYEdIRkwMPCBgRkggYEZIQ0wkHyBgRUggYEBIAB0AaBD0gB8I0UXyVVBBTCBgBiBgYED2/3CgYAC/AL8AIBC9AUYBKQLQAikP0QDgAL8zSBQ4AGhA8AQAMUoUOhBgEEYAaEDwAQAQYAC/AL8AIHBHMUgxSQhgMUhIYDFIiGDIYAhhSGGIYchhA+BK9qogKEkIYCJIAGgQ8AEP9tEgSABoEPRwbwfQHUgAaED0cGAbSQhgASBwRwAg/OcBRgAgcEcDRgEgcEcQtQNGAfEfACDwHwEf4BhoFGigQgHQEGgYYAPgSvaqIBJMIGAMSABoEPABD/bRCkgAaBD0cG8H0AdIAGhA9HBgBUwgYAEgEL0bHRIdCR8AKd3RACD35wAAGDwCQO/Nq4kFBAMCyNnq+ycmJSQAMABAqgBV/wAA+B94AIf/AAD//wAAAAA=
+    pc_init: 1
+    pc_uninit: 91
+    pc_program_page: 225
+    pc_erase_sector: 213
+    pc_erase_all: 139
+    data_section_offset: 352
+    flash_properties:
+      address_range:
+        start: 536346624
+        end: 536346656
+      page_size: 32
+      erased_byte_value: 0
+      program_page_timeout: 3000
+      erase_sector_timeout: 3000
+      sectors:
+        - size: 32
+          address: 0
+  stm32l1xx_512:
+    name: stm32l1xx_512
+    description: STM32L1xx XL-density Flash
+    default: true
+    instructions: ELUDRgEqAtACKiLRAOAAv3RIAGhA9HBgckwgYHJIcUwMPCBgcUggYHFIJB0gYHFIIGBsSAAdAGgA9IAQQLlF8lVQbUwgYAYgYGBA9v9woGAAvwC/ACAQvQFGASkC0AIpD9EA4AC/X0gUOABoQPACAFxKFDoQYBBGAGhA8AEAEGAAvwC/ACBwRwFGVkgUOABoQPQAcFNKFDoQYBBGAGhA8AgAEGAAIAhgA+BK9qogUkoQYExIAGgA8AEAACj10UlIFDgAaCD0AHBGShQ6EGAQRgBoIPAIABBgACBwRwNGASBwRzC1A0aAJAHx/wAg8P8BPEgUOABoQPSAYDpNFD0oYChGAGhA8AgAKGAAvwXgEGgYYBsdEh0JHyQfCbEALPbRA+BK9qogNE0oYC5IAGgA8AEAACj10StIAGgA9HBgOLEoSABoQPRwYCZNKGABIDC9JEgUOABoIPSAYCJNFD0oYChGAGgg8AgAKGAoRgBoQPSAYChgKEYAaEDwCAAoYIAkBeAQaBhgGx0SHQkfJB8JsQAs9tED4Er2qiAXTShgEUgAaADwAQAAKPXRDkgAaAD0cGA4sQtIAGhA9HBgCU0oYAEgxOcHSBQ4AGgg9IBgBU0UPShgKEYAaCDwCAAoYAAgtecAABg8AkDvzauJBQQDAr+unYwWFRQTADAAQAAAAAA=
+    pc_init: 1
+    pc_uninit: 89
+    pc_program_page: 227
+    pc_erase_sector: 137
+    pc_erase_all: ~
+    data_section_offset: 508
+    flash_properties:
+      address_range:
+        start: 134217728
+        end: 134742016
+      page_size: 256
+      erased_byte_value: 0
+      program_page_timeout: 500
+      erase_sector_timeout: 500
+      sectors:
+        - size: 256
+          address: 0
+  stm32l1xx_512_eeprom:
+    name: stm32l1xx_512_eeprom
+    description: STM32L1xx XL-density Data EEPROM
+    default: false
+    instructions: ELUDRgEqAtACKh3RAOAAv0ZIAGhA9HBgREwgYERIQ0wMPCBgQ0ggYEBIAB0AaAD0gBBAuUXyVVA/TCBgBiBgYED2/3CgYAC/AL8AIBC9AUYBKQLQAikK0QDgAL8zSBQ4AGhA8AEAMUoUOhBgAL8AvwAgcEcBRk/0gHIB8f8AIPD/AQPgSvaqICtLGGAnSABoAPABAAAo9dEO4AAgCGAD4Er2qiAkSxhgIEgAaADwAQAAKPXRCR0SHwAq7tEAIHBHA0YBIHBHMLUDRk/0gHQB8f8AIPD/AQPgSvaqIBZNKGASSABoAPABAAAo9dEY4A9IFDgAaCD0gHAMTRQ9KGAQaBhgA+BK9qogC00oYAdIAGgA8AEAACj10RsdEh0JHyQfCbEALOPRACAwvQAAGDwCQO/Nq4kFBAMCADAAQAAAAAA=
+    pc_init: 1
+    pc_uninit: 79
+    pc_program_page: 199
+    pc_erase_sector: 117
+    pc_erase_all: ~
+    data_section_offset: 316
+    flash_properties:
+      address_range:
+        start: 134742016
+        end: 134758400
+      page_size: 256
+      erased_byte_value: 0
+      program_page_timeout: 500
+      erase_sector_timeout: 500
+      sectors:
+        - size: 256
+          address: 0
+  stm32l1xx_512_opt:
+    name: stm32l1xx_512_opt
+    description: STM32L1xx XL-density Options
+    default: false
+    instructions: ELUDRgEqAtACKiPRAOAAv19IAGhA9HBgXUwgYF1IXEwMPCBgXEggYFxIWUwkHyBgW0ggYFZIAB0AaAD0gBBAuUXyVVBXTCBgBiBgYED2/3CgYAC/AL8AIBC9AUYBKQLQAikP0QDgAL9JSBQ4AGhA8AQAR0oUOhBgEEYAaEDwAQAQYAC/AL8AIHBHR0hHSQhgR0hIYEdIiGDIYAhhSGGIYchhQkmAMQhgQEnB+IQAA+BK9qogO0kIYDVIAGgA8AEAACj10TJIAGgA9HBgOLEwSABoQPRwYC5JCGABIHBHACD85wFGACBwRwNGASBwRzC1A0YAJCghJeAYWRVoqEIB0BBoGFED4Er2qiAmTShgIEgAaADwAQAAKPXRHUgAaAD0cGA4sRpIAGhA9HBgGE0oYAEgML0bHRIdCR8cSCAwg0IA0WAkACnX0QAg8ucwtQNGACQoIRjgGFkVaKhCAdAYRjC9A+BK9qogDk0oYAhIAGgA8AEAACj10RsdEh0JHwtIIDCDQgDRYCQAKeTRWBjn5xg8AkDvzauJBQQDAsjZ6vsnJiUkADAAQKoAVf8AAPgfeACH/wAA//8AAAAA
+    pc_init: 1
+    pc_uninit: 91
+    pc_program_page: 239
+    pc_erase_sector: 227
+    pc_erase_all: 139
+    data_section_offset: 440
+    flash_properties:
+      address_range:
+        start: 536346624
+        end: 536346664
+      page_size: 40
+      erased_byte_value: 0
+      program_page_timeout: 3000
+      erase_sector_timeout: 3000
+      sectors:
+        - size: 40
+          address: 0
+core: M3

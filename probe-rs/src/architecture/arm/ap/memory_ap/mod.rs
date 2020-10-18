@@ -3,7 +3,8 @@
 #[doc(hidden)]
 pub(crate) mod mock;
 
-use super::{APRegister, AccessPort, GenericAP, Register};
+use super::{APAccess, APRegister, AccessPort, GenericAP, Register};
+use crate::DebugProbeError;
 use enum_primitive_derive::Primitive;
 use num_traits::{FromPrimitive, ToPrimitive};
 
@@ -13,17 +14,32 @@ use num_traits::{FromPrimitive, ToPrimitive};
 // set of debug resouces of the attached system.
 define_ap!(MemoryAP);
 
-impl From<GenericAP> for MemoryAP {
-    fn from(other: GenericAP) -> Self {
-        MemoryAP {
-            port_number: other.get_port_number(),
-        }
+impl MemoryAP {
+    pub fn base_address<A>(&self, interface: &mut A) -> Result<u64, DebugProbeError>
+    where
+        A: APAccess<MemoryAP, BASE, Error = DebugProbeError>
+            + APAccess<MemoryAP, BASE2, Error = DebugProbeError>,
+    {
+        let base_register = interface.read_ap_register(self.port_number(), BASE::default())?;
+
+        let mut base_address = if BaseaddrFormat::ADIv5 == base_register.Format {
+            let base2 = interface.read_ap_register(self.port_number(), BASE2::default())?;
+
+            u64::from(base2.BASEADDR) << 32
+        } else {
+            0
+        };
+        base_address |= u64::from(base_register.BASEADDR << 12);
+
+        Ok(base_address)
     }
 }
 
-impl From<u8> for MemoryAP {
-    fn from(value: u8) -> Self {
-        MemoryAP { port_number: value }
+impl From<GenericAP> for MemoryAP {
+    fn from(other: GenericAP) -> Self {
+        MemoryAP {
+            port_number: other.port_number(),
+        }
     }
 }
 

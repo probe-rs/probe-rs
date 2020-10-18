@@ -1,6 +1,8 @@
 use super::super::{Category, Request, Response, Result, Status};
+use anyhow::anyhow;
 
 /// The DAP_TransferConfigure Command sets parameters for DAP_Transfer and DAP_TransferBlock.
+#[derive(Debug)]
 pub struct ConfigureRequest {
     /// Number of extra idle cycles after each transfer.
     pub idle_cycles: u8,
@@ -19,14 +21,15 @@ impl Request for ConfigureRequest {
         buffer[offset] = self.idle_cycles;
         buffer
             .pwrite_with(self.wait_retry, offset + 1, LE)
-            .expect("This is a bug. Please report it.");
+            .map_err(|_| anyhow!("This is a bug. Please report it."))?;
         buffer
             .pwrite_with(self.match_retry, offset + 3, LE)
-            .expect("This is a bug. Please report it.");
+            .map_err(|_| anyhow!("This is a bug. Please report it."))?;
         Ok(5)
     }
 }
 
+#[derive(Debug)]
 pub struct ConfigureResponse(pub(crate) Status);
 
 impl Response for ConfigureResponse {

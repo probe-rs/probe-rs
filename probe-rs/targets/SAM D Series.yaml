@@ -1,0 +1,540 @@
+---
+name: SAM D Series
+manufacturer: ~
+variants:
+  - name: ATSAMD21E15A
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536875008
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 0
+            end: 32768
+          is_boot_memory: true
+    flash_algorithms:
+      - atsamd21_32
+  - name: ATSAMD21E15B
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536875008
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 0
+            end: 32768
+          is_boot_memory: true
+    flash_algorithms:
+      - atsamd21_32
+      - atsamd21_32_eeprom
+  - name: ATSAMD21E15BU
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536875008
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 0
+            end: 32768
+          is_boot_memory: true
+    flash_algorithms:
+      - atsamd21_32
+      - atsamd21_32_eeprom
+  - name: ATSAMD21E15L
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536875008
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 0
+            end: 32768
+          is_boot_memory: true
+    flash_algorithms:
+      - atsamd21_32
+      - atsamd21_32_eeprom
+  - name: ATSAMD21E16A
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 0
+            end: 65536
+          is_boot_memory: true
+    flash_algorithms:
+      - atsamd21_64
+  - name: ATSAMD21E16B
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 0
+            end: 65536
+          is_boot_memory: true
+    flash_algorithms:
+      - atsamd21_64
+      - atsamd21_64_eeprom
+  - name: ATSAMD21E16BU
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 0
+            end: 65536
+          is_boot_memory: true
+    flash_algorithms:
+      - atsamd21_64
+      - atsamd21_64_eeprom
+  - name: ATSAMD21E16L
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 0
+            end: 65536
+          is_boot_memory: true
+    flash_algorithms:
+      - atsamd21_64
+      - atsamd21_64_eeprom
+  - name: ATSAMD21E17A
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536887296
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 0
+            end: 131072
+          is_boot_memory: true
+    flash_algorithms:
+      - atsamd21_128
+  - name: ATSAMD21E18A
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 0
+            end: 262144
+          is_boot_memory: true
+    flash_algorithms:
+      - atsamd21_256
+  - name: ATSAMD21G15A
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536875008
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 0
+            end: 32768
+          is_boot_memory: true
+    flash_algorithms:
+      - atsamd21_32
+  - name: ATSAMD21G15B
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536875008
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 0
+            end: 32768
+          is_boot_memory: true
+    flash_algorithms:
+      - atsamd21_32
+      - atsamd21_32_eeprom
+  - name: ATSAMD21G15L
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536875008
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 0
+            end: 32768
+          is_boot_memory: true
+    flash_algorithms:
+      - atsamd21_32
+      - atsamd21_32_eeprom
+  - name: ATSAMD21G16A
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 0
+            end: 65536
+          is_boot_memory: true
+    flash_algorithms:
+      - atsamd21_64
+  - name: ATSAMD21G16B
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 0
+            end: 65536
+          is_boot_memory: true
+    flash_algorithms:
+      - atsamd21_64
+      - atsamd21_64_eeprom
+  - name: ATSAMD21G16L
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 0
+            end: 65536
+          is_boot_memory: true
+    flash_algorithms:
+      - atsamd21_64
+      - atsamd21_64_eeprom
+  - name: ATSAMD21G17A
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536887296
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 0
+            end: 131072
+          is_boot_memory: true
+    flash_algorithms:
+      - atsamd21_128
+  - name: ATSAMD21G17AU
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536887296
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 0
+            end: 131072
+          is_boot_memory: true
+    flash_algorithms:
+      - atsamd21_128
+  - name: ATSAMD21G18A
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 0
+            end: 262144
+          is_boot_memory: true
+    flash_algorithms:
+      - atsamd21_256
+  - name: ATSAMD21G18AU
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 0
+            end: 262144
+          is_boot_memory: true
+    flash_algorithms:
+      - atsamd21_256
+  - name: ATSAMD21J15A
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536875008
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 0
+            end: 32768
+          is_boot_memory: true
+    flash_algorithms:
+      - atsamd21_32
+  - name: ATSAMD21J15B
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536875008
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 0
+            end: 32768
+          is_boot_memory: true
+    flash_algorithms:
+      - atsamd21_32
+      - atsamd21_32_eeprom
+  - name: ATSAMD21J16A
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 0
+            end: 65536
+          is_boot_memory: true
+    flash_algorithms:
+      - atsamd21_64
+  - name: ATSAMD21J16B
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 0
+            end: 65536
+          is_boot_memory: true
+    flash_algorithms:
+      - atsamd21_64
+      - atsamd21_64_eeprom
+  - name: ATSAMD21J17A
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536887296
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 0
+            end: 131072
+          is_boot_memory: true
+    flash_algorithms:
+      - atsamd21_128
+  - name: ATSAMD21J18A
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 0
+            end: 262144
+          is_boot_memory: true
+    flash_algorithms:
+      - atsamd21_256
+flash_algorithms:
+  atsamd21_32:
+    name: atsamd21_32
+    description: ATSAMD21 32kB Flash
+    default: true
+    instructions: QSEJBgpoUgcB1QQiCmAtSitJUWAsSUlECGAAIHBHACBwRw8hyQIBQEIIDyCAAgJAELUkSMJhJUoCgAJ90gf80CJMASI/PNICixgM4EoIwmEEgAJ90gf80AJ9kgcB1QEgEL3/MQExmULw0wAgEL3wtckciQgVS4kAEk3bHCuAK33bB/zQEU49PgApFtADRkApAdlAJAXgDEYD4IDKCR+AwyQfACz50S6AQDArfdsH/NArfZsH6NUBIPC9ACDwvQAAngAEAABAAEEEAAAAQaUAAAAAAAAAAAAA
+    pc_init: 1
+    pc_uninit: 31
+    pc_program_page: 111
+    pc_erase_sector: 35
+    pc_erase_all: ~
+    data_section_offset: 208
+    flash_properties:
+      address_range:
+        start: 0
+        end: 32768
+      page_size: 1024
+      erased_byte_value: 255
+      program_page_timeout: 100
+      erase_sector_timeout: 1000
+      sectors:
+        - size: 2048
+          address: 0
+  atsamd21_32_eeprom:
+    name: atsamd21_32_eeprom
+    description: ATSAMD21 1kB Data EEPROM
+    default: true
+    instructions: QSEJBgpoUgcB1QQiCmAcShpJUWAbSUlECGAAIHBHACBwR0EIFkjBYRdJAYABfckH/NAAfYAHAdUBIHBHACBwRxC1EUwOSyo0HIAcfeQH/NDJHIkIiQAC4BDKCR8QwAAp+tEJSIAcGIAYfcAH/NAYfYAHAdUBIBC9ACAQvZ4ABAAAQABBBAAAABqlAAAAAAAAAAAAAA==
+    pc_init: 1
+    pc_uninit: 31
+    pc_program_page: 65
+    pc_erase_sector: 35
+    pc_erase_all: ~
+    data_section_offset: 140
+    flash_properties:
+      address_range:
+        start: 4194304
+        end: 4195328
+      page_size: 64
+      erased_byte_value: 255
+      program_page_timeout: 100
+      erase_sector_timeout: 1000
+      sectors:
+        - size: 256
+          address: 0
+  atsamd21_64:
+    name: atsamd21_64
+    description: ATSAMD21 64kB Flash
+    default: true
+    instructions: QSEJBgpoUgcB1QQiCmAtSitJUWAsSUlECGAAIHBHACBwRw8hCQMBQEIIDyDAAgJAELUkSMJhJUoCgAJ90gf80CJMASI/PBIDixgM4EoIwmEEgAJ90gf80AJ9kgcB1QEgEL3/MQExmULw0wAgEL3wtckciQgVS4kAEk3bHCuAK33bB/zQEU49PgApFtADRkApAdlAJAXgDEYD4IDKCR+AwyQfACz50S6AQDArfdsH/NArfZsH6NUBIPC9ACDwvQAAngAEAABAAEEEAAAAQaUAAAAAAAAAAAAA
+    pc_init: 1
+    pc_uninit: 31
+    pc_program_page: 111
+    pc_erase_sector: 35
+    pc_erase_all: ~
+    data_section_offset: 208
+    flash_properties:
+      address_range:
+        start: 0
+        end: 65536
+      page_size: 1024
+      erased_byte_value: 255
+      program_page_timeout: 100
+      erase_sector_timeout: 1000
+      sectors:
+        - size: 4096
+          address: 0
+  atsamd21_64_eeprom:
+    name: atsamd21_64_eeprom
+    description: ATSAMD21 2kB Data EEPROM
+    default: true
+    instructions: QSEJBgpoUgcB1QQiCmAcShpJUWAbSUlECGAAIHBHACBwR0EIFkjBYRdJAYABfckH/NAAfYAHAdUBIHBHACBwRxC1EUwOSyo0HIAcfeQH/NDJHIkIiQAC4BDKCR8QwAAp+tEJSIAcGIAYfcAH/NAYfYAHAdUBIBC9ACAQvZ4ABAAAQABBBAAAABqlAAAAAAAAAAAAAA==
+    pc_init: 1
+    pc_uninit: 31
+    pc_program_page: 65
+    pc_erase_sector: 35
+    pc_erase_all: ~
+    data_section_offset: 140
+    flash_properties:
+      address_range:
+        start: 4194304
+        end: 4196352
+      page_size: 64
+      erased_byte_value: 255
+      program_page_timeout: 100
+      erase_sector_timeout: 1000
+      sectors:
+        - size: 256
+          address: 0
+  atsamd21_128:
+    name: atsamd21_128
+    description: ATSAMD21 128kB Flash
+    default: true
+    instructions: QSEJBgpoUgcB1QQiCmAtSitJUWAsSUlECGAAIHBHACBwRw8hSQMBQEIIDyAAAwJAELUkSMJhJUoCgAJ90gf80CJMASI/PFIDixgM4EoIwmEEgAJ90gf80AJ9kgcB1QEgEL3/MQExmULw0wAgEL3wtckciQgVS4kAEk3bHCuAK33bB/zQEU49PgApFtADRkApAdlAJAXgDEYD4IDKCR+AwyQfACz50S6AQDArfdsH/NArfZsH6NUBIPC9ACDwvQAAngAEAABAAEEEAAAAQaUAAAAAAAAAAAAA
+    pc_init: 1
+    pc_uninit: 31
+    pc_program_page: 111
+    pc_erase_sector: 35
+    pc_erase_all: ~
+    data_section_offset: 208
+    flash_properties:
+      address_range:
+        start: 0
+        end: 131072
+      page_size: 1024
+      erased_byte_value: 255
+      program_page_timeout: 100
+      erase_sector_timeout: 1000
+      sectors:
+        - size: 8192
+          address: 0
+  atsamd21_256:
+    name: atsamd21_256
+    description: ATSAMD21 256kB Flash
+    default: true
+    instructions: QSEJBgpoUgcB1QQiCmAtSitJUWAsSUlECGAAIHBHACBwRw8hiQMBQEIIDyBAAwJAELUkSMJhJUoCgAJ90gf80CJMASI/PJIDixgM4EoIwmEEgAJ90gf80AJ9kgcB1QEgEL3/MQExmULw0wAgEL3wtckciQgVS4kAEk3bHCuAK33bB/zQEU49PgApFtADRkApAdlAJAXgDEYD4IDKCR+AwyQfACz50S6AQDArfdsH/NArfZsH6NUBIPC9ACDwvQAAngAEAABAAEEEAAAAQaUAAAAAAAAAAAAA
+    pc_init: 1
+    pc_uninit: 31
+    pc_program_page: 111
+    pc_erase_sector: 35
+    pc_erase_all: ~
+    data_section_offset: 208
+    flash_properties:
+      address_range:
+        start: 0
+        end: 262144
+      page_size: 1024
+      erased_byte_value: 255
+      program_page_timeout: 100
+      erase_sector_timeout: 1000
+      sectors:
+        - size: 16384
+          address: 0
+core: M0

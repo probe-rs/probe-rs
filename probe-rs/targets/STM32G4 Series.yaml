@@ -1,0 +1,1834 @@
+---
+name: STM32G4 Series
+variants:
+  - name: STM32G431C6Tx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_32
+  - name: STM32G431C6Ux
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_32
+  - name: STM32G431C8Tx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_64
+  - name: STM32G431C8Ux
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_64
+  - name: STM32G431CBTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_128
+  - name: STM32G431CBUx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_128
+  - name: STM32G431CBYx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_128
+  - name: STM32G431K6Tx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_32
+  - name: STM32G431K6Ux
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_32
+  - name: STM32G431K8Tx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_64
+  - name: STM32G431K8Ux
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_64
+  - name: STM32G431KBTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_128
+  - name: STM32G431KBUx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_128
+  - name: STM32G431M6Tx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_32
+  - name: STM32G431M8Tx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_64
+  - name: STM32G431R6Ix
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_32
+  - name: STM32G431R6Tx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_32
+  - name: STM32G431R8Ix
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_64
+  - name: STM32G431R8Tx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_64
+  - name: STM32G431RBIx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_128
+  - name: STM32G431RBTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_128
+  - name: STM32G431V6Tx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_32
+  - name: STM32G431V8Tx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_64
+  - name: STM32G431VBTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_128
+  - name: STM32G441CBTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_128
+  - name: STM32G441CBUx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_128
+  - name: STM32G441CBYx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_128
+  - name: STM32G441KBTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_128
+  - name: STM32G441KBUx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_128
+  - name: STM32G441RBIx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_128
+  - name: STM32G441RBTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_128
+  - name: STM32G441VBTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_128
+  - name: STM32G471CCTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_256
+  - name: STM32G471CCUx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_256
+  - name: STM32G471CETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_512_dual
+      - stm32g4xx_512
+  - name: STM32G471CEUx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_512_dual
+      - stm32g4xx_512
+  - name: STM32G471MCTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_256
+  - name: STM32G471METx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_512_dual
+      - stm32g4xx_512
+  - name: STM32G471MEYx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_512_dual
+      - stm32g4xx_512
+  - name: STM32G471QCTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_256
+  - name: STM32G471QETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_512_dual
+      - stm32g4xx_512
+  - name: STM32G471RCTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_256
+  - name: STM32G471RE
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_512_dual
+      - stm32g4xx_512
+  - name: STM32G471VCHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_256
+  - name: STM32G471VCIx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_256
+  - name: STM32G471VCTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_256
+  - name: STM32G471VEHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_512_dual
+      - stm32g4xx_512
+  - name: STM32G471VEIx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_512_dual
+      - stm32g4xx_512
+  - name: STM32G471VETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_512_dual
+      - stm32g4xx_512
+  - name: STM32G473CBTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_128
+  - name: STM32G473CBUx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_128
+  - name: STM32G473CCTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_256
+  - name: STM32G473CCUx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_256
+  - name: STM32G473CETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_512_dual
+      - stm32g4xx_512
+  - name: STM32G473CEUx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_512_dual
+      - stm32g4xx_512
+  - name: STM32G473MBTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_128
+  - name: STM32G473MCTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_256
+  - name: STM32G473METx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_512_dual
+      - stm32g4xx_512
+  - name: STM32G473MEUx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_512_dual
+      - stm32g4xx_512
+  - name: STM32G473QBTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_128
+  - name: STM32G473QCTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_256
+  - name: STM32G473QETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_512_dual
+      - stm32g4xx_512
+  - name: STM32G473RBTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_128
+  - name: STM32G473RCTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_256
+  - name: STM32G473RETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_512_dual
+      - stm32g4xx_512
+  - name: STM32G473VBHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_128
+  - name: STM32G473VBIx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_128
+  - name: STM32G473VBTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_128
+  - name: STM32G473VCHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_256
+  - name: STM32G473VCIx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_256
+  - name: STM32G473VCTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_256
+  - name: STM32G473VEHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_512_dual
+      - stm32g4xx_512
+  - name: STM32G473VEIx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_512_dual
+      - stm32g4xx_512
+  - name: STM32G473VETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_512_dual
+      - stm32g4xx_512
+  - name: STM32G474CBTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_128
+  - name: STM32G474CBUx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_128
+  - name: STM32G474CCTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_256
+  - name: STM32G474CCUx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_256
+  - name: STM32G474CETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_512_dual
+      - stm32g4xx_512
+  - name: STM32G474CEUx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_512_dual
+      - stm32g4xx_512
+  - name: STM32G474MBTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_128
+  - name: STM32G474MCTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_256
+  - name: STM32G474METx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_512_dual
+      - stm32g4xx_512
+  - name: STM32G474MEYx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_512_dual
+      - stm32g4xx_512
+  - name: STM32G474QBTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_128
+  - name: STM32G474QCTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_256
+  - name: STM32G474QETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_512_dual
+      - stm32g4xx_512
+  - name: STM32G474RBTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_128
+  - name: STM32G474RCTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_256
+  - name: STM32G474RETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_512_dual
+      - stm32g4xx_512
+  - name: STM32G474VBHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_128
+  - name: STM32G474VBIx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_128
+  - name: STM32G474VBTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_128
+  - name: STM32G474VCHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_256
+  - name: STM32G474VCIx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_256
+  - name: STM32G474VCTx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_256
+  - name: STM32G474VEHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_512_dual
+      - stm32g4xx_512
+  - name: STM32G474VEIx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_512_dual
+      - stm32g4xx_512
+  - name: STM32G474VETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_512_dual
+      - stm32g4xx_512
+  - name: STM32G483CETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_512_dual
+      - stm32g4xx_512
+  - name: STM32G483CEUx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_512_dual
+      - stm32g4xx_512
+  - name: STM32G483METx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_512_dual
+      - stm32g4xx_512
+  - name: STM32G483MEYx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_512_dual
+      - stm32g4xx_512
+  - name: STM32G483QETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_512_dual
+      - stm32g4xx_512
+  - name: STM32G483RETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_512_dual
+      - stm32g4xx_512
+  - name: STM32G483VEHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_512_dual
+      - stm32g4xx_512
+  - name: STM32G483VEIx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_512_dual
+      - stm32g4xx_512
+  - name: STM32G483VETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_512_dual
+      - stm32g4xx_512
+  - name: STM32G484CETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_512_dual
+      - stm32g4xx_512
+  - name: STM32G484CEUx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_512_dual
+      - stm32g4xx_512
+  - name: STM32G484METx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_512_dual
+      - stm32g4xx_512
+  - name: STM32G484MEYx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_512_dual
+      - stm32g4xx_512
+  - name: STM32G484QETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_512_dual
+      - stm32g4xx_512
+  - name: STM32G484RETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_512_dual
+      - stm32g4xx_512
+  - name: STM32G484VEHx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_512_dual
+      - stm32g4xx_512
+  - name: STM32G484VEIx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_512_dual
+      - stm32g4xx_512
+  - name: STM32G484VETx
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_512_dual
+      - stm32g4xx_512
+  - name: STM32GBK1CB
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+      - Flash:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32g4xx_128
+flash_algorithms:
+  stm32g4xx_32:
+    name: stm32g4xx_32
+    description: STM32G4xx 32 Flash
+    default: true
+    instructions: ELUDRnZId0ygYHdIoGAgRgBqwLKqKBfQdEjgYHRI4GAgRgBqIPD/ACBiIEYAakDwqgAgYiBGQGlA9AAwYGEgRkBpQPAAYGBhAL9mSABpAPSAMAAo+dEQvQFGYkhAaUDwAEBgSlBhACBwRwNGASBwRwPgTPL7MFtJCGFaSABpAPSAMAAo9dEEIFZJSGEIRkBpQPSAMEhhAL9SSABpAPSAMAAo+dFPSABpRPL6MQhAILEIRkxJCGEBIHBHSkhAaSDwBABISUhhACD25wFGTPL7MERLGGEYRkBpQPACAFhhRUhIRABogUIJ08oKgDoC8H8CGEZAaUD0AGBYYQfgwfPGIjhIQGkg9ABgNktYYTVIQGkg9H5wM0tYYRhGQGlA6sIAWGEYRkBpQPSAMFhhAL8tSABpAPSAMAAo+dEAvylIAGkA9IAwACj50SZIAGlE8vozGEAgsRhGI0sYYQEgcEchSEBpIPACAB9LWGEAIPbnELUDRsgdIPAHAQC/GkgAaQD0gDAAKPnRTPL7MBZMIGEgRkBpQPABAGBhGOAQaBhgUGhYYAC/D0gAaQD0gDAAKPnRCDMIMgg5C0gAaQDwAQAosUTy+jAHTCBhASAQvQAp5NEESEBpIPABAAJMYGEAIPTnIwFnRQAgAkCrie/NOyoZCH9uXUwEAAAAAAAAAAAABAg=
+    pc_init: 1
+    pc_uninit: 89
+    pc_program_page: 367
+    pc_erase_sector: 203
+    pc_erase_all: 113
+    data_section_offset: 504
+    flash_properties:
+      address_range:
+        start: 134217728
+        end: 134250496
+      page_size: 1024
+      erased_byte_value: 255
+      program_page_timeout: 400
+      erase_sector_timeout: 400
+      sectors:
+        - size: 2048
+          address: 0
+  stm32g4xx_64:
+    name: stm32g4xx_64
+    description: STM32G4xx 64 Flash
+    default: true
+    instructions: ELUDRnZId0ygYHdIoGAgRgBqwLKqKBfQdEjgYHRI4GAgRgBqIPD/ACBiIEYAakDwqgAgYiBGQGlA9AAwYGEgRkBpQPAAYGBhAL9mSABpAPSAMAAo+dEQvQFGYkhAaUDwAEBgSlBhACBwRwNGASBwRwPgTPL7MFtJCGFaSABpAPSAMAAo9dEEIFZJSGEIRkBpQPSAMEhhAL9SSABpAPSAMAAo+dFPSABpRPL6MQhAILEIRkxJCGEBIHBHSkhAaSDwBABISUhhACD25wFGTPL7MERLGGEYRkBpQPACAFhhRUhIRABogUIJ08oKgDoC8H8CGEZAaUD0AGBYYQfgwfPGIjhIQGkg9ABgNktYYTVIQGkg9H5wM0tYYRhGQGlA6sIAWGEYRkBpQPSAMFhhAL8tSABpAPSAMAAo+dEAvylIAGkA9IAwACj50SZIAGlE8vozGEAgsRhGI0sYYQEgcEchSEBpIPACAB9LWGEAIPbnELUDRsgdIPAHAQC/GkgAaQD0gDAAKPnRTPL7MBZMIGEgRkBpQPABAGBhGOAQaBhgUGhYYAC/D0gAaQD0gDAAKPnRCDMIMgg5C0gAaQDwAQAosUTy+jAHTCBhASAQvQAp5NEESEBpIPABAAJMYGEAIPTnIwFnRQAgAkCrie/NOyoZCH9uXUwEAAAAAAAAAAAABAg=
+    pc_init: 1
+    pc_uninit: 89
+    pc_program_page: 367
+    pc_erase_sector: 203
+    pc_erase_all: 113
+    data_section_offset: 504
+    flash_properties:
+      address_range:
+        start: 134217728
+        end: 134283264
+      page_size: 1024
+      erased_byte_value: 255
+      program_page_timeout: 400
+      erase_sector_timeout: 400
+      sectors:
+        - size: 2048
+          address: 0
+  stm32g4xx_256:
+    name: stm32g4xx_256
+    description: "STM32G4xx 256 "
+    default: true
+    instructions: ELUDRmlIakygYGpIoGAAv2dIAGkA9IAwACj50RC9AUZjSEBpQPAAQGFKUGEAIHBHA0YBIHBHA+BM8vswXEkIYVtIAGkA9IAwACj10UjyBABXSUhhCEZAaUD0gDBIYQC/U0gAaQD0gDAAKPnRUEgAaUTy+jEIQCCxCEZNSQhhASBwR0tIQGkg8AQASUlIYQhGQGkg9ABASGEAIPHnAUZESEBpQPACAEJLWGFDSEhEAGiBQgnTygqAOgLwfwIYRkBpQPQAYFhhB+DB88YiOEhAaSD0AGA2S1hhNUhAaSD0fnAzS1hhGEZAaUDqwgBYYRhGQGlA9IAwWGEAvy1IAGkA9IAwACj50QC/KUgAaQD0gDAAKPnRJkgAaUTy+jMYQCCxGEYjSxhhASBwRyFIQGkg8AIAH0tYYQAg9ucQtQNGyB0g8AcBAL8aSABpAPSAMAAo+dFM8vswFkwgYSBGQGlA8AEAYGEY4BBoGGBQaFhgAL8PSABpAPSAMAAo+dEIMwgyCDkLSABpAPABACixRPL6MAdMIGEBIBC9ACnk0QRIQGkg8AEAAkxgYQAg9OcjAWdFACACQKuJ780EAAAAAAAAAAAABAg=
+    pc_init: 1
+    pc_uninit: 31
+    pc_program_page: 315
+    pc_erase_sector: 157
+    pc_erase_all: 55
+    data_section_offset: 444
+    flash_properties:
+      address_range:
+        start: 134217728
+        end: 134479872
+      page_size: 1024
+      erased_byte_value: 255
+      program_page_timeout: 400
+      erase_sector_timeout: 400
+      sectors:
+        - size: 4096
+          address: 0
+  stm32g4xx_512_dual:
+    name: stm32g4xx_512_dual
+    description: STM32G4xx 512 Dual Flash
+    default: true
+    instructions: ELUDRmlIakygYGpIoGAAv2dIAGkA9IAwACj50RC9AUZjSEBpQPAAQGFKUGEAIHBHA0YBIHBHA+BM8vswXEkIYVtIAGkA9IAwACj10UjyBABXSUhhCEZAaUD0gDBIYQC/U0gAaQD0gDAAKPnRUEgAaUTy+jEIQCCxCEZNSQhhASBwR0tIQGkg8AQASUlIYQhGQGkg9ABASGEAIPHnAUZESEBpQPACAEJLWGFDSEhEAGiBQgnTygqAOgLwfwIYRkBpQPQAYFhhB+DB88YiOEhAaSD0AGA2S1hhNUhAaSD0fnAzS1hhGEZAaUDqwgBYYRhGQGlA9IAwWGEAvy1IAGkA9IAwACj50QC/KUgAaQD0gDAAKPnRJkgAaUTy+jMYQCCxGEYjSxhhASBwRyFIQGkg8AIAH0tYYQAg9ucQtQNGyB0g8AcBAL8aSABpAPSAMAAo+dFM8vswFkwgYSBGQGlA8AEAYGEY4BBoGGBQaFhgAL8PSABpAPSAMAAo+dEIMwgyCDkLSABpAPABACixRPL6MAdMIGEBIBC9ACnk0QRIQGkg8AEAAkxgYQAg9OcjAWdFACACQKuJ780EAAAAAAAAAAAABAgAAAAAAAAAAA==
+    pc_init: 1
+    pc_uninit: 31
+    pc_program_page: 315
+    pc_erase_sector: 157
+    pc_erase_all: 55
+    data_section_offset: 444
+    flash_properties:
+      address_range:
+        start: 134217728
+        end: 134742016
+      page_size: 1024
+      erased_byte_value: 255
+      program_page_timeout: 400
+      erase_sector_timeout: 400
+      sectors:
+        - size: 2048
+          address: 0
+  stm32g4xx_512:
+    name: stm32g4xx_512
+    description: STM32G4xx 512 Single Flash
+    default: false
+    instructions: ELUDRmFIYkygYGJIoGAAv19IAGkA9IAwACj50RC9AUZbSEBpQPAAQFlKUGEAIHBHA0YBIHBHA+BM8vswVEkIYVNIAGkA9IAwACj10UjyBABPSUhhCEZAaUD0gDBIYQC/S0gAaQD0gDAAKPnRSEgAaUTy+jEIQCCxCEZFSQhhASBwR0NIQGkg8AQAQUlIYQhGQGkg9ABASGEAIPHnAUY8SEBpQPACADpLWGHB8wYyGEZAaSD0AGBYYRhGQGkg9H5wWGEYRkBpQOrCAFhhGEZAaUD0gDBYYQC/LUgAaQD0gDAAKPnRAL8qSABpAPSAMAAo+dEnSABpRPL6MxhAILEYRiNLGGEBIHBHIUhAaSDwAgAfS1hhACD25xC1A0bIHSDwBwEAvxpIAGkA9IAwACj50Uzy+zAWTCBhIEZAaUDwAQBgYRjgEGgYYFBoWGAAvxBIAGkA9IAwACj50QgzCDIIOQtIAGkA8AEAKLFE8vowCEwgYQEgEL0AKeTRBUhAaSDwAQADTGBhACD05wAAIwFnRQAgAkCrie/NAAAAAA==
+    pc_init: 1
+    pc_uninit: 31
+    pc_program_page: 281
+    pc_erase_sector: 157
+    pc_erase_all: 55
+    data_section_offset: 408
+    flash_properties:
+      address_range:
+        start: 134217728
+        end: 134742016
+      page_size: 1024
+      erased_byte_value: 255
+      program_page_timeout: 400
+      erase_sector_timeout: 400
+      sectors:
+        - size: 4096
+          address: 0
+  stm32g4xx_128:
+    name: stm32g4xx_128
+    description: STM32G4xx 128 Flash
+    default: true
+    instructions: ELUDRnZId0ygYHdIoGAgRgBqwLKqKBfQdEjgYHRI4GAgRgBqIPD/ACBiIEYAakDwqgAgYiBGQGlA9AAwYGEgRkBpQPAAYGBhAL9mSABpAPSAMAAo+dEQvQFGYkhAaUDwAEBgSlBhACBwRwNGASBwRwPgTPL7MFtJCGFaSABpAPSAMAAo9dEEIFZJSGEIRkBpQPSAMEhhAL9SSABpAPSAMAAo+dFPSABpRPL6MQhAILEIRkxJCGEBIHBHSkhAaSDwBABISUhhACD25wFGTPL7MERLGGEYRkBpQPACAFhhRUhIRABogUIJ08oKgDoC8H8CGEZAaUD0AGBYYQfgwfPGIjhIQGkg9ABgNktYYTVIQGkg9H5wM0tYYRhGQGlA6sIAWGEYRkBpQPSAMFhhAL8tSABpAPSAMAAo+dEAvylIAGkA9IAwACj50SZIAGlE8vozGEAgsRhGI0sYYQEgcEchSEBpIPACAB9LWGEAIPbnELUDRsgdIPAHAQC/GkgAaQD0gDAAKPnRTPL7MBZMIGEgRkBpQPABAGBhGOAQaBhgUGhYYAC/D0gAaQD0gDAAKPnRCDMIMgg5C0gAaQDwAQAosUTy+jAHTCBhASAQvQAp5NEESEBpIPABAAJMYGEAIPTnIwFnRQAgAkCrie/NOyoZCH9uXUwEAAAAAAAAAAAABAgAAAAAAAAAAA==
+    pc_init: 1
+    pc_uninit: 89
+    pc_program_page: 367
+    pc_erase_sector: 203
+    pc_erase_all: 113
+    data_section_offset: 504
+    flash_properties:
+      address_range:
+        start: 134217728
+        end: 134348800
+      page_size: 1024
+      erased_byte_value: 255
+      program_page_timeout: 400
+      erase_sector_timeout: 400
+      sectors:
+        - size: 2048
+          address: 0
+core: M4
