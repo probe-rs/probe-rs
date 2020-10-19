@@ -428,6 +428,7 @@ fn notmain() -> Result<i32, anyhow::Error> {
                     #[cfg(not(feature = "defmt"))]
                     () => {
                         stdout.write_all(&read_buf[..num_bytes_read])?;
+                        stdout.flush()?;
                     }
                 }
             }
