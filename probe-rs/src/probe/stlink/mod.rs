@@ -1644,7 +1644,7 @@ impl MemoryInterface for StLinkMemoryInterface<'_> {
             let word_bytes = word_count * 4;
             current_address += word_bytes as u32;
 
-            let remaining_bytes = &mut data[bytes_beginning+word_bytes..];
+            let remaining_bytes = &mut data[bytes_beginning + word_bytes..];
 
             if !remaining_bytes.is_empty() {
                 log::trace!(
