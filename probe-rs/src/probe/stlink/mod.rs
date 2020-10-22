@@ -841,8 +841,25 @@ impl<D: StLinkUsb> STLink<D> {
         length: u16,
         apsel: u8,
     ) -> Result<Vec<u8>, DebugProbeError> {
+        log::trace!("read_mem_8bit");
+
+        if self.hw_version < 3 {
+            assert!(
+                length <= 64,
+                "8-Bit reads are limited to 64 bytes on ST-Link v2"
+            );
+        } else {
+            assert!(
+                length <= 512,
+                "8-Bit reads are limited to 512 bytes on ST-Link v3"
+            );
+        }
+
         log::debug!("Read mem 8 bit, address={:08x}, length={}", address, length);
-        let mut receive_buffer = vec![0u8; length as usize];
+
+        // Single-byte reads don't work; read 2 if 1 is requested and then truncate
+        let read_len = if length == 1 { 2 } else { length as u8 };
+        let mut receive_buffer = vec![0u8; read_len as usize];
 
         self.device.write(
             &[
@@ -852,7 +869,7 @@ impl<D: StLinkUsb> STLink<D> {
                 (address >> 8) as u8,
                 (address >> 16) as u8,
                 (address >> 24) as u8,
-                length as u8,
+                read_len,
                 (length >> 8) as u8,
                 apsel,
             ],
@@ -860,6 +877,10 @@ impl<D: StLinkUsb> STLink<D> {
             &mut receive_buffer,
             TIMEOUT,
         )?;
+
+        if length == 1 {
+            receive_buffer.resize(length as usize, 0)
+        }
 
         self.get_last_rw_status()?;
 
@@ -1556,13 +1577,89 @@ impl MemoryInterface for StLinkMemoryInterface<'_> {
     fn read_8(&mut self, address: u32, data: &mut [u8]) -> Result<(), ProbeRsError> {
         self.probe.select_ap(self.access_port)?;
 
-        let received_words = self.probe.probe.read_mem_8bit(
-            address,
-            data.len() as u16,
-            self.access_port.port_number(),
-        )?;
+        let chunk_size = if self.probe.probe.hw_version < 3 {
+            64
+        } else {
+            512
+        };
 
-        data.copy_from_slice(&received_words);
+        // If we read less than chunk_size bytes, just read it directly
+        if data.len() < chunk_size {
+            log::trace!("read_8: small - direct 8 bit read from {:08x}", address);
+            let received_words = self.probe.probe.read_mem_8bit(
+                address,
+                data.len() as u16,
+                self.access_port.port_number(),
+            )?;
+            data.copy_from_slice(&received_words);
+        } else {
+            // Handle unaligned data in the beginning.
+            let bytes_beginning = if address % 4 == 0 {
+                0
+            } else {
+                (4 - address % 4) as usize
+            };
+
+            let mut current_address = address;
+
+            if bytes_beginning > 0 {
+                log::trace!(
+                    "read_8: at_begin - unaligned read of {} bytes from address {:08x}",
+                    bytes_beginning,
+                    current_address,
+                );
+                let received_words = self.probe.probe.read_mem_8bit(
+                    current_address,
+                    bytes_beginning as u16,
+                    self.access_port.port_number(),
+                )?;
+                data[0..bytes_beginning].copy_from_slice(&received_words);
+
+                current_address += bytes_beginning as u32;
+            }
+
+            // Address has to be aligned here.
+            assert!(current_address % 4 == 0);
+            let bytes_remaining = data.len() - bytes_beginning;
+            let word_count = bytes_remaining / 4;
+
+            log::trace!(
+                "read_8: aligned read of {} bytes from address {:08x}",
+                bytes_remaining,
+                current_address,
+            );
+
+            let received_words = self.probe.probe.read_mem_32bit(
+                current_address,
+                word_count as u16,
+                self.access_port.port_number(),
+            )?;
+
+            let data_chunks = (&mut data[bytes_beginning..]).chunks_exact_mut(4);
+            received_words
+                .into_iter()
+                .zip(data_chunks)
+                .for_each(|(word, chunk)| chunk.copy_from_slice(&word.to_le_bytes()));
+
+            let word_bytes = word_count * 4;
+            current_address += word_bytes as u32;
+
+            let remaining_bytes = &mut data[bytes_beginning+word_bytes..];
+
+            if !remaining_bytes.is_empty() {
+                log::trace!(
+                    "read_8: at_end -unaligned read of {} bytes from address {:08x}",
+                    remaining_bytes.len(),
+                    current_address,
+                );
+                let received_words = self.probe.probe.read_mem_8bit(
+                    current_address,
+                    remaining_bytes.len() as u16,
+                    self.access_port.port_number(),
+                )?;
+                remaining_bytes.copy_from_slice(&received_words);
+            }
+        }
 
         Ok(())
     }
@@ -1616,7 +1713,7 @@ impl MemoryInterface for StLinkMemoryInterface<'_> {
             let mut current_address = address;
 
             if bytes_beginning > 0 {
-                log::warn!(
+                log::trace!(
                     "write_8: at_begin - unaligned write of {} bytes to address {:08x}",
                     bytes_beginning,
                     current_address,
