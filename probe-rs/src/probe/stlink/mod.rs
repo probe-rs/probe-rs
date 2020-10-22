@@ -857,7 +857,7 @@ impl<D: StLinkUsb> STLink<D> {
 
         log::debug!("Read mem 8 bit, address={:08x}, length={}", address, length);
 
-        // Single-byte reads don't work; read 2 if 1 is requested and then truncate
+        // Single-byte reads don't work; read 2 if 1 is requested and then truncate.
         let read_len = if length == 1 { 2 } else { length as u8 };
         let mut receive_buffer = vec![0u8; read_len as usize];
 
@@ -1577,13 +1577,16 @@ impl MemoryInterface for StLinkMemoryInterface<'_> {
     fn read_8(&mut self, address: u32, data: &mut [u8]) -> Result<(), ProbeRsError> {
         self.probe.select_ap(self.access_port)?;
 
+        // The underlying STLink command is limited to a single USB frame at a time
+        // so we must manually chunk it into multiple commands if it exceeds
+        // that size.
         let chunk_size = if self.probe.probe.hw_version < 3 {
             64
         } else {
             512
         };
 
-        // If we read less than chunk_size bytes, just read it directly
+        // If we read less than chunk_size bytes, just read it directly.
         if data.len() < chunk_size {
             log::trace!("read_8: small - direct 8 bit read from {:08x}", address);
             let received_words = self.probe.probe.read_mem_8bit(
@@ -1690,6 +1693,9 @@ impl MemoryInterface for StLinkMemoryInterface<'_> {
     fn write_8(&mut self, address: u32, data: &[u8]) -> Result<(), ProbeRsError> {
         self.probe.select_ap(self.access_port)?;
 
+        // The underlying STLink command is limited to a single USB frame at a time
+        // so we must manually chunk it into multiple command if it exceeds
+        // that size.
         let chunk_size = if self.probe.probe.hw_version < 3 {
             64
         } else {
