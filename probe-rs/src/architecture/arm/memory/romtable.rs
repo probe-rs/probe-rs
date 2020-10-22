@@ -404,6 +404,10 @@ impl Component {
             component_id.peripheral_id
         );
 
+        if let Some(info) = component_id.peripheral_id.determine_part() {
+            log::info!("\tComponent is known: {}", info.name());
+        }
+
         let class = match component_id.class {
             RawComponent::GenericVerificationComponent => {
                 Component::GenericVerificationComponent(component_id)
@@ -609,18 +613,44 @@ impl PeripheralID {
             self.dev_type,
             self.arch_id,
         ) {
+            ("ARM Ltd", 0x000, 0x00, 0x0000) => Some(ComponentInfo::new("Cortex-M3 SCS", PeripheralType::Scs)),
             ("ARM Ltd", 0x001, 0x00, 0x0000) => Some(ComponentInfo::new("Cortex-M3 ITM", PeripheralType::Itm)),
             ("ARM Ltd", 0x002, 0x00, 0x0000) => Some(ComponentInfo::new("Cortex-M3 DWT", PeripheralType::Dwt)),
+            ("ARM Ltd", 0x003, 0x00, 0x0000) => Some(ComponentInfo::new("Cortex-M3 FBP", PeripheralType::Fbp)),
+            ("ARM Ltd", 0x008, 0x00, 0x0000) => Some(ComponentInfo::new("Cortex-M0 SCS", PeripheralType::Scs)),
             ("ARM Ltd", 0x00A, 0x00, 0x0000) => Some(ComponentInfo::new("Cortex-M0 DWT", PeripheralType::Dwt)),
+            ("ARM Ltd", 0x00B, 0x00, 0x0000) => Some(ComponentInfo::new("Cortex-M0 BPU", PeripheralType::Bpu)),
+            ("ARM Ltd", 0x00C, 0x00, 0x0000) => Some(ComponentInfo::new("Cortex-M4 SCS", PeripheralType::Scs)),
+            ("ARM Ltd", 0x00D, 0x00, 0x0000) => Some(ComponentInfo::new("CoreSight ETM11", PeripheralType::Etm)),
+            ("ARM Ltd", 0x00E, 0x00, 0x0000) => Some(ComponentInfo::new("Cortex-M7 FBP", PeripheralType::Fbp)),
+            ("ARM Ltd", 0x101, 0x00, 0x0000) => Some(ComponentInfo::new("System TSGEN", PeripheralType::Tsgen)),
+            ("ARM Ltd", 0x471, 0x00, 0x0000) => Some(ComponentInfo::new("Cortex-M0  ROM", PeripheralType::Rom)),
+            ("ARM Ltd", 0x4C0, 0x00, 0x0000) => Some(ComponentInfo::new("Cortex-M0+ ROM", PeripheralType::Rom)),
+            ("ARM Ltd", 0x4C4, 0x00, 0x0000) => Some(ComponentInfo::new("Cortex-M4 ROM", PeripheralType::Rom)),
+            ("ARM Ltd", 0x907, 0x21, 0x0000) => Some(ComponentInfo::new("CoreSight ETB", PeripheralType::Etb)),
+            ("ARM Ltd", 0x910, 0x00, 0x0000) => Some(ComponentInfo::new("CoreSight ETM9", PeripheralType::Etm)),
             ("ARM Ltd", 0x912, 0x11, 0x0000) => Some(ComponentInfo::new("CoreSight TPIU", PeripheralType::Tpiu)),
             ("ARM Ltd", 0x913, 0x00, 0x0000) => Some(ComponentInfo::new("CoreSight ITM", PeripheralType::Itm)),
+            ("ARM Ltd", 0x914, 0x00, 0x0000) => Some(ComponentInfo::new("CoreSight SWO", PeripheralType::Swo)),
+            ("ARM Ltd", 0x920, 0x00, 0x0000) => Some(ComponentInfo::new("CoreSight ETM11", PeripheralType::Etm)),
             ("ARM Ltd", 0x923, 0x11, 0x0000) => Some(ComponentInfo::new("Cortex-M3 TPIU", PeripheralType::Tpiu)),
+            ("ARM Ltd", 0x924, 0x13, 0x0000) => Some(ComponentInfo::new("Cortex-M3 ETM", PeripheralType::Etm)),
+            ("ARM Ltd", 0x925, 0x13, 0x0000) => Some(ComponentInfo::new("Cortex-M4 ETM", PeripheralType::Etm)),
+            ("ARM Ltd", 0x962, 0x00, 0x0000) => Some(ComponentInfo::new("CoreSight STM", PeripheralType::Stm)),
+            ("ARM Ltd", 0x963, 0x63, 0x0a63) => Some(ComponentInfo::new("CoreSight STM", PeripheralType::Stm)),
+            ("ARM Ltd", 0x975, 0x13, 0x4a13) => Some(ComponentInfo::new("Cortex-M7 ETM", PeripheralType::Stm)),
             ("ARM Ltd", 0x9A1, 0x11, 0x0000) => Some(ComponentInfo::new("Cortex-M4 TPIU", PeripheralType::Tpiu)),
             ("ARM Ltd", 0x9A9, 0x11, 0x0000) => Some(ComponentInfo::new("Cortex-M7 TPIU", PeripheralType::Tpiu)),
+            ("ARM Ltd", 0xD20, 0x00, 0x2A04) => Some(ComponentInfo::new("Cortex-M23 SCS", PeripheralType::Scs)),
             ("ARM Ltd", 0xD20, 0x11, 0x0000) => Some(ComponentInfo::new("Cortex-M23 TPIU", PeripheralType::Tpiu)),
+            ("ARM Ltd", 0xD20, 0x13, 0x0000) => Some(ComponentInfo::new("Cortex-M23 ETM", PeripheralType::Etm)),
             ("ARM Ltd", 0xD20, 0x00, 0x1A02) => Some(ComponentInfo::new("Cortex-M23 DWT", PeripheralType::Dwt)),
+            ("ARM Ltd", 0xD20, 0x00, 0x1A03) => Some(ComponentInfo::new("Cortex-M23 BPU", PeripheralType::Bpu)),
+            ("ARM Ltd", 0xD21, 0x00, 0x2A04) => Some(ComponentInfo::new("Cortex-M33 SCS", PeripheralType::Scs)),
             ("ARM Ltd", 0xD21, 0x43, 0x1A01) => Some(ComponentInfo::new("Cortex-M33 ITM", PeripheralType::Itm)),
             ("ARM Ltd", 0xD21, 0x00, 0x1A02) => Some(ComponentInfo::new("Cortex-M33 DWT", PeripheralType::Dwt)),
+            ("ARM Ltd", 0xD21, 0x00, 0x1A03) => Some(ComponentInfo::new("Cortex-M33 BPU", PeripheralType::Bpu)),
+            ("ARM Ltd", 0xD21, 0x13, 0x4A13) => Some(ComponentInfo::new("Cortex-M33 ETM", PeripheralType::Etm)),
             ("ARM Ltd", 0xD21, 0x11, 0x0000) => Some(ComponentInfo::new("Cortex-M33 TPIU", PeripheralType::Tpiu)),
             _ => None,
         }
@@ -655,14 +685,32 @@ pub enum PeripheralType {
     Tpiu,
     Itm,
     Dwt,
+    Scs,
+    Fbp,
+    Bpu,
+    Etm,
+    Etb,
+    Rom,
+    Swo,
+    Stm,
+    Tsgen,
 }
 
 impl std::fmt::Display for PeripheralType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            PeripheralType::Tpiu => write!(f, "Tpiu"),
-            PeripheralType::Itm => write!(f, "Itm"),
-            PeripheralType::Dwt => write!(f, "Dwt"),
+            PeripheralType::Tpiu => write!(f, "Tpiu (Trace Port Interface Unit)"),
+            PeripheralType::Itm => write!(f, "Itm (Instrumentation Trace Module)"),
+            PeripheralType::Dwt => write!(f, "Dwt (Data Watchpoint and Trace)"),
+            PeripheralType::Scs => write!(f, "Scs (System Control Space)"),
+            PeripheralType::Fbp => write!(f, "Fbp (Flash Patch and Breakpoint)"),
+            PeripheralType::Bpu => write!(f, "Bpu (Breakpoint Unit)"),
+            PeripheralType::Etm => write!(f, "Etm (Embedded Trace)"),
+            PeripheralType::Etb => write!(f, "Etb (Trace Buffer)"),
+            PeripheralType::Rom => write!(f, "Rom"),
+            PeripheralType::Swo => write!(f, "Swo (Single Wire Output)"),
+            PeripheralType::Stm => write!(f, "Stm (System Trace Macrocell)"),
+            PeripheralType::Tsgen => write!(f, "Tsgen (Time Stamp Generator)"),
         }
     }
 }
