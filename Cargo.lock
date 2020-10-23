@@ -230,12 +230,11 @@ source = "git+https://github.com/knurling-rs/defmt?rev=be7f4a7cbe#be7f4a7cbe8a61
 [[package]]
 name = "defmt-decoder"
 version = "0.1.0"
-source = "git+https://github.com/knurling-rs/defmt?rev=be7f4a7cbe#be7f4a7cbe8a61e005f55fed1a41b11f85cb8ed6"
+source = "git+https://github.com/knurling-rs/defmt?branch=main#1933c5b6d60c9cd59b29db30b525f198ac3e9dc6"
 dependencies = [
  "byteorder",
  "colored",
- "defmt-common",
- "defmt-parser",
+ "defmt-parser 0.1.0 (git+https://github.com/knurling-rs/defmt?branch=main)",
  "leb128",
  "ryu",
 ]
@@ -243,12 +242,14 @@ dependencies = [
 [[package]]
 name = "defmt-elf2table"
 version = "0.1.0"
-source = "git+https://github.com/knurling-rs/defmt?rev=be7f4a7cbe#be7f4a7cbe8a61e005f55fed1a41b11f85cb8ed6"
+source = "git+https://github.com/knurling-rs/defmt?branch=main#1933c5b6d60c9cd59b29db30b525f198ac3e9dc6"
 dependencies = [
  "anyhow",
  "defmt-decoder",
  "gimli 0.22.0",
  "object 0.21.1",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -256,7 +257,7 @@ name = "defmt-macros"
 version = "0.1.0"
 source = "git+https://github.com/knurling-rs/defmt.git?rev=be7f4a7cbe#be7f4a7cbe8a61e005f55fed1a41b11f85cb8ed6"
 dependencies = [
- "defmt-parser",
+ "defmt-parser 0.1.0 (git+https://github.com/knurling-rs/defmt?rev=be7f4a7cbe)",
  "proc-macro2",
  "quote",
  "syn",
@@ -266,6 +267,11 @@ dependencies = [
 name = "defmt-parser"
 version = "0.1.0"
 source = "git+https://github.com/knurling-rs/defmt?rev=be7f4a7cbe#be7f4a7cbe8a61e005f55fed1a41b11f85cb8ed6"
+
+[[package]]
+name = "defmt-parser"
+version = "0.1.0"
+source = "git+https://github.com/knurling-rs/defmt?branch=main#1933c5b6d60c9cd59b29db30b525f198ac3e9dc6"
 
 [[package]]
 name = "derivative"
@@ -432,6 +438,12 @@ dependencies = [
  "autocfg",
  "hashbrown",
 ]
+
+[[package]]
+name = "itoa"
+version = "0.4.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dc6f3ad7b9d11a0c00842ff8de1b60ee58661048eb8049ed33c73594f359d7e6"
 
 [[package]]
 name = "jaylink"
@@ -797,6 +809,17 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "serde_json"
+version = "1.0.59"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dcac07dbffa1c65e7f816ab9eba78eb142c6d44410f4eeba1e26e4f5dfa56b95"
+dependencies = [
+ "itoa",
+ "ryu",
+ "serde",
 ]
 
 [[package]]

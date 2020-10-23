@@ -15,8 +15,8 @@ addr2line = "0.13.0"
 anyhow = "1.0.32"
 arrayref = "0.3.6"
 colored = "2.0.0"
-defmt-decoder = { git = "https://github.com/knurling-rs/defmt", rev = "be7f4a7cbe", optional = true }
-defmt-elf2table = { git = "https://github.com/knurling-rs/defmt", rev = "be7f4a7cbe", optional = true }
+defmt-decoder = { git = "https://github.com/knurling-rs/defmt", branch = "main", features = ['unstable'], optional = true }
+defmt-elf2table = { git = "https://github.com/knurling-rs/defmt", branch = "main", features = ['unstable'], optional = true }
 gimli = "0.22.0"
 log = { version = "0.4.11", features = ["std"] }
 # an addr2line trait is implement for a type in this particular version
