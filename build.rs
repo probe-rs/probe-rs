@@ -1,5 +1,4 @@
-use core::str;
-use std::{env, error::Error, fs, path::PathBuf, process::Command};
+use std::{env, error::Error, fs, path::PathBuf, process::Command, str};
 
 fn main() -> Result<(), Box<dyn Error>> {
     let out = &PathBuf::from(env::var("OUT_DIR")?);
