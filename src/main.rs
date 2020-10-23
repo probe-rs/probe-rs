@@ -47,7 +47,10 @@ fn main() -> Result<(), anyhow::Error> {
 
 /// A Cargo runner for microcontrollers.
 #[derive(StructOpt)]
-#[structopt(name = "probe-run")]
+#[structopt(
+    name = "probe-run",
+    version = concat!(env!("CARGO_PKG_VERSION"), include_str!(concat!(env!("OUT_DIR"), "/git-info.txt"))),
+)]
 struct Opts {
     /// List supported chips and exit.
     #[structopt(long)]
