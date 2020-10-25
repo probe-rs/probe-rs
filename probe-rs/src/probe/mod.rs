@@ -182,7 +182,7 @@ impl Probe {
         }
         list.extend(stlink::tools::list_stlink_devices());
 
-        list.extend(list_jlink_devices().expect("Failed to list J-Link devices."));
+        list.extend(list_jlink_devices());
 
         list
     }
