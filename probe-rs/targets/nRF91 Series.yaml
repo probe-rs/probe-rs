@@ -61,4 +61,4 @@ flash_algorithms:
       sectors:
         - size: 4096
           address: 0
-core: ""
+core: M33
