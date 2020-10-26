@@ -57,7 +57,7 @@ pub fn build_artifact(work_dir: &Path, args: &[String]) -> Result<PathBuf> {
         .current_dir(work_dir)
         .arg("build")
         .args(args)
-        .args(&["--message-format", "json"])
+        .args(&["--message-format", "json-diagnostic-rendered-ansi"])
         .stdout(Stdio::piped())
         .spawn()?;
 
