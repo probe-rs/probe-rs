@@ -23,8 +23,16 @@ use std::{cmp::Ordering, convert::TryInto, time::Duration};
 use thiserror::Error;
 use usb_interface::TIMEOUT;
 
+/// Maximum length of 32 bit reads in bytes.
+///
+/// Length has been determined by experimenting with
+/// a ST-Link v2.
 const STLINK_MAX_READ_LEN: usize = 6144;
-const STLINK_MAX_WRITE_LEN: usize = 16384;
+
+/// Maximum length of 32 bit writes in bytes.
+/// The length is limited to the largest 16-bit value which
+/// is also a multiple of 4.
+const STLINK_MAX_WRITE_LEN: usize = 0xFFFC;
 
 #[derive(Debug)]
 pub struct STLink<D: StLinkUsb> {
@@ -787,10 +795,16 @@ impl<D: StLinkUsb> STLink<D> {
             address,
             data.len()
         );
-        // Maximum supported read length is 2^16 bytes.
+        // Maximum supported read length is 6144 bytes.
         assert!(
-            data.len() <= 6144,
-            "Maximum read length for STLink is 6144 bytes"
+            data.len() <= STLINK_MAX_READ_LEN,
+            "Maximum read length for STLink is {} bytes",
+            STLINK_MAX_READ_LEN
+        );
+
+        assert!(
+            data.len() % 4 == 0,
+            "Data length has to be a multiple of 4 for 32 bit reads"
         );
 
         if address % 4 != 0 {
@@ -876,7 +890,7 @@ impl<D: StLinkUsb> STLink<D> {
     fn write_mem_32bit(
         &mut self,
         address: u32,
-        data: &[u32],
+        data: &[u8],
         apsel: u8,
     ) -> Result<(), DebugProbeError> {
         log::trace!("write_mem_32bit");
@@ -884,24 +898,18 @@ impl<D: StLinkUsb> STLink<D> {
 
         // Maximum supported read length is 2^16 bytes.
         assert!(
-            length < (u16::MAX / 4) as usize,
-            "Maximum write length for STLink is 16'384 words"
+            length <= STLINK_MAX_WRITE_LEN,
+            "Maximum write length for STLink is {} bytes",
+            STLINK_MAX_WRITE_LEN
+        );
+
+        assert!(
+            data.len() % 4 == 0,
+            "Data length has to be a multiple of 4 for 32 bit writes"
         );
 
         if address % 4 != 0 {
             todo!("Should return an error here");
-        }
-
-        let byte_length = length * 4;
-
-        let mut tx_buffer = vec![0u8; byte_length];
-
-        let mut offset = 0;
-
-        for word in data {
-            tx_buffer
-                .gwrite(word, &mut offset)
-                .expect("Failed to write into tx_buffer");
         }
 
         self.device.write(
@@ -912,11 +920,11 @@ impl<D: StLinkUsb> STLink<D> {
                 (address >> 8) as u8,
                 (address >> 16) as u8,
                 (address >> 24) as u8,
-                byte_length as u8,
-                (byte_length >> 8) as u8,
+                length as u8,
+                (length >> 8) as u8,
                 apsel,
             ],
-            &tx_buffer,
+            &data,
             &mut [],
             TIMEOUT,
         )?;
@@ -1076,8 +1084,8 @@ pub(crate) enum StlinkError {
     UnknownMode,
     #[error("Blank values are not allowed on DebugPort writes.")]
     BlanksNotAllowedOnDPRegister,
-    #[error("Not enough bytes read.")]
-    NotEnoughBytesRead { is: usize, should: usize },
+    #[error("Not enough bytes written.")]
+    NotEnoughBytesWritten { is: usize, should: usize },
     #[error("USB endpoint not found.")]
     EndpointNotFound,
     #[error("Command failed with status {0:?}")]
@@ -1516,7 +1524,17 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
     fn write_32(&mut self, ap: MemoryAP, address: u32, data: &[u32]) -> Result<(), ProbeRsError> {
         self.probe.select_ap(ap)?;
 
-        for (index, chunk) in data.chunks(16384 / 4).enumerate() {
+        let mut tx_buffer = vec![0u8; data.len() * 4];
+
+        let mut offset = 0;
+
+        for word in data {
+            tx_buffer
+                .gwrite(word, &mut offset)
+                .expect("Failed to write into tx_buffer");
+        }
+
+        for (index, chunk) in tx_buffer.chunks(STLINK_MAX_WRITE_LEN).enumerate() {
             self.probe.probe.write_mem_32bit(
                 address + (index * STLINK_MAX_WRITE_LEN) as u32,
                 chunk,
@@ -1573,26 +1591,23 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
             // Address has to be aligned here.
             assert!(current_address % 4 == 0);
 
-            // Convert bytes to u32
-            let mut chunks_iter = (&data[bytes_beginning..]).chunks_exact(4);
-
-            let words: Vec<u32> = (&mut chunks_iter)
-                .map(|c| u32::from_le_bytes(c.try_into().unwrap()))
-                .collect();
+            let aligned_len = ((data.len() - bytes_beginning) / 4) * 4;
 
             log::trace!(
                 "write_8: aligned write of {} bytes to address {:08x}",
-                words.len() * 4,
+                aligned_len,
                 current_address,
             );
 
-            self.probe
-                .probe
-                .write_mem_32bit(current_address, &words, ap.port_number())?;
+            self.probe.probe.write_mem_32bit(
+                current_address,
+                &data[bytes_beginning..(bytes_beginning + aligned_len)],
+                ap.port_number(),
+            )?;
 
-            current_address += (words.len() * 4) as u32;
+            current_address += aligned_len as u32;
 
-            let remaining_bytes = chunks_iter.remainder();
+            let remaining_bytes = &data[bytes_beginning + aligned_len..];
 
             if !remaining_bytes.is_empty() {
                 log::trace!(
