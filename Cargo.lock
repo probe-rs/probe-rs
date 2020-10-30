@@ -237,11 +237,11 @@ source = "git+https://github.com/knurling-rs/defmt.git?rev=be7f4a7cbe#be7f4a7cbe
 [[package]]
 name = "defmt-decoder"
 version = "0.1.0"
-source = "git+https://github.com/knurling-rs/defmt?rev=1933c5b6d60c9cd59b29db30b525f198ac3e9dc6#1933c5b6d60c9cd59b29db30b525f198ac3e9dc6"
+source = "git+https://github.com/knurling-rs/defmt?rev=28c1afb#28c1afb4d3bad747ef47737a83f5c8b13928cb8a"
 dependencies = [
  "byteorder",
  "colored",
- "defmt-parser 0.1.0 (git+https://github.com/knurling-rs/defmt?rev=1933c5b6d60c9cd59b29db30b525f198ac3e9dc6)",
+ "defmt-parser 0.1.0 (git+https://github.com/knurling-rs/defmt?rev=28c1afb)",
  "leb128",
  "ryu",
 ]
@@ -249,7 +249,7 @@ dependencies = [
 [[package]]
 name = "defmt-elf2table"
 version = "0.1.0"
-source = "git+https://github.com/knurling-rs/defmt?rev=1933c5b6d60c9cd59b29db30b525f198ac3e9dc6#1933c5b6d60c9cd59b29db30b525f198ac3e9dc6"
+source = "git+https://github.com/knurling-rs/defmt?rev=28c1afb#28c1afb4d3bad747ef47737a83f5c8b13928cb8a"
 dependencies = [
  "anyhow",
  "defmt-decoder",
@@ -273,7 +273,7 @@ dependencies = [
 [[package]]
 name = "defmt-parser"
 version = "0.1.0"
-source = "git+https://github.com/knurling-rs/defmt?rev=1933c5b6d60c9cd59b29db30b525f198ac3e9dc6#1933c5b6d60c9cd59b29db30b525f198ac3e9dc6"
+source = "git+https://github.com/knurling-rs/defmt?rev=28c1afb#28c1afb4d3bad747ef47737a83f5c8b13928cb8a"
 
 [[package]]
 name = "defmt-parser"
