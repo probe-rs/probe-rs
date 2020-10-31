@@ -28,8 +28,14 @@ use probe_rs::{
 use probe_rs_cli_util::build_artifact;
 use probe_rs_rtt::{Rtt, ScanRegion};
 
+const CARGO_NAME: &'static str = env!("CARGO_PKG_NAME");
+const CARGO_VERSION: &'static str = env!("CARGO_PKG_VERSION");
+const GIT_VERSION: &'static str = git_version::git_version!();
+
 #[derive(Debug, StructOpt)]
 struct Opt {
+    #[structopt(short = "V", long = "version")]
+    pub version: bool,
     #[structopt(name = "config")]
     config: Option<String>,
     #[structopt(name = "chip", long = "chip")]
@@ -119,6 +125,14 @@ fn main_try() -> Result<()> {
 
     // Get commandline options.
     let opt = Opt::from_iter(&args);
+
+    if opt.version {
+        println!(
+            "{} {}\ngit commit: {}",
+            CARGO_NAME, CARGO_VERSION, GIT_VERSION
+        );
+        return Ok(());
+    }
 
     let work_dir = std::env::current_dir()?;
 
