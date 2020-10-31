@@ -532,7 +532,7 @@ impl DebugProbe for JLink {
 
                 // Construct the entire init sequence.
                 let swd_io_sequence =
-                    // Send the reset sequence (> 50 0-bits).    
+                    // Send the reset sequence (> 50 0-bits).
                     iter::repeat(true).take(64)
                     // Send the JTAG to SWD sequence.
                     .chain(jtag_to_swd_sequence.iter().copied())
@@ -543,7 +543,7 @@ impl DebugProbe for JLink {
 
                 // Construct the direction sequence for reset sequence.
                 let direction =
-                    // Send the reset sequence (> 50 0-bits).    
+                    // Send the reset sequence (> 50 0-bits).
                     iter::repeat(true).take(64)
                     // Send the JTAG to SWD sequence.
                     .chain(iter::repeat(true).take(16))
@@ -736,9 +736,7 @@ impl DAPAccess for JLink {
         ];
 
         // Add the data bits to the SWDIO sequence.
-        for _ in 0..32 {
-            swd_io_sequence.push(false);
-        }
+        swd_io_sequence.extend_from_slice(&[false; 32]);
 
         // Add the parity bit to the sequence.
         swd_io_sequence.push(false);

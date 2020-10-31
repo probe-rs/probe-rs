@@ -453,6 +453,12 @@ impl Decoder {
     }
 }
 
+impl Default for Decoder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 fn extract_size(c: u8) -> Result<usize, String> {
     match c & 0b11 {
         0b01 => Ok(1),

@@ -30,7 +30,7 @@ pub fn v_packet(input: &[u8]) -> IResult<&[u8], VPacket> {
         Err(nom::Err::Error((input, _kind))) => {
             // For unknown packets, we have to return a valid packet here.
             // This is requird by the GDB spec.
-            Ok(("".as_bytes(), VPacket::Unknown(input.to_owned())))
+            Ok((b"", VPacket::Unknown(input.to_owned())))
         }
         Err(other) => Err(other),
     }

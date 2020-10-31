@@ -800,8 +800,8 @@ mod tests {
                         address: 0x000000,
                         data: {
                             let mut data = vec![42; 1024];
-                            for i in 0..42 {
-                                data[i] = 0;
+                            for d in &mut data[..42] {
+                                *d = 0;
                             }
                             data
                         },
@@ -810,8 +810,8 @@ mod tests {
                         address: 0x000400,
                         data: {
                             let mut data = vec![0; 1024];
-                            for i in 0..42 {
-                                data[i] = 42;
+                            for d in &mut data[..42] {
+                                *d = 42;
                             }
                             data
                         },
@@ -898,8 +898,8 @@ mod tests {
                         address: 0x001000,
                         data: {
                             let mut data = vec![0; 1024];
-                            for i in 0..928 {
-                                data[i] = 42;
+                            for d in &mut data[..928] {
+                                *d = 42;
                             }
                             data
                         },
@@ -999,8 +999,8 @@ mod tests {
                         address: 0x001000,
                         data: {
                             let mut data = vec![42; 1024];
-                            for i in 928..1024 {
-                                data[i] = 0;
+                            for d in &mut data[928..1024] {
+                                *d = 0;
                             }
                             data
                         },
@@ -1009,8 +1009,8 @@ mod tests {
                         address: 0x001C00,
                         data: {
                             let mut data = vec![42; 1024];
-                            for i in 0..692 {
-                                data[i] = 0;
+                            for d in &mut data[..692] {
+                                *d = 0;
                             }
                             data
                         },
@@ -1043,8 +1043,8 @@ mod tests {
                         address: 0x003000,
                         data: {
                             let mut data = vec![42; 1024];
-                            for i in 596..1024 {
-                                data[i] = 0;
+                            for d in &mut data[596..1024] {
+                                *d = 0;
                             }
                             data
                         },
@@ -1170,8 +1170,8 @@ mod tests {
                         address: 0x001000,
                         data: {
                             let mut data = vec![42; 1024];
-                            for i in 928..1024 {
-                                data[i] = 0;
+                            for d in &mut data[928..1024] {
+                                *d = 0;
                             }
                             data
                         },
@@ -1180,8 +1180,8 @@ mod tests {
                         address: 0x001C00,
                         data: {
                             let mut data = vec![42; 1024];
-                            for i in 0..692 {
-                                data[i] = 0;
+                            for d in &mut data[..692] {
+                                *d = 0;
                             }
                             data
                         },
@@ -1206,8 +1206,8 @@ mod tests {
                         address: 0x003000,
                         data: {
                             let mut data = vec![42; 1024];
-                            for i in 596..1024 {
-                                data[i] = 0;
+                            for d in &mut data[596..1024] {
+                                *d = 0;
                             }
                             data
                         },

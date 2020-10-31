@@ -293,6 +293,7 @@ impl Write for Device {
     }
 }
 
+#[non_exhaustive]
 #[derive(Debug, Error)]
 pub enum Error {
     #[error("failed to enumerate devices to open the correct one")]
@@ -316,10 +317,6 @@ pub enum Error {
 
     #[error("unknown or unexpected libftdi error")]
     Unknown { source: LibFtdiError },
-
-    #[error("INTERNAL, DO NOT USE")]
-    #[doc(hidden)]
-    __NonExhaustive,
 }
 
 impl Error {

@@ -11,7 +11,8 @@ use std::io::{self, Read, Write};
 use std::sync::Mutex;
 use std::time::Duration;
 
-mod ftdi;
+mod ftdi_impl;
+use ftdi_impl as ftdi;
 
 #[derive(Debug)]
 struct JtagChainItem {
@@ -261,7 +262,7 @@ impl JtagAdapter {
         let mut ir = 0;
         let mut irbits = 0;
         for (i, target) in targets.iter_mut().enumerate() {
-            if r.len() > 0 && irbits < 8 {
+            if (!r.is_empty()) && irbits < 8 {
                 let byte = r[0];
                 r.remove(0);
                 ir |= (byte as u32) << irbits;
@@ -270,7 +271,7 @@ impl JtagAdapter {
             if ir & 0b11 == 0b01 {
                 ir &= !1;
                 let irlen = ir.trailing_zeros();
-                ir = ir >> irlen;
+                ir >>= irlen;
                 irbits -= irlen;
                 log::debug!("tap {} irlen: {}", i, irlen);
                 target.irlen = irlen as usize;
@@ -455,7 +456,7 @@ impl DebugProbe for FtdiProbe {
             let idcode = taps
                 .iter()
                 .map(|tap| tap.idcode)
-                .find(|idcode| known_idcodes.iter().find(|v| *v == idcode).is_some());
+                .find(|idcode| known_idcodes.iter().any(|v| v == idcode));
             if let Some(idcode) = idcode {
                 adapter
                     .select_target(idcode)
