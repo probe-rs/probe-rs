@@ -715,7 +715,7 @@ impl<D: StLinkUsb> STLink<D> {
 
         // Return the last error (will be SwdDpWait or SwdApWait)
         let status = Status::from(read_data[0]);
-        return Err(From::from(StlinkError::CommandFailed(status)));
+        Err(From::from(StlinkError::CommandFailed(status)))
     }
 
     pub fn start_trace_reception(&mut self, config: &SwoConfig) -> Result<(), DebugProbeError> {
@@ -1835,7 +1835,7 @@ mod test {
 
                     let version: u16 = ((self.hw_version as u16) << 12)
                         | ((self.jtag_version as u16) << 6)
-                        | ((self.swim_version as u16) << 0);
+                        | (self.swim_version as u16);
 
                     read_data[0] = (version >> 8) as u8;
                     read_data[1] = version as u8;

@@ -164,10 +164,7 @@ impl Session {
 
     /// Attaches to the core with the given number.
     pub fn core(&mut self, n: usize) -> Result<Core<'_>, Error> {
-        let (core, core_state) = self
-            .cores
-            .get_mut(n)
-            .ok_or_else(|| Error::CoreNotFound(n))?;
+        let (core, core_state) = self.cores.get_mut(n).ok_or(Error::CoreNotFound(n))?;
 
         self.interface.attach(core, core_state)
     }
@@ -182,9 +179,7 @@ impl Session {
         interface.read_swo()
     }
 
-    pub fn get_arm_interface<'session>(
-        &'session mut self,
-    ) -> Result<&'session mut Box<dyn ArmProbeInterface>, Error> {
+    pub fn get_arm_interface(&mut self) -> Result<&mut Box<dyn ArmProbeInterface>, Error> {
         let interface = match &mut self.interface {
             ArchitectureInterface::Arm(state) => state,
             _ => return Err(Error::ArchitectureRequired(&["ARMv7", "ARMv8"])),

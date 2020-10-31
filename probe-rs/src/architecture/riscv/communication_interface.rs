@@ -138,6 +138,12 @@ impl RiscvCommunicationInterfaceState {
     }
 }
 
+impl Default for RiscvCommunicationInterfaceState {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[derive(Debug)]
 pub struct RiscvCommunicationInterface {
     probe: Box<dyn JTAGAccess>,

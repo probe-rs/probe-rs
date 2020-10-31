@@ -521,7 +521,7 @@ impl<'probe> Core<'probe> {
             .iter()
             .map(|bp| bp.register_hw)
             .collect();
-        used_bp.sort();
+        used_bp.sort_unstable();
 
         let mut free_bp = 0;
 
@@ -583,10 +583,7 @@ pub enum CoreStatus {
 
 impl CoreStatus {
     pub fn is_halted(&self) -> bool {
-        match self {
-            CoreStatus::Halted(_) => true,
-            _ => false,
-        }
+        matches!(self, CoreStatus::Halted(_))
     }
 }
 
