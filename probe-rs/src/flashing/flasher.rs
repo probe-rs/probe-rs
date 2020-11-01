@@ -8,7 +8,7 @@ use crate::{
     Core, CoreRegisterAddress,
 };
 use anyhow::{anyhow, Result};
-use std::time::Duration;
+use std::{fmt::Debug, time::Duration};
 
 pub(super) trait Operation {
     fn operation() -> u32;
@@ -430,6 +430,24 @@ impl<'session> Flasher<'session> {
     }
 }
 
+struct Registers {
+    pc: u32,
+    r0: Option<u32>,
+    r1: Option<u32>,
+    r2: Option<u32>,
+    r3: Option<u32>,
+}
+
+impl Debug for Registers {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{:08x}({:?}, {:?}, {:?}, {:?}",
+            self.pc, self.r0, self.r1, self.r2, self.r3
+        )
+    }
+}
+
 pub(super) struct ActiveFlasher<'probe, O: Operation> {
     core: Core<'probe>,
     flash_algorithm: FlashAlgorithm,
@@ -445,11 +463,13 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
         // Execute init routine if one is present.
         if let Some(pc_init) = algo.pc_init {
             let result = self.call_function_and_wait(
-                pc_init,
-                address,
-                clock.or(Some(0)),
-                Some(O::operation()),
-                None,
+                &Registers {
+                    pc: pc_init,
+                    r0: address,
+                    r1: clock.or(Some(0)),
+                    r2: Some(O::operation()),
+                    r3: None,
+                },
                 true,
                 Duration::from_secs(2),
             )?;
@@ -475,11 +495,13 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
 
         if let Some(pc_uninit) = algo.pc_uninit {
             let result = self.call_function_and_wait(
-                pc_uninit,
-                Some(O::operation()),
-                None,
-                None,
-                None,
+                &Registers {
+                    pc: pc_uninit,
+                    r0: Some(O::operation()),
+                    r1: None,
+                    r2: None,
+                    r3: None,
+                },
                 false,
                 Duration::from_secs(2),
             )?;
@@ -496,46 +518,26 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
 
     fn call_function_and_wait(
         &mut self,
-        pc: u32,
-        r0: Option<u32>,
-        r1: Option<u32>,
-        r2: Option<u32>,
-        r3: Option<u32>,
+        registers: &Registers,
         init: bool,
         duration: Duration,
     ) -> Result<u32> {
-        self.call_function(pc, r0, r1, r2, r3, init)?;
+        self.call_function(registers, init)?;
         self.wait_for_completion(duration)
     }
 
-    fn call_function(
-        &mut self,
-        pc: u32,
-        r0: Option<u32>,
-        r1: Option<u32>,
-        r2: Option<u32>,
-        r3: Option<u32>,
-        init: bool,
-    ) -> Result<()> {
-        log::debug!(
-            "Calling routine {:08x}({:?}, {:?}, {:?}, {:?}, init={})",
-            pc,
-            r0,
-            r1,
-            r2,
-            r3,
-            init
-        );
+    fn call_function(&mut self, registers: &Registers, init: bool) -> Result<()> {
+        log::debug!("Calling routine {:?}, init={})", &registers, init);
 
         let algo = &self.flash_algorithm;
         let regs: &'static RegisterFile = self.core.registers();
 
         let registers = [
-            (regs.program_counter(), Some(pc)),
-            (regs.argument_register(0), r0),
-            (regs.argument_register(1), r1),
-            (regs.argument_register(2), r2),
-            (regs.argument_register(3), r3),
+            (regs.program_counter(), Some(registers.pc)),
+            (regs.argument_register(0), registers.r0),
+            (regs.argument_register(1), registers.r1),
+            (regs.argument_register(2), registers.r2),
+            (regs.argument_register(3), registers.r3),
             (
                 regs.platform_register(9),
                 if init { Some(algo.static_base) } else { None },
@@ -625,11 +627,13 @@ impl<'probe> ActiveFlasher<'probe, Erase> {
 
         if let Some(pc_erase_all) = algo.pc_erase_all {
             let result = flasher.call_function_and_wait(
-                pc_erase_all,
-                None,
-                None,
-                None,
-                None,
+                &Registers {
+                    pc: pc_erase_all,
+                    r0: None,
+                    r1: None,
+                    r2: None,
+                    r3: None,
+                },
                 false,
                 Duration::from_secs(5),
             )?;
@@ -652,11 +656,13 @@ impl<'probe> ActiveFlasher<'probe, Erase> {
         let t1 = std::time::Instant::now();
 
         let result = self.call_function_and_wait(
-            self.flash_algorithm.pc_erase_sector,
-            Some(address),
-            None,
-            None,
-            None,
+            &Registers {
+                pc: self.flash_algorithm.pc_erase_sector,
+                r0: Some(address),
+                r1: None,
+                r2: None,
+                r3: None,
+            },
             false,
             Duration::from_secs(5),
         )?;
@@ -693,11 +699,13 @@ impl<'p> ActiveFlasher<'p, Program> {
             .map_err(FlashError::Memory)?;
 
         let result = self.call_function_and_wait(
-            self.flash_algorithm.pc_program_page,
-            Some(address),
-            Some(bytes.len() as u32),
-            Some(self.flash_algorithm.begin_data),
-            None,
+            &Registers {
+                pc: self.flash_algorithm.pc_program_page,
+                r0: Some(address),
+                r1: Some(bytes.len() as u32),
+                r2: Some(self.flash_algorithm.begin_data),
+                r3: None,
+            },
             false,
             Duration::from_secs(2),
         )?;
@@ -727,11 +735,13 @@ impl<'p> ActiveFlasher<'p, Program> {
         }
 
         self.call_function(
-            self.flash_algorithm.pc_program_page,
-            Some(address),
-            Some(self.flash_algorithm.flash_properties.page_size),
-            Some(self.flash_algorithm.page_buffers[buffer_number as usize]),
-            None,
+            &Registers {
+                pc: self.flash_algorithm.pc_program_page,
+                r0: Some(address),
+                r1: Some(self.flash_algorithm.flash_properties.page_size),
+                r2: Some(self.flash_algorithm.page_buffers[buffer_number as usize]),
+                r3: None,
+            },
             false,
         )?;
 
