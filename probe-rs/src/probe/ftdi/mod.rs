@@ -3,8 +3,7 @@ use crate::probe::{JTAGAccess, ProbeCreationError};
 use crate::{
     DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, DebugProbeType, WireProtocol,
 };
-use bitvec::order::Lsb0;
-use bitvec::vec::BitVec;
+use bitvec::{order::Lsb0, slice::BitSlice, vec::BitVec};
 use rusb::UsbContext;
 use std::convert::TryInto;
 use std::io::{self, Read, Write};
@@ -354,8 +353,12 @@ impl JtagAdapter {
         self.shift_ir(&ir.to_le_bytes(), irbits)?;
 
         let drbits = params.drpre + len_bits + params.drpost;
-        let request = if let Some(data) = data {
-            let mut data = BitVec::<Lsb0, u8>::from_slice(data);
+        let request = if let Some(data_slice) = data {
+            let data = BitSlice::<Lsb0, u8>::from_slice(data_slice).ok_or(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "could not create bitslice",
+            ))?;
+            let mut data = BitVec::<Lsb0, u8>::from_bitslice(&data);
             data.truncate(len_bits);
 
             let mut buf = BitVec::<Lsb0, u8>::new();
