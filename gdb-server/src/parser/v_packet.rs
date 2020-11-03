@@ -27,7 +27,7 @@ pub fn v_packet(input: &[u8]) -> IResult<&[u8], VPacket> {
 
     match parse_result {
         Ok((input, packet)) => Ok((input, packet)),
-        Err(nom::Err::Error((input, _kind))) => {
+        Err(nom::Err::Error(nom::error::Error { input, .. })) => {
             // For unknown packets, we have to return a valid packet here.
             // This is requird by the GDB spec.
             Ok((b"", VPacket::Unknown(input.to_owned())))
