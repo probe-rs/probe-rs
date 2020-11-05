@@ -1,3 +1,4 @@
+pub mod argument_handling;
 pub mod logging;
 
 use anyhow::{anyhow, Context, Result};
