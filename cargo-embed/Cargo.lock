@@ -185,22 +185,12 @@ checksum = "cf1de2fe8c75bc145a2f577add951f8134889b4795d47466a54a5c846d691693"
 
 [[package]]
 name = "bitvec"
-version = "0.17.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "41262f11d771fd4a61aa3ce019fca363b4b6c282fca9da2a31186d3965a47a5c"
-dependencies = [
- "either",
- "radium 0.3.0",
-]
-
-[[package]]
-name = "bitvec"
 version = "0.19.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a7ba35e9565969edb811639dbebfe34edc0368e472c5018474c8eb2543397f81"
 dependencies = [
  "funty",
- "radium 0.5.3",
+ "radium",
  "tap",
  "wyz",
 ]
@@ -254,7 +244,7 @@ dependencies = [
  "indicatif",
  "lazy_static",
  "log",
- "probe-rs 0.9.0 (git+https://github.com/probe-rs/probe-rs)",
+ "probe-rs",
  "probe-rs-cli-util",
  "probe-rs-rtt",
  "serde",
@@ -467,10 +457,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "134951f4028bdadb9b84baf4232681efbf277da25144b9b0ad65df75946c422b"
 
 [[package]]
-name = "either"
-version = "1.6.1"
+name = "dunce"
+version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e78d4f1cc4ae33bbfc157ed5d5a5ef3bc29227303d595861deb238fcec4e9457"
+checksum = "b2641c4a7c0c4101df53ea572bffdc561c146f6c2eb09e4df02bc4811e3feeb4"
 
 [[package]]
 name = "encode_unicode"
@@ -698,18 +688,7 @@ dependencies = [
  "log",
  "memchr",
  "nom 6.0.0",
- "probe-rs 0.9.0 (git+https://github.com/probe-rs/probe-rs)",
-]
-
-[[package]]
-name = "gimli"
-version = "0.22.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aaf91faf136cb47367fa430cd46e37a788775e7fa104f8b4bcb3861dc389b724"
-dependencies = [
- "fallible-iterator",
- "indexmap",
- "stable_deref_trait",
+ "probe-rs",
 ]
 
 [[package]]
@@ -1067,7 +1046,7 @@ version = "6.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4489ccc7d668957ddf64af7cd027c081728903afa6479d35da7e99bf5728f75f"
 dependencies = [
- "bitvec 0.19.4",
+ "bitvec",
  "lexical-core",
  "memchr",
  "version_check",
@@ -1116,16 +1095,6 @@ name = "number_prefix"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "17b02fc0ff9a9e4b35b3342880f48e896ebf69f2967921fe8646bf5b7125956a"
-
-[[package]]
-name = "object"
-version = "0.21.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "37fd5004feb2ce328a52b0b3d01dbf4ffff72583493900ed15f22d4111c51693"
-dependencies = [
- "flate2",
- "wasmparser",
-]
 
 [[package]]
 name = "object"
@@ -1242,43 +1211,14 @@ dependencies = [
 [[package]]
 name = "probe-rs"
 version = "0.9.0"
-source = "git+https://github.com/probe-rs/probe-rs?branch=logging-generalize#9c3589578691804c2136309eb3d14e270ca86bd6"
-dependencies = [
- "anyhow",
- "base64",
- "bitfield",
- "bitvec 0.17.4",
- "enum-primitive-derive",
- "gimli 0.22.0",
- "goblin",
- "hidapi",
- "ihex",
- "jaylink",
- "jep106",
- "lazy_static",
- "log",
- "num-traits",
- "object 0.21.1",
- "probe-rs-t2rust 0.6.0 (git+https://github.com/probe-rs/probe-rs?branch=logging-generalize)",
- "rusb",
- "scroll",
- "serde",
- "serde_yaml",
- "svg",
- "thiserror",
-]
-
-[[package]]
-name = "probe-rs"
-version = "0.9.0"
 source = "git+https://github.com/probe-rs/probe-rs#ec5e498e3238cac896edc84bd0d1288e71325a04"
 dependencies = [
  "anyhow",
  "base64",
  "bitfield",
- "bitvec 0.19.4",
+ "bitvec",
  "enum-primitive-derive",
- "gimli 0.23.0",
+ "gimli",
  "goblin",
  "hidapi",
  "ihex",
@@ -1288,8 +1228,8 @@ dependencies = [
  "libftdi1-sys",
  "log",
  "num-traits",
- "object 0.22.0",
- "probe-rs-t2rust 0.6.0 (git+https://github.com/probe-rs/probe-rs)",
+ "object",
+ "probe-rs-t2rust",
  "rusb",
  "scroll",
  "serde",
@@ -1301,17 +1241,18 @@ dependencies = [
 [[package]]
 name = "probe-rs-cli-util"
 version = "0.9.0"
-source = "git+https://github.com/probe-rs/probe-rs?branch=logging-generalize#9c3589578691804c2136309eb3d14e270ca86bd6"
+source = "git+https://github.com/probe-rs/probe-rs#ec5e498e3238cac896edc84bd0d1288e71325a04"
 dependencies = [
  "anyhow",
  "cargo_metadata",
  "cargo_toml",
  "colored",
+ "dunce",
  "env_logger 0.8.1",
  "indicatif",
  "lazy_static",
  "log",
- "probe-rs 0.9.0 (git+https://github.com/probe-rs/probe-rs?branch=logging-generalize)",
+ "probe-rs",
  "serde",
  "structopt",
 ]
@@ -1323,21 +1264,9 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e08122b8ba5a934dd10a16a0cd0cab4f1ada1be500782b77bc49c1cd93cb8b03"
 dependencies = [
  "log",
- "probe-rs 0.9.0 (git+https://github.com/probe-rs/probe-rs)",
+ "probe-rs",
  "scroll",
  "thiserror",
-]
-
-[[package]]
-name = "probe-rs-t2rust"
-version = "0.6.0"
-source = "git+https://github.com/probe-rs/probe-rs?branch=logging-generalize#9c3589578691804c2136309eb3d14e270ca86bd6"
-dependencies = [
- "base64",
- "proc-macro2",
- "quote",
- "scroll",
- "serde_yaml",
 ]
 
 [[package]]
@@ -1411,12 +1340,6 @@ checksum = "aa563d17ecb180e500da1cfd2b028310ac758de548efdd203e18f283af693f37"
 dependencies = [
  "proc-macro2",
 ]
-
-[[package]]
-name = "radium"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "def50a86306165861203e7f84ecffbbdfdea79f0e51039b33de1e952358c47ac"
 
 [[package]]
 name = "radium"
