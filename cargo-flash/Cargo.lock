@@ -550,35 +550,6 @@ checksum = "b4596b6d070b27117e987119b4dac604f3c58cfb0b191112e24771b2faeac1a6"
 [[package]]
 name = "probe-rs"
 version = "0.9.0"
-source = "git+https://github.com/probe-rs/probe-rs?branch=logging-generalize#9c3589578691804c2136309eb3d14e270ca86bd6"
-dependencies = [
- "anyhow",
- "base64",
- "bitfield",
- "bitvec",
- "enum-primitive-derive",
- "gimli 0.22.0",
- "goblin",
- "hidapi",
- "ihex",
- "jaylink",
- "jep106",
- "lazy_static",
- "log",
- "num-traits",
- "object 0.21.1",
- "probe-rs-t2rust 0.6.0 (git+https://github.com/probe-rs/probe-rs?branch=logging-generalize)",
- "rusb",
- "scroll",
- "serde",
- "serde_yaml",
- "svg",
- "thiserror",
-]
-
-[[package]]
-name = "probe-rs"
-version = "0.9.0"
 source = "git+https://github.com/probe-rs/probe-rs#556308ce1132000dafd4d4e4a76343f411188f31"
 dependencies = [
  "anyhow",
@@ -605,9 +576,38 @@ dependencies = [
 ]
 
 [[package]]
+name = "probe-rs"
+version = "0.9.0"
+source = "git+https://github.com/probe-rs/probe-rs?branch=unified-args#eb8635cd484d8203ccc37c1cb1c01895bb255c99"
+dependencies = [
+ "anyhow",
+ "base64",
+ "bitfield",
+ "bitvec",
+ "enum-primitive-derive",
+ "gimli 0.22.0",
+ "goblin",
+ "hidapi",
+ "ihex",
+ "jaylink",
+ "jep106",
+ "lazy_static",
+ "log",
+ "num-traits",
+ "object 0.21.1",
+ "probe-rs-t2rust 0.6.0 (git+https://github.com/probe-rs/probe-rs?branch=unified-args)",
+ "rusb",
+ "scroll",
+ "serde",
+ "serde_yaml",
+ "svg",
+ "thiserror",
+]
+
+[[package]]
 name = "probe-rs-cli-util"
 version = "0.9.0"
-source = "git+https://github.com/probe-rs/probe-rs?branch=logging-generalize#9c3589578691804c2136309eb3d14e270ca86bd6"
+source = "git+https://github.com/probe-rs/probe-rs?branch=unified-args#eb8635cd484d8203ccc37c1cb1c01895bb255c99"
 dependencies = [
  "anyhow",
  "cargo_metadata",
@@ -617,7 +617,7 @@ dependencies = [
  "indicatif",
  "lazy_static",
  "log",
- "probe-rs 0.9.0 (git+https://github.com/probe-rs/probe-rs?branch=logging-generalize)",
+ "probe-rs 0.9.0 (git+https://github.com/probe-rs/probe-rs?branch=unified-args)",
  "serde",
  "structopt",
 ]
@@ -625,7 +625,7 @@ dependencies = [
 [[package]]
 name = "probe-rs-t2rust"
 version = "0.6.0"
-source = "git+https://github.com/probe-rs/probe-rs?branch=logging-generalize#9c3589578691804c2136309eb3d14e270ca86bd6"
+source = "git+https://github.com/probe-rs/probe-rs#556308ce1132000dafd4d4e4a76343f411188f31"
 dependencies = [
  "base64",
  "proc-macro2",
@@ -637,7 +637,7 @@ dependencies = [
 [[package]]
 name = "probe-rs-t2rust"
 version = "0.6.0"
-source = "git+https://github.com/probe-rs/probe-rs#556308ce1132000dafd4d4e4a76343f411188f31"
+source = "git+https://github.com/probe-rs/probe-rs?branch=unified-args#eb8635cd484d8203ccc37c1cb1c01895bb255c99"
 dependencies = [
  "base64",
  "proc-macro2",
