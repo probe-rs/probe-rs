@@ -42,7 +42,7 @@ pub fn read_metadata(work_dir: &Path) -> Result<Metadata> {
 /// The output of `cargo build` is parsed to detect the path to the generated binary artifact.
 /// If either no artifact, or more than a single artifact are created, an error is returned.
 pub fn build_artifact(work_dir: &Path, args: &[String]) -> Result<PathBuf> {
-    let work_dir = work_dir.canonicalize()?;
+    let work_dir = dunce::canonicalize(work_dir)?;
 
     let cargo_executable = std::env::var("CARGO").unwrap_or_else(|_| "cargo".to_owned());
 

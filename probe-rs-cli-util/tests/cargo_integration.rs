@@ -35,18 +35,14 @@ fn get_binary_artifact_with_cargo_config() {
     expected_path.push("thumbv7m-none-eabi");
     expected_path.push("debug");
     expected_path.push("binary_cargo_config");
+    expected_path = dunce::canonicalize(expected_path).expect("Failed to canonicalize path");
 
     let args = [];
 
     let binary_path =
         probe_rs_cli_util::build_artifact(&work_dir, &args).expect("Failed to read artifact path.");
 
-    assert_eq!(
-        binary_path,
-        expected_path
-            .canonicalize()
-            .expect("Failed to canonicalize path")
-    );
+    assert_eq!(binary_path, expected_path);
 }
 
 #[test]
@@ -56,18 +52,14 @@ fn get_binary_artifact_with_cargo_config_toml() {
     expected_path.push("thumbv7m-none-eabi");
     expected_path.push("debug");
     expected_path.push("binary_cargo_config_toml");
+    expected_path = dunce::canonicalize(expected_path).expect("Failed to canonicalize path");
 
     let args = [];
 
     let binary_path =
         probe_rs_cli_util::build_artifact(&work_dir, &args).expect("Failed to read artifact path.");
 
-    assert_eq!(
-        binary_path,
-        expected_path
-            .canonicalize()
-            .expect("Failed to canonicalize path")
-    );
+    assert_eq!(binary_path, expected_path);
 }
 
 #[test]
@@ -216,9 +208,7 @@ fn test_project_dir(test_name: &str) -> PathBuf {
 
     manifest_dir.push(test_name);
 
-    manifest_dir
-        .canonicalize()
-        .expect("Failed to build canonicalized test_project_dir")
+    dunce::canonicalize(manifest_dir).expect("Failed to build canonicalized test_project_dir")
 }
 
 fn owned_args(args: &[&str]) -> Vec<String> {
