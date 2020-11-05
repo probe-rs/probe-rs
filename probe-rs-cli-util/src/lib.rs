@@ -1,4 +1,4 @@
-mod logging;
+pub mod logging;
 
 use anyhow::{anyhow, Context, Result};
 use cargo_toml::Manifest;
