@@ -1,6 +1,5 @@
 mod config;
 mod error;
-mod helpers;
 mod rttui;
 
 use anyhow::{anyhow, Context, Result};
@@ -24,7 +23,7 @@ use probe_rs::{
     flashing::{download_file_with_options, DownloadOptions, FlashProgress, Format, ProgressEvent},
     DebugProbeSelector, Probe,
 };
-use probe_rs_cli_util::{build_artifact, logging};
+use probe_rs_cli_util::{argument_handling, build_artifact, logging};
 use probe_rs_rtt::{Rtt, ScanRegion};
 
 #[derive(Debug, StructOpt)]
@@ -148,7 +147,7 @@ fn main_try() -> Result<()> {
     args.remove(0);
 
     // Remove all arguments that `cargo build` does not understand.
-    helpers::remove_arguments(ARGUMENTS_TO_REMOVE, &mut args);
+    argument_handling::remove_arguments(ARGUMENTS_TO_REMOVE, &mut args);
 
     if let Some(index) = args.iter().position(|x| x == config_name) {
         // We remove the argument we found.
