@@ -17,7 +17,11 @@ license = "MIT OR Apache-2.0"
 [dependencies]
 structopt = "0.3.16"
 anyhow = "1.0"
+indicatif = "0.15.0"
+env_logger = "0.8.1"
 log = "0.4.0"
+lazy_static = "1.4.0"
+colored = "2.0.0"
 probe-rs = { version = "0.9.0", path = "../probe-rs" }
 cargo_toml = "0.8.1"
 serde = { version = "1.0.115", features = [ "derive" ] }
