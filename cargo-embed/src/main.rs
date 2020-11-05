@@ -1,7 +1,6 @@
 mod config;
 mod error;
 mod helpers;
-mod logging;
 mod rttui;
 
 use anyhow::{anyhow, Context, Result};
@@ -25,7 +24,7 @@ use probe_rs::{
     flashing::{download_file_with_options, DownloadOptions, FlashProgress, Format, ProgressEvent},
     DebugProbeSelector, Probe,
 };
-use probe_rs_cli_util::build_artifact;
+use probe_rs_cli_util::{build_artifact, logging};
 use probe_rs_rtt::{Rtt, ScanRegion};
 
 #[derive(Debug, StructOpt)]
