@@ -18,7 +18,7 @@ default = ["builtin-targets"]
 # Enable all built in targets.
 builtin-targets = []
 
-ftdi = ["libftdi1-sys"]
+ftdi = ["libftdi1-sys", "bitvec"]
 
 [dependencies]
 log = "0.4.8"
@@ -42,7 +42,7 @@ jaylink = "0.1.4"
 base64 = "0.13.0"
 svg = "0.8.0"
 anyhow = "1.0.31"
-bitvec = "0.17.4"
+bitvec = {version = "0.19.4", optional = true }
 libftdi1-sys = { version = "1.0.0-alpha3", optional = true }
 
 [build-dependencies]

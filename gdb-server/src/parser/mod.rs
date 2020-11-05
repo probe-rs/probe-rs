@@ -11,7 +11,7 @@ use nom::{
     bytes::complete::{tag, take},
     character::complete::char,
     combinator::value,
-    dbg_dmp, map, named,
+    map, named,
     number::complete::hex_u32,
     IResult,
 };
@@ -127,28 +127,25 @@ pub enum BreakpointType {
 }
 
 pub fn parse_packet(input: &[u8]) -> Result<Packet> {
-    let parse_result = dbg_dmp(
-        alt((
-            extended_mode,
-            detach,
-            halt_reason,
-            read_register,
-            read_register_hex,
-            read_memory,
-            query,
-            v,
-            insert_breakpoint,
-            remove_breakpoint,
-            write_memory_binary,
-            ctrl_c_interrupt,
-            continue_packet,
-        )),
-        "Parsing packet",
-    )(input);
+    let parse_result = alt((
+        extended_mode,
+        detach,
+        halt_reason,
+        read_register,
+        read_register_hex,
+        read_memory,
+        query,
+        v,
+        insert_breakpoint,
+        remove_breakpoint,
+        write_memory_binary,
+        ctrl_c_interrupt,
+        continue_packet,
+    ))(input);
 
     match parse_result {
         Ok((_remaining, packet)) => Ok(packet),
-        Err(e) => Err(anyhow!(e.to_owned())),
+        Err(e) => Err(anyhow!("{}", e)),
     }
 }
 
