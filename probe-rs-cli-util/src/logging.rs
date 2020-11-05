@@ -10,6 +10,7 @@ use std::{
     },
 };
 
+/// The maximum window width of the terminal, given in characters possible.
 static MAX_WINDOW_WIDTH: AtomicUsize = AtomicUsize::new(0);
 
 lazy_static::lazy_static! {
@@ -17,6 +18,7 @@ lazy_static::lazy_static! {
     static ref PROGRESS_BAR: RwLock<Option<Arc<ProgressBar>>> = RwLock::new(None);
 }
 
+/// A structure to hold a string with a padding attached to the start of it.
 struct Padded<T> {
     value: T,
     width: usize,
@@ -28,6 +30,7 @@ impl<T: fmt::Display> fmt::Display for Padded<T> {
     }
 }
 
+/// Get the maximum between the window width and the length of the given string.
 fn max_target_width(target: &str) -> usize {
     let max_width = MAX_WINDOW_WIDTH.load(Ordering::Relaxed);
     if max_width < target.len() {
@@ -38,6 +41,7 @@ fn max_target_width(target: &str) -> usize {
     }
 }
 
+/// Helper to receive a color for a given level.
 fn colored_level(level: Level) -> ColoredString {
     match level {
         Level::Trace => "TRACE".magenta().bold(),
@@ -50,10 +54,10 @@ fn colored_level(level: Level) -> ColoredString {
 
 /// Initialize the logger.
 ///
-/// There are two sources of log level configuration:
+/// There are two sources for log level configuration:
 ///
-/// - The config file can define the default log level through `general.log_level`.
-/// - The user can set the `RUST_LOG` env var, which overrides the log level from the config.
+/// - The log level value passed to this function
+/// - The user can set the `RUST_LOG` env var, which overrides the log level passed to this function.
 ///
 /// The config file only accepts a log level, while the `RUST_LOG` variable
 /// supports the full `env_logger` syntax, including filtering by crate and
@@ -61,19 +65,19 @@ fn colored_level(level: Level) -> ColoredString {
 pub fn init(level: Option<Level>) {
     let mut builder = Builder::new();
 
-    // First, apply log level from the config
+    // First, apply the log level given to this function.
     if let Some(level) = level {
         builder.filter_level(level.to_level_filter());
     } else {
         builder.filter_level(LevelFilter::Warn);
     }
 
-    // Then override that with the `RUST_LOG` env var, if set
+    // Then override that with the `RUST_LOG` env var, if set.
     if let Ok(s) = ::std::env::var("RUST_LOG") {
         builder.parse_filters(&s);
     }
 
-    // Custom log format
+    // Define our custom log format.
     builder.format(move |f, record| {
         let target = record.target();
         let max_width = max_target_width(target);
@@ -99,20 +103,20 @@ pub fn init(level: Option<Level>) {
     builder.init();
 }
 
-/// Sets the current progress bar in store for the logging facility.
+/// Sets the currently displayed progress bar of the CLI.
 pub fn set_progress_bar(progress: Arc<ProgressBar>) {
     let mut guard = PROGRESS_BAR.write().unwrap();
     *guard = Some(progress);
 }
 
-/// Clears current progress bar in store for the logging facility.
+/// Disables the currently displayed progress bar of the CLI.
 pub fn clear_progress_bar() {
     let mut guard = PROGRESS_BAR.write().unwrap();
     *guard = None;
 }
 
-/// Writes an error to the log.
-/// This can be used for unwraps/eprintlns/etc.
+/// Writes an error to stderr.
+/// This function respects the progress bars of the CLI that might be displayed and displays the message above it if any are.
 pub fn eprintln(message: impl AsRef<str>) {
     let guard = PROGRESS_BAR.write().unwrap();
 
@@ -126,8 +130,8 @@ pub fn eprintln(message: impl AsRef<str>) {
     }
 }
 
-/// Writes an error to the log.
-/// This can be used for unwraps/eprintlns/etc.
+/// Writes a message to stdout.
+/// This function respects the progress bars of the CLI that might be displayed and displays the message above it if any are.
 pub fn println(message: impl AsRef<str>) {
     let guard = PROGRESS_BAR.write().unwrap();
     if let Some(pb) = &*guard {
