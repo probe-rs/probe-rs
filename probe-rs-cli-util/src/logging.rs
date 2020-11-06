@@ -161,6 +161,7 @@ fn sentry_config(release: &str) -> sentry::ClientOptions {
     }
 }
 
+/// Captures an std::error::Error with sentry and sends all previously captured logs.
 pub fn capture_error<E>(release: &str, error: &E)
 where
     E: Error + ?Sized,
@@ -170,6 +171,14 @@ where
     sentry::capture_error(error);
 }
 
+/// Captures an anyhow error with sentry and sends all previously captured logs.
+pub fn capture_anyhow(release: &str, error: &anyhow::Error) {
+    let _guard = sentry::init(sentry_config(release));
+    send_logs();
+    sentry::integrations::anyhow::capture_anyhow(error);
+}
+
+/// Captures a panic with sentry and sends all previously captured logs.
 pub fn capture_panic(release: &str, info: &PanicInfo<'_>) {
     let _guard = sentry::init(sentry_config(release));
     send_logs();
