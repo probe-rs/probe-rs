@@ -208,24 +208,40 @@ fn text() -> std::io::Result<String> {
 
 /// Displays the text to ask if the crash should be reported.
 pub fn ask_to_log_crash() -> bool {
-    println(format!(
-        "        {} {}",
-        "Hint".green().bold(),
-        "Unfortunately probe-rs encountered an unhandled problem. To help the devs, you can automatically log the error to sentry.technokrat.ch. Your data will be transmitted completely anonymous and cannot be associated with you directly. Do you wish to transmit the data? y/N"
-    ));
-    if let Ok(s) = text() {
-        let s = s.to_lowercase();
-        if s.is_empty() {
-            false
-        } else if "yes".starts_with(&s) {
-            true
-        } else if "no".starts_with(&s) {
-            false
+    if let Ok(var) = std::env::var("PROBE_RS_SENTRY") {
+        var == "true"
+    } else {
+        println(format!(
+            "        {} {}",
+            "Hint".blue().bold(),
+            "Unfortunately probe-rs encountered an unhandled problem. To help the devs, you can automatically log the error to sentry.technokrat.ch."
+        ));
+        println(format!(
+            "             {}",
+            "Your data will be transmitted completely anonymous and cannot be associated with you directly."
+        ));
+        println(format!(
+            "             {}",
+            "To Hide this message in the future, please set $PROBE_RS_SENTRY to 'true' or 'false'."
+        ));
+        println(format!(
+            "             {}",
+            "Do you wish to transmit the data? y/N"
+        ));
+        if let Ok(s) = text() {
+            let s = s.to_lowercase();
+            if s.is_empty() {
+                false
+            } else if "yes".starts_with(&s) {
+                true
+            } else if "no".starts_with(&s) {
+                false
+            } else {
+                false
+            }
         } else {
             false
         }
-    } else {
-        false
     }
 }
 
