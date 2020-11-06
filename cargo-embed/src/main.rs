@@ -23,7 +23,11 @@ use probe_rs::{
     flashing::{download_file_with_options, DownloadOptions, FlashProgress, Format, ProgressEvent},
     DebugProbeSelector, Probe,
 };
-use probe_rs_cli_util::{argument_handling, build_artifact, logging};
+use probe_rs_cli_util::{
+    argument_handling, build_artifact,
+    logging::ask_to_log_crash,
+    logging::{self, capture_anyhow, capture_panic},
+};
 use probe_rs_rtt::{Rtt, ScanRegion};
 
 #[derive(Debug, StructOpt)]
@@ -67,6 +71,19 @@ struct Opt {
 const ARGUMENTS_TO_REMOVE: &[&str] = &["list-chips", "disable-progressbars", "chip=", "probe="];
 
 fn main() {
+    panic::set_hook(Box::new(|info| {
+        if ask_to_log_crash() {
+            capture_panic(
+                &format!(
+                    "{}-{}",
+                    env!("CARGO_PKG_VERSION"),
+                    git_version::git_version!()
+                ),
+                &info,
+            )
+        }
+    }));
+
     match main_try() {
         Ok(_) => (),
         Err(e) => {
@@ -75,6 +92,17 @@ fn main() {
             // to access stderr during shutdown.
             //
             // We ignore the errors, not much we can do anyway.
+
+            if ask_to_log_crash() {
+                capture_anyhow(
+                    &format!(
+                        "{}-{}",
+                        env!("CARGO_PKG_VERSION"),
+                        git_version::git_version!()
+                    ),
+                    &e,
+                )
+            }
 
             let mut stderr = std::io::stderr();
 
