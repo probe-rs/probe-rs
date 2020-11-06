@@ -4,6 +4,7 @@ use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use std::{
     env,
     io::Write,
+    panic,
     path::{Path, PathBuf},
     process,
     sync::Arc,
@@ -17,7 +18,11 @@ use probe_rs::{
     DebugProbeError, DebugProbeSelector, Probe, WireProtocol,
 };
 
-use probe_rs_cli_util::{argument_handling, build_artifact, logging, read_metadata};
+use probe_rs_cli_util::{
+    argument_handling, build_artifact,
+    logging::{self, ask_to_log_crash, capture_anyhow, capture_panic},
+    read_metadata,
+};
 
 #[derive(Debug, StructOpt)]
 struct Opt {
@@ -134,6 +139,19 @@ const ARGUMENTS_TO_REMOVE: &[&str] = &[
 ];
 
 fn main() {
+    panic::set_hook(Box::new(|info| {
+        if ask_to_log_crash() {
+            capture_panic(
+                &format!(
+                    "{}-{}",
+                    env!("CARGO_PKG_VERSION"),
+                    git_version::git_version!()
+                ),
+                &info,
+            )
+        }
+    }));
+
     match main_try() {
         Ok(_) => (),
         Err(e) => {
@@ -142,6 +160,18 @@ fn main() {
             // to access stderr during shutdown.
             //
             // We ignore the errors, not much we can do anyway.
+
+            if ask_to_log_crash() {
+                capture_anyhow(
+                    &format!(
+                        "{}-{}",
+                        env!("CARGO_PKG_VERSION"),
+                        git_version::git_version!()
+                    ),
+                    &e,
+                )
+            }
+
             let mut stderr = std::io::stderr();
             let _ = writeln!(stderr, "       {} {:?}", "Error".red().bold(), e);
             let _ = stderr.flush();
