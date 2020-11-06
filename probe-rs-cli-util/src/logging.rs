@@ -2,8 +2,13 @@ use colored::*;
 use env_logger::Builder;
 use indicatif::ProgressBar;
 use log::{Level, LevelFilter};
+use sentry::internals::Dsn;
 use std::{
+    borrow::Cow,
+    error::Error,
     fmt,
+    panic::PanicInfo,
+    str::FromStr,
     sync::{
         atomic::{AtomicUsize, Ordering},
         Arc, RwLock,
@@ -16,6 +21,12 @@ static MAX_WINDOW_WIDTH: AtomicUsize = AtomicUsize::new(0);
 lazy_static::lazy_static! {
     /// Stores the progress bar for the logging facility.
     static ref PROGRESS_BAR: RwLock<Option<Arc<ProgressBar>>> = RwLock::new(None);
+    static ref LOG: Arc<RwLock<Vec<LogEntry>>> = Arc::new(RwLock::new(vec![]));
+}
+
+struct LogEntry {
+    level: Level,
+    message: String,
 }
 
 /// A structure to hold a string with a padding attached to the start of it.
@@ -90,6 +101,12 @@ pub fn init(level: Option<Level>) {
             width: max_width,
         });
 
+        let mut log_guard = LOG.write().unwrap();
+        log_guard.push(LogEntry {
+            level: record.level(),
+            message: format!("{} > {}", target, record.args()),
+        });
+
         let guard = PROGRESS_BAR.write().unwrap();
         if let Some(pb) = &*guard {
             pb.println(format!("       {} {} > {}", level, target, record.args()));
@@ -113,6 +130,91 @@ pub fn set_progress_bar(progress: Arc<ProgressBar>) {
 pub fn clear_progress_bar() {
     let mut guard = PROGRESS_BAR.write().unwrap();
     *guard = None;
+}
+
+fn send_logs() {
+    let mut log_guard = LOG.write().unwrap();
+
+    for log in log_guard.drain(..) {
+        sentry::capture_message(
+            &log.message,
+            match log.level {
+                Level::Error => sentry::Level::Error,
+                Level::Warn => sentry::Level::Warning,
+                Level::Info => sentry::Level::Info,
+                Level::Debug => sentry::Level::Debug,
+                Level::Trace => sentry::Level::Debug,
+            },
+        );
+    }
+}
+
+fn sentry_config(release: &str) -> sentry::ClientOptions {
+    sentry::ClientOptions {
+        dsn: Some(Dsn::from_str("https://examplePublicKey@o0.ingest.sentry.io/0").unwrap()),
+        release: Some(Cow::<'static>::Owned(release.to_string())),
+        #[cfg(debug_assertions)]
+        environment: Some(Cow::Borrowed("Development")),
+        #[cfg(not(debug_assertions))]
+        environment: Some(Cow::Borrowed("Production")),
+        ..Default::default()
+    }
+}
+
+pub fn capture_error<E>(release: &str, error: &E)
+where
+    E: Error + ?Sized,
+{
+    let _guard = sentry::init(sentry_config(release));
+    send_logs();
+    sentry::capture_error(error);
+}
+
+pub fn capture_panic(release: &str, info: &PanicInfo<'_>) {
+    let _guard = sentry::init(sentry_config(release));
+    send_logs();
+    sentry::integrations::panic::panic_handler(info);
+}
+
+/// Ask for a line of text.
+fn text() -> std::io::Result<String> {
+    // Read up to the first newline or EOF.
+
+    let mut out = String::new();
+    std::io::stdin().read_line(&mut out)?;
+
+    // Only capture up to the first newline.
+    if let Some(mut newline) = out.find('\n') {
+        if newline > 0 && out.as_bytes()[newline - 1] == b'\r' {
+            newline -= 1;
+        }
+        out.truncate(newline);
+    }
+
+    Ok(out)
+}
+
+/// Displays the text to ask if the crash should be reported.
+pub fn ask_to_log_crash() -> bool {
+    println(format!(
+        "        {} {}",
+        "Hint".green().bold(),
+        "Unfortunately probe-rs encountered an unhandled problem. To help the devs, you can automatically log the error to sentry.technokrat.ch. Your data will be transmitted completely anonymous and cannot be associated with you directly. Do you wish to transmit the data? y/N"
+    ));
+    if let Ok(s) = text() {
+        let s = s.to_lowercase();
+        if s.is_empty() {
+            false
+        } else if "yes".starts_with(&s) {
+            true
+        } else if "no".starts_with(&s) {
+            false
+        } else {
+            false
+        }
+    } else {
+        false
+    }
 }
 
 /// Writes an error to stderr.
