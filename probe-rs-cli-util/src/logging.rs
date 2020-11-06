@@ -151,7 +151,10 @@ fn send_logs() {
 
 fn sentry_config(release: &str) -> sentry::ClientOptions {
     sentry::ClientOptions {
-        dsn: Some(Dsn::from_str("https://examplePublicKey@o0.ingest.sentry.io/0").unwrap()),
+        dsn: Some(
+            Dsn::from_str("https://4396a23b463a46b8b3bfa883910333fe@sentry.technokrat.ch/7")
+                .unwrap(),
+        ),
         release: Some(Cow::<'static>::Owned(release.to_string())),
         #[cfg(debug_assertions)]
         environment: Some(Cow::Borrowed("Development")),
