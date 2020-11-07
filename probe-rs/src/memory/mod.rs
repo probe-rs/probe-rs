@@ -1,4 +1,10 @@
 use crate::error;
+use crate::{
+    architecture::arm::{ap::MemoryAP, memory::adi_v5_memory_interface::ArmProbe},
+    CoreRegisterAddress,
+};
+
+use anyhow::Result;
 
 pub trait MemoryInterface {
     /// Read a 32bit word of at `address`.
@@ -89,96 +95,71 @@ where
     }
 }
 
-pub struct MemoryDummy;
-
-impl<'probe> MemoryInterface for MemoryDummy {
-    fn read_word_32(&mut self, _address: u32) -> Result<u32, error::Error> {
-        unimplemented!()
-    }
-    fn read_word_8(&mut self, _address: u32) -> Result<u8, error::Error> {
-        unimplemented!()
-    }
-    fn read_32(&mut self, _address: u32, _data: &mut [u32]) -> Result<(), error::Error> {
-        unimplemented!()
-    }
-    fn read_8(&mut self, _address: u32, _data: &mut [u8]) -> Result<(), error::Error> {
-        unimplemented!()
-    }
-    fn write_word_32(&mut self, _address: u32, _data: u32) -> Result<(), error::Error> {
-        unimplemented!()
-    }
-    fn write_word_8(&mut self, _address: u32, _data: u8) -> Result<(), error::Error> {
-        unimplemented!()
-    }
-    fn write_32(&mut self, _address: u32, _data: &[u32]) -> Result<(), error::Error> {
-        unimplemented!()
-    }
-    fn write_8(&mut self, _address: u32, _data: &[u8]) -> Result<(), error::Error> {
-        unimplemented!()
-    }
-
-    fn flush(&mut self) -> Result<(), error::Error> {
-        unimplemented!()
-    }
-}
-
 pub struct Memory<'probe> {
-    inner: Box<dyn MemoryInterface + 'probe>,
+    inner: Box<dyn ArmProbe + 'probe>,
+    ap_sel: MemoryAP,
 }
 
 impl<'probe> Memory<'probe> {
-    pub fn new(memory: impl MemoryInterface + 'probe + Sized) -> Memory<'probe> {
+    pub fn new(memory: impl ArmProbe + 'probe + Sized, ap_sel: MemoryAP) -> Memory<'probe> {
         Self {
             inner: Box::new(memory),
+            ap_sel,
         }
     }
 
-    pub fn new_dummy() -> Self {
-        Self::new(MemoryDummy)
-    }
-
-    pub fn memory_interface(&self) -> &dyn MemoryInterface {
-        self.inner.as_ref()
-    }
-
-    pub fn memory_interface_mut(&mut self) -> &mut dyn MemoryInterface {
-        self.inner.as_mut()
-    }
-
     pub fn read_word_32(&mut self, address: u32) -> Result<u32, error::Error> {
-        self.inner.read_word_32(address)
+        let mut buff = [0];
+        self.inner.read_32(self.ap_sel, address, &mut buff)?;
+
+        Ok(buff[0])
     }
 
     pub fn read_word_8(&mut self, address: u32) -> Result<u8, error::Error> {
-        self.inner.read_word_8(address)
+        let mut buff = [0];
+        self.inner.read_8(self.ap_sel, address, &mut buff)?;
+
+        Ok(buff[0])
     }
 
     pub fn read_32(&mut self, address: u32, data: &mut [u32]) -> Result<(), error::Error> {
-        self.inner.read_32(address, data)
+        self.inner.read_32(self.ap_sel, address, data)
     }
 
     pub fn read_8(&mut self, address: u32, data: &mut [u8]) -> Result<(), error::Error> {
-        self.inner.read_8(address, data)
+        self.inner.read_8(self.ap_sel, address, data)
     }
 
     pub fn write_word_32(&mut self, addr: u32, data: u32) -> Result<(), error::Error> {
-        self.inner.write_word_32(addr, data)
+        self.inner.write_32(self.ap_sel, addr, &[data])
     }
 
     pub fn write_word_8(&mut self, addr: u32, data: u8) -> Result<(), error::Error> {
-        self.inner.write_word_8(addr, data)
+        self.inner.write_8(self.ap_sel, addr, &[data])
     }
 
     pub fn write_32(&mut self, addr: u32, data: &[u32]) -> Result<(), error::Error> {
-        self.inner.write_32(addr, data)
+        self.inner.write_32(self.ap_sel, addr, data)
     }
 
     pub fn write_8(&mut self, addr: u32, data: &[u8]) -> Result<(), error::Error> {
-        self.inner.write_8(addr, data)
+        self.inner.write_8(self.ap_sel, addr, data)
     }
 
     pub fn flush(&mut self) -> Result<(), error::Error> {
         self.inner.flush()
+    }
+
+    pub fn read_core_reg(&mut self, addr: CoreRegisterAddress) -> Result<u32, error::Error> {
+        self.inner.read_core_reg(self.ap_sel, addr)
+    }
+
+    pub fn write_core_reg(
+        &mut self,
+        addr: CoreRegisterAddress,
+        value: u32,
+    ) -> Result<(), error::Error> {
+        self.inner.write_core_reg(self.ap_sel, addr, value)
     }
 }
 
