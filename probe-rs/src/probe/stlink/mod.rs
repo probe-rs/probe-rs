@@ -795,7 +795,8 @@ impl<D: StLinkUsb> STLink<D> {
             address,
             data.len()
         );
-        // Maximum supported read length is 6144 bytes.
+
+        // Ensure maximum read length is not exceeded.
         assert!(
             data.len() <= STLINK_MAX_READ_LEN,
             "Maximum read length for STLink is {} bytes",
@@ -808,7 +809,7 @@ impl<D: StLinkUsb> STLink<D> {
         );
 
         if address % 4 != 0 {
-            todo!("Should return an error here");
+            return Err(StlinkError::UnalignedAddress).map_err(DebugProbeError::from);
         }
 
         let data_length = data.len();
@@ -909,7 +910,7 @@ impl<D: StLinkUsb> STLink<D> {
         );
 
         if address % 4 != 0 {
-            todo!("Should return an error here");
+            return Err(StlinkError::UnalignedAddress).map_err(DebugProbeError::from);
         }
 
         self.device.write(
@@ -1092,8 +1093,10 @@ pub(crate) enum StlinkError {
     CommandFailed(Status),
     #[error("JTAG not supported on Probe")]
     JTAGNotSupportedOnProbe,
-    #[error("Mancehster-coded SWO mode not supported")]
+    #[error("Manchester-coded SWO mode not supported")]
     ManchesterSwoNotSupported,
+    #[error("Unaligned")]
+    UnalignedAddress,
 }
 
 impl From<StlinkError> for DebugProbeError {
@@ -1490,7 +1493,7 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
     ) -> Result<(), ProbeRsError> {
         self.probe.select_ap(ap)?;
 
-        // Read needs to be chunked into chunks with max length 6144 bytes
+        // Read needs to be chunked into chunks with appropiate max length (see STLINK_MAX_READ_LEN).
         for (index, chunk) in data.chunks_mut(STLINK_MAX_READ_LEN / 4).enumerate() {
             let mut buff = vec![0u8; 4 * chunk.len()];
 

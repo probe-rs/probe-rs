@@ -256,14 +256,14 @@ impl StLinkUsb for STLinkUSBDevice {
                 remaining_bytes -= written_bytes;
                 write_index += written_bytes;
 
-                log::debug!(
+                log::trace!(
                     "Wrote {} bytes, {} bytes remaining",
                     written_bytes,
                     remaining_bytes
                 );
             }
 
-            log::debug!("USB write done!");
+            log::trace!("USB write done!");
         }
 
         // Optional data in phase.
@@ -280,7 +280,7 @@ impl StLinkUsb for STLinkUSBDevice {
                 read_index += read_bytes;
                 remaining_bytes -= read_bytes;
 
-                log::debug!(
+                log::trace!(
                     "Read {} bytes, {} bytes remaining",
                     read_bytes,
                     remaining_bytes
