@@ -168,9 +168,9 @@ fn sentry_config(release: String) -> sentry::ClientOptions {
 }
 
 pub struct Metadata {
-    chip: Option<String>,
-    probe: Option<String>,
-    release: String,
+    pub chip: Option<String>,
+    pub probe: Option<String>,
+    pub release: String,
 }
 
 /// Sets the metadata concerning the current probe-rs session on the sentry scope.
