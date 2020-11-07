@@ -220,6 +220,7 @@ pub struct Metadata {
     pub chip: Option<String>,
     pub probe: Option<String>,
     pub release: String,
+    pub commit: String,
 }
 
 /// Sets the metadata concerning the current probe-rs session on the sentry scope.
@@ -233,6 +234,7 @@ fn set_metadata(metadata: &Metadata) {
             .probe
             .as_ref()
             .map(|probe| scope.set_tag("probe", probe));
+        scope.set_tag("commit", &metadata.commit);
     })
 }
 
