@@ -24,11 +24,19 @@ use probe_rs::{
     DebugProbeSelector, Probe,
 };
 use probe_rs_cli_util::{
-    argument_handling, build_artifact,
-    logging::ask_to_log_crash,
-    logging::{self, capture_anyhow, capture_panic},
+    argument_handling, build_artifact, logging,
+    logging::{ask_to_log_crash, capture_anyhow, capture_panic, Metadata},
 };
 use probe_rs_rtt::{Rtt, ScanRegion};
+
+lazy_static::lazy_static! {
+    static ref METADATA: Arc<Mutex<Metadata>> = Arc::new(Mutex::new(Metadata {
+        release: env!("CARGO_PKG_VERSION").to_string(),
+        chip: None,
+        probe: None,
+        commit: git_version::git_version!().to_string()
+    }));
+}
 
 #[derive(Debug, StructOpt)]
 struct Opt {
@@ -71,16 +79,10 @@ struct Opt {
 const ARGUMENTS_TO_REMOVE: &[&str] = &["list-chips", "disable-progressbars", "chip=", "probe="];
 
 fn main() {
-    panic::set_hook(Box::new(|info| {
+    let _next = panic::take_hook();
+    panic::set_hook(Box::new(move |info| {
         if ask_to_log_crash() {
-            capture_panic(
-                &format!(
-                    "{}-{}",
-                    env!("CARGO_PKG_VERSION"),
-                    git_version::git_version!()
-                ),
-                &info,
-            )
+            capture_panic(&METADATA.lock().unwrap(), &info)
         }
     }));
 
@@ -92,17 +94,6 @@ fn main() {
             // to access stderr during shutdown.
             //
             // We ignore the errors, not much we can do anyway.
-
-            if ask_to_log_crash() {
-                capture_anyhow(
-                    &format!(
-                        "{}-{}",
-                        env!("CARGO_PKG_VERSION"),
-                        git_version::git_version!()
-                    ),
-                    &e,
-                )
-            }
 
             let mut stderr = std::io::stderr();
 
@@ -126,6 +117,10 @@ fn main() {
             }
 
             let _ = stderr.flush();
+
+            if ask_to_log_crash() {
+                capture_anyhow(&METADATA.lock().unwrap(), &e)
+            }
 
             process::exit(1);
         }
