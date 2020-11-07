@@ -149,7 +149,7 @@ fn send_logs() {
     }
 }
 
-fn sentry_config(release: &str) -> sentry::ClientOptions {
+fn sentry_config(release: String) -> sentry::ClientOptions {
     sentry::ClientOptions {
         dsn: Some(
             Dsn::from_str("https://4396a23b463a46b8b3bfa883910333fe@sentry.technokrat.ch/7")
@@ -164,26 +164,42 @@ fn sentry_config(release: &str) -> sentry::ClientOptions {
     }
 }
 
+pub struct Metadata {
+    chip: Option<String>,
+    probe: Option<String>,
+    release: String,
+}
+
+/// Sets the metadata concerning the current probe-rs session on the sentry scope.
+fn set_metadata(metadata: Metadata) {
+    sentry::configure_scope(|scope| {
+        metadata.chip.map(|chip| scope.set_tag("chip", chip));
+        metadata.probe.map(|probe| scope.set_tag("probe", probe));
+    })
+}
+
 /// Captures an std::error::Error with sentry and sends all previously captured logs.
-pub fn capture_error<E>(release: &str, error: &E)
+pub fn capture_error<E>(metadata: Metadata, error: &E)
 where
     E: Error + ?Sized,
 {
-    let _guard = sentry::init(sentry_config(release));
+    let _guard = sentry::init(sentry_config(metadata.release.clone()));
+    set_metadata(metadata);
     send_logs();
     sentry::capture_error(error);
 }
 
 /// Captures an anyhow error with sentry and sends all previously captured logs.
-pub fn capture_anyhow(release: &str, error: &anyhow::Error) {
-    let _guard = sentry::init(sentry_config(release));
+pub fn capture_anyhow(metadata: Metadata, error: &anyhow::Error) {
+    let _guard = sentry::init(sentry_config(metadata.release.clone()));
+    set_metadata(metadata);
     send_logs();
     sentry::integrations::anyhow::capture_anyhow(error);
 }
 
 /// Captures a panic with sentry and sends all previously captured logs.
-pub fn capture_panic(release: &str, info: &PanicInfo<'_>) {
-    let _guard = sentry::init(sentry_config(release));
+pub fn capture_panic(metadata: Metadata, info: &PanicInfo<'_>) {
+    let _guard = sentry::init(sentry_config(metadata.release));
     send_logs();
     sentry::integrations::panic::panic_handler(info);
 }
