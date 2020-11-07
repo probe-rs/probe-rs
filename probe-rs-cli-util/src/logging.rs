@@ -211,6 +211,7 @@ fn sentry_config(release: String) -> sentry::ClientOptions {
         environment: Some(Cow::Borrowed("Development")),
         #[cfg(not(debug_assertions))]
         environment: Some(Cow::Borrowed("Production")),
+        default_integrations: false,
         ..Default::default()
     }
 }
@@ -270,9 +271,7 @@ pub fn capture_panic(metadata: &Metadata, info: &PanicInfo<'_>) {
     let _guard = sentry::init(sentry_config(metadata.release.clone()));
     set_metadata(metadata);
     send_logs();
-    let uuid = sentry::with_integration(|integration: &PanicIntegration, hub| {
-        hub.capture_event(integration.event_from_panic_info(info))
-    });
+    let uuid = sentry::capture_event(PanicIntegration::new().event_from_panic_info(info));
     print_uuid(uuid);
 }
 
