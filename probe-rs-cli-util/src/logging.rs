@@ -2,7 +2,10 @@ use colored::*;
 use env_logger::Builder;
 use indicatif::ProgressBar;
 use log::{Level, LevelFilter};
-use sentry::internals::Dsn;
+use sentry::{
+    integrations::panic::PanicIntegration,
+    internals::{Dsn, Uuid},
+};
 use std::{
     borrow::Cow,
     error::Error,
@@ -178,6 +181,15 @@ fn set_metadata(metadata: Metadata) {
     })
 }
 
+fn print_uuid(uuid: Uuid) {
+    println(format!(
+        "        {} {} {}",
+        "Thanks".white().bold(),
+        "Your error was reported successfully. If you don't mind, please open an issue and include the UUID: ",
+        uuid
+    ));
+}
+
 /// Captures an std::error::Error with sentry and sends all previously captured logs.
 pub fn capture_error<E>(metadata: Metadata, error: &E)
 where
@@ -186,7 +198,8 @@ where
     let _guard = sentry::init(sentry_config(metadata.release.clone()));
     set_metadata(metadata);
     send_logs();
-    sentry::capture_error(error);
+    let uuid = sentry::capture_error(error);
+    print_uuid(uuid);
 }
 
 /// Captures an anyhow error with sentry and sends all previously captured logs.
@@ -194,14 +207,18 @@ pub fn capture_anyhow(metadata: Metadata, error: &anyhow::Error) {
     let _guard = sentry::init(sentry_config(metadata.release.clone()));
     set_metadata(metadata);
     send_logs();
-    sentry::integrations::anyhow::capture_anyhow(error);
+    let uuid = sentry::integrations::anyhow::capture_anyhow(error);
+    print_uuid(uuid);
 }
 
 /// Captures a panic with sentry and sends all previously captured logs.
 pub fn capture_panic(metadata: Metadata, info: &PanicInfo<'_>) {
     let _guard = sentry::init(sentry_config(metadata.release));
     send_logs();
-    sentry::integrations::panic::panic_handler(info);
+    let uuid = sentry::with_integration(|integration: &PanicIntegration, hub| {
+        hub.capture_event(integration.event_from_panic_info(info))
+    });
+    print_uuid(uuid);
 }
 
 /// Ask for a line of text.
