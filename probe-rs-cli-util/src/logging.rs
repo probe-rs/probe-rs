@@ -288,24 +288,32 @@ pub fn ask_to_log_crash() -> bool {
 /// Writes an error to stderr.
 /// This function respects the progress bars of the CLI that might be displayed and displays the message above it if any are.
 pub fn eprintln(message: impl AsRef<str>) {
-    let guard = PROGRESS_BAR.write().unwrap();
-
-    match guard.as_ref() {
-        Some(pb) if !pb.is_finished() => {
-            pb.println(message.as_ref());
+    if let Ok(guard) = PROGRESS_BAR.try_write() {
+        match guard.as_ref() {
+            Some(pb) if !pb.is_finished() => {
+                pb.println(message.as_ref());
+            }
+            _ => {
+                eprintln!("{}", message.as_ref());
+            }
         }
-        _ => {
-            eprintln!("{}", message.as_ref());
-        }
+    } else {
+        eprintln!("{}", message.as_ref());
     }
 }
 
 /// Writes a message to stdout.
 /// This function respects the progress bars of the CLI that might be displayed and displays the message above it if any are.
 pub fn println(message: impl AsRef<str>) {
-    let guard = PROGRESS_BAR.write().unwrap();
-    if let Some(pb) = &*guard {
-        pb.println(message.as_ref());
+    if let Ok(guard) = PROGRESS_BAR.try_write() {
+        match guard.as_ref() {
+            Some(pb) if !pb.is_finished() => {
+                pb.println(message.as_ref());
+            }
+            _ => {
+                println!("{}", message.as_ref());
+            }
+        }
     } else {
         println!("{}", message.as_ref());
     }
