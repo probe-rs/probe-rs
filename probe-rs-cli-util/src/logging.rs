@@ -1,11 +1,13 @@
 use colored::*;
-use env_logger::Builder;
+use env_logger::{Builder, Logger};
 use indicatif::ProgressBar;
-use log::{Level, LevelFilter};
+use log::{Level, LevelFilter, Log, Record};
 use sentry::{
     integrations::panic::PanicIntegration,
-    internals::{Dsn, Uuid},
+    internals::{Dsn, Utc, Uuid},
+    Breadcrumb,
 };
+use simplelog::{CombinedLogger, SharedLogger};
 use std::{
     borrow::Cow,
     error::Error,
@@ -24,12 +26,7 @@ static MAX_WINDOW_WIDTH: AtomicUsize = AtomicUsize::new(0);
 lazy_static::lazy_static! {
     /// Stores the progress bar for the logging facility.
     static ref PROGRESS_BAR: RwLock<Option<Arc<ProgressBar>>> = RwLock::new(None);
-    static ref LOG: Arc<RwLock<Vec<LogEntry>>> = Arc::new(RwLock::new(vec![]));
-}
-
-struct LogEntry {
-    level: Level,
-    message: String,
+    static ref LOG: Arc<RwLock<Vec<Breadcrumb>>> = Arc::new(RwLock::new(vec![]));
 }
 
 /// A structure to hold a string with a padding attached to the start of it.
@@ -66,6 +63,38 @@ fn colored_level(level: Level) -> ColoredString {
     }
 }
 
+struct ShareableLogger(Logger);
+
+impl Log for ShareableLogger {
+    fn enabled(&self, metadata: &log::Metadata<'_>) -> bool {
+        metadata.level() <= self.0.filter()
+    }
+
+    fn log(&self, record: &Record<'_>) {
+        if self.enabled(record.metadata()) {
+            self.0.log(record);
+        }
+    }
+
+    fn flush(&self) {
+        self.0.flush();
+    }
+}
+
+impl SharedLogger for ShareableLogger {
+    fn level(&self) -> LevelFilter {
+        self.0.filter()
+    }
+
+    fn config(&self) -> Option<&simplelog::Config> {
+        todo!()
+    }
+
+    fn as_log(self: Box<Self>) -> Box<dyn log::Log> {
+        todo!()
+    }
+}
+
 /// Initialize the logger.
 ///
 /// There are two sources for log level configuration:
@@ -77,22 +106,24 @@ fn colored_level(level: Level) -> ColoredString {
 /// supports the full `env_logger` syntax, including filtering by crate and
 /// module.
 pub fn init(level: Option<Level>) {
-    let mut builder = Builder::new();
+    // User visible logging.
+
+    let mut log_builder = Builder::new();
 
     // First, apply the log level given to this function.
     if let Some(level) = level {
-        builder.filter_level(level.to_level_filter());
+        log_builder.filter_level(level.to_level_filter());
     } else {
-        builder.filter_level(LevelFilter::Warn);
+        log_builder.filter_level(LevelFilter::Warn);
     }
 
     // Then override that with the `RUST_LOG` env var, if set.
     if let Ok(s) = ::std::env::var("RUST_LOG") {
-        builder.parse_filters(&s);
+        log_builder.parse_filters(&s);
     }
 
     // Define our custom log format.
-    builder.format(move |f, record| {
+    log_builder.format(move |f, record| {
         let target = record.target();
         let max_width = max_target_width(target);
 
@@ -102,12 +133,6 @@ pub fn init(level: Option<Level>) {
         let target = style.set_bold(true).value(Padded {
             value: target,
             width: max_width,
-        });
-
-        let mut log_guard = LOG.write().unwrap();
-        log_guard.push(LogEntry {
-            level: record.level(),
-            message: format!("{} > {}", target, record.args()),
         });
 
         let guard = PROGRESS_BAR.write().unwrap();
@@ -120,7 +145,38 @@ pub fn init(level: Option<Level>) {
         Ok(())
     });
 
-    builder.init();
+    // Sentry logging (all log levels except tracing (to not clog the server disk & internet sink)).
+
+    let mut sentry = Builder::new();
+
+    // Always use the Debug log level.
+    sentry.filter_level(LevelFilter::Debug);
+
+    // Define our custom log format.
+    sentry.format(move |_f, record| {
+        let mut log_guard = LOG.write().unwrap();
+        log_guard.push(Breadcrumb {
+            level: match record.level() {
+                Level::Error => sentry::Level::Error,
+                Level::Warn => sentry::Level::Warning,
+                Level::Info => sentry::Level::Info,
+                Level::Debug => sentry::Level::Debug,
+                Level::Trace => sentry::Level::Debug,
+            },
+            category: Some(record.target().to_string()),
+            message: Some(format!("{}", record.args())),
+            timestamp: Utc::now(),
+            ..Default::default()
+        });
+
+        Ok(())
+    });
+
+    CombinedLogger::init(vec![
+        Box::new(ShareableLogger(log_builder.build())),
+        Box::new(ShareableLogger(sentry.build())),
+    ])
+    .unwrap();
 }
 
 /// Sets the currently displayed progress bar of the CLI.
@@ -138,17 +194,8 @@ pub fn clear_progress_bar() {
 fn send_logs() {
     let mut log_guard = LOG.write().unwrap();
 
-    for log in log_guard.drain(..) {
-        sentry::capture_message(
-            &log.message,
-            match log.level {
-                Level::Error => sentry::Level::Error,
-                Level::Warn => sentry::Level::Warning,
-                Level::Info => sentry::Level::Info,
-                Level::Debug => sentry::Level::Debug,
-                Level::Trace => sentry::Level::Debug,
-            },
-        );
+    for breadcrumb in log_guard.drain(..) {
+        sentry::add_breadcrumb(breadcrumb);
     }
 }
 
