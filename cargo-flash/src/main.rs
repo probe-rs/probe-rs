@@ -17,9 +17,7 @@ use probe_rs::{
     DebugProbeError, DebugProbeSelector, Probe, WireProtocol,
 };
 
-mod logging;
-
-use probe_rs_cli_util::{build_artifact, read_metadata};
+use probe_rs_cli_util::{build_artifact, logging, read_metadata};
 
 #[derive(Debug, StructOpt)]
 struct Opt {
