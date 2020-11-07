@@ -174,10 +174,16 @@ pub struct Metadata {
 }
 
 /// Sets the metadata concerning the current probe-rs session on the sentry scope.
-fn set_metadata(metadata: Metadata) {
+fn set_metadata(metadata: &Metadata) {
     sentry::configure_scope(|scope| {
-        metadata.chip.map(|chip| scope.set_tag("chip", chip));
-        metadata.probe.map(|probe| scope.set_tag("probe", probe));
+        metadata
+            .chip
+            .as_ref()
+            .map(|chip| scope.set_tag("chip", chip));
+        metadata
+            .probe
+            .as_ref()
+            .map(|probe| scope.set_tag("probe", probe));
     })
 }
 
@@ -191,7 +197,7 @@ fn print_uuid(uuid: Uuid) {
 }
 
 /// Captures an std::error::Error with sentry and sends all previously captured logs.
-pub fn capture_error<E>(metadata: Metadata, error: &E)
+pub fn capture_error<E>(metadata: &Metadata, error: &E)
 where
     E: Error + ?Sized,
 {
@@ -203,7 +209,7 @@ where
 }
 
 /// Captures an anyhow error with sentry and sends all previously captured logs.
-pub fn capture_anyhow(metadata: Metadata, error: &anyhow::Error) {
+pub fn capture_anyhow(metadata: &Metadata, error: &anyhow::Error) {
     let _guard = sentry::init(sentry_config(metadata.release.clone()));
     set_metadata(metadata);
     send_logs();
@@ -212,8 +218,9 @@ pub fn capture_anyhow(metadata: Metadata, error: &anyhow::Error) {
 }
 
 /// Captures a panic with sentry and sends all previously captured logs.
-pub fn capture_panic(metadata: Metadata, info: &PanicInfo<'_>) {
-    let _guard = sentry::init(sentry_config(metadata.release));
+pub fn capture_panic(metadata: &Metadata, info: &PanicInfo<'_>) {
+    let _guard = sentry::init(sentry_config(metadata.release.clone()));
+    set_metadata(metadata);
     send_logs();
     let uuid = sentry::with_integration(|integration: &PanicIntegration, hub| {
         hub.capture_event(integration.event_from_panic_info(info))
