@@ -12,6 +12,7 @@ use std::{
     borrow::Cow,
     error::Error,
     fmt,
+    io::Write,
     panic::PanicInfo,
     str::FromStr,
     sync::{
@@ -236,9 +237,9 @@ fn set_metadata(metadata: &Metadata) {
 
 fn print_uuid(uuid: Uuid) {
     println(format!(
-        "        {} {} {}",
-        "Thanks".white().bold(),
-        "Your error was reported successfully. If you don't mind, please open an issue and include the UUID: ",
+        "  {} {} {}",
+        "Thank You!".cyan().bold(),
+        "Your error was reported successfully. If you don't mind, please open an issue on Github and include the UUID: ",
         uuid
     ));
 }
@@ -311,11 +312,9 @@ pub fn ask_to_log_crash() -> bool {
             "             {}",
             "To Hide this message in the future, please set $PROBE_RS_SENTRY to 'true' or 'false'."
         ));
-        println(format!(
-            "             {}",
-            "Do you wish to transmit the data? y/N"
-        ));
-        if let Ok(s) = text() {
+        print!("             {}", "Do you wish to transmit the data? y/N: ");
+        std::io::stdout().flush().ok();
+        let result = if let Ok(s) = text() {
             let s = s.to_lowercase();
             if s.is_empty() {
                 false
@@ -328,7 +327,11 @@ pub fn ask_to_log_crash() -> bool {
             }
         } else {
             false
-        }
+        };
+
+        println!();
+
+        result
     }
 }
 
@@ -349,7 +352,7 @@ pub fn eprintln(message: impl AsRef<str>) {
     }
 }
 
-/// Writes a message to stdout.
+/// Writes a message to stdout with a newline at the end.
 /// This function respects the progress bars of the CLI that might be displayed and displays the message above it if any are.
 pub fn println(message: impl AsRef<str>) {
     if let Ok(guard) = PROGRESS_BAR.try_write() {
