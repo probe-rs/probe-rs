@@ -142,6 +142,7 @@ name = "cargo-flash"
 version = "0.9.0"
 dependencies = [
  "anyhow",
+ "backtrace",
  "colored",
  "env_logger 0.7.1",
  "git-version",
@@ -177,9 +178,9 @@ dependencies = [
 
 [[package]]
 name = "cc"
-version = "1.0.61"
+version = "1.0.62"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ed67cbde08356238e75fc4656be4749481eeffb09e19f320a25237d5221c985d"
+checksum = "f1770ced377336a88a67c473594ccc14eca6f4559217c34f64aac8f83d641b40"
 
 [[package]]
 name = "cfg-if"
@@ -251,9 +252,9 @@ dependencies = [
 
 [[package]]
 name = "core-foundation"
-version = "0.7.0"
+version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "57d24c7a13c43e870e37c1556b74555437870a04514f7685f5b354e090567171"
+checksum = "0a89e2ae426ea83155dccf10c0fa6b1463ef6d5fcb44cee0b224a408fa640a62"
 dependencies = [
  "core-foundation-sys",
  "libc",
@@ -261,9 +262,9 @@ dependencies = [
 
 [[package]]
 name = "core-foundation-sys"
-version = "0.7.0"
+version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b3a71ab494c0b5b860bdc8407ae08978052417070c2ced38573a9157ad75b8ac"
+checksum = "ea221b5284a47e40033bf9b66f35f984ec0ea2931eb03505246cd27a963f981b"
 
 [[package]]
 name = "crc32fast"
@@ -420,6 +421,16 @@ name = "foreign-types-shared"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "00b0228411908ca8685dba7fc2cdd70ec9990a6e753e89b6ac91a84c40fbaf4b"
+
+[[package]]
+name = "form_urlencoded"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ece68d15c92e84fa4f19d3780f1294e5ca82a78a6d515f1efaabcc144688be00"
+dependencies = [
+ "matches",
+ "percent-encoding",
+]
 
 [[package]]
 name = "fuchsia-zircon"
@@ -955,9 +966,9 @@ dependencies = [
 
 [[package]]
 name = "native-tls"
-version = "0.2.4"
+version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2b0d88c06fe90d5ee94048ba40409ef1d9315d86f6f38c2efdaad4fb50c58b2d"
+checksum = "1a1cda389c26d6b88f3d2dc38aa1b750fe87d298cc5d795ec9e975f402f00372"
 dependencies = [
  "lazy_static",
  "libc",
@@ -1164,7 +1175,35 @@ checksum = "ac74c624d6b2d21f425f752262f42188365d7b8ff1aff74c82e45136510a4857"
 [[package]]
 name = "probe-rs"
 version = "0.9.0"
-source = "git+https://github.com/probe-rs/probe-rs#556308ce1132000dafd4d4e4a76343f411188f31"
+dependencies = [
+ "anyhow",
+ "base64 0.13.0",
+ "bitfield",
+ "bitvec",
+ "enum-primitive-derive",
+ "gimli 0.22.0",
+ "goblin",
+ "hidapi",
+ "ihex",
+ "jaylink",
+ "jep106",
+ "lazy_static",
+ "log",
+ "num-traits",
+ "object 0.21.1",
+ "probe-rs-t2rust 0.6.0",
+ "rusb",
+ "scroll",
+ "serde",
+ "serde_yaml",
+ "svg",
+ "thiserror",
+]
+
+[[package]]
+name = "probe-rs"
+version = "0.9.0"
+source = "git+https://github.com/probe-rs/probe-rs#b49cc5d1ae74cebca2cb9f04198614c4555602ce"
 dependencies = [
  "anyhow",
  "base64 0.13.0",
@@ -1190,38 +1229,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "probe-rs"
-version = "0.9.0"
-source = "git+https://github.com/probe-rs/probe-rs?branch=sentry#fae9f8b3b971e9a1a32289dc7d4d64b0deb1eba2"
-dependencies = [
- "anyhow",
- "base64 0.13.0",
- "bitfield",
- "bitvec",
- "enum-primitive-derive",
- "gimli 0.22.0",
- "goblin",
- "hidapi",
- "ihex",
- "jaylink",
- "jep106",
- "lazy_static",
- "log",
- "num-traits",
- "object 0.21.1",
- "probe-rs-t2rust 0.6.0 (git+https://github.com/probe-rs/probe-rs?branch=sentry)",
- "rusb",
- "scroll",
- "serde",
- "serde_yaml",
- "svg",
- "thiserror",
-]
-
-[[package]]
 name = "probe-rs-cli-util"
 version = "0.9.0"
-source = "git+https://github.com/probe-rs/probe-rs?branch=sentry#fae9f8b3b971e9a1a32289dc7d4d64b0deb1eba2"
 dependencies = [
  "anyhow",
  "cargo_metadata",
@@ -1231,16 +1240,16 @@ dependencies = [
  "indicatif",
  "lazy_static",
  "log",
- "probe-rs 0.9.0 (git+https://github.com/probe-rs/probe-rs?branch=sentry)",
+ "probe-rs 0.9.0",
  "sentry",
  "serde",
+ "simplelog",
  "structopt",
 ]
 
 [[package]]
 name = "probe-rs-t2rust"
 version = "0.6.0"
-source = "git+https://github.com/probe-rs/probe-rs#556308ce1132000dafd4d4e4a76343f411188f31"
 dependencies = [
  "base64 0.13.0",
  "proc-macro2",
@@ -1252,7 +1261,7 @@ dependencies = [
 [[package]]
 name = "probe-rs-t2rust"
 version = "0.6.0"
-source = "git+https://github.com/probe-rs/probe-rs?branch=sentry#fae9f8b3b971e9a1a32289dc7d4d64b0deb1eba2"
+source = "git+https://github.com/probe-rs/probe-rs#b49cc5d1ae74cebca2cb9f04198614c4555602ce"
 dependencies = [
  "base64 0.13.0",
  "proc-macro2",
@@ -1509,9 +1518,9 @@ dependencies = [
 
 [[package]]
 name = "security-framework"
-version = "0.4.4"
+version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "64808902d7d99f78eaddd2b4e2509713babc3dc3c85ad6f4c447680f3c01e535"
+checksum = "c1759c2e3c8580017a484a7ac56d3abc5a6c1feadf88db2f3633f12ae4268c69"
 dependencies = [
  "bitflags",
  "core-foundation",
@@ -1522,9 +1531,9 @@ dependencies = [
 
 [[package]]
 name = "security-framework-sys"
-version = "0.4.3"
+version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "17bf11d99252f512695eb468de5516e5cf75455521e69dfe343f3b74e4748405"
+checksum = "f99b9d5e26d2a71633cc4f2ebae7cc9f874044e0c351a27e17892d76dce5678b"
 dependencies = [
  "core-foundation-sys",
  "libc",
@@ -1720,6 +1729,17 @@ dependencies = [
  "linked-hash-map",
  "serde",
  "yaml-rust",
+]
+
+[[package]]
+name = "simplelog"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2b2736f58087298a448859961d3f4a0850b832e72619d75adc69da7993c2cd3c"
+dependencies = [
+ "chrono",
+ "log",
+ "termcolor",
 ]
 
 [[package]]
@@ -2077,10 +2097,11 @@ checksum = "f7fe0bb3479651439c9112f72b6c505038574c9fbb575ed1bf3b797fa39dd564"
 
 [[package]]
 name = "url"
-version = "2.1.1"
+version = "2.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "829d4a8476c35c9bf0bbce5a3b23f4106f79728039b726d292bb93bc106787cb"
+checksum = "5909f2b0817350449ed73e8bcd81c8c3c8d9a7a5d8acba4b27db277f1868976e"
 dependencies = [
+ "form_urlencoded",
  "idna",
  "matches",
  "percent-encoding",
