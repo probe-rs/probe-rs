@@ -306,7 +306,7 @@ fn text() -> std::io::Result<String> {
     Ok(out)
 }
 
-const SENTRY_HINT: &str = r"Unfortunately probe-rs encountered an unhandled problem. To help the devs, you can automatically log the error to sentry.technokrat.ch. Your data will be transmitted completely anonymous and cannot be associated with you directly. To Hide this message in the future, please set $PROBE_RS_SENTRY to 'true' or 'false'. Do you wish to transmit the data? y/N: ";
+const SENTRY_HINT: &str = r"Unfortunately probe-rs encountered an unhandled problem. To help the devs, you can automatically log the error to sentry.technokrat.ch. Your data will be transmitted completely anonymous and cannot be associated with you directly. To hide this message in the future, please set $PROBE_RS_SENTRY to 'true' or 'false'. Do you wish to transmit the data? y/N: ";
 
 /// Chunks the given string into pieces of maximum_length whilst honoring word boundaries.
 fn chunk_string(s: &str, max_width: usize) -> Vec<String> {
@@ -371,8 +371,6 @@ pub fn ask_to_log_crash() -> bool {
                 false
             } else if "yes".starts_with(&s) {
                 true
-            } else if "no".starts_with(&s) {
-                false
             } else {
                 false
             }
