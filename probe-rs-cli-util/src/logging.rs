@@ -89,11 +89,11 @@ impl SharedLogger for ShareableLogger {
     }
 
     fn config(&self) -> Option<&simplelog::Config> {
-        todo!()
+        None
     }
 
     fn as_log(self: Box<Self>) -> Box<dyn log::Log> {
-        todo!()
+        Box::new(*self)
     }
 }
 
@@ -163,6 +163,7 @@ pub fn init(level: Option<Level>) {
                 Level::Warn => sentry::Level::Warning,
                 Level::Info => sentry::Level::Info,
                 Level::Debug => sentry::Level::Debug,
+                // This mapping is intended as unfortunately, Sentry does not have any trace level for events & breadcrumbs.
                 Level::Trace => sentry::Level::Debug,
             },
             category: Some(record.target().to_string()),
