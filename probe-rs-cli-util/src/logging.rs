@@ -311,7 +311,7 @@ pub fn ask_to_log_crash() -> bool {
         ));
         println(format!(
             "             {}",
-            "To Hide this message in the future, please set $PROBE_RS_SENTRY to 'true' or 'false'."
+            "To hide this message in the future, please set $PROBE_RS_SENTRY to 'true' or 'false'."
         ));
         print!("             {}", "Do you wish to transmit the data? y/N: ");
         std::io::stdout().flush().ok();
