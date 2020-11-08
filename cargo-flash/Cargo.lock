@@ -116,9 +116,9 @@ dependencies = [
 
 [[package]]
 name = "cc"
-version = "1.0.61"
+version = "1.0.62"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ed67cbde08356238e75fc4656be4749481eeffb09e19f320a25237d5221c985d"
+checksum = "f1770ced377336a88a67c473594ccc14eca6f4559217c34f64aac8f83d641b40"
 
 [[package]]
 name = "cfg-if"
@@ -497,7 +497,7 @@ checksum = "b4596b6d070b27117e987119b4dac604f3c58cfb0b191112e24771b2faeac1a6"
 [[package]]
 name = "probe-rs"
 version = "0.9.0"
-source = "git+https://github.com/probe-rs/probe-rs#b49cc5d1ae74cebca2cb9f04198614c4555602ce"
+source = "git+https://github.com/probe-rs/probe-rs#ec5e498e3238cac896edc84bd0d1288e71325a04"
 dependencies = [
  "anyhow",
  "base64",
@@ -525,7 +525,7 @@ dependencies = [
 [[package]]
 name = "probe-rs-cli-util"
 version = "0.9.0"
-source = "git+https://github.com/probe-rs/probe-rs#b49cc5d1ae74cebca2cb9f04198614c4555602ce"
+source = "git+https://github.com/probe-rs/probe-rs#ec5e498e3238cac896edc84bd0d1288e71325a04"
 dependencies = [
  "anyhow",
  "cargo_metadata",
@@ -544,7 +544,7 @@ dependencies = [
 [[package]]
 name = "probe-rs-t2rust"
 version = "0.6.0"
-source = "git+https://github.com/probe-rs/probe-rs#b49cc5d1ae74cebca2cb9f04198614c4555602ce"
+source = "git+https://github.com/probe-rs/probe-rs#ec5e498e3238cac896edc84bd0d1288e71325a04"
 dependencies = [
  "base64",
  "proc-macro2",
