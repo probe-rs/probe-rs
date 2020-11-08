@@ -21,7 +21,7 @@ fn main() {
     let fmt_result = rustfmt.status().expect("Failed to run rustfmt");
 
     if !fmt_result.success() {
-        println!("cargo:warning=Failed to formated generated target file.",);
+        println!("cargo:warning=Failed to format generated target file.",);
         println!(
             "cargo:warning='rustfmt --emit files {}' failed with {}",
             dest_path.display(),
