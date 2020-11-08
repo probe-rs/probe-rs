@@ -18,7 +18,14 @@ fn main() {
 
     rustfmt.arg("--emit").arg("files").arg(&dest_path);
 
-    let fmt_result = rustfmt.status().expect("Failed to run rustfmt");
+    let fmt_result = match rustfmt.status() {
+        Ok(o) => o,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+            println!("cargo:warning=Failed to format generated target file. rustfmt not found",);
+            return;
+        }
+        Err(e) => panic!("Failed to run rustfmt: {:?}", e),
+    };
 
     if !fmt_result.success() {
         println!("cargo:warning=Failed to format generated target file.",);
