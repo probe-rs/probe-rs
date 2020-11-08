@@ -12,6 +12,9 @@ categories = ["embedded", "hardware-support", "development-tools::debugging"]
 keywords = ["embedded"]
 license = "MIT OR Apache-2.0"
 
+[features]
+ftdi = ["probe-rs/ftdi"]
+
 [dependencies]
 structopt = "0.3.20"
 anyhow = "1.0"
