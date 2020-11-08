@@ -321,8 +321,6 @@ pub fn ask_to_log_crash() -> bool {
                 false
             } else if "yes".starts_with(&s) {
                 true
-            } else if "no".starts_with(&s) {
-                false
             } else {
                 false
             }
