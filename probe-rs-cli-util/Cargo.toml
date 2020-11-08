@@ -29,3 +29,4 @@ cargo_metadata = "0.12.0"
 dunce = "1.0.1"
 sentry = { version = "0.20.1", features = ["anyhow"] }
 simplelog = "0.8.0"
+terminal_size = "0.1.13"

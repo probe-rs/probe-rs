@@ -20,6 +20,7 @@ use std::{
         Arc, RwLock,
     },
 };
+use terminal_size::{Height, Width};
 
 /// The maximum window width of the terminal, given in characters possible.
 static MAX_WINDOW_WIDTH: AtomicUsize = AtomicUsize::new(0);
@@ -238,13 +239,23 @@ fn set_metadata(metadata: &Metadata) {
     })
 }
 
+const SENTRY_SUCCESS: &str = r"Your error was reported successfully. If you don't mind, please open an issue on Github and include the UUID:";
+
 fn print_uuid(uuid: Uuid) {
-    println(format!(
-        "  {} {} {}",
-        "Thank You!".cyan().bold(),
-        "Your error was reported successfully. If you don't mind, please open an issue on Github and include the UUID: ",
-        uuid
-    ));
+    let size = terminal_size::terminal_size();
+    if let Some((Width(w), Height(_h))) = size {
+        let lines = chunk_string(&format!("{} {}", SENTRY_SUCCESS, uuid), w as usize - 14);
+
+        for (i, l) in lines.iter().enumerate() {
+            if i == 0 {
+                println!("  {} {}", "Thank You!".cyan().bold(), l);
+            } else {
+                println!("             {}", l);
+            }
+        }
+    } else {
+        print!("{}", SENTRY_HINT);
+    }
 }
 
 /// Captures an std::error::Error with sentry and sends all previously captured logs.
@@ -295,25 +306,64 @@ fn text() -> std::io::Result<String> {
     Ok(out)
 }
 
+const SENTRY_HINT: &str = r"Unfortunately probe-rs encountered an unhandled problem. To help the devs, you can automatically log the error to sentry.technokrat.ch. Your data will be transmitted completely anonymous and cannot be associated with you directly. To Hide this message in the future, please set $PROBE_RS_SENTRY to 'true' or 'false'. Do you wish to transmit the data? y/N: ";
+
+/// Chunks the given string into pieces of maximum_length whilst honoring word boundaries.
+fn chunk_string(s: &str, max_width: usize) -> Vec<String> {
+    let string = s.chars().collect::<Vec<char>>();
+
+    let mut result = vec![];
+
+    let mut last_ws = 0;
+    let mut offset = 0;
+    let mut i = 0;
+    let mut t_max_width = max_width;
+    while i < string.len() {
+        let c = string[i];
+        if c.is_whitespace() {
+            last_ws = i;
+        }
+        if i > offset + t_max_width {
+            if last_ws > offset {
+                let s = string[offset..last_ws].iter().collect::<String>();
+                result.push(s);
+                t_max_width = max_width;
+            } else {
+                t_max_width += 1;
+            }
+
+            offset = last_ws + 1;
+            i = last_ws + 1;
+        } else {
+            i += 1;
+        }
+    }
+    result.push(string[offset..].iter().collect::<String>());
+    result
+}
+
 /// Displays the text to ask if the crash should be reported.
 pub fn ask_to_log_crash() -> bool {
     if let Ok(var) = std::env::var("PROBE_RS_SENTRY") {
         var == "true"
     } else {
-        println(format!(
-            "        {} {}",
-            "Hint".blue().bold(),
-            "Unfortunately probe-rs encountered an unhandled problem. To help the devs, you can automatically log the error to sentry.technokrat.ch."
-        ));
-        println(format!(
-            "             {}",
-            "Your data will be transmitted completely anonymous and cannot be associated with you directly."
-        ));
-        println(format!(
-            "             {}",
-            "To Hide this message in the future, please set $PROBE_RS_SENTRY to 'true' or 'false'."
-        ));
-        print!("             {}", "Do you wish to transmit the data? y/N: ");
+        let size = terminal_size::terminal_size();
+        if let Some((Width(w), Height(_h))) = size {
+            let lines = chunk_string(SENTRY_HINT, w as usize - 14);
+
+            for (i, l) in lines.iter().enumerate() {
+                if i == 0 {
+                    println!("        {} {}", "Hint".blue().bold(), l);
+                } else if i == lines.len() - 1 {
+                    print!("             {}", l);
+                } else {
+                    println!("             {}", l);
+                }
+            }
+        } else {
+            print!("{}", SENTRY_HINT);
+        }
+
         std::io::stdout().flush().ok();
         let result = if let Ok(s) = text() {
             let s = s.to_lowercase();
