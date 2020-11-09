@@ -151,7 +151,7 @@ dependencies = [
  "indicatif",
  "lazy_static",
  "log",
- "probe-rs 0.9.0 (git+https://github.com/probe-rs/probe-rs)",
+ "probe-rs",
  "probe-rs-cli-util",
  "structopt",
 ]
@@ -1152,7 +1152,7 @@ checksum = "ac74c624d6b2d21f425f752262f42188365d7b8ff1aff74c82e45136510a4857"
 [[package]]
 name = "probe-rs"
 version = "0.9.0"
-source = "git+https://github.com/probe-rs/probe-rs#30b01a5cd811061d92b11c54f46a68ee2d193eb7"
+source = "git+https://github.com/probe-rs/probe-rs#0f8120747bca519968ac42057b212de7f49ade09"
 dependencies = [
  "anyhow",
  "base64 0.13.0",
@@ -1170,35 +1170,7 @@ dependencies = [
  "log",
  "num-traits",
  "object",
- "probe-rs-t2rust 0.6.0 (git+https://github.com/probe-rs/probe-rs)",
- "rusb",
- "scroll",
- "serde",
- "serde_yaml",
- "svg",
- "thiserror",
-]
-
-[[package]]
-name = "probe-rs"
-version = "0.9.0"
-source = "git+https://github.com/probe-rs/probe-rs?branch=sentry#482aaaf73d0ace235918c1730aaf736bb176663e"
-dependencies = [
- "anyhow",
- "base64 0.13.0",
- "bitfield",
- "enum-primitive-derive",
- "gimli",
- "goblin",
- "hidapi",
- "ihex",
- "jaylink",
- "jep106",
- "lazy_static",
- "log",
- "num-traits",
- "object",
- "probe-rs-t2rust 0.6.0 (git+https://github.com/probe-rs/probe-rs?branch=sentry)",
+ "probe-rs-t2rust",
  "rusb",
  "scroll",
  "serde",
@@ -1210,7 +1182,7 @@ dependencies = [
 [[package]]
 name = "probe-rs-cli-util"
 version = "0.9.0"
-source = "git+https://github.com/probe-rs/probe-rs?branch=sentry#482aaaf73d0ace235918c1730aaf736bb176663e"
+source = "git+https://github.com/probe-rs/probe-rs#0f8120747bca519968ac42057b212de7f49ade09"
 dependencies = [
  "anyhow",
  "cargo_metadata",
@@ -1221,7 +1193,7 @@ dependencies = [
  "indicatif",
  "lazy_static",
  "log",
- "probe-rs 0.9.0 (git+https://github.com/probe-rs/probe-rs?branch=sentry)",
+ "probe-rs",
  "sentry",
  "serde",
  "simplelog",
@@ -1232,19 +1204,7 @@ dependencies = [
 [[package]]
 name = "probe-rs-t2rust"
 version = "0.6.0"
-source = "git+https://github.com/probe-rs/probe-rs#30b01a5cd811061d92b11c54f46a68ee2d193eb7"
-dependencies = [
- "base64 0.13.0",
- "proc-macro2",
- "quote",
- "scroll",
- "serde_yaml",
-]
-
-[[package]]
-name = "probe-rs-t2rust"
-version = "0.6.0"
-source = "git+https://github.com/probe-rs/probe-rs?branch=sentry#482aaaf73d0ace235918c1730aaf736bb176663e"
+source = "git+https://github.com/probe-rs/probe-rs#0f8120747bca519968ac42057b212de7f49ade09"
 dependencies = [
  "base64 0.13.0",
  "proc-macro2",
