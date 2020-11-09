@@ -23,23 +23,27 @@ use probe_rs::{
     flashing::{download_file_with_options, DownloadOptions, FlashProgress, Format, ProgressEvent},
     DebugProbeSelector, Probe,
 };
-use probe_rs_cli_util::{
-    argument_handling, build_artifact, logging,
-    logging::{ask_to_log_crash, capture_anyhow, capture_panic, Metadata},
-};
+use probe_rs_cli_util::logging::{ask_to_log_crash, capture_anyhow, capture_panic, Metadata};
+use probe_rs_cli_util::{argument_handling, build_artifact, logging};
 use probe_rs_rtt::{Rtt, ScanRegion};
 
 lazy_static::lazy_static! {
     static ref METADATA: Arc<Mutex<Metadata>> = Arc::new(Mutex::new(Metadata {
-        release: env!("CARGO_PKG_VERSION").to_string(),
+        release: CARGO_VERSION.to_string(),
         chip: None,
         probe: None,
-        commit: git_version::git_version!().to_string()
+        commit: GIT_VERSION.to_string()
     }));
 }
 
+const CARGO_NAME: &'static str = env!("CARGO_PKG_NAME");
+const CARGO_VERSION: &'static str = env!("CARGO_PKG_VERSION");
+const GIT_VERSION: &'static str = git_version::git_version!();
+
 #[derive(Debug, StructOpt)]
 struct Opt {
+    #[structopt(short = "V", long = "version")]
+    pub version: bool,
     #[structopt(name = "config")]
     config: Option<String>,
     #[structopt(name = "chip", long = "chip")]
@@ -140,6 +144,14 @@ fn main_try() -> Result<()> {
 
     // Get commandline options.
     let opt = Opt::from_iter(&args);
+
+    if opt.version {
+        println!(
+            "{} {}\ngit commit: {}",
+            CARGO_NAME, CARGO_VERSION, GIT_VERSION
+        );
+        return Ok(());
+    }
 
     let work_dir = std::env::current_dir()?;
 

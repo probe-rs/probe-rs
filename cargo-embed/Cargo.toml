@@ -12,12 +12,16 @@ categories = ["embedded", "hardware-support", "development-tools::debugging"]
 keywords = ["embedded"]
 license = "MIT OR Apache-2.0"
 
+[features]
+ftdi = ["probe-rs/ftdi"]
+
 [dependencies]
 probe-rs = { version = "0.9.0", git = "https://github.com/probe-rs/probe-rs" }
 gdb-server = { version = "0.9.0", git = "https://github.com/probe-rs/probe-rs"  }
 probe-rs-cli-util = { version = "0.9.0", git = "https://github.com/probe-rs/probe-rs", branch = "sentry" }
 
-structopt = "0.3.17"
+structopt = "0.3.18"
+git-version = "0.3.4"
 indicatif = "0.15.0"
 env_logger = "0.7.1"
 log = { version = "0.4.0", features = ["serde"] }
@@ -32,10 +36,9 @@ chrono = "0.4"
 crossterm = "<= 0.17.7"
 derivative = "2.1.0"
 goblin = "0.2.0"
-tui = { version = "0.10.0", default-features = false, features = ["crossterm"] }
+tui = { version = "0.12.0", default-features = false, features = ["crossterm"] }
 anyhow = "1.0.31"
 textwrap = "0.12.1"
-git-version = "0.3.4"
 
 [patch.crates-io]
 probe-rs = { version = "0.9.0", git = "https://github.com/probe-rs/probe-rs" }
