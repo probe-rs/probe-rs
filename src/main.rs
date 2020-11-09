@@ -73,6 +73,10 @@ struct Opts {
     #[structopt(long, env = "PROBE_RUN_PROBE")]
     probe: Option<String>,
 
+    /// The probe clock frequency in kHz
+    #[structopt(long)]
+    speed: Option<u32>,
+
     /// Path to an ELF firmware file.
     #[structopt(name = "ELF", parse(from_os_str), required_unless_one(&["list-chips", "list-probes"]))]
     elf: Option<PathBuf>,
@@ -286,8 +290,13 @@ fn notmain() -> Result<i32, anyhow::Error> {
     if probes.len() > 1 {
         bail!("more than one probe found; use --probe to specify which one to use");
     }
-    let probe = probes[0].open()?;
+    let mut probe = probes[0].open()?;
     log::debug!("opened probe");
+
+    if let Some(speed) = opts.speed {
+        probe.set_speed(speed)?;
+    }
+
     let mut sess = probe.attach(target)?;
     log::debug!("started session");
 
