@@ -220,7 +220,7 @@ fn sentry_config(release: String) -> sentry::ClientOptions {
             )
             .unwrap(),
         ),
-        release: Some(Cow::<'static>::Owned(release.to_string())),
+        release: Some(Cow::<'static>::Owned(release)),
         #[cfg(debug_assertions)]
         environment: Some(Cow::Borrowed("Development")),
         #[cfg(not(debug_assertions))]
@@ -241,14 +241,12 @@ pub struct Metadata {
 /// Sets the metadata concerning the current probe-rs session on the sentry scope.
 fn set_metadata(metadata: &Metadata) {
     sentry::configure_scope(|scope| {
-        metadata
-            .chip
-            .as_ref()
-            .map(|chip| scope.set_tag("chip", chip));
-        metadata
-            .probe
-            .as_ref()
-            .map(|probe| scope.set_tag("probe", probe));
+        if let Some(chip) = metadata.chip.as_ref() {
+            scope.set_tag("chip", chip);
+        }
+        if let Some(probe) = metadata.probe.as_ref() {
+            scope.set_tag("probe", probe);
+        }
         scope.set_tag("commit", &metadata.commit);
     })
 }
@@ -325,7 +323,7 @@ fn text() -> std::io::Result<String> {
     Ok(out)
 }
 
-const SENTRY_HINT: &str = r"Unfortunately probe-rs encountered an unhandled problem. To help the devs, you can automatically log the error to sentry.technokrat.ch. Your data will be transmitted completely anonymous and cannot be associated with you directly. To hide this message in the future, please set $PROBE_RS_SENTRY to 'true' or 'false'. Do you wish to transmit the data? y/N: ";
+const SENTRY_HINT: &str = r"Unfortunately probe-rs encountered an unhandled problem. To help the devs, you can automatically log the error to sentry.technokrat.ch. Your data will be transmitted completely anonymous and cannot be associated with you directly. To hide this message in the future, please set $PROBE_RS_SENTRY to 'true' or 'false'. Do you wish to transmit the data? Y/n: ";
 
 /// Chunks the given string into pieces of maximum_length whilst honoring word boundaries.
 fn chunk_string(s: &str, max_width: usize) -> Vec<String> {
@@ -386,13 +384,7 @@ pub fn ask_to_log_crash() -> bool {
         std::io::stdout().flush().ok();
         let result = if let Ok(s) = text() {
             let s = s.to_lowercase();
-            if s.is_empty() {
-                false
-            } else if "yes".starts_with(&s) {
-                true
-            } else {
-                false
-            }
+            "yes".starts_with(&s)
         } else {
             false
         };
