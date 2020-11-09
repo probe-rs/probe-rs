@@ -107,4 +107,10 @@ On macOS, [homebrew](https://brew.sh/) is the suggested method to install libftd
 > brew install libftdi
 ```
 
+# Sentry logging
 
+We use Sentry to record crash data. This helps us trace crashes better.
+No data will ever be transmitted without your consent!
+All data is transmitted completely anonymous.
+This is an OPT-IN feature. On crash, cargo-flash will ask you whether to transmit the data or not. You can also set whether to do this for all times with an environment variable to ommit the message in the future.
+If you do not wish to have sentry integrated at all, you can also build cargo-flash without sentry by using `--no-default-features`.
