@@ -2,19 +2,18 @@ use colored::*;
 use env_logger::{Builder, Logger};
 use indicatif::ProgressBar;
 use log::{Level, LevelFilter, Log, Record};
+#[cfg(feature = "sentry")]
 use sentry::{
     integrations::panic::PanicIntegration,
     internals::{Dsn, Utc, Uuid},
     Breadcrumb,
 };
 use simplelog::{CombinedLogger, SharedLogger};
+#[cfg(feature = "sentry")]
+use std::{borrow::Cow, error::Error, panic::PanicInfo, str::FromStr};
 use std::{
-    borrow::Cow,
-    error::Error,
     fmt,
     io::Write,
-    panic::PanicInfo,
-    str::FromStr,
     sync::{
         atomic::{AtomicUsize, Ordering},
         Arc, RwLock,
@@ -28,6 +27,10 @@ static MAX_WINDOW_WIDTH: AtomicUsize = AtomicUsize::new(0);
 lazy_static::lazy_static! {
     /// Stores the progress bar for the logging facility.
     static ref PROGRESS_BAR: RwLock<Option<Arc<ProgressBar>>> = RwLock::new(None);
+}
+
+#[cfg(feature = "sentry")]
+lazy_static::lazy_static! {
     static ref LOG: Arc<RwLock<Vec<Breadcrumb>>> = Arc::new(RwLock::new(vec![]));
 }
 
@@ -148,35 +151,40 @@ pub fn init(level: Option<Level>) {
     });
 
     // Sentry logging (all log levels except tracing (to not clog the server disk & internet sink)).
+    #[cfg(feature = "sentry")]
+    let mut sentry = {
+        let mut sentry = Builder::new();
 
-    let mut sentry = Builder::new();
+        // Always use the Debug log level.
+        sentry.filter_level(LevelFilter::Debug);
 
-    // Always use the Debug log level.
-    sentry.filter_level(LevelFilter::Debug);
+        // Define our custom log format.
+        sentry.format(move |_f, record| {
+            let mut log_guard = LOG.write().unwrap();
+            log_guard.push(Breadcrumb {
+                level: match record.level() {
+                    Level::Error => sentry::Level::Error,
+                    Level::Warn => sentry::Level::Warning,
+                    Level::Info => sentry::Level::Info,
+                    Level::Debug => sentry::Level::Debug,
+                    // This mapping is intended as unfortunately, Sentry does not have any trace level for events & breadcrumbs.
+                    Level::Trace => sentry::Level::Debug,
+                },
+                category: Some(record.target().to_string()),
+                message: Some(format!("{}", record.args())),
+                timestamp: Utc::now(),
+                ..Default::default()
+            });
 
-    // Define our custom log format.
-    sentry.format(move |_f, record| {
-        let mut log_guard = LOG.write().unwrap();
-        log_guard.push(Breadcrumb {
-            level: match record.level() {
-                Level::Error => sentry::Level::Error,
-                Level::Warn => sentry::Level::Warning,
-                Level::Info => sentry::Level::Info,
-                Level::Debug => sentry::Level::Debug,
-                // This mapping is intended as unfortunately, Sentry does not have any trace level for events & breadcrumbs.
-                Level::Trace => sentry::Level::Debug,
-            },
-            category: Some(record.target().to_string()),
-            message: Some(format!("{}", record.args())),
-            timestamp: Utc::now(),
-            ..Default::default()
+            Ok(())
         });
 
-        Ok(())
-    });
+        sentry
+    };
 
     CombinedLogger::init(vec![
         Box::new(ShareableLogger(log_builder.build())),
+        #[cfg(feature = "sentry")]
         Box::new(ShareableLogger(sentry.build())),
     ])
     .unwrap();
@@ -194,6 +202,7 @@ pub fn clear_progress_bar() {
     *guard = None;
 }
 
+#[cfg(feature = "sentry")]
 fn send_logs() {
     let mut log_guard = LOG.write().unwrap();
 
@@ -202,6 +211,7 @@ fn send_logs() {
     }
 }
 
+#[cfg(feature = "sentry")]
 fn sentry_config(release: String) -> sentry::ClientOptions {
     sentry::ClientOptions {
         dsn: Some(
@@ -227,6 +237,7 @@ pub struct Metadata {
     pub commit: String,
 }
 
+#[cfg(feature = "sentry")]
 /// Sets the metadata concerning the current probe-rs session on the sentry scope.
 fn set_metadata(metadata: &Metadata) {
     sentry::configure_scope(|scope| {
@@ -242,8 +253,10 @@ fn set_metadata(metadata: &Metadata) {
     })
 }
 
+#[cfg(feature = "sentry")]
 const SENTRY_SUCCESS: &str = r"Your error was reported successfully. If you don't mind, please open an issue on Github and include the UUID:";
 
+#[cfg(feature = "sentry")]
 fn print_uuid(uuid: Uuid) {
     let size = terminal_size::terminal_size();
     if let Some((Width(w), Height(_h))) = size {
@@ -261,6 +274,7 @@ fn print_uuid(uuid: Uuid) {
     }
 }
 
+#[cfg(feature = "sentry")]
 /// Captures an std::error::Error with sentry and sends all previously captured logs.
 pub fn capture_error<E>(metadata: &Metadata, error: &E)
 where
@@ -273,6 +287,7 @@ where
     print_uuid(uuid);
 }
 
+#[cfg(feature = "sentry")]
 /// Captures an anyhow error with sentry and sends all previously captured logs.
 pub fn capture_anyhow(metadata: &Metadata, error: &anyhow::Error) {
     let _guard = sentry::init(sentry_config(metadata.release.clone()));
@@ -282,6 +297,7 @@ pub fn capture_anyhow(metadata: &Metadata, error: &anyhow::Error) {
     print_uuid(uuid);
 }
 
+#[cfg(feature = "sentry")]
 /// Captures a panic with sentry and sends all previously captured logs.
 pub fn capture_panic(metadata: &Metadata, info: &PanicInfo<'_>) {
     let _guard = sentry::init(sentry_config(metadata.release.clone()));
