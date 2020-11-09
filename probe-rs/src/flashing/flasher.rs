@@ -639,7 +639,7 @@ impl<'probe> ActiveFlasher<'probe, Erase> {
             )?;
 
             if result != 0 {
-                Err(anyhow!(FlashError::RoutineCallFailed {
+                Err(anyhow!(FlashError::EraseFailed {
                     name: "erase_all",
                     errorcode: result,
                 }))
@@ -673,7 +673,7 @@ impl<'probe> ActiveFlasher<'probe, Erase> {
         );
 
         if result != 0 {
-            Err(anyhow!(FlashError::RoutineCallFailed {
+            Err(anyhow!(FlashError::EraseFailed {
                 name: "erase_sector",
                 errorcode: result,
             }))

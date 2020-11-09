@@ -6,6 +6,8 @@ use crate::error;
 /// Describes any error that happened during the or in preparation for the flashing procedure.
 #[derive(Error, Debug)]
 pub enum FlashError {
+    #[error("The execution of '{name}' failed with code {errorcode}. Perhaps your chip has write protected sectors that need to be cleared? Perhaps you need the --nmagic linker arg https://github.com/rust-embedded/cortex-m-quickstart/pull/95")]
+    EraseFailed { name: &'static str, errorcode: u32 },
     #[error("The execution of '{name}' failed with code {errorcode}")]
     RoutineCallFailed { name: &'static str, errorcode: u32 },
     #[error("The '{0}' routine is not supported with the given flash algorithm.")]
