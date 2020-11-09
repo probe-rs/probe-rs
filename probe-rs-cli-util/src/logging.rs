@@ -205,8 +205,10 @@ fn send_logs() {
 fn sentry_config(release: String) -> sentry::ClientOptions {
     sentry::ClientOptions {
         dsn: Some(
-            Dsn::from_str("https://4396a23b463a46b8b3bfa883910333fe@sentry.technokrat.ch/7")
-                .unwrap(),
+            Dsn::from_str(
+                "https://820ae3cb7b524b59af68d652aeb8ac3a@o473674.ingest.sentry.io/5508777",
+            )
+            .unwrap(),
         ),
         release: Some(Cow::<'static>::Owned(release.to_string())),
         #[cfg(debug_assertions)]
