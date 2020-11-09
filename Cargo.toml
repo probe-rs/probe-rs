@@ -7,3 +7,5 @@ members = [
     "gdb-server",
 ]
 
+[profile.release]
+debug = true
