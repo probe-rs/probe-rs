@@ -13,7 +13,9 @@ keywords = ["embedded"]
 license = "MIT OR Apache-2.0"
 
 [features]
+default = ["sentry"]
 ftdi = ["probe-rs/ftdi"]
+sentry = ["probe-rs-cli-util/sentry"]
 
 [dependencies]
 probe-rs = { version = "0.9.0", git = "https://github.com/probe-rs/probe-rs" }

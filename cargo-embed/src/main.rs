@@ -23,10 +23,12 @@ use probe_rs::{
     flashing::{download_file_with_options, DownloadOptions, FlashProgress, Format, ProgressEvent},
     DebugProbeSelector, Probe,
 };
+#[cfg(feature = "sentry")]
 use probe_rs_cli_util::logging::{ask_to_log_crash, capture_anyhow, capture_panic, Metadata};
 use probe_rs_cli_util::{argument_handling, build_artifact, logging};
 use probe_rs_rtt::{Rtt, ScanRegion};
 
+#[cfg(feature = "sentry")]
 lazy_static::lazy_static! {
     static ref METADATA: Arc<Mutex<Metadata>> = Arc::new(Mutex::new(Metadata {
         release: CARGO_VERSION.to_string(),
@@ -83,7 +85,9 @@ struct Opt {
 const ARGUMENTS_TO_REMOVE: &[&str] = &["list-chips", "disable-progressbars", "chip=", "probe="];
 
 fn main() {
+    #[cfg(feature = "sentry")]
     let _next = panic::take_hook();
+    #[cfg(feature = "sentry")]
     panic::set_hook(Box::new(move |info| {
         if ask_to_log_crash() {
             capture_panic(&METADATA.lock().unwrap(), &info)
@@ -122,6 +126,7 @@ fn main() {
 
             let _ = stderr.flush();
 
+            #[cfg(feature = "sentry")]
             if ask_to_log_crash() {
                 capture_anyhow(&METADATA.lock().unwrap(), &e)
             }
