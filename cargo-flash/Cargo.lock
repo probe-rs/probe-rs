@@ -1182,7 +1182,7 @@ dependencies = [
 [[package]]
 name = "probe-rs"
 version = "0.9.0"
-source = "git+https://github.com/probe-rs/probe-rs?branch=sentry#1bdcd56fbefbf867145b5c4ff9d6727db2b2edb7"
+source = "git+https://github.com/probe-rs/probe-rs?branch=sentry#482aaaf73d0ace235918c1730aaf736bb176663e"
 dependencies = [
  "anyhow",
  "base64 0.13.0",
@@ -1210,7 +1210,7 @@ dependencies = [
 [[package]]
 name = "probe-rs-cli-util"
 version = "0.9.0"
-source = "git+https://github.com/probe-rs/probe-rs?branch=sentry#1bdcd56fbefbf867145b5c4ff9d6727db2b2edb7"
+source = "git+https://github.com/probe-rs/probe-rs?branch=sentry#482aaaf73d0ace235918c1730aaf736bb176663e"
 dependencies = [
  "anyhow",
  "cargo_metadata",
@@ -1244,7 +1244,7 @@ dependencies = [
 [[package]]
 name = "probe-rs-t2rust"
 version = "0.6.0"
-source = "git+https://github.com/probe-rs/probe-rs?branch=sentry#1bdcd56fbefbf867145b5c4ff9d6727db2b2edb7"
+source = "git+https://github.com/probe-rs/probe-rs?branch=sentry#482aaaf73d0ace235918c1730aaf736bb176663e"
 dependencies = [
  "base64 0.13.0",
  "proc-macro2",

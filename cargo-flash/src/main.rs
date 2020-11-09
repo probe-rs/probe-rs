@@ -4,13 +4,13 @@ use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use std::{
     env,
     io::Write,
-    panic,
     path::{Path, PathBuf},
     process,
     sync::Arc,
-    sync::Mutex,
     time::Instant,
 };
+#[cfg(feature = "sentry")]
+use std::{panic, sync::Mutex};
 use structopt::StructOpt;
 
 use probe_rs::{
@@ -19,12 +19,11 @@ use probe_rs::{
     DebugProbeError, DebugProbeSelector, Probe, WireProtocol,
 };
 
-use probe_rs_cli_util::{
-    argument_handling, build_artifact,
-    logging::{self, ask_to_log_crash, capture_anyhow, capture_panic, Metadata},
-    read_metadata,
-};
+#[cfg(feature = "sentry")]
+use probe_rs_cli_util::logging::{ask_to_log_crash, capture_anyhow, capture_panic, Metadata};
+use probe_rs_cli_util::{argument_handling, build_artifact, logging, read_metadata};
 
+#[cfg(feature = "sentry")]
 lazy_static::lazy_static! {
     static ref METADATA: Arc<Mutex<Metadata>> = Arc::new(Mutex::new(Metadata {
         release: env!("CARGO_PKG_VERSION").to_string(),
@@ -149,7 +148,9 @@ const ARGUMENTS_TO_REMOVE: &[&str] = &[
 ];
 
 fn main() {
+    #[cfg(feature = "sentry")]
     let _next = panic::take_hook();
+    #[cfg(feature = "sentry")]
     panic::set_hook(Box::new(move |info| {
         if ask_to_log_crash() {
             capture_panic(&METADATA.lock().unwrap(), &info)
@@ -169,6 +170,7 @@ fn main() {
             let _ = writeln!(stderr, "       {} {:?}", "Error".red().bold(), e);
             let _ = stderr.flush();
 
+            #[cfg(feature = "sentry")]
             if ask_to_log_crash() {
                 capture_anyhow(&METADATA.lock().unwrap(), &e)
             }
@@ -221,6 +223,7 @@ fn main_try() -> Result<()> {
             _ => TargetSelector::Auto,
         }
     };
+    #[cfg(feature = "sentry")]
     {
         METADATA.lock().unwrap().chip = Some(format!("{:?}", chip));
     }
@@ -258,14 +261,21 @@ fn main_try() -> Result<()> {
                 return Err(anyhow!("More than a single probe detected. Use the --probe argument to select which probe to use."));
             }
 
-            Probe::open(
+            #[cfg(not(feature = "sentry"))]
+            let probe = Probe::open(
+                list.first()
+                    .ok_or_else(|| anyhow!("No supported probe was found"))?,
+            )?;
+            #[cfg(feature = "sentry")]
+            let probe = Probe::open(
                 list.first()
                     .map(|info| {
                         METADATA.lock().unwrap().probe = Some(format!("{:?}", info.probe_type));
                         info
                     })
                     .ok_or_else(|| anyhow!("No supported probe was found"))?,
-            )?
+            )?;
+            probe
         }
     };
 
