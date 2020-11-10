@@ -7,6 +7,74 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- [#30] added a `--no-flash` flag to run a program without re-flashing it
+[#30]: https://github.com/knurling-rs/probe-run/pull/30
+
+- [#40] added (`--help`) documentation to the many CLI flags
+[#40]: https://github.com/knurling-rs/probe-run/pull/40
+
+- [#33] added canary-based stack overflow detection
+[#33]: https://github.com/knurling-rs/probe-run/pull/33
+
+- [#38] added file location information to log messages
+[#38]: https://github.com/knurling-rs/probe-run/pull/38
+
+- [#41] the `PROBE_RUN_CHIP` env variable can be used as an alternative to the `--chip` flag
+[#41]: https://github.com/knurling-rs/probe-run/pull/41
+
+- [#49] `--list-probes` and `--probe` flags to list all probes and select a particular probe, respectively
+[#49]: https://github.com/knurling-rs/probe-run/pull/49
+
+- [#55] added more precise stack overflow detection for apps linked with `flip-link`
+[#55]: https://github.com/knurling-rs/probe-run/pull/55
+
+- [#57] added module location information to log messages
+[#57]: https://github.com/knurling-rs/probe-run/pull/57
+
+- [#63] added file location information to the stack backtrace
+[#63]: https://github.com/knurling-rs/probe-run/pull/63
+
+- [#83] added git info to the `--version` output
+[#83]: https://github.com/knurling-rs/probe-run/pull/83
+
+- [#88] added `--speed` flag to set the frequency of the probe
+[#88]: https://github.com/knurling-rs/probe-run/pull/88
+
+### Fixed
+
+- [#28] notify the user ASAP that RTT logs were not found in the image
+[#28]: https://github.com/knurling-rs/probe-run/pull/28
+
+- [#50] fixed a bug that was causing an infinite stack backtrace to be printed
+[#50]: https://github.com/knurling-rs/probe-run/pull/50
+
+- [#51] fixed the handling of Ctrl-C
+[#51]: https://github.com/knurling-rs/probe-run/pull/51
+
+- [#77] flush stdout after each write; fixes a bug where output was not printed until a newline was sent from the device using non-defmt-ed RTT
+[#77]: https://github.com/knurling-rs/probe-run/pull/77
+
+### Changed
+
+- [#25] increased RTT attach retries. Needed, in some cases, for inter-operation with `rtt-target`
+[#25]: https://github.com/knurling-rs/probe-run/pull/25
+
+- [#44] improve diagnostics when linker script is missing
+[#44]: https://github.com/knurling-rs/probe-run/pull/44
+
+- [#53], [#60] the output format of logs
+[#53]: https://github.com/knurling-rs/probe-run/pull/53
+[#60]: https://github.com/knurling-rs/probe-run/pull/60
+
+- [#55], [#64] all hard faults make `probe-run` exit with non-zero exit code regardless of whether `panic-probe` was used or not
+[#55]: https://github.com/knurling-rs/probe-run/pull/55
+[#64]: https://github.com/knurling-rs/probe-run/pull/64
+
+- [#69] `probe-run` now changes the RTT mode to blocking at runtime, right after RAM initialization
+[#69]: https://github.com/knurling-rs/probe-run/pull/69
+
 ## [v0.1.3] - 2020-08-19
 
 ### Changed
