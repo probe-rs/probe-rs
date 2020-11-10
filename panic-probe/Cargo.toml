@@ -25,3 +25,6 @@ print-rtt = ["rtt-target"]
 print-defmt = ["defmt", "defmt-error"]
 
 defmt-error = [] # internal feature, do not use
+
+[package.metadata.docs.rs]
+default-target = "thumbv7m-none-eabi"

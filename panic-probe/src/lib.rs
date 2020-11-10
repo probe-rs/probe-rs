@@ -17,6 +17,7 @@
 //! [defmt]: https://github.com/knurling-rs/defmt/
 
 #![no_std]
+#![cfg(target_os = "none")]
 
 #[cfg(not(cortex_m))]
 compile_error!("`panic-probe` only supports Cortex-M targets (thumbvN-none-eabi[hf])");
