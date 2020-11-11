@@ -37,7 +37,6 @@ jobs:
     - name: Build host tooling
       run: |
         cargo build
-        cargo build --features defmt
     - name: Build embedded tooling
       working-directory: panic-probe
       run: |
