@@ -45,11 +45,28 @@ fn main() -> Result<(), anyhow::Error> {
     notmain().map(|code| process::exit(code))
 }
 
+// the string reported by the `--version` flag
+fn version() -> &'static str {
+    // version from Cargo.toml e.g. "0.1.4"
+    let mut output = env!("CARGO_PKG_VERSION").to_string();
+
+    // "" OR git hash e.g. "34019f8" -- this is generated in build.rs
+    output.push_str(include_str!(concat!(env!("OUT_DIR"), "/git-info.txt")));
+
+    output.push_str("\nsupported defmt version: ");
+    output.push_str(defmt_decoder::DEFMT_VERSION);
+
+    // leak (!) heap memory to create a `&'static str` value. `String` won't work due to how
+    // structopt uses the clap API
+    // (this is only called once so it's not that bad)
+    Box::leak(Box::<str>::from(output))
+}
+
 /// A Cargo runner for microcontrollers.
 #[derive(StructOpt)]
 #[structopt(
     name = "probe-run",
-    version = concat!(env!("CARGO_PKG_VERSION"), include_str!(concat!(env!("OUT_DIR"), "/git-info.txt"))),
+    version = version(),
 )]
 struct Opts {
     /// List supported chips and exit.
