@@ -73,7 +73,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Changed
 
-- [#25] increased RTT attach retries. Needed, in some cases, for inter-operation with `rtt-target`
+- [#25] increased RTT attach retries, which is sometimes needed for inter-operation with `rtt-target`
 
 [#25]: https://github.com/knurling-rs/probe-run/pull/25
 
