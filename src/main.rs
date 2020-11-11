@@ -61,7 +61,6 @@ struct Opts {
     list_probes: bool,
 
     /// Enable defmt decoding.
-    #[cfg(feature = "defmt")]
     #[structopt(long, conflicts_with = "no_flash")]
     defmt: bool,
 
@@ -142,7 +141,6 @@ fn notmain() -> Result<i32, anyhow::Error> {
         )
         })?;
 
-    #[cfg(feature = "defmt")]
     let (table, locs) = {
         let table = defmt_elf2table::parse(&bytes)?;
 
@@ -378,7 +376,6 @@ fn notmain() -> Result<i32, anyhow::Error> {
     let stdout = io::stdout();
     let mut stdout = stdout.lock();
     let mut read_buf = [0; 1024];
-    #[cfg(feature = "defmt")]
     let mut frames = vec![];
     let mut was_halted = false;
     let current_dir = std::env::current_dir()?;
@@ -394,54 +391,44 @@ fn notmain() -> Result<i32, anyhow::Error> {
             };
 
             if num_bytes_read != 0 {
-                match () {
-                    #[cfg(feature = "defmt")]
-                    () => {
-                        if opts.defmt {
-                            frames.extend_from_slice(&read_buf[..num_bytes_read]);
+                if opts.defmt {
+                    frames.extend_from_slice(&read_buf[..num_bytes_read]);
 
-                            while let Ok((frame, consumed)) =
-                                defmt_decoder::decode(&frames, table.as_ref().unwrap())
-                            {
-                                // NOTE(`[]` indexing) all indices in `table` have already been
-                                // verified to exist in the `locs` map
-                                let loc = locs.as_ref().map(|locs| &locs[&frame.index()]);
+                    while let Ok((frame, consumed)) =
+                        defmt_decoder::decode(&frames, table.as_ref().unwrap())
+                    {
+                        // NOTE(`[]` indexing) all indices in `table` have already been
+                        // verified to exist in the `locs` map
+                        let loc = locs.as_ref().map(|locs| &locs[&frame.index()]);
 
-                                let (mut file, mut line, mut mod_path) = (None, None, None);
-                                if let Some(loc) = loc {
-                                    let relpath =
-                                        if let Ok(relpath) = loc.file.strip_prefix(&current_dir) {
-                                            relpath
-                                        } else {
-                                            // not relative; use full path
-                                            &loc.file
-                                        };
-                                    file = Some(relpath.display().to_string());
-                                    line = Some(loc.line as u32);
-                                    mod_path = Some(loc.module.clone());
-                                }
-
-                                // Forward the defmt frame to our logger.
-                                logger::log_defmt(
-                                    &frame,
-                                    file.as_deref(),
-                                    line,
-                                    mod_path.as_ref().map(|s| &**s),
-                                );
-
-                                let num_frames = frames.len();
-                                frames.rotate_left(consumed);
-                                frames.truncate(num_frames - consumed);
-                            }
-                        } else {
-                            stdout.write_all(&read_buf[..num_bytes_read])?;
+                        let (mut file, mut line, mut mod_path) = (None, None, None);
+                        if let Some(loc) = loc {
+                            let relpath = if let Ok(relpath) = loc.file.strip_prefix(&current_dir) {
+                                relpath
+                            } else {
+                                // not relative; use full path
+                                &loc.file
+                            };
+                            file = Some(relpath.display().to_string());
+                            line = Some(loc.line as u32);
+                            mod_path = Some(loc.module.clone());
                         }
+
+                        // Forward the defmt frame to our logger.
+                        logger::log_defmt(
+                            &frame,
+                            file.as_deref(),
+                            line,
+                            mod_path.as_ref().map(|s| &**s),
+                        );
+
+                        let num_frames = frames.len();
+                        frames.rotate_left(consumed);
+                        frames.truncate(num_frames - consumed);
                     }
-                    #[cfg(not(feature = "defmt"))]
-                    () => {
-                        stdout.write_all(&read_buf[..num_bytes_read])?;
-                        stdout.flush()?;
-                    }
+                } else {
+                    stdout.write_all(&read_buf[..num_bytes_read])?;
+                    stdout.flush()?;
                 }
             }
         }

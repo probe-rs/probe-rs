@@ -1,5 +1,4 @@
 use colored::{Color, Colorize};
-#[cfg(feature = "defmt")]
 use defmt_decoder::Frame;
 use io::Write;
 use log::{Level, Log, Metadata, Record};
@@ -21,7 +20,6 @@ pub fn init(verbose: bool) {
 }
 
 /// Logs a defmt frame using the `log` facade.
-#[cfg(feature = "defmt")]
 pub fn log_defmt(
     frame: &Frame<'_>,
     file: Option<&str>,
