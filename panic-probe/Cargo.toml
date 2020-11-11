@@ -1,9 +1,14 @@
 [package]
-name = "panic-probe"
-version = "0.1.0"
 authors = ["The Knurling Authors"]
-edition = "2018"
+categories = ["embedded", "no-std"]
 description = "Panic handler that exits `probe-run` with an error code"
+edition = "2018"
+keywords = ["knurling", "panic-impl", "defmt", "probe-run"]
+license = "MIT OR Apache-2.0"
+name = "panic-probe"
+readme = "README.md"
+repository = "https://github.com/knurling-rs/probe-run"
+version = "0.1.0"
 
 [dependencies]
 cortex-m = "0.6.3"
@@ -15,8 +20,9 @@ optional = true
 
 [dependencies.defmt]
 git = "https://github.com/knurling-rs/defmt.git"
-rev = "be7f4a7cbe"
 optional = true
+rev = "be7f4a7cbe"
+version = "0.1.0"
 
 [features]
 # Print the panic message using `rtt-target`.
