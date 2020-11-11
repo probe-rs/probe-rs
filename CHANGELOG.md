@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [v0.1.4] - 2020-11-11
+
 ### Added
 
 - [#30] added a `--no-flash` flag to run a program without re-flashing it
@@ -20,6 +22,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - [#63] added file location information to the stack backtrace
 - [#83] added git info to the `--version` output
 - [#88] added `--speed` flag to set the frequency of the probe
+- [#98] the output of `--version` now includes the supported defmt version
 
 [#30]: https://github.com/knurling-rs/probe-run/pull/30
 [#33]: https://github.com/knurling-rs/probe-run/pull/33
@@ -32,6 +35,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 [#63]: https://github.com/knurling-rs/probe-run/pull/63
 [#83]: https://github.com/knurling-rs/probe-run/pull/83
 [#88]: https://github.com/knurling-rs/probe-run/pull/88
+[#98]: https://github.com/knurling-rs/probe-run/pull/98
 
 ### Fixed
 
@@ -92,7 +96,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 Initial release
 
-[Unreleased]: https://github.com/knurling-rs/probe-run/compare/v0.1.3...main
+[Unreleased]: https://github.com/knurling-rs/probe-run/compare/v0.1.4...main
+[v0.1.4]: https://github.com/knurling-rs/probe-run/compare/v0.1.3...v0.1.4
 [v0.1.3]: https://github.com/knurling-rs/probe-run/compare/v0.1.2...v0.1.3
 [v0.1.2]: https://github.com/knurling-rs/probe-run/compare/v0.1.1...v0.1.2
 [v0.1.1]: https://github.com/knurling-rs/probe-run/compare/v0.1.0...v0.1.1

@@ -223,33 +223,29 @@ dependencies = [
 [[package]]
 name = "defmt"
 version = "0.1.0"
-source = "git+https://github.com/knurling-rs/defmt.git?rev=be7f4a7cbe#be7f4a7cbe8a61e005f55fed1a41b11f85cb8ed6"
+source = "git+https://github.com/knurling-rs/defmt.git?rev=3db6b41#3db6b41f08a5c866e6d6ed7103d01b0b0fe5a1f4"
 dependencies = [
- "defmt-common",
  "defmt-macros",
+ "semver 0.11.0",
 ]
-
-[[package]]
-name = "defmt-common"
-version = "0.1.0"
-source = "git+https://github.com/knurling-rs/defmt.git?rev=be7f4a7cbe#be7f4a7cbe8a61e005f55fed1a41b11f85cb8ed6"
 
 [[package]]
 name = "defmt-decoder"
 version = "0.1.0"
-source = "git+https://github.com/knurling-rs/defmt?rev=a6dc090#a6dc0904872cd3f4aee5125dffc17723df3c9393"
+source = "git+https://github.com/knurling-rs/defmt.git?rev=3db6b41#3db6b41f08a5c866e6d6ed7103d01b0b0fe5a1f4"
 dependencies = [
  "byteorder",
  "colored",
- "defmt-parser 0.1.0 (git+https://github.com/knurling-rs/defmt?rev=a6dc090)",
+ "defmt-parser",
  "leb128",
  "ryu",
+ "semver 0.11.0",
 ]
 
 [[package]]
 name = "defmt-elf2table"
 version = "0.1.0"
-source = "git+https://github.com/knurling-rs/defmt?rev=a6dc090#a6dc0904872cd3f4aee5125dffc17723df3c9393"
+source = "git+https://github.com/knurling-rs/defmt.git?rev=3db6b41#3db6b41f08a5c866e6d6ed7103d01b0b0fe5a1f4"
 dependencies = [
  "anyhow",
  "defmt-decoder",
@@ -262,9 +258,9 @@ dependencies = [
 [[package]]
 name = "defmt-macros"
 version = "0.1.0"
-source = "git+https://github.com/knurling-rs/defmt.git?rev=be7f4a7cbe#be7f4a7cbe8a61e005f55fed1a41b11f85cb8ed6"
+source = "git+https://github.com/knurling-rs/defmt.git?rev=3db6b41#3db6b41f08a5c866e6d6ed7103d01b0b0fe5a1f4"
 dependencies = [
- "defmt-parser 0.1.0 (git+https://github.com/knurling-rs/defmt.git?rev=be7f4a7cbe)",
+ "defmt-parser",
  "proc-macro2",
  "quote",
  "syn",
@@ -273,12 +269,7 @@ dependencies = [
 [[package]]
 name = "defmt-parser"
 version = "0.1.0"
-source = "git+https://github.com/knurling-rs/defmt?rev=a6dc090#a6dc0904872cd3f4aee5125dffc17723df3c9393"
-
-[[package]]
-name = "defmt-parser"
-version = "0.1.0"
-source = "git+https://github.com/knurling-rs/defmt.git?rev=be7f4a7cbe#be7f4a7cbe8a61e005f55fed1a41b11f85cb8ed6"
+source = "git+https://github.com/knurling-rs/defmt.git?rev=3db6b41#3db6b41f08a5c866e6d6ed7103d01b0b0fe5a1f4"
 
 [[package]]
 name = "derivative"
@@ -594,6 +585,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "pest"
+version = "2.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "10f4872ae94d7b90ae48754df22fd42ad52ce740b8f370b03da4835417403e53"
+dependencies = [
+ "ucd-trie",
+]
+
+[[package]]
 name = "pkg-config"
 version = "0.3.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -662,7 +662,7 @@ dependencies = [
 
 [[package]]
 name = "probe-run"
-version = "0.1.3"
+version = "0.1.4"
 dependencies = [
  "addr2line",
  "anyhow",
@@ -771,7 +771,7 @@ version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "138e3e0acb6c9fb258b19b67cb8abd63c00679d2851805ea151465464fe9030a"
 dependencies = [
- "semver",
+ "semver 0.9.0",
 ]
 
 [[package]]
@@ -806,7 +806,16 @@ version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1d7eb9ef2c18661902cc47e535f9bc51b78acd254da71d375c2f6720d9a40403"
 dependencies = [
- "semver-parser",
+ "semver-parser 0.7.0",
+]
+
+[[package]]
+name = "semver"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f301af10236f6df4160f7c3f04eec6dbc70ace82d23326abad5edee88801c6b6"
+dependencies = [
+ "semver-parser 0.10.1",
 ]
 
 [[package]]
@@ -814,6 +823,15 @@ name = "semver-parser"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "388a1df253eca08550bef6c72392cfe7c30914bf41df5269b68cbd6ff8f570a3"
+
+[[package]]
+name = "semver-parser"
+version = "0.10.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "42ef146c2ad5e5f4b037cd6ce2ebb775401729b19a82040c1beac9d36c7d1428"
+dependencies = [
+ "pest",
+]
 
 [[package]]
 name = "serde"
@@ -983,6 +1001,12 @@ name = "typenum"
 version = "1.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "373c8a200f9e67a0c95e62a4f52fbf80c23b4381c05a17845531982fa99e6b33"
+
+[[package]]
+name = "ucd-trie"
+version = "0.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "56dee185309b50d1f11bfedef0fe6d036842e3fb77413abef29f8f8d1c5d4c1c"
 
 [[package]]
 name = "ufmt-write"
