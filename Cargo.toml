@@ -31,6 +31,3 @@ structopt = "0.3.15"
 [features]
 # this feature does nothing and it's kept for backwards compatibility; it will be removed in the next semver bump
 defmt = []
-
-[workspace]
-members = ["panic-probe"]

@@ -1,36 +1,17 @@
 [package]
 authors = ["The Knurling Authors"]
-categories = ["embedded", "no-std"]
-description = "Panic handler that exits `probe-run` with an error code"
 edition = "2018"
-keywords = ["knurling", "panic-impl", "defmt", "probe-run"]
 license = "MIT OR Apache-2.0"
 name = "panic-probe"
-readme = "README.md"
-repository = "https://github.com/knurling-rs/probe-run"
+# dummy crate to guide people towards the new repo location of the panic-probe crate
+publish = false
 version = "0.1.0"
 
-[dependencies]
-cortex-m = "0.6.3"
-cortex-m-rt = "0.6.12"
-
-[dependencies.rtt-target]
-version = "0.2.2"
-optional = true
-
-[dependencies.defmt]
-git = "https://github.com/knurling-rs/defmt.git"
-optional = true
-rev = "3db6b41"
-version = "0.1.0"
-
+# need to keep the features to prevent Cargo errors at dependency-resolution time
 [features]
 # Print the panic message using `rtt-target`.
-print-rtt = ["rtt-target"]
+print-rtt = []
 # Print the panic message using `defmt`.
-print-defmt = ["defmt", "defmt-error"]
+print-defmt = ["defmt-error"]
 
 defmt-error = [] # internal feature, do not use
-
-[package.metadata.docs.rs]
-default-target = "thumbv7m-none-eabi"

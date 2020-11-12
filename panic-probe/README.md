@@ -4,8 +4,7 @@
 
 [`probe-run`]: https://github.com/knurling-rs/probe-run
 
-`panic-probe` can optionally log the panic message using the [`defmt`] logging framework.
-This functionality can be enabled through the `print-defmt` Cargo feature.
+This crate has been moved to the [`defmt`] repository
 
 [`defmt`]: https://github.com/knurling-rs/defmt
 

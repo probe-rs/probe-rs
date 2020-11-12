@@ -37,9 +37,3 @@ jobs:
     - name: Build host tooling
       run: |
         cargo build
-    - name: Build embedded tooling
-      working-directory: panic-probe
-      run: |
-        cargo build --target thumbv6m-none-eabi
-        cargo build --target thumbv6m-none-eabi --features print-rtt
-        cargo build --target thumbv6m-none-eabi --features print-defmt
