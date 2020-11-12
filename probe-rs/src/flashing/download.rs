@@ -181,7 +181,16 @@ fn download_elf<'buffer, T: Read + Seek>(
     let binary = goblin::elf::Elf::parse(&buffer.as_slice())?;
     let mut added_sections = vec![];
     for ph in &binary.program_headers {
-        if ph.p_type == PT_LOAD && ph.p_filesz > 0 {
+        if ph.p_type == PT_LOAD && ph.p_filesz > 0
+        // In rustc 1.47 and above the ELF header itself is part of a ProgramHeader too at address 0.
+        // It is not clear yet how exactly this works.
+        // It says the LOADABLE symbol is present at address 0, even tho there is other symbols like the vector table.
+        // So which of both symbols should actually be loaded? As they seem, to be contained in the same program header they seem to share the same memory?
+        // If anyone reading this source knows, please let us know!
+        // We filter this unwanted symbol if it's the only one in a program header by checking the offset of the program header inside the ELF file
+        // against the ELF header bytesize, to ensure that the symbol we load is not part of the ELF header.
+        && ph.p_offset >= binary.header.e_ehsize as u64
+        {
             log::debug!("Found loadable segment.");
 
             let sector: core::ops::Range<u32> =
