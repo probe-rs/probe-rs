@@ -34,6 +34,6 @@ Unless you explicitly state otherwise, any contribution intentionally submitted
 for inclusion in the work by you, as defined in the Apache-2.0 license, shall be
 licensed as above, without any additional terms or conditions.
 
-[Knurling]: https://github.com/knurling-rs/meta
+[Knurling]: https://knurling.ferrous-systems.com
 [Ferrous Systems]: https://ferrous-systems.com/
 [GitHub Sponsors]: https://github.com/sponsors/knurling-rs
