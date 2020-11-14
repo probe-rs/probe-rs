@@ -789,6 +789,12 @@ impl DAPAccess for JLink {
                 // To get a clue about the actual fault we read the ctrl register,
                 // which will have the fault status flags set.
 
+                // Reading ctrl directly fails with nack on jlink. A dummy read
+                // of id first seems to clear it up.
+                let dp =
+                    DAPAccess::read_register(self, PortType::DebugPort, DPIDR::ADDRESS as u16)?;
+                log::trace!("Dummy read of DebugPort ID:  {:#x?}", dp);
+
                 let response =
                     DAPAccess::read_register(self, PortType::DebugPort, Ctrl::ADDRESS as u16)?;
                 let ctrl = Ctrl::from(response);
@@ -941,6 +947,12 @@ impl DAPAccess for JLink {
 
                 // To get a clue about the actual fault we read the ctrl register,
                 // which will have the fault status flags set.
+
+                // Reading ctrl directly fails with nack on jlink. A dummy read
+                // of id first seems to clear it up.
+                let dp =
+                    DAPAccess::read_register(self, PortType::DebugPort, DPIDR::ADDRESS as u16)?;
+                log::trace!("Dummy read of DebugPort ID:  {:#x?}", dp);
 
                 let response =
                     DAPAccess::read_register(self, PortType::DebugPort, Ctrl::ADDRESS as u16)?;
