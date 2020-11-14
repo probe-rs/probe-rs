@@ -47,11 +47,11 @@ bitfield! {
     #[derive(Clone)]
     pub struct Abort(u32);
     impl Debug;
-    pub _, set_orunerrclr: 5;
-    pub _, set_wderrclr: 4;
-    pub _, set_stkerrclr: 3;
-    pub _, set_stkcmpclr: 2;
-    pub _, set_dapabort: 1;
+    pub _, set_orunerrclr: 4;
+    pub _, set_wderrclr: 3;
+    pub _, set_stkerrclr: 2;
+    pub _, set_stkcmpclr: 1;
+    pub _, set_dapabort: 0;
 }
 
 impl Default for Abort {
