@@ -138,6 +138,7 @@ where
 }
 
 /// Determine if an AP exists with the given AP number.
+/// Can fail silently under the hood testing an ap that doesnt exist and would require cleanup.
 pub fn access_port_is_valid<AP>(debug_port: &mut AP, access_port: GenericAP) -> bool
 where
     AP: APAccess<GenericAP, IDR>,
@@ -149,7 +150,8 @@ where
     }
 }
 
-/// Return a Vec of all valid access ports found that the target connected to the debug_probe
+/// Return a Vec of all valid access ports found that the target connected to the debug_probe.
+/// Can fail silently under the hood testing an ap that doesnt exist and would require cleanup.
 pub(crate) fn valid_access_ports<AP>(debug_port: &mut AP) -> Vec<GenericAP>
 where
     AP: APAccess<GenericAP, IDR>,

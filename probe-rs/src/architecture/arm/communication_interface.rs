@@ -243,8 +243,21 @@ impl<'interface> ArmCommunicationInterface {
         interface.enter_debug_mode()?;
 
         /* determine the number and type of available APs */
+        log::trace!("Searching valid APs");
 
-        for ap in valid_access_ports(&mut interface) {
+        // faults on some chips need to be cleaned up.
+        let aps = valid_access_ports(&mut interface);
+
+        // Check sticky error and cleanup if necessary
+        let ctrl_reg: crate::architecture::arm::dp::Ctrl = interface.read_dp_register()?;
+        if ctrl_reg.sticky_err() {
+            log::trace!("AP Search faulted. Cleaning up");
+            let mut abort = Abort::default();
+            abort.set_stkerrclr(true);
+            interface.write_dp_register(abort)?;
+        }
+
+        for ap in aps {
             let ap_state = interface.read_ap_information(ap)?;
 
             log::debug!("AP {}: {:?}", ap.port_number(), ap_state);
@@ -727,7 +740,22 @@ pub struct ArmChipInfo {
 
 impl ArmCommunicationInterface {
     pub fn read_from_rom_table(&mut self) -> Result<Option<ArmChipInfo>, ProbeRsError> {
-        for access_port in valid_access_ports(self) {
+        // faults on some chips need to be cleaned up.
+        let aps = valid_access_ports(self);
+
+        // Check sticky error and cleanup if necessary
+        let ctrl_reg: crate::architecture::arm::dp::Ctrl = self
+            .read_dp_register()
+            .map_err(ProbeRsError::architecture_specific)?;
+
+        if ctrl_reg.sticky_err() {
+            log::trace!("AP Search faulted. Cleaning up");
+            let mut abort = Abort::default();
+            abort.set_stkerrclr(true);
+            self.write_dp_register(abort)
+                .map_err(ProbeRsError::architecture_specific)?;
+        }
+        for access_port in aps {
             let idr = self
                 .read_ap_register(access_port, IDR::default())
                 .map_err(ProbeRsError::Probe)?;
