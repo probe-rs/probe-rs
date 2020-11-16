@@ -424,8 +424,11 @@ impl<'probe> RiscvCommunicationInterface {
             self.write_progbuf(index, *word)?;
         }
 
-        // Add manual ebreak if necessary
-        if !self.state.implicit_ebreak {
+        // Add manual ebreak if necessary.
+        //
+        // This is necessary when we either don't need the full program buffer,
+        // or if there is no implict ebreak after the last program buffer word.
+        if !self.state.implicit_ebreak || data.len() < self.state.progbuf_size as usize {
             self.write_progbuf(data.len(), assembly::EBREAK)?;
         }
 
