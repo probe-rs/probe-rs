@@ -4,9 +4,10 @@ pub mod tools;
 use crate::{
     architecture::arm::{
         communication_interface::ArmProbeInterface,
-        dp::{DPAccess, DPRegister, DebugPortError},
+        dp::{Ctrl, DPAccess, DPRegister, DebugPortError, DPIDR},
         swo::poll_interval_from_buf_size,
-        ArmCommunicationInterface, DAPAccess, DapError, PortType, SwoAccess, SwoConfig, SwoMode,
+        ArmCommunicationInterface, DAPAccess, DapError, PortType, Register, SwoAccess, SwoConfig,
+        SwoMode,
     },
     probe::{daplink::commands::CmsisDapError, BatchCommand},
     DebugProbe, DebugProbeError, DebugProbeSelector, Error as ProbeRsError, WireProtocol,
@@ -196,10 +197,35 @@ impl DAPLink {
                     Err(DapError::SwdProtocol.into())
                 } else {
                     match response.transfer_response.ack {
-                        Ack::Ok => Ok(response.transfer_data),
-                        Ack::NoAck => Err(DapError::NoAcknowledge.into()),
-                        Ack::Fault => Err(DapError::FaultResponse.into()),
-                        Ack::Wait => Err(DapError::WaitResponse.into()),
+                        Ack::Ok => {
+                            log::trace!("ack",);
+                            Ok(response.transfer_data)
+                        }
+                        Ack::NoAck => {
+                            log::trace!("nack",);
+                            Err(DapError::NoAcknowledge.into())
+                        }
+                        Ack::Fault => {
+                            log::trace!("fault",);
+
+                            let response = DAPAccess::read_register(
+                                self,
+                                PortType::DebugPort,
+                                Ctrl::ADDRESS as u16,
+                            )?;
+                            let ctrl = Ctrl::from(response);
+                            log::trace!(
+                                "Writing DAP register failed. Ctrl/Stat register value is: {:?}",
+                                ctrl
+                            );
+
+                            Err(DapError::FaultResponse.into())
+                        }
+                        Ack::Wait => {
+                            log::trace!("wait",);
+
+                            Err(DapError::WaitResponse.into())
+                        }
                     }
                 }
             }
