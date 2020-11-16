@@ -36,7 +36,7 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
 
       - name: Install libftdi (windows)
-        uses: lukka/run-vcpkg@v3
+        uses: lukka/run-vcpkg@v5
         with:
           vcpkgArguments: "libftdi1:x64-windows"
           # Version including bugfix for libusb (see https://github.com/microsoft/vcpkg/issues/12642)
@@ -88,7 +88,7 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
 
       - name: Install libftdi (windows)
-        uses: lukka/run-vcpkg@v3
+        uses: lukka/run-vcpkg@v5
         with:
           vcpkgArguments: "libftdi1:x64-windows"
           # Version including bugfix for libusb (see https://github.com/microsoft/vcpkg/issues/12642)
@@ -108,7 +108,7 @@ jobs:
         with:
           command: test
           args: --all-features
-      
+
       - name: Build with default features
         uses: actions-rs/cargo@v1
         with:
