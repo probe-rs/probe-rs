@@ -159,8 +159,8 @@ dependencies = [
 
 [[package]]
 name = "defmt-decoder"
-version = "0.1.0"
-source = "git+https://github.com/knurling-rs/defmt.git?rev=3db6b41#3db6b41f08a5c866e6d6ed7103d01b0b0fe5a1f4"
+version = "0.1.1"
+source = "git+https://github.com/knurling-rs/defmt?rev=a158192#a15819212e07bfedfde08ae6e7d1eb2965b55e6d"
 dependencies = [
  "byteorder",
  "colored",
@@ -173,7 +173,7 @@ dependencies = [
 [[package]]
 name = "defmt-elf2table"
 version = "0.1.0"
-source = "git+https://github.com/knurling-rs/defmt.git?rev=3db6b41#3db6b41f08a5c866e6d6ed7103d01b0b0fe5a1f4"
+source = "git+https://github.com/knurling-rs/defmt?rev=a158192#a15819212e07bfedfde08ae6e7d1eb2965b55e6d"
 dependencies = [
  "anyhow",
  "defmt-decoder",
@@ -186,7 +186,7 @@ dependencies = [
 [[package]]
 name = "defmt-parser"
 version = "0.1.0"
-source = "git+https://github.com/knurling-rs/defmt.git?rev=3db6b41#3db6b41f08a5c866e6d6ed7103d01b0b0fe5a1f4"
+source = "git+https://github.com/knurling-rs/defmt?rev=a158192#a15819212e07bfedfde08ae6e7d1eb2965b55e6d"
 
 [[package]]
 name = "derivative"

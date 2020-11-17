@@ -77,8 +77,9 @@ struct Opts {
     #[structopt(long)]
     list_probes: bool,
 
-    /// Enable defmt decoding.
-    #[structopt(long, conflicts_with = "no_flash")]
+    /// [DEPRECATED] This flag does nothing.
+    #[structopt(long, hidden(true), conflicts_with = "no_flash")]
+    #[allow(dead_code)]
     defmt: bool,
 
     /// The chip to program.
@@ -153,22 +154,15 @@ fn notmain() -> Result<i32, anyhow::Error> {
         .map(|section| section.index())
         .ok_or_else(|| {
             anyhow!(
-            "`.text` section is missing, please make sure that the linker script was passed to the \
-            linker (check `.cargo/config.toml` and the `RUSTFLAGS` variable)"
-        )
+                "`.text` section is missing, please make sure that the linker script was passed \
+                to the linker (check `.cargo/config.toml` and the `RUSTFLAGS` variable)"
+            )
         })?;
 
-    let (table, locs) = {
+    let (mut table, locs) = {
         let table = defmt_elf2table::parse(&bytes)?;
 
-        if table.is_none() && opts.defmt {
-            bail!("`.defmt` section not found")
-        } else if table.is_some() && !opts.defmt {
-            log::warn!("application may be using `defmt` but `--defmt` flag was not used");
-        }
-
-        let locs = if opts.defmt {
-            let table = table.as_ref().unwrap();
+        let locs = if let Some(table) = table.as_ref() {
             let locs = defmt_elf2table::get_locations(&bytes, table)?;
 
             if !table.is_empty() && locs.is_empty() {
@@ -389,6 +383,19 @@ fn notmain() -> Result<i32, anyhow::Error> {
     let sess = Arc::new(Mutex::new(sess));
     let mut logging_channel = setup_logging_channel(rtt_addr, sess.clone())?;
 
+    // `defmt-rtt` names the channel "defmt", so enable defmt decoding in that case.
+    let use_defmt = logging_channel
+        .as_ref()
+        .map_or(false, |ch| ch.name() == Some("defmt"));
+
+    if use_defmt && table.is_none() {
+        bail!("\"defmt\" RTT channel is in use, but the firmware binary contains no defmt data");
+    }
+
+    if !use_defmt {
+        table = None;
+    }
+
     // wait for breakpoint
     let stdout = io::stdout();
     let mut stdout = stdout.lock();
@@ -408,12 +415,10 @@ fn notmain() -> Result<i32, anyhow::Error> {
             };
 
             if num_bytes_read != 0 {
-                if opts.defmt {
+                if let Some(table) = table.as_ref() {
                     frames.extend_from_slice(&read_buf[..num_bytes_read]);
 
-                    while let Ok((frame, consumed)) =
-                        defmt_decoder::decode(&frames, table.as_ref().unwrap())
-                    {
+                    while let Ok((frame, consumed)) = defmt_decoder::decode(&frames, table) {
                         // NOTE(`[]` indexing) all indices in `table` have already been
                         // verified to exist in the `locs` map
                         let loc = locs.as_ref().map(|locs| &locs[&frame.index()]);
