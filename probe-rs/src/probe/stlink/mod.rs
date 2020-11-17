@@ -1515,10 +1515,15 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
         self.probe.select_ap(ap)?;
 
         // Read needs to be chunked into chunks of appropriate max length of the probe
-        // Currently fixed to ST-Link v2 max length of 64. However, ST-Link v3 supports 512.
-        for (index, chunk) in data.chunks_mut(64).enumerate() {
+        let chunk_size = if self.probe.probe.hw_version < 3 {
+            64
+        } else {
+            512
+        };
+
+        for (index, chunk) in data.chunks_mut(chunk_size).enumerate() {
             chunk.copy_from_slice(&self.probe.probe.read_mem_8bit(
-                address + (index * 64) as u32,
+                address + (index * chunk_size) as u32,
                 chunk.len() as u16,
                 ap.port_number(),
             )?);
