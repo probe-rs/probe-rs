@@ -442,7 +442,7 @@ impl<'probe> CoreInterface for M0<'probe> {
             // match higher halfword
             value.set_bp_match(0b10);
         }
-        value.set_comp((addr >> 2) & 0x00FF_FFFF);
+        value.set_comp((addr >> 2) & 0x07FF_FFFF);
         value.set_enable(true);
 
         let register_addr = BpCompx::ADDRESS + (bp_register_index * size_of::<u32>()) as u32;
