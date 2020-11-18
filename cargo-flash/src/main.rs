@@ -176,6 +176,8 @@ fn main() {
             if ask_to_log_crash() {
                 capture_anyhow(&METADATA.lock().unwrap(), &e)
             }
+            #[cfg(not(feature = "sentry"))]
+            log::info!("{}", &METADATA.lock().unwrap());
 
             process::exit(1);
         }
