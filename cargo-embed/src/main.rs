@@ -24,16 +24,16 @@ use probe_rs::{
     DebugProbeSelector, Probe,
 };
 #[cfg(feature = "sentry")]
-use probe_rs_cli_util::logging::{ask_to_log_crash, capture_anyhow, capture_panic, Metadata};
-use probe_rs_cli_util::{argument_handling, build_artifact, logging};
+use probe_rs_cli_util::logging::{ask_to_log_crash, capture_anyhow, capture_panic};
+use probe_rs_cli_util::{argument_handling, build_artifact, logging, logging::Metadata};
 use probe_rs_rtt::{Rtt, ScanRegion};
 
-#[cfg(feature = "sentry")]
 lazy_static::lazy_static! {
     static ref METADATA: Arc<Mutex<Metadata>> = Arc::new(Mutex::new(Metadata {
         release: CARGO_VERSION.to_string(),
         chip: None,
         probe: None,
+        speed: None,
         commit: GIT_VERSION.to_string()
     }));
 }
@@ -85,13 +85,15 @@ struct Opt {
 const ARGUMENTS_TO_REMOVE: &[&str] = &["list-chips", "disable-progressbars", "chip=", "probe="];
 
 fn main() {
-    #[cfg(feature = "sentry")]
-    let _next = panic::take_hook();
-    #[cfg(feature = "sentry")]
+    let next = panic::take_hook();
     panic::set_hook(Box::new(move |info| {
+        #[cfg(feature = "sentry")]
         if ask_to_log_crash() {
             capture_panic(&METADATA.lock().unwrap(), &info)
         }
+        #[cfg(not(feature = "sentry"))]
+        log::info!("{:#?}", &METADATA.lock().unwrap());
+        next(info);
     }));
 
     match main_try() {
@@ -130,6 +132,8 @@ fn main() {
             if ask_to_log_crash() {
                 capture_anyhow(&METADATA.lock().unwrap(), &e)
             }
+            #[cfg(not(feature = "sentry"))]
+            log::info!("{:#?}", &METADATA.lock().unwrap());
 
             process::exit(1);
         }
@@ -182,6 +186,8 @@ fn main_try() -> Result<()> {
             .map(|chip| chip.into())
             .unwrap_or(TargetSelector::Auto)
     };
+
+    METADATA.lock().unwrap().chip = Some(format!("{:?}", chip));
 
     // Remove executable name from the arguments list.
     args.remove(0);
@@ -249,6 +255,10 @@ fn main_try() -> Result<()> {
                 }
                 Probe::open(
                     list.first()
+                        .map(|info| {
+                            METADATA.lock().unwrap().probe = Some(format!("{:?}", info.probe_type));
+                            info
+                        })
                         .ok_or_else(|| anyhow!("No supported probe was found"))?,
                 )?
             }
@@ -274,6 +284,8 @@ fn main_try() -> Result<()> {
     } else {
         probe.speed_khz()
     };
+
+    METADATA.lock().unwrap().speed = Some(format!("{:?}", protocol_speed));
 
     log::info!("Protocol speed {} kHz", protocol_speed);
 
