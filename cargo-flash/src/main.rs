@@ -155,7 +155,7 @@ fn main() {
             capture_panic(&METADATA.lock().unwrap(), &info)
         }
         #[cfg(not(feature = "sentry"))]
-        log::info!("{}", &METADATA.lock().unwrap());
+        log::info!("{:#?}", &METADATA.lock().unwrap());
         next(info);
     }));
 
@@ -177,7 +177,7 @@ fn main() {
                 capture_anyhow(&METADATA.lock().unwrap(), &e)
             }
             #[cfg(not(feature = "sentry"))]
-            log::info!("{}", &METADATA.lock().unwrap());
+            log::info!("{:#?}", &METADATA.lock().unwrap());
 
             process::exit(1);
         }
