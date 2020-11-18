@@ -288,6 +288,8 @@ fn main_try() -> Result<()> {
             );
         }
 
+        METADATA.lock().unwrap().speed = Some(format!("{:?}", speed));
+
         actual_speed
     } else {
         probe.speed_khz()
