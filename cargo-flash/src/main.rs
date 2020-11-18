@@ -262,15 +262,14 @@ fn main_try() -> Result<()> {
                 return Err(anyhow!("More than a single probe detected. Use the --probe argument to select which probe to use."));
             }
 
-            let probe = Probe::open(
+            Probe::open(
                 list.first()
                     .map(|info| {
                         METADATA.lock().unwrap().probe = Some(format!("{:?}", info.probe_type));
                         info
                     })
                     .ok_or_else(|| anyhow!("No supported probe was found"))?,
-            )?;
-            probe
+            )?
         }
     };
 
