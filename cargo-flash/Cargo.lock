@@ -144,7 +144,6 @@ name = "cargo-flash"
 version = "0.9.0"
 dependencies = [
  "anyhow",
- "backtrace",
  "colored",
  "env_logger",
  "git-version",
