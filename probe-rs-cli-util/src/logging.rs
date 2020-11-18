@@ -230,6 +230,7 @@ fn sentry_config(release: String) -> sentry::ClientOptions {
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct Metadata {
     pub chip: Option<String>,
     pub probe: Option<String>,
