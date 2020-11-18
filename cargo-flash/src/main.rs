@@ -29,6 +29,7 @@ lazy_static::lazy_static! {
         release: env!("CARGO_PKG_VERSION").to_string(),
         chip: None,
         probe: None,
+        speed: None,
         commit: git_version::git_version!().to_string(),
     }));
 }
@@ -288,12 +289,12 @@ fn main_try() -> Result<()> {
             );
         }
 
-        METADATA.lock().unwrap().speed = Some(format!("{:?}", speed));
-
         actual_speed
     } else {
         probe.speed_khz()
     };
+
+    METADATA.lock().unwrap().speed = Some(format!("{:?}", protocol_speed));
 
     log::info!("Protocol speed {} kHz", protocol_speed);
 
