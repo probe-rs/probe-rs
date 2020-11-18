@@ -36,6 +36,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ansi_term"
+version = "0.12.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d52a9bb7ec0cf484c551830a7ce27bd20d67eac647e1befb56b0be4ee39a55d2"
+dependencies = [
+ "winapi",
+]
+
+[[package]]
 name = "anyhow"
 version = "1.0.33"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -118,7 +127,7 @@ version = "2.33.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "37e58ac78573c40708d45522f0d80fa2f01cc4f9b4e2bf749807255454312002"
 dependencies = [
- "ansi_term",
+ "ansi_term 0.11.0",
  "atty",
  "bitflags",
  "strsim",
@@ -187,6 +196,12 @@ dependencies = [
 name = "defmt-parser"
 version = "0.1.0"
 source = "git+https://github.com/knurling-rs/defmt?rev=1bb6478#1bb6478544a7188b2e7f3ac21939f58f50d56b9f"
+
+[[package]]
+name = "difference"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "524cbf6897b527295dff137cec09ecf3a05f4fddffd7dfcd1585403449e74198"
 
 [[package]]
 name = "dtoa"
@@ -542,11 +557,13 @@ name = "probe-run"
 version = "0.1.6"
 dependencies = [
  "addr2line",
+ "ansi_term 0.12.1",
  "anyhow",
  "arrayref",
  "colored",
  "defmt-decoder",
  "defmt-elf2table",
+ "difference",
  "gimli 0.22.0",
  "log",
  "object 0.20.0",
