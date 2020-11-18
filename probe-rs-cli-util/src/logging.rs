@@ -234,6 +234,7 @@ fn sentry_config(release: String) -> sentry::ClientOptions {
 pub struct Metadata {
     pub chip: Option<String>,
     pub probe: Option<String>,
+    pub speed: Option<String>,
     pub release: String,
     pub commit: String,
 }
@@ -247,6 +248,9 @@ fn set_metadata(metadata: &Metadata) {
         }
         if let Some(probe) = metadata.probe.as_ref() {
             scope.set_tag("probe", probe);
+        }
+        if let Some(speed) = metadata.speed.as_ref() {
+            scope.set_tag("speed", speed);
         }
         scope.set_tag("commit", &metadata.commit);
     })
