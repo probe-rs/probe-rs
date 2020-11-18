@@ -4,7 +4,7 @@ pub mod tools;
 use crate::{
     architecture::arm::{
         communication_interface::ArmProbeInterface,
-        dp::{Ctrl, DPAccess, DPRegister, DebugPortError, DPIDR},
+        dp::{Ctrl, DPAccess, DPRegister, DebugPortError},
         swo::poll_interval_from_buf_size,
         ArmCommunicationInterface, DAPAccess, DapError, PortType, Register, SwoAccess, SwoConfig,
         SwoMode,
