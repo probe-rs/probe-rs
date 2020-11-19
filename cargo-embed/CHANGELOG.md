@@ -11,6 +11,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+## [0.10.0]
+
+### Added
+
+- Updated to probe-rs 0.10.0. Please consult its own changelog for new features and fixes.
+- Added logging to sentry.io. This is 100% OPT-IN! You will be asked only if an unhandled error or panic occurs, and only if you give consent, data is transmitted. If you do not trust us either way, you can disable the `sentry` feature when you install the crate. The completely anonymous data can be investigated on sentry.io by anyone who likes to see it. Unfortunately sentry.io does not feature public orgs yet, so please reach out to @Yatekii to be added.
+Sentry helps us track down tricky issues that only occur in very specific cases. It is very much appreciated if you log upcoming errors this way (#125)!
+- Added printing of the git hash cargo-embed was compiled with and the current package version (#116).
+
+### Changed
+
+- FTDI support is now optional. To enable FTDI support, please use the `ftdi` feature (#131).
+
 ## [0.9.1]
 
 ### Added
@@ -133,10 +146,11 @@ An example is this config:
 ## [0.6.0]
 - Initial release
 
-[Unreleased]: https://github.com/probe-rs/probe-rs/compare/v0.9.1...master
-[0.9.1]: https://github.com/probe-rs/probe-rs/releases/tag/v0.9.1..v0.9.0
-[0.9.0]: https://github.com/probe-rs/probe-rs/releases/tag/v0.9.0..v0.8.0
-[0.8.0]: https://github.com/probe-rs/probe-rs/releases/tag/v0.8.0..v0.7.0
-[0.7.0]: https://github.com/probe-rs/probe-rs/releases/tag/v0.7.0..v0.6.1
-[0.6.1]: https://github.com/probe-rs/probe-rs/releases/tag/v0.6.1..v0.6.0
-[0.6.0]: https://github.com/probe-rs/probe-rs/releases/tag/v0.6.0
+[Unreleased]: https://github.com/probe-rs/cargo-embed/compare/v0.10.0..master
+[0.10.0]: https://github.com/probe-rs/cargo-embed/releases/tag/v0.9.0..v0.10.0
+[0.9.1]: https://github.com/probe-rs/cargo-embed/releases/tag/v0.9.0..v0.9.1
+[0.9.0]: https://github.com/probe-rs/cargo-embed/releases/tag/v0.8.0..v0.9.0
+[0.8.0]: https://github.com/probe-rs/cargo-embed/releases/tag/v0.7.0..v0.8.0
+[0.7.0]: https://github.com/probe-rs/cargo-embed/releases/tag/v0.6.1..v0.7.0
+[0.6.1]: https://github.com/probe-rs/cargo-embed/releases/tag/v0.6.0..v0.6.1
+[0.6.0]: https://github.com/probe-rs/cargo-embed/releases/tag/v0.6.0
