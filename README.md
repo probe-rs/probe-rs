@@ -3,7 +3,7 @@
 a modern, embedded debugging toolkit,
 written in Rust
 
-[![crates.io](https://meritbadge.herokuapp.com/probe-rs)](https://crates.io/crates/probe-rs) [![documentation](https://docs.rs/probe-rs/badge.svg)](https://docs.rs/probe-rs) [![Actions Status](https://github.com/probe-rs/probe-rs/workflows/CI/badge.svg)](https://github.com/probe-rs/probe-rs/actions) [![chat](https://img.shields.io/badge/chat-probe--rs%3Amatrix.org-brightgreen)](https://matrix.to/#/#probe-rs:matrix.org)
+[![crates.io](https://meritbadge.herokuapp.com/probe-rs)](https://crates.io/crates/probe-rs) [![documentation](https://docs.rs/probe-rs/badge.svg)](https://docs.rs/probe-rs) [![Actions Status](https://github.com/probe-rs/probe-rs/workflows/CI/badge.svg)](https://github.com/probe-rs/probe-rs/actions) [![chat](https://img.shields.io/badge/chat-probe--rs%3Amatrix.org-brightgreen)](https://matrix.to/#/#probe-rs:matrix.org) 
 
 The goal of this library is to provide a toolset to interact with a variety of embedded MCUs and debug probes.
 
@@ -18,7 +18,7 @@ which then enables other software to use its debug functionality.
 
 ## Functionality
 
-As of version 0.6.0 this library can
+As of version 0.10.0 this library can
 
 - connect to a DAPLink, STLink or JLink
 - talk to ARM and Risc-V cores via SWD or JTAG
@@ -29,14 +29,17 @@ As of version 0.6.0 this library can
 
 To see what new functionality was added have a look at the [CHANGELOG](CHANGELOG.md)
 
+## Support
+
+If you think probe-rs makes your embedded journey more enjoyable or even earns you money, please consider supporting the project on [Github Sponsors](https://github.com/sponsors/probe-rs/) for better support and more features.
+
 ## Downloading a file
 
 The `cargo-flash` utility can be used as a cargo subcommand to download a compiled Rust program onto a target device. It can also be used to download arbitrary ELF files that might come out of a C/C++ compiler. Have a look at [cargo-flash](https://github.com/probe-rs/cargo-flash) for more information.
 
-## GDB
+## Better debugging with probe-rs
 
-We provide a GDB stub so you can use all your usual tools.
-You can find it [here](https://github.com/probe-rs/probe-rs/tree/master/gdb-server) and you can also use it from within `cargo-flash` with the `--gdb` flag.
+If you are looking for a more extended debugging experience, please head over to [cargo-embed](https://github.com/probe-rs/cargo-embed) which provides support for GDB, RTT, and config files.
 
 ## VSCode
 
