@@ -9,6 +9,7 @@ use std::{
     sync::Arc,
     time::Instant,
 };
+use std::{panic, sync::Mutex};
 use structopt::StructOpt;
 
 use probe_rs::{
@@ -17,7 +18,21 @@ use probe_rs::{
     DebugProbeError, DebugProbeSelector, Probe, WireProtocol,
 };
 
-use probe_rs_cli_util::{argument_handling, build_artifact, logging, read_metadata};
+#[cfg(feature = "sentry")]
+use probe_rs_cli_util::logging::{ask_to_log_crash, capture_anyhow, capture_panic};
+use probe_rs_cli_util::{
+    argument_handling, build_artifact, logging, logging::Metadata, read_metadata,
+};
+
+lazy_static::lazy_static! {
+    static ref METADATA: Arc<Mutex<Metadata>> = Arc::new(Mutex::new(Metadata {
+        release: env!("CARGO_PKG_VERSION").to_string(),
+        chip: None,
+        probe: None,
+        speed: None,
+        commit: git_version::git_version!().to_string(),
+    }));
+}
 
 #[derive(Debug, StructOpt)]
 struct Opt {
@@ -134,6 +149,17 @@ const ARGUMENTS_TO_REMOVE: &[&str] = &[
 ];
 
 fn main() {
+    let next = panic::take_hook();
+    panic::set_hook(Box::new(move |info| {
+        #[cfg(feature = "sentry")]
+        if ask_to_log_crash() {
+            capture_panic(&METADATA.lock().unwrap(), &info)
+        }
+        #[cfg(not(feature = "sentry"))]
+        log::info!("{:#?}", &METADATA.lock().unwrap());
+        next(info);
+    }));
+
     match main_try() {
         Ok(_) => (),
         Err(e) => {
@@ -142,9 +168,17 @@ fn main() {
             // to access stderr during shutdown.
             //
             // We ignore the errors, not much we can do anyway.
+
             let mut stderr = std::io::stderr();
             let _ = writeln!(stderr, "       {} {:?}", "Error".red().bold(), e);
             let _ = stderr.flush();
+
+            #[cfg(feature = "sentry")]
+            if ask_to_log_crash() {
+                capture_anyhow(&METADATA.lock().unwrap(), &e)
+            }
+            #[cfg(not(feature = "sentry"))]
+            log::info!("{:#?}", &METADATA.lock().unwrap());
 
             process::exit(1);
         }
@@ -194,6 +228,7 @@ fn main_try() -> Result<()> {
             _ => TargetSelector::Auto,
         }
     };
+    METADATA.lock().unwrap().chip = Some(format!("{:?}", chip));
 
     args.remove(0); // Remove executable name
 
@@ -230,6 +265,10 @@ fn main_try() -> Result<()> {
 
             Probe::open(
                 list.first()
+                    .map(|info| {
+                        METADATA.lock().unwrap().probe = Some(format!("{:?}", info.probe_type));
+                        info
+                    })
                     .ok_or_else(|| anyhow!("No supported probe was found"))?,
             )?
         }
@@ -238,19 +277,6 @@ fn main_try() -> Result<()> {
     probe
         .select_protocol(opt.protocol)
         .context("failed to select protocol")?;
-
-    // Disabled for now
-    // TODO: reenable once we got the plugin architecture working.
-    // if opt.nrf_recover {
-    //     match device.probe_type {
-    //         DebugProbeType::DAPLink => {
-    //             probe.nrf_recover()?;
-    //         }
-    //         DebugProbeType::STLink => {
-    //             return Err(format_err!("It isn't possible to recover with a ST-Link"));
-    //         }
-    //     };
-    // }
 
     let protocol_speed = if let Some(speed) = opt.speed {
         let actual_speed = probe.set_speed(speed).context("failed to set speed")?;
@@ -267,6 +293,8 @@ fn main_try() -> Result<()> {
     } else {
         probe.speed_khz()
     };
+
+    METADATA.lock().unwrap().speed = Some(format!("{:?}", protocol_speed));
 
     log::info!("Protocol speed {} kHz", protocol_speed);
 
