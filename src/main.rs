@@ -314,7 +314,7 @@ fn notmain() -> Result<i32, anyhow::Error> {
     } else {
         // program lives in Flash
         let size = program_size_of(&elf);
-        log::info!("flashing program ({:.02} KiBi)", size as f64 / 1024 as f64);
+        log::info!("flashing program ({:.02} KiB)", size as f64 / 1024 as f64);
         flashing::download_file(&mut sess, elf_path, Format::Elf)?;
         log::info!("success!");
     }
