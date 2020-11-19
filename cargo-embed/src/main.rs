@@ -40,7 +40,7 @@ lazy_static::lazy_static! {
 
 const CARGO_NAME: &'static str = env!("CARGO_PKG_NAME");
 const CARGO_VERSION: &'static str = env!("CARGO_PKG_VERSION");
-const GIT_VERSION: &'static str = git_version::git_version!();
+const GIT_VERSION: &'static str = git_version::git_version!(fallback="crates.io");
 
 #[derive(Debug, StructOpt)]
 struct Opt {
