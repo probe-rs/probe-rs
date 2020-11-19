@@ -5,7 +5,7 @@ use log::{Level, LevelFilter, Log, Record};
 #[cfg(feature = "sentry")]
 use sentry::{
     integrations::panic::PanicIntegration,
-    internals::{Dsn, Utc, Uuid},
+    types::{Dsn, Utc, Uuid},
     Breadcrumb,
 };
 use simplelog::{CombinedLogger, SharedLogger};
