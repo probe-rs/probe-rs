@@ -30,7 +30,7 @@ lazy_static::lazy_static! {
         chip: None,
         probe: None,
         speed: None,
-        commit: git_version::git_version!().to_string(),
+        commit: git_version::git_version!(fallback = "crates.io").to_string(),
     }));
 }
 
