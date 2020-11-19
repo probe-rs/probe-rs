@@ -287,7 +287,7 @@ dependencies = [
  "indicatif",
  "lazy_static",
  "log",
- "probe-rs 0.10.0 (git+https://github.com/probe-rs/probe-rs)",
+ "probe-rs",
  "probe-rs-cli-util",
  "probe-rs-rtt",
  "serde",
@@ -803,7 +803,7 @@ dependencies = [
  "log",
  "memchr",
  "nom 6.0.0",
- "probe-rs 0.10.0 (git+https://github.com/probe-rs/probe-rs)",
+ "probe-rs",
 ]
 
 [[package]]
@@ -1641,35 +1641,6 @@ checksum = "ac74c624d6b2d21f425f752262f42188365d7b8ff1aff74c82e45136510a4857"
 [[package]]
 name = "probe-rs"
 version = "0.10.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ddad22daa4f8b3048750a51b99a8e3e19313a3805009b8918fce3440ee7a4472"
-dependencies = [
- "anyhow",
- "base64 0.13.0",
- "bitfield",
- "enum-primitive-derive",
- "gimli",
- "goblin",
- "hidapi",
- "ihex",
- "jaylink",
- "jep106",
- "lazy_static",
- "log",
- "num-traits",
- "object",
- "probe-rs-t2rust 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "rusb",
- "scroll",
- "serde",
- "serde_yaml",
- "svg",
- "thiserror",
-]
-
-[[package]]
-name = "probe-rs"
-version = "0.10.0"
 source = "git+https://github.com/probe-rs/probe-rs#09fa14698050447b2f22401c11ae24a6ac740ad7"
 dependencies = [
  "anyhow",
@@ -1688,7 +1659,7 @@ dependencies = [
  "log",
  "num-traits",
  "object",
- "probe-rs-t2rust 0.7.0 (git+https://github.com/probe-rs/probe-rs)",
+ "probe-rs-t2rust",
  "rusb",
  "scroll",
  "serde",
@@ -1711,7 +1682,7 @@ dependencies = [
  "indicatif",
  "lazy_static",
  "log",
- "probe-rs 0.10.0 (git+https://github.com/probe-rs/probe-rs)",
+ "probe-rs",
  "sentry",
  "serde",
  "simplelog",
@@ -1722,26 +1693,12 @@ dependencies = [
 [[package]]
 name = "probe-rs-rtt"
 version = "0.10.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "28a1edbeaff3821f35357a58b035dee2c4d2655dc1ab87899803eb2e79c88e30"
+source = "git+https://github.com/probe-rs/probe-rs-rtt#f6fbf9e01f6715133c9ad5c9ec3948552b8185fb"
 dependencies = [
  "log",
- "probe-rs 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "probe-rs",
  "scroll",
  "thiserror",
-]
-
-[[package]]
-name = "probe-rs-t2rust"
-version = "0.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "856b6a25368ebfc253dbd0be8deb666a8a6e1d90eb630560d5f5cdcf8dc35b7f"
-dependencies = [
- "base64 0.13.0",
- "proc-macro2",
- "quote",
- "scroll",
- "serde_yaml",
 ]
 
 [[package]]
