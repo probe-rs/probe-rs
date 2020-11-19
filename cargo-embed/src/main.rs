@@ -23,8 +23,20 @@ use probe_rs::{
     flashing::{download_file_with_options, DownloadOptions, FlashProgress, Format, ProgressEvent},
     DebugProbeSelector, Probe,
 };
-use probe_rs_cli_util::{argument_handling, build_artifact, logging};
+#[cfg(feature = "sentry")]
+use probe_rs_cli_util::logging::{ask_to_log_crash, capture_anyhow, capture_panic};
+use probe_rs_cli_util::{argument_handling, build_artifact, logging, logging::Metadata};
 use probe_rs_rtt::{Rtt, ScanRegion};
+
+lazy_static::lazy_static! {
+    static ref METADATA: Arc<Mutex<Metadata>> = Arc::new(Mutex::new(Metadata {
+        release: CARGO_VERSION.to_string(),
+        chip: None,
+        probe: None,
+        speed: None,
+        commit: GIT_VERSION.to_string()
+    }));
+}
 
 const CARGO_NAME: &'static str = env!("CARGO_PKG_NAME");
 const CARGO_VERSION: &'static str = env!("CARGO_PKG_VERSION");
@@ -73,6 +85,17 @@ struct Opt {
 const ARGUMENTS_TO_REMOVE: &[&str] = &["list-chips", "disable-progressbars", "chip=", "probe="];
 
 fn main() {
+    let next = panic::take_hook();
+    panic::set_hook(Box::new(move |info| {
+        #[cfg(feature = "sentry")]
+        if ask_to_log_crash() {
+            capture_panic(&METADATA.lock().unwrap(), &info)
+        }
+        #[cfg(not(feature = "sentry"))]
+        log::info!("{:#?}", &METADATA.lock().unwrap());
+        next(info);
+    }));
+
     match main_try() {
         Ok(_) => (),
         Err(e) => {
@@ -104,6 +127,13 @@ fn main() {
             }
 
             let _ = stderr.flush();
+
+            #[cfg(feature = "sentry")]
+            if ask_to_log_crash() {
+                capture_anyhow(&METADATA.lock().unwrap(), &e)
+            }
+            #[cfg(not(feature = "sentry"))]
+            log::info!("{:#?}", &METADATA.lock().unwrap());
 
             process::exit(1);
         }
@@ -156,6 +186,8 @@ fn main_try() -> Result<()> {
             .map(|chip| chip.into())
             .unwrap_or(TargetSelector::Auto)
     };
+
+    METADATA.lock().unwrap().chip = Some(format!("{:?}", chip));
 
     // Remove executable name from the arguments list.
     args.remove(0);
@@ -223,6 +255,10 @@ fn main_try() -> Result<()> {
                 }
                 Probe::open(
                     list.first()
+                        .map(|info| {
+                            METADATA.lock().unwrap().probe = Some(format!("{:?}", info.probe_type));
+                            info
+                        })
                         .ok_or_else(|| anyhow!("No supported probe was found"))?,
                 )?
             }
@@ -248,6 +284,8 @@ fn main_try() -> Result<()> {
     } else {
         probe.speed_khz()
     };
+
+    METADATA.lock().unwrap().speed = Some(format!("{:?}", protocol_speed));
 
     log::info!("Protocol speed {} kHz", protocol_speed);
 

@@ -44,3 +44,11 @@ Config file precedence:
 Instead of a TOML file, you can also use a JSON or YAML file. Choose what suits you best!
 
 You can find all available options in the [default.toml](src/config/default.toml). Commented out options are the ones that are `None` by default.
+
+# Sentry logging
+
+We use Sentry to record crash data. This helps us trace crashes better.
+No data will ever be transmitted without your consent!
+All data is transmitted completely anonymously.
+This is an OPT-IN feature. On crash, cargo-embed will ask you whether to transmit the data or not. You can also set whether to do this for all times with an environment variable to omit the message in the future.
+If you do not wish to have sentry integrated at all, you can also build cargo-embed without sentry by using `--no-default-features`.
