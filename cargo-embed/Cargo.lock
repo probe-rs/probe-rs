@@ -273,7 +273,7 @@ checksum = "631ae5198c9be5e753e5cc215e1bd73c2b466a3565173db433f52bb9d3e66dba"
 
 [[package]]
 name = "cargo-embed"
-version = "0.9.1"
+version = "0.10.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -287,7 +287,7 @@ dependencies = [
  "indicatif",
  "lazy_static",
  "log",
- "probe-rs",
+ "probe-rs 0.10.0 (git+https://github.com/probe-rs/probe-rs)",
  "probe-rs-cli-util",
  "probe-rs-rtt",
  "serde",
@@ -580,28 +580,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f7531096570974c3a9dcf9e4b8e1cede1ec26cf5046219fb3b9d897503b9be59"
 
 [[package]]
-name = "failure"
-version = "0.1.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d32e9bd16cc02eae7db7ef620b392808b89f6a5e16bb3497d159c6b92a0f4f86"
-dependencies = [
- "backtrace",
- "failure_derive",
-]
-
-[[package]]
-name = "failure_derive"
-version = "0.1.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aa4da3c766cd7a0db8242e326e9e4e081edd567072893ed320008189715366a4"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
- "synstructure",
-]
-
-[[package]]
 name = "fallible-iterator"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -814,8 +792,8 @@ dependencies = [
 
 [[package]]
 name = "gdb-server"
-version = "0.9.0"
-source = "git+https://github.com/probe-rs/probe-rs#030341ac63af4cc0c813f52f4281c8f2fc5d602f"
+version = "0.10.0"
+source = "git+https://github.com/probe-rs/probe-rs#09fa14698050447b2f22401c11ae24a6ac740ad7"
 dependencies = [
  "anyhow",
  "async-std",
@@ -825,7 +803,7 @@ dependencies = [
  "log",
  "memchr",
  "nom 6.0.0",
- "probe-rs",
+ "probe-rs 0.10.0 (git+https://github.com/probe-rs/probe-rs)",
 ]
 
 [[package]]
@@ -1108,9 +1086,9 @@ dependencies = [
 
 [[package]]
 name = "instant"
-version = "0.1.8"
+version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cb1fc4429a33e1f80d41dc9fea4d108a88bec1de8053878898ae448a0b52f613"
+checksum = "61124eeebbd69b8190558df225adf7e4caafce0d743919e5d6b19652314ec5ec"
 dependencies = [
  "cfg-if 1.0.0",
 ]
@@ -1662,8 +1640,37 @@ checksum = "ac74c624d6b2d21f425f752262f42188365d7b8ff1aff74c82e45136510a4857"
 
 [[package]]
 name = "probe-rs"
-version = "0.9.0"
-source = "git+https://github.com/probe-rs/probe-rs#030341ac63af4cc0c813f52f4281c8f2fc5d602f"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ddad22daa4f8b3048750a51b99a8e3e19313a3805009b8918fce3440ee7a4472"
+dependencies = [
+ "anyhow",
+ "base64 0.13.0",
+ "bitfield",
+ "enum-primitive-derive",
+ "gimli",
+ "goblin",
+ "hidapi",
+ "ihex",
+ "jaylink",
+ "jep106",
+ "lazy_static",
+ "log",
+ "num-traits",
+ "object",
+ "probe-rs-t2rust 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rusb",
+ "scroll",
+ "serde",
+ "serde_yaml",
+ "svg",
+ "thiserror",
+]
+
+[[package]]
+name = "probe-rs"
+version = "0.10.0"
+source = "git+https://github.com/probe-rs/probe-rs#09fa14698050447b2f22401c11ae24a6ac740ad7"
 dependencies = [
  "anyhow",
  "base64 0.13.0",
@@ -1681,7 +1688,7 @@ dependencies = [
  "log",
  "num-traits",
  "object",
- "probe-rs-t2rust",
+ "probe-rs-t2rust 0.7.0 (git+https://github.com/probe-rs/probe-rs)",
  "rusb",
  "scroll",
  "serde",
@@ -1692,8 +1699,8 @@ dependencies = [
 
 [[package]]
 name = "probe-rs-cli-util"
-version = "0.9.0"
-source = "git+https://github.com/probe-rs/probe-rs#030341ac63af4cc0c813f52f4281c8f2fc5d602f"
+version = "0.10.0"
+source = "git+https://github.com/probe-rs/probe-rs#09fa14698050447b2f22401c11ae24a6ac740ad7"
 dependencies = [
  "anyhow",
  "cargo_metadata",
@@ -1704,7 +1711,7 @@ dependencies = [
  "indicatif",
  "lazy_static",
  "log",
- "probe-rs",
+ "probe-rs 0.10.0 (git+https://github.com/probe-rs/probe-rs)",
  "sentry",
  "serde",
  "simplelog",
@@ -1714,20 +1721,33 @@ dependencies = [
 
 [[package]]
 name = "probe-rs-rtt"
-version = "0.4.0"
+version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e08122b8ba5a934dd10a16a0cd0cab4f1ada1be500782b77bc49c1cd93cb8b03"
+checksum = "28a1edbeaff3821f35357a58b035dee2c4d2655dc1ab87899803eb2e79c88e30"
 dependencies = [
  "log",
- "probe-rs",
+ "probe-rs 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "scroll",
  "thiserror",
 ]
 
 [[package]]
 name = "probe-rs-t2rust"
-version = "0.6.0"
-source = "git+https://github.com/probe-rs/probe-rs#030341ac63af4cc0c813f52f4281c8f2fc5d602f"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "856b6a25368ebfc253dbd0be8deb666a8a6e1d90eb630560d5f5cdcf8dc35b7f"
+dependencies = [
+ "base64 0.13.0",
+ "proc-macro2",
+ "quote",
+ "scroll",
+ "serde_yaml",
+]
+
+[[package]]
+name = "probe-rs-t2rust"
+version = "0.7.0"
+source = "git+https://github.com/probe-rs/probe-rs#09fa14698050447b2f22401c11ae24a6ac740ad7"
 dependencies = [
  "base64 0.13.0",
  "proc-macro2",
@@ -2053,9 +2073,9 @@ dependencies = [
 
 [[package]]
 name = "sentry"
-version = "0.20.1"
+version = "0.21.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "144e85b28d129f056ef91664fe2b985eade906d2838752c2f61c9f233cd98e4a"
+checksum = "933beb0343c84eefd69a368318e9291b179e09e51982d49c65d7b362b0e9466f"
 dependencies = [
  "httpdate",
  "reqwest",
@@ -2063,15 +2083,14 @@ dependencies = [
  "sentry-backtrace",
  "sentry-contexts",
  "sentry-core",
- "sentry-failure",
  "sentry-panic",
 ]
 
 [[package]]
 name = "sentry-anyhow"
-version = "0.20.1"
+version = "0.21.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3e6a984e366219d09cd3c34e87dc477367678564b6412a5492854cce122c73e6"
+checksum = "6176c8099ad6fcef14b8d5ce3e5717e060e26f1ab23453f45ea48be904bcd4a7"
 dependencies = [
  "anyhow",
  "sentry-core",
@@ -2079,9 +2098,9 @@ dependencies = [
 
 [[package]]
 name = "sentry-backtrace"
-version = "0.20.1"
+version = "0.21.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "92dabd890482f152fb6d261fe2034a193facc2c99c0c571bbf7687c356fcb2e8"
+checksum = "38e528fb457baf53fcd6c90beb420705f35c12c3d8caed8817dcf7be00eff7c7"
 dependencies = [
  "backtrace",
  "lazy_static",
@@ -2091,9 +2110,9 @@ dependencies = [
 
 [[package]]
 name = "sentry-contexts"
-version = "0.20.1"
+version = "0.21.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "039ac50d2d740d51c5d376c2e9e93725eea662fa3acdcbcfe1b8b93a3b30c478"
+checksum = "ce3a560a34cffac347f0b588fc29b31db969e27bf57208f946d6a2d588668b0b"
 dependencies = [
  "hostname",
  "lazy_static",
@@ -2106,9 +2125,9 @@ dependencies = [
 
 [[package]]
 name = "sentry-core"
-version = "0.20.1"
+version = "0.21.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3fe4fe890b12416701f838c702898a9c5e574c333cfbbee9fb7855a14e6490a3"
+checksum = "17b8c235063c1007fd8e2fc7e35ce7eac09dd678d198ecc996daee33d46b3dcc"
 dependencies = [
  "im",
  "lazy_static",
@@ -2119,21 +2138,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "sentry-failure"
-version = "0.20.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ead35e7019f77a79ed0345b3f3c28427139100f87f318c1c3e2788db2cdea8b7"
-dependencies = [
- "failure",
- "sentry-backtrace",
- "sentry-core",
-]
-
-[[package]]
 name = "sentry-panic"
-version = "0.20.1"
+version = "0.21.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ab8a3ac989339a76efd6155f9d02675ce4b04419cd8083ca58d083c222554147"
+checksum = "04ee338d8292fcdcfb032929c9f53bc0dfac8e0b9d3096be79ceee96818851ed"
 dependencies = [
  "sentry-backtrace",
  "sentry-core",
@@ -2141,9 +2149,9 @@ dependencies = [
 
 [[package]]
 name = "sentry-types"
-version = "0.20.1"
+version = "0.21.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c8124f0e9bc1113ecbcc8c3746e0e590943cf23e7d09c70a088c116869bb12e3"
+checksum = "5fbbea6debac0a24880a38239d4c2fc3dbb0b1b398f621bea03ed761796b7dfb"
 dependencies = [
  "chrono",
  "debugid",
@@ -2334,18 +2342,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "synstructure"
-version = "0.12.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b834f2d66f734cb897113e34aaff2f1ab4719ca946f9a7358dba8f8064148701"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
- "unicode-xid",
-]
-
-[[package]]
 name = "tap"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2379,9 +2375,9 @@ dependencies = [
 
 [[package]]
 name = "termcolor"
-version = "1.1.1"
+version = "1.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bf11676eb135389f21fcda654382c4859bbfc1d2f36e4425a2f829bb41b1e20e"
+checksum = "2dfed899f0eb03f32ee8c6a0aabdb8a7949659e3466561fc0adf54e26d88c5f4"
 dependencies = [
  "winapi-util",
 ]
