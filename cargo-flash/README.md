@@ -6,6 +6,10 @@ This crate provides a cargo subcommand to flash ELF binaries onto ARM chips.
 
 Various chip families including but not limited to **nRF5x**, **STM32** and **LPC800** can be flashed using **DAPLink**, **ST-Link** or **J-Link**. To check if your specific chip is supported, use `cargo flash --list-chips`
 
+## Support
+
+If you think cargo-flash makes your embedded journey more enjoyable or even earns you money, please consider supporting the project on [Github Sponsors](https://github.com/sponsors/probe-rs/) for better support and more features.
+
 ## Installation
 
 You can install this utility with cargo, after installing the
@@ -72,11 +76,13 @@ If you have a chip you want to flash, feel free to contribute to [probe-rs](http
 `cargo-flash` can be built using cargo, after installing the necessary prerequisites. See the list below for your operating
 system.
 
+### FTDI support
+
+FTDI support is optional. You can enable it with the `ftdi` feature. You also need the correct prerequisites from the next section installed.
+
 ### Prerequisites
 
-cargo-flash depends on the [libusb](https://libusb.info/) and [libftdi](https://www.intra2net.com/en/developer/libftdi/) libraries, which need
-to be installed to build cargo-flash.
-
+cargo-flash depends on the [libusb](https://libusb.info/) and optionally on [libftdi](https://www.intra2net.com/en/developer/libftdi/) libraries, which need to be installed to build cargo-flash.
 
 #### Linux
 

@@ -11,6 +11,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+## [0.10.0]
+
+### Added
+
+- Updated to probe-rs 0.10.0. Please consult its own changelog for new features and fixes.
+- Added logging to sentry.io. This is 100% OPT-IN! You will be asked only if an unhandled error or panic occurs, and only if you give consent, data is transmitted. If you do not trust us either way, you can disable the `sentry` feature when you install the crate. The completely anonymous data can be investigated on sentry.io by anyone who likes to see it. Unfortunately sentry.io does not feature public orgs yet, so please reach out to @Yatekii to be added.
+Sentry helps us track down tricky issues that only occur in very specific cases. It is very much appreciated if you log upcoming errors this way (#121)!
+
+### Changed
+
+- FTDI support is now optional. To enable FTDI support, please use the `ftdi` feature (#124).
+
 ## [0.9.0]
 
 ### Added
@@ -114,7 +126,8 @@ Improved flashing for `cargo-flash` considering speed and useability.
 ## [0.2.0]
 - Introduce cargo-flash which can automatically build & flash the target elf file.
 
-[Unreleased]: https://github.com/probe-rs/cargo-flash/compare/v0.9.0...master
+[Unreleased]: https://github.com/probe-rs/cargo-flash/compare/v0.10.0...master
+[0.10.0]: https://github.com/probe-rs/cargo-flash/releases/tag/v0.9.0..v0.10.0
 [0.9.0]: https://github.com/probe-rs/cargo-flash/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/probe-rs/cargo-flash/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/probe-rs/cargo-flash/compare/v0.6.0...v0.7.0
