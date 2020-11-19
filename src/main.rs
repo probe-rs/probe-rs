@@ -27,7 +27,7 @@ use gimli::{
 };
 use object::{
     read::{File as ElfFile, Object as _, ObjectSection as _},
-    SymbolSection,
+    ObjectSegment, SymbolSection,
 };
 use probe_rs::config::{registry, MemoryRegion, RamRegion};
 use probe_rs::{
@@ -313,7 +313,8 @@ fn notmain() -> Result<i32, anyhow::Error> {
         log::info!("skipped flashing");
     } else {
         // program lives in Flash
-        log::info!("flashing program");
+        let size = program_size_of(&elf);
+        log::info!("flashing program ({:.02} KiBi)", size as f64 / 1024 as f64);
         flashing::download_file(&mut sess, elf_path, Format::Elf)?;
         log::info!("success!");
     }
@@ -526,6 +527,11 @@ fn notmain() -> Result<i32, anyhow::Error> {
             0
         },
     )
+}
+
+fn program_size_of(file: &ElfFile) -> u64 {
+    // `segments` iterates only over *loadable* segments, which are the segments that will be loaded to Flash by probe-rs
+    file.segments().map(|segment| segment.size()).sum()
 }
 
 const SIGABRT: i32 = 134;
