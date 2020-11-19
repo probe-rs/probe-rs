@@ -9,6 +9,10 @@ It can flash targets, just like cargo-flash but can do much more, such as loggin
 Various chip families including but not limited to nRF5x, STM32 and LPC800 can be worked with using DAPLink, ST-Link or J-Link.
 It supports all the targets & probes [probe-rs](https://github.com/probe-rs/probe-rs) supports.
 
+## Support
+
+If you think cargo-embedded makes your embedded journey more enjoyable or even earns you money, please consider supporting the project on [Github Sponsors](https://github.com/sponsors/probe-rs/) for better support and more features.
+
 ## Installation
 
 You can install this utility with cargo:
@@ -44,6 +48,48 @@ Config file precedence:
 Instead of a TOML file, you can also use a JSON or YAML file. Choose what suits you best!
 
 You can find all available options in the [default.toml](src/config/default.toml). Commented out options are the ones that are `None` by default.
+
+## Building
+
+`cargo-embed` can be built using cargo, after installing the necessary prerequisites. See the list below for your operating
+system.
+
+### FTDI Support
+
+FTDI support is optional. You can enable it with the `ftdi` feature. You also need the correct prerequisites from the next section installed.
+
+### Prerequisites
+
+cargo-embed depends on the [libusb](https://libusb.info/) and optionally on [libftdi](https://www.intra2net.com/en/developer/libftdi/) libraries, which need to be installed to build cargo-embed.
+
+#### Linux
+
+On Ubuntu, the following packages need to be installed:
+
+```
+> sudo apt install -y pkg-config libusb-dev libusb-1.0 libftdi1-dev
+```
+
+#### Windows
+
+On Windows you can use [vcpkg](https://github.com/microsoft/vcpkg#quick-start-windows) to install the prerequisites:
+
+```
+# dynamic linking 64-bit
+> vcpkg install libftdi1:x64-windows libusb:x64-windows
+> set VCPKGRS_DYNAMIC=1
+
+# static linking 64-bit
+> vcpkg install libftdi1:x64-windows-static-md libusb:x64-windows-static-md
+```
+
+#### macOS
+
+On macOS, [homebrew](https://brew.sh/) is the suggested method to install libftdi:
+
+```
+> brew install libftdi
+```
 
 # Sentry logging
 
