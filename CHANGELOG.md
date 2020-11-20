@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [v0.1.5] - 2020-11-20
+
+- [#106] `probe-run` now reports the program size
+- [#105] `probe-run`'s `--defmt` flag is now optional. `probe-run` will auto-detect the use of the `defmt` crate so the flag is no longer needed.
+- [#259] building the crates.io version of `probe-run` no longer depends on the `git` command line tool (fixed [#256])
+- [#264] `probe-run` doesn't panic if log message is not UTF-8
+
+[#106]: https://github.com/knurling-rs/probe-run/pull/106
+[#105]: https://github.com/knurling-rs/probe-run/pull/105
+[#259]: https://github.com/knurling-rs/defmt/pull/259
+[#264]: https://github.com/knurling-rs/defmt/pull/264
+
 ## [v0.1.4] - 2020-11-11
 
 ### Added
@@ -96,7 +108,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 Initial release
 
-[Unreleased]: https://github.com/knurling-rs/probe-run/compare/v0.1.4...main
+[Unreleased]: https://github.com/knurling-rs/probe-run/compare/v0.1.5...main
+[v0.1.5]: https://github.com/knurling-rs/probe-run/compare/v0.1.4...v0.1.5
 [v0.1.4]: https://github.com/knurling-rs/probe-run/compare/v0.1.3...v0.1.4
 [v0.1.3]: https://github.com/knurling-rs/probe-run/compare/v0.1.2...v0.1.3
 [v0.1.2]: https://github.com/knurling-rs/probe-run/compare/v0.1.1...v0.1.2
