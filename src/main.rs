@@ -747,7 +747,6 @@ fn backtrace(
         if top_exception.is_none() {
             top_exception = Some(if pc & !THUMB_BIT == vector_table.hard_fault & !THUMB_BIT {
                 // HardFaultTrampoline
-                println!("      <exception entry>");
 
                 let stack_overflow = if let Some(sp_ram_region) = sp_ram_region {
                     // NOTE stack is full descending; meaning the stack pointer can be `ORIGIN(RAM) +
