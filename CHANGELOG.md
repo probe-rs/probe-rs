@@ -14,7 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.10.1]
 ### Fixed
 
-- Replace calls to `unwrap()` in adi_v5_memory_interface.rs with proper error types.
+- Replace calls to `unwrap()` in adi_v5_memory_interface.rs with proper error types (#440).
+- Correct URL for Sentry logging in probe-rs-cli-util (#439).
 
 ## [0.10.0]
 
