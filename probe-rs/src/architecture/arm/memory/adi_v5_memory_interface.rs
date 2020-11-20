@@ -101,7 +101,7 @@ where
         let start = Instant::now();
 
         while start.elapsed() < timeout {
-            let dhcsr_val = Dhcsr(self.read_word_32(access_port, Dhcsr::ADDRESS).unwrap());
+            let dhcsr_val = Dhcsr(self.read_word_32(access_port, Dhcsr::ADDRESS)?);
 
             if dhcsr_val.s_regrdy() {
                 return Ok(());
@@ -574,12 +574,11 @@ where
         dcrsr_val.set_regwnr(false); // Perform a read.
         dcrsr_val.set_regsel(addr.into()); // The address of the register to read.
 
-        self.write_word_32(ap, Dcrsr::ADDRESS, dcrsr_val.into())
-            .unwrap();
+        self.write_word_32(ap, Dcrsr::ADDRESS, dcrsr_val.into())?;
 
         self.wait_for_core_register_transfer(ap, Duration::from_millis(100))?;
 
-        let value = self.read_word_32(ap, Dcrdr::ADDRESS).unwrap();
+        let value = self.read_word_32(ap, Dcrdr::ADDRESS)?;
 
         Ok(value)
     }
@@ -590,15 +589,14 @@ where
         addr: CoreRegisterAddress,
         value: u32,
     ) -> Result<(), Error> {
-        self.write_word_32(ap, Dcrdr::ADDRESS, value).unwrap();
+        self.write_word_32(ap, Dcrdr::ADDRESS, value)?;
 
         // write the DCRSR value to select the register we want to write.
         let mut dcrsr_val = Dcrsr(0);
         dcrsr_val.set_regwnr(true); // Perform a write.
         dcrsr_val.set_regsel(addr.into()); // The address of the register to write.
 
-        self.write_word_32(ap, Dcrsr::ADDRESS, dcrsr_val.into())
-            .unwrap();
+        self.write_word_32(ap, Dcrsr::ADDRESS, dcrsr_val.into())?;
 
         self.wait_for_core_register_transfer(ap, Duration::from_millis(100))?;
 
@@ -607,9 +605,9 @@ where
 
     fn read_8(&mut self, ap: MemoryAP, address: u32, data: &mut [u8]) -> Result<(), Error> {
         if data.len() == 1 {
-            data[0] = self.read_word_8(ap, address).unwrap();
+            data[0] = self.read_word_8(ap, address)?;
         } else {
-            self.read_8(ap, address, data).unwrap();
+            self.read_8(ap, address, data)?;
         }
 
         Ok(())
@@ -617,9 +615,9 @@ where
 
     fn read_32(&mut self, ap: MemoryAP, address: u32, data: &mut [u32]) -> Result<(), Error> {
         if data.len() == 1 {
-            data[0] = self.read_word_32(ap, address).unwrap();
+            data[0] = self.read_word_32(ap, address)?;
         } else {
-            self.read_32(ap, address, data).unwrap();
+            self.read_32(ap, address, data)?;
         }
 
         Ok(())
@@ -627,9 +625,9 @@ where
 
     fn write_8(&mut self, ap: MemoryAP, address: u32, data: &[u8]) -> Result<(), Error> {
         if data.len() == 1 {
-            self.write_word_8(ap, address, data[0]).unwrap();
+            self.write_word_8(ap, address, data[0])?;
         } else {
-            self.write_8(ap, address, data).unwrap();
+            self.write_8(ap, address, data)?;
         }
 
         Ok(())
@@ -637,9 +635,9 @@ where
 
     fn write_32(&mut self, ap: MemoryAP, address: u32, data: &[u32]) -> Result<(), Error> {
         if data.len() == 1 {
-            self.write_word_32(ap, address, data[0]).unwrap();
+            self.write_word_32(ap, address, data[0])?;
         } else {
-            self.write_32(ap, address, data).unwrap();
+            self.write_32(ap, address, data)?;
         }
 
         Ok(())

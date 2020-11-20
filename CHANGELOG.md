@@ -11,6 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+## [0.10.1]
+### Fixed
+
+- Replace calls to `unwrap()` in adi_v5_memory_interface.rs with proper error types.
+
 ## [0.10.0]
 
 ### Added
@@ -283,7 +288,8 @@ Initial release on crates.io
 - Working basic flash downloader with nRF51.
 - Introduce cargo-flash which can automatically build & flash the target elf file.
 
-[Unreleased]: https://github.com/probe-rs/probe-rs/compare/v0.10.0...master
+[Unreleased]: https://github.com/probe-rs/probe-rs/compare/v0.10.1...master
+[0.10.1]: https://github.com/probe-rs/probe-rs/compare/v0.10.0...v0.10.1
 [0.10.0]: https://github.com/probe-rs/probe-rs/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/probe-rs/probe-rs/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/probe-rs/probe-rs/compare/v0.7.1...v0.8.0
