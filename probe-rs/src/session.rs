@@ -147,7 +147,7 @@ impl Session {
         let probes = Probe::list_all();
 
         // Use the first probe found.
-        let probe = probes[0].open()?;
+        let probe = probes.get(0).ok_or(Error::UnableToOpenProbe("No probe was found"))?.open()?;
 
         // Attach to a chip.
         probe.attach(target)
