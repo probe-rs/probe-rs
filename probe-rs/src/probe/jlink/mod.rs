@@ -665,7 +665,7 @@ impl DebugProbe for JLink {
 
     fn get_arm_interface<'probe>(
         self: Box<Self>,
-    ) -> Result<Option<Box<dyn ArmProbeInterface + 'probe>>, DebugProbeError> {
+    ) -> Result<Option<Box<dyn ArmProbeInterface + Send + Sync + 'probe>>, DebugProbeError> {
         if self.supported_protocols.contains(&WireProtocol::Swd) {
             let interface = ArmCommunicationInterface::new(self, true)?;
 

@@ -43,7 +43,7 @@ pub struct Session {
 
 #[derive(Debug)]
 enum ArchitectureInterface {
-    Arm(Box<dyn ArmProbeInterface>),
+    Arm(Box<dyn ArmProbeInterface + Send + Sync + 'static>),
     Riscv(RiscvCommunicationInterface),
 }
 
@@ -202,7 +202,9 @@ impl Session {
         interface.read_swo()
     }
 
-    fn get_arm_interface(&mut self) -> Result<&mut Box<dyn ArmProbeInterface>, Error> {
+    fn get_arm_interface(
+        &mut self,
+    ) -> Result<&mut Box<dyn ArmProbeInterface + Send + Sync>, Error> {
         let interface = match &mut self.interface {
             ArchitectureInterface::Arm(state) => state,
             _ => return Err(Error::ArchitectureRequired(&["ARMv7", "ARMv8"])),

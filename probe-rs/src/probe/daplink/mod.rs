@@ -585,7 +585,7 @@ impl DebugProbe for DAPLink {
 
     fn get_arm_interface<'probe>(
         self: Box<Self>,
-    ) -> Result<Option<Box<dyn ArmProbeInterface + 'probe>>, DebugProbeError> {
+    ) -> Result<Option<Box<dyn ArmProbeInterface + Send + Sync + 'probe>>, DebugProbeError> {
         let interface = ArmCommunicationInterface::new(self, false)?;
 
         Ok(Some(Box::new(interface)))

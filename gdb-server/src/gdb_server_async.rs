@@ -1,3 +1,5 @@
+use std::sync::{Arc, Mutex};
+
 use async_std::{
     net::{TcpListener, TcpStream, ToSocketAddrs},
     prelude::*,
@@ -14,7 +16,12 @@ type Receiver<T> = mpsc::UnboundedReceiver<T>;
 const CONNECTION_STRING: &str = "127.0.0.1:1337";
 
 /// This is the main entrypoint which we will call to start the GDB stub.
-pub fn run(connection_string: Option<impl Into<String>>, session: Session) -> Result<()> {
+/// This function is blocking. If you would like to use it concurently to other users of the session,
+/// please use a thread.
+pub fn run(
+    connection_string: Option<impl Into<String>>,
+    session: Arc<Mutex<Session>>,
+) -> Result<()> {
     let connection_string = connection_string
         .map(|cs| cs.into())
         .unwrap_or_else(|| CONNECTION_STRING.to_owned());
@@ -23,14 +30,14 @@ pub fn run(connection_string: Option<impl Into<String>>, session: Session) -> Re
 }
 
 /// This function accepts any incomming connection.
-async fn accept_loop(addr: impl ToSocketAddrs, session: Session) -> Result<()> {
+async fn accept_loop(addr: impl ToSocketAddrs, session: Arc<Mutex<Session>>) -> Result<()> {
     let listener = TcpListener::bind(addr).await?;
 
-    let mut session = session;
+    let session = session;
 
     let mut incoming = listener.incoming();
     while let Some(stream) = incoming.next().await {
-        if let Err(e) = handle_connection(stream?, &mut session).await {
+        if let Err(e) = handle_connection(stream?, Arc::clone(&session)).await {
             eprintln!(
                 "An error with the current connection has been encountered. It has been closed."
             );
@@ -41,7 +48,7 @@ async fn accept_loop(addr: impl ToSocketAddrs, session: Session) -> Result<()> {
 }
 
 /// Handle a single connection of a client
-async fn handle_connection(stream: TcpStream, session: &mut Session) -> Result<()> {
+async fn handle_connection(stream: TcpStream, session: Arc<Mutex<Session>>) -> Result<()> {
     let (packet_stream_sender, packet_stream_receiver) = mpsc::unbounded();
     let (tbd_sender, tbd_receiver) = mpsc::unbounded();
 

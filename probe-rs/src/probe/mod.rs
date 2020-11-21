@@ -362,7 +362,7 @@ impl Probe {
 
     pub fn into_arm_interface<'probe>(
         self,
-    ) -> Result<Option<Box<dyn ArmProbeInterface + 'probe>>, DebugProbeError> {
+    ) -> Result<Option<Box<dyn ArmProbeInterface + Send + Sync + 'probe>>, DebugProbeError> {
         if !self.attached {
             // TODO: Return self here
             Err(DebugProbeError::NotAttached)
@@ -457,7 +457,7 @@ pub trait DebugProbe: Send + Sync + fmt::Debug {
     /// probe actually supports this by calling [DebugProbe::has_arm_interface] first.
     fn get_arm_interface<'probe>(
         self: Box<Self>,
-    ) -> Result<Option<Box<dyn ArmProbeInterface + 'probe>>, DebugProbeError> {
+    ) -> Result<Option<Box<dyn ArmProbeInterface + Send + Sync + 'probe>>, DebugProbeError> {
         Ok(None)
     }
 
