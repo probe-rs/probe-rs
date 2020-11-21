@@ -681,6 +681,69 @@ impl JTAGAccess for JLink {
     }
 }
 
+impl JLink {
+    // Try to perform a line reset, followed by a read of the DPIDR register.
+    //
+    // Returns true if the read of the DPIDR register was succesful, and false
+    // otherwise. In case of JLink Errors, the actual error is returned.
+    fn line_reset(&mut self) -> Result<bool, DebugProbeError> {
+        log::debug!("Performing line reset!");
+
+        let mut reset_seq: Vec<bool> = iter::repeat(true)
+            .take(50)
+            .chain(iter::repeat(false).take(2))
+            // Perform a DPIDR READ
+            .chain(iter::repeat(true).take(1)) // Start
+            .chain(iter::repeat(false).take(1)) // 0
+            .chain(iter::repeat(true).take(1)) // Start
+            .chain(iter::repeat(false).take(2)) // 0 0
+            .chain(iter::repeat(true).take(1)) // Start
+            .chain(iter::repeat(false).take(1)) // 0
+            .chain(iter::repeat(true).take(1)) // Start
+            .chain(iter::repeat(false).take(3)) // 0 0 0
+            .collect();
+
+        // Add the data bits to the SWDIO sequence.
+        reset_seq.extend_from_slice(&[false; 32]);
+
+        // Add the parity bit to the sequence.
+        reset_seq.push(false);
+
+        // Finally add the turnaround bit to the sequence.
+        reset_seq.push(false);
+
+        // Assemble the direction sequence.
+        let direction = iter::repeat(true)
+            .take(52) // Transmit 50 reset and 2 Line idle bits.
+            .chain(iter::repeat(true).take(8)) // Transmit 8 Request bits
+            // Here *should* be a Trn bit, but since something with the spec is akward we leave it away.
+            // See comments above!
+            .chain(iter::repeat(false).take(3)) // Receive 3 Ack bits.
+            .chain(iter::repeat(false).take(32)) // Receive 32 Data bits.
+            .chain(iter::repeat(false).take(1)) // Receive 1 Parity bit.
+            .chain(iter::repeat(false).take(1)); // Receive 1 Turnaround bit.
+
+        let mut result_sequence = self
+            .handle
+            .get_mut()
+            .unwrap()
+            .swd_io(direction, reset_seq)?;
+
+        // Ignore reset bits, idle bits, and request
+        result_sequence.split_off(50 + 2 + 8);
+
+        let ack = result_sequence.split_off(3).collect::<Vec<_>>();
+
+        // If we get an OK return true, otherwise the reset failed
+
+        if ack[0] && !ack[1] && !ack[2] {
+            Ok(true)
+        } else {
+            Ok(false)
+        }
+    }
+}
+
 impl<'a> AsRef<dyn DebugProbe + 'a> for JLink {
     fn as_ref(&self) -> &(dyn DebugProbe + 'a) {
         self
@@ -757,8 +820,7 @@ impl DAPAccess for JLink {
 
         // Now we try to issue the request until it fails or succeeds.
         // If we timeout we retry a maximum of 5 times.
-        let mut retries = 0;
-        while retries < 5 {
+        for retry in 0..5 {
             // Transmit the sequence and record the line sequence for the ack bits.
             let mut result_sequence = self
                 .handle
@@ -775,12 +837,30 @@ impl DAPAccess for JLink {
             let ack = result_sequence.split_off(3).collect::<Vec<_>>();
 
             if ack[0] && ack[1] && ack[2] {
-                return Err(DapError::NoAcknowledge.into());
+                // Because we clock the SWDCLK line after receving the WAIT response,
+                // the target might be in weird state. If we perform a line reset,
+                // we should be able to recover from this.
+
+                let first_line_reset = self.line_reset()?;
+
+                // Retry line reset if it failed the first time
+                if !first_line_reset {
+                    let second_line_reset = self.line_reset()?;
+
+                    if !second_line_reset {
+                        // Second line reset failed as well, abort read
+                        return Err(DapError::NoAcknowledge.into());
+                    }
+                }
+
+                // Retry operation again
+                continue;
+                //return Err(DapError::NoAcknowledge.into());
             }
             if ack[1] {
                 // If ack[1] is set the host must retry the request. So let's do that right away!
-                retries += 1;
-                log::debug!("DAP line busy, retries remaining {}.", 5 - retries);
+                log::debug!("DAP WAIT, retries remaining {}.", 5 - retry);
+
                 continue;
             }
             if ack[2] {
@@ -949,7 +1029,8 @@ impl DAPAccess for JLink {
             if ack[1] {
                 // If ack[1] is set the host must retry the request. So let's do that right away!
                 retries += 1;
-                log::debug!("DAP line busy, retries remaining {}.", 5 - retries);
+
+                log::debug!("DAP WAIT, retries remaining {}.", 5 - retries);
                 continue;
             }
             if ack[2] {
