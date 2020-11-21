@@ -903,6 +903,15 @@ impl DAPAccess for JLink {
         // Then we add the parity bit just after the previously added data bits.
         swd_io_sequence.push(parity);
 
+        // Add 8 idle cycles to ensure the write is performed.
+        // See section B4.1.1 in the ARM Debug Interface specification.
+        //
+        // This doesn't have to be done if the write is directly followed by another request,
+        // but until batching is implemented, this is the safest way.
+        for _ in 0..8 {
+            swd_io_sequence.push(false);
+        }
+
         // Assemble the direction sequence.
         let direction = iter::repeat(true)
             .take(2) // Transmit 2 Line idle bits.
@@ -912,7 +921,8 @@ impl DAPAccess for JLink {
             .chain(iter::repeat(false).take(3)) // Receive 3 Ack bits.
             .chain(iter::repeat(false).take(2)) // Transmit 2 Turnaround bits.
             .chain(iter::repeat(true).take(32)) // Transmit 32 Data bits.
-            .chain(iter::repeat(true).take(1)); // Transmit 1 Parity bit.
+            .chain(iter::repeat(true).take(1)) // Transmit 1 Parity bit.
+            .chain(iter::repeat(true).take(8)); // 8 idle cycles
 
         // Now we try to issue the request until it fails or succeeds.
         // If we timeout we retry a maximum of 5 times.
