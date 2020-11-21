@@ -686,61 +686,41 @@ impl JLink {
     //
     // Returns true if the read of the DPIDR register was succesful, and false
     // otherwise. In case of JLink Errors, the actual error is returned.
+    //
+    // If the first line reset fails, it is tried once again, as the target
+    // might be in the middle of a transfer the first time we try the reset.
+    // See
     fn line_reset(&mut self) -> Result<bool, DebugProbeError> {
         log::debug!("Performing line reset!");
 
-        let mut reset_seq: Vec<bool> = iter::repeat(true)
-            .take(50)
-            .chain(iter::repeat(false).take(2))
-            // Perform a DPIDR READ
-            .chain(iter::repeat(true).take(1)) // Start
-            .chain(iter::repeat(false).take(1)) // 0
-            .chain(iter::repeat(true).take(1)) // Start
-            .chain(iter::repeat(false).take(2)) // 0 0
-            .chain(iter::repeat(true).take(1)) // Start
-            .chain(iter::repeat(false).take(1)) // 0
-            .chain(iter::repeat(true).take(1)) // Start
-            .chain(iter::repeat(false).take(3)) // 0 0 0
-            .collect();
+        let mut swd_io = vec![true; 50];
+        let mut direction = vec![true; 50];
 
-        // Add the data bits to the SWDIO sequence.
-        reset_seq.extend_from_slice(&[false; 32]);
+        let (register_io, register_direction) =
+            build_swd_transfer(PortType::DebugPort, TransferType::Read, 0);
 
-        // Add the parity bit to the sequence.
-        reset_seq.push(false);
+        swd_io.extend_from_slice(&register_io);
+        direction.extend_from_slice(&register_direction);
 
-        // Finally add the turnaround bit to the sequence.
-        reset_seq.push(false);
+        for _ in 0..2 {
+            let mut result_sequence = self
+                .handle
+                .get_mut()
+                .unwrap()
+                .swd_io(direction.clone(), swd_io.clone())?;
 
-        // Assemble the direction sequence.
-        let direction = iter::repeat(true)
-            .take(52) // Transmit 50 reset and 2 Line idle bits.
-            .chain(iter::repeat(true).take(8)) // Transmit 8 Request bits
-            // Here *should* be a Trn bit, but since something with the spec is akward we leave it away.
-            // See comments above!
-            .chain(iter::repeat(false).take(3)) // Receive 3 Ack bits.
-            .chain(iter::repeat(false).take(32)) // Receive 32 Data bits.
-            .chain(iter::repeat(false).take(1)) // Receive 1 Parity bit.
-            .chain(iter::repeat(false).take(1)); // Receive 1 Turnaround bit.
+            // Ignore reset bits, idle bits, and request
+            result_sequence.split_off(50 + 2 + 8);
 
-        let mut result_sequence = self
-            .handle
-            .get_mut()
-            .unwrap()
-            .swd_io(direction, reset_seq)?;
+            let ack = result_sequence.split_off(3).collect::<Vec<_>>();
 
-        // Ignore reset bits, idle bits, and request
-        result_sequence.split_off(50 + 2 + 8);
+            // If we get an OK return true, otherwise the reset failed
 
-        let ack = result_sequence.split_off(3).collect::<Vec<_>>();
-
-        // If we get an OK return true, otherwise the reset failed
-
-        if ack[0] && !ack[1] && !ack[2] {
-            Ok(true)
-        } else {
-            Ok(false)
+            if ack[0] && !ack[1] && !ack[2] {
+                return Ok(true);
+            }
         }
+        Ok(false)
     }
 }
 
@@ -756,48 +736,81 @@ impl<'a> AsMut<dyn DebugProbe + 'a> for JLink {
     }
 }
 
-impl DAPAccess for JLink {
-    fn read_register(&mut self, port: PortType, address: u16) -> Result<u32, DebugProbeError> {
-        // JLink operates on raw SWD bit sequences.
-        // So we need to manually assemble the read and write bitsequences.
-        // The following code with the comments hopefully explains well enough how it works.
-        // `true` means `1` and `false` means `0` for the SWDIO sequence.
-        // `true` means `drive line` and `false` means `open drain` for the direction sequence.
+#[derive(Debug, PartialEq)]
+enum TransferType {
+    Read,
+    Write(u32),
+}
 
-        // First we determine the APnDP bit.
-        let port = match port {
-            PortType::DebugPort => false,
-            PortType::AccessPort(_) => true,
-        };
+fn build_swd_transfer(
+    port: PortType,
+    direction: TransferType,
+    address: u16,
+) -> (Vec<bool>, Vec<bool>) {
+    // JLink operates on raw SWD bit sequences.
+    // So we need to manually assemble the read and write bitsequences.
+    // The following code with the comments hopefully explains well enough how it works.
+    // `true` means `1` and `false` means `0` for the SWDIO sequence.
+    // `true` means `drive line` and `false` means `open drain` for the direction sequence.
 
-        // Then we determine the address bits.
-        // Only bits 2 and 3 are relevant as we use byte addressing but can only read 32bits
-        // which means we can skip bits 0 and 1. The ADI specification is defined like this.
-        let a2 = (address >> 2) & 0x01 == 1;
-        let a3 = (address >> 3) & 0x01 == 1;
+    // First we determine the APnDP bit.
+    let port = match port {
+        PortType::DebugPort => false,
+        PortType::AccessPort(_) => true,
+    };
 
-        // Now we assemble an SWD read request.
-        let mut swd_io_sequence = vec![
-            // First we make sure we have the SDWIO line on idle for at least 2 clock cylces.
-            false, // Line idle.
-            false, // Line idle.
-            // Then we assemble the actual request.
-            true,                  // Start bit (always 1).
-            port,                  // APnDP (0 for DP, 1 for AP).
-            true,                  // RnW (0 for Write, 1 for Read).
-            a2,                    // Address bit 2.
-            a3,                    // Address bit 3,
-            port ^ true ^ a2 ^ a3, // Odd parity bit over APnDP, RnW a2 and a3
-            false,                 // Stop bit (always 0).
-            true,                  // Park bit (always 1).
-            // Theoretically the spec says that there is a turnaround bit required here, where no clock is driven.
-            // This seems to not be the case in actual implementations. So we do not insert this bit either!
-            // false,                 // Turnaround bit.
-            false, // ACK bit.
-            false, // ACK bit.
-            false, // ACK bit.
-        ];
+    let direction_bit = if direction == TransferType::Read {
+        true
+    } else {
+        false
+    };
 
+    // Then we determine the address bits.
+    // Only bits 2 and 3 are relevant as we use byte addressing but can only read 32bits
+    // which means we can skip bits 0 and 1. The ADI specification is defined like this.
+    let a2 = (address >> 2) & 0x01 == 1;
+    let a3 = (address >> 3) & 0x01 == 1;
+
+    // Now we assemble an SWD request.
+    let mut swd_io_sequence = vec![
+        // First we make sure we have the SDWIO line on idle for at least 2 clock cylces.
+        false, // Line idle.
+        false, // Line idle.
+        // Then we assemble the actual request.
+        true,                           // Start bit (always 1).
+        port,                           // APnDP (0 for DP, 1 for AP).
+        direction_bit,                  // RnW (0 for Write, 1 for Read).
+        a2,                             // Address bit 2.
+        a3,                             // Address bit 3,
+        port ^ direction_bit ^ a2 ^ a3, // Odd parity bit over APnDP, RnW a2 and a3
+        false,                          // Stop bit (always 0).
+        true,                           // Park bit (always 1).
+        // Theoretically the spec says that there is a turnaround bit required here, where no clock is driven.
+        // This seems to not be the case in actual implementations. So we do not insert this bit either!
+        // false,                 // Turnaround bit.
+        false, // ACK bit.
+        false, // ACK bit.
+        false, // ACK bit.
+    ];
+
+    if let TransferType::Write(mut value) = direction {
+        // For writes, we need to add two turnaround bits.
+        // Theoretically the spec says that there is only one turnaround bit required here, where no clock is driven.
+        // This seems to not be the case in actual implementations. So we insert two turnaround bits here!
+        swd_io_sequence.extend_from_slice(&[false, false]);
+
+        // Now we add all the data bits to the sequence and in the same loop we also calculate the parity bit.
+        let mut parity = false;
+        for _ in 0..32 {
+            let bit = value & 1 == 1;
+            swd_io_sequence.push(bit);
+            parity ^= bit;
+            value >>= 1;
+        }
+
+        swd_io_sequence.push(parity);
+    } else {
+        // Handle Read
         // Add the data bits to the SWDIO sequence.
         swd_io_sequence.extend_from_slice(&[false; 32]);
 
@@ -806,17 +819,48 @@ impl DAPAccess for JLink {
 
         // Finally add the turnaround bit to the sequence.
         swd_io_sequence.push(false);
+    }
 
-        // Assemble the direction sequence.
-        let direction = iter::repeat(true)
-            .take(2) // Transmit 2 Line idle bits.
-            .chain(iter::repeat(true).take(8)) // Transmit 8 Request bits
-            // Here *should* be a Trn bit, but since something with the spec is akward we leave it away.
-            // See comments above!
-            .chain(iter::repeat(false).take(3)) // Receive 3 Ack bits.
+    // Assemble the direction sequence.
+    let direction_sequence = iter::repeat(true)
+        .take(2) // Transmit 2 Line idle bits.
+        .chain(iter::repeat(true).take(8)) // Transmit 8 Request bits
+        // Here *should* be a Trn bit, but since something with the spec is akward we leave it away.
+        // See comments above!
+        .chain(iter::repeat(false).take(3)); // Receive 3 Ack bits.
+
+    let direction_sequence: Vec<bool> = if direction == TransferType::Read {
+        direction_sequence
             .chain(iter::repeat(false).take(32)) // Receive 32 Data bits.
             .chain(iter::repeat(false).take(1)) // Receive 1 Parity bit.
-            .chain(iter::repeat(false).take(1)); // Receive 1 Turnaround bit.
+            .chain(iter::repeat(false).take(1)) // Transmit turnaround bit
+            .collect()
+    } else {
+        direction_sequence
+            .chain(iter::repeat(false).take(2)) // Transmit two turnaround bits.
+            .chain(iter::repeat(true).take(32)) // Transmit 32 Data bits.
+            .chain(iter::repeat(true).take(1)) // Transmit 1 Parity bit.
+            .collect()
+    };
+
+    assert_eq!(
+        swd_io_sequence.len(),
+        direction_sequence.len(),
+        "IO and direction sequences need to have the same length."
+    );
+
+    (swd_io_sequence, direction_sequence)
+}
+
+impl DAPAccess for JLink {
+    fn read_register(&mut self, port: PortType, address: u16) -> Result<u32, DebugProbeError> {
+        // JLink operates on raw SWD bit sequences.
+        // So we need to manually assemble the read and write bitsequences.
+        // The following code with the comments hopefully explains well enough how it works.
+        // `true` means `1` and `false` means `0` for the SWDIO sequence.
+        // `true` means `drive line` and `false` means `open drain` for the direction sequence.
+
+        let (swd_io_sequence, direction) = build_swd_transfer(port, TransferType::Read, address);
 
         // Now we try to issue the request until it fails or succeeds.
         // If we timeout we retry a maximum of 5 times.
@@ -836,26 +880,19 @@ impl DAPAccess for JLink {
             // Get the ack.
             let ack = result_sequence.split_off(3).collect::<Vec<_>>();
 
+            // When all bits are high, this means we didn't get any response from the
+            // target, which indicates a protocol error.
             if ack[0] && ack[1] && ack[2] {
                 // Because we clock the SWDCLK line after receving the WAIT response,
                 // the target might be in weird state. If we perform a line reset,
                 // we should be able to recover from this.
 
-                let first_line_reset = self.line_reset()?;
-
-                // Retry line reset if it failed the first time
-                if !first_line_reset {
-                    let second_line_reset = self.line_reset()?;
-
-                    if !second_line_reset {
-                        // Second line reset failed as well, abort read
-                        return Err(DapError::NoAcknowledge.into());
-                    }
+                if !self.line_reset()? {
+                    return Err(DapError::NoAcknowledge.into());
                 }
 
                 // Retry operation again
                 continue;
-                //return Err(DapError::NoAcknowledge.into());
             }
             if ack[1] {
                 // If ack[1] is set the host must retry the request. So let's do that right away!
@@ -888,7 +925,7 @@ impl DAPAccess for JLink {
 
             // If we are reading an AP register we only get the actual result in the next transaction.
             // So we issue a special transaction to get the read value.
-            if port {
+            if let PortType::AccessPort(_) = port {
                 // We read the RDBUFF register to get the value of the last AP transaction.
                 // This special register just returns the last read value with no side-effects like auto-increment.
                 return DAPAccess::read_register(self, PortType::DebugPort, 0x0C);
@@ -926,7 +963,7 @@ impl DAPAccess for JLink {
         &mut self,
         port: PortType,
         address: u16,
-        mut value: u32,
+        value: u32,
     ) -> Result<(), DebugProbeError> {
         // JLink operates on raw SWD bit sequences.
         // So we need to manually assemble the read and write bitsequences.
@@ -934,54 +971,8 @@ impl DAPAccess for JLink {
         // `true` means `1` and `false` means `0` for the SWDIO sequence.
         // `true` means `drive line` and `false` means `open drain` for the direction sequence.
 
-        // First we determine the APnDP bit.
-        let port = match port {
-            PortType::DebugPort => false,
-            PortType::AccessPort(_) => true,
-        };
-
-        // Then we determine the address bits.
-        // Only bits 2 and 3 are relevant as we use byte addressing but can only read 32bits
-        // which means we can skip bits 0 and 1. The ADI specification is defined like this.
-        let a2 = (address >> 2) & 0x01 == 1;
-        let a3 = (address >> 3) & 0x01 == 1;
-
-        // Now we assemble an SWD write request.
-        let mut swd_io_sequence = vec![
-            false, // Line idle.
-            false, // Line idle.
-            // Then we assemble the actual request.
-            true,                   // Start bit (always 1).
-            port,                   // APnDP (0 for DP, 1 for AP).
-            false,                  // RnW (0 for Write, 1 for Read).
-            a2,                     // Address bit 2.
-            a3,                     // Address bit 3,
-            port ^ false ^ a2 ^ a3, // Odd parity bit over ApnDP, RnW a2 and a3
-            false,                  // Stop bit (always 0).
-            true,                   // Park bit (always 1).
-            // Theoretically the spec says that there is a turnaround bit required here, where no clock is driven.
-            // This seems to not be the case in actual implementations. So we do not insert this bit either!
-            // false,                 // Turnaround bit.
-            false, // ACK bit.
-            false, // ACK bit.
-            false, // ACK bit.
-            // Theoretically the spec says that there is only one turnaround bit required here, where no clock is driven.
-            // This seems to not be the case in actual implementations. So we insert two turnaround bits here!
-            false, // Turnaround bit.
-            false, // Turnaround bit.
-        ];
-
-        // Now we add all the data bits to the sequence and in the same loop we also calculate the parity bit.
-        let mut parity = false;
-        for _ in 0..32 {
-            let bit = value & 1 == 1;
-            swd_io_sequence.push(bit);
-            parity ^= bit;
-            value >>= 1;
-        }
-
-        // Then we add the parity bit just after the previously added data bits.
-        swd_io_sequence.push(parity);
+        let (mut swd_io_sequence, mut direction) =
+            build_swd_transfer(port, TransferType::Write(value), address);
 
         // Add 8 idle cycles to ensure the write is performed.
         // See section B4.1.1 in the ARM Debug Interface specification.
@@ -990,24 +981,12 @@ impl DAPAccess for JLink {
         // but until batching is implemented, this is the safest way.
         for _ in 0..8 {
             swd_io_sequence.push(false);
+            direction.push(true);
         }
-
-        // Assemble the direction sequence.
-        let direction = iter::repeat(true)
-            .take(2) // Transmit 2 Line idle bits.
-            .chain(iter::repeat(true).take(8)) // Transmit 8 Request bits
-            // Here *should* be a Trn bit, but since something with the spec is akward we leave it away.
-            // See comments above!
-            .chain(iter::repeat(false).take(3)) // Receive 3 Ack bits.
-            .chain(iter::repeat(false).take(2)) // Transmit 2 Turnaround bits.
-            .chain(iter::repeat(true).take(32)) // Transmit 32 Data bits.
-            .chain(iter::repeat(true).take(1)) // Transmit 1 Parity bit.
-            .chain(iter::repeat(true).take(8)); // 8 idle cycles
 
         // Now we try to issue the request until it fails or succeeds.
         // If we timeout we retry a maximum of 5 times.
-        let mut retries = 0;
-        while retries < 5 {
+        for retry in 0..5 {
             // Transmit the sequence and record the line sequence for the ack and data bits.
             let mut result_sequence = self
                 .handle
@@ -1023,16 +1002,27 @@ impl DAPAccess for JLink {
             // Get the ack.
             let ack = result_sequence.by_ref().take(3).collect::<Vec<_>>();
 
+            // When all bits are high, this means we didn't get any response from the
+            // target, which indicates a protocol error.
             if ack[0] && ack[1] && ack[2] {
-                return Err(DapError::NoAcknowledge.into());
-            }
-            if ack[1] {
-                // If ack[1] is set the host must retry the request. So let's do that right away!
-                retries += 1;
+                // Because we clock the SWDCLK line after receving the WAIT response,
+                // the target might be in weird state. If we perform a line reset,
+                // we should be able to recover from this.
 
-                log::debug!("DAP WAIT, retries remaining {}.", 5 - retries);
+                if !self.line_reset()? {
+                    return Err(DapError::NoAcknowledge.into());
+                }
+
+                // Retry operation
                 continue;
             }
+
+            if ack[1] {
+                // If ack[1] is set the host must retry the request. So let's do that right away!
+                log::debug!("DAP WAIT, retries remaining {}.", 5 - retry);
+                continue;
+            }
+
             if ack[2] {
                 // A fault happened during operation.
 
