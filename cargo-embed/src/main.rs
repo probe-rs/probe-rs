@@ -466,28 +466,34 @@ fn main_try() -> Result<()> {
         }
     }
 
-    if config.gdb.enabled && config.rtt.enabled {
-        return Err(anyhow!(
-            "Unfortunately, at the moment, only GDB OR RTT are possible."
-        ));
-    }
+    // if config.gdb.enabled && config.rtt.enabled {
+    //     return Err(anyhow!(
+    //         "Unfortunately, at the moment, only GDB OR RTT are possible."
+    //     ));
+    // }
+
+    let session = Arc::new(Mutex::new(session));
 
     if config.gdb.enabled {
-        let gdb_connection_string = config
-            .gdb
-            .gdb_connection_string
-            .as_deref()
-            .or_else(|| Some("127.0.0.1:1337"));
-        // This next unwrap will always resolve as the connection string is always Some(T).
-        logging::println(format!(
-            "Firing up GDB stub at {}.",
-            gdb_connection_string.as_ref().unwrap(),
-        ));
-        let session = Mutex::new(session);
-        if let Err(e) = probe_rs_gdb_server::run(gdb_connection_string, &session) {
-            logging::eprintln("During the execution of GDB an error was encountered:");
-            logging::eprintln(format!("{:?}", e));
-        }
+        let gdb_connection_string = config.gdb.gdb_connection_string.clone();
+        let session = session.clone();
+        std::thread::spawn(move || {
+            let gdb_connection_string = config
+                .gdb
+                .gdb_connection_string
+                .as_deref()
+                .or_else(|| Some("127.0.0.1:1337"));
+            // This next unwrap will always resolve as the connection string is always Some(T).
+            logging::println(format!(
+                "Firing up GDB stub at {}.",
+                gdb_connection_string.as_ref().unwrap(),
+            ));
+            let session = Mutex::new(session);
+            if let Err(e) = probe_rs_gdb_server::run(gdb_connection_string, &session) {
+                logging::eprintln("During the execution of GDB an error was encountered:");
+                logging::eprintln(format!("{:?}", e));
+            }
+        });
     } else if config.rtt.enabled {
         let defmt_enable = config
             .rtt
@@ -568,6 +574,7 @@ fn main_try() -> Result<()> {
                             logging::println("Shutting down.");
                             return Ok(());
                         };
+                        std::thread::sleep(Duration::from_millis(10));
                     }
                 }
                 Err(err) => {

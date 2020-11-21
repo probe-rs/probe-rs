@@ -18,9 +18,9 @@ ftdi = ["probe-rs/ftdi"]
 sentry = ["probe-rs-cli-util/sentry"]
 
 [dependencies]
-probe-rs = { version = "0.10.0", git = "https://github.com/probe-rs/probe-rs" }
-gdb-server = { version = "0.10.0", git = "https://github.com/probe-rs/probe-rs"  }
-probe-rs-cli-util = { version = "0.10.0", git = "https://github.com/probe-rs/probe-rs", default-features = false }
+probe-rs = { version = "0.10.0", path = "../probe-rs/probe-rs" }
+gdb-server = { version = "0.10.0", path = "../probe-rs/gdb-server"  }
+probe-rs-cli-util = { version = "0.10.0", path = "../probe-rs/probe-rs-cli-util", default-features = false }
 
 structopt = "0.3.18"
 git-version = "0.3.4"
@@ -32,7 +32,7 @@ colored = "2.0.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0.51" }
 config = { version = "0.10.1", features = ["toml", "json", "yaml"], default-features = false }
-probe-rs-rtt = { version = "0.10.0", git = "https://github.com/probe-rs/probe-rs-rtt" }
+probe-rs-rtt = { version = "0.10.0", path = "../probe-rs-rtt/probe-rs-rtt" }
 chrono = "0.4"
 # Version 0.17.8 doesn't compile on Windows
 crossterm = "<= 0.17.7"
