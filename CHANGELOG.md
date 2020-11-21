@@ -11,6 +11,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+## [0.10.1]
+### Fixed
+
+- Replace calls to `unwrap()` in adi_v5_memory_interface.rs with proper error types (#440).
+- Correct URL for Sentry logging in probe-rs-cli-util (#439).
+
+## [0.10.0]
+
+### Added
+
+- Added support for the dedicated ST-Link API which doubles flash write speeds for ST-Link v2 (#369, #377, #397, #435).
+- Added support for the STM32WLE.
+- Added support for the ATSAMD21 & ATSAMD51.
+- Added support for the STM32L1.
+- Added support for the EFM32PG12.
+- Added support for the MAX32665 & MAX32666.
+- Building probe-rs now works without rustfmt being present too (#423).
+- Added support for implicit ebreak in RISCV chips (#423, #430).
+
+### Changed
+
+- nRF devices now use the `SoftDevice Erase` algorithm for flashing which will also erase the flash if it contains the softdevice. The previous algorithm prevented users from flashing at all if a softdevice was present (#365, #366).
+- The names of probe interface methods were named more consistently (#375).
+- FTDI support is now opt in. Please use the `ftdi` feature for support (#378).
+
+### Fixed
+
+- ST-Links now retry the command if a wait was returned in during the SWD transmission (#370).
+- Fixed a bug where CMSIS-DAP would not be able to open a probe with a specific VID/PID but no SN specified (#387).
+- Fixed a bug where a CMSIS-DAP probe could not be opened if an USB descriptor did not contain any language. This was dominant on macOS (#389).
+- Fixed support for the nRF91 (#403).
+- Fixed a bug on Windows where paths were not canonicalized properly (#416).
+- Fixed a bug where a target fault during AP scans would not be cleared and result in failure on some cores even tho there was no actual issue other than the scan being aborted due to an AP not being present (which is perfectly okay) (#419).
+- Use the correct bit mask for the breakpoint comperator on Cortex-M0(+) devices (#434).
+- Fixed a bug where breakpoints on M0 would always match the full word even if half word would have been correct (#368).
+
+### Known issues
+
+- Flashing on some chips (known are SAMDx and rare STM32s) with the JLink or CMSIS-DAP probes can be slow. If you see an error involving th DRW or CSW registers, please try using a speed of 100kHz and file a report in #433.
 
 ## [0.9.0]
 
@@ -250,7 +289,9 @@ Initial release on crates.io
 - Working basic flash downloader with nRF51.
 - Introduce cargo-flash which can automatically build & flash the target elf file.
 
-[Unreleased]: https://github.com/probe-rs/probe-rs/compare/v0.9.0...master
+[Unreleased]: https://github.com/probe-rs/probe-rs/compare/v0.10.1...master
+[0.10.1]: https://github.com/probe-rs/probe-rs/compare/v0.10.0...v0.10.1
+[0.10.0]: https://github.com/probe-rs/probe-rs/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/probe-rs/probe-rs/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/probe-rs/probe-rs/compare/v0.7.1...v0.8.0
 [0.7.1]: https://github.com/probe-rs/probe-rs/compare/v0.7.0...v0.7.1

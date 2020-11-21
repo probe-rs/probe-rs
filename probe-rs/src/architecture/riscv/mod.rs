@@ -33,6 +33,8 @@ impl<'probe> Riscv32<'probe> {
     }
 
     fn read_csr(&mut self, address: u16) -> Result<u32, RiscvError> {
+        log::debug!("Reading CSR {:#04x}", address);
+
         let s0 = self.interface.abstract_cmd_register_read(&register::S0)?;
 
         // We need to perform the csrr instruction, which reads a CSR.
@@ -48,8 +50,7 @@ impl<'probe> Riscv32<'probe> {
         let mut csrrs_cmd: u32 = 0b_00000_010_01000_1110011;
         csrrs_cmd |= ((address as u32) & 0xfff) << 20;
 
-        self.interface
-            .setup_program_buffer(&[csrrs_cmd, assembly::EBREAK])?;
+        self.interface.setup_program_buffer(&[csrrs_cmd])?;
 
         // command: postexec
         let mut postexec_cmd = AccessRegisterCommand(0);
@@ -68,6 +69,8 @@ impl<'probe> Riscv32<'probe> {
     }
 
     fn write_csr(&mut self, address: u16, value: u32) -> Result<(), RiscvError> {
+        log::debug!("Writing CSR {:#04x}={}", address, value);
+
         // Backup register s0
         let s0 = self.interface.abstract_cmd_register_read(&register::S0)?;
 
@@ -89,8 +92,7 @@ impl<'probe> Riscv32<'probe> {
         csrrw_cmd |= ((address as u32) & 0xfff) << 20;
 
         // write progbuf0: csrr xxxxxx s0, (address) // lookup correct command
-        self.interface
-            .setup_program_buffer(&[csrrw_cmd, assembly::EBREAK])?;
+        self.interface.setup_program_buffer(&[csrrw_cmd])?;
 
         // command: postexec
         let mut postexec_cmd = AccessRegisterCommand(0);

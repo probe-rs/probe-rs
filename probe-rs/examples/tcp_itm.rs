@@ -154,7 +154,7 @@ impl SwoPublisher for TcpPublisher {
                 loop {
                     // If a halt was requested, cease operations.
                     if halt_rx.try_recv().is_ok() {
-                        return ();
+                        return;
                     }
 
                     // Handle new incomming connections.
@@ -180,19 +180,16 @@ impl SwoPublisher for TcpPublisher {
                         }
                         None => {
                             log::error!("The TCP listener iterator was exhausted. Shutting down websocket listener.");
-                            return ();
+                            return;
                         }
                     }
 
                     // Send at max one pending message to each socket.
-                    match inbound.try_recv() {
-                        Ok(update) => {
-                            Self::write_to_all_sockets(
-                                &mut sockets,
-                                serde_json::to_string(&update).unwrap(),
-                            );
-                        }
-                        _ => (),
+                    if let Ok(update) = inbound.try_recv() {
+                        Self::write_to_all_sockets(
+                            &mut sockets,
+                            serde_json::to_string(&update).unwrap(),
+                        );
                     }
 
                     // Pause the current thread to not use CPU for no reason.

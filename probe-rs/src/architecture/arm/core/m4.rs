@@ -10,7 +10,7 @@ use crate::{
     core::{Architecture, CoreStatus, HaltReason},
     MemoryInterface,
 };
-use anyhow::{Context, Result};
+use anyhow::Result;
 
 use bitfield::bitfield;
 use std::mem::size_of;
@@ -61,31 +61,6 @@ impl From<Dhcsr> for u32 {
 impl CoreRegister for Dhcsr {
     const ADDRESS: u32 = 0xE000_EDF0;
     const NAME: &'static str = "DHCSR";
-}
-
-bitfield! {
-    #[derive(Copy, Clone)]
-    pub struct Dcrsr(u32);
-    impl Debug;
-    pub _, set_regwnr: 16;
-    pub _, set_regsel: 6,0;
-}
-
-impl From<u32> for Dcrsr {
-    fn from(value: u32) -> Self {
-        Self(value)
-    }
-}
-
-impl From<Dcrsr> for u32 {
-    fn from(value: Dcrsr) -> Self {
-        value.0
-    }
-}
-
-impl CoreRegister for Dcrsr {
-    const ADDRESS: u32 = 0xE000_EDF4;
-    const NAME: &'static str = "DCRSR";
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -370,21 +345,6 @@ impl<'probe> M4<'probe> {
 
         Ok(Self { memory, state })
     }
-
-    fn wait_for_core_register_transfer(&mut self, timeout: Duration) -> Result<(), Error> {
-        // now we have to poll the dhcsr register, until the dhcsr.s_regrdy bit is set
-        // (see C1-292, cortex m0 arm)
-        let start = Instant::now();
-
-        while start.elapsed() < timeout {
-            let dhcsr_val = Dhcsr(self.memory.read_word_32(Dhcsr::ADDRESS)?);
-
-            if dhcsr_val.s_regrdy() {
-                return Ok(());
-            }
-        }
-        Err(Error::Probe(DebugProbeError::Timeout))
-    }
 }
 
 impl<'probe> CoreInterface for M4<'probe> {
@@ -472,37 +432,14 @@ impl<'probe> CoreInterface for M4<'probe> {
         Ok(CoreStatus::Running)
     }
 
-    fn read_core_reg(&mut self, addr: CoreRegisterAddress) -> Result<u32, Error> {
-        // Write the DCRSR value to select the register we want to read.
-        let mut dcrsr_val = Dcrsr(0);
-        dcrsr_val.set_regwnr(false); // Perform a read.
-        dcrsr_val.set_regsel(addr.into()); // The address of the register to read.
-
-        self.memory
-            .write_word_32(Dcrsr::ADDRESS, dcrsr_val.into())?;
-
-        self.wait_for_core_register_transfer(Duration::from_millis(100))?;
-
-        self.memory.read_word_32(Dcrdr::ADDRESS).map_err(From::from)
+    fn read_core_reg(&mut self, address: CoreRegisterAddress) -> Result<u32, Error> {
+        self.memory.read_core_reg(address)
     }
 
-    fn write_core_reg(&mut self, addr: CoreRegisterAddress, value: u32) -> Result<()> {
-        let result: Result<(), Error> = self
-            .memory
-            .write_word_32(Dcrdr::ADDRESS, value)
-            .map_err(From::from);
-        result?;
+    fn write_core_reg(&mut self, address: CoreRegisterAddress, value: u32) -> Result<()> {
+        self.memory.write_core_reg(address, value)?;
 
-        // write the DCRSR value to select the register we want to write.
-        let mut dcrsr_val = Dcrsr(0);
-        dcrsr_val.set_regwnr(true); // Perform a write.
-        dcrsr_val.set_regsel(addr.into()); // The address of the register to write.
-
-        self.memory
-            .write_word_32(Dcrsr::ADDRESS, dcrsr_val.into())?;
-
-        self.wait_for_core_register_transfer(Duration::from_millis(100))
-            .context("Waiting for core register transfer")
+        Ok(())
     }
 
     fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {

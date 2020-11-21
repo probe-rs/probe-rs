@@ -11,7 +11,7 @@ use crate::{
     architecture::arm::{DapError, PortType, Register},
     architecture::{
         arm::{
-            communication_interface::ArmProbeInterface, dp::Ctrl, swo::SwoConfig,
+            communication_interface::ArmProbeInterface, dp::Ctrl, dp::DPIDR, swo::SwoConfig,
             ArmCommunicationInterface, SwoAccess,
         },
         riscv::communication_interface::RiscvCommunicationInterface,
@@ -532,7 +532,7 @@ impl DebugProbe for JLink {
 
                 // Construct the entire init sequence.
                 let swd_io_sequence =
-                    // Send the reset sequence (> 50 0-bits).    
+                    // Send the reset sequence (> 50 0-bits).
                     iter::repeat(true).take(64)
                     // Send the JTAG to SWD sequence.
                     .chain(jtag_to_swd_sequence.iter().copied())
@@ -543,7 +543,7 @@ impl DebugProbe for JLink {
 
                 // Construct the direction sequence for reset sequence.
                 let direction =
-                    // Send the reset sequence (> 50 0-bits).    
+                    // Send the reset sequence (> 50 0-bits).
                     iter::repeat(true).take(64)
                     // Send the JTAG to SWD sequence.
                     .chain(iter::repeat(true).take(16))
@@ -736,9 +736,7 @@ impl DAPAccess for JLink {
         ];
 
         // Add the data bits to the SWDIO sequence.
-        for _ in 0..32 {
-            swd_io_sequence.push(false);
-        }
+        swd_io_sequence.extend_from_slice(&[false; 32]);
 
         // Add the parity bit to the sequence.
         swd_io_sequence.push(false);
@@ -775,6 +773,10 @@ impl DAPAccess for JLink {
 
             // Get the ack.
             let ack = result_sequence.split_off(3).collect::<Vec<_>>();
+
+            if ack[0] && ack[1] && ack[2] {
+                return Err(DapError::NoAcknowledge.into());
+            }
             if ack[1] {
                 // If ack[1] is set the host must retry the request. So let's do that right away!
                 retries += 1;
@@ -786,11 +788,18 @@ impl DAPAccess for JLink {
 
                 // To get a clue about the actual fault we read the ctrl register,
                 // which will have the fault status flags set.
+
+                // Reading ctrl directly fails with nack on jlink. A dummy read
+                // of id first seems to clear it up.
+                let dp =
+                    DAPAccess::read_register(self, PortType::DebugPort, DPIDR::ADDRESS as u16)?;
+                log::trace!("Dummy read of DebugPort ID:  {:#x?}", dp);
+
                 let response =
                     DAPAccess::read_register(self, PortType::DebugPort, Ctrl::ADDRESS as u16)?;
                 let ctrl = Ctrl::from(response);
-                log::error!(
-                    "Reading DAP register failed. Ctrl/Stat register value is: {:#?}",
+                log::trace!(
+                    "Writing DAP register failed. Ctrl/Stat register value is: {:#?}",
                     ctrl
                 );
 
@@ -923,6 +932,10 @@ impl DAPAccess for JLink {
 
             // Get the ack.
             let ack = result_sequence.by_ref().take(3).collect::<Vec<_>>();
+
+            if ack[0] && ack[1] && ack[2] {
+                return Err(DapError::NoAcknowledge.into());
+            }
             if ack[1] {
                 // If ack[1] is set the host must retry the request. So let's do that right away!
                 retries += 1;
@@ -934,6 +947,13 @@ impl DAPAccess for JLink {
 
                 // To get a clue about the actual fault we read the ctrl register,
                 // which will have the fault status flags set.
+
+                // Reading ctrl directly fails with nack on jlink. A dummy read
+                // of id first seems to clear it up.
+                let dp =
+                    DAPAccess::read_register(self, PortType::DebugPort, DPIDR::ADDRESS as u16)?;
+                log::trace!("Dummy read of DebugPort ID:  {:#x?}", dp);
+
                 let response =
                     DAPAccess::read_register(self, PortType::DebugPort, Ctrl::ADDRESS as u16)?;
                 let ctrl = Ctrl::from(response);

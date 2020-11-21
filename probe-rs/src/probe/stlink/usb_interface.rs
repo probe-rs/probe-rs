@@ -234,38 +234,57 @@ impl StLinkUsb for STLinkUSBDevice {
             .map_err(|e| DebugProbeError::USB(Some(Box::new(e))))?;
 
         if written_bytes != CMD_LEN {
-            return Err(StlinkError::NotEnoughBytesRead {
+            return Err(StlinkError::NotEnoughBytesWritten {
                 is: written_bytes,
                 should: CMD_LEN,
             }
             .into());
         }
+
         // Optional data out phase.
         if !write_data.is_empty() {
-            let written_bytes = self
-                .device_handle
-                .write_bulk(ep_out, write_data, timeout)
-                .map_err(|e| DebugProbeError::USB(Some(Box::new(e))))?;
-            if written_bytes != write_data.len() {
-                return Err(StlinkError::NotEnoughBytesRead {
-                    is: written_bytes,
-                    should: write_data.len(),
-                }
-                .into());
+            let mut remaining_bytes = write_data.len();
+
+            let mut write_index = 0;
+
+            while remaining_bytes > 0 {
+                let written_bytes = self
+                    .device_handle
+                    .write_bulk(ep_out, &write_data[write_index..], timeout)
+                    .map_err(|e| DebugProbeError::USB(Some(Box::new(e))))?;
+
+                remaining_bytes -= written_bytes;
+                write_index += written_bytes;
+
+                log::trace!(
+                    "Wrote {} bytes, {} bytes remaining",
+                    written_bytes,
+                    remaining_bytes
+                );
             }
+
+            log::trace!("USB write done!");
         }
+
         // Optional data in phase.
         if !read_data.is_empty() {
-            let read_bytes = self
-                .device_handle
-                .read_bulk(ep_in, read_data, timeout)
-                .map_err(|e| DebugProbeError::USB(Some(Box::new(e))))?;
-            if read_bytes != read_data.len() {
-                return Err(StlinkError::NotEnoughBytesRead {
-                    is: read_bytes,
-                    should: read_data.len(),
-                }
-                .into());
+            let mut remaining_bytes = read_data.len();
+            let mut read_index = 0;
+
+            while remaining_bytes > 0 {
+                let read_bytes = self
+                    .device_handle
+                    .read_bulk(ep_in, &mut read_data[read_index..], timeout)
+                    .map_err(|e| DebugProbeError::USB(Some(Box::new(e))))?;
+
+                read_index += read_bytes;
+                remaining_bytes -= read_bytes;
+
+                log::trace!(
+                    "Read {} bytes, {} bytes remaining",
+                    read_bytes,
+                    remaining_bytes
+                );
             }
         }
         Ok(())

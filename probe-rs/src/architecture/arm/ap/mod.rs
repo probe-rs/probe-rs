@@ -18,14 +18,14 @@ use thiserror::Error;
 pub enum AccessPortError {
     #[error("Failed to access address 0x{address:08x} as it is not aligned to the requirement of {alignment} bytes.")]
     MemoryNotAligned { address: u32, alignment: usize },
-    #[error("Failed to read register {name} at address 0x{address:08x} because: {source}")]
+    #[error("Failed to read register {name} at address 0x{address:08x}")]
     RegisterReadError {
         address: u8,
         name: &'static str,
         #[source]
         source: Box<dyn std::error::Error + Send + Sync>,
     },
-    #[error("Failed to write register {name} at address 0x{address:08x} because: {source}")]
+    #[error("Failed to write register {name} at address 0x{address:08x}")]
     RegisterWriteError {
         address: u8,
         name: &'static str,
@@ -138,6 +138,7 @@ where
 }
 
 /// Determine if an AP exists with the given AP number.
+/// Can fail silently under the hood testing an ap that doesnt exist and would require cleanup.
 pub fn access_port_is_valid<AP>(debug_port: &mut AP, access_port: GenericAP) -> bool
 where
     AP: APAccess<GenericAP, IDR>,
@@ -149,7 +150,8 @@ where
     }
 }
 
-/// Return a Vec of all valid access ports found that the target connected to the debug_probe
+/// Return a Vec of all valid access ports found that the target connected to the debug_probe.
+/// Can fail silently under the hood testing an ap that doesnt exist and would require cleanup.
 pub(crate) fn valid_access_ports<AP>(debug_port: &mut AP) -> Vec<GenericAP>
 where
     AP: APAccess<GenericAP, IDR>,

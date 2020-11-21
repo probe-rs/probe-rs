@@ -110,6 +110,10 @@ pub struct RiscvCommunicationInterfaceState {
     /// Cache for the program buffer.
     progbuf_cache: [u32; 16],
 
+    /// Implicit `ebreak` instruction is present after the
+    /// the program buffer.
+    implicit_ebreak: bool,
+
     /// Number of data registers for abstract commands
     data_register_count: u8,
 
@@ -128,6 +132,10 @@ impl RiscvCommunicationInterfaceState {
             // Set to the minimum here, will be set to the correct value below
             progbuf_size: 0,
             progbuf_cache: [0u32; 16],
+
+            // Assume the implicit ebreak is not present
+            implicit_ebreak: false,
+
             // Set to the minimum here, will be set to the correct value below
             data_register_count: 1,
 
@@ -135,6 +143,12 @@ impl RiscvCommunicationInterfaceState {
 
             supports_autoexec: false,
         }
+    }
+}
+
+impl Default for RiscvCommunicationInterfaceState {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -185,6 +199,8 @@ impl<'probe> RiscvCommunicationInterface {
                 status.version() as u8
             ));
         }
+
+        self.state.implicit_ebreak = status.impebreak();
 
         log::debug!("dmstatus: {:?}", status);
 
@@ -388,7 +404,13 @@ impl<'probe> RiscvCommunicationInterface {
     }
 
     pub(crate) fn setup_program_buffer(&mut self, data: &[u32]) -> Result<(), RiscvError> {
-        if data.len() > self.state.progbuf_size as usize {
+        let required_len = if self.state.implicit_ebreak {
+            data.len()
+        } else {
+            data.len() + 1
+        };
+
+        if required_len > self.state.progbuf_size as usize {
             return Err(RiscvError::ProgramBufferTooSmall);
         }
 
@@ -400,6 +422,14 @@ impl<'probe> RiscvCommunicationInterface {
 
         for (index, word) in data.iter().enumerate() {
             self.write_progbuf(index, *word)?;
+        }
+
+        // Add manual ebreak if necessary.
+        //
+        // This is necessary when we either don't need the full program buffer,
+        // or if there is no implict ebreak after the last program buffer word.
+        if !self.state.implicit_ebreak || data.len() < self.state.progbuf_size as usize {
+            self.write_progbuf(data.len(), assembly::EBREAK)?;
         }
 
         // Update the cache
@@ -428,7 +458,7 @@ impl<'probe> RiscvCommunicationInterface {
 
         let lw_command: u32 = assembly::lw(0, 8, width as u32, 8);
 
-        self.setup_program_buffer(&[lw_command, assembly::EBREAK])?;
+        self.setup_program_buffer(&[lw_command])?;
 
         self.write_dm_register(Data0(address))?;
 
@@ -482,7 +512,7 @@ impl<'probe> RiscvCommunicationInterface {
 
         let sw_command = assembly::sw(0, 8, width as u32, 9);
 
-        self.setup_program_buffer(&[sw_command, assembly::EBREAK])?;
+        self.setup_program_buffer(&[sw_command])?;
 
         // write value into s0
         self.abstract_cmd_register_write(&register::S0, address)?;
@@ -654,6 +684,7 @@ impl MemoryInterface for RiscvCommunicationInterface {
     }
 
     fn read_32(&mut self, address: u32, data: &mut [u32]) -> Result<(), crate::Error> {
+        log::debug!("read_32 from {:#08x}", address);
         //  lb s1, 0(s0)
 
         // Backup registers s0 and s1
@@ -662,7 +693,7 @@ impl MemoryInterface for RiscvCommunicationInterface {
 
         let lw_command: u32 = assembly::lw(0, 8, RiscvBusAccess::A32 as u32, 9);
 
-        self.setup_program_buffer(&[lw_command, assembly::addi(8, 8, 4), assembly::EBREAK])?;
+        self.setup_program_buffer(&[lw_command, assembly::addi(8, 8, 4)])?;
 
         self.write_dm_register(Data0(address))?;
 
@@ -723,14 +754,17 @@ impl MemoryInterface for RiscvCommunicationInterface {
         Ok(())
     }
 
+    /// Read 8-bit values from target memory.
     fn read_8(&mut self, address: u32, data: &mut [u8]) -> Result<(), crate::Error> {
+        log::debug!("read_8 from {:#08x}", address);
+
         // Backup registers s0 and s1
         let s0 = self.abstract_cmd_register_read(&register::S0)?;
         let s1 = self.abstract_cmd_register_read(&register::S1)?;
 
         let lw_command: u32 = assembly::lw(0, 8, RiscvBusAccess::A8 as u32, 9);
 
-        self.setup_program_buffer(&[lw_command, assembly::addi(8, 8, 1), assembly::EBREAK])?;
+        self.setup_program_buffer(&[lw_command, assembly::addi(8, 8, 1)])?;
 
         self.write_dm_register(Data0(address))?;
 
@@ -804,6 +838,8 @@ impl MemoryInterface for RiscvCommunicationInterface {
     }
 
     fn write_32(&mut self, address: u32, data: &[u32]) -> Result<(), crate::Error> {
+        log::debug!("write_32 to {:#08x}", address);
+
         let s0 = self.abstract_cmd_register_read(&register::S0)?;
         let s1 = self.abstract_cmd_register_read(&register::S1)?;
 
@@ -812,7 +848,7 @@ impl MemoryInterface for RiscvCommunicationInterface {
         // then increase the address for next write.
         let sw_command = assembly::sw(0, 8, RiscvBusAccess::A32 as u32, 9);
 
-        self.setup_program_buffer(&[sw_command, assembly::addi(8, 8, 4), assembly::EBREAK])?;
+        self.setup_program_buffer(&[sw_command, assembly::addi(8, 8, 4)])?;
 
         // write address into s0
         self.abstract_cmd_register_write(&register::S0, address)?;
@@ -856,6 +892,8 @@ impl MemoryInterface for RiscvCommunicationInterface {
     }
 
     fn write_8(&mut self, address: u32, data: &[u8]) -> Result<(), crate::Error> {
+        log::debug!("write_8 to {:#08x}", address);
+
         //fn perform_memory_write(
         //    &mut self,
         //    address: u32,
@@ -868,7 +906,7 @@ impl MemoryInterface for RiscvCommunicationInterface {
 
         let sw_command = assembly::sw(0, 8, RiscvBusAccess::A8 as u32, 9);
 
-        self.setup_program_buffer(&[sw_command, assembly::addi(8, 8, 1), assembly::EBREAK])?;
+        self.setup_program_buffer(&[sw_command, assembly::addi(8, 8, 1)])?;
 
         // write value into s0
         self.abstract_cmd_register_write(&register::S0, address)?;

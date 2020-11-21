@@ -5,7 +5,7 @@ use nom::{
     character::complete::char,
     combinator::{all_consuming, opt, peek},
     error::ErrorKind,
-    multi::separated_nonempty_list,
+    multi::separated_list1,
     number::complete::hex_u32,
     sequence::preceded,
     IResult,
@@ -102,7 +102,7 @@ fn query_supported(input: &[u8]) -> IResult<&[u8], QueryPacket> {
     let (input, features) = if next_char.is_some() {
         let (input, _) = char(':')(input)?;
 
-        separated_nonempty_list(tag(";"), gdb_feature)(input)?
+        separated_list1(tag(";"), gdb_feature)(input)?
     } else {
         (input, vec![])
     };
@@ -113,8 +113,8 @@ fn query_supported(input: &[u8]) -> IResult<&[u8], QueryPacket> {
 fn gdb_feature(input: &[u8]) -> IResult<&[u8], String> {
     let (input, data) = take_while(|c| c != b';')(input)?;
 
-    let feature =
-        std::str::from_utf8(data).map_err(|_e| nom::Err::Failure((input, ErrorKind::IsNot)))?;
+    let feature = std::str::from_utf8(data)
+        .map_err(|_e| nom::Err::Failure(nom::error::Error::new(input, ErrorKind::IsNot)))?;
 
     // TODO: Actually recognize features with their flags
 

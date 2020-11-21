@@ -3,15 +3,15 @@ use crate::probe::{JTAGAccess, ProbeCreationError};
 use crate::{
     DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, DebugProbeType, WireProtocol,
 };
-use bitvec::order::Lsb0;
-use bitvec::vec::BitVec;
+use bitvec::{order::Lsb0, slice::BitSlice, vec::BitVec};
 use rusb::UsbContext;
 use std::convert::TryInto;
 use std::io::{self, Read, Write};
 use std::sync::Mutex;
 use std::time::Duration;
 
-mod ftdi;
+mod ftdi_impl;
+use ftdi_impl as ftdi;
 
 #[derive(Debug)]
 struct JtagChainItem {
@@ -261,7 +261,7 @@ impl JtagAdapter {
         let mut ir = 0;
         let mut irbits = 0;
         for (i, target) in targets.iter_mut().enumerate() {
-            if r.len() > 0 && irbits < 8 {
+            if (!r.is_empty()) && irbits < 8 {
                 let byte = r[0];
                 r.remove(0);
                 ir |= (byte as u32) << irbits;
@@ -270,7 +270,7 @@ impl JtagAdapter {
             if ir & 0b11 == 0b01 {
                 ir &= !1;
                 let irlen = ir.trailing_zeros();
-                ir = ir >> irlen;
+                ir >>= irlen;
                 irbits -= irlen;
                 log::debug!("tap {} irlen: {}", i, irlen);
                 target.irlen = irlen as usize;
@@ -353,8 +353,12 @@ impl JtagAdapter {
         self.shift_ir(&ir.to_le_bytes(), irbits)?;
 
         let drbits = params.drpre + len_bits + params.drpost;
-        let request = if let Some(data) = data {
-            let mut data = BitVec::<Lsb0, u8>::from_slice(data);
+        let request = if let Some(data_slice) = data {
+            let data = BitSlice::<Lsb0, u8>::from_slice(data_slice).ok_or(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "could not create bitslice",
+            ))?;
+            let mut data = BitVec::<Lsb0, u8>::from_bitslice(&data);
             data.truncate(len_bits);
 
             let mut buf = BitVec::<Lsb0, u8>::new();
@@ -455,7 +459,7 @@ impl DebugProbe for FtdiProbe {
             let idcode = taps
                 .iter()
                 .map(|tap| tap.idcode)
-                .find(|idcode| known_idcodes.iter().find(|v| *v == idcode).is_some());
+                .find(|idcode| known_idcodes.iter().any(|v| v == idcode));
             if let Some(idcode) = idcode {
                 adapter
                     .select_target(idcode)

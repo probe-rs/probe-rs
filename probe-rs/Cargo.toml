@@ -1,6 +1,6 @@
 [package]
 name = "probe-rs"
-version = "0.9.0"
+version = "0.10.1"
 authors = ["Noah Hüsser <yatekii@yatekii.ch>", "Dominik Boehi <dominik.boehi@gmail.ch>"]
 edition = "2018"
 description = "A collection of on chip debugging tools to communicate with microchips."
@@ -18,7 +18,7 @@ default = ["builtin-targets"]
 # Enable all built in targets.
 builtin-targets = []
 
-ftdi = ["libftdi1-sys"]
+ftdi = ["libftdi1-sys", "bitvec"]
 
 [dependencies]
 log = "0.4.8"
@@ -29,8 +29,8 @@ scroll = "0.10.1"
 rusb = "0.6.0"
 lazy_static = "1.4.0"
 hidapi = "1.2.0"
-gimli = "0.22.0"
-object = "0.21.0"
+gimli = "0.23.0"
+object = "0.22.0"
 bitfield = "0.13.2"
 serde = { version = "1.0.104", features = ["derive"] }
 serde_yaml = "0.8.11"
@@ -39,14 +39,14 @@ goblin = "0.2.0"
 hexdump = { version = "0.1.0", optional = true }
 thiserror = "1.0.10"
 jaylink = "0.1.4"
-base64 = "0.12.0"
+base64 = "0.13.0"
 svg = "0.8.0"
 anyhow = "1.0.31"
-bitvec = "0.17.4"
+bitvec = {version = "0.19.4", optional = true }
 libftdi1-sys = { version = "1.0.0-alpha3", optional = true }
 
 [build-dependencies]
-probe-rs-t2rust  = { path = "../probe-rs-t2rust", version ="0.6.0" }
+probe-rs-t2rust  = { path = "../probe-rs-t2rust", version ="0.7.0" }
 
 [dev-dependencies]
 rand = "0.7.2"
