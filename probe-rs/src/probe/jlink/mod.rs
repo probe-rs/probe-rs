@@ -682,14 +682,14 @@ impl JTAGAccess for JLink {
 }
 
 impl JLink {
-    // Try to perform a line reset, followed by a read of the DPIDR register.
-    //
-    // Returns true if the read of the DPIDR register was succesful, and false
-    // otherwise. In case of JLink Errors, the actual error is returned.
-    //
-    // If the first line reset fails, it is tried once again, as the target
-    // might be in the middle of a transfer the first time we try the reset.
-    // See
+    /// Try to perform a line reset, followed by a read of the DPIDR register.
+    ///
+    /// Returns true if the read of the DPIDR register was succesful, and false
+    /// otherwise. In case of JLink Errors, the actual error is returned.
+    ///
+    /// If the first line reset fails, it is tried once again, as the target
+    /// might be in the middle of a transfer the first time we try the reset.
+    /// See
     fn line_reset(&mut self) -> Result<bool, DebugProbeError> {
         log::debug!("Performing line reset!");
 
