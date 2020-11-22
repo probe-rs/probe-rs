@@ -1,8 +1,13 @@
 use colored::*;
+<<<<<<< HEAD
 use std::{
     process::{self},
     time::Duration,
 };
+=======
+use std::process::{self};
+use std::sync::{Arc, Mutex};
+>>>>>>> Adapt GDB server binary
 use structopt::StructOpt;
 
 use probe_rs::{config::TargetSelector, Probe};
@@ -74,7 +79,7 @@ fn main_try() -> Result<(), failure::Error> {
         Some(identifier) => identifier.into(),
         None => TargetSelector::Auto,
     };
-    let mut session = probe.attach(target_selector)?;
+    let mut session = Arc::new(Mutex::new(probe.attach(target_selector)?);
 
     if opt.reset_halt {
         session
