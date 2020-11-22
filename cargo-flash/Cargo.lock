@@ -141,7 +141,7 @@ checksum = "0e4cec68f03f32e44924783795810fa50a7035d8c8ebe78580ad7e6c703fba38"
 
 [[package]]
 name = "cargo-flash"
-version = "0.10.1"
+version = "0.10.2"
 dependencies = [
  "anyhow",
  "colored",
