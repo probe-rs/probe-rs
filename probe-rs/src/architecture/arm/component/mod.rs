@@ -44,20 +44,20 @@ pub trait DebugRegister: Clone + From<u32> + Into<u32> + Sized + std::fmt::Debug
 
 /// Goes through every component in the vector and tries to find the first component with the given type
 fn find_component(
-    components: &Vec<Component>,
+    components: &[Component],
     peripheral_type: PeripheralType,
 ) -> Result<&Component, Error> {
     components
         .iter()
         .find_map(|component| component.find_component(peripheral_type))
-        .ok_or(Error::architecture_specific(
+        .ok_or_else(|| Error::architecture_specific(
             RomTableError::ComponentNotFound(peripheral_type),
         ))
 }
 
 pub fn setup_swv(
     core: &mut Core,
-    components: &Vec<Component>,
+    components: &[Component],
     config: &SwoConfig,
 ) -> Result<(), Error> {
     // Enable tracing
@@ -100,11 +100,11 @@ pub fn setup_swv(
 
 fn setup_swv_vendor(
     core: &mut Core,
-    components: &Vec<Component>,
+    components: &[Component],
     config: &SwoConfig,
 ) -> Result<(), Error> {
     if components.is_empty() {
-        return Err(Error::architecture_specific(RomTableError::NoComponents))
+        return Err(Error::architecture_specific(RomTableError::NoComponents));
     }
 
     for component in components.iter() {
@@ -138,7 +138,9 @@ fn setup_swv_vendor(
                 traceconfig |= 1 << 16; // tracemux : serial = 1
                 return core.write_word_32(CLOCK_TRACECONFIG, traceconfig);
             }
-            _ => { return Ok(()); }
+            _ => {
+                continue;
+            }
         }
     }
 
@@ -148,7 +150,7 @@ fn setup_swv_vendor(
 /// Configures DWT trace unit `unit` to begin tracing `address`.
 pub fn add_swv_data_trace(
     core: &mut Core,
-    components: &Vec<Component>,
+    components: &[Component],
     unit: usize,
     address: u32,
 ) -> Result<(), Error> {
@@ -158,7 +160,7 @@ pub fn add_swv_data_trace(
 
 pub fn remove_swv_data_trace(
     core: &mut Core,
-    components: &Vec<Component>,
+    components: &[Component],
     unit: usize,
 ) -> Result<(), Error> {
     let mut dwt = Dwt::new(core, find_component(components, PeripheralType::Dwt)?);

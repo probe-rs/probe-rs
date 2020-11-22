@@ -321,7 +321,7 @@ impl<'probe: 'memory, 'memory> ComponentInformationReader<'probe, 'memory> {
             .memory
             .read_word_32(self.base_address as u32 + DEV_TYPE_OFFSET)
             .map(|v| (v & DEV_TYPE_MASK) as u8)
-            .map_err(|e| RomTableError::Memory(e))?;
+            .map_err(RomTableError::Memory)?;
 
         const ARCH_ID_OFFSET: u32 = 0xFBC;
         const ARCH_ID_MASK: u32 = 0xFFFF;
@@ -337,7 +337,7 @@ impl<'probe: 'memory, 'memory> ComponentInformationReader<'probe, 'memory> {
                     0
                 }
             })
-            .map_err(|e| RomTableError::Memory(e))?;
+            .map_err(RomTableError::Memory)?;
 
         log::debug!("Dev type: {:x}, arch id: {:x}", dev_type, arch_id);
 
@@ -451,10 +451,8 @@ impl Component {
         Ok(())
     }
 
-    pub fn find_component<'core>(
-        &'core self,
-        peripheral_type: PeripheralType,
-    ) -> Option<&'core Component> {
+    /// Finds the first component with the given peripheral type
+    pub fn find_component(&self, peripheral_type: PeripheralType) -> Option<&Component> {
         for component in self.iter() {
             if component.id().peripheral_id.is_of_type(peripheral_type) {
                 return Some(component);
@@ -553,16 +551,13 @@ pub struct PeripheralID {
     PART: u16,
     /// The SIZE is indicated as a multiple of 4k blocks the peripheral occupies.
     SIZE: u8,
-
+    /// The dev_type of the peripheral
     dev_type: u8,
+    /// The arch_id of the peripheral
     arch_id: u16,
 }
 
 impl PeripheralID {
-    const _ITM_PID: [u8; 8] = [0x1, 0xB0, 0x3b, 0x0, 0x4, 0x0, 0x0, 0x0];
-    const _TPIU_PID: [u8; 8] = [0xA1, 0xB9, 0x0B, 0x0, 0x4, 0x0, 0x0, 0x0];
-    const _DWT_PID: [u8; 8] = [0x2, 0xB0, 0x3b, 0x0, 0x4, 0x0, 0x0, 0x0];
-
     /// Extracts the peripheral ID of the CoreSight component table data.
     fn from_raw(data: &[u32; 8], dev_type: u8, arch_id: u16) -> Self {
         let jep106id = (((data[2] & 0x07) << 4) | ((data[1] >> 4) & 0x0F)) as u8;
@@ -601,8 +596,11 @@ impl PeripheralID {
         self.PART
     }
 
+    /// Uses the available data to match it againts a table of known components.
+    /// If the component is known, some info about it is returned.
+    /// If it is not known, None is returned.
     #[rustfmt::skip]
-    pub fn determine_part(&self) -> Option<ComponentInfo> {
+    pub fn determine_part(&self) -> Option<PartInfo> {
         let code = self.JEP106.map(|jep106| jep106.get()).flatten().unwrap_or("");
 
         // Source of the table: https://github.com/blacksphere/blackmagic/blob/master/src/target/adiv5.c#L189
@@ -613,45 +611,45 @@ impl PeripheralID {
             self.dev_type,
             self.arch_id,
         ) {
-            ("ARM Ltd", 0x000, 0x00, 0x0000) => Some(ComponentInfo::new("Cortex-M3 SCS", PeripheralType::Scs)),
-            ("ARM Ltd", 0x001, 0x00, 0x0000) => Some(ComponentInfo::new("Cortex-M3 ITM", PeripheralType::Itm)),
-            ("ARM Ltd", 0x002, 0x00, 0x0000) => Some(ComponentInfo::new("Cortex-M3 DWT", PeripheralType::Dwt)),
-            ("ARM Ltd", 0x003, 0x00, 0x0000) => Some(ComponentInfo::new("Cortex-M3 FBP", PeripheralType::Fbp)),
-            ("ARM Ltd", 0x008, 0x00, 0x0000) => Some(ComponentInfo::new("Cortex-M0 SCS", PeripheralType::Scs)),
-            ("ARM Ltd", 0x00A, 0x00, 0x0000) => Some(ComponentInfo::new("Cortex-M0 DWT", PeripheralType::Dwt)),
-            ("ARM Ltd", 0x00B, 0x00, 0x0000) => Some(ComponentInfo::new("Cortex-M0 BPU", PeripheralType::Bpu)),
-            ("ARM Ltd", 0x00C, 0x00, 0x0000) => Some(ComponentInfo::new("Cortex-M4 SCS", PeripheralType::Scs)),
-            ("ARM Ltd", 0x00D, 0x00, 0x0000) => Some(ComponentInfo::new("CoreSight ETM11", PeripheralType::Etm)),
-            ("ARM Ltd", 0x00E, 0x00, 0x0000) => Some(ComponentInfo::new("Cortex-M7 FBP", PeripheralType::Fbp)),
-            ("ARM Ltd", 0x101, 0x00, 0x0000) => Some(ComponentInfo::new("System TSGEN", PeripheralType::Tsgen)),
-            ("ARM Ltd", 0x471, 0x00, 0x0000) => Some(ComponentInfo::new("Cortex-M0  ROM", PeripheralType::Rom)),
-            ("ARM Ltd", 0x4C0, 0x00, 0x0000) => Some(ComponentInfo::new("Cortex-M0+ ROM", PeripheralType::Rom)),
-            ("ARM Ltd", 0x4C4, 0x00, 0x0000) => Some(ComponentInfo::new("Cortex-M4 ROM", PeripheralType::Rom)),
-            ("ARM Ltd", 0x907, 0x21, 0x0000) => Some(ComponentInfo::new("CoreSight ETB", PeripheralType::Etb)),
-            ("ARM Ltd", 0x910, 0x00, 0x0000) => Some(ComponentInfo::new("CoreSight ETM9", PeripheralType::Etm)),
-            ("ARM Ltd", 0x912, 0x11, 0x0000) => Some(ComponentInfo::new("CoreSight TPIU", PeripheralType::Tpiu)),
-            ("ARM Ltd", 0x913, 0x00, 0x0000) => Some(ComponentInfo::new("CoreSight ITM", PeripheralType::Itm)),
-            ("ARM Ltd", 0x914, 0x00, 0x0000) => Some(ComponentInfo::new("CoreSight SWO", PeripheralType::Swo)),
-            ("ARM Ltd", 0x920, 0x00, 0x0000) => Some(ComponentInfo::new("CoreSight ETM11", PeripheralType::Etm)),
-            ("ARM Ltd", 0x923, 0x11, 0x0000) => Some(ComponentInfo::new("Cortex-M3 TPIU", PeripheralType::Tpiu)),
-            ("ARM Ltd", 0x924, 0x13, 0x0000) => Some(ComponentInfo::new("Cortex-M3 ETM", PeripheralType::Etm)),
-            ("ARM Ltd", 0x925, 0x13, 0x0000) => Some(ComponentInfo::new("Cortex-M4 ETM", PeripheralType::Etm)),
-            ("ARM Ltd", 0x962, 0x00, 0x0000) => Some(ComponentInfo::new("CoreSight STM", PeripheralType::Stm)),
-            ("ARM Ltd", 0x963, 0x63, 0x0a63) => Some(ComponentInfo::new("CoreSight STM", PeripheralType::Stm)),
-            ("ARM Ltd", 0x975, 0x13, 0x4a13) => Some(ComponentInfo::new("Cortex-M7 ETM", PeripheralType::Etm)),
-            ("ARM Ltd", 0x9A1, 0x11, 0x0000) => Some(ComponentInfo::new("Cortex-M4 TPIU", PeripheralType::Tpiu)),
-            ("ARM Ltd", 0x9A9, 0x11, 0x0000) => Some(ComponentInfo::new("Cortex-M7 TPIU", PeripheralType::Tpiu)),
-            ("ARM Ltd", 0xD20, 0x00, 0x2A04) => Some(ComponentInfo::new("Cortex-M23 SCS", PeripheralType::Scs)),
-            ("ARM Ltd", 0xD20, 0x11, 0x0000) => Some(ComponentInfo::new("Cortex-M23 TPIU", PeripheralType::Tpiu)),
-            ("ARM Ltd", 0xD20, 0x13, 0x0000) => Some(ComponentInfo::new("Cortex-M23 ETM", PeripheralType::Etm)),
-            ("ARM Ltd", 0xD20, 0x00, 0x1A02) => Some(ComponentInfo::new("Cortex-M23 DWT", PeripheralType::Dwt)),
-            ("ARM Ltd", 0xD20, 0x00, 0x1A03) => Some(ComponentInfo::new("Cortex-M23 BPU", PeripheralType::Bpu)),
-            ("ARM Ltd", 0xD21, 0x00, 0x2A04) => Some(ComponentInfo::new("Cortex-M33 SCS", PeripheralType::Scs)),
-            ("ARM Ltd", 0xD21, 0x43, 0x1A01) => Some(ComponentInfo::new("Cortex-M33 ITM", PeripheralType::Itm)),
-            ("ARM Ltd", 0xD21, 0x00, 0x1A02) => Some(ComponentInfo::new("Cortex-M33 DWT", PeripheralType::Dwt)),
-            ("ARM Ltd", 0xD21, 0x00, 0x1A03) => Some(ComponentInfo::new("Cortex-M33 BPU", PeripheralType::Bpu)),
-            ("ARM Ltd", 0xD21, 0x13, 0x4A13) => Some(ComponentInfo::new("Cortex-M33 ETM", PeripheralType::Etm)),
-            ("ARM Ltd", 0xD21, 0x11, 0x0000) => Some(ComponentInfo::new("Cortex-M33 TPIU", PeripheralType::Tpiu)),
+            ("ARM Ltd", 0x000, 0x00, 0x0000) => Some(PartInfo::new("Cortex-M3 SCS", PeripheralType::Scs)),
+            ("ARM Ltd", 0x001, 0x00, 0x0000) => Some(PartInfo::new("Cortex-M3 ITM", PeripheralType::Itm)),
+            ("ARM Ltd", 0x002, 0x00, 0x0000) => Some(PartInfo::new("Cortex-M3 DWT", PeripheralType::Dwt)),
+            ("ARM Ltd", 0x003, 0x00, 0x0000) => Some(PartInfo::new("Cortex-M3 FBP", PeripheralType::Fbp)),
+            ("ARM Ltd", 0x008, 0x00, 0x0000) => Some(PartInfo::new("Cortex-M0 SCS", PeripheralType::Scs)),
+            ("ARM Ltd", 0x00A, 0x00, 0x0000) => Some(PartInfo::new("Cortex-M0 DWT", PeripheralType::Dwt)),
+            ("ARM Ltd", 0x00B, 0x00, 0x0000) => Some(PartInfo::new("Cortex-M0 BPU", PeripheralType::Bpu)),
+            ("ARM Ltd", 0x00C, 0x00, 0x0000) => Some(PartInfo::new("Cortex-M4 SCS", PeripheralType::Scs)),
+            ("ARM Ltd", 0x00D, 0x00, 0x0000) => Some(PartInfo::new("CoreSight ETM11", PeripheralType::Etm)),
+            ("ARM Ltd", 0x00E, 0x00, 0x0000) => Some(PartInfo::new("Cortex-M7 FBP", PeripheralType::Fbp)),
+            ("ARM Ltd", 0x101, 0x00, 0x0000) => Some(PartInfo::new("System TSGEN", PeripheralType::Tsgen)),
+            ("ARM Ltd", 0x471, 0x00, 0x0000) => Some(PartInfo::new("Cortex-M0  ROM", PeripheralType::Rom)),
+            ("ARM Ltd", 0x4C0, 0x00, 0x0000) => Some(PartInfo::new("Cortex-M0+ ROM", PeripheralType::Rom)),
+            ("ARM Ltd", 0x4C4, 0x00, 0x0000) => Some(PartInfo::new("Cortex-M4 ROM", PeripheralType::Rom)),
+            ("ARM Ltd", 0x907, 0x21, 0x0000) => Some(PartInfo::new("CoreSight ETB", PeripheralType::Etb)),
+            ("ARM Ltd", 0x910, 0x00, 0x0000) => Some(PartInfo::new("CoreSight ETM9", PeripheralType::Etm)),
+            ("ARM Ltd", 0x912, 0x11, 0x0000) => Some(PartInfo::new("CoreSight TPIU", PeripheralType::Tpiu)),
+            ("ARM Ltd", 0x913, 0x00, 0x0000) => Some(PartInfo::new("CoreSight ITM", PeripheralType::Itm)),
+            ("ARM Ltd", 0x914, 0x00, 0x0000) => Some(PartInfo::new("CoreSight SWO", PeripheralType::Swo)),
+            ("ARM Ltd", 0x920, 0x00, 0x0000) => Some(PartInfo::new("CoreSight ETM11", PeripheralType::Etm)),
+            ("ARM Ltd", 0x923, 0x11, 0x0000) => Some(PartInfo::new("Cortex-M3 TPIU", PeripheralType::Tpiu)),
+            ("ARM Ltd", 0x924, 0x13, 0x0000) => Some(PartInfo::new("Cortex-M3 ETM", PeripheralType::Etm)),
+            ("ARM Ltd", 0x925, 0x13, 0x0000) => Some(PartInfo::new("Cortex-M4 ETM", PeripheralType::Etm)),
+            ("ARM Ltd", 0x962, 0x00, 0x0000) => Some(PartInfo::new("CoreSight STM", PeripheralType::Stm)),
+            ("ARM Ltd", 0x963, 0x63, 0x0a63) => Some(PartInfo::new("CoreSight STM", PeripheralType::Stm)),
+            ("ARM Ltd", 0x975, 0x13, 0x4a13) => Some(PartInfo::new("Cortex-M7 ETM", PeripheralType::Etm)),
+            ("ARM Ltd", 0x9A1, 0x11, 0x0000) => Some(PartInfo::new("Cortex-M4 TPIU", PeripheralType::Tpiu)),
+            ("ARM Ltd", 0x9A9, 0x11, 0x0000) => Some(PartInfo::new("Cortex-M7 TPIU", PeripheralType::Tpiu)),
+            ("ARM Ltd", 0xD20, 0x00, 0x2A04) => Some(PartInfo::new("Cortex-M23 SCS", PeripheralType::Scs)),
+            ("ARM Ltd", 0xD20, 0x11, 0x0000) => Some(PartInfo::new("Cortex-M23 TPIU", PeripheralType::Tpiu)),
+            ("ARM Ltd", 0xD20, 0x13, 0x0000) => Some(PartInfo::new("Cortex-M23 ETM", PeripheralType::Etm)),
+            ("ARM Ltd", 0xD20, 0x00, 0x1A02) => Some(PartInfo::new("Cortex-M23 DWT", PeripheralType::Dwt)),
+            ("ARM Ltd", 0xD20, 0x00, 0x1A03) => Some(PartInfo::new("Cortex-M23 BPU", PeripheralType::Bpu)),
+            ("ARM Ltd", 0xD21, 0x00, 0x2A04) => Some(PartInfo::new("Cortex-M33 SCS", PeripheralType::Scs)),
+            ("ARM Ltd", 0xD21, 0x43, 0x1A01) => Some(PartInfo::new("Cortex-M33 ITM", PeripheralType::Itm)),
+            ("ARM Ltd", 0xD21, 0x00, 0x1A02) => Some(PartInfo::new("Cortex-M33 DWT", PeripheralType::Dwt)),
+            ("ARM Ltd", 0xD21, 0x00, 0x1A03) => Some(PartInfo::new("Cortex-M33 BPU", PeripheralType::Bpu)),
+            ("ARM Ltd", 0xD21, 0x13, 0x4A13) => Some(PartInfo::new("Cortex-M33 ETM", PeripheralType::Etm)),
+            ("ARM Ltd", 0xD21, 0x11, 0x0000) => Some(PartInfo::new("Cortex-M33 TPIU", PeripheralType::Tpiu)),
             _ => None,
         };
 
@@ -660,7 +658,7 @@ impl PeripheralID {
         }
 
         let stm_part = if code == "STMicroelectronics" && self.dev_type <= 0x01 && self.arch_id == 0x00 {
-            Stm32ID::from_u16(self.PART).map(|id| ComponentInfo::new("STM device id", PeripheralType::Stm32ID(id)))
+            Stm32ID::from_u16(self.PART).map(|id| PartInfo::new("STM device id", PeripheralType::Stm32ID(id)))
         } else {
             None
         };
@@ -673,13 +671,15 @@ impl PeripheralID {
     }
 }
 
+/// Some info about a romtable component
 #[derive(Debug, Copy, Clone)]
-pub struct ComponentInfo {
+pub struct PartInfo {
     name: &'static str,
     peripheral_type: PeripheralType,
 }
 
-impl ComponentInfo {
+impl PartInfo {
+    /// Creates a new part info instance of a given name and type
     pub const fn new(name: &'static str, peripheral_type: PeripheralType) -> Self {
         Self {
             name,
@@ -687,21 +687,24 @@ impl ComponentInfo {
         }
     }
 
+    /// Gets the part name
     pub const fn name(&self) -> &'static str {
         self.name
     }
 
+    /// Gets the peripheral type
     pub const fn peripheral_type(&self) -> PeripheralType {
         self.peripheral_type
     }
 }
 
-impl std::fmt::Display for ComponentInfo {
+impl std::fmt::Display for PartInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}: {}", self.name, self.peripheral_type)
     }
 }
 
+/// The type of peripheral as read by the romtable parser
 #[non_exhaustive]
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum PeripheralType {
@@ -811,132 +814,111 @@ pub enum Stm32ID {
 
 impl Stm32ID {
     pub fn is_f0_series(&self) -> bool {
-        match self {
-            Stm32ID::STM32F03 => true,
-            Stm32ID::STM32F04 => true,
-            Stm32ID::STM32F05 => true,
-            Stm32ID::STM32F07 => true,
-            Stm32ID::STM32F09 => true,
-            _ => false,
-        }
+        matches!(
+            self,
+            Stm32ID::STM32F03
+                | Stm32ID::STM32F04
+                | Stm32ID::STM32F05
+                | Stm32ID::STM32F07
+                | Stm32ID::STM32F09
+        )
     }
 
     pub fn is_f1_series(&self) -> bool {
-        match self {
-            Stm32ID::STM32F1LD => true,
-            Stm32ID::STM32F1MD => true,
-            Stm32ID::STM32F1HD => true,
-            Stm32ID::STM32F1XL => true,
-            Stm32ID::STM32F1CD => true,
-            _ => false,
-        }
+        matches!(
+            self,
+            Stm32ID::STM32F1LD
+                | Stm32ID::STM32F1MD
+                | Stm32ID::STM32F1HD
+                | Stm32ID::STM32F1XL
+                | Stm32ID::STM32F1CD
+        )
     }
 
     pub fn is_f2_series(&self) -> bool {
-        match self {
-            Stm32ID::STM32F20X => true,
-            _ => false,
-        }
+        matches!(self, Stm32ID::STM32F20X)
     }
 
     pub fn is_f3_series(&self) -> bool {
-        match self {
-            Stm32ID::STM32F328 => true,
-            Stm32ID::STM32F30X => true,
-            Stm32ID::STM32F398XE => true,
-            Stm32ID::STM32F37X => true,
-            Stm32ID::STM32F302C8 => true,
-            _ => false,
-        }
+        matches!(
+            self,
+            Stm32ID::STM32F328
+                | Stm32ID::STM32F30X
+                | Stm32ID::STM32F398XE
+                | Stm32ID::STM32F37X
+                | Stm32ID::STM32F302C8
+        )
     }
 
     pub fn is_f4_series(&self) -> bool {
-        match self {
-            Stm32ID::STM32F40X => true,
-            Stm32ID::STM32F42X => true,
-            Stm32ID::STM32F446 => true,
-            Stm32ID::STM32F401C => true,
-            Stm32ID::STM32F411 => true,
-            Stm32ID::STM32F401E => true,
-            Stm32ID::STM32F46X => true,
-            Stm32ID::STM32F412 => true,
-            Stm32ID::STM32F410 => true,
-            Stm32ID::STM32F413 => true,
-            _ => false,
-        }
+        matches!(
+            self,
+            Stm32ID::STM32F40X
+                | Stm32ID::STM32F42X
+                | Stm32ID::STM32F446
+                | Stm32ID::STM32F401C
+                | Stm32ID::STM32F411
+                | Stm32ID::STM32F401E
+                | Stm32ID::STM32F46X
+                | Stm32ID::STM32F412
+                | Stm32ID::STM32F410
+                | Stm32ID::STM32F413
+        )
     }
 
     pub fn is_f7_series(&self) -> bool {
-        match self {
-            Stm32ID::STM32F74X => true,
-            Stm32ID::STM32F76X => true,
-            Stm32ID::STM32F72X => true,
-            _ => false,
-        }
+        matches!(
+            self,
+            Stm32ID::STM32F74X | Stm32ID::STM32F76X | Stm32ID::STM32F72X
+        )
     }
 
     pub fn is_l0_series(&self) -> bool {
-        match self {
-            Stm32ID::STM32L0XC1 => true,
-            Stm32ID::STM32L0XC2 => true,
-            Stm32ID::STM32L0XC3 => true,
-            Stm32ID::STM32L0XC5 => true,
-            _ => false,
-        }
+        matches!(
+            self,
+            Stm32ID::STM32L0XC1 | Stm32ID::STM32L0XC2 | Stm32ID::STM32L0XC3 | Stm32ID::STM32L0XC5
+        )
     }
 
     pub fn is_l1_series(&self) -> bool {
-        match self {
-            Stm32ID::STM32L1XC1 => true,
-            Stm32ID::STM32L1XC2 => true,
-            Stm32ID::STM32L1XC3 => true,
-            Stm32ID::STM32L1XC4 => true,
-            Stm32ID::STM32L1XC5 => true,
-            _ => false,
-        }
+        matches!(
+            self,
+            Stm32ID::STM32L1XC1
+                | Stm32ID::STM32L1XC2
+                | Stm32ID::STM32L1XC3
+                | Stm32ID::STM32L1XC4
+                | Stm32ID::STM32L1XC5
+        )
     }
 
     pub fn is_l4_series(&self) -> bool {
-        match self {
-            Stm32ID::STM32L41 => true,
-            Stm32ID::STM32L43 => true,
-            Stm32ID::STM32L45 => true,
-            Stm32ID::STM32L47 => true,
-            Stm32ID::STM32L49 => true,
-            Stm32ID::STM32L4R => true,
-            _ => false,
-        }
+        matches!(
+            self,
+            Stm32ID::STM32L41
+                | Stm32ID::STM32L43
+                | Stm32ID::STM32L45
+                | Stm32ID::STM32L47
+                | Stm32ID::STM32L49
+                | Stm32ID::STM32L4R
+        )
     }
 
     pub fn is_l5_series(&self) -> bool {
-        match self {
-            Stm32ID::STM32L5 => true,
-            _ => false,
-        }
+        matches!(self, Stm32ID::STM32L5)
     }
 
     pub fn is_g0_series(&self) -> bool {
-        match self {
-            Stm32ID::STM32G03 => true,
-            Stm32ID::STM32G07 => true,
-            _ => false,
-        }
+        matches!(self, Stm32ID::STM32G03 | Stm32ID::STM32G07)
     }
 
     pub fn is_g4_series(&self) -> bool {
-        match self {
-            Stm32ID::STM32G43 => true,
-            Stm32ID::STM32G47 => true,
-            _ => false,
-        }
+        matches!(self, Stm32ID::STM32G43 | Stm32ID::STM32G47)
     }
 
     pub fn is_h7_series(&self) -> bool {
-        match self {
-            Stm32ID::STM32H74X => true,
-            Stm32ID::STM32H7BX => true,
-            Stm32ID::STM32H72X => true,
-            _ => false,
-        }
+        matches!(
+            self,
+            Stm32ID::STM32H74X | Stm32ID::STM32H7BX | Stm32ID::STM32H72X
+        )
     }
 }

@@ -203,11 +203,7 @@ impl Session {
                     port_number: _,
                     only_32bit_data_size: _,
                     debug_base_address: 0,
-                } => {
-                    Err(Error::Other(anyhow!(
-                        "AP has a base address of 0"
-                    )))
-                }
+                } => Err(Error::Other(anyhow!("AP has a base address of 0"))),
                 MemoryAp {
                     port_number,
                     only_32bit_data_size: _,
@@ -273,7 +269,10 @@ impl Session {
         let components = self.get_arm_components()?;
         let mut core = self.core(0)?;
         crate::architecture::arm::component::add_swv_data_trace(
-            &mut core, &components, unit, address,
+            &mut core,
+            &components,
+            unit,
+            address,
         )
     }
 
