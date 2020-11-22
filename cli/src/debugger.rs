@@ -184,17 +184,23 @@ impl DebugCli {
             help_text: "Show backtrace",
 
             function: |cli_data, _args| {
-                let regs = cli_data.core.registers();
-                let program_counter = cli_data.core.read_core_reg(regs.program_counter())?;
+                let status = cli_data.core.status()?;
 
-                if let Some(di) = &cli_data.debug_info {
-                    let frames = di.try_unwind(&mut cli_data.core, u64::from(program_counter));
+                if status.is_halted() {
+                    let regs = cli_data.core.registers();
+                    let program_counter = cli_data.core.read_core_reg(regs.program_counter())?;
 
-                    for frame in frames {
-                        println!("{}", frame);
+                    if let Some(di) = &cli_data.debug_info {
+                        let frames = di.try_unwind(&mut cli_data.core, u64::from(program_counter));
+
+                        for frame in frames {
+                            println!("{}", frame);
+                        }
+                    } else {
+                        println!("No debug information present!");
                     }
                 } else {
-                    println!("No debug information present!");
+                    println!("Core must be halted for a backtrace.");
                 }
 
                 Ok(CliState::Continue)
