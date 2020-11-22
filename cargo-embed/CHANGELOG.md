@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+## [0.10.1]
+
+### Changed
+
+- Disable sentry by default as an intermediate measure to fix the subpar user experience due to its introduction.
+
 ## [0.10.0]
 
 ### Added
@@ -146,7 +152,8 @@ An example is this config:
 ## [0.6.0]
 - Initial release
 
-[Unreleased]: https://github.com/probe-rs/cargo-embed/compare/v0.10.0..master
+[Unreleased]: https://github.com/probe-rs/cargo-embed/compare/v0.10.1..master
+[0.10.1]: https://github.com/probe-rs/cargo-embed/releases/tag/v0.10.0..v0.10.1
 [0.10.0]: https://github.com/probe-rs/cargo-embed/releases/tag/v0.9.0..v0.10.0
 [0.9.1]: https://github.com/probe-rs/cargo-embed/releases/tag/v0.9.0..v0.9.1
 [0.9.0]: https://github.com/probe-rs/cargo-embed/releases/tag/v0.8.0..v0.9.0
