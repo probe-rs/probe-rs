@@ -50,9 +50,9 @@ fn find_component(
     components
         .iter()
         .find_map(|component| component.find_component(peripheral_type))
-        .ok_or_else(|| Error::architecture_specific(
-            RomTableError::ComponentNotFound(peripheral_type),
-        ))
+        .ok_or_else(|| {
+            Error::architecture_specific(RomTableError::ComponentNotFound(peripheral_type))
+        })
 }
 
 pub fn setup_swv(
