@@ -235,12 +235,15 @@ impl<'a> AsMut<dyn DebugProbe + 'a> for ArmCommunicationInterface {
 }
 
 impl<'interface> ArmCommunicationInterface {
-    pub(crate) fn new(probe: Box<dyn DAPAccess>) -> Result<Self, DebugProbeError> {
+    pub(crate) fn new(
+        probe: Box<dyn DAPAccess>,
+        use_overrun_detect: bool,
+    ) -> Result<Self, DebugProbeError> {
         let state = ArmCommunicationInterfaceState::new();
 
         let mut interface = Self { probe, state };
 
-        interface.enter_debug_mode()?;
+        interface.enter_debug_mode(use_overrun_detect)?;
 
         /* determine the number and type of available APs */
         log::trace!("Searching valid APs");
@@ -298,7 +301,7 @@ impl<'interface> ArmCommunicationInterface {
         }
     }
 
-    fn enter_debug_mode(&mut self) -> Result<(), DebugProbeError> {
+    fn enter_debug_mode(&mut self, use_overrun_detect: bool) -> Result<(), DebugProbeError> {
         // Assume that we have DebugPort v1 Interface!
         // Maybe change this in the future when other versions are released.
 
@@ -331,6 +334,7 @@ impl<'interface> ArmCommunicationInterface {
         let mut ctrl_reg = Ctrl::default();
         ctrl_reg.set_csyspwrupreq(true);
         ctrl_reg.set_cdbgpwrupreq(true);
+        ctrl_reg.set_orun_detect(use_overrun_detect);
         self.write_dp_register(ctrl_reg)?;
 
         // Check the return value to see whether power up was ok.
