@@ -139,7 +139,7 @@ impl Request for TransferRequest {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Ack {
     /// TODO: ??????????????????????? Docs are weird?
     /// OK (for SWD protocol), OK or FAULT (for JTAG protocol),

@@ -193,6 +193,8 @@ impl DAPLink {
 
         match count {
             _ if count == batch.len() => {
+                // All commands have been executed
+
                 if response.transfer_response.protocol_error {
                     Err(DapError::SwdProtocol.into())
                 } else {
@@ -229,11 +231,32 @@ impl DAPLink {
                     }
                 }
             }
-            0 => Err(DebugProbeError::Other(anyhow!(
-                "Didn't receive any answer during batch processing: {:?}",
-                batch
-            ))),
-            _ => Err(DebugProbeError::BatchError(batch[count - 1])),
+            count => {
+                log::debug!("Not all batch commands executed: executed {}/{}, last response: proctol_err={}, ack={:?}", 
+                    count, batch.len(), response.transfer_response.protocol_error, response.transfer_response.ack);
+
+                if count > 0 {
+                    log::debug!("Failing batch command: {:?}", batch[count - 1]);
+                    Err(DebugProbeError::BatchError(batch[count - 1]))
+                } else {
+                    // Not a single command has been executed succesfully
+
+                    if response.transfer_response.protocol_error {
+                        Err(DapError::SwdProtocol.into())
+                    } else {
+                        match response.transfer_response.ack {
+                            Ack::Ok => {
+                                // This should not happen, if the response was OK
+                                // the probe should have executed all commands.
+                                Err(DebugProbeError::Other(anyhow!("U")))
+                            }
+                            Ack::Wait => Err(DapError::WaitResponse.into()),
+                            Ack::Fault => Err(DapError::FaultResponse.into()),
+                            Ack::NoAck => Err(DapError::SwdProtocol.into()),
+                        }
+                    }
+                }
+            }
         }
     }
 
