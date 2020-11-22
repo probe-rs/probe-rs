@@ -1,6 +1,6 @@
 [package]
 name = "cargo-embed"
-version = "0.10.0"
+version = "0.10.1"
 authors = ["Noah Hüsser <yatekii@yatekii.ch>"]
 edition = "2018"
 description = "A utility to develop software for embedded ARM and RISC-V cores."
@@ -13,7 +13,7 @@ keywords = ["embedded"]
 license = "MIT OR Apache-2.0"
 
 [features]
-default = ["sentry"]
+default = []
 ftdi = ["probe-rs/ftdi"]
 sentry = ["probe-rs-cli-util/sentry"]
 
