@@ -9,7 +9,7 @@ name = "probe-run"
 readme = "README.md"
 repository = "https://github.com/knurling-rs/probe-run"
 # TODO(on 0.2.0) remove the "defmt" Cargo feature
-version = "0.1.5"
+version = "0.1.6"
 
 [dependencies]
 addr2line = "0.13.0"

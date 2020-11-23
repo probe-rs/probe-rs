@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [v0.1.6] - 2020-11-23
+
+### Fixed
+
+- [#109] `<exception entry>` is not printed twice in the backtrace when the firmware aborts.
+
+[#109]: https://github.com/knurling-rs/probe-run/pull/109
+
+### Changed
+
+- [#108] `probe-rs` has been bumped to version 0.10. This should fix some ST-LINK bugs and expand device support.
+
+[#108]: https://github.com/knurling-rs/probe-run/pull/108
+
 ## [v0.1.5] - 2020-11-20
 
 - [#106] `probe-run` now reports the program size
@@ -108,7 +122,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 Initial release
 
-[Unreleased]: https://github.com/knurling-rs/probe-run/compare/v0.1.5...main
+[Unreleased]: https://github.com/knurling-rs/probe-run/compare/v0.1.6...main
+[v0.1.6]: https://github.com/knurling-rs/probe-run/compare/v0.1.5...v0.1.6
 [v0.1.5]: https://github.com/knurling-rs/probe-run/compare/v0.1.4...v0.1.5
 [v0.1.4]: https://github.com/knurling-rs/probe-run/compare/v0.1.3...v0.1.4
 [v0.1.3]: https://github.com/knurling-rs/probe-run/compare/v0.1.2...v0.1.3
