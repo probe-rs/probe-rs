@@ -164,6 +164,7 @@ fn color_diff(text: String) -> String {
             && right.starts_with(RIGHT_START)
             && right.ends_with(END)
         {
+            // `defmt::assert_eq!` output
             let left = &left[LEFT_START.len()..left.len() - END.len()];
             let right = &right[RIGHT_START.len()..right.len() - END.len()];
 
@@ -215,5 +216,6 @@ fn color_diff(text: String) -> String {
         }
     }
 
+    // keep output as it is
     text.bold().to_string()
 }
