@@ -319,11 +319,12 @@ impl JLink {
 
     // Try to perform a SWD line reset, followed by a read of the DPIDR register.
     //
-    // Returns true if the read of the DPIDR register was succesful, and false
+    // Returns Ok if the read of the DPIDR register was succesful, and Err
     // otherwise. In case of JLink Errors, the actual error is returned.
     //
     // If the first line reset fails, it is tried once again, as the target
     // might be in the middle of a transfer the first time we try the reset.
+    //
     // See section B4.3.3 in the ADIv5 Specification.
     fn swd_line_reset(&mut self) -> Result<(), DebugProbeError> {
         log::debug!("Performing line reset!");
@@ -1069,7 +1070,6 @@ impl DAPAccess for JLink {
                 // Because we clock the SWDCLK line after receving the WAIT response,
                 // the target might be in weird state. If we perform a line reset,
                 // we should be able to recover from this.
-                log::debug!("Wolo");
                 self.swd_line_reset()?;
 
                 // Retry operation
@@ -1102,16 +1102,11 @@ impl DAPAccess for JLink {
                 // To get a clue about the actual fault we read the ctrl register,
                 // which will have the fault status flags set.
 
-                // Reading ctrl directly fails with nack on jlink. A dummy read
-                // of id first seems to clear it up.
-                // let dp =
-                //     DAPAccess::read_register(self, PortType::DebugPort, DPIDR::ADDRESS as u16)?;
-                // log::trace!("Dummy read of DebugPort ID:  {:#x?}", dp);
-
                 let response =
                     DAPAccess::read_register(self, PortType::DebugPort, Ctrl::ADDRESS as u16)?;
+
                 let ctrl = Ctrl::from(response);
-                log::error!(
+                log::trace!(
                     "Writing DAP register failed. Ctrl/Stat register value is: {:#?}",
                     ctrl
                 );
@@ -1121,7 +1116,7 @@ impl DAPAccess for JLink {
                 if ctrl.sticky_orun() {
                     // We did not handle a WAIT state properly
 
-                    log::error!("Sticky overrun was reason for FAULT!");
+                    log::debug!("Sticky overrun was reason for FAULT!");
 
                     // Because we use overrun detection, we now have to clear the overrun error
                     let mut abort = Abort(0);
@@ -1141,7 +1136,7 @@ impl DAPAccess for JLink {
                     // Reason for error is unknown, let's try again
                     let mut abort = Abort(0);
 
-                    log::error!("Cleaning sticky error");
+                    log::debug!("Cleaning sticky error");
 
                     abort.set_stkerrclr(true);
 
