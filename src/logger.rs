@@ -164,6 +164,9 @@ fn color_diff(text: String) -> String {
             && right.starts_with(RIGHT_START)
             && right.ends_with(END)
         {
+            const DARK_RED: Colour = Colour::Fixed(52);
+            const DARK_GREEN: Colour = Colour::Fixed(22);
+
             // `defmt::assert_eq!` output
             let left = &left[LEFT_START.len()..left.len() - END.len()];
             let right = &right[RIGHT_START.len()..right.len() - END.len()];
@@ -189,7 +192,7 @@ fn color_diff(text: String) -> String {
                     }
                     Difference::Add(_) => continue,
                     Difference::Rem(s) => {
-                        write!(buf, "{}", Colour::Red.on(Colour::Fixed(52)).bold().paint(s)).ok();
+                        write!(buf, "{}", Colour::Red.on(DARK_RED).bold().paint(s)).ok();
                     }
                 }
             }
@@ -203,12 +206,7 @@ fn color_diff(text: String) -> String {
                     }
                     Difference::Rem(_) => continue,
                     Difference::Add(s) => {
-                        write!(
-                            buf,
-                            "{}",
-                            Colour::Green.on(Colour::Fixed(22)).bold().paint(s)
-                        )
-                        .ok();
+                        write!(buf, "{}", Colour::Green.on(DARK_GREEN).bold().paint(s)).ok();
                     }
                 }
             }
