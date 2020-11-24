@@ -1,8 +1,11 @@
+use ansi_term::Colour;
 use colored::{Color, Colorize};
 use defmt_decoder::Frame;
-use io::Write;
+use difference::{Changeset, Difference};
 use log::{Level, Log, Metadata, Record};
+
 use std::{
+    fmt::Write as _,
     io,
     sync::atomic::{AtomicUsize, Ordering},
 };
@@ -104,7 +107,7 @@ impl Log for Logger {
             .fetch_max(timestamp.len(), Ordering::Relaxed);
 
         let (stdout, stderr, mut stdout_lock, mut stderr_lock);
-        let sink: &mut dyn Write = if is_defmt {
+        let sink: &mut dyn io::Write = if is_defmt {
             // defmt goes to stdout, since it's the primary output produced by this tool.
             stdout = io::stdout();
             stdout_lock = stdout.lock();
@@ -122,7 +125,7 @@ impl Log for Logger {
             self.timing_align.load(Ordering::Relaxed),
             timestamp = timestamp,
             level = record.level().to_string().color(level_color),
-            args = record.args().to_string().bold(),
+            args = color_diff(record.args().to_string()),
         )
         .ok();
 
@@ -141,4 +144,76 @@ impl Log for Logger {
     }
 
     fn flush(&self) {}
+}
+
+// color the output of `defmt::assert_eq`
+// HACK we should not re-parse formatted output but instead directly format into a color diff
+// template; that may require specially tagging log messages that come from `defmt::assert_eq`
+fn color_diff(text: String) -> String {
+    let lines = text.lines().collect::<Vec<_>>();
+    let nlines = lines.len();
+    if nlines > 2 {
+        let left = lines[nlines - 2];
+        let right = lines[nlines - 1];
+
+        const LEFT_START: &str = " left: `";
+        const RIGHT_START: &str = "right: `";
+        const END: &str = "`";
+        if left.starts_with(LEFT_START)
+            && left.ends_with(END)
+            && right.starts_with(RIGHT_START)
+            && right.ends_with(END)
+        {
+            const DARK_RED: Colour = Colour::Fixed(52);
+            const DARK_GREEN: Colour = Colour::Fixed(22);
+
+            // `defmt::assert_eq!` output
+            let left = &left[LEFT_START.len()..left.len() - END.len()];
+            let right = &right[RIGHT_START.len()..right.len() - END.len()];
+
+            let mut buf = lines[..nlines - 2].join("\n").bold().to_string();
+            buf.push('\n');
+
+            let changeset = Changeset::new(left, right, "");
+
+            writeln!(
+                buf,
+                "{} {} / {}",
+                "diff".bold(),
+                "< left".red(),
+                "right >".green()
+            )
+            .ok();
+            write!(buf, "{}", "<".red()).ok();
+            for diff in &changeset.diffs {
+                match diff {
+                    Difference::Same(s) => {
+                        write!(buf, "{}", s.red()).ok();
+                    }
+                    Difference::Add(_) => continue,
+                    Difference::Rem(s) => {
+                        write!(buf, "{}", Colour::Red.on(DARK_RED).bold().paint(s)).ok();
+                    }
+                }
+            }
+            buf.push('\n');
+
+            write!(buf, "{}", ">".green()).ok();
+            for diff in &changeset.diffs {
+                match diff {
+                    Difference::Same(s) => {
+                        write!(buf, "{}", s.green()).ok();
+                    }
+                    Difference::Rem(_) => continue,
+                    Difference::Add(s) => {
+                        write!(buf, "{}", Colour::Green.on(DARK_GREEN).bold().paint(s)).ok();
+                    }
+                }
+            }
+            return buf;
+        }
+    }
+
+    // keep output as it is
+    text.bold().to_string()
 }
