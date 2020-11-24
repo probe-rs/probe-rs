@@ -900,6 +900,8 @@ impl DAPAccess for JLink {
             // When all bits are high, this means we didn't get any response from the
             // target, which indicates a protocol error.
             if ack[0] && ack[1] && ack[2] {
+                log::debug!("DAP NACK");
+
                 // Because we clock the SWDCLK line after receving the WAIT response,
                 // the target might be in weird state. If we perform a line reset,
                 // we should be able to recover from this.
@@ -927,6 +929,8 @@ impl DAPAccess for JLink {
                 continue;
             }
             if ack[2] {
+                log::debug!("DAP FAULT");
+
                 // A fault happened during operation.
 
                 // To get a clue about the actual fault we read the ctrl register,
@@ -934,39 +938,22 @@ impl DAPAccess for JLink {
                 let response =
                     DAPAccess::read_register(self, PortType::DebugPort, Ctrl::ADDRESS as u16)?;
                 let ctrl = Ctrl::from(response);
-                log::error!(
+                log::debug!(
                     "Writing DAP register failed. Ctrl/Stat register value is: {:#?}",
                     ctrl
                 );
 
                 // Check the reason for the fault
-
-                if ctrl.sticky_orun() {
+                // Other fault reasons than overrun or write error are not handled yet.
+                if ctrl.sticky_orun() || ctrl.sticky_err() {
                     // We did not handle a WAIT state properly
-
-                    log::error!("Sticky overrun was reason for FAULT!");
 
                     // Because we use overrun detection, we now have to clear the overrun error
                     let mut abort = Abort(0);
 
-                    abort.set_orunerrclr(true);
-
-                    DAPAccess::write_register(
-                        self,
-                        PortType::DebugPort,
-                        Abort::ADDRESS as u16,
-                        abort.into(),
-                    )?;
-                    continue;
-                }
-
-                if ctrl.sticky_err() {
-                    // Reason for error is unknown, let's try again
-                    let mut abort = Abort(0);
-
-                    log::error!("Cleaning sticky error");
-
-                    abort.set_stkerrclr(true);
+                    // Clear sticky error flags
+                    abort.set_orunerrclr(ctrl.sticky_orun());
+                    abort.set_stkerrclr(ctrl.sticky_err());
 
                     DAPAccess::write_register(
                         self,
@@ -1031,9 +1018,6 @@ impl DAPAccess for JLink {
         let (mut swd_io_sequence, mut direction) =
             build_swd_transfer(port, TransferType::Write(value), address);
 
-        // add a parity error for testing purposes
-        //swd_io_sequence[45] = !swd_io_sequence[45];
-
         // Add 8 idle cycles to ensure the write is performed.
         // See section B4.1.1 in the ARM Debug Interface specification.
         //
@@ -1062,11 +1046,11 @@ impl DAPAccess for JLink {
             // Get the ack.
             let ack = result_sequence.by_ref().take(3).collect::<Vec<_>>();
 
-            log::trace!("Ack: {:?}", ack);
-
             // When all bits are high, this means we didn't get any response from the
             // target, which indicates a protocol error.
             if ack[0] && ack[1] && ack[2] {
+                log::debug!("DAP NACK");
+
                 // Because we clock the SWDCLK line after receving the WAIT response,
                 // the target might be in weird state. If we perform a line reset,
                 // we should be able to recover from this.
@@ -1112,33 +1096,16 @@ impl DAPAccess for JLink {
                 );
 
                 // Check the reason for the fault
-
-                if ctrl.sticky_orun() {
+                // Other fault reasons than overrun or write error are not handled yet.
+                if ctrl.sticky_orun() || ctrl.sticky_err() {
                     // We did not handle a WAIT state properly
-
-                    log::debug!("Sticky overrun was reason for FAULT!");
 
                     // Because we use overrun detection, we now have to clear the overrun error
                     let mut abort = Abort(0);
 
-                    abort.set_orunerrclr(true);
-
-                    DAPAccess::write_register(
-                        self,
-                        PortType::DebugPort,
-                        Abort::ADDRESS as u16,
-                        abort.into(),
-                    )?;
-                    continue;
-                }
-
-                if ctrl.sticky_err() {
-                    // Reason for error is unknown, let's try again
-                    let mut abort = Abort(0);
-
-                    log::debug!("Cleaning sticky error");
-
-                    abort.set_stkerrclr(true);
+                    // Clear sticky error flags
+                    abort.set_orunerrclr(ctrl.sticky_orun());
+                    abort.set_stkerrclr(ctrl.sticky_err());
 
                     DAPAccess::write_register(
                         self,
