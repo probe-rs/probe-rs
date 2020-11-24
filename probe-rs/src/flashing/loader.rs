@@ -1,7 +1,6 @@
 use super::{FlashBuilder, FlashError, FlashProgress, Flasher};
 use crate::config::{FlashRegion, MemoryRange, MemoryRegion};
 use crate::session::Session;
-use anyhow::anyhow;
 use std::collections::HashMap;
 
 /// `FlashLoader` is a struct which manages the flashing of any chunks of data onto any sections of flash.
@@ -142,7 +141,7 @@ impl<'mmap, 'data> FlashLoader<'mmap, 'data> {
                     MemoryRegion::Ram(ram) => Some(ram),
                     _ => None,
                 })
-                .ok_or_else(|| anyhow!("No RAM defined for chip."))?;
+                .ok_or(FlashError::NoRamDefined)?;
 
             let flash_algorithm = raw_flash_algorithm.assemble(ram, session.architecture())?;
 
