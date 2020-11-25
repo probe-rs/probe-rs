@@ -1,5 +1,8 @@
 use colored::*;
-use std::process::{self};
+use std::{
+    process::{self},
+    time::Duration,
+};
 use structopt::StructOpt;
 
 use probe_rs::{config::TargetSelector, Probe};
@@ -15,11 +18,17 @@ struct Opt {
     )]
     chip_description_path: Option<String>,
     #[structopt(
-        name = "reset-halt",
-        long = "reset-halt",
-        help = "Use this flag to reset and halt (instead of just a reset) the attached core after flashing the target."
+        name = "halt",
+        long = "halt",
+        help = "Use this flag to halt core after attaching."
     )]
-    reset_halt: bool,
+    halt: bool,
+    #[structopt(
+        name = "reset",
+        long = "reset",
+        help = "Use this flag to reset the core after attaching."
+    )]
+    reset: bool,
     #[structopt(
         name = "gdb-connection-string",
         long = "gdb-connection-string",
@@ -71,7 +80,21 @@ fn main_try() -> Result<(), failure::Error> {
         Some(identifier) => identifier.into(),
         None => TargetSelector::Auto,
     };
-    let session = probe.attach(target_selector)?;
+    let mut session = probe.attach(target_selector)?;
+
+    if opt.reset {
+        let mut core = session.core(0)?;
+        if opt.halt {
+            let halt_timeout = Duration::from_millis(500);
+            core.reset_and_halt(halt_timeout)?;
+        } else {
+            core.reset()?;
+        }
+    } else if opt.halt {
+        let mut core = session.core(0)?;
+        let halt_timeout = Duration::from_millis(500);
+        core.halt(halt_timeout)?;
+    }
 
     let gdb_connection_string = opt
         .gdb_connection_string
