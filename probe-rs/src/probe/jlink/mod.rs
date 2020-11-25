@@ -11,7 +11,10 @@ use crate::{
     architecture::arm::{DapError, PortType, Register},
     architecture::{
         arm::{
-            communication_interface::ArmProbeInterface, dp::Ctrl, dp::DPIDR, swo::SwoConfig,
+            communication_interface::ArmProbeInterface,
+            dp::Abort,
+            dp::{Ctrl, RdBuff},
+            swo::SwoConfig,
             ArmCommunicationInterface, SwoAccess,
         },
         riscv::communication_interface::RiscvCommunicationInterface,
@@ -313,6 +316,66 @@ impl JLink {
 
         Ok(result)
     }
+
+    /// Try to perform a SWD line reset, followed by a read of the DPIDR register.
+    ///
+    /// Returns Ok if the read of the DPIDR register was succesful, and Err
+    /// otherwise. In case of JLink Errors, the actual error is returned.
+    ///
+    /// If the first line reset fails, it is tried once again, as the target
+    /// might be in the middle of a transfer the first time we try the reset.
+    ///
+    /// See section B4.3.3 in the ADIv5 Specification.
+    fn swd_line_reset(&mut self) -> Result<(), DebugProbeError> {
+        log::debug!("Performing line reset!");
+
+        let mut swd_io = vec![true; 50];
+        let mut direction = vec![true; 50];
+
+        let (register_io, register_direction) =
+            build_swd_transfer(PortType::DebugPort, TransferType::Read, 0);
+
+        swd_io.extend_from_slice(&register_io);
+        direction.extend_from_slice(&register_direction);
+
+        let mut result = Ok(());
+
+        for _ in 0..2 {
+            let mut result_sequence = self
+                .handle
+                .get_mut()
+                .unwrap()
+                .swd_io(direction.clone(), swd_io.clone())?;
+
+            // Ignore reset bits, idle bits, and request
+            result_sequence.split_off(50 + 2 + 8);
+
+            let ack = result_sequence.split_off(3).collect::<Vec<_>>();
+
+            log::debug!("line reset ack: {:?}", ack);
+
+            match &ack[..] {
+                // OK response
+                [true, false, false] => {
+                    return Ok(());
+                }
+                // WAIT response
+                [false, true, false] => {
+                    result = Err(DapError::WaitResponse.into());
+                }
+                // FAULT response
+                [false, false, true] => {
+                    result = Err(DapError::FaultResponse.into());
+                }
+                _ => {
+                    result = Err(DapError::NoAcknowledge.into());
+                }
+            }
+        }
+
+        // No acknowledge from the target, even if after line reset
+        result
+    }
 }
 
 impl DebugProbe for JLink {
@@ -535,27 +598,22 @@ impl DebugProbe for JLink {
                     // Send the reset sequence (> 50 0-bits).
                     iter::repeat(true).take(64)
                     // Send the JTAG to SWD sequence.
-                    .chain(jtag_to_swd_sequence.iter().copied())
-                    // Send the reset sequence again in case we were in SWD mode already (> 50 0-bits).
-                    .chain(iter::repeat(true).take(64))
-                    // Send 10 idle line bits.
-                    .chain(iter::repeat(false).take(10));
+                    .chain(jtag_to_swd_sequence.iter().copied());
 
                 // Construct the direction sequence for reset sequence.
                 let direction =
                     // Send the reset sequence (> 50 0-bits).
                     iter::repeat(true).take(64)
                     // Send the JTAG to SWD sequence.
-                    .chain(iter::repeat(true).take(16))
-                    // Send the reset sequence again in case we were in SWD mode already (> 50 0-bits).
-                    .chain(iter::repeat(true).take(64))
-                    // Send 10 idle line bits.
-                    .chain(iter::repeat(true).take(10));
+                    .chain(iter::repeat(true).take(16));
 
                 // Send the init sequence.
                 // We don't actually care about the response here.
                 // A read on the DPIDR will finalize the init procedure and tell us if it worked.
                 jlink.swd_io(direction, swd_io_sequence)?;
+
+                // Perform a line reset
+                self.swd_line_reset()?;
                 log::debug!("Sucessfully switched to SWD");
 
                 // We are ready to debug.
@@ -609,7 +667,7 @@ impl DebugProbe for JLink {
         self: Box<Self>,
     ) -> Result<Option<Box<dyn ArmProbeInterface + 'probe>>, DebugProbeError> {
         if self.supported_protocols.contains(&WireProtocol::Swd) {
-            let interface = ArmCommunicationInterface::new(self)?;
+            let interface = ArmCommunicationInterface::new(self, true)?;
 
             Ok(Some(Box::new(interface)))
         } else {
@@ -678,49 +736,6 @@ impl JTAGAccess for JLink {
 
     fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
         self
-    }
-}
-
-impl JLink {
-    /// Try to perform a line reset, followed by a read of the DPIDR register.
-    ///
-    /// Returns true if the read of the DPIDR register was succesful, and false
-    /// otherwise. In case of JLink Errors, the actual error is returned.
-    ///
-    /// If the first line reset fails, it is tried once again, as the target
-    /// might be in the middle of a transfer the first time we try the reset.
-    /// See
-    fn line_reset(&mut self) -> Result<bool, DebugProbeError> {
-        log::debug!("Performing line reset!");
-
-        let mut swd_io = vec![true; 50];
-        let mut direction = vec![true; 50];
-
-        let (register_io, register_direction) =
-            build_swd_transfer(PortType::DebugPort, TransferType::Read, 0);
-
-        swd_io.extend_from_slice(&register_io);
-        direction.extend_from_slice(&register_direction);
-
-        for _ in 0..2 {
-            let mut result_sequence = self
-                .handle
-                .get_mut()
-                .unwrap()
-                .swd_io(direction.clone(), swd_io.clone())?;
-
-            // Ignore reset bits, idle bits, and request
-            result_sequence.split_off(50 + 2 + 8);
-
-            let ack = result_sequence.split_off(3).collect::<Vec<_>>();
-
-            // If we get an OK return true, otherwise the reset failed
-
-            if ack[0] && !ack[1] && !ack[2] {
-                return Ok(true);
-            }
-        }
-        Ok(false)
     }
 }
 
@@ -883,13 +898,12 @@ impl DAPAccess for JLink {
             // When all bits are high, this means we didn't get any response from the
             // target, which indicates a protocol error.
             if ack[0] && ack[1] && ack[2] {
+                log::debug!("DAP NACK");
+
                 // Because we clock the SWDCLK line after receving the WAIT response,
                 // the target might be in weird state. If we perform a line reset,
                 // we should be able to recover from this.
-
-                if !self.line_reset()? {
-                    return Err(DapError::NoAcknowledge.into());
-                }
+                self.swd_line_reset()?;
 
                 // Retry operation again
                 continue;
@@ -898,27 +912,55 @@ impl DAPAccess for JLink {
                 // If ack[1] is set the host must retry the request. So let's do that right away!
                 log::debug!("DAP WAIT, retries remaining {}.", 5 - retry);
 
+                // Because we use overrun detection, we now have to clear the overrun error
+                let mut abort = Abort(0);
+
+                abort.set_orunerrclr(true);
+
+                DAPAccess::write_register(
+                    self,
+                    PortType::DebugPort,
+                    Abort::ADDRESS as u16,
+                    abort.into(),
+                )?;
+
                 continue;
             }
             if ack[2] {
+                log::debug!("DAP FAULT");
+
                 // A fault happened during operation.
 
                 // To get a clue about the actual fault we read the ctrl register,
                 // which will have the fault status flags set.
-
-                // Reading ctrl directly fails with nack on jlink. A dummy read
-                // of id first seems to clear it up.
-                let dp =
-                    DAPAccess::read_register(self, PortType::DebugPort, DPIDR::ADDRESS as u16)?;
-                log::trace!("Dummy read of DebugPort ID:  {:#x?}", dp);
-
                 let response =
                     DAPAccess::read_register(self, PortType::DebugPort, Ctrl::ADDRESS as u16)?;
                 let ctrl = Ctrl::from(response);
-                log::trace!(
+                log::debug!(
                     "Writing DAP register failed. Ctrl/Stat register value is: {:#?}",
                     ctrl
                 );
+
+                // Check the reason for the fault
+                // Other fault reasons than overrun or write error are not handled yet.
+                if ctrl.sticky_orun() || ctrl.sticky_err() {
+                    // We did not handle a WAIT state properly
+
+                    // Because we use overrun detection, we now have to clear the overrun error
+                    let mut abort = Abort(0);
+
+                    // Clear sticky error flags
+                    abort.set_orunerrclr(ctrl.sticky_orun());
+                    abort.set_stkerrclr(ctrl.sticky_err());
+
+                    DAPAccess::write_register(
+                        self,
+                        PortType::DebugPort,
+                        Abort::ADDRESS as u16,
+                        abort.into(),
+                    )?;
+                    continue;
+                }
 
                 return Err(DapError::FaultResponse.into());
             }
@@ -928,7 +970,7 @@ impl DAPAccess for JLink {
             if let PortType::AccessPort(_) = port {
                 // We read the RDBUFF register to get the value of the last AP transaction.
                 // This special register just returns the last read value with no side-effects like auto-increment.
-                return DAPAccess::read_register(self, PortType::DebugPort, 0x0C);
+                return DAPAccess::read_register(self, PortType::DebugPort, RdBuff::ADDRESS as u16);
             } else {
                 // Take the data bits and convert them into a 32bit int.
                 let register_val = result_sequence.split_off(32);
@@ -1005,13 +1047,12 @@ impl DAPAccess for JLink {
             // When all bits are high, this means we didn't get any response from the
             // target, which indicates a protocol error.
             if ack[0] && ack[1] && ack[2] {
+                log::debug!("DAP NACK");
+
                 // Because we clock the SWDCLK line after receving the WAIT response,
                 // the target might be in weird state. If we perform a line reset,
                 // we should be able to recover from this.
-
-                if !self.line_reset()? {
-                    return Err(DapError::NoAcknowledge.into());
-                }
+                self.swd_line_reset()?;
 
                 // Retry operation
                 continue;
@@ -1020,28 +1061,58 @@ impl DAPAccess for JLink {
             if ack[1] {
                 // If ack[1] is set the host must retry the request. So let's do that right away!
                 log::debug!("DAP WAIT, retries remaining {}.", 5 - retry);
+
+                let mut abort = Abort(0);
+
+                abort.set_orunerrclr(true);
+
+                // Because we use overrun detection, we now have to clear the overrun error
+                DAPAccess::write_register(
+                    self,
+                    PortType::DebugPort,
+                    Abort::ADDRESS as u16,
+                    abort.into(),
+                )?;
+
                 continue;
             }
 
             if ack[2] {
+                log::debug!("DAP FAULT");
                 // A fault happened during operation.
 
                 // To get a clue about the actual fault we read the ctrl register,
                 // which will have the fault status flags set.
 
-                // Reading ctrl directly fails with nack on jlink. A dummy read
-                // of id first seems to clear it up.
-                let dp =
-                    DAPAccess::read_register(self, PortType::DebugPort, DPIDR::ADDRESS as u16)?;
-                log::trace!("Dummy read of DebugPort ID:  {:#x?}", dp);
-
                 let response =
                     DAPAccess::read_register(self, PortType::DebugPort, Ctrl::ADDRESS as u16)?;
+
                 let ctrl = Ctrl::from(response);
-                log::error!(
+                log::trace!(
                     "Writing DAP register failed. Ctrl/Stat register value is: {:#?}",
                     ctrl
                 );
+
+                // Check the reason for the fault
+                // Other fault reasons than overrun or write error are not handled yet.
+                if ctrl.sticky_orun() || ctrl.sticky_err() {
+                    // We did not handle a WAIT state properly
+
+                    // Because we use overrun detection, we now have to clear the overrun error
+                    let mut abort = Abort(0);
+
+                    // Clear sticky error flags
+                    abort.set_orunerrclr(ctrl.sticky_orun());
+                    abort.set_stkerrclr(ctrl.sticky_err());
+
+                    DAPAccess::write_register(
+                        self,
+                        PortType::DebugPort,
+                        Abort::ADDRESS as u16,
+                        abort.into(),
+                    )?;
+                    continue;
+                }
 
                 return Err(DapError::FaultResponse.into());
             }
