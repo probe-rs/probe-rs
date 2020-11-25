@@ -317,15 +317,15 @@ impl JLink {
         Ok(result)
     }
 
-    // Try to perform a SWD line reset, followed by a read of the DPIDR register.
-    //
-    // Returns Ok if the read of the DPIDR register was succesful, and Err
-    // otherwise. In case of JLink Errors, the actual error is returned.
-    //
-    // If the first line reset fails, it is tried once again, as the target
-    // might be in the middle of a transfer the first time we try the reset.
-    //
-    // See section B4.3.3 in the ADIv5 Specification.
+    /// Try to perform a SWD line reset, followed by a read of the DPIDR register.
+    ///
+    /// Returns Ok if the read of the DPIDR register was succesful, and Err
+    /// otherwise. In case of JLink Errors, the actual error is returned.
+    ///
+    /// If the first line reset fails, it is tried once again, as the target
+    /// might be in the middle of a transfer the first time we try the reset.
+    ///
+    /// See section B4.3.3 in the ADIv5 Specification.
     fn swd_line_reset(&mut self) -> Result<(), DebugProbeError> {
         log::debug!("Performing line reset!");
 
@@ -615,8 +615,6 @@ impl DebugProbe for JLink {
                 // Perform a line reset
                 self.swd_line_reset()?;
                 log::debug!("Sucessfully switched to SWD");
-
-                // enable sticky overrun
 
                 // We are ready to debug.
             }
