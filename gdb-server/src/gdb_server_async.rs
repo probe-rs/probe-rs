@@ -94,7 +94,7 @@ async fn inbound_broker_loop(
                         log::info!("Current buf {}", String::from_utf8_lossy(&buffer));
                         super::reader::reader(&mut stream, &packet_stream, &mut buffer).await?
                     },
-                    Err(e) => {
+                    Err(_e) => {
 
                     }
                 }
