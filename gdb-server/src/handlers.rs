@@ -1,4 +1,4 @@
-use probe_rs::{config::MemoryRegion, Core, MemoryInterface, Session};
+use probe_rs::{config::MemoryRegion, Core, CoreStatus, MemoryInterface, Session};
 use std::time::Duration;
 
 pub(crate) fn q_supported() -> Option<String> {
@@ -18,6 +18,30 @@ pub(crate) fn halt_reason() -> Option<String> {
 }
 
 pub(crate) fn read_general_registers(mut core: Core) -> Option<String> {
+    // First we check the core status.
+    // If the core is not properly halted it does not make much sense to try and read registes.
+    // On some cores this even leads to a fault!
+    match core.status() {
+        Err(e) => {
+            log::debug!("Unable to read register 0. Reason:");
+            log::debug!("{:#?}", e);
+            // Tell GDB that we encountered an error reading the register (because of an unhalted core) with a EFAULT response.
+            // Errno values can be found here: https://sourceware.org/gdb/current/onlinedocs/gdb/Errno-Values.html
+            // More descriptions do not exist.
+            return Some("E14".to_string());
+        }
+        // The core is halted and we can read the register and return its value.
+        Ok(CoreStatus::Halted(_)) => (),
+        Ok(_) => {
+            log::info!("Unable to read register 0 because of a running core.");
+            log::info!("Try to halt the core on attach if this problem persists.");
+            // Tell GDB that we encountered an error reading the register (because of an unhalted core) with a EFAULT response.
+            // Errno values can be found here: https://sourceware.org/gdb/current/onlinedocs/gdb/Errno-Values.html
+            // More descriptions do not exist.
+            return Some("E14".to_string());
+        }
+    }
+
     // The format of this packet is determined by the register number
     // used by GDB. Just sending register 0 seems to be sufficient,
     // the other registers are then requested using 'p' packets.
@@ -26,6 +50,33 @@ pub(crate) fn read_general_registers(mut core: Core) -> Option<String> {
 }
 
 pub(crate) fn read_register(register: u32, mut core: Core) -> Option<String> {
+    // First we check the core status.
+    // If the core is not properly halted it does not make much sense to try and read registes.
+    // On some cores this even leads to a fault!
+    match core.status() {
+        Err(e) => {
+            log::debug!("Unable to read register {}. Reason:", register);
+            log::debug!("{:#?}", e);
+            // Tell GDB that we encountered an error reading the register (because of an unhalted core) with a EFAULT response.
+            // Errno values can be found here: https://sourceware.org/gdb/current/onlinedocs/gdb/Errno-Values.html
+            // More descriptions do not exist.
+            return Some("E14".to_string());
+        }
+        // The core is halted and we can read the register and return its value.
+        Ok(CoreStatus::Halted(_)) => (),
+        Ok(_) => {
+            log::info!(
+                "Unable to read register {} because of a running core.",
+                register
+            );
+            log::info!("Try to halt the core on attach if this problem persists.");
+            // Tell GDB that we encountered an error reading the register (because of an unhalted core) with a EFAULT response.
+            // Errno values can be found here: https://sourceware.org/gdb/current/onlinedocs/gdb/Errno-Values.html
+            // More descriptions do not exist.
+            return Some("E14".to_string());
+        }
+    }
+
     // We have to translate from the GDB register number to the probe-rs register
     // number.
     //
