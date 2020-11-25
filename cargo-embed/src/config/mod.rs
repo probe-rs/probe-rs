@@ -58,6 +58,8 @@ pub struct General {
     pub chip_descriptions: Vec<String>,
     pub log_level: log::Level,
     pub derives: Option<String>,
+    /// Use this flag to assert the nreset & ntrst pins during attaching the probe to the chip.
+    pub connect_under_reset: bool,
 }
 
 /// The rtt config struct holding all the possible rtt options.
