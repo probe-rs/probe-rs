@@ -19,7 +19,7 @@ pub(crate) fn halt_reason() -> Option<String> {
 
 pub(crate) fn read_general_registers(mut core: Core) -> Option<String> {
     // First we check the core status.
-    // If the core is not properly halted it does not make much sense to try and read registes.
+    // If the core is not properly halted it does not make much sense to try and read registers.
     // On some cores this even leads to a fault!
     match core.status() {
         Err(e) => {
@@ -51,7 +51,7 @@ pub(crate) fn read_general_registers(mut core: Core) -> Option<String> {
 
 pub(crate) fn read_register(register: u32, mut core: Core) -> Option<String> {
     // First we check the core status.
-    // If the core is not properly halted it does not make much sense to try and read registes.
+    // If the core is not properly halted it does not make much sense to try and read registers.
     // On some cores this even leads to a fault!
     match core.status() {
         Err(e) => {
