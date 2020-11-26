@@ -60,7 +60,7 @@ pub struct Flasher<'session> {
 }
 
 impl<'session> Flasher<'session> {
-    pub fn new(
+    pub(super) fn new(
         session: &'session mut Session,
         flash_algorithm: FlashAlgorithm,
         region: FlashRegion,
