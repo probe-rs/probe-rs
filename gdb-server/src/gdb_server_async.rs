@@ -52,7 +52,7 @@ async fn handle_connection(stream: TcpStream, session: Arc<Mutex<Session>>) -> R
     let (packet_stream_sender, packet_stream_receiver) = mpsc::unbounded();
     let (tbd_sender, tbd_receiver) = mpsc::unbounded();
 
-    println!("Accepted a new connection from: {}", stream.peer_addr()?);
+    log::info!("Accepted a new connection from: {}", stream.peer_addr()?);
 
     let inbound_broker_handle = task::spawn(inbound_broker_loop(
         stream,

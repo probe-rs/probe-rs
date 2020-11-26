@@ -75,7 +75,6 @@ pub async fn handler(
                 Query(QueryPacket::Supported { .. }) => handlers::q_supported(),
                 Query(QueryPacket::Attached { .. }) => handlers::q_attached(),
                 Query(QueryPacket::Command(cmd)) => {
-                    println!("FUCK");
                     if cmd == b"reset" {
                         handlers::reset_halt(session.core(0)?)
                     } else {
