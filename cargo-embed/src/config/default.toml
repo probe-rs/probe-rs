@@ -60,4 +60,4 @@ log_path = "./logs"
 # This is exclusive and cannot be used with RTT at the moment.
 enabled = false
 # The connection string in host:port format wher the GDB server will open a socket.
-# gdb_connection_string
+gdb_connection_string = "127.0.0.1:1337"

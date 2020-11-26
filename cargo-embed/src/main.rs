@@ -475,7 +475,7 @@ fn main_try() -> Result<()> {
             .gdb
             .gdb_connection_string
             .as_deref()
-            .or_else(|| Some("localhost:1337"));
+            .or_else(|| Some("127.0.0.1:1337"));
         // This next unwrap will always resolve as the connection string is always Some(T).
         logging::println(format!(
             "Firing up GDB stub at {}.",
