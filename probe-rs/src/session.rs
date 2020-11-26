@@ -84,7 +84,7 @@ impl<'a> AsMut<dyn DebugProbe + 'a> for ArchitectureInterface {
 
 impl Session {
     /// Open a new session with a given debug target.
-    pub fn new(
+    pub(crate) fn new(
         probe: Probe,
         target: impl Into<TargetSelector>,
         attach_method: AttachMethod,

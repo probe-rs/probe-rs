@@ -1,5 +1,4 @@
 /// RISCV breakpoint instruction
-#[allow(clippy::unusual_byte_groupings)]
 pub const EBREAK: u32 = 0b000000000001_00000_000_00000_1110011;
 
 /// Assemble a `lw` instruction.
