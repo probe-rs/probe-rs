@@ -484,11 +484,10 @@ fn main_try() -> Result<()> {
                 .as_deref()
                 .or_else(|| Some("127.0.0.1:1337"));
             // This next unwrap will always resolve as the connection string is always Some(T).
-            logging::println(format!(
+            log::info!(
                 "Firing up GDB stub at {}.",
                 gdb_connection_string.as_ref().unwrap(),
-            ));
-            let session = Mutex::new(session);
+            );
             if let Err(e) = probe_rs_gdb_server::run(gdb_connection_string, &session) {
                 logging::eprintln("During the execution of GDB an error was encountered:");
                 logging::eprintln(format!("{:?}", e));
