@@ -6,13 +6,14 @@ use std::time::Duration;
 /// This struct stores a handler closure which will be called everytime an event happens during the flashing process.
 /// Such an event can be start or finish of the flashing procedure or a progress report, as well as some more events.
 ///
+/// # Example
+///
 /// ```
 /// use probe_rs::flashing::FlashProgress;
 ///
 /// // Print events
 /// let progress = FlashProgress::new(|event| println!("Event: {:#?}", event));
 /// ```
-
 pub struct FlashProgress {
     handler: Box<dyn Fn(ProgressEvent)>,
 }
@@ -116,14 +117,21 @@ impl FlashProgress {
 /// and no further events will be returned.
 #[derive(Debug)]
 pub enum ProgressEvent {
+    /// The flash layout has been built and the flashing procedure was initialized.
     Initialized {
+        /// The layour of the flash contents as it will be used by the flash procedure.
+        /// This is an exact report of what the flashing procedure will do during the flashing process.
         flash_layout: FlashLayout,
     },
     /// Filling of flash pages has started.
     StartedFilling,
     /// A page has been filled successfully.
+    /// This does not mean the page has been programmed yet.
+    /// Only its contents are determined at this point!
     PageFilled {
+        /// The size of the page in bytes.
         size: u32,
+        /// The time it took to fill this flash page.
         time: Duration,
     },
     /// Filling of the pages has failed.
@@ -134,7 +142,9 @@ pub enum ProgressEvent {
     StartedErasing,
     /// A sector has been erased successfully.
     SectorErased {
+        /// The size of the sector in bytes.
         size: u32,
+        /// The time it took to erase this sector.
         time: Duration,
     },
     /// Erasing of the flash has failed.
@@ -145,7 +155,9 @@ pub enum ProgressEvent {
     StartedProgramming,
     /// A flash page has been programmed successfully.
     PageProgrammed {
+        /// The size of this page in bytes.
         size: u32,
+        /// The time it took to program this page.
         time: Duration,
     },
     /// Programming of the flash failed.
