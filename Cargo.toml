@@ -30,6 +30,9 @@ rustc-demangle = "0.1.16"
 signal-hook = "0.1.16"
 structopt = "0.3.15"
 
+# pin version to avoid issue #113 on macOS
+hidapi = "=1.2.3"
+
 [features]
 # this feature does nothing and it's kept for backwards compatibility; it will be removed in the next semver bump
 defmt = []
