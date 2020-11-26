@@ -145,7 +145,7 @@ fn list_connected_devices() -> Result<()> {
 
 fn dump_memory(shared_options: &SharedOptions, loc: u32, words: u32) -> Result<()> {
     with_device(shared_options, |mut session| {
-        let mut data = vec![0 as u32; words as usize];
+        let mut data = vec![0_u32; words as usize];
 
         // Start timer.
         let instant = Instant::now();
@@ -215,7 +215,7 @@ fn trace_u32_on_target(shared_options: &SharedOptions, loc: u32) -> Result<()> {
             ys.push(value);
 
             // Send value to plot.py.
-            let mut buf = [0 as u8; 8];
+            let mut buf = [0_u8; 8];
             // Unwrap is safe!
             buf.pwrite_with(instant, 0, LE).unwrap();
             buf.pwrite_with(value, 4, LE).unwrap();

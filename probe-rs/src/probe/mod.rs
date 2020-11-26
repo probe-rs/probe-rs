@@ -454,7 +454,7 @@ pub trait DebugProbe: Send + Sync + fmt::Debug {
     }
 
     /// Get the dedicated interface to debug ARM chips. Ensure that the
-    /// probe actually supports this by calling `has_arm_interface` first.
+    /// probe actually supports this by calling [has_arm_interface] first.
     fn get_arm_interface<'probe>(
         self: Box<Self>,
     ) -> Result<Option<Box<dyn ArmProbeInterface + 'probe>>, DebugProbeError> {
@@ -462,14 +462,14 @@ pub trait DebugProbe: Send + Sync + fmt::Debug {
     }
 
     /// Get the dedicated interface to debug RISCV chips. Ensure that the
-    /// probe actually supports this by calling `get_riscv_interface` first.
+    /// probe actually supports this by calling [has_riscv_interface] first.
     fn get_riscv_interface(
         self: Box<Self>,
     ) -> Result<Option<RiscvCommunicationInterface>, DebugProbeError> {
         Ok(None)
     }
 
-    /// Check if the proble offers an interface to debug RISCV chips.
+    /// Check if the probe offers an interface to debug RISCV chips.
     fn has_riscv_interface(&self) -> bool {
         false
     }

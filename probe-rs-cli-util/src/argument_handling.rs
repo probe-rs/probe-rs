@@ -16,8 +16,8 @@ pub fn remove_arguments(arguments_to_remove: &[&'static str], arguments: &mut Ve
         // If the original arg contained an equal sign we take this as a hint
         // that the arg can be used as `--arg value` as well as `--arg=value`.
         // In the prior case we need to remove two arguments. So remember this.
-        let (remove_two, clean_argument) = if argument.ends_with('=') {
-            (true, format!("--{}", &argument[..argument.len() - 1]))
+        let (remove_two, clean_argument) = if let Some(stripped) = argument.strip_suffix('=') {
+            (true, format!("--{}", stripped))
         } else {
             (false, format!("--{}", argument))
         };

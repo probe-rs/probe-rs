@@ -1,6 +1,7 @@
 //! RISCV Support
 
 #![allow(clippy::inconsistent_digit_grouping)]
+#![allow(clippy::unusual_byte_groupings)]
 
 use crate::core::Architecture;
 use crate::CoreInterface;

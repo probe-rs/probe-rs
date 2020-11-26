@@ -774,11 +774,8 @@ fn build_swd_transfer(
         PortType::AccessPort(_) => true,
     };
 
-    let direction_bit = if direction == TransferType::Read {
-        true
-    } else {
-        false
-    };
+    // Set direction bit to 1 for reads.
+    let direction_bit = direction == TransferType::Read;
 
     // Then we determine the address bits.
     // Only bits 2 and 3 are relevant as we use byte addressing but can only read 32bits

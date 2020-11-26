@@ -178,7 +178,7 @@ impl RomTable {
 /// This should only be used for parsing the raw memory structures of the entry.
 /// Don't use this in the public API.
 ///
-/// For advanced usages, see [RomTableEntry](struct.RomTableEntry.html).
+/// For advanced usages, see [RomTableEntry].
 #[derive(Debug, PartialEq)]
 struct RomTableEntryRaw {
     /// The offset from the BASEADDR at which the CoreSight component
