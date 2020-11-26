@@ -23,8 +23,13 @@ pub struct BinOptions {
 /// A finite list of all the available binary formats probe-rs understands.
 #[derive(Debug)]
 pub enum Format {
+    /// Marks a file in binary format. This means that the file contains the contents of the flash 1:1.
+    /// [BinOptions] can be used to define the location in flash where the file contents should be put at.
+    /// Additionally using the same config struct, you can skip the first N bytes of the binary file to have them not put into the flash.
     Bin(BinOptions),
+    /// Marks a file in [Intel HEX](https://en.wikipedia.org/wiki/Intel_HEX) format.
     Hex,
+    /// Marks a file in the [ELF](https://en.wikipedia.org/wiki/Executable_and_Linkable_Format) format.
     Elf,
 }
 
@@ -34,16 +39,26 @@ pub enum Format {
 /// OS permission issues as well as chip connectivity and memory boundary issues.
 #[derive(Debug, Error)]
 pub enum FileDownloadError {
+    /// An error with the actual flashing procedure has occured.
+    ///
+    /// This is mostly an error in the communication with the target inflicted by a bad hardware connection or a probe-rs bug.
     #[error("Error while flashing")]
     Flash(#[from] FlashError),
+    /// Reading and decoding the IHEX file has failed due to the given error.
     #[error("Could not read ihex format")]
     IhexRead(#[from] ihex::ReaderError),
+    /// An IO error has occured while reading the firmware file.
     #[error("I/O error")]
     IO(#[from] std::io::Error),
+    /// The given error has occured while reading the object file.
     #[error("Object Error: {0}.")]
     Object(&'static str),
+    /// Reading and decoding the given ELF file has resulted in the given error.
     #[error("Could not read ELF file")]
     Elf(#[from] goblin::error::Error),
+    /// No loadable segments were found in the ELF file.
+    ///
+    /// This is most likely because of a bad linker script.
     #[error("No loadable ELF sections were found.")]
     NoLoadableSegments,
 }
@@ -51,10 +66,14 @@ pub enum FileDownloadError {
 /// Options for downloading a file onto a target chip.
 #[derive(Default)]
 pub struct DownloadOptions<'progress> {
-    /// An optional progress reporter which is used if this argument is set to Some(...).
+    /// An optional progress reporter which is used if this argument is set to `Some(...)`.
     pub progress: Option<&'progress FlashProgress>,
-    /// If `keep_unwritten_bytes` is `true`, erased portions that are not overwritten by the ELF data
+    /// If `keep_unwritten_bytes` is `true`, erased portions of the flash that are not overwritten by the ELF data
     /// are restored afterwards, such that the old contents are untouched.
+    ///
+    /// This is necessary because the flash can only be erased in sectors. If only parts of the erased sector are written thereafter,
+    /// instead of the full sector, the excessively erased bytes wont match the contents before the erase which might not be intuitive
+    /// to the user or even worse, result in unexpected behavior if those contents contain important data.
     pub keep_unwritten_bytes: bool,
 }
 
@@ -62,7 +81,7 @@ pub struct DownloadOptions<'progress> {
 ///
 /// This will ensure that memory bounderies are honored and does unlocking, erasing and programming of the flash for you.
 ///
-/// If you are looking for more options, have a look at `download_file_with_options`.
+/// If you are looking for more options, have a look at [download_file_with_options].
 pub fn download_file(
     session: &mut Session,
     path: &Path,
@@ -74,6 +93,8 @@ pub fn download_file(
 /// Downloads a file of given `format` at `path` to the flash of the target given in `session`.
 ///
 /// This will ensure that memory bounderies are honored and does unlocking, erasing and programming of the flash for you.
+///
+/// If you are looking for a simple version without many options, have a look at [download_file].
 pub fn download_file_with_options(
     session: &mut Session,
     path: &Path,

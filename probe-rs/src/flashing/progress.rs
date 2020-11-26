@@ -119,7 +119,7 @@ impl FlashProgress {
 pub enum ProgressEvent {
     /// The flash layout has been built and the flashing procedure was initialized.
     Initialized {
-        /// The layour of the flash contents as it will be used by the flash procedure.
+        /// The layout of the flash contents as it will be used by the flash procedure.
         /// This is an exact report of what the flashing procedure will do during the flashing process.
         flash_layout: FlashLayout,
     },
