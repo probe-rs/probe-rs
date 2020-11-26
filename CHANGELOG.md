@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [v0.1.7] - 2020-11-26
+
+### Fixed
+
+- [#114] pin `hidapi` dependency to 1.2.3 to enable macOS builds
+- [#112] defmt decode errors are now reported to the user
+- [#110] colorize `assert_eq!` output
+
+[#114]: https://github.com/knurling-rs/probe-run/pull/114
+[#112]: https://github.com/knurling-rs/probe-run/pull/112
+[#110]: https://github.com/knurling-rs/probe-run/pull/110
+
 ## [v0.1.6] - 2020-11-23
 
 ### Fixed
@@ -122,7 +134,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 Initial release
 
-[Unreleased]: https://github.com/knurling-rs/probe-run/compare/v0.1.6...main
+[Unreleased]: https://github.com/knurling-rs/probe-run/compare/v0.1.7...main
+[v0.1.7]: https://github.com/knurling-rs/probe-run/compare/v0.1.6...v0.1.7
 [v0.1.6]: https://github.com/knurling-rs/probe-run/compare/v0.1.5...v0.1.6
 [v0.1.5]: https://github.com/knurling-rs/probe-run/compare/v0.1.4...v0.1.5
 [v0.1.4]: https://github.com/knurling-rs/probe-run/compare/v0.1.3...v0.1.4
