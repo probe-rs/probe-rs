@@ -233,7 +233,7 @@ impl DebugCli {
                 //
                 // stack beginning -> assume beginning to be hardcoded
 
-                let stack_top: u32 = 0x2000_0000 + 0x4_000;
+                let stack_top: u32 = 0x2000_0000 + 0x4000;
 
                 let regs = cli_data.core.registers();
 

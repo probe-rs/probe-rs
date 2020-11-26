@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 use crate::architecture::{
     arm::{
         communication_interface::{
@@ -18,6 +20,20 @@ use crate::{AttachMethod, Core, CoreType, DebugProbe, Error, Probe};
 use anyhow::anyhow;
 use std::time::Duration;
 
+/// The `Session` struct represents an active debug session.
+///
+/// ## Creating a session
+///
+/// It can be conviently created by calling the [Session::auto_attach()] function,
+/// which tries to automatically select a probe, and then connect to the target.
+///
+/// For more control, the [Probe::attach()] and [Probe::attach_under_reset()]
+/// methods can be used to open a `Session` from a specific [Probe].
+///
+/// # Usage
+/// To get access to a single [Core] from the `Session`, the [Session::core()] method
+/// can be used.
+///
 #[derive(Debug)]
 pub struct Session {
     target: Target,
@@ -67,8 +83,8 @@ impl<'a> AsMut<dyn DebugProbe + 'a> for ArchitectureInterface {
 }
 
 impl Session {
-    /// Open a new session with a given debug target
-    pub fn new(
+    /// Open a new session with a given debug target.
+    pub(crate) fn new(
         probe: Probe,
         target: impl Into<TargetSelector>,
         attach_method: AttachMethod,
@@ -177,12 +193,16 @@ impl Session {
         &self.target.flash_algorithms
     }
 
+    /// Read available data from the SWO interface without waiting.
+    ///
+    /// This method is only supported for ARM-based targets, and will
+    /// return [Error::ArchitectureRequired] otherwise.
     pub fn read_swo(&mut self) -> Result<Vec<u8>, Error> {
         let interface = self.get_arm_interface()?;
         interface.read_swo()
     }
 
-    pub fn get_arm_interface(&mut self) -> Result<&mut Box<dyn ArmProbeInterface>, Error> {
+    fn get_arm_interface(&mut self) -> Result<&mut Box<dyn ArmProbeInterface>, Error> {
         let interface = match &mut self.interface {
             ArchitectureInterface::Arm(state) => state,
             _ => return Err(Error::ArchitectureRequired(&["ARMv7", "ARMv8"])),
@@ -191,7 +211,7 @@ impl Session {
         Ok(interface)
     }
 
-    pub fn get_arm_component(&mut self) -> Result<Component, Error> {
+    fn get_arm_component(&mut self) -> Result<Component, Error> {
         let interface = self.get_arm_interface()?;
 
         let ap_index = 0;
@@ -297,10 +317,10 @@ impl Drop for Session {
         }
     }
 }
-/// Determine the ```Target``` from a ```TargetSelector```.
+/// Determine the [Target] from a [TargetSelector].
 ///
-/// If the selector is ```Unspecified```, the target will be looked up in the registry.
-/// If it its ```Auto```, probe-rs will try to determine the target automatically, based on
+/// If the selector is [TargetSelector::Unspecified], the target will be looked up in the registry.
+/// If it its [TargetSelector::Auto], probe-rs will try to determine the target automatically, based on
 /// information read from the chip.
 fn get_target_from_selector(
     target: impl Into<TargetSelector>,

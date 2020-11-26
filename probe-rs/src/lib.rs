@@ -59,8 +59,8 @@
 //! # Ok::<(), Error>(())
 //! ```
 //!
-//! probe-rs is built around 5 main interfaces: the [Probe](./struct.Probe.html),
-//! [Target](./struct.Target.html), [Session](./struct.Session.html), [Memory](./struct.Memory.html) and [Core](./struct.Core.html) strucs.
+//! probe-rs is built around 5 main interfaces: the [Probe],
+//! [Target], [Session], [Memory] and [Core] strucs.
 
 #![allow(clippy::useless_let_if_seq)]
 #![allow(clippy::trivially_copy_pass_by_ref)]
