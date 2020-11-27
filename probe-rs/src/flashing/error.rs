@@ -1,3 +1,5 @@
+#![allow(missing_docs)]
+
 use thiserror::Error;
 
 use crate::config::FlashRegion;

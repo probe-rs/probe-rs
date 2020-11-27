@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 //! Flash programming operations.
 //!
 //! This modules provides a means to do flash unlocking, erasing and programming.
