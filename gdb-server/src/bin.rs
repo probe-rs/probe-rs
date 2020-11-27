@@ -1,5 +1,8 @@
 use colored::*;
-use std::process::{self};
+use std::{
+    process::{self},
+    time::Duration,
+};
 use structopt::StructOpt;
 
 use probe_rs::{config::TargetSelector, Probe};
@@ -17,7 +20,7 @@ struct Opt {
     #[structopt(
         name = "reset-halt",
         long = "reset-halt",
-        help = "Use this flag to reset and halt (instead of just a reset) the attached core after flashing the target."
+        help = "Use this flag to reset and halt (instead of just a halt) the attached core after attaching to the target."
     )]
     reset_halt: bool,
     #[structopt(
@@ -71,7 +74,13 @@ fn main_try() -> Result<(), failure::Error> {
         Some(identifier) => identifier.into(),
         None => TargetSelector::Auto,
     };
-    let session = probe.attach(target_selector)?;
+    let mut session = probe.attach(target_selector)?;
+
+    if opt.reset_halt {
+        session
+            .core(0)?
+            .reset_and_halt(Duration::from_millis(100))?;
+    }
 
     let gdb_connection_string = opt
         .gdb_connection_string
