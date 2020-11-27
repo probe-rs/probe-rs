@@ -44,6 +44,7 @@ svg = "0.8.0"
 anyhow = "1.0.31"
 bitvec = {version = "0.19.4", optional = true }
 libftdi1-sys = { version = "1.0.0-alpha3", optional = true }
+static_assertions = "1.1.0"
 
 [build-dependencies]
 probe-rs-t2rust  = { path = "../probe-rs-t2rust", version ="0.7.0" }
