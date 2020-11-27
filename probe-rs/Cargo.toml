@@ -35,7 +35,7 @@ bitfield = "0.13.2"
 serde = { version = "1.0.104", features = ["derive"] }
 serde_yaml = "0.8.11"
 ihex = "3.0.0"
-goblin = "0.2.0"
+goblin = "0.3.0"
 hexdump = { version = "0.1.0", optional = true }
 thiserror = "1.0.10"
 jaylink = "0.1.4"
