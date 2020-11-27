@@ -86,7 +86,7 @@ async fn inbound_broker_loop(
             n = read => {
                 match n {
                     Ok(0) => {
-                        println!("GDB connection closed.");
+                        log::info!("GDB connection closed.");
                         break Ok(());
                     }
                     Ok(n) => {
