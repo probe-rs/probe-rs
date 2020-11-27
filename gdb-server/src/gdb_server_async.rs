@@ -1,4 +1,4 @@
-use std::sync::{Arc, Mutex};
+use std::sync::Mutex;
 
 use async_std::{
     net::{TcpListener, TcpStream, ToSocketAddrs},
@@ -18,10 +18,7 @@ const CONNECTION_STRING: &str = "127.0.0.1:1337";
 /// This is the main entrypoint which we will call to start the GDB stub.
 /// This function is blocking. If you would like to use it concurently to other users of the session,
 /// please use a thread.
-pub fn run(
-    connection_string: Option<impl Into<String>>,
-    session: Arc<Mutex<Session>>,
-) -> Result<()> {
+pub fn run(connection_string: Option<impl Into<String>>, session: &Mutex<Session>) -> Result<()> {
     let connection_string = connection_string
         .map(|cs| cs.into())
         .unwrap_or_else(|| CONNECTION_STRING.to_owned());
@@ -30,14 +27,14 @@ pub fn run(
 }
 
 /// This function accepts any incomming connection.
-async fn accept_loop(addr: impl ToSocketAddrs, session: Arc<Mutex<Session>>) -> Result<()> {
+async fn accept_loop(addr: impl ToSocketAddrs, session: &Mutex<Session>) -> Result<()> {
     let listener = TcpListener::bind(addr).await?;
 
     let session = session;
 
     let mut incoming = listener.incoming();
     while let Some(stream) = incoming.next().await {
-        if let Err(e) = handle_connection(stream?, Arc::clone(&session)).await {
+        if let Err(e) = handle_connection(stream?, session).await {
             eprintln!(
                 "An error with the current connection has been encountered. It has been closed."
             );
@@ -48,7 +45,7 @@ async fn accept_loop(addr: impl ToSocketAddrs, session: Arc<Mutex<Session>>) -> 
 }
 
 /// Handle a single connection of a client
-async fn handle_connection(stream: TcpStream, session: Arc<Mutex<Session>>) -> Result<()> {
+async fn handle_connection(stream: TcpStream, session: &Mutex<Session>) -> Result<()> {
     let (packet_stream_sender, packet_stream_receiver) = mpsc::unbounded();
     let (tbd_sender, tbd_receiver) = mpsc::unbounded();
 

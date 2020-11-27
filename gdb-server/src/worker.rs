@@ -5,7 +5,7 @@ use futures::future::FutureExt;
 use futures::select;
 use gdb_protocol::packet::{CheckedPacket, Kind as PacketKind};
 use probe_rs::Session;
-use std::{convert::TryFrom, sync::Arc};
+use std::convert::TryFrom;
 use std::{sync::Mutex, time::Duration};
 
 use crate::parser::parse_packet;
@@ -19,7 +19,7 @@ type Receiver<T> = mpsc::UnboundedReceiver<T>;
 pub async fn worker(
     mut input_stream: Receiver<CheckedPacket>,
     output_stream: Sender<CheckedPacket>,
-    session: Arc<Mutex<Session>>,
+    session: &Mutex<Session>,
 ) -> ServerResult<()> {
     // When we first attach to the core, GDB expects us to halt the core, so we do this here when a new client connects.
     // If the core is already halted, nothing happens if we issue a halt command again, so we always do this no matter of core state.
@@ -36,21 +36,21 @@ pub async fn worker(
             potential_packet = input_stream.next().fuse() => {
                 if let Some(packet) = potential_packet {
                     log::warn!("WORKING {}", String::from_utf8_lossy(&packet.data));
-                    if handler(Arc::clone(&session), &output_stream, &mut awaits_halt, packet).await? {
+                    if handler(&session, &output_stream, &mut awaits_halt, packet).await? {
                         break;
                     }
                 } else {
                     break
                 }
             },
-            _ = await_halt(Arc::clone(&session), &output_stream, &mut awaits_halt).fuse() => {}
+            _ = await_halt(session, &output_stream, &mut awaits_halt).fuse() => {}
         }
     }
     Ok(())
 }
 
 pub async fn handler(
-    session: Arc<Mutex<Session>>,
+    session: &Mutex<Session>,
     output_stream: &Sender<CheckedPacket>,
     awaits_halt: &mut bool,
     packet: CheckedPacket,
@@ -190,7 +190,7 @@ pub async fn handler(
 }
 
 pub async fn await_halt(
-    session: Arc<Mutex<Session>>,
+    session: &Mutex<Session>,
     output_stream: &Sender<CheckedPacket>,
     await_halt: &mut bool,
 ) -> ServerResult<()> {
