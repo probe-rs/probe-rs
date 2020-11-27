@@ -1,21 +1,21 @@
 use anyhow::{anyhow, Context, Result};
 use colored::*;
+use diagnostics::{handle_flash_error, Diagnostic};
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use std::{
     env,
-    io::Write,
     path::{Path, PathBuf},
     process,
     sync::Arc,
     time::Instant,
 };
-use std::{panic, sync::Mutex};
+use std::{fmt::Write, panic, sync::Mutex};
 use structopt::StructOpt;
 
 use probe_rs::{
     config::TargetSelector,
     flashing::{download_file_with_options, DownloadOptions, FlashProgress, Format, ProgressEvent},
-    DebugProbeError, DebugProbeSelector, Probe, WireProtocol,
+    DebugProbeSelector, Probe, Session, WireProtocol,
 };
 
 #[cfg(feature = "sentry")]
@@ -23,6 +23,8 @@ use probe_rs_cli_util::logging::{ask_to_log_crash, capture_anyhow, capture_panic
 use probe_rs_cli_util::{
     argument_handling, build_artifact, logging, logging::Metadata, read_metadata,
 };
+
+mod diagnostics;
 
 lazy_static::lazy_static! {
     static ref METADATA: Arc<Mutex<Metadata>> = Arc::new(Mutex::new(Metadata {
@@ -168,14 +170,11 @@ fn main() {
             // to access stderr during shutdown.
             //
             // We ignore the errors, not much we can do anyway.
-
-            let mut stderr = std::io::stderr();
-            let _ = writeln!(stderr, "       {} {:?}", "Error".red().bold(), e);
-            let _ = stderr.flush();
+            e.render();
 
             #[cfg(feature = "sentry")]
             if ask_to_log_crash() {
-                capture_anyhow(&METADATA.lock().unwrap(), &e)
+                capture_anyhow(&METADATA.lock().unwrap(), e.source_error())
             }
             #[cfg(not(feature = "sentry"))]
             log::info!("{:#?}", &METADATA.lock().unwrap());
@@ -185,7 +184,7 @@ fn main() {
     }
 }
 
-fn main_try() -> Result<()> {
+fn main_try() -> Result<(), Diagnostic> {
     let mut args = std::env::args();
 
     // When called by Cargo, the first argument after the binary name will be `flash`. If that's the
@@ -201,7 +200,7 @@ fn main_try() -> Result<()> {
 
     logging::init(opt.log);
 
-    let work_dir = PathBuf::from(opt.work_dir.unwrap_or_else(|| ".".to_owned()));
+    let work_dir = PathBuf::from(opt.work_dir.clone().unwrap_or_else(|| ".".to_owned()));
 
     // If someone wants to list the connected probes, just do that and exit.
     if opt.list_probes {
@@ -213,8 +212,9 @@ fn main_try() -> Result<()> {
     let meta = read_metadata(&work_dir).ok();
 
     // Make sure we load the config given in the cli parameters.
-    if let Some(cdp) = opt.chip_description_path {
-        probe_rs::config::registry::add_target_from_yaml(&Path::new(&cdp))?;
+    if let Some(ref cdp) = opt.chip_description_path {
+        probe_rs::config::registry::add_target_from_yaml(&Path::new(cdp))
+            .with_context(|| format!("Failed to parse chip description ''"))?;
     }
 
     let chip = if opt.list_chips {
@@ -222,7 +222,7 @@ fn main_try() -> Result<()> {
         return Ok(());
     } else {
         // First use command line, then manifest, then default to auto
-        match (opt.chip, meta.map(|m| m.chip).flatten()) {
+        match (&opt.chip, meta.map(|m| m.chip).flatten()) {
             (Some(c), _) => c.into(),
             (_, Some(c)) => c.into(),
             _ => TargetSelector::Auto,
@@ -236,13 +236,21 @@ fn main_try() -> Result<()> {
     argument_handling::remove_arguments(ARGUMENTS_TO_REMOVE, &mut args);
 
     // Change the work dir if the user asked to do so
-    std::env::set_current_dir(&work_dir).context("failed to change the working directory")?;
+    //std::env::set_current_dir(&work_dir).context("Failed to change the working directory")?;
 
-    let path: PathBuf = if let Some(path) = opt.elf {
+    log::debug!("Changed working directory to {}", work_dir.display());
+
+    let path: PathBuf = if let Some(path) = &opt.elf {
         path.into()
     } else {
         // Build the project, and extract the path of the built artifact.
-        build_artifact(&work_dir, &args)?
+        build_artifact(&work_dir, &args).with_context(|| {
+            if let Some(ref work_dir) = opt.work_dir {
+                format!("Failed to build Cargo project in directory '{}'", work_dir)
+            } else {
+                "Failed to build Cargo project".to_string()
+            }
+        })?
     };
 
     logging::println(format!(
@@ -254,13 +262,13 @@ fn main_try() -> Result<()> {
     let list = Probe::list_all();
 
     // If we got a probe selector as an argument, open the probe matching the selector if possible.
-    let mut probe = match opt.probe_selector {
-        Some(selector) => Probe::open(selector)?,
+    let mut probe = match &opt.probe_selector {
+        Some(selector) => Probe::open(selector.clone()).context("Failed to open Probe")?,
         None => {
             // Only automatically select a probe if there is only
             // a single probe detected.
             if list.len() > 1 {
-                return Err(anyhow!("More than a single probe detected. Use the --probe argument to select which probe to use."));
+                return Err(anyhow!("More than a single probe detected. Use the --probe argument to select which probe to use.").into());
             }
 
             Probe::open(
@@ -270,7 +278,8 @@ fn main_try() -> Result<()> {
                         info
                     })
                     .ok_or_else(|| anyhow!("No supported probe was found"))?,
-            )?
+            )
+            .map_err(|err| anyhow!(err))?
         }
     };
 
@@ -306,13 +315,24 @@ fn main_try() -> Result<()> {
         let potential_session = probe.attach(chip);
         match potential_session {
             Ok(session) => session,
-            Err(session) => {
-                log::info!("The target seems to be unable to be attached to.");
-                log::info!(
+            Err(err) => {
+                let mut diagnostic =
+                    Diagnostic::from(anyhow!(err).context("Failed attaching to target"));
+
+                let mut buff = String::new();
+                let _ = writeln!(buff, "The target seems to be unable to be attached to.");
+                let _ = writeln!(
+                    buff,
                     "A hard reset during attaching might help. This will reset the entire chip."
                 );
-                log::info!("Run with `--connect-under-reset` to enable this feature.");
-                return Err(session).context("failed attaching to target");
+                let _ = writeln!(
+                    buff,
+                    "Run with `--connect-under-reset` to enable this feature."
+                );
+
+                diagnostic.add_hint(buff);
+
+                return Err(diagnostic);
             }
         }
     };
@@ -320,6 +340,63 @@ fn main_try() -> Result<()> {
     // Start timer.
     let instant = Instant::now();
 
+    if let Err(e) = run_flash_operation(&mut session, &path, &opt) {
+        handle_flash_error(e, session.target())?;
+    }
+
+    // Stop timer.
+    let elapsed = instant.elapsed();
+    logging::println(format!(
+        "    {} in {}s",
+        "Finished".green().bold(),
+        elapsed.as_millis() as f32 / 1000.0,
+    ));
+
+    {
+        let mut core = session
+            .core(0)
+            .context("Failed to get handle for first core")?;
+        if opt.reset_halt {
+            core.reset_and_halt(std::time::Duration::from_millis(500))
+                .context("failed to reset and halt")?;
+        } else {
+            core.reset().context("failed to reset")?;
+        }
+    }
+
+    Ok(())
+}
+
+fn print_families() -> Result<()> {
+    logging::println("Available chips:");
+    for family in probe_rs::config::registry::families().context("failed to read families")? {
+        logging::println(&family.name);
+        logging::println("    Variants:");
+        for variant in family.variants() {
+            logging::println(format!("        {}", variant.name));
+        }
+    }
+    Ok(())
+}
+
+/// Lists all connected devices
+fn list_connected_devices() -> Result<()> {
+    let probes = Probe::list_all();
+
+    if !probes.is_empty() {
+        println!("The following devices were found:");
+        probes
+            .iter()
+            .enumerate()
+            .for_each(|(num, link)| println!("[{}]: {:?}", num, link));
+    } else {
+        println!("No devices were found.");
+    }
+
+    Ok(())
+}
+
+fn run_flash_operation(session: &mut Session, path: &Path, opt: &Opt) -> Result<()> {
     if !opt.disable_progressbars {
         // Create progress bars.
         let multi_progress = MultiProgress::new();
@@ -358,9 +435,12 @@ fn main_try() -> Result<()> {
             match event {
                 Initialized { flash_layout } => {
                     let total_page_size: u32 = flash_layout.pages().iter().map(|s| s.size()).sum();
+
                     let total_sector_size: u32 =
                         flash_layout.sectors().iter().map(|s| s.size()).sum();
+
                     let total_fill_size: u32 = flash_layout.fills().iter().map(|s| s.size()).sum();
+
                     if let Some(fp) = fill_progress.as_ref() {
                         fp.set_length(total_fill_size as u64)
                     }
@@ -432,8 +512,8 @@ fn main_try() -> Result<()> {
         });
 
         download_file_with_options(
-            &mut session,
-            path.as_path(),
+            session,
+            path,
             Format::Elf,
             DownloadOptions {
                 progress: Some(&progress),
@@ -446,8 +526,8 @@ fn main_try() -> Result<()> {
         let _ = progress_thread_handle.join();
     } else {
         download_file_with_options(
-            &mut session,
-            path.as_path(),
+            session,
+            path,
             Format::Elf,
             DownloadOptions {
                 progress: None,
@@ -455,53 +535,6 @@ fn main_try() -> Result<()> {
             },
         )
         .with_context(|| format!("failed to flash {}", path.display()))?;
-    }
-
-    // Stop timer.
-    let elapsed = instant.elapsed();
-    logging::println(format!(
-        "    {} in {}s",
-        "Finished".green().bold(),
-        elapsed.as_millis() as f32 / 1000.0,
-    ));
-
-    {
-        let mut core = session.core(0)?;
-        if opt.reset_halt {
-            core.reset_and_halt(std::time::Duration::from_millis(500))
-                .context("failed to reset and halt")?;
-        } else {
-            core.reset().context("failed to reset")?;
-        }
-    }
-
-    Ok(())
-}
-
-fn print_families() -> Result<()> {
-    logging::println("Available chips:");
-    for family in probe_rs::config::registry::families().context("failed to read families")? {
-        logging::println(&family.name);
-        logging::println("    Variants:");
-        for variant in family.variants() {
-            logging::println(format!("        {}", variant.name));
-        }
-    }
-    Ok(())
-}
-
-/// Lists all connected devices
-fn list_connected_devices() -> Result<(), DebugProbeError> {
-    let probes = Probe::list_all();
-
-    if !probes.is_empty() {
-        println!("The following devices were found:");
-        probes
-            .iter()
-            .enumerate()
-            .for_each(|(num, link)| println!("[{}]: {:?}", num, link));
-    } else {
-        println!("No devices were found.");
     }
 
     Ok(())
