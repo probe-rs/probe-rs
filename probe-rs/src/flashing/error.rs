@@ -2,7 +2,7 @@
 
 use thiserror::Error;
 
-use crate::config::FlashRegion;
+use crate::config::{FlashRegion, TargetDescriptionSource};
 use crate::error;
 
 /// Describes any error that happened during the or in preparation for the flashing procedure.
@@ -20,7 +20,11 @@ pub enum FlashError {
     #[error(
         "No flash memory contains the entire requested memory range {start:#08X}..{end:#08X}."
     )]
-    NoSuitableFlash { start: u32, end: u32 },
+    NoSuitableFlash {
+        start: u32,
+        end: u32,
+        description_source: TargetDescriptionSource,
+    },
 
     // 1 Add information about flash (name, address)
     // 2 Add source of target definition (built-in, yaml)
@@ -47,14 +51,6 @@ pub enum FlashError {
     #[error("The execution of '{name}' failed with code {errorcode}")]
     RoutineCallFailed { name: &'static str, errorcode: u32 }, // probably an issue with the flash algorithm / target
 
-    // Bug in library, should never occur -> panic?
-    #[error("Buffer {n}/{max} does not exist")]
-    InvalidBufferNumber { n: usize, max: usize },
-    #[error("Overlap in data, address {0:#010x} was already written earlier.")]
-    DataOverlap(u32),
-    #[error("Address {0:#010x} is not a valid address in the flash area.")]
-    InvalidFlashAddress(u32),
-
     // Libary API error?
     #[error("{address} is not contained in {region:?}")]
     AddressNotInRegion { address: u32, region: FlashRegion },
@@ -67,7 +63,10 @@ pub enum FlashError {
 
     // Flash algorithm in YAML is broken
     #[error("Flash algorithm length is not 32 bit aligned.")]
-    InvalidFlashAlgorithmLength,
+    InvalidFlashAlgorithmLength {
+        name: String,
+        algorithm_source: Option<TargetDescriptionSource>,
+    },
 
     // Remove this error?
     #[error(

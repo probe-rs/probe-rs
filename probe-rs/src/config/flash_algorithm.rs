@@ -207,7 +207,10 @@ impl RawFlashAlgorithm {
         let assembled_instructions = self.instructions.chunks_exact(size_of::<u32>());
 
         if !assembled_instructions.remainder().is_empty() {
-            return Err(FlashError::InvalidFlashAlgorithmLength);
+            return Err(FlashError::InvalidFlashAlgorithmLength {
+                name: self.name.to_string(),
+                algorithm_source: None,
+            });
         }
 
         let header = self.get_algorithm_header(architecture);

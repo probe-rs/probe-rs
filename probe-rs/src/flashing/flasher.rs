@@ -740,13 +740,13 @@ impl<'p> ActiveFlasher<'p, Program> {
         address: u32,
         buffer_number: usize,
     ) -> Result<(), FlashError> {
-        // Check the buffer number.
-        if buffer_number < self.flash_algorithm.page_buffers.len() {
-            return Err(FlashError::InvalidBufferNumber {
-                n: buffer_number,
-                max: self.flash_algorithm.page_buffers.len(),
-            });
-        }
+        // Ensure the buffer number is valid, otherwise there is a bug somewhere
+        // in the flashing code.
+        assert!(
+            buffer_number < self.flash_algorithm.page_buffers.len(),
+            "Trying to use non-existing buffer ({}/{}) for flashing. This is a bug. Please report it.",
+            buffer_number + 1, self.flash_algorithm.page_buffers.len()
+        );
 
         self.call_function(
             &Registers {
@@ -771,13 +771,13 @@ impl<'p> ActiveFlasher<'p, Program> {
         let flasher = self;
         let algo = &flasher.flash_algorithm;
 
-        // Check the buffer number.
-        if buffer_number < algo.page_buffers.len() {
-            return Err(FlashError::InvalidBufferNumber {
-                n: buffer_number,
-                max: algo.page_buffers.len(),
-            });
-        }
+        // Ensure the buffer number is valid, otherwise there is a bug somewhere
+        // in the flashing code.
+        assert!(
+            buffer_number < algo.page_buffers.len(),
+            "Trying to use non-existing buffer ({}/{}) for flashing. This is a bug. Please report it.",
+            buffer_number + 1, algo.page_buffers.len()
+        );
 
         // TODO: Prevent security settings from locking the device.
 

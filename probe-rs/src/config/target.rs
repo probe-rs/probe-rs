@@ -14,6 +14,9 @@ pub struct Target {
     pub core_type: CoreType,
     /// The memory map of the target.
     pub memory_map: Vec<MemoryRegion>,
+
+    /// Source of the target description. Used for diagnostics.
+    pub(crate) source: TargetDescriptionSource,
 }
 
 impl std::fmt::Debug for Target {
@@ -30,6 +33,24 @@ impl std::fmt::Debug for Target {
     }
 }
 
+/// Source of a target description.
+///
+/// This is used for diagnostics, when
+/// an error related to a target description occurs.
+#[derive(Clone, Debug, PartialEq)]
+pub enum TargetDescriptionSource {
+    /// The target description is a generic target description,
+    /// which just describes a core type (e.g. M4), without any
+    /// flash algorithm or memory description.
+    Generic,
+    /// The target description is a built-in target description,
+    /// which was included into probe-rs at compile time.
+    BuiltIn,
+    /// The target description was from an external source
+    /// during runtime.
+    External,
+}
+
 /// An error occured while parsing the target description.
 pub type TargetParseError = serde_yaml::Error;
 
@@ -39,12 +60,14 @@ impl Target {
         chip: &Chip,
         flash_algorithms: Vec<RawFlashAlgorithm>,
         core_type: CoreType,
+        source: TargetDescriptionSource,
     ) -> Target {
         Target {
             name: chip.name.clone().into_owned(),
             flash_algorithms,
             core_type,
             memory_map: chip.memory_map.clone().into_owned(),
+            source,
         }
     }
 

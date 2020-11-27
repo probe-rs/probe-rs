@@ -235,8 +235,10 @@ impl<'data> FlashBuilder<'data> {
             .data_blocks
             .binary_search_by_key(&address, |&v| v.address)
         {
-            // If it already is present in the list, return an error.
-            Ok(_) => return Err(FlashError::DataOverlap(address)),
+            // If it already is present in the list, this indicates a bug in the flashing code.
+            Ok(_) => panic!(
+                        "Error preparing data to flash. Address {0:#010x} is not a valid address in the flash area. This is a bug, please report it.",
+                        address),
             // Add it to the list if it is not present yet.
             Err(position) => {
                 // If we have a prior block (prevent u32 underflow), check if its range intersects
@@ -244,9 +246,12 @@ impl<'data> FlashBuilder<'data> {
                 if position > 0 {
                     if let Some(block) = self.data_blocks.get(position - 1) {
                         let range = block.address..block.address + block.data.len() as u32;
-                        if range.intersects_range(&(address..address + data.len() as u32)) {
-                            return Err(FlashError::DataOverlap(address));
-                        }
+
+                        assert!(
+                            !range.intersects_range(&(address..address + data.len() as u32)),
+                            "Overlap in data, address {0:#010x} was already written earlier. This is a bug, please report it.",
+                            address
+                        );
                     }
                 }
 
@@ -257,9 +262,12 @@ impl<'data> FlashBuilder<'data> {
                 // So the ones on the right are not shifted yet!
                 if let Some(block) = self.data_blocks.get(position) {
                     let range = block.address..block.address + block.data.len() as u32;
-                    if range.intersects_range(&(address..address + data.len() as u32)) {
-                        return Err(FlashError::DataOverlap(address));
-                    }
+
+                    assert!(
+                        !range.intersects_range(&(address..address + data.len() as u32)),
+                        "Error preparing data to flash. Address {0:#010x} is not a valid address in the flash area. This is a bug, please report it.",
+                        address
+                    );
                 }
 
                 // If we made it until here, it is safe to insert the block.
@@ -446,20 +454,17 @@ fn add_sector<'sector>(
     address: u32,
     sectors: &'sector mut Vec<FlashSector>,
 ) -> Result<&'sector mut FlashSector, FlashError> {
-    let sector_info = flash_algorithm.sector_info(address);
-    if let Some(sector_info) = sector_info {
-        let new_sector = FlashSector::new(&sector_info);
-        sectors.push(new_sector);
-        log::trace!(
-            "Added Sector (0x{:08x}..0x{:08x})",
-            sector_info.base_address,
-            sector_info.base_address + sector_info.size
-        );
-        // We just added a sector, so this unwrap can never fail!
-        Ok(sectors.last_mut().unwrap())
-    } else {
-        Err(FlashError::InvalidFlashAddress(address))
-    }
+    let sector_info = flash_algorithm.sector_info(address).expect(&format!("Address {0:#010x} is not a valid address in the flash area. This is a bug, please report it.", address));
+
+    let new_sector = FlashSector::new(&sector_info);
+    sectors.push(new_sector);
+    log::trace!(
+        "Added Sector (0x{:08x}..0x{:08x})",
+        sector_info.base_address,
+        sector_info.base_address + sector_info.size
+    );
+    // We just added a sector, so this unwrap can never fail!
+    Ok(sectors.last_mut().unwrap())
 }
 
 /// Adds a new page to the pages.
@@ -468,20 +473,18 @@ fn add_page<'page>(
     address: u32,
     pages: &'page mut Vec<FlashPage>,
 ) -> Result<&'page mut FlashPage, FlashError> {
-    let page_info = flash_algorithm.page_info(address);
-    if let Some(page_info) = page_info {
-        let new_page = FlashPage::new(&page_info);
-        pages.push(new_page);
-        log::trace!(
-            "Added Page (0x{:08x}..0x{:08x})",
-            page_info.base_address,
-            page_info.base_address + page_info.size
-        );
-        // We just added a page, so this unwrap can never fail!
-        Ok(pages.last_mut().unwrap())
-    } else {
-        Err(FlashError::InvalidFlashAddress(address))
-    }
+    let page_info = flash_algorithm.page_info(address).expect(&format!("Address {0:#010x} is not a valid address in the flash area. This is a bug, please report it.", address));
+
+    let new_page = FlashPage::new(&page_info);
+
+    pages.push(new_page);
+    log::trace!(
+        "Added Page (0x{:08x}..0x{:08x})",
+        page_info.base_address,
+        page_info.base_address + page_info.size
+    );
+    // We just added a page, so this unwrap can never fail!
+    Ok(pages.last_mut().unwrap())
 }
 
 /// Adds a new fill to the fills.

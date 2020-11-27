@@ -1,5 +1,5 @@
 use super::{FlashBuilder, FlashError, FlashProgress, Flasher};
-use crate::config::{FlashRegion, MemoryRange, MemoryRegion};
+use crate::config::{FlashRegion, MemoryRange, MemoryRegion, TargetDescriptionSource};
 use crate::session::Session;
 use std::collections::HashMap;
 
@@ -12,14 +12,23 @@ pub(super) struct FlashLoader<'mmap, 'data> {
     memory_map: &'mmap [MemoryRegion],
     builders: HashMap<FlashRegion, FlashBuilder<'data>>,
     keep_unwritten: bool,
+
+    /// Source of the flash description,
+    /// used for diagnostics.
+    source: TargetDescriptionSource,
 }
 
 impl<'mmap, 'data> FlashLoader<'mmap, 'data> {
-    pub(super) fn new(memory_map: &'mmap [MemoryRegion], keep_unwritten: bool) -> Self {
+    pub(super) fn new(
+        memory_map: &'mmap [MemoryRegion],
+        keep_unwritten: bool,
+        source: TargetDescriptionSource,
+    ) -> Self {
         Self {
             memory_map,
             builders: HashMap::new(),
             keep_unwritten,
+            source,
         }
     }
     /// Stages a chunk of data to be programmed.
@@ -58,6 +67,7 @@ impl<'mmap, 'data> FlashLoader<'mmap, 'data> {
                 return Err(FlashError::NoSuitableFlash {
                     start: address,
                     end: address + data.len() as u32,
+                    description_source: self.source.clone(),
                 });
             }
         }

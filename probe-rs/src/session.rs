@@ -247,6 +247,10 @@ impl Session {
         }
     }
 
+    pub fn target(&self) -> &Target {
+        &self.target
+    }
+
     /// Configure the target and probe for serial wire view (SWV) tracing.
     pub fn setup_swv(&mut self, config: &SwoConfig) -> Result<(), Error> {
         // Configure SWO on the probe

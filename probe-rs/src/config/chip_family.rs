@@ -1,5 +1,5 @@
-use super::chip::Chip;
 use super::flash_algorithm::RawFlashAlgorithm;
+use super::{chip::Chip, target::TargetDescriptionSource};
 use crate::config::TargetParseError;
 use jep106::JEP106Code;
 use std::borrow::Cow;
@@ -27,6 +27,10 @@ pub struct ChipFamily {
     /// The name of the core type.
     /// E.g. `M0` or `M4`.
     pub core: Cow<'static, str>,
+
+    #[serde(skip_serializing, deserialize_with = "deserialize_source")]
+    /// Source of the target description, used for diagnostics
+    pub(crate) source: TargetDescriptionSource,
 }
 
 pub fn serialize<S>(raw_algorithms: &[RawFlashAlgorithm], serializer: S) -> Result<S::Ok, S::Error>
@@ -96,6 +100,14 @@ impl ChipFamily {
         let name = name.as_ref();
         self.flash_algorithms.iter().find(|elem| elem.name == name)
     }
+}
+
+// When deserialization is used, this means that the target is read from an external source.
+pub fn deserialize_source<'de, D>(_deserializer: D) -> Result<TargetDescriptionSource, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    Ok(TargetDescriptionSource::External)
 }
 
 #[test]

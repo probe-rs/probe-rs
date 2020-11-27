@@ -37,7 +37,7 @@ pub use flash_algorithm::{FlashAlgorithm, RawFlashAlgorithm};
 pub use flash_properties::FlashProperties;
 pub use memory::{FlashRegion, MemoryRegion, PageInfo, RamRegion, SectorDescription, SectorInfo};
 pub use registry::{add_target_from_yaml, families, RegistryError};
-pub use target::{Target, TargetParseError, TargetSelector};
+pub use target::{Target, TargetDescriptionSource, TargetParseError, TargetSelector};
 
 // Crate-internal API
 pub(crate) use chip_info::ChipInfo;
