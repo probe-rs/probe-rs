@@ -34,6 +34,8 @@ use std::time::Duration;
 /// To get access to a single [Core] from the `Session`, the [Session::core()] method
 /// can be used.
 ///
+/// You can create and share a session between threads to enable multiple stakeholders (e.g. GDB and RTT) to access the target
+/// taking turns. If you do so, please make sure that both threads sleep in between tasks such that other shareholders may take their turn.
 #[derive(Debug)]
 pub struct Session {
     target: Target,
@@ -382,4 +384,32 @@ fn get_target_from_selector(
     };
 
     Ok((probe.unwrap(), target))
+}
+
+#[cfg(test)]
+mod tests {
+    /// This test ensures that [Session] is fully [Send] + [Sync]. We do not actually have to run it to do this.
+    /// We make the test panic and expect it to do that, so we do not try to attach to any probe/target which are not present on CI.
+    #[test]
+    #[should_panic]
+    fn ensure_send_sync() {
+        panic!();
+
+        // This is required because the test will never continue beyond the intentional panic.
+        #[allow(unreachable_code)]
+        {
+            use super::Session;
+            use std::sync::{Arc, Mutex};
+            let session = Arc::new(Mutex::new(Session::auto_attach(()).unwrap()));
+            let session_clone = session.clone();
+            std::thread::spawn(move || loop {
+                session_clone.lock().unwrap().core(0).unwrap();
+                std::thread::sleep(std::time::Duration::from_millis(10));
+            });
+            std::thread::spawn(move || loop {
+                session.lock().unwrap().core(0).unwrap();
+                std::thread::sleep(std::time::Duration::from_millis(10));
+            });
+        }
+    }
 }
