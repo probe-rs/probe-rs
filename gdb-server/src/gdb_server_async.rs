@@ -86,7 +86,7 @@ async fn inbound_broker_loop(
             n = read => {
                 match n {
                     Ok(0) => {
-                        println!("GDB connection closed.");
+                        log::info!("GDB connection closed.");
                         break Ok(());
                     }
                     Ok(n) => {
@@ -94,7 +94,7 @@ async fn inbound_broker_loop(
                         log::info!("Current buf {}", String::from_utf8_lossy(&buffer));
                         super::reader::reader(&mut stream, &packet_stream, &mut buffer).await?
                     },
-                    Err(e) => {
+                    Err(_e) => {
 
                     }
                 }

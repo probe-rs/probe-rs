@@ -21,6 +21,10 @@ pub async fn worker(
     output_stream: Sender<CheckedPacket>,
     session: &mut Session,
 ) -> ServerResult<()> {
+    // When we first attach to the core, GDB expects us to halt the core, so we do this here when a new client connects.
+    // If the core is already halted, nothing happens if we issue a halt command again, so we always do this no matter of core state.
+    session.core(0)?.halt(Duration::from_millis(100))?;
+
     let mut awaits_halt = false;
 
     loop {
