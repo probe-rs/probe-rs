@@ -248,19 +248,7 @@ impl<'interface> ArmCommunicationInterface {
         /* determine the number and type of available APs */
         log::trace!("Searching valid APs");
 
-        // faults on some chips need to be cleaned up.
-        let aps = valid_access_ports(&mut interface);
-
-        // Check sticky error and cleanup if necessary
-        let ctrl_reg: crate::architecture::arm::dp::Ctrl = interface.read_dp_register()?;
-        if ctrl_reg.sticky_err() {
-            log::trace!("AP Search faulted. Cleaning up");
-            let mut abort = Abort::default();
-            abort.set_stkerrclr(true);
-            interface.write_dp_register(abort)?;
-        }
-
-        for ap in aps {
+        for ap in valid_access_ports(&mut interface) {
             let ap_state = interface.read_ap_information(ap)?;
 
             log::debug!("AP {}: {:?}", ap.port_number(), ap_state);

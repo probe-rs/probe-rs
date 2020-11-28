@@ -4,7 +4,7 @@ pub mod tools;
 use crate::{
     architecture::arm::{
         communication_interface::ArmProbeInterface,
-        dp::{Ctrl, DPAccess, DPRegister, DebugPortError},
+        dp::{Abort, Ctrl, DPAccess, DPRegister, DebugPortError},
         swo::poll_interval_from_buf_size,
         ArmCommunicationInterface, DAPAccess, DapError, PortType, Register, SwoAccess, SwoConfig,
         SwoMode,
@@ -205,6 +205,7 @@ impl DAPLink {
                 Ack::Fault => {
                     log::trace!("fault",);
 
+                    // Check the reason for the fault
                     let response =
                         DAPAccess::read_register(self, PortType::DebugPort, Ctrl::ADDRESS as u16)?;
                     let ctrl = Ctrl::from(response);
@@ -212,6 +213,20 @@ impl DAPLink {
                         "Writing DAP register failed. Ctrl/Stat register value is: {:?}",
                         ctrl
                     );
+
+                    if ctrl.sticky_err() {
+                        let mut abort = Abort(0);
+
+                        // Clear sticky error flags
+                        abort.set_stkerrclr(ctrl.sticky_err());
+
+                        DAPAccess::write_register(
+                            self,
+                            PortType::DebugPort,
+                            Abort::ADDRESS as u16,
+                            abort.into(),
+                        )?;
+                    }
 
                     Err(DapError::FaultResponse.into())
                 }
