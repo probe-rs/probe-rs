@@ -1,4 +1,5 @@
 use colored::*;
+use std::sync::Mutex;
 use std::{
     process::{self},
     time::Duration,
@@ -74,10 +75,13 @@ fn main_try() -> Result<(), failure::Error> {
         Some(identifier) => identifier.into(),
         None => TargetSelector::Auto,
     };
-    let mut session = probe.attach(target_selector)?;
+
+    let session = Mutex::new(probe.attach(target_selector)?);
 
     if opt.reset_halt {
         session
+            .lock()
+            .unwrap()
             .core(0)?
             .reset_and_halt(Duration::from_millis(100))?;
     }
@@ -90,7 +94,7 @@ fn main_try() -> Result<(), failure::Error> {
         "Firing up GDB stub at {}",
         gdb_connection_string.as_ref().unwrap()
     );
-    if let Err(e) = probe_rs_gdb_server::run(gdb_connection_string, session) {
+    if let Err(e) = probe_rs_gdb_server::run(gdb_connection_string, &session) {
         eprintln!("During the execution of GDB an error was encountered:");
         eprintln!("{:?}", e);
     }

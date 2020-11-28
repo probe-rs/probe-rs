@@ -45,8 +45,8 @@ pub(crate) fn read_general_registers(mut core: Core) -> Option<String> {
     // The format of this packet is determined by the register number
     // used by GDB. Just sending register 0 seems to be sufficient,
     // the other registers are then requested using 'p' packets.
-    let register_0 = core.read_core_reg(0).unwrap();
-    Some(format!("{:08x}", register_0))
+    let register_0 = core.read_core_reg(0);
+    register_0.ok().map(|v| format!("{:08x}", v))
 }
 
 pub(crate) fn read_register(register: u32, mut core: Core) -> Option<String> {

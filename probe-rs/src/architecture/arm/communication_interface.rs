@@ -128,7 +128,7 @@ pub trait DAPAccess: DebugProbe + AsRef<dyn DebugProbe> + AsMut<dyn DebugProbe> 
 }
 
 pub trait ArmProbeInterface:
-    SwoAccess + AsRef<dyn DebugProbe> + AsMut<dyn DebugProbe> + Debug
+    SwoAccess + AsRef<dyn DebugProbe> + AsMut<dyn DebugProbe> + Debug + Send + Sync
 {
     fn memory_interface(&mut self, access_port: MemoryAP) -> Result<Memory<'_>, ProbeRsError>;
 

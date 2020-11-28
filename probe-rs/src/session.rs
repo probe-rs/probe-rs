@@ -34,6 +34,8 @@ use std::time::Duration;
 /// To get access to a single [Core] from the `Session`, the [Session::core()] method
 /// can be used.
 ///
+/// You can create and share a session between threads to enable multiple stakeholders (e.g. GDB and RTT) to access the target
+/// taking turns. If you do so, please make sure that both threads sleep in between tasks such that other shareholders may take their turn.
 #[derive(Debug)]
 pub struct Session {
     target: Target,
@@ -43,7 +45,7 @@ pub struct Session {
 
 #[derive(Debug)]
 enum ArchitectureInterface {
-    Arm(Box<dyn ArmProbeInterface>),
+    Arm(Box<dyn ArmProbeInterface + 'static>),
     Riscv(RiscvCommunicationInterface),
 }
 
@@ -309,6 +311,9 @@ impl Session {
             .map(|_| ())
     }
 }
+
+// This test ensures that [Session] is fully [Send] + [Sync].
+static_assertions::assert_impl_all!(Session: Send, Sync);
 
 impl Drop for Session {
     fn drop(&mut self) {
