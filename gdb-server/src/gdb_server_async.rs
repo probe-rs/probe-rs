@@ -30,8 +30,6 @@ pub fn run(connection_string: Option<impl Into<String>>, session: &Mutex<Session
 async fn accept_loop(addr: impl ToSocketAddrs, session: &Mutex<Session>) -> Result<()> {
     let listener = TcpListener::bind(addr).await?;
 
-    let session = session;
-
     let mut incoming = listener.incoming();
     while let Some(stream) = incoming.next().await {
         if let Err(e) = handle_connection(stream?, session).await {
@@ -66,7 +64,7 @@ async fn handle_connection(stream: TcpStream, session: &Mutex<Session>) -> Resul
 
 /// The receiver loop handles any messages that are inbound.
 async fn inbound_broker_loop(
-    stream: TcpStream,
+    mut stream: TcpStream,
     packet_stream: Sender<CheckedPacket>,
     mut packet_stream_2: Receiver<CheckedPacket>,
 ) -> Result<()> {
@@ -74,8 +72,6 @@ async fn inbound_broker_loop(
 
     let mut buffer = vec![];
     let mut tmp_buf = [0; 1024];
-
-    let mut stream = stream;
 
     loop {
         let mut packet_stream_2 = packet_stream_2.next().fuse();
