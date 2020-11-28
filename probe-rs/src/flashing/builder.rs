@@ -536,9 +536,11 @@ mod tests {
     }
 
     #[test]
+    #[should_panic]
     fn add_overlapping_data() {
         let mut flash_builder = FlashBuilder::new();
         assert!(flash_builder.add_data(0, &[42]).is_ok());
+
         assert!(flash_builder.add_data(0, &[42]).is_err());
     }
 

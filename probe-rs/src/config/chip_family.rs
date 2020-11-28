@@ -28,7 +28,7 @@ pub struct ChipFamily {
     /// E.g. `M0` or `M4`.
     pub core: Cow<'static, str>,
 
-    #[serde(skip_serializing, deserialize_with = "deserialize_source")]
+    #[serde(skip, default = "default_source")]
     /// Source of the target description, used for diagnostics
     pub(crate) source: TargetDescriptionSource,
 }
@@ -103,18 +103,17 @@ impl ChipFamily {
 }
 
 // When deserialization is used, this means that the target is read from an external source.
-pub fn deserialize_source<'de, D>(_deserializer: D) -> Result<TargetDescriptionSource, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    Ok(TargetDescriptionSource::External)
+fn default_source() -> TargetDescriptionSource {
+    TargetDescriptionSource::External
 }
 
 #[test]
 fn map_to_list_deserialize() {
-    let result: Result<ChipFamily, _> =
-        serde_yaml::from_str(include_str!("../../targets/STM32F4 Series.yaml"));
-    assert!(result.is_ok());
+    let yaml_data = include_str!("../../targets/STM32F4 Series.yaml");
+
+    let reader = std::io::Cursor::new(yaml_data);
+
+    let result: Result<ChipFamily, _> = ChipFamily::from_yaml_reader(reader);
 
     let chip_family = result.unwrap();
     assert_eq!(chip_family.algorithms().len(), 18);
