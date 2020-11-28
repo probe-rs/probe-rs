@@ -189,72 +189,36 @@ impl DAPLink {
             TransferRequest::new(&transfers),
         )?;
 
-        let count = response.transfer_count as usize;
-
-        match count {
-            _ if count == batch.len() => {
-                // All commands have been executed
-
-                if response.transfer_response.protocol_error {
-                    Err(DapError::SwdProtocol.into())
-                } else {
-                    match response.transfer_response.ack {
-                        Ack::Ok => {
-                            log::trace!("ack",);
-                            Ok(response.transfer_data)
-                        }
-                        Ack::NoAck => {
-                            log::trace!("nack",);
-                            Err(DapError::NoAcknowledge.into())
-                        }
-                        Ack::Fault => {
-                            log::trace!("fault",);
-
-                            let response = DAPAccess::read_register(
-                                self,
-                                PortType::DebugPort,
-                                Ctrl::ADDRESS as u16,
-                            )?;
-                            let ctrl = Ctrl::from(response);
-                            log::trace!(
-                                "Writing DAP register failed. Ctrl/Stat register value is: {:?}",
-                                ctrl
-                            );
-
-                            Err(DapError::FaultResponse.into())
-                        }
-                        Ack::Wait => {
-                            log::trace!("wait",);
-
-                            Err(DapError::WaitResponse.into())
-                        }
-                    }
+        if response.transfer_response.protocol_error {
+            Err(DapError::SwdProtocol.into())
+        } else {
+            match response.transfer_response.ack {
+                Ack::Ok => {
+                    log::trace!("ack",);
+                    Ok(response.transfer_data)
                 }
-            }
-            count => {
-                log::debug!("Not all batch commands executed: executed {}/{}, last response: proctol_err={}, ack={:?}", 
-                    count, batch.len(), response.transfer_response.protocol_error, response.transfer_response.ack);
+                Ack::NoAck => {
+                    log::trace!("nack",);
+                    //try a reset?
+                    Err(DapError::NoAcknowledge.into())
+                }
+                Ack::Fault => {
+                    log::trace!("fault",);
 
-                if count > 0 {
-                    log::debug!("Failing batch command: {:?}", batch[count - 1]);
-                    Err(DebugProbeError::BatchError(batch[count - 1]))
-                } else {
-                    // Not a single command has been executed succesfully
+                    let response =
+                        DAPAccess::read_register(self, PortType::DebugPort, Ctrl::ADDRESS as u16)?;
+                    let ctrl = Ctrl::from(response);
+                    log::trace!(
+                        "Writing DAP register failed. Ctrl/Stat register value is: {:?}",
+                        ctrl
+                    );
 
-                    if response.transfer_response.protocol_error {
-                        Err(DapError::SwdProtocol.into())
-                    } else {
-                        match response.transfer_response.ack {
-                            Ack::Ok => {
-                                // This should not happen, if the response was OK
-                                // the probe should have executed all commands.
-                                Err(DebugProbeError::Other(anyhow!("U")))
-                            }
-                            Ack::Wait => Err(DapError::WaitResponse.into()),
-                            Ack::Fault => Err(DapError::FaultResponse.into()),
-                            Ack::NoAck => Err(DapError::SwdProtocol.into()),
-                        }
-                    }
+                    Err(DapError::FaultResponse.into())
+                }
+                Ack::Wait => {
+                    log::trace!("wait",);
+
+                    Err(DapError::WaitResponse.into())
                 }
             }
         }
