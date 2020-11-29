@@ -168,75 +168,88 @@ impl DAPLink {
         if self.batch.is_empty() {
             return Ok(0);
         }
-        debug!("Processing batch of {} items", self.batch.len());
 
-        let batch = std::mem::replace(&mut self.batch, Vec::new());
+        let mut batch = std::mem::replace(&mut self.batch, Vec::new());
 
-        let transfers: Vec<InnerTransferRequest> = batch
-            .iter()
-            .map(|command| match *command {
-                BatchCommand::Read(port, addr) => {
-                    InnerTransferRequest::new(port.into(), RW::R, addr as u8, None)
-                }
-                BatchCommand::Write(port, addr, data) => {
-                    InnerTransferRequest::new(port.into(), RW::W, addr as u8, Some(data))
-                }
-            })
-            .collect();
+        debug!("{} items in batch", batch.len());
 
-        let response = commands::send_command::<TransferRequest, TransferResponse>(
-            &mut self.device,
-            TransferRequest::new(&transfers),
-        )?;
+        for retry in (0..5).rev() {
+            debug!("Attempting batch of {} items", batch.len());
 
-        if response.transfer_response.protocol_error {
-            Err(DapError::SwdProtocol.into())
-        } else {
-            match response.transfer_response.ack {
-                Ack::Ok => {
-                    log::trace!("ack",);
-                    Ok(response.transfer_data)
-                }
-                Ack::NoAck => {
-                    log::trace!("nack",);
-                    //try a reset?
-                    Err(DapError::NoAcknowledge.into())
-                }
-                Ack::Fault => {
-                    log::trace!("fault",);
+            let transfers: Vec<InnerTransferRequest> = batch
+                .iter()
+                .map(|command| match *command {
+                    BatchCommand::Read(port, addr) => {
+                        InnerTransferRequest::new(port.into(), RW::R, addr as u8, None)
+                    }
+                    BatchCommand::Write(port, addr, data) => {
+                        InnerTransferRequest::new(port.into(), RW::W, addr as u8, Some(data))
+                    }
+                })
+                .collect();
 
-                    // Check the reason for the fault
-                    let response =
-                        DAPAccess::read_register(self, PortType::DebugPort, Ctrl::ADDRESS as u16)?;
-                    let ctrl = Ctrl::from(response);
-                    log::trace!(
-                        "Writing DAP register failed. Ctrl/Stat register value is: {:?}",
-                        ctrl
-                    );
+            let response = commands::send_command::<TransferRequest, TransferResponse>(
+                &mut self.device,
+                TransferRequest::new(&transfers),
+            )?;
 
-                    if ctrl.sticky_err() {
-                        let mut abort = Abort(0);
+            let count = response.transfer_count as usize;
 
-                        // Clear sticky error flags
-                        abort.set_stkerrclr(ctrl.sticky_err());
+            debug!("{:?} of batch of {} items suceeded", count, batch.len());
 
-                        DAPAccess::write_register(
+            if response.transfer_response.protocol_error {
+                return Err(DapError::SwdProtocol.into());
+            } else {
+                match response.transfer_response.ack {
+                    Ack::Ok => {
+                        log::trace!("ack",);
+                        return Ok(response.transfer_data);
+                    }
+                    Ack::NoAck => {
+                        log::trace!("nack",);
+                        //try a reset?
+                        return Err(DapError::NoAcknowledge.into());
+                    }
+                    Ack::Fault => {
+                        log::trace!("fault",);
+
+                        // Check the reason for the fault
+                        let response = DAPAccess::read_register(
                             self,
                             PortType::DebugPort,
-                            Abort::ADDRESS as u16,
-                            abort.into(),
+                            Ctrl::ADDRESS as u16,
                         )?;
+                        let ctrl = Ctrl::from(response);
+                        log::trace!("Ctrl/Stat register value is: {:?}", ctrl);
+
+                        if ctrl.sticky_err() {
+                            let mut abort = Abort(0);
+
+                            // Clear sticky error flags
+                            abort.set_stkerrclr(ctrl.sticky_err());
+
+                            DAPAccess::write_register(
+                                self,
+                                PortType::DebugPort,
+                                Abort::ADDRESS as u16,
+                                abort.into(),
+                            )?;
+                        }
+
+                        log::trace!("draining {:?} and retries left {:?}", count, retry);
+                        batch.drain(0..count);
+                        continue;
                     }
+                    Ack::Wait => {
+                        log::trace!("wait",);
 
-                    Err(DapError::FaultResponse.into())
-                }
-                Ack::Wait => {
-                    log::trace!("wait",);
-
-                    Err(DapError::WaitResponse.into())
+                        return Err(DapError::WaitResponse.into());
+                    }
                 }
             }
         }
+
+        Err(DapError::FaultResponse.into())
     }
 
     /// Add a BatchCommand to our current batch.
