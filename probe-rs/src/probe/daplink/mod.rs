@@ -4,7 +4,7 @@ pub mod tools;
 use crate::{
     architecture::arm::{
         communication_interface::ArmProbeInterface,
-        dp::{Ctrl, DPAccess, DPRegister, DebugPortError},
+        dp::{Abort, Ctrl, DPAccess, DPRegister, DebugPortError},
         swo::poll_interval_from_buf_size,
         ArmCommunicationInterface, DAPAccess, DapError, PortType, Register, SwoAccess, SwoConfig,
         SwoMode,
@@ -168,96 +168,88 @@ impl DAPLink {
         if self.batch.is_empty() {
             return Ok(0);
         }
-        debug!("Processing batch of {} items", self.batch.len());
 
-        let batch = std::mem::replace(&mut self.batch, Vec::new());
+        let mut batch = std::mem::replace(&mut self.batch, Vec::new());
 
-        let transfers: Vec<InnerTransferRequest> = batch
-            .iter()
-            .map(|command| match *command {
-                BatchCommand::Read(port, addr) => {
-                    InnerTransferRequest::new(port.into(), RW::R, addr as u8, None)
-                }
-                BatchCommand::Write(port, addr, data) => {
-                    InnerTransferRequest::new(port.into(), RW::W, addr as u8, Some(data))
-                }
-            })
-            .collect();
+        debug!("{} items in batch", batch.len());
 
-        let response = commands::send_command::<TransferRequest, TransferResponse>(
-            &mut self.device,
-            TransferRequest::new(&transfers),
-        )?;
+        for retry in (0..5).rev() {
+            debug!("Attempting batch of {} items", batch.len());
 
-        let count = response.transfer_count as usize;
+            let transfers: Vec<InnerTransferRequest> = batch
+                .iter()
+                .map(|command| match *command {
+                    BatchCommand::Read(port, addr) => {
+                        InnerTransferRequest::new(port.into(), RW::R, addr as u8, None)
+                    }
+                    BatchCommand::Write(port, addr, data) => {
+                        InnerTransferRequest::new(port.into(), RW::W, addr as u8, Some(data))
+                    }
+                })
+                .collect();
 
-        match count {
-            _ if count == batch.len() => {
-                // All commands have been executed
+            let response = commands::send_command::<TransferRequest, TransferResponse>(
+                &mut self.device,
+                TransferRequest::new(&transfers),
+            )?;
 
-                if response.transfer_response.protocol_error {
-                    Err(DapError::SwdProtocol.into())
-                } else {
-                    match response.transfer_response.ack {
-                        Ack::Ok => {
-                            log::trace!("ack",);
-                            Ok(response.transfer_data)
-                        }
-                        Ack::NoAck => {
-                            log::trace!("nack",);
-                            Err(DapError::NoAcknowledge.into())
-                        }
-                        Ack::Fault => {
-                            log::trace!("fault",);
+            let count = response.transfer_count as usize;
 
-                            let response = DAPAccess::read_register(
+            debug!("{:?} of batch of {} items suceeded", count, batch.len());
+
+            if response.transfer_response.protocol_error {
+                return Err(DapError::SwdProtocol.into());
+            } else {
+                match response.transfer_response.ack {
+                    Ack::Ok => {
+                        log::trace!("ack",);
+                        return Ok(response.transfer_data);
+                    }
+                    Ack::NoAck => {
+                        log::trace!("nack",);
+                        //try a reset?
+                        return Err(DapError::NoAcknowledge.into());
+                    }
+                    Ack::Fault => {
+                        log::trace!("fault",);
+
+                        // Check the reason for the fault
+                        let response = DAPAccess::read_register(
+                            self,
+                            PortType::DebugPort,
+                            Ctrl::ADDRESS as u16,
+                        )?;
+                        let ctrl = Ctrl::from(response);
+                        log::trace!("Ctrl/Stat register value is: {:?}", ctrl);
+
+                        if ctrl.sticky_err() {
+                            let mut abort = Abort(0);
+
+                            // Clear sticky error flags
+                            abort.set_stkerrclr(ctrl.sticky_err());
+
+                            DAPAccess::write_register(
                                 self,
                                 PortType::DebugPort,
-                                Ctrl::ADDRESS as u16,
+                                Abort::ADDRESS as u16,
+                                abort.into(),
                             )?;
-                            let ctrl = Ctrl::from(response);
-                            log::trace!(
-                                "Writing DAP register failed. Ctrl/Stat register value is: {:?}",
-                                ctrl
-                            );
-
-                            Err(DapError::FaultResponse.into())
                         }
-                        Ack::Wait => {
-                            log::trace!("wait",);
 
-                            Err(DapError::WaitResponse.into())
-                        }
+                        log::trace!("draining {:?} and retries left {:?}", count, retry);
+                        batch.drain(0..count);
+                        continue;
                     }
-                }
-            }
-            count => {
-                log::debug!("Not all batch commands executed: executed {}/{}, last response: proctol_err={}, ack={:?}", 
-                    count, batch.len(), response.transfer_response.protocol_error, response.transfer_response.ack);
+                    Ack::Wait => {
+                        log::trace!("wait",);
 
-                if count > 0 {
-                    log::debug!("Failing batch command: {:?}", batch[count - 1]);
-                    Err(DebugProbeError::BatchError(batch[count - 1]))
-                } else {
-                    // Not a single command has been executed succesfully
-
-                    if response.transfer_response.protocol_error {
-                        Err(DapError::SwdProtocol.into())
-                    } else {
-                        match response.transfer_response.ack {
-                            Ack::Ok => {
-                                // This should not happen, if the response was OK
-                                // the probe should have executed all commands.
-                                Err(DebugProbeError::Other(anyhow!("U")))
-                            }
-                            Ack::Wait => Err(DapError::WaitResponse.into()),
-                            Ack::Fault => Err(DapError::FaultResponse.into()),
-                            Ack::NoAck => Err(DapError::SwdProtocol.into()),
-                        }
+                        return Err(DapError::WaitResponse.into());
                     }
                 }
             }
         }
+
+        Err(DapError::FaultResponse.into())
     }
 
     /// Add a BatchCommand to our current batch.
@@ -492,17 +484,26 @@ impl DebugProbe for DAPLink {
 
         self.configure_swd(swd::configure::ConfigureRequest {})?;
 
+        // SWJ-DP defaults to JTAG operation on powerup reset
+        // Switching from JTAG to SWD operation
+
+        // ~50 SWCLKTCK
         self.send_swj_sequences(SequenceRequest::new(&[
             0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
         ])?)?;
 
+        // 16-bit JTAG-to-SWD select sequence
         self.send_swj_sequences(SequenceRequest::new(&[0x9e, 0xe7])?)?;
 
+        // ~50 SWCLKTCK
         self.send_swj_sequences(SequenceRequest::new(&[
             0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
         ])?)?;
 
+        // returning to low state? 2 idle cycles?
         self.send_swj_sequences(SequenceRequest::new(&[0x00])?)?;
+
+        // On selecting SWD operation, the SWD interface returns to its reset state.
 
         debug!("Successfully changed to SWD.");
 
