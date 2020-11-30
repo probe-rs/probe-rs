@@ -3,7 +3,7 @@
 //! Target specific configuration
 //!
 //! For debugging and flashing different chips, called *target* in probe-rs, some
-//! target specific configuration is required. This includes the architecture of 
+//! target specific configuration is required. This includes the architecture of
 //! the chip, e.g. RISCV or ARM, and information about the memory map of the target,
 //! which can be used together with a flash algorithm to program the flash memory
 //! of a target.
