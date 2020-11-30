@@ -3,7 +3,9 @@ use core::ops::Range;
 /// Represents a region in flash.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct FlashRegion {
+    /// Address range of the region
     pub range: Range<u32>,
+    /// True if the chip boots from this memory
     pub is_boot_memory: bool,
 }
 
@@ -19,35 +21,54 @@ impl FlashRegion {
 /// Represents a region in RAM.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct RamRegion {
+    /// Address range of the region
     pub range: Range<u32>,
+    /// True if the chip boots from this memory
     pub is_boot_memory: bool,
 }
 
 /// Represents a generic region.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct GenericRegion {
+    /// Address range of the region
     pub range: Range<u32>,
 }
 
-/// Holds information about a sepcific flash sector.
-#[derive(Debug, Copy, Clone, PartialEq, Serialize, Deserialize)]
+/// Holds information about a specific, individual flash
+/// sector.
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub struct SectorInfo {
+    /// Base address of the flash sector
     pub base_address: u32,
-    pub page_size: u32,
+    /// Size of the flash sector
     pub size: u32,
 }
 
-/// Holds information about a sepcific flash sector.
+/// Information about a group of flash sectors, which
+/// is used as part of the [`FlashProperties`] struct.
+///
+/// The SectorDescription means that, starting at the
+/// flash address `address`, all following sectors will
+/// have a size of `size`. This is valid until either the
+/// end of the flash, or until another `SectorDescription`
+/// changes the sector size.
+///
+/// [`FlashProperties`]: crate::config::FlashProperties
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct SectorDescription {
+    /// Size of each individual flash sector
     pub size: u32,
+    /// Start address of the group of flash sectors, relative
+    /// to the start address of the flash.
     pub address: u32,
 }
 
 /// Holds information about a page in flash.
 #[derive(Debug, Copy, Clone)]
 pub struct PageInfo {
+    /// Base address of the page in flash.
     pub base_address: u32,
+    /// Size of the page
     pub size: u32,
 }
 
@@ -58,13 +79,15 @@ pub struct FlashInfo {
 }
 
 /// Enables the user to do range intersection testing.
-pub trait MemoryRange {
+pub(crate) trait MemoryRange {
+    /// Returns true if `self` contains `range` fully.
     fn contains_range(&self, range: &Range<u32>) -> bool;
+
+    /// Returns true if `self` intersects `range` partially.
     fn intersects_range(&self, range: &Range<u32>) -> bool;
 }
 
 impl MemoryRange for Range<u32> {
-    /// Returns true if `self` contains `range` fully.
     fn contains_range(&self, range: &Range<u32>) -> bool {
         if range.end == 0 {
             false
@@ -73,7 +96,6 @@ impl MemoryRange for Range<u32> {
         }
     }
 
-    /// Returns true if `self` intersects `range` partially.
     fn intersects_range(&self, range: &Range<u32>) -> bool {
         if range.end == 0 {
             false
@@ -89,8 +111,12 @@ impl MemoryRange for Range<u32> {
 /// Declares the type of a memory region.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum MemoryRegion {
+    /// Memory region describing RAM.
     Ram(RamRegion),
+    /// Generic memory region, which is neither
+    /// flash nor RAM.
     Generic(GenericRegion),
+    /// Memory region describing flash.
     Flash(FlashRegion),
 }
 

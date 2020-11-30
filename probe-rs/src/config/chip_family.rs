@@ -7,6 +7,9 @@ use std::borrow::Cow;
 use serde::{Deserialize, Serialize};
 
 /// This describes a chip family with all its variants.
+///
+/// This struct is usually read from a target description
+/// file.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChipFamily {
     /// This is the name of the chip family in base form.
@@ -69,20 +72,26 @@ where
 }
 
 impl ChipFamily {
-    pub fn from_yaml_reader<R: std::io::Read>(
+    /// Create a [ChipFamily] from a target
+    /// description in YAML format.
+    pub(crate) fn from_yaml_reader<R: std::io::Read>(
         definition_reader: R,
     ) -> Result<Self, TargetParseError> {
         serde_yaml::from_reader(definition_reader)
     }
 
+    /// Get the different [Chip]s which are part of this
+    /// family.
     pub fn variants(&self) -> &[Chip] {
         &self.variants
     }
 
+    /// Get all flash algorithms for this family of chips.
     pub fn algorithms(&self) -> &[RawFlashAlgorithm] {
         &self.flash_algorithms
     }
 
+    /// Try to find a [RawFlashAlgorithm] with a given name.
     pub fn get_algorithm(&self, name: impl AsRef<str>) -> Option<&RawFlashAlgorithm> {
         let name = name.as_ref();
         self.flash_algorithms.iter().find(|elem| elem.name == name)

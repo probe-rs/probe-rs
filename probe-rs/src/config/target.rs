@@ -1,14 +1,13 @@
 use super::chip::Chip;
 use super::flash_algorithm::RawFlashAlgorithm;
 use super::memory::MemoryRegion;
-use super::registry::TargetIdentifier;
 use crate::core::{Architecture, CoreType};
 
 /// This describes a complete target with a fixed chip model and variant.
 #[derive(Clone)]
 pub struct Target {
-    /// The complete identifier of the target.
-    pub identifier: TargetIdentifier,
+    /// The name of the target.
+    pub name: String,
     /// The name of the flash algorithm.
     pub flash_algorithms: Vec<RawFlashAlgorithm>,
     /// The core type.
@@ -26,29 +25,30 @@ impl std::fmt::Debug for Target {
             flash_algorithms: {:?},
             memory_map: {:?},
         }}",
-            self.identifier, self.flash_algorithms, self.memory_map
+            self.name, self.flash_algorithms, self.memory_map
         )
     }
 }
 
+/// An error occured while parsing the target description.
 pub type TargetParseError = serde_yaml::Error;
 
 impl Target {
+    /// Create a new target
     pub fn new(
         chip: &Chip,
         flash_algorithms: Vec<RawFlashAlgorithm>,
         core_type: CoreType,
     ) -> Target {
         Target {
-            identifier: TargetIdentifier {
-                chip_name: chip.name.clone().into_owned(),
-            },
+            name: chip.name.clone().into_owned(),
             flash_algorithms,
             core_type,
             memory_map: chip.memory_map.clone().into_owned(),
         }
     }
 
+    /// Get the architectre of the target
     pub fn architecture(&self) -> Architecture {
         match &self.core_type {
             CoreType::M0 => Architecture::Arm,
@@ -61,10 +61,18 @@ impl Target {
     }
 }
 
+/// Selector for the debug target.
 #[derive(Debug, Clone)]
 pub enum TargetSelector {
+    /// Specify the name of a target, which will
+    /// be used to search the internal list of
+    /// targets.
     Unspecified(String),
+    /// Directly specify a target.
     Specified(Target),
+    /// Try to automatically identify the target,
+    /// by reading identifying information from
+    /// the probe and / or target.
     Auto,
 }
 
