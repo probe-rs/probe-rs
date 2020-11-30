@@ -5,7 +5,14 @@ use crate::core::Architecture;
 use crate::flashing::FlashError;
 use std::{borrow::Cow, convert::TryInto};
 
-#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+/// A flash algorithm, which has been assembled for a specific
+/// chip.
+///
+/// To create a [FlashAlgorithm], call the [`assemble`] function
+/// on a [RawFlashAlgorithm].
+///
+/// [`assemble`]: RawFlashAlgorithm::assemble
+#[derive(Debug, Default, Clone)]
 pub struct FlashAlgorithm {
     /// The name of the flash algorithm.
     pub name: String,
@@ -42,6 +49,11 @@ pub struct FlashAlgorithm {
 }
 
 impl FlashAlgorithm {
+    /// Try to retrieve the information about the flash sector
+    /// which contains `address`.
+    ///
+    /// If the `address` is not part of the flash, None will
+    /// be returned.
     pub fn sector_info(&self, address: u32) -> Option<SectorInfo> {
         if !self.flash_properties.address_range.contains(&address) {
             log::trace!("Address {:08x} not contained in this flash device", address);
@@ -65,7 +77,6 @@ impl FlashAlgorithm {
         Some(SectorInfo {
             base_address: sector_address,
             size: containing_sector.size,
-            page_size: self.flash_properties.page_size,
         })
     }
 
@@ -93,6 +104,12 @@ impl FlashAlgorithm {
     }
 }
 
+/// The raw flash algorithm is the description of a flash algorithm,
+/// and is usually read from a target description file.
+///
+/// Before it can be used for flashing, it has to be assembled for
+/// a specific chip, using the [RawFlashAlgorithm::assemble] function. This function
+/// will determine the RAM addresses which are used when flashing.
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct RawFlashAlgorithm {
     /// The name of the flash algorithm.
@@ -277,7 +294,6 @@ fn flash_sector_single_size() {
 
     let expected_first = SectorInfo {
         base_address: 0x1000,
-        page_size: 0x10,
         size: 0x100,
     };
 
@@ -308,7 +324,6 @@ fn flash_sector_single_size_weird_sector_size() {
 
     let expected_first = SectorInfo {
         base_address: 0x800_0000,
-        page_size: 0x10,
         size: 258,
     };
 
@@ -349,19 +364,16 @@ fn flash_sector_multiple_sizes() {
 
     let expected_a = SectorInfo {
         base_address: 0x800_4000,
-        page_size: 0x10,
         size: 0x4000,
     };
 
     let expected_b = SectorInfo {
         base_address: 0x801_0000,
-        page_size: 0x10,
         size: 0x1_0000,
     };
 
     let expected_c = SectorInfo {
         base_address: 0x80A_0000,
-        page_size: 0x10,
         size: 0x2_0000,
     };
 

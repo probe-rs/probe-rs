@@ -329,7 +329,7 @@ fn get_target_from_selector(
     let mut probe = Some(probe);
 
     let target = match target.into() {
-        TargetSelector::Unspecified(name) => crate::config::registry::get_target_by_name(name)?,
+        TargetSelector::Unspecified(name) => crate::config::get_target_by_name(name)?,
         TargetSelector::Specified(target) => target,
         TargetSelector::Auto => {
             let mut found_chip = None;
@@ -372,7 +372,7 @@ fn get_target_from_selector(
             }
 
             if let Some(chip) = found_chip {
-                crate::config::registry::get_target_by_chip_info(chip)?
+                crate::config::get_target_by_chip_info(chip)?
             } else {
                 return Err(Error::ChipNotFound(RegistryError::ChipAutodetectFailed));
             }

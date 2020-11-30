@@ -1,3 +1,5 @@
+//! Internal target registry
+
 use super::target::Target;
 use crate::config::{Chip, ChipFamily, ChipInfo};
 use crate::core::CoreType;
@@ -15,24 +17,28 @@ lazy_static! {
         Arc::new(Mutex::new(Registry::from_builtin_families()));
 }
 
+/// Error type for all errors which occur when working
+/// with the internal registry of targets.
 #[derive(Debug, Error)]
 pub enum RegistryError {
-    #[error("The requested chip was not found.")]
-    ChipNotFound,
+    /// The requested chip was not found in the registry.
+    #[error("The requested chip '{0}' was not found in the list of known targets.")]
+    ChipNotFound(String),
+    /// When searching for a chip based on information read from the target,
+    /// no matching chip was found in the registry.
     #[error("The connected chip could not automatically be determined.")]
     ChipAutodetectFailed,
-    #[error("The requested algorithm was not found.")]
-    AlgorithmNotFound,
-    #[error("The requested core '{0}' was not found.")]
-    CoreNotFound(String),
-    #[error("No RAM description was found.")]
-    RamMissing,
-    #[error("No flash description was found.")]
-    FlashMissing,
+    /// A core type contained in a target description is not supported
+    /// in probe-rs.
+    #[error("The core type '{0}' is not supported in probe-rs.")]
+    UnknownCoreType(String),
+    /// An IO error which occured when trying to read a target description file.
     #[error("An IO error was encountered")]
     Io(#[from] std::io::Error),
+    /// An error occured while deserializing a YAML target description file.
     #[error("Deserializing the yaml encountered an error")]
     Yaml(#[from] serde_yaml::Error),
+    /// Unable to lock the registry.
     #[error("Unable to lock registry")]
     LockUnavailable,
 }
@@ -118,7 +124,8 @@ const GENERIC_TARGETS: [ChipFamily; 6] = [
     },
 ];
 
-pub struct Registry {
+/// Registry of all available targets.
+struct Registry {
     /// All the available chips.
     families: Vec<ChipFamily>,
 }
@@ -175,7 +182,8 @@ impl Registry {
                     }
                 }
             }
-            let (family, chip) = selected_family_and_chip.ok_or(RegistryError::ChipNotFound)?;
+            let (family, chip) = selected_family_and_chip
+                .ok_or_else(|| RegistryError::ChipNotFound(name.to_owned()))?;
 
             // Try get the correspnding flash algorithm.
             (family, chip)
@@ -230,7 +238,7 @@ impl Registry {
         let core = if let Some(core) = CoreType::from_string(&family.core) {
             core
         } else {
-            return Err(RegistryError::CoreNotFound(
+            return Err(RegistryError::UnknownCoreType(
                 family.core.clone().into_owned(),
             ));
         };
@@ -263,35 +271,26 @@ impl Registry {
     }
 }
 
+/// Get a target from the internal registry based on its name.
 pub fn get_target_by_name(name: impl AsRef<str>) -> Result<Target, RegistryError> {
     REGISTRY.try_lock()?.get_target_by_name(name)
 }
 
-pub fn get_target_by_chip_info(chip_info: ChipInfo) -> Result<Target, RegistryError> {
+/// Try to retrieve a target based on [ChipInfo] read from a target.
+pub(crate) fn get_target_by_chip_info(chip_info: ChipInfo) -> Result<Target, RegistryError> {
     REGISTRY.try_lock()?.get_target_by_chip_info(chip_info)
 }
 
+/// Parse a target description file and add the contained targets
+/// to the internal target registry.
 pub fn add_target_from_yaml(path_to_yaml: &Path) -> Result<(), RegistryError> {
     REGISTRY.try_lock()?.add_target_from_yaml(path_to_yaml)
 }
 
+/// Get a list of all families which are contained in the internal
+/// registry.
 pub fn families() -> Result<Vec<ChipFamily>, RegistryError> {
     Ok(REGISTRY.try_lock()?.families().clone())
-}
-
-#[derive(Debug, Clone, Hash, PartialEq, Eq, Serialize, Deserialize)]
-pub struct TargetIdentifier {
-    pub chip_name: String,
-}
-
-impl<S: AsRef<str>> From<S> for TargetIdentifier {
-    fn from(value: S) -> TargetIdentifier {
-        let split: Vec<_> = value.as_ref().split("::").collect();
-        TargetIdentifier {
-            // There will always be a 0th element, so this is safe!
-            chip_name: split[0].to_owned(),
-        }
-    }
 }
 
 #[cfg(test)]

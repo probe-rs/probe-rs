@@ -46,7 +46,6 @@ macro_rules! define_ap_register {
     }
 }
 
-#[macro_export]
 macro_rules! define_ap {
     ($name:ident) => {
         #[derive(Clone, Copy, Debug)]

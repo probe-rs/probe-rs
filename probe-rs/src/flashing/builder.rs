@@ -57,7 +57,7 @@ pub struct FlashSector {
 }
 
 impl FlashSector {
-    /// Creates a new empty flash sector form a `SectorInfo`.
+    /// Creates a new empty flash sector from a [SectorInfo].
     fn new(sector_info: &SectorInfo) -> Self {
         Self {
             address: sector_info.base_address,
