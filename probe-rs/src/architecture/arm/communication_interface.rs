@@ -160,21 +160,7 @@ pub enum ApInformation {
     /// Information about a Memory AP, which allows access to target memory. See Chapter C2 in the [ARM Debug Interface Architecture Specification].
     ///
     /// [ARM Debug Interface Architecture Specification]: https://developer.arm.com/documentation/ihi0031/d/
-    MemoryAp {
-        /// Zero-based port number of the access port. This is used in the debug port to select an AP.
-        port_number: u8,
-        /// Some Memory APs only support 32 bit wide access to data, while others
-        /// also support other widths. Based on this, 8 bit data access can either
-        /// be performed directly, or has to be done as a 32 bit access.
-        only_32bit_data_size: bool,
-        /// The Debug Base Address points to either the start of a set of debug register,
-        /// or a ROM table which describes the connected debug components.
-        ///
-        /// See chapter C2.6, [ARM Debug Interface Architecture Specification].
-        ///
-        /// [ARM Debug Interface Architecture Specification]: https://developer.arm.com/documentation/ihi0031/d/
-        debug_base_address: u64,
-    },
+    MemoryAp(MemoryApInformation),
     /// Information about an AP with an unknown class.
     Other {
         /// Zero-based port number of the access port. This is used in the debug port to select an AP.
@@ -192,6 +178,29 @@ impl ArmCommunicationInterfaceState {
             ap_information: Vec::new(),
         }
     }
+}
+
+#[derive(Debug, Clone)]
+pub struct MemoryApInformation {
+    /// Zero-based port number of the access port. This is used in the debug port to select an AP.
+    pub port_number: u8,
+    /// Some Memory APs only support 32 bit wide access to data, while others
+    /// also support other widths. Based on this, 8 bit data access can either
+    /// be performed directly, or has to be done as a 32 bit access.
+    pub only_32bit_data_size: bool,
+    /// The Debug Base Address points to either the start of a set of debug register,
+    /// or a ROM table which describes the connected debug components.
+    ///
+    /// See chapter C2.6, [ARM Debug Interface Architecture Specification].
+    ///
+    /// [ARM Debug Interface Architecture Specification]: https://developer.arm.com/documentation/ihi0031/d/
+    pub debug_base_address: u64,
+
+    /// Indicates if the HNONSEC bit in the CSW register is supported.
+    /// See section E1.5.1, [ARM Debug Interface Architecture Specification].
+    ///
+    /// [ARM Debug Interface Architecture Specification]: https://developer.arm.com/documentation/ihi0031/d/
+    pub supports_hnonsec: bool,
 }
 
 #[derive(Debug)]
@@ -268,16 +277,12 @@ impl<'interface> ArmCommunicationInterface {
             .expect("Failed to get information for AP");
 
         match info {
-            ApInformation::MemoryAp {
-                port_number: _,
-                only_32bit_data_size,
-                debug_base_address: _,
-            } => {
-                let only_32bit_data_size = *only_32bit_data_size;
+            ApInformation::MemoryAp(ap_information) => {
+                let information = ap_information.clone();
                 let adi_v5_memory_interface = ADIMemoryInterface::<
                     'interface,
                     ArmCommunicationInterface,
-                >::new(self, only_32bit_data_size)
+                >::new(self, &information)
                 .map_err(ProbeRsError::architecture_specific)?;
 
                 Ok(Memory::new(adi_v5_memory_interface, access_port))
@@ -401,13 +406,9 @@ impl<'interface> ArmCommunicationInterface {
         AP: AccessPort,
         R: APRegister<AP>,
     {
-        let register_value = register.into();
+        log::debug!("Writing register {}, value={:x?}", R::NAME, register);
 
-        log::debug!(
-            "Writing register {}, value=0x{:08X}",
-            R::NAME,
-            register_value
-        );
+        let register_value = register.into();
 
         self.select_ap_and_ap_bank(port.into().port_number(), R::APBANKSEL)?;
 
@@ -463,14 +464,17 @@ impl<'interface> ArmCommunicationInterface {
         log::debug!("Reading register {}", R::NAME);
         self.select_ap_and_ap_bank(port.into().port_number(), R::APBANKSEL)?;
 
-        let result = self.probe.read_register(
-            PortType::AccessPort(u16::from(self.state.current_apsel)),
-            u16::from(R::ADDRESS),
-        )?;
+        let result: R = self
+            .probe
+            .read_register(
+                PortType::AccessPort(u16::from(self.state.current_apsel)),
+                u16::from(R::ADDRESS),
+            )?
+            .into();
 
-        log::debug!("Read register    {}, value=0x{:08x}", R::NAME, result);
+        log::debug!("Read register    {}, value=0x{:x?}", R::NAME, result);
 
-        Ok(R::from(result))
+        Ok(result)
     }
 
     // TODO: fix types, see above!
@@ -536,13 +540,24 @@ impl<'interface> ArmCommunicationInterface {
             };
             base_address |= u64::from(base_register.BASEADDR << 12);
 
-            let only_32bit_data_size = ap_supports_only_32bit_access(self, access_port)?;
+            // Read information about HNONSEC support and supported access widths
+            let csw = CSW::new(DataSize::U8);
 
-            Ok(ApInformation::MemoryAp {
+            self.write_ap_register(access_port, csw)?;
+            let csw = self.read_ap_register(access_port, CSW::default())?;
+
+            let only_32bit_data_size = csw.SIZE != DataSize::U8;
+
+            let supports_hnonsec = csw.HNONSEC == 1;
+
+            log::debug!("HNONSEC supported: {}", supports_hnonsec);
+
+            Ok(ApInformation::MemoryAp(MemoryApInformation {
                 port_number: access_port.port_number(),
                 only_32bit_data_size,
                 debug_base_address: base_address,
-            })
+                supports_hnonsec,
+            }))
         } else {
             Ok(ApInformation::Other {
                 port_number: access_port.port_number(),
@@ -577,11 +592,12 @@ impl DPAccess for ArmCommunicationInterface {
         log::debug!("Reading DP register {}", R::NAME);
         let result = self
             .probe
-            .read_register(PortType::DebugPort, u16::from(R::ADDRESS))?;
+            .read_register(PortType::DebugPort, u16::from(R::ADDRESS))?
+            .into();
 
-        log::debug!("Read    DP register {}, value=0x{:08x}", R::NAME, result);
+        log::debug!("Read    DP register {}, value=0x{:x?}", R::NAME, result);
 
-        Ok(result.into())
+        Ok(result)
     }
 
     fn write_dp_register<R: DPRegister>(&mut self, register: R) -> Result<(), DebugPortError> {
@@ -594,11 +610,9 @@ impl DPAccess for ArmCommunicationInterface {
 
         self.select_dp_bank(R::DP_BANK)?;
 
-        let value = register.into();
-
-        log::debug!("Writing DP register {}, value=0x{:08x}", R::NAME, value);
+        log::debug!("Writing DP register {}, value=0x{:x?}", R::NAME, register);
         self.probe
-            .write_register(PortType::DebugPort, R::ADDRESS as u16, value)?;
+            .write_register(PortType::DebugPort, R::ADDRESS as u16, register.into())?;
 
         Ok(())
     }
@@ -707,21 +721,6 @@ where
     ) -> Result<(), Self::Error> {
         self.read_ap_register_repeated(port, register, values)
     }
-}
-
-/// Check that target supports memory access with sizes different from 32 bits.
-///
-/// If only 32-bit access is supported, the SIZE field will be read-only and changing it
-/// will not have any effect.
-fn ap_supports_only_32bit_access(
-    interface: &mut ArmCommunicationInterface,
-    ap: MemoryAP,
-) -> Result<bool, DebugProbeError> {
-    let csw = ADIMemoryInterface::<ArmCommunicationInterface>::build_csw_register(DataSize::U8);
-    interface.write_ap_register(ap, csw)?;
-    let csw = interface.read_ap_register(ap, CSW::default())?;
-
-    Ok(csw.SIZE != DataSize::U8)
 }
 
 #[derive(Debug)]

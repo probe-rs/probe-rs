@@ -231,11 +231,13 @@ define_ap_register!(
     0x00,
     [
         (DbgSwEnable: u8),           // 1 bit
-        (PROT: u8),                  // 3 bits
+        (HNONSEC: u8),               // 1 bit
+        (PROT: u8),                  // 2 bits
         (CACHE: u8),                 // 4 bits
         (SPIDEN: u8),                // 1 bit
         (_RES0: u8),                 // 7 bits
-        (Type: u8),                  // 4 bits
+        (MTE: u8),                   // 1 bits
+        (Type: u8),                  // 3 bits
         (Mode: u8),                  // 4 bits
         (TrinProg: u8),              // 1 bit
         (DeviceEn: u8),              // 1 bit
@@ -246,11 +248,13 @@ define_ap_register!(
     value,
     CSW {
         DbgSwEnable: ((value >> 31) & 0x01) as u8,
-        PROT: ((value >> 28) & 0x07) as u8,
+        HNONSEC: ((value >> 30) & 0x01) as u8,
+        PROT: ((value >> 28) & 0x03) as u8,
         CACHE: ((value >> 24) & 0x0F) as u8,
         SPIDEN: ((value >> 23) & 0x01) as u8,
         _RES0: 0,
-        Type: ((value >> 12) & 0x0F) as u8,
+        MTE: ((value >> 15) & 0x01) as u8,
+        Type: ((value >> 12) & 0x07) as u8,
         Mode: ((value >> 8) & 0x0F) as u8,
         TrinProg: ((value >> 7) & 0x01) as u8,
         DeviceEn: ((value >> 6) & 0x01) as u8,
@@ -261,9 +265,11 @@ define_ap_register!(
         SIZE: DataSize::from_u8((value & 0x07) as u8).unwrap(),
     },
     (u32::from(value.DbgSwEnable) << 31)
+    | (u32::from(value.HNONSEC    ) << 30)
     | (u32::from(value.PROT       ) << 28)
     | (u32::from(value.CACHE      ) << 24)
     | (u32::from(value.SPIDEN     ) << 23)
+    | (u32::from(value.MTE        ) << 15)
     //  value._RES0
     | (u32::from(value.Type       ) << 12)
     | (u32::from(value.Mode       ) <<  8)
@@ -274,6 +280,33 @@ define_ap_register!(
     // unwrap() is safe!
     | value.SIZE.to_u32().unwrap()
 );
+
+impl CSW {
+    pub fn new(data_size: DataSize) -> Self {
+        // The CSW Register is set for an AMBA AHB Acccess, according to
+        // the ARM Debug Interface Architecture Specification.
+        //
+        // The PROT bits are set as follows:
+        //  HNONSEC[30]          = 1  - Should be One, if not supported.
+        //  MasterType, bit [29] = 1  - Access as default AHB Master
+        //  HPROT[4]             = 0  - Non-allocating access
+        //
+        // The CACHE bits are set for the following AHB access:
+        //   HPROT[0] == 1   - data           access
+        //   HPROT[1] == 1   - privileged     access
+        //   HPROT[2] == 0   - non-cacheable  access
+        //   HPROT[3] == 0   - non-bufferable access
+        CSW {
+            DbgSwEnable: 0b1,
+            HNONSEC: 0b1,
+            PROT: 0b110,
+            CACHE: 0b11,
+            AddrInc: AddressIncrement::Single,
+            SIZE: data_size,
+            ..Default::default()
+        }
+    }
+}
 
 define_ap_register!(
     /// Data Read/Write register
