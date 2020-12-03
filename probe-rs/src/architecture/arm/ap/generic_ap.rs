@@ -27,6 +27,8 @@ pub enum APType {
     AMBA_AXI3_AXI4 = 0x4,
     AMBA_AHB5 = 0x5,
     AMBA_AHB4 = 0x6,
+    AMBA_AXI5 = 0x7,
+    AMBA_AHB5_HPROT = 0x8,
 }
 
 impl Default for APType {

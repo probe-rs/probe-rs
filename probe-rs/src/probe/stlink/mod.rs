@@ -5,6 +5,7 @@ mod usb_interface;
 use self::usb_interface::{STLinkUSBDevice, StLinkUsb};
 use super::{DAPAccess, DebugProbe, DebugProbeError, PortType, ProbeCreationError, WireProtocol};
 use crate::{
+    architecture::arm::communication_interface::MemoryApInformation,
     architecture::arm::{
         ap::{
             valid_access_ports, APAccess, APClass, APRegister, AccessPort, BaseaddrFormat,
@@ -1178,11 +1179,14 @@ impl StlinkArmDebug {
             //       with the dedicated API
             let only_32bit_data_size = false;
 
-            Ok(ApInformation::MemoryAp {
+            // TODO: Check if HNONSEC is supported
+
+            Ok(ApInformation::MemoryAp(MemoryApInformation {
                 port_number: access_port.port_number(),
                 only_32bit_data_size,
                 debug_base_address: base_address,
-            })
+                supports_hnonsec: false,
+            }))
         } else {
             Ok(ApInformation::Other {
                 port_number: access_port.port_number(),

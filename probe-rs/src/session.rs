@@ -4,7 +4,7 @@ use crate::architecture::{
     arm::{
         communication_interface::{
             ApInformation::{MemoryAp, Other},
-            ArmProbeInterface,
+            ArmProbeInterface, MemoryApInformation,
         },
         core::{debug_core_start, reset_catch_clear, reset_catch_set},
         memory::Component,
@@ -223,11 +223,12 @@ impl Session {
             .ok_or_else(|| anyhow!("AP {} does not exist on chip.", ap_index))?;
 
         match ap_information {
-            MemoryAp {
+            MemoryAp(MemoryApInformation {
                 port_number,
                 only_32bit_data_size: _,
                 debug_base_address,
-            } => {
+                supports_hnonsec: _,
+            }) => {
                 let access_port_number = *port_number;
                 let base_address = *debug_base_address;
 

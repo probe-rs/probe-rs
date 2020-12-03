@@ -1,7 +1,7 @@
 use super::super::ap::{
     APAccess, APRegister, AccessPortError, AddressIncrement, DataSize, MemoryAP, CSW, DRW, TAR,
 };
-use crate::architecture::arm::{dp::DPAccess, ArmCommunicationInterface};
+use crate::architecture::arm::{dp::DPAccess, ArmCommunicationInterface, MemoryApInformation};
 use crate::{CommunicationInterface, CoreRegister, CoreRegisterAddress, DebugProbeError, Error};
 use scroll::{Pread, Pwrite, LE};
 use std::convert::TryInto;
@@ -41,17 +41,23 @@ where
 {
     interface: &'interface mut AP,
     only_32bit_data_size: bool,
+
+    // Does the connected memory AP support the HNONSEC bit?
+    // If it doesn't support it, bit 30 in the CSW register has
+    // to be set to 1 at all times.
+    supports_hnonsec: bool,
 }
 
 impl<'interface> ADIMemoryInterface<'interface, ArmCommunicationInterface> {
     /// Creates a new MemoryInterface for given AccessPort.
     pub fn new(
         interface: &'interface mut ArmCommunicationInterface,
-        only_32bit_data_size: bool,
+        ap_information: &MemoryApInformation,
     ) -> Result<ADIMemoryInterface<'interface, ArmCommunicationInterface>, AccessPortError> {
         Ok(Self {
             interface,
-            only_32bit_data_size,
+            only_32bit_data_size: ap_information.only_32bit_data_size,
+            supports_hnonsec: ap_information.supports_hnonsec,
         })
     }
 }
@@ -67,12 +73,15 @@ where
     /// Build the correct CSW register for a memory access
     ///
     /// Currently, only AMBA AHB Access is supported.
-    pub fn build_csw_register(data_size: DataSize) -> CSW {
+    pub fn build_csw_register(&self, data_size: DataSize) -> CSW {
         // The CSW Register is set for an AMBA AHB Acccess, according to
         // the ARM Debug Interface Architecture Specification.
         //
+        // The HNONSEC bit is set according to [Self::supports_hnonsec]:
+        //
+        //  HNONSEC[30]          = 1  - Should be One, if unsupported, otherwise
+        //                              zero to indicate secure access
         // The PROT bits are set as follows:
-        //  BIT[30]              = 1  - Should be One, otherwise unpredictable
         //  MasterType, bit [29] = 1  - Access as default AHB Master
         //  HPROT[4]             = 0  - Non-allocating access
         //
@@ -83,7 +92,8 @@ where
         //   HPROT[3] == 0   - non-bufferable access
 
         CSW {
-            PROT: 0b110,
+            HNONSEC: if self.supports_hnonsec { 0 } else { 1 },
+            PROT: 0b10,
             CACHE: 0b11,
             AddrInc: AddressIncrement::Single,
             SIZE: data_size,
@@ -187,7 +197,7 @@ where
             return Err(AccessPortError::alignment_error(address, 4));
         }
 
-        let csw = Self::build_csw_register(DataSize::U32);
+        let csw = self.build_csw_register(DataSize::U32);
 
         let tar = TAR { address };
         self.write_ap_register(access_port, csw)?;
@@ -212,7 +222,7 @@ where
             // Read 32-bit word and extract the correct byte
             ((self.read_word_32(access_port, aligned.start)? >> bit_offset) & 0xFF) as u8
         } else {
-            let csw = Self::build_csw_register(DataSize::U8);
+            let csw = self.build_csw_register(DataSize::U8);
             let tar = TAR { address };
             self.write_ap_register(access_port, csw)?;
             self.write_ap_register(access_port, tar)?;
@@ -246,7 +256,7 @@ where
         }
 
         // Second we read in 32 bit reads until we have less than 32 bits left to read.
-        let csw = Self::build_csw_register(DataSize::U32);
+        let csw = self.build_csw_register(DataSize::U32);
         self.write_ap_register(access_port, csw)?;
 
         let mut address = start_address;
@@ -361,7 +371,7 @@ where
             return Err(AccessPortError::alignment_error(address, 4));
         }
 
-        let csw = Self::build_csw_register(DataSize::U32);
+        let csw = self.build_csw_register(DataSize::U32);
         let drw = DRW { data };
         let tar = TAR { address };
         self.write_ap_register(access_port, csw)?;
@@ -394,7 +404,7 @@ where
 
             self.write_word_32(access_port, aligned.start, word)?;
         } else {
-            let csw = Self::build_csw_register(DataSize::U8);
+            let csw = self.build_csw_register(DataSize::U8);
             let drw = DRW {
                 data: u32::from(data) << bit_offset,
             };
@@ -433,7 +443,7 @@ where
         );
 
         // Second we write in 32 bit reads until we have less than 32 bits left to write.
-        let csw = Self::build_csw_register(DataSize::U32);
+        let csw = self.build_csw_register(DataSize::U32);
 
         self.write_ap_register(access_port, csw)?;
 
@@ -771,6 +781,7 @@ mod tests {
             Self {
                 interface: mock,
                 only_32bit_data_size: false,
+                supports_hnonsec: false,
             }
         }
 
