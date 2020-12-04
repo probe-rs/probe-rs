@@ -466,12 +466,6 @@ fn main_try() -> Result<()> {
         }
     }
 
-    // if config.gdb.enabled && config.rtt.enabled {
-    //     return Err(anyhow!(
-    //         "Unfortunately, at the moment, only GDB OR RTT are possible."
-    //     ));
-    // }
-
     let session = Arc::new(Mutex::new(session));
 
     if config.gdb.enabled {
