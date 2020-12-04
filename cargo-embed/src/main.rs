@@ -472,9 +472,7 @@ fn main_try() -> Result<()> {
         let gdb_connection_string = config.gdb.gdb_connection_string.clone();
         let session = session.clone();
         std::thread::spawn(move || {
-            let gdb_connection_string = config
-                .gdb
-                .gdb_connection_string
+            let gdb_connection_string = gdb_connection_string
                 .as_deref()
                 .or_else(|| Some("127.0.0.1:1337"));
             // This next unwrap will always resolve as the connection string is always Some(T).
@@ -487,7 +485,8 @@ fn main_try() -> Result<()> {
                 logging::eprintln(format!("{:?}", e));
             }
         });
-    } else if config.rtt.enabled {
+    }
+    if config.rtt.enabled {
         let defmt_enable = config
             .rtt
             .channels
@@ -517,7 +516,6 @@ fn main_try() -> Result<()> {
             None
         };
 
-        let session = Arc::new(Mutex::new(session));
         let t = std::time::Instant::now();
         let mut error = None;
 
