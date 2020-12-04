@@ -35,6 +35,7 @@ Sentry helps us track down tricky issues that only occur in very specific cases.
 ### Added
 
 - Added a config flag to config what format to use on a channel.
+- Added support for Defmt over RTT
 
 ### Changed
 

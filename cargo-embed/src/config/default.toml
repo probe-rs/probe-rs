@@ -35,7 +35,7 @@ halt_afterwards = false
 # A list of chip descriptions to be loaded during runtime.
 chip_descriptions = []
 # The default log level to be used. Possible values are one of:
-#   "OFF", "ERROR", "WARN", "INFO", "DEBUG", "TRACE" 
+#   "OFF", "ERROR", "WARN", "INFO", "DEBUG", "TRACE"
 log_level = "WARN"
 
 [default.rtt]
@@ -43,8 +43,14 @@ log_level = "WARN"
 # This is exclusive and cannot be used with GDB at the moment.
 enabled = false
 # A list of channel associations to be displayed. If left empty, all channels are displayed.
+# formats are: String, Defmt, BinaryLE,
 channels = [
-    # { up = 0, down = 0, name = "name", format = "String" }
+    # { up = 0, down = 0, name = "name", format = "String" },
+
+    # How to enable Defmt formatting (https://github.com/knurling-rs/defmt)
+    # (formats on host, not on microcontroller)?
+    # microcontroller setup: https://github.com/knurling-rs/app-template
+    # { up = 0, name = "defmt_name", format = "Defmt" },
 ]
 # The duration in ms for which the logger should retry to attach to RTT.
 timeout = 3000

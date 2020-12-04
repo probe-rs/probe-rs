@@ -17,8 +17,10 @@ use tui::{
     Terminal,
 };
 
-use super::channel::{ChannelState, DataFormat};
-use super::event::{Event, Events};
+use super::{
+    channel::{ChannelState, DataFormat},
+    event::{Event, Events},
+};
 
 use event::{DisableMouseCapture, KeyModifiers};
 
@@ -129,7 +131,7 @@ impl App {
         })
     }
 
-    pub fn get_rtt_symbol<'b, T: Read + Seek>(file: &'b mut T) -> Option<u64> {
+    pub fn get_rtt_symbol<T: Read + Seek>(file: &mut T) -> Option<u64> {
         let mut buffer = Vec::new();
         if file.read_to_end(&mut buffer).is_ok() {
             if let Ok(binary) = goblin::elf::Elf::parse(&buffer.as_slice()) {
@@ -147,7 +149,10 @@ impl App {
         None
     }
 
-    pub fn render(&mut self) {
+    pub fn render(
+        &mut self,
+        defmt_state: &Option<(defmt_decoder::Table, Option<defmt_elf2table::Locations>)>,
+    ) {
         let input = self.current_tab().input().to_owned();
         let has_down_channel = self.current_tab().has_down_channel();
         let scroll_offset = self.current_tab().scroll_offset();
@@ -231,7 +236,7 @@ impl App {
                         .set_scroll_offset(message_num - height.min(message_num));
                 }
             }
-            DataFormat::BinaryLE => {
+            binle_or_defmt => {
                 self.terminal
                     .draw(|f| {
                         let constraints = if has_down_channel {
@@ -266,19 +271,57 @@ impl App {
 
                         height = chunks[1].height as usize;
 
-                        //probably pretty bad
-                        let data_string: String =
-                            data.iter().fold(String::new(), |mut output, byte| {
-                                let _ = write(&mut output, format_args!("{:#04x}, ", byte));
-                                output
-                            });
+                        // probably pretty bad
+                        match binle_or_defmt {
+                            DataFormat::BinaryLE => {
+                                messages_wrapped.push(data.iter().fold(
+                                    String::new(),
+                                    |mut output, byte| {
+                                        let _ = write(&mut output, format_args!("{:#04x}, ", byte));
+                                        output
+                                    },
+                                ));
+                            }
+                            DataFormat::Defmt => {
+                                let (table, locs) = defmt_state.as_ref().expect(
+                                "Running rtt in defmt mode but table or locations could not be loaded.",
+                            );
+                                let mut frames = vec![];
 
-                        // We need to collect to generate message_num :(
-                        messages_wrapped = textwrap::wrap(&data_string, chunks[1].width as usize)
-                            .iter()
-                            .cloned()
-                            .map(|cow| cow.into_owned())
-                            .collect();
+                                frames.extend_from_slice(&data);
+
+                                while let Ok((frame, consumed)) =
+                                    defmt_decoder::decode(&frames, table)
+                                {
+                                    // NOTE(`[]` indexing) all indices in `table` have already been
+                                    // verified to exist in the `locs` map.
+                                    let loc = locs.as_ref().map(|locs| &locs[&frame.index()]);
+
+                                    messages_wrapped.push(format!("{}", frame.display(false)));
+                                    if let Some(loc) = loc {
+                                        let relpath = if let Ok(relpath) =
+                                            loc.file.strip_prefix(&std::env::current_dir().unwrap())
+                                        {
+                                            relpath
+                                        } else {
+                                            // not relative; use full path
+                                            &loc.file
+                                        };
+
+                                        messages_wrapped.push(format!(
+                                            "└─ {}:{}",
+                                            relpath.display(),
+                                            loc.line
+                                        ));
+                                    }
+
+                                    let num_frames = frames.len();
+                                    frames.rotate_left(consumed);
+                                    frames.truncate(num_frames - consumed);
+                                }
+                            }
+                            DataFormat::String => unreachable!("You encountered a bug. Please open an issue on Github."),
+                        }
 
                         let message_num = messages_wrapped.len();
 
@@ -324,6 +367,9 @@ impl App {
                             let extension = match tab.format() {
                                 DataFormat::String => "txt",
                                 DataFormat::BinaryLE => "dat",
+                                DataFormat::Defmt => {
+                                    panic!("You encountered a bug. Please open an issue on Github.")
+                                }
                             };
 
                             let name = format!("{}_channel{}.{}", self.logname, i, extension);
@@ -356,6 +402,9 @@ impl App {
                                                 continue;
                                             }
                                         },
+                                        DataFormat::Defmt => {
+                                            panic!("can not write Defmt output to disk")
+                                        }
                                     };
                                 }
                                 Err(e) => {
