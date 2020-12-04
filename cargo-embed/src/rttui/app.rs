@@ -403,7 +403,7 @@ impl App {
                                             }
                                         },
                                         DataFormat::Defmt => {
-                                            panic!("can not write Defmt output to disk")
+                                            log::error!("Cannot write defmt output to disk.")
                                         }
                                     };
                                 }
