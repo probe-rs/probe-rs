@@ -3,10 +3,11 @@ use std::fmt;
 use chrono::Local;
 use probe_rs_rtt::{DownChannel, UpChannel};
 
-#[derive(Debug, Copy, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Copy, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum DataFormat {
     String,
     BinaryLE,
+    Defmt,
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -23,7 +24,10 @@ pub struct ChannelState {
     down_channel: Option<DownChannel>,
     name: String,
     format: DataFormat,
+    /// Contains the strings when [ChannelState::format] is [DataFormat::String].
     messages: Vec<String>,
+    /// When [ChannelState::format] is not [DataFormat::String] this
+    /// contains RTT binary data or binary data in defmt format.
     data: Vec<u8>,
     last_line_done: bool,
     input: String,
@@ -119,7 +123,7 @@ impl ChannelState {
             match channel.read(self.rtt_buffer.0.as_mut()) {
                 Ok(count) => count,
                 Err(err) => {
-                    eprintln!("\nError reading from RTT: {}", err);
+                    log::error!("\nError reading from RTT: {}", err);
                     return;
                 }
             }
@@ -165,7 +169,8 @@ impl ChannelState {
                     }
                 }
             }
-            DataFormat::BinaryLE => {
+            // defmt output is later formatted into strings in [App::render].
+            DataFormat::BinaryLE | DataFormat::Defmt => {
                 self.data.extend_from_slice(&self.rtt_buffer.0[..count]);
             }
         };

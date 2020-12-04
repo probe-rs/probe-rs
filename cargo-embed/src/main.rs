@@ -7,7 +7,7 @@ use chrono::Local;
 use colored::*;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use std::{
-    env,
+    env, fs,
     fs::File,
     io::Write,
     iter, panic,
@@ -28,6 +28,8 @@ use probe_rs_cli_util::logging::{ask_to_log_crash, capture_anyhow, capture_panic
 use probe_rs_cli_util::{argument_handling, build_artifact, logging, logging::Metadata};
 use probe_rs_rtt::{Rtt, ScanRegion};
 
+use crate::rttui::channel::DataFormat;
+
 lazy_static::lazy_static! {
     static ref METADATA: Arc<Mutex<Metadata>> = Arc::new(Mutex::new(Metadata {
         release: CARGO_VERSION.to_string(),
@@ -38,9 +40,9 @@ lazy_static::lazy_static! {
     }));
 }
 
-const CARGO_NAME: &'static str = env!("CARGO_PKG_NAME");
-const CARGO_VERSION: &'static str = env!("CARGO_PKG_VERSION");
-const GIT_VERSION: &'static str = git_version::git_version!(fallback = "crates.io");
+const CARGO_NAME: &str = env!("CARGO_PKG_NAME");
+const CARGO_VERSION: &str = env!("CARGO_PKG_VERSION");
+const GIT_VERSION: &str = git_version::git_version!(fallback = "crates.io");
 
 #[derive(Debug, StructOpt)]
 struct Opt {
@@ -165,7 +167,7 @@ fn main_try() -> Result<()> {
     let work_dir = std::env::current_dir()?;
 
     // Get the config.
-    let config_name = opt.config.as_deref().unwrap_or_else(|| "default");
+    let config_name = opt.config.as_deref().unwrap_or("default");
     let config = config::Configs::new(config_name)
         .with_context(|| format!("The config '{}' could not be loaded.", config_name))?;
 
@@ -173,7 +175,7 @@ fn main_try() -> Result<()> {
 
     // Make sure we load the config given in the cli parameters.
     for cdp in &config.general.chip_descriptions {
-        probe_rs::config::registry::add_target_from_yaml(&Path::new(cdp))
+        probe_rs::config::add_target_from_yaml(&Path::new(cdp))
             .with_context(|| format!("failed to load the chip description from {}", cdp))?;
     }
 
@@ -481,11 +483,41 @@ fn main_try() -> Result<()> {
             "Firing up GDB stub at {}.",
             gdb_connection_string.as_ref().unwrap(),
         ));
-        if let Err(e) = probe_rs_gdb_server::run(gdb_connection_string, session) {
+        let session = Mutex::new(session);
+        if let Err(e) = probe_rs_gdb_server::run(gdb_connection_string, &session) {
             logging::eprintln("During the execution of GDB an error was encountered:");
             logging::eprintln(format!("{:?}", e));
         }
     } else if config.rtt.enabled {
+        let defmt_enable = config
+            .rtt
+            .channels
+            .iter()
+            .find(|elem| elem.format == DataFormat::Defmt)
+            .is_some();
+        let defmt_state = if defmt_enable {
+            let elf = fs::read(path.clone()).unwrap();
+            let table = defmt_elf2table::parse(&elf)?;
+
+            let locs = {
+                let table = table.as_ref().unwrap();
+                let locs = defmt_elf2table::get_locations(&elf, &table)?;
+
+                if !table.is_empty() && locs.is_empty() {
+                    log::warn!("Insufficient DWARF info; compile your program with `debug = 2` to enable location info.");
+                    None
+                } else if table.indices().all(|idx| locs.contains_key(&(idx as u64))) {
+                    Some(locs)
+                } else {
+                    log::warn!("Location info is incomplete; it will be omitted from the output.");
+                    None
+                }
+            };
+            Some((table.unwrap(), locs))
+        } else {
+            None
+        };
+
         let session = Arc::new(Mutex::new(session));
         let t = std::time::Instant::now();
         let mut error = None;
@@ -531,7 +563,7 @@ fn main_try() -> Result<()> {
                     let mut app = rttui::app::App::new(rtt, &config, logname)?;
                     loop {
                         app.poll_rtt();
-                        app.render();
+                        app.render(&defmt_state);
                         if app.handle_event() {
                             logging::println("Shutting down.");
                             return Ok(());
@@ -561,8 +593,8 @@ fn main_try() -> Result<()> {
 
 fn print_families() -> Result<()> {
     logging::println("Available chips:");
-    for family in probe_rs::config::registry::families()
-        .map_err(|e| anyhow!("Families could not be read: {:?}", e))?
+    for family in
+        probe_rs::config::families().map_err(|e| anyhow!("Families could not be read: {:?}", e))?
     {
         logging::println(&family.name);
         logging::println("    Variants:");
