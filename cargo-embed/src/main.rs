@@ -302,7 +302,7 @@ fn main_try() -> Result<()> {
                 log::info!(
                     "A hard reset during attaching might help. This will reset the entire chip."
                 );
-                log::info!("Set `general.connect-under-reset` to enable this feature.");
+                log::info!("Set `general.connect_under_reset` in your cargo-embed configuration file to enable this feature.");
                 return Err(session).context("failed attaching to target");
             }
         }
