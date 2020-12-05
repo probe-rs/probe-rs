@@ -490,10 +490,25 @@ impl<'probe> Core<'probe> {
         }
     }
 
+    /// Clear all hardware breakpoints
+    ///
+    /// This function will clear all HW breakpoints which are configured on the target,
+    /// regardless if they are set by probe-rs or not.
     pub fn clear_all_hw_breakpoints(&mut self) -> Result<(), error::Error> {
         let num_hw_breakpoints = self.get_available_breakpoint_units()? as usize;
 
         { 0..num_hw_breakpoints }.try_for_each(|unit_index| self.inner.clear_breakpoint(unit_index))
+    }
+
+    /// Clear all HW breakpoints which were set by probe-rs.
+    ///
+    /// Currently used as a helper function in [Session::drop].
+    pub(crate) fn clear_all_set_hw_breakpoints(&mut self) -> Result<(), error::Error> {
+        for bp in self.state.breakpoints.drain(..) {
+            self.inner.clear_breakpoint(bp.register_hw)?;
+        }
+
+        Ok(())
     }
 
     pub fn architecture(&self) -> Architecture {
