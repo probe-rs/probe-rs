@@ -168,7 +168,7 @@ fn main_try() -> Result<()> {
 
     // Get the config.
     let config_name = opt.config.as_deref().unwrap_or("default");
-    let config = config::Configs::new(config_name)
+    let config = config::Configs::try_new(config_name)
         .with_context(|| format!("The config '{}' could not be loaded.", config_name))?;
 
     logging::init(Some(config.general.log_level));
@@ -472,9 +472,7 @@ fn main_try() -> Result<()> {
         let gdb_connection_string = config.gdb.gdb_connection_string.clone();
         let session = session.clone();
         std::thread::spawn(move || {
-            let gdb_connection_string = gdb_connection_string
-                .as_deref()
-                .or_else(|| Some("127.0.0.1:1337"));
+            let gdb_connection_string = gdb_connection_string.as_deref().or(Some("127.0.0.1:1337"));
             // This next unwrap will always resolve as the connection string is always Some(T).
             log::info!(
                 "Firing up GDB stub at {}.",
@@ -491,8 +489,7 @@ fn main_try() -> Result<()> {
             .rtt
             .channels
             .iter()
-            .find(|elem| elem.format == DataFormat::Defmt)
-            .is_some();
+            .any(|elem| elem.format == DataFormat::Defmt);
         let defmt_state = if defmt_enable {
             let elf = fs::read(path.clone()).unwrap();
             let table = defmt_elf2table::parse(&elf)?;
