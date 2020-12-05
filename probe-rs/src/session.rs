@@ -308,8 +308,7 @@ impl Session {
                 self.core(n)
                     .and_then(|mut core| core.clear_all_hw_breakpoints())
             })
-            .collect::<Result<Vec<_>, _>>()
-            .map(|_| ())
+            .collect()
     }
 }
 
@@ -318,7 +317,14 @@ static_assertions::assert_impl_all!(Session: Send, Sync);
 
 impl Drop for Session {
     fn drop(&mut self) {
-        if let Err(err) = self.clear_all_hw_breakpoints() {
+        let result: Result<(), crate::Error> = { 0..self.cores.len() }
+            .map(|i| {
+                self.core(i)
+                    .and_then(|mut core| core.clear_all_set_hw_breakpoints())
+            })
+            .collect();
+
+        if let Err(err) = result {
             log::warn!("Could not clear all hardware breakpoints: {:?}", err);
         }
     }
