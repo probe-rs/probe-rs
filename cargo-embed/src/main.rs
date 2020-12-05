@@ -297,13 +297,13 @@ fn main_try() -> Result<()> {
         let potential_session = probe.attach(chip);
         match potential_session {
             Ok(session) => session,
-            Err(session) => {
+            Err(err) => {
                 log::info!("The target seems to be unable to be attached to.");
                 log::info!(
                     "A hard reset during attaching might help. This will reset the entire chip."
                 );
                 log::info!("Set `general.connect_under_reset` in your cargo-embed configuration file to enable this feature.");
-                return Err(session).context("failed attaching to target");
+                return Err(err).context("failed attaching to target");
             }
         }
     };
