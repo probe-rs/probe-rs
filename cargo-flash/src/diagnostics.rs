@@ -91,8 +91,8 @@ fn handle_probe_rs_error(err: &FileDownloadError, target: &Target) -> Vec<String
             // Show the available flash regions
             let _ = writeln!(
                 buff,
-                "The following flash memory is available for the chip '{:?}':",
-                target.identifier
+                "The following flash memory is available for the chip '{}':",
+                target.name
             );
 
             for memory_region in &target.memory_map {

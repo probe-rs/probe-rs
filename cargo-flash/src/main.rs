@@ -213,7 +213,7 @@ fn main_try() -> Result<(), Diagnostic> {
 
     // Make sure we load the config given in the cli parameters.
     if let Some(ref cdp) = opt.chip_description_path {
-        probe_rs::config::registry::add_target_from_yaml(&Path::new(cdp))
+        probe_rs::config::add_target_from_yaml(&Path::new(cdp))
             .with_context(|| format!("Failed to parse chip description ''"))?;
     }
 
@@ -380,7 +380,7 @@ fn main_try() -> Result<(), Diagnostic> {
 
 fn print_families() -> Result<()> {
     logging::println("Available chips:");
-    for family in probe_rs::config::registry::families().context("failed to read families")? {
+    for family in probe_rs::config::families().context("failed to read families")? {
         logging::println(&family.name);
         logging::println("    Variants:");
         for variant in family.variants() {
