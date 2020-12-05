@@ -272,9 +272,12 @@ impl<'interface> ArmCommunicationInterface {
         &'interface mut self,
         access_port: MemoryAP,
     ) -> Result<Memory<'interface>, ProbeRsError> {
-        let info = self
-            .ap_information(access_port)
-            .expect("Failed to get information for AP");
+        let info = self.ap_information(access_port).ok_or_else(|| {
+            anyhow!(
+                "Failed to get information for AP {}",
+                access_port.port_number()
+            )
+        })?;
 
         match info {
             ApInformation::MemoryAp(ap_information) => {
