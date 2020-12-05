@@ -316,21 +316,32 @@ fn main_try() -> Result<(), Diagnostic> {
         match potential_session {
             Ok(session) => session,
             Err(err) => {
+                let hint = match err {
+                    probe_rs::Error::ChipNotFound(
+                        probe_rs::config::RegistryError::ChipAutodetectFailed,
+                    ) => {
+                        let autodetection_hint = "Specify a chip using the `--chip` option. \n \
+                                                       A list of all supported chips can be shown using the `--list-chips` command.";
+                        Some(autodetection_hint.to_owned())
+                    }
+                    _ => {
+                        let mut buff = String::new();
+                        let _ = writeln!(buff, "The target seems to be unable to be attached to.");
+                        let _ = writeln!(buff, "A hard reset during attaching might help. This will reset the entire chip.");
+                        let _ = writeln!(
+                            buff,
+                            "Run with `--connect-under-reset` to enable this feature."
+                        );
+                        Some(buff.to_owned())
+                    }
+                };
+
                 let mut diagnostic =
                     Diagnostic::from(anyhow!(err).context("Failed attaching to target"));
 
-                let mut buff = String::new();
-                let _ = writeln!(buff, "The target seems to be unable to be attached to.");
-                let _ = writeln!(
-                    buff,
-                    "A hard reset during attaching might help. This will reset the entire chip."
-                );
-                let _ = writeln!(
-                    buff,
-                    "Run with `--connect-under-reset` to enable this feature."
-                );
-
-                diagnostic.add_hint(buff);
+                if let Some(hint) = hint {
+                    diagnostic.add_hint(hint);
+                }
 
                 return Err(diagnostic);
             }
