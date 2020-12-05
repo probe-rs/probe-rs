@@ -85,7 +85,7 @@ pub struct Gdb {
 }
 
 impl Configs {
-    pub fn new(name: impl AsRef<str>) -> anyhow::Result<Config> {
+    pub fn try_new(name: impl AsRef<str>) -> anyhow::Result<Config> {
         let mut s = config::Config::new();
 
         // Start off by merging in the default configuration file.
@@ -173,6 +173,6 @@ mod test {
     fn default_config() {
         // Ensure the default config can be parsed.
 
-        let _config = Configs::new("default").unwrap();
+        let _config = Configs::try_new("default").unwrap();
     }
 }

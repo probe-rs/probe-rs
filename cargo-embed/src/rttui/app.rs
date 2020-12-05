@@ -51,9 +51,9 @@ impl App {
         logname: String,
     ) -> Result<Self> {
         let mut tabs = Vec::new();
-        let mut up_channels = rtt.up_channels().drain().collect::<Vec<_>>();
-        let mut down_channels = rtt.down_channels().drain().collect::<Vec<_>>();
         if !config.rtt.channels.is_empty() {
+            let mut up_channels = rtt.up_channels().drain().collect::<Vec<_>>();
+            let mut down_channels = rtt.down_channels().drain().collect::<Vec<_>>();
             for channel in &config.rtt.channels {
                 tabs.push(ChannelState::new(
                     channel.up.and_then(|up| pull_channel(&mut up_channels, up)),
@@ -66,6 +66,8 @@ impl App {
                 ))
             }
         } else {
+            let up_channels = rtt.up_channels().drain();
+            let mut down_channels = rtt.down_channels().drain().collect::<Vec<_>>();
             for channel in up_channels.into_iter() {
                 let number = channel.number();
                 tabs.push(ChannelState::new(
