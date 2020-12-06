@@ -28,7 +28,7 @@ mod chip_info;
 mod flash_algorithm;
 mod flash_properties;
 mod memory;
-mod registry;
+pub mod registry;
 mod target;
 
 pub use chip::Chip;
