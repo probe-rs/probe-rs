@@ -102,6 +102,10 @@ struct Opts {
     #[structopt(long, conflicts_with = "defmt")]
     no_flash: bool,
 
+    /// Connect to device when NRST is pressed.
+    #[structopt(long)]
+    connect_under_reset: bool,
+
     /// Enable more verbose logging.
     #[structopt(short, long)]
     verbose: bool,
@@ -306,7 +310,11 @@ fn notmain() -> Result<i32, anyhow::Error> {
         probe.set_speed(speed)?;
     }
 
-    let mut sess = probe.attach(target)?;
+    let mut sess = if opts.connect_under_reset {
+        probe.attach_under_reset(target)?
+    } else {
+        probe.attach(target)?
+    };
     log::debug!("started session");
 
     if opts.no_flash {
