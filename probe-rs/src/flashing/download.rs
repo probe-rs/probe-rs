@@ -15,9 +15,9 @@ use thiserror::Error;
 #[derive(Debug)]
 pub struct BinOptions {
     /// The address in memory where the binary will be put at.
-    base_address: Option<u32>,
+    pub base_address: Option<u32>,
     /// The number of bytes to skip at the start of the binary file.
-    skip: u32,
+    pub skip: u32,
 }
 
 /// A finite list of all the available binary formats probe-rs understands.
