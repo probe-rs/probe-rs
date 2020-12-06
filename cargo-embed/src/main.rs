@@ -485,10 +485,11 @@ fn main_try() -> Result<()> {
 
     let session = Arc::new(Mutex::new(session));
 
+    let mut gdb_thread_handle = None;
     if config.gdb.enabled {
         let gdb_connection_string = config.gdb.gdb_connection_string.clone();
         let session = session.clone();
-        std::thread::spawn(move || {
+        gdb_thread_handle = Some(std::thread::spawn(move || {
             let gdb_connection_string = gdb_connection_string.as_deref().or(Some("127.0.0.1:1337"));
             // This next unwrap will always resolve as the connection string is always Some(T).
             log::info!(
@@ -499,7 +500,7 @@ fn main_try() -> Result<()> {
                 logging::eprintln("During the execution of GDB an error was encountered:");
                 logging::eprintln(format!("{:?}", e));
             }
-        });
+        }));
     }
     if config.rtt.enabled {
         let defmt_enable = config
@@ -592,6 +593,10 @@ fn main_try() -> Result<()> {
         if let Some(error) = error {
             return Err(error);
         }
+    }
+
+    if let Some(gdb_thread_handle) = gdb_thread_handle {
+        let _ = gdb_thread_handle.join();
     }
 
     logging::println(format!(
