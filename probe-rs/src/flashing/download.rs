@@ -172,7 +172,7 @@ fn download_hex<'buffer, T: Read + Seek>(
                 let offset = extended_linear_address | offset as u32;
                 buffer.push((offset, value));
             }
-            EndOfFile => return Ok(()),
+            EndOfFile => (),
             ExtendedSegmentAddress(address) => {
                 _extended_segment_address = address * 16;
             }
