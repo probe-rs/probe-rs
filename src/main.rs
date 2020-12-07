@@ -365,6 +365,7 @@ fn notmain() -> Result<i32, anyhow::Error> {
         if let Some(rtt) = rtt_addr {
             core.set_hw_breakpoint(main)?;
             core.run()?;
+            core.wait_for_core_halted(Duration::from_secs(5))?;
             const OFFSET: u32 = 44;
             const FLAG: u32 = 2; // BLOCK_IF_FULL
             core.write_word_32(rtt + OFFSET, FLAG)?;
