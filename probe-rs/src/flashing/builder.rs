@@ -20,11 +20,11 @@ impl Debug for FlashPage {
 }
 
 impl FlashPage {
-    /// Creates a new empty flash page form a `PageInfo`.
-    fn new(page_info: &PageInfo) -> Self {
+    /// Creates a new empty flash page from a `PageInfo`.
+    fn new(page_info: &PageInfo, default_value: u8) -> Self {
         Self {
             address: page_info.base_address,
-            data: vec![0; page_info.size as usize],
+            data: vec![default_value; page_info.size as usize],
         }
     }
 
@@ -470,7 +470,10 @@ fn add_page<'page>(
 ) -> Result<&'page mut FlashPage, FlashError> {
     let page_info = flash_algorithm.page_info(address);
     if let Some(page_info) = page_info {
-        let new_page = FlashPage::new(&page_info);
+        let new_page = FlashPage::new(
+            &page_info,
+            flash_algorithm.flash_properties.erased_byte_value,
+        );
         pages.push(new_page);
         log::trace!(
             "Added Page (0x{:08x}..0x{:08x})",
