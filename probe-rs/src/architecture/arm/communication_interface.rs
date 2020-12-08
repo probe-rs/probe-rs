@@ -36,7 +36,10 @@ impl From<DapError> for DebugProbeError {
     }
 }
 
-use std::{fmt::Debug, time::Duration};
+use std::{
+    fmt::Debug,
+    time::{Duration, Instant},
+};
 
 pub trait Register: Clone + From<u32> + Into<u32> + Sized + Debug {
     const ADDRESS: u8;
@@ -302,6 +305,8 @@ impl<'interface> ArmCommunicationInterface {
         let dp_id: DebugPortId = dp_id.into();
         log::debug!("DebugPort ID:  {:#x?}", dp_id);
 
+        /*
+
         // Clear all existing sticky errors.
         let mut abort_reg = Abort(0);
         abort_reg.set_orunerrclr(true);
@@ -330,6 +335,10 @@ impl<'interface> ArmCommunicationInterface {
             log::error!("Debug power request failed");
             return Err(DapError::TargetPowerUpFailed.into());
         }
+
+        */
+
+        debug_port_start(self)?;
 
         Ok(())
     }
@@ -589,4 +598,64 @@ impl std::fmt::Display for ArmChipInfo {
         };
         write!(f, "{} 0x{:04x}", manu, self.part)
     }
+}
+
+fn debug_port_start(interface: &mut ArmCommunicationInterface) -> Result<(), DebugProbeError> {
+    interface.write_dp_register(Select(0))?;
+
+    //let powered_down = interface.read_dp_register::<Select>::()
+
+    let ctrl = interface.read_dp_register::<Ctrl>()?;
+
+    let powered_down = !(ctrl.csyspwrupack() && ctrl.cdbgpwrupack());
+
+    if powered_down {
+        let mut ctrl = Ctrl(0);
+        ctrl.set_cdbgpwrupreq(true);
+        ctrl.set_csyspwrupreq(true);
+
+        interface.write_dp_register(ctrl)?;
+
+        let start = Instant::now();
+
+        let mut timeout = true;
+
+        while start.elapsed() < Duration::from_micros(100_0000) {
+            let ctrl = interface.read_dp_register::<Ctrl>()?;
+
+            if ctrl.csyspwrupack() && ctrl.cdbgpwrupack() {
+                timeout = false;
+                break;
+            }
+        }
+
+        if timeout {
+            return Err(DebugProbeError::Timeout);
+        }
+
+        // TODO: Handle JTAG Specific part
+
+        // TODO: Only run the following code when the SWD protocol is used
+
+        // Init AP Transfer Mode, Transaction Counter, and Lane Mask (Normal Transfer Mode, Include all Byte Lanes)
+        let mut ctrl = Ctrl(0);
+
+        ctrl.set_cdbgpwrupreq(true);
+        ctrl.set_csyspwrupreq(true);
+
+        ctrl.set_mask_lane(0b1111);
+
+        interface.write_dp_register(ctrl)?;
+
+        let mut abort = Abort(0);
+
+        abort.set_orunerrclr(true);
+        abort.set_wderrclr(true);
+        abort.set_stkerrclr(true);
+        abort.set_stkcmpclr(true);
+
+        interface.write_dp_register(abort)?;
+    }
+
+    Ok(())
 }

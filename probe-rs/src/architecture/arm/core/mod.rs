@@ -23,10 +23,12 @@ pub(crate) fn debug_core_start(core: &mut impl MemoryInterface) -> Result<(), Er
 
     let current_dhcsr = Dhcsr(core.read_word_32(Dhcsr::ADDRESS)?);
 
+    // Note: Manual addition for debugging, not part of the original DebugCoreStart function
     if current_dhcsr.c_debugen() {
         log::debug!("Core is already in debug mode, no need to enable it again");
         return Ok(());
     }
+    // -- End addition
 
     let mut dhcsr = Dhcsr(0);
     dhcsr.set_c_debugen(true);
@@ -37,7 +39,6 @@ pub(crate) fn debug_core_start(core: &mut impl MemoryInterface) -> Result<(), Er
     Ok(())
 }
 
-/*
 /// Setup the core to stop after reset. After this, the core will halt when it comes
 /// out of reset. This is based on the `ResetCatchSet` function from
 /// the [ARM SVD Debug Description].
@@ -57,7 +58,10 @@ pub(crate) fn reset_catch_set(core: &mut impl MemoryInterface) -> Result<(), Err
 
     Ok(())
 }
-*/
+
+/*
+
+LPC55S69 specific sequence
 
 pub(crate) fn reset_catch_set(core: &mut impl MemoryInterface) -> Result<(), Error> {
     use crate::architecture::arm::core::m4::{Demcr, Dhcsr};
@@ -131,8 +135,8 @@ pub(crate) fn reset_catch_set(core: &mut impl MemoryInterface) -> Result<(), Err
 
     Ok(())
 }
+*/
 
-/*
 /// Undo the settings of the `reset_catch_set` function.
 /// This is based on the `ResetCatchSet` function from
 /// the [ARM SVD Debug Description].
@@ -148,7 +152,10 @@ pub(crate) fn reset_catch_clear(core: &mut impl MemoryInterface) -> Result<(), E
     core.write_word_32(Demcr::ADDRESS, demcr.into())?;
     Ok(())
 }
-*/
+
+/*
+
+LPC55S69 specific sequence
 
 pub(crate) fn reset_catch_clear(core: &mut impl MemoryInterface) -> Result<(), Error> {
     use crate::architecture::arm::core::m4::Demcr;
@@ -162,8 +169,8 @@ pub(crate) fn reset_catch_clear(core: &mut impl MemoryInterface) -> Result<(), E
 
     core.write_word_32(Demcr::ADDRESS, demcr.into())
 }
+*/
 
-/*
 pub(crate) fn reset_system(core: &mut impl MemoryInterface) -> Result<(), Error> {
     use crate::architecture::arm::core::m4::{Aircr, Dhcsr};
 
@@ -186,7 +193,8 @@ pub(crate) fn reset_system(core: &mut impl MemoryInterface) -> Result<(), Error>
 
     Err(Error::Probe(DebugProbeError::Timeout))
 }
-*/
+
+/*
 
 // TODO: Remove this, hacked version for lpc555s69
 pub(crate) fn reset_system(core: &mut impl MemoryInterface) -> Result<(), Error> {
@@ -206,6 +214,8 @@ pub(crate) fn reset_system(core: &mut impl MemoryInterface) -> Result<(), Error>
 
     wait_for_stop_after_reset(core)
 }
+
+*/
 
 fn wait_for_stop_after_reset(core: &mut impl MemoryInterface) -> Result<(), Error> {
     use crate::architecture::arm::core::m4::Dhcsr;
