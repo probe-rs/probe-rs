@@ -216,6 +216,12 @@ impl<'probe> MemoryInterface for Core<'probe> {
     fn flush(&mut self) -> Result<(), Error> {
         self.inner.flush()
     }
+
+    fn get_arm_interface(
+        &mut self,
+    ) -> Result<&mut crate::architecture::arm::ArmCommunicationInterface, Error> {
+        todo!()
+    }
 }
 
 #[derive(Debug)]

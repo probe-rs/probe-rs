@@ -38,6 +38,7 @@ impl From<DapError> for DebugProbeError {
 
 use std::{
     fmt::Debug,
+    thread,
     time::{Duration, Instant},
 };
 
@@ -600,6 +601,7 @@ impl std::fmt::Display for ArmChipInfo {
     }
 }
 
+/*
 fn debug_port_start(interface: &mut ArmCommunicationInterface) -> Result<(), DebugProbeError> {
     interface.write_dp_register(Select(0))?;
 
@@ -656,6 +658,149 @@ fn debug_port_start(interface: &mut ArmCommunicationInterface) -> Result<(), Deb
 
         interface.write_dp_register(abort)?;
     }
+
+    Ok(())
+}
+
+*/
+
+fn debug_port_start(interface: &mut ArmCommunicationInterface) -> Result<(), DebugProbeError> {
+    log::info!("debug_port_start");
+
+    interface.write_dp_register(Select(0))?;
+
+    //let powered_down = interface.read_dp_register::<Select>::()
+
+    let ctrl = interface.read_dp_register::<Ctrl>()?;
+
+    let powered_down = !(ctrl.csyspwrupack() && ctrl.cdbgpwrupack());
+
+    if powered_down {
+        let mut ctrl = Ctrl(0);
+        ctrl.set_cdbgpwrupreq(true);
+        ctrl.set_csyspwrupreq(true);
+
+        interface.write_dp_register(ctrl)?;
+
+        let start = Instant::now();
+
+        let mut timeout = true;
+
+        while start.elapsed() < Duration::from_micros(100_0000) {
+            let ctrl = interface.read_dp_register::<Ctrl>()?;
+
+            if ctrl.csyspwrupack() && ctrl.cdbgpwrupack() {
+                timeout = false;
+                break;
+            }
+        }
+
+        if timeout {
+            return Err(DebugProbeError::Timeout);
+        }
+
+        // TODO: Handle JTAG Specific part
+
+        // TODO: Only run the following code when the SWD protocol is used
+
+        // Init AP Transfer Mode, Transaction Counter, and Lane Mask (Normal Transfer Mode, Include all Byte Lanes)
+        let mut ctrl = Ctrl(0);
+
+        ctrl.set_cdbgpwrupreq(true);
+        ctrl.set_csyspwrupreq(true);
+
+        ctrl.set_mask_lane(0b1111);
+
+        interface.write_dp_register(ctrl)?;
+
+        let mut abort = Abort(0);
+
+        abort.set_orunerrclr(true);
+        abort.set_wderrclr(true);
+        abort.set_stkerrclr(true);
+        abort.set_stkcmpclr(true);
+
+        interface.write_dp_register(abort)?;
+
+        enable_debug_mailbox(interface)?;
+    }
+
+    Ok(())
+}
+
+pub(crate) fn enable_debug_mailbox(
+    interface: &mut ArmCommunicationInterface,
+) -> Result<(), DebugProbeError> {
+    log::info!("LPC55xx connect srcipt start");
+
+    let status: IDR = interface.read_ap_register(2)?;
+
+    //let status = read_ap(interface, 2, 0xFC)?;
+
+    log::info!("APIDR: {:?}", status);
+    log::info!("APIDR: 0x{:08X}", u32::from(status));
+
+    let status: u32 = interface.read_dp_register::<DPIDR>()?.into();
+
+    log::info!("DPIDR: 0x{:08X}", status);
+
+    // Active DebugMailbox
+    write_ap(interface, 2, 0x0, 0x0000_0021)?;
+
+    // DAP_Delay(30000)
+    thread::sleep(Duration::from_micros(30000));
+
+    let _ = read_ap(interface, 2, 0)?;
+
+    // Enter Debug session
+    write_ap(interface, 2, 0x4, 0x0000_0007)?;
+
+    // DAP_Delay(30000)
+    thread::sleep(Duration::from_micros(30000));
+
+    let _ = read_ap(interface, 2, 8)?;
+
+    log::info!("LPC55xx connect srcipt end");
+    Ok(())
+}
+
+fn read_ap(
+    interface: &mut ArmCommunicationInterface,
+    port: u8,
+    register: u8,
+) -> Result<u32, DebugProbeError> {
+    // TODO: Determine AP Bank and address
+
+    let ap_address = register & 0b1111;
+    let ap_bank = ((register >> 4) & 0b1111) as u8;
+
+    interface.select_ap_and_ap_bank(port, ap_bank)?;
+
+    let result = interface
+        .probe
+        .read_register(PortType::AccessPort(port as u16), ap_address)?;
+
+    log::debug!("AP Read: {:#010x}", result);
+
+    Ok(result)
+}
+
+fn write_ap(
+    interface: &mut ArmCommunicationInterface,
+    port: u8,
+    register: u8,
+    value: u32,
+) -> Result<(), DebugProbeError> {
+    // TODO: Determine AP Bank and address
+
+    let ap_address = register & 0b1111;
+    let ap_bank = ((register >> 4) & 0b1111) as u8;
+
+    interface.select_ap_and_ap_bank(port, ap_bank)?;
+
+    interface
+        .probe
+        .write_register(PortType::AccessPort(port as u16), ap_address, value)?;
 
     Ok(())
 }
