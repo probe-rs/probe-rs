@@ -10,6 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Renamed `MemoryRegion::Flash` to `MemoryRegion::Nvm`
+- Renamed `FlashInfo` to `NvmInfo`
+- Renamed `FlashRegion` to `NvmRegion` and its `flash_info()` method to `nvm_info()`
+- Renamed `FlashError::NoSuitableFlash` to `FlashError::NoSuitableNvm`
+
 ### Fixed
 
 ## [0.10.1]
