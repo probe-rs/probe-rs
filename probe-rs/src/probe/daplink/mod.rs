@@ -38,13 +38,12 @@ use commands::{
 
 use log::debug;
 
-use std::sync::Mutex;
 use std::time::Duration;
 
 use anyhow::anyhow;
 
 pub struct DAPLink {
-    pub device: Mutex<DAPLinkDevice>,
+    pub device: DAPLinkDevice,
     _hw_version: u8,
     _jtag_version: u8,
     protocol: Option<WireProtocol>,
@@ -92,7 +91,7 @@ impl DAPLink {
         }
 
         Self {
-            device: Mutex::new(device),
+            device,
             _hw_version: 0,
             _jtag_version: 0,
             protocol: None,
@@ -750,9 +749,7 @@ impl SwoAccess for DAPLink {
         // Set transport. If the dedicated endpoint is available and we have opened
         // the probe in V2 mode and it has an SWO endpoint, request that, otherwise
         // request the DAP_SWO_Data polling mode.
-        if caps.swo_streaming_trace_implemented
-            && self.device.get_mut().unwrap().swo_streaming_supported()
-        {
+        if caps.swo_streaming_trace_implemented && self.device.swo_streaming_supported() {
             debug!("Starting SWO capture with WinUSB transport");
             self.set_swo_transport(swo::TransportRequest::WinUsbEndpoint)?;
             self.swo_streaming = true;
@@ -794,12 +791,8 @@ impl SwoAccess for DAPLink {
     fn read_swo_timeout(&mut self, timeout: Duration) -> Result<Vec<u8>, ProbeRsError> {
         if self.swo_active {
             if self.swo_streaming {
-                let device = self
-                    .device
-                    .get_mut()
-                    .expect("This is a bug. Please report it.");
                 let mut buffer = vec![0u8; 1024];
-                let n = device.read_swo_stream(&mut buffer, timeout)?;
+                let n = self.device.read_swo_stream(&mut buffer, timeout)?;
                 buffer.truncate(n);
                 log::trace!("SWO streaming buffer: {:?}", buffer);
                 Ok(buffer)
@@ -815,9 +808,7 @@ impl SwoAccess for DAPLink {
 
     fn swo_poll_interval_hint(&mut self, config: &SwoConfig) -> Option<std::time::Duration> {
         let caps = self.capabilities.expect("This is a bug. Please report it.");
-        if caps.swo_streaming_trace_implemented
-            && self.device.get_mut().unwrap().swo_streaming_supported()
-        {
+        if caps.swo_streaming_trace_implemented && self.device.swo_streaming_supported() {
             // Streaming reads block waiting for new data so any polling interval is fine
             Some(std::time::Duration::from_secs(0))
         } else {

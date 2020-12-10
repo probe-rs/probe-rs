@@ -159,7 +159,7 @@ pub(crate) trait Response: Sized {
 }
 
 pub(crate) fn send_command<Req: Request, Res: Response>(
-    device: &mut std::sync::Mutex<DAPLinkDevice>,
+    device: &mut DAPLinkDevice,
     request: Req,
 ) -> Result<Res> {
     // On CMSIS-DAP v2 USB HS devices, a single request might be up to 1024 bytes,
@@ -172,34 +172,30 @@ pub(crate) fn send_command<Req: Request, Res: Response>(
     let mut size = request.to_bytes(&mut write_buffer, 1 + 1)?;
     size += 2;
 
-    if let Ok(device) = device.get_mut() {
-        // On Windows, HID writes must write exactly the size of the
-        // largest report for the device, but there's no way to query
-        // this in hidapi. Almost all known CMSIS-DAP devices use 64-byte
-        // HID reports (the maximum permitted), so ensure we always
-        // write exactly 64 (+1 for report ID) bytes for HID.
-        // For v2 devices, we can write the precise request size.
-        if let DAPLinkDevice::V1(_) = device {
-            size = 65;
-        }
+    // On Windows, HID writes must write exactly the size of the
+    // largest report for the device, but there's no way to query
+    // this in hidapi. Almost all known CMSIS-DAP devices use 64-byte
+    // HID reports (the maximum permitted), so ensure we always
+    // write exactly 64 (+1 for report ID) bytes for HID.
+    // For v2 devices, we can write the precise request size.
+    if let DAPLinkDevice::V1(_) = device {
+        size = 65;
+    }
 
-        // Send buffer to the device.
-        device.write(&write_buffer[..size])?;
-        trace_buffer("Transmit buffer", &write_buffer[..size]);
+    // Send buffer to the device.
+    device.write(&write_buffer[..size])?;
+    trace_buffer("Transmit buffer", &write_buffer[..size]);
 
-        // Read back resonse.
-        let mut read_buffer = [0; BUFFER_LEN];
-        device.read(&mut read_buffer)?;
-        trace_buffer("Receive buffer", &read_buffer[..]);
+    // Read back resonse.
+    let mut read_buffer = [0; BUFFER_LEN];
+    device.read(&mut read_buffer)?;
+    trace_buffer("Receive buffer", &read_buffer[..]);
 
-        if read_buffer[0] == *Req::CATEGORY {
-            Res::from_bytes(&read_buffer, 1)
-        } else {
-            Err(anyhow!(CmsisDapError::UnexpectedAnswer))
-                .with_context(|| format!("Received invalid data for {:?}", *Req::CATEGORY))
-        }
+    if read_buffer[0] == *Req::CATEGORY {
+        Res::from_bytes(&read_buffer, 1)
     } else {
-        Err(anyhow!(CmsisDapError::ErrorResponse)).context("failed while sending command")
+        Err(anyhow!(CmsisDapError::UnexpectedAnswer))
+            .with_context(|| format!("Received invalid data for {:?}", *Req::CATEGORY))
     }
 }
 

@@ -5,7 +5,6 @@ use thiserror::Error;
 
 use std::convert::{TryFrom, TryInto};
 use std::iter;
-use std::sync::Mutex;
 
 use crate::{
     architecture::arm::{DapError, PortType, Register},
@@ -30,7 +29,7 @@ const SWO_BUFFER_SIZE: u16 = 128;
 
 #[derive(Debug)]
 pub(crate) struct JLink {
-    handle: Mutex<JayLink>,
+    handle: JayLink,
     swo_config: Option<SwoConfig>,
 
     /// Idle cycles necessary between consecutive
@@ -57,9 +56,7 @@ impl JLink {
         &mut self,
         protocol: Option<WireProtocol>,
     ) -> Result<WireProtocol, DebugProbeError> {
-        let handle = self.handle.get_mut().unwrap();
-
-        let capabilities = handle.read_capabilities()?;
+        let capabilities = self.handle.read_capabilities()?;
 
         if capabilities.contains(jaylink::Capabilities::SELECT_IF) {
             if let Some(protocol) = protocol {
@@ -68,19 +65,20 @@ impl JLink {
                     WireProtocol::Jtag => jaylink::Interface::Jtag,
                 };
 
-                if handle
+                if self
+                    .handle
                     .read_available_interfaces()?
                     .any(|interface| interface == jlink_interface)
                 {
                     // We can select the desired interface
-                    handle.select_interface(jlink_interface)?;
+                    self.handle.select_interface(jlink_interface)?;
                     Ok(protocol)
                 } else {
                     Err(DebugProbeError::UnsupportedProtocol(protocol))
                 }
             } else {
                 // No special protocol request
-                let current_protocol = handle.read_current_interface()?;
+                let current_protocol = self.handle.read_current_interface()?;
 
                 match current_protocol {
                     jaylink::Interface::Swd => Ok(WireProtocol::Swd),
@@ -119,8 +117,7 @@ impl JLink {
         // We have to stay in the idle cycle a bit
         tms.extend(iter::repeat(false).take(self.idle_cycles() as usize));
 
-        let jlink = self.handle.get_mut().unwrap();
-        let mut response = jlink.jtag_io(tms, tdi)?;
+        let mut response = self.handle.jtag_io(tms, tdi)?;
 
         log::trace!("Response: {:?}", response);
 
@@ -217,8 +214,7 @@ impl JLink {
         log::trace!("tms: {:?}", tms);
         log::trace!("tdi: {:?}", tdi);
 
-        let jlink = self.handle.get_mut().unwrap();
-        let response = jlink.jtag_io(tms, tdi)?;
+        let response = self.handle.jtag_io(tms, tdi)?;
 
         log::trace!("Response: {:?}", response);
 
@@ -290,8 +286,7 @@ impl JLink {
         tms.extend(iter::repeat(false).take(self.idle_cycles() as usize));
         tdi.extend(iter::repeat(false).take(self.idle_cycles() as usize));
 
-        let jlink = self.handle.get_mut().unwrap();
-        let mut response = jlink.jtag_io(tms, tdi)?;
+        let mut response = self.handle.jtag_io(tms, tdi)?;
 
         log::trace!("Response: {:?}", response);
 
@@ -341,11 +336,7 @@ impl JLink {
         let mut result = Ok(());
 
         for _ in 0..2 {
-            let mut result_sequence = self
-                .handle
-                .get_mut()
-                .unwrap()
-                .swd_io(direction.clone(), swd_io.clone())?;
+            let mut result_sequence = self.handle.swd_io(direction.clone(), swd_io.clone())?;
 
             // Ignore reset bits, idle bits, and request
             result_sequence.split_off(50 + 2 + 8);
@@ -452,7 +443,7 @@ impl DebugProbe for JLink {
         };
 
         Ok(Box::new(JLink {
-            handle: Mutex::from(jlink_handle),
+            handle: jlink_handle,
             swo_config: None,
             supported_protocols,
             jtag_idle_cycles: 0,
@@ -489,10 +480,8 @@ impl DebugProbe for JLink {
             return Err(DebugProbeError::UnsupportedSpeed(speed_khz));
         }
 
-        let jlink = self.handle.get_mut().unwrap();
-
         let actual_speed_khz;
-        if let Ok(speeds) = jlink.read_speeds() {
+        if let Ok(speeds) = self.handle.read_speeds() {
             log::debug!("Supported speeds: {:?}", speeds);
 
             let speed_hz = 1000 * speed_khz;
@@ -508,7 +497,8 @@ impl DebugProbe for JLink {
             actual_speed_khz = speed_khz;
         }
 
-        jlink.set_speed(CommunicationSpeed::khz(actual_speed_khz as u16).unwrap())?;
+        self.handle
+            .set_speed(CommunicationSpeed::khz(actual_speed_khz as u16).unwrap())?;
         self.speed_khz = actual_speed_khz;
 
         Ok(actual_speed_khz)
@@ -538,22 +528,24 @@ impl DebugProbe for JLink {
         log::debug!("Attaching with protocol '{}'", actual_protocol);
 
         // Get reference to JayLink instance
-        let jlink: &mut JayLink = self.handle.get_mut().unwrap();
-        let capabilities = jlink.read_capabilities()?;
+        let capabilities = self.handle.read_capabilities()?;
 
         // Log some information about the probe
-        let serial = jlink.serial_string().trim_start_matches('0');
+        let serial = self.handle.serial_string().trim_start_matches('0');
         log::info!("J-Link: S/N: {}", serial);
         log::debug!("J-Link: Capabilities: {:?}", capabilities);
-        let fw_version = jlink.read_firmware_version().unwrap_or_else(|_| "?".into());
+        let fw_version = self
+            .handle
+            .read_firmware_version()
+            .unwrap_or_else(|_| "?".into());
         log::info!("J-Link: Firmware version: {}", fw_version);
-        match jlink.read_hardware_version() {
+        match self.handle.read_hardware_version() {
             Ok(hw_version) => log::info!("J-Link: Hardware version: {}", hw_version),
             Err(_) => log::info!("J-Link: Hardware version: ?"),
         };
 
         // Verify target voltage (VTref pin, mV). If this is 0, the device is not powered.
-        let target_voltage = jlink.read_target_voltage()?;
+        let target_voltage = self.handle.read_target_voltage()?;
         if target_voltage == 0 {
             log::warn!("J-Link: Target voltage (VTref) is 0 V. Is your target device powered?");
         } else {
@@ -568,7 +560,7 @@ impl DebugProbe for JLink {
                 // try some JTAG stuff
 
                 log::debug!("Resetting JTAG chain using trst");
-                jlink.reset_trst()?;
+                self.handle.reset_trst()?;
 
                 log::debug!("Resetting JTAG chain by setting tms high for 32 bits");
 
@@ -576,7 +568,7 @@ impl DebugProbe for JLink {
                 let tms = vec![true, true, true, true, true, false];
                 let tdi = iter::repeat(false).take(6);
 
-                let response: Vec<_> = jlink.jtag_io(tms, tdi)?.collect();
+                let response: Vec<_> = self.handle.jtag_io(tms, tdi)?.collect();
 
                 log::debug!("Response to reset: {:?}", response);
 
@@ -610,7 +602,7 @@ impl DebugProbe for JLink {
                 // Send the init sequence.
                 // We don't actually care about the response here.
                 // A read on the DPIDR will finalize the init procedure and tell us if it worked.
-                jlink.swd_io(direction, swd_io_sequence)?;
+                self.handle.swd_io(direction, swd_io_sequence)?;
 
                 // Perform a line reset
                 self.swd_line_reset()?;
@@ -634,14 +626,12 @@ impl DebugProbe for JLink {
     }
 
     fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
-        let jlink = self.handle.get_mut().unwrap();
-        jlink.set_reset(false)?;
+        self.handle.set_reset(false)?;
         Ok(())
     }
 
     fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
-        let jlink = self.handle.get_mut().unwrap();
-        jlink.set_reset(true)?;
+        self.handle.set_reset(true)?;
         Ok(())
     }
 
@@ -880,8 +870,6 @@ impl DAPAccess for JLink {
             // Transmit the sequence and record the line sequence for the ack bits.
             let mut result_sequence = self
                 .handle
-                .get_mut()
-                .unwrap()
                 .swd_io(direction.clone(), swd_io_sequence.iter().copied())?;
 
             // Throw away the two idle bits.
@@ -1029,8 +1017,6 @@ impl DAPAccess for JLink {
             // Transmit the sequence and record the line sequence for the ack and data bits.
             let mut result_sequence = self
                 .handle
-                .get_mut()
-                .unwrap()
                 .swd_io(direction.clone(), swd_io_sequence.iter().copied())?;
 
             // Throw away the two idle bits.
@@ -1132,18 +1118,16 @@ impl DAPAccess for JLink {
 
 impl SwoAccess for JLink {
     fn enable_swo(&mut self, config: &SwoConfig) -> Result<(), ProbeRsError> {
-        let jlink = self.handle.get_mut().unwrap();
         self.swo_config = Some(*config);
-        jlink
+        self.handle
             .swo_start_uart(config.baud(), SWO_BUFFER_SIZE.into())
             .map_err(|e| ProbeRsError::Probe(DebugProbeError::ArchitectureSpecific(Box::new(e))))?;
         Ok(())
     }
 
     fn disable_swo(&mut self) -> Result<(), ProbeRsError> {
-        let jlink = self.handle.get_mut().unwrap();
         self.swo_config = None;
-        jlink
+        self.handle
             .swo_stop()
             .map_err(|e| ProbeRsError::Probe(DebugProbeError::ArchitectureSpecific(Box::new(e))))?;
         Ok(())
@@ -1161,11 +1145,9 @@ impl SwoAccess for JLink {
             .swo_poll_interval_hint(&self.swo_config.unwrap())
             .unwrap();
 
-        let jlink = self.handle.get_mut().unwrap();
-
         let mut bytes = vec![];
         loop {
-            let data = jlink.swo_read(&mut buf).map_err(|e| {
+            let data = self.handle.swo_read(&mut buf).map_err(|e| {
                 ProbeRsError::Probe(DebugProbeError::ArchitectureSpecific(Box::new(e)))
             })?;
             bytes.extend(data.as_ref());
