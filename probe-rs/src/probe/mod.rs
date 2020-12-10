@@ -396,7 +396,7 @@ impl Probe {
     }
 }
 
-pub trait DebugProbe: Send + Sync + fmt::Debug {
+pub trait DebugProbe: Send + fmt::Debug {
     fn new_from_selector(
         selector: impl Into<DebugProbeSelector>,
     ) -> Result<Box<Self>, DebugProbeError>

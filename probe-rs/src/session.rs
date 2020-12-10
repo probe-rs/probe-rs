@@ -313,7 +313,7 @@ impl Session {
 }
 
 // This test ensures that [Session] is fully [Send] + [Sync].
-static_assertions::assert_impl_all!(Session: Send, Sync);
+static_assertions::assert_impl_all!(Session: Send);
 
 impl Drop for Session {
     fn drop(&mut self) {
