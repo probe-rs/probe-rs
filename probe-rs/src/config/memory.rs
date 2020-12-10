@@ -116,8 +116,9 @@ pub enum MemoryRegion {
     /// Generic memory region, which is neither
     /// flash nor RAM.
     Generic(GenericRegion),
-    /// Memory region describing flash.
-    Flash(FlashRegion),
+    /// Memory region describing flash, EEPROM or other non-volatile memory.
+    #[serde(alias = "Flash")] // Keeping the "Flash" name this for backwards compatibility
+    Nvm(FlashRegion),
 }
 
 #[cfg(test)]

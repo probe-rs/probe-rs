@@ -46,7 +46,7 @@ impl<'mmap, 'data> FlashLoader<'mmap, 'data> {
             let possible_region = Self::get_region_for_address(self.memory_map, address);
             // If we found a corresponding region, create a builder.
             match possible_region {
-                Some(MemoryRegion::Flash(region)) => {
+                Some(MemoryRegion::Nvm(region)) => {
                     // Get our builder instance.
                     if !self.builders.contains_key(region) {
                         self.builders.insert(region.clone(), FlashBuilder::new());
@@ -96,7 +96,7 @@ impl<'mmap, 'data> FlashLoader<'mmap, 'data> {
         for region in memory_map {
             let r = match region {
                 MemoryRegion::Ram(r) => r.range.clone(),
-                MemoryRegion::Flash(r) => r.range.clone(),
+                MemoryRegion::Nvm(r) => r.range.clone(),
                 MemoryRegion::Generic(r) => r.range.clone(),
             };
             if r.contains(&address) {

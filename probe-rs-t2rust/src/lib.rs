@@ -278,7 +278,7 @@ fn extract_memory_map(chip: &serde_yaml::Value) -> Vec<proc_macro2::TokenStream>
                             region.get("is_boot_memory").unwrap().as_bool().unwrap();
 
                         quote::quote! {
-                            MemoryRegion::Flash(FlashRegion {
+                            MemoryRegion::Nvm(FlashRegion {
                                 range: #start..#end,
                                 is_boot_memory: #is_boot_memory,
                             })
