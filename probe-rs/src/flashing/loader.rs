@@ -1,5 +1,5 @@
 use super::{FlashBuilder, FlashError, FlashProgress, Flasher};
-use crate::config::{FlashRegion, MemoryRange, MemoryRegion};
+use crate::config::{MemoryRange, MemoryRegion, NvmRegion};
 use crate::memory::MemoryInterface;
 use crate::session::Session;
 use anyhow::anyhow;
@@ -17,7 +17,7 @@ struct RamWrite<'data> {
 /// Region crossing data chunks are allowed as long as the regions are contiguous.
 pub(super) struct FlashLoader<'mmap, 'data> {
     memory_map: &'mmap [MemoryRegion],
-    builders: HashMap<FlashRegion, FlashBuilder<'data>>,
+    builders: HashMap<NvmRegion, FlashBuilder<'data>>,
     ram_write: Vec<RamWrite<'data>>,
     keep_unwritten: bool,
 }

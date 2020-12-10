@@ -2,14 +2,14 @@ use core::ops::Range;
 
 /// Represents a region in flash.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct FlashRegion {
+pub struct NvmRegion {
     /// Address range of the region
     pub range: Range<u32>,
     /// True if the chip boots from this memory
     pub is_boot_memory: bool,
 }
 
-impl FlashRegion {
+impl NvmRegion {
     /// Returns the necessary information about the flash.
     pub fn flash_info(&self) -> FlashInfo {
         FlashInfo {
@@ -118,7 +118,7 @@ pub enum MemoryRegion {
     Generic(GenericRegion),
     /// Memory region describing flash, EEPROM or other non-volatile memory.
     #[serde(alias = "Flash")] // Keeping the "Flash" name this for backwards compatibility
-    Nvm(FlashRegion),
+    Nvm(NvmRegion),
 }
 
 #[cfg(test)]

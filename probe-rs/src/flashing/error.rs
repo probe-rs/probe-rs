@@ -2,7 +2,7 @@
 
 use thiserror::Error;
 
-use crate::config::FlashRegion;
+use crate::config::NvmRegion;
 use crate::error;
 
 /// Describes any error that happened during the or in preparation for the flashing procedure.
@@ -21,7 +21,7 @@ pub enum FlashError {
     #[error("Something during the interaction with the core went wrong")]
     Core(#[source] error::Error),
     #[error("{address} is not contained in {region:?}")]
-    AddressNotInRegion { address: u32, region: FlashRegion },
+    AddressNotInRegion { address: u32, region: NvmRegion },
     #[error("Flash algorithm length is not 32 bit aligned.")]
     InvalidFlashAlgorithmLength,
     #[error(
