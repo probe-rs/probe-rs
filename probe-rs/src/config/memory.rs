@@ -1,6 +1,6 @@
 use core::ops::Range;
 
-/// Represents a region in flash.
+/// Represents a region in non-volatile memory (e.g. flash or EEPROM).
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct NvmRegion {
     /// Address range of the region
@@ -10,9 +10,9 @@ pub struct NvmRegion {
 }
 
 impl NvmRegion {
-    /// Returns the necessary information about the flash.
-    pub fn flash_info(&self) -> FlashInfo {
-        FlashInfo {
+    /// Returns the necessary information about the NVM.
+    pub fn nvm_info(&self) -> NvmInfo {
+        NvmInfo {
             rom_start: self.range.start,
         }
     }
@@ -74,7 +74,7 @@ pub struct PageInfo {
 
 /// Holds information about the entire flash.
 #[derive(Debug, Copy, Clone)]
-pub struct FlashInfo {
+pub struct NvmInfo {
     pub rom_start: u32,
 }
 

@@ -92,7 +92,7 @@ impl<'session> Flasher<'session> {
         let algo = &mut self.flash_algorithm;
 
         if address.is_none() {
-            address = Some(self.region.flash_info().rom_start);
+            address = Some(self.region.nvm_info().rom_start);
         }
 
         // Attach to memory and core.
