@@ -79,7 +79,7 @@ impl<'mmap, 'data> FlashLoader<'mmap, 'data> {
                     address += program_length as u32
                 }
                 _ => {
-                    return Err(FlashError::NoSuitableFlash {
+                    return Err(FlashError::NoSuitableNvm {
                         start: address,
                         end: address + data.len() as u32,
                     })
