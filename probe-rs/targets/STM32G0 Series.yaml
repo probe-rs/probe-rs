@@ -8,7 +8,7 @@ variants:
             start: 536870912
             end: 536879104
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 134217728
             end: 134250496
@@ -24,7 +24,7 @@ variants:
             start: 536870912
             end: 536879104
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 134217728
             end: 134283264
@@ -40,7 +40,7 @@ variants:
             start: 536870912
             end: 536879104
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 134217728
             end: 134250496
@@ -56,7 +56,7 @@ variants:
             start: 536870912
             end: 536879104
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 134217728
             end: 134250496
@@ -72,7 +72,7 @@ variants:
             start: 536870912
             end: 536879104
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 134217728
             end: 134250496
@@ -88,7 +88,7 @@ variants:
             start: 536870912
             end: 536879104
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 134217728
             end: 134283264
@@ -104,7 +104,7 @@ variants:
             start: 536870912
             end: 536879104
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 134217728
             end: 134234112
@@ -120,7 +120,7 @@ variants:
             start: 536870912
             end: 536879104
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 134217728
             end: 134234112
@@ -136,7 +136,7 @@ variants:
             start: 536870912
             end: 536879104
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 134217728
             end: 134250496
@@ -152,7 +152,7 @@ variants:
             start: 536870912
             end: 536879104
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 134217728
             end: 134250496
@@ -168,7 +168,7 @@ variants:
             start: 536870912
             end: 536879104
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 134217728
             end: 134283264
@@ -184,7 +184,7 @@ variants:
             start: 536870912
             end: 536879104
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 134217728
             end: 134283264
@@ -200,7 +200,7 @@ variants:
             start: 536870912
             end: 536879104
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 134217728
             end: 134234112
@@ -216,7 +216,7 @@ variants:
             start: 536870912
             end: 536879104
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 134217728
             end: 134250496
@@ -232,7 +232,7 @@ variants:
             start: 536870912
             end: 536879104
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 134217728
             end: 134283264
@@ -248,7 +248,7 @@ variants:
             start: 536870912
             end: 536879104
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 134217728
             end: 134234112
@@ -264,7 +264,7 @@ variants:
             start: 536870912
             end: 536879104
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 134217728
             end: 134250496
@@ -280,7 +280,7 @@ variants:
             start: 536870912
             end: 536879104
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 134217728
             end: 134283264
@@ -296,7 +296,7 @@ variants:
             start: 536870912
             end: 536879104
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 134217728
             end: 134234112
@@ -312,7 +312,7 @@ variants:
             start: 536870912
             end: 536879104
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 134217728
             end: 134250496
@@ -328,7 +328,7 @@ variants:
             start: 536870912
             end: 536879104
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 134217728
             end: 134234112
@@ -344,7 +344,7 @@ variants:
             start: 536870912
             end: 536879104
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 134217728
             end: 134234112
@@ -360,7 +360,7 @@ variants:
             start: 536870912
             end: 536879104
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 134217728
             end: 134250496
@@ -376,7 +376,7 @@ variants:
             start: 536870912
             end: 536879104
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 134217728
             end: 134250496
@@ -392,7 +392,7 @@ variants:
             start: 536870912
             end: 536879104
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 134217728
             end: 134283264
@@ -408,7 +408,7 @@ variants:
             start: 536870912
             end: 536879104
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 134217728
             end: 134283264
@@ -424,7 +424,7 @@ variants:
             start: 536870912
             end: 536879104
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 134217728
             end: 134283264
@@ -440,7 +440,7 @@ variants:
             start: 536870912
             end: 536879104
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 134217728
             end: 134250496
@@ -456,7 +456,7 @@ variants:
             start: 536870912
             end: 536879104
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 134217728
             end: 134250496
@@ -472,7 +472,7 @@ variants:
             start: 536870912
             end: 536879104
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 134217728
             end: 134283264
@@ -488,7 +488,7 @@ variants:
             start: 536870912
             end: 536879104
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 134217728
             end: 134283264
@@ -504,7 +504,7 @@ variants:
             start: 536870912
             end: 536879104
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 134217728
             end: 134250496
@@ -520,7 +520,7 @@ variants:
             start: 536870912
             end: 536879104
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 134217728
             end: 134283264
@@ -536,7 +536,7 @@ variants:
             start: 536870912
             end: 536879104
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 134217728
             end: 134250496
@@ -552,7 +552,7 @@ variants:
             start: 536870912
             end: 536879104
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 134217728
             end: 134283264
@@ -568,7 +568,7 @@ variants:
             start: 536870912
             end: 536879104
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 134217728
             end: 134250496
@@ -584,7 +584,7 @@ variants:
             start: 536870912
             end: 536879104
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 134217728
             end: 134250496
@@ -600,7 +600,7 @@ variants:
             start: 536870912
             end: 536879104
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 134217728
             end: 134250496
@@ -616,7 +616,7 @@ variants:
             start: 536870912
             end: 536879104
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 134217728
             end: 134283264
@@ -632,7 +632,7 @@ variants:
             start: 536870912
             end: 536879104
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 134217728
             end: 134283264
@@ -648,7 +648,7 @@ variants:
             start: 536870912
             end: 536879104
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 134217728
             end: 134283264
@@ -664,7 +664,7 @@ variants:
             start: 536870912
             end: 536907776
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 134217728
             end: 134348800
@@ -680,7 +680,7 @@ variants:
             start: 536870912
             end: 536907776
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 134217728
             end: 134348800
@@ -696,7 +696,7 @@ variants:
             start: 536870912
             end: 536907776
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 134217728
             end: 134348800
@@ -712,7 +712,7 @@ variants:
             start: 536870912
             end: 536907776
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 134217728
             end: 134250496
@@ -728,7 +728,7 @@ variants:
             start: 536870912
             end: 536907776
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 134217728
             end: 134250496
@@ -744,7 +744,7 @@ variants:
             start: 536870912
             end: 536907776
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 134217728
             end: 134283264
@@ -760,7 +760,7 @@ variants:
             start: 536870912
             end: 536907776
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 134217728
             end: 134283264
@@ -776,7 +776,7 @@ variants:
             start: 536870912
             end: 536907776
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 134217728
             end: 134348800
@@ -792,7 +792,7 @@ variants:
             start: 536870912
             end: 536907776
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 134217728
             end: 134348800
@@ -808,7 +808,7 @@ variants:
             start: 536870912
             end: 536907776
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 134217728
             end: 134348800
@@ -824,7 +824,7 @@ variants:
             start: 536870912
             end: 536907776
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 134217728
             end: 134250496
@@ -840,7 +840,7 @@ variants:
             start: 536870912
             end: 536907776
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 134217728
             end: 134283264
@@ -856,7 +856,7 @@ variants:
             start: 536870912
             end: 536907776
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 134217728
             end: 134283264
@@ -872,7 +872,7 @@ variants:
             start: 536870912
             end: 536907776
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 134217728
             end: 134348800
@@ -888,7 +888,7 @@ variants:
             start: 536870912
             end: 536907776
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 134217728
             end: 134348800
@@ -904,7 +904,7 @@ variants:
             start: 536870912
             end: 536907776
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 134217728
             end: 134250496
@@ -920,7 +920,7 @@ variants:
             start: 536870912
             end: 536907776
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 134217728
             end: 134250496
@@ -936,7 +936,7 @@ variants:
             start: 536870912
             end: 536907776
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 134217728
             end: 134283264
@@ -952,7 +952,7 @@ variants:
             start: 536870912
             end: 536907776
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 134217728
             end: 134283264
@@ -968,7 +968,7 @@ variants:
             start: 536870912
             end: 536907776
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 134217728
             end: 134283264
@@ -984,7 +984,7 @@ variants:
             start: 536870912
             end: 536907776
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 134217728
             end: 134283264
@@ -1000,7 +1000,7 @@ variants:
             start: 536870912
             end: 536907776
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 134217728
             end: 134348800
@@ -1016,7 +1016,7 @@ variants:
             start: 536870912
             end: 536907776
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 134217728
             end: 134348800
@@ -1032,7 +1032,7 @@ variants:
             start: 536870912
             end: 536907776
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 134217728
             end: 134348800
@@ -1048,7 +1048,7 @@ variants:
             start: 536870912
             end: 536907776
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 134217728
             end: 134348800
@@ -1064,7 +1064,7 @@ variants:
             start: 536870912
             end: 536907776
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 134217728
             end: 134250496
@@ -1080,7 +1080,7 @@ variants:
             start: 536870912
             end: 536907776
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 134217728
             end: 134283264
@@ -1096,7 +1096,7 @@ variants:
             start: 536870912
             end: 536907776
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 134217728
             end: 134348800
@@ -1112,7 +1112,7 @@ variants:
             start: 536870912
             end: 536907776
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 134217728
             end: 134348800
@@ -1128,7 +1128,7 @@ variants:
             start: 536870912
             end: 536907776
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 134217728
             end: 134348800
@@ -1144,7 +1144,7 @@ variants:
             start: 536870912
             end: 536907776
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 134217728
             end: 134348800
@@ -1160,7 +1160,7 @@ variants:
             start: 536870912
             end: 536907776
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 134217728
             end: 134348800
@@ -1176,7 +1176,7 @@ variants:
             start: 536870912
             end: 536907776
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 134217728
             end: 134348800
@@ -1192,7 +1192,7 @@ variants:
             start: 536870912
             end: 536907776
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 134217728
             end: 134348800
@@ -1208,7 +1208,7 @@ variants:
             start: 536870912
             end: 536907776
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 134217728
             end: 134348800
@@ -1224,7 +1224,7 @@ variants:
             start: 536870912
             end: 536907776
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 134217728
             end: 134348800
@@ -1240,7 +1240,7 @@ variants:
             start: 536870912
             end: 536907776
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 134217728
             end: 134348800
@@ -1256,7 +1256,7 @@ variants:
             start: 536870912
             end: 536907776
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 134217728
             end: 134348800
@@ -1272,7 +1272,7 @@ variants:
             start: 536870912
             end: 536907776
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 134217728
             end: 134348800
@@ -1288,7 +1288,7 @@ variants:
             start: 536870912
             end: 536907776
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 134217728
             end: 134348800
