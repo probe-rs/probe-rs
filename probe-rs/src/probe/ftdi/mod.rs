@@ -439,7 +439,8 @@ impl DebugProbe for FtdiProbe {
             .attach()
             .map_err(|e| DebugProbeError::ProbeSpecific(Box::new(e)))?;
 
-        let taps = selfadapter
+        let taps = self
+            .adapter
             .scan()
             .map_err(|e| DebugProbeError::ProbeSpecific(Box::new(e)))?;
         if taps.is_empty() {
