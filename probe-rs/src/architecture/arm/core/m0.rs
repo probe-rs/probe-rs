@@ -1,4 +1,6 @@
-use super::{reset_catch_clear, reset_catch_set, CortexState, Dfsr, ARM_REGISTER_FILE};
+use super::{
+    reset_catch_clear, reset_catch_set, reset_system, CortexState, Dfsr, ARM_REGISTER_FILE,
+};
 use crate::core::{
     Architecture, CoreInformation, CoreInterface, CoreRegister, CoreRegisterAddress,
     RegisterDescription, RegisterFile, RegisterKind,
@@ -420,23 +422,13 @@ impl<'probe> CoreInterface for M0<'probe> {
     }
 
     fn reset(&mut self) -> Result<(), Error> {
-        // Set THE AIRCR.SYSRESETREQ control bit to 1 to request a reset. (ARM V6 ARM, B1.5.16)
-
-        let mut value = Aircr(0);
-        value.vectkey();
-        value.set_sysresetreq(true);
-
-        self.memory.write_word_32(Aircr::ADDRESS, value.into())?;
-
-        Ok(())
+        reset_system(self)
     }
 
     fn reset_and_halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
         reset_catch_set(self)?;
 
-        self.reset()?;
-
-        self.wait_for_core_halted(timeout)?;
+        reset_system(self)?;
 
         // Update core status
         let _ = self.status()?;

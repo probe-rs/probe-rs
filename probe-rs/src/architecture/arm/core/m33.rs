@@ -16,7 +16,9 @@ use crate::{architecture::arm::core::register, MemoryInterface};
 
 use bitfield::bitfield;
 
-use super::{reset_catch_clear, reset_catch_set, CortexState, Dfsr, ARM_REGISTER_FILE};
+use super::{
+    reset_catch_clear, reset_catch_set, reset_system, CortexState, Dfsr, ARM_REGISTER_FILE,
+};
 use std::{
     mem::size_of,
     time::{Duration, Instant},
@@ -36,6 +38,8 @@ impl<'probe> M33<'probe> {
         if !state.initialized() {
             // determine current state
             let dhcsr = Dhcsr(memory.read_word_32(Dhcsr::ADDRESS)?);
+
+            log::debug!("State when connecting: {:x?}", dhcsr);
 
             let core_state = if dhcsr.s_sleep() {
                 CoreStatus::Sleeping
@@ -130,15 +134,7 @@ impl<'probe> CoreInterface for M33<'probe> {
     }
 
     fn reset(&mut self) -> Result<(), Error> {
-        // Set THE AIRCR.SYSRESETREQ control bit to 1 to request a reset. (ARM V6 ARM, B1.5.16)
-
-        let mut value = Aircr(0);
-        value.vectkey();
-        value.set_sysresetreq(true);
-
-        self.memory.write_word_32(Aircr::ADDRESS, value.into())?;
-
-        Ok(())
+        reset_system(self)
     }
 
     fn reset_and_halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
@@ -146,9 +142,7 @@ impl<'probe> CoreInterface for M33<'probe> {
         // This will halt the core after reset.
         reset_catch_set(self)?;
 
-        self.reset()?;
-
-        self.wait_for_core_halted(timeout)?;
+        reset_system(self)?;
 
         // Update core status
         let _ = self.status()?;
