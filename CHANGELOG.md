@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [v0.1.8] - 2020-12-11
+
+### Added
+
+- [#119] `probe-run` has gained a `--connect-under-reset` command line flag. When used, the probe drives the NRST pin of the microcontroller to put it in reset state before establishing a SWD / JTAG connection with the device.
+
+[#119]: https://github.com/knurling-rs/probe-run/pull/119
+
+### Fixed
+
+- [#117] wait for breakpoint before switching RTT from non-blocking mode to blocking mode.
+
+[#117]: https://github.com/knurling-rs/probe-run/pull/117
+
 ## [v0.1.7] - 2020-11-26
 
 ### Fixed
@@ -134,7 +148,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 Initial release
 
-[Unreleased]: https://github.com/knurling-rs/probe-run/compare/v0.1.7...main
+[Unreleased]: https://github.com/knurling-rs/probe-run/compare/v0.1.8...main
+[v0.1.8]: https://github.com/knurling-rs/probe-run/compare/v0.1.7...v0.1.8
 [v0.1.7]: https://github.com/knurling-rs/probe-run/compare/v0.1.6...v0.1.7
 [v0.1.6]: https://github.com/knurling-rs/probe-run/compare/v0.1.5...v0.1.6
 [v0.1.5]: https://github.com/knurling-rs/probe-run/compare/v0.1.4...v0.1.5
