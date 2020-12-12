@@ -568,9 +568,19 @@ impl AsMut<dyn DebugProbe> for FtdiProbe {
     }
 }
 
+/// (VendorId, ProductId)
+static FTDI_COMPAT_DEVICE_IDS: &[(u16, u16)] = &[
+    (0x0403, 0x6010),
+    (0x0403, 0x6014)
+];
+
 fn get_device_info(device: &rusb::Device<rusb::Context>) -> Option<DebugProbeInfo> {
     let d_desc = device.device_descriptor().ok()?;
-    if d_desc.vendor_id() != 0x0403 || d_desc.product_id() != 0x6010 {
+
+    if !FTDI_COMPAT_DEVICE_IDS
+        .iter()
+        .any(|(vid, pid)| d_desc.vendor_id() == *vid && d_desc.product_id() == *pid)
+    {
         return None;
     }
 
