@@ -569,10 +569,7 @@ impl AsMut<dyn DebugProbe> for FtdiProbe {
 }
 
 /// (VendorId, ProductId)
-static FTDI_COMPAT_DEVICE_IDS: &[(u16, u16)] = &[
-    (0x0403, 0x6010),
-    (0x0403, 0x6014)
-];
+static FTDI_COMPAT_DEVICE_IDS: &[(u16, u16)] = &[(0x0403, 0x6010), (0x0403, 0x6014)];
 
 fn get_device_info(device: &rusb::Device<rusb::Context>) -> Option<DebugProbeInfo> {
     let d_desc = device.device_descriptor().ok()?;
