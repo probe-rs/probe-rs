@@ -30,7 +30,7 @@ struct Opt {
         help = "Use this flag to override the default GDB connection string (localhost:1337)."
     )]
     gdb_connection_string: Option<String>,
-    #[structopt(name = "list", long = "list", help = "list available debug probes")]
+    #[structopt(name = "list-probes", long = "list-probes", help = "list available debug probes")]
     list: bool,
     #[structopt(
         name = "debug probe index",
@@ -59,7 +59,7 @@ pub fn open_probe(
     let device = match index {
         Some(index) => available_probes
             .get(index)
-            .ok_or_else(|| failure::err_msg("Unable to open the specified probe. Use the '--list' flag to see all available probes."))?,
+            .ok_or_else(|| failure::err_msg("Unable to open the specified probe. Use the '--list-probes' flag to see all available probes."))?,
         None => {
             // open the default probe, if only one probe was found
             match available_probes.len() {
