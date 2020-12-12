@@ -6,7 +6,7 @@ use std::{
 };
 use structopt::StructOpt;
 
-use probe_rs::{config::TargetSelector, Probe};
+use probe_rs::{config::TargetSelector, DebugProbeInfo, Probe};
 
 #[derive(Debug, StructOpt)]
 struct Opt {
@@ -30,6 +30,15 @@ struct Opt {
         help = "Use this flag to override the default GDB connection string (localhost:1337)."
     )]
     gdb_connection_string: Option<String>,
+    #[structopt(name = "list", long = "list", help = "list available debug probes")]
+    list: bool,
+    #[structopt(
+        name = "debug probe index",
+        long = "probe-index",
+        short = "n",
+        help = "select index of debug probe to use"
+    )]
+    probe_index: Option<usize>,
 }
 
 fn main() {
@@ -43,19 +52,20 @@ fn main() {
     }
 }
 
-pub fn open_probe(index: Option<usize>) -> Result<Probe, failure::Error> {
-    let available_probes = Probe::list_all();
-
+pub fn open_probe(
+    index: Option<usize>,
+    available_probes: &[DebugProbeInfo],
+) -> Result<Probe, failure::Error> {
     let device = match index {
         Some(index) => available_probes
             .get(index)
-            .ok_or_else(|| failure::err_msg("Unable to open the specified probe. Use the 'list' subcommand to see all available probes."))?,
+            .ok_or_else(|| failure::err_msg("Unable to open the specified probe. Use the '--list' flag to see all available probes."))?,
         None => {
             // open the default probe, if only one probe was found
-            if available_probes.len() == 1 {
-                &available_probes[0]
-            } else {
-                return Err(failure::err_msg("Multiple probes found. Please specify which probe to use using the -n parameter."));
+            match available_probes.len() {
+                1 => &available_probes[0],
+                0 => return Err(failure::err_msg("No probe found.")),
+                _ => return Err(failure::err_msg("Multiple probes found. Please specify which probe to use using the -n option.")),
             }
         }
     };
@@ -69,7 +79,17 @@ fn main_try() -> Result<(), failure::Error> {
     // Get commandline options.
     let opt = Opt::from_iter(std::env::args());
 
-    let probe = open_probe(None)?;
+    let available_probes = Probe::list_all();
+
+    if opt.list {
+        println!("Available probes:");
+        for (idx, probe) in available_probes.iter().enumerate() {
+            println!("[{}]: {:?}", idx, probe);
+        }
+        return Ok(());
+    }
+
+    let probe = open_probe(opt.probe_index, &available_probes)?;
 
     let target_selector = match opt.chip {
         Some(identifier) => identifier.into(),
