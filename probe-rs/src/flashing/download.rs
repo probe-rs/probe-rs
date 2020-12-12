@@ -107,9 +107,14 @@ pub fn download_file_with_options(
     };
     let mut buffer = vec![];
     let mut buffer_vec = vec![];
-    // IMPORTANT: Change this to an actual memory map of a real chip
+
     let memory_map = session.memory_map().to_vec();
-    let mut loader = FlashLoader::new(&memory_map, options.keep_unwritten_bytes);
+    let flash_algorithms = session.flash_algorithms().to_vec();
+    let mut loader = FlashLoader::new(
+        &memory_map,
+        &flash_algorithms,
+        options.keep_unwritten_bytes,
+    );
 
     match format {
         Format::Bin(options) => download_bin(&mut buffer, &mut file, &mut loader, options),
@@ -131,7 +136,7 @@ pub fn download_file_with_options(
 fn download_bin<'buffer, T: Read + Seek>(
     buffer: &'buffer mut Vec<u8>,
     file: &'buffer mut T,
-    loader: &mut FlashLoader<'_, 'buffer>,
+    loader: &mut FlashLoader<'_, '_, 'buffer>,
     options: BinOptions,
 ) -> Result<(), FileDownloadError> {
     // Skip the specified bytes.
@@ -157,7 +162,7 @@ fn download_bin<'buffer, T: Read + Seek>(
 fn download_hex<'buffer, T: Read + Seek>(
     buffer: &'buffer mut Vec<(u32, Vec<u8>)>,
     file: &mut T,
-    loader: &mut FlashLoader<'_, 'buffer>,
+    loader: &mut FlashLoader<'_, '_, 'buffer>,
 ) -> Result<(), FileDownloadError> {
     let mut _extended_segment_address = 0;
     let mut extended_linear_address = 0;
@@ -193,7 +198,7 @@ fn download_hex<'buffer, T: Read + Seek>(
 fn download_elf<'buffer, T: Read + Seek>(
     buffer: &'buffer mut Vec<u8>,
     file: &'buffer mut T,
-    loader: &mut FlashLoader<'_, 'buffer>,
+    loader: &mut FlashLoader<'_, '_, 'buffer>,
 ) -> Result<(), FileDownloadError> {
     use goblin::elf::program_header::*;
 

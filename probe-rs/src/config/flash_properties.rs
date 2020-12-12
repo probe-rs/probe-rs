@@ -1,11 +1,12 @@
 use super::memory::SectorDescription;
 use std::{borrow::Cow, ops::Range};
 
-/// Properties of flash memory, which
-/// are used when programming Flash memory.
+/// Properties of flash memory, which are used when programming Flash memory.
 ///
-/// These values are read from the
-/// YAML target description files.
+/// These values are read from the YAML target description files,
+/// and are part of the [`FlashAlgorithm`] struct.
+///
+/// [`FlashAlgorithm`]: crate::config::FlashAlgorithm
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FlashProperties {
     /// The range of the device flash.

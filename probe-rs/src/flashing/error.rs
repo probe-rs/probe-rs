@@ -2,8 +2,9 @@
 
 use thiserror::Error;
 
-use crate::config::NvmRegion;
 use crate::error;
+
+use std::ops::Range;
 
 /// Describes any error that happened during the or in preparation for the flashing procedure.
 #[derive(Error, Debug)]
@@ -20,8 +21,8 @@ pub enum FlashError {
     Memory(#[source] error::Error),
     #[error("Something during the interaction with the core went wrong")]
     Core(#[source] error::Error),
-    #[error("{address} is not contained in {region:?}")]
-    AddressNotInRegion { address: u32, region: NvmRegion },
+    #[error("{address} is not contained in region {region:?}")]
+    AddressNotInRegion { address: u32, region: Range<u32> },
     #[error("Flash algorithm length is not 32 bit aligned.")]
     InvalidFlashAlgorithmLength,
     #[error(
@@ -36,8 +37,8 @@ pub enum FlashError {
     DataOverlap(u32),
     #[error("Address {0:#010x} is not a valid address in the flash area.")]
     InvalidFlashAddress(u32),
-    #[error("No NVM memory contains the entire requested memory range {start:#08X}..{end:#08X}.")]
-    NoSuitableNvm { start: u32, end: u32 },
+    #[error("No memory region contains the entire requested memory range {start:#08X}..{end:#08X}.")]
+    NoSuitableMemoryRegion { start: u32, end: u32 },
     #[error("Trying to write flash, but no suitable flash loader algorithm is linked to the given target information.")]
     NoFlashLoaderAlgorithmAttached,
     #[error(transparent)]

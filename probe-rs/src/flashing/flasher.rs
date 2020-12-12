@@ -1,6 +1,6 @@
 use super::FlashProgress;
 use super::{FlashBuilder, FlashError, FlashFill, FlashLayout, FlashPage};
-use crate::config::{FlashAlgorithm, MemoryRange, NvmRegion};
+use crate::config::{FlashAlgorithm, MemoryRange};
 use crate::memory::MemoryInterface;
 use crate::{
     core::{Architecture, RegisterFile},
@@ -8,7 +8,7 @@ use crate::{
     Core, CoreRegisterAddress,
 };
 use anyhow::{anyhow, Result};
-use std::{fmt::Debug, time::Duration};
+use std::{fmt::Debug, ops::Range, time::Duration};
 
 pub(super) trait Operation {
     fn operation() -> u32;
@@ -57,7 +57,7 @@ impl Operation for Verify {
 pub struct Flasher<'session> {
     session: &'session mut Session,
     flash_algorithm: FlashAlgorithm,
-    region: NvmRegion,
+    region: Range<u32>,
     double_buffering_supported: bool,
 }
 
@@ -65,7 +65,7 @@ impl<'session> Flasher<'session> {
     pub(super) fn new(
         session: &'session mut Session,
         flash_algorithm: FlashAlgorithm,
-        region: NvmRegion,
+        region: Range<u32>,
     ) -> Self {
         Self {
             session,
@@ -92,7 +92,7 @@ impl<'session> Flasher<'session> {
         let algo = &mut self.flash_algorithm;
 
         if address.is_none() {
-            address = Some(self.region.nvm_info().rom_start);
+            address = Some(self.region.start);
         }
 
         // Attach to memory and core.
@@ -211,7 +211,6 @@ impl<'session> Flasher<'session> {
     ) -> Result<()> {
         if !self
             .region
-            .range
             .contains_range(&(address..address + data.len() as u32))
         {
             return Err(anyhow!(FlashError::AddressNotInRegion {
