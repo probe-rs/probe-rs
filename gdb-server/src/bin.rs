@@ -6,7 +6,7 @@ use std::{
 };
 use structopt::StructOpt;
 
-use probe_rs::{config::TargetSelector, DebugProbeInfo, Probe};
+use probe_rs::{config::TargetSelector, DebugProbeInfo, DebugProbeSelector, Probe};
 
 #[derive(Debug, StructOpt)]
 struct Opt {
@@ -30,7 +30,11 @@ struct Opt {
         help = "Use this flag to override the default GDB connection string (localhost:1337)."
     )]
     gdb_connection_string: Option<String>,
-    #[structopt(name = "list-probes", long = "list-probes", help = "list available debug probes")]
+    #[structopt(
+        name = "list-probes",
+        long = "list-probes",
+        help = "list available debug probes"
+    )]
     list: bool,
     #[structopt(
         name = "debug probe index",
@@ -39,6 +43,13 @@ struct Opt {
         help = "select index of debug probe to use"
     )]
     probe_index: Option<usize>,
+    #[structopt(
+        long = "probe",
+        help = "Use this flag to select a specific probe in the list by vendor and product id.\n\
+        Use '--probe VID:PID' or '--probe VID:PID:Serial' if you have more than one probe with the same VID:PID.\n\
+        If there are multiple probes with the same VID:PID:Serial, you have to specify it with '--probe-index'."
+    )]
+    probe_selector: Option<DebugProbeSelector>,
 }
 
 fn main() {
@@ -79,7 +90,20 @@ fn main_try() -> Result<(), failure::Error> {
     // Get commandline options.
     let opt = Opt::from_iter(std::env::args());
 
-    let available_probes = Probe::list_all();
+    let mut available_probes = Probe::list_all();
+
+    // Only retain probes with matching probe selector
+    if let Some(selector) = opt.probe_selector {
+        available_probes.retain(|probe| {
+            probe.vendor_id == selector.vendor_id
+                && probe.product_id == selector.product_id
+                && if let Some(serial) = &selector.serial_number {
+                    probe.serial_number.as_ref() == Some(serial)
+                } else {
+                    true
+                }
+        });
+    }
 
     if opt.list {
         println!("Available probes:");
