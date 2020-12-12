@@ -203,7 +203,7 @@ pub(crate) fn get_memory_map(session: &Session) -> Option<String> {
                 region.range.start,
                 region.range.end - region.range.start
             ),
-            MemoryRegion::Flash(region) => {
+            MemoryRegion::Nvm(region) => {
                 // TODO: Use flash with block size
                 format!(
                     r#"<memory type="rom" start="{:#x}" length="{:#x}"/>\n"#,

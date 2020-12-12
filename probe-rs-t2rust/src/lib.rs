@@ -40,7 +40,7 @@ pub fn run(input_dir: impl AsRef<Path>, output_file: impl AsRef<Path>) {
         quote::quote! {
             #[allow(unused_imports)]
             use jep106::JEP106Code;
-            use crate::config::{Chip, RawFlashAlgorithm, FlashRegion, MemoryRegion, RamRegion, SectorDescription, FlashProperties};
+            use crate::config::{Chip, RawFlashAlgorithm, NvmRegion, MemoryRegion, RamRegion, SectorDescription, FlashProperties};
 
             use std::borrow::Cow;
         }
@@ -278,7 +278,7 @@ fn extract_memory_map(chip: &serde_yaml::Value) -> Vec<proc_macro2::TokenStream>
                             region.get("is_boot_memory").unwrap().as_bool().unwrap();
 
                         quote::quote! {
-                            MemoryRegion::Flash(FlashRegion {
+                            MemoryRegion::Nvm(NvmRegion {
                                 range: #start..#end,
                                 is_boot_memory: #is_boot_memory,
                             })

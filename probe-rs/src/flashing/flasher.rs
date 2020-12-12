@@ -1,6 +1,6 @@
 use super::FlashProgress;
 use super::{FlashBuilder, FlashError, FlashFill, FlashLayout, FlashPage};
-use crate::config::{FlashAlgorithm, FlashRegion, MemoryRange};
+use crate::config::{FlashAlgorithm, MemoryRange, NvmRegion};
 use crate::memory::MemoryInterface;
 use crate::{
     core::{Architecture, RegisterFile},
@@ -57,7 +57,7 @@ impl Operation for Verify {
 pub struct Flasher<'session> {
     session: &'session mut Session,
     flash_algorithm: FlashAlgorithm,
-    region: FlashRegion,
+    region: NvmRegion,
     double_buffering_supported: bool,
 }
 
@@ -65,7 +65,7 @@ impl<'session> Flasher<'session> {
     pub(super) fn new(
         session: &'session mut Session,
         flash_algorithm: FlashAlgorithm,
-        region: FlashRegion,
+        region: NvmRegion,
     ) -> Self {
         Self {
             session,
@@ -92,7 +92,7 @@ impl<'session> Flasher<'session> {
         let algo = &mut self.flash_algorithm;
 
         if address.is_none() {
-            address = Some(self.region.flash_info().rom_start);
+            address = Some(self.region.nvm_info().rom_start);
         }
 
         // Attach to memory and core.

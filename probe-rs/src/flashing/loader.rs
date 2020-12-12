@@ -1,5 +1,5 @@
 use super::{FlashBuilder, FlashError, FlashProgress, Flasher};
-use crate::config::{FlashRegion, MemoryRange, MemoryRegion};
+use crate::config::{MemoryRange, MemoryRegion, NvmRegion};
 use crate::memory::MemoryInterface;
 use crate::session::Session;
 use anyhow::anyhow;
@@ -17,7 +17,7 @@ struct RamWrite<'data> {
 /// Region crossing data chunks are allowed as long as the regions are contiguous.
 pub(super) struct FlashLoader<'mmap, 'data> {
     memory_map: &'mmap [MemoryRegion],
-    builders: HashMap<FlashRegion, FlashBuilder<'data>>,
+    builders: HashMap<NvmRegion, FlashBuilder<'data>>,
     ram_write: Vec<RamWrite<'data>>,
     keep_unwritten: bool,
 }
@@ -46,7 +46,7 @@ impl<'mmap, 'data> FlashLoader<'mmap, 'data> {
             let possible_region = Self::get_region_for_address(self.memory_map, address);
             // If we found a corresponding region, create a builder.
             match possible_region {
-                Some(MemoryRegion::Flash(region)) => {
+                Some(MemoryRegion::Nvm(region)) => {
                     // Get our builder instance.
                     if !self.builders.contains_key(region) {
                         self.builders.insert(region.clone(), FlashBuilder::new());
@@ -79,7 +79,7 @@ impl<'mmap, 'data> FlashLoader<'mmap, 'data> {
                     address += program_length as u32
                 }
                 _ => {
-                    return Err(FlashError::NoSuitableFlash {
+                    return Err(FlashError::NoSuitableNvm {
                         start: address,
                         end: address + data.len() as u32,
                     })
@@ -96,7 +96,7 @@ impl<'mmap, 'data> FlashLoader<'mmap, 'data> {
         for region in memory_map {
             let r = match region {
                 MemoryRegion::Ram(r) => r.range.clone(),
-                MemoryRegion::Flash(r) => r.range.clone(),
+                MemoryRegion::Nvm(r) => r.range.clone(),
                 MemoryRegion::Generic(r) => r.range.clone(),
             };
             if r.contains(&address) {
