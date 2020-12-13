@@ -5,7 +5,10 @@ pub(crate) mod jlink;
 pub(crate) mod stlink;
 
 use crate::architecture::{
-    arm::{communication_interface::ArmProbeInterface, DAPAccess, PortType, SwoAccess},
+    arm::{
+        ap::memory_ap::mock::MockMemoryAP, communication_interface::ArmProbeInterface,
+        ApInformation, DAPAccess, PortType, SwoAccess,
+    },
     riscv::communication_interface::RiscvCommunicationInterface,
 };
 use crate::config::{RegistryError, TargetSelector};
@@ -85,8 +88,6 @@ pub enum DebugProbeError {
     Timeout,
     #[error("An error specific to the selected architecture occured")]
     ArchitectureSpecific(#[source] Box<dyn std::error::Error + Send + Sync>),
-    #[error("The connected probe does not support the interface '{0}'")]
-    InterfaceNotAvailable(&'static str),
     #[error("An error occured while working with the registry occured")]
     Registry(#[from] RegistryError),
     #[error("Tried to close interface while it was still in use")]
@@ -620,8 +621,20 @@ impl From<&DebugProbeInfo> for DebugProbeSelector {
     }
 }
 
-#[derive(Default, Debug)]
-pub struct FakeProbe;
+#[derive(Debug)]
+pub struct FakeProbe {
+    protocol: WireProtocol,
+    speed: u32,
+}
+
+impl FakeProbe {
+    pub fn new() -> Self {
+        FakeProbe {
+            protocol: WireProtocol::Swd,
+            speed: 1000,
+        }
+    }
+}
 
 impl DebugProbe for FakeProbe {
     fn new_from_selector(
@@ -630,9 +643,7 @@ impl DebugProbe for FakeProbe {
     where
         Self: Sized,
     {
-        Err(DebugProbeError::ProbeCouldNotBeCreated(
-            ProbeCreationError::Other("This is a fake probe."),
-        ))
+        Ok(Box::new(FakeProbe::new()))
     }
 
     /// Get human readable name for the probe
@@ -641,19 +652,23 @@ impl DebugProbe for FakeProbe {
     }
 
     fn speed(&self) -> u32 {
-        unimplemented!()
+        self.speed
     }
 
-    fn set_speed(&mut self, _speed_khz: u32) -> Result<u32, DebugProbeError> {
-        unimplemented!()
+    fn set_speed(&mut self, speed_khz: u32) -> Result<u32, DebugProbeError> {
+        self.speed = speed_khz;
+
+        Ok(speed_khz)
     }
 
     fn attach(&mut self) -> Result<(), DebugProbeError> {
-        unimplemented!()
+        Ok(())
     }
 
-    fn select_protocol(&mut self, _protocol: WireProtocol) -> Result<(), DebugProbeError> {
-        unimplemented!()
+    fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError> {
+        self.protocol = protocol;
+
+        Ok(())
     }
 
     /// Leave debug mode
@@ -672,6 +687,16 @@ impl DebugProbe for FakeProbe {
 
     fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
         unimplemented!()
+    }
+
+    fn has_arm_interface(&self) -> bool {
+        true
+    }
+
+    fn get_arm_interface<'probe>(
+        self: Box<Self>,
+    ) -> Result<Option<Box<dyn ArmProbeInterface + 'probe>>, DebugProbeError> {
+        Ok(Some(Box::new(FakeArmInterface::new(self))))
     }
 }
 
@@ -705,6 +730,76 @@ impl<'a> AsRef<dyn DebugProbe + 'a> for FakeProbe {
 impl<'a> AsMut<dyn DebugProbe + 'a> for FakeProbe {
     fn as_mut(&mut self) -> &mut (dyn DebugProbe + 'a) {
         self
+    }
+}
+
+#[derive(Debug)]
+struct FakeArmInterface {
+    probe: Box<FakeProbe>,
+
+    memory_ap: MockMemoryAP,
+}
+
+impl FakeArmInterface {
+    fn new(probe: Box<FakeProbe>) -> Self {
+        let memory_ap = MockMemoryAP::with_pattern();
+        FakeArmInterface { probe, memory_ap }
+    }
+}
+
+impl ArmProbeInterface for FakeArmInterface {
+    fn memory_interface(
+        &mut self,
+        access_port: crate::architecture::arm::ap::MemoryAP,
+    ) -> Result<crate::Memory<'_>, Error> {
+        todo!()
+    }
+
+    fn ap_information(
+        &self,
+        access_port: crate::architecture::arm::ap::GenericAP,
+    ) -> Option<&crate::architecture::arm::ApInformation> {
+        todo!()
+    }
+
+    fn num_access_ports(&self) -> usize {
+        1
+    }
+
+    fn read_from_rom_table(
+        &mut self,
+    ) -> Result<Option<crate::architecture::arm::ArmChipInfo>, Error> {
+        todo!()
+    }
+
+    fn close(self: Box<Self>) -> Probe {
+        todo!()
+    }
+}
+
+impl AsMut<(dyn DebugProbe + 'static)> for FakeArmInterface {
+    fn as_mut(&mut self) -> &mut (dyn DebugProbe + 'static) {
+        todo!()
+    }
+}
+
+impl AsRef<(dyn DebugProbe + 'static)> for FakeArmInterface {
+    fn as_ref(&self) -> &(dyn DebugProbe + 'static) {
+        todo!()
+    }
+}
+
+impl SwoAccess for FakeArmInterface {
+    fn enable_swo(&mut self, config: &crate::architecture::arm::SwoConfig) -> Result<(), Error> {
+        todo!()
+    }
+
+    fn disable_swo(&mut self) -> Result<(), Error> {
+        todo!()
+    }
+
+    fn read_swo_timeout(&mut self, timeout: std::time::Duration) -> Result<Vec<u8>, Error> {
+        todo!()
     }
 }
 

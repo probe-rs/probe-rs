@@ -93,3 +93,6 @@ pub use crate::probe::{
     Probe, WireProtocol,
 };
 pub use crate::session::Session;
+
+// TODO: Hide behind feature
+pub use crate::probe::FakeProbe;

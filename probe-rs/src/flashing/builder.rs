@@ -237,7 +237,7 @@ impl<'data> FlashBuilder<'data> {
         {
             // If it already is present in the list, this indicates a bug in the flashing code.
             Ok(_) => panic!(
-                        "Error preparing data to flash. Address {0:#010x} is not a valid address in the flash area. This is a bug, please report it.",
+                        "Error preparing data to flash. Address {0:#010x} was already written earlier. This is a bug, please report it.",
                         address),
             // Add it to the list if it is not present yet.
             Err(position) => {

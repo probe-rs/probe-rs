@@ -95,16 +95,24 @@ impl Session {
 
         let mut session = match target.architecture() {
             Architecture::Arm => {
+                if !probe.has_arm_interface() {
+                    return Err(anyhow!(
+                        "Debugging ARM based chips is not supported with the connected probe."
+                    )
+                    .into());
+                }
+
+                // This unwrap is safe, we check if the interface is available just above.
+                let interface = probe.into_arm_interface()?.unwrap();
+
                 let core = (
                     SpecificCoreState::from_core_type(target.core_type),
                     Core::create_state(0),
                 );
 
-                let interface = probe.into_arm_interface()?;
-
                 let mut session = Session {
                     target,
-                    interface: ArchitectureInterface::Arm(interface.unwrap()),
+                    interface: ArchitectureInterface::Arm(interface),
                     cores: vec![core],
                 };
 

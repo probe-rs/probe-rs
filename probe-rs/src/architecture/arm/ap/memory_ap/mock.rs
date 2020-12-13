@@ -8,6 +8,7 @@ use std::collections::HashMap;
 use std::convert::TryInto;
 use thiserror::Error;
 
+#[derive(Debug)]
 pub struct MockMemoryAP {
     pub memory: Vec<u8>,
     store: HashMap<(u8, u8), u32>,
@@ -21,7 +22,6 @@ pub enum MockMemoryError {
     UnknownRegister,
 }
 
-#[cfg(test)]
 impl MockMemoryAP {
     /// Creates a MockMemoryAP with the memory filled with a pattern where each byte is equal to its
     /// own address plus one (to avoid zeros). The pattern can be used as a canary pattern to ensure

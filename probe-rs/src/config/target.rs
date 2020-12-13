@@ -82,6 +82,10 @@ impl Target {
             CoreType::Riscv => Architecture::Riscv,
         }
     }
+
+    pub fn source(&self) -> &TargetDescriptionSource {
+        &self.source
+    }
 }
 
 /// Selector for the debug target.

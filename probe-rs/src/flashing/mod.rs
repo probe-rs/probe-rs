@@ -22,3 +22,5 @@ pub use flasher::*;
 use loader::*;
 pub use progress::*;
 pub use visualizer::*;
+
+pub use loader::FlashLoader;

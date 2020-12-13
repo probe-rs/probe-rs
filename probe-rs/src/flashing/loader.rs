@@ -1,4 +1,4 @@
-use super::{FlashBuilder, FlashError, FlashProgress, Flasher};
+use super::{ExtractedFlashData, FlashBuilder, FlashError, FlashProgress, Flasher};
 use crate::config::{FlashRegion, MemoryRange, MemoryRegion, TargetDescriptionSource};
 use crate::session::Session;
 use std::collections::HashMap;
@@ -8,7 +8,7 @@ use std::collections::HashMap;
 /// Once you are done adding all your data, use `commit()` to flash the data.
 /// The flash loader will make sure to select the appropriate flash region for the right data chunks.
 /// Region crossing data chunks are allowed as long as the regions are contiguous.
-pub(super) struct FlashLoader<'mmap, 'data> {
+pub struct FlashLoader<'mmap, 'data> {
     memory_map: &'mmap [MemoryRegion],
     builders: HashMap<FlashRegion, FlashBuilder<'data>>,
     keep_unwritten: bool,
@@ -19,7 +19,7 @@ pub(super) struct FlashLoader<'mmap, 'data> {
 }
 
 impl<'mmap, 'data> FlashLoader<'mmap, 'data> {
-    pub(super) fn new(
+    pub fn new(
         memory_map: &'mmap [MemoryRegion],
         keep_unwritten: bool,
         source: TargetDescriptionSource,
@@ -31,19 +31,31 @@ impl<'mmap, 'data> FlashLoader<'mmap, 'data> {
             source,
         }
     }
+
+    pub fn add_section(&mut self, data: ExtractedFlashData<'data>) -> Result<(), FlashError> {
+        log::debug!("Adding data: {:x?}", data);
+
+        self.add_data_internal(data)
+    }
+
     /// Stages a chunk of data to be programmed.
     ///
     /// The chunk can cross flash boundaries as long as one flash region connects to another flash region.
-    pub(super) fn add_data(
-        &mut self,
-        mut address: u32,
-        data: &'data [u8],
-    ) -> Result<(), FlashError> {
-        let size = data.len();
-        let mut remaining = size;
-        while remaining > 0 {
+    pub fn add_data(&mut self, address: u32, data: &'data [u8]) -> Result<(), FlashError> {
+        let data = ExtractedFlashData::from_unknown_source(address, data);
+        self.add_data_internal(data)
+    }
+
+    fn add_data_internal(&mut self, mut data: ExtractedFlashData<'data>) -> Result<(), FlashError> {
+        log::debug!(
+            "Adding data at address {:#010x} with size {} bytes",
+            data.address(),
+            data.len()
+        );
+
+        while data.len() > 0 {
             // Get the flash region in with this chunk of data starts.
-            let possible_region = Self::get_region_for_address(self.memory_map, address);
+            let possible_region = Self::get_region_for_address(self.memory_map, data.address());
             // If we found a corresponding region, create a builder.
             if let Some(MemoryRegion::Flash(region)) = possible_region {
                 // Get our builder instance.
@@ -53,20 +65,18 @@ impl<'mmap, 'data> FlashLoader<'mmap, 'data> {
 
                 // Determine how much more data can be contained by this region.
                 let program_length =
-                    usize::min(remaining, (region.range.end - address + 1) as usize);
+                    usize::min(data.len(), (region.range.end - data.address() + 1) as usize);
+
+                let programmed_data = data.split_at_beginning(program_length);
 
                 // Add as much data to the builder as can be contained by this region.
                 self.builders
                     .get_mut(&region)
-                    .map(|r| r.add_data(address, &data[size - remaining..program_length]));
-
-                // Advance the cursors.
-                remaining -= program_length;
-                address += program_length as u32;
+                    .map(|r| r.add_data(programmed_data.address(), programmed_data.data()));
             } else {
                 return Err(FlashError::NoSuitableFlash {
-                    start: address,
-                    end: address + data.len() as u32,
+                    start: data.address(),
+                    end: data.address() + data.data().len() as u32,
                     description_source: self.source.clone(),
                 });
             }
