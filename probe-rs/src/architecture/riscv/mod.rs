@@ -33,6 +33,28 @@ impl<'probe> Riscv32<'probe> {
     }
 
     fn read_csr(&mut self, address: u16) -> Result<u32, RiscvError> {
+        // We need to sue the "Access Register Command",
+        // which has cmdtype 0
+
+        // write needs to be clear
+        // transfer has to be set
+
+        log::debug!("Reading CSR {:#x}", address);
+
+        // always try to read register with abstract command, fallback to program buffer,
+        // if not supported
+        match self.interface.abstract_cmd_register_read(address) {
+            Ok(v) => Ok(v),
+            Err(RiscvError::AbstractCommand(AbstractCommandErrorKind::NotSupported)) => {
+                log::debug!("Could not read core register {:#x} with abstract command, falling back to program buffer", address);
+                let reg_value = self.read_csr_progbuf(address)?;
+                Ok(reg_value)
+            }
+            Err(e) => Err(e.into()),
+        }
+    }
+
+    fn read_csr_progbuf(&mut self, address: u16) -> Result<u32, RiscvError> {
         log::debug!("Reading CSR {:#04x}", address);
 
         let s0 = self.interface.abstract_cmd_register_read(&register::S0)?;
@@ -69,6 +91,20 @@ impl<'probe> Riscv32<'probe> {
     }
 
     fn write_csr(&mut self, address: u16, value: u32) -> Result<(), RiscvError> {
+        log::debug!("Writing CSR {:#x}", address);
+
+        match self.interface.abstract_cmd_register_write(address, value) {
+            Ok(_) => Ok(()),
+            Err(RiscvError::AbstractCommand(AbstractCommandErrorKind::NotSupported)) => {
+                log::debug!("Could not write core register {:#x} with abstract command, falling back to program buffer", address);
+                self.write_csr_progbuf(address, value)?;
+                Ok(())
+            }
+            Err(e) => Err(e.into()),
+        }
+    }
+
+    fn write_csr_progbuf(&mut self, address: u16, value: u32) -> Result<(), RiscvError> {
         log::debug!("Writing CSR {:#04x}={}", address, value);
 
         // Backup register s0
@@ -156,7 +192,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
 
         self.interface.write_dm_register(dmcontrol)?;
 
-        let pc = self.read_core_reg(CoreRegisterAddress(0x7b1))?;
+        let pc = self.read_core_reg(register::RISCV_REGISTERS.program_counter.address)?;
 
         Ok(CoreInformation { pc })
     }
@@ -334,32 +370,11 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
     }
 
     fn read_core_reg(&mut self, address: crate::CoreRegisterAddress) -> Result<u32, crate::Error> {
-        // We need to sue the "Access Register Command",
-        // which has cmdtype 0
-
-        // write needs to be clear
-        // transfer has to be set
-
-        log::debug!("Reading core register at address {:#x}", address.0);
-
-        // if it is a gpr (general purpose register) read using an abstract command,
-        // otherwise, use the program buffer
-        if address.0 >= 0x1000 && address.0 <= 0x101f {
-            let value = self.interface.abstract_cmd_register_read(address)?;
-            Ok(value)
-        } else {
-            let reg_value = self.read_csr(address.0)?;
-            Ok(reg_value)
-        }
+        self.read_csr(address.0).map_err(|e| e.into())
     }
 
     fn write_core_reg(&mut self, address: crate::CoreRegisterAddress, value: u32) -> Result<()> {
-        if address.0 >= 0x1000 && address.0 <= 0x101f {
-            self.interface.abstract_cmd_register_write(address, value)?;
-        } else {
-            self.write_csr(address.0, value)?;
-        }
-        Ok(())
+        self.write_csr(address.0, value).map_err(|e| e.into())
     }
 
     fn get_available_breakpoint_units(&mut self) -> Result<u32, crate::Error> {
