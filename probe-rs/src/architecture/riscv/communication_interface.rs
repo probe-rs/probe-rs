@@ -12,7 +12,9 @@ use crate::{MemoryInterface, Probe};
 use crate::{probe::JTAGAccess, CoreRegisterAddress, DebugProbe, Error as ProbeRsError};
 
 use std::{
+    collections::HashMap,
     convert::TryInto,
+    mem,
     time::{Duration, Instant},
 };
 
@@ -100,6 +102,23 @@ enum DebugModuleVersion {
     NonConforming = 15,
 }
 
+#[repr(u8)]
+#[derive(Debug, Copy, Clone)]
+enum CoreRegisterAbstractCmdSupport {
+    Read = 1 << 0,
+    Write = 1 << 1,
+    Both = Self::Read as u8 | Self::Write as u8,
+}
+
+impl CoreRegisterAbstractCmdSupport {
+    fn supports(&self, o: Self) -> bool {
+        o as u8 & *self as u8 == o as u8
+    }
+    fn unset(&mut self, o: Self) {
+        *self = unsafe { mem::transmute(*self as u8 & !(o as u8)) }
+    }
+}
+
 #[derive(Debug)]
 pub struct RiscvCommunicationInterfaceState {
     abits: u32,
@@ -120,6 +139,10 @@ pub struct RiscvCommunicationInterfaceState {
     nscratch: u8,
 
     supports_autoexec: bool,
+
+    /// describes, if the given register can be read / written with an
+    /// abstract command
+    abstract_cmd_register_info: HashMap<CoreRegisterAddress, CoreRegisterAbstractCmdSupport>,
 }
 
 /// Timeout for RISCV operations.
@@ -142,6 +165,8 @@ impl RiscvCommunicationInterfaceState {
             nscratch: 0,
 
             supports_autoexec: false,
+
+            abstract_cmd_register_info: HashMap::new(),
         }
     }
 }
@@ -609,12 +634,48 @@ impl<'probe> RiscvCommunicationInterface {
         Ok(())
     }
 
+    /// Check if a register can be accessed via abstract commands
+    fn check_abstract_cmd_register_support(
+        &self,
+        regno: CoreRegisterAddress,
+        rw: CoreRegisterAbstractCmdSupport,
+    ) -> bool {
+        if let Some(status) = self.state.abstract_cmd_register_info.get(&regno) {
+            status.supports(rw)
+        } else {
+            // If not cached yet, assume the register is accessible
+            true
+        }
+    }
+
+    /// Remember, that the given register can not be accessed via abstract commands
+    fn set_abstract_cmd_register_unsupported(
+        &mut self,
+        regno: CoreRegisterAddress,
+        rw: CoreRegisterAbstractCmdSupport,
+    ) {
+        let entry = self
+            .state
+            .abstract_cmd_register_info
+            .entry(regno)
+            .or_insert(CoreRegisterAbstractCmdSupport::Both);
+
+        entry.unset(rw);
+    }
+
     // Read a core register using an abstract command
     pub(crate) fn abstract_cmd_register_read(
         &mut self,
         regno: impl Into<CoreRegisterAddress>,
     ) -> Result<u32, RiscvError> {
-        // GPR
+        let regno = regno.into();
+
+        // Check if the register was already tried via abstract cmd
+        if !self.check_abstract_cmd_register_support(regno, CoreRegisterAbstractCmdSupport::Read) {
+            return Err(RiscvError::AbstractCommand(
+                AbstractCommandErrorKind::NotSupported,
+            ));
+        }
 
         // read from data0
         let mut command = AccessRegisterCommand(0);
@@ -622,9 +683,20 @@ impl<'probe> RiscvCommunicationInterface {
         command.set_transfer(true);
         command.set_aarsize(RiscvBusAccess::A32);
 
-        command.set_regno(regno.into().0 as u32);
+        command.set_regno(regno.0 as u32);
 
-        self.execute_abstract_command(command.0)?;
+        match self.execute_abstract_command(command.0) {
+            Ok(_) => (),
+            err @ Err(RiscvError::AbstractCommand(AbstractCommandErrorKind::NotSupported)) => {
+                // Remember, that this register is unsupported
+                self.set_abstract_cmd_register_unsupported(
+                    regno,
+                    CoreRegisterAbstractCmdSupport::Read,
+                );
+                err?;
+            }
+            Err(e) => Err(e)?,
+        }
 
         let register_value: Data0 = self.read_dm_register()?;
 
@@ -636,6 +708,15 @@ impl<'probe> RiscvCommunicationInterface {
         regno: impl Into<CoreRegisterAddress>,
         value: u32,
     ) -> Result<(), RiscvError> {
+        let regno = regno.into();
+
+        // Check if the register was already tried via abstract cmd
+        if !self.check_abstract_cmd_register_support(regno, CoreRegisterAbstractCmdSupport::Write) {
+            return Err(RiscvError::AbstractCommand(
+                AbstractCommandErrorKind::NotSupported,
+            ));
+        }
+
         // write to data0
         let mut command = AccessRegisterCommand(0);
         command.set_cmd_type(0);
@@ -643,14 +724,23 @@ impl<'probe> RiscvCommunicationInterface {
         command.set_write(true);
         command.set_aarsize(RiscvBusAccess::A32);
 
-        command.set_regno(regno.into().0 as u32);
+        command.set_regno(regno.0 as u32);
 
         // write data0
         self.write_dm_register(Data0(value))?;
 
-        self.execute_abstract_command(command.0)?;
-
-        Ok(())
+        match self.execute_abstract_command(command.0) {
+            Ok(_) => Ok(()),
+            err @ Err(RiscvError::AbstractCommand(AbstractCommandErrorKind::NotSupported)) => {
+                // Remember, that this register is unsupported
+                self.set_abstract_cmd_register_unsupported(
+                    regno,
+                    CoreRegisterAbstractCmdSupport::Read,
+                );
+                err
+            }
+            Err(e) => Err(e),
+        }
     }
 
     pub fn close(self) -> Probe {
