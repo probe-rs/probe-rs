@@ -11,14 +11,12 @@ use crate::{MemoryInterface, Probe};
 
 use crate::{probe::JTAGAccess, CoreRegisterAddress, DebugProbe, Error as ProbeRsError};
 
+use bitfield::bitfield;
 use std::{
     collections::HashMap,
     convert::TryInto,
-    mem,
     time::{Duration, Instant},
 };
-
-use bitfield::bitfield;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -102,20 +100,20 @@ enum DebugModuleVersion {
     NonConforming = 15,
 }
 
-#[repr(u8)]
-#[derive(Debug, Copy, Clone)]
-enum CoreRegisterAbstractCmdSupport {
-    Read = 1 << 0,
-    Write = 1 << 1,
-    Both = Self::Read as u8 | Self::Write as u8,
-}
+#[derive(Copy, Clone, Debug)]
+struct CoreRegisterAbstractCmdSupport(u8);
 
 impl CoreRegisterAbstractCmdSupport {
+    const READ: Self = Self(1 << 0);
+    const WRITE: Self = Self(1 << 1);
+    const BOTH: Self = Self(Self::READ.0 | Self::WRITE.0);
+
     fn supports(&self, o: Self) -> bool {
-        o as u8 & *self as u8 == o as u8
+        self.0 & o.0 == o.0
     }
+
     fn unset(&mut self, o: Self) {
-        *self = unsafe { mem::transmute(*self as u8 & !(o as u8)) }
+        self.0 &= !(o.0);
     }
 }
 
@@ -658,7 +656,7 @@ impl<'probe> RiscvCommunicationInterface {
             .state
             .abstract_cmd_register_info
             .entry(regno)
-            .or_insert(CoreRegisterAbstractCmdSupport::Both);
+            .or_insert(CoreRegisterAbstractCmdSupport::BOTH);
 
         entry.unset(rw);
     }
@@ -671,7 +669,7 @@ impl<'probe> RiscvCommunicationInterface {
         let regno = regno.into();
 
         // Check if the register was already tried via abstract cmd
-        if !self.check_abstract_cmd_register_support(regno, CoreRegisterAbstractCmdSupport::Read) {
+        if !self.check_abstract_cmd_register_support(regno, CoreRegisterAbstractCmdSupport::READ) {
             return Err(RiscvError::AbstractCommand(
                 AbstractCommandErrorKind::NotSupported,
             ));
@@ -691,7 +689,7 @@ impl<'probe> RiscvCommunicationInterface {
                 // Remember, that this register is unsupported
                 self.set_abstract_cmd_register_unsupported(
                     regno,
-                    CoreRegisterAbstractCmdSupport::Read,
+                    CoreRegisterAbstractCmdSupport::READ,
                 );
                 err?;
             }
@@ -711,7 +709,7 @@ impl<'probe> RiscvCommunicationInterface {
         let regno = regno.into();
 
         // Check if the register was already tried via abstract cmd
-        if !self.check_abstract_cmd_register_support(regno, CoreRegisterAbstractCmdSupport::Write) {
+        if !self.check_abstract_cmd_register_support(regno, CoreRegisterAbstractCmdSupport::WRITE) {
             return Err(RiscvError::AbstractCommand(
                 AbstractCommandErrorKind::NotSupported,
             ));
@@ -735,7 +733,7 @@ impl<'probe> RiscvCommunicationInterface {
                 // Remember, that this register is unsupported
                 self.set_abstract_cmd_register_unsupported(
                     regno,
-                    CoreRegisterAbstractCmdSupport::Write,
+                    CoreRegisterAbstractCmdSupport::WRITE,
                 );
                 err
             }
