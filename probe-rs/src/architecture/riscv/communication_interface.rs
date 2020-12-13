@@ -735,7 +735,7 @@ impl<'probe> RiscvCommunicationInterface {
                 // Remember, that this register is unsupported
                 self.set_abstract_cmd_register_unsupported(
                     regno,
-                    CoreRegisterAbstractCmdSupport::Read,
+                    CoreRegisterAbstractCmdSupport::Write,
                 );
                 err
             }
