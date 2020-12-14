@@ -37,7 +37,9 @@ pub enum FlashError {
     DataOverlap(u32),
     #[error("Address {0:#010x} is not a valid address in the flash area.")]
     InvalidFlashAddress(u32),
-    #[error("No memory region contains the entire requested memory range {start:#08X}..{end:#08X}.")]
+    #[error(
+        "No memory region contains the entire requested memory range {start:#08X}..{end:#08X}."
+    )]
     NoSuitableMemoryRegion { start: u32, end: u32 },
     #[error("Trying to write flash, but no suitable flash loader algorithm is linked to the given target information.")]
     NoFlashLoaderAlgorithmAttached,

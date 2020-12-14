@@ -110,11 +110,7 @@ pub fn download_file_with_options(
 
     let memory_map = session.memory_map().to_vec();
     let flash_algorithms = session.flash_algorithms().to_vec();
-    let mut loader = FlashLoader::new(
-        &memory_map,
-        &flash_algorithms,
-        options.keep_unwritten_bytes,
-    );
+    let mut loader = FlashLoader::new(&memory_map, &flash_algorithms, options.keep_unwritten_bytes);
 
     match format {
         Format::Bin(options) => download_bin(&mut buffer, &mut file, &mut loader, options),
