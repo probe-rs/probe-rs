@@ -1,5 +1,6 @@
 #![recursion_limit = "256"]
 
+mod architecture;
 mod gdb_server_async;
 mod handlers;
 mod parser;
