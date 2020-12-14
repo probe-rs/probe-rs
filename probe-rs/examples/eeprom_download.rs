@@ -85,8 +85,7 @@ fn main() -> Result<()> {
             progress: None,
             keep_unwritten_bytes: !matches.no_keep_unwritten_bytes,
         },
-    )
-    .unwrap();
+    )?;
 
     // Reset core
     let mut core = session.core(0).context("Failed to attach to core")?;
