@@ -11,6 +11,7 @@ struct RamWrite<'data> {
 }
 
 /// Flashable memory types.
+#[derive(PartialEq, Debug)]
 pub(super) enum MemoryType {
     /// Non-volatile memory, e.g. flash or EEPROM.
     Nvm,
@@ -114,10 +115,11 @@ impl<'mmap, 'algos, 'data> FlashLoader<'mmap, 'algos, 'data> {
             .iter()
             .filter_map(|mmap| {
                 if let MemoryRegion::Ram(region) = mmap {
-                    Some(region.range.clone())
-                } else {
-                    None
+                    if region.range.contains(&address) {
+                        return Some(region.range.clone());
+                    }
                 }
+                None
             })
             .map(|range| (range, MemoryType::Ram))
             .next()
@@ -204,5 +206,79 @@ impl<'mmap, 'algos, 'data> FlashLoader<'mmap, 'algos, 'data> {
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use std::default::Default;
+
+    use crate::config::{FlashProperties, GenericRegion, RamRegion};
+
+    #[test]
+    fn get_region_for_address() {
+        // Define a memory map and some flash algorithms:
+        // - NVM: 10..50
+        // - NVM: 120..200
+        // - RAM: 1000..2000
+        // - Generic: 2000..3000
+        // - RAM: 4000..5000
+        let memory_map = vec![
+            MemoryRegion::Ram(RamRegion {
+                range: 1000..2000,
+                is_boot_memory: false,
+            }),
+            MemoryRegion::Generic(GenericRegion { range: 2000..3000 }),
+            MemoryRegion::Ram(RamRegion {
+                range: 4000..5000,
+                is_boot_memory: false,
+            }),
+        ];
+        let flash_algorithms = vec![
+            RawFlashAlgorithm {
+                flash_properties: FlashProperties {
+                    address_range: 10..50,
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+            RawFlashAlgorithm {
+                flash_properties: FlashProperties {
+                    address_range: 120..200,
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+        ];
+
+        // Create flash loader
+        let loader = FlashLoader::new(&memory_map, &flash_algorithms, true);
+
+        /// Assert that the specified address is within the specified region.
+        macro_rules! assert_in_region {
+            ($address:expr, $region:expr, $type:expr) => {{
+                assert_eq!(
+                    loader.get_region_for_address($address),
+                    Some(($region, $type))
+                );
+            }};
+        }
+
+        // NVM: at the start of a region
+        assert_in_region!(10, 10..50, MemoryType::Nvm);
+        // NVM: in the middle of a region
+        assert_in_region!(42, 10..50, MemoryType::Nvm);
+        // NVM: at the end of the region
+        assert_in_region!(199, 120..200, MemoryType::Nvm);
+        // RAM: in the middle of the first region
+        assert_in_region!(1500, 1000..2000, MemoryType::Ram);
+        // RAM: in the middle of the second region
+        assert_in_region!(4500, 4000..5000, MemoryType::Ram);
+        // Generic memory address, neither RAM nor NVM
+        assert_eq!(loader.get_region_for_address(2222), None);
+        // Outside any valid region
+        assert_eq!(loader.get_region_for_address(200), None);
     }
 }

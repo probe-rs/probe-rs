@@ -35,7 +35,9 @@ pub use chip::Chip;
 pub use chip_family::ChipFamily;
 pub use flash_algorithm::{FlashAlgorithm, RawFlashAlgorithm};
 pub use flash_properties::FlashProperties;
-pub use memory::{MemoryRegion, NvmRegion, PageInfo, RamRegion, SectorDescription, SectorInfo};
+pub use memory::{
+    GenericRegion, MemoryRegion, NvmRegion, PageInfo, RamRegion, SectorDescription, SectorInfo,
+};
 pub use registry::{add_target_from_yaml, families, RegistryError};
 pub use target::{Target, TargetParseError, TargetSelector};
 
