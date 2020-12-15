@@ -57,9 +57,6 @@ pub(crate) fn read_general_registers(mut core: Core) -> Option<String> {
         }
     }
 
-    // The format of this packet is determined by the register number
-    // used by GDB. Just sending register 0 seems to be sufficient,
-    // the other registers are then requested using 'p' packets.
     Some(general_registers_value)
 }
 
