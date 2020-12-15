@@ -5,7 +5,7 @@ use probe_rs::{Core, CoreRegisterAddress};
 /// Translates some GDB architecture dependant stuff
 /// to probe-rs internals.
 pub(crate) trait GdbArchitectureExt {
-    /// Translate GDB register number to internal register address
+    /// Translates a GDB register number to an internal register address.
     fn translate_gdb_register_number(
         &self,
         gdb_reg_number: u32,
