@@ -289,8 +289,14 @@ impl Session {
     }
 
     /// Returns the memory map of the target.
+    #[deprecated = "Use the Session::target function instead"]
     pub fn memory_map(&self) -> &[MemoryRegion] {
         &self.target.memory_map
+    }
+
+    /// Get the target description of the connected target.
+    pub fn target(&self) -> &Target {
+        &self.target
     }
 
     /// Return the `Architecture` of the currently connected chip.

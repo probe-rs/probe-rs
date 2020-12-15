@@ -191,7 +191,7 @@ pub(crate) fn get_memory_map(session: &Session) -> Option<String> {
 <memory-map>
 "#.to_owned();
 
-    for region in session.memory_map() {
+    for region in &session.target().memory_map {
         let region_entry = match region {
             MemoryRegion::Ram(ram) => format!(
                 r#"<memory type="ram" start="{:#x}" length="{:#x}"/>\n"#,
