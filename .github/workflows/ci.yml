@@ -11,6 +11,7 @@ env:
   RUSTFLAGS: "--deny warnings"
 
 jobs:
+  # NOTE all these jobs need to be added to the `needs` section of the ci-* jobs!
   test:
     strategy:
       matrix:
@@ -37,3 +38,25 @@ jobs:
     - name: Build host tooling
       run: |
         cargo build
+
+  # Refs: https://github.com/rust-lang/crater/blob/9ab6f9697c901c4a44025cf0a39b73ad5b37d198/.github/workflows/bors.yml#L125-L149
+  # bors.tech integration
+  ci-success:
+    name: ci
+    if: ${{ success() }}
+    needs:
+      - test
+    runs-on: ubuntu-20.04
+    steps:
+      - name: CI succeeded
+        run: exit 0
+
+  ci-failure:
+    name: ci
+    if: ${{ !success() }}
+    needs:
+      - test
+    runs-on: ubuntu-20.04
+    steps:
+      - name: CI failed
+        run: exit 1
