@@ -1,9 +1,12 @@
 use crate::architecture::GdbArchitectureExt;
-use probe_rs::{config::MemoryRegion, Core, CoreStatus, MemoryInterface, Session};
+use probe_rs::{config::MemoryRegion, Core, CoreStatus, CoreType, MemoryInterface, Session};
 use std::time::Duration;
 
 pub(crate) fn q_supported() -> Option<String> {
-    Some("PacketSize=2048;swbreak-;hwbreak+;vContSupported+;qXfer:memory-map:read+".into())
+    Some(
+        "PacketSize=2048;swbreak-;hwbreak+;vContSupported+;qXfer:features:read+;qXfer:memory-map:read+"
+            .into(),
+    )
 }
 
 pub(crate) fn reply_empty() -> Option<String> {
@@ -238,5 +241,42 @@ fn gdb_sanitize_file(data: &[u8], offset: u32, len: u32) -> Vec<u8> {
             trimmed_data.insert(0, b'l');
         }
         trimmed_data
+    }
+}
+
+pub(crate) fn read_target_description(session: &Session, annex: &[u8]) -> Option<String> {
+    // GDB-architectures
+    //
+    // - armv6-m      -> Core-M0
+    // - armv7-m      -> Core-M3
+    // - armv7e-m      -> Core-M4, Core-M7
+    // - armv8-m.base -> Core-M23
+    // - armv8-m.main -> Core-M33
+    // - riscv:rv32   -> RISCV
+
+    let architecture = match session.target().core_type {
+        CoreType::M0 => "armv6-m",
+        CoreType::M3 => "armv7-m",
+        CoreType::M4 | CoreType::M7 => "armv7e-m",
+        CoreType::M33 => "armv8-m.main",
+        //CoreType::M23 => "armv8-m.base",
+        CoreType::Riscv => "riscv:rv32",
+    };
+
+    // Only target.xml is supported
+    if annex == b"target.xml" {
+        let mut target_description = r#"<?xml version="1.0"?>
+        <!DOCTYPE target SYSTEM "gdb-target.dtd">
+        <target version="1.0">
+        "#
+        .to_owned();
+
+        target_description.push_str(&format!("<architecture>{}</architecture>", architecture));
+
+        target_description.push_str("</target>");
+
+        Some(String::from_utf8(gdb_sanitize_file(target_description.as_bytes(), 0, 1000)).unwrap())
+    } else {
+        None
     }
 }

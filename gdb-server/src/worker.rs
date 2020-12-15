@@ -141,17 +141,33 @@ pub async fn handler(
                 Query(QueryPacket::Transfer { object, operation }) => {
                     use crate::parser::query::TransferOperation;
 
-                    if object == b"memory-map" {
-                        match operation {
-                            TransferOperation::Read { .. } => handlers::get_memory_map(&session),
-                            TransferOperation::Write { .. } => {
-                                // not supported
-                                handlers::reply_empty()
+                    match object.as_slice() {
+                        b"memory-map" => {
+                            match operation {
+                                TransferOperation::Read { .. } => {
+                                    handlers::get_memory_map(&session)
+                                }
+                                TransferOperation::Write { .. } => {
+                                    // not supported
+                                    handlers::reply_empty()
+                                }
                             }
                         }
-                    } else {
-                        log::warn!("Object '{:?}' not supported for qXfer command", object);
-                        handlers::reply_empty()
+                        b"features" => {
+                            match operation {
+                                TransferOperation::Read { annex, .. } => {
+                                    handlers::read_target_description(&session, &annex)
+                                }
+                                TransferOperation::Write { .. } => {
+                                    // not supported
+                                    handlers::reply_empty()
+                                }
+                            }
+                        }
+                        object => {
+                            log::warn!("Object '{:?}' not supported for qXfer command", object);
+                            handlers::reply_empty()
+                        }
                     }
                 }
                 Interrupt => handlers::user_halt(session.core(0)?, awaits_halt),
