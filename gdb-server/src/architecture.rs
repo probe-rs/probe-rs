@@ -2,7 +2,7 @@ use probe_rs::{Core, CoreRegisterAddress};
 
 /// Extension trait for probe_rs::Core, which adds some GDB -> probe-rs internal translation functions
 ///
-/// translates some GDB architecture dependant stuff
+/// Translates some GDB architecture dependant stuff
 /// to probe-rs internals.
 pub(crate) trait GdbArchitectureExt {
     /// Translate GDB register number to internal register address
