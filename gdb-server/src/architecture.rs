@@ -11,7 +11,7 @@ pub(crate) trait GdbArchitectureExt {
         gdb_reg_number: u32,
     ) -> Option<(CoreRegisterAddress, u32)>;
 
-    /// Number of general registers
+    /// Returns the number of general registers.
     fn num_general_registers(&self) -> usize;
 }
 
