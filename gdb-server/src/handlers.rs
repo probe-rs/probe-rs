@@ -1,5 +1,5 @@
-use crate::architecture::GdbArchitectureExt;
-use probe_rs::{config::MemoryRegion, Core, CoreStatus, CoreType, MemoryInterface, Session};
+use crate::architecture::{GdbArchitectureExt, GdbTargetExt};
+use probe_rs::{Core, CoreStatus, MemoryInterface, Session};
 use std::time::Duration;
 
 pub(crate) fn q_supported() -> Option<String> {
@@ -173,38 +173,9 @@ pub(crate) fn write_memory(address: u32, data: &[u8], mut core: Core) -> Option<
 }
 
 pub(crate) fn get_memory_map(session: &Session) -> Option<String> {
-    let mut xml_map = r#"<?xml version="1.0"?>
-<!DOCTYPE memory-map PUBLIC "+//IDN gnu.org//DTD GDB Memory Map V1.0//EN" "http://sourceware.org/gdb/gdb-memory-map.dtd">
-<memory-map>
-"#.to_owned();
+    let memory_map = session.target().gdb_memory_map();
 
-    for region in &session.target().memory_map {
-        let region_entry = match region {
-            MemoryRegion::Ram(ram) => format!(
-                r#"<memory type="ram" start="{:#x}" length="{:#x}"/>\n"#,
-                ram.range.start,
-                ram.range.end - ram.range.start
-            ),
-            MemoryRegion::Generic(region) => format!(
-                r#"<memory type="rom" start="{:#x}" length="{:#x}"/>\n"#,
-                region.range.start,
-                region.range.end - region.range.start
-            ),
-            MemoryRegion::Nvm(region) => {
-                // TODO: Use flash with block size
-                format!(
-                    r#"<memory type="rom" start="{:#x}" length="{:#x}"/>\n"#,
-                    region.range.start,
-                    region.range.end - region.range.start
-                )
-            }
-        };
-
-        xml_map.push_str(&region_entry);
-    }
-
-    xml_map.push_str(r#"</memory-map>"#);
-    Some(String::from_utf8(gdb_sanitize_file(xml_map.as_bytes(), 0, 1000)).unwrap())
+    Some(String::from_utf8(gdb_sanitize_file(memory_map.as_bytes(), 0, 1000)).unwrap())
 }
 
 pub(crate) fn user_halt(mut core: Core, awaits_halt: &mut bool) -> Option<String> {
@@ -245,37 +216,11 @@ fn gdb_sanitize_file(data: &[u8], offset: u32, len: u32) -> Vec<u8> {
 }
 
 pub(crate) fn read_target_description(session: &Session, annex: &[u8]) -> Option<String> {
-    // GDB-architectures
-    //
-    // - armv6-m      -> Core-M0
-    // - armv7-m      -> Core-M3
-    // - armv7e-m      -> Core-M4, Core-M7
-    // - armv8-m.base -> Core-M23
-    // - armv8-m.main -> Core-M33
-    // - riscv:rv32   -> RISCV
-
-    let architecture = match session.target().core_type {
-        CoreType::M0 => "armv6-m",
-        CoreType::M3 => "armv7-m",
-        CoreType::M4 | CoreType::M7 => "armv7e-m",
-        CoreType::M33 => "armv8-m.main",
-        //CoreType::M23 => "armv8-m.base",
-        CoreType::Riscv => "riscv:rv32",
-    };
-
     // Only target.xml is supported
     if annex == b"target.xml" {
-        let mut target_description = r#"<?xml version="1.0"?>
-        <!DOCTYPE target SYSTEM "gdb-target.dtd">
-        <target version="1.0">
-        "#
-        .to_owned();
+        let description = session.target().target_description();
 
-        target_description.push_str(&format!("<architecture>{}</architecture>", architecture));
-
-        target_description.push_str("</target>");
-
-        Some(String::from_utf8(gdb_sanitize_file(target_description.as_bytes(), 0, 1000)).unwrap())
+        Some(String::from_utf8(gdb_sanitize_file(description.as_bytes(), 0, 1000)).unwrap())
     } else {
         None
     }
