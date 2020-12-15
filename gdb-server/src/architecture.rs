@@ -1,6 +1,6 @@
 use probe_rs::{Core, CoreRegisterAddress};
 
-/// Extension trait for probe_rs::Core, which adds some GDB -> probe-rs internal translation functions
+/// Extension trait for probe_rs::Core, which adds some GDB -> probe-rs internal translation functions.
 ///
 /// Translates some GDB architecture dependant stuff
 /// to probe-rs internals.
