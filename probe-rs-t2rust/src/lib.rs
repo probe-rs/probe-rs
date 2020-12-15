@@ -102,10 +102,8 @@ fn extract_algorithms(
     // Get an iterator over all the algorithms contained in the chip value obtained from the yaml file.
     let algorithm_iter = chip
         .get("flash_algorithms")
-        .unwrap()
-        .as_mapping()
-        .unwrap()
-        .iter();
+        .into_iter()
+        .flat_map(|f| f.as_mapping().into_iter().flat_map(|f2| f2.iter()));
 
     algorithm_iter
         .map(|(_name, algorithm)| {
@@ -313,10 +311,10 @@ fn extract_variants(chip_family: &serde_yaml::Value) -> Vec<proc_macro2::TokenSt
 
             let flash_algorithms = variant
                 .get("flash_algorithms")
-                .unwrap()
-                .as_sequence()
-                .unwrap();
-            let flash_algorithm_names = flash_algorithms.iter().map(|a| a.as_str().unwrap());
+                .into_iter()
+                .flat_map(|f| f.as_sequence().into_iter().flat_map(|f2| f2.iter()));
+
+            let flash_algorithm_names = flash_algorithms.map(|a| a.as_str().unwrap());
             quote::quote! {
                 Chip {
                     name: Cow::Borrowed(#name),
