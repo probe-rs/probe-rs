@@ -159,7 +159,7 @@ impl<'mmap, 'data> FlashLoader<'mmap, 'data> {
                     .ok_or(FlashError::NoFlashLoaderAlgorithmAttached)?,
             };
 
-            let mm = session.memory_map();
+            let mm = &session.target().memory_map;
             let ram = mm
                 .iter()
                 .find_map(|mm| match mm {
