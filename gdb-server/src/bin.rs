@@ -1,3 +1,4 @@
+use anyhow::{anyhow, Result};
 use colored::*;
 use std::sync::Mutex;
 use std::{
@@ -63,20 +64,17 @@ fn main() {
     }
 }
 
-pub fn open_probe(
-    index: Option<usize>,
-    available_probes: &[DebugProbeInfo],
-) -> Result<Probe, failure::Error> {
+pub fn open_probe(index: Option<usize>, available_probes: &[DebugProbeInfo]) -> Result<Probe> {
     let device = match index {
         Some(index) => available_probes
             .get(index)
-            .ok_or_else(|| failure::err_msg("Unable to open the specified probe. Use the '--list-probes' flag to see all available probes."))?,
+            .ok_or_else(|| anyhow!("Unable to open the specified probe. Use the '--list-probes' flag to see all available probes."))?,
         None => {
             // open the default probe, if only one probe was found
             match available_probes.len() {
                 1 => &available_probes[0],
-                0 => return Err(failure::err_msg("No probe found.")),
-                _ => return Err(failure::err_msg("Multiple probes found. Please specify which probe to use using the -n option.")),
+                0 => return Err(anyhow!("No probe found.")),
+                _ => return Err(anyhow!("Multiple probes found. Please specify which probe to use using the -n option.")),
             }
         }
     };
@@ -86,7 +84,7 @@ pub fn open_probe(
     Ok(probe)
 }
 
-fn main_try() -> Result<(), failure::Error> {
+fn main_try() -> Result<()> {
     // Get commandline options.
     let opt = Opt::from_iter(std::env::args());
 
