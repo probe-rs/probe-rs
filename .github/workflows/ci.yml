@@ -10,6 +10,8 @@ env:
   CARGO_TERM_COLOR: always
   RUSTFLAGS: "--deny warnings"
 
+# NOTE if you change the `matrix` field or add/remove a job you'll need to update the list of jobs
+# in `.github/bors.toml
 jobs:
   test:
     strategy:
