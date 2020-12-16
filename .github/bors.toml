@@ -1,0 +1,9 @@
+delete_merged_branches = true
+status = [
+    "test (stable, ubuntu-latest)",
+    "test (stable, macOS-latest)",
+    "test (stable, windows-latest)",
+    "test (nightly, ubuntu-latest)",
+    "test (nightly, macOS-latest)",
+    "test (nightly, windows-latest)",
+]
