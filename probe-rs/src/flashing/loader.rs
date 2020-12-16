@@ -57,33 +57,45 @@ impl<'mmap, 'algos, 'data> FlashLoader<'mmap, 'algos, 'data> {
         mut address: u32,
         data: &'data [u8],
     ) -> Result<(), FlashError> {
-        let size = data.len();
-        let mut remaining = size;
+        let data_size = data.len();
+        let mut remaining = data_size;
+        let base_address = address;
+        println!("---");
         while remaining > 0 {
             // Get the flash region in which this chunk of data starts.
-            let (range, memory_type) = self.get_region_for_address(address).ok_or_else(|| {
-                FlashError::NoSuitableMemoryRegion {
-                    start: address,
-                    end: address + data.len() as u32,
-                }
-            })?;
+            let (memory_range, memory_type) =
+                self.get_region_for_address(address).ok_or_else(|| {
+                    FlashError::NoSuitableMemoryRegion {
+                        start: base_address,
+                        end: base_address + data.len() as u32,
+                    }
+                })?;
 
             // Determine how much more data can be contained by this region.
-            let program_length = usize::min(remaining, (range.end - address + 1) as usize);
+            let program_length = usize::min(remaining, (memory_range.end - address) as usize);
 
             // If we found a corresponding region, create a builder.
+            println!("Data size: {}", data_size);
+            println!("Remaining: {}", remaining);
+            println!("Length: {}", program_length);
+            let data_range = (data_size - remaining)..(data_size - remaining + program_length);
+            println!("Range: {:?}", data_range);
+            let data_slice = &data[data_range];
+            println!("==> Write {} bytes at {}", data_slice.len(), address);
             match memory_type {
                 MemoryType::Nvm => {
                     // Add as much data to the builder as can be contained by this region.
                     self.builders
-                        .entry(range)
+                        .entry(memory_range)
                         .or_insert_with(FlashBuilder::new)
-                        .add_data(address, &data[size - remaining..program_length])?;
+                        .add_data(address, data_slice)?;
                 }
                 MemoryType::Ram => {
                     // Add data to be written to the vector.
-                    let data = &data[size - remaining..program_length];
-                    self.ram_write.push(RamWrite { address, data });
+                    self.ram_write.push(RamWrite {
+                        address,
+                        data: data_slice,
+                    });
                 }
             }
 
@@ -217,29 +229,23 @@ mod tests {
 
     use crate::config::{FlashProperties, GenericRegion, RamRegion};
 
-    #[test]
-    fn get_region_for_address() {
-        // Define a memory map and some flash algorithms:
-        // - NVM: 10..50
-        // - NVM: 120..200
-        // - RAM: 1000..2000
-        // - Generic: 2000..3000
-        // - RAM: 4000..5000
-        let memory_map = vec![
-            MemoryRegion::Ram(RamRegion {
-                range: 1000..2000,
-                is_boot_memory: false,
-            }),
-            MemoryRegion::Generic(GenericRegion { range: 2000..3000 }),
-            MemoryRegion::Ram(RamRegion {
-                range: 4000..5000,
-                is_boot_memory: false,
-            }),
-        ];
-        let flash_algorithms = vec![
+    /// Create a vector of flash algorithms for the following NVM memory regions:
+    ///
+    /// - NVM: 10..50
+    /// - NVM: 50..60
+    /// - NVM: 120..200
+    fn make_flash_algorithms() -> Vec<RawFlashAlgorithm> {
+        vec![
             RawFlashAlgorithm {
                 flash_properties: FlashProperties {
                     address_range: 10..50,
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+            RawFlashAlgorithm {
+                flash_properties: FlashProperties {
+                    address_range: 50..60,
                     ..Default::default()
                 },
                 ..Default::default()
@@ -251,9 +257,38 @@ mod tests {
                 },
                 ..Default::default()
             },
-        ];
+        ]
+    }
 
-        // Create flash loader
+    /// Create a memory map with the following regions:
+    ///
+    /// - RAM: 1000..2000
+    /// - Generic: 2000..3000
+    /// - RAM: 4000..4800
+    /// - RAM: 4800..5000
+    fn make_memory_map() -> Vec<MemoryRegion> {
+        vec![
+            MemoryRegion::Ram(RamRegion {
+                range: 1000..2000,
+                is_boot_memory: false,
+            }),
+            MemoryRegion::Generic(GenericRegion { range: 2000..3000 }),
+            MemoryRegion::Ram(RamRegion {
+                range: 4000..4800,
+                is_boot_memory: false,
+            }),
+            MemoryRegion::Ram(RamRegion {
+                range: 4800..5000,
+                is_boot_memory: false,
+            }),
+        ]
+    }
+
+    #[test]
+    fn get_region_for_address() {
+        // Generate test loader
+        let memory_map = make_memory_map();
+        let flash_algorithms = make_flash_algorithms();
         let loader = FlashLoader::new(&memory_map, &flash_algorithms, true);
 
         /// Assert that the specified address is within the specified region.
@@ -275,10 +310,58 @@ mod tests {
         // RAM: in the middle of the first region
         assert_in_region!(1500, 1000..2000, MemoryType::Ram);
         // RAM: in the middle of the second region
-        assert_in_region!(4500, 4000..5000, MemoryType::Ram);
+        assert_in_region!(4500, 4000..4800, MemoryType::Ram);
         // Generic memory address, neither RAM nor NVM
         assert_eq!(loader.get_region_for_address(2222), None);
         // Outside any valid region
         assert_eq!(loader.get_region_for_address(200), None);
+    }
+
+    #[test]
+    fn add_data() {
+        // Generate test loader
+        let memory_map = make_memory_map();
+        let flash_algorithms = make_flash_algorithms();
+
+        // Add data in an NVM region.
+        let mut loader = FlashLoader::new(&memory_map, &flash_algorithms, true);
+        loader.add_data(20, &[0x42; 10]).unwrap();
+
+        // Add data in a RAM region.
+        let mut loader = FlashLoader::new(&memory_map, &flash_algorithms, true);
+        loader.add_data(4500, &[0x23; 10]).unwrap();
+
+        // Add data across two contiguous RAM memory regions.
+        let mut loader = FlashLoader::new(&memory_map, &flash_algorithms, true);
+        loader.add_data(4700, &[0x23; 200]).unwrap();
+
+        macro_rules! assert_error {
+            ($addr:expr, $data:expr) => {{
+                let mut loader = FlashLoader::new(&memory_map, &flash_algorithms, true);
+                let result = loader.add_data($addr, $data);
+                if let Err(FlashError::NoSuitableMemoryRegion { start, end }) = result {
+                    assert_eq!(start, $addr, "Start address in error struct is wrong");
+                    assert_eq!(
+                        end,
+                        $addr + $data.len() as u32,
+                        "End address in error struct is wrong"
+                    );
+                } else {
+                    panic!("Expected NoSuitableMemoryRegion, got {:?}", result);
+                }
+            }};
+        };
+
+        // Add data that goes outside an NVM region, this should trigger an
+        // error.
+        assert_error!(50, &[0x01; 11]);
+
+        // Add data that overlaps two contiguous NVM regions with different
+        // flash algorithms, this should trigger an error.
+        assert_error!(40, &[0x01; 15]);
+
+        // Add data that overlaps between contiguous RAM / generic memory
+        // regions, this should trigger an error.
+        assert_error!(1990, &[0x01; 20]);
     }
 }
