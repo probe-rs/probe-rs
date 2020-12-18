@@ -162,8 +162,8 @@ dependencies = [
 
 [[package]]
 name = "defmt-decoder"
-version = "0.1.3"
-source = "git+https://github.com/knurling-rs/defmt?rev=1bb6478#1bb6478544a7188b2e7f3ac21939f58f50d56b9f"
+version = "0.1.4"
+source = "git+https://github.com/knurling-rs/defmt?rev=c4461eb#c4461eb148461e54d9a1e203cf01393f07ce84f0"
 dependencies = [
  "byteorder",
  "colored",
@@ -176,7 +176,7 @@ dependencies = [
 [[package]]
 name = "defmt-elf2table"
 version = "0.1.0"
-source = "git+https://github.com/knurling-rs/defmt?rev=1bb6478#1bb6478544a7188b2e7f3ac21939f58f50d56b9f"
+source = "git+https://github.com/knurling-rs/defmt?rev=c4461eb#c4461eb148461e54d9a1e203cf01393f07ce84f0"
 dependencies = [
  "anyhow",
  "defmt-decoder",
@@ -189,7 +189,7 @@ dependencies = [
 [[package]]
 name = "defmt-parser"
 version = "0.1.0"
-source = "git+https://github.com/knurling-rs/defmt?rev=1bb6478#1bb6478544a7188b2e7f3ac21939f58f50d56b9f"
+source = "git+https://github.com/knurling-rs/defmt?rev=c4461eb#c4461eb148461e54d9a1e203cf01393f07ce84f0"
 
 [[package]]
 name = "difference"
