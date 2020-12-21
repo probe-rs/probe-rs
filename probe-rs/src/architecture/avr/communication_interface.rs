@@ -17,7 +17,7 @@ use crate::probe::daplink::{
 
 #[derive(Debug, Error)]
 pub enum AvrEdbgError {
-    #[error("Unexpected answer to command")]
+    #[error("Unexpected answer to avr command")]
     UnexpectedAnswer,
     #[error("Debug Probe Error")]
     DebugProbe(#[from] DebugProbeError),
@@ -70,6 +70,10 @@ impl AvrCommunicationInterface {
 
         Ok(response.events)
     }
+}
+
+// Edbg part
+impl AvrCommunicationInterface {
 }
 
 impl<'a> AsRef<dyn DebugProbe + 'a> for AvrCommunicationInterface {

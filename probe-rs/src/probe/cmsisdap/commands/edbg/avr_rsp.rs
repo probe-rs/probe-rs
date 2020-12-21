@@ -1,5 +1,5 @@
 use super::super::{Category, Request, Response, Result};
-use scroll::{Pread, LE};
+use scroll::{Pread, BE};
 
 
 pub struct AvrRSPRequest;
@@ -14,7 +14,6 @@ impl Request for AvrRSPRequest {
 
 pub struct AvrRSPResponse {
     pub fragment_info: u8,
-    pub size: u16,
     pub command_packet: Vec<u8>,
 }
 impl Response for AvrRSPResponse {
@@ -23,16 +22,15 @@ impl Response for AvrRSPResponse {
         if fragment_info == 0 {
             Ok(AvrRSPResponse{
                 fragment_info: buffer[offset],
-                size: 0,
                 command_packet: vec![]
             })
         }
         else {
+            let size: u16 = buffer.pread_with(offset+1, BE)
+                    .expect("Failed to read size");
             Ok(AvrRSPResponse{
                 fragment_info: buffer[offset],
-                size: buffer.pread_with(offset+1, LE)
-                    .expect("Failed to read size"),
-                command_packet: buffer[offset+3..].to_vec(),
+                command_packet: buffer[offset+3..offset+3+size as usize].to_vec(),
             })
         }
     }

@@ -171,6 +171,11 @@ impl Response for PacketSize {
                 .pread_with::<u16>(offset + 1, LE)
                 .map_err(|_| anyhow!("This is a bug. Please report it."))?;
             Ok(PacketSize(res))
+        } else if buffer[offset] == 0x01 {
+            let res = buffer
+                .pread_with::<u8>(offset, LE)
+                .map_err(|_| anyhow!("This is a bug. Please report it."))?;
+            Ok(PacketSize(res as u16))
         } else {
             Err(anyhow!(CmsisDapError::UnexpectedAnswer))
         }

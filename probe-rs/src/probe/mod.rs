@@ -5,7 +5,6 @@ pub(crate) mod jlink;
 pub(crate) mod stlink;
 pub(crate) mod edbg;
 
-<<<<<<< HEAD
 use crate::{architecture::arm::ap::AccessPort, Session};
 use crate::{
     architecture::arm::memory::adi_v5_memory_interface::ADIMemoryInterface,
@@ -17,6 +16,7 @@ use crate::{
 };
 use crate::{
     architecture::{
+        avr::communication_interface::AvrCommunicationInterface,
         arm::{
             ap::memory_ap::mock::MockMemoryAp, communication_interface::ArmProbeInterface,
             DapAccess, PortType, SwoAccess,
@@ -24,12 +24,6 @@ use crate::{
         riscv::communication_interface::RiscvCommunicationInterface,
     },
     Memory,
-=======
-use crate::architecture::{
-    arm::{communication_interface::ArmProbeInterface, DAPAccess, PortType, SwoAccess},
-    avr::communication_interface::AvrCommunicationInterface,
-    riscv::communication_interface::RiscvCommunicationInterface,
->>>>>>> e599d1d (Plumbed in avr architecture to rest of probe-rs. Started on basic commands)
 };
 use jlink::list_jlink_devices;
 use std::{convert::TryFrom, fmt};

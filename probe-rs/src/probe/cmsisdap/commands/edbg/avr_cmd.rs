@@ -1,4 +1,6 @@
 use super::super::{Category, Request, Response, Result};
+use anyhow::anyhow;
+use scroll::{Pread, Pwrite, BE};
 
 
 pub struct AvrCommand<'a> {
@@ -12,7 +14,11 @@ impl Request for AvrCommand<'_> {
     fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize> {
         buffer[offset] = self.fragment_info;
         let len = self.command_packet.len() as u16;
-        buffer[(offset+1) .. (offset+3)].copy_from_slice(&len.to_le_bytes());
+        //buffer[(offset+1) .. (offset+3)].copy_from_slice(&len.to_be_bytes());
+        buffer.pwrite_with(len, offset + 1, BE)
+                .map_err(|_| anyhow!("This is a bug. Please report it."))?;
+        buffer[offset+3..offset+3+len as usize].copy_from_slice(self.command_packet);
+        log::debug!("Sending AvrCommand with len {}", len);
 
 
         Ok(len as usize + 3)
