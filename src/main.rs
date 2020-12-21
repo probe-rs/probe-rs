@@ -116,7 +116,7 @@ fn notmain() -> Result<i32, anyhow::Error> {
     logger::init(opts.verbose);
 
     if opts.list_probes {
-        return print_probes();
+        return print_probes(Probe::list_all());
     }
 
     if opts.list_chips {
@@ -301,6 +301,7 @@ fn notmain() -> Result<i32, anyhow::Error> {
     }
     log::debug!("found {} probes", probes.len());
     if probes.len() > 1 {
+        let _ = print_probes(probes);
         bail!("more than one probe found; use --probe to specify which one to use");
     }
     let mut probe = probes[0].open()?;
@@ -852,9 +853,7 @@ fn probes_filter(probes: &[DebugProbeInfo], selector: &DebugProbeSelector) -> Ve
         .collect()
 }
 
-fn print_probes() -> Result<i32, anyhow::Error> {
-    let probes = Probe::list_all();
-
+fn print_probes(probes: Vec<DebugProbeInfo>) -> Result<i32, anyhow::Error> {
     if !probes.is_empty() {
         println!("The following devices were found:");
         probes
