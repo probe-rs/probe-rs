@@ -18,7 +18,7 @@ use crate::DebugProbeSelector;
 use crate::WireProtocol;
 
 mod avr8generic;
-use avr8generic::Avr8GenericProtocol;
+use avr8generic::*;
 
 pub struct EDBGprobe {
     pub device: Mutex<DAPLinkDevice>,
@@ -57,6 +57,20 @@ enum Jtagice3Discovery {
 enum Jtagice3DiscoveryFailureCodes {
     DiscoveryFailedNotSupported = 0x10,
 }
+
+#[derive(Clone, Copy, Debug, PartialEq, Primitive)]
+enum Jtagice3HousekeepingCommands {
+    HousekeepingQuery = 0x00,
+    HousekeepingSet = 0x01,
+    HousekeepingGet = 0x02,
+    HousekeepingStartSession = 0x10,
+    HousekeepingEndSession = 0x11,
+    HousekeepingJtagDetect = 0x30,
+    HousekeepingJtagCalOsc = 0x31,
+    HousekeepingJtagFwUpgrade = 0x50,
+}
+
+
 const EDBG_SOF: u8 = 0x0E;
 
 #[derive(Clone, Copy, Debug, PartialEq, Primitive)]
@@ -69,7 +83,6 @@ enum SubProtocols {
     TPI = 0x14,
     EDBGCtrl = 0x20,
 }
-
 
 impl std::fmt::Debug for EDBGprobe {
     fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -171,7 +184,7 @@ impl EDBGprobe {
             SubProtocols::Discovery,
             Jtagice3DiscoveryCommands::CmdQuery as u8,
         )?;
-        if  Jtagice3DiscoveryResponses::RspDiscoveryList as u8== rsp[0] {
+        if Jtagice3DiscoveryResponses::RspDiscoveryList as u8 == rsp[0] {
             let mut protocols: Vec<SubProtocols> = Vec::new();
             for p in rsp[2..].iter() {
                 protocols.push(SubProtocols::from_u8(*p).unwrap())
@@ -180,6 +193,41 @@ impl EDBGprobe {
         } else {
             unimplemented!("RSP discovery did not return list");
         }
+    }
+
+    fn housekeeping_start_session(&mut self) -> Result<(), DebugProbeError> {
+        self.send_command(
+            SubProtocols::Housekeeping,
+            &[
+                Jtagice3HousekeepingCommands::HousekeepingStartSession as u8,
+                0x00,
+            ],
+        )?;
+        Ok(())
+    }
+
+    fn avr8generic_set(
+        &mut self,
+        context: Avr8GenericSetGetContexts,
+        address: u8,
+        data: &[u8],
+    ) -> Result<(), DebugProbeError> {
+        self.send_command(
+            SubProtocols::AVR8Generic,
+            &[
+                &[
+                    Avr8GenericCommands::Set as u8,
+                    0x00,
+                    context as u8,
+                    address,
+                    data.len() as u8,
+                ],
+                data,
+            ]
+            .concat(),
+        )?;
+
+        Ok(())
     }
 }
 
@@ -197,7 +245,6 @@ impl DebugProbe for EDBGprobe {
         log::debug!("Found protocols {:?}", protocols);
 
         Ok(Box::new(probe))
-
     }
 
     fn get_name(&self) -> &str {
@@ -215,6 +262,7 @@ impl DebugProbe for EDBGprobe {
     }
 
     fn attach(&mut self) -> Result<(), DebugProbeError> {
+        self.housekeeping_start_session()?;
         unimplemented!("Attach not implemented");
     }
 
