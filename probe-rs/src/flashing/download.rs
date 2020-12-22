@@ -1,4 +1,8 @@
 use ihex::Record::*;
+use object::{
+    elf::FileHeader32, read::elf::FileHeader, read::elf::ProgramHeader, Bytes, Endianness, Object,
+    ObjectSection,
+};
 
 use std::{
     fs::File,
@@ -55,7 +59,7 @@ pub enum FileDownloadError {
     Object(&'static str),
     /// Reading and decoding the given ELF file has resulted in the given error.
     #[error("Could not read ELF file")]
-    Elf(#[from] goblin::error::Error),
+    Elf(#[from] object::read::Error),
     /// No loadable segments were found in the ELF file.
     ///
     /// This is most likely because of a bad linker script.
@@ -195,37 +199,71 @@ fn download_elf<'buffer, T: Read + Seek>(
     file: &'buffer mut T,
     loader: &mut FlashLoader<'_, 'buffer>,
 ) -> Result<(), FileDownloadError> {
-    use goblin::elf::program_header::*;
-
     file.read_to_end(buffer)?;
 
-    let binary = goblin::elf::Elf::parse(&buffer.as_slice())?;
+    let file_kind = object::FileKind::parse(buffer)?;
+
+    match file_kind {
+        object::FileKind::Elf32 => (),
+        _ => return Err(FileDownloadError::Object("Unsupported file type")),
+    }
+
+    let elf_header = FileHeader32::<Endianness>::parse(Bytes(buffer))?;
+
+    let binary = object::read::elf::ElfFile::<FileHeader32<Endianness>>::parse(buffer)?;
+
+    let endian = elf_header.endian()?;
+
     let mut added_sections = vec![];
-    for ph in &binary.program_headers {
-        if ph.p_type == PT_LOAD && ph.p_filesz > 0 {
-            log::debug!("Found loadable segment.");
+
+    for segment in elf_header.program_headers(elf_header.endian()?, Bytes(buffer))? {
+        // Get the physical address of the segment. The data will be programmed to that location.
+        let p_paddr: u64 = segment.p_paddr(endian).into();
+
+        let segment_data = segment
+            .data(endian, Bytes(buffer))
+            .map_err(|_| FileDownloadError::Object("Failed to access data for an ELF segment."))?;
+
+        if segment_data.len() > 0 {
+            log::info!("Found loadable segment, address: {:#010x}", p_paddr);
+
+            let (segment_offset, segment_filesize) = segment.file_range(endian);
 
             let sector: core::ops::Range<u32> =
-                ph.p_offset as u32..ph.p_offset as u32 + ph.p_filesz as u32;
+                segment_offset as u32..segment_offset as u32 + segment_filesize as u32;
 
-            for sh in &binary.section_headers {
-                if sector
-                    .contains_range(&(sh.sh_offset as u32..sh.sh_offset as u32 + sh.sh_size as u32))
-                {
+            for section in binary.sections() {
+                let (section_offset, section_filesize) = match section.file_range() {
+                    Some(range) => range,
+                    None => continue,
+                };
+
+                if sector.contains_range(
+                    &(section_offset as u32..section_offset as u32 + section_filesize as u32),
+                ) {
+                    log::info!("Matching section: {:?}", section.name()?);
+
                     #[cfg(feature = "hexdump")]
-                    for line in hexdump::hexdump_iter(
-                        &buffer[sh.sh_offset as usize..][..sh.sh_size as usize],
-                    ) {
+                    for line in hexdump::hexdump_iter(section.data()?) {
                         log::trace!("{}", line);
                     }
 
-                    added_sections.push((&binary.shdr_strtab[sh.sh_name], sh.sh_addr, sh.sh_size));
+                    for (offset, relocation) in section.relocations() {
+                        log::info!("Relocation: offset={}, relocation={:?}", offset, relocation);
+                    }
+
+                    added_sections.push((
+                        section.name()?.to_owned(),
+                        section.address(),
+                        section.size(),
+                    ));
                 }
             }
 
             loader.add_data(
-                ph.p_paddr as u32,
-                &buffer[ph.p_offset as usize..][..ph.p_filesz as usize],
+                p_paddr as u32,
+                &buffer
+                    [segment_offset as usize..segment_offset as usize + segment_filesize as usize],
             )?;
         }
     }
