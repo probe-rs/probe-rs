@@ -224,7 +224,7 @@ fn download_elf<'buffer, T: Read + Seek>(
             .data(endian, Bytes(buffer))
             .map_err(|_| FileDownloadError::Object("Failed to access data for an ELF segment."))?;
 
-        if segment_data.len() > 0 {
+        if !segment_data.is_empty() {
             log::info!("Found loadable segment, address: {:#010x}", p_paddr);
 
             let (segment_offset, segment_filesize) = segment.file_range(endian);
