@@ -2,7 +2,7 @@
 
 use thiserror::Error;
 
-use crate::config::{FlashRegion, TargetDescriptionSource};
+use crate::config::{NvmRegion, TargetDescriptionSource};
 use crate::error;
 
 /// Describes any error that happened during the or in preparation for the flashing procedure.
@@ -20,7 +20,7 @@ pub enum FlashError {
     #[error(
         "No flash memory contains the entire requested memory range {start:#08X}..{end:#08X}."
     )]
-    NoSuitableFlash {
+    NoSuitableNvm {
         start: u32,
         end: u32,
         description_source: TargetDescriptionSource,
@@ -53,7 +53,7 @@ pub enum FlashError {
 
     // Libary API error?
     #[error("{address} is not contained in {region:?}")]
-    AddressNotInRegion { address: u32, region: FlashRegion },
+    AddressNotInRegion { address: u32, region: NvmRegion },
 
     // Group Memory and Core (connection / communication problem?)
     #[error("Something during memory interaction went wrong")]

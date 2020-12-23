@@ -7,7 +7,6 @@ use bitvec::{order::Lsb0, slice::BitSlice, vec::BitVec};
 use rusb::UsbContext;
 use std::convert::TryInto;
 use std::io::{self, Read, Write};
-use std::sync::Mutex;
 use std::time::Duration;
 
 mod ftdi_impl;
@@ -386,7 +385,7 @@ impl JtagAdapter {
 
 #[derive(Debug)]
 pub struct FtdiProbe {
-    adapter: Mutex<JtagAdapter>,
+    adapter: JtagAdapter,
     speed_khz: u32,
     idle_cycles: u8,
 }
@@ -411,7 +410,7 @@ impl DebugProbe for FtdiProbe {
             .map_err(|e| DebugProbeError::ProbeSpecific(Box::new(e)))?;
 
         let probe = FtdiProbe {
-            adapter: Mutex::new(adapter),
+            adapter,
             speed_khz: 0,
             idle_cycles: 0,
         };
@@ -435,13 +434,13 @@ impl DebugProbe for FtdiProbe {
 
     fn attach(&mut self) -> Result<(), DebugProbeError> {
         log::debug!("attaching...");
-        let adapter = self.adapter.get_mut().unwrap();
 
-        adapter
+        self.adapter
             .attach()
             .map_err(|e| DebugProbeError::ProbeSpecific(Box::new(e)))?;
 
-        let taps = adapter
+        let taps = self
+            .adapter
             .scan()
             .map_err(|e| DebugProbeError::ProbeSpecific(Box::new(e)))?;
         if taps.is_empty() {
@@ -449,7 +448,7 @@ impl DebugProbe for FtdiProbe {
             return Err(DebugProbeError::TargetNotFound);
         }
         if taps.len() == 1 {
-            adapter
+            self.adapter
                 .select_target(taps[0].idcode)
                 .map_err(|e| DebugProbeError::ProbeSpecific(Box::new(e)))?;
         } else {
@@ -461,7 +460,7 @@ impl DebugProbe for FtdiProbe {
                 .map(|tap| tap.idcode)
                 .find(|idcode| known_idcodes.iter().any(|v| v == idcode));
             if let Some(idcode) = idcode {
-                adapter
+                self.adapter
                     .select_target(idcode)
                     .map_err(|e| DebugProbeError::ProbeSpecific(Box::new(e)))?;
             } else {
@@ -512,14 +511,14 @@ impl DebugProbe for FtdiProbe {
 impl JTAGAccess for FtdiProbe {
     fn read_register(&mut self, address: u32, len: u32) -> Result<Vec<u8>, DebugProbeError> {
         log::debug!("read_register({:#x}, {})", address, len);
-        let adapter = self.adapter.get_mut().unwrap();
-        let r = adapter
+        let r = self
+            .adapter
             .target_transfer(address, None, len as usize)
             .map_err(|e| {
                 log::debug!("target_transfer error: {:?}", e);
                 DebugProbeError::ProbeSpecific(Box::new(e))
             })?;
-        adapter
+        self.adapter
             .idle(self.idle_cycles as usize)
             .map_err(|e| DebugProbeError::ProbeSpecific(Box::new(e)))?;
         log::debug!("read_register result: {:?})", r);
@@ -538,14 +537,14 @@ impl JTAGAccess for FtdiProbe {
         len: u32,
     ) -> Result<Vec<u8>, DebugProbeError> {
         log::debug!("write_register({:#x}, {:?}, {})", address, data, len);
-        let adapter = self.adapter.get_mut().unwrap();
-        let r = adapter
+        let r = self
+            .adapter
             .target_transfer(address, Some(data), len as usize)
             .map_err(|e| {
                 log::debug!("target_transfer error: {:?}", e);
                 DebugProbeError::ProbeSpecific(Box::new(e))
             })?;
-        adapter
+        self.adapter
             .idle(self.idle_cycles as usize)
             .map_err(|e| DebugProbeError::ProbeSpecific(Box::new(e)))?;
         log::debug!("write_register result: {:?})", r);
@@ -569,9 +568,16 @@ impl AsMut<dyn DebugProbe> for FtdiProbe {
     }
 }
 
+/// (VendorId, ProductId)
+static FTDI_COMPAT_DEVICE_IDS: &[(u16, u16)] = &[(0x0403, 0x6010), (0x0403, 0x6014)];
+
 fn get_device_info(device: &rusb::Device<rusb::Context>) -> Option<DebugProbeInfo> {
     let d_desc = device.device_descriptor().ok()?;
-    if d_desc.vendor_id() != 0x0403 || d_desc.product_id() != 0x6010 {
+
+    if !FTDI_COMPAT_DEVICE_IDS
+        .iter()
+        .any(|(vid, pid)| d_desc.vendor_id() == *vid && d_desc.product_id() == *pid)
+    {
         return None;
     }
 

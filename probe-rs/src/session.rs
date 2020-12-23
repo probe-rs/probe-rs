@@ -255,6 +255,7 @@ impl Session {
         }
     }
 
+    /// Get the target description of the connected target.
     pub fn target(&self) -> &Target {
         &self.target
     }
@@ -301,6 +302,7 @@ impl Session {
     }
 
     /// Returns the memory map of the target.
+    #[deprecated = "Use the Session::target function instead"]
     pub fn memory_map(&self) -> &[MemoryRegion] {
         &self.target.memory_map
     }
@@ -325,7 +327,7 @@ impl Session {
 }
 
 // This test ensures that [Session] is fully [Send] + [Sync].
-static_assertions::assert_impl_all!(Session: Send, Sync);
+static_assertions::assert_impl_all!(Session: Send);
 
 impl Drop for Session {
     fn drop(&mut self) {

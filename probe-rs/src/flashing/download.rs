@@ -1,5 +1,8 @@
-use goblin::elf64::section_header::SHT_NOBITS;
 use ihex::Record::*;
+use object::{
+    elf::FileHeader32, read::elf::FileHeader, read::elf::ProgramHeader, Bytes, Endianness, Object,
+    ObjectSection,
+};
 
 use std::{
     fs::File,
@@ -16,9 +19,9 @@ use thiserror::Error;
 #[derive(Debug)]
 pub struct BinOptions {
     /// The address in memory where the binary will be put at.
-    base_address: Option<u32>,
+    pub base_address: Option<u32>,
     /// The number of bytes to skip at the start of the binary file.
-    skip: u32,
+    pub skip: u32,
 }
 
 /// A finite list of all the available binary formats probe-rs understands.
@@ -56,7 +59,7 @@ pub enum FileDownloadError {
     Object(&'static str),
     /// Reading and decoding the given ELF file has resulted in the given error.
     #[error("Could not read ELF file")]
-    Elf(#[from] goblin::error::Error),
+    Elf(#[from] object::read::Error),
     /// No loadable segments were found in the ELF file.
     ///
     /// This is most likely because of a bad linker script.
@@ -186,7 +189,7 @@ fn download_hex<'buffer, T: Read + Seek>(
 
                 offsets.push((offset, index))
             }
-            EndOfFile => return Ok(()),
+            EndOfFile => (),
             ExtendedSegmentAddress(address) => {
                 _extended_segment_address = address * 16;
             }
@@ -330,62 +333,68 @@ fn extract_from_elf<'data, 'elf: 'data>(
     extracted_data: &mut Vec<ExtractedFlashData<'data>>,
     elf_data: &'data [u8],
 ) -> Result<usize, FileDownloadError> {
-    use goblin::elf::program_header::*;
+    let file_kind = object::FileKind::parse(elf_data)?;
 
-    let binary = goblin::elf::Elf::parse(&elf_data)?;
+    match file_kind {
+        object::FileKind::Elf32 => (),
+        _ => return Err(FileDownloadError::Object("Unsupported file type")),
+    }
+
+    let elf_header = FileHeader32::<Endianness>::parse(Bytes(elf_data))?;
+
+    let binary = object::read::elf::ElfFile::<FileHeader32<Endianness>>::parse(elf_data)?;
+
+    let endian = elf_header.endian()?;
 
     let mut extracted_sections = 0;
 
-    for ph in &binary.program_headers {
-        if ph.p_type == PT_LOAD && ph.p_filesz > 0 {
-            log::info!(
-                "Found loadable segment, target address: {:#10x}",
-                ph.p_paddr
-            );
+    for segment in elf_header.program_headers(elf_header.endian()?, Bytes(elf_data))? {
+        // Get the physical address of the segment. The data will be programmed to that location.
+        let p_paddr: u64 = segment.p_paddr(endian).into();
 
-            // The file section is the part of the ELF which
-            // contains the data for the current program header.
-            //
-            // This is the data that should be loaded into memory.
-            let file_section: core::ops::Range<u32> =
-                ph.p_offset as u32..ph.p_offset as u32 + ph.p_filesz as u32;
+        let segment_data = segment
+            .data(endian, Bytes(elf_data))
+            .map_err(|_| FileDownloadError::Object("Failed to access data for an ELF segment."))?;
 
-            let mut elf_section = Vec::new();
+        let mut elf_section = Vec::new();
 
-            for sh in &binary.section_headers {
-                if file_section
-                    .contains_range(&(sh.sh_offset as u32..sh.sh_offset as u32 + sh.sh_size as u32))
-                {
-                    if sh.sh_size > 0 && (sh.sh_type & SHT_NOBITS) == 0 {
-                        log::info!(
-                            "ELF Section:     {}",
-                            binary.shdr_strtab[sh.sh_name].to_owned()
-                        );
-                        log::info!("\tFile Range:    {:x?}", sh.file_range());
-                        log::info!("\tVirtual Range: {:x?}", sh.vm_range());
+        if !segment_data.is_empty() {
+            log::info!("Found loadable segment, address: {:#010x}", p_paddr);
 
-                        elf_section.push(binary.shdr_strtab[sh.sh_name].to_owned());
-                    } else {
-                        log::debug!(
-                            "ELF Section: {} is empty!",
-                            binary.shdr_strtab[sh.sh_name].to_owned()
-                        );
-                    }
+            let (segment_offset, segment_filesize) = segment.file_range(endian);
+
+            let sector: core::ops::Range<u32> =
+                segment_offset as u32..segment_offset as u32 + segment_filesize as u32;
+
+            for section in binary.sections() {
+                let (section_offset, section_filesize) = match section.file_range() {
+                    Some(range) => range,
+                    None => continue,
+                };
+
+                if sector.contains_range(
+                    &(section_offset as u32..section_offset as u32 + section_filesize as u32),
+                ) {
+                    log::info!("Matching section: {:?}", section.name()?);
 
                     #[cfg(feature = "hexdump")]
-                    for line in hexdump::hexdump_iter(
-                        &buffer[sh.sh_offset as usize..][..sh.sh_size as usize],
-                    ) {
+                    for line in hexdump::hexdump_iter(section.data()?) {
                         log::trace!("{}", line);
                     }
+
+                    for (offset, relocation) in section.relocations() {
+                        log::info!("Relocation: offset={}, relocation={:?}", offset, relocation);
+                    }
+
+                    elf_section.push(section.name()?.to_owned());
                 }
             }
 
-            let section_data = &elf_data[ph.p_offset as usize..][..ph.p_filesz as usize];
+            let section_data = &elf_data[segment_offset as usize..][..segment_filesize as usize];
 
             extracted_data.push(ExtractedFlashData {
                 name: elf_section,
-                address: ph.p_paddr as u32,
+                address: p_paddr as u32,
                 data: section_data,
             });
 

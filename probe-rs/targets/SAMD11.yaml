@@ -8,7 +8,7 @@ variants:
             start: 536870912
             end: 536875008
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0
             end: 16384
@@ -22,7 +22,7 @@ variants:
             start: 536870912
             end: 536875008
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0
             end: 16384
@@ -36,7 +36,7 @@ variants:
             start: 536870912
             end: 536875008
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0
             end: 16384
@@ -50,7 +50,7 @@ variants:
             start: 536870912
             end: 536875008
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0
             end: 16384

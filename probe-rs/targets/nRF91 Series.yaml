@@ -8,7 +8,7 @@ variants:
             start: 536870912
             end: 537133056
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0
             end: 1048576

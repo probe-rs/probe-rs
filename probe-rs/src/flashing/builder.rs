@@ -20,11 +20,11 @@ impl Debug for FlashPage {
 }
 
 impl FlashPage {
-    /// Creates a new empty flash page form a `PageInfo`.
-    fn new(page_info: &PageInfo) -> Self {
+    /// Creates a new empty flash page from a `PageInfo`.
+    fn new(page_info: &PageInfo, default_value: u8) -> Self {
         Self {
             address: page_info.base_address,
-            data: vec![0; page_info.size as usize],
+            data: vec![default_value; page_info.size as usize],
         }
     }
 
@@ -475,7 +475,10 @@ fn add_page<'page>(
 ) -> Result<&'page mut FlashPage, FlashError> {
     let page_info = flash_algorithm.page_info(address).expect(&format!("Address {0:#010x} is not a valid address in the flash area. This is a bug, please report it.", address));
 
-    let new_page = FlashPage::new(&page_info);
+    let new_page = FlashPage::new(
+        &page_info,
+        flash_algorithm.flash_properties.erased_byte_value,
+    );
 
     pages.push(new_page);
     log::trace!(
@@ -560,6 +563,8 @@ mod tests {
             .build_sectors_and_pages(&flash_algorithm, true)
             .unwrap();
 
+        let erased_byte_value = flash_algorithm.flash_properties.erased_byte_value;
+
         assert_eq!(
             flash_layout,
             FlashLayout {
@@ -571,22 +576,22 @@ mod tests {
                     FlashPage {
                         address: 0x0000,
                         data: {
-                            let mut data = vec![0; 1024];
+                            let mut data = vec![erased_byte_value; 1024];
                             data[0] = 42;
                             data
                         },
                     },
                     FlashPage {
                         address: 0x0400,
-                        data: vec![0; 1024],
+                        data: vec![erased_byte_value; 1024],
                     },
                     FlashPage {
                         address: 0x0800,
-                        data: vec![0; 1024],
+                        data: vec![erased_byte_value; 1024],
                     },
                     FlashPage {
                         address: 0x0C00,
-                        data: vec![0; 1024],
+                        data: vec![erased_byte_value; 1024],
                     },
                 ],
                 fills: vec![
@@ -628,6 +633,8 @@ mod tests {
             .build_sectors_and_pages(&flash_algorithm, true)
             .unwrap();
 
+        let erased_byte_value = flash_algorithm.flash_properties.erased_byte_value;
+
         assert_eq!(
             flash_layout,
             FlashLayout {
@@ -642,15 +649,15 @@ mod tests {
                     },
                     FlashPage {
                         address: 0x0400,
-                        data: vec![0; 1024],
+                        data: vec![erased_byte_value; 1024],
                     },
                     FlashPage {
                         address: 0x0800,
-                        data: vec![0; 1024],
+                        data: vec![erased_byte_value; 1024],
                     },
                     FlashPage {
                         address: 0x0C00,
-                        data: vec![0; 1024],
+                        data: vec![erased_byte_value; 1024],
                     },
                 ],
                 fills: vec![
@@ -687,6 +694,8 @@ mod tests {
             .build_sectors_and_pages(&flash_algorithm, true)
             .unwrap();
 
+        let erased_byte_value = flash_algorithm.flash_properties.erased_byte_value;
+
         assert_eq!(
             flash_layout,
             FlashLayout {
@@ -702,18 +711,18 @@ mod tests {
                     FlashPage {
                         address: 0x0400,
                         data: {
-                            let mut data = vec![0; 1024];
+                            let mut data = vec![erased_byte_value; 1024];
                             data[0] = 42;
                             data
                         },
                     },
                     FlashPage {
                         address: 0x0800,
-                        data: vec![0; 1024],
+                        data: vec![erased_byte_value; 1024],
                     },
                     FlashPage {
                         address: 0x0C00,
-                        data: vec![0; 1024],
+                        data: vec![erased_byte_value; 1024],
                     },
                 ],
                 fills: vec![
@@ -750,6 +759,8 @@ mod tests {
             .build_sectors_and_pages(&flash_algorithm, false)
             .unwrap();
 
+        let erased_byte_value = flash_algorithm.flash_properties.erased_byte_value;
+
         assert_eq!(
             flash_layout,
             FlashLayout {
@@ -765,7 +776,7 @@ mod tests {
                     FlashPage {
                         address: 0x0400,
                         data: {
-                            let mut data = vec![0; 1024];
+                            let mut data = vec![erased_byte_value; 1024];
                             data[0] = 42;
                             data
                         },
@@ -793,6 +804,8 @@ mod tests {
             .build_sectors_and_pages(&flash_algorithm, true)
             .unwrap();
 
+        let erased_byte_value = flash_algorithm.flash_properties.erased_byte_value;
+
         assert_eq!(
             flash_layout,
             FlashLayout {
@@ -806,7 +819,7 @@ mod tests {
                         data: {
                             let mut data = vec![42; 1024];
                             for d in &mut data[..42] {
-                                *d = 0;
+                                *d = erased_byte_value;
                             }
                             data
                         },
@@ -814,7 +827,7 @@ mod tests {
                     FlashPage {
                         address: 0x000400,
                         data: {
-                            let mut data = vec![0; 1024];
+                            let mut data = vec![erased_byte_value; 1024];
                             for d in &mut data[..42] {
                                 *d = 42;
                             }
@@ -823,11 +836,11 @@ mod tests {
                     },
                     FlashPage {
                         address: 0x000800,
-                        data: vec![0; 1024],
+                        data: vec![erased_byte_value; 1024],
                     },
                     FlashPage {
                         address: 0x000C00,
-                        data: vec![0; 1024],
+                        data: vec![erased_byte_value; 1024],
                     },
                 ],
                 fills: vec![
@@ -869,6 +882,8 @@ mod tests {
             .build_sectors_and_pages(&flash_algorithm, true)
             .unwrap();
 
+        let erased_byte_value = flash_algorithm.flash_properties.erased_byte_value;
+
         assert_eq!(
             flash_layout,
             FlashLayout {
@@ -902,7 +917,7 @@ mod tests {
                     FlashPage {
                         address: 0x001000,
                         data: {
-                            let mut data = vec![0; 1024];
+                            let mut data = vec![erased_byte_value; 1024];
                             for d in &mut data[..928] {
                                 *d = 42;
                             }
@@ -911,15 +926,15 @@ mod tests {
                     },
                     FlashPage {
                         address: 0x001400,
-                        data: vec![0; 1024],
+                        data: vec![erased_byte_value; 1024],
                     },
                     FlashPage {
                         address: 0x001800,
-                        data: vec![0; 1024],
+                        data: vec![erased_byte_value; 1024],
                     },
                     FlashPage {
                         address: 0x001C00,
-                        data: vec![0; 1024],
+                        data: vec![erased_byte_value; 1024],
                     },
                 ],
                 fills: vec![
@@ -961,6 +976,8 @@ mod tests {
         let flash_layout = flash_builder
             .build_sectors_and_pages(&flash_algorithm, true)
             .unwrap();
+
+        let erased_byte_value = flash_algorithm.flash_properties.erased_byte_value;
 
         assert_eq!(
             flash_layout,
@@ -1005,7 +1022,7 @@ mod tests {
                         data: {
                             let mut data = vec![42; 1024];
                             for d in &mut data[928..1024] {
-                                *d = 0;
+                                *d = erased_byte_value;
                             }
                             data
                         },
@@ -1015,18 +1032,18 @@ mod tests {
                         data: {
                             let mut data = vec![42; 1024];
                             for d in &mut data[..692] {
-                                *d = 0;
+                                *d = erased_byte_value;
                             }
                             data
                         },
                     },
                     FlashPage {
                         address: 0x001400,
-                        data: vec![0; 1024],
+                        data: vec![erased_byte_value; 1024],
                     },
                     FlashPage {
                         address: 0x001800,
-                        data: vec![0; 1024],
+                        data: vec![erased_byte_value; 1024],
                     },
                     FlashPage {
                         address: 0x002000,
@@ -1049,22 +1066,22 @@ mod tests {
                         data: {
                             let mut data = vec![42; 1024];
                             for d in &mut data[596..1024] {
-                                *d = 0;
+                                *d = erased_byte_value;
                             }
                             data
                         },
                     },
                     FlashPage {
                         address: 0x003400,
-                        data: vec![0; 1024],
+                        data: vec![erased_byte_value; 1024],
                     },
                     FlashPage {
                         address: 0x003800,
-                        data: vec![0; 1024],
+                        data: vec![erased_byte_value; 1024],
                     },
                     FlashPage {
                         address: 0x003C00,
-                        data: vec![0; 1024],
+                        data: vec![erased_byte_value; 1024],
                     },
                 ],
                 fills: vec![
@@ -1133,6 +1150,8 @@ mod tests {
             .build_sectors_and_pages(&flash_algorithm, true)
             .unwrap();
 
+        let erased_byte_value = flash_algorithm.flash_properties.erased_byte_value;
+
         assert_eq!(
             flash_layout,
             FlashLayout {
@@ -1176,7 +1195,7 @@ mod tests {
                         data: {
                             let mut data = vec![42; 1024];
                             for d in &mut data[928..1024] {
-                                *d = 0;
+                                *d = erased_byte_value;
                             }
                             data
                         },
@@ -1186,7 +1205,7 @@ mod tests {
                         data: {
                             let mut data = vec![42; 1024];
                             for d in &mut data[..692] {
-                                *d = 0;
+                                *d = erased_byte_value;
                             }
                             data
                         },
@@ -1212,7 +1231,7 @@ mod tests {
                         data: {
                             let mut data = vec![42; 1024];
                             for d in &mut data[596..1024] {
-                                *d = 0;
+                                *d = erased_byte_value;
                             }
                             data
                         },

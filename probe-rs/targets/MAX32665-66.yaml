@@ -10,7 +10,7 @@ variants:
             start: 0x20000000
             end: 0x2008C000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x10000000
             end: 0x10100000
@@ -25,7 +25,7 @@ variants:
             start: 0x20000000
             end: 0x2008C000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x10000000
             end: 0x10100000

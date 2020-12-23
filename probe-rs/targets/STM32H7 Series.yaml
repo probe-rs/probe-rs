@@ -8,7 +8,7 @@ variants:
             start: 0x24000000
             end: 0x24060000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08100000
@@ -22,7 +22,7 @@ variants:
             start: 0x24000000
             end: 0x24060000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08200000
@@ -36,7 +36,7 @@ variants:
             start: 0x24000000
             end: 0x24060000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08100000
@@ -50,7 +50,7 @@ variants:
             start: 0x24000000
             end: 0x24060000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08200000
@@ -64,7 +64,7 @@ variants:
             start: 0x24000000
             end: 0x24060000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08100000
@@ -78,7 +78,7 @@ variants:
             start: 0x24000000
             end: 0x24060000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08100000
@@ -92,7 +92,7 @@ variants:
             start: 0x24000000
             end: 0x24060000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08200000
@@ -106,7 +106,7 @@ variants:
             start: 0x24000000
             end: 0x24060000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08200000
@@ -120,7 +120,7 @@ variants:
             start: 0x24000000
             end: 0x24060000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08100000
@@ -134,7 +134,7 @@ variants:
             start: 0x24000000
             end: 0x24060000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08100000
@@ -148,7 +148,7 @@ variants:
             start: 0x24000000
             end: 0x24060000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08200000
@@ -162,7 +162,7 @@ variants:
             start: 0x24000000
             end: 0x24060000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08200000
@@ -176,7 +176,7 @@ variants:
             start: 0x24000000
             end: 0x24060000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08100000
@@ -190,7 +190,7 @@ variants:
             start: 0x24000000
             end: 0x24060000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08200000
@@ -204,7 +204,7 @@ variants:
             start: 0x24000000
             end: 0x24060000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08100000
@@ -218,7 +218,7 @@ variants:
             start: 0x24000000
             end: 0x24060000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08200000
@@ -232,7 +232,7 @@ variants:
             start: 0x24000000
             end: 0x24080000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08100000
@@ -246,7 +246,7 @@ variants:
             start: 0x24000000
             end: 0x24080000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08200000
@@ -260,7 +260,7 @@ variants:
             start: 0x24000000
             end: 0x24080000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08100000
@@ -274,7 +274,7 @@ variants:
             start: 0x24000000
             end: 0x24080000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08200000
@@ -288,7 +288,7 @@ variants:
             start: 0x24000000
             end: 0x24080000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08100000
@@ -302,7 +302,7 @@ variants:
             start: 0x24000000
             end: 0x24080000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08100000
@@ -316,7 +316,7 @@ variants:
             start: 0x24000000
             end: 0x24080000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08200000
@@ -330,7 +330,7 @@ variants:
             start: 0x24000000
             end: 0x24080000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08200000
@@ -344,7 +344,7 @@ variants:
             start: 0x24000000
             end: 0x24080000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08100000
@@ -358,7 +358,7 @@ variants:
             start: 0x24000000
             end: 0x24080000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08100000
@@ -372,7 +372,7 @@ variants:
             start: 0x24000000
             end: 0x24080000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08200000
@@ -386,7 +386,7 @@ variants:
             start: 0x24000000
             end: 0x24080000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08200000
@@ -400,7 +400,7 @@ variants:
             start: 0x24000000
             end: 0x24080000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08100000
@@ -414,7 +414,7 @@ variants:
             start: 0x24000000
             end: 0x24080000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08200000
@@ -428,7 +428,7 @@ variants:
             start: 0x24000000
             end: 0x24080000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08100000
@@ -442,7 +442,7 @@ variants:
             start: 0x24000000
             end: 0x24080000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08200000
@@ -456,7 +456,7 @@ variants:
             start: 0x24000000
             end: 0x24080000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08100000
@@ -471,7 +471,7 @@ variants:
             start: 0x24000000
             end: 0x24080000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08200000
@@ -486,7 +486,7 @@ variants:
             start: 0x24000000
             end: 0x24080000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08100000
@@ -501,7 +501,7 @@ variants:
             start: 0x24000000
             end: 0x24080000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08100000
@@ -516,7 +516,7 @@ variants:
             start: 0x24000000
             end: 0x24080000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08200000
@@ -531,7 +531,7 @@ variants:
             start: 0x24000000
             end: 0x24080000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08200000
@@ -546,7 +546,7 @@ variants:
             start: 0x24000000
             end: 0x24080000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08100000
@@ -561,7 +561,7 @@ variants:
             start: 0x24000000
             end: 0x24080000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08200000
@@ -576,7 +576,7 @@ variants:
             start: 0x24000000
             end: 0x24080000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08100000
@@ -591,7 +591,7 @@ variants:
             start: 0x24000000
             end: 0x24080000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08200000
@@ -606,7 +606,7 @@ variants:
             start: 0x24000000
             end: 0x24080000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08100000
@@ -621,7 +621,7 @@ variants:
             start: 0x24000000
             end: 0x24080000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08200000
@@ -636,7 +636,7 @@ variants:
             start: 0x24000000
             end: 0x24080000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08100000
@@ -651,7 +651,7 @@ variants:
             start: 0x24000000
             end: 0x24080000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08200000
@@ -666,7 +666,7 @@ variants:
             start: 0x24000000
             end: 0x24080000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08100000
@@ -681,7 +681,7 @@ variants:
             start: 0x24000000
             end: 0x24080000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08200000
@@ -696,7 +696,7 @@ variants:
             start: 0x24000000
             end: 0x24080000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08100000
@@ -711,7 +711,7 @@ variants:
             start: 0x24000000
             end: 0x24080000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08200000
@@ -726,7 +726,7 @@ variants:
             start: 0x24000000
             end: 0x24080000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08200000
@@ -741,7 +741,7 @@ variants:
             start: 0x24000000
             end: 0x24080000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08020000
@@ -755,7 +755,7 @@ variants:
             start: 0x24000000
             end: 0x24080000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08020000
@@ -769,7 +769,7 @@ variants:
             start: 0x24000000
             end: 0x24080000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08020000
@@ -783,7 +783,7 @@ variants:
             start: 0x24000000
             end: 0x24080000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08020000
@@ -797,7 +797,7 @@ variants:
             start: 0x24000000
             end: 0x24080000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08020000
@@ -811,7 +811,7 @@ variants:
             start: 0x24000000
             end: 0x24080000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08200000
@@ -825,7 +825,7 @@ variants:
             start: 0x24000000
             end: 0x24080000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08200000
@@ -839,7 +839,7 @@ variants:
             start: 0x24000000
             end: 0x24080000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08200000
@@ -853,7 +853,7 @@ variants:
             start: 0x24000000
             end: 0x24080000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08200000
@@ -867,7 +867,7 @@ variants:
             start: 0x24000000
             end: 0x24080000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08200000
@@ -881,7 +881,7 @@ variants:
             start: 0x24000000
             end: 0x24080000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08200000
@@ -895,7 +895,7 @@ variants:
             start: 0x24000000
             end: 0x24080000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08200000
@@ -909,7 +909,7 @@ variants:
             start: 0x24000000
             end: 0x24080000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08200000
@@ -923,7 +923,7 @@ variants:
             start: 0x24000000
             end: 0x24080000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08200000
@@ -938,7 +938,7 @@ variants:
             start: 0x24000000
             end: 0x24080000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08200000
@@ -953,7 +953,7 @@ variants:
             start: 0x24000000
             end: 0x24080000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08200000
@@ -968,7 +968,7 @@ variants:
             start: 0x24000000
             end: 0x24080000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08200000
@@ -983,7 +983,7 @@ variants:
             start: 0x24000000
             end: 0x24080000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08200000
@@ -998,7 +998,7 @@ variants:
             start: 0x24000000
             end: 0x24080000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08200000
@@ -1013,7 +1013,7 @@ variants:
             start: 0x24000000
             end: 0x24080000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08200000
@@ -1028,7 +1028,7 @@ variants:
             start: 0x24000000
             end: 0x24080000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08200000
@@ -1043,7 +1043,7 @@ variants:
             start: 0x24000000
             end: 0x24080000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08200000
@@ -1058,7 +1058,7 @@ variants:
             start: 0x24000000
             end: 0x24080000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08200000
@@ -1073,7 +1073,7 @@ variants:
             start: 0x24000000
             end: 0x24100000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08100000
@@ -1087,7 +1087,7 @@ variants:
             start: 0x24000000
             end: 0x24100000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08200000
@@ -1101,7 +1101,7 @@ variants:
             start: 0x24000000
             end: 0x24100000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08100000
@@ -1115,7 +1115,7 @@ variants:
             start: 0x24000000
             end: 0x24100000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08100000
@@ -1129,7 +1129,7 @@ variants:
             start: 0x24000000
             end: 0x24100000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08100000
@@ -1143,7 +1143,7 @@ variants:
             start: 0x24000000
             end: 0x24100000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08100000
@@ -1157,7 +1157,7 @@ variants:
             start: 0x24000000
             end: 0x24100000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08200000
@@ -1171,7 +1171,7 @@ variants:
             start: 0x24000000
             end: 0x24100000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08200000
@@ -1185,7 +1185,7 @@ variants:
             start: 0x24000000
             end: 0x24100000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08200000
@@ -1199,7 +1199,7 @@ variants:
             start: 0x24000000
             end: 0x24100000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08200000
@@ -1213,7 +1213,7 @@ variants:
             start: 0x24000000
             end: 0x24100000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08100000
@@ -1227,7 +1227,7 @@ variants:
             start: 0x24000000
             end: 0x24100000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08200000
@@ -1241,7 +1241,7 @@ variants:
             start: 0x24000000
             end: 0x24100000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08100000
@@ -1255,7 +1255,7 @@ variants:
             start: 0x24000000
             end: 0x24100000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08200000
@@ -1269,7 +1269,7 @@ variants:
             start: 0x24000000
             end: 0x24100000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08200000
@@ -1283,7 +1283,7 @@ variants:
             start: 0x24000000
             end: 0x24100000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08100000
@@ -1297,7 +1297,7 @@ variants:
             start: 0x24000000
             end: 0x24100000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08200000
@@ -1311,7 +1311,7 @@ variants:
             start: 0x24000000
             end: 0x24100000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08100000
@@ -1325,7 +1325,7 @@ variants:
             start: 0x24000000
             end: 0x24100000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08100000
@@ -1339,7 +1339,7 @@ variants:
             start: 0x24000000
             end: 0x24100000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08100000
@@ -1353,7 +1353,7 @@ variants:
             start: 0x24000000
             end: 0x24100000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08100000
@@ -1367,7 +1367,7 @@ variants:
             start: 0x24000000
             end: 0x24100000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08200000
@@ -1381,7 +1381,7 @@ variants:
             start: 0x24000000
             end: 0x24100000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08200000
@@ -1395,7 +1395,7 @@ variants:
             start: 0x24000000
             end: 0x24100000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08200000
@@ -1409,7 +1409,7 @@ variants:
             start: 0x24000000
             end: 0x24100000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08200000
@@ -1423,7 +1423,7 @@ variants:
             start: 0x24000000
             end: 0x24100000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08100000
@@ -1437,7 +1437,7 @@ variants:
             start: 0x24000000
             end: 0x24100000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08100000
@@ -1451,7 +1451,7 @@ variants:
             start: 0x24000000
             end: 0x24100000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08200000
@@ -1465,7 +1465,7 @@ variants:
             start: 0x24000000
             end: 0x24100000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08200000
@@ -1479,7 +1479,7 @@ variants:
             start: 0x24000000
             end: 0x24100000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08020000
@@ -1493,7 +1493,7 @@ variants:
             start: 0x24000000
             end: 0x24100000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08020000
@@ -1507,7 +1507,7 @@ variants:
             start: 0x24000000
             end: 0x24100000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08020000
@@ -1521,7 +1521,7 @@ variants:
             start: 0x24000000
             end: 0x24100000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08020000
@@ -1535,7 +1535,7 @@ variants:
             start: 0x24000000
             end: 0x24100000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08020000
@@ -1549,7 +1549,7 @@ variants:
             start: 0x24000000
             end: 0x24100000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08020000
@@ -1563,7 +1563,7 @@ variants:
             start: 0x24000000
             end: 0x24100000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08200000
@@ -1577,7 +1577,7 @@ variants:
             start: 0x24000000
             end: 0x24100000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08200000
@@ -1591,7 +1591,7 @@ variants:
             start: 0x24000000
             end: 0x24100000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08200000
@@ -1605,7 +1605,7 @@ variants:
             start: 0x24000000
             end: 0x24100000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08200000
@@ -1619,7 +1619,7 @@ variants:
             start: 0x24000000
             end: 0x24100000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08200000
@@ -1633,7 +1633,7 @@ variants:
             start: 0x24000000
             end: 0x24100000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08200000
@@ -1647,7 +1647,7 @@ variants:
             start: 0x24000000
             end: 0x24100000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08200000
@@ -1661,7 +1661,7 @@ variants:
             start: 0x24000000
             end: 0x24100000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08200000
@@ -1675,7 +1675,7 @@ variants:
             start: 0x24000000
             end: 0x24100000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08200000
@@ -1689,7 +1689,7 @@ variants:
             start: 0x24000000
             end: 0x24100000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08200000
@@ -1703,7 +1703,7 @@ variants:
             start: 0x24000000
             end: 0x24100000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08200000
@@ -1717,7 +1717,7 @@ variants:
             start: 0x24000000
             end: 0x24100000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08200000
@@ -1731,7 +1731,7 @@ variants:
             start: 0x24000000
             end: 0x24100000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08200000
@@ -1745,7 +1745,7 @@ variants:
             start: 0x24000000
             end: 0x24100000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08200000
@@ -1759,7 +1759,7 @@ variants:
             start: 0x24000000
             end: 0x24100000
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0x08000000
             end: 0x08200000
