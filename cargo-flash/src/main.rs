@@ -4,6 +4,7 @@ use diagnostics::{handle_flash_error, Diagnostic};
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use std::{
     env,
+    fs::File,
     path::{Path, PathBuf},
     process,
     sync::Arc,
@@ -14,8 +15,11 @@ use structopt::StructOpt;
 
 use probe_rs::{
     config::TargetSelector,
-    flashing::{download_file_with_options, DownloadOptions, FlashProgress, Format, ProgressEvent},
-    DebugProbeSelector, Probe, Session, WireProtocol,
+    flashing::{
+        download_elf, download_file_with_options, DownloadOptions, FlashLoader, FlashProgress,
+        Format, ProgressEvent,
+    },
+    DebugProbeSelector, FakeProbe, Probe, Session, Target, WireProtocol,
 };
 
 #[cfg(feature = "sentry")]
@@ -109,6 +113,9 @@ struct Opt {
     )]
     work_dir: Option<String>,
 
+    #[structopt(long = "dry-run")]
+    dry_run: bool,
+
     // `cargo build` arguments
     #[structopt(name = "binary", long = "bin")]
     bin: Option<String>,
@@ -148,6 +155,7 @@ const ARGUMENTS_TO_REMOVE: &[&str] = &[
     "nrf-recover",
     "log=",
     "connect-under-reset",
+    "dry-run",
 ];
 
 fn main() {
@@ -165,6 +173,9 @@ fn main() {
     match main_try() {
         Ok(_) => (),
         Err(e) => {
+            #[cfg(not(feature = "sentry"))]
+            log::info!("{:#?}", &METADATA.lock().unwrap());
+
             // Ensure stderr is flushed before calling proces::exit,
             // otherwise the process might panic, because it tries
             // to access stderr during shutdown.
@@ -176,8 +187,6 @@ fn main() {
             if ask_to_log_crash() {
                 capture_anyhow(&METADATA.lock().unwrap(), e.source_error())
             }
-            #[cfg(not(feature = "sentry"))]
-            log::info!("{:#?}", &METADATA.lock().unwrap());
 
             process::exit(1);
         }
@@ -259,29 +268,20 @@ fn main_try() -> Result<(), Diagnostic> {
         path.display()
     ));
 
-    let list = Probe::list_all();
+    let mut data_buffer = Vec::new();
 
-    // If we got a probe selector as an argument, open the probe matching the selector if possible.
-    let mut probe = match &opt.probe_selector {
-        Some(selector) => Probe::open(selector.clone()).context("Failed to open Probe")?,
-        None => {
-            // Only automatically select a probe if there is only
-            // a single probe detected.
-            if list.len() > 1 {
-                return Err(anyhow!("More than a single probe detected. Use the --probe argument to select which probe to use.").into());
-            }
+    let (target_selector, flash_loader) = if let Some(chip_name) = &opt.chip {
+        let target = probe_rs::config::get_target_by_name(chip_name)
+            .context("Failed to retrieve chip description.")?;
 
-            Probe::open(
-                list.first()
-                    .map(|info| {
-                        METADATA.lock().unwrap().probe = Some(format!("{:?}", info.probe_type));
-                        info
-                    })
-                    .ok_or_else(|| anyhow!("No supported probe was found"))?,
-            )
-            .map_err(|err| anyhow!(err))?
-        }
+        let loader = build_flashloader(&target, &path, &mut data_buffer)
+            .map_err(|e| handle_flash_error(e, &target, opt.chip.as_deref()))?;
+        (TargetSelector::Specified(target), Some(loader))
+    } else {
+        (TargetSelector::Auto, None)
     };
+
+    let mut probe = open_probe(&opt)?;
 
     probe
         .select_protocol(opt.protocol)
@@ -309,10 +309,10 @@ fn main_try() -> Result<(), Diagnostic> {
 
     let mut session = if opt.connect_under_reset {
         probe
-            .attach_under_reset(chip)
+            .attach_under_reset(target_selector)
             .context("failed attaching to target")?
     } else {
-        let potential_session = probe.attach(chip);
+        let potential_session = probe.attach(target_selector);
         match potential_session {
             Ok(session) => session,
             Err(err) => {
@@ -351,9 +351,8 @@ fn main_try() -> Result<(), Diagnostic> {
     // Start timer.
     let instant = Instant::now();
 
-    if let Err(e) = run_flash_operation(&mut session, &path, &opt) {
-        handle_flash_error(e, session.target())?;
-    }
+    run_flash_operation(&mut session, &path, &opt, flash_loader)
+        .map_err(|e| handle_flash_error(e, session.target(), opt.chip.as_deref()))?;
 
     // Stop timer.
     let elapsed = instant.elapsed();
@@ -407,7 +406,19 @@ fn list_connected_devices() -> Result<()> {
     Ok(())
 }
 
-fn run_flash_operation(session: &mut Session, path: &Path, opt: &Opt) -> Result<()> {
+fn run_flash_operation(
+    session: &mut Session,
+    path: &Path,
+    opt: &Opt,
+    loader: Option<FlashLoader>,
+) -> Result<()> {
+    let mut buffer = Vec::new();
+
+    let mut loader = match loader {
+        Some(loader) => loader,
+        None => build_flashloader(session.target(), path, &mut buffer)?,
+    };
+
     if !opt.disable_progressbars {
         // Create progress bars.
         let multi_progress = MultiProgress::new();
@@ -522,20 +533,17 @@ fn run_flash_operation(session: &mut Session, path: &Path, opt: &Opt) -> Result<
             multi_progress.join().unwrap();
         });
 
-        download_file_with_options(
-            session,
-            path,
-            Format::Elf,
-            DownloadOptions {
-                progress: Some(&progress),
-                keep_unwritten_bytes: opt.restore_unwritten,
-            },
-        )
-        .with_context(|| format!("failed to flash {}", path.display()))?;
+        loader
+            .commit(session, &progress, false)
+            .with_context(|| format!("failed to flash {}", path.display()))?;
 
         // We don't care if we cannot join this thread.
         let _ = progress_thread_handle.join();
     } else {
+        loader
+            .commit(session, &FlashProgress::new(|_| {}), false)
+            .with_context(|| format!("failed to flash {}", path.display()))?;
+
         download_file_with_options(
             session,
             path,
@@ -549,4 +557,55 @@ fn run_flash_operation(session: &mut Session, path: &Path, opt: &Opt) -> Result<
     }
 
     Ok(())
+}
+
+fn open_probe(options: &Opt) -> Result<Probe> {
+    if options.dry_run {
+        return Ok(Probe::from_specific_probe(Box::new(FakeProbe::new())));
+    }
+
+    let list = Probe::list_all();
+
+    // If we got a probe selector as an argument, open the probe matching the selector if possible.
+    let probe = match &options.probe_selector {
+        Some(selector) => Probe::open(selector.clone()).context("Failed to open Probe")?,
+        None => {
+            // Only automatically select a probe if there is only
+            // a single probe detected.
+            if list.len() > 1 {
+                return Err(anyhow!("More than a single probe detected. Use the --probe argument to select which probe to use.").into());
+            }
+
+            Probe::open(
+                list.first()
+                    .map(|info| {
+                        METADATA.lock().unwrap().probe = Some(format!("{:?}", info.probe_type));
+                        info
+                    })
+                    .ok_or_else(|| anyhow!("No supported probe was found"))?,
+            )
+            .map_err(|err| anyhow!(err))?
+        }
+    };
+
+    Ok(probe)
+}
+
+fn build_flashloader<'data>(
+    target: &Target,
+    path: &Path,
+    buffer: &'data mut Vec<Vec<u8>>,
+) -> Result<FlashLoader<'data>> {
+    // Now that we have the target, we can create the flash loader
+
+    let mut loader = FlashLoader::new(target.memory_map.to_vec(), true, target.source().clone());
+
+    // Add data from elf.
+
+    let mut file = File::open(&path)
+        .with_context(|| format!("Failed to open ELF file {} for flashing.", path.display()))?;
+
+    download_elf(buffer, &mut file, &mut loader).context("Failed to add ELF data")?;
+
+    Ok(loader)
 }

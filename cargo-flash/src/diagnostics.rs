@@ -2,6 +2,8 @@
 use colored::*;
 use std::fmt::{Display, Write};
 
+use bytesize::ByteSize;
+
 use probe_rs::{
     config::MemoryRegion, config::TargetDescriptionSource, flashing::FileDownloadError, Target,
 };
@@ -27,6 +29,7 @@ impl Diagnostic {
 
         for hint in &self.hints {
             write_with_offset(&mut stderr, "Hint".blue().bold(), hint);
+            let _ = writeln!(stderr, "");
         }
 
         let _ = stderr.flush();
@@ -56,11 +59,15 @@ impl From<anyhow::Error> for Diagnostic {
     }
 }
 
-pub fn handle_flash_error(err: anyhow::Error, target: &Target) -> Result<(), Diagnostic> {
+pub fn handle_flash_error(
+    err: anyhow::Error,
+    target: &Target,
+    target_spec: Option<&str>,
+) -> Diagnostic {
     // Try to get a probe_rs::Error out of the anyhow error
 
     let hints = if let Some(err) = err.downcast_ref::<FileDownloadError>() {
-        handle_probe_rs_error(err, target)
+        handle_probe_rs_error(err, target, target_spec)
     } else {
         vec![]
     };
@@ -69,12 +76,16 @@ pub fn handle_flash_error(err: anyhow::Error, target: &Target) -> Result<(), Dia
 
     diagnostic.hints = hints;
 
-    Err(diagnostic)
+    diagnostic
 }
 
-fn handle_probe_rs_error(err: &FileDownloadError, target: &Target) -> Vec<String> {
+fn handle_probe_rs_error(
+    err: &FileDownloadError,
+    target: &Target,
+    target_spec: Option<&str>,
+) -> Vec<String> {
     match err {
-        FileDownloadError::Flash(probe_rs::flashing::FlashError::NoSuitableFlash {
+        FileDownloadError::Flash(probe_rs::flashing::FlashError::NoSuitableNvm {
             start: _,
             end: _,
             description_source,
@@ -86,11 +97,13 @@ fn handle_probe_rs_error(err: &FileDownloadError, target: &Target) -> Vec<String
                     ];
             }
 
-            let mut buff = String::new();
+            let mut hints = Vec::new();
+
+            let mut hint_available_regions = String::new();
 
             // Show the available flash regions
             let _ = writeln!(
-                buff,
+                hint_available_regions,
                 "The following flash memory is available for the chip '{}':",
                 target.name
             );
@@ -99,17 +112,43 @@ fn handle_probe_rs_error(err: &FileDownloadError, target: &Target) -> Vec<String
                 match memory_region {
                     MemoryRegion::Ram(_) => {}
                     MemoryRegion::Generic(_) => {}
-                    MemoryRegion::Flash(flash) => {
+                    MemoryRegion::Nvm(flash) => {
                         let _ = writeln!(
-                            buff,
-                            "  {:#08x} - {:#08x}",
-                            &flash.range.start, flash.range.end
+                            hint_available_regions,
+                            "  {:#010x} - {:#010x} ({})",
+                            flash.range.start,
+                            flash.range.end,
+                            ByteSize((flash.range.end - flash.range.start) as u64)
+                                .to_string_as(true)
                         );
                     }
                 }
             }
 
-            return vec![buff];
+            hints.push(hint_available_regions);
+
+            if let Some(target_spec) = target_spec {
+                // Check if the chip specification was unique
+                let matching_chips = probe_rs::config::search_chips(target_spec).unwrap();
+
+                log::info!(
+                    "Searching for all chips for spec '{}', found {}",
+                    target_spec,
+                    matching_chips.len()
+                );
+
+                if matching_chips.len() > 1 {
+                    let mut non_unique_target_hint = format!("The specified chip '{}' did match multiple possible targets. Try to specify your chip more exactly. The following possible targets were found:\n", target_spec);
+
+                    for target in matching_chips {
+                        non_unique_target_hint.push_str(&format!("\t{}\n", target));
+                    }
+
+                    hints.push(non_unique_target_hint)
+                }
+            }
+
+            return hints;
         }
         // Ignore other errors
         _ => (),
