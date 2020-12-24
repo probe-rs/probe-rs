@@ -197,6 +197,26 @@ impl Registry {
         self.get_target(family, chip)
     }
 
+    fn search_chips(&self, name: &str) -> Vec<String> {
+        log::debug!("Searching registry for chip with name {}", name);
+
+        let mut targets = Vec::new();
+
+        for family in &self.families {
+            for variant in family.variants.iter() {
+                if variant
+                    .name
+                    .to_ascii_lowercase()
+                    .starts_with(&name.to_ascii_lowercase())
+                {
+                    targets.push(variant.name.to_string())
+                }
+            }
+        }
+
+        targets
+    }
+
     fn get_target_by_chip_info(&self, chip_info: ChipInfo) -> Result<Target, RegistryError> {
         let (family, chip) = {
             match chip_info {
@@ -285,6 +305,11 @@ impl Registry {
 /// Get a target from the internal registry based on its name.
 pub fn get_target_by_name(name: impl AsRef<str>) -> Result<Target, RegistryError> {
     REGISTRY.try_lock()?.get_target_by_name(name)
+}
+
+/// Get a target from the internal registry based on its name.
+pub fn search_chips(name: impl AsRef<str>) -> Result<Vec<String>, RegistryError> {
+    Ok(REGISTRY.try_lock()?.search_chips(name.as_ref()))
 }
 
 /// Try to retrieve a target based on [ChipInfo] read from a target.

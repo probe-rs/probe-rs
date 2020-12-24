@@ -95,7 +95,7 @@ impl<'session> Flasher<'session> {
         }
 
         // Attach to memory and core.
-        let mut core = self.session.core(0).map_err(FlashError::Memory)?;
+        let mut core = self.session.core(0).map_err(FlashError::Core)?;
 
         // TODO: Halt & reset target.
         log::debug!("Halting core.");
@@ -116,11 +116,11 @@ impl<'session> Flasher<'session> {
         );
 
         core.write_32(algo.load_address, algo.instructions.as_slice())
-            .map_err(FlashError::Memory)?;
+            .map_err(FlashError::Core)?;
 
         let mut data = vec![0; algo.instructions.len()];
         core.read_32(algo.load_address, &mut data)
-            .map_err(FlashError::Memory)?;
+            .map_err(FlashError::Core)?;
 
         for (offset, (original, read_back)) in algo.instructions.iter().zip(data.iter()).enumerate()
         {
@@ -626,9 +626,7 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
     }
 
     pub(super) fn read_block8(&mut self, address: u32, data: &mut [u8]) -> Result<(), FlashError> {
-        self.core
-            .read_8(address, data)
-            .map_err(FlashError::Memory)?;
+        self.core.read_8(address, data).map_err(FlashError::Core)?;
         Ok(())
     }
 }
@@ -653,10 +651,7 @@ impl<'probe> ActiveFlasher<'probe, Erase> {
             )?;
 
             if result != 0 {
-                Err(FlashError::EraseFailed {
-                    name: "erase_all",
-                    errorcode: result,
-                })
+                Err(FlashError::EraseChipFailed { errorcode: result })
             } else {
                 Ok(())
             }
@@ -688,7 +683,7 @@ impl<'probe> ActiveFlasher<'probe, Erase> {
 
         if result != 0 {
             Err(FlashError::EraseFailed {
-                name: "erase_sector",
+                address,
                 errorcode: result,
             })
         } else {
@@ -710,7 +705,7 @@ impl<'p> ActiveFlasher<'p, Program> {
         // Transfer the bytes to RAM.
         self.core
             .write_8(self.flash_algorithm.begin_data, bytes)
-            .map_err(FlashError::Memory)?;
+            .map_err(FlashError::Core)?;
 
         let result = self.call_function_and_wait(
             &Registers {
@@ -768,8 +763,7 @@ impl<'p> ActiveFlasher<'p, Program> {
         bytes: &[u8],
         buffer_number: usize,
     ) -> Result<(), FlashError> {
-        let flasher = self;
-        let algo = &flasher.flash_algorithm;
+        let algo = &self.flash_algorithm;
 
         // Ensure the buffer number is valid, otherwise there is a bug somewhere
         // in the flashing code.
@@ -782,10 +776,9 @@ impl<'p> ActiveFlasher<'p, Program> {
         // TODO: Prevent security settings from locking the device.
 
         // Transfer the buffer bytes to RAM.
-        flasher
-            .core
-            .write_8(algo.page_buffers[buffer_number as usize], bytes)
-            .map_err(FlashError::Memory)?;
+        self.core
+            .write_8(algo.page_buffers[buffer_number], bytes)
+            .map_err(FlashError::Core)?;
 
         Ok(())
     }

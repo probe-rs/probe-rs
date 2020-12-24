@@ -36,11 +36,25 @@ pub enum FlashError {
     #[error("No RAM defined for chip.")]
     NoRamDefined,
 
+    // Flash algorithm in YAML is broken
+    #[error("Flash algorithm length is not 32 bit aligned.")]
+    InvalidFlashAlgorithmLength {
+        name: String,
+        algorithm_source: Option<TargetDescriptionSource>,
+    },
+
     // Add address of sector to error
-    #[error("The execution of '{name}' failed with code {errorcode}. Perhaps your chip has write protected sectors that need to be cleared? Perhaps you need the --nmagic linker arg https://github.com/rust-embedded/cortex-m-quickstart/pull/95")]
-    EraseFailed { name: &'static str, errorcode: u32 },
     #[error(
-        "The page write of the page at address {page_address:#08X} failed with error code {error_code}."
+        "Failed to erase the whole chip. The flash algorithm returned error code {errorcode}."
+    )]
+    EraseChipFailed { errorcode: u32 },
+
+    // Add address of sector to error
+    #[error("Failed to erase flash sector at address {address:#010x}. Perhaps your chip has write protected sectors that need to be cleared? Perhaps you need the --nmagic linker arg https://github.com/rust-embedded/cortex-m-quickstart/pull/95")]
+    EraseFailed { address: u32, errorcode: u32 },
+
+    #[error(
+        "The page write of the page at address {page_address:#010x} failed with error code {error_code}."
     )]
     PageWrite { page_address: u32, error_code: u32 },
 
@@ -56,17 +70,8 @@ pub enum FlashError {
     AddressNotInRegion { address: u32, region: NvmRegion },
 
     // Group Memory and Core (connection / communication problem?)
-    #[error("Something during memory interaction went wrong")]
-    Memory(#[source] error::Error),
     #[error("Something during the interaction with the core went wrong")]
     Core(#[source] error::Error),
-
-    // Flash algorithm in YAML is broken
-    #[error("Flash algorithm length is not 32 bit aligned.")]
-    InvalidFlashAlgorithmLength {
-        name: String,
-        algorithm_source: Option<TargetDescriptionSource>,
-    },
 
     // Remove this error?
     #[error(

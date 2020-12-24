@@ -14,8 +14,8 @@ struct RamWrite<'data> {
 /// Once you are done adding all your data, use `commit()` to flash the data.
 /// The flash loader will make sure to select the appropriate flash region for the right data chunks.
 /// Region crossing data chunks are allowed as long as the regions are contiguous.
-pub struct FlashLoader<'mmap, 'data> {
-    memory_map: &'mmap [MemoryRegion],
+pub struct FlashLoader<'data> {
+    memory_map: Vec<MemoryRegion>,
     builders: HashMap<NvmRegion, FlashBuilder<'data>>,
     ram_write: Vec<RamWrite<'data>>,
     keep_unwritten: bool,
@@ -25,9 +25,9 @@ pub struct FlashLoader<'mmap, 'data> {
     source: TargetDescriptionSource,
 }
 
-impl<'mmap, 'data> FlashLoader<'mmap, 'data> {
+impl<'mmap, 'data> FlashLoader<'data> {
     pub fn new(
-        memory_map: &'mmap [MemoryRegion],
+        memory_map: Vec<MemoryRegion>,
         keep_unwritten: bool,
         source: TargetDescriptionSource,
     ) -> Self {
@@ -63,7 +63,7 @@ impl<'mmap, 'data> FlashLoader<'mmap, 'data> {
 
         while data.len() > 0 {
             // Get the flash region in with this chunk of data starts.
-            let possible_region = Self::get_region_for_address(self.memory_map, data.address());
+            let possible_region = Self::get_region_for_address(&self.memory_map, data.address());
             // If we found a corresponding region, create a builder.
             match possible_region {
                 Some(MemoryRegion::Nvm(region)) => {
@@ -130,7 +130,7 @@ impl<'mmap, 'data> FlashLoader<'mmap, 'data> {
     /// Requires a session with an attached target that has a known flash algorithm.
     ///
     /// If `do_chip_erase` is `true` the entire flash will be erased.
-    pub(super) fn commit(
+    pub fn commit(
         &mut self,
         session: &mut Session,
         progress: &FlashProgress,
@@ -145,7 +145,9 @@ impl<'mmap, 'data> FlashLoader<'mmap, 'data> {
             );
 
             // Try to find a flash algorithm for the range of the current builder
-            for algorithm in session.flash_algorithms() {
+            let algorithms = &session.target().flash_algorithms;
+
+            for algorithm in algorithms {
                 log::debug!(
                     "Algorithm {} - start: {:#08x} - size: {:#08x}",
                     algorithm.name,
@@ -154,8 +156,6 @@ impl<'mmap, 'data> FlashLoader<'mmap, 'data> {
                         - algorithm.flash_properties.address_range.start
                 );
             }
-
-            let algorithms = session.flash_algorithms();
             let algorithms = algorithms
                 .iter()
                 .filter(|fa| {
@@ -197,7 +197,7 @@ impl<'mmap, 'data> FlashLoader<'mmap, 'data> {
         // Write data to ram.
 
         // Attach to memory and core.
-        let mut core = session.core(0).map_err(FlashError::Memory)?;
+        let mut core = session.core(0).map_err(FlashError::Core)?;
 
         for RamWrite { address, data } in &self.ram_write {
             log::info!(
@@ -206,7 +206,7 @@ impl<'mmap, 'data> FlashLoader<'mmap, 'data> {
                 data.len()
             );
             // Write data to memory.
-            core.write_8(*address, data).map_err(FlashError::Memory)?;
+            core.write_8(*address, data).map_err(FlashError::Core)?;
         }
 
         Ok(())

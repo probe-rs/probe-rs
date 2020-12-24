@@ -111,9 +111,10 @@ pub fn download_file_with_options(
     };
     let mut buffer = vec![];
     // IMPORTANT: Change this to an actual memory map of a real chip
-    let memory_map = session.memory_map().to_vec();
+    let memory_map = session.target().memory_map.clone();
+
     let mut loader = FlashLoader::new(
-        &memory_map,
+        memory_map,
         options.keep_unwritten_bytes,
         session.target().source.clone(),
     );
@@ -138,7 +139,7 @@ pub fn download_file_with_options(
 fn download_bin<'buffer, T: Read + Seek>(
     buffer: &'buffer mut Vec<Vec<u8>>,
     file: &'buffer mut T,
-    loader: &mut FlashLoader<'_, 'buffer>,
+    loader: &mut FlashLoader<'buffer>,
     options: BinOptions,
 ) -> Result<(), FileDownloadError> {
     let mut file_buffer = Vec::new();
@@ -168,7 +169,7 @@ fn download_bin<'buffer, T: Read + Seek>(
 fn download_hex<'buffer, T: Read + Seek>(
     data_buffer: &'buffer mut Vec<Vec<u8>>,
     file: &mut T,
-    loader: &mut FlashLoader<'_, 'buffer>,
+    loader: &mut FlashLoader<'buffer>,
 ) -> Result<(), FileDownloadError> {
     let mut _extended_segment_address = 0;
     let mut extended_linear_address = 0;
@@ -207,7 +208,7 @@ fn download_hex<'buffer, T: Read + Seek>(
 }
 
 pub struct ExtractedFlashData<'data> {
-    name: Vec<String>,
+    section_names: Vec<String>,
     address: u32,
     data: &'data [u8],
 }
@@ -217,7 +218,7 @@ impl std::fmt::Debug for ExtractedFlashData<'_> {
         let mut helper = f.debug_struct("ExtractedFlashData");
 
         helper
-            .field("name", &self.name)
+            .field("name", &self.section_names)
             .field("address", &self.address);
 
         if self.data.len() > 10 {
@@ -233,7 +234,7 @@ impl std::fmt::Debug for ExtractedFlashData<'_> {
 impl<'data> ExtractedFlashData<'data> {
     pub fn from_unknown_source(address: u32, data: &'data [u8]) -> Self {
         Self {
-            name: vec![],
+            section_names: vec![],
             address,
             data,
         }
@@ -257,13 +258,13 @@ impl<'data> ExtractedFlashData<'data> {
             self.address += offset as u32;
 
             ExtractedFlashData {
-                name: self.name.clone(),
+                section_names: self.section_names.clone(),
                 address: first_address,
                 data: first,
             }
         } else if offset == self.data.len() {
             let return_value = ExtractedFlashData {
-                name: self.name.clone(),
+                section_names: self.section_names.clone(),
                 address: self.address,
                 data: self.data,
             };
@@ -285,7 +286,7 @@ impl<'data> ExtractedFlashData<'data> {
 pub fn download_elf<'buffer, T: Read>(
     buffer: &'buffer mut Vec<Vec<u8>>,
     file: &mut T,
-    loader: &mut FlashLoader<'_, 'buffer>,
+    loader: &mut FlashLoader<'buffer>,
 ) -> Result<(), FileDownloadError> {
     buffer.push(Vec::new());
 
@@ -305,10 +306,10 @@ pub fn download_elf<'buffer, T: Read>(
     log::info!("Found {} loadable sections:", num_sections);
 
     for section in &extracted_data {
-        let source = if section.name.is_empty() {
+        let source = if section.section_names.is_empty() {
             "Unknown".to_string()
-        } else if section.name.len() == 1 {
-            section.name[0].to_owned()
+        } else if section.section_names.len() == 1 {
+            section.section_names[0].to_owned()
         } else {
             "Multiple sections".to_owned()
         };
@@ -393,7 +394,7 @@ fn extract_from_elf<'data, 'elf: 'data>(
             let section_data = &elf_data[segment_offset as usize..][..segment_filesize as usize];
 
             extracted_data.push(ExtractedFlashData {
-                name: elf_section,
+                section_names: elf_section,
                 address: p_paddr as u32,
                 data: section_data,
             });

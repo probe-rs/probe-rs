@@ -198,11 +198,6 @@ impl Session {
         self.interface.attach(core, core_state)
     }
 
-    /// Returns a list of the flash algotithms on the target.
-    pub(crate) fn flash_algorithms(&self) -> &[RawFlashAlgorithm] {
-        &self.target.flash_algorithms
-    }
-
     /// Read available data from the SWO interface without waiting.
     ///
     /// This method is only supported for ARM-based targets, and will
