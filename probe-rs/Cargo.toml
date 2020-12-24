@@ -41,7 +41,7 @@ jaylink = "0.1.4"
 base64 = "0.13.0"
 svg = "0.8.0"
 anyhow = "1.0.31"
-bitvec = {version = "0.19.4", optional = true }
+bitvec = {version = "0.20.1", optional = true }
 libftdi1-sys = { version = "1.0.0-alpha3", optional = true }
 static_assertions = "1.1.0"
 
