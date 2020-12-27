@@ -26,6 +26,7 @@ pub struct FlashLoader<'data> {
 }
 
 impl<'mmap, 'data> FlashLoader<'data> {
+    /// Create a new flash loader.
     pub fn new(
         memory_map: Vec<MemoryRegion>,
         keep_unwritten: bool,
@@ -40,7 +41,10 @@ impl<'mmap, 'data> FlashLoader<'data> {
         }
     }
 
-    pub fn add_section(&mut self, data: ExtractedFlashData<'data>) -> Result<(), FlashError> {
+    pub(crate) fn add_section(
+        &mut self,
+        data: ExtractedFlashData<'data>,
+    ) -> Result<(), FlashError> {
         log::debug!("Adding data: {:x?}", data);
 
         self.add_data_internal(data)
@@ -76,7 +80,7 @@ impl<'mmap, 'data> FlashLoader<'data> {
                     let program_length =
                         usize::min(data.len(), (region.range.end - data.address() + 1) as usize);
 
-                    let programmed_data = data.split_at_beginning(program_length);
+                    let programmed_data = data.split_off(program_length);
 
                     // Add as much data to the builder as can be contained by this region.
                     self.builders
@@ -88,7 +92,7 @@ impl<'mmap, 'data> FlashLoader<'data> {
                     let program_length =
                         usize::min(data.len(), (region.range.end - data.address() + 1) as usize);
 
-                    let programmed_data = data.split_at_beginning(program_length);
+                    let programmed_data = data.split_off(program_length);
 
                     // Add data to be written to the vector.
                     self.ram_write.push(RamWrite {
@@ -135,6 +139,7 @@ impl<'mmap, 'data> FlashLoader<'data> {
         session: &mut Session,
         progress: &FlashProgress,
         do_chip_erase: bool,
+        dry_run: bool,
     ) -> Result<(), FlashError> {
         // Iterate over builders we've created and program the data.
         for (region, builder) in &self.builders {
@@ -188,6 +193,12 @@ impl<'mmap, 'data> FlashLoader<'data> {
                 .ok_or(FlashError::NoRamDefined)?;
 
             let flash_algorithm = raw_flash_algorithm.assemble(ram, session.architecture())?;
+
+            if dry_run {
+                println!("Skipping programming, dry run!");
+                progress.failed_erasing();
+                continue;
+            }
 
             // Program the data.
             let mut flasher = Flasher::new(session, flash_algorithm, region.clone());

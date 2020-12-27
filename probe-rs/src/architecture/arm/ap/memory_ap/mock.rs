@@ -71,16 +71,26 @@ where
 
                 let new_drw = match csw.SIZE {
                     DataSize::U32 => {
-                        let bytes = self.memory[offset..offset + 4].try_into().unwrap();
+                        //let bytes = self.memory[offset..offset + 4].try_into().unwrap();
+                        let bytes: [u8; 4] = self
+                            .memory
+                            .get(offset..offset + 4)
+                            .map(|v| v.try_into().unwrap())
+                            .unwrap_or([0u8; 4]);
+
                         u32::from_le_bytes(bytes)
                     }
                     DataSize::U16 => {
-                        let bytes = self.memory[offset..offset + 2].try_into().unwrap();
+                        let bytes = self
+                            .memory
+                            .get(offset..offset + 2)
+                            .map(|v| v.try_into().unwrap())
+                            .unwrap_or([0u8; 2]);
                         let value = u16::from_le_bytes(bytes);
                         drw & !(0xffff << bit_offset) | (u32::from(value) << bit_offset)
                     }
                     DataSize::U8 => {
-                        let value = self.memory[offset];
+                        let value = *self.memory.get(offset).unwrap_or(&0u8);
                         drw & !(0xff << bit_offset) | (u32::from(value) << bit_offset)
                     }
                     _ => return Err(MockMemoryError::UnknownWidth),
@@ -122,10 +132,29 @@ where
         _port: impl Into<MemoryAP>,
         register: R,
     ) -> Result<(), Self::Error> {
+        log::debug!("Mock: Write to register {:x?}", &register);
+
         let value = register.into();
         self.store.insert((R::ADDRESS, R::APBANKSEL), value);
         let csw = self.store[&(CSW::ADDRESS, CSW::APBANKSEL)];
         let address = self.store[&(TAR::ADDRESS, TAR::APBANKSEL)];
+
+        let csw = CSW::from(csw);
+
+        let access_width = match csw.SIZE {
+            DataSize::U256 => 32,
+            DataSize::U128 => 16,
+            DataSize::U64 => 8,
+            DataSize::U32 => 4,
+            DataSize::U16 => 2,
+            DataSize::U8 => 1,
+        };
+
+        if (address + access_width) as usize >= self.memory.len() {
+            // Ignore out-of-bounds write
+            return Ok(());
+        }
+
         match (R::ADDRESS, R::APBANKSEL) {
             (DRW::ADDRESS, DRW::APBANKSEL) => {
                 let bit_offset = (address % 4) * 8;

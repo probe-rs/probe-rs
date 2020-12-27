@@ -12,9 +12,7 @@ use crate::architecture::{
     },
     riscv::communication_interface::RiscvCommunicationInterface,
 };
-use crate::config::{
-    ChipInfo, MemoryRegion, RawFlashAlgorithm, RegistryError, Target, TargetSelector,
-};
+use crate::config::{ChipInfo, MemoryRegion, RegistryError, Target, TargetSelector};
 use crate::core::{Architecture, CoreState, SpecificCoreState};
 use crate::{AttachMethod, Core, CoreType, DebugProbe, Error, Probe};
 use anyhow::anyhow;

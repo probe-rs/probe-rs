@@ -83,6 +83,7 @@ impl Target {
         }
     }
 
+    /// Source description of this target.
     pub fn source(&self) -> &TargetDescriptionSource {
         &self.source
     }

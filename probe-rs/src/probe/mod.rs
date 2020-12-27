@@ -4,16 +4,25 @@ pub(crate) mod ftdi;
 pub(crate) mod jlink;
 pub(crate) mod stlink;
 
-use crate::architecture::{
-    arm::{
-        ap::memory_ap::mock::MockMemoryAP, communication_interface::ArmProbeInterface,
-        ApInformation, DAPAccess, PortType, SwoAccess,
-    },
-    riscv::communication_interface::RiscvCommunicationInterface,
+use crate::{architecture::arm::ap::AccessPort, Session};
+use crate::{
+    architecture::arm::memory::adi_v5_memory_interface::ADIMemoryInterface,
+    config::{RegistryError, TargetSelector},
 };
-use crate::config::{RegistryError, TargetSelector};
-use crate::error::Error;
-use crate::Session;
+use crate::{
+    architecture::arm::{ap::MemoryAP, MemoryApInformation},
+    error::Error,
+};
+use crate::{
+    architecture::{
+        arm::{
+            ap::memory_ap::mock::MockMemoryAP, communication_interface::ArmProbeInterface,
+            DAPAccess, PortType, SwoAccess,
+        },
+        riscv::communication_interface::RiscvCommunicationInterface,
+    },
+    Memory,
+};
 use jlink::list_jlink_devices;
 use std::{convert::TryFrom, fmt};
 use thiserror::Error;
@@ -748,16 +757,22 @@ impl FakeArmInterface {
 }
 
 impl ArmProbeInterface for FakeArmInterface {
-    fn memory_interface(
-        &mut self,
-        access_port: crate::architecture::arm::ap::MemoryAP,
-    ) -> Result<crate::Memory<'_>, Error> {
-        todo!()
+    fn memory_interface(&mut self, access_port: MemoryAP) -> Result<Memory<'_>, Error> {
+        let ap_information = MemoryApInformation {
+            port_number: access_port.port_number(),
+            only_32bit_data_size: false,
+            debug_base_address: 0xf000_0000,
+            supports_hnonsec: false,
+        };
+
+        let memory = ADIMemoryInterface::new(&mut self.memory_ap, &ap_information)?;
+
+        Ok(Memory::new(memory, access_port))
     }
 
     fn ap_information(
         &self,
-        access_port: crate::architecture::arm::ap::GenericAP,
+        _access_port: crate::architecture::arm::ap::GenericAP,
     ) -> Option<&crate::architecture::arm::ApInformation> {
         todo!()
     }
@@ -769,37 +784,37 @@ impl ArmProbeInterface for FakeArmInterface {
     fn read_from_rom_table(
         &mut self,
     ) -> Result<Option<crate::architecture::arm::ArmChipInfo>, Error> {
-        todo!()
+        Ok(None)
     }
 
     fn close(self: Box<Self>) -> Probe {
-        todo!()
+        Probe::from_attached_probe(self.probe)
     }
 }
 
 impl AsMut<(dyn DebugProbe + 'static)> for FakeArmInterface {
     fn as_mut(&mut self) -> &mut (dyn DebugProbe + 'static) {
-        todo!()
+        self.probe.as_mut()
     }
 }
 
 impl AsRef<(dyn DebugProbe + 'static)> for FakeArmInterface {
     fn as_ref(&self) -> &(dyn DebugProbe + 'static) {
-        todo!()
+        self.probe.as_ref()
     }
 }
 
 impl SwoAccess for FakeArmInterface {
-    fn enable_swo(&mut self, config: &crate::architecture::arm::SwoConfig) -> Result<(), Error> {
-        todo!()
+    fn enable_swo(&mut self, _config: &crate::architecture::arm::SwoConfig) -> Result<(), Error> {
+        unimplemented!()
     }
 
     fn disable_swo(&mut self) -> Result<(), Error> {
-        todo!()
+        unimplemented!()
     }
 
-    fn read_swo_timeout(&mut self, timeout: std::time::Duration) -> Result<Vec<u8>, Error> {
-        todo!()
+    fn read_swo_timeout(&mut self, _timeout: std::time::Duration) -> Result<Vec<u8>, Error> {
+        unimplemented!()
     }
 }
 

@@ -19,7 +19,6 @@ use builder::*;
 pub use download::*;
 pub use error::*;
 pub use flasher::*;
-use loader::*;
 pub use progress::*;
 pub use visualizer::*;
 

@@ -79,6 +79,8 @@ pub struct DownloadOptions<'progress> {
     /// instead of the full sector, the excessively erased bytes wont match the contents before the erase which might not be intuitive
     /// to the user or even worse, result in unexpected behavior if those contents contain important data.
     pub keep_unwritten_bytes: bool,
+    /// Perform a dry run. This prepares everything for flashing, but does not write anything to flash.
+    pub dry_run: bool,
 }
 
 /// Downloads a file of given `format` at `path` to the flash of the target given in `session`.
@@ -131,6 +133,7 @@ pub fn download_file_with_options(
             session,
             options.progress.unwrap_or(&FlashProgress::new(|_| {})),
             false,
+            options.dry_run,
         )
         .map_err(FileDownloadError::Flash)
 }
@@ -207,7 +210,8 @@ fn download_hex<'buffer, T: Read + Seek>(
     Ok(())
 }
 
-pub struct ExtractedFlashData<'data> {
+/// Flash data which was extraced from an ELF file.
+pub(crate) struct ExtractedFlashData<'data> {
     section_names: Vec<String>,
     address: u32,
     data: &'data [u8],
@@ -232,6 +236,7 @@ impl std::fmt::Debug for ExtractedFlashData<'_> {
 }
 
 impl<'data> ExtractedFlashData<'data> {
+    /// Create a data slice without tracking its source.
     pub fn from_unknown_source(address: u32, data: &'data [u8]) -> Self {
         Self {
             section_names: vec![],
@@ -240,15 +245,19 @@ impl<'data> ExtractedFlashData<'data> {
         }
     }
 
+    /// Target address for this flash data.
     pub fn address(&self) -> u32 {
         self.address
     }
 
+    /// Data to be programmed.
     pub fn data(&self) -> &'data [u8] {
         self.data
     }
 
-    pub fn split_at_beginning(&mut self, offset: usize) -> ExtractedFlashData<'data> {
+    /// Split off data from the beginning, and return it. If the offset is
+    /// out of bounds, this function will panic.
+    pub fn split_off(&mut self, offset: usize) -> ExtractedFlashData<'data> {
         if offset < self.data.len() {
             let (first, second) = self.data.split_at(offset);
 
@@ -273,10 +282,11 @@ impl<'data> ExtractedFlashData<'data> {
 
             return_value
         } else {
-            unimplemented!("TOOD: Handle out of bounds");
+            panic!("Offset is out of bounds!");
         }
     }
 
+    /// Length of the contained data.
     pub fn len(&self) -> usize {
         self.data.len()
     }
@@ -353,6 +363,10 @@ fn extract_from_elf<'data, 'elf: 'data>(
         // Get the physical address of the segment. The data will be programmed to that location.
         let p_paddr: u64 = segment.p_paddr(endian).into();
 
+        let p_vaddr: u64 = segment.p_vaddr(endian).into();
+
+        let flags = segment.p_flags(endian);
+
         let segment_data = segment
             .data(endian, Bytes(elf_data))
             .map_err(|_| FileDownloadError::Object("Failed to access data for an ELF segment."))?;
@@ -360,7 +374,12 @@ fn extract_from_elf<'data, 'elf: 'data>(
         let mut elf_section = Vec::new();
 
         if !segment_data.is_empty() {
-            log::info!("Found loadable segment, address: {:#010x}", p_paddr);
+            log::info!(
+                "Found loadable segment, physical address: {:#010x}, virtual address: {:#010x}, flags: {:#x}",
+                p_paddr,
+                p_vaddr,
+                flags
+            );
 
             let (segment_offset, segment_filesize) = segment.file_range(endian);
 
@@ -391,15 +410,20 @@ fn extract_from_elf<'data, 'elf: 'data>(
                 }
             }
 
-            let section_data = &elf_data[segment_offset as usize..][..segment_filesize as usize];
+            if elf_section.is_empty() {
+                log::info!("Not adding segment, no matching sections found.");
+            } else {
+                let section_data =
+                    &elf_data[segment_offset as usize..][..segment_filesize as usize];
 
-            extracted_data.push(ExtractedFlashData {
-                section_names: elf_section,
-                address: p_paddr as u32,
-                data: section_data,
-            });
+                extracted_data.push(ExtractedFlashData {
+                    section_names: elf_section,
+                    address: p_paddr as u32,
+                    data: section_data,
+                });
 
-            extracted_sections += 1;
+                extracted_sections += 1;
+            }
         }
     }
 
