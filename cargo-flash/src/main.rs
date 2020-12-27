@@ -15,10 +15,7 @@ use structopt::StructOpt;
 
 use probe_rs::{
     config::TargetSelector,
-    flashing::{
-        download_elf, download_file_with_options, DownloadOptions, FlashLoader, FlashProgress,
-        Format, ProgressEvent,
-    },
+    flashing::{download_elf, FlashLoader, FlashProgress, ProgressEvent},
     DebugProbeSelector, FakeProbe, Probe, Session, Target, WireProtocol,
 };
 
@@ -534,26 +531,15 @@ fn run_flash_operation(
         });
 
         loader
-            .commit(session, &progress, false)
+            .commit(session, &progress, false, opt.dry_run)
             .with_context(|| format!("failed to flash {}", path.display()))?;
 
         // We don't care if we cannot join this thread.
         let _ = progress_thread_handle.join();
     } else {
         loader
-            .commit(session, &FlashProgress::new(|_| {}), false)
+            .commit(session, &FlashProgress::new(|_| {}), false, opt.dry_run)
             .with_context(|| format!("failed to flash {}", path.display()))?;
-
-        download_file_with_options(
-            session,
-            path,
-            Format::Elf,
-            DownloadOptions {
-                progress: None,
-                keep_unwritten_bytes: opt.restore_unwritten,
-            },
-        )
-        .with_context(|| format!("failed to flash {}", path.display()))?;
     }
 
     Ok(())

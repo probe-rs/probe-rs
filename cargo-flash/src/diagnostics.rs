@@ -35,10 +35,6 @@ impl Diagnostic {
         let _ = stderr.flush();
     }
 
-    pub fn source_error(&self) -> &anyhow::Error {
-        &self.error
-    }
-
     pub fn add_hint(&mut self, hint: impl Into<String>) {
         self.hints.push(hint.into())
     }
