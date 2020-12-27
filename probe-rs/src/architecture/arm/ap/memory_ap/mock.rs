@@ -139,24 +139,24 @@ where
         let csw = self.store[&(CSW::ADDRESS, CSW::APBANKSEL)];
         let address = self.store[&(TAR::ADDRESS, TAR::APBANKSEL)];
 
-        let csw = CSW::from(csw);
-
-        let access_width = match csw.SIZE {
-            DataSize::U256 => 32,
-            DataSize::U128 => 16,
-            DataSize::U64 => 8,
-            DataSize::U32 => 4,
-            DataSize::U16 => 2,
-            DataSize::U8 => 1,
-        };
-
-        if (address + access_width) as usize >= self.memory.len() {
-            // Ignore out-of-bounds write
-            return Ok(());
-        }
-
         match (R::ADDRESS, R::APBANKSEL) {
             (DRW::ADDRESS, DRW::APBANKSEL) => {
+                let csw = CSW::from(csw);
+
+                let access_width = match csw.SIZE {
+                    DataSize::U256 => 32,
+                    DataSize::U128 => 16,
+                    DataSize::U64 => 8,
+                    DataSize::U32 => 4,
+                    DataSize::U16 => 2,
+                    DataSize::U8 => 1,
+                };
+
+                if (address + access_width) as usize > self.memory.len() {
+                    // Ignore out-of-bounds write
+                    return Ok(());
+                }
+
                 let bit_offset = (address % 4) * 8;
                 let result = match CSW::from(csw).SIZE {
                     DataSize::U32 => {
