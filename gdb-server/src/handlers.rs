@@ -13,6 +13,10 @@ pub(crate) fn reply_empty() -> Option<String> {
     Some("".into())
 }
 
+pub(crate) fn reply_ok() -> Option<String> {
+    Some("OK".into())
+}
+
 pub(crate) fn q_attached() -> Option<String> {
     Some("1".into())
 }
@@ -104,6 +108,77 @@ pub(crate) fn read_register(register: u32, mut core: Core) -> Option<String> {
     }
 
     Some(register_value)
+}
+
+pub(crate) fn write_general_registers(reg_values: &[u32], mut core: Core) -> Option<String> {
+    // First we check the core status.
+    // If the core is not properly halted it does not make much sense to try and write registers.
+    // On some cores this even leads to a fault!
+    match core.status() {
+        Err(e) => {
+            log::debug!("Unable to write register 0. Reason:");
+            log::debug!("{:#?}", e);
+            // Tell GDB that we encountered an error writing the register (because of an unhalted core) with a EFAULT response.
+            // Errno values can be found here: https://sourceware.org/gdb/current/onlinedocs/gdb/Errno-Values.html
+            // More descriptions do not exist.
+            return Some("E14".to_string());
+        }
+        // The core is halted and we can read the register and return its value.
+        Ok(CoreStatus::Halted(_)) => (),
+        Ok(_) => {
+            log::info!("Unable to write register 0 because of a running core.");
+            log::info!("Try to halt the core on attach if this problem persists.");
+            // Tell GDB that we encountered an error writing the register (because of an unhalted core) with a EFAULT response.
+            // Errno values can be found here: https://sourceware.org/gdb/current/onlinedocs/gdb/Errno-Values.html
+            // More descriptions do not exist.
+            return Some("E14".to_string());
+        }
+    }
+
+    for (reg_num, reg_val) in (0..core.num_general_registers() as u32)
+        .into_iter()
+        .zip(reg_values.into_iter())
+    {
+        let (addr, _bytesize) = core.translate_gdb_register_number(reg_num)?;
+        core.write_core_reg(addr, *reg_val).unwrap();
+    }
+
+    reply_ok()
+}
+
+pub(crate) fn write_register(register: u32, value: u32, mut core: Core) -> Option<String> {
+    // First we check the core status.
+    // If the core is not properly halted it does not make much sense to try and write registers.
+    // On some cores this even leads to a fault!
+    match core.status() {
+        Err(e) => {
+            log::debug!("Unable to write register {}. Reason:", register);
+            log::debug!("{:#?}", e);
+            // Tell GDB that we encountered an error writing the register (because of an unhalted core) with a EFAULT response.
+            // Errno values can be found here: https://sourceware.org/gdb/current/onlinedocs/gdb/Errno-Values.html
+            // More descriptions do not exist.
+            return Some("E14".to_string());
+        }
+        // The core is halted and we can read the register and return its value.
+        Ok(CoreStatus::Halted(_)) => (),
+        Ok(_) => {
+            log::info!(
+                "Unable to write register {} because of a running core.",
+                register
+            );
+            log::info!("Try to halt the core on attach if this problem persists.");
+            // Tell GDB that we encountered an error writing the register (because of an unhalted core) with a EFAULT response.
+            // Errno values can be found here: https://sourceware.org/gdb/current/onlinedocs/gdb/Errno-Values.html
+            // More descriptions do not exist.
+            return Some("E14".to_string());
+        }
+    }
+
+    let (probe_rs_number, _bytesize) = core.translate_gdb_register_number(register)?;
+
+    core.write_core_reg(probe_rs_number, value).unwrap();
+
+    reply_ok()
 }
 
 pub(crate) fn read_memory(address: u32, length: u32, mut core: Core) -> Option<String> {

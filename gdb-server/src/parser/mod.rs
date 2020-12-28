@@ -11,7 +11,10 @@ use nom::{
     bytes::complete::{tag, take},
     character::complete::char,
     combinator::value,
-    map, named,
+    error::ParseError,
+    map,
+    multi::many0,
+    named,
     number::complete::hex_u32,
     IResult,
 };
@@ -58,7 +61,9 @@ pub enum Packet {
     /// Packet `g`
     ReadGeneralRegister,
     /// Packet `G`
-    WriteGeneralRegister,
+    WriteGeneralRegister {
+        reg_values: Vec<u32>,
+    },
     /// Packet `H`
     SelectThread,
     /// Packet `i`
@@ -77,7 +82,10 @@ pub enum Packet {
     /// Packet 'p'
     ReadRegisterHex(u32),
     /// Packet 'P'
-    WriteRegisterHex,
+    WriteRegisterHex {
+        address: u32,
+        value: u32,
+    },
     // Packet 'q'
     Query(QueryPacket),
     // Packet 'Q'
@@ -141,6 +149,8 @@ pub fn parse_packet(input: &[u8]) -> Result<Packet> {
         write_memory_binary,
         ctrl_c_interrupt,
         continue_packet,
+        write_register,
+        write_register_hex,
     ))(input);
 
     match parse_result {
@@ -175,6 +185,35 @@ fn read_register_hex(input: &[u8]) -> IResult<&[u8], Packet> {
     let (input, value) = hex_u32(input)?;
 
     Ok((input, Packet::ReadRegisterHex(value)))
+}
+
+/// Parse a 32 bit number from hexadecimal characters, but hex bytes are in little endian.
+fn hex_u32_le<'a, E: ParseError<&'a [u8]>>(input: &'a [u8]) -> IResult<&'a [u8], u32, E> {
+    let (input, val) = hex_u32(input)?;
+
+    Ok((input, val.swap_bytes()))
+}
+
+fn write_register(input: &[u8]) -> IResult<&[u8], Packet> {
+    let (input, _) = char('G')(input)?;
+
+    // TODO: Handle target byteorder correctly
+    let (input, v) = many0(hex_u32_le)(input)?;
+
+    Ok((input, Packet::WriteGeneralRegister { reg_values: v }))
+}
+
+fn write_register_hex(input: &[u8]) -> IResult<&[u8], Packet> {
+    let (input, _) = char('P')(input)?;
+
+    let (input, address) = hex_u32(input)?;
+
+    let (input, _) = char('=')(input)?;
+
+    // TODO: Handle target byteorder correctly
+    let (input, value) = hex_u32_le(input)?;
+
+    Ok((input, Packet::WriteRegisterHex { address, value }))
 }
 
 fn query(input: &[u8]) -> IResult<&[u8], Packet> {
