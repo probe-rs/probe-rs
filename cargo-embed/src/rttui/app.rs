@@ -7,7 +7,6 @@ use crossterm::{
 use probe_rs_rtt::RttChannel;
 use std::io::{Read, Seek, Write};
 use std::{fmt::write, path::PathBuf};
-use textwrap::wrap_iter;
 use tui::{
     backend::CrosstermBackend,
     layout::{Constraint, Direction, Layout},
@@ -204,10 +203,9 @@ impl App {
                         // We need to collect to generate message_num :(
                         messages_wrapped = messages
                             .iter()
-                            .map(|m| {
-                                wrap_iter(m, chunks[1].width as usize).map(|cow| cow.into_owned())
-                            })
+                            .map(|m| textwrap::wrap(m, chunks[1].width as usize))
                             .flatten()
+                            .map(|s| s.into_owned())
                             .collect();
 
                         let message_num = messages_wrapped.len();
