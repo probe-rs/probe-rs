@@ -377,7 +377,7 @@ impl App {
                             let name = format!("{}_channel{}.{}", self.logname, i, extension);
                             let final_path = path.join(name);
 
-                            match std::fs::File::create(final_path.clone()) {
+                            match std::fs::File::create(&final_path) {
                                 Ok(mut file) => {
                                     match tab.format() {
                                         DataFormat::String => {
@@ -408,11 +408,16 @@ impl App {
                                             log::error!("Cannot write defmt output to disk.")
                                         }
                                     };
+
+                                    // Flush file
+                                    if let Err(e) = file.flush() {
+                                        eprintln!("Error writing log channel {}: {}", i, e)
+                                    }
                                 }
                                 Err(e) => {
                                     eprintln!(
-                                        "\nCould not create log file {:?}: {}",
-                                        final_path.clone(),
+                                        "\nCould not create log file {}: {}",
+                                        final_path.display(),
                                         e
                                     );
                                 }
