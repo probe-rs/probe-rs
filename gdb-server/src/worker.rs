@@ -91,7 +91,7 @@ pub async fn handler(
                 WriteGeneralRegister { reg_values } => {
                     handlers::write_general_registers(&reg_values, session.core(0)?)
                 }
-                crate::parser::Packet::WriteRegisterHex { address, value } => {
+                WriteRegisterHex { address, value } => {
                     handlers::write_register(address, value, session.core(0)?)
                 }
                 ReadMemory { address, length } => {

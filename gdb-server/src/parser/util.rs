@@ -1,4 +1,7 @@
-use nom::{bytes::complete::take_while_m_n, character::is_hex_digit, multi::many1, IResult};
+use nom::{
+    bytes::complete::take_while_m_n, character::is_hex_digit, error::ParseError, multi::many1,
+    number::complete::hex_u32, IResult,
+};
 
 /// Parse bytes encoded as a ASCII hex string.
 ///
@@ -33,6 +36,13 @@ pub fn hex_u64(input: &[u8]) -> IResult<&[u8], u64> {
     }
 
     Ok((input, value))
+}
+
+/// Parse a 32 bit number from hexadecimal characters, but hex bytes are in little endian.
+pub fn hex_u32_le<'a, E: ParseError<&'a [u8]>>(input: &'a [u8]) -> IResult<&'a [u8], u32, E> {
+    let (input, val) = hex_u32(input)?;
+
+    Ok((input, val.swap_bytes()))
 }
 
 #[cfg(test)]

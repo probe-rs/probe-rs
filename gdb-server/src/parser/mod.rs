@@ -11,7 +11,6 @@ use nom::{
     bytes::complete::{tag, take},
     character::complete::char,
     combinator::value,
-    error::ParseError,
     map,
     multi::many0,
     named,
@@ -24,7 +23,7 @@ use query::query_packet;
 use v_packet::v_packet;
 
 pub use query::{Pid, QueryPacket};
-use util::hex_u64;
+use util::{hex_u32_le, hex_u64};
 pub use v_packet::VPacket;
 
 #[allow(dead_code)]
@@ -185,13 +184,6 @@ fn read_register_hex(input: &[u8]) -> IResult<&[u8], Packet> {
     let (input, value) = hex_u32(input)?;
 
     Ok((input, Packet::ReadRegisterHex(value)))
-}
-
-/// Parse a 32 bit number from hexadecimal characters, but hex bytes are in little endian.
-fn hex_u32_le<'a, E: ParseError<&'a [u8]>>(input: &'a [u8]) -> IResult<&'a [u8], u32, E> {
-    let (input, val) = hex_u32(input)?;
-
-    Ok((input, val.swap_bytes()))
 }
 
 fn write_register(input: &[u8]) -> IResult<&[u8], Packet> {
