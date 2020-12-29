@@ -1167,7 +1167,7 @@ bitfield! {
 }
 
 impl DebugRegister for Abstractauto {
-    const ADDRESS: u8 = 0x38;
+    const ADDRESS: u8 = 0x18;
     const NAME: &'static str = "abstractauto";
 }
 
