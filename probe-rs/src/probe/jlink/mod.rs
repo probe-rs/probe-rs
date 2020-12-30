@@ -367,6 +367,9 @@ fn perform_transfers<P: RawSwdIo>(
     probe: &mut P,
     transfers: &mut [SwdTransfer],
 ) -> Result<(), DebugProbeError> {
+    // Number of idle cycles after a write;
+    let idle_cycles = 16;
+
     let mut expected_responses: Vec<TransferDirection> = Vec::new();
 
     let mut result_indices = Vec::new();
@@ -394,6 +397,10 @@ fn perform_transfers<P: RawSwdIo>(
         && first_transfer.direction == TransferDirection::Write;
 
     let mut write_response_pending = first_transfer.direction == TransferDirection::Write;
+
+    if write_response_pending {
+        io_sequence.add_output_sequence(&vec![false; idle_cycles])
+    }
 
     // If the response is returned in the next transfer, we push the correct index
     if need_ap_read || write_response_pending {
@@ -469,6 +476,10 @@ fn perform_transfers<P: RawSwdIo>(
 
         write_response_pending = transfer.direction == TransferDirection::Write;
 
+        if write_response_pending {
+            io_sequence.add_output_sequence(&vec![false; idle_cycles])
+        }
+
         // If the response is returned in the next transfer, we push the correct index
         if need_ap_read || write_response_pending {
             result_indices.push(num_transfers + 1);
@@ -516,9 +527,17 @@ fn perform_transfers<P: RawSwdIo>(
             TransferDirection::Write => TransferType::Write(0),
         };
 
-        responses.push(parse_swd_response(&mut result[read_index..], response_type));
+        let response = parse_swd_response(&mut result[read_index..], response_type);
+
+        log::debug!("Transfer result: {:x?}", response);
+
+        responses.push(response);
 
         read_index += response_length(response_type);
+
+        if response_direction == TransferDirection::Write {
+            read_index += idle_cycles;
+        }
     }
 
     // Retrieve the results
@@ -1242,6 +1261,8 @@ impl DAPAccess for JLink {
                         abort.into(),
                     )?;
 
+                    log::debug!("Cleared sticky overrun bit");
+
                     continue;
                 }
                 TransferStatus::Failed(DapError::FaultResponse) => {
@@ -1348,6 +1369,8 @@ impl DAPAccess for JLink {
                         Abort::ADDRESS as u16,
                         abort.into(),
                     )?;
+
+                    log::debug!("Cleared sticky overrun bit");
 
                     continue;
                 }
