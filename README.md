@@ -43,7 +43,7 @@ If you are looking for a more extended debugging experience, please head over to
 
 ## VSCode
 
-We are implementing [Microsoft DAP](https://code.visualstudio.com/blogs/2018/08/07/debug-adapter-protocol-website). This makes embedded debugging via probe-rs available in moden code editors implementing the standard, such as VSCode.
+We are implementing [Microsoft DAP](https://code.visualstudio.com/blogs/2018/08/07/debug-adapter-protocol-website). This makes embedded debugging via probe-rs available in modern code editors implementing the standard, such as VSCode.
 
 ## Usage Examples
 ### Halting the attached chip
