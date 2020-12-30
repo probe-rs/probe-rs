@@ -1,6 +1,6 @@
 //! Support for J-Link Debug probes
 
-use jaylink::{BitIter, CommunicationSpeed, Interface, JayLink};
+use jaylink::{CommunicationSpeed, Interface, JayLink};
 use thiserror::Error;
 
 use std::convert::{TryFrom, TryInto};
@@ -11,8 +11,7 @@ use crate::{
     architecture::{
         arm::{
             communication_interface::ArmProbeInterface,
-            dp::Abort,
-            dp::{Ctrl, RdBuff},
+            dp::{Abort, Ctrl, RdBuff, DPIDR},
             swo::SwoConfig,
             ArmCommunicationInterface, SwoAccess,
         },
@@ -339,15 +338,15 @@ impl JLink {
         let mut result = Ok(());
 
         for _ in 0..2 {
-            let mut result_sequence = self.handle.swd_io(
+            let mut result_sequence = self.swd_io(
                 io_sequence.direction_bits().to_owned(),
                 io_sequence.io_bits().to_owned(),
             )?;
 
             // Ignore reset bits, idle bits, and request
-            result_sequence.split_off(NUM_RESET_BITS);
+            // result_sequence.split_off(NUM_RESET_BITS);
 
-            match parse_swd_response(&mut result_sequence, TransferType::Read) {
+            match parse_swd_response(&mut result_sequence[NUM_RESET_BITS..], TransferType::Read) {
                 Ok(_) => {
                     // Line reset was succesful
                     return Ok(());
@@ -362,6 +361,213 @@ impl JLink {
         // No acknowledge from the target, even if after line reset
         result.map_err(|e| e.into())
     }
+}
+
+fn perform_transfers<P: RawSwdIo>(
+    probe: &mut P,
+    transfers: &mut [SwdTransfer],
+) -> Result<(), DebugProbeError> {
+    let mut expected_responses: Vec<TransferDirection> = Vec::new();
+
+    let mut result_indices = Vec::new();
+
+    let mut num_transfers = 0;
+
+    let first_transfer = &transfers[0];
+
+    let mut io_sequence = build_swd_transfer(
+        first_transfer.port,
+        first_transfer.transfer_type(),
+        first_transfer.address,
+    );
+
+    // Read from DebugPort  -> Nothing special needed
+    // Read from AccessPort -> Response is returned in next read
+    //                         -> The next transfer must be a AP Read, otherwise we need to insert a read from the RDBUFF register
+    // Write to any port    -> Status is reported in next transfer
+    // Write to any port    -> Writes can be buffered, so certain transfers have to be avoided until a instruction which can be stalled is performed
+
+    let mut need_ap_read = matches!(first_transfer.port, PortType::AccessPort(_x))
+        && first_transfer.direction == TransferDirection::Read;
+
+    let mut buffered_write = matches!(first_transfer.port, PortType::AccessPort(_x))
+        && first_transfer.direction == TransferDirection::Write;
+
+    let mut write_response_pending = first_transfer.direction == TransferDirection::Write;
+
+    // If the response is returned in the next transfer, we push the correct index
+    if need_ap_read || write_response_pending {
+        result_indices.push(num_transfers + 1);
+    } else {
+        result_indices.push(num_transfers);
+    }
+
+    expected_responses.push(first_transfer.direction);
+
+    num_transfers += 1;
+
+    for transfer in &transfers[1..] {
+        let is_ap_read = matches!(transfer.port, PortType::AccessPort(_x))
+            && transfer.direction == TransferDirection::Read;
+
+        // Check if we need to insert an additional read from the RDBUFF register
+        if !is_ap_read && need_ap_read {
+            io_sequence.extend(&build_swd_transfer(
+                PortType::DebugPort,
+                TransferType::Read,
+                RdBuff::ADDRESS as u16,
+            ));
+            num_transfers += 1;
+
+            expected_responses.push(TransferDirection::Read);
+
+            // This is an extra transfer, which doesn't have a reponse on it's own.
+        }
+
+        if buffered_write {
+            // Check if we need an additional instruction to avoid loosing buffered writes.
+
+            let abort_write = transfer.port == PortType::DebugPort
+                && transfer.address == Abort::ADDRESS as u16
+                && transfer.direction == TransferDirection::Write;
+
+            let dpidr_read = transfer.port == PortType::DebugPort
+                && transfer.address == DPIDR::ADDRESS as u16
+                && transfer.direction == TransferDirection::Read;
+
+            let ctrl_stat_read = transfer.port == PortType::DebugPort
+                && transfer.address == Ctrl::ADDRESS as u16
+                && transfer.direction == TransferDirection::Read;
+
+            if abort_write || dpidr_read || ctrl_stat_read {
+                // Add a read from RDBUFF, this access will stalled by the DebugPort if the write buffer
+                // is not empty.
+
+                io_sequence.extend(&build_swd_transfer(
+                    PortType::DebugPort,
+                    TransferType::Read,
+                    RdBuff::ADDRESS as u16,
+                ));
+
+                num_transfers += 1;
+                expected_responses.push(TransferDirection::Read);
+
+                // This is an extra transfer, which doesn't have a reponse on it's own.
+            }
+        }
+
+        io_sequence.extend(&build_swd_transfer(
+            transfer.port,
+            transfer.transfer_type(),
+            transfer.address,
+        ));
+
+        need_ap_read = is_ap_read;
+
+        buffered_write = matches!(transfer.port, PortType::AccessPort(_x))
+            && transfer.direction == TransferDirection::Write;
+
+        write_response_pending = transfer.direction == TransferDirection::Write;
+
+        // If the response is returned in the next transfer, we push the correct index
+        if need_ap_read || write_response_pending {
+            result_indices.push(num_transfers + 1);
+        } else {
+            result_indices.push(num_transfers);
+        }
+
+        expected_responses.push(transfer.direction);
+
+        num_transfers += 1;
+    }
+
+    if need_ap_read || write_response_pending || buffered_write {
+        io_sequence.extend(&build_swd_transfer(
+            PortType::DebugPort,
+            TransferType::Read,
+            RdBuff::ADDRESS as u16,
+        ));
+
+        expected_responses.push(TransferDirection::Read);
+
+        num_transfers += 1;
+    }
+
+    log::debug!(
+        "Performing {} transfers ({} additional transfers)",
+        num_transfers,
+        num_transfers - transfers.len()
+    );
+
+    let mut result = probe.swd_io(
+        io_sequence.direction_bits().to_owned(),
+        io_sequence.io_bits().to_owned(),
+    )?;
+
+    // Parse the response
+
+    let mut responses = Vec::with_capacity(num_transfers);
+
+    let mut read_index = 0;
+
+    for response_direction in expected_responses {
+        let response_type = match response_direction {
+            TransferDirection::Read => TransferType::Read,
+            TransferDirection::Write => TransferType::Write(0),
+        };
+
+        responses.push(parse_swd_response(&mut result[read_index..], response_type));
+
+        read_index += response_length(response_type);
+    }
+
+    // Retrieve the results
+    for (transfer, index) in transfers.iter_mut().zip(result_indices) {
+        match &responses[index] {
+            Ok(value) => {
+                if transfer.direction == TransferDirection::Read {
+                    transfer.value = *value;
+                }
+
+                transfer.status = TransferStatus::Ok;
+            }
+            Err(e) => {
+                transfer.status = TransferStatus::Failed(e.clone());
+            }
+        }
+    }
+
+    Ok(())
+}
+
+struct SwdTransfer {
+    port: PortType,
+    direction: TransferDirection,
+    address: u16,
+    value: u32,
+    status: TransferStatus,
+}
+
+impl SwdTransfer {
+    fn transfer_type(&self) -> TransferType {
+        match self.direction {
+            TransferDirection::Read => TransferType::Read,
+            TransferDirection::Write => TransferType::Write(self.value),
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Copy, Clone)]
+enum TransferDirection {
+    Read,
+    Write,
+}
+
+#[derive(Debug, PartialEq)]
+enum TransferStatus {
+    Pending,
+    Ok,
+    Failed(DapError),
 }
 
 impl DebugProbe for JLink {
@@ -776,10 +982,6 @@ impl IoSequence {
             .extend(iter::repeat(Self::INPUT).take(length));
     }
 
-    fn len(&self) -> usize {
-        self.io.len()
-    }
-
     fn io_bits(&self) -> &[bool] {
         &self.io
     }
@@ -889,8 +1091,15 @@ fn build_swd_transfer(port: PortType, direction: TransferType, address: u16) -> 
     sequence
 }
 
-fn parse_swd_response(response: &mut BitIter, direction: TransferType) -> Result<u32, DapError> {
-    let result_sequence = response;
+fn response_length(direction: TransferType) -> usize {
+    match direction {
+        TransferType::Read => 2 + 8 + 3 + 32 + 1 + 2,
+        TransferType::Write(_) => 2 + 8 + 3 + 2 + 32 + 1,
+    }
+}
+
+fn parse_swd_response(response: &[bool], direction: TransferType) -> Result<u32, DapError> {
+    let mut read_index = 0;
 
     // We need to discard the output bits that correspond to the part of the request
     // in which the probe is driving SWDIO. Additionally, there is a phase shift that
@@ -903,26 +1112,33 @@ fn parse_swd_response(response: &mut BitIter, direction: TransferType) -> Result
     // first ack bit.
 
     // Throw away the two idle bits.
-    result_sequence.split_off(2);
+    read_index += 2;
+
     // Throw away the request bits.
-    result_sequence.split_off(8);
+    read_index += 8;
 
     // Get the ack.
-    let ack = result_sequence.split_off(3).collect::<Vec<_>>();
+    let ack = (&response[read_index..read_index + 3]).to_owned();
+    read_index += 3;
 
     if let TransferType::Write(_) = direction {
         // remove two turnaround bits
-        result_sequence.split_off(2);
+        read_index += 2;
     }
 
-    let register_val = result_sequence.split_off(32);
+    let register_val = (&response[read_index..read_index + 32]).to_owned();
+    read_index += 32;
 
-    let parity_bit = result_sequence.next().ok_or(DapError::IncorrectParity)?;
+    let parity_bit = response[read_index];
+
+    /*
+    read_index += 1;
 
     if TransferType::Read == direction {
         // Remove turnaround bits
-        result_sequence.split_off(2);
+        read_index += 2;
     }
+    */
 
     // When all bits are high, this means we didn't get any response from the
     // target, which indicates a protocol error.
@@ -964,78 +1180,55 @@ fn parse_swd_response(response: &mut BitIter, direction: TransferType) -> Result
     }
 }
 
+trait RawSwdIo {
+    fn swd_io<'a, D, S>(&mut self, dir: D, swdio: S) -> Result<Vec<bool>, DebugProbeError>
+    where
+        D: IntoIterator<Item = bool>,
+        S: IntoIterator<Item = bool>;
+}
+
+impl RawSwdIo for JLink {
+    fn swd_io<'a, D, S>(&'a mut self, dir: D, swdio: S) -> Result<Vec<bool>, DebugProbeError>
+    where
+        D: IntoIterator<Item = bool>,
+        S: IntoIterator<Item = bool>,
+    {
+        let iter = self.handle.swd_io(dir, swdio)?;
+
+        Ok(iter.collect())
+    }
+}
+
 impl DAPAccess for JLink {
     fn read_register(&mut self, port: PortType, address: u16) -> Result<u32, DebugProbeError> {
-        // JLink operates on raw SWD bit sequences.
-        // So we need to manually assemble the read and write bitsequences.
-        // The following code with the comments hopefully explains well enough how it works.
-        // `true` means `1` and `false` means `0` for the SWDIO sequence.
-        // `true` means `drive line` and `false` means `open drain` for the direction sequence.
-
-        let mut io_sequence = build_swd_transfer(port, TransferType::Read, address);
-
-        let num_idle_bits = 0;
-        let mut first_request_len = io_sequence.len();
-
-        if let PortType::AccessPort(_) = port {
-            for _ in 0..num_idle_bits {
-                io_sequence.add_output(false);
-            }
-
-            first_request_len += num_idle_bits;
-
-            // extend sequence with a read of the RDBUFF register
-            io_sequence.extend(&build_swd_transfer(
-                PortType::DebugPort,
-                TransferType::Read,
-                RdBuff::ADDRESS as u16,
-            ));
-
-            log::trace!("Request IO:        {:?}", io_sequence.io_bits());
-            log::trace!("Request Direction: {:?}", io_sequence.direction_bits());
-        }
+        let dap_wait_retries = 20;
 
         // Now we try to issue the request until it fails or succeeds.
         // If we timeout we retry a maximum of 5 times.
-        for retry in 0..5 {
-            // Transmit the sequence and record the line sequence for the ack bits.
-            let mut result_sequence = self.handle.swd_io(
-                io_sequence.direction_bits().to_owned(),
-                io_sequence.io_bits().to_owned(),
-            )?;
+        for retry in 0..dap_wait_retries {
+            let mut transfers = [SwdTransfer {
+                port,
+                address,
+                value: 0,
+                direction: TransferDirection::Read,
+                status: TransferStatus::Pending,
+            }];
 
-            assert_eq!(result_sequence.len(), io_sequence.len());
+            perform_transfers(self, &mut transfers)?;
 
-            let mut first_response = result_sequence.split_off(first_request_len);
-
-            match parse_swd_response(&mut first_response, TransferType::Read) {
-                Ok(value) => {
-                    // If we are reading an AP register we only get the actual result in the next transaction.
-                    // So we need to parse the next part of the response.
-                    if let PortType::AccessPort(_) = port {
-                        log::debug!("Parsing second part of response");
-
-                        // We read the RDBUFF register to get the value of the last AP transaction.
-                        // This special register just returns the last read value with no side-effects like auto-increment.
-
-                        let value = parse_swd_response(&mut result_sequence, TransferType::Read)?;
-
-                        return Ok(value);
-
-                    /*
-                    return DAPAccess::read_register(
-                        self,
-                        PortType::DebugPort,
-                        RdBuff::ADDRESS as u16,
-                    );
-                    */
-                    } else {
-                        return Ok(value);
-                    }
+            match transfers[0].status {
+                TransferStatus::Ok => {
+                    return Ok(transfers[0].value);
                 }
-                Err(DapError::WaitResponse) => {
+                TransferStatus::Pending => {
+                    // This shouldn't happen...
+
+                    // Just retry?
+                    continue;
+                }
+                TransferStatus::Failed(DapError::WaitResponse) => {
                     // If ack[1] is set the host must retry the request. So let's do that right away!
-                    log::debug!("DAP WAIT, retries remaining {}.", 5 - retry);
+                    log::debug!("DAP WAIT, retries remaining {}.", dap_wait_retries - retry);
 
                     // Because we use overrun detection, we now have to clear the overrun error
                     let mut abort = Abort(0);
@@ -1051,7 +1244,7 @@ impl DAPAccess for JLink {
 
                     continue;
                 }
-                Err(DapError::FaultResponse) => {
+                TransferStatus::Failed(DapError::FaultResponse) => {
                     log::debug!("DAP FAULT");
 
                     // A fault happened during operation.
@@ -1090,7 +1283,7 @@ impl DAPAccess for JLink {
                 }
                 // The other errors mean that something went wrong with the protocol itself,
                 // so we try to perform a line reset, and recover.
-                Err(_) => {
+                TransferStatus::Failed(_) => {
                     log::debug!("DAP NACK");
 
                     // Because we clock the SWDCLK line after receving the WAIT response,
@@ -1115,56 +1308,34 @@ impl DAPAccess for JLink {
         address: u16,
         value: u32,
     ) -> Result<(), DebugProbeError> {
-        // JLink operates on raw SWD bit sequences.
-        // So we need to manually assemble the read and write bitsequences.
-        // The following code with the comments hopefully explains well enough how it works.
-        // `true` means `1` and `false` means `0` for the SWDIO sequence.
-        // `true` means `drive line` and `false` means `open drain` for the direction sequence.
-
-        let mut io_sequence = build_swd_transfer(port, TransferType::Write(value), address);
-
-        // Add 8 idle cycles to ensure the write is performed.
-        // See section B4.1.1 in the ARM Debug Interface specification.
-        //
-        // This doesn't have to be done if the write is directly followed by another request,
-        // but until batching is implemented, this is the safest way.
-        for _ in 0..8 {
-            io_sequence.add_output(false);
-        }
-
-        let first_request_len = io_sequence.len();
-
-        // add a read, to ensure the write is actually performed
-        io_sequence.extend(&build_swd_transfer(
-            PortType::DebugPort,
-            TransferType::Read,
-            RdBuff::ADDRESS as u16,
-        ));
+        let dap_wait_retries = 20;
 
         // Now we try to issue the request until it fails or succeeds.
         // If we timeout we retry a maximum of 5 times.
-        for retry in 0..5 {
-            // Transmit the sequence and record the line sequence for the ack and data bits.
-            let mut result_sequence = self.handle.swd_io(
-                io_sequence.direction_bits().to_owned(),
-                io_sequence.io_bits().to_owned(),
-            )?;
+        for retry in 0..dap_wait_retries {
+            let mut transfers = [SwdTransfer {
+                port,
+                direction: TransferDirection::Write,
+                address,
+                value,
+                status: TransferStatus::Pending,
+            }];
 
-            let mut first_response = result_sequence.split_off(first_request_len);
+            perform_transfers(self, &mut transfers)?;
 
-            match parse_swd_response(&mut first_response, TransferType::Write(value)) {
-                Ok(_) => {
-                    // The OK response only means that the write was accepted, not that it was performed succesfully.
-                    // To ensure that the write was succesfull, we read from the RDBUFF register in the DP. The actual
-                    // value doesn't matter, but the returned status indicates if the write was succesful.
-
-                    let _ = parse_swd_response(&mut result_sequence, TransferType::Read)?;
-
+            match transfers[0].status {
+                TransferStatus::Ok => {
                     return Ok(());
                 }
-                Err(DapError::WaitResponse) => {
+                TransferStatus::Pending => {
+                    // This shouldn't happen...
+
+                    // Just retry?
+                    continue;
+                }
+                TransferStatus::Failed(DapError::WaitResponse) => {
                     // If ack[1] is set the host must retry the request. So let's do that right away!
-                    log::debug!("DAP WAIT, retries remaining {}.", 5 - retry);
+                    log::debug!("DAP WAIT, retries remaining {}.", dap_wait_retries - retry);
 
                     let mut abort = Abort(0);
 
@@ -1180,7 +1351,7 @@ impl DAPAccess for JLink {
 
                     continue;
                 }
-                Err(DapError::FaultResponse) => {
+                TransferStatus::Failed(DapError::FaultResponse) => {
                     log::debug!("DAP FAULT");
                     // A fault happened during operation.
 
@@ -1220,7 +1391,7 @@ impl DAPAccess for JLink {
                 }
                 // The other errors mean that something went wrong with the protocol itself,
                 // so we try to perform a line reset, and recover.
-                Err(_) => {
+                TransferStatus::Failed(_) => {
                     log::debug!("DAP NACK");
 
                     // Because we clock the SWDCLK line after receving the WAIT response,
@@ -1362,5 +1533,186 @@ impl TryFrom<jaylink::Interface> for WireProtocol {
             Interface::Swd => Ok(WireProtocol::Swd),
             unknown_interface => Err(JlinkError::UnknownInterface(unknown_interface)),
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+
+    use crate::architecture::arm::PortType;
+
+    use super::{perform_transfers, RawSwdIo, SwdTransfer, TransferDirection, TransferStatus};
+
+    use bitvec::prelude::*;
+
+    struct MockJaylink {
+        direction_input: Option<Vec<bool>>,
+        io_input: Option<Vec<bool>>,
+        response: Vec<bool>,
+    }
+
+    impl MockJaylink {
+        fn with_response(response: Vec<bool>) -> Self {
+            Self {
+                direction_input: None,
+                io_input: None,
+                response,
+            }
+        }
+    }
+
+    impl RawSwdIo for MockJaylink {
+        fn swd_io<'a, D, S>(
+            &'a mut self,
+            dir: D,
+            swdio: S,
+        ) -> Result<Vec<bool>, crate::DebugProbeError>
+        where
+            D: IntoIterator<Item = bool>,
+            S: IntoIterator<Item = bool>,
+        {
+            self.direction_input = Some(dir.into_iter().collect());
+            self.io_input = Some(swdio.into_iter().collect());
+
+            assert_eq!(
+                self.direction_input.as_ref().unwrap().len(),
+                self.io_input.as_ref().unwrap().len()
+            );
+
+            assert_eq!(
+                self.response.len(),
+                self.io_input.as_ref().map(|v| v.len()).unwrap()
+            );
+
+            Ok(self.response.clone())
+        }
+    }
+
+    #[test]
+    fn single_dp_register_read() {
+        let mut transfers = vec![SwdTransfer {
+            port: PortType::DebugPort,
+            address: 0,
+            direction: TransferDirection::Read,
+            value: 0,
+            status: TransferStatus::Pending,
+        }];
+
+        let read_length = 2 + 8 + 1 + 3 + 32 + 2;
+
+        let mut response = BitVec::<Lsb0, usize>::repeat(false, read_length);
+
+        // Set acknowledege to ok
+        response.set(10, true);
+
+        let mut mock = MockJaylink::with_response(response.into_iter().collect());
+
+        perform_transfers(&mut mock, &mut transfers).expect("Failed to perform transfer");
+
+        let transfer_result = &transfers[0];
+
+        assert_eq!(transfer_result.status, TransferStatus::Ok);
+    }
+
+    #[test]
+    fn single_ap_register_read() {
+        let register_value = 0x11_22_33_44u32;
+
+        let mut transfers = vec![SwdTransfer {
+            port: PortType::AccessPort(0),
+            address: 0,
+            direction: TransferDirection::Read,
+            value: 0,
+            status: TransferStatus::Pending,
+        }];
+
+        let read_length = 2 + 8 + 1 + 3 + 32 + 2;
+
+        let mut response = BitVec::<Lsb0, usize>::repeat(false, 2 * read_length);
+
+        // Set first  and second acknowledege to Ok
+        response.set(10, true);
+        response.set(read_length + 10, true);
+
+        // Set the read value
+        response
+            .get_mut(read_length + 13..read_length + 13 + 32)
+            .unwrap()
+            .store_le(register_value);
+
+        let mut mock = MockJaylink {
+            direction_input: None,
+            io_input: None,
+            response: response.into_iter().collect(),
+        };
+
+        perform_transfers(&mut mock, &mut transfers).expect("Failed to perform transfer");
+
+        let transfer_result = &transfers[0];
+
+        assert_eq!(transfer_result.status, TransferStatus::Ok);
+        assert_eq!(transfer_result.value, register_value);
+    }
+
+    #[test]
+    fn single_dp_register_write() {
+        let mut transfers = vec![SwdTransfer {
+            port: PortType::DebugPort,
+            address: 0,
+            direction: TransferDirection::Write,
+            value: 0x1234_5678,
+            status: TransferStatus::Pending,
+        }];
+
+        let write_length = 2 + 8 + 1 + 3 + 32 + 2;
+
+        let mut response = BitVec::<Lsb0, usize>::repeat(false, 2 * write_length);
+
+        // Set first  and second acknowledege to Ok
+        response.set(10, true);
+        response.set(write_length + 10, true);
+
+        let mut mock = MockJaylink {
+            direction_input: None,
+            io_input: None,
+            response: response.into_iter().collect(),
+        };
+
+        perform_transfers(&mut mock, &mut transfers).expect("Failed to perform transfer");
+
+        let transfer_result = &transfers[0];
+
+        assert_eq!(transfer_result.status, TransferStatus::Ok);
+    }
+
+    #[test]
+    fn single_ap_register_write() {
+        let mut transfers = vec![SwdTransfer {
+            port: PortType::AccessPort(0),
+            address: 0,
+            direction: TransferDirection::Write,
+            value: 0x1234_5678,
+            status: TransferStatus::Pending,
+        }];
+
+        let write_length = 2 + 8 + 1 + 3 + 2 + 32;
+
+        let mut response = BitVec::<Lsb0, usize>::repeat(false, 2 * write_length);
+
+        // Set first  and second acknowledege to Ok
+        response.set(10, true);
+        response.set(write_length + 10, true);
+
+        let mut mock = MockJaylink {
+            direction_input: None,
+            io_input: None,
+            response: response.into_iter().collect(),
+        };
+
+        perform_transfers(&mut mock, &mut transfers).expect("Failed to perform transfer");
+
+        let transfer_result = &transfers[0];
+
+        assert_eq!(transfer_result.status, TransferStatus::Ok);
     }
 }
