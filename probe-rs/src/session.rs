@@ -253,7 +253,6 @@ impl Session {
                 }
             };
 
-
             match component {
                 Ok(component) => {
                     components.push(component);
