@@ -605,7 +605,7 @@ impl PeripheralID {
 
         // Source of the table: https://github.com/blacksphere/blackmagic/blob/master/src/target/adiv5.c#L189
         // Not all are present and this table could be expanded
-        let arm_part = match (
+        match (
             code,
             self.PART,
             self.dev_type,
@@ -651,23 +651,7 @@ impl PeripheralID {
             ("ARM Ltd", 0xD21, 0x13, 0x4A13) => Some(PartInfo::new("Cortex-M33 ETM", PeripheralType::Etm)),
             ("ARM Ltd", 0xD21, 0x11, 0x0000) => Some(PartInfo::new("Cortex-M33 TPIU", PeripheralType::Tpiu)),
             _ => None,
-        };
-
-        if arm_part.is_some() {
-            return arm_part;
         }
-
-        let stm_part = if code == "STMicroelectronics" && self.dev_type <= 0x01 && self.arch_id == 0x00 {
-            Stm32ID::from_u16(self.PART).map(|id| PartInfo::new("STM device id", PeripheralType::Stm32ID(id)))
-        } else {
-            None
-        };
-
-        if stm_part.is_some() {
-            return stm_part;
-        }
-
-        None
     }
 }
 
@@ -720,7 +704,6 @@ pub enum PeripheralType {
     Swo,
     Stm,
     Tsgen,
-    Stm32ID(Stm32ID),
 }
 
 impl std::fmt::Display for PeripheralType {
@@ -738,187 +721,6 @@ impl std::fmt::Display for PeripheralType {
             PeripheralType::Swo => write!(f, "Swo (Single Wire Output)"),
             PeripheralType::Stm => write!(f, "Stm (System Trace Macrocell)"),
             PeripheralType::Tsgen => write!(f, "Tsgen (Time Stamp Generator)"),
-            PeripheralType::Stm32ID(id) => write!(f, "{:?}", id),
         }
-    }
-}
-
-#[non_exhaustive]
-#[derive(Debug, Copy, Clone, PartialEq, Primitive)]
-pub enum Stm32ID {
-    STM32H74X = 0x450,
-    STM32H7BX = 0x480,
-    STM32H72X = 0x483,
-
-    STM32L41 = 0x464,
-    STM32L43 = 0x435,
-    STM32L45 = 0x462,
-    STM32L47 = 0x415,
-    STM32L49 = 0x461,
-    STM32L4R = 0x470,
-
-    STM32G03 = 0x466,
-    STM32G07 = 0x460,
-
-    STM32G43 = 0x468,
-    STM32G47 = 0x469,
-
-    STM32F20X = 0x411,
-
-    STM32F40X = 0x413,
-    STM32F42X = 0x419,
-    STM32F446 = 0x421,
-    STM32F401C = 0x423,
-    STM32F411 = 0x431,
-    STM32F401E = 0x433,
-    STM32F46X = 0x434,
-    STM32F412 = 0x441,
-    STM32F410 = 0x458,
-    STM32F413 = 0x463,
-
-    STM32F74X = 0x449,
-    STM32F76X = 0x451,
-    STM32F72X = 0x452,
-
-    STM32F1LD = 0x412, // Low density
-    STM32F1MD = 0x410, // Medium density
-    STM32F1HD = 0x414, // High density
-    STM32F1XL = 0x430, // XL density
-    STM32F1CD = 0x418, // Connectivity device
-
-    STM32F328 = 0x438, // STM32F303x6/8 and STM32F328
-    STM32F30X = 0x422,
-    STM32F398XE = 0x446, // STM32F303xD/E and STM32F398xE
-    STM32F37X = 0x432,
-    STM32F302C8 = 0x439,
-
-    STM32F03 = 0x444,
-    STM32F04 = 0x445, // STM32F04/F070x6
-    STM32F05 = 0x440, // STM32F05/F030x8
-    STM32F07 = 0x448,
-    STM32F09 = 0x442, // STM32F09/F030xC
-
-    STM32L0XC1 = 0x457, // STM32L0xx Cat1
-    STM32L0XC2 = 0x425, // STM32L0xx Cat2
-    STM32L0XC3 = 0x417, // STM32L0xx Cat3
-    STM32L0XC5 = 0x447, // STM32L0xx Cat5
-
-    STM32L1XC1 = 0x416, // STM32L1xx Cat1
-    STM32L1XC2 = 0x429, // STM32L1xx Cat2
-    STM32L1XC3 = 0x427, // STM32L1xx Cat3
-    STM32L1XC4 = 0x436, // STM32L1xx Cat4
-    STM32L1XC5 = 0x437, // STM32L1xx Cat5
-
-    STM32L5 = 0x472, // STM32L552xx and STM32L562x
-}
-
-impl Stm32ID {
-    pub fn is_f0_series(&self) -> bool {
-        matches!(
-            self,
-            Stm32ID::STM32F03
-                | Stm32ID::STM32F04
-                | Stm32ID::STM32F05
-                | Stm32ID::STM32F07
-                | Stm32ID::STM32F09
-        )
-    }
-
-    pub fn is_f1_series(&self) -> bool {
-        matches!(
-            self,
-            Stm32ID::STM32F1LD
-                | Stm32ID::STM32F1MD
-                | Stm32ID::STM32F1HD
-                | Stm32ID::STM32F1XL
-                | Stm32ID::STM32F1CD
-        )
-    }
-
-    pub fn is_f2_series(&self) -> bool {
-        matches!(self, Stm32ID::STM32F20X)
-    }
-
-    pub fn is_f3_series(&self) -> bool {
-        matches!(
-            self,
-            Stm32ID::STM32F328
-                | Stm32ID::STM32F30X
-                | Stm32ID::STM32F398XE
-                | Stm32ID::STM32F37X
-                | Stm32ID::STM32F302C8
-        )
-    }
-
-    pub fn is_f4_series(&self) -> bool {
-        matches!(
-            self,
-            Stm32ID::STM32F40X
-                | Stm32ID::STM32F42X
-                | Stm32ID::STM32F446
-                | Stm32ID::STM32F401C
-                | Stm32ID::STM32F411
-                | Stm32ID::STM32F401E
-                | Stm32ID::STM32F46X
-                | Stm32ID::STM32F412
-                | Stm32ID::STM32F410
-                | Stm32ID::STM32F413
-        )
-    }
-
-    pub fn is_f7_series(&self) -> bool {
-        matches!(
-            self,
-            Stm32ID::STM32F74X | Stm32ID::STM32F76X | Stm32ID::STM32F72X
-        )
-    }
-
-    pub fn is_l0_series(&self) -> bool {
-        matches!(
-            self,
-            Stm32ID::STM32L0XC1 | Stm32ID::STM32L0XC2 | Stm32ID::STM32L0XC3 | Stm32ID::STM32L0XC5
-        )
-    }
-
-    pub fn is_l1_series(&self) -> bool {
-        matches!(
-            self,
-            Stm32ID::STM32L1XC1
-                | Stm32ID::STM32L1XC2
-                | Stm32ID::STM32L1XC3
-                | Stm32ID::STM32L1XC4
-                | Stm32ID::STM32L1XC5
-        )
-    }
-
-    pub fn is_l4_series(&self) -> bool {
-        matches!(
-            self,
-            Stm32ID::STM32L41
-                | Stm32ID::STM32L43
-                | Stm32ID::STM32L45
-                | Stm32ID::STM32L47
-                | Stm32ID::STM32L49
-                | Stm32ID::STM32L4R
-        )
-    }
-
-    pub fn is_l5_series(&self) -> bool {
-        matches!(self, Stm32ID::STM32L5)
-    }
-
-    pub fn is_g0_series(&self) -> bool {
-        matches!(self, Stm32ID::STM32G03 | Stm32ID::STM32G07)
-    }
-
-    pub fn is_g4_series(&self) -> bool {
-        matches!(self, Stm32ID::STM32G43 | Stm32ID::STM32G47)
-    }
-
-    pub fn is_h7_series(&self) -> bool {
-        matches!(
-            self,
-            Stm32ID::STM32H74X | Stm32ID::STM32H7BX | Stm32ID::STM32H72X
-        )
     }
 }
