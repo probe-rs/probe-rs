@@ -182,7 +182,7 @@ impl Probe {
         }
         list.extend(stlink::tools::list_stlink_devices());
 
-        list.extend(list_jlink_devices().expect("Failed to list J-Link devices."));
+        list.extend(list_jlink_devices());
 
         list
     }
@@ -396,7 +396,7 @@ impl Probe {
     }
 }
 
-pub trait DebugProbe: Send + Sync + fmt::Debug {
+pub trait DebugProbe: Send + fmt::Debug {
     fn new_from_selector(
         selector: impl Into<DebugProbeSelector>,
     ) -> Result<Box<Self>, DebugProbeError>
@@ -454,7 +454,7 @@ pub trait DebugProbe: Send + Sync + fmt::Debug {
     }
 
     /// Get the dedicated interface to debug ARM chips. Ensure that the
-    /// probe actually supports this by calling `has_arm_interface` first.
+    /// probe actually supports this by calling [DebugProbe::has_arm_interface] first.
     fn get_arm_interface<'probe>(
         self: Box<Self>,
     ) -> Result<Option<Box<dyn ArmProbeInterface + 'probe>>, DebugProbeError> {
@@ -462,14 +462,14 @@ pub trait DebugProbe: Send + Sync + fmt::Debug {
     }
 
     /// Get the dedicated interface to debug RISCV chips. Ensure that the
-    /// probe actually supports this by calling `get_riscv_interface` first.
+    /// probe actually supports this by calling [DebugProbe::has_riscv_interface] first.
     fn get_riscv_interface(
         self: Box<Self>,
     ) -> Result<Option<RiscvCommunicationInterface>, DebugProbeError> {
         Ok(None)
     }
 
-    /// Check if the proble offers an interface to debug RISCV chips.
+    /// Check if the probe offers an interface to debug RISCV chips.
     fn has_riscv_interface(&self) -> bool {
         false
     }
@@ -504,13 +504,13 @@ impl std::fmt::Debug for DebugProbeInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(
             f,
-            "{} (VID: {:04x}, PID: {:04x}, {} {:?})",
+            "{} (VID: {:04x}, PID: {:04x}, {}{:?})",
             self.identifier,
             self.vendor_id,
             self.product_id,
             self.serial_number
                 .clone()
-                .map_or("".to_owned(), |v| format!("Serial: {},", v)),
+                .map_or("".to_owned(), |v| format!("Serial: {}, ", v)),
             self.probe_type
         )
     }

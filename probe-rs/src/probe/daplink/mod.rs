@@ -4,7 +4,7 @@ pub mod tools;
 use crate::{
     architecture::arm::{
         communication_interface::ArmProbeInterface,
-        dp::{Ctrl, DPAccess, DPRegister, DebugPortError},
+        dp::{Abort, Ctrl, DPAccess, DPRegister, DebugPortError},
         swo::poll_interval_from_buf_size,
         ArmCommunicationInterface, DAPAccess, DapError, PortType, Register, SwoAccess, SwoConfig,
         SwoMode,
@@ -38,13 +38,12 @@ use commands::{
 
 use log::debug;
 
-use std::sync::Mutex;
 use std::time::Duration;
 
 use anyhow::anyhow;
 
 pub struct DAPLink {
-    pub device: Mutex<DAPLinkDevice>,
+    pub device: DAPLinkDevice,
     _hw_version: u8,
     _jtag_version: u8,
     protocol: Option<WireProtocol>,
@@ -92,7 +91,7 @@ impl DAPLink {
         }
 
         Self {
-            device: Mutex::new(device),
+            device,
             _hw_version: 0,
             _jtag_version: 0,
             protocol: None,
@@ -168,73 +167,88 @@ impl DAPLink {
         if self.batch.is_empty() {
             return Ok(0);
         }
-        debug!("Processing batch of {} items", self.batch.len());
 
-        let batch = std::mem::replace(&mut self.batch, Vec::new());
+        let mut batch = std::mem::replace(&mut self.batch, Vec::new());
 
-        let transfers: Vec<InnerTransferRequest> = batch
-            .iter()
-            .map(|command| match *command {
-                BatchCommand::Read(port, addr) => {
-                    InnerTransferRequest::new(port.into(), RW::R, addr as u8, None)
-                }
-                BatchCommand::Write(port, addr, data) => {
-                    InnerTransferRequest::new(port.into(), RW::W, addr as u8, Some(data))
-                }
-            })
-            .collect();
+        debug!("{} items in batch", batch.len());
 
-        let response = commands::send_command::<TransferRequest, TransferResponse>(
-            &mut self.device,
-            TransferRequest::new(&transfers),
-        )?;
+        for retry in (0..5).rev() {
+            debug!("Attempting batch of {} items", batch.len());
 
-        let count = response.transfer_count as usize;
+            let transfers: Vec<InnerTransferRequest> = batch
+                .iter()
+                .map(|command| match *command {
+                    BatchCommand::Read(port, addr) => {
+                        InnerTransferRequest::new(port.into(), RW::R, addr as u8, None)
+                    }
+                    BatchCommand::Write(port, addr, data) => {
+                        InnerTransferRequest::new(port.into(), RW::W, addr as u8, Some(data))
+                    }
+                })
+                .collect();
 
-        match count {
-            _ if count == batch.len() => {
-                if response.transfer_response.protocol_error {
-                    Err(DapError::SwdProtocol.into())
-                } else {
-                    match response.transfer_response.ack {
-                        Ack::Ok => {
-                            log::trace!("ack",);
-                            Ok(response.transfer_data)
-                        }
-                        Ack::NoAck => {
-                            log::trace!("nack",);
-                            Err(DapError::NoAcknowledge.into())
-                        }
-                        Ack::Fault => {
-                            log::trace!("fault",);
+            let response = commands::send_command::<TransferRequest, TransferResponse>(
+                &mut self.device,
+                TransferRequest::new(&transfers),
+            )?;
 
-                            let response = DAPAccess::read_register(
+            let count = response.transfer_count as usize;
+
+            debug!("{:?} of batch of {} items suceeded", count, batch.len());
+
+            if response.transfer_response.protocol_error {
+                return Err(DapError::SwdProtocol.into());
+            } else {
+                match response.transfer_response.ack {
+                    Ack::Ok => {
+                        log::trace!("ack",);
+                        return Ok(response.transfer_data);
+                    }
+                    Ack::NoAck => {
+                        log::trace!("nack",);
+                        //try a reset?
+                        return Err(DapError::NoAcknowledge.into());
+                    }
+                    Ack::Fault => {
+                        log::trace!("fault",);
+
+                        // Check the reason for the fault
+                        let response = DAPAccess::read_register(
+                            self,
+                            PortType::DebugPort,
+                            Ctrl::ADDRESS as u16,
+                        )?;
+                        let ctrl = Ctrl::from(response);
+                        log::trace!("Ctrl/Stat register value is: {:?}", ctrl);
+
+                        if ctrl.sticky_err() {
+                            let mut abort = Abort(0);
+
+                            // Clear sticky error flags
+                            abort.set_stkerrclr(ctrl.sticky_err());
+
+                            DAPAccess::write_register(
                                 self,
                                 PortType::DebugPort,
-                                Ctrl::ADDRESS as u16,
+                                Abort::ADDRESS as u16,
+                                abort.into(),
                             )?;
-                            let ctrl = Ctrl::from(response);
-                            log::trace!(
-                                "Writing DAP register failed. Ctrl/Stat register value is: {:?}",
-                                ctrl
-                            );
-
-                            Err(DapError::FaultResponse.into())
                         }
-                        Ack::Wait => {
-                            log::trace!("wait",);
 
-                            Err(DapError::WaitResponse.into())
-                        }
+                        log::trace!("draining {:?} and retries left {:?}", count, retry);
+                        batch.drain(0..count);
+                        continue;
+                    }
+                    Ack::Wait => {
+                        log::trace!("wait",);
+
+                        return Err(DapError::WaitResponse.into());
                     }
                 }
             }
-            0 => Err(DebugProbeError::Other(anyhow!(
-                "Didn't receive any answer during batch processing: {:?}",
-                batch
-            ))),
-            _ => Err(DebugProbeError::BatchError(batch[count - 1])),
         }
+
+        Err(DapError::FaultResponse.into())
     }
 
     /// Add a BatchCommand to our current batch.
@@ -469,17 +483,26 @@ impl DebugProbe for DAPLink {
 
         self.configure_swd(swd::configure::ConfigureRequest {})?;
 
+        // SWJ-DP defaults to JTAG operation on powerup reset
+        // Switching from JTAG to SWD operation
+
+        // ~50 SWCLKTCK
         self.send_swj_sequences(SequenceRequest::new(&[
             0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
         ])?)?;
 
+        // 16-bit JTAG-to-SWD select sequence
         self.send_swj_sequences(SequenceRequest::new(&[0x9e, 0xe7])?)?;
 
+        // ~50 SWCLKTCK
         self.send_swj_sequences(SequenceRequest::new(&[
             0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
         ])?)?;
 
+        // returning to low state? 2 idle cycles?
         self.send_swj_sequences(SequenceRequest::new(&[0x00])?)?;
+
+        // On selecting SWD operation, the SWD interface returns to its reset state.
 
         debug!("Successfully changed to SWD.");
 
@@ -563,7 +586,7 @@ impl DebugProbe for DAPLink {
     fn get_arm_interface<'probe>(
         self: Box<Self>,
     ) -> Result<Option<Box<dyn ArmProbeInterface + 'probe>>, DebugProbeError> {
-        let interface = ArmCommunicationInterface::new(self)?;
+        let interface = ArmCommunicationInterface::new(self, false)?;
 
         Ok(Some(Box::new(interface)))
     }
@@ -726,9 +749,7 @@ impl SwoAccess for DAPLink {
         // Set transport. If the dedicated endpoint is available and we have opened
         // the probe in V2 mode and it has an SWO endpoint, request that, otherwise
         // request the DAP_SWO_Data polling mode.
-        if caps.swo_streaming_trace_implemented
-            && self.device.get_mut().unwrap().swo_streaming_supported()
-        {
+        if caps.swo_streaming_trace_implemented && self.device.swo_streaming_supported() {
             debug!("Starting SWO capture with WinUSB transport");
             self.set_swo_transport(swo::TransportRequest::WinUsbEndpoint)?;
             self.swo_streaming = true;
@@ -770,12 +791,8 @@ impl SwoAccess for DAPLink {
     fn read_swo_timeout(&mut self, timeout: Duration) -> Result<Vec<u8>, ProbeRsError> {
         if self.swo_active {
             if self.swo_streaming {
-                let device = self
-                    .device
-                    .get_mut()
-                    .expect("This is a bug. Please report it.");
                 let mut buffer = vec![0u8; 1024];
-                let n = device.read_swo_stream(&mut buffer, timeout)?;
+                let n = self.device.read_swo_stream(&mut buffer, timeout)?;
                 buffer.truncate(n);
                 log::trace!("SWO streaming buffer: {:?}", buffer);
                 Ok(buffer)
@@ -791,9 +808,7 @@ impl SwoAccess for DAPLink {
 
     fn swo_poll_interval_hint(&mut self, config: &SwoConfig) -> Option<std::time::Duration> {
         let caps = self.capabilities.expect("This is a bug. Please report it.");
-        if caps.swo_streaming_trace_implemented
-            && self.device.get_mut().unwrap().swo_streaming_supported()
-        {
+        if caps.swo_streaming_trace_implemented && self.device.swo_streaming_supported() {
             // Streaming reads block waiting for new data so any polling interval is fine
             Some(std::time::Duration::from_secs(0))
         } else {

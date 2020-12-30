@@ -1,8 +1,10 @@
+#![warn(missing_docs)]
+
 use crate::architecture::{
     arm::{
         communication_interface::{
             ApInformation::{MemoryAp, Other},
-            ArmProbeInterface,
+            ArmProbeInterface, MemoryApInformation,
         },
         core::{debug_core_start, reset_catch_clear, reset_catch_set},
         memory::Component,
@@ -18,6 +20,22 @@ use crate::{AttachMethod, Core, CoreType, DebugProbe, Error, Probe};
 use anyhow::anyhow;
 use std::time::Duration;
 
+/// The `Session` struct represents an active debug session.
+///
+/// ## Creating a session
+///
+/// It can be conviently created by calling the [Session::auto_attach()] function,
+/// which tries to automatically select a probe, and then connect to the target.
+///
+/// For more control, the [Probe::attach()] and [Probe::attach_under_reset()]
+/// methods can be used to open a `Session` from a specific [Probe].
+///
+/// # Usage
+/// To get access to a single [Core] from the `Session`, the [Session::core()] method
+/// can be used.
+///
+/// You can create and share a session between threads to enable multiple stakeholders (e.g. GDB and RTT) to access the target
+/// taking turns. If you do so, please make sure that both threads sleep in between tasks such that other shareholders may take their turn.
 #[derive(Debug)]
 pub struct Session {
     target: Target,
@@ -27,7 +45,7 @@ pub struct Session {
 
 #[derive(Debug)]
 enum ArchitectureInterface {
-    Arm(Box<dyn ArmProbeInterface>),
+    Arm(Box<dyn ArmProbeInterface + 'static>),
     Riscv(RiscvCommunicationInterface),
 }
 
@@ -67,8 +85,8 @@ impl<'a> AsMut<dyn DebugProbe + 'a> for ArchitectureInterface {
 }
 
 impl Session {
-    /// Open a new session with a given debug target
-    pub fn new(
+    /// Open a new session with a given debug target.
+    pub(crate) fn new(
         probe: Probe,
         target: impl Into<TargetSelector>,
         attach_method: AttachMethod,
@@ -147,7 +165,10 @@ impl Session {
         let probes = Probe::list_all();
 
         // Use the first probe found.
-        let probe = probes[0].open()?;
+        let probe = probes
+            .get(0)
+            .ok_or(Error::UnableToOpenProbe("No probe was found"))?
+            .open()?;
 
         // Attach to a chip.
         probe.attach(target)
@@ -174,12 +195,16 @@ impl Session {
         &self.target.flash_algorithms
     }
 
+    /// Read available data from the SWO interface without waiting.
+    ///
+    /// This method is only supported for ARM-based targets, and will
+    /// return [Error::ArchitectureRequired] otherwise.
     pub fn read_swo(&mut self) -> Result<Vec<u8>, Error> {
         let interface = self.get_arm_interface()?;
         interface.read_swo()
     }
 
-    pub fn get_arm_interface(&mut self) -> Result<&mut Box<dyn ArmProbeInterface>, Error> {
+    fn get_arm_interface(&mut self) -> Result<&mut Box<dyn ArmProbeInterface>, Error> {
         let interface = match &mut self.interface {
             ArchitectureInterface::Arm(state) => state,
             _ => return Err(Error::ArchitectureRequired(&["ARMv7", "ARMv8"])),
@@ -199,16 +224,18 @@ impl Session {
                 .ok_or_else(|| anyhow!("AP {} does not exist on chip.", ap_index))?;
 
             let component = match ap_information {
-                MemoryAp {
+                MemoryAp(MemoryApInformation {
                     port_number: _,
                     only_32bit_data_size: _,
                     debug_base_address: 0,
-                } => Err(Error::Other(anyhow!("AP has a base address of 0"))),
-                MemoryAp {
+                    supports_hnonsec: _,
+                }) => Err(Error::Other(anyhow!("AP has a base address of 0"))),
+                MemoryAp(MemoryApInformation {
                     port_number,
                     only_32bit_data_size: _,
                     debug_base_address,
-                } => {
+                    supports_hnonsec: _,
+                }) => {
                     let access_port_number = *port_number;
                     let base_address = *debug_base_address;
 
@@ -225,6 +252,7 @@ impl Session {
                     )))
                 }
             };
+
 
             match component {
                 Ok(component) => {
@@ -284,8 +312,14 @@ impl Session {
     }
 
     /// Returns the memory map of the target.
+    #[deprecated = "Use the Session::target function instead"]
     pub fn memory_map(&self) -> &[MemoryRegion] {
         &self.target.memory_map
+    }
+
+    /// Get the target description of the connected target.
+    pub fn target(&self) -> &Target {
+        &self.target
     }
 
     /// Return the `Architecture` of the currently connected chip.
@@ -303,22 +337,31 @@ impl Session {
                 self.core(n)
                     .and_then(|mut core| core.clear_all_hw_breakpoints())
             })
-            .collect::<Result<Vec<_>, _>>()
-            .map(|_| ())
+            .collect()
     }
 }
 
+// This test ensures that [Session] is fully [Send] + [Sync].
+static_assertions::assert_impl_all!(Session: Send);
+
 impl Drop for Session {
     fn drop(&mut self) {
-        if let Err(err) = self.clear_all_hw_breakpoints() {
+        let result: Result<(), crate::Error> = { 0..self.cores.len() }
+            .map(|i| {
+                self.core(i)
+                    .and_then(|mut core| core.clear_all_set_hw_breakpoints())
+            })
+            .collect();
+
+        if let Err(err) = result {
             log::warn!("Could not clear all hardware breakpoints: {:?}", err);
         }
     }
 }
-/// Determine the ```Target``` from a ```TargetSelector```.
+/// Determine the [Target] from a [TargetSelector].
 ///
-/// If the selector is ```Unspecified```, the target will be looked up in the registry.
-/// If it its ```Auto```, probe-rs will try to determine the target automatically, based on
+/// If the selector is [TargetSelector::Unspecified], the target will be looked up in the registry.
+/// If it its [TargetSelector::Auto], probe-rs will try to determine the target automatically, based on
 /// information read from the chip.
 fn get_target_from_selector(
     target: impl Into<TargetSelector>,
@@ -327,7 +370,7 @@ fn get_target_from_selector(
     let mut probe = Some(probe);
 
     let target = match target.into() {
-        TargetSelector::Unspecified(name) => crate::config::registry::get_target_by_name(name)?,
+        TargetSelector::Unspecified(name) => crate::config::get_target_by_name(name)?,
         TargetSelector::Specified(target) => target,
         TargetSelector::Auto => {
             let mut found_chip = None;
@@ -370,7 +413,7 @@ fn get_target_from_selector(
             }
 
             if let Some(chip) = found_chip {
-                crate::config::registry::get_target_by_chip_info(chip)?
+                crate::config::get_target_by_chip_info(chip)?
             } else {
                 return Err(Error::ChipNotFound(RegistryError::ChipAutodetectFailed));
             }

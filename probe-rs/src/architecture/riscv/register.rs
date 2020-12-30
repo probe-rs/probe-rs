@@ -160,6 +160,91 @@ pub(super) static RISCV_REGISTERS: RegisterFile = RegisterFile {
             kind: RegisterKind::General,
             address: CoreRegisterAddress(0x100E),
         },
+        RegisterDescription {
+            name: "x15",
+            kind: RegisterKind::General,
+            address: CoreRegisterAddress(0x100F),
+        },
+        RegisterDescription {
+            name: "x16",
+            kind: RegisterKind::General,
+            address: CoreRegisterAddress(0x1010),
+        },
+        RegisterDescription {
+            name: "x17",
+            kind: RegisterKind::General,
+            address: CoreRegisterAddress(0x1011),
+        },
+        RegisterDescription {
+            name: "x18",
+            kind: RegisterKind::General,
+            address: CoreRegisterAddress(0x1012),
+        },
+        RegisterDescription {
+            name: "x19",
+            kind: RegisterKind::General,
+            address: CoreRegisterAddress(0x1013),
+        },
+        RegisterDescription {
+            name: "x20",
+            kind: RegisterKind::General,
+            address: CoreRegisterAddress(0x1014),
+        },
+        RegisterDescription {
+            name: "x21",
+            kind: RegisterKind::General,
+            address: CoreRegisterAddress(0x1015),
+        },
+        RegisterDescription {
+            name: "x22",
+            kind: RegisterKind::General,
+            address: CoreRegisterAddress(0x1016),
+        },
+        RegisterDescription {
+            name: "x23",
+            kind: RegisterKind::General,
+            address: CoreRegisterAddress(0x1017),
+        },
+        RegisterDescription {
+            name: "x24",
+            kind: RegisterKind::General,
+            address: CoreRegisterAddress(0x1018),
+        },
+        RegisterDescription {
+            name: "x25",
+            kind: RegisterKind::General,
+            address: CoreRegisterAddress(0x1019),
+        },
+        RegisterDescription {
+            name: "x26",
+            kind: RegisterKind::General,
+            address: CoreRegisterAddress(0x101A),
+        },
+        RegisterDescription {
+            name: "x27",
+            kind: RegisterKind::General,
+            address: CoreRegisterAddress(0x101B),
+        },
+        RegisterDescription {
+            name: "x28",
+            kind: RegisterKind::General,
+            address: CoreRegisterAddress(0x101C),
+        },
+        RegisterDescription {
+            name: "x29",
+            kind: RegisterKind::General,
+            address: CoreRegisterAddress(0x101D),
+        },
+        RegisterDescription {
+            name: "x30",
+            kind: RegisterKind::General,
+            address: CoreRegisterAddress(0x101E),
+        },
+        RegisterDescription {
+            name: "x31",
+            kind: RegisterKind::General,
+            address: CoreRegisterAddress(0x101F),
+        },
     ],
 
     program_counter: &PC,

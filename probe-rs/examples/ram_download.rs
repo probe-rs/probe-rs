@@ -6,6 +6,8 @@ use std::time::{Duration, Instant};
 use rand::prelude::*;
 use structopt::StructOpt;
 
+use anyhow::{anyhow, Context, Result};
+
 #[derive(StructOpt)]
 struct CLI {
     #[structopt(long = "chip")]
@@ -24,7 +26,7 @@ fn parse_hex(src: &str) -> Result<u32, ParseIntError> {
     u32::from_str_radix(src.trim_start_matches("0x"), 16)
 }
 
-fn main() -> Result<(), &'static str> {
+fn main() -> Result<()> {
     pretty_env_logger::init();
 
     let matches = CLI::from_args();
@@ -37,24 +39,26 @@ fn main() -> Result<(), &'static str> {
     };
 
     let protocol = match matches.protocol {
-        Some(protocol) => protocol.parse().map_err(|_| "Unknown protocol")?,
+        Some(protocol) => protocol
+            .parse()
+            .map_err(|e| anyhow!("Unknown protocol: '{}'", e))?,
         None => WireProtocol::Swd,
     };
 
     probe
         .select_protocol(protocol)
-        .map_err(|_| "Failed to select SWD as the transport protocol")?;
+        .context("Failed to select SWD as the transport protocol")?;
 
     if let Some(speed) = matches.speed {
         probe
             .set_speed(speed)
-            .map_err(|_| "Failed to set probe speed")?;
+            .context("Failed to set probe speed")?;
     }
 
     let mut session = probe
         .attach(target_selector)
-        .map_err(|_| "Failed to attach probe to target")?;
-    let mut core = session.core(0).map_err(|_| "Failed to attach to core")?;
+        .context("Failed to attach probe to target")?;
+    let mut core = session.core(0).context("Failed to attach to core")?;
 
     let data_size_words = matches.size;
 
@@ -71,7 +75,7 @@ fn main() -> Result<(), &'static str> {
 
     let write_start = Instant::now();
     core.write_32(matches.address, &sample_data)
-        .expect("Writing the sample data failed");
+        .context("Writing the sample data failed")?;
 
     let write_duration = write_start.elapsed();
 
@@ -123,27 +127,24 @@ fn main() -> Result<(), &'static str> {
     Ok(())
 }
 
-fn open_probe(index: Option<usize>) -> Result<Probe, &'static str> {
+fn open_probe(index: Option<usize>) -> Result<Probe> {
     let list = Probe::list_all();
 
     let device = match index {
         Some(index) => list
             .get(index)
-            .ok_or("Probe with specified index not found")?,
+            .ok_or(anyhow!("Probe with specified index not found"))?,
         None => {
             // open the default probe, if only one probe was found
             if list.len() == 1 {
                 &list[0]
             } else {
-                return Err("No probe found.");
+                return Err(anyhow!("No probe found."));
             }
         }
     };
 
-    let probe = device.open().map_err(|e| {
-        println!("{}", e);
-        "Failed to open probe"
-    })?;
+    let probe = device.open().context("Failed to open probe")?;
 
     Ok(probe)
 }

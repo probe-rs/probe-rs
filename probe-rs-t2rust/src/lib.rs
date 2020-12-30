@@ -40,7 +40,7 @@ pub fn run(input_dir: impl AsRef<Path>, output_file: impl AsRef<Path>) {
         quote::quote! {
             #[allow(unused_imports)]
             use jep106::JEP106Code;
-            use crate::config::{Chip, RawFlashAlgorithm, FlashRegion, MemoryRegion, RamRegion, SectorDescription, FlashProperties};
+            use crate::config::{Chip, RawFlashAlgorithm, NvmRegion, MemoryRegion, RamRegion, SectorDescription, FlashProperties};
 
             use std::borrow::Cow;
         }
@@ -102,10 +102,8 @@ fn extract_algorithms(
     // Get an iterator over all the algorithms contained in the chip value obtained from the yaml file.
     let algorithm_iter = chip
         .get("flash_algorithms")
-        .unwrap()
-        .as_mapping()
-        .unwrap()
-        .iter();
+        .into_iter()
+        .flat_map(|f| f.as_mapping().into_iter().flat_map(|f2| f2.iter()));
 
     algorithm_iter
         .map(|(_name, algorithm)| {
@@ -270,7 +268,7 @@ fn extract_memory_map(chip: &serde_yaml::Value) -> Vec<proc_macro2::TokenStream>
                     }
                 })
                 .or_else(|| {
-                    memory_region.get("Flash").map(|region| {
+                    memory_region.get("Nvm").map(|region| {
                         let range = region.get("range").unwrap();
                         let start = range.get("start").unwrap().as_u64().unwrap() as u32;
                         let end = range.get("end").unwrap().as_u64().unwrap() as u32;
@@ -278,7 +276,7 @@ fn extract_memory_map(chip: &serde_yaml::Value) -> Vec<proc_macro2::TokenStream>
                             region.get("is_boot_memory").unwrap().as_bool().unwrap();
 
                         quote::quote! {
-                            MemoryRegion::Flash(FlashRegion {
+                            MemoryRegion::Nvm(NvmRegion {
                                 range: #start..#end,
                                 is_boot_memory: #is_boot_memory,
                             })
@@ -313,10 +311,10 @@ fn extract_variants(chip_family: &serde_yaml::Value) -> Vec<proc_macro2::TokenSt
 
             let flash_algorithms = variant
                 .get("flash_algorithms")
-                .unwrap()
-                .as_sequence()
-                .unwrap();
-            let flash_algorithm_names = flash_algorithms.iter().map(|a| a.as_str().unwrap());
+                .into_iter()
+                .flat_map(|f| f.as_sequence().into_iter().flat_map(|f2| f2.iter()));
+
+            let flash_algorithm_names = flash_algorithms.map(|a| a.as_str().unwrap());
             quote::quote! {
                 Chip {
                     name: Cow::Borrowed(#name),

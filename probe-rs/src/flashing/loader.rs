@@ -1,8 +1,14 @@
 use super::{FlashBuilder, FlashError, FlashProgress, Flasher};
-use crate::config::{FlashRegion, MemoryRange, MemoryRegion};
+use crate::config::{MemoryRange, MemoryRegion, NvmRegion};
+use crate::memory::MemoryInterface;
 use crate::session::Session;
 use anyhow::anyhow;
 use std::collections::HashMap;
+
+struct RamWrite<'data> {
+    address: u32,
+    data: &'data [u8],
+}
 
 /// `FlashLoader` is a struct which manages the flashing of any chunks of data onto any sections of flash.
 /// Use `add_data()` to add a chunks of data.
@@ -11,7 +17,8 @@ use std::collections::HashMap;
 /// Region crossing data chunks are allowed as long as the regions are contiguous.
 pub(super) struct FlashLoader<'mmap, 'data> {
     memory_map: &'mmap [MemoryRegion],
-    builders: HashMap<FlashRegion, FlashBuilder<'data>>,
+    builders: HashMap<NvmRegion, FlashBuilder<'data>>,
+    ram_write: Vec<RamWrite<'data>>,
     keep_unwritten: bool,
 }
 
@@ -20,6 +27,7 @@ impl<'mmap, 'data> FlashLoader<'mmap, 'data> {
         Self {
             memory_map,
             builders: HashMap::new(),
+            ram_write: Vec::new(),
             keep_unwritten,
         }
     }
@@ -37,29 +45,45 @@ impl<'mmap, 'data> FlashLoader<'mmap, 'data> {
             // Get the flash region in with this chunk of data starts.
             let possible_region = Self::get_region_for_address(self.memory_map, address);
             // If we found a corresponding region, create a builder.
-            if let Some(MemoryRegion::Flash(region)) = possible_region {
-                // Get our builder instance.
-                if !self.builders.contains_key(region) {
-                    self.builders.insert(region.clone(), FlashBuilder::new());
-                };
+            match possible_region {
+                Some(MemoryRegion::Nvm(region)) => {
+                    // Get our builder instance.
+                    if !self.builders.contains_key(region) {
+                        self.builders.insert(region.clone(), FlashBuilder::new());
+                    };
 
-                // Determine how much more data can be contained by this region.
-                let program_length =
-                    usize::min(remaining, (region.range.end - address + 1) as usize);
+                    // Determine how much more data can be contained by this region.
+                    let program_length =
+                        usize::min(remaining, (region.range.end - address + 1) as usize);
 
-                // Add as much data to the builder as can be contained by this region.
-                self.builders
-                    .get_mut(&region)
-                    .map(|r| r.add_data(address, &data[size - remaining..program_length]));
+                    // Add as much data to the builder as can be contained by this region.
+                    self.builders
+                        .get_mut(&region)
+                        .map(|r| r.add_data(address, &data[size - remaining..program_length]));
 
-                // Advance the cursors.
-                remaining -= program_length;
-                address += program_length as u32;
-            } else {
-                return Err(FlashError::NoSuitableFlash {
-                    start: address,
-                    end: address + data.len() as u32,
-                });
+                    // Advance the cursors.
+                    remaining -= program_length;
+                    address += program_length as u32
+                }
+                Some(MemoryRegion::Ram(region)) => {
+                    // Determine how much more data can be contained by this region.
+                    let program_length =
+                        usize::min(remaining, (region.range.end - address + 1) as usize);
+
+                    // Add data to be written to the vector.
+                    let data = &data[size - remaining..program_length];
+                    self.ram_write.push(RamWrite { address, data });
+
+                    // Advance the cursors.
+                    remaining -= program_length;
+                    address += program_length as u32
+                }
+                _ => {
+                    return Err(FlashError::NoSuitableNvm {
+                        start: address,
+                        end: address + data.len() as u32,
+                    })
+                }
             }
         }
         Ok(())
@@ -72,7 +96,7 @@ impl<'mmap, 'data> FlashLoader<'mmap, 'data> {
         for region in memory_map {
             let r = match region {
                 MemoryRegion::Ram(r) => r.range.clone(),
-                MemoryRegion::Flash(r) => r.range.clone(),
+                MemoryRegion::Nvm(r) => r.range.clone(),
                 MemoryRegion::Generic(r) => r.range.clone(),
             };
             if r.contains(&address) {
@@ -135,7 +159,7 @@ impl<'mmap, 'data> FlashLoader<'mmap, 'data> {
                     .ok_or(FlashError::NoFlashLoaderAlgorithmAttached)?,
             };
 
-            let mm = session.memory_map();
+            let mm = &session.target().memory_map;
             let ram = mm
                 .iter()
                 .find_map(|mm| match mm {
@@ -149,6 +173,21 @@ impl<'mmap, 'data> FlashLoader<'mmap, 'data> {
             // Program the data.
             let mut flasher = Flasher::new(session, flash_algorithm, region.clone());
             flasher.program(builder, do_chip_erase, self.keep_unwritten, false, progress)?
+        }
+
+        // Write data to ram.
+
+        // Attach to memory and core.
+        let mut core = session.core(0).map_err(FlashError::Memory)?;
+
+        for RamWrite { address, data } in &self.ram_write {
+            log::info!(
+                "Ram write program data @ {:X} {} bytes",
+                *address,
+                data.len()
+            );
+            // Write data to memory.
+            core.write_8(*address, data).map_err(FlashError::Memory)?;
         }
 
         Ok(())

@@ -6,8 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Support for the `HNONSEC` bit in memory access. This now allows secure access on chips which support TrustZone (#???).
 
 ### Changed
+
+- Renamed `MemoryRegion::Flash` to `MemoryRegion::Nvm`
+- Renamed `FlashInfo` to `NvmInfo`
+- Renamed `FlashRegion` to `NvmRegion` and its `flash_info()` method to `nvm_info()`
+- Renamed `FlashError::NoSuitableFlash` to `FlashError::NoSuitableNvm`
 
 ### Fixed
 

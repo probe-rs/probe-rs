@@ -1,0 +1,83 @@
+---
+name: SAMD11
+variants:
+  - name: ATSAMD11C14A
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536875008
+          is_boot_memory: false
+      - Nvm:
+          range:
+            start: 0
+            end: 16384
+          is_boot_memory: true
+    flash_algorithms:
+      - atsamd11_16
+  - name: ATSAMD11D14AM
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536875008
+          is_boot_memory: false
+      - Nvm:
+          range:
+            start: 0
+            end: 16384
+          is_boot_memory: true
+    flash_algorithms:
+      - atsamd11_16
+  - name: ATSAMD11D14AS
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536875008
+          is_boot_memory: false
+      - Nvm:
+          range:
+            start: 0
+            end: 16384
+          is_boot_memory: true
+    flash_algorithms:
+      - atsamd11_16
+  - name: ATSAMD11D14AU
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536875008
+          is_boot_memory: false
+      - Nvm:
+          range:
+            start: 0
+            end: 16384
+          is_boot_memory: true
+    flash_algorithms:
+      - atsamd11_16
+flash_algorithms:
+  atsamd11_16:
+    name: atsamd11_16
+    description: ATSAMD11 16kB Flash
+    default: true
+    instructions: QSEJBgpoUgcB1QQiCmAoSiZJUWAnSUlECGAAIHBHACBwRw8hiQIBQEIIDyBAAgJAELUfSMJhIEoCgAJ90gf80B1MASI/PJICixgM4EoIwmEEgAJ90gf80AJ9kgcB1QEgEL3/MQExmULw0wAgEL0QtRFMD0vkHByAHH3kB/zQyRyJCIkAAuAQygkfEMAAKfrRCUg9OBiAGH3AB/zQGH2ABwHVASAQvQAgEL0AAJ4ABAAAQABBBAAAAEGlAAAAAAAAAAAAAA==
+    pc_init: 1
+    pc_uninit: 31
+    pc_program_page: 111
+    pc_erase_sector: 35
+    pc_erase_all: ~
+    data_section_offset: 188
+    flash_properties:
+      address_range:
+        start: 0
+        end: 16384
+      page_size: 64
+      erased_byte_value: 255
+      program_page_timeout: 100
+      erase_sector_timeout: 1000
+      sectors:
+        - size: 1024
+          address: 0
+core: M0

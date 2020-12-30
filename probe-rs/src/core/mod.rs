@@ -18,7 +18,7 @@ pub trait CoreRegister: Clone + From<u32> + Into<u32> + Sized + std::fmt::Debug 
     const NAME: &'static str;
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct CoreRegisterAddress(pub u16);
 
 impl From<CoreRegisterAddress> for u32 {
@@ -128,23 +128,17 @@ impl RegisterFile {
 
 pub trait CoreInterface: MemoryInterface {
     /// Wait until the core is halted. If the core does not halt on its own,
-    /// a [`DebugProbeError::Timeout`] error will be returned.
-    ///
-    /// [`DebugProbeError::Timeout`]: ../probe/debug_probe/enum.DebugProbeError.html#variant.Timeout
+    /// a [DebugProbeError::Timeout] error will be returned.
     fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), error::Error>;
 
     /// Check if the core is halted. If the core does not halt on its own,
-    /// a [`CoreError::Timeout`] error will be returned.
-    ///
-    /// [`CoreError::Timeout`]: ../probe/debug_probe/enum.CoreError.html#variant.Timeout
+    /// a [DebugProbeError::Timeout] error will be returned.
     fn core_halted(&mut self) -> Result<bool, error::Error>;
 
     fn status(&mut self) -> Result<CoreStatus, error::Error>;
 
     /// Try to halt the core. This function ensures the core is actually halted, and
-    /// returns a [`CoreError::Timeout`] otherwise.
-    ///
-    /// [`CoreError::Timeout`]: ../probe/debug_probe/enum.CoreError.html#variant.Timeout
+    /// returns a [DebugProbeError::Timeout] otherwise.
     fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, error::Error>;
 
     fn run(&mut self) -> Result<(), error::Error>;
@@ -152,13 +146,13 @@ pub trait CoreInterface: MemoryInterface {
     /// Reset the core, and then continue to execute instructions. If the core
     /// should be halted after reset, use the [`reset_and_halt`] function.
     ///
-    /// [`reset_and_halt`]: trait.Core.html#tymethod.reset_and_halt
+    /// [`reset_and_halt`]: Core::reset_and_halt
     fn reset(&mut self) -> Result<(), error::Error>;
 
     /// Reset the core, and then immediately halt. To continue execution after
     /// reset, use the [`reset`] function.
     ///
-    /// [`reset`]: trait.Core.html#tymethod.reset
+    /// [`reset`]: Core::reset
     fn reset_and_halt(&mut self, timeout: Duration) -> Result<CoreInformation, error::Error>;
 
     /// Steps one instruction and then enters halted state again.
@@ -360,25 +354,19 @@ impl<'probe> Core<'probe> {
     }
 
     /// Wait until the core is halted. If the core does not halt on its own,
-    /// a [`DebugProbeError::Timeout`] error will be returned.
-    ///
-    /// [`DebugProbeError::Timeout`]: ../probe/debug_probe/enum.DebugProbeError.html#variant.Timeout
+    /// a [DebugProbeError::Timeout] error will be returned.
     pub fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), error::Error> {
         self.inner.wait_for_core_halted(timeout)
     }
 
     /// Check if the core is halted. If the core does not halt on its own,
-    /// a [`CoreError::Timeout`] error will be returned.
-    ///
-    /// [`CoreError::Timeout`]: ../probe/debug_probe/enum.CoreError.html#variant.Timeout
+    /// a [DebugProbeError::Timeout] error will be returned.
     pub fn core_halted(&mut self) -> Result<bool, error::Error> {
         self.inner.core_halted()
     }
 
     /// Try to halt the core. This function ensures the core is actually halted, and
-    /// returns a [`CoreError::Timeout`] otherwise.
-    ///
-    /// [`CoreError::Timeout`]: ../probe/debug_probe/enum.CoreError.html#variant.Timeout
+    /// returns a [DebugProbeError::Timeout] otherwise.
     pub fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, error::Error> {
         self.inner.halt(timeout)
     }
@@ -390,7 +378,7 @@ impl<'probe> Core<'probe> {
     /// Reset the core, and then continue to execute instructions. If the core
     /// should be halted after reset, use the [`reset_and_halt`] function.
     ///
-    /// [`reset_and_halt`]: trait.Core.html#tymethod.reset_and_halt
+    /// [`reset_and_halt`]: Core::reset_and_halt
     pub fn reset(&mut self) -> Result<(), error::Error> {
         self.inner.reset()
     }
@@ -398,7 +386,7 @@ impl<'probe> Core<'probe> {
     /// Reset the core, and then immediately halt. To continue execution after
     /// reset, use the [`reset`] function.
     ///
-    /// [`reset`]: trait.Core.html#tymethod.reset
+    /// [`reset`]: Core::reset
     pub fn reset_and_halt(&mut self, timeout: Duration) -> Result<CoreInformation, error::Error> {
         self.inner.reset_and_halt(timeout)
     }
@@ -502,12 +490,25 @@ impl<'probe> Core<'probe> {
         }
     }
 
+    /// Clear all hardware breakpoints
+    ///
+    /// This function will clear all HW breakpoints which are configured on the target,
+    /// regardless if they are set by probe-rs or not.
     pub fn clear_all_hw_breakpoints(&mut self) -> Result<(), error::Error> {
         let num_hw_breakpoints = self.get_available_breakpoint_units()? as usize;
 
-        { 0..num_hw_breakpoints }
-            .map(|unit_index| self.inner.clear_breakpoint(unit_index))
-            .collect()
+        { 0..num_hw_breakpoints }.try_for_each(|unit_index| self.inner.clear_breakpoint(unit_index))
+    }
+
+    /// Clear all HW breakpoints which were set by probe-rs.
+    ///
+    /// Currently used as a helper function in [Session::drop].
+    pub(crate) fn clear_all_set_hw_breakpoints(&mut self) -> Result<(), error::Error> {
+        for bp in self.state.breakpoints.drain(..) {
+            self.inner.clear_breakpoint(bp.register_hw)?;
+        }
+
+        Ok(())
     }
 
     pub fn architecture(&self) -> Architecture {

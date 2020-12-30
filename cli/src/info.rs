@@ -5,7 +5,7 @@ use probe_rs::{
         ap::{GenericAP, MemoryAP},
         m0::Demcr,
         memory::Component,
-        ApInformation,
+        ApInformation, MemoryApInformation,
     },
     CoreRegister,
 };
@@ -54,9 +54,9 @@ pub(crate) fn show_info_of_device(shared_options: &SharedOptions) -> Result<()> 
             //println!("{:#x?}", idr);
 
             match ap_information {
-                ApInformation::MemoryAp {
+                ApInformation::MemoryAp(MemoryApInformation {
                     debug_base_address, ..
-                } => {
+                }) => {
                     let access_port: MemoryAP = access_port.into();
 
                     let base_address = *debug_base_address;

@@ -6,7 +6,7 @@ use futures::select;
 use gdb_protocol::packet::{CheckedPacket, Kind as PacketKind};
 use probe_rs::Session;
 use std::convert::TryFrom;
-use std::time::Duration;
+use std::{sync::Mutex, time::Duration};
 
 use crate::parser::parse_packet;
 
@@ -19,8 +19,16 @@ type Receiver<T> = mpsc::UnboundedReceiver<T>;
 pub async fn worker(
     mut input_stream: Receiver<CheckedPacket>,
     output_stream: Sender<CheckedPacket>,
-    session: &mut Session,
+    session: &Mutex<Session>,
 ) -> ServerResult<()> {
+    // When we first attach to the core, GDB expects us to halt the core, so we do this here when a new client connects.
+    // If the core is already halted, nothing happens if we issue a halt command again, so we always do this no matter of core state.
+    session
+        .lock()
+        .unwrap()
+        .core(0)?
+        .halt(Duration::from_millis(100))?;
+
     let mut awaits_halt = false;
 
     loop {
@@ -28,7 +36,7 @@ pub async fn worker(
             potential_packet = input_stream.next().fuse() => {
                 if let Some(packet) = potential_packet {
                     log::warn!("WORKING {}", String::from_utf8_lossy(&packet.data));
-                    if handler(session, &output_stream, &mut awaits_halt, packet).await? {
+                    if handler(&session, &output_stream, &mut awaits_halt, packet).await? {
                         break;
                     }
                 } else {
@@ -42,7 +50,7 @@ pub async fn worker(
 }
 
 pub async fn handler(
-    session: &mut Session,
+    session: &Mutex<Session>,
     output_stream: &Sender<CheckedPacket>,
     awaits_halt: &mut bool,
     packet: CheckedPacket,
@@ -59,6 +67,7 @@ pub async fn handler(
     let response: Option<String> = match parsed_packet {
         Ok(parsed_packet) => {
             log::debug!("Parsed packet: {:?}", parsed_packet);
+            let mut session = session.lock().expect("Poisoned Mutex");
             match parsed_packet {
                 HaltReason => handlers::halt_reason(),
                 Continue => handlers::run(session.core(0)?, awaits_halt),
@@ -132,17 +141,33 @@ pub async fn handler(
                 Query(QueryPacket::Transfer { object, operation }) => {
                     use crate::parser::query::TransferOperation;
 
-                    if object == b"memory-map" {
-                        match operation {
-                            TransferOperation::Read { .. } => handlers::get_memory_map(session),
-                            TransferOperation::Write { .. } => {
-                                // not supported
-                                handlers::reply_empty()
+                    match object.as_slice() {
+                        b"memory-map" => {
+                            match operation {
+                                TransferOperation::Read { .. } => {
+                                    handlers::get_memory_map(&session)
+                                }
+                                TransferOperation::Write { .. } => {
+                                    // not supported
+                                    handlers::reply_empty()
+                                }
                             }
                         }
-                    } else {
-                        log::warn!("Object '{:?}' not supported for qXfer command", object);
-                        handlers::reply_empty()
+                        b"features" => {
+                            match operation {
+                                TransferOperation::Read { annex, .. } => {
+                                    handlers::read_target_description(&session, &annex)
+                                }
+                                TransferOperation::Write { .. } => {
+                                    // not supported
+                                    handlers::reply_empty()
+                                }
+                            }
+                        }
+                        object => {
+                            log::warn!("Object '{:?}' not supported for qXfer command", object);
+                            handlers::reply_empty()
+                        }
                     }
                 }
                 Interrupt => handlers::user_halt(session.core(0)?, awaits_halt),
@@ -155,7 +180,11 @@ pub async fn handler(
             }
         }
         Err(e) => {
-            log::warn!("Failed to parse packet '{:?}': {}", &packet.data, e);
+            log::warn!(
+                "Failed to parse packet '{:?}': {}",
+                String::from_utf8_lossy(&packet.data),
+                e
+            );
             handlers::reply_empty()
         }
     };
@@ -177,19 +206,22 @@ pub async fn handler(
 }
 
 pub async fn await_halt(
-    session: &mut Session,
+    session: &Mutex<Session>,
     output_stream: &Sender<CheckedPacket>,
     await_halt: &mut bool,
 ) -> ServerResult<()> {
     task::sleep(Duration::from_millis(10)).await;
-    if *await_halt && session.core(0)?.core_halted().unwrap() {
-        let response = CheckedPacket::from_data(PacketKind::Packet, b"T05hwbreak:;".to_vec());
+    if *await_halt {
+        let mut session = session.lock().expect("Poisoned Mutex");
+        if session.core(0)?.core_halted().unwrap() {
+            let response = CheckedPacket::from_data(PacketKind::Packet, b"T05hwbreak:;".to_vec());
 
-        let mut bytes = Vec::new();
-        response.encode(&mut bytes).unwrap();
-        *await_halt = false;
+            let mut bytes = Vec::new();
+            response.encode(&mut bytes).unwrap();
+            *await_halt = false;
 
-        let _ = output_stream.unbounded_send(response);
+            let _ = output_stream.unbounded_send(response);
+        }
     }
 
     Ok(())

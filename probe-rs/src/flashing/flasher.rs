@@ -1,6 +1,6 @@
 use super::FlashProgress;
 use super::{FlashBuilder, FlashError, FlashFill, FlashLayout, FlashPage};
-use crate::config::{FlashAlgorithm, FlashRegion, MemoryRange};
+use crate::config::{FlashAlgorithm, MemoryRange, NvmRegion};
 use crate::memory::MemoryInterface;
 use crate::{
     core::{Architecture, RegisterFile},
@@ -49,21 +49,23 @@ impl Operation for Verify {
 /// A structure to control the flash of an attached microchip.
 ///
 /// Once constructed it can be used to program date to the flash.
-/// This is mostly for internal use but can be used with `::flash_block()` for low, block level access to the flash.
+/// This is mostly for internal use but can be used with [Flasher::flash_block()] for low, block level access to the flash.
 ///
-/// If a higher level access to the flash is required, check out `flashing::download_file()`.
+/// If a higher level access to the flash is required, check out [flashing::download_file()].
+///
+/// [flashing::download_file()]: crate::flashing::download_file()
 pub struct Flasher<'session> {
     session: &'session mut Session,
     flash_algorithm: FlashAlgorithm,
-    region: FlashRegion,
+    region: NvmRegion,
     double_buffering_supported: bool,
 }
 
 impl<'session> Flasher<'session> {
-    pub fn new(
+    pub(super) fn new(
         session: &'session mut Session,
         flash_algorithm: FlashAlgorithm,
-        region: FlashRegion,
+        region: NvmRegion,
     ) -> Self {
         Self {
             session,
@@ -90,7 +92,7 @@ impl<'session> Flasher<'session> {
         let algo = &mut self.flash_algorithm;
 
         if address.is_none() {
-            address = Some(self.region.flash_info().rom_start);
+            address = Some(self.region.nvm_info().rom_start);
         }
 
         // Attach to memory and core.

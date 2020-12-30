@@ -1,4 +1,8 @@
 use ihex::Record::*;
+use object::{
+    elf::FileHeader32, read::elf::FileHeader, read::elf::ProgramHeader, Bytes, Endianness, Object,
+    ObjectSection,
+};
 
 use std::{
     fs::File,
@@ -15,16 +19,21 @@ use thiserror::Error;
 #[derive(Debug)]
 pub struct BinOptions {
     /// The address in memory where the binary will be put at.
-    base_address: Option<u32>,
+    pub base_address: Option<u32>,
     /// The number of bytes to skip at the start of the binary file.
-    skip: u32,
+    pub skip: u32,
 }
 
 /// A finite list of all the available binary formats probe-rs understands.
 #[derive(Debug)]
 pub enum Format {
+    /// Marks a file in binary format. This means that the file contains the contents of the flash 1:1.
+    /// [BinOptions] can be used to define the location in flash where the file contents should be put at.
+    /// Additionally using the same config struct, you can skip the first N bytes of the binary file to have them not put into the flash.
     Bin(BinOptions),
+    /// Marks a file in [Intel HEX](https://en.wikipedia.org/wiki/Intel_HEX) format.
     Hex,
+    /// Marks a file in the [ELF](https://en.wikipedia.org/wiki/Executable_and_Linkable_Format) format.
     Elf,
 }
 
@@ -34,16 +43,26 @@ pub enum Format {
 /// OS permission issues as well as chip connectivity and memory boundary issues.
 #[derive(Debug, Error)]
 pub enum FileDownloadError {
+    /// An error with the actual flashing procedure has occured.
+    ///
+    /// This is mostly an error in the communication with the target inflicted by a bad hardware connection or a probe-rs bug.
     #[error("Error while flashing")]
     Flash(#[from] FlashError),
+    /// Reading and decoding the IHEX file has failed due to the given error.
     #[error("Could not read ihex format")]
     IhexRead(#[from] ihex::ReaderError),
+    /// An IO error has occured while reading the firmware file.
     #[error("I/O error")]
     IO(#[from] std::io::Error),
+    /// The given error has occured while reading the object file.
     #[error("Object Error: {0}.")]
     Object(&'static str),
+    /// Reading and decoding the given ELF file has resulted in the given error.
     #[error("Could not read ELF file")]
-    Elf(#[from] goblin::error::Error),
+    Elf(#[from] object::read::Error),
+    /// No loadable segments were found in the ELF file.
+    ///
+    /// This is most likely because of a bad linker script.
     #[error("No loadable ELF sections were found.")]
     NoLoadableSegments,
 }
@@ -51,10 +70,14 @@ pub enum FileDownloadError {
 /// Options for downloading a file onto a target chip.
 #[derive(Default)]
 pub struct DownloadOptions<'progress> {
-    /// An optional progress reporter which is used if this argument is set to Some(...).
+    /// An optional progress reporter which is used if this argument is set to `Some(...)`.
     pub progress: Option<&'progress FlashProgress>,
-    /// If `keep_unwritten_bytes` is `true`, erased portions that are not overwritten by the ELF data
+    /// If `keep_unwritten_bytes` is `true`, erased portions of the flash that are not overwritten by the ELF data
     /// are restored afterwards, such that the old contents are untouched.
+    ///
+    /// This is necessary because the flash can only be erased in sectors. If only parts of the erased sector are written thereafter,
+    /// instead of the full sector, the excessively erased bytes wont match the contents before the erase which might not be intuitive
+    /// to the user or even worse, result in unexpected behavior if those contents contain important data.
     pub keep_unwritten_bytes: bool,
 }
 
@@ -62,7 +85,7 @@ pub struct DownloadOptions<'progress> {
 ///
 /// This will ensure that memory bounderies are honored and does unlocking, erasing and programming of the flash for you.
 ///
-/// If you are looking for more options, have a look at `download_file_with_options`.
+/// If you are looking for more options, have a look at [download_file_with_options].
 pub fn download_file(
     session: &mut Session,
     path: &Path,
@@ -74,6 +97,8 @@ pub fn download_file(
 /// Downloads a file of given `format` at `path` to the flash of the target given in `session`.
 ///
 /// This will ensure that memory bounderies are honored and does unlocking, erasing and programming of the flash for you.
+///
+/// If you are looking for a simple version without many options, have a look at [download_file].
 pub fn download_file_with_options(
     session: &mut Session,
     path: &Path,
@@ -87,7 +112,7 @@ pub fn download_file_with_options(
     let mut buffer = vec![];
     let mut buffer_vec = vec![];
     // IMPORTANT: Change this to an actual memory map of a real chip
-    let memory_map = session.memory_map().to_vec();
+    let memory_map = session.target().memory_map.clone();
     let mut loader = FlashLoader::new(&memory_map, options.keep_unwritten_bytes);
 
     match format {
@@ -151,7 +176,7 @@ fn download_hex<'buffer, T: Read + Seek>(
                 let offset = extended_linear_address | offset as u32;
                 buffer.push((offset, value));
             }
-            EndOfFile => return Ok(()),
+            EndOfFile => (),
             ExtendedSegmentAddress(address) => {
                 _extended_segment_address = address * 16;
             }
@@ -174,37 +199,71 @@ fn download_elf<'buffer, T: Read + Seek>(
     file: &'buffer mut T,
     loader: &mut FlashLoader<'_, 'buffer>,
 ) -> Result<(), FileDownloadError> {
-    use goblin::elf::program_header::*;
-
     file.read_to_end(buffer)?;
 
-    let binary = goblin::elf::Elf::parse(&buffer.as_slice())?;
+    let file_kind = object::FileKind::parse(buffer)?;
+
+    match file_kind {
+        object::FileKind::Elf32 => (),
+        _ => return Err(FileDownloadError::Object("Unsupported file type")),
+    }
+
+    let elf_header = FileHeader32::<Endianness>::parse(Bytes(buffer))?;
+
+    let binary = object::read::elf::ElfFile::<FileHeader32<Endianness>>::parse(buffer)?;
+
+    let endian = elf_header.endian()?;
+
     let mut added_sections = vec![];
-    for ph in &binary.program_headers {
-        if ph.p_type == PT_LOAD && ph.p_filesz > 0 {
-            log::debug!("Found loadable segment.");
+
+    for segment in elf_header.program_headers(elf_header.endian()?, Bytes(buffer))? {
+        // Get the physical address of the segment. The data will be programmed to that location.
+        let p_paddr: u64 = segment.p_paddr(endian).into();
+
+        let segment_data = segment
+            .data(endian, Bytes(buffer))
+            .map_err(|_| FileDownloadError::Object("Failed to access data for an ELF segment."))?;
+
+        if !segment_data.is_empty() {
+            log::info!("Found loadable segment, address: {:#010x}", p_paddr);
+
+            let (segment_offset, segment_filesize) = segment.file_range(endian);
 
             let sector: core::ops::Range<u32> =
-                ph.p_offset as u32..ph.p_offset as u32 + ph.p_filesz as u32;
+                segment_offset as u32..segment_offset as u32 + segment_filesize as u32;
 
-            for sh in &binary.section_headers {
-                if sector
-                    .contains_range(&(sh.sh_offset as u32..sh.sh_offset as u32 + sh.sh_size as u32))
-                {
+            for section in binary.sections() {
+                let (section_offset, section_filesize) = match section.file_range() {
+                    Some(range) => range,
+                    None => continue,
+                };
+
+                if sector.contains_range(
+                    &(section_offset as u32..section_offset as u32 + section_filesize as u32),
+                ) {
+                    log::info!("Matching section: {:?}", section.name()?);
+
                     #[cfg(feature = "hexdump")]
-                    for line in hexdump::hexdump_iter(
-                        &buffer[sh.sh_offset as usize..][..sh.sh_size as usize],
-                    ) {
+                    for line in hexdump::hexdump_iter(section.data()?) {
                         log::trace!("{}", line);
                     }
 
-                    added_sections.push((&binary.shdr_strtab[sh.sh_name], sh.sh_addr, sh.sh_size));
+                    for (offset, relocation) in section.relocations() {
+                        log::info!("Relocation: offset={}, relocation={:?}", offset, relocation);
+                    }
+
+                    added_sections.push((
+                        section.name()?.to_owned(),
+                        section.address(),
+                        section.size(),
+                    ));
                 }
             }
 
             loader.add_data(
-                ph.p_paddr as u32,
-                &buffer[ph.p_offset as usize..][..ph.p_filesz as usize],
+                p_paddr as u32,
+                &buffer
+                    [segment_offset as usize..segment_offset as usize + segment_filesize as usize],
             )?;
         }
     }

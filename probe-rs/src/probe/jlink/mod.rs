@@ -5,13 +5,15 @@ use thiserror::Error;
 
 use std::convert::{TryFrom, TryInto};
 use std::iter;
-use std::sync::Mutex;
 
 use crate::{
     architecture::arm::{DapError, PortType, Register},
     architecture::{
         arm::{
-            communication_interface::ArmProbeInterface, dp::Ctrl, dp::DPIDR, swo::SwoConfig,
+            communication_interface::ArmProbeInterface,
+            dp::Abort,
+            dp::{Ctrl, RdBuff},
+            swo::SwoConfig,
             ArmCommunicationInterface, SwoAccess,
         },
         riscv::communication_interface::RiscvCommunicationInterface,
@@ -27,7 +29,7 @@ const SWO_BUFFER_SIZE: u16 = 128;
 
 #[derive(Debug)]
 pub(crate) struct JLink {
-    handle: Mutex<JayLink>,
+    handle: JayLink,
     swo_config: Option<SwoConfig>,
 
     /// Idle cycles necessary between consecutive
@@ -54,9 +56,7 @@ impl JLink {
         &mut self,
         protocol: Option<WireProtocol>,
     ) -> Result<WireProtocol, DebugProbeError> {
-        let handle = self.handle.get_mut().unwrap();
-
-        let capabilities = handle.read_capabilities()?;
+        let capabilities = self.handle.read_capabilities()?;
 
         if capabilities.contains(jaylink::Capabilities::SELECT_IF) {
             if let Some(protocol) = protocol {
@@ -65,19 +65,20 @@ impl JLink {
                     WireProtocol::Jtag => jaylink::Interface::Jtag,
                 };
 
-                if handle
+                if self
+                    .handle
                     .read_available_interfaces()?
                     .any(|interface| interface == jlink_interface)
                 {
                     // We can select the desired interface
-                    handle.select_interface(jlink_interface)?;
+                    self.handle.select_interface(jlink_interface)?;
                     Ok(protocol)
                 } else {
                     Err(DebugProbeError::UnsupportedProtocol(protocol))
                 }
             } else {
                 // No special protocol request
-                let current_protocol = handle.read_current_interface()?;
+                let current_protocol = self.handle.read_current_interface()?;
 
                 match current_protocol {
                     jaylink::Interface::Swd => Ok(WireProtocol::Swd),
@@ -116,8 +117,7 @@ impl JLink {
         // We have to stay in the idle cycle a bit
         tms.extend(iter::repeat(false).take(self.idle_cycles() as usize));
 
-        let jlink = self.handle.get_mut().unwrap();
-        let mut response = jlink.jtag_io(tms, tdi)?;
+        let mut response = self.handle.jtag_io(tms, tdi)?;
 
         log::trace!("Response: {:?}", response);
 
@@ -214,8 +214,7 @@ impl JLink {
         log::trace!("tms: {:?}", tms);
         log::trace!("tdi: {:?}", tdi);
 
-        let jlink = self.handle.get_mut().unwrap();
-        let response = jlink.jtag_io(tms, tdi)?;
+        let response = self.handle.jtag_io(tms, tdi)?;
 
         log::trace!("Response: {:?}", response);
 
@@ -287,8 +286,7 @@ impl JLink {
         tms.extend(iter::repeat(false).take(self.idle_cycles() as usize));
         tdi.extend(iter::repeat(false).take(self.idle_cycles() as usize));
 
-        let jlink = self.handle.get_mut().unwrap();
-        let mut response = jlink.jtag_io(tms, tdi)?;
+        let mut response = self.handle.jtag_io(tms, tdi)?;
 
         log::trace!("Response: {:?}", response);
 
@@ -312,6 +310,62 @@ impl JLink {
         log::trace!("result: {:?}", result);
 
         Ok(result)
+    }
+
+    /// Try to perform a SWD line reset, followed by a read of the DPIDR register.
+    ///
+    /// Returns Ok if the read of the DPIDR register was succesful, and Err
+    /// otherwise. In case of JLink Errors, the actual error is returned.
+    ///
+    /// If the first line reset fails, it is tried once again, as the target
+    /// might be in the middle of a transfer the first time we try the reset.
+    ///
+    /// See section B4.3.3 in the ADIv5 Specification.
+    fn swd_line_reset(&mut self) -> Result<(), DebugProbeError> {
+        log::debug!("Performing line reset!");
+
+        let mut swd_io = vec![true; 50];
+        let mut direction = vec![true; 50];
+
+        let (register_io, register_direction) =
+            build_swd_transfer(PortType::DebugPort, TransferType::Read, 0);
+
+        swd_io.extend_from_slice(&register_io);
+        direction.extend_from_slice(&register_direction);
+
+        let mut result = Ok(());
+
+        for _ in 0..2 {
+            let mut result_sequence = self.handle.swd_io(direction.clone(), swd_io.clone())?;
+
+            // Ignore reset bits, idle bits, and request
+            result_sequence.split_off(50 + 2 + 8);
+
+            let ack = result_sequence.split_off(3).collect::<Vec<_>>();
+
+            log::debug!("line reset ack: {:?}", ack);
+
+            match &ack[..] {
+                // OK response
+                [true, false, false] => {
+                    return Ok(());
+                }
+                // WAIT response
+                [false, true, false] => {
+                    result = Err(DapError::WaitResponse.into());
+                }
+                // FAULT response
+                [false, false, true] => {
+                    result = Err(DapError::FaultResponse.into());
+                }
+                _ => {
+                    result = Err(DapError::NoAcknowledge.into());
+                }
+            }
+        }
+
+        // No acknowledge from the target, even if after line reset
+        result
     }
 }
 
@@ -389,7 +443,7 @@ impl DebugProbe for JLink {
         };
 
         Ok(Box::new(JLink {
-            handle: Mutex::from(jlink_handle),
+            handle: jlink_handle,
             swo_config: None,
             supported_protocols,
             jtag_idle_cycles: 0,
@@ -426,10 +480,8 @@ impl DebugProbe for JLink {
             return Err(DebugProbeError::UnsupportedSpeed(speed_khz));
         }
 
-        let jlink = self.handle.get_mut().unwrap();
-
         let actual_speed_khz;
-        if let Ok(speeds) = jlink.read_speeds() {
+        if let Ok(speeds) = self.handle.read_speeds() {
             log::debug!("Supported speeds: {:?}", speeds);
 
             let speed_hz = 1000 * speed_khz;
@@ -445,7 +497,8 @@ impl DebugProbe for JLink {
             actual_speed_khz = speed_khz;
         }
 
-        jlink.set_speed(CommunicationSpeed::khz(actual_speed_khz as u16).unwrap())?;
+        self.handle
+            .set_speed(CommunicationSpeed::khz(actual_speed_khz as u16).unwrap())?;
         self.speed_khz = actual_speed_khz;
 
         Ok(actual_speed_khz)
@@ -475,22 +528,24 @@ impl DebugProbe for JLink {
         log::debug!("Attaching with protocol '{}'", actual_protocol);
 
         // Get reference to JayLink instance
-        let jlink: &mut JayLink = self.handle.get_mut().unwrap();
-        let capabilities = jlink.read_capabilities()?;
+        let capabilities = self.handle.read_capabilities()?;
 
         // Log some information about the probe
-        let serial = jlink.serial_string().trim_start_matches('0');
+        let serial = self.handle.serial_string().trim_start_matches('0');
         log::info!("J-Link: S/N: {}", serial);
         log::debug!("J-Link: Capabilities: {:?}", capabilities);
-        let fw_version = jlink.read_firmware_version().unwrap_or_else(|_| "?".into());
+        let fw_version = self
+            .handle
+            .read_firmware_version()
+            .unwrap_or_else(|_| "?".into());
         log::info!("J-Link: Firmware version: {}", fw_version);
-        match jlink.read_hardware_version() {
+        match self.handle.read_hardware_version() {
             Ok(hw_version) => log::info!("J-Link: Hardware version: {}", hw_version),
             Err(_) => log::info!("J-Link: Hardware version: ?"),
         };
 
         // Verify target voltage (VTref pin, mV). If this is 0, the device is not powered.
-        let target_voltage = jlink.read_target_voltage()?;
+        let target_voltage = self.handle.read_target_voltage()?;
         if target_voltage == 0 {
             log::warn!("J-Link: Target voltage (VTref) is 0 V. Is your target device powered?");
         } else {
@@ -505,7 +560,7 @@ impl DebugProbe for JLink {
                 // try some JTAG stuff
 
                 log::debug!("Resetting JTAG chain using trst");
-                jlink.reset_trst()?;
+                self.handle.reset_trst()?;
 
                 log::debug!("Resetting JTAG chain by setting tms high for 32 bits");
 
@@ -513,7 +568,7 @@ impl DebugProbe for JLink {
                 let tms = vec![true, true, true, true, true, false];
                 let tdi = iter::repeat(false).take(6);
 
-                let response: Vec<_> = jlink.jtag_io(tms, tdi)?.collect();
+                let response: Vec<_> = self.handle.jtag_io(tms, tdi)?.collect();
 
                 log::debug!("Response to reset: {:?}", response);
 
@@ -535,27 +590,22 @@ impl DebugProbe for JLink {
                     // Send the reset sequence (> 50 0-bits).
                     iter::repeat(true).take(64)
                     // Send the JTAG to SWD sequence.
-                    .chain(jtag_to_swd_sequence.iter().copied())
-                    // Send the reset sequence again in case we were in SWD mode already (> 50 0-bits).
-                    .chain(iter::repeat(true).take(64))
-                    // Send 10 idle line bits.
-                    .chain(iter::repeat(false).take(10));
+                    .chain(jtag_to_swd_sequence.iter().copied());
 
                 // Construct the direction sequence for reset sequence.
                 let direction =
                     // Send the reset sequence (> 50 0-bits).
                     iter::repeat(true).take(64)
                     // Send the JTAG to SWD sequence.
-                    .chain(iter::repeat(true).take(16))
-                    // Send the reset sequence again in case we were in SWD mode already (> 50 0-bits).
-                    .chain(iter::repeat(true).take(64))
-                    // Send 10 idle line bits.
-                    .chain(iter::repeat(true).take(10));
+                    .chain(iter::repeat(true).take(16));
 
                 // Send the init sequence.
                 // We don't actually care about the response here.
                 // A read on the DPIDR will finalize the init procedure and tell us if it worked.
-                jlink.swd_io(direction, swd_io_sequence)?;
+                self.handle.swd_io(direction, swd_io_sequence)?;
+
+                // Perform a line reset
+                self.swd_line_reset()?;
                 log::debug!("Sucessfully switched to SWD");
 
                 // We are ready to debug.
@@ -576,14 +626,12 @@ impl DebugProbe for JLink {
     }
 
     fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
-        let jlink = self.handle.get_mut().unwrap();
-        jlink.set_reset(false)?;
+        self.handle.set_reset(false)?;
         Ok(())
     }
 
     fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
-        let jlink = self.handle.get_mut().unwrap();
-        jlink.set_reset(true)?;
+        self.handle.set_reset(true)?;
         Ok(())
     }
 
@@ -609,7 +657,7 @@ impl DebugProbe for JLink {
         self: Box<Self>,
     ) -> Result<Option<Box<dyn ArmProbeInterface + 'probe>>, DebugProbeError> {
         if self.supported_protocols.contains(&WireProtocol::Swd) {
-            let interface = ArmCommunicationInterface::new(self)?;
+            let interface = ArmCommunicationInterface::new(self, true)?;
 
             Ok(Some(Box::new(interface)))
         } else {
@@ -693,48 +741,78 @@ impl<'a> AsMut<dyn DebugProbe + 'a> for JLink {
     }
 }
 
-impl DAPAccess for JLink {
-    fn read_register(&mut self, port: PortType, address: u16) -> Result<u32, DebugProbeError> {
-        // JLink operates on raw SWD bit sequences.
-        // So we need to manually assemble the read and write bitsequences.
-        // The following code with the comments hopefully explains well enough how it works.
-        // `true` means `1` and `false` means `0` for the SWDIO sequence.
-        // `true` means `drive line` and `false` means `open drain` for the direction sequence.
+#[derive(Debug, PartialEq)]
+enum TransferType {
+    Read,
+    Write(u32),
+}
 
-        // First we determine the APnDP bit.
-        let port = match port {
-            PortType::DebugPort => false,
-            PortType::AccessPort(_) => true,
-        };
+fn build_swd_transfer(
+    port: PortType,
+    direction: TransferType,
+    address: u16,
+) -> (Vec<bool>, Vec<bool>) {
+    // JLink operates on raw SWD bit sequences.
+    // So we need to manually assemble the read and write bitsequences.
+    // The following code with the comments hopefully explains well enough how it works.
+    // `true` means `1` and `false` means `0` for the SWDIO sequence.
+    // `true` means `drive line` and `false` means `open drain` for the direction sequence.
 
-        // Then we determine the address bits.
-        // Only bits 2 and 3 are relevant as we use byte addressing but can only read 32bits
-        // which means we can skip bits 0 and 1. The ADI specification is defined like this.
-        let a2 = (address >> 2) & 0x01 == 1;
-        let a3 = (address >> 3) & 0x01 == 1;
+    // First we determine the APnDP bit.
+    let port = match port {
+        PortType::DebugPort => false,
+        PortType::AccessPort(_) => true,
+    };
 
-        // Now we assemble an SWD read request.
-        let mut swd_io_sequence = vec![
-            // First we make sure we have the SDWIO line on idle for at least 2 clock cylces.
-            false, // Line idle.
-            false, // Line idle.
-            // Then we assemble the actual request.
-            true,                  // Start bit (always 1).
-            port,                  // APnDP (0 for DP, 1 for AP).
-            true,                  // RnW (0 for Write, 1 for Read).
-            a2,                    // Address bit 2.
-            a3,                    // Address bit 3,
-            port ^ true ^ a2 ^ a3, // Odd parity bit over APnDP, RnW a2 and a3
-            false,                 // Stop bit (always 0).
-            true,                  // Park bit (always 1).
-            // Theoretically the spec says that there is a turnaround bit required here, where no clock is driven.
-            // This seems to not be the case in actual implementations. So we do not insert this bit either!
-            // false,                 // Turnaround bit.
-            false, // ACK bit.
-            false, // ACK bit.
-            false, // ACK bit.
-        ];
+    // Set direction bit to 1 for reads.
+    let direction_bit = direction == TransferType::Read;
 
+    // Then we determine the address bits.
+    // Only bits 2 and 3 are relevant as we use byte addressing but can only read 32bits
+    // which means we can skip bits 0 and 1. The ADI specification is defined like this.
+    let a2 = (address >> 2) & 0x01 == 1;
+    let a3 = (address >> 3) & 0x01 == 1;
+
+    // Now we assemble an SWD request.
+    let mut swd_io_sequence = vec![
+        // First we make sure we have the SDWIO line on idle for at least 2 clock cylces.
+        false, // Line idle.
+        false, // Line idle.
+        // Then we assemble the actual request.
+        true,                           // Start bit (always 1).
+        port,                           // APnDP (0 for DP, 1 for AP).
+        direction_bit,                  // RnW (0 for Write, 1 for Read).
+        a2,                             // Address bit 2.
+        a3,                             // Address bit 3,
+        port ^ direction_bit ^ a2 ^ a3, // Odd parity bit over APnDP, RnW a2 and a3
+        false,                          // Stop bit (always 0).
+        true,                           // Park bit (always 1).
+        // Theoretically the spec says that there is a turnaround bit required here, where no clock is driven.
+        // This seems to not be the case in actual implementations. So we do not insert this bit either!
+        // false,                 // Turnaround bit.
+        false, // ACK bit.
+        false, // ACK bit.
+        false, // ACK bit.
+    ];
+
+    if let TransferType::Write(mut value) = direction {
+        // For writes, we need to add two turnaround bits.
+        // Theoretically the spec says that there is only one turnaround bit required here, where no clock is driven.
+        // This seems to not be the case in actual implementations. So we insert two turnaround bits here!
+        swd_io_sequence.extend_from_slice(&[false, false]);
+
+        // Now we add all the data bits to the sequence and in the same loop we also calculate the parity bit.
+        let mut parity = false;
+        for _ in 0..32 {
+            let bit = value & 1 == 1;
+            swd_io_sequence.push(bit);
+            parity ^= bit;
+            value >>= 1;
+        }
+
+        swd_io_sequence.push(parity);
+    } else {
+        // Handle Read
         // Add the data bits to the SWDIO sequence.
         swd_io_sequence.extend_from_slice(&[false; 32]);
 
@@ -743,27 +821,55 @@ impl DAPAccess for JLink {
 
         // Finally add the turnaround bit to the sequence.
         swd_io_sequence.push(false);
+    }
 
-        // Assemble the direction sequence.
-        let direction = iter::repeat(true)
-            .take(2) // Transmit 2 Line idle bits.
-            .chain(iter::repeat(true).take(8)) // Transmit 8 Request bits
-            // Here *should* be a Trn bit, but since something with the spec is akward we leave it away.
-            // See comments above!
-            .chain(iter::repeat(false).take(3)) // Receive 3 Ack bits.
+    // Assemble the direction sequence.
+    let direction_sequence = iter::repeat(true)
+        .take(2) // Transmit 2 Line idle bits.
+        .chain(iter::repeat(true).take(8)) // Transmit 8 Request bits
+        // Here *should* be a Trn bit, but since something with the spec is akward we leave it away.
+        // See comments above!
+        .chain(iter::repeat(false).take(3)); // Receive 3 Ack bits.
+
+    let direction_sequence: Vec<bool> = if direction == TransferType::Read {
+        direction_sequence
             .chain(iter::repeat(false).take(32)) // Receive 32 Data bits.
             .chain(iter::repeat(false).take(1)) // Receive 1 Parity bit.
-            .chain(iter::repeat(false).take(1)); // Receive 1 Turnaround bit.
+            .chain(iter::repeat(false).take(1)) // Transmit turnaround bit
+            .collect()
+    } else {
+        direction_sequence
+            .chain(iter::repeat(false).take(2)) // Transmit two turnaround bits.
+            .chain(iter::repeat(true).take(32)) // Transmit 32 Data bits.
+            .chain(iter::repeat(true).take(1)) // Transmit 1 Parity bit.
+            .collect()
+    };
+
+    assert_eq!(
+        swd_io_sequence.len(),
+        direction_sequence.len(),
+        "IO and direction sequences need to have the same length."
+    );
+
+    (swd_io_sequence, direction_sequence)
+}
+
+impl DAPAccess for JLink {
+    fn read_register(&mut self, port: PortType, address: u16) -> Result<u32, DebugProbeError> {
+        // JLink operates on raw SWD bit sequences.
+        // So we need to manually assemble the read and write bitsequences.
+        // The following code with the comments hopefully explains well enough how it works.
+        // `true` means `1` and `false` means `0` for the SWDIO sequence.
+        // `true` means `drive line` and `false` means `open drain` for the direction sequence.
+
+        let (swd_io_sequence, direction) = build_swd_transfer(port, TransferType::Read, address);
 
         // Now we try to issue the request until it fails or succeeds.
         // If we timeout we retry a maximum of 5 times.
-        let mut retries = 0;
-        while retries < 5 {
+        for retry in 0..5 {
             // Transmit the sequence and record the line sequence for the ack bits.
             let mut result_sequence = self
                 .handle
-                .get_mut()
-                .unwrap()
                 .swd_io(direction.clone(), swd_io_sequence.iter().copied())?;
 
             // Throw away the two idle bits.
@@ -774,44 +880,82 @@ impl DAPAccess for JLink {
             // Get the ack.
             let ack = result_sequence.split_off(3).collect::<Vec<_>>();
 
+            // When all bits are high, this means we didn't get any response from the
+            // target, which indicates a protocol error.
             if ack[0] && ack[1] && ack[2] {
-                return Err(DapError::NoAcknowledge.into());
+                log::debug!("DAP NACK");
+
+                // Because we clock the SWDCLK line after receving the WAIT response,
+                // the target might be in weird state. If we perform a line reset,
+                // we should be able to recover from this.
+                self.swd_line_reset()?;
+
+                // Retry operation again
+                continue;
             }
             if ack[1] {
                 // If ack[1] is set the host must retry the request. So let's do that right away!
-                retries += 1;
-                log::debug!("DAP line busy, retries remaining {}.", 5 - retries);
+                log::debug!("DAP WAIT, retries remaining {}.", 5 - retry);
+
+                // Because we use overrun detection, we now have to clear the overrun error
+                let mut abort = Abort(0);
+
+                abort.set_orunerrclr(true);
+
+                DAPAccess::write_register(
+                    self,
+                    PortType::DebugPort,
+                    Abort::ADDRESS as u16,
+                    abort.into(),
+                )?;
+
                 continue;
             }
             if ack[2] {
+                log::debug!("DAP FAULT");
+
                 // A fault happened during operation.
 
                 // To get a clue about the actual fault we read the ctrl register,
                 // which will have the fault status flags set.
-
-                // Reading ctrl directly fails with nack on jlink. A dummy read
-                // of id first seems to clear it up.
-                let dp =
-                    DAPAccess::read_register(self, PortType::DebugPort, DPIDR::ADDRESS as u16)?;
-                log::trace!("Dummy read of DebugPort ID:  {:#x?}", dp);
-
                 let response =
                     DAPAccess::read_register(self, PortType::DebugPort, Ctrl::ADDRESS as u16)?;
                 let ctrl = Ctrl::from(response);
-                log::trace!(
+                log::debug!(
                     "Writing DAP register failed. Ctrl/Stat register value is: {:#?}",
                     ctrl
                 );
+
+                // Check the reason for the fault
+                // Other fault reasons than overrun or write error are not handled yet.
+                if ctrl.sticky_orun() || ctrl.sticky_err() {
+                    // We did not handle a WAIT state properly
+
+                    // Because we use overrun detection, we now have to clear the overrun error
+                    let mut abort = Abort(0);
+
+                    // Clear sticky error flags
+                    abort.set_orunerrclr(ctrl.sticky_orun());
+                    abort.set_stkerrclr(ctrl.sticky_err());
+
+                    DAPAccess::write_register(
+                        self,
+                        PortType::DebugPort,
+                        Abort::ADDRESS as u16,
+                        abort.into(),
+                    )?;
+                    continue;
+                }
 
                 return Err(DapError::FaultResponse.into());
             }
 
             // If we are reading an AP register we only get the actual result in the next transaction.
             // So we issue a special transaction to get the read value.
-            if port {
+            if let PortType::AccessPort(_) = port {
                 // We read the RDBUFF register to get the value of the last AP transaction.
                 // This special register just returns the last read value with no side-effects like auto-increment.
-                return DAPAccess::read_register(self, PortType::DebugPort, 0x0C);
+                return DAPAccess::read_register(self, PortType::DebugPort, RdBuff::ADDRESS as u16);
             } else {
                 // Take the data bits and convert them into a 32bit int.
                 let register_val = result_sequence.split_off(32);
@@ -846,7 +990,7 @@ impl DAPAccess for JLink {
         &mut self,
         port: PortType,
         address: u16,
-        mut value: u32,
+        value: u32,
     ) -> Result<(), DebugProbeError> {
         // JLink operates on raw SWD bit sequences.
         // So we need to manually assemble the read and write bitsequences.
@@ -854,75 +998,25 @@ impl DAPAccess for JLink {
         // `true` means `1` and `false` means `0` for the SWDIO sequence.
         // `true` means `drive line` and `false` means `open drain` for the direction sequence.
 
-        // First we determine the APnDP bit.
-        let port = match port {
-            PortType::DebugPort => false,
-            PortType::AccessPort(_) => true,
-        };
+        let (mut swd_io_sequence, mut direction) =
+            build_swd_transfer(port, TransferType::Write(value), address);
 
-        // Then we determine the address bits.
-        // Only bits 2 and 3 are relevant as we use byte addressing but can only read 32bits
-        // which means we can skip bits 0 and 1. The ADI specification is defined like this.
-        let a2 = (address >> 2) & 0x01 == 1;
-        let a3 = (address >> 3) & 0x01 == 1;
-
-        // Now we assemble an SWD write request.
-        let mut swd_io_sequence = vec![
-            false, // Line idle.
-            false, // Line idle.
-            // Then we assemble the actual request.
-            true,                   // Start bit (always 1).
-            port,                   // APnDP (0 for DP, 1 for AP).
-            false,                  // RnW (0 for Write, 1 for Read).
-            a2,                     // Address bit 2.
-            a3,                     // Address bit 3,
-            port ^ false ^ a2 ^ a3, // Odd parity bit over ApnDP, RnW a2 and a3
-            false,                  // Stop bit (always 0).
-            true,                   // Park bit (always 1).
-            // Theoretically the spec says that there is a turnaround bit required here, where no clock is driven.
-            // This seems to not be the case in actual implementations. So we do not insert this bit either!
-            // false,                 // Turnaround bit.
-            false, // ACK bit.
-            false, // ACK bit.
-            false, // ACK bit.
-            // Theoretically the spec says that there is only one turnaround bit required here, where no clock is driven.
-            // This seems to not be the case in actual implementations. So we insert two turnaround bits here!
-            false, // Turnaround bit.
-            false, // Turnaround bit.
-        ];
-
-        // Now we add all the data bits to the sequence and in the same loop we also calculate the parity bit.
-        let mut parity = false;
-        for _ in 0..32 {
-            let bit = value & 1 == 1;
-            swd_io_sequence.push(bit);
-            parity ^= bit;
-            value >>= 1;
+        // Add 8 idle cycles to ensure the write is performed.
+        // See section B4.1.1 in the ARM Debug Interface specification.
+        //
+        // This doesn't have to be done if the write is directly followed by another request,
+        // but until batching is implemented, this is the safest way.
+        for _ in 0..8 {
+            swd_io_sequence.push(false);
+            direction.push(true);
         }
-
-        // Then we add the parity bit just after the previously added data bits.
-        swd_io_sequence.push(parity);
-
-        // Assemble the direction sequence.
-        let direction = iter::repeat(true)
-            .take(2) // Transmit 2 Line idle bits.
-            .chain(iter::repeat(true).take(8)) // Transmit 8 Request bits
-            // Here *should* be a Trn bit, but since something with the spec is akward we leave it away.
-            // See comments above!
-            .chain(iter::repeat(false).take(3)) // Receive 3 Ack bits.
-            .chain(iter::repeat(false).take(2)) // Transmit 2 Turnaround bits.
-            .chain(iter::repeat(true).take(32)) // Transmit 32 Data bits.
-            .chain(iter::repeat(true).take(1)); // Transmit 1 Parity bit.
 
         // Now we try to issue the request until it fails or succeeds.
         // If we timeout we retry a maximum of 5 times.
-        let mut retries = 0;
-        while retries < 5 {
+        for retry in 0..5 {
             // Transmit the sequence and record the line sequence for the ack and data bits.
             let mut result_sequence = self
                 .handle
-                .get_mut()
-                .unwrap()
                 .swd_io(direction.clone(), swd_io_sequence.iter().copied())?;
 
             // Throw away the two idle bits.
@@ -933,34 +1027,75 @@ impl DAPAccess for JLink {
             // Get the ack.
             let ack = result_sequence.by_ref().take(3).collect::<Vec<_>>();
 
+            // When all bits are high, this means we didn't get any response from the
+            // target, which indicates a protocol error.
             if ack[0] && ack[1] && ack[2] {
-                return Err(DapError::NoAcknowledge.into());
-            }
-            if ack[1] {
-                // If ack[1] is set the host must retry the request. So let's do that right away!
-                retries += 1;
-                log::debug!("DAP line busy, retries remaining {}.", 5 - retries);
+                log::debug!("DAP NACK");
+
+                // Because we clock the SWDCLK line after receving the WAIT response,
+                // the target might be in weird state. If we perform a line reset,
+                // we should be able to recover from this.
+                self.swd_line_reset()?;
+
+                // Retry operation
                 continue;
             }
+
+            if ack[1] {
+                // If ack[1] is set the host must retry the request. So let's do that right away!
+                log::debug!("DAP WAIT, retries remaining {}.", 5 - retry);
+
+                let mut abort = Abort(0);
+
+                abort.set_orunerrclr(true);
+
+                // Because we use overrun detection, we now have to clear the overrun error
+                DAPAccess::write_register(
+                    self,
+                    PortType::DebugPort,
+                    Abort::ADDRESS as u16,
+                    abort.into(),
+                )?;
+
+                continue;
+            }
+
             if ack[2] {
+                log::debug!("DAP FAULT");
                 // A fault happened during operation.
 
                 // To get a clue about the actual fault we read the ctrl register,
                 // which will have the fault status flags set.
 
-                // Reading ctrl directly fails with nack on jlink. A dummy read
-                // of id first seems to clear it up.
-                let dp =
-                    DAPAccess::read_register(self, PortType::DebugPort, DPIDR::ADDRESS as u16)?;
-                log::trace!("Dummy read of DebugPort ID:  {:#x?}", dp);
-
                 let response =
                     DAPAccess::read_register(self, PortType::DebugPort, Ctrl::ADDRESS as u16)?;
+
                 let ctrl = Ctrl::from(response);
-                log::error!(
+                log::trace!(
                     "Writing DAP register failed. Ctrl/Stat register value is: {:#?}",
                     ctrl
                 );
+
+                // Check the reason for the fault
+                // Other fault reasons than overrun or write error are not handled yet.
+                if ctrl.sticky_orun() || ctrl.sticky_err() {
+                    // We did not handle a WAIT state properly
+
+                    // Because we use overrun detection, we now have to clear the overrun error
+                    let mut abort = Abort(0);
+
+                    // Clear sticky error flags
+                    abort.set_orunerrclr(ctrl.sticky_orun());
+                    abort.set_stkerrclr(ctrl.sticky_err());
+
+                    DAPAccess::write_register(
+                        self,
+                        PortType::DebugPort,
+                        Abort::ADDRESS as u16,
+                        abort.into(),
+                    )?;
+                    continue;
+                }
 
                 return Err(DapError::FaultResponse.into());
             }
@@ -983,18 +1118,16 @@ impl DAPAccess for JLink {
 
 impl SwoAccess for JLink {
     fn enable_swo(&mut self, config: &SwoConfig) -> Result<(), ProbeRsError> {
-        let jlink = self.handle.get_mut().unwrap();
         self.swo_config = Some(*config);
-        jlink
+        self.handle
             .swo_start_uart(config.baud(), SWO_BUFFER_SIZE.into())
             .map_err(|e| ProbeRsError::Probe(DebugProbeError::ArchitectureSpecific(Box::new(e))))?;
         Ok(())
     }
 
     fn disable_swo(&mut self) -> Result<(), ProbeRsError> {
-        let jlink = self.handle.get_mut().unwrap();
         self.swo_config = None;
-        jlink
+        self.handle
             .swo_stop()
             .map_err(|e| ProbeRsError::Probe(DebugProbeError::ArchitectureSpecific(Box::new(e))))?;
         Ok(())
@@ -1012,11 +1145,9 @@ impl SwoAccess for JLink {
             .swo_poll_interval_hint(&self.swo_config.unwrap())
             .unwrap();
 
-        let jlink = self.handle.get_mut().unwrap();
-
         let mut bytes = vec![];
         loop {
-            let data = jlink.swo_read(&mut buf).map_err(|e| {
+            let data = self.handle.swo_read(&mut buf).map_err(|e| {
                 ProbeRsError::Probe(DebugProbeError::ArchitectureSpecific(Box::new(e)))
             })?;
             bytes.extend(data.as_ref());
@@ -1043,39 +1174,43 @@ fn bits_to_byte(bits: impl IntoIterator<Item = bool>) -> u32 {
     bit_val
 }
 
-pub(crate) fn list_jlink_devices() -> Result<impl Iterator<Item = DebugProbeInfo>, DebugProbeError>
-{
-    Ok(jaylink::scan_usb()?.map(|device_info| {
-        let vid = device_info.vid();
-        let pid = device_info.pid();
-        let (serial, product) = if let Ok(device) = device_info.open() {
-            let serial = device.serial_string();
-            let serial = if serial.is_empty() {
-                None
-            } else {
-                Some(serial.to_owned())
-            };
-            let product = device.product_string();
-            let product = if product.is_empty() {
-                None
-            } else {
-                Some(product.to_owned())
-            };
-            (serial, product)
-        } else {
-            (None, None)
-        };
-        DebugProbeInfo::new(
-            format!(
-                "J-Link{}",
-                product.map(|p| format!(" ({})", p)).unwrap_or_default()
-            ),
-            vid,
-            pid,
-            serial,
-            DebugProbeType::JLink,
-        )
-    }))
+pub(crate) fn list_jlink_devices() -> Vec<DebugProbeInfo> {
+    match jaylink::scan_usb() {
+        Ok(devices) => devices
+            .map(|device_info| {
+                let vid = device_info.vid();
+                let pid = device_info.pid();
+                let (serial, product) = if let Ok(device) = device_info.open() {
+                    let serial = device.serial_string();
+                    let serial = if serial.is_empty() {
+                        None
+                    } else {
+                        Some(serial.to_owned())
+                    };
+                    let product = device.product_string();
+                    let product = if product.is_empty() {
+                        None
+                    } else {
+                        Some(product.to_owned())
+                    };
+                    (serial, product)
+                } else {
+                    (None, None)
+                };
+                DebugProbeInfo::new(
+                    format!(
+                        "J-Link{}",
+                        product.map(|p| format!(" ({})", p)).unwrap_or_default()
+                    ),
+                    vid,
+                    pid,
+                    serial,
+                    DebugProbeType::JLink,
+                )
+            })
+            .collect(),
+        Err(_) => Vec::new(),
+    }
 }
 
 impl From<jaylink::Error> for DebugProbeError {

@@ -66,6 +66,9 @@ impl<'layout> FlashVisualizer<'layout> {
     }
 
     /// Generates an SVG in string form which visualizes the given flash contents.
+    ///
+    /// This generator was introduced to debug the library flashing algorithms
+    /// but can also be used to track what contents of flash will be erased and written.
     pub fn generate_svg(&self) -> String {
         let mut document = Document::new();
         let mut group = Group::new().set("transform", "scale(1, 1)");
@@ -110,7 +113,9 @@ impl<'layout> FlashVisualizer<'layout> {
     }
 
     /// Generates an SVG which visualizes the given flash contents
-    /// and writes it into the file at the given `path`
+    /// and writes the SVG into the file at the given `path`.
+    ///
+    /// This is aequivalent to [FlashVisualizer::generate_svg] with the difference of operating on a file instead of a string.
     pub fn write_svg(&self, path: impl AsRef<std::path::Path>) -> std::io::Result<()> {
         use std::fs::OpenOptions;
         use std::io::Write;
