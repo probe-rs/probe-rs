@@ -787,19 +787,15 @@ fn build_swd_transfer(
         port ^ direction_bit ^ a2 ^ a3, // Odd parity bit over APnDP, RnW a2 and a3
         false,                          // Stop bit (always 0).
         true,                           // Park bit (always 1).
-        // Theoretically the spec says that there is a turnaround bit required here, where no clock is driven.
-        // This seems to not be the case in actual implementations. So we do not insert this bit either!
-        // false,                 // Turnaround bit.
-        false, // ACK bit.
-        false, // ACK bit.
-        false, // ACK bit.
+        false,                          // Turnaround bit.
+        false,                          // ACK bit.
+        false,                          // ACK bit.
+        false,                          // ACK bit.
     ];
 
     if let TransferType::Write(mut value) = direction {
-        // For writes, we need to add two turnaround bits.
-        // Theoretically the spec says that there is only one turnaround bit required here, where no clock is driven.
-        // This seems to not be the case in actual implementations. So we insert two turnaround bits here!
-        swd_io_sequence.extend_from_slice(&[false, false]);
+        // For writes, we need to add another turnaround bit to gain back ownership of the SWDIO line.
+        swd_io_sequence.push(false);
 
         // Now we add all the data bits to the sequence and in the same loop we also calculate the parity bit.
         let mut parity = false;
@@ -827,8 +823,7 @@ fn build_swd_transfer(
     let direction_sequence = iter::repeat(true)
         .take(2) // Transmit 2 Line idle bits.
         .chain(iter::repeat(true).take(8)) // Transmit 8 Request bits
-        // Here *should* be a Trn bit, but since something with the spec is akward we leave it away.
-        // See comments above!
+        .chain(iter::repeat(false).take(1)) // Turnaround bit
         .chain(iter::repeat(false).take(3)); // Receive 3 Ack bits.
 
     let direction_sequence: Vec<bool> = if direction == TransferType::Read {
@@ -839,7 +834,7 @@ fn build_swd_transfer(
             .collect()
     } else {
         direction_sequence
-            .chain(iter::repeat(false).take(2)) // Transmit two turnaround bits.
+            .chain(iter::repeat(false).take(1)) // Transmit turnaround bit.
             .chain(iter::repeat(true).take(32)) // Transmit 32 Data bits.
             .chain(iter::repeat(true).take(1)) // Transmit 1 Parity bit.
             .collect()
@@ -872,10 +867,17 @@ impl DAPAccess for JLink {
                 .handle
                 .swd_io(direction.clone(), swd_io_sequence.iter().copied())?;
 
-            // Throw away the two idle bits.
-            result_sequence.split_off(2);
-            // Throw away the request bits.
-            result_sequence.split_off(8);
+            // We need to discard the output bits that correspond to the part of the request
+            // in which the probe is driving SWDIO. Additionally, there is a phase shift that
+            // happens when ownership of the SWDIO line is transfered to the device.
+            // The device changes the value of SWDIO with the rising edge of the clock.
+            //
+            // It appears that the JLink probe samples this line with the falling edge of
+            // the clock. Therefore, the whole sequence seems to be leading by one bit,
+            // which is why we don't discard the turnaround bit. It actually contains the
+            // first ack bit.
+            result_sequence.split_off(2); // Idle bits
+            result_sequence.split_off(8); // Request bits
 
             // Get the ack.
             let ack = result_sequence.split_off(3).collect::<Vec<_>>();
@@ -1019,10 +1021,17 @@ impl DAPAccess for JLink {
                 .handle
                 .swd_io(direction.clone(), swd_io_sequence.iter().copied())?;
 
-            // Throw away the two idle bits.
-            result_sequence.split_off(2);
-            // Throw away the request bits.
-            result_sequence.split_off(8);
+            // We need to discard the output bits that correspond to the part of the request
+            // in which the probe is driving SWDIO. Additionally, there is a phase shift that
+            // happens when ownership of the SWDIO line is transfered to the device.
+            // The device changes the value of SWDIO with the rising edge of the clock.
+            //
+            // It appears that the JLink probe samples this line with the falling edge of
+            // the clock. Therefore, the whole sequence seems to be leading by one bit,
+            // which is why we don't discard the turnaround bit. It actually contains the
+            // first ack bit.
+            result_sequence.split_off(2); // Idle bits
+            result_sequence.split_off(8); // Request bits
 
             // Get the ack.
             let ack = result_sequence.by_ref().take(3).collect::<Vec<_>>();
