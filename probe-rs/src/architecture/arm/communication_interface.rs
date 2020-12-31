@@ -70,7 +70,7 @@ pub trait Register: Clone + From<u32> + Into<u32> + Sized + Debug {
     const NAME: &'static str;
 }
 
-pub trait DAPAccess: DebugProbe + AsRef<dyn DebugProbe> + AsMut<dyn DebugProbe> {
+pub trait DAPAccess {
     /// Reads the DAP register on the specified port and address
     fn read_register(&mut self, port: PortType, addr: u16) -> Result<u32, DebugProbeError>;
 
@@ -123,8 +123,6 @@ pub trait DAPAccess: DebugProbe + AsRef<dyn DebugProbe> + AsMut<dyn DebugProbe> 
     fn flush(&mut self) -> Result<(), DebugProbeError> {
         Ok(())
     }
-
-    fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe>;
 }
 
 pub trait ArmProbeInterface:
@@ -205,9 +203,11 @@ pub struct MemoryApInformation {
 
 #[derive(Debug)]
 pub struct ArmCommunicationInterface {
-    probe: Box<dyn DAPAccess>,
+    probe: Box<dyn SwdProbe>,
     state: ArmCommunicationInterfaceState,
 }
+
+pub trait SwdProbe: DAPAccess + DebugProbe + AsRef<dyn DebugProbe> + AsMut<dyn DebugProbe> {}
 
 impl ArmProbeInterface for ArmCommunicationInterface {
     fn memory_interface(&mut self, access_port: MemoryAP) -> Result<Memory<'_>, ProbeRsError> {
@@ -245,7 +245,7 @@ impl<'a> AsMut<dyn DebugProbe + 'a> for ArmCommunicationInterface {
 
 impl<'interface> ArmCommunicationInterface {
     pub(crate) fn new(
-        probe: Box<dyn DAPAccess>,
+        probe: Box<dyn SwdProbe>,
         use_overrun_detect: bool,
     ) -> Result<Self, DebugProbeError> {
         let state = ArmCommunicationInterfaceState::new();

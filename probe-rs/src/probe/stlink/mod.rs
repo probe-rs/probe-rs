@@ -253,6 +253,10 @@ impl DebugProbe for STLink<STLinkUSBDevice> {
     fn has_arm_interface(&self) -> bool {
         true
     }
+
+    fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
+        self
+    }
 }
 
 impl DAPAccess for STLink<STLinkUSBDevice> {
@@ -314,10 +318,6 @@ impl DAPAccess for STLink<STLinkUSBDevice> {
         } else {
             Err(StlinkError::BlanksNotAllowedOnDPRegister.into())
         }
-    }
-
-    fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
-        self
     }
 }
 
