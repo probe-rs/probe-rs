@@ -44,6 +44,8 @@ pub(crate) struct JLink {
     current_ir_reg: u32,
 
     speed_khz: u32,
+
+    transfer_queue: Vec<SwdTransfer>,
 }
 
 impl JLink {
@@ -559,6 +561,7 @@ fn perform_transfers<P: RawSwdIo>(
     Ok(())
 }
 
+#[derive(Debug)]
 struct SwdTransfer {
     port: PortType,
     direction: TransferDirection,
@@ -568,6 +571,26 @@ struct SwdTransfer {
 }
 
 impl SwdTransfer {
+    fn read(port: PortType, address: u16) -> SwdTransfer {
+        Self {
+            port,
+            address,
+            direction: TransferDirection::Read,
+            value: 0,
+            status: TransferStatus::Pending,
+        }
+    }
+
+    fn write(port: PortType, address: u16, value: u32) -> SwdTransfer {
+        Self {
+            port,
+            address,
+            value,
+            direction: TransferDirection::Write,
+            status: TransferStatus::Pending,
+        }
+    }
+
     fn transfer_type(&self) -> TransferType {
         match self.direction {
             TransferDirection::Read => TransferType::Read,
@@ -670,6 +693,7 @@ impl DebugProbe for JLink {
             protocol: None,
             current_ir_reg: 1,
             speed_khz: 0,
+            transfer_queue: Vec::new(),
         }))
     }
 
@@ -1225,13 +1249,7 @@ impl DAPAccess for JLink {
         // Now we try to issue the request until it fails or succeeds.
         // If we timeout we retry a maximum of 5 times.
         for retry in 0..dap_wait_retries {
-            let mut transfers = [SwdTransfer {
-                port,
-                address,
-                value: 0,
-                direction: TransferDirection::Read,
-                status: TransferStatus::Pending,
-            }];
+            let mut transfers = [SwdTransfer::read(port, address)];
 
             perform_transfers(self, &mut transfers)?;
 
@@ -1334,13 +1352,7 @@ impl DAPAccess for JLink {
         // Now we try to issue the request until it fails or succeeds.
         // If we timeout we retry a maximum of 5 times.
         for retry in 0..dap_wait_retries {
-            let mut transfers = [SwdTransfer {
-                port,
-                direction: TransferDirection::Write,
-                address,
-                value,
-                status: TransferStatus::Pending,
-            }];
+            let mut transfers = [SwdTransfer::write(port, address, value)];
 
             perform_transfers(self, &mut transfers)?;
 
@@ -1564,10 +1576,18 @@ mod test {
 
     use crate::architecture::arm::PortType;
 
-    use super::{perform_transfers, RawSwdIo, SwdTransfer, TransferDirection, TransferStatus};
+    use super::{perform_transfers, RawSwdIo, SwdTransfer, TransferStatus};
 
     use bitvec::prelude::*;
 
+    enum DapAcknowledge {
+        Ok,
+        Wait,
+        Fault,
+        NoAck,
+    }
+
+    #[derive(Default)]
     struct MockJaylink {
         direction_input: Option<Vec<bool>>,
         io_input: Option<Vec<bool>>,
@@ -1575,12 +1595,80 @@ mod test {
     }
 
     impl MockJaylink {
-        fn with_response(response: Vec<bool>) -> Self {
-            Self {
-                direction_input: None,
-                io_input: None,
-                response,
+        fn add_write_response(&mut self, acknowledge: DapAcknowledge, idle_cycles: usize) {
+            // The write consists of the following parts:
+            //
+            // - 2 idle bits
+            // - 8 request bits
+            // - 1 turnaround bit
+            // - 3 acknowledge bits
+            // - 2 turnaround bits
+            // - x idle cycles
+            let write_length = 2 + 8 + 1 + 3 + 2 + 32 + idle_cycles;
+
+            let mut response = BitVec::<Lsb0, usize>::repeat(false, write_length);
+
+            match acknowledge {
+                DapAcknowledge::Ok => {
+                    // Set acknowledege to OK
+                    response.set(10, true);
+                }
+                DapAcknowledge::Wait => {
+                    // Set acknowledege to WAIT
+                    response.set(11, true);
+                }
+                DapAcknowledge::Fault => {
+                    // Set acknowledege to FAULT
+                    response.set(12, true);
+                }
+                DapAcknowledge::NoAck => {
+                    // No acknowledge means that all acknowledge bits
+                    // are set to false.
+                }
             }
+
+            self.response.extend(response);
+        }
+
+        fn add_read_response(&mut self, acknowledge: DapAcknowledge, value: u32) {
+            // The read consists of the following parts:
+            //
+            // - 2 idle bits
+            // - 8 request bits
+            // - 1 turnaround bit
+            // - 3 acknowledge bits
+            // - 2 turnaround bits
+            let write_length = 2 + 8 + 1 + 3 + 32 + 2;
+
+            let mut response = BitVec::<Lsb0, usize>::repeat(false, write_length);
+
+            match acknowledge {
+                DapAcknowledge::Ok => {
+                    // Set acknowledege to OK
+                    response.set(10, true);
+                }
+                DapAcknowledge::Wait => {
+                    // Set acknowledege to WAIT
+                    response.set(11, true);
+                }
+                DapAcknowledge::Fault => {
+                    // Set acknowledege to FAULT
+                    response.set(12, true);
+                }
+                DapAcknowledge::NoAck => {
+                    // No acknowledge means that all acknowledge bits
+                    // are set to false.
+                }
+            }
+
+            // Set the read value
+            response.get_mut(13..13 + 32).unwrap().store_le(value);
+
+            // calculate the parity bit
+            let parity_bit = value.count_ones() % 2 == 1;
+            response.set(13 + 32, parity_bit);
+
+            self.response.extend(response);
         }
     }
 
@@ -1613,61 +1701,13 @@ mod test {
 
     #[test]
     fn single_dp_register_read() {
-        let mut transfers = vec![SwdTransfer {
-            port: PortType::DebugPort,
-            address: 0,
-            direction: TransferDirection::Read,
-            value: 0,
-            status: TransferStatus::Pending,
-        }];
+        let register_value = 32354;
 
-        let read_length = 2 + 8 + 1 + 3 + 32 + 2;
+        let mut transfers = vec![SwdTransfer::read(PortType::DebugPort, 0)];
 
-        let mut response = BitVec::<Lsb0, usize>::repeat(false, read_length);
+        let mut mock = MockJaylink::default();
 
-        // Set acknowledege to ok
-        response.set(10, true);
-
-        let mut mock = MockJaylink::with_response(response.into_iter().collect());
-
-        perform_transfers(&mut mock, &mut transfers).expect("Failed to perform transfer");
-
-        let transfer_result = &transfers[0];
-
-        assert_eq!(transfer_result.status, TransferStatus::Ok);
-    }
-
-    #[test]
-    fn single_ap_register_read() {
-        let register_value = 0x11_22_33_44u32;
-
-        let mut transfers = vec![SwdTransfer {
-            port: PortType::AccessPort(0),
-            address: 0,
-            direction: TransferDirection::Read,
-            value: 0,
-            status: TransferStatus::Pending,
-        }];
-
-        let read_length = 2 + 8 + 1 + 3 + 32 + 2;
-
-        let mut response = BitVec::<Lsb0, usize>::repeat(false, 2 * read_length);
-
-        // Set first  and second acknowledege to Ok
-        response.set(10, true);
-        response.set(read_length + 10, true);
-
-        // Set the read value
-        response
-            .get_mut(read_length + 13..read_length + 13 + 32)
-            .unwrap()
-            .store_le(register_value);
-
-        let mut mock = MockJaylink {
-            direction_input: None,
-            io_input: None,
-            response: response.into_iter().collect(),
-        };
+        mock.add_read_response(DapAcknowledge::Ok, register_value);
 
         perform_transfers(&mut mock, &mut transfers).expect("Failed to perform transfer");
 
@@ -1678,28 +1718,141 @@ mod test {
     }
 
     #[test]
+    fn single_ap_register_read() {
+        let register_value = 0x11_22_33_44u32;
+
+        let mut transfers = vec![SwdTransfer::read(PortType::AccessPort(0), 0)];
+
+        let mut mock = MockJaylink::default();
+
+        mock.add_read_response(DapAcknowledge::Ok, 0);
+        mock.add_read_response(DapAcknowledge::Ok, register_value);
+
+        perform_transfers(&mut mock, &mut transfers).expect("Failed to perform transfer");
+
+        let transfer_result = &transfers[0];
+
+        assert_eq!(transfer_result.status, TransferStatus::Ok);
+        assert_eq!(transfer_result.value, register_value);
+    }
+
+    #[test]
+    fn ap_then_dp_register_read() {
+        // When reading from the AP first, and then from the DP,
+        // we need to insert an additional read from the RDBUFF register to
+        // get the result for the AP read.
+
+        let ap_read_value = 0x123223;
+        let dp_read_value = 0xFFAABB;
+
+        let mut transfers = vec![
+            SwdTransfer::read(PortType::AccessPort(0), 4),
+            SwdTransfer::read(PortType::DebugPort, 3),
+        ];
+
+        let mut mock = MockJaylink::default();
+
+        mock.add_read_response(DapAcknowledge::Ok, 0);
+        mock.add_read_response(DapAcknowledge::Ok, ap_read_value);
+        mock.add_read_response(DapAcknowledge::Ok, dp_read_value);
+
+        perform_transfers(&mut mock, &mut transfers).expect("Failed to perform transfer");
+
+        assert_eq!(transfers[0].status, TransferStatus::Ok);
+        assert_eq!(transfers[0].value, ap_read_value);
+
+        assert_eq!(transfers[1].status, TransferStatus::Ok);
+        assert_eq!(transfers[1].value, dp_read_value);
+    }
+
+    #[test]
+    fn dp_then_ap_register_read() {
+        // When reading from the DP first, and then from the AP,
+        // we need to insert an additional read from the RDBUFF register at the end
+        // to get the result for the AP read.
+
+        let ap_read_value = 0x123223;
+        let dp_read_value = 0xFFAABB;
+
+        let mut transfers = vec![
+            SwdTransfer::read(PortType::DebugPort, 3),
+            SwdTransfer::read(PortType::AccessPort(0), 4),
+        ];
+
+        let mut mock = MockJaylink::default();
+
+        mock.add_read_response(DapAcknowledge::Ok, dp_read_value);
+        mock.add_read_response(DapAcknowledge::Ok, 0);
+        mock.add_read_response(DapAcknowledge::Ok, ap_read_value);
+
+        perform_transfers(&mut mock, &mut transfers).expect("Failed to perform transfer");
+
+        assert_eq!(transfers[0].status, TransferStatus::Ok);
+        assert_eq!(transfers[0].value, dp_read_value);
+
+        assert_eq!(transfers[1].status, TransferStatus::Ok);
+        assert_eq!(transfers[1].value, ap_read_value);
+    }
+
+    #[test]
+    fn multiple_ap_read() {
+        // When reading from the AP twice, only a single additional read from the
+        // RDBUFF register is necessary.
+
+        let ap_read_values = [1, 2];
+
+        let mut transfers = vec![
+            SwdTransfer::read(PortType::AccessPort(0), 4),
+            SwdTransfer::read(PortType::AccessPort(0), 4),
+        ];
+
+        let mut mock = MockJaylink::default();
+
+        mock.add_read_response(DapAcknowledge::Ok, 0);
+        mock.add_read_response(DapAcknowledge::Ok, ap_read_values[0]);
+        mock.add_read_response(DapAcknowledge::Ok, ap_read_values[1]);
+
+        perform_transfers(&mut mock, &mut transfers).expect("Failed to perform transfer");
+
+        assert_eq!(transfers[0].status, TransferStatus::Ok);
+        assert_eq!(transfers[0].value, ap_read_values[0]);
+
+        assert_eq!(transfers[1].status, TransferStatus::Ok);
+        assert_eq!(transfers[1].value, ap_read_values[1]);
+    }
+
+    #[test]
+    fn multiple_dp_read() {
+        // When reading from the DP twice, no additional reads have to be inserted.
+
+        let dp_read_values = [1, 2];
+
+        let mut transfers = vec![
+            SwdTransfer::read(PortType::DebugPort, 4),
+            SwdTransfer::read(PortType::DebugPort, 4),
+        ];
+
+        let mut mock = MockJaylink::default();
+
+        mock.add_read_response(DapAcknowledge::Ok, dp_read_values[0]);
+        mock.add_read_response(DapAcknowledge::Ok, dp_read_values[1]);
+
+        perform_transfers(&mut mock, &mut transfers).expect("Failed to perform transfer");
+
+        assert_eq!(transfers[0].status, TransferStatus::Ok);
+        assert_eq!(transfers[0].value, dp_read_values[0]);
+
+        assert_eq!(transfers[1].status, TransferStatus::Ok);
+        assert_eq!(transfers[1].value, dp_read_values[1]);
+    }
+
+    #[test]
     fn single_dp_register_write() {
-        let mut transfers = vec![SwdTransfer {
-            port: PortType::DebugPort,
-            address: 0,
-            direction: TransferDirection::Write,
-            value: 0x1234_5678,
-            status: TransferStatus::Pending,
-        }];
+        let mut transfers = vec![SwdTransfer::write(PortType::DebugPort, 0, 0x1234_5678)];
 
-        let write_length = 2 + 8 + 1 + 3 + 32 + 2;
-
-        let mut response = BitVec::<Lsb0, usize>::repeat(false, 2 * write_length);
-
-        // Set first  and second acknowledege to Ok
-        response.set(10, true);
-        response.set(write_length + 10, true);
-
-        let mut mock = MockJaylink {
-            direction_input: None,
-            io_input: None,
-            response: response.into_iter().collect(),
-        };
+        let mut mock = MockJaylink::default();
+        mock.add_write_response(DapAcknowledge::Ok, 16);
+        mock.add_read_response(DapAcknowledge::Ok, 0);
 
         perform_transfers(&mut mock, &mut transfers).expect("Failed to perform transfer");
 
@@ -1710,32 +1863,34 @@ mod test {
 
     #[test]
     fn single_ap_register_write() {
-        let mut transfers = vec![SwdTransfer {
-            port: PortType::AccessPort(0),
-            address: 0,
-            direction: TransferDirection::Write,
-            value: 0x1234_5678,
-            status: TransferStatus::Pending,
-        }];
+        let mut transfers = vec![SwdTransfer::write(PortType::AccessPort(0), 0, 0x1234_5678)];
 
-        let write_length = 2 + 8 + 1 + 3 + 2 + 32;
-
-        let mut response = BitVec::<Lsb0, usize>::repeat(false, 2 * write_length);
-
-        // Set first  and second acknowledege to Ok
-        response.set(10, true);
-        response.set(write_length + 10, true);
-
-        let mut mock = MockJaylink {
-            direction_input: None,
-            io_input: None,
-            response: response.into_iter().collect(),
-        };
+        let mut mock = MockJaylink::default();
+        mock.add_write_response(DapAcknowledge::Ok, 16);
+        mock.add_read_response(DapAcknowledge::Ok, 0);
 
         perform_transfers(&mut mock, &mut transfers).expect("Failed to perform transfer");
 
         let transfer_result = &transfers[0];
 
         assert_eq!(transfer_result.status, TransferStatus::Ok);
+    }
+
+    #[test]
+    fn multiple_ap_register_write() {
+        let mut transfers = vec![
+            SwdTransfer::write(PortType::AccessPort(0), 0, 0x1234_5678),
+            SwdTransfer::write(PortType::AccessPort(0), 0, 0xABABABAB),
+        ];
+
+        let mut mock = MockJaylink::default();
+        mock.add_write_response(DapAcknowledge::Ok, 16);
+        mock.add_write_response(DapAcknowledge::Ok, 16);
+        mock.add_read_response(DapAcknowledge::Ok, 0);
+
+        perform_transfers(&mut mock, &mut transfers).expect("Failed to perform transfer");
+
+        assert_eq!(transfers[0].status, TransferStatus::Ok);
+        assert_eq!(transfers[1].status, TransferStatus::Ok);
     }
 }
