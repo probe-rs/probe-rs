@@ -1,6 +1,6 @@
 use probe_rs::{config::TargetSelector, MemoryInterface, Probe, WireProtocol};
 
-use std::{num::ParseIntError, time::SystemTime};
+use std::{env, num::ParseIntError, time::SystemTime};
 use std::{
     process::Command,
     time::{Duration, Instant, UNIX_EPOCH},
@@ -44,15 +44,20 @@ fn main() -> Result<(), &'static str> {
         None => WireProtocol::Swd,
     };
 
+    let protocol_name = format!("{}", protocol.clone());
+
     probe
         .select_protocol(protocol)
         .map_err(|_| "Failed to select SWD as the transport protocol")?;
 
-    if let Some(speed) = matches.speed {
-        probe
+    let protocol_speed = if let Some(speed) = matches.speed {
+        let protocol_speed = probe
             .set_speed(speed)
             .map_err(|_| "Failed to set probe speed")?;
-    }
+        protocol_speed
+    } else {
+        probe.speed_khz()
+    } as i32;
 
     let probe_name = probe.get_name();
 
@@ -140,13 +145,13 @@ fn main() -> Result<(), &'static str> {
 
         let client = reqwest::blocking::Client::new();
         client
-            .post("http://localhost:8000/add")
+            .post("http://perf.probe.rs/add")
             .json(&NewLog {
                 probe: probe_name,
                 chip: matches.chip.unwrap(),
-                os: "Linux".into(),
-                protocol: "SWD".into(),
-                protocol_speed: 1000,
+                os: env::consts::OS.to_string(),
+                protocol: protocol_name,
+                protocol_speed: protocol_speed,
                 commit_hash: commit_hash,
                 timestamp: NaiveDateTime::from_timestamp(since_the_epoch as i64, 0),
                 kind: "ram".into(),
