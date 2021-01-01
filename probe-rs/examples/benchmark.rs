@@ -145,7 +145,7 @@ fn main() -> Result<(), &'static str> {
 
         let client = reqwest::blocking::Client::new();
         client
-            .post("http://perf.probe.rs/add")
+            .post("https://perf.probe.rs/add")
             .json(&NewLog {
                 probe: probe_name,
                 chip: matches.chip.unwrap(),
