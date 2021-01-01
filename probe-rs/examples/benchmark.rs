@@ -141,7 +141,8 @@ fn main() -> Result<(), &'static str> {
                 .unwrap()
                 .stdout,
         )
-        .into_owned();
+        .into_owned()
+        .trim();
 
         let client = reqwest::blocking::Client::new();
         client
