@@ -21,6 +21,8 @@ struct CLI {
     speed: Option<u32>,
     #[structopt(long = "protocol")]
     protocol: Option<String>,
+    #[structopt(long = "pr")]
+    pr: Option<u64>,
 }
 
 fn parse_hex(src: &str) -> Result<u32, ParseIntError> {
@@ -141,12 +143,17 @@ fn main() -> Result<(), &'static str> {
                 .unwrap()
                 .stdout,
         )
-        .into_owned()
-        .trim();
+        .trim()
+        .to_string();
 
         let client = reqwest::blocking::Client::new();
+        const BASE_URL: &str = "https://perf.probe.rs/add";
         client
-            .post("https://perf.probe.rs/add")
+            .post(&if let Some(pr) = matches.pr {
+                format!("{}?pr={}", BASE_URL, pr)
+            } else {
+                BASE_URL.to_string()
+            })
             .json(&NewLog {
                 probe: probe_name,
                 chip: matches.chip.unwrap(),
