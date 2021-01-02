@@ -1,8 +1,8 @@
 use super::flash_properties::FlashProperties;
 use super::memory::{PageInfo, RamRegion, SectorInfo};
-use crate::architecture::riscv;
 use crate::core::Architecture;
 use crate::flashing::FlashError;
+use crate::{architecture::riscv, Target};
 use std::{borrow::Cow, convert::TryInto};
 
 /// A flash algorithm, which has been assembled for a specific
@@ -200,7 +200,7 @@ impl RawFlashAlgorithm {
     pub fn assemble(
         &self,
         ram_region: &RamRegion,
-        architecture: Architecture,
+        target: &Target,
     ) -> Result<FlashAlgorithm, FlashError> {
         use std::mem::size_of;
 
@@ -209,11 +209,11 @@ impl RawFlashAlgorithm {
         if !assembled_instructions.remainder().is_empty() {
             return Err(FlashError::InvalidFlashAlgorithmLength {
                 name: self.name.to_string(),
-                algorithm_source: None,
+                algorithm_source: Some(target.source().clone()),
             });
         }
 
-        let header = self.get_algorithm_header(architecture);
+        let header = self.get_algorithm_header(target.architecture());
         let instructions: Vec<u32> = header
             .iter()
             .copied()

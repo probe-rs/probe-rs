@@ -454,7 +454,7 @@ fn add_sector<'sector>(
     address: u32,
     sectors: &'sector mut Vec<FlashSector>,
 ) -> Result<&'sector mut FlashSector, FlashError> {
-    let sector_info = flash_algorithm.sector_info(address).expect(&format!("Address {0:#010x} is not a valid address in the flash area. This is a bug, please report it.", address));
+    let sector_info = flash_algorithm.sector_info(address).unwrap_or_else(|| panic!("Address {0:#010x} is not a valid address in the flash area. This is a bug, please report it.", address));
 
     let new_sector = FlashSector::new(&sector_info);
     sectors.push(new_sector);
@@ -473,7 +473,7 @@ fn add_page<'page>(
     address: u32,
     pages: &'page mut Vec<FlashPage>,
 ) -> Result<&'page mut FlashPage, FlashError> {
-    let page_info = flash_algorithm.page_info(address).expect(&format!("Address {0:#010x} is not a valid address in the flash area. This is a bug, please report it.", address));
+    let page_info = flash_algorithm.page_info(address).unwrap_or_else(|| panic!("Address {0:#010x} is not a valid address in the flash area. This is a bug, please report it.", address));
 
     let new_page = FlashPage::new(
         &page_info,

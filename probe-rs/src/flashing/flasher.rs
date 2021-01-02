@@ -651,12 +651,12 @@ impl<'probe> ActiveFlasher<'probe, Erase> {
             )?;
 
             if result != 0 {
-                Err(FlashError::EraseChipFailed { errorcode: result })
+                Err(FlashError::ChipEraseFailed { errorcode: result })
             } else {
                 Ok(())
             }
         } else {
-            Err(FlashError::RoutineNotSupported("erase_all"))
+            Err(FlashError::ChipEraseNotSupported)
         }
     }
 

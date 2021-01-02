@@ -181,7 +181,6 @@ where
                 };
 
                 if result.is_ok() {
-                    let csw = CSW::from(csw);
                     match csw.AddrInc {
                         AddressIncrement::Single => {
                             let new_address = match csw.SIZE {

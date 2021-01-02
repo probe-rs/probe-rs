@@ -190,9 +190,11 @@ impl<'mmap, 'data> FlashLoader<'data> {
                     MemoryRegion::Ram(ram) => Some(ram),
                     _ => None,
                 })
-                .ok_or(FlashError::NoRamDefined)?;
+                .ok_or(FlashError::NoRamDefined {
+                    chip: session.target().name.clone(),
+                })?;
 
-            let flash_algorithm = raw_flash_algorithm.assemble(ram, session.architecture())?;
+            let flash_algorithm = raw_flash_algorithm.assemble(ram, session.target())?;
 
             if dry_run {
                 println!("Skipping programming, dry run!");

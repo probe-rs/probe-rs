@@ -26,28 +26,11 @@ pub enum FlashError {
         description_source: TargetDescriptionSource,
     },
 
-    // 1 Add information about flash (name, address)
-    // 2 Add source of target definition (built-in, yaml)
-    #[error("Trying to write flash, but no suitable flash loader algorithm is linked to the given target information.")]
-    NoFlashLoaderAlgorithmAttached,
-
-    // 1 Add name of chip
-    // 2 Add source of target definition
-    #[error("No RAM defined for chip.")]
-    NoRamDefined,
-
-    // Flash algorithm in YAML is broken
-    #[error("Flash algorithm length is not 32 bit aligned.")]
-    InvalidFlashAlgorithmLength {
-        name: String,
-        algorithm_source: Option<TargetDescriptionSource>,
-    },
-
     // Add address of sector to error
     #[error(
         "Failed to erase the whole chip. The flash algorithm returned error code {errorcode}."
     )]
-    EraseChipFailed { errorcode: u32 },
+    ChipEraseFailed { errorcode: u32 },
 
     // Add address of sector to error
     #[error("Failed to erase flash sector at address {address:#010x}. Perhaps your chip has write protected sectors that need to be cleared? Perhaps you need the --nmagic linker arg https://github.com/rust-embedded/cortex-m-quickstart/pull/95")]
@@ -58,8 +41,8 @@ pub enum FlashError {
     )]
     PageWrite { page_address: u32, error_code: u32 },
 
-    #[error("The '{0}' routine is not supported with the given flash algorithm.")]
-    RoutineNotSupported(&'static str), // TODO: Rename to erase_all not supported
+    #[error("The chip erase routine is not supported with the given flash algorithm.")]
+    ChipEraseNotSupported,
 
     // Mostly internal error, should probably be a bug report
     #[error("The execution of '{name}' failed with code {errorcode}")]
@@ -78,4 +61,20 @@ pub enum FlashError {
         "The RAM contents did not match the expected contents after loading the flash algorithm."
     )]
     FlashAlgorithmNotLoaded,
+
+    // 1 Add information about flash (name, address)
+    // 2 Add source of target definition (built-in, yaml)
+    #[error("Trying to write flash, but no suitable flash loader algorithm is linked to the given target information.")]
+    NoFlashLoaderAlgorithmAttached,
+
+    // 1 Add source of target definition
+    #[error("No RAM defined for chip.")]
+    NoRamDefined { chip: String },
+
+    // Flash algorithm in YAML is broken
+    #[error("Flash algorithm length is not 32 bit aligned.")]
+    InvalidFlashAlgorithmLength {
+        name: String,
+        algorithm_source: Option<TargetDescriptionSource>,
+    },
 }
