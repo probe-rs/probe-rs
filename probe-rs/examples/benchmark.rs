@@ -15,8 +15,6 @@ struct CLI {
     chip: Option<String>,
     #[structopt(long = "address", parse(try_from_str = parse_hex))]
     address: u32,
-    #[structopt(long = "size")]
-    size: usize,
     #[structopt(long = "speed")]
     speed: Option<u32>,
     #[structopt(long = "protocol")]
@@ -28,6 +26,8 @@ struct CLI {
 fn parse_hex(src: &str) -> Result<u32, ParseIntError> {
     u32::from_str_radix(src.trim_start_matches("0x"), 16)
 }
+
+const SIZE: usize = 0x2000;
 
 fn main() -> Result<(), &'static str> {
     pretty_env_logger::init();
@@ -58,8 +58,15 @@ fn main() -> Result<(), &'static str> {
             .map_err(|_| "Failed to set probe speed")?;
         protocol_speed
     } else {
-        probe.speed_khz()
+        let protocol_speed = probe
+            .set_speed(10000)
+            .map_err(|_| "Failed to set probe speed")?;
+        protocol_speed
     } as i32;
+
+    if ![100, 1000, 10000, 50000].contains(&protocol_speed) {
+        return Err("Speed must be in [100, 1000, 10000, 50000] KHz");
+    }
 
     let probe_name = probe.get_name();
 
@@ -68,7 +75,7 @@ fn main() -> Result<(), &'static str> {
         .map_err(|_| "Failed to attach probe to target")?;
     let mut core = session.core(0).map_err(|_| "Failed to attach to core")?;
 
-    let data_size_words = matches.size;
+    let data_size_words = SIZE;
 
     let data_size_bytes = data_size_words * 4;
 
