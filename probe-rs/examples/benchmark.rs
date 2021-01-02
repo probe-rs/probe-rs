@@ -27,7 +27,7 @@ fn parse_hex(src: &str) -> Result<u32, ParseIntError> {
     u32::from_str_radix(src.trim_start_matches("0x"), 16)
 }
 
-const SIZE: usize = 0x2000;
+const SIZE: usize = 0x1000;
 
 fn main() -> Result<(), &'static str> {
     pretty_env_logger::init();
