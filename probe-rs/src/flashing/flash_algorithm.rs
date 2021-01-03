@@ -1,5 +1,8 @@
+use probe_rs_target::{
+    FlashProperties, PageInfo, RamRegion, RawFlashAlgorithm, SectorDescription, SectorInfo,
+};
+
 use super::FlashError;
-use crate::config::{FlashProperties, PageInfo, RamRegion, RawFlashAlgorithm, SectorInfo};
 use crate::core::Architecture;
 use crate::{architecture::riscv, Target};
 use std::convert::TryInto;
@@ -262,8 +265,6 @@ impl FlashAlgorithm {
 
 #[test]
 fn flash_sector_single_size() {
-    use crate::config::SectorDescription;
-
     let config = FlashAlgorithm {
         flash_properties: FlashProperties {
             sectors: vec![SectorDescription {
@@ -293,8 +294,6 @@ fn flash_sector_single_size() {
 
 #[test]
 fn flash_sector_single_size_weird_sector_size() {
-    use crate::config::SectorDescription;
-
     let config = FlashAlgorithm {
         flash_properties: FlashProperties {
             sectors: vec![SectorDescription {
@@ -324,8 +323,6 @@ fn flash_sector_single_size_weird_sector_size() {
 
 #[test]
 fn flash_sector_multiple_sizes() {
-    use crate::config::SectorDescription;
-
     let config = FlashAlgorithm {
         flash_properties: FlashProperties {
             sectors: vec![
@@ -371,8 +368,6 @@ fn flash_sector_multiple_sizes() {
 
 #[test]
 fn flash_sector_multiple_sizes_iter() {
-    use crate::config::SectorDescription;
-
     let config = FlashAlgorithm {
         flash_properties: FlashProperties {
             sectors: vec![

@@ -1,5 +1,5 @@
 use ihex::Record;
-use probe_rs_target::RawFlashAlgorithm;
+use probe_rs_target::{MemoryRegion, RawFlashAlgorithm};
 use std::collections::HashMap;
 use std::io::{Read, Seek, SeekFrom};
 use std::ops::Range;
@@ -12,7 +12,7 @@ use super::{
 use crate::memory::MemoryInterface;
 use crate::session::Session;
 use crate::{
-    config::{MemoryRange, MemoryRegion, NvmRegion, TargetDescriptionSource},
+    config::{MemoryRange, NvmRegion, TargetDescriptionSource},
     Target,
 };
 

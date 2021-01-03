@@ -1223,6 +1223,21 @@ impl<'probe> ArmProbeInterface for StlinkArmDebug {
     fn close(self: Box<Self>) -> Probe {
         Probe::from_attached_probe(self.probe)
     }
+
+    fn swj_sequence(&mut self, _bit_len: usize, _bits: u64) -> Result<(), ProbeRsError> {
+        // This is not supported for ST-Links, unfortunately.
+        Err(DebugProbeError::CommandNotSupportedByProbe.into())
+    }
+
+    fn swj_pins(
+        &mut self,
+        _pin_out: u32,
+        _pin_select: u32,
+        _pin_wait: u32,
+    ) -> Result<u32, ProbeRsError> {
+        // This is not supported for ST-Links, unfortunately.
+        Err(DebugProbeError::CommandNotSupportedByProbe.into())
+    }
 }
 
 impl SwoAccess for StlinkArmDebug {

@@ -65,6 +65,16 @@ pub trait ArmProbeInterface: DapAccess + SwoAccess + Debug + Send {
     ///
     /// See also [`Probe::target_reset_deassert`].
     fn target_reset_deassert(&mut self) -> Result<(), ProbeRsError>;
+    /// Corresponds to the DAP_SWJ_Sequence function from the ARM Debug sequences
+    fn swj_sequence(&mut self, bit_len: usize, bits: u64) -> Result<(), ProbeRsError>;
+
+    /// Corresponds to the DAP_SWJ_Pins function from the ARM Debug sequences
+    fn swj_pins(
+        &mut self,
+        pin_out: u32,
+        pin_select: u32,
+        pin_wait: u32,
+    ) -> Result<u32, ProbeRsError>;
 
     fn close(self: Box<Self>) -> Probe;
 }
@@ -226,6 +236,19 @@ impl ArmProbeInterface for ArmCommunicationInterface {
         self.probe.target_reset_deassert()?;
 
         Ok(())
+    }
+
+    fn swj_sequence(&mut self, bit_len: usize, bits: u64) -> Result<(), ProbeRsError> {
+        todo!()
+    }
+
+    fn swj_pins(
+        &mut self,
+        pin_out: u32,
+        pin_select: u32,
+        pin_wait: u32,
+    ) -> Result<u32, ProbeRsError> {
+        todo!()
     }
 
     fn close(self: Box<Self>) -> Probe {
@@ -601,69 +624,6 @@ impl std::fmt::Display for ArmChipInfo {
     }
 }
 
-/*
-fn debug_port_start(interface: &mut ArmCommunicationInterface) -> Result<(), DebugProbeError> {
-    interface.write_dp_register(Select(0))?;
-
-    //let powered_down = interface.read_dp_register::<Select>::()
-
-    let ctrl = interface.read_dp_register::<Ctrl>()?;
-
-    let powered_down = !(ctrl.csyspwrupack() && ctrl.cdbgpwrupack());
-
-    if powered_down {
-        let mut ctrl = Ctrl(0);
-        ctrl.set_cdbgpwrupreq(true);
-        ctrl.set_csyspwrupreq(true);
-
-        interface.write_dp_register(ctrl)?;
-
-        let start = Instant::now();
-
-        let mut timeout = true;
-
-        while start.elapsed() < Duration::from_micros(100_0000) {
-            let ctrl = interface.read_dp_register::<Ctrl>()?;
-
-            if ctrl.csyspwrupack() && ctrl.cdbgpwrupack() {
-                timeout = false;
-                break;
-            }
-        }
-
-        if timeout {
-            return Err(DebugProbeError::Timeout);
-        }
-
-        // TODO: Handle JTAG Specific part
-
-        // TODO: Only run the following code when the SWD protocol is used
-
-        // Init AP Transfer Mode, Transaction Counter, and Lane Mask (Normal Transfer Mode, Include all Byte Lanes)
-        let mut ctrl = Ctrl(0);
-
-        ctrl.set_cdbgpwrupreq(true);
-        ctrl.set_csyspwrupreq(true);
-
-        ctrl.set_mask_lane(0b1111);
-
-        interface.write_dp_register(ctrl)?;
-
-        let mut abort = Abort(0);
-
-        abort.set_orunerrclr(true);
-        abort.set_wderrclr(true);
-        abort.set_stkerrclr(true);
-        abort.set_stkcmpclr(true);
-
-        interface.write_dp_register(abort)?;
-    }
-
-    Ok(())
-}
-
-*/
-
 fn debug_port_start(interface: &mut ArmCommunicationInterface) -> Result<(), DebugProbeError> {
     log::info!("debug_port_start");
 
@@ -778,7 +738,7 @@ fn read_ap(
 
     let result = interface
         .probe
-        .read_register(PortType::AccessPort(port as u16), ap_address)?;
+        .raw_read_register(PortType::AccessPort, ap_address)?;
 
     log::debug!("AP Read: {:#010x}", result);
 
@@ -800,7 +760,7 @@ fn write_ap(
 
     interface
         .probe
-        .write_register(PortType::AccessPort(port as u16), ap_address, value)?;
+        .raw_write_register(PortType::AccessPort, ap_address, value)?;
 
     Ok(())
 }

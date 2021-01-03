@@ -808,7 +808,9 @@ impl ArmProbeInterface for FakeArmInterface {
 
         let memory = ADIMemoryInterface::new(&mut self.memory_ap, &ap_information)?;
 
-        Ok(Memory::new(memory, access_port))
+        todo!("Fix this");
+
+        //Ok(Memory::new(memory, access_port))
     }
 
     fn ap_information(
@@ -833,6 +835,14 @@ impl ArmProbeInterface for FakeArmInterface {
     }
 
     fn target_reset_deassert(&mut self) -> Result<(), Error> {
+        todo!()
+    }
+
+    fn swj_sequence(&mut self, bit_len: usize, bits: u64) -> Result<(), Error> {
+        todo!()
+    }
+
+    fn swj_pins(&mut self, pin_out: u32, pin_select: u32, pin_wait: u32) -> Result<u32, Error> {
         todo!()
     }
 }

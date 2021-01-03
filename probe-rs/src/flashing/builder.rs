@@ -2,8 +2,10 @@ use std::collections::BTreeMap;
 use std::fmt::{Debug, Formatter};
 use std::ops::Range;
 
+use probe_rs_target::PageInfo;
+
 use super::{FlashAlgorithm, FlashError, FlashVisualizer};
-use crate::config::{MemoryRange, NvmRegion, PageInfo};
+use crate::config::{MemoryRange, NvmRegion};
 
 /// The description of a page in flash.
 #[derive(Clone, PartialEq, Eq)]
@@ -365,8 +367,9 @@ impl FlashBuilder {
 
 #[cfg(test)]
 mod tests {
+    use probe_rs_target::{FlashProperties, SectorDescription};
+
     use super::*;
-    use crate::config::{FlashProperties, SectorDescription};
 
     fn assemble_demo_flash1() -> (NvmRegion, FlashAlgorithm) {
         let sd = SectorDescription {

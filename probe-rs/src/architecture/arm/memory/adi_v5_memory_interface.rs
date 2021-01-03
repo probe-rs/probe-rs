@@ -1,6 +1,7 @@
 use super::super::ap::{
     AccessPortError, AddressIncrement, ApAccess, ApRegister, DataSize, MemoryAp, CSW, DRW, TAR,
 };
+use crate::architecture::arm::ArmCommunicationInterface;
 use crate::architecture::arm::{dp::DpAccess, MemoryApInformation};
 use crate::{CommunicationInterface, CoreRegister, CoreRegisterAddress, DebugProbeError, Error};
 use scroll::{Pread, Pwrite, LE};
@@ -589,11 +590,9 @@ where
 /*
 impl<AP> ArmProbe for ADIMemoryInterface<'_, AP>
 where
-<<<<<<< HEAD
     AP: CommunicationInterface + ApAccess + DpAccess,
 {
     fn read_core_reg(&mut self, ap: MemoryAp, addr: CoreRegisterAddress) -> Result<u32, Error> {
-=======
     AP: CommunicationInterface
         + APAccess<MemoryAP, CSW>
         + APAccess<MemoryAP, TAR>
@@ -602,8 +601,7 @@ where
         */
 
 impl ArmProbe for ADIMemoryInterface<'_, ArmCommunicationInterface> {
-    fn read_core_reg(&mut self, ap: MemoryAP, addr: CoreRegisterAddress) -> Result<u32, Error> {
->>>>>>> 6c9178f (Working flash for LPC55S69)
+    fn read_core_reg(&mut self, ap: MemoryAp, addr: CoreRegisterAddress) -> Result<u32, Error> {
         // Write the DCRSR value to select the register we want to read.
         let mut dcrsr_val = Dcrsr(0);
         dcrsr_val.set_regwnr(false); // Perform a read.
