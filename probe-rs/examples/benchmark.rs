@@ -73,6 +73,9 @@ fn main() -> Result<(), &'static str> {
     let mut session = probe
         .attach(target_selector)
         .map_err(|_| "Failed to attach probe to target")?;
+
+    let chip_name = session.target().name.clone();
+
     let mut core = session.core(0).map_err(|_| "Failed to attach to core")?;
 
     let data_size_words = SIZE;
@@ -153,6 +156,18 @@ fn main() -> Result<(), &'static str> {
         .trim()
         .to_string();
 
+        let commit_name = if Command::new("git")
+            .args(&["diff-index", "--quiet", "HEAD", "--"])
+            .output()
+            .unwrap()
+            .status
+            .success()
+        {
+            commit_hash
+        } else {
+            commit_hash + "-changed"
+        };
+
         let client = reqwest::blocking::Client::new();
         const BASE_URL: &str = "https://perf.probe.rs/add";
         client
@@ -163,11 +178,11 @@ fn main() -> Result<(), &'static str> {
             })
             .json(&NewLog {
                 probe: probe_name,
-                chip: matches.chip.unwrap(),
+                chip: chip_name,
                 os: env::consts::OS.to_string(),
                 protocol: protocol_name,
                 protocol_speed: protocol_speed,
-                commit_hash: commit_hash,
+                commit_hash: commit_name,
                 timestamp: NaiveDateTime::from_timestamp(since_the_epoch as i64, 0),
                 kind: "ram".into(),
                 read_speed: read_throughput as i32,
