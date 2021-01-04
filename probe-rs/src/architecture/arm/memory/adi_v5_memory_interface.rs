@@ -46,6 +46,13 @@ where
     // If it doesn't support it, bit 30 in the CSW register has
     // to be set to 1 at all times.
     supports_hnonsec: bool,
+
+    // Cached value of the CSW register, to avoid unecessary writes.
+    //
+    // TODO: This is the wrong location for this, it should actually be
+    // cached on a lower level, where the other Memory AP information is
+    // stored.
+    cached_csw_value: Option<CSW>,
 }
 
 impl<'interface> ADIMemoryInterface<'interface, ArmCommunicationInterface> {
@@ -58,6 +65,7 @@ impl<'interface> ADIMemoryInterface<'interface, ArmCommunicationInterface> {
             interface,
             only_32bit_data_size: ap_information.only_32bit_data_size,
             supports_hnonsec: ap_information.supports_hnonsec,
+            cached_csw_value: None,
         })
     }
 }
@@ -73,7 +81,7 @@ where
     /// Build the correct CSW register for a memory access
     ///
     /// Currently, only AMBA AHB Access is supported.
-    pub fn build_csw_register(&self, data_size: DataSize) -> CSW {
+    fn build_csw_register(&self, data_size: DataSize) -> CSW {
         // The CSW Register is set for an AMBA AHB Acccess, according to
         // the ARM Debug Interface Architecture Specification.
         //
@@ -98,6 +106,24 @@ where
             AddrInc: AddressIncrement::Single,
             SIZE: data_size,
             ..Default::default()
+        }
+    }
+
+    fn write_csw_register(
+        &mut self,
+        access_port: MemoryAP,
+        value: CSW,
+    ) -> Result<(), AccessPortError> {
+        // Check if the write is necessary
+        match self.cached_csw_value {
+            Some(cached_value) if cached_value == value => Ok(()),
+            _ => {
+                self.write_ap_register(access_port, value)?;
+
+                self.cached_csw_value = Some(value);
+
+                Ok(())
+            }
         }
     }
 
@@ -200,7 +226,8 @@ where
         let csw = self.build_csw_register(DataSize::U32);
 
         let tar = TAR { address };
-        self.write_ap_register(access_port, csw)?;
+
+        self.write_csw_register(access_port, csw)?;
         self.write_ap_register(access_port, tar)?;
         let result = self.read_ap_register(access_port, DRW::default())?;
 
@@ -224,7 +251,7 @@ where
         } else {
             let csw = self.build_csw_register(DataSize::U8);
             let tar = TAR { address };
-            self.write_ap_register(access_port, csw)?;
+            self.write_csw_register(access_port, csw)?;
             self.write_ap_register(access_port, tar)?;
             let result = self.read_ap_register(access_port, DRW::default())?;
 
@@ -257,7 +284,7 @@ where
 
         // Second we read in 32 bit reads until we have less than 32 bits left to read.
         let csw = self.build_csw_register(DataSize::U32);
-        self.write_ap_register(access_port, csw)?;
+        self.write_csw_register(access_port, csw)?;
 
         let mut address = start_address;
         let tar = TAR { address };
@@ -374,12 +401,10 @@ where
         let csw = self.build_csw_register(DataSize::U32);
         let drw = DRW { data };
         let tar = TAR { address };
-        self.write_ap_register(access_port, csw)?;
+        self.write_csw_register(access_port, csw)?;
+
         self.write_ap_register(access_port, tar)?;
         self.write_ap_register(access_port, drw)?;
-
-        // Ensure the write is actually performed.
-        let _ = self.write_ap_register(access_port, csw);
 
         Ok(())
     }
@@ -409,7 +434,8 @@ where
                 data: u32::from(data) << bit_offset,
             };
             let tar = TAR { address };
-            self.write_ap_register(access_port, csw)?;
+            self.write_csw_register(access_port, csw)?;
+
             self.write_ap_register(access_port, tar)?;
             self.write_ap_register(access_port, drw)?;
         }
@@ -445,7 +471,7 @@ where
         // Second we write in 32 bit reads until we have less than 32 bits left to write.
         let csw = self.build_csw_register(DataSize::U32);
 
-        self.write_ap_register(access_port, csw)?;
+        self.write_csw_register(access_port, csw)?;
 
         let mut address = start_address;
         let tar = TAR { address };
@@ -510,9 +536,6 @@ where
             address += (4 * next_chunk_size_words) as u32;
             data_offset += next_chunk_size_words;
         }
-
-        // Ensure the last write is actually performed
-        self.write_ap_register(access_port, csw)?;
 
         log::debug!("Finished writing block");
 
@@ -782,6 +805,7 @@ mod tests {
                 interface: mock,
                 only_32bit_data_size: false,
                 supports_hnonsec: false,
+                cached_csw_value: None,
             }
         }
 
