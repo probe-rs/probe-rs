@@ -213,38 +213,57 @@ impl Session {
         Ok(interface)
     }
 
-    fn get_arm_component(&mut self) -> Result<Component, Error> {
+    pub fn get_arm_components(&mut self) -> Result<Vec<Component>, Error> {
         let interface = self.get_arm_interface()?;
 
-        let ap_index = 0;
+        let mut components = Vec::new();
 
-        let ap_information = interface
-            .ap_information(ap_index.into())
-            .ok_or_else(|| anyhow!("AP {} does not exist on chip.", ap_index))?;
+        for ap_index in 0..(interface.num_access_ports() as u8) {
+            let ap_information = interface
+                .ap_information(ap_index.into())
+                .ok_or_else(|| anyhow!("AP {} does not exist on chip.", ap_index))?;
 
-        match ap_information {
-            MemoryAp(MemoryApInformation {
-                port_number,
-                only_32bit_data_size: _,
-                debug_base_address,
-                supports_hnonsec: _,
-            }) => {
-                let access_port_number = *port_number;
-                let base_address = *debug_base_address;
+            let component = match ap_information {
+                MemoryAp(MemoryApInformation {
+                    port_number: _,
+                    only_32bit_data_size: _,
+                    debug_base_address: 0,
+                    supports_hnonsec: _,
+                }) => Err(Error::Other(anyhow!("AP has a base address of 0"))),
+                MemoryAp(MemoryApInformation {
+                    port_number,
+                    only_32bit_data_size: _,
+                    debug_base_address,
+                    supports_hnonsec: _,
+                }) => {
+                    let access_port_number = *port_number;
+                    let base_address = *debug_base_address;
 
-                let mut memory = interface.memory_interface(access_port_number.into())?;
+                    let mut memory = interface.memory_interface(access_port_number.into())?;
 
-                Component::try_parse(&mut memory, base_address)
-                    .map_err(Error::architecture_specific)
-            }
-            Other { port_number } => {
-                // Return an error, only possible to get Component from MemoryAP
-                Err(Error::Other(anyhow!(
-                    "AP {} is not a MemoryAP, unable to get ARM component.",
-                    port_number
-                )))
+                    Component::try_parse(&mut memory, base_address)
+                        .map_err(Error::architecture_specific)
+                }
+                Other { port_number } => {
+                    // Return an error, only possible to get Component from MemoryAP
+                    Err(Error::Other(anyhow!(
+                        "AP {} is not a MemoryAP, unable to get ARM component.",
+                        port_number
+                    )))
+                }
+            };
+
+            match component {
+                Ok(component) => {
+                    components.push(component);
+                }
+                Err(e) => {
+                    log::info!("Not counting AP {} because of: {}", ap_index, e);
+                }
             }
         }
+
+        Ok(components)
     }
 
     /// Configure the target and probe for serial wire view (SWV) tracing.
@@ -262,9 +281,9 @@ impl Session {
         }
 
         // Configure SWV on the target
-        let component = self.get_arm_component()?;
+        let components = self.get_arm_components()?;
         let mut core = self.core(0)?;
-        crate::architecture::arm::component::setup_swv(&mut core, &component, config)
+        crate::architecture::arm::component::setup_swv(&mut core, &components, config)
     }
 
     /// Configure the target to stop emitting SWV trace data.
@@ -274,18 +293,21 @@ impl Session {
 
     /// Begin tracing a memory address over SWV.
     pub fn add_swv_data_trace(&mut self, unit: usize, address: u32) -> Result<(), Error> {
-        let component = self.get_arm_component()?;
+        let components = self.get_arm_components()?;
         let mut core = self.core(0)?;
         crate::architecture::arm::component::add_swv_data_trace(
-            &mut core, &component, unit, address,
+            &mut core,
+            &components,
+            unit,
+            address,
         )
     }
 
     /// Stop tracing from a given SWV unit
     pub fn remove_swv_data_trace(&mut self, unit: usize) -> Result<(), Error> {
-        let component = self.get_arm_component()?;
+        let components = self.get_arm_components()?;
         let mut core = self.core(0)?;
-        crate::architecture::arm::component::remove_swv_data_trace(&mut core, &component, unit)
+        crate::architecture::arm::component::remove_swv_data_trace(&mut core, &components, unit)
     }
 
     /// Returns the memory map of the target.
