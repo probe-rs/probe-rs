@@ -9,7 +9,7 @@ use std::iter;
 use crate::{
     architecture::{
         arm::{
-            communication_interface::{ArmProbeInterface, SwdProbe},
+            communication_interface::{ArmProbeInterface, DAPProbe},
             swo::SwoConfig,
             ArmCommunicationInterface, SwoAccess,
         },
@@ -685,7 +685,7 @@ impl<'a> AsMut<dyn DebugProbe + 'a> for JLink {
     }
 }
 
-impl SwdProbe for JLink {}
+impl DAPProbe for JLink {}
 
 impl SwoAccess for JLink {
     fn enable_swo(&mut self, config: &SwoConfig) -> Result<(), ProbeRsError> {

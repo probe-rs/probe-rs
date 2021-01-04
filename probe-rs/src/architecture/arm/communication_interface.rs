@@ -203,11 +203,15 @@ pub struct MemoryApInformation {
 
 #[derive(Debug)]
 pub struct ArmCommunicationInterface {
-    probe: Box<dyn SwdProbe>,
+    probe: Box<dyn DAPProbe>,
     state: ArmCommunicationInterfaceState,
 }
 
-pub trait SwdProbe: DAPAccess + DebugProbe + AsRef<dyn DebugProbe> + AsMut<dyn DebugProbe> {}
+/// Helper trait for probes which offer access to ARM DAP (Debug Access Port).
+///
+/// This is used to combine the traits, because it cannot be done in the ArmCommunicationInterface
+/// struct itself.
+pub trait DAPProbe: DAPAccess + DebugProbe + AsRef<dyn DebugProbe> + AsMut<dyn DebugProbe> {}
 
 impl ArmProbeInterface for ArmCommunicationInterface {
     fn memory_interface(&mut self, access_port: MemoryAP) -> Result<Memory<'_>, ProbeRsError> {
@@ -245,7 +249,7 @@ impl<'a> AsMut<dyn DebugProbe + 'a> for ArmCommunicationInterface {
 
 impl<'interface> ArmCommunicationInterface {
     pub(crate) fn new(
-        probe: Box<dyn SwdProbe>,
+        probe: Box<dyn DAPProbe>,
         use_overrun_detect: bool,
     ) -> Result<Self, DebugProbeError> {
         let state = ArmCommunicationInterfaceState::new();

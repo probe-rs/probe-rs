@@ -125,7 +125,7 @@ fn perform_transfers<P: RawSwdIo>(
         num_transfers - transfers.len()
     );
 
-    let mut result = probe.swd_io(
+    let result = probe.swd_io(
         io_sequence.direction_bits().to_owned(),
         io_sequence.io_bits().to_owned(),
     )?;
@@ -137,7 +137,7 @@ fn perform_transfers<P: RawSwdIo>(
     let mut read_index = 0;
 
     for response_direction in expected_responses {
-        let response = parse_swd_response(&mut result[read_index..], response_direction);
+        let response = parse_swd_response(&result[read_index..], response_direction);
 
         log::debug!("Transfer result: {:x?}", response);
 
@@ -454,12 +454,12 @@ fn parse_swd_response(response: &[bool], direction: TransferDirection) -> Result
             "Unexpected response from target, does not conform to SWD specfication (ack={:?})",
             ack
         );
-        return Err(DapError::SwdProtocol);
+        Err(DapError::SwdProtocol)
     }
 }
 
 pub trait RawSwdIo {
-    fn swd_io<'a, D, S>(&mut self, dir: D, swdio: S) -> Result<Vec<bool>, DebugProbeError>
+    fn swd_io<D, S>(&mut self, dir: D, swdio: S) -> Result<Vec<bool>, DebugProbeError>
     where
         D: IntoIterator<Item = bool>,
         S: IntoIterator<Item = bool>;
@@ -477,7 +477,7 @@ pub trait RawSwdIo {
 }
 
 impl RawSwdIo for JLink {
-    fn swd_io<'a, D, S>(&'a mut self, dir: D, swdio: S) -> Result<Vec<bool>, DebugProbeError>
+    fn swd_io<D, S>(&mut self, dir: D, swdio: S) -> Result<Vec<bool>, DebugProbeError>
     where
         D: IntoIterator<Item = bool>,
         S: IntoIterator<Item = bool>,
@@ -505,16 +505,13 @@ impl RawSwdIo for JLink {
         let mut result = Ok(());
 
         for _ in 0..2 {
-            let mut result_sequence = self.swd_io(
+            let result_sequence = self.swd_io(
                 io_sequence.direction_bits().to_owned(),
                 io_sequence.io_bits().to_owned(),
             )?;
 
             // Parse the response after the reset bits.
-            match parse_swd_response(
-                &mut result_sequence[NUM_RESET_BITS..],
-                TransferDirection::Read,
-            ) {
+            match parse_swd_response(&result_sequence[NUM_RESET_BITS..], TransferDirection::Read) {
                 Ok(_) => {
                     // Line reset was succesful
                     return Ok(());
