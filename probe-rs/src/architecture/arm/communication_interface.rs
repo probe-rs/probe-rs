@@ -66,7 +66,7 @@ pub trait ArmProbeInterface: DapAccess + SwoAccess + Debug + Send {
     /// See also [`Probe::target_reset_deassert`].
     fn target_reset_deassert(&mut self) -> Result<(), ProbeRsError>;
     /// Corresponds to the DAP_SWJ_Sequence function from the ARM Debug sequences
-    fn swj_sequence(&mut self, bit_len: usize, bits: u64) -> Result<(), ProbeRsError>;
+    fn swj_sequence(&mut self, bit_len: u8, bits: u64) -> Result<(), ProbeRsError>;
 
     /// Corresponds to the DAP_SWJ_Pins function from the ARM Debug sequences
     fn swj_pins(
@@ -238,8 +238,10 @@ impl ArmProbeInterface for ArmCommunicationInterface {
         Ok(())
     }
 
-    fn swj_sequence(&mut self, bit_len: usize, bits: u64) -> Result<(), ProbeRsError> {
-        todo!()
+    fn swj_sequence(&mut self, bit_len: u8, bits: u64) -> Result<(), ProbeRsError> {
+        self.probe.swj_sequence(bit_len, bits)?;
+
+        Ok(())
     }
 
     fn swj_pins(
@@ -248,11 +250,13 @@ impl ArmProbeInterface for ArmCommunicationInterface {
         pin_select: u32,
         pin_wait: u32,
     ) -> Result<u32, ProbeRsError> {
-        todo!()
+        let value = self.probe.swj_pins(pin_out, pin_select, pin_wait)?;
+
+        Ok(value)
     }
 
     fn close(self: Box<Self>) -> Probe {
-        Probe::from_attached_probe(self.probe.into_probe())
+        Probe::from_attached_probe(RawDapAccess::into_probe(self.probe))
     }
 }
 

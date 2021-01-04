@@ -10,7 +10,7 @@ use crate::{
         communication_interface::{ArmCommunicationInterfaceState, ArmProbeInterface},
         dp::DebugPortVersion,
         memory::{adi_v5_memory_interface::ArmProbe, Component},
-        ApInformation, ArmChipInfo, DapAccess, SwoAccess, SwoConfig, SwoMode,
+        ApInformation, ArmChipInfo, DapAccess, RawDapAccess, SwoAccess, SwoConfig, SwoMode,
     },
     DebugProbeSelector, Error as ProbeRsError, Memory, Probe,
 };
@@ -268,7 +268,7 @@ impl DebugProbe for StLink<StLinkUsbDevice> {
     ) -> Result<Box<dyn ArmProbeInterface + 'probe>, (Box<dyn DebugProbe>, DebugProbeError)> {
         match StlinkArmDebug::new(self) {
             Ok(interface) => Ok(Box::new(interface)),
-            Err((probe, err)) => Err((probe.into_probe(), err)),
+            Err((probe, err)) => Err((DebugProbe::into_probe(probe), err)),
         }
     }
 
@@ -287,6 +287,12 @@ impl DebugProbe for StLink<StLinkUsbDevice> {
                     Err(StlinkError::VoltageDivisionByZero.into())
                 }
             })
+    }
+}
+
+impl<'a> AsRef<dyn DebugProbe + 'a> for StLink<StLinkUsbDevice> {
+    fn as_ref(&self) -> &(dyn DebugProbe + 'a) {
+        self
     }
 }
 
@@ -1224,7 +1230,7 @@ impl<'probe> ArmProbeInterface for StlinkArmDebug {
         Probe::from_attached_probe(self.probe)
     }
 
-    fn swj_sequence(&mut self, _bit_len: usize, _bits: u64) -> Result<(), ProbeRsError> {
+    fn swj_sequence(&mut self, _bit_len: u8, _bits: u64) -> Result<(), ProbeRsError> {
         // This is not supported for ST-Links, unfortunately.
         Err(DebugProbeError::CommandNotSupportedByProbe.into())
     }

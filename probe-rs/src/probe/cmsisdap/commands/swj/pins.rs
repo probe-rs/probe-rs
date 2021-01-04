@@ -9,6 +9,16 @@ pub struct SWJPinsRequest {
     pub(crate) wait: u32,
 }
 
+impl SWJPinsRequest {
+    pub fn from_raw_values(pin_out: u8, pin_select: u8, pin_wait: u32) -> Self {
+        Self {
+            output: Pins(pin_out),
+            select: Pins(pin_select),
+            wait: pin_wait,
+        }
+    }
+}
+
 #[derive(Debug, Default)]
 pub struct SWJPinsRequestBuilder {
     nreset: Option<bool>,

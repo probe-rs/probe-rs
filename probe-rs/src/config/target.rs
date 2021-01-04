@@ -179,7 +179,7 @@ pub trait ArmDebugSequence: Send + Sync {
 
     fn debug_core_start(&self, interface: &mut Memory) -> Result<(), Error>;
 
-    fn recover_support_start(&self, interface: &mut Memory) -> Result<(), Error> {
+    fn recover_support_start(&self, _interface: &mut Memory) -> Result<(), Error> {
         // Empty by default
         Ok(())
     }

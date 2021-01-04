@@ -6,10 +6,6 @@ use super::{
 use crate::config::NvmRegion;
 use crate::memory::MemoryInterface;
 use crate::{
-    architecture::arm::m33::{Demcr, Dhcsr},
-    CoreRegister,
-};
-use crate::{
     core::{Architecture, RegisterFile},
     session::Session,
     Core, CoreRegisterAddress,

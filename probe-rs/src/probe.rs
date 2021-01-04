@@ -28,8 +28,9 @@ use crate::{
     },
     Memory,
 };
-use jlink::list_jlink_devices;
 use std::{convert::TryFrom, fmt};
+
+use self::jlink::list_jlink_devices;
 
 /// Used to log warnings when the measured target voltage is
 /// lower than 1.4V, if at all measureable.
@@ -781,6 +782,23 @@ impl RawDapAccess for FakeProbe {
     ) -> Result<(), DebugProbeError> {
         Err(DebugProbeError::CommandNotSupportedByProbe)
     }
+
+    fn swj_sequence(&mut self, bit_len: u8, bits: u64) -> Result<(), DebugProbeError> {
+        todo!()
+    }
+
+    fn swj_pins(
+        &mut self,
+        pin_out: u32,
+        pin_select: u32,
+        pin_wait: u32,
+    ) -> Result<u32, DebugProbeError> {
+        todo!()
+    }
+
+    fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
+        todo!()
+    }
 }
 
 #[derive(Debug)]
@@ -794,6 +812,19 @@ impl FakeArmInterface {
     fn new(probe: Box<FakeProbe>) -> Self {
         let memory_ap = MockMemoryAp::with_pattern();
         FakeArmInterface { probe, memory_ap }
+    }
+
+    fn swj_sequence(&mut self, _bit_len: u8, _bits: u64) -> Result<(), DebugProbeError> {
+        Err(DebugProbeError::CommandNotSupportedByProbe)
+    }
+
+    fn swj_pins(
+        &mut self,
+        _pin_out: u32,
+        _pin_select: u32,
+        _pin_wait: u32,
+    ) -> Result<u32, DebugProbeError> {
+        Err(DebugProbeError::CommandNotSupportedByProbe)
     }
 }
 
@@ -838,7 +869,7 @@ impl ArmProbeInterface for FakeArmInterface {
         todo!()
     }
 
-    fn swj_sequence(&mut self, bit_len: usize, bits: u64) -> Result<(), Error> {
+    fn swj_sequence(&mut self, bit_len: u8, bits: u64) -> Result<(), Error> {
         todo!()
     }
 
