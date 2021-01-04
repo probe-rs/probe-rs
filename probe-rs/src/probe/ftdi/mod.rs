@@ -506,6 +506,10 @@ impl DebugProbe for FtdiProbe {
     fn has_riscv_interface(&self) -> bool {
         true
     }
+
+    fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
+        self
+    }
 }
 
 impl JTAGAccess for FtdiProbe {
@@ -549,10 +553,6 @@ impl JTAGAccess for FtdiProbe {
             .map_err(|e| DebugProbeError::ProbeSpecific(Box::new(e)))?;
         log::debug!("write_register result: {:?})", r);
         Ok(r)
-    }
-
-    fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
-        self
     }
 }
 

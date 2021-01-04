@@ -3,7 +3,7 @@ pub mod tools;
 
 use crate::{
     architecture::arm::{
-        communication_interface::ArmProbeInterface,
+        communication_interface::{ArmProbeInterface, DAPProbe},
         dp::{Abort, Ctrl, DPAccess, DPRegister, DebugPortError},
         swo::poll_interval_from_buf_size,
         ArmCommunicationInterface, DAPAccess, DapError, PortType, Register, SwoAccess, SwoConfig,
@@ -594,6 +594,10 @@ impl DebugProbe for DAPLink {
     fn has_arm_interface(&self) -> bool {
         true
     }
+
+    fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
+        self
+    }
 }
 
 impl<'a> AsRef<dyn DebugProbe + 'a> for DAPLink {
@@ -715,11 +719,9 @@ impl DAPAccess for DAPLink {
         self.process_batch()?;
         Ok(())
     }
-
-    fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
-        self
-    }
 }
+
+impl DAPProbe for DAPLink {}
 
 impl SwoAccess for DAPLink {
     fn enable_swo(&mut self, config: &SwoConfig) -> Result<(), ProbeRsError> {

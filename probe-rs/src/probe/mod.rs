@@ -481,6 +481,8 @@ pub trait DebugProbe: Send + fmt::Debug {
     fn get_swo_interface_mut(&mut self) -> Option<&mut dyn SwoAccess> {
         None
     }
+
+    fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe>;
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -673,6 +675,10 @@ impl DebugProbe for FakeProbe {
     fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
         unimplemented!()
     }
+
+    fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
+        self
+    }
 }
 
 impl DAPAccess for FakeProbe {
@@ -689,10 +695,6 @@ impl DAPAccess for FakeProbe {
         _value: u32,
     ) -> Result<(), DebugProbeError> {
         Err(DebugProbeError::CommandNotSupportedByProbe)
-    }
-
-    fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
-        self
     }
 }
 
@@ -732,8 +734,6 @@ pub trait JTAGAccess: DebugProbe + AsRef<dyn DebugProbe> + AsMut<dyn DebugProbe>
         data: &[u8],
         len: u32,
     ) -> Result<Vec<u8>, DebugProbeError>;
-
-    fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe>;
 }
 
 #[derive(PartialEq, Debug, Copy, Clone)]
