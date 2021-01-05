@@ -2,7 +2,8 @@ use super::{Chip, Core, CoreType, MemoryRegion, RawFlashAlgorithm, TargetDescrip
 use crate::{core::Architecture, flashing::FlashLoader};
 use std::sync::Arc;
 
-use crate::{architecture::arm::ArmCommunicationInterface, DebugProbeError, Error, Memory};
+use crate::architecture::arm::{sequences::DefaultArmSequence, ArmCommunicationInterface};
+use crate::{Error, Memory};
 
 /// This describes a complete target with a fixed chip model and variant.
 #[derive(Clone)]
@@ -38,6 +39,19 @@ impl std::fmt::Debug for Target {
 /// An error occured while parsing the target description.
 pub type TargetParseError = serde_yaml::Error;
 
+trait CoreArchitecture {
+    fn architecture(&self) -> Architecture;
+}
+
+impl CoreArchitecture for CoreType {
+    fn architecture(&self) -> Architecture {
+        match self {
+            CoreType::Riscv => Architecture::Riscv,
+            _ => Architecture::Arm,
+        }
+    }
+}
+
 impl Target {
     /// Create a new target
     pub fn new(
@@ -46,6 +60,12 @@ impl Target {
         flash_algorithms: Vec<RawFlashAlgorithm>,
         source: TargetDescriptionSource,
     ) -> Target {
+        // TODO: Figure out how to handle this if cores can have different architectures.
+        let debug_sequence = match cores[0].core_type.architecture() {
+            Architecture::Arm => DebugSequence::Arm(Box::new(DefaultArmSequence {})),
+            Architecture::Riscv => DebugSequence::Riscv,
+        };
+
         Target {
             name: chip.name.clone(),
             cores,
@@ -58,23 +78,12 @@ impl Target {
 
     /// Get the architecture of the target
     pub fn architecture(&self) -> Architecture {
-        fn get_architecture_from_core(core_type: CoreType) -> Architecture {
-            match core_type {
-                CoreType::M0 => Architecture::Arm,
-                CoreType::M3 => Architecture::Arm,
-                CoreType::M33 => Architecture::Arm,
-                CoreType::M4 => Architecture::Arm,
-                CoreType::M7 => Architecture::Arm,
-                CoreType::Riscv => Architecture::Riscv,
-            }
-        }
-
-        let target_arch = get_architecture_from_core(self.cores[0].core_type);
+        let target_arch = self.cores[0].core_type.architecture();
 
         assert!(
             self.cores
                 .iter()
-                .map(|core| get_architecture_from_core(core.core_type))
+                .map(|core| core.core_type.architecture())
                 .all(|core_arch| core_arch == target_arch),
             "Not all cores of the target are of the same architecture. Probe-rs doesn't support this (yet). If you see this, it is a bug. Please file an issue."
         );

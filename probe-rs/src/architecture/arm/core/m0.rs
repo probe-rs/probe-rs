@@ -1,13 +1,13 @@
 use super::{
     reset_catch_clear, reset_catch_set, reset_system, CortexState, Dfsr, ARM_REGISTER_FILE,
 };
-use crate::core::{
-    Architecture, CoreInformation, CoreInterface, CoreRegister, CoreRegisterAddress,
-    RegisterDescription, RegisterFile, RegisterKind,
-};
+use crate::core::{RegisterDescription, RegisterFile, RegisterKind};
 use crate::error::Error;
 use crate::memory::Memory;
-use crate::{CoreStatus, DebugProbeError, HaltReason, MemoryInterface};
+use crate::{
+    Architecture, CoreInformation, CoreInterface, CoreRegister, CoreRegisterAddress, CoreStatus,
+    DebugProbeError, HaltReason, MemoryInterface,
+};
 use anyhow::Result;
 use bitfield::bitfield;
 use log::debug;

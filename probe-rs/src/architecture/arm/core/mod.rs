@@ -10,8 +10,6 @@ use crate::{
 
 use bitfield::bitfield;
 
-use super::communication_interface::enable_debug_mailbox;
-
 pub mod m0;
 pub mod m33;
 pub mod m4;
@@ -41,8 +39,6 @@ pub(crate) fn debug_core_start(core: &mut impl MemoryInterface) -> Result<(), Er
     Ok(())
 }
 
-/*
-
 /// Setup the core to stop after reset. After this, the core will halt when it comes
 /// out of reset. This is based on the `ResetCatchSet` function from
 /// the [ARM SVD Debug Description].
@@ -63,87 +59,6 @@ pub(crate) fn reset_catch_set(core: &mut impl MemoryInterface) -> Result<(), Err
     Ok(())
 }
 
-*/
-
-/*
-LPC55S69 specific sequence
-*/
-
-pub(crate) fn reset_catch_set(core: &mut impl MemoryInterface) -> Result<(), Error> {
-    use crate::architecture::arm::core::m4::{Demcr, Dhcsr};
-
-    let mut reset_vector = 0xffff_ffff;
-    let mut demcr = Demcr(core.read_word_32(Demcr::ADDRESS)?);
-
-    demcr.set_vc_corereset(false);
-
-    core.write_word_32(Demcr::ADDRESS, demcr.into())?;
-
-    // Write some stuff
-    core.write_word_32(0x40034010, 0x00000000)?; // Program Flash Word Start Address to 0x0 to read reset vector (STARTA)
-    core.write_word_32(0x40034014, 0x00000000)?; // Program Flash Word Stop Address to 0x0 to read reset vector (STOPA)
-    core.write_word_32(0x40034080, 0x00000000)?; // DATAW0: Prepare for read
-    core.write_word_32(0x40034084, 0x00000000)?; // DATAW1: Prepare for read
-    core.write_word_32(0x40034088, 0x00000000)?; // DATAW2: Prepare for read
-    core.write_word_32(0x4003408C, 0x00000000)?; // DATAW3: Prepare for read
-    core.write_word_32(0x40034090, 0x00000000)?; // DATAW4: Prepare for read
-    core.write_word_32(0x40034094, 0x00000000)?; // DATAW5: Prepare for read
-    core.write_word_32(0x40034098, 0x00000000)?; // DATAW6: Prepare for read
-    core.write_word_32(0x4003409C, 0x00000000)?; // DATAW7: Prepare for read
-
-    core.write_word_32(0x40034FE8, 0x0000000F)?; // Clear FLASH Controller Status (INT_CLR_STATUS)
-    core.write_word_32(0x40034000, 0x00000003)?; // Read single Flash Word (CMD_READ_SINGLE_WORD)
-
-    let start = Instant::now();
-
-    let mut timeout = true;
-
-    while start.elapsed() < Duration::from_micros(10_0000) {
-        let value = core.read_word_32(0x40034FE0)?;
-
-        if (value & 0x4) == 0x4 {
-            timeout = false;
-            break;
-        }
-    }
-
-    if timeout {
-        log::warn!("Failed: Wait for flash word read to finish");
-        return Err(Error::Probe(DebugProbeError::Timeout));
-    }
-
-    if (core.read_word_32(0x4003_4fe0)? & 0xB) == 0 {
-        log::info!("No Error reading Flash Word with Reset Vector");
-
-        reset_vector = core.read_word_32(0x0000_0004)?;
-    }
-
-    if reset_vector != 0xffff_ffff {
-        log::info!("Breakpoint on user application reset vector");
-
-        core.write_word_32(0xE000_2008, reset_vector | 1)?;
-        core.write_word_32(0xE000_2000, 3)?;
-    }
-
-    if reset_vector == 0xffff_ffff {
-        log::info!("Enable reset vector catch");
-
-        let mut demcr = Demcr(core.read_word_32(Demcr::ADDRESS)?);
-
-        demcr.set_vc_corereset(true);
-
-        core.write_word_32(Demcr::ADDRESS, demcr.into())?;
-    }
-
-    let _ = core.read_word_32(Dhcsr::ADDRESS)?;
-
-    log::debug!("reset_catch_set -- done");
-
-    Ok(())
-}
-
-/*
-
 /// Undo the settings of the `reset_catch_set` function.
 /// This is based on the `ResetCatchSet` function from
 /// the [ARM SVD Debug Description].
@@ -159,27 +74,7 @@ pub(crate) fn reset_catch_clear(core: &mut impl MemoryInterface) -> Result<(), E
     core.write_word_32(Demcr::ADDRESS, demcr.into())?;
     Ok(())
 }
-*/
 
-/*
-
-LPC55S69 specific sequence
-*/
-
-pub(crate) fn reset_catch_clear(core: &mut impl MemoryInterface) -> Result<(), Error> {
-    use crate::architecture::arm::core::m4::Demcr;
-
-    core.write_word_32(0xE000_2008, 0x0)?;
-    core.write_word_32(0xE000_2000, 0x2)?;
-
-    let mut demcr = Demcr(core.read_word_32(Demcr::ADDRESS)?);
-
-    demcr.set_vc_corereset(false);
-
-    core.write_word_32(Demcr::ADDRESS, demcr.into())
-}
-
-/*
 pub(crate) fn reset_system(core: &mut impl MemoryInterface) -> Result<(), Error> {
     use crate::architecture::arm::core::m4::{Aircr, Dhcsr};
 
@@ -201,73 +96,6 @@ pub(crate) fn reset_system(core: &mut impl MemoryInterface) -> Result<(), Error>
     }
 
     Err(Error::Probe(DebugProbeError::Timeout))
-}
-
-*/
-
-/*
-
-// TODO: Remove this, hacked version for lpc555s69
-*/
-pub(crate) fn reset_system(core: &mut impl MemoryInterface) -> Result<(), Error> {
-    use crate::architecture::arm::core::m4::{Aircr, Dhcsr};
-
-    let mut aircr = Aircr(0);
-    aircr.vectkey();
-    aircr.set_sysresetreq(true);
-
-    let result = core.write_word_32(Aircr::ADDRESS, aircr.into());
-
-    if let Err(e) = result {
-        log::debug!("Error requesting reset: {:?}", e);
-    }
-
-    log::info!("Waiting after reset");
-    thread::sleep(Duration::from_millis(10));
-
-    wait_for_stop_after_reset(core)
-}
-
-fn wait_for_stop_after_reset(core: &mut impl MemoryInterface) -> Result<(), Error> {
-    use crate::architecture::arm::core::m4::Dhcsr;
-    log::info!("Wait for stop after reset");
-
-    thread::sleep(Duration::from_millis(10));
-
-    // TODO: Hack for lpc55s69 recovery
-    let interface = core.get_arm_interface()?;
-
-    enable_debug_mailbox(interface)?;
-
-    let mut timeout = true;
-
-    let start = Instant::now();
-
-    while start.elapsed() < Duration::from_micros(50_0000) {
-        let dhcsr = Dhcsr(core.read_word_32(Dhcsr::ADDRESS)?);
-
-        if !dhcsr.s_reset_st() {
-            timeout = false;
-            break;
-        }
-    }
-
-    if timeout {
-        return Err(Error::Probe(DebugProbeError::Timeout));
-    }
-
-    let dhcsr = Dhcsr(core.read_word_32(Dhcsr::ADDRESS)?);
-
-    if !dhcsr.s_halt() {
-        let mut dhcsr = Dhcsr(0);
-        dhcsr.enable_write();
-        dhcsr.set_c_halt(true);
-        dhcsr.set_c_debugen(true);
-
-        core.write_word_32(Dhcsr::ADDRESS, dhcsr.into())?;
-    }
-
-    Ok(())
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -14,6 +14,12 @@ use crate::{
 use anyhow::anyhow;
 use jep106::JEP106Code;
 
+use std::{
+    fmt::Debug,
+    thread,
+    time::{Duration, Instant},
+};
+
 #[derive(Debug, thiserror::Error, Clone, PartialEq)]
 pub enum DapError {
     #[error("An error occured in the SWD communication between probe and device.")]
@@ -35,12 +41,6 @@ impl From<DapError> for DebugProbeError {
         DebugProbeError::ArchitectureSpecific(Box::new(error))
     }
 }
-
-use std::{
-    fmt::Debug,
-    thread,
-    time::{Duration, Instant},
-};
 
 pub trait Register: Clone + From<u32> + Into<u32> + Sized + Debug {
     const ADDRESS: u8;
@@ -333,8 +333,6 @@ impl<'interface> ArmCommunicationInterface {
         let dp_id: DebugPortId = dp_id.into();
         log::debug!("DebugPort ID:  {:#x?}", dp_id);
 
-        /*
-
         // Clear all existing sticky errors.
         let mut abort_reg = Abort(0);
         abort_reg.set_orunerrclr(true);
@@ -364,14 +362,12 @@ impl<'interface> ArmCommunicationInterface {
             return Err(DapError::TargetPowerUpFailed.into());
         }
 
-        */
-
-        debug_port_start(self)?;
+        // debug_port_start(self)?;
 
         Ok(())
     }
 
-    fn select_ap_and_ap_bank(
+    pub(crate) fn select_ap_and_ap_bank(
         &mut self,
         port: u8,
         ap_register_address: u8,
@@ -728,7 +724,7 @@ pub(crate) fn enable_debug_mailbox(
     Ok(())
 }
 
-fn read_ap(
+pub(crate) fn read_ap(
     interface: &mut ArmCommunicationInterface,
     port: u8,
     register: u8,
@@ -749,7 +745,7 @@ fn read_ap(
     Ok(result)
 }
 
-fn write_ap(
+pub(crate) fn write_ap(
     interface: &mut ArmCommunicationInterface,
     port: u8,
     register: u8,

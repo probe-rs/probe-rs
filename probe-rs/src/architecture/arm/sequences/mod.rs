@@ -1,3 +1,5 @@
+pub mod nxp;
+
 use std::{
     thread,
     time::{Duration, Instant},
@@ -28,7 +30,7 @@ impl ArmDebugSequence for DefaultArmSequence {
 
         let n_reset = 0x80;
 
-        let can_read_pins = (interface.swj_pins(n_reset, n_reset, 0)? != 0xffff_ffff);
+        let can_read_pins = interface.swj_pins(n_reset, n_reset, 0)? != 0xffff_ffff;
 
         if can_read_pins {
             let start = Instant::now();
