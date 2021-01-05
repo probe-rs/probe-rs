@@ -50,7 +50,7 @@ impl<'probe> Riscv32<'probe> {
                 let reg_value = self.read_csr_progbuf(address)?;
                 Ok(reg_value)
             }
-            Err(e) => Err(e.into()),
+            Err(e) => Err(e),
         }
     }
 
@@ -100,7 +100,7 @@ impl<'probe> Riscv32<'probe> {
                 self.write_csr_progbuf(address, value)?;
                 Ok(())
             }
-            Err(e) => Err(e.into()),
+            Err(e) => Err(e),
         }
     }
 

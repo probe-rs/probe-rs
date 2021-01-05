@@ -111,11 +111,14 @@ impl RomTable {
     /// This does not check whether the data actually signalizes
     /// to contain a ROM table but assumes this was checked beforehand.
     fn try_parse(memory: &mut Memory<'_>, base_address: u64) -> Result<RomTable, RomTableError> {
+        // This is not a needless collect! It fixes the borrowing issue with &mut Memory!
+        #![allow(clippy::needless_collect)]
         let mut entries = vec![];
 
         log::info!("Parsing romtable at base_address {:x?}", base_address);
 
         // Read all the raw romtable entries and flatten them.
+
         let reader = RomTableReader::new(memory, base_address)
             .entries()
             .filter_map(Result::ok)
