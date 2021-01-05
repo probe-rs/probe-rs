@@ -57,7 +57,7 @@ impl DebugProbe for STLink<STLinkUSBDevice> {
         let device = STLinkUSBDevice::new_from_selector(selector)?;
         let mut stlink = Self {
             name: format!("ST-Link {}", &device.info.version_name),
-            device: device,
+            device,
             hw_version: 0,
             jtag_version: 0,
             protocol: WireProtocol::Swd,

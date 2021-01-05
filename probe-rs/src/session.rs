@@ -213,6 +213,10 @@ impl Session {
         Ok(interface)
     }
 
+    /// Reads all the available ARM CoresightComponents of the currently attached target.
+    ///
+    /// This will recursively parse the Romtable of the attached target
+    /// and create a list of all the contained components.
     pub fn get_arm_components(&mut self) -> Result<Vec<Component>, Error> {
         let interface = self.get_arm_interface()?;
 
