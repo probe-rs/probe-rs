@@ -36,10 +36,7 @@ pub fn remove_arguments(arguments_to_remove: &[&'static str], arguments: &mut Ve
         // which we need to remove as well.
         if remove_two {
             // Iterate all args in the input and if we find one that matches, we remove it.
-            if let Some(index) = arguments
-                .iter()
-                .position(|x| x.starts_with(&clean_argument))
-            {
+            if let Some(index) = arguments.iter().position(|x| x == &clean_argument) {
                 // We remove the argument we found plus its value.
                 arguments.remove(index);
                 arguments.remove(index);
@@ -65,11 +62,11 @@ fn remove_arguments_test() {
     ];
 
     let mut arguments = vec![
+        "--chip-description-path=kek".to_string(),
+        "--chip-description-path".to_string(),
         "--chip=kek".to_string(),
         "--chip".to_string(),
         "kek".to_string(),
-        "--chip-description-path=kek".to_string(),
-        "--chip-description-path".to_string(),
         "kek".to_string(),
         "--list-chips".to_string(),
         "--disable-progressbars".to_string(),
@@ -89,6 +86,8 @@ fn remove_arguments_test() {
     ];
 
     remove_arguments(&arguments_to_remove, &mut arguments);
+
+    println!("{:?}", arguments);
 
     assert!(arguments.is_empty());
 }
