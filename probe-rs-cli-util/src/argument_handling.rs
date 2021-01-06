@@ -1,6 +1,7 @@
 /// Removes all arguments from the commandline input that `cargo build` does not understand.
 /// All the arguments are removed in place!
-/// It expects a list of arguments to be removed. If the argument can have a value it MUST contain a `=` at the end.
+/// It expects a valid list of arguments to be removed. If the argument can have a value it MUST contain a `=` at the end.
+/// The validity of the arguments list can be ensured by having `structopt` parse the arguments first and check its result.
 /// E.g:
 /// ```rust
 /// let arguments_to_remove = [
@@ -46,6 +47,10 @@ pub fn remove_arguments(arguments_to_remove: &[&'static str], arguments: &mut Ve
 }
 
 #[test]
+/// This test will test that all arguments are properly removed.
+/// The [remove_arguments] function only works if the arguments are valid.
+/// In real world applications this will always hold true because `structopt` which we have infront of this removal
+/// will always ensure that the arguments are valid and in correct order!
 fn remove_arguments_test() {
     let arguments_to_remove = [
         "chip=",
@@ -64,9 +69,9 @@ fn remove_arguments_test() {
     let mut arguments = vec![
         "--chip-description-path=kek".to_string(),
         "--chip-description-path".to_string(),
+        "kek".to_string(),
         "--chip=kek".to_string(),
         "--chip".to_string(),
-        "kek".to_string(),
         "kek".to_string(),
         "--list-chips".to_string(),
         "--disable-progressbars".to_string(),
