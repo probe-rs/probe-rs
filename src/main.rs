@@ -385,9 +385,6 @@ fn notmain() -> Result<i32, anyhow::Error> {
         core.run()?;
     }
 
-    // Print a separator before the device messages start.
-    eprintln!("{}", "─".repeat(80).dimmed());
-
     let exit = Arc::new(AtomicBool::new(false));
     let sig_id = signal_hook::flag::register(signal_hook::SIGINT, exit.clone())?;
 
@@ -399,6 +396,10 @@ fn notmain() -> Result<i32, anyhow::Error> {
         .as_ref()
         .map_or(false, |ch| ch.name() == Some("defmt"));
 
+    if use_defmt && opts.no_flash {
+        bail!("\"defmt\" RTT channel is in use, but `--no-flash` was specified -- this combination is not allowed");
+    }
+
     if use_defmt && table.is_none() {
         bail!("\"defmt\" RTT channel is in use, but the firmware binary contains no defmt data");
     }
@@ -406,6 +407,9 @@ fn notmain() -> Result<i32, anyhow::Error> {
     if !use_defmt {
         table = None;
     }
+
+    // Print a separator before the device messages start.
+    eprintln!("{}", "─".repeat(80).dimmed());
 
     // wait for breakpoint
     let stdout = io::stdout();
