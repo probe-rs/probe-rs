@@ -397,7 +397,9 @@ fn notmain() -> Result<i32, anyhow::Error> {
         .map_or(false, |ch| ch.name() == Some("defmt"));
 
     if use_defmt && opts.no_flash {
-        bail!("\"defmt\" RTT channel is in use, but `--no-flash` was specified -- this combination is not allowed");
+        bail!(
+            "attempted to use `--no-flash` and `defmt` logging -- this combination is not allowed. Remove the `--no-flash` flag"
+        );
     }
 
     if use_defmt && table.is_none() {
