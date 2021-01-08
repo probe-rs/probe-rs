@@ -455,6 +455,7 @@ pub trait DebugProbe: Send + fmt::Debug {
 
     /// Get the dedicated interface to debug ARM chips. Ensure that the
     /// probe actually supports this by calling [DebugProbe::has_arm_interface] first.
+    #[allow(clippy::boxed_local)] // This is required due to the trait!
     fn get_arm_interface<'probe>(
         self: Box<Self>,
     ) -> Result<Option<Box<dyn ArmProbeInterface + 'probe>>, DebugProbeError> {
@@ -463,6 +464,7 @@ pub trait DebugProbe: Send + fmt::Debug {
 
     /// Get the dedicated interface to debug RISCV chips. Ensure that the
     /// probe actually supports this by calling [DebugProbe::has_riscv_interface] first.
+    #[allow(clippy::boxed_local)] // This is required due to the trait!
     fn get_riscv_interface(
         self: Box<Self>,
     ) -> Result<Option<RiscvCommunicationInterface>, DebugProbeError> {

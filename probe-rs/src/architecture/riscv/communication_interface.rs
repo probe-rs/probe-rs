@@ -693,7 +693,7 @@ impl<'probe> RiscvCommunicationInterface {
                 );
                 err?;
             }
-            Err(e) => Err(e)?,
+            Err(e) => return Err(e),
         }
 
         let register_value: Data0 = self.read_dm_register()?;
