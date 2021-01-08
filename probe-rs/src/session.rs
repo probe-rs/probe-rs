@@ -100,11 +100,11 @@ impl Session {
                     Core::create_state(0),
                 );
 
-                let interface = probe.into_arm_interface()?;
+                let interface = probe.try_into_arm_interface().map_err(|(_, err)| err)?;
 
                 let mut session = Session {
                     target,
-                    interface: ArchitectureInterface::Arm(interface.unwrap()),
+                    interface: ArchitectureInterface::Arm(interface),
                     cores: vec![core],
                 };
 
@@ -380,23 +380,25 @@ fn get_target_from_selector(
 
             {
                 if probe.as_ref().unwrap().has_arm_interface() {
-                    let interface = probe.take().unwrap().into_arm_interface()?;
+                    match probe.take().unwrap().try_into_arm_interface() {
+                        Ok(mut interface) => {
+                            //let chip_result = try_arm_autodetect(interface);
+                            log::debug!("Autodetect: Trying DAP interface...");
 
-                    if let Some(mut interface) = interface {
-                        //let chip_result = try_arm_autodetect(interface);
-                        log::debug!("Autodetect: Trying DAP interface...");
+                            let found_arm_chip =
+                                interface.read_from_rom_table().unwrap_or_else(|e| {
+                                    log::info!("Error during auto-detection of ARM chips: {}", e);
+                                    None
+                                });
 
-                        let found_arm_chip = interface.read_from_rom_table().unwrap_or_else(|e| {
-                            log::info!("Error during auto-detection of ARM chips: {}", e);
-                            None
-                        });
+                            found_chip = found_arm_chip.map(ChipInfo::from);
 
-                        found_chip = found_arm_chip.map(ChipInfo::from);
-
-                        probe = Some(interface.close());
-                    } else {
-                        //TODO: Handle this case, we still need the probe here!
-                        log::debug!("No DAP interface was present. This is not an ARM core. Skipping ARM autodetect.");
+                            probe = Some(interface.close());
+                        }
+                        Err((returned_probe, err)) => {
+                            probe = Some(returned_probe);
+                            log::debug!("Error using ARM interface: {}", err);
+                        }
                     }
                 }
             }

@@ -31,8 +31,8 @@ pub(crate) enum RiscvError {
     AbstractCommand(AbstractCommandErrorKind),
     #[error("The core did not acknowledge a request for reset, resume or halt")]
     RequestNotAcknowledged,
-    #[error("The version '{0}' of the debug module is currently not supported.")]
-    UnsupportedDebugModuleVersion(u8),
+    #[error("The version '{0:?}' of the debug module is currently not supported.")]
+    UnsupportedDebugModuleVersion(DebugModuleVersion),
     #[error("Program buffer register '{0}' is currently not supported.")]
     UnsupportedProgramBufferRegister(usize),
     #[error("Program buffer is too small for supplied program.")]
@@ -89,15 +89,28 @@ impl AbstractCommandErrorKind {
 /// register.
 #[allow(dead_code)]
 #[derive(Debug, Copy, Clone, PartialEq)]
-enum DebugModuleVersion {
+pub enum DebugModuleVersion {
     /// There is no debug module present.
-    NoModule = 0,
+    NoModule,
     /// The debug module confirms to the version 0.11 of the RISCV Debug Specification.
-    Version0_11 = 1,
+    Version0_11,
     /// The debug module confirms to the version 0.13 of the RISCV Debug Specification.
-    Version0_13 = 2,
+    Version0_13,
     /// The debug module is present, but does not confirm to any available version of the RISCV Debug Specification.
-    NonConforming = 15,
+    NonConforming,
+    Unknown(u8),
+}
+
+impl From<u8> for DebugModuleVersion {
+    fn from(raw: u8) -> Self {
+        match raw {
+            0 => DebugModuleVersion::NoModule,
+            1 => DebugModuleVersion::Version0_11,
+            2 => DebugModuleVersion::Version0_13,
+            15 => DebugModuleVersion::NonConforming,
+            other => DebugModuleVersion::Unknown(other),
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -119,7 +132,11 @@ impl CoreRegisterAbstractCmdSupport {
 
 #[derive(Debug)]
 pub struct RiscvCommunicationInterfaceState {
+    /// Number of addres bits
     abits: u32,
+
+    /// Debug Spec version
+    debug_version: DebugModuleVersion,
 
     /// Size of the program buffer, in 32-bit words
     progbuf_size: u8,
@@ -138,6 +155,8 @@ pub struct RiscvCommunicationInterfaceState {
 
     supports_autoexec: bool,
 
+    confstrptr: Option<u128>,
+
     /// describes, if the given register can be read / written with an
     /// abstract command
     abstract_cmd_register_info: HashMap<CoreRegisterAddress, CoreRegisterAbstractCmdSupport>,
@@ -154,6 +173,8 @@ impl RiscvCommunicationInterfaceState {
             progbuf_size: 0,
             progbuf_cache: [0u32; 16],
 
+            debug_version: DebugModuleVersion::NonConforming,
+
             // Assume the implicit ebreak is not present
             implicit_ebreak: false,
 
@@ -163,6 +184,8 @@ impl RiscvCommunicationInterfaceState {
             nscratch: 0,
 
             supports_autoexec: false,
+
+            confstrptr: None,
 
             abstract_cmd_register_info: HashMap::new(),
         }
@@ -182,12 +205,13 @@ pub struct RiscvCommunicationInterface {
 }
 
 impl<'probe> RiscvCommunicationInterface {
-    pub fn new(probe: Box<dyn JTAGAccess>) -> Result<Self, DebugProbeError> {
+    pub fn new(probe: Box<dyn JTAGAccess>) -> Result<Self, (Box<dyn JTAGAccess>, DebugProbeError)> {
         let state = RiscvCommunicationInterfaceState::new();
         let mut s = Self { probe, state };
 
-        s.enter_debug_mode()
-            .map_err(|e| DebugProbeError::Other(anyhow!(e)))?;
+        if let Err(err) = s.enter_debug_mode() {
+            return Err((s.probe, DebugProbeError::from(anyhow!(err))));
+        }
 
         Ok(s)
     }
@@ -216,14 +240,33 @@ impl<'probe> RiscvCommunicationInterface {
         // read the  version of the debug module
         let status: Dmstatus = self.read_dm_register()?;
 
+        self.state.debug_version = DebugModuleVersion::from(status.version() as u8);
+
         // Only version of 0.13 of the debug specification is currently supported.
-        if status.version() != DebugModuleVersion::Version0_13 as u32 {
+        if self.state.debug_version != DebugModuleVersion::Version0_13 {
             return Err(RiscvError::UnsupportedDebugModuleVersion(
-                status.version() as u8
+                self.state.debug_version,
             ));
         }
 
         self.state.implicit_ebreak = status.impebreak();
+
+        // check if the configuration string pointer is valid, and retrieve it, if valid
+        self.state.confstrptr = if status.confstrptrvalid() {
+            let confstrptr_0: Confstrptr0 = self.read_dm_register()?;
+            let confstrptr_1: Confstrptr1 = self.read_dm_register()?;
+            let confstrptr_2: Confstrptr2 = self.read_dm_register()?;
+            let confstrptr_3: Confstrptr3 = self.read_dm_register()?;
+
+            let confstrptr = (u32::from(confstrptr_0) as u128)
+                | (u32::from(confstrptr_1) as u128) << 8
+                | (u32::from(confstrptr_2) as u128) << 16
+                | (u32::from(confstrptr_3) as u128) << 32;
+
+            Some(confstrptr)
+        } else {
+            None
+        };
 
         log::debug!("dmstatus: {:?}", status);
 
@@ -282,7 +325,7 @@ impl<'probe> RiscvCommunicationInterface {
         Ok(())
     }
 
-    pub(crate) fn read_idcode(&mut self) -> Result<u32, DebugProbeError> {
+    pub fn read_idcode(&mut self) -> Result<u32, DebugProbeError> {
         let value = self.probe.read_register(0x1, 32)?;
 
         Ok(u32::from_le_bytes((&value[..]).try_into().unwrap()))
@@ -926,7 +969,7 @@ impl MemoryInterface for RiscvCommunicationInterface {
     }
 
     fn write_32(&mut self, address: u32, data: &[u32]) -> Result<(), crate::Error> {
-        log::debug!("write_32 to {:#08x}", address);
+        log::debug!("write_32 to {:#08x}, {} words", address, data.len());
 
         let s0 = self.abstract_cmd_register_read(&register::S0)?;
         let s1 = self.abstract_cmd_register_read(&register::S1)?;
@@ -965,8 +1008,16 @@ impl MemoryInterface for RiscvCommunicationInterface {
         let status: Abstractcs = self.read_dm_register()?;
 
         if status.cmderr() != 0 {
+            let error = AbstractCommandErrorKind::parse(status.cmderr() as u8);
+
+            log::error!(
+                "Executing the abstract command for write_32 failed: {:?} ({:x?})",
+                error,
+                status,
+            );
+
             return Err(DebugProbeError::ArchitectureSpecific(Box::new(
-                RiscvError::AbstractCommand(AbstractCommandErrorKind::parse(status.cmderr() as u8)),
+                RiscvError::AbstractCommand(error),
             ))
             .into());
         }
@@ -1231,6 +1282,11 @@ data_register! { Sbdata0, 0x3c, "sbdata0" }
 data_register! { Sbdata1, 0x3d, "sbdata1" }
 data_register! { Sbdata2, 0x3e, "sbdata2" }
 data_register! { Sbdata3, 0x3f, "sbdata3" }
+
+data_register! { Confstrptr0, 0x19, "confstrptr0" }
+data_register! { Confstrptr1, 0x1a, "confstrptr1" }
+data_register! { Confstrptr2, 0x1b, "confstrptr2" }
+data_register! { Confstrptr3, 0x1c, "confstrptr3" }
 
 /// Possible return values in the op field of
 /// the dmi register.

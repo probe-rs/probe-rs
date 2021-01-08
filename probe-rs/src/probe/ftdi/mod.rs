@@ -500,7 +500,19 @@ impl DebugProbe for FtdiProbe {
     fn get_riscv_interface(
         self: Box<Self>,
     ) -> Result<Option<RiscvCommunicationInterface>, DebugProbeError> {
-        Ok(Some(RiscvCommunicationInterface::new(self)?))
+        match RiscvCommunicationInterface::new(self) {
+            Ok(interface) => Ok(Some(interface)),
+            Err((_, error)) => Err(error),
+        }
+    }
+
+    fn try_get_riscv_interface(
+        self: Box<Self>,
+    ) -> Result<RiscvCommunicationInterface, (Box<dyn DebugProbe>, DebugProbeError)> {
+        match RiscvCommunicationInterface::new(self) {
+            Ok(interface) => Ok(interface),
+            Err((probe, err)) => Err((probe.into_probe(), err)),
+        }
     }
 
     fn has_riscv_interface(&self) -> bool {
@@ -509,6 +521,15 @@ impl DebugProbe for FtdiProbe {
 
     fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
         self
+    }
+
+    fn try_get_arm_interface<'probe>(
+        self: Box<Self>,
+    ) -> Result<
+        Box<dyn crate::architecture::arm::communication_interface::ArmProbeInterface + 'probe>,
+        (Box<dyn DebugProbe>, DebugProbeError),
+    > {
+        todo!()
     }
 }
 
