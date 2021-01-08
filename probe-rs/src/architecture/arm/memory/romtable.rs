@@ -111,7 +111,7 @@ impl RomTable {
     /// This does not check whether the data actually signalizes
     /// to contain a ROM table but assumes this was checked beforehand.
     fn try_parse(memory: &mut Memory<'_>, base_address: u64) -> Result<RomTable, RomTableError> {
-        // This is not a needless collect! It fixes the borrowing issue with &mut Memory!
+        // This is required for the collect down below.
         #![allow(clippy::needless_collect)]
         let mut entries = vec![];
 
@@ -122,6 +122,7 @@ impl RomTable {
         let reader = RomTableReader::new(memory, base_address)
             .entries()
             .filter_map(Result::ok)
+            // This is not a needless collect! It fixes the borrowing issue with &mut Memory that clippy cannot detect!
             .collect::<Vec<RomTableEntryRaw>>();
 
         // Iterate all entries and get their data.
