@@ -106,6 +106,10 @@ struct SharedOptions {
     #[structopt(short, long)]
     protocol: Option<String>,
 
+    /// Protocol speed in kHz
+    #[structopt(short, long)]
+    speed: Option<u32>,
+
     #[structopt(long)]
     connect_under_reset: bool,
 }

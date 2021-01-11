@@ -1,18 +1,35 @@
 use crate::common::CliError;
 
 use capstone::Capstone;
+use num_traits::Num;
 use probe_rs::architecture::arm::CortexDump;
 use probe_rs::debug::DebugInfo;
 use probe_rs::{Core, CoreRegisterAddress, MemoryInterface};
+
 use std::fs::File;
 use std::{io::prelude::*, time::Duration};
+
+use parse_int::parse;
 
 pub struct DebugCli {
     commands: Vec<Command>,
 }
 
-fn parse_u32_hex(s: &str) -> u32 {
-    u32::from_str_radix(s, 16).expect("Couldn't parse hex number")
+/// Parse the argument at the given index.
+fn get_int_argument<T: Num>(args: &[&str], index: usize) -> Result<T, CliError>
+where
+    <T as Num>::FromStrRadixErr: std::error::Error,
+    <T as Num>::FromStrRadixErr: Send,
+    <T as Num>::FromStrRadixErr: Sync,
+    <T as Num>::FromStrRadixErr: 'static,
+{
+    let arg_str = args.get(index).ok_or(CliError::MissingArgument)?;
+
+    parse::<T>(arg_str).map_err(|e| CliError::ArgumentParseError {
+        argument_index: 0,
+        argument: arg_str.to_string(),
+        source: e.into(),
+    })
 }
 
 impl DebugCli {
@@ -111,18 +128,21 @@ impl DebugCli {
             help_text: "Read 32bit value from memory",
 
             function: |cli_data, args| {
-                let address_str = args.get(0).ok_or(CliError::MissingArgument)?;
+                let address = get_int_argument(args, 0)?;
 
-                let address = parse_u32_hex(address_str);
-
-                let num_words = args
-                    .get(1)
-                    .map(|c| c.parse::<usize>().expect("Couldn't parse number of words"))
-                    .unwrap_or(1);
+                let num_words = if args.len() > 1 {
+                    get_int_argument(args, 1)?
+                } else {
+                    1
+                };
 
                 let mut buff = vec![0u32; num_words];
 
-                cli_data.core.read_32(address, &mut buff)?;
+                if num_words > 1 {
+                    cli_data.core.read_32(address, &mut buff)?;
+                } else {
+                    buff[0] = cli_data.core.read_word_32(address)?;
+                }
 
                 for (offset, word) in buff.iter().enumerate() {
                     println!("0x{:08x} = 0x{:08x}", address + (offset * 4) as u32, word);
@@ -137,11 +157,8 @@ impl DebugCli {
             help_text: "Write a 32bit value to memory",
 
             function: |cli_data, args| {
-                let address_str = args.get(0).ok_or(CliError::MissingArgument)?;
-                let address = parse_u32_hex(address_str);
-
-                let data_str = args.get(1).ok_or(CliError::MissingArgument)?;
-                let data = parse_u32_hex(data_str);
+                let address = get_int_argument(args, 0)?;
+                let data = get_int_argument(args, 1)?;
 
                 cli_data.core.write_word_32(address, data)?;
 
@@ -154,8 +171,7 @@ impl DebugCli {
             help_text: "Set a breakpoint at a specifc address",
 
             function: |cli_data, args| {
-                let address_str = args.get(0).ok_or(CliError::MissingArgument)?;
-                let address = parse_u32_hex(address_str);
+                let address = get_int_argument(args, 0)?;
 
                 cli_data.core.set_hw_breakpoint(address)?;
 
@@ -170,8 +186,7 @@ impl DebugCli {
             help_text: "Clear a breakpoint",
 
             function: |cli_data, args| {
-                let address_str = args.get(0).ok_or(CliError::MissingArgument)?;
-                let address = parse_u32_hex(address_str);
+                let address = get_int_argument(args, 0)?;
 
                 cli_data.core.clear_hw_breakpoint(address)?;
 
@@ -310,7 +325,7 @@ impl DebugCli {
             if let Some(cmd) = cmd {
                 let remaining_args: Vec<&str> = command_parts.collect();
 
-                (cmd.function)(cli_data, &remaining_args)
+                Self::execute_command(cli_data, cmd, &remaining_args)
             } else {
                 println!("Unknown command '{}'", command);
                 println!("Enter 'help' for a list of commands");
@@ -319,6 +334,30 @@ impl DebugCli {
             }
         } else {
             Ok(CliState::Continue)
+        }
+    }
+
+    fn execute_command(
+        cli_data: &mut CliData,
+        command: &Command,
+        args: &[&str],
+    ) -> Result<CliState, CliError> {
+        match (command.function)(cli_data, &args) {
+            Err(CliError::MissingArgument) => {
+                println!("Error: Missing argument");
+                println!("");
+                println!("{}", command.help_text);
+                Ok(CliState::Continue)
+            }
+            Err(CliError::ArgumentParseError {
+                argument, source, ..
+            }) => {
+                println!("Error parsing argument '{}': {}", argument, source);
+                println!("");
+                println!("{}", command.help_text);
+                Ok(CliState::Continue)
+            }
+            other => other,
         }
     }
 }
