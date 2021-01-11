@@ -20,7 +20,7 @@ use std::{
 use thiserror::Error;
 
 #[derive(Error, Debug)]
-pub(crate) enum RiscvError {
+pub enum RiscvError {
     #[error("Error during read/write to the DMI register: {0:?}")]
     DmiTransfer(DmiOperationStatus),
     #[error("Debug Probe Error")]
@@ -39,6 +39,8 @@ pub(crate) enum RiscvError {
     ProgramBufferTooSmall,
     #[error("Memory width larger than 32 bits is not supported yet.")]
     UnsupportedBusAccessWidth(RiscvBusAccess),
+    #[error("Error using system bus")]
+    SystemBusAccess,
     #[error("Unexpected trigger type {0} for address breakpoint.")]
     UnexpectedTriggerType(u32),
 }
@@ -54,7 +56,7 @@ impl From<RiscvError> for ProbeRsError {
 
 /// Errors which can occur while executing an abstract command
 #[derive(Debug)]
-pub(crate) enum AbstractCommandErrorKind {
+pub enum AbstractCommandErrorKind {
     None = 0,
     Busy = 1,
     NotSupported = 2,
@@ -138,6 +140,16 @@ pub struct RiscvCommunicationInterfaceState {
 
     supports_autoexec: bool,
 
+    confstrptr: Option<u128>,
+
+    /// Width of the hartsel register
+    hartsellen: u8,
+
+    /// Number of harts
+    num_harts: u32,
+
+    memory_access_info: HashMap<RiscvBusAccess, MemoryAccessMethod>,
+
     /// describes, if the given register can be read / written with an
     /// abstract command
     abstract_cmd_register_info: HashMap<CoreRegisterAddress, CoreRegisterAbstractCmdSupport>,
@@ -164,8 +176,27 @@ impl RiscvCommunicationInterfaceState {
 
             supports_autoexec: false,
 
+            confstrptr: None,
+
+            // Assume maximum value, will be determined exactly alter.
+            hartsellen: 20,
+
+            // We assume only a singe hart exisits initially
+            num_harts: 1,
+
+            memory_access_info: HashMap::new(),
+
             abstract_cmd_register_info: HashMap::new(),
         }
+    }
+
+    /// Get the memory access method which should be used for an
+    /// access with the specified width.
+    fn memory_access_method(&mut self, access_width: RiscvBusAccess) -> MemoryAccessMethod {
+        *self
+            .memory_access_info
+            .entry(access_width)
+            .or_insert(MemoryAccessMethod::ProgramBuffer)
     }
 }
 
@@ -230,6 +261,52 @@ impl<'probe> RiscvCommunicationInterface {
         // enable the debug module
         let mut control = Dmcontrol(0);
         control.set_dmactive(true);
+        self.write_dm_register(control)?;
+
+        // Select all harts to determine the width
+        // of the hartsel register.
+        control.set_hartsel(0xffff_ffff);
+
+        self.write_dm_register(control)?;
+
+        let control: Dmcontrol = self.read_dm_register()?;
+
+        self.state.hartsellen = control.hartsel().count_ones() as u8;
+
+        log::debug!("HARTSELLEN: {}", self.state.hartsellen);
+
+        // Determine number of harts
+
+        let max_hart_index = 2u32.pow(self.state.hartsellen as u32);
+
+        let mut num_harts = 1;
+
+        // Hart 0 exists on every chip
+        for hart_index in 1..max_hart_index {
+            let mut control = Dmcontrol(0);
+            control.set_dmactive(true);
+            control.set_hartsel(hart_index);
+
+            self.write_dm_register(control)?;
+
+            // Check if the current hart exists
+            let status: Dmstatus = self.read_dm_register()?;
+
+            if status.anyunavail() {
+                break;
+            }
+
+            num_harts += 1;
+        }
+
+        log::debug!("Number of harts: {}", num_harts);
+
+        self.state.num_harts = num_harts;
+
+        // Select hart 0 again
+        let mut control = Dmcontrol(0);
+        control.set_hartsel(0);
+        control.set_dmactive(true);
 
         self.write_dm_register(control)?;
 
@@ -263,6 +340,46 @@ impl<'probe> RiscvCommunicationInterface {
 
         self.state.supports_autoexec = abstractauto_readback == abstractauto;
         log::debug!("Support for autoexec: {}", self.state.supports_autoexec);
+
+        // determine support system bus access
+        let sbcs = self.read_dm_register::<Sbcs>()?;
+
+        // Only version 1 is supported, this means that
+        // the system bus access conforms to the debug
+        // specification 13.2.
+        if sbcs.sbversion() == 1 {
+            // When possible, we use system bus access for memory access
+
+            if sbcs.sbaccess8() {
+                self.state
+                    .memory_access_info
+                    .insert(RiscvBusAccess::A8, MemoryAccessMethod::SystemBus);
+            }
+
+            if sbcs.sbaccess16() {
+                self.state
+                    .memory_access_info
+                    .insert(RiscvBusAccess::A16, MemoryAccessMethod::SystemBus);
+            }
+
+            if sbcs.sbaccess32() {
+                self.state
+                    .memory_access_info
+                    .insert(RiscvBusAccess::A32, MemoryAccessMethod::SystemBus);
+            }
+
+            if sbcs.sbaccess64() {
+                self.state
+                    .memory_access_info
+                    .insert(RiscvBusAccess::A64, MemoryAccessMethod::SystemBus);
+            }
+
+            if sbcs.sbaccess128() {
+                self.state
+                    .memory_access_info
+                    .insert(RiscvBusAccess::A128, MemoryAccessMethod::SystemBus);
+            }
+        }
 
         Ok(())
     }
@@ -357,26 +474,27 @@ impl<'probe> RiscvCommunicationInterface {
     pub(super) fn read_dm_register<R: DebugRegister>(&mut self) -> Result<R, RiscvError> {
         log::debug!("Reading DM register '{}' at {:#010x}", R::NAME, R::ADDRESS);
 
-        // Prepare the read by sending a read request with the register address
-        self.dmi_register_access_with_timeout(
-            R::ADDRESS as u64,
-            0,
-            DmiOperation::Read,
-            RISCV_TIMEOUT,
-        )?;
-
-        // Read back the response from the previous request.
-        let response =
-            self.dmi_register_access_with_timeout(0, 0, DmiOperation::NoOp, RISCV_TIMEOUT)?;
+        let register_value = self.read_dm_register_untyped(R::ADDRESS as u64)?.into();
 
         log::debug!(
-            "Read DM register '{}' at {:#010x} = {:#010x}",
+            "Read DM register '{}' at {:#010x} = {:x?}",
             R::NAME,
             R::ADDRESS,
-            response
+            register_value
         );
 
-        Ok(response.into())
+        Ok(register_value)
+    }
+
+    /// Read from a DM register
+    ///
+    /// Use the [`read_dm_register`] function if possible.
+    pub fn read_dm_register_untyped(&mut self, address: u64) -> Result<u32, RiscvError> {
+        // Prepare the read by sending a read request with the register address
+        self.dmi_register_access_with_timeout(address, 0, DmiOperation::Read, RISCV_TIMEOUT)?;
+
+        // Read back the response from the previous request.
+        self.dmi_register_access_with_timeout(0, 0, DmiOperation::NoOp, RISCV_TIMEOUT)
     }
 
     pub(super) fn write_dm_register<R: DebugRegister>(
@@ -385,21 +503,18 @@ impl<'probe> RiscvCommunicationInterface {
     ) -> Result<(), RiscvError> {
         // write write command to dmi register
 
-        let data = register.into();
-
         log::debug!(
-            "Write DM register '{}' at {:#010x} = {:#010x}",
+            "Write DM register '{}' at {:#010x} = {:x?}",
             R::NAME,
             R::ADDRESS,
-            data
+            register
         );
 
-        self.dmi_register_access_with_timeout(
-            R::ADDRESS as u64,
-            data,
-            DmiOperation::Write,
-            RISCV_TIMEOUT,
-        )?;
+        self.write_dm_register_untyped(R::ADDRESS as u64, register.into())
+    }
+
+    fn write_dm_register_untyped(&mut self, address: u64, value: u32) -> Result<(), RiscvError> {
+        self.dmi_register_access_with_timeout(address, value, DmiOperation::Write, RISCV_TIMEOUT)?;
 
         Ok(())
     }
@@ -461,10 +576,74 @@ impl<'probe> RiscvCommunicationInterface {
         Ok(())
     }
 
-    /// Perfrom memory read from a single location using the program buffer.
+    /// Perform a single read from a memory location, using system bus access.
+    fn perform_memory_read_sysbus<V: RiscvValue>(&mut self, address: u32) -> Result<V, RiscvError> {
+        let mut sbcs = Sbcs(0);
+
+        sbcs.set_sbaccess(V::WIDTH as u32);
+        sbcs.set_sbreadonaddr(true);
+
+        self.write_dm_register(sbcs)?;
+
+        self.write_dm_register(Sbaddress0(address))?;
+        let data = self.read_large_dtm_register::<V, Sbdata>()?;
+
+        // Check that the read was succesful
+        let sbcs = self.read_dm_register::<Sbcs>()?;
+
+        if sbcs.sberror() != 0 {
+            Err(RiscvError::SystemBusAccess)
+        } else {
+            Ok(data)
+        }
+    }
+
+    /// Perform multiple reads from consecutive memory locations
+    /// using system bus access.
+    fn perform_memory_read_multiple_sysbus<V: RiscvValue>(
+        &mut self,
+        address: u32,
+        data: &mut [V],
+    ) -> Result<(), RiscvError> {
+        let mut sbcs = Sbcs(0);
+
+        sbcs.set_sbaccess(V::WIDTH as u32);
+
+        sbcs.set_sbreadonaddr(true);
+
+        sbcs.set_sbreadondata(true);
+        sbcs.set_sbautoincrement(true);
+
+        self.write_dm_register(sbcs)?;
+
+        self.write_dm_register(Sbaddress0(address))?;
+
+        let data_len = data.len();
+
+        for value in data[..data_len - 1].iter_mut() {
+            *value = self.read_large_dtm_register::<V, Sbdata>()?;
+        }
+
+        sbcs.set_sbautoincrement(false);
+        self.write_dm_register(sbcs)?;
+
+        // Read last value
+        data[data.len() - 1] = self.read_large_dtm_register::<V, Sbdata>()?;
+
+        // Check that the read was succesful
+        let sbcs = self.read_dm_register::<Sbcs>()?;
+
+        if sbcs.sberror() != 0 {
+            Err(RiscvError::SystemBusAccess)
+        } else {
+            Ok(())
+        }
+    }
+
+    /// Perform memory read from a single location using the program buffer.
     /// Only reads up to a width of 32 bits are currently supported.
     /// For widths smaller than u32, the higher bits have to be discarded manually.
-    fn perform_memory_read(
+    fn perform_memory_read_progbuf(
         &mut self,
         address: u32,
         width: RiscvBusAccess,
@@ -517,14 +696,120 @@ impl<'probe> RiscvCommunicationInterface {
         Ok(value)
     }
 
+    fn perform_memory_read_multiple_progbuf(
+        &mut self,
+        address: u32,
+        width: RiscvBusAccess,
+        data: &mut [u32],
+    ) -> Result<(), RiscvError> {
+        // Backup registers s0 and s1
+        let s0 = self.abstract_cmd_register_read(&register::S0)?;
+        let s1 = self.abstract_cmd_register_read(&register::S1)?;
+
+        // Load a word from address in register 8 (S0), with offset 0, into register 9 (S9)
+        let lw_command: u32 = assembly::lw(0, 8, RiscvBusAccess::A32 as u32, 9);
+
+        self.setup_program_buffer(&[lw_command, assembly::addi(8, 8, 4)])?;
+
+        self.write_dm_register(Data0(address))?;
+
+        // Write s0, then execute program buffer
+        let mut command = AccessRegisterCommand(0);
+        command.set_cmd_type(0);
+        command.set_transfer(true);
+        command.set_write(true);
+
+        // registers are 32 bit, so we have size 2 here
+        command.set_aarsize(RiscvBusAccess::A32);
+        command.set_postexec(true);
+
+        // register s0, ie. 0x1008
+        command.set_regno((register::S0).address.0 as u32);
+
+        self.write_dm_register(command)?;
+
+        let data_len = data.len();
+
+        for word in &mut data[..data_len - 1] {
+            let mut command = AccessRegisterCommand(0);
+            command.set_cmd_type(0);
+            command.set_transfer(true);
+            command.set_write(false);
+
+            // registers are 32 bit, so we have size 2 here
+            command.set_aarsize(RiscvBusAccess::A32);
+            command.set_postexec(true);
+
+            command.set_regno((register::S1).address.0 as u32);
+
+            self.write_dm_register(command)?;
+
+            // Read back s1
+            let value: Data0 = self.read_dm_register()?;
+
+            *word = value.0;
+        }
+
+        let last_value = self.abstract_cmd_register_read(&register::S1)?;
+
+        data[data.len() - 1] = last_value;
+
+        let status: Abstractcs = self.read_dm_register()?;
+
+        if status.cmderr() != 0 {
+            return Err(RiscvError::AbstractCommand(AbstractCommandErrorKind::parse(
+                status.cmderr() as u8,
+            ))
+            .into());
+        }
+
+        self.abstract_cmd_register_write(&register::S0, s0)?;
+        self.abstract_cmd_register_write(&register::S1, s1)?;
+
+        Ok(())
+    }
+
+    /// Memory write using system bus
+    fn perform_memory_write_sysbus<V: RiscvValue>(
+        &mut self,
+        address: u32,
+        width: RiscvBusAccess,
+        data: &[V],
+    ) -> Result<(), RiscvError> {
+        let mut sbcs = Sbcs(0);
+
+        // Set correct access width
+        sbcs.set_sbaccess(width as u32);
+        sbcs.set_sbautoincrement(true);
+
+        self.write_dm_register(sbcs)?;
+
+        self.write_dm_register(Sbaddress0(address))?;
+
+        for value in data {
+            self.write_large_dtm_register::<V, Sbdata>(*value)?;
+        }
+
+        // Check that the write was succesful
+        let sbcs = self.read_dm_register::<Sbcs>()?;
+
+        if sbcs.sberror() != 0 {
+            Err(RiscvError::SystemBusAccess)
+        } else {
+            Ok(())
+        }
+    }
+
     /// Perform memory write to a single location using the program buffer.
     /// Only writes up to a width of 32 bits are currently supported.
-    fn perform_memory_write(
+    fn perform_memory_write_progbuf(
         &mut self,
         address: u32,
         width: RiscvBusAccess,
         data: u32,
     ) -> Result<(), RiscvError> {
+        log::debug!("Perfoming memory write!");
+
         // Backup registers s0 and s1
         let s0 = self.abstract_cmd_register_read(&register::S0)?;
         let s1 = self.abstract_cmd_register_read(&register::S1)?;
@@ -543,7 +828,7 @@ impl<'probe> RiscvCommunicationInterface {
         // write address into data 0
         self.write_dm_register(Data0(data))?;
 
-        // Write s0, then execute program buffer
+        // Write s1, then execute program buffer
         let mut command = AccessRegisterCommand(0);
         command.set_cmd_type(0);
         command.set_transfer(true);
@@ -553,7 +838,7 @@ impl<'probe> RiscvCommunicationInterface {
         command.set_aarsize(RiscvBusAccess::A32);
         command.set_postexec(true);
 
-        // register s0, ie. 0x1008
+        // register s1, ie. 0x1008
         command.set_regno((register::S1).address.0 as u32);
 
         self.write_dm_register(command)?;
@@ -561,9 +846,80 @@ impl<'probe> RiscvCommunicationInterface {
         let status: Abstractcs = self.read_dm_register()?;
 
         if status.cmderr() != 0 {
-            return Err(RiscvError::AbstractCommand(
-                AbstractCommandErrorKind::parse(status.cmderr() as u8),
-            ));
+            let error = AbstractCommandErrorKind::parse(status.cmderr() as u8);
+
+            log::error!(
+                "Executing the abstract command for perform_memory_write failed: {:?} ({:x?})",
+                error,
+                status,
+            );
+
+            return Err(RiscvError::AbstractCommand(error));
+        }
+
+        // Restore register s0 and s1
+
+        self.abstract_cmd_register_write(&register::S0, s0)?;
+        self.abstract_cmd_register_write(&register::S1, s1)?;
+
+        Ok(())
+    }
+
+    fn perform_memory_write_multiple_progbuf(
+        &mut self,
+        address: u32,
+        width: RiscvBusAccess,
+        data: &[u32],
+    ) -> Result<(), RiscvError> {
+        let s0 = self.abstract_cmd_register_read(&register::S0)?;
+        let s1 = self.abstract_cmd_register_read(&register::S1)?;
+
+        // Setup program buffer for multiple writes
+        // Store value from register s9 into memory,
+        // then increase the address for next write.
+        let sw_command = assembly::sw(0, 8, RiscvBusAccess::A32 as u32, 9);
+
+        self.setup_program_buffer(&[sw_command, assembly::addi(8, 8, 4)])?;
+
+        // write address into s0
+        self.abstract_cmd_register_write(&register::S0, address)?;
+
+        for value in data {
+            // write address into data 0
+            self.write_dm_register(Data0(*value as u32))?;
+
+            // Write s0, then execute program buffer
+            let mut command = AccessRegisterCommand(0);
+            command.set_cmd_type(0);
+            command.set_transfer(true);
+            command.set_write(true);
+
+            // registers are 32 bit, so we have size 2 here
+            command.set_aarsize(RiscvBusAccess::A32);
+            command.set_postexec(true);
+
+            // register s1
+            command.set_regno((register::S1).address.0 as u32);
+
+            self.write_dm_register(command)?;
+        }
+
+        // Errors are sticky, so we can just check at the end if everything worked.
+        let status: Abstractcs = self.read_dm_register()?;
+
+        if status.cmderr() != 0 {
+            let error = AbstractCommandErrorKind::parse(status.cmderr() as u8);
+
+            log::error!(
+                "Executing the abstract command for write_32 failed: {:?} ({:x?})",
+                error,
+                status,
+            );
+
+            return Err(DebugProbeError::ArchitectureSpecific(Box::new(
+                RiscvError::AbstractCommand(error),
+            ))
+            .into());
         }
 
         // Restore register s0 and s1
@@ -701,10 +1057,10 @@ impl<'probe> RiscvCommunicationInterface {
         Ok(register_value.into())
     }
 
-    pub(crate) fn abstract_cmd_register_write(
+    pub(crate) fn abstract_cmd_register_write<V: RiscvValue>(
         &mut self,
         regno: impl Into<CoreRegisterAddress>,
-        value: u32,
+        value: V,
     ) -> Result<(), RiscvError> {
         let regno = regno.into();
 
@@ -720,12 +1076,11 @@ impl<'probe> RiscvCommunicationInterface {
         command.set_cmd_type(0);
         command.set_transfer(true);
         command.set_write(true);
-        command.set_aarsize(RiscvBusAccess::A32);
+        command.set_aarsize(V::WIDTH);
 
         command.set_regno(regno.0 as u32);
 
-        // write data0
-        self.write_dm_register(Data0(value))?;
+        self.write_large_dtm_register::<V, Arg0>(value)?;
 
         match self.execute_abstract_command(command.0) {
             Ok(_) => Ok(()),
@@ -741,8 +1096,289 @@ impl<'probe> RiscvCommunicationInterface {
         }
     }
 
+    pub fn read_csr_progbuf(&mut self, address: u16) -> Result<u32, RiscvError> {
+        log::debug!("Reading CSR {:#04x}", address);
+
+        let s0 = self.abstract_cmd_register_read(&register::S0)?;
+
+        // We need to perform the csrr instruction, which reads a CSR.
+        // This is a pseudo instruction, which actually is encoded as a
+        // csrrs instruction, with the rs1 register being x0,
+        // so no bits are changed in the CSR, but the CSR is read into rd, i.e. s0.
+        //
+        // csrrs,
+        // with rd  = s0
+        //      rs1 = x0
+        //      csr = address
+
+        let mut csrrs_cmd: u32 = 0b_00000_010_01000_1110011;
+        csrrs_cmd |= ((address as u32) & 0xfff) << 20;
+
+        self.setup_program_buffer(&[csrrs_cmd])?;
+
+        // command: postexec
+        let mut postexec_cmd = AccessRegisterCommand(0);
+        postexec_cmd.set_postexec(true);
+
+        self.execute_abstract_command(postexec_cmd.0)?;
+
+        // read the s0 value
+        let reg_value = self.abstract_cmd_register_read(&register::S0)?;
+
+        // restore original value in s0
+        self.abstract_cmd_register_write(&register::S0, s0)?;
+
+        Ok(reg_value)
+    }
+
+    pub fn write_csr_progbuf(&mut self, address: u16, value: u32) -> Result<(), RiscvError> {
+        log::debug!("Writing CSR {:#04x}={}", address, value);
+
+        // Backup register s0
+        let s0 = self.abstract_cmd_register_read(&register::S0)?;
+
+        // We need to perform the csrw instruction, which writes a CSR.
+        // This is a pseudo instruction, which actually is encoded as a
+        // csrrw instruction, with the destination register being x0,
+        // so the read is ignored.
+        //
+        // csrrw,
+        // with rd  = x0
+        //      rs1 = s0
+        //      csr = address
+
+        // Write value into s0
+        self.abstract_cmd_register_write(&register::S0, value)?;
+
+        let mut csrrw_cmd: u32 = 0b_01000_001_00000_1110011;
+        csrrw_cmd |= ((address as u32) & 0xfff) << 20;
+
+        // write progbuf0: csrr xxxxxx s0, (address) // lookup correct command
+        self.setup_program_buffer(&[csrrw_cmd])?;
+
+        // command: postexec
+        let mut postexec_cmd = AccessRegisterCommand(0);
+        postexec_cmd.set_postexec(true);
+
+        self.execute_abstract_command(postexec_cmd.0)?;
+
+        // command: transfer, regno = 0x1008
+        // restore original value in s0
+        self.abstract_cmd_register_write(&register::S0, s0)?;
+
+        Ok(())
+    }
+
+    fn read_large_dtm_register<V, R>(&mut self) -> Result<V, RiscvError>
+    where
+        V: RiscvValue,
+        R: LargeRegister,
+    {
+        V::read_from_register::<R>(self)
+    }
+
+    fn write_large_dtm_register<V, R>(&mut self, value: V) -> Result<(), RiscvError>
+    where
+        V: RiscvValue,
+        R: LargeRegister,
+    {
+        V::write_to_register::<R>(self, value)
+    }
+
     pub fn close(self) -> Probe {
         Probe::from_attached_probe(self.probe.into_probe())
+    }
+}
+pub(crate) trait LargeRegister {
+    const R0_ADDRESS: u8;
+    const R1_ADDRESS: u8;
+    const R2_ADDRESS: u8;
+    const R3_ADDRESS: u8;
+}
+
+struct Sbdata {}
+
+impl LargeRegister for Sbdata {
+    const R0_ADDRESS: u8 = Sbdata0::ADDRESS;
+    const R1_ADDRESS: u8 = Sbdata1::ADDRESS;
+    const R2_ADDRESS: u8 = Sbdata2::ADDRESS;
+    const R3_ADDRESS: u8 = Sbdata3::ADDRESS;
+}
+
+struct Arg0 {}
+
+impl LargeRegister for Arg0 {
+    const R0_ADDRESS: u8 = Data0::ADDRESS;
+    const R1_ADDRESS: u8 = Data1::ADDRESS;
+    const R2_ADDRESS: u8 = Data2::ADDRESS;
+    const R3_ADDRESS: u8 = Data3::ADDRESS;
+}
+
+/// Marker trait for
+pub(crate) trait RiscvValue: Copy + Sized {
+    const WIDTH: RiscvBusAccess;
+
+    fn read_from_register<R>(
+        interface: &mut RiscvCommunicationInterface,
+    ) -> Result<Self, RiscvError>
+    where
+        R: LargeRegister;
+
+    fn write_to_register<R>(
+        interface: &mut RiscvCommunicationInterface,
+        value: Self,
+    ) -> Result<(), RiscvError>
+    where
+        R: LargeRegister;
+}
+
+impl RiscvValue for u8 {
+    const WIDTH: RiscvBusAccess = RiscvBusAccess::A8;
+
+    fn read_from_register<R>(
+        interface: &mut RiscvCommunicationInterface,
+    ) -> Result<Self, RiscvError>
+    where
+        R: LargeRegister,
+    {
+        interface
+            .read_dm_register_untyped(R::R0_ADDRESS as u64)
+            .map(|v| v as u8)
+    }
+
+    fn write_to_register<R>(
+        interface: &mut RiscvCommunicationInterface,
+        value: Self,
+    ) -> Result<(), RiscvError>
+    where
+        R: LargeRegister,
+    {
+        interface.write_dm_register_untyped(R::R0_ADDRESS as u64, value as u32)
+    }
+}
+
+impl RiscvValue for u16 {
+    const WIDTH: RiscvBusAccess = RiscvBusAccess::A16;
+    fn read_from_register<R>(
+        interface: &mut RiscvCommunicationInterface,
+    ) -> Result<Self, RiscvError>
+    where
+        R: LargeRegister,
+    {
+        interface
+            .read_dm_register_untyped(R::R0_ADDRESS as u64)
+            .map(|v| v as u16)
+    }
+
+    fn write_to_register<R>(
+        interface: &mut RiscvCommunicationInterface,
+        value: Self,
+    ) -> Result<(), RiscvError>
+    where
+        R: LargeRegister,
+    {
+        interface.write_dm_register_untyped(R::R0_ADDRESS as u64, value as u32)
+    }
+}
+
+impl RiscvValue for u32 {
+    const WIDTH: RiscvBusAccess = RiscvBusAccess::A32;
+    fn read_from_register<R>(
+        interface: &mut RiscvCommunicationInterface,
+    ) -> Result<Self, RiscvError>
+    where
+        R: LargeRegister,
+    {
+        interface.read_dm_register_untyped(R::R0_ADDRESS as u64)
+    }
+
+    fn write_to_register<R>(
+        interface: &mut RiscvCommunicationInterface,
+        value: Self,
+    ) -> Result<(), RiscvError>
+    where
+        R: LargeRegister,
+    {
+        interface.write_dm_register_untyped(R::R0_ADDRESS as u64, value)
+    }
+}
+
+impl RiscvValue for u64 {
+    const WIDTH: RiscvBusAccess = RiscvBusAccess::A64;
+
+    fn read_from_register<R>(
+        interface: &mut RiscvCommunicationInterface,
+    ) -> Result<Self, RiscvError>
+    where
+        R: LargeRegister,
+    {
+        // R0 has to be read last, side effects are triggerd by reads from
+        // this register.
+        let upper_bits = interface.read_dm_register_untyped(R::R1_ADDRESS as u64)?;
+        let lower_bits = interface.read_dm_register_untyped(R::R0_ADDRESS as u64)?;
+
+        Ok((upper_bits as u64) << 32 | lower_bits as u64)
+    }
+
+    fn write_to_register<R>(
+        interface: &mut RiscvCommunicationInterface,
+        value: Self,
+    ) -> Result<(), RiscvError>
+    where
+        R: LargeRegister,
+    {
+        let upper_bits = (value >> 32) as u32;
+        let lower_bits = (value & 0xffff_ffff) as u32;
+
+        // R0 has to be written last, side effects are triggerd by writes from
+        // this register.
+
+        interface.write_dm_register_untyped(R::R1_ADDRESS as u64, upper_bits)?;
+        interface.write_dm_register_untyped(R::R0_ADDRESS as u64, lower_bits)
+    }
+}
+
+impl RiscvValue for u128 {
+    const WIDTH: RiscvBusAccess = RiscvBusAccess::A128;
+
+    fn read_from_register<R>(
+        interface: &mut RiscvCommunicationInterface,
+    ) -> Result<Self, RiscvError>
+    where
+        R: LargeRegister,
+    {
+        // R0 has to be read last, side effects are triggerd by reads from
+        // this register.
+        let bits_3 = interface.read_dm_register_untyped(R::R3_ADDRESS as u64)?;
+        let bits_2 = interface.read_dm_register_untyped(R::R2_ADDRESS as u64)?;
+        let bits_1 = interface.read_dm_register_untyped(R::R1_ADDRESS as u64)?;
+        let bits_0 = interface.read_dm_register_untyped(R::R0_ADDRESS as u64)?;
+
+        Ok((bits_3 as u128) << 96
+            | (bits_2 as u128) << 64
+            | (bits_1 as u128) << 32
+            | bits_0 as u128)
+    }
+
+    fn write_to_register<R>(
+        interface: &mut RiscvCommunicationInterface,
+        value: Self,
+    ) -> Result<(), RiscvError>
+    where
+        R: LargeRegister,
+    {
+        let bits_3 = (value >> 96) as u32;
+        let bits_2 = (value >> 64) as u32;
+        let bits_1 = (value >> 32) as u32;
+        let bits_0 = (value & 0xffff_ffff) as u32;
+
+        // R0 has to be written last, side effects are triggerd by writes from
+        // this register.
+
+        interface.write_dm_register_untyped(R::R3_ADDRESS as u64, bits_3)?;
+        interface.write_dm_register_untyped(R::R2_ADDRESS as u64, bits_2)?;
+        interface.write_dm_register_untyped(R::R1_ADDRESS as u64, bits_1)?;
+        interface.write_dm_register_untyped(R::R0_ADDRESS as u64, bits_0)
     }
 }
 
@@ -760,84 +1396,39 @@ impl<'a> AsMut<dyn DebugProbe + 'a> for RiscvCommunicationInterface {
 
 impl MemoryInterface for RiscvCommunicationInterface {
     fn read_word_32(&mut self, address: u32) -> Result<u32, crate::Error> {
-        let result = self.perform_memory_read(address, RiscvBusAccess::A32)?;
+        let result = match self.state.memory_access_method(RiscvBusAccess::A32) {
+            MemoryAccessMethod::ProgramBuffer => {
+                self.perform_memory_read_progbuf(address, RiscvBusAccess::A32)?
+            }
+            MemoryAccessMethod::SystemBus => self.perform_memory_read_sysbus(address)?,
+            MemoryAccessMethod::AbstractCommand => {
+                unimplemented!("Memory access using abstract commands is not implemted")
+            }
+        };
 
         Ok(result)
     }
 
     fn read_word_8(&mut self, address: u32) -> Result<u8, crate::Error> {
-        let value = self.perform_memory_read(address, RiscvBusAccess::A8)?;
+        let value = self.perform_memory_read_progbuf(address, RiscvBusAccess::A8)?;
 
         Ok((value & 0xff) as u8)
     }
 
     fn read_32(&mut self, address: u32, data: &mut [u32]) -> Result<(), crate::Error> {
         log::debug!("read_32 from {:#08x}", address);
-        //  lb s1, 0(s0)
 
-        // Backup registers s0 and s1
-        let s0 = self.abstract_cmd_register_read(&register::S0)?;
-        let s1 = self.abstract_cmd_register_read(&register::S1)?;
-
-        let lw_command: u32 = assembly::lw(0, 8, RiscvBusAccess::A32 as u32, 9);
-
-        self.setup_program_buffer(&[lw_command, assembly::addi(8, 8, 4)])?;
-
-        self.write_dm_register(Data0(address))?;
-
-        // Write s0, then execute program buffer
-        let mut command = AccessRegisterCommand(0);
-        command.set_cmd_type(0);
-        command.set_transfer(true);
-        command.set_write(true);
-
-        // registers are 32 bit, so we have size 2 here
-        command.set_aarsize(RiscvBusAccess::A32);
-        command.set_postexec(true);
-
-        // register s0, ie. 0x1008
-        command.set_regno((register::S0).address.0 as u32);
-
-        self.write_dm_register(command)?;
-
-        let data_len = data.len();
-
-        for word in &mut data[..data_len - 1] {
-            let mut command = AccessRegisterCommand(0);
-            command.set_cmd_type(0);
-            command.set_transfer(true);
-            command.set_write(false);
-
-            // registers are 32 bit, so we have size 2 here
-            command.set_aarsize(RiscvBusAccess::A32);
-            command.set_postexec(true);
-
-            command.set_regno((register::S1).address.0 as u32);
-
-            self.write_dm_register(command)?;
-
-            // Read back s1
-            let value: Data0 = self.read_dm_register()?;
-
-            *word = value.0;
-        }
-
-        let last_value = self.abstract_cmd_register_read(&register::S1)?;
-
-        data[data.len() - 1] = last_value;
-
-        let status: Abstractcs = self.read_dm_register()?;
-
-        if status.cmderr() != 0 {
-            return Err(RiscvError::AbstractCommand(AbstractCommandErrorKind::parse(
-                status.cmderr() as u8,
-            ))
-            .into());
-        }
-
-        // Restore s0 register
-        self.abstract_cmd_register_write(&register::S0, s0)?;
-        self.abstract_cmd_register_write(&register::S1, s1)?;
+        match self.state.memory_access_method(RiscvBusAccess::A32) {
+            MemoryAccessMethod::ProgramBuffer => {
+                self.perform_memory_read_multiple_progbuf(address, RiscvBusAccess::A32, data)?;
+            }
+            MemoryAccessMethod::SystemBus => {
+                self.perform_memory_read_multiple_sysbus(address, data)?;
+            }
+            MemoryAccessMethod::AbstractCommand => {
+                unimplemented!("Memory access using abstract commands is not implemted")
+            }
+        };
 
         Ok(())
     }
@@ -914,13 +1505,23 @@ impl MemoryInterface for RiscvCommunicationInterface {
     }
 
     fn write_word_32(&mut self, address: u32, data: u32) -> Result<(), crate::Error> {
-        self.perform_memory_write(address, RiscvBusAccess::A32, data)?;
+        match self.state.memory_access_method(RiscvBusAccess::A32) {
+            MemoryAccessMethod::ProgramBuffer => {
+                self.perform_memory_write_progbuf(address, RiscvBusAccess::A32, data)?
+            }
+            MemoryAccessMethod::SystemBus => {
+                self.perform_memory_write_sysbus(address, RiscvBusAccess::A32, &[data])?
+            }
+            MemoryAccessMethod::AbstractCommand => {
+                unimplemented!("Memory access using abstract commands is not implemted")
+            }
+        };
 
         Ok(())
     }
 
     fn write_word_8(&mut self, address: u32, data: u8) -> Result<(), crate::Error> {
-        self.perform_memory_write(address, RiscvBusAccess::A8, data as u32)?;
+        self.perform_memory_write_progbuf(address, RiscvBusAccess::A8, data as u32)?;
 
         Ok(())
     }
@@ -928,55 +1529,19 @@ impl MemoryInterface for RiscvCommunicationInterface {
     fn write_32(&mut self, address: u32, data: &[u32]) -> Result<(), crate::Error> {
         log::debug!("write_32 to {:#08x}", address);
 
-        let s0 = self.abstract_cmd_register_read(&register::S0)?;
-        let s1 = self.abstract_cmd_register_read(&register::S1)?;
-
-        // Setup program buffer for multiple writes
-        // Store value from register s0 into memory,
-        // then increase the address for next write.
-        let sw_command = assembly::sw(0, 8, RiscvBusAccess::A32 as u32, 9);
-
-        self.setup_program_buffer(&[sw_command, assembly::addi(8, 8, 4)])?;
-
-        // write address into s0
-        self.abstract_cmd_register_write(&register::S0, address)?;
-
-        for value in data {
-            // write address into data 0
-            self.write_dm_register(Data0(*value as u32))?;
-
-            // Write s0, then execute program buffer
-            let mut command = AccessRegisterCommand(0);
-            command.set_cmd_type(0);
-            command.set_transfer(true);
-            command.set_write(true);
-
-            // registers are 32 bit, so we have size 2 here
-            command.set_aarsize(RiscvBusAccess::A32);
-            command.set_postexec(true);
-
-            // register s1
-            command.set_regno((register::S1).address.0 as u32);
-
-            self.write_dm_register(command)?;
+        match self.state.memory_access_method(RiscvBusAccess::A32) {
+            MemoryAccessMethod::SystemBus => {
+                self.perform_memory_write_sysbus(address, RiscvBusAccess::A32, data)?
+            }
+            MemoryAccessMethod::ProgramBuffer => {
+                self.perform_memory_write_multiple_progbuf(address, RiscvBusAccess::A32, data)?
+            }
+            MemoryAccessMethod::AbstractCommand => {
+                unimplemented!("Memory access using abstract commands is not implemted")
+            }
         }
 
-        // Errors are sticky, so we can just check at the end if everything worked.
-        let status: Abstractcs = self.read_dm_register()?;
-
-        if status.cmderr() != 0 {
-            return Err(DebugProbeError::ArchitectureSpecific(Box::new(
-                RiscvError::AbstractCommand(AbstractCommandErrorKind::parse(status.cmderr() as u8)),
-            ))
-            .into());
-        }
-
-        // Restore register s0 and s1
-
-        self.abstract_cmd_register_write(&register::S0, s0)?;
-        self.abstract_cmd_register_write(&register::S1, s1)?;
-
-        Ok(())
+        return Ok(());
     }
 
     fn write_8(&mut self, address: u32, data: &[u8]) -> Result<(), crate::Error> {
@@ -1044,7 +1609,7 @@ impl MemoryInterface for RiscvCommunicationInterface {
 /// Access width for bus access.
 /// This is used both for system bus access (`sbcs` register),
 /// as well for abstract commands.
-#[derive(Copy, Clone, PartialEq, PartialOrd, Debug)]
+#[derive(Copy, Clone, PartialEq, PartialOrd, Hash, Eq, Debug)]
 pub enum RiscvBusAccess {
     A8 = 0,
     A16 = 1,
@@ -1057,6 +1622,21 @@ impl From<RiscvBusAccess> for u8 {
     fn from(value: RiscvBusAccess) -> Self {
         value as u8
     }
+}
+
+/// Different methods of memory access,
+/// which can be supported by a debug module.
+///
+/// The `AbstractCommand` method for memory access is not implemented.
+#[derive(Debug, Copy, Clone)]
+#[allow(dead_code)]
+enum MemoryAccessMethod {
+    /// Memory access using the program buffer is supported
+    ProgramBuffer,
+    /// Memory access using an abstract command is supported
+    AbstractCommand,
+    /// Memory access using system bus access supported
+    SystemBus,
 }
 
 bitfield! {
@@ -1121,12 +1701,13 @@ impl From<u32> for AccessRegisterCommand {
     }
 }
 
-pub(super) trait DebugRegister: Into<u32> + From<u32> {
+pub(super) trait DebugRegister: Into<u32> + From<u32> + std::fmt::Debug {
     const ADDRESS: u8;
     const NAME: &'static str;
 }
 
 bitfield! {
+    #[derive(Copy, Clone)]
     pub struct Sbcs(u32);
     impl Debug;
 
@@ -1136,7 +1717,7 @@ bitfield! {
     sbreadonaddr, set_sbreadonaddr: 20;
     sbaccess, set_sbaccess: 19, 17;
     sbautoincrement, set_sbautoincrement: 16;
-    sbreadondata, set_sbreadondata: 16;
+    sbreadondata, set_sbreadondata: 15;
     sberror, set_sberror: 14, 12;
     sbasize, _: 11, 5;
     sbaccess128, _: 4;
@@ -1235,7 +1816,7 @@ data_register! { Sbdata3, 0x3f, "sbdata3" }
 /// Possible return values in the op field of
 /// the dmi register.
 #[derive(Debug)]
-pub(crate) enum DmiOperationStatus {
+pub enum DmiOperationStatus {
     Ok = 0,
     Reserved = 1,
     OperationFailed = 2,

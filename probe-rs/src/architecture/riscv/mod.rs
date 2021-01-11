@@ -6,8 +6,7 @@ use crate::core::Architecture;
 use crate::CoreInterface;
 use anyhow::{anyhow, Result};
 use communication_interface::{
-    AbstractCommandErrorKind, AccessRegisterCommand, DebugRegister, RiscvCommunicationInterface,
-    RiscvError,
+    AbstractCommandErrorKind, DebugRegister, RiscvCommunicationInterface, RiscvError,
 };
 
 use crate::core::{CoreInformation, RegisterFile};
@@ -33,7 +32,7 @@ impl<'probe> Riscv32<'probe> {
     }
 
     fn read_csr(&mut self, address: u16) -> Result<u32, RiscvError> {
-        // We need to sue the "Access Register Command",
+        // We need to use the "Access Register Command",
         // which has cmdtype 0
 
         // write needs to be clear
@@ -44,104 +43,24 @@ impl<'probe> Riscv32<'probe> {
         // always try to read register with abstract command, fallback to program buffer,
         // if not supported
         match self.interface.abstract_cmd_register_read(address) {
-            Ok(v) => Ok(v),
             Err(RiscvError::AbstractCommand(AbstractCommandErrorKind::NotSupported)) => {
                 log::debug!("Could not read core register {:#x} with abstract command, falling back to program buffer", address);
-                let reg_value = self.read_csr_progbuf(address)?;
-                Ok(reg_value)
+                self.interface.read_csr_progbuf(address)
             }
-            Err(e) => Err(e),
+            other => other,
         }
-    }
-
-    fn read_csr_progbuf(&mut self, address: u16) -> Result<u32, RiscvError> {
-        log::debug!("Reading CSR {:#04x}", address);
-
-        let s0 = self.interface.abstract_cmd_register_read(&register::S0)?;
-
-        // We need to perform the csrr instruction, which reads a CSR.
-        // This is a pseudo instruction, which actually is encoded as a
-        // csrrs instruction, with the rs1 register being x0,
-        // so no bits are changed in the CSR, but the CSR is read into rd, i.e. s0.
-        //
-        // csrrs,
-        // with rd  = s0
-        //      rs1 = x0
-        //      csr = address
-
-        let mut csrrs_cmd: u32 = 0b_00000_010_01000_1110011;
-        csrrs_cmd |= ((address as u32) & 0xfff) << 20;
-
-        self.interface.setup_program_buffer(&[csrrs_cmd])?;
-
-        // command: postexec
-        let mut postexec_cmd = AccessRegisterCommand(0);
-        postexec_cmd.set_postexec(true);
-
-        self.interface.execute_abstract_command(postexec_cmd.0)?;
-
-        // read the s0 value
-        let reg_value = self.interface.abstract_cmd_register_read(&register::S0)?;
-
-        // restore original value in s0
-        self.interface
-            .abstract_cmd_register_write(&register::S0, s0)?;
-
-        Ok(reg_value)
     }
 
     fn write_csr(&mut self, address: u16, value: u32) -> Result<(), RiscvError> {
         log::debug!("Writing CSR {:#x}", address);
 
         match self.interface.abstract_cmd_register_write(address, value) {
-            Ok(_) => Ok(()),
             Err(RiscvError::AbstractCommand(AbstractCommandErrorKind::NotSupported)) => {
                 log::debug!("Could not write core register {:#x} with abstract command, falling back to program buffer", address);
-                self.write_csr_progbuf(address, value)?;
-                Ok(())
+                self.interface.write_csr_progbuf(address, value)
             }
-            Err(e) => Err(e),
+            other => other,
         }
-    }
-
-    fn write_csr_progbuf(&mut self, address: u16, value: u32) -> Result<(), RiscvError> {
-        log::debug!("Writing CSR {:#04x}={}", address, value);
-
-        // Backup register s0
-        let s0 = self.interface.abstract_cmd_register_read(&register::S0)?;
-
-        // We need to perform the csrw instruction, which writes a CSR.
-        // This is a pseudo instruction, which actually is encoded as a
-        // csrrw instruction, with the destination register being x0,
-        // so the read is ignored.
-        //
-        // csrrw,
-        // with rd  = x0
-        //      rs1 = s0
-        //      csr = address
-
-        // Write value into s0
-        self.interface
-            .abstract_cmd_register_write(&register::S0, value)?;
-
-        let mut csrrw_cmd: u32 = 0b_01000_001_00000_1110011;
-        csrrw_cmd |= ((address as u32) & 0xfff) << 20;
-
-        // write progbuf0: csrr xxxxxx s0, (address) // lookup correct command
-        self.interface.setup_program_buffer(&[csrrw_cmd])?;
-
-        // command: postexec
-        let mut postexec_cmd = AccessRegisterCommand(0);
-        postexec_cmd.set_postexec(true);
-
-        self.interface.execute_abstract_command(postexec_cmd.0)?;
-
-        // command: transfer, regno = 0x1008
-        // restore original value in s0
-        self.interface
-            .abstract_cmd_register_write(&register::S0, s0)?;
-
-        Ok(())
     }
 }
 
@@ -586,6 +505,7 @@ impl<'probe> MemoryInterface for Riscv32<'probe> {
 bitfield! {
     // `dmcontrol` register, located at
     // address 0x10
+    #[derive(Copy, Clone)]
     pub struct Dmcontrol(u32);
     impl Debug;
 
@@ -600,6 +520,24 @@ bitfield! {
     _, set_clrresethaltreq: 2;
     ndmreset, set_ndmreset: 1;
     dmactive, set_dmactive: 0;
+}
+
+impl Dmcontrol {
+    /// Currently selected harts
+    ///
+    /// Combination of the hartselhi and hartsello registers.
+    fn hartsel(&self) -> u32 {
+        self.hartselhi() << 10 | self.hartsello()
+    }
+
+    /// Set the currently selected harts
+    ///
+    /// This sets the hartselhi and hartsello registers.
+    /// This is a 20 bit register, larger values will be truncated.
+    fn set_hartsel(&mut self, value: u32) {
+        self.set_hartsello(value & 0x3ff);
+        self.set_hartselhi((value >> 10) & 0x3ff);
+    }
 }
 
 impl DebugRegister for Dmcontrol {
