@@ -1,5 +1,3 @@
-mod logger;
-
 use core::{
     cmp,
     convert::TryInto,
@@ -113,7 +111,7 @@ struct Opts {
 
 fn notmain() -> Result<i32, anyhow::Error> {
     let opts: Opts = Opts::from_args();
-    logger::init(opts.verbose);
+    defmt_logger::init(opts.verbose);
 
     if opts.list_probes {
         return print_probes(Probe::list_all());
@@ -457,7 +455,7 @@ fn notmain() -> Result<i32, anyhow::Error> {
                                 }
 
                                 // Forward the defmt frame to our logger.
-                                logger::log_defmt(
+                                defmt_logger::log_defmt(
                                     &frame,
                                     file.as_deref(),
                                     line,

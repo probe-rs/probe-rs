@@ -163,7 +163,7 @@ dependencies = [
 [[package]]
 name = "defmt-decoder"
 version = "0.1.4"
-source = "git+https://github.com/knurling-rs/defmt?rev=c4461eb#c4461eb148461e54d9a1e203cf01393f07ce84f0"
+source = "git+https://github.com/knurling-rs/defmt?rev=a4400d8#a4400d8f3e58c89e97d9d10056df501d4434e6b6"
 dependencies = [
  "byteorder",
  "colored",
@@ -176,7 +176,7 @@ dependencies = [
 [[package]]
 name = "defmt-elf2table"
 version = "0.1.0"
-source = "git+https://github.com/knurling-rs/defmt?rev=c4461eb#c4461eb148461e54d9a1e203cf01393f07ce84f0"
+source = "git+https://github.com/knurling-rs/defmt?rev=a4400d8#a4400d8f3e58c89e97d9d10056df501d4434e6b6"
 dependencies = [
  "anyhow",
  "defmt-decoder",
@@ -187,9 +187,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "defmt-logger"
+version = "0.1.0"
+source = "git+https://github.com/knurling-rs/defmt?rev=a4400d8#a4400d8f3e58c89e97d9d10056df501d4434e6b6"
+dependencies = [
+ "ansi_term 0.12.1",
+ "colored",
+ "defmt-decoder",
+ "difference",
+ "log",
+]
+
+[[package]]
 name = "defmt-parser"
 version = "0.1.0"
-source = "git+https://github.com/knurling-rs/defmt?rev=c4461eb#c4461eb148461e54d9a1e203cf01393f07ce84f0"
+source = "git+https://github.com/knurling-rs/defmt?rev=a4400d8#a4400d8f3e58c89e97d9d10056df501d4434e6b6"
 
 [[package]]
 name = "difference"
@@ -419,9 +431,9 @@ checksum = "8dd5a6d5999d9907cda8ed67bbd137d3af8085216c2ac62de5be860bd41f304a"
 
 [[package]]
 name = "log"
-version = "0.4.11"
+version = "0.4.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4fabed175da42fed1fa0746b0ea71f412aa9d35e76e95e59b192c64b9dc2bf8b"
+checksum = "fcf3805d4480bb5b86070dcfeb9e2cb2ebc148adb753c5cca5f884d1d65a42b2"
 dependencies = [
  "cfg-if 0.1.10",
 ]
@@ -557,6 +569,7 @@ dependencies = [
  "colored",
  "defmt-decoder",
  "defmt-elf2table",
+ "defmt-logger",
  "difference",
  "gimli 0.22.0",
  "hidapi",
