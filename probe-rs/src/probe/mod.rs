@@ -360,21 +360,14 @@ impl Probe {
         self.inner.has_arm_interface()
     }
 
-    #[deprecated = "Use try_into_arm_interface instead"]
-    pub fn into_arm_interface<'probe>(
-        self,
-    ) -> Result<Option<Box<dyn ArmProbeInterface + 'probe>>, DebugProbeError> {
-        match self.try_into_arm_interface() {
-            Ok(interface) => Ok(Some(interface)),
-            Err((_, e)) => Err(e),
-        }
-    }
-
+    /// Try to get a trait object implementing [`ArmProbeInterface`], which can
+    /// can be used to communicate with chips using the ARM architecture.
+    ///
+    /// If an error occurs while trying to connect, the probe is returned.
     pub fn try_into_arm_interface<'probe>(
         self,
     ) -> Result<Box<dyn ArmProbeInterface + 'probe>, (Self, DebugProbeError)> {
         if !self.attached {
-            // TODO: Return self here
             Err((self, DebugProbeError::NotAttached))
         } else {
             self.inner
@@ -389,21 +382,15 @@ impl Probe {
         self.inner.has_riscv_interface()
     }
 
-    #[deprecated = "Use try_into_riscv_interface instead"]
-    pub fn into_riscv_interface(
-        self,
-    ) -> Result<Option<RiscvCommunicationInterface>, DebugProbeError> {
-        match self.try_into_riscv_interface() {
-            Ok(interface) => Ok(Some(interface)),
-            Err((_, err)) => Err(err),
-        }
-    }
-
-    pub fn try_into_riscv_interface<'probe>(
+    /// Try to get a [`RiscvCommunicationInterface`], which can
+    /// can be used to communicate with chips using the RISCV
+    /// architecture.
+    ///
+    /// If an error occurs while trying to connect, the probe is returned.
+    pub fn try_into_riscv_interface(
         self,
     ) -> Result<RiscvCommunicationInterface, (Self, DebugProbeError)> {
         if !self.attached {
-            // TODO: Return self here
             Err((self, DebugProbeError::NotAttached))
         } else {
             self.inner
@@ -478,16 +465,6 @@ pub trait DebugProbe: Send + fmt::Debug {
         false
     }
 
-    /// Get the dedicated interface to debug ARM chips. Ensure that the
-    /// probe actually supports this by calling [DebugProbe::has_arm_interface] first.
-    #[allow(clippy::boxed_local)] // This is required due to the trait!
-    #[deprecated = "Use try_get_arm_interface instead."]
-    fn get_arm_interface<'probe>(
-        self: Box<Self>,
-    ) -> Result<Option<Box<dyn ArmProbeInterface + 'probe>>, DebugProbeError> {
-        Ok(None)
-    }
-
     /// Get the dedicated interface to debug ARM chips. To check that the
     /// probe actually supports this, call [DebugProbe::has_arm_interface] first.
     fn try_get_arm_interface<'probe>(
@@ -501,15 +478,7 @@ pub trait DebugProbe: Send + fmt::Debug {
 
     /// Get the dedicated interface to debug RISCV chips. Ensure that the
     /// probe actually supports this by calling [DebugProbe::has_riscv_interface] first.
-    #[allow(clippy::boxed_local)] // This is required due to the trait!
-    #[deprecated = "Use try_get_riscv_interface instead."]
-    fn get_riscv_interface(
-        self: Box<Self>,
-    ) -> Result<Option<RiscvCommunicationInterface>, DebugProbeError> {
-        Ok(None)
-    }
-
-    fn try_get_riscv_interface<'probe>(
+    fn try_get_riscv_interface(
         self: Box<Self>,
     ) -> Result<RiscvCommunicationInterface, (Box<dyn DebugProbe>, DebugProbeError)> {
         Err((

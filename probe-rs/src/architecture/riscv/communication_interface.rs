@@ -155,6 +155,7 @@ pub struct RiscvCommunicationInterfaceState {
 
     supports_autoexec: bool,
 
+    /// Pointer to configuration string.
     confstrptr: Option<u128>,
 
     /// describes, if the given register can be read / written with an
@@ -325,6 +326,7 @@ impl<'probe> RiscvCommunicationInterface {
         Ok(())
     }
 
+    /// Read the JTAG IDCODE.
     pub fn read_idcode(&mut self) -> Result<u32, DebugProbeError> {
         let value = self.probe.read_register(0x1, 32)?;
 

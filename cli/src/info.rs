@@ -155,7 +155,6 @@ fn show_riscv_info(interface: &mut RiscvCommunicationInterface) -> Result<()> {
     let jep_cc = (manufacturer_id >> 7) & 0xf;
     let jep_id = manufacturer_id & 0x3f;
 
-    // Uncomment when next version of JEP106 crate is released
     let jep_id = jep106::JEP106Code::new(jep_cc as u8, jep_id as u8);
 
     println!("RISCV Chip:");
@@ -163,8 +162,6 @@ fn show_riscv_info(interface: &mut RiscvCommunicationInterface) -> Result<()> {
     println!("\t Version:      {}", version);
     println!("\t Part:         {}", part_number);
     println!("\t Manufacturer: {} ({})", manufacturer_id, jep_id);
-
-    println!("Interface: {:#?}", interface);
 
     Ok(())
 }

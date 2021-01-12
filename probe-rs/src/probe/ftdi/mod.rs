@@ -497,15 +497,6 @@ impl DebugProbe for FtdiProbe {
         }
     }
 
-    fn get_riscv_interface(
-        self: Box<Self>,
-    ) -> Result<Option<RiscvCommunicationInterface>, DebugProbeError> {
-        match RiscvCommunicationInterface::new(self) {
-            Ok(interface) => Ok(Some(interface)),
-            Err((_, error)) => Err(error),
-        }
-    }
-
     fn try_get_riscv_interface(
         self: Box<Self>,
     ) -> Result<RiscvCommunicationInterface, (Box<dyn DebugProbe>, DebugProbeError)> {

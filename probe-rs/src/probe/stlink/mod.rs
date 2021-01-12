@@ -245,15 +245,6 @@ impl DebugProbe for STLink<STLinkUSBDevice> {
         Some(self as _)
     }
 
-    fn get_arm_interface<'probe>(
-        self: Box<Self>,
-    ) -> Result<Option<Box<dyn ArmProbeInterface + 'probe>>, DebugProbeError> {
-        match StlinkArmDebug::new(self) {
-            Ok(interface) => Ok(Some(Box::new(interface))),
-            Err((_, e)) => Err(e),
-        }
-    }
-
     fn has_arm_interface(&self) -> bool {
         true
     }

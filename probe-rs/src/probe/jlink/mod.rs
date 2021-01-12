@@ -603,19 +603,6 @@ impl DebugProbe for JLink {
         Some(self as _)
     }
 
-    fn get_arm_interface<'probe>(
-        self: Box<Self>,
-    ) -> Result<Option<Box<dyn ArmProbeInterface + 'probe>>, DebugProbeError> {
-        if self.supported_protocols.contains(&WireProtocol::Swd) {
-            match ArmCommunicationInterface::new(self, true) {
-                Ok(interface) => Ok(Some(Box::new(interface))),
-                Err((_, err)) => Err(err),
-            }
-        } else {
-            Ok(None)
-        }
-    }
-
     fn has_arm_interface(&self) -> bool {
         self.supported_protocols.contains(&WireProtocol::Swd)
     }
