@@ -44,28 +44,22 @@ fn main() -> Result<(), anyhow::Error> {
 }
 
 // the string reported by the `--version` flag
-fn version() -> &'static str {
-    // version from Cargo.toml e.g. "0.1.4"
-    let mut output = env!("CARGO_PKG_VERSION").to_string();
+fn print_version() -> Result<i32, anyhow::Error> {
+    println!(
+        "{}{}",
+        // version from Cargo.toml e.g. "0.1.4"
+        env!("CARGO_PKG_VERSION"),
+        // "" OR git hash e.g. "34019f8" -- this is generated in build.rs
+        include_str!(concat!(env!("OUT_DIR"), "/git-info.txt"))
+    );
+    println!("supported defmt version: {}", defmt_decoder::DEFMT_VERSION);
 
-    // "" OR git hash e.g. "34019f8" -- this is generated in build.rs
-    output.push_str(include_str!(concat!(env!("OUT_DIR"), "/git-info.txt")));
-
-    output.push_str("\nsupported defmt version: ");
-    output.push_str(defmt_decoder::DEFMT_VERSION);
-
-    // leak (!) heap memory to create a `&'static str` value. `String` won't work due to how
-    // structopt uses the clap API
-    // (this is only called once so it's not that bad)
-    Box::leak(Box::<str>::from(output))
+    Ok(0)
 }
 
 /// A Cargo runner for microcontrollers.
 #[derive(StructOpt)]
-#[structopt(
-    name = "probe-run",
-    version = version(),
-)]
+#[structopt(name = "probe-run")]
 struct Opts {
     /// List supported chips and exit.
     #[structopt(long)]
@@ -81,7 +75,7 @@ struct Opts {
     defmt: bool,
 
     /// The chip to program.
-    #[structopt(long, required_unless_one(&["list-chips", "list-probes"]), env = "PROBE_RUN_CHIP")]
+    #[structopt(long, required_unless_one(&["list-chips", "list-probes", "version"]), env = "PROBE_RUN_CHIP")]
     chip: Option<String>,
 
     /// The probe to use (eg. VID:PID or VID:PID:Serial).
@@ -93,7 +87,7 @@ struct Opts {
     speed: Option<u32>,
 
     /// Path to an ELF firmware file.
-    #[structopt(name = "ELF", parse(from_os_str), required_unless_one(&["list-chips", "list-probes"]))]
+    #[structopt(name = "ELF", parse(from_os_str), required_unless_one(&["list-chips", "list-probes", "version"]))]
     elf: Option<PathBuf>,
 
     /// Skip writing the application binary to flash.
@@ -107,11 +101,19 @@ struct Opts {
     /// Enable more verbose logging.
     #[structopt(short, long)]
     verbose: bool,
+
+    /// Prints version information
+    #[structopt(short = "V", long)]
+    version: bool,
 }
 
 fn notmain() -> Result<i32, anyhow::Error> {
     let opts: Opts = Opts::from_args();
     defmt_logger::init(opts.verbose);
+
+    if opts.version {
+        return print_version();
+    }
 
     if opts.list_probes {
         return print_probes(Probe::list_all());
