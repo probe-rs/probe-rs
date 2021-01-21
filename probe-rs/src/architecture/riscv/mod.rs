@@ -17,8 +17,8 @@ use std::time::{Duration, Instant};
 
 #[macro_use]
 mod register;
-
 pub(crate) mod assembly;
+mod dtm;
 
 pub mod communication_interface;
 
