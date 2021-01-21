@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+Note that `probe-run` depends on `defmt-decoder`, `defmt-elf2table` and `defmt-logger`.
+The git version of `probe-run` may pull in breaking `defmt` changes, as the git version of `defmt` is currently on its way towards a `v0.2.0` release, while the crates.io version is at `0.1.x`.
+
+- [#122] bumps `defmt` git dependencies to `dd056e6`
+- [#125] bumps `defmt` git dependencies to `c4461eb` which includes the new, breaking format string syntax
+
+[#122]: https://github.com/knurling-rs/probe-run/pull/122
+[#125]: https://github.com/knurling-rs/probe-run/pull/125
+
+## [v0.1.9] - 2021-01-21
+
+### Added
+
+- [#126] print a list of probes when multiple probes are found and none was selected
+- [#133] removes `supported defmt version: c4461eb1484...` from `-h` / ` --help` output
+
+[#126]: https://github.com/knurling-rs/probe-run/pull/126
+[#133]: https://github.com/knurling-rs/probe-run/pull/133
+
+### Fixed
+
+- [#129] reject use of defmt logs and the `--no-flash` flag.
+- [#132] Make use of the new defmt-logger crate
+- [#134] updates `probe-run`'s `defmt` dependencies in order to make new features accessible
+
+[#129]: https://github.com/knurling-rs/probe-run/pull/129
+[#132]: https://github.com/knurling-rs/probe-run/pull/132
+[#134]: https://github.com/knurling-rs/probe-run/pull/134
+
 ## [v0.1.8] - 2020-12-11
 
 ### Added
@@ -148,7 +177,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 Initial release
 
-[Unreleased]: https://github.com/knurling-rs/probe-run/compare/v0.1.8...main
+[Unreleased]: https://github.com/knurling-rs/probe-run/compare/v0.1.9...main
+[v0.1.8]: https://github.com/knurling-rs/probe-run/compare/v0.1.8...v0.1.9
 [v0.1.8]: https://github.com/knurling-rs/probe-run/compare/v0.1.7...v0.1.8
 [v0.1.7]: https://github.com/knurling-rs/probe-run/compare/v0.1.6...v0.1.7
 [v0.1.6]: https://github.com/knurling-rs/probe-run/compare/v0.1.5...v0.1.6
