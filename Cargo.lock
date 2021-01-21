@@ -560,7 +560,7 @@ dependencies = [
 
 [[package]]
 name = "probe-run"
-version = "0.1.8"
+version = "0.1.9"
 dependencies = [
  "addr2line",
  "ansi_term 0.12.1",
