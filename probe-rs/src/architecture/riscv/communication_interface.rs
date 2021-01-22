@@ -87,16 +87,15 @@ impl AbstractCommandErrorKind {
 ///
 /// The version of the debug module can be read from the version field of the `dmstatus`
 /// register.
-#[allow(dead_code)]
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum DebugModuleVersion {
     /// There is no debug module present.
     NoModule,
-    /// The debug module confirms to the version 0.11 of the RISCV Debug Specification.
+    /// The debug module conforms to the version 0.11 of the RISCV Debug Specification.
     Version0_11,
-    /// The debug module confirms to the version 0.13 of the RISCV Debug Specification.
+    /// The debug module conforms to the version 0.13 of the RISCV Debug Specification.
     Version0_13,
-    /// The debug module is present, but does not confirm to any available version of the RISCV Debug Specification.
+    /// The debug module is present, but does not conform to any available version of the RISCV Debug Specification.
     NonConforming,
     Unknown(u8),
 }
@@ -132,10 +131,10 @@ impl CoreRegisterAbstractCmdSupport {
 
 #[derive(Debug)]
 pub struct RiscvCommunicationInterfaceState {
-    /// Number of addres bits
+    /// Number of address bits
     abits: u32,
 
-    /// Debug Spec version
+    /// Debug specification version
     debug_version: DebugModuleVersion,
 
     /// Size of the program buffer, in 32-bit words
@@ -155,7 +154,7 @@ pub struct RiscvCommunicationInterfaceState {
 
     supports_autoexec: bool,
 
-    /// Pointer to configuration string.
+    /// Pointer to the configuration string
     confstrptr: Option<u128>,
 
     /// describes, if the given register can be read / written with an
