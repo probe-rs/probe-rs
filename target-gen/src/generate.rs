@@ -193,7 +193,7 @@ pub(crate) fn visit_file(path: &Path, families: &mut Vec<ChipFamily>) -> Result<
 
     let mut archive = zip::ZipArchive::new(file)?;
 
-    let mut pdsc_file = find_pdsc_in_archive(&mut archive)
+    let mut pdsc_file = find_pdsc_in_archive(&mut archive)?
         .ok_or_else(|| anyhow!("Failed to find .pdsc file in archive {}", path.display()))?;
 
     let mut pdsc = String::new();
@@ -202,7 +202,7 @@ pub(crate) fn visit_file(path: &Path, families: &mut Vec<ChipFamily>) -> Result<
     let package = Package::from_string(&pdsc).map_err(|e| {
         anyhow!(
             "Failed to parse pdsc file '{}' in CMSIS Pack {}: {}",
-            pdsc_file.sanitized_name().display(),
+            pdsc_file.name(),
             path.display(),
             e
         )
@@ -277,9 +277,13 @@ pub(crate) async fn visit_arm_file(pack: &PdscRef) -> Vec<ChipFamily> {
     };
 
     let mut pdsc_file = match find_pdsc_in_archive(&mut archive) {
-        Some(file) => file,
-        None => {
+        Ok(Some(file)) => file,
+        Ok(None) => {
             log::error!("Failed to find .pdsc file in archive {}", &url);
+            return vec![];
+        }
+        Err(e) => {
+            log::error!("Error handling archive {}: {}", url, e);
             return vec![];
         }
     };
@@ -299,7 +303,7 @@ pub(crate) async fn visit_arm_file(pack: &PdscRef) -> Vec<ChipFamily> {
         Err(e) => {
             log::error!(
                 "Failed to parse pdsc file '{}' in CMSIS Pack {}: {}",
-                pdsc_file.sanitized_name().display(),
+                pdsc_file.name(),
                 &url,
                 e
             );
@@ -322,26 +326,37 @@ pub(crate) async fn visit_arm_file(pack: &PdscRef) -> Vec<ChipFamily> {
 /// Extracts the pdsc out of a ZIP archive.
 pub(crate) fn find_pdsc_in_archive<T>(
     archive: &mut zip::ZipArchive<T>,
-) -> Option<zip::read::ZipFile>
+) -> Result<Option<zip::read::ZipFile>>
 where
     T: std::io::Seek + std::io::Read,
 {
     let mut index = None;
     for i in 0..archive.len() {
-        let file = archive.by_index(i).unwrap();
-        let outpath = file.sanitized_name();
+        let file = archive.by_index(i)?;
+        let outpath = file.enclosed_name().ok_or_else(|| {
+            anyhow!(
+                "Error handling the ZIP file content with path '{}': Path seems to be malformed",
+                file.name()
+            )
+        })?;
 
         if let Some(extension) = outpath.extension() {
             if extension == "pdsc" {
+                // We cannot return the file directly here,
+                // because this leads to lifetime problems.
+
                 index = Some(i);
                 break;
             }
         }
     }
+
     if let Some(index) = index {
-        Some(archive.by_index(index).unwrap())
+        let file = archive.by_index(index)?;
+
+        Ok(Some(file))
     } else {
-        None
+        Ok(None)
     }
 }
 

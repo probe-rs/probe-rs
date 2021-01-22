@@ -1616,6 +1616,7 @@ dependencies = [
 [[package]]
 name = "probe-rs"
 version = "0.10.1"
+source = "git+https://github.com/probe-rs/probe-rs.git#9a10a0c0c439b64a597c576209164f1f8ad4033b"
 dependencies = [
  "anyhow",
  "base64 0.13.0",
@@ -1644,6 +1645,7 @@ dependencies = [
 [[package]]
 name = "probe-rs-t2rust"
 version = "0.7.0"
+source = "git+https://github.com/probe-rs/probe-rs.git#9a10a0c0c439b64a597c576209164f1f8ad4033b"
 dependencies = [
  "base64 0.13.0",
  "proc-macro2",

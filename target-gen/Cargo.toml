@@ -16,7 +16,7 @@ num-traits = "0.2.10"
 num-derive = "0.3.0"
 serde_yaml = "0.8.11"
 log = "0.4.8"
-zip = "0.5.3"
+zip = "0.5.9"
 structopt = "0.3.2"
 base64 = "0.12.3"
 simplelog = "0.8.0"
@@ -31,6 +31,3 @@ tokio = { version = "0.2.22", features = ["rt-core", "macros", "rt-threaded", "b
 assert_cmd = "1.0.1"
 predicates = "1"
 assert_fs = "1.0.0"
-
-[patch."https://github.com/probe-rs/probe-rs"]
-probe-rs = { path = "../probe-rs/probe-rs",  default-features = false }
