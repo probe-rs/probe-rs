@@ -245,20 +245,21 @@ impl DebugProbe for STLink<STLinkUSBDevice> {
         Some(self as _)
     }
 
-    fn get_arm_interface<'probe>(
-        self: Box<Self>,
-    ) -> Result<Option<Box<dyn ArmProbeInterface + 'probe>>, DebugProbeError> {
-        let interface = StlinkArmDebug::new(self)?;
-
-        Ok(Some(Box::new(interface)))
-    }
-
     fn has_arm_interface(&self) -> bool {
         true
     }
 
     fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
         self
+    }
+
+    fn try_get_arm_interface<'probe>(
+        self: Box<Self>,
+    ) -> Result<Box<dyn ArmProbeInterface + 'probe>, (Box<dyn DebugProbe>, DebugProbeError)> {
+        match StlinkArmDebug::new(self) {
+            Ok(interface) => Ok(Box::new(interface)),
+            Err((probe, err)) => Err((probe.into_probe(), err)),
+        }
     }
 }
 
@@ -1122,7 +1123,9 @@ struct StlinkArmDebug {
 }
 
 impl StlinkArmDebug {
-    fn new(probe: Box<STLink<STLinkUSBDevice>>) -> Result<Self, DebugProbeError> {
+    fn new(
+        probe: Box<STLink<STLinkUSBDevice>>,
+    ) -> Result<Self, (Box<STLink<STLinkUSBDevice>>, DebugProbeError)> {
         let state = ArmCommunicationInterfaceState::new();
 
         // Determine the number and type of available APs.
@@ -1130,7 +1133,10 @@ impl StlinkArmDebug {
         let mut interface = Self { probe, state };
 
         for ap in valid_access_ports(&mut interface) {
-            let ap_state = interface.read_ap_information(ap)?;
+            let ap_state = match interface.read_ap_information(ap) {
+                Ok(state) => state,
+                Err(e) => return Err((interface.probe, e)),
+            };
 
             log::debug!("AP {}: {:?}", ap.port_number(), ap_state);
 

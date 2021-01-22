@@ -583,12 +583,13 @@ impl DebugProbe for DAPLink {
         Some(self as _)
     }
 
-    fn get_arm_interface<'probe>(
+    fn try_get_arm_interface<'probe>(
         self: Box<Self>,
-    ) -> Result<Option<Box<dyn ArmProbeInterface + 'probe>>, DebugProbeError> {
-        let interface = ArmCommunicationInterface::new(self, false)?;
-
-        Ok(Some(Box::new(interface)))
+    ) -> Result<Box<dyn ArmProbeInterface + 'probe>, (Box<dyn DebugProbe>, DebugProbeError)> {
+        match ArmCommunicationInterface::new(self, false) {
+            Ok(interface) => Ok(Box::new(interface)),
+            Err((probe, error)) => Err((probe.into_probe(), error)),
+        }
     }
 
     fn has_arm_interface(&self) -> bool {

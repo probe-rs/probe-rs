@@ -520,7 +520,7 @@ impl DebugProbe for JLink {
                 let idcode_bytes = self.read_dr(32)?;
                 let idcode = u32::from_le_bytes((&idcode_bytes[..]).try_into().unwrap());
 
-                log::debug!("IDCODE: {:#010x}", idcode);
+                log::info!("JTAG IDCODE: {:#010x}", idcode);
             }
             WireProtocol::Swd => {
                 // Construct the JTAG to SWD sequence.
@@ -562,7 +562,7 @@ impl DebugProbe for JLink {
     }
 
     fn detach(&mut self) -> Result<(), super::DebugProbeError> {
-        unimplemented!()
+        Ok(())
     }
 
     fn target_reset(&mut self) -> Result<(), super::DebugProbeError> {
@@ -579,13 +579,19 @@ impl DebugProbe for JLink {
         Ok(())
     }
 
-    fn get_riscv_interface(
+    fn try_get_riscv_interface(
         self: Box<Self>,
-    ) -> Result<Option<RiscvCommunicationInterface>, DebugProbeError> {
+    ) -> Result<RiscvCommunicationInterface, (Box<dyn DebugProbe>, DebugProbeError)> {
         if self.supported_protocols.contains(&WireProtocol::Jtag) {
-            Ok(Some(RiscvCommunicationInterface::new(self)?))
+            match RiscvCommunicationInterface::new(self) {
+                Ok(interface) => Ok(interface),
+                Err((probe, err)) => Err((probe.into_probe(), err)),
+            }
         } else {
-            Ok(None)
+            Err((
+                self.into_probe(),
+                DebugProbeError::InterfaceNotAvailable("JTAG"),
+            ))
         }
     }
 
@@ -595,18 +601,6 @@ impl DebugProbe for JLink {
 
     fn get_swo_interface_mut(&mut self) -> Option<&mut dyn SwoAccess> {
         Some(self as _)
-    }
-
-    fn get_arm_interface<'probe>(
-        self: Box<Self>,
-    ) -> Result<Option<Box<dyn ArmProbeInterface + 'probe>>, DebugProbeError> {
-        if self.supported_protocols.contains(&WireProtocol::Swd) {
-            let interface = ArmCommunicationInterface::new(self, true)?;
-
-            Ok(Some(Box::new(interface)))
-        } else {
-            Ok(None)
-        }
     }
 
     fn has_arm_interface(&self) -> bool {
@@ -619,6 +613,29 @@ impl DebugProbe for JLink {
 
     fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
         self
+    }
+
+    fn try_get_arm_interface<'probe>(
+        mut self: Box<Self>,
+    ) -> Result<Box<dyn ArmProbeInterface + 'probe>, (Box<dyn DebugProbe>, DebugProbeError)> {
+        if self.supported_protocols.contains(&WireProtocol::Swd) {
+            if let Some(WireProtocol::Jtag) = self.protocol {
+                log::warn!("Debugging ARM chips over JTAG is not yet implemented for JLink.");
+                return Err((self, DebugProbeError::InterfaceNotAvailable("SWD/ARM")));
+            }
+
+            // Ensure the SWD protocol is used.
+            if let Err(e) = self.select_protocol(WireProtocol::Swd) {
+                return Err((self, e));
+            };
+
+            match ArmCommunicationInterface::new(self, true) {
+                Ok(interface) => Ok(Box::new(interface)),
+                Err((probe, err)) => Err((probe.into_probe(), err)),
+            }
+        } else {
+            Err((self, DebugProbeError::InterfaceNotAvailable("SWD/ARM")))
+        }
     }
 }
 
