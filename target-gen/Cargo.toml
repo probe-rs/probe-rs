@@ -31,3 +31,6 @@ tokio = { version = "0.2.22", features = ["rt-core", "macros", "rt-threaded", "b
 assert_cmd = "1.0.1"
 predicates = "1"
 assert_fs = "1.0.0"
+
+[patch."https://github.com/probe-rs/probe-rs"]
+probe-rs = { path = "../probe-rs/probe-rs",  default-features = false }

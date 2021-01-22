@@ -12,7 +12,7 @@ use std::{
 };
 
 use anyhow::{bail, ensure, Context, Result};
-use probe_rs::config::{Chip, ChipFamily, FlashRegion, MemoryRegion, RamRegion};
+use probe_rs::config::{Chip, ChipFamily, MemoryRegion, NvmRegion, RamRegion};
 use simplelog::*;
 use structopt::StructOpt;
 
@@ -137,7 +137,7 @@ fn cmd_elf(
                 part: None,
                 name: Cow::Borrowed("<chip name>"),
                 memory_map: Cow::Borrowed(&[
-                    MemoryRegion::Flash(FlashRegion {
+                    MemoryRegion::Nvm(NvmRegion {
                         is_boot_memory: false,
                         range: 0..0x2000,
                     }),

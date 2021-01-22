@@ -7,7 +7,7 @@ use cmsis_pack::pdsc::{Core, Device, Package, Processors};
 use cmsis_pack::{pack_index::PdscRef, utils::FromElem};
 use futures::StreamExt;
 use log;
-use probe_rs::config::{Chip, ChipFamily, FlashRegion, MemoryRegion, RamRegion, RawFlashAlgorithm};
+use probe_rs::config::{Chip, ChipFamily, MemoryRegion, NvmRegion, RamRegion, RawFlashAlgorithm};
 use tokio::runtime::Builder;
 
 pub(crate) enum Kind<'a, T>
@@ -141,7 +141,7 @@ where
             memory_map.push(MemoryRegion::Ram(mem));
         }
         if let Some(mem) = flash {
-            memory_map.push(MemoryRegion::Flash(mem));
+            memory_map.push(MemoryRegion::Nvm(mem));
         }
 
         family.variants.to_mut().push(Chip {
@@ -381,12 +381,12 @@ pub(crate) fn get_ram(device: &Device) -> Option<RamRegion> {
     regions.last().cloned()
 }
 
-pub(crate) fn get_flash(device: &Device) -> Option<FlashRegion> {
+pub(crate) fn get_flash(device: &Device) -> Option<NvmRegion> {
     // Make a Vec of all memories which are flash-like
     let mut regions = Vec::new();
     for memory in device.memories.0.values() {
         if memory.default && memory.access.read && memory.access.execute && !memory.access.write {
-            regions.push(FlashRegion {
+            regions.push(NvmRegion {
                 range: memory.start as u32..memory.start as u32 + memory.size as u32,
                 is_boot_memory: memory.startup,
             });
