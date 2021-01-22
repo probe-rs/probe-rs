@@ -16,9 +16,10 @@ use bitfield::bitfield;
 use register::RISCV_REGISTERS;
 use std::time::{Duration, Instant};
 
+use self::assembly::{csrr, csrw};
+
 #[macro_use]
 mod register;
-
 pub(crate) mod assembly;
 
 pub mod communication_interface;
@@ -59,20 +60,10 @@ impl<'probe> Riscv32<'probe> {
 
         let s0 = self.interface.abstract_cmd_register_read(&register::S0)?;
 
-        // We need to perform the csrr instruction, which reads a CSR.
-        // This is a pseudo instruction, which actually is encoded as a
-        // csrrs instruction, with the rs1 register being x0,
-        // so no bits are changed in the CSR, but the CSR is read into rd, i.e. s0.
-        //
-        // csrrs,
-        // with rd  = s0
-        //      rs1 = x0
-        //      csr = address
+        // Read csr value into register 8 (s0)
+        let csrr_cmd = csrr(8, address);
 
-        let mut csrrs_cmd: u32 = 0b_00000_010_01000_1110011;
-        csrrs_cmd |= ((address as u32) & 0xfff) << 20;
-
-        self.interface.setup_program_buffer(&[csrrs_cmd])?;
+        self.interface.setup_program_buffer(&[csrr_cmd])?;
 
         // command: postexec
         let mut postexec_cmd = AccessRegisterCommand(0);
@@ -110,22 +101,11 @@ impl<'probe> Riscv32<'probe> {
         // Backup register s0
         let s0 = self.interface.abstract_cmd_register_read(&register::S0)?;
 
-        // We need to perform the csrw instruction, which writes a CSR.
-        // This is a pseudo instruction, which actually is encoded as a
-        // csrrw instruction, with the destination register being x0,
-        // so the read is ignored.
-        //
-        // csrrw,
-        // with rd  = x0
-        //      rs1 = s0
-        //      csr = address
-
         // Write value into s0
         self.interface
             .abstract_cmd_register_write(&register::S0, value)?;
 
-        let mut csrrw_cmd: u32 = 0b_01000_001_00000_1110011;
-        csrrw_cmd |= ((address as u32) & 0xfff) << 20;
+        let csrrw_cmd = csrw(address, 8);
 
         // write progbuf0: csrr xxxxxx s0, (address) // lookup correct command
         self.interface.setup_program_buffer(&[csrrw_cmd])?;

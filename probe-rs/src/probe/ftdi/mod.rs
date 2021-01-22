@@ -353,10 +353,9 @@ impl JtagAdapter {
 
         let drbits = params.drpre + len_bits + params.drpost;
         let request = if let Some(data_slice) = data {
-            let data = BitSlice::<Lsb0, u8>::from_slice(data_slice).ok_or(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "could not create bitslice",
-            ))?;
+            let data = BitSlice::<Lsb0, u8>::from_slice(data_slice).ok_or_else(|| {
+                io::Error::new(io::ErrorKind::InvalidData, "could not create bitslice")
+            })?;
             let mut data = BitVec::<Lsb0, u8>::from_bitslice(&data);
             data.truncate(len_bits);
 
@@ -553,18 +552,6 @@ impl JTAGAccess for FtdiProbe {
             .map_err(|e| DebugProbeError::ProbeSpecific(Box::new(e)))?;
         log::debug!("write_register result: {:?})", r);
         Ok(r)
-    }
-}
-
-impl AsRef<dyn DebugProbe> for FtdiProbe {
-    fn as_ref(&self) -> &(dyn DebugProbe + 'static) {
-        self
-    }
-}
-
-impl AsMut<dyn DebugProbe> for FtdiProbe {
-    fn as_mut(&mut self) -> &mut (dyn DebugProbe + 'static) {
-        self
     }
 }
 

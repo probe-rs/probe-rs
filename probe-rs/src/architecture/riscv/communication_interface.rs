@@ -9,7 +9,7 @@ use crate::architecture::riscv::*;
 use crate::DebugProbeError;
 use crate::{MemoryInterface, Probe};
 
-use crate::{probe::JTAGAccess, CoreRegisterAddress, DebugProbe, Error as ProbeRsError};
+use crate::{probe::JTAGAccess, CoreRegisterAddress, Error as ProbeRsError};
 
 use bitfield::bitfield;
 use std::{
@@ -404,6 +404,10 @@ impl<'probe> RiscvCommunicationInterface {
         Ok(())
     }
 
+    pub fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
+        self.probe.target_reset_deassert()
+    }
+
     fn write_progbuf(&mut self, index: usize, value: u32) -> Result<(), RiscvError> {
         match index {
             0 => self.write_dm_register(Progbuf0(value)),
@@ -479,7 +483,7 @@ impl<'probe> RiscvCommunicationInterface {
             return Err(RiscvError::UnsupportedBusAccessWidth(width));
         }
 
-        let lw_command: u32 = assembly::lw(0, 8, width as u32, 8);
+        let lw_command: u32 = assembly::lw(0, 8, width as u8, 8);
 
         self.setup_program_buffer(&[lw_command])?;
 
@@ -746,18 +750,6 @@ impl<'probe> RiscvCommunicationInterface {
     }
 }
 
-impl<'a> AsRef<dyn DebugProbe + 'a> for RiscvCommunicationInterface {
-    fn as_ref(&self) -> &(dyn DebugProbe + 'a) {
-        self.probe.as_ref().as_ref()
-    }
-}
-
-impl<'a> AsMut<dyn DebugProbe + 'a> for RiscvCommunicationInterface {
-    fn as_mut(&mut self) -> &mut (dyn DebugProbe + 'a) {
-        self.probe.as_mut().as_mut()
-    }
-}
-
 impl MemoryInterface for RiscvCommunicationInterface {
     fn read_word_32(&mut self, address: u32) -> Result<u32, crate::Error> {
         let result = self.perform_memory_read(address, RiscvBusAccess::A32)?;
@@ -779,7 +771,7 @@ impl MemoryInterface for RiscvCommunicationInterface {
         let s0 = self.abstract_cmd_register_read(&register::S0)?;
         let s1 = self.abstract_cmd_register_read(&register::S1)?;
 
-        let lw_command: u32 = assembly::lw(0, 8, RiscvBusAccess::A32 as u32, 9);
+        let lw_command: u32 = assembly::lw(0, 8, RiscvBusAccess::A32 as u8, 9);
 
         self.setup_program_buffer(&[lw_command, assembly::addi(8, 8, 4)])?;
 
@@ -850,7 +842,7 @@ impl MemoryInterface for RiscvCommunicationInterface {
         let s0 = self.abstract_cmd_register_read(&register::S0)?;
         let s1 = self.abstract_cmd_register_read(&register::S1)?;
 
-        let lw_command: u32 = assembly::lw(0, 8, RiscvBusAccess::A8 as u32, 9);
+        let lw_command: u32 = assembly::lw(0, 8, RiscvBusAccess::A8 as u8, 9);
 
         self.setup_program_buffer(&[lw_command, assembly::addi(8, 8, 1)])?;
 

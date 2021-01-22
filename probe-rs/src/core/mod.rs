@@ -502,7 +502,7 @@ impl<'probe> Core<'probe> {
 
     /// Clear all HW breakpoints which were set by probe-rs.
     ///
-    /// Currently used as a helper function in [Session::drop].
+    /// Currently used as a helper function in [`Session::drop`].
     pub(crate) fn clear_all_set_hw_breakpoints(&mut self) -> Result<(), error::Error> {
         for bp in self.state.breakpoints.drain(..) {
             self.inner.clear_breakpoint(bp.register_hw)?;
