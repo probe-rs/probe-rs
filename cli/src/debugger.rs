@@ -26,7 +26,7 @@ where
     let arg_str = args.get(index).ok_or(CliError::MissingArgument)?;
 
     parse::<T>(arg_str).map_err(|e| CliError::ArgumentParseError {
-        argument_index: 0,
+        argument_index: index,
         argument: arg_str.to_string(),
         source: e.into(),
     })
@@ -345,7 +345,7 @@ impl DebugCli {
         match (command.function)(cli_data, &args) {
             Err(CliError::MissingArgument) => {
                 println!("Error: Missing argument");
-                println!("");
+                println!();
                 println!("{}", command.help_text);
                 Ok(CliState::Continue)
             }
@@ -353,7 +353,7 @@ impl DebugCli {
                 argument, source, ..
             }) => {
                 println!("Error parsing argument '{}': {}", argument, source);
-                println!("");
+                println!();
                 println!("{}", command.help_text);
                 Ok(CliState::Continue)
             }

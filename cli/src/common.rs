@@ -27,7 +27,7 @@ pub enum CliError {
         argument: String,
         source: anyhow::Error,
     },
-    #[error("Unable to open probe{}", .0.map(|s| format!(": {}", s)).unwrap_or(".".to_string()))]
+    #[error("Unable to open probe{}", .0.map(|s| format!(": {}", s)).as_deref().unwrap_or("."))]
     UnableToOpenProbe(Option<&'static str>),
     #[error(transparent)]
     ProbeRs(#[from] Error),
