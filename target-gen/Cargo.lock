@@ -269,7 +269,6 @@ dependencies = [
  "libc",
  "num-integer",
  "num-traits",
- "serde",
  "time",
  "winapi 0.3.9",
 ]
@@ -1382,17 +1381,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "61807f77802ff30975e01f4f071c8ba10c022052f98b3294119f3e615d13e5be"
 
 [[package]]
-name = "num-derive"
-version = "0.3.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "876a53fff98e03a936a674b29568b0e605f06b29372c2489ff4de23f1949743d"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
 name = "num-integer"
 version = "0.1.44"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2458,13 +2446,10 @@ dependencies = [
  "assert_cmd",
  "assert_fs",
  "base64 0.12.3",
- "chrono",
  "cmsis-pack",
  "futures 0.3.12",
  "goblin",
  "log",
- "num-derive",
- "num-traits",
  "predicates",
  "probe-rs",
  "reqwest 0.10.10",
