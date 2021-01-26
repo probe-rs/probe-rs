@@ -492,8 +492,11 @@ impl DebugProbe for JLink {
         // We can call .unwrap() here, as errors get propagated by ?, and the J-Link
         // supports reading the target voltage, so we’re always going to get Some(f32).
         let target_voltage = self.get_target_voltage()?.unwrap();
-        if target_voltage == crate::probe::LOW_TARGET_VOLTAGE_WARNING_THRESHOLD {
-            log::warn!("J-Link: Target voltage (VTref) is 0 V. Is your target device powered?");
+        if target_voltage < crate::probe::LOW_TARGET_VOLTAGE_WARNING_THRESHOLD {
+            log::warn!(
+                "J-Link: Target voltage (VTref) is {:2.2} V. Is your target device powered?",
+                target_voltage
+            );
         } else {
             log::info!("J-Link: Target voltage: {:2.2} V", target_voltage);
         }
