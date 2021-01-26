@@ -21,7 +21,7 @@ use crate::{
     DebugProbeSelector, Error as ProbeRsError,
 };
 
-use self::swd::RawSwdIo;
+use self::swd::{RawSwdIo, SwdSettings, SwdStatistics};
 
 mod swd;
 
@@ -45,6 +45,9 @@ pub(crate) struct JLink {
     current_ir_reg: u32,
 
     speed_khz: u32,
+
+    swd_statistics: SwdStatistics,
+    swd_settings: SwdSettings,
 }
 
 impl JLink {
@@ -394,6 +397,8 @@ impl DebugProbe for JLink {
             protocol: None,
             current_ir_reg: 1,
             speed_khz: 0,
+            swd_settings: SwdSettings::default(),
+            swd_statistics: SwdStatistics::default(),
         }))
     }
 
