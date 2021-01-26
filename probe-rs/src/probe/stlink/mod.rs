@@ -151,10 +151,8 @@ impl DebugProbe for STLink<STLinkUSBDevice> {
             }
         };
 
-        // Check and report the target voltage. We can call
-        // ?.unwrap() as the ST-Link supports reading the target
-        // voltage and will always return Some(f32).
-        let target_voltage = self.get_target_voltage()?.unwrap();
+        // Check and report the target voltage.
+        let target_voltage = self.get_target_voltage()?.expect("The ST-Link returned None when it should only be able to return Some(f32) or an error. Please report this bug!");
         if target_voltage < crate::probe::LOW_TARGET_VOLTAGE_WARNING_THRESHOLD {
             log::warn!(
                 "Target voltage (VAPP) is {:2.2} V. Is your target device powered?",

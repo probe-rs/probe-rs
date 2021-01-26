@@ -488,10 +488,8 @@ impl DebugProbe for JLink {
             Err(_) => log::info!("J-Link: Hardware version: ?"),
         };
 
-        // Verify target voltage (VTref pin). If this is 0, the device is not powered.
-        // We can call .unwrap() here, as errors get propagated by ?, and the J-Link
-        // supports reading the target voltage, so we’re always going to get Some(f32).
-        let target_voltage = self.get_target_voltage()?.unwrap();
+        // Check and report the target voltage.
+        let target_voltage = self.get_target_voltage()?.expect("The J-Link returned None when it should only be able to return Some(f32) or an error. Please report this bug!");
         if target_voltage < crate::probe::LOW_TARGET_VOLTAGE_WARNING_THRESHOLD {
             log::warn!(
                 "J-Link: Target voltage (VTref) is {:2.2} V. Is your target device powered?",
@@ -640,8 +638,8 @@ impl DebugProbe for JLink {
         }
     }
 
-    // self.handle.read_target_voltage() returns the voltage as an integer in mV.
     fn get_target_voltage(&mut self) -> Result<Option<f32>, DebugProbeError> {
+        // Convert the integer millivolts value from self.handle to volts as an f32.
         Ok(Some((self.handle.read_target_voltage()? as f32) / 1000f32))
     }
 }
