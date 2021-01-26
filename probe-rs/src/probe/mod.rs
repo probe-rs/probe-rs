@@ -15,6 +15,10 @@ use jlink::list_jlink_devices;
 use std::{convert::TryFrom, fmt};
 use thiserror::Error;
 
+/// Log warnings when the measured target voltage is
+/// lower than 1.4V, if at all measureable.
+const LOW_TARGET_VOLTAGE_WARNING_THRESHOLD: f32 = 1.4;
+
 #[derive(Copy, Clone, PartialEq, Debug, serde::Serialize, serde::Deserialize)]
 pub enum WireProtocol {
     Swd,
@@ -501,6 +505,12 @@ pub trait DebugProbe: Send + fmt::Debug {
     }
 
     fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe>;
+
+    /// Reads the target voltage, if possible. Returns `Ok(None)` if the
+    /// probe doesn’t support reading the target voltage.
+    fn get_target_voltage(&mut self) -> Result<Option<f32>, DebugProbeError> {
+        Ok(None)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
