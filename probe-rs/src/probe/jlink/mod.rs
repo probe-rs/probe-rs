@@ -488,15 +488,15 @@ impl DebugProbe for JLink {
             Err(_) => log::info!("J-Link: Hardware version: ?"),
         };
 
-        // Verify target voltage (VTref pin, mV). If this is 0, the device is not powered.
-        let target_voltage = self.handle.read_target_voltage()?;
-        if target_voltage == 0 {
-            log::warn!("J-Link: Target voltage (VTref) is 0 V. Is your target device powered?");
-        } else {
-            log::info!(
-                "J-Link: Target voltage: {:2.2} V",
-                target_voltage as f32 / 1000f32
+        // Check and report the target voltage.
+        let target_voltage = self.get_target_voltage()?.expect("The J-Link returned None when it should only be able to return Some(f32) or an error. Please report this bug!");
+        if target_voltage < crate::probe::LOW_TARGET_VOLTAGE_WARNING_THRESHOLD {
+            log::warn!(
+                "J-Link: Target voltage (VTref) is {:2.2} V. Is your target device powered?",
+                target_voltage
             );
+        } else {
+            log::info!("J-Link: Target voltage: {:2.2} V", target_voltage);
         }
 
         match actual_protocol {
@@ -636,6 +636,11 @@ impl DebugProbe for JLink {
         } else {
             Err((self, DebugProbeError::InterfaceNotAvailable("SWD/ARM")))
         }
+    }
+
+    fn get_target_voltage(&mut self) -> Result<Option<f32>, DebugProbeError> {
+        // Convert the integer millivolts value from self.handle to volts as an f32.
+        Ok(Some((self.handle.read_target_voltage()? as f32) / 1000f32))
     }
 }
 

@@ -151,6 +151,17 @@ impl DebugProbe for STLink<STLinkUSBDevice> {
             }
         };
 
+        // Check and report the target voltage.
+        let target_voltage = self.get_target_voltage()?.expect("The ST-Link returned None when it should only be able to return Some(f32) or an error. Please report this bug!");
+        if target_voltage < crate::probe::LOW_TARGET_VOLTAGE_WARNING_THRESHOLD {
+            log::warn!(
+                "Target voltage (VAPP) is {:2.2} V. Is your target device powered?",
+                target_voltage
+            );
+        } else {
+            log::info!("Target voltage (VAPP): {:2.2} V", target_voltage);
+        }
+
         let mut buf = [0; 2];
         self.send_jtag_command(
             &[commands::JTAG_COMMAND, commands::JTAG_ENTER2, param, 0],
@@ -261,6 +272,27 @@ impl DebugProbe for STLink<STLinkUSBDevice> {
             Err((probe, err)) => Err((probe.into_probe(), err)),
         }
     }
+
+    fn get_target_voltage(&mut self) -> Result<Option<f32>, DebugProbeError> {
+        let mut buf = [0; 8];
+        match self
+            .device
+            .write(&[commands::GET_TARGET_VOLTAGE], &[], &mut buf, TIMEOUT)
+        {
+            Ok(_) => {
+                // The next two unwraps are safe!
+                let a0 = (&buf[0..4]).pread_with::<u32>(0, LE).unwrap() as f32;
+                let a1 = (&buf[4..8]).pread_with::<u32>(0, LE).unwrap() as f32;
+                if a0 != 0.0 {
+                    Ok(Some((2.0 * a1 * 1.2 / a0) as f32))
+                } else {
+                    // Should never happen
+                    Err(StlinkError::VoltageDivisionByZero.into())
+                }
+            }
+            Err(e) => Err(e),
+        }
+    }
 }
 
 impl DAPAccess for STLink<STLinkUSBDevice> {
@@ -363,29 +395,6 @@ impl<D: StLinkUsb> STLink<D> {
 
     /// Firmware version that adds multiple AP support.
     const MIN_JTAG_VERSION_MULTI_AP: u8 = 28;
-
-    /// Reads the target voltage.
-    /// For the china fake variants this will always read a nonzero value!
-    pub fn get_target_voltage(&mut self) -> Result<f32, DebugProbeError> {
-        let mut buf = [0; 8];
-        match self
-            .device
-            .write(&[commands::GET_TARGET_VOLTAGE], &[], &mut buf, TIMEOUT)
-        {
-            Ok(_) => {
-                // The next two unwraps are safe!
-                let a0 = (&buf[0..4]).pread_with::<u32>(0, LE).unwrap() as f32;
-                let a1 = (&buf[4..8]).pread_with::<u32>(0, LE).unwrap() as f32;
-                if a0 != 0.0 {
-                    Ok((2.0 * a1 * 1.2 / a0) as f32)
-                } else {
-                    // Should never happen
-                    Err(StlinkError::VoltageDivisionByZero.into())
-                }
-            }
-            Err(e) => Err(e),
-        }
-    }
 
     /// Get the current mode of the ST-Link
     fn get_current_mode(&mut self) -> Result<Mode, DebugProbeError> {
@@ -526,7 +535,7 @@ impl<D: StLinkUsb> STLink<D> {
             self.jtag_speed_khz = current;
         }
 
-        self.get_target_voltage().map(|_| ())
+        Ok(())
     }
 
     /// sets the SWD frequency.
