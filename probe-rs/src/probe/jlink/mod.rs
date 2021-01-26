@@ -495,10 +495,7 @@ impl DebugProbe for JLink {
         if target_voltage == crate::probe::LOW_TARGET_VOLTAGE_WARNING_THRESHOLD {
             log::warn!("J-Link: Target voltage (VTref) is 0 V. Is your target device powered?");
         } else {
-            log::info!(
-                "J-Link: Target voltage: {:2.2} V",
-                target_voltage
-            );
+            log::info!("J-Link: Target voltage: {:2.2} V", target_voltage);
         }
 
         match actual_protocol {

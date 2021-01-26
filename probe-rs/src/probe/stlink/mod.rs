@@ -161,10 +161,7 @@ impl DebugProbe for STLink<STLinkUSBDevice> {
                 target_voltage
             );
         } else {
-            log::info!(
-                "Target voltage (VAPP): {:2.2} V",
-                target_voltage
-            );
+            log::info!("Target voltage (VAPP): {:2.2} V", target_voltage);
         }
 
         let mut buf = [0; 2];
