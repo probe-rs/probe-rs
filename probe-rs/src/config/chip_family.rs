@@ -74,7 +74,7 @@ where
 impl ChipFamily {
     /// Create a [ChipFamily] from a target
     /// description in YAML format.
-    pub(crate) fn from_yaml_reader<R: std::io::Read>(
+    pub fn from_yaml_reader<R: std::io::Read>(
         definition_reader: R,
     ) -> Result<Self, TargetParseError> {
         serde_yaml::from_reader(definition_reader)

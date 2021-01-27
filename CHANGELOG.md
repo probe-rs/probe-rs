@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Renamed `FlashInfo` to `NvmInfo`
 - Renamed `FlashRegion` to `NvmRegion` and its `flash_info()` method to `nvm_info()`
 - Renamed `FlashError::NoSuitableFlash` to `FlashError::NoSuitableNvm`
+- The `into_arm_interface` and `into_riscv_interface` functions are replaced by the `try_into_arm_interface` and
+  `try_into_riscv_interface` functions, which return the `Probe` struct in the case of an error. This improves the
+  auto detection process.
+  
 
 ### Fixed
 

@@ -6,7 +6,7 @@ use std::{
 use bitfield::bitfield;
 
 use super::communication_interface::RiscvError;
-use crate::{probe::JTAGAccess, DebugProbe, DebugProbeError, Probe};
+use crate::{probe::JTAGAccess, DebugProbe, DebugProbeError};
 
 ///! Debug Transport Module (DTM) handling
 ///!
@@ -17,15 +17,18 @@ use crate::{probe::JTAGAccess, DebugProbe, DebugProbeError, Probe};
 /// which is used to communicate with the RISCV debug module.
 #[derive(Debug)]
 pub struct Dtm {
-    probe: Box<dyn JTAGAccess>,
+    pub probe: Box<dyn JTAGAccess>,
 
     /// Number of address bits in the DMI register
     abits: u32,
 }
 
 impl Dtm {
-    pub fn new(mut probe: Box<dyn JTAGAccess>) -> Result<Self, RiscvError> {
-        let dtmcs_raw = probe.read_register(DTMCS_ADDRESS, DTMCS_WIDTH)?;
+    pub fn new(mut probe: Box<dyn JTAGAccess>) -> Result<Self, (Box<dyn JTAGAccess>, RiscvError)> {
+        let dtmcs_raw = match probe.read_register(DTMCS_ADDRESS, DTMCS_WIDTH) {
+            Ok(value) => value,
+            Err(e) => return Err((probe, e.into())),
+        };
 
         let dtmcs = Dtmcs(u32::from_le_bytes((&dtmcs_raw[..]).try_into().unwrap()));
 
@@ -35,8 +38,9 @@ impl Dtm {
         let idle_cycles = dtmcs.idle();
 
         if dtmcs.version() != 1 {
-            return Err(RiscvError::UnsupportedDebugTransportModuleVersion(
-                dtmcs.version() as u8,
+            return Err((
+                probe,
+                RiscvError::UnsupportedDebugTransportModuleVersion(dtmcs.version() as u8),
             ));
         }
 
@@ -48,10 +52,6 @@ impl Dtm {
 
     pub fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
         self.probe.target_reset_deassert()
-    }
-
-    pub fn close(self) -> Probe {
-        Probe::from_attached_probe(self.probe.into_probe())
     }
 
     pub fn read_idcode(&mut self) -> Result<u32, DebugProbeError> {
