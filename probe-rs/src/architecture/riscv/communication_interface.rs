@@ -679,10 +679,9 @@ impl<'probe> RiscvCommunicationInterface {
         let status: Abstractcs = self.read_dm_register()?;
 
         if status.cmderr() != 0 {
-            return Err(RiscvError::AbstractCommand(AbstractCommandErrorKind::parse(
-                status.cmderr() as u8,
-            ))
-            .into());
+            return Err(RiscvError::AbstractCommand(
+                AbstractCommandErrorKind::parse(status.cmderr() as u8),
+            ));
         }
 
         self.abstract_cmd_register_write(&register::S0, s0)?;
@@ -1168,7 +1167,7 @@ impl<'probe> RiscvCommunicationInterface {
             }
         }
 
-        return Ok(());
+        Ok(())
     }
 
     pub fn close(self) -> Probe {
