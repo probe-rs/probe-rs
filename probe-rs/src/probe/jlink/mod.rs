@@ -488,15 +488,15 @@ impl DebugProbe for JLink {
             Err(_) => log::info!("J-Link: Hardware version: ?"),
         };
 
-        // Verify target voltage (VTref pin, mV). If this is 0, the device is not powered.
-        let target_voltage = self.handle.read_target_voltage()?;
-        if target_voltage == 0 {
-            log::warn!("J-Link: Target voltage (VTref) is 0 V. Is your target device powered?");
-        } else {
-            log::info!(
-                "J-Link: Target voltage: {:2.2} V",
-                target_voltage as f32 / 1000f32
+        // Check and report the target voltage.
+        let target_voltage = self.get_target_voltage()?.expect("The J-Link returned None when it should only be able to return Some(f32) or an error. Please report this bug!");
+        if target_voltage < crate::probe::LOW_TARGET_VOLTAGE_WARNING_THRESHOLD {
+            log::warn!(
+                "J-Link: Target voltage (VTref) is {:2.2} V. Is your target device powered?",
+                target_voltage
             );
+        } else {
+            log::info!("J-Link: Target voltage: {:2.2} V", target_voltage);
         }
 
         match actual_protocol {
@@ -520,7 +520,7 @@ impl DebugProbe for JLink {
                 let idcode_bytes = self.read_dr(32)?;
                 let idcode = u32::from_le_bytes((&idcode_bytes[..]).try_into().unwrap());
 
-                log::debug!("IDCODE: {:#010x}", idcode);
+                log::info!("JTAG IDCODE: {:#010x}", idcode);
             }
             WireProtocol::Swd => {
                 // Construct the JTAG to SWD sequence.
@@ -562,7 +562,7 @@ impl DebugProbe for JLink {
     }
 
     fn detach(&mut self) -> Result<(), super::DebugProbeError> {
-        unimplemented!()
+        Ok(())
     }
 
     fn target_reset(&mut self) -> Result<(), super::DebugProbeError> {
@@ -579,13 +579,19 @@ impl DebugProbe for JLink {
         Ok(())
     }
 
-    fn get_riscv_interface(
+    fn try_get_riscv_interface(
         self: Box<Self>,
-    ) -> Result<Option<RiscvCommunicationInterface>, DebugProbeError> {
+    ) -> Result<RiscvCommunicationInterface, (Box<dyn DebugProbe>, DebugProbeError)> {
         if self.supported_protocols.contains(&WireProtocol::Jtag) {
-            Ok(Some(RiscvCommunicationInterface::new(self)?))
+            match RiscvCommunicationInterface::new(self) {
+                Ok(interface) => Ok(interface),
+                Err((probe, err)) => Err((probe.into_probe(), err)),
+            }
         } else {
-            Ok(None)
+            Err((
+                self.into_probe(),
+                DebugProbeError::InterfaceNotAvailable("JTAG"),
+            ))
         }
     }
 
@@ -595,18 +601,6 @@ impl DebugProbe for JLink {
 
     fn get_swo_interface_mut(&mut self) -> Option<&mut dyn SwoAccess> {
         Some(self as _)
-    }
-
-    fn get_arm_interface<'probe>(
-        self: Box<Self>,
-    ) -> Result<Option<Box<dyn ArmProbeInterface + 'probe>>, DebugProbeError> {
-        if self.supported_protocols.contains(&WireProtocol::Swd) {
-            let interface = ArmCommunicationInterface::new(self, true)?;
-
-            Ok(Some(Box::new(interface)))
-        } else {
-            Ok(None)
-        }
     }
 
     fn has_arm_interface(&self) -> bool {
@@ -619,6 +613,34 @@ impl DebugProbe for JLink {
 
     fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
         self
+    }
+
+    fn try_get_arm_interface<'probe>(
+        mut self: Box<Self>,
+    ) -> Result<Box<dyn ArmProbeInterface + 'probe>, (Box<dyn DebugProbe>, DebugProbeError)> {
+        if self.supported_protocols.contains(&WireProtocol::Swd) {
+            if let Some(WireProtocol::Jtag) = self.protocol {
+                log::warn!("Debugging ARM chips over JTAG is not yet implemented for JLink.");
+                return Err((self, DebugProbeError::InterfaceNotAvailable("SWD/ARM")));
+            }
+
+            // Ensure the SWD protocol is used.
+            if let Err(e) = self.select_protocol(WireProtocol::Swd) {
+                return Err((self, e));
+            };
+
+            match ArmCommunicationInterface::new(self, true) {
+                Ok(interface) => Ok(Box::new(interface)),
+                Err((probe, err)) => Err((probe.into_probe(), err)),
+            }
+        } else {
+            Err((self, DebugProbeError::InterfaceNotAvailable("SWD/ARM")))
+        }
+    }
+
+    fn get_target_voltage(&mut self) -> Result<Option<f32>, DebugProbeError> {
+        // Convert the integer millivolts value from self.handle to volts as an f32.
+        Ok(Some((self.handle.read_target_voltage()? as f32) / 1000f32))
     }
 }
 

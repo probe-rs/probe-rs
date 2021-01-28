@@ -253,18 +253,23 @@ impl<'interface> ArmCommunicationInterface {
     pub(crate) fn new(
         probe: Box<dyn DAPProbe>,
         use_overrun_detect: bool,
-    ) -> Result<Self, DebugProbeError> {
+    ) -> Result<Self, (Box<dyn DAPProbe>, DebugProbeError)> {
         let state = ArmCommunicationInterfaceState::new();
 
         let mut interface = Self { probe, state };
 
-        interface.enter_debug_mode(use_overrun_detect)?;
+        if let Err(e) = interface.enter_debug_mode(use_overrun_detect) {
+            return Err((interface.probe, e));
+        };
 
         /* determine the number and type of available APs */
         log::trace!("Searching valid APs");
 
         for ap in valid_access_ports(&mut interface) {
-            let ap_state = interface.read_ap_information(ap)?;
+            let ap_state = match interface.read_ap_information(ap) {
+                Ok(state) => state,
+                Err(e) => return Err((interface.probe, e)),
+            };
 
             log::debug!("AP {}: {:?}", ap.port_number(), ap_state);
 

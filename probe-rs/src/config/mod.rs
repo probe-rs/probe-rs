@@ -35,11 +35,12 @@ pub use chip::Chip;
 pub use chip_family::ChipFamily;
 pub use flash_algorithm::{FlashAlgorithm, RawFlashAlgorithm};
 pub use flash_properties::FlashProperties;
-pub use memory::{MemoryRegion, NvmRegion, PageInfo, RamRegion, SectorDescription, SectorInfo};
+pub use memory::{
+    MemoryRange, MemoryRegion, NvmRegion, PageInfo, RamRegion, SectorDescription, SectorInfo,
+};
 pub use registry::{add_target_from_yaml, families, get_target_by_name, RegistryError};
 pub use target::{Target, TargetParseError, TargetSelector};
 
 // Crate-internal API
 pub(crate) use chip_info::ChipInfo;
-pub(crate) use memory::MemoryRange;
 pub(crate) use registry::get_target_by_chip_info;

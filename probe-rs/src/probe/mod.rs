@@ -15,6 +15,10 @@ use jlink::list_jlink_devices;
 use std::{convert::TryFrom, fmt};
 use thiserror::Error;
 
+/// Used to log warnings when the measured target voltage is
+/// lower than 1.4V, if at all measureable.
+const LOW_TARGET_VOLTAGE_WARNING_THRESHOLD: f32 = 1.4;
+
 #[derive(Copy, Clone, PartialEq, Debug, serde::Serialize, serde::Deserialize)]
 pub enum WireProtocol {
     Swd,
@@ -360,14 +364,19 @@ impl Probe {
         self.inner.has_arm_interface()
     }
 
-    pub fn into_arm_interface<'probe>(
+    /// Try to get a trait object implementing [`ArmProbeInterface`], which can
+    /// can be used to communicate with chips using the ARM architecture.
+    ///
+    /// If an error occurs while trying to connect, the probe is returned.
+    pub fn try_into_arm_interface<'probe>(
         self,
-    ) -> Result<Option<Box<dyn ArmProbeInterface + 'probe>>, DebugProbeError> {
+    ) -> Result<Box<dyn ArmProbeInterface + 'probe>, (Self, DebugProbeError)> {
         if !self.attached {
-            // TODO: Return self here
-            Err(DebugProbeError::NotAttached)
+            Err((self, DebugProbeError::NotAttached))
         } else {
-            self.inner.get_arm_interface()
+            self.inner
+                .try_get_arm_interface()
+                .map_err(|(probe, err)| (Probe::from_attached_probe(probe), err))
         }
     }
 
@@ -377,13 +386,20 @@ impl Probe {
         self.inner.has_riscv_interface()
     }
 
-    pub fn into_riscv_interface(
+    /// Try to get a [`RiscvCommunicationInterface`], which can
+    /// can be used to communicate with chips using the RISCV
+    /// architecture.
+    ///
+    /// If an error occurs while trying to connect, the probe is returned.
+    pub fn try_into_riscv_interface(
         self,
-    ) -> Result<Option<RiscvCommunicationInterface>, DebugProbeError> {
+    ) -> Result<RiscvCommunicationInterface, (Self, DebugProbeError)> {
         if !self.attached {
-            Err(DebugProbeError::NotAttached)
+            Err((self, DebugProbeError::NotAttached))
         } else {
-            self.inner.get_riscv_interface()
+            self.inner
+                .try_get_riscv_interface()
+                .map_err(|(probe, err)| (Probe::from_attached_probe(probe), err))
         }
     }
 
@@ -453,22 +469,26 @@ pub trait DebugProbe: Send + fmt::Debug {
         false
     }
 
-    /// Get the dedicated interface to debug ARM chips. Ensure that the
-    /// probe actually supports this by calling [DebugProbe::has_arm_interface] first.
-    #[allow(clippy::boxed_local)] // This is required due to the trait!
-    fn get_arm_interface<'probe>(
+    /// Get the dedicated interface to debug ARM chips. To check that the
+    /// probe actually supports this, call [DebugProbe::has_arm_interface] first.
+    fn try_get_arm_interface<'probe>(
         self: Box<Self>,
-    ) -> Result<Option<Box<dyn ArmProbeInterface + 'probe>>, DebugProbeError> {
-        Ok(None)
+    ) -> Result<Box<dyn ArmProbeInterface + 'probe>, (Box<dyn DebugProbe>, DebugProbeError)> {
+        Err((
+            self.into_probe(),
+            DebugProbeError::InterfaceNotAvailable("ARM"),
+        ))
     }
 
     /// Get the dedicated interface to debug RISCV chips. Ensure that the
     /// probe actually supports this by calling [DebugProbe::has_riscv_interface] first.
-    #[allow(clippy::boxed_local)] // This is required due to the trait!
-    fn get_riscv_interface(
+    fn try_get_riscv_interface(
         self: Box<Self>,
-    ) -> Result<Option<RiscvCommunicationInterface>, DebugProbeError> {
-        Ok(None)
+    ) -> Result<RiscvCommunicationInterface, (Box<dyn DebugProbe>, DebugProbeError)> {
+        Err((
+            self.into_probe(),
+            DebugProbeError::InterfaceNotAvailable("RISCV"),
+        ))
     }
 
     /// Check if the probe offers an interface to debug RISCV chips.
@@ -485,6 +505,12 @@ pub trait DebugProbe: Send + fmt::Debug {
     }
 
     fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe>;
+
+    /// Reads the target voltage in Volts, if possible. Returns `Ok(None)`
+    /// if the probe doesn’t support reading the target voltage.
+    fn get_target_voltage(&mut self) -> Result<Option<f32>, DebugProbeError> {
+        Ok(None)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -680,6 +706,12 @@ impl DebugProbe for FakeProbe {
 
     fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
         self
+    }
+
+    fn try_get_arm_interface<'probe>(
+        self: Box<Self>,
+    ) -> Result<Box<dyn ArmProbeInterface + 'probe>, (Box<dyn DebugProbe>, DebugProbeError)> {
+        todo!()
     }
 }
 

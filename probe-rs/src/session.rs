@@ -111,11 +111,11 @@ impl Session {
                     Core::create_state(0),
                 );
 
-                let interface = probe.into_arm_interface()?;
+                let interface = probe.try_into_arm_interface().map_err(|(_, err)| err)?;
 
                 let mut session = Session {
                     target,
-                    interface: ArchitectureInterface::Arm(interface.unwrap()),
+                    interface: ArchitectureInterface::Arm(interface),
                     cores: vec![core],
                 };
 
@@ -147,11 +147,13 @@ impl Session {
                     Core::create_state(0),
                 );
 
-                let interface = probe.into_riscv_interface()?;
+                let interface = probe
+                    .try_into_riscv_interface()
+                    .map_err(|(_probe, err)| err)?;
 
                 let mut session = Session {
                     target,
-                    interface: ArchitectureInterface::Riscv(interface.unwrap()),
+                    interface: ArchitectureInterface::Riscv(interface),
                     cores: vec![core],
                 };
 
@@ -377,7 +379,7 @@ fn get_target_from_selector(
     target: impl Into<TargetSelector>,
     probe: Probe,
 ) -> Result<(Probe, Target), Error> {
-    let mut probe = Some(probe);
+    let mut probe = probe;
 
     let target = match target.into() {
         TargetSelector::Unspecified(name) => crate::config::get_target_by_name(name)?,
@@ -385,11 +387,9 @@ fn get_target_from_selector(
         TargetSelector::Auto => {
             let mut found_chip = None;
 
-            {
-                if probe.as_ref().unwrap().has_arm_interface() {
-                    let interface = probe.take().unwrap().into_arm_interface()?;
-
-                    if let Some(mut interface) = interface {
+            if probe.has_arm_interface() {
+                match probe.try_into_arm_interface() {
+                    Ok(mut interface) => {
                         //let chip_result = try_arm_autodetect(interface);
                         log::debug!("Autodetect: Trying DAP interface...");
 
@@ -400,26 +400,33 @@ fn get_target_from_selector(
 
                         found_chip = found_arm_chip.map(ChipInfo::from);
 
-                        probe = Some(interface.close());
-                    } else {
-                        //TODO: Handle this case, we still need the probe here!
-                        log::debug!("No DAP interface was present. This is not an ARM core. Skipping ARM autodetect.");
+                        probe = interface.close();
+                    }
+                    Err((returned_probe, err)) => {
+                        probe = returned_probe;
+                        log::debug!("Error using ARM interface: {}", err);
                     }
                 }
+            } else {
+                log::debug!("No ARM interface was present. Skipping Riscv autodetect.");
             }
 
-            if found_chip.is_none() && probe.as_ref().unwrap().has_riscv_interface() {
-                let interface = probe.take().unwrap().into_riscv_interface()?;
+            if found_chip.is_none() && probe.has_riscv_interface() {
+                match probe.try_into_riscv_interface() {
+                    Ok(mut interface) => {
+                        let idcode = interface.read_idcode();
 
-                if let Some(mut interface) = interface {
-                    let idcode = interface.read_idcode();
+                        log::debug!("ID Code read over JTAG: {:x?}", idcode);
 
-                    log::debug!("ID Code read over JTAG: {:x?}", idcode);
-
-                    probe = Some(interface.close());
-                } else {
-                    log::debug!("No JTAG interface was present. Skipping Riscv autodetect.");
+                        probe = interface.close();
+                    }
+                    Err((returned_probe, err)) => {
+                        log::debug!("Error during autodetection of RISCV chips: {}", err);
+                        probe = returned_probe;
+                    }
                 }
+            } else {
+                log::debug!("No RISCV interface was present. Skipping Riscv autodetect.");
             }
 
             if let Some(chip) = found_chip {
@@ -430,5 +437,5 @@ fn get_target_from_selector(
         }
     };
 
-    Ok((probe.unwrap(), target))
+    Ok((probe, target))
 }

@@ -258,7 +258,7 @@ pub struct CoreState {
 }
 
 impl CoreState {
-    fn new(id: usize) -> Self {
+    pub fn new(id: usize) -> Self {
         Self {
             id,
             breakpoints: vec![],
@@ -267,7 +267,7 @@ impl CoreState {
 }
 
 #[derive(Debug)]
-pub(crate) enum SpecificCoreState {
+pub enum SpecificCoreState {
     M3(CortexState),
     M4(CortexState),
     M33(CortexState),
@@ -314,7 +314,7 @@ impl SpecificCoreState {
         })
     }
 
-    pub(crate) fn attach_riscv<'probe>(
+    pub fn attach_riscv<'probe>(
         &self,
         state: &'probe mut CoreState,
         interface: &'probe mut RiscvCommunicationInterface,

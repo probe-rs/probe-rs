@@ -72,12 +72,8 @@ where
         None => TargetSelector::Auto,
     };
 
-    if let Some(ref protocol) = shared_options.protocol {
-        probe.select_protocol(
-            protocol
-                .parse()
-                .map_err(|_e| CliError::UnableToOpenProbe(Some("Error while parsing protocol")))?,
-        )?;
+    if let Some(protocol) = shared_options.protocol {
+        probe.select_protocol(protocol)?;
     }
 
     if let Some(speed) = shared_options.speed {
