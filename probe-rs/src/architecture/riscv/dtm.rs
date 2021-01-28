@@ -6,7 +6,7 @@ use std::{
 use bitfield::bitfield;
 
 use super::communication_interface::RiscvError;
-use crate::{probe::JTAGAccess, DebugProbe, DebugProbeError};
+use crate::{probe::JTAGAccess, DebugProbeError};
 
 ///! Debug Transport Module (DTM) handling
 ///!
@@ -138,18 +138,6 @@ impl Dtm {
                 return Err(RiscvError::Timeout);
             }
         }
-    }
-}
-
-impl<'a> AsRef<dyn DebugProbe + 'a> for Dtm {
-    fn as_ref(&self) -> &(dyn DebugProbe + 'a) {
-        self.probe.as_ref().as_ref()
-    }
-}
-
-impl<'a> AsMut<dyn DebugProbe + 'a> for Dtm {
-    fn as_mut(&mut self) -> &mut (dyn DebugProbe + 'a) {
-        self.probe.as_mut().as_mut()
     }
 }
 

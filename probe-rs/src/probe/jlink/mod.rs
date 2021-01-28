@@ -695,18 +695,6 @@ impl JTAGAccess for JLink {
     }
 }
 
-impl<'a> AsRef<dyn DebugProbe + 'a> for JLink {
-    fn as_ref(&self) -> &(dyn DebugProbe + 'a) {
-        self
-    }
-}
-
-impl<'a> AsMut<dyn DebugProbe + 'a> for JLink {
-    fn as_mut(&mut self) -> &mut (dyn DebugProbe + 'a) {
-        self
-    }
-}
-
 impl DAPProbe for JLink {}
 
 impl SwoAccess for JLink {

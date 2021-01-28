@@ -16,7 +16,7 @@ use crate::config::{
     ChipInfo, MemoryRegion, RawFlashAlgorithm, RegistryError, Target, TargetSelector,
 };
 use crate::core::{Architecture, CoreState, SpecificCoreState};
-use crate::{AttachMethod, Core, CoreType, DebugProbe, Error, Probe};
+use crate::{AttachMethod, Core, CoreType, Error, Probe};
 use anyhow::anyhow;
 use std::time::Duration;
 
@@ -73,14 +73,25 @@ impl ArchitectureInterface {
             ArchitectureInterface::Riscv(state) => core.attach_riscv(core_state, state),
         }
     }
-}
 
-impl<'a> AsMut<dyn DebugProbe + 'a> for ArchitectureInterface {
-    fn as_mut(&mut self) -> &mut (dyn DebugProbe + 'a) {
+    /// Deassert the target reset line
+    ///
+    /// When connecting under reset,
+    /// initial configuration is done with the reset line
+    /// asserted. After initial configuration is done, the
+    /// reset line can be deasserted using this method.
+    ///
+    /// See also [`Probe::target_reset_deassert`].
+    fn target_reset_deassert(&mut self) -> Result<(), Error> {
         match self {
-            ArchitectureInterface::Arm(interface) => interface.as_mut().as_mut(),
-            ArchitectureInterface::Riscv(interface) => interface.as_mut(),
+            ArchitectureInterface::Arm(arm_interface) => arm_interface.target_reset_deassert()?,
+
+            ArchitectureInterface::Riscv(riscv_interface) => {
+                riscv_interface.target_reset_deassert()?
+            }
         }
+
+        Ok(())
     }
 }
 
@@ -116,7 +127,7 @@ impl Session {
                     reset_catch_set(&mut session.core(0)?)?;
 
                     // Deassert the reset pin
-                    session.interface.as_mut().target_reset_deassert()?;
+                    session.interface.target_reset_deassert()?;
 
                     // Wait for the core to be halted
                     let mut core = session.core(0)?;
@@ -337,12 +348,10 @@ impl Session {
 
     /// Clears all hardware breakpoints on all cores
     pub fn clear_all_hw_breakpoints(&mut self) -> Result<(), Error> {
-        { 0..self.cores.len() }
-            .map(|n| {
-                self.core(n)
-                    .and_then(|mut core| core.clear_all_hw_breakpoints())
-            })
-            .collect()
+        { 0..self.cores.len() }.try_for_each(|n| {
+            self.core(n)
+                .and_then(|mut core| core.clear_all_hw_breakpoints())
+        })
     }
 }
 
@@ -351,12 +360,10 @@ static_assertions::assert_impl_all!(Session: Send);
 
 impl Drop for Session {
     fn drop(&mut self) {
-        let result: Result<(), crate::Error> = { 0..self.cores.len() }
-            .map(|i| {
-                self.core(i)
-                    .and_then(|mut core| core.clear_all_set_hw_breakpoints())
-            })
-            .collect();
+        let result = { 0..self.cores.len() }.try_for_each(|i| {
+            self.core(i)
+                .and_then(|mut core| core.clear_all_set_hw_breakpoints())
+        });
 
         if let Err(err) = result {
             log::warn!("Could not clear all hardware breakpoints: {:?}", err);

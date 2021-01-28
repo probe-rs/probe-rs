@@ -601,18 +601,6 @@ impl DebugProbe for DAPLink {
     }
 }
 
-impl<'a> AsRef<dyn DebugProbe + 'a> for DAPLink {
-    fn as_ref(&self) -> &(dyn DebugProbe + 'a) {
-        self
-    }
-}
-
-impl<'a> AsMut<dyn DebugProbe + 'a> for DAPLink {
-    fn as_mut(&mut self) -> &mut (dyn DebugProbe + 'a) {
-        self
-    }
-}
-
 impl DAPAccess for DAPLink {
     /// Reads the DAP register on the specified port and address.
     fn read_register(&mut self, port: PortType, addr: u16) -> Result<u32, DebugProbeError> {

@@ -357,18 +357,6 @@ impl DAPAccess for STLink<STLinkUSBDevice> {
     }
 }
 
-impl<'a> AsRef<dyn DebugProbe + 'a> for STLink<STLinkUSBDevice> {
-    fn as_ref(&self) -> &(dyn DebugProbe + 'a) {
-        self
-    }
-}
-
-impl<'a> AsMut<dyn DebugProbe + 'a> for STLink<STLinkUSBDevice> {
-    fn as_mut(&mut self) -> &mut (dyn DebugProbe + 'a) {
-        self
-    }
-}
-
 impl<D: StLinkUsb> Drop for STLink<D> {
     fn drop(&mut self) {
         // We ignore the error cases as we can't do much about it anyways.
@@ -1371,6 +1359,12 @@ impl<'probe> ArmProbeInterface for StlinkArmDebug {
         self.state.ap_information.len()
     }
 
+    fn target_reset_deassert(&mut self) -> Result<(), ProbeRsError> {
+        self.probe.target_reset_deassert()?;
+
+        Ok(())
+    }
+
     fn close(self: Box<Self>) -> Probe {
         Probe::from_attached_probe(self.probe)
     }
@@ -1472,18 +1466,6 @@ where
             values,
         )?;
         Ok(())
-    }
-}
-
-impl<'a> AsRef<dyn DebugProbe + 'a> for StlinkArmDebug {
-    fn as_ref(&self) -> &(dyn DebugProbe + 'a) {
-        self.probe.as_ref()
-    }
-}
-
-impl<'a> AsMut<dyn DebugProbe + 'a> for StlinkArmDebug {
-    fn as_mut(&mut self) -> &mut (dyn DebugProbe + 'a) {
-        self.probe.as_mut()
     }
 }
 

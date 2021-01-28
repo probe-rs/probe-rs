@@ -125,9 +125,7 @@ pub trait DAPAccess {
     }
 }
 
-pub trait ArmProbeInterface:
-    SwoAccess + AsRef<dyn DebugProbe> + AsMut<dyn DebugProbe> + Debug + Send
-{
+pub trait ArmProbeInterface: SwoAccess + Debug + Send {
     fn memory_interface(&mut self, access_port: MemoryAP) -> Result<Memory<'_>, ProbeRsError>;
 
     fn ap_information(&self, access_port: GenericAP) -> Option<&ApInformation>;
@@ -135,6 +133,16 @@ pub trait ArmProbeInterface:
     fn num_access_ports(&self) -> usize;
 
     fn read_from_rom_table(&mut self) -> Result<Option<ArmChipInfo>, ProbeRsError>;
+
+    /// Deassert the target reset line
+    ///
+    /// When connecting under reset,
+    /// initial configuration is done with the reset line
+    /// asserted. After initial configuration is done, the
+    /// reset line can be deasserted using this method.
+    ///
+    /// See also [`Probe::target_reset_deassert`].
+    fn target_reset_deassert(&mut self) -> Result<(), ProbeRsError>;
 
     fn close(self: Box<Self>) -> Probe;
 }
@@ -211,7 +219,7 @@ pub struct ArmCommunicationInterface {
 ///
 /// This is used to combine the traits, because it cannot be done in the ArmCommunicationInterface
 /// struct itself.
-pub trait DAPProbe: DAPAccess + DebugProbe + AsRef<dyn DebugProbe> + AsMut<dyn DebugProbe> {}
+pub trait DAPProbe: DAPAccess + DebugProbe {}
 
 impl ArmProbeInterface for ArmCommunicationInterface {
     fn memory_interface(&mut self, access_port: MemoryAP) -> Result<Memory<'_>, ProbeRsError> {
@@ -230,20 +238,14 @@ impl ArmProbeInterface for ArmCommunicationInterface {
         self.state.ap_information.len()
     }
 
+    fn target_reset_deassert(&mut self) -> Result<(), ProbeRsError> {
+        self.probe.target_reset_deassert()?;
+
+        Ok(())
+    }
+
     fn close(self: Box<Self>) -> Probe {
         Probe::from_attached_probe(self.probe.into_probe())
-    }
-}
-
-impl<'a> AsRef<dyn DebugProbe + 'a> for ArmCommunicationInterface {
-    fn as_ref(&self) -> &(dyn DebugProbe + 'a) {
-        self.probe.as_ref().as_ref()
-    }
-}
-
-impl<'a> AsMut<dyn DebugProbe + 'a> for ArmCommunicationInterface {
-    fn as_mut(&mut self) -> &mut (dyn DebugProbe + 'a) {
-        self.probe.as_mut().as_mut()
     }
 }
 

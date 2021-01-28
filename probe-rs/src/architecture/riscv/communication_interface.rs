@@ -12,7 +12,7 @@ use crate::architecture::riscv::*;
 use crate::DebugProbeError;
 use crate::{MemoryInterface, Probe};
 
-use crate::{probe::JTAGAccess, CoreRegisterAddress, DebugProbe, Error as ProbeRsError};
+use crate::{probe::JTAGAccess, CoreRegisterAddress, Error as ProbeRsError};
 
 use bitfield::bitfield;
 use std::{
@@ -619,7 +619,7 @@ impl<'probe> RiscvCommunicationInterface {
         // Backup register s0
         let s0 = self.abstract_cmd_register_read(&register::S0)?;
 
-        let lw_command: u32 = assembly::lw(0, 8, V::WIDTH as u32, 8);
+        let lw_command: u32 = assembly::lw(0, 8, V::WIDTH as u8, 8);
 
         self.setup_program_buffer(&[lw_command])?;
 
@@ -667,11 +667,11 @@ impl<'probe> RiscvCommunicationInterface {
         let s1 = self.abstract_cmd_register_read(&register::S1)?;
 
         // Load a word from address in register 8 (S0), with offset 0, into register 9 (S9)
-        let lw_command: u32 = assembly::lw(0, 8, V::WIDTH as u32, 9);
+        let lw_command: u32 = assembly::lw(0, 8, V::WIDTH as u8, 9);
 
         self.setup_program_buffer(&[
             lw_command,
-            assembly::addi(8, 8, V::WIDTH.byte_width() as u32),
+            assembly::addi(8, 8, V::WIDTH.byte_width() as u16),
         ])?;
 
         self.write_dm_register(Data0(address))?;
@@ -838,7 +838,7 @@ impl<'probe> RiscvCommunicationInterface {
 
         self.setup_program_buffer(&[
             sw_command,
-            assembly::addi(8, 8, V::WIDTH.byte_width() as u32),
+            assembly::addi(8, 8, V::WIDTH.byte_width() as u16),
         ])?;
 
         // write address into s0
@@ -1061,20 +1061,10 @@ impl<'probe> RiscvCommunicationInterface {
 
         let s0 = self.abstract_cmd_register_read(&register::S0)?;
 
-        // We need to perform the csrr instruction, which reads a CSR.
-        // This is a pseudo instruction, which actually is encoded as a
-        // csrrs instruction, with the rs1 register being x0,
-        // so no bits are changed in the CSR, but the CSR is read into rd, i.e. s0.
-        //
-        // csrrs,
-        // with rd  = s0
-        //      rs1 = x0
-        //      csr = address
+        // Read csr value into register 8 (s0)
+        let csrr_cmd = assembly::csrr(8, address);
 
-        let mut csrrs_cmd: u32 = 0b_00000_010_01000_1110011;
-        csrrs_cmd |= ((address as u32) & 0xfff) << 20;
-
-        self.setup_program_buffer(&[csrrs_cmd])?;
+        self.setup_program_buffer(&[csrr_cmd])?;
 
         // command: postexec
         let mut postexec_cmd = AccessRegisterCommand(0);
@@ -1097,24 +1087,12 @@ impl<'probe> RiscvCommunicationInterface {
         // Backup register s0
         let s0 = self.abstract_cmd_register_read(&register::S0)?;
 
-        // We need to perform the csrw instruction, which writes a CSR.
-        // This is a pseudo instruction, which actually is encoded as a
-        // csrrw instruction, with the destination register being x0,
-        // so the read is ignored.
-        //
-        // csrrw,
-        // with rd  = x0
-        //      rs1 = s0
-        //      csr = address
-
         // Write value into s0
         self.abstract_cmd_register_write(&register::S0, value)?;
 
-        let mut csrrw_cmd: u32 = 0b_01000_001_00000_1110011;
-        csrrw_cmd |= ((address as u32) & 0xfff) << 20;
-
-        // write progbuf0: csrr xxxxxx s0, (address) // lookup correct command
-        self.setup_program_buffer(&[csrrw_cmd])?;
+        // Built the CSRW command to write into the program buffer
+        let csrw_cmd = assembly::csrw(address, 8);
+        self.setup_program_buffer(&[csrw_cmd])?;
 
         // command: postexec
         let mut postexec_cmd = AccessRegisterCommand(0);
@@ -1427,18 +1405,6 @@ impl RiscvValue for u128 {
         interface.write_dm_register_untyped(R::R2_ADDRESS as u64, bits_2)?;
         interface.write_dm_register_untyped(R::R1_ADDRESS as u64, bits_1)?;
         interface.write_dm_register_untyped(R::R0_ADDRESS as u64, bits_0)
-    }
-}
-
-impl<'a> AsRef<dyn DebugProbe + 'a> for RiscvCommunicationInterface {
-    fn as_ref(&self) -> &(dyn DebugProbe + 'a) {
-        self.dtm.as_ref()
-    }
-}
-
-impl<'a> AsMut<dyn DebugProbe + 'a> for RiscvCommunicationInterface {
-    fn as_mut(&mut self) -> &mut (dyn DebugProbe + 'a) {
-        self.dtm.as_mut()
     }
 }
 

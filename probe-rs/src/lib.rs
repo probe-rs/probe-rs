@@ -62,11 +62,6 @@
 //! probe-rs is built around 5 main interfaces: the [Probe],
 //! [Target], [Session], [Memory] and [Core] strucs.
 
-#![allow(clippy::useless_let_if_seq)]
-#![allow(clippy::trivially_copy_pass_by_ref)]
-#![allow(clippy::implicit_hasher)]
-#![allow(clippy::verbose_bit_mask)]
-
 #[macro_use]
 extern crate serde;
 
