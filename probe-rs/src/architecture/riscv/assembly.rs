@@ -62,15 +62,46 @@ pub fn csrrw(rd: u8, rs1: u8, csr: u16) -> u32 {
 ///
 /// This function panics if any of the values would have to be truncated.
 fn i_type_instruction(opcode: u8, rs1: u8, funct3: u8, rd: u8, imm: u16) -> u32 {
-    assert!(opcode <= 0x3f);
-    assert!(rs1 <= 0x1f);
-    assert!(funct3 <= 0x3);
-    assert!(rd <= 0x1f);
-    assert!(imm <= 0xfff);
+    assert!(opcode <= 0x7f); // [06:00]
+    assert!(rd <= 0x1f); // [11:07]
+    assert!(funct3 <= 0x7); // [14:12]
+    assert!(rs1 <= 0x1f); // [19:15]
+    assert!(imm <= 0xfff); // [31:20]
 
     (imm as u32) << 20
         | (rs1 as u32) << 15
         | (funct3 as u32) << 12
         | (rd as u32) << 7
         | opcode as u32
+}
+
+#[cfg(test)]
+mod test {
+    use super::{csrr, csrw};
+
+    #[test]
+    fn assemble_csrr() {
+        // Assembly output of assembly 'csrr  s0, mie'
+        //
+        // mie address: 0x304
+        // s0 index:    8
+        let expected = 0x30402473;
+
+        let assembled = csrr(8, 0x304);
+
+        assert_eq!(assembled, expected);
+    }
+
+    #[test]
+    fn assemble_csrw() {
+        // Assembly output of assembly 'csrw  mstatus, s1'
+        //
+        // mstatus address: 0x300
+        // s9 index:    9
+        let expected = 0x30049073;
+
+        let assembled = csrw(0x300, 9);
+
+        assert_eq!(assembled, expected);
+    }
 }
