@@ -26,10 +26,13 @@ use probe_rs_cli_util::{
 };
 
 mod diagnostics;
+const CARGO_NAME: &str = env!("CARGO_PKG_NAME");
+const CARGO_VERSION: &str = env!("CARGO_PKG_VERSION");
+const GIT_VERSION: &str = git_version::git_version!(fallback = "crates.io");
 
 lazy_static::lazy_static! {
     static ref METADATA: Arc<Mutex<Metadata>> = Arc::new(Mutex::new(Metadata {
-        release: env!("CARGO_PKG_VERSION").to_string(),
+        release: CARGO_VERSION.to_string(),
         chip: None,
         probe: None,
         speed: None,
@@ -39,6 +42,8 @@ lazy_static::lazy_static! {
 
 #[derive(Debug, StructOpt)]
 struct Opt {
+    #[structopt(short = "V", long = "version")]
+    pub version: bool,
     #[structopt(name = "chip", long = "chip")]
     chip: Option<String>,
     #[structopt(name = "chip description file path", long = "chip-description-path")]
@@ -203,6 +208,14 @@ fn main_try() -> Result<(), Diagnostic> {
 
     // Get commandline options.
     let opt = Opt::from_iter(&args);
+
+    if opt.version {
+        println!(
+            "{} {}\ngit commit: {}",
+            CARGO_NAME, CARGO_VERSION, GIT_VERSION
+        );
+        return Ok(());
+    }
 
     logging::init(opt.log);
 

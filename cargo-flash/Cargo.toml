@@ -21,7 +21,7 @@ sentry = ["probe-rs-cli-util/sentry"]
 structopt = "0.3.20"
 indicatif = "0.15.0"
 env_logger = "0.8.1"
-log = "0.4.0"
+log = "0.4.14"
 lazy_static = "1.4.0"
 colored = "2.0.0"
 probe-rs = { version = "0.10.0", git = "https://github.com/probe-rs/probe-rs", branch = "improved-flash-errors" }

@@ -89,7 +89,7 @@ cargo-flash depends on the [libusb](https://libusb.info/) and optionally on [lib
 On Ubuntu, the following packages need to be installed:
 
 ```
-> sudo apt install -y pkg-config libusb-dev libusb-1.0 libftdi1-dev
+> sudo apt install -y pkg-config libusb-1.0-0-dev libftdi1-dev
 ```
 
 #### Windows
