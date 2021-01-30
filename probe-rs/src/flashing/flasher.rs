@@ -249,6 +249,8 @@ impl<'session> Flasher<'session> {
         // If the flash algo doesn't support erase all, disable chip erase.
         if self.flash_algorithm().pc_erase_all.is_none() {
             do_chip_erase = false;
+            log::warn!("Chip erase was the selected method to erase the sectors but this chip does not support chip erases (yet).");
+            log::warn!("A manual sector erase will be performed.");
         }
 
         log::debug!("Full Chip Erase enabled: {:?}", do_chip_erase);
@@ -285,7 +287,6 @@ impl<'session> Flasher<'session> {
         }
 
         // Flash all necessary pages.
-
         if self.double_buffering_supported() && enable_double_buffering {
             self.program_double_buffer(&flash_layout, progress)?;
         } else {
