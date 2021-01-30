@@ -16,3 +16,5 @@ pub use self::core::m0;
 pub use self::core::m33;
 pub use self::core::m4;
 pub use self::core::CortexDump;
+
+pub use communication_interface::ArmProbeInterface;

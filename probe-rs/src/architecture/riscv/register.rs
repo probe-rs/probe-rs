@@ -6,6 +6,7 @@ use crate::{
 
 macro_rules! data_register {
     ($i:ident, $addr:expr, $name:expr) => {
+        #[derive(Debug, Copy, Clone)]
         struct $i(u32);
 
         impl DebugRegister for $i {
@@ -27,6 +28,7 @@ macro_rules! data_register {
     };
 
     (pub $i:ident, $addr:expr, $name:expr) => {
+        #[derive(Debug, Copy, Clone)]
         pub struct $i(u32);
 
         impl DebugRegister for $i {

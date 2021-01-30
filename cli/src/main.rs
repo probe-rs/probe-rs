@@ -8,7 +8,7 @@ use debugger::CliState;
 use probe_rs::{
     debug::DebugInfo,
     flashing::{download_file, Format},
-    MemoryInterface, Probe, Session,
+    MemoryInterface, Probe, Session, WireProtocol,
 };
 
 use capstone::{arch::arm::ArchMode, prelude::*, Capstone, Endian};
@@ -104,7 +104,11 @@ struct SharedOptions {
 
     /// Protocol to use for target connection
     #[structopt(short, long)]
-    protocol: Option<String>,
+    protocol: Option<WireProtocol>,
+
+    /// Protocol speed in kHz
+    #[structopt(short, long)]
+    speed: Option<u32>,
 
     #[structopt(long)]
     connect_under_reset: bool,

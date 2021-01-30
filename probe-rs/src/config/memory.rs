@@ -79,7 +79,7 @@ pub struct NvmInfo {
 }
 
 /// Enables the user to do range intersection testing.
-pub(crate) trait MemoryRange {
+pub trait MemoryRange {
     /// Returns true if `self` contains `range` fully.
     fn contains_range(&self, range: &Range<u32>) -> bool;
 

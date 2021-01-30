@@ -5,59 +5,32 @@ use probe_rs::{
     DebugProbeError, Error, Probe, Session,
 };
 
-use std::fmt;
 use thiserror::Error;
 
 use anyhow::Result;
 
 #[derive(Debug, Error)]
 pub enum CliError {
-    DebugProbe(
-        #[source]
-        #[from]
-        DebugProbeError,
-    ),
-    AccessPort(
-        #[source]
-        #[from]
-        AccessPortError,
-    ),
-    StdIO(
-        #[source]
-        #[from]
-        std::io::Error,
-    ),
-    FileDownload(
-        #[source]
-        #[from]
-        FileDownloadError,
-    ),
+    #[error(transparent)]
+    DebugProbe(#[from] DebugProbeError),
+    #[error(transparent)]
+    AccessPort(#[from] AccessPortError),
+    #[error(transparent)]
+    StdIO(#[from] std::io::Error),
+    #[error(transparent)]
+    FileDownload(#[from] FileDownloadError),
+    #[error("Command expected more arguments.")]
     MissingArgument,
+    #[error("Failed to parse argument '{argument}'.")]
+    ArgumentParseError {
+        argument_index: usize,
+        argument: String,
+        source: anyhow::Error,
+    },
+    #[error("Unable to open probe{}", .0.map(|s| format!(": {}", s)).as_deref().unwrap_or("."))]
     UnableToOpenProbe(Option<&'static str>),
-    ProbeRs(
-        #[source]
-        #[from]
-        Error,
-    ),
-}
-
-impl fmt::Display for CliError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use CliError::*;
-
-        match self {
-            DebugProbe(ref e) => e.fmt(f),
-            AccessPort(ref e) => e.fmt(f),
-            StdIO(ref e) => e.fmt(f),
-            FileDownload(ref e) => e.fmt(f),
-            MissingArgument => write!(f, "Command expected more arguments."),
-            UnableToOpenProbe(ref details) => match details {
-                None => write!(f, "Unable to open probe."),
-                Some(details) => write!(f, "Unable to open probe: {}", details),
-            },
-            ProbeRs(ref e) => e.fmt(f),
-        }
-    }
+    #[error(transparent)]
+    ProbeRs(#[from] Error),
 }
 
 pub(crate) fn open_probe(index: Option<usize>) -> Result<Probe, CliError> {
@@ -99,12 +72,20 @@ where
         None => TargetSelector::Auto,
     };
 
-    if let Some(ref protocol) = shared_options.protocol {
-        probe.select_protocol(
-            protocol
-                .parse()
-                .map_err(|_e| CliError::UnableToOpenProbe(Some("Error while parsing protocol")))?,
-        )?;
+    if let Some(protocol) = shared_options.protocol {
+        probe.select_protocol(protocol)?;
+    }
+
+    if let Some(speed) = shared_options.speed {
+        let actual_speed = probe.set_speed(speed)?;
+
+        if actual_speed != speed {
+            log::warn!(
+                "Protocol speed {} kHz not supported, actual speed is {} kHz",
+                speed,
+                actual_speed
+            );
+        }
     }
 
     let session = if shared_options.connect_under_reset {

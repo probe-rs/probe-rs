@@ -258,7 +258,7 @@ pub struct CoreState {
 }
 
 impl CoreState {
-    fn new(id: usize) -> Self {
+    pub fn new(id: usize) -> Self {
         Self {
             id,
             breakpoints: vec![],
@@ -267,7 +267,7 @@ impl CoreState {
 }
 
 #[derive(Debug)]
-pub(crate) enum SpecificCoreState {
+pub enum SpecificCoreState {
     M3(CortexState),
     M4(CortexState),
     M33(CortexState),
@@ -314,7 +314,7 @@ impl SpecificCoreState {
         })
     }
 
-    pub(crate) fn attach_riscv<'probe>(
+    pub fn attach_riscv<'probe>(
         &self,
         state: &'probe mut CoreState,
         interface: &'probe mut RiscvCommunicationInterface,
@@ -502,7 +502,7 @@ impl<'probe> Core<'probe> {
 
     /// Clear all HW breakpoints which were set by probe-rs.
     ///
-    /// Currently used as a helper function in [Session::drop].
+    /// Currently used as a helper function in [`Session::drop`].
     pub(crate) fn clear_all_set_hw_breakpoints(&mut self) -> Result<(), error::Error> {
         for bp in self.state.breakpoints.drain(..) {
             self.inner.clear_breakpoint(bp.register_hw)?;

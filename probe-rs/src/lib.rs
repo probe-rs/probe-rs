@@ -62,11 +62,6 @@
 //! probe-rs is built around 5 main interfaces: the [Probe],
 //! [Target], [Session], [Memory] and [Core] strucs.
 
-#![allow(clippy::useless_let_if_seq)]
-#![allow(clippy::trivially_copy_pass_by_ref)]
-#![allow(clippy::implicit_hasher)]
-#![allow(clippy::verbose_bit_mask)]
-
 #[macro_use]
 extern crate serde;
 
@@ -84,7 +79,8 @@ pub use crate::config::Target;
 pub use crate::core::CoreType;
 pub use crate::core::{
     Architecture, Breakpoint, BreakpointId, CommunicationInterface, Core, CoreInformation,
-    CoreInterface, CoreList, CoreRegister, CoreRegisterAddress, CoreStatus, HaltReason,
+    CoreInterface, CoreList, CoreRegister, CoreRegisterAddress, CoreState, CoreStatus, HaltReason,
+    SpecificCoreState,
 };
 pub use crate::error::Error;
 pub use crate::memory::{Memory, MemoryInterface, MemoryList};
