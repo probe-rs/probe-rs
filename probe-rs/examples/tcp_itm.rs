@@ -1,12 +1,10 @@
-use probe_rs::architecture::arm::swo::{
-    Decoder, SwoConfig, SwoPublisher, TracePacket, UpdaterChannel,
-};
+use probe_rs::architecture::arm::swo::{Decoder, SwoConfig, TracePacket};
 use probe_rs::Error;
 use serde::{Deserialize, Serialize};
-use std::io::prelude::*;
 use std::net::{SocketAddr, TcpListener, TcpStream};
-use std::sync::mpsc::{channel, Sender};
+use std::sync::mpsc::{channel, Receiver, Sender};
 use std::thread::{sleep, spawn, JoinHandle};
+use std::{any::Any, io::prelude::*};
 
 fn main() -> Result<(), Error> {
     pretty_env_logger::init();
@@ -131,7 +129,54 @@ impl TcpPublisher {
     }
 }
 
-impl SwoPublisher for TcpPublisher {
+pub trait SwoPublisher<E> {
+    /// Starts the `SwoPublisher`.
+    /// This should never block and run the `Updater` asynchronously.
+    fn start<
+        I: Serialize + Send + Sync + 'static,
+        O: Deserialize<'static> + Send + Sync + 'static,
+    >(
+        &mut self,
+    ) -> UpdaterChannel<I, O>;
+    /// Stops the `SwoPublisher` if currently running.
+    /// Returns `Ok` if everything went smooth during the run of the `SwoPublisher`.
+    /// Returns `Err` if something went wrong during the run of the `SwoPublisher`.
+    fn stop(&mut self) -> Result<(), E>;
+}
+
+/// A complete channel to an updater.
+/// Rx and tx naming is done from the user view of the channel, not the `Updater` view.
+pub struct UpdaterChannel<
+    I: Serialize + Send + Sync + 'static,
+    O: Deserialize<'static> + Send + Sync + 'static,
+> {
+    /// The rx where the user reads data from.
+    rx: Receiver<O>,
+    /// The tx where the user sends data to.
+    tx: Sender<I>,
+}
+
+impl<I: Serialize + Send + Sync + 'static, O: Deserialize<'static> + Send + Sync + 'static>
+    UpdaterChannel<I, O>
+{
+    /// Creates a new `UpdaterChannel` where crossover is done internally.
+    /// The argument naming is done from the `Updater`s view. Where as the member naming is done from a user point of view.
+    pub fn new(rx: Sender<I>, tx: Receiver<O>) -> Self {
+        Self { rx: tx, tx: rx }
+    }
+
+    /// Returns the rx end of the channel.
+    pub fn rx(&mut self) -> &mut Receiver<O> {
+        &mut self.rx
+    }
+
+    /// Returns the tx end of the channel.
+    pub fn tx(&mut self) -> &mut Sender<I> {
+        &mut self.tx
+    }
+}
+
+impl SwoPublisher<Box<dyn Any + Send>> for TcpPublisher {
     fn start<
         I: Serialize + Send + Sync + 'static,
         O: Deserialize<'static> + Send + Sync + 'static,
@@ -202,7 +247,7 @@ impl SwoPublisher for TcpPublisher {
         UpdaterChannel::new(rx, tx)
     }
 
-    fn stop(&mut self) -> Result<(), ()> {
+    fn stop(&mut self) -> Result<(), Box<dyn Any + Send>> {
         let thread_handle = self.thread_handle.take();
         match thread_handle.map(|h| {
             // If we have a running thread, send the request to stop it and then wait for a join.
@@ -214,7 +259,7 @@ impl SwoPublisher for TcpPublisher {
         }) {
             Some(Err(err)) => {
                 log::error!("An error occured during thread execution: {:?}", err);
-                Err(())
+                Err(err)
             }
             _ => Ok(()),
         }
