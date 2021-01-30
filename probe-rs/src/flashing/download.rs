@@ -17,7 +17,7 @@ use crate::{config::MemoryRange, session::Session};
 use thiserror::Error;
 
 /// Extended options for flashing a binary file.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct BinOptions {
     /// The address in memory where the binary will be put at.
     pub base_address: Option<u32>,
@@ -26,7 +26,7 @@ pub struct BinOptions {
 }
 
 /// A finite list of all the available binary formats probe-rs understands.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub enum Format {
     /// Marks a file in binary format. This means that the file contains the contents of the flash 1:1.
     /// [BinOptions] can be used to define the location in flash where the file contents should be put at.
@@ -299,5 +299,67 @@ fn download_elf<'buffer, T: Read + Seek>(
             );
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::str::FromStr;
+
+    use super::{BinOptions, Format};
+
+    #[test]
+    fn parse_format() {
+        assert_eq!(Format::from_str("hex"), Ok(Format::Hex));
+        assert_eq!(Format::from_str("Hex"), Ok(Format::Hex));
+        assert_eq!(Format::from_str("Ihex"), Ok(Format::Hex));
+        assert_eq!(Format::from_str("IHex"), Ok(Format::Hex));
+        assert_eq!(Format::from_str("iHex"), Ok(Format::Hex));
+        assert_eq!(Format::from_str("IntelHex"), Ok(Format::Hex));
+        assert_eq!(Format::from_str("intelhex"), Ok(Format::Hex));
+        assert_eq!(Format::from_str("intelHex"), Ok(Format::Hex));
+        assert_eq!(Format::from_str("Intelhex"), Ok(Format::Hex));
+        assert_eq!(
+            Format::from_str("bin"),
+            Ok(Format::Bin(BinOptions {
+                base_address: None,
+                skip: 0
+            }))
+        );
+        assert_eq!(
+            Format::from_str("Bin"),
+            Ok(Format::Bin(BinOptions {
+                base_address: None,
+                skip: 0
+            }))
+        );
+        assert_eq!(
+            Format::from_str("binary"),
+            Ok(Format::Bin(BinOptions {
+                base_address: None,
+                skip: 0
+            }))
+        );
+        assert_eq!(
+            Format::from_str("Binary"),
+            Ok(Format::Bin(BinOptions {
+                base_address: None,
+                skip: 0
+            }))
+        );
+        assert_eq!(Format::from_str("Elf"), Ok(Format::Elf));
+        assert_eq!(Format::from_str("elf"), Ok(Format::Elf));
+        assert_eq!(
+            Format::from_str("elfbin"),
+            Err("Format 'elfbin' is unknown.".to_string())
+        );
+        assert_eq!(
+            Format::from_str(""),
+            Err("Format '' is unknown.".to_string())
+        );
+        assert_eq!(
+            Format::from_str("asdasdf"),
+            Err("Format 'asdasdf' is unknown.".to_string())
+        );
     }
 }
