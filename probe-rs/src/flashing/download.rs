@@ -8,6 +8,7 @@ use std::{
     fs::File,
     io::{Read, Seek, SeekFrom},
     path::Path,
+    str::FromStr,
 };
 
 use super::*;
@@ -16,7 +17,7 @@ use crate::{config::MemoryRange, session::Session};
 use thiserror::Error;
 
 /// Extended options for flashing a binary file.
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct BinOptions {
     /// The address in memory where the binary will be put at.
     pub base_address: Option<u32>,
@@ -25,7 +26,7 @@ pub struct BinOptions {
 }
 
 /// A finite list of all the available binary formats probe-rs understands.
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum Format {
     /// Marks a file in binary format. This means that the file contains the contents of the flash 1:1.
     /// [BinOptions] can be used to define the location in flash where the file contents should be put at.
@@ -35,6 +36,22 @@ pub enum Format {
     Hex,
     /// Marks a file in the [ELF](https://en.wikipedia.org/wiki/Executable_and_Linkable_Format) format.
     Elf,
+}
+
+impl FromStr for Format {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match &s.to_lowercase()[..] {
+            "bin" | "binary" => Ok(Format::Bin(BinOptions {
+                base_address: None,
+                skip: 0,
+            })),
+            "hex" | "ihex" | "intelhex" => Ok(Format::Hex),
+            "elf" => Ok(Format::Elf),
+            _ => Err(format!("Format '{}' is unknown.", s)),
+        }
+    }
 }
 
 /// A finite list of all the errors that can occur when flashing a given file.
