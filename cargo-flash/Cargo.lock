@@ -46,27 +46,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "afddf7f520a80dbf76e6f50a35bca42a2331ef227a28b3b6dc5c2e2338d114b1"
 
 [[package]]
-name = "async-stream"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3670df70cbc01729f901f94c887814b3c68db038aad1329a418bae178bc5295c"
-dependencies = [
- "async-stream-impl",
- "futures-core",
-]
-
-[[package]]
-name = "async-stream-impl"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a3548b8efc9f8e8a5a0a2808c5bd8451a9031b9e5b879a79590304ae928b0a70"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
 name = "atty"
 version = "0.2.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -166,6 +145,7 @@ dependencies = [
  "probe-rs",
  "probe-rs-cli-util",
  "structopt",
+ "thiserror",
 ]
 
 [[package]]
@@ -1072,7 +1052,7 @@ checksum = "ac74c624d6b2d21f425f752262f42188365d7b8ff1aff74c82e45136510a4857"
 [[package]]
 name = "probe-rs"
 version = "0.10.1"
-source = "git+https://github.com/probe-rs/probe-rs?branch=improved-flash-errors#f5717f1430240f0fc0489330029de1f699ec4d69"
+source = "git+https://github.com/probe-rs/probe-rs?branch=improved-flash-errors#9d6829907c97608d5c2d0689a5dc4db50b0fad4d"
 dependencies = [
  "anyhow",
  "base64",
@@ -1102,7 +1082,7 @@ dependencies = [
 [[package]]
 name = "probe-rs-cli-util"
 version = "0.10.1"
-source = "git+https://github.com/probe-rs/probe-rs?branch=improved-flash-errors#f5717f1430240f0fc0489330029de1f699ec4d69"
+source = "git+https://github.com/probe-rs/probe-rs?branch=improved-flash-errors#9d6829907c97608d5c2d0689a5dc4db50b0fad4d"
 dependencies = [
  "anyhow",
  "cargo_metadata",
@@ -1124,7 +1104,7 @@ dependencies = [
 [[package]]
 name = "probe-rs-t2rust"
 version = "0.7.0"
-source = "git+https://github.com/probe-rs/probe-rs?branch=improved-flash-errors#f5717f1430240f0fc0489330029de1f699ec4d69"
+source = "git+https://github.com/probe-rs/probe-rs?branch=improved-flash-errors#9d6829907c97608d5c2d0689a5dc4db50b0fad4d"
 dependencies = [
  "base64",
  "proc-macro2",
@@ -1780,30 +1760,17 @@ dependencies = [
 ]
 
 [[package]]
-name = "tokio-stream"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "76066865172052eb8796c686f0b441a93df8b08d40a950b062ffb9a426f00edd"
-dependencies = [
- "futures-core",
- "pin-project-lite",
- "tokio",
-]
-
-[[package]]
 name = "tokio-util"
-version = "0.6.2"
+version = "0.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "feb971a26599ffd28066d387f109746df178eff14d5ea1e235015c5601967a4b"
+checksum = "ebb7cb2f00c5ae8df755b252306272cd1790d39728363936e01827e11f0b017b"
 dependencies = [
- "async-stream",
  "bytes",
  "futures-core",
  "futures-sink",
  "log",
  "pin-project-lite",
  "tokio",
- "tokio-stream",
 ]
 
 [[package]]
