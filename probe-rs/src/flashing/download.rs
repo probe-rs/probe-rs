@@ -1,14 +1,9 @@
-use ihex::Record::*;
 use object::{
     elf::FileHeader32, read::elf::FileHeader, read::elf::ProgramHeader, Bytes, Endianness, Object,
     ObjectSection,
 };
 
-use std::{
-    fs::File,
-    io::{Read, Seek, SeekFrom},
-    path::Path,
-};
+use std::{fs::File, path::Path};
 
 use super::*;
 use crate::{config::MemoryRange, session::Session};
@@ -122,9 +117,9 @@ pub fn download_file_with_options(
     );
 
     match format {
-        Format::Bin(options) => download_bin(&mut buffer, &mut file, &mut loader, options),
-        Format::Elf => download_elf(&mut buffer, &mut file, &mut loader),
-        Format::Hex => download_hex(&mut buffer, &mut file, &mut loader),
+        Format::Bin(options) => loader.load_bin_data(&mut buffer, &mut file, options),
+        Format::Elf => loader.load_elf_data(&mut buffer, &mut file),
+        Format::Hex => loader.load_hex_data(&mut buffer, &mut file),
     }?;
 
     loader
@@ -138,83 +133,11 @@ pub fn download_file_with_options(
         .map_err(FileDownloadError::Flash)
 }
 
-/// Starts the download of a binary file.
-fn download_bin<'buffer, T: Read + Seek>(
-    buffer: &'buffer mut Vec<Vec<u8>>,
-    file: &'buffer mut T,
-    loader: &mut FlashLoader<'buffer>,
-    options: BinOptions,
-) -> Result<(), FileDownloadError> {
-    let mut file_buffer = Vec::new();
-
-    // Skip the specified bytes.
-    file.seek(SeekFrom::Start(u64::from(options.skip)))?;
-
-    file.read_to_end(&mut file_buffer)?;
-
-    buffer.push(file_buffer);
-
-    loader.add_data(
-        if let Some(address) = options.base_address {
-            address
-        } else {
-            // If no base address is specified use the start of the boot memory.
-            // TODO: Implement this as soon as we know targets.
-            0
-        },
-        buffer.last().unwrap(),
-    )?;
-
-    Ok(())
-}
-
-/// Starts the download of a hex file.
-fn download_hex<'buffer, T: Read + Seek>(
-    data_buffer: &'buffer mut Vec<Vec<u8>>,
-    file: &mut T,
-    loader: &mut FlashLoader<'buffer>,
-) -> Result<(), FileDownloadError> {
-    let mut _extended_segment_address = 0;
-    let mut extended_linear_address = 0;
-
-    let mut data = String::new();
-    file.read_to_string(&mut data)?;
-
-    let mut offsets: Vec<(u32, usize)> = Vec::new();
-
-    for record in ihex::Reader::new(&data) {
-        let record = record?;
-        match record {
-            Data { offset, value } => {
-                let offset = extended_linear_address | offset as u32;
-
-                let index = data_buffer.len();
-                data_buffer.push(value);
-
-                offsets.push((offset, index))
-            }
-            EndOfFile => (),
-            ExtendedSegmentAddress(address) => {
-                _extended_segment_address = address * 16;
-            }
-            StartSegmentAddress { .. } => (),
-            ExtendedLinearAddress(address) => {
-                extended_linear_address = (address as u32) << 16;
-            }
-            StartLinearAddress(_) => (),
-        };
-    }
-    for (offset, data_index) in offsets {
-        loader.add_data(offset, &data_buffer[data_index])?;
-    }
-    Ok(())
-}
-
 /// Flash data which was extraced from an ELF file.
-pub(crate) struct ExtractedFlashData<'data> {
-    section_names: Vec<String>,
-    address: u32,
-    data: &'data [u8],
+pub(super) struct ExtractedFlashData<'data> {
+    pub(super) section_names: Vec<String>,
+    pub(super) address: u32,
+    pub(super) data: &'data [u8],
 }
 
 impl std::fmt::Debug for ExtractedFlashData<'_> {
@@ -292,55 +215,7 @@ impl<'data> ExtractedFlashData<'data> {
     }
 }
 
-/// Starts the download of a elf file.
-pub fn download_elf<'buffer, T: Read>(
-    buffer: &'buffer mut Vec<Vec<u8>>,
-    file: &mut T,
-    loader: &mut FlashLoader<'buffer>,
-) -> Result<(), FileDownloadError> {
-    buffer.push(Vec::new());
-
-    let elf_buffer = buffer.last_mut().unwrap();
-
-    file.read_to_end(elf_buffer)?;
-
-    let mut extracted_data = Vec::new();
-
-    let num_sections = extract_from_elf(&mut extracted_data, elf_buffer)?;
-
-    if num_sections == 0 {
-        log::warn!("No loadable segments were found in the ELF file.");
-        return Err(FileDownloadError::NoLoadableSegments);
-    }
-
-    log::info!("Found {} loadable sections:", num_sections);
-
-    for section in &extracted_data {
-        let source = if section.section_names.is_empty() {
-            "Unknown".to_string()
-        } else if section.section_names.len() == 1 {
-            section.section_names[0].to_owned()
-        } else {
-            "Multiple sections".to_owned()
-        };
-
-        log::info!(
-            "    {} at {:08X?} ({} byte{})",
-            source,
-            section.address,
-            section.data.len(),
-            if section.data.len() == 1 { "" } else { "s" }
-        );
-    }
-
-    for data in extracted_data {
-        loader.add_section(data)?;
-    }
-
-    Ok(())
-}
-
-fn extract_from_elf<'data, 'elf: 'data>(
+pub(super) fn extract_from_elf<'data, 'elf: 'data>(
     extracted_data: &mut Vec<ExtractedFlashData<'data>>,
     elf_data: &'data [u8],
 ) -> Result<usize, FileDownloadError> {

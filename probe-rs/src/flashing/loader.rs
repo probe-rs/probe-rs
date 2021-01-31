@@ -1,8 +1,16 @@
-use super::{ExtractedFlashData, FlashBuilder, FlashError, FlashProgress, Flasher};
+use ihex::Record;
+
+use super::{
+    extract_from_elf, BinOptions, ExtractedFlashData, FileDownloadError, FlashBuilder, FlashError,
+    FlashProgress, Flasher,
+};
 use crate::config::{MemoryRange, MemoryRegion, NvmRegion, TargetDescriptionSource};
 use crate::memory::MemoryInterface;
 use crate::session::Session;
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    io::{Read, Seek, SeekFrom},
+};
 
 struct RamWrite<'data> {
     address: u32,
@@ -25,7 +33,7 @@ pub struct FlashLoader<'data> {
     source: TargetDescriptionSource,
 }
 
-impl<'mmap, 'data> FlashLoader<'data> {
+impl<'data> FlashLoader<'data> {
     /// Create a new flash loader.
     pub fn new(
         memory_map: Vec<MemoryRegion>,
@@ -41,7 +49,7 @@ impl<'mmap, 'data> FlashLoader<'data> {
         }
     }
 
-    pub(crate) fn add_section(
+    pub(super) fn add_section(
         &mut self,
         data: ExtractedFlashData<'data>,
     ) -> Result<(), FlashError> {
@@ -127,6 +135,129 @@ impl<'mmap, 'data> FlashLoader<'data> {
             }
         }
         None
+    }
+
+    /// Reads the data from the binary file and adds it to the loader without splitting it into flash instructions yet.
+    pub fn load_bin_data<'buffer: 'data, T: Read + Seek>(
+        &mut self,
+        buffer: &'buffer mut Vec<Vec<u8>>,
+        file: &'buffer mut T,
+        options: BinOptions,
+    ) -> Result<(), FileDownloadError> {
+        let mut file_buffer = Vec::new();
+
+        // Skip the specified bytes.
+        file.seek(SeekFrom::Start(u64::from(options.skip)))?;
+
+        file.read_to_end(&mut file_buffer)?;
+
+        buffer.push(file_buffer);
+
+        self.add_data(
+            if let Some(address) = options.base_address {
+                address
+            } else {
+                // If no base address is specified use the start of the boot memory.
+                // TODO: Implement this as soon as we know targets.
+                0
+            },
+            buffer.last().unwrap(),
+        )?;
+
+        Ok(())
+    }
+
+    /// Reads the HEX data segments and adds them as loadable data blocks to the loader.
+    /// This does not create and flash loader instructions yet.
+    pub fn load_hex_data<'buffer: 'data, T: Read + Seek>(
+        &mut self,
+        data_buffer: &'buffer mut Vec<Vec<u8>>,
+        file: &mut T,
+    ) -> Result<(), FileDownloadError> {
+        let mut _extended_segment_address = 0;
+        let mut extended_linear_address = 0;
+
+        let mut data = String::new();
+        file.read_to_string(&mut data)?;
+
+        let mut offsets: Vec<(u32, usize)> = Vec::new();
+
+        for record in ihex::Reader::new(&data) {
+            let record = record?;
+            use Record::*;
+            match record {
+                Data { offset, value } => {
+                    let offset = extended_linear_address | offset as u32;
+
+                    let index = data_buffer.len();
+                    data_buffer.push(value);
+
+                    offsets.push((offset, index))
+                }
+                EndOfFile => (),
+                ExtendedSegmentAddress(address) => {
+                    _extended_segment_address = address * 16;
+                }
+                StartSegmentAddress { .. } => (),
+                ExtendedLinearAddress(address) => {
+                    extended_linear_address = (address as u32) << 16;
+                }
+                StartLinearAddress(_) => (),
+            };
+        }
+        for (offset, data_index) in offsets {
+            self.add_data(offset, &data_buffer[data_index])?;
+        }
+        Ok(())
+    }
+
+    /// Prepares the data sections that have to be loaded into flash from an ELF file.
+    /// This will validate the ELF file and transform all its data into sections but no flash loader commands yet.
+    pub fn load_elf_data<'buffer: 'data, T: Read>(
+        &mut self,
+        buffer: &'buffer mut Vec<Vec<u8>>,
+        file: &mut T,
+    ) -> Result<(), FileDownloadError> {
+        buffer.push(Vec::new());
+
+        let elf_buffer = buffer.last_mut().unwrap();
+
+        file.read_to_end(elf_buffer)?;
+
+        let mut extracted_data = Vec::new();
+
+        let num_sections = extract_from_elf(&mut extracted_data, elf_buffer)?;
+
+        if num_sections == 0 {
+            log::warn!("No loadable segments were found in the ELF file.");
+            return Err(FileDownloadError::NoLoadableSegments);
+        }
+
+        log::info!("Found {} loadable sections:", num_sections);
+
+        for section in &extracted_data {
+            let source = if section.section_names.is_empty() {
+                "Unknown".to_string()
+            } else if section.section_names.len() == 1 {
+                section.section_names[0].to_owned()
+            } else {
+                "Multiple sections".to_owned()
+            };
+
+            log::info!(
+                "    {} at {:08X?} ({} byte{})",
+                source,
+                section.address,
+                section.data.len(),
+                if section.data.len() == 1 { "" } else { "s" }
+            );
+        }
+
+        for data in extracted_data {
+            self.add_section(data)?;
+        }
+
+        Ok(())
     }
 
     /// Writes all the stored data chunks to flash.
