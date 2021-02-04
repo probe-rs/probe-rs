@@ -132,15 +132,12 @@ fn notmain() -> Result<i32, anyhow::Error> {
 
     let mut ram_region = None;
     for region in &target.memory_map {
-        match region {
-            MemoryRegion::Ram(ram) => {
-                if let Some(old) = &ram_region {
-                    log::debug!("multiple RAM regions found ({:?} and {:?}), stack canary will not be available", old, ram);
-                } else {
-                    ram_region = Some(ram.clone());
-                }
+        if let MemoryRegion::Ram(ram) = region {
+            if let Some(old) = &ram_region {
+                log::debug!("multiple RAM regions found ({:?} and {:?}), stack canary will not be available", old, ram);
+            } else {
+                ram_region = Some(ram.clone());
             }
-            _ => {}
         }
     }
 
@@ -172,15 +169,11 @@ fn notmain() -> Result<i32, anyhow::Error> {
             if !table.is_empty() && locs.is_empty() {
                 log::warn!("insufficient DWARF info; compile your program with `debug = 2` to enable location info");
                 None
+            } else if table.indices().all(|idx| locs.contains_key(&(idx as u64))) {
+                Some(locs)
             } else {
-                if table.indices().all(|idx| locs.contains_key(&(idx as u64))) {
-                    Some(locs)
-                } else {
-                    log::warn!(
-                        "(BUG) location info is incomplete; it will be omitted from the output"
-                    );
-                    None
-                }
+                log::warn!("(BUG) location info is incomplete; it will be omitted from the output");
+                None
             }
         } else {
             None
@@ -323,7 +316,7 @@ fn notmain() -> Result<i32, anyhow::Error> {
     } else {
         // program lives in Flash
         let size = program_size_of(&elf);
-        log::info!("flashing program ({:.02} KiB)", size as f64 / 1024 as f64);
+        log::info!("flashing program ({:.02} KiB)", size as f64 / 1024_f64);
         flashing::download_file(&mut sess, elf_path, Format::Elf)?;
         log::info!("success!");
     }
@@ -461,7 +454,7 @@ fn notmain() -> Result<i32, anyhow::Error> {
                                     &frame,
                                     file.as_deref(),
                                     line,
-                                    mod_path.as_ref().map(|s| &**s),
+                                    mod_path.as_deref(),
                                 );
 
                                 let num_frames = frames.len();
@@ -471,7 +464,7 @@ fn notmain() -> Result<i32, anyhow::Error> {
                             Err(defmt_decoder::DecodeError::UnexpectedEof) => break,
                             Err(defmt_decoder::DecodeError::Malformed) => {
                                 log::error!("failed to decode defmt data: {:x?}", frames);
-                                Err(defmt_decoder::DecodeError::Malformed)?;
+                                return Err(defmt_decoder::DecodeError::Malformed.into());
                             }
                         }
                     }
@@ -680,6 +673,7 @@ impl<'c, 'probe> Registers<'c, 'probe> {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn backtrace(
     core: &mut Core<'_>,
     mut pc: u32,
@@ -855,7 +849,7 @@ fn probes_filter(probes: &[DebugProbeInfo], selector: &DebugProbeSelector) -> Ve
                 && p.product_id == selector.product_id
                 && (selector.serial_number == None || p.serial_number == selector.serial_number)
         })
-        .map(|p| p.clone())
+        .cloned()
         .collect()
 }
 

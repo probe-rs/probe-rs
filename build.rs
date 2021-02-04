@@ -4,10 +4,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let out = &PathBuf::from(env::var("OUT_DIR")?);
     // NOTE(unwrap_or) user may not have `git` installed or this may be a crates.io checkout; don't
     // error in either case; just report an empty string
-    fs::write(
-        out.join("git-info.txt"),
-        git_info().unwrap_or(String::new()),
-    )?;
+    fs::write(out.join("git-info.txt"), git_info().unwrap_or_default())?;
 
     Ok(())
 }
