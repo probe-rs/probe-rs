@@ -673,7 +673,7 @@ impl<'c, 'probe> Registers<'c, 'probe> {
     }
 }
 
-#[allow(clippy::too_many_arguments)]
+#[allow(clippy::too_many_arguments)] // FIXME: clean this up
 fn backtrace(
     core: &mut Core<'_>,
     mut pc: u32,
