@@ -50,6 +50,7 @@ const STACK_CANARY: u8 = 0xAA;
 const SIGABRT: i32 = 134;
 const THUMB_BIT: u32 = 1;
 const TIMEOUT: Duration = Duration::from_secs(1);
+const EXC_RETURN_MARKER: u32 = 0xFFFF_FFF0;
 
 /// A Cargo runner for microcontrollers.
 #[derive(StructOpt)]
@@ -95,6 +96,10 @@ struct Opts {
     #[structopt(short = "V", long)]
     version: bool,
 
+    /// Print a backtrace even if the program ran successfully
+    #[structopt(long)]
+    force_backtrace: bool,
+
     /// Arguments passed after the ELF file path are discarded
     #[structopt(name = "REST")]
     _rest: Vec<String>,
@@ -133,6 +138,7 @@ fn notmain() -> anyhow::Result<i32> {
         return Ok(EXIT_SUCCESS);
     }
 
+    let force_backtrace = opts.force_backtrace;
     let elf_path = opts.elf.as_deref().unwrap();
     let chip = opts.chip.as_deref().unwrap();
     let bytes = fs::read(elf_path)?;
@@ -276,8 +282,8 @@ fn notmain() -> anyhow::Result<i32> {
         .iter()
         .filter_map(|region| match region {
             MemoryRegion::Ram(region) => {
-                // NOTE stack is full descending; meaning the stack pointer can be `ORIGIN(RAM) +
-                // LENGTH(RAM)`
+                // NOTE stack is full descending; meaning the stack pointer can be
+                // `ORIGIN(RAM) + LENGTH(RAM)`
                 let range = region.range.start..=region.range.end;
                 if range.contains(&vector_table.initial_sp) {
                     Some(region)
@@ -412,8 +418,7 @@ fn notmain() -> anyhow::Result<i32> {
         table = None;
     }
 
-    // Print a separator before the device messages start.
-    eprintln!("{}", "─".repeat(80).dimmed());
+    print_separator();
 
     // wait for breakpoint
     let stdout = io::stdout();
@@ -509,6 +514,8 @@ fn notmain() -> anyhow::Result<i32> {
         core.halt(TIMEOUT)?;
     }
 
+    // TODO move into own function?
+    let mut canary_touched = false;
     if let Some((addr, len)) = canary {
         let mut buf = vec![0; len as usize];
         core.read_8(addr as u32, &mut buf)?;
@@ -523,6 +530,7 @@ fn notmain() -> anyhow::Result<i32> {
                 may be corrupted due to stack overflow",
                 min_stack_usage,
             );
+            canary_touched = true;
         } else {
             log::debug!("stack canary intact");
         }
@@ -532,41 +540,51 @@ fn notmain() -> anyhow::Result<i32> {
 
     let debug_frame = debug_frame.ok_or_else(|| anyhow!("`.debug_frame` section not found"))?;
 
-    // print backtrace
-    let top_exception = backtrace(
-        &mut core,
-        pc,
-        debug_frame,
-        &elf,
-        &vector_table,
-        &sp_ram_region,
-        &live_functions,
-        &current_dir,
-    )?;
+    print_separator();
+
+    let top_exception = construct_backtrace(
+            &mut core,
+            pc,
+            debug_frame,
+            &elf,
+            &vector_table,
+            &sp_ram_region,
+            &live_functions,
+            &current_dir,
+            // TODO any other cases in which we should force a backtrace?
+            force_backtrace || canary_touched
+        )?;
 
     core.reset_and_halt(TIMEOUT)?;
 
     Ok(
-        if let Some(TopException::HardFault { stack_overflow }) = top_exception {
-            if stack_overflow {
+        match top_exception {
+            Some(TopException::StackOverflow) => {
                 log::error!("the program has overflowed its stack");
+                SIGABRT
             }
-            SIGABRT
-        } else {
-            EXIT_SUCCESS
-        },
+            Some(TopException::HardFault) => {
+                log::error!("the program panicked");
+                SIGABRT
+            }
+            None => {
+                log::info!("device halted without error");
+                0
+            }
+        }
     )
 }
 
 fn program_size_of(file: &ElfFile) -> u64 {
-    // `segments` iterates only over *loadable* segments, which are the segments that will be loaded to Flash by probe-rs
+    // `segments` iterates only over *loadable* segments,
+    // which are the segments that will be loaded to Flash by probe-rs
     file.segments().map(|segment| segment.size()).sum()
 }
 
 #[derive(Debug, PartialEq)]
 enum TopException {
-    HardFault { stack_overflow: bool },
-    Other,
+    StackOverflow,
+    HardFault, // generic hard fault
 }
 
 fn setup_logging_channel(
@@ -612,7 +630,7 @@ fn setup_logging_channel(
 }
 
 #[allow(clippy::too_many_arguments)] // FIXME: clean this up
-fn backtrace(
+fn construct_backtrace(
     core: &mut Core<'_>,
     mut pc: u32,
     debug_frame: &[u8],
@@ -621,7 +639,8 @@ fn backtrace(
     sp_ram_region: &Option<RamRegion>,
     live_functions: &HashSet<&str>,
     current_dir: &Path,
-) -> anyhow::Result<Option<TopException>> {
+    force_backtrace: bool
+) -> Result<Option<TopException>, anyhow::Error> {
     let mut debug_frame = DebugFrame::new(debug_frame, LittleEndian);
     // 32-bit ARM -- this defaults to the host's address size which is likely going to be 8
     debug_frame.set_address_size(mem::size_of::<u32>() as u8);
@@ -638,7 +657,8 @@ fn backtrace(
     let mut frame_index = 0;
     let mut registers = Registers::new(lr, sp, core);
     let symtab = elf.symbol_map();
-    println!("stack backtrace:");
+    let mut print_backtrace = force_backtrace;
+
     loop {
         let frames = addr2line.find_frames(pc as u64)?.collect::<Vec<_>>()?;
         // when the input of `find_frames` is the PC of a subroutine that has no debug information
@@ -657,6 +677,48 @@ fn backtrace(
             false
         };
 
+        // This is our first run through the loop, some initial handling and printing is required
+        // TODO refactor this
+        if frame_index == 0 {
+            if pc & !THUMB_BIT == vector_table.hard_fault & !THUMB_BIT {
+                // HardFaultTrampoline
+                // on hard fault exception entry we hit the breakpoint before the subroutine prelude (`push
+                // lr`) is executed so special handling is required
+                // also note that hard fault will always be the first frame we unwind
+
+                print_backtrace_start();
+
+                let mut stack_overflow = false;
+
+                if let Some(sp_ram_region) = sp_ram_region {
+                    // NOTE stack is full descending; meaning the stack pointer can be
+                    // `ORIGIN(RAM) + LENGTH(RAM)`
+                    let range = sp_ram_region.range.start..=sp_ram_region.range.end;
+                    stack_overflow = !range.contains(&sp);
+
+                    // if a stack overflow happened, we're definitely printing a backtrace
+                    print_backtrace |= stack_overflow;
+                } else {
+                    log::warn!(
+                        "no RAM region appears to contain the stack; cannot determine if this was a stack overflow"
+                    );
+                };
+
+                top_exception = Some(
+                    match stack_overflow {
+                        true => TopException::StackOverflow,
+                        false => TopException::HardFault
+                    }
+                );
+            } else {
+                if force_backtrace {
+                    print_backtrace_start();
+                }
+            }
+        }
+
+        let mut backtrace_display_str = "".to_string();
+
         if has_valid_debuginfo {
             for frame in &frames {
                 let name = frame
@@ -666,7 +728,7 @@ fn backtrace(
                     .transpose()?
                     .unwrap_or(Cow::Borrowed("???"));
 
-                println!("{:>4}: {}", frame_index, name);
+                backtrace_display_str.push_str(&format!("{:>4}: {}\n", frame_index, name));
                 frame_index += 1;
 
                 if let Some((file, line)) = frame
@@ -681,7 +743,7 @@ fn backtrace(
                         // not within current directory; use full path
                         file
                     };
-                    println!("        at {}:{}", relpath.display(), line);
+                    backtrace_display_str.push_str(&format!("        at {}:{}\n", relpath.display(), line));
                 }
             }
         } else {
@@ -695,37 +757,19 @@ fn backtrace(
                 .get(address)
                 .map(|symbol| symbol.name())
                 .unwrap_or("???");
-            println!("{:>4}: {}", frame_index, name);
+            backtrace_display_str.push_str(&format!("{:>4}: {}\n", frame_index, name));
             frame_index += 1;
         }
 
-        // on hard fault exception entry we hit the breakpoint before the subroutine prelude (`push
-        // lr`) is executed so special handling is required
-        // also note that hard fault will always be the first frame we unwind
-        if top_exception.is_none() {
-            top_exception = Some(if pc & !THUMB_BIT == vector_table.hard_fault & !THUMB_BIT {
-                // HardFaultTrampoline
-
-                let stack_overflow = if let Some(sp_ram_region) = sp_ram_region {
-                    // NOTE stack is full descending; meaning the stack pointer can be `ORIGIN(RAM) +
-                    // LENGTH(RAM)`
-                    let range = sp_ram_region.range.start..=sp_ram_region.range.end;
-                    !range.contains(&sp)
-                } else {
-                    log::warn!(
-                        "no RAM region appears to contain the stack; cannot determine if this was a stack overflow"
-                    );
-
-                    false
-                };
-
-                TopException::HardFault { stack_overflow }
-            } else {
-                TopException::Other
-            });
+        if print_backtrace {
+            // we need to print everything we've collected up until now, otherwise the
+            // debug level logs won't match up
+            print!("{}", backtrace_display_str);
         }
 
-        let uwt_row = debug_frame.unwind_info_for_address(bases, ctx, pc.into(), DebugFrame::cie_from_offset).with_context(|| {
+        let uwt_row = debug_frame
+            .unwind_info_for_address(bases, ctx, pc.into(), DebugFrame::cie_from_offset)
+            .with_context(|| {
             "debug information is missing. Likely fixes:
 1. compile the Rust code with `debug = 1` or higher. This is configured in the `profile.{release,bench}` sections of Cargo.toml (`profile.{dev,test}` default to `debug = 2`)
 2. use a recent version of the `cortex-m` crates (e.g. cortex-m 0.6.3 or newer). Check versions in Cargo.lock
@@ -739,20 +783,43 @@ fn backtrace(
         }
 
         let lr = registers.get(LR)?;
-        log::debug!("lr=0x{:08x} pc=0x{:08x}", lr, pc);
+
         if lr == LR_END {
             break;
         }
 
+        // Link Register contains an EXC_RETURN value. This deliberately also includes
+        // invalid combinations of final bits 0-4 to prevent futile backtrace re-generation attempts
+        let exception_entry = lr >= EXC_RETURN_MARKER;
         // If the frame didn't move, and the program counter didn't change, bail out (otherwise we
         // might print the same frame over and over).
         // Since we strip the thumb bit from `pc`, ignore it in this comparison.
-        if !cfa_changed && lr & !THUMB_BIT == pc & !THUMB_BIT {
-            println!("error: the stack appears to be corrupted beyond this point");
-            return Ok(top_exception);
+        let stack_corrupted = !cfa_changed && lr & !THUMB_BIT == pc & !THUMB_BIT;
+
+        if !print_backtrace && (stack_corrupted || exception_entry) {
+            // we haven't printed a backtrace yet but have discovered a corrupted stack or exception:
+            // print the backtrace now
+            print!("{}", backtrace_display_str);
+
+            // and enforce backtrace printing from this point on
+            print_backtrace = true;
         }
 
-        if lr > 0xffff_ffe0 {
+        if print_backtrace {
+            log::debug!("lr=0x{:08x} pc=0x{:08x}", lr, pc);
+        }
+
+        if stack_corrupted {
+            println!("error: the stack appears to be corrupted beyond this point");
+
+            if top_exception == Some(TopException::StackOverflow) {
+                return Ok(top_exception);
+            } else {
+                return Ok(Some(TopException::HardFault))
+            }
+        }
+
+        if exception_entry {
             let fpu = match lr {
                 0xFFFFFFF1 | 0xFFFFFFF9 | 0xFFFFFFFD => false,
                 0xFFFFFFE1 | 0xFFFFFFE9 | 0xFFFFFFED => true,
@@ -859,6 +926,16 @@ fn print_version() {
         "{}{}\nsupported defmt version: {}",
         VERSION, HASH, DEFMT_VERSION
     );
+}
+
+/// Print a line to separate different execution stages.
+fn print_separator() {
+    println!("{}", "─".repeat(80).dimmed());
+}
+
+/// Print a message indicating that the backtrace starts here
+fn print_backtrace_start() {
+    println!("{}", "stack backtrace:".dimmed());
 }
 
 fn get_rtt_heap_main_from(

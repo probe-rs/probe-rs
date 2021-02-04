@@ -96,6 +96,8 @@ fn main() -> ! {
 }
 ```
 
+TODO dont forget to adjust the examples
+
 ``` console
 $ cargo run --bin hello
 Running `probe-run target/thumbv7em-none-eabi/debug/hello`
