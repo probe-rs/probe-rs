@@ -96,6 +96,10 @@ pub struct DownloadOptions<'progress> {
     /// instead of the full sector, the excessively erased bytes wont match the contents before the erase which might not be intuitive
     /// to the user or even worse, result in unexpected behavior if those contents contain important data.
     pub keep_unwritten_bytes: bool,
+    /// If this flag is set to true, probe-rs will try to use the chips built in method to do a full chip erase if one is available.
+    /// This is often faster than erasing a lot of single sectors.
+    /// So if you do not need the old contents of the flash, this is a good option.
+    pub do_chip_erase: bool,
 }
 
 /// Downloads a file of given `format` at `path` to the flash of the target given in `session`.
@@ -143,7 +147,7 @@ pub fn download_file_with_options(
         .commit(
             session,
             options.progress.unwrap_or(&FlashProgress::new(|_| {})),
-            false,
+            options.do_chip_erase,
         )
         .map_err(FileDownloadError::Flash)
 }
