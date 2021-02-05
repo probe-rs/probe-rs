@@ -9,3 +9,6 @@ members = [
 
 [profile.release]
 debug = true
+
+[patch.crates-io]
+jaylink = { git = "https://github.com/jonas-schievink/jaylink", rev = "7fa2d44" }
