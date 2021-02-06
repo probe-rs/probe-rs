@@ -58,7 +58,6 @@ pub struct Flasher<'session> {
     session: &'session mut Session,
     flash_algorithm: FlashAlgorithm,
     region: NvmRegion,
-    double_buffering_supported: bool,
 }
 
 impl<'session> Flasher<'session> {
@@ -71,7 +70,6 @@ impl<'session> Flasher<'session> {
             session,
             flash_algorithm,
             region,
-            double_buffering_supported: false,
         }
     }
 
@@ -144,14 +142,9 @@ impl<'session> Flasher<'session> {
 
         log::debug!("Preparing Flasher for region:");
         log::debug!("{:#?}", &self.region);
-        log::debug!(
-            "Double buffering enabled: {}",
-            self.double_buffering_supported
-        );
         let mut flasher = ActiveFlasher::<O> {
             core,
             flash_algorithm: self.flash_algorithm.clone(),
-            _double_buffering_supported: self.double_buffering_supported,
             _operation: core::marker::PhantomData,
         };
 
@@ -222,7 +215,7 @@ impl<'session> Flasher<'session> {
 
         let mut fb = FlashBuilder::new();
         fb.add_data(address, data)?;
-        self.program(&fb, do_chip_erase, true, false, progress)?;
+        self.program(&fb, do_chip_erase, true, true, progress)?;
 
         Ok(())
     }
@@ -381,7 +374,13 @@ impl<'session> Flasher<'session> {
 
     /// Flash a program using double buffering.
     ///
-    /// UNTESTED
+    /// This uses two buffers to increase the flash speed.
+    /// While the data from one buffer is programmed, the
+    /// data for the next page is already downloaded
+    /// into the next buffer.
+    ///
+    /// This is only possible if the RAM is large enough to
+    /// fit at least two page buffers. See [Flasher::double_buffering_supported].
     fn program_double_buffer(
         &mut self,
         flash_layout: &FlashLayout,
@@ -462,7 +461,6 @@ impl Debug for Registers {
 pub(super) struct ActiveFlasher<'probe, O: Operation> {
     core: Core<'probe>,
     flash_algorithm: FlashAlgorithm,
-    _double_buffering_supported: bool,
     _operation: core::marker::PhantomData<O>,
 }
 
