@@ -1,8 +1,7 @@
 mod diagnostics;
 
-use anyhow::{anyhow, Context};
 use colored::*;
-use diagnostics::{handle_flash_error, render_diagnostics, Diagnostic};
+use diagnostics::render_diagnostics;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use std::{
     env,
@@ -12,7 +11,7 @@ use std::{
     sync::Arc,
     time::Instant,
 };
-use std::{fmt::Write, panic, sync::Mutex};
+use std::{panic, sync::Mutex};
 use structopt::StructOpt;
 
 use probe_rs::{
@@ -24,7 +23,7 @@ use probe_rs::{
 #[cfg(feature = "sentry")]
 use probe_rs_cli_util::logging::{ask_to_log_crash, capture_anyhow, capture_panic};
 use probe_rs_cli_util::{
-    argument_handling, build_artifact, logging, logging::Metadata, read_metadata,
+    argument_handling, build_artifact, logging, logging::Metadata, read_metadata, ArtifactError,
 };
 
 const CARGO_NAME: &str = env!("CARGO_PKG_NAME");
@@ -163,51 +162,77 @@ enum CargoFlashError {
     #[error("No connected probes were found.")]
     NoProbesFound,
     #[error("Failed to list the target descriptions.")]
-    FailedToReadFamilies(RegistryError),
+    FailedToReadFamilies(#[source] RegistryError),
     #[error("Failed to open the ELF file '{path}' for flashing.")]
     FailedToOpenElf {
+        #[source]
         source: std::io::Error,
         path: String,
     },
     #[error("Failed to load the ELF data.")]
-    FailedToLoadElfData(FileDownloadError),
+    FailedToLoadElfData(#[source] FileDownloadError),
     #[error("Failed to open the debug probe.")]
-    FailedToOpenProbe(DebugProbeError),
+    FailedToOpenProbe(#[source] DebugProbeError),
     #[error("{number} probes were found.")]
     MultipleProbesFound { number: usize },
     #[error("The flashing procedure failed for '{path}'.")]
-    FlashingFailed { source: FlashError, path: String },
+    FlashingFailed {
+        #[source]
+        source: FlashError,
+        target: Target,
+        target_spec: Option<String>,
+        path: String,
+    },
     #[error("Failed to parse the chip description '{path}'.")]
-    FailedChipDescriptionParsing { source: RegistryError, path: String },
+    FailedChipDescriptionParsing {
+        #[source]
+        source: RegistryError,
+        path: String,
+    },
     #[error("Failed to change the working directory to '{path}'.")]
     FailedToChangeWorkingDirectory {
+        #[source]
         source: std::io::Error,
         path: String,
     },
     #[error("Failed to build the cargo project at '{path}'.")]
-    FailedToBuildExternalCargoProject { source: anyhow::Error, path: String },
+    FailedToBuildExternalCargoProject {
+        #[source]
+        source: ArtifactError,
+        path: String,
+    },
     #[error("Failed to build the cargo project.")]
-    FailedToBuildCargoProject(anyhow::Error),
+    FailedToBuildCargoProject(#[source] ArtifactError),
     #[error("The chip '{name}' was not found in the database.")]
-    ChipNotFound { source: RegistryError, name: String },
+    ChipNotFound {
+        #[source]
+        source: RegistryError,
+        name: String,
+    },
     #[error("The protocol '{protocol}' could not be selected.")]
     FailedToSelectProtocol {
+        #[source]
         source: DebugProbeError,
         protocol: WireProtocol,
     },
     #[error("The protocol speed coudl not be set to '{speed}' kHz.")]
-    FailedToSelectProtocolSpeed { source: DebugProbeError, speed: u32 },
+    FailedToSelectProtocolSpeed {
+        #[source]
+        source: DebugProbeError,
+        speed: u32,
+    },
     #[error("Connecting to the chip was unsuccessful.")]
     AttachingFailed {
+        #[source]
         source: probe_rs::Error,
         connect_under_reset: bool,
     },
     #[error("Failed to get a handle to the first core.")]
-    AttachingToCoreFailed(probe_rs::Error),
+    AttachingToCoreFailed(#[source] probe_rs::Error),
     #[error("The reset of the target failed.")]
-    TargetResetFailed(probe_rs::Error),
+    TargetResetFailed(#[source] probe_rs::Error),
     #[error("The target could not be reset and halted.")]
-    TargetResetHaltFailed(probe_rs::Error),
+    TargetResetHaltFailed(#[source] probe_rs::Error),
 }
 
 fn main() {
@@ -337,7 +362,12 @@ fn main_try() -> Result<(), CargoFlashError> {
             if let Some(ref work_dir) = opt.work_dir {
                 CargoFlashError::FailedToBuildExternalCargoProject {
                     source: error,
-                    path: work_dir.clone(),
+                    // This unwrap is okay, because if we get this error, the path was properly canonicalized on the internal
+                    // `cargo build` step.
+                    path: format!(
+                        "{}",
+                        dunce::canonicalize(work_dir.clone()).unwrap().display()
+                    ),
                 }
             } else {
                 CargoFlashError::FailedToBuildCargoProject(error)
@@ -438,7 +468,8 @@ fn main_try() -> Result<(), CargoFlashError> {
             core.reset_and_halt(std::time::Duration::from_millis(500))
                 .map_err(CargoFlashError::TargetResetFailed)?;
         } else {
-            core.reset().map_err(CargoFlashError::TargetResetHaltFailed);
+            core.reset()
+                .map_err(CargoFlashError::TargetResetHaltFailed)?;
         }
     }
 
@@ -606,6 +637,8 @@ fn run_flash_download(
             .commit(session, &progress, false, opt.dry_run)
             .map_err(|error| CargoFlashError::FlashingFailed {
                 source: error,
+                target: session.target().clone(),
+                target_spec: opt.chip.clone(),
                 path: format!("{}", path.display()),
             })?;
 
@@ -616,6 +649,8 @@ fn run_flash_download(
             .commit(session, &FlashProgress::new(|_| {}), false, opt.dry_run)
             .map_err(|error| CargoFlashError::FlashingFailed {
                 source: error,
+                target: session.target().clone(),
+                target_spec: opt.chip.clone(),
                 path: format!("{}", path.display()),
             })?;
     }
