@@ -71,7 +71,6 @@ where
 
                 let new_drw = match csw.SIZE {
                     DataSize::U32 => {
-                        //let bytes = self.memory[offset..offset + 4].try_into().unwrap();
                         let bytes: [u8; 4] = self
                             .memory
                             .get(offset..offset + 4)
