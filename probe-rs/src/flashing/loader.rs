@@ -335,7 +335,7 @@ impl<'data> FlashLoader<'data> {
 
             // Program the data.
             let mut flasher = Flasher::new(session, flash_algorithm, region.clone());
-            flasher.program(builder, do_chip_erase, self.keep_unwritten, false, progress)?
+            flasher.program(builder, do_chip_erase, self.keep_unwritten, true, progress)?
         }
 
         // Write data to ram.
