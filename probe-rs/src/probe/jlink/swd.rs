@@ -48,7 +48,7 @@ pub struct SwdSettings {
 impl Default for SwdSettings {
     fn default() -> Self {
         Self {
-            num_idle_cycles_between_writes: 2, // 16,
+            num_idle_cycles_between_writes: 2,
             num_retries_after_wait: 80,
             idle_cycles_before_write_verify: 8,
             idle_cycles_after_transfer: 8,
@@ -185,11 +185,10 @@ fn perform_transfers<P: RawSwdIo>(
                         .swd_settings()
                         .idle_cycles_before_write_verify
                 ]);
-                expected_responses
-                    .last_mut()
-                    .map(|(_transfer, extra_cycles)| {
-                        *extra_cycles += probe.swd_settings().idle_cycles_before_write_verify
-                    });
+
+                if let Some((_transfer, extra_cycles)) = expected_responses.last_mut() {
+                    *extra_cycles += probe.swd_settings().idle_cycles_before_write_verify
+                }
 
                 // Add a read from RDBUFF, this access will stalled by the DebugPort if the write buffer
                 // is not empty.
@@ -250,11 +249,10 @@ fn perform_transfers<P: RawSwdIo>(
                     .swd_settings()
                     .idle_cycles_before_write_verify
             ]);
-            expected_responses
-                .last_mut()
-                .map(|(_transfer, extra_cycles)| {
-                    *extra_cycles += probe.swd_settings().idle_cycles_before_write_verify
-                });
+
+            if let Some((_transfer, extra_cycles)) = expected_responses.last_mut() {
+                *extra_cycles += probe.swd_settings().idle_cycles_before_write_verify;
+            }
         }
 
         io_sequence.extend(&rdbuff_read());
@@ -838,7 +836,7 @@ impl<Probe: RawSwdIo + 'static> DAPAccess for Probe {
 
                         if err == &DapError::WaitResponse {
                             // Clear STICKORRUN flag.
-                            
+
                             // Because we use overrun detection, we now have to clear the overrun error.
                             let mut abort = Abort(0);
 
@@ -861,7 +859,7 @@ impl<Probe: RawSwdIo + 'static> DAPAccess for Probe {
                     }
                     TransferStatus::Pending => {
                         // This should not happen...
-                        panic!("Error performing transfers. This is a bug and should be reported.")
+                        panic!("Error performing transfers. This is a bug, please report it.")
                     }
                 }
             }
@@ -1037,7 +1035,7 @@ impl<Probe: RawSwdIo + 'static> DAPAccess for Probe {
                     }
                     TransferStatus::Pending => {
                         // This should not happen...
-                        panic!("Error performing transfers")
+                        panic!("Error performing transfers. This is a bug, please report it.")
                     }
                 }
             }
@@ -1492,8 +1490,6 @@ mod test {
             );
 
             // To verify that the write was succesfull, an additional read is performed.
-            // mock.add_idle_cycles(mock.swd_settings.idle_cycles_before_write_verify);
-            // mock.add_read_response(DapAcknowledge::Ok, 0);
             mock.add_idle_cycles(mock.swd_settings.idle_cycles_after_transfer);
 
             perform_transfers(&mut mock, &mut transfers, idle_cycles)
