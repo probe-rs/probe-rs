@@ -10,6 +10,112 @@ use crate::{
 
 use super::{bits_to_byte, JLink};
 
+#[derive(Debug)]
+pub struct SwdSettings {
+    /// Initial number of idle cycles between consecutive writes.
+    ///
+    /// When a WAIT response is received, the number of idle cycles
+    /// will be increased automatically, so this number can be quite
+    /// low.
+    num_idle_cycles_between_writes: usize,
+
+    /// How often a SWD transfer is retried when a WAIT response
+    /// is received.
+    num_retries_after_wait: usize,
+
+    /// Number of idle cycles inserted before the result
+    /// of a write is checked.
+    ///
+    /// When performing a write operation, the write can
+    /// be buffered, meaning that completing the transfer
+    /// does not mean that the write was performed succesfully.
+    ///
+    /// To check that all writes have been executed, the
+    /// `RDBUFF` register can be read from the DP.
+    ///
+    /// If any writes are still pending, this read will result in a WAIT response.
+    /// By adding idle cycles before performing this read, the chance of a
+    /// WAIT response is smaller.
+    idle_cycles_before_write_verify: usize,
+
+    /// Number of idle cycles to insert after a transfer
+    ///
+    /// It is recommended that at least 8 idle cycles are
+    /// inserted.
+    idle_cycles_after_transfer: usize,
+}
+
+impl Default for SwdSettings {
+    fn default() -> Self {
+        Self {
+            num_idle_cycles_between_writes: 2,
+            num_retries_after_wait: 80,
+            idle_cycles_before_write_verify: 8,
+            idle_cycles_after_transfer: 8,
+        }
+    }
+}
+
+#[derive(Default, Debug)]
+pub struct SwdStatistics {
+    /// Number of SWD transfers performed.
+    ///
+    /// This includes repeated transfers, and transfers
+    /// which are automatically added to fullfill
+    /// protocol requirements, e.g. a read from a
+    /// DP register will result in two transfers,
+    /// because the read value is returned in the
+    /// second transfer
+    num_transfers: usize,
+
+    /// Number of extra transfers added to fullfil protocol
+    /// requirements. Ideally as low as possible.
+    num_extra_transfers: usize,
+
+    /// Number of calls to the probe IO function.
+    ///
+    /// A single call can perform multiple SWD transfers,
+    /// so this number is ideally a lot lower than then
+    /// number of SWD transfers.
+    num_io_calls: usize,
+
+    /// Number of SWD wait responses encountered.
+    num_wait_resp: usize,
+
+    /// Number of SWD FAULT responses encountered.
+    num_faults: usize,
+
+    /// Number of line resets executed.
+    num_line_resets: usize,
+}
+
+impl SwdStatistics {
+    fn record_extra_transfer(&mut self) {
+        self.num_extra_transfers += 1;
+    }
+
+    fn record_transfers(&mut self, num_transfers: usize) {
+        self.num_transfers += num_transfers;
+    }
+
+    fn report_io(&mut self) {
+        self.num_io_calls += 1;
+    }
+
+    fn report_swd_response<T>(&mut self, response: &Result<T, DapError>) {
+        match response {
+            Err(DapError::FaultResponse) => self.num_faults += 1,
+            Err(DapError::WaitResponse) => self.num_wait_resp += 1,
+            // Other errors are not counted right now.
+            _ => (),
+        }
+    }
+
+    fn report_line_reset(&mut self) {
+        self.num_line_resets += 1;
+    }
+}
+
 ///! Implementation of the SWD protocol for the JLink probe.
 
 /// Perform a batch of SWD transfers.
@@ -24,10 +130,8 @@ use super::{bits_to_byte, JLink};
 fn perform_transfers<P: RawSwdIo>(
     probe: &mut P,
     transfers: &mut [SwdTransfer],
+    idle_cycles: usize,
 ) -> Result<(), DebugProbeError> {
-    // Number of idle cycles after a write;
-    let idle_cycles = 16;
-
     // Read from DebugPort  -> Nothing special needed
     // Read from AccessPort -> Response is returned in next read
     //                         -> The next transfer must be a AP Read, otherwise we need to insert a read from the RDBUFF register
@@ -35,7 +139,7 @@ fn perform_transfers<P: RawSwdIo>(
     // Write to any port    -> Writes can be buffered, so certain transfers have to be avoided until a instruction which can be stalled is performed
 
     // The expected responses, needed for parsing
-    let mut expected_responses: Vec<TransferDirection> = Vec::new();
+    let mut expected_responses: Vec<(TransferDirection, usize)> = Vec::new();
 
     let mut result_indices = Vec::new();
 
@@ -53,9 +157,10 @@ fn perform_transfers<P: RawSwdIo>(
             io_sequence.extend(&rdbuff_read());
             num_transfers += 1;
 
-            expected_responses.push(TransferDirection::Read);
+            expected_responses.push((TransferDirection::Read, 0));
 
             // This is an extra transfer, which doesn't have a reponse on it's own.
+            probe.swd_statistics().record_extra_transfer();
         }
 
         if buffered_write {
@@ -74,14 +179,26 @@ fn perform_transfers<P: RawSwdIo>(
                 && transfer.direction == TransferDirection::Read;
 
             if abort_write || dpidr_read || ctrl_stat_read {
+                io_sequence.add_output_sequence(&vec![
+                    false;
+                    probe
+                        .swd_settings()
+                        .idle_cycles_before_write_verify
+                ]);
+
+                if let Some((_transfer, extra_cycles)) = expected_responses.last_mut() {
+                    *extra_cycles += probe.swd_settings().idle_cycles_before_write_verify
+                }
+
                 // Add a read from RDBUFF, this access will stalled by the DebugPort if the write buffer
                 // is not empty.
                 io_sequence.extend(&rdbuff_read());
 
                 num_transfers += 1;
-                expected_responses.push(TransferDirection::Read);
+                expected_responses.push((TransferDirection::Read, 0));
 
                 // This is an extra transfer, which doesn't have a reponse on it's own.
+                probe.swd_statistics().record_extra_transfer();
             }
         }
 
@@ -90,33 +207,68 @@ fn perform_transfers<P: RawSwdIo>(
         // The response for an AP read is returned in the next response
         need_ap_read = transfer.is_ap_read();
 
+        // Writes to the AP can be buffered
+        //
+        // TODO: Can DP writes be buffered as well?
         buffered_write = matches!(transfer.port, PortType::AccessPort(_x))
             && transfer.direction == TransferDirection::Write;
 
-        write_response_pending = transfer.is_write();
-
-        if write_response_pending {
-            io_sequence.add_output_sequence(&vec![false; idle_cycles])
-        }
+        // For all writes, except writes to the DP ABORT register, we need to perform another register to ensure that
+        // we know if the write succeeded.
+        write_response_pending = transfer.is_write()
+            && !(matches!(transfer.port, PortType::DebugPort)
+                && transfer.address == Abort::ADDRESS as u16);
 
         // If the response is returned in the next transfer, we push the correct index
+        // if need_ap_read || write_response_pending {
         if need_ap_read || write_response_pending {
             result_indices.push(num_transfers + 1);
         } else {
             result_indices.push(num_transfers);
         }
 
-        expected_responses.push(transfer.direction);
+        expected_responses.push((transfer.direction, 0));
+
+        if transfer.is_write() {
+            log::trace!("Adding {} idle cycles after transfer!", idle_cycles);
+
+            io_sequence.add_output_sequence(&vec![false; idle_cycles]);
+
+            expected_responses.last_mut().unwrap().1 = idle_cycles;
+        }
 
         num_transfers += 1;
     }
 
+    //if need_ap_read || write_response_pending {
     if need_ap_read || write_response_pending {
+        if write_response_pending {
+            io_sequence.add_output_sequence(&vec![
+                false;
+                probe
+                    .swd_settings()
+                    .idle_cycles_before_write_verify
+            ]);
+
+            if let Some((_transfer, extra_cycles)) = expected_responses.last_mut() {
+                *extra_cycles += probe.swd_settings().idle_cycles_before_write_verify;
+            }
+        }
+
         io_sequence.extend(&rdbuff_read());
 
-        expected_responses.push(TransferDirection::Read);
+        expected_responses.push((TransferDirection::Read, 0));
 
         num_transfers += 1;
+        probe.swd_statistics().record_extra_transfer();
+    }
+
+    // Add idle cycles at the end, to ensure transfer is performed
+    if probe.swd_settings().idle_cycles_after_transfer > 0 {
+        io_sequence.add_output_sequence(&vec![
+            false;
+            probe.swd_settings().idle_cycles_after_transfer
+        ]);
     }
 
     log::debug!(
@@ -124,6 +276,8 @@ fn perform_transfers<P: RawSwdIo>(
         num_transfers,
         num_transfers - transfers.len()
     );
+
+    probe.swd_statistics().record_transfers(num_transfers);
 
     let result = probe.swd_io(
         io_sequence.direction_bits().to_owned(),
@@ -136,18 +290,20 @@ fn perform_transfers<P: RawSwdIo>(
 
     let mut read_index = 0;
 
-    for response_direction in expected_responses {
+    for (i, (response_direction, additional_idle_cycles_after)) in
+        expected_responses.into_iter().enumerate()
+    {
         let response = parse_swd_response(&result[read_index..], response_direction);
 
-        log::debug!("Transfer result: {:x?}", response);
+        probe.swd_statistics().report_swd_response(&response);
+
+        log::debug!("Transfer result {}: {:x?}", i, response);
 
         responses.push(response);
 
         read_index += response_length(response_direction);
 
-        if response_direction == TransferDirection::Write {
-            read_index += idle_cycles;
-        }
+        read_index += additional_idle_cycles_after;
     }
 
     // Retrieve the results
@@ -464,6 +620,10 @@ pub trait RawSwdIo {
         D: IntoIterator<Item = bool>,
         S: IntoIterator<Item = bool>;
 
+    fn swd_settings(&self) -> &SwdSettings;
+
+    fn swd_statistics(&mut self) -> &mut SwdStatistics;
+
     /// Try to perform a SWD line reset, followed by a read of the DPIDR register.
     ///
     /// Returns Ok if the read of the DPIDR register was succesful, and Err
@@ -482,6 +642,8 @@ impl RawSwdIo for JLink {
         D: IntoIterator<Item = bool>,
         S: IntoIterator<Item = bool>,
     {
+        self.swd_statistics.report_io();
+
         let iter = self.handle.swd_io(dir, swdio)?;
 
         Ok(iter.collect())
@@ -505,6 +667,8 @@ impl RawSwdIo for JLink {
         let mut result = Ok(());
 
         for _ in 0..2 {
+            self.swd_statistics().report_line_reset();
+
             let result_sequence = self.swd_io(
                 io_sequence.direction_bits().to_owned(),
                 io_sequence.io_bits().to_owned(),
@@ -526,32 +690,41 @@ impl RawSwdIo for JLink {
         // No acknowledge from the target, even if after line reset
         result.map_err(|e| e.into())
     }
+
+    fn swd_settings(&self) -> &SwdSettings {
+        &self.swd_settings
+    }
+
+    fn swd_statistics(&mut self) -> &mut SwdStatistics {
+        &mut self.swd_statistics
+    }
 }
 
 impl<Probe: RawSwdIo + 'static> DAPAccess for Probe {
     fn read_register(&mut self, port: PortType, address: u16) -> Result<u32, DebugProbeError> {
-        let dap_wait_retries = 20;
+        let dap_wait_retries = self.swd_settings().num_retries_after_wait;
+        let mut idle_cycles = std::cmp::max(1, self.swd_settings().num_idle_cycles_between_writes);
 
         // Now we try to issue the request until it fails or succeeds.
         // If we timeout we retry a maximum of 5 times.
         for retry in 0..dap_wait_retries {
             let mut transfers = [SwdTransfer::read(port, address)];
 
-            perform_transfers(self, &mut transfers)?;
+            perform_transfers(self, &mut transfers, idle_cycles)?;
 
             match transfers[0].status {
                 TransferStatus::Ok => {
                     return Ok(transfers[0].value);
                 }
                 TransferStatus::Pending => {
-                    // This shouldn't happen...
-
-                    // Just retry?
-                    continue;
+                    panic!("Unexpected transfer state after reading register. This is a bug!");
                 }
                 TransferStatus::Failed(DapError::WaitResponse) => {
                     // If ack[1] is set the host must retry the request. So let's do that right away!
-                    log::debug!("DAP WAIT, retries remaining {}.", dap_wait_retries - retry);
+                    log::debug!(
+                        "DAP WAIT, (read), retries remaining {}.",
+                        dap_wait_retries - retry
+                    );
 
                     // Because we use overrun detection, we now have to clear the overrun error
                     let mut abort = Abort(0);
@@ -566,6 +739,8 @@ impl<Probe: RawSwdIo + 'static> DAPAccess for Probe {
                     )?;
 
                     log::debug!("Cleared sticky overrun bit");
+
+                    idle_cycles *= 2;
 
                     continue;
                 }
@@ -633,27 +808,59 @@ impl<Probe: RawSwdIo + 'static> DAPAccess for Probe {
         address: u16,
         values: &mut [u32],
     ) -> Result<(), DebugProbeError> {
-        let mut transfers = vec![SwdTransfer::read(port, address); values.len()];
+        let mut succesful_transfers = 0;
 
-        perform_transfers(self, &mut transfers)?;
+        let mut idle_cycles = std::cmp::max(1, self.swd_settings().num_idle_cycles_between_writes);
 
-        for (index, result) in transfers.iter().enumerate() {
-            match &result.status {
-                TransferStatus::Ok => {
-                    values[index] = result.value;
-                }
-                TransferStatus::Failed(err) => {
-                    log::debug!(
-                        "Error in access {}/{} of block access: {}",
-                        index + 1,
-                        values.len(),
-                        err
-                    );
-                    return Err(err.clone().into());
-                }
-                TransferStatus::Pending => {
-                    // This should not happen...
-                    panic!("Error performing transfers")
+        'transfer: for _ in 0..self.swd_settings().num_retries_after_wait {
+            let mut transfers =
+                vec![SwdTransfer::read(port, address); values.len() - succesful_transfers];
+
+            perform_transfers(self, &mut transfers, idle_cycles)?;
+
+            let index_offset = succesful_transfers;
+
+            for (index, result) in transfers.iter().enumerate() {
+                match &result.status {
+                    TransferStatus::Ok => {
+                        values[index_offset + index] = result.value;
+                        succesful_transfers += 1;
+                    }
+                    TransferStatus::Failed(err) => {
+                        log::debug!(
+                            "Error in access {}/{} of block access: {}",
+                            index + 1,
+                            values.len(),
+                            err
+                        );
+
+                        if err == &DapError::WaitResponse {
+                            // Clear STICKORRUN flag.
+
+                            // Because we use overrun detection, we now have to clear the overrun error.
+                            let mut abort = Abort(0);
+
+                            abort.set_orunerrclr(true);
+
+                            DAPAccess::write_register(
+                                self,
+                                PortType::DebugPort,
+                                Abort::ADDRESS as u16,
+                                abort.into(),
+                            )?;
+
+                            idle_cycles *= 2;
+
+                            log::debug!("Retrying access {}", index_offset + index + 1);
+
+                            continue 'transfer;
+                        }
+                        return Err(err.clone().into());
+                    }
+                    TransferStatus::Pending => {
+                        // This should not happen...
+                        panic!("Error performing transfers. This is a bug, please report it.")
+                    }
                 }
             }
         }
@@ -667,28 +874,29 @@ impl<Probe: RawSwdIo + 'static> DAPAccess for Probe {
         address: u16,
         value: u32,
     ) -> Result<(), DebugProbeError> {
-        let dap_wait_retries = 20;
+        let dap_wait_retries = self.swd_settings().num_retries_after_wait;
+        let mut idle_cycles = std::cmp::max(1, self.swd_settings().num_idle_cycles_between_writes);
 
         // Now we try to issue the request until it fails or succeeds.
         // If we timeout we retry a maximum of 5 times.
         for retry in 0..dap_wait_retries {
             let mut transfers = [SwdTransfer::write(port, address, value)];
 
-            perform_transfers(self, &mut transfers)?;
+            perform_transfers(self, &mut transfers, idle_cycles)?;
 
             match transfers[0].status {
                 TransferStatus::Ok => {
                     return Ok(());
                 }
                 TransferStatus::Pending => {
-                    // This shouldn't happen...
-
-                    // Just retry?
-                    continue;
+                    panic!("Unexpected transfer state after writing register. This is a bug!");
                 }
                 TransferStatus::Failed(DapError::WaitResponse) => {
                     // If ack[1] is set the host must retry the request. So let's do that right away!
-                    log::debug!("DAP WAIT, retries remaining {}.", dap_wait_retries - retry);
+                    log::debug!(
+                        "DAP WAIT, (write), retries remaining {}.",
+                        dap_wait_retries - retry
+                    );
 
                     let mut abort = Abort(0);
 
@@ -703,6 +911,8 @@ impl<Probe: RawSwdIo + 'static> DAPAccess for Probe {
                     )?;
 
                     log::debug!("Cleared sticky overrun bit");
+
+                    idle_cycles *= 2;
 
                     continue;
                 }
@@ -771,30 +981,66 @@ impl<Probe: RawSwdIo + 'static> DAPAccess for Probe {
         address: u16,
         values: &[u32],
     ) -> Result<(), DebugProbeError> {
-        let mut transfers: Vec<SwdTransfer> = values
-            .iter()
-            .map(|v| SwdTransfer::write(port, address, *v))
-            .collect();
+        let mut succesful_transfers = 0;
 
-        perform_transfers(self, &mut transfers)?;
+        let mut idle_cycles = std::cmp::max(1, self.swd_settings().num_idle_cycles_between_writes);
 
-        for (index, result) in transfers.iter().enumerate() {
-            match &result.status {
-                TransferStatus::Ok => {}
-                TransferStatus::Failed(err) => {
-                    log::debug!(
-                        "Error in access {}/{} of block access: {}",
-                        index + 1,
-                        values.len(),
-                        err
-                    );
-                    return Err(err.clone().into());
-                }
-                TransferStatus::Pending => {
-                    // This should not happen...
-                    panic!("Error performing transfers")
+        'transfer: for _ in 0..self.swd_settings().num_retries_after_wait {
+            let mut transfers: Vec<SwdTransfer> = values
+                .iter()
+                .skip(succesful_transfers)
+                .map(|v| SwdTransfer::write(port, address, *v))
+                .collect();
+
+            let index_offset = succesful_transfers;
+
+            perform_transfers(self, &mut transfers, idle_cycles)?;
+
+            for (index, result) in transfers.iter().enumerate() {
+                match &result.status {
+                    TransferStatus::Ok => {
+                        succesful_transfers += 1;
+                    }
+                    TransferStatus::Failed(err) => {
+                        log::debug!(
+                            "Error in access {}/{} of block access: {}",
+                            index_offset + index + 1,
+                            values.len(),
+                            err
+                        );
+
+                        if err == &DapError::WaitResponse {
+                            // Clear STICKORRUN flag.
+
+                            // Because we use overrun detection, we now have to clear the overrun error.
+                            let mut abort = Abort(0);
+
+                            abort.set_orunerrclr(true);
+
+                            DAPAccess::write_register(
+                                self,
+                                PortType::DebugPort,
+                                Abort::ADDRESS as u16,
+                                abort.into(),
+                            )?;
+
+                            idle_cycles *= 2;
+
+                            log::debug!("Retrying access {}", index_offset + index + 1);
+
+                            continue 'transfer;
+                        }
+
+                        return Err(err.clone().into());
+                    }
+                    TransferStatus::Pending => {
+                        // This should not happen...
+                        panic!("Error performing transfers. This is a bug, please report it.")
+                    }
                 }
             }
+
+            return Ok(());
         }
 
         Ok(())
@@ -804,9 +1050,11 @@ impl<Probe: RawSwdIo + 'static> DAPAccess for Probe {
 #[cfg(test)]
 mod test {
 
+    use std::iter;
+
     use crate::architecture::arm::{DAPAccess, PortType};
 
-    use super::RawSwdIo;
+    use super::{RawSwdIo, SwdSettings, SwdStatistics};
 
     use bitvec::prelude::*;
 
@@ -825,6 +1073,9 @@ mod test {
 
         expected_transfer_count: usize,
         performed_transfer_count: usize,
+
+        swd_settings: SwdSettings,
+        swd_statistics: SwdStatistics,
     }
 
     impl MockJaylink {
@@ -836,6 +1087,9 @@ mod test {
 
                 expected_transfer_count: 1,
                 performed_transfer_count: 0,
+
+                swd_settings: SwdSettings::default(),
+                swd_statistics: SwdStatistics::default(),
             }
         }
 
@@ -919,6 +1173,12 @@ mod test {
             last_transfer.extend(response);
         }
 
+        fn add_idle_cycles(&mut self, len: usize) {
+            let last_transfer = self.transfer_responses.last_mut().unwrap();
+
+            last_transfer.extend(iter::repeat(false).take(len))
+        }
+
         fn add_transfer(&mut self) {
             self.transfer_responses.push(Vec::new());
             self.expected_transfer_count += 1;
@@ -961,6 +1221,14 @@ mod test {
         fn swd_line_reset(&mut self) -> Result<(), crate::DebugProbeError> {
             Ok(())
         }
+
+        fn swd_settings(&self) -> &SwdSettings {
+            &self.swd_settings
+        }
+
+        fn swd_statistics(&mut self) -> &mut SwdStatistics {
+            &mut self.swd_statistics
+        }
     }
 
     #[test]
@@ -970,6 +1238,7 @@ mod test {
 
         mock.add_read_response(DapAcknowledge::Ok, 0);
         mock.add_read_response(DapAcknowledge::Ok, read_value);
+        mock.add_idle_cycles(mock.swd_settings.idle_cycles_after_transfer);
 
         let result = mock.read_register(PortType::AccessPort(0), 4).unwrap();
 
@@ -983,16 +1252,21 @@ mod test {
 
         mock.add_read_response(DapAcknowledge::Ok, 0);
         mock.add_read_response(DapAcknowledge::Wait, 0);
+        mock.add_idle_cycles(mock.swd_settings.idle_cycles_after_transfer);
 
         //  When a wait response is received, the sticky overrun bit has to be cleared
 
         mock.add_transfer();
-        mock.add_write_response(DapAcknowledge::Ok, 16);
-        mock.add_read_response(DapAcknowledge::Ok, 0);
+        mock.add_write_response(
+            DapAcknowledge::Ok,
+            mock.swd_settings.num_idle_cycles_between_writes,
+        );
+        mock.add_idle_cycles(mock.swd_settings.idle_cycles_after_transfer);
 
         mock.add_transfer();
         mock.add_read_response(DapAcknowledge::Ok, 0);
         mock.add_read_response(DapAcknowledge::Ok, read_value);
+        mock.add_idle_cycles(mock.swd_settings.idle_cycles_after_transfer);
 
         let result = mock.read_register(PortType::AccessPort(0), 4).unwrap();
 
@@ -1003,8 +1277,12 @@ mod test {
     fn write_register() {
         let mut mock = MockJaylink::new();
 
-        mock.add_write_response(DapAcknowledge::Ok, 16);
+        let idle_cycles = mock.swd_settings.num_idle_cycles_between_writes;
+
+        mock.add_write_response(DapAcknowledge::Ok, idle_cycles);
+        mock.add_idle_cycles(mock.swd_settings.idle_cycles_before_write_verify);
         mock.add_read_response(DapAcknowledge::Ok, 0);
+        mock.add_idle_cycles(mock.swd_settings.idle_cycles_after_transfer);
 
         mock.write_register(PortType::AccessPort(0), 4, 0x123)
             .expect("Failed to write register");
@@ -1013,17 +1291,24 @@ mod test {
     #[test]
     fn write_register_with_wait_response() {
         let mut mock = MockJaylink::new();
+        let idle_cycles = mock.swd_settings.num_idle_cycles_between_writes;
 
-        mock.add_write_response(DapAcknowledge::Ok, 16);
+        mock.add_write_response(DapAcknowledge::Ok, idle_cycles);
+        mock.add_idle_cycles(mock.swd_settings.idle_cycles_before_write_verify);
         mock.add_read_response(DapAcknowledge::Wait, 0);
+        mock.add_idle_cycles(mock.swd_settings.idle_cycles_after_transfer);
 
+        // Expect a Write to the ABORT register.
         mock.add_transfer();
-        mock.add_write_response(DapAcknowledge::Ok, 16);
-        mock.add_read_response(DapAcknowledge::Ok, 0);
+        mock.add_write_response(DapAcknowledge::Ok, idle_cycles);
+        mock.add_idle_cycles(mock.swd_settings.idle_cycles_after_transfer);
 
+        // Second try to write register, with increased idle cycles.
         mock.add_transfer();
-        mock.add_write_response(DapAcknowledge::Ok, 16);
+        mock.add_write_response(DapAcknowledge::Ok, idle_cycles * 2);
+        mock.add_idle_cycles(mock.swd_settings.idle_cycles_before_write_verify);
         mock.add_read_response(DapAcknowledge::Ok, 0);
+        mock.add_idle_cycles(mock.swd_settings.idle_cycles_after_transfer);
 
         mock.write_register(PortType::AccessPort(0), 4, 0x123)
             .expect("Failed to write register");
@@ -1048,8 +1333,9 @@ mod test {
             let mut mock = MockJaylink::new();
 
             mock.add_read_response(DapAcknowledge::Ok, register_value);
+            mock.add_idle_cycles(mock.swd_settings.idle_cycles_after_transfer);
 
-            perform_transfers(&mut mock, &mut transfers).expect("Failed to perform transfer");
+            perform_transfers(&mut mock, &mut transfers, 16).expect("Failed to perform transfer");
 
             let transfer_result = &transfers[0];
 
@@ -1067,8 +1353,9 @@ mod test {
 
             mock.add_read_response(DapAcknowledge::Ok, 0);
             mock.add_read_response(DapAcknowledge::Ok, register_value);
+            mock.add_idle_cycles(mock.swd_settings.idle_cycles_after_transfer);
 
-            perform_transfers(&mut mock, &mut transfers).expect("Failed to perform transfer");
+            perform_transfers(&mut mock, &mut transfers, 16).expect("Failed to perform transfer");
 
             let transfer_result = &transfers[0];
 
@@ -1095,8 +1382,9 @@ mod test {
             mock.add_read_response(DapAcknowledge::Ok, 0);
             mock.add_read_response(DapAcknowledge::Ok, ap_read_value);
             mock.add_read_response(DapAcknowledge::Ok, dp_read_value);
+            mock.add_idle_cycles(mock.swd_settings.idle_cycles_after_transfer);
 
-            perform_transfers(&mut mock, &mut transfers).expect("Failed to perform transfer");
+            perform_transfers(&mut mock, &mut transfers, 16).expect("Failed to perform transfer");
 
             assert_eq!(transfers[0].status, TransferStatus::Ok);
             assert_eq!(transfers[0].value, ap_read_value);
@@ -1124,8 +1412,9 @@ mod test {
             mock.add_read_response(DapAcknowledge::Ok, dp_read_value);
             mock.add_read_response(DapAcknowledge::Ok, 0);
             mock.add_read_response(DapAcknowledge::Ok, ap_read_value);
+            mock.add_idle_cycles(mock.swd_settings.idle_cycles_after_transfer);
 
-            perform_transfers(&mut mock, &mut transfers).expect("Failed to perform transfer");
+            perform_transfers(&mut mock, &mut transfers, 16).expect("Failed to perform transfer");
 
             assert_eq!(transfers[0].status, TransferStatus::Ok);
             assert_eq!(transfers[0].value, dp_read_value);
@@ -1151,8 +1440,9 @@ mod test {
             mock.add_read_response(DapAcknowledge::Ok, 0);
             mock.add_read_response(DapAcknowledge::Ok, ap_read_values[0]);
             mock.add_read_response(DapAcknowledge::Ok, ap_read_values[1]);
+            mock.add_idle_cycles(mock.swd_settings.idle_cycles_after_transfer);
 
-            perform_transfers(&mut mock, &mut transfers).expect("Failed to perform transfer");
+            perform_transfers(&mut mock, &mut transfers, 16).expect("Failed to perform transfer");
 
             assert_eq!(transfers[0].status, TransferStatus::Ok);
             assert_eq!(transfers[0].value, ap_read_values[0]);
@@ -1176,8 +1466,9 @@ mod test {
 
             mock.add_read_response(DapAcknowledge::Ok, dp_read_values[0]);
             mock.add_read_response(DapAcknowledge::Ok, dp_read_values[1]);
+            mock.add_idle_cycles(mock.swd_settings.idle_cycles_after_transfer);
 
-            perform_transfers(&mut mock, &mut transfers).expect("Failed to perform transfer");
+            perform_transfers(&mut mock, &mut transfers, 16).expect("Failed to perform transfer");
 
             assert_eq!(transfers[0].status, TransferStatus::Ok);
             assert_eq!(transfers[0].value, dp_read_values[0]);
@@ -1191,10 +1482,18 @@ mod test {
             let mut transfers = vec![SwdTransfer::write(PortType::DebugPort, 0, 0x1234_5678)];
 
             let mut mock = MockJaylink::new();
-            mock.add_write_response(DapAcknowledge::Ok, 16);
-            mock.add_read_response(DapAcknowledge::Ok, 0);
+            let idle_cycles = mock.swd_settings.num_idle_cycles_between_writes;
 
-            perform_transfers(&mut mock, &mut transfers).expect("Failed to perform transfer");
+            mock.add_write_response(
+                DapAcknowledge::Ok,
+                mock.swd_settings.num_idle_cycles_between_writes,
+            );
+
+            // To verify that the write was succesfull, an additional read is performed.
+            mock.add_idle_cycles(mock.swd_settings.idle_cycles_after_transfer);
+
+            perform_transfers(&mut mock, &mut transfers, idle_cycles)
+                .expect("Failed to perform transfer");
 
             let transfer_result = &transfers[0];
 
@@ -1206,10 +1505,21 @@ mod test {
             let mut transfers = vec![SwdTransfer::write(PortType::AccessPort(0), 0, 0x1234_5678)];
 
             let mut mock = MockJaylink::new();
-            mock.add_write_response(DapAcknowledge::Ok, 16);
-            mock.add_read_response(DapAcknowledge::Ok, 0);
 
-            perform_transfers(&mut mock, &mut transfers).expect("Failed to perform transfer");
+            let idle_cycles = mock.swd_settings.num_idle_cycles_between_writes;
+
+            mock.add_write_response(
+                DapAcknowledge::Ok,
+                mock.swd_settings.num_idle_cycles_between_writes,
+            );
+
+            // To verify that the write was succesfull, an additional read is performed.
+            mock.add_idle_cycles(mock.swd_settings.idle_cycles_before_write_verify);
+            mock.add_read_response(DapAcknowledge::Ok, 0);
+            mock.add_idle_cycles(mock.swd_settings.idle_cycles_after_transfer);
+
+            perform_transfers(&mut mock, &mut transfers, idle_cycles)
+                .expect("Failed to perform transfer");
 
             let transfer_result = &transfers[0];
 
@@ -1224,11 +1534,24 @@ mod test {
             ];
 
             let mut mock = MockJaylink::new();
-            mock.add_write_response(DapAcknowledge::Ok, 16);
-            mock.add_write_response(DapAcknowledge::Ok, 16);
-            mock.add_read_response(DapAcknowledge::Ok, 0);
 
-            perform_transfers(&mut mock, &mut transfers).expect("Failed to perform transfer");
+            let idle_cycles = mock.swd_settings.num_idle_cycles_between_writes;
+
+            mock.add_write_response(
+                DapAcknowledge::Ok,
+                mock.swd_settings.num_idle_cycles_between_writes,
+            );
+            mock.add_write_response(
+                DapAcknowledge::Ok,
+                mock.swd_settings.num_idle_cycles_between_writes,
+            );
+
+            mock.add_idle_cycles(mock.swd_settings.idle_cycles_before_write_verify);
+            mock.add_read_response(DapAcknowledge::Ok, 0);
+            mock.add_idle_cycles(mock.swd_settings.idle_cycles_after_transfer);
+
+            perform_transfers(&mut mock, &mut transfers, idle_cycles)
+                .expect("Failed to perform transfer");
 
             assert_eq!(transfers[0].status, TransferStatus::Ok);
             assert_eq!(transfers[1].status, TransferStatus::Ok);
