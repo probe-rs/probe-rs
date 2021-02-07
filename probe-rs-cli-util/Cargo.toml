@@ -17,6 +17,7 @@ default = ["sentry"]
 
 [dependencies]
 structopt = "0.3.16"
+thiserror = "1.0"
 anyhow = "1.0"
 indicatif = "0.15.0"
 env_logger = "0.8.1"
