@@ -162,14 +162,19 @@ pub(crate) fn render_diagnostics(error: CargoFlashError) {
 
     let mut stderr = std::io::stderr();
 
+    let short_error = format!("{:}", error);
+    let error_stack = Err::<(), _>(error)
+        // .context("An unexpected issue was encountered.")
+        .err()
+        .unwrap();
+
+    // We always log the entire error trace to be better able to debug.
+    log::debug!("{:?}", error_stack);
+
     let err_msg = if hints.is_empty() {
-        let error = Err::<(), _>(error)
-            // .context("An unexpected issue was encountered.")
-            .err()
-            .unwrap();
-        format!("{:?}", error)
+        format!("{:?}", error_stack)
     } else {
-        format!("{:}", error)
+        short_error
     };
 
     let _ = write_with_offset(&mut stderr, "Error".red().bold(), &err_msg);
