@@ -269,7 +269,7 @@ fn generate_flash_error_hints(
 }
 
 fn write_with_offset(mut output: impl std::io::Write, header: ColoredString, msg: &str) {
-    let _ = write!(output, "       {} ", header);
+    let _ = write!(output, "{: >1$} ", header, 12);
 
     let mut lines = msg.lines();
 
