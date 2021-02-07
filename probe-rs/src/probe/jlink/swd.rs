@@ -837,9 +837,9 @@ impl<Probe: RawSwdIo + 'static> DAPAccess for Probe {
                         );
 
                         if err == &DapError::WaitResponse {
-                            // Clear STICKORRUN flag
-
-                            // Because we use overrun detection, we now have to clear the overrun error
+                            // Clear STICKORRUN flag.
+                            
+                            // Because we use overrun detection, we now have to clear the overrun error.
                             let mut abort = Abort(0);
 
                             abort.set_orunerrclr(true);
@@ -861,7 +861,7 @@ impl<Probe: RawSwdIo + 'static> DAPAccess for Probe {
                     }
                     TransferStatus::Pending => {
                         // This should not happen...
-                        panic!("Error performing transfers")
+                        panic!("Error performing transfers. This is a bug and should be reported.")
                     }
                 }
             }
@@ -1012,9 +1012,9 @@ impl<Probe: RawSwdIo + 'static> DAPAccess for Probe {
                         );
 
                         if err == &DapError::WaitResponse {
-                            // Clear STICKORRUN flag
+                            // Clear STICKORRUN flag.
 
-                            // Because we use overrun detection, we now have to clear the overrun error
+                            // Because we use overrun detection, we now have to clear the overrun error.
                             let mut abort = Abort(0);
 
                             abort.set_orunerrclr(true);
@@ -1300,12 +1300,12 @@ mod test {
         mock.add_read_response(DapAcknowledge::Wait, 0);
         mock.add_idle_cycles(mock.swd_settings.idle_cycles_after_transfer);
 
-        // Expect a Write to the ABORT register
+        // Expect a Write to the ABORT register.
         mock.add_transfer();
         mock.add_write_response(DapAcknowledge::Ok, idle_cycles);
         mock.add_idle_cycles(mock.swd_settings.idle_cycles_after_transfer);
 
-        // Second try to write register, with increased idle cycles
+        // Second try to write register, with increased idle cycles.
         mock.add_transfer();
         mock.add_write_response(DapAcknowledge::Ok, idle_cycles * 2);
         mock.add_idle_cycles(mock.swd_settings.idle_cycles_before_write_verify);
