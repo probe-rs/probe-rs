@@ -131,7 +131,7 @@ pub(crate) fn render_diagnostics(error: CargoFlashError) {
             RegistryError::ChipNotFound(_) => vec![
                 "Did you spell the name of your chip correctly? Capitalization does not matter."
                     .into(),
-                "Maybe your chip is not supported yet. You could add it your self with our tool here: https://github.com/probe-rs/target-gen.".into(),
+                "Maybe your chip is not supported yet. You could add it yourself with our tool here: https://github.com/probe-rs/target-gen.".into(),
                 "You can list all the available chips by passing the `--list-chips` argument.".into(),
             ],
             _ => vec![],
@@ -262,7 +262,7 @@ fn generate_flash_error_hints(
         },
         FlashError::EraseFailed { ..} => vec![
             "Perhaps your chip has write protected sectors that need to be cleared?".into(),
-            "Perhaps you need the --nmagic linker arg https://github.com/rust-embedded/cortex-m-quickstart/pull/95.".into()
+            "Perhaps you need the --nmagic linker arg. See https://github.com/rust-embedded/cortex-m-quickstart/pull/95 for more information.".into()
         ],
         _ => vec![],
     }

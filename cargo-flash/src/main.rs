@@ -326,7 +326,7 @@ fn main_try() -> Result<(), CargoFlashError> {
         return Ok(());
     }
 
-    // First use command line, then manifest, then default to auto
+    // First use command line, then manifest, then default to auto.
     let chip = match (&opt.chip, meta.map(|m| m.chip).flatten()) {
         (Some(c), _) => c.into(),
         (_, Some(c)) => c.into(),
