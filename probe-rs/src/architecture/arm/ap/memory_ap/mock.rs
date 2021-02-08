@@ -157,7 +157,7 @@ where
                 }
 
                 let bit_offset = (address % 4) * 8;
-                let result = match CSW::from(csw).SIZE {
+                let result = match csw.SIZE {
                     DataSize::U32 => {
                         self.memory[address as usize] = value as u8;
                         self.memory[address as usize + 1] = (value >> 8) as u8;

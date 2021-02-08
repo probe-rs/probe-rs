@@ -3,7 +3,7 @@ use object::{
     ObjectSection,
 };
 
-use std::{fs::File, path::Path, str::FromStr};
+use std::{cmp::Ordering, fs::File, path::Path, str::FromStr};
 
 use super::*;
 use crate::{config::MemoryRange, session::Session};
@@ -201,31 +201,35 @@ impl<'data> ExtractedFlashData<'data> {
     /// Split off data from the beginning, and return it. If the offset is
     /// out of bounds, this function will panic.
     pub fn split_off(&mut self, offset: usize) -> ExtractedFlashData<'data> {
-        if offset < self.data.len() {
-            let (first, second) = self.data.split_at(offset);
+        match offset.cmp(&self.data.len()) {
+            Ordering::Less => {
+                let (first, second) = self.data.split_at(offset);
 
-            let first_address = self.address;
+                let first_address = self.address;
 
-            self.data = second;
-            self.address += offset as u32;
+                self.data = second;
+                self.address += offset as u32;
 
-            ExtractedFlashData {
-                section_names: self.section_names.clone(),
-                address: first_address,
-                data: first,
+                ExtractedFlashData {
+                    section_names: self.section_names.clone(),
+                    address: first_address,
+                    data: first,
+                }
             }
-        } else if offset == self.data.len() {
-            let return_value = ExtractedFlashData {
-                section_names: self.section_names.clone(),
-                address: self.address,
-                data: self.data,
-            };
+            Ordering::Equal => {
+                let return_value = ExtractedFlashData {
+                    section_names: self.section_names.clone(),
+                    address: self.address,
+                    data: self.data,
+                };
 
-            self.data = &[];
+                self.data = &[];
 
-            return_value
-        } else {
-            panic!("Offset is out of bounds!");
+                return_value
+            }
+            Ordering::Greater => {
+                panic!("Offset is out of bounds!");
+            }
         }
     }
 
@@ -235,7 +239,7 @@ impl<'data> ExtractedFlashData<'data> {
     }
 }
 
-pub(super) fn extract_from_elf<'data, 'elf: 'data>(
+pub(super) fn extract_from_elf<'data>(
     extracted_data: &mut Vec<ExtractedFlashData<'data>>,
     elf_data: &'data [u8],
 ) -> Result<usize, FileDownloadError> {

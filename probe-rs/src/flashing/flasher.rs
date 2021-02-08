@@ -459,10 +459,10 @@ impl<'session> Flasher<'session> {
                 })?;
 
             if result != 0 {
-                return Err(FlashError::RoutineCallFailed {
+                Err(FlashError::RoutineCallFailed {
                     name: "wait_for_completion",
                     error_code: result,
-                });
+                })
             } else {
                 Ok(0)
             }

@@ -677,6 +677,12 @@ impl FakeProbe {
     }
 }
 
+impl Default for FakeProbe {
+    fn default() -> Self {
+        FakeProbe::new()
+    }
+}
+
 impl DebugProbe for FakeProbe {
     fn new_from_selector(
         _selector: impl Into<DebugProbeSelector>,
