@@ -21,7 +21,7 @@ use probe_rs::{
 };
 
 #[cfg(feature = "sentry")]
-use probe_rs_cli_util::logging::{ask_to_log_crash, capture_anyhow, capture_panic};
+use probe_rs_cli_util::logging::{ask_to_log_crash, capture_panic};
 use probe_rs_cli_util::{
     argument_handling, build_artifact, logging, logging::Metadata, read_metadata, ArtifactError,
 };
@@ -260,11 +260,6 @@ fn main() {
             // We ignore the errors, not much we can do anyway.
             render_diagnostics(e);
 
-            #[cfg(feature = "sentry")]
-            if ask_to_log_crash() {
-                capture_anyhow(&METADATA.lock().unwrap(), e.source_error())
-            }
-
             process::exit(1);
         }
     }
@@ -411,7 +406,7 @@ fn main_try() -> Result<(), CargoFlashError> {
         let actual_speed = probe.set_speed(speed).map_err(|error| {
             CargoFlashError::FailedToSelectProtocolSpeed {
                 source: error,
-                speed: speed,
+                speed,
             }
         })?;
 

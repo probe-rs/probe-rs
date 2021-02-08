@@ -1,6 +1,6 @@
 /// Error handling
 use colored::*;
-use std::fmt::{Display, Write};
+use std::fmt::Write;
 
 use bytesize::ByteSize;
 
@@ -13,53 +13,6 @@ use probe_rs::{
 use probe_rs_cli_util::ArtifactError;
 
 use crate::CargoFlashError;
-
-#[derive(Debug)]
-pub struct Diagnostic {
-    error: anyhow::Error,
-
-    hints: Vec<String>,
-}
-
-impl Diagnostic {
-    pub fn render(&self) {
-        use std::io::Write;
-
-        let mut stderr = std::io::stderr();
-
-        let err_msg = format!("{:?}", self.error);
-
-        let _ = write_with_offset(&mut stderr, "Error".red().bold(), &err_msg);
-
-        let _ = writeln!(stderr, "");
-
-        for hint in &self.hints {
-            write_with_offset(&mut stderr, "Hint".blue().bold(), hint);
-            let _ = writeln!(stderr, "");
-        }
-
-        let _ = stderr.flush();
-    }
-
-    pub fn add_hint(&mut self, hint: impl Into<String>) {
-        self.hints.push(hint.into())
-    }
-}
-
-impl Display for Diagnostic {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.error.fmt(f)
-    }
-}
-
-impl From<anyhow::Error> for Diagnostic {
-    fn from(error: anyhow::Error) -> Self {
-        Diagnostic {
-            error,
-            hints: vec![],
-        }
-    }
-}
 
 pub(crate) fn render_diagnostics(error: CargoFlashError) {
     let hints: Vec<String> = match &error {
@@ -179,11 +132,11 @@ pub(crate) fn render_diagnostics(error: CargoFlashError) {
 
     let _ = write_with_offset(&mut stderr, "Error".red().bold(), &err_msg);
 
-    let _ = writeln!(stderr, "");
+    let _ = writeln!(stderr);
 
     for hint in &hints {
         write_with_offset(&mut stderr, "Hint".blue().bold(), hint);
-        let _ = writeln!(stderr, "");
+        let _ = writeln!(stderr);
     }
 
     let _ = stderr.flush();

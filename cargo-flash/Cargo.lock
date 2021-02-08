@@ -1053,7 +1053,7 @@ checksum = "ac74c624d6b2d21f425f752262f42188365d7b8ff1aff74c82e45136510a4857"
 [[package]]
 name = "probe-rs"
 version = "0.10.1"
-source = "git+https://github.com/probe-rs/probe-rs?branch=improved-flash-errors#0a281eabd3e9ba080dce654443b8ea34e7be48b7"
+source = "git+https://github.com/probe-rs/probe-rs?branch=improved-flash-errors#037210789967e78e36a003e6181429303e1e0647"
 dependencies = [
  "anyhow",
  "base64",
@@ -1083,7 +1083,7 @@ dependencies = [
 [[package]]
 name = "probe-rs-cli-util"
 version = "0.10.1"
-source = "git+https://github.com/probe-rs/probe-rs?branch=improved-flash-errors#0a281eabd3e9ba080dce654443b8ea34e7be48b7"
+source = "git+https://github.com/probe-rs/probe-rs?branch=improved-flash-errors#037210789967e78e36a003e6181429303e1e0647"
 dependencies = [
  "anyhow",
  "cargo_metadata",
@@ -1106,7 +1106,7 @@ dependencies = [
 [[package]]
 name = "probe-rs-t2rust"
 version = "0.7.0"
-source = "git+https://github.com/probe-rs/probe-rs?branch=improved-flash-errors#0a281eabd3e9ba080dce654443b8ea34e7be48b7"
+source = "git+https://github.com/probe-rs/probe-rs?branch=improved-flash-errors#037210789967e78e36a003e6181429303e1e0647"
 dependencies = [
  "base64",
  "proc-macro2",
