@@ -46,7 +46,7 @@ pub struct Session {
 #[derive(Debug)]
 enum ArchitectureInterface {
     Arm(Box<dyn ArmProbeInterface + 'static>),
-    Riscv(RiscvCommunicationInterface),
+    Riscv(Box<RiscvCommunicationInterface>),
 }
 
 impl From<ArchitectureInterface> for Architecture {
@@ -153,7 +153,7 @@ impl Session {
 
                 let mut session = Session {
                     target,
-                    interface: ArchitectureInterface::Riscv(interface),
+                    interface: ArchitectureInterface::Riscv(Box::new(interface)),
                     cores: vec![core],
                 };
 

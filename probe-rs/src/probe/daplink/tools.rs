@@ -96,7 +96,7 @@ pub fn open_v2_device(device: Device<rusb::Context>) -> Option<DAPLinkDevice> {
 
             // Skip interfaces without 2 or 3 endpoints
             let n_ep = i_desc.num_endpoints();
-            if n_ep < 2 || n_ep > 3 {
+            if !(2..=3).contains(&n_ep) {
                 continue;
             }
 

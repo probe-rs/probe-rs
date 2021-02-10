@@ -58,7 +58,6 @@ pub struct Flasher<'session> {
     session: &'session mut Session,
     flash_algorithm: FlashAlgorithm,
     region: NvmRegion,
-    double_buffering_supported: bool,
 }
 
 impl<'session> Flasher<'session> {
@@ -71,7 +70,6 @@ impl<'session> Flasher<'session> {
             session,
             flash_algorithm,
             region,
-            double_buffering_supported: false,
         }
     }
 
@@ -80,7 +78,7 @@ impl<'session> Flasher<'session> {
     }
 
     pub(super) fn double_buffering_supported(&self) -> bool {
-        self.double_buffering_supported
+        self.flash_algorithm.page_buffers.len() > 1
     }
 
     pub(super) fn init<O: Operation>(
@@ -144,14 +142,9 @@ impl<'session> Flasher<'session> {
 
         log::debug!("Preparing Flasher for region:");
         log::debug!("{:#?}", &self.region);
-        log::debug!(
-            "Double buffering enabled: {}",
-            self.double_buffering_supported
-        );
         let mut flasher = ActiveFlasher::<O> {
             core,
             flash_algorithm: self.flash_algorithm.clone(),
-            _double_buffering_supported: self.double_buffering_supported,
             _operation: core::marker::PhantomData,
         };
 
@@ -222,7 +215,7 @@ impl<'session> Flasher<'session> {
 
         let mut fb = FlashBuilder::new();
         fb.add_data(address, data)?;
-        self.program(&fb, do_chip_erase, true, false, progress)?;
+        self.program(&fb, do_chip_erase, true, true, progress)?;
 
         Ok(())
     }
@@ -249,6 +242,8 @@ impl<'session> Flasher<'session> {
         // If the flash algo doesn't support erase all, disable chip erase.
         if self.flash_algorithm().pc_erase_all.is_none() {
             do_chip_erase = false;
+            log::warn!("Chip erase was the selected method to erase the sectors but this chip does not support chip erases (yet).");
+            log::warn!("A manual sector erase will be performed.");
         }
 
         log::debug!("Full Chip Erase enabled: {:?}", do_chip_erase);
@@ -285,7 +280,6 @@ impl<'session> Flasher<'session> {
         }
 
         // Flash all necessary pages.
-
         if self.double_buffering_supported() && enable_double_buffering {
             self.program_double_buffer(&flash_layout, progress)?;
         } else {
@@ -380,7 +374,13 @@ impl<'session> Flasher<'session> {
 
     /// Flash a program using double buffering.
     ///
-    /// UNTESTED
+    /// This uses two buffers to increase the flash speed.
+    /// While the data from one buffer is programmed, the
+    /// data for the next page is already downloaded
+    /// into the next buffer.
+    ///
+    /// This is only possible if the RAM is large enough to
+    /// fit at least two page buffers. See [Flasher::double_buffering_supported].
     fn program_double_buffer(
         &mut self,
         flash_layout: &FlashLayout,
@@ -419,7 +419,15 @@ impl<'session> Flasher<'session> {
                 }
             }
 
-            Ok(())
+            let result = active.wait_for_completion(Duration::from_secs(2));
+            if let Ok(0) = result {
+                Ok(())
+            } else {
+                Err(FlashError::PageWrite {
+                    page_address: 0,
+                    error_code: 0,
+                })
+            }
         });
 
         if result.is_ok() {
@@ -453,7 +461,6 @@ impl Debug for Registers {
 pub(super) struct ActiveFlasher<'probe, O: Operation> {
     core: Core<'probe>,
     flash_algorithm: FlashAlgorithm,
-    _double_buffering_supported: bool,
     _operation: core::marker::PhantomData<O>,
 }
 
@@ -729,7 +736,7 @@ impl<'p> ActiveFlasher<'p, Program> {
         buffer_number: usize,
     ) -> Result<()> {
         // Check the buffer number.
-        if buffer_number < self.flash_algorithm.page_buffers.len() {
+        if buffer_number >= self.flash_algorithm.page_buffers.len() {
             return Err(anyhow!(FlashError::InvalidBufferNumber {
                 n: buffer_number,
                 max: self.flash_algorithm.page_buffers.len(),
@@ -760,7 +767,7 @@ impl<'p> ActiveFlasher<'p, Program> {
         let algo = &flasher.flash_algorithm;
 
         // Check the buffer number.
-        if buffer_number < algo.page_buffers.len() {
+        if buffer_number >= algo.page_buffers.len() {
             return Err(anyhow!(FlashError::InvalidBufferNumber {
                 n: buffer_number,
                 max: algo.page_buffers.len(),

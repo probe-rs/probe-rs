@@ -1,5 +1,8 @@
 ---
 name: nRF51 Series
+manufacturer:
+  cc: 0x02
+  id: 0x44
 variants:
   - name: nRF51422_xxAA
     memory_map:

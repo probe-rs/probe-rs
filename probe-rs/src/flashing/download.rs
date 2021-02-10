@@ -8,6 +8,7 @@ use std::{
     fs::File,
     io::{Read, Seek, SeekFrom},
     path::Path,
+    str::FromStr,
 };
 
 use super::*;
@@ -16,7 +17,7 @@ use crate::{config::MemoryRange, session::Session};
 use thiserror::Error;
 
 /// Extended options for flashing a binary file.
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct BinOptions {
     /// The address in memory where the binary will be put at.
     pub base_address: Option<u32>,
@@ -25,7 +26,7 @@ pub struct BinOptions {
 }
 
 /// A finite list of all the available binary formats probe-rs understands.
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub enum Format {
     /// Marks a file in binary format. This means that the file contains the contents of the flash 1:1.
     /// [BinOptions] can be used to define the location in flash where the file contents should be put at.
@@ -35,6 +36,22 @@ pub enum Format {
     Hex,
     /// Marks a file in the [ELF](https://en.wikipedia.org/wiki/Executable_and_Linkable_Format) format.
     Elf,
+}
+
+impl FromStr for Format {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match &s.to_lowercase()[..] {
+            "bin" | "binary" => Ok(Format::Bin(BinOptions {
+                base_address: None,
+                skip: 0,
+            })),
+            "hex" | "ihex" | "intelhex" => Ok(Format::Hex),
+            "elf" => Ok(Format::Elf),
+            _ => Err(format!("Format '{}' is unknown.", s)),
+        }
+    }
 }
 
 /// A finite list of all the errors that can occur when flashing a given file.
@@ -79,6 +96,10 @@ pub struct DownloadOptions<'progress> {
     /// instead of the full sector, the excessively erased bytes wont match the contents before the erase which might not be intuitive
     /// to the user or even worse, result in unexpected behavior if those contents contain important data.
     pub keep_unwritten_bytes: bool,
+    /// If this flag is set to true, probe-rs will try to use the chips built in method to do a full chip erase if one is available.
+    /// This is often faster than erasing a lot of single sectors.
+    /// So if you do not need the old contents of the flash, this is a good option.
+    pub do_chip_erase: bool,
 }
 
 /// Downloads a file of given `format` at `path` to the flash of the target given in `session`.
@@ -126,7 +147,7 @@ pub fn download_file_with_options(
         .commit(
             session,
             options.progress.unwrap_or(&FlashProgress::new(|_| {})),
-            false,
+            options.do_chip_erase,
         )
         .map_err(FileDownloadError::Flash)
 }
@@ -282,5 +303,67 @@ fn download_elf<'buffer, T: Read + Seek>(
             );
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::str::FromStr;
+
+    use super::{BinOptions, Format};
+
+    #[test]
+    fn parse_format() {
+        assert_eq!(Format::from_str("hex"), Ok(Format::Hex));
+        assert_eq!(Format::from_str("Hex"), Ok(Format::Hex));
+        assert_eq!(Format::from_str("Ihex"), Ok(Format::Hex));
+        assert_eq!(Format::from_str("IHex"), Ok(Format::Hex));
+        assert_eq!(Format::from_str("iHex"), Ok(Format::Hex));
+        assert_eq!(Format::from_str("IntelHex"), Ok(Format::Hex));
+        assert_eq!(Format::from_str("intelhex"), Ok(Format::Hex));
+        assert_eq!(Format::from_str("intelHex"), Ok(Format::Hex));
+        assert_eq!(Format::from_str("Intelhex"), Ok(Format::Hex));
+        assert_eq!(
+            Format::from_str("bin"),
+            Ok(Format::Bin(BinOptions {
+                base_address: None,
+                skip: 0
+            }))
+        );
+        assert_eq!(
+            Format::from_str("Bin"),
+            Ok(Format::Bin(BinOptions {
+                base_address: None,
+                skip: 0
+            }))
+        );
+        assert_eq!(
+            Format::from_str("binary"),
+            Ok(Format::Bin(BinOptions {
+                base_address: None,
+                skip: 0
+            }))
+        );
+        assert_eq!(
+            Format::from_str("Binary"),
+            Ok(Format::Bin(BinOptions {
+                base_address: None,
+                skip: 0
+            }))
+        );
+        assert_eq!(Format::from_str("Elf"), Ok(Format::Elf));
+        assert_eq!(Format::from_str("elf"), Ok(Format::Elf));
+        assert_eq!(
+            Format::from_str("elfbin"),
+            Err("Format 'elfbin' is unknown.".to_string())
+        );
+        assert_eq!(
+            Format::from_str(""),
+            Err("Format '' is unknown.".to_string())
+        );
+        assert_eq!(
+            Format::from_str("asdasdf"),
+            Err("Format 'asdasdf' is unknown.".to_string())
+        );
     }
 }
