@@ -182,7 +182,32 @@ $ echo $?
 **NOTE** when you run your application with `probe-run` the `HardFault` handler,
 default or user-defined one, will *NOT* be executed.
 
-## Support
+## Troubleshooting
+
+### `probe-run --list-probes` says "No devices were found."
+
+Apart from a faulty connection between your computer and the target device, this could be caused by several things:
+
+#### [Linux only] udev rules haven't been set
+
+In order for `probe-run` to find the device you'd like to run your code on, your system needs permission to access the device as a non-root user.
+
+In order to grant these permissions, you'll need to add a new set of udev rules.
+
+To learn how to do this for the nRF52840 Development Kit, check out the [installation instructions](https://embedded-trainings.ferrous-systems.com/installation.html?highlight=udev#linux-only-usb) in our embedded training materials.
+
+#### No external or on-board debugger present
+
+To use `probe-run` you need a "probe" (also known as "debugger") that sits between your PC and the microcontroller.
+
+Most development boards, especially the bigger ones, have a probe "on-board": If the product description of your board mentions something like a J-Link or ST-Link on-board debugger you're good to go. With these boards, all you need to do is connect your PC to the dev board using a USB cable you are all set to use `probe-run`!
+
+If this is *not* the case for your board, check if the datasheet if it exposes exposes SWD or JTAG pins.
+If this is the case, you can connect a "stand alone" probe device to the microcontroller and then connect the probe to your PC via USB. Some examples of stand alone probes are: the ST-Link and the J-Link.
+
+Note that this may involve some soldering if your board does not come with a pre-attached header to plug your debugger into.
+
+## Support Us
 
 `probe-run` is part of the [Knurling] project, [Ferrous Systems]' effort at
 improving tooling used to develop for embedded systems.
