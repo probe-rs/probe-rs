@@ -22,6 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fixed `m33` breakpoints.
+
 ## [0.10.1]
 ### Fixed
 
