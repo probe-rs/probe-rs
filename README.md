@@ -202,8 +202,8 @@ To use `probe-run` you need a "probe" (also known as "debugger") that sits betwe
 
 Most development boards, especially the bigger ones, have a probe "on-board": If the product description of your board mentions something like a J-Link or ST-Link on-board debugger you're good to go. With these boards, all you need to do is connect your PC to the dev board using a USB cable you are all set to use `probe-run`!
 
-If this is *not* the case for your board, check if the datasheet if it exposes exposes SWD or JTAG pins.
-If this is the case, you can connect a "stand alone" probe device to the microcontroller and then connect the probe to your PC via USB. Some examples of stand alone probes are: the ST-Link and the J-Link.
+If this is *not* the case for your board, check in the datasheet if it exposes exposes SWD or JTAG pins.
+If they are exposed, you can connect a "stand alone" probe device to the microcontroller and then connect the probe to your PC via USB. Some examples of stand alone probes are: the ST-Link and the J-Link.
 
 Note that this may involve some soldering if your board does not come with a pre-attached header to plug your debugger into.
 
