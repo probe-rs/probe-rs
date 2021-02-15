@@ -42,6 +42,8 @@ base64 = "0.13.0"
 svg = "0.8.0"
 anyhow = "1.0.31"
 bitvec = {version = "0.19.4" }
+funty = "=1.1.0" # Temporary fix for https://github.com/bitvecto-rs/bitvec/issues/105
+
 libftdi1-sys = { version = "1.0.0-alpha3", optional = true }
 static_assertions = "1.1.0"
 
