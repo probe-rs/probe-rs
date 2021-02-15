@@ -23,6 +23,7 @@ use gimli::{
     read::{CfaRule, DebugFrame, UnwindSection},
     BaseAddresses, EndianSlice, LittleEndian, RegisterRule, UninitializedUnwindContext,
 };
+use log::Level;
 use object::{
     read::{File as ElfFile, Object as _, ObjectSection as _},
     ObjectSegment, SymbolSection,
@@ -109,7 +110,21 @@ struct Opts {
 
 fn notmain() -> Result<i32, anyhow::Error> {
     let opts: Opts = Opts::from_args();
-    defmt_logger::init(opts.verbose);
+    let verbose = opts.verbose;
+    defmt_decoder::log::init_logger(verbose, move |metadata| {
+        if defmt_decoder::log::is_defmt_frame(metadata) {
+            // We want to display *all* defmt frames.
+            true
+        } else {
+            // Host logs use `info!` as the default level, but with the `verbose` flag set we log at
+            // `trace!` level instead.
+            if verbose {
+                metadata.target().starts_with("probe_run")
+            } else {
+                metadata.target().starts_with("probe_run") && metadata.level() <= Level::Info
+            }
+        }
+    });
 
     if opts.version {
         return print_version();
@@ -161,10 +176,10 @@ fn notmain() -> Result<i32, anyhow::Error> {
         })?;
 
     let (mut table, locs) = {
-        let table = defmt_elf2table::parse(&bytes)?;
+        let table = defmt_decoder::elf2table::parse(&bytes)?;
 
         let locs = if let Some(table) = table.as_ref() {
-            let locs = defmt_elf2table::get_locations(&bytes, table)?;
+            let locs = defmt_decoder::elf2table::get_locations(&bytes, table)?;
 
             if !table.is_empty() && locs.is_empty() {
                 log::warn!("insufficient DWARF info; compile your program with `debug = 2` to enable location info");
@@ -450,7 +465,7 @@ fn notmain() -> Result<i32, anyhow::Error> {
                                 }
 
                                 // Forward the defmt frame to our logger.
-                                defmt_logger::log_defmt(
+                                defmt_decoder::log::log_defmt(
                                     &frame,
                                     file.as_deref(),
                                     line,
