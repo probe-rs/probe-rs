@@ -26,7 +26,7 @@ use gimli::{
 use log::Level;
 use object::{
     read::{File as ElfFile, Object as _, ObjectSection as _},
-    ObjectSegment, SymbolSection,
+    ObjectSegment, ObjectSymbol, SymbolSection,
 };
 use probe_rs::config::{registry, MemoryRegion, RamRegion};
 use probe_rs::{
@@ -34,6 +34,7 @@ use probe_rs::{
     Core, CoreRegisterAddress, DebugProbeInfo, DebugProbeSelector, MemoryInterface, Probe, Session,
 };
 use probe_rs_rtt::{Rtt, ScanRegion, UpChannel};
+use signal_hook::consts::signal;
 use structopt::StructOpt;
 
 const TIMEOUT: Duration = Duration::from_secs(1);
@@ -262,17 +263,15 @@ fn notmain() -> Result<i32, anyhow::Error> {
     }
 
     let live_functions = elf
-        .symbol_map()
         .symbols()
-        .iter()
         .filter_map(|sym| {
             if sym.section() == SymbolSection::Section(text) {
-                sym.name()
+                Some(sym.name())
             } else {
                 None
             }
         })
-        .collect::<HashSet<_>>();
+        .collect::<Result<HashSet<_>, _>>()?;
 
     let (rtt_addr, uses_heap, main) = get_rtt_heap_main_from(&elf)?;
 
@@ -393,8 +392,10 @@ fn notmain() -> Result<i32, anyhow::Error> {
         core.run()?;
     }
 
+    // Register a signal handler that sets `exit` to `true` on Ctrl+C. On the second Ctrl+C, the
+    // signal's default action will be run.
     let exit = Arc::new(AtomicBool::new(false));
-    let sig_id = signal_hook::flag::register(signal_hook::SIGINT, exit.clone())?;
+    signal_hook::flag::register_conditional_default(signal::SIGINT, exit.clone())?;
 
     let sess = Arc::new(Mutex::new(sess));
     let mut logging_channel = setup_logging_channel(rtt_addr, sess.clone())?;
@@ -500,10 +501,6 @@ fn notmain() -> Result<i32, anyhow::Error> {
         was_halted = is_halted;
     }
     drop(stdout);
-
-    // Restore default Ctrl+C behavior.
-    signal_hook::unregister(sig_id);
-    signal_hook::cleanup::cleanup_signal(signal_hook::SIGINT)?;
 
     let mut sess = sess.lock().unwrap();
     let mut core = sess.core(0)?;
@@ -770,7 +767,7 @@ fn backtrace(
             let address = (pc | THUMB_BIT) as u64;
             let name = symtab
                 .get(address)
-                .and_then(|symbol| symbol.name())
+                .map(|symbol| symbol.name())
                 .unwrap_or("???");
             println!("{:>4}: {}", frame_index, name);
             frame_index += 1;
@@ -1000,10 +997,10 @@ fn get_rtt_heap_main_from(
     let mut uses_heap = false;
     let mut main = None;
 
-    for (_, symbol) in elf.symbols() {
+    for symbol in elf.symbols() {
         let name = match symbol.name() {
-            Some(name) => name,
-            None => continue,
+            Ok(name) => name,
+            Err(_) => continue,
         };
 
         match name {
