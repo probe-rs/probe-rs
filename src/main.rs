@@ -34,6 +34,7 @@ use probe_rs::{
     Core, CoreRegisterAddress, DebugProbeInfo, DebugProbeSelector, MemoryInterface, Probe, Session,
 };
 use probe_rs_rtt::{Rtt, ScanRegion, UpChannel};
+use signal_hook::consts::signal;
 use structopt::StructOpt;
 
 const TIMEOUT: Duration = Duration::from_secs(1);
@@ -391,8 +392,10 @@ fn notmain() -> Result<i32, anyhow::Error> {
         core.run()?;
     }
 
+    // Register a signal handler that sets `exit` to `true` on Ctrl+C. On the second Ctrl+C, the
+    // signal's default action will be run.
     let exit = Arc::new(AtomicBool::new(false));
-    let sig_id = signal_hook::flag::register(signal_hook::SIGINT, exit.clone())?;
+    signal_hook::flag::register_conditional_default(signal::SIGINT, exit.clone())?;
 
     let sess = Arc::new(Mutex::new(sess));
     let mut logging_channel = setup_logging_channel(rtt_addr, sess.clone())?;
@@ -498,10 +501,6 @@ fn notmain() -> Result<i32, anyhow::Error> {
         was_halted = is_halted;
     }
     drop(stdout);
-
-    // Restore default Ctrl+C behavior.
-    signal_hook::unregister(sig_id);
-    signal_hook::cleanup::cleanup_signal(signal_hook::SIGINT)?;
 
     let mut sess = sess.lock().unwrap();
     let mut core = sess.core(0)?;
