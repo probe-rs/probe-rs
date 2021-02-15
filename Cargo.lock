@@ -163,45 +163,28 @@ dependencies = [
 [[package]]
 name = "defmt-decoder"
 version = "0.1.4"
-source = "git+https://github.com/knurling-rs/defmt?rev=574f77f#574f77f05f0d72f905c8955cb7a652fb4f91726e"
+source = "git+https://github.com/knurling-rs/defmt?rev=c0773af#c0773afe09e8a10111024b1c1f51fbb000f88fe2"
 dependencies = [
+ "ansi_term 0.12.1",
+ "anyhow",
  "byteorder",
  "colored",
  "defmt-parser",
+ "difference",
+ "gimli 0.22.0",
  "leb128",
+ "log",
+ "object 0.21.1",
  "ryu",
  "semver",
-]
-
-[[package]]
-name = "defmt-elf2table"
-version = "0.1.0"
-source = "git+https://github.com/knurling-rs/defmt?rev=574f77f#574f77f05f0d72f905c8955cb7a652fb4f91726e"
-dependencies = [
- "anyhow",
- "defmt-decoder",
- "gimli 0.22.0",
- "object 0.21.1",
  "serde",
  "serde_json",
 ]
 
 [[package]]
-name = "defmt-logger"
-version = "0.1.0"
-source = "git+https://github.com/knurling-rs/defmt?rev=574f77f#574f77f05f0d72f905c8955cb7a652fb4f91726e"
-dependencies = [
- "ansi_term 0.12.1",
- "colored",
- "defmt-decoder",
- "difference",
- "log",
-]
-
-[[package]]
 name = "defmt-parser"
 version = "0.1.0"
-source = "git+https://github.com/knurling-rs/defmt?rev=574f77f#574f77f05f0d72f905c8955cb7a652fb4f91726e"
+source = "git+https://github.com/knurling-rs/defmt?rev=c0773af#c0773afe09e8a10111024b1c1f51fbb000f88fe2"
 
 [[package]]
 name = "difference"
@@ -568,8 +551,6 @@ dependencies = [
  "arrayref",
  "colored",
  "defmt-decoder",
- "defmt-elf2table",
- "defmt-logger",
  "difference",
  "gimli 0.22.0",
  "hidapi",
@@ -718,9 +699,9 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.61"
+version = "1.0.62"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4fceb2595057b6891a4ee808f70054bd2d12f0e97f1cbb78689b59f676df325a"
+checksum = "ea1c6153794552ea7cf7cf63b1231a25de00ec90db326ba6264440fa08e31486"
 dependencies = [
  "itoa",
  "ryu",
