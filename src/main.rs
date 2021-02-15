@@ -35,7 +35,7 @@ use probe_rs::{
 };
 use probe_rs_rtt::{Rtt, ScanRegion, UpChannel};
 use signal_hook::consts::signal;
-use structopt::StructOpt;
+use structopt::{clap::AppSettings, StructOpt};
 
 const TIMEOUT: Duration = Duration::from_secs(1);
 const STACK_CANARY: u8 = 0xAA;
@@ -61,7 +61,7 @@ fn print_version() -> Result<i32, anyhow::Error> {
 
 /// A Cargo runner for microcontrollers.
 #[derive(StructOpt)]
-#[structopt(name = "probe-run")]
+#[structopt(name = "probe-run", setting = AppSettings::TrailingVarArg)]
 struct Opts {
     /// List supported chips and exit.
     #[structopt(long)]
@@ -107,6 +107,10 @@ struct Opts {
     /// Prints version information
     #[structopt(short = "V", long)]
     version: bool,
+
+    /// Arguments passed after the ELF file path are discarded
+    #[structopt(name = "REST")]
+    _rest: Vec<String>,
 }
 
 fn notmain() -> Result<i32, anyhow::Error> {
