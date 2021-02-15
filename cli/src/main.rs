@@ -179,7 +179,7 @@ fn dump_memory(shared_options: &SharedOptions, loc: u32, words: u32) -> Result<(
 
 fn download_program_fast(shared_options: &SharedOptions, path: &str) -> Result<()> {
     with_device(shared_options, |mut session| {
-        download_file(&mut session, std::path::Path::new(&path), Format::Elf)?;
+        download_file(&mut session, &path, Format::Elf)?;
 
         Ok(())
     })
