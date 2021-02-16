@@ -1,5 +1,5 @@
-use super::chip::Chip;
 use super::flash_algorithm::RawFlashAlgorithm;
+use super::{chip::Chip, target::TargetDescriptionSource};
 use crate::config::TargetParseError;
 use jep106::JEP106Code;
 use std::borrow::Cow;
@@ -27,6 +27,10 @@ pub struct ChipFamily {
     /// The name of the core type.
     /// E.g. `M0` or `M4`.
     pub core: Cow<'static, str>,
+
+    #[serde(skip, default = "default_source")]
+    /// Source of the target description, used for diagnostics
+    pub(crate) source: TargetDescriptionSource,
 }
 
 pub fn serialize<S>(raw_algorithms: &[RawFlashAlgorithm], serializer: S) -> Result<S::Ok, S::Error>
@@ -98,11 +102,18 @@ impl ChipFamily {
     }
 }
 
+// When deserialization is used, this means that the target is read from an external source.
+fn default_source() -> TargetDescriptionSource {
+    TargetDescriptionSource::External
+}
+
 #[test]
 fn map_to_list_deserialize() {
-    let result: Result<ChipFamily, _> =
-        serde_yaml::from_str(include_str!("../../targets/STM32F4 Series.yaml"));
-    assert!(result.is_ok());
+    let yaml_data = include_str!("../../targets/STM32F4 Series.yaml");
+
+    let reader = std::io::Cursor::new(yaml_data);
+
+    let result: Result<ChipFamily, _> = ChipFamily::from_yaml_reader(reader);
 
     let chip_family = result.unwrap();
     assert_eq!(chip_family.algorithms().len(), 18);

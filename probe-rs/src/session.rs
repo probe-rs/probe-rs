@@ -12,9 +12,7 @@ use crate::architecture::{
     },
     riscv::communication_interface::RiscvCommunicationInterface,
 };
-use crate::config::{
-    ChipInfo, MemoryRegion, RawFlashAlgorithm, RegistryError, Target, TargetSelector,
-};
+use crate::config::{ChipInfo, MemoryRegion, RegistryError, Target, TargetSelector};
 use crate::core::{Architecture, CoreState, SpecificCoreState};
 use crate::{AttachMethod, Core, CoreType, Error, Probe};
 use anyhow::anyhow;
@@ -106,6 +104,13 @@ impl Session {
 
         let mut session = match target.architecture() {
             Architecture::Arm => {
+                if !probe.has_arm_interface() {
+                    return Err(anyhow!(
+                        "Debugging ARM based chips is not supported with the connected probe."
+                    )
+                    .into());
+                }
+
                 let core = (
                     SpecificCoreState::from_core_type(target.core_type),
                     Core::create_state(0),
@@ -203,11 +208,6 @@ impl Session {
         self.interface.attach(core, core_state)
     }
 
-    /// Returns a list of the flash algotithms on the target.
-    pub(crate) fn flash_algorithms(&self) -> &[RawFlashAlgorithm] {
-        &self.target.flash_algorithms
-    }
-
     /// Read available data from the SWO interface without waiting.
     ///
     /// This method is only supported for ARM-based targets, and will
@@ -283,6 +283,11 @@ impl Session {
         Ok(components)
     }
 
+    /// Get the target description of the connected target.
+    pub fn target(&self) -> &Target {
+        &self.target
+    }
+
     /// Configure the target and probe for serial wire view (SWV) tracing.
     pub fn setup_swv(&mut self, config: &SwoConfig) -> Result<(), Error> {
         // Configure SWO on the probe
@@ -331,11 +336,6 @@ impl Session {
     #[deprecated = "Use the Session::target function instead"]
     pub fn memory_map(&self) -> &[MemoryRegion] {
         &self.target.memory_map
-    }
-
-    /// Get the target description of the connected target.
-    pub fn target(&self) -> &Target {
-        &self.target
     }
 
     /// Return the `Architecture` of the currently connected chip.

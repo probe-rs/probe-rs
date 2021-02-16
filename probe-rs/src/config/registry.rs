@@ -1,6 +1,6 @@
 //! Internal target registry
 
-use super::target::Target;
+use super::target::{Target, TargetDescriptionSource};
 use crate::config::{Chip, ChipFamily, ChipInfo};
 use crate::core::CoreType;
 use lazy_static::lazy_static;
@@ -61,6 +61,7 @@ const GENERIC_TARGETS: [ChipFamily; 6] = [
         }]),
         flash_algorithms: Cow::Borrowed(&[]),
         core: Cow::Borrowed("M0"),
+        source: TargetDescriptionSource::Generic,
     },
     ChipFamily {
         name: Cow::Borrowed("Generic Cortex-M4"),
@@ -73,6 +74,7 @@ const GENERIC_TARGETS: [ChipFamily; 6] = [
         }]),
         flash_algorithms: Cow::Borrowed(&[]),
         core: Cow::Borrowed("M4"),
+        source: TargetDescriptionSource::Generic,
     },
     ChipFamily {
         name: Cow::Borrowed("Generic Cortex-M3"),
@@ -85,6 +87,7 @@ const GENERIC_TARGETS: [ChipFamily; 6] = [
         }]),
         flash_algorithms: Cow::Borrowed(&[]),
         core: Cow::Borrowed("M3"),
+        source: TargetDescriptionSource::Generic,
     },
     ChipFamily {
         name: Cow::Borrowed("Generic Cortex-M33"),
@@ -97,6 +100,7 @@ const GENERIC_TARGETS: [ChipFamily; 6] = [
         }]),
         flash_algorithms: Cow::Borrowed(&[]),
         core: Cow::Borrowed("M33"),
+        source: TargetDescriptionSource::Generic,
     },
     ChipFamily {
         name: Cow::Borrowed("Generic Cortex-M7"),
@@ -109,6 +113,7 @@ const GENERIC_TARGETS: [ChipFamily; 6] = [
         }]),
         flash_algorithms: Cow::Borrowed(&[]),
         core: Cow::Borrowed("M7"),
+        source: TargetDescriptionSource::Generic,
     },
     ChipFamily {
         name: Cow::Borrowed("Generic Riscv"),
@@ -121,6 +126,7 @@ const GENERIC_TARGETS: [ChipFamily; 6] = [
         }]),
         flash_algorithms: Cow::Borrowed(&[]),
         core: Cow::Borrowed("riscv"),
+        source: TargetDescriptionSource::Generic,
     },
 ];
 
@@ -191,6 +197,26 @@ impl Registry {
         self.get_target(family, chip)
     }
 
+    fn search_chips(&self, name: &str) -> Vec<String> {
+        log::debug!("Searching registry for chip with name {}", name);
+
+        let mut targets = Vec::new();
+
+        for family in &self.families {
+            for variant in family.variants.iter() {
+                if variant
+                    .name
+                    .to_ascii_lowercase()
+                    .starts_with(&name.to_ascii_lowercase())
+                {
+                    targets.push(variant.name.to_string())
+                }
+            }
+        }
+
+        targets
+    }
+
     fn get_target_by_chip_info(&self, chip_info: ChipInfo) -> Result<Target, RegistryError> {
         let (family, chip) = {
             match chip_info {
@@ -251,7 +277,12 @@ impl Registry {
             .cloned()
             .collect();
 
-        Ok(Target::new(chip, chip_algorithms, core))
+        Ok(Target::new(
+            chip,
+            chip_algorithms,
+            core,
+            family.source.clone(),
+        ))
     }
 
     fn add_target_from_yaml(&mut self, path_to_yaml: &Path) -> Result<(), RegistryError> {
@@ -274,6 +305,11 @@ impl Registry {
 /// Get a target from the internal registry based on its name.
 pub fn get_target_by_name(name: impl AsRef<str>) -> Result<Target, RegistryError> {
     REGISTRY.try_lock()?.get_target_by_name(name)
+}
+
+/// Get a target from the internal registry based on its name.
+pub fn search_chips(name: impl AsRef<str>) -> Result<Vec<String>, RegistryError> {
+    Ok(REGISTRY.try_lock()?.search_chips(name.as_ref()))
 }
 
 /// Try to retrieve a target based on [ChipInfo] read from a target.

@@ -7,7 +7,6 @@ use crate::{
     session::Session,
     Core, CoreRegisterAddress,
 };
-use anyhow::{anyhow, Result};
 use std::{fmt::Debug, time::Duration};
 
 pub(super) trait Operation {
@@ -85,7 +84,7 @@ impl<'session> Flasher<'session> {
         &mut self,
         mut address: Option<u32>,
         clock: Option<u32>,
-    ) -> Result<ActiveFlasher<'_, O>> {
+    ) -> Result<ActiveFlasher<'_, O>, FlashError> {
         log::debug!("Initializing the flash algorithm.");
         let algo = &mut self.flash_algorithm;
 
@@ -94,7 +93,7 @@ impl<'session> Flasher<'session> {
         }
 
         // Attach to memory and core.
-        let mut core = self.session.core(0).map_err(FlashError::Memory)?;
+        let mut core = self.session.core(0).map_err(FlashError::Core)?;
 
         // TODO: Halt & reset target.
         log::debug!("Halting core.");
@@ -115,11 +114,11 @@ impl<'session> Flasher<'session> {
         );
 
         core.write_32(algo.load_address, algo.instructions.as_slice())
-            .map_err(FlashError::Memory)?;
+            .map_err(FlashError::Core)?;
 
         let mut data = vec![0; algo.instructions.len()];
         core.read_32(algo.load_address, &mut data)
-            .map_err(FlashError::Memory)?;
+            .map_err(FlashError::Core)?;
 
         for (offset, (original, read_back)) in algo.instructions.iter().zip(data.iter()).enumerate()
         {
@@ -134,7 +133,7 @@ impl<'session> Flasher<'session> {
                 log::error!("Original: {:x?}", &algo.instructions);
                 log::error!("Readback: {:x?}", &data);
 
-                return Err(anyhow!(FlashError::FlashAlgorithmNotLoaded));
+                return Err(FlashError::FlashAlgorithmNotLoaded);
             }
         }
 
@@ -153,10 +152,9 @@ impl<'session> Flasher<'session> {
         Ok(flasher)
     }
 
-    pub(super) fn run_erase<T, F, E: From<FlashError>>(&mut self, f: F) -> Result<T, E>
+    pub(super) fn run_erase<T, F>(&mut self, f: F) -> Result<T, FlashError>
     where
-        F: FnOnce(&mut ActiveFlasher<'_, Erase>) -> Result<T, E> + Sized,
-        E: std::convert::From<anyhow::Error>,
+        F: FnOnce(&mut ActiveFlasher<'_, Erase>) -> Result<T, FlashError> + Sized,
     {
         // TODO: Fix those values (None, None).
         let mut active = self.init(None, None)?;
@@ -165,10 +163,9 @@ impl<'session> Flasher<'session> {
         Ok(r)
     }
 
-    pub(super) fn run_program<T, F, E: From<FlashError>>(&mut self, f: F) -> Result<T, E>
+    pub(super) fn run_program<T, F>(&mut self, f: F) -> Result<T, FlashError>
     where
-        F: FnOnce(&mut ActiveFlasher<'_, Program>) -> Result<T, E> + Sized,
-        E: std::convert::From<anyhow::Error>,
+        F: FnOnce(&mut ActiveFlasher<'_, Program>) -> Result<T, FlashError> + Sized,
     {
         // TODO: Fix those values (None, None).
         let mut active = self.init(None, None)?;
@@ -177,10 +174,9 @@ impl<'session> Flasher<'session> {
         Ok(r)
     }
 
-    pub(super) fn run_verify<T, F, E: From<FlashError>>(&mut self, f: F) -> Result<T, E>
+    pub(super) fn run_verify<T, F>(&mut self, f: F) -> Result<T, FlashError>
     where
-        F: FnOnce(&mut ActiveFlasher<'_, Verify>) -> Result<T, E> + Sized,
-        E: std::convert::From<anyhow::Error>,
+        F: FnOnce(&mut ActiveFlasher<'_, Verify>) -> Result<T, FlashError> + Sized,
     {
         // TODO: Fix those values (None, None).
         let mut active = self.init(None, None)?;
@@ -191,9 +187,8 @@ impl<'session> Flasher<'session> {
 
     /// Writes a single block of data to a given address in the flash.
     ///
-    /// This will not check any physical flash boundaries.
-    /// You have to make sure that the data is within the flash boundaries.
-    /// Unexpected things may happen if this is not ensured.
+    /// This will return a [FlashError::AddressNotInRegion] if the given address range is not contained
+    /// in the given NVM region.
     pub fn flash_block(
         &mut self,
         address: u32,
@@ -201,16 +196,16 @@ impl<'session> Flasher<'session> {
         progress: &FlashProgress,
         do_chip_erase: bool,
         _fast_verify: bool,
-    ) -> Result<()> {
+    ) -> Result<(), FlashError> {
         if !self
             .region
             .range
             .contains_range(&(address..address + data.len() as u32))
         {
-            return Err(anyhow!(FlashError::AddressNotInRegion {
+            return Err(FlashError::AddressNotInRegion {
                 address,
                 region: self.region.clone(),
-            }));
+            });
         }
 
         let mut fb = FlashBuilder::new();
@@ -232,7 +227,7 @@ impl<'session> Flasher<'session> {
         restore_unwritten_bytes: bool,
         enable_double_buffering: bool,
         progress: &FlashProgress,
-    ) -> Result<()> {
+    ) -> Result<(), FlashError> {
         // Convert the list of flash operations into flash sectors and pages.
         let mut flash_layout = flash_builder
             .build_sectors_and_pages(&self.flash_algorithm().clone(), restore_unwritten_bytes)?;
@@ -294,17 +289,30 @@ impl<'session> Flasher<'session> {
     /// If `restore_unwritten_bytes` is `true`, all bytes of the page,
     /// that are not to be written during flashing will be read from the flash first
     /// and written again once the page is programmed.
-    pub(super) fn fill_page(&mut self, page: &mut FlashPage, fill: &FlashFill) -> Result<()> {
+    pub(super) fn fill_page(
+        &mut self,
+        page: &mut FlashPage,
+        fill: &FlashFill,
+    ) -> Result<(), FlashError> {
         let page_offset = (fill.address() - page.address()) as usize;
         let page_slice = &mut page.data_mut()[page_offset..page_offset + fill.size() as usize];
-        self.run_verify(|active| active.read_block8(fill.address(), page_slice))
+        self.run_verify(|active| {
+            active
+                .core
+                .read_8(fill.address(), page_slice)
+                .map_err(FlashError::Core)
+        })
     }
 
     /// Erase the entire flash of the chip.
     ///
     /// This takes the list of available sectors only for progress reporting reasons.
     /// It does not indeed erase single sectors but erases the entire flash.
-    fn chip_erase(&mut self, flash_layout: &FlashLayout, progress: &FlashProgress) -> Result<()> {
+    fn chip_erase(
+        &mut self,
+        flash_layout: &FlashLayout,
+        progress: &FlashProgress,
+    ) -> Result<(), FlashError> {
         progress.started_erasing();
 
         let mut t = std::time::Instant::now();
@@ -327,13 +335,18 @@ impl<'session> Flasher<'session> {
         &mut self,
         flash_layout: &FlashLayout,
         progress: &FlashProgress,
-    ) -> Result<()> {
+    ) -> Result<(), FlashError> {
         progress.started_programming();
 
         let mut t = std::time::Instant::now();
         let result = self.run_program(|active| {
             for page in flash_layout.pages() {
-                active.program_page(page.address(), page.data())?;
+                active
+                    .program_page(page.address(), page.data())
+                    .map_err(|error| FlashError::PageWrite {
+                        page_address: page.address(),
+                        source: Box::new(error),
+                    })?;
                 progress.page_programmed(page.size(), t.elapsed());
                 t = std::time::Instant::now();
             }
@@ -350,13 +363,23 @@ impl<'session> Flasher<'session> {
     }
 
     /// Perform an erase of all sectors given in `flash_layout`.
-    fn sector_erase(&mut self, flash_layout: &FlashLayout, progress: &FlashProgress) -> Result<()> {
+    fn sector_erase(
+        &mut self,
+        flash_layout: &FlashLayout,
+        progress: &FlashProgress,
+    ) -> Result<(), FlashError> {
         progress.started_erasing();
 
         let mut t = std::time::Instant::now();
         let result = self.run_erase(|active| {
             for sector in flash_layout.sectors() {
-                active.erase_sector(sector.address())?;
+                active
+                    .erase_sector(sector.address())
+                    .map_err(|e| FlashError::EraseFailed {
+                        sector_address: sector.address(),
+                        source: Box::new(e),
+                    })?;
+
                 progress.sector_erased(sector.size(), t.elapsed());
                 t = std::time::Instant::now();
             }
@@ -385,25 +408,34 @@ impl<'session> Flasher<'session> {
         &mut self,
         flash_layout: &FlashLayout,
         progress: &FlashProgress,
-    ) -> Result<()> {
+    ) -> Result<(), FlashError> {
         let mut current_buf = 0;
 
         progress.started_programming();
 
         let mut t = std::time::Instant::now();
         let result = self.run_program(|active| {
+            let mut last_page_address = 0;
             for page in flash_layout.pages() {
                 // At the start of each loop cycle load the next page buffer into RAM.
                 active.load_page_buffer(page.address(), page.data(), current_buf)?;
 
                 // Then wait for the active RAM -> Flash copy process to finish.
                 // Also check if it finished properly. If it didn't, return an error.
-                let result = active.wait_for_completion(Duration::from_secs(2))?;
+                let result =
+                    active
+                        .wait_for_completion(Duration::from_secs(2))
+                        .map_err(|error| FlashError::PageWrite {
+                            page_address: last_page_address,
+                            source: Box::new(error),
+                        })?;
+
+                last_page_address = page.address();
                 progress.page_programmed(page.size(), t.elapsed());
                 t = std::time::Instant::now();
                 if result != 0 {
-                    return Err(FlashError::PageWrite {
-                        page_address: page.address(),
+                    return Err(FlashError::RoutineCallFailed {
+                        name: "program_page",
                         error_code: result,
                     });
                 }
@@ -419,14 +451,20 @@ impl<'session> Flasher<'session> {
                 }
             }
 
-            let result = active.wait_for_completion(Duration::from_secs(2));
-            if let Ok(0) = result {
-                Ok(())
-            } else {
-                Err(FlashError::PageWrite {
-                    page_address: 0,
-                    error_code: 0,
+            let result = active
+                .wait_for_completion(Duration::from_secs(2))
+                .map_err(|error| FlashError::PageWrite {
+                    page_address: last_page_address,
+                    source: Box::new(error),
+                })?;
+
+            if result != 0 {
+                Err(FlashError::RoutineCallFailed {
+                    name: "wait_for_completion",
+                    error_code: result,
                 })
+            } else {
+                Ok(0)
             }
         });
 
@@ -434,9 +472,10 @@ impl<'session> Flasher<'session> {
             progress.finished_programming();
         } else {
             progress.failed_programming();
+            result?;
         }
 
-        Ok(result?)
+        Ok(())
     }
 }
 
@@ -465,29 +504,35 @@ pub(super) struct ActiveFlasher<'probe, O: Operation> {
 }
 
 impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
-    pub(super) fn init(&mut self, address: Option<u32>, clock: Option<u32>) -> Result<()> {
+    pub(super) fn init(
+        &mut self,
+        address: Option<u32>,
+        clock: Option<u32>,
+    ) -> Result<(), FlashError> {
         let algo = &self.flash_algorithm;
         log::debug!("Running init routine.");
 
         // Execute init routine if one is present.
         if let Some(pc_init) = algo.pc_init {
-            let result = self.call_function_and_wait(
-                &Registers {
-                    pc: pc_init,
-                    r0: address,
-                    r1: clock.or(Some(0)),
-                    r2: Some(O::operation()),
-                    r3: None,
-                },
-                true,
-                Duration::from_secs(2),
-            )?;
+            let result = self
+                .call_function_and_wait(
+                    &Registers {
+                        pc: pc_init,
+                        r0: address,
+                        r1: clock.or(Some(0)),
+                        r2: Some(O::operation()),
+                        r3: None,
+                    },
+                    true,
+                    Duration::from_secs(2),
+                )
+                .map_err(|error| FlashError::Init(Box::new(error)))?;
 
             if result != 0 {
-                return Err(anyhow!(FlashError::RoutineCallFailed {
+                return Err(FlashError::RoutineCallFailed {
                     name: "init",
-                    errorcode: result,
-                }));
+                    error_code: result,
+                });
             }
         }
 
@@ -498,28 +543,30 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
     //     &mut self.session
     // }
 
-    pub(super) fn uninit(&mut self) -> Result<()> {
+    pub(super) fn uninit(&mut self) -> Result<(), FlashError> {
         log::debug!("Running uninit routine.");
         let algo = &self.flash_algorithm;
 
         if let Some(pc_uninit) = algo.pc_uninit {
-            let result = self.call_function_and_wait(
-                &Registers {
-                    pc: pc_uninit,
-                    r0: Some(O::operation()),
-                    r1: None,
-                    r2: None,
-                    r3: None,
-                },
-                false,
-                Duration::from_secs(2),
-            )?;
+            let result = self
+                .call_function_and_wait(
+                    &Registers {
+                        pc: pc_uninit,
+                        r0: Some(O::operation()),
+                        r1: None,
+                        r2: None,
+                        r3: None,
+                    },
+                    false,
+                    Duration::from_secs(2),
+                )
+                .map_err(|error| FlashError::Uninit(Box::new(error)))?;
 
             if result != 0 {
-                return Err(anyhow!(FlashError::RoutineCallFailed {
+                return Err(FlashError::RoutineCallFailed {
                     name: "uninit",
-                    errorcode: result,
-                }));
+                    error_code: result,
+                });
             }
         }
         Ok(())
@@ -530,12 +577,12 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
         registers: &Registers,
         init: bool,
         duration: Duration,
-    ) -> Result<u32> {
+    ) -> Result<u32, crate::Error> {
         self.call_function(registers, init)?;
         self.wait_for_completion(duration)
     }
 
-    fn call_function(&mut self, registers: &Registers, init: bool) -> Result<()> {
+    fn call_function(&mut self, registers: &Registers, init: bool) -> Result<(), crate::Error> {
         log::debug!("Calling routine {:?}, init={})", &registers, init);
 
         let algo = &self.flash_algorithm;
@@ -569,16 +616,12 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
 
         for (description, value) in &registers {
             if let Some(v) = value {
-                self.core
-                    .write_core_reg(description.address, *v)
-                    .map_err(FlashError::Core)?;
+                self.core.write_core_reg(description.address, *v)?;
                 log::debug!(
                     "content of {} {:#x}: 0x{:08x} should be: 0x{:08x}",
                     description.name,
                     description.address.0,
-                    self.core
-                        .read_core_reg(description.address)
-                        .map_err(FlashError::Core)?,
+                    self.core.read_core_reg(description.address)?,
                     *v
                 );
             }
@@ -586,95 +629,89 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
 
         if self.core.architecture() == Architecture::Riscv {
             // Ensure ebreak enters debug mode, this is necessary for soft breakpoints to work.
-            let dcsr = self
-                .core
-                .read_core_reg(CoreRegisterAddress::from(0x7b0))
-                .map_err(FlashError::Core)?;
+            let dcsr = self.core.read_core_reg(CoreRegisterAddress::from(0x7b0))?;
 
-            self.core
-                .write_core_reg(
-                    CoreRegisterAddress::from(0x7b0),
-                    dcsr | (1 << 15) | (1 << 13) | (1 << 12),
-                )
-                .map_err(FlashError::Core)?;
+            self.core.write_core_reg(
+                CoreRegisterAddress::from(0x7b0),
+                dcsr | (1 << 15) | (1 << 13) | (1 << 12),
+            )?;
         }
 
         // Resume target operation.
-        self.core.run().map_err(FlashError::Core)?;
+        self.core.run()?;
 
         Ok(())
     }
 
-    pub(super) fn wait_for_completion(&mut self, timeout: Duration) -> Result<u32> {
+    pub(super) fn wait_for_completion(&mut self, timeout: Duration) -> Result<u32, crate::Error> {
         log::debug!("Waiting for routine call completion.");
         let regs = self.core.registers();
 
-        self.core
-            .wait_for_core_halted(timeout)
-            .map_err(FlashError::Core)?;
+        self.core.wait_for_core_halted(timeout)?;
 
-        let r = self
-            .core
-            .read_core_reg(regs.result_register(0).address)
-            .map_err(FlashError::Core)?;
+        let r = self.core.read_core_reg(regs.result_register(0).address)?;
         Ok(r)
-    }
-
-    pub(super) fn read_block8(&mut self, address: u32, data: &mut [u8]) -> Result<()> {
-        self.core
-            .read_8(address, data)
-            .map_err(FlashError::Memory)?;
-        Ok(())
     }
 }
 
 impl<'probe> ActiveFlasher<'probe, Erase> {
-    pub(super) fn erase_all(&mut self) -> Result<()> {
+    pub(super) fn erase_all(&mut self) -> Result<(), FlashError> {
         log::debug!("Erasing entire chip.");
         let flasher = self;
         let algo = &flasher.flash_algorithm;
 
         if let Some(pc_erase_all) = algo.pc_erase_all {
-            let result = flasher.call_function_and_wait(
+            let result = flasher
+                .call_function_and_wait(
+                    &Registers {
+                        pc: pc_erase_all,
+                        r0: None,
+                        r1: None,
+                        r2: None,
+                        r3: None,
+                    },
+                    false,
+                    Duration::from_secs(5),
+                )
+                .map_err(|error| FlashError::ChipEraseFailed {
+                    source: Box::new(error),
+                })?;
+
+            if result != 0 {
+                Err(FlashError::ChipEraseFailed {
+                    source: Box::new(FlashError::RoutineCallFailed {
+                        name: "chip_erase",
+                        error_code: result,
+                    }),
+                })
+            } else {
+                Ok(())
+            }
+        } else {
+            Err(FlashError::ChipEraseNotSupported)
+        }
+    }
+
+    pub(super) fn erase_sector(&mut self, address: u32) -> Result<(), FlashError> {
+        log::info!("Erasing sector at address 0x{:08x}", address);
+        let t1 = std::time::Instant::now();
+
+        let result = self
+            .call_function_and_wait(
                 &Registers {
-                    pc: pc_erase_all,
-                    r0: None,
+                    pc: self.flash_algorithm.pc_erase_sector,
+                    r0: Some(address),
                     r1: None,
                     r2: None,
                     r3: None,
                 },
                 false,
                 Duration::from_secs(5),
-            )?;
-
-            if result != 0 {
-                Err(anyhow!(FlashError::EraseFailed {
-                    name: "erase_all",
-                    errorcode: result,
-                }))
-            } else {
-                Ok(())
-            }
-        } else {
-            Err(anyhow!(FlashError::RoutineNotSupported("erase_all")))
-        }
-    }
-
-    pub(super) fn erase_sector(&mut self, address: u32) -> Result<()> {
-        log::info!("Erasing sector at address 0x{:08x}", address);
-        let t1 = std::time::Instant::now();
-
-        let result = self.call_function_and_wait(
-            &Registers {
-                pc: self.flash_algorithm.pc_erase_sector,
-                r0: Some(address),
-                r1: None,
-                r2: None,
-                r3: None,
-            },
-            false,
-            Duration::from_secs(5),
-        )?;
+            )
+            .map_err(|error| FlashError::EraseFailed {
+                sector_address: address,
+                source: Box::new(error),
+            })?;
         log::info!(
             "Done erasing sector. Result is {}. This took {:?}",
             result,
@@ -682,10 +719,10 @@ impl<'probe> ActiveFlasher<'probe, Erase> {
         );
 
         if result != 0 {
-            Err(anyhow!(FlashError::EraseFailed {
+            Err(FlashError::RoutineCallFailed {
                 name: "erase_sector",
-                errorcode: result,
-            }))
+                error_code: result,
+            })
         } else {
             Ok(())
         }
@@ -693,7 +730,7 @@ impl<'probe> ActiveFlasher<'probe, Erase> {
 }
 
 impl<'p> ActiveFlasher<'p, Program> {
-    pub(super) fn program_page(&mut self, address: u32, bytes: &[u8]) -> Result<()> {
+    pub(super) fn program_page(&mut self, address: u32, bytes: &[u8]) -> Result<(), FlashError> {
         let t1 = std::time::Instant::now();
 
         log::info!(
@@ -705,26 +742,34 @@ impl<'p> ActiveFlasher<'p, Program> {
         // Transfer the bytes to RAM.
         self.core
             .write_8(self.flash_algorithm.begin_data, bytes)
-            .map_err(FlashError::Memory)?;
+            .map_err(FlashError::Core)?;
 
-        let result = self.call_function_and_wait(
-            &Registers {
-                pc: self.flash_algorithm.pc_program_page,
-                r0: Some(address),
-                r1: Some(bytes.len() as u32),
-                r2: Some(self.flash_algorithm.begin_data),
-                r3: None,
-            },
-            false,
-            Duration::from_secs(2),
-        )?;
+        let result = self
+            .call_function_and_wait(
+                &Registers {
+                    pc: self.flash_algorithm.pc_program_page,
+                    r0: Some(address),
+                    r1: Some(bytes.len() as u32),
+                    r2: Some(self.flash_algorithm.begin_data),
+                    r3: None,
+                },
+                false,
+                Duration::from_secs(2),
+            )
+            .map_err(|error| FlashError::PageWrite {
+                page_address: address,
+                source: Box::new(error),
+            })?;
         log::info!("Flashing took: {:?}", t1.elapsed());
 
         if result != 0 {
-            Err(anyhow!(FlashError::RoutineCallFailed {
-                name: "program_page",
-                errorcode: result,
-            }))
+            Err(FlashError::PageWrite {
+                page_address: address,
+                source: Box::new(FlashError::RoutineCallFailed {
+                    name: "program_page",
+                    error_code: result,
+                }),
+            })
         } else {
             Ok(())
         }
@@ -734,14 +779,14 @@ impl<'p> ActiveFlasher<'p, Program> {
         &mut self,
         address: u32,
         buffer_number: usize,
-    ) -> Result<()> {
-        // Check the buffer number.
-        if buffer_number >= self.flash_algorithm.page_buffers.len() {
-            return Err(anyhow!(FlashError::InvalidBufferNumber {
-                n: buffer_number,
-                max: self.flash_algorithm.page_buffers.len(),
-            }));
-        }
+    ) -> Result<(), FlashError> {
+        // Ensure the buffer number is valid, otherwise there is a bug somewhere
+        // in the flashing code.
+        assert!(
+            buffer_number < self.flash_algorithm.page_buffers.len(),
+            "Trying to use non-existing buffer ({}/{}) for flashing. This is a bug. Please report it.",
+            buffer_number, self.flash_algorithm.page_buffers.len()
+        );
 
         self.call_function(
             &Registers {
@@ -752,7 +797,11 @@ impl<'p> ActiveFlasher<'p, Program> {
                 r3: None,
             },
             false,
-        )?;
+        )
+        .map_err(|error| FlashError::PageWrite {
+            page_address: address,
+            source: Box::new(error),
+        })?;
 
         Ok(())
     }
@@ -762,25 +811,23 @@ impl<'p> ActiveFlasher<'p, Program> {
         _address: u32,
         bytes: &[u8],
         buffer_number: usize,
-    ) -> Result<()> {
-        let flasher = self;
-        let algo = &flasher.flash_algorithm;
+    ) -> Result<(), FlashError> {
+        let algo = &self.flash_algorithm;
 
-        // Check the buffer number.
-        if buffer_number >= algo.page_buffers.len() {
-            return Err(anyhow!(FlashError::InvalidBufferNumber {
-                n: buffer_number,
-                max: algo.page_buffers.len(),
-            }));
-        }
+        // Ensure the buffer number is valid, otherwise there is a bug somewhere
+        // in the flashing code.
+        assert!(
+            buffer_number < algo.page_buffers.len(),
+            "Trying to use non-existing buffer ({}/{}) for flashing. This is a bug. Please report it.",
+            buffer_number, algo.page_buffers.len()
+        );
 
         // TODO: Prevent security settings from locking the device.
 
         // Transfer the buffer bytes to RAM.
-        flasher
-            .core
-            .write_8(algo.page_buffers[buffer_number as usize], bytes)
-            .map_err(FlashError::Memory)?;
+        self.core
+            .write_8(algo.page_buffers[buffer_number], bytes)
+            .map_err(FlashError::Core)?;
 
         Ok(())
     }
