@@ -15,100 +15,199 @@ use probe_rs_cli_util::ArtifactError;
 use crate::CargoFlashError;
 
 pub(crate) fn render_diagnostics(error: CargoFlashError) {
-    let hints: Vec<String> = match &error {
-        CargoFlashError::NoProbesFound => vec![
-            "If you are on Linux, you most likely need to install the udev rules for your probe.\nSee https://probe.rs/guide/2_probes/udev/ if you do not know how to install them.".into(),
-            "If you are on Windows, make sure to install the correct driver. For J-Link usage you will need the https://zadig.akeo.ie/ driver.".into(),
-            "For a guide on how to set up your probes, see https://probe.rs/guide/2_probes/.".into(),
-        ],
-        CargoFlashError::FailedToReadFamilies(_e) => vec![],
-        CargoFlashError::FailedToOpenElf { source, path } => match source.kind() {
-            std::io::ErrorKind::NotFound => vec![
-                format!("Make sure the path '{}' is the correct location of your ELF binary.", path)
+    let (error, hints) = match &error {
+        CargoFlashError::NoProbesFound => (
+            error.to_string(),
+            vec![
+                "If you are on Linux, you most likely need to install the udev rules for your probe.\nSee https://probe.rs/guide/2_probes/udev/ if you do not know how to install them.".into(),
+                "If you are on Windows, make sure to install the correct driver. For J-Link usage you will need the https://zadig.akeo.ie/ driver.".into(),
+                "For a guide on how to set up your probes, see https://probe.rs/guide/2_probes/.".into(),
             ],
-            _ => vec![]
-        },
-        CargoFlashError::FailedToLoadElfData(e) => match e {
-            FileDownloadError::NoLoadableSegments => vec![
-                "Please make sure your linker script is correct and not missing at all.".into(),
-                "If you are working with Rust, check your `.cargo/config.toml`? If you are new to the rust-embedded ecosystem, please head over to https://github.com/rust-embedded/cortex-m-quickstart.".into()
-            ],
-            _ => vec![
-                "Make sure you are compiling for the correct architecture of your chip.".into()
-            ],
-        },
-        CargoFlashError::FailedToOpenProbe(_e) => vec![
-            "This could be a permission issue. Check our guide on how to make all probes work properly on your system: https://probe.rs/guide/2_probes/.".into()
-        ],
-        CargoFlashError::MultipleProbesFound { .. } => vec![
-            "You can select a probe with the `--probe` argument. See `--help` for how to use it.".into()
-        ],
-        CargoFlashError::FlashingFailed { source, target, target_spec, .. } => generate_flash_error_hints(source, target, target_spec),
-        CargoFlashError::FailedChipDescriptionParsing { .. } => vec![],
-        CargoFlashError::FailedToChangeWorkingDirectory { .. } => vec![],
-        CargoFlashError::FailedToBuildExternalCargoProject { source, path } => match source {
-            ArtifactError::NoArtifacts => vec![
-                "Use '--example' to specify an example to flash.".into(),
-                "Use '--package' to specify which package to flash in a workspace.".into(),
-            ],
-            ArtifactError::MultipleArtifacts => vec![
-                "Use '--bin' to specify which binary to flash.".into(),
-            ],
-            ArtifactError::CargoBuild(code) => match code {
-                Some(101) => vec![
-                    "'cargo build' was not successful. Have a look at the error output above.".into(),
-                    format!("Make sure '{}' is indeed a cargo project with a Cargo.toml in it.", path),
+        ),
+        CargoFlashError::FailedToReadFamilies(_e) => (
+            error.to_string(),
+            vec![],
+        ),
+        CargoFlashError::FailedToOpenElf { source, path } => (
+            error.to_string(),
+            match source.kind() {
+                std::io::ErrorKind::NotFound => vec![
+                    format!("Make sure the path '{}' is the correct location of your ELF binary.", path)
                 ],
                 _ => vec![]
             },
-            _ => vec![],
+        ),
+        CargoFlashError::FailedToLoadElfData(e) => match e {
+            FileDownloadError::NoLoadableSegments => (
+                e.to_string(),
+                vec![
+                    "Please make sure your linker script is correct and not missing at all.".into(),
+                    "If you are working with Rust, check your `.cargo/config.toml`? If you are new to the rust-embedded ecosystem, please head over to https://github.com/rust-embedded/cortex-m-quickstart.".into()
+                ],
+            ),
+            FileDownloadError::Flash(e) => match e {
+                FlashError::NoSuitableNvm {..} => (
+                    e.to_string(),
+                    vec![
+                        "Make sure the flash region specified in the linkerscript matches the one specified in the datasheet of your chip.".into()
+                    ]
+                ),
+                _ => (
+                    e.to_string(),
+                    vec![]
+                ),
+            },
+            _ => (
+                e.to_string(),
+                vec![
+                    "Make sure you are compiling for the correct architecture of your chip.".into()
+                ],
+            ),
+        },
+        CargoFlashError::FailedToOpenProbe(_e) => (
+            error.to_string(),
+            vec![
+                "This could be a permission issue. Check our guide on how to make all probes work properly on your system: https://probe.rs/guide/2_probes/.".into()
+            ],
+        ),
+        CargoFlashError::MultipleProbesFound { .. } => (
+            error.to_string(),
+            vec![
+                "You can select a probe with the `--probe` argument. See `--help` for how to use it.".into()
+            ],
+        ),
+        CargoFlashError::FlashingFailed { source, target, target_spec, .. } => generate_flash_error_hints(source, target, target_spec),
+        CargoFlashError::FailedChipDescriptionParsing { .. } => (
+            error.to_string(),
+            vec![],
+        ),
+        CargoFlashError::FailedToChangeWorkingDirectory { .. } => (
+            error.to_string(),
+            vec![],
+        ),
+        CargoFlashError::FailedToBuildExternalCargoProject { source, path } => match source {
+            ArtifactError::NoArtifacts => (
+                source.to_string(),
+                vec![
+                    "Use '--example' to specify an example to flash.".into(),
+                    "Use '--package' to specify which package to flash in a workspace.".into(),
+                ],
+            ),
+            ArtifactError::MultipleArtifacts => (
+                source.to_string(),
+                vec![
+                    "Use '--bin' to specify which binary to flash.".into(),
+                ],
+            ),
+            ArtifactError::CargoBuild(code) => match code {
+                Some(101) => (
+                    source.to_string(),
+                    vec![
+                        "'cargo build' was not successful. Have a look at the error output above.".into(),
+                        format!("Make sure '{}' is indeed a cargo project with a Cargo.toml in it.", path),
+                    ],
+                ),
+                _ => (
+                    source.to_string(),
+                    vec![],
+                ),
+            },
+            _ => (
+                source.to_string(),
+                vec![],
+            ),
         },
         CargoFlashError::FailedToBuildCargoProject(e) => match e {
-            ArtifactError::NoArtifacts => vec![
-                "Use '--example' to specify an example to flash.".into(),
-                "Use '--package' to specify which package to flash in a workspace.".into(),
-            ],
-            ArtifactError::MultipleArtifacts => vec![
-                "Use '--bin' to specify which binary to flash.".into(),
-            ],
-            ArtifactError::CargoBuild(code) => match code {
-                Some(101) => vec![
-                    "'cargo build' was not successful. Have a look at the error output above.".into(),
-                    "Make sure the working directory you selected is indeed a cargo project with a Cargo.toml in it.".into()
+            ArtifactError::NoArtifacts => (
+                error.to_string(),
+                vec![
+                    "Use '--example' to specify an example to flash.".into(),
+                    "Use '--package' to specify which package to flash in a workspace.".into(),
                 ],
-                _ => vec![]
+            ),
+            ArtifactError::MultipleArtifacts => (
+                error.to_string(),
+                vec![
+                    "Use '--bin' to specify which binary to flash.".into(),
+                ],
+            ),
+            ArtifactError::CargoBuild(code) => match code {
+                Some(101) => (
+                    error.to_string(),
+                    vec![
+                        "'cargo build' was not successful. Have a look at the error output above.".into(),
+                        "Make sure the working directory you selected is indeed a cargo project with a Cargo.toml in it.".into()
+                    ],
+                ),
+                _ => (
+                    error.to_string(),
+                    vec![],
+                ),
             },
-            _ => vec![],
+            _ => (
+                error.to_string(),
+                vec![],
+            ),
         },
         CargoFlashError::ChipNotFound { source, .. } => match source {
-            RegistryError::ChipNotFound(_) => vec![
-                "Did you spell the name of your chip correctly? Capitalization does not matter."
-                    .into(),
-                "Maybe your chip is not supported yet. You could add it yourself with our tool here: https://github.com/probe-rs/target-gen.".into(),
-                "You can list all the available chips by passing the `--list-chips` argument.".into(),
-            ],
-            _ => vec![],
-        },
-        CargoFlashError::FailedToSelectProtocol { .. } => vec![],
-        CargoFlashError::FailedToSelectProtocolSpeed { speed, .. } => vec![
-            format!("Try specifying a speed lower than {} kHz", speed)
-        ],
-        CargoFlashError::AttachingFailed { source, connect_under_reset } => match source {
-            Error::ChipNotFound(RegistryError::ChipAutodetectFailed) => vec![
-                "Try specifying your chip with the `--chip` argument.".into(),
-                "You can list all the available chips by passing the `--list-chips` argument.".into(),
-            ],
-            _ => if !connect_under_reset {
+            RegistryError::ChipNotFound(_) => (
+                error.to_string(),
                 vec![
-                    "A hard reset during attaching might help. This will reset the entire chip. Run with `--connect-under-reset` to enable this feature.".into()
-                ]
+                    "Did you spell the name of your chip correctly? Capitalization does not matter."
+                        .into(),
+                    "Maybe your chip is not supported yet. You could add it yourself with our tool here: https://github.com/probe-rs/target-gen.".into(),
+                    "You can list all the available chips by passing the `--list-chips` argument.".into(),
+                ],
+            ),
+            _ => (
+                error.to_string(),
+                vec![],
+            ),
+        },
+        CargoFlashError::FailedToSelectProtocol { .. } => (
+            error.to_string(),
+            vec![],
+        ),
+        CargoFlashError::FailedToSelectProtocolSpeed { speed, .. } => (
+            error.to_string(),
+            vec![
+                format!("Try specifying a speed lower than {} kHz", speed)
+            ],
+        ),
+        CargoFlashError::AttachingFailed { source, connect_under_reset } => match source {
+            Error::ChipNotFound(RegistryError::ChipAutodetectFailed) => (
+                error.to_string(),
+                vec![
+                    "Try specifying your chip with the `--chip` argument.".into(),
+                    "You can list all the available chips by passing the `--list-chips` argument.".into(),
+                ],
+            ),
+            _ => if !connect_under_reset {
+                (
+                    error.to_string(),
+                    vec![
+                        "A hard reset during attaching might help. This will reset the entire chip. Run with `--connect-under-reset` to enable this feature.".into()
+                    ],
+                )
             } else {
-                vec![]
+                (
+                    error.to_string(),
+                    vec![],
+                )
             },
         },
-        CargoFlashError::AttachingToCoreFailed(_e) =>  vec![],
-        CargoFlashError::TargetResetFailed(_e) =>  vec![],
-        CargoFlashError::TargetResetHaltFailed(_e) => vec![],
+        CargoFlashError::AttachingToCoreFailed(_e) =>  (
+            error.to_string(),
+            vec![],
+        ),
+        CargoFlashError::TargetResetFailed(_e) =>  (
+            error.to_string(),
+            vec![],
+        ),
+        CargoFlashError::TargetResetHaltFailed(_e) => (
+            error.to_string(),
+            vec![],
+        ),
     };
 
     use std::io::Write;
@@ -146,79 +245,85 @@ fn generate_flash_error_hints(
     error: &FlashError,
     target: &Target,
     target_spec: &Option<String>,
-) -> Vec<String> {
-    match error {
-        FlashError::NoSuitableNvm {
-            start: _,
-            end: _,
-            description_source,
-        } => {
-            if &TargetDescriptionSource::Generic == description_source {
-                return vec![
-                "A generic chip was selected as the target. For flashing, it is necessary to specify a concrete chip.\n\
-                Use `--list-chips` to see all available chips.".to_owned()
-                ];
-            }
-
-            let mut hints = Vec::new();
-
-            let mut hint_available_regions = String::new();
-
-            // Show the available flash regions
-            let _ = writeln!(
-                hint_available_regions,
-                "The following flash memory is available for the chip '{}':",
-                target.name
-            );
-
-            for memory_region in &target.memory_map {
-                match memory_region {
-                    MemoryRegion::Ram(_) => {}
-                    MemoryRegion::Generic(_) => {}
-                    MemoryRegion::Nvm(flash) => {
-                        let _ = writeln!(
-                            hint_available_regions,
-                            "  {:#010x} - {:#010x} ({})",
-                            flash.range.start,
-                            flash.range.end,
-                            ByteSize((flash.range.end - flash.range.start) as u64)
-                                .to_string_as(true)
-                        );
-                    }
+) -> (String, Vec<String>) {
+    (
+        error.to_string(),
+        match error {
+            FlashError::NoSuitableNvm {
+                start: _,
+                end: _,
+                description_source,
+            } => {
+                if &TargetDescriptionSource::Generic == description_source {
+                    return (
+                        error.to_string(),
+                        vec![
+                            "A generic chip was selected as the target. For flashing, it is necessary to specify a concrete chip.\n\
+                            Use `--list-chips` to see all available chips.".to_owned()
+                        ]
+                    );
                 }
-            }
 
-            hints.push(hint_available_regions);
+                let mut hints = Vec::new();
 
-            if let Some(target_spec) = target_spec {
-                // Check if the chip specification was unique
-                let matching_chips = probe_rs::config::search_chips(target_spec).unwrap();
+                let mut hint_available_regions = String::new();
 
-                log::info!(
-                    "Searching for all chips for spec '{}', found {}",
-                    target_spec,
-                    matching_chips.len()
+                // Show the available flash regions
+                let _ = writeln!(
+                    hint_available_regions,
+                    "The following flash memory is available for the chip '{}':",
+                    target.name
                 );
 
-                if matching_chips.len() > 1 {
-                    let mut non_unique_target_hint = format!("The specified chip '{}' did match multiple possible targets. Try to specify your chip more exactly. The following possible targets were found:\n", target_spec);
-
-                    for target in matching_chips {
-                        non_unique_target_hint.push_str(&format!("\t{}\n", target));
+                for memory_region in &target.memory_map {
+                    match memory_region {
+                        MemoryRegion::Ram(_) => {}
+                        MemoryRegion::Generic(_) => {}
+                        MemoryRegion::Nvm(flash) => {
+                            let _ = writeln!(
+                                hint_available_regions,
+                                "  {:#010x} - {:#010x} ({})",
+                                flash.range.start,
+                                flash.range.end,
+                                ByteSize((flash.range.end - flash.range.start) as u64)
+                                    .to_string_as(true)
+                            );
+                        }
                     }
-
-                    hints.push(non_unique_target_hint)
                 }
-            }
 
-             hints
-        },
-        FlashError::EraseFailed { ..} => vec![
-            "Perhaps your chip has write protected sectors that need to be cleared?".into(),
-            "Perhaps you need the --nmagic linker arg. See https://github.com/rust-embedded/cortex-m-quickstart/pull/95 for more information.".into()
-        ],
-        _ => vec![],
-    }
+                hints.push(hint_available_regions);
+
+                if let Some(target_spec) = target_spec {
+                    // Check if the chip specification was unique
+                    let matching_chips = probe_rs::config::search_chips(target_spec).unwrap();
+
+                    log::info!(
+                        "Searching for all chips for spec '{}', found {}",
+                        target_spec,
+                        matching_chips.len()
+                    );
+
+                    if matching_chips.len() > 1 {
+                        let mut non_unique_target_hint = format!("The specified chip '{}' did match multiple possible targets. Try to specify your chip more exactly. The following possible targets were found:\n", target_spec);
+
+                        for target in matching_chips {
+                            non_unique_target_hint.push_str(&format!("\t{}\n", target));
+                        }
+
+                        hints.push(non_unique_target_hint)
+                    }
+                }
+
+                hints
+            },
+            FlashError::EraseFailed { ..} => vec![
+                "Perhaps your chip has write protected sectors that need to be cleared?".into(),
+                "Perhaps you need the --nmagic linker arg. See https://github.com/rust-embedded/cortex-m-quickstart/pull/95 for more information.".into()
+            ],
+            _ => vec![],
+        }
+    )
 }
 
 fn write_with_offset(mut output: impl std::io::Write, header: ColoredString, msg: &str) {
