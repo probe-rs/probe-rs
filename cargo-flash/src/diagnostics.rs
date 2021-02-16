@@ -1,5 +1,6 @@
 /// Error handling
 use colored::*;
+use std::error::Error;
 use std::fmt::Write;
 
 use bytesize::ByteSize;
@@ -8,14 +9,14 @@ use probe_rs::{
     config::MemoryRegion,
     config::{RegistryError, TargetDescriptionSource},
     flashing::{FileDownloadError, FlashError},
-    Error, Target,
+    Error as ProbeRsError, Target,
 };
 use probe_rs_cli_util::ArtifactError;
 
 use crate::CargoFlashError;
 
 pub(crate) fn render_diagnostics(error: CargoFlashError) {
-    let (error, hints) = match &error {
+    let (selected_error, hints) = match &error {
         CargoFlashError::NoProbesFound => (
             error.to_string(),
             vec![
@@ -175,7 +176,7 @@ pub(crate) fn render_diagnostics(error: CargoFlashError) {
             ],
         ),
         CargoFlashError::AttachingFailed { source, connect_under_reset } => match source {
-            Error::ChipNotFound(RegistryError::ChipAutodetectFailed) => (
+            ProbeRsError::ChipNotFound(RegistryError::ChipAutodetectFailed) => (
                 error.to_string(),
                 vec![
                     "Try specifying your chip with the `--chip` argument.".into(),
@@ -211,25 +212,31 @@ pub(crate) fn render_diagnostics(error: CargoFlashError) {
     };
 
     use std::io::Write;
-
     let mut stderr = std::io::stderr();
+    let mut source = error.source();
+    let mut i = 0;
+    while let Some(s) = source {
+        if hints.is_empty() {
+            let string = format!("{}: {}", i, s);
+            write_with_offset(
+                &mut stderr,
+                if i == 0 {
+                    "Error".red().bold()
+                } else {
+                    "".red().bold()
+                },
+                &string,
+            );
+        } else {
+            log::debug!("{}: {}", i, s);
+        }
+        i += 1;
+        source = s.source();
+    }
 
-    let short_error = format!("{:}", error);
-    let error_stack = Err::<(), _>(error)
-        // .context("An unexpected issue was encountered.")
-        .err()
-        .unwrap();
-
-    // We always log the entire error trace to be better able to debug.
-    log::debug!("{:?}", error_stack);
-
-    let err_msg = if hints.is_empty() {
-        format!("{:?}", error_stack)
-    } else {
-        short_error
+    if !hints.is_empty() {
+        let _ = write_with_offset(&mut stderr, "Error".red().bold(), &selected_error);
     };
-
-    let _ = write_with_offset(&mut stderr, "Error".red().bold(), &err_msg);
 
     let _ = writeln!(stderr);
 
