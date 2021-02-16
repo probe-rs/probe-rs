@@ -17,7 +17,7 @@ ansi_term = "0.12.1"
 anyhow = "1.0.32"
 arrayref = "0.3.6"
 colored = "2.0.0"
-defmt-decoder = { git = "https://github.com/knurling-rs/defmt", rev = "c0773af", version = "=0.1.4", features = ['unstable'] }
+defmt-decoder = { git = "https://github.com/knurling-rs/defmt", rev = "42be5f6", version = "=0.1.4", features = ['unstable'] }
 difference = "2.0.0"
 gimli = "0.23.0"
 log = { version = "0.4.11", features = ["std"] }
