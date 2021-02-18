@@ -429,11 +429,13 @@ fn main_try() -> Result<()> {
 
             download_file_with_options(
                 &mut session,
-                path.as_path(),
+                &path,
                 Format::Elf,
                 DownloadOptions {
                     progress: Some(&progress),
                     keep_unwritten_bytes: config.flashing.restore_unwritten_bytes,
+                    do_chip_erase: config.flashing.do_chip_erase,
+                    dry_run: false,
                 },
             )
             .with_context(|| format!("failed to flash {}", path.display()))?;
@@ -447,11 +449,13 @@ fn main_try() -> Result<()> {
         } else {
             download_file_with_options(
                 &mut session,
-                path.as_path(),
+                &path,
                 Format::Elf,
                 DownloadOptions {
                     progress: None,
                     keep_unwritten_bytes: config.flashing.restore_unwritten_bytes,
+                    do_chip_erase: config.flashing.do_chip_erase,
+                    dry_run: false,
                 },
             )
             .with_context(|| format!("failed to flash {}", path.display()))?;
