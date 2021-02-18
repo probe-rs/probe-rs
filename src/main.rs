@@ -11,6 +11,7 @@ use std::{
     io::{self, Write as _},
     path::{Path, PathBuf},
     process,
+    str::FromStr,
     sync::{Arc, Mutex},
     time::Duration,
 };
@@ -31,7 +32,7 @@ use object::{
 use probe_rs::config::{registry, MemoryRegion, RamRegion};
 use probe_rs::{
     flashing::{self, Format},
-    Core, CoreRegisterAddress, DebugProbeInfo, DebugProbeSelector, MemoryInterface, Probe, Session,
+    Core, CoreRegisterAddress, DebugProbeInfo, MemoryInterface, Probe, Session,
 };
 use probe_rs_rtt::{Rtt, ScanRegion, UpChannel};
 use signal_hook::consts::signal;
@@ -80,7 +81,7 @@ struct Opts {
     #[structopt(long, required_unless_one(&["list-chips", "list-probes", "version"]), env = "PROBE_RUN_CHIP")]
     chip: Option<String>,
 
-    /// The probe to use (eg. VID:PID or VID:PID:Serial).
+    /// The probe to use (eg. `VID:PID`, `VID:PID:Serial`, or just `Serial`).
     #[structopt(long, env = "PROBE_RUN_PROBE")]
     probe: Option<String>,
 
@@ -302,7 +303,7 @@ fn notmain() -> Result<i32, anyhow::Error> {
 
     let probes = Probe::list_all();
     let probes = if let Some(probe_opt) = opts.probe.as_deref() {
-        let selector = probe_opt.try_into()?;
+        let selector = probe_opt.parse()?;
         probes_filter(&probes, &selector)
     } else {
         probes
@@ -857,13 +858,51 @@ fn backtrace(
     Ok(top_exception)
 }
 
-fn probes_filter(probes: &[DebugProbeInfo], selector: &DebugProbeSelector) -> Vec<DebugProbeInfo> {
+struct ProbeFilter {
+    vid_pid: Option<(u16, u16)>,
+    serial: Option<String>,
+}
+
+impl FromStr for ProbeFilter {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let parts = s.split(':').collect::<Vec<_>>();
+        match &*parts {
+            [serial] => Ok(Self {
+                vid_pid: None,
+                serial: Some(serial.to_string()),
+            }),
+            [vid, pid] => Ok(Self {
+                vid_pid: Some((u16::from_str_radix(vid, 16)?, u16::from_str_radix(pid, 16)?)),
+                serial: None,
+            }),
+            [vid, pid, serial] => Ok(Self {
+                vid_pid: Some((u16::from_str_radix(vid, 16)?, u16::from_str_radix(pid, 16)?)),
+                serial: Some(serial.to_string()),
+            }),
+            _ => Err(anyhow!("invalid probe filter")),
+        }
+    }
+}
+
+fn probes_filter(probes: &[DebugProbeInfo], selector: &ProbeFilter) -> Vec<DebugProbeInfo> {
     probes
         .iter()
         .filter(|&p| {
-            p.vendor_id == selector.vendor_id
-                && p.product_id == selector.product_id
-                && (selector.serial_number == None || p.serial_number == selector.serial_number)
+            if let Some((vid, pid)) = selector.vid_pid {
+                if p.vendor_id != vid || p.product_id != pid {
+                    return false;
+                }
+            }
+
+            if let Some(serial) = &selector.serial {
+                if p.serial_number.as_deref() != Some(serial) {
+                    return false;
+                }
+            }
+
+            true
         })
         .cloned()
         .collect()
