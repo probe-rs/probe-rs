@@ -81,7 +81,7 @@ struct Opts {
     #[structopt(long, required_unless_one(&["list-chips", "list-probes", "version"]), env = "PROBE_RUN_CHIP")]
     chip: Option<String>,
 
-    /// The probe to use (eg. VID:PID or VID:PID:Serial).
+    /// The probe to use (eg. `VID:PID`, `VID:PID:Serial`, or just `Serial`).
     #[structopt(long, env = "PROBE_RUN_PROBE")]
     probe: Option<String>,
 
