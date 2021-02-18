@@ -1658,6 +1658,7 @@ name = "probe-rs-cli-util"
 version = "0.10.1"
 source = "git+https://github.com/probe-rs/probe-rs#f49d5167eb50321c86f0d4e59711177fbb7293a4"
 dependencies = [
+ "anyhow",
  "cargo_metadata",
  "cargo_toml",
  "colored",
