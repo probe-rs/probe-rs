@@ -100,19 +100,13 @@ pub(crate) fn render_diagnostics(error: CargoFlashError) {
                     "Use '--bin' to specify which binary to flash.".into(),
                 ],
             ),
-            ArtifactError::CargoBuild(code) => match code {
-                Some(101) => (
-                    source.to_string(),
-                    vec![
-                        "'cargo build' was not successful. Have a look at the error output above.".into(),
-                        format!("Make sure '{}' is indeed a cargo project with a Cargo.toml in it.", path),
-                    ],
-                ),
-                _ => (
-                    source.to_string(),
-                    vec![],
-                ),
-            },
+            ArtifactError::CargoBuild(Some(101)) => (
+                source.to_string(),
+                vec![
+                    "'cargo build' was not successful. Have a look at the error output above.".into(),
+                    format!("Make sure '{}' is indeed a cargo project with a Cargo.toml in it.", path),
+                ],
+            ),
             _ => (
                 source.to_string(),
                 vec![],
@@ -132,19 +126,13 @@ pub(crate) fn render_diagnostics(error: CargoFlashError) {
                     "Use '--bin' to specify which binary to flash.".into(),
                 ],
             ),
-            ArtifactError::CargoBuild(code) => match code {
-                Some(101) => (
-                    error.to_string(),
-                    vec![
-                        "'cargo build' was not successful. Have a look at the error output above.".into(),
-                        "Make sure the working directory you selected is indeed a cargo project with a Cargo.toml in it.".into()
-                    ],
-                ),
-                _ => (
-                    error.to_string(),
-                    vec![],
-                ),
-            },
+            ArtifactError::CargoBuild(Some(101)) => (
+                error.to_string(),
+                vec![
+                    "'cargo build' was not successful. Have a look at the error output above.".into(),
+                    "Make sure the working directory you selected is indeed a cargo project with a Cargo.toml in it.".into()
+                ],
+            ),
             _ => (
                 error.to_string(),
                 vec![],
