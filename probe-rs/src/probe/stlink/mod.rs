@@ -1526,10 +1526,10 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
         let chunk_size = if self.probe.probe.hw_version < 3 {
             64
         } else {
-            // This 128 byte limitation was empirically derived by @disasm @diondokter and @Yatekii
-            // on various STM32 chips and different ST-Linkv3 versions (J5, J7).
-            // It works until 255. 256 and above fail. Apparently it *should* work with up to
-            // 512 bytes but those tries were not fruitful.
+            // This 128 byte chunk was set as the maximum possible amount is 255 even though it should
+            // support 512 bytes in theory. Thus we chose a smaller amount to avoid more possible bugs
+            // by not pushing the limit.
+            // See code of `read_mem_8bit` for more info.
             128
         };
 
