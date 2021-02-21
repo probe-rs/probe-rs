@@ -386,7 +386,7 @@ fn main_try() -> Result<(), CargoFlashError> {
             }
         })?;
 
-        let loader = build_flashloader(&target, &path, &mut data_buffer)?;
+        let loader = build_flashloader(&target, &path, &mut data_buffer, opt.restore_unwritten)?;
         (TargetSelector::Specified(target), Some(loader))
     } else {
         (TargetSelector::Auto, None)
@@ -511,7 +511,7 @@ fn run_flash_download(
 
     let mut loader = match loader {
         Some(loader) => loader,
-        None => build_flashloader(session.target(), path, &mut buffer)?,
+        None => build_flashloader(session.target(), path, &mut buffer, opt.restore_unwritten)?,
     };
 
     if !opt.disable_progressbars {
@@ -661,14 +661,13 @@ fn open_probe(options: &Opt) -> Result<Probe, CargoFlashError> {
         return Ok(Probe::from_specific_probe(Box::new(FakeProbe::new())));
     }
 
-    let list = Probe::list_all();
-
     // If we got a probe selector as an argument, open the probe matching the selector if possible.
     match &options.probe_selector {
         Some(selector) => Probe::open(selector.clone()).map_err(CargoFlashError::FailedToOpenProbe),
         None => {
             // Only automatically select a probe if there is only
             // a single probe detected.
+            let list = Probe::list_all();
             if list.len() > 1 {
                 return Err(CargoFlashError::MultipleProbesFound { number: list.len() });
             }
@@ -689,9 +688,14 @@ fn build_flashloader<'data>(
     target: &Target,
     path: &Path,
     buffer: &'data mut Vec<Vec<u8>>,
+    keep_unwritten: bool,
 ) -> Result<FlashLoader<'data>, CargoFlashError> {
     // Create the flash loader
-    let mut loader = FlashLoader::new(target.memory_map.to_vec(), true, target.source().clone());
+    let mut loader = FlashLoader::new(
+        target.memory_map.to_vec(),
+        keep_unwritten,
+        target.source().clone(),
+    );
 
     // Add data from the ELF.
     let mut file = File::open(&path).map_err(|error| CargoFlashError::FailedToOpenElf {
