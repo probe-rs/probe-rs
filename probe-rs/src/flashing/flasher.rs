@@ -228,6 +228,7 @@ impl<'session> Flasher<'session> {
         enable_double_buffering: bool,
         progress: &FlashProgress,
     ) -> Result<(), FlashError> {
+        log::debug!("Starting program procedure.");
         // Convert the list of flash operations into flash sectors and pages.
         let mut flash_layout = flash_builder
             .build_sectors_and_pages(&self.flash_algorithm().clone(), restore_unwritten_bytes)?;
@@ -243,6 +244,10 @@ impl<'session> Flasher<'session> {
 
         log::debug!("Full Chip Erase enabled: {:?}", do_chip_erase);
         log::debug!("Double Buffering enabled: {:?}", enable_double_buffering);
+        log::debug!(
+            "Restoring unwritten bytes enabled: {:?}",
+            restore_unwritten_bytes
+        );
 
         // Read all fill areas from the flash.
         progress.started_filling();
