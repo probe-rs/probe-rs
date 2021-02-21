@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Fixed `m33` breakpoints.
+- Fix a bug where ST-Link v3 is not able to read 8 bit data chunks with more than 255 bytes. Currently we set the chunking to 128 bytes. This might be a bug in the ST-Link v3 firmware and might change in the future.
 
 ## [0.10.1]
 ### Fixed
