@@ -47,7 +47,7 @@ Config file precedence:
 
 Instead of a TOML file, you can also use a JSON or YAML file. Choose what suits you best!
 
-You can find all available options in the [default.toml](src/config/default.toml). Commented out options are the ones that are `None` by default.
+You can find all available options in the [default.toml](https://github.com/probe-rs/cargo-embed/blob/master/src/config/default.toml). Commented out options are the ones that are `None` by default.
 
 ## Building
 
