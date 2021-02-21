@@ -852,9 +852,13 @@ impl<D: StLinkUsb> STLink<D> {
                 "8-Bit reads are limited to 64 bytes on ST-Link v2"
             );
         } else {
+            // This 255 byte limitation was empirically derived by @disasm @diondokter and @Yatekii
+            // on various STM32 chips and different ST-Linkv3 versions (J5, J7).
+            // It works until 255. 256 and above fail. Apparently it *should* work with up to
+            // 512 bytes but those tries were not fruitful.
             assert!(
-                length <= 512,
-                "8-Bit reads are limited to 512 bytes on ST-Link v3"
+                length <= 255,
+                "8-Bit reads are limited to 255 bytes on ST-Link v3"
             );
         }
 
@@ -1522,7 +1526,11 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
         let chunk_size = if self.probe.probe.hw_version < 3 {
             64
         } else {
-            512
+            // This 128 byte chunk was set as the maximum possible amount is 255 even though it should
+            // support 512 bytes in theory. Thus we chose a smaller amount to avoid more possible bugs
+            // by not pushing the limit.
+            // See code of `read_mem_8bit` for more info.
+            128
         };
 
         for (index, chunk) in data.chunks_mut(chunk_size).enumerate() {
