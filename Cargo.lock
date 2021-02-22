@@ -156,8 +156,8 @@ dependencies = [
 
 [[package]]
 name = "defmt-decoder"
-version = "0.1.4"
-source = "git+https://github.com/knurling-rs/defmt?rev=42be5f6#42be5f61547fd837669d3fd70f3ab7fab7512b88"
+version = "0.2.0"
+source = "git+https://github.com/knurling-rs/defmt?tag=defmt-decoder-v0.2.0#60c6447f8ecbc4ff023378ba6905bcd0de1e679f"
 dependencies = [
  "ansi_term 0.12.1",
  "anyhow",
@@ -177,8 +177,8 @@ dependencies = [
 
 [[package]]
 name = "defmt-parser"
-version = "0.1.0"
-source = "git+https://github.com/knurling-rs/defmt?rev=42be5f6#42be5f61547fd837669d3fd70f3ab7fab7512b88"
+version = "0.2.0"
+source = "git+https://github.com/knurling-rs/defmt?tag=defmt-decoder-v0.2.0#60c6447f8ecbc4ff023378ba6905bcd0de1e679f"
 
 [[package]]
 name = "difference"
@@ -510,7 +510,7 @@ dependencies = [
 
 [[package]]
 name = "probe-run"
-version = "0.1.9"
+version = "0.2.0"
 dependencies = [
  "addr2line",
  "ansi_term 0.12.1",
