@@ -7,14 +7,24 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
-Note that `probe-run` depends on `defmt-decoder`, `defmt-elf2table` and `defmt-logger`.
-The git version of `probe-run` may pull in breaking `defmt` changes, as the git version of `defmt` is currently on its way towards a `v0.2.0` release, while the crates.io version is at `0.1.x`.
+(no changes)
 
-- [#122] bumps `defmt` git dependencies to `dd056e6`
-- [#125] bumps `defmt` git dependencies to `c4461eb` which includes the new, breaking format string syntax
+## [v0.2.0] - 2021-02-22
 
-[#122]: https://github.com/knurling-rs/probe-run/pull/122
-[#125]: https://github.com/knurling-rs/probe-run/pull/125
+### New Features
+
+- [#153] Update to defmt 0.2.0
+- [#152] Allow selecting a probe by serial number
+- [#149] Update and deduplicate dependencies
+
+### Fixes
+
+- [#141] Address Clippy lints
+
+[#141]: https://github.com/knurling-rs/probe-run/pull/141
+[#149]: https://github.com/knurling-rs/probe-run/pull/149
+[#152]: https://github.com/knurling-rs/probe-run/pull/152
+[#153]: https://github.com/knurling-rs/probe-run/pull/153
 
 ## [v0.1.9] - 2021-01-21
 
@@ -177,7 +187,8 @@ The git version of `probe-run` may pull in breaking `defmt` changes, as the git 
 
 Initial release
 
-[Unreleased]: https://github.com/knurling-rs/probe-run/compare/v0.1.9...main
+[Unreleased]: https://github.com/knurling-rs/probe-run/compare/v0.2.0...main
+[v0.2.0]: https://github.com/knurling-rs/probe-run/compare/v0.1.9...v0.2.0
 [v0.1.9]: https://github.com/knurling-rs/probe-run/compare/v0.1.8...v0.1.9
 [v0.1.8]: https://github.com/knurling-rs/probe-run/compare/v0.1.7...v0.1.8
 [v0.1.7]: https://github.com/knurling-rs/probe-run/compare/v0.1.6...v0.1.7
