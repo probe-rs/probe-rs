@@ -182,10 +182,10 @@ fn notmain() -> Result<i32, anyhow::Error> {
         })?;
 
     let (mut table, locs) = {
-        let table = defmt_decoder::elf2table::parse(&bytes)?;
+        let table = defmt_decoder::Table::parse(&bytes)?;
 
         let locs = if let Some(table) = table.as_ref() {
-            let locs = defmt_decoder::elf2table::get_locations(&bytes, table)?;
+            let locs = table.get_locations(&bytes)?;
 
             if !table.is_empty() && locs.is_empty() {
                 log::warn!("insufficient DWARF info; compile your program with `debug = 2` to enable location info");
@@ -450,7 +450,7 @@ fn notmain() -> Result<i32, anyhow::Error> {
                     frames.extend_from_slice(&read_buf[..num_bytes_read]);
 
                     loop {
-                        match defmt_decoder::decode(&frames, table) {
+                        match table.decode(&frames) {
                             Ok((frame, consumed)) => {
                                 // NOTE(`[]` indexing) all indices in `table` have already been
                                 // verified to exist in the `locs` map
