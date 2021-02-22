@@ -72,11 +72,6 @@ struct Opts {
     #[structopt(long)]
     list_probes: bool,
 
-    /// [DEPRECATED] This flag does nothing.
-    #[structopt(long, hidden(true), conflicts_with = "no_flash")]
-    #[allow(dead_code)]
-    defmt: bool,
-
     /// The chip to program.
     #[structopt(long, required_unless_one(&["list-chips", "list-probes", "version"]), env = "PROBE_RUN_CHIP")]
     chip: Option<String>,
