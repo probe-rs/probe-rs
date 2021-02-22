@@ -19,7 +19,7 @@ colored = "2.0.0"
 defmt-decoder = { git = "https://github.com/knurling-rs/defmt", tag = "defmt-decoder-v0.2.0", version = "=0.2.0", features = ['unstable'] }
 difference = "2.0.0"
 gimli = "0.23.0"
-log = { version = "0.4.11", features = ["std"] }
+log = "0.4.11"
 # an addr2line trait is implement for a type in this particular version
 object = "0.22.0"
 probe-rs = "0.10.0"
