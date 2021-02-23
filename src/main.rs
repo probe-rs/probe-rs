@@ -395,7 +395,7 @@ fn notmain() -> Result<i32, anyhow::Error> {
     // Register a signal handler that sets `exit` to `true` on Ctrl+C. On the second Ctrl+C, the
     // signal's default action will be run.
     let exit = Arc::new(AtomicBool::new(false));
-    signal_hook::flag::register_conditional_default(signal::SIGINT, exit.clone())?;
+    let sigid = signal_hook::flag::register(signal::SIGINT, exit.clone())?;
 
     let sess = Arc::new(Mutex::new(sess));
     let mut logging_channel = setup_logging_channel(rtt_addr, sess.clone())?;
@@ -501,6 +501,12 @@ fn notmain() -> Result<i32, anyhow::Error> {
         was_halted = is_halted;
     }
     drop(stdout);
+
+    // Make any incoming SIGINT terminate the process.
+    // Due to https://github.com/vorner/signal-hook/issues/97, this will result in SIGABRT, but you
+    // only need to Ctrl+C here if the backtrace hangs, so that should be fine.
+    signal_hook::low_level::unregister(sigid);
+    signal_hook::flag::register_conditional_default(signal::SIGINT, exit.clone())?;
 
     let mut sess = sess.lock().unwrap();
     let mut core = sess.core(0)?;
