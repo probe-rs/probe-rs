@@ -159,7 +159,7 @@ fn notmain() -> Result<i32, anyhow::Error> {
         );
     }
 
-    // NOTE we want to raise the linking error before calling `defmt_elf2table::parse`
+    // NOTE we want to raise the linking error before calling `defmt_decoder::Table::parse`
     let text = elf
         .section_by_name(".text")
         .map(|section| section.index())
@@ -297,6 +297,8 @@ fn notmain() -> Result<i32, anyhow::Error> {
     } else {
         probes
     };
+
+    // ensure exactly one probe is found and open it
     if probes.is_empty() {
         bail!("no probe was found")
     }
@@ -402,9 +404,7 @@ fn notmain() -> Result<i32, anyhow::Error> {
         bail!(
             "attempted to use `--no-flash` and `defmt` logging -- this combination is not allowed. Remove the `--no-flash` flag"
         );
-    }
-
-    if use_defmt && table.is_none() {
+    } else if use_defmt && table.is_none() {
         bail!("\"defmt\" RTT channel is in use, but the firmware binary contains no defmt data");
     }
 
