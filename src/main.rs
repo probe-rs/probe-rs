@@ -915,8 +915,7 @@ fn print_probes(probes: Vec<DebugProbeInfo>) -> i32 {
 fn print_chips() -> i32 {
     let registry = registry::families().expect("Could not retrieve chip family registry");
     for chip_family in registry {
-        println!("{}", chip_family.name);
-        println!("    Variants:");
+        println!("{}\n    Variants:", chip_family.name);
         for variant in chip_family.variants.iter() {
             println!("        {}", variant.name);
         }
