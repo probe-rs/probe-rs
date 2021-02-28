@@ -43,21 +43,6 @@ const SIGSUCCESS: i32 = 0;
 const THUMB_BIT: u32 = 1;
 const TIMEOUT: Duration = Duration::from_secs(1);
 
-fn main() -> Result<(), anyhow::Error> {
-    notmain().map(|code| process::exit(code))
-}
-
-// the string reported by the `--version` flag
-fn print_version() -> i32 {
-    const VERSION: &str = env!("CARGO_PKG_VERSION"); // version from Cargo.toml e.g. "0.1.4"
-    const HASH: &str = include_str!(concat!(env!("OUT_DIR"), "/git-info.txt")); // "" OR git hash e.g. "34019f8" -- this is generated in build.rs
-    println!(
-        "{}{}\nsupported defmt version: {}",
-        VERSION, HASH, DEFMT_VERSION
-    );
-    SIGSUCCESS
-}
-
 /// A Cargo runner for microcontrollers.
 #[derive(StructOpt)]
 #[structopt(name = "probe-run", setting = AppSettings::TrailingVarArg)]
@@ -105,6 +90,10 @@ struct Opts {
     /// Arguments passed after the ELF file path are discarded
     #[structopt(name = "REST")]
     _rest: Vec<String>,
+}
+
+fn main() -> Result<(), anyhow::Error> {
+    notmain().map(|code| process::exit(code))
 }
 
 fn notmain() -> Result<i32, anyhow::Error> {
@@ -899,6 +888,17 @@ fn probes_filter(probes: &[DebugProbeInfo], selector: &ProbeFilter) -> Vec<Debug
         .collect()
 }
 
+fn print_chips() -> i32 {
+    let registry = registry::families().expect("Could not retrieve chip family registry");
+    for chip_family in registry {
+        println!("{}\n    Variants:", chip_family.name);
+        for variant in chip_family.variants.iter() {
+            println!("        {}", variant.name);
+        }
+    }
+    SIGSUCCESS
+}
+
 fn print_probes(probes: Vec<DebugProbeInfo>) -> i32 {
     if !probes.is_empty() {
         println!("The following devices were found:");
@@ -912,14 +912,14 @@ fn print_probes(probes: Vec<DebugProbeInfo>) -> i32 {
     SIGSUCCESS
 }
 
-fn print_chips() -> i32 {
-    let registry = registry::families().expect("Could not retrieve chip family registry");
-    for chip_family in registry {
-        println!("{}\n    Variants:", chip_family.name);
-        for variant in chip_family.variants.iter() {
-            println!("        {}", variant.name);
-        }
-    }
+/// The string reported by the `--version` flag
+fn print_version() -> i32 {
+    const VERSION: &str = env!("CARGO_PKG_VERSION"); // version from Cargo.toml e.g. "0.1.4"
+    const HASH: &str = include_str!(concat!(env!("OUT_DIR"), "/git-info.txt")); // "" OR git hash e.g. "34019f8" -- this is generated in build.rs
+    println!(
+        "{}{}\nsupported defmt version: {}",
+        VERSION, HASH, DEFMT_VERSION
+    );
     SIGSUCCESS
 }
 
