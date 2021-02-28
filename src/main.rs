@@ -17,6 +17,7 @@ use addr2line::fallible_iterator::FallibleIterator as _;
 use anyhow::{anyhow, bail, Context};
 use arrayref::array_ref;
 use colored::Colorize as _;
+use defmt_decoder::DEFMT_VERSION;
 use gimli::{
     read::{CfaRule, DebugFrame, UnwindSection},
     BaseAddresses, EndianSlice, LittleEndian, RegisterRule, UninitializedUnwindContext,
@@ -48,15 +49,12 @@ fn main() -> Result<(), anyhow::Error> {
 
 // the string reported by the `--version` flag
 fn print_version() -> Result<i32, anyhow::Error> {
+    const VERSION: &str = env!("CARGO_PKG_VERSION"); // version from Cargo.toml e.g. "0.1.4"
+    const HASH: &str = include_str!(concat!(env!("OUT_DIR"), "/git-info.txt")); // "" OR git hash e.g. "34019f8" -- this is generated in build.rs
     println!(
-        "{}{}",
-        // version from Cargo.toml e.g. "0.1.4"
-        env!("CARGO_PKG_VERSION"),
-        // "" OR git hash e.g. "34019f8" -- this is generated in build.rs
-        include_str!(concat!(env!("OUT_DIR"), "/git-info.txt"))
+        "{}{}\nsupported defmt version: {}",
+        VERSION, HASH, DEFMT_VERSION
     );
-    println!("supported defmt version: {}", defmt_decoder::DEFMT_VERSION);
-
     Ok(SIGSUCCESS)
 }
 
