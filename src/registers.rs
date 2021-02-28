@@ -1,6 +1,6 @@
 use std::collections::{btree_map, BTreeMap};
 
-use gimli::{read::CfaRule, EndianSlice, LittleEndian, RegisterRule};
+use gimli::{read::CfaRule, EndianSlice, LittleEndian, Register, RegisterRule};
 use probe_rs::{Core, CoreRegisterAddress, MemoryInterface};
 
 pub const LR: CoreRegisterAddress = CoreRegisterAddress(14);
@@ -48,7 +48,6 @@ impl<'c, 'probe> Registers<'c, 'probe> {
                 self.cache.insert(SP.0, cfa);
                 Ok(changed)
             }
-
             // NOTE not encountered in practice so far
             CfaRule::Expression(_) => todo!("CfaRule::Expression"),
         }
@@ -56,25 +55,22 @@ impl<'c, 'probe> Registers<'c, 'probe> {
 
     pub fn update(
         &mut self,
-        reg: &gimli::Register,
+        reg: &Register,
         rule: &RegisterRule<EndianSlice<LittleEndian>>,
     ) -> anyhow::Result<()> {
         match rule {
-            RegisterRule::Undefined => unreachable!(),
-
             RegisterRule::Offset(offset) => {
                 let cfa = self.get(SP)?;
-                let addr = (i64::from(cfa) + offset) as u32;
+                let addr = (cfa as i64 + offset) as u32;
                 self.cache.insert(reg.0, self.core.read_word_32(addr)?);
             }
-
+            RegisterRule::Undefined => unreachable!(),
             _ => unimplemented!(),
         }
-
         Ok(())
     }
 }
 
-fn gimli2probe(reg: &gimli::Register) -> CoreRegisterAddress {
+fn gimli2probe(reg: &Register) -> CoreRegisterAddress {
     CoreRegisterAddress(reg.0)
 }
