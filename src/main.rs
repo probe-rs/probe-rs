@@ -1,8 +1,9 @@
+mod registers;
 mod stacked;
 
 use std::{
     borrow::Cow,
-    collections::{btree_map, BTreeMap, HashSet},
+    collections::HashSet,
     convert::TryInto,
     fs,
     io::{self, Write as _},
@@ -21,8 +22,8 @@ use arrayref::array_ref;
 use colored::Colorize as _;
 use defmt_decoder::DEFMT_VERSION;
 use gimli::{
-    read::{CfaRule, DebugFrame, UnwindSection},
-    BaseAddresses, EndianSlice, LittleEndian, RegisterRule, UninitializedUnwindContext,
+    read::{DebugFrame, UnwindSection},
+    BaseAddresses, LittleEndian, UninitializedUnwindContext,
 };
 use log::Level;
 use object::{
@@ -32,13 +33,16 @@ use object::{
 use probe_rs::{
     config::{registry, MemoryRegion, RamRegion},
     flashing::{self, Format},
-    Core, CoreRegisterAddress, DebugProbeInfo, MemoryInterface, Probe, Session,
+    Core, DebugProbeInfo, MemoryInterface, Probe, Session,
 };
 use probe_rs_rtt::{Rtt, ScanRegion, UpChannel};
 use signal_hook::consts::signal;
 use structopt::{clap::AppSettings, StructOpt};
 
-use crate::stacked::Stacked;
+use crate::{
+    registers::{Registers, LR, LR_END, PC, SP},
+    stacked::Stacked,
+};
 
 const STACK_CANARY: u8 = 0xAA;
 const SIGABRT: i32 = 134;
@@ -604,76 +608,6 @@ fn setup_logging_channel(
     }
 }
 
-fn gimli2probe(reg: &gimli::Register) -> CoreRegisterAddress {
-    CoreRegisterAddress(reg.0)
-}
-
-struct Registers<'c, 'probe> {
-    cache: BTreeMap<u16, u32>,
-    core: &'c mut Core<'probe>,
-}
-
-impl<'c, 'probe> Registers<'c, 'probe> {
-    fn new(lr: u32, sp: u32, core: &'c mut Core<'probe>) -> Self {
-        let mut cache = BTreeMap::new();
-        cache.insert(LR.0, lr);
-        cache.insert(SP.0, sp);
-        Self { cache, core }
-    }
-
-    fn get(&mut self, reg: CoreRegisterAddress) -> Result<u32, anyhow::Error> {
-        Ok(match self.cache.entry(reg.0) {
-            btree_map::Entry::Occupied(entry) => *entry.get(),
-            btree_map::Entry::Vacant(entry) => *entry.insert(self.core.read_core_reg(reg)?),
-        })
-    }
-
-    fn insert(&mut self, reg: CoreRegisterAddress, val: u32) {
-        self.cache.insert(reg.0, val);
-    }
-
-    fn update_cfa(
-        &mut self,
-        rule: &CfaRule<EndianSlice<LittleEndian>>,
-    ) -> Result</* cfa_changed: */ bool, anyhow::Error> {
-        match rule {
-            CfaRule::RegisterAndOffset { register, offset } => {
-                let cfa = (i64::from(self.get(gimli2probe(register))?) + offset) as u32;
-                let old_cfa = self.cache.get(&SP.0);
-                let changed = old_cfa != Some(&cfa);
-                if changed {
-                    log::debug!("update_cfa: CFA changed {:8x?} -> {:8x}", old_cfa, cfa);
-                }
-                self.cache.insert(SP.0, cfa);
-                Ok(changed)
-            }
-
-            // NOTE not encountered in practice so far
-            CfaRule::Expression(_) => todo!("CfaRule::Expression"),
-        }
-    }
-
-    fn update(
-        &mut self,
-        reg: &gimli::Register,
-        rule: &RegisterRule<EndianSlice<LittleEndian>>,
-    ) -> Result<(), anyhow::Error> {
-        match rule {
-            RegisterRule::Undefined => unreachable!(),
-
-            RegisterRule::Offset(offset) => {
-                let cfa = self.get(SP)?;
-                let addr = (i64::from(cfa) + offset) as u32;
-                self.cache.insert(reg.0, self.core.read_word_32(addr)?);
-            }
-
-            _ => unimplemented!(),
-        }
-
-        Ok(())
-    }
-}
-
 #[allow(clippy::too_many_arguments)] // FIXME: clean this up
 fn backtrace(
     core: &mut Core<'_>,
@@ -957,12 +891,6 @@ fn get_rtt_heap_main_from(
         main.ok_or_else(|| anyhow!("`main` symbol not found"))?,
     ))
 }
-
-const LR: CoreRegisterAddress = CoreRegisterAddress(14);
-const PC: CoreRegisterAddress = CoreRegisterAddress(15);
-const SP: CoreRegisterAddress = CoreRegisterAddress(13);
-
-const LR_END: u32 = 0xFFFF_FFFF;
 
 /// ELF section to be loaded onto the target
 #[derive(Debug)]
