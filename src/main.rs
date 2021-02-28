@@ -1,17 +1,15 @@
-use core::{
-    cmp,
-    convert::TryInto,
-    mem,
-    sync::atomic::{AtomicBool, Ordering},
-};
 use std::{
     borrow::Cow,
+    cmp,
     collections::{btree_map, BTreeMap, HashSet},
+    convert::TryInto,
     fs,
     io::{self, Write as _},
+    mem,
     path::{Path, PathBuf},
     process,
     str::FromStr,
+    sync::atomic::{AtomicBool, Ordering},
     sync::{Arc, Mutex},
     time::Duration,
 };
@@ -29,8 +27,8 @@ use object::{
     read::{File as ElfFile, Object as _, ObjectSection as _},
     ObjectSegment, ObjectSymbol, SymbolSection,
 };
-use probe_rs::config::{registry, MemoryRegion, RamRegion};
 use probe_rs::{
+    config::{registry, MemoryRegion, RamRegion},
     flashing::{self, Format},
     Core, CoreRegisterAddress, DebugProbeInfo, MemoryInterface, Probe, Session,
 };
