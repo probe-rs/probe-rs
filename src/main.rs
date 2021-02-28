@@ -48,14 +48,14 @@ fn main() -> Result<(), anyhow::Error> {
 }
 
 // the string reported by the `--version` flag
-fn print_version() -> Result<i32, anyhow::Error> {
+fn print_version() -> i32 {
     const VERSION: &str = env!("CARGO_PKG_VERSION"); // version from Cargo.toml e.g. "0.1.4"
     const HASH: &str = include_str!(concat!(env!("OUT_DIR"), "/git-info.txt")); // "" OR git hash e.g. "34019f8" -- this is generated in build.rs
     println!(
         "{}{}\nsupported defmt version: {}",
         VERSION, HASH, DEFMT_VERSION
     );
-    Ok(SIGSUCCESS)
+    SIGSUCCESS
 }
 
 /// A Cargo runner for microcontrollers.
@@ -126,15 +126,11 @@ fn notmain() -> Result<i32, anyhow::Error> {
     });
 
     if opts.version {
-        return print_version();
-    }
-
-    if opts.list_probes {
-        return print_probes(Probe::list_all());
-    }
-
-    if opts.list_chips {
-        return print_chips();
+        return Ok(print_version());
+    } else if opts.list_probes {
+        return Ok(print_probes(Probe::list_all()));
+    } else if opts.list_chips {
+        return Ok(print_chips());
     }
 
     let elf_path = opts.elf.as_deref().unwrap();
@@ -903,7 +899,7 @@ fn probes_filter(probes: &[DebugProbeInfo], selector: &ProbeFilter) -> Vec<Debug
         .collect()
 }
 
-fn print_probes(probes: Vec<DebugProbeInfo>) -> Result<i32, anyhow::Error> {
+fn print_probes(probes: Vec<DebugProbeInfo>) -> i32 {
     if !probes.is_empty() {
         println!("The following devices were found:");
         probes
@@ -913,11 +909,10 @@ fn print_probes(probes: Vec<DebugProbeInfo>) -> Result<i32, anyhow::Error> {
     } else {
         println!("No devices were found.");
     }
-
-    Ok(SIGSUCCESS)
+    SIGSUCCESS
 }
 
-fn print_chips() -> Result<i32, anyhow::Error> {
+fn print_chips() -> i32 {
     let registry = registry::families().expect("Could not retrieve chip family registry");
     for chip_family in registry {
         println!("{}", chip_family.name);
@@ -926,8 +921,7 @@ fn print_chips() -> Result<i32, anyhow::Error> {
             println!("        {}", variant.name);
         }
     }
-    
-    Ok(SIGSUCCESS)
+    SIGSUCCESS
 }
 
 #[derive(Debug)]
