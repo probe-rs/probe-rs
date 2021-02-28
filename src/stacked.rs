@@ -21,7 +21,7 @@ impl Stacked {
     /// Number of 32-bit words stacked in an extended frame.
     const WORDS_EXTENDED: usize = Self::WORDS_BASIC + 17; // 16 FPU regs + 1 status word
 
-    pub fn read(core: &mut Core<'_>, sp: u32, fpu: bool) -> Result<Self, anyhow::Error> {
+    pub fn read(core: &mut Core<'_>, sp: u32, fpu: bool) -> anyhow::Result<Self> {
         let mut storage = [0; Self::WORDS_EXTENDED];
         let registers: &mut [_] = if fpu {
             &mut storage

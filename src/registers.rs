@@ -22,7 +22,7 @@ impl<'c, 'probe> Registers<'c, 'probe> {
         Self { cache, core }
     }
 
-    pub fn get(&mut self, reg: CoreRegisterAddress) -> Result<u32, anyhow::Error> {
+    pub fn get(&mut self, reg: CoreRegisterAddress) -> anyhow::Result<u32> {
         Ok(match self.cache.entry(reg.0) {
             btree_map::Entry::Occupied(entry) => *entry.get(),
             btree_map::Entry::Vacant(entry) => *entry.insert(self.core.read_core_reg(reg)?),
@@ -36,7 +36,7 @@ impl<'c, 'probe> Registers<'c, 'probe> {
     pub fn update_cfa(
         &mut self,
         rule: &CfaRule<EndianSlice<LittleEndian>>,
-    ) -> Result</* cfa_changed: */ bool, anyhow::Error> {
+    ) -> anyhow::Result</* cfa_changed: */ bool> {
         match rule {
             CfaRule::RegisterAndOffset { register, offset } => {
                 let cfa = (i64::from(self.get(gimli2probe(register))?) + offset) as u32;
@@ -58,7 +58,7 @@ impl<'c, 'probe> Registers<'c, 'probe> {
         &mut self,
         reg: &gimli::Register,
         rule: &RegisterRule<EndianSlice<LittleEndian>>,
-    ) -> Result<(), anyhow::Error> {
+    ) -> anyhow::Result<()> {
         match rule {
             RegisterRule::Undefined => unreachable!(),
 

@@ -100,11 +100,11 @@ struct Opts {
     _rest: Vec<String>,
 }
 
-fn main() -> Result<(), anyhow::Error> {
+fn main() -> anyhow::Result<()> {
     notmain().map(|code| process::exit(code))
 }
 
-fn notmain() -> Result<i32, anyhow::Error> {
+fn notmain() -> anyhow::Result<i32> {
     let opts: Opts = Opts::from_args();
     let verbose = opts.verbose;
     defmt_decoder::log::init_logger(verbose, move |metadata| {
@@ -569,7 +569,7 @@ enum TopException {
 fn setup_logging_channel(
     rtt_addr: Option<u32>,
     sess: Arc<Mutex<Session>>,
-) -> Result<Option<UpChannel>, anyhow::Error> {
+) -> anyhow::Result<Option<UpChannel>> {
     if let Some(rtt_addr_res) = rtt_addr {
         const NUM_RETRIES: usize = 10; // picked at random, increase if necessary
         let mut rtt_res: Result<Rtt, probe_rs_rtt::Error> =
@@ -618,7 +618,7 @@ fn backtrace(
     sp_ram_region: &Option<RamRegion>,
     live_functions: &HashSet<&str>,
     current_dir: &Path,
-) -> Result<Option<TopException>, anyhow::Error> {
+) -> anyhow::Result<Option<TopException>> {
     let mut debug_frame = DebugFrame::new(debug_frame, LittleEndian);
     // 32-bit ARM -- this defaults to the host's address size which is likely going to be 8
     debug_frame.set_address_size(mem::size_of::<u32>() as u8);
@@ -863,7 +863,7 @@ fn print_version() -> i32 {
 
 fn get_rtt_heap_main_from(
     elf: &ElfFile,
-) -> Result<(Option<u32>, bool /* uses heap */, u32), anyhow::Error> {
+) -> anyhow::Result<(Option<u32>, /* uses heap: */ bool, u32)> {
     let mut rtt = None;
     let mut uses_heap = false;
     let mut main = None;
