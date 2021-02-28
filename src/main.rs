@@ -35,9 +35,12 @@ use probe_rs_rtt::{Rtt, ScanRegion, UpChannel};
 use signal_hook::consts::signal;
 use structopt::{clap::AppSettings, StructOpt};
 
-const TIMEOUT: Duration = Duration::from_secs(1);
 const STACK_CANARY: u8 = 0xAA;
+const SIGABRT: i32 = 134;
+/// Successfull termination of process.
+const SIGSUCCESS: i32 = 0;
 const THUMB_BIT: u32 = 1;
+const TIMEOUT: Duration = Duration::from_secs(1);
 
 fn main() -> Result<(), anyhow::Error> {
     notmain().map(|code| process::exit(code))
@@ -54,7 +57,7 @@ fn print_version() -> Result<i32, anyhow::Error> {
     );
     println!("supported defmt version: {}", defmt_decoder::DEFMT_VERSION);
 
-    Ok(0)
+    Ok(SIGSUCCESS)
 }
 
 /// A Cargo runner for microcontrollers.
@@ -554,10 +557,9 @@ fn notmain() -> Result<i32, anyhow::Error> {
             if stack_overflow {
                 log::error!("the program has overflowed its stack");
             }
-
             SIGABRT
         } else {
-            0
+            SIGSUCCESS
         },
     )
 }
@@ -566,8 +568,6 @@ fn program_size_of(file: &ElfFile) -> u64 {
     // `segments` iterates only over *loadable* segments, which are the segments that will be loaded to Flash by probe-rs
     file.segments().map(|segment| segment.size()).sum()
 }
-
-const SIGABRT: i32 = 134;
 
 #[derive(Debug, PartialEq)]
 enum TopException {
@@ -916,7 +916,7 @@ fn print_probes(probes: Vec<DebugProbeInfo>) -> Result<i32, anyhow::Error> {
         println!("No devices were found.");
     }
 
-    Ok(0)
+    Ok(SIGSUCCESS)
 }
 
 fn print_chips() -> Result<i32, anyhow::Error> {
@@ -928,8 +928,8 @@ fn print_chips() -> Result<i32, anyhow::Error> {
             println!("        {}", variant.name);
         }
     }
-
-    Ok(0)
+    
+    Ok(SIGSUCCESS)
 }
 
 #[derive(Debug)]
