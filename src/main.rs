@@ -1,6 +1,5 @@
 use std::{
     borrow::Cow,
-    cmp,
     collections::{btree_map, BTreeMap, HashSet},
     convert::TryInto,
     fs,
@@ -346,10 +345,9 @@ fn notmain() -> Result<i32, anyhow::Error> {
             if highest_ram_addr_in_use != 0 && !uses_heap && initial_sp_makes_sense {
                 let stack_available = vector_table.initial_sp - highest_ram_addr_in_use - 1;
 
-                // We consider >90% stack usage a potential stack overflow, but don't go beyond 1 kb
-                // since filling a lot of RAM is slow (and 1 kb should be "good enough" for what
-                // we're doing).
-                let canary_size = cmp::min(stack_available / 10, 1024);
+                // We consider >90% stack usage a potential stack overflow, but don't go beyond 1 kb since
+                // filling a lot of RAM is slow (and 1 kb should be "good enough" for what we're doing).
+                let canary_size = 1024.min(stack_available / 10);
 
                 log::debug!(
                     "{} bytes of stack available (0x{:08X}-0x{:08X}), using {} byte canary to detect overflows",
