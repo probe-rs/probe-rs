@@ -1,3 +1,4 @@
+use anyhow::{anyhow, Result};
 use colored::*;
 use std::sync::Mutex;
 use std::{
@@ -6,7 +7,7 @@ use std::{
 };
 use structopt::StructOpt;
 
-use probe_rs::{config::TargetSelector, Probe};
+use probe_rs::{config::TargetSelector, DebugProbeInfo, DebugProbeSelector, Probe};
 
 #[derive(Debug, StructOpt)]
 struct Opt {
@@ -30,6 +31,26 @@ struct Opt {
         help = "Use this flag to override the default GDB connection string (localhost:1337)."
     )]
     gdb_connection_string: Option<String>,
+    #[structopt(
+        name = "list-probes",
+        long = "list-probes",
+        help = "list available debug probes"
+    )]
+    list: bool,
+    #[structopt(
+        name = "debug probe index",
+        long = "probe-index",
+        short = "n",
+        help = "select index of debug probe to use"
+    )]
+    probe_index: Option<usize>,
+    #[structopt(
+        long = "probe",
+        help = "Use this flag to select a specific probe in the list by vendor and product id.\n\
+        Use '--probe VID:PID' or '--probe VID:PID:Serial' if you have more than one probe with the same VID:PID.\n\
+        If there are multiple probes with the same VID:PID:Serial, you have to specify it with '--probe-index'."
+    )]
+    probe_selector: Option<DebugProbeSelector>,
 }
 
 fn main() {
@@ -43,19 +64,17 @@ fn main() {
     }
 }
 
-pub fn open_probe(index: Option<usize>) -> Result<Probe, failure::Error> {
-    let available_probes = Probe::list_all();
-
+pub fn open_probe(index: Option<usize>, available_probes: &[DebugProbeInfo]) -> Result<Probe> {
     let device = match index {
         Some(index) => available_probes
             .get(index)
-            .ok_or_else(|| failure::err_msg("Unable to open the specified probe. Use the 'list' subcommand to see all available probes."))?,
+            .ok_or_else(|| anyhow!("Unable to open the specified probe. Use the '--list-probes' flag to see all available probes."))?,
         None => {
             // open the default probe, if only one probe was found
-            if available_probes.len() == 1 {
-                &available_probes[0]
-            } else {
-                return Err(failure::err_msg("Multiple probes found. Please specify which probe to use using the -n parameter."));
+            match available_probes.len() {
+                1 => &available_probes[0],
+                0 => return Err(anyhow!("No probe found.")),
+                _ => return Err(anyhow!("Multiple probes found. Please specify which probe to use using the -n option.")),
             }
         }
     };
@@ -65,11 +84,34 @@ pub fn open_probe(index: Option<usize>) -> Result<Probe, failure::Error> {
     Ok(probe)
 }
 
-fn main_try() -> Result<(), failure::Error> {
+fn main_try() -> Result<()> {
     // Get commandline options.
     let opt = Opt::from_iter(std::env::args());
 
-    let probe = open_probe(None)?;
+    let mut available_probes = Probe::list_all();
+
+    // Only retain probes with matching probe selector
+    if let Some(selector) = opt.probe_selector {
+        available_probes.retain(|probe| {
+            probe.vendor_id == selector.vendor_id
+                && probe.product_id == selector.product_id
+                && if let Some(serial) = &selector.serial_number {
+                    probe.serial_number.as_ref() == Some(serial)
+                } else {
+                    true
+                }
+        });
+    }
+
+    if opt.list {
+        println!("Available probes:");
+        for (idx, probe) in available_probes.iter().enumerate() {
+            println!("[{}]: {:?}", idx, probe);
+        }
+        return Ok(());
+    }
+
+    let probe = open_probe(opt.probe_index, &available_probes)?;
 
     let target_selector = match opt.chip {
         Some(identifier) => identifier.into(),

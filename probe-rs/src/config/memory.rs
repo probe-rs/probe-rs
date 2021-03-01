@@ -1,18 +1,18 @@
 use core::ops::Range;
 
-/// Represents a region in flash.
+/// Represents a region in non-volatile memory (e.g. flash or EEPROM).
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct FlashRegion {
+pub struct NvmRegion {
     /// Address range of the region
     pub range: Range<u32>,
     /// True if the chip boots from this memory
     pub is_boot_memory: bool,
 }
 
-impl FlashRegion {
-    /// Returns the necessary information about the flash.
-    pub fn flash_info(&self) -> FlashInfo {
-        FlashInfo {
+impl NvmRegion {
+    /// Returns the necessary information about the NVM.
+    pub fn nvm_info(&self) -> NvmInfo {
+        NvmInfo {
             rom_start: self.range.start,
         }
     }
@@ -74,12 +74,12 @@ pub struct PageInfo {
 
 /// Holds information about the entire flash.
 #[derive(Debug, Copy, Clone)]
-pub struct FlashInfo {
+pub struct NvmInfo {
     pub rom_start: u32,
 }
 
 /// Enables the user to do range intersection testing.
-pub(crate) trait MemoryRange {
+pub trait MemoryRange {
     /// Returns true if `self` contains `range` fully.
     fn contains_range(&self, range: &Range<u32>) -> bool;
 
@@ -116,8 +116,9 @@ pub enum MemoryRegion {
     /// Generic memory region, which is neither
     /// flash nor RAM.
     Generic(GenericRegion),
-    /// Memory region describing flash.
-    Flash(FlashRegion),
+    /// Memory region describing flash, EEPROM or other non-volatile memory.
+    #[serde(alias = "Flash")] // Keeping the "Flash" name this for backwards compatibility
+    Nvm(NvmRegion),
 }
 
 #[cfg(test)]

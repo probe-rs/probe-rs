@@ -7,10 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Support for the `HNONSEC` bit in memory access. This now allows secure access on chips which support TrustZone (#???).
+- Support for RISCV chips which use the System Bus Access method for memory access when debugging (#527).
 
 ### Changed
 
+- Renamed `MemoryRegion::Flash` to `MemoryRegion::Nvm`
+- Renamed `FlashInfo` to `NvmInfo`
+- Renamed `FlashRegion` to `NvmRegion` and its `flash_info()` method to `nvm_info()`
+- Renamed `FlashError::NoSuitableFlash` to `FlashError::NoSuitableNvm`
+- The `into_arm_interface` and `into_riscv_interface` functions are replaced by the `try_into_arm_interface` and
+  `try_into_riscv_interface` functions, which return the `Probe` struct in the case of an error. This improves the
+  auto detection process.
+  
+
 ### Fixed
+
+- Fixed `m33` breakpoints.
+- Fix a bug where ST-Link v3 is not able to read 8 bit data chunks with more than 255 bytes. Currently we set the chunking to 128 bytes. This might be a bug in the ST-Link v3 firmware and might change in the future.
 
 ## [0.10.1]
 ### Fixed

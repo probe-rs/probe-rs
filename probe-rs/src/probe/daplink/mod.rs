@@ -3,7 +3,7 @@ pub mod tools;
 
 use crate::{
     architecture::arm::{
-        communication_interface::ArmProbeInterface,
+        communication_interface::{ArmProbeInterface, DAPProbe},
         dp::{Abort, Ctrl, DPAccess, DPRegister, DebugPortError},
         swo::poll_interval_from_buf_size,
         ArmCommunicationInterface, DAPAccess, DapError, PortType, Register, SwoAccess, SwoConfig,
@@ -583,27 +583,20 @@ impl DebugProbe for DAPLink {
         Some(self as _)
     }
 
-    fn get_arm_interface<'probe>(
+    fn try_get_arm_interface<'probe>(
         self: Box<Self>,
-    ) -> Result<Option<Box<dyn ArmProbeInterface + 'probe>>, DebugProbeError> {
-        let interface = ArmCommunicationInterface::new(self, false)?;
-
-        Ok(Some(Box::new(interface)))
+    ) -> Result<Box<dyn ArmProbeInterface + 'probe>, (Box<dyn DebugProbe>, DebugProbeError)> {
+        match ArmCommunicationInterface::new(self, false) {
+            Ok(interface) => Ok(Box::new(interface)),
+            Err((probe, error)) => Err((probe.into_probe(), error)),
+        }
     }
 
     fn has_arm_interface(&self) -> bool {
         true
     }
-}
 
-impl<'a> AsRef<dyn DebugProbe + 'a> for DAPLink {
-    fn as_ref(&self) -> &(dyn DebugProbe + 'a) {
-        self
-    }
-}
-
-impl<'a> AsMut<dyn DebugProbe + 'a> for DAPLink {
-    fn as_mut(&mut self) -> &mut (dyn DebugProbe + 'a) {
+    fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
         self
     }
 }
@@ -715,11 +708,9 @@ impl DAPAccess for DAPLink {
         self.process_batch()?;
         Ok(())
     }
-
-    fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
-        self
-    }
 }
+
+impl DAPProbe for DAPLink {}
 
 impl SwoAccess for DAPLink {
     fn enable_swo(&mut self, config: &SwoConfig) -> Result<(), ProbeRsError> {

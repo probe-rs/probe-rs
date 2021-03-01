@@ -13,11 +13,12 @@ keywords = ["embedded"]
 license = "MIT OR Apache-2.0"
 
 [features]
-default = ["sentry"]
+default = ["sentry", "anyhow"]
 
 [dependencies]
 structopt = "0.3.16"
-anyhow = "1.0"
+thiserror = "1.0"
+anyhow = { version = "1.0", optional = true }
 indicatif = "0.15.0"
 env_logger = "0.8.1"
 log = "0.4.0"
@@ -28,6 +29,6 @@ cargo_toml = "0.8.1"
 serde = { version = "1.0.115", features = [ "derive" ] }
 cargo_metadata = "0.12.0"
 dunce = "1.0.1"
-sentry = { version = "0.21.0", features = ["anyhow"], optional = true }
-simplelog = "0.8.0"
+sentry = { version = "0.22.0", features = ["anyhow"], optional = true }
+simplelog = "0.9.0"
 terminal_size = "0.1.13"

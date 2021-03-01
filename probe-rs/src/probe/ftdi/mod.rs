@@ -353,10 +353,9 @@ impl JtagAdapter {
 
         let drbits = params.drpre + len_bits + params.drpost;
         let request = if let Some(data_slice) = data {
-            let data = BitSlice::<Lsb0, u8>::from_slice(data_slice).ok_or(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "could not create bitslice",
-            ))?;
+            let data = BitSlice::<Lsb0, u8>::from_slice(data_slice).ok_or_else(|| {
+                io::Error::new(io::ErrorKind::InvalidData, "could not create bitslice")
+            })?;
             let mut data = BitVec::<Lsb0, u8>::from_bitslice(&data);
             data.truncate(len_bits);
 
@@ -497,14 +496,30 @@ impl DebugProbe for FtdiProbe {
         }
     }
 
-    fn get_riscv_interface(
+    fn try_get_riscv_interface(
         self: Box<Self>,
-    ) -> Result<Option<RiscvCommunicationInterface>, DebugProbeError> {
-        Ok(Some(RiscvCommunicationInterface::new(self)?))
+    ) -> Result<RiscvCommunicationInterface, (Box<dyn DebugProbe>, DebugProbeError)> {
+        match RiscvCommunicationInterface::new(self) {
+            Ok(interface) => Ok(interface),
+            Err((probe, err)) => Err((probe.into_probe(), err)),
+        }
     }
 
     fn has_riscv_interface(&self) -> bool {
         true
+    }
+
+    fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
+        self
+    }
+
+    fn try_get_arm_interface<'probe>(
+        self: Box<Self>,
+    ) -> Result<
+        Box<dyn crate::architecture::arm::communication_interface::ArmProbeInterface + 'probe>,
+        (Box<dyn DebugProbe>, DebugProbeError),
+    > {
+        todo!()
     }
 }
 
@@ -550,27 +565,18 @@ impl JTAGAccess for FtdiProbe {
         log::debug!("write_register result: {:?})", r);
         Ok(r)
     }
-
-    fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
-        self
-    }
 }
 
-impl AsRef<dyn DebugProbe> for FtdiProbe {
-    fn as_ref(&self) -> &(dyn DebugProbe + 'static) {
-        self
-    }
-}
-
-impl AsMut<dyn DebugProbe> for FtdiProbe {
-    fn as_mut(&mut self) -> &mut (dyn DebugProbe + 'static) {
-        self
-    }
-}
+/// (VendorId, ProductId)
+static FTDI_COMPAT_DEVICE_IDS: &[(u16, u16)] = &[(0x0403, 0x6010), (0x0403, 0x6014)];
 
 fn get_device_info(device: &rusb::Device<rusb::Context>) -> Option<DebugProbeInfo> {
     let d_desc = device.device_descriptor().ok()?;
-    if d_desc.vendor_id() != 0x0403 || d_desc.product_id() != 0x6010 {
+
+    if !FTDI_COMPAT_DEVICE_IDS
+        .iter()
+        .any(|(vid, pid)| d_desc.vendor_id() == *vid && d_desc.product_id() == *pid)
+    {
         return None;
     }
 

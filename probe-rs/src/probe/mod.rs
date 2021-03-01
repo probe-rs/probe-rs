@@ -4,16 +4,32 @@ pub(crate) mod ftdi;
 pub(crate) mod jlink;
 pub(crate) mod stlink;
 
-use crate::architecture::{
-    arm::{communication_interface::ArmProbeInterface, DAPAccess, PortType, SwoAccess},
-    riscv::communication_interface::RiscvCommunicationInterface,
+use crate::{architecture::arm::ap::AccessPort, Session};
+use crate::{
+    architecture::arm::memory::adi_v5_memory_interface::ADIMemoryInterface,
+    config::{RegistryError, TargetSelector},
 };
-use crate::config::{RegistryError, TargetSelector};
-use crate::error::Error;
-use crate::Session;
+use crate::{
+    architecture::arm::{ap::MemoryAP, MemoryApInformation},
+    error::Error,
+};
+use crate::{
+    architecture::{
+        arm::{
+            ap::memory_ap::mock::MockMemoryAP, communication_interface::ArmProbeInterface,
+            DAPAccess, PortType, SwoAccess,
+        },
+        riscv::communication_interface::RiscvCommunicationInterface,
+    },
+    Memory,
+};
 use jlink::list_jlink_devices;
 use std::{convert::TryFrom, fmt};
 use thiserror::Error;
+
+/// Used to log warnings when the measured target voltage is
+/// lower than 1.4V, if at all measureable.
+const LOW_TARGET_VOLTAGE_WARNING_THRESHOLD: f32 = 1.4;
 
 #[derive(Copy, Clone, PartialEq, Debug, serde::Serialize, serde::Deserialize)]
 pub enum WireProtocol {
@@ -360,14 +376,19 @@ impl Probe {
         self.inner.has_arm_interface()
     }
 
-    pub fn into_arm_interface<'probe>(
+    /// Try to get a trait object implementing [`ArmProbeInterface`], which can
+    /// can be used to communicate with chips using the ARM architecture.
+    ///
+    /// If an error occurs while trying to connect, the probe is returned.
+    pub fn try_into_arm_interface<'probe>(
         self,
-    ) -> Result<Option<Box<dyn ArmProbeInterface + 'probe>>, DebugProbeError> {
+    ) -> Result<Box<dyn ArmProbeInterface + 'probe>, (Self, DebugProbeError)> {
         if !self.attached {
-            // TODO: Return self here
-            Err(DebugProbeError::NotAttached)
+            Err((self, DebugProbeError::NotAttached))
         } else {
-            self.inner.get_arm_interface()
+            self.inner
+                .try_get_arm_interface()
+                .map_err(|(probe, err)| (Probe::from_attached_probe(probe), err))
         }
     }
 
@@ -377,13 +398,20 @@ impl Probe {
         self.inner.has_riscv_interface()
     }
 
-    pub fn into_riscv_interface(
+    /// Try to get a [`RiscvCommunicationInterface`], which can
+    /// can be used to communicate with chips using the RISCV
+    /// architecture.
+    ///
+    /// If an error occurs while trying to connect, the probe is returned.
+    pub fn try_into_riscv_interface(
         self,
-    ) -> Result<Option<RiscvCommunicationInterface>, DebugProbeError> {
+    ) -> Result<RiscvCommunicationInterface, (Self, DebugProbeError)> {
         if !self.attached {
-            Err(DebugProbeError::NotAttached)
+            Err((self, DebugProbeError::NotAttached))
         } else {
-            self.inner.get_riscv_interface()
+            self.inner
+                .try_get_riscv_interface()
+                .map_err(|(probe, err)| (Probe::from_attached_probe(probe), err))
         }
     }
 
@@ -453,20 +481,26 @@ pub trait DebugProbe: Send + fmt::Debug {
         false
     }
 
-    /// Get the dedicated interface to debug ARM chips. Ensure that the
-    /// probe actually supports this by calling [DebugProbe::has_arm_interface] first.
-    fn get_arm_interface<'probe>(
+    /// Get the dedicated interface to debug ARM chips. To check that the
+    /// probe actually supports this, call [DebugProbe::has_arm_interface] first.
+    fn try_get_arm_interface<'probe>(
         self: Box<Self>,
-    ) -> Result<Option<Box<dyn ArmProbeInterface + 'probe>>, DebugProbeError> {
-        Ok(None)
+    ) -> Result<Box<dyn ArmProbeInterface + 'probe>, (Box<dyn DebugProbe>, DebugProbeError)> {
+        Err((
+            self.into_probe(),
+            DebugProbeError::InterfaceNotAvailable("ARM"),
+        ))
     }
 
     /// Get the dedicated interface to debug RISCV chips. Ensure that the
     /// probe actually supports this by calling [DebugProbe::has_riscv_interface] first.
-    fn get_riscv_interface(
+    fn try_get_riscv_interface(
         self: Box<Self>,
-    ) -> Result<Option<RiscvCommunicationInterface>, DebugProbeError> {
-        Ok(None)
+    ) -> Result<RiscvCommunicationInterface, (Box<dyn DebugProbe>, DebugProbeError)> {
+        Err((
+            self.into_probe(),
+            DebugProbeError::InterfaceNotAvailable("RISCV"),
+        ))
     }
 
     /// Check if the probe offers an interface to debug RISCV chips.
@@ -480,6 +514,14 @@ pub trait DebugProbe: Send + fmt::Debug {
 
     fn get_swo_interface_mut(&mut self) -> Option<&mut dyn SwoAccess> {
         None
+    }
+
+    fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe>;
+
+    /// Reads the target voltage in Volts, if possible. Returns `Ok(None)`
+    /// if the probe doesn’t support reading the target voltage.
+    fn get_target_voltage(&mut self) -> Result<Option<f32>, DebugProbeError> {
+        Ok(None)
     }
 }
 
@@ -504,13 +546,13 @@ impl std::fmt::Debug for DebugProbeInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(
             f,
-            "{} (VID: {:04x}, PID: {:04x}, {} {:?})",
+            "{} (VID: {:04x}, PID: {:04x}, {}{:?})",
             self.identifier,
             self.vendor_id,
             self.product_id,
             self.serial_number
                 .clone()
-                .map_or("".to_owned(), |v| format!("Serial: {},", v)),
+                .map_or("".to_owned(), |v| format!("Serial: {}, ", v)),
             self.probe_type
         )
     }
@@ -620,8 +662,26 @@ impl From<&DebugProbeInfo> for DebugProbeSelector {
     }
 }
 
-#[derive(Default, Debug)]
-pub struct FakeProbe;
+#[derive(Debug)]
+pub struct FakeProbe {
+    protocol: WireProtocol,
+    speed: u32,
+}
+
+impl FakeProbe {
+    pub fn new() -> Self {
+        FakeProbe {
+            protocol: WireProtocol::Swd,
+            speed: 1000,
+        }
+    }
+}
+
+impl Default for FakeProbe {
+    fn default() -> Self {
+        FakeProbe::new()
+    }
+}
 
 impl DebugProbe for FakeProbe {
     fn new_from_selector(
@@ -630,9 +690,7 @@ impl DebugProbe for FakeProbe {
     where
         Self: Sized,
     {
-        Err(DebugProbeError::ProbeCouldNotBeCreated(
-            ProbeCreationError::Other("This is a fake probe."),
-        ))
+        Ok(Box::new(FakeProbe::new()))
     }
 
     /// Get human readable name for the probe
@@ -641,19 +699,23 @@ impl DebugProbe for FakeProbe {
     }
 
     fn speed(&self) -> u32 {
-        unimplemented!()
+        self.speed
     }
 
-    fn set_speed(&mut self, _speed_khz: u32) -> Result<u32, DebugProbeError> {
-        unimplemented!()
+    fn set_speed(&mut self, speed_khz: u32) -> Result<u32, DebugProbeError> {
+        self.speed = speed_khz;
+
+        Ok(speed_khz)
     }
 
     fn attach(&mut self) -> Result<(), DebugProbeError> {
-        unimplemented!()
+        Ok(())
     }
 
-    fn select_protocol(&mut self, _protocol: WireProtocol) -> Result<(), DebugProbeError> {
-        unimplemented!()
+    fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError> {
+        self.protocol = protocol;
+
+        Ok(())
     }
 
     /// Leave debug mode
@@ -673,6 +735,16 @@ impl DebugProbe for FakeProbe {
     fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
         unimplemented!()
     }
+
+    fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
+        self
+    }
+
+    fn try_get_arm_interface<'probe>(
+        self: Box<Self>,
+    ) -> Result<Box<dyn ArmProbeInterface + 'probe>, (Box<dyn DebugProbe>, DebugProbeError)> {
+        Ok(Box::new(FakeArmInterface::new(self)))
+    }
 }
 
 impl DAPAccess for FakeProbe {
@@ -690,21 +762,85 @@ impl DAPAccess for FakeProbe {
     ) -> Result<(), DebugProbeError> {
         Err(DebugProbeError::CommandNotSupportedByProbe)
     }
+}
 
-    fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
-        self
+#[derive(Debug)]
+struct FakeArmInterface {
+    probe: Box<FakeProbe>,
+
+    memory_ap: MockMemoryAP,
+}
+
+impl FakeArmInterface {
+    fn new(probe: Box<FakeProbe>) -> Self {
+        let memory_ap = MockMemoryAP::with_pattern();
+        FakeArmInterface { probe, memory_ap }
     }
 }
 
-impl<'a> AsRef<dyn DebugProbe + 'a> for FakeProbe {
-    fn as_ref(&self) -> &(dyn DebugProbe + 'a) {
-        self
+impl ArmProbeInterface for FakeArmInterface {
+    fn memory_interface(&mut self, access_port: MemoryAP) -> Result<Memory<'_>, Error> {
+        let ap_information = MemoryApInformation {
+            port_number: access_port.port_number(),
+            only_32bit_data_size: false,
+            debug_base_address: 0xf000_0000,
+            supports_hnonsec: false,
+        };
+
+        let memory = ADIMemoryInterface::new(&mut self.memory_ap, &ap_information)?;
+
+        Ok(Memory::new(memory, access_port))
+    }
+
+    fn ap_information(
+        &self,
+        _access_port: crate::architecture::arm::ap::GenericAP,
+    ) -> Option<&crate::architecture::arm::ApInformation> {
+        todo!()
+    }
+
+    fn num_access_ports(&self) -> usize {
+        1
+    }
+
+    fn read_from_rom_table(
+        &mut self,
+    ) -> Result<Option<crate::architecture::arm::ArmChipInfo>, Error> {
+        Ok(None)
+    }
+
+    fn close(self: Box<Self>) -> Probe {
+        Probe::from_attached_probe(self.probe)
+    }
+
+    fn target_reset_deassert(&mut self) -> Result<(), Error> {
+        todo!()
     }
 }
 
-impl<'a> AsMut<dyn DebugProbe + 'a> for FakeProbe {
-    fn as_mut(&mut self) -> &mut (dyn DebugProbe + 'a) {
-        self
+impl AsMut<(dyn DebugProbe + 'static)> for FakeArmInterface {
+    fn as_mut(&mut self) -> &mut (dyn DebugProbe + 'static) {
+        self.probe.as_mut()
+    }
+}
+
+impl AsRef<(dyn DebugProbe + 'static)> for FakeArmInterface {
+    fn as_ref(&self) -> &(dyn DebugProbe + 'static) {
+        self.probe.as_ref()
+    }
+}
+
+impl SwoAccess for FakeArmInterface {
+    fn enable_swo(&mut self, _config: &crate::architecture::arm::SwoConfig) -> Result<(), Error> {
+        unimplemented!()
+    }
+
+    fn disable_swo(&mut self) -> Result<(), Error> {
+        unimplemented!()
+    }
+
+    fn read_swo_timeout(&mut self, _timeout: std::time::Duration) -> Result<Vec<u8>, Error> {
+        unimplemented!()
     }
 }
 
@@ -712,7 +848,7 @@ impl<'a> AsMut<dyn DebugProbe + 'a> for FakeProbe {
 ///
 /// This trait should be implemented by all probes which offer low-level access to
 /// the JTAG protocol, i.e. directo control over the bytes sent and received.
-pub trait JTAGAccess: DebugProbe + AsRef<dyn DebugProbe> + AsMut<dyn DebugProbe> {
+pub trait JTAGAccess: DebugProbe {
     fn read_register(&mut self, address: u32, len: u32) -> Result<Vec<u8>, DebugProbeError>;
 
     /// For Riscv, and possibly other interfaces, the JTAG interface has to remain in
@@ -732,8 +868,6 @@ pub trait JTAGAccess: DebugProbe + AsRef<dyn DebugProbe> + AsMut<dyn DebugProbe>
         data: &[u8],
         len: u32,
     ) -> Result<Vec<u8>, DebugProbeError>;
-
-    fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe>;
 }
 
 #[derive(PartialEq, Debug, Copy, Clone)]

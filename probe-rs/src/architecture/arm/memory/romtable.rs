@@ -1,4 +1,3 @@
-use super::super::component::{Dwt, Itm, Tpiu};
 use super::AccessPortError;
 use crate::{Core, Error, Memory, MemoryInterface};
 use enum_primitive_derive::Primitive;
@@ -21,7 +20,9 @@ pub enum RomTableError {
     #[error("Could not access romtable")]
     Memory(#[source] Error),
     #[error("The requested component '{0}' was not found")]
-    ComponentNotFound(String),
+    ComponentNotFound(PeripheralType),
+    #[error("There are no components to operate on")]
+    NoComponents,
 }
 
 /// A lazy romtable reader that is used to create an iterator over all romtable entries.
@@ -102,12 +103,6 @@ pub struct RomTable {
     /// ALL the entries in the romtable in flattened fashion.
     /// This contains all nested romtable entries.
     entries: Vec<RomTableEntry>,
-    /// The index of the TPIU peripheral in the entries.
-    tpiu: Option<usize>,
-    /// The index of the DWT peripheral in the entries.
-    dwt: Option<usize>,
-    /// The index of the ITM peripheral in the entries.
-    itm: Option<usize>,
 }
 
 impl RomTable {
@@ -116,41 +111,28 @@ impl RomTable {
     /// This does not check whether the data actually signalizes
     /// to contain a ROM table but assumes this was checked beforehand.
     fn try_parse(memory: &mut Memory<'_>, base_address: u64) -> Result<RomTable, RomTableError> {
+        // This is required for the collect down below.
+        #![allow(clippy::needless_collect)]
         let mut entries = vec![];
-        let mut tpiu = None;
-        let mut dwt = None;
-        let mut itm = None;
 
         log::info!("Parsing romtable at base_address {:x?}", base_address);
 
         // Read all the raw romtable entries and flatten them.
+
         let reader = RomTableReader::new(memory, base_address)
             .entries()
             .filter_map(Result::ok)
+            // This is not a needless collect! It fixes the borrowing issue with &mut Memory that clippy cannot detect!
             .collect::<Vec<RomTableEntryRaw>>();
 
         // Iterate all entries and get their data.
-        for (id, raw_entry) in reader.into_iter().enumerate() {
+        for raw_entry in reader.into_iter() {
             let entry_base_addr = raw_entry.component_address();
 
             log::info!("Parsing entry at {:x?}", entry_base_addr);
 
             if raw_entry.entry_present {
                 let component = Component::try_parse(memory, u64::from(entry_base_addr))?;
-                let component_id = component.id();
-
-                // Make sure we store known component locations so we can easily access them lateron.
-                if component_id.peripheral_id.is_tpiu() {
-                    tpiu = Some(id);
-                }
-
-                if component_id.peripheral_id.is_dwt() {
-                    dwt = Some(id);
-                }
-
-                if component_id.peripheral_id.is_itm() {
-                    itm = Some(id);
-                }
 
                 // Finally remmeber the entry.
                 entries.push(RomTableEntry {
@@ -162,12 +144,7 @@ impl RomTable {
             }
         }
 
-        Ok(RomTable {
-            entries,
-            tpiu,
-            dwt,
-            itm,
-        })
+        Ok(RomTable { entries })
     }
 }
 
@@ -341,7 +318,34 @@ impl<'probe: 'memory, 'memory> ComponentInformationReader<'probe, 'memory> {
 
         log::debug!("Raw peripheral id: {:x?}", data);
 
-        Ok(PeripheralID::from_raw(&data))
+        const DEV_TYPE_OFFSET: u32 = 0xFCC;
+        const DEV_TYPE_MASK: u32 = 0xFF;
+
+        let dev_type = self
+            .memory
+            .read_word_32(self.base_address as u32 + DEV_TYPE_OFFSET)
+            .map(|v| (v & DEV_TYPE_MASK) as u8)
+            .map_err(RomTableError::Memory)?;
+
+        const ARCH_ID_OFFSET: u32 = 0xFBC;
+        const ARCH_ID_MASK: u32 = 0xFFFF;
+        const ARCH_ID_PRESENT_BIT: u32 = 1 << 20;
+
+        let arch_id = self
+            .memory
+            .read_word_32(self.base_address as u32 + ARCH_ID_OFFSET)
+            .map(|v| {
+                if v & ARCH_ID_PRESENT_BIT > 0 {
+                    (v & ARCH_ID_MASK) as u16
+                } else {
+                    0
+                }
+            })
+            .map_err(RomTableError::Memory)?;
+
+        log::debug!("Dev type: {:x}, arch id: {:x}", dev_type, arch_id);
+
+        Ok(PeripheralID::from_raw(&data, dev_type, arch_id))
     }
 
     /// Reads all component properties from a component info table
@@ -404,6 +408,10 @@ impl Component {
             component_id.peripheral_id
         );
 
+        if let Some(info) = component_id.peripheral_id.determine_part() {
+            log::info!("\tComponent is known: {}", info);
+        }
+
         let class = match component_id.class {
             RawComponent::GenericVerificationComponent => {
                 Component::GenericVerificationComponent(component_id)
@@ -447,43 +455,14 @@ impl Component {
         Ok(())
     }
 
-    /// Returns the TPIU component if there is any.
-    pub fn tpiu<'probe: 'core, 'core>(
-        &'core self,
-        core: &'core mut Core<'probe>,
-    ) -> Result<Tpiu<'probe, 'core>, RomTableError> {
+    /// Finds the first component with the given peripheral type
+    pub fn find_component(&self, peripheral_type: PeripheralType) -> Option<&Component> {
         for component in self.iter() {
-            if component.id().peripheral_id.is_tpiu() {
-                return Ok(Tpiu::new(core, component));
+            if component.id().peripheral_id.is_of_type(peripheral_type) {
+                return Some(component);
             }
         }
-        Err(RomTableError::ComponentNotFound("TPIU".into()))
-    }
-
-    /// Returns the DWT component if there is any.
-    pub fn dwt<'probe: 'core, 'core>(
-        &'core self,
-        core: &'core mut Core<'probe>,
-    ) -> Result<Dwt<'probe, 'core>, RomTableError> {
-        for component in self.iter() {
-            if component.id().peripheral_id.is_dwt() {
-                return Ok(Dwt::new(core, component));
-            }
-        }
-        Err(RomTableError::ComponentNotFound("DWT".into()))
-    }
-
-    /// Returns the ITM component if there is any.
-    pub fn itm<'probe: 'core, 'core>(
-        &'core self,
-        core: &'core mut Core<'probe>,
-    ) -> Result<Itm<'probe, 'core>, RomTableError> {
-        for component in self.iter() {
-            if component.id().peripheral_id.is_itm() {
-                return Ok(Itm::new(core, component));
-            }
-        }
-        Err(RomTableError::ComponentNotFound("TPIU".into()))
+        None
     }
 
     pub fn iter(&self) -> ComponentIter {
@@ -576,15 +555,15 @@ pub struct PeripheralID {
     PART: u16,
     /// The SIZE is indicated as a multiple of 4k blocks the peripheral occupies.
     SIZE: u8,
+    /// The dev_type of the peripheral
+    dev_type: u8,
+    /// The arch_id of the peripheral
+    arch_id: u16,
 }
 
 impl PeripheralID {
-    const _ITM_PID: [u8; 8] = [0x1, 0xB0, 0x3b, 0x0, 0x4, 0x0, 0x0, 0x0];
-    const _TPIU_PID: [u8; 8] = [0xA1, 0xB9, 0x0B, 0x0, 0x4, 0x0, 0x0, 0x0];
-    const _DWT_PID: [u8; 8] = [0x2, 0xB0, 0x3b, 0x0, 0x4, 0x0, 0x0, 0x0];
-
     /// Extracts the peripheral ID of the CoreSight component table data.
-    fn from_raw(data: &[u32; 8]) -> Self {
+    fn from_raw(data: &[u32; 8], dev_type: u8, arch_id: u16) -> Self {
         let jep106id = (((data[2] & 0x07) << 4) | ((data[1] >> 4) & 0x0F)) as u8;
         let jep106 = jep106::JEP106Code::new((data[4] & 0x0F) as u8, jep106id);
         let legacy = (data[2] & 0x8) > 1;
@@ -599,22 +578,16 @@ impl PeripheralID {
             JEP106: if legacy { Some(jep106) } else { None },
             PART: (((data[1] & 0x0F) << 8) | (data[0] & 0xFF)) as u16,
             SIZE: 2u32.pow((data[4] >> 4) & 0x0F) as u8,
+            dev_type,
+            arch_id,
         }
     }
 
-    /// Returns whether the peripheral is a TPIU cell.
-    pub fn is_tpiu(&self) -> bool {
-        self.PART == 0x9A1
-    }
-
-    /// Returns whether the peripheral is an ITM cell.
-    pub fn is_itm(&self) -> bool {
-        self.PART == 0x01
-    }
-
-    /// Returns whether the peripheral is a DWT cell.
-    pub fn is_dwt(&self) -> bool {
-        self.PART == 0x2
+    /// Returns whether the peripheral is of the given type.
+    pub fn is_of_type(&self, peripheral_type: PeripheralType) -> bool {
+        self.determine_part()
+            .map(|info| info.peripheral_type() == peripheral_type)
+            .unwrap_or(false)
     }
 
     /// Returns the JEP106 code of the peripheral ID register.
@@ -625,5 +598,133 @@ impl PeripheralID {
     /// Returns the PART of the peripheral ID register.
     pub fn part(&self) -> u16 {
         self.PART
+    }
+
+    /// Uses the available data to match it againts a table of known components.
+    /// If the component is known, some info about it is returned.
+    /// If it is not known, None is returned.
+    #[rustfmt::skip]
+    pub fn determine_part(&self) -> Option<PartInfo> {
+        let code = self.JEP106.map(|jep106| jep106.get()).flatten().unwrap_or("");
+
+        // Source of the table: https://github.com/blacksphere/blackmagic/blob/master/src/target/adiv5.c#L189
+        // Not all are present and this table could be expanded
+        match (
+            code,
+            self.PART,
+            self.dev_type,
+            self.arch_id,
+        ) {
+            ("ARM Ltd", 0x000, 0x00, 0x0000) => Some(PartInfo::new("Cortex-M3 SCS", PeripheralType::Scs)),
+            ("ARM Ltd", 0x001, 0x00, 0x0000) => Some(PartInfo::new("Cortex-M3 ITM", PeripheralType::Itm)),
+            ("ARM Ltd", 0x002, 0x00, 0x0000) => Some(PartInfo::new("Cortex-M3 DWT", PeripheralType::Dwt)),
+            ("ARM Ltd", 0x003, 0x00, 0x0000) => Some(PartInfo::new("Cortex-M3 FBP", PeripheralType::Fbp)),
+            ("ARM Ltd", 0x008, 0x00, 0x0000) => Some(PartInfo::new("Cortex-M0 SCS", PeripheralType::Scs)),
+            ("ARM Ltd", 0x00A, 0x00, 0x0000) => Some(PartInfo::new("Cortex-M0 DWT", PeripheralType::Dwt)),
+            ("ARM Ltd", 0x00B, 0x00, 0x0000) => Some(PartInfo::new("Cortex-M0 BPU", PeripheralType::Bpu)),
+            ("ARM Ltd", 0x00C, 0x00, 0x0000) => Some(PartInfo::new("Cortex-M4 SCS", PeripheralType::Scs)),
+            ("ARM Ltd", 0x00D, 0x00, 0x0000) => Some(PartInfo::new("CoreSight ETM11", PeripheralType::Etm)),
+            ("ARM Ltd", 0x00E, 0x00, 0x0000) => Some(PartInfo::new("Cortex-M7 FBP", PeripheralType::Fbp)),
+            ("ARM Ltd", 0x101, 0x00, 0x0000) => Some(PartInfo::new("System TSGEN", PeripheralType::Tsgen)),
+            ("ARM Ltd", 0x471, 0x00, 0x0000) => Some(PartInfo::new("Cortex-M0  ROM", PeripheralType::Rom)),
+            ("ARM Ltd", 0x4C0, 0x00, 0x0000) => Some(PartInfo::new("Cortex-M0+ ROM", PeripheralType::Rom)),
+            ("ARM Ltd", 0x4C4, 0x00, 0x0000) => Some(PartInfo::new("Cortex-M4 ROM", PeripheralType::Rom)),
+            ("ARM Ltd", 0x907, 0x21, 0x0000) => Some(PartInfo::new("CoreSight ETB", PeripheralType::Etb)),
+            ("ARM Ltd", 0x910, 0x00, 0x0000) => Some(PartInfo::new("CoreSight ETM9", PeripheralType::Etm)),
+            ("ARM Ltd", 0x912, 0x11, 0x0000) => Some(PartInfo::new("CoreSight TPIU", PeripheralType::Tpiu)),
+            ("ARM Ltd", 0x913, 0x00, 0x0000) => Some(PartInfo::new("CoreSight ITM", PeripheralType::Itm)),
+            ("ARM Ltd", 0x914, 0x00, 0x0000) => Some(PartInfo::new("CoreSight SWO", PeripheralType::Swo)),
+            ("ARM Ltd", 0x920, 0x00, 0x0000) => Some(PartInfo::new("CoreSight ETM11", PeripheralType::Etm)),
+            ("ARM Ltd", 0x923, 0x11, 0x0000) => Some(PartInfo::new("Cortex-M3 TPIU", PeripheralType::Tpiu)),
+            ("ARM Ltd", 0x924, 0x13, 0x0000) => Some(PartInfo::new("Cortex-M3 ETM", PeripheralType::Etm)),
+            ("ARM Ltd", 0x925, 0x13, 0x0000) => Some(PartInfo::new("Cortex-M4 ETM", PeripheralType::Etm)),
+            ("ARM Ltd", 0x962, 0x00, 0x0000) => Some(PartInfo::new("CoreSight STM", PeripheralType::Stm)),
+            ("ARM Ltd", 0x963, 0x63, 0x0a63) => Some(PartInfo::new("CoreSight STM", PeripheralType::Stm)),
+            ("ARM Ltd", 0x975, 0x13, 0x4a13) => Some(PartInfo::new("Cortex-M7 ETM", PeripheralType::Etm)),
+            ("ARM Ltd", 0x9A1, 0x11, 0x0000) => Some(PartInfo::new("Cortex-M4 TPIU", PeripheralType::Tpiu)),
+            ("ARM Ltd", 0x9A9, 0x11, 0x0000) => Some(PartInfo::new("Cortex-M7 TPIU", PeripheralType::Tpiu)),
+            ("ARM Ltd", 0xD20, 0x00, 0x2A04) => Some(PartInfo::new("Cortex-M23 SCS", PeripheralType::Scs)),
+            ("ARM Ltd", 0xD20, 0x11, 0x0000) => Some(PartInfo::new("Cortex-M23 TPIU", PeripheralType::Tpiu)),
+            ("ARM Ltd", 0xD20, 0x13, 0x0000) => Some(PartInfo::new("Cortex-M23 ETM", PeripheralType::Etm)),
+            ("ARM Ltd", 0xD20, 0x00, 0x1A02) => Some(PartInfo::new("Cortex-M23 DWT", PeripheralType::Dwt)),
+            ("ARM Ltd", 0xD20, 0x00, 0x1A03) => Some(PartInfo::new("Cortex-M23 BPU", PeripheralType::Bpu)),
+            ("ARM Ltd", 0xD21, 0x00, 0x2A04) => Some(PartInfo::new("Cortex-M33 SCS", PeripheralType::Scs)),
+            ("ARM Ltd", 0xD21, 0x43, 0x1A01) => Some(PartInfo::new("Cortex-M33 ITM", PeripheralType::Itm)),
+            ("ARM Ltd", 0xD21, 0x00, 0x1A02) => Some(PartInfo::new("Cortex-M33 DWT", PeripheralType::Dwt)),
+            ("ARM Ltd", 0xD21, 0x00, 0x1A03) => Some(PartInfo::new("Cortex-M33 BPU", PeripheralType::Bpu)),
+            ("ARM Ltd", 0xD21, 0x13, 0x4A13) => Some(PartInfo::new("Cortex-M33 ETM", PeripheralType::Etm)),
+            ("ARM Ltd", 0xD21, 0x11, 0x0000) => Some(PartInfo::new("Cortex-M33 TPIU", PeripheralType::Tpiu)),
+            _ => None,
+        }
+    }
+}
+
+/// Some info about a romtable component
+#[derive(Debug, Copy, Clone)]
+pub struct PartInfo {
+    name: &'static str,
+    peripheral_type: PeripheralType,
+}
+
+impl PartInfo {
+    /// Creates a new part info instance of a given name and type
+    pub const fn new(name: &'static str, peripheral_type: PeripheralType) -> Self {
+        Self {
+            name,
+            peripheral_type,
+        }
+    }
+
+    /// Gets the part name
+    pub const fn name(&self) -> &'static str {
+        self.name
+    }
+
+    /// Gets the peripheral type
+    pub const fn peripheral_type(&self) -> PeripheralType {
+        self.peripheral_type
+    }
+}
+
+impl std::fmt::Display for PartInfo {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}: {}", self.name, self.peripheral_type)
+    }
+}
+
+/// The type of peripheral as read by the romtable parser
+#[non_exhaustive]
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub enum PeripheralType {
+    Tpiu,
+    Itm,
+    Dwt,
+    Scs,
+    Fbp,
+    Bpu,
+    Etm,
+    Etb,
+    Rom,
+    Swo,
+    Stm,
+    Tsgen,
+}
+
+impl std::fmt::Display for PeripheralType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            PeripheralType::Tpiu => write!(f, "Tpiu (Trace Port Interface Unit)"),
+            PeripheralType::Itm => write!(f, "Itm (Instrumentation Trace Module)"),
+            PeripheralType::Dwt => write!(f, "Dwt (Data Watchpoint and Trace)"),
+            PeripheralType::Scs => write!(f, "Scs (System Control Space)"),
+            PeripheralType::Fbp => write!(f, "Fbp (Flash Patch and Breakpoint)"),
+            PeripheralType::Bpu => write!(f, "Bpu (Breakpoint Unit)"),
+            PeripheralType::Etm => write!(f, "Etm (Embedded Trace)"),
+            PeripheralType::Etb => write!(f, "Etb (Trace Buffer)"),
+            PeripheralType::Rom => write!(f, "Rom"),
+            PeripheralType::Swo => write!(f, "Swo (Single Wire Output)"),
+            PeripheralType::Stm => write!(f, "Stm (System Trace Macrocell)"),
+            PeripheralType::Tsgen => write!(f, "Tsgen (Time Stamp Generator)"),
+        }
     }
 }

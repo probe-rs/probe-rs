@@ -1,5 +1,8 @@
 ---
 name: nRF51 Series
+manufacturer:
+  cc: 0x02
+  id: 0x44
 variants:
   - name: nRF51422_xxAA
     memory_map:
@@ -8,7 +11,7 @@ variants:
             start: 536870912
             end: 536887296
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0
             end: 262144
@@ -24,7 +27,7 @@ variants:
             start: 536870912
             end: 536887296
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0
             end: 131072
@@ -40,7 +43,7 @@ variants:
             start: 536870912
             end: 536903680
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0
             end: 262144
@@ -56,7 +59,7 @@ variants:
             start: 536870912
             end: 536887296
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0
             end: 196608
@@ -72,7 +75,7 @@ variants:
             start: 536870912
             end: 536887296
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0
             end: 262144
@@ -88,7 +91,7 @@ variants:
             start: 536870912
             end: 536887296
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0
             end: 262144
@@ -104,7 +107,7 @@ variants:
             start: 536870912
             end: 536887296
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0
             end: 131072
@@ -120,7 +123,7 @@ variants:
             start: 536870912
             end: 536903680
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0
             end: 262144
@@ -136,7 +139,7 @@ variants:
             start: 536870912
             end: 536887296
           is_boot_memory: false
-      - Flash:
+      - Nvm:
           range:
             start: 0
             end: 262144

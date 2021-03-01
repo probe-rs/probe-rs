@@ -1,0 +1,18 @@
+---
+name: GD32VF1 Series
+variants:
+  - name: GD32VF103CBT6
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536969216
+          is_boot_memory: false
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+flash_algorithms:
+core: riscv

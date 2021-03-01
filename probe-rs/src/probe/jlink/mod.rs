@@ -7,23 +7,23 @@ use std::convert::{TryFrom, TryInto};
 use std::iter;
 
 use crate::{
-    architecture::arm::{DapError, PortType, Register},
     architecture::{
         arm::{
-            communication_interface::ArmProbeInterface,
-            dp::Abort,
-            dp::{Ctrl, RdBuff},
+            communication_interface::{ArmProbeInterface, DAPProbe},
             swo::SwoConfig,
             ArmCommunicationInterface, SwoAccess,
         },
         riscv::communication_interface::RiscvCommunicationInterface,
     },
     probe::{
-        DAPAccess, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeType, JTAGAccess,
-        WireProtocol,
+        DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeType, JTAGAccess, WireProtocol,
     },
     DebugProbeSelector, Error as ProbeRsError,
 };
+
+use self::swd::{RawSwdIo, SwdSettings, SwdStatistics};
+
+mod swd;
 
 const SWO_BUFFER_SIZE: u16 = 128;
 
@@ -45,6 +45,9 @@ pub(crate) struct JLink {
     current_ir_reg: u32,
 
     speed_khz: u32,
+
+    swd_statistics: SwdStatistics,
+    swd_settings: SwdSettings,
 }
 
 impl JLink {
@@ -311,62 +314,6 @@ impl JLink {
 
         Ok(result)
     }
-
-    /// Try to perform a SWD line reset, followed by a read of the DPIDR register.
-    ///
-    /// Returns Ok if the read of the DPIDR register was succesful, and Err
-    /// otherwise. In case of JLink Errors, the actual error is returned.
-    ///
-    /// If the first line reset fails, it is tried once again, as the target
-    /// might be in the middle of a transfer the first time we try the reset.
-    ///
-    /// See section B4.3.3 in the ADIv5 Specification.
-    fn swd_line_reset(&mut self) -> Result<(), DebugProbeError> {
-        log::debug!("Performing line reset!");
-
-        let mut swd_io = vec![true; 50];
-        let mut direction = vec![true; 50];
-
-        let (register_io, register_direction) =
-            build_swd_transfer(PortType::DebugPort, TransferType::Read, 0);
-
-        swd_io.extend_from_slice(&register_io);
-        direction.extend_from_slice(&register_direction);
-
-        let mut result = Ok(());
-
-        for _ in 0..2 {
-            let mut result_sequence = self.handle.swd_io(direction.clone(), swd_io.clone())?;
-
-            // Ignore reset bits, idle bits, and request
-            result_sequence.split_off(50 + 2 + 8);
-
-            let ack = result_sequence.split_off(3).collect::<Vec<_>>();
-
-            log::debug!("line reset ack: {:?}", ack);
-
-            match &ack[..] {
-                // OK response
-                [true, false, false] => {
-                    return Ok(());
-                }
-                // WAIT response
-                [false, true, false] => {
-                    result = Err(DapError::WaitResponse.into());
-                }
-                // FAULT response
-                [false, false, true] => {
-                    result = Err(DapError::FaultResponse.into());
-                }
-                _ => {
-                    result = Err(DapError::NoAcknowledge.into());
-                }
-            }
-        }
-
-        // No acknowledge from the target, even if after line reset
-        result
-    }
 }
 
 impl DebugProbe for JLink {
@@ -450,6 +397,8 @@ impl DebugProbe for JLink {
             protocol: None,
             current_ir_reg: 1,
             speed_khz: 0,
+            swd_settings: SwdSettings::default(),
+            swd_statistics: SwdStatistics::default(),
         }))
     }
 
@@ -544,15 +493,15 @@ impl DebugProbe for JLink {
             Err(_) => log::info!("J-Link: Hardware version: ?"),
         };
 
-        // Verify target voltage (VTref pin, mV). If this is 0, the device is not powered.
-        let target_voltage = self.handle.read_target_voltage()?;
-        if target_voltage == 0 {
-            log::warn!("J-Link: Target voltage (VTref) is 0 V. Is your target device powered?");
-        } else {
-            log::info!(
-                "J-Link: Target voltage: {:2.2} V",
-                target_voltage as f32 / 1000f32
+        // Check and report the target voltage.
+        let target_voltage = self.get_target_voltage()?.expect("The J-Link returned None when it should only be able to return Some(f32) or an error. Please report this bug!");
+        if target_voltage < crate::probe::LOW_TARGET_VOLTAGE_WARNING_THRESHOLD {
+            log::warn!(
+                "J-Link: Target voltage (VTref) is {:2.2} V. Is your target device powered?",
+                target_voltage
             );
+        } else {
+            log::info!("J-Link: Target voltage: {:2.2} V", target_voltage);
         }
 
         match actual_protocol {
@@ -576,7 +525,7 @@ impl DebugProbe for JLink {
                 let idcode_bytes = self.read_dr(32)?;
                 let idcode = u32::from_le_bytes((&idcode_bytes[..]).try_into().unwrap());
 
-                log::debug!("IDCODE: {:#010x}", idcode);
+                log::info!("JTAG IDCODE: {:#010x}", idcode);
             }
             WireProtocol::Swd => {
                 // Construct the JTAG to SWD sequence.
@@ -618,7 +567,7 @@ impl DebugProbe for JLink {
     }
 
     fn detach(&mut self) -> Result<(), super::DebugProbeError> {
-        unimplemented!()
+        Ok(())
     }
 
     fn target_reset(&mut self) -> Result<(), super::DebugProbeError> {
@@ -635,13 +584,19 @@ impl DebugProbe for JLink {
         Ok(())
     }
 
-    fn get_riscv_interface(
+    fn try_get_riscv_interface(
         self: Box<Self>,
-    ) -> Result<Option<RiscvCommunicationInterface>, DebugProbeError> {
+    ) -> Result<RiscvCommunicationInterface, (Box<dyn DebugProbe>, DebugProbeError)> {
         if self.supported_protocols.contains(&WireProtocol::Jtag) {
-            Ok(Some(RiscvCommunicationInterface::new(self)?))
+            match RiscvCommunicationInterface::new(self) {
+                Ok(interface) => Ok(interface),
+                Err((probe, err)) => Err((probe.into_probe(), err)),
+            }
         } else {
-            Ok(None)
+            Err((
+                self.into_probe(),
+                DebugProbeError::InterfaceNotAvailable("JTAG"),
+            ))
         }
     }
 
@@ -653,24 +608,44 @@ impl DebugProbe for JLink {
         Some(self as _)
     }
 
-    fn get_arm_interface<'probe>(
-        self: Box<Self>,
-    ) -> Result<Option<Box<dyn ArmProbeInterface + 'probe>>, DebugProbeError> {
-        if self.supported_protocols.contains(&WireProtocol::Swd) {
-            let interface = ArmCommunicationInterface::new(self, true)?;
-
-            Ok(Some(Box::new(interface)))
-        } else {
-            Ok(None)
-        }
-    }
-
     fn has_arm_interface(&self) -> bool {
         self.supported_protocols.contains(&WireProtocol::Swd)
     }
 
     fn has_riscv_interface(&self) -> bool {
         self.supported_protocols.contains(&WireProtocol::Jtag)
+    }
+
+    fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
+        self
+    }
+
+    fn try_get_arm_interface<'probe>(
+        mut self: Box<Self>,
+    ) -> Result<Box<dyn ArmProbeInterface + 'probe>, (Box<dyn DebugProbe>, DebugProbeError)> {
+        if self.supported_protocols.contains(&WireProtocol::Swd) {
+            if let Some(WireProtocol::Jtag) = self.protocol {
+                log::warn!("Debugging ARM chips over JTAG is not yet implemented for JLink.");
+                return Err((self, DebugProbeError::InterfaceNotAvailable("SWD/ARM")));
+            }
+
+            // Ensure the SWD protocol is used.
+            if let Err(e) = self.select_protocol(WireProtocol::Swd) {
+                return Err((self, e));
+            };
+
+            match ArmCommunicationInterface::new(self, true) {
+                Ok(interface) => Ok(Box::new(interface)),
+                Err((probe, err)) => Err((probe.into_probe(), err)),
+            }
+        } else {
+            Err((self, DebugProbeError::InterfaceNotAvailable("SWD/ARM")))
+        }
+    }
+
+    fn get_target_voltage(&mut self) -> Result<Option<f32>, DebugProbeError> {
+        // Convert the integer millivolts value from self.handle to volts as an f32.
+        Ok(Some((self.handle.read_target_voltage()? as f32) / 1000f32))
     }
 }
 
@@ -723,398 +698,9 @@ impl JTAGAccess for JLink {
     fn set_idle_cycles(&mut self, idle_cycles: u8) {
         self.jtag_idle_cycles = idle_cycles;
     }
-
-    fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
-        self
-    }
 }
 
-impl<'a> AsRef<dyn DebugProbe + 'a> for JLink {
-    fn as_ref(&self) -> &(dyn DebugProbe + 'a) {
-        self
-    }
-}
-
-impl<'a> AsMut<dyn DebugProbe + 'a> for JLink {
-    fn as_mut(&mut self) -> &mut (dyn DebugProbe + 'a) {
-        self
-    }
-}
-
-#[derive(Debug, PartialEq)]
-enum TransferType {
-    Read,
-    Write(u32),
-}
-
-fn build_swd_transfer(
-    port: PortType,
-    direction: TransferType,
-    address: u16,
-) -> (Vec<bool>, Vec<bool>) {
-    // JLink operates on raw SWD bit sequences.
-    // So we need to manually assemble the read and write bitsequences.
-    // The following code with the comments hopefully explains well enough how it works.
-    // `true` means `1` and `false` means `0` for the SWDIO sequence.
-    // `true` means `drive line` and `false` means `open drain` for the direction sequence.
-
-    // First we determine the APnDP bit.
-    let port = match port {
-        PortType::DebugPort => false,
-        PortType::AccessPort(_) => true,
-    };
-
-    // Set direction bit to 1 for reads.
-    let direction_bit = direction == TransferType::Read;
-
-    // Then we determine the address bits.
-    // Only bits 2 and 3 are relevant as we use byte addressing but can only read 32bits
-    // which means we can skip bits 0 and 1. The ADI specification is defined like this.
-    let a2 = (address >> 2) & 0x01 == 1;
-    let a3 = (address >> 3) & 0x01 == 1;
-
-    // Now we assemble an SWD request.
-    let mut swd_io_sequence = vec![
-        // First we make sure we have the SDWIO line on idle for at least 2 clock cylces.
-        false, // Line idle.
-        false, // Line idle.
-        // Then we assemble the actual request.
-        true,                           // Start bit (always 1).
-        port,                           // APnDP (0 for DP, 1 for AP).
-        direction_bit,                  // RnW (0 for Write, 1 for Read).
-        a2,                             // Address bit 2.
-        a3,                             // Address bit 3,
-        port ^ direction_bit ^ a2 ^ a3, // Odd parity bit over APnDP, RnW a2 and a3
-        false,                          // Stop bit (always 0).
-        true,                           // Park bit (always 1).
-        // Theoretically the spec says that there is a turnaround bit required here, where no clock is driven.
-        // This seems to not be the case in actual implementations. So we do not insert this bit either!
-        // false,                 // Turnaround bit.
-        false, // ACK bit.
-        false, // ACK bit.
-        false, // ACK bit.
-    ];
-
-    if let TransferType::Write(mut value) = direction {
-        // For writes, we need to add two turnaround bits.
-        // Theoretically the spec says that there is only one turnaround bit required here, where no clock is driven.
-        // This seems to not be the case in actual implementations. So we insert two turnaround bits here!
-        swd_io_sequence.extend_from_slice(&[false, false]);
-
-        // Now we add all the data bits to the sequence and in the same loop we also calculate the parity bit.
-        let mut parity = false;
-        for _ in 0..32 {
-            let bit = value & 1 == 1;
-            swd_io_sequence.push(bit);
-            parity ^= bit;
-            value >>= 1;
-        }
-
-        swd_io_sequence.push(parity);
-    } else {
-        // Handle Read
-        // Add the data bits to the SWDIO sequence.
-        swd_io_sequence.extend_from_slice(&[false; 32]);
-
-        // Add the parity bit to the sequence.
-        swd_io_sequence.push(false);
-
-        // Finally add the turnaround bit to the sequence.
-        swd_io_sequence.push(false);
-    }
-
-    // Assemble the direction sequence.
-    let direction_sequence = iter::repeat(true)
-        .take(2) // Transmit 2 Line idle bits.
-        .chain(iter::repeat(true).take(8)) // Transmit 8 Request bits
-        // Here *should* be a Trn bit, but since something with the spec is akward we leave it away.
-        // See comments above!
-        .chain(iter::repeat(false).take(3)); // Receive 3 Ack bits.
-
-    let direction_sequence: Vec<bool> = if direction == TransferType::Read {
-        direction_sequence
-            .chain(iter::repeat(false).take(32)) // Receive 32 Data bits.
-            .chain(iter::repeat(false).take(1)) // Receive 1 Parity bit.
-            .chain(iter::repeat(false).take(1)) // Transmit turnaround bit
-            .collect()
-    } else {
-        direction_sequence
-            .chain(iter::repeat(false).take(2)) // Transmit two turnaround bits.
-            .chain(iter::repeat(true).take(32)) // Transmit 32 Data bits.
-            .chain(iter::repeat(true).take(1)) // Transmit 1 Parity bit.
-            .collect()
-    };
-
-    assert_eq!(
-        swd_io_sequence.len(),
-        direction_sequence.len(),
-        "IO and direction sequences need to have the same length."
-    );
-
-    (swd_io_sequence, direction_sequence)
-}
-
-impl DAPAccess for JLink {
-    fn read_register(&mut self, port: PortType, address: u16) -> Result<u32, DebugProbeError> {
-        // JLink operates on raw SWD bit sequences.
-        // So we need to manually assemble the read and write bitsequences.
-        // The following code with the comments hopefully explains well enough how it works.
-        // `true` means `1` and `false` means `0` for the SWDIO sequence.
-        // `true` means `drive line` and `false` means `open drain` for the direction sequence.
-
-        let (swd_io_sequence, direction) = build_swd_transfer(port, TransferType::Read, address);
-
-        // Now we try to issue the request until it fails or succeeds.
-        // If we timeout we retry a maximum of 5 times.
-        for retry in 0..5 {
-            // Transmit the sequence and record the line sequence for the ack bits.
-            let mut result_sequence = self
-                .handle
-                .swd_io(direction.clone(), swd_io_sequence.iter().copied())?;
-
-            // Throw away the two idle bits.
-            result_sequence.split_off(2);
-            // Throw away the request bits.
-            result_sequence.split_off(8);
-
-            // Get the ack.
-            let ack = result_sequence.split_off(3).collect::<Vec<_>>();
-
-            // When all bits are high, this means we didn't get any response from the
-            // target, which indicates a protocol error.
-            if ack[0] && ack[1] && ack[2] {
-                log::debug!("DAP NACK");
-
-                // Because we clock the SWDCLK line after receving the WAIT response,
-                // the target might be in weird state. If we perform a line reset,
-                // we should be able to recover from this.
-                self.swd_line_reset()?;
-
-                // Retry operation again
-                continue;
-            }
-            if ack[1] {
-                // If ack[1] is set the host must retry the request. So let's do that right away!
-                log::debug!("DAP WAIT, retries remaining {}.", 5 - retry);
-
-                // Because we use overrun detection, we now have to clear the overrun error
-                let mut abort = Abort(0);
-
-                abort.set_orunerrclr(true);
-
-                DAPAccess::write_register(
-                    self,
-                    PortType::DebugPort,
-                    Abort::ADDRESS as u16,
-                    abort.into(),
-                )?;
-
-                continue;
-            }
-            if ack[2] {
-                log::debug!("DAP FAULT");
-
-                // A fault happened during operation.
-
-                // To get a clue about the actual fault we read the ctrl register,
-                // which will have the fault status flags set.
-                let response =
-                    DAPAccess::read_register(self, PortType::DebugPort, Ctrl::ADDRESS as u16)?;
-                let ctrl = Ctrl::from(response);
-                log::debug!(
-                    "Writing DAP register failed. Ctrl/Stat register value is: {:#?}",
-                    ctrl
-                );
-
-                // Check the reason for the fault
-                // Other fault reasons than overrun or write error are not handled yet.
-                if ctrl.sticky_orun() || ctrl.sticky_err() {
-                    // We did not handle a WAIT state properly
-
-                    // Because we use overrun detection, we now have to clear the overrun error
-                    let mut abort = Abort(0);
-
-                    // Clear sticky error flags
-                    abort.set_orunerrclr(ctrl.sticky_orun());
-                    abort.set_stkerrclr(ctrl.sticky_err());
-
-                    DAPAccess::write_register(
-                        self,
-                        PortType::DebugPort,
-                        Abort::ADDRESS as u16,
-                        abort.into(),
-                    )?;
-                    continue;
-                }
-
-                return Err(DapError::FaultResponse.into());
-            }
-
-            // If we are reading an AP register we only get the actual result in the next transaction.
-            // So we issue a special transaction to get the read value.
-            if let PortType::AccessPort(_) = port {
-                // We read the RDBUFF register to get the value of the last AP transaction.
-                // This special register just returns the last read value with no side-effects like auto-increment.
-                return DAPAccess::read_register(self, PortType::DebugPort, RdBuff::ADDRESS as u16);
-            } else {
-                // Take the data bits and convert them into a 32bit int.
-                let register_val = result_sequence.split_off(32);
-                let value = bits_to_byte(register_val);
-
-                // Make sure the parity is correct.
-                return result_sequence
-                    .next()
-                    .and_then(|parity| {
-                        if (value.count_ones() % 2 == 1) == parity {
-                            log::trace!("DAP read {}.", value);
-                            Some(value)
-                        } else {
-                            None
-                        }
-                    })
-                    .ok_or_else(|| {
-                        log::error!("DAP read fault.");
-                        DapError::IncorrectParity.into()
-                    });
-
-                // Don't care about the Trn bit at the end.
-            }
-        }
-
-        // If we land here, the DAP operation timed out.
-        log::error!("DAP read timeout.");
-        Err(DebugProbeError::Timeout)
-    }
-
-    fn write_register(
-        &mut self,
-        port: PortType,
-        address: u16,
-        value: u32,
-    ) -> Result<(), DebugProbeError> {
-        // JLink operates on raw SWD bit sequences.
-        // So we need to manually assemble the read and write bitsequences.
-        // The following code with the comments hopefully explains well enough how it works.
-        // `true` means `1` and `false` means `0` for the SWDIO sequence.
-        // `true` means `drive line` and `false` means `open drain` for the direction sequence.
-
-        let (mut swd_io_sequence, mut direction) =
-            build_swd_transfer(port, TransferType::Write(value), address);
-
-        // Add 8 idle cycles to ensure the write is performed.
-        // See section B4.1.1 in the ARM Debug Interface specification.
-        //
-        // This doesn't have to be done if the write is directly followed by another request,
-        // but until batching is implemented, this is the safest way.
-        for _ in 0..8 {
-            swd_io_sequence.push(false);
-            direction.push(true);
-        }
-
-        // Now we try to issue the request until it fails or succeeds.
-        // If we timeout we retry a maximum of 5 times.
-        for retry in 0..5 {
-            // Transmit the sequence and record the line sequence for the ack and data bits.
-            let mut result_sequence = self
-                .handle
-                .swd_io(direction.clone(), swd_io_sequence.iter().copied())?;
-
-            // Throw away the two idle bits.
-            result_sequence.split_off(2);
-            // Throw away the request bits.
-            result_sequence.split_off(8);
-
-            // Get the ack.
-            let ack = result_sequence.by_ref().take(3).collect::<Vec<_>>();
-
-            // When all bits are high, this means we didn't get any response from the
-            // target, which indicates a protocol error.
-            if ack[0] && ack[1] && ack[2] {
-                log::debug!("DAP NACK");
-
-                // Because we clock the SWDCLK line after receving the WAIT response,
-                // the target might be in weird state. If we perform a line reset,
-                // we should be able to recover from this.
-                self.swd_line_reset()?;
-
-                // Retry operation
-                continue;
-            }
-
-            if ack[1] {
-                // If ack[1] is set the host must retry the request. So let's do that right away!
-                log::debug!("DAP WAIT, retries remaining {}.", 5 - retry);
-
-                let mut abort = Abort(0);
-
-                abort.set_orunerrclr(true);
-
-                // Because we use overrun detection, we now have to clear the overrun error
-                DAPAccess::write_register(
-                    self,
-                    PortType::DebugPort,
-                    Abort::ADDRESS as u16,
-                    abort.into(),
-                )?;
-
-                continue;
-            }
-
-            if ack[2] {
-                log::debug!("DAP FAULT");
-                // A fault happened during operation.
-
-                // To get a clue about the actual fault we read the ctrl register,
-                // which will have the fault status flags set.
-
-                let response =
-                    DAPAccess::read_register(self, PortType::DebugPort, Ctrl::ADDRESS as u16)?;
-
-                let ctrl = Ctrl::from(response);
-                log::trace!(
-                    "Writing DAP register failed. Ctrl/Stat register value is: {:#?}",
-                    ctrl
-                );
-
-                // Check the reason for the fault
-                // Other fault reasons than overrun or write error are not handled yet.
-                if ctrl.sticky_orun() || ctrl.sticky_err() {
-                    // We did not handle a WAIT state properly
-
-                    // Because we use overrun detection, we now have to clear the overrun error
-                    let mut abort = Abort(0);
-
-                    // Clear sticky error flags
-                    abort.set_orunerrclr(ctrl.sticky_orun());
-                    abort.set_stkerrclr(ctrl.sticky_err());
-
-                    DAPAccess::write_register(
-                        self,
-                        PortType::DebugPort,
-                        Abort::ADDRESS as u16,
-                        abort.into(),
-                    )?;
-                    continue;
-                }
-
-                return Err(DapError::FaultResponse.into());
-            }
-
-            // Since this is a write request, we don't care about the part after the ack bits.
-            // So we just discard the Trn + Data + Parity bits.
-            log::trace!("DAP wrote {}.", value);
-            return Ok(());
-        }
-
-        // If we land here, the DAP operation timed out.
-        log::error!("DAP write timeout.");
-        Err(DebugProbeError::Timeout)
-    }
-
-    fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
-        self
-    }
-}
+impl DAPProbe for JLink {}
 
 impl SwoAccess for JLink {
     fn enable_swo(&mut self, config: &SwoConfig) -> Result<(), ProbeRsError> {
@@ -1162,7 +748,7 @@ impl SwoAccess for JLink {
     }
 }
 
-fn bits_to_byte(bits: impl IntoIterator<Item = bool>) -> u32 {
+pub(crate) fn bits_to_byte(bits: impl IntoIterator<Item = bool>) -> u32 {
     let mut bit_val = 0u32;
 
     for (index, bit) in bits.into_iter().take(32).enumerate() {
