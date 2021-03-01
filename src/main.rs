@@ -140,6 +140,7 @@ fn notmain() -> anyhow::Result<i32> {
 
     let target = probe_rs::config::registry::get_target_by_name(chip)?;
 
+    // find and report the RAM region
     let mut ram_region = None;
     for region in &target.memory_map {
         if let MemoryRegion::Ram(ram) = region {
@@ -150,7 +151,6 @@ fn notmain() -> anyhow::Result<i32> {
             }
         }
     }
-
     if let Some(ram) = &ram_region {
         log::debug!(
             "RAM region: 0x{:08X}-0x{:08X}",
