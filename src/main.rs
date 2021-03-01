@@ -44,10 +44,10 @@ use crate::{
     stacked::Stacked,
 };
 
+/// Successfull termination of process.
+const EXIT_SUCCESS: i32 = 0;
 const STACK_CANARY: u8 = 0xAA;
 const SIGABRT: i32 = 134;
-/// Successfull termination of process.
-const SIGSUCCESS: i32 = 0;
 const THUMB_BIT: u32 = 1;
 const TIMEOUT: Duration = Duration::from_secs(1);
 
@@ -123,11 +123,14 @@ fn notmain() -> anyhow::Result<i32> {
     });
 
     if opts.version {
-        return Ok(print_version());
+        print_version();
+        return Ok(EXIT_SUCCESS);
     } else if opts.list_probes {
-        return Ok(print_probes(Probe::list_all()));
+        print_probes(Probe::list_all());
+        return Ok(EXIT_SUCCESS);
     } else if opts.list_chips {
-        return Ok(print_chips());
+        print_chips();
+        return Ok(EXIT_SUCCESS);
     }
 
     let elf_path = opts.elf.as_deref().unwrap();
@@ -550,7 +553,7 @@ fn notmain() -> anyhow::Result<i32> {
             }
             SIGABRT
         } else {
-            SIGSUCCESS
+            EXIT_SUCCESS
         },
     )
 }
@@ -826,7 +829,7 @@ fn probes_filter(probes: &[DebugProbeInfo], selector: &ProbeFilter) -> Vec<Debug
         .collect()
 }
 
-fn print_chips() -> i32 {
+fn print_chips() {
     let registry = registry::families().expect("Could not retrieve chip family registry");
     for chip_family in registry {
         println!("{}\n    Variants:", chip_family.name);
@@ -834,10 +837,9 @@ fn print_chips() -> i32 {
             println!("        {}", variant.name);
         }
     }
-    SIGSUCCESS
 }
 
-fn print_probes(probes: Vec<DebugProbeInfo>) -> i32 {
+fn print_probes(probes: Vec<DebugProbeInfo>) {
     if !probes.is_empty() {
         println!("The following devices were found:");
         probes
@@ -847,18 +849,16 @@ fn print_probes(probes: Vec<DebugProbeInfo>) -> i32 {
     } else {
         println!("No devices were found.");
     }
-    SIGSUCCESS
 }
 
 /// The string reported by the `--version` flag
-fn print_version() -> i32 {
+fn print_version() {
     const VERSION: &str = env!("CARGO_PKG_VERSION"); // version from Cargo.toml e.g. "0.1.4"
     const HASH: &str = include_str!(concat!(env!("OUT_DIR"), "/git-info.txt")); // "" OR git hash e.g. "34019f8" -- this is generated in build.rs
     println!(
         "{}{}\nsupported defmt version: {}",
         VERSION, HASH, DEFMT_VERSION
     );
-    SIGSUCCESS
 }
 
 fn get_rtt_heap_main_from(
