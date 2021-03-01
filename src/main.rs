@@ -1,17 +1,17 @@
-use core::{
-    cmp,
-    convert::TryInto,
-    mem,
-    sync::atomic::{AtomicBool, Ordering},
-};
+mod registers;
+mod stacked;
+
 use std::{
     borrow::Cow,
-    collections::{btree_map, BTreeMap, HashSet},
+    collections::HashSet,
+    convert::TryInto,
     fs,
     io::{self, Write as _},
+    mem,
     path::{Path, PathBuf},
     process,
     str::FromStr,
+    sync::atomic::{AtomicBool, Ordering},
     sync::{Arc, Mutex},
     time::Duration,
 };
@@ -20,45 +20,36 @@ use addr2line::fallible_iterator::FallibleIterator as _;
 use anyhow::{anyhow, bail, Context};
 use arrayref::array_ref;
 use colored::Colorize as _;
+use defmt_decoder::DEFMT_VERSION;
 use gimli::{
-    read::{CfaRule, DebugFrame, UnwindSection},
-    BaseAddresses, EndianSlice, LittleEndian, RegisterRule, UninitializedUnwindContext,
+    read::{DebugFrame, UnwindSection},
+    BaseAddresses, LittleEndian, UninitializedUnwindContext,
 };
 use log::Level;
 use object::{
     read::{File as ElfFile, Object as _, ObjectSection as _},
     ObjectSegment, ObjectSymbol, SymbolSection,
 };
-use probe_rs::config::{registry, MemoryRegion, RamRegion};
 use probe_rs::{
+    config::{registry, MemoryRegion, RamRegion},
     flashing::{self, Format},
-    Core, CoreRegisterAddress, DebugProbeInfo, MemoryInterface, Probe, Session,
+    Core, DebugProbeInfo, MemoryInterface, Probe, Session,
 };
 use probe_rs_rtt::{Rtt, ScanRegion, UpChannel};
 use signal_hook::consts::signal;
 use structopt::{clap::AppSettings, StructOpt};
 
-const TIMEOUT: Duration = Duration::from_secs(1);
+use crate::{
+    registers::{Registers, LR, LR_END, PC, SP},
+    stacked::Stacked,
+};
+
+/// Successfull termination of process.
+const EXIT_SUCCESS: i32 = 0;
 const STACK_CANARY: u8 = 0xAA;
+const SIGABRT: i32 = 134;
 const THUMB_BIT: u32 = 1;
-
-fn main() -> Result<(), anyhow::Error> {
-    notmain().map(|code| process::exit(code))
-}
-
-// the string reported by the `--version` flag
-fn print_version() -> Result<i32, anyhow::Error> {
-    println!(
-        "{}{}",
-        // version from Cargo.toml e.g. "0.1.4"
-        env!("CARGO_PKG_VERSION"),
-        // "" OR git hash e.g. "34019f8" -- this is generated in build.rs
-        include_str!(concat!(env!("OUT_DIR"), "/git-info.txt"))
-    );
-    println!("supported defmt version: {}", defmt_decoder::DEFMT_VERSION);
-
-    Ok(0)
-}
+const TIMEOUT: Duration = Duration::from_secs(1);
 
 /// A Cargo runner for microcontrollers.
 #[derive(StructOpt)]
@@ -109,7 +100,11 @@ struct Opts {
     _rest: Vec<String>,
 }
 
-fn notmain() -> Result<i32, anyhow::Error> {
+fn main() -> anyhow::Result<()> {
+    notmain().map(|code| process::exit(code))
+}
+
+fn notmain() -> anyhow::Result<i32> {
     let opts: Opts = Opts::from_args();
     let verbose = opts.verbose;
     defmt_decoder::log::init_logger(verbose, move |metadata| {
@@ -128,15 +123,14 @@ fn notmain() -> Result<i32, anyhow::Error> {
     });
 
     if opts.version {
-        return print_version();
-    }
-
-    if opts.list_probes {
-        return print_probes(Probe::list_all());
-    }
-
-    if opts.list_chips {
-        return print_chips();
+        print_version();
+        return Ok(EXIT_SUCCESS);
+    } else if opts.list_probes {
+        print_probes(Probe::list_all());
+        return Ok(EXIT_SUCCESS);
+    } else if opts.list_chips {
+        print_chips();
+        return Ok(EXIT_SUCCESS);
     }
 
     let elf_path = opts.elf.as_deref().unwrap();
@@ -146,6 +140,7 @@ fn notmain() -> Result<i32, anyhow::Error> {
 
     let target = probe_rs::config::registry::get_target_by_name(chip)?;
 
+    // find and report the RAM region
     let mut ram_region = None;
     for region in &target.memory_map {
         if let MemoryRegion::Ram(ram) = region {
@@ -156,7 +151,6 @@ fn notmain() -> Result<i32, anyhow::Error> {
             }
         }
     }
-
     if let Some(ram) = &ram_region {
         log::debug!(
             "RAM region: 0x{:08X}-0x{:08X}",
@@ -165,7 +159,7 @@ fn notmain() -> Result<i32, anyhow::Error> {
         );
     }
 
-    // NOTE we want to raise the linking error before calling `defmt_elf2table::parse`
+    // NOTE we want to raise the linking error before calling `defmt_decoder::Table::parse`
     let text = elf
         .section_by_name(".text")
         .map(|section| section.index())
@@ -303,6 +297,8 @@ fn notmain() -> Result<i32, anyhow::Error> {
     } else {
         probes
     };
+
+    // ensure exactly one probe is found and open it
     if probes.is_empty() {
         bail!("no probe was found")
     }
@@ -348,10 +344,9 @@ fn notmain() -> Result<i32, anyhow::Error> {
             if highest_ram_addr_in_use != 0 && !uses_heap && initial_sp_makes_sense {
                 let stack_available = vector_table.initial_sp - highest_ram_addr_in_use - 1;
 
-                // We consider >90% stack usage a potential stack overflow, but don't go beyond 1 kb
-                // since filling a lot of RAM is slow (and 1 kb should be "good enough" for what
-                // we're doing).
-                let canary_size = cmp::min(stack_available / 10, 1024);
+                // We consider >90% stack usage a potential stack overflow, but don't go beyond 1 kb since
+                // filling a lot of RAM is slow (and 1 kb should be "good enough" for what we're doing).
+                let canary_size = 1024.min(stack_available / 10);
 
                 log::debug!(
                     "{} bytes of stack available (0x{:08X}-0x{:08X}), using {} byte canary to detect overflows",
@@ -409,9 +404,7 @@ fn notmain() -> Result<i32, anyhow::Error> {
         bail!(
             "attempted to use `--no-flash` and `defmt` logging -- this combination is not allowed. Remove the `--no-flash` flag"
         );
-    }
-
-    if use_defmt && table.is_none() {
+    } else if use_defmt && table.is_none() {
         bail!("\"defmt\" RTT channel is in use, but the firmware binary contains no defmt data");
     }
 
@@ -558,10 +551,9 @@ fn notmain() -> Result<i32, anyhow::Error> {
             if stack_overflow {
                 log::error!("the program has overflowed its stack");
             }
-
             SIGABRT
         } else {
-            0
+            EXIT_SUCCESS
         },
     )
 }
@@ -570,8 +562,6 @@ fn program_size_of(file: &ElfFile) -> u64 {
     // `segments` iterates only over *loadable* segments, which are the segments that will be loaded to Flash by probe-rs
     file.segments().map(|segment| segment.size()).sum()
 }
-
-const SIGABRT: i32 = 134;
 
 #[derive(Debug, PartialEq)]
 enum TopException {
@@ -582,7 +572,7 @@ enum TopException {
 fn setup_logging_channel(
     rtt_addr: Option<u32>,
     sess: Arc<Mutex<Session>>,
-) -> Result<Option<UpChannel>, anyhow::Error> {
+) -> anyhow::Result<Option<UpChannel>> {
     if let Some(rtt_addr_res) = rtt_addr {
         const NUM_RETRIES: usize = 10; // picked at random, increase if necessary
         let mut rtt_res: Result<Rtt, probe_rs_rtt::Error> =
@@ -621,76 +611,6 @@ fn setup_logging_channel(
     }
 }
 
-fn gimli2probe(reg: &gimli::Register) -> CoreRegisterAddress {
-    CoreRegisterAddress(reg.0)
-}
-
-struct Registers<'c, 'probe> {
-    cache: BTreeMap<u16, u32>,
-    core: &'c mut Core<'probe>,
-}
-
-impl<'c, 'probe> Registers<'c, 'probe> {
-    fn new(lr: u32, sp: u32, core: &'c mut Core<'probe>) -> Self {
-        let mut cache = BTreeMap::new();
-        cache.insert(LR.0, lr);
-        cache.insert(SP.0, sp);
-        Self { cache, core }
-    }
-
-    fn get(&mut self, reg: CoreRegisterAddress) -> Result<u32, anyhow::Error> {
-        Ok(match self.cache.entry(reg.0) {
-            btree_map::Entry::Occupied(entry) => *entry.get(),
-            btree_map::Entry::Vacant(entry) => *entry.insert(self.core.read_core_reg(reg)?),
-        })
-    }
-
-    fn insert(&mut self, reg: CoreRegisterAddress, val: u32) {
-        self.cache.insert(reg.0, val);
-    }
-
-    fn update_cfa(
-        &mut self,
-        rule: &CfaRule<EndianSlice<LittleEndian>>,
-    ) -> Result</* cfa_changed: */ bool, anyhow::Error> {
-        match rule {
-            CfaRule::RegisterAndOffset { register, offset } => {
-                let cfa = (i64::from(self.get(gimli2probe(register))?) + offset) as u32;
-                let old_cfa = self.cache.get(&SP.0);
-                let changed = old_cfa != Some(&cfa);
-                if changed {
-                    log::debug!("update_cfa: CFA changed {:8x?} -> {:8x}", old_cfa, cfa);
-                }
-                self.cache.insert(SP.0, cfa);
-                Ok(changed)
-            }
-
-            // NOTE not encountered in practice so far
-            CfaRule::Expression(_) => todo!("CfaRule::Expression"),
-        }
-    }
-
-    fn update(
-        &mut self,
-        reg: &gimli::Register,
-        rule: &RegisterRule<EndianSlice<LittleEndian>>,
-    ) -> Result<(), anyhow::Error> {
-        match rule {
-            RegisterRule::Undefined => unreachable!(),
-
-            RegisterRule::Offset(offset) => {
-                let cfa = self.get(SP)?;
-                let addr = (i64::from(cfa) + offset) as u32;
-                self.cache.insert(reg.0, self.core.read_word_32(addr)?);
-            }
-
-            _ => unimplemented!(),
-        }
-
-        Ok(())
-    }
-}
-
 #[allow(clippy::too_many_arguments)] // FIXME: clean this up
 fn backtrace(
     core: &mut Core<'_>,
@@ -701,7 +621,7 @@ fn backtrace(
     sp_ram_region: &Option<RamRegion>,
     live_functions: &HashSet<&str>,
     current_dir: &Path,
-) -> Result<Option<TopException>, anyhow::Error> {
+) -> anyhow::Result<Option<TopException>> {
     let mut debug_frame = DebugFrame::new(debug_frame, LittleEndian);
     // 32-bit ARM -- this defaults to the host's address size which is likely going to be 8
     debug_frame.set_address_size(mem::size_of::<u32>() as u8);
@@ -909,7 +829,17 @@ fn probes_filter(probes: &[DebugProbeInfo], selector: &ProbeFilter) -> Vec<Debug
         .collect()
 }
 
-fn print_probes(probes: Vec<DebugProbeInfo>) -> Result<i32, anyhow::Error> {
+fn print_chips() {
+    let registry = registry::families().expect("Could not retrieve chip family registry");
+    for chip_family in registry {
+        println!("{}\n    Variants:", chip_family.name);
+        for variant in chip_family.variants.iter() {
+            println!("        {}", variant.name);
+        }
+    }
+}
+
+fn print_probes(probes: Vec<DebugProbeInfo>) {
     if !probes.is_empty() {
         println!("The following devices were found:");
         probes
@@ -919,124 +849,21 @@ fn print_probes(probes: Vec<DebugProbeInfo>) -> Result<i32, anyhow::Error> {
     } else {
         println!("No devices were found.");
     }
-
-    Ok(0)
 }
 
-fn print_chips() -> Result<i32, anyhow::Error> {
-    let registry = registry::families().expect("Could not retrieve chip family registry");
-    for chip_family in registry {
-        println!("{}", chip_family.name);
-        println!("    Variants:");
-        for variant in chip_family.variants.iter() {
-            println!("        {}", variant.name);
-        }
-    }
-
-    Ok(0)
-}
-
-#[derive(Debug)]
-struct StackedFpuRegs {
-    s0: f32,
-    s1: f32,
-    s2: f32,
-    s3: f32,
-    s4: f32,
-    s5: f32,
-    s6: f32,
-    s7: f32,
-    s8: f32,
-    s9: f32,
-    s10: f32,
-    s11: f32,
-    s12: f32,
-    s13: f32,
-    s14: f32,
-    s15: f32,
-    fpscr: u32,
-}
-
-/// Registers stacked on exception entry.
-#[derive(Debug)]
-struct Stacked {
-    r0: u32,
-    r1: u32,
-    r2: u32,
-    r3: u32,
-    r12: u32,
-    lr: u32,
-    pc: u32,
-    xpsr: u32,
-    fpu_regs: Option<StackedFpuRegs>,
-}
-
-impl Stacked {
-    /// Number of 32-bit words stacked in a basic frame.
-    const WORDS_BASIC: usize = 8;
-
-    /// Number of 32-bit words stacked in an extended frame.
-    const WORDS_EXTENDED: usize = Self::WORDS_BASIC + 17; // 16 FPU regs + 1 status word
-
-    fn read(core: &mut Core<'_>, sp: u32, fpu: bool) -> Result<Self, anyhow::Error> {
-        let mut storage = [0; Self::WORDS_EXTENDED];
-        let registers: &mut [_] = if fpu {
-            &mut storage
-        } else {
-            &mut storage[..Self::WORDS_BASIC]
-        };
-        core.read_32(sp, registers)?;
-
-        Ok(Stacked {
-            r0: registers[0],
-            r1: registers[1],
-            r2: registers[2],
-            r3: registers[3],
-            r12: registers[4],
-            lr: registers[5],
-            pc: registers[6],
-            xpsr: registers[7],
-            fpu_regs: if fpu {
-                Some(StackedFpuRegs {
-                    s0: f32::from_bits(registers[8]),
-                    s1: f32::from_bits(registers[9]),
-                    s2: f32::from_bits(registers[10]),
-                    s3: f32::from_bits(registers[11]),
-                    s4: f32::from_bits(registers[12]),
-                    s5: f32::from_bits(registers[13]),
-                    s6: f32::from_bits(registers[14]),
-                    s7: f32::from_bits(registers[15]),
-                    s8: f32::from_bits(registers[16]),
-                    s9: f32::from_bits(registers[17]),
-                    s10: f32::from_bits(registers[18]),
-                    s11: f32::from_bits(registers[19]),
-                    s12: f32::from_bits(registers[20]),
-                    s13: f32::from_bits(registers[21]),
-                    s14: f32::from_bits(registers[22]),
-                    s15: f32::from_bits(registers[23]),
-                    fpscr: registers[24],
-                })
-            } else {
-                None
-            },
-        })
-    }
-
-    /// Returns the in-memory size of these stacked registers, in Bytes.
-    fn size(&self) -> u32 {
-        let num_words = if self.fpu_regs.is_none() {
-            Self::WORDS_BASIC
-        } else {
-            Self::WORDS_EXTENDED
-        };
-
-        num_words as u32 * 4
-    }
+/// The string reported by the `--version` flag
+fn print_version() {
+    const VERSION: &str = env!("CARGO_PKG_VERSION"); // version from Cargo.toml e.g. "0.1.4"
+    const HASH: &str = include_str!(concat!(env!("OUT_DIR"), "/git-info.txt")); // "" OR git hash e.g. "34019f8" -- this is generated in build.rs
+    println!(
+        "{}{}\nsupported defmt version: {}",
+        VERSION, HASH, DEFMT_VERSION
+    );
 }
 
 fn get_rtt_heap_main_from(
     elf: &ElfFile,
-) -> Result<(Option<u32>, bool /* uses heap */, u32), anyhow::Error> {
+) -> anyhow::Result<(Option<u32>, /* uses heap: */ bool, u32)> {
     let mut rtt = None;
     let mut uses_heap = false;
     let mut main = None;
@@ -1064,12 +891,6 @@ fn get_rtt_heap_main_from(
         main.ok_or_else(|| anyhow!("`main` symbol not found"))?,
     ))
 }
-
-const LR: CoreRegisterAddress = CoreRegisterAddress(14);
-const PC: CoreRegisterAddress = CoreRegisterAddress(15);
-const SP: CoreRegisterAddress = CoreRegisterAddress(13);
-
-const LR_END: u32 = 0xFFFF_FFFF;
 
 /// ELF section to be loaded onto the target
 #[derive(Debug)]
