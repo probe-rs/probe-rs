@@ -39,10 +39,14 @@ fn main() -> Result<(), Error> {
         let bytes = session.read_swo()?;
 
         decoder.feed(bytes);
-        while let Some(packet) = decoder.pull() {
+        while let Ok(Some(packet)) = decoder.pull() {
             match packet {
-                TracePacket::TimeStamp { tc, ts } => {
-                    log::debug!("Timestamp packet: tc={} ts={}", tc, ts);
+                TracePacket::LocalTimestamp1 { ts, data_relation } => {
+                    log::debug!(
+                        "Timestamp packet: data_relation={:?} ts={}",
+                        data_relation,
+                        ts
+                    );
                     let mut time_delta: f64 = ts as f64;
                     // Divide by core clock frequency to go from ticks to seconds.
                     time_delta /= 16_000_000.0;
@@ -57,7 +61,8 @@ fn main() -> Result<(), Error> {
                 //         // client.send_sample("a", timestamp, value as f64).unwrap();
                 //     }
                 // }
-                TracePacket::ItmData { id, payload } => {
+                TracePacket::Instrumentation { port, payload } => {
+                    let id = port as usize;
                     // First decode the string data from the stimuli.
                     stimuli[id].push_str(&String::from_utf8_lossy(&payload));
                     // Then collect all the lines we have gotten so far.
