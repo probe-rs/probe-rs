@@ -28,8 +28,8 @@ mod registry;
 mod target;
 
 pub use probe_rs_target::{
-    Chip, ChipFamily, FlashProperties, MemoryRange, MemoryRegion, NvmRegion, PageInfo, RamRegion,
-    RawFlashAlgorithm, SectorDescription, SectorInfo, TargetDescriptionSource,
+    Chip, ChipFamily, CoreType, FlashProperties, MemoryRange, MemoryRegion, NvmRegion, PageInfo,
+    RamRegion, RawFlashAlgorithm, SectorDescription, SectorInfo, TargetDescriptionSource,
 };
 
 pub use flash_algorithm::FlashAlgorithm;

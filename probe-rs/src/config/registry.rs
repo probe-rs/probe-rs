@@ -1,7 +1,7 @@
 //! Internal target registry
 
 use super::{Chip, ChipFamily, ChipInfo, Target, TargetDescriptionSource};
-use crate::core::CoreType;
+use crate::config::CoreType;
 use lazy_static::lazy_static;
 use std::fs::File;
 use std::path::Path;
@@ -57,7 +57,7 @@ fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
                 flash_algorithms: vec![],
             }],
             flash_algorithms: vec![],
-            core: "M0".to_owned(),
+            core: CoreType::M0,
             source: TargetDescriptionSource::Generic,
         },
         ChipFamily {
@@ -70,7 +70,7 @@ fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
                 flash_algorithms: vec![],
             }],
             flash_algorithms: vec![],
-            core: "M4".to_owned(),
+            core: CoreType::M4,
             source: TargetDescriptionSource::Generic,
         },
         ChipFamily {
@@ -83,7 +83,7 @@ fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
                 flash_algorithms: vec![],
             }],
             flash_algorithms: vec![],
-            core: "M3".to_owned(),
+            core: CoreType::M3,
             source: TargetDescriptionSource::Generic,
         },
         ChipFamily {
@@ -96,7 +96,7 @@ fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
                 flash_algorithms: vec![],
             }],
             flash_algorithms: vec![],
-            core: "M33".to_owned(),
+            core: CoreType::M33,
             source: TargetDescriptionSource::Generic,
         },
         ChipFamily {
@@ -109,7 +109,7 @@ fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
                 flash_algorithms: vec![],
             }],
             flash_algorithms: vec![],
-            core: "M7".to_owned(),
+            core: CoreType::M7,
             source: TargetDescriptionSource::Generic,
         },
         ChipFamily {
@@ -122,7 +122,7 @@ fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
                 flash_algorithms: vec![],
             }],
             flash_algorithms: vec![],
-            core: "riscv".to_owned(),
+            core: CoreType::Riscv,
             source: TargetDescriptionSource::Generic,
         },
     ]);
@@ -255,13 +255,6 @@ impl Registry {
     }
 
     fn get_target(&self, family: &ChipFamily, chip: &Chip) -> Result<Target, RegistryError> {
-        // Try get the corresponding chip.
-        let core = if let Some(core) = CoreType::from_string(&family.core) {
-            core
-        } else {
-            return Err(RegistryError::UnknownCoreType(family.core.clone()));
-        };
-
         // find relevant algorithms
         let chip_algorithms = chip
             .flash_algorithms
@@ -273,7 +266,7 @@ impl Registry {
         Ok(Target::new(
             chip,
             chip_algorithms,
-            core,
+            family.core,
             family.source.clone(),
         ))
     }

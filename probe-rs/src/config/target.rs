@@ -1,5 +1,5 @@
-use super::{Chip, MemoryRegion, RawFlashAlgorithm, TargetDescriptionSource};
-use crate::core::{Architecture, CoreType};
+use super::{Chip, CoreType, MemoryRegion, RawFlashAlgorithm, TargetDescriptionSource};
+use crate::core::Architecture;
 
 /// This describes a complete target with a fixed chip model and variant.
 #[derive(Clone)]
