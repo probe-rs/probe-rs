@@ -1,4 +1,5 @@
 use super::memory::SectorDescription;
+use serde::{Deserialize, Serialize};
 use std::{borrow::Cow, ops::Range};
 
 /// Properties of flash memory, which

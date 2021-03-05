@@ -1,6 +1,4 @@
-use super::chip::Chip;
-use super::flash_algorithm::RawFlashAlgorithm;
-use super::memory::MemoryRegion;
+use super::{Chip, MemoryRegion, RawFlashAlgorithm, TargetDescriptionSource};
 use crate::core::{Architecture, CoreType};
 
 /// This describes a complete target with a fixed chip model and variant.
@@ -31,24 +29,6 @@ impl std::fmt::Debug for Target {
             self.name, self.flash_algorithms, self.memory_map
         )
     }
-}
-
-/// Source of a target description.
-///
-/// This is used for diagnostics, when
-/// an error related to a target description occurs.
-#[derive(Clone, Debug, PartialEq)]
-pub enum TargetDescriptionSource {
-    /// The target description is a generic target description,
-    /// which just describes a core type (e.g. M4), without any
-    /// flash algorithm or memory description.
-    Generic,
-    /// The target description is a built-in target description,
-    /// which was included into probe-rs at compile time.
-    BuiltIn,
-    /// The target description was from an external source
-    /// during runtime.
-    External,
 }
 
 /// An error occured while parsing the target description.

@@ -4,7 +4,9 @@ use super::{
     extract_from_elf, BinOptions, ExtractedFlashData, FileDownloadError, FlashBuilder, FlashError,
     FlashProgress, Flasher,
 };
-use crate::config::{MemoryRange, MemoryRegion, NvmRegion, TargetDescriptionSource};
+use crate::config::{
+    FlashAlgorithm, MemoryRange, MemoryRegion, NvmRegion, TargetDescriptionSource,
+};
 use crate::memory::MemoryInterface;
 use crate::session::Session;
 use std::{
@@ -307,8 +309,8 @@ impl<'data> FlashLoader<'data> {
                 0 => {
                     return Err(FlashError::NoFlashLoaderAlgorithmAttached);
                 }
-                1 => &algorithms[0],
-                _ => algorithms
+                1 => algorithms[0],
+                _ => *algorithms
                     .iter()
                     .find(|a| a.default)
                     .ok_or(FlashError::NoFlashLoaderAlgorithmAttached)?,
@@ -325,7 +327,8 @@ impl<'data> FlashLoader<'data> {
                     chip: session.target().name.clone(),
                 })?;
 
-            let flash_algorithm = raw_flash_algorithm.assemble(ram, session.target())?;
+            let flash_algorithm =
+                FlashAlgorithm::assemble_from_raw(raw_flash_algorithm, ram, session.target())?;
 
             if dry_run {
                 println!("Skipping programming, dry run!");

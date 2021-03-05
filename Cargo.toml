@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "probe-rs",
+    "probe-rs-target",
     "probe-rs-t2rust",
     "probe-rs-cli-util",
     "cli",

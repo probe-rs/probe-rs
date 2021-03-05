@@ -48,6 +48,8 @@ itm-decode = "0.1.5"
 libftdi1-sys = { version = "1.0.0-alpha3", optional = true }
 static_assertions = "1.1.0"
 
+probe-rs-target  = { path = "../probe-rs-target", version ="0.1.0" }
+
 [build-dependencies]
 probe-rs-t2rust  = { path = "../probe-rs-t2rust", version ="0.7.0" }
 
