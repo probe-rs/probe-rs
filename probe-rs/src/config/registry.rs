@@ -135,15 +135,13 @@ struct Registry {
     families: Vec<ChipFamily>,
 }
 
-#[cfg(feature = "builtin-targets")]
-mod builtin {
-    include!(concat!(env!("OUT_DIR"), "/targets.rs"));
-}
-
 impl Registry {
     #[cfg(feature = "builtin-targets")]
     fn from_builtin_families() -> Self {
-        let mut families = Vec::from(builtin::get_targets());
+        const BUILTIN_TARGETS: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/targets.bincode"));
+
+        let mut families: Vec<ChipFamily> = bincode::deserialize(BUILTIN_TARGETS)
+            .expect("Failed to deserialize builtin targets. This is a bug.");
 
         families.extend(GENERIC_TARGETS.iter().cloned());
 
