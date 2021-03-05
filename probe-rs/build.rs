@@ -38,7 +38,7 @@ fn main() {
     let _: Vec<ChipFamily> = bincode::deserialize(&families_bin).unwrap();
 }
 
-// one possible implementation of walking a directory only visiting files
+/// One possible implementation of walking a directory only visiting files.
 fn visit_dirs(dir: &Path, targets: &mut Vec<PathBuf>) -> io::Result<()> {
     if dir.is_dir() {
         for entry in read_dir(dir)? {
