@@ -33,7 +33,10 @@ pub struct ChipFamily {
     /// E.g. `nRF52832`.
     pub name: Cow<'static, str>,
     /// The JEP106 code of the manufacturer.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(
+        not(feature = "bincode"),
+        serde(skip_serializing_if = "Option::is_none")
+    )]
     pub manufacturer: Option<JEP106Code>,
     /// This vector holds all the variants of the family.
     pub variants: Cow<'static, [Chip]>,

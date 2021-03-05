@@ -10,7 +10,7 @@
 //!
 //! ## Built-in targets
 //!
-//! The built-in targets are added at build-time, using the `probe-rs-t2rust` tool.
+//! The built-in targets are added at build-time, from the `build.rs` script.
 //! They are generated from the target files in the `targets/` subfolder of this
 //! crate.
 //!

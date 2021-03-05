@@ -10,7 +10,7 @@ updates:
       interval: daily
     open-pull-requests-limit: 10
   - package-ecosystem: cargo
-    directory: "/probe-rs-t2rust"
+    directory: "/probe-rs-target"
     schedule:
       interval: daily
     open-pull-requests-limit: 10
