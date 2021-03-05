@@ -2,7 +2,6 @@ use super::{FlashProperties, PageInfo, RamRegion, SectorInfo};
 use crate::core::Architecture;
 use crate::flashing::FlashError;
 use crate::{architecture::riscv, Target};
-use std::borrow::Cow;
 use std::convert::TryInto;
 
 /// A flash algorithm, which has been assembled for a specific
@@ -213,6 +212,8 @@ impl FlashAlgorithm {
 #[test]
 fn flash_sector_single_size() {
     use crate::config::SectorDescription;
+    use std::borrow::Cow;
+
     let config = FlashAlgorithm {
         flash_properties: FlashProperties {
             sectors: Cow::Borrowed(&[SectorDescription {
@@ -243,6 +244,8 @@ fn flash_sector_single_size() {
 #[test]
 fn flash_sector_single_size_weird_sector_size() {
     use crate::config::SectorDescription;
+    use std::borrow::Cow;
+
     let config = FlashAlgorithm {
         flash_properties: FlashProperties {
             sectors: Cow::Borrowed(&[SectorDescription {
@@ -273,6 +276,8 @@ fn flash_sector_single_size_weird_sector_size() {
 #[test]
 fn flash_sector_multiple_sizes() {
     use crate::config::SectorDescription;
+    use std::borrow::Cow;
+
     let config = FlashAlgorithm {
         flash_properties: FlashProperties {
             sectors: Cow::Borrowed(&[

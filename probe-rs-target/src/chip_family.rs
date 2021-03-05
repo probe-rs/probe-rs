@@ -50,7 +50,7 @@ pub struct ChipFamily {
     pub source: TargetDescriptionSource,
 }
 
-// When deserialization is used, this means that the target is read from an external source.
+/// When deserialization is used, this means that the target is read from an external source.
 fn default_source() -> TargetDescriptionSource {
     TargetDescriptionSource::External
 }
