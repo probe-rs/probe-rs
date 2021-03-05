@@ -1,7 +1,6 @@
 use super::chip::Chip;
 use super::flash_algorithm::RawFlashAlgorithm;
 use jep106::JEP106Code;
-use std::borrow::Cow;
 
 use serde::{Deserialize, Serialize};
 
@@ -31,7 +30,7 @@ pub enum TargetDescriptionSource {
 pub struct ChipFamily {
     /// This is the name of the chip family in base form.
     /// E.g. `nRF52832`.
-    pub name: Cow<'static, str>,
+    pub name: String,
     /// The JEP106 code of the manufacturer.
     #[cfg_attr(
         not(feature = "bincode"),
@@ -39,14 +38,14 @@ pub struct ChipFamily {
     )]
     pub manufacturer: Option<JEP106Code>,
     /// This vector holds all the variants of the family.
-    pub variants: Cow<'static, [Chip]>,
+    pub variants: Vec<Chip>,
     /// This vector holds all available algorithms.
     #[serde(deserialize_with = "deserialize")]
     #[serde(serialize_with = "serialize")]
-    pub flash_algorithms: Cow<'static, [RawFlashAlgorithm]>,
+    pub flash_algorithms: Vec<RawFlashAlgorithm>,
     /// The name of the core type.
     /// E.g. `M0` or `M4`.
-    pub core: Cow<'static, str>,
+    pub core: String,
 
     #[serde(skip, default = "default_source")]
     /// Source of the target description, used for diagnostics
@@ -65,12 +64,12 @@ where
     use serde::ser::SerializeMap;
     let mut map = serializer.serialize_map(Some(raw_algorithms.len()))?;
     for entry in raw_algorithms {
-        map.serialize_entry(entry.name.as_ref(), entry)?;
+        map.serialize_entry(&entry.name, entry)?;
     }
     map.end()
 }
 
-pub fn deserialize<'de, D>(deserializer: D) -> Result<Cow<'static, [RawFlashAlgorithm]>, D::Error>
+pub fn deserialize<'de, D>(deserializer: D) -> Result<Vec<RawFlashAlgorithm>, D::Error>
 where
     D: serde::Deserializer<'de>,
 {
@@ -78,7 +77,7 @@ where
 
     use serde::de::MapAccess;
     impl<'de> serde::de::Visitor<'de> for MapVisitor {
-        type Value = Cow<'static, [RawFlashAlgorithm]>;
+        type Value = Vec<RawFlashAlgorithm>;
 
         fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
             write!(formatter, "a map")
@@ -93,7 +92,7 @@ where
                 result.push(value);
             }
 
-            Ok(Cow::Owned(result))
+            Ok(result)
         }
     }
 
