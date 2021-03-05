@@ -1,9 +1,9 @@
-use super::flash_properties::FlashProperties;
-use super::memory::{PageInfo, RamRegion, SectorInfo};
+use super::{FlashProperties, PageInfo, RamRegion, SectorInfo};
 use crate::core::Architecture;
 use crate::flashing::FlashError;
 use crate::{architecture::riscv, Target};
-use std::{borrow::Cow, convert::TryInto};
+use std::borrow::Cow;
+use std::convert::TryInto;
 
 /// A flash algorithm, which has been assembled for a specific
 /// chip.
@@ -102,76 +102,7 @@ impl FlashAlgorithm {
         }
         true
     }
-}
 
-/// The raw flash algorithm is the description of a flash algorithm,
-/// and is usually read from a target description file.
-///
-/// Before it can be used for flashing, it has to be assembled for
-/// a specific chip, using the [RawFlashAlgorithm::assemble] function. This function
-/// will determine the RAM addresses which are used when flashing.
-#[derive(Debug, Default, Clone, Serialize, Deserialize)]
-pub struct RawFlashAlgorithm {
-    /// The name of the flash algorithm.
-    pub name: Cow<'static, str>,
-    /// The description of the algorithm.
-    pub description: Cow<'static, str>,
-    /// Whether this flash algorithm is the default one or not.
-    pub default: bool,
-    /// List of 32-bit words containing the position-independent code for the algo.
-    #[serde(deserialize_with = "deserialize")]
-    #[serde(serialize_with = "serialize")]
-    pub instructions: Cow<'static, [u8]>,
-    /// Address of the `Init()` entry point. Optional.
-    pub pc_init: Option<u32>,
-    /// Address of the `UnInit()` entry point. Optional.
-    pub pc_uninit: Option<u32>,
-    /// Address of the `ProgramPage()` entry point.
-    pub pc_program_page: u32,
-    /// Address of the `EraseSector()` entry point.
-    pub pc_erase_sector: u32,
-    /// Address of the `EraseAll()` entry point. Optional.
-    pub pc_erase_all: Option<u32>,
-    /// The offset from the start of RAM to the data section.
-    pub data_section_offset: u32,
-    /// The properties of the flash on the device.
-    pub flash_properties: FlashProperties,
-}
-
-pub fn serialize<S>(bytes: &[u8], serializer: S) -> Result<S::Ok, S::Error>
-where
-    S: serde::Serializer,
-{
-    serializer.serialize_str(&base64::encode(bytes))
-}
-
-pub fn deserialize<'de, D>(deserializer: D) -> Result<Cow<'static, [u8]>, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    struct Base64Visitor;
-
-    impl<'de> serde::de::Visitor<'de> for Base64Visitor {
-        type Value = Cow<'static, [u8]>;
-
-        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-            write!(formatter, "base64 ASCII text")
-        }
-
-        fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
-        where
-            E: serde::de::Error,
-        {
-            base64::decode(v)
-                .map(Cow::Owned)
-                .map_err(serde::de::Error::custom)
-        }
-    }
-
-    deserializer.deserialize_str(Base64Visitor)
-}
-
-impl RawFlashAlgorithm {
     const FLASH_ALGO_STACK_SIZE: u32 = 512;
     const FLASH_ALGO_STACK_DECREMENT: u32 = 64;
 
@@ -189,7 +120,7 @@ impl RawFlashAlgorithm {
         0x0477_0D1F,
     ];
 
-    fn get_algorithm_header(&self, architecture: Architecture) -> &[u32] {
+    fn get_algorithm_header(architecture: Architecture) -> &'static [u32] {
         match architecture {
             Architecture::Arm => &Self::ARM_FLASH_BLOB_HEADER,
             Architecture::Riscv => &Self::RISCV_FLASH_BLOB_HEADER,
@@ -197,23 +128,23 @@ impl RawFlashAlgorithm {
     }
 
     /// Constructs a complete flash algorithm, tailored to the flash and RAM sizes given.
-    pub fn assemble(
-        &self,
+    pub fn assemble_from_raw(
+        raw: &super::RawFlashAlgorithm,
         ram_region: &RamRegion,
         target: &Target,
-    ) -> Result<FlashAlgorithm, FlashError> {
+    ) -> Result<Self, FlashError> {
         use std::mem::size_of;
 
-        let assembled_instructions = self.instructions.chunks_exact(size_of::<u32>());
+        let assembled_instructions = raw.instructions.chunks_exact(size_of::<u32>());
 
         if !assembled_instructions.remainder().is_empty() {
             return Err(FlashError::InvalidFlashAlgorithmLength {
-                name: self.name.to_string(),
+                name: raw.name.to_string(),
                 algorithm_source: Some(target.source().clone()),
             });
         }
 
-        let header = self.get_algorithm_header(target.architecture());
+        let header = Self::get_algorithm_header(target.architecture());
         let instructions: Vec<u32> = header
             .iter()
             .copied()
@@ -238,7 +169,7 @@ impl RawFlashAlgorithm {
 
             // Data buffer 1
             addr_data = ram_region.range.start + offset;
-            offset += self.flash_properties.page_size;
+            offset += raw.flash_properties.page_size;
 
             if offset <= ram_region.range.end - ram_region.range.start {
                 break;
@@ -247,7 +178,7 @@ impl RawFlashAlgorithm {
 
         // Data buffer 2
         let addr_data2 = ram_region.range.start + offset;
-        offset += self.flash_properties.page_size;
+        offset += raw.flash_properties.page_size;
 
         // Determine whether we can use double buffering or not by the remaining RAM region size.
         let page_buffers = if offset <= ram_region.range.end - ram_region.range.start {
@@ -258,23 +189,23 @@ impl RawFlashAlgorithm {
 
         let code_start = addr_load + (header.len() * size_of::<u32>()) as u32;
 
-        let name = self.name.clone().into_owned();
+        let name = raw.name.clone().into_owned();
 
         Ok(FlashAlgorithm {
             name,
-            default: self.default,
+            default: raw.default,
             load_address: addr_load,
             instructions,
-            pc_init: self.pc_init.map(|v| code_start + v),
-            pc_uninit: self.pc_uninit.map(|v| code_start + v),
-            pc_program_page: code_start + self.pc_program_page,
-            pc_erase_sector: code_start + self.pc_erase_sector,
-            pc_erase_all: self.pc_erase_all.map(|v| code_start + v),
-            static_base: code_start + self.data_section_offset,
+            pc_init: raw.pc_init.map(|v| code_start + v),
+            pc_uninit: raw.pc_uninit.map(|v| code_start + v),
+            pc_program_page: code_start + raw.pc_program_page,
+            pc_erase_sector: code_start + raw.pc_erase_sector,
+            pc_erase_all: raw.pc_erase_all.map(|v| code_start + v),
+            static_base: code_start + raw.data_section_offset,
             begin_stack: addr_stack,
             begin_data: page_buffers[0],
             page_buffers: page_buffers.clone(),
-            flash_properties: self.flash_properties.clone(),
+            flash_properties: raw.flash_properties.clone(),
         })
     }
 }

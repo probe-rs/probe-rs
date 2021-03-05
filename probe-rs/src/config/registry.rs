@@ -1,7 +1,6 @@
 //! Internal target registry
 
-use super::target::{Target, TargetDescriptionSource};
-use crate::config::{Chip, ChipFamily, ChipInfo};
+use super::{Chip, ChipFamily, ChipInfo, Target, TargetDescriptionSource};
 use crate::core::CoreType;
 use lazy_static::lazy_static;
 use std::fs::File;
@@ -287,7 +286,7 @@ impl Registry {
 
     fn add_target_from_yaml(&mut self, path_to_yaml: &Path) -> Result<(), RegistryError> {
         let file = File::open(path_to_yaml)?;
-        let chip = ChipFamily::from_yaml_reader(file)?;
+        let chip: ChipFamily = serde_yaml::from_reader(file)?;
 
         let index = self
             .families

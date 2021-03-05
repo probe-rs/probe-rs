@@ -1,4 +1,5 @@
 use core::ops::Range;
+use serde::{Deserialize, Serialize};
 
 /// Represents a region in non-volatile memory (e.g. flash or EEPROM).
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -53,7 +54,7 @@ pub struct SectorInfo {
 /// end of the flash, or until another `SectorDescription`
 /// changes the sector size.
 ///
-/// [`FlashProperties`]: crate::config::FlashProperties
+/// [`FlashProperties`]: crate::FlashProperties
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct SectorDescription {
     /// Size of each individual flash sector

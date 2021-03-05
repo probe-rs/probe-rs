@@ -1,4 +1,5 @@
 use super::memory::MemoryRegion;
+use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 
 /// A single chip variant.
@@ -22,6 +23,6 @@ pub struct Chip {
     /// This can be used to look up the flash algorithm in the
     /// [`ChipFamily::flash_algorithms`] field.
     ///
-    /// [`ChipFamily::flash_algorithms`]: crate::config::ChipFamily::flash_algorithms
+    /// [`ChipFamily::flash_algorithms`]: crate::ChipFamily::flash_algorithms
     pub flash_algorithms: Cow<'static, [Cow<'static, str>]>,
 }

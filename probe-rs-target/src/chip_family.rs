@@ -1,10 +1,27 @@
+use super::chip::Chip;
 use super::flash_algorithm::RawFlashAlgorithm;
-use super::{chip::Chip, target::TargetDescriptionSource};
-use crate::config::TargetParseError;
 use jep106::JEP106Code;
 use std::borrow::Cow;
 
 use serde::{Deserialize, Serialize};
+
+/// Source of a target description.
+///
+/// This is used for diagnostics, when
+/// an error related to a target description occurs.
+#[derive(Clone, Debug, PartialEq)]
+pub enum TargetDescriptionSource {
+    /// The target description is a generic target description,
+    /// which just describes a core type (e.g. M4), without any
+    /// flash algorithm or memory description.
+    Generic,
+    /// The target description is a built-in target description,
+    /// which was included into probe-rs at compile time.
+    BuiltIn,
+    /// The target description was from an external source
+    /// during runtime.
+    External,
+}
 
 /// This describes a chip family with all its variants.
 ///
@@ -30,14 +47,19 @@ pub struct ChipFamily {
 
     #[serde(skip, default = "default_source")]
     /// Source of the target description, used for diagnostics
-    pub(crate) source: TargetDescriptionSource,
+    pub source: TargetDescriptionSource,
+}
+
+// When deserialization is used, this means that the target is read from an external source.
+fn default_source() -> TargetDescriptionSource {
+    TargetDescriptionSource::External
 }
 
 pub fn serialize<S>(raw_algorithms: &[RawFlashAlgorithm], serializer: S) -> Result<S::Ok, S::Error>
 where
     S: serde::Serializer,
 {
-    use crate::serde::ser::SerializeMap;
+    use serde::ser::SerializeMap;
     let mut map = serializer.serialize_map(Some(raw_algorithms.len()))?;
     for entry in raw_algorithms {
         map.serialize_entry(entry.name.as_ref(), entry)?;
@@ -76,14 +98,6 @@ where
 }
 
 impl ChipFamily {
-    /// Create a [ChipFamily] from a target
-    /// description in YAML format.
-    pub fn from_yaml_reader<R: std::io::Read>(
-        definition_reader: R,
-    ) -> Result<Self, TargetParseError> {
-        serde_yaml::from_reader(definition_reader)
-    }
-
     /// Get the different [Chip]s which are part of this
     /// family.
     pub fn variants(&self) -> &[Chip] {
@@ -100,21 +114,4 @@ impl ChipFamily {
         let name = name.as_ref();
         self.flash_algorithms.iter().find(|elem| elem.name == name)
     }
-}
-
-// When deserialization is used, this means that the target is read from an external source.
-fn default_source() -> TargetDescriptionSource {
-    TargetDescriptionSource::External
-}
-
-#[test]
-fn map_to_list_deserialize() {
-    let yaml_data = include_str!("../../targets/STM32F4 Series.yaml");
-
-    let reader = std::io::Cursor::new(yaml_data);
-
-    let result: Result<ChipFamily, _> = ChipFamily::from_yaml_reader(reader);
-
-    let chip_family = result.unwrap();
-    assert_eq!(chip_family.algorithms().len(), 18);
 }
