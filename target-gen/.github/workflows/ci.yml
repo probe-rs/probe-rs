@@ -24,7 +24,7 @@ jobs:
         uses: actions/checkout@v1
       
       - name: Install libusb
-        run: sudo apt install -y libusb-dev libusb-1.0
+        run: sudo apt install -y libusb-1.0-0-dev
         # Only install on Ubuntu
         if: matrix.os == 'ubuntu-latest'
 
@@ -48,7 +48,7 @@ jobs:
         uses: actions/checkout@v1
 
       - name: Install libusb
-        run: sudo apt install -y libusb-dev libusb-1.0
+        run: sudo apt install -y libusb-1.0-0-dev
 
       - name: Install stable toolchain
         uses: actions-rs/toolchain@v1
@@ -91,7 +91,7 @@ jobs:
         uses: actions/checkout@v1
 
       - name: Install libusb
-        run: sudo apt install -y libusb-dev libusb-1.0
+        run: sudo apt install -y libusb-1.0-0-dev
 
       - name: Install stable toolchain
         uses: actions-rs/toolchain@v1
