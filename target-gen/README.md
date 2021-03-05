@@ -23,7 +23,7 @@ can be found at: https://arm-software.github.io/CMSIS_5/Pack/html/algorithmFunc.
 
 Running
 
-    cargo run -- extract <ELF FILE> target.yml
+    cargo run -- elf <ELF FILE> target.yml
 
 will create a target description containing the extracted flash algorithm. The values
 for the chip description itself have to be adjusted manually in the generated Yaml file.
