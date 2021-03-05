@@ -188,7 +188,7 @@ impl FlashAlgorithm {
 
         let code_start = addr_load + (header.len() * size_of::<u32>()) as u32;
 
-        let name = raw.name.clone().into_owned();
+        let name = raw.name.clone();
 
         Ok(FlashAlgorithm {
             name,
@@ -212,14 +212,13 @@ impl FlashAlgorithm {
 #[test]
 fn flash_sector_single_size() {
     use crate::config::SectorDescription;
-    use std::borrow::Cow;
 
     let config = FlashAlgorithm {
         flash_properties: FlashProperties {
-            sectors: Cow::Borrowed(&[SectorDescription {
+            sectors: vec![SectorDescription {
                 size: 0x100,
                 address: 0x0,
-            }]),
+            }],
             address_range: 0x1000..0x1000 + 0x1000,
             page_size: 0x10,
             ..Default::default()
@@ -244,14 +243,13 @@ fn flash_sector_single_size() {
 #[test]
 fn flash_sector_single_size_weird_sector_size() {
     use crate::config::SectorDescription;
-    use std::borrow::Cow;
 
     let config = FlashAlgorithm {
         flash_properties: FlashProperties {
-            sectors: Cow::Borrowed(&[SectorDescription {
+            sectors: vec![SectorDescription {
                 size: 258,
                 address: 0x0,
-            }]),
+            }],
             address_range: 0x800_0000..0x800_0000 + 258 * 10,
             page_size: 0x10,
             ..Default::default()
@@ -276,11 +274,10 @@ fn flash_sector_single_size_weird_sector_size() {
 #[test]
 fn flash_sector_multiple_sizes() {
     use crate::config::SectorDescription;
-    use std::borrow::Cow;
 
     let config = FlashAlgorithm {
         flash_properties: FlashProperties {
-            sectors: Cow::Borrowed(&[
+            sectors: vec![
                 SectorDescription {
                     size: 0x4000,
                     address: 0x0,
@@ -293,7 +290,7 @@ fn flash_sector_multiple_sizes() {
                     size: 0x2_0000,
                     address: 0x2_0000,
                 },
-            ]),
+            ],
             address_range: 0x800_0000..0x800_0000 + 0x10_0000,
             page_size: 0x10,
             ..Default::default()

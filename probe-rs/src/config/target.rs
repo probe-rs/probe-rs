@@ -43,10 +43,10 @@ impl Target {
         source: TargetDescriptionSource,
     ) -> Target {
         Target {
-            name: chip.name.clone().into_owned(),
+            name: chip.name.clone(),
             flash_algorithms,
             core_type,
-            memory_map: chip.memory_map.clone().into_owned(),
+            memory_map: chip.memory_map.clone(),
             source,
         }
     }

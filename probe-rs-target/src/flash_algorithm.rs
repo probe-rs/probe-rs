@@ -1,5 +1,4 @@
 use super::flash_properties::FlashProperties;
-use std::borrow::Cow;
 
 use serde::{Deserialize, Serialize};
 
@@ -12,15 +11,15 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct RawFlashAlgorithm {
     /// The name of the flash algorithm.
-    pub name: Cow<'static, str>,
+    pub name: String,
     /// The description of the algorithm.
-    pub description: Cow<'static, str>,
+    pub description: String,
     /// Whether this flash algorithm is the default one or not.
     pub default: bool,
     /// List of 32-bit words containing the position-independent code for the algo.
     #[serde(deserialize_with = "deserialize")]
     #[serde(serialize_with = "serialize")]
-    pub instructions: Cow<'static, [u8]>,
+    pub instructions: Vec<u8>,
     /// Address of the `Init()` entry point. Optional.
     pub pc_init: Option<u32>,
     /// Address of the `UnInit()` entry point. Optional.
@@ -44,14 +43,14 @@ where
     serializer.serialize_str(&base64::encode(bytes))
 }
 
-pub fn deserialize<'de, D>(deserializer: D) -> Result<Cow<'static, [u8]>, D::Error>
+pub fn deserialize<'de, D>(deserializer: D) -> Result<Vec<u8>, D::Error>
 where
     D: serde::Deserializer<'de>,
 {
     struct Base64Visitor;
 
     impl<'de> serde::de::Visitor<'de> for Base64Visitor {
-        type Value = Cow<'static, [u8]>;
+        type Value = Vec<u8>;
 
         fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
             write!(formatter, "base64 ASCII text")
@@ -61,9 +60,7 @@ where
         where
             E: serde::de::Error,
         {
-            base64::decode(v)
-                .map(Cow::Owned)
-                .map_err(serde::de::Error::custom)
+            base64::decode(v).map_err(serde::de::Error::custom)
         }
     }
 

@@ -513,7 +513,7 @@ mod tests {
             erased_byte_value: 255,
             program_page_timeout: 200,
             erase_sector_timeout: 200,
-            sectors: std::borrow::Cow::Owned(vec![sd]),
+            sectors: vec![sd],
         };
 
         flash_algorithm
@@ -532,7 +532,7 @@ mod tests {
             erased_byte_value: 255,
             program_page_timeout: 200,
             erase_sector_timeout: 200,
-            sectors: std::borrow::Cow::Owned(vec![sd]),
+            sectors: vec![sd],
         };
 
         flash_algorithm
