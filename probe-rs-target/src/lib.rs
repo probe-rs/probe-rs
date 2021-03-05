@@ -18,7 +18,7 @@ mod flash_properties;
 mod memory;
 
 pub use chip::Chip;
-pub use chip_family::{ChipFamily, TargetDescriptionSource};
+pub use chip_family::{ChipFamily, CoreType, TargetDescriptionSource};
 pub use flash_algorithm::RawFlashAlgorithm;
 pub use flash_properties::FlashProperties;
 pub use memory::{

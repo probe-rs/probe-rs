@@ -15,4 +15,4 @@ variants:
           is_boot_memory: true
     flash_algorithms: []
 flash_algorithms: {}
-core: riscv
+core: Riscv

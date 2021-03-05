@@ -196,7 +196,7 @@ impl Session {
     pub fn list_cores(&self) -> Vec<(usize, CoreType)> {
         self.cores
             .iter()
-            .map(|(t, _)| CoreType::from(t))
+            .map(|(t, _)| t.core_type())
             .enumerate()
             .collect()
     }
