@@ -1,6 +1,4 @@
-mod decoder;
-
-pub use decoder::{Decoder, ExceptionAction, ExceptionType, TracePacket};
+pub use itm_decode::*;
 
 use crate::Error;
 
