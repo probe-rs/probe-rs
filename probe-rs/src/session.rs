@@ -33,7 +33,8 @@ use std::time::Duration;
 ///
 /// If you do so, make sure that both threads sleep in between tasks such that other stakeholders may take their turn.  
 ///
-/// To get access to a single [Core] from the `Session`, the [Session::core()] method can be used. Please see the [Session::core()] method for more usage guidelines.
+/// To get access to a single [Core] from the `Session`, the [Session::core()] method can be used.
+/// Please see the [Session::core()] method for more usage guidelines.
 ///
 
 #[derive(Debug)]
