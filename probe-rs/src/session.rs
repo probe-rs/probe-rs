@@ -31,7 +31,7 @@ use std::time::Duration;
 /// The Session is the common handle that gives a user exclusive access to an active probe.  
 /// You can create and share a session between threads to enable multiple stakeholders (e.g. GDB and RTT) to access the target taking turns, by using  `Arc<Mutex<Session>>.`  
 ///
-/// If you do so, please make sure that both threads sleep in between tasks such that other shareholders may take their turn.  
+/// If you do so, make sure that both threads sleep in between tasks such that other stakeholders may take their turn.  
 ///
 /// To get access to a single [Core] from the `Session`, the [Session::core()] method can be used. Please see the [Session::core()] method for more usage guidelines.
 ///
