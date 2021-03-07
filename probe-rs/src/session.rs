@@ -24,7 +24,8 @@ use std::time::Duration;
 /// The session can be created by calling the [Session::auto_attach()] function,
 /// which tries to automatically select a probe, and then connect to the target.  
 ///
-/// For more control, the [Probe::attach()] and [Probe::attach_under_reset()]methods can be used to open a `Session` from a specific [Probe].  
+/// For more control, the [Probe::attach()] and [Probe::attach_under_reset()]
+/// methods can be used to open a `Session` from a specific [Probe].  
 ///
 /// # Usage  
 /// Session is the common handle that gives a user exclusive access to a probe.  
