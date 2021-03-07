@@ -18,22 +18,22 @@ use crate::{AttachMethod, Core, CoreType, Error, Probe};
 use anyhow::anyhow;
 use std::time::Duration;
 
-/// The `Session` struct represents an active debug session.
+/// The `Session` struct represents an active debug session.  
 ///
-/// ## Creating a session
+/// ## Creating a session  
+/// It can be conviently created by calling the [Session::auto_attach()] function,which tries to automatically select a probe, and then connect to the target.  
 ///
-/// It can be conviently created by calling the [Session::auto_attach()] function,
-/// which tries to automatically select a probe, and then connect to the target.
+/// For more control, the [Probe::attach()] and [Probe::attach_under_reset()]methods can be used to open a `Session` from a specific [Probe].  
 ///
-/// For more control, the [Probe::attach()] and [Probe::attach_under_reset()]
-/// methods can be used to open a `Session` from a specific [Probe].
+/// # Usage  
+/// Session is the common handle that gives a user exclusive access to a probe.  
+/// You can create and share a session between threads to enable multiplestakeholders (e.g. GDB and RTT) to access the target taking turns, by using  `Arc<Mutex<Session>>`  
 ///
-/// # Usage
-/// To get access to a single [Core] from the `Session`, the [Session::core()] method
-/// can be used.
+/// If you do so, please make sure that both threads sleep in between tasks such that other shareholders may take their turn.  
 ///
-/// You can create and share a session between threads to enable multiple stakeholders (e.g. GDB and RTT) to access the target
-/// taking turns. If you do so, please make sure that both threads sleep in between tasks such that other shareholders may take their turn.
+/// To get access to a single [Core] from the `Session`, the [Session::core()] method can be used. Please see the [Session::core()] method for more usage guidelines.
+///
+
 #[derive(Debug)]
 pub struct Session {
     target: Target,
@@ -202,6 +202,20 @@ impl Session {
     }
 
     /// Attaches to the core with the given number.
+    ///
+    /// ## Usage  
+    /// Everytime you want to perform an operation on the chip, you need to get the Core handle with the [Session::core() function. This is merely a view into the core.
+    ///
+    /// All the state is actually stored in the Session handle.
+    ///
+    /// The first time you call [Session::core()] for a specific core, it will run the attach/init sequences and return a handle to the core.
+    ///
+    /// Every subsequent call is no-op. It simply returns a convenient handle for the user to use in further operations.
+    ///
+    /// It is strongly advised to never store the core handle for any significant duration! Free it as fast as possible such that other concurrent users have access to the core.
+    ///
+    /// The idea behind this is exactly that: you need the smallest common denominator which you can share between threads and since you sometimes need the core, sometimes the probe or sometimes the target, the session is the only common ground and the only handle you should keep active in your code.
+    ///
     pub fn core(&mut self, n: usize) -> Result<Core<'_>, Error> {
         let (core, core_state) = self.cores.get_mut(n).ok_or(Error::CoreNotFound(n))?;
 
