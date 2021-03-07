@@ -206,18 +206,18 @@ impl Session {
 
     /// Attaches to the core with the given number.
     ///
-    /// ## Usage  
-    /// Everytime you want to perform an operation on the chip, you need to get the Core handle with the [Session::core() function. This is merely a view into the core.
+    /// ## Usage
+    /// Everytime you want to perform an operation on the chip, you need to get the Core handle with the [Session::core() method. This [Core] handle is merely a view into the core. And provides a convenient API surface.
     ///
-    /// All the state is actually stored in the Session handle.
+    /// All the state is stored in the [Session] handle.
     ///
-    /// The first time you call [Session::core()] for a specific core, it will run the attach/init sequences and return a handle to the core.
+    /// The first time you call [Session::core()] for a specific core, it will run the attach/init sequences and return a handle to the [Core].
     ///
-    /// Every subsequent call is no-op. It simply returns a convenient handle for the user to use in further operations.
+    /// Every subsequent call is a no-op. It simply returns the handle for the user to use in further operations without calling any int sequences again.
     ///
-    /// It is strongly advised to never store the core handle for any significant duration! Free it as fast as possible such that other concurrent users have access to the core.
+    /// It is strongly advised to never store the [Core] handle for any significant duration! Free it as fast as possible such that other stakeholders can have access to the [Core] too.
     ///
-    /// The idea behind this is exactly that: you need the smallest common denominator which you can share between threads and since you sometimes need the core, sometimes the probe or sometimes the target, the session is the only common ground and the only handle you should keep active in your code.
+    /// The idea behind this is: You need the smallest common denominator which you can share between threads. Since you sometimes need the [Core], sometimes the [Probe] or sometimes the [Target], the [Session] is the only common ground and the only handle you should actively store in your code.
     ///
     pub fn core(&mut self, n: usize) -> Result<Core<'_>, Error> {
         let (core, core_state) = self.cores.get_mut(n).ok_or(Error::CoreNotFound(n))?;
