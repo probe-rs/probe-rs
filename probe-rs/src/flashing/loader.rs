@@ -86,7 +86,7 @@ impl<'data> FlashLoader<'data> {
 
                     // Determine how much more data can be contained by this region.
                     let program_length =
-                        usize::min(data.len(), (region.range.end - data.address() + 1) as usize);
+                        usize::min(data.len(), (region.range.end - data.address()) as usize);
 
                     let programmed_data = data.split_off(program_length);
 
@@ -98,7 +98,7 @@ impl<'data> FlashLoader<'data> {
                 Some(MemoryRegion::Ram(region)) => {
                     // Determine how much more data can be contained by this region.
                     let program_length =
-                        usize::min(data.len(), (region.range.end - data.address() + 1) as usize);
+                        usize::min(data.len(), (region.range.end - data.address()) as usize);
 
                     let programmed_data = data.split_off(program_length);
 
