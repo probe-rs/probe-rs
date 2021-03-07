@@ -21,7 +21,8 @@ use std::time::Duration;
 /// The `Session` struct represents an active debug session.
 ///
 /// ## Creating a session  
-/// It can be conviently created by calling the [Session::auto_attach()] function,which tries to automatically select a probe, and then connect to the target.  
+/// The session can be created by calling the [Session::auto_attach()] function,
+/// which tries to automatically select a probe, and then connect to the target.  
 ///
 /// For more control, the [Probe::attach()] and [Probe::attach_under_reset()]methods can be used to open a `Session` from a specific [Probe].  
 ///
