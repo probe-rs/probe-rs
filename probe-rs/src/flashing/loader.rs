@@ -1,12 +1,10 @@
 use ihex::Record;
 
 use super::{
-    extract_from_elf, BinOptions, ExtractedFlashData, FileDownloadError, FlashBuilder, FlashError,
-    FlashProgress, Flasher,
+    extract_from_elf, BinOptions, ExtractedFlashData, FileDownloadError, FlashAlgorithm,
+    FlashBuilder, FlashError, FlashProgress, Flasher,
 };
-use crate::config::{
-    FlashAlgorithm, MemoryRange, MemoryRegion, NvmRegion, TargetDescriptionSource,
-};
+use crate::config::{MemoryRange, MemoryRegion, NvmRegion, TargetDescriptionSource};
 use crate::memory::MemoryInterface;
 use crate::session::Session;
 use std::{

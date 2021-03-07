@@ -1,16 +1,15 @@
-use super::{FlashProperties, PageInfo, RamRegion, SectorInfo};
+use super::FlashError;
+use crate::config::{FlashProperties, PageInfo, RamRegion, RawFlashAlgorithm, SectorInfo};
 use crate::core::Architecture;
-use crate::flashing::FlashError;
 use crate::{architecture::riscv, Target};
 use std::convert::TryInto;
 
 /// A flash algorithm, which has been assembled for a specific
 /// chip.
 ///
-/// To create a [FlashAlgorithm], call the [`assemble`] function
-/// on a [RawFlashAlgorithm].
+/// To create a [FlashAlgorithm], call the [`assemble_from_raw`] function.
 ///
-/// [`assemble`]: RawFlashAlgorithm::assemble
+/// [`assemble_from_raw`]: FlashAlgorithm::assemble_from_raw
 #[derive(Debug, Default, Clone)]
 pub struct FlashAlgorithm {
     /// The name of the flash algorithm.
@@ -128,7 +127,7 @@ impl FlashAlgorithm {
 
     /// Constructs a complete flash algorithm, tailored to the flash and RAM sizes given.
     pub fn assemble_from_raw(
-        raw: &super::RawFlashAlgorithm,
+        raw: &RawFlashAlgorithm,
         ram_region: &RamRegion,
         target: &Target,
     ) -> Result<Self, FlashError> {

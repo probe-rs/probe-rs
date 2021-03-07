@@ -1,6 +1,7 @@
-use super::FlashProgress;
-use super::{FlashBuilder, FlashError, FlashFill, FlashLayout, FlashPage};
-use crate::config::{FlashAlgorithm, MemoryRange, NvmRegion};
+use super::{
+    FlashAlgorithm, FlashBuilder, FlashError, FlashFill, FlashLayout, FlashPage, FlashProgress,
+};
+use crate::config::{MemoryRange, NvmRegion};
 use crate::memory::MemoryInterface;
 use crate::{
     core::{Architecture, RegisterFile},

@@ -23,7 +23,6 @@
 //!
 
 mod chip_info;
-mod flash_algorithm;
 mod registry;
 mod target;
 
@@ -32,7 +31,6 @@ pub use probe_rs_target::{
     RamRegion, RawFlashAlgorithm, SectorDescription, SectorInfo, TargetDescriptionSource,
 };
 
-pub use flash_algorithm::FlashAlgorithm;
 pub use registry::{
     add_target_from_yaml, families, get_target_by_name, search_chips, RegistryError,
 };

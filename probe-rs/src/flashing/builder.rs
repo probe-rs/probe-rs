@@ -1,7 +1,7 @@
 use std::fmt::{Debug, Formatter};
 
-use super::{FlashError, FlashVisualizer};
-use crate::config::{FlashAlgorithm, MemoryRange, PageInfo, SectorInfo};
+use super::{FlashAlgorithm, FlashError, FlashVisualizer};
+use crate::config::{MemoryRange, PageInfo, SectorInfo};
 
 /// The description of a page in flash.
 #[derive(Clone, PartialEq, Eq)]
@@ -498,7 +498,7 @@ fn add_fill(address: u32, size: u32, fills: &mut Vec<FlashFill>, page_index: usi
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::{FlashAlgorithm, FlashProperties, SectorDescription};
+    use crate::config::{FlashProperties, SectorDescription};
 
     fn assemble_demo_flash1() -> FlashAlgorithm {
         let sd = SectorDescription {
