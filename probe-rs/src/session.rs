@@ -18,7 +18,7 @@ use crate::{AttachMethod, Core, CoreType, Error, Probe};
 use anyhow::anyhow;
 use std::time::Duration;
 
-/// The `Session` struct represents an active debug session.  
+/// The `Session` struct represents an active debug session.
 ///
 /// ## Creating a session  
 /// It can be conviently created by calling the [Session::auto_attach()] function,which tries to automatically select a probe, and then connect to the target.  
