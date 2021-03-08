@@ -88,8 +88,8 @@ struct Opts {
     connect_under_reset: bool,
 
     /// Enable more verbose logging.
-    #[structopt(short, long)]
-    verbose: bool,
+    #[structopt(short, long, parse(from_occurrences))]
+    verbose: u32,
 
     /// Prints version information
     #[structopt(short = "V", long)]
@@ -107,14 +107,18 @@ fn main() -> anyhow::Result<()> {
 fn notmain() -> anyhow::Result<i32> {
     let opts: Opts = Opts::from_args();
     let verbose = opts.verbose;
-    defmt_decoder::log::init_logger(verbose, move |metadata| {
+
+    defmt_decoder::log::init_logger(verbose >= 1, move |metadata| {
         if defmt_decoder::log::is_defmt_frame(metadata) {
-            // We want to display *all* defmt frames.
-            true
+            true // We want to display *all* defmt frames.
         } else {
-            // Host logs use `info!` as the default level, but with the `verbose` flag set we log at
-            // `trace!` level instead.
-            if verbose {
+            // Log depending on how often the `--verbose` (`-v`) cli-param is supplied:
+            //   * 0: log everything from probe-run, with level "info" or higher
+            //   * 1: log everything from probe-run
+            //   * 2 or more: log everything
+            if verbose >= 2 {
+                true
+            } else if verbose >= 1 {
                 metadata.target().starts_with("probe_run")
             } else {
                 metadata.target().starts_with("probe_run") && metadata.level() <= Level::Info
