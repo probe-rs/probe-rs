@@ -105,7 +105,7 @@ pub struct DownloadOptions<'progress> {
 /// If you are looking for more options, have a look at [download_file_with_options].
 pub fn download_file<P: AsRef<Path>>(
     session: &mut Session,
-    path: &P,
+    path: P,
     format: Format,
 ) -> Result<(), FileDownloadError> {
     download_file_with_options(session, path, format, DownloadOptions::default())
@@ -118,7 +118,7 @@ pub fn download_file<P: AsRef<Path>>(
 /// If you are looking for a simple version without many options, have a look at [download_file].
 pub fn download_file_with_options<P: AsRef<Path>>(
     session: &mut Session,
-    path: &P,
+    path: P,
     format: Format,
     options: DownloadOptions<'_>,
 ) -> Result<(), FileDownloadError> {
