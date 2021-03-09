@@ -25,7 +25,7 @@ manager before installing `probe-run`.
 
 ## Setup
 
-1. Set the Cargo runner
+### 1. Set the Cargo runner
 
 The recommend way to use `probe-run` is to set as the Cargo runner of your application.
 Add this line to your Cargo configuration (`.cargo/config`) file:
@@ -55,7 +55,7 @@ PROBE_RUN_PROBE='1366:0101:123456' cargo run
 
 To list all connected probes, run `probe-run --list-probes`.
 
-2. Enable debug info
+### 2. Enable debug info
 
 Next check that debug info is enabled for all profiles.
 If you are using the `cortex-m-quickstart` template then this is already the case.
@@ -70,14 +70,14 @@ debug = 1 # default is `true`; not needed if not already overridden
 debug = 1 # default is `false`; using `true` is also OK
 ```
 
-3. Look out for old dependencies
+### 3. Look out for old dependencies
 
 The `cortex-m` dependency must be version 0.6.3 or newer.
 Older versions are not supported.
 Check your `Cargo.lock` for old versions.
 Run `cargo update` to update the `cortex-m` dependency if an older one appears in `Cargo.lock`.
 
-4. Run
+### 4. Run
 
 You are all set.
 You can now run your firmware using `cargo run`.
@@ -96,91 +96,79 @@ fn main() -> ! {
 }
 ```
 
+would output
+
 ``` console
 $ cargo run --bin hello
-Running `probe-run target/thumbv7em-none-eabi/debug/hello`
-flashing program ..
-DONE
-resetting device
-Hello, world!
-stack backtrace:
-0: 0x0000031e - __bkpt
-1: 0x000001d2 - hello::__cortex_m_rt_main
-2: 0x00000108 - main
-3: 0x000002fa - Reset
+    Finished dev [unoptimized + debuginfo] target(s) in 0.07s
+     Running `probe-run --chip nRF52840_xxAA target/thumbv7em-none-eabihf/debug/hello`
+  (HOST) INFO  flashing program (30.22 KiB)
+  (HOST) INFO  success!
+────────────────────────────────────────────────────────────────────────────────
+INFO:hello -- Hello, world!
+────────────────────────────────────────────────────────────────────────────────
+  (HOST) INFO  exiting because the device halted.
+To see the backtrace at the exit point repeat this run with
+`probe-run --chip nRF52840_xxAA target/thumbv7em-none-eabihf/debug/hello --force-backtrace`
 ```
 
 ## Stack backtraces
 
-When the firmware reaches a BKPT instruction the device halts. The `probe-run` tool treats this
-halted state as the "end" of the application and exits with exit-code = 0. Before exiting,
-`probe-run` prints the stack backtrace of the halted program.
+When the device raises a hard fault exception, indicating e.g. a panic or a stack overflow, `probe-run` will print a backtrace and exit with a non-zero exit code.
 
 This backtrace follows the format of the `std` backtraces you get from `std::panic!` but includes
 `<exception entry>` lines to indicate where an exception/interrupt occurred.
 
 ``` rust
-use cortex_m::asm;
-use rtt_target::rprintln;
-#[entry]
-fn main() -> ! {
-    // omitted: rtt initialization
-    rprintln!("main");
-    SCB::set_pendsv();
-    rprintln!("after PendSV");
-    loop { asm::bkpt() }
-}
-#[exception]
-fn PendSV() {
-    rprintln!("PendSV");
-    asm::bkpt()
-}
-```
+#![no_main]
+#![no_std]
 
-``` console
-$ cargo run --bin exception --release
-main
-PendSV
-stack backtrace:
-0: 0x00000902 - __bkpt
-<exception entry>
-1: 0x000004de - nrf52::__cortex_m_rt_main
-2: 0x00000408 - main
-3: 0x000005ee - Reset
-```
-
-## Non-zero exit code
-
-When the device raises a hard fault exception `probe-run` will print a backtrace
-and exit with non-zero exit code.
-
-You can trigger a hard fault exception with the UDF instruction.
-
-``` rust
 use cortex_m::asm;
 #[entry]
 fn main() -> ! {
+    // trigger a hard fault exception with the UDF instruction.
     asm::udf()
 }
 ```
 
 ``` console
-$ cargo run --bin hard-fault
+    Finished dev [optimized + debuginfo] target(s) in 0.04s
+     Running `probe-run --chip nRF52840_xxAA target/thumbv7em-none-eabihf/debug/hard-fault`
+  (HOST) INFO  flashing program (30.08 KiB)
+  (HOST) INFO  success!
+────────────────────────────────────────────────────────────────────────────────
 stack backtrace:
-   0: 0x000003e0 - HardFaultTrampoline
+   0: HardFaultTrampoline
       <exception entry>
-   1: 0x00000140 - __udf
-   2: 0x00000118 - cortex_m::asm::udf
-   3: 0x0000012c - hard_fault::__cortex_m_rt_main
-   4: 0x00000122 - main
-   5: 0x000000fa - Reset
+   1: __udf
+   2: cortex_m::asm::udf
+        at /<...>/cortex-m-0.6.4/src/asm.rs:104
+   3: panic::__cortex_m_rt_main
+        at src/bin/hard-fault.rs:12
+   4: main
+        at src/bin/hard-fault.rs:8
+   5: ResetTrampoline
+        at /<...>3/cortex-m-rt-0.6.13/src/lib.rs:547
+   6: Reset
+        at /<...>/cortex-m-rt-0.6.13/src/lib.rs:550
+```
 
+If we look at the return code emitted by this `cargo run`, we'll see that it is non-0:
+
+```console
 $ echo $?
 134
 ```
 
-**NOTE** when you run your application with `probe-run` the `HardFault` handler,
-default or user-defined one, will *NOT* be executed.
+⚠️ **NOTE** when you run your application with `probe-run`, the `HardFault` handler (default or user-defined) will *NOT* be executed.
+
+### Forcing backtraces
+
+If you'd like to see a backtrace at the end of successful program runs as well, you can enable this by setting the `--force-backtrace` flag:
+
+``` console
+$ cargo run --bin hello --force-backtrace
+```
 
 ## Troubleshooting
 
