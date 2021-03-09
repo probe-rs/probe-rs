@@ -180,27 +180,23 @@ fn notmain() -> anyhow::Result<i32> {
             )
         })?;
 
-    let (mut table, locs) = {
-        let table = defmt_decoder::Table::parse(&bytes)?;
+    // Parse defmt_decoder-table from bytes
+    // * skip defmt version check, if `PROBE_RUN_IGNORE_VERSION` matches one of the options
+    let mut table = defmt_decoder::Table::parse(&bytes)?;
+    // Extract the `Locations` from the table, if there is a table
+    let mut locs = None;
+    if let Some(table) = table.as_ref() {
+        let tmp = table.get_locations(&bytes)?;
 
-        let locs = if let Some(table) = table.as_ref() {
-            let locs = table.get_locations(&bytes)?;
-
-            if !table.is_empty() && locs.is_empty() {
-                log::warn!("insufficient DWARF info; compile your program with `debug = 2` to enable location info");
-                None
-            } else if table.indices().all(|idx| locs.contains_key(&(idx as u64))) {
-                Some(locs)
-            } else {
-                log::warn!("(BUG) location info is incomplete; it will be omitted from the output");
-                None
-            }
+        if !table.is_empty() && tmp.is_empty() {
+            log::warn!("insufficient DWARF info; compile your program with `debug = 2` to enable location info");
+        } else if table.indices().all(|idx| tmp.contains_key(&(idx as u64))) {
+            locs = Some(tmp);
         } else {
-            None
-        };
-
-        (table, locs)
-    };
+            log::warn!("(BUG) location info is incomplete; it will be omitted from the output");
+        }
+    }
+    let locs = locs;
 
     // sections used in cortex-m-rt
     // NOTE we won't load `.uninit` so it is not included here
