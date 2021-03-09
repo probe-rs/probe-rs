@@ -182,7 +182,10 @@ fn notmain() -> anyhow::Result<i32> {
 
     // Parse defmt_decoder-table from bytes
     // * skip defmt version check, if `PROBE_RUN_IGNORE_VERSION` matches one of the options
-    let mut table = defmt_decoder::Table::parse(&bytes)?;
+    let mut table = match option_env!("PROBE_RUN_IGNORE_VERSION") {
+        Some("true") | Some("1") => defmt_decoder::Table::parse_ignore_version(&bytes)?,
+        _ => defmt_decoder::Table::parse(&bytes)?,
+    };
     // Extract the `Locations` from the table, if there is a table
     let mut locs = None;
     if let Some(table) = table.as_ref() {
