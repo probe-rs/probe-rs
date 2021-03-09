@@ -547,36 +547,34 @@ fn notmain() -> anyhow::Result<i32> {
     print_separator();
 
     let top_exception = construct_backtrace(
-            &mut core,
-            pc,
-            debug_frame,
-            &elf,
-            &vector_table,
-            &sp_ram_region,
-            &live_functions,
-            &current_dir,
-            // TODO any other cases in which we should force a backtrace?
-            force_backtrace || canary_touched
-        )?;
+        &mut core,
+        pc,
+        debug_frame,
+        &elf,
+        &vector_table,
+        &sp_ram_region,
+        &live_functions,
+        &current_dir,
+        // TODO any other cases in which we should force a backtrace?
+        force_backtrace || canary_touched,
+    )?;
 
     core.reset_and_halt(TIMEOUT)?;
 
-    Ok(
-        match top_exception {
-            Some(TopException::StackOverflow) => {
-                log::error!("the program has overflowed its stack");
-                SIGABRT
-            }
-            Some(TopException::HardFault) => {
-                log::error!("the program panicked");
-                SIGABRT
-            }
-            None => {
-                log::info!("device halted without error");
-                0
-            }
+    Ok(match top_exception {
+        Some(TopException::StackOverflow) => {
+            log::error!("the program has overflowed its stack");
+            SIGABRT
         }
-    )
+        Some(TopException::HardFault) => {
+            log::error!("the program panicked");
+            SIGABRT
+        }
+        None => {
+            log::info!("device halted without error");
+            0
+        }
+    })
 }
 
 fn program_size_of(file: &ElfFile) -> u64 {
@@ -643,7 +641,7 @@ fn construct_backtrace(
     sp_ram_region: &Option<RamRegion>,
     live_functions: &HashSet<&str>,
     current_dir: &Path,
-    force_backtrace: bool
+    force_backtrace: bool,
 ) -> Result<Option<TopException>, anyhow::Error> {
     let mut debug_frame = DebugFrame::new(debug_frame, LittleEndian);
     // 32-bit ARM -- this defaults to the host's address size which is likely going to be 8
@@ -708,12 +706,10 @@ fn construct_backtrace(
                     );
                 };
 
-                top_exception = Some(
-                    match stack_overflow {
-                        true => TopException::StackOverflow,
-                        false => TopException::HardFault
-                    }
-                );
+                top_exception = Some(match stack_overflow {
+                    true => TopException::StackOverflow,
+                    false => TopException::HardFault,
+                });
             } else {
                 if force_backtrace {
                     print_backtrace_start();
@@ -747,7 +743,11 @@ fn construct_backtrace(
                         // not within current directory; use full path
                         file
                     };
-                    backtrace_display_str.push_str(&format!("        at {}:{}\n", relpath.display(), line));
+                    backtrace_display_str.push_str(&format!(
+                        "        at {}:{}\n",
+                        relpath.display(),
+                        line
+                    ));
                 }
             }
         } else {
@@ -819,7 +819,7 @@ fn construct_backtrace(
             if top_exception == Some(TopException::StackOverflow) {
                 return Ok(top_exception);
             } else {
-                return Ok(Some(TopException::HardFault))
+                return Ok(Some(TopException::HardFault));
             }
         }
 
