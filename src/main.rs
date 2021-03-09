@@ -168,6 +168,7 @@ fn notmain() -> anyhow::Result<i32> {
             ram.range.end - 1
         );
     }
+    let ram_region = ram_region;
 
     // NOTE we want to raise the linking error before calling `defmt_decoder::Table::parse`
     let text = elf
@@ -264,6 +265,7 @@ fn notmain() -> anyhow::Result<i32> {
             }
         }
     }
+    let (debug_frame, vector_table) = (debug_frame, vector_table);
 
     let live_functions = elf
         .symbols()
@@ -395,6 +397,7 @@ fn notmain() -> anyhow::Result<i32> {
         core.set_hw_breakpoint(vector_table.hard_fault & !THUMB_BIT)?;
         core.run()?;
     }
+    let canary = canary;
 
     // Register a signal handler that sets `exit` to `true` on Ctrl+C. On the second Ctrl+C, the
     // signal's default action will be run.
