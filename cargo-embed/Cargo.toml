@@ -30,7 +30,7 @@ log = { version = "0.4.14", features = ["serde"] }
 lazy_static = "1.4.0"
 colored = "2.0.0"
 serde = { version = "1.0", features = ["derive"] }
-serde_json = { version = "1.0.62" }
+serde_json = { version = "1.0.64" }
 config = { version = "0.10.1", features = ["toml", "json", "yaml"], default-features = false }
 probe-rs-rtt = { version = "0.10.0", git = "https://github.com/probe-rs/probe-rs-rtt" }
 chrono = "0.4"
