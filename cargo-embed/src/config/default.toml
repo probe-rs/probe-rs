@@ -21,6 +21,7 @@ halt_afterwards = false
 restore_unwritten_bytes = false
 # The path where an SVG of the assembled flash layout should be written to.
 # flash_layout_output_path = "out.svg"
+# Triggers a full chip erase instead of a page by page erase.
 do_chip_erase = false
 
 [default.reset]
