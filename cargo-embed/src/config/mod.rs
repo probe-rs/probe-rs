@@ -42,6 +42,7 @@ pub struct Flashing {
     pub halt_afterwards: bool,
     pub restore_unwritten_bytes: bool,
     pub flash_layout_output_path: Option<String>,
+    pub do_chip_erase: bool,
 }
 
 /// The reset config struct holding all the possible reset options.

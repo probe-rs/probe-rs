@@ -20,7 +20,7 @@ sentry = ["probe-rs-cli-util/sentry"]
 [dependencies]
 probe-rs = { version = "0.10.0", git = "https://github.com/probe-rs/probe-rs" }
 gdb-server = { version = "0.10.0", git = "https://github.com/probe-rs/probe-rs"  }
-probe-rs-cli-util = { version = "0.10.0", git = "https://github.com/probe-rs/probe-rs", default-features = false }
+probe-rs-cli-util = { version = "0.10.0", git = "https://github.com/probe-rs/probe-rs", default-features = false, features=["anyhow"] }
 
 structopt = "0.3.18"
 git-version = "0.3.4"
