@@ -1,4 +1,7 @@
-use crate::architecture::riscv::communication_interface::RiscvCommunicationInterface;
+use crate::architecture::{
+    arm::communication_interface::UninitializedArmProbe,
+    riscv::communication_interface::RiscvCommunicationInterface,
+};
 use crate::probe::{JTAGAccess, ProbeCreationError};
 use crate::{
     DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, DebugProbeType, WireProtocol,
@@ -515,10 +518,8 @@ impl DebugProbe for FtdiProbe {
 
     fn try_get_arm_interface<'probe>(
         self: Box<Self>,
-    ) -> Result<
-        Box<dyn crate::architecture::arm::communication_interface::ArmProbeInterface + 'probe>,
-        (Box<dyn DebugProbe>, DebugProbeError),
-    > {
+    ) -> Result<Box<dyn UninitializedArmProbe + 'probe>, (Box<dyn DebugProbe>, DebugProbeError)>
+    {
         todo!()
     }
 }

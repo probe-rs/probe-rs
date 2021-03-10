@@ -1,24 +1,25 @@
 #![warn(missing_docs)]
 
-use crate::architecture::{
-    arm::{
-        ap::AccessPortError,
-        communication_interface::{
-            ApInformation::{MemoryAp, Other},
-            ArmProbeInterface, MemoryApInformation,
-        },
-        core::{debug_core_start, reset_catch_clear, reset_catch_set},
-        memory::Component,
-        SwoConfig,
-    },
-    riscv::communication_interface::RiscvCommunicationInterface,
-};
+use crate::architecture::arm::core::{reset_catch_clear, reset_catch_set};
 use crate::config::{
     ChipInfo, Core as CoreConfig, MemoryRegion, RegistryError, Target, TargetSelector,
 };
 use crate::core::{Architecture, CoreState, SpecificCoreState};
+use crate::{
+    architecture::{
+        arm::{
+            ap::{AccessPortError, MemoryAp},
+            communication_interface::{ArmProbeInterface, MemoryApInformation},
+            memory::Component,
+            ApInformation, SwoConfig,
+        },
+        riscv::communication_interface::RiscvCommunicationInterface,
+    },
+    config::DebugSequence,
+};
 use crate::{AttachMethod, Core, CoreType, Error, Probe};
 use anyhow::anyhow;
+use std::borrow::{Borrow, BorrowMut};
 use std::time::Duration;
 
 /// The `Session` struct represents an active debug session.
@@ -130,24 +131,34 @@ impl Session {
 
         let mut session = match target.architecture() {
             Architecture::Arm => {
-                if !probe.has_arm_interface() {
-                    return Err(anyhow!(
-                        "Debugging ARM based chips is not supported with the connected probe."
-                    )
-                    .into());
+                let mut interface = probe.try_into_arm_interface().map_err(|(_, err)| err)?;
+
+                match target.debug_sequence.borrow() {
+                    DebugSequence::Arm(sequence) => {
+                        sequence.debug_port_setup(interface.borrow_mut())?
+                    }
+                    DebugSequence::Riscv => panic!("Should not happen...."),
                 }
 
-                let interface = probe.try_into_arm_interface().map_err(|(_, err)| err)?;
+                let mut interface = interface.initialize()?;
+
+                {
+                    let mut memory_interface = interface.memory_interface(MemoryAp::from(0))?;
+
+                    // Enable debug mode
+                    match target.debug_sequence.borrow() {
+                        DebugSequence::Arm(sequence) => {
+                            sequence.debug_core_start(&mut memory_interface)?
+                        }
+                        DebugSequence::Riscv => panic!("Should not happen...."),
+                    }
+                }
 
                 let mut session = Session {
                     target,
                     interface: ArchitectureInterface::Arm(interface),
                     cores,
                 };
-
-                // Todo: Add multicore support. How to deal with any cores that are not active and won't respond?
-                // Enable debug mode
-                debug_core_start(&mut session.core(0)?)?;
 
                 if attach_method == AttachMethod::UnderReset {
                     // we need to halt the chip here
@@ -273,13 +284,14 @@ impl Session {
                 .ok_or_else(|| anyhow!("AP {} does not exist on chip.", ap_index))?;
 
             let component = match ap_information {
-                MemoryAp(MemoryApInformation {
+                ApInformation::MemoryAp(MemoryApInformation {
                     port_number: _,
                     only_32bit_data_size: _,
                     debug_base_address: 0,
                     supports_hnonsec: _,
                 }) => Err(Error::Other(anyhow!("AP has a base address of 0"))),
-                MemoryAp(MemoryApInformation {
+
+                ApInformation::MemoryAp(MemoryApInformation {
                     port_number,
                     only_32bit_data_size: _,
                     debug_base_address,
@@ -293,7 +305,7 @@ impl Session {
                     Component::try_parse(&mut memory, base_address)
                         .map_err(Error::architecture_specific)
                 }
-                Other { port_number } => {
+                ApInformation::Other { port_number } => {
                     // Return an error, only possible to get Component from MemoryAP
                     Err(Error::Other(anyhow!(
                         "AP {} is not a MemoryAP, unable to get ARM component.",
@@ -426,7 +438,9 @@ fn get_target_from_selector(
 
             if probe.has_arm_interface() {
                 match probe.try_into_arm_interface() {
-                    Ok(mut interface) => {
+                    Ok(interface) => {
+                        let mut interface = interface.initialize()?;
+
                         //let chip_result = try_arm_autodetect(interface);
                         log::debug!("Autodetect: Trying DAP interface...");
 

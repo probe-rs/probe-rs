@@ -9,6 +9,7 @@ use crate::architecture::arm::{PortType, RawDapAccess};
 use crate::{
     architecture::{
         arm::{
+            communication_interface::UninitializedArmProbe,
             communication_interface::{ArmProbeInterface, DapProbe},
             swo::SwoConfig,
             ArmCommunicationInterface, DapAccess, SwoAccess,
@@ -522,6 +523,8 @@ impl DebugProbe for JLink {
             WireProtocol::Swd => {
                 // The following sequence is the DebugPortSetup sequence from the ARM debug sequences
 
+                /*
+
                 // Construct the JTAG to SWD sequence.
                 let jtag_to_swd_sequence = [
                     false, true, true, true, true, false, false, true, true, true, true, false,
@@ -550,6 +553,8 @@ impl DebugProbe for JLink {
                 // Perform a line reset
                 self.swd_line_reset()?;
                 log::debug!("Sucessfully switched to SWD");
+
+                */
 
                 // We are ready to debug.
             }
@@ -616,7 +621,8 @@ impl DebugProbe for JLink {
 
     fn try_get_arm_interface<'probe>(
         mut self: Box<Self>,
-    ) -> Result<Box<dyn ArmProbeInterface + 'probe>, (Box<dyn DebugProbe>, DebugProbeError)> {
+    ) -> Result<Box<dyn UninitializedArmProbe + 'probe>, (Box<dyn DebugProbe>, DebugProbeError)>
+    {
         if self.supported_protocols.contains(&WireProtocol::Swd) {
             if let Some(WireProtocol::Jtag) = self.protocol {
                 log::warn!("Debugging ARM chips over JTAG is not yet implemented for JLink.");
@@ -628,10 +634,16 @@ impl DebugProbe for JLink {
                 return Err((self, e));
             };
 
+            /*
             match ArmCommunicationInterface::new(self, true) {
                 Ok(interface) => Ok(Box::new(interface)),
                 Err((probe, err)) => Err((DebugProbe::into_probe(probe), err)),
             }
+            */
+
+            let uninitialized_interface = ArmCommunicationInterface::new(self, true);
+
+            Ok(Box::new(uninitialized_interface))
         } else {
             Err((self, DebugProbeError::InterfaceNotAvailable("SWD/ARM")))
         }

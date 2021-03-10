@@ -35,15 +35,14 @@ impl Request for SequenceRequest {
 }
 
 impl SequenceRequest {
-    pub(crate) fn new(data: &[u8]) -> Result<SequenceRequest, CmsisDapError> {
+    pub(crate) fn new(data: &[u8], bit_count: u8) -> Result<SequenceRequest, CmsisDapError> {
         if data.len() > 32 {
             return Err(CmsisDapError::TooMuchData);
         }
 
-        let bit_count = match data.len() {
-            32 => 0,
-            x => x * 8,
-        } as u8;
+        if (bit_count as usize + 7) / 8 > data.len() {
+            panic!("Data too short for given bit length. This is a bug, please report it.")
+        }
 
         let mut owned_data = [0u8; 32];
 

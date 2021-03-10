@@ -1,8 +1,8 @@
 //! Support for Cortex-M33
 //!
 
-use crate::error::Error;
 use crate::memory::Memory;
+use crate::{architecture::arm::communication_interface::Initialized, error::Error};
 use crate::{
     core::{
         Architecture, CoreInformation, CoreInterface, CoreRegister, CoreRegisterAddress,
@@ -386,7 +386,7 @@ impl<'probe> MemoryInterface for M33<'probe> {
 
     fn get_arm_interface(
         &mut self,
-    ) -> Result<&mut crate::architecture::arm::ArmCommunicationInterface, Error> {
+    ) -> Result<&mut crate::architecture::arm::ArmCommunicationInterface<Initialized>, Error> {
         self.memory.get_arm_interface()
     }
 }

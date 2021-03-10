@@ -5,10 +5,12 @@ use std::{
 
 use crate::{
     architecture::arm::{
-        ap::{ApAccess, IDR},
+        ap::ApAccess,
+        ap::IDR,
         communication_interface::{read_ap, write_ap},
+        communication_interface::{SwdSequence, UninitializedArmProbe},
         dp::{Abort, Ctrl, DpAccess, Select, DPIDR},
-        ArmCommunicationInterface, PortType,
+        ArmCommunicationInterface, DapAccess, PortType,
     },
     config::ArmDebugSequence,
     core::CoreRegister,
@@ -26,7 +28,10 @@ impl ArmDebugSequence for LPC55S69 {
         todo!()
     }
 
-    fn debug_port_setup(&self, interface: &mut crate::Memory) -> Result<(), crate::Error> {
+    fn debug_port_setup(
+        &self,
+        interface: &mut Box<dyn UninitializedArmProbe>,
+    ) -> Result<(), crate::Error> {
         todo!()
     }
 

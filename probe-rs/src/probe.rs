@@ -4,10 +4,8 @@ pub(crate) mod ftdi;
 pub(crate) mod jlink;
 pub(crate) mod stlink;
 
-use crate::{
-    architecture::arm::{ap::AccessPort, DapAccess},
-    Session,
-};
+use crate::architecture::arm::{ap::AccessPort, DapAccess};
+use crate::Session;
 use crate::{
     architecture::arm::{ap::MemoryAp, MemoryApInformation},
     error::Error,
@@ -28,6 +26,8 @@ use crate::{
     },
     Memory,
 };
+
+use crate::architecture::arm::communication_interface::{SwdSequence, UninitializedArmProbe};
 use std::{convert::TryFrom, fmt};
 
 use self::jlink::list_jlink_devices;
@@ -387,7 +387,7 @@ impl Probe {
     /// If an error occurs while trying to connect, the probe is returned.
     pub fn try_into_arm_interface<'probe>(
         self,
-    ) -> Result<Box<dyn ArmProbeInterface + 'probe>, (Self, DebugProbeError)> {
+    ) -> Result<Box<dyn UninitializedArmProbe + 'probe>, (Self, DebugProbeError)> {
         if !self.attached {
             Err((self, DebugProbeError::NotAttached))
         } else {
@@ -490,7 +490,8 @@ pub trait DebugProbe: Send + fmt::Debug {
     /// probe actually supports this, call [DebugProbe::has_arm_interface] first.
     fn try_get_arm_interface<'probe>(
         self: Box<Self>,
-    ) -> Result<Box<dyn ArmProbeInterface + 'probe>, (Box<dyn DebugProbe>, DebugProbeError)> {
+    ) -> Result<Box<dyn UninitializedArmProbe + 'probe>, (Box<dyn DebugProbe>, DebugProbeError)>
+    {
         Err((
             self.into_probe(),
             DebugProbeError::InterfaceNotAvailable("ARM"),
@@ -762,8 +763,9 @@ impl DebugProbe for FakeProbe {
 
     fn try_get_arm_interface<'probe>(
         self: Box<Self>,
-    ) -> Result<Box<dyn ArmProbeInterface + 'probe>, (Box<dyn DebugProbe>, DebugProbeError)> {
-        Ok(Box::new(FakeArmInterface::new(self)))
+    ) -> Result<Box<dyn UninitializedArmProbe + 'probe>, (Box<dyn DebugProbe>, DebugProbeError)>
+    {
+        todo!()
     }
 }
 
@@ -837,9 +839,9 @@ impl ArmProbeInterface for FakeArmInterface {
             supports_hnonsec: false,
         };
 
-        let memory = ADIMemoryInterface::new(&mut self.memory_ap, &ap_information)?;
-
         todo!("Fix this");
+
+        //let memory = ADIMemoryInterface::new(&mut self.memory_ap, &ap_information)?;
 
         //Ok(Memory::new(memory, access_port))
     }
@@ -868,12 +870,18 @@ impl ArmProbeInterface for FakeArmInterface {
     fn target_reset_deassert(&mut self) -> Result<(), Error> {
         todo!()
     }
+}
 
+impl SwdSequence for FakeArmInterface {
     fn swj_sequence(&mut self, bit_len: u8, bits: u64) -> Result<(), Error> {
         todo!()
     }
 
     fn swj_pins(&mut self, pin_out: u32, pin_select: u32, pin_wait: u32) -> Result<u32, Error> {
+        todo!()
+    }
+
+    fn read_dpidr(&mut self) -> Result<u32, Error> {
         todo!()
     }
 }

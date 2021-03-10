@@ -9,7 +9,9 @@ use crate::{config::ArmDebugSequence, core::CoreRegister, DebugProbeError, Memor
 
 use super::{
     communication_interface::ArmProbeInterface,
+    communication_interface::{SwdSequence, UninitializedArmProbe},
     dp::{Abort, Ctrl, DpAccess, Select, DPIDR},
+    PortType, Register,
 };
 
 pub struct DefaultArmSequence;
@@ -48,10 +50,10 @@ impl ArmDebugSequence for DefaultArmSequence {
         }
     }
 
-    fn debug_port_setup(&self, memory: &mut Memory) -> Result<(), crate::Error> {
-        // TODO: Handle JTAG, etc.
-        let interface = memory.get_arm_interface()?;
-
+    fn debug_port_setup(
+        &self,
+        interface: &mut Box<dyn UninitializedArmProbe>,
+    ) -> Result<(), crate::Error> {
         // TODO: Handle this differently for ST-Link?
 
         // TODO: Use atomic block
@@ -68,11 +70,10 @@ impl ArmDebugSequence for DefaultArmSequence {
 
         // End of atomic block
 
-        let _ = interface
-            .read_dp_register::<DPIDR>()
-            .map_err(DebugProbeError::from)?;
+        // Read DPIDR to enable SWD interface
+        interface.read_dpidr()?;
 
-        todo!()
+        Ok(())
     }
 
     fn debug_port_start(&self, memory: &mut Memory) -> Result<(), crate::Error> {

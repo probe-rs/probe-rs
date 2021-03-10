@@ -14,31 +14,6 @@ pub mod m0;
 pub mod m33;
 pub mod m4;
 
-/// Enable debugging on an ARM core. This is based on the
-/// `DebugCoreStart` function from the [ARM SVD Debug Description].
-///
-/// [ARM SVD Debug Description]: http://www.keil.com/pack/doc/cmsis/Pack/html/debug_description.html#debugCoreStart
-pub(crate) fn debug_core_start(core: &mut impl MemoryInterface) -> Result<(), Error> {
-    use crate::architecture::arm::core::m4::Dhcsr;
-
-    let current_dhcsr = Dhcsr(core.read_word_32(Dhcsr::ADDRESS)?);
-
-    // Note: Manual addition for debugging, not part of the original DebugCoreStart function
-    if current_dhcsr.c_debugen() {
-        log::debug!("Core is already in debug mode, no need to enable it again");
-        return Ok(());
-    }
-    // -- End addition
-
-    let mut dhcsr = Dhcsr(0);
-    dhcsr.set_c_debugen(true);
-    dhcsr.enable_write();
-
-    core.write_word_32(Dhcsr::ADDRESS, dhcsr.into())?;
-
-    Ok(())
-}
-
 /// Setup the core to stop after reset. After this, the core will halt when it comes
 /// out of reset. This is based on the `ResetCatchSet` function from
 /// the [ARM SVD Debug Description].

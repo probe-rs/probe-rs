@@ -1,9 +1,10 @@
-use crate::core::{
-    CoreInformation, CoreInterface, CoreRegister, CoreRegisterAddress, RegisterFile,
-};
 use crate::error::Error;
 use crate::memory::Memory;
 use crate::DebugProbeError;
+use crate::{
+    architecture::arm::communication_interface::Initialized,
+    core::{CoreInformation, CoreInterface, CoreRegister, CoreRegisterAddress, RegisterFile},
+};
 
 use super::{
     register, reset_catch_clear, reset_catch_set, reset_system, CortexState, Dfsr,
@@ -721,7 +722,7 @@ impl<'probe> MemoryInterface for M4<'probe> {
 
     fn get_arm_interface(
         &mut self,
-    ) -> Result<&mut crate::architecture::arm::ArmCommunicationInterface, Error> {
+    ) -> Result<&mut crate::architecture::arm::ArmCommunicationInterface<Initialized>, Error> {
         todo!()
     }
 }

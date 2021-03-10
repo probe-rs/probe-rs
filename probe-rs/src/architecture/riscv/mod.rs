@@ -15,6 +15,8 @@ use bitfield::bitfield;
 use register::RISCV_REGISTERS;
 use std::time::{Duration, Instant};
 
+use super::arm::communication_interface::Initialized;
+
 #[macro_use]
 mod register;
 pub(crate) mod assembly;
@@ -552,7 +554,9 @@ impl<'probe> MemoryInterface for Riscv32<'probe> {
         self.interface.flush()
     }
 
-    fn get_arm_interface(&mut self) -> Result<&mut super::arm::ArmCommunicationInterface, Error> {
+    fn get_arm_interface(
+        &mut self,
+    ) -> Result<&mut super::arm::ArmCommunicationInterface<Initialized>, Error> {
         todo!()
     }
 }

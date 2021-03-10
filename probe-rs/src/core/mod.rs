@@ -1,12 +1,14 @@
 pub(crate) mod communication_interface;
 
 pub use communication_interface::CommunicationInterface;
+use probe_rs_target::CoreType;
 
 use crate::architecture::{
     arm::core::CortexState, riscv::communication_interface::RiscvCommunicationInterface,
 };
-use crate::config::CoreType;
-use crate::{error, Error, Memory, MemoryInterface};
+use crate::DebugProbeError;
+use crate::{architecture::arm::communication_interface::Initialized, error};
+use crate::{Error, Memory, MemoryInterface};
 use anyhow::{anyhow, Result};
 use std::time::Duration;
 
@@ -219,7 +221,7 @@ impl<'probe> MemoryInterface for Core<'probe> {
 
     fn get_arm_interface(
         &mut self,
-    ) -> Result<&mut crate::architecture::arm::ArmCommunicationInterface, Error> {
+    ) -> Result<&mut crate::architecture::arm::ArmCommunicationInterface<Initialized>, Error> {
         todo!()
     }
 }

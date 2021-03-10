@@ -1,4 +1,5 @@
 use super::{Chip, Core, CoreType, MemoryRegion, RawFlashAlgorithm, TargetDescriptionSource};
+use crate::architecture::arm::communication_interface::UninitializedArmProbe;
 use crate::{core::Architecture, flashing::FlashLoader};
 use std::sync::Arc;
 
@@ -70,9 +71,9 @@ impl Target {
             name: chip.name.clone(),
             cores,
             flash_algorithms,
-            memory_map: chip.memory_map.clone(),
             source,
-            debug_sequence: Arc::new(DebugSequence::Riscv),
+            memory_map: chip.memory_map.clone(),
+            debug_sequence: Arc::new(debug_sequence),
         }
     }
 
@@ -177,7 +178,8 @@ pub trait ArmDebugSequence: Send + Sync {
     fn reset_hardware_assert(&self, interface: &mut Memory) -> Result<(), Error>;
     fn reset_hardware_deassert(&self, interface: &mut Memory) -> Result<(), Error>;
 
-    fn debug_port_setup(&self, interface: &mut Memory) -> Result<(), Error>;
+    fn debug_port_setup(&self, interface: &mut Box<dyn UninitializedArmProbe>)
+        -> Result<(), Error>;
 
     fn debug_port_start(&self, interface: &mut Memory) -> Result<(), Error>;
 

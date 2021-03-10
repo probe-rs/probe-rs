@@ -8,7 +8,7 @@ use super::{
     dtm::{DmiOperation, DmiOperationStatus, Dtm},
     register, Dmcontrol, Dmstatus,
 };
-use crate::architecture::riscv::*;
+use crate::architecture::{arm::communication_interface::Initialized, riscv::*};
 use crate::DebugProbeError;
 use crate::{MemoryInterface, Probe};
 
@@ -1468,7 +1468,7 @@ impl MemoryInterface for RiscvCommunicationInterface {
 
     fn get_arm_interface(
         &mut self,
-    ) -> Result<&mut crate::architecture::arm::ArmCommunicationInterface, Error> {
+    ) -> Result<&mut crate::architecture::arm::ArmCommunicationInterface<Initialized>, Error> {
         todo!()
     }
 }

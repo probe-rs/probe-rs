@@ -1,7 +1,10 @@
-use crate::{architecture::arm::ArmCommunicationInterface, error};
 use crate::{
     architecture::arm::{ap::MemoryAp, memory::adi_v5_memory_interface::ArmProbe},
     CoreRegisterAddress,
+};
+use crate::{
+    architecture::arm::{communication_interface::Initialized, ArmCommunicationInterface},
+    error,
 };
 
 use anyhow::anyhow;
@@ -90,7 +93,9 @@ pub trait MemoryInterface {
     /// operation fails.
     fn flush(&mut self) -> Result<(), error::Error>;
 
-    fn get_arm_interface(&mut self) -> Result<&mut ArmCommunicationInterface, error::Error>;
+    fn get_arm_interface(
+        &mut self,
+    ) -> Result<&mut ArmCommunicationInterface<Initialized>, error::Error>;
 }
 
 impl<T> MemoryInterface for &mut T
@@ -133,7 +138,9 @@ where
         (*self).flush()
     }
 
-    fn get_arm_interface(&mut self) -> Result<&mut ArmCommunicationInterface, crate::Error> {
+    fn get_arm_interface(
+        &mut self,
+    ) -> Result<&mut ArmCommunicationInterface<Initialized>, crate::Error> {
         todo!()
     }
 }
@@ -205,7 +212,9 @@ impl<'probe> Memory<'probe> {
         self.inner.write_core_reg(self.ap_sel, addr, value)
     }
 
-    pub fn get_arm_interface(&mut self) -> Result<&mut ArmCommunicationInterface, error::Error> {
+    pub fn get_arm_interface(
+        &mut self,
+    ) -> Result<&mut ArmCommunicationInterface<Initialized>, error::Error> {
         self.inner.get_arm_communication_interface()
     }
 }

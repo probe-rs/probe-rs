@@ -1,5 +1,7 @@
 use ihex::Record;
-use probe_rs_target::{MemoryRegion, RawFlashAlgorithm};
+use probe_rs_target::{
+    MemoryRange, MemoryRegion, NvmRegion, RawFlashAlgorithm, TargetDescriptionSource,
+};
 use std::collections::HashMap;
 use std::io::{Read, Seek, SeekFrom};
 use std::ops::Range;
@@ -11,10 +13,7 @@ use super::{
 };
 use crate::memory::MemoryInterface;
 use crate::session::Session;
-use crate::{
-    config::{MemoryRange, NvmRegion, TargetDescriptionSource},
-    Target,
-};
+use crate::Target;
 
 /// `FlashLoader` is a struct which manages the flashing of any chunks of data onto any sections of flash.
 ///

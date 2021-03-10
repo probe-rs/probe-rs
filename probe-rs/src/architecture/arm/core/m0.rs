@@ -1,6 +1,7 @@
 use super::{
     reset_catch_clear, reset_catch_set, reset_system, CortexState, Dfsr, ARM_REGISTER_FILE,
 };
+use crate::architecture::arm::communication_interface::Initialized;
 use crate::core::{RegisterDescription, RegisterFile, RegisterKind};
 use crate::error::Error;
 use crate::memory::Memory;
@@ -645,7 +646,7 @@ impl<'probe> MemoryInterface for M0<'probe> {
 
     fn get_arm_interface(
         &mut self,
-    ) -> Result<&mut crate::architecture::arm::ArmCommunicationInterface, Error> {
+    ) -> Result<&mut crate::architecture::arm::ArmCommunicationInterface<Initialized>, Error> {
         todo!()
     }
 }
