@@ -195,6 +195,14 @@ If they are exposed, you can connect a "stand alone" probe device to the microco
 
 Note that this may involve some soldering if your board does not come with a pre-attached header to plug your debugger into.
 
+### defmt version mismatch
+
+#### end-user
+Follow the instructions in the error message to resolve the mismatch.
+
+#### developer
+If you are building `probe-run` from source, you can disable the version check by setting the `PROBE_RUN_IGNORE_VERSION` environment variable to `true` or `1` at compile time.
+
 ## Support Us
 
 `probe-run` is part of the [Knurling] project, [Ferrous Systems]' effort at
