@@ -92,7 +92,5 @@ fn remove_arguments_test() {
 
     remove_arguments(&arguments_to_remove, &mut arguments);
 
-    println!("{:?}", arguments);
-
     assert!(arguments.is_empty());
 }
