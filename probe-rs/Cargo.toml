@@ -32,13 +32,13 @@ gimli = { version = "0.23.0", default-features = false, features = ["endian-read
 hidapi = "1.2.0"
 ihex = "3.0.0"
 itm-decode = "0.2.0"
-jaylink = {version = "0.1.5", git = "https://github.com/jschievink/jaylink" }
+jaylink = {version = "0.1.5", git = "https://github.com/jonas-schievink/jaylink" }
 jep106 = "0.2.4"
 lazy_static = "1.4.0"
 log = "0.4.8"
 num-traits = "0.2.11"
 object = { version = "0.23.0", default-features = false, features = ["elf", "read_core", "std"] }
-rusb = "0.7.0"
+rusb = "0.8.0"
 scroll = "0.10.1"
 serde = { version = "1.0.104", features = ["derive"] }
 serde_yaml = "0.8.11"
