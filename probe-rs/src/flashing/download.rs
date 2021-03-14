@@ -11,7 +11,7 @@ use crate::{config::MemoryRange, session::Session};
 use thiserror::Error;
 
 /// Extended options for flashing a binary file.
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct BinOptions {
     /// The address in memory where the binary will be put at.
     pub base_address: Option<u32>,
@@ -20,7 +20,7 @@ pub struct BinOptions {
 }
 
 /// A finite list of all the available binary formats probe-rs understands.
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub enum Format {
     /// Marks a file in binary format. This means that the file contains the contents of the flash 1:1.
     /// [BinOptions] can be used to define the location in flash where the file contents should be put at.
