@@ -1,6 +1,6 @@
 use object::{
-    elf::FileHeader32, read::elf::FileHeader, read::elf::ProgramHeader, Bytes, Endianness, Object,
-    ObjectSection,
+    elf::FileHeader32, elf::PT_LOAD, read::elf::FileHeader, read::elf::ProgramHeader, Bytes,
+    Endianness, Object, ObjectSection,
 };
 
 use std::{cmp::Ordering, fs::File, path::Path, str::FromStr};
@@ -272,7 +272,7 @@ pub(super) fn extract_from_elf<'data>(
 
         let mut elf_section = Vec::new();
 
-        if !segment_data.is_empty() {
+        if !segment_data.is_empty() && segment.p_type(endian) == PT_LOAD {
             log::info!(
                 "Found loadable segment, physical address: {:#010x}, virtual address: {:#010x}, flags: {:#x}",
                 p_paddr,
