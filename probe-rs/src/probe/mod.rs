@@ -599,7 +599,7 @@ pub enum DebugProbeSelectorParseError {
 /// use std::convert::TryInto;
 /// let selector: probe_rs::DebugProbeSelector = "1337:1337:SERIAL".try_into().unwrap();
 /// ```
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DebugProbeSelector {
     pub vendor_id: u16,
     pub product_id: u16,
