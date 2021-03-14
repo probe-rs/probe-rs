@@ -329,7 +329,7 @@ impl<'data> FlashLoader<'data> {
                 FlashAlgorithm::assemble_from_raw(raw_flash_algorithm, ram, session.target())?;
 
             if dry_run {
-                println!("Skipping programming, dry run!");
+                log::info!("Skipping programming, dry run!");
                 progress.failed_erasing();
                 continue;
             }
