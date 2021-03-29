@@ -30,5 +30,5 @@ serde = { version = "1.0.115", features = [ "derive" ] }
 cargo_metadata = "0.12.0"
 dunce = "1.0.1"
 sentry = { version = "0.22.0", features = ["anyhow"], optional = true }
-simplelog = "0.9.0"
+simplelog = "0.10.0"
 terminal_size = "0.1.13"
