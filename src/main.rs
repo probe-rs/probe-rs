@@ -797,10 +797,12 @@ fn construct_backtrace(
         // Link Register contains an EXC_RETURN value. This deliberately also includes
         // invalid combinations of final bits 0-4 to prevent futile backtrace re-generation attempts
         let exception_entry = lr >= EXC_RETURN_MARKER;
+
+        // Since we strip the thumb bit from `pc`, ignore it in this comparison.
+        let program_counter_changed = (lr & !THUMB_BIT) != (pc & !THUMB_BIT);
         // If the frame didn't move, and the program counter didn't change, bail out (otherwise we
         // might print the same frame over and over).
-        // Since we strip the thumb bit from `pc`, ignore it in this comparison.
-        let stack_corrupted = !cfa_changed && lr & !THUMB_BIT == pc & !THUMB_BIT;
+        let stack_corrupted = !cfa_changed && !program_counter_changed;
 
         if !print_backtrace && (stack_corrupted || exception_entry) {
             // we haven't printed a backtrace yet but have discovered a corrupted stack or exception:

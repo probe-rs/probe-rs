@@ -34,6 +34,10 @@ impl<'c, 'probe> Registers<'c, 'probe> {
         self.cache.insert(reg.0, val);
     }
 
+    /// Updates the Canonical Frame Address (CFA), e.g.
+    /// the value of the Stack Pointer (SP) on function entry – the current frame we're looking at
+    ///
+    /// returns `true` if the CFA has changed
     pub fn update_cfa(
         &mut self,
         rule: &CfaRule<EndianSlice<LittleEndian>>,
