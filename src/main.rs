@@ -100,6 +100,10 @@ struct Opts {
     #[structopt(long)]
     force_backtrace: bool,
 
+    /// Configure the number of lines to print before a backtrace gets cut off
+    #[structopt(long, default_value = "50")]
+    max_backtrace_len: u32,
+
     /// Arguments passed after the ELF file path are discarded
     #[structopt(name = "REST")]
     _rest: Vec<String>,
@@ -143,6 +147,7 @@ fn notmain() -> anyhow::Result<i32> {
     }
 
     let force_backtrace = opts.force_backtrace;
+    let max_backtrace_len = opts.max_backtrace_len;
     let elf_path = opts.elf.as_deref().unwrap();
     let chip = opts.chip.as_deref().unwrap();
     let bytes = fs::read(elf_path)?;
@@ -559,6 +564,7 @@ fn notmain() -> anyhow::Result<i32> {
         &current_dir,
         // TODO any other cases in which we should force a backtrace?
         force_backtrace || canary_touched,
+        max_backtrace_len,
     )?;
 
     core.reset_and_halt(TIMEOUT)?;
@@ -644,6 +650,7 @@ fn construct_backtrace(
     live_functions: &HashSet<&str>,
     current_dir: &Path,
     force_backtrace: bool,
+    max_backtrace_len: u32,
 ) -> Result<Option<TopException>, anyhow::Error> {
     let mut debug_frame = DebugFrame::new(debug_frame, LittleEndian);
     // 32-bit ARM -- this defaults to the host's address size which is likely going to be 8
@@ -797,10 +804,12 @@ fn construct_backtrace(
         // Link Register contains an EXC_RETURN value. This deliberately also includes
         // invalid combinations of final bits 0-4 to prevent futile backtrace re-generation attempts
         let exception_entry = lr >= EXC_RETURN_MARKER;
+
+        // Since we strip the thumb bit from `pc`, ignore it in this comparison.
+        let program_counter_changed = (lr & !THUMB_BIT) != (pc & !THUMB_BIT);
         // If the frame didn't move, and the program counter didn't change, bail out (otherwise we
         // might print the same frame over and over).
-        // Since we strip the thumb bit from `pc`, ignore it in this comparison.
-        let stack_corrupted = !cfa_changed && lr & !THUMB_BIT == pc & !THUMB_BIT;
+        let stack_corrupted = !cfa_changed && !program_counter_changed;
 
         if !print_backtrace && (stack_corrupted || exception_entry) {
             // we haven't printed a backtrace yet but have discovered a corrupted stack or exception:
@@ -846,6 +855,15 @@ fn construct_backtrace(
                 bail!("bug? LR ({:#010x}) didn't have the Thumb bit set", lr)
             }
             pc = lr & !THUMB_BIT;
+        }
+
+        if frame_index >= max_backtrace_len {
+            log::warn!(
+                "maximum backtrace length of {} reached; cutting off the rest
+               note: re-run with `--max-backtrace-len=<your maximum>` to extend this limit",
+                max_backtrace_len
+            );
+            return Ok(top_exception);
         }
     }
 
