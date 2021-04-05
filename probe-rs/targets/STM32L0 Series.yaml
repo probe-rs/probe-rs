@@ -1368,11 +1368,16 @@ variants:
             start: 536870912
             end: 536891392
           is_boot_memory: false
-      - Nvm:
+      - Nvm: # Flash program memory
           range:
-            start: 134217728
-            end: 134348800
+            start: 134217728 # 0x0800_0000
+            end: 134348800 # 0x0800_3FFF + 1
           is_boot_memory: true
+      - Nvm: # Data EEPROM
+          range:
+            start: 134742016 # 0x0808_0000
+            end: 134742528 # 0x0808_01FF + 1
+          is_boot_memory: false
     flash_algorithms:
       - stm32l0xx_128
       - stm32l07_8x_eeprom
