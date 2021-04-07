@@ -203,6 +203,19 @@ Follow the instructions in the error message to resolve the mismatch.
 #### developer
 If you are building `probe-run` from source, you can disable the version check by setting the `PROBE_RUN_IGNORE_VERSION` environment variable to `true` or `1` at compile time.
 
+
+### developer: running your locally modified `probe-run`
+
+For easier copy-paste-ability, here's an example how to try out your local `probe_run` modifications.
+
+```console
+$ cd probe-run/
+$ PROBE_RUN_IGNORE_VERSION=1 cargo run -- --chip nRF52840_xxAA --max-backtrace-len=10 hello
+  ˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆ                                   ˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆ ˆˆˆˆˆ
+  environment variables                                        extra flags             binary to be
+  (optional)                                                   (optional)              flashed & run
+```
+
 ## Support Us
 
 `probe-run` is part of the [Knurling] project, [Ferrous Systems]' effort at
