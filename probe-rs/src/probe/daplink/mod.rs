@@ -81,7 +81,11 @@ impl DAPLink {
         // Discard anything left in buffer, as otherwise
         // we'll get out of sync between requests and responses.
         match device {
-            DAPLinkDevice::V1 { ref device, vendor_id: _, product_id: _ } => {
+            DAPLinkDevice::V1 {
+                ref device,
+                vendor_id: _,
+                product_id: _,
+            } => {
                 let mut discard_buffer = [0u8; 128];
                 loop {
                     match device.read_timeout(&mut discard_buffer, 1) {
@@ -89,7 +93,7 @@ impl DAPLink {
                         _ => break,
                     }
                 }
-            },
+            }
             _ => {}
         }
 

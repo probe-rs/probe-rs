@@ -79,7 +79,7 @@ impl DAPLinkDevice {
             } => {
                 let timeout = Duration::from_millis(100);
                 Ok(handle.read_bulk(*in_ep, buf, timeout)?)
-            },
+            }
         }
     }
 
@@ -100,7 +100,7 @@ impl DAPLinkDevice {
                 let timeout = Duration::from_millis(100);
                 // Skip first byte as it's set to 0 for HID transfers
                 Ok(handle.write_bulk(*out_ep, &buf[1..], timeout)?)
-            },
+            }
         }
     }
 
@@ -194,14 +194,18 @@ pub(crate) fn send_command<Req: Request, Res: Response>(
     //
     // For v2 devices, we can write the precise request size.
     match device {
-        DAPLinkDevice::V1 { device: _, vendor_id, product_id } => {
+        DAPLinkDevice::V1 {
+            device: _,
+            vendor_id,
+            product_id,
+        } => {
             // If the device is an EDBG but NOT an EDBG on the SAMD10 xplained, use 512+1 as the byte size.
             if *vendor_id == 0x03eb && *product_id != 0x2145 && *product_id != 0x2175 {
                 size = 512 + 1;
             } else {
                 size = 64 + 1;
             }
-        },
+        }
         // V2 devices.
         _ => {}
     }
