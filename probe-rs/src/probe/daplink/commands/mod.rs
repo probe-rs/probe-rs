@@ -46,12 +46,8 @@ impl From<CmsisDapError> for DebugProbeError {
 }
 
 pub enum DAPLinkDevice {
-    /// CMSIS-DAP v1 over HID. Stores a HID device handle along with vendor and product IDs.
-    V1 {
-        device: hidapi::HidDevice,
-        vendor_id: u16,
-        product_id: u16,
-    },
+    /// CMSIS-DAP v1 over HID. Stores a HID device handle.
+    V1(hidapi::HidDevice),
 
     /// CMSIS-DAP v2 over WinUSB/Bulk. Stores an rusb device handle and out/in EP addresses.
     V2 {
@@ -66,11 +62,7 @@ impl DAPLinkDevice {
     /// Read from the probe into `buf`, returning the number of bytes read on success.
     fn read(&self, buf: &mut [u8]) -> Result<usize> {
         match self {
-            DAPLinkDevice::V1 {
-                device,
-                vendor_id: _,
-                product_id: _,
-            } => Ok(device.read_timeout(buf, 100)?),
+            DAPLinkDevice::V1(device) => Ok(device.read_timeout(buf, 100)?),
             DAPLinkDevice::V2 {
                 handle,
                 out_ep: _,
@@ -86,11 +78,7 @@ impl DAPLinkDevice {
     /// Write `buf` to the probe, returning the number of bytes written on success.
     fn write(&self, buf: &[u8]) -> Result<usize> {
         match self {
-            DAPLinkDevice::V1 {
-                device,
-                vendor_id: _,
-                product_id: _,
-            } => Ok(device.write(buf)?),
+            DAPLinkDevice::V1(device) => Ok(device.write(buf)?),
             DAPLinkDevice::V2 {
                 handle,
                 out_ep,
@@ -107,7 +95,7 @@ impl DAPLinkDevice {
     /// Check if SWO streaming is supported by this device.
     pub(super) fn swo_streaming_supported(&self) -> bool {
         match self {
-            DAPLinkDevice::V1 { .. } => false,
+            DAPLinkDevice::V1(_) => false,
             DAPLinkDevice::V2 { swo_ep, .. } => swo_ep.is_some(),
         }
     }
@@ -119,7 +107,7 @@ impl DAPLinkDevice {
     /// On timeout, returns Ok(0).
     pub(super) fn read_swo_stream(&self, buf: &mut [u8], timeout: Duration) -> Result<usize> {
         match self {
-            DAPLinkDevice::V1 { .. } => Err(CmsisDapError::SWOModeNotAvailable.into()),
+            DAPLinkDevice::V1(_) => Err(CmsisDapError::SWOModeNotAvailable.into()),
             DAPLinkDevice::V2 { handle, swo_ep, .. } => match swo_ep {
                 Some(ep) => match handle.read_bulk(*ep, buf, timeout) {
                     Ok(n) => Ok(n),
@@ -189,25 +177,9 @@ pub(crate) fn send_command<Req: Request, Res: Response>(
     // this in hidapi. Almost all known CMSIS-DAP devices use 64-byte
     // HID reports (the maximum permitted), so ensure we always
     // write exactly 64 (+1 for report ID) bytes for HID.
-    // NOTE: the above isn't true for ATMEL EDBG devices which use 512+1
-    // for reports (unless it's a SAMD10 xplained)
-    //
     // For v2 devices, we can write the precise request size.
-    match device {
-        DAPLinkDevice::V1 {
-            device: _,
-            vendor_id,
-            product_id,
-        } => {
-            // If the device is an EDBG but NOT an EDBG on the SAMD10 xplained, use 512+1 as the byte size.
-            if *vendor_id == 0x03eb && *product_id != 0x2145 && *product_id != 0x2175 {
-                size = 512 + 1;
-            } else {
-                size = 64 + 1;
-            }
-        }
-        // V2 devices.
-        _ => {}
+    if let DAPLinkDevice::V1(_) = device {
+        size = 65;
     }
 
     // Send buffer to the device.
