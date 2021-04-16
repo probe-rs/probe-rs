@@ -12,16 +12,38 @@ use std::time::Duration;
 /// to permission or driver errors, so it falls back to listing only
 /// HID devices if it does not find any suitable devices.
 pub fn list_daplink_devices() -> Vec<DebugProbeInfo> {
-    match rusb::Context::new().and_then(|ctx| ctx.devices()) {
+    log::debug!("Searching for CMSIS-DAP probes using libusb");
+    let mut probes = match rusb::Context::new().and_then(|ctx| ctx.devices()) {
         Ok(devices) => devices
             .iter()
             .filter_map(|device| get_daplink_info(&device))
             .collect(),
-        Err(_) => match hidapi::HidApi::new() {
-            Ok(api) => api.device_list().filter_map(get_daplink_hid_info).collect(),
-            Err(_) => vec![],
-        },
+        Err(_) => vec![],
+    };
+
+    log::debug!(
+        "Found {} CMSIS-DAP probes using libusb, searching HID",
+        probes.len()
+    );
+
+    if let Ok(api) = hidapi::HidApi::new() {
+        for device in api.device_list() {
+            if let Some(info) = get_daplink_hid_info(&device) {
+                if !probes
+                    .iter()
+                    .any(|p| p.vendor_id == info.vendor_id && p.product_id == info.product_id)
+                {
+                    log::trace!("Adding new HID-only probe {:?}", info);
+                    probes.push(info)
+                } else {
+                    log::trace!("Ignoring duplicate {:?}", info);
+                }
+            }
+        }
     }
+
+    log::debug!("Found {} CMSIS-DAP probes total", probes.len());
+    probes
 }
 
 /// Checks if a given Device is a CMSIS-DAP probe, returning Some(DebugProbeInfo) if so.
