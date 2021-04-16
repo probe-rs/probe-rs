@@ -257,7 +257,10 @@ pub fn open_device_from_selector(
     match hid_device {
         Ok(device) => {
             match device.get_product_string() {
-                Ok(Some(s)) if s.contains("CMSIS-DAP") => Ok(DAPLinkDevice::V1(device)),
+                Ok(Some(s)) if s.contains("CMSIS-DAP") => Ok(DAPLinkDevice::V1 {
+                    handle: device,
+                    report_size: 64,
+                }),
                 _ => {
                     // Return NotFound if this VID:PID was not a valid CMSIS-DAP probe,
                     // or if it couldn't be opened, so that other probe modules can

@@ -80,10 +80,10 @@ impl DAPLink {
     pub fn new_from_device(device: DAPLinkDevice) -> Self {
         // Discard anything left in buffer, as otherwise
         // we'll get out of sync between requests and responses.
-        if let DAPLinkDevice::V1(ref hid_device) = device {
+        if let DAPLinkDevice::V1 { ref handle, .. } = device {
             let mut discard_buffer = [0u8; 128];
             loop {
-                match hid_device.read_timeout(&mut discard_buffer, 1) {
+                match handle.read_timeout(&mut discard_buffer, 1) {
                     Ok(n) if n != 0 => continue,
                     _ => break,
                 }
@@ -443,6 +443,19 @@ impl DebugProbe for DAPLink {
 
         self.packet_count = Some(packet_count);
         self.packet_size = Some(packet_size);
+        if let DAPLinkDevice::V1 {
+            ref mut report_size,
+            ..
+        } = self.device
+        {
+            if packet_size > 0 && packet_size as usize != *report_size {
+                debug!(
+                    "Setting HID report size to packet size of {} bytes",
+                    packet_size
+                );
+                *report_size = packet_size as usize;
+            }
+        }
 
         let caps = commands::send_command(&mut self.device, Command::Capabilities)?;
         self.capabilities = Some(caps);
