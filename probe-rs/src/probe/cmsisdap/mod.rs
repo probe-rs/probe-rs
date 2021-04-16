@@ -9,7 +9,7 @@ use crate::{
         ArmCommunicationInterface, DAPAccess, DapError, PortType, Register, SwoAccess, SwoConfig,
         SwoMode,
     },
-    probe::{daplink::commands::CmsisDapError, BatchCommand},
+    probe::{cmsisdap::commands::CmsisDapError, BatchCommand},
     DebugProbe, DebugProbeError, DebugProbeSelector, Error as ProbeRsError, WireProtocol,
 };
 
@@ -33,7 +33,7 @@ use commands::{
         Ack, InnerTransferRequest, TransferBlockRequest, TransferBlockResponse, TransferRequest,
         TransferResponse, RW,
     },
-    DAPLinkDevice, Status,
+    CMSISDAPDevice, Status,
 };
 
 use log::debug;
@@ -42,8 +42,8 @@ use std::time::Duration;
 
 use anyhow::anyhow;
 
-pub struct DAPLink {
-    pub device: DAPLinkDevice,
+pub struct CMSISDAP {
+    pub device: CMSISDAPDevice,
     _hw_version: u8,
     _jtag_version: u8,
     protocol: Option<WireProtocol>,
@@ -61,9 +61,9 @@ pub struct DAPLink {
     batch: Vec<BatchCommand>,
 }
 
-impl std::fmt::Debug for DAPLink {
+impl std::fmt::Debug for CMSISDAP {
     fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        fmt.debug_struct("DAPLink")
+        fmt.debug_struct("CMSISDAP")
             .field("protocol", &self.protocol)
             .field("packet_size", &self.packet_size)
             .field("packet_count", &self.packet_count)
@@ -76,8 +76,8 @@ impl std::fmt::Debug for DAPLink {
     }
 }
 
-impl DAPLink {
-    pub fn new_from_device(device: DAPLinkDevice) -> Self {
+impl CMSISDAP {
+    pub fn new_from_device(device: CMSISDAPDevice) -> Self {
         // Discard anything left in buffer, as otherwise
         // we'll get out of sync between requests and responses.
         device.drain();
@@ -372,7 +372,7 @@ impl DAPLink {
     }
 }
 
-impl DPAccess for DAPLink {
+impl DPAccess for CMSISDAP {
     fn read_dp_register<R: DPRegister>(&mut self) -> Result<R, DebugPortError> {
         debug!("Reading DP register {}", R::NAME);
         let result = self.read_register(PortType::DebugPort, u16::from(R::ADDRESS))?;
@@ -392,7 +392,7 @@ impl DPAccess for DAPLink {
     }
 }
 
-impl DebugProbe for DAPLink {
+impl DebugProbe for CMSISDAP {
     fn new_from_selector(
         selector: impl Into<DebugProbeSelector>,
     ) -> Result<Box<Self>, DebugProbeError>
@@ -405,7 +405,7 @@ impl DebugProbe for DAPLink {
     }
 
     fn get_name(&self) -> &str {
-        "DAPLink"
+        "CMSISDAP"
     }
 
     /// Get the currently set maximum speed.
@@ -427,7 +427,7 @@ impl DebugProbe for DAPLink {
 
     /// Enters debug mode.
     fn attach(&mut self) -> Result<(), DebugProbeError> {
-        // get information about the daplink
+        // get information about the probe
         let PacketCount(packet_count) =
             commands::send_command(&mut self.device, Command::PacketCount)?;
         let PacketSize(packet_size) =
@@ -435,7 +435,7 @@ impl DebugProbe for DAPLink {
 
         self.packet_count = Some(packet_count);
         self.packet_size = Some(packet_size);
-        if let DAPLinkDevice::V1 {
+        if let CMSISDAPDevice::V1 {
             ref mut report_size,
             ..
         } = self.device
@@ -606,7 +606,7 @@ impl DebugProbe for DAPLink {
     }
 }
 
-impl DAPAccess for DAPLink {
+impl DAPAccess for CMSISDAP {
     /// Reads the DAP register on the specified port and address.
     fn read_register(&mut self, port: PortType, addr: u16) -> Result<u32, DebugProbeError> {
         self.batch_add(BatchCommand::Read(port, addr))
@@ -715,9 +715,9 @@ impl DAPAccess for DAPLink {
     }
 }
 
-impl DAPProbe for DAPLink {}
+impl DAPProbe for CMSISDAP {}
 
-impl SwoAccess for DAPLink {
+impl SwoAccess for CMSISDAP {
     fn enable_swo(&mut self, config: &SwoConfig) -> Result<(), ProbeRsError> {
         // We read capabilities on initialisation so it should not be None.
         let caps = self.capabilities.expect("This is a bug. Please report it.");
@@ -823,9 +823,9 @@ impl SwoAccess for DAPLink {
     }
 }
 
-impl Drop for DAPLink {
+impl Drop for CMSISDAP {
     fn drop(&mut self) {
-        debug!("Detaching from DAPLink");
+        debug!("Detaching from CMSIS-DAP probe");
         // We ignore the error cases as we can't do much about it anyways.
         let _ = self.process_batch();
 

@@ -45,7 +45,7 @@ impl From<CmsisDapError> for DebugProbeError {
     }
 }
 
-pub enum DAPLinkDevice {
+pub enum CMSISDAPDevice {
     /// CMSIS-DAP v1 over HID. Stores a HID device handle.
     V1 {
         handle: hidapi::HidDevice,
@@ -61,12 +61,12 @@ pub enum DAPLinkDevice {
     },
 }
 
-impl DAPLinkDevice {
+impl CMSISDAPDevice {
     /// Read from the probe into `buf`, returning the number of bytes read on success.
     fn read(&self, buf: &mut [u8]) -> Result<usize> {
         match self {
-            DAPLinkDevice::V1 { handle, .. } => Ok(handle.read_timeout(buf, 100)?),
-            DAPLinkDevice::V2 { handle, in_ep, .. } => {
+            CMSISDAPDevice::V1 { handle, .. } => Ok(handle.read_timeout(buf, 100)?),
+            CMSISDAPDevice::V2 { handle, in_ep, .. } => {
                 let timeout = Duration::from_millis(100);
                 Ok(handle.read_bulk(*in_ep, buf, timeout)?)
             }
@@ -76,8 +76,8 @@ impl DAPLinkDevice {
     /// Write `buf` to the probe, returning the number of bytes written on success.
     fn write(&self, buf: &[u8]) -> Result<usize> {
         match self {
-            DAPLinkDevice::V1 { handle, .. } => Ok(handle.write(buf)?),
-            DAPLinkDevice::V2 { handle, out_ep, .. } => {
+            CMSISDAPDevice::V1 { handle, .. } => Ok(handle.write(buf)?),
+            CMSISDAPDevice::V2 { handle, out_ep, .. } => {
                 let timeout = Duration::from_millis(100);
                 // Skip first byte as it's set to 0 for HID transfers
                 Ok(handle.write_bulk(*out_ep, &buf[1..], timeout)?)
@@ -90,14 +90,14 @@ impl DAPLinkDevice {
         log::debug!("Draining probe of any pending data.");
 
         match self {
-            DAPLinkDevice::V1 { handle, .. } => loop {
+            CMSISDAPDevice::V1 { handle, .. } => loop {
                 match handle.read_timeout(&mut discard, 1) {
                     Ok(n) if n != 0 => continue,
                     _ => break,
                 }
             },
 
-            DAPLinkDevice::V2 { handle, in_ep, .. } => {
+            CMSISDAPDevice::V2 { handle, in_ep, .. } => {
                 let timeout = Duration::from_millis(1);
                 loop {
                     match handle.read_bulk(*in_ep, &mut discard, timeout) {
@@ -112,8 +112,8 @@ impl DAPLinkDevice {
     /// Check if SWO streaming is supported by this device.
     pub(super) fn swo_streaming_supported(&self) -> bool {
         match self {
-            DAPLinkDevice::V1 { .. } => false,
-            DAPLinkDevice::V2 { swo_ep, .. } => swo_ep.is_some(),
+            CMSISDAPDevice::V1 { .. } => false,
+            CMSISDAPDevice::V2 { swo_ep, .. } => swo_ep.is_some(),
         }
     }
 
@@ -124,8 +124,8 @@ impl DAPLinkDevice {
     /// On timeout, returns Ok(0).
     pub(super) fn read_swo_stream(&self, buf: &mut [u8], timeout: Duration) -> Result<usize> {
         match self {
-            DAPLinkDevice::V1 { .. } => Err(CmsisDapError::SWOModeNotAvailable.into()),
-            DAPLinkDevice::V2 { handle, swo_ep, .. } => match swo_ep {
+            CMSISDAPDevice::V1 { .. } => Err(CmsisDapError::SWOModeNotAvailable.into()),
+            CMSISDAPDevice::V2 { handle, swo_ep, .. } => match swo_ep {
                 Some(ep) => match handle.read_bulk(*ep, buf, timeout) {
                     Ok(n) => Ok(n),
                     Err(rusb::Error::Timeout) => Ok(0),
@@ -166,8 +166,8 @@ impl Deref for Category {
 pub(crate) trait Request {
     const CATEGORY: Category;
 
-    /// Convert the request to bytes, which can be sent to the Daplink. Returns
-    /// the amount of bytes written to the buffer.
+    /// Convert the request to bytes, which can be sent to the probe.
+    /// Returns the amount of bytes written to the buffer.
     fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize>;
 }
 
@@ -176,7 +176,7 @@ pub(crate) trait Response: Sized {
 }
 
 pub(crate) fn send_command<Req: Request, Res: Response>(
-    device: &mut DAPLinkDevice,
+    device: &mut CMSISDAPDevice,
     request: Req,
 ) -> Result<Res> {
     // On CMSIS-DAP v2 USB HS devices, a single request might be up to 1024 bytes,
@@ -193,7 +193,7 @@ pub(crate) fn send_command<Req: Request, Res: Response>(
     // so set the transfer size to the report size, plus one
     // byte for the HID report ID. On v2 devices, we just
     // write the exact required size every time.
-    if let DAPLinkDevice::V1 {
+    if let CMSISDAPDevice::V1 {
         ref report_size, ..
     } = device
     {
