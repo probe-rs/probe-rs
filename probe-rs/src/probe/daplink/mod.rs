@@ -80,15 +80,7 @@ impl DAPLink {
     pub fn new_from_device(device: DAPLinkDevice) -> Self {
         // Discard anything left in buffer, as otherwise
         // we'll get out of sync between requests and responses.
-        if let DAPLinkDevice::V1 { ref handle, .. } = device {
-            let mut discard_buffer = [0u8; 128];
-            loop {
-                match handle.read_timeout(&mut discard_buffer, 1) {
-                    Ok(n) if n != 0 => continue,
-                    _ => break,
-                }
-            }
-        }
+        device.drain();
 
         Self {
             device,
