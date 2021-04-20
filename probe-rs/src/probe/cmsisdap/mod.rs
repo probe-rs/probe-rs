@@ -435,6 +435,9 @@ impl DebugProbe for CMSISDAP {
 
         self.packet_count = Some(packet_count);
         self.packet_size = Some(packet_size);
+
+        // On V1 devices, set the HID report size to the CMSIS-DAP reported packet size.
+        // We don't change it on V2 devices since we can use the endpoint maximum length.
         if let CMSISDAPDevice::V1 {
             ref mut report_size,
             ..
@@ -746,7 +749,7 @@ impl SwoAccess for CMSISDAP {
         // the probe in V2 mode and it has an SWO endpoint, request that, otherwise
         // request the DAP_SWO_Data polling mode.
         if caps.swo_streaming_trace_implemented && self.device.swo_streaming_supported() {
-            debug!("Starting SWO capture with WinUSB transport");
+            debug!("Starting SWO capture with streaming transport");
             self.set_swo_transport(swo::TransportRequest::WinUsbEndpoint)?;
             self.swo_streaming = true;
         } else {
@@ -787,9 +790,7 @@ impl SwoAccess for CMSISDAP {
     fn read_swo_timeout(&mut self, timeout: Duration) -> Result<Vec<u8>, ProbeRsError> {
         if self.swo_active {
             if self.swo_streaming {
-                let mut buffer = vec![0u8; 1024];
-                let n = self.device.read_swo_stream(&mut buffer, timeout)?;
-                buffer.truncate(n);
+                let buffer = self.device.read_swo_stream(timeout)?;
                 log::trace!("SWO streaming buffer: {:?}", buffer);
                 Ok(buffer)
             } else {

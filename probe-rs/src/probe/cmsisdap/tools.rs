@@ -145,12 +145,8 @@ pub fn open_v2_device(device: Device<rusb::Context>) -> Option<CMSISDAPDevice> {
                 && eps[2].transfer_type() == rusb::TransferType::Bulk
                 && eps[2].direction() == rusb::Direction::In
             {
-                swo_ep = Some(eps[2].address());
+                swo_ep = Some((eps[2].address(), eps[2].max_packet_size() as usize));
             }
-
-            // Store EP addresses of the in and out EPs
-            let out_ep = eps[0].address();
-            let in_ep = eps[1].address();
 
             // Attempt to claim this interface
             match handle.claim_interface(interface.number()) {
@@ -158,9 +154,10 @@ pub fn open_v2_device(device: Device<rusb::Context>) -> Option<CMSISDAPDevice> {
                     log::debug!("Opening {:04x}:{:04x} in CMSIS-DAPv2 mode", vid, pid);
                     return Some(CMSISDAPDevice::V2 {
                         handle,
-                        out_ep,
-                        in_ep,
+                        out_ep: eps[0].address(),
+                        in_ep: eps[1].address(),
                         swo_ep,
+                        max_packet_size: eps[1].max_packet_size() as usize,
                     });
                 }
                 Err(_) => continue,
@@ -279,6 +276,9 @@ pub fn open_device_from_selector(
             match device.get_product_string() {
                 Ok(Some(s)) if s.contains("CMSIS-DAP") => Ok(CMSISDAPDevice::V1 {
                     handle: device,
+                    // Start with a default 64-byte report size, which is the most
+                    // common size for CMSIS-DAPv1 HID devices. We'll request the
+                    // actual size to use from the probe later.
                     report_size: 64,
                 }),
                 _ => {

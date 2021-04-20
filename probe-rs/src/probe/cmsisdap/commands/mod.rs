@@ -46,18 +46,22 @@ impl From<CmsisDapError> for DebugProbeError {
 }
 
 pub enum CMSISDAPDevice {
-    /// CMSIS-DAP v1 over HID. Stores a HID device handle.
+    /// CMSIS-DAP v1 over HID.
+    /// Stores a HID device handle and maximum HID report size.
     V1 {
         handle: hidapi::HidDevice,
         report_size: usize,
     },
 
-    /// CMSIS-DAP v2 over WinUSB/Bulk. Stores an rusb device handle and out/in EP addresses.
+    /// CMSIS-DAP v2 over WinUSB/Bulk.
+    /// Stores an rusb device handle, out/in EP addresses, maximum DAP packet size,
+    /// and an optional SWO streaming EP address and SWO maximum packet size.
     V2 {
         handle: rusb::DeviceHandle<rusb::Context>,
         out_ep: u8,
         in_ep: u8,
-        swo_ep: Option<u8>,
+        max_packet_size: usize,
+        swo_ep: Option<(u8, usize)>,
     },
 }
 
@@ -86,19 +90,29 @@ impl CMSISDAPDevice {
     }
 
     pub(super) fn drain(&self) {
-        let mut discard = [0u8; 128];
         log::debug!("Draining probe of any pending data.");
 
         match self {
-            CMSISDAPDevice::V1 { handle, .. } => loop {
+            CMSISDAPDevice::V1 {
+                handle,
+                report_size,
+                ..
+            } => loop {
+                let mut discard = vec![0u8; report_size + 1];
                 match handle.read_timeout(&mut discard, 1) {
                     Ok(n) if n != 0 => continue,
                     _ => break,
                 }
             },
 
-            CMSISDAPDevice::V2 { handle, in_ep, .. } => {
+            CMSISDAPDevice::V2 {
+                handle,
+                in_ep,
+                max_packet_size,
+                ..
+            } => {
                 let timeout = Duration::from_millis(1);
+                let mut discard = vec![0u8; *max_packet_size];
                 loop {
                     match handle.read_bulk(*in_ep, &mut discard, timeout) {
                         Ok(n) if n != 0 => continue,
@@ -117,20 +131,29 @@ impl CMSISDAPDevice {
         }
     }
 
-    /// Read into `buf` from the SWO streaming endpoint.
+    /// Read from the SWO streaming endpoint.
     ///
     /// Returns SWOModeNotAvailable if this device does not support SWO streaming.
     ///
-    /// On timeout, returns Ok(0).
-    pub(super) fn read_swo_stream(&self, buf: &mut [u8], timeout: Duration) -> Result<usize> {
+    /// On timeout, returns a zero-length buffer.
+    pub(super) fn read_swo_stream(&self, timeout: Duration) -> Result<Vec<u8>> {
         match self {
             CMSISDAPDevice::V1 { .. } => Err(CmsisDapError::SWOModeNotAvailable.into()),
             CMSISDAPDevice::V2 { handle, swo_ep, .. } => match swo_ep {
-                Some(ep) => match handle.read_bulk(*ep, buf, timeout) {
-                    Ok(n) => Ok(n),
-                    Err(rusb::Error::Timeout) => Ok(0),
-                    Err(e) => Err(e.into()),
-                },
+                Some((ep, len)) => {
+                    let mut buf = vec![0u8; *len];
+                    match handle.read_bulk(*ep, &mut buf, timeout) {
+                        Ok(n) => {
+                            buf.truncate(n);
+                            Ok(buf)
+                        }
+                        Err(rusb::Error::Timeout) => {
+                            buf.truncate(0);
+                            Ok(buf)
+                        }
+                        Err(e) => Err(e.into()),
+                    }
+                }
                 None => Err(CmsisDapError::SWOModeNotAvailable.into()),
             },
         }
@@ -179,38 +202,40 @@ pub(crate) fn send_command<Req: Request, Res: Response>(
     device: &mut CMSISDAPDevice,
     request: Req,
 ) -> Result<Res> {
-    // On CMSIS-DAP v2 USB HS devices, a single request might be up to 1024 bytes,
-    // plus we need one extra byte for the always-written HID report ID.
-    const BUFFER_LEN: usize = 1025;
+    // Size the buffer for the maximum packet size.
+    // On v1, we always send this full-sized report, while
+    // on v2 we can truncate to just the required data.
+    // Add one byte for HID report ID.
+    let buffer_len: usize = match device {
+        CMSISDAPDevice::V1 { report_size, .. } => *report_size + 1,
+        CMSISDAPDevice::V2 {
+            max_packet_size, ..
+        } => *max_packet_size + 1,
+    };
+    let mut buffer = vec![0; buffer_len];
 
-    // Write the command & request to the buffer.
-    let mut write_buffer = [0; BUFFER_LEN];
-    write_buffer[1] = *Req::CATEGORY;
-    let mut size = request.to_bytes(&mut write_buffer, 1 + 1)?;
-    size += 2;
+    // Leave byte 0 as the HID report, and write the command and request to the buffer.
+    buffer[1] = *Req::CATEGORY;
+    let mut size = request.to_bytes(&mut buffer, 2)? + 2;
 
     // For HID devices we must write a full report every time,
     // so set the transfer size to the report size, plus one
     // byte for the HID report ID. On v2 devices, we just
     // write the exact required size every time.
-    if let CMSISDAPDevice::V1 {
-        ref report_size, ..
-    } = device
-    {
-        size = report_size + 1;
+    if let CMSISDAPDevice::V1 { report_size, .. } = device {
+        size = *report_size + 1;
     }
 
     // Send buffer to the device.
-    device.write(&write_buffer[..size])?;
-    trace_buffer("Transmit buffer", &write_buffer[..size]);
+    device.write(&buffer[..size])?;
+    trace_buffer("Transmit buffer", &buffer[..size]);
 
     // Read back resonse.
-    let mut read_buffer = [0; BUFFER_LEN];
-    device.read(&mut read_buffer)?;
-    trace_buffer("Receive buffer", &read_buffer[..]);
+    device.read(&mut buffer)?;
+    trace_buffer("Receive buffer", &buffer[..]);
 
-    if read_buffer[0] == *Req::CATEGORY {
-        Res::from_bytes(&read_buffer, 1)
+    if buffer[0] == *Req::CATEGORY {
+        Res::from_bytes(&buffer, 1)
     } else {
         Err(anyhow!(CmsisDapError::UnexpectedAnswer))
             .with_context(|| format!("Received invalid data for {:?}", *Req::CATEGORY))
