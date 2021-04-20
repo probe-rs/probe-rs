@@ -662,6 +662,16 @@ impl From<&DebugProbeInfo> for DebugProbeSelector {
     }
 }
 
+impl fmt::Display for DebugProbeSelector {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:04x}:{:04x}", self.vendor_id, self.product_id)?;
+        if let Some(ref sn) = self.serial_number {
+            write!(f, ":{}", sn)?;
+        }
+        Ok(())
+    }
+}
+
 #[derive(Debug)]
 pub struct FakeProbe {
     protocol: WireProtocol,

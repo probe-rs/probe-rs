@@ -193,16 +193,16 @@ impl CMSISDAP {
             } else {
                 match response.transfer_response.ack {
                     Ack::Ok => {
-                        log::trace!("ack",);
+                        log::trace!("Transfer status: ACK");
                         return Ok(response.transfer_data);
                     }
                     Ack::NoAck => {
-                        log::trace!("nack",);
+                        log::trace!("Transfer status: NACK");
                         //try a reset?
                         return Err(DapError::NoAcknowledge.into());
                     }
                     Ack::Fault => {
-                        log::trace!("fault",);
+                        log::trace!("Transfer status: FAULT");
 
                         // Check the reason for the fault
                         let response = DAPAccess::read_register(

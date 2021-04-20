@@ -202,17 +202,19 @@ pub fn open_device_from_selector(
 ) -> Result<CMSISDAPDevice, ProbeCreationError> {
     let selector = selector.into();
 
+    log::trace!("Attempting to open device matching {}", selector);
+
     // Try using rusb to open a v2 device. This might fail if
     // the device does not support v2 operation or due to driver
     // or permission issues with opening bulk devices.
     if let Ok(devices) = rusb::Context::new().and_then(|ctx| ctx.devices()) {
         for device in devices.iter() {
-            log::debug!("Device {:?}", device);
+            log::trace!("Trying device {:?}", device);
 
             let d_desc = match device.device_descriptor() {
                 Ok(d_desc) => d_desc,
                 Err(err) => {
-                    log::debug!("Device descriptor error {:?}", err);
+                    log::trace!("Error reading descriptor: {:?}", err);
                     continue;
                 }
             };
@@ -220,7 +222,7 @@ pub fn open_device_from_selector(
             let handle = match device.open() {
                 Ok(handle) => handle,
                 Err(err) => {
-                    log::debug!("Device open error {:?}", err);
+                    log::trace!("Error opening: {:?}", err);
                     continue;
                 }
             };
@@ -233,7 +235,7 @@ pub fn open_device_from_selector(
                         .ok()
                 }),
                 Err(err) => {
-                    log::debug!("Error getting DeviceHandle::read_languages, {:?}", err);
+                    log::trace!("Error getting languages: {:?}", err);
                     continue;
                 }
             };
@@ -248,15 +250,11 @@ pub fn open_device_from_selector(
                 // attempt to open the device in v2 mode.
                 if let Some(device) = open_v2_device(device) {
                     return Ok(device);
-                } else {
-                    log::debug!("No device returned from open_v2_device");
                 }
-            } else {
-                log::debug!("No device matches");
             }
         }
     } else {
-        log::debug!("No devices from rusb context");
+        log::debug!("No devices matched using rusb");
     }
 
     // If rusb failed or the device didn't support v2, try using hidapi to open in v1 mode.
