@@ -1,4 +1,4 @@
-pub(crate) mod daplink;
+pub(crate) mod cmsisdap;
 #[cfg(feature = "ftdi")]
 pub(crate) mod ftdi;
 pub(crate) mod jlink;
@@ -191,7 +191,7 @@ impl Probe {
     /// This can be used to select the debug probe which
     /// should be used.
     pub fn list_all() -> Vec<DebugProbeInfo> {
-        let mut list = daplink::tools::list_daplink_devices();
+        let mut list = cmsisdap::tools::list_cmsisdap_devices();
         #[cfg(feature = "ftdi")]
         {
             list.extend(ftdi::list_ftdi_devices());
@@ -207,7 +207,7 @@ impl Probe {
     /// `Probe::list_all()` function to get the information
     /// about all probes available.
     pub fn open(selector: impl Into<DebugProbeSelector> + Clone) -> Result<Self, DebugProbeError> {
-        match daplink::DAPLink::new_from_selector(selector.clone()) {
+        match cmsisdap::CMSISDAP::new_from_selector(selector.clone()) {
             Ok(link) => return Ok(Probe::from_specific_probe(link)),
             Err(DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::NotFound)) => {}
             Err(e) => return Err(e),
@@ -527,7 +527,7 @@ pub trait DebugProbe: Send + fmt::Debug {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum DebugProbeType {
-    DAPLink,
+    CMSISDAP,
     FTDI,
     STLink,
     JLink,
@@ -659,6 +659,16 @@ impl From<&DebugProbeInfo> for DebugProbeSelector {
             product_id: selector.product_id,
             serial_number: selector.serial_number.clone(),
         }
+    }
+}
+
+impl fmt::Display for DebugProbeSelector {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:04x}:{:04x}", self.vendor_id, self.product_id)?;
+        if let Some(ref sn) = self.serial_number {
+            write!(f, ":{}", sn)?;
+        }
+        Ok(())
     }
 }
 

@@ -19,7 +19,7 @@ use thiserror::Error;
 
 #[derive(Debug, Error, Clone, PartialEq)]
 pub enum DapError {
-    #[error("An error occured in the SWD communication between DAPlink and device.")]
+    #[error("An error occured in the SWD communication between probe and device.")]
     SwdProtocol,
     #[error("Target device did not respond to request.")]
     NoAcknowledge,

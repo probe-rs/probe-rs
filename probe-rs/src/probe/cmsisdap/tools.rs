@@ -1,4 +1,4 @@
-use super::DAPLinkDevice;
+use super::CMSISDAPDevice;
 use crate::{
     probe::{DebugProbeInfo, DebugProbeType, ProbeCreationError},
     DebugProbeSelector,
@@ -11,21 +11,43 @@ use std::time::Duration;
 /// This method uses rusb to read device strings, which might fail due
 /// to permission or driver errors, so it falls back to listing only
 /// HID devices if it does not find any suitable devices.
-pub fn list_daplink_devices() -> Vec<DebugProbeInfo> {
-    match rusb::Context::new().and_then(|ctx| ctx.devices()) {
+pub fn list_cmsisdap_devices() -> Vec<DebugProbeInfo> {
+    log::debug!("Searching for CMSIS-DAP probes using libusb");
+    let mut probes = match rusb::Context::new().and_then(|ctx| ctx.devices()) {
         Ok(devices) => devices
             .iter()
-            .filter_map(|device| get_daplink_info(&device))
+            .filter_map(|device| get_cmsisdap_info(&device))
             .collect(),
-        Err(_) => match hidapi::HidApi::new() {
-            Ok(api) => api.device_list().filter_map(get_daplink_hid_info).collect(),
-            Err(_) => vec![],
-        },
+        Err(_) => vec![],
+    };
+
+    log::debug!(
+        "Found {} CMSIS-DAP probes using libusb, searching HID",
+        probes.len()
+    );
+
+    if let Ok(api) = hidapi::HidApi::new() {
+        for device in api.device_list() {
+            if let Some(info) = get_cmsisdap_hid_info(&device) {
+                if !probes
+                    .iter()
+                    .any(|p| p.vendor_id == info.vendor_id && p.product_id == info.product_id)
+                {
+                    log::trace!("Adding new HID-only probe {:?}", info);
+                    probes.push(info)
+                } else {
+                    log::trace!("Ignoring duplicate {:?}", info);
+                }
+            }
+        }
     }
+
+    log::debug!("Found {} CMSIS-DAP probes total", probes.len());
+    probes
 }
 
 /// Checks if a given Device is a CMSIS-DAP probe, returning Some(DebugProbeInfo) if so.
-fn get_daplink_info(device: &Device<rusb::Context>) -> Option<DebugProbeInfo> {
+fn get_cmsisdap_info(device: &Device<rusb::Context>) -> Option<DebugProbeInfo> {
     // Open device handle and read basic information
     let timeout = Duration::from_millis(100);
     let d_desc = device.device_descriptor().ok()?;
@@ -45,7 +67,7 @@ fn get_daplink_info(device: &Device<rusb::Context>) -> Option<DebugProbeInfo> {
             vendor_id: d_desc.vendor_id(),
             product_id: d_desc.product_id(),
             serial_number: sn_str,
-            probe_type: DebugProbeType::DAPLink,
+            probe_type: DebugProbeType::CMSISDAP,
         })
     } else {
         None
@@ -53,7 +75,7 @@ fn get_daplink_info(device: &Device<rusb::Context>) -> Option<DebugProbeInfo> {
 }
 
 /// Checks if a given HID device is a CMSIS-DAP v1 probe, returning Some(DebugProbeInfo) if so.
-fn get_daplink_hid_info(device: &hidapi::DeviceInfo) -> Option<DebugProbeInfo> {
+fn get_cmsisdap_hid_info(device: &hidapi::DeviceInfo) -> Option<DebugProbeInfo> {
     if let Some(prod_str) = device.product_string() {
         if prod_str.contains("CMSIS-DAP") {
             return Some(DebugProbeInfo {
@@ -61,7 +83,7 @@ fn get_daplink_hid_info(device: &hidapi::DeviceInfo) -> Option<DebugProbeInfo> {
                 vendor_id: device.vendor_id(),
                 product_id: device.product_id(),
                 serial_number: device.serial_number().map(|s| s.to_owned()),
-                probe_type: DebugProbeType::DAPLink,
+                probe_type: DebugProbeType::CMSISDAP,
             });
         }
     }
@@ -69,7 +91,7 @@ fn get_daplink_hid_info(device: &hidapi::DeviceInfo) -> Option<DebugProbeInfo> {
 }
 
 /// Attempt to open the given device in CMSIS-DAP v2 mode
-pub fn open_v2_device(device: Device<rusb::Context>) -> Option<DAPLinkDevice> {
+pub fn open_v2_device(device: Device<rusb::Context>) -> Option<CMSISDAPDevice> {
     // Open device handle and read basic information
     let timeout = Duration::from_millis(100);
     let d_desc = device.device_descriptor().ok()?;
@@ -81,7 +103,7 @@ pub fn open_v2_device(device: Device<rusb::Context>) -> Option<DAPLinkDevice> {
     // Go through interfaces to try and find a v2 interface.
     // The CMSIS-DAPv2 spec says that v2 interfaces should use a specific
     // WinUSB interface GUID, but in addition to being hard to read, the
-    // official DAPlink firmware doesn't use it. Instead, we scan for an
+    // official DAPLink firmware doesn't use it. Instead, we scan for an
     // interface whose string contains "CMSIS-DAP" and has two or three
     // endpoints of the correct type and direction.
     let c_desc = device.config_descriptor(0).ok()?;
@@ -123,22 +145,19 @@ pub fn open_v2_device(device: Device<rusb::Context>) -> Option<DAPLinkDevice> {
                 && eps[2].transfer_type() == rusb::TransferType::Bulk
                 && eps[2].direction() == rusb::Direction::In
             {
-                swo_ep = Some(eps[2].address());
+                swo_ep = Some((eps[2].address(), eps[2].max_packet_size() as usize));
             }
-
-            // Store EP addresses of the in and out EPs
-            let out_ep = eps[0].address();
-            let in_ep = eps[1].address();
 
             // Attempt to claim this interface
             match handle.claim_interface(interface.number()) {
                 Ok(()) => {
                     log::debug!("Opening {:04x}:{:04x} in CMSIS-DAPv2 mode", vid, pid);
-                    return Some(DAPLinkDevice::V2 {
+                    return Some(CMSISDAPDevice::V2 {
                         handle,
-                        out_ep,
-                        in_ep,
+                        out_ep: eps[0].address(),
+                        in_ep: eps[1].address(),
                         swo_ep,
+                        max_packet_size: eps[1].max_packet_size() as usize,
                     });
                 }
                 Err(_) => continue,
@@ -177,20 +196,22 @@ fn device_matches(
 /// otherwise in v1 mode.
 pub fn open_device_from_selector(
     selector: impl Into<DebugProbeSelector>,
-) -> Result<DAPLinkDevice, ProbeCreationError> {
+) -> Result<CMSISDAPDevice, ProbeCreationError> {
     let selector = selector.into();
+
+    log::trace!("Attempting to open device matching {}", selector);
 
     // Try using rusb to open a v2 device. This might fail if
     // the device does not support v2 operation or due to driver
     // or permission issues with opening bulk devices.
     if let Ok(devices) = rusb::Context::new().and_then(|ctx| ctx.devices()) {
         for device in devices.iter() {
-            log::debug!("Device {:?}", device);
+            log::trace!("Trying device {:?}", device);
 
             let d_desc = match device.device_descriptor() {
                 Ok(d_desc) => d_desc,
                 Err(err) => {
-                    log::debug!("Device descriptor error {:?}", err);
+                    log::trace!("Error reading descriptor: {:?}", err);
                     continue;
                 }
             };
@@ -198,7 +219,7 @@ pub fn open_device_from_selector(
             let handle = match device.open() {
                 Ok(handle) => handle,
                 Err(err) => {
-                    log::debug!("Device open error {:?}", err);
+                    log::trace!("Error opening: {:?}", err);
                     continue;
                 }
             };
@@ -211,7 +232,7 @@ pub fn open_device_from_selector(
                         .ok()
                 }),
                 Err(err) => {
-                    log::debug!("Error getting DeviceHandle::read_languages, {:?}", err);
+                    log::trace!("Error getting languages: {:?}", err);
                     continue;
                 }
             };
@@ -220,21 +241,17 @@ pub fn open_device_from_selector(
             // multiple open handles are not allowed on Windows.
             drop(handle);
 
-            if device_matches(d_desc, &selector, sn_str) && get_daplink_info(&device).is_some() {
+            if device_matches(d_desc, &selector, sn_str) && get_cmsisdap_info(&device).is_some() {
                 // If the VID, PID, and potentially SN all match,
                 // and the device is a valid CMSIS-DAP probe,
                 // attempt to open the device in v2 mode.
                 if let Some(device) = open_v2_device(device) {
                     return Ok(device);
-                } else {
-                    log::debug!("No device returned from open_v2_device");
                 }
-            } else {
-                log::debug!("No device matches");
             }
         }
     } else {
-        log::debug!("No devices from rusb context");
+        log::debug!("No devices matched using rusb");
     }
 
     // If rusb failed or the device didn't support v2, try using hidapi to open in v1 mode.
@@ -257,7 +274,13 @@ pub fn open_device_from_selector(
     match hid_device {
         Ok(device) => {
             match device.get_product_string() {
-                Ok(Some(s)) if s.contains("CMSIS-DAP") => Ok(DAPLinkDevice::V1(device)),
+                Ok(Some(s)) if s.contains("CMSIS-DAP") => Ok(CMSISDAPDevice::V1 {
+                    handle: device,
+                    // Start with a default 64-byte report size, which is the most
+                    // common size for CMSIS-DAPv1 HID devices. We'll request the
+                    // actual size to use from the probe later.
+                    report_size: 64,
+                }),
                 _ => {
                     // Return NotFound if this VID:PID was not a valid CMSIS-DAP probe,
                     // or if it couldn't be opened, so that other probe modules can
