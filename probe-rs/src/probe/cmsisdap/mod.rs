@@ -405,7 +405,7 @@ impl DebugProbe for CMSISDAP {
     }
 
     fn get_name(&self) -> &str {
-        "CMSISDAP"
+        "CMSIS-DAP"
     }
 
     /// Get the currently set maximum speed.
