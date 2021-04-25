@@ -195,6 +195,37 @@ If they are exposed, you can connect a "stand alone" probe device to the microco
 
 Note that this may involve some soldering if your board does not come with a pre-attached header to plug your debugger into.
 
+### Error: RTT up channel 0 not found
+
+This may instead present as `Error: RTT control block not found in target memory.`
+
+Your code, or a library you're using (e.g. RTIC) might be putting your CPU to
+sleep when idle. You can verify that this is the problem by busy looping instead
+of sleeping. When using RTIC, this can be achieved by adding an idle handler to
+your app:
+
+```rust
+#[idle]
+fn idle(_ctx: idle::Context) -> ! {
+     loop {}
+}
+```
+
+Assuming you'd like to still sleep in order to save power, you need to configure
+your microcontroller so that RTT can still be handled even when the CPU is
+sleeping. How to do this varies between microcontrollers.
+
+On an STM32G0 running RTIC it can be done by amending your init function to set
+the `dmaen` bit on `RCC.ahbenr`. e.g.:
+
+```rust
+#[init]
+fn init(ctx: init::Context) -> init::LateResources {
+     ctx.device.RCC.ahbenr.write(|w| w.dmaen().set_bit());
+     ...
+}
+```
+
 ### defmt version mismatch
 
 #### end-user
