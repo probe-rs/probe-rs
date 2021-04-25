@@ -3,7 +3,9 @@ pub(crate) mod cmsisdap;
 pub(crate) mod ftdi;
 pub(crate) mod jlink;
 pub(crate) mod stlink;
+pub(crate) mod edbg;
 
+<<<<<<< HEAD
 use crate::{architecture::arm::ap::AccessPort, Session};
 use crate::{
     architecture::arm::memory::adi_v5_memory_interface::ADIMemoryInterface,
@@ -22,6 +24,12 @@ use crate::{
         riscv::communication_interface::RiscvCommunicationInterface,
     },
     Memory,
+=======
+use crate::architecture::{
+    arm::{communication_interface::ArmProbeInterface, DAPAccess, PortType, SwoAccess},
+    avr::communication_interface::AvrCommunicationInterface,
+    riscv::communication_interface::RiscvCommunicationInterface,
+>>>>>>> e599d1d (Plumbed in avr architecture to rest of probe-rs. Started on basic commands)
 };
 use jlink::list_jlink_devices;
 use std::{convert::TryFrom, fmt};
@@ -393,6 +401,22 @@ impl Probe {
     }
 
     /// Check if the probe has an interface to
+    /// debug Avr chips.
+    pub fn has_avr_interface(&self) -> bool {
+        self.inner.has_avr_interface()
+    }
+
+    pub fn into_avr_interface(
+        self,
+    ) -> Result<Option<AvrCommunicationInterface>, DebugProbeError> {
+        if !self.attached {
+            Err(DebugProbeError::NotAttached)
+        } else {
+            self.inner.get_avr_interface()
+        }
+    }
+
+    /// Check if the probe has an interface to
     /// debug RISCV chips.
     pub fn has_riscv_interface(&self) -> bool {
         self.inner.has_riscv_interface()
@@ -492,6 +516,14 @@ pub trait DebugProbe: Send + fmt::Debug {
         ))
     }
 
+    fn try_get_avr_interface(
+        self: Box<Self>,
+    ) -> Result<AvrCommunicationInterface, (Box<dyn DebugProbe>, DebugProbeError)> {
+        Err((
+            self.into_probe(),
+            DebugProbeError::InterfaceNotAvailable("AVR"),
+        ))
+
     /// Get the dedicated interface to debug RISCV chips. Ensure that the
     /// probe actually supports this by calling [DebugProbe::has_riscv_interface] first.
     fn try_get_riscv_interface(
@@ -501,6 +533,11 @@ pub trait DebugProbe: Send + fmt::Debug {
             self.into_probe(),
             DebugProbeError::InterfaceNotAvailable("RISCV"),
         ))
+    }
+
+    /// Check if the probe offers an interface to debug AVR chips.
+    fn has_avr_interface(&self) -> bool {
+        false
     }
 
     /// Check if the probe offers an interface to debug RISCV chips.

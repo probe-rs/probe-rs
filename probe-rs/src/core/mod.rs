@@ -2,8 +2,8 @@ pub(crate) mod communication_interface;
 
 pub use communication_interface::CommunicationInterface;
 
-use crate::architecture::{
-    arm::core::CortexState, riscv::communication_interface::RiscvCommunicationInterface,
+use crate:: architecture::{
+    arm::core::CortexState, avr::communication_interface::AvrCommunicationInterface, riscv::communication_interface::RiscvCommunicationInterface,
 };
 use crate::config::CoreType;
 use crate::{error, DebugProbeError, Error, Memory, MemoryInterface};
@@ -235,6 +235,7 @@ pub enum SpecificCoreState {
     M33(CortexState),
     M0(CortexState),
     M7(CortexState),
+    Avr,
     Riscv,
 }
 
@@ -246,12 +247,14 @@ impl SpecificCoreState {
             CoreType::M33 => SpecificCoreState::M33(CortexState::new()),
             CoreType::M4 => SpecificCoreState::M4(CortexState::new()),
             CoreType::M7 => SpecificCoreState::M7(CortexState::new()),
+            CoreType::Avr => SpecificCoreState::Avr,
             CoreType::Riscv => SpecificCoreState::Riscv,
         }
     }
 
     pub(crate) fn core_type(&self) -> CoreType {
         match self {
+            SpecificCoreState::Avr => CoreType::Avr,
             SpecificCoreState::M0(_) => CoreType::M0,
             SpecificCoreState::M3(_) => CoreType::M3,
             SpecificCoreState::M33(_) => CoreType::M33,
@@ -278,6 +281,23 @@ impl SpecificCoreState {
             }
             SpecificCoreState::M0(s) => {
                 Core::new(crate::architecture::arm::m0::M0::new(memory, s)?, state)
+            }
+            _ => {
+                return Err(Error::UnableToOpenProbe(
+                    "Core architecture and Probe mismatch.",
+                ))
+            }
+        })
+    }
+
+    pub(crate) fn attach_avr<'probe>(
+        &self,
+        state: &'probe mut CoreState,
+        interface: &'probe mut AvrCommunicationInterface,
+    ) -> Result<Core<'probe>, Error> {
+        Ok(match self {
+            SpecificCoreState::Avr => {
+                Core::new(crate::architecture::avr::Avr::new(interface), state)
             }
             _ => {
                 return Err(Error::UnableToOpenProbe(
@@ -544,6 +564,7 @@ pub struct Breakpoint {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Architecture {
     Arm,
+    Avr,
     Riscv,
 }
 

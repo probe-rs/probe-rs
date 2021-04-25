@@ -3,6 +3,7 @@ pub mod swd;
 pub mod swj;
 pub mod swo;
 pub mod transfer;
+pub mod edbg;
 
 use crate::architecture::arm::DapError;
 use crate::DebugProbeError;

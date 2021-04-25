@@ -10,6 +10,7 @@ use crate::architecture::{
         memory::Component,
         SwoConfig,
     },
+    avr::communication_interface::AvrCommunicationInterface,
     riscv::communication_interface::RiscvCommunicationInterface,
 };
 use crate::config::{ChipInfo, MemoryRegion, RegistryError, Target, TargetSelector};
@@ -48,12 +49,14 @@ pub struct Session {
 enum ArchitectureInterface {
     Arm(Box<dyn ArmProbeInterface + 'static>),
     Riscv(Box<RiscvCommunicationInterface>),
+    Avr(Box<AvrCommunicationInterface>),
 }
 
 impl From<ArchitectureInterface> for Architecture {
     fn from(value: ArchitectureInterface) -> Self {
         match value {
             ArchitectureInterface::Arm(_) => Architecture::Arm,
+            ArchitectureInterface::Avr(_) => Architecture::Avr,
             ArchitectureInterface::Riscv(_) => Architecture::Riscv,
         }
     }
@@ -71,6 +74,7 @@ impl ArchitectureInterface {
 
                 core.attach_arm(core_state, memory)
             }
+            ArchitectureInterface::Avr(state) => core.attach_avr(core_state, state),
             ArchitectureInterface::Riscv(state) => core.attach_riscv(core_state, state),
         }
     }
@@ -86,6 +90,7 @@ impl ArchitectureInterface {
     fn target_reset_deassert(&mut self) -> Result<(), Error> {
         match self {
             ArchitectureInterface::Arm(arm_interface) => arm_interface.target_reset_deassert()?,
+            ArchitectureInterface::Avr(avr_interface) => avr_interface.target_reset_deassert()?,
 
             ArchitectureInterface::Riscv(riscv_interface) => {
                 riscv_interface.target_reset_deassert()?
@@ -146,7 +151,18 @@ impl Session {
                 }
 
                 session
-            }
+            },
+            Architecture::Avr => {
+                let interface = probe.into_avr_interface()?;
+
+                let mut session = Session {
+                    target,
+                    interface: ArchitectureInterface::Avr(interface.unwrap()),
+                    cores: vec![]
+                };
+
+                session
+            },
             Architecture::Riscv => {
                 // TODO: Handle attach under reset
 
@@ -359,6 +375,7 @@ impl Session {
     pub fn architecture(&self) -> Architecture {
         match self.interface {
             ArchitectureInterface::Arm(_) => Architecture::Arm,
+            ArchitectureInterface::Avr(_) => Architecture::Avr,
             ArchitectureInterface::Riscv(_) => Architecture::Riscv,
         }
     }

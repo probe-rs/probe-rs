@@ -173,6 +173,7 @@ impl FlashAlgorithm {
     fn get_algorithm_header(architecture: Architecture) -> &'static [u32] {
         match architecture {
             Architecture::Arm => &Self::ARM_FLASH_BLOB_HEADER,
+            Architecture::Avr => &[0], // FIXME
             Architecture::Riscv => &Self::RISCV_FLASH_BLOB_HEADER,
         }
     }
