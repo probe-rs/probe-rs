@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Improved handling of config files. Unknown keys in the config file now cause an error, and trying to use unknown profiles as well (#205).
+
 ### Fixed
 
 ## [0.10.1]
