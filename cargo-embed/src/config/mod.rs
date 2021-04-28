@@ -1,17 +1,22 @@
-use std::collections::HashMap;
-
 use crate::rttui::channel::ChannelConfig;
-use anyhow::{bail, Context};
+use anyhow::bail;
+use figment::{
+    providers::{Format, Json, Toml, Yaml},
+    Figment,
+};
 use probe_rs::WireProtocol;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
 /// A struct which holds all configs.
-#[derive(Debug, Deserialize, Serialize)]
-pub struct Configs(HashMap<String, Config>);
+#[derive(Debug, Clone)]
+pub struct Configs {
+    figment: Figment,
+}
 
 /// The main struct holding all the possible config options.
 #[derive(Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
 pub struct Config {
     pub general: General,
     pub flashing: Flashing,
@@ -23,6 +28,7 @@ pub struct Config {
 
 /// The probe config struct holding all the possible probe options.
 #[derive(Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
 pub struct Probe {
     pub usb_vid: Option<String>,
     pub usb_pid: Option<String>,
@@ -33,6 +39,7 @@ pub struct Probe {
 
 /// The flashing config struct holding all the possible flashing options.
 #[derive(Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
 pub struct Flashing {
     pub enabled: bool,
     #[deprecated(
@@ -47,6 +54,7 @@ pub struct Flashing {
 
 /// The reset config struct holding all the possible reset options.
 #[derive(Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
 pub struct Reset {
     pub enabled: bool,
     pub halt_afterwards: bool,
@@ -54,6 +62,7 @@ pub struct Reset {
 
 /// The general config struct holding all the possible general options.
 #[derive(Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
 pub struct General {
     pub chip: Option<String>,
     pub chip_descriptions: Vec<String>,
@@ -65,6 +74,7 @@ pub struct General {
 
 /// The rtt config struct holding all the possible rtt options.
 #[derive(Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
 pub struct Rtt {
     pub enabled: bool,
     pub channels: Vec<ChannelConfig>,
@@ -80,89 +90,110 @@ pub struct Rtt {
 
 /// The gdb config struct holding all the possible gdb options.
 #[derive(Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
 pub struct Gdb {
     pub enabled: bool,
     pub gdb_connection_string: Option<String>,
 }
 
 impl Configs {
-    pub fn try_new(name: impl AsRef<str>) -> anyhow::Result<Config> {
-        let mut s = config::Config::new();
-
+    pub fn new(conf_dir: PathBuf) -> Configs {
         // Start off by merging in the default configuration file.
-        s.merge(config::File::from_str(
-            include_str!("default.toml"),
-            config::FileFormat::Toml,
-        ))?;
+        let mut figments =
+            Figment::new().merge(Toml::string(include_str!("default.toml")).nested());
 
         // Ordered list of config files, which are handled in the order specified here.
         let config_files = [
-            // Merge in the project-specific configuration files.
-            // These files may be added to your git repo.
+            // The following files are intended to be project-specific and would normally be
+            // included in a project's source repository.
             ".embed",
             "Embed",
-            // Merge in the local configuration files.
-            // These files should not be added to your git repo.
+            // The following files are intended to hold personal or exceptional settings, which
+            // are not useful for other users, and would NOT normally be included in a project's
+            // source repository.
             ".embed.local",
             "Embed.local",
-            // As described in https://github.com/mehcode/config-rs/issues/101
-            // the above lines will not work unless that bug is fixed, until
-            // then, we add ".ext" to be replaced with a valid format name.
-            ".embed.local.ext",
-            "Embed.local.ext",
         ];
 
         for file in &config_files {
-            s.merge(config::File::with_name(file).required(false))
-                .with_context(|| format!("Failed to merge config file '{}", file))?;
+            let mut toml_path: std::path::PathBuf = conf_dir.clone();
+            toml_path.push(format!("{}.toml", file));
+
+            let mut json_path = conf_dir.clone();
+            json_path.push(format!("{}.json", file));
+
+            let mut yaml_path = conf_dir.clone();
+            yaml_path.push(format!("{}.yaml", file));
+
+            let mut yml_path = conf_dir.clone();
+            yml_path.push(format!("{}.yml", file));
+
+            figments = Figment::from(figments)
+                .merge(Toml::file(toml_path).nested())
+                .merge(Json::file(json_path).nested())
+                .merge(Yaml::file(yaml_path).nested())
+                .merge(Yaml::file(yml_path).nested());
         }
-
-        let map: HashMap<String, serde_json::value::Value> = s.try_into()?;
-
-        let config = match map.get(name.as_ref()) {
-            Some(c) => c,
-            None => bail!(
-                "Cannot find config \"{}\" (available configs: {})",
-                name.as_ref(),
-                map.keys().cloned().collect::<Vec<String>>().join(", "),
-            ),
-        };
-
-        let mut s = config::Config::new();
-
-        Self::apply(name.as_ref(), &mut s, config, &map)?;
-
-        // You can deserialize (and thus freeze) the entire configuration
-        Ok(s.try_into()?)
+        Configs { figment: figments }
     }
 
-    pub fn apply(
-        name: &str,
-        s: &mut config::Config,
-        config: &serde_json::value::Value,
-        map: &HashMap<String, serde_json::value::Value>,
-    ) -> Result<(), config::ConfigError> {
-        // If this config derives from another config, merge the other config first.
-        // Do this recursively.
-        if let Some(derives) = config
-            .get("general")
-            .and_then(|g| g.get("derives").and_then(|d| d.as_str()))
-            .or(Some("default"))
-        {
-            if derives == name {
-                log::warn!("Endless recursion within the {} config.", derives);
-            } else if let Some(dconfig) = map.get(derives) {
-                Self::apply(derives, s, dconfig, map)?;
+    pub fn prof_names(&self) -> Vec<String> {
+        self.figment
+            .profiles()
+            .map(|p| String::from(p.as_str().as_str()))
+            .collect()
+    }
+
+    /// Extract the requested config, but only if the profile has been explicity defined in the
+    /// configuration files etc. (selecting an arbitrary undefined profile with Figment will coerce
+    /// it into existance - inheriting from the default config).
+    pub fn select_defined(self: Configs, name: &str) -> anyhow::Result<Config> {
+        let defined_profiles = self.prof_names();
+        let requested_profile_defined: bool = defined_profiles
+            .iter()
+            .any(|p| p.to_lowercase() == name.to_lowercase());
+
+        let figext: figment::error::Result<Config> = self.figment.select(name).extract();
+        match figext {
+            Err(figerr) => {
+                // Join all the figment errors into a multiline string.
+                bail!(
+                    "Failed to parse supplied configuration:\n{}",
+                    figerr
+                        .into_iter()
+                        .map(|e| e.to_string())
+                        .collect::<Vec<String>>()
+                        .join("\n")
+                );
+            }
+            Ok(config) => {
+                // Gross errors (e.g. config file syntax problems) have already been caught by the
+                // other match arm.  Guard against Figment coercing previously undefined profiles
+                // into existance.
+                if !requested_profile_defined {
+                    bail!(
+                        "the requested configuration profile \"{}\" hasn't been defined (defined profiles: {})",
+                        name,
+                        defined_profiles.join(", ")
+                    );
+                }
+                Ok(config)
             }
         }
-
-        // Merge this current config.
-        s.merge(config::File::from_str(
-            // This unwrap can never fail as we just deserialized this. The reverse has to work!
-            &serde_json::to_string(&config).unwrap(),
-            config::FileFormat::Json,
-        ))
-        .map(|_| ())
+    }
+    #[cfg(test)]
+    pub fn new_with_test_data(conf_dir: PathBuf) -> Configs {
+        let mut cfs = Configs::new(conf_dir);
+        cfs.figment = cfs.figment.merge(
+            Toml::string(
+                r#"
+            [default]
+               bogusInvalidItem = "oops"
+               "#,
+            )
+            .nested(),
+        );
+        cfs
     }
 }
 
@@ -171,9 +202,21 @@ mod test {
     use super::Configs;
 
     #[test]
-    fn default_config() {
+    fn default_profile() {
         // Ensure the default config can be parsed.
-
-        let _config = Configs::try_new("default").unwrap();
+        let configs = Configs::new(std::env::current_dir().unwrap());
+        let _config = configs.select_defined("default").unwrap();
+    }
+    #[test]
+    fn non_existant_profile_is_error() {
+        // Selecting a non-existant profile.
+        let configs = Configs::new(std::env::current_dir().unwrap());
+        let _noprofile = configs.select_defined("nonexxistantprofle").unwrap_err();
+    }
+    #[test]
+    fn unknown_config_items_in_config_fail() {
+        // Selecting a profile with an invalid item.
+        let configs = Configs::new_with_test_data(std::env::current_dir().unwrap());
+        let _superfluous: anyhow::Error = configs.select_defined("default").unwrap_err();
     }
 }

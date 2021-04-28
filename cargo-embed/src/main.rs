@@ -168,8 +168,8 @@ fn main_try() -> Result<()> {
 
     // Get the config.
     let config_name = opt.config.as_deref().unwrap_or("default");
-    let config = config::Configs::try_new(config_name)
-        .with_context(|| format!("The config '{}' could not be loaded.", config_name))?;
+    let configs = config::Configs::new(work_dir.clone());
+    let config = configs.select_defined(config_name)?;
 
     logging::init(Some(config.general.log_level));
 
