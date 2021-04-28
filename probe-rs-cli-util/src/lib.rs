@@ -135,7 +135,7 @@ pub fn build_artifact(work_dir: &Path, args: &[String]) -> Result<PathBuf, Artif
 
     if let Some(artifact) = target_artifact {
         // Unwrap is safe, we only store artifacts with an executable.
-        Ok(artifact.executable.unwrap())
+        Ok(PathBuf::from(artifact.executable.unwrap().as_path()))
     } else {
         // We did not find a binary, so we should return an error.
         Err(ArtifactError::NoArtifacts)
