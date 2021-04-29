@@ -1,3 +1,5 @@
+use std::{mem, ops::Range};
+
 use probe_rs::{Core, MemoryInterface};
 
 /// Registers stacked on exception entry.
@@ -14,6 +16,15 @@ pub struct Stacked {
     fpu_regs: Option<StackedFpuRegs>,
 }
 
+fn bounds_check(bounds: Range<u32>, start: u32, len: u32) -> Result<(), ()> {
+    let end = start + len;
+    if bounds.contains(&start) && bounds.contains(&end) {
+        Ok(())
+    } else {
+        Err(())
+    }
+}
+
 impl Stacked {
     /// Number of 32-bit words stacked in a basic frame.
     const WORDS_BASIC: usize = 8;
@@ -21,16 +32,35 @@ impl Stacked {
     /// Number of 32-bit words stacked in an extended frame.
     const WORDS_EXTENDED: usize = Self::WORDS_BASIC + 17; // 16 FPU regs + 1 status word
 
-    pub fn read(core: &mut Core<'_>, sp: u32, fpu: bool) -> anyhow::Result<Self> {
+    /// Reads stacked registers from RAM
+    ///
+    /// This performs bound checks and returns `None` if a invalid memory read is requested
+    pub fn read(
+        core: &mut Core<'_>,
+        sp: u32,
+        fpu: bool,
+        ram_bounds: Range<u32>,
+    ) -> anyhow::Result<Option<Self>> {
         let mut storage = [0; Self::WORDS_EXTENDED];
         let registers: &mut [_] = if fpu {
             &mut storage
         } else {
             &mut storage[..Self::WORDS_BASIC]
         };
+
+        if bounds_check(
+            ram_bounds,
+            sp,
+            (registers.len() * mem::size_of::<u32>()) as u32,
+        )
+        .is_err()
+        {
+            return Ok(None);
+        }
+
         core.read_32(sp, registers)?;
 
-        Ok(Stacked {
+        Ok(Some(Stacked {
             r0: registers[0],
             r1: registers[1],
             r2: registers[2],
@@ -62,7 +92,7 @@ impl Stacked {
             } else {
                 None
             },
-        })
+        }))
     }
 
     /// Returns the in-memory size of these stacked registers, in Bytes.

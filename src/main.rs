@@ -844,7 +844,18 @@ fn construct_backtrace(
             println!("      <exception entry>");
 
             let sp = registers.get(SP)?;
-            let stacked = Stacked::read(registers.core, sp, fpu)?;
+            let ram_bounds = sp_ram_region
+                .as_ref()
+                .map(|ram_region| ram_region.range.clone())
+                // if no device-specific information, use the range specific in the Cortex-M* Technical Reference Manual
+                .unwrap_or(0x2000_0000..0x4000_0000);
+            let stacked = if let Some(stacked) = Stacked::read(registers.core, sp, fpu, ram_bounds)?
+            {
+                stacked
+            } else {
+                log::warn!("exception entry pushed registers outside RAM; not possible to unwind the stack");
+                return Ok(top_exception);
+            };
 
             registers.insert(LR, stacked.lr);
             // adjust the stack pointer for stacked registers
