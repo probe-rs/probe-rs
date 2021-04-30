@@ -1,10 +1,10 @@
-use super::{
-    reset_catch_clear, reset_catch_set, reset_system, CortexState, Dfsr, ARM_REGISTER_FILE,
-};
+use super::{reset_catch_set, reset_system, CortexState, Dfsr, ARM_REGISTER_FILE};
 use crate::architecture::arm::communication_interface::Initialized;
+use crate::config::DebugSequence;
 use crate::core::{RegisterDescription, RegisterFile, RegisterKind};
 use crate::error::Error;
 use crate::memory::Memory;
+use crate::Target;
 use crate::{
     Architecture, CoreInformation, CoreInterface, CoreRegister, CoreRegisterAddress, CoreStatus,
     DebugProbeError, HaltReason, MemoryInterface,
@@ -13,6 +13,7 @@ use anyhow::Result;
 use bitfield::bitfield;
 use log::debug;
 use std::{
+    borrow::Borrow,
     mem::size_of,
     time::{Duration, Instant},
 };
@@ -277,16 +278,19 @@ const XPSR: RegisterDescription = RegisterDescription {
     address: CoreRegisterAddress(0b1_0000),
 };
 
-pub struct M0<'probe> {
+pub struct M0<'probe, 'target> {
     memory: Memory<'probe>,
 
     state: &'probe mut CortexState,
+
+    target: &'target Target,
 }
 
-impl<'probe> M0<'probe> {
+impl<'probe, 'target> M0<'probe, 'target> {
     pub(crate) fn new(
         mut memory: Memory<'probe>,
         state: &'probe mut CortexState,
+        target: &'target Target,
     ) -> Result<Self, Error> {
         if !state.initialized() {
             // determine current state
@@ -316,11 +320,15 @@ impl<'probe> M0<'probe> {
             state.initialize();
         }
 
-        Ok(Self { memory, state })
+        Ok(Self {
+            memory,
+            state,
+            target,
+        })
     }
 }
 
-impl<'probe> CoreInterface for M0<'probe> {
+impl<'probe, 'target> CoreInterface for M0<'probe, 'target> {
     fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), Error> {
         // Wait until halted state is active again.
         let start = Instant::now();
@@ -426,7 +434,7 @@ impl<'probe> CoreInterface for M0<'probe> {
         reset_system(self)
     }
 
-    fn reset_and_halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
+    fn reset_and_halt(&mut self, _timeout: Duration) -> Result<CoreInformation, Error> {
         reset_catch_set(self)?;
 
         reset_system(self)?;
@@ -440,7 +448,10 @@ impl<'probe> CoreInterface for M0<'probe> {
             self.write_core_reg(XPSR.address, xpsr_value | XPSR_THUMB)?;
         }
 
-        reset_catch_clear(self)?;
+        match self.target.debug_sequence.borrow() {
+            DebugSequence::Arm(sequence) => sequence.reset_catch_clear(&mut self.memory)?,
+            DebugSequence::Riscv => panic!("Should not happen..."),
+        }
 
         // try to read the program counter
         let pc_value = self.read_core_reg(PC.address)?;
@@ -615,7 +626,7 @@ impl<'probe> CoreInterface for M0<'probe> {
     }
 }
 
-impl<'probe> MemoryInterface for M0<'probe> {
+impl<'probe, 'target> MemoryInterface for M0<'probe, 'target> {
     fn read_word_32(&mut self, address: u32) -> Result<u32, Error> {
         self.memory.read_word_32(address)
     }

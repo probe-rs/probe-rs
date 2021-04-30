@@ -8,10 +8,8 @@ use std::{
 use crate::{config::ArmDebugSequence, core::CoreRegister, DebugProbeError, Memory};
 
 use super::{
-    communication_interface::ArmProbeInterface,
     communication_interface::{SwdSequence, UninitializedArmProbe},
-    dp::{Abort, Ctrl, DpAccess, Select, DPIDR},
-    PortType, Register,
+    dp::{Abort, Ctrl, DpAccess, Select},
 };
 
 pub struct DefaultArmSequence;

@@ -64,14 +64,18 @@ impl From<ArchitectureInterface> for Architecture {
 }
 
 impl ArchitectureInterface {
-    fn attach<'probe>(
+    fn attach<'probe, 'target: 'probe>(
         &'probe mut self,
         core: &'probe mut SpecificCoreState,
         core_state: &'probe mut CoreState,
-        config: &'probe CoreConfig,
+        target: &'target Target,
     ) -> Result<Core<'probe>, Error> {
         match self {
             ArchitectureInterface::Arm(state) => {
+                let config = target
+                    .cores
+                    .get(core_state.id())
+                    .ok_or(Error::CoreNotFound(core_state.id()))?;
                 let arm_core_access_options = match &config.core_access_options {
                     probe_rs_target::CoreAccessOptions::Arm(opt) => Ok(opt),
                     probe_rs_target::CoreAccessOptions::Riscv(_) => {
@@ -81,7 +85,7 @@ impl ArchitectureInterface {
 
                 let memory = state.memory_interface(arm_core_access_options.ap.into())?;
 
-                core.attach_arm(core_state, memory)
+                core.attach_arm(core_state, memory, target)
             }
             ArchitectureInterface::Riscv(state) => core.attach_riscv(core_state, state),
         }
@@ -134,9 +138,7 @@ impl Session {
                 let mut interface = probe.try_into_arm_interface().map_err(|(_, err)| err)?;
 
                 match target.debug_sequence.borrow() {
-                    DebugSequence::Arm(sequence) => {
-                        sequence.debug_port_setup(interface.borrow_mut())?
-                    }
+                    DebugSequence::Arm(sequence) => sequence.debug_port_setup(&mut interface)?,
                     DebugSequence::Riscv => panic!("Should not happen...."),
                 }
 
@@ -247,8 +249,7 @@ impl Session {
     ///
     pub fn core(&mut self, n: usize) -> Result<Core<'_>, Error> {
         let (core, core_state) = self.cores.get_mut(n).ok_or(Error::CoreNotFound(n))?;
-        let config = self.target.cores.get(n).ok_or(Error::CoreNotFound(n))?;
-        self.interface.attach(core, core_state, config)
+        self.interface.attach(core, core_state, &self.target)
     }
 
     /// Read available data from the SWO interface without waiting.

@@ -7,6 +7,7 @@ use crate::architecture::{
     arm::core::CortexState, riscv::communication_interface::RiscvCommunicationInterface,
 };
 use crate::DebugProbeError;
+use crate::Target;
 use crate::{architecture::arm::communication_interface::Initialized, error};
 use crate::{Error, Memory, MemoryInterface};
 use anyhow::{anyhow, Result};
@@ -235,6 +236,10 @@ impl CoreState {
     pub fn new(id: usize) -> Self {
         Self { id }
     }
+
+    pub fn id(&self) -> usize {
+        self.id
+    }
 }
 
 #[derive(Debug)]
@@ -270,10 +275,11 @@ impl SpecificCoreState {
         }
     }
 
-    pub(crate) fn attach_arm<'probe>(
+    pub(crate) fn attach_arm<'probe, 'target: 'probe>(
         &'probe mut self,
         state: &'probe mut CoreState,
         memory: Memory<'probe>,
+        target: &'target Target,
     ) -> Result<Core<'probe>, Error> {
         Ok(match self {
             // TODO: Change this once the new archtecture structure for ARM hits.
@@ -282,12 +288,14 @@ impl SpecificCoreState {
             SpecificCoreState::M3(s) | SpecificCoreState::M4(s) | SpecificCoreState::M7(s) => {
                 Core::new(crate::architecture::arm::m4::M4::new(memory, s)?, state)
             }
-            SpecificCoreState::M33(s) => {
-                Core::new(crate::architecture::arm::m33::M33::new(memory, s)?, state)
-            }
-            SpecificCoreState::M0(s) => {
-                Core::new(crate::architecture::arm::m0::M0::new(memory, s)?, state)
-            }
+            SpecificCoreState::M33(s) => Core::new(
+                crate::architecture::arm::m33::M33::new(memory, s, target)?,
+                state,
+            ),
+            SpecificCoreState::M0(s) => Core::new(
+                crate::architecture::arm::m0::M0::new(memory, s, target)?,
+                state,
+            ),
             _ => {
                 return Err(Error::UnableToOpenProbe(
                     "Core architecture and Probe mismatch.",

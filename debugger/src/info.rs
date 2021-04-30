@@ -84,7 +84,7 @@ fn try_show_info(mut probe: Probe, protocol: WireProtocol) -> (Probe, Result<()>
 
     if probe.has_arm_interface() {
         match probe.try_into_arm_interface() {
-            Ok(mut interface) => {
+            Ok(interface) => {
                 let mut interface = interface
                     .initialize()
                     .expect("This should not be an unwrap");

@@ -7,24 +7,23 @@ use crate::{
     architecture::arm::{
         ap::ApAccess,
         ap::IDR,
+        communication_interface::UninitializedArmProbe,
         communication_interface::{read_ap, write_ap},
-        communication_interface::{SwdSequence, UninitializedArmProbe},
         dp::{Abort, Ctrl, DpAccess, Select, DPIDR},
-        ArmCommunicationInterface, DapAccess, PortType,
     },
     config::ArmDebugSequence,
     core::CoreRegister,
-    DebugProbe, DebugProbeError,
+    DebugProbeError,
 };
 
 struct LPC55S69 {}
 
 impl ArmDebugSequence for LPC55S69 {
-    fn reset_hardware_assert(&self, interface: &mut crate::Memory) -> Result<(), crate::Error> {
+    fn reset_hardware_assert(&self, _interface: &mut crate::Memory) -> Result<(), crate::Error> {
         todo!()
     }
 
-    fn reset_hardware_deassert(&self, interface: &mut crate::Memory) -> Result<(), crate::Error> {
+    fn reset_hardware_deassert(&self, _interface: &mut crate::Memory) -> Result<(), crate::Error> {
         todo!()
     }
 
@@ -204,7 +203,7 @@ impl ArmDebugSequence for LPC55S69 {
     }
 
     fn reset_system(&self, interface: &mut crate::Memory) -> Result<(), crate::Error> {
-        use crate::architecture::arm::core::m4::{Aircr, Dhcsr};
+        use crate::architecture::arm::core::m4::Aircr;
 
         let mut aircr = Aircr(0);
         aircr.vectkey();

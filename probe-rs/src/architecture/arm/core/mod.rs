@@ -1,7 +1,4 @@
-use std::{
-    thread,
-    time::{Duration, Instant},
-};
+use std::time::{Duration, Instant};
 
 use crate::{
     core::{CoreRegister, CoreRegisterAddress, RegisterDescription, RegisterFile, RegisterKind},

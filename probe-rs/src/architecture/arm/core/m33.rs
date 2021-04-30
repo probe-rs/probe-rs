@@ -1,24 +1,22 @@
 //! Support for Cortex-M33
 //!
 
+use crate::core::RegisterFile;
 use crate::memory::Memory;
+use crate::CoreRegisterAddress;
 use crate::{architecture::arm::communication_interface::Initialized, error::Error};
 use crate::{
-    core::{
-        Architecture, CoreInformation, CoreInterface, CoreRegister, CoreRegisterAddress,
-        RegisterFile,
-    },
-    CoreStatus, DebugProbeError, HaltReason,
+    architecture::arm::core::register, config::DebugSequence, CoreStatus, DebugProbeError,
+    HaltReason, MemoryInterface, Target,
 };
+use crate::{Architecture, CoreInformation};
+use crate::{CoreInterface, CoreRegister};
 use anyhow::Result;
-
-use crate::{architecture::arm::core::register, MemoryInterface};
 
 use bitfield::bitfield;
 
-use super::{
-    reset_catch_clear, reset_catch_set, reset_system, CortexState, Dfsr, ARM_REGISTER_FILE,
-};
+use super::{reset_catch_set, reset_system, CortexState, Dfsr, ARM_REGISTER_FILE};
+use std::borrow::Borrow;
 use std::{
     mem::size_of,
     time::{Duration, Instant},
@@ -28,12 +26,15 @@ pub struct M33<'probe> {
     memory: Memory<'probe>,
 
     state: &'probe mut CortexState,
+
+    target: &'probe Target,
 }
 
 impl<'probe> M33<'probe> {
     pub(crate) fn new(
         mut memory: Memory<'probe>,
         state: &'probe mut CortexState,
+        target: &'probe Target,
     ) -> Result<Self, Error> {
         if !state.initialized() {
             // determine current state
@@ -65,7 +66,11 @@ impl<'probe> M33<'probe> {
             state.initialize();
         }
 
-        Ok(Self { memory, state })
+        Ok(Self {
+            memory,
+            state,
+            target,
+        })
     }
 }
 
@@ -153,7 +158,10 @@ impl<'probe> CoreInterface for M33<'probe> {
             self.write_core_reg(register::XPSR.address, xpsr_value | XPSR_THUMB)?;
         }
 
-        reset_catch_clear(self)?;
+        match self.target.debug_sequence.borrow() {
+            DebugSequence::Arm(sequence) => sequence.reset_catch_clear(&mut self.memory)?,
+            DebugSequence::Riscv => panic!("Should not happen..."),
+        }
 
         // try to read the program counter
         let pc_value = self.read_core_reg(register::PC.address)?;

@@ -785,15 +785,15 @@ impl RawDapAccess for FakeProbe {
         Err(DebugProbeError::CommandNotSupportedByProbe)
     }
 
-    fn swj_sequence(&mut self, bit_len: u8, bits: u64) -> Result<(), DebugProbeError> {
+    fn swj_sequence(&mut self, _bit_len: u8, _bits: u64) -> Result<(), DebugProbeError> {
         todo!()
     }
 
     fn swj_pins(
         &mut self,
-        pin_out: u32,
-        pin_select: u32,
-        pin_wait: u32,
+        _pin_out: u32,
+        _pin_select: u32,
+        _pin_wait: u32,
     ) -> Result<u32, DebugProbeError> {
         todo!()
     }
@@ -873,11 +873,11 @@ impl ArmProbeInterface for FakeArmInterface {
 }
 
 impl SwdSequence for FakeArmInterface {
-    fn swj_sequence(&mut self, bit_len: u8, bits: u64) -> Result<(), Error> {
+    fn swj_sequence(&mut self, _bit_len: u8, _bits: u64) -> Result<(), Error> {
         todo!()
     }
 
-    fn swj_pins(&mut self, pin_out: u32, pin_select: u32, pin_wait: u32) -> Result<u32, Error> {
+    fn swj_pins(&mut self, _pin_out: u32, _pin_select: u32, _pin_wait: u32) -> Result<u32, Error> {
         todo!()
     }
 

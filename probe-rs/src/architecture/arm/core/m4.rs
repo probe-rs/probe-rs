@@ -553,7 +553,7 @@ impl<'probe> CoreInterface for M4<'probe> {
         reset_system(self)
     }
 
-    fn reset_and_halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
+    fn reset_and_halt(&mut self, _timeout: Duration) -> Result<CoreInformation, Error> {
         // Set the vc_corereset bit in the DEMCR register.
         // This will halt the core after reset.
         reset_catch_set(self)?;
