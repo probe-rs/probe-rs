@@ -12,6 +12,7 @@ use variable::Variable;
 
 use std::{
     borrow, io,
+    num::NonZeroU64,
     path::{Path, PathBuf},
     rc::Rc,
     str::{from_utf8, Utf8Error},
@@ -45,7 +46,7 @@ impl From<gimli::ColumnType> for ColumnType {
     fn from(column: gimli::ColumnType) -> Self {
         match column {
             gimli::ColumnType::LeftEdge => ColumnType::LeftEdge,
-            gimli::ColumnType::Column(c) => ColumnType::Column(c),
+            gimli::ColumnType::Column(c) => ColumnType::Column(c.get()),
         }
     }
 }
@@ -351,17 +352,9 @@ impl DebugInfo {
                 gimli::LittleEndian,
             ))
         };
-        // Load a supplementary section. We don't have a supplementary object file,
-        // so always return an empty slice.
-        let load_section_sup = |_| {
-            Ok(gimli::read::EndianRcSlice::new(
-                Rc::from(&*borrow::Cow::Borrowed(&[][..])),
-                gimli::LittleEndian,
-            ))
-        };
 
         // Load all of the sections.
-        let dwarf_cow = gimli::Dwarf::load(&load_section, &load_section_sup)?;
+        let dwarf_cow = gimli::Dwarf::load(&load_section)?;
 
         use gimli::Section;
         let mut frame_section = gimli::DebugFrame::load(load_section)?;
@@ -436,7 +429,7 @@ impl DebugInfo {
                             .to_owned();
 
                             return Some(SourceLocation {
-                                line: row.line(),
+                                line: row.line().map(NonZeroU64::get),
                                 column: Some(row.column().into()),
                                 file: file_name_str.into(),
                                 directory: Some(file_dir_str.into()),
@@ -458,7 +451,7 @@ impl DebugInfo {
                             .to_owned();
 
                             return Some(SourceLocation {
-                                line: row.line(),
+                                line: row.line().map(NonZeroU64::get),
                                 column: Some(row.column().into()),
                                 file: file_name_str.into(),
                                 directory: Some(file_dir_str.into()),
@@ -592,7 +585,7 @@ impl DebugInfo {
                             }
 
                             if let Some(cur_line) = row.line() {
-                                if cur_line == line {
+                                if cur_line.get() == line {
                                     locations.push((row.address(), row.column()));
                                 }
                             }
@@ -627,9 +620,9 @@ impl DebugInfo {
                     Some(search_col) => {
                         let mut best_location = &locations[0];
 
-                        let search_col = match search_col {
-                            0 => gimli::read::ColumnType::LeftEdge,
-                            c => gimli::read::ColumnType::Column(c),
+                        let search_col = match NonZeroU64::new(search_col) {
+                            None => gimli::read::ColumnType::LeftEdge,
+                            Some(c) => gimli::read::ColumnType::Column(c),
                         };
 
                         for loc in &locations[1..] {
