@@ -28,7 +28,7 @@ bitfield = "0.13.2"
 bitvec = "0.19.4"
 enum-primitive-derive = "0.2.1"
 funty = "=1.1.0" # Temporary fix for https://github.com/bitvecto-rs/bitvec/issues/105
-gimli = { version = "0.23.0", default-features = false, features = ["endian-reader", "read", "std"] }
+gimli = { version = "0.24.0", default-features = false, features = ["endian-reader", "read", "std"] }
 hidapi = "1.2.0"
 ihex = "3.0.0"
 itm-decode = { version = "0.2.1", default-features = false }
