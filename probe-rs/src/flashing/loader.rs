@@ -174,8 +174,7 @@ impl<'data> FlashLoader<'data> {
         data_buffer: &'buffer mut Vec<Vec<u8>>,
         file: &mut T,
     ) -> Result<(), FileDownloadError> {
-        let mut _extended_segment_address = 0;
-        let mut extended_linear_address = 0;
+        let mut base_address = 0;
 
         let mut data = String::new();
         file.read_to_string(&mut data)?;
@@ -187,7 +186,7 @@ impl<'data> FlashLoader<'data> {
             use Record::*;
             match record {
                 Data { offset, value } => {
-                    let offset = extended_linear_address | offset as u32;
+                    let offset = base_address + offset as u32;
 
                     let index = data_buffer.len();
                     data_buffer.push(value);
@@ -196,11 +195,11 @@ impl<'data> FlashLoader<'data> {
                 }
                 EndOfFile => (),
                 ExtendedSegmentAddress(address) => {
-                    _extended_segment_address = address * 16;
+                    base_address = (address as u32) * 16;
                 }
                 StartSegmentAddress { .. } => (),
                 ExtendedLinearAddress(address) => {
-                    extended_linear_address = (address as u32) << 16;
+                    base_address = (address as u32) << 16;
                 }
                 StartLinearAddress(_) => (),
             };
