@@ -37,7 +37,7 @@ jep106 = "0.2.4"
 lazy_static = "1.4.0"
 log = "0.4.8"
 num-traits = "0.2.11"
-object = { version = "0.23.0", default-features = false, features = ["elf", "read_core", "std"] }
+object = { version = "0.24.0", default-features = false, features = ["elf", "read_core", "std"] }
 rusb = "0.8.0"
 scroll = "0.10.1"
 serde = { version = "1.0.104", features = ["derive"] }
