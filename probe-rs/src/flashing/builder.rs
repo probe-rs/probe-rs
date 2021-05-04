@@ -152,15 +152,15 @@ impl FlashLayout {
 }
 
 /// A block of data that is to be written to flash.
-#[derive(Clone, Copy)]
-pub(super) struct FlashDataBlock<'data> {
+#[derive(Clone)]
+pub(super) struct FlashDataBlock {
     address: u32,
-    data: &'data [u8],
+    data: Vec<u8>,
 }
 
-impl<'data> FlashDataBlock<'data> {
+impl FlashDataBlock {
     /// Create a new `FlashDataBlock`.
-    fn new(address: u32, data: &'data [u8]) -> Self {
+    fn new(address: u32, data: Vec<u8>) -> Self {
         Self { address, data }
     }
 
@@ -194,7 +194,7 @@ impl FlashDataBlockSpan {
     }
 }
 
-impl<'data> From<FlashDataBlock<'data>> for FlashDataBlockSpan {
+impl From<FlashDataBlock> for FlashDataBlockSpan {
     fn from(block: FlashDataBlock) -> Self {
         Self {
             address: block.address(),
@@ -203,7 +203,7 @@ impl<'data> From<FlashDataBlock<'data>> for FlashDataBlockSpan {
     }
 }
 
-impl<'data> From<&FlashDataBlock<'data>> for FlashDataBlockSpan {
+impl From<&FlashDataBlock> for FlashDataBlockSpan {
     fn from(block: &FlashDataBlock) -> Self {
         Self {
             address: block.address(),
@@ -214,11 +214,11 @@ impl<'data> From<&FlashDataBlock<'data>> for FlashDataBlockSpan {
 
 /// A helper structure to build a flash layout from a set of data blocks.
 #[derive(Default)]
-pub(super) struct FlashBuilder<'data> {
-    data_blocks: Vec<FlashDataBlock<'data>>,
+pub(super) struct FlashBuilder {
+    data_blocks: Vec<FlashDataBlock>,
 }
 
-impl<'data> FlashBuilder<'data> {
+impl FlashBuilder {
     /// Creates a new `FlashBuilder` with empty data.
     pub(super) fn new() -> Self {
         Self {
@@ -229,11 +229,11 @@ impl<'data> FlashBuilder<'data> {
     /// Add a block of data to be programmed.
     ///
     /// Programming does not start until the `program` method is called.
-    pub(super) fn add_data(&mut self, address: u32, data: &'data [u8]) -> Result<(), FlashError> {
+    pub(super) fn add_data(&mut self, address: u32, data: &[u8]) -> Result<(), FlashError> {
         // Add the operation to the sorted data list.
         match self
             .data_blocks
-            .binary_search_by_key(&address, |&v| v.address)
+            .binary_search_by_key(&address, |v| v.address)
         {
             // If it already is present in the list, this indicates a bug in the flashing code.
             Ok(_) => panic!(
@@ -272,7 +272,7 @@ impl<'data> FlashBuilder<'data> {
 
                 // If we made it until here, it is safe to insert the block.
                 self.data_blocks
-                    .insert(position, FlashDataBlock::new(address, data))
+                    .insert(position, FlashDataBlock::new(address, data.to_vec()))
             }
         }
 
