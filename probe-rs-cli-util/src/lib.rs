@@ -11,6 +11,10 @@ use std::{
     process::{Command, Stdio},
 };
 
+// Re-export crates to avoid version conflicts in the dependent crates.
+pub use indicatif;
+pub use log;
+
 #[derive(Debug, Error)]
 pub enum ArtifactError {
     #[error("Failed to canonicalize path '{work_dir}'.")]
