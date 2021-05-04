@@ -16,7 +16,9 @@ use structopt::StructOpt;
 
 use probe_rs::{
     config::{RegistryError, TargetSelector},
-    flashing::{FileDownloadError, FlashError, FlashLoader, FlashProgress, ProgressEvent},
+    flashing::{
+        DownloadOptions, FileDownloadError, FlashError, FlashLoader, FlashProgress, ProgressEvent,
+    },
     DebugProbeError, DebugProbeSelector, FakeProbe, Probe, Session, Target, WireProtocol,
 };
 
@@ -376,8 +378,6 @@ fn main_try() -> Result<(), CargoFlashError> {
         path.display()
     ));
 
-    let mut data_buffer = Vec::new();
-
     let (target_selector, flash_loader) = if let Some(chip_name) = &opt.chip {
         let target = probe_rs::config::get_target_by_name(chip_name).map_err(|error| {
             CargoFlashError::ChipNotFound {
@@ -386,7 +386,7 @@ fn main_try() -> Result<(), CargoFlashError> {
             }
         })?;
 
-        let loader = build_flashloader(&target, &path, &mut data_buffer, opt.restore_unwritten)?;
+        let loader = build_flashloader(&target, &path)?;
         (TargetSelector::Specified(target), Some(loader))
     } else {
         (TargetSelector::Auto, None)
@@ -507,11 +507,15 @@ fn run_flash_download(
     opt: &Opt,
     loader: Option<FlashLoader>,
 ) -> Result<(), CargoFlashError> {
-    let mut buffer = Vec::new();
-
-    let mut loader = match loader {
+    let loader = match loader {
         Some(loader) => loader,
-        None => build_flashloader(session.target(), path, &mut buffer, opt.restore_unwritten)?,
+        None => build_flashloader(session.target(), path)?,
+    };
+
+    let mut download_option = DownloadOptions {
+        keep_unwritten_bytes: opt.restore_unwritten,
+        dry_run: opt.dry_run,
+        ..Default::default()
     };
 
     if !opt.disable_progressbars {
@@ -628,26 +632,28 @@ fn run_flash_download(
             multi_progress.join().unwrap();
         });
 
-        loader
-            .commit(session, &progress, false, opt.dry_run)
-            .map_err(|error| CargoFlashError::FlashingFailed {
+        download_option.progress = Some(&progress);
+
+        loader.commit(session, download_option).map_err(|error| {
+            CargoFlashError::FlashingFailed {
                 source: error,
                 target: session.target().clone(),
                 target_spec: opt.chip.clone(),
                 path: format!("{}", path.display()),
-            })?;
+            }
+        })?;
 
         // We don't care if we cannot join this thread.
         let _ = progress_thread_handle.join();
     } else {
-        loader
-            .commit(session, &FlashProgress::new(|_| {}), false, opt.dry_run)
-            .map_err(|error| CargoFlashError::FlashingFailed {
+        loader.commit(session, download_option).map_err(|error| {
+            CargoFlashError::FlashingFailed {
                 source: error,
                 target: session.target().clone(),
                 target_spec: opt.chip.clone(),
                 path: format!("{}", path.display()),
-            })?;
+            }
+        })?;
     }
 
     Ok(())
@@ -684,18 +690,9 @@ fn open_probe(options: &Opt) -> Result<Probe, CargoFlashError> {
 
 /// Builds a new flash loader for the given target and ELF.
 /// This will check the ELF for validity and check what pages have to be flashed etc.
-fn build_flashloader<'data>(
-    target: &Target,
-    path: &Path,
-    buffer: &'data mut Vec<Vec<u8>>,
-    keep_unwritten: bool,
-) -> Result<FlashLoader<'data>, CargoFlashError> {
+fn build_flashloader(target: &Target, path: &Path) -> Result<FlashLoader, CargoFlashError> {
     // Create the flash loader
-    let mut loader = FlashLoader::new(
-        target.memory_map.to_vec(),
-        keep_unwritten,
-        target.source().clone(),
-    );
+    let mut loader = FlashLoader::new(target.memory_map.to_vec(), target.source().clone());
 
     // Add data from the ELF.
     let mut file = File::open(&path).map_err(|error| CargoFlashError::FailedToOpenElf {
@@ -705,7 +702,7 @@ fn build_flashloader<'data>(
 
     // Try and load the ELF data.
     loader
-        .load_elf_data(buffer, &mut file)
+        .load_elf_data(&mut file)
         .map_err(CargoFlashError::FailedToLoadElfData)?;
 
     Ok(loader)

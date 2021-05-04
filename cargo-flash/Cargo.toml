@@ -19,7 +19,7 @@ sentry = ["probe-rs-cli-util/sentry"]
 
 [dependencies]
 structopt = "0.3.20"
-indicatif = "0.15.0"
+indicatif = "0.16.0"
 env_logger = "0.8.1"
 log = "0.4.14"
 lazy_static = "1.4.0"
