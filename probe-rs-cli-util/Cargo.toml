@@ -16,7 +16,6 @@ license = "MIT OR Apache-2.0"
 default = ["sentry", "anyhow"]
 
 [dependencies]
-structopt = "0.3.16"
 thiserror = "1.0"
 anyhow = { version = "1.0", optional = true }
 indicatif = "0.16.0"
