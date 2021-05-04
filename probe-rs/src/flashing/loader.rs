@@ -1,8 +1,8 @@
 use ihex::Record;
 
 use super::{
-    extract_from_elf, BinOptions, ExtractedFlashData, FileDownloadError, FlashAlgorithm,
-    FlashBuilder, FlashError, FlashProgress, Flasher,
+    extract_from_elf, BinOptions, DownloadOptions, ExtractedFlashData, FileDownloadError,
+    FlashAlgorithm, FlashBuilder, FlashError, FlashProgress, Flasher,
 };
 use crate::config::{MemoryRange, MemoryRegion, NvmRegion, TargetDescriptionSource};
 use crate::memory::MemoryInterface;
@@ -26,7 +26,6 @@ pub struct FlashLoader {
     memory_map: Vec<MemoryRegion>,
     builders: HashMap<NvmRegion, FlashBuilder>,
     ram_write: Vec<RamWrite>,
-    keep_unwritten: bool,
 
     /// Source of the flash description,
     /// used for diagnostics.
@@ -35,16 +34,11 @@ pub struct FlashLoader {
 
 impl FlashLoader {
     /// Create a new flash loader.
-    pub fn new(
-        memory_map: Vec<MemoryRegion>,
-        keep_unwritten: bool,
-        source: TargetDescriptionSource,
-    ) -> Self {
+    pub fn new(memory_map: Vec<MemoryRegion>, source: TargetDescriptionSource) -> Self {
         Self {
             memory_map,
             builders: HashMap::new(),
             ram_write: Vec::new(),
-            keep_unwritten,
             source,
         }
     }
@@ -232,11 +226,9 @@ impl FlashLoader {
     ///
     /// If `do_chip_erase` is `true` the entire flash will be erased.
     pub fn commit(
-        &mut self,
+        &self,
         session: &mut Session,
-        progress: &FlashProgress,
-        do_chip_erase: bool,
-        dry_run: bool,
+        options: DownloadOptions<'_>,
     ) -> Result<(), FlashError> {
         // Iterate over builders we've created and program the data.
         for (region, builder) in &self.builders {
@@ -294,15 +286,23 @@ impl FlashLoader {
             let flash_algorithm =
                 FlashAlgorithm::assemble_from_raw(raw_flash_algorithm, ram, session.target())?;
 
-            if dry_run {
+            if options.dry_run {
                 log::info!("Skipping programming, dry run!");
-                progress.failed_erasing();
+                if let Some(progress) = options.progress {
+                    progress.failed_erasing();
+                }
                 continue;
             }
 
             // Program the data.
             let mut flasher = Flasher::new(session, flash_algorithm, region.clone());
-            flasher.program(builder, do_chip_erase, self.keep_unwritten, true, progress)?
+            flasher.program(
+                builder,
+                options.do_chip_erase,
+                options.keep_unwritten_bytes,
+                true,
+                options.progress.unwrap_or(&FlashProgress::new(|_| {})),
+            )?
         }
 
         // Write data to ram.

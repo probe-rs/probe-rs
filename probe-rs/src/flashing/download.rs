@@ -129,11 +129,7 @@ pub fn download_file_with_options<P: AsRef<Path>>(
     // IMPORTANT: Change this to an actual memory map of a real chip
     let memory_map = session.target().memory_map.clone();
 
-    let mut loader = FlashLoader::new(
-        memory_map,
-        options.keep_unwritten_bytes,
-        session.target().source.clone(),
-    );
+    let mut loader = FlashLoader::new(memory_map, session.target().source.clone());
 
     match format {
         Format::Bin(options) => loader.load_bin_data(&mut file, options),
@@ -143,12 +139,7 @@ pub fn download_file_with_options<P: AsRef<Path>>(
 
     loader
         // TODO: hand out chip erase flag
-        .commit(
-            session,
-            options.progress.unwrap_or(&FlashProgress::new(|_| {})),
-            options.do_chip_erase,
-            options.dry_run,
-        )
+        .commit(session, options)
         .map_err(FileDownloadError::Flash)
 }
 
