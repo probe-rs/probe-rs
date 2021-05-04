@@ -126,7 +126,6 @@ pub fn download_file_with_options<P: AsRef<Path>>(
         Ok(file) => file,
         Err(e) => return Err(FileDownloadError::IO(e)),
     };
-    let mut buffer = vec![];
     // IMPORTANT: Change this to an actual memory map of a real chip
     let memory_map = session.target().memory_map.clone();
 
@@ -137,9 +136,9 @@ pub fn download_file_with_options<P: AsRef<Path>>(
     );
 
     match format {
-        Format::Bin(options) => loader.load_bin_data(&mut buffer, &mut file, options),
-        Format::Elf => loader.load_elf_data(&mut buffer, &mut file),
-        Format::Hex => loader.load_hex_data(&mut buffer, &mut file),
+        Format::Bin(options) => loader.load_bin_data(&mut file, options),
+        Format::Elf => loader.load_elf_data(&mut file),
+        Format::Hex => loader.load_hex_data(&mut file),
     }?;
 
     loader
