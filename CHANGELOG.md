@@ -9,6 +9,43 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 (no changes)
 
+## [v0.2.2] - 2021-05-06
+
+### Improvements
+
+- [#163] Report exit reason, make `backtrace` optional
+- [#171] Introduce even more verbose log level
+- [#174] Let developers skip defmt version check
+- [#179] Limit `backtrace` length, make limit configurable
+- [#184] Add some bounds checking to `unwinding`
+
+#### Docs
+
+- [#161] Remind the user that the `bench` profile should be also overridden
+- [#181] `README`: add copypasteable example how to run from repo
+- [#183] `README`: Add troubleshooting for use with RTIC
+
+### Fixes
+
+- [#162] Remove `panic-probe`
+
+### Internal Improvements
+
+- [#165] Various simplifications
+- [#175] Run `cargo fmt -- --check` in CI
+
+[#161]: https://github.com/knurling-rs/probe-run/pull/161
+[#162]: https://github.com/knurling-rs/probe-run/pull/162
+[#163]: https://github.com/knurling-rs/probe-run/pull/163
+[#165]: https://github.com/knurling-rs/probe-run/pull/165
+[#171]: https://github.com/knurling-rs/probe-run/pull/171
+[#174]: https://github.com/knurling-rs/probe-run/pull/174
+[#175]: https://github.com/knurling-rs/probe-run/pull/175
+[#179]: https://github.com/knurling-rs/probe-run/pull/179
+[#181]: https://github.com/knurling-rs/probe-run/pull/181
+[#184]: https://github.com/knurling-rs/probe-run/pull/184
+[#183]: https://github.com/knurling-rs/probe-run/pull/183
+
 ## [v0.2.1] - 2021-02-23
 
 - [#158] Fix Ctrl+C handling
@@ -193,7 +230,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 Initial release
 
-[Unreleased]: https://github.com/knurling-rs/probe-run/compare/v0.2.1...main
+[Unreleased]: https://github.com/knurling-rs/probe-run/compare/v0.2.2...main
+[v0.2.2]: https://github.com/knurling-rs/probe-run/compare/v0.2.1...v0.2.2
 [v0.2.1]: https://github.com/knurling-rs/probe-run/compare/v0.2.0...v0.2.1
 [v0.2.0]: https://github.com/knurling-rs/probe-run/compare/v0.1.9...v0.2.0
 [v0.1.9]: https://github.com/knurling-rs/probe-run/compare/v0.1.8...v0.1.9
