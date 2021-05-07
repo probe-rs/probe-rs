@@ -28,12 +28,12 @@ manager before installing `probe-run`.
 ### 1. Set the Cargo runner
 
 The recommend way to use `probe-run` is to set as the Cargo runner of your application.
-Add this line to your Cargo configuration (`.cargo/config`) file, adjusting for the particular `--chip` value:
+Add this line to your Cargo configuration file (.cargo/config) and adjust ${PROBE_RUN_CHIP} for the particular `--chip` value:
 
 
 ``` toml
 [target.'cfg(all(target_arch = "arm", target_os = "none"))']
-runner = "probe-run --chip nRF52840_xxAA"
+runner = "probe-run --chip ${PROBE_RUN_CHIP}"
 ```
 
 For example, one would use `nRF52840_xxAA` for the nRF52840 microcontroller.
