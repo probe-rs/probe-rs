@@ -51,7 +51,7 @@ pub fn list_stlink_devices() -> Vec<DebugProbeInfo> {
                         descriptor.vendor_id(),
                         descriptor.product_id(),
                         sn_str,
-                        DebugProbeType::STLink,
+                        DebugProbeType::StLink,
                     ))
                 })
                 .collect::<Vec<_>>()

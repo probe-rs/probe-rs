@@ -31,7 +31,7 @@ fn parse_hex(src: &str) -> Result<u32, ParseIntError> {
     about = "A CLI for on top of the debug probe capabilities provided by probe-rs",
     author = "Noah Hüsser <yatekii@yatekii.ch> / Dominik Böhi <dominik.boehi@gmail.ch>"
 )]
-enum CLI {
+enum Cli {
     /// List all connected debug probes
     #[structopt(name = "list")]
     List {},
@@ -118,16 +118,16 @@ fn main() -> Result<()> {
     // Initialize the logging backend.
     pretty_env_logger::init();
 
-    let matches = CLI::from_args();
+    let matches = Cli::from_args();
 
     match matches {
-        CLI::List {} => list_connected_devices(),
-        CLI::Info { shared } => crate::info::show_info_of_device(&shared),
-        CLI::Reset { shared, assert } => reset_target_of_device(&shared, assert),
-        CLI::Debug { shared, exe } => debug(&shared, exe),
-        CLI::Dump { shared, loc, words } => dump_memory(&shared, loc, words),
-        CLI::Download { shared, path } => download_program_fast(&shared, &path),
-        CLI::Trace { shared, loc } => trace_u32_on_target(&shared, loc),
+        Cli::List {} => list_connected_devices(),
+        Cli::Info { shared } => crate::info::show_info_of_device(&shared),
+        Cli::Reset { shared, assert } => reset_target_of_device(&shared, assert),
+        Cli::Debug { shared, exe } => debug(&shared, exe),
+        Cli::Dump { shared, loc, words } => dump_memory(&shared, loc, words),
+        Cli::Download { shared, path } => download_program_fast(&shared, &path),
+        Cli::Trace { shared, loc } => trace_u32_on_target(&shared, loc),
     }
 }
 

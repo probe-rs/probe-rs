@@ -3,7 +3,7 @@ use std::iter;
 use crate::{
     architecture::arm::{
         dp::{Abort, Ctrl, RdBuff, DPIDR},
-        DAPAccess, DapError, PortType, Register,
+        DapAccess, DapError, PortType, Register,
     },
     DebugProbeError,
 };
@@ -700,7 +700,7 @@ impl RawSwdIo for JLink {
     }
 }
 
-impl<Probe: RawSwdIo + 'static> DAPAccess for Probe {
+impl<Probe: RawSwdIo + 'static> DapAccess for Probe {
     fn read_register(&mut self, port: PortType, address: u16) -> Result<u32, DebugProbeError> {
         let dap_wait_retries = self.swd_settings().num_retries_after_wait;
         let mut idle_cycles = std::cmp::max(1, self.swd_settings().num_idle_cycles_between_writes);
@@ -731,7 +731,7 @@ impl<Probe: RawSwdIo + 'static> DAPAccess for Probe {
 
                     abort.set_orunerrclr(true);
 
-                    DAPAccess::write_register(
+                    DapAccess::write_register(
                         self,
                         PortType::DebugPort,
                         Abort::ADDRESS as u16,
@@ -752,7 +752,7 @@ impl<Probe: RawSwdIo + 'static> DAPAccess for Probe {
                     // To get a clue about the actual fault we read the ctrl register,
                     // which will have the fault status flags set.
                     let response =
-                        DAPAccess::read_register(self, PortType::DebugPort, Ctrl::ADDRESS as u16)?;
+                        DapAccess::read_register(self, PortType::DebugPort, Ctrl::ADDRESS as u16)?;
                     let ctrl = Ctrl::from(response);
                     log::debug!(
                         "Reading DAP register failed. Ctrl/Stat register value is: {:#?}",
@@ -771,7 +771,7 @@ impl<Probe: RawSwdIo + 'static> DAPAccess for Probe {
                         abort.set_orunerrclr(ctrl.sticky_orun());
                         abort.set_stkerrclr(ctrl.sticky_err());
 
-                        DAPAccess::write_register(
+                        DapAccess::write_register(
                             self,
                             PortType::DebugPort,
                             Abort::ADDRESS as u16,
@@ -842,7 +842,7 @@ impl<Probe: RawSwdIo + 'static> DAPAccess for Probe {
 
                             abort.set_orunerrclr(true);
 
-                            DAPAccess::write_register(
+                            DapAccess::write_register(
                                 self,
                                 PortType::DebugPort,
                                 Abort::ADDRESS as u16,
@@ -903,7 +903,7 @@ impl<Probe: RawSwdIo + 'static> DAPAccess for Probe {
                     abort.set_orunerrclr(true);
 
                     // Because we use overrun detection, we now have to clear the overrun error
-                    DAPAccess::write_register(
+                    DapAccess::write_register(
                         self,
                         PortType::DebugPort,
                         Abort::ADDRESS as u16,
@@ -924,7 +924,7 @@ impl<Probe: RawSwdIo + 'static> DAPAccess for Probe {
                     // which will have the fault status flags set.
 
                     let response =
-                        DAPAccess::read_register(self, PortType::DebugPort, Ctrl::ADDRESS as u16)?;
+                        DapAccess::read_register(self, PortType::DebugPort, Ctrl::ADDRESS as u16)?;
 
                     let ctrl = Ctrl::from(response);
                     log::trace!(
@@ -944,7 +944,7 @@ impl<Probe: RawSwdIo + 'static> DAPAccess for Probe {
                         abort.set_orunerrclr(ctrl.sticky_orun());
                         abort.set_stkerrclr(ctrl.sticky_err());
 
-                        DAPAccess::write_register(
+                        DapAccess::write_register(
                             self,
                             PortType::DebugPort,
                             Abort::ADDRESS as u16,
@@ -1017,7 +1017,7 @@ impl<Probe: RawSwdIo + 'static> DAPAccess for Probe {
 
                             abort.set_orunerrclr(true);
 
-                            DAPAccess::write_register(
+                            DapAccess::write_register(
                                 self,
                                 PortType::DebugPort,
                                 Abort::ADDRESS as u16,
@@ -1052,7 +1052,7 @@ mod test {
 
     use std::iter;
 
-    use crate::architecture::arm::{DAPAccess, PortType};
+    use crate::architecture::arm::{DapAccess, PortType};
 
     use super::{RawSwdIo, SwdSettings, SwdStatistics};
 

@@ -21,7 +21,7 @@ pub struct Dwt<'probe: 'core, 'core> {
 impl<'probe: 'core, 'core> Dwt<'probe, 'core> {
     /// Creates a new DWT component representation.
     pub fn new(core: &'core mut Core<'probe>, component: &'core Component) -> Self {
-        Dwt { core, component }
+        Dwt { component, core }
     }
 
     /// Logs some info about the DWT component.

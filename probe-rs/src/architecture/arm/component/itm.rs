@@ -19,7 +19,7 @@ const REGISTER_OFFSET_ACCESS: u32 = 0xFB0;
 
 impl<'probe: 'core, 'core> Itm<'probe, 'core> {
     pub fn new(core: &'core mut Core<'probe>, component: &'core Component) -> Self {
-        Itm { core, component }
+        Itm { component, core }
     }
 
     pub fn unlock(&mut self) -> Result<(), Error> {

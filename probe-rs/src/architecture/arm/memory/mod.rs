@@ -10,15 +10,15 @@ pub trait ToMemoryReadSize: Into<u32> + Copy {
     /// The transfer size expressed in bytes.
     const MEMORY_TRANSFER_SIZE: u8;
     /// Transform a generic 32 bit sized value to a transfer size sized one.
-    fn to_result(value: u32) -> Self;
+    fn into_result(self) -> Self;
 }
 
 impl ToMemoryReadSize for u32 {
     const ALIGNMENT_MASK: u32 = 0x3;
     const MEMORY_TRANSFER_SIZE: u8 = 4;
 
-    fn to_result(value: u32) -> Self {
-        value
+    fn into_result(self) -> Self {
+        self
     }
 }
 
@@ -26,8 +26,8 @@ impl ToMemoryReadSize for u16 {
     const ALIGNMENT_MASK: u32 = 0x1;
     const MEMORY_TRANSFER_SIZE: u8 = 2;
 
-    fn to_result(value: u32) -> Self {
-        value as u16
+    fn into_result(self) -> Self {
+        self as u16
     }
 }
 
@@ -35,8 +35,8 @@ impl ToMemoryReadSize for u8 {
     const ALIGNMENT_MASK: u32 = 0x0;
     const MEMORY_TRANSFER_SIZE: u8 = 1;
 
-    fn to_result(value: u32) -> Self {
-        value as u8
+    fn into_result(self) -> Self {
+        self as u8
     }
 }
 

@@ -186,7 +186,7 @@ impl FlashLoader {
 
         let mut extracted_data = Vec::new();
 
-        let num_sections = extract_from_elf(&mut extracted_data, &mut elf_buffer)?;
+        let num_sections = extract_from_elf(&mut extracted_data, &elf_buffer)?;
 
         if num_sections == 0 {
             log::warn!("No loadable segments were found in the ELF file.");

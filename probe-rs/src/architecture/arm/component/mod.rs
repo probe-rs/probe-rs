@@ -74,7 +74,7 @@ pub fn setup_swv(
     tpiu.set_prescaler(prescaler)?;
     match config.mode() {
         SwoMode::Manchester => tpiu.set_pin_protocol(1)?,
-        SwoMode::UART => tpiu.set_pin_protocol(2)?,
+        SwoMode::Uart => tpiu.set_pin_protocol(2)?,
     }
 
     // Formatter: TrigIn enabled, bypass optional

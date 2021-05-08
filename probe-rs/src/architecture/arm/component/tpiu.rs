@@ -19,7 +19,7 @@ pub struct Tpiu<'probe: 'core, 'core> {
 
 impl<'probe: 'core, 'core> Tpiu<'probe, 'core> {
     pub fn new(core: &'core mut Core<'probe>, component: &'core Component) -> Self {
-        Tpiu { core, component }
+        Tpiu { component, core }
     }
 
     pub fn set_port_size(&mut self, value: u32) -> Result<(), Error> {
