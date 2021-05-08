@@ -862,11 +862,13 @@ impl<D: StLinkUsb> STLink<D> {
             );
         }
 
-        log::debug!("Read mem 8 bit, address={:08x}, length={}", address, length);
+        // The receive buffer must be at least two bytes in size, otherwise
+        // a USB overflow error occurs.
+        let buffer_len = length.max(2) as usize;
 
-        // Single-byte reads don't work; read 2 if 1 is requested and then truncate.
-        let read_len = if length == 1 { 2 } else { length as u8 };
-        let mut receive_buffer = vec![0u8; read_len as usize];
+        let mut receive_buffer = vec![0u8; buffer_len];
+
+        log::debug!("Read mem 8 bit, address={:08x}, length={}", address, length);
 
         self.device.write(
             &[
@@ -876,7 +878,7 @@ impl<D: StLinkUsb> STLink<D> {
                 (address >> 8) as u8,
                 (address >> 16) as u8,
                 (address >> 24) as u8,
-                read_len,
+                length as u8,
                 (length >> 8) as u8,
                 apsel,
             ],
