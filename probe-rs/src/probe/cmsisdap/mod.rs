@@ -3,10 +3,10 @@ pub mod tools;
 
 use crate::{
     architecture::arm::{
-        communication_interface::{ArmProbeInterface, DAPProbe},
-        dp::{Abort, Ctrl, DPAccess, DPRegister, DebugPortError},
+        communication_interface::{ArmProbeInterface, DapProbe},
+        dp::{Abort, Ctrl, DebugPortError, DpAccess, DpRegister},
         swo::poll_interval_from_buf_size,
-        ArmCommunicationInterface, DAPAccess, DapError, PortType, Register, SwoAccess, SwoConfig,
+        ArmCommunicationInterface, DapAccess, DapError, PortType, Register, SwoAccess, SwoConfig,
         SwoMode,
     },
     probe::{cmsisdap::commands::CmsisDapError, BatchCommand},
@@ -33,7 +33,7 @@ use commands::{
         Ack, InnerTransferRequest, TransferBlockRequest, TransferBlockResponse, TransferRequest,
         TransferResponse, RW,
     },
-    CMSISDAPDevice, Status,
+    CmsisDapDevice, Status,
 };
 
 use log::debug;
@@ -42,8 +42,8 @@ use std::time::Duration;
 
 use anyhow::anyhow;
 
-pub struct CMSISDAP {
-    pub device: CMSISDAPDevice,
+pub struct CmsisDap {
+    pub device: CmsisDapDevice,
     _hw_version: u8,
     _jtag_version: u8,
     protocol: Option<WireProtocol>,
@@ -61,9 +61,9 @@ pub struct CMSISDAP {
     batch: Vec<BatchCommand>,
 }
 
-impl std::fmt::Debug for CMSISDAP {
+impl std::fmt::Debug for CmsisDap {
     fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        fmt.debug_struct("CMSISDAP")
+        fmt.debug_struct("CmsisDap")
             .field("protocol", &self.protocol)
             .field("packet_size", &self.packet_size)
             .field("packet_count", &self.packet_count)
@@ -76,8 +76,8 @@ impl std::fmt::Debug for CMSISDAP {
     }
 }
 
-impl CMSISDAP {
-    pub fn new_from_device(device: CMSISDAPDevice) -> Self {
+impl CmsisDap {
+    pub fn new_from_device(device: CmsisDapDevice) -> Self {
         // Discard anything left in buffer, as otherwise
         // we'll get out of sync between requests and responses.
         device.drain();
@@ -205,7 +205,7 @@ impl CMSISDAP {
                         log::trace!("Transfer status: FAULT");
 
                         // Check the reason for the fault
-                        let response = DAPAccess::read_register(
+                        let response = DapAccess::read_register(
                             self,
                             PortType::DebugPort,
                             Ctrl::ADDRESS as u16,
@@ -219,7 +219,7 @@ impl CMSISDAP {
                             // Clear sticky error flags
                             abort.set_stkerrclr(ctrl.sticky_err());
 
-                            DAPAccess::write_register(
+                            DapAccess::write_register(
                                 self,
                                 PortType::DebugPort,
                                 Abort::ADDRESS as u16,
@@ -292,7 +292,7 @@ impl CMSISDAP {
 
     /// Set SWO port to specified baud rate.
     ///
-    /// Returns `SWOBaudrateNotConfigured` if the probe returns 0,
+    /// Returns `SwoBaudrateNotConfigured` if the probe returns 0,
     /// indicating the requested baud rate was not configured,
     /// and returns the configured baud rate on success (which
     /// may differ from the requested baud rate).
@@ -300,7 +300,7 @@ impl CMSISDAP {
         let response: swo::BaudrateResponse = commands::send_command(&mut self.device, baud)?;
         debug!("Requested baud {}, got {}", baud.0, response.0);
         if response.0 == 0 {
-            Err(CmsisDapError::SWOBaudrateNotConfigured.into())
+            Err(CmsisDapError::SwoBaudrateNotConfigured.into())
         } else {
             Ok(response.0)
         }
@@ -362,7 +362,7 @@ impl CMSISDAP {
                 let response: swo::DataResponse =
                     commands::send_command(&mut self.device, swo::DataRequest { max_count: n })?;
                 if response.status.error {
-                    Err(CmsisDapError::SWOTraceStreamError.into())
+                    Err(CmsisDapError::SwoTraceStreamError.into())
                 } else {
                     Ok(response.data)
                 }
@@ -372,8 +372,8 @@ impl CMSISDAP {
     }
 }
 
-impl DPAccess for CMSISDAP {
-    fn read_dp_register<R: DPRegister>(&mut self) -> Result<R, DebugPortError> {
+impl DpAccess for CmsisDap {
+    fn read_dp_register<R: DpRegister>(&mut self) -> Result<R, DebugPortError> {
         debug!("Reading DP register {}", R::NAME);
         let result = self.read_register(PortType::DebugPort, u16::from(R::ADDRESS))?;
 
@@ -382,7 +382,7 @@ impl DPAccess for CMSISDAP {
         Ok(result.into())
     }
 
-    fn write_dp_register<R: DPRegister>(&mut self, register: R) -> Result<(), DebugPortError> {
+    fn write_dp_register<R: DpRegister>(&mut self, register: R) -> Result<(), DebugPortError> {
         let value = register.into();
 
         debug!("Writing DP register {}, value=0x{:08x}", R::NAME, value);
@@ -392,7 +392,7 @@ impl DPAccess for CMSISDAP {
     }
 }
 
-impl DebugProbe for CMSISDAP {
+impl DebugProbe for CmsisDap {
     fn new_from_selector(
         selector: impl Into<DebugProbeSelector>,
     ) -> Result<Box<Self>, DebugProbeError>
@@ -438,7 +438,7 @@ impl DebugProbe for CMSISDAP {
 
         // On V1 devices, set the HID report size to the CMSIS-DAP reported packet size.
         // We don't change it on V2 devices since we can use the endpoint maximum length.
-        if let CMSISDAPDevice::V1 {
+        if let CmsisDapDevice::V1 {
             ref mut report_size,
             ..
         } = self.device
@@ -609,7 +609,7 @@ impl DebugProbe for CMSISDAP {
     }
 }
 
-impl DAPAccess for CMSISDAP {
+impl DapAccess for CmsisDap {
     /// Reads the DAP register on the specified port and address.
     fn read_register(&mut self, port: PortType, addr: u16) -> Result<u32, DebugProbeError> {
         self.batch_add(BatchCommand::Read(port, addr))
@@ -718,24 +718,24 @@ impl DAPAccess for CMSISDAP {
     }
 }
 
-impl DAPProbe for CMSISDAP {}
+impl DapProbe for CmsisDap {}
 
-impl SwoAccess for CMSISDAP {
+impl SwoAccess for CmsisDap {
     fn enable_swo(&mut self, config: &SwoConfig) -> Result<(), ProbeRsError> {
         // We read capabilities on initialisation so it should not be None.
         let caps = self.capabilities.expect("This is a bug. Please report it.");
 
         // Check requested mode is available in probe capabilities
         match config.mode() {
-            SwoMode::UART if !caps.swo_uart_implemented => {
+            SwoMode::Uart if !caps.swo_uart_implemented => {
                 return Err(DebugProbeError::ProbeSpecific(
-                    CmsisDapError::SWOModeNotAvailable.into(),
+                    CmsisDapError::SwoModeNotAvailable.into(),
                 )
                 .into())
             }
             SwoMode::Manchester if !caps.swo_manchester_implemented => {
                 return Err(DebugProbeError::ProbeSpecific(
-                    CmsisDapError::SWOModeNotAvailable.into(),
+                    CmsisDapError::SwoModeNotAvailable.into(),
                 )
                 .into())
             }
@@ -760,7 +760,7 @@ impl SwoAccess for CMSISDAP {
 
         // Set mode. We've already checked that the requested mode is listed as supported.
         match config.mode() {
-            SwoMode::UART => self.set_swo_mode(swo::ModeRequest::Uart)?,
+            SwoMode::Uart => self.set_swo_mode(swo::ModeRequest::Uart)?,
             SwoMode::Manchester => self.set_swo_mode(swo::ModeRequest::Manchester)?,
         }
 
@@ -824,7 +824,7 @@ impl SwoAccess for CMSISDAP {
     }
 }
 
-impl Drop for CMSISDAP {
+impl Drop for CmsisDap {
     fn drop(&mut self) {
         debug!("Detaching from CMSIS-DAP probe");
         // We ignore the error cases as we can't do much about it anyways.

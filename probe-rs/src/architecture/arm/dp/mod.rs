@@ -26,20 +26,20 @@ impl From<DebugPortError> for DebugProbeError {
     }
 }
 
-pub trait DPAccess {
-    fn read_dp_register<R: DPRegister>(&mut self) -> Result<R, DebugPortError>;
+pub trait DpAccess {
+    fn read_dp_register<R: DpRegister>(&mut self) -> Result<R, DebugPortError>;
 
-    fn write_dp_register<R: DPRegister>(&mut self, register: R) -> Result<(), DebugPortError>;
+    fn write_dp_register<R: DpRegister>(&mut self, register: R) -> Result<(), DebugPortError>;
 }
 
 #[derive(Debug, PartialEq, Copy, Clone)]
-pub enum DPBankSel {
+pub enum DpBankSel {
     DontCare,
     Bank(u8),
 }
 
-pub trait DPRegister: Register {
-    const DP_BANK: DPBankSel;
+pub trait DpRegister: Register {
+    const DP_BANK: DpBankSel;
     const VERSION: DebugPortVersion;
 }
 
@@ -72,8 +72,8 @@ impl From<Abort> for u32 {
     }
 }
 
-impl DPRegister for Abort {
-    const DP_BANK: DPBankSel = DPBankSel::DontCare;
+impl DpRegister for Abort {
+    const DP_BANK: DpBankSel = DpBankSel::DontCare;
     const VERSION: DebugPortVersion = DebugPortVersion::DPv1;
 }
 
@@ -121,8 +121,8 @@ impl From<Ctrl> for u32 {
     }
 }
 
-impl DPRegister for Ctrl {
-    const DP_BANK: DPBankSel = DPBankSel::Bank(0);
+impl DpRegister for Ctrl {
+    const DP_BANK: DpBankSel = DpBankSel::Bank(0);
     const VERSION: DebugPortVersion = DebugPortVersion::DPv1;
 }
 
@@ -152,8 +152,8 @@ impl From<Select> for u32 {
     }
 }
 
-impl DPRegister for Select {
-    const DP_BANK: DPBankSel = DPBankSel::DontCare;
+impl DpRegister for Select {
+    const DP_BANK: DpBankSel = DpBankSel::DontCare;
     const VERSION: DebugPortVersion = DebugPortVersion::DPv1;
 }
 
@@ -187,8 +187,8 @@ impl From<DPIDR> for u32 {
     }
 }
 
-impl DPRegister for DPIDR {
-    const DP_BANK: DPBankSel = DPBankSel::DontCare;
+impl DpRegister for DPIDR {
+    const DP_BANK: DpBankSel = DpBankSel::DontCare;
     const VERSION: DebugPortVersion = DebugPortVersion::DPv1;
 }
 
@@ -218,8 +218,8 @@ impl From<TARGETID> for u32 {
     }
 }
 
-impl DPRegister for TARGETID {
-    const DP_BANK: DPBankSel = DPBankSel::Bank(2);
+impl DpRegister for TARGETID {
+    const DP_BANK: DpBankSel = DpBankSel::Bank(2);
     const VERSION: DebugPortVersion = DebugPortVersion::DPv2;
 }
 
@@ -270,8 +270,8 @@ impl From<RdBuff> for u32 {
     }
 }
 
-impl DPRegister for RdBuff {
-    const DP_BANK: DPBankSel = DPBankSel::DontCare;
+impl DpRegister for RdBuff {
+    const DP_BANK: DpBankSel = DpBankSel::DontCare;
     const VERSION: DebugPortVersion = DebugPortVersion::DPv1;
 }
 

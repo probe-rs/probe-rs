@@ -3,7 +3,7 @@ use crate::{common::open_probe, SharedOptions};
 use probe_rs::{
     architecture::{
         arm::{
-            ap::{GenericAP, MemoryAP},
+            ap::{GenericAp, MemoryAp},
             m0::Demcr,
             memory::Component,
             ApInformation, ArmProbeInterface, MemoryApInformation,
@@ -98,7 +98,7 @@ fn show_arm_info(interface: &mut Box<dyn ArmProbeInterface>) -> Result<()> {
     let num_access_ports = interface.num_access_ports();
 
     for ap_index in 0..num_access_ports {
-        let access_port = GenericAP::from(ap_index as u8);
+        let access_port = GenericAp::from(ap_index as u8);
 
         let ap_information = interface.ap_information(access_port).unwrap();
 
@@ -109,7 +109,7 @@ fn show_arm_info(interface: &mut Box<dyn ArmProbeInterface>) -> Result<()> {
             ApInformation::MemoryAp(MemoryApInformation {
                 debug_base_address, ..
             }) => {
-                let access_port: MemoryAP = access_port.into();
+                let access_port: MemoryAp = access_port.into();
 
                 let base_address = *debug_base_address;
 

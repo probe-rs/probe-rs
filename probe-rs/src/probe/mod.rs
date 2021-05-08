@@ -10,14 +10,14 @@ use crate::{
     config::{RegistryError, TargetSelector},
 };
 use crate::{
-    architecture::arm::{ap::MemoryAP, MemoryApInformation},
+    architecture::arm::{ap::MemoryAp, MemoryApInformation},
     error::Error,
 };
 use crate::{
     architecture::{
         arm::{
-            ap::memory_ap::mock::MockMemoryAP, communication_interface::ArmProbeInterface,
-            DAPAccess, PortType, SwoAccess,
+            ap::memory_ap::mock::MockMemoryAp, communication_interface::ArmProbeInterface,
+            DapAccess, PortType, SwoAccess,
         },
         riscv::communication_interface::RiscvCommunicationInterface,
     },
@@ -87,7 +87,7 @@ impl fmt::Display for BatchCommand {
 #[derive(Error, Debug)]
 pub enum DebugProbeError {
     #[error("USB Communication Error")]
-    USB(#[source] Option<Box<dyn std::error::Error + Send + Sync>>),
+    Usb(#[source] Option<Box<dyn std::error::Error + Send + Sync>>),
     #[error("The firmware on the probe is outdated")]
     ProbeFirmwareOutdated,
     #[error("An error specific to a probe type occured")]
@@ -207,7 +207,7 @@ impl Probe {
     /// `Probe::list_all()` function to get the information
     /// about all probes available.
     pub fn open(selector: impl Into<DebugProbeSelector> + Clone) -> Result<Self, DebugProbeError> {
-        match cmsisdap::CMSISDAP::new_from_selector(selector.clone()) {
+        match cmsisdap::CmsisDap::new_from_selector(selector.clone()) {
             Ok(link) => return Ok(Probe::from_specific_probe(link)),
             Err(DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::NotFound)) => {}
             Err(e) => return Err(e),
@@ -218,7 +218,7 @@ impl Probe {
             Err(DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::NotFound)) => {}
             Err(e) => return Err(e),
         };
-        match stlink::STLink::new_from_selector(selector.clone()) {
+        match stlink::StLink::new_from_selector(selector.clone()) {
             Ok(link) => return Ok(Probe::from_specific_probe(link)),
             Err(DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::NotFound)) => {}
             Err(e) => return Err(e),
@@ -527,9 +527,9 @@ pub trait DebugProbe: Send + fmt::Debug {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum DebugProbeType {
-    CMSISDAP,
-    FTDI,
-    STLink,
+    CmsisDap,
+    Ftdi,
+    StLink,
     JLink,
 }
 
@@ -757,7 +757,7 @@ impl DebugProbe for FakeProbe {
     }
 }
 
-impl DAPAccess for FakeProbe {
+impl DapAccess for FakeProbe {
     /// Reads the DAP register on the specified port and address
     fn read_register(&mut self, _port: PortType, _addr: u16) -> Result<u32, DebugProbeError> {
         Err(DebugProbeError::CommandNotSupportedByProbe)
@@ -778,18 +778,18 @@ impl DAPAccess for FakeProbe {
 struct FakeArmInterface {
     probe: Box<FakeProbe>,
 
-    memory_ap: MockMemoryAP,
+    memory_ap: MockMemoryAp,
 }
 
 impl FakeArmInterface {
     fn new(probe: Box<FakeProbe>) -> Self {
-        let memory_ap = MockMemoryAP::with_pattern();
+        let memory_ap = MockMemoryAp::with_pattern();
         FakeArmInterface { probe, memory_ap }
     }
 }
 
 impl ArmProbeInterface for FakeArmInterface {
-    fn memory_interface(&mut self, access_port: MemoryAP) -> Result<Memory<'_>, Error> {
+    fn memory_interface(&mut self, access_port: MemoryAp) -> Result<Memory<'_>, Error> {
         let ap_information = MemoryApInformation {
             port_number: access_port.port_number(),
             only_32bit_data_size: false,
@@ -804,7 +804,7 @@ impl ArmProbeInterface for FakeArmInterface {
 
     fn ap_information(
         &self,
-        _access_port: crate::architecture::arm::ap::GenericAP,
+        _access_port: crate::architecture::arm::ap::GenericAp,
     ) -> Option<&crate::architecture::arm::ApInformation> {
         todo!()
     }

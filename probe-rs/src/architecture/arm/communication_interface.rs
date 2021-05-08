@@ -1,11 +1,11 @@
 use super::{
     ap::{
-        valid_access_ports, APAccess, APClass, APRegister, AccessPort, BaseaddrFormat, DataSize,
-        GenericAP, MemoryAP, BASE, BASE2, CSW, IDR,
+        valid_access_ports, AccessPort, ApAccess, ApClass, ApRegister, BaseaddrFormat, DataSize,
+        GenericAp, MemoryAp, BASE, BASE2, CSW, IDR,
     },
     dp::{
-        Abort, Ctrl, DPAccess, DPBankSel, DPRegister, DebugPortError, DebugPortId,
-        DebugPortVersion, Select, DPIDR,
+        Abort, Ctrl, DebugPortError, DebugPortId, DebugPortVersion, DpAccess, DpBankSel,
+        DpRegister, Select, DPIDR,
     },
     memory::{adi_v5_memory_interface::ADIMemoryInterface, Component},
     SwoAccess, SwoConfig,
@@ -70,7 +70,7 @@ pub trait Register: Clone + From<u32> + Into<u32> + Sized + Debug {
     const NAME: &'static str;
 }
 
-pub trait DAPAccess {
+pub trait DapAccess {
     /// Reads the DAP register on the specified port and address
     fn read_register(&mut self, port: PortType, addr: u16) -> Result<u32, DebugProbeError>;
 
@@ -126,9 +126,9 @@ pub trait DAPAccess {
 }
 
 pub trait ArmProbeInterface: SwoAccess + Debug + Send {
-    fn memory_interface(&mut self, access_port: MemoryAP) -> Result<Memory<'_>, ProbeRsError>;
+    fn memory_interface(&mut self, access_port: MemoryAp) -> Result<Memory<'_>, ProbeRsError>;
 
-    fn ap_information(&self, access_port: GenericAP) -> Option<&ApInformation>;
+    fn ap_information(&self, access_port: GenericAp) -> Option<&ApInformation>;
 
     fn num_access_ports(&self) -> usize;
 
@@ -211,7 +211,7 @@ pub struct MemoryApInformation {
 
 #[derive(Debug)]
 pub struct ArmCommunicationInterface {
-    probe: Box<dyn DAPProbe>,
+    probe: Box<dyn DapProbe>,
     state: ArmCommunicationInterfaceState,
 }
 
@@ -219,14 +219,14 @@ pub struct ArmCommunicationInterface {
 ///
 /// This is used to combine the traits, because it cannot be done in the ArmCommunicationInterface
 /// struct itself.
-pub trait DAPProbe: DAPAccess + DebugProbe {}
+pub trait DapProbe: DapAccess + DebugProbe {}
 
 impl ArmProbeInterface for ArmCommunicationInterface {
-    fn memory_interface(&mut self, access_port: MemoryAP) -> Result<Memory<'_>, ProbeRsError> {
+    fn memory_interface(&mut self, access_port: MemoryAp) -> Result<Memory<'_>, ProbeRsError> {
         ArmCommunicationInterface::memory_interface(self, access_port)
     }
 
-    fn ap_information(&self, access_port: GenericAP) -> Option<&ApInformation> {
+    fn ap_information(&self, access_port: GenericAp) -> Option<&ApInformation> {
         ArmCommunicationInterface::ap_information(self, access_port)
     }
 
@@ -251,9 +251,9 @@ impl ArmProbeInterface for ArmCommunicationInterface {
 
 impl<'interface> ArmCommunicationInterface {
     pub(crate) fn new(
-        probe: Box<dyn DAPProbe>,
+        probe: Box<dyn DapProbe>,
         use_overrun_detect: bool,
-    ) -> Result<Self, (Box<dyn DAPProbe>, DebugProbeError)> {
+    ) -> Result<Self, (Box<dyn DapProbe>, DebugProbeError)> {
         let state = ArmCommunicationInterfaceState::new();
 
         let mut interface = Self { probe, state };
@@ -281,7 +281,7 @@ impl<'interface> ArmCommunicationInterface {
 
     pub fn memory_interface(
         &'interface mut self,
-        access_port: MemoryAP,
+        access_port: MemoryAp,
     ) -> Result<Memory<'interface>, ProbeRsError> {
         let info = self.ap_information(access_port).ok_or_else(|| {
             anyhow!(
@@ -386,9 +386,9 @@ impl<'interface> ArmCommunicationInterface {
         Ok(())
     }
 
-    fn select_dp_bank(&mut self, dp_bank: DPBankSel) -> Result<(), DebugPortError> {
+    fn select_dp_bank(&mut self, dp_bank: DpBankSel) -> Result<(), DebugPortError> {
         match dp_bank {
-            DPBankSel::Bank(new_bank) => {
+            DpBankSel::Bank(new_bank) => {
                 if new_bank != self.state.current_dpbanksel {
                     self.state.current_dpbanksel = new_bank;
 
@@ -403,7 +403,7 @@ impl<'interface> ArmCommunicationInterface {
                     self.write_dp_register(select)?;
                 }
             }
-            DPBankSel::DontCare => (),
+            DpBankSel::DontCare => (),
         }
 
         Ok(())
@@ -418,7 +418,7 @@ impl<'interface> ArmCommunicationInterface {
     ) -> Result<(), DebugProbeError>
     where
         AP: AccessPort,
-        R: APRegister<AP>,
+        R: ApRegister<AP>,
     {
         log::debug!("Writing register {}, value={:x?}", R::NAME, register);
 
@@ -446,7 +446,7 @@ impl<'interface> ArmCommunicationInterface {
     ) -> Result<(), DebugProbeError>
     where
         AP: AccessPort,
-        R: APRegister<AP>,
+        R: ApRegister<AP>,
     {
         log::debug!(
             "Writing register {}, block with len={} words",
@@ -473,7 +473,7 @@ impl<'interface> ArmCommunicationInterface {
     ) -> Result<R, DebugProbeError>
     where
         AP: AccessPort,
-        R: APRegister<AP>,
+        R: ApRegister<AP>,
     {
         log::debug!("Reading register {}", R::NAME);
         self.select_ap_and_ap_bank(port.into().port_number(), R::APBANKSEL)?;
@@ -503,7 +503,7 @@ impl<'interface> ArmCommunicationInterface {
     ) -> Result<(), DebugProbeError>
     where
         AP: AccessPort,
-        R: APRegister<AP>,
+        R: ApRegister<AP>,
     {
         log::debug!(
             "Reading register {}, block with len={} words",
@@ -536,12 +536,12 @@ impl<'interface> ArmCommunicationInterface {
     /// Currently, AP specific information is read for Memory APs.
     fn read_ap_information(
         &mut self,
-        access_port: GenericAP,
+        access_port: GenericAp,
     ) -> Result<ApInformation, DebugProbeError> {
         let idr = self.read_ap_register(access_port, IDR::default())?;
 
-        if idr.CLASS == APClass::MEMAP {
-            let access_port: MemoryAP = access_port.into();
+        if idr.CLASS == ApClass::MemAp {
+            let access_port: MemoryAp = access_port.into();
 
             let base_register = self.read_ap_register(access_port, BASE::default())?;
 
@@ -592,8 +592,8 @@ impl CommunicationInterface for ArmCommunicationInterface {
     }
 }
 
-impl DPAccess for ArmCommunicationInterface {
-    fn read_dp_register<R: DPRegister>(&mut self) -> Result<R, DebugPortError> {
+impl DpAccess for ArmCommunicationInterface {
+    fn read_dp_register<R: DpRegister>(&mut self) -> Result<R, DebugPortError> {
         if R::VERSION > self.state.debug_port_version {
             return Err(DebugPortError::UnsupportedRegister {
                 register: R::NAME,
@@ -614,7 +614,7 @@ impl DPAccess for ArmCommunicationInterface {
         Ok(result)
     }
 
-    fn write_dp_register<R: DPRegister>(&mut self, register: R) -> Result<(), DebugPortError> {
+    fn write_dp_register<R: DpRegister>(&mut self, register: R) -> Result<(), DebugPortError> {
         if R::VERSION > self.state.debug_port_version {
             return Err(DebugPortError::UnsupportedRegister {
                 register: R::NAME,
@@ -655,15 +655,15 @@ impl SwoAccess for ArmCommunicationInterface {
     }
 }
 
-impl<R> APAccess<MemoryAP, R> for ArmCommunicationInterface
+impl<R> ApAccess<MemoryAp, R> for ArmCommunicationInterface
 where
-    R: APRegister<MemoryAP>,
+    R: ApRegister<MemoryAp>,
 {
     type Error = DebugProbeError;
 
     fn read_ap_register(
         &mut self,
-        port: impl Into<MemoryAP>,
+        port: impl Into<MemoryAp>,
         register: R,
     ) -> Result<R, Self::Error> {
         self.read_ap_register(port, register)
@@ -671,7 +671,7 @@ where
 
     fn write_ap_register(
         &mut self,
-        port: impl Into<MemoryAP>,
+        port: impl Into<MemoryAp>,
         register: R,
     ) -> Result<(), Self::Error> {
         self.write_ap_register(port, register)
@@ -679,7 +679,7 @@ where
 
     fn write_ap_register_repeated(
         &mut self,
-        port: impl Into<MemoryAP>,
+        port: impl Into<MemoryAp>,
         register: R,
         values: &[u32],
     ) -> Result<(), Self::Error> {
@@ -688,7 +688,7 @@ where
 
     fn read_ap_register_repeated(
         &mut self,
-        port: impl Into<MemoryAP>,
+        port: impl Into<MemoryAp>,
         register: R,
         values: &mut [u32],
     ) -> Result<(), Self::Error> {
@@ -696,15 +696,15 @@ where
     }
 }
 
-impl<R> APAccess<GenericAP, R> for ArmCommunicationInterface
+impl<R> ApAccess<GenericAp, R> for ArmCommunicationInterface
 where
-    R: APRegister<GenericAP>,
+    R: ApRegister<GenericAp>,
 {
     type Error = DebugProbeError;
 
     fn read_ap_register(
         &mut self,
-        port: impl Into<GenericAP>,
+        port: impl Into<GenericAp>,
         register: R,
     ) -> Result<R, Self::Error> {
         self.read_ap_register(port, register)
@@ -712,7 +712,7 @@ where
 
     fn write_ap_register(
         &mut self,
-        port: impl Into<GenericAP>,
+        port: impl Into<GenericAp>,
         register: R,
     ) -> Result<(), Self::Error> {
         self.write_ap_register(port, register)
@@ -720,7 +720,7 @@ where
 
     fn write_ap_register_repeated(
         &mut self,
-        port: impl Into<GenericAP>,
+        port: impl Into<GenericAp>,
         register: R,
         values: &[u32],
     ) -> Result<(), Self::Error> {
@@ -729,7 +729,7 @@ where
 
     fn read_ap_register_repeated(
         &mut self,
-        port: impl Into<GenericAP>,
+        port: impl Into<GenericAp>,
         register: R,
         values: &mut [u32],
     ) -> Result<(), Self::Error> {
@@ -766,8 +766,8 @@ impl ArmCommunicationInterface {
                 .map_err(ProbeRsError::Probe)?;
             log::debug!("{:#x?}", idr);
 
-            if idr.CLASS == APClass::MEMAP {
-                let access_port: MemoryAP = access_port.into();
+            if idr.CLASS == ApClass::MemAp {
+                let access_port: MemoryAp = access_port.into();
 
                 let baseaddr = access_port.base_address(self)?;
 

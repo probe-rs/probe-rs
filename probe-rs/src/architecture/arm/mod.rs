@@ -7,7 +7,7 @@ pub mod memory;
 pub mod swo;
 
 pub use communication_interface::{
-    ApInformation, ArmChipInfo, ArmCommunicationInterface, DAPAccess, DapError, MemoryApInformation,
+    ApInformation, ArmChipInfo, ArmCommunicationInterface, DapAccess, DapError, MemoryApInformation,
 };
 pub use communication_interface::{PortType, Register};
 pub use swo::{SwoAccess, SwoConfig, SwoMode};

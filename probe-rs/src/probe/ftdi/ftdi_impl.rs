@@ -19,9 +19,9 @@ pub enum Interface {
     Any,
 }
 
-impl Into<ffi::ftdi_interface> for Interface {
-    fn into(self) -> ffi::ftdi_interface {
-        match self {
+impl From<Interface> for ffi::ftdi_interface {
+    fn from(value: Interface) -> Self {
+        match value {
             Interface::A => ffi::ftdi_interface::INTERFACE_A,
             Interface::B => ffi::ftdi_interface::INTERFACE_B,
             Interface::C => ffi::ftdi_interface::INTERFACE_C,
@@ -43,9 +43,9 @@ pub enum BitMode {
     Ft1284,
 }
 
-impl Into<ffi::ftdi_mpsse_mode> for BitMode {
-    fn into(self) -> ffi::ftdi_mpsse_mode {
-        match self {
+impl From<BitMode> for ffi::ftdi_mpsse_mode {
+    fn from(value: BitMode) -> Self {
+        match value {
             BitMode::Reset => ffi::ftdi_mpsse_mode::BITMODE_RESET,
             BitMode::Bitbang => ffi::ftdi_mpsse_mode::BITMODE_BITBANG,
             BitMode::Mpsse => ffi::ftdi_mpsse_mode::BITMODE_MPSSE,

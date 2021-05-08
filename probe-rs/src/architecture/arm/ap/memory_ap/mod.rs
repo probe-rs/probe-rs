@@ -3,7 +3,7 @@
 #[doc(hidden)]
 pub(crate) mod mock;
 
-use super::{APAccess, APRegister, AccessPort, GenericAP, Register};
+use super::{AccessPort, ApAccess, ApRegister, GenericAp, Register};
 use crate::DebugProbeError;
 use enum_primitive_derive::Primitive;
 use num_traits::{FromPrimitive, ToPrimitive};
@@ -12,13 +12,13 @@ use num_traits::{FromPrimitive, ToPrimitive};
 //
 // The memory AP can be used to access a memory-mapped
 // set of debug resouces of the attached system.
-define_ap!(MemoryAP);
+define_ap!(MemoryAp);
 
-impl MemoryAP {
+impl MemoryAp {
     pub fn base_address<A>(&self, interface: &mut A) -> Result<u64, DebugProbeError>
     where
-        A: APAccess<MemoryAP, BASE, Error = DebugProbeError>
-            + APAccess<MemoryAP, BASE2, Error = DebugProbeError>,
+        A: ApAccess<MemoryAp, BASE, Error = DebugProbeError>
+            + ApAccess<MemoryAp, BASE2, Error = DebugProbeError>,
     {
         let base_register = interface.read_ap_register(self.port_number(), BASE::default())?;
 
@@ -35,9 +35,9 @@ impl MemoryAP {
     }
 }
 
-impl From<GenericAP> for MemoryAP {
-    fn from(other: GenericAP) -> Self {
-        MemoryAP {
+impl From<GenericAp> for MemoryAp {
+    fn from(other: GenericAp) -> Self {
+        MemoryAp {
             port_number: other.port_number(),
         }
     }
@@ -118,7 +118,7 @@ impl Default for DebugEntryState {
 
 define_ap_register!(
     /// Base register
-    MemoryAP,
+    MemoryAp,
     BASE,
     0xF8,
     [
@@ -150,7 +150,7 @@ define_ap_register!(
 
 define_ap_register!(
     /// Base register
-    MemoryAP,
+    MemoryAp,
     BASE2,
     0xF0,
     [(BASEADDR: u32),],
@@ -161,7 +161,7 @@ define_ap_register!(
 
 define_ap_register!(
     /// Banked Data 0 register
-    MemoryAP,
+    MemoryAp,
     BD0,
     0x10,
     [(data: u32),],
@@ -172,7 +172,7 @@ define_ap_register!(
 
 define_ap_register!(
     /// Banked Data 1 register
-    MemoryAP,
+    MemoryAp,
     BD1,
     0x14,
     [(data: u32),],
@@ -183,7 +183,7 @@ define_ap_register!(
 
 define_ap_register!(
     /// Banked Data 2 register
-    MemoryAP,
+    MemoryAp,
     BD2,
     0x18,
     [(data: u32),],
@@ -194,7 +194,7 @@ define_ap_register!(
 
 define_ap_register!(
     /// Banked Data 3 register
-    MemoryAP,
+    MemoryAp,
     BD3,
     0x1C,
     [(data: u32),],
@@ -208,7 +208,7 @@ define_ap_register!(
     ///
     /// The configuration register (CFG) is used to determine
     /// which extensions are included in the memory AP.
-    MemoryAP,
+    MemoryAp,
     CFG,
     0xF4,
     [(LD: u8), (LA: u8), (BE: u8),],
@@ -226,7 +226,7 @@ define_ap_register!(
     ///
     /// The control and status word register (CSW) is used
     /// to configure memory access through the memory AP.
-    MemoryAP,
+    MemoryAp,
     CSW,
     0x00,
     [
@@ -319,7 +319,7 @@ define_ap_register!(
     ///
     /// A read from the *DRW* register is translated to a memory read
     /// from the address specified in the TAR register.
-    MemoryAP,
+    MemoryAp,
     DRW,
     0x0C,
     [(data: u32),],
@@ -338,7 +338,7 @@ define_ap_register!(
     /// Writes to this register only have an effect if
     /// the *Barrier Operations Extension* is implemented
     /// by the AP.
-    MemoryAP,
+    MemoryAp,
     MBT,
     0x20,
     [(data: u32)],
@@ -353,7 +353,7 @@ define_ap_register!(
     /// The transfer address register (TAR) holds the memory
     /// address which will be accessed through a read or
     /// write of the DRW register.
-    MemoryAP,
+    MemoryAp,
     TAR,
     0x04,
     [(address: u32),],

@@ -1,6 +1,6 @@
 use crate::error;
 use crate::{
-    architecture::arm::{ap::MemoryAP, memory::adi_v5_memory_interface::ArmProbe},
+    architecture::arm::{ap::MemoryAp, memory::adi_v5_memory_interface::ArmProbe},
     CoreRegisterAddress,
 };
 
@@ -97,11 +97,11 @@ where
 
 pub struct Memory<'probe> {
     inner: Box<dyn ArmProbe + 'probe>,
-    ap_sel: MemoryAP,
+    ap_sel: MemoryAp,
 }
 
 impl<'probe> Memory<'probe> {
-    pub fn new(memory: impl ArmProbe + 'probe + Sized, ap_sel: MemoryAP) -> Memory<'probe> {
+    pub fn new(memory: impl ArmProbe + 'probe + Sized, ap_sel: MemoryAp) -> Memory<'probe> {
         Self {
             inner: Box::new(memory),
             ap_sel,

@@ -1,4 +1,4 @@
-use super::CMSISDAPDevice;
+use super::CmsisDapDevice;
 use crate::{
     probe::{DebugProbeInfo, DebugProbeType, ProbeCreationError},
     DebugProbeSelector,
@@ -67,7 +67,7 @@ fn get_cmsisdap_info(device: &Device<rusb::Context>) -> Option<DebugProbeInfo> {
             vendor_id: d_desc.vendor_id(),
             product_id: d_desc.product_id(),
             serial_number: sn_str,
-            probe_type: DebugProbeType::CMSISDAP,
+            probe_type: DebugProbeType::CmsisDap,
         })
     } else {
         None
@@ -83,7 +83,7 @@ fn get_cmsisdap_hid_info(device: &hidapi::DeviceInfo) -> Option<DebugProbeInfo> 
                 vendor_id: device.vendor_id(),
                 product_id: device.product_id(),
                 serial_number: device.serial_number().map(|s| s.to_owned()),
-                probe_type: DebugProbeType::CMSISDAP,
+                probe_type: DebugProbeType::CmsisDap,
             });
         }
     }
@@ -91,7 +91,7 @@ fn get_cmsisdap_hid_info(device: &hidapi::DeviceInfo) -> Option<DebugProbeInfo> 
 }
 
 /// Attempt to open the given device in CMSIS-DAP v2 mode
-pub fn open_v2_device(device: Device<rusb::Context>) -> Option<CMSISDAPDevice> {
+pub fn open_v2_device(device: Device<rusb::Context>) -> Option<CmsisDapDevice> {
     // Open device handle and read basic information
     let timeout = Duration::from_millis(100);
     let d_desc = device.device_descriptor().ok()?;
@@ -152,7 +152,7 @@ pub fn open_v2_device(device: Device<rusb::Context>) -> Option<CMSISDAPDevice> {
             match handle.claim_interface(interface.number()) {
                 Ok(()) => {
                     log::debug!("Opening {:04x}:{:04x} in CMSIS-DAPv2 mode", vid, pid);
-                    return Some(CMSISDAPDevice::V2 {
+                    return Some(CmsisDapDevice::V2 {
                         handle,
                         out_ep: eps[0].address(),
                         in_ep: eps[1].address(),
@@ -196,7 +196,7 @@ fn device_matches(
 /// otherwise in v1 mode.
 pub fn open_device_from_selector(
     selector: impl Into<DebugProbeSelector>,
-) -> Result<CMSISDAPDevice, ProbeCreationError> {
+) -> Result<CmsisDapDevice, ProbeCreationError> {
     let selector = selector.into();
 
     log::trace!("Attempting to open device matching {}", selector);
@@ -274,7 +274,7 @@ pub fn open_device_from_selector(
     match hid_device {
         Ok(device) => {
             match device.get_product_string() {
-                Ok(Some(s)) if s.contains("CMSIS-DAP") => Ok(CMSISDAPDevice::V1 {
+                Ok(Some(s)) if s.contains("CMSIS-DAP") => Ok(CmsisDapDevice::V1 {
                     handle: device,
                     // Start with a default 64-byte report size, which is the most
                     // common size for CMSIS-DAPv1 HID devices. We'll request the

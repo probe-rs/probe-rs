@@ -590,7 +590,7 @@ fn get_device_info(device: &rusb::Device<rusb::Context>) -> Option<DebugProbeInf
         vendor_id: d_desc.vendor_id(),
         product_id: d_desc.product_id(),
         serial_number: sn_str,
-        probe_type: DebugProbeType::FTDI,
+        probe_type: DebugProbeType::Ftdi,
     })
 }
 

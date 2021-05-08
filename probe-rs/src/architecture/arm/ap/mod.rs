@@ -6,9 +6,9 @@ pub(crate) mod memory_ap;
 use crate::architecture::arm::dp::DebugPortError;
 use crate::DebugProbeError;
 
-pub use generic_ap::{APClass, APType, GenericAP, IDR};
+pub use generic_ap::{ApClass, ApType, GenericAp, IDR};
 pub use memory_ap::{
-    AddressIncrement, BaseaddrFormat, DataSize, MemoryAP, BASE, BASE2, CSW, DRW, TAR,
+    AddressIncrement, BaseaddrFormat, DataSize, MemoryAp, BASE, BASE2, CSW, DRW, TAR,
 };
 
 use super::Register;
@@ -66,7 +66,7 @@ impl AccessPortError {
     }
 }
 
-pub trait APRegister<PORT: AccessPort>: Register + Sized {
+pub trait ApRegister<PORT: AccessPort>: Register + Sized {
     const APBANKSEL: u8;
 }
 
@@ -74,10 +74,10 @@ pub trait AccessPort {
     fn port_number(&self) -> u8;
 }
 
-pub trait APAccess<PORT, R>
+pub trait ApAccess<PORT, R>
 where
     PORT: AccessPort,
-    R: APRegister<PORT>,
+    R: ApRegister<PORT>,
 {
     type Error: std::error::Error + Send + Sync + 'static;
     fn read_ap_register(&mut self, port: impl Into<PORT>, register: R) -> Result<R, Self::Error>;
@@ -103,11 +103,11 @@ where
     ) -> Result<(), Self::Error>;
 }
 
-impl<T, PORT, R> APAccess<PORT, R> for &mut T
+impl<T, PORT, R> ApAccess<PORT, R> for &mut T
 where
-    T: APAccess<PORT, R>,
+    T: ApAccess<PORT, R>,
     PORT: AccessPort,
-    R: APRegister<PORT>,
+    R: ApRegister<PORT>,
 {
     type Error = T::Error;
 
@@ -139,9 +139,9 @@ where
 
 /// Determine if an AP exists with the given AP number.
 /// Can fail silently under the hood testing an ap that doesnt exist and would require cleanup.
-pub fn access_port_is_valid<AP>(debug_port: &mut AP, access_port: GenericAP) -> bool
+pub fn access_port_is_valid<AP>(debug_port: &mut AP, access_port: GenericAp) -> bool
 where
-    AP: APAccess<GenericAP, IDR>,
+    AP: ApAccess<GenericAp, IDR>,
 {
     if let Ok(idr) = debug_port.read_ap_register(access_port, IDR::default()) {
         u32::from(idr) != 0
@@ -152,23 +152,23 @@ where
 
 /// Return a Vec of all valid access ports found that the target connected to the debug_probe.
 /// Can fail silently under the hood testing an ap that doesnt exist and would require cleanup.
-pub(crate) fn valid_access_ports<AP>(debug_port: &mut AP) -> Vec<GenericAP>
+pub(crate) fn valid_access_ports<AP>(debug_port: &mut AP) -> Vec<GenericAp>
 where
-    AP: APAccess<GenericAP, IDR>,
+    AP: ApAccess<GenericAp, IDR>,
 {
     (0..=255)
-        .map(GenericAP::new)
+        .map(GenericAp::new)
         .take_while(|port| access_port_is_valid(debug_port, *port))
-        .collect::<Vec<GenericAP>>()
+        .collect::<Vec<GenericAp>>()
 }
 
 /// Tries to find the first AP with the given idr value, returns `None` if there isn't any
-pub fn get_ap_by_idr<AP, P>(debug_port: &mut AP, f: P) -> Option<GenericAP>
+pub fn get_ap_by_idr<AP, P>(debug_port: &mut AP, f: P) -> Option<GenericAp>
 where
-    AP: APAccess<GenericAP, IDR>,
+    AP: ApAccess<GenericAp, IDR>,
     P: Fn(IDR) -> bool,
 {
-    (0..=255).map(GenericAP::new).find(|ap| {
+    (0..=255).map(GenericAp::new).find(|ap| {
         if let Ok(idr) = debug_port.read_ap_register(*ap, IDR::default()) {
             f(idr)
         } else {

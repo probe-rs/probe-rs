@@ -2,17 +2,17 @@ pub mod constants;
 pub mod tools;
 mod usb_interface;
 
-use self::usb_interface::{STLinkUSBDevice, StLinkUsb};
-use super::{DAPAccess, DebugProbe, DebugProbeError, PortType, ProbeCreationError, WireProtocol};
+use self::usb_interface::{StLinkUsb, StLinkUsbDevice};
+use super::{DapAccess, DebugProbe, DebugProbeError, PortType, ProbeCreationError, WireProtocol};
 use crate::{
     architecture::arm::communication_interface::MemoryApInformation,
     architecture::arm::{
         ap::{
-            valid_access_ports, APAccess, APClass, APRegister, AccessPort, BaseaddrFormat,
-            GenericAP, MemoryAP, BASE, BASE2, CSW, IDR,
+            valid_access_ports, AccessPort, ApAccess, ApClass, ApRegister, BaseaddrFormat,
+            GenericAp, MemoryAp, BASE, BASE2, CSW, IDR,
         },
         communication_interface::{ArmCommunicationInterfaceState, ArmProbeInterface},
-        dp::{DPAccess, DPBankSel, DPRegister, DebugPortError, Select},
+        dp::{DebugPortError, DpAccess, DpBankSel, DpRegister, Select},
         memory::{adi_v5_memory_interface::ArmProbe, Component},
         ApInformation, ArmChipInfo, SwoAccess, SwoConfig, SwoMode,
     },
@@ -36,7 +36,7 @@ const STLINK_MAX_READ_LEN: usize = 6144;
 const STLINK_MAX_WRITE_LEN: usize = 0xFFFC;
 
 #[derive(Debug)]
-pub struct STLink<D: StLinkUsb> {
+pub struct StLink<D: StLinkUsb> {
     device: D,
     name: String,
     hw_version: u8,
@@ -50,11 +50,11 @@ pub struct STLink<D: StLinkUsb> {
     openend_aps: Vec<u8>,
 }
 
-impl DebugProbe for STLink<STLinkUSBDevice> {
+impl DebugProbe for StLink<StLinkUsbDevice> {
     fn new_from_selector(
         selector: impl Into<DebugProbeSelector>,
     ) -> Result<Box<Self>, DebugProbeError> {
-        let device = STLinkUSBDevice::new_from_selector(selector)?;
+        let device = StLinkUsbDevice::new_from_selector(selector)?;
         let mut stlink = Self {
             name: format!("ST-Link {}", &device.info.version_name),
             device,
@@ -295,7 +295,7 @@ impl DebugProbe for STLink<STLinkUSBDevice> {
     }
 }
 
-impl DAPAccess for STLink<STLinkUSBDevice> {
+impl DapAccess for StLink<StLinkUsbDevice> {
     /// Reads the DAP register on the specified port and address.
     fn read_register(&mut self, port: PortType, addr: u16) -> Result<u32, DebugProbeError> {
         if (addr & 0xf0) == 0 || port != PortType::DebugPort {
@@ -357,7 +357,7 @@ impl DAPAccess for STLink<STLinkUSBDevice> {
     }
 }
 
-impl<D: StLinkUsb> Drop for STLink<D> {
+impl<D: StLinkUsb> Drop for StLink<D> {
     fn drop(&mut self) {
         // We ignore the error cases as we can't do much about it anyways.
         if self.swo_enabled {
@@ -367,7 +367,7 @@ impl<D: StLinkUsb> Drop for STLink<D> {
     }
 }
 
-impl<D: StLinkUsb> STLink<D> {
+impl<D: StLinkUsb> StLink<D> {
     /// Maximum number of bytes to send or receive for 32- and 16- bit transfers.
     ///
     /// 8-bit transfers have a maximum size of the maximum USB packet size (64 bytes for full speed).
@@ -501,7 +501,7 @@ impl<D: StLinkUsb> STLink<D> {
 
         if let Err(e) = self.enter_idle() {
             match e {
-                DebugProbeError::USB(_) => {
+                DebugProbeError::Usb(_) => {
                     // Reset the device, and try to enter idle mode again
                     self.device.reset()?;
 
@@ -1058,10 +1058,10 @@ impl<D: StLinkUsb> STLink<D> {
     }
 }
 
-impl<D: StLinkUsb> SwoAccess for STLink<D> {
+impl<D: StLinkUsb> SwoAccess for StLink<D> {
     fn enable_swo(&mut self, config: &SwoConfig) -> Result<(), ProbeRsError> {
         match config.mode() {
-            SwoMode::UART => {
+            SwoMode::Uart => {
                 self.start_trace_reception(config)?;
                 Ok(())
             }
@@ -1093,7 +1093,7 @@ pub(crate) enum StlinkError {
     BlanksNotAllowedOnDPRegister,
     #[error("Not enough bytes written.")]
     NotEnoughBytesWritten { is: usize, should: usize },
-    #[error("USB endpoint not found.")]
+    #[error("Usb endpoint not found.")]
     EndpointNotFound,
     #[error("Command failed with status {0:?}")]
     CommandFailed(Status),
@@ -1119,14 +1119,14 @@ impl From<StlinkError> for ProbeCreationError {
 
 #[derive(Debug)]
 struct StlinkArmDebug {
-    probe: Box<STLink<STLinkUSBDevice>>,
+    probe: Box<StLink<StLinkUsbDevice>>,
     state: ArmCommunicationInterfaceState,
 }
 
 impl StlinkArmDebug {
     fn new(
-        probe: Box<STLink<STLinkUSBDevice>>,
-    ) -> Result<Self, (Box<STLink<STLinkUSBDevice>>, DebugProbeError)> {
+        probe: Box<StLink<StLinkUsbDevice>>,
+    ) -> Result<Self, (Box<StLink<StLinkUsbDevice>>, DebugProbeError)> {
         let state = ArmCommunicationInterfaceState::new();
 
         // Determine the number and type of available APs.
@@ -1155,12 +1155,12 @@ impl StlinkArmDebug {
     /// Currently, AP specific information is read for Memory APs.
     fn read_ap_information(
         &mut self,
-        access_port: GenericAP,
+        access_port: GenericAp,
     ) -> Result<ApInformation, DebugProbeError> {
         let idr = self.read_ap_register(access_port, IDR::default())?;
 
-        if idr.CLASS == APClass::MEMAP {
-            let access_port: MemoryAP = access_port.into();
+        if idr.CLASS == ApClass::MemAp {
+            let access_port: MemoryAp = access_port.into();
 
             let base_register = self.read_ap_register(access_port, BASE::default())?;
 
@@ -1204,9 +1204,9 @@ impl StlinkArmDebug {
         }
     }
 
-    fn select_dp_bank(&mut self, dp_bank: DPBankSel) -> Result<(), DebugPortError> {
+    fn select_dp_bank(&mut self, dp_bank: DpBankSel) -> Result<(), DebugPortError> {
         match dp_bank {
-            DPBankSel::Bank(new_bank) => {
+            DpBankSel::Bank(new_bank) => {
                 if new_bank != self.state.current_dpbanksel {
                     self.state.current_dpbanksel = new_bank;
 
@@ -1221,7 +1221,7 @@ impl StlinkArmDebug {
                     self.write_dp_register(select)?;
                 }
             }
-            DPBankSel::DontCare => (),
+            DpBankSel::DontCare => (),
         }
 
         Ok(())
@@ -1267,8 +1267,8 @@ impl StlinkArmDebug {
     }
 }
 
-impl DPAccess for StlinkArmDebug {
-    fn read_dp_register<R: DPRegister>(&mut self) -> Result<R, DebugPortError> {
+impl DpAccess for StlinkArmDebug {
+    fn read_dp_register<R: DpRegister>(&mut self) -> Result<R, DebugPortError> {
         if R::VERSION > self.state.debug_port_version {
             return Err(DebugPortError::UnsupportedRegister {
                 register: R::NAME,
@@ -1288,7 +1288,7 @@ impl DPAccess for StlinkArmDebug {
         Ok(result.into())
     }
 
-    fn write_dp_register<R: DPRegister>(&mut self, register: R) -> Result<(), DebugPortError> {
+    fn write_dp_register<R: DpRegister>(&mut self, register: R) -> Result<(), DebugPortError> {
         if R::VERSION > self.state.debug_port_version {
             return Err(DebugPortError::UnsupportedRegister {
                 register: R::NAME,
@@ -1309,7 +1309,7 @@ impl DPAccess for StlinkArmDebug {
 }
 
 impl<'probe> ArmProbeInterface for StlinkArmDebug {
-    fn memory_interface(&mut self, access_port: MemoryAP) -> Result<Memory<'_>, ProbeRsError> {
+    fn memory_interface(&mut self, access_port: MemoryAp) -> Result<Memory<'_>, ProbeRsError> {
         let interface = StLinkMemoryInterface { probe: self };
 
         Ok(Memory::new(interface, access_port))
@@ -1317,7 +1317,7 @@ impl<'probe> ArmProbeInterface for StlinkArmDebug {
 
     fn ap_information(
         &self,
-        access_port: crate::architecture::arm::ap::GenericAP,
+        access_port: crate::architecture::arm::ap::GenericAp,
     ) -> Option<&crate::architecture::arm::communication_interface::ApInformation> {
         self.state
             .ap_information
@@ -1333,8 +1333,8 @@ impl<'probe> ArmProbeInterface for StlinkArmDebug {
                 .map_err(ProbeRsError::Probe)?;
             log::debug!("{:#x?}", idr);
 
-            if idr.CLASS == APClass::MEMAP {
-                let access_port: MemoryAP = access_port.into();
+            if idr.CLASS == ApClass::MemAp {
+                let access_port: MemoryAp = access_port.into();
 
                 let baseaddr = access_port.base_address(self)?;
 
@@ -1374,9 +1374,9 @@ impl<'probe> ArmProbeInterface for StlinkArmDebug {
     }
 }
 
-impl<AP, R> APAccess<AP, R> for StlinkArmDebug
+impl<AP, R> ApAccess<AP, R> for StlinkArmDebug
 where
-    R: APRegister<AP> + Clone,
+    R: ApRegister<AP> + Clone,
     AP: AccessPort,
 {
     type Error = DebugProbeError;
@@ -1495,7 +1495,7 @@ struct StLinkMemoryInterface<'probe> {
 impl ArmProbe for StLinkMemoryInterface<'_> {
     fn read_32(
         &mut self,
-        ap: MemoryAP,
+        ap: MemoryAp,
         address: u32,
         data: &mut [u32],
     ) -> Result<(), ProbeRsError> {
@@ -1519,7 +1519,7 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
         Ok(())
     }
 
-    fn read_8(&mut self, ap: MemoryAP, address: u32, data: &mut [u8]) -> Result<(), ProbeRsError> {
+    fn read_8(&mut self, ap: MemoryAp, address: u32, data: &mut [u8]) -> Result<(), ProbeRsError> {
         self.probe.select_ap(ap)?;
 
         // Read needs to be chunked into chunks of appropriate max length of the probe
@@ -1544,7 +1544,7 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
         Ok(())
     }
 
-    fn write_32(&mut self, ap: MemoryAP, address: u32, data: &[u32]) -> Result<(), ProbeRsError> {
+    fn write_32(&mut self, ap: MemoryAp, address: u32, data: &[u32]) -> Result<(), ProbeRsError> {
         self.probe.select_ap(ap)?;
 
         let mut tx_buffer = vec![0u8; data.len() * 4];
@@ -1568,7 +1568,7 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
         Ok(())
     }
 
-    fn write_8(&mut self, ap: MemoryAP, address: u32, data: &[u8]) -> Result<(), ProbeRsError> {
+    fn write_8(&mut self, ap: MemoryAp, address: u32, data: &[u8]) -> Result<(), ProbeRsError> {
         self.probe.select_ap(ap)?;
 
         // The underlying STLink command is limited to a single USB frame at a time
@@ -1656,7 +1656,7 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
 
     fn read_core_reg(
         &mut self,
-        _ap: MemoryAP,
+        _ap: MemoryAp,
         addr: crate::CoreRegisterAddress,
     ) -> Result<u32, ProbeRsError> {
         // Unclear how this works with multiple APs
@@ -1668,7 +1668,7 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
 
     fn write_core_reg(
         &mut self,
-        _ap: MemoryAP,
+        _ap: MemoryAp,
         addr: crate::CoreRegisterAddress,
         value: u32,
     ) -> Result<(), ProbeRsError> {
@@ -1683,7 +1683,7 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
 #[cfg(test)]
 mod test {
 
-    use super::{constants::commands, usb_interface::StLinkUsb, STLink};
+    use super::{constants::commands, usb_interface::StLinkUsb, StLink};
     use crate::{DebugProbeError, WireProtocol};
 
     use scroll::Pwrite;
@@ -1699,8 +1699,8 @@ mod test {
     }
 
     impl MockUsb {
-        fn build(self) -> STLink<MockUsb> {
-            STLink {
+        fn build(self) -> StLink<MockUsb> {
+            StLink {
                 device: self,
                 name: "Mock STlink".into(),
                 hw_version: 0,

@@ -1,7 +1,7 @@
 use super::super::ap::{
-    APAccess, APRegister, AccessPortError, AddressIncrement, DataSize, MemoryAP, CSW, DRW, TAR,
+    AccessPortError, AddressIncrement, ApAccess, ApRegister, DataSize, MemoryAp, CSW, DRW, TAR,
 };
-use crate::architecture::arm::{dp::DPAccess, MemoryApInformation};
+use crate::architecture::arm::{dp::DpAccess, MemoryApInformation};
 use crate::{CommunicationInterface, CoreRegister, CoreRegisterAddress, DebugProbeError, Error};
 use scroll::{Pread, Pwrite, LE};
 use std::convert::TryInto;
@@ -13,19 +13,19 @@ use std::{
 use bitfield::bitfield;
 
 pub trait ArmProbe {
-    fn read_core_reg(&mut self, ap: MemoryAP, addr: CoreRegisterAddress) -> Result<u32, Error>;
+    fn read_core_reg(&mut self, ap: MemoryAp, addr: CoreRegisterAddress) -> Result<u32, Error>;
     fn write_core_reg(
         &mut self,
-        ap: MemoryAP,
+        ap: MemoryAp,
         addr: CoreRegisterAddress,
         value: u32,
     ) -> Result<(), Error>;
 
-    fn read_8(&mut self, ap: MemoryAP, address: u32, data: &mut [u8]) -> Result<(), Error>;
-    fn read_32(&mut self, ap: MemoryAP, address: u32, data: &mut [u32]) -> Result<(), Error>;
+    fn read_8(&mut self, ap: MemoryAp, address: u32, data: &mut [u8]) -> Result<(), Error>;
+    fn read_32(&mut self, ap: MemoryAp, address: u32, data: &mut [u32]) -> Result<(), Error>;
 
-    fn write_8(&mut self, ap: MemoryAP, address: u32, data: &[u8]) -> Result<(), Error>;
-    fn write_32(&mut self, ap: MemoryAP, address: u32, data: &[u32]) -> Result<(), Error>;
+    fn write_8(&mut self, ap: MemoryAp, address: u32, data: &[u8]) -> Result<(), Error>;
+    fn write_32(&mut self, ap: MemoryAp, address: u32, data: &[u32]) -> Result<(), Error>;
 
     fn flush(&mut self) -> Result<(), Error>;
 }
@@ -34,10 +34,10 @@ pub trait ArmProbe {
 pub(crate) struct ADIMemoryInterface<'interface, AP>
 where
     AP: CommunicationInterface
-        + APAccess<MemoryAP, CSW>
-        + APAccess<MemoryAP, TAR>
-        + APAccess<MemoryAP, DRW>
-        + DPAccess,
+        + ApAccess<MemoryAp, CSW>
+        + ApAccess<MemoryAp, TAR>
+        + ApAccess<MemoryAp, DRW>
+        + DpAccess,
 {
     interface: &'interface mut AP,
     only_32bit_data_size: bool,
@@ -58,10 +58,10 @@ where
 impl<'interface, AP> ADIMemoryInterface<'interface, AP>
 where
     AP: CommunicationInterface
-        + APAccess<MemoryAP, CSW>
-        + APAccess<MemoryAP, TAR>
-        + APAccess<MemoryAP, DRW>
-        + DPAccess,
+        + ApAccess<MemoryAp, CSW>
+        + ApAccess<MemoryAp, TAR>
+        + ApAccess<MemoryAp, DRW>
+        + DpAccess,
 {
     /// Creates a new MemoryInterface for given AccessPort.
     pub fn new(
@@ -80,10 +80,10 @@ where
 impl<AP> ADIMemoryInterface<'_, AP>
 where
     AP: CommunicationInterface
-        + APAccess<MemoryAP, CSW>
-        + APAccess<MemoryAP, TAR>
-        + APAccess<MemoryAP, DRW>
-        + DPAccess,
+        + ApAccess<MemoryAp, CSW>
+        + ApAccess<MemoryAp, TAR>
+        + ApAccess<MemoryAp, DRW>
+        + DpAccess,
 {
     /// Build the correct CSW register for a memory access
     ///
@@ -118,7 +118,7 @@ where
 
     fn write_csw_register(
         &mut self,
-        access_port: MemoryAP,
+        access_port: MemoryAp,
         value: CSW,
     ) -> Result<(), AccessPortError> {
         // Check if the write is necessary
@@ -136,7 +136,7 @@ where
 
     fn wait_for_core_register_transfer(
         &mut self,
-        access_port: MemoryAP,
+        access_port: MemoryAp,
         timeout: Duration,
     ) -> Result<(), Error> {
         // now we have to poll the dhcsr register, until the dhcsr.s_regrdy bit is set
@@ -156,12 +156,12 @@ where
     /// Read a 32 bit register on the given AP.
     fn read_ap_register<R>(
         &mut self,
-        access_port: MemoryAP,
+        access_port: MemoryAp,
         register: R,
     ) -> Result<R, AccessPortError>
     where
-        R: APRegister<MemoryAP>,
-        AP: APAccess<MemoryAP, R>,
+        R: ApRegister<MemoryAp>,
+        AP: ApAccess<MemoryAp, R>,
     {
         self.interface
             .read_ap_register(access_port, register)
@@ -172,13 +172,13 @@ where
     /// register on the given AP.
     fn read_ap_register_repeated<R>(
         &mut self,
-        access_port: MemoryAP,
+        access_port: MemoryAp,
         register: R,
         values: &mut [u32],
     ) -> Result<(), AccessPortError>
     where
-        R: APRegister<MemoryAP>,
-        AP: APAccess<MemoryAP, R>,
+        R: ApRegister<MemoryAp>,
+        AP: ApAccess<MemoryAp, R>,
     {
         self.interface
             .read_ap_register_repeated(access_port, register, values)
@@ -188,12 +188,12 @@ where
     /// Write a 32 bit register on the given AP.
     fn write_ap_register<R>(
         &mut self,
-        access_port: MemoryAP,
+        access_port: MemoryAp,
         register: R,
     ) -> Result<(), AccessPortError>
     where
-        R: APRegister<MemoryAP>,
-        AP: APAccess<MemoryAP, R>,
+        R: ApRegister<MemoryAp>,
+        AP: ApAccess<MemoryAp, R>,
     {
         self.interface
             .write_ap_register(access_port, register)
@@ -204,13 +204,13 @@ where
     /// register on the given AP.
     fn write_ap_register_repeated<R>(
         &mut self,
-        access_port: MemoryAP,
+        access_port: MemoryAp,
         register: R,
         values: &[u32],
     ) -> Result<(), AccessPortError>
     where
-        R: APRegister<MemoryAP>,
-        AP: APAccess<MemoryAP, R>,
+        R: ApRegister<MemoryAp>,
+        AP: ApAccess<MemoryAp, R>,
     {
         self.interface
             .write_ap_register_repeated(access_port, register, values)
@@ -223,7 +223,7 @@ where
     /// Returns `AccessPortError::MemoryNotAligned` if this does not hold true.
     pub fn read_word_32(
         &mut self,
-        access_port: MemoryAP,
+        access_port: MemoryAp,
         address: u32,
     ) -> Result<u32, AccessPortError> {
         if (address % 4) != 0 {
@@ -244,7 +244,7 @@ where
     /// Read an 8bit word at `addr`.
     pub fn read_word_8(
         &mut self,
-        access_port: MemoryAP,
+        access_port: MemoryAp,
         address: u32,
     ) -> Result<u8, AccessPortError> {
         let aligned = aligned_range(address, 1)?;
@@ -277,7 +277,7 @@ where
     /// Returns `AccessPortError::MemoryNotAligned` if this does not hold true.
     pub fn read_32(
         &mut self,
-        access_port: MemoryAP,
+        access_port: MemoryAp,
         start_address: u32,
         data: &mut [u32],
     ) -> Result<(), AccessPortError> {
@@ -364,7 +364,7 @@ where
 
     pub fn read_8(
         &mut self,
-        access_port: MemoryAP,
+        access_port: MemoryAp,
         address: u32,
         data: &mut [u8],
     ) -> Result<(), AccessPortError> {
@@ -397,7 +397,7 @@ where
     /// Returns `AccessPortError::MemoryNotAligned` if this does not hold true.
     pub fn write_word_32(
         &mut self,
-        access_port: MemoryAP,
+        access_port: MemoryAp,
         address: u32,
         data: u32,
     ) -> Result<(), AccessPortError> {
@@ -419,7 +419,7 @@ where
     /// Write an 8bit word at `addr`.
     pub fn write_word_8(
         &mut self,
-        access_port: MemoryAP,
+        access_port: MemoryAp,
         address: u32,
         data: u8,
     ) -> Result<(), AccessPortError> {
@@ -457,7 +457,7 @@ where
     /// Returns `AccessPortError::MemoryNotAligned` if this does not hold true.
     pub fn write_32(
         &mut self,
-        access_port: MemoryAP,
+        access_port: MemoryAp,
         start_address: u32,
         data: &[u32],
     ) -> Result<(), AccessPortError> {
@@ -554,7 +554,7 @@ where
     /// The number of words written is `data.len()`.
     pub fn write_8(
         &mut self,
-        access_port: MemoryAP,
+        access_port: MemoryAp,
         address: u32,
         data: &[u8],
     ) -> Result<(), AccessPortError> {
@@ -603,12 +603,12 @@ where
 impl<AP> ArmProbe for ADIMemoryInterface<'_, AP>
 where
     AP: CommunicationInterface
-        + APAccess<MemoryAP, CSW>
-        + APAccess<MemoryAP, TAR>
-        + APAccess<MemoryAP, DRW>
-        + DPAccess,
+        + ApAccess<MemoryAp, CSW>
+        + ApAccess<MemoryAp, TAR>
+        + ApAccess<MemoryAp, DRW>
+        + DpAccess,
 {
-    fn read_core_reg(&mut self, ap: MemoryAP, addr: CoreRegisterAddress) -> Result<u32, Error> {
+    fn read_core_reg(&mut self, ap: MemoryAp, addr: CoreRegisterAddress) -> Result<u32, Error> {
         // Write the DCRSR value to select the register we want to read.
         let mut dcrsr_val = Dcrsr(0);
         dcrsr_val.set_regwnr(false); // Perform a read.
@@ -625,7 +625,7 @@ where
 
     fn write_core_reg(
         &mut self,
-        ap: MemoryAP,
+        ap: MemoryAp,
         addr: CoreRegisterAddress,
         value: u32,
     ) -> Result<(), Error> {
@@ -643,7 +643,7 @@ where
         Ok(())
     }
 
-    fn read_8(&mut self, ap: MemoryAP, address: u32, data: &mut [u8]) -> Result<(), Error> {
+    fn read_8(&mut self, ap: MemoryAp, address: u32, data: &mut [u8]) -> Result<(), Error> {
         if data.len() == 1 {
             data[0] = self.read_word_8(ap, address)?;
         } else {
@@ -653,7 +653,7 @@ where
         Ok(())
     }
 
-    fn read_32(&mut self, ap: MemoryAP, address: u32, data: &mut [u32]) -> Result<(), Error> {
+    fn read_32(&mut self, ap: MemoryAp, address: u32, data: &mut [u32]) -> Result<(), Error> {
         if data.len() == 1 {
             data[0] = self.read_word_32(ap, address)?;
         } else {
@@ -663,7 +663,7 @@ where
         Ok(())
     }
 
-    fn write_8(&mut self, ap: MemoryAP, address: u32, data: &[u8]) -> Result<(), Error> {
+    fn write_8(&mut self, ap: MemoryAp, address: u32, data: &[u8]) -> Result<(), Error> {
         if data.len() == 1 {
             self.write_word_8(ap, address, data[0])?;
         } else {
@@ -673,7 +673,7 @@ where
         Ok(())
     }
 
-    fn write_32(&mut self, ap: MemoryAP, address: u32, data: &[u32]) -> Result<(), Error> {
+    fn write_32(&mut self, ap: MemoryAp, address: u32, data: &[u32]) -> Result<(), Error> {
         if data.len() == 1 {
             self.write_word_32(ap, address, data[0])?;
         } else {
@@ -804,14 +804,14 @@ fn aligned_range(address: u32, len: usize) -> Result<Range<u32>, AccessPortError
 mod tests {
     use crate::architecture::arm::MemoryApInformation;
 
-    use super::super::super::ap::memory_ap::mock::MockMemoryAP;
+    use super::super::super::ap::memory_ap::mock::MockMemoryAp;
     use super::ADIMemoryInterface;
 
-    impl<'interface> ADIMemoryInterface<'interface, MockMemoryAP> {
+    impl<'interface> ADIMemoryInterface<'interface, MockMemoryAp> {
         /// Creates a new MemoryInterface for given AccessPort.
         fn new_mock(
-            mock: &'interface mut MockMemoryAP,
-        ) -> ADIMemoryInterface<'interface, MockMemoryAP> {
+            mock: &'interface mut MockMemoryAp,
+        ) -> ADIMemoryInterface<'interface, MockMemoryAp> {
             let ap_information = MemoryApInformation {
                 port_number: 0,
                 only_32bit_data_size: false,
@@ -836,7 +836,7 @@ mod tests {
 
     #[test]
     fn read_word_32() {
-        let mut mock = MockMemoryAP::with_pattern();
+        let mut mock = MockMemoryAp::with_pattern();
         mock.memory[..8].copy_from_slice(&DATA8[..8]);
         let mut mi = ADIMemoryInterface::new_mock(&mut mock);
 
@@ -850,7 +850,7 @@ mod tests {
 
     #[test]
     fn read_word_8() {
-        let mut mock = MockMemoryAP::with_pattern();
+        let mut mock = MockMemoryAp::with_pattern();
         mock.memory[..8].copy_from_slice(&DATA8[..8]);
         let mut mi = ADIMemoryInterface::new_mock(&mut mock);
 
@@ -865,7 +865,7 @@ mod tests {
     #[test]
     fn write_word_32() {
         for &address in &[0, 4] {
-            let mut mock = MockMemoryAP::with_pattern();
+            let mut mock = MockMemoryAp::with_pattern();
             let mut mi = ADIMemoryInterface::new_mock(&mut mock);
 
             let mut expected = Vec::from(mi.mock_memory());
@@ -885,7 +885,7 @@ mod tests {
     #[test]
     fn write_word_8() {
         for address in 0..8 {
-            let mut mock = MockMemoryAP::with_pattern();
+            let mut mock = MockMemoryAp::with_pattern();
             let mut mi = ADIMemoryInterface::new_mock(&mut mock);
 
             let mut expected = Vec::from(mi.mock_memory());
@@ -904,7 +904,7 @@ mod tests {
 
     #[test]
     fn read_32() {
-        let mut mock = MockMemoryAP::with_pattern();
+        let mut mock = MockMemoryAp::with_pattern();
         mock.memory[..DATA8.len()].copy_from_slice(DATA8);
         let mut mi = ADIMemoryInterface::new_mock(&mut mock);
 
@@ -929,7 +929,7 @@ mod tests {
 
     #[test]
     fn read_32_unaligned_should_error() {
-        let mut mock = MockMemoryAP::with_pattern();
+        let mut mock = MockMemoryAp::with_pattern();
         let mut mi = ADIMemoryInterface::new_mock(&mut mock);
 
         for &address in &[1, 3, 127] {
@@ -939,7 +939,7 @@ mod tests {
 
     #[test]
     fn read_8() {
-        let mut mock = MockMemoryAP::with_pattern();
+        let mut mock = MockMemoryAp::with_pattern();
         mock.memory[..DATA8.len()].copy_from_slice(DATA8);
         let mut mi = ADIMemoryInterface::new_mock(&mut mock);
 
@@ -965,7 +965,7 @@ mod tests {
     fn write_32() {
         for &address in &[0, 4] {
             for len in 0..3 {
-                let mut mock = MockMemoryAP::with_pattern();
+                let mut mock = MockMemoryAp::with_pattern();
                 let mut mi = ADIMemoryInterface::new_mock(&mut mock);
 
                 let mut expected = Vec::from(mi.mock_memory());
@@ -990,7 +990,7 @@ mod tests {
 
     #[test]
     fn write_block_u32_unaligned_should_error() {
-        let mut mock = MockMemoryAP::with_pattern();
+        let mut mock = MockMemoryAp::with_pattern();
         let mut mi = ADIMemoryInterface::new_mock(&mut mock);
 
         for &address in &[1, 3, 127] {
@@ -1004,7 +1004,7 @@ mod tests {
     fn write_8() {
         for address in 0..4 {
             for len in 0..12 {
-                let mut mock = MockMemoryAP::with_pattern();
+                let mut mock = MockMemoryAp::with_pattern();
                 let mut mi = ADIMemoryInterface::new_mock(&mut mock);
 
                 let mut expected = Vec::from(mi.mock_memory());

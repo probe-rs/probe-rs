@@ -16,6 +16,7 @@ macro_rules! define_ap_register {
     => {
         $(#[$outer])*
         #[allow(non_snake_case)]
+        #[allow(clippy::upper_case_acronyms)]
         #[derive(Debug, Default, Clone, Copy, PartialEq)]
         pub struct $name {
             $(pub $field: $type,)*
@@ -39,7 +40,7 @@ macro_rules! define_ap_register {
             }
         }
 
-        impl APRegister<$port_type> for $name {
+        impl ApRegister<$port_type> for $name {
             // APBANKSEL is always the upper 4 bits of the register address.
             const APBANKSEL: u8 = $address >> 4;
         }

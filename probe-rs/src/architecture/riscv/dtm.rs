@@ -47,7 +47,7 @@ impl Dtm {
         // Setup the number of idle cycles between JTAG accesses
         probe.set_idle_cycles(idle_cycles as u8);
 
-        Ok(Self { abits, probe })
+        Ok(Self { probe, abits })
     }
 
     pub fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {

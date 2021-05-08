@@ -1,7 +1,7 @@
-use super::super::{APAccess, Register};
-use super::{APRegister, AddressIncrement, DataSize, MemoryAP, CSW, DRW, TAR};
+use super::super::{ApAccess, Register};
+use super::{AddressIncrement, ApRegister, DataSize, MemoryAp, CSW, DRW, TAR};
 use crate::{
-    architecture::arm::dp::{DPAccess, DPRegister, DebugPortError},
+    architecture::arm::dp::{DebugPortError, DpAccess, DpRegister},
     CommunicationInterface, DebugProbeError,
 };
 use std::collections::HashMap;
@@ -9,7 +9,7 @@ use std::convert::TryInto;
 use thiserror::Error;
 
 #[derive(Debug)]
-pub struct MockMemoryAP {
+pub struct MockMemoryAp {
     pub memory: Vec<u8>,
     store: HashMap<(u8, u8), u32>,
 }
@@ -22,8 +22,8 @@ pub enum MockMemoryError {
     UnknownRegister,
 }
 
-impl MockMemoryAP {
-    /// Creates a MockMemoryAP with the memory filled with a pattern where each byte is equal to its
+impl MockMemoryAp {
+    /// Creates a MockMemoryAp with the memory filled with a pattern where each byte is equal to its
     /// own address plus one (to avoid zeros). The pattern can be used as a canary pattern to ensure
     /// writes do not clobber adjacent memory. The memory is also quite small so it can be feasibly
     /// printed out for debugging.
@@ -39,15 +39,15 @@ impl MockMemoryAP {
     }
 }
 
-impl CommunicationInterface for MockMemoryAP {
+impl CommunicationInterface for MockMemoryAp {
     fn flush(&mut self) -> Result<(), DebugProbeError> {
         Ok(())
     }
 }
 
-impl<R> APAccess<MemoryAP, R> for MockMemoryAP
+impl<R> ApAccess<MemoryAp, R> for MockMemoryAp
 where
-    R: APRegister<MemoryAP>,
+    R: ApRegister<MemoryAp>,
 {
     type Error = MockMemoryError;
 
@@ -56,7 +56,7 @@ where
     /// Returns an Error if any bad instructions or values are chosen.
     fn read_ap_register(
         &mut self,
-        _port: impl Into<MemoryAP>,
+        _port: impl Into<MemoryAp>,
         _register: R,
     ) -> Result<R, Self::Error> {
         let csw = self.store[&(CSW::ADDRESS, CSW::APBANKSEL)];
@@ -128,7 +128,7 @@ where
     /// Returns an Error if any bad instructions or values are chosen.
     fn write_ap_register(
         &mut self,
-        _port: impl Into<MemoryAP>,
+        _port: impl Into<MemoryAp>,
         register: R,
     ) -> Result<(), Self::Error> {
         log::debug!("Mock: Write to register {:x?}", &register);
@@ -214,7 +214,7 @@ where
 
     fn write_ap_register_repeated(
         &mut self,
-        port: impl Into<MemoryAP> + Clone,
+        port: impl Into<MemoryAp> + Clone,
         _register: R,
         values: &[u32],
     ) -> Result<(), Self::Error> {
@@ -226,7 +226,7 @@ where
     }
     fn read_ap_register_repeated(
         &mut self,
-        port: impl Into<MemoryAP> + Clone,
+        port: impl Into<MemoryAp> + Clone,
         register: R,
         values: &mut [u32],
     ) -> Result<(), Self::Error> {
@@ -240,13 +240,13 @@ where
     }
 }
 
-impl DPAccess for MockMemoryAP {
-    fn read_dp_register<R: DPRegister>(&mut self) -> Result<R, DebugPortError> {
+impl DpAccess for MockMemoryAp {
+    fn read_dp_register<R: DpRegister>(&mut self) -> Result<R, DebugPortError> {
         // Ignore for Tests
         Ok(0.into())
     }
 
-    fn write_dp_register<R: DPRegister>(&mut self, _register: R) -> Result<(), DebugPortError> {
+    fn write_dp_register<R: DpRegister>(&mut self, _register: R) -> Result<(), DebugPortError> {
         Ok(())
     }
 }

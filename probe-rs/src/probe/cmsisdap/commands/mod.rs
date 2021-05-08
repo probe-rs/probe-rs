@@ -24,15 +24,15 @@ pub enum CmsisDapError {
     #[error("Not enough data in response from probe")]
     NotEnoughData,
     #[error("Requested SWO baud rate could not be configured")]
-    SWOBaudrateNotConfigured,
+    SwoBaudrateNotConfigured,
     #[error("Probe reported an error while streaming SWO")]
-    SWOTraceStreamError,
+    SwoTraceStreamError,
     #[error("Requested SWO mode is not available on this probe")]
-    SWOModeNotAvailable,
+    SwoModeNotAvailable,
     #[error("Error in the USB HID access")]
     HidApi(#[from] hidapi::HidError),
     #[error("Error in the USB access")]
-    USBError(#[from] rusb::Error),
+    UsbError(#[from] rusb::Error),
     #[error("An error with the DAP communication occured")]
     Dap(#[from] DapError),
     #[error(transparent)]
@@ -45,7 +45,7 @@ impl From<CmsisDapError> for DebugProbeError {
     }
 }
 
-pub enum CMSISDAPDevice {
+pub enum CmsisDapDevice {
     /// CMSIS-DAP v1 over HID.
     /// Stores a HID device handle and maximum HID report size.
     V1 {
@@ -65,12 +65,12 @@ pub enum CMSISDAPDevice {
     },
 }
 
-impl CMSISDAPDevice {
+impl CmsisDapDevice {
     /// Read from the probe into `buf`, returning the number of bytes read on success.
     fn read(&self, buf: &mut [u8]) -> Result<usize> {
         match self {
-            CMSISDAPDevice::V1 { handle, .. } => Ok(handle.read_timeout(buf, 100)?),
-            CMSISDAPDevice::V2 { handle, in_ep, .. } => {
+            CmsisDapDevice::V1 { handle, .. } => Ok(handle.read_timeout(buf, 100)?),
+            CmsisDapDevice::V2 { handle, in_ep, .. } => {
                 let timeout = Duration::from_millis(100);
                 Ok(handle.read_bulk(*in_ep, buf, timeout)?)
             }
@@ -80,8 +80,8 @@ impl CMSISDAPDevice {
     /// Write `buf` to the probe, returning the number of bytes written on success.
     fn write(&self, buf: &[u8]) -> Result<usize> {
         match self {
-            CMSISDAPDevice::V1 { handle, .. } => Ok(handle.write(buf)?),
-            CMSISDAPDevice::V2 { handle, out_ep, .. } => {
+            CmsisDapDevice::V1 { handle, .. } => Ok(handle.write(buf)?),
+            CmsisDapDevice::V2 { handle, out_ep, .. } => {
                 let timeout = Duration::from_millis(100);
                 // Skip first byte as it's set to 0 for HID transfers
                 Ok(handle.write_bulk(*out_ep, &buf[1..], timeout)?)
@@ -93,7 +93,7 @@ impl CMSISDAPDevice {
         log::debug!("Draining probe of any pending data.");
 
         match self {
-            CMSISDAPDevice::V1 {
+            CmsisDapDevice::V1 {
                 handle,
                 report_size,
                 ..
@@ -105,7 +105,7 @@ impl CMSISDAPDevice {
                 }
             },
 
-            CMSISDAPDevice::V2 {
+            CmsisDapDevice::V2 {
                 handle,
                 in_ep,
                 max_packet_size,
@@ -126,8 +126,8 @@ impl CMSISDAPDevice {
     /// Check if SWO streaming is supported by this device.
     pub(super) fn swo_streaming_supported(&self) -> bool {
         match self {
-            CMSISDAPDevice::V1 { .. } => false,
-            CMSISDAPDevice::V2 { swo_ep, .. } => swo_ep.is_some(),
+            CmsisDapDevice::V1 { .. } => false,
+            CmsisDapDevice::V2 { swo_ep, .. } => swo_ep.is_some(),
         }
     }
 
@@ -138,8 +138,8 @@ impl CMSISDAPDevice {
     /// On timeout, returns a zero-length buffer.
     pub(super) fn read_swo_stream(&self, timeout: Duration) -> Result<Vec<u8>> {
         match self {
-            CMSISDAPDevice::V1 { .. } => Err(CmsisDapError::SWOModeNotAvailable.into()),
-            CMSISDAPDevice::V2 { handle, swo_ep, .. } => match swo_ep {
+            CmsisDapDevice::V1 { .. } => Err(CmsisDapError::SwoModeNotAvailable.into()),
+            CmsisDapDevice::V2 { handle, swo_ep, .. } => match swo_ep {
                 Some((ep, len)) => {
                     let mut buf = vec![0u8; *len];
                     match handle.read_bulk(*ep, &mut buf, timeout) {
@@ -154,7 +154,7 @@ impl CMSISDAPDevice {
                         Err(e) => Err(e.into()),
                     }
                 }
-                None => Err(CmsisDapError::SWOModeNotAvailable.into()),
+                None => Err(CmsisDapError::SwoModeNotAvailable.into()),
             },
         }
     }
@@ -199,7 +199,7 @@ pub(crate) trait Response: Sized {
 }
 
 pub(crate) fn send_command<Req: Request, Res: Response>(
-    device: &mut CMSISDAPDevice,
+    device: &mut CmsisDapDevice,
     request: Req,
 ) -> Result<Res> {
     // Size the buffer for the maximum packet size.
@@ -207,8 +207,8 @@ pub(crate) fn send_command<Req: Request, Res: Response>(
     // on v2 we can truncate to just the required data.
     // Add one byte for HID report ID.
     let buffer_len: usize = match device {
-        CMSISDAPDevice::V1 { report_size, .. } => *report_size + 1,
-        CMSISDAPDevice::V2 {
+        CmsisDapDevice::V1 { report_size, .. } => *report_size + 1,
+        CmsisDapDevice::V2 {
             max_packet_size, ..
         } => *max_packet_size + 1,
     };
@@ -222,7 +222,7 @@ pub(crate) fn send_command<Req: Request, Res: Response>(
     // so set the transfer size to the report size, plus one
     // byte for the HID report ID. On v2 devices, we just
     // write the exact required size every time.
-    if let CMSISDAPDevice::V1 { report_size, .. } = device {
+    if let CmsisDapDevice::V1 { report_size, .. } = device {
         size = *report_size + 1;
     }
 

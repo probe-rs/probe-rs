@@ -4,7 +4,7 @@ use crate::Error;
 
 #[derive(Debug, Copy, Clone)]
 pub enum SwoMode {
-    UART,
+    Uart,
     Manchester,
 }
 
@@ -36,7 +36,7 @@ impl SwoConfig {
     /// TPIU continuous formatting is disabled (DWT/ITM only).
     pub fn new(tpiu_clk: u32) -> Self {
         SwoConfig {
-            mode: SwoMode::UART,
+            mode: SwoMode::Uart,
             baud: 1_000_000,
             tpiu_clk,
             tpiu_continuous_formatting: false,
@@ -57,7 +57,7 @@ impl SwoConfig {
 
     /// Set the mode to UART
     pub fn set_mode_uart(mut self) -> Self {
-        self.mode = SwoMode::UART;
+        self.mode = SwoMode::Uart;
         self
     }
 
@@ -140,7 +140,7 @@ pub(crate) fn poll_interval_from_buf_size(
 ) -> Option<std::time::Duration> {
     let time_to_full_ms = match config.mode() {
         // In UART, the output data is at the baud rate with 10 clocks per byte.
-        SwoMode::UART => (1000 * buf_size as u32) / (config.baud() / 10),
+        SwoMode::Uart => (1000 * buf_size as u32) / (config.baud() / 10),
 
         // In Manchester, the output data is at half the baud rate with
         // between 8.25 and 10 clocks per byte, so use a conservative 8 clocks/byte.
