@@ -9,7 +9,7 @@ pub(crate) mod v_packet;
 use nom::{
     branch::alt,
     bytes::complete::{tag, take},
-    character::complete::char,
+    character::complete::{char, hex_digit1},
     combinator::value,
     map, named,
     number::complete::hex_u32,
@@ -58,7 +58,9 @@ pub enum Packet {
     /// Packet `g`
     ReadGeneralRegister,
     /// Packet `G`
-    WriteGeneralRegister,
+    WriteGeneralRegister {
+        reg_values: String,
+    },
     /// Packet `H`
     SelectThread,
     /// Packet `i`
@@ -77,7 +79,10 @@ pub enum Packet {
     /// Packet 'p'
     ReadRegisterHex(u32),
     /// Packet 'P'
-    WriteRegisterHex,
+    WriteRegisterHex {
+        address: u32,
+        value: String,
+    },
     // Packet 'q'
     Query(QueryPacket),
     // Packet 'Q'
@@ -141,6 +146,8 @@ pub fn parse_packet(input: &[u8]) -> Result<Packet> {
         write_memory_binary,
         ctrl_c_interrupt,
         continue_packet,
+        write_register,
+        write_register_hex,
     ))(input);
 
     match parse_result {
@@ -175,6 +182,37 @@ fn read_register_hex(input: &[u8]) -> IResult<&[u8], Packet> {
     let (input, value) = hex_u32(input)?;
 
     Ok((input, Packet::ReadRegisterHex(value)))
+}
+
+fn write_register(input: &[u8]) -> IResult<&[u8], Packet> {
+    let (input, _) = char('G')(input)?;
+
+    let (input, digits) = hex_digit1(input)?;
+
+    Ok((
+        input,
+        Packet::WriteGeneralRegister {
+            reg_values: std::str::from_utf8(digits).unwrap().to_owned(),
+        },
+    ))
+}
+
+fn write_register_hex(input: &[u8]) -> IResult<&[u8], Packet> {
+    let (input, _) = char('P')(input)?;
+
+    let (input, address) = hex_u32(input)?;
+
+    let (input, _) = char('=')(input)?;
+
+    let (input, digits) = hex_digit1(input)?;
+
+    Ok((
+        input,
+        Packet::WriteRegisterHex {
+            address,
+            value: std::str::from_utf8(digits).unwrap().to_owned(),
+        },
+    ))
 }
 
 fn query(input: &[u8]) -> IResult<&[u8], Packet> {

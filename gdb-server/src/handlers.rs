@@ -13,6 +13,10 @@ pub(crate) fn reply_empty() -> Option<String> {
     Some("".into())
 }
 
+pub(crate) fn reply_ok() -> Option<String> {
+    Some("OK".into())
+}
+
 pub(crate) fn q_attached() -> Option<String> {
     Some("1".into())
 }
@@ -104,6 +108,132 @@ pub(crate) fn read_register(register: u32, mut core: Core) -> Option<String> {
     }
 
     Some(register_value)
+}
+
+pub(crate) fn write_general_registers(reg_values: &str, mut core: Core) -> Option<String> {
+    // First we check the core status.
+    // If the core is not properly halted it does not make much sense to try and write registers.
+    // On some cores this even leads to a fault!
+    match core.status() {
+        Err(e) => {
+            log::debug!("Unable to write register 0. Reason:");
+            log::debug!("{:#?}", e);
+            // Tell GDB that we encountered an error writing the register (because of an unhalted core) with a EFAULT response.
+            // Errno values can be found here: https://sourceware.org/gdb/current/onlinedocs/gdb/Errno-Values.html
+            // More descriptions do not exist.
+            return Some("E14".to_string());
+        }
+        // The core is halted and we can read the register and return its value.
+        Ok(CoreStatus::Halted(_)) => (),
+        Ok(_) => {
+            log::info!("Unable to write register 0 because of a running core.");
+            log::info!("Try to halt the core on attach if this problem persists.");
+            // Tell GDB that we encountered an error writing the register (because of an unhalted core) with a EFAULT response.
+            // Errno values can be found here: https://sourceware.org/gdb/current/onlinedocs/gdb/Errno-Values.html
+            // More descriptions do not exist.
+            return Some("E14".to_string());
+        }
+    }
+
+    let mut current_str_regval_offset = 0;
+
+    for reg_num in (0..core.num_general_registers() as u32).into_iter() {
+        let (addr, bytesize) = core.translate_gdb_register_number(reg_num)?;
+
+        // TODO: remove, when `Core::write_core_reg()` supports larger registers
+        if bytesize as usize > std::mem::size_of::<u32>() {
+            // Currently registers larger than 32 bits are not supported
+            log::warn!("Register {} is truncated, because probe-rs does not currently support registers longer than 32 bit", reg_num);
+        }
+
+        let current_str_regval_end = current_str_regval_offset + bytesize as usize * 2;
+
+        if current_str_regval_end > reg_values.len() {
+            // Supplied write general registers command argument length not valid, tell GDB
+            log::error!(
+                "Unable to write register {}, because supplied register value length was too short",
+                reg_num
+            );
+            return Some("E22".to_string());
+        }
+
+        let str_value = &reg_values[current_str_regval_offset..current_str_regval_end];
+
+        let mut value = 0;
+        for (exp, ch) in str_value
+            .as_bytes()
+            .chunks(2)
+            .enumerate()
+            // TODO: remove, when `Core::write_core_reg()` supports larger registers
+            .take(std::mem::size_of::<u32>())
+        {
+            value +=
+                u32::from_str_radix(std::str::from_utf8(ch).unwrap(), 16).unwrap() << (8 * exp);
+        }
+
+        core.write_core_reg(addr, value).unwrap();
+
+        current_str_regval_offset = current_str_regval_end;
+
+        if current_str_regval_offset == reg_values.len() {
+            break;
+        }
+    }
+
+    reply_ok()
+}
+
+pub(crate) fn write_register(register: u32, hex_value: &str, mut core: Core) -> Option<String> {
+    // First we check the core status.
+    // If the core is not properly halted it does not make much sense to try and write registers.
+    // On some cores this even leads to a fault!
+    match core.status() {
+        Err(e) => {
+            log::debug!("Unable to write register {}. Reason:", register);
+            log::debug!("{:#?}", e);
+            // Tell GDB that we encountered an error writing the register (because of an unhalted core) with a EFAULT response.
+            // Errno values can be found here: https://sourceware.org/gdb/current/onlinedocs/gdb/Errno-Values.html
+            // More descriptions do not exist.
+            return Some("E14".to_string());
+        }
+        // The core is halted and we can read the register and return its value.
+        Ok(CoreStatus::Halted(_)) => (),
+        Ok(_) => {
+            log::info!(
+                "Unable to write register {} because of a running core.",
+                register
+            );
+            log::info!("Try to halt the core on attach if this problem persists.");
+            // Tell GDB that we encountered an error writing the register (because of an unhalted core) with a EFAULT response.
+            // Errno values can be found here: https://sourceware.org/gdb/current/onlinedocs/gdb/Errno-Values.html
+            // More descriptions do not exist.
+            return Some("E14".to_string());
+        }
+    }
+
+    let (probe_rs_number, bytesize) = core.translate_gdb_register_number(register)?;
+
+    // TODO: remove, when `Core::write_core_reg()` supports larger registers
+    if bytesize as usize > std::mem::size_of::<u32>() {
+        // Currently registers larger than 32 bits are not supported
+        log::warn!("Register {} is truncated, because probe-rs does not currently support registers longer than 32 bit", register);
+    }
+
+    let mut value = 0;
+
+    for (exp, ch) in hex_value
+        .as_bytes()
+        .chunks(2)
+        .enumerate()
+        // TODO: remove, when `Core::write_core_reg()` supports larger registers
+        .take(std::mem::size_of::<u32>())
+    {
+        value += u32::from_str_radix(std::str::from_utf8(ch).unwrap(), 16).unwrap() << (8 * exp);
+    }
+
+    core.write_core_reg(probe_rs_number, value).unwrap();
+
+    reply_ok()
 }
 
 pub(crate) fn read_memory(address: u32, length: u32, mut core: Core) -> Option<String> {
