@@ -110,7 +110,7 @@ pub(crate) fn read_register(register: u32, mut core: Core) -> Option<String> {
     Some(register_value)
 }
 
-pub(crate) fn write_general_registers(reg_values: &[u32], mut core: Core) -> Option<String> {
+pub(crate) fn write_general_registers(reg_values: &str, mut core: Core) -> Option<String> {
     // First we check the core status.
     // If the core is not properly halted it does not make much sense to try and write registers.
     // On some cores this even leads to a fault!
@@ -135,18 +135,55 @@ pub(crate) fn write_general_registers(reg_values: &[u32], mut core: Core) -> Opt
         }
     }
 
-    for (reg_num, reg_val) in (0..core.num_general_registers() as u32)
-        .into_iter()
-        .zip(reg_values.into_iter())
-    {
-        let (addr, _bytesize) = core.translate_gdb_register_number(reg_num)?;
-        core.write_core_reg(addr, *reg_val).unwrap();
+    let mut current_str_regval_offset = 0;
+
+    for reg_num in (0..core.num_general_registers() as u32).into_iter() {
+        let (addr, bytesize) = core.translate_gdb_register_number(reg_num)?;
+
+        // TODO: remove, when `Core::write_core_reg()` supports larger registers
+        if bytesize as usize > std::mem::size_of::<u32>() {
+            // Currently registers larger than 32 bits are not supported
+            log::warn!("Register {} is truncated, because probe-rs does not currently support registers longer than 32 bit", reg_num);
+        }
+
+        let current_str_regval_end = current_str_regval_offset + bytesize as usize * 2;
+
+        if current_str_regval_end > reg_values.len() {
+            // Supplied write general registers command argument length not valid, tell GDB
+            log::error!(
+                "Unable to write register {}, because supplied register value length was too short",
+                reg_num
+            );
+            return Some("E22".to_string());
+        }
+
+        let str_value = &reg_values[current_str_regval_offset..current_str_regval_end];
+
+        let mut value = 0;
+        for (exp, ch) in str_value
+            .as_bytes()
+            .chunks(2)
+            .enumerate()
+            // TODO: remove, when `Core::write_core_reg()` supports larger registers
+            .take(std::mem::size_of::<u32>())
+        {
+            value +=
+                u32::from_str_radix(std::str::from_utf8(ch).unwrap(), 16).unwrap() << (8 * exp);
+        }
+
+        core.write_core_reg(addr, value).unwrap();
+
+        current_str_regval_offset = current_str_regval_end;
+
+        if current_str_regval_offset == reg_values.len() {
+            break;
+        }
     }
 
     reply_ok()
 }
 
-pub(crate) fn write_register(register: u32, value: u32, mut core: Core) -> Option<String> {
+pub(crate) fn write_register(register: u32, hex_value: &str, mut core: Core) -> Option<String> {
     // First we check the core status.
     // If the core is not properly halted it does not make much sense to try and write registers.
     // On some cores this even leads to a fault!
@@ -174,7 +211,25 @@ pub(crate) fn write_register(register: u32, value: u32, mut core: Core) -> Optio
         }
     }
 
-    let (probe_rs_number, _bytesize) = core.translate_gdb_register_number(register)?;
+    let (probe_rs_number, bytesize) = core.translate_gdb_register_number(register)?;
+
+    // TODO: remove, when `Core::write_core_reg()` supports larger registers
+    if bytesize as usize > std::mem::size_of::<u32>() {
+        // Currently registers larger than 32 bits are not supported
+        log::warn!("Register {} is truncated, because probe-rs does not currently support registers longer than 32 bit", register);
+    }
+
+    let mut value = 0;
+
+    for (exp, ch) in hex_value
+        .as_bytes()
+        .chunks(2)
+        .enumerate()
+        // TODO: remove, when `Core::write_core_reg()` supports larger registers
+        .take(std::mem::size_of::<u32>())
+    {
+        value += u32::from_str_radix(std::str::from_utf8(ch).unwrap(), 16).unwrap() << (8 * exp);
+    }
 
     core.write_core_reg(probe_rs_number, value).unwrap();
 

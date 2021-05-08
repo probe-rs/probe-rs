@@ -92,7 +92,7 @@ pub async fn handler(
                     handlers::write_general_registers(&reg_values, session.core(0)?)
                 }
                 WriteRegisterHex { address, value } => {
-                    handlers::write_register(address, value, session.core(0)?)
+                    handlers::write_register(address, &value, session.core(0)?)
                 }
                 ReadMemory { address, length } => {
                     // LLDB will send 64 bit addresses, which are not supported by probe-rs

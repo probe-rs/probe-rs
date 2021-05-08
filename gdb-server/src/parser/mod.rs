@@ -9,11 +9,9 @@ pub(crate) mod v_packet;
 use nom::{
     branch::alt,
     bytes::complete::{tag, take},
-    character::complete::char,
+    character::complete::{char, hex_digit1},
     combinator::value,
-    map,
-    multi::many0,
-    named,
+    map, named,
     number::complete::hex_u32,
     IResult,
 };
@@ -23,7 +21,7 @@ use query::query_packet;
 use v_packet::v_packet;
 
 pub use query::{Pid, QueryPacket};
-use util::{hex_u32_le, hex_u64};
+use util::hex_u64;
 pub use v_packet::VPacket;
 
 #[allow(dead_code)]
@@ -61,7 +59,7 @@ pub enum Packet {
     ReadGeneralRegister,
     /// Packet `G`
     WriteGeneralRegister {
-        reg_values: Vec<u32>,
+        reg_values: String,
     },
     /// Packet `H`
     SelectThread,
@@ -83,7 +81,7 @@ pub enum Packet {
     /// Packet 'P'
     WriteRegisterHex {
         address: u32,
-        value: u32,
+        value: String,
     },
     // Packet 'q'
     Query(QueryPacket),
@@ -189,10 +187,14 @@ fn read_register_hex(input: &[u8]) -> IResult<&[u8], Packet> {
 fn write_register(input: &[u8]) -> IResult<&[u8], Packet> {
     let (input, _) = char('G')(input)?;
 
-    // TODO: Handle target byteorder correctly
-    let (input, v) = many0(hex_u32_le)(input)?;
+    let (input, digits) = hex_digit1(input)?;
 
-    Ok((input, Packet::WriteGeneralRegister { reg_values: v }))
+    Ok((
+        input,
+        Packet::WriteGeneralRegister {
+            reg_values: std::str::from_utf8(digits).unwrap().to_owned(),
+        },
+    ))
 }
 
 fn write_register_hex(input: &[u8]) -> IResult<&[u8], Packet> {
@@ -202,10 +204,15 @@ fn write_register_hex(input: &[u8]) -> IResult<&[u8], Packet> {
 
     let (input, _) = char('=')(input)?;
 
-    // TODO: Handle target byteorder correctly
-    let (input, value) = hex_u32_le(input)?;
+    let (input, digits) = hex_digit1(input)?;
 
-    Ok((input, Packet::WriteRegisterHex { address, value }))
+    Ok((
+        input,
+        Packet::WriteRegisterHex {
+            address,
+            value: std::str::from_utf8(digits).unwrap().to_owned(),
+        },
+    ))
 }
 
 fn query(input: &[u8]) -> IResult<&[u8], Packet> {
