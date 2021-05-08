@@ -382,6 +382,10 @@ impl<'probe> RiscvCommunicationInterface {
 
         let abstractauto_readback: Abstractauto = self.read_dm_register()?;
 
+        // clear abstractauto
+        abstractauto = Abstractauto(0);
+        self.write_dm_register(abstractauto)?;
+
         self.state.supports_autoexec = abstractauto_readback == abstractauto;
         log::debug!("Support for autoexec: {}", self.state.supports_autoexec);
 
