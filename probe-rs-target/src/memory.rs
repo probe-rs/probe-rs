@@ -1,4 +1,5 @@
 use core::ops::Range;
+use serde::{Deserialize, Serialize};
 
 /// Represents a region in non-volatile memory (e.g. flash or EEPROM).
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -53,7 +54,7 @@ pub struct SectorInfo {
 /// end of the flash, or until another `SectorDescription`
 /// changes the sector size.
 ///
-/// [`FlashProperties`]: crate::config::FlashProperties
+/// [`FlashProperties`]: crate::FlashProperties
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct SectorDescription {
     /// Size of each individual flash sector
@@ -79,7 +80,7 @@ pub struct NvmInfo {
 }
 
 /// Enables the user to do range intersection testing.
-pub(crate) trait MemoryRange {
+pub trait MemoryRange {
     /// Returns true if `self` contains `range` fully.
     fn contains_range(&self, range: &Range<u32>) -> bool;
 

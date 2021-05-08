@@ -1,15 +1,11 @@
 //! Internal target registry
 
-use super::target::Target;
-use crate::config::{Chip, ChipFamily, ChipInfo};
-use crate::core::CoreType;
+use super::{Chip, ChipFamily, ChipInfo, Target, TargetDescriptionSource};
+use crate::config::CoreType;
 use lazy_static::lazy_static;
 use std::fs::File;
 use std::path::Path;
-use std::{
-    borrow::Cow,
-    sync::{Arc, Mutex, TryLockError},
-};
+use std::sync::{Arc, Mutex, TryLockError};
 use thiserror::Error;
 
 lazy_static! {
@@ -49,80 +45,88 @@ impl<R> From<TryLockError<R>> for RegistryError {
     }
 }
 
-const GENERIC_TARGETS: [ChipFamily; 6] = [
-    ChipFamily {
-        name: Cow::Borrowed("Generic Cortex-M0"),
-        manufacturer: None,
-        variants: Cow::Borrowed(&[Chip {
-            name: Cow::Borrowed("cortex-m0"),
-            part: None,
-            memory_map: Cow::Borrowed(&[]),
-            flash_algorithms: Cow::Borrowed(&[]),
-        }]),
-        flash_algorithms: Cow::Borrowed(&[]),
-        core: Cow::Borrowed("M0"),
-    },
-    ChipFamily {
-        name: Cow::Borrowed("Generic Cortex-M4"),
-        manufacturer: None,
-        variants: Cow::Borrowed(&[Chip {
-            name: Cow::Borrowed("cortex-m4"),
-            part: None,
-            memory_map: Cow::Borrowed(&[]),
-            flash_algorithms: Cow::Borrowed(&[]),
-        }]),
-        flash_algorithms: Cow::Borrowed(&[]),
-        core: Cow::Borrowed("M4"),
-    },
-    ChipFamily {
-        name: Cow::Borrowed("Generic Cortex-M3"),
-        manufacturer: None,
-        variants: Cow::Borrowed(&[Chip {
-            name: Cow::Borrowed("cortex-m3"),
-            part: None,
-            memory_map: Cow::Borrowed(&[]),
-            flash_algorithms: Cow::Borrowed(&[]),
-        }]),
-        flash_algorithms: Cow::Borrowed(&[]),
-        core: Cow::Borrowed("M3"),
-    },
-    ChipFamily {
-        name: Cow::Borrowed("Generic Cortex-M33"),
-        manufacturer: None,
-        variants: Cow::Borrowed(&[Chip {
-            name: Cow::Borrowed("cortex-m33"),
-            part: None,
-            memory_map: Cow::Borrowed(&[]),
-            flash_algorithms: Cow::Borrowed(&[]),
-        }]),
-        flash_algorithms: Cow::Borrowed(&[]),
-        core: Cow::Borrowed("M33"),
-    },
-    ChipFamily {
-        name: Cow::Borrowed("Generic Cortex-M7"),
-        manufacturer: None,
-        variants: Cow::Borrowed(&[Chip {
-            name: Cow::Borrowed("cortex-m7"),
-            part: None,
-            memory_map: Cow::Borrowed(&[]),
-            flash_algorithms: Cow::Borrowed(&[]),
-        }]),
-        flash_algorithms: Cow::Borrowed(&[]),
-        core: Cow::Borrowed("M7"),
-    },
-    ChipFamily {
-        name: Cow::Borrowed("Generic Riscv"),
-        manufacturer: None,
-        variants: Cow::Borrowed(&[Chip {
-            name: Cow::Borrowed("riscv"),
-            part: None,
-            memory_map: Cow::Borrowed(&[]),
-            flash_algorithms: Cow::Borrowed(&[]),
-        }]),
-        flash_algorithms: Cow::Borrowed(&[]),
-        core: Cow::Borrowed("riscv"),
-    },
-];
+fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
+    vec.extend_from_slice(&[
+        ChipFamily {
+            name: "Generic Cortex-M0".to_owned(),
+            manufacturer: None,
+            variants: vec![Chip {
+                name: "cortex-m0".to_owned(),
+                part: None,
+                memory_map: vec![],
+                flash_algorithms: vec![],
+            }],
+            flash_algorithms: vec![],
+            core: CoreType::M0,
+            source: TargetDescriptionSource::Generic,
+        },
+        ChipFamily {
+            name: "Generic Cortex-M4".to_owned(),
+            manufacturer: None,
+            variants: vec![Chip {
+                name: "cortex-m4".to_owned(),
+                part: None,
+                memory_map: vec![],
+                flash_algorithms: vec![],
+            }],
+            flash_algorithms: vec![],
+            core: CoreType::M4,
+            source: TargetDescriptionSource::Generic,
+        },
+        ChipFamily {
+            name: "Generic Cortex-M3".to_owned(),
+            manufacturer: None,
+            variants: vec![Chip {
+                name: "cortex-m3".to_owned(),
+                part: None,
+                memory_map: vec![],
+                flash_algorithms: vec![],
+            }],
+            flash_algorithms: vec![],
+            core: CoreType::M3,
+            source: TargetDescriptionSource::Generic,
+        },
+        ChipFamily {
+            name: "Generic Cortex-M33".to_owned(),
+            manufacturer: None,
+            variants: vec![Chip {
+                name: "cortex-m33".to_owned(),
+                part: None,
+                memory_map: vec![],
+                flash_algorithms: vec![],
+            }],
+            flash_algorithms: vec![],
+            core: CoreType::M33,
+            source: TargetDescriptionSource::Generic,
+        },
+        ChipFamily {
+            name: "Generic Cortex-M7".to_owned(),
+            manufacturer: None,
+            variants: vec![Chip {
+                name: "cortex-m7".to_owned(),
+                part: None,
+                memory_map: vec![],
+                flash_algorithms: vec![],
+            }],
+            flash_algorithms: vec![],
+            core: CoreType::M7,
+            source: TargetDescriptionSource::Generic,
+        },
+        ChipFamily {
+            name: "Generic Riscv".to_owned(),
+            manufacturer: None,
+            variants: vec![Chip {
+                name: "riscv".to_owned(),
+                part: None,
+                memory_map: vec![],
+                flash_algorithms: vec![],
+            }],
+            flash_algorithms: vec![],
+            core: CoreType::Riscv,
+            source: TargetDescriptionSource::Generic,
+        },
+    ]);
+}
 
 /// Registry of all available targets.
 struct Registry {
@@ -130,26 +134,23 @@ struct Registry {
     families: Vec<ChipFamily>,
 }
 
-#[cfg(feature = "builtin-targets")]
-mod builtin {
-    include!(concat!(env!("OUT_DIR"), "/targets.rs"));
-}
-
 impl Registry {
-    #[cfg(feature = "builtin-targets")]
     fn from_builtin_families() -> Self {
-        let mut families = Vec::from(builtin::get_targets());
+        const BUILTIN_TARGETS: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/targets.bincode"));
 
-        families.extend(GENERIC_TARGETS.iter().cloned());
+        let mut families: Vec<ChipFamily> = bincode::deserialize(BUILTIN_TARGETS)
+            .expect("Failed to deserialize builtin targets. This is a bug.");
+
+        add_generic_targets(&mut families);
 
         Self { families }
     }
 
     #[cfg(not(feature = "builtin-targets"))]
     fn from_builtin_families() -> Self {
-        Self {
-            families: GENERIC_TARGETS.iter().cloned().collect(),
-        }
+        let mut families = vec![];
+        add_generic_targets(&mut families);
+        families
     }
 
     fn families(&self) -> &Vec<ChipFamily> {
@@ -189,6 +190,26 @@ impl Registry {
             (family, chip)
         };
         self.get_target(family, chip)
+    }
+
+    fn search_chips(&self, name: &str) -> Vec<String> {
+        log::debug!("Searching registry for chip with name {}", name);
+
+        let mut targets = Vec::new();
+
+        for family in &self.families {
+            for variant in family.variants.iter() {
+                if variant
+                    .name
+                    .to_ascii_lowercase()
+                    .starts_with(&name.to_ascii_lowercase())
+                {
+                    targets.push(variant.name.to_string())
+                }
+            }
+        }
+
+        targets
     }
 
     fn get_target_by_chip_info(&self, chip_info: ChipInfo) -> Result<Target, RegistryError> {
@@ -234,15 +255,6 @@ impl Registry {
     }
 
     fn get_target(&self, family: &ChipFamily, chip: &Chip) -> Result<Target, RegistryError> {
-        // Try get the corresponding chip.
-        let core = if let Some(core) = CoreType::from_string(&family.core) {
-            core
-        } else {
-            return Err(RegistryError::UnknownCoreType(
-                family.core.clone().into_owned(),
-            ));
-        };
-
         // find relevant algorithms
         let chip_algorithms = chip
             .flash_algorithms
@@ -251,12 +263,17 @@ impl Registry {
             .cloned()
             .collect();
 
-        Ok(Target::new(chip, chip_algorithms, core))
+        Ok(Target::new(
+            chip,
+            chip_algorithms,
+            family.core,
+            family.source.clone(),
+        ))
     }
 
     fn add_target_from_yaml(&mut self, path_to_yaml: &Path) -> Result<(), RegistryError> {
         let file = File::open(path_to_yaml)?;
-        let chip = ChipFamily::from_yaml_reader(file)?;
+        let chip: ChipFamily = serde_yaml::from_reader(file)?;
 
         let index = self
             .families
@@ -274,6 +291,11 @@ impl Registry {
 /// Get a target from the internal registry based on its name.
 pub fn get_target_by_name(name: impl AsRef<str>) -> Result<Target, RegistryError> {
     REGISTRY.try_lock()?.get_target_by_name(name)
+}
+
+/// Get a target from the internal registry based on its name.
+pub fn search_chips(name: impl AsRef<str>) -> Result<Vec<String>, RegistryError> {
+    Ok(REGISTRY.try_lock()?.search_chips(name.as_ref()))
 }
 
 /// Try to retrieve a target based on [ChipInfo] read from a target.

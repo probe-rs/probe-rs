@@ -1,0 +1,363 @@
+---
+name: SAME70
+variants:
+  - name: ATSAME70J19
+    memory_map:
+      - Ram:
+          range:
+            start: 541065216
+            end: 541327360
+          is_boot_memory: false
+      - Nvm:
+          range:
+            start: 4194304
+            end: 4718592
+          is_boot_memory: true
+    flash_algorithms:
+      - atsame7x_512
+      - atsame7x_gpnvm
+  - name: ATSAME70J19B
+    memory_map:
+      - Ram:
+          range:
+            start: 541065216
+            end: 541327360
+          is_boot_memory: false
+      - Nvm:
+          range:
+            start: 4194304
+            end: 4718592
+          is_boot_memory: true
+    flash_algorithms:
+      - atsame7x_512
+      - atsame7x_gpnvm
+  - name: ATSAME70J20
+    memory_map:
+      - Ram:
+          range:
+            start: 541065216
+            end: 541458432
+          is_boot_memory: false
+      - Nvm:
+          range:
+            start: 4194304
+            end: 5242880
+          is_boot_memory: true
+    flash_algorithms:
+      - atsame7x_1024
+      - atsame7x_gpnvm
+  - name: ATSAME70J20B
+    memory_map:
+      - Ram:
+          range:
+            start: 541065216
+            end: 541458432
+          is_boot_memory: false
+      - Nvm:
+          range:
+            start: 4194304
+            end: 5242880
+          is_boot_memory: true
+    flash_algorithms:
+      - atsame7x_1024
+      - atsame7x_gpnvm
+  - name: ATSAME70J21
+    memory_map:
+      - Ram:
+          range:
+            start: 541065216
+            end: 541458432
+          is_boot_memory: false
+      - Nvm:
+          range:
+            start: 4194304
+            end: 6291456
+          is_boot_memory: true
+    flash_algorithms:
+      - atsame7x_2048
+      - atsame7x_gpnvm
+  - name: ATSAME70J21B
+    memory_map:
+      - Ram:
+          range:
+            start: 541065216
+            end: 541458432
+          is_boot_memory: false
+      - Nvm:
+          range:
+            start: 4194304
+            end: 6291456
+          is_boot_memory: true
+    flash_algorithms:
+      - atsame7x_2048
+      - atsame7x_gpnvm
+  - name: ATSAME70N19
+    memory_map:
+      - Ram:
+          range:
+            start: 541065216
+            end: 541327360
+          is_boot_memory: false
+      - Nvm:
+          range:
+            start: 4194304
+            end: 4718592
+          is_boot_memory: true
+    flash_algorithms:
+      - atsame7x_512
+      - atsame7x_gpnvm
+  - name: ATSAME70N19B
+    memory_map:
+      - Ram:
+          range:
+            start: 541065216
+            end: 541327360
+          is_boot_memory: false
+      - Nvm:
+          range:
+            start: 4194304
+            end: 4718592
+          is_boot_memory: true
+    flash_algorithms:
+      - atsame7x_512
+      - atsame7x_gpnvm
+  - name: ATSAME70N20
+    memory_map:
+      - Ram:
+          range:
+            start: 541065216
+            end: 541458432
+          is_boot_memory: false
+      - Nvm:
+          range:
+            start: 4194304
+            end: 5242880
+          is_boot_memory: true
+    flash_algorithms:
+      - atsame7x_1024
+      - atsame7x_gpnvm
+  - name: ATSAME70N20B
+    memory_map:
+      - Ram:
+          range:
+            start: 541065216
+            end: 541458432
+          is_boot_memory: false
+      - Nvm:
+          range:
+            start: 4194304
+            end: 5242880
+          is_boot_memory: true
+    flash_algorithms:
+      - atsame7x_1024
+      - atsame7x_gpnvm
+  - name: ATSAME70N21
+    memory_map:
+      - Ram:
+          range:
+            start: 541065216
+            end: 541458432
+          is_boot_memory: false
+      - Nvm:
+          range:
+            start: 4194304
+            end: 6291456
+          is_boot_memory: true
+    flash_algorithms:
+      - atsame7x_2048
+      - atsame7x_gpnvm
+  - name: ATSAME70N21B
+    memory_map:
+      - Ram:
+          range:
+            start: 541065216
+            end: 541458432
+          is_boot_memory: false
+      - Nvm:
+          range:
+            start: 4194304
+            end: 6291456
+          is_boot_memory: true
+    flash_algorithms:
+      - atsame7x_2048
+      - atsame7x_gpnvm
+  - name: ATSAME70Q19
+    memory_map:
+      - Ram:
+          range:
+            start: 541065216
+            end: 541327360
+          is_boot_memory: false
+      - Nvm:
+          range:
+            start: 4194304
+            end: 4718592
+          is_boot_memory: true
+    flash_algorithms:
+      - atsame7x_512
+      - atsame7x_gpnvm
+  - name: ATSAME70Q19B
+    memory_map:
+      - Ram:
+          range:
+            start: 541065216
+            end: 541327360
+          is_boot_memory: false
+      - Nvm:
+          range:
+            start: 4194304
+            end: 4718592
+          is_boot_memory: true
+    flash_algorithms:
+      - atsame7x_512
+      - atsame7x_gpnvm
+  - name: ATSAME70Q20
+    memory_map:
+      - Ram:
+          range:
+            start: 541065216
+            end: 541458432
+          is_boot_memory: false
+      - Nvm:
+          range:
+            start: 4194304
+            end: 5242880
+          is_boot_memory: true
+    flash_algorithms:
+      - atsame7x_1024
+      - atsame7x_gpnvm
+  - name: ATSAME70Q20B
+    memory_map:
+      - Ram:
+          range:
+            start: 541065216
+            end: 541458432
+          is_boot_memory: false
+      - Nvm:
+          range:
+            start: 4194304
+            end: 5242880
+          is_boot_memory: true
+    flash_algorithms:
+      - atsame7x_1024
+      - atsame7x_gpnvm
+  - name: ATSAME70Q21
+    memory_map:
+      - Ram:
+          range:
+            start: 541065216
+            end: 541458432
+          is_boot_memory: false
+      - Nvm:
+          range:
+            start: 4194304
+            end: 6291456
+          is_boot_memory: true
+    flash_algorithms:
+      - atsame7x_2048
+      - atsame7x_gpnvm
+  - name: ATSAME70Q21B
+    memory_map:
+      - Ram:
+          range:
+            start: 541065216
+            end: 541458432
+          is_boot_memory: false
+      - Nvm:
+          range:
+            start: 4194304
+            end: 6291456
+          is_boot_memory: true
+    flash_algorithms:
+      - atsame7x_2048
+      - atsame7x_gpnvm
+flash_algorithms:
+  atsame7x_512:
+    name: atsame7x_512
+    description: ATSAME7x 512kB Flash
+    default: true
+    instructions: MLVdSUlECGBdSVxISGIPIFtJAALAOQhgASBaScADSGFYScAxSGBZS1dIWGJXSsA6EGuACIAAQBwQY1RIgDiBagkH/NURa3AkoUMRY4FqCQf81RFqTk0pQxFigWqJA/zVEWqhQ0pMGDQhQxFiEWrkBKFDNyQkBCFDEWKBaskD/NURa4kIiQBJHBFjgWoJB/zVASERY4FqCQf81TtIQBxYYgAgML0CKBHRNUg6ScA4QWCBaMkH/NDBaIkHB9Q1Sf4xQWAA4AC/gWjJB/vQK0gsSUAcSGIAIHBHLkkpSAg5wDhBYADgAL+BaMkH+9AAIHBHIUojSUpEEmjAOYAaQAqACIAAgBwABAIKIkgAHxBDSGAA4AC/iGjAB/vQHkiAHwJDSmAA4AC/iGjAB/vQiGgAB0APANABIHBHMLUPSRBLSUQJaMA7QRpMClkVIMoJHyDAACn60SAED0kACgw5CENYYADgAL+YaMAH+9CYaAAHQA8A0AEgML0AAAQAAAAAQ0ZFwAwOQEAYDkAAQ01QwAYOQAgANwANAABaAAAAAAAAAAA=
+    pc_init: 1
+    pc_uninit: 165
+    pc_program_page: 313
+    pc_erase_sector: 241
+    pc_erase_all: 217
+    data_section_offset: 408
+    flash_properties:
+      address_range:
+        start: 4194304
+        end: 4718592
+      page_size: 512
+      erased_byte_value: 255
+      program_page_timeout: 100
+      erase_sector_timeout: 1000
+      sectors:
+        - size: 8192
+          address: 0
+  atsame7x_1024:
+    name: atsame7x_1024
+    description: ATSAME7x 1024kB Flash
+    default: true
+    instructions: MLVdSUlECGBdSVxISGIPIFtJAALAOQhgASBaScADSGFYScAxSGBZS1dIWGJXSsA6EGuACIAAQBwQY1RIgDiBagkH/NURa3AkoUMRY4FqCQf81RFqTk0pQxFigWqJA/zVEWqhQ0pMGDQhQxFiEWrkBKFDNyQkBCFDEWKBaskD/NURa4kIiQBJHBFjgWoJB/zVASERY4FqCQf81TtIQBxYYgAgML0CKBHRNUg6ScA4QWCBaMkH/NDBaIkHB9Q1Sf4xQWAA4AC/gWjJB/vQK0gsSUAcSGIAIHBHLkkpSAg5wDhBYADgAL+BaMkH+9AAIHBHIUojSUpEEmjAOYAaQAqACIAAgBwABAIKIkgAHxBDSGAA4AC/iGjAB/vQHkiAHwJDSmAA4AC/iGjAB/vQiGgAB0APANABIHBHMLUPSRBLSUQJaMA7QRpMClkVIMoJHyDAACn60SAED0kACgw5CENYYADgAL+YaMAH+9CYaAAHQA8A0AEgML0AAAQAAAAAQ0ZFwAwOQEAYDkAAQ01QwAYOQAgANwANAABaAAAAAAAAAAA=
+    pc_init: 1
+    pc_uninit: 165
+    pc_program_page: 313
+    pc_erase_sector: 241
+    pc_erase_all: 217
+    data_section_offset: 408
+    flash_properties:
+      address_range:
+        start: 4194304
+        end: 5242880
+      page_size: 512
+      erased_byte_value: 255
+      program_page_timeout: 100
+      erase_sector_timeout: 1000
+      sectors:
+        - size: 8192
+          address: 0
+  atsame7x_2048:
+    name: atsame7x_2048
+    description: ATSAME7x 2048kB Flash
+    default: true
+    instructions: MLVdSUlECGBdSVxISGIPIFtJAALAOQhgASBaScADSGFYScAxSGBZS1dIWGJXSsA6EGuACIAAQBwQY1RIgDiBagkH/NURa3AkoUMRY4FqCQf81RFqTk0pQxFigWqJA/zVEWqhQ0pMGDQhQxFiEWrkBKFDNyQkBCFDEWKBaskD/NURa4kIiQBJHBFjgWoJB/zVASERY4FqCQf81TtIQBxYYgAgML0CKBHRNUg6ScA4QWCBaMkH/NDBaIkHB9Q1Sf4xQWAA4AC/gWjJB/vQK0gsSUAcSGIAIHBHLkkpSAg5wDhBYADgAL+BaMkH+9AAIHBHIUojSUpEEmjAOYAaQAqACIAAgBwABAIKIkgAHxBDSGAA4AC/iGjAB/vQHkiAHwJDSmAA4AC/iGjAB/vQiGgAB0APANABIHBHMLUPSRBLSUQJaMA7QRpMClkVIMoJHyDAACn60SAED0kACgw5CENYYADgAL+YaMAH+9CYaAAHQA8A0AEgML0AAAQAAAAAQ0ZFwAwOQEAYDkAAQ01QwAYOQAgANwANAABaAAAAAAAAAAA=
+    pc_init: 1
+    pc_uninit: 165
+    pc_program_page: 313
+    pc_erase_sector: 241
+    pc_erase_all: 217
+    data_section_offset: 408
+    flash_properties:
+      address_range:
+        start: 4194304
+        end: 6291456
+      page_size: 512
+      erased_byte_value: 255
+      program_page_timeout: 100
+      erase_sector_timeout: 1000
+      sectors:
+        - size: 8192
+          address: 0
+  atsame7x_gpnvm:
+    name: atsame7x_gpnvm
+    description: ATSAME7x GPNVM bits
+    default: false
+    instructions: MLWASUlECGCASX9ISGIPIH5JAALAOQhgASB9ScADSGF7ScAxSGB8S3pIWGJ6SsA6EGuACIAAQBwQY3dIgDiBagkH/NURa3AkoUMRY4FqCQf81RFqcU0pQxFigWqJA/zVEWqhQ21MGDQhQxFiEWrkBKFDNyQkBCFDEWKBaskD/NURa4kIiQBJHBFjgWoJB/zVASERY4FqCQf81V5IQBxYYgAgML1YSFlJQBxIYgAgcEcAIHBHACBwR1JKVElKRBJowDmAGkAKgAiAAIAcAAQCClNIEENIYADgAL+IaMAH+9BPSIAeAkNKYADgAL+IaMAH+9CIaAAHQA8A0AEgcEcQtRBoR0pBSRIdwDlKYIpo0gf80MpowwfUB9sP5A+jQgzQwwcC0D5LmxwB4D1L2xxLYADgAL+LaNsH+9ACIwRGHEATQJxCC9CDBwHVNksB4DVLWxxLYADgAL+LaNsH+9CAIwRGHEATQJxCC9ADBgHVLksB4C1LWxxLYADgAL+LaNsH+9D/IwEzBEYcQBpAlEIL0MAFAdUlSAHgJEhAHEhgAOAAv4howAf70AAgEL0wtRxMFkskHRJowDtcYJxo5Af80Nto1AfdB+QP7Q+sQgbRAiQVRiVAHEClQgHQQBwwvYAkFUYlQBxApUIB0MAdML3/JAE0IkAjQJpCAdAIMDC9QBgwvQAABAAAAABDRkXADA5AQBgOQABDTVDABg5ACAA3AAkAAFoLAQBaCwcAWgsIAFoAAAAAAAAAAA==
+    pc_init: 1
+    pc_uninit: 165
+    pc_program_page: 255
+    pc_erase_sector: 185
+    pc_erase_all: 181
+    data_section_offset: 560
+    flash_properties:
+      address_range:
+        start: 536870896
+        end: 536870912
+      page_size: 16
+      erased_byte_value: 255
+      program_page_timeout: 100
+      erase_sector_timeout: 1000
+      sectors:
+        - size: 16
+          address: 0
+core: M7

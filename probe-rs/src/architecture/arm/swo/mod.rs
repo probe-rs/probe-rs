@@ -1,8 +1,4 @@
-mod decoder;
-mod publisher;
-
-pub use decoder::{Decoder, ExceptionAction, ExceptionType, TracePacket};
-pub use publisher::{SwoPublisher, UpdaterChannel};
+pub use itm_decode::*;
 
 use crate::Error;
 

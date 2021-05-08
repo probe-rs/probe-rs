@@ -3,13 +3,13 @@ pub mod tools;
 
 use crate::{
     architecture::arm::{
-        communication_interface::ArmProbeInterface,
+        communication_interface::{ArmProbeInterface, DAPProbe},
         dp::{Abort, Ctrl, DPAccess, DPRegister, DebugPortError},
         swo::poll_interval_from_buf_size,
         ArmCommunicationInterface, DAPAccess, DapError, PortType, Register, SwoAccess, SwoConfig,
         SwoMode,
     },
-    probe::{daplink::commands::CmsisDapError, BatchCommand},
+    probe::{cmsisdap::commands::CmsisDapError, BatchCommand},
     DebugProbe, DebugProbeError, DebugProbeSelector, Error as ProbeRsError, WireProtocol,
 };
 
@@ -33,7 +33,7 @@ use commands::{
         Ack, InnerTransferRequest, TransferBlockRequest, TransferBlockResponse, TransferRequest,
         TransferResponse, RW,
     },
-    DAPLinkDevice, Status,
+    CMSISDAPDevice, Status,
 };
 
 use log::debug;
@@ -42,8 +42,8 @@ use std::time::Duration;
 
 use anyhow::anyhow;
 
-pub struct DAPLink {
-    pub device: DAPLinkDevice,
+pub struct CMSISDAP {
+    pub device: CMSISDAPDevice,
     _hw_version: u8,
     _jtag_version: u8,
     protocol: Option<WireProtocol>,
@@ -61,9 +61,9 @@ pub struct DAPLink {
     batch: Vec<BatchCommand>,
 }
 
-impl std::fmt::Debug for DAPLink {
+impl std::fmt::Debug for CMSISDAP {
     fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        fmt.debug_struct("DAPLink")
+        fmt.debug_struct("CMSISDAP")
             .field("protocol", &self.protocol)
             .field("packet_size", &self.packet_size)
             .field("packet_count", &self.packet_count)
@@ -76,19 +76,11 @@ impl std::fmt::Debug for DAPLink {
     }
 }
 
-impl DAPLink {
-    pub fn new_from_device(device: DAPLinkDevice) -> Self {
+impl CMSISDAP {
+    pub fn new_from_device(device: CMSISDAPDevice) -> Self {
         // Discard anything left in buffer, as otherwise
         // we'll get out of sync between requests and responses.
-        if let DAPLinkDevice::V1(ref hid_device) = device {
-            let mut discard_buffer = [0u8; 128];
-            loop {
-                match hid_device.read_timeout(&mut discard_buffer, 1) {
-                    Ok(n) if n != 0 => continue,
-                    _ => break,
-                }
-            }
-        }
+        device.drain();
 
         Self {
             device,
@@ -201,16 +193,16 @@ impl DAPLink {
             } else {
                 match response.transfer_response.ack {
                     Ack::Ok => {
-                        log::trace!("ack",);
+                        log::trace!("Transfer status: ACK");
                         return Ok(response.transfer_data);
                     }
                     Ack::NoAck => {
-                        log::trace!("nack",);
+                        log::trace!("Transfer status: NACK");
                         //try a reset?
                         return Err(DapError::NoAcknowledge.into());
                     }
                     Ack::Fault => {
-                        log::trace!("fault",);
+                        log::trace!("Transfer status: FAULT");
 
                         // Check the reason for the fault
                         let response = DAPAccess::read_register(
@@ -380,7 +372,7 @@ impl DAPLink {
     }
 }
 
-impl DPAccess for DAPLink {
+impl DPAccess for CMSISDAP {
     fn read_dp_register<R: DPRegister>(&mut self) -> Result<R, DebugPortError> {
         debug!("Reading DP register {}", R::NAME);
         let result = self.read_register(PortType::DebugPort, u16::from(R::ADDRESS))?;
@@ -400,7 +392,7 @@ impl DPAccess for DAPLink {
     }
 }
 
-impl DebugProbe for DAPLink {
+impl DebugProbe for CMSISDAP {
     fn new_from_selector(
         selector: impl Into<DebugProbeSelector>,
     ) -> Result<Box<Self>, DebugProbeError>
@@ -413,7 +405,7 @@ impl DebugProbe for DAPLink {
     }
 
     fn get_name(&self) -> &str {
-        "DAPLink"
+        "CMSIS-DAP"
     }
 
     /// Get the currently set maximum speed.
@@ -435,7 +427,7 @@ impl DebugProbe for DAPLink {
 
     /// Enters debug mode.
     fn attach(&mut self) -> Result<(), DebugProbeError> {
-        // get information about the daplink
+        // get information about the probe
         let PacketCount(packet_count) =
             commands::send_command(&mut self.device, Command::PacketCount)?;
         let PacketSize(packet_size) =
@@ -443,6 +435,22 @@ impl DebugProbe for DAPLink {
 
         self.packet_count = Some(packet_count);
         self.packet_size = Some(packet_size);
+
+        // On V1 devices, set the HID report size to the CMSIS-DAP reported packet size.
+        // We don't change it on V2 devices since we can use the endpoint maximum length.
+        if let CMSISDAPDevice::V1 {
+            ref mut report_size,
+            ..
+        } = self.device
+        {
+            if packet_size > 0 && packet_size as usize != *report_size {
+                debug!(
+                    "Setting HID report size to packet size of {} bytes",
+                    packet_size
+                );
+                *report_size = packet_size as usize;
+            }
+        }
 
         let caps = commands::send_command(&mut self.device, Command::Capabilities)?;
         self.capabilities = Some(caps);
@@ -583,32 +591,25 @@ impl DebugProbe for DAPLink {
         Some(self as _)
     }
 
-    fn get_arm_interface<'probe>(
+    fn try_get_arm_interface<'probe>(
         self: Box<Self>,
-    ) -> Result<Option<Box<dyn ArmProbeInterface + 'probe>>, DebugProbeError> {
-        let interface = ArmCommunicationInterface::new(self, false)?;
-
-        Ok(Some(Box::new(interface)))
+    ) -> Result<Box<dyn ArmProbeInterface + 'probe>, (Box<dyn DebugProbe>, DebugProbeError)> {
+        match ArmCommunicationInterface::new(self, false) {
+            Ok(interface) => Ok(Box::new(interface)),
+            Err((probe, error)) => Err((probe.into_probe(), error)),
+        }
     }
 
     fn has_arm_interface(&self) -> bool {
         true
     }
-}
 
-impl<'a> AsRef<dyn DebugProbe + 'a> for DAPLink {
-    fn as_ref(&self) -> &(dyn DebugProbe + 'a) {
+    fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
         self
     }
 }
 
-impl<'a> AsMut<dyn DebugProbe + 'a> for DAPLink {
-    fn as_mut(&mut self) -> &mut (dyn DebugProbe + 'a) {
-        self
-    }
-}
-
-impl DAPAccess for DAPLink {
+impl DAPAccess for CMSISDAP {
     /// Reads the DAP register on the specified port and address.
     fn read_register(&mut self, port: PortType, addr: u16) -> Result<u32, DebugProbeError> {
         self.batch_add(BatchCommand::Read(port, addr))
@@ -715,13 +716,11 @@ impl DAPAccess for DAPLink {
         self.process_batch()?;
         Ok(())
     }
-
-    fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
-        self
-    }
 }
 
-impl SwoAccess for DAPLink {
+impl DAPProbe for CMSISDAP {}
+
+impl SwoAccess for CMSISDAP {
     fn enable_swo(&mut self, config: &SwoConfig) -> Result<(), ProbeRsError> {
         // We read capabilities on initialisation so it should not be None.
         let caps = self.capabilities.expect("This is a bug. Please report it.");
@@ -750,7 +749,7 @@ impl SwoAccess for DAPLink {
         // the probe in V2 mode and it has an SWO endpoint, request that, otherwise
         // request the DAP_SWO_Data polling mode.
         if caps.swo_streaming_trace_implemented && self.device.swo_streaming_supported() {
-            debug!("Starting SWO capture with WinUSB transport");
+            debug!("Starting SWO capture with streaming transport");
             self.set_swo_transport(swo::TransportRequest::WinUsbEndpoint)?;
             self.swo_streaming = true;
         } else {
@@ -791,9 +790,7 @@ impl SwoAccess for DAPLink {
     fn read_swo_timeout(&mut self, timeout: Duration) -> Result<Vec<u8>, ProbeRsError> {
         if self.swo_active {
             if self.swo_streaming {
-                let mut buffer = vec![0u8; 1024];
-                let n = self.device.read_swo_stream(&mut buffer, timeout)?;
-                buffer.truncate(n);
+                let buffer = self.device.read_swo_stream(timeout)?;
                 log::trace!("SWO streaming buffer: {:?}", buffer);
                 Ok(buffer)
             } else {
@@ -827,9 +824,9 @@ impl SwoAccess for DAPLink {
     }
 }
 
-impl Drop for DAPLink {
+impl Drop for CMSISDAP {
     fn drop(&mut self) {
-        debug!("Detaching from DAPLink");
+        debug!("Detaching from CMSIS-DAP probe");
         // We ignore the error cases as we can't do much about it anyways.
         let _ = self.process_batch();
 

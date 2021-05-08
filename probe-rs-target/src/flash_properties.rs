@@ -1,5 +1,6 @@
 use super::memory::SectorDescription;
-use std::{borrow::Cow, ops::Range};
+use serde::{Deserialize, Serialize};
+use std::ops::Range;
 
 /// Properties of flash memory, which
 /// are used when programming Flash memory.
@@ -19,7 +20,7 @@ pub struct FlashProperties {
     /// The approximative time it takes to erase a sector.
     pub erase_sector_timeout: u32,
     /// The available sectors of the device flash.
-    pub sectors: Cow<'static, [SectorDescription]>,
+    pub sectors: Vec<SectorDescription>,
 }
 
 impl Default for FlashProperties {
@@ -31,7 +32,7 @@ impl Default for FlashProperties {
             erased_byte_value: 0,
             program_page_timeout: 0,
             erase_sector_timeout: 0,
-            sectors: Cow::Borrowed(&[]),
+            sectors: vec![],
         }
     }
 }

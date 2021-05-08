@@ -2,14 +2,11 @@ pub(crate) mod communication_interface;
 
 pub use communication_interface::CommunicationInterface;
 
-use crate::error;
-use crate::DebugProbeError;
-use crate::{
-    architecture::{
-        arm::core::CortexState, riscv::communication_interface::RiscvCommunicationInterface,
-    },
-    Error, Memory, MemoryInterface,
+use crate::architecture::{
+    arm::core::CortexState, riscv::communication_interface::RiscvCommunicationInterface,
 };
+use crate::config::CoreType;
+use crate::{error, DebugProbeError, Error, Memory, MemoryInterface};
 use anyhow::{anyhow, Result};
 use std::time::Duration;
 
@@ -216,41 +213,6 @@ impl<'probe> MemoryInterface for Core<'probe> {
     }
 }
 
-#[derive(Copy, Clone)]
-pub enum CoreType {
-    M3,
-    M4,
-    M33,
-    M0,
-    M7,
-    Riscv,
-}
-
-impl CoreType {
-    pub(crate) fn from_string(name: impl AsRef<str>) -> Option<Self> {
-        match &name.as_ref().to_ascii_lowercase()[..] {
-            "m0" => Some(CoreType::M0),
-            "m4" => Some(CoreType::M4),
-            "m3" => Some(CoreType::M3),
-            "m33" => Some(CoreType::M33),
-            "riscv" => Some(CoreType::Riscv),
-            "m7" => Some(CoreType::M7),
-            _ => None,
-        }
-    }
-
-    pub(crate) fn from(value: &SpecificCoreState) -> Self {
-        match value {
-            SpecificCoreState::M0(_) => CoreType::M0,
-            SpecificCoreState::M3(_) => CoreType::M3,
-            SpecificCoreState::M33(_) => CoreType::M33,
-            SpecificCoreState::M4(_) => CoreType::M4,
-            SpecificCoreState::M7(_) => CoreType::M7,
-            SpecificCoreState::Riscv => CoreType::Riscv,
-        }
-    }
-}
-
 #[derive(Debug)]
 pub struct CoreState {
     id: usize,
@@ -258,7 +220,7 @@ pub struct CoreState {
 }
 
 impl CoreState {
-    fn new(id: usize) -> Self {
+    pub fn new(id: usize) -> Self {
         Self {
             id,
             breakpoints: vec![],
@@ -267,7 +229,7 @@ impl CoreState {
 }
 
 #[derive(Debug)]
-pub(crate) enum SpecificCoreState {
+pub enum SpecificCoreState {
     M3(CortexState),
     M4(CortexState),
     M33(CortexState),
@@ -285,6 +247,17 @@ impl SpecificCoreState {
             CoreType::M4 => SpecificCoreState::M4(CortexState::new()),
             CoreType::M7 => SpecificCoreState::M7(CortexState::new()),
             CoreType::Riscv => SpecificCoreState::Riscv,
+        }
+    }
+
+    pub(crate) fn core_type(&self) -> CoreType {
+        match self {
+            SpecificCoreState::M0(_) => CoreType::M0,
+            SpecificCoreState::M3(_) => CoreType::M3,
+            SpecificCoreState::M33(_) => CoreType::M33,
+            SpecificCoreState::M4(_) => CoreType::M4,
+            SpecificCoreState::M7(_) => CoreType::M7,
+            SpecificCoreState::Riscv => CoreType::Riscv,
         }
     }
 
@@ -314,7 +287,7 @@ impl SpecificCoreState {
         })
     }
 
-    pub(crate) fn attach_riscv<'probe>(
+    pub fn attach_riscv<'probe>(
         &self,
         state: &'probe mut CoreState,
         interface: &'probe mut RiscvCommunicationInterface,
@@ -502,7 +475,7 @@ impl<'probe> Core<'probe> {
 
     /// Clear all HW breakpoints which were set by probe-rs.
     ///
-    /// Currently used as a helper function in [Session::drop].
+    /// Currently used as a helper function in [`Session::drop`].
     pub(crate) fn clear_all_set_hw_breakpoints(&mut self) -> Result<(), error::Error> {
         for bp in self.state.breakpoints.drain(..) {
             self.inner.clear_breakpoint(bp.register_hw)?;

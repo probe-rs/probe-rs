@@ -8,6 +8,7 @@ use std::collections::HashMap;
 use std::convert::TryInto;
 use thiserror::Error;
 
+#[derive(Debug)]
 pub struct MockMemoryAP {
     pub memory: Vec<u8>,
     store: HashMap<(u8, u8), u32>,
@@ -21,7 +22,6 @@ pub enum MockMemoryError {
     UnknownRegister,
 }
 
-#[cfg(test)]
 impl MockMemoryAP {
     /// Creates a MockMemoryAP with the memory filled with a pattern where each byte is equal to its
     /// own address plus one (to avoid zeros). The pattern can be used as a canary pattern to ensure
@@ -71,16 +71,25 @@ where
 
                 let new_drw = match csw.SIZE {
                     DataSize::U32 => {
-                        let bytes = self.memory[offset..offset + 4].try_into().unwrap();
+                        let bytes: [u8; 4] = self
+                            .memory
+                            .get(offset..offset + 4)
+                            .map(|v| v.try_into().unwrap())
+                            .unwrap_or([0u8; 4]);
+
                         u32::from_le_bytes(bytes)
                     }
                     DataSize::U16 => {
-                        let bytes = self.memory[offset..offset + 2].try_into().unwrap();
+                        let bytes = self
+                            .memory
+                            .get(offset..offset + 2)
+                            .map(|v| v.try_into().unwrap())
+                            .unwrap_or([0u8; 2]);
                         let value = u16::from_le_bytes(bytes);
                         drw & !(0xffff << bit_offset) | (u32::from(value) << bit_offset)
                     }
                     DataSize::U8 => {
-                        let value = self.memory[offset];
+                        let value = *self.memory.get(offset).unwrap_or(&0u8);
                         drw & !(0xff << bit_offset) | (u32::from(value) << bit_offset)
                     }
                     _ => return Err(MockMemoryError::UnknownWidth),
@@ -122,14 +131,33 @@ where
         _port: impl Into<MemoryAP>,
         register: R,
     ) -> Result<(), Self::Error> {
+        log::debug!("Mock: Write to register {:x?}", &register);
+
         let value = register.into();
         self.store.insert((R::ADDRESS, R::APBANKSEL), value);
         let csw = self.store[&(CSW::ADDRESS, CSW::APBANKSEL)];
         let address = self.store[&(TAR::ADDRESS, TAR::APBANKSEL)];
+
         match (R::ADDRESS, R::APBANKSEL) {
             (DRW::ADDRESS, DRW::APBANKSEL) => {
+                let csw = CSW::from(csw);
+
+                let access_width = match csw.SIZE {
+                    DataSize::U256 => 32,
+                    DataSize::U128 => 16,
+                    DataSize::U64 => 8,
+                    DataSize::U32 => 4,
+                    DataSize::U16 => 2,
+                    DataSize::U8 => 1,
+                };
+
+                if (address + access_width) as usize > self.memory.len() {
+                    // Ignore out-of-bounds write
+                    return Ok(());
+                }
+
                 let bit_offset = (address % 4) * 8;
-                let result = match CSW::from(csw).SIZE {
+                let result = match csw.SIZE {
                     DataSize::U32 => {
                         self.memory[address as usize] = value as u8;
                         self.memory[address as usize + 1] = (value >> 8) as u8;
@@ -152,7 +180,6 @@ where
                 };
 
                 if result.is_ok() {
-                    let csw = CSW::from(csw);
                     match csw.AddrInc {
                         AddressIncrement::Single => {
                             let new_address = match csw.SIZE {

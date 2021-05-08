@@ -10,6 +10,7 @@
 mod builder;
 mod download;
 mod error;
+mod flash_algorithm;
 mod flasher;
 mod loader;
 mod progress;
@@ -18,7 +19,9 @@ mod visualizer;
 use builder::*;
 pub use download::*;
 pub use error::*;
+pub use flash_algorithm::*;
 pub use flasher::*;
-use loader::*;
 pub use progress::*;
 pub use visualizer::*;
+
+pub use loader::FlashLoader;

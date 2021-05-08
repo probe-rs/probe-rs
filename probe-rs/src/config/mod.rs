@@ -10,7 +10,7 @@
 //!
 //! ## Built-in targets
 //!
-//! The built-in targets are added at build-time, using the `probe-rs-t2rust` tool.
+//! The built-in targets are added at build-time, from the `build.rs` script.
 //! They are generated from the target files in the `targets/` subfolder of this
 //! crate.
 //!
@@ -22,24 +22,20 @@
 //! be used to read targets from a YAML file.
 //!
 
-mod chip;
-mod chip_family;
 mod chip_info;
-mod flash_algorithm;
-mod flash_properties;
-mod memory;
 mod registry;
 mod target;
 
-pub use chip::Chip;
-pub use chip_family::ChipFamily;
-pub use flash_algorithm::{FlashAlgorithm, RawFlashAlgorithm};
-pub use flash_properties::FlashProperties;
-pub use memory::{MemoryRegion, NvmRegion, PageInfo, RamRegion, SectorDescription, SectorInfo};
-pub use registry::{add_target_from_yaml, families, get_target_by_name, RegistryError};
+pub use probe_rs_target::{
+    Chip, ChipFamily, CoreType, FlashProperties, MemoryRange, MemoryRegion, NvmRegion, PageInfo,
+    RamRegion, RawFlashAlgorithm, SectorDescription, SectorInfo, TargetDescriptionSource,
+};
+
+pub use registry::{
+    add_target_from_yaml, families, get_target_by_name, search_chips, RegistryError,
+};
 pub use target::{Target, TargetParseError, TargetSelector};
 
 // Crate-internal API
 pub(crate) use chip_info::ChipInfo;
-pub(crate) use memory::MemoryRange;
 pub(crate) use registry::get_target_by_chip_info;

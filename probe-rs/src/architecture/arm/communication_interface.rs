@@ -17,9 +17,9 @@ use anyhow::anyhow;
 use jep106::JEP106Code;
 use thiserror::Error;
 
-#[derive(Debug, Error)]
+#[derive(Debug, Error, Clone, PartialEq)]
 pub enum DapError {
-    #[error("An error occured in the SWD communication between DAPlink and device.")]
+    #[error("An error occured in the SWD communication between probe and device.")]
     SwdProtocol,
     #[error("Target device did not respond to request.")]
     NoAcknowledge,
@@ -70,7 +70,7 @@ pub trait Register: Clone + From<u32> + Into<u32> + Sized + Debug {
     const NAME: &'static str;
 }
 
-pub trait DAPAccess: DebugProbe + AsRef<dyn DebugProbe> + AsMut<dyn DebugProbe> {
+pub trait DAPAccess {
     /// Reads the DAP register on the specified port and address
     fn read_register(&mut self, port: PortType, addr: u16) -> Result<u32, DebugProbeError>;
 
@@ -123,13 +123,9 @@ pub trait DAPAccess: DebugProbe + AsRef<dyn DebugProbe> + AsMut<dyn DebugProbe> 
     fn flush(&mut self) -> Result<(), DebugProbeError> {
         Ok(())
     }
-
-    fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe>;
 }
 
-pub trait ArmProbeInterface:
-    SwoAccess + AsRef<dyn DebugProbe> + AsMut<dyn DebugProbe> + Debug + Send
-{
+pub trait ArmProbeInterface: SwoAccess + Debug + Send {
     fn memory_interface(&mut self, access_port: MemoryAP) -> Result<Memory<'_>, ProbeRsError>;
 
     fn ap_information(&self, access_port: GenericAP) -> Option<&ApInformation>;
@@ -137,6 +133,16 @@ pub trait ArmProbeInterface:
     fn num_access_ports(&self) -> usize;
 
     fn read_from_rom_table(&mut self) -> Result<Option<ArmChipInfo>, ProbeRsError>;
+
+    /// Deassert the target reset line
+    ///
+    /// When connecting under reset,
+    /// initial configuration is done with the reset line
+    /// asserted. After initial configuration is done, the
+    /// reset line can be deasserted using this method.
+    ///
+    /// See also [`Probe::target_reset_deassert`].
+    fn target_reset_deassert(&mut self) -> Result<(), ProbeRsError>;
 
     fn close(self: Box<Self>) -> Probe;
 }
@@ -205,9 +211,15 @@ pub struct MemoryApInformation {
 
 #[derive(Debug)]
 pub struct ArmCommunicationInterface {
-    probe: Box<dyn DAPAccess>,
+    probe: Box<dyn DAPProbe>,
     state: ArmCommunicationInterfaceState,
 }
+
+/// Helper trait for probes which offer access to ARM DAP (Debug Access Port).
+///
+/// This is used to combine the traits, because it cannot be done in the ArmCommunicationInterface
+/// struct itself.
+pub trait DAPProbe: DAPAccess + DebugProbe {}
 
 impl ArmProbeInterface for ArmCommunicationInterface {
     fn memory_interface(&mut self, access_port: MemoryAP) -> Result<Memory<'_>, ProbeRsError> {
@@ -226,39 +238,38 @@ impl ArmProbeInterface for ArmCommunicationInterface {
         self.state.ap_information.len()
     }
 
+    fn target_reset_deassert(&mut self) -> Result<(), ProbeRsError> {
+        self.probe.target_reset_deassert()?;
+
+        Ok(())
+    }
+
     fn close(self: Box<Self>) -> Probe {
         Probe::from_attached_probe(self.probe.into_probe())
     }
 }
 
-impl<'a> AsRef<dyn DebugProbe + 'a> for ArmCommunicationInterface {
-    fn as_ref(&self) -> &(dyn DebugProbe + 'a) {
-        self.probe.as_ref().as_ref()
-    }
-}
-
-impl<'a> AsMut<dyn DebugProbe + 'a> for ArmCommunicationInterface {
-    fn as_mut(&mut self) -> &mut (dyn DebugProbe + 'a) {
-        self.probe.as_mut().as_mut()
-    }
-}
-
 impl<'interface> ArmCommunicationInterface {
     pub(crate) fn new(
-        probe: Box<dyn DAPAccess>,
+        probe: Box<dyn DAPProbe>,
         use_overrun_detect: bool,
-    ) -> Result<Self, DebugProbeError> {
+    ) -> Result<Self, (Box<dyn DAPProbe>, DebugProbeError)> {
         let state = ArmCommunicationInterfaceState::new();
 
         let mut interface = Self { probe, state };
 
-        interface.enter_debug_mode(use_overrun_detect)?;
+        if let Err(e) = interface.enter_debug_mode(use_overrun_detect) {
+            return Err((interface.probe, e));
+        };
 
         /* determine the number and type of available APs */
         log::trace!("Searching valid APs");
 
         for ap in valid_access_ports(&mut interface) {
-            let ap_state = interface.read_ap_information(ap)?;
+            let ap_state = match interface.read_ap_information(ap) {
+                Ok(state) => state,
+                Err(e) => return Err((interface.probe, e)),
+            };
 
             log::debug!("AP {}: {:?}", ap.port_number(), ap_state);
 

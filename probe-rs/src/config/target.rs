@@ -1,7 +1,5 @@
-use super::chip::Chip;
-use super::flash_algorithm::RawFlashAlgorithm;
-use super::memory::MemoryRegion;
-use crate::core::{Architecture, CoreType};
+use super::{Chip, CoreType, MemoryRegion, RawFlashAlgorithm, TargetDescriptionSource};
+use crate::core::Architecture;
 
 /// This describes a complete target with a fixed chip model and variant.
 #[derive(Clone)]
@@ -14,6 +12,9 @@ pub struct Target {
     pub core_type: CoreType,
     /// The memory map of the target.
     pub memory_map: Vec<MemoryRegion>,
+
+    /// Source of the target description. Used for diagnostics.
+    pub(crate) source: TargetDescriptionSource,
 }
 
 impl std::fmt::Debug for Target {
@@ -39,12 +40,14 @@ impl Target {
         chip: &Chip,
         flash_algorithms: Vec<RawFlashAlgorithm>,
         core_type: CoreType,
+        source: TargetDescriptionSource,
     ) -> Target {
         Target {
-            name: chip.name.clone().into_owned(),
+            name: chip.name.clone(),
             flash_algorithms,
             core_type,
-            memory_map: chip.memory_map.clone().into_owned(),
+            memory_map: chip.memory_map.clone(),
+            source,
         }
     }
 
@@ -58,6 +61,11 @@ impl Target {
             CoreType::M7 => Architecture::Arm,
             CoreType::Riscv => Architecture::Riscv,
         }
+    }
+
+    /// Source description of this target.
+    pub fn source(&self) -> &TargetDescriptionSource {
+        &self.source
     }
 }
 

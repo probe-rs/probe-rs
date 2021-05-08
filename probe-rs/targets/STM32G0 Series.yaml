@@ -1298,8 +1298,8 @@ variants:
       - stm32g0xx_otp
       - stm32g0x1_opt
 flash_algorithms:
-  STM32G0xx_OTP:
-    name: STM32G0xx_OTP
+  stm32g0xx_otp:
+    name: stm32g0xx_otp
     description: STM32G0xx Flash OTP
     default: false
     instructions: v/NPj3BHG0gZSYFgGkmBYBpJAWEAIHBHASAWScAHSGEAIHBHASBwRwAgcEfwtckdEEzJCBFNyQAlYQEmACcT4GZhE2gDYFNoQ2C/80+PI2nbA/zUZ2EjaStCAtAlYQEg8L0IMAg5CDIAKenRACDwvSMBZ0UAIAJAq4nvzfrDAAAAAAAA
@@ -1320,8 +1320,8 @@ flash_algorithms:
       sectors:
         - size: 1024
           address: 0
-  STM32G0xx_16:
-    name: STM32G0xx_16
+  stm32g0xx_16:
+    name: stm32g0xx_16
     description: STM32G0xx 16 KB Flash
     default: true
     instructions: v/NPj3BHwAOADnBHNUg0SYFgNUmBYDVJAWEAIHBHASAwScAHSGEAIHBHASBwRy1ILkoCYQQhQWFBaQEjGwQZQ0Fhv/NPjwFpyQP81AAhQWEBaRFCBNABaRFDAWEBIHBHACBwR8ADgQ4eSCBKAmHJAIkcQWFBaQEjGwQZQ0Fhv/NPjwFpyQP81AAhQWEBaRFCAtACYQEgcEcAIHBH8LXJHRBMyQgRTckAJWEBJgAnE+BmYRNoA2BTaENgv/NPjyNp2wP81GdhI2krQgLQJWEBIPC9CDAIOQgyACnp0QAg8L0jAWdFACACQKuJ7836wwAAAAAAAA==
@@ -1342,8 +1342,8 @@ flash_algorithms:
       sectors:
         - size: 2048
           address: 0
-  STM32G0x1_OPT:
-    name: STM32G0x1_OPT
+  stm32g0x1_opt:
+    name: stm32g0x1_opt
     description: STM32G0x1 Flash Options
     default: false
     instructions: v/NPj3BHPEg6SYFgO0mBYDtJwWA7ScFgO0kBYQAgcEcBITVIyQdBYUEEQWEAIHBHASBwRzBINEsDYTRJAWI/IcFiAWP/IUFiACKCYkFjgmMpSYAxCmABIUkEQWG/80+PAWnJA/zUQmEBaRlCBNABaRlDAWEBIHBHACBwRwAgcEfwtRd7Fn28Rhd+FWi+RlRok2gRaRhI0mkbTwdhHE89QAViHE0sQMRiK0ADY2dG+7JDYhlLGUCBYvGyQWN3RvmygWMWSQpADEmAMQpgmQtBYb/zT48BackD/NQCaQpJCkIE0AJpCkMCYQEg8L0AIPC9QBhwRyMBZ0UAIAJAq4nvzTsqGQh/bl1M+sMAAKr+Tzj//08/PwA/AP8AAID/AAEAAAAAAA==
@@ -1364,8 +1364,8 @@ flash_algorithms:
       sectors:
         - size: 32
           address: 0
-  STM32G0xx_64:
-    name: STM32G0xx_64
+  stm32g0xx_64:
+    name: stm32g0xx_64
     description: STM32G0xx 64 KB Flash
     default: true
     instructions: v/NPj3BHwAOADnBHNUg0SYFgNUmBYDVJAWEAIHBHASAwScAHSGEAIHBHASBwRy1ILkoCYQQhQWFBaQEjGwQZQ0Fhv/NPjwFpyQP81AAhQWEBaRFCBNABaRFDAWEBIHBHACBwR8ADgQ4eSCBKAmHJAIkcQWFBaQEjGwQZQ0Fhv/NPjwFpyQP81AAhQWEBaRFCAtACYQEgcEcAIHBH8LXJHRBMyQgRTckAJWEBJgAnE+BmYRNoA2BTaENgv/NPjyNp2wP81GdhI2krQgLQJWEBIPC9CDAIOQgyACnp0QAg8L0jAWdFACACQKuJ7836wwAAAAAAAA==
@@ -1386,8 +1386,8 @@ flash_algorithms:
       sectors:
         - size: 2048
           address: 0
-  STM32G0xx_128:
-    name: STM32G0xx_128
+  stm32g0xx_128:
+    name: stm32g0xx_128
     description: STM32G0xx 128 KB Flash
     default: true
     instructions: v/NPj3BHwAOADnBHNUg0SYFgNUmBYDVJAWEAIHBHASAwScAHSGEAIHBHASBwRy1ILkoCYQQhQWFBaQEjGwQZQ0Fhv/NPjwFpyQP81AAhQWEBaRFCBNABaRFDAWEBIHBHACBwR8ADgQ4eSCBKAmHJAIkcQWFBaQEjGwQZQ0Fhv/NPjwFpyQP81AAhQWEBaRFCAtACYQEgcEcAIHBH8LXJHRBMyQgRTckAJWEBJgAnE+BmYRNoA2BTaENgv/NPjyNp2wP81GdhI2krQgLQJWEBIPC9CDAIOQgyACnp0QAg8L0jAWdFACACQKuJ7836wwAAAAAAAA==
@@ -1408,8 +1408,8 @@ flash_algorithms:
       sectors:
         - size: 2048
           address: 0
-  STM32G0x0_OPT:
-    name: STM32G0x0_OPT
+  stm32g0x0_opt:
+    name: stm32g0x0_opt
     description: STM32G0x0 Flash Options
     default: false
     instructions: v/NPj3BHLUgrSYFgLEmBYCxJwWAsScFgLEkBYQAgcEcBISZIyQdBYUEEQWEAIHBHASBwRyFIJUoCYSVJAWI/IcFiAWMBIUkEQWG/80+PAWnJA/zUACFBYQFpEUIE0AFpEUMBYQEgcEcAIHBHACBwRzC1lGgTaFFoEEgUSgJhFU0rQANiFEsZQMFiHEAEYwEhSQRBYb/zT48BackD/NQBaRFCBNABaRFDAWEBIDC9ACAwvUAYcEcAACMBZ0UAIAJAq4nvzTsqGQh/bl1M+sMAAKr+Tzj//08/PwA/AAAAAAA=
@@ -1430,8 +1430,8 @@ flash_algorithms:
       sectors:
         - size: 12
           address: 0
-  STM32G0xx_32:
-    name: STM32G0xx_32
+  stm32g0xx_32:
+    name: stm32g0xx_32
     description: STM32G0xx 32 KB Flash
     default: true
     instructions: v/NPj3BHwAOADnBHNUg0SYFgNUmBYDVJAWEAIHBHASAwScAHSGEAIHBHASBwRy1ILkoCYQQhQWFBaQEjGwQZQ0Fhv/NPjwFpyQP81AAhQWEBaRFCBNABaRFDAWEBIHBHACBwR8ADgQ4eSCBKAmHJAIkcQWFBaQEjGwQZQ0Fhv/NPjwFpyQP81AAhQWEBaRFCAtACYQEgcEcAIHBH8LXJHRBMyQgRTckAJWEBJgAnE+BmYRNoA2BTaENgv/NPjyNp2wP81GdhI2krQgLQJWEBIPC9CDAIOQgyACnp0QAg8L0jAWdFACACQKuJ7836wwAAAAAAAA==

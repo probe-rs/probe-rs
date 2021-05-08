@@ -106,20 +106,32 @@ fn main() -> Result<()> {
         read_throughput
     );
 
-    if sample_data != readback_data {
-        let mismatch = sample_data
-            .iter()
-            .zip(readback_data.iter())
-            .position(|(sample, readback)| sample != readback);
+    let max_error_count = 10;
 
-        eprintln!("Verification failed!");
+    let mut error_count = 0;
 
-        if let Some(mismatch) = mismatch {
+    for (index, (sample_data, readback_data)) in
+        sample_data.iter().zip(readback_data.iter()).enumerate()
+    {
+        if sample_data != readback_data {
+            let mismatch_address = matches.address + index as u32 * 4;
+
             eprintln!(
                 "Readback data differs at address {:08x}: expected word {:08x}, got word {:08x}",
-                matches.address, sample_data[mismatch], readback_data[mismatch]
+                mismatch_address, sample_data, readback_data
             );
+
+            error_count += 1;
         }
+
+        if error_count >= max_error_count {
+            break;
+        }
+    }
+
+    if error_count > 0 {
+        println!("First element: {:08x}", sample_data[0]);
+        eprintln!("Verification failed!");
     } else {
         println!("Verification succesful.");
     }

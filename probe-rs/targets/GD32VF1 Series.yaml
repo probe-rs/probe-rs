@@ -13,6 +13,6 @@ variants:
             start: 134217728
             end: 134348800
           is_boot_memory: true
-    flash_algorithms:
-flash_algorithms:
-core: riscv
+    flash_algorithms: []
+flash_algorithms: {}
+core: Riscv

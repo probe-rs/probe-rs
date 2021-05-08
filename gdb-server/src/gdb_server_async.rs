@@ -22,7 +22,7 @@ pub fn run(connection_string: Option<impl Into<String>>, session: &Mutex<Session
     let connection_string = connection_string
         .map(|cs| cs.into())
         .unwrap_or_else(|| CONNECTION_STRING.to_owned());
-    println!("GDB stub listening on {}", connection_string);
+    log::info!("GDB stub listening on {}", connection_string);
     task::block_on(accept_loop(connection_string, session))
 }
 
@@ -33,10 +33,10 @@ async fn accept_loop(addr: impl ToSocketAddrs, session: &Mutex<Session>) -> Resu
     let mut incoming = listener.incoming();
     while let Some(stream) = incoming.next().await {
         if let Err(e) = handle_connection(stream?, session).await {
-            eprintln!(
+            log::error!(
                 "An error with the current connection has been encountered. It has been closed."
             );
-            eprintln!("{:?}", e);
+            log::error!("{:?}", e);
         }
     }
     Ok(())

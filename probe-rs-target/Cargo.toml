@@ -1,0 +1,24 @@
+[package]
+name = "probe-rs-target"
+version = "0.1.0"
+edition = "2018"
+description = "Target description schema for probe-rs."
+documentation = "https://docs.rs/probe-rs/"
+homepage = "https://github.com/probe-rs/probe-rs"
+repository = "https://github.com/probe-rs/probe-rs"
+readme = "../README.md"
+categories = ["embedded", "hardware-support", "development-tools::debugging"]
+keywords = ["embedded"]
+license = "MIT OR Apache-2.0"
+
+[features]
+# serde(skip_serializing_if) breaks with `bincode`, because it doesn't encode metadata (field names).
+# Enable this if you want to serialize to bincode. Do not enable this if you want to serialize to other formats (YAML, JSON...)
+# https://github.com/serde-rs/serde/issues/1732
+# https://github.com/bincode-org/bincode/issues/326
+bincode = []
+
+[dependencies]
+jep106 = "0.2.4"
+serde = { version = "1.0.104", features = ["derive"] }
+base64 = "0.13.0"
