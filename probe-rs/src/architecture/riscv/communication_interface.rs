@@ -336,7 +336,7 @@ impl<'probe> RiscvCommunicationInterface {
             // Check if the current hart exists
             let status: Dmstatus = self.read_dm_register()?;
 
-            if status.anyunavail() {
+            if status.anynonexistent() {
                 break;
             }
 
