@@ -336,7 +336,7 @@ impl<'probe> RiscvCommunicationInterface {
             // Check if the current hart exists
             let status: Dmstatus = self.read_dm_register()?;
 
-            if status.anyunavail() {
+            if status.anynonexistent() {
                 break;
             }
 
@@ -381,6 +381,10 @@ impl<'probe> RiscvCommunicationInterface {
         self.write_dm_register(abstractauto)?;
 
         let abstractauto_readback: Abstractauto = self.read_dm_register()?;
+
+        // clear abstractauto
+        abstractauto = Abstractauto(0);
+        self.write_dm_register(abstractauto)?;
 
         self.state.supports_autoexec = abstractauto_readback == abstractauto;
         log::debug!("Support for autoexec: {}", self.state.supports_autoexec);
