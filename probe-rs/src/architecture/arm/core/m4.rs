@@ -361,7 +361,7 @@ impl<'probe> CoreInterface for M4<'probe> {
 
                 return Ok(());
             }
-            std::thread::sleep(Duration::from_millis(10 + n * 10));
+            std::thread::sleep(Duration::from_millis(1 << n));
             n += 1;
         }
         Err(Error::Probe(DebugProbeError::Timeout))
