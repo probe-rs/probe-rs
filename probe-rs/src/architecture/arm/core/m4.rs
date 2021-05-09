@@ -360,6 +360,7 @@ impl<'probe> CoreInterface for M4<'probe> {
 
                 return Ok(());
             }
+            std::thread::sleep(Duration::from_millis(1));
         }
         Err(Error::Probe(DebugProbeError::Timeout))
     }

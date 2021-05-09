@@ -712,7 +712,9 @@ impl<'probe> ActiveFlasher<'probe, Erase> {
                     r3: None,
                 },
                 false,
-                Duration::from_secs(5),
+                Duration::from_millis(
+                    self.flash_algorithm.flash_properties.erase_sector_timeout as u64,
+                ),
             )
             .map_err(|error| FlashError::EraseFailed {
                 sector_address: address,
@@ -760,7 +762,9 @@ impl<'p> ActiveFlasher<'p, Program> {
                     r3: None,
                 },
                 false,
-                Duration::from_secs(2),
+                Duration::from_millis(
+                    self.flash_algorithm.flash_properties.program_page_timeout as u64,
+                ),
             )
             .map_err(|error| FlashError::PageWrite {
                 page_address: address,

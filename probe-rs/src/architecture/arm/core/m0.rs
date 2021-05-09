@@ -312,6 +312,7 @@ impl<'probe> CoreInterface for M0<'probe> {
             if dhcsr_val.s_halt() {
                 return Ok(());
             }
+            std::thread::sleep(Duration::from_millis(1));
         }
         Err(Error::Probe(DebugProbeError::Timeout))
     }
