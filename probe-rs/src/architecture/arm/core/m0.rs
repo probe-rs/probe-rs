@@ -306,15 +306,13 @@ impl<'probe> CoreInterface for M0<'probe> {
         // Wait until halted state is active again.
         let start = Instant::now();
 
-        let mut n = 0;
         while start.elapsed() < timeout {
             let dhcsr_val = Dhcsr(self.memory.read_word_32(Dhcsr::ADDRESS)?);
 
             if dhcsr_val.s_halt() {
                 return Ok(());
             }
-            std::thread::sleep(Duration::from_millis(1 << n));
-            n += 1;
+            std::thread::sleep(Duration::from_millis(1));
         }
         Err(Error::Probe(DebugProbeError::Timeout))
     }
