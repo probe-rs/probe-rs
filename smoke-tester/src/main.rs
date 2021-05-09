@@ -1,8 +1,12 @@
-use std::time::Duration;
+use std::{path::Path, time::Duration};
 
-use probe_rs::{config::MemoryRegion, Core, MemoryInterface};
+use probe_rs::{
+    config::MemoryRegion,
+    flashing::{download_file_with_options, DownloadOptions, FlashProgress, Format},
+    Architecture, Core, MemoryInterface, Session,
+};
 
-use crate::dut_definition::DutDefinition;
+use crate::dut_definition::{DefinitionSource, DutDefinition};
 use anyhow::{bail, Context, Result};
 
 mod dut_definition;
@@ -28,7 +32,13 @@ fn main() -> Result<()> {
     let mut tests_ok = true;
 
     for (i, definition) in definitions.iter().enumerate() {
-        println!("DUT [{}/{}] - Starting tests", i + 1, num_duts,);
+        print!("DUT [{}/{}] - Starting test", i + 1, num_duts,);
+
+        if let DefinitionSource::File(path) = &definition.source {
+            print!(" - {}", path.display());
+        }
+
+        println!();
 
         match handle_dut(definition) {
             Ok(()) => {
@@ -85,6 +95,10 @@ fn handle_dut(definition: &DutDefinition) -> Result<()> {
         core.reset_and_halt(Duration::from_millis(200))?;
     }
 
+    if let Some(flash_binary) = &definition.flash_test_binary {
+        test_flashing(&mut session, flash_binary)?;
+    }
+
     Ok(())
 }
 
@@ -96,6 +110,11 @@ fn test_register_access(core: &mut Core) -> Result<()> {
     let mut test_value = 1;
 
     for register in register.registers() {
+        // Skip register x0 on RISCV chips, it's hardwired to zero.
+        if core.architecture() == Architecture::Riscv && register.name() == "x0" {
+            continue;
+        }
+
         // Write new value
 
         core.write_core_reg(register.into(), test_value)?;
@@ -208,6 +227,31 @@ fn test_hw_breakpoints(core: &mut Core, memory_regions: &[MemoryRegion]) -> Resu
             _other => {}
         }
     }
+
+    Ok(())
+}
+
+fn test_flashing(session: &mut Session, test_binary: &Path) -> Result<()> {
+    let progress = FlashProgress::new(|event| {
+        log::debug!("Flash Event: {:?}", event);
+        eprint!(".");
+    });
+
+    let options = DownloadOptions {
+        keep_unwritten_bytes: false,
+        dry_run: false,
+        do_chip_erase: false,
+        progress: Some(&progress),
+    };
+
+    println!("Starting flashing test");
+    println!("Binary: {}", test_binary.display());
+
+    download_file_with_options(session, test_binary, Format::Elf, options)?;
+
+    println!();
+
+    println!("Finished flashing");
 
     Ok(())
 }

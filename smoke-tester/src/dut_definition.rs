@@ -4,7 +4,11 @@ use probe_rs::{
     DebugProbeSelector, Probe, Target,
 };
 use serde::Deserialize;
-use std::{convert::TryInto, path::Path};
+use std::{
+    convert::TryInto,
+    ffi::OsStr,
+    path::{Path, PathBuf},
+};
 ///! # DUT Defintions
 ///!
 ///! This module handles the definition of the different devices under test (DUTs),
@@ -17,6 +21,8 @@ struct RawDutDefinition {
     /// Selector for the debug probe to be used.
     /// See [probe_rs::DebugProbeSelector].
     probe_selector: String,
+
+    flash_test_binary: Option<String>,
 }
 
 impl RawDutDefinition {
@@ -30,12 +36,24 @@ impl RawDutDefinition {
     }
 }
 
+pub enum DefinitionSource {
+    File(PathBuf),
+    Cli,
+}
+
 pub struct DutDefinition {
     pub chip: Target,
 
     /// Selector for the debug probe to be used.
     /// See [probe_rs::DebugProbeSelector].
     pub probe_selector: DebugProbeSelector,
+
+    /// Path to a binary which can be used to test
+    /// flashing for the DUT.     
+    pub flash_test_binary: Option<PathBuf>,
+
+    /// Source of the DUT definition.
+    pub source: DefinitionSource,
 }
 
 impl DutDefinition {
@@ -61,6 +79,15 @@ impl DutDefinition {
         for file in directory.read_dir()? {
             let file_path = file?.path();
 
+            // Ignore files without .toml ending
+            if file_path.extension() != Some(OsStr::new("toml")) {
+                log::debug!(
+                    "Skipping file {}, does not end with .toml",
+                    file_path.display(),
+                );
+                continue;
+            }
+
             let definition = DutDefinition::from_file(&file_path)
                 .with_context(|| format!("Failed to parse definition '{}'", file_path.display()))?;
 
@@ -74,7 +101,7 @@ impl DutDefinition {
     fn from_file(file: &Path) -> Result<Self> {
         let raw_definition = RawDutDefinition::from_file(file)?;
 
-        DutDefinition::from_raw_definition(raw_definition)
+        DutDefinition::from_raw_definition(raw_definition, file)
     }
 
     pub fn open_probe(&self) -> Result<Probe> {
@@ -88,7 +115,7 @@ impl DutDefinition {
         Ok(probe)
     }
 
-    fn from_raw_definition(raw_definition: RawDutDefinition) -> Result<Self> {
+    fn from_raw_definition(raw_definition: RawDutDefinition, source_file: &Path) -> Result<Self> {
         let probe_selector = raw_definition.probe_selector.try_into()?;
 
         let targets = search_chips(&raw_definition.chip)?;
@@ -114,9 +141,30 @@ impl DutDefinition {
 
         let target = get_target_by_name(&targets[0])?;
 
+        let flash_test_binary = raw_definition.flash_test_binary.map(PathBuf::from);
+
+        let flash_test_binary = match flash_test_binary {
+            Some(path) => {
+                if path.is_absolute() {
+                    Some(path)
+                } else {
+                    // For relative paths, join the path with the location of the source file to create an absolute path.
+
+                    let source_file_directory = source_file.parent().unwrap_or(Path::new("."));
+
+                    let flash_binary_location = source_file_directory.join(path);
+
+                    Some(flash_binary_location.canonicalize()?)
+                }
+            }
+            None => None,
+        };
+
         Ok(Self {
             chip: target,
             probe_selector,
+            flash_test_binary,
+            source: DefinitionSource::File(source_file.to_owned()),
         })
     }
 }
