@@ -15,6 +15,8 @@ struct Options {
 }
 
 fn main() -> Result<()> {
+    pretty_env_logger::init();
+
     let opts = Options::from_args();
 
     let definitions = DutDefinition::collect(&opts.path)?;

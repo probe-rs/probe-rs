@@ -12,3 +12,4 @@ toml = "0.5.8"
 anyhow = "1.0.40"
 serde = {version = "1.0.125", features = ["derive"]}
 structopt = "0.3.21"
+pretty_env_logger = "0.4.0"
