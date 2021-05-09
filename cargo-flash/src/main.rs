@@ -2,7 +2,6 @@ mod diagnostics;
 
 use colored::*;
 use diagnostics::render_diagnostics;
-use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use std::{
     env,
     fs::File,
@@ -24,6 +23,9 @@ use probe_rs::{
 
 #[cfg(feature = "sentry")]
 use probe_rs_cli_util::logging::{ask_to_log_crash, capture_panic};
+
+use probe_rs_cli_util::indicatif::{MultiProgress, ProgressBar, ProgressStyle};
+use probe_rs_cli_util::log;
 use probe_rs_cli_util::{
     argument_handling, build_artifact, logging, logging::Metadata, read_metadata, ArtifactError,
 };

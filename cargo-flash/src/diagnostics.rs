@@ -11,6 +11,8 @@ use probe_rs::{
     flashing::{FileDownloadError, FlashError},
     Error as ProbeRsError, Target,
 };
+
+use probe_rs_cli_util::log;
 use probe_rs_cli_util::ArtifactError;
 
 use crate::CargoFlashError;
