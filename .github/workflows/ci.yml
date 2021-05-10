@@ -55,6 +55,9 @@ jobs:
         with:
           toolchain: stable
           override: true
+          
+      - name: Cache Dependencies
+        uses: Swatinem/rust-cache@v1.2.0
 
       - name: Run cargo check
         uses: actions-rs/cargo@v1
