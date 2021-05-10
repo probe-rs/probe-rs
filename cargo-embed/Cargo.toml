@@ -34,7 +34,7 @@ figment = { version = "0.10", features = ["toml", "json", "yaml", "env"] }
 probe-rs-rtt = { version = "0.10.0", git = "https://github.com/probe-rs/probe-rs-rtt" }
 chrono = "0.4"
 # Version 0.17.8 doesn't compile on Windows
-crossterm = "<= 0.17.7"
+crossterm = "<= 0.19.1"
 goblin = "0.4.0"
 tui = { version = "0.15.0", default-features = false, features = ["crossterm"] }
 anyhow = "1.0.40"
