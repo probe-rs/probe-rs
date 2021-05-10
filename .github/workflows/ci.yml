@@ -15,7 +15,6 @@ jobs:
     strategy:
       matrix:
         os:
-          - ubuntu-20.04
           - ubuntu-latest
           - windows-latest
           - macos-latest
@@ -55,6 +54,9 @@ jobs:
         with:
           toolchain: stable
           override: true
+          
+      - name: Cache Dependencies
+        uses: Swatinem/rust-cache@v1.2.0
 
       - name: Run cargo check
         uses: actions-rs/cargo@v1
@@ -103,6 +105,9 @@ jobs:
           toolchain: stable
           override: true
           target: thumbv7m-none-eabi
+      
+      - name: Cache Dependencies
+        uses: Swatinem/rust-cache@v1.2.0
 
       - name: Run cargo test
         uses: actions-rs/cargo@v1
@@ -157,6 +162,9 @@ jobs:
 
       - name: Install clippy
         run: rustup component add clippy
+        
+      - name: Cache Dependencies
+        uses: Swatinem/rust-cache@v1.2.0
 
       - name: Run cargo clippy
         uses: actions-rs/clippy-check@v1
