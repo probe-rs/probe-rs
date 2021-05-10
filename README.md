@@ -23,6 +23,14 @@ To install `probe-run`, use `cargo install probe-run`.
 On Linux, you might have to install `libudev` and `libusb` from your package
 manager before installing `probe-run`.
 
+``` console
+# ubuntu
+$ sudo apt install -y libusb-dev libusb-1.0 libftdi1-dev
+
+# fedora
+$ sudo dnf install -y libusbx-devel systemd-devel
+```
+
 ## Setup
 
 ### 1. Set the Cargo runner
@@ -53,7 +61,7 @@ the --probe option to the `runner` or setting the `${PROBE_RUN_PROBE}` environme
 variable with a value containing either `${VID}:${PID}` or `${VID}:${PID}:${SERIAL}`:
 
 ```console
-probe-run --probe '0483:3748' --chip ${PROBE_RUN_CHIP}
+$ probe-run --probe '0483:3748' --chip ${PROBE_RUN_CHIP}
 PROBE_RUN_PROBE='1366:0101:123456' cargo run
 ```
 
