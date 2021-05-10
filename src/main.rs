@@ -5,7 +5,7 @@ use std::{
     borrow::Cow,
     collections::HashSet,
     convert::TryInto,
-    fs,
+    env, fs,
     io::{self, Write as _},
     mem,
     path::{Path, PathBuf},
@@ -188,8 +188,8 @@ fn notmain() -> anyhow::Result<i32> {
 
     // Parse defmt_decoder-table from bytes
     // * skip defmt version check, if `PROBE_RUN_IGNORE_VERSION` matches one of the options
-    let mut table = match option_env!("PROBE_RUN_IGNORE_VERSION") {
-        Some("true") | Some("1") => defmt_decoder::Table::parse_ignore_version(&bytes)?,
+    let mut table = match env::var("PROBE_RUN_IGNORE_VERSION").as_deref() {
+        Ok("true") | Ok("1") => defmt_decoder::Table::parse_ignore_version(&bytes)?,
         _ => defmt_decoder::Table::parse(&bytes)?,
     };
     // Extract the `Locations` from the table, if there is a table

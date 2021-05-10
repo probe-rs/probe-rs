@@ -244,7 +244,7 @@ fn init(ctx: init::Context) -> init::LateResources {
 Follow the instructions in the error message to resolve the mismatch.
 
 #### developer
-If you are building `probe-run` from source, you can disable the version check by setting the `PROBE_RUN_IGNORE_VERSION` environment variable to `true` or `1` at compile time.
+If you are hacking around with `probe-run`, you can disable the version check by setting the `PROBE_RUN_IGNORE_VERSION` environment variable to `true` or `1` at runtime.
 
 
 ### developer: running your locally modified `probe-run`
