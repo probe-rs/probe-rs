@@ -25,7 +25,7 @@ manager before installing `probe-run`.
 
 ``` console
 # ubuntu
-$ sudo apt install -y libusb-dev libusb-1.0 libftdi1-dev
+$ sudo apt install -y libusb-1.0-0-dev libudev-dev
 
 # fedora
 $ sudo dnf install -y libusbx-devel systemd-devel
