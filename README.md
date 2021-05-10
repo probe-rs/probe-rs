@@ -124,14 +124,17 @@ Please reach out to [@Yatekii](https://github.com/Yatekii)
 
 Building requires Rust and Cargo which can be installed [using rustup](https://rustup.rs/). probe-rs also depends on libusb and libftdi. On linux these can be installed with your package manager:
 
-```
+```console
 # Ubuntu
 > sudo apt install -y libusb-1.0-0-dev libftdi1-dev
+
+# Fedora
+> sudo dnf install -y libusbx-devel libftdi-devel
 ```
 
 On Windows you can use [vcpkg](https://github.com/microsoft/vcpkg#quick-start-windows):
 
-```
+```console
 # dynamic linking 64-bit
 > vcpkg install libftdi1:x64-windows libusb:x64-windows
 > set VCPKGRS_DYNAMIC=1
