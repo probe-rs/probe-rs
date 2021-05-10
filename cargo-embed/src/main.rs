@@ -5,7 +5,6 @@ mod rttui;
 use anyhow::{anyhow, Context, Result};
 use chrono::Local;
 use colored::*;
-use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use std::{
     env, fs,
     fs::File,
@@ -25,7 +24,13 @@ use probe_rs::{
 };
 #[cfg(feature = "sentry")]
 use probe_rs_cli_util::logging::{ask_to_log_crash, capture_anyhow, capture_panic};
-use probe_rs_cli_util::{argument_handling, build_artifact, logging, logging::Metadata};
+
+use probe_rs_cli_util::{
+    argument_handling, build_artifact,
+    indicatif::{MultiProgress, ProgressBar, ProgressStyle},
+    logging::{self, Metadata},
+};
+
 use probe_rs_rtt::{Rtt, ScanRegion};
 
 use crate::rttui::channel::DataFormat;
