@@ -3,13 +3,12 @@
 //! The `debug` module contains various debug functionality, which can be
 //! used to implement a debugger based on `probe-rs`.
 
-mod typ;
 mod variable;
 
 use crate::{core::Core, MemoryInterface};
-use typ::Type;
-use variable::Variable;
+pub use variable::{Variable, VariableKind, VariantRole};
 
+//use std::{borrow, intrinsics::variant_count, io, path::{Path, PathBuf}, rc::Rc, str::{from_utf8, Utf8Error}};
 use std::{
     borrow, io,
     path::{Path, PathBuf},
@@ -17,8 +16,8 @@ use std::{
     str::{from_utf8, Utf8Error},
 };
 
-use gimli::{FileEntry, LineProgramHeader};
-use log::{debug, error, info};
+use gimli::{DebuggingInformationEntry, FileEntry, LineProgramHeader, Location};
+use log::{debug, error, info, warn};
 use object::read::{Object, ObjectSection};
 use thiserror::Error;
 
@@ -32,8 +31,12 @@ pub enum DebugError {
     Parse(#[from] gimli::read::Error),
     #[error("Non-UTF8 data found in debug data")]
     NonUtf8(#[from] Utf8Error),
-    #[error("Error using the probe")]
+    #[error(transparent)] //"Error using the probe")]
     Probe(#[from] crate::Error),
+    #[error(transparent)]
+    CharConversion(#[from] std::char::CharTryFromError),
+    #[error(transparent)]
+    IntConversion(#[from] std::num::TryFromIntError),
 }
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum ColumnType {
@@ -55,8 +58,8 @@ pub struct StackFrame {
     pub id: u64,
     pub function_name: String,
     pub source_location: Option<SourceLocation>,
-    registers: Registers,
-    pc: u32,
+    pub registers: Registers,
+    pub pc: u32,
     pub variables: Vec<Variable>,
 }
 
@@ -86,18 +89,34 @@ impl std::fmt::Display for StackFrame {
         writeln!(f, "\tVariables:")?;
 
         for variable in &self.variables {
-            writeln!(
-                f,
-                "\t\t{}: {}:{} = 0x{:08x}",
-                variable.name, variable.file, variable.line, variable.value
-            )?;
+            variable_recurse(variable, 0, f)?;
         }
         write!(f, "")
     }
 }
 
+fn variable_recurse(
+    variable: &Variable,
+    level: u32,
+    f: &mut std::fmt::Formatter,
+) -> std::fmt::Result {
+    for _depth in 0..level {
+        write!(f, "   ")?;
+    }
+    let new_level = level + 1;
+    let ret = writeln!(f, "|-> {} \t= {}", variable.name, variable.value);
+    // "\t{} = {}\tlocation: {},\tline:{},\tfile:{}",
+    // variable.name, variable.value, variable.location, variable.line, variable.file
+    if let Some(children) = variable.children.clone() {
+        for variable in &children {
+            variable_recurse(variable, new_level, f)?;
+        }
+    }
+
+    ret
+}
 #[derive(Debug, Clone)]
-struct Registers([Option<u32>; 16]);
+pub struct Registers([Option<u32>; 16]);
 
 impl Registers {
     pub fn from_core(core: &mut Core) -> Self {
@@ -114,6 +133,15 @@ impl Registers {
 
     pub fn set_call_frame_address(&mut self, value: Option<u32>) {
         self.0[13] = value;
+    }
+}
+
+impl<'a> IntoIterator for &'a Registers {
+    type Item = &'a Option<u32>;
+    type IntoIter = std::slice::Iter<'a, Option<u32>>;
+
+    fn into_iter(self) -> std::slice::Iter<'a, Option<u32>> {
+        self.0.iter()
     }
 }
 
@@ -242,7 +270,6 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
             if i == 13 {
                 continue;
             }
-
             use gimli::read::RegisterRule::*;
 
             let register_rule = unwind_info.register(gimli::Register(i as u16));
@@ -258,6 +285,7 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
 
                     match i {
                         4 | 5 | 6 | 7 | 8 | 10 | 11 | 14 => self.registers[i],
+                        15 => Some(pc as u32),
                         _ => None,
                     }
                 }
@@ -502,17 +530,14 @@ impl DebugInfo {
                 let function_name = unit_info
                     .get_function_name(&die_cursor_state.function_die)
                     .unwrap_or(unknown_function);
-
-                let variables = unit_info.get_variables(
+                let variables = unit_info.get_function_variables(
                     core,
                     die_cursor_state,
                     u64::from(registers.get_call_frame_address().unwrap()),
                 )?;
-
                 // dbg!(&variables);
-
                 return Ok(StackFrame {
-                    id: frame_count,
+                    id: registers.get_call_frame_address().unwrap_or(0) as u64, //MS DAP Specification requires the id to be unique accross all threads, so using the frame pointer as the id.
                     function_name,
                     source_location: self.get_source_location(address),
                     registers,
@@ -682,7 +707,7 @@ impl DebugInfo {
 }
 
 struct DieCursorState<'abbrev, 'unit> {
-    entries_cursor: EntriesCursor<'abbrev, 'unit>,
+    _entries_cursor: EntriesCursor<'abbrev, 'unit>,
     _depth: isize,
     function_die: FunctionDie<'abbrev, 'unit>,
 }
@@ -710,7 +735,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                             return Some(DieCursorState {
                                 _depth: depth,
                                 function_die: current.clone(),
-                                entries_cursor,
+                                _entries_cursor: entries_cursor,
                             });
                         }
                     }
@@ -770,11 +795,10 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                             evaluation.resume_with_memory(gimli::Value::U32(val))?
                         }
                         x => {
-                            error!(
+                            todo!(
                                 "Requested memory with size {}, which is not supported yet.",
                                 x
                             );
-                            unimplemented!();
                         }
                     }
                 }
@@ -786,7 +810,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     let raw_value = core.read_core_reg(register.0 as u16)?;
 
                     if base_type != gimli::UnitOffset(0) {
-                        unimplemented!(
+                        todo!(
                             "Support for units in RequiresRegister request is not yet implemented."
                         )
                     }
@@ -794,136 +818,595 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     evaluation.resume_with_register(gimli::Value::Generic(raw_value as u64))?
                 }
                 x => {
-                    println!("{:?}", x);
-                    unimplemented!()
+                    todo!("expr_to_piece {:?}", x)
                 }
             }
         }
-
         Ok(evaluation.result())
     }
 
-    fn get_variables(
+    fn process_tree_node_attributes(
+        &self,
+        tree_node: &mut gimli::EntriesTreeNode<R>,
+        parent_variable: &mut Variable,
+        child_variable: &mut Variable,
+        core: &mut Core<'_>,
+        frame_base: u64,
+    ) -> Result<(), DebugError> {
+        // child_variable.value = format!("{:?}", tree_node.entry().offset());
+        //We need to process the location attribute in advance of looping through all the attributes, to ensure that location is known before we calculate type.
+        self.extract_location(tree_node, parent_variable, child_variable, core, frame_base)?;
+        let attrs = &mut tree_node.entry().attrs();
+        while let Some(attr) = attrs.next().unwrap() {
+            match attr.name() {
+                gimli::DW_AT_location | gimli::DW_AT_data_member_location => {
+                    //The child_variable.location is calculated higher up by invoking self.extract_location.
+                }
+                gimli::DW_AT_name => {
+                    child_variable.name = extract_name(&self.debug_info, attr.value());
+                }
+                gimli::DW_AT_decl_file => {
+                    child_variable.file = extract_file(&self.debug_info, &self.unit, attr.value())
+                        .unwrap_or_else(|| "<undefined>".to_string());
+                }
+                gimli::DW_AT_decl_line => {
+                    child_variable.line = extract_line(&self.debug_info, attr.value()).unwrap_or(0);
+                }
+                gimli::DW_AT_type => {
+                    match attr.value() {
+                        gimli::AttributeValue::UnitRef(unit_ref) => {
+                            //reference to a type, or an entry to another type or a type modifier which will point to another type
+                            let mut type_tree = self
+                                .unit
+                                .header
+                                .entries_tree(&self.unit.abbreviations, Some(unit_ref))?;
+                            let tree_node = type_tree.root().unwrap();
+                            self.extract_type(tree_node, child_variable, core, frame_base)?;
+                        }
+                        other_attribute_value => {
+                            child_variable.value = format!(
+                                "UNIMPLEMENTED: Attribute Value for DW_AT_type {:?}",
+                                other_attribute_value
+                            );
+                        }
+                    }
+                }
+                gimli::DW_AT_enum_class => match attr.value() {
+                    gimli::AttributeValue::Flag(is_enum_class) => {
+                        if is_enum_class {
+                            child_variable.value = child_variable.type_name.clone();
+                        } else {
+                            child_variable.value = format!(
+                                "UNIMPLEMENTED: Flag Value for DW_AT_enum_class {:?}",
+                                is_enum_class
+                            );
+                        }
+                    }
+                    other_attribute_value => {
+                        child_variable.value = format!(
+                            "UNIMPLEMENTED: Attribute Value for DW_AT_enum_class: {:?}",
+                            other_attribute_value
+                        );
+                    }
+                },
+                gimli::DW_AT_const_value => match attr.value() {
+                    gimli::AttributeValue::Udata(const_value) => {
+                        child_variable.value = const_value.to_string();
+                    }
+                    other_attribute_value => {
+                        child_variable.value = format!(
+                            "UNIMPLEMENTED: Attribute Value for DW_AT_const_value: {:?}",
+                            other_attribute_value
+                        );
+                    }
+                },
+                gimli::DW_AT_alignment => {
+                    // warn!("UNIMPLEMENTED: DW_AT_alignment({:?})", attr.value())
+                } //TODO: Figure out when (if at all) we need to do anything with DW_AT_alignment for the purposes of decoding data values
+                gimli::DW_AT_artificial => {
+                    //These are references for entries like discriminant values of VariantParts
+                    child_variable.name = "artificial".to_string();
+                }
+                gimli::DW_AT_discr => match attr.value() {
+                    gimli::AttributeValue::UnitRef(unit_ref) => {
+                        let mut type_tree = self
+                            .unit
+                            .header
+                            .entries_tree(&self.unit.abbreviations, Some(unit_ref))?;
+                        let mut discriminant_node = type_tree.root().unwrap();
+                        let mut discriminant_variable = Variable::new();
+                        self.process_tree_node_attributes(
+                            &mut discriminant_node,
+                            parent_variable,
+                            &mut discriminant_variable,
+                            core,
+                            frame_base,
+                        )?;
+                        discriminant_variable.extract_value(core);
+                        parent_variable.role = VariantRole::VariantPart(
+                            discriminant_variable.value.parse().unwrap_or(u64::MAX) as u64,
+                        );
+                    }
+                    other_attribute_value => {
+                        child_variable.value = format!(
+                            "UNIMPLEMENTED: Attribute Value for DW_AT_discr {:?}",
+                            other_attribute_value
+                        );
+                    }
+                },
+                gimli::DW_AT_discr_value => {} //Processed by extract_variant_discriminant()
+                gimli::DW_AT_byte_size => {}   //Processed by extract_byte_size()
+                other_attribute => {
+                    child_variable.value = format!(
+                        "UNIMPLEMENTED: Variable Attribute {:?} : {:?}, with children = {}",
+                        other_attribute.static_string(),
+                        tree_node
+                            .entry()
+                            .attr_value(other_attribute)
+                            .unwrap()
+                            .unwrap(),
+                        tree_node.entry().has_children()
+                    );
+                }
+            }
+        }
+        Ok(())
+    }
+
+    fn process_tree(
+        &self,
+        parent_node: gimli::EntriesTreeNode<R>,
+        parent_variable: &mut Variable,
+        core: &mut Core<'_>,
+        frame_base: u64,
+    ) -> Result<(), DebugError> {
+        let mut child_nodes = parent_node.children();
+        while let Some(mut child_node) = child_nodes.next()? {
+            match child_node.entry().tag() {
+                gimli::DW_TAG_variable |    //typical top-level variables 
+                gimli::DW_TAG_member |      //members of structured types
+                gimli::DW_TAG_enumerator    //possible values for enumerators, used by extract_type() when processing DW_TAG_enumeration_type
+                => {
+                    if child_node.entry().attr(gimli::DW_AT_abstract_origin) == Ok(None) {
+                        let mut child_variable = Variable::new();
+                        child_variable.kind = VariableKind::Named;
+                        self.process_tree_node_attributes(&mut child_node, parent_variable, &mut child_variable, core, frame_base)?;
+                        // Recursively process each child.
+                        self.process_tree(child_node, &mut child_variable, core, frame_base)?;
+                        child_variable.extract_value(core);
+                        parent_variable.add_child_variable(&mut child_variable);
+                    }
+                    else {
+                        //TODO: Investigate and implement DW_AT_abstract_origin variables ... warn!{"Found Abstract origin for: {:?}", parent_variable};
+                    }
+                }
+                gimli::DW_TAG_structure_type |
+                gimli::DW_TAG_enumeration_type  => {} //These will be processed in the extract_type recursion,
+                gimli::DW_TAG_variant_part => {
+                    let mut child_variable = Variable::new();
+                    //If there is a child with DW_AT_discr, the variable role will updated appropriately, otherwise we use 0 as the default ...
+                    parent_variable.role = VariantRole::VariantPart(0);
+                    self.process_tree_node_attributes(&mut child_node, parent_variable, &mut child_variable, core, frame_base)?;
+                    child_variable.location = parent_variable.location; //Pass it along through intermediate nodes
+                    // Recursively process each child.
+                    self.process_tree(child_node, &mut child_variable, core, frame_base)?;
+                    child_variable.extract_value(core);
+                    //We need to recurse through the children, to find the DW_TAG_variant with discriminant matching the DW_TAG_variant, 
+                    // and ONLY add it's children to the parent variable. 
+                    // The structure looks like this (there are other nodes in the structure that we use and discard before we get here):
+                    // Level 1: `parent_variable`               --> An actual variable that has a variant value
+                    // Level 2:     `child_variable`            --> this DW_TAG_variant_part node (ignore hidden children previously used to calc the active Variant discriminant)
+                    // Level 3:         `grand_child`           --> Some DW_TAG_variant's that have discriminant values to be matched against the discriminant 
+                    // Level 4:             `active_child`      --> The actual variables, with matching discriminant, which will be added to `parent_variable`
+                    // TODO: Handle Level 3 nodes that belong to a DW_AT_discr_list, instead of having a discreet DW_AT_discr_value 
+                    if let Some(grand_children) = child_variable.children {
+                        for grand_child in grand_children {
+                            if let VariantRole::Variant(discriminant) = grand_child.role {
+                                if parent_variable.role  == VariantRole::VariantPart(discriminant) {
+                                    if let Some(active_children) = grand_child.children {
+                                        for mut active_child in active_children {
+                                            parent_variable.add_child_variable(&mut active_child);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                gimli::DW_TAG_variant //variant is a child of a structure, and one of them should have a discriminant value to match the DW_TAG_variant_part 
+                => {
+                    let mut child_variable = Variable::new();
+                    //We need to do this here, to identify "default" variants for when the rust lang compiler doesn't encode them explicitly ... only by absence of a DW_AT_discr_value
+                    self.extract_variant_discriminant(&child_node, &mut child_variable, core, frame_base)?;
+                    self.process_tree_node_attributes(&mut child_node, parent_variable, &mut child_variable, core, frame_base)?;
+                    child_variable.location = parent_variable.location; //Pass it along through intermediate nodes
+                    // Recursively process each child.
+                    self.process_tree(child_node, &mut child_variable, core, frame_base)?;
+                    child_variable.extract_value(core);
+                    parent_variable.add_child_variable(&mut child_variable);
+                }
+                gimli::DW_TAG_template_type_parameter |
+                gimli::DW_TAG_formal_parameter |
+                gimli::DW_TAG_inlined_subroutine |
+                gimli::DW_TAG_subrange_type |
+                gimli::DW_TAG_lexical_block //TODO: These hold the scope & visibility info
+                => {
+                    // Recursively process each node, but pass the parent_variable so that new children are caught despite missing these tags.
+                    self.process_tree(child_node, parent_variable, core, frame_base)?;
+                    // warn!("\n\nEncountered a TODO node {:?}", child_node.entry().tag().static_string());
+                    // print_all_attributes(core, Some(frame_base), &self.debug_info.dwarf, &self.unit, &child_node.entry(), 1 );
+                }
+                other => {
+                    parent_variable.value = format!("\n{{\n\tFound unexpected tag: {:?} for variable \n\t{:?}", other.static_string(), parent_variable);
+                }
+            }
+        }
+        Ok(())
+    }
+
+    //TODO: Need to limit this to the variables that are in-scope. Currently it brings back all the variables for a function unit, even if the `pc` has not reached that point yet.
+    fn get_function_variables(
         &self,
         core: &mut Core<'_>,
         die_cursor_state: &mut DieCursorState,
         frame_base: u64,
     ) -> Result<Vec<Variable>, DebugError> {
-        let mut variables = vec![];
+        let abbrevs = &self.unit.abbreviations;
+        let mut tree = self
+            .unit
+            .header
+            .entries_tree(abbrevs, Some(die_cursor_state.function_die.offset()))?;
+        let function_node = tree.root()?;
+        let mut root_variable = Variable {
+            name: "<locals>".to_string(),
+            ..Default::default()
+        };
+        self.process_tree(function_node, &mut root_variable, core, frame_base)?;
+        match root_variable.children {
+            Some(function_variables) => Ok(function_variables),
+            None => Ok(vec![]),
+        }
+    }
 
-        while let Some((depth, current)) = die_cursor_state.entries_cursor.next_dfs()? {
-            if depth != 0 && depth != 1 {
-                break;
-            }
-            if let gimli::DW_TAG_variable = current.tag() {
-                let mut variable = Variable {
-                    name: String::new(),
-                    file: String::new(),
-                    line: u64::max_value(),
-                    value: 0,
-                    ..Default::default()
-                };
-                let mut attrs = current.attrs();
-                while let Ok(Some(attr)) = attrs.next() {
-                    match attr.name() {
-                        gimli::DW_AT_name => {
-                            variable.name = extract_name(&self.debug_info, attr.value())
-                                .unwrap_or_else(|| "<undefined>".to_string());
+    ///Compute the discriminant value of a DW_TAG_variant variable. If it is not explicitly captured in the DWARF, then it is the default value.
+    fn extract_variant_discriminant(
+        &self,
+        node: &gimli::EntriesTreeNode<R>,
+        variable: &mut Variable,
+        _core: &mut Core<'_>,
+        _frame_base: u64,
+    ) -> Result<(), DebugError> {
+        if node.entry().tag() == gimli::DW_TAG_variant {
+            //TODO: I don't think we can rely on this structure
+            variable.role = match node.entry().attr(gimli::DW_AT_discr_value) {
+                Ok(optional_discr_value_attr) => {
+                    match optional_discr_value_attr {
+                        Some(discr_attr) => {
+                            match discr_attr.value() {
+                                gimli::AttributeValue::Data1(const_value) => {
+                                    VariantRole::Variant(const_value as u64)
+                                }
+                                other_attribute_value => {
+                                    variable.value = format!("UNIMPLEMENTED: Attribute Value for DW_AT_discr_value: {:?}", other_attribute_value);
+                                    VariantRole::Variant(u64::MAX)
+                                }
+                            }
                         }
-                        gimli::DW_AT_decl_file => {
-                            variable.file =
-                                extract_file(&self.debug_info, &self.unit, attr.value())
-                                    .unwrap_or_else(|| "<undefined>".to_string());
+                        None => {
+                            //In the case where the variable is a DW_TAG_variant, but has NO DW_AT_discr_value, then this is the "default" to be used
+                            VariantRole::Variant(0)
                         }
-                        gimli::DW_AT_decl_line => {
-                            variable.line = extract_line(&self.debug_info, attr.value())
-                                .unwrap_or_else(u64::max_value);
-                        }
-                        gimli::DW_AT_type => {
-                            variable.typ =
-                                extract_type(&self, attr.value()).unwrap_or_else(|| Type {
-                                    name: "<undefined>".to_string(),
-                                    named_children: None,
-                                    indexed_children: None,
-                                });
-                        }
-                        gimli::DW_AT_location => {
-                            variable.value =
-                                extract_location(&self, core, frame_base, attr.value())?
-                                    .unwrap_or_else(u64::max_value);
-                        }
-                        _ => (),
                     }
                 }
-                variables.push(variable);
+                Err(_error) => {
+                    variable.value = format!(
+                        "ERROR: Retrieving DW_AT_discr_value for variable {:?}",
+                        variable
+                    );
+                    VariantRole::NonVariant
+                }
             };
         }
-
-        Ok(variables)
+        Ok(())
     }
-}
 
-fn extract_location(
-    unit_info: &UnitInfo,
-    core: &mut Core<'_>,
-    frame_base: u64,
-    attribute_value: gimli::AttributeValue<R>,
-) -> Result<Option<u64>, DebugError> {
-    match attribute_value {
-        gimli::AttributeValue::Exprloc(expression) => {
-            let piece = unit_info.expr_to_piece(core, expression, frame_base)?;
-
-            let value = get_piece_value(core, &piece[0]);
-            Ok(value.map(u64::from))
-        }
-        _ => Ok(None),
-    }
-}
-
-fn extract_type(unit_info: &UnitInfo, attribute_value: gimli::AttributeValue<R>) -> Option<Type> {
-    match attribute_value {
-        gimli::AttributeValue::UnitRef(unit_ref) => {
-            if let Ok(mut tree) = unit_info.unit.entries_tree(Some(unit_ref)) {
-                let node = tree.root().unwrap();
-
-                // Examine the entry attributes.
-                let entry = node.entry();
-                if let gimli::DW_TAG_structure_type = entry.tag() {
-                    let type_name = extract_name(
-                        &unit_info.debug_info,
-                        entry.attr(gimli::DW_AT_name).unwrap().unwrap().value(),
-                    );
-                    let mut named_children = std::collections::HashMap::new();
-
-                    let mut children = node.children();
-                    while let Ok(Some(child)) = children.next() {
-                        // Recursively process a child.
-                        let entry = child.entry();
-                        if let gimli::DW_TAG_member = entry.tag() {
-                            let member_name = extract_name(
-                                &unit_info.debug_info,
-                                entry.attr(gimli::DW_AT_name).unwrap().unwrap().value(),
-                            );
-                            named_children.insert(
-                                member_name?,
-                                extract_type(
-                                    unit_info,
-                                    (entry.attr(gimli::DW_AT_type).ok()?)?.value(),
-                                )?,
-                            );
-                        };
-                    }
-
-                    return Some(Type {
-                        name: type_name.unwrap_or_else(|| "<unnamed type>".to_string()),
-                        named_children: Some(named_children),
-                        indexed_children: Some(vec![]),
-                    });
-                };
+    ///Compute the type (base to complex) of a variable. Only base types have values.
+    fn extract_type(
+        &self,
+        node: gimli::EntriesTreeNode<R>,
+        variable: &mut Variable,
+        core: &mut Core<'_>,
+        frame_base: u64,
+    ) -> Result<(), DebugError> {
+        // let entry = node.entry();
+        variable.type_name = match node.entry().attr(gimli::DW_AT_name) {
+            Ok(optional_name_attr) => match optional_name_attr {
+                Some(name_attr) => extract_name(self.debug_info, name_attr.value()),
+                None => "<unnamed type>".to_owned(),
+            },
+            Err(error) => {
+                format!("ERROR: evaluating name: {:?} ", error)
             }
-            None
+        };
+        variable.byte_size = extract_byte_size(self.debug_info, node.entry());
+        match node.entry().tag() {
+            gimli::DW_TAG_base_type => {
+                variable.children = None;
+                Ok(())
+            }
+            gimli::DW_TAG_pointer_type => {
+                //This needs to resolve the pointer before the regular recursion can continue
+                match node.entry().attr(gimli::DW_AT_type) {
+                    Ok(optional_data_type_attribute) => {
+                        match optional_data_type_attribute {
+                            Some(data_type_attribute) => {
+                                match data_type_attribute.value() {
+                                    gimli::AttributeValue::UnitRef(unit_ref) => {
+                                        //reference to a type, or an node.entry() to another type or a type modifier which will point to another type
+                                        let mut referenced_variable = Variable::new();
+                                        let mut type_tree = self.unit.header.entries_tree(
+                                            &self.unit.abbreviations,
+                                            Some(unit_ref),
+                                        )?;
+                                        let referenced_node = type_tree.root().unwrap();
+                                        referenced_variable.name = match node
+                                            .entry()
+                                            .attr(gimli::DW_AT_name)
+                                        {
+                                            Ok(optional_name_attr) => match optional_name_attr {
+                                                Some(name_attr) => {
+                                                    extract_name(self.debug_info, name_attr.value())
+                                                }
+                                                None => "".to_owned(),
+                                            },
+                                            Err(error) => {
+                                                format!("ERROR: evaluating name: {:?} ", error)
+                                            }
+                                        };
+                                        //Now, retrieve the location by reading the adddress pointed to by the parent variable
+                                        let mut buff = [0u8; 4];
+                                        core.read_8(variable.location as u32, &mut buff)?;
+                                        referenced_variable.location =
+                                            u32::from_le_bytes(buff) as u64;
+                                        self.extract_type(
+                                            referenced_node,
+                                            &mut referenced_variable,
+                                            core,
+                                            frame_base,
+                                        )?;
+                                        referenced_variable.kind = VariableKind::Referenced;
+                                        referenced_variable.extract_value(core);
+                                        //Now add the referenced_variable as a child.
+                                        variable.add_child_variable(&mut referenced_variable);
+                                    }
+                                    other_attribute_value => {
+                                        variable.value = format!(
+                                            "UNIMPLEMENTED: Attribute Value for DW_AT_type {:?}",
+                                            other_attribute_value
+                                        );
+                                    }
+                                }
+                            }
+                            None => {
+                                variable.value = format!(
+                                    "ERROR: No Attribute Value for DW_AT_type for variable {:?}",
+                                    variable.name
+                                );
+                            }
+                        }
+                    }
+                    Err(error) => {
+                        variable.value =
+                            format!("ERROR: Failed to decode pointer reference: {:?}", error);
+                    }
+                }
+                Ok(())
+            }
+            gimli::DW_TAG_structure_type => {
+                // Recursively process a child types.
+                self.process_tree(node, variable, core, frame_base)?;
+                Ok(())
+            }
+            gimli::DW_TAG_array_type => {
+                // Recursively process a child types.
+                self.process_tree(node, variable, core, frame_base)?;
+                Ok(())
+            }
+            gimli::DW_TAG_enumeration_type => {
+                // Recursively process a child types.
+                self.process_tree(node, variable, core, frame_base)?;
+                let enumerator_values = match variable.children.clone() {
+                    Some(enumerator_values) => enumerator_values,
+                    None => {
+                        vec![]
+                    }
+                };
+                let mut buff = [0u8; 1]; //NOTE: hard-coding value of variable.byte_size to 1 ... replace with code if necessary
+                core.read_8(variable.location as u32, &mut buff)?;
+                let this_enum_const_value = u8::from_le_bytes(buff).to_string();
+                let enumumerator_value = match enumerator_values
+                    .into_iter()
+                    .find(|enumerator_variable| enumerator_variable.value == this_enum_const_value)
+                {
+                    Some(this_enum) => this_enum.name,
+                    None => "<ERROR: Unresolved enum value>".to_string(),
+                };
+                variable.value = format!("{}::{}", variable.type_name, enumumerator_value);
+                variable.children = None; //We don't need to keep these.
+                Ok(())
+            }
+            gimli::DW_TAG_union_type => {
+                //TODO: Implement Uninon Types ...
+                // println!("\nUNION: Variable {:?} has a {:?} TYPE child node", variable.name, node.entry().tag().static_string());
+                // print_all_attributes(core, Some(frame_base), &self.debug_info.dwarf, &self.unit, node.entry(), 1 );
+                // Variable {
+                //     name: "buffer",
+                //     value: "",
+                //     file: "",
+                //     line: 18446744073709551615,
+                //     type_name: MaybeUninit
+                //         {
+                //             generic_array::GenericArray
+                //             {
+                //                 i8,
+                //                 typenum::uint::UInt
+                //                 {
+                //                     typenum::uint::UInt
+                //                     {
+                //                         typenum::uint::UInt
+                //                         {
+                //                             typenum::uint::UInt
+                //                             {
+                //                                 typenum::uint::UTerm,
+                //                                 typenum::bit::B1
+                //                             },
+                //                             typenum::bit::B0
+                //                         },
+                //                         typenum::bit::B1
+                //                     },
+                //                     typenum::bit::B0
+                //                 }
+                //             }
+                //         },
+                //     location: 537001440,
+                //     byte_size: 10,
+                //     children: None
+                // }
+                Ok(())
+            }
+            other => {
+                variable.type_name = format!("<UNIMPLEMENTED: type : {:?}>", other.static_string());
+                variable.value = format!("<UNIMPLEMENTED: type : {:?}>", other.static_string());
+                variable.children = None;
+                Ok(())
+            }
         }
-        _ => None,
+    }
+
+    ///Find the location using either DW_AT_location, or DW_AT_data_member_location, and store it in the &mut Variable. A value of 0 is a valid 0 reported from dwarf.
+    fn extract_location(
+        &self,
+        node: &gimli::EntriesTreeNode<R>,
+        parent_variable: &mut Variable,
+        child_variable: &mut Variable,
+        core: &mut Core<'_>,
+        frame_base: u64,
+    ) -> Result<(), DebugError> {
+        let mut attrs = node.entry().attrs();
+        while let Some(attr) = attrs.next().unwrap() {
+            match attr.name() {
+                gimli::DW_AT_location | gimli::DW_AT_data_member_location => {
+                    match attr.value() {
+                        gimli::AttributeValue::Exprloc(expression) => {
+                            let pieces = match self.expr_to_piece(core, expression, frame_base) {
+                                Ok(pieces) => pieces,
+                                Err(err) => {
+                                    child_variable.location = u64::MAX;
+                                    child_variable.value =
+                                        format!("ERROR: expr_to_piece() failed with: {:?}", err);
+                                    return Err(err);
+                                }
+                            };
+                            if pieces.is_empty() {
+                                child_variable.location = u64::MAX;
+                                child_variable.value = format!(
+                                    "ERROR: expr_to_piece() returned 0 results: {:?}",
+                                    pieces
+                                );
+                            } else if pieces.len() > 1 {
+                                child_variable.location = u64::MAX;
+                                child_variable.value = format!("UNIMPLEMENTED: expr_to_piece() returned more than 1 result: {:?}", pieces);
+                            } else {
+                                match &pieces[0].location {
+                                    Location::Empty => {
+                                        child_variable.location = 0_u64;
+                                    }
+                                    Location::Address { address } => {
+                                        child_variable.location = *address;
+                                    }
+                                    Location::Value { value } => match value {
+                                        gimli::Value::Generic(value) => {
+                                            child_variable.location = u64::MAX;
+                                            child_variable.value = value.to_string();
+                                        }
+                                        gimli::Value::I8(value) => {
+                                            child_variable.location = u64::MAX;
+                                            child_variable.value = value.to_string();
+                                        }
+                                        gimli::Value::U8(value) => {
+                                            child_variable.location = u64::MAX;
+                                            child_variable.value = value.to_string();
+                                        }
+                                        gimli::Value::I16(value) => {
+                                            child_variable.location = u64::MAX;
+                                            child_variable.value = value.to_string();
+                                        }
+                                        gimli::Value::U16(value) => {
+                                            child_variable.location = u64::MAX;
+                                            child_variable.value = value.to_string();
+                                        }
+                                        gimli::Value::I32(value) => {
+                                            child_variable.location = u64::MAX;
+                                            child_variable.value = value.to_string();
+                                        }
+                                        gimli::Value::U32(value) => {
+                                            child_variable.location = u64::MAX;
+                                            child_variable.value = value.to_string();
+                                        }
+                                        gimli::Value::I64(value) => {
+                                            child_variable.location = u64::MAX;
+                                            child_variable.value = value.to_string();
+                                        }
+                                        gimli::Value::U64(value) => {
+                                            child_variable.location = u64::MAX;
+                                            child_variable.value = value.to_string();
+                                        }
+                                        gimli::Value::F32(value) => {
+                                            child_variable.location = u64::MAX;
+                                            child_variable.value = value.to_string();
+                                        }
+                                        gimli::Value::F64(value) => {
+                                            child_variable.location = u64::MAX;
+                                            child_variable.value = value.to_string();
+                                        }
+                                    },
+                                    Location::Register { register: _ } => {
+                                        //TODO: I commented the below, because it needs work to read the correct register, NOT just 0 // match core.read_core_reg(register.0)
+                                        // let val = core
+                                        //     .read_core_reg(register.0 as u16)
+                                        //     .expect("Failed to read register from target");
+                                        child_variable.location = u64::MAX;
+                                        child_variable.value = "extract_location() found a register address as the location".to_owned();
+                                    }
+                                    l => {
+                                        child_variable.location = u64::MAX;
+                                        child_variable.value = format!("UNIMPLEMENTED: extract_location() found a location type: {:?}", l);
+                                    }
+                                }
+                            }
+                        }
+                        gimli::AttributeValue::Udata(offset_from_parent) => {
+                            if parent_variable.location != u64::MAX {
+                                child_variable.location =
+                                    parent_variable.location + offset_from_parent as u64;
+                            } else {
+                                child_variable.location = offset_from_parent as u64;
+                            }
+                        }
+                        other_attribute_value => {
+                            //TODO: Implement bit offset for structure types
+                            child_variable.value = format!(
+                                "ERROR: extract_location() Could not extract location from: {:?}",
+                                other_attribute_value
+                            );
+                        }
+                    }
+                    //TODO:Sometimes there are 'intermediate' nodes between the parent and the children, so make sure we carry these forward.
+                }
+                _other_attributes => {} //these will be handled elsewhere
+            }
+        }
+        Ok(())
     }
 }
 
@@ -936,11 +1419,12 @@ fn extract_file(
         gimli::AttributeValue::FileIndex(index) => unit.line_program.as_ref().and_then(|ilnp| {
             let header = ilnp.header();
             header.file(index).and_then(|file_entry| {
-                file_entry.directory(header).and_then(|directory| {
-                    extract_name(debug_info, directory).and_then(|dir| {
+                file_entry.directory(header).map(|directory| {
+                    format!(
+                        "{}/{}",
+                        extract_name(debug_info, directory),
                         extract_name(debug_info, file_entry.path_name())
-                            .map(|file| format!("{}/{}", dir, file))
-                    })
+                    )
                 })
             })
         }),
@@ -948,6 +1432,29 @@ fn extract_file(
     }
 }
 
+///If a DW_AT_byte_size attribute exists, return the u64 value, otherwise (including errors) return 0
+fn extract_byte_size(_debug_info: &DebugInfo, di_entry: &DebuggingInformationEntry<R>) -> u64 {
+    match di_entry.attr(gimli::DW_AT_byte_size) {
+        Ok(optional_byte_size_attr) => match optional_byte_size_attr {
+            Some(byte_size_attr) => match byte_size_attr.value() {
+                gimli::AttributeValue::Udata(byte_size) => byte_size,
+                other => {
+                    warn!("UNIMPLEMENTED: DW_AT_byte_size value: {:?} ", other);
+                    0
+                }
+            },
+            None => 0,
+        },
+        Err(error) => {
+            warn!(
+                "Failed to extract byte_size: {:?} for debug_entry {:?}",
+                error,
+                di_entry.tag().static_string()
+            );
+            0
+        }
+    }
+}
 fn extract_line(_debug_info: &DebugInfo, attribute_value: gimli::AttributeValue<R>) -> Option<u64> {
     match attribute_value {
         gimli::AttributeValue::Udata(line) => Some(line),
@@ -955,40 +1462,20 @@ fn extract_line(_debug_info: &DebugInfo, attribute_value: gimli::AttributeValue<
     }
 }
 
-fn extract_name(
-    debug_info: &DebugInfo,
-    attribute_value: gimli::AttributeValue<R>,
-) -> Option<String> {
+fn extract_name(debug_info: &DebugInfo, attribute_value: gimli::AttributeValue<R>) -> String {
     match attribute_value {
         gimli::AttributeValue::DebugStrRef(name_ref) => {
             let name_raw = debug_info.dwarf.string(name_ref).unwrap();
-            Some(String::from_utf8_lossy(&name_raw).to_string())
+            String::from_utf8_lossy(&name_raw).to_string()
         }
-        gimli::AttributeValue::String(name) => Some(String::from_utf8_lossy(&name).to_string()),
-        _ => None,
-    }
-}
-
-fn get_piece_value(core: &mut Core<'_>, p: &gimli::Piece<DwarfReader>) -> Option<u32> {
-    use gimli::Location;
-
-    match &p.location {
-        Location::Empty => None,
-        Location::Address { address } => Some(*address as u32),
-        Location::Value { value } => Some(value.to_u64(0xff_ff_ff_ff).unwrap() as u32),
-        Location::Register { register } => {
-            let val = core
-                .read_core_reg(register.0 as u16)
-                .expect("Failed to read register from target");
-            Some(val)
-        }
-        l => unimplemented!("Location {:?} not implemented", l),
+        gimli::AttributeValue::String(name) => String::from_utf8_lossy(&name).to_string(),
+        other => format!("UNIMPLEMENTED: Evaluate name from {:?}", other),
     }
 }
 
 pub(crate) fn _print_all_attributes(
     core: &mut Core<'_>,
-    frame_base: Option<u32>,
+    frame_base: Option<u64>,
     dwarf: &gimli::Dwarf<DwarfReader>,
     unit: &gimli::Unit<DwarfReader>,
     tag: &gimli::DebuggingInformationEntry<DwarfReader>,
@@ -1044,15 +1531,39 @@ pub(crate) fn _print_all_attributes(
                                         .resume_with_memory(gimli::Value::U32(val))
                                         .unwrap()
                                 }
-                                _ => unimplemented!(),
+                                x => {
+                                    error!(
+                                        "Requested memory with size {}, which is not supported yet.",
+                                        x
+                                    );
+                                    unimplemented!();
+                                }
                             }
                         }
                         RequiresFrameBase => evaluation
-                            .resume_with_frame_base(u64::from(frame_base.unwrap()))
+                            .resume_with_frame_base(frame_base.unwrap())
                             .unwrap(),
+                        RequiresRegister {
+                            register,
+                            base_type,
+                        } => {
+                            let raw_value = core
+                                .read_core_reg(register.0 as u16)
+                                .expect("Failed to read memory");
+
+                            if base_type != gimli::UnitOffset(0) {
+                                unimplemented!(
+                                    "Support for units in RequiresRegister request is not yet implemented."
+                                )
+                            }
+                            evaluation
+                                .resume_with_register(gimli::Value::Generic(raw_value as u64))
+                                .unwrap()
+                        }
                         x => {
-                            println!("{:?}", x);
-                            unimplemented!()
+                            println!("print_all_attributes {:?}", x);
+                            // x
+                            todo!()
                         }
                     }
                 }
@@ -1070,8 +1581,10 @@ pub(crate) fn _print_all_attributes(
             DebugLocListsIndex(_) => {
                 println!(" LocationList");
             }
-            //_ => println!("{:?}", attr.value()),
-            _ => println!("-"),
+            _ => {
+                println!("print_all_attributes {:?}", attr.value());
+                //todo!()
+            } // _ => println!("-"),
         }
     }
 }

@@ -4,8 +4,13 @@ members = [
     "probe-rs-target",
     "probe-rs-cli-util",
     "cli",
+    "debugger",
     "gdb-server",
 ]
 
 [profile.release]
 debug = true
+split-debuginfo = "unpacked"
+
+[profile.dev]
+split-debuginfo = "unpacked"

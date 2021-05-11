@@ -43,7 +43,7 @@ If you are looking for a more extended debugging experience, please head over to
 
 ## VSCode
 
-We are implementing [Microsoft DAP](https://code.visualstudio.com/blogs/2018/08/07/debug-adapter-protocol-website). This makes embedded debugging via probe-rs available in modern code editors implementing the standard, such as VSCode.
+We are implementing [Microsoft DAP](https://microsoft.github.io/debug-adapter-protocol/). This makes embedded debugging via probe-rs available in modern code editors implementing the standard, such as VSCode. To support this, probe-rs includes a debugger which supports both basic command line debugging, and more extensive capabilities when run as a DAP server. Please see [probe-rs-debugger](https://github.com/probe-rs/probe-rs/tree/dap/debugger) and [vscode](https://github.com/probe-rs/vscode) for more information.
 
 ## Usage Examples
 ### Halting the attached chip
