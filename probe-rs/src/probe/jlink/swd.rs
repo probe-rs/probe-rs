@@ -306,6 +306,11 @@ fn perform_transfers<P: RawSwdIo>(
         read_index += additional_idle_cycles_after;
     }
 
+    let wait_result_index = responses
+        .iter()
+        .position(|r| r == &Err(DapError::WaitResponse))
+        .unwrap_or(responses.len());
+
     // Retrieve the results
     for (transfer, index) in transfers.iter_mut().zip(result_indices) {
         match &responses[index] {
@@ -317,7 +322,11 @@ fn perform_transfers<P: RawSwdIo>(
                 transfer.status = TransferStatus::Ok;
             }
             Err(e) => {
-                transfer.status = TransferStatus::Failed(e.clone());
+                transfer.status = TransferStatus::Failed(if index >= wait_result_index {
+                    DapError::WaitResponse
+                } else {
+                    e.clone()
+                });
             }
         }
     }
