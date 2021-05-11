@@ -54,7 +54,7 @@ impl Default for SwdSettings {
     fn default() -> Self {
         Self {
             num_idle_cycles_between_writes: 2,
-            num_retries_after_wait: 80,
+            num_retries_after_wait: 1000,
             max_retry_idle_cycles_after_wait: 128,
             idle_cycles_before_write_verify: 8,
             idle_cycles_after_transfer: 8,
