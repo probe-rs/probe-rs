@@ -45,6 +45,7 @@ lazy_static::lazy_static! {
 }
 
 #[derive(Debug, StructOpt)]
+#[structopt(bin_name = "cargo flash", after_help = CARGO_HELP_MESSAGE)]
 struct Opt {
     #[structopt(short = "V", long = "version")]
     pub version: bool,
@@ -119,26 +120,56 @@ struct Opt {
     #[structopt(long = "dry-run")]
     dry_run: bool,
 
-    // `cargo build` arguments
-    #[structopt(name = "binary", long = "bin")]
+    #[structopt(flatten)]
+    /// Arguments which are forwarded to 'cargo build'.
+    cargo_options: CargoOptions,
+}
+
+#[derive(StructOpt, Debug)]
+struct CargoOptions {
+    #[structopt(name = "binary", long = "bin", hidden = true)]
     bin: Option<String>,
-    #[structopt(name = "example", long = "example")]
+    #[structopt(name = "example", long = "example", hidden = true)]
     example: Option<String>,
-    #[structopt(name = "package", short = "p", long = "package")]
+    #[structopt(name = "package", short = "p", long = "package", hidden = true)]
     package: Option<String>,
-    #[structopt(name = "release", long = "release")]
+    #[structopt(name = "release", long = "release", hidden = true)]
     release: bool,
-    #[structopt(name = "target", long = "target")]
+    #[structopt(name = "target", long = "target", hidden = true)]
     target: Option<String>,
-    #[structopt(name = "PATH", long = "manifest-path", parse(from_os_str))]
+    #[structopt(
+        name = "PATH",
+        long = "manifest-path",
+        parse(from_os_str),
+        hidden = true
+    )]
     manifest_path: Option<PathBuf>,
-    #[structopt(long)]
+    #[structopt(long, hidden = true)]
     no_default_features: bool,
-    #[structopt(long)]
+    #[structopt(long, hidden = true)]
     all_features: bool,
-    #[structopt(long)]
+    #[structopt(long, hidden = true)]
     features: Vec<String>,
 }
+
+const CARGO_HELP_MESSAGE: &'static str = r#"
+CARGO BUILD OPTIONS:
+
+    The following options are forwarded to 'cargo build':
+
+        --bin
+        --example
+    -p, --package
+        --release
+        --target
+        --manifest-path
+        --no-default-features
+        --all-features
+        --features
+    
+    For example, if you run the command 'cargo flash --release', 
+    this means that 'cargo build --release' will be called.
+"#;
 
 const ARGUMENTS_TO_REMOVE: &[&str] = &[
     "chip=",
