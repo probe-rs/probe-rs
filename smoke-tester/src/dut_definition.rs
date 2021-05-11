@@ -46,7 +46,10 @@ pub struct DutDefinition {
 
     /// Selector for the debug probe to be used.
     /// See [probe_rs::DebugProbeSelector].
-    pub probe_selector: DebugProbeSelector,
+    ///
+    /// If not set, any detected probe will be used.
+    /// If multiple probes are found, an error is returned.
+    pub probe_selector: Option<DebugProbeSelector>,
 
     /// Path to a binary which can be used to test
     /// flashing for the DUT.     
@@ -57,7 +60,31 @@ pub struct DutDefinition {
 }
 
 impl DutDefinition {
-    /// Collect all DUT definitions from a direcotry.
+    pub fn new(chip: &str, probe: &str) -> Result<Self> {
+        let target = lookup_unique_target(chip)?;
+
+        let selector: DebugProbeSelector = probe.parse()?;
+
+        Ok(DutDefinition {
+            chip: target,
+            probe_selector: Some(selector),
+            flash_test_binary: None,
+            source: DefinitionSource::Cli,
+        })
+    }
+
+    pub fn autodetect_probe(chip: &str) -> Result<Self> {
+        let target = lookup_unique_target(chip)?;
+
+        Ok(DutDefinition {
+            chip: target,
+            probe_selector: None,
+            flash_test_binary: None,
+            source: DefinitionSource::Cli,
+        })
+    }
+
+    /// Collect all DUT definitions from a directory.
     ///
     /// This will try to parse all TOML files in the given directory
     /// into DUT definitions.
@@ -105,41 +132,34 @@ impl DutDefinition {
     }
 
     pub fn open_probe(&self) -> Result<Probe> {
-        let probe = Probe::open(self.probe_selector.clone()).with_context(|| {
-            format!(
-                "Failed to open probe with selector {}",
-                &self.probe_selector
-            )
-        })?;
+        match &self.probe_selector {
+            Some(selector) => {
+                let probe = Probe::open(selector.clone())
+                    .with_context(|| format!("Failed to open probe with selector {}", selector))?;
 
-        Ok(probe)
+                Ok(probe)
+            }
+            None => {
+                let probes = Probe::list_all();
+
+                ensure!(!probes.is_empty(), "No probes detected!");
+
+                ensure!(
+            probes.len() < 2,
+            "Multiple probes detected. Specify which probe to use using the '--probe' argument."
+        );
+
+                let probe = probes[0].open()?;
+
+                Ok(probe)
+            }
+        }
     }
 
     fn from_raw_definition(raw_definition: RawDutDefinition, source_file: &Path) -> Result<Self> {
-        let probe_selector = raw_definition.probe_selector.try_into()?;
+        let probe_selector = Some(raw_definition.probe_selector.try_into()?);
 
-        let targets = search_chips(&raw_definition.chip)?;
-
-        ensure!(
-            !targets.is_empty(),
-            "Unable to find any chip matching {}",
-            &raw_definition.chip
-        );
-
-        if targets.len() > 1 {
-            eprintln!(
-                "For tests, chip definition must be exact. Chip name {} matches multiple chips:",
-                &raw_definition.chip
-            );
-
-            for target in &targets {
-                eprintln!("\t{}", target);
-            }
-
-            bail!("Chip definition does not match exactly.");
-        }
-
-        let target = get_target_by_name(&targets[0])?;
+        let target = lookup_unique_target(&raw_definition.chip)?;
 
         let flash_test_binary = raw_definition.flash_test_binary.map(PathBuf::from);
 
@@ -167,4 +187,31 @@ impl DutDefinition {
             source: DefinitionSource::File(source_file.to_owned()),
         })
     }
+}
+
+fn lookup_unique_target(chip: &str) -> Result<Target> {
+    let targets = search_chips(&chip)?;
+
+    ensure!(
+        !targets.is_empty(),
+        "Unable to find any chip matching {}",
+        &chip
+    );
+
+    if targets.len() > 1 {
+        eprintln!(
+            "For tests, chip definition must be exact. Chip name {} matches multiple chips:",
+            &chip
+        );
+
+        for target in &targets {
+            eprintln!("\t{}", target);
+        }
+
+        bail!("Chip definition does not match exactly.");
+    }
+
+    let target = get_target_by_name(&targets[0])?;
+
+    Ok(target)
 }

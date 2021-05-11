@@ -6,24 +6,55 @@ use crate::{
 };
 use anyhow::{bail, Context, Result};
 
+use clap::{App, Arg};
+
 mod dut_definition;
 mod tests;
-
-use structopt::StructOpt;
-
-#[derive(StructOpt)]
-struct Options {
-    path: String,
-}
 
 fn main() -> Result<()> {
     pretty_env_logger::init();
 
-    let opts = Options::from_args();
+    let app = App::new("smoke tester")
+        .arg(
+            Arg::with_name("dut_definitions")
+                .long("dut-definitions")
+                .value_name("DIRECTORY")
+                .takes_value(true)
+                .conflicts_with_all(&["chip", "probe"])
+                .required(true),
+        )
+        .arg(
+            Arg::with_name("chip")
+                .long("chip")
+                .takes_value(true)
+                .value_name("CHIP")
+                .conflicts_with("dut_definitions")
+                .required(true),
+        )
+        .arg(
+            Arg::with_name("probe")
+                .long("probe")
+                .takes_value(true)
+                .value_name("PROBE")
+                .required(false),
+        );
 
-    let definitions = DutDefinition::collect(&opts.path)?;
+    let matches = app.get_matches();
 
-    println!("Found {} target definitions.", definitions.len());
+    let definitions = if let Some(dut_definitions) = matches.value_of("dut_definitions") {
+        let definitions = DutDefinition::collect(dut_definitions)?;
+        println!("Found {} target definitions.", definitions.len());
+        definitions
+    } else {
+        // Chip needs to be specified
+        let chip = matches.value_of("chip").unwrap(); // If dut-definitions is not present, chip must be present
+
+        if let Some(probe) = matches.value_of("probe") {
+            vec![DutDefinition::new(&chip, &probe)?]
+        } else {
+            vec![DutDefinition::autodetect_probe(&chip)?]
+        }
+    };
 
     let num_duts = definitions.len();
 

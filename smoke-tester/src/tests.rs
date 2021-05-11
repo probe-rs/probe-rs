@@ -144,10 +144,8 @@ pub fn test_flashing(session: &mut Session, test_binary: &Path) -> Result<()> {
     });
 
     let options = DownloadOptions {
-        keep_unwritten_bytes: false,
-        dry_run: false,
-        do_chip_erase: false,
         progress: Some(&progress),
+        ..Default::default()
     };
 
     println!("Starting flashing test");
