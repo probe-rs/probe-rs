@@ -463,7 +463,6 @@ impl<'probe> CoreInterface for M4<'probe> {
     }
 
     fn run(&mut self) -> Result<(), Error> {
-
         //before we run, we always perform a single instruction step, to account for possible breakpoints that might get us stuck on the current instruction
         self.step()?;
 
@@ -504,7 +503,7 @@ impl<'probe> CoreInterface for M4<'probe> {
         self.memory.flush()?;
         self.wait_for_core_halted(Duration::from_millis(100))?;
 
-       //Re-enable breakpoints before we continue
+        //Re-enable breakpoints before we continue
         if was_breakpoint {
             self.enable_breakpoints(true)?;
         }
