@@ -12,7 +12,6 @@ use probe_rs::{
 };
 
 use capstone::{arch::arm::ArchMode, prelude::*, Capstone, Endian};
-use clap::arg_enum;
 use rustyline::Editor;
 use structopt::StructOpt;
 
@@ -24,23 +23,6 @@ use std::time::Instant;
 
 fn parse_hex(src: &str) -> Result<u32, ParseIntError> {
     u32::from_str_radix(src, 16)
-}
-
-arg_enum! {
-    #[derive(Debug, Clone, Copy)]
-    enum DownloadFileType {
-        Elf,
-        Hex,
-    }
-}
-
-impl From<DownloadFileType> for Format {
-    fn from(this: DownloadFileType) -> Format {
-        match this {
-            DownloadFileType::Elf => Format::Elf,
-            DownloadFileType::Hex => Format::Hex,
-        }
-    }
 }
 
 #[derive(StructOpt)]
@@ -95,15 +77,6 @@ enum Cli {
         #[structopt(flatten)]
         shared: SharedOptions,
 
-        /// Format of the file to be downloaded to the flash
-        #[structopt(
-            possible_values = &DownloadFileType::variants(),
-            case_insensitive = true,
-            default_value = "elf",
-            long
-        )]
-        format: DownloadFileType,
-
         /// The path to the file to be downloaded to the flash
         path: String,
     },
@@ -153,11 +126,7 @@ fn main() -> Result<()> {
         Cli::Reset { shared, assert } => reset_target_of_device(&shared, assert),
         Cli::Debug { shared, exe } => debug(&shared, exe),
         Cli::Dump { shared, loc, words } => dump_memory(&shared, loc, words),
-        Cli::Download {
-            shared,
-            format,
-            path,
-        } => download_program_fast(&shared, format.into(), &path),
+        Cli::Download { shared, path } => download_program_fast(&shared, &path),
         Cli::Trace { shared, loc } => trace_u32_on_target(&shared, loc),
     }
 }
@@ -208,9 +177,9 @@ fn dump_memory(shared_options: &SharedOptions, loc: u32, words: u32) -> Result<(
     })
 }
 
-fn download_program_fast(shared_options: &SharedOptions, format: Format, path: &str) -> Result<()> {
+fn download_program_fast(shared_options: &SharedOptions, path: &str) -> Result<()> {
     with_device(shared_options, |mut session| {
-        download_file(&mut session, &path, format)?;
+        download_file(&mut session, &path, Format::Elf)?;
 
         Ok(())
     })
