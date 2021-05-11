@@ -23,6 +23,11 @@ pub struct SwdSettings {
     /// is received.
     num_retries_after_wait: usize,
 
+    /// When a SWD transfer is retried due to a WAIT response, the idle
+    /// cycle amount is doubled every time as a backoff. This sets a maximum
+    /// cap to the cycle amount.
+    max_retry_idle_cycles_after_wait: usize,
+
     /// Number of idle cycles inserted before the result
     /// of a write is checked.
     ///
@@ -49,7 +54,8 @@ impl Default for SwdSettings {
     fn default() -> Self {
         Self {
             num_idle_cycles_between_writes: 2,
-            num_retries_after_wait: 80,
+            num_retries_after_wait: 1000,
+            max_retry_idle_cycles_after_wait: 128,
             idle_cycles_before_write_verify: 8,
             idle_cycles_after_transfer: 8,
         }
@@ -132,6 +138,8 @@ fn perform_transfers<P: RawSwdIo>(
     transfers: &mut [SwdTransfer],
     idle_cycles: usize,
 ) -> Result<(), DebugProbeError> {
+    assert!(!transfers.is_empty());
+
     // Read from DebugPort  -> Nothing special needed
     // Read from AccessPort -> Response is returned in next read
     //                         -> The next transfer must be a AP Read, otherwise we need to insert a read from the RDBUFF register
@@ -306,6 +314,11 @@ fn perform_transfers<P: RawSwdIo>(
         read_index += additional_idle_cycles_after;
     }
 
+    let wait_result_index = responses
+        .iter()
+        .position(|r| r == &Err(DapError::WaitResponse))
+        .unwrap_or(responses.len());
+
     // Retrieve the results
     for (transfer, index) in transfers.iter_mut().zip(result_indices) {
         match &responses[index] {
@@ -317,7 +330,11 @@ fn perform_transfers<P: RawSwdIo>(
                 transfer.status = TransferStatus::Ok;
             }
             Err(e) => {
-                transfer.status = TransferStatus::Failed(e.clone());
+                transfer.status = TransferStatus::Failed(if index >= wait_result_index {
+                    DapError::WaitResponse
+                } else {
+                    e.clone()
+                });
             }
         }
     }
@@ -740,7 +757,10 @@ impl<Probe: RawSwdIo + 'static> DapAccess for Probe {
 
                     log::debug!("Cleared sticky overrun bit");
 
-                    idle_cycles *= 2;
+                    idle_cycles = std::cmp::min(
+                        self.swd_settings().max_retry_idle_cycles_after_wait,
+                        idle_cycles * 2,
+                    );
 
                     continue;
                 }
@@ -813,6 +833,10 @@ impl<Probe: RawSwdIo + 'static> DapAccess for Probe {
         let mut idle_cycles = std::cmp::max(1, self.swd_settings().num_idle_cycles_between_writes);
 
         'transfer: for _ in 0..self.swd_settings().num_retries_after_wait {
+            if succesful_transfers == values.len() {
+                break;
+            }
+
             let mut transfers =
                 vec![SwdTransfer::read(port, address); values.len() - succesful_transfers];
 
@@ -849,7 +873,10 @@ impl<Probe: RawSwdIo + 'static> DapAccess for Probe {
                                 abort.into(),
                             )?;
 
-                            idle_cycles *= 2;
+                            idle_cycles = std::cmp::min(
+                                self.swd_settings().max_retry_idle_cycles_after_wait,
+                                idle_cycles * 2,
+                            );
 
                             log::debug!("Retrying access {}", index_offset + index + 1);
 
@@ -912,7 +939,10 @@ impl<Probe: RawSwdIo + 'static> DapAccess for Probe {
 
                     log::debug!("Cleared sticky overrun bit");
 
-                    idle_cycles *= 2;
+                    idle_cycles = std::cmp::min(
+                        self.swd_settings().max_retry_idle_cycles_after_wait,
+                        idle_cycles * 2,
+                    );
 
                     continue;
                 }
@@ -986,6 +1016,10 @@ impl<Probe: RawSwdIo + 'static> DapAccess for Probe {
         let mut idle_cycles = std::cmp::max(1, self.swd_settings().num_idle_cycles_between_writes);
 
         'transfer: for _ in 0..self.swd_settings().num_retries_after_wait {
+            if succesful_transfers == values.len() {
+                break;
+            }
+
             let mut transfers: Vec<SwdTransfer> = values
                 .iter()
                 .skip(succesful_transfers)
@@ -1024,7 +1058,10 @@ impl<Probe: RawSwdIo + 'static> DapAccess for Probe {
                                 abort.into(),
                             )?;
 
-                            idle_cycles *= 2;
+                            idle_cycles = std::cmp::min(
+                                self.swd_settings().max_retry_idle_cycles_after_wait,
+                                idle_cycles * 2,
+                            );
 
                             log::debug!("Retrying access {}", index_offset + index + 1);
 
