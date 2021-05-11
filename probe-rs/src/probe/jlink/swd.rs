@@ -23,6 +23,11 @@ pub struct SwdSettings {
     /// is received.
     num_retries_after_wait: usize,
 
+    /// When a SWD transfer is retried due to a WAIT response, the idle
+    /// cycle amount is doubled every time as a backoff. This sets a maximum
+    /// cap to the cycle amount.
+    max_retry_idle_cycles_after_wait: usize,
+
     /// Number of idle cycles inserted before the result
     /// of a write is checked.
     ///
@@ -50,6 +55,7 @@ impl Default for SwdSettings {
         Self {
             num_idle_cycles_between_writes: 2,
             num_retries_after_wait: 80,
+            max_retry_idle_cycles_after_wait: 128,
             idle_cycles_before_write_verify: 8,
             idle_cycles_after_transfer: 8,
         }
@@ -749,7 +755,10 @@ impl<Probe: RawSwdIo + 'static> DapAccess for Probe {
 
                     log::debug!("Cleared sticky overrun bit");
 
-                    idle_cycles *= 2;
+                    idle_cycles = std::cmp::min(
+                        self.swd_settings().max_retry_idle_cycles_after_wait,
+                        idle_cycles * 2,
+                    );
 
                     continue;
                 }
@@ -858,7 +867,10 @@ impl<Probe: RawSwdIo + 'static> DapAccess for Probe {
                                 abort.into(),
                             )?;
 
-                            idle_cycles *= 2;
+                            idle_cycles = std::cmp::min(
+                                self.swd_settings().max_retry_idle_cycles_after_wait,
+                                idle_cycles * 2,
+                            );
 
                             log::debug!("Retrying access {}", index_offset + index + 1);
 
@@ -921,7 +933,10 @@ impl<Probe: RawSwdIo + 'static> DapAccess for Probe {
 
                     log::debug!("Cleared sticky overrun bit");
 
-                    idle_cycles *= 2;
+                    idle_cycles = std::cmp::min(
+                        self.swd_settings().max_retry_idle_cycles_after_wait,
+                        idle_cycles * 2,
+                    );
 
                     continue;
                 }
@@ -1033,7 +1048,10 @@ impl<Probe: RawSwdIo + 'static> DapAccess for Probe {
                                 abort.into(),
                             )?;
 
-                            idle_cycles *= 2;
+                            idle_cycles = std::cmp::min(
+                                self.swd_settings().max_retry_idle_cycles_after_wait,
+                                idle_cycles * 2,
+                            );
 
                             log::debug!("Retrying access {}", index_offset + index + 1);
 
