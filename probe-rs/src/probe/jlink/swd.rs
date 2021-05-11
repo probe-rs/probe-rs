@@ -138,6 +138,8 @@ fn perform_transfers<P: RawSwdIo>(
     transfers: &mut [SwdTransfer],
     idle_cycles: usize,
 ) -> Result<(), DebugProbeError> {
+    assert!(!transfers.is_empty());
+
     // Read from DebugPort  -> Nothing special needed
     // Read from AccessPort -> Response is returned in next read
     //                         -> The next transfer must be a AP Read, otherwise we need to insert a read from the RDBUFF register
@@ -831,6 +833,10 @@ impl<Probe: RawSwdIo + 'static> DapAccess for Probe {
         let mut idle_cycles = std::cmp::max(1, self.swd_settings().num_idle_cycles_between_writes);
 
         'transfer: for _ in 0..self.swd_settings().num_retries_after_wait {
+            if succesful_transfers == values.len() {
+                break;
+            }
+
             let mut transfers =
                 vec![SwdTransfer::read(port, address); values.len() - succesful_transfers];
 
@@ -1010,6 +1016,10 @@ impl<Probe: RawSwdIo + 'static> DapAccess for Probe {
         let mut idle_cycles = std::cmp::max(1, self.swd_settings().num_idle_cycles_between_writes);
 
         'transfer: for _ in 0..self.swd_settings().num_retries_after_wait {
+            if succesful_transfers == values.len() {
+                break;
+            }
+
             let mut transfers: Vec<SwdTransfer> = values
                 .iter()
                 .skip(succesful_transfers)
