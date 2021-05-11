@@ -32,7 +32,7 @@ probe-rs-debugger debug --dap --port 50001
 
 ## Additional information
 
-**For a complete configuration, refer to this [debug-example](https://github.com/probe-rs/vscode/debug_example) folder, which contains a working example on a _STM32H745ZI-Q Nucleo_ board. Helpful config hints can be found in the `.cargo/config.toml` file.**
+**For a complete configuration, refer to this [debug-example](https://github.com/probe-rs/vscode/tree/master/debug_example) folder, which contains a working example on a _STM32H745ZI-Q Nucleo_ board. Helpful config hints can be found in the `.cargo/config.toml` file.**
 
 **Please refer to [probe-rs/vscode](https://github.com/probe-rs/vscode) for additional instructions, as well as up to date information on supported functionality and ongoing improvements.**
 
