@@ -116,11 +116,11 @@ impl Subroutine {
                 .map(Either::Left)
                 .unwrap_or_else(|| name_from_symtab(pc, symtab));
 
-            let location = if let Some((file, line)) = frame
-                .location
-                .as_ref()
-                .and_then(|loc| loc.file.and_then(|file| loc.line.map(|line| (file, line))))
-            {
+            let location = if let Some((file, line, column)) =
+                frame.location.as_ref().and_then(|loc| {
+                    loc.file
+                        .and_then(|file| loc.line.map(|line| (file, line, loc.column)))
+                }) {
                 let fullpath = Path::new(file);
                 let path = if let Ok(relpath) = fullpath.strip_prefix(&current_dir) {
                     relpath
@@ -129,6 +129,7 @@ impl Subroutine {
                 };
 
                 Some(Location {
+                    column,
                     line,
                     path: path.to_owned(),
                 })
@@ -169,6 +170,7 @@ fn name_from_symtab(pc: u32, symtab: &SymbolMap<SymbolMapName>) -> Either<String
 
 #[derive(Debug)]
 pub(crate) struct Location {
+    pub(crate) column: Option<u32>,
     pub(crate) line: u32,
     pub(crate) path: PathBuf,
 }
