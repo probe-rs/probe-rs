@@ -26,7 +26,7 @@ jobs:
 
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v2
+        uses: actions/checkout@v2.3.4
 
       - name: Install libusb and libftdi (linux)
         run: |
@@ -81,7 +81,7 @@ jobs:
 
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v2
+        uses: actions/checkout@v2.3.4
 
       - name: Install libusb and libftdi (linux)
         run: |
@@ -125,7 +125,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v2
+        uses: actions/checkout@v2.3.4
 
       - name: Install stable toolchain
         uses: actions-rs/toolchain@v1
@@ -147,7 +147,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v2
+        uses: actions/checkout@v2.3.4
 
       - name: Install libusb
         run: |
