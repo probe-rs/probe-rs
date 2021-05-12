@@ -1,14 +1,14 @@
+mod backtrace;
+mod cortexm;
 mod registers;
 mod stacked;
 
 use std::{
-    borrow::Cow,
     collections::HashSet,
     convert::TryInto,
     env, fs,
     io::{self, Write as _},
-    mem,
-    path::{Path, PathBuf},
+    path::PathBuf,
     process,
     str::FromStr,
     sync::atomic::{AtomicBool, Ordering},
@@ -16,41 +16,29 @@ use std::{
     time::Duration,
 };
 
-use addr2line::fallible_iterator::FallibleIterator as _;
-use anyhow::{anyhow, bail, Context};
+use anyhow::{anyhow, bail};
 use arrayref::array_ref;
 use colored::Colorize as _;
 use defmt_decoder::DEFMT_VERSION;
-use gimli::{
-    read::{DebugFrame, UnwindSection},
-    BaseAddresses, LittleEndian, UninitializedUnwindContext,
-};
 use log::Level;
 use object::{
     read::{File as ElfFile, Object as _, ObjectSection as _},
     ObjectSegment, ObjectSymbol, SymbolSection,
 };
 use probe_rs::{
-    config::{registry, MemoryRegion, RamRegion},
+    config::{registry, MemoryRegion},
     flashing::{self, Format},
-    Core, DebugProbeInfo, MemoryInterface, Probe, Session,
+    DebugProbeInfo, MemoryInterface, Probe, Session,
 };
 use probe_rs_rtt::{Rtt, ScanRegion, UpChannel};
 use signal_hook::consts::signal;
 use structopt::{clap::AppSettings, StructOpt};
 
-use crate::{
-    registers::{Registers, LR, LR_END, PC, SP},
-    stacked::Stacked,
-};
-
 /// Successfull termination of process.
 const EXIT_SUCCESS: i32 = 0;
 const STACK_CANARY: u8 = 0xAA;
 const SIGABRT: i32 = 134;
-const THUMB_BIT: u32 = 1;
 const TIMEOUT: Duration = Duration::from_secs(1);
-const EXC_RETURN_MARKER: u32 = 0xFFFF_FFF0;
 
 /// A Cargo runner for microcontrollers.
 #[derive(StructOpt)]
@@ -399,7 +387,7 @@ fn notmain() -> anyhow::Result<i32> {
             core.clear_hw_breakpoint(main)?;
         }
 
-        core.set_hw_breakpoint(vector_table.hard_fault & !THUMB_BIT)?;
+        core.set_hw_breakpoint(cortexm::clear_thumb_bit(vector_table.hard_fault))?;
         core.run()?;
     }
     let canary = canary;
@@ -547,15 +535,12 @@ fn notmain() -> anyhow::Result<i32> {
         }
     }
 
-    let pc = core.read_core_reg(PC)?;
-
     let debug_frame = debug_frame.ok_or_else(|| anyhow!("`.debug_frame` section not found"))?;
 
     print_separator();
 
-    let top_exception = construct_backtrace(
+    let outcome = backtrace::print(
         &mut core,
-        pc,
         debug_frame,
         &elf,
         &vector_table,
@@ -569,16 +554,16 @@ fn notmain() -> anyhow::Result<i32> {
 
     core.reset_and_halt(TIMEOUT)?;
 
-    Ok(match top_exception {
-        Some(TopException::StackOverflow) => {
+    Ok(match outcome {
+        Outcome::StackOverflow => {
             log::error!("the program has overflowed its stack");
             SIGABRT
         }
-        Some(TopException::HardFault) => {
+        Outcome::HardFault => {
             log::error!("the program panicked");
             SIGABRT
         }
-        None => {
+        Outcome::Ok => {
             log::info!("device halted without error");
             0
         }
@@ -592,7 +577,7 @@ fn program_size_of(file: &ElfFile) -> u64 {
 }
 
 #[derive(Debug, PartialEq)]
-enum TopException {
+pub enum TopException {
     StackOverflow,
     HardFault, // generic hard fault
 }
@@ -637,248 +622,6 @@ fn setup_logging_channel(
         eprintln!("RTT logs not available; blocking until the device halts..");
         Ok(None)
     }
-}
-
-#[allow(clippy::too_many_arguments)] // FIXME: clean this up
-fn construct_backtrace(
-    core: &mut Core<'_>,
-    mut pc: u32,
-    debug_frame: &[u8],
-    elf: &ElfFile,
-    vector_table: &VectorTable,
-    sp_ram_region: &Option<RamRegion>,
-    live_functions: &HashSet<&str>,
-    current_dir: &Path,
-    force_backtrace: bool,
-    max_backtrace_len: u32,
-) -> Result<Option<TopException>, anyhow::Error> {
-    let mut debug_frame = DebugFrame::new(debug_frame, LittleEndian);
-    // 32-bit ARM -- this defaults to the host's address size which is likely going to be 8
-    debug_frame.set_address_size(mem::size_of::<u32>() as u8);
-
-    let sp = core.read_core_reg(SP)?;
-    let lr = core.read_core_reg(LR)?;
-
-    // statically linked binary -- there are no relative addresses
-    let bases = &BaseAddresses::default();
-    let ctx = &mut UninitializedUnwindContext::new();
-
-    let addr2line = addr2line::Context::new(elf)?;
-    let mut top_exception = None;
-    let mut frame_index = 0;
-    let mut registers = Registers::new(lr, sp, core);
-    let symtab = elf.symbol_map();
-    let mut print_backtrace = force_backtrace;
-
-    loop {
-        let frames = addr2line.find_frames(pc as u64)?.collect::<Vec<_>>()?;
-        // when the input of `find_frames` is the PC of a subroutine that has no debug information
-        // (e.g. external assembly), it will either return an empty `FrameIter` OR the frames that
-        // correspond to a subroutine GC-ed by the linker, instead of an `Err`or.
-        // To detect the second failure mode we check that the last frame (the non-inline one) is
-        // actually "live" (exists in the final binary).
-        // When there's no debuginfo we fallback to a symtab lookup to at least provide the name of
-        // the function that contains the PC.
-        let subroutine = frames.last();
-        let has_valid_debuginfo = if let Some(function) =
-            subroutine.and_then(|subroutine| subroutine.function.as_ref())
-        {
-            live_functions.contains(&*function.raw_name()?)
-        } else {
-            false
-        };
-
-        // This is our first run through the loop, some initial handling and printing is required
-        // TODO refactor this
-        if frame_index == 0 {
-            if pc & !THUMB_BIT == vector_table.hard_fault & !THUMB_BIT {
-                // HardFaultTrampoline
-                // on hard fault exception entry we hit the breakpoint before the subroutine prelude (`push
-                // lr`) is executed so special handling is required
-                // also note that hard fault will always be the first frame we unwind
-
-                print_backtrace_start();
-
-                let mut stack_overflow = false;
-
-                if let Some(sp_ram_region) = sp_ram_region {
-                    // NOTE stack is full descending; meaning the stack pointer can be
-                    // `ORIGIN(RAM) + LENGTH(RAM)`
-                    let range = sp_ram_region.range.start..=sp_ram_region.range.end;
-                    stack_overflow = !range.contains(&sp);
-
-                    // if a stack overflow happened, we're definitely printing a backtrace
-                    print_backtrace |= stack_overflow;
-                } else {
-                    log::warn!(
-                        "no RAM region appears to contain the stack; cannot determine if this was a stack overflow"
-                    );
-                };
-
-                top_exception = Some(match stack_overflow {
-                    true => TopException::StackOverflow,
-                    false => TopException::HardFault,
-                });
-            } else {
-                if force_backtrace {
-                    print_backtrace_start();
-                }
-            }
-        }
-
-        let mut backtrace_display_str = "".to_string();
-
-        if has_valid_debuginfo {
-            for frame in &frames {
-                let name = frame
-                    .function
-                    .as_ref()
-                    .map(|function| function.demangle())
-                    .transpose()?
-                    .unwrap_or(Cow::Borrowed("???"));
-
-                backtrace_display_str.push_str(&format!("{:>4}: {}\n", frame_index, name));
-                frame_index += 1;
-
-                if let Some((file, line)) = frame
-                    .location
-                    .as_ref()
-                    .and_then(|loc| loc.file.and_then(|file| loc.line.map(|line| (file, line))))
-                {
-                    let file = Path::new(file);
-                    let relpath = if let Ok(relpath) = file.strip_prefix(&current_dir) {
-                        relpath
-                    } else {
-                        // not within current directory; use full path
-                        file
-                    };
-                    backtrace_display_str.push_str(&format!(
-                        "        at {}:{}\n",
-                        relpath.display(),
-                        line
-                    ));
-                }
-            }
-        } else {
-            // .symtab fallback
-            // the .symtab appears to use address ranges that have their thumb bits set (e.g.
-            // `0x101..0x200`). Passing the `pc` with the thumb bit cleared (e.g. `0x100`) to the
-            // lookup function sometimes returns the *previous* symbol. Work around the issue by
-            // setting `pc`'s thumb bit before looking it up
-            let address = (pc | THUMB_BIT) as u64;
-            let name = symtab
-                .get(address)
-                .map(|symbol| symbol.name())
-                .unwrap_or("???");
-            backtrace_display_str.push_str(&format!("{:>4}: {}\n", frame_index, name));
-            frame_index += 1;
-        }
-
-        if print_backtrace {
-            // we need to print everything we've collected up until now, otherwise the
-            // debug level logs won't match up
-            print!("{}", backtrace_display_str);
-        }
-
-        let uwt_row = debug_frame
-            .unwind_info_for_address(bases, ctx, pc.into(), DebugFrame::cie_from_offset)
-            .with_context(|| {
-            "debug information is missing. Likely fixes:
-1. compile the Rust code with `debug = 1` or higher. This is configured in the `profile.{release,bench}` sections of Cargo.toml (`profile.{dev,test}` default to `debug = 2`)
-2. use a recent version of the `cortex-m` crates (e.g. cortex-m 0.6.3 or newer). Check versions in Cargo.lock
-3. if linking to C code, compile the C code with the `-g` flag"
-        })?;
-
-        let cfa_changed = registers.update_cfa(uwt_row.cfa())?;
-
-        for (reg, rule) in uwt_row.registers() {
-            registers.update(reg, rule)?;
-        }
-
-        let lr = registers.get(LR)?;
-
-        if lr == LR_END {
-            break;
-        }
-
-        // Link Register contains an EXC_RETURN value. This deliberately also includes
-        // invalid combinations of final bits 0-4 to prevent futile backtrace re-generation attempts
-        let exception_entry = lr >= EXC_RETURN_MARKER;
-
-        // Since we strip the thumb bit from `pc`, ignore it in this comparison.
-        let program_counter_changed = (lr & !THUMB_BIT) != (pc & !THUMB_BIT);
-        // If the frame didn't move, and the program counter didn't change, bail out (otherwise we
-        // might print the same frame over and over).
-        let stack_corrupted = !cfa_changed && !program_counter_changed;
-
-        if !print_backtrace && (stack_corrupted || exception_entry) {
-            // we haven't printed a backtrace yet but have discovered a corrupted stack or exception:
-            // print the backtrace now
-            print!("{}", backtrace_display_str);
-
-            // and enforce backtrace printing from this point on
-            print_backtrace = true;
-        }
-
-        if print_backtrace {
-            log::debug!("lr=0x{:08x} pc=0x{:08x}", lr, pc);
-        }
-
-        if stack_corrupted {
-            println!("error: the stack appears to be corrupted beyond this point");
-
-            if top_exception == Some(TopException::StackOverflow) {
-                return Ok(top_exception);
-            } else {
-                return Ok(Some(TopException::HardFault));
-            }
-        }
-
-        if exception_entry {
-            let fpu = match lr {
-                0xFFFFFFF1 | 0xFFFFFFF9 | 0xFFFFFFFD => false,
-                0xFFFFFFE1 | 0xFFFFFFE9 | 0xFFFFFFED => true,
-                _ => bail!("LR contains invalid EXC_RETURN value 0x{:08X}", lr),
-            };
-
-            println!("      <exception entry>");
-
-            let sp = registers.get(SP)?;
-            let ram_bounds = sp_ram_region
-                .as_ref()
-                .map(|ram_region| ram_region.range.clone())
-                // if no device-specific information, use the range specific in the Cortex-M* Technical Reference Manual
-                .unwrap_or(0x2000_0000..0x4000_0000);
-            let stacked = if let Some(stacked) = Stacked::read(registers.core, sp, fpu, ram_bounds)?
-            {
-                stacked
-            } else {
-                log::warn!("exception entry pushed registers outside RAM; not possible to unwind the stack");
-                return Ok(top_exception);
-            };
-
-            registers.insert(LR, stacked.lr);
-            // adjust the stack pointer for stacked registers
-            registers.insert(SP, sp + stacked.size());
-            pc = stacked.pc;
-        } else {
-            if lr & 1 == 0 {
-                bail!("bug? LR ({:#010x}) didn't have the Thumb bit set", lr)
-            }
-            pc = lr & !THUMB_BIT;
-        }
-
-        if frame_index >= max_backtrace_len {
-            log::warn!(
-                "maximum backtrace length of {} reached; cutting off the rest
-               note: re-run with `--max-backtrace-len=<your maximum>` to extend this limit",
-                max_backtrace_len
-            );
-            return Ok(top_exception);
-        }
-    }
-
-    Ok(top_exception)
 }
 
 struct ProbeFilter {
@@ -968,11 +711,6 @@ fn print_separator() {
     println!("{}", "─".repeat(80).dimmed());
 }
 
-/// Print a message indicating that the backtrace starts here
-fn print_backtrace_start() {
-    println!("{}", "stack backtrace:".dimmed());
-}
-
 fn get_rtt_heap_main_from(
     elf: &ElfFile,
 ) -> anyhow::Result<(Option<u32>, /* uses heap: */ bool, u32)> {
@@ -987,7 +725,7 @@ fn get_rtt_heap_main_from(
         };
 
         match name {
-            "main" => main = Some(symbol.address() as u32 & !THUMB_BIT),
+            "main" => main = Some(cortexm::clear_thumb_bit(symbol.address() as u32)),
             "_SEGGER_RTT" => rtt = Some(symbol.address() as u32),
             "__rust_alloc" | "__rg_alloc" | "__rdl_alloc" | "malloc" if !uses_heap => {
                 log::debug!("symbol `{}` indicates heap is in use", name);
@@ -1021,4 +759,12 @@ struct VectorTable {
     reset: u32,
     // entry 3: HardFault handler
     hard_fault: u32,
+}
+
+/// Target program outcome
+#[derive(Clone, Copy, Debug, PartialEq)]
+enum Outcome {
+    HardFault,
+    Ok,
+    StackOverflow,
 }
