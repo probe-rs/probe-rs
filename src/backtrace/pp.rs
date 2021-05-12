@@ -32,13 +32,11 @@ pub(crate) fn backtrace(frames: &[Frame], max_backtrace_len: u32) {
                 frame_index += 1;
 
                 if frame_index >= max_backtrace_len {
-                    // NOTE whitespace preceding "note: " is intentional and used for alignment
-                    // purposes
                     log::warn!(
-                        "maximum backtrace length of {} reached; cutting off the rest.
-               note: re-run with `--max-backtrace-len=<your maximum>` to extend this limit",
+                        "maximum backtrace length of {} reached; cutting off the rest.const ",
                         max_backtrace_len
                     );
+                    log::warn!("note: re-run with `--max-backtrace-len=<your maximum>` to extend this limit");
 
                     break;
                 }
