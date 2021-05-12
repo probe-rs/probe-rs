@@ -8,7 +8,5 @@ cli/target
 cargo-flash/target
 debugger/target
 
-.vscode 
-
 #It's a Mac Thing
 **/.DS_Store 

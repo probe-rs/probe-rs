@@ -1,0 +1,95 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "CLI probe-rs-debugger", //Use this to test the CLI version
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=probe-rs-debugger",
+                    "--package=probe-rs-debugger",
+                    "--target",
+                    "x86_64-apple-darwin"
+                ],
+                "filter": {
+                    "name": "probe-rs-debugger",
+                    "kind": "bin"
+                }
+            },
+            "args": [
+                // "reset",
+                "debug",
+                "--chip",
+                "STM32H745ZITx",
+                "--speed",
+                "24000",
+                "--probe-index",
+                "0",
+                "--program-binary",
+                "some binary path and file",
+                "--protocol",
+                "swd",
+                "--connect-under-reset",
+                "--flashing-enabled",
+                "--reset-after-flashing"                ,
+                "--halt-after-reset",
+                "--console-log-level",
+                "normal"
+            ],
+            "cwd": "${workspaceFolder}/debugger"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "DAP-STDIO probe-rs-debugger", //Use this to test the dap server, in 'launch' mode
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=probe-rs-debugger",
+                    "--package=probe-rs-debugger",
+                    "--target",
+                    "x86_64-apple-darwin"
+                ],
+                "filter": {
+                    "name": "probe-rs-debugger",
+                    "kind": "bin"
+                }
+            },
+            "args": [
+                "debug",
+                "--dap"
+            ],
+            "cwd": "${workspaceFolder}/debugger"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "DAP-Server probe-rs-debugger", //Use this to test the dap server in 'attach' mode
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=probe-rs-debugger",
+                    "--package=probe-rs-debugger",
+                    "--target",
+                    "x86_64-apple-darwin"
+                ],
+                "filter": {
+                    "name": "probe-rs-debugger",
+                    "kind": "bin"
+                }
+            },
+            "args": [
+                "debug",
+                "--dap",
+                "--port",
+                "50001"
+            ],
+            "cwd": "${workspaceFolder}/debugger"
+        }
+    ]
+}
