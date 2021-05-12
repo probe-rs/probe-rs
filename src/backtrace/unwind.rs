@@ -44,7 +44,7 @@ pub(crate) fn target(
 
     loop {
         if cortexm::is_hard_fault(pc, vector_table) {
-            debug_assert!(
+            assert!(
                 raw_frames.is_empty(),
                 "when present HardFault handler must be the first frame we unwind but wasn't"
             );
