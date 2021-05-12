@@ -1,5 +1,7 @@
 #![allow(missing_docs)]
 
+use std::ops::Range;
+
 use thiserror::Error;
 
 use crate::config::{NvmRegion, TargetDescriptionSource};
@@ -62,5 +64,10 @@ pub enum FlashError {
     InvalidFlashAlgorithmLength {
         name: String,
         algorithm_source: Option<TargetDescriptionSource>,
+    },
+    #[error("Adding data for addresses {added_addresses:08X?} overlaps previously added data for addresses {existing_addresses:08X?}.")]
+    DataOverlaps {
+        added_addresses: Range<u32>,
+        existing_addresses: Range<u32>,
     },
 }

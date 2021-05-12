@@ -179,9 +179,12 @@ impl FlashBuilder {
         }
 
         // Check the new data doesn't overlap to the right.
-        if let Some((&next_addr, _)) = self.data.range(address..).next() {
+        if let Some((&next_addr, next_data)) = self.data.range(address..).next() {
             if address + (data.len() as u32) > next_addr {
-                panic!("data overlaps to the right");
+                return Err(FlashError::DataOverlaps {
+                    added_addresses: address..address + data.len() as u32,
+                    existing_addresses: next_addr..next_addr + next_data.len() as u32,
+                });
             }
         }
 
@@ -190,7 +193,10 @@ impl FlashBuilder {
             let prev_end = prev_addr + (prev_data.len() as u32);
 
             if prev_end > address {
-                panic!("data overlaps to the left");
+                return Err(FlashError::DataOverlaps {
+                    added_addresses: address..address + data.len() as u32,
+                    existing_addresses: prev_addr..prev_addr + prev_data.len() as u32,
+                });
             }
 
             // Optimization: If it exactly touches the left neighbor, extend it instead.
