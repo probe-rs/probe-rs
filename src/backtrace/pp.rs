@@ -23,7 +23,19 @@ pub(crate) fn backtrace(frames: &[Frame], max_backtrace_len: u32) {
                     either::Either::Right(pc) => Cow::Owned(format!("??? (PC={:#010x})", pc)),
                 };
 
-                println!("{:>4}: {}", frame_index, name);
+                let is_local_function = subroutine
+                    .location
+                    .as_ref()
+                    .map(|location| location.path_is_relative)
+                    .unwrap_or(false);
+
+                let line = format!("{:>4}: {}", frame_index, name);
+                let colorized_line = if is_local_function {
+                    line.bold()
+                } else {
+                    line.normal()
+                };
+                println!("{}", colorized_line);
 
                 if let Some(location) = &subroutine.location {
                     let path = location.path.display();
@@ -33,7 +45,13 @@ pub(crate) fn backtrace(frames: &[Frame], max_backtrace_len: u32) {
                         .map(|column| Cow::Owned(format!(":{}", column)))
                         .unwrap_or(Cow::Borrowed(""));
 
-                    println!("        at {}:{}{}", path, line, column);
+                    let line = format!("        at {}:{}{}", path, line, column);
+                    let colorized_line = if is_local_function {
+                        line.normal()
+                    } else {
+                        line.dimmed()
+                    };
+                    println!("{}", colorized_line);
                 }
 
                 frame_index += 1;
