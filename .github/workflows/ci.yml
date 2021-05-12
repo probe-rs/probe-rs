@@ -59,7 +59,7 @@ jobs:
         uses: Swatinem/rust-cache@v1.2.0
 
       - name: Run cargo check
-        uses: actions-rs/cargo@v1
+        uses: actions-rs/cargo@v1.0.3
         with:
           command: check
 
@@ -110,13 +110,13 @@ jobs:
         uses: Swatinem/rust-cache@v1.2.0
 
       - name: Run cargo test
-        uses: actions-rs/cargo@v1
+        uses: actions-rs/cargo@v1.0.3
         with:
           command: test
           args: --all-features
 
       - name: Build with default features
-        uses: actions-rs/cargo@v1
+        uses: actions-rs/cargo@v1.0.3
         with:
           command: build
 
@@ -137,7 +137,7 @@ jobs:
         run: rustup component add rustfmt
 
       - name: Run cargo fmt
-        uses: actions-rs/cargo@v1
+        uses: actions-rs/cargo@v1.0.3
         with:
           command: fmt
           args: --all -- --check
