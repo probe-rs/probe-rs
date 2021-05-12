@@ -539,6 +539,13 @@ fn notmain() -> anyhow::Result<i32> {
 
     print_separator();
 
+    let backtrace_settings = backtrace::Settings {
+        current_dir: &current_dir,
+        max_backtrace_len,
+        // TODO any other cases in which we should force a backtrace?
+        force_backtrace: force_backtrace || canary_touched,
+    };
+
     let outcome = backtrace::print(
         &mut core,
         debug_frame,
@@ -546,10 +553,7 @@ fn notmain() -> anyhow::Result<i32> {
         &vector_table,
         &sp_ram_region,
         &live_functions,
-        &current_dir,
-        // TODO any other cases in which we should force a backtrace?
-        force_backtrace || canary_touched,
-        max_backtrace_len,
+        &backtrace_settings,
     )?;
 
     core.reset_and_halt(TIMEOUT)?;
