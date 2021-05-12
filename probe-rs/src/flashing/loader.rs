@@ -1,21 +1,15 @@
 use ihex::Record;
+use std::io::{Read, Seek, SeekFrom};
+use std::ops::Range;
 
+use super::builder::FlashBuilder;
 use super::{
-    extract_from_elf, BinOptions, DownloadOptions, ExtractedFlashData, FileDownloadError,
-    FlashAlgorithm, FlashBuilder, FlashError, FlashProgress, Flasher,
+    extract_from_elf, BinOptions, DownloadOptions, FileDownloadError, FlashAlgorithm, FlashError,
+    FlashProgress, Flasher,
 };
-use crate::config::{MemoryRange, MemoryRegion, NvmRegion, TargetDescriptionSource};
+use crate::config::{MemoryRange, MemoryRegion, NvmRegion, RamRegion, TargetDescriptionSource};
 use crate::memory::MemoryInterface;
 use crate::session::Session;
-use std::{
-    collections::HashMap,
-    io::{Read, Seek, SeekFrom},
-};
-
-struct RamWrite {
-    address: u32,
-    data: Vec<u8>,
-}
 
 /// `FlashLoader` is a struct which manages the flashing of any chunks of data onto any sections of flash.
 /// Use `add_data()` to add a chunks of data.
@@ -24,8 +18,7 @@ struct RamWrite {
 /// Region crossing data chunks are allowed as long as the regions are contiguous.
 pub struct FlashLoader {
     memory_map: Vec<MemoryRegion>,
-    builders: HashMap<NvmRegion, FlashBuilder>,
-    ram_write: Vec<RamWrite>,
+    builder: FlashBuilder,
 
     /// Source of the flash description,
     /// used for diagnostics.
@@ -37,72 +30,43 @@ impl FlashLoader {
     pub fn new(memory_map: Vec<MemoryRegion>, source: TargetDescriptionSource) -> Self {
         Self {
             memory_map,
-            builders: HashMap::new(),
-            ram_write: Vec::new(),
+            builder: FlashBuilder::new(),
             source,
         }
     }
 
-    /// Stages a chunk of data to be programmed.
-    ///
-    /// The chunk can cross flash boundaries as long as one flash region connects to another flash region.
-    pub fn add_data(&mut self, address: u32, data: &[u8]) -> Result<(), FlashError> {
-        let data = ExtractedFlashData::from_unknown_source(address, data);
-        self.add_data_internal(data)
-    }
-
-    fn add_data_internal(&mut self, mut data: ExtractedFlashData) -> Result<(), FlashError> {
-        log::debug!(
-            "Adding data at address {:#010x} with size {} bytes",
-            data.address(),
-            data.len()
-        );
-
-        while data.len() > 0 {
-            // Get the flash region in with this chunk of data starts.
-            let possible_region = Self::get_region_for_address(&self.memory_map, data.address());
-            // If we found a corresponding region, create a builder.
-            match possible_region {
-                Some(MemoryRegion::Nvm(region)) => {
-                    // Get our builder instance.
-                    if !self.builders.contains_key(region) {
-                        self.builders.insert(region.clone(), FlashBuilder::new());
-                    };
-
-                    // Determine how much more data can be contained by this region.
-                    let program_length =
-                        usize::min(data.len(), (region.range.end - data.address()) as usize);
-
-                    let programmed_data = data.split_off(program_length);
-
-                    // Add as much data to the builder as can be contained by this region.
-                    self.builders
-                        .get_mut(&region)
-                        .map(|r| r.add_data(programmed_data.address(), programmed_data.data()));
-                }
-                Some(MemoryRegion::Ram(region)) => {
-                    // Determine how much more data can be contained by this region.
-                    let program_length =
-                        usize::min(data.len(), (region.range.end - data.address()) as usize);
-
-                    let programmed_data = data.split_off(program_length);
-
-                    // Add data to be written to the vector.
-                    self.ram_write.push(RamWrite {
-                        address: programmed_data.address(),
-                        data: programmed_data.data().to_vec(),
-                    });
-                }
+    /// Check the given address range is completely covered by the memory map,
+    /// possibly by multiple memory regions.
+    fn check_data_in_memory_map(&mut self, range: Range<u32>) -> Result<(), FlashError> {
+        let mut address = range.start;
+        while address < range.end {
+            match Self::get_region_for_address(&self.memory_map, address) {
+                Some(MemoryRegion::Nvm(region)) => address = region.range.end,
+                Some(MemoryRegion::Ram(region)) => address = region.range.end,
                 _ => {
                     return Err(FlashError::NoSuitableNvm {
-                        start: data.address(),
-                        end: data.address() + data.len() as u32,
+                        start: range.start,
+                        end: range.end,
                         description_source: self.source.clone(),
                     })
                 }
             }
         }
         Ok(())
+    }
+
+    /// Stages a chunk of data to be programmed.
+    ///
+    /// The chunk can cross flash boundaries as long as one flash region connects to another flash region.
+    pub fn add_data(&mut self, address: u32, data: &[u8]) -> Result<(), FlashError> {
+        log::debug!(
+            "Adding data at address {:#010x} with size {} bytes",
+            address,
+            data.len()
+        );
+
+        self.check_data_in_memory_map(address..address + data.len() as u32)?;
+        self.builder.add_data(address, data)
     }
 
     pub(super) fn get_region_for_address(
@@ -230,95 +194,131 @@ impl FlashLoader {
         session: &mut Session,
         options: DownloadOptions<'_>,
     ) -> Result<(), FlashError> {
-        // Iterate over builders we've created and program the data.
-        for (region, builder) in &self.builders {
+        log::debug!("committing flash!");
+        for (&address, data) in &self.builder.data {
             log::debug!(
-                "Using builder for region (0x{:08x}..0x{:08x})",
-                region.range.start,
-                region.range.end
+                "    region: {:08x}-{:08x} ({} bytes)",
+                address,
+                address + data.len() as u32,
+                data.len()
             );
-
-            // Try to find a flash algorithm for the range of the current builder
-            let algorithms = &session.target().flash_algorithms;
-
-            for algorithm in algorithms {
-                log::debug!(
-                    "Algorithm {} - start: {:#08x} - size: {:#08x}",
-                    algorithm.name,
-                    algorithm.flash_properties.address_range.start,
-                    algorithm.flash_properties.address_range.end
-                        - algorithm.flash_properties.address_range.start
-                );
-            }
-            let algorithms = algorithms
-                .iter()
-                .filter(|fa| {
-                    fa.flash_properties
-                        .address_range
-                        .contains_range(&region.range)
-                })
-                .collect::<Vec<_>>();
-
-            log::debug!("Algorithms: {:?}", &algorithms);
-
-            let raw_flash_algorithm = match algorithms.len() {
-                0 => {
-                    return Err(FlashError::NoFlashLoaderAlgorithmAttached);
-                }
-                1 => algorithms[0],
-                _ => *algorithms
-                    .iter()
-                    .find(|a| a.default)
-                    .ok_or(FlashError::NoFlashLoaderAlgorithmAttached)?,
-            };
-
-            let mm = &session.target().memory_map;
-            let ram = mm
-                .iter()
-                .find_map(|mm| match mm {
-                    MemoryRegion::Ram(ram) => Some(ram),
-                    _ => None,
-                })
-                .ok_or(FlashError::NoRamDefined {
-                    chip: session.target().name.clone(),
-                })?;
-
-            let flash_algorithm =
-                FlashAlgorithm::assemble_from_raw(raw_flash_algorithm, ram, session.target())?;
-
-            if options.dry_run {
-                log::info!("Skipping programming, dry run!");
-                if let Some(progress) = options.progress {
-                    progress.failed_erasing();
-                }
-                continue;
-            }
-
-            // Program the data.
-            let mut flasher = Flasher::new(session, flash_algorithm, region.clone());
-            flasher.program(
-                builder,
-                options.do_chip_erase,
-                options.keep_unwritten_bytes,
-                true,
-                options.progress.unwrap_or(&FlashProgress::new(|_| {})),
-            )?
         }
 
-        // Write data to ram.
+        let map = session.target().memory_map.clone();
 
+        // Iterate over all memory regions, and program their data.
+
+        // Commit NVM first
+        for region in &map {
+            if let MemoryRegion::Nvm(region) = region {
+                self.commit_nvm(region, session, &options)?;
+            }
+        }
+
+        // Commit RAM last, because NVM flashing overwrites RAM
+        for region in &map {
+            if let MemoryRegion::Ram(region) = region {
+                self.commit_ram(region, session)?;
+            }
+        }
+
+        Ok(())
+    }
+
+    fn commit_ram(&self, region: &RamRegion, session: &mut Session) -> Result<(), FlashError> {
         // Attach to memory and core.
         let mut core = session.core(0).map_err(FlashError::Core)?;
 
-        for RamWrite { address, data } in &self.ram_write {
+        for (address, data) in self.builder.data_in_range(&region.range) {
             log::info!(
                 "Ram write program data @ {:X} {} bytes",
-                *address,
+                address,
                 data.len()
             );
             // Write data to memory.
-            core.write_8(*address, data).map_err(FlashError::Core)?;
+            core.write_8(address, data).map_err(FlashError::Core)?;
         }
+
+        Ok(())
+    }
+
+    fn commit_nvm(
+        &self,
+        region: &NvmRegion,
+        session: &mut Session,
+        options: &DownloadOptions<'_>,
+    ) -> Result<(), FlashError> {
+        log::debug!(
+            "Using builder for region (0x{:08x}..0x{:08x})",
+            region.range.start,
+            region.range.end
+        );
+
+        // Try to find a flash algorithm for the range of the current builder
+        let algorithms = &session.target().flash_algorithms;
+
+        for algorithm in algorithms {
+            log::debug!(
+                "Algorithm {} - start: {:#08x} - size: {:#08x}",
+                algorithm.name,
+                algorithm.flash_properties.address_range.start,
+                algorithm.flash_properties.address_range.end
+                    - algorithm.flash_properties.address_range.start
+            );
+        }
+        let algorithms = algorithms
+            .iter()
+            .filter(|fa| {
+                fa.flash_properties
+                    .address_range
+                    .contains_range(&region.range)
+            })
+            .collect::<Vec<_>>();
+
+        log::debug!("Algorithms: {:?}", &algorithms);
+
+        let raw_flash_algorithm = match algorithms.len() {
+            0 => {
+                return Err(FlashError::NoFlashLoaderAlgorithmAttached);
+            }
+            1 => algorithms[0],
+            _ => *algorithms
+                .iter()
+                .find(|a| a.default)
+                .ok_or(FlashError::NoFlashLoaderAlgorithmAttached)?,
+        };
+
+        let mm = &session.target().memory_map;
+        let ram = mm
+            .iter()
+            .find_map(|mm| match mm {
+                MemoryRegion::Ram(ram) => Some(ram),
+                _ => None,
+            })
+            .ok_or(FlashError::NoRamDefined {
+                chip: session.target().name.clone(),
+            })?;
+
+        let flash_algorithm =
+            FlashAlgorithm::assemble_from_raw(raw_flash_algorithm, ram, session.target())?;
+
+        if options.dry_run {
+            log::info!("Skipping programming, dry run!");
+            if let Some(progress) = options.progress {
+                progress.failed_erasing();
+            }
+            return Ok(());
+        }
+
+        // Program the data.
+        let mut flasher = Flasher::new(session, flash_algorithm, region.clone());
+        flasher.program(
+            &self.builder,
+            options.do_chip_erase,
+            options.keep_unwritten_bytes,
+            true,
+            options.progress.unwrap_or(&FlashProgress::new(|_| {})),
+        )?;
 
         Ok(())
     }

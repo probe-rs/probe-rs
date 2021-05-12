@@ -3,7 +3,7 @@ use object::{
     Endianness, Object, ObjectSection,
 };
 
-use std::{cmp::Ordering, fs::File, path::Path, str::FromStr};
+use std::{fs::File, path::Path, str::FromStr};
 
 use super::*;
 use crate::{config::MemoryRange, session::Session};
@@ -165,67 +165,6 @@ impl std::fmt::Debug for ExtractedFlashData<'_> {
         } else {
             helper.field("data", &self.data).finish()
         }
-    }
-}
-
-impl<'data> ExtractedFlashData<'data> {
-    /// Create a data slice without tracking its source.
-    pub fn from_unknown_source(address: u32, data: &'data [u8]) -> Self {
-        Self {
-            section_names: vec![],
-            address,
-            data,
-        }
-    }
-
-    /// Target address for this flash data.
-    pub fn address(&self) -> u32 {
-        self.address
-    }
-
-    /// Data to be programmed.
-    pub fn data(&self) -> &'data [u8] {
-        self.data
-    }
-
-    /// Split off data from the beginning, and return it. If the offset is
-    /// out of bounds, this function will panic.
-    pub fn split_off(&mut self, offset: usize) -> ExtractedFlashData<'data> {
-        match offset.cmp(&self.data.len()) {
-            Ordering::Less => {
-                let (first, second) = self.data.split_at(offset);
-
-                let first_address = self.address;
-
-                self.data = second;
-                self.address += offset as u32;
-
-                ExtractedFlashData {
-                    section_names: self.section_names.clone(),
-                    address: first_address,
-                    data: first,
-                }
-            }
-            Ordering::Equal => {
-                let return_value = ExtractedFlashData {
-                    section_names: self.section_names.clone(),
-                    address: self.address,
-                    data: self.data,
-                };
-
-                self.data = &[];
-
-                return_value
-            }
-            Ordering::Greater => {
-                panic!("Offset is out of bounds!");
-            }
-        }
-    }
-
-    /// Length of the contained data.
-    pub fn len(&self) -> usize {
-        self.data.len()
     }
 }
 

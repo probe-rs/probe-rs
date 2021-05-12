@@ -231,8 +231,11 @@ impl<'session> Flasher<'session> {
     ) -> Result<(), FlashError> {
         log::debug!("Starting program procedure.");
         // Convert the list of flash operations into flash sectors and pages.
-        let mut flash_layout = flash_builder
-            .build_sectors_and_pages(&self.flash_algorithm().clone(), restore_unwritten_bytes)?;
+        let mut flash_layout = flash_builder.build_sectors_and_pages(
+            &self.region,
+            &self.flash_algorithm,
+            restore_unwritten_bytes,
+        )?;
 
         progress.initialized(flash_layout.clone());
 

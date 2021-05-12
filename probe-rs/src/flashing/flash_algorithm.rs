@@ -91,6 +91,58 @@ impl FlashAlgorithm {
         })
     }
 
+    /// Iterate over all the sectors of the flash.
+    pub fn iter_sectors(&self) -> impl Iterator<Item = SectorInfo> + '_ {
+        let props = &self.flash_properties;
+
+        assert!(!props.sectors.is_empty());
+        assert!(props.sectors[0].address == 0);
+
+        let mut addr = props.address_range.start;
+        let mut desc_idx = 0;
+        std::iter::from_fn(move || {
+            if addr >= props.address_range.end {
+                return None;
+            }
+
+            // Advance desc_idx if needed
+            if let Some(next_desc) = props.sectors.get(desc_idx + 1) {
+                if props.address_range.start + next_desc.address <= addr {
+                    desc_idx += 1;
+                }
+            }
+
+            let size = props.sectors[desc_idx].size;
+            let sector = SectorInfo {
+                base_address: addr,
+                size,
+            };
+            addr += size;
+
+            Some(sector)
+        })
+    }
+
+    /// Iterate over all the pages of the flash.
+    pub fn iter_pages(&self) -> impl Iterator<Item = PageInfo> + '_ {
+        let props = &self.flash_properties;
+
+        let mut addr = props.address_range.start;
+        std::iter::from_fn(move || {
+            if addr >= props.address_range.end {
+                return None;
+            }
+
+            let page = PageInfo {
+                base_address: addr,
+                size: props.page_size,
+            };
+            addr += props.page_size;
+
+            Some(page)
+        })
+    }
+
     /// Returns true if the entire contents of the argument array equal the erased byte value.
     pub fn is_erased(&self, data: &[u8]) -> bool {
         for b in data {
@@ -315,4 +367,70 @@ fn flash_sector_multiple_sizes() {
     assert_eq!(Some(expected_a), config.sector_info(0x800_4000));
     assert_eq!(Some(expected_b), config.sector_info(0x801_0000));
     assert_eq!(Some(expected_c), config.sector_info(0x80A_0000));
+}
+
+#[test]
+fn flash_sector_multiple_sizes_iter() {
+    use crate::config::SectorDescription;
+
+    let config = FlashAlgorithm {
+        flash_properties: FlashProperties {
+            sectors: vec![
+                SectorDescription {
+                    size: 0x4000,
+                    address: 0x0,
+                },
+                SectorDescription {
+                    size: 0x1_0000,
+                    address: 0x1_0000,
+                },
+                SectorDescription {
+                    size: 0x2_0000,
+                    address: 0x2_0000,
+                },
+            ],
+            address_range: 0x800_0000..0x800_0000 + 0x8_0000,
+            page_size: 0x10,
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+
+    let got: Vec<SectorInfo> = config.iter_sectors().collect();
+
+    let expected = &[
+        SectorInfo {
+            base_address: 0x800_0000,
+            size: 0x4000,
+        },
+        SectorInfo {
+            base_address: 0x800_4000,
+            size: 0x4000,
+        },
+        SectorInfo {
+            base_address: 0x800_8000,
+            size: 0x4000,
+        },
+        SectorInfo {
+            base_address: 0x800_c000,
+            size: 0x4000,
+        },
+        SectorInfo {
+            base_address: 0x801_0000,
+            size: 0x1_0000,
+        },
+        SectorInfo {
+            base_address: 0x802_0000,
+            size: 0x2_0000,
+        },
+        SectorInfo {
+            base_address: 0x804_0000,
+            size: 0x2_0000,
+        },
+        SectorInfo {
+            base_address: 0x806_0000,
+            size: 0x2_0000,
+        },
+    ];
+    assert_eq!(&got, expected);
 }
