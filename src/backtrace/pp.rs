@@ -26,7 +26,14 @@ pub(crate) fn backtrace(frames: &[Frame], max_backtrace_len: u32) {
                 println!("{:>4}: {}", frame_index, name);
 
                 if let Some(location) = &subroutine.location {
-                    println!("        at {}:{}", location.path.display(), location.line);
+                    let path = location.path.display();
+                    let line = location.line;
+                    let column = location
+                        .column
+                        .map(|column| Cow::Owned(format!(":{}", column)))
+                        .unwrap_or(Cow::Borrowed(""));
+
+                    println!("        at {}:{}{}", path, line, column);
                 }
 
                 frame_index += 1;
