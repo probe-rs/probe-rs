@@ -122,14 +122,15 @@ impl Subroutine {
                         .and_then(|file| loc.line.map(|line| (file, line, loc.column)))
                 }) {
                 let fullpath = Path::new(file);
-                let path = if let Ok(relpath) = fullpath.strip_prefix(&current_dir) {
-                    relpath
+                let (path, is_local) = if let Ok(relpath) = fullpath.strip_prefix(&current_dir) {
+                    (relpath, true)
                 } else {
-                    fullpath
+                    (fullpath, false)
                 };
 
                 Some(Location {
                     column,
+                    path_is_relative: is_local,
                     line,
                     path: path.to_owned(),
                 })
@@ -171,6 +172,7 @@ fn name_from_symtab(pc: u32, symtab: &SymbolMap<SymbolMapName>) -> Either<String
 #[derive(Debug)]
 pub(crate) struct Location {
     pub(crate) column: Option<u32>,
+    pub(crate) path_is_relative: bool,
     pub(crate) line: u32,
     pub(crate) path: PathBuf,
 }
