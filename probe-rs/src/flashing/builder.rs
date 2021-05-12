@@ -178,14 +178,14 @@ impl FlashBuilder {
             return Ok(());
         }
 
-        // Check the new data doesn't overlap to the right
+        // Check the new data doesn't overlap to the right.
         if let Some((&next_addr, _)) = self.data.range(address..).next() {
             if address + (data.len() as u32) > next_addr {
                 panic!("data overlaps to the right");
             }
         }
 
-        // Check the new data doesn't overlap to the left
+        // Check the new data doesn't overlap to the left.
         if let Some((&prev_addr, prev_data)) = self.data.range_mut(..address).next_back() {
             let prev_end = prev_addr + (prev_data.len() as u32);
 
@@ -215,7 +215,8 @@ impl FlashBuilder {
     ///
     /// Data is returned in ascending address order, and is guaranteed not to overlap.
     /// If a staged chunk is not fully contained in the range, only the contained part is
-    /// returned. ie it's guaranteed that `start <= addr && addr+len <= end`
+    /// returned. ie for each returned item (addr, data), it's guaranteed that the condition
+    /// `start <= addr && addr + data.len() <= end` upholds.
     pub(crate) fn data_in_range(&self, range: &Range<u32>) -> impl Iterator<Item = (u32, &[u8])> {
         let range = range.clone();
 
@@ -235,7 +236,7 @@ impl FlashBuilder {
                 let mut addr = addr;
                 let mut data = &data[..];
 
-                // Cut chunk from the left if it starts before `start`
+                // Cut chunk from the left if it starts before `start`.
                 if addr < range.start {
                     data = &data[(range.start - addr) as usize..];
                     addr = range.start;
@@ -265,7 +266,7 @@ impl FlashBuilder {
         for info in flash_algorithm.iter_sectors() {
             let range = info.base_address..info.base_address + info.size;
 
-            // Ignore if outside the NvmRegion.
+            // Ignore the sector if it's outside the NvmRegion.
             if !region.range.contains_range(&range) {
                 continue;
             }
@@ -275,7 +276,7 @@ impl FlashBuilder {
             let sector_has_data = self.has_data_in_range(&range);
             let page_has_data = self.has_data_in_range(&page_range);
 
-            // Ignore if no data.
+            // Ignore if neither the sector nor the page contain any data.
             if !sector_has_data && !page_has_data {
                 continue;
             }
@@ -290,7 +291,7 @@ impl FlashBuilder {
             let page_end = info.base_address + info.size;
             let range = info.base_address..page_end;
 
-            // Ignore if outside the NvmRegion.
+            // Ignore the page if it's outside the NvmRegion.
             if !region.range.contains_range(&range.clone()) {
                 continue;
             }
@@ -316,7 +317,7 @@ impl FlashBuilder {
                 let offset = (address - info.base_address) as usize;
                 page.data[offset..offset + data.len()].copy_from_slice(data);
 
-                // Fill hole between the previous datablock (or page start) and current block.
+                // Fill the hole between the previous data block (or page start if there are no blocks) and current block.
                 if address > fill_start_addr {
                     fills.push(FlashFill {
                         address: fill_start_addr,
@@ -327,7 +328,7 @@ impl FlashBuilder {
                 fill_start_addr = address + data.len() as u32;
             }
 
-            // Fill hole between the last datablock (or page start if no blocks) and page end.
+            // Fill the hole between the last data block (or page start if there are no blocks) and page end.
             if fill_start_addr < page_end {
                 fills.push(FlashFill {
                     address: fill_start_addr,

@@ -91,7 +91,7 @@ impl FlashAlgorithm {
         })
     }
 
-    /// Iterate over all the sectors of the flash
+    /// Iterate over all the sectors of the flash.
     pub fn iter_sectors(&self) -> impl Iterator<Item = SectorInfo> + '_ {
         let props = &self.flash_properties;
 
@@ -123,7 +123,7 @@ impl FlashAlgorithm {
         })
     }
 
-    /// Iterate over all the pages of the flash
+    /// Iterate over all the pages of the flash.
     pub fn iter_pages(&self) -> impl Iterator<Item = PageInfo> + '_ {
         let props = &self.flash_properties;
 
