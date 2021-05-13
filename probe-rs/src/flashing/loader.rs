@@ -16,7 +16,7 @@ use crate::{
 
 /// `FlashLoader` is a struct which manages the flashing of any chunks of data onto any sections of flash.
 ///
-/// Use [add_data()](FlashLoader::add_data) to add a chunks of data.
+/// Use [add_data()](FlashLoader::add_data) to add a chunk of data.
 /// Once you are done adding all your data, use `commit()` to flash the data.
 /// The flash loader will make sure to select the appropriate flash region for the right data chunks.
 /// Region crossing data chunks are allowed as long as the regions are contiguous.
