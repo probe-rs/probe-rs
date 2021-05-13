@@ -7,12 +7,16 @@ use super::{
     extract_from_elf, BinOptions, DownloadOptions, FileDownloadError, FlashAlgorithm, FlashError,
     FlashProgress, Flasher,
 };
-use crate::config::{MemoryRange, MemoryRegion, NvmRegion, RamRegion, TargetDescriptionSource};
 use crate::memory::MemoryInterface;
 use crate::session::Session;
+use crate::{
+    config::{MemoryRange, MemoryRegion, NvmRegion, RamRegion, TargetDescriptionSource},
+    Target,
+};
 
 /// `FlashLoader` is a struct which manages the flashing of any chunks of data onto any sections of flash.
-/// Use `add_data()` to add a chunks of data.
+///
+/// Use [add_data()](FlashLoader::add_data) to add a chunks of data.
 /// Once you are done adding all your data, use `commit()` to flash the data.
 /// The flash loader will make sure to select the appropriate flash region for the right data chunks.
 /// Region crossing data chunks are allowed as long as the regions are contiguous.
@@ -204,19 +208,21 @@ impl FlashLoader {
             );
         }
 
-        let map = session.target().memory_map.clone();
-
         // Iterate over all memory regions, and program their data.
 
+        if self.memory_map != session.target().memory_map {
+            log::warn!("Memory map of flash loader does not match memory map of target!");
+        }
+
         // Commit NVM first
-        for region in &map {
+        for region in &self.memory_map {
             if let MemoryRegion::Nvm(region) = region {
                 self.commit_nvm(region, session, &options)?;
             }
         }
 
         // Commit RAM last, because NVM flashing overwrites RAM
-        for region in &map {
+        for region in &self.memory_map {
             if let MemoryRegion::Ram(region) = region {
                 self.commit_ram(region, session)?;
             }
@@ -242,20 +248,13 @@ impl FlashLoader {
         Ok(())
     }
 
-    fn commit_nvm(
+    fn get_flash_algorithm(
         &self,
         region: &NvmRegion,
-        session: &mut Session,
-        options: &DownloadOptions<'_>,
-    ) -> Result<(), FlashError> {
-        log::debug!(
-            "Using builder for region (0x{:08x}..0x{:08x})",
-            region.range.start,
-            region.range.end
-        );
-
+        target: &Target,
+    ) -> Result<FlashAlgorithm, FlashError> {
         // Try to find a flash algorithm for the range of the current builder
-        let algorithms = &session.target().flash_algorithms;
+        let algorithms = &target.flash_algorithms;
 
         for algorithm in algorithms {
             log::debug!(
@@ -288,7 +287,7 @@ impl FlashLoader {
                 .ok_or(FlashError::NoFlashLoaderAlgorithmAttached)?,
         };
 
-        let mm = &session.target().memory_map;
+        let mm = &target.memory_map;
         let ram = mm
             .iter()
             .find_map(|mm| match mm {
@@ -296,11 +295,27 @@ impl FlashLoader {
                 _ => None,
             })
             .ok_or(FlashError::NoRamDefined {
-                chip: session.target().name.clone(),
+                chip: target.name.clone(),
             })?;
 
-        let flash_algorithm =
-            FlashAlgorithm::assemble_from_raw(raw_flash_algorithm, ram, session.target())?;
+        let flash_algorithm = FlashAlgorithm::assemble_from_raw(raw_flash_algorithm, ram, target)?;
+
+        Ok(flash_algorithm)
+    }
+
+    fn commit_nvm(
+        &self,
+        region: &NvmRegion,
+        session: &mut Session,
+        options: &DownloadOptions<'_>,
+    ) -> Result<(), FlashError> {
+        log::debug!(
+            "Using builder for region (0x{:08x}..0x{:08x})",
+            region.range.start,
+            region.range.end
+        );
+
+        let flash_algorithm = self.get_flash_algorithm(region, session.target())?;
 
         if options.dry_run {
             log::info!("Skipping programming, dry run!");
@@ -312,6 +327,7 @@ impl FlashLoader {
 
         // Program the data.
         let mut flasher = Flasher::new(session, flash_algorithm, region.clone());
+
         flasher.program(
             &self.builder,
             options.do_chip_erase,
