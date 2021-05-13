@@ -1,5 +1,5 @@
 use super::{Chip, CoreType, MemoryRegion, RawFlashAlgorithm, TargetDescriptionSource};
-use crate::core::Architecture;
+use crate::{core::Architecture, flashing::FlashLoader};
 
 /// This describes a complete target with a fixed chip model and variant.
 #[derive(Clone)]
@@ -66,6 +66,12 @@ impl Target {
     /// Source description of this target.
     pub fn source(&self) -> &TargetDescriptionSource {
         &self.source
+    }
+
+    /// Create a [FlashLoader] for this target, which can be used
+    /// to program its non-volatile memory.
+    pub fn flash_loader(&self) -> FlashLoader {
+        FlashLoader::new(self.memory_map.clone(), self.source.clone())
     }
 }
 
