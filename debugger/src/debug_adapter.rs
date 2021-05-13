@@ -1025,7 +1025,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                     };
                 Variable {
                     name: variable.name.clone(),
-                    value: variable.value.clone(),
+                    value: variable.get_value(),
                     type_: Some(variable.type_name.clone()),
                     presentation_hint: None,
                     evaluate_name: None,

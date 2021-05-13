@@ -35,7 +35,7 @@ impl Default for VariantRole {
 #[derive(Debug, Default, Clone)]
 pub struct Variable {
     pub name: String,
-    pub value: String,
+    value: String,
     pub file: String,
     pub line: u64,
     pub type_name: String,
@@ -59,14 +59,29 @@ impl Variable {
         }
     }
 
-    ///Evaluate the variable's result if possible and set self.value, or set self.value as the error String.
+    ///Implementing set_value(), because the library passes errors into the value of the variable. This ensures debug front ends can see the errors, but doesn't fail because of a single variable not being able to decode correctly.
+    pub fn set_value(&mut self, new_value: String) {
+        if self.value.is_empty() {
+            self.value = new_value.clone();
+        } else { //We append the new value to the old value, so that we don't loose any prior errors or warnings originating from the process of decoding the actual value
+            self.value = format!("{} : {}", self.value, new_value);
+        }
+
+    }
+
+    ///Implementing get_value(), because Variable.value has to be private (a requirement of updating the value without overriding earlier values ... see set_value())
+    pub fn get_value(&self) -> String {
+        self.value.clone()
+    }
+
+    ///Evaluate the variable's result if possible and set self.value, or else set self.value as the error String.
     pub fn extract_value(&mut self, core: &mut Core<'_>) {
         if self.location == u64::MAX {
             //the value was set by get_location(), so just leave it as is
             return;
         }
         if !self.value.is_empty() {
-            //the value was set by extract_type(), so just leave it as is
+            //the value was set elsewhere in this library - probably because of an error - so just leave it as is
             return;
         }
         let string_value = match self.type_name.as_str() {
