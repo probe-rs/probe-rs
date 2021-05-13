@@ -1180,14 +1180,13 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                     };
                     match error {
                         DebuggerError::NonBlockingReadError {
-                            os_error_number,
+                            os_error_number: _,
                             original_error,
                         } => {
                             // println!("temporary error ... retry: {}", os_error_number);
-                            if os_error_number == 35 {
+                            if original_error.kind() == std::io::ErrorKind::WouldBlock {
                                 //non-blocking read is waiting for incoming data that is not ready yet.
                                 //This is not a real error, so use this opportunity to check on probe status and notify the debug client if required.
-                                //TODO: Ensure Os Error 35 on Mac is same thing on other OS'es
                                 return Request {
                                     arguments: None,
                                     command: "process_next_request".to_owned(),
