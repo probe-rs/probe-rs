@@ -435,6 +435,13 @@ impl<'probe> CoreInterface for M0<'probe> {
 
     fn set_breakpoint(&mut self, bp_register_index: usize, addr: u32) -> Result<(), Error> {
         debug!("Setting breakpoint on address 0x{:08x}", addr);
+
+        // The highest 3 bits of the address have to be zero, otherwise the breakpoint cannot
+        // be set at the address.
+        if addr >= 0x2000_0000 {
+            return Err(Error::ArchitectureSpecific(Box::new(DebugProbeError::Other(anyhow::anyhow!("Unsupported address {:#08x} for HW breakpoint. Breakpoint must be at address < 0x2000_0000.", addr)))));
+        }
+
         let mut value = BpCompx(0);
         if addr % 4 < 2 {
             // match lower halfword
@@ -475,6 +482,7 @@ impl<'probe> CoreInterface for M0<'probe> {
     fn architecture(&self) -> Architecture {
         Architecture::Arm
     }
+
     fn status(&mut self) -> Result<crate::core::CoreStatus, Error> {
         let dhcsr = Dhcsr(self.memory.read_word_32(Dhcsr::ADDRESS)?);
 

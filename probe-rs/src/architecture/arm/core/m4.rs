@@ -241,8 +241,14 @@ impl From<FpRev1CompX> for u32 {
 impl FpRev1CompX {
     /// Get the correct register configuration which enables
     /// a hardware breakpoint at the given address.
-    fn breakpoint_configuration(address: u32) -> Self {
+    fn breakpoint_configuration(address: u32) -> Result<Self, Error> {
         let mut reg = FpRev1CompX::from(0);
+
+        // The highest 3 bits of the address have to be zero, otherwise the breakpoint cannot
+        // be set at the address.
+        if address >= 0x2000_0000 {
+            return Err(Error::ArchitectureSpecific(Box::new(DebugProbeError::Other(anyhow::anyhow!("Unsupported address {:#08x} for HW breakpoint. Breakpoint must be at address < 0x2000_0000.", address)))));
+        }
 
         let comp_val = (address & 0x1f_ff_ff_fc) >> 2;
 
@@ -258,7 +264,7 @@ impl FpRev1CompX {
         reg.set_comp(comp_val);
         reg.set_enable(true);
 
-        reg
+        Ok(reg)
     }
 }
 
@@ -564,7 +570,7 @@ impl<'probe> CoreInterface for M4<'probe> {
 
         let val: u32;
         if ctrl_reg.rev() == 0 {
-            val = FpRev1CompX::breakpoint_configuration(addr).into();
+            val = FpRev1CompX::breakpoint_configuration(addr)?.into();
         } else if ctrl_reg.rev() == 1 {
             val = FpRev2CompX::breakpoint_configuration(addr).into();
         } else {
@@ -644,8 +650,16 @@ fn breakpoint_register_value() {
     // See ARMv7 Architecture Reference Manual, Section C1.11.5
     let address: u32 = 0x0800_09A4;
 
-    let reg = FpRev1CompX::breakpoint_configuration(address);
+    let reg = FpRev1CompX::breakpoint_configuration(address).unwrap();
     let reg_val: u32 = reg.into();
 
     assert_eq!(0x4800_09A5, reg_val);
+}
+
+#[test]
+fn unsupported_breakpoint_address() {
+    // Revision 1 of the FPBU only supports breakpoints for address < 0x2000_0000.
+    let address: u32 = 0x2000_0000;
+
+    FpRev1CompX::breakpoint_configuration(address).unwrap_err();
 }
