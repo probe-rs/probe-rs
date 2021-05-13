@@ -1,8 +1,11 @@
-use std::time::Duration;
+use std::{path::Path, time::Duration};
 
 use crate::{
     dut_definition::{DefinitionSource, DutDefinition},
-    tests::{test_flashing, test_hw_breakpoints, test_memory_access, test_register_access},
+    tests::{
+        stepping::test_stepping, test_flashing, test_hw_breakpoints, test_memory_access,
+        test_register_access,
+    },
 };
 use anyhow::{bail, Context, Result};
 
@@ -20,7 +23,7 @@ fn main() -> Result<()> {
                 .long("dut-definitions")
                 .value_name("DIRECTORY")
                 .takes_value(true)
-                .conflicts_with_all(&["chip", "probe"])
+                .conflicts_with_all(&["chip", "probe", "single_dut"])
                 .required(true),
         )
         .arg(
@@ -28,7 +31,7 @@ fn main() -> Result<()> {
                 .long("chip")
                 .takes_value(true)
                 .value_name("CHIP")
-                .conflicts_with("dut_definitions")
+                .conflicts_with_all(&["dut_definitions", "single_dut"])
                 .required(true),
         )
         .arg(
@@ -37,6 +40,14 @@ fn main() -> Result<()> {
                 .takes_value(true)
                 .value_name("PROBE")
                 .required(false),
+        )
+        .arg(
+            Arg::with_name("single_dut")
+                .long("single-dut")
+                .value_name("FILE")
+                .takes_value(true)
+                .required(true)
+                .conflicts_with_all(&["chip", "dut_definitions"]),
         );
 
     let matches = app.get_matches();
@@ -45,6 +56,8 @@ fn main() -> Result<()> {
         let definitions = DutDefinition::collect(dut_definitions)?;
         println!("Found {} target definitions.", definitions.len());
         definitions
+    } else if let Some(single_dut) = matches.value_of("single_dut") {
+        vec![DutDefinition::from_file(Path::new(single_dut))?]
     } else {
         // Chip needs to be specified
         let chip = matches.value_of("chip").unwrap(); // If dut-definitions is not present, chip must be present
@@ -119,6 +132,8 @@ fn handle_dut(definition: &DutDefinition) -> Result<()> {
         test_memory_access(&mut core, &memory_regions)?;
 
         test_hw_breakpoints(&mut core, &memory_regions)?;
+
+        test_stepping(&mut core, &memory_regions)?;
 
         // Ensure core is not running anymore.
         core.reset_and_halt(Duration::from_millis(200))?;

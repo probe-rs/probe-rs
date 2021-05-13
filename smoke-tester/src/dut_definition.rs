@@ -125,7 +125,7 @@ impl DutDefinition {
     }
 
     /// Try to parse a DUT definition from a file.
-    fn from_file(file: &Path) -> Result<Self> {
+    pub fn from_file(file: &Path) -> Result<Self> {
         let raw_definition = RawDutDefinition::from_file(file)?;
 
         DutDefinition::from_raw_definition(raw_definition, file)

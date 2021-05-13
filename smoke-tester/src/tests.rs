@@ -6,6 +6,8 @@ use probe_rs::{
     Architecture, Core, MemoryInterface, Session,
 };
 
+pub mod stepping;
+
 use anyhow::{Context, Result};
 
 pub fn test_register_access(core: &mut Core) -> Result<()> {
@@ -51,19 +53,19 @@ pub fn test_memory_access(core: &mut Core, memory_regions: &[MemoryRegion]) -> R
                 // Write first word
                 core.write_word_32(ram_start, 0xababab)?;
                 let value = core.read_word_32(ram_start)?;
-                assert!(value == 0xababab);
+                assert_eq!(value, 0xababab);
 
                 println!("Test - RAM End 32");
                 // Write last word
                 core.write_word_32(ram_start + ram_size - 4, 0xababac)?;
                 let value = core.read_word_32(ram_start + ram_size - 4)?;
-                assert!(value == 0xababac);
+                assert_eq!(value, 0xababac);
 
                 println!("Test - RAM Start 8");
                 // Write first byte
                 core.write_word_8(ram_start, 0xac)?;
                 let value = core.read_word_8(ram_start)?;
-                assert!(value == 0xac);
+                assert_eq!(value, 0xac);
 
                 println!("Test - RAM 8 Unaligned");
                 let address = ram_start + 1;
@@ -75,7 +77,7 @@ pub fn test_memory_access(core: &mut Core, memory_regions: &[MemoryRegion]) -> R
                 let value = core
                     .read_word_8(address)
                     .with_context(|| format!("read_word_8 from address {:08x}", address))?;
-                assert!(value == data);
+                assert_eq!(value, data);
 
                 println!("Test - RAM End 8");
                 // Write last byte
@@ -89,7 +91,7 @@ pub fn test_memory_access(core: &mut Core, memory_regions: &[MemoryRegion]) -> R
                     .with_context(|| {
                         format!("read_word_8 from address {:08x}", ram_start + ram_size - 1)
                     })?;
-                assert!(value == 0xcd);
+                assert_eq!(value, 0xcd);
             }
             // Ignore other types of regions
             _other => {}
