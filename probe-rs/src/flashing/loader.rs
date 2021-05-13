@@ -248,7 +248,7 @@ impl FlashLoader {
         Ok(())
     }
 
-    fn get_flash_algorithm(
+    fn build_flash_algorithm(
         &self,
         region: &NvmRegion,
         target: &Target,
@@ -315,7 +315,7 @@ impl FlashLoader {
             region.range.end
         );
 
-        let flash_algorithm = self.get_flash_algorithm(region, session.target())?;
+        let flash_algorithm = self.build_flash_algorithm(region, session.target())?;
 
         if options.dry_run {
             log::info!("Skipping programming, dry run!");
