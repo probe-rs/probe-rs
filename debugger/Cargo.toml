@@ -34,11 +34,3 @@ jep106 = "0.2.4"
 serde_json = "^1.0"
 serde = { version = "^1.0", features = ["derive"] }
 schemafy = "^0.5"
-
-
-[profile.release]
-debug = true
-split-debuginfo = "unpacked"
-
-[profile.dev]
-split-debuginfo = "unpacked"
