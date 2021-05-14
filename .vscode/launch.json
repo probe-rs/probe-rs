@@ -12,9 +12,7 @@
                 "args": [
                     "build",
                     "--bin=probe-rs-debugger",
-                    "--package=probe-rs-debugger",
-                    "--target",
-                    "x86_64-apple-darwin"
+                    "--package=probe-rs-debugger"
                 ],
                 "filter": {
                     "name": "probe-rs-debugger",
@@ -27,8 +25,8 @@
                 "STM32H745ZITx",
                 "--speed",
                 "24000",
-                "--probe",
-                "PID:VID",
+                // "--probe",
+                // "PID:VID",
                 "--program-binary",
                 "debug_example/target/thumbv7em-none-eabihf/debug/debugging_variables",
                 "--protocol",
@@ -73,9 +71,7 @@
                 "args": [
                     "build",
                     "--bin=probe-rs-debugger",
-                    "--package=probe-rs-debugger",
-                    "--target",
-                    "x86_64-apple-darwin"
+                    "--package=probe-rs-debugger"
                 ],
                 "filter": {
                     "name": "probe-rs-debugger",

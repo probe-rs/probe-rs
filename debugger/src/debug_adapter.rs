@@ -1,7 +1,7 @@
+use crate::dap_types;
 use crate::debugger::ConsoleLog;
 use crate::debugger::CoreData;
 use crate::DebuggerError;
-use crate::{dap_types, debugger::LAST_KNOWN_STATUS};
 use anyhow::{anyhow, Result};
 use dap_types::*;
 use parse_int::parse;
@@ -28,6 +28,8 @@ pub struct DebugAdapter<R: Read, W: Write> {
     seq: i64,
     input: BufReader<R>,
     output: W,
+    ///Track the last_known_status of the probe. The debug client needs to be notified when the probe changes state, and the only way is to poll the probe status periodically. For instance, when the client sets the probe running, and the probe halts because of a breakpoint, we need to notify the client.
+    pub(crate) last_known_status: CoreStatus,
     pub(crate) adapter_type: DebugAdapterType,
     pub(crate) halt_after_reset: bool,
     pub(crate) console_log_level: ConsoleLog,
@@ -48,6 +50,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
             seq: 1,
             input: BufReader::new(input),
             output,
+            last_known_status: CoreStatus::Unknown,
             adapter_type,
             halt_after_reset: false, //default of false
             console_log_level: ConsoleLog::Error,
@@ -64,7 +67,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
     pub(crate) fn status(&mut self, core_data: &mut CoreData, request: &Request) -> bool {
         let status = match core_data.target_core.status() {
             Ok(status) => {
-                unsafe { LAST_KNOWN_STATUS = status };
+                self.last_known_status = status;
                 status
             }
             Err(error) => {
@@ -105,9 +108,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
             Ok(cpu_info) => {
                 let event_body = Some(StoppedEventBody {
                     reason: "pause".to_owned(),
-                    description: Some(unsafe {
-                        LAST_KNOWN_STATUS.short_long_status().1.to_owned()
-                    }),
+                    description: Some(self.last_known_status.short_long_status().1.to_owned()),
                     thread_id: Some(core_data.target_core.id() as i64),
                     preserve_focus_hint: Some(false),
                     text: None,
@@ -122,7 +123,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                         cpu_info.pc
                     ))),
                 );
-                unsafe { LAST_KNOWN_STATUS = CoreStatus::Halted(HaltReason::Request) };
+                self.last_known_status = CoreStatus::Halted(HaltReason::Request);
 
                 true
             }
@@ -337,7 +338,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                         }
                     }
                     //Only notify the DAP client if we are NOT in initialization stage (CoreStatus::Unknown)
-                    if unsafe { LAST_KNOWN_STATUS } != CoreStatus::Unknown {
+                    if self.last_known_status != CoreStatus::Unknown {
                         let event_body = Some(StoppedEventBody {
                             reason: "reset".to_owned(),
                             description: Some(
@@ -353,9 +354,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                             hit_breakpoint_ids: None,
                         });
                         self.send_event("stopped", event_body);
-                        unsafe {
-                            LAST_KNOWN_STATUS = CoreStatus::Halted(HaltReason::External);
-                        }
+                        self.last_known_status = CoreStatus::Halted(HaltReason::External);
                     }
                     true
                 }
@@ -369,9 +368,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
         } else if self.adapter_type == DebugAdapterType::CommandLine {
             match core_data.target_core.reset() {
                 Ok(_) => {
-                    unsafe {
-                        LAST_KNOWN_STATUS = CoreStatus::Running;
-                    }
+                    self.last_known_status = CoreStatus::Running;
                     let event_body = Some(ContinuedEventBody {
                         all_threads_continued: Some(true),
                         thread_id: core_data.target_core.id() as i64,
@@ -399,7 +396,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
         //Make sure the DAP Client and DAP Server are in synch with status of the core
         match core_data.target_core.status() {
             Ok(core_status) => {
-                unsafe { LAST_KNOWN_STATUS = core_status };
+                self.last_known_status = core_status;
                 if core_status.is_halted() {
                     if self.halt_after_reset
                         || core_status == CoreStatus::Halted(HaltReason::Breakpoint)
@@ -891,22 +888,20 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
         // let args: ContinueArguments = get_arguments(&request)?;
         match core_data.target_core.run() {
             Ok(_) => {
-                unsafe {
-                    LAST_KNOWN_STATUS = core_data
-                        .target_core
-                        .status()
-                        .unwrap_or(CoreStatus::Unknown);
-                }
+                self.last_known_status = core_data
+                    .target_core
+                    .status()
+                    .unwrap_or(CoreStatus::Unknown);
                 match self.adapter_type {
                     DebugAdapterType::CommandLine => self.send_response(
                         &request,
-                        Ok(Some(unsafe { LAST_KNOWN_STATUS.short_long_status().1 })),
+                        Ok(Some(self.last_known_status.short_long_status().1)),
                     ),
                     DebugAdapterType::DapClient => {
                         self.send_response(
                             &request,
                             Ok(Some(ContinueResponseBody {
-                                all_threads_continued: if unsafe { LAST_KNOWN_STATUS }
+                                all_threads_continued: if self.last_known_status
                                     == CoreStatus::Running
                                 {
                                     Some(true)
@@ -938,17 +933,13 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                             },
                             Err(_) => CoreStatus::Unknown,
                         };
-                        unsafe {
-                            LAST_KNOWN_STATUS = core_status;
-                        }
+                        self.last_known_status = core_status;
                         true
                     }
                 }
             }
             Err(error) => {
-                unsafe {
-                    LAST_KNOWN_STATUS = CoreStatus::Halted(HaltReason::Unknown);
-                }
+                self.last_known_status = CoreStatus::Halted(HaltReason::Unknown);
                 self.send_response::<()>(&request, Err(DebuggerError::Other(anyhow!("{}", error))))
             }
         }
@@ -968,9 +959,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                         return false;
                     }
                 };
-                unsafe {
-                    LAST_KNOWN_STATUS = new_status;
-                }
+                self.last_known_status = new_status;
                 self.send_response::<()>(&request, Ok(None));
                 let event_body = Some(StoppedEventBody {
                     reason: "step".to_owned(),
@@ -1426,9 +1415,10 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                     }
                 }
                 "continued" => {
-                    println!("{}", unsafe {
-                        LAST_KNOWN_STATUS.short_long_status().1.to_owned()
-                    });
+                    println!(
+                        "{}",
+                        self.last_known_status.short_long_status().1.to_owned()
+                    );
                 }
                 other => match self.console_log_level {
                     ConsoleLog::Error => {}

@@ -67,9 +67,6 @@ impl std::str::FromStr for ConsoleLog {
     }
 }
 
-//TODO: When we implement multi-threaded server, this static handling needs work
-pub static mut LAST_KNOWN_STATUS: CoreStatus = CoreStatus::Unknown;
-
 /// Shared options for all commands which use a specific probe
 #[derive(StructOpt, Clone, Deserialize, Debug, Default)]
 pub struct DebuggerOptions {
@@ -492,7 +489,7 @@ impl Debugger {
                 - If the `new_status` is `Running`, then we have to poll on a regular basis, until the Probe stops for good reasons like breakpoints, or bad reasons like panics. Then tell the DAP-Client.
                 - TODO: Figure out CPU/Comms overhead costs to determine optimal polling intervals
                 */
-                let last_known_status = unsafe { LAST_KNOWN_STATUS };
+                let last_known_status = debug_adapter.last_known_status;
                 match last_known_status {
                     CoreStatus::Unknown => true,
                     _other => {
@@ -560,7 +557,7 @@ impl Debugger {
                                 return false;
                             }
                         };
-                        unsafe { LAST_KNOWN_STATUS = new_status };
+                        debug_adapter.last_known_status = new_status;
                         true
                     }
                 }
