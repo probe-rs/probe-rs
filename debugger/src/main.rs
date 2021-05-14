@@ -142,10 +142,11 @@ enum CliCommands {
         loc: u32,
     },
 }
+
 fn main() -> Result<()> {
     // Initialize the logging backend.
-    pretty_env_logger::formatted_builder()
-        .target(pretty_env_logger::env_logger::Target::Stderr) // Log to Stderr, because the DebugAdapater, in 'Launch' mode, needs Stdin and Stdout to communicate with VSCode DAP Client
+    env_logger::Builder::from_default_env()
+        .target(env_logger::Target::Stderr) // Log to Stderr, because the DebugAdapater, in 'Launch' mode, needs Stdin and Stdout to communicate with VSCode DAP Client
         .init();
 
     let matches = CliCommands::from_args();

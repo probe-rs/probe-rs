@@ -21,7 +21,9 @@ pub(crate) fn show_info_of_device(debugger_options: &DebuggerOptions) -> Result<
             DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::NotFound) => {
                 DebuggerError::Other(anyhow!(
                     "Could not find the probe_selector specified as {:04x}:{:04x}:{:?}",
-                    selector.vendor_id, selector.product_id, selector.serial_number
+                    selector.vendor_id,
+                    selector.product_id,
+                    selector.serial_number
                 ))
             }
             other_error => DebuggerError::DebugProbe(other_error),
