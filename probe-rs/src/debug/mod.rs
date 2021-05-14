@@ -837,7 +837,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
         child_variable: &mut Variable,
         core: &mut Core<'_>,
         frame_base: u64,
-        program_counter:u64,
+        program_counter: u64,
     ) -> Result<(), DebugError> {
         // child_variable.get_value() = format!("{:?}", tree_node.entry().offset());
         //We need to process the location attribute in advance of looping through all the attributes, to ensure that location is known before we calculate type.
@@ -867,7 +867,13 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                 .header
                                 .entries_tree(&self.unit.abbreviations, Some(unit_ref))?;
                             let tree_node = type_tree.root().unwrap();
-                            self.extract_type(tree_node, child_variable, core, frame_base, program_counter)?;
+                            self.extract_type(
+                                tree_node,
+                                child_variable,
+                                core,
+                                frame_base,
+                                program_counter,
+                            )?;
                         }
                         other_attribute_value => {
                             child_variable.set_value(format!(
@@ -926,12 +932,15 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                             parent_variable,
                             &mut discriminant_variable,
                             core,
-                            frame_base, 
+                            frame_base,
                             program_counter,
                         )?;
                         discriminant_variable.extract_value(core);
                         parent_variable.role = VariantRole::VariantPart(
-                            discriminant_variable.get_value().parse().unwrap_or(u64::MAX) as u64,
+                            discriminant_variable
+                                .get_value()
+                                .parse()
+                                .unwrap_or(u64::MAX) as u64,
                         );
                     }
                     other_attribute_value => {
@@ -1066,7 +1075,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     self.process_tree(child_node, parent_variable, core, frame_base, program_counter)?;
                 }
                 gimli::DW_TAG_lexical_block => { //Determine the low and high ranges for which this DIE and children are in scope
-                    let low_pc = if let Ok(Some(low_pc_attr)) 
+                    let low_pc = if let Ok(Some(low_pc_attr))
                         = child_node.entry().attr(gimli::DW_AT_low_pc) {
                             match low_pc_attr.value() {
                                 gimli::AttributeValue::Addr(value) => value as u64,
@@ -1074,7 +1083,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                             }
                     } else { 0_u64};
 
-                    let high_pc = if let Ok(Some(high_pc_attr)) 
+                    let high_pc = if let Ok(Some(high_pc_attr))
                         = child_node.entry().attr(gimli::DW_AT_high_pc) {
                             match high_pc_attr.value() {
                                 gimli::AttributeValue::Addr(addr) => addr,
@@ -1083,7 +1092,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                             }
                     } else { low_pc};
 
-                    let range_offset = if let Ok(Some(ranges)) 
+                    let range_offset = if let Ok(Some(ranges))
                         = child_node.entry().attr(gimli::DW_AT_ranges) {
                             match ranges.value() {
                                 gimli::AttributeValue::RangeListsRef(range_lists_ref) => {
@@ -1111,7 +1120,6 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                 => {
                     // println!("\n\nEncountered a TODO node {:?}", child_node.entry().tag().static_string());
                     // _print_all_attributes(core, Some(frame_base), &self.debug_info.dwarf, &self.unit, &child_node.entry(), 1 );
-                    
                     // Recursively process each node, but pass the parent_variable so that new children are caught despite missing these tags.
                     self.process_tree(child_node, parent_variable, core, frame_base, program_counter)?;
                 }
@@ -1139,7 +1147,13 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
         let function_node = tree.root()?;
         let mut root_variable = Variable::new();
         root_variable.name = "<locals>".to_string();
-        self.process_tree(function_node, &mut root_variable, core, frame_base, program_counter)?;
+        self.process_tree(
+            function_node,
+            &mut root_variable,
+            core,
+            frame_base,
+            program_counter,
+        )?;
         match root_variable.children {
             Some(function_variables) => Ok(function_variables),
             None => Ok(vec![]),
@@ -1195,7 +1209,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
         variable: &mut Variable,
         core: &mut Core<'_>,
         frame_base: u64,
-        program_counter:u64,
+        program_counter: u64,
     ) -> Result<(), DebugError> {
         // let entry = node.entry();
         variable.type_name = match node.entry().attr(gimli::DW_AT_name) {
@@ -1276,7 +1290,10 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         }
                     }
                     Err(error) => {
-                        variable.set_value(format!("ERROR: Failed to decode pointer reference: {:?}", error));
+                        variable.set_value(format!(
+                            "ERROR: Failed to decode pointer reference: {:?}",
+                            error
+                        ));
                     }
                 }
                 Ok(())
@@ -1303,13 +1320,13 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                 let mut buff = [0u8; 1]; //NOTE: hard-coding value of variable.byte_size to 1 ... replace with code if necessary
                 core.read_8(variable.location as u32, &mut buff)?;
                 let this_enum_const_value = u8::from_le_bytes(buff).to_string();
-                let enumumerator_value = match enumerator_values
-                    .into_iter()
-                    .find(|enumerator_variable| enumerator_variable.get_value() == this_enum_const_value)
-                {
-                    Some(this_enum) => this_enum.name,
-                    None => "<ERROR: Unresolved enum value>".to_string(),
-                };
+                let enumumerator_value =
+                    match enumerator_values.into_iter().find(|enumerator_variable| {
+                        enumerator_variable.get_value() == this_enum_const_value
+                    }) {
+                        Some(this_enum) => this_enum.name,
+                        None => "<ERROR: Unresolved enum value>".to_string(),
+                    };
                 variable.set_value(format!("{}::{}", variable.type_name, enumumerator_value));
                 variable.children = None; //We don't need to keep these.
                 Ok(())
@@ -1355,7 +1372,10 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
             }
             other => {
                 variable.type_name = format!("<UNIMPLEMENTED: type : {:?}>", other.static_string());
-                variable.set_value(format!("<UNIMPLEMENTED: type : {:?}>", other.static_string()));
+                variable.set_value(format!(
+                    "<UNIMPLEMENTED: type : {:?}>",
+                    other.static_string()
+                ));
                 variable.children = None;
                 Ok(())
             }
@@ -1381,7 +1401,10 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                 Ok(pieces) => pieces,
                                 Err(err) => {
                                     child_variable.location = u64::MAX;
-                                    child_variable.set_value(format!("ERROR: expr_to_piece() failed with: {:?}", err));
+                                    child_variable.set_value(format!(
+                                        "ERROR: expr_to_piece() failed with: {:?}",
+                                        err
+                                    ));
                                     return Err(err);
                                 }
                             };

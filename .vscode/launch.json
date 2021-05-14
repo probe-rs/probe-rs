@@ -22,16 +22,15 @@
                 }
             },
             "args": [
-                // "reset",
                 "debug",
                 "--chip",
                 "STM32H745ZITx",
                 "--speed",
                 "24000",
-                "--probe-index",
-                "0",
+                "--probe",
+                "PID:VID",
                 "--program-binary",
-                "some binary path and file",
+                "debug_example/target/thumbv7em-none-eabihf/debug/debugging_variables",
                 "--protocol",
                 "swd",
                 "--connect-under-reset",
@@ -39,7 +38,7 @@
                 "--reset-after-flashing"                ,
                 "--halt-after-reset",
                 "--console-log-level",
-                "normal"
+                "Info"
             ],
             "cwd": "${workspaceFolder}/debugger"
         },

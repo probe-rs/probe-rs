@@ -21,7 +21,7 @@ probe-rs-debugger --help
 2. An fully qualified example of a CLI based debug session
 
 ```
-probe-rs-debugger debug --chip STM32H745ZITx --speed 24000 --probe-index 0 --program-binary ./target/thumbv7em-none-eabihf/debug/debug_example --protocol swd --connect-under-reset  --core-index 0 --flashing-enabled --reset-after-flashing --halt-after-reset
+probe-rs-debugger debug --chip STM32H745ZITx --speed 24000 --probe PID:VID --program-binary ./target/thumbv7em-none-eabihf/debug/debug_example --protocol swd --connect-under-reset  --core-index 0 --flashing-enabled --reset-after-flashing --halt-after-reset
 ```
 
 3. Starting a DAP server on a specific port, to allow a DAP Client like VSCode to connect 

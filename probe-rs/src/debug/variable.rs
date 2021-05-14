@@ -62,11 +62,11 @@ impl Variable {
     ///Implementing set_value(), because the library passes errors into the value of the variable. This ensures debug front ends can see the errors, but doesn't fail because of a single variable not being able to decode correctly.
     pub fn set_value(&mut self, new_value: String) {
         if self.value.is_empty() {
-            self.value = new_value.clone();
-        } else { //We append the new value to the old value, so that we don't loose any prior errors or warnings originating from the process of decoding the actual value
+            self.value = new_value;
+        } else {
+            //We append the new value to the old value, so that we don't loose any prior errors or warnings originating from the process of decoding the actual value
             self.value = format!("{} : {}", self.value, new_value);
         }
-
     }
 
     ///Implementing get_value(), because Variable.value has to be private (a requirement of updating the value without overriding earlier values ... see set_value())

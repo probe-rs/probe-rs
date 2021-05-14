@@ -1,4 +1,4 @@
-use crate::{debugger::open_probe, DebuggerOptions};
+use crate::{DebuggerError, DebuggerOptions};
 
 use probe_rs::{
     architecture::{
@@ -10,13 +10,40 @@ use probe_rs::{
         },
         riscv::communication_interface::RiscvCommunicationInterface,
     },
-    CoreRegister, Probe, WireProtocol,
+    CoreRegister, DebugProbeError, Probe, ProbeCreationError, WireProtocol,
 };
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 
-pub(crate) fn show_info_of_device(debugger_options: &DebuggerOptions) -> Result<()> {
-    let mut probe = open_probe(Some(debugger_options.probe_index))?;
+pub(crate) fn show_info_of_device(debugger_options: &DebuggerOptions) -> Result<(), DebuggerError> {
+    let mut probe = match debugger_options.probe_selector.clone() {
+        Some(selector) => Probe::open(selector.clone()).map_err(|e| match e {
+            DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::NotFound) => {
+                DebuggerError::Other(anyhow!(
+                    "Could not find the probe_selector specified as {:?}",
+                    selector
+                ))
+            }
+            other_error => DebuggerError::DebugProbe(other_error),
+        }),
+        None => {
+            // Only automatically select a probe if there is only
+            // a single probe detected.
+            let list = Probe::list_all();
+            if list.len() > 1 {
+                return Err(DebuggerError::Other(anyhow!(
+                    "Found multiple ({}) probes",
+                    list.len()
+                )));
+            }
+
+            if let Some(info) = list.first() {
+                Probe::open(info).map_err(DebuggerError::DebugProbe)
+            } else {
+                return Err(DebuggerError::Other(anyhow!("No probes found")));
+            }
+        }
+    }?;
 
     let protocols = if let Some(protocol) = debugger_options.protocol {
         vec![protocol]

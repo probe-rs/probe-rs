@@ -5,10 +5,13 @@ use crate::debug_adapter::*;
 use crate::DebuggerError;
 use anyhow::{anyhow, Result};
 use capstone::{arch::arm::ArchMode, prelude::*, Capstone, Endian};
-use probe_rs::config::TargetSelector;
 use probe_rs::debug::DebugInfo;
 use probe_rs::flashing::{download_file, download_file_with_options, DownloadOptions, Format};
-use probe_rs::{Core, CoreStatus, MemoryInterface, Probe, Session, WireProtocol};
+use probe_rs::{config::TargetSelector, ProbeCreationError};
+use probe_rs::{
+    Core, CoreStatus, DebugProbeError, DebugProbeSelector, MemoryInterface, Probe, Session,
+    WireProtocol,
+};
 use serde::Deserialize;
 use std::{
     env::{current_dir, set_current_dir},
@@ -34,6 +37,13 @@ fn default_console_log() -> Option<ConsoleLog> {
 fn parse_console_log(src: &str) -> Result<ConsoleLog, String> {
     ConsoleLog::from_str(src)
 }
+fn parse_probe_selector(src: &str) -> Result<DebugProbeSelector, String> {
+    match DebugProbeSelector::from_str(src) {
+        Ok(probe_selector) => Ok(probe_selector),
+        Err(error) => Err(error.to_string()),
+    }
+}
+
 /// The level of information to be logged to the debugger console
 #[derive(Copy, Clone, PartialEq, Debug, serde::Serialize, serde::Deserialize)]
 pub enum ConsoleLog {
@@ -72,9 +82,14 @@ pub struct DebuggerOptions {
     program_binary: Option<PathBuf>,
 
     /// The number associated with the debug probe to use. Use 'list' command to see available probes
-    #[structopt(long = "probe-index", default_value)]
-    #[serde(default)]
-    pub(crate) probe_index: usize,
+    #[structopt(
+        long = "probe",
+        parse(try_from_str = parse_probe_selector),
+        help = "Use this flag to select a specific probe in the list.\n\
+                    Use '--probe VID:PID' or '--probe VID:PID:Serial' if you have more than one probe with the same VID:PID."
+    )]
+    #[serde(alias = "probe")]
+    pub(crate) probe_selector: Option<DebugProbeSelector>,
 
     /// The MCU Core to debug. Default is 0
     #[structopt(long = "core-index", default_value)]
@@ -213,35 +228,38 @@ pub struct DebugCommand {
     //pub(crate) function: fn(core_data: &mut CoreData, request: &Request) -> bool,
 }
 
-pub(crate) fn open_probe(index: Option<usize>) -> Result<Probe, DebuggerError> {
-    let available_probes = Probe::list_all();
-
-    // open the default probe, if only one probe was found
-    let device = match available_probes.len() {
-        0 => {
-            return Err(DebuggerError::UnableToOpenProbe(Some("No probe detected.")));
-        }
-        1 => &available_probes[0],
-        _ => match index {
-            Some(index) => match available_probes.get(index) {
-                Some(device) => device,
-                None => return Err(DebuggerError::UnableToOpenProbe(Some(
-                    "Invalid probe index. Use the 'list' subcommand to see all available probes.",
-                ))),
-            },
-            None => {
-                return Err(DebuggerError::UnableToOpenProbe(Some("Multiple probes found. Please specify which probe to use using the -n parameter.")));
-            }
-        },
-    };
-    device.open().map_err(DebuggerError::DebugProbe)
-}
-
 pub fn start_session(debugger_options: &DebuggerOptions) -> Result<SessionData, DebuggerError> {
-    let mut target_probe = match open_probe(Some(debugger_options.probe_index)) {
-        Ok(probe) => probe,
-        Err(error) => return Err(error),
-    };
+    let mut target_probe = match debugger_options.probe_selector.clone() {
+        Some(selector) => Probe::open(selector.clone()).map_err(|e| match e {
+            DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::NotFound) => {
+                DebuggerError::Other(anyhow!(
+                    "Could not find the probe_selector specified as {:?}",
+                    selector
+                ))
+            }
+            other_error => DebuggerError::DebugProbe(other_error),
+        }),
+        None => {
+            // Only automatically select a probe if there is only
+            // a single probe detected.
+            let list = Probe::list_all();
+            if list.len() > 1 {
+                return Err(DebuggerError::Other(anyhow!(
+                    "Found multiple ({}) probes",
+                    list.len()
+                )));
+            }
+
+            if let Some(info) = list.first() {
+                Probe::open(info).map_err(DebuggerError::DebugProbe)
+            } else {
+                return Err(DebuggerError::Other(anyhow!(
+                    "No probes found. Please check your USB connections."
+                )));
+            }
+        }
+    }?;
+
     let target_selector = match &debugger_options.chip {
         Some(identifier) => identifier.into(),
         None => TargetSelector::Auto,
