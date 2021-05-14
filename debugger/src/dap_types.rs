@@ -22,7 +22,7 @@ impl TryFrom<&serde_json::Value> for ReadMemoryArguments {
     type Error = DebuggerError;
 }
 
-//SECTION: For various helper functions
+// SECTION: For various helper functions
 
 /// Parse the argument at the given index.
 pub fn get_int_argument<T: Num>(

@@ -28,18 +28,18 @@ pub struct DebugAdapter<R: Read, W: Write> {
     seq: i64,
     input: BufReader<R>,
     output: W,
-    ///Track the last_known_status of the probe. The debug client needs to be notified when the probe changes state, and the only way is to poll the probe status periodically. For instance, when the client sets the probe running, and the probe halts because of a breakpoint, we need to notify the client.
+    /// Track the last_known_status of the probe. The debug client needs to be notified when the probe changes state, and the only way is to poll the probe status periodically. For instance, when the client sets the probe running, and the probe halts because of a breakpoint, we need to notify the client.
     pub(crate) last_known_status: CoreStatus,
     pub(crate) adapter_type: DebugAdapterType,
     pub(crate) halt_after_reset: bool,
     pub(crate) console_log_level: ConsoleLog,
-    ///rl is the optional rustyline command line processor instance
+    /// rl is the optional rustyline command line processor instance
     rl: Option<Editor<()>>,
-    ///scope_map stores a list of all MS DAP Scopes with a each stack frame's unique id as key
-    ///It is cleared by threads(), populated by stack_trace(), for later re-use by scopes()
+    /// scope_map stores a list of all MS DAP Scopes with a each stack frame's unique id as key
+    /// It is cleared by threads(), populated by stack_trace(), for later re-use by scopes()
     scope_map: HashMap<i64, Vec<Scope>>,
-    ///variable_map stores a list of all MS DAP Variables with a unique per-level reference
-    ///It is cleared by threads(), populated by stack_trace(), for later nested re-use by variables()
+    /// variable_map stores a list of all MS DAP Variables with a unique per-level reference
+    /// It is cleared by threads(), populated by stack_trace(), for later nested re-use by variables()
     variable_map_key_seq: i64, //Used to create unique values for self.variable_map keys
     variable_map: HashMap<i64, Vec<Variable>>,
 }
@@ -783,7 +783,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
             )
         }
     }
-    ///scopes uses the following references for variables_map in a frame.
+    /// scopes uses the following references for variables_map in a frame.
     /// - local scope   : Use the frame.id (the actual frame address in memory)
     /// - registers     : Manufactured references in the range 0..0x400
     /// - global scope  : Manufactured refernces in the range 0x400..0x800 (unimplemented)
@@ -946,7 +946,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
         }
     }
 
-    ///Steps at 'instruction' granularity ONLY.
+    /// Steps at 'instruction' granularity ONLY.
     pub(crate) fn next(&mut self, core_data: &mut CoreData, request: &Request) -> bool {
         //TODO: Implement 'statement' granularity, then update DAP `Capabilities` and read `NextArguments`
         // let args: NextArguments = get_arguments(&request)?;
@@ -988,14 +988,14 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
         self.seq
     }
 
-    ///return a newly allocated id for a register scope reference
+    /// return a newly allocated id for a register scope reference
     fn new_variable_map_key(&mut self) -> i64 {
         self.variable_map_key_seq += 1;
         self.variable_map_key_seq
     }
 
-    ///recurse through each variable and add children with parent reference to sef.variables_map
-    ///returns a tuple containing the parent's  (variables_map_key, named_child_variables_cnt, indexed_child_variables_cnt)
+    /// recurse through each variable and add children with parent reference to sef.variables_map
+    /// returns a tuple containing the parent's  (variables_map_key, named_child_variables_cnt, indexed_child_variables_cnt)
     fn create_variable_map(&mut self, variables: &[probe_rs::debug::Variable]) -> (i64, i64, i64) {
         let mut named_child_variables_cnt = 0;
         let mut indexed_child_variables_cnt = 0;
@@ -1042,7 +1042,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
         }
     }
 
-    ///Returns one of the standard DAP Requests if all goes well, or a "error" request, which should indicate that the calling function should return. When preparing to return an "error" request, we will send a Response containing the DebuggerError encountered.
+    /// Returns one of the standard DAP Requests if all goes well, or a "error" request, which should indicate that the calling function should return. When preparing to return an "error" request, we will send a Response containing the DebuggerError encountered.
     pub fn listen_for_request(&mut self) -> Request {
         if self.adapter_type == DebugAdapterType::CommandLine {
             let readline = self.rl.as_mut().unwrap().readline(">> ");
@@ -1271,7 +1271,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
         }
     }
 
-    ///Sends either the success response or an error response if passed a DebuggerError. For the DAP Client, it forwards the response, while for the CLI, it will print the body for success, or the message for failure.
+    /// Sends either the success response or an error response if passed a DebuggerError. For the DAP Client, it forwards the response, while for the CLI, it will print the body for success, or the message for failure.
     pub fn send_response<S: Serialize>(
         &mut self,
         request: &Request,
@@ -1464,7 +1464,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
     }
 }
 
-//SECTION: Some helper functions
+// SECTION: Some helper functions
 pub fn get_arguments<T: DeserializeOwned>(req: &Request) -> Result<T, crate::DebuggerError> {
     let value = req
         .arguments
@@ -1499,7 +1499,7 @@ pub(crate) trait DapStatus {
     fn short_long_status(&self) -> (&'static str, &'static str);
 }
 impl DapStatus for CoreStatus {
-    ///Return a tuple with short and long descriptions of the core status for human machine interface / hmi. The short status matches with the strings implemented by the Microsoft DAP protocol, e.g. `let (short_status, long status) = CoreStatus::short_long_status(core_status)`
+    /// Return a tuple with short and long descriptions of the core status for human machine interface / hmi. The short status matches with the strings implemented by the Microsoft DAP protocol, e.g. `let (short_status, long status) = CoreStatus::short_long_status(core_status)`
     fn short_long_status(&self) -> (&'static str, &'static str) {
         match self {
             CoreStatus::Running => ("continued", "Core is running"),

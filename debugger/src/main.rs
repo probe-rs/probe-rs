@@ -70,8 +70,8 @@ fn parse_hex(src: &str) -> Result<u32, std::num::ParseIntError> {
 //     src.parse()
 // }
 
-///CliCommands enum contains the list of supported commands that can be invoked from the command line.
-///The `debug` command is also the entry point for the DAP server, when the --dap option is used.
+/// CliCommands enum contains the list of supported commands that can be invoked from the command line.
+/// The `debug` command is also the entry point for the DAP server, when the --dap option is used.
 #[derive(StructOpt)]
 #[structopt(
     name = crate_name!(),
@@ -98,8 +98,8 @@ enum CliCommands {
         /// Whether the reset pin should be asserted or deasserted. If left open, just pulse it
         assert: Option<bool>,
     },
-    ///Open target in debug mode and accept debug commands.
-    ///By default, the program operates in CLI mode.
+    /// Open target in debug mode and accept debug commands.
+    /// By default, the program operates in CLI mode.
     #[structopt(name = "debug")]
     Debug {
         #[structopt(flatten)]
@@ -131,7 +131,7 @@ enum CliCommands {
         /// The path to the file to be downloaded to the flash
         path: String,
     },
-    ///Begin tracing a memory address over SWV
+    /// Begin tracing a memory address over SWV
     #[structopt(name = "trace")]
     Trace {
         #[structopt(flatten)]

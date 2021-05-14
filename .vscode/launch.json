@@ -48,9 +48,7 @@
                 "args": [
                     "build",
                     "--bin=probe-rs-debugger",
-                    "--package=probe-rs-debugger",
-                    "--target",
-                    "x86_64-apple-darwin"
+                    "--package=probe-rs-debugger"
                 ],
                 "filter": {
                     "name": "probe-rs-debugger",

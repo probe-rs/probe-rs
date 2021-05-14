@@ -106,7 +106,7 @@ pub struct DebuggerOptions {
     #[structopt(short, long, conflicts_with("dap"))]
     pub(crate) speed: Option<u32>,
 
-    ///Assert target's reset during connect
+    /// Assert target's reset during connect
     #[structopt(long, conflicts_with("dap"))]
     #[serde(default)]
     pub(crate) connect_under_reset: bool,
@@ -208,16 +208,16 @@ pub struct CoreData<'p> {
     pub(crate) target_name: String,
     pub(crate) debug_info: Option<DebugInfo>,
 }
-///Definition of commands that have been implemented in Debugger.
+/// Definition of commands that have been implemented in Debugger.
 #[derive(Clone, Copy)]
 pub struct DebugCommand {
-    ///Has value if it can be called from DAP, else ""
+    /// Has value if it can be called from DAP, else ""
     pub(crate) dap_cmd: &'static str,
-    ///Has value if it can be called from CLI, else ""
+    /// Has value if it can be called from CLI, else ""
     pub(crate) cli_cmd: &'static str,
-    ///Help message to be displayed if invalid usage is attempted
+    /// Help message to be displayed if invalid usage is attempted
     pub(crate) help_text: &'static str,
-    ///The function that will be called when this command is intiated. It returns data via the DebugAdapter send_response() methods, so the only return from the function is and hint to the caller on whether it should continue with other commands, or terminate.
+    /// The function that will be called when this command is intiated. It returns data via the DebugAdapter send_response() methods, so the only return from the function is and hint to the caller on whether it should continue with other commands, or terminate.
     pub(crate) function_name: &'static str,
     //TODO: Need to be able to pass DebugAdapter<R,W> as a parameter then we can simplify the DebugAdapter::process_next_request() match statement to invoke the function from a pointer.
     //pub(crate) function: fn(core_data: &mut CoreData, request: &Request) -> bool,
@@ -956,7 +956,7 @@ impl Debugger {
         //TODO: Add functionality to keep the server alive, respond to DAP Client sessions that end, and accept new session requests.
     }
 }
-//SECTION: Functions for CLI struct matches from main.rs
+// SECTION: Functions for CLI struct matches from main.rs
 
 pub fn list_connected_devices() -> Result<()> {
     let connected_devices = Probe::list_all();
@@ -973,7 +973,7 @@ pub fn list_connected_devices() -> Result<()> {
     Ok(())
 }
 
-//TODO: Implement assert functionality for true, false & unspecified
+// TODO: Implement assert functionality for true, false & unspecified
 pub fn reset_target_of_device(
     debugger_options: DebuggerOptions,
     _assert: Option<bool>,

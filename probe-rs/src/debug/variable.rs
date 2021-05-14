@@ -1,16 +1,16 @@
 use super::*;
 use std::convert::TryInto;
 
-///VariableKind is a tag used to differentiate the nature of a variable. The DAP protocol requires a differentiation between 'Named' and 'Indexed'. We've added 'Referenced', because those require unique handling when decoding the value during runtime.
+/// VariableKind is a tag used to differentiate the nature of a variable. The DAP protocol requires a differentiation between 'Named' and 'Indexed'. We've added 'Referenced', because those require unique handling when decoding the value during runtime.
 #[derive(Debug, Clone, PartialEq)]
 pub enum VariableKind {
-    ///An Indexed variable (bound to an ordinal position), such as the sequenced members of an Array or Vector
+    /// An Indexed variable (bound to an ordinal position), such as the sequenced members of an Array or Vector
     Indexed,
-    ///A variable that is identified by it's name, and is not bound to a specific ordinal position.
+    /// A variable that is identified by it's name, and is not bound to a specific ordinal position.
     Named,
-    ///A variable that is the target of a pointer variable
+    /// A variable that is the target of a pointer variable
     Referenced,
-    ///This should never be the final value for a Variable
+    /// This should never be the final value for a Variable
     Undefined,
 }
 impl Default for VariableKind {
@@ -19,14 +19,14 @@ impl Default for VariableKind {
     }
 }
 
-///Define the role that a variable plays in a Variant relationship. See section '5.7.10 Variant Entries' of the DWARF 5 specification
+/// Define the role that a variable plays in a Variant relationship. See section '5.7.10 Variant Entries' of the DWARF 5 specification
 #[derive(Debug, Clone, PartialEq)]
 pub enum VariantRole {
-    ///A (parent) Variable that can have any number of Variant's as it's value
+    /// A (parent) Variable that can have any number of Variant's as it's value
     VariantPart(u64),
-    ///A (child) Variable that defines one of many possible types to hold the current value of a VariantPart.
+    /// A (child) Variable that defines one of many possible types to hold the current value of a VariantPart.
     Variant(u64),
-    ///This variable doesn't play a role in a Variant relationship
+    /// This variable doesn't play a role in a Variant relationship
     NonVariant,
 }
 
@@ -43,7 +43,7 @@ pub struct Variable {
     pub file: String,
     pub line: u64,
     pub type_name: String,
-    ///The starting location/address in memory where this Variable's value is stored.
+    /// The starting location/address in memory where this Variable's value is stored.
     pub memory_location: u64,
     pub byte_size: u64,
     pub kind: VariableKind,
@@ -57,13 +57,13 @@ impl Variable {
             name: String::new(),
             value: String::new(),
             file: String::new(),
-            ///There are instances when extract_location() will encounter a value in the DWARF definition, rather than a memory location where the value can be read. In those cases it will set Variable.value, and set Variable.location to u64::MAX, which tells the Variable.extract_value() to NOT overwrite it
+            /// There are instances when extract_location() will encounter a value in the DWARF definition, rather than a memory location where the value can be read. In those cases it will set Variable.value, and set Variable.location to u64::MAX, which tells the Variable.extract_value() to NOT overwrite it
             memory_location: 0,
             ..Default::default()
         }
     }
 
-    ///Implementing set_value(), because the library passes errors into the value of the variable. This ensures debug front ends can see the errors, but doesn't fail because of a single variable not being able to decode correctly.
+    /// Implementing set_value(), because the library passes errors into the value of the variable. This ensures debug front ends can see the errors, but doesn't fail because of a single variable not being able to decode correctly.
     pub fn set_value(&mut self, new_value: String) {
         if self.value.is_empty() {
             self.value = new_value;
@@ -73,12 +73,12 @@ impl Variable {
         }
     }
 
-    ///Implementing get_value(), because Variable.value has to be private (a requirement of updating the value without overriding earlier values ... see set_value())
+    /// Implementing get_value(), because Variable.value has to be private (a requirement of updating the value without overriding earlier values ... see set_value())
     pub fn get_value(&self) -> String {
         self.value.clone()
     }
 
-    ///Evaluate the variable's result if possible and set self.value, or else set self.value as the error String.
+    /// Evaluate the variable's result if possible and set self.value, or else set self.value as the error String.
     pub fn extract_value(&mut self, core: &mut Core<'_>) {
         if self.memory_location == u64::MAX {
             //the value was set by get_location(), so just leave it as is
@@ -149,7 +149,7 @@ impl Variable {
         self.value = string_value;
     }
 
-    ///Instead of just pushing to Variable.children, do some intelligent selection/addition of new Variables.
+    /// Instead of just pushing to Variable.children, do some intelligent selection/addition of new Variables.
     pub fn add_child_variable(&mut self, child_variable: &mut Variable) {
         //TODO:
         let children: &mut Vec<Variable> = match &mut self.children {
@@ -168,7 +168,7 @@ impl Variable {
         children.push(child_variable.clone());
     }
 }
-///Traits and Impl's to read from memory and decode the Variable value based on Variable::typ and Variable::location. The MS DAP protocol passes the value as a string, so these are here only to provide the memory read logic before returning it as a string.
+/// Traits and Impl's to read from memory and decode the Variable value based on Variable::typ and Variable::location. The MS DAP protocol passes the value as a string, so these are here only to provide the memory read logic before returning it as a string.
 trait Value {
     fn get_value(variable: &Variable, core: &mut Core<'_>) -> Result<Self, DebugError>
     where

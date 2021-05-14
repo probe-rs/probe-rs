@@ -8,7 +8,7 @@ mod variable;
 use crate::{core::Core, MemoryInterface};
 pub use variable::{Variable, VariableKind, VariantRole};
 
-//use std::{borrow, intrinsics::variant_count, io, path::{Path, PathBuf}, rc::Rc, str::{from_utf8, Utf8Error}};
+// use std::{borrow, intrinsics::variant_count, io, path::{Path, PathBuf}, rc::Rc, str::{from_utf8, Utf8Error}};
 use std::{
     borrow, io,
     path::{Path, PathBuf},
@@ -1160,7 +1160,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
         }
     }
 
-    ///Compute the discriminant value of a DW_TAG_variant variable. If it is not explicitly captured in the DWARF, then it is the default value.
+    /// Compute the discriminant value of a DW_TAG_variant variable. If it is not explicitly captured in the DWARF, then it is the default value.
     fn extract_variant_discriminant(
         &self,
         node: &gimli::EntriesTreeNode<R>,
@@ -1202,7 +1202,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
         Ok(())
     }
 
-    ///Compute the type (base to complex) of a variable. Only base types have values.
+    /// Compute the type (base to complex) of a variable. Only base types have values.
     fn extract_type(
         &self,
         node: gimli::EntriesTreeNode<R>,
@@ -1382,7 +1382,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
         }
     }
 
-    ///Find the location using either DW_AT_location, or DW_AT_data_member_location, and store it in the &mut Variable. A value of 0 is a valid 0 reported from dwarf.
+    /// Find the location using either DW_AT_location, or DW_AT_data_member_location, and store it in the &mut Variable. A value of 0 is a valid 0 reported from dwarf.
     fn extract_location(
         &self,
         node: &gimli::EntriesTreeNode<R>,
@@ -1533,7 +1533,7 @@ fn extract_file(
     }
 }
 
-///If a DW_AT_byte_size attribute exists, return the u64 value, otherwise (including errors) return 0
+/// If a DW_AT_byte_size attribute exists, return the u64 value, otherwise (including errors) return 0
 fn extract_byte_size(_debug_info: &DebugInfo, di_entry: &DebuggingInformationEntry<R>) -> u64 {
     match di_entry.attr(gimli::DW_AT_byte_size) {
         Ok(optional_byte_size_attr) => match optional_byte_size_attr {
