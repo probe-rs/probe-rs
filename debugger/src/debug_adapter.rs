@@ -517,9 +517,8 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                 });
 
                 if let Some(location) = source_location {
-                    let (verified, reason_msg) = match core_data
-                        .target_core
-                        .set_hw_breakpoint(location as u32) {
+                    let (verified, reason_msg) =
+                        match core_data.target_core.set_hw_breakpoint(location as u32) {
                             Ok(_) => (true, None),
                             Err(err) => (false, Some(err.to_string())),
                         };
