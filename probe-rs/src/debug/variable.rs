@@ -1,10 +1,14 @@
 use super::*;
 use std::convert::TryInto;
 
+///VariableKind is a tag used to differentiate the nature of a variable. The DAP protocol requires a differentiation between 'Named' and 'Indexed'. We've added 'Referenced', because those require unique handling when decoding the value during runtime.
 #[derive(Debug, Clone, PartialEq)]
 pub enum VariableKind {
+    ///An Indexed variable (bound to an ordinal position), such as the sequenced members of an Array or Vector
     Indexed,
+    ///A variable that is identified by it's name, and is not bound to a specific ordinal position.
     Named,
+    ///A variable that is the target of a pointer variable
     Referenced,
     ///This should never be the final value for a Variable
     Undefined,
@@ -15,12 +19,12 @@ impl Default for VariableKind {
     }
 }
 
-///Define the role that a variable plays in a Variant relationship
+///Define the role that a variable plays in a Variant relationship. See section '5.7.10 Variant Entries' of the DWARF 5 specification
 #[derive(Debug, Clone, PartialEq)]
 pub enum VariantRole {
-    ///The parent of a Variant value
+    ///A (parent) Variable that can have any number of Variant's as it's value
     VariantPart(u64),
-    ///The children values of a VariantPart
+    ///A (child) Variable that defines one of many possible types to hold the current value of a VariantPart.
     Variant(u64),
     ///This variable doesn't play a role in a Variant relationship
     NonVariant,

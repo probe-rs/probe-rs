@@ -185,18 +185,16 @@ impl DebuggerOptions {
     }
 }
 
-/**
-#Debugger Overview
-The Debugger struct and it's implementation supports both CLI and DAP requests. On startup, the command line arguments are checked for validity, then executed by a dedicated method, and results/errors are wrapped for appropriate CLI or DAP handling
-## Usage: CLI for `probe-rs`
-The CLI accepts commands on STDIN and returns results to STDOUT, while all LOG actions are sent to STDERR.
-- `probe-rs-debug --help` to list available commands and flags. All of the commands, except for `debug` will execute and then return to the OS.
-- `probe-rs-debug debug --help` to list required and optional options for debug mode. The `debug` command will accept and process incoming requests until the user, or a fatal error, ends the session.
-## Usage: DAP Server for `probe-rs`
-The DAP Server can run in one of two modes.
-- `probe-rs-debug --debug --dap <other options>` : Uses STDIN and STDOUT to service DAP requests. For example, a VSCode `Launch` request prefers this mode.
-- `probe-rs-debug --debug --dap --port <IP port number> <other options>` : Uses TCP Sockets to the defined IP port number to service DAP requests. For example, a VSCode `Attach` request prefers this mode.
-*/
+/// #Debugger Overview
+/// The Debugger struct and it's implementation supports both CLI and DAP requests. On startup, the command line arguments are checked for validity, then executed by a dedicated method, and results/errors are wrapped for appropriate CLI or DAP handling
+/// ## Usage: CLI for `probe-rs`
+/// The CLI accepts commands on STDIN and returns results to STDOUT, while all LOG actions are sent to STDERR.
+/// - `probe-rs-debug --help` to list available commands and flags. All of the commands, except for `debug` will execute and then return to the OS.
+/// - `probe-rs-debug debug --help` to list required and optional options for debug mode. The `debug` command will accept and process incoming requests until the user, or a fatal error, ends the session.
+/// ## Usage: DAP Server for `probe-rs`
+/// The DAP Server can run in one of two modes.
+/// - `probe-rs-debug --debug --dap <other options>` : Uses STDIN and STDOUT to service DAP requests. For example, a VSCode `Launch` request prefers this mode.
+/// - `probe-rs-debug --debug --dap --port <IP port number> <other options>` : Uses TCP Sockets to the defined IP port number to service DAP requests. For example, a VSCode `Attach` request prefers this mode.
 pub struct Debugger {
     debugger_options: DebuggerOptions,
     all_commands: Vec<DebugCommand>,
@@ -266,12 +264,7 @@ pub fn start_session(debugger_options: &DebuggerOptions) -> Result<SessionData, 
         None => TargetSelector::Auto,
     };
     //set the protocol
-    target_probe.select_protocol(
-        debugger_options
-            .protocol
-            .or(Some(WireProtocol::Swd))
-            .unwrap(),
-    )?;
+    target_probe.select_protocol(debugger_options.protocol.unwrap_or(WireProtocol::Swd))?;
 
     //set the speed
     if let Some(speed) = debugger_options.speed {
@@ -290,7 +283,7 @@ pub fn start_session(debugger_options: &DebuggerOptions) -> Result<SessionData, 
     } else {
         target_probe.attach(target_selector).map_err(|err| {
             anyhow!(
-                "Error creating capstone: {:?}.\nTry the --connect-under-reset option",
+                "Error attaching to the probe: {:?}.\nTry the --connect-under-reset option",
                 err
             )
         })?
@@ -799,21 +792,28 @@ impl Debugger {
                     self.debugger_options.qualify_and_update_program_binary(
                         self.debugger_options.program_binary.clone(),
                     );
-                    if !self
-                        .debugger_options
-                        .program_binary
-                        .clone()
-                        .unwrap()
-                        .is_file()
-                    {
-                        debug_adapter.send_response::<()>(
-                            &request,
-                            Err(DebuggerError::Other(anyhow!(
-                                "Invalid program binary file specified '{:?}'",
-                                self.debugger_options.program_binary.clone().unwrap()
+                    match self.debugger_options.program_binary.clone() {
+                        Some(program_binary) => {
+                            if !program_binary.is_file() {
+                                debug_adapter.send_response::<()>(
+                                    &request,
+                                    Err(DebuggerError::Other(anyhow!(
+                                        "Invalid program binary file specified '{:?}'",
+                                        program_binary
+                                    ))),
+                                );
+                                return;
+                            }
+                        }
+                        None => {
+                            debug_adapter.send_response::<()>(
+                                &request,
+                                Err(DebuggerError::Other(anyhow!(
+                                "Please use the --program-binary option to specify an executable"
                             ))),
-                        );
-                        return;
+                            );
+                            return;
+                        }
                     }
                     debug_adapter.send_response::<()>(&request, Ok(None));
                 }
@@ -833,21 +833,28 @@ impl Debugger {
                 .validate_and_update_cwd(self.debugger_options.cwd.clone());
             self.debugger_options
                 .qualify_and_update_program_binary(self.debugger_options.program_binary.clone());
-            if !self
-                .debugger_options
-                .program_binary
-                .clone()
-                .unwrap()
-                .is_file()
-            {
-                debug_adapter.send_response::<()>(
-                    &custom_request,
-                    Err(DebuggerError::Other(anyhow!(
-                        "Invalid program binary file specified '{:?}'",
-                        self.debugger_options.program_binary.clone().unwrap()
-                    ))),
-                );
-                return;
+            match self.debugger_options.program_binary.clone() {
+                Some(program_binary) => {
+                    if !program_binary.is_file() {
+                        debug_adapter.send_response::<()>(
+                            &custom_request,
+                            Err(DebuggerError::Other(anyhow!(
+                                "Invalid program binary file specified '{:?}'",
+                                program_binary
+                            ))),
+                        );
+                        return;
+                    }
+                }
+                None => {
+                    debug_adapter.send_response::<()>(
+                        &custom_request,
+                        Err(DebuggerError::Other(anyhow!(
+                            "Please use the --program-binary option to specify an executable"
+                        ))),
+                    );
+                    return;
+                }
             }
         }
 
@@ -949,6 +956,7 @@ impl Debugger {
             }
         }
         //Exiting this function means we the debug_session is complete and we are done. End of process.
+        //TODO: Add functionality to keep the server alive, respond to DAP Client sessions that end, and accept new session requests.
     }
 }
 //SECTION: Functions for CLI struct matches from main.rs

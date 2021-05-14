@@ -492,6 +492,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
 
         //Always clear existing breakpoints before setting new ones.
         //TODO: Consider if it would be more or less efficient to compare VSCode's requested breakpoints against Probe-rs and only clear/set the old/new ones.
+        //TODO: It appears as if the clear_all_hw_breakpoints doesn't always do that. Investigate and fix.
         match core_data.target_core.clear_all_hw_breakpoints() {
             Ok(_) => {}
             Err(error) => {
@@ -1504,11 +1505,11 @@ mod test {
 }
 
 pub(crate) trait DapStatus {
-    fn short_long_status(&self) -> (&str, &str);
+    fn short_long_status(&self) -> (&'static str, &'static str);
 }
 impl DapStatus for CoreStatus {
     ///Return a tuple with short and long descriptions of the core status for human machine interface / hmi. The short status matches with the strings implemented by the Microsoft DAP protocol, e.g. `let (short_status, long status) = CoreStatus::short_long_status(core_status)`
-    fn short_long_status(&self) -> (&str, &str) {
+    fn short_long_status(&self) -> (&'static str, &'static str) {
         match self {
             CoreStatus::Running => ("continued", "Core is running"),
             CoreStatus::Sleeping => ("sleeping", "Core is in SLEEP mode"),

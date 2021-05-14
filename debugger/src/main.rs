@@ -144,6 +144,8 @@ enum CliCommands {
 }
 
 fn main() -> Result<()> {
+    //TODO: Consider using https://github.com/probe-rs/probe-rs/blob/master/probe-rs-cli-util/src/logging.rs
+    //TODO: See if we can have a single solution for RUST_LOG and the DAP Client Console Log (`debug_adapter::log_to_console`)
     // Initialize the logging backend.
     env_logger::Builder::from_default_env()
         .target(env_logger::Target::Stderr) // Log to Stderr, because the DebugAdapater, in 'Launch' mode, needs Stdin and Stdout to communicate with VSCode DAP Client
