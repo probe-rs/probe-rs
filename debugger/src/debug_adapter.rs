@@ -1024,7 +1024,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                     variables_reference,
                     named_variables: Some(named_variables_cnt),
                     indexed_variables: Some(indexed_variables_cnt),
-                    memory_reference: Some(format!("0x{:08x}", variable.location)),
+                    memory_reference: Some(format!("0x{:08x}", variable.memory_location)),
                 }
             })
             .collect();

@@ -1003,7 +1003,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     //If there is a child with DW_AT_discr, the variable role will updated appropriately, otherwise we use 0 as the default ...
                     parent_variable.role = VariantRole::VariantPart(0);
                     self.process_tree_node_attributes(&mut child_node, parent_variable, &mut child_variable, core, frame_base, program_counter)?;
-                    child_variable.location = parent_variable.location; //Pass it along through intermediate nodes
+                    child_variable.memory_location = parent_variable.memory_location; //Pass it along through intermediate nodes
                     // Recursively process each child.
                     self.process_tree(child_node, &mut child_variable, core, frame_base, program_counter)?;
                     child_variable.extract_value(core);
@@ -1035,7 +1035,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     //We need to do this here, to identify "default" variants for when the rust lang compiler doesn't encode them explicitly ... only by absence of a DW_AT_discr_value
                     self.extract_variant_discriminant(&child_node, &mut child_variable, core, frame_base)?;
                     self.process_tree_node_attributes(&mut child_node, parent_variable, &mut child_variable, core, frame_base, program_counter)?;
-                    child_variable.location = parent_variable.location; //Pass it along through intermediate nodes
+                    child_variable.memory_location = parent_variable.memory_location; //Pass it along through intermediate nodes
                     // Recursively process each child.
                     self.process_tree(child_node, &mut child_variable, core, frame_base, program_counter)?;
                     child_variable.extract_value(core);
@@ -1258,8 +1258,8 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                         };
                                         //Now, retrieve the location by reading the adddress pointed to by the parent variable
                                         let mut buff = [0u8; 4];
-                                        core.read_8(variable.location as u32, &mut buff)?;
-                                        referenced_variable.location =
+                                        core.read_8(variable.memory_location as u32, &mut buff)?;
+                                        referenced_variable.memory_location =
                                             u32::from_le_bytes(buff) as u64;
                                         self.extract_type(
                                             referenced_node,
@@ -1318,7 +1318,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     }
                 };
                 let mut buff = [0u8; 1]; //NOTE: hard-coding value of variable.byte_size to 1 ... replace with code if necessary
-                core.read_8(variable.location as u32, &mut buff)?;
+                core.read_8(variable.memory_location as u32, &mut buff)?;
                 let this_enum_const_value = u8::from_le_bytes(buff).to_string();
                 let enumumerator_value =
                     match enumerator_values.into_iter().find(|enumerator_variable| {
@@ -1400,7 +1400,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                             let pieces = match self.expr_to_piece(core, expression, frame_base) {
                                 Ok(pieces) => pieces,
                                 Err(err) => {
-                                    child_variable.location = u64::MAX;
+                                    child_variable.memory_location = u64::MAX;
                                     child_variable.set_value(format!(
                                         "ERROR: expr_to_piece() failed with: {:?}",
                                         err
@@ -1409,65 +1409,65 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                 }
                             };
                             if pieces.is_empty() {
-                                child_variable.location = u64::MAX;
+                                child_variable.memory_location = u64::MAX;
                                 child_variable.set_value(format!(
                                     "ERROR: expr_to_piece() returned 0 results: {:?}",
                                     pieces
                                 ));
                             } else if pieces.len() > 1 {
-                                child_variable.location = u64::MAX;
+                                child_variable.memory_location = u64::MAX;
                                 child_variable.set_value(format!("UNIMPLEMENTED: expr_to_piece() returned more than 1 result: {:?}", pieces));
                             } else {
                                 match &pieces[0].location {
                                     Location::Empty => {
-                                        child_variable.location = 0_u64;
+                                        child_variable.memory_location = 0_u64;
                                     }
                                     Location::Address { address } => {
-                                        child_variable.location = *address;
+                                        child_variable.memory_location = *address;
                                     }
                                     Location::Value { value } => match value {
                                         gimli::Value::Generic(value) => {
-                                            child_variable.location = u64::MAX;
+                                            child_variable.memory_location = u64::MAX;
                                             child_variable.set_value(value.to_string());
                                         }
                                         gimli::Value::I8(value) => {
-                                            child_variable.location = u64::MAX;
+                                            child_variable.memory_location = u64::MAX;
                                             child_variable.set_value(value.to_string());
                                         }
                                         gimli::Value::U8(value) => {
-                                            child_variable.location = u64::MAX;
+                                            child_variable.memory_location = u64::MAX;
                                             child_variable.set_value(value.to_string());
                                         }
                                         gimli::Value::I16(value) => {
-                                            child_variable.location = u64::MAX;
+                                            child_variable.memory_location = u64::MAX;
                                             child_variable.set_value(value.to_string());
                                         }
                                         gimli::Value::U16(value) => {
-                                            child_variable.location = u64::MAX;
+                                            child_variable.memory_location = u64::MAX;
                                             child_variable.set_value(value.to_string());
                                         }
                                         gimli::Value::I32(value) => {
-                                            child_variable.location = u64::MAX;
+                                            child_variable.memory_location = u64::MAX;
                                             child_variable.set_value(value.to_string());
                                         }
                                         gimli::Value::U32(value) => {
-                                            child_variable.location = u64::MAX;
+                                            child_variable.memory_location = u64::MAX;
                                             child_variable.set_value(value.to_string());
                                         }
                                         gimli::Value::I64(value) => {
-                                            child_variable.location = u64::MAX;
+                                            child_variable.memory_location = u64::MAX;
                                             child_variable.set_value(value.to_string());
                                         }
                                         gimli::Value::U64(value) => {
-                                            child_variable.location = u64::MAX;
+                                            child_variable.memory_location = u64::MAX;
                                             child_variable.set_value(value.to_string());
                                         }
                                         gimli::Value::F32(value) => {
-                                            child_variable.location = u64::MAX;
+                                            child_variable.memory_location = u64::MAX;
                                             child_variable.set_value(value.to_string());
                                         }
                                         gimli::Value::F64(value) => {
-                                            child_variable.location = u64::MAX;
+                                            child_variable.memory_location = u64::MAX;
                                             child_variable.set_value(value.to_string());
                                         }
                                     },
@@ -1476,22 +1476,22 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                         // let val = core
                                         //     .read_core_reg(register.0 as u16)
                                         //     .expect("Failed to read register from target");
-                                        child_variable.location = u64::MAX;
+                                        child_variable.memory_location = u64::MAX;
                                         child_variable.set_value("extract_location() found a register address as the location".to_owned());
                                     }
                                     l => {
-                                        child_variable.location = u64::MAX;
+                                        child_variable.memory_location = u64::MAX;
                                         child_variable.set_value(format!("UNIMPLEMENTED: extract_location() found a location type: {:?}", l));
                                     }
                                 }
                             }
                         }
                         gimli::AttributeValue::Udata(offset_from_parent) => {
-                            if parent_variable.location != u64::MAX {
-                                child_variable.location =
-                                    parent_variable.location + offset_from_parent as u64;
+                            if parent_variable.memory_location != u64::MAX {
+                                child_variable.memory_location =
+                                    parent_variable.memory_location + offset_from_parent as u64;
                             } else {
-                                child_variable.location = offset_from_parent as u64;
+                                child_variable.memory_location = offset_from_parent as u64;
                             }
                         }
                         other_attribute_value => {

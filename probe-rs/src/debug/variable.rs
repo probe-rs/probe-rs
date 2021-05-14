@@ -43,7 +43,8 @@ pub struct Variable {
     pub file: String,
     pub line: u64,
     pub type_name: String,
-    pub location: u64,
+    ///The starting location/address in memory where this Variable's value is stored.
+    pub memory_location: u64,
     pub byte_size: u64,
     pub kind: VariableKind,
     pub role: VariantRole,
@@ -56,9 +57,8 @@ impl Variable {
             name: String::new(),
             value: String::new(),
             file: String::new(),
-            line: u64::MAX, //A default value that tells us it hasn't been processed yet.
             ///There are instances when extract_location() will encounter a value in the DWARF definition, rather than a memory location where the value can be read. In those cases it will set Variable.value, and set Variable.location to u64::MAX, which tells the Variable.extract_value() to NOT overwrite it
-            location: 0,
+            memory_location: 0,
             ..Default::default()
         }
     }
@@ -80,7 +80,7 @@ impl Variable {
 
     ///Evaluate the variable's result if possible and set self.value, or else set self.value as the error String.
     pub fn extract_value(&mut self, core: &mut Core<'_>) {
-        if self.location == u64::MAX {
+        if self.memory_location == u64::MAX {
             //the value was set by get_location(), so just leave it as is
             return;
         }
@@ -138,7 +138,7 @@ impl Variable {
                         None => {
                             format!(
                                 "UNIMPLEMENTED: Evaluate type {} of ({} bytes) at location 0x{:08x}",
-                                oops, self.byte_size, self.location
+                                oops, self.byte_size, self.memory_location
                             )
                         }
                     }
@@ -177,14 +177,14 @@ trait Value {
 
 impl Value for bool {
     fn get_value(variable: &Variable, core: &mut Core<'_>) -> Result<Self, DebugError> {
-        let mem_data = core.read_word_8(variable.location as u32)?;
+        let mem_data = core.read_word_8(variable.memory_location as u32)?;
         let ret_value: bool = mem_data != 0;
         Ok(ret_value)
     }
 }
 impl Value for char {
     fn get_value(variable: &Variable, core: &mut Core<'_>) -> Result<Self, DebugError> {
-        let mem_data = core.read_word_32(variable.location as u32)?;
+        let mem_data = core.read_word_32(variable.memory_location as u32)?;
         let ret_value: char = mem_data.try_into()?; //TODO: Use char::from_u32 once it stabilizes
         Ok(ret_value)
     }
@@ -208,7 +208,7 @@ impl Value for String {
                     .find(|child_variable| child_variable.name == *"data_ptr")
                 {
                     Some(location_value) => {
-                        location_value.children.unwrap_or_default()[0].location as u32
+                        location_value.children.unwrap_or_default()[0].memory_location as u32
                     }
                     None => 0_u32,
                 };
@@ -226,7 +226,7 @@ impl Value for String {
 impl Value for i8 {
     fn get_value(variable: &Variable, core: &mut Core<'_>) -> Result<Self, DebugError> {
         let mut buff = [0u8; 1];
-        core.read_8(variable.location as u32, &mut buff)?;
+        core.read_8(variable.memory_location as u32, &mut buff)?;
         let ret_value = i8::from_le_bytes(buff);
         Ok(ret_value)
     }
@@ -234,7 +234,7 @@ impl Value for i8 {
 impl Value for i16 {
     fn get_value(variable: &Variable, core: &mut Core<'_>) -> Result<Self, DebugError> {
         let mut buff = [0u8; 2];
-        core.read_8(variable.location as u32, &mut buff)?;
+        core.read_8(variable.memory_location as u32, &mut buff)?;
         let ret_value = i16::from_le_bytes(buff);
         Ok(ret_value)
     }
@@ -242,7 +242,7 @@ impl Value for i16 {
 impl Value for i32 {
     fn get_value(variable: &Variable, core: &mut Core<'_>) -> Result<Self, DebugError> {
         let mut buff = [0u8; 4];
-        core.read_8(variable.location as u32, &mut buff)?;
+        core.read_8(variable.memory_location as u32, &mut buff)?;
         let ret_value = i32::from_le_bytes(buff);
         Ok(ret_value)
     }
@@ -250,7 +250,7 @@ impl Value for i32 {
 impl Value for i64 {
     fn get_value(variable: &Variable, core: &mut Core<'_>) -> Result<Self, DebugError> {
         let mut buff = [0u8; 8];
-        core.read_8(variable.location as u32, &mut buff)?;
+        core.read_8(variable.memory_location as u32, &mut buff)?;
         let ret_value = i64::from_le_bytes(buff);
         Ok(ret_value)
     }
@@ -258,7 +258,7 @@ impl Value for i64 {
 impl Value for i128 {
     fn get_value(variable: &Variable, core: &mut Core<'_>) -> Result<Self, DebugError> {
         let mut buff = [0u8; 16];
-        core.read_8(variable.location as u32, &mut buff)?;
+        core.read_8(variable.memory_location as u32, &mut buff)?;
         let ret_value = i128::from_le_bytes(buff);
         Ok(ret_value)
     }
@@ -266,7 +266,7 @@ impl Value for i128 {
 impl Value for isize {
     fn get_value(variable: &Variable, core: &mut Core<'_>) -> Result<Self, DebugError> {
         let mut buff = [0u8; 4];
-        core.read_8(variable.location as u32, &mut buff)?;
+        core.read_8(variable.memory_location as u32, &mut buff)?;
         let ret_value = i32::from_le_bytes(buff); //TODO: how to get the MCU isize calculated for all platforms
         Ok(ret_value as isize)
     }
@@ -275,7 +275,7 @@ impl Value for isize {
 impl Value for u8 {
     fn get_value(variable: &Variable, core: &mut Core<'_>) -> Result<Self, DebugError> {
         let mut buff = [0u8; 1];
-        core.read_8(variable.location as u32, &mut buff)?;
+        core.read_8(variable.memory_location as u32, &mut buff)?;
         let ret_value = u8::from_le_bytes(buff);
         Ok(ret_value)
     }
@@ -283,7 +283,7 @@ impl Value for u8 {
 impl Value for u16 {
     fn get_value(variable: &Variable, core: &mut Core<'_>) -> Result<Self, DebugError> {
         let mut buff = [0u8; 2];
-        core.read_8(variable.location as u32, &mut buff)?;
+        core.read_8(variable.memory_location as u32, &mut buff)?;
         let ret_value = u16::from_le_bytes(buff);
         Ok(ret_value)
     }
@@ -291,7 +291,7 @@ impl Value for u16 {
 impl Value for u32 {
     fn get_value(variable: &Variable, core: &mut Core<'_>) -> Result<Self, DebugError> {
         let mut buff = [0u8; 4];
-        core.read_8(variable.location as u32, &mut buff)?;
+        core.read_8(variable.memory_location as u32, &mut buff)?;
         let ret_value = u32::from_le_bytes(buff);
         Ok(ret_value)
     }
@@ -299,7 +299,7 @@ impl Value for u32 {
 impl Value for u64 {
     fn get_value(variable: &Variable, core: &mut Core<'_>) -> Result<Self, DebugError> {
         let mut buff = [0u8; 8];
-        core.read_8(variable.location as u32, &mut buff)?;
+        core.read_8(variable.memory_location as u32, &mut buff)?;
         let ret_value = u64::from_le_bytes(buff);
         Ok(ret_value)
     }
@@ -307,7 +307,7 @@ impl Value for u64 {
 impl Value for u128 {
     fn get_value(variable: &Variable, core: &mut Core<'_>) -> Result<Self, DebugError> {
         let mut buff = [0u8; 16];
-        core.read_8(variable.location as u32, &mut buff)?;
+        core.read_8(variable.memory_location as u32, &mut buff)?;
         let ret_value = u128::from_le_bytes(buff);
         Ok(ret_value)
     }
@@ -315,7 +315,7 @@ impl Value for u128 {
 impl Value for usize {
     fn get_value(variable: &Variable, core: &mut Core<'_>) -> Result<Self, DebugError> {
         let mut buff = [0u8; 4];
-        core.read_8(variable.location as u32, &mut buff)?;
+        core.read_8(variable.memory_location as u32, &mut buff)?;
         let ret_value = u32::from_le_bytes(buff); //TODO: how to get the MCU usize calculated for all platforms
         Ok(ret_value as usize)
     }
@@ -323,7 +323,7 @@ impl Value for usize {
 impl Value for f32 {
     fn get_value(variable: &Variable, core: &mut Core<'_>) -> Result<Self, DebugError> {
         let mut buff = [0u8; 4];
-        core.read_8(variable.location as u32, &mut buff)?;
+        core.read_8(variable.memory_location as u32, &mut buff)?;
         let ret_value = f32::from_le_bytes(buff);
         Ok(ret_value)
     }
@@ -331,7 +331,7 @@ impl Value for f32 {
 impl Value for f64 {
     fn get_value(variable: &Variable, core: &mut Core<'_>) -> Result<Self, DebugError> {
         let mut buff = [0u8; 8];
-        core.read_8(variable.location as u32, &mut buff)?;
+        core.read_8(variable.memory_location as u32, &mut buff)?;
         let ret_value = f64::from_le_bytes(buff);
         Ok(ret_value)
     }
