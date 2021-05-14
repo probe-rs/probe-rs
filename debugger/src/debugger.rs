@@ -227,14 +227,13 @@ pub struct DebugCommand {
     //TODO: Need to be able to pass DebugAdapter<R,W> as a parameter then we can simplify the DebugAdapter::process_next_request() match statement to invoke the function from a pointer.
     //pub(crate) function: fn(core_data: &mut CoreData, request: &Request) -> bool,
 }
-
 pub fn start_session(debugger_options: &DebuggerOptions) -> Result<SessionData, DebuggerError> {
     let mut target_probe = match debugger_options.probe_selector.clone() {
         Some(selector) => Probe::open(selector.clone()).map_err(|e| match e {
             DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::NotFound) => {
                 DebuggerError::Other(anyhow!(
-                    "Could not find the probe_selector specified as {:?}",
-                    selector
+                    "Could not find the probe_selector specified as {:04x}:{:04x}:{:?}",
+                    selector.vendor_id, selector.product_id, selector.serial_number
                 ))
             }
             other_error => DebuggerError::DebugProbe(other_error),
