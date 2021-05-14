@@ -6,3 +6,7 @@ Cargo.lock
 probe-rs/target
 cli/target
 cargo-flash/target
+debugger/target
+
+#It's a Mac Thing
+**/.DS_Store 

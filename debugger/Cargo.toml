@@ -1,0 +1,36 @@
+[package]
+name = "probe-rs-debugger"
+version = "0.10.1"
+authors = ["Noah Hüsser <yatekii@yatekii.ch>", "Dominik Boehi <dominik.boehi@gmail.ch>", "Jack Noppe <noppej@hotmail.com>"]
+edition = "2018"
+description = "An interface (CLI or DAP Server) on top of the debug probe capabilities provided by probe-rs."
+documentation = "https://docs.rs/probe-rs/"
+homepage = "https://github.com/probe-rs/probe-rs"
+repository = "https://github.com/probe-rs/probe-rs"
+readme = "README.md"
+categories = ["embedded", "hardware-support", "development-tools::debugging"]
+keywords = ["embedded"]
+license = "MIT OR Apache-2.0"
+
+[features]
+ftdi = ["probe-rs/ftdi"]
+
+[dependencies]
+probe-rs = { path = "../probe-rs"} 
+
+env_logger = "0.8.3"
+log = "0.4.6"
+structopt = "0.3.7"
+scroll = "0.10.1"
+rustyline = "8.0.0"
+capstone = "0.8.0"
+ron = "0.6.0"
+thiserror = "1.0"
+anyhow = "1.0.34"
+parse_int = "0.5.0"
+num-traits = "0.2.14"
+bitfield = "0.13.2"
+jep106 = "0.2.4"
+serde_json = "^1.0"
+serde = { version = "^1.0", features = ["derive"] }
+schemafy = "^0.5"
