@@ -517,10 +517,12 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                 });
 
                 if let Some(location) = source_location {
-                    let verified = core_data
+                    let (verified, reason_msg) = match core_data
                         .target_core
-                        .set_hw_breakpoint(location as u32)
-                        .is_ok();
+                        .set_hw_breakpoint(location as u32) {
+                            Ok(_) => (true, None),
+                            Err(err) => (false, Some(err.to_string())),
+                        };
 
                     created_breakpoints.push(Breakpoint {
                         column: bp.column,
@@ -528,7 +530,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                         end_line: None,
                         id: None,
                         line: Some(bp.line),
-                        message: None,
+                        message: reason_msg,
                         source: None,
                         instruction_reference: Some(location.to_string()),
                         offset: None,
