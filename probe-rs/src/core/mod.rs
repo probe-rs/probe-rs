@@ -566,7 +566,7 @@ pub enum HaltReason {
     /// Multiple reasons for a halt.
     ///
     /// This can happen for example when a single instruction
-    /// step ends up on a breakpoint, after which both brekpoint and step / request
+    /// step ends up on a breakpoint, after which both breakpoint and step / request
     /// are set.
     Multiple,
     /// Core halted due to a breakpoint, either
