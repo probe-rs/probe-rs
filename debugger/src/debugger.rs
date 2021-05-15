@@ -885,6 +885,7 @@ impl Debugger {
                     progress: None,
                     keep_unwritten_bytes: self.debugger_options.restore_unwritten_bytes,
                     dry_run: false,
+                    skip_erase: false,
                     do_chip_erase: self.debugger_options.full_chip_erase,
                 };
                 match download_file_with_options(

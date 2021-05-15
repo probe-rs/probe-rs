@@ -211,7 +211,7 @@ impl<'session> Flasher<'session> {
 
         let mut fb = FlashBuilder::new();
         fb.add_data(address, data)?;
-        self.program(&fb, do_chip_erase, true, true, progress)?;
+        self.program(&fb, do_chip_erase, true, true, false, progress)?;
 
         Ok(())
     }
@@ -227,6 +227,7 @@ impl<'session> Flasher<'session> {
         mut do_chip_erase: bool,
         restore_unwritten_bytes: bool,
         enable_double_buffering: bool,
+        skip_erasing: bool,
         progress: &FlashProgress,
     ) -> Result<(), FlashError> {
         log::debug!("Starting program procedure.");
@@ -276,11 +277,14 @@ impl<'session> Flasher<'session> {
         // We successfully finished filling.
         progress.finished_filling();
 
-        // Erase all necessary sectors.
-        if do_chip_erase {
-            self.chip_erase(&flash_layout, progress)?;
-        } else {
-            self.sector_erase(&flash_layout, progress)?;
+        // Skip erase if necessary
+        if !skip_erasing {
+            // Erase all necessary sectors
+            if do_chip_erase {
+                self.chip_erase(&flash_layout, progress)?;
+            } else {
+                self.sector_erase(&flash_layout, progress)?;
+            }
         }
 
         // Flash all necessary pages.
