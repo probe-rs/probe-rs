@@ -563,6 +563,12 @@ impl CoreStatus {
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub enum HaltReason {
+    /// Multiple reasons for a halt.
+    ///
+    /// This can happen for example when a single instruction
+    /// step ends up on a breakpoint, after which both brekpoint and step / request
+    /// are set.
+    Multiple,
     /// Core halted due to a breakpoint, either
     /// a *soft* or a *hard* breakpoint.
     Breakpoint,
@@ -577,7 +583,8 @@ pub enum HaltReason {
     Request,
     /// External halt request
     External,
-    /// Unknown reason for halt. This can happen for
-    /// example when the core is already halted when we connect.
+    /// Unknown reason for halt.
+    ///
+    /// This can happen for example when the core is already halted when we connect.
     Unknown,
 }
