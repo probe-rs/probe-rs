@@ -18,7 +18,10 @@ use std::{
     str::{from_utf8, Utf8Error},
 };
 
-use gimli::{DebuggingInformationEntry, FileEntry, LineProgramHeader, Location};
+use gimli::{
+    DW_AT_abstract_origin, DebuggingInformationEntry, FileEntry, LineProgramHeader, Location,
+    UnitOffset,
+};
 use log::{debug, error, info, warn};
 use object::read::{Object, ObjectSection};
 use thiserror::Error;
@@ -339,19 +342,14 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
     }
 }
 
-type R = gimli::EndianReader<gimli::LittleEndian, std::rc::Rc<[u8]>>;
+type GimliReader = gimli::EndianReader<gimli::LittleEndian, std::rc::Rc<[u8]>>;
+type GimliAttribute = gimli::Attribute<GimliReader>;
+
 type DwarfReader = gimli::read::EndianRcSlice<gimli::LittleEndian>;
-type FunctionDie<'abbrev, 'unit> = gimli::DebuggingInformationEntry<
-    'abbrev,
-    'unit,
-    gimli::EndianReader<gimli::LittleEndian, std::rc::Rc<[u8]>>,
-    usize,
->;
-type EntriesCursor<'abbrev, 'unit> = gimli::EntriesCursor<
-    'abbrev,
-    'unit,
-    gimli::EndianReader<gimli::LittleEndian, std::rc::Rc<[u8]>>,
->;
+
+type FunctionDieType<'abbrev, 'unit> =
+    gimli::DebuggingInformationEntry<'abbrev, 'unit, GimliReader, usize>;
+
 type UnitIter =
     gimli::DebugInfoUnitHeadersIter<gimli::EndianReader<gimli::LittleEndian, std::rc::Rc<[u8]>>>;
 
@@ -403,6 +401,23 @@ impl DebugInfo {
         })
     }
 
+    pub fn function_name(&self, address: u64) -> Option<String> {
+        let mut units = self.dwarf.units();
+
+        while let Some(unit_info) = self.get_next_unit_info(&mut units) {
+            if let Some(die_cursor_state) = &mut unit_info.get_function_die(address) {
+                let function_name = die_cursor_state.function_name(&unit_info);
+
+                if function_name.is_some() {
+                    return function_name;
+                }
+            }
+        }
+
+        None
+    }
+
+    /// Try get the [`SourceLocation`] for a given address.
     pub fn get_source_location(&self, address: u64) -> Option<SourceLocation> {
         let mut units = self.dwarf.units();
 
@@ -525,9 +540,10 @@ impl DebugInfo {
         let unknown_function = format!("<unknown_function_{}>", frame_count);
         while let Some(unit_info) = self.get_next_unit_info(&mut units) {
             if let Some(die_cursor_state) = &mut unit_info.get_function_die(address) {
-                let function_name = unit_info
-                    .get_function_name(&die_cursor_state.function_die)
+                let function_name = die_cursor_state
+                    .function_name(&unit_info)
                     .unwrap_or(unknown_function);
+
                 let variables = unit_info.get_function_variables(
                     core,
                     die_cursor_state,
@@ -705,22 +721,98 @@ impl DebugInfo {
     }
 }
 
-struct DieCursorState<'abbrev, 'unit> {
-    _entries_cursor: EntriesCursor<'abbrev, 'unit>,
-    _depth: isize,
-    function_die: FunctionDie<'abbrev, 'unit>,
+/// Reference to a DIE for a function
+struct FunctionDie<'abbrev, 'unit> {
+    function_die: FunctionDieType<'abbrev, 'unit>,
+
+    is_inline: bool,
+    abstract_die: Option<FunctionDieType<'abbrev, 'unit>>,
+}
+
+impl<'debugunit, 'abbrev, 'unit: 'debugunit> FunctionDie<'abbrev, 'unit> {
+    fn new(die: FunctionDieType<'abbrev, 'unit>) -> Self {
+        let tag = die.tag();
+
+        match tag {
+            gimli::DW_TAG_subprogram => {
+                Self {
+                    function_die: die,
+                    is_inline: false,
+                    abstract_die: None,
+                }
+            }
+            other_tag => panic!("FunctionDie has to has to have Tag xxx or xxx, but tag is {:?}. This is a bug, please report it.", other_tag)
+        }
+    }
+
+    fn new_inlined(
+        concrete_die: FunctionDieType<'abbrev, 'unit>,
+        abstract_die: FunctionDieType<'abbrev, 'unit>,
+    ) -> Self {
+        let tag = concrete_die.tag();
+
+        match tag {
+            gimli::DW_TAG_inlined_subroutine => {
+                Self {
+                    function_die: concrete_die,
+                    is_inline: true,
+                    abstract_die: Some(abstract_die),
+                }
+            }
+            other_tag => panic!("FunctionDie has to has to have Tag xxx or xxx, but tag is {:?}. This is a bug, please report it.", other_tag)
+        }
+    }
+
+    fn function_name(&self, unit: &UnitInfo<'_>) -> Option<String> {
+        if let Some(fn_name_attr) = self.get_attribute(gimli::DW_AT_name) {
+            match fn_name_attr.value() {
+                gimli::AttributeValue::DebugStrRef(fn_name_ref) => {
+                    let fn_name_raw = unit.debug_info.dwarf.string(fn_name_ref).unwrap();
+
+                    Some(String::from_utf8_lossy(&fn_name_raw).to_string())
+                }
+                value => {
+                    log::debug!("Unexpected attribute value for DW_AT_name: {:?}", value);
+                    None
+                }
+            }
+        } else {
+            log::debug!("DW_AT_name attribute not found, unable to retrieve function name");
+            None
+        }
+    }
+
+    fn get_attribute(&self, attribute_name: gimli::DwAt) -> Option<GimliAttribute> {
+        let attribute = self
+            .function_die
+            .attr(attribute_name)
+            .expect(" Failed to parse entry");
+
+        // For inlined function, the *abstract instance* has to be checked if we cannot find the
+        // attribute on the *concrete instance*.
+        if self.is_inline && attribute.is_none() {
+            let origin = self.abstract_die.as_ref().unwrap();
+
+            origin.attr(attribute_name).expect("Failed to parse entry")
+        } else {
+            attribute
+        }
+    }
 }
 
 struct UnitInfo<'debuginfo> {
     debug_info: &'debuginfo DebugInfo,
-    unit: gimli::Unit<gimli::EndianReader<gimli::LittleEndian, std::rc::Rc<[u8]>>, usize>,
+    unit: gimli::Unit<GimliReader, usize>,
 }
 
 impl<'debuginfo> UnitInfo<'debuginfo> {
-    fn get_function_die(&self, address: u64) -> Option<DieCursorState> {
+    /// Get the DIE for the function containing the given address.
+    fn get_function_die(&self, address: u64) -> Option<FunctionDie> {
+        log::debug!("Searching Function DIE for address {:#010x}", address);
+
         let mut entries_cursor = self.unit.entries();
 
-        while let Ok(Some((depth, current))) = entries_cursor.next_dfs() {
+        while let Ok(Some((_depth, current))) = entries_cursor.next_dfs() {
             match current.tag() {
                 gimli::DW_TAG_subprogram | gimli::DW_TAG_inlined_subroutine => {
                     let mut ranges = self
@@ -731,11 +823,11 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
 
                     while let Ok(Some(ranges)) = ranges.next() {
                         if (ranges.begin <= address) && (address < ranges.end) {
-                            return Some(DieCursorState {
-                                _depth: depth,
-                                function_die: current.clone(),
-                                _entries_cursor: entries_cursor,
-                            });
+                            // Check if we are actually in an inlined function
+
+                            return self
+                                .find_inlined_function(address, current.offset())
+                                .or_else(|| Some(FunctionDie::new(current.clone())));
                         }
                     }
                 }
@@ -745,15 +837,56 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
         None
     }
 
-    fn get_function_name(&self, function_die: &FunctionDie) -> Option<String> {
-        if let Some(fn_name_attr) = function_die
-            .attr(gimli::DW_AT_name)
-            .expect(" Failed to parse entry")
-        {
-            if let gimli::AttributeValue::DebugStrRef(fn_name_ref) = fn_name_attr.value() {
-                let fn_name_raw = self.debug_info.dwarf.string(fn_name_ref).unwrap();
+    fn find_inlined_function(&self, address: u64, offset: UnitOffset) -> Option<FunctionDie> {
+        println!("Checking in children!");
 
-                return Some(String::from_utf8_lossy(&fn_name_raw).to_string());
+        let mut current_depth = 0;
+
+        let mut cursor = self.unit.entries_at_offset(offset).unwrap();
+
+        while let Ok(Some((depth, current))) = cursor.next_dfs() {
+            current_depth += depth;
+            println!("\tCurrent depth: {}", current_depth);
+
+            if current_depth < 0 {
+                break;
+            }
+
+            match current.tag() {
+                gimli::DW_TAG_inlined_subroutine => {
+                    let mut ranges = self
+                        .debug_info
+                        .dwarf
+                        .die_ranges(&self.unit, &current)
+                        .unwrap();
+
+                    while let Ok(Some(ranges)) = ranges.next() {
+                        if (ranges.begin <= address) && (address < ranges.end) {
+                            // Check if we are actually in an inlined function
+
+                            // Find the abstract definition
+
+                            if let Some(abstract_origin) =
+                                current.attr(DW_AT_abstract_origin).unwrap()
+                            {
+                                match abstract_origin.value() {
+                                    gimli::AttributeValue::UnitRef(unit_ref) => {
+                                        let abstract_die = self.unit.entry(unit_ref).unwrap();
+
+                                        return Some(FunctionDie::new_inlined(
+                                            current.clone(),
+                                            abstract_die.clone(),
+                                        ));
+                                    }
+                                    other_value => panic!("Unsupported value: {:?}", other_value),
+                                }
+                            } else {
+                                return None;
+                            }
+                        }
+                    }
+                }
+                _ => (),
             }
         }
 
@@ -763,9 +896,9 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
     fn expr_to_piece(
         &self,
         core: &mut Core<'_>,
-        expression: gimli::Expression<R>,
+        expression: gimli::Expression<GimliReader>,
         frame_base: u64,
-    ) -> Result<Vec<gimli::Piece<R, usize>>, DebugError> {
+    ) -> Result<Vec<gimli::Piece<GimliReader, usize>>, DebugError> {
         let mut evaluation = expression.evaluation(self.unit.encoding());
 
         // go for evaluation
@@ -826,7 +959,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
 
     fn process_tree_node_attributes(
         &self,
-        tree_node: &mut gimli::EntriesTreeNode<R>,
+        tree_node: &mut gimli::EntriesTreeNode<GimliReader>,
         parent_variable: &mut Variable,
         child_variable: &mut Variable,
         core: &mut Core<'_>,
@@ -996,7 +1129,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
 
     fn process_tree(
         &self,
-        parent_node: gimli::EntriesTreeNode<R>,
+        parent_node: gimli::EntriesTreeNode<GimliReader>,
         parent_variable: &mut Variable,
         core: &mut Core<'_>,
         frame_base: u64,
@@ -1154,7 +1287,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
     fn get_function_variables(
         &self,
         core: &mut Core<'_>,
-        die_cursor_state: &mut DieCursorState,
+        die_cursor_state: &mut FunctionDie,
         frame_base: u64,
         program_counter: u64,
     ) -> Result<Vec<Variable>, DebugError> {
@@ -1182,7 +1315,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
     /// Compute the discriminant value of a DW_TAG_variant variable. If it is not explicitly captured in the DWARF, then it is the default value.
     fn extract_variant_discriminant(
         &self,
-        node: &gimli::EntriesTreeNode<R>,
+        node: &gimli::EntriesTreeNode<GimliReader>,
         variable: &mut Variable,
         _core: &mut Core<'_>,
         _frame_base: u64,
@@ -1224,7 +1357,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
     /// Complex types are references to node trees, that require traversal in similar ways to other DIE's like functions. This means both `get_function_variables()` and `extract_type()` will call the recursive `process_tree()` method to build an integrated `tree` of variables with types and values.
     fn extract_type(
         &self,
-        node: gimli::EntriesTreeNode<R>,
+        node: gimli::EntriesTreeNode<GimliReader>,
         parent_variable: &mut Variable,
         child_variable: &mut Variable,
         core: &mut Core<'_>,
@@ -1495,7 +1628,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
     /// Find the location using either DW_AT_location, or DW_AT_data_member_location, and store it in the &mut Variable. A value of 0 is a valid 0 reported from dwarf.
     fn extract_location(
         &self,
-        node: &gimli::EntriesTreeNode<R>,
+        node: &gimli::EntriesTreeNode<GimliReader>,
         parent_variable: &mut Variable,
         child_variable: &mut Variable,
         core: &mut Core<'_>,
@@ -1621,8 +1754,8 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
 
 fn extract_file(
     debug_info: &DebugInfo,
-    unit: &gimli::Unit<R>,
-    attribute_value: gimli::AttributeValue<R>,
+    unit: &gimli::Unit<GimliReader>,
+    attribute_value: gimli::AttributeValue<GimliReader>,
 ) -> Option<String> {
     match attribute_value {
         gimli::AttributeValue::FileIndex(index) => unit.line_program.as_ref().and_then(|ilnp| {
@@ -1642,7 +1775,10 @@ fn extract_file(
 }
 
 /// If a DW_AT_byte_size attribute exists, return the u64 value, otherwise (including errors) return 0
-fn extract_byte_size(_debug_info: &DebugInfo, di_entry: &DebuggingInformationEntry<R>) -> u64 {
+fn extract_byte_size(
+    _debug_info: &DebugInfo,
+    di_entry: &DebuggingInformationEntry<GimliReader>,
+) -> u64 {
     match di_entry.attr(gimli::DW_AT_byte_size) {
         Ok(optional_byte_size_attr) => match optional_byte_size_attr {
             Some(byte_size_attr) => match byte_size_attr.value() {
@@ -1664,14 +1800,20 @@ fn extract_byte_size(_debug_info: &DebugInfo, di_entry: &DebuggingInformationEnt
         }
     }
 }
-fn extract_line(_debug_info: &DebugInfo, attribute_value: gimli::AttributeValue<R>) -> Option<u64> {
+fn extract_line(
+    _debug_info: &DebugInfo,
+    attribute_value: gimli::AttributeValue<GimliReader>,
+) -> Option<u64> {
     match attribute_value {
         gimli::AttributeValue::Udata(line) => Some(line),
         _ => None,
     }
 }
 
-fn extract_name(debug_info: &DebugInfo, attribute_value: gimli::AttributeValue<R>) -> String {
+fn extract_name(
+    debug_info: &DebugInfo,
+    attribute_value: gimli::AttributeValue<GimliReader>,
+) -> String {
     match attribute_value {
         gimli::AttributeValue::DebugStrRef(name_ref) => {
             let name_raw = debug_info.dwarf.string(name_ref).unwrap();
