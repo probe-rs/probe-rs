@@ -96,6 +96,9 @@ pub struct DownloadOptions<'progress> {
     /// This is often faster than erasing a lot of single sectors.
     /// So if you do not need the old contents of the flash, this is a good option.
     pub do_chip_erase: bool,
+    /// If the chip was pre-erased with external erasers, this flag can set to true to skip erasing
+    /// It may be useful for mass production.
+    pub skip_erase: bool,
 }
 
 /// Downloads a file of given `format` at `path` to the flash of the target given in `session`.

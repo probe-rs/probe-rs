@@ -333,6 +333,7 @@ impl FlashLoader {
             options.do_chip_erase,
             options.keep_unwritten_bytes,
             true,
+            options.skip_erase,
             options.progress.unwrap_or(&FlashProgress::new(|_| {})),
         )?;
 
