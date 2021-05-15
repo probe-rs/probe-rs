@@ -1124,6 +1124,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     self.process_tree(child_node, parent_variable, core, frame_base, program_counter)?;
                 }
                 other => {
+                    // WIP: Add more supported datatypes
                     parent_variable.set_value(format!("\n{{\n\tFound unexpected tag: {:?} for variable \n\t{:?}", other.static_string(), parent_variable));
                 }
             }
