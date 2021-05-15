@@ -40,11 +40,11 @@ impl<'probe> M33<'probe> {
             let core_state = if dhcsr.s_sleep() {
                 CoreStatus::Sleeping
             } else if dhcsr.s_halt() {
-                log::debug!("Core was halted when connecting");
-
                 let dfsr = Dfsr(memory.read_word_32(Dfsr::ADDRESS)?);
 
                 let reason = dfsr.halt_reason();
+
+                log::debug!("Core was halted when connecting, reason: {:?}", reason);
 
                 CoreStatus::Halted(reason)
             } else {
@@ -101,21 +101,34 @@ impl<'probe> CoreInterface for M33<'probe> {
 
         self.wait_for_core_halted(timeout)?;
 
+        // Update core status
+        let _ = self.status()?;
+
         // try to read the program counter
         let pc_value = self.read_core_reg(register::PC.address)?;
 
         // get pc
         Ok(CoreInformation { pc: pc_value })
     }
+
     fn run(&mut self) -> Result<(), Error> {
+        //before we run, we always perform a single instruction step, to account for possible breakpoints that might get us stuck on the current instruction
+        self.step()?;
+
         let mut value = Dhcsr(0);
         value.set_c_halt(false);
         value.set_c_debugen(true);
         value.enable_write();
 
         self.memory.write_word_32(Dhcsr::ADDRESS, value.into())?;
-        self.memory.flush()
+        self.memory.flush()?;
+
+        // We assume that the core is running now
+        self.state.current_state = CoreStatus::Running;
+
+        Ok(())
     }
+
     fn reset(&mut self) -> Result<(), Error> {
         // Set THE AIRCR.SYSRESETREQ control bit to 1 to request a reset. (ARM V6 ARM, B1.5.16)
 
@@ -137,6 +150,9 @@ impl<'probe> CoreInterface for M33<'probe> {
 
         self.wait_for_core_halted(timeout)?;
 
+        // Update core status
+        let _ = self.status()?;
+
         const XPSR_THUMB: u32 = 1 << 24;
         let xpsr_value = self.read_core_reg(register::XPSR.address)?;
         if xpsr_value & XPSR_THUMB == 0 {
@@ -153,6 +169,16 @@ impl<'probe> CoreInterface for M33<'probe> {
     }
 
     fn step(&mut self) -> Result<CoreInformation, Error> {
+        //First check if we stopped on a breakpoint, because this requires special handling before we can continue
+        let was_breakpoint =
+            if self.state.current_state == CoreStatus::Halted(HaltReason::Breakpoint) {
+                log::debug!("Core was halted on breakpoint, disabling breakpoints");
+                self.enable_breakpoints(false)?;
+                true
+            } else {
+                false
+            };
+
         let mut value = Dhcsr(0);
         // Leave halted state.
         // Step one instruction.
@@ -163,8 +189,14 @@ impl<'probe> CoreInterface for M33<'probe> {
         value.enable_write();
 
         self.memory.write_word_32(Dhcsr::ADDRESS, value.into())?;
+        self.memory.flush()?;
 
         self.wait_for_core_halted(Duration::from_millis(100))?;
+
+        //Re-enable breakpoints before we continue
+        if was_breakpoint {
+            self.enable_breakpoints(true)?;
+        }
 
         // try to read the program counter
         let pc_value = self.read_core_reg(register::PC.address)?;
@@ -196,8 +228,9 @@ impl<'probe> CoreInterface for M33<'probe> {
         val.set_enable(state);
 
         self.memory.write_word_32(FpCtrl::ADDRESS, val.into())?;
+        self.memory.flush()?;
 
-        self.state.hw_breakpoints_enabled = true;
+        self.state.hw_breakpoints_enabled = state;
 
         Ok(())
     }
@@ -274,6 +307,7 @@ impl<'probe> CoreInterface for M33<'probe> {
                 // that the reason for the halt has changed. No bits set
                 // means that we have an unkown HaltReason.
                 if reason == HaltReason::Unknown {
+                    log::debug!("Cached halt reason: {:?}", self.state.current_state);
                     return Ok(self.state.current_state);
                 }
 

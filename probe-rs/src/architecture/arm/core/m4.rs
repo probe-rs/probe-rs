@@ -328,11 +328,11 @@ impl<'probe> M4<'probe> {
             let core_state = if dhcsr.s_sleep() {
                 CoreStatus::Sleeping
             } else if dhcsr.s_halt() {
-                log::debug!("Core was halted when connecting");
-
                 let dfsr = Dfsr(memory.read_word_32(Dfsr::ADDRESS)?);
 
                 let reason = dfsr.halt_reason();
+
+                log::debug!("Core was halted when connecting, reason: {:?}", reason);
 
                 CoreStatus::Halted(reason)
             } else {
@@ -414,6 +414,7 @@ impl<'probe> CoreInterface for M4<'probe> {
                 // that the reason for the halt has changed. No bits set
                 // means that we have an unkown HaltReason.
                 if reason == HaltReason::Unknown {
+                    log::debug!("Cached halt reason: {:?}", self.state.current_state);
                     return Ok(self.state.current_state);
                 }
 
@@ -460,6 +461,9 @@ impl<'probe> CoreInterface for M4<'probe> {
         self.memory.write_word_32(Dhcsr::ADDRESS, value.into())?;
 
         self.wait_for_core_halted(timeout)?;
+
+        // Update core status
+        let _ = self.status()?;
 
         // try to read the program counter
         let pc_value = self.read_core_reg(register::PC.address)?;
@@ -541,6 +545,9 @@ impl<'probe> CoreInterface for M4<'probe> {
 
         self.wait_for_core_halted(timeout)?;
 
+        // Update core status
+        let _ = self.status()?;
+
         const XPSR_THUMB: u32 = 1 << 24;
         let xpsr_value = self.read_core_reg(register::XPSR.address)?;
         if xpsr_value & XPSR_THUMB == 0 {
@@ -577,7 +584,7 @@ impl<'probe> CoreInterface for M4<'probe> {
         self.memory.write_word_32(FpCtrl::ADDRESS, val.into())?;
         self.memory.flush()?;
 
-        self.state.hw_breakpoints_enabled = true;
+        self.state.hw_breakpoints_enabled = state;
 
         Ok(())
     }

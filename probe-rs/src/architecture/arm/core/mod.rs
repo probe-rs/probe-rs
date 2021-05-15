@@ -251,10 +251,24 @@ impl Dfsr {
     }
 
     fn halt_reason(&self) -> HaltReason {
-        if self.0.count_ones() != 1 {
+        if self.0 == 0 {
+            // No bit is set
+            HaltReason::Unknown
+        } else if self.0.count_ones() > 1 {
+            log::debug!("DFSR: {:?}", self);
+
             // We cannot identify why the chip halted,
             // it could be for multiple reasons.
-            HaltReason::Unknown
+
+            // For debuggers, it's important to know if
+            // the core halted because of a breakpoint.
+            // Because of this, we still return breakpoint
+            // even if other reasons are possible as well.
+            if self.bkpt() {
+                HaltReason::Breakpoint
+            } else {
+                HaltReason::Multiple
+            }
         } else if self.bkpt() {
             HaltReason::Breakpoint
         } else if self.external() {
