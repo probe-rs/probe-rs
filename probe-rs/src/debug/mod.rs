@@ -977,16 +977,21 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                 gimli::DW_TAG_member |      //members of structured types
                 gimli::DW_TAG_enumerator    //possible values for enumerators, used by extract_type() when processing DW_TAG_enumeration_type
                 => {
-                    if child_node.entry().attr(gimli::DW_AT_abstract_origin) == Ok(None) {
-                        let mut child_variable = Variable::new();
-                        self.process_tree_node_attributes(&mut child_node, parent_variable, &mut child_variable, core, frame_base, program_counter)?;
-                        // Recursively process each child.
-                        self.process_tree(child_node, &mut child_variable, core, frame_base, program_counter)?;
-                        child_variable.extract_value(core);
-                        parent_variable.add_child_variable(&mut child_variable);
+                    let mut child_variable = Variable::new();
+                    self.process_tree_node_attributes(&mut child_node, parent_variable, &mut child_variable, core, frame_base, program_counter)?;                    
+                    if child_node.entry().attr(gimli::DW_AT_abstract_origin) == Ok(None) 
+                    && !child_variable.type_name.starts_with("PhantomData") { // Do not process PhantomData nodes
+
+                            // Recursively process each child.
+                            self.process_tree(child_node, &mut child_variable, core, frame_base, program_counter)?;
+                            child_variable.extract_value(core);
+                            parent_variable.add_child_variable(&mut child_variable);
                     }
                     else {
                         //TODO: Investigate and implement DW_AT_abstract_origin variables ... warn!{"Found Abstract origin for: {:?}", parent_variable};
+                        // println!("\n\nEncountered a VARIABLE node {:?}", child_node.entry().tag().static_string());
+                        // _print_all_attributes(core, Some(frame_base), &self.debug_info.dwarf, &self.unit, &child_node.entry(), 1 );
+
                     }
                 }
                 gimli::DW_TAG_structure_type |
@@ -1034,18 +1039,9 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     child_variable.extract_value(core);
                     parent_variable.add_child_variable(&mut child_variable);
                 }
-                gimli::DW_TAG_template_type_parameter => {  // TODO: WIP The parent node for Rust generic type parameter
-                    // Recursively process each node, but pass the parent_variable so that new children are caught despite missing these tags.
-                    // println!("\n\nEncountered a Template type parameter node {:?}", child_node.entry().tag().static_string());
-                    // _print_all_attributes(core, Some(frame_base), &self.debug_info.dwarf, &self.unit, &child_node.entry(), 1 );
-                    // DW_AT_type: print_all_attributes UnitRef(UnitOffset(16813))
-                    // DW_AT_name: T
-                    let mut child_variable = Variable::new();
-                    self.process_tree_node_attributes(&mut child_node, parent_variable, &mut child_variable, core, frame_base, program_counter)?;
-                    // Recursively process each child.
-                    self.process_tree(child_node, &mut child_variable, core, frame_base, program_counter)?;
-                    child_variable.extract_value(core);
-                    parent_variable.add_child_variable(&mut child_variable);
+                gimli::DW_TAG_template_type_parameter => {  //The parent node for Rust generic type parameter
+                    // These show up as a child of structures they belong to, but don't lead to the member value or type.
+                    // We will ONLY process the ACTUAL structure member, to avoid confusing UI. 
                 }
                 gimli::DW_TAG_formal_parameter => { // TODO: WIP Parameters for DW_TAG_inlined_subroutine
                 // DW_AT_location: Expression: Piece { size_in_bits: None, bit_offset: None, location: Address { address: 2001fe58 } }
@@ -1261,10 +1257,13 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                             frame_base,
                                             program_counter,
                                         )?;
-                                        referenced_variable.kind = VariableKind::Referenced;
-                                        referenced_variable.extract_value(core);
-                                        //Now add the referenced_variable as a child.
-                                        variable.add_child_variable(&mut referenced_variable);
+                                        if !referenced_variable.type_name.eq("()") {
+                                            // Halt further processing of unit types
+                                            referenced_variable.kind = VariableKind::Referenced;
+                                            referenced_variable.extract_value(core);
+                                            //Now add the referenced_variable as a child.
+                                            variable.add_child_variable(&mut referenced_variable);
+                                        }
                                     }
                                     other_attribute_value => {
                                         variable.set_value(format!(
@@ -1294,6 +1293,10 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
             gimli::DW_TAG_structure_type => {
                 // Recursively process a child types.
                 self.process_tree(node, variable, core, frame_base, program_counter)?;
+                if variable.children.is_none() {
+                    //Empty structs don't have values
+                    variable.set_value(variable.type_name.clone());
+                }
                 Ok(())
             }
             gimli::DW_TAG_array_type => {

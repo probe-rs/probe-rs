@@ -1,3 +1,5 @@
+use num_traits::Zero;
+
 use super::*;
 use std::convert::TryInto;
 
@@ -80,15 +82,14 @@ impl Variable {
 
     /// Evaluate the variable's result if possible and set self.value, or else set self.value as the error String.
     pub fn extract_value(&mut self, core: &mut Core<'_>) {
-        if self.memory_location == u64::MAX {
-            //the value was set by get_location(), so just leave it as is
-            return;
-        }
-        if !self.value.is_empty() {
-            //the value was set elsewhere in this library - probably because of an error - so just leave it as is
+        if self.memory_location == u64::MAX// the value was set by get_location(), so just leave it as is
+        || !self.value.is_empty()// the value was set elsewhere in this library - probably because of an error - so just leave it as is
+        || self.memory_location.is_zero()// Templates, Phantoms, etc.
+        {
             return;
         }
         let string_value = match self.type_name.as_str() {
+            "()" => "()".to_string(),
             "bool" => bool::get_value(self, core)
                 .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
             "char" => char::get_value(self, core)
