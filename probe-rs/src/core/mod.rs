@@ -398,7 +398,7 @@ impl<'probe> Core<'probe> {
         self.inner.registers()
     }
 
-    //Find the id of the next available hw breakpoint
+    /// Find the ID of the next available HW breakpoint.
     fn next_available_hw_breakpoint_id(&mut self) -> Result<usize, error::Error> {
         let mut next_available_hw_breakpoint = 0;
         for breakpoint in self.inner.get_hw_breakpoints()? {
