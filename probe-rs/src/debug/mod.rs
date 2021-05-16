@@ -450,7 +450,21 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
                         let addr = i64::from(current_cfa.unwrap()) + o;
 
                         let mut buff = [0u8; 4];
-                        self.core.read_8(addr as u32, &mut buff).unwrap();
+
+                        if let Err(e) = self.core.read_8(addr as u32, &mut buff) {
+                            log::info!(
+                                "Failed to read from address {:#010x} ({} bytes): {}",
+                                addr,
+                                4,
+                                e
+                            );
+                            log::debug!(
+                                "Rule: Offset {} from address {:#010x}",
+                                o,
+                                current_cfa.unwrap()
+                            );
+                            return None;
+                        }
 
                         let val = u32::from_le_bytes(buff);
 
