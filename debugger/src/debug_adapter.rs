@@ -483,13 +483,11 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
             }
         };
 
-        let mut created_breakpoints: Vec<Breakpoint> = Vec::new(); //For returning in the Response
+        let mut created_breakpoints: Vec<Breakpoint> = Vec::new(); // For returning in the Response
 
         let source_path = args.source.path.as_ref().map(Path::new);
 
-        //Always clear existing breakpoints before setting new ones.
-        //TODO: Consider if it would be more or less efficient to compare VSCode's requested breakpoints against Probe-rs and only clear/set the old/new ones.
-        //TODO: It appears as if the clear_all_hw_breakpoints doesn't always do that. Investigate and fix.
+        // Always clear existing breakpoints before setting new ones. The DAP Specification doesn't make allowances for deleting and setting individual breakpoints.
         match core_data.target_core.clear_all_hw_breakpoints() {
             Ok(_) => {}
             Err(error) => {
@@ -1077,7 +1075,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
 
             let mut command_arguments: Vec<&str> = line.split_whitespace().collect();
             let command_name = command_arguments.remove(0);
-            let arguments = if command_arguments.is_empty() {
+            let arguments = if !command_arguments.is_empty() {
                 Some(json!(command_arguments))
             } else {
                 None

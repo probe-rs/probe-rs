@@ -332,6 +332,10 @@ impl<'probe> CoreInterface for M33<'probe> {
 
         Ok(CoreStatus::Running)
     }
+
+    fn get_hw_breakpoints(&mut self) -> Result<Vec<u32>, Error> {
+        todo!()
+    }
 }
 
 impl<'probe> MemoryInterface for M33<'probe> {

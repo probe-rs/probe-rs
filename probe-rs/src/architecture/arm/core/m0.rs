@@ -578,6 +578,10 @@ impl<'probe> CoreInterface for M0<'probe> {
         self.memory.write_core_reg(address, value)?;
         Ok(())
     }
+
+    fn get_hw_breakpoints(&mut self) -> Result<Vec<u32>, Error> {
+        todo!()
+    }
 }
 
 impl<'probe> MemoryInterface for M0<'probe> {

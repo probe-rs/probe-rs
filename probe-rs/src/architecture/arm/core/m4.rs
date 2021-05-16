@@ -635,6 +635,33 @@ impl<'probe> CoreInterface for M4<'probe> {
     fn architecture(&self) -> Architecture {
         Architecture::Arm
     }
+
+    /// Read the hardware breakpoints from FpComp registers, and adds them to the Result Vector. A value of 0 in any position of the Vector indicates that the position is unset/available.
+    fn get_hw_breakpoints(&mut self) -> Result<Vec<u32>, Error> {
+        let mut breakpoints = vec![];
+        let num_hw_breakpoints = self.get_available_breakpoint_units()? as usize;
+        { 0..num_hw_breakpoints }.try_for_each(|bp_unit_index| {
+            let raw_val = self.memory.read_word_32(FpCtrl::ADDRESS)?;
+            let ctrl_reg = FpCtrl::from(raw_val);
+            let breakpoint: u32;    // The breakpoint address after it has been adjusted for FpRev
+            let register_value: u32;// The raw breakpoint address as read from memory
+            if ctrl_reg.rev() == 0 {
+                let reg_addr = FpRev1CompX::ADDRESS + (bp_unit_index * size_of::<u32>()) as u32;
+                register_value = self.memory.read_word_32(reg_addr)?;
+                breakpoint = register_value & 0x1f_ff_ff_fc;
+            } else if ctrl_reg.rev() == 1 {
+                let reg_addr = FpRev2CompX::ADDRESS + (bp_unit_index * size_of::<u32>()) as u32;
+                register_value = self.memory.read_word_32(reg_addr)?;
+                breakpoint = register_value & 0xff_ff_ff_fe;
+            } else {
+                log::warn!("This chip uses FPBU revision {}, which is not yet supported. HW breakpoints are not available.", ctrl_reg.rev());
+                return Err(Error::Probe(DebugProbeError::CommandNotSupportedByProbe));
+            }
+            breakpoints.push(breakpoint);
+            Ok(())
+        })?;
+        Ok(breakpoints)
+    }
 }
 
 impl<'probe> MemoryInterface for M4<'probe> {

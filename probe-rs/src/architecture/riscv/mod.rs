@@ -470,6 +470,10 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
             )
         }
     }
+
+    fn get_hw_breakpoints(&mut self) -> Result<Vec<u32>, Error> {
+        todo!()
+    }
 }
 
 impl<'probe> MemoryInterface for Riscv32<'probe> {
