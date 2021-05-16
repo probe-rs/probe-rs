@@ -10,7 +10,7 @@ use crate::{
     core::{Architecture, CoreStatus, HaltReason},
     MemoryInterface,
 };
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 
 use bitfield::bitfield;
 use std::mem::size_of;
@@ -600,7 +600,7 @@ impl<'probe> CoreInterface for M4<'probe> {
             val = FpRev2CompX::breakpoint_configuration(addr).into();
         } else {
             log::warn!("This chip uses FPBU revision {}, which is not yet supported. HW breakpoints are not available.", ctrl_reg.rev());
-            return Err(Error::Probe(DebugProbeError::CommandNotSupportedByProbe));
+            return Err(Error::Other(anyhow!("This chip uses FPBU revision {}, which is not yet supported. HW breakpoints are not available.", ctrl_reg.rev())));
         }
 
         // This is fine as FpRev1CompX and Rev2CompX are just two different
@@ -655,7 +655,7 @@ impl<'probe> CoreInterface for M4<'probe> {
                 breakpoint = register_value & 0xff_ff_ff_fe;
             } else {
                 log::warn!("This chip uses FPBU revision {}, which is not yet supported. HW breakpoints are not available.", ctrl_reg.rev());
-                return Err(Error::Probe(DebugProbeError::CommandNotSupportedByProbe));
+                return Err(Error::Other(anyhow!("This chip uses FPBU revision {}, which is not yet supported. HW breakpoints are not available.", ctrl_reg.rev())));
             }
             breakpoints.push(breakpoint);
             Ok(())

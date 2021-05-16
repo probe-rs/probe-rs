@@ -1,6 +1,7 @@
 pub(crate) mod communication_interface;
 
 pub use communication_interface::CommunicationInterface;
+use num_traits::Zero;
 
 use crate::architecture::{
     arm::core::CortexState, riscv::communication_interface::RiscvCommunicationInterface,
@@ -467,7 +468,7 @@ impl<'probe> Core<'probe> {
     /// Also used as a helper function in [`Session::drop`].
     pub fn clear_all_hw_breakpoints(&mut self) -> Result<(), error::Error> {
         for breakpoint in self.inner.get_hw_breakpoints()? {
-            if breakpoint != 0 {
+            if !breakpoint.is_zero() {
                 self.clear_hw_breakpoint(breakpoint)?;
             }
         }
