@@ -403,7 +403,7 @@ impl<'probe> Core<'probe> {
     fn next_available_hw_breakpoint_id(&mut self) -> Result<usize, error::Error> {
         let mut next_available_hw_breakpoint = 0;
         for breakpoint in self.inner.get_hw_breakpoints()? {
-            if breakpoint == 0 {
+            if breakpoint.is_zero() {
                 return Ok(next_available_hw_breakpoint);
             } else {
                 next_available_hw_breakpoint += 1;
