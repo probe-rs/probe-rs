@@ -441,6 +441,7 @@ fn main_try() -> Result<()> {
                     keep_unwritten_bytes: config.flashing.restore_unwritten_bytes,
                     do_chip_erase: config.flashing.do_chip_erase,
                     dry_run: false,
+                    skip_erase: false,
                 },
             )
             .with_context(|| format!("failed to flash {}", path.display()))?;
@@ -461,6 +462,7 @@ fn main_try() -> Result<()> {
                     keep_unwritten_bytes: config.flashing.restore_unwritten_bytes,
                     do_chip_erase: config.flashing.do_chip_erase,
                     dry_run: false,
+                    skip_erase: false,
                 },
             )
             .with_context(|| format!("failed to flash {}", path.display()))?;
