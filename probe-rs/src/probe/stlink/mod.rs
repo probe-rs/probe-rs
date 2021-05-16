@@ -81,6 +81,7 @@ impl DebugProbe for StLink<StLinkUsbDevice> {
         match self.protocol {
             WireProtocol::Swd => self.swd_speed_khz,
             WireProtocol::Jtag => self.jtag_speed_khz,
+            WireProtocol::Avr(_) => panic!("STlink does not support AVR protocols"),
         }
     }
 
@@ -113,6 +114,7 @@ impl DebugProbe for StLink<StLinkUsbDevice> {
                         Err(DebugProbeError::UnsupportedSpeed(speed_khz))
                     }
                 }
+                WireProtocol::Avr(_) => panic!("STlink does not support AVR protocols"),
             },
             Ordering::Equal => {
                 let (available, _) = self.get_communication_frequencies(self.protocol)?;
@@ -128,6 +130,7 @@ impl DebugProbe for StLink<StLinkUsbDevice> {
                 match self.protocol {
                     WireProtocol::Swd => self.swd_speed_khz = actual_speed_khz,
                     WireProtocol::Jtag => self.jtag_speed_khz = actual_speed_khz,
+                    WireProtocol::Avr(_) => panic!("STlink does not support AVR protocols"),
                 }
 
                 Ok(actual_speed_khz)
@@ -149,6 +152,7 @@ impl DebugProbe for StLink<StLinkUsbDevice> {
                 log::debug!("Switching protocol to SWD");
                 commands::JTAG_ENTER_SWD
             }
+            WireProtocol::Avr(_) => panic!("STlink does not support AVR protocols"),
         };
 
         // Check and report the target voltage.
@@ -184,6 +188,7 @@ impl DebugProbe for StLink<StLinkUsbDevice> {
             WireProtocol::Swd => {
                 self.set_speed(self.swd_speed_khz)?;
             }
+            WireProtocol::Avr(_) => panic!("STlink does not support AVR protocols"),
         }
 
         Ok(())
@@ -244,6 +249,7 @@ impl DebugProbe for StLink<StLinkUsbDevice> {
         match protocol {
             WireProtocol::Jtag => self.protocol = WireProtocol::Jtag,
             WireProtocol::Swd => self.protocol = WireProtocol::Swd,
+            WireProtocol::Avr(_) => panic!("STlink does not support AVR protocols"),
         }
         Ok(())
     }
@@ -575,6 +581,7 @@ impl<D: StLinkUsb> StLink<D> {
         let cmd_proto = match protocol {
             WireProtocol::Swd => 0,
             WireProtocol::Jtag => 1,
+            WireProtocol::Avr(_) => panic!("STlink does not support AVR protocols"),
         };
 
         let mut command = vec![commands::JTAG_COMMAND, commands::SET_COM_FREQ, cmd_proto, 0];
@@ -596,6 +603,7 @@ impl<D: StLinkUsb> StLink<D> {
         let cmd_proto = match protocol {
             WireProtocol::Swd => 0,
             WireProtocol::Jtag => 1,
+            WireProtocol::Avr(_) => panic!("STlink does not support AVR protocols"),
         };
 
         let mut buf = [0; 52];

@@ -2,8 +2,9 @@ pub(crate) mod communication_interface;
 
 pub use communication_interface::CommunicationInterface;
 
-use crate:: architecture::{
-    arm::core::CortexState, avr::communication_interface::AvrCommunicationInterface, riscv::communication_interface::RiscvCommunicationInterface,
+use crate::architecture::{
+    arm::core::CortexState, avr::communication_interface::AvrCommunicationInterface,
+    riscv::communication_interface::RiscvCommunicationInterface,
 };
 use crate::config::CoreType;
 use crate::{error, DebugProbeError, Error, Memory, MemoryInterface};

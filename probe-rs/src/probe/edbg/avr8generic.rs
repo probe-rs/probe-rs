@@ -1,12 +1,17 @@
-use crate::probe::edbg::EDBGprobe;
+use crate::probe::edbg::EDBG;
+use enum_primitive_derive::Primitive;
+use num_traits::FromPrimitive;
 pub struct Avr8GenericProtocol {}
 
 impl Avr8GenericProtocol {
-    fn new(probe: &EDBGprobe) -> Self {
+    fn new(probe: &EDBG) -> Self {
         Avr8GenericProtocol {}
     }
 }
-enum Avr8GenericCommands {
+
+#[allow(dead_code)]
+#[derive(Clone, Copy, Debug, Primitive, PartialEq)]
+pub enum Avr8GenericCommands {
     Query = 0x00,              // Capability discovery
     Set = 0x01,                // Set parameters
     Get = 0x02,                // Get parameters
@@ -38,7 +43,9 @@ enum Avr8GenericCommands {
     PageErase = 0x50,          // Erase page
 }
 
-enum Avr8GenericResponses {
+#[allow(dead_code)]
+#[derive(Clone, Copy, Debug, Primitive, PartialEq)]
+pub enum Avr8GenericResponses {
     StatusOk = 0x80, //  All OK
     List = 0x81,     //  List of items returned
     Data = 0x84,     //  Data returned
@@ -46,14 +53,17 @@ enum Avr8GenericResponses {
     Failed = 0xA0,   // Command failed to execute
 }
 
-// Protocol events
-enum Avr8GenericEvents {
+/// Protocol events
+#[allow(dead_code)]
+pub enum Avr8GenericEvents {
     Break = 0x40,
     Idr = 0x41,
 }
 
-// Failure response codes (RSP_FAILED)
-enum Avr8GenericFailureCodes {
+/// Failure response codes (RSP_FAILED)
+#[allow(dead_code)]
+#[derive(Clone, Copy, Debug, Primitive, PartialEq)]
+pub enum Avr8GenericFailureCodes {
     StatusOk = 0x00,             // All OK
     DwPhyError = 0x10,           // debugWIRE physical error
     JtagmInitError = 0x11,       // JTAGM failed to initialise
@@ -104,16 +114,18 @@ enum Avr8GenericFailureCodes {
     Unknown = 0xFF,              //Disaster.
 }
 
-// QUERY types on this protocol
-enum Avr8GenericQueryContexts {
+/// QUERY types on this protocol
+#[allow(dead_code)]
+pub enum Avr8GenericQueryContexts {
     Commands = 0x00,      // Supported command list
     Configuration = 0x05, // Supported configuration list
     ReadMemtypes = 0x07,  // Supported read memtypes list
     WriteMemtypes = 0x08, // Supported write memtypes list
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Primitive)]
-enum Avr8GenericSetGetContexts {
+#[allow(dead_code)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum Avr8GenericSetGetContexts {
     Config = 0x00,
     Physical = 0x01,
     Device = 0x02,
@@ -121,12 +133,14 @@ enum Avr8GenericSetGetContexts {
     Session = 0x04,
 }
 
-enum Avr8GenericConfigContextParameters {
+#[allow(dead_code)]
+pub enum Avr8GenericConfigContextParameters {
     Variant = 0x00,  // Device family/variant
     Function = 0x01, // Functional intent
 }
 
-enum Avr8GenericPhysicalContextParameters {
+#[allow(dead_code)]
+pub enum Avr8GenericPhysicalContextParameters {
     Interface = 0x00,  // Physical interface selector
     JtagDaisY = 0x01,  // JTAG daisy chain settings
     DwClkDiv = 0x10,   // debugWIRE clock divide ratio
@@ -136,21 +150,26 @@ enum Avr8GenericPhysicalContextParameters {
     XmPdiClK = 0x31,   // PDI clock for AVR XMEGA and AVR devices with UPDI
 }
 
-enum Avr8GenericOptionsContextParameters {
+#[allow(dead_code)]
+pub enum Avr8GenericOptionsContextParameters {
     RunTimers = 0x00,    //  Keep timers running when stopped
     DisableDrp = 0x01,   //  No data breaks during reset
     EnableIdr = 0x03,    //  Relay IDR messages
     PollInterval = 0x04, //  Configure polling interval
 }
 
-enum Avr8GenericSessionContextParameters {
+#[allow(dead_code)]
+pub enum Avr8GenericSessionContextParameters {
     AVR8_SESS_MAIN_PC = 0x00, // Address of main() function (deprecated)
 }
-enum Avr8GenericConfigTestParameters {
+
+#[allow(dead_code)]
+pub enum Avr8GenericConfigTestParameters {
     TargetRunning = 0x00, // Is target running?
 }
 
-enum Avr8GenericVariantValues {
+#[allow(dead_code)]
+pub enum Avr8GenericVariantValues {
     Loopback = 0x00, //  Dummy device
     Dw = 0x01,       //  tinyAVR or megaAVR with debugWIRE
     Megajtag = 0x02, //  megaAVR with JTAG
@@ -159,14 +178,16 @@ enum Avr8GenericVariantValues {
     None = 0xFF,     //  No device
 }
 
-enum Avr8GenericFunctionValues {
+#[allow(dead_code)]
+pub enum Avr8GenericFunctionValues {
     None = 0x00,        // Not configured
     Programming = 0x01, // I want to program only
     Debugging = 0x02,   // I want a debug session
 }
 
-// Physical modes
-enum Avr8GenericPhysicalInterfaces {
+/// Physical modes
+#[allow(dead_code)]
+pub enum Avr8GenericPhysicalInterfaces {
     None = 0x00, //  Not configured
     JTAG = 0x04, //  JTAG
     DW = 0x05,   //  debugWIRE
@@ -174,16 +195,19 @@ enum Avr8GenericPhysicalInterfaces {
     UPDI = 0x08, //  UPDI (one-wire)
 }
 
-enum Avr8GenericMegaBreakpointTypes {
-    AVR8_HWBP_PROG_BP = 0x01, // Program breaks
+#[allow(dead_code)]
+pub enum Avr8GenericMegaBreakpointTypes {
+    Avr8HwbpProgBp = 0x01, // Program breaks
 }
 
-enum Avr8GenericMegaBreakCauses {
+#[allow(dead_code)]
+pub enum Avr8GenericMegaBreakCauses {
     Unknown = 0x00, // Unspecified
     Program = 0x01, // Program break
 }
 
-enum Avr8GenericXtendedEraseModes {
+#[allow(dead_code)]
+pub enum Avr8GenericXtendedEraseModes {
     Chip = 0x00,       // Erase entire chip
     App = 0x01,        // Erase application section only
     Boot = 0x02,       // Erase boot section only
@@ -194,8 +218,9 @@ enum Avr8GenericXtendedEraseModes {
     Usersig = 0x07,    // Erase the user signature section
 }
 
-// Memory types
-enum Avr8GenericMemtypes {
+/// Memory types
+#[allow(dead_code)]
+pub enum Avr8GenericMemtypes {
     SRAM = 0x20,                 //  SRAM
     Eeprom = 0x22,               //  EEPROM memory
     Spm = 0xA0,                  //  Flash memory in a debug session

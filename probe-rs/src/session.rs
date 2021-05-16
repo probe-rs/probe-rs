@@ -151,18 +151,25 @@ impl Session {
                 }
 
                 session
-            },
+            }
             Architecture::Avr => {
-                let interface = probe.into_avr_interface()?;
+                let core = (
+                    SpecificCoreState::from_core_type(target.core_type),
+                    Core::create_state(0),
+                );
+
+                let interface = probe
+                    .try_into_avr_interface()
+                    .map_err(|(_probe, err)| err)?;
 
                 let mut session = Session {
                     target,
-                    interface: ArchitectureInterface::Avr(interface.unwrap()),
-                    cores: vec![]
+                    interface: ArchitectureInterface::Avr(Box::new(interface)),
+                    cores: vec![core],
                 };
 
                 session
-            },
+            }
             Architecture::Riscv => {
                 // TODO: Handle attach under reset
 

@@ -271,7 +271,7 @@ impl CmsisDap {
     fn set_swo_transport(
         &mut self,
         transport: swo::TransportRequest,
-        ) -> Result<(), DebugProbeError> {
+    ) -> Result<(), DebugProbeError> {
         let response = commands::send_command(&mut self.device, transport)?;
         match response {
             swo::TransportResponse(Status::DAPOk) => Ok(()),
@@ -328,9 +328,9 @@ impl CmsisDap {
     #[allow(dead_code)]
     fn get_swo_status(&mut self) -> Result<swo::StatusResponse, DebugProbeError> {
         Ok(commands::send_command(
-                &mut self.device,
-                swo::StatusRequest,
-                )?)
+            &mut self.device,
+            swo::StatusRequest,
+        )?)
     }
 
     /// Fetch extended SWO trace status.
@@ -342,7 +342,7 @@ impl CmsisDap {
     fn get_swo_extended_status(
         &mut self,
         request: swo::ExtendedStatusRequest,
-        ) -> Result<swo::ExtendedStatusResponse, DebugProbeError> {
+    ) -> Result<swo::ExtendedStatusResponse, DebugProbeError> {
         Ok(commands::send_command(&mut self.device, request)?)
     }
 
@@ -469,6 +469,7 @@ impl DebugProbe for CmsisDap {
             match protocol {
                 WireProtocol::Swd => ConnectRequest::UseSWD,
                 WireProtocol::Jtag => ConnectRequest::UseJTAG,
+                WireProtocol::Avr(_) => panic!("Avr protocol only supported on EDBG"),
             }
         } else {
             ConnectRequest::UseDefaultPort
@@ -548,6 +549,10 @@ impl DebugProbe for CmsisDap {
                 log::warn!(
                     "Support for JTAG protocol is not yet implemented for CMSIS-DAP based probes."
                 );
+                Err(DebugProbeError::UnsupportedProtocol(WireProtocol::Jtag))
+            }
+            WireProtocol::Avr(_) => {
+                log::warn!("Avr protocols is only supported on EDBG probes");
                 Err(DebugProbeError::UnsupportedProtocol(WireProtocol::Jtag))
             }
             WireProtocol::Swd => {

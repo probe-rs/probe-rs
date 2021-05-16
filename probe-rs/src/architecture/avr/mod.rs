@@ -1,10 +1,12 @@
-//! AVR support
+/// AVR support
 pub mod communication_interface;
 use crate::architecture::avr::communication_interface::AvrCommunicationInterface;
-use crate::{CoreInterface, MemoryInterface, CoreStatus, CoreInformation, CoreRegisterAddress, Architecture};
 use crate::core::RegisterFile;
-use crate::error::Error;
 use crate::error;
+use crate::error::Error;
+use crate::{
+    Architecture, CoreInformation, CoreInterface, CoreRegisterAddress, CoreStatus, MemoryInterface,
+};
 
 use anyhow::{anyhow, Result};
 
@@ -19,7 +21,7 @@ impl<'probe> Avr<'probe> {
     }
 }
 
-impl <'probe> CoreInterface for Avr<'probe> {
+impl<'probe> CoreInterface for Avr<'probe> {
     /// Wait until the core is halted. If the core does not halt on its own,
     /// a [DebugProbeError::Timeout] error will be returned.
     fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), error::Error> {
@@ -39,7 +41,7 @@ impl <'probe> CoreInterface for Avr<'probe> {
     /// Try to halt the core. This function ensures the core is actually halted, and
     /// returns a [DebugProbeError::Timeout] otherwise.
     fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, error::Error> {
-        unimplemented!();
+        self.interface.halt(timeout)
     }
 
     fn run(&mut self) -> Result<(), error::Error> {
@@ -76,7 +78,8 @@ impl <'probe> CoreInterface for Avr<'probe> {
     }
 
     fn get_available_breakpoint_units(&mut self) -> Result<u32, error::Error> {
-        unimplemented!();
+        //FIXME: Add support for SW breakpoints and devices with more than one hw breakpoint
+        Ok(1)
     }
 
     fn enable_breakpoints(&mut self, state: bool) -> Result<(), error::Error> {
@@ -88,7 +91,7 @@ impl <'probe> CoreInterface for Avr<'probe> {
     }
 
     fn clear_breakpoint(&mut self, unit_index: usize) -> Result<(), error::Error> {
-        unimplemented!();
+        self.interface.clear_breakpoint(unit_index)
     }
 
     fn registers(&self) -> &'static RegisterFile {

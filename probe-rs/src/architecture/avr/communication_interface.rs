@@ -1,19 +1,27 @@
+use crate::error;
 use crate::DebugProbeError;
 use crate::Error as ProbeRsError;
 use thiserror::Error;
 
-use crate::core::Architecture;
+use crate::{
+    Architecture, CoreInformation, CoreInterface, CoreRegisterAddress, CoreStatus, MemoryInterface,
+};
 
-use crate::DebugProbe;
-use crate::probe::daplink::DAPLink;
-use crate::probe::daplink::{
+use std::time::Duration;
+
+
+use crate::probe::cmsisdap::CMSISDAP;
+use crate::probe::cmsisdap::{
     commands,
     commands::edbg::{
         avr_cmd::{AvrCommand, AvrCommandResponse},
-        avr_rsp::{AvrRSPRequest, AvrRSPResponse},
         avr_evt::{AvrEventRequest, AvrEventResponse},
+        avr_rsp::{AvrRSPRequest, AvrRSPResponse},
     },
 };
+use crate::probe::edbg::EDBG;
+use crate::DebugProbe;
+use crate::Probe;
 
 #[derive(Debug, Error)]
 pub enum AvrEdbgError {
@@ -34,56 +42,45 @@ impl From<AvrEdbgError> for ProbeRsError {
 
 #[derive(Debug)]
 pub struct AvrCommunicationInterface {
-    probe: Box<DAPLink>,
+    //probe: Box<CMSISDAP>,
+    probe: Box<EDBG>,
 }
 
 impl AvrCommunicationInterface {
-    fn send_command(&mut self, command_packet: &[u8]) -> Result<Vec<u8>, DebugProbeError> {
-        let report_size = 512;
-        commands::send_command::<AvrCommand, AvrCommandResponse>(
-            &mut self.probe.device,
-            // FIXME: fragment info need to be properly calculated
-            AvrCommand {
-                fragment_info: 0x11,
-                command_packet,
-            },
-        )?;
-
-        // FIXME: Handle data split accross multiple packages
-        let rsp = loop {
-            let rsp = commands::send_command::<AvrRSPRequest, AvrRSPResponse>(
-                &mut self.probe.device,
-                AvrRSPRequest,
-            )?;
-
-            if rsp.fragment_info != 0 {
-                break rsp;
-            }
-        };
-        Ok(rsp.command_packet)
+    pub fn new(probe: Box<EDBG>) -> Result<Self, (Box<CMSISDAP>, DebugProbeError)> {
+        Ok(AvrCommunicationInterface { probe })
     }
 
-    fn check_event(&mut self) -> Result<Vec<u8>, DebugProbeError> {
-        let response = commands::send_command::<AvrEventRequest, AvrEventResponse>(
-            &mut self.probe.device,
-            AvrEventRequest)?;
+    pub fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
+        //self.dtm.target_reset_deassert()
+        unimplemented!()
+    }
 
-        Ok(response.events)
+    pub fn close(self) -> Probe {
+        Probe::from_attached_probe(self.probe.into_probe())
     }
 }
 
-// Edbg part
+//Functions for core interface
 impl AvrCommunicationInterface {
-}
+    pub fn clear_breakpoint(&mut self, unit_index: usize) -> Result<(), error::Error> {
+        self.probe.as_mut().clear_breakpoint(unit_index)
+    }
 
+    pub fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, error::Error> {
+        self.probe.as_mut().halt(timeout)
+    }
+}
+/*
 impl<'a> AsRef<dyn DebugProbe + 'a> for AvrCommunicationInterface {
     fn as_ref(&self) -> &(dyn DebugProbe + 'a) {
-        self.probe.as_ref().as_ref()
+        self.probe.as_ref()
     }
 }
 
 impl<'a> AsMut<dyn DebugProbe + 'a> for AvrCommunicationInterface {
     fn as_mut(&mut self) -> &mut (dyn DebugProbe + 'a) {
-        self.probe.as_mut().as_mut()
+        self.probe.as_mut()
     }
 }
+*/

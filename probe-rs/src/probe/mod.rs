@@ -1,9 +1,9 @@
 pub(crate) mod cmsisdap;
+pub(crate) mod edbg;
 #[cfg(feature = "ftdi")]
 pub(crate) mod ftdi;
 pub(crate) mod jlink;
 pub(crate) mod stlink;
-pub(crate) mod edbg;
 
 use crate::{architecture::arm::ap::AccessPort, Session};
 use crate::{
@@ -16,15 +16,18 @@ use crate::{
 };
 use crate::{
     architecture::{
-        avr::communication_interface::AvrCommunicationInterface,
         arm::{
             ap::memory_ap::mock::MockMemoryAp, communication_interface::ArmProbeInterface,
             DapAccess, PortType, SwoAccess,
         },
+        avr::communication_interface::AvrCommunicationInterface,
         riscv::communication_interface::RiscvCommunicationInterface,
     },
     Memory,
 };
+
+pub use edbg::AvrWireProtocol;
+
 use jlink::list_jlink_devices;
 use std::{convert::TryFrom, fmt};
 use thiserror::Error;
@@ -37,6 +40,7 @@ const LOW_TARGET_VOLTAGE_WARNING_THRESHOLD: f32 = 1.4;
 pub enum WireProtocol {
     Swd,
     Jtag,
+    Avr(edbg::AvrWireProtocol),
 }
 
 impl fmt::Display for WireProtocol {
@@ -44,6 +48,7 @@ impl fmt::Display for WireProtocol {
         match self {
             WireProtocol::Swd => write!(f, "SWD"),
             WireProtocol::Jtag => write!(f, "JTAG"),
+            WireProtocol::Avr(p) => p.fmt(f),
         }
     }
 }
@@ -55,10 +60,16 @@ impl std::str::FromStr for WireProtocol {
         match &s.to_ascii_lowercase()[..] {
             "swd" => Ok(WireProtocol::Swd),
             "jtag" => Ok(WireProtocol::Jtag),
-            _ => Err(format!(
-                "'{}' is not a valid protocol. Choose from [swd, jtag].",
-                s
-            )),
+            s => {
+                if let Ok(p) = edbg::AvrWireProtocol::from_str(s) {
+                    Ok(WireProtocol::Avr(p))
+                } else {
+                    Err(format!(
+                        "'{}' is not a valid protocol. Choose from [swd, jtag].",
+                        s
+                    ))
+                }
+            }
         }
     }
 }
@@ -198,6 +209,7 @@ impl Probe {
         {
             list.extend(ftdi::list_ftdi_devices());
         }
+        list.extend(edbg::tools::list_edbg_devices());
         list.extend(stlink::tools::list_stlink_devices());
 
         list.extend(list_jlink_devices());
@@ -209,6 +221,11 @@ impl Probe {
     /// `Probe::list_all()` function to get the information
     /// about all probes available.
     pub fn open(selector: impl Into<DebugProbeSelector> + Clone) -> Result<Self, DebugProbeError> {
+        match edbg::EDBG::new_from_selector(selector.clone()) {
+            Ok(link) => return Ok(Probe::from_specific_probe(link)),
+            Err(DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::NotFound)) => {}
+            Err(e) => return Err(e),
+        };
         match cmsisdap::CmsisDap::new_from_selector(selector.clone()) {
             Ok(link) => return Ok(Probe::from_specific_probe(link)),
             Err(DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::NotFound)) => {}
@@ -400,13 +417,15 @@ impl Probe {
         self.inner.has_avr_interface()
     }
 
-    pub fn into_avr_interface(
+    pub fn try_into_avr_interface(
         self,
-    ) -> Result<Option<AvrCommunicationInterface>, DebugProbeError> {
+    ) -> Result<AvrCommunicationInterface, (Self, DebugProbeError)> {
         if !self.attached {
-            Err(DebugProbeError::NotAttached)
+            Err((self, DebugProbeError::NotAttached))
         } else {
-            self.inner.get_avr_interface()
+            self.inner
+                .try_get_avr_interface()
+                .map_err(|(probe, err)| (Probe::from_attached_probe(probe), err))
         }
     }
 
@@ -517,6 +536,7 @@ pub trait DebugProbe: Send + fmt::Debug {
             self.into_probe(),
             DebugProbeError::InterfaceNotAvailable("AVR"),
         ))
+    }
 
     /// Get the dedicated interface to debug RISCV chips. Ensure that the
     /// probe actually supports this by calling [DebugProbe::has_riscv_interface] first.
@@ -559,6 +579,7 @@ pub trait DebugProbe: Send + fmt::Debug {
 #[derive(Debug, Clone, PartialEq)]
 pub enum DebugProbeType {
     CmsisDap,
+    EDBG,
     Ftdi,
     StLink,
     JLink,

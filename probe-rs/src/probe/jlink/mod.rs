@@ -66,6 +66,7 @@ impl JLink {
                 let jlink_interface = match protocol {
                     WireProtocol::Swd => jaylink::Interface::Swd,
                     WireProtocol::Jtag => jaylink::Interface::Jtag,
+                    WireProtocol::Avr(_) => panic!("Jlink does not support AVR protocols"),
                 };
 
                 if self.handle.available_interfaces().contains(jlink_interface) {
@@ -551,6 +552,7 @@ impl DebugProbe for JLink {
 
                 // We are ready to debug.
             }
+            WireProtocol::Avr(_) => panic!("Jlink does not support AVR protocols"),
         }
 
         log::debug!("Attached succesfully");

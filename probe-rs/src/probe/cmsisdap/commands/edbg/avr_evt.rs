@@ -1,7 +1,6 @@
 use super::super::{Category, Request, Response, Result};
 use scroll::{Pread, LE};
 
-
 pub struct AvrEventRequest;
 
 impl Request for AvrEventRequest {
@@ -17,10 +16,9 @@ pub struct AvrEventResponse {
 }
 impl Response for AvrEventResponse {
     fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self> {
-        let size: u16 = buffer.pread_with(offset, LE)
-                .expect("Failed to read size");
-        Ok(AvrEventResponse{
-            events: buffer[offset+2..offset+ 2+ size as usize].to_vec(),
+        let size: u16 = buffer.pread_with(offset, LE).expect("Failed to read size");
+        Ok(AvrEventResponse {
+            events: buffer[offset + 2..offset + 2 + size as usize].to_vec(),
         })
     }
 }

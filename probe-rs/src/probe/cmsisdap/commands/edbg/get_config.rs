@@ -1,7 +1,6 @@
 use super::super::{Category, Request, Response, Result};
-use scroll::{Pread, LE};
 use anyhow::anyhow;
-
+use scroll::{Pread, LE};
 
 pub struct EdbgGetConfigRequest {
     pub count: u8,
@@ -14,8 +13,8 @@ impl Request for EdbgGetConfigRequest {
 
     fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize> {
         buffer[offset] = self.count;
-        buffer[offset+1] = self.config_id;
-        buffer[offset+2] = self.parameter;
+        buffer[offset + 1] = self.config_id;
+        buffer[offset + 2] = self.parameter;
 
         Ok(3)
     }
@@ -34,15 +33,14 @@ impl Response for EdbgGetConfigResponse {
     fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self> {
         let status = buffer[offset];
         if status == 0 {
-            let size: u16 = buffer.pread_with(offset+1, LE)
+            let size: u16 = buffer
+                .pread_with(offset + 1, LE)
                 .expect("Failed to read size");
-            Ok(EdbgGetConfigResponse{
-                config_packets: buffer[offset+3 .. offset+3+size as usize].to_vec()
+            Ok(EdbgGetConfigResponse {
+                config_packets: buffer[offset + 3..offset + 3 + size as usize].to_vec(),
             })
-        }
-        else {
+        } else {
             Err(anyhow!("GET_CONFIG failed"))
         }
     }
 }
-
