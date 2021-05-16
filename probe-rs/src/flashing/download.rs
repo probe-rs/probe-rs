@@ -1,6 +1,6 @@
 use object::{
-    elf::FileHeader32, elf::PT_LOAD, read::elf::FileHeader, read::elf::ProgramHeader, Bytes,
-    Endianness, Object, ObjectSection,
+    elf::FileHeader32, elf::PT_LOAD, read::elf::FileHeader, read::elf::ProgramHeader, Endianness,
+    Object, ObjectSection,
 };
 
 use std::{fs::File, path::Path, str::FromStr};
@@ -179,7 +179,7 @@ pub(super) fn extract_from_elf<'data>(
         _ => return Err(FileDownloadError::Object("Unsupported file type")),
     }
 
-    let elf_header = FileHeader32::<Endianness>::parse(Bytes(elf_data))?;
+    let elf_header = FileHeader32::<Endianness>::parse(elf_data)?;
 
     let binary = object::read::elf::ElfFile::<FileHeader32<Endianness>>::parse(elf_data)?;
 
@@ -187,7 +187,7 @@ pub(super) fn extract_from_elf<'data>(
 
     let mut extracted_sections = 0;
 
-    for segment in elf_header.program_headers(elf_header.endian()?, Bytes(elf_data))? {
+    for segment in elf_header.program_headers(elf_header.endian()?, elf_data)? {
         // Get the physical address of the segment. The data will be programmed to that location.
         let p_paddr: u64 = segment.p_paddr(endian).into();
 
@@ -196,7 +196,7 @@ pub(super) fn extract_from_elf<'data>(
         let flags = segment.p_flags(endian);
 
         let segment_data = segment
-            .data(endian, Bytes(elf_data))
+            .data(endian, elf_data)
             .map_err(|_| FileDownloadError::Object("Failed to access data for an ELF segment."))?;
 
         let mut elf_section = Vec::new();
