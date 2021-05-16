@@ -1022,10 +1022,10 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         }
                     }
                 }
-                gimli::DW_TAG_variant //variant is a child of a structure, and one of them should have a discriminant value to match the DW_TAG_variant_part 
+                gimli::DW_TAG_variant // variant is a child of a structure, and one of them should have a discriminant value to match the DW_TAG_variant_part 
                 => {
                     let mut child_variable = Variable::new();
-                    //We need to do this here, to identify "default" variants for when the rust lang compiler doesn't encode them explicitly ... only by absence of a DW_AT_discr_value
+                    // We need to do this here, to identify "default" variants for when the rust lang compiler doesn't encode them explicitly ... only by absence of a DW_AT_discr_value
                     self.extract_variant_discriminant(&child_node, &mut child_variable, core, frame_base)?;
                     self.process_tree_node_attributes(&mut child_node, parent_variable, &mut child_variable, core, frame_base, program_counter)?;
                     child_variable.memory_location = parent_variable.memory_location; //Pass it along through intermediate nodes
@@ -1034,7 +1034,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     child_variable.extract_value(core);
                     parent_variable.add_child_variable(&mut child_variable);
                 }
-                gimli::DW_TAG_template_type_parameter => {  //The parent node for Rust generic type parameter
+                gimli::DW_TAG_template_type_parameter => {  // TODO: WIP The parent node for Rust generic type parameter
                     // Recursively process each node, but pass the parent_variable so that new children are caught despite missing these tags.
                     // println!("\n\nEncountered a Template type parameter node {:?}", child_node.entry().tag().static_string());
                     // _print_all_attributes(core, Some(frame_base), &self.debug_info.dwarf, &self.unit, &child_node.entry(), 1 );
@@ -1047,7 +1047,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     child_variable.extract_value(core);
                     parent_variable.add_child_variable(&mut child_variable);
                 }
-                gimli::DW_TAG_formal_parameter => { //Parameters for DW_TAG_inlined_subroutine
+                gimli::DW_TAG_formal_parameter => { // TODO: WIP Parameters for DW_TAG_inlined_subroutine
                 // DW_AT_location: Expression: Piece { size_in_bits: None, bit_offset: None, location: Address { address: 2001fe58 } }
                 // DW_AT_abstract_origin: print_all_attributes UnitRef(UnitOffset(15182))                    
                     // let mut child_variable = Variable::new();
@@ -1058,7 +1058,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     // parent_variable.add_child_variable(&mut child_variable);
                     self.process_tree(child_node, parent_variable, core, frame_base, program_counter)?;
                 }
-                gimli::DW_TAG_inlined_subroutine => {
+                gimli::DW_TAG_inlined_subroutine => { // TODO: WIP Inlined subroutines
                     // let mut child_variable = Variable::new();
                     // self.process_tree_node_attributes(&mut child_node, parent_variable, &mut child_variable, core, frame_base)?;
                     // // Recursively process each child.
@@ -1067,7 +1067,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     // parent_variable.add_child_variable(&mut child_variable);
                     self.process_tree(child_node, parent_variable, core, frame_base, program_counter)?;
                 }
-                gimli::DW_TAG_lexical_block => { //Determine the low and high ranges for which this DIE and children are in scope
+                gimli::DW_TAG_lexical_block => { // Determine the low and high ranges for which this DIE and children are in scope
                     let low_pc = if let Ok(Some(low_pc_attr))
                         = child_node.entry().attr(gimli::DW_AT_low_pc) {
                             match low_pc_attr.value() {
@@ -1109,7 +1109,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         }
 
                 }
-                gimli::DW_TAG_subrange_type
+                gimli::DW_TAG_subrange_type // TODO: WIP subrange types
                 => {
                     // println!("\n\nEncountered a TODO node {:?}", child_node.entry().tag().static_string());
                     // _print_all_attributes(core, Some(frame_base), &self.debug_info.dwarf, &self.unit, &child_node.entry(), 1 );
@@ -1125,7 +1125,6 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
         Ok(())
     }
 
-    //TODO: Need to limit this to the variables that are in-scope. Currently it brings back all the variables for a function unit, even if the `program_counter` has not reached that point yet.
     fn get_function_variables(
         &self,
         core: &mut Core<'_>,
