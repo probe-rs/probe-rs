@@ -191,12 +191,26 @@ pub struct SourceLocation {
     pub directory: Option<PathBuf>,
 }
 
+#[derive(Debug, Clone)]
+enum InlineFunctionState {
+    /// We are at the state where the function was inlined.
+    InlinedCallSite {
+        call_line: Option<u64>,
+        call_file: Option<String>,
+        call_directory: Option<PathBuf>,
+        call_column: Option<u64>,
+    },
+    /// Not handling anything related to inlining.
+    NoInlining,
+}
+
 pub struct StackFrameIterator<'debuginfo, 'probe, 'core> {
     debug_info: &'debuginfo DebugInfo,
     core: &'core mut Core<'probe>,
     frame_count: u64,
     pc: Option<u64>,
     registers: Registers,
+    inlining_state: InlineFunctionState,
 }
 
 impl<'debuginfo, 'probe, 'core> StackFrameIterator<'debuginfo, 'probe, 'core> {
@@ -214,6 +228,7 @@ impl<'debuginfo, 'probe, 'core> StackFrameIterator<'debuginfo, 'probe, 'core> {
             frame_count: 0,
             pc: Some(pc),
             registers,
+            inlining_state: InlineFunctionState::NoInlining,
         }
     }
 }
@@ -232,6 +247,137 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
                 debug!("Unable to determine next frame, program counter is zero");
                 return None;
             }
+        };
+
+        log::debug!("StackFrame: Unwinding at address {:#010x}", pc);
+
+        // Find function information, to check if we are in an inlined function.
+
+        let inline_call_site = match self.inlining_state {
+            InlineFunctionState::InlinedCallSite { .. } => true,
+            InlineFunctionState::NoInlining => false,
+        };
+
+        if inline_call_site {
+            log::debug!("At call site of inlined function.");
+        }
+
+        let mut in_inlined_function = false;
+
+        let mut inline_call_site_info = None;
+
+        if !inline_call_site {
+            let mut units = self.debug_info.get_units();
+            while let Some(unit_info) = self.debug_info.get_next_unit_info(&mut units) {
+                if let Some(die_cursor_state) = &mut unit_info.get_function_die(pc, true) {
+                    if die_cursor_state.is_inline {
+                        // Add a 'virtual' stack frame, for the inlined call.
+                        // For this, we need the following attributes:
+                        //
+                        // - DW_AT_call_file
+                        // - DW_AT_call_line
+                        // - DW_AT_call_column
+
+                        let call_column = die_cursor_state
+                            .get_attribute(gimli::DW_AT_call_column)
+                            .and_then(|attr| attr.udata_value());
+
+                        let call_file_index = die_cursor_state
+                            .get_attribute(gimli::DW_AT_call_file)
+                            .and_then(|attr| attr.udata_value());
+
+                        let call_line = die_cursor_state
+                            .get_attribute(gimli::DW_AT_call_line)
+                            .and_then(|attr| attr.udata_value());
+
+                        let (call_file, call_directory) = match call_file_index {
+                            Some(0) => (None, None),
+                            Some(n) => {
+                                // Lookup source file in the line number information table.
+
+                                if let Some(header) = unit_info
+                                    .unit
+                                    .line_program
+                                    .as_ref()
+                                    .map(|line_program| line_program.header())
+                                {
+                                    if let Some(file_entry) = header.file(n) {
+                                        let path_name = file_entry.path_name();
+
+                                        let directory = file_entry.directory(header);
+
+                                        let path_name = std::str::from_utf8(
+                                            &self
+                                                .debug_info
+                                                .dwarf
+                                                .attr_string(&unit_info.unit, path_name)
+                                                .unwrap(),
+                                        )
+                                        .unwrap()
+                                        .to_owned();
+
+                                        let complete_path: PathBuf = match directory {
+                                            None => path_name.into(),
+                                            Some(dir) => {
+                                                let mut dir_string: PathBuf = std::str::from_utf8(
+                                                    &self
+                                                        .debug_info
+                                                        .dwarf
+                                                        .attr_string(&unit_info.unit, dir)
+                                                        .unwrap(),
+                                                )
+                                                .unwrap()
+                                                .to_owned()
+                                                .into();
+
+                                                dir_string.push(path_name);
+
+                                                dir_string
+                                            }
+                                        };
+
+                                        let file_name = complete_path
+                                            .file_name()
+                                            .map(|name| name.to_string_lossy().into_owned());
+
+                                        let directory =
+                                            complete_path.parent().map(|p| p.to_path_buf());
+
+                                        (file_name, directory)
+                                    } else {
+                                        (None, None)
+                                    }
+                                } else {
+                                    (None, None)
+                                }
+                            }
+                            None => (None, None),
+                        };
+
+                        self.inlining_state = InlineFunctionState::InlinedCallSite {
+                            call_column,
+                            call_file,
+                            call_line,
+                            call_directory,
+                        };
+
+                        log::debug!(
+                            "Current function {:?} is inlined at: {:?}",
+                            die_cursor_state.function_name(&unit_info),
+                            self.inlining_state
+                        );
+                        in_inlined_function = true;
+                        break;
+                    } else {
+                        // No inlined function
+                        break;
+                    }
+                }
+            }
+        } else {
+            inline_call_site_info = Some(self.inlining_state.clone());
+            // Reset inlining state
+            self.inlining_state = InlineFunctionState::NoInlining;
         };
 
         let unwind_info = self.debug_info.frame_section.unwind_info_for_address(
@@ -274,55 +420,85 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
             debug!("Current CFA: {:#x}", cfa);
         }
 
-        // generate previous registers
-        for i in 0..16 {
-            if i == 13 {
-                continue;
-            }
-            use gimli::read::RegisterRule::*;
+        if !in_inlined_function {
+            // generate previous registers
+            for i in 0..16 {
+                if i == 13 {
+                    continue;
+                }
+                use gimli::read::RegisterRule::*;
 
-            let register_rule = unwind_info.register(gimli::Register(i as u16));
+                let register_rule = unwind_info.register(gimli::Register(i as u16));
 
-            log::trace!("Register {}: {:?}", i, &register_rule);
+                log::trace!("Register {}: {:?}", i, &register_rule);
 
-            self.registers[i] = match register_rule {
-                Undefined => {
-                    // If we get undefined for the LR register (register 14) or any callee saved register,
-                    // we assume that it is unchanged. Gimli doesn't allow us
-                    // to distinguish if  a rule is not present or actually set to Undefined
-                    // in the call frame information.
+                self.registers[i] = match register_rule {
+                    Undefined => {
+                        // If we get undefined for the LR register (register 14) or any callee saved register,
+                        // we assume that it is unchanged. Gimli doesn't allow us
+                        // to distinguish if  a rule is not present or actually set to Undefined
+                        // in the call frame information.
 
-                    match i {
-                        4 | 5 | 6 | 7 | 8 | 10 | 11 | 14 => self.registers[i],
-                        15 => Some(pc as u32),
-                        _ => None,
+                        match i {
+                            4 | 5 | 6 | 7 | 8 | 10 | 11 | 14 => self.registers[i],
+                            15 => Some(pc as u32),
+                            _ => None,
+                        }
                     }
+                    SameValue => self.registers[i],
+                    Offset(o) => {
+                        let addr = i64::from(current_cfa.unwrap()) + o;
+
+                        let mut buff = [0u8; 4];
+                        self.core.read_8(addr as u32, &mut buff).unwrap();
+
+                        let val = u32::from_le_bytes(buff);
+
+                        debug!("reg[{: >}] @ {:#010x} = {:#08x}", i, addr, val);
+
+                        Some(val)
+                    }
+                    _ => unimplemented!(),
                 }
-                SameValue => self.registers[i],
-                Offset(o) => {
-                    let addr = i64::from(current_cfa.unwrap()) + o;
-                    let mut buff = [0u8; 4];
-                    self.core.read_8(addr as u32, &mut buff).unwrap();
-
-                    let val = u32::from_le_bytes(buff);
-
-                    debug!("reg[{: >}]={:#08x}", i, val);
-
-                    Some(val)
-                }
-                _ => unimplemented!(),
             }
-        }
 
-        self.registers.set_call_frame_address(current_cfa);
+            self.registers.set_call_frame_address(current_cfa);
+        }
 
         let return_frame = match self.debug_info.get_stackframe_info(
             &mut self.core,
             pc,
             self.frame_count,
             self.registers.clone(),
+            in_inlined_function,
         ) {
-            Ok(frame) => Some(frame),
+            Ok(mut frame) => {
+                if let Some(InlineFunctionState::InlinedCallSite {
+                    call_line,
+                    call_column,
+                    call_file,
+                    call_directory,
+                }) = inline_call_site_info
+                {
+                    // Update location to match call site
+
+                    frame.source_location = Some(SourceLocation {
+                        line: call_line,
+                        column: call_column.map(|c| {
+                            if c == 0 {
+                                ColumnType::LeftEdge
+                            } else {
+                                ColumnType::Column(c)
+                            }
+                        }),
+                        file: call_file,
+                        directory: call_directory,
+                    })
+                }
+
+                Some(frame)
+            }
+
             Err(e) => {
                 log::warn!("Unable to get stack frame information: {}", e);
                 None
@@ -331,12 +507,16 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
 
         self.frame_count += 1;
 
-        // Next function is where our current return register is pointing to.
-        // We just have to remove the lowest bit (indicator for Thumb mode).
-        //
-        // We also have to subtract one, as we want the calling instruction for
-        // a backtrace, not the next instruction to be executed.
-        self.pc = self.registers[14].map(|pc| u64::from(pc & !1) - 1);
+        if !in_inlined_function {
+            // Next function is where our current return register is pointing to.
+            // We just have to remove the lowest bit (indicator for Thumb mode).
+            //
+            // We also have to subtract one, as we want the calling instruction for
+            // a backtrace, not the next instruction to be executed.
+            self.pc = self.registers[14].map(|pc| u64::from(pc & !1));
+
+            log::debug!("Called from pc={:#010x?}", self.pc);
+        }
 
         return_frame
     }
@@ -401,11 +581,11 @@ impl DebugInfo {
         })
     }
 
-    pub fn function_name(&self, address: u64) -> Option<String> {
+    pub fn function_name(&self, address: u64, find_inlined: bool) -> Option<String> {
         let mut units = self.dwarf.units();
 
         while let Some(unit_info) = self.get_next_unit_info(&mut units) {
-            if let Some(die_cursor_state) = &mut unit_info.get_function_die(address) {
+            if let Some(die_cursor_state) = &mut unit_info.get_function_die(address, find_inlined) {
                 let function_name = die_cursor_state.function_name(&unit_info);
 
                 if function_name.is_some() {
@@ -415,6 +595,50 @@ impl DebugInfo {
         }
 
         None
+    }
+
+    pub fn all_function_names(&self, address: u64, find_inlined: bool) -> Vec<String> {
+        let mut units = self.dwarf.units();
+
+        let mut names = Vec::new();
+
+        while let Some(unit_info) = self.get_next_unit_info(&mut units) {
+            let unit_name = unit_info
+                .unit
+                .name
+                .as_ref()
+                .map(|name| std::str::from_utf8(name).unwrap());
+
+            println!("Unit: {}", unit_name.unwrap_or("<unknown_unit>"));
+
+            let mut ranges = unit_info
+                .debug_info
+                .dwarf
+                .unit_ranges(&unit_info.unit)
+                .unwrap();
+
+            while let Some(range) = ranges.next().unwrap() {
+                if range.begin <= address && address < range.end {
+                    println!(
+                        "\tMatching range: {:#010x} - {:#010x}",
+                        range.begin, range.end
+                    );
+
+                    let function_dies = unit_info.get_all_function_dies(address, find_inlined);
+
+                    for die in function_dies {
+                        let function_name = die.function_name(&unit_info);
+
+                        if let Some(name) = function_name {
+                            println!("\t\tFunction: {}", name);
+                            names.push(name);
+                        }
+                    }
+                }
+            }
+        }
+
+        names
     }
 
     /// Try get the [`SourceLocation`] for a given address.
@@ -535,14 +759,19 @@ impl DebugInfo {
         address: u64,
         frame_count: u64,
         registers: Registers,
+        inlined_function: bool,
     ) -> Result<StackFrame, DebugError> {
         let mut units = self.get_units();
         let unknown_function = format!("<unknown_function_{}>", frame_count);
         while let Some(unit_info) = self.get_next_unit_info(&mut units) {
-            if let Some(die_cursor_state) = &mut unit_info.get_function_die(address) {
+            if let Some(die_cursor_state) =
+                &mut unit_info.get_function_die(address, inlined_function)
+            {
                 let function_name = die_cursor_state
                     .function_name(&unit_info)
                     .unwrap_or(unknown_function);
+
+                log::debug!("Function name: {}", function_name);
 
                 let variables = unit_info.get_function_variables(
                     core,
@@ -741,7 +970,7 @@ impl<'debugunit, 'abbrev, 'unit: 'debugunit> FunctionDie<'abbrev, 'unit> {
                     abstract_die: None,
                 }
             }
-            other_tag => panic!("FunctionDie has to has to have Tag xxx or xxx, but tag is {:?}. This is a bug, please report it.", other_tag)
+            other_tag => panic!("FunctionDie has to has to have Tag DW_TAG_subprogram, but tag is {:?}. This is a bug, please report it.", other_tag.static_string())
         }
     }
 
@@ -759,7 +988,7 @@ impl<'debugunit, 'abbrev, 'unit: 'debugunit> FunctionDie<'abbrev, 'unit> {
                     abstract_die: Some(abstract_die),
                 }
             }
-            other_tag => panic!("FunctionDie has to has to have Tag xxx or xxx, but tag is {:?}. This is a bug, please report it.", other_tag)
+            other_tag => panic!("FunctionDie has to has to have Tag DW_TAG_inlined_subroutine, but tag is {:?}. This is a bug, please report it.", other_tag.static_string())
         }
     }
 
@@ -807,14 +1036,14 @@ struct UnitInfo<'debuginfo> {
 
 impl<'debuginfo> UnitInfo<'debuginfo> {
     /// Get the DIE for the function containing the given address.
-    fn get_function_die(&self, address: u64) -> Option<FunctionDie> {
-        log::debug!("Searching Function DIE for address {:#010x}", address);
+    fn get_function_die(&self, address: u64, find_inlined: bool) -> Option<FunctionDie> {
+        log::trace!("Searching Function DIE for address {:#010x}", address);
 
         let mut entries_cursor = self.unit.entries();
 
         while let Ok(Some((_depth, current))) = entries_cursor.next_dfs() {
             match current.tag() {
-                gimli::DW_TAG_subprogram | gimli::DW_TAG_inlined_subroutine => {
+                gimli::DW_TAG_subprogram => {
                     let mut ranges = self
                         .debug_info
                         .dwarf
@@ -825,9 +1054,29 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         if (ranges.begin <= address) && (address < ranges.end) {
                             // Check if we are actually in an inlined function
 
-                            return self
-                                .find_inlined_function(address, current.offset())
-                                .or_else(|| Some(FunctionDie::new(current.clone())));
+                            if find_inlined {
+                                let die = FunctionDie::new(current.clone());
+
+                                //log::debug!(
+                                println!(
+                                    "Found DIE, now checking for inlined functions: name={:?}",
+                                    die.function_name(&self)
+                                );
+
+                                return self
+                                    .find_inlined_function(address, current.offset())
+                                    .or_else(|| {
+                                        log::debug!("No inlined function found!");
+                                        Some(FunctionDie::new(current.clone()))
+                                    });
+                            } else {
+                                let die = FunctionDie::new(current.clone());
+
+                                //log::debug!("Found DIE: name={:?}", die.function_name(&self));
+                                println!("Found DIE: name={:?}", die.function_name(&self));
+
+                                return Some(die);
+                            }
                         }
                     }
                 }
@@ -837,16 +1086,65 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
         None
     }
 
-    fn find_inlined_function(&self, address: u64, offset: UnitOffset) -> Option<FunctionDie> {
-        println!("Checking in children!");
+    fn get_all_function_dies(&self, address: u64, find_inlined: bool) -> Vec<FunctionDie> {
+        log::trace!("Searching Function DIE for address {:#010x}", address);
 
+        let mut dies = Vec::new();
+
+        let mut entries_cursor = self.unit.entries();
+
+        while let Ok(Some((_depth, current))) = entries_cursor.next_dfs() {
+            match current.tag() {
+                gimli::DW_TAG_subprogram => {
+                    let mut ranges = self
+                        .debug_info
+                        .dwarf
+                        .die_ranges(&self.unit, &current)
+                        .unwrap();
+
+                    while let Ok(Some(ranges)) = ranges.next() {
+                        if (ranges.begin <= address) && (address < ranges.end) {
+                            // Check if we are actually in an inlined function
+
+                            if find_inlined {
+                                let die = FunctionDie::new(current.clone());
+
+                                log::debug!(
+                                    "Found DIE, now checking for inlined functions: name={:?}",
+                                    die.function_name(&self)
+                                );
+
+                                let die = self
+                                    .find_inlined_function(address, current.offset())
+                                    .unwrap_or_else(|| {
+                                        log::debug!("No inlined function found!");
+                                        FunctionDie::new(current.clone())
+                                    });
+
+                                dies.push(die);
+                            } else {
+                                let die = FunctionDie::new(current.clone());
+
+                                log::debug!("Found DIE: name={:?}", die.function_name(&self));
+
+                                dies.push(die);
+                            }
+                        }
+                    }
+                }
+                _ => (),
+            };
+        }
+        dies
+    }
+
+    fn find_inlined_function(&self, address: u64, offset: UnitOffset) -> Option<FunctionDie> {
         let mut current_depth = 0;
 
         let mut cursor = self.unit.entries_at_offset(offset).unwrap();
 
         while let Ok(Some((depth, current))) = cursor.next_dfs() {
             current_depth += depth;
-            println!("\tCurrent depth: {}", current_depth);
 
             if current_depth < 0 {
                 break;

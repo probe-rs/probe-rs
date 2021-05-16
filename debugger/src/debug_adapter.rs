@@ -645,25 +645,35 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
 
                             let sl = frame.source_location.as_ref().unwrap();
 
-                            let mut path: PathBuf = sl.directory.as_ref().unwrap().into();
+                            let mut path: Option<PathBuf> = sl.directory.as_ref().map(|path| {
+                                if path.is_relative() {
+                                    std::env::current_dir().unwrap().join(path)
+                                } else {
+                                    path.to_owned()
+                                }
+                            });
 
-                            if path.is_relative() {
-                                path = std::env::current_dir().unwrap().join(path);
+                            if let Some(path) = &mut path {
+                                if let Some(file) = &sl.file {
+                                    path.push(file);
+                                }
                             }
 
-                            path.push(sl.file.as_ref().unwrap());
-
                             //TODO: Consider implementing RTIC's expanded source access. Might also do a general macro expansion if that makes sense.
-                            let source = Some(Source {
-                                name: Some(sl.file.clone().unwrap()),
-                                path: path.to_str().map(|s| s.to_owned()),
-                                source_reference: None,
-                                presentation_hint: None,
-                                origin: None,
-                                sources: None,
-                                adapter_data: None,
-                                checksums: None,
-                            });
+                            let source = if path.is_some() {
+                                Some(Source {
+                                    name: sl.file.clone(),
+                                    path: path.map(|p| p.to_string_lossy().to_string()),
+                                    source_reference: None,
+                                    presentation_hint: None,
+                                    origin: None,
+                                    sources: None,
+                                    adapter_data: None,
+                                    checksums: None,
+                                })
+                            } else {
+                                None
+                            };
 
                             let line = frame
                                 .source_location
