@@ -89,6 +89,9 @@ struct Dependency<'p> {
 }
 
 impl<'p> Dependency<'p> {
+    // as of Rust 1.52.1 this path looks like this on Linux
+    // /home/some-user/.cargo/registry/src/github.com-0123456789abcdef/crate-name-0.1.2/src/lib.rs
+    // on Windows the `/home/some-user` part becomes something else
     fn from_path(path: &'p Path) -> Option<Self> {
         if !path.is_absolute() {
             return None;
