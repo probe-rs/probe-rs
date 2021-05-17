@@ -462,7 +462,7 @@ impl<'probe> CoreInterface for M0<'probe> {
         Ok(())
     }
 
-    fn set_breakpoint(&mut self, bp_register_index: usize, addr: u32) -> Result<(), Error> {
+    fn set_hw_breakpoint(&mut self, bp_register_index: usize, addr: u32) -> Result<(), Error> {
         debug!("Setting breakpoint on address 0x{:08x}", addr);
 
         // The highest 3 bits of the address have to be zero, otherwise the breakpoint cannot
@@ -493,7 +493,7 @@ impl<'probe> CoreInterface for M0<'probe> {
         &ARM_REGISTER_FILE
     }
 
-    fn clear_breakpoint(&mut self, bp_unit_index: usize) -> Result<(), Error> {
+    fn clear_hw_breakpoint(&mut self, bp_unit_index: usize) -> Result<(), Error> {
         let register_addr = BpCompx::ADDRESS + (bp_unit_index * size_of::<u32>()) as u32;
 
         let mut value = BpCompx::from(0);
@@ -579,7 +579,7 @@ impl<'probe> CoreInterface for M0<'probe> {
         Ok(())
     }
 
-    fn get_hw_breakpoints(&mut self) -> Result<Vec<u32>, Error> {
+    fn get_hw_breakpoints(&mut self) -> Result<Vec<Option<u32>>, Error> {
         todo!()
     }
 }

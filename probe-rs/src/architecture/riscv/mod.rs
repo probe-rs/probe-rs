@@ -371,7 +371,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         Ok(())
     }
 
-    fn set_breakpoint(&mut self, bp_unit_index: usize, addr: u32) -> Result<(), crate::Error> {
+    fn set_hw_breakpoint(&mut self, bp_unit_index: usize, addr: u32) -> Result<(), crate::Error> {
         // select requested trigger
         let tselect = 0x7a0;
         let tdata1 = 0x7a1;
@@ -409,7 +409,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         Ok(())
     }
 
-    fn clear_breakpoint(&mut self, unit_index: usize) -> Result<(), crate::Error> {
+    fn clear_hw_breakpoint(&mut self, unit_index: usize) -> Result<(), crate::Error> {
         let tselect = 0x7a0;
         let tdata1 = 0x7a1;
         let tdata2 = 0x7a2;
@@ -471,7 +471,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         }
     }
 
-    fn get_hw_breakpoints(&mut self) -> Result<Vec<u32>, Error> {
+    fn get_hw_breakpoints(&mut self) -> Result<Vec<Option<u32>>, Error> {
         todo!()
     }
 }

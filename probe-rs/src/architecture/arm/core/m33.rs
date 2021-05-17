@@ -235,7 +235,7 @@ impl<'probe> CoreInterface for M33<'probe> {
         Ok(())
     }
 
-    fn set_breakpoint(&mut self, bp_unit_index: usize, addr: u32) -> Result<(), Error> {
+    fn set_hw_breakpoint(&mut self, bp_unit_index: usize, addr: u32) -> Result<(), Error> {
         let mut val = FpCompX::from(0);
 
         // clear bits which cannot be set and shift into position
@@ -255,7 +255,7 @@ impl<'probe> CoreInterface for M33<'probe> {
         &ARM_REGISTER_FILE
     }
 
-    fn clear_breakpoint(&mut self, bp_unit_index: usize) -> Result<(), Error> {
+    fn clear_hw_breakpoint(&mut self, bp_unit_index: usize) -> Result<(), Error> {
         let mut val = FpCompX::from(0);
         val.set_enable(false);
         val.set_bp_addr(0);
@@ -333,7 +333,7 @@ impl<'probe> CoreInterface for M33<'probe> {
         Ok(CoreStatus::Running)
     }
 
-    fn get_hw_breakpoints(&mut self) -> Result<Vec<u32>, Error> {
+    fn get_hw_breakpoints(&mut self) -> Result<Vec<Option<u32>>, Error> {
         todo!()
     }
 }

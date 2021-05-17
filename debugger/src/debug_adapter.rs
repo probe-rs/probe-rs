@@ -517,7 +517,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                 if let Some(location) = source_location {
                     let (verified, reason_msg) =
                         match core_data.target_core.set_hw_breakpoint(location as u32) {
-                            Ok(_) => (true, None),
+                            Ok(_) => (true, Some(format!("Breakpoint at memory address: 0x{:08x}", location))),
                             Err(err) => (false, Some(err.to_string())),
                         };
 
