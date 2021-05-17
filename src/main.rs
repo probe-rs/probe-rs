@@ -539,11 +539,12 @@ fn notmain() -> anyhow::Result<i32> {
 
     print_separator();
 
+    let halted_due_to_signal = exit.load(Ordering::Relaxed);
     let backtrace_settings = backtrace::Settings {
         current_dir: &current_dir,
         max_backtrace_len,
         // TODO any other cases in which we should force a backtrace?
-        force_backtrace: force_backtrace || canary_touched,
+        force_backtrace: force_backtrace || canary_touched || halted_due_to_signal,
     };
 
     let outcome = backtrace::print(
