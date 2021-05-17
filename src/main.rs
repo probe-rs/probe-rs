@@ -92,6 +92,10 @@ struct Opts {
     #[structopt(long, default_value = "50")]
     max_backtrace_len: u32,
 
+    /// Whether to compress the paths to crates.io dependencies
+    #[structopt(long)]
+    compress_cratesio_dep_paths: bool,
+
     /// Arguments passed after the ELF file path are discarded
     #[structopt(name = "REST")]
     _rest: Vec<String>,
@@ -136,6 +140,7 @@ fn notmain() -> anyhow::Result<i32> {
 
     let force_backtrace = opts.force_backtrace;
     let max_backtrace_len = opts.max_backtrace_len;
+    let compress_cratesio_dep_paths = opts.compress_cratesio_dep_paths;
     let elf_path = opts.elf.as_deref().unwrap();
     let chip = opts.chip.as_deref().unwrap();
     let bytes = fs::read(elf_path)?;
@@ -545,6 +550,7 @@ fn notmain() -> anyhow::Result<i32> {
         max_backtrace_len,
         // TODO any other cases in which we should force a backtrace?
         force_backtrace: force_backtrace || canary_touched || halted_due_to_signal,
+        compress_cratesio_dep_paths,
     };
 
     let outcome = backtrace::print(
