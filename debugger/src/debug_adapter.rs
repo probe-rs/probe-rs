@@ -710,7 +710,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                                 column: None,
                                 end_column: None,
                                 end_line: None,
-                                expensive: false,
+                                expensive: true, //VSCode won't open this tree by default.
                                 indexed_variables: Some(0),
                                 name: "Registers".to_string(),
                                 presentation_hint: Some("registers".to_string()),
