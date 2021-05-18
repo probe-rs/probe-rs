@@ -1,6 +1,6 @@
 use std::path::Path;
 
-pub(crate) fn compress_cratesio_dep_path(path: &Path) -> String {
+pub(crate) fn shorten_paths(path: &Path) -> String {
     if let Some(dep) = Dependency::from_path(path) {
         format!("[{}]/{}", dep.name_version, dep.path.display())
     } else {

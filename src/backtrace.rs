@@ -13,7 +13,7 @@ pub(crate) struct Settings<'p> {
     pub(crate) current_dir: &'p Path,
     pub(crate) max_backtrace_len: u32,
     pub(crate) force_backtrace: bool,
-    pub(crate) compress_cratesio_dep_paths: bool,
+    pub(crate) shorten_paths: bool,
 }
 
 /// (virtually) unwinds the target's program and prints its backtrace

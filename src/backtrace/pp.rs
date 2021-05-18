@@ -40,8 +40,8 @@ pub(crate) fn backtrace(frames: &[Frame], settings: &Settings) {
                 println!("{}", colorized_line);
 
                 if let Some(location) = &subroutine.location {
-                    let path = if settings.compress_cratesio_dep_paths {
-                        utils::compress_cratesio_dep_path(&location.path)
+                    let path = if settings.shorten_paths {
+                        utils::shorten_paths(&location.path)
                     } else {
                         location.path.display().to_string()
                     };

@@ -93,9 +93,9 @@ struct Opts {
     #[structopt(long, default_value = "50")]
     max_backtrace_len: u32,
 
-    /// Whether to compress the paths to crates.io dependencies
+    /// Whether to shorten paths (e.g. to crates.io dependencies) in backtraces and defmt logs
     #[structopt(long)]
-    compress_cratesio_dep_paths: bool,
+    shorten_paths: bool,
 
     /// Arguments passed after the ELF file path are discarded
     #[structopt(name = "REST")]
@@ -141,7 +141,7 @@ fn notmain() -> anyhow::Result<i32> {
 
     let force_backtrace = opts.force_backtrace;
     let max_backtrace_len = opts.max_backtrace_len;
-    let compress_cratesio_dep_paths = opts.compress_cratesio_dep_paths;
+    let shorten_paths = opts.shorten_paths;
     let elf_path = opts.elf.as_deref().unwrap();
     let chip = opts.chip.as_deref().unwrap();
     let bytes = fs::read(elf_path)?;
@@ -459,8 +459,8 @@ fn notmain() -> anyhow::Result<i32> {
                                     let path =
                                         if let Ok(relpath) = loc.file.strip_prefix(&current_dir) {
                                             relpath.display().to_string()
-                                        } else if compress_cratesio_dep_paths {
-                                            utils::compress_cratesio_dep_path(&loc.file)
+                                        } else if shorten_paths {
+                                            utils::shorten_paths(&loc.file)
                                         } else {
                                             loc.file.display().to_string()
                                         };
@@ -553,7 +553,7 @@ fn notmain() -> anyhow::Result<i32> {
         max_backtrace_len,
         // TODO any other cases in which we should force a backtrace?
         force_backtrace: force_backtrace || canary_touched || halted_due_to_signal,
-        compress_cratesio_dep_paths,
+        shorten_paths,
     };
 
     let outcome = backtrace::print(
