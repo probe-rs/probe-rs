@@ -431,7 +431,7 @@ impl<'probe> Core<'probe> {
             .inner
             .get_hw_breakpoints()?
             .iter()
-            .position(|bp| bp.is_some() && bp.unwrap() == address)
+            .position(|&bp| bp == Some(address))
         {
             Some(breakpoint_comparator_index) => breakpoint_comparator_index,
             None => self.find_free_breakpoint_comparator_index()?,
