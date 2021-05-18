@@ -4,6 +4,7 @@ use crate::{
     CoreRegisterAddress,
 };
 
+use anyhow::anyhow;
 use anyhow::Result;
 
 pub trait MemoryInterface {
@@ -25,6 +26,42 @@ pub trait MemoryInterface {
 
     /// Read a block of 8bit words at `address`.
     fn read_8(&mut self, address: u32, data: &mut [u8]) -> Result<(), error::Error>;
+
+    /// Reads bytes using 32 bit memory access. Address must be 32 bit aligned
+    /// and data must be an exact multiple of 4.
+    fn read_mem_32bit(&mut self, address: u32, data: &mut [u8]) -> Result<(), error::Error> {
+        // Default implementation uses `read_32`, then converts u32 values back
+        // to bytes. Assumes target is little endian. May be overridden to
+        // provide an implementation that avoids heap allocation and endian
+        // conversions. Must be overridden for big endian targets.
+        if data.len() % 4 != 0 {
+            return Err(error::Error::Other(anyhow!(
+                "Call to read_mem_32bit with data.len() not a multiple of 4"
+            )));
+        }
+        let mut buffer = vec![0u32; data.len() / 4];
+        self.read_32(address, &mut buffer)?;
+        for (bytes, value) in data.chunks_exact_mut(4).zip(buffer.iter()) {
+            bytes.copy_from_slice(&u32::to_le_bytes(*value));
+        }
+        Ok(())
+    }
+
+    /// Read a block of 8bit words at `address`. May use 32 bit memory access,
+    /// so should only be used if reading memory locations that don't have side
+    /// effects. Generally faster than `read_8`.
+    fn read(&mut self, address: u32, data: &mut [u8]) -> Result<(), error::Error> {
+        if address % 4 == 0 && data.len() % 4 == 0 {
+            // Avoid heap allocation and copy if we don't need it.
+            self.read_mem_32bit(address, data)?;
+        } else {
+            let start_extra_count = (address % 4) as usize;
+            let mut buffer = vec![0u8; (start_extra_count + data.len() + 3) / 4 * 4];
+            self.read_mem_32bit(address - start_extra_count as u32, &mut buffer)?;
+            data.copy_from_slice(&buffer[start_extra_count..start_extra_count + data.len()]);
+        }
+        Ok(())
+    }
 
     /// Write a 32bit word at `address`.
     ///
