@@ -5,7 +5,7 @@ use std::{mem, ops::Range};
 use crate::VectorTable;
 
 pub(crate) const ADDRESS_SIZE: u8 = mem::size_of::<u32>() as u8;
-pub(crate) const EXC_RETURN_MARKER: u32 = 0xFFFF_FFF0;
+pub(crate) const EXC_RETURN_MARKER: u32 = 0xFFFF_FFE0;
 const THUMB_BIT: u32 = 1;
 // According to the ARM Cortex-M Reference Manual RAM memory must be located in this address range
 // (vendors still place e.g. Core-Coupled RAM outside this address range)
