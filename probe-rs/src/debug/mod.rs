@@ -913,6 +913,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     child_variable.name = "artificial".to_string();
                 }
                 gimli::DW_AT_discr => match attr.value() {
+                    //This calculates the active discriminant value for the VariantPart
                     gimli::AttributeValue::UnitRef(unit_ref) => {
                         let mut type_tree = self
                             .unit
@@ -945,6 +946,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                 },
                 gimli::DW_AT_discr_value => {} //Processed by extract_variant_discriminant()
                 gimli::DW_AT_byte_size => {}   //Processed by extract_byte_size()
+                gimli::DW_AT_abstract_origin => {} // TODO: DW_AT_abstract_origin attributes are only applicable to DW_TAG_subprogram (closures), and DW_TAG_inline_subroutine, and DW_TAG_formal_parameters
                 other_attribute => {
                     child_variable.set_value(format!(
                         "UNIMPLEMENTED: Variable Attribute {:?} : {:?}, with children = {}",
@@ -978,52 +980,38 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                 gimli::DW_TAG_enumerator    //possible values for enumerators, used by extract_type() when processing DW_TAG_enumeration_type
                 => {
                     let mut child_variable = Variable::new();
-                    self.process_tree_node_attributes(&mut child_node, parent_variable, &mut child_variable, core, frame_base, program_counter)?;                    
-                    if child_node.entry().attr(gimli::DW_AT_abstract_origin) == Ok(None) 
-                    && !child_variable.type_name.starts_with("PhantomData") { // Do not process PhantomData nodes
-
-                            // Recursively process each child.
-                            self.process_tree(child_node, &mut child_variable, core, frame_base, program_counter)?;
-                            child_variable.extract_value(core);
-                            parent_variable.add_child_variable(&mut child_variable);
-                    }
-                    else {
-                        //TODO: Investigate and implement DW_AT_abstract_origin variables ... warn!{"Found Abstract origin for: {:?}", parent_variable};
-                        // println!("\n\nEncountered a VARIABLE node {:?}", child_node.entry().tag().static_string());
-                        // _print_all_attributes(core, Some(frame_base), &self.debug_info.dwarf, &self.unit, &child_node.entry(), 1 );
-
+                    self.process_tree_node_attributes(&mut child_node, parent_variable, &mut child_variable, core, frame_base, program_counter)?;
+                    if !child_variable.type_name.starts_with("PhantomData") // Do not process PhantomData nodes
+                    && child_node.entry().attr(gimli::DW_AT_artificial) == Ok(None) { //We only needed these to calculate the discriminant
+                        // Recursively process each child.
+                        self.process_tree(child_node, &mut child_variable, core, frame_base, program_counter)?;
+                        child_variable.extract_value(core);
+                        parent_variable.add_child_variable(&mut child_variable);
                     }
                 }
                 gimli::DW_TAG_structure_type |
                 gimli::DW_TAG_enumeration_type  => {} //These will be processed in the extract_type recursion,
                 gimli::DW_TAG_variant_part => {
+                    // We need to recurse through the children, to find the DW_TAG_variant with discriminant matching the DW_TAG_variant, 
+                    // and ONLY add it's children to the parent variable. 
+                    // The structure looks like this (there are other nodes in the structure that we use and discard before we get here):
+                    // Level 1: --> An actual variable that has a variant value
+                    //      Level 2: --> this DW_TAG_variant_part node (some child nodes arer used to calc the active Variant discriminant)
+                    //          Level 3: --> Some DW_TAG_variant's that have discriminant values to be matched against the discriminant 
+                    //              Level 4: --> The actual variables, with matching discriminant, which will be added to `parent_variable`
+                    // TODO: Handle Level 3 nodes that belong to a DW_AT_discr_list, instead of having a discreet DW_AT_discr_value 
                     let mut child_variable = Variable::new();
                     //If there is a child with DW_AT_discr, the variable role will updated appropriately, otherwise we use 0 as the default ...
                     parent_variable.role = VariantRole::VariantPart(0);
                     self.process_tree_node_attributes(&mut child_node, parent_variable, &mut child_variable, core, frame_base, program_counter)?;
                     child_variable.memory_location = parent_variable.memory_location; //Pass it along through intermediate nodes
+                    child_variable.role = parent_variable.role.clone(); //Pass it along through intermediate nodes
                     // Recursively process each child.
                     self.process_tree(child_node, &mut child_variable, core, frame_base, program_counter)?;
-                    child_variable.extract_value(core);
-                    //We need to recurse through the children, to find the DW_TAG_variant with discriminant matching the DW_TAG_variant, 
-                    // and ONLY add it's children to the parent variable. 
-                    // The structure looks like this (there are other nodes in the structure that we use and discard before we get here):
-                    // Level 1: `parent_variable`               --> An actual variable that has a variant value
-                    // Level 2:     `child_variable`            --> this DW_TAG_variant_part node (ignore hidden children previously used to calc the active Variant discriminant)
-                    // Level 3:         `grand_child`           --> Some DW_TAG_variant's that have discriminant values to be matched against the discriminant 
-                    // Level 4:             `active_child`      --> The actual variables, with matching discriminant, which will be added to `parent_variable`
-                    // TODO: Handle Level 3 nodes that belong to a DW_AT_discr_list, instead of having a discreet DW_AT_discr_value 
-                    if let Some(grand_children) = child_variable.children {
-                        for grand_child in grand_children {
-                            if let VariantRole::Variant(discriminant) = grand_child.role {
-                                if parent_variable.role  == VariantRole::VariantPart(discriminant) {
-                                    if let Some(active_children) = grand_child.children {
-                                        for mut active_child in active_children {
-                                            parent_variable.add_child_variable(&mut active_child);
-                                        }
-                                    }
-                                }
-                            }
+                    if child_variable.type_name.is_empty()
+                    && child_variable.children.is_some()  { //Make sure we pass children up, past the intermediate
+                        for mut grand_child in child_variable.children.unwrap() {
+                            parent_variable.add_child_variable(&mut grand_child);
                         }
                     }
                 }
@@ -1033,11 +1021,19 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     // We need to do this here, to identify "default" variants for when the rust lang compiler doesn't encode them explicitly ... only by absence of a DW_AT_discr_value
                     self.extract_variant_discriminant(&child_node, &mut child_variable, core, frame_base)?;
                     self.process_tree_node_attributes(&mut child_node, parent_variable, &mut child_variable, core, frame_base, program_counter)?;
-                    child_variable.memory_location = parent_variable.memory_location; //Pass it along through intermediate nodes
-                    // Recursively process each child.
-                    self.process_tree(child_node, &mut child_variable, core, frame_base, program_counter)?;
-                    child_variable.extract_value(core);
-                    parent_variable.add_child_variable(&mut child_variable);
+                    if let VariantRole::Variant(discriminant) = child_variable.role {
+                        if parent_variable.role == VariantRole::VariantPart(discriminant) { //Only process the discriminant Variants
+                            child_variable.memory_location = parent_variable.memory_location; //Pass it along through intermediate nodes
+                            // Recursively process each relevant child.
+                            self.process_tree(child_node, &mut child_variable, core, frame_base, program_counter)?;
+                            if child_variable.type_name.is_empty()
+                            && child_variable.children.is_some()  { //Make sure we pass children up, past the intermediate
+                                for mut grand_child in child_variable.children.unwrap() {
+                                    parent_variable.add_child_variable(&mut grand_child);
+                                }
+                            }
+                        }
+                    }
                 }
                 gimli::DW_TAG_template_type_parameter => {  //The parent node for Rust generic type parameter
                     // These show up as a child of structures they belong to, but don't lead to the member value or type.
@@ -1158,7 +1154,6 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
         _frame_base: u64,
     ) -> Result<(), DebugError> {
         if node.entry().tag() == gimli::DW_TAG_variant {
-            //TODO: I don't think we can rely on this structure
             variable.role = match node.entry().attr(gimli::DW_AT_discr_value) {
                 Ok(optional_discr_value_attr) => {
                     match optional_discr_value_attr {

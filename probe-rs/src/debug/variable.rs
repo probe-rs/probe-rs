@@ -22,7 +22,7 @@ impl Default for VariableKind {
 }
 
 /// Define the role that a variable plays in a Variant relationship. See section '5.7.10 Variant Entries' of the DWARF 5 specification
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum VariantRole {
     /// A (parent) Variable that can have any number of Variant's as it's value
     VariantPart(u64),
@@ -84,7 +84,8 @@ impl Variable {
     pub fn extract_value(&mut self, core: &mut Core<'_>) {
         if self.memory_location == u64::MAX// the value was set by get_location(), so just leave it as is
         || !self.value.is_empty()// the value was set elsewhere in this library - probably because of an error - so just leave it as is
-        || self.memory_location.is_zero()// Templates, Phantoms, etc.
+        || self.memory_location.is_zero()
+        // Templates, Phantoms, etc.
         {
             return;
         }
@@ -134,7 +135,12 @@ impl Variable {
                 } else {
                     match &self.children {
                         Some(_children) => {
-                            oops.to_string() //return the type name as the value for non-leaf level variables
+                            if oops.is_empty() {
+                                "ERROR: This is a bug! Attempted to evaluate an empty Type"
+                                    .to_string()
+                            } else {
+                                oops.to_string() //return the type name as the value for non-leaf level variables
+                            }
                         }
                         None => {
                             format!(
@@ -152,7 +158,6 @@ impl Variable {
 
     /// Instead of just pushing to Variable.children, do some intelligent selection/addition of new Variables.
     pub fn add_child_variable(&mut self, child_variable: &mut Variable) {
-        //TODO:
         let children: &mut Vec<Variable> = match &mut self.children {
             Some(children) => children,
             None => {
