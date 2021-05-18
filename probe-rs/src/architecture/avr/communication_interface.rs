@@ -9,7 +9,6 @@ use crate::{
 
 use std::time::Duration;
 
-
 use crate::probe::cmsisdap::CMSISDAP;
 use crate::probe::cmsisdap::{
     commands,
@@ -46,7 +45,7 @@ pub struct AvrCommunicationInterface {
     probe: Box<EDBG>,
 }
 
-impl AvrCommunicationInterface {
+impl<'probe> AvrCommunicationInterface {
     pub fn new(probe: Box<EDBG>) -> Result<Self, (Box<CMSISDAP>, DebugProbeError)> {
         Ok(AvrCommunicationInterface { probe })
     }
@@ -62,13 +61,30 @@ impl AvrCommunicationInterface {
 }
 
 //Functions for core interface
-impl AvrCommunicationInterface {
+impl<'probe> AvrCommunicationInterface {
     pub fn clear_breakpoint(&mut self, unit_index: usize) -> Result<(), error::Error> {
         self.probe.as_mut().clear_breakpoint(unit_index)
     }
 
     pub fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, error::Error> {
         self.probe.as_mut().halt(timeout)
+    }
+
+    pub fn run(&mut self) -> Result<(), error::Error> {
+        self.probe.as_mut().run()
+    }
+
+    pub fn reset_and_halt(&mut self, timeout: Duration) -> Result<CoreInformation, error::Error> {
+        self.probe.as_mut().reset_and_halt(timeout)
+    }
+
+    pub fn step(&mut self) -> Result<CoreInformation, error::Error> {
+        self.probe.as_mut().step()
+    }
+
+    // Memory interface
+    pub fn read_word_8(&mut self, address: u32) -> Result<u8, error::Error> {
+        self.probe.as_mut().read_word_8(address)
     }
 }
 /*

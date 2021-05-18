@@ -1,6 +1,6 @@
 use crate::error;
 use log::debug;
-use scroll::{Pread, LE};
+use scroll::{Pread, Pwrite, LE};
 
 use crate::architecture::avr::communication_interface::AvrCommunicationInterface;
 use crate::probe::cmsisdap;
@@ -15,9 +15,7 @@ use crate::DebugProbe;
 use crate::DebugProbeError;
 use crate::DebugProbeSelector;
 use crate::WireProtocol;
-use crate::{
-    CoreInformation, CoreInterface, CoreRegisterAddress, CoreStatus, MemoryInterface,
-};
+use crate::{CoreInformation, CoreInterface, CoreRegisterAddress, CoreStatus, MemoryInterface};
 use enum_primitive_derive::Primitive;
 use num_traits::FromPrimitive;
 
@@ -27,6 +25,8 @@ use std::{convert::TryFrom, fmt};
 
 mod avr8generic;
 use avr8generic::*;
+
+mod housekeeping;
 
 pub mod tools;
 
@@ -108,19 +108,6 @@ enum Jtagice3DiscoveryFailureCodes {
     DiscoveryFailedNotSupported = 0x10,
 }
 
-#[allow(dead_code)]
-#[derive(Clone, Copy, Debug, PartialEq)]
-enum Jtagice3HousekeepingCommands {
-    HousekeepingQuery = 0x00,
-    HousekeepingSet = 0x01,
-    HousekeepingGet = 0x02,
-    HousekeepingStartSession = 0x10,
-    HousekeepingEndSession = 0x11,
-    HousekeepingJtagDetect = 0x30,
-    HousekeepingJtagCalOsc = 0x31,
-    HousekeepingJtagFwUpgrade = 0x50,
-}
-
 const EDBG_SOF: u8 = 0x0E;
 
 #[allow(dead_code)]
@@ -169,6 +156,92 @@ impl Avr8GenericResponse {
     }
 }
 
+#[derive(Copy, Clone, Debug)]
+enum AddressSize {
+    Size24bit = 0x01,
+    Size16bit = 0x00,
+}
+#[derive(Copy, Clone, Debug)]
+struct TinyXDeviceData {
+    prog_base: u32,
+    flash_pages_bytes: u16,
+    eeprom_pages_bytes: u8,
+    nvmctrl_module_address: u16,
+    ocd_module_address: u16,
+    //_padding: [u8; 10],
+    flash_bytes: u32,
+    eeprom_bytes: u16,
+    user_sig_bytes_bytes: u16,
+    fuse_bytes: u8,
+    //padding: [u8; 5]
+    eeprom_base: u16,
+    user_row_base: u16,
+    sigrow_base: u16,
+    fuses_base: u16,
+    lock_base: u16,
+    device_id: u32,
+    //prog_base_msb
+    //flash_pages_bytes_msb
+    address_size: AddressSize,
+}
+
+impl TinyXDeviceData {
+    pub fn to_device_data(&self) -> Vec<u8> {
+        let mut data = vec![0u8; 0x2f];
+
+        data.pwrite_with(self.prog_base as u16, 0, LE).unwrap();
+        data.pwrite_with(self.flash_pages_bytes as u8, 2, LE)
+            .unwrap();
+        data.pwrite_with(self.eeprom_pages_bytes as u8, 3, LE)
+            .unwrap();
+        data.pwrite_with(self.nvmctrl_module_address as u16, 4, LE)
+            .unwrap();
+        data.pwrite_with(self.ocd_module_address as u16, 6, LE)
+            .unwrap();
+
+        data.pwrite_with(self.flash_bytes as u32, 0x12, LE).unwrap();
+        data.pwrite_with(self.eeprom_bytes as u16, 0x16, LE)
+            .unwrap();
+        data.pwrite_with(self.user_sig_bytes_bytes as u16, 0x18, LE)
+            .unwrap();
+        data.pwrite_with(self.fuse_bytes as u8, 0x1a, LE).unwrap();
+
+        data.pwrite_with(self.eeprom_base as u16, 0x20, LE).unwrap();
+        data.pwrite_with(self.user_row_base as u16, 0x22, LE)
+            .unwrap();
+        data.pwrite_with(self.sigrow_base as u16, 0x24, LE).unwrap();
+        data.pwrite_with(self.fuses_base as u16, 0x26, LE).unwrap();
+        data.pwrite_with(self.lock_base as u16, 0x28, LE).unwrap();
+        data.pwrite_with(self.device_id as u16, 0x2a, LE).unwrap();
+        data.pwrite_with((self.prog_base >> 16) as u8, 0x2c, LE)
+            .unwrap();
+        data.pwrite_with((self.flash_pages_bytes >> 8) as u8, 0x2d, LE)
+            .unwrap();
+        data.pwrite_with(self.address_size as u8, 0x2e, LE).unwrap();
+
+        data
+    }
+}
+
+static avr128da48_device_data: TinyXDeviceData = TinyXDeviceData {
+    prog_base: 0x00800000,
+    flash_pages_bytes: 0x200,
+    eeprom_pages_bytes: 0x01,
+    nvmctrl_module_address: 0x00001000,
+    ocd_module_address: 0x0F80,
+    flash_bytes: 0x20000,
+    eeprom_bytes: 0x200,
+    user_sig_bytes_bytes: 0x20,
+    fuse_bytes: 0x10,
+    eeprom_base: 0x1400,
+    user_row_base: 0x1080,
+    sigrow_base: 0x1100,
+    fuses_base: 0x1050,
+    lock_base: 0x1040,
+    device_id: 0x1E9708,
+    address_size: AddressSize::Size24bit,
+};
+
 impl std::fmt::Debug for EDBG {
     fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         fmt.debug_struct("DAPLink")
@@ -183,7 +256,7 @@ impl EDBG {
 
         Self {
             device,
-            speed_khz: 1_000,
+            speed_khz: 100,
             sequence_number: 0,
             avr8generic_protocol: None,
         }
@@ -253,15 +326,36 @@ impl EDBG {
         version: u8,
         data: &[u8],
     ) -> Result<Avr8GenericResponse, DebugProbeError> {
-        log::trace!("Sending Avr8GenericCommand {:?}, with data:{:?}", cmd, data);
+        log::trace!(
+            "Sending Avr8GenericCommand {:?}, with data:{:02X?}",
+            cmd,
+            data
+        );
         let packet = &[&[cmd as u8, version], data].concat();
         log::trace!("Sending {:x?}", packet);
         let response = self
-            .send_command(
-                SubProtocols::AVR8Generic,
-                packet,
-            )
+            .send_command(SubProtocols::AVR8Generic, packet)
             .map(|r| Avr8GenericResponse::parse_response(&r));
+
+        if let Ok(r) = &response {
+            log::trace!("Command response: {:?}", r);
+        }
+
+        response
+    }
+
+    fn send_command_housekeeping(
+        &mut self,
+        cmd: housekeeping::Commands,
+        version: u8,
+        data: &[u8],
+    ) -> Result<housekeeping::Response, DebugProbeError> {
+        log::trace!("Sending housekeeping {:?}, with data:{:?}", cmd, data);
+        let packet = &[&[cmd as u8, version], data].concat();
+        log::trace!("Sending {:x?}", packet);
+        let response = self
+            .send_command(SubProtocols::Housekeeping, packet)
+            .map(|r| housekeeping::Response::parse_response(&r));
 
         if let Ok(r) = &response {
             log::trace!("Command response: {:?}", r);
@@ -305,13 +399,7 @@ impl EDBG {
     }
 
     fn housekeeping_start_session(&mut self) -> Result<(), DebugProbeError> {
-        self.send_command(
-            SubProtocols::Housekeeping,
-            &[
-                Jtagice3HousekeepingCommands::HousekeepingStartSession as u8,
-                0x00,
-            ],
-        )?;
+        self.send_command_housekeeping(housekeeping::Commands::StartSession, 0, &[])?;
         Ok(())
     }
 
@@ -321,24 +409,29 @@ impl EDBG {
         address: u8,
         data: &[u8],
     ) -> Result<(), DebugProbeError> {
-        self.send_command(
-            SubProtocols::AVR8Generic,
-            &[
-                &[
-                    Avr8GenericCommands::Set as u8,
-                    0x00,
-                    context as u8,
-                    address,
-                    data.len() as u8,
-                ],
-                data,
-            ]
-            .concat(),
+        self.send_command_avr8_generic(
+            Avr8GenericCommands::Set,
+            0x00,
+            &[&[context as u8, address, data.len() as u8], data].concat(),
         )?;
-
         Ok(())
     }
 
+    fn send_device_data(&mut self, device_data: TinyXDeviceData) -> Result<(), DebugProbeError> {
+        let data = device_data.to_device_data();
+
+        self.avr8generic_set(Avr8GenericSetGetContexts::Device, 0x00, &data)?;
+        Ok(())
+    }
+
+    fn read_program_counter(&mut self) -> Result<u32, DebugProbeError> {
+        let response = self.send_command_avr8_generic(Avr8GenericCommands::PcRead, 0, &[])?;
+        if let Avr8GenericResponse::Pc(pc) = response {
+            Ok(pc)
+        } else {
+            panic!("Unable to read Program Counter");
+        }
+    }
 }
 
 impl EDBG {
@@ -350,15 +443,49 @@ impl EDBG {
 
     pub fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, error::Error> {
         // FIXME: Implementation currently ignores timeout argmuent
-        self.send_command_avr8_generic(Avr8GenericCommands::Stop, 0, &[1]);
-        let response = self.send_command_avr8_generic(Avr8GenericCommands::PcRead, 0, &[])?;
-        let pc = if let Avr8GenericResponse::Pc(pc) = response {
-            pc
-        } else {
-            panic!("Unable to read Program Counter");
-        };
+        self.send_command_avr8_generic(Avr8GenericCommands::Stop, 0, &[1])?;
+        let pc = self.read_program_counter()?;
 
         Ok(CoreInformation { pc })
+    }
+
+    pub fn run(&mut self) -> Result<(), error::Error> {
+        self.send_command_avr8_generic(Avr8GenericCommands::Run, 0, &[])?;
+        Ok(())
+    }
+
+    pub fn reset_and_halt(&mut self, timeout: Duration) -> Result<CoreInformation, error::Error> {
+        self.send_command_avr8_generic(Avr8GenericCommands::Reset, 0, &[1])?;
+
+        let pc = self.read_program_counter()?;
+
+        Ok(CoreInformation { pc })
+    }
+
+    pub fn step(&mut self) -> Result<CoreInformation, error::Error> {
+        self.send_command_avr8_generic(Avr8GenericCommands::Step, 0, &[1, 1])?;
+
+        let pc = self.read_program_counter()?;
+
+        Ok(CoreInformation { pc })
+    }
+    pub fn read_word_8(&mut self, address: u32) -> Result<u8, error::Error> {
+        let mem_type = 0xC0;
+        let data = self.send_command_avr8_generic(
+            Avr8GenericCommands::MemoryRead,
+            0,
+            &[
+                &[mem_type],
+                &address.to_le_bytes()[..],
+                &2u32.to_le_bytes()[..],
+            ]
+            .concat(),
+        )?;
+        if let Avr8GenericResponse::Data(d) = data {
+            Ok(d[0])
+        } else {
+            unimplemented!("No data recived from debugger");
+        }
     }
 }
 
@@ -412,6 +539,11 @@ impl DebugProbe for EDBG {
     fn attach(&mut self) -> Result<(), DebugProbeError> {
         log::debug!("Running attach");
         self.housekeeping_start_session()?;
+
+        self.select_protocol(WireProtocol::Avr(AvrWireProtocol::Updi))?;
+
+        self.send_device_data(avr128da48_device_data)?;
+
         self.send_command_avr8_generic(Avr8GenericCommands::ActivatePhysical, 0, &[0])?;
         self.send_command_avr8_generic(Avr8GenericCommands::Attach, 0, &[0])?;
         Ok(())
@@ -423,11 +555,36 @@ impl DebugProbe for EDBG {
 
     fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError> {
         log::debug!("Attemting to select protocol: {:?}", protocol);
+        // Disable high voltage
+        self.avr8generic_set(
+            Avr8GenericSetGetContexts::Options,
+            Avr8GenericOptionsContextParameters::HvUpdiEnable as u8,
+            &[0],
+        )?;
 
         self.avr8generic_set(
             Avr8GenericSetGetContexts::Config,
             Avr8GenericConfigContextParameters::Variant as u8,
             &[Avr8GenericVariantValues::Updi as u8],
+        )?;
+
+        // Select debug functionality
+        self.avr8generic_set(
+            Avr8GenericSetGetContexts::Config,
+            Avr8GenericConfigContextParameters::Function as u8,
+            &[Avr8GenericFunctionValues::Debugging as u8],
+        )?;
+
+        self.avr8generic_set(
+            Avr8GenericSetGetContexts::Physical,
+            Avr8GenericPhysicalContextParameters::Interface as u8,
+            &[Avr8GenericPhysicalInterfaces::UPDI as u8],
+        )?;
+
+        self.avr8generic_set(
+            Avr8GenericSetGetContexts::Physical,
+            Avr8GenericPhysicalContextParameters::XmPdiClK as u8,
+            &(self.speed_khz as u16).to_le_bytes(),
         )?;
 
         Ok(())

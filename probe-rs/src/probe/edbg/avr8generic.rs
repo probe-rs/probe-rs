@@ -156,6 +156,9 @@ pub enum Avr8GenericOptionsContextParameters {
     DisableDrp = 0x01,   //  No data breaks during reset
     EnableIdr = 0x03,    //  Relay IDR messages
     PollInterval = 0x04, //  Configure polling interval
+    PowerNap = 0x5,
+    HvUpdiEnable = 0x6,
+    ChipEraseToEnter = 0x7,
 }
 
 #[allow(dead_code)]
@@ -193,6 +196,7 @@ pub enum Avr8GenericPhysicalInterfaces {
     DW = 0x05,   //  debugWIRE
     PDI = 0x06,  //  PDI
     UPDI = 0x08, //  UPDI (one-wire)
+    PDI3W = 0x0A,
 }
 
 #[allow(dead_code)]

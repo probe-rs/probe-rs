@@ -45,7 +45,7 @@ impl<'probe> CoreInterface for Avr<'probe> {
     }
 
     fn run(&mut self) -> Result<(), error::Error> {
-        unimplemented!();
+        self.interface.run()
     }
 
     /// Reset the core, and then continue to execute instructions. If the core
@@ -61,12 +61,12 @@ impl<'probe> CoreInterface for Avr<'probe> {
     ///
     /// [`reset`]: Core::reset
     fn reset_and_halt(&mut self, timeout: Duration) -> Result<CoreInformation, error::Error> {
-        unimplemented!();
+        self.interface.reset_and_halt(timeout)
     }
 
     /// Steps one instruction and then enters halted state again.
     fn step(&mut self) -> Result<CoreInformation, error::Error> {
-        unimplemented!();
+        self.interface.step()
     }
 
     fn read_core_reg(&mut self, address: CoreRegisterAddress) -> Result<u32, error::Error> {
@@ -104,7 +104,7 @@ impl<'probe> CoreInterface for Avr<'probe> {
 
     /// Get the `Architecture` of the Core.
     fn architecture(&self) -> Architecture {
-        unimplemented!();
+        Architecture::Avr
     }
 }
 impl<'probe> MemoryInterface for Avr<'probe> {
@@ -113,8 +113,7 @@ impl<'probe> MemoryInterface for Avr<'probe> {
         unimplemented!()
     }
     fn read_word_8(&mut self, address: u32) -> Result<u8, Error> {
-        //self.interface.read_word_8(address)
-        unimplemented!()
+        self.interface.read_word_8(address)
     }
     fn read_32(&mut self, address: u32, data: &mut [u32]) -> Result<(), Error> {
         //self.interface.read_32(address, data)
