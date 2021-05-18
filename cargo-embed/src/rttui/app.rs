@@ -5,8 +5,11 @@ use crossterm::{
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use probe_rs_rtt::RttChannel;
-use std::io::{Read, Seek, Write};
-use std::{fmt::write, path::PathBuf};
+use std::{fmt::write, path::PathBuf, sync::mpsc::RecvTimeoutError};
+use std::{
+    io::{Read, Seek, Write},
+    time::Duration,
+};
 use tui::{
     backend::CrosstermBackend,
     layout::{Constraint, Direction, Layout},
@@ -18,7 +21,7 @@ use tui::{
 
 use super::{
     channel::{ChannelState, DataFormat},
-    event::{Event, Events},
+    event::Events,
 };
 
 use event::{DisableMouseCapture, KeyModifiers};
@@ -356,8 +359,8 @@ impl App {
 
     /// Returns true if the application should exit.
     pub fn handle_event(&mut self) -> bool {
-        match self.events.next().unwrap() {
-            Event::Input(event) => match event.code {
+        match self.events.next(Duration::from_millis(10)) {
+            Ok(event) => match event.code {
                 KeyCode::Char('c') if event.modifiers.contains(KeyModifiers::CONTROL) => {
                     clean_up_terminal();
                     let _ = self.terminal.show_cursor();
@@ -453,7 +456,12 @@ impl App {
                 }
                 _ => false,
             },
-            _ => false,
+            Err(RecvTimeoutError::Disconnected) => {
+                log::warn!("Unable to receive anymore input events from terminal, shutting down.");
+                true
+            }
+            // Timeout just means no input received.
+            Err(RecvTimeoutError::Timeout) => false,
         }
     }
 
