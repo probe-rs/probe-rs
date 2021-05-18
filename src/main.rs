@@ -2,6 +2,7 @@ mod backtrace;
 mod cortexm;
 mod registers;
 mod stacked;
+mod utils;
 
 use std::{
     collections::HashSet,
@@ -455,14 +456,16 @@ fn notmain() -> anyhow::Result<i32> {
 
                                 let (mut file, mut line, mut mod_path) = (None, None, None);
                                 if let Some(loc) = loc {
-                                    let relpath =
+                                    let path =
                                         if let Ok(relpath) = loc.file.strip_prefix(&current_dir) {
-                                            relpath
+                                            relpath.display().to_string()
+                                        } else if compress_cratesio_dep_paths {
+                                            utils::compress_cratesio_dep_path(&loc.file)
                                         } else {
-                                            // not relative; use full path
-                                            &loc.file
+                                            loc.file.display().to_string()
                                         };
-                                    file = Some(relpath.display().to_string());
+
+                                    file = Some(path);
                                     line = Some(loc.line as u32);
                                     mod_path = Some(loc.module.clone());
                                 }
