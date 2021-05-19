@@ -2,6 +2,7 @@ mod backtrace;
 mod cortexm;
 mod registers;
 mod stacked;
+mod utils;
 
 use std::{
     collections::HashSet,
@@ -92,6 +93,10 @@ struct Opts {
     #[structopt(long, default_value = "50")]
     max_backtrace_len: u32,
 
+    /// Whether to shorten paths (e.g. to crates.io dependencies) in backtraces and defmt logs
+    #[structopt(long)]
+    shorten_paths: bool,
+
     /// Arguments passed after the ELF file path are discarded
     #[structopt(name = "REST")]
     _rest: Vec<String>,
@@ -136,6 +141,7 @@ fn notmain() -> anyhow::Result<i32> {
 
     let force_backtrace = opts.force_backtrace;
     let max_backtrace_len = opts.max_backtrace_len;
+    let shorten_paths = opts.shorten_paths;
     let elf_path = opts.elf.as_deref().unwrap();
     let chip = opts.chip.as_deref().unwrap();
     let bytes = fs::read(elf_path)?;
@@ -450,14 +456,16 @@ fn notmain() -> anyhow::Result<i32> {
 
                                 let (mut file, mut line, mut mod_path) = (None, None, None);
                                 if let Some(loc) = loc {
-                                    let relpath =
+                                    let path =
                                         if let Ok(relpath) = loc.file.strip_prefix(&current_dir) {
-                                            relpath
+                                            relpath.display().to_string()
+                                        } else if shorten_paths {
+                                            utils::shorten_paths(&loc.file)
                                         } else {
-                                            // not relative; use full path
-                                            &loc.file
+                                            loc.file.display().to_string()
                                         };
-                                    file = Some(relpath.display().to_string());
+
+                                    file = Some(path);
                                     line = Some(loc.line as u32);
                                     mod_path = Some(loc.module.clone());
                                 }
@@ -545,6 +553,7 @@ fn notmain() -> anyhow::Result<i32> {
         max_backtrace_len,
         // TODO any other cases in which we should force a backtrace?
         force_backtrace: force_backtrace || canary_touched || halted_due_to_signal,
+        shorten_paths,
     };
 
     let outcome = backtrace::print(

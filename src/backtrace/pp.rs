@@ -4,10 +4,12 @@ use std::borrow::Cow;
 
 use colored::Colorize as _;
 
-use super::symbolicate::Frame;
+use crate::utils;
+
+use super::{symbolicate::Frame, Settings};
 
 /// Pretty prints processed backtrace frames up to `max_backtrace_len`
-pub(crate) fn backtrace(frames: &[Frame], max_backtrace_len: u32) {
+pub(crate) fn backtrace(frames: &[Frame], settings: &Settings) {
     println!("{}", "stack backtrace:".dimmed());
 
     let mut frame_index = 0;
@@ -38,7 +40,11 @@ pub(crate) fn backtrace(frames: &[Frame], max_backtrace_len: u32) {
                 println!("{}", colorized_line);
 
                 if let Some(location) = &subroutine.location {
-                    let path = location.path.display();
+                    let path = if settings.shorten_paths {
+                        utils::shorten_paths(&location.path)
+                    } else {
+                        location.path.display().to_string()
+                    };
                     let line = location.line;
                     let column = location
                         .column
@@ -56,10 +62,10 @@ pub(crate) fn backtrace(frames: &[Frame], max_backtrace_len: u32) {
 
                 frame_index += 1;
 
-                if frame_index >= max_backtrace_len {
+                if frame_index >= settings.max_backtrace_len {
                     log::warn!(
                         "maximum backtrace length of {} reached; cutting off the rest.const ",
-                        max_backtrace_len
+                        settings.max_backtrace_len
                     );
                     log::warn!("note: re-run with `--max-backtrace-len=<your maximum>` to extend this limit");
 
