@@ -1,8 +1,13 @@
-use std::path::Path;
+use std::path::{self, Path};
 
 pub(crate) fn shorten_paths(path: &Path) -> String {
     if let Some(dep) = Dependency::from_path(path) {
-        format!("[{}]/{}", dep.name_version, dep.path.display())
+        format!(
+            "[{}]{}{}",
+            dep.name_version,
+            path::MAIN_SEPARATOR,
+            dep.path.display()
+        )
     } else {
         path.display().to_string()
     }
