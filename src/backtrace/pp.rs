@@ -4,7 +4,7 @@ use std::borrow::Cow;
 
 use colored::Colorize as _;
 
-use crate::utils;
+use crate::dep;
 
 use super::{symbolicate::Frame, Settings};
 
@@ -40,24 +40,21 @@ pub(crate) fn backtrace(frames: &[Frame], settings: &Settings) {
                 println!("{}", colorized_line);
 
                 if let Some(location) = &subroutine.location {
+                    let dep_path = dep::Path::from_std_path(&location.path);
+
                     let path = if settings.shorten_paths {
-                        utils::shorten_paths(&location.path)
+                        dep_path.format_short()
                     } else {
-                        location.path.display().to_string()
+                        dep_path.format_highlight()
                     };
+
                     let line = location.line;
                     let column = location
                         .column
                         .map(|column| Cow::Owned(format!(":{}", column)))
                         .unwrap_or(Cow::Borrowed(""));
 
-                    let line = format!("        at {}:{}{}", path, line, column);
-                    let colorized_line = if is_local_function {
-                        line.normal()
-                    } else {
-                        line.dimmed()
-                    };
-                    println!("{}", colorized_line);
+                    println!("        at {}:{}{}", path, line, column);
                 }
 
                 frame_index += 1;
