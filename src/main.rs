@@ -1,8 +1,8 @@
 mod backtrace;
 mod cortexm;
+mod dep;
 mod registers;
 mod stacked;
-mod utils;
 
 use std::{
     collections::HashSet,
@@ -432,7 +432,7 @@ fn notmain() -> anyhow::Result<i32> {
     let mut frames = vec![];
     let mut was_halted = false;
     let current_dir = std::env::current_dir()?;
-    // TODO strip prefix from crates-io paths (?)
+
     while !exit.load(Ordering::Relaxed) {
         if let Some(logging_channel) = &mut logging_channel {
             let num_bytes_read = match logging_channel.read(&mut read_buf) {
@@ -459,10 +459,14 @@ fn notmain() -> anyhow::Result<i32> {
                                     let path =
                                         if let Ok(relpath) = loc.file.strip_prefix(&current_dir) {
                                             relpath.display().to_string()
-                                        } else if shorten_paths {
-                                            utils::shorten_paths(&loc.file)
                                         } else {
-                                            loc.file.display().to_string()
+                                            let dep_path = dep::Path::from_std_path(&loc.file);
+
+                                            if shorten_paths {
+                                                dep_path.format_short()
+                                            } else {
+                                                dep_path.format_highlight()
+                                            }
                                         };
 
                                     file = Some(path);
