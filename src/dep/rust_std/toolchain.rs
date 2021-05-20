@@ -78,7 +78,7 @@ impl<'p> One52<'p> {
                     host: rest,
                 }
             }
-        } else if maybe_channel.contains(".") {
+        } else if maybe_channel.contains('.') {
             One52 {
                 channel: Channel::Version(maybe_channel),
                 host: rest,

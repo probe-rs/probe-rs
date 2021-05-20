@@ -52,7 +52,7 @@ impl<'p> Path<'p> {
     }
 }
 
-fn get_component_normal<'c>(component: Component<'c>) -> Option<&'c OsStr> {
+fn get_component_normal(component: Component) -> Option<&OsStr> {
     if let Component::Normal(string) = component {
         Some(string)
     } else {
