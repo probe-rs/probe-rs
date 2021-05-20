@@ -60,3 +60,26 @@ fn get_component_normal<'c>(component: Component<'c>) -> Option<&'c OsStr> {
         None
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn from_std_path_returns_correct_variant() {
+        let cratesio = StdPath::new(
+        "/home/user/.cargo/registry/src/github.com-1ecc6299db9ec823/cortex-m-rt-0.6.13/src/lib.rs",
+    );
+
+        let rustc = StdPath::new(
+            "/rustc/9bc8c42bb2f19e745a63f3445f1ac248fb015e53/library/core/src/panicking.rs",
+        );
+        let rust_std = StdPath::new("/home/user/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/sync/atomic.rs");
+        let local = StdPath::new("src/lib.rs");
+
+        assert!(matches!(Path::from_std_path(cratesio), Path::Cratesio(_)));
+        assert!(matches!(Path::from_std_path(rustc), Path::Rustc(_)));
+        assert!(matches!(Path::from_std_path(rust_std), Path::RustStd(_)));
+        assert!(matches!(Path::from_std_path(local), Path::Verbatim(_)));
+    }
+}
