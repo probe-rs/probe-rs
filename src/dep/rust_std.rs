@@ -2,7 +2,11 @@ use std::path::{self, Component, Path as StdPath, PathBuf};
 
 use colored::Colorize;
 
-use super::{rust_repo, toolchain::Toolchain};
+use self::toolchain::Toolchain;
+
+use super::rust_repo;
+
+mod toolchain;
 
 #[derive(Debug, PartialEq)]
 pub(crate) struct Path<'p> {
@@ -81,8 +85,6 @@ mod tests {
     use std::path::Path as StdPath;
 
     use pretty_assertions::assert_eq;
-
-    use crate::dep::toolchain;
 
     use super::*;
 

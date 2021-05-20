@@ -9,7 +9,6 @@ mod cratesio;
 mod rust_repo;
 mod rust_std;
 mod rustc;
-mod toolchain;
 
 #[derive(Debug, PartialEq)]
 pub(crate) enum Path<'p> {
