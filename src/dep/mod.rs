@@ -67,13 +67,14 @@ mod tests {
     #[test]
     fn from_std_path_returns_correct_variant() {
         let cratesio = StdPath::new(
-        "/home/user/.cargo/registry/src/github.com-1ecc6299db9ec823/cortex-m-rt-0.6.13/src/lib.rs",
-    );
-
+            "/home/user/.cargo/registry/src/github.com-1ecc6299db9ec823/cortex-m-rt-0.6.13/src/lib.rs",
+        );
         let rustc = StdPath::new(
             "/rustc/9bc8c42bb2f19e745a63f3445f1ac248fb015e53/library/core/src/panicking.rs",
         );
-        let rust_std = StdPath::new("/home/user/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/sync/atomic.rs");
+        let rust_std = StdPath::new(
+            "/home/user/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/sync/atomic.rs",
+        );
         let local = StdPath::new("src/lib.rs");
 
         assert!(matches!(Path::from_std_path(cratesio), Path::Cratesio(_)));
