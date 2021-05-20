@@ -82,8 +82,6 @@ impl<'p> One52Path<'p> {
 
 #[cfg(test)]
 mod tests {
-    use std::path::Path as StdPath;
-
     use super::*;
 
     #[test]
