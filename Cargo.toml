@@ -29,7 +29,7 @@ rustc-demangle = "0.1.19"
 signal-hook = "0.3.8"
 structopt = "0.3.21"
 hidapi = "1.2.6"
-pretty_assertions = "0.7.2"
 
 [dev-dependencies]
+pretty_assertions = "0.7.2"
 rstest = "0.10.0"
