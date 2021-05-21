@@ -247,7 +247,9 @@ Follow the instructions in the error message to resolve the mismatch.
 If you are hacking around with `probe-run`, you can disable the version check by setting the `PROBE_RUN_IGNORE_VERSION` environment variable to `true` or `1` at runtime.
 
 
-### developer: running your locally modified `probe-run`
+## Developer Information
+
+### running your locally modified `probe-run`
 
 For easier copy-paste-ability, here's an example how to try out your local `probe_run` modifications.
 
@@ -257,6 +259,16 @@ $ PROBE_RUN_IGNORE_VERSION=1 cargo run -- --chip nRF52840_xxAA --max-backtrace-l
   ˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆ                                   ˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆ ˆˆˆˆˆ
   environment variables                                        extra flags             binary to be
   (optional)                                                   (optional)              flashed & run
+```
+
+### running snapshot tests
+
+To check whether your change has altered probe-run in unexpected ways, please run the snapshot tests in `tests` before opening a PR if at all possible.
+
+You can do so by connecting a nrf52840 Development Kit and running
+
+```console
+$ cargo test -- --ignored
 ```
 
 ## Support Us

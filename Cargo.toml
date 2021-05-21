@@ -31,5 +31,7 @@ signal-hook = "0.3.8"
 structopt = "0.3.21"
 
 [dev-dependencies]
+insta = "1.7"
+os_pipe = "0.9.2"
 pretty_assertions = "0.7.2"
 rstest = "0.10.0"
