@@ -2,6 +2,7 @@ mod backtrace;
 mod cortexm;
 mod dep;
 mod registers;
+mod sketch;
 mod stacked;
 
 use std::{
@@ -34,6 +35,8 @@ use probe_rs::{
 use probe_rs_rtt::{Rtt, ScanRegion, UpChannel};
 use signal_hook::consts::signal;
 use structopt::{clap::AppSettings, StructOpt};
+
+use crate::sketch::ProcessedElf;
 
 /// Successfull termination of process.
 const EXIT_SUCCESS: i32 = 0;
@@ -152,6 +155,8 @@ fn notmain() -> anyhow::Result<i32> {
     let chip = opts.chip.as_deref().unwrap();
     let bytes = fs::read(elf_path)?;
     let elf = ElfFile::parse(&bytes)?;
+
+    // let processed_elf = ProcessedElf::from_elf(elf);
 
     let target = probe_rs::config::registry::get_target_by_name(chip)?;
 
