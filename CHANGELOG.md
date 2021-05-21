@@ -2,12 +2,47 @@
 
 All notable changes to this project will be documented in this file.
 
-The format is based on [Keep a Changelog](http://keepachangelog.com/)
-and this project adheres to [Semantic Versioning](http://semver.org/).
+The format is based on [Keep a Changelog](http://keepachangelog.com/) and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
 (no changes)
+
+## [v0.2.3] - 2021-05-21
+
+### Improvements
+- [#193] Check `PROBE_RUN_IGNORE_VERSION` on runtime
+- [#199] Add column info to backtrace
+- [#200] Highlight frames that point to local code in backtrace
+- [#203] + [#209] + [#210] Add `--shorten-paths`
+- [#204] Make 'stopped due to signal' force a backtrace
+- [#207] Read as little stacked registers as possible during unwinding
+
+### Docs
+- [#190] `README`: Replace ${PROBE_RUN_CHIP} in code example
+- [#192] + [#194] `README`: Add installation instructions for Fedora and Ubuntu
+
+### Fixes
+- [#206] Fix unwinding exceptions that push FPU registers onto the stack
+
+### Internal improvements
+- [#197] Refactor "print backtrace" code
+- [#211] `mv backtrace.rs backtrace/mod.rs`
+
+[#193]: https://github.com/knurling-rs/probe-run/pull/193
+[#199]: https://github.com/knurling-rs/probe-run/pull/199
+[#200]: https://github.com/knurling-rs/probe-run/pull/200
+[#203]: https://github.com/knurling-rs/probe-run/pull/203
+[#204]: https://github.com/knurling-rs/probe-run/pull/204
+[#207]: https://github.com/knurling-rs/probe-run/pull/207
+[#190]: https://github.com/knurling-rs/probe-run/pull/190
+[#192]: https://github.com/knurling-rs/probe-run/pull/192
+[#194]: https://github.com/knurling-rs/probe-run/pull/194
+[#206]: https://github.com/knurling-rs/probe-run/pull/206
+[#209]: https://github.com/knurling-rs/probe-run/pull/209
+[#210]: https://github.com/knurling-rs/probe-run/pull/210
+[#197]: https://github.com/knurling-rs/probe-run/pull/197
+[#211]: https://github.com/knurling-rs/probe-run/pull/211
 
 ## [v0.2.2] - 2021-05-06
 
@@ -230,7 +265,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 Initial release
 
-[Unreleased]: https://github.com/knurling-rs/probe-run/compare/v0.2.2...main
+[Unreleased]: https://github.com/knurling-rs/probe-run/compare/v0.2.3...main
+[v0.2.3]: https://github.com/knurling-rs/probe-run/compare/v0.2.2...v0.2.3
 [v0.2.2]: https://github.com/knurling-rs/probe-run/compare/v0.2.1...v0.2.2
 [v0.2.1]: https://github.com/knurling-rs/probe-run/compare/v0.2.0...v0.2.1
 [v0.2.0]: https://github.com/knurling-rs/probe-run/compare/v0.1.9...v0.2.0
