@@ -175,6 +175,7 @@ fn notmain() -> anyhow::Result<i32> {
     }
     let ram_region = ram_region;
 
+    // .text section INDEX
     // NOTE we want to raise the linking error before calling `defmt_decoder::Table::parse`
     let text = elf
         .section_by_name(".text")
@@ -192,6 +193,9 @@ fn notmain() -> anyhow::Result<i32> {
         Ok("true") | Ok("1") => defmt_decoder::Table::parse_ignore_version(&bytes)?,
         _ => defmt_decoder::Table::parse(&bytes)?,
     };
+    // verify that all defmt logs have a location
+    // defmt::Table is map from index to defmt frame
+    // defmt::Locations is a map from index to source code location
     // Extract the `Locations` from the table, if there is a table
     let mut locs = None;
     if let Some(table) = table.as_ref() {
@@ -212,8 +216,11 @@ fn notmain() -> anyhow::Result<i32> {
     // NOTE we don't load `.bss` because the app (cortex-m-rt) will zero it
     let candidates = [".vector_table", ".text", ".rodata", ".data"];
 
+    // TODO use this instead of iterating?
+    // let _: Option<_> = elf.section(".debug_frame")
     let mut highest_ram_addr_in_use = 0;
     let mut debug_frame = None;
+    // TODO remove this
     let mut sections = vec![];
     let mut vector_table = None;
     for sect in elf.sections() {
@@ -270,6 +277,7 @@ fn notmain() -> anyhow::Result<i32> {
             }
         }
     }
+    // ???
     let (debug_frame, vector_table) = (debug_frame, vector_table);
 
     let live_functions = elf
@@ -285,6 +293,7 @@ fn notmain() -> anyhow::Result<i32> {
 
     let (rtt_addr, uses_heap, main) = get_rtt_heap_main_from(&elf)?;
 
+    // TODO continue looking at code from here
     let vector_table = vector_table.ok_or_else(|| anyhow!("`.vector_table` section is missing"))?;
     log::debug!("vector table: {:x?}", vector_table);
     let sp_ram_region = target
@@ -431,10 +440,11 @@ fn notmain() -> anyhow::Result<i32> {
 
     print_separator();
 
-    // wait for breakpoint
+    // wait for breakpoint ???
     let stdout = io::stdout();
     let mut stdout = stdout.lock();
     let mut read_buf = [0; 1024];
+    // this is undecoded RTT data
     let mut frames = vec![];
     let mut was_halted = false;
     let current_dir = std::env::current_dir()?;
@@ -766,6 +776,7 @@ fn get_rtt_heap_main_from(
     ))
 }
 
+// TODO remove this
 /// ELF section to be loaded onto the target
 #[derive(Debug)]
 struct Section {
