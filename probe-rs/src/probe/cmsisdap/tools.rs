@@ -252,7 +252,7 @@ pub fn open_device_from_selector(
             if device_matches(&device, d_desc, &selector, sn_str)
                 && get_cmsisdap_info(&device).is_some()
             {
-                // If the VID, PID, and potentially SN all match,
+                // If the VID, PID, and potentially SN, bus number and port number are all match,
                 // and the device is a valid CMSIS-DAP probe,
                 // attempt to open the device in v2 mode.
                 if let Some(device) = open_v2_device(device) {
@@ -262,6 +262,11 @@ pub fn open_device_from_selector(
         }
     } else {
         log::debug!("No devices matched using rusb");
+    }
+
+    // Ignore CMSIS-DAP v1 probes as HIDAPI library does not expose
+    if selector.port_number.is_some() && selector.bus_number.is_some() {
+        return Err(ProbeCreationError::NotFound);
     }
 
     // If rusb failed or the device didn't support v2, try using hidapi to open in v1 mode.
