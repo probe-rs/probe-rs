@@ -1,5 +1,8 @@
 use crate::error;
-use log::debug;
+use anyhow::{anyhow, Context, Result};
+use thiserror::Error;
+
+//use log::debug;
 use scroll::{Pread, Pwrite, LE};
 
 use crate::architecture::avr::communication_interface::AvrCommunicationInterface;
@@ -15,7 +18,9 @@ use crate::DebugProbe;
 use crate::DebugProbeError;
 use crate::DebugProbeSelector;
 use crate::WireProtocol;
-use crate::{CoreInformation, CoreInterface, CoreRegisterAddress, CoreStatus, MemoryInterface};
+use crate::{
+    CoreInformation, CoreInterface, CoreRegisterAddress, CoreStatus, HaltReason, MemoryInterface,
+};
 use enum_primitive_derive::Primitive;
 use num_traits::FromPrimitive;
 
@@ -23,18 +28,33 @@ use std::time::Duration;
 
 use std::{convert::TryFrom, fmt};
 
-mod avr8generic;
-use avr8generic::*;
+pub mod avr8generic;
 
 mod housekeeping;
 
 pub mod tools;
 
+#[derive(Debug, Error)]
+pub enum EdbgError {
+    #[error("Debugger returned error code")]
+    ErrorCode(avr8generic::FailureCodes),
+    #[error("Unexpected response to command")]
+    UnexpectedResponse,
+    #[error(transparent)]
+    Other(#[from] anyhow::Error),
+}
+
+impl From<EdbgError> for DebugProbeError {
+    fn from(error: EdbgError) -> Self {
+        DebugProbeError::ProbeSpecific(Box::new(error))
+    }
+}
+
 pub struct EDBG {
     pub device: CmsisDapDevice,
     pub speed_khz: u32,
     pub sequence_number: u16,
-    pub avr8generic_protocol: Option<Avr8GenericProtocol>,
+    pub protocol: Option<AvrWireProtocol>,
 }
 
 #[derive(Copy, Clone, PartialEq, Debug, serde::Serialize, serde::Deserialize)]
@@ -120,40 +140,6 @@ enum SubProtocols {
     AVR32Generic = 0x13,
     TPI = 0x14,
     EDBGCtrl = 0x20,
-}
-
-#[derive(Clone, Debug)]
-pub enum Avr8GenericResponse {
-    Ok,
-    List(Vec<u8>),
-    Data(Vec<u8>),
-    Pc(u32),
-    Failed(Avr8GenericFailureCodes),
-}
-
-impl Avr8GenericResponse {
-    fn parse_response(response: &[u8]) -> Self {
-        match Avr8GenericResponses::from_u8(response[0]).unwrap() {
-            Avr8GenericResponses::StatusOk => Avr8GenericResponse::Ok,
-            Avr8GenericResponses::List => Avr8GenericResponse::List(response[2..].to_vec()),
-            Avr8GenericResponses::Data => {
-                if *response.last().expect("No status in response") == 0x00 {
-                    Avr8GenericResponse::Data(response[2..response.len() - 1].to_vec())
-                } else {
-                    Avr8GenericResponse::Failed(Avr8GenericFailureCodes::Unknown)
-                }
-            }
-            Avr8GenericResponses::Pc => Avr8GenericResponse::Pc(
-                response
-                    .pread_with::<u32>(2, LE)
-                    .expect("Unable to read PC"),
-            ),
-            Avr8GenericResponses::Failed => Avr8GenericResponse::Failed(
-                Avr8GenericFailureCodes::from_u8(response[2])
-                    .expect("Unable to find matching error code"),
-            ),
-        }
-    }
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -258,7 +244,7 @@ impl EDBG {
             device,
             speed_khz: 100,
             sequence_number: 0,
-            avr8generic_protocol: None,
+            protocol: None,
         }
     }
 
@@ -322,12 +308,12 @@ impl EDBG {
     /// Send a AVR8Generic command. `version` is normaly 0
     fn send_command_avr8_generic(
         &mut self,
-        cmd: Avr8GenericCommands,
+        cmd: avr8generic::Commands,
         version: u8,
         data: &[u8],
-    ) -> Result<Avr8GenericResponse, DebugProbeError> {
+    ) -> Result<avr8generic::Response, DebugProbeError> {
         log::trace!(
-            "Sending Avr8GenericCommand {:?}, with data:{:02X?}",
+            "Sending avr8generic::Command {:?}, with data:{:02X?}",
             cmd,
             data
         );
@@ -335,7 +321,7 @@ impl EDBG {
         log::trace!("Sending {:x?}", packet);
         let response = self
             .send_command(SubProtocols::AVR8Generic, packet)
-            .map(|r| Avr8GenericResponse::parse_response(&r));
+            .map(|r| avr8generic::Response::parse_response(&r));
 
         if let Ok(r) = &response {
             log::trace!("Command response: {:?}", r);
@@ -405,31 +391,114 @@ impl EDBG {
 
     fn avr8generic_set(
         &mut self,
-        context: Avr8GenericSetGetContexts,
+        context: avr8generic::SetGetContexts,
         address: u8,
         data: &[u8],
     ) -> Result<(), DebugProbeError> {
         self.send_command_avr8_generic(
-            Avr8GenericCommands::Set,
+            avr8generic::Commands::Set,
             0x00,
             &[&[context as u8, address, data.len() as u8], data].concat(),
         )?;
         Ok(())
     }
 
+    fn avr8generic_get(
+        &mut self,
+        context: avr8generic::SetGetContexts,
+        address: u8,
+        data: &mut [u8],
+    ) -> Result<(), DebugProbeError> {
+        let response = self.send_command_avr8_generic(
+            avr8generic::Commands::Get,
+            0x00,
+            &[context as u8, address, data.len() as u8],
+        )?;
+        match response {
+            avr8generic::Response::Data(d) => {
+                data.copy_from_slice(&d);
+                Ok(())
+            }
+            avr8generic::Response::Failed(f) => Err(EdbgError::ErrorCode(f).into()),
+            _ => Err(EdbgError::UnexpectedResponse.into()),
+        }
+    }
+
     fn send_device_data(&mut self, device_data: TinyXDeviceData) -> Result<(), DebugProbeError> {
         let data = device_data.to_device_data();
 
-        self.avr8generic_set(Avr8GenericSetGetContexts::Device, 0x00, &data)?;
+        self.avr8generic_set(avr8generic::SetGetContexts::Device, 0x00, &data)?;
         Ok(())
     }
 
-    fn read_program_counter(&mut self) -> Result<u32, DebugProbeError> {
-        let response = self.send_command_avr8_generic(Avr8GenericCommands::PcRead, 0, &[])?;
-        if let Avr8GenericResponse::Pc(pc) = response {
-            Ok(pc)
+    pub fn read_program_counter(&mut self) -> Result<u32, DebugProbeError> {
+        let response = self.send_command_avr8_generic(avr8generic::Commands::PcRead, 0, &[])?;
+        match response {
+            avr8generic::Response::Pc(pc) => Ok(pc),
+            avr8generic::Response::Failed(f) => Err(EdbgError::ErrorCode(f).into()),
+            _ => Err(EdbgError::UnexpectedResponse.into()),
+        }
+    }
+
+    fn get_id(&mut self) -> Result<u32, DebugProbeError> {
+        let response = self.send_command_avr8_generic(avr8generic::Commands::GetId, 0, &[])?;
+        if let avr8generic::Response::Data(data) = response {
+            Ok(data.pread_with(0, LE).unwrap())
         } else {
             panic!("Unable to read Program Counter");
+        }
+    }
+
+    pub fn read_memory(
+        &mut self,
+        address: u32,
+        data: &mut [u8],
+        mem_type: avr8generic::Memtypes,
+    ) -> Result<(), DebugProbeError> {
+        let response = self.send_command_avr8_generic(
+            avr8generic::Commands::MemoryRead,
+            0,
+            &[
+                &[mem_type as u8],
+                &address.to_le_bytes()[..],
+                &data.len().to_le_bytes()[..],
+            ]
+            .concat(),
+        )?;
+
+        match response {
+            avr8generic::Response::Data(d) => {
+                data.copy_from_slice(&d);
+                Ok(())
+            }
+            avr8generic::Response::Failed(f) => Err(EdbgError::ErrorCode(f).into()),
+            _ => Err(EdbgError::UnexpectedResponse.into()),
+        }
+    }
+
+    pub fn write_memory(
+        &mut self,
+        address: u32,
+        data: &[u8],
+        mem_type: avr8generic::Memtypes,
+    ) -> Result<(), DebugProbeError> {
+        let response = self.send_command_avr8_generic(
+            avr8generic::Commands::MemoryWrite,
+            0,
+            &[
+                &[mem_type as u8],
+                &address.to_le_bytes()[..],
+                &data.len().to_le_bytes()[..],
+                &[0], // Write first then reply
+                data,
+            ]
+            .concat(),
+        )?;
+
+        match response {
+            avr8generic::Response::Ok => Ok(()),
+            avr8generic::Response::Failed(f) => Err(EdbgError::ErrorCode(f).into()),
+            _ => Err(EdbgError::UnexpectedResponse.into()),
         }
     }
 }
@@ -437,25 +506,39 @@ impl EDBG {
 impl EDBG {
     // Private functions for core interface
     pub fn clear_breakpoint(&mut self, unit_index: usize) -> Result<(), error::Error> {
-        self.send_command_avr8_generic(Avr8GenericCommands::HwBreakClear, 0, &[unit_index as u8])?;
+        self.send_command_avr8_generic(
+            avr8generic::Commands::HwBreakClear,
+            0,
+            &[unit_index as u8],
+        )?;
         Ok(())
+    }
+    pub fn status(&mut self) -> Result<CoreStatus, error::Error> {
+        let mut data = [0u8; 1];
+        self.avr8generic_get(avr8generic::SetGetContexts::Test, 0, &mut data)?;
+
+        if data[0] == 0 {
+            Ok(CoreStatus::Halted(HaltReason::Unknown))
+        } else {
+            Ok(CoreStatus::Running)
+        }
     }
 
     pub fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, error::Error> {
         // FIXME: Implementation currently ignores timeout argmuent
-        self.send_command_avr8_generic(Avr8GenericCommands::Stop, 0, &[1])?;
+        self.send_command_avr8_generic(avr8generic::Commands::Stop, 0, &[1])?;
         let pc = self.read_program_counter()?;
 
         Ok(CoreInformation { pc })
     }
 
     pub fn run(&mut self) -> Result<(), error::Error> {
-        self.send_command_avr8_generic(Avr8GenericCommands::Run, 0, &[])?;
+        self.send_command_avr8_generic(avr8generic::Commands::Run, 0, &[])?;
         Ok(())
     }
 
     pub fn reset_and_halt(&mut self, timeout: Duration) -> Result<CoreInformation, error::Error> {
-        self.send_command_avr8_generic(Avr8GenericCommands::Reset, 0, &[1])?;
+        self.send_command_avr8_generic(avr8generic::Commands::Reset, 0, &[1])?;
 
         let pc = self.read_program_counter()?;
 
@@ -463,29 +546,11 @@ impl EDBG {
     }
 
     pub fn step(&mut self) -> Result<CoreInformation, error::Error> {
-        self.send_command_avr8_generic(Avr8GenericCommands::Step, 0, &[1, 1])?;
+        self.send_command_avr8_generic(avr8generic::Commands::Step, 0, &[1, 1])?;
 
         let pc = self.read_program_counter()?;
 
         Ok(CoreInformation { pc })
-    }
-    pub fn read_word_8(&mut self, address: u32) -> Result<u8, error::Error> {
-        let mem_type = 0xC0;
-        let data = self.send_command_avr8_generic(
-            Avr8GenericCommands::MemoryRead,
-            0,
-            &[
-                &[mem_type],
-                &address.to_le_bytes()[..],
-                &2u32.to_le_bytes()[..],
-            ]
-            .concat(),
-        )?;
-        if let Avr8GenericResponse::Data(d) = data {
-            Ok(d[0])
-        } else {
-            unimplemented!("No data recived from debugger");
-        }
     }
 }
 
@@ -531,9 +596,10 @@ impl DebugProbe for EDBG {
     }
 
     fn set_speed(&mut self, speed_khz: u32) -> Result<u32, DebugProbeError> {
-        todo!("Set speed not done");
+        //FIXME: Check if speed is valid
+        self.speed_khz = speed_khz;
 
-        //        Ok(speed_khz)
+        Ok(self.speed_khz)
     }
 
     fn attach(&mut self) -> Result<(), DebugProbeError> {
@@ -544,53 +610,61 @@ impl DebugProbe for EDBG {
 
         self.send_device_data(avr128da48_device_data)?;
 
-        self.send_command_avr8_generic(Avr8GenericCommands::ActivatePhysical, 0, &[0])?;
-        self.send_command_avr8_generic(Avr8GenericCommands::Attach, 0, &[0])?;
+        self.send_command_avr8_generic(avr8generic::Commands::ActivatePhysical, 0, &[0])?;
+        self.send_command_avr8_generic(avr8generic::Commands::Attach, 0, &[0])?;
         Ok(())
     }
 
     fn detach(&mut self) -> Result<(), DebugProbeError> {
-        unimplemented!();
+        self.send_command_avr8_generic(avr8generic::Commands::Detach, 0, &[0])?;
+        Ok(())
     }
 
     fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError> {
         log::debug!("Attemting to select protocol: {:?}", protocol);
-        // Disable high voltage
-        self.avr8generic_set(
-            Avr8GenericSetGetContexts::Options,
-            Avr8GenericOptionsContextParameters::HvUpdiEnable as u8,
-            &[0],
-        )?;
+        if let WireProtocol::Avr(AvrWireProtocol::Updi) = protocol {
+            // Disable high voltage
+            self.avr8generic_set(
+                avr8generic::SetGetContexts::Options,
+                avr8generic::OptionsContextParameters::HvUpdiEnable as u8,
+                &[0],
+            )?;
 
-        self.avr8generic_set(
-            Avr8GenericSetGetContexts::Config,
-            Avr8GenericConfigContextParameters::Variant as u8,
-            &[Avr8GenericVariantValues::Updi as u8],
-        )?;
+            self.avr8generic_set(
+                avr8generic::SetGetContexts::Config,
+                avr8generic::ConfigContextParameters::Variant as u8,
+                &[avr8generic::VariantValues::Updi as u8],
+            )?;
 
-        // Select debug functionality
-        self.avr8generic_set(
-            Avr8GenericSetGetContexts::Config,
-            Avr8GenericConfigContextParameters::Function as u8,
-            &[Avr8GenericFunctionValues::Debugging as u8],
-        )?;
+            // Select debug functionality
+            self.avr8generic_set(
+                avr8generic::SetGetContexts::Config,
+                avr8generic::ConfigContextParameters::Function as u8,
+                &[avr8generic::FunctionValues::Debugging as u8],
+            )?;
 
-        self.avr8generic_set(
-            Avr8GenericSetGetContexts::Physical,
-            Avr8GenericPhysicalContextParameters::Interface as u8,
-            &[Avr8GenericPhysicalInterfaces::UPDI as u8],
-        )?;
+            self.avr8generic_set(
+                avr8generic::SetGetContexts::Physical,
+                avr8generic::PhysicalContextParameters::Interface as u8,
+                &[avr8generic::PhysicalInterfaces::UPDI as u8],
+            )?;
 
-        self.avr8generic_set(
-            Avr8GenericSetGetContexts::Physical,
-            Avr8GenericPhysicalContextParameters::XmPdiClK as u8,
-            &(self.speed_khz as u16).to_le_bytes(),
-        )?;
+            self.avr8generic_set(
+                avr8generic::SetGetContexts::Physical,
+                avr8generic::PhysicalContextParameters::XmPdiClK as u8,
+                &(self.speed_khz as u16).to_le_bytes(),
+            )?;
+        } else {
+            return Err(DebugProbeError::NotImplemented(
+                "Only UPDI is implemented for AVR EDBG",
+            ));
+        }
 
         Ok(())
     }
     fn target_reset(&mut self) -> Result<(), DebugProbeError> {
-        unimplemented!();
+        self.send_command_avr8_generic(avr8generic::Commands::Reset, 0, &[1])?;
+        Ok(())
     }
 
     fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {

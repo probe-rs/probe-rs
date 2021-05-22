@@ -8,6 +8,7 @@ use probe_rs::{
             memory::Component,
             ApInformation, ArmProbeInterface, MemoryApInformation,
         },
+        avr::communication_interface::AvrCommunicationInterface,
         riscv::communication_interface::RiscvCommunicationInterface,
     },
     CoreRegister, Probe, WireProtocol,
@@ -79,6 +80,21 @@ fn try_show_info(mut probe: Probe, protocol: WireProtocol) -> (Probe, Result<()>
             Ok(mut interface) => {
                 if let Err(e) = show_riscv_info(&mut interface) {
                     log::warn!("Error showing RISCV chip information: {}", e);
+                }
+
+                probe = interface.close();
+            }
+            Err((interface_probe, _e)) => {
+                probe = interface_probe;
+            }
+        }
+    }
+
+    if probe.has_avr_interface() {
+        match probe.try_into_avr_interface() {
+            Ok(mut interface) => {
+                if let Err(e) = show_avr_info(&mut interface) {
+                    log::warn!("Error showing AVR chip information: {}", e);
                 }
 
                 probe = interface.close();
@@ -163,5 +179,9 @@ fn show_riscv_info(interface: &mut RiscvCommunicationInterface) -> Result<()> {
     println!("\t Part:         {}", part_number);
     println!("\t Manufacturer: {} ({})", manufacturer_id, jep_id);
 
+    Ok(())
+}
+
+fn show_avr_info(interface: &mut AvrCommunicationInterface) -> Result<()> {
     Ok(())
 }

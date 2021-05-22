@@ -10,6 +10,7 @@ use crate::{
 use std::time::Duration;
 
 use crate::probe::cmsisdap::CmsisDap;
+use crate::probe::cmsisdap::commands::CmsisDapDevice;
 use crate::probe::edbg::avr8generic;
 use crate::probe::edbg::EDBG;
 use crate::DebugProbe;
@@ -39,7 +40,7 @@ pub struct AvrCommunicationInterface {
 }
 
 impl<'probe> AvrCommunicationInterface {
-    pub fn new(probe: Box<EDBG>) -> Result<Self, (Box<CMSISDAP>, DebugProbeError)> {
+    pub fn new(probe: Box<EDBG>) -> Result<Self, (Box<CmsisDap>, DebugProbeError)> {
         Ok(AvrCommunicationInterface { probe })
     }
 

@@ -1,17 +1,11 @@
 use crate::probe::edbg::EDBG;
 use enum_primitive_derive::Primitive;
 use num_traits::FromPrimitive;
-pub struct Avr8GenericProtocol {}
-
-impl Avr8GenericProtocol {
-    fn new(probe: &EDBG) -> Self {
-        Avr8GenericProtocol {}
-    }
-}
+use scroll::{Pread, Pwrite, LE};
 
 #[allow(dead_code)]
 #[derive(Clone, Copy, Debug, Primitive, PartialEq)]
-pub enum Avr8GenericCommands {
+pub enum Commands {
     Query = 0x00,              // Capability discovery
     Set = 0x01,                // Set parameters
     Get = 0x02,                // Get parameters
@@ -45,7 +39,7 @@ pub enum Avr8GenericCommands {
 
 #[allow(dead_code)]
 #[derive(Clone, Copy, Debug, Primitive, PartialEq)]
-pub enum Avr8GenericResponses {
+pub enum Responses {
     StatusOk = 0x80, //  All OK
     List = 0x81,     //  List of items returned
     Data = 0x84,     //  Data returned
@@ -55,7 +49,7 @@ pub enum Avr8GenericResponses {
 
 /// Protocol events
 #[allow(dead_code)]
-pub enum Avr8GenericEvents {
+pub enum Events {
     Break = 0x40,
     Idr = 0x41,
 }
@@ -63,7 +57,7 @@ pub enum Avr8GenericEvents {
 /// Failure response codes (RSP_FAILED)
 #[allow(dead_code)]
 #[derive(Clone, Copy, Debug, Primitive, PartialEq)]
-pub enum Avr8GenericFailureCodes {
+pub enum FailureCodes {
     StatusOk = 0x00,             // All OK
     DwPhyError = 0x10,           // debugWIRE physical error
     JtagmInitError = 0x11,       // JTAGM failed to initialise
@@ -116,7 +110,7 @@ pub enum Avr8GenericFailureCodes {
 
 /// QUERY types on this protocol
 #[allow(dead_code)]
-pub enum Avr8GenericQueryContexts {
+pub enum QueryContexts {
     Commands = 0x00,      // Supported command list
     Configuration = 0x05, // Supported configuration list
     ReadMemtypes = 0x07,  // Supported read memtypes list
@@ -125,22 +119,23 @@ pub enum Avr8GenericQueryContexts {
 
 #[allow(dead_code)]
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub enum Avr8GenericSetGetContexts {
+pub enum SetGetContexts {
     Config = 0x00,
     Physical = 0x01,
     Device = 0x02,
     Options = 0x03,
     Session = 0x04,
+    Test = 0x80,
 }
 
 #[allow(dead_code)]
-pub enum Avr8GenericConfigContextParameters {
+pub enum ConfigContextParameters {
     Variant = 0x00,  // Device family/variant
     Function = 0x01, // Functional intent
 }
 
 #[allow(dead_code)]
-pub enum Avr8GenericPhysicalContextParameters {
+pub enum PhysicalContextParameters {
     Interface = 0x00,  // Physical interface selector
     JtagDaisY = 0x01,  // JTAG daisy chain settings
     DwClkDiv = 0x10,   // debugWIRE clock divide ratio
@@ -151,7 +146,7 @@ pub enum Avr8GenericPhysicalContextParameters {
 }
 
 #[allow(dead_code)]
-pub enum Avr8GenericOptionsContextParameters {
+pub enum OptionsContextParameters {
     RunTimers = 0x00,    //  Keep timers running when stopped
     DisableDrp = 0x01,   //  No data breaks during reset
     EnableIdr = 0x03,    //  Relay IDR messages
@@ -162,17 +157,17 @@ pub enum Avr8GenericOptionsContextParameters {
 }
 
 #[allow(dead_code)]
-pub enum Avr8GenericSessionContextParameters {
+pub enum SessionContextParameters {
     AVR8_SESS_MAIN_PC = 0x00, // Address of main() function (deprecated)
 }
 
 #[allow(dead_code)]
-pub enum Avr8GenericConfigTestParameters {
+pub enum ConfigTestParameters {
     TargetRunning = 0x00, // Is target running?
 }
 
 #[allow(dead_code)]
-pub enum Avr8GenericVariantValues {
+pub enum VariantValues {
     Loopback = 0x00, //  Dummy device
     Dw = 0x01,       //  tinyAVR or megaAVR with debugWIRE
     Megajtag = 0x02, //  megaAVR with JTAG
@@ -182,7 +177,7 @@ pub enum Avr8GenericVariantValues {
 }
 
 #[allow(dead_code)]
-pub enum Avr8GenericFunctionValues {
+pub enum FunctionValues {
     None = 0x00,        // Not configured
     Programming = 0x01, // I want to program only
     Debugging = 0x02,   // I want a debug session
@@ -190,7 +185,7 @@ pub enum Avr8GenericFunctionValues {
 
 /// Physical modes
 #[allow(dead_code)]
-pub enum Avr8GenericPhysicalInterfaces {
+pub enum PhysicalInterfaces {
     None = 0x00, //  Not configured
     JTAG = 0x04, //  JTAG
     DW = 0x05,   //  debugWIRE
@@ -200,18 +195,18 @@ pub enum Avr8GenericPhysicalInterfaces {
 }
 
 #[allow(dead_code)]
-pub enum Avr8GenericMegaBreakpointTypes {
+pub enum MegaBreakpointTypes {
     Avr8HwbpProgBp = 0x01, // Program breaks
 }
 
 #[allow(dead_code)]
-pub enum Avr8GenericMegaBreakCauses {
+pub enum MegaBreakCauses {
     Unknown = 0x00, // Unspecified
     Program = 0x01, // Program break
 }
 
 #[allow(dead_code)]
-pub enum Avr8GenericXtendedEraseModes {
+pub enum XtendedEraseModes {
     Chip = 0x00,       // Erase entire chip
     App = 0x01,        // Erase application section only
     Boot = 0x02,       // Erase boot section only
@@ -224,8 +219,8 @@ pub enum Avr8GenericXtendedEraseModes {
 
 /// Memory types
 #[allow(dead_code)]
-pub enum Avr8GenericMemtypes {
-    SRAM = 0x20,                 //  SRAM
+pub enum Memtypes {
+    Sram = 0x20,                 //  SRAM
     Eeprom = 0x22,               //  EEPROM memory
     Spm = 0xA0,                  //  Flash memory in a debug session
     FlashPage = 0xB0,            //  Flash memory programming
@@ -242,4 +237,37 @@ pub enum Avr8GenericMemtypes {
     EepromAtomic = 0xC4,         //  EEPROM page with auto-erase
     UserSignature = 0xC5,        //  User signature secion
     CalibrationSignature = 0xC6, //  Calibration section
+}
+
+#[derive(Clone, Debug)]
+pub enum Response {
+    Ok,
+    List(Vec<u8>),
+    Data(Vec<u8>),
+    Pc(u32),
+    Failed(FailureCodes),
+}
+
+impl Response {
+    pub fn parse_response(response: &[u8]) -> Self {
+        match Responses::from_u8(response[0]).unwrap() {
+            Responses::StatusOk => Response::Ok,
+            Responses::List => Response::List(response[2..].to_vec()),
+            Responses::Data => {
+                if *response.last().expect("No status in response") == 0x00 {
+                    Response::Data(response[2..response.len() - 1].to_vec())
+                } else {
+                    Response::Failed(FailureCodes::Unknown)
+                }
+            }
+            Responses::Pc => Response::Pc(
+                response
+                    .pread_with::<u32>(2, LE)
+                    .expect("Unable to read PC"),
+            ),
+            Responses::Failed => Response::Failed(
+                FailureCodes::from_u8(response[2]).expect("Unable to find matching error code"),
+            ),
+        }
+    }
 }

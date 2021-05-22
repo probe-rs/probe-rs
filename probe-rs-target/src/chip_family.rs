@@ -25,6 +25,8 @@ pub enum TargetDescriptionSource {
 /// Type of a supported core
 #[derive(Debug, Copy, Clone, Serialize, Deserialize)]
 pub enum CoreType {
+    /// AVR
+    Avr,
     /// ARM Cortex M0
     M0,
     /// ARM Cortex M3
