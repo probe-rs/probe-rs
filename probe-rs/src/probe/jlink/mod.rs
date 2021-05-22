@@ -320,8 +320,19 @@ impl DebugProbe for JLink {
         let mut jlinks = jaylink::scan_usb()?
             .filter_map(|usb_info| {
                 if usb_info.vid() == selector.vendor_id && usb_info.pid() == selector.product_id {
+                    let port_num = usb_info.port_number();
+                    let bus_num = usb_info.bus_number();
                     let device = usb_info.open();
-                    if let Some(serial_number) = selector.serial_number.as_deref() {
+
+                    if selector.port_number.is_some() && selector.bus_number.is_some() {
+                        if selector.port_number.unwrap() == port_num
+                            && selector.bus_number.unwrap() == bus_num
+                        {
+                            Some(device)
+                        } else {
+                            None
+                        }
+                    } else if let Some(serial_number) = selector.serial_number.as_deref() {
                         if device
                             .as_ref()
                             .map(|d| d.serial_string() == serial_number)
@@ -762,6 +773,8 @@ pub(crate) fn list_jlink_devices() -> Vec<DebugProbeInfo> {
             .map(|device_info| {
                 let vid = device_info.vid();
                 let pid = device_info.pid();
+                let bus = device_info.bus_number();
+                let port = device_info.port_number();
                 let (serial, product) = if let Ok(device) = device_info.open() {
                     let serial = device.serial_string();
                     let serial = if serial.is_empty() {
@@ -788,6 +801,8 @@ pub(crate) fn list_jlink_devices() -> Vec<DebugProbeInfo> {
                     pid,
                     serial,
                     DebugProbeType::JLink,
+                    Some(bus),
+                    Some(port),
                 )
             })
             .collect(),

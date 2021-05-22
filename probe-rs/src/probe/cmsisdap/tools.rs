@@ -3,7 +3,7 @@ use crate::{
     probe::{DebugProbeInfo, DebugProbeType, ProbeCreationError},
     DebugProbeSelector,
 };
-use rusb::{Device, DeviceDescriptor, UsbContext};
+use rusb::{Context, Device, DeviceDescriptor, UsbContext};
 use std::time::Duration;
 
 /// Finds all CMSIS-DAP devices, either v1 (HID) or v2 (WinUSB Bulk).
@@ -68,6 +68,8 @@ fn get_cmsisdap_info(device: &Device<rusb::Context>) -> Option<DebugProbeInfo> {
             product_id: d_desc.product_id(),
             serial_number: sn_str,
             probe_type: DebugProbeType::CmsisDap,
+            bus_id: Some(device.bus_number()),
+            port_id: Some(device.port_number()),
         })
     } else {
         None
@@ -84,6 +86,8 @@ fn get_cmsisdap_hid_info(device: &hidapi::DeviceInfo) -> Option<DebugProbeInfo> 
                 product_id: device.product_id(),
                 serial_number: device.serial_number().map(|s| s.to_owned()),
                 probe_type: DebugProbeType::CmsisDap,
+                bus_id: None,
+                port_id: None,
             });
         }
     }
@@ -175,6 +179,7 @@ pub fn open_v2_device(device: Device<rusb::Context>) -> Option<CmsisDapDevice> {
 }
 
 fn device_matches(
+    device: &Device<Context>,
     device_descriptor: DeviceDescriptor,
     selector: &DebugProbeSelector,
     serial_str: Option<String>,
@@ -182,7 +187,10 @@ fn device_matches(
     if device_descriptor.vendor_id() == selector.vendor_id
         && device_descriptor.product_id() == selector.product_id
     {
-        if selector.serial_number.is_some() {
+        if selector.port_number.is_some() && selector.bus_number.is_some() {
+            return device.bus_number() == selector.bus_number.unwrap()
+                && device.port_number() == selector.port_number.unwrap();
+        } else if selector.serial_number.is_some() {
             serial_str == selector.serial_number
         } else {
             true
@@ -241,7 +249,9 @@ pub fn open_device_from_selector(
             // multiple open handles are not allowed on Windows.
             drop(handle);
 
-            if device_matches(d_desc, &selector, sn_str) && get_cmsisdap_info(&device).is_some() {
+            if device_matches(&device, d_desc, &selector, sn_str)
+                && get_cmsisdap_info(&device).is_some()
+            {
                 // If the VID, PID, and potentially SN all match,
                 // and the device is a valid CMSIS-DAP probe,
                 // attempt to open the device in v2 mode.

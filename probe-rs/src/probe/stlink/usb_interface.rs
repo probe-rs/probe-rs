@@ -119,7 +119,18 @@ impl StLinkUsbDevice {
                 if selector.vendor_id == descriptor.vendor_id()
                     && selector.product_id == descriptor.product_id()
                 {
-                    // If the VID & PID match, match the serial if one was given.
+                    // If Port ID and Bus ID are given, use them first; otherwise if serial number is given, try serial number;
+                    // or finally, just return with matched the VID and PID.
+                    let port_num = device.port_number();
+                    let bus_num = device.bus_number();
+                    if selector.port_number.is_some()
+                        && selector.bus_number.is_some()
+                        && selector.port_number.unwrap() == port_num
+                        && selector.bus_number.unwrap() == bus_num
+                    {
+                        return Some(device);
+                    }
+
                     if let Some(serial) = &selector.serial_number {
                         let sn_str = read_serial_number(&device, &descriptor).ok();
                         if sn_str.as_ref() == Some(serial) {
