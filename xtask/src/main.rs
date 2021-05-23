@@ -60,11 +60,16 @@ fn release(version: &str) -> Result<(), DynError> {
     cmd!("git checkout -b v{version}").run()?;
 
     // Create the release commit.
-    cmd!("git commit -a -m `Prepare for the v{version} release.`").run()?;
+    let message = format!("Prepare for the v{} release.", version);
+    cmd!("git commit -a -m {message}").run()?;
     cmd!("git push -u origin v{version}").run()?;
 
     // Create the PR with a proper label, which then gets picked up by the CI.
-    cmd!("gh pr create --label 'release' --title '{version}' --repo 'probe-rs/probe-rs' --body 'Bump probe-rs versions in preparation for the v{version} release.'").run()?;
+    let message = format!(
+        "Bump probe-rs versions in preparation for the v{} release.",
+        version
+    );
+    cmd!("gh pr create --label 'release' --title '{version}' --repo 'probe-rs/probe-rs' --body {message}").run()?;
 
     Ok(())
 }
