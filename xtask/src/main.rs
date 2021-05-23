@@ -60,7 +60,7 @@ fn release(version: &str) -> Result<(), DynError> {
     cmd!("git checkout -b v{version}").run()?;
 
     // Create the release commit.
-    cmd!("git commit -a -m 'Prepare for the v{version} release.'").run()?;
+    cmd!("git commit -a -m `Prepare for the v{version} release.`").run()?;
     cmd!("git push -u origin v{version}").run()?;
 
     // Create the PR with a proper label, which then gets picked up by the CI.
