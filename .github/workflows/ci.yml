@@ -175,6 +175,6 @@ jobs:
         with:
           changeLogPath: CHANGELOG.md
           skipLabels: 'needs-changelog, skip-changelog'
-          missingUpdateErrorMessage: 'Please add a changelog entry in the CHANGELOG.md.'
+          missingUpdateErrorMessage: 'Please add a changelog entry in the CHANGELOG.md file.'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
