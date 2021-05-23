@@ -13,3 +13,5 @@ Repeat for the [probe-rs, probe-rs-rtt, cargo-embed, cargo-flash] repositories:
 2. Run `cargo xtask release <version>` in the respective repo with `version` being the version that this release is assigned. This will checkout master, pull all changes, bump all dependencies and create a commit with the changes on a branch for that release for you. It then creates a new PR with a `release-ready` label for GHA to automatically release that version when it is successfully merged into `master`.
 
 3. Let GHA take its course.
+
+4. Optionally, fix issues on the created PR. But of course, we do not make mistakes here.
