@@ -6,6 +6,7 @@ members = [
     "cli",
     "debugger",
     "gdb-server",
+    "xtask",
 ]
 
 [profile.release]

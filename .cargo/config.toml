@@ -1,0 +1,2 @@
+[alias]
+scripts = "run --package xtask --"
