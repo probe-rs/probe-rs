@@ -1,13 +1,14 @@
-# Based on https://github.com/actions-rs/meta/blob/master/recipes/quickstart.md
+# This action builds* all the pushes to master, staging and trying which are required for bors.
+# Additionally it builds* for each PR.
 #
-# Currently only builds on Linux and Windows
+# * builds includes building, checking, testing, checking format and clippy, as well as the changelog.
 
 on:
   push:
     branches: [master, staging, trying]
   pull_request:
 
-name: CI
+name: Run CI
 
 jobs:
   check:
