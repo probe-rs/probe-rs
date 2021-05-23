@@ -164,7 +164,7 @@ jobs:
           args: --all-features
 
   changelog:
-    name: Changelog check
+    name: Changelog
     runs-on: ubuntu-latest
     steps:
       - name: Checkout sources
