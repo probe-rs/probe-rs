@@ -170,9 +170,11 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v2
 
-      - name: Changelog updated
-        uses: Zomzog/changelog-checker@v1.1.0
+      - name: Check that changelog updated
+        uses: dangoslen/changelog-enforcer@v2
         with:
-          fileName: CHANGELOG.md
+          changeLogPath: CHANGELOG.md
+          skipLabels: 'needs-changelog, skip-changelog'
+          missingUpdateErrorMessage: 'Please add a changelog entry in the CHANGELOG.md.'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
