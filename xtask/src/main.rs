@@ -63,7 +63,7 @@ fn release(version: &str) -> Result<(), DynError> {
     cmd!("git commit -a -m 'Prepare for the v{version} release.'").run()?;
 
     // Create the PR with a proper label, which then gets picked up by the CI.
-    cmd!("gh pr create --label 'release'").run()?;
+    cmd!("gh pr create --label 'release' --title '{version}' --repo 'probe-rs/probe-rs' --body 'Bump probe-rs versions in preparation for the v{version} release.'").run()?;
 
     Ok(())
 }
