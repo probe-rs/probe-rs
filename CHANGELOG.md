@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+
+### Changed
+
+### Fixed
+
+## [0.11.0-alpha.1]
+
+### Added
 - Support for the `HNONSEC` bit in memory access. This now allows secure access on chips which support TrustZone (#???).
 - Support for RISCV chips which use the System Bus Access method for memory access when debugging (#527).
 
@@ -303,7 +311,8 @@ Initial release on crates.io
 - Working basic flash downloader with nRF51.
 - Introduce cargo-flash which can automatically build & flash the target elf file.
 
-[Unreleased]: https://github.com/probe-rs/probe-rs/compare/v0.10.1...master
+[Unreleased]: https://github.com/probe-rs/probe-rs/compare/0.11.0-alpha.1...master
+[0.11.0-alpha.1]: https://github.com/probe-rs/probe-rs/compare/v0.10.1...0.11.0-alpha.1
 [0.10.1]: https://github.com/probe-rs/probe-rs/compare/v0.10.0...v0.10.1
 [0.10.0]: https://github.com/probe-rs/probe-rs/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/probe-rs/probe-rs/compare/v0.8.0...v0.9.0
