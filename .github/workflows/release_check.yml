@@ -1,5 +1,5 @@
 # This Action is triggered when a PR with the label 'release' is created against 'master'.
-# It publishes the crates in the repo to crates.io.
+# It checks if the crates in the repo could publish to crates.io.
 
 on:
   pull_request:

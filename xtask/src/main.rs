@@ -27,9 +27,7 @@ fn try_main() -> Result<(), DynError> {
 fn print_help() {
     eprintln!(
         "Tasks:
-fetch-prs <current_release>
-    Arguments:
-        - <current_release>: The version number of the currently last released version on crates.io (e.g. 0.1.0).
+fetch-prs
     Help: Fetches all the PRs since the current release.
 
 release <next_release>
@@ -56,8 +54,7 @@ fn release(version: &str) -> Result<(), DynError> {
     cmd!("git pull").run()?;
 
     // Bump the crate versions.
-    cmd!("cargo workspaces version -y --no-git-tag --no-git-commit --no-git-push custom {version}")
-        .run()?;
+    cmd!("cargo workspaces version -y --no-git-commit custom {version}").run()?;
 
     // Checkout a release branch
     cmd!("git checkout -b v{version}").run()?;
