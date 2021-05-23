@@ -61,7 +61,7 @@ fn release(version: &str) -> Result<(), DynError> {
 
     // Create the release commit.
     cmd!("git commit -a -m 'Prepare for the v{version} release.'").run()?;
-    cmd!("git push --set-upstream origin v{version}").run()?;
+    cmd!("git branch -u origin v{version}").run()?;
 
     // Create the PR with a proper label, which then gets picked up by the CI.
     cmd!("gh pr create --label 'release' --title '{version}' --repo 'probe-rs/probe-rs' --body 'Bump probe-rs versions in preparation for the v{version} release.'").run()?;
