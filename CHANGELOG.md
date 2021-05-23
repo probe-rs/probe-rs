@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.11.0-alpha.1]
 
+## [0.11.0-alpha.0]
+
 ### Added
 - Support for the `HNONSEC` bit in memory access. This now allows secure access on chips which support TrustZone (#???).
 - Support for RISCV chips which use the System Bus Access method for memory access when debugging (#527).

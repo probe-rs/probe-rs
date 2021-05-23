@@ -1,6 +1,6 @@
 [package]
 name = "probe-rs-debugger"
-version = "0.11.0-alpha.0"
+version = "0.11.0-alpha.1"
 authors = ["Noah Hüsser <yatekii@yatekii.ch>", "Dominik Boehi <dominik.boehi@gmail.ch>", "Jack Noppe <noppej@hotmail.com>"]
 edition = "2018"
 description = "An interface (CLI or DAP Server) on top of the debug probe capabilities provided by probe-rs."
