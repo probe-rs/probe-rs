@@ -1,0 +1,23 @@
+# Check that the changelog is updated for all changes.
+#
+# This is only run for PRs.
+
+on:
+  pull_request:
+
+jobs:
+  changelog:
+    name: Changelog
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v2
+
+      - name: Check that changelog updated
+        uses: dangoslen/changelog-enforcer@v2
+        with:
+          changeLogPath: CHANGELOG.md
+          skipLabels: 'needs-changelog, skip-changelog'
+          missingUpdateErrorMessage: 'Please add a changelog entry in the CHANGELOG.md file.'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
