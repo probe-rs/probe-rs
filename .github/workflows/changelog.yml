@@ -4,6 +4,11 @@
 
 on:
   pull_request:
+    # opened, reopened, synchronize are the default types for pull_request.
+    # labeled, unlabeled ensure this check is also run if a label is added or removed.
+    types: [opened, reopened, labeled, unlabeled, synchronize]
+
+name: Changelog
 
 jobs:
   changelog:
