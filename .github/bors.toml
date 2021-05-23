@@ -7,5 +7,5 @@ status = [
     "Test Suite (ubuntu-latest)",
     "Test Suite (windows-latest)",
     "Rustfmt",
-    "Changelog",
 ]
+pr_status = ["Changelog"]
