@@ -4,7 +4,6 @@
 on:
   pull_request:
     branches: [master]
-    labels: [release]
 
 name: Check that the release on crates.io will succeed.
 
@@ -12,7 +11,7 @@ jobs:
   verify:
     name: Verify
     runs-on: ubuntu-latest
-    if: ${{ !contains(github.event.pull_request.labels.*.names, 'release') }}
+    if: ${{ contains(github.event.pull_request.labels.*.names, 'release') }}
 
     steps:
       - name: Checkout sources
