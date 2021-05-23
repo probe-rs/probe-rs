@@ -172,19 +172,3 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           args: --all-features
-
-  changelog:
-    name: Changelog
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout sources
-        uses: actions/checkout@v2
-
-      - name: Check that changelog updated
-        uses: dangoslen/changelog-enforcer@v2
-        with:
-          changeLogPath: CHANGELOG.md
-          skipLabels: 'needs-changelog, skip-changelog'
-          missingUpdateErrorMessage: 'Please add a changelog entry in the CHANGELOG.md file.'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
