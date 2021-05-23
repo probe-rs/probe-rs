@@ -8,6 +8,8 @@ on:
 
 name: Release on crates.io
 
+environment: release
+
 jobs:
   release:
     name: Release
