@@ -8,13 +8,12 @@ on:
 
 name: Release on crates.io
 
-environment: release
-
 jobs:
   release:
     name: Release
     runs-on: ubuntu-latest
     if: github.event.pull_request.merged == true && !contains(github.event.pull_request.labels.*.names, 'release')
+    environment: release
 
     steps:
       - name: Checkout sources
