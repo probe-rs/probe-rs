@@ -15,6 +15,10 @@ Repeat for the [probe-rs, probe-rs-rtt, cargo-embed, cargo-flash] repositories:
 
 4. Let GHA take its course.
 
-5. Optionally, fix issues on the created PR. But of course, we do not make mistakes here.
+5. Optionally, fix issues on the created PR. Bust of course, we do not make mistakes here.
 
 6. Add the changelog to to the newly created Github release.
+
+# Required changelog entry for PRs
+
+Generally we require a changelog entry for each PR. If for good reason it is omitted but required for the release, please add a `needs-changelog` label to the PR to make the CI pass. If it's a purely maintenance related PR,, you can also use `skip-changelog` to skip putting a changelog entry now and lateron during the release.
