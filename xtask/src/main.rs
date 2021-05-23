@@ -69,7 +69,8 @@ fn release(version: &str) -> Result<(), DynError> {
         "Bump probe-rs versions in preparation for the v{} release.",
         version
     );
-    cmd!("gh pr create --label 'release' --title {version} --repo 'probe-rs/probe-rs' --body {message}").run()?;
+    let title = format!("Release v{}", version);
+    cmd!("gh pr create --label 'release' --title {title} --repo 'probe-rs/probe-rs' --body {message}").run()?;
 
     Ok(())
 }
