@@ -21,7 +21,7 @@ jobs:
       - name: Install libusb and libftdi (linux)
         run: |
           sudo apt update
-          sudo apt install -y libusb-dev libusb-1.0 libftdi1-dev
+          sudo apt install -y libusb-1.0-0-dev libftdi1-dev
 
       - name: Install Rust toolchains
         uses: actions-rs/toolchain@v1
