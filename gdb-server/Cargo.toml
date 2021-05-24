@@ -1,6 +1,6 @@
 [package]
 name = "gdb-server"
-version = "0.11.0-alpha.4"
+version = "0.11.0-alpha.5"
 authors = ["Noah Hüsser <yatekii@yatekii.ch>", "Dominik Boehi <dominik.boehi@gmail.ch>"]
 edition = "2018"
 description = "A gdb stub implementation for on chip debugging and flashing of ARM chips."
