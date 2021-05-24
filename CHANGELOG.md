@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Support for the `HNONSEC` bit in memory access. This now allows secure access on chips which support TrustZone (#465).
 - Support for RISCV chips which use the System Bus Access method for memory access when debugging (#527).
-- Support double buffering in the flash loader (#107).
+- Support for double buffering in the flash loader, which increased flashing speed (#107).
 - Determine location of debug components by parsing ROM table (#431).
 - Support for "flashing" data to RAM in the flash loader (#480).
 - Added FTDI C232HM-DDHSL-0 to comaptible USB list for FTDI backend (#485).
@@ -42,6 +42,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added support for SiLabs EFR32 targets (#566, #567).
 - Added support for flashing Intel hex files using `probe-rs-cli` (#618).
 - Updated target description for NRF91 (#619).
+- Added a RAM benchmark script (#514).
+- Initial support for batched commands for J-Link (#515).
 
 ### Changed
 
@@ -58,7 +60,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Better error handling for flashing (#451).
 - gdb-server: Halt the chip when attaching (#461).
 - Better error messages in the ram_download example (#464).
-- Cache value of CSW register (#471).
+- Cache value of CSW register to reduce number of SWD transfers (#471).
 - Use `erased_byte_value` from target description as default value in the flash loader (#475).
 - Added retry functionality for CMSIS-DAP probes (#462).
 - riscv: Use abstract commands for CSR access for improved speed (#487).
@@ -66,6 +68,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Use `itm-decode` to decode ITM packets instead of built-in decoder (#564).
 - Flash API Improvements: Data is now owned by the `FlashLoader`and `FlashBuilder` structs to simply the API, and the `FlashLoader::commit()` accepts the `DownloadOptions` struct instead of bool flags (#605).
 - Improve internal tracking of core status (#629).
+- Rework SWD sequence in J-Link (#513).
+- Print ST-Link version in name (#516).
+- Improve argument parsing in debugger, add speed option to probe-rs-cli (#523).
   
 
 ### Fixed
@@ -87,6 +92,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - riscv: Fixed abstract command handling (#611).
 - Fixed a bus congestion issue where the chip is polled too often, leading to problems while flashing (#613).
 - The breakpoint address is now verified to ensure a breakpoint at the given address is actually possible (#626).
+- riscv: Use correct address for access to `abstractauto`register (#511).
+- The `--chip` argument now works without specifying the `--elf` argument (fix #517).
 
 
 
@@ -108,17 +115,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added support for the MAX32665 & MAX32666.
 - Building probe-rs now works without rustfmt being present too (#423).
 - Added support for implicit ebreak in RISCV chips (#423, #430).
-- Added a RAM benchmark script (#514).
-- Initial support for batched commands for J-Link (#515).
 
 ### Changed
 
 - nRF devices now use the `SoftDevice Erase` algorithm for flashing which will also erase the flash if it contains the softdevice. The previous algorithm prevented users from flashing at all if a softdevice was present (#365, #366).
 - The names of probe interface methods were named more consistently (#375).
 - FTDI support is now opt in. Please use the `ftdi` feature for support (#378).
-- Rework SWD sequence in J-Link (#513).
-- Print ST-Link version in name (#516).
-- Improve argument parsing in debugger, add speed option to probe-rs-cli (#523).
 
 ### Fixed
 
@@ -130,8 +132,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed a bug where a target fault during AP scans would not be cleared and result in failure on some cores even tho there was no actual issue other than the scan being aborted due to an AP not being present (which is perfectly okay) (#419).
 - Use the correct bit mask for the breakpoint comperator on Cortex-M0(+) devices (#434).
 - Fixed a bug where breakpoints on M0 would always match the full word even if half word would have been correct (#368).
-- riscv: Use correct address for access to `abstractauto`register (#511).
-- The `--chip` argument now works without specifying the `--elf` argument (fix #517).
 
 ### Known issues
 
