@@ -8,4 +8,4 @@ status = [
     "Test Suite (windows-latest)",
     "Rustfmt",
 ]
-pr_status = ["Changelog"]
+# pr_status = ["Changelog"]

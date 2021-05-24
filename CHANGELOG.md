@@ -18,7 +18,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `try_into_riscv_interface` functions, which return the `Probe` struct in the case of an error. This improves the
   auto detection process.
   
-
 ### Fixed
 
 - Fixed `m33` breakpoints.
