@@ -22,7 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - riscv: Support for memory access using system bus (#527).
 - Added a generic `read` function, which can be used for memory access with maximum speed, regardless of access width (#633).
 - Added an option to skip erasing the flash before programming (#628).
-- Added a new debugger for VS Code, using the [Debug Adapter Protocol](https://microsoft.github.io/debug-adapter-protocol/specification). The debugger can be found in `probe-rs-debugger` crate (#620).
+- Added a new debugger for VS Code, using the [Debug Adapter Protocol](https://microsoft.github.io/debug-adapter-protocol/specification). The debugger can be found in the `probe-rs-debugger` crate (#620).
 
 
 ### Target Support
@@ -72,7 +72,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Fixed `M33` breakpoints (#543).
 - Fixed a bug where ST-Link v3 is not able to read 8 bit data chunks with more than 255 bytes. Currently we set the chunking to 128 bytes. This might be a bug in the ST-Link v3 firmware and might change in the future (#553, #609).
-- Errors occuring while trying to open J-Link probes should not prevent other probes from working (#401).
+- Errors occuring while trying to open J-Link probes do not prevent other probes from working anymore (#401).
 - CMSIS-DAPv1 probes with a HID report size different than 64 bytes are now supported (fixes #282).
 - CMSIS-DAPv2 devices are now drained when attaching (fixes #424).
 - Improved SWO speed on CMSIS-DAPv2 (fix #448).
