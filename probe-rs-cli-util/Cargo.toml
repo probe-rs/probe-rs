@@ -1,6 +1,6 @@
 [package]
 name = "probe-rs-cli-util"
-version = "0.11.0-alpha.4"
+version = "0.11.0-alpha.5"
 authors = ["Noah Hüsser <yatekii@yatekii.ch", "Dominik Boehi <dominik.boehi@gmail.com>"]
 edition = "2018"
 description = "Helper library for CLI applications based on probe-rs."
