@@ -33,7 +33,7 @@ jobs:
       - name: Publish to crates.io
         run: |
           cargo install cargo-workspaces
-          cargo workspaces publish --from-git --token ${{ secrets.CARGO_REGISTRY_TOKEN }} custom ${{ github.head_ref }}
+          cargo workspaces publish --from-git --token ${{ secrets.CARGO_REGISTRY_TOKEN }} custom `echo "${{ github.head_ref }}" | cut -c2-`
 
       - name: Bump version and push tag
         id: tag_version
