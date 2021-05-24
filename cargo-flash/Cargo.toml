@@ -27,5 +27,5 @@ probe-rs-cli-util = { version = "0.10.0", git = "https://github.com/probe-rs/pro
 git-version = "0.3.4"
 anyhow = "1.0.40"
 bytesize = "1.0.1"
-thiserror = "1.0.24"
+thiserror = "1.0.25"
 dunce = "1.0.1"
