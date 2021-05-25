@@ -70,8 +70,8 @@ pub(crate) struct ProcessedElf<'file> {
 
     // // currently extracted via `for` loop over sections
     // debug_frame: (),                // gimli one (not bytes)
-    // vector_table: (),               // processed one (not bytes)
-    // highest_ram_address_in_use: (), // used for stack canary
+    pub(crate) vector_table: VectorTable, // processed one (not bytes)
+                                          // highest_ram_address_in_use: (), // used for stack canary
 }
 
 impl<'file> ProcessedElf<'file> {
@@ -81,12 +81,14 @@ impl<'file> ProcessedElf<'file> {
         let live_functions = extract_live_functions(&elf)?;
 
         let (defmt_table, defmt_locations) = extract_defmt_info(elf_bytes)?;
+        let vector_table = extract_vector_table(&elf)?;
 
         Ok(Self {
             defmt_table,
             defmt_locations,
             elf,
             live_functions,
+            vector_table,
         })
     }
     //     fn symbol_map(&self) -> SymbolMap {
@@ -155,7 +157,7 @@ fn extract_live_functions<'file>(elf: &ElfFile<'file>) -> anyhow::Result<HashSet
     Ok(live_functions)
 }
 
-pub(crate) fn extract_vector_table(elf: &ElfFile) -> anyhow::Result<VectorTable> {
+fn extract_vector_table(elf: &ElfFile) -> anyhow::Result<VectorTable> {
     let section = elf
         .section_by_name(".vector_table")
         .ok_or_else(|| anyhow!("`.vector_table` section is missing"))?;

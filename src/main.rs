@@ -205,8 +205,7 @@ fn notmain() -> anyhow::Result<i32> {
     let (rtt_addr, uses_heap, main) = get_rtt_heap_main_from(&elf)?;
 
     // TODO continue looking at code from here
-    let vector_table = sketch::extract_vector_table(&elf)?;
-    log::debug!("vector table: {:x?}", vector_table);
+    log::debug!("vector table: {:x?}", elf.vector_table);
     let sp_ram_region = target
         .memory_map
         .iter()
@@ -215,7 +214,7 @@ fn notmain() -> anyhow::Result<i32> {
                 // NOTE stack is full descending; meaning the stack pointer can be
                 // `ORIGIN(RAM) + LENGTH(RAM)`
                 let range = region.range.start..=region.range.end;
-                if range.contains(&vector_table.initial_stack_pointer) {
+                if range.contains(&elf.vector_table.initial_stack_pointer) {
                     Some(region)
                 } else {
                     None
@@ -277,11 +276,11 @@ fn notmain() -> anyhow::Result<i32> {
             // Initial SP must be past canary location.
             let initial_sp_makes_sense = ram
                 .range
-                .contains(&(vector_table.initial_stack_pointer - 1))
-                && highest_ram_addr_in_use < vector_table.initial_stack_pointer;
+                .contains(&(elf.vector_table.initial_stack_pointer - 1))
+                && highest_ram_addr_in_use < elf.vector_table.initial_stack_pointer;
             if highest_ram_addr_in_use != 0 && !uses_heap && initial_sp_makes_sense {
                 let stack_available =
-                    vector_table.initial_stack_pointer - highest_ram_addr_in_use - 1;
+                    elf.vector_table.initial_stack_pointer - highest_ram_addr_in_use - 1;
 
                 // We consider >90% stack usage a potential stack overflow, but don't go beyond 1 kb since
                 // filling a lot of RAM is slow (and 1 kb should be "good enough" for what we're doing).
@@ -291,7 +290,7 @@ fn notmain() -> anyhow::Result<i32> {
                     "{} bytes of stack available (0x{:08X}-0x{:08X}), using {} byte canary to detect overflows",
                     stack_available,
                     highest_ram_addr_in_use + 1,
-                    vector_table.initial_stack_pointer,
+                    elf.vector_table.initial_stack_pointer,
                     canary_size,
                 );
 
@@ -322,7 +321,7 @@ fn notmain() -> anyhow::Result<i32> {
             core.clear_hw_breakpoint(main)?;
         }
 
-        core.set_hw_breakpoint(cortexm::clear_thumb_bit(vector_table.hard_fault))?;
+        core.set_hw_breakpoint(cortexm::clear_thumb_bit(elf.vector_table.hard_fault))?;
         core.run()?;
     }
     let canary = canary;
@@ -468,7 +467,7 @@ fn notmain() -> anyhow::Result<i32> {
             let touched_addr = addr + pos as u32;
             log::debug!("canary was touched at 0x{:08X}", touched_addr);
 
-            let min_stack_usage = vector_table.initial_stack_pointer - touched_addr;
+            let min_stack_usage = elf.vector_table.initial_stack_pointer - touched_addr;
             log::warn!(
                 "program has used at least {} bytes of stack space, data segments \
                 may be corrupted due to stack overflow",
@@ -498,7 +497,7 @@ fn notmain() -> anyhow::Result<i32> {
         &mut core,
         debug_frame,
         &elf,
-        &vector_table,
+        &elf.vector_table,
         &sp_ram_region,
         &elf.live_functions,
         &backtrace_settings,
