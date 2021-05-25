@@ -57,8 +57,7 @@ pub(crate) struct ProcessedElf<'file> {
     // // extracted using `defmt` crate
     // map(index: usize) -> defmt frame
     defmt_table: Option<Table>,
-    // defmt_locations: (), // map(index: usize) -> source code location
-
+    defmt_locations: Option<BTreeMap<u64, defmt_decoder::Location>>,
     // // extracted from `for` loop over symbols
     // target_program_uses_heap: (),
     // rtt_buffer_address: (),
@@ -76,10 +75,11 @@ impl<'file> ProcessedElf<'file> {
 
         let live_functions = extract_live_functions(&elf)?;
 
-        let defmt_table = extract_defmt_info(elf_bytes)?;
+        let (defmt_table, defmt_locations) = extract_defmt_info(elf_bytes)?;
 
         Ok(Self {
             defmt_table,
+            defmt_locations,
             elf,
             live_functions,
         })
@@ -97,7 +97,15 @@ impl<'elf> Deref for ProcessedElf<'elf> {
     }
 }
 
-fn extract_defmt_info(elf_bytes: &[u8]) -> Result<Option<Table>, anyhow::Error> {
+fn extract_defmt_info(
+    elf_bytes: &[u8],
+) -> Result<
+    (
+        Option<Table>,
+        Option<BTreeMap<u64, defmt_decoder::Location>>,
+    ),
+    anyhow::Error,
+> {
     let mut defmt_table = match env::var("PROBE_RUN_IGNORE_VERSION").as_deref() {
         Ok("true") | Ok("1") => defmt_decoder::Table::parse_ignore_version(elf_bytes)?,
         _ => defmt_decoder::Table::parse(elf_bytes)?,
@@ -114,7 +122,7 @@ fn extract_defmt_info(elf_bytes: &[u8]) -> Result<Option<Table>, anyhow::Error> 
             log::warn!("(BUG) location info is incomplete; it will be omitted from the output");
         }
     }
-    Ok(defmt_table)
+    Ok((defmt_table, defmt_locations))
 }
 
 fn extract_live_functions<'file>(
