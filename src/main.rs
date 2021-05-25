@@ -185,7 +185,10 @@ fn notmain() -> anyhow::Result<i32> {
     // TODO use this instead of iterating?
     // let _: Option<_> = elf.section(".debug_frame")
     let mut highest_ram_addr_in_use = 0;
-    let mut debug_frame = None;
+    let debug_frame = elf
+        .section_by_name(".debug_frame")
+        .map(|section| section.data())
+        .transpose()?;
     let mut vector_table = None;
     for sect in elf.sections() {
         // If this section resides in RAM, track the highest RAM address in use.
@@ -206,11 +209,6 @@ fn notmain() -> anyhow::Result<i32> {
         }
 
         if let Ok(name) = sect.name() {
-            if name == ".debug_frame" {
-                debug_frame = Some(sect.data()?);
-                continue;
-            }
-
             let size = sect.size();
             // skip empty sections
             if candidates.contains(&name) && size != 0 {
@@ -515,6 +513,7 @@ fn notmain() -> anyhow::Result<i32> {
         }
     }
 
+    // TODO can we call this earlier?
     let debug_frame = debug_frame.ok_or_else(|| anyhow!("`.debug_frame` section not found"))?;
 
     print_separator();
