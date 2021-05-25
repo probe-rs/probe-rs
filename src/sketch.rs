@@ -1,8 +1,9 @@
+#![allow(dead_code)] // TODO remove this
+
 use std::{
     collections::{BTreeMap, HashSet},
-    env, fs,
+    env,
     ops::Deref,
-    path::Path,
 };
 
 use anyhow::anyhow;
@@ -56,8 +57,8 @@ pub(crate) struct ProcessedElf<'file> {
     pub(crate) live_functions: HashSet<&'file str>,
     // // extracted using `defmt` crate
     // map(index: usize) -> defmt frame
-    defmt_table: Option<Table>,
-    defmt_locations: Option<BTreeMap<u64, defmt_decoder::Location>>,
+    pub(crate) defmt_table: Option<Table>,
+    pub(crate) defmt_locations: Option<BTreeMap<u64, defmt_decoder::Location>>,
     // // extracted from `for` loop over symbols
     // target_program_uses_heap: (),
     // rtt_buffer_address: (),
@@ -89,6 +90,7 @@ impl<'file> ProcessedElf<'file> {
     //     }
 }
 
+// TODO remove this
 impl<'elf> Deref for ProcessedElf<'elf> {
     type Target = ElfFile<'elf>;
 
@@ -106,11 +108,13 @@ fn extract_defmt_info(
     ),
     anyhow::Error,
 > {
-    let mut defmt_table = match env::var("PROBE_RUN_IGNORE_VERSION").as_deref() {
+    let defmt_table = match env::var("PROBE_RUN_IGNORE_VERSION").as_deref() {
         Ok("true") | Ok("1") => defmt_decoder::Table::parse_ignore_version(elf_bytes)?,
         _ => defmt_decoder::Table::parse(elf_bytes)?,
     };
+
     let mut defmt_locations = None;
+
     if let Some(table) = defmt_table.as_ref() {
         let tmp = table.get_locations(elf_bytes)?;
 
@@ -122,6 +126,7 @@ fn extract_defmt_info(
             log::warn!("(BUG) location info is incomplete; it will be omitted from the output");
         }
     }
+
     Ok((defmt_table, defmt_locations))
 }
 

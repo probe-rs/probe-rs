@@ -153,7 +153,7 @@ fn notmain() -> anyhow::Result<i32> {
     }
     let chip = opts.chip.as_deref().unwrap();
     let bytes = fs::read(elf_path)?;
-    let elf = ProcessedElf::from_elf(&bytes)?;
+    let mut elf = ProcessedElf::from_elf(&bytes)?;
 
     let target = probe_rs::config::registry::get_target_by_name(chip)?;
 
@@ -176,30 +176,6 @@ fn notmain() -> anyhow::Result<i32> {
         );
     }
     let ram_region = ram_region;
-
-    // Parse defmt_decoder-table from bytes
-    // * skip defmt version check, if `PROBE_RUN_IGNORE_VERSION` matches one of the options
-    let mut table = match env::var("PROBE_RUN_IGNORE_VERSION").as_deref() {
-        Ok("true") | Ok("1") => defmt_decoder::Table::parse_ignore_version(&bytes)?,
-        _ => defmt_decoder::Table::parse(&bytes)?,
-    };
-    // verify that all defmt logs have a location
-    // defmt::Table is map from index to defmt frame
-    // defmt::Locations is a map from index to source code location
-    // Extract the `Locations` from the table, if there is a table
-    let mut locs = None;
-    if let Some(table) = table.as_ref() {
-        let tmp = table.get_locations(&bytes)?;
-
-        if !table.is_empty() && tmp.is_empty() {
-            log::warn!("insufficient DWARF info; compile your program with `debug = 2` to enable location info");
-        } else if table.indices().all(|idx| tmp.contains_key(&(idx as u64))) {
-            locs = Some(tmp);
-        } else {
-            log::warn!("(BUG) location info is incomplete; it will be omitted from the output");
-        }
-    }
-    let locs = locs;
 
     // sections used in cortex-m-rt
     // NOTE we won't load `.uninit` so it is not included here
@@ -409,12 +385,12 @@ fn notmain() -> anyhow::Result<i32> {
         bail!(
             "attempted to use `--no-flash` and `defmt` logging -- this combination is not allowed. Remove the `--no-flash` flag"
         );
-    } else if use_defmt && table.is_none() {
+    } else if use_defmt && elf.defmt_table.is_none() {
         bail!("\"defmt\" RTT channel is in use, but the firmware binary contains no defmt data");
     }
 
     if !use_defmt {
-        table = None;
+        elf.defmt_table = None;
     }
 
     print_separator();
@@ -439,7 +415,7 @@ fn notmain() -> anyhow::Result<i32> {
             };
 
             if num_bytes_read != 0 {
-                if let Some(table) = table.as_ref() {
+                if let Some(table) = elf.defmt_table.as_ref() {
                     frames.extend_from_slice(&read_buf[..num_bytes_read]);
 
                     loop {
@@ -447,7 +423,10 @@ fn notmain() -> anyhow::Result<i32> {
                             Ok((frame, consumed)) => {
                                 // NOTE(`[]` indexing) all indices in `table` have already been
                                 // verified to exist in the `locs` map
-                                let loc = locs.as_ref().map(|locs| &locs[&frame.index()]);
+                                let loc = elf
+                                    .defmt_locations
+                                    .as_ref()
+                                    .map(|locs| &locs[&frame.index()]);
 
                                 let (mut file, mut line, mut mod_path) = (None, None, None);
                                 if let Some(loc) = loc {
