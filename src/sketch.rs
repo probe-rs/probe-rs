@@ -53,7 +53,7 @@ pub(crate) struct ProcessedElf<'file> {
     elf: ElfFile<'file>,
     // name of functions in program after linking
     // extracted from `.text` section
-    live_functions: HashSet<&'file str>,
+    pub(crate) live_functions: HashSet<&'file str>,
     // // extracted using `defmt` crate
     // map(index: usize) -> defmt frame
     defmt_table: Option<Table>,

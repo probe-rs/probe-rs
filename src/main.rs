@@ -6,7 +6,6 @@ mod sketch;
 mod stacked;
 
 use std::{
-    collections::HashSet,
     convert::TryInto,
     env, fs,
     io::{self, Write as _},
@@ -25,7 +24,7 @@ use defmt_decoder::DEFMT_VERSION;
 use log::Level;
 use object::{
     read::{File as ElfFile, Object as _, ObjectSection as _},
-    ObjectSegment, ObjectSymbol, SymbolSection,
+    ObjectSegment, ObjectSymbol,
 };
 use probe_rs::{
     config::{registry, MemoryRegion},
@@ -178,18 +177,6 @@ fn notmain() -> anyhow::Result<i32> {
     }
     let ram_region = ram_region;
 
-    // .text section INDEX
-    // NOTE we want to raise the linking error before calling `defmt_decoder::Table::parse`
-    let text = elf
-        .section_by_name(".text")
-        .map(|section| section.index())
-        .ok_or_else(|| {
-            anyhow!(
-                "`.text` section is missing, please make sure that the linker script was passed \
-                to the linker (check `.cargo/config.toml` and the `RUSTFLAGS` variable)"
-            )
-        })?;
-
     // Parse defmt_decoder-table from bytes
     // * skip defmt version check, if `PROBE_RUN_IGNORE_VERSION` matches one of the options
     let mut table = match env::var("PROBE_RUN_IGNORE_VERSION").as_deref() {
@@ -282,17 +269,6 @@ fn notmain() -> anyhow::Result<i32> {
     }
     // ???
     let (debug_frame, vector_table) = (debug_frame, vector_table);
-
-    let live_functions = elf
-        .symbols()
-        .filter_map(|sym| {
-            if sym.section() == SymbolSection::Section(text) {
-                Some(sym.name())
-            } else {
-                None
-            }
-        })
-        .collect::<Result<HashSet<_>, _>>()?;
 
     let (rtt_addr, uses_heap, main) = get_rtt_heap_main_from(&elf)?;
 
@@ -585,7 +561,7 @@ fn notmain() -> anyhow::Result<i32> {
         &elf,
         &vector_table,
         &sp_ram_region,
-        &live_functions,
+        &elf.live_functions,
         &backtrace_settings,
     )?;
 
