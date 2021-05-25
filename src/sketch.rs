@@ -1,6 +1,7 @@
 use std::{
     collections::{BTreeMap, HashSet},
     env, fs,
+    ops::Deref,
     path::Path,
 };
 
@@ -86,6 +87,14 @@ impl<'file> ProcessedElf<'file> {
     //     fn symbol_map(&self) -> SymbolMap {
     //         self.elf.symbol_map()
     //     }
+}
+
+impl<'elf> Deref for ProcessedElf<'elf> {
+    type Target = ElfFile<'elf>;
+
+    fn deref(&self) -> &ElfFile<'elf> {
+        &self.elf
+    }
 }
 
 fn extract_defmt_info(elf_bytes: &[u8]) -> Result<Option<Table>, anyhow::Error> {
