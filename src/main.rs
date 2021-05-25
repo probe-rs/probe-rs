@@ -18,7 +18,6 @@ use std::{
 };
 
 use anyhow::{anyhow, bail};
-use arrayref::array_ref;
 use colored::Colorize as _;
 use defmt_decoder::DEFMT_VERSION;
 use log::Level;
@@ -177,11 +176,6 @@ fn notmain() -> anyhow::Result<i32> {
     }
     let ram_region = ram_region;
 
-    // sections used in cortex-m-rt
-    // NOTE we won't load `.uninit` so it is not included here
-    // NOTE we don't load `.bss` because the app (cortex-m-rt) will zero it
-    let candidates = [".vector_table", ".text", ".rodata", ".data"];
-
     // TODO use this instead of iterating?
     // let _: Option<_> = elf.section(".debug_frame")
     let mut highest_ram_addr_in_use = 0;
@@ -189,7 +183,6 @@ fn notmain() -> anyhow::Result<i32> {
         .section_by_name(".debug_frame")
         .map(|section| section.data())
         .transpose()?;
-    let mut vector_table = None;
     for sect in elf.sections() {
         // If this section resides in RAM, track the highest RAM address in use.
         if let Some(ram) = &ram_region {
@@ -207,41 +200,12 @@ fn notmain() -> anyhow::Result<i32> {
                 }
             }
         }
-
-        if let Ok(name) = sect.name() {
-            let size = sect.size();
-            // skip empty sections
-            if candidates.contains(&name) && size != 0 {
-                let start = sect.address();
-                if size % 4 != 0 || start % 4 != 0 {
-                    // we could support unaligned sections but let's not do that now
-                    bail!("section `{}` is not 4-byte aligned", name);
-                }
-
-                let start = start.try_into()?;
-                let data = sect
-                    .data()?
-                    .chunks_exact(4)
-                    .map(|chunk| u32::from_le_bytes(*array_ref!(chunk, 0, 4)))
-                    .collect::<Vec<_>>();
-
-                if name == ".vector_table" {
-                    vector_table = Some(VectorTable {
-                        location: start,
-                        // Initial stack pointer
-                        initial_sp: data[0],
-                        reset: data[1],
-                        hard_fault: data[3],
-                    });
-                }
-            }
-        }
     }
 
     let (rtt_addr, uses_heap, main) = get_rtt_heap_main_from(&elf)?;
 
     // TODO continue looking at code from here
-    let vector_table = vector_table.ok_or_else(|| anyhow!("`.vector_table` section is missing"))?;
+    let vector_table = sketch::extract_vector_table(&elf)?;
     log::debug!("vector table: {:x?}", vector_table);
     let sp_ram_region = target
         .memory_map
@@ -251,7 +215,7 @@ fn notmain() -> anyhow::Result<i32> {
                 // NOTE stack is full descending; meaning the stack pointer can be
                 // `ORIGIN(RAM) + LENGTH(RAM)`
                 let range = region.range.start..=region.range.end;
-                if range.contains(&vector_table.initial_sp) {
+                if range.contains(&vector_table.initial_stack_pointer) {
                     Some(region)
                 } else {
                     None
@@ -311,10 +275,13 @@ fn notmain() -> anyhow::Result<i32> {
         // Decide if and where to place the stack canary.
         if let Some(ram) = &ram_region {
             // Initial SP must be past canary location.
-            let initial_sp_makes_sense = ram.range.contains(&(vector_table.initial_sp - 1))
-                && highest_ram_addr_in_use < vector_table.initial_sp;
+            let initial_sp_makes_sense = ram
+                .range
+                .contains(&(vector_table.initial_stack_pointer - 1))
+                && highest_ram_addr_in_use < vector_table.initial_stack_pointer;
             if highest_ram_addr_in_use != 0 && !uses_heap && initial_sp_makes_sense {
-                let stack_available = vector_table.initial_sp - highest_ram_addr_in_use - 1;
+                let stack_available =
+                    vector_table.initial_stack_pointer - highest_ram_addr_in_use - 1;
 
                 // We consider >90% stack usage a potential stack overflow, but don't go beyond 1 kb since
                 // filling a lot of RAM is slow (and 1 kb should be "good enough" for what we're doing).
@@ -324,7 +291,7 @@ fn notmain() -> anyhow::Result<i32> {
                     "{} bytes of stack available (0x{:08X}-0x{:08X}), using {} byte canary to detect overflows",
                     stack_available,
                     highest_ram_addr_in_use + 1,
-                    vector_table.initial_sp,
+                    vector_table.initial_stack_pointer,
                     canary_size,
                 );
 
@@ -501,7 +468,7 @@ fn notmain() -> anyhow::Result<i32> {
             let touched_addr = addr + pos as u32;
             log::debug!("canary was touched at 0x{:08X}", touched_addr);
 
-            let min_stack_usage = vector_table.initial_sp - touched_addr;
+            let min_stack_usage = vector_table.initial_stack_pointer - touched_addr;
             log::warn!(
                 "program has used at least {} bytes of stack space, data segments \
                 may be corrupted due to stack overflow",
@@ -732,7 +699,7 @@ fn get_rtt_heap_main_from(
 struct VectorTable {
     location: u32,
     // entry 0
-    initial_sp: u32,
+    initial_stack_pointer: u32,
     // entry 1: Reset handler
     reset: u32,
     // entry 3: HardFault handler

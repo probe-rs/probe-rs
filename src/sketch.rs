@@ -2,13 +2,17 @@
 
 use std::{
     collections::{BTreeMap, HashSet},
+    convert::TryInto,
     env,
     ops::Deref,
 };
 
-use anyhow::anyhow;
+use anyhow::{anyhow, bail};
+use arrayref::array_ref;
 use defmt_decoder::Table;
 use object::{read::File as ElfFile, Object, ObjectSection, ObjectSymbol, SymbolSection};
+
+use crate::VectorTable;
 
 pub(crate) fn notmain() -> anyhow::Result<i32> {
     // - parse CL arguments
@@ -90,7 +94,7 @@ impl<'file> ProcessedElf<'file> {
     //     }
 }
 
-// TODO remove this
+// TODO remove this when we are done and don't need access to the internal elf anymore
 impl<'elf> Deref for ProcessedElf<'elf> {
     type Target = ElfFile<'elf>;
 
@@ -101,13 +105,10 @@ impl<'elf> Deref for ProcessedElf<'elf> {
 
 fn extract_defmt_info(
     elf_bytes: &[u8],
-) -> Result<
-    (
-        Option<Table>,
-        Option<BTreeMap<u64, defmt_decoder::Location>>,
-    ),
-    anyhow::Error,
-> {
+) -> anyhow::Result<(
+    Option<Table>,
+    Option<BTreeMap<u64, defmt_decoder::Location>>,
+)> {
     let defmt_table = match env::var("PROBE_RUN_IGNORE_VERSION").as_deref() {
         Ok("true") | Ok("1") => defmt_decoder::Table::parse_ignore_version(elf_bytes)?,
         _ => defmt_decoder::Table::parse(elf_bytes)?,
@@ -130,9 +131,7 @@ fn extract_defmt_info(
     Ok((defmt_table, defmt_locations))
 }
 
-fn extract_live_functions<'file>(
-    elf: &ElfFile<'file>,
-) -> Result<HashSet<&'file str>, anyhow::Error> {
+fn extract_live_functions<'file>(elf: &ElfFile<'file>) -> anyhow::Result<HashSet<&'file str>> {
     let text = elf
         .section_by_name(".text")
         .map(|section| section.index())
@@ -154,6 +153,41 @@ fn extract_live_functions<'file>(
         })
         .collect::<Result<HashSet<_>, _>>()?;
     Ok(live_functions)
+}
+
+pub(crate) fn extract_vector_table(elf: &ElfFile) -> anyhow::Result<VectorTable> {
+    let section = elf
+        .section_by_name(".vector_table")
+        .ok_or_else(|| anyhow!("`.vector_table` section is missing"))?;
+
+    let start = section.address().try_into()?;
+    let size = section.size();
+
+    if size % 4 != 0 || start % 4 != 0 {
+        // we could support unaligned sections but let's not do that now
+        bail!("section `.vector_table` is not 4-byte aligned");
+    }
+
+    let bytes = section.data()?;
+    let mut words = bytes
+        .chunks_exact(4)
+        .map(|chunk| u32::from_le_bytes(*array_ref!(chunk, 0, 4)));
+
+    if let (Some(initial_stack_pointer), Some(reset), Some(_third), Some(hard_fault)) =
+        (words.next(), words.next(), words.next(), words.next())
+    {
+        Ok(VectorTable {
+            location: start,
+            initial_stack_pointer,
+            reset,
+            hard_fault,
+        })
+    } else {
+        Err(anyhow!(
+            "vector table section is too short. (has length: {} - should be at least 16)",
+            bytes.len()
+        ))
+    }
 }
 
 struct DataFromProbeRsRegistry {
