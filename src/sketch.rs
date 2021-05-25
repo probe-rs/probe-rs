@@ -69,9 +69,9 @@ pub(crate) struct ProcessedElf<'file> {
     // address_of_main_function: (),
 
     // // currently extracted via `for` loop over sections
-    // debug_frame: (),                // gimli one (not bytes)
+    pub(crate) debug_frame: &'file [u8], // gimli one (not bytes)
     pub(crate) vector_table: VectorTable, // processed one (not bytes)
-                                          // highest_ram_address_in_use: (), // used for stack canary
+                                         // highest_ram_address_in_use: (), // used for stack canary
 }
 
 impl<'file> ProcessedElf<'file> {
@@ -82,6 +82,7 @@ impl<'file> ProcessedElf<'file> {
 
         let (defmt_table, defmt_locations) = extract_defmt_info(elf_bytes)?;
         let vector_table = extract_vector_table(&elf)?;
+        let debug_frame = extract_debug_frame(&elf)?;
 
         Ok(Self {
             defmt_table,
@@ -89,6 +90,7 @@ impl<'file> ProcessedElf<'file> {
             elf,
             live_functions,
             vector_table,
+            debug_frame,
         })
     }
     //     fn symbol_map(&self) -> SymbolMap {
@@ -190,6 +192,13 @@ fn extract_vector_table(elf: &ElfFile) -> anyhow::Result<VectorTable> {
             bytes.len()
         ))
     }
+}
+
+fn extract_debug_frame<'file>(elf: &ElfFile<'file>) -> anyhow::Result<&'file [u8]> {
+    elf.section_by_name(".debug_frame")
+        .map(|section| section.data())
+        .transpose()?
+        .ok_or_else(|| anyhow!("`.debug_frame` section not found"))
 }
 
 struct DataFromProbeRsRegistry {
