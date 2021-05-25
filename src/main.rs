@@ -239,8 +239,6 @@ fn notmain() -> anyhow::Result<i32> {
             }
         }
     }
-    // ???
-    let (debug_frame, vector_table) = (debug_frame, vector_table);
 
     let (rtt_addr, uses_heap, main) = get_rtt_heap_main_from(&elf)?;
 
@@ -562,6 +560,12 @@ fn program_size_of(file: &ElfFile) -> u64 {
     // `segments` iterates only over *loadable* segments,
     // which are the segments that will be loaded to Flash by probe-rs
     file.segments().map(|segment| segment.size()).sum()
+}
+
+#[derive(Debug, PartialEq)]
+pub enum TopException {
+    StackOverflow,
+    HardFault, // generic hard fault
 }
 
 fn setup_logging_channel(
