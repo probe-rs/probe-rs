@@ -186,8 +186,6 @@ fn notmain() -> anyhow::Result<i32> {
     // let _: Option<_> = elf.section(".debug_frame")
     let mut highest_ram_addr_in_use = 0;
     let mut debug_frame = None;
-    // TODO remove this
-    let mut sections = vec![];
     let mut vector_table = None;
     for sect in elf.sections() {
         // If this section resides in RAM, track the highest RAM address in use.
@@ -238,8 +236,6 @@ fn notmain() -> anyhow::Result<i32> {
                         hard_fault: data[3],
                     });
                 }
-
-                sections.push(Section { start, data });
             }
         }
     }
@@ -568,12 +564,6 @@ fn program_size_of(file: &ElfFile) -> u64 {
     file.segments().map(|segment| segment.size()).sum()
 }
 
-#[derive(Debug, PartialEq)]
-pub enum TopException {
-    StackOverflow,
-    HardFault, // generic hard fault
-}
-
 fn setup_logging_channel(
     rtt_addr: Option<u32>,
     sess: Arc<Mutex<Session>>,
@@ -732,14 +722,6 @@ fn get_rtt_heap_main_from(
         uses_heap,
         main.ok_or_else(|| anyhow!("`main` symbol not found"))?,
     ))
-}
-
-// TODO remove this
-/// ELF section to be loaded onto the target
-#[derive(Debug)]
-struct Section {
-    start: u32,
-    data: Vec<u32>,
 }
 
 /// The contents of the vector table
