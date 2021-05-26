@@ -4,6 +4,7 @@ mod dep;
 mod elf;
 mod registers;
 mod stacked;
+mod target_info;
 
 use std::{
     env, fs,
@@ -29,8 +30,7 @@ use probe_rs_rtt::{Rtt, ScanRegion, UpChannel};
 use signal_hook::consts::signal;
 use structopt::{clap::AppSettings, StructOpt};
 
-use crate::elf::ProcessedElf;
-use crate::{backtrace::Outcome, elf::TargetInfo};
+use crate::{backtrace::Outcome, elf::ProcessedElf, target_info::TargetInfo};
 
 /// Successfull termination of process.
 const EXIT_SUCCESS: i32 = 0;
