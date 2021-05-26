@@ -39,5 +39,4 @@ goblin = "0.4.0"
 tui = { version = "0.15.0", default-features = false, features = ["crossterm"] }
 anyhow = "1.0.40"
 textwrap = "0.13.2"
-defmt-decoder = { version = "0.1.3" }
-defmt-elf2table = { version = "0.1.0", features = ['unstable'] }
+defmt-decoder = { version = "0.2.1", features = ["unstable"] }

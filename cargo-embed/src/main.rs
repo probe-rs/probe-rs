@@ -521,11 +521,11 @@ fn main_try() -> Result<()> {
             .any(|elem| elem.format == DataFormat::Defmt);
         let defmt_state = if defmt_enable {
             let elf = fs::read(path.clone()).unwrap();
-            let table = defmt_elf2table::parse(&elf)?;
+            let table = defmt_decoder::Table::parse(&elf)?;
 
             let locs = {
                 let table = table.as_ref().unwrap();
-                let locs = defmt_elf2table::get_locations(&elf, &table)?;
+                let locs = table.get_locations(&elf)?;
 
                 if !table.is_empty() && locs.is_empty() {
                     log::warn!("Insufficient DWARF info; compile your program with `debug = 2` to enable location info.");

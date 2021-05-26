@@ -155,7 +155,7 @@ impl App {
 
     pub fn render(
         &mut self,
-        defmt_state: &Option<(defmt_decoder::Table, Option<defmt_elf2table::Locations>)>,
+        defmt_state: &Option<(defmt_decoder::Table, Option<defmt_decoder::Locations>)>,
     ) {
         let input = self.current_tab().input().to_owned();
         let has_down_channel = self.current_tab().has_down_channel();
@@ -294,7 +294,7 @@ impl App {
                                 frames.extend_from_slice(&data);
 
                                 while let Ok((frame, consumed)) =
-                                    defmt_decoder::decode(&frames, table)
+                                    table.decode(&frames)
                                 {
                                     // NOTE(`[]` indexing) all indices in `table` have already been
                                     // verified to exist in the `locs` map.
