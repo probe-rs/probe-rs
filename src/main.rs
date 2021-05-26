@@ -6,7 +6,6 @@ mod registers;
 mod stacked;
 
 use std::{
-    convert::TryInto,
     env, fs,
     io::{self, Write as _},
     path::PathBuf,
@@ -21,7 +20,6 @@ use anyhow::{anyhow, bail};
 use colored::Colorize as _;
 use defmt_decoder::DEFMT_VERSION;
 use log::Level;
-use object::read::{Object as _, ObjectSection as _};
 use probe_rs::{
     config::registry,
     flashing::{self, Format},
@@ -152,31 +150,10 @@ fn notmain() -> anyhow::Result<i32> {
     let bytes = fs::read(elf_path)?;
     let mut elf = ProcessedElf::from_elf(&bytes)?;
 
-    let target_info = TargetInfo::new(chip, elf.vector_table.initial_stack_pointer)?;
+    let target_info = TargetInfo::new(chip, &elf)?;
 
     // TODO continue looking at code from here
     log::debug!("vector table: {:x?}", elf.vector_table);
-
-    // TODO use this instead of iterating?
-    let mut highest_ram_addr_in_use = 0;
-    for sect in elf.sections() {
-        // If this section resides in RAM, track the highest RAM address in use.
-        if let Some(ram) = &target_info.active_ram_region {
-            if sect.size() != 0 {
-                let last_addr = sect.address() + sect.size() - 1;
-                let last_addr = last_addr.try_into()?;
-                if ram.range.contains(&last_addr) {
-                    log::debug!(
-                        "section `{}` is in RAM at 0x{:08X}-0x{:08X}",
-                        sect.name().unwrap_or("<unknown>"),
-                        sect.address(),
-                        last_addr,
-                    );
-                    highest_ram_addr_in_use = highest_ram_addr_in_use.max(last_addr);
-                }
-            }
-        }
-    }
 
     let probes = Probe::list_all();
     let probes = if let Some(probe_opt) = opts.probe.as_deref() {
@@ -225,13 +202,16 @@ fn notmain() -> anyhow::Result<i32> {
         core.reset_and_halt(TIMEOUT)?;
 
         // Decide if and where to place the stack canary.
-        if let Some(ram) = &target_info.active_ram_region {
+        if let (Some(ram), Some(highest_ram_addr_in_use)) = (
+            &target_info.active_ram_region,
+            target_info.highest_ram_addr_in_use,
+        ) {
             // Initial SP must be past canary location.
             let initial_sp_makes_sense = ram
                 .range
                 .contains(&(elf.vector_table.initial_stack_pointer - 1))
                 && highest_ram_addr_in_use < elf.vector_table.initial_stack_pointer;
-            if highest_ram_addr_in_use != 0
+            if target_info.highest_ram_addr_in_use.is_some()
                 && !elf.target_program_uses_heap
                 && initial_sp_makes_sense
             {
