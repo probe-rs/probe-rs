@@ -13,7 +13,10 @@ use defmt_decoder::Table;
 use object::{
     read::File as ElfFile, Object, ObjectSection, ObjectSegment, ObjectSymbol, SymbolSection,
 };
-use probe_rs::Target;
+use probe_rs::{
+    config::{MemoryRegion, RamRegion},
+    Target,
+};
 
 use crate::cortexm;
 
@@ -243,13 +246,11 @@ fn extract_symbols(elf: &ElfFile) -> anyhow::Result<(Option<u32>, /* uses heap: 
 
 pub(crate) struct DataFromProbeRsRegistry {
     target: Target,
-    //ram_region_that_contains_stack: u32,
 }
 
 impl DataFromProbeRsRegistry {
     pub(crate) fn new(chip: &str) -> anyhow::Result<Self> {
         let target = probe_rs::config::registry::get_target_by_name(chip)?;
-
         Ok(Self { target })
     }
 }
