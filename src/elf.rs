@@ -103,7 +103,8 @@ impl<'file> Elf<'file> {
         })
     }
 
-    pub(crate) fn program_size(&self) -> u64 {
+    /// Returns the size of the part of the program allocated in Flash
+    pub(crate) fn program_flash_size(&self) -> u64 {
         // `segments` iterates only over *loadable* segments,
         // which are the segments that will be loaded to Flash by probe-rs
         self.elf.segments().map(|segment| segment.size()).sum()

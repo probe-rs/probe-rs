@@ -25,8 +25,13 @@ pub(crate) fn open(opts: &cli::Opts) -> Result<Probe, anyhow::Error> {
         bail!("more than one probe found; use --probe to specify which one to use");
     }
 
-    let probe = filtered_probes[0].open()?;
+    let mut probe = filtered_probes[0].open()?;
     log::debug!("opened probe");
+
+    if let Some(speed) = opts.speed {
+        probe.set_speed(speed)?;
+    }
+
     Ok(probe)
 }
 

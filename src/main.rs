@@ -50,11 +50,7 @@ fn run_target_program(elf_path: &Path, chip: &str, opts: &cli::Opts) -> anyhow::
 
     let target_info = TargetInfo::new(chip, &elf)?;
 
-    let mut probe = probe::open(opts)?;
-
-    if let Some(speed) = opts.speed {
-        probe.set_speed(speed)?;
-    }
+    let probe = probe::open(opts)?;
 
     let target = target_info.target.clone();
     let mut sess = if opts.connect_under_reset {
@@ -67,9 +63,9 @@ fn run_target_program(elf_path: &Path, chip: &str, opts: &cli::Opts) -> anyhow::
     if opts.no_flash {
         log::info!("skipped flashing");
     } else {
-        // program lives in Flash
-        let size = elf.program_size();
+        let size = elf.program_flash_size();
         log::info!("flashing program ({:.02} KiB)", size as f64 / 1024.0);
+
         flashing::download_file(&mut sess, elf_path, Format::Elf)?;
         log::info!("success!");
     }
