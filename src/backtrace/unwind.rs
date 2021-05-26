@@ -7,11 +7,12 @@ use gimli::{
 use probe_rs::{config::RamRegion, Core};
 
 use crate::{
+    backtrace::Outcome,
     cortexm,
     registers::{self, Registers},
     sketch::ProcessedElf,
     stacked::Stacked,
-    Outcome, VectorTable,
+    VectorTable,
 };
 
 fn missing_debug_info(pc: u32) -> String {

@@ -34,6 +34,7 @@ use probe_rs_rtt::{Rtt, ScanRegion, UpChannel};
 use signal_hook::consts::signal;
 use structopt::{clap::AppSettings, StructOpt};
 
+use crate::backtrace::Outcome;
 use crate::sketch::ProcessedElf;
 
 /// Successfull termination of process.
@@ -687,12 +688,4 @@ struct VectorTable {
     reset: u32,
     // entry 3: HardFault handler
     hard_fault: u32,
-}
-
-/// Target program outcome
-#[derive(Clone, Copy, Debug, PartialEq)]
-enum Outcome {
-    HardFault,
-    Ok,
-    StackOverflow,
 }

@@ -2,7 +2,7 @@ use std::path::Path;
 
 use probe_rs::{config::RamRegion, Core};
 
-use crate::{sketch::ProcessedElf, Outcome};
+use crate::sketch::ProcessedElf;
 
 mod pp;
 mod symbolicate;
@@ -52,4 +52,12 @@ pub(crate) fn print(
     }
 
     Ok(unwind.outcome)
+}
+
+/// Target program outcome
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) enum Outcome {
+    HardFault,
+    Ok,
+    StackOverflow,
 }
