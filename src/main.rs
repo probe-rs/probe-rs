@@ -152,34 +152,16 @@ fn notmain() -> anyhow::Result<i32> {
     let bytes = fs::read(elf_path)?;
     let mut elf = ProcessedElf::from_elf(&bytes)?;
 
-    let target = DataFromProbeRsRegistry::new(chip)?;
+    let target = DataFromProbeRsRegistry::new(chip, elf.vector_table.initial_stack_pointer)?;
 
     // TODO continue looking at code from here
     log::debug!("vector table: {:x?}", elf.vector_table);
-    let sp_ram_region = target
-        .memory_map
-        .iter()
-        .filter_map(|region| match region {
-            MemoryRegion::Ram(region) => {
-                // NOTE stack is full descending; meaning the stack pointer can be
-                // `ORIGIN(RAM) + LENGTH(RAM)`
-                let range = region.range.start..=region.range.end;
-                if range.contains(&elf.vector_table.initial_stack_pointer) {
-                    Some(region)
-                } else {
-                    None
-                }
-            }
-            _ => None,
-        })
-        .next()
-        .cloned();
 
     // TODO use this instead of iterating?
     let mut highest_ram_addr_in_use = 0;
     for sect in elf.sections() {
         // If this section resides in RAM, track the highest RAM address in use.
-        if let Some(ram) = &sp_ram_region {
+        if let Some(ram) = &target.sp_ram_region {
             if sect.size() != 0 {
                 let last_addr = sect.address() + sect.size() - 1;
                 let last_addr = last_addr.try_into()?;
@@ -220,11 +202,10 @@ fn notmain() -> anyhow::Result<i32> {
         probe.set_speed(speed)?;
     }
 
-    let target: probe_rs::Target = target.into();
     let mut sess = if opts.connect_under_reset {
-        probe.attach_under_reset(target)?
+        probe.attach_under_reset(target.target)?
     } else {
-        probe.attach(target)?
+        probe.attach(target.target)?
     };
     log::debug!("started session");
 
@@ -244,7 +225,7 @@ fn notmain() -> anyhow::Result<i32> {
         core.reset_and_halt(TIMEOUT)?;
 
         // Decide if and where to place the stack canary.
-        if let Some(ram) = &sp_ram_region {
+        if let Some(ram) = &target.sp_ram_region {
             // Initial SP must be past canary location.
             let initial_sp_makes_sense = ram
                 .range
@@ -465,7 +446,7 @@ fn notmain() -> anyhow::Result<i32> {
         shorten_paths,
     };
 
-    let outcome = backtrace::print(&mut core, &elf, &sp_ram_region, &backtrace_settings)?;
+    let outcome = backtrace::print(&mut core, &elf, &target.sp_ram_region, &backtrace_settings)?;
 
     core.reset_and_halt(TIMEOUT)?;
 

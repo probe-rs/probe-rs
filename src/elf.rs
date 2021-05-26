@@ -245,29 +245,40 @@ fn extract_symbols(elf: &ElfFile) -> anyhow::Result<(Option<u32>, /* uses heap: 
 }
 
 pub(crate) struct DataFromProbeRsRegistry {
-    target: Target,
+    pub(crate) target: Target,
+    pub(crate) sp_ram_region: Option<RamRegion>,
 }
 
 impl DataFromProbeRsRegistry {
-    pub(crate) fn new(chip: &str) -> anyhow::Result<Self> {
+    pub(crate) fn new(chip: &str, initial_sp: u32) -> anyhow::Result<Self> {
         let target = probe_rs::config::registry::get_target_by_name(chip)?;
-        Ok(Self { target })
+        let sp_ram_region = extract_sp_ram_region(&target, initial_sp);
+        Ok(Self {
+            target,
+            sp_ram_region,
+        })
     }
 }
 
-impl Into<probe_rs::Target> for DataFromProbeRsRegistry {
-    fn into(self) -> probe_rs::Target {
-        self.target
-    }
-}
-
-// TODO remove this when we are done
-impl Deref for DataFromProbeRsRegistry {
-    type Target = probe_rs::Target;
-
-    fn deref(&self) -> &probe_rs::Target {
-        &self.target
-    }
+fn extract_sp_ram_region(target: &Target, initial_sp: u32) -> Option<RamRegion> {
+    target
+        .memory_map
+        .iter()
+        .filter_map(|region| match region {
+            MemoryRegion::Ram(region) => {
+                // NOTE stack is full descending; meaning the stack pointer can be
+                // `ORIGIN(RAM) + LENGTH(RAM)`
+                let range = region.range.start..=region.range.end;
+                if range.contains(&initial_sp) {
+                    Some(region)
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        })
+        .next()
+        .cloned()
 }
 
 // obtained via probe-rs?
