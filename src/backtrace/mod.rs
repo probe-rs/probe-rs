@@ -2,7 +2,7 @@ use std::path::Path;
 
 use probe_rs::{config::RamRegion, Core};
 
-use crate::elf::ProcessedElf;
+use crate::elf::Elf;
 
 mod pp;
 mod symbolicate;
@@ -18,7 +18,7 @@ pub(crate) struct Settings<'p> {
 /// (virtually) unwinds the target's program and prints its backtrace
 pub(crate) fn print(
     core: &mut Core,
-    elf: &ProcessedElf,
+    elf: &Elf,
     active_ram_region: &Option<RamRegion>,
     settings: &Settings,
 ) -> anyhow::Result<Outcome> {

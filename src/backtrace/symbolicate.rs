@@ -11,15 +11,11 @@ use either::Either;
 use gimli::{EndianReader, RunTimeEndian};
 use object::{Object as _, SymbolMap, SymbolMapName};
 
-use crate::{cortexm, elf::ProcessedElf};
+use crate::{cortexm, elf::Elf};
 
 use super::unwind::RawFrame;
 
-pub(crate) fn frames(
-    raw_frames: &[RawFrame],
-    current_dir: &Path,
-    elf: &ProcessedElf,
-) -> Vec<Frame> {
+pub(crate) fn frames(raw_frames: &[RawFrame], current_dir: &Path, elf: &Elf) -> Vec<Frame> {
     let mut frames = vec![];
 
     let symtab = elf.symbol_map();

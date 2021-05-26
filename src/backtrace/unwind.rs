@@ -9,7 +9,7 @@ use probe_rs::{config::RamRegion, Core};
 use crate::{
     backtrace::Outcome,
     cortexm,
-    elf::ProcessedElf,
+    elf::Elf,
     registers::{self, Registers},
     stacked::Stacked,
 };
@@ -28,7 +28,7 @@ fn missing_debug_info(pc: u32) -> String {
 /// If an error occurred during processing, it is stored in `Output::processing_error`.
 pub(crate) fn target(
     core: &mut Core,
-    elf: &ProcessedElf,
+    elf: &Elf,
     active_ram_region: &Option<RamRegion>,
 ) -> Output {
     let mut output = Output {

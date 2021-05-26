@@ -1,5 +1,5 @@
 use crate::TIMEOUT;
-use crate::{cortexm, ProcessedElf, TargetInfo};
+use crate::{cortexm, Elf, TargetInfo};
 use anyhow::bail;
 use probe_rs::{MemoryInterface, Session};
 use std::time::Duration;
@@ -14,7 +14,7 @@ pub(crate) struct Canary {
 pub(crate) fn touched(
     canary: Option<Canary>,
     core: &mut probe_rs::Core,
-    elf: &ProcessedElf,
+    elf: &Elf,
 ) -> anyhow::Result<bool> {
     if let Some(canary) = canary {
         let mut buf = vec![0; canary.size];
@@ -42,7 +42,7 @@ pub(crate) fn touched(
 pub(crate) fn place(
     sess: &mut Session,
     target_info: &TargetInfo,
-    elf: &ProcessedElf,
+    elf: &Elf,
 ) -> Result<Option<Canary>, anyhow::Error> {
     let mut canary = None;
     {

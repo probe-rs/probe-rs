@@ -1,8 +1,8 @@
-use object::{read::File as ElfFile, Object, ObjectSection};
+use object::{Object, ObjectSection};
 use probe_rs::config::{MemoryRegion, RamRegion};
 use std::convert::TryInto;
 
-use crate::elf::ProcessedElf;
+use crate::elf::Elf;
 
 pub(crate) struct TargetInfo {
     pub(crate) target: probe_rs::Target,
@@ -11,7 +11,7 @@ pub(crate) struct TargetInfo {
 }
 
 impl TargetInfo {
-    pub(crate) fn new(chip: &str, elf: &ProcessedElf) -> anyhow::Result<Self> {
+    pub(crate) fn new(chip: &str, elf: &Elf) -> anyhow::Result<Self> {
         let target = probe_rs::config::registry::get_target_by_name(chip)?;
         let active_ram_region =
             extract_active_ram_region(&target, elf.vector_table.initial_stack_pointer);
@@ -47,7 +47,7 @@ fn extract_active_ram_region(target: &probe_rs::Target, initial_sp: u32) -> Opti
 }
 
 fn extract_highest_ram_addr_in_use(
-    elf: &ElfFile,
+    elf: &object::read::File,
     active_ram_region: Option<&RamRegion>,
 ) -> anyhow::Result<Option<u32>> {
     let mut highest_ram_addr_in_use = None;

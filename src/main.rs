@@ -10,7 +10,7 @@ mod target_info;
 use std::{
     env, fs,
     io::{self, Write as _},
-    path::PathBuf,
+    path::{Path, PathBuf},
     process,
     str::FromStr,
     sync::atomic::{AtomicBool, Ordering},
@@ -31,7 +31,7 @@ use probe_rs_rtt::{Rtt, ScanRegion, UpChannel};
 use signal_hook::consts::signal;
 use structopt::{clap::AppSettings, StructOpt};
 
-use crate::{backtrace::Outcome, elf::ProcessedElf, target_info::TargetInfo};
+use crate::{backtrace::Outcome, elf::Elf, target_info::TargetInfo};
 
 /// Successfull termination of process.
 const EXIT_SUCCESS: i32 = 0;
@@ -100,10 +100,10 @@ struct Opts {
 }
 
 fn main() -> anyhow::Result<()> {
-    notmain().map(|code| process::exit(code))
+    handle_cli_arguments().map(|code| process::exit(code))
 }
 
-fn notmain() -> anyhow::Result<i32> {
+fn handle_cli_arguments() -> anyhow::Result<i32> {
     let opts: Opts = Opts::from_args();
     let verbose = opts.verbose;
 
@@ -127,25 +127,30 @@ fn notmain() -> anyhow::Result<i32> {
 
     if opts.version {
         print_version();
-        return Ok(EXIT_SUCCESS);
+        Ok(EXIT_SUCCESS)
     } else if opts.list_probes {
         print_probes(Probe::list_all());
-        return Ok(EXIT_SUCCESS);
+        Ok(EXIT_SUCCESS)
     } else if opts.list_chips {
         print_chips();
-        return Ok(EXIT_SUCCESS);
+        Ok(EXIT_SUCCESS)
+    } else if let (Some(elf), Some(chip)) = (opts.elf.as_deref(), opts.chip.as_deref()) {
+        run_target_program(elf, chip, &opts)
+    } else {
+        unreachable!("due to `StructOpt` constraints")
     }
+}
 
-    let elf_path = opts.elf.as_deref().unwrap();
+fn run_target_program(elf_path: &Path, chip: &str, opts: &Opts) -> anyhow::Result<i32> {
     if !elf_path.exists() {
         return Err(anyhow!(
             "can't find ELF file at `{}`; are you sure you got the right path?",
             elf_path.display()
         ));
     }
-    let chip = opts.chip.as_deref().unwrap();
-    let bytes = fs::read(elf_path)?;
-    let mut elf = ProcessedElf::from_elf(&bytes)?;
+
+    let elf_bytes = fs::read(elf_path)?;
+    let mut elf = Elf::parse(&elf_bytes)?;
 
     let target_info = TargetInfo::new(chip, &elf)?;
 

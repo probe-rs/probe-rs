@@ -11,7 +11,7 @@ use anyhow::{anyhow, bail};
 use arrayref::array_ref;
 use defmt_decoder::Table;
 use object::{
-    read::File as ElfFile, Object, ObjectSection, ObjectSegment, ObjectSymbol, SymbolSection,
+    read::File as ObjectFile, Object, ObjectSection, ObjectSegment, ObjectSymbol, SymbolSection,
 };
 
 use crate::cortexm;
@@ -55,9 +55,9 @@ struct BacktraceInput {
     elf: (),
 }
 
-pub(crate) struct ProcessedElf<'file> {
+pub(crate) struct Elf<'file> {
     // original ELF (object crate)
-    elf: ElfFile<'file>,
+    elf: ObjectFile<'file>,
     // name of functions in program after linking
     // extracted from `.text` section
     pub(crate) live_functions: HashSet<&'file str>,
@@ -75,9 +75,9 @@ pub(crate) struct ProcessedElf<'file> {
     pub(crate) vector_table: cortexm::VectorTable, // processed one (not bytes)
 }
 
-impl<'file> ProcessedElf<'file> {
-    pub(crate) fn from_elf(elf_bytes: &'file [u8]) -> Result<Self, anyhow::Error> {
-        let elf = ElfFile::parse(elf_bytes)?;
+impl<'file> Elf<'file> {
+    pub(crate) fn parse(elf_bytes: &'file [u8]) -> Result<Self, anyhow::Error> {
+        let elf = ObjectFile::parse(elf_bytes)?;
 
         let live_functions = extract_live_functions(&elf)?;
 
@@ -111,10 +111,10 @@ impl<'file> ProcessedElf<'file> {
 }
 
 // TODO remove this when we are done and don't need access to the internal elf anymore
-impl<'elf> Deref for ProcessedElf<'elf> {
-    type Target = ElfFile<'elf>;
+impl<'elf> Deref for Elf<'elf> {
+    type Target = ObjectFile<'elf>;
 
-    fn deref(&self) -> &ElfFile<'elf> {
+    fn deref(&self) -> &ObjectFile<'elf> {
         &self.elf
     }
 }
@@ -147,7 +147,7 @@ fn extract_defmt_info(
     Ok((defmt_table, defmt_locations))
 }
 
-fn extract_live_functions<'file>(elf: &ElfFile<'file>) -> anyhow::Result<HashSet<&'file str>> {
+fn extract_live_functions<'file>(elf: &ObjectFile<'file>) -> anyhow::Result<HashSet<&'file str>> {
     let text = elf
         .section_by_name(".text")
         .map(|section| section.index())
@@ -171,7 +171,7 @@ fn extract_live_functions<'file>(elf: &ElfFile<'file>) -> anyhow::Result<HashSet
     Ok(live_functions)
 }
 
-fn extract_vector_table(elf: &ElfFile) -> anyhow::Result<cortexm::VectorTable> {
+fn extract_vector_table(elf: &ObjectFile) -> anyhow::Result<cortexm::VectorTable> {
     let section = elf
         .section_by_name(".vector_table")
         .ok_or_else(|| anyhow!("`.vector_table` section is missing"))?;
@@ -206,14 +206,14 @@ fn extract_vector_table(elf: &ElfFile) -> anyhow::Result<cortexm::VectorTable> {
     }
 }
 
-fn extract_debug_frame<'file>(elf: &ElfFile<'file>) -> anyhow::Result<&'file [u8]> {
+fn extract_debug_frame<'file>(elf: &ObjectFile<'file>) -> anyhow::Result<&'file [u8]> {
     elf.section_by_name(".debug_frame")
         .map(|section| section.data())
         .transpose()?
         .ok_or_else(|| anyhow!("`.debug_frame` section not found"))
 }
 
-fn extract_symbols(elf: &ElfFile) -> anyhow::Result<(Option<u32>, /* uses heap: */ bool, u32)> {
+fn extract_symbols(elf: &ObjectFile) -> anyhow::Result<(Option<u32>, /* uses heap: */ bool, u32)> {
     let mut rtt = None;
     let mut uses_heap = false;
     let mut main = None;
