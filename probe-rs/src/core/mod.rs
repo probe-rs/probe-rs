@@ -477,7 +477,7 @@ impl<'probe> Core<'probe> {
     /// Clear all hardware breakpoints
     ///
     /// This function will clear all HW breakpoints which are configured on the target,
-    /// regardless if they are set by probe-rs, AND regardless of the are enabled
+    /// regardless if they are set by probe-rs, AND regardless if they are enabled or not.
     /// Also used as a helper function in [`Session::drop`].
     pub fn clear_all_hw_breakpoints(&mut self) -> Result<(), error::Error> {
         for breakpoint in (self.inner.get_hw_breakpoints()?).into_iter().flatten() {
