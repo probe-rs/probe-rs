@@ -50,25 +50,7 @@ fn run_target_program(elf_path: &Path, chip: &str, opts: &cli::Opts) -> anyhow::
 
     let target_info = TargetInfo::new(chip, &elf)?;
 
-    let probes = Probe::list_all();
-    let probes = if let Some(probe_opt) = opts.probe.as_deref() {
-        let selector = probe_opt.parse()?;
-        probes_filter(&probes, &selector)
-    } else {
-        probes
-    };
-
-    // ensure exactly one probe is found and open it
-    if probes.is_empty() {
-        bail!("no probe was found")
-    }
-    log::debug!("found {} probes", probes.len());
-    if probes.len() > 1 {
-        let _ = print_probes(probes);
-        bail!("more than one probe found; use --probe to specify which one to use");
-    }
-    let mut probe = probes[0].open()?;
-    log::debug!("opened probe");
+    let mut probe = open_probe(opts)?;
 
     if let Some(speed) = opts.speed {
         probe.set_speed(speed)?;
@@ -260,6 +242,31 @@ fn run_target_program(elf_path: &Path, chip: &str, opts: &cli::Opts) -> anyhow::
             0
         }
     })
+}
+
+fn open_probe(opts: &cli::Opts) -> Result<Probe, anyhow::Error> {
+    let all_probes = Probe::list_all();
+    let filtered_probes = if let Some(probe_opt) = opts.probe.as_deref() {
+        let selector = probe_opt.parse()?;
+        probes_filter(&all_probes, &selector)
+    } else {
+        all_probes
+    };
+
+    if filtered_probes.is_empty() {
+        bail!("no probe was found")
+    }
+
+    log::debug!("found {} probes", filtered_probes.len());
+
+    if filtered_probes.len() > 1 {
+        let _ = print_probes(filtered_probes);
+        bail!("more than one probe found; use --probe to specify which one to use");
+    }
+
+    let probe = filtered_probes[0].open()?;
+    log::debug!("opened probe");
+    Ok(probe)
 }
 
 fn setup_logging_channel(
