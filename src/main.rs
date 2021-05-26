@@ -136,9 +136,6 @@ fn notmain() -> anyhow::Result<i32> {
         return Ok(EXIT_SUCCESS);
     }
 
-    let force_backtrace = opts.force_backtrace;
-    let max_backtrace_len = opts.max_backtrace_len;
-    let shorten_paths = opts.shorten_paths;
     let elf_path = opts.elf.as_deref().unwrap();
     if !elf_path.exists() {
         return Err(anyhow!(
@@ -151,9 +148,6 @@ fn notmain() -> anyhow::Result<i32> {
     let mut elf = ProcessedElf::from_elf(&bytes)?;
 
     let target_info = TargetInfo::new(chip, &elf)?;
-
-    // TODO continue looking at code from here
-    log::debug!("vector table: {:x?}", elf.vector_table);
 
     let probes = Probe::list_all();
     let probes = if let Some(probe_opt) = opts.probe.as_deref() {
@@ -267,7 +261,7 @@ fn notmain() -> anyhow::Result<i32> {
                                         } else {
                                             let dep_path = dep::Path::from_std_path(&loc.file);
 
-                                            if shorten_paths {
+                                            if opts.shorten_paths {
                                                 dep_path.format_short()
                                             } else {
                                                 dep_path.format_highlight()
@@ -336,10 +330,10 @@ fn notmain() -> anyhow::Result<i32> {
     let halted_due_to_signal = exit.load(Ordering::Relaxed);
     let backtrace_settings = backtrace::Settings {
         current_dir: &current_dir,
-        max_backtrace_len,
+        max_backtrace_len: opts.max_backtrace_len,
         // TODO any other cases in which we should force a backtrace?
-        force_backtrace: force_backtrace || canary_touched || halted_due_to_signal,
-        shorten_paths,
+        force_backtrace: opts.force_backtrace || canary_touched || halted_due_to_signal,
+        shorten_paths: opts.shorten_paths,
     };
 
     let outcome = backtrace::print(

@@ -83,6 +83,8 @@ impl<'file> ProcessedElf<'file> {
 
         let (defmt_table, defmt_locations) = extract_defmt_info(elf_bytes)?;
         let vector_table = extract_vector_table(&elf)?;
+        log::debug!("vector table: {:x?}", vector_table);
+
         let debug_frame = extract_debug_frame(&elf)?;
 
         let (rtt_buffer_address, target_program_uses_heap, address_of_main_function) =
