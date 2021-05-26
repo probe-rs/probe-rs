@@ -21,10 +21,7 @@ use anyhow::{anyhow, bail};
 use colored::Colorize as _;
 use defmt_decoder::DEFMT_VERSION;
 use log::Level;
-use object::{
-    read::{File as ElfFile, Object as _, ObjectSection as _},
-    ObjectSegment, ObjectSymbol,
-};
+use object::read::{Object as _, ObjectSection as _};
 use probe_rs::{
     config::{registry, MemoryRegion},
     flashing::{self, Format},
@@ -198,8 +195,6 @@ fn notmain() -> anyhow::Result<i32> {
         }
     }
 
-    let (rtt_addr, uses_heap, main) = get_rtt_heap_main_from(&elf)?;
-
     // TODO continue looking at code from here
     log::debug!("vector table: {:x?}", elf.vector_table);
     let sp_ram_region = target
@@ -256,7 +251,7 @@ fn notmain() -> anyhow::Result<i32> {
         log::info!("skipped flashing");
     } else {
         // program lives in Flash
-        let size = program_size_of(&elf);
+        let size = elf.program_size();
         log::info!("flashing program ({:.02} KiB)", size as f64 / 1024.0);
         flashing::download_file(&mut sess, elf_path, Format::Elf)?;
         log::info!("success!");
@@ -274,7 +269,10 @@ fn notmain() -> anyhow::Result<i32> {
                 .range
                 .contains(&(elf.vector_table.initial_stack_pointer - 1))
                 && highest_ram_addr_in_use < elf.vector_table.initial_stack_pointer;
-            if highest_ram_addr_in_use != 0 && !uses_heap && initial_sp_makes_sense {
+            if highest_ram_addr_in_use != 0
+                && !elf.target_program_uses_heap
+                && initial_sp_makes_sense
+            {
                 let stack_available =
                     elf.vector_table.initial_stack_pointer - highest_ram_addr_in_use - 1;
 
@@ -300,21 +298,21 @@ fn notmain() -> anyhow::Result<i32> {
 
         log::debug!("starting device");
         if core.get_available_breakpoint_units()? == 0 {
-            if rtt_addr.is_some() {
+            if elf.rtt_buffer_address.is_some() {
                 bail!("RTT not supported on device without HW breakpoints");
             } else {
                 log::warn!("device doesn't support HW breakpoints; HardFault will NOT make `probe-run` exit with an error code");
             }
         }
 
-        if let Some(rtt) = rtt_addr {
-            core.set_hw_breakpoint(main)?;
+        if let Some(rtt) = elf.rtt_buffer_address {
+            core.set_hw_breakpoint(elf.main_function_address)?;
             core.run()?;
             core.wait_for_core_halted(Duration::from_secs(5))?;
             const OFFSET: u32 = 44;
             const FLAG: u32 = 2; // BLOCK_IF_FULL
             core.write_word_32(rtt + OFFSET, FLAG)?;
-            core.clear_hw_breakpoint(main)?;
+            core.clear_hw_breakpoint(elf.main_function_address)?;
         }
 
         core.set_hw_breakpoint(cortexm::clear_thumb_bit(elf.vector_table.hard_fault))?;
@@ -328,7 +326,7 @@ fn notmain() -> anyhow::Result<i32> {
     let sigid = signal_hook::flag::register(signal::SIGINT, exit.clone())?;
 
     let sess = Arc::new(Mutex::new(sess));
-    let mut logging_channel = setup_logging_channel(rtt_addr, sess.clone())?;
+    let mut logging_channel = setup_logging_channel(elf.rtt_buffer_address, sess.clone())?;
 
     // `defmt-rtt` names the channel "defmt", so enable defmt decoding in that case.
     let use_defmt = logging_channel
@@ -506,29 +504,17 @@ fn notmain() -> anyhow::Result<i32> {
     })
 }
 
-fn program_size_of(file: &ElfFile) -> u64 {
-    // `segments` iterates only over *loadable* segments,
-    // which are the segments that will be loaded to Flash by probe-rs
-    file.segments().map(|segment| segment.size()).sum()
-}
-
-#[derive(Debug, PartialEq)]
-pub enum TopException {
-    StackOverflow,
-    HardFault, // generic hard fault
-}
-
 fn setup_logging_channel(
-    rtt_addr: Option<u32>,
+    rtt_buffer_address: Option<u32>,
     sess: Arc<Mutex<Session>>,
 ) -> anyhow::Result<Option<UpChannel>> {
-    if let Some(rtt_addr_res) = rtt_addr {
+    if let Some(rtt_buffer_address) = rtt_buffer_address {
         const NUM_RETRIES: usize = 10; // picked at random, increase if necessary
         let mut rtt_res: Result<Rtt, probe_rs_rtt::Error> =
             Err(probe_rs_rtt::Error::ControlBlockNotFound);
 
         for try_index in 0..=NUM_RETRIES {
-            rtt_res = Rtt::attach_region(sess.clone(), &ScanRegion::Exact(rtt_addr_res));
+            rtt_res = Rtt::attach_region(sess.clone(), &ScanRegion::Exact(rtt_buffer_address));
             match rtt_res {
                 Ok(_) => {
                     log::debug!("Successfully attached RTT");
@@ -645,35 +631,4 @@ fn print_version() {
 /// Print a line to separate different execution stages.
 fn print_separator() {
     println!("{}", "─".repeat(80).dimmed());
-}
-
-fn get_rtt_heap_main_from(
-    elf: &ElfFile,
-) -> anyhow::Result<(Option<u32>, /* uses heap: */ bool, u32)> {
-    let mut rtt = None;
-    let mut uses_heap = false;
-    let mut main = None;
-
-    for symbol in elf.symbols() {
-        let name = match symbol.name() {
-            Ok(name) => name,
-            Err(_) => continue,
-        };
-
-        match name {
-            "main" => main = Some(cortexm::clear_thumb_bit(symbol.address() as u32)),
-            "_SEGGER_RTT" => rtt = Some(symbol.address() as u32),
-            "__rust_alloc" | "__rg_alloc" | "__rdl_alloc" | "malloc" if !uses_heap => {
-                log::debug!("symbol `{}` indicates heap is in use", name);
-                uses_heap = true;
-            }
-            _ => {}
-        }
-    }
-
-    Ok((
-        rtt,
-        uses_heap,
-        main.ok_or_else(|| anyhow!("`main` symbol not found"))?,
-    ))
 }
