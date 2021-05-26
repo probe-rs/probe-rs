@@ -9,10 +9,9 @@ use probe_rs::{config::RamRegion, Core};
 use crate::{
     backtrace::Outcome,
     cortexm,
-    registers::{self, Registers},
     elf::ProcessedElf,
+    registers::{self, Registers},
     stacked::Stacked,
-    VectorTable,
 };
 
 fn missing_debug_info(pc: u32) -> String {
@@ -30,7 +29,7 @@ fn missing_debug_info(pc: u32) -> String {
 pub(crate) fn target(
     core: &mut Core,
     elf: &ProcessedElf,
-    sp_ram_region: &Option<RamRegion>,
+    active_ram_region: &Option<RamRegion>,
 ) -> Output {
     let mut output = Output {
         corrupted: true,
@@ -64,7 +63,7 @@ pub(crate) fn target(
 
     loop {
         if let Some(outcome) =
-            check_hard_fault(pc, &elf.vector_table, &mut output, sp, sp_ram_region)
+            check_hard_fault(pc, &elf.vector_table, &mut output, sp, active_ram_region)
         {
             output.outcome = outcome;
         }
@@ -115,7 +114,7 @@ pub(crate) fn target(
             let fpu = lr & cortexm::EXC_RETURN_FTYPE_MASK == 0;
 
             let sp = unwrap_or_return_output!(registers.get(registers::SP));
-            let ram_bounds = sp_ram_region
+            let ram_bounds = active_ram_region
                 .as_ref()
                 .map(|ram_region| ram_region.range.clone())
                 .unwrap_or(cortexm::VALID_RAM_ADDRESS);
@@ -151,7 +150,7 @@ pub(crate) fn target(
 
 fn check_hard_fault(
     pc: u32,
-    vector_table: &VectorTable,
+    vector_table: &cortexm::VectorTable,
     output: &mut Output,
     sp: u32,
     sp_ram_region: &Option<RamRegion>,
@@ -195,11 +194,11 @@ impl RawFrame {
     }
 }
 
-fn overflowed_stack(sp: u32, sp_ram_region: &Option<RamRegion>) -> bool {
-    if let Some(sp_ram_region) = sp_ram_region {
+fn overflowed_stack(sp: u32, active_ram_region: &Option<RamRegion>) -> bool {
+    if let Some(active_ram_region) = active_ram_region {
         // NOTE stack is full descending; meaning the stack pointer can be
         // `ORIGIN(RAM) + LENGTH(RAM)`
-        let range = sp_ram_region.range.start..=sp_ram_region.range.end;
+        let range = active_ram_region.range.start..=active_ram_region.range.end;
         !range.contains(&sp)
     } else {
         log::warn!("no RAM region appears to contain the stack; cannot determine if this was a stack overflow");

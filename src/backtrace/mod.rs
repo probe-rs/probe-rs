@@ -19,10 +19,10 @@ pub(crate) struct Settings<'p> {
 pub(crate) fn print(
     core: &mut Core,
     elf: &ProcessedElf,
-    sp_ram_region: &Option<RamRegion>,
+    active_ram_region: &Option<RamRegion>,
     settings: &Settings,
 ) -> anyhow::Result<Outcome> {
-    let unwind = unwind::target(core, elf, sp_ram_region);
+    let unwind = unwind::target(core, elf, active_ram_region);
 
     let frames = symbolicate::frames(&unwind.raw_frames, settings.current_dir, elf);
 

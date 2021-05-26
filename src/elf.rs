@@ -244,23 +244,23 @@ fn extract_symbols(elf: &ElfFile) -> anyhow::Result<(Option<u32>, /* uses heap: 
     ))
 }
 
-pub(crate) struct DataFromProbeRsRegistry {
+pub(crate) struct TargetInfo {
     pub(crate) target: Target,
-    pub(crate) sp_ram_region: Option<RamRegion>,
+    pub(crate) active_ram_region: Option<RamRegion>,
 }
 
-impl DataFromProbeRsRegistry {
+impl TargetInfo {
     pub(crate) fn new(chip: &str, initial_sp: u32) -> anyhow::Result<Self> {
         let target = probe_rs::config::registry::get_target_by_name(chip)?;
-        let sp_ram_region = extract_sp_ram_region(&target, initial_sp);
+        let active_ram_region = extract_active_ram_region(&target, initial_sp);
         Ok(Self {
             target,
-            sp_ram_region,
+            active_ram_region,
         })
     }
 }
 
-fn extract_sp_ram_region(target: &Target, initial_sp: u32) -> Option<RamRegion> {
+fn extract_active_ram_region(target: &Target, initial_sp: u32) -> Option<RamRegion> {
     target
         .memory_map
         .iter()
