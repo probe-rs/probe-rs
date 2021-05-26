@@ -4,6 +4,7 @@ mod cli;
 mod cortexm;
 mod dep;
 mod elf;
+mod probe;
 mod registers;
 mod stacked;
 mod target_info;
@@ -13,7 +14,6 @@ use std::{
     io::{self, Write as _},
     path::Path,
     process,
-    str::FromStr,
     sync::atomic::{AtomicBool, Ordering},
     sync::{Arc, Mutex},
     time::Duration,
@@ -23,7 +23,7 @@ use anyhow::{anyhow, bail};
 use colored::Colorize as _;
 use probe_rs::{
     flashing::{self, Format},
-    DebugProbeInfo, Probe, Session,
+    Session,
 };
 use probe_rs_rtt::{Rtt, ScanRegion, UpChannel};
 use signal_hook::consts::signal;
@@ -50,7 +50,7 @@ fn run_target_program(elf_path: &Path, chip: &str, opts: &cli::Opts) -> anyhow::
 
     let target_info = TargetInfo::new(chip, &elf)?;
 
-    let mut probe = open_probe(opts)?;
+    let mut probe = probe::open(opts)?;
 
     if let Some(speed) = opts.speed {
         probe.set_speed(speed)?;
@@ -244,31 +244,6 @@ fn run_target_program(elf_path: &Path, chip: &str, opts: &cli::Opts) -> anyhow::
     })
 }
 
-fn open_probe(opts: &cli::Opts) -> Result<Probe, anyhow::Error> {
-    let all_probes = Probe::list_all();
-    let filtered_probes = if let Some(probe_opt) = opts.probe.as_deref() {
-        let selector = probe_opt.parse()?;
-        probes_filter(&all_probes, &selector)
-    } else {
-        all_probes
-    };
-
-    if filtered_probes.is_empty() {
-        bail!("no probe was found")
-    }
-
-    log::debug!("found {} probes", filtered_probes.len());
-
-    if filtered_probes.len() > 1 {
-        let _ = print_probes(filtered_probes);
-        bail!("more than one probe found; use --probe to specify which one to use");
-    }
-
-    let probe = filtered_probes[0].open()?;
-    log::debug!("opened probe");
-    Ok(probe)
-}
-
 fn setup_logging_channel(
     rtt_buffer_address: Option<u32>,
     sess: Arc<Mutex<Session>>,
@@ -308,68 +283,6 @@ fn setup_logging_channel(
     } else {
         eprintln!("RTT logs not available; blocking until the device halts..");
         Ok(None)
-    }
-}
-
-struct ProbeFilter {
-    vid_pid: Option<(u16, u16)>,
-    serial: Option<String>,
-}
-
-impl FromStr for ProbeFilter {
-    type Err = anyhow::Error;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let parts = s.split(':').collect::<Vec<_>>();
-        match &*parts {
-            [serial] => Ok(Self {
-                vid_pid: None,
-                serial: Some(serial.to_string()),
-            }),
-            [vid, pid] => Ok(Self {
-                vid_pid: Some((u16::from_str_radix(vid, 16)?, u16::from_str_radix(pid, 16)?)),
-                serial: None,
-            }),
-            [vid, pid, serial] => Ok(Self {
-                vid_pid: Some((u16::from_str_radix(vid, 16)?, u16::from_str_radix(pid, 16)?)),
-                serial: Some(serial.to_string()),
-            }),
-            _ => Err(anyhow!("invalid probe filter")),
-        }
-    }
-}
-
-fn probes_filter(probes: &[DebugProbeInfo], selector: &ProbeFilter) -> Vec<DebugProbeInfo> {
-    probes
-        .iter()
-        .filter(|&p| {
-            if let Some((vid, pid)) = selector.vid_pid {
-                if p.vendor_id != vid || p.product_id != pid {
-                    return false;
-                }
-            }
-
-            if let Some(serial) = &selector.serial {
-                if p.serial_number.as_deref() != Some(serial) {
-                    return false;
-                }
-            }
-
-            true
-        })
-        .cloned()
-        .collect()
-}
-
-fn print_probes(probes: Vec<DebugProbeInfo>) {
-    if !probes.is_empty() {
-        println!("The following devices were found:");
-        probes
-            .iter()
-            .enumerate()
-            .for_each(|(num, link)| println!("[{}]: {:?}", num, link));
-    } else {
-        println!("No devices were found.");
     }
 }
 

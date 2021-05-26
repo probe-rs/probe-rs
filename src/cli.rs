@@ -6,6 +6,8 @@ use probe_rs::Probe;
 use structopt::clap::AppSettings;
 use structopt::StructOpt;
 
+use crate::probe;
+
 /// Successfull termination of process.
 const EXIT_SUCCESS: i32 = 0;
 
@@ -96,7 +98,7 @@ pub(crate) fn handle_arguments() -> anyhow::Result<i32> {
         print_version();
         Ok(EXIT_SUCCESS)
     } else if opts.list_probes {
-        crate::print_probes(Probe::list_all());
+        probe::print(Probe::list_all());
         Ok(EXIT_SUCCESS)
     } else if opts.list_chips {
         print_chips();
