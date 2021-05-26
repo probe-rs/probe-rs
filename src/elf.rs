@@ -13,6 +13,7 @@ use defmt_decoder::Table;
 use object::{
     read::File as ElfFile, Object, ObjectSection, ObjectSegment, ObjectSymbol, SymbolSection,
 };
+use probe_rs::Target;
 
 use crate::cortexm;
 
@@ -73,7 +74,6 @@ pub(crate) struct ProcessedElf<'file> {
     // // currently extracted via `for` loop over sections
     pub(crate) debug_frame: &'file [u8], // gimli one (not bytes)
     pub(crate) vector_table: cortexm::VectorTable, // processed one (not bytes)
-                                         // highest_ram_address_in_use: (), // used for stack canary
 }
 
 impl<'file> ProcessedElf<'file> {
@@ -241,8 +241,32 @@ fn extract_symbols(elf: &ElfFile) -> anyhow::Result<(Option<u32>, /* uses heap: 
     ))
 }
 
-struct DataFromProbeRsRegistry {
-    ram_region_that_contains_stack: (),
+pub(crate) struct DataFromProbeRsRegistry {
+    target: Target,
+    //ram_region_that_contains_stack: u32,
+}
+
+impl DataFromProbeRsRegistry {
+    pub(crate) fn new(chip: &str) -> anyhow::Result<Self> {
+        let target = probe_rs::config::registry::get_target_by_name(chip)?;
+
+        Ok(Self { target })
+    }
+}
+
+impl Into<probe_rs::Target> for DataFromProbeRsRegistry {
+    fn into(self) -> probe_rs::Target {
+        self.target
+    }
+}
+
+// TODO remove this when we are done
+impl Deref for DataFromProbeRsRegistry {
+    type Target = probe_rs::Target;
+
+    fn deref(&self) -> &probe_rs::Target {
+        &self.target
+    }
 }
 
 // obtained via probe-rs?

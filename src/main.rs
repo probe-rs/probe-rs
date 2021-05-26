@@ -31,8 +31,8 @@ use probe_rs_rtt::{Rtt, ScanRegion, UpChannel};
 use signal_hook::consts::signal;
 use structopt::{clap::AppSettings, StructOpt};
 
-use crate::backtrace::Outcome;
 use crate::elf::ProcessedElf;
+use crate::{backtrace::Outcome, elf::DataFromProbeRsRegistry};
 
 /// Successfull termination of process.
 const EXIT_SUCCESS: i32 = 0;
@@ -152,7 +152,7 @@ fn notmain() -> anyhow::Result<i32> {
     let bytes = fs::read(elf_path)?;
     let mut elf = ProcessedElf::from_elf(&bytes)?;
 
-    let target = probe_rs::config::registry::get_target_by_name(chip)?;
+    let target = DataFromProbeRsRegistry::new(chip)?;
 
     // find and report the RAM region
     let mut ram_region = None;
@@ -240,6 +240,7 @@ fn notmain() -> anyhow::Result<i32> {
         probe.set_speed(speed)?;
     }
 
+    let target: probe_rs::Target = target.into();
     let mut sess = if opts.connect_under_reset {
         probe.attach_under_reset(target)?
     } else {
