@@ -71,16 +71,61 @@ fn run_target_program(elf_path: &Path, chip: &str, opts: &cli::Opts) -> anyhow::
     }
 
     let canary = canary::place(&mut sess, &target_info, &elf)?;
+    let sess = Arc::new(Mutex::new(sess));
+    let current_dir = std::env::current_dir()?;
 
-    // Register a signal handler that sets `exit` to `true` on Ctrl+C. On the second Ctrl+C, the
-    // signal's default action will be run.
+    let halted_due_to_signal = extract_and_print_logs(&mut elf, &sess, opts, &current_dir)?;
+
+    let mut sess = sess.lock().unwrap();
+    let mut core = sess.core(0)?;
+
+    print_separator();
+
+    let canary_touched = canary::touched(canary, &mut core, &elf)?;
+    let backtrace_settings = backtrace::Settings {
+        current_dir: &current_dir,
+        max_backtrace_len: opts.max_backtrace_len,
+        // TODO any other cases in which we should force a backtrace?
+        force_backtrace: opts.force_backtrace || canary_touched || halted_due_to_signal,
+        shorten_paths: opts.shorten_paths,
+    };
+
+    let outcome = backtrace::print(
+        &mut core,
+        &elf,
+        &target_info.active_ram_region,
+        &backtrace_settings,
+    )?;
+
+    core.reset_and_halt(TIMEOUT)?;
+
+    Ok(match outcome {
+        Outcome::StackOverflow => {
+            log::error!("the program has overflowed its stack");
+            SIGABRT
+        }
+        Outcome::HardFault => {
+            log::error!("the program panicked");
+            SIGABRT
+        }
+        Outcome::Ok => {
+            log::info!("device halted without error");
+            0
+        }
+    })
+}
+
+fn extract_and_print_logs(
+    elf: &mut Elf,
+    sess: &Arc<Mutex<Session>>,
+    opts: &cli::Opts,
+    current_dir: &Path,
+) -> Result<bool, anyhow::Error> {
     let exit = Arc::new(AtomicBool::new(false));
     let sigid = signal_hook::flag::register(signal::SIGINT, exit.clone())?;
 
-    let sess = Arc::new(Mutex::new(sess));
     let mut logging_channel = setup_logging_channel(elf.rtt_buffer_address, sess.clone())?;
 
-    // `defmt-rtt` names the channel "defmt", so enable defmt decoding in that case.
     let use_defmt = logging_channel
         .as_ref()
         .map_or(false, |ch| ch.name() == Some("defmt"));
@@ -99,15 +144,11 @@ fn run_target_program(elf_path: &Path, chip: &str, opts: &cli::Opts) -> anyhow::
 
     print_separator();
 
-    // wait for breakpoint ???
     let stdout = io::stdout();
     let mut stdout = stdout.lock();
     let mut read_buf = [0; 1024];
-    // this is undecoded RTT data
     let mut frames = vec![];
     let mut was_halted = false;
-    let current_dir = std::env::current_dir()?;
-
     while !exit.load(Ordering::Relaxed) {
         if let Some(logging_channel) = &mut logging_channel {
             let num_bytes_read = match logging_channel.read(&mut read_buf) {
@@ -188,56 +229,19 @@ fn run_target_program(elf_path: &Path, chip: &str, opts: &cli::Opts) -> anyhow::
         was_halted = is_halted;
     }
     drop(stdout);
-
-    // Make any incoming SIGINT terminate the process.
-    // Due to https://github.com/vorner/signal-hook/issues/97, this will result in SIGABRT, but you
-    // only need to Ctrl+C here if the backtrace hangs, so that should be fine.
     signal_hook::low_level::unregister(sigid);
     signal_hook::flag::register_conditional_default(signal::SIGINT, exit.clone())?;
 
-    let mut sess = sess.lock().unwrap();
-    let mut core = sess.core(0)?;
-
     if exit.load(Ordering::Relaxed) {
         // Ctrl-C was pressed; stop the microcontroller.
+        let mut sess = sess.lock().unwrap();
+        let mut core = sess.core(0)?;
         core.halt(TIMEOUT)?;
     }
 
-    print_separator();
-
-    let canary_touched = canary::touched(canary, &mut core, &elf)?;
     let halted_due_to_signal = exit.load(Ordering::Relaxed);
-    let backtrace_settings = backtrace::Settings {
-        current_dir: &current_dir,
-        max_backtrace_len: opts.max_backtrace_len,
-        // TODO any other cases in which we should force a backtrace?
-        force_backtrace: opts.force_backtrace || canary_touched || halted_due_to_signal,
-        shorten_paths: opts.shorten_paths,
-    };
 
-    let outcome = backtrace::print(
-        &mut core,
-        &elf,
-        &target_info.active_ram_region,
-        &backtrace_settings,
-    )?;
-
-    core.reset_and_halt(TIMEOUT)?;
-
-    Ok(match outcome {
-        Outcome::StackOverflow => {
-            log::error!("the program has overflowed its stack");
-            SIGABRT
-        }
-        Outcome::HardFault => {
-            log::error!("the program panicked");
-            SIGABRT
-        }
-        Outcome::Ok => {
-            log::info!("device halted without error");
-            0
-        }
-    })
+    Ok(halted_due_to_signal)
 }
 
 fn setup_logging_channel(
