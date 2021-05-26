@@ -330,30 +330,9 @@ fn notmain() -> anyhow::Result<i32> {
         core.halt(TIMEOUT)?;
     }
 
-    // TODO move into own function?
-    let mut canary_touched = false;
-    if let Some(canary) = canary {
-        let mut buf = vec![0; canary.size];
-        core.read_8(canary.address, &mut buf)?;
-
-        if let Some(pos) = buf.iter().position(|b| *b != STACK_CANARY) {
-            let touched_addr = canary.address + pos as u32;
-            log::debug!("canary was touched at 0x{:08X}", touched_addr);
-
-            let min_stack_usage = elf.vector_table.initial_stack_pointer - touched_addr;
-            log::warn!(
-                "program has used at least {} bytes of stack space, data segments \
-                may be corrupted due to stack overflow",
-                min_stack_usage,
-            );
-            canary_touched = true;
-        } else {
-            log::debug!("stack canary intact");
-        }
-    }
-
     print_separator();
 
+    let canary_touched = canary_touched(canary, &mut core, &elf)?;
     let halted_due_to_signal = exit.load(Ordering::Relaxed);
     let backtrace_settings = backtrace::Settings {
         current_dir: &current_dir,
@@ -386,6 +365,34 @@ fn notmain() -> anyhow::Result<i32> {
             0
         }
     })
+}
+
+fn canary_touched(
+    canary: Option<Canary>,
+    core: &mut probe_rs::Core,
+    elf: &ProcessedElf,
+) -> anyhow::Result<bool> {
+    if let Some(canary) = canary {
+        let mut buf = vec![0; canary.size];
+        core.read_8(canary.address, &mut buf)?;
+
+        if let Some(pos) = buf.iter().position(|b| *b != STACK_CANARY) {
+            let touched_addr = canary.address + pos as u32;
+            log::debug!("canary was touched at 0x{:08X}", touched_addr);
+
+            let min_stack_usage = elf.vector_table.initial_stack_pointer - touched_addr;
+            log::warn!(
+                "program has used at least {} bytes of stack space, data segments \
+                may be corrupted due to stack overflow",
+                min_stack_usage,
+            );
+            return Ok(true);
+        } else {
+            log::debug!("stack canary intact");
+        }
+    }
+
+    Ok(false)
 }
 
 struct Canary {
