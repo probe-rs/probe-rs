@@ -92,6 +92,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The breakpoint address is now verified to ensure a breakpoint at the given address is actually possible (#626).
 - riscv: Use correct address for access to `abstractauto`register (#511).
 - The `--chip` argument now works without specifying the `--elf` argument (fix #517).
+- Fixed: Invalid "Unable to set hardware breakpoint", by removing breakpoint caching (#632)
 
 
 
