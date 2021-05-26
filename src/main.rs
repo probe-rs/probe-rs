@@ -677,15 +677,3 @@ fn get_rtt_heap_main_from(
         main.ok_or_else(|| anyhow!("`main` symbol not found"))?,
     ))
 }
-
-/// The contents of the vector table
-#[derive(Debug)]
-struct VectorTable {
-    location: u32,
-    // entry 0
-    initial_stack_pointer: u32,
-    // entry 1: Reset handler
-    reset: u32,
-    // entry 3: HardFault handler
-    hard_fault: u32,
-}

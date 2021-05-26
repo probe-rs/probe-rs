@@ -12,7 +12,7 @@ use arrayref::array_ref;
 use defmt_decoder::Table;
 use object::{read::File as ElfFile, Object, ObjectSection, ObjectSymbol, SymbolSection};
 
-use crate::VectorTable;
+use crate::cortexm;
 
 pub(crate) fn notmain() -> anyhow::Result<i32> {
     // - parse CL arguments
@@ -70,7 +70,7 @@ pub(crate) struct ProcessedElf<'file> {
 
     // // currently extracted via `for` loop over sections
     pub(crate) debug_frame: &'file [u8], // gimli one (not bytes)
-    pub(crate) vector_table: VectorTable, // processed one (not bytes)
+    pub(crate) vector_table: cortexm::VectorTable, // processed one (not bytes)
                                          // highest_ram_address_in_use: (), // used for stack canary
 }
 
@@ -159,7 +159,7 @@ fn extract_live_functions<'file>(elf: &ElfFile<'file>) -> anyhow::Result<HashSet
     Ok(live_functions)
 }
 
-fn extract_vector_table(elf: &ElfFile) -> anyhow::Result<VectorTable> {
+fn extract_vector_table(elf: &ElfFile) -> anyhow::Result<cortexm::VectorTable> {
     let section = elf
         .section_by_name(".vector_table")
         .ok_or_else(|| anyhow!("`.vector_table` section is missing"))?;
@@ -180,7 +180,7 @@ fn extract_vector_table(elf: &ElfFile) -> anyhow::Result<VectorTable> {
     if let (Some(initial_stack_pointer), Some(reset), Some(_third), Some(hard_fault)) =
         (words.next(), words.next(), words.next(), words.next())
     {
-        Ok(VectorTable {
+        Ok(cortexm::VectorTable {
             location: start,
             initial_stack_pointer,
             reset,

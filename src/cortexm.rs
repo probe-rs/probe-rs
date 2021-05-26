@@ -2,8 +2,6 @@
 
 use std::{mem, ops::Range};
 
-use crate::VectorTable;
-
 pub(crate) const ADDRESS_SIZE: u8 = mem::size_of::<u32>() as u8;
 
 /// According to Armv8-M Architecture Reference Manual, the most significant 8 bits are `0xFF` to
@@ -38,4 +36,16 @@ pub(crate) fn set_thumb_bit(addr: u32) -> u32 {
 /// Checks if two subroutine addresses are equivalent by first clearing their `THUMB_BIT`
 pub(crate) fn subroutine_eq(addr1: u32, addr2: u32) -> bool {
     addr1 & !THUMB_BIT == addr2 & !THUMB_BIT
+}
+
+/// The contents of the vector table
+#[derive(Debug)]
+pub(crate) struct VectorTable {
+    pub(crate) location: u32,
+    // entry 0
+    pub(crate) initial_stack_pointer: u32,
+    // entry 1: Reset handler
+    pub(crate) reset: u32,
+    // entry 3: HardFault handler
+    pub(crate) hard_fault: u32,
 }
