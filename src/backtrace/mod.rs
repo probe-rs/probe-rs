@@ -2,7 +2,7 @@ use std::path::Path;
 
 use probe_rs::{config::RamRegion, Core};
 
-use crate::sketch::ProcessedElf;
+use crate::elf::ProcessedElf;
 
 mod pp;
 mod symbolicate;

@@ -10,7 +10,9 @@ use std::{
 use anyhow::{anyhow, bail};
 use arrayref::array_ref;
 use defmt_decoder::Table;
-use object::{read::File as ElfFile, Object, ObjectSection, ObjectSymbol, SymbolSection};
+use object::{
+    read::File as ElfFile, Object, ObjectSection, ObjectSegment, ObjectSymbol, SymbolSection,
+};
 
 use crate::cortexm;
 
@@ -64,9 +66,9 @@ pub(crate) struct ProcessedElf<'file> {
     pub(crate) defmt_table: Option<Table>,
     pub(crate) defmt_locations: Option<BTreeMap<u64, defmt_decoder::Location>>,
     // // extracted from `for` loop over symbols
-    // target_program_uses_heap: (),
-    // rtt_buffer_address: (),
-    // address_of_main_function: (),
+    pub(crate) rtt_buffer_address: Option<u32>,
+    pub(crate) target_program_uses_heap: bool,
+    pub(crate) main_function_address: u32,
 
     // // currently extracted via `for` loop over sections
     pub(crate) debug_frame: &'file [u8], // gimli one (not bytes)
@@ -84,6 +86,9 @@ impl<'file> ProcessedElf<'file> {
         let vector_table = extract_vector_table(&elf)?;
         let debug_frame = extract_debug_frame(&elf)?;
 
+        let (rtt_buffer_address, target_program_uses_heap, address_of_main_function) =
+            extract_symbols(&elf)?;
+
         Ok(Self {
             defmt_table,
             defmt_locations,
@@ -91,11 +96,17 @@ impl<'file> ProcessedElf<'file> {
             live_functions,
             vector_table,
             debug_frame,
+            rtt_buffer_address,
+            target_program_uses_heap,
+            main_function_address: address_of_main_function,
         })
     }
-    //     fn symbol_map(&self) -> SymbolMap {
-    //         self.elf.symbol_map()
-    //     }
+
+    pub(crate) fn program_size(&self) -> u64 {
+        // `segments` iterates only over *loadable* segments,
+        // which are the segments that will be loaded to Flash by probe-rs
+        self.elf.segments().map(|segment| segment.size()).sum()
+    }
 }
 
 // TODO remove this when we are done and don't need access to the internal elf anymore
@@ -199,6 +210,35 @@ fn extract_debug_frame<'file>(elf: &ElfFile<'file>) -> anyhow::Result<&'file [u8
         .map(|section| section.data())
         .transpose()?
         .ok_or_else(|| anyhow!("`.debug_frame` section not found"))
+}
+
+fn extract_symbols(elf: &ElfFile) -> anyhow::Result<(Option<u32>, /* uses heap: */ bool, u32)> {
+    let mut rtt = None;
+    let mut uses_heap = false;
+    let mut main = None;
+
+    for symbol in elf.symbols() {
+        let name = match symbol.name() {
+            Ok(name) => name,
+            Err(_) => continue,
+        };
+
+        match name {
+            "main" => main = Some(cortexm::clear_thumb_bit(symbol.address() as u32)),
+            "_SEGGER_RTT" => rtt = Some(symbol.address() as u32),
+            "__rust_alloc" | "__rg_alloc" | "__rdl_alloc" | "malloc" if !uses_heap => {
+                log::debug!("symbol `{}` indicates heap is in use", name);
+                uses_heap = true;
+            }
+            _ => {}
+        }
+    }
+
+    Ok((
+        rtt,
+        uses_heap,
+        main.ok_or_else(|| anyhow!("`main` symbol not found"))?,
+    ))
 }
 
 struct DataFromProbeRsRegistry {

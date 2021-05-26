@@ -1,8 +1,8 @@
 mod backtrace;
 mod cortexm;
 mod dep;
+mod elf;
 mod registers;
-mod sketch;
 mod stacked;
 
 use std::{
@@ -35,7 +35,7 @@ use signal_hook::consts::signal;
 use structopt::{clap::AppSettings, StructOpt};
 
 use crate::backtrace::Outcome;
-use crate::sketch::ProcessedElf;
+use crate::elf::ProcessedElf;
 
 /// Successfull termination of process.
 const EXIT_SUCCESS: i32 = 0;

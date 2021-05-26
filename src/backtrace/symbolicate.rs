@@ -11,7 +11,7 @@ use either::Either;
 use gimli::{EndianReader, RunTimeEndian};
 use object::{Object as _, SymbolMap, SymbolMapName};
 
-use crate::{cortexm, sketch::ProcessedElf};
+use crate::{cortexm, elf::ProcessedElf};
 
 use super::unwind::RawFrame;
 

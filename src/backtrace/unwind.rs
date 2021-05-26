@@ -10,7 +10,7 @@ use crate::{
     backtrace::Outcome,
     cortexm,
     registers::{self, Registers},
-    sketch::ProcessedElf,
+    elf::ProcessedElf,
     stacked::Stacked,
     VectorTable,
 };
