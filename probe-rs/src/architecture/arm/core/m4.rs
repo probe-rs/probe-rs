@@ -668,7 +668,7 @@ impl<'probe> CoreInterface for M4<'probe> {
             // FpRev1 and FpRev2 needs different decoding of the register value, but the location where we read from is the same ...
             let reg_addr = FpRev1CompX::ADDRESS + (bp_unit_index * size_of::<u32>()) as u32;
             // The raw breakpoint address as read from memory
-           let register_value = self.memory.read_word_32(reg_addr)?;
+            let register_value = self.memory.read_word_32(reg_addr)?;
             // The breakpoint address after it has been adjusted for FpRev 1 or 2
             let breakpoint:u32;
             if register_value & 0b1 == 0b1 { // We only care about `enabled` breakpoints

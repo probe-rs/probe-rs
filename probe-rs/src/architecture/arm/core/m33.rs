@@ -333,8 +333,23 @@ impl<'probe> CoreInterface for M33<'probe> {
         Ok(CoreStatus::Running)
     }
 
+    /// See docs on the [`CoreInterface::get_hw_breakpoints`] trait
     fn get_hw_breakpoints(&mut self) -> Result<Vec<Option<u32>>, Error> {
-        todo!()
+        let mut breakpoints = vec![];
+        let num_hw_breakpoints = self.get_available_breakpoint_units()? as usize;
+        for bp_unit_index in 0..num_hw_breakpoints {
+            let reg_addr = FpCompX::ADDRESS + (bp_unit_index * size_of::<u32>()) as u32;
+            // The raw breakpoint address as read from memory
+            let register_value = self.memory.read_word_32(reg_addr)?;
+            // The breakpoint address after it has been adjusted for FpRev 1 or 2
+            if FpCompX::from(register_value).enable() {
+                let breakpoint = FpCompX::from(register_value).bp_addr() << 1;
+                breakpoints.push(Some(breakpoint));
+            } else {
+                breakpoints.push(None);
+            }
+        }
+        Ok(breakpoints)
     }
 }
 

@@ -122,17 +122,17 @@ bitfield! {
     /// - 10 breakpoint on upper halfword, lower is unaffected.
     /// - 11 breakpoint on both lower and upper halfwords.
     /// - The field is UNKNOWN on reset.
-    pub _, set_bp_match: 31,30;
+    pub bp_match, set_bp_match: 31,30;
     /// Stores bits [28:2] of the comparison address. The comparison address is
     /// compared with the address from the Code memory region. Bits [31:29] and
     /// [1:0] of the comparison address are zero.
     /// The field is UNKNOWN on power-on reset.
-    pub _, set_comp: 28,2;
+    pub comp, set_comp: 28,2;
     /// Enables the comparator:
     /// 0 comparator is disabled.
     /// 1 comparator is enabled.
     /// This bit is set to 0 on a power-on reset.
-    pub _, set_enable: 0;
+    pub enable, set_enable: 0;
 }
 
 impl From<u32> for BpCompx {
@@ -150,6 +150,22 @@ impl From<BpCompx> for u32 {
 impl CoreRegister for BpCompx {
     const ADDRESS: u32 = 0xE000_2008;
     const NAME: &'static str = "BP_CTRL0";
+}
+
+impl BpCompx {
+    /// Get the correct comparator value stored at the given address
+    /// This will adjust the `BpCompx.comp() result based on the `BpCompx.bp_match()` specification
+    /// NOTE: Does not support a `bp_match value of '11'
+    fn get_breakpoint_comparator(register_value: u32) -> Result<u32, Error> {
+        let bp_val = BpCompx::from(register_value);
+        if bp_val.bp_match() == 0b01 {
+            Ok(bp_val.comp() << 2)
+        } else if bp_val.bp_match() == 0b10 {
+            Ok((bp_val.comp() << 2) | 0x2)
+        } else {
+            return Err(Error::ArchitectureSpecific(Box::new(DebugProbeError::Other(anyhow::anyhow!("Unsupported breakpoint comparator value {:#08x} for HW breakpoint. Breakpoint must be on half-word boundaries", bp_val.0)))));
+        }
+    }
 }
 
 bitfield! {
@@ -579,8 +595,22 @@ impl<'probe> CoreInterface for M0<'probe> {
         Ok(())
     }
 
+    /// See docs on the [`CoreInterface::get_hw_breakpoints`] trait
     fn get_hw_breakpoints(&mut self) -> Result<Vec<Option<u32>>, Error> {
-        todo!()
+        let mut breakpoints = vec![];
+        let num_hw_breakpoints = self.get_available_breakpoint_units()? as usize;
+        for bp_unit_index in 0..num_hw_breakpoints {
+            let reg_addr = BpCompx::ADDRESS + (bp_unit_index * size_of::<u32>()) as u32;
+            // The raw breakpoint address as read from memory
+            let register_value = self.memory.read_word_32(reg_addr)?;
+            if BpCompx::from(register_value).enable() {
+                let breakpoint = BpCompx::get_breakpoint_comparator(register_value)?;
+                breakpoints.push(Some(breakpoint));
+            } else {
+                breakpoints.push(None);
+            }
+        }
+        Ok(breakpoints)
     }
 }
 
