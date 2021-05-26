@@ -9,6 +9,7 @@ use probe_rs::{config::RamRegion, Core};
 use crate::{
     cortexm,
     registers::{self, Registers},
+    sketch::ProcessedElf,
     stacked::Stacked,
     Outcome, VectorTable,
 };
@@ -27,8 +28,7 @@ fn missing_debug_info(pc: u32) -> String {
 /// If an error occurred during processing, it is stored in `Output::processing_error`.
 pub(crate) fn target(
     core: &mut Core,
-    debug_frame: &[u8],
-    vector_table: &VectorTable,
+    elf: &ProcessedElf,
     sp_ram_region: &Option<RamRegion>,
 ) -> Output {
     let mut output = Output {
@@ -51,7 +51,7 @@ pub(crate) fn target(
         };
     }
 
-    let mut debug_frame = DebugFrame::new(debug_frame, LittleEndian);
+    let mut debug_frame = DebugFrame::new(elf.debug_frame, LittleEndian);
     debug_frame.set_address_size(cortexm::ADDRESS_SIZE);
 
     let mut pc = unwrap_or_return_output!(core.read_core_reg(registers::PC));
@@ -62,7 +62,9 @@ pub(crate) fn target(
     let mut registers = Registers::new(lr, sp, core);
 
     loop {
-        if let Some(outcome) = check_hard_fault(pc, vector_table, &mut output, sp, sp_ram_region) {
+        if let Some(outcome) =
+            check_hard_fault(pc, &elf.vector_table, &mut output, sp, sp_ram_region)
+        {
             output.outcome = outcome;
         }
 

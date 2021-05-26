@@ -485,15 +485,7 @@ fn notmain() -> anyhow::Result<i32> {
         shorten_paths,
     };
 
-    let outcome = backtrace::print(
-        &mut core,
-        elf.debug_frame,
-        &elf,
-        &elf.vector_table,
-        &sp_ram_region,
-        &elf.live_functions,
-        &backtrace_settings,
-    )?;
+    let outcome = backtrace::print(&mut core, &elf, &sp_ram_region, &backtrace_settings)?;
 
     core.reset_and_halt(TIMEOUT)?;
 

@@ -9,22 +9,21 @@ use std::{
 use addr2line::fallible_iterator::FallibleIterator as _;
 use either::Either;
 use gimli::{EndianReader, RunTimeEndian};
-use object::{read::File as ElfFile, Object as _, SymbolMap, SymbolMapName};
+use object::{Object as _, SymbolMap, SymbolMapName};
 
-use crate::cortexm;
+use crate::{cortexm, sketch::ProcessedElf};
 
 use super::unwind::RawFrame;
 
 pub(crate) fn frames(
     raw_frames: &[RawFrame],
-    live_functions: &HashSet<&str>,
     current_dir: &Path,
-    elf: &ElfFile,
+    elf: &ProcessedElf,
 ) -> Vec<Frame> {
     let mut frames = vec![];
 
     let symtab = elf.symbol_map();
-    let addr2line = addr2line::Context::new(elf).ok();
+    let addr2line = addr2line::Context::new(&**elf).ok();
 
     for raw_frame in raw_frames {
         match raw_frame {
@@ -34,7 +33,7 @@ pub(crate) fn frames(
                 for subroutine in Subroutine::from_pc(
                     *pc,
                     addr2line.as_ref(),
-                    live_functions,
+                    &elf.live_functions,
                     current_dir,
                     &symtab,
                 ) {

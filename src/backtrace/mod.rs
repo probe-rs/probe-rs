@@ -1,9 +1,8 @@
-use std::{collections::HashSet, path::Path};
+use std::path::Path;
 
-use object::read::File as ElfFile;
 use probe_rs::{config::RamRegion, Core};
 
-use crate::{Outcome, VectorTable};
+use crate::{sketch::ProcessedElf, Outcome};
 
 mod pp;
 mod symbolicate;
@@ -19,21 +18,13 @@ pub(crate) struct Settings<'p> {
 /// (virtually) unwinds the target's program and prints its backtrace
 pub(crate) fn print(
     core: &mut Core,
-    debug_frame: &[u8],
-    elf: &ElfFile,
-    vector_table: &VectorTable,
+    elf: &ProcessedElf,
     sp_ram_region: &Option<RamRegion>,
-    live_functions: &HashSet<&str>,
     settings: &Settings,
 ) -> anyhow::Result<Outcome> {
-    let unwind = unwind::target(core, debug_frame, vector_table, sp_ram_region);
+    let unwind = unwind::target(core, elf, sp_ram_region);
 
-    let frames = symbolicate::frames(
-        &unwind.raw_frames,
-        live_functions,
-        settings.current_dir,
-        elf,
-    );
+    let frames = symbolicate::frames(&unwind.raw_frames, settings.current_dir, elf);
 
     let contains_exception = unwind
         .raw_frames
