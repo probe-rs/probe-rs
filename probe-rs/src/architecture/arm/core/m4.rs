@@ -247,7 +247,7 @@ impl FpRev1CompX {
         if fp1_val.replace() == 0b01 {
             Ok(fp1_val.comp() << 2)
         } else if fp1_val.replace() == 0b10 {
-            Ok((fp1_val.comp() << 2) & 0x2)
+            Ok((fp1_val.comp() << 2) | 0x2)
         } else {
             return Err(Error::ArchitectureSpecific(Box::new(DebugProbeError::Other(anyhow::anyhow!("Unsupported breakpoint comparator value {:#08x} for HW breakpoint. Breakpoint must be on half-word boundaries", fp1_val.0)))));
         }
@@ -668,18 +668,18 @@ impl<'probe> CoreInterface for M4<'probe> {
             // FpRev1 and FpRev2 needs different decoding of the register value, but the location where we read from is the same ...
             let reg_addr = FpRev1CompX::ADDRESS + (bp_unit_index * size_of::<u32>()) as u32;
             // The raw breakpoint address as read from memory
-            let register_value = self.memory.read_word_32(reg_addr)?;
+           let register_value = self.memory.read_word_32(reg_addr)?;
             // The breakpoint address after it has been adjusted for FpRev 1 or 2
             let breakpoint:u32;
-            if ctrl_reg.rev() == 0 {
-                breakpoint = FpRev1CompX::get_breakpoint_comparator(register_value)?;
-            } else if ctrl_reg.rev() == 1 {
-                breakpoint = FpRev2CompX::from(register_value).bpaddr() << 1;
-            } else {
-                log::warn!("This chip uses FPBU revision {}, which is not yet supported. HW breakpoints are not available.", ctrl_reg.rev());
-                return Err(Error::Other(anyhow!("This chip uses FPBU revision {}, which is not yet supported. HW breakpoints are not available.", ctrl_reg.rev())));
-            }
-            if breakpoint > 0 {
+            if register_value & 0b1 == 0b1 { // We only care about `enabled` breakpoints
+                if ctrl_reg.rev() == 0 {
+                    breakpoint = FpRev1CompX::get_breakpoint_comparator(register_value)?;
+                } else if ctrl_reg.rev() == 1 {
+                    breakpoint = FpRev2CompX::from(register_value).bpaddr() << 1;
+                } else {
+                    log::warn!("This chip uses FPBU revision {}, which is not yet supported. HW breakpoints are not available.", ctrl_reg.rev());
+                    return Err(Error::Other(anyhow!("This chip uses FPBU revision {}, which is not yet supported. HW breakpoints are not available.", ctrl_reg.rev())));
+                }
                 breakpoints.push(Some(breakpoint));
             } else {
                 breakpoints.push(None);
