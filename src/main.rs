@@ -1,5 +1,6 @@
 mod backtrace;
 mod canary;
+mod cli;
 mod cortexm;
 mod dep;
 mod elf;
@@ -8,9 +9,9 @@ mod stacked;
 mod target_info;
 
 use std::{
-    env, fs,
+    fs,
     io::{self, Write as _},
-    path::{Path, PathBuf},
+    path::Path,
     process,
     str::FromStr,
     sync::atomic::{AtomicBool, Ordering},
@@ -20,128 +21,23 @@ use std::{
 
 use anyhow::{anyhow, bail};
 use colored::Colorize as _;
-use defmt_decoder::DEFMT_VERSION;
-use log::Level;
 use probe_rs::{
-    config::registry,
     flashing::{self, Format},
     DebugProbeInfo, Probe, Session,
 };
 use probe_rs_rtt::{Rtt, ScanRegion, UpChannel};
 use signal_hook::consts::signal;
-use structopt::{clap::AppSettings, StructOpt};
 
 use crate::{backtrace::Outcome, elf::Elf, target_info::TargetInfo};
 
-/// Successfull termination of process.
-const EXIT_SUCCESS: i32 = 0;
 const SIGABRT: i32 = 134;
 const TIMEOUT: Duration = Duration::from_secs(1);
 
-/// A Cargo runner for microcontrollers.
-#[derive(StructOpt)]
-#[structopt(name = "probe-run", setting = AppSettings::TrailingVarArg)]
-struct Opts {
-    /// List supported chips and exit.
-    #[structopt(long)]
-    list_chips: bool,
-
-    /// Lists all the connected probes and exit.
-    #[structopt(long)]
-    list_probes: bool,
-
-    /// The chip to program.
-    #[structopt(long, required_unless_one(&["list-chips", "list-probes", "version"]), env = "PROBE_RUN_CHIP")]
-    chip: Option<String>,
-
-    /// The probe to use (eg. `VID:PID`, `VID:PID:Serial`, or just `Serial`).
-    #[structopt(long, env = "PROBE_RUN_PROBE")]
-    probe: Option<String>,
-
-    /// The probe clock frequency in kHz
-    #[structopt(long)]
-    speed: Option<u32>,
-
-    /// Path to an ELF firmware file.
-    #[structopt(name = "ELF", parse(from_os_str), required_unless_one(&["list-chips", "list-probes", "version"]))]
-    elf: Option<PathBuf>,
-
-    /// Skip writing the application binary to flash.
-    #[structopt(long, conflicts_with = "defmt")]
-    no_flash: bool,
-
-    /// Connect to device when NRST is pressed.
-    #[structopt(long)]
-    connect_under_reset: bool,
-
-    /// Enable more verbose logging.
-    #[structopt(short, long, parse(from_occurrences))]
-    verbose: u32,
-
-    /// Prints version information
-    #[structopt(short = "V", long)]
-    version: bool,
-
-    /// Print a backtrace even if the program ran successfully
-    #[structopt(long)]
-    force_backtrace: bool,
-
-    /// Configure the number of lines to print before a backtrace gets cut off
-    #[structopt(long, default_value = "50")]
-    max_backtrace_len: u32,
-
-    /// Whether to shorten paths (e.g. to crates.io dependencies) in backtraces and defmt logs
-    #[structopt(long)]
-    shorten_paths: bool,
-
-    /// Arguments passed after the ELF file path are discarded
-    #[structopt(name = "REST")]
-    _rest: Vec<String>,
-}
-
 fn main() -> anyhow::Result<()> {
-    handle_cli_arguments().map(|code| process::exit(code))
+    cli::handle_arguments().map(|code| process::exit(code))
 }
 
-fn handle_cli_arguments() -> anyhow::Result<i32> {
-    let opts: Opts = Opts::from_args();
-    let verbose = opts.verbose;
-
-    defmt_decoder::log::init_logger(verbose >= 1, move |metadata| {
-        if defmt_decoder::log::is_defmt_frame(metadata) {
-            true // We want to display *all* defmt frames.
-        } else {
-            // Log depending on how often the `--verbose` (`-v`) cli-param is supplied:
-            //   * 0: log everything from probe-run, with level "info" or higher
-            //   * 1: log everything from probe-run
-            //   * 2 or more: log everything
-            if verbose >= 2 {
-                true
-            } else if verbose >= 1 {
-                metadata.target().starts_with("probe_run")
-            } else {
-                metadata.target().starts_with("probe_run") && metadata.level() <= Level::Info
-            }
-        }
-    });
-
-    if opts.version {
-        print_version();
-        Ok(EXIT_SUCCESS)
-    } else if opts.list_probes {
-        print_probes(Probe::list_all());
-        Ok(EXIT_SUCCESS)
-    } else if opts.list_chips {
-        print_chips();
-        Ok(EXIT_SUCCESS)
-    } else if let (Some(elf), Some(chip)) = (opts.elf.as_deref(), opts.chip.as_deref()) {
-        run_target_program(elf, chip, &opts)
-    } else {
-        unreachable!("due to `StructOpt` constraints")
-    }
-}
-
-fn run_target_program(elf_path: &Path, chip: &str, opts: &Opts) -> anyhow::Result<i32> {
+fn run_target_program(elf_path: &Path, chip: &str, opts: &cli::Opts) -> anyhow::Result<i32> {
     if !elf_path.exists() {
         return Err(anyhow!(
             "can't find ELF file at `{}`; are you sure you got the right path?",
@@ -458,16 +354,6 @@ fn probes_filter(probes: &[DebugProbeInfo], selector: &ProbeFilter) -> Vec<Debug
         .collect()
 }
 
-fn print_chips() {
-    let registry = registry::families().expect("Could not retrieve chip family registry");
-    for chip_family in registry {
-        println!("{}\n    Variants:", chip_family.name);
-        for variant in chip_family.variants.iter() {
-            println!("        {}", variant.name);
-        }
-    }
-}
-
 fn print_probes(probes: Vec<DebugProbeInfo>) {
     if !probes.is_empty() {
         println!("The following devices were found:");
@@ -478,16 +364,6 @@ fn print_probes(probes: Vec<DebugProbeInfo>) {
     } else {
         println!("No devices were found.");
     }
-}
-
-/// The string reported by the `--version` flag
-fn print_version() {
-    const VERSION: &str = env!("CARGO_PKG_VERSION"); // version from Cargo.toml e.g. "0.1.4"
-    const HASH: &str = include_str!(concat!(env!("OUT_DIR"), "/git-info.txt")); // "" OR git hash e.g. "34019f8" -- this is generated in build.rs
-    println!(
-        "{}{}\nsupported defmt version: {}",
-        VERSION, HASH, DEFMT_VERSION
-    );
 }
 
 /// Print a line to separate different execution stages.
