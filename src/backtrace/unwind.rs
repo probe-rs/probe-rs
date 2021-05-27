@@ -101,7 +101,7 @@ pub(crate) fn target(
             raw_frames.push(RawFrame::Exception);
 
             // Read the `FType` field from the `EXC_RETURN` value.
-            let fpu = lr & (1 << 4) == 0;
+            let fpu = lr & cortexm::EXC_RETURN_FTYPE_MASK == 0;
 
             let sp = registers.get(registers::SP)?;
             let ram_bounds = sp_ram_region
