@@ -98,11 +98,8 @@ pub(crate) fn target(
         if exception_entry {
             raw_frames.push(RawFrame::Exception);
 
-            let fpu = match lr {
-                0xFFFFFFF1 | 0xFFFFFFF9 | 0xFFFFFFFD => false,
-                0xFFFFFFE1 | 0xFFFFFFE9 | 0xFFFFFFED => true,
-                _ => bail!("LR contains invalid EXC_RETURN value {:#010X}", lr),
-            };
+            // Read the `FType` field from the `EXC_RETURN` value.
+            let fpu = lr & (1 << 4) == 0;
 
             let sp = registers.get(registers::SP)?;
             let ram_bounds = sp_ram_region
