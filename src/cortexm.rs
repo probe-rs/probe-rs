@@ -5,7 +5,11 @@ use std::{mem, ops::Range};
 use crate::VectorTable;
 
 pub(crate) const ADDRESS_SIZE: u8 = mem::size_of::<u32>() as u8;
-pub(crate) const EXC_RETURN_MARKER: u32 = 0xFFFF_FFE0;
+
+/// According to Armv8-M Architecture Reference Manual, the most significant 8 bits are `0xFF` to
+/// indicate `EXC_RETURN`, the rest is either reserved or contains data.
+pub(crate) const EXC_RETURN_MARKER: u32 = 0xFF00_0000;
+
 const THUMB_BIT: u32 = 1;
 // According to the ARM Cortex-M Reference Manual RAM memory must be located in this address range
 // (vendors still place e.g. Core-Coupled RAM outside this address range)
