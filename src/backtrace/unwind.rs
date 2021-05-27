@@ -1,6 +1,6 @@
 //! unwind target's program
 
-use anyhow::{bail, ensure, Context as _};
+use anyhow::{ensure, Context as _};
 use gimli::{
     BaseAddresses, DebugFrame, LittleEndian, UninitializedUnwindContext, UnwindSection as _,
 };
@@ -13,10 +13,12 @@ use crate::{
     Outcome, VectorTable,
 };
 
-static MISSING_DEBUG_INFO: &str = "debug information is missing. Likely fixes:
-1. compile the Rust code with `debug = 1` or higher. This is configured in the `profile.{release,bench}` sections of Cargo.toml (`profile.{dev,test}` default to `debug = 2`)
-2. use a recent version of the `cortex-m` crates (e.g. cortex-m 0.6.3 or newer). Check versions in Cargo.lock
-3. if linking to C code, compile the C code with the `-g` flag";
+fn missing_debug_info(pc: u32) -> String {
+    format!("debug information for address {:#x} is missing. Likely fixes:
+        1. compile the Rust code with `debug = 1` or higher. This is configured in the `profile.{{release,bench}}` sections of Cargo.toml (`profile.{{dev,test}}` default to `debug = 2`)
+        2. use a recent version of the `cortex-m` crates (e.g. cortex-m 0.6.3 or newer). Check versions in Cargo.lock
+        3. if linking to C code, compile the C code with the `-g` flag", pc)
+}
 
 /// Virtually* unwinds the target's program
 /// \* destructors are not run
@@ -65,7 +67,7 @@ pub(crate) fn target(
                 pc.into(),
                 DebugFrame::cie_from_offset,
             )
-            .with_context(|| MISSING_DEBUG_INFO)?;
+            .with_context(|| missing_debug_info(pc))?;
 
         let cfa_changed = registers.update_cfa(uwt_row.cfa())?;
 
@@ -98,11 +100,8 @@ pub(crate) fn target(
         if exception_entry {
             raw_frames.push(RawFrame::Exception);
 
-            let fpu = match lr {
-                0xFFFFFFF1 | 0xFFFFFFF9 | 0xFFFFFFFD => false,
-                0xFFFFFFE1 | 0xFFFFFFE9 | 0xFFFFFFED => true,
-                _ => bail!("LR contains invalid EXC_RETURN value {:#010X}", lr),
-            };
+            // Read the `FType` field from the `EXC_RETURN` value.
+            let fpu = lr & cortexm::EXC_RETURN_FTYPE_MASK == 0;
 
             let sp = registers.get(registers::SP)?;
             let ram_bounds = sp_ram_region
