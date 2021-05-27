@@ -147,7 +147,7 @@ fn extract_and_print_logs(
     let stdout = io::stdout();
     let mut stdout = stdout.lock();
     let mut read_buf = [0; 1024];
-    let mut frames = vec![];
+    let mut defmt_buffer = vec![];
     let mut was_halted = false;
     while !exit.load(Ordering::Relaxed) {
         if let Some(logging_channel) = &mut logging_channel {
@@ -161,56 +161,16 @@ fn extract_and_print_logs(
 
             if num_bytes_read != 0 {
                 if let Some(table) = elf.defmt_table.as_ref() {
-                    frames.extend_from_slice(&read_buf[..num_bytes_read]);
+                    defmt_buffer.extend_from_slice(&read_buf[..num_bytes_read]);
 
-                    loop {
-                        match table.decode(&frames) {
-                            Ok((frame, consumed)) => {
-                                // NOTE(`[]` indexing) all indices in `table` have already been
-                                // verified to exist in the `locs` map
-                                let loc = elf
-                                    .defmt_locations
-                                    .as_ref()
-                                    .map(|locs| &locs[&frame.index()]);
-
-                                let (mut file, mut line, mut mod_path) = (None, None, None);
-                                if let Some(loc) = loc {
-                                    let path =
-                                        if let Ok(relpath) = loc.file.strip_prefix(&current_dir) {
-                                            relpath.display().to_string()
-                                        } else {
-                                            let dep_path = dep::Path::from_std_path(&loc.file);
-
-                                            if opts.shorten_paths {
-                                                dep_path.format_short()
-                                            } else {
-                                                dep_path.format_highlight()
-                                            }
-                                        };
-
-                                    file = Some(path);
-                                    line = Some(loc.line as u32);
-                                    mod_path = Some(loc.module.clone());
-                                }
-
-                                // Forward the defmt frame to our logger.
-                                defmt_decoder::log::log_defmt(
-                                    &frame,
-                                    file.as_deref(),
-                                    line,
-                                    mod_path.as_deref(),
-                                );
-
-                                let num_frames = frames.len();
-                                frames.rotate_left(consumed);
-                                frames.truncate(num_frames - consumed);
-                            }
-                            Err(defmt_decoder::DecodeError::UnexpectedEof) => break,
-                            Err(defmt_decoder::DecodeError::Malformed) => {
-                                log::error!("failed to decode defmt data: {:x?}", frames);
-                                return Err(defmt_decoder::DecodeError::Malformed.into());
-                            }
-                        }
+                    if let Some(value) = decode_and_print_defmt_logs(
+                        &mut defmt_buffer,
+                        table,
+                        elf,
+                        current_dir,
+                        opts,
+                    ) {
+                        return value;
                     }
                 } else {
                     stdout.write_all(&read_buf[..num_bytes_read])?;
@@ -228,20 +188,76 @@ fn extract_and_print_logs(
         }
         was_halted = is_halted;
     }
+
     drop(stdout);
+
     signal_hook::low_level::unregister(sigid);
     signal_hook::flag::register_conditional_default(signal::SIGINT, exit.clone())?;
 
+    // Ctrl-C was pressed; stop the microcontroller.
     if exit.load(Ordering::Relaxed) {
-        // Ctrl-C was pressed; stop the microcontroller.
         let mut sess = sess.lock().unwrap();
         let mut core = sess.core(0)?;
+
         core.halt(TIMEOUT)?;
     }
 
     let halted_due_to_signal = exit.load(Ordering::Relaxed);
 
     Ok(halted_due_to_signal)
+}
+
+fn decode_and_print_defmt_logs(
+    defmt_buffer: &mut Vec<u8>,
+    table: &defmt_decoder::Table,
+    elf: &Elf,
+    current_dir: &Path,
+    opts: &cli::Opts,
+) -> Option<Result<bool, anyhow::Error>> {
+    loop {
+        match table.decode(&defmt_buffer) {
+            Ok((frame, consumed)) => {
+                // NOTE(`[]` indexing) all indices in `table` have already been
+                // verified to exist in the `locs` map
+                let loc = elf
+                    .defmt_locations
+                    .as_ref()
+                    .map(|locs| &locs[&frame.index()]);
+
+                let (mut file, mut line, mut mod_path) = (None, None, None);
+                if let Some(loc) = loc {
+                    let path = if let Ok(relpath) = loc.file.strip_prefix(&current_dir) {
+                        relpath.display().to_string()
+                    } else {
+                        let dep_path = dep::Path::from_std_path(&loc.file);
+
+                        if opts.shorten_paths {
+                            dep_path.format_short()
+                        } else {
+                            dep_path.format_highlight()
+                        }
+                    };
+
+                    file = Some(path);
+                    line = Some(loc.line as u32);
+                    mod_path = Some(loc.module.clone());
+                }
+
+                // Forward the defmt frame to our logger.
+                defmt_decoder::log::log_defmt(&frame, file.as_deref(), line, mod_path.as_deref());
+
+                let num_frames = defmt_buffer.len();
+                defmt_buffer.rotate_left(consumed);
+                defmt_buffer.truncate(num_frames - consumed);
+            }
+            Err(defmt_decoder::DecodeError::UnexpectedEof) => break,
+            Err(defmt_decoder::DecodeError::Malformed) => {
+                log::error!("failed to decode defmt data: {:x?}", defmt_buffer);
+                return Some(Err(defmt_decoder::DecodeError::Malformed.into()));
+            }
+        }
+    }
+    None
 }
 
 fn setup_logging_channel(
