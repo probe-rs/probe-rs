@@ -302,48 +302,13 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
                                     .map(|line_program| line_program.header())
                                 {
                                     if let Some(file_entry) = header.file(n) {
-                                        let path_name = file_entry.path_name();
-
-                                        let directory = file_entry.directory(header);
-
-                                        let path_name = std::str::from_utf8(
-                                            &self
-                                                .debug_info
-                                                .dwarf
-                                                .attr_string(&unit_info.unit, path_name)
-                                                .unwrap(),
-                                        )
-                                        .unwrap()
-                                        .to_owned();
-
-                                        let complete_path: PathBuf = match directory {
-                                            None => path_name.into(),
-                                            Some(dir) => {
-                                                let mut dir_string: PathBuf = std::str::from_utf8(
-                                                    &self
-                                                        .debug_info
-                                                        .dwarf
-                                                        .attr_string(&unit_info.unit, dir)
-                                                        .unwrap(),
-                                                )
-                                                .unwrap()
-                                                .to_owned()
-                                                .into();
-
-                                                dir_string.push(path_name);
-
-                                                dir_string
-                                            }
-                                        };
-
-                                        let file_name = complete_path
-                                            .file_name()
-                                            .map(|name| name.to_string_lossy().into_owned());
-
-                                        let directory =
-                                            complete_path.parent().map(|p| p.to_path_buf());
-
-                                        (file_name, directory)
+                                        self.debug_info
+                                            .find_file_and_directory(
+                                                &unit_info.unit,
+                                                header,
+                                                file_entry,
+                                            )
+                                            .unwrap()
                                     } else {
                                         (None, None)
                                     }
@@ -611,50 +576,6 @@ impl DebugInfo {
         None
     }
 
-    pub fn all_function_names(&self, address: u64, find_inlined: bool) -> Vec<String> {
-        let mut units = self.dwarf.units();
-
-        let mut names = Vec::new();
-
-        while let Some(unit_info) = self.get_next_unit_info(&mut units) {
-            let unit_name = unit_info
-                .unit
-                .name
-                .as_ref()
-                .map(|name| std::str::from_utf8(name).unwrap());
-
-            println!("Unit: {}", unit_name.unwrap_or("<unknown_unit>"));
-
-            let mut ranges = unit_info
-                .debug_info
-                .dwarf
-                .unit_ranges(&unit_info.unit)
-                .unwrap();
-
-            while let Some(range) = ranges.next().unwrap() {
-                if range.begin <= address && address < range.end {
-                    println!(
-                        "\tMatching range: {:#010x} - {:#010x}",
-                        range.begin, range.end
-                    );
-
-                    let function_dies = unit_info.get_all_function_dies(address, find_inlined);
-
-                    for die in function_dies {
-                        let function_name = die.function_name(&unit_info);
-
-                        if let Some(name) = function_name {
-                            println!("\t\tFunction: {}", name);
-                            names.push(name);
-                        }
-                    }
-                }
-            }
-        }
-
-        names
-    }
-
     /// Try get the [`SourceLocation`] for a given address.
     pub fn get_source_location(&self, address: u64) -> Option<SourceLocation> {
         let mut units = self.dwarf.units();
@@ -684,7 +605,6 @@ impl DebugInfo {
                     let mut target_seq = None;
 
                     for seq in sequences {
-                        //println!("Seq 0x{:08x} - 0x{:08x}", seq.start, seq.end);
                         if (seq.start <= address) && (address < seq.end) {
                             target_seq = Some(seq);
                             break;
@@ -699,48 +619,29 @@ impl DebugInfo {
                         program.resume_from(target_seq.as_ref().expect("Sequence not found"));
 
                     while let Ok(Some((header, row))) = rows.next_row() {
-                        //println!("Row address: 0x{:08x}", row.address());
                         if row.address() == address {
-                            let file = row.file(header).unwrap().path_name();
-                            let file_name_str =
-                                std::str::from_utf8(&self.dwarf.attr_string(&unit, file).unwrap())
-                                    .unwrap()
-                                    .to_owned();
-
-                            let file_dir = row.file(header).unwrap().directory(header).unwrap();
-                            let file_dir_str = std::str::from_utf8(
-                                &self.dwarf.attr_string(&unit, file_dir).unwrap(),
-                            )
-                            .unwrap()
-                            .to_owned();
+                            let (file, directory) = self
+                                .find_file_and_directory(&unit, header, row.file(header).unwrap())
+                                .unwrap();
 
                             return Some(SourceLocation {
                                 line: row.line().map(NonZeroU64::get),
                                 column: Some(row.column().into()),
-                                file: file_name_str.into(),
-                                directory: Some(file_dir_str.into()),
+                                file,
+                                directory,
                             });
                         } else if (row.address() > address) && previous_row.is_some() {
                             let row = previous_row.unwrap();
 
-                            let file = row.file(header).unwrap().path_name();
-                            let file_name_str =
-                                std::str::from_utf8(&self.dwarf.attr_string(&unit, file).unwrap())
-                                    .unwrap()
-                                    .to_owned();
-
-                            let file_dir = row.file(header).unwrap().directory(header).unwrap();
-                            let file_dir_str = std::str::from_utf8(
-                                &self.dwarf.attr_string(&unit, file_dir).unwrap(),
-                            )
-                            .unwrap()
-                            .to_owned();
+                            let (file, directory) = self
+                                .find_file_and_directory(&unit, header, row.file(header).unwrap())
+                                .unwrap();
 
                             return Some(SourceLocation {
                                 line: row.line().map(NonZeroU64::get),
                                 column: Some(row.column().into()),
-                                file: file_name_str.into(),
-                                directory: Some(file_dir_str.into()),
+                                file,
+                                directory,
                             });
                         }
                         previous_row = Some(*row);
@@ -776,7 +677,9 @@ impl DebugInfo {
         inlined_function: bool,
     ) -> Result<StackFrame, DebugError> {
         let mut units = self.get_units();
-        let unknown_function = format!("<unknown_function_{}>", frame_count);
+
+        let unknown_function = format!("<unknown function @ {:#010x}>", address);
+
         while let Some(unit_info) = self.get_next_unit_info(&mut units) {
             if let Some(die_cursor_state) =
                 &mut unit_info.get_function_die(address, inlined_function)
@@ -847,28 +750,19 @@ impl DebugInfo {
         while let Some(unit_header) = unit_iter.next()? {
             let unit = self.dwarf.unit(unit_header)?;
 
-            let comp_dir = unit
-                .comp_dir
-                .as_ref()
-                .map(|dir| from_utf8(dir))
-                .transpose()?
-                .map(PathBuf::from);
-
             if let Some(ref line_program) = unit.line_program {
                 let header = line_program.header();
 
                 for file_name in header.file_names() {
-                    let combined_path = comp_dir
-                        .as_ref()
-                        .and_then(|dir| self.get_path(&dir, &unit, &header, file_name));
+                    let combined_path = self.get_path(&unit, &header, file_name);
 
                     if combined_path.map(|p| p == path).unwrap_or(false) {
                         let mut rows = line_program.clone().rows();
 
                         while let Some((header, row)) = rows.next_row()? {
-                            let row_path = comp_dir.as_ref().and_then(|dir| {
-                                self.get_path(&dir, &unit, &header, row.file(&header)?)
-                            });
+                            let row_path = row
+                                .file(&header)
+                                .and_then(|file_entry| self.get_path(&unit, &header, file_entry));
 
                             if row_path.map(|p| p != path).unwrap_or(true) {
                                 continue;
@@ -936,7 +830,6 @@ impl DebugInfo {
     /// Get the absolute path for an entry in a line program header
     fn get_path(
         &self,
-        comp_dir: &Path,
         unit: &gimli::read::Unit<DwarfReader>,
         header: &LineProgramHeader<DwarfReader>,
         file_entry: &FileEntry<DwarfReader>,
@@ -957,10 +850,37 @@ impl DebugInfo {
         };
 
         if combined_path.is_relative() {
-            combined_path = comp_dir.to_owned().join(&combined_path);
+            let comp_dir = unit
+                .comp_dir
+                .as_ref()
+                .map(|dir| from_utf8(dir))
+                .transpose()
+                .ok()?
+                .map(PathBuf::from);
+
+            if let Some(comp_dir) = comp_dir {
+                combined_path = comp_dir.to_owned().join(&combined_path);
+            }
         }
 
         Some(combined_path)
+    }
+
+    fn find_file_and_directory(
+        &self,
+        unit: &gimli::read::Unit<DwarfReader>,
+        header: &LineProgramHeader<DwarfReader>,
+        file_entry: &FileEntry<DwarfReader>,
+    ) -> Option<(Option<String>, Option<PathBuf>)> {
+        let combined_path = self.get_path(unit, header, file_entry)?;
+
+        let file_name = combined_path
+            .file_name()
+            .map(|name| name.to_string_lossy().into_owned());
+
+        let directory = combined_path.parent().map(|p| p.to_path_buf());
+
+        Some((file_name, directory))
     }
 }
 
@@ -1071,8 +991,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                             if find_inlined {
                                 let die = FunctionDie::new(current.clone());
 
-                                //log::debug!(
-                                println!(
+                                log::debug!(
                                     "Found DIE, now checking for inlined functions: name={:?}",
                                     die.function_name(&self)
                                 );
@@ -1086,8 +1005,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                             } else {
                                 let die = FunctionDie::new(current.clone());
 
-                                //log::debug!("Found DIE: name={:?}", die.function_name(&self));
-                                println!("Found DIE: name={:?}", die.function_name(&self));
+                                log::debug!("Found DIE: name={:?}", die.function_name(&self));
 
                                 return Some(die);
                             }
@@ -1100,58 +1018,8 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
         None
     }
 
-    fn get_all_function_dies(&self, address: u64, find_inlined: bool) -> Vec<FunctionDie> {
-        log::trace!("Searching Function DIE for address {:#010x}", address);
-
-        let mut dies = Vec::new();
-
-        let mut entries_cursor = self.unit.entries();
-
-        while let Ok(Some((_depth, current))) = entries_cursor.next_dfs() {
-            match current.tag() {
-                gimli::DW_TAG_subprogram => {
-                    let mut ranges = self
-                        .debug_info
-                        .dwarf
-                        .die_ranges(&self.unit, &current)
-                        .unwrap();
-
-                    while let Ok(Some(ranges)) = ranges.next() {
-                        if (ranges.begin <= address) && (address < ranges.end) {
-                            // Check if we are actually in an inlined function
-
-                            if find_inlined {
-                                let die = FunctionDie::new(current.clone());
-
-                                log::debug!(
-                                    "Found DIE, now checking for inlined functions: name={:?}",
-                                    die.function_name(&self)
-                                );
-
-                                let die = self
-                                    .find_inlined_function(address, current.offset())
-                                    .unwrap_or_else(|| {
-                                        log::debug!("No inlined function found!");
-                                        FunctionDie::new(current.clone())
-                                    });
-
-                                dies.push(die);
-                            } else {
-                                let die = FunctionDie::new(current.clone());
-
-                                log::debug!("Found DIE: name={:?}", die.function_name(&self));
-
-                                dies.push(die);
-                            }
-                        }
-                    }
-                }
-                _ => (),
-            };
-        }
-        dies
-    }
-
+    /// Check if the function located at the given offset contains an inlined function at the
+    /// given address.
     fn find_inlined_function(&self, address: u64, offset: UnitOffset) -> Option<FunctionDie> {
         let mut current_depth = 0;
 

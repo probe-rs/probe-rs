@@ -68,16 +68,3 @@ fn function_name_of_non_inlined_function() {
     let name = di.function_name(address, false).unwrap();
     assert_eq!(expected_name, name);
 }
-
-#[test]
-fn check_multiple_functions_at_location() {
-    let di = DebugInfo::from_file("tests/inlined-function").unwrap();
-
-    let address = 0xd8;
-
-    let expected_names = vec!["blink_off"];
-
-    let name = di.all_function_names(address, true);
-
-    assert_eq!(&expected_names, &name);
-}
