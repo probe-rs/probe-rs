@@ -1,6 +1,6 @@
 //! unwind target's program
 
-use anyhow::{bail, ensure, Context as _};
+use anyhow::{ensure, Context as _};
 use gimli::{
     BaseAddresses, DebugFrame, LittleEndian, UninitializedUnwindContext, UnwindSection as _,
 };
