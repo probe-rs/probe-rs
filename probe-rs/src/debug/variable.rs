@@ -110,42 +110,65 @@ impl Variable {
             }
             "i8" => i8::get_value(self, core)
                 .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
-            "i16" => i16::get_value(self, core)
-                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.separate_with_underscores()),
-            "i32" => i32::get_value(self, core)
-                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.separate_with_underscores()),
-            "i64" => i64::get_value(self, core)
-                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.separate_with_underscores()),
-            "i128" => i128::get_value(self, core)
-                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.separate_with_underscores()),
-            "isize" => isize::get_value(self, core)
-                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.separate_with_underscores()),
+            "i16" => i16::get_value(self, core).map_or_else(
+                |err| format!("ERROR: {:?}", err),
+                |value| value.separate_with_underscores(),
+            ),
+            "i32" => i32::get_value(self, core).map_or_else(
+                |err| format!("ERROR: {:?}", err),
+                |value| value.separate_with_underscores(),
+            ),
+            "i64" => i64::get_value(self, core).map_or_else(
+                |err| format!("ERROR: {:?}", err),
+                |value| value.separate_with_underscores(),
+            ),
+            "i128" => i128::get_value(self, core).map_or_else(
+                |err| format!("ERROR: {:?}", err),
+                |value| value.separate_with_underscores(),
+            ),
+            "isize" => isize::get_value(self, core).map_or_else(
+                |err| format!("ERROR: {:?}", err),
+                |value| value.separate_with_underscores(),
+            ),
             "u8" => u8::get_value(self, core)
                 .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
-            "u16" => u16::get_value(self, core)
-                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.separate_with_underscores()),
-            "u32" => u32::get_value(self, core)
-                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.separate_with_underscores()),
-            "u64" => u64::get_value(self, core)
-                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.separate_with_underscores()),
-            "u128" => u128::get_value(self, core)
-                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.separate_with_underscores()),
-            "usize" => usize::get_value(self, core)
-                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.separate_with_underscores()),
-            "f32" => f32::get_value(self, core)
-                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.separate_with_underscores()),
-            "f64" => f64::get_value(self, core)
-                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.separate_with_underscores()),
+            "u16" => u16::get_value(self, core).map_or_else(
+                |err| format!("ERROR: {:?}", err),
+                |value| value.separate_with_underscores(),
+            ),
+            "u32" => u32::get_value(self, core).map_or_else(
+                |err| format!("ERROR: {:?}", err),
+                |value| value.separate_with_underscores(),
+            ),
+            "u64" => u64::get_value(self, core).map_or_else(
+                |err| format!("ERROR: {:?}", err),
+                |value| value.separate_with_underscores(),
+            ),
+            "u128" => u128::get_value(self, core).map_or_else(
+                |err| format!("ERROR: {:?}", err),
+                |value| value.separate_with_underscores(),
+            ),
+            "usize" => usize::get_value(self, core).map_or_else(
+                |err| format!("ERROR: {:?}", err),
+                |value| value.separate_with_underscores(),
+            ),
+            "f32" => f32::get_value(self, core).map_or_else(
+                |err| format!("ERROR: {:?}", err),
+                |value| value.separate_with_underscores(),
+            ),
+            "f64" => f64::get_value(self, core).map_or_else(
+                |err| format!("ERROR: {:?}", err),
+                |value| value.separate_with_underscores(),
+            ),
             "None" => "None".to_string(),
             oops => {
                 match &self.children {
                     Some(_children) => {
                         if oops.is_empty() {
-                            "ERROR: This is a bug! Attempted to evaluate an empty Type"
-                                .to_string()
+                            "ERROR: This is a bug! Attempted to evaluate an empty Type".to_string()
                         } else {
                             format!("{}", self) //Use the Display implementation below to create 'at a glance' values for structured types
-                            //oops.to_string() //return the type name as the value for non-leaf level variables
+                                                //oops.to_string() //return the type name as the value for non-leaf level variables
                         }
                     }
                     None => {
@@ -184,37 +207,42 @@ impl Variable {
 
 impl fmt::Display for Variable {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if self.value.is_empty() { //Only do this if we do not already have a value assigned
-            if let Some(children) = self.children.clone() { //Make sure we can safely unwrap() children
-                if self.type_name.starts_with('&') { //Pointers
+        if self.value.is_empty() {
+            //Only do this if we do not already have a value assigned
+            if let Some(children) = self.children.clone() {
+                //Make sure we can safely unwrap() children
+                if self.type_name.starts_with('&') {
+                    //Pointers
                     write!(f, "{}", children.first().unwrap())
-                } else if self.type_name.starts_with('(') { //Tuples
+                } else if self.type_name.starts_with('(') {
+                    //Tuples
                     write!(f, "(")?;
-                    for child in children { 
-                      write!(f, "{}, ", child)?;
+                    for child in children {
+                        write!(f, "{}, ", child)?;
                     }
                     write!(f, ")")
-                } else if self.type_name.starts_with('[') {//Arrays
+                } else if self.type_name.starts_with('[') {
+                    //Arrays
                     write!(f, "[")?;
-                    for child in children { 
-                      write!(f, "{}, ", child)?;
+                    for child in children {
+                        write!(f, "{}, ", child)?;
                     }
                     write!(f, "]")
-                } else  {//Generic handling of other structured types
+                } else {
+                    //Generic handling of other structured types
                     if self.kind == VariableKind::Named {
                         write!(f, "{}:{{", self.name)?;
                     } else {
                         write!(f, "{{")?;
-
                     }
-                    for child in children { 
-                      write!(f, "{}, ", child)?;
+                    for child in children {
+                        write!(f, "{}, ", child)?;
                     }
                     write!(f, "}}")
-                } 
+                }
             } else {
                 write!(f, "{}", self.type_name) //Unknown
-            } 
+            }
         } else {
             write!(f, "{}", self.value) //Use the supplied value
         }
