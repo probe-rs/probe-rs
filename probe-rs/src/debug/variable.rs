@@ -48,6 +48,8 @@ pub struct Variable {
     /// The starting location/address in memory where this Variable's value is stored.
     pub memory_location: u64,
     pub byte_size: u64,
+    /// If  this is a subrange (array, vector, etc.), is the ordinal position of this variable in that range
+    pub(crate) member_index: Option<i64>,
     /// If this is a subrange (array, vector, etc.), we need to temporarily store the lower bound.
     pub(crate) range_lower_bound: i64,
     /// If this is a subrange (array, vector, etc.), we need to temporarily store the the upper bound of the range.
@@ -133,29 +135,6 @@ impl Variable {
                 .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
             "f64" => f64::get_value(self, core)
                 .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
-            "__ARRAY_SIZE_TYPE__" => {
-                if self.range_lower_bound < 0 || self.range_upper_bound < 0 {
-                    format!(
-                        "UNIMPLEMENTED: Array has a sub-range of {}..{} for ",
-                        self.range_lower_bound, self.range_upper_bound
-                    )
-                } else {
-                    for iteration in self.range_lower_bound..self.range_upper_bound {
-                        let mut child = Variable::new();
-                        child.name = format!("__{}", iteration);
-                        child.type_name = self.name.clone();
-                        child.byte_size = self.byte_size;
-                        child.memory_location =
-                            self.memory_location + (iteration as u64 * child.byte_size);
-                        child.kind = VariableKind::Indexed;
-                        child.file = self.file.clone();
-                        child.line = self.line.clone();
-                        child.extract_value(core);
-                        self.add_child_variable(&mut child);
-                    }
-                    format!("[{};{}]", self.name, self.range_upper_bound)
-                }
-            }
             oops => {
                 if oops == "None" {
                     oops.to_string()
@@ -184,7 +163,8 @@ impl Variable {
     }
 
     /// Instead of just pushing to Variable.children, do some intelligent selection/addition of new Variables.
-    pub fn add_child_variable(&mut self, child_variable: &mut Variable) {
+    /// Primarily this is to force late-as-possible(before parent) call of `extract_value()` on child variables
+    pub fn add_child_variable(&mut self, child_variable: &mut Variable, core: &mut Core<'_>) {
         let children: &mut Vec<Variable> = match &mut self.children {
             Some(children) => children,
             None => {
@@ -198,6 +178,7 @@ impl Variable {
         } else {
             self.kind = VariableKind::Named
         }
+        child_variable.extract_value(core);
         children.push(child_variable.clone());
     }
 }
