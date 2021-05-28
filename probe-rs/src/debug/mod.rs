@@ -1072,12 +1072,14 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     parent_variable.range_upper_bound = range_variable.range_upper_bound;
                 }
                 gimli::DW_TAG_template_type_parameter => {  //The parent node for Rust generic type parameter
-                    // These show up as a child of structures they belong to, but don't lead to the member value or type.
-                    // We will ONLY process the ACTUAL structure member, to avoid a cluttered UI. 
+                    // These show up as a child of structures they belong to, but currently don't lead to the member value or type.
+                    // Until rust lang implements this, we will ONLY process the ACTUAL structure member, to avoid a cluttered UI. 
+                    // let mut template_type_variable = Variable::new();
+                    // self.process_tree_node_attributes(&mut child_node, parent_variable, &mut template_type_variable, core, frame_base, program_counter)?;
+                    // parent_variable.add_child_variable(&mut template_type_variable, core);
+                    // self.process_tree(child_node, parent_variable, core, frame_base, program_counter)?;
                 }
                 gimli::DW_TAG_formal_parameter => { // TODO: WIP Parameters for DW_TAG_inlined_subroutine
-                // DW_AT_location: Expression: Piece { size_in_bits: None, bit_offset: None, location: Address { address: 2001fe58 } }
-                // DW_AT_abstract_origin: print_all_attributes UnitRef(UnitOffset(15182))                    
                     // let mut child_variable = Variable::new();
                     // self.process_tree_node_attributes(&mut child_node, parent_variable, &mut child_variable, core, frame_base)?;
                     // // Recursively process each child.
@@ -1140,6 +1142,8 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                 }
                 other => {
                     // WIP: Add more supported datatypes
+                    println!("\nERROR: Variable: {:?}: {:?}", parent_variable.name,  child_node.entry().tag().static_string());
+                    _print_all_attributes(core, Some(frame_base), &self.debug_info.dwarf, &self.unit, child_node.entry(), 1);
                     parent_variable.set_value(format!("Found unexpected tag: {:?} for variable {:?}", other.static_string(), parent_variable));
                 }
             }
@@ -1436,7 +1440,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
             }
             gimli::DW_TAG_union_type => {
                 // Recursively process a child types.
-                //TODO: Use the DW_TAG_template..... tags to identify the runtime value
+                //TODO: The DWARF does not currently hold information that allows decoding of which UNION arm is instantiated, so we have to display all available.
                 self.process_tree(node, child_variable, core, frame_base, program_counter)?;
                 if child_variable.children.is_none() {
                     //Empty structs don't have values
@@ -1445,6 +1449,8 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                 Ok(())
             }
             other => {
+                // println!("\nERROR: Type: {:?}: {:?}", child_variable.name,  node.entry().tag().static_string());
+                // _print_all_attributes(core, Some(frame_base), &self.debug_info.dwarf, &self.unit, node.entry(), 1);
                 child_variable.type_name = format!("<UNIMPLEMENTED: type : {:?}>", other.static_string());
                 child_variable.set_value(format!(
                     "<UNIMPLEMENTED: type : {:?}>",
