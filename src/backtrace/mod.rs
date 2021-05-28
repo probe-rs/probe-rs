@@ -61,3 +61,29 @@ pub(crate) enum Outcome {
     Ok,
     StackOverflow,
 }
+
+impl Outcome {
+    pub(crate) fn log(&self) {
+        match self {
+            Outcome::StackOverflow => {
+                log::error!("the program has overflowed its stack");
+            }
+            Outcome::HardFault => {
+                log::error!("the program panicked");
+            }
+            Outcome::Ok => {
+                log::info!("device halted without error");
+            }
+        }
+    }
+}
+
+/// convert outomce into an exit code
+impl Into<i32> for Outcome {
+    fn into(self) -> i32 {
+        match self {
+            Outcome::HardFault | Outcome::StackOverflow => crate::SIGABRT,
+            Outcome::Ok => 0,
+        }
+    }
+}

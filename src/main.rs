@@ -28,7 +28,7 @@ use probe_rs::{
 use probe_rs_rtt::{Rtt, ScanRegion, UpChannel};
 use signal_hook::consts::signal;
 
-use crate::{backtrace::Outcome, elf::Elf, target_info::TargetInfo};
+use crate::{elf::Elf, target_info::TargetInfo};
 
 const SIGABRT: i32 = 134;
 const TIMEOUT: Duration = Duration::from_secs(1);
@@ -99,20 +99,8 @@ fn run_target_program(elf_path: &Path, chip: &str, opts: &cli::Opts) -> anyhow::
 
     core.reset_and_halt(TIMEOUT)?;
 
-    Ok(match outcome {
-        Outcome::StackOverflow => {
-            log::error!("the program has overflowed its stack");
-            SIGABRT
-        }
-        Outcome::HardFault => {
-            log::error!("the program panicked");
-            SIGABRT
-        }
-        Outcome::Ok => {
-            log::info!("device halted without error");
-            0
-        }
-    })
+    outcome.log();
+    Ok(outcome.into())
 }
 
 fn extract_and_print_logs(
