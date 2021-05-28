@@ -32,7 +32,7 @@ gimli = { version = "0.24.0", default-features = false, features = ["endian-read
 hidapi = "1.2.0"
 ihex = "3.0.0"
 itm-decode = { version = "0.2.1", default-features = false }
-jaylink = { version = "0.1.5", git = "https://github.com/jonas-schievink/jaylink" }
+jaylink = "0.2.0"
 jep106 = "0.2.4"
 lazy_static = "1.4.0"
 log = "0.4.8"

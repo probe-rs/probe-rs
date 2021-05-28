@@ -1,6 +1,6 @@
 //! Support for J-Link Debug probes
 
-use jaylink::{CommunicationSpeed, Interface, JayLink};
+use jaylink::{Capability, Interface, JayLink, SpeedConfig, SwoMode};
 use thiserror::Error;
 
 use std::convert::{TryFrom, TryInto};
@@ -61,7 +61,7 @@ impl JLink {
     ) -> Result<WireProtocol, DebugProbeError> {
         let capabilities = self.handle.capabilities();
 
-        if capabilities.contains(jaylink::Capabilities::SELECT_IF) {
+        if capabilities.contains(Capability::SelectIf) {
             if let Some(protocol) = protocol {
                 let jlink_interface = match protocol {
                     WireProtocol::Swd => jaylink::Interface::Swd,
@@ -356,34 +356,33 @@ impl DebugProbe for JLink {
         // we assume that it justs support JTAG. In that case, we will also
         // not be able to change protocols.
 
-        let supported_protocols: Vec<WireProtocol> = if jlink_handle
-            .capabilities()
-            .contains(jaylink::Capabilities::SELECT_IF)
-        {
-            let interfaces = jlink_handle.available_interfaces();
+        let supported_protocols: Vec<WireProtocol> =
+            if jlink_handle.capabilities().contains(Capability::SelectIf) {
+                let interfaces = jlink_handle.available_interfaces();
 
-            let protocols: Vec<_> = interfaces.into_iter().map(WireProtocol::try_from).collect();
+                let protocols: Vec<_> =
+                    interfaces.into_iter().map(WireProtocol::try_from).collect();
 
-            protocols
-                .iter()
-                .filter(|p| p.is_err())
-                .for_each(|protocol| {
-                    if let Err(JlinkError::UnknownInterface(interface)) = protocol {
-                        log::warn!(
+                protocols
+                    .iter()
+                    .filter(|p| p.is_err())
+                    .for_each(|protocol| {
+                        if let Err(JlinkError::UnknownInterface(interface)) = protocol {
+                            log::debug!(
                             "J-Link returned interface {:?}, which is not supported by probe-rs.",
                             interface
                         );
-                    }
-                });
+                        }
+                    });
 
-            // We ignore unknown protocols, the chance that this happens is pretty low,
-            // and we can just work with the ones we know and support.
-            protocols.into_iter().filter_map(Result::ok).collect()
-        } else {
-            // The J-Link cannot report which interfaces it supports, and cannot
-            // switch interfaces. We assume it just supports JTAG.
-            vec![WireProtocol::Jtag]
-        };
+                // We ignore unknown protocols, the chance that this happens is pretty low,
+                // and we can just work with the ones we know and support.
+                protocols.into_iter().filter_map(Result::ok).collect()
+            } else {
+                // The J-Link cannot report which interfaces it supports, and cannot
+                // switch interfaces. We assume it just supports JTAG.
+                vec![WireProtocol::Jtag]
+            };
 
         Ok(Box::new(JLink {
             handle: jlink_handle,
@@ -425,25 +424,22 @@ impl DebugProbe for JLink {
             return Err(DebugProbeError::UnsupportedSpeed(speed_khz));
         }
 
-        let actual_speed_khz;
-        if let Ok(speeds) = self.handle.read_speeds() {
+        let actual_speed_khz = if let Ok(speeds) = self.handle.read_speeds() {
             log::debug!("Supported speeds: {:?}", speeds);
 
-            let speed_hz = 1000 * speed_khz;
-            let div = (speeds.base_freq() + speed_hz - 1) / speed_hz;
-            log::debug!("Divider: {}", div);
-            let div = std::cmp::max(div, speeds.min_div() as u32);
+            let max_speed_khz = speeds.max_speed_hz() / 1000;
 
-            actual_speed_khz = ((speeds.base_freq() / div) + 999) / 1000;
-            if actual_speed_khz > speed_khz {
+            if max_speed_khz < speed_khz {
                 return Err(DebugProbeError::UnsupportedSpeed(speed_khz));
             }
+
+            speed_khz
         } else {
-            actual_speed_khz = speed_khz;
-        }
+            speed_khz
+        };
 
         self.handle
-            .set_speed(CommunicationSpeed::khz(actual_speed_khz as u16).unwrap())?;
+            .set_speed(SpeedConfig::khz(actual_speed_khz as u16).unwrap())?;
         self.speed_khz = actual_speed_khz;
 
         Ok(actual_speed_khz)
@@ -702,7 +698,7 @@ impl SwoAccess for JLink {
     fn enable_swo(&mut self, config: &SwoConfig) -> Result<(), ProbeRsError> {
         self.swo_config = Some(*config);
         self.handle
-            .swo_start_uart(config.baud(), SWO_BUFFER_SIZE.into())
+            .swo_start(SwoMode::Uart, config.baud(), SWO_BUFFER_SIZE.into())
             .map_err(|e| ProbeRsError::Probe(DebugProbeError::ArchitectureSpecific(Box::new(e))))?;
         Ok(())
     }
