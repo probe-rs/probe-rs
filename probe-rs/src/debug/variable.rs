@@ -1,7 +1,7 @@
 use num_traits::Zero;
 
 use super::*;
-use std::convert::TryInto;
+use std::{convert::TryInto, fmt};
 
 /// VariableKind is a tag used to differentiate the nature of a variable. The DAP protocol requires a differentiation between 'Named' and 'Indexed'. We've added 'Referenced', because those require unique handling when decoding the value during runtime.
 #[derive(Debug, Clone, PartialEq)]
@@ -135,25 +135,23 @@ impl Variable {
                 .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
             "f64" => f64::get_value(self, core)
                 .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
+            "None" => "None".to_string(),
             oops => {
-                if oops == "None" {
-                    oops.to_string()
-                } else {
-                    match &self.children {
-                        Some(_children) => {
-                            if oops.is_empty() {
-                                "ERROR: This is a bug! Attempted to evaluate an empty Type"
-                                    .to_string()
-                            } else {
-                                oops.to_string() //return the type name as the value for non-leaf level variables
-                            }
+                match &self.children {
+                    Some(_children) => {
+                        if oops.is_empty() {
+                            "ERROR: This is a bug! Attempted to evaluate an empty Type"
+                                .to_string()
+                        } else {
+                            format!("{}", self) //Use the Display implementation below to create 'at a glance' values for structured types
+                            //oops.to_string() //return the type name as the value for non-leaf level variables
                         }
-                        None => {
-                            format!(
-                                "UNIMPLEMENTED: Evaluate type {} of ({} bytes) at location 0x{:08x}",
-                                oops, self.byte_size, self.memory_location
-                            )
-                        }
+                    }
+                    None => {
+                        format!(
+                            "UNIMPLEMENTED: Evaluate type {} of ({} bytes) at location 0x{:08x}",
+                            oops, self.byte_size, self.memory_location
+                        )
                     }
                 }
             }
@@ -180,6 +178,45 @@ impl Variable {
         }
         child_variable.extract_value(core);
         children.push(child_variable.clone());
+    }
+}
+
+impl fmt::Display for Variable {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if self.value.is_empty() { //Only do this if we do not already have a value assigned
+            if let Some(children) = self.children.clone() { //Make sure we can safely unwrap() children
+                if self.type_name.starts_with('&') { //Pointers
+                    write!(f, "{}", children.first().unwrap())
+                } else if self.type_name.starts_with('(') { //Tuples
+                    write!(f, "(")?;
+                    for child in children { 
+                      write!(f, "{}, ", child)?;
+                    }
+                    write!(f, ")")
+                } else if self.type_name.starts_with('[') {//Arrays
+                    write!(f, "[")?;
+                    for child in children { 
+                      write!(f, "{}, ", child)?;
+                    }
+                    write!(f, "]")
+                } else  {//Generic handling of other structured types
+                    if self.kind == VariableKind::Named {
+                        write!(f, "{}:{{", self.name)?;
+                    } else {
+                        write!(f, "{{")?;
+
+                    }
+                    for child in children { 
+                      write!(f, "{}, ", child)?;
+                    }
+                    write!(f, "}}")
+                } 
+            } else {
+                write!(f, "{}", self.type_name) //Unknown
+            } 
+        } else {
+            write!(f, "{}", self.value) //Use the supplied value
+        }
     }
 }
 /// Traits and Impl's to read from memory and decode the Variable value based on Variable::typ and Variable::location. The MS DAP protocol passes the value as a string, so these are here only to provide the memory read logic before returning it as a string.
