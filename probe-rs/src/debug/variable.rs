@@ -1,4 +1,5 @@
 use num_traits::Zero;
+use thousands::Separable;
 
 use super::*;
 use std::{convert::TryInto, fmt};
@@ -110,31 +111,31 @@ impl Variable {
             "i8" => i8::get_value(self, core)
                 .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
             "i16" => i16::get_value(self, core)
-                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
+                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.separate_with_underscores()),
             "i32" => i32::get_value(self, core)
-                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
+                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.separate_with_underscores()),
             "i64" => i64::get_value(self, core)
-                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
+                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.separate_with_underscores()),
             "i128" => i128::get_value(self, core)
-                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
+                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.separate_with_underscores()),
             "isize" => isize::get_value(self, core)
-                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
+                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.separate_with_underscores()),
             "u8" => u8::get_value(self, core)
                 .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
             "u16" => u16::get_value(self, core)
-                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
+                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.separate_with_underscores()),
             "u32" => u32::get_value(self, core)
-                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
+                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.separate_with_underscores()),
             "u64" => u64::get_value(self, core)
-                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
+                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.separate_with_underscores()),
             "u128" => u128::get_value(self, core)
-                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
+                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.separate_with_underscores()),
             "usize" => usize::get_value(self, core)
-                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
+                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.separate_with_underscores()),
             "f32" => f32::get_value(self, core)
-                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
+                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.separate_with_underscores()),
             "f64" => f64::get_value(self, core)
-                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
+                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.separate_with_underscores()),
             "None" => "None".to_string(),
             oops => {
                 match &self.children {
