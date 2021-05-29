@@ -5,14 +5,15 @@ pub mod generate;
 pub mod parser;
 
 use std::{
-    borrow::Cow,
     fs::{create_dir, File, OpenOptions},
     io::Write,
     path::{Path, PathBuf},
 };
 
 use anyhow::{bail, ensure, Context, Result};
-use probe_rs::config::{Chip, ChipFamily, MemoryRegion, NvmRegion, RamRegion};
+use probe_rs::config::{
+    Chip, ChipFamily, MemoryRegion, NvmRegion, RamRegion, TargetDescriptionSource::BuiltIn,
+};
 use simplelog::*;
 use structopt::StructOpt;
 
@@ -95,7 +96,7 @@ fn cmd_elf(
     let mut algorithm = extract_flash_algo(elf_file, &file, true)?;
 
     if let Some(name) = name {
-        algorithm.name = Cow::Owned(name);
+        algorithm.name = name;
     }
 
     if update {
@@ -108,10 +109,7 @@ fn cmd_elf(
             target_description_file.display()
         ))?;
 
-        let mut family = probe_rs::config::ChipFamily::from_yaml_reader(&target_description)?;
-
-        // Close target description file, we want to overwrite it later
-        drop(target_description);
+        let mut family: ChipFamily = serde_yaml::from_reader(target_description)?;
 
         let algorithm_to_update = family
             .flash_algorithms
@@ -120,7 +118,7 @@ fn cmd_elf(
 
         match algorithm_to_update {
             None => bail!("Unable to update flash algorithm in target description file '{}'. Did not find an existing algorithm with name '{}'", target_description_file.display(), &algorithm.name),
-            Some(index) => family.flash_algorithms.to_mut()[index] = algorithm,
+            Some(index) => family.flash_algorithms[index] = algorithm,
         }
 
         let target_description = File::create(&target_description_file)?;
@@ -131,12 +129,12 @@ fn cmd_elf(
         let algorithm_name = algorithm.name.clone();
 
         let chip_family = ChipFamily {
-            name: Cow::Borrowed("<family name>"),
+            name: "<family name>".to_owned(),
             manufacturer: None,
-            variants: Cow::Owned(vec![Chip {
+            variants: vec![Chip {
                 part: None,
-                name: Cow::Borrowed("<chip name>"),
-                memory_map: Cow::Borrowed(&[
+                name: "<chip name>".to_owned(),
+                memory_map: vec![
                     MemoryRegion::Nvm(NvmRegion {
                         is_boot_memory: false,
                         range: 0..0x2000,
@@ -145,11 +143,12 @@ fn cmd_elf(
                         is_boot_memory: true,
                         range: 0x1_0000..0x2_0000,
                     }),
-                ]),
-                flash_algorithms: Cow::Owned(vec![algorithm_name]),
-            }]),
-            flash_algorithms: Cow::Owned(vec![algorithm]),
-            core: Cow::Borrowed("<mcu core>"),
+                ],
+                flash_algorithms: vec![algorithm_name],
+            }],
+            flash_algorithms: vec![algorithm],
+            core: probe_rs::CoreType::M0,
+            source: BuiltIn,
         };
 
         let serialized = serde_yaml::to_string(&chip_family)?;
@@ -213,7 +212,7 @@ fn cmd_pack(input: &Path, out_dir: &Path) -> Result<()> {
     let mut generated_files = Vec::with_capacity(families.len());
 
     for family in &families {
-        let path = out_dir.join(family.name.clone().into_owned() + ".yaml");
+        let path = out_dir.join(family.name.clone() + ".yaml");
         let file = std::fs::File::create(&path)
             .context(format!("Failed to create file '{}'.", path.display()))?;
         serde_yaml::to_writer(file, &family)?;
@@ -247,7 +246,7 @@ fn cmd_arm(out_dir: &Path) -> Result<()> {
     let mut generated_files = Vec::with_capacity(families.len());
 
     for family in &families {
-        let path = out_dir.join(family.name.clone().into_owned() + ".yaml");
+        let path = out_dir.join(family.name.clone() + ".yaml");
         let file = std::fs::File::create(&path)
             .context(format!("Failed to create file '{}'.", path.display()))?;
         serde_yaml::to_writer(file, &family)?;

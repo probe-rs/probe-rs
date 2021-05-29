@@ -77,7 +77,7 @@ pub fn extract_flash_algo(
 
     // Extract binary blob.
     let algorithm_binary = crate::algorithm_binary::AlgorithmBinary::new(&elf, &buffer)?;
-    algo.instructions = algorithm_binary.blob().into();
+    algo.instructions = algorithm_binary.blob();
 
     let code_section_offset = algorithm_binary.code_section.start;
 
@@ -95,14 +95,13 @@ pub fn extract_flash_algo(
         }
     }
 
-    algo.description = flash_device.name.into();
+    algo.description = flash_device.name;
+
     algo.name = file_name
         .file_stem()
+        .and_then(|f| f.to_str())
         .unwrap()
-        .to_str()
-        .unwrap()
-        .to_lowercase()
-        .into();
+        .to_lowercase();
     algo.default = default;
     algo.data_section_offset = algorithm_binary.data_section.start;
 

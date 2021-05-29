@@ -1,13 +1,13 @@
 use std::fs::{self};
 use std::io::Read;
-use std::{borrow::Cow, path::Path};
+use std::path::Path;
 
 use anyhow::{anyhow, bail, Context, Result};
 use cmsis_pack::pdsc::{Core, Device, Package, Processors};
 use cmsis_pack::{pack_index::PdscRef, utils::FromElem};
 use futures::StreamExt;
-use log;
 use probe_rs::config::{Chip, ChipFamily, MemoryRegion, NvmRegion, RamRegion, RawFlashAlgorithm};
+use probe_rs::CoreType;
 use tokio::runtime::Builder;
 
 pub(crate) enum Kind<'a, T>
@@ -74,7 +74,7 @@ where
             Processors::Symmetric(c) => Some(c.core.clone()),
             Processors::Asymmetric(c) => {
                 let cores: Vec<Core> = c.values().map(|p| p.core.clone()).collect();
-                if cores.len() > 0 {
+                if !cores.is_empty() {
                     let mut c: Option<Core> = Some(cores[0].clone());
                     for i in 1..cores.len() {
                         if std::mem::discriminant(&cores[i]) != std::mem::discriminant(&cores[0]) {
@@ -90,22 +90,21 @@ where
 
         let core = if let Some(ct) = core_type {
             match ct {
-                Core::CortexM0 => "M0",
-                Core::CortexM0Plus => "M0",
-                Core::CortexM4 => "M4",
-                Core::CortexM3 => "M3",
-                Core::CortexM33 => "M33",
-                Core::CortexM7 => "M7",
+                Core::CortexM0 => CoreType::M0,
+                Core::CortexM0Plus => CoreType::M0,
+                Core::CortexM4 => CoreType::M4,
+                Core::CortexM3 => CoreType::M3,
+                Core::CortexM33 => CoreType::M33,
+                Core::CortexM7 => CoreType::M7,
                 c => {
                     bail!("Core '{:?}' is not yet supported for target generation.", c);
                 }
             }
         } else {
-            log::warn!(
+            bail!(
                 "Asymmetric core types are not supported yet: {:?}",
                 &device.processor
             );
-            ""
         };
 
         // Check if this device family is already known.
@@ -117,11 +116,12 @@ where
             family
         } else {
             families.push(ChipFamily {
-                name: device.family.into(),
+                name: device.family,
                 manufacturer: None,
-                variants: Cow::Owned(Vec::new()),
-                core: core.into(),
-                flash_algorithms: Cow::Borrowed(&[]),
+                variants: Vec::new(),
+                core,
+                flash_algorithms: Vec::new(),
+                source: probe_rs::config::TargetDescriptionSource::BuiltIn,
             });
             // This unwrap is always safe as we insert at least one item previously.
             families.last_mut().unwrap()
@@ -133,7 +133,7 @@ where
             .collect();
 
         for fa in variant_flash_algorithms {
-            family.flash_algorithms.to_mut().push(fa);
+            family.flash_algorithms.push(fa);
         }
 
         let mut memory_map: Vec<MemoryRegion> = Vec::new();
@@ -144,13 +144,11 @@ where
             memory_map.push(MemoryRegion::Nvm(mem));
         }
 
-        family.variants.to_mut().push(Chip {
-            name: Cow::Owned(device_name),
+        family.variants.push(Chip {
+            name: device_name,
             part: None,
-            memory_map: Cow::Owned(memory_map),
-            flash_algorithms: Cow::Owned(
-                flash_algorithm_names.into_iter().map(Cow::Owned).collect(),
-            ),
+            memory_map,
+            flash_algorithms: flash_algorithm_names,
         });
     }
 
@@ -360,6 +358,8 @@ where
     }
 }
 
+// Clippy complains about `region.range.start == cur.range.end`, but that is correct ;).
+#[allow(clippy::suspicious_operation_groupings)]
 pub(crate) fn get_ram(device: &Device) -> Option<RamRegion> {
     let mut regions: Vec<RamRegion> = Vec::new();
     for memory in device.memories.0.values() {
@@ -375,15 +375,13 @@ pub(crate) fn get_ram(device: &Device) -> Option<RamRegion> {
         regions.sort_by_key(|r| r.range.start);
         let mut merged: Vec<RamRegion> = Vec::new();
         let mut cur = regions.first().cloned().unwrap();
-        for i in 1..regions.len() {
-            if regions[i].is_boot_memory == cur.is_boot_memory
-                && regions[i].range.start == cur.range.end
-            {
+        for region in regions.iter().skip(1) {
+            if region.is_boot_memory == cur.is_boot_memory && region.range.start == cur.range.end {
                 // Merge with previous region
-                cur.range.end = regions[i].range.end;
+                cur.range.end = region.range.end;
             } else {
                 merged.push(cur);
-                cur = regions[i].clone();
+                cur = region.clone();
             }
         }
         merged.push(cur);
@@ -415,14 +413,16 @@ pub(crate) fn get_flash(device: &Device) -> Option<NvmRegion> {
         // Merge contiguous flash regions
         let mut merged = Vec::new();
         let mut cur = regions.first().cloned().unwrap();
-        for i in 1..regions.len() {
-            if regions[i].range.start == cur.range.end {
-                cur.range.end = regions[i].range.end;
+
+        for region in regions.iter().skip(1) {
+            if region.range.start == cur.range.end {
+                cur.range.end = region.range.end;
             } else {
                 merged.push(cur);
-                cur = regions[i].clone();
+                cur = region.clone();
             }
         }
+
         merged.push(cur);
         regions = merged;
     }
