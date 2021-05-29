@@ -9,15 +9,8 @@ use crate::{
 
 use std::time::Duration;
 
-use crate::probe::cmsisdap::CMSISDAP;
-use crate::probe::cmsisdap::{
-    commands,
-    commands::edbg::{
-        avr_cmd::{AvrCommand, AvrCommandResponse},
-        avr_evt::{AvrEventRequest, AvrEventResponse},
-        avr_rsp::{AvrRSPRequest, AvrRSPResponse},
-    },
-};
+use crate::probe::cmsisdap::CmsisDap;
+use crate::probe::edbg::avr8generic;
 use crate::probe::edbg::EDBG;
 use crate::DebugProbe;
 use crate::Probe;
@@ -84,19 +77,37 @@ impl<'probe> AvrCommunicationInterface {
 
     // Memory interface
     pub fn read_word_8(&mut self, address: u32) -> Result<u8, error::Error> {
-        self.probe.as_mut().read_word_8(address)
+        let mut data = [0u8;1];
+        self.probe.as_mut().read_memory(address, &mut data[..], avr8generic::Memtypes::Sram)?;
+        Ok(data[0])
     }
-}
-/*
-impl<'a> AsRef<dyn DebugProbe + 'a> for AvrCommunicationInterface {
-    fn as_ref(&self) -> &(dyn DebugProbe + 'a) {
-        self.probe.as_ref()
-    }
-}
 
-impl<'a> AsMut<dyn DebugProbe + 'a> for AvrCommunicationInterface {
-    fn as_mut(&mut self) -> &mut (dyn DebugProbe + 'a) {
-        self.probe.as_mut()
+    pub fn read_8(&mut self, address: u32, data: &mut [u8]) -> Result<(), error::Error> {
+        self.probe.as_mut().read_memory(address, &mut data[..], avr8generic::Memtypes::Sram)?;
+        Ok(())
     }
+
+    pub fn write_word_8(&mut self, address: u32, data: u8) -> Result<(), error::Error> {
+        self.probe.as_mut().write_memory(address, &[data], avr8generic::Memtypes::Sram)?;
+        Ok(())
+    }
+
+    pub fn read_register(&mut self, address: u32) -> Result<u8, error::Error> {
+        Ok(self.read_registerfile()?[address as usize])
+    }
+
+    pub fn status(&mut self) -> Result<CoreStatus, error::Error> {
+        self.probe.as_mut().status()
+    }
+
+    pub fn read_registerfile(&mut self) -> Result<Vec<u8>, error::Error> {
+        let mut data = vec![0u8;32];
+        self.probe.as_mut().read_memory(0, &mut data[..], avr8generic::Memtypes::Regfile)?;
+        Ok(data)
+    }
+
+    pub fn read_program_counter(&mut self) -> Result<u32, error::Error> {
+        Ok(self.probe.as_mut().read_program_counter()?)
+    }
+
 }
-*/
