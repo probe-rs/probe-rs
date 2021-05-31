@@ -1,7 +1,7 @@
 /// AVR support
 pub mod communication_interface;
 use crate::architecture::avr::communication_interface::AvrCommunicationInterface;
-use crate::core::{RegisterFile, RegisterDescription, RegisterKind};
+use crate::core::{RegisterDescription, RegisterFile, RegisterKind};
 use crate::error;
 use crate::error::Error;
 use crate::{
@@ -174,12 +174,17 @@ static AVR_REGISTER_FILE: RegisterFile = RegisterFile {
             kind: RegisterKind::General,
             address: CoreRegisterAddress(31),
         },
+        RegisterDescription {
+            name: "SREG",
+            kind: RegisterKind::General,
+            address: CoreRegisterAddress(32),
+        },
     ],
 
     program_counter: &RegisterDescription {
         name: "PC",
         kind: RegisterKind::PC,
-        address: CoreRegisterAddress(32),
+        address: CoreRegisterAddress(34),
     },
     return_address: &RegisterDescription {
         name: "RA",
@@ -189,12 +194,11 @@ static AVR_REGISTER_FILE: RegisterFile = RegisterFile {
     stack_pointer: &RegisterDescription {
         name: "SP",
         kind: RegisterKind::General,
-        address: CoreRegisterAddress(0),
+        address: CoreRegisterAddress(33),
     },
 
     argument_registers: &[],
     result_registers: &[],
-
 };
 
 pub struct Avr<'probe> {
@@ -216,7 +220,10 @@ impl<'probe> CoreInterface for Avr<'probe> {
     /// Check if the core is halted. If the core does not halt on its own,
     /// a [DebugProbeError::Timeout] error will be returned.
     fn core_halted(&mut self) -> Result<bool, error::Error> {
-        unimplemented!();
+        Ok(match self.interface.status()? {
+            CoreStatus::Halted(_) => true,
+            _ => false,
+        })
     }
 
     fn status(&mut self) -> Result<CoreStatus, error::Error> {
@@ -255,13 +262,12 @@ impl<'probe> CoreInterface for Avr<'probe> {
     }
 
     fn read_core_reg(&mut self, address: CoreRegisterAddress) -> Result<u32, error::Error> {
-        if address.0 == 32{
-            Ok(self.interface.read_program_counter()?)
+        match address.0 {
+            32 => Ok(self.interface.read_sreg()?),
+            33 => Ok(self.interface.read_stack_pointer()?),
+            34 => Ok(self.interface.read_program_counter()?),
+            _ => Ok(self.interface.read_register(address.into())? as u32),
         }
-        else{
-            Ok(self.interface.read_register(address.into())? as u32)
-        }
-
     }
 
     fn write_core_reg(&mut self, address: CoreRegisterAddress, value: u32) -> Result<()> {

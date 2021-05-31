@@ -452,6 +452,24 @@ fn get_target_from_selector(
                 log::debug!("No ARM interface was present. Skipping Riscv autodetect.");
             }
 
+            if found_chip.is_none() && probe.has_avr_interface() {
+                match probe.try_into_avr_interface() {
+                    Ok(mut interface) => {
+                        //let idcode = interface.read_idcode();
+
+                        //log::debug!("ID Code read over JTAG: {:x?}", idcode);
+
+                        probe = interface.close();
+                    }
+                    Err((returned_probe, err)) => {
+                        log::debug!("Error during autodetection of AVR chips: {}", err);
+                        probe = returned_probe;
+                    }
+                }
+            } else {
+                log::debug!("No AVR interface was present. Skipping Avr autodetect.");
+            }
+
             if found_chip.is_none() && probe.has_riscv_interface() {
                 match probe.try_into_riscv_interface() {
                     Ok(mut interface) => {

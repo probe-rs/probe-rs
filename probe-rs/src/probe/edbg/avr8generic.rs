@@ -237,6 +237,9 @@ pub enum Memtypes {
     EepromAtomic = 0xC4,         //  EEPROM page with auto-erase
     UserSignature = 0xC5,        //  User signature secion
     CalibrationSignature = 0xC6, //  Calibration section
+    PdiCs = 0xD0,
+    Ocd = 0xD1,
+    Sib = 0xD3,
 }
 
 #[derive(Clone, Debug)]

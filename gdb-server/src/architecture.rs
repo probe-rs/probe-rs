@@ -47,6 +47,41 @@ impl<'probe> GdbArchitectureExt for Core<'probe> {
                     }
                 }
             }
+            probe_rs::Architecture::Avr => match gdb_reg_number {
+                // general purpose registers 0 to 31
+                x @ 0..=31 => {
+                    let addr: CoreRegisterAddress = self
+                        .registers()
+                        .get_platform_register(x as usize)
+                        .expect("avr register must exist")
+                        .into();
+                    (addr.0, 1)
+                }
+                // SREG
+                x @ 32 => {
+                    let addr: CoreRegisterAddress = self
+                        .registers()
+                        .get_platform_register(x as usize)
+                        .expect("avr register must exist")
+                        .into();
+                    (addr.0, 1)
+                }
+                // SP
+                33 => {
+                    let addr: CoreRegisterAddress = self.registers().stack_pointer().into();
+                    (addr.0, 2)
+                }
+                // Program counter
+                34 => {
+                    let addr: CoreRegisterAddress = self.registers().program_counter().into();
+                    log::debug!("Read program counter: {}", addr.0);
+                    (addr.0, 4)
+                }
+                other => {
+                    log::warn!("Request for unsupported register with number {}", other);
+                    return None;
+                }
+            },
             probe_rs::Architecture::Riscv => match gdb_reg_number {
                 // general purpose registers 0 to 31
                 x @ 0..=31 => {
@@ -75,6 +110,7 @@ impl<'probe> GdbArchitectureExt for Core<'probe> {
     fn num_general_registers(&self) -> usize {
         match self.architecture() {
             probe_rs::Architecture::Arm => 24,
+            probe_rs::Architecture::Avr => 33,
             probe_rs::Architecture::Riscv => 33,
         }
     }
@@ -142,6 +178,7 @@ impl GdbTargetExt for probe_rs::Target {
         // - riscv:rv32   -> RISCV
 
         let architecture = match self.core_type {
+            CoreType::Avr => "avr",
             CoreType::M0 => "armv6-m",
             CoreType::M3 => "armv7-m",
             CoreType::M4 | CoreType::M7 => "armv7e-m",

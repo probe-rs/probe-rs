@@ -5,13 +5,13 @@ variants:
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536875008
+            start: 0
+            end: 131072
           is_boot_memory: false
       - Flash:
           range:
             start: 0
-            end: 8192
+            end: 131072
           is_boot_memory: true
     flash_algorithms:
       - updi

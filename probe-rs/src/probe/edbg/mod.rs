@@ -274,35 +274,46 @@ impl EDBG {
         )?;
 
         // FIXME: Handle data split accross multiple packages
-        let mut rsp = loop {
+
+        let mut response_data: Vec<u8> = vec![];
+
+        let rsp = commands::send_command::<AvrRSPRequest, AvrRSPResponse>(
+            &mut self.device,
+            AvrRSPRequest,
+        )?;
+
+        log::debug!("Fragment info: {}", rsp.fragment_info);
+
+        let total_fragments: u8 = rsp.fragment_info & 0x0f;
+        response_data.extend(&rsp.command_packet);
+
+        for i in 2..(total_fragments + 1) {
             let rsp = commands::send_command::<AvrRSPRequest, AvrRSPResponse>(
                 &mut self.device,
                 AvrRSPRequest,
             )?;
 
-            if rsp.fragment_info != 0 {
-                break rsp;
+            let current_fragment = (rsp.fragment_info & 0xF0)>>4;
+            if rsp.fragment_info == 0 || current_fragment != i{
+                panic!("Invalid fragment");
             }
+            response_data.extend(&rsp.command_packet);
         };
 
-        // FIXME: use propper errors
-        if rsp.command_packet[0] != EDBG_SOF {
+        if response_data[0] != EDBG_SOF {
             panic!("Wrong SOF byte in AVR RSP");
         }
-        if rsp
-            .command_packet
+        if response_data
             .pread_with::<u16>(1, LE)
             .expect("Failed to read buffer")
             != self.sequence_number
         {
             panic!("Wrong sequence number in AVR RSP");
-        }
-        //if rsp.command_packet[3] != sub_protocol_id as u8 {
-        //    panic!("Wrong sub protocol in AVR RSP");
-        //}
+            }
+
         self.sequence_number += 1;
-        rsp.command_packet.drain(0..4);
-        Ok(rsp.command_packet)
+        response_data.drain(0..4);
+        Ok(response_data)
     }
 
     /// Send a AVR8Generic command. `version` is normaly 0
@@ -324,7 +335,7 @@ impl EDBG {
             .map(|r| avr8generic::Response::parse_response(&r));
 
         if let Ok(r) = &response {
-            log::trace!("Command response: {:?}", r);
+            log::trace!("Command response: {:X?}", r);
         }
 
         response
@@ -434,10 +445,22 @@ impl EDBG {
     pub fn read_program_counter(&mut self) -> Result<u32, DebugProbeError> {
         let response = self.send_command_avr8_generic(avr8generic::Commands::PcRead, 0, &[])?;
         match response {
-            avr8generic::Response::Pc(pc) => Ok(pc),
+            avr8generic::Response::Pc(pc) => Ok(pc*2),
             avr8generic::Response::Failed(f) => Err(EdbgError::ErrorCode(f).into()),
             _ => Err(EdbgError::UnexpectedResponse.into()),
         }
+    }
+
+    pub fn read_sreg(&mut self) -> Result<u32, DebugProbeError> {
+        let mut data = [0u8; 1];
+        self.read_memory(0x1C, &mut data[..], avr8generic::Memtypes::Ocd)?;
+        Ok(u8::from_le_bytes(data) as u32)
+    }
+
+    pub fn read_stack_pointer(&mut self) -> Result<u32, DebugProbeError> {
+        let mut data = [0u8; 2];
+        self.read_memory(0x18, &mut data[..], avr8generic::Memtypes::Ocd)?;
+        Ok(u16::from_le_bytes(data) as u32)
     }
 
     fn get_id(&mut self) -> Result<u32, DebugProbeError> {

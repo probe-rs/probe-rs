@@ -9,8 +9,8 @@ use crate::{
 
 use std::time::Duration;
 
-use crate::probe::cmsisdap::CmsisDap;
 use crate::probe::cmsisdap::commands::CmsisDapDevice;
+use crate::probe::cmsisdap::CmsisDap;
 use crate::probe::edbg::avr8generic;
 use crate::probe::edbg::EDBG;
 use crate::DebugProbe;
@@ -78,18 +78,35 @@ impl<'probe> AvrCommunicationInterface {
 
     // Memory interface
     pub fn read_word_8(&mut self, address: u32) -> Result<u8, error::Error> {
-        let mut data = [0u8;1];
-        self.probe.as_mut().read_memory(address, &mut data[..], avr8generic::Memtypes::Sram)?;
+        let mut data = [0u8; 1];
+        self.probe
+            .as_mut()
+            .read_memory(address, &mut data[..], avr8generic::Memtypes::Sram)?;
         Ok(data[0])
     }
 
     pub fn read_8(&mut self, address: u32, data: &mut [u8]) -> Result<(), error::Error> {
-        self.probe.as_mut().read_memory(address, &mut data[..], avr8generic::Memtypes::Sram)?;
+        let addr_space = (address & 0x00ff0000) >> 16;
+        let mem_type = match addr_space{
+            0x00 => avr8generic::Memtypes::ApplFlash,
+            0x80 => avr8generic::Memtypes::Sram,
+            0x81 => avr8generic::Memtypes::Eeprom,
+            0x82 => avr8generic::Memtypes::Fuses,
+            0x83 => avr8generic::Memtypes::Lockbits,
+            0x84 => avr8generic::Memtypes::Signature,
+            0x85 => avr8generic::Memtypes::UserSignature,
+            _ => unimplemented!("Unknown AVR memory type"),
+        };
+        self.probe
+            .as_mut()
+            .read_memory(address, &mut data[..], mem_type)?;
         Ok(())
     }
 
     pub fn write_word_8(&mut self, address: u32, data: u8) -> Result<(), error::Error> {
-        self.probe.as_mut().write_memory(address, &[data], avr8generic::Memtypes::Sram)?;
+        self.probe
+            .as_mut()
+            .write_memory(address, &[data], avr8generic::Memtypes::Sram)?;
         Ok(())
     }
 
@@ -102,13 +119,22 @@ impl<'probe> AvrCommunicationInterface {
     }
 
     pub fn read_registerfile(&mut self) -> Result<Vec<u8>, error::Error> {
-        let mut data = vec![0u8;32];
-        self.probe.as_mut().read_memory(0, &mut data[..], avr8generic::Memtypes::Regfile)?;
+        let mut data = vec![0u8; 32];
+        self.probe
+            .as_mut()
+            .read_memory(0, &mut data[..], avr8generic::Memtypes::Regfile)?;
         Ok(data)
+    }
+
+    pub fn read_sreg(&mut self) -> Result<u32, error::Error> {
+        Ok(self.probe.as_mut().read_sreg()?)
     }
 
     pub fn read_program_counter(&mut self) -> Result<u32, error::Error> {
         Ok(self.probe.as_mut().read_program_counter()?)
     }
 
+    pub fn read_stack_pointer(&mut self) -> Result<u32, error::Error> {
+        Ok(self.probe.as_mut().read_stack_pointer()?)
+    }
 }

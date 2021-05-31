@@ -84,8 +84,8 @@ pub use crate::core::{
 pub use crate::error::Error;
 pub use crate::memory::{Memory, MemoryInterface, MemoryList};
 pub use crate::probe::{
-    AttachMethod, AvrWireProtocol, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, DebugProbeType,
-    Probe, ProbeCreationError, WireProtocol,
+    AttachMethod, AvrWireProtocol, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector,
+    DebugProbeType, Probe, ProbeCreationError, WireProtocol,
 };
 pub use crate::session::Session;
 
