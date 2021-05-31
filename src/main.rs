@@ -143,6 +143,12 @@ fn notmain() -> anyhow::Result<i32> {
     let max_backtrace_len = opts.max_backtrace_len;
     let shorten_paths = opts.shorten_paths;
     let elf_path = opts.elf.as_deref().unwrap();
+    if !elf_path.exists() {
+        return Err(anyhow!(
+            "can't find ELF file at `{}`; are you sure you got the right path?",
+            elf_path.display()
+        ));
+    }
     let chip = opts.chip.as_deref().unwrap();
     let bytes = fs::read(elf_path)?;
     let elf = ElfFile::parse(&bytes)?;
