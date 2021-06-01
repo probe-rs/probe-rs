@@ -7,7 +7,7 @@ pub const EBREAK: u32 = 0b000000000001_00000_000_00000_1110011;
 pub fn lw(offset: u16, base: u8, width: u8, destination: u8) -> u32 {
     let opcode = 0b000_0011;
 
-    i_type_instruction(opcode, destination, width, base, offset)
+    i_type_instruction(opcode, base, width, destination, offset)
 }
 
 /// Assemble a `sw` instruction.
@@ -77,7 +77,7 @@ fn i_type_instruction(opcode: u8, rs1: u8, funct3: u8, rd: u8, imm: u16) -> u32 
 
 #[cfg(test)]
 mod test {
-    use super::{csrr, csrw};
+    use super::{csrr, csrw, lw, sw};
 
     #[test]
     fn assemble_csrr() {
@@ -101,6 +101,28 @@ mod test {
         let expected = 0x30049073;
 
         let assembled = csrw(0x300, 9);
+
+        assert_eq!(assembled, expected);
+    }
+
+    #[test]
+    fn assemble_sw() {
+        // Assembly output of assembly 'sw      x1, 4(x2)'
+        //
+        let expected = 0x00112223;
+
+        let assembled = sw(4, 2, 2, 1);
+
+        assert_eq!(assembled, expected);
+    }
+
+    #[test]
+    fn assemble_lw() {
+        // Assembly output of assembly 'lw      x3, 8(x4)'
+        //
+        let expected = 0x00822183;
+
+        let assembled = lw(8, 4, 2, 3);
 
         assert_eq!(assembled, expected);
     }

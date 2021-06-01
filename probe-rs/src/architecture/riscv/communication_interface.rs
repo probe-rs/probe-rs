@@ -382,12 +382,12 @@ impl<'probe> RiscvCommunicationInterface {
 
         let abstractauto_readback: Abstractauto = self.read_dm_register()?;
 
+        self.state.supports_autoexec = abstractauto_readback == abstractauto;
+        log::debug!("Support for autoexec: {}", self.state.supports_autoexec);
+
         // clear abstractauto
         abstractauto = Abstractauto(0);
         self.write_dm_register(abstractauto)?;
-
-        self.state.supports_autoexec = abstractauto_readback == abstractauto;
-        log::debug!("Support for autoexec: {}", self.state.supports_autoexec);
 
         // determine support system bus access
         let sbcs = self.read_dm_register::<Sbcs>()?;
@@ -427,6 +427,11 @@ impl<'probe> RiscvCommunicationInterface {
                     .memory_access_info
                     .insert(RiscvBusAccess::A128, MemoryAccessMethod::SystemBus);
             }
+        } else {
+            log::debug!(
+                "System bus interface version {} is not supported.",
+                sbcs.sbversion()
+            );
         }
 
         Ok(())
