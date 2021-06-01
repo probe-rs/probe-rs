@@ -125,7 +125,7 @@ pub trait DapAccess {
     }
 }
 
-pub trait ArmProbeInterface: SwoAccess + Debug + Send {
+pub trait ArmProbeInterface: DapAccess + SwoAccess + Debug + Send {
     fn memory_interface(&mut self, access_port: MemoryAp) -> Result<Memory<'_>, ProbeRsError>;
 
     fn ap_information(&self, access_port: GenericAp) -> Option<&ApInformation>;
@@ -246,6 +246,36 @@ impl ArmProbeInterface for ArmCommunicationInterface {
 
     fn close(self: Box<Self>) -> Probe {
         Probe::from_attached_probe(self.probe.into_probe())
+    }
+}
+
+impl DapAccess for ArmCommunicationInterface {
+    fn read_register(&mut self, port: PortType, addr: u16) -> Result<u32, DebugProbeError> {
+        self.probe.read_register(port, addr)
+    }
+    fn write_register(
+        &mut self,
+        port: PortType,
+        addr: u16,
+        value: u32,
+    ) -> Result<(), DebugProbeError> {
+        self.probe.write_register(port, addr, value)
+    }
+    fn read_block(
+        &mut self,
+        port: PortType,
+        addr: u16,
+        values: &mut [u32],
+    ) -> Result<(), DebugProbeError> {
+        self.probe.read_block(port, addr, values)
+    }
+    fn write_block(
+        &mut self,
+        port: PortType,
+        addr: u16,
+        values: &[u32],
+    ) -> Result<(), DebugProbeError> {
+        self.probe.write_block(port, addr, values)
     }
 }
 
