@@ -19,6 +19,7 @@ defmt-decoder = { version = "=0.2.1", features = ['unstable'] }
 difference = "2.0.0"
 either = "1.6.1"
 gimli = "0.23.0"
+hidapi = "1.2.6"
 log = "0.4.14"
 # an addr2line trait is implement for a type in this particular version
 object = "0.22.0"
@@ -27,7 +28,6 @@ probe-rs-rtt = "0.10.1"
 rustc-demangle = "0.1.19"
 signal-hook = "0.3.8"
 structopt = "0.3.21"
-hidapi = "1.2.6"
 
 [dev-dependencies]
 pretty_assertions = "0.7.2"
