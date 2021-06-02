@@ -135,6 +135,7 @@ struct Registry {
 }
 
 impl Registry {
+    #[cfg(feature = "builtin-targets")]
     fn from_builtin_families() -> Self {
         const BUILTIN_TARGETS: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/targets.bincode"));
 
@@ -150,7 +151,7 @@ impl Registry {
     fn from_builtin_families() -> Self {
         let mut families = vec![];
         add_generic_targets(&mut families);
-        families
+        Self { families }
     }
 
     fn families(&self) -> &Vec<ChipFamily> {

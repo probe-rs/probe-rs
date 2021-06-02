@@ -47,7 +47,7 @@ pub struct StLink<D: StLinkUsb> {
     swo_enabled: bool,
 
     /// List of opened APs
-    openend_aps: Vec<u8>,
+    opened_aps: Vec<u8>,
 }
 
 impl DebugProbe for StLink<StLinkUsbDevice> {
@@ -65,7 +65,7 @@ impl DebugProbe for StLink<StLinkUsbDevice> {
             jtag_speed_khz: 1_120,
             swo_enabled: false,
 
-            openend_aps: vec![],
+            opened_aps: vec![],
         };
 
         stlink.init()?;
@@ -152,7 +152,9 @@ impl DebugProbe for StLink<StLinkUsbDevice> {
         };
 
         // Check and report the target voltage.
-        let target_voltage = self.get_target_voltage()?.expect("The ST-Link returned None when it should only be able to return Some(f32) or an error. Please report this bug!");
+        let target_voltage = self
+            .get_target_voltage()?
+            .expect("The ST-Link returned None when it should only be able to return Some(f32) or an error. Please report this bug!");
         if target_voltage < crate::probe::LOW_TARGET_VOLTAGE_WARNING_THRESHOLD {
             log::warn!(
                 "Target voltage (VAPP) is {:2.2} V. Is your target device powered?",
@@ -637,10 +639,10 @@ impl<D: StLinkUsb> StLink<D> {
             }
         }
 
-        if !self.openend_aps.contains(&ap) {
+        if !self.opened_aps.contains(&ap) {
             log::debug!("Opening AP {}", ap);
             self.open_ap(ap)?;
-            self.openend_aps.push(ap)
+            self.opened_aps.push(ap)
         }
 
         Ok(())
@@ -1711,7 +1713,7 @@ mod test {
                 swd_speed_khz: 0,
                 jtag_speed_khz: 0,
                 swo_enabled: false,
-                openend_aps: vec![],
+                opened_aps: vec![],
             }
         }
     }
