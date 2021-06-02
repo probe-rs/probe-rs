@@ -1,5 +1,6 @@
 use ihex::Record;
 use probe_rs_target::RawFlashAlgorithm;
+use std::collections::HashMap;
 use std::io::{Read, Seek, SeekFrom};
 use std::ops::Range;
 
@@ -215,10 +216,47 @@ impl FlashLoader {
             log::warn!("Memory map of flash loader does not match memory map of target!");
         }
 
+        let mut algos: HashMap<String, Vec<NvmRegion>> = HashMap::new();
+
         // Commit NVM first
+
+        // Iterate all NvmRegions and group them by flash algorithm.
+        // This avoids loading the same algorithm twice if it's used for two regions.
+        //
+        // This also ensures correct operation when chip erase is used. We assume doing a chip erase
+        // using a given algorithm erases all regions controlled by it. Therefore, we must do
+        // chip erase once per algorithm, not once per region. Otherwise subsequent chip erases will
+        // erase previous regions' flashed contents.
         for region in &self.memory_map {
             if let MemoryRegion::Nvm(region) = region {
-                self.commit_nvm(region, session, &options)?;
+                // If we have no data in this region, ignore it.
+                // This avoids uselessly initializing and deinitializing its flash algorithm.
+                if !self.builder.has_data_in_range(&region.range) {
+                    continue;
+                }
+
+                let algo = Self::get_flash_algorithm_for_region(region, session.target())?;
+
+                let entry = algos.entry(algo.name.clone()).or_default();
+                entry.push(region.clone());
+            }
+        }
+
+        // Iterate all flash algorithms we need to use.
+        for (algo_name, regions) in algos {
+            // This can't fail, algo_name comes from the target.
+            let algo = session
+                .target()
+                .flash_algorithms
+                .iter()
+                .find(|a| a.name == algo_name)
+                .unwrap()
+                .clone();
+
+            let mut flasher = Flasher::new(session, &algo)?;
+
+            for region in regions {
+                self.commit_nvm(&region, &mut flasher, &options)?;
             }
         }
 
@@ -295,7 +333,7 @@ impl FlashLoader {
     fn commit_nvm(
         &self,
         region: &NvmRegion,
-        session: &mut Session,
+        flasher: &mut Flasher,
         options: &DownloadOptions<'_>,
     ) -> Result<(), FlashError> {
         log::debug!(
@@ -303,9 +341,6 @@ impl FlashLoader {
             region.range.start,
             region.range.end
         );
-
-        let flash_algorithm =
-            Self::get_flash_algorithm_for_region(region, session.target())?.clone();
 
         if options.dry_run {
             log::info!("Skipping programming, dry run!");
@@ -316,8 +351,6 @@ impl FlashLoader {
         }
 
         // Program the data.
-        let mut flasher = Flasher::new(session, &flash_algorithm)?;
-
         flasher.program(
             region,
             &self.builder,
