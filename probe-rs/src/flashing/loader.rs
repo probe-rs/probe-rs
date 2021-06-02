@@ -6,13 +6,13 @@ use std::ops::Range;
 
 use super::builder::FlashBuilder;
 use super::{
-    extract_from_elf, BinOptions, DownloadOptions, FileDownloadError, FlashAlgorithm, FlashError,
-    FlashProgress, Flasher,
+    extract_from_elf, BinOptions, DownloadOptions, FileDownloadError, FlashError, FlashProgress,
+    Flasher,
 };
 use crate::memory::MemoryInterface;
 use crate::session::Session;
 use crate::{
-    config::{MemoryRange, MemoryRegion, NvmRegion, RamRegion, TargetDescriptionSource},
+    config::{MemoryRange, MemoryRegion, NvmRegion, TargetDescriptionSource},
     Target,
 };
 
@@ -242,6 +242,11 @@ impl FlashLoader {
             }
         }
 
+        if options.dry_run {
+            log::info!("Skipping programming, dry run!");
+            return Ok(());
+        }
+
         // Iterate all flash algorithms we need to use.
         for (algo_name, regions) in algos {
             // This can't fail, algo_name comes from the target.
@@ -255,8 +260,36 @@ impl FlashLoader {
 
             let mut flasher = Flasher::new(session, &algo)?;
 
+            let mut do_chip_erase = options.do_chip_erase;
+
+            // If the flash algo doesn't support erase all, disable chip erase.
+            if do_chip_erase && !flasher.is_chip_erase_supported() {
+                do_chip_erase = false;
+                log::warn!("Chip erase was the selected method to erase the sectors but this chip does not support chip erases (yet).");
+                log::warn!("A manual sector erase will be performed.");
+            }
+
+            if do_chip_erase {
+                log::debug!("Doing chip erase!");
+                flasher.run_erase(|active| active.erase_all())?;
+            }
+
             for region in regions {
-                self.commit_nvm(&region, &mut flasher, &options)?;
+                log::debug!(
+                    "Using builder for region (0x{:08x}..0x{:08x})",
+                    region.range.start,
+                    region.range.end
+                );
+
+                // Program the data.
+                flasher.program(
+                    &region,
+                    &self.builder,
+                    options.keep_unwritten_bytes,
+                    true,
+                    options.skip_erase || do_chip_erase,
+                    options.progress.unwrap_or(&FlashProgress::new(|_| {})),
+                )?;
             }
         }
 
@@ -294,18 +327,8 @@ impl FlashLoader {
         region: &NvmRegion,
         target: &'a Target,
     ) -> Result<&'a RawFlashAlgorithm, FlashError> {
-        let algorithms = &target.flash_algorithms;
-
-        for algorithm in algorithms {
-            log::debug!(
-                "Algorithm {} - start: {:#08x} - size: {:#08x}",
-                algorithm.name,
-                algorithm.flash_properties.address_range.start,
-                algorithm.flash_properties.address_range.end
-                    - algorithm.flash_properties.address_range.start
-            );
-        }
-        let algorithms = algorithms
+        let algorithms = &target
+            .flash_algorithms
             .iter()
             .filter(|fa| {
                 fa.flash_properties
@@ -313,8 +336,6 @@ impl FlashLoader {
                     .contains_range(&region.range)
             })
             .collect::<Vec<_>>();
-
-        log::debug!("Algorithms: {:?}", &algorithms);
 
         let raw_flash_algorithm = match algorithms.len() {
             0 => {
@@ -328,39 +349,5 @@ impl FlashLoader {
         };
 
         Ok(raw_flash_algorithm)
-    }
-
-    fn commit_nvm(
-        &self,
-        region: &NvmRegion,
-        flasher: &mut Flasher,
-        options: &DownloadOptions<'_>,
-    ) -> Result<(), FlashError> {
-        log::debug!(
-            "Using builder for region (0x{:08x}..0x{:08x})",
-            region.range.start,
-            region.range.end
-        );
-
-        if options.dry_run {
-            log::info!("Skipping programming, dry run!");
-            if let Some(progress) = options.progress {
-                progress.failed_erasing();
-            }
-            return Ok(());
-        }
-
-        // Program the data.
-        flasher.program(
-            region,
-            &self.builder,
-            options.do_chip_erase,
-            options.keep_unwritten_bytes,
-            true,
-            options.skip_erase,
-            options.progress.unwrap_or(&FlashProgress::new(|_| {})),
-        )?;
-
-        Ok(())
     }
 }

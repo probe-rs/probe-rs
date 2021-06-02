@@ -200,6 +200,10 @@ impl<'session> Flasher<'session> {
         Ok(r)
     }
 
+    pub(super) fn is_chip_erase_supported(&self) -> bool {
+        self.flash_algorithm().pc_erase_all.is_some()
+    }
+
     /// Program the contents of given `FlashBuilder` to the flash.
     ///
     /// If `restore_unwritten_bytes` is `true`, all bytes of a sector,
@@ -209,7 +213,6 @@ impl<'session> Flasher<'session> {
         &mut self,
         region: &NvmRegion,
         flash_builder: &FlashBuilder,
-        mut do_chip_erase: bool,
         restore_unwritten_bytes: bool,
         enable_double_buffering: bool,
         skip_erasing: bool,
@@ -225,14 +228,6 @@ impl<'session> Flasher<'session> {
 
         progress.initialized(flash_layout.clone());
 
-        // If the flash algo doesn't support erase all, disable chip erase.
-        if self.flash_algorithm().pc_erase_all.is_none() {
-            do_chip_erase = false;
-            log::warn!("Chip erase was the selected method to erase the sectors but this chip does not support chip erases (yet).");
-            log::warn!("A manual sector erase will be performed.");
-        }
-
-        log::debug!("Full Chip Erase enabled: {:?}", do_chip_erase);
         log::debug!("Double Buffering enabled: {:?}", enable_double_buffering);
         log::debug!(
             "Restoring unwritten bytes enabled: {:?}",
@@ -265,11 +260,7 @@ impl<'session> Flasher<'session> {
         // Skip erase if necessary
         if !skip_erasing {
             // Erase all necessary sectors
-            if do_chip_erase {
-                self.chip_erase(&flash_layout, progress)?;
-            } else {
-                self.sector_erase(&flash_layout, progress)?;
-            }
+            self.sector_erase(&flash_layout, progress)?;
         }
 
         // Flash all necessary pages.
@@ -300,32 +291,6 @@ impl<'session> Flasher<'session> {
                 .read_8(fill.address(), page_slice)
                 .map_err(FlashError::Core)
         })
-    }
-
-    /// Erase the entire flash of the chip.
-    ///
-    /// This takes the list of available sectors only for progress reporting reasons.
-    /// It does not indeed erase single sectors but erases the entire flash.
-    fn chip_erase(
-        &mut self,
-        flash_layout: &FlashLayout,
-        progress: &FlashProgress,
-    ) -> Result<(), FlashError> {
-        progress.started_erasing();
-
-        let mut t = std::time::Instant::now();
-        let result = self.run_erase(|active| active.erase_all());
-        for sector in flash_layout.sectors() {
-            progress.sector_erased(sector.size(), t.elapsed());
-            t = std::time::Instant::now();
-        }
-
-        if result.is_ok() {
-            progress.finished_erasing();
-        } else {
-            progress.failed_erasing();
-        }
-        result
     }
 
     /// Programs the pages given in `flash_layout` into the flash.
