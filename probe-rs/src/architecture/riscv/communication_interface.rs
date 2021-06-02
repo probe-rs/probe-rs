@@ -777,20 +777,24 @@ impl<'probe> RiscvCommunicationInterface {
         address: u32,
         data: V,
     ) -> Result<(), RiscvError> {
-        log::debug!("Perfoming memory write!");
+        log::debug!(
+            "Memory write using progbuf - {:#010x} = {:#?}",
+            address,
+            data
+        );
 
         // Backup registers s0 and s1
         let s0 = self.abstract_cmd_register_read(&register::S0)?;
         let s1 = self.abstract_cmd_register_read(&register::S1)?;
 
-        let sw_command = assembly::sw(0, 8, V::WIDTH.byte_width() as u32, 9);
+        let sw_command = assembly::sw(0, 8, V::WIDTH as u32, 9);
 
         self.setup_program_buffer(&[sw_command])?;
 
-        // write value into s0
+        // write address into s0
         self.abstract_cmd_register_write(&register::S0, address)?;
 
-        // write address into data 0
+        // write data into data 0
         self.write_dm_register(Data0(data.into()))?;
 
         // Write s1, then execute program buffer
@@ -803,7 +807,7 @@ impl<'probe> RiscvCommunicationInterface {
         command.set_aarsize(RiscvBusAccess::A32);
         command.set_postexec(true);
 
-        // register s1, ie. 0x1008
+        // register s1, ie. 0x1009
         command.set_regno((register::S1).address.0 as u32);
 
         self.write_dm_register(command)?;
@@ -1250,7 +1254,7 @@ impl RiscvValue32 for u32 {
 
 /// Marker trait for different values which
 /// can be read / written using the debug module.
-pub(crate) trait RiscvValue: Copy + Sized {
+pub(crate) trait RiscvValue: std::fmt::Debug + Copy + Sized {
     const WIDTH: RiscvBusAccess;
 
     fn read_from_register<R>(
