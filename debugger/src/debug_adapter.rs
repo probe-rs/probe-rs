@@ -515,23 +515,21 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                 });
 
                 if let Some(location) = source_location {
-                    let (verified, reason_msg) = match core_data
-                        .target_core
-                        .set_hw_breakpoint(location as u32)
-                    {
-                        Ok(_) => (
-                            true,
-                            Some(format!("Breakpoint at memory address: 0x{:08x}", location)),
-                        ),
-                        Err(err) => {
-                            //In addition to sending the error to the 'Hover' message, also write it to the Debug Console Log
-                            self.log_to_console(format!(
+                    let (verified, reason_msg) =
+                        match core_data.target_core.set_hw_breakpoint(location as u32) {
+                            Ok(_) => (
+                                true,
+                                Some(format!("Breakpoint at memory address: 0x{:08x}", location)),
+                            ),
+                            Err(err) => {
+                                //In addition to sending the error to the 'Hover' message, also write it to the Debug Console Log
+                                self.log_to_console(format!(
                                 "ERROR: Could not set breakpoint at memory address: 0x{:08x}: {}",
                                 location, err
                             ));
-                            (false, Some(err.to_string()))
-                        }
-                    };
+                                (false, Some(err.to_string()))
+                            }
+                        };
 
                     created_breakpoints.push(Breakpoint {
                         column: bp.column,
