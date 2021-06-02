@@ -371,7 +371,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         Ok(())
     }
 
-    fn set_breakpoint(&mut self, bp_unit_index: usize, addr: u32) -> Result<(), crate::Error> {
+    fn set_hw_breakpoint(&mut self, bp_unit_index: usize, addr: u32) -> Result<(), crate::Error> {
         // select requested trigger
         let tselect = 0x7a0;
         let tdata1 = 0x7a1;
@@ -409,7 +409,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         Ok(())
     }
 
-    fn clear_breakpoint(&mut self, unit_index: usize) -> Result<(), crate::Error> {
+    fn clear_hw_breakpoint(&mut self, unit_index: usize) -> Result<(), crate::Error> {
         let tselect = 0x7a0;
         let tdata1 = 0x7a1;
         let tdata2 = 0x7a2;
@@ -469,6 +469,41 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
                     .into(),
             )
         }
+    }
+
+    /// See docs on the [`CoreInterface::get_hw_breakpoints`] trait
+    /// NOTE: For riscv, this assumes that only execution breakpoints are used.
+    fn get_hw_breakpoints(&mut self) -> Result<Vec<Option<u32>>, Error> {
+        let tselect = 0x7a0;
+        let tdata1 = 0x7a1;
+        let tdata2 = 0x7a2;
+
+        let mut breakpoints = vec![];
+        let num_hw_breakpoints = self.get_available_breakpoint_units()? as usize;
+        for bp_unit_index in 0..num_hw_breakpoints {
+            //select the trigger
+            self.write_csr(tselect, bp_unit_index as u32)?;
+
+            //Read the trigger "configuration" data
+            let tdata_value = Mcontrol(self.read_csr(tdata1)?);
+
+            //Only return if the trigger if it is for an execution debug action in all modes
+            if tdata_value.type_() == 0b10
+                && tdata_value.action() == 1
+                && tdata_value.match_() == 0
+                && tdata_value.m()
+                && tdata_value.s()
+                && tdata_value.u()
+                && tdata_value.execute()
+                && tdata_value.dmode()
+            {
+                let breakpoint = self.read_csr(tdata2)?;
+                breakpoints.push(Some(breakpoint));
+            } else {
+                breakpoints.push(None);
+            }
+        }
+        Ok(breakpoints)
     }
 }
 

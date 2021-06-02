@@ -10,7 +10,7 @@ use crate::{
     core::{Architecture, CoreStatus, HaltReason},
     MemoryInterface,
 };
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 
 use bitfield::bitfield;
 use std::mem::size_of;
@@ -239,8 +239,22 @@ impl From<FpRev1CompX> for u32 {
 }
 
 impl FpRev1CompX {
+    /// Get the correct comparator value stored at the given address
+    /// This will adjust the `FpRev1CompX.comp() result based on the `FpRev1CompX.replace()` specification
+    /// NOTE: Does not support a `replace value of '11'
+    fn get_breakpoint_comparator(register_value: u32) -> Result<u32, Error> {
+        let fp1_val = FpRev1CompX::from(register_value);
+        if fp1_val.replace() == 0b01 {
+            Ok(fp1_val.comp() << 2)
+        } else if fp1_val.replace() == 0b10 {
+            Ok((fp1_val.comp() << 2) | 0x2)
+        } else {
+            return Err(Error::ArchitectureSpecific(Box::new(DebugProbeError::Other(anyhow::anyhow!("Unsupported breakpoint comparator value {:#08x} for HW breakpoint. Breakpoint must be on half-word boundaries", fp1_val.0)))));
+        }
+    }
     /// Get the correct register configuration which enables
     /// a hardware breakpoint at the given address.
+    /// NOTE: Does not support a `replace` value of '11'
     fn breakpoint_configuration(address: u32) -> Result<Self, Error> {
         let mut reg = FpRev1CompX::from(0);
 
@@ -589,7 +603,15 @@ impl<'probe> CoreInterface for M4<'probe> {
         Ok(())
     }
 
-    fn set_breakpoint(&mut self, bp_unit_index: usize, addr: u32) -> Result<(), Error> {
+    fn set_hw_breakpoint(&mut self, bp_unit_index: usize, addr: u32) -> Result<(), Error> {
+        //First make sure they are asking for a breakpoint on a half-word boundary
+        if (addr & 0x1) > 0 {
+            return Err(Error::Other(anyhow!(
+                "The requested breakpoint address 0x{:08x} is not on a half-word boundary",
+                addr
+            )));
+        }
+
         let raw_val = self.memory.read_word_32(FpCtrl::ADDRESS)?;
         let ctrl_reg = FpCtrl::from(raw_val);
 
@@ -600,7 +622,7 @@ impl<'probe> CoreInterface for M4<'probe> {
             val = FpRev2CompX::breakpoint_configuration(addr).into();
         } else {
             log::warn!("This chip uses FPBU revision {}, which is not yet supported. HW breakpoints are not available.", ctrl_reg.rev());
-            return Err(Error::Probe(DebugProbeError::CommandNotSupportedByProbe));
+            return Err(Error::Other(anyhow!("This chip uses FPBU revision {}, which is not yet supported. HW breakpoints are not available.", ctrl_reg.rev())));
         }
 
         // This is fine as FpRev1CompX and Rev2CompX are just two different
@@ -617,7 +639,7 @@ impl<'probe> CoreInterface for M4<'probe> {
         &ARM_REGISTER_FILE
     }
 
-    fn clear_breakpoint(&mut self, bp_unit_index: usize) -> Result<(), Error> {
+    fn clear_hw_breakpoint(&mut self, bp_unit_index: usize) -> Result<(), Error> {
         let mut val = FpRev1CompX::from(0);
         val.set_enable(false);
 
@@ -634,6 +656,37 @@ impl<'probe> CoreInterface for M4<'probe> {
 
     fn architecture(&self) -> Architecture {
         Architecture::Arm
+    }
+
+    /// See docs on the [`CoreInterface::get_hw_breakpoints`] trait
+    fn get_hw_breakpoints(&mut self) -> Result<Vec<Option<u32>>, Error> {
+        let mut breakpoints = vec![];
+        let num_hw_breakpoints = self.get_available_breakpoint_units()? as usize;
+        { 0..num_hw_breakpoints }.try_for_each(|bp_unit_index| {
+            let raw_val = self.memory.read_word_32(FpCtrl::ADDRESS)?;
+            let ctrl_reg = FpCtrl::from(raw_val);
+            // FpRev1 and FpRev2 needs different decoding of the register value, but the location where we read from is the same ...
+            let reg_addr = FpRev1CompX::ADDRESS + (bp_unit_index * size_of::<u32>()) as u32;
+            // The raw breakpoint address as read from memory
+            let register_value = self.memory.read_word_32(reg_addr)?;
+            // The breakpoint address after it has been adjusted for FpRev 1 or 2
+            let breakpoint:u32;
+            if register_value & 0b1 == 0b1 { // We only care about `enabled` breakpoints
+                if ctrl_reg.rev() == 0 {
+                    breakpoint = FpRev1CompX::get_breakpoint_comparator(register_value)?;
+                } else if ctrl_reg.rev() == 1 {
+                    breakpoint = FpRev2CompX::from(register_value).bpaddr() << 1;
+                } else {
+                    log::warn!("This chip uses FPBU revision {}, which is not yet supported. HW breakpoints are not available.", ctrl_reg.rev());
+                    return Err(Error::Other(anyhow!("This chip uses FPBU revision {}, which is not yet supported. HW breakpoints are not available.", ctrl_reg.rev())));
+                }
+                breakpoints.push(Some(breakpoint));
+            } else {
+                breakpoints.push(None);
+            }
+            Ok(())
+        })?;
+        Ok(breakpoints)
     }
 }
 

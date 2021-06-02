@@ -379,7 +379,7 @@ impl Drop for Session {
     fn drop(&mut self) {
         let result = { 0..self.cores.len() }.try_for_each(|i| {
             self.core(i)
-                .and_then(|mut core| core.clear_all_set_hw_breakpoints())
+                .and_then(|mut core| core.clear_all_hw_breakpoints())
         });
 
         if let Err(err) = result {

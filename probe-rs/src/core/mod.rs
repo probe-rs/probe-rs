@@ -6,7 +6,7 @@ use crate::architecture::{
     arm::core::CortexState, riscv::communication_interface::RiscvCommunicationInterface,
 };
 use crate::config::CoreType;
-use crate::{error, DebugProbeError, Error, Memory, MemoryInterface};
+use crate::{error, Error, Memory, MemoryInterface};
 use anyhow::{anyhow, Result};
 use std::time::Duration;
 
@@ -161,11 +161,16 @@ pub trait CoreInterface: MemoryInterface {
 
     fn get_available_breakpoint_units(&mut self) -> Result<u32, error::Error>;
 
+    /// Read the hardware breakpoints from FpComp registers, and adds them to the Result Vector.
+    /// A value of None in any position of the Vector indicates that the position is unset/available.
+    /// We intentionally return all breakpoints, irrespective of whether they are enabled or not.
+    fn get_hw_breakpoints(&mut self) -> Result<Vec<Option<u32>>, error::Error>;
+
     fn enable_breakpoints(&mut self, state: bool) -> Result<(), error::Error>;
 
-    fn set_breakpoint(&mut self, bp_unit_index: usize, addr: u32) -> Result<(), error::Error>;
+    fn set_hw_breakpoint(&mut self, bp_unit_index: usize, addr: u32) -> Result<(), error::Error>;
 
-    fn clear_breakpoint(&mut self, unit_index: usize) -> Result<(), error::Error>;
+    fn clear_hw_breakpoint(&mut self, unit_index: usize) -> Result<(), error::Error>;
 
     fn registers(&self) -> &'static RegisterFile;
 
@@ -216,15 +221,11 @@ impl<'probe> MemoryInterface for Core<'probe> {
 #[derive(Debug)]
 pub struct CoreState {
     id: usize,
-    breakpoints: Vec<Breakpoint>,
 }
 
 impl CoreState {
     pub fn new(id: usize) -> Self {
-        Self {
-            id,
-            breakpoints: vec![],
-        }
+        Self { id }
     }
 }
 
@@ -400,60 +401,70 @@ impl<'probe> Core<'probe> {
         self.inner.registers()
     }
 
+    /// Find the index of the next available HW breakpoint comparator.
+    fn find_free_breakpoint_comparator_index(&mut self) -> Result<usize, error::Error> {
+        let mut next_available_hw_breakpoint = 0;
+        for breakpoint in self.inner.get_hw_breakpoints()? {
+            if breakpoint.is_none() {
+                return Ok(next_available_hw_breakpoint);
+            } else {
+                next_available_hw_breakpoint += 1;
+            }
+        }
+        Err(error::Error::Other(anyhow!(
+            "No available hardware breakpoints"
+        )))
+    }
+
     /// Set a hardware breakpoint
     ///
     /// This function will try to set a hardware breakpoint. The amount
     /// of hardware breakpoints which are supported is chip specific,
     /// and can be queried using the `get_available_breakpoint_units` function.
     pub fn set_hw_breakpoint(&mut self, address: u32) -> Result<(), error::Error> {
-        log::debug!("Trying to set HW breakpoint at address {:#08x}", address);
-
-        // Get the number of HW breakpoints available
-        let num_hw_breakpoints = self.get_available_breakpoint_units()? as usize;
-
-        log::debug!("{} HW breakpoints are supported.", num_hw_breakpoints);
-
-        if num_hw_breakpoints <= self.state.breakpoints.len() {
-            // We cannot set additional breakpoints
-            log::warn!("Maximum number of breakpoints ({}) reached, unable to set additional HW breakpoint.", num_hw_breakpoints);
-
-            return Err(error::Error::Probe(
-                DebugProbeError::BreakpointUnitsExceeded,
-            ));
-        }
-
         if !self.inner.hw_breakpoints_enabled() {
             self.enable_breakpoints(true)?;
         }
 
-        let bp_unit = self.find_free_breakpoint_unit();
+        //If there is a breakpoint set already, return its bp_unit_index, else find the next free index
+        let breakpoint_comparator_index = match self
+            .inner
+            .get_hw_breakpoints()?
+            .iter()
+            .position(|&bp| bp == Some(address))
+        {
+            Some(breakpoint_comparator_index) => breakpoint_comparator_index,
+            None => self.find_free_breakpoint_comparator_index()?,
+        };
 
-        log::debug!("Using comparator {} of breakpoint unit", bp_unit);
-        // actually set the breakpoint
-        self.inner.set_breakpoint(bp_unit, address)?;
+        log::debug!(
+            "Trying to set HW breakpoint #{} with comparator address  {:#08x}",
+            breakpoint_comparator_index,
+            address
+        );
 
-        self.state.breakpoints.push(Breakpoint {
-            address,
-            register_hw: bp_unit,
-        });
-
+        // Actually set the breakpoint. Even if it has been set, set it again so it will be active.
+        self.inner
+            .set_hw_breakpoint(breakpoint_comparator_index, address)?;
         Ok(())
     }
 
     pub fn clear_hw_breakpoint(&mut self, address: u32) -> Result<(), error::Error> {
         let bp_position = self
-            .state
-            .breakpoints
+            .inner
+            .get_hw_breakpoints()?
             .iter()
-            .position(|bp| bp.address == address);
+            .position(|bp| bp.is_some() && bp.unwrap() == address);
+
+        log::debug!(
+            "Will clear HW breakpoint    #{} with comparator address    {:#08x}",
+            bp_position.unwrap_or(usize::MAX),
+            address
+        );
 
         match bp_position {
             Some(bp_position) => {
-                let bp = &self.state.breakpoints[bp_position];
-                self.inner.clear_breakpoint(bp.register_hw)?;
-
-                // We only remove the breakpoint if we have actually managed to clear it.
-                self.state.breakpoints.swap_remove(bp_position);
+                self.inner.clear_hw_breakpoint(bp_position)?;
                 Ok(())
             }
             None => Err(error::Error::Other(anyhow!(
@@ -466,48 +477,17 @@ impl<'probe> Core<'probe> {
     /// Clear all hardware breakpoints
     ///
     /// This function will clear all HW breakpoints which are configured on the target,
-    /// regardless if they are set by probe-rs or not.
+    /// regardless if they are set by probe-rs, AND regardless if they are enabled or not.
+    /// Also used as a helper function in [`Session::drop`].
     pub fn clear_all_hw_breakpoints(&mut self) -> Result<(), error::Error> {
-        let num_hw_breakpoints = self.get_available_breakpoint_units()? as usize;
-
-        { 0..num_hw_breakpoints }.try_for_each(|unit_index| self.inner.clear_breakpoint(unit_index))
-    }
-
-    /// Clear all HW breakpoints which were set by probe-rs.
-    ///
-    /// Currently used as a helper function in [`Session::drop`].
-    pub(crate) fn clear_all_set_hw_breakpoints(&mut self) -> Result<(), error::Error> {
-        for bp in self.state.breakpoints.drain(..) {
-            self.inner.clear_breakpoint(bp.register_hw)?;
+        for breakpoint in (self.inner.get_hw_breakpoints()?).into_iter().flatten() {
+            self.clear_hw_breakpoint(breakpoint)?
         }
-
         Ok(())
     }
 
     pub fn architecture(&self) -> Architecture {
         self.inner.architecture()
-    }
-
-    fn find_free_breakpoint_unit(&self) -> usize {
-        let mut used_bp: Vec<_> = self
-            .state
-            .breakpoints
-            .iter()
-            .map(|bp| bp.register_hw)
-            .collect();
-        used_bp.sort_unstable();
-
-        let mut free_bp = 0;
-
-        for bp in used_bp {
-            if bp == free_bp {
-                free_bp += 1;
-            } else {
-                return free_bp;
-            }
-        }
-
-        free_bp
     }
 }
 
