@@ -1,4 +1,5 @@
 use ihex::Record;
+use probe_rs_target::RawFlashAlgorithm;
 use std::io::{Read, Seek, SeekFrom};
 use std::ops::Range;
 
@@ -248,12 +249,13 @@ impl FlashLoader {
         Ok(())
     }
 
-    fn build_flash_algorithm(
-        &self,
+    /// Try to find a flash algorithm for the given NvmRegion.
+    /// Errors if there's no algo for the region.
+    /// Errors if there's multiple algos for the region and none is marked as default.
+    fn get_flash_algorithm_for_region<'a>(
         region: &NvmRegion,
-        target: &Target,
-    ) -> Result<FlashAlgorithm, FlashError> {
-        // Try to find a flash algorithm for the range of the current builder
+        target: &'a Target,
+    ) -> Result<&'a RawFlashAlgorithm, FlashError> {
         let algorithms = &target.flash_algorithms;
 
         for algorithm in algorithms {
@@ -287,20 +289,7 @@ impl FlashLoader {
                 .ok_or(FlashError::NoFlashLoaderAlgorithmAttached)?,
         };
 
-        let mm = &target.memory_map;
-        let ram = mm
-            .iter()
-            .find_map(|mm| match mm {
-                MemoryRegion::Ram(ram) => Some(ram),
-                _ => None,
-            })
-            .ok_or(FlashError::NoRamDefined {
-                chip: target.name.clone(),
-            })?;
-
-        let flash_algorithm = FlashAlgorithm::assemble_from_raw(raw_flash_algorithm, ram, target)?;
-
-        Ok(flash_algorithm)
+        Ok(raw_flash_algorithm)
     }
 
     fn commit_nvm(
@@ -315,7 +304,8 @@ impl FlashLoader {
             region.range.end
         );
 
-        let flash_algorithm = self.build_flash_algorithm(region, session.target())?;
+        let flash_algorithm =
+            Self::get_flash_algorithm_for_region(region, session.target())?.clone();
 
         if options.dry_run {
             log::info!("Skipping programming, dry run!");
@@ -326,7 +316,7 @@ impl FlashLoader {
         }
 
         // Program the data.
-        let mut flasher = Flasher::new(session, flash_algorithm)?;
+        let mut flasher = Flasher::new(session, &flash_algorithm)?;
 
         flasher.program(
             region,

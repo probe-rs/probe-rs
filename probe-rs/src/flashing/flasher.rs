@@ -1,3 +1,5 @@
+use probe_rs_target::{MemoryRegion, RawFlashAlgorithm};
+
 use super::{
     FlashAlgorithm, FlashBuilder, FlashError, FlashFill, FlashLayout, FlashPage, FlashProgress,
 };
@@ -57,8 +59,23 @@ pub(super) struct Flasher<'session> {
 impl<'session> Flasher<'session> {
     pub(super) fn new(
         session: &'session mut Session,
-        flash_algorithm: FlashAlgorithm,
+        raw_flash_algorithm: &RawFlashAlgorithm,
     ) -> Result<Self, FlashError> {
+        let target = session.target();
+
+        let mm = &target.memory_map;
+        let ram = mm
+            .iter()
+            .find_map(|mm| match mm {
+                MemoryRegion::Ram(ram) => Some(ram),
+                _ => None,
+            })
+            .ok_or(FlashError::NoRamDefined {
+                chip: target.name.clone(),
+            })?;
+
+        let flash_algorithm = FlashAlgorithm::assemble_from_raw(raw_flash_algorithm, ram, target)?;
+
         let mut this = Self {
             session,
             flash_algorithm,
