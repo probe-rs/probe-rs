@@ -23,7 +23,6 @@ variants:
           is_boot_memory: false
     flash_algorithms:
       - nrf52
-      - nrf52_uicr
   - name: nRF52810_xxAA
     memory_map:
       - Ram:
@@ -43,7 +42,6 @@ variants:
           is_boot_memory: false
     flash_algorithms:
       - nrf52
-      - nrf52_uicr
   - name: nRF52811_xxAA
     memory_map:
       - Ram:
@@ -63,7 +61,6 @@ variants:
           is_boot_memory: false
     flash_algorithms:
       - nrf52
-      - nrf52_uicr
   - name: nRF52820_xxAA
     memory_map:
       - Ram:
@@ -83,7 +80,6 @@ variants:
           is_boot_memory: false
     flash_algorithms:
       - nrf52
-      - nrf52_uicr
   - name: nRF52832_xxAA
     memory_map:
       - Ram:
@@ -103,7 +99,6 @@ variants:
           is_boot_memory: false
     flash_algorithms:
       - nrf52
-      - nrf52_uicr
   - name: nRF52832_xxAB
     memory_map:
       - Ram:
@@ -123,7 +118,6 @@ variants:
           is_boot_memory: false
     flash_algorithms:
       - nrf52
-      - nrf52_uicr
   - name: nRF52833_xxAA
     memory_map:
       - Ram:
@@ -143,7 +137,6 @@ variants:
           is_boot_memory: false
     flash_algorithms:
       - nrf52
-      - nrf52_uicr
   - name: nRF52840_xxAA
     memory_map:
       - Ram:
@@ -163,7 +156,6 @@ variants:
           is_boot_memory: false
     flash_algorithms:
       - nrf52
-      - nrf52_uicr
 flash_algorithms:
   nrf52:
     name: nrf52
@@ -179,28 +171,6 @@ flash_algorithms:
     flash_properties:
       address_range:
         start: 0
-        end: 0x100000
-      page_size: 0x1000
-      erased_byte_value: 0xFF
-      program_page_timeout: 1000
-      erase_sector_timeout: 3000
-      sectors:
-        - size: 0x1000
-          address: 0
-  nrf52_uicr:
-    name: nrf52_uicr
-    description: nrf52_uicr
-    default: false
-    instructions: AL4K4A14LQZoQAgkQAAA01hAZB760UkcUh4AKvLRcEcAIHBHACBwR3C1JkwCIGBgASDgYCRNKGjABwLQACBgYHC9APAs+PbncLUeTAIhYWAeSYhCAtMBIGBhAOCgYBpNAPAd+ChowAf60AAgYGBwvfi1BUaOCBNIASEURkFgEk8BzAHFOGjABwbQdh740Q1IACFBYAhG+L0A8AH48ucMSEBoAAYADgvQCklJaAApB9AJSQpKwwcA0ApgCR1ACPnRcEcAAADlAUAA5AFAABAAEAAEAUAABQFAAAYBQDVGUm4AAAAA
-    pc_init: 0x21
-    pc_uninit: 0x21
-    pc_program_page: 0x71
-    pc_erase_sector: 0x49
-    pc_erase_all: 0x29
-    data_section_offset: 0x170
-    flash_properties:
-      address_range:
-        start: 0x10001000
         end: 0x10002000
       page_size: 0x1000
       erased_byte_value: 0xFF
