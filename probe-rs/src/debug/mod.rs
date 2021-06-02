@@ -1247,8 +1247,8 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                 child_variable.children = None;
                 if let Some(child_member_index) = child_variable.member_index {
                     //This is a member of an array type, and needs special handling
-                    child_variable.memory_location = child_variable.memory_location
-                        + (child_member_index as u64 * child_variable.byte_size);
+                    child_variable.memory_location +=
+                        child_member_index as u64 * child_variable.byte_size;
                 }
                 Ok(())
             }
