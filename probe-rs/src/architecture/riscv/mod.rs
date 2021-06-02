@@ -377,6 +377,8 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         let tdata1 = 0x7a1;
         let tdata2 = 0x7a2;
 
+        log::warn!("Setting breakpoint {}", bp_unit_index);
+
         self.write_csr(tselect, bp_unit_index as u32)?;
 
         // verify the trigger has the correct type
@@ -392,16 +394,24 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         // Setup the trigger
 
         let mut instruction_breakpoint = Mcontrol(0);
+
+        // Enter debug mode
         instruction_breakpoint.set_action(1);
+
+        // Match exactly the value in tdata2
         instruction_breakpoint.set_match(0);
 
         instruction_breakpoint.set_m(true);
         instruction_breakpoint.set_s(true);
         instruction_breakpoint.set_u(true);
 
+        // Trigger when instruction is executed
         instruction_breakpoint.set_execute(true);
 
         instruction_breakpoint.set_dmode(true);
+
+        // Match address
+        instruction_breakpoint.set_select(false);
 
         self.write_csr(tdata1, instruction_breakpoint.0)?;
         self.write_csr(tdata2, addr)?;
@@ -487,15 +497,20 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
             //Read the trigger "configuration" data
             let tdata_value = Mcontrol(self.read_csr(tdata1)?);
 
+            log::warn!("Breakpoint {}: {:?}", bp_unit_index, tdata_value);
+
+            // The trigger must be active in at least a single mode
+            let trigger_any_mode_active = tdata_value.m() || tdata_value.s() || tdata_value.u();
+
+            let trigger_any_action_enabled =
+                tdata_value.execute() || tdata_value.store() || tdata_value.load();
+
             //Only return if the trigger if it is for an execution debug action in all modes
             if tdata_value.type_() == 0b10
                 && tdata_value.action() == 1
                 && tdata_value.match_() == 0
-                && tdata_value.m()
-                && tdata_value.s()
-                && tdata_value.u()
-                && tdata_value.execute()
-                && tdata_value.dmode()
+                && trigger_any_mode_active
+                && trigger_any_action_enabled
             {
                 let breakpoint = self.read_csr(tdata2)?;
                 breakpoints.push(Some(breakpoint));
@@ -503,6 +518,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
                 breakpoints.push(None);
             }
         }
+
         Ok(breakpoints)
     }
 }

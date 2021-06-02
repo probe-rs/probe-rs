@@ -55,11 +55,11 @@ mod progress;
 mod visualizer;
 
 use builder::*;
+use flasher::*;
+
 pub use download::*;
 pub use error::*;
 pub use flash_algorithm::*;
-pub use flasher::*;
+pub use loader::*;
 pub use progress::*;
 pub use visualizer::*;
-
-pub use loader::FlashLoader;
