@@ -1,7 +1,7 @@
 use super::{
     FlashAlgorithm, FlashBuilder, FlashError, FlashFill, FlashLayout, FlashPage, FlashProgress,
 };
-use crate::config::{MemoryRange, NvmRegion};
+use crate::config::NvmRegion;
 use crate::memory::MemoryInterface;
 use crate::{
     core::{Architecture, RegisterFile},
@@ -12,7 +12,7 @@ use std::{fmt::Debug, time::Duration};
 
 pub(super) trait Operation {
     fn operation() -> u32;
-    fn operation_name(&self) -> &str {
+    fn operation_name() -> &'static str {
         match Self::operation() {
             1 => "Erase",
             2 => "Program",
@@ -49,28 +49,24 @@ impl Operation for Verify {
 /// A structure to control the flash of an attached microchip.
 ///
 /// Once constructed it can be used to program date to the flash.
-/// This is mostly for internal use but can be used with [Flasher::flash_block()] for low, block level access to the flash.
-///
-/// If a higher level access to the flash is required, check out [flashing::download_file()].
-///
-/// [flashing::download_file()]: crate::flashing::download_file()
-pub struct Flasher<'session> {
+pub(super) struct Flasher<'session> {
     session: &'session mut Session,
     flash_algorithm: FlashAlgorithm,
-    region: NvmRegion,
 }
 
 impl<'session> Flasher<'session> {
     pub(super) fn new(
         session: &'session mut Session,
         flash_algorithm: FlashAlgorithm,
-        region: NvmRegion,
-    ) -> Self {
-        Self {
+    ) -> Result<Self, FlashError> {
+        let mut this = Self {
             session,
             flash_algorithm,
-            region,
-        }
+        };
+
+        this.load()?;
+
+        Ok(this)
     }
 
     pub(super) fn flash_algorithm(&self) -> &FlashAlgorithm {
@@ -81,17 +77,9 @@ impl<'session> Flasher<'session> {
         self.flash_algorithm.page_buffers.len() > 1
     }
 
-    pub(super) fn init<O: Operation>(
-        &mut self,
-        mut address: Option<u32>,
-        clock: Option<u32>,
-    ) -> Result<ActiveFlasher<'_, O>, FlashError> {
+    fn load(&mut self) -> Result<(), FlashError> {
         log::debug!("Initializing the flash algorithm.");
         let algo = &mut self.flash_algorithm;
-
-        if address.is_none() {
-            address = Some(self.region.nvm_info().rom_start);
-        }
 
         // Attach to memory and core.
         let mut core = self.session.core(0).map_err(FlashError::Core)?;
@@ -140,15 +128,24 @@ impl<'session> Flasher<'session> {
 
         log::debug!("RAM contents match flashing algo blob.");
 
-        log::debug!("Preparing Flasher for region:");
-        log::debug!("{:#?}", &self.region);
+        Ok(())
+    }
+
+    pub(super) fn init<O: Operation>(
+        &mut self,
+        clock: Option<u32>,
+    ) -> Result<ActiveFlasher<'_, O>, FlashError> {
+        // Attach to memory and core.
+        let core = self.session.core(0).map_err(FlashError::Core)?;
+
+        log::debug!("Preparing Flasher for operation {}", O::operation_name());
         let mut flasher = ActiveFlasher::<O> {
             core,
             flash_algorithm: self.flash_algorithm.clone(),
             _operation: core::marker::PhantomData,
         };
 
-        flasher.init(address, clock)?;
+        flasher.init(clock)?;
 
         Ok(flasher)
     }
@@ -158,7 +155,7 @@ impl<'session> Flasher<'session> {
         F: FnOnce(&mut ActiveFlasher<'_, Erase>) -> Result<T, FlashError> + Sized,
     {
         // TODO: Fix those values (None, None).
-        let mut active = self.init(None, None)?;
+        let mut active = self.init(None)?;
         let r = f(&mut active)?;
         active.uninit()?;
         Ok(r)
@@ -169,7 +166,7 @@ impl<'session> Flasher<'session> {
         F: FnOnce(&mut ActiveFlasher<'_, Program>) -> Result<T, FlashError> + Sized,
     {
         // TODO: Fix those values (None, None).
-        let mut active = self.init(None, None)?;
+        let mut active = self.init(None)?;
         let r = f(&mut active)?;
         active.uninit()?;
         Ok(r)
@@ -180,40 +177,10 @@ impl<'session> Flasher<'session> {
         F: FnOnce(&mut ActiveFlasher<'_, Verify>) -> Result<T, FlashError> + Sized,
     {
         // TODO: Fix those values (None, None).
-        let mut active = self.init(None, None)?;
+        let mut active = self.init(None)?;
         let r = f(&mut active)?;
         active.uninit()?;
         Ok(r)
-    }
-
-    /// Writes a single block of data to a given address in the flash.
-    ///
-    /// This will return a [FlashError::AddressNotInRegion] if the given address range is not contained
-    /// in the given NVM region.
-    pub fn flash_block(
-        &mut self,
-        address: u32,
-        data: &[u8],
-        progress: &FlashProgress,
-        do_chip_erase: bool,
-        _fast_verify: bool,
-    ) -> Result<(), FlashError> {
-        if !self
-            .region
-            .range
-            .contains_range(&(address..address + data.len() as u32))
-        {
-            return Err(FlashError::AddressNotInRegion {
-                address,
-                region: self.region.clone(),
-            });
-        }
-
-        let mut fb = FlashBuilder::new();
-        fb.add_data(address, data)?;
-        self.program(&fb, do_chip_erase, true, true, false, progress)?;
-
-        Ok(())
     }
 
     /// Program the contents of given `FlashBuilder` to the flash.
@@ -223,6 +190,7 @@ impl<'session> Flasher<'session> {
     /// and written again once the sector is erased.
     pub(super) fn program(
         &mut self,
+        region: &NvmRegion,
         flash_builder: &FlashBuilder,
         mut do_chip_erase: bool,
         restore_unwritten_bytes: bool,
@@ -233,7 +201,7 @@ impl<'session> Flasher<'session> {
         log::debug!("Starting program procedure.");
         // Convert the list of flash operations into flash sectors and pages.
         let mut flash_layout = flash_builder.build_sectors_and_pages(
-            &self.region,
+            region,
             &self.flash_algorithm,
             restore_unwritten_bytes,
         )?;
@@ -517,13 +485,11 @@ pub(super) struct ActiveFlasher<'probe, O: Operation> {
 }
 
 impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
-    pub(super) fn init(
-        &mut self,
-        address: Option<u32>,
-        clock: Option<u32>,
-    ) -> Result<(), FlashError> {
+    pub(super) fn init(&mut self, clock: Option<u32>) -> Result<(), FlashError> {
         let algo = &self.flash_algorithm;
         log::debug!("Running init routine.");
+
+        let address = self.flash_algorithm.flash_properties.address_range.start;
 
         // Execute init routine if one is present.
         if let Some(pc_init) = algo.pc_init {
@@ -531,7 +497,7 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
                 .call_function_and_wait(
                     &Registers {
                         pc: pc_init,
-                        r0: address,
+                        r0: Some(address),
                         r1: clock.or(Some(0)),
                         r2: Some(O::operation()),
                         r3: None,

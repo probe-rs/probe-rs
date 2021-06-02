@@ -326,9 +326,10 @@ impl FlashLoader {
         }
 
         // Program the data.
-        let mut flasher = Flasher::new(session, flash_algorithm, region.clone());
+        let mut flasher = Flasher::new(session, flash_algorithm)?;
 
         flasher.program(
+            region,
             &self.builder,
             options.do_chip_erase,
             options.keep_unwritten_bytes,
