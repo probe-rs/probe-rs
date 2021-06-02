@@ -829,6 +829,36 @@ impl ArmProbeInterface for FakeArmInterface {
     }
 }
 
+impl DapAccess for FakeArmInterface {
+    fn read_register(&mut self, port: PortType, addr: u16) -> Result<u32, DebugProbeError> {
+        self.probe.read_register(port, addr)
+    }
+    fn write_register(
+        &mut self,
+        port: PortType,
+        addr: u16,
+        value: u32,
+    ) -> Result<(), DebugProbeError> {
+        self.probe.write_register(port, addr, value)
+    }
+    fn read_block(
+        &mut self,
+        port: PortType,
+        addr: u16,
+        values: &mut [u32],
+    ) -> Result<(), DebugProbeError> {
+        self.probe.read_block(port, addr, values)
+    }
+    fn write_block(
+        &mut self,
+        port: PortType,
+        addr: u16,
+        values: &[u32],
+    ) -> Result<(), DebugProbeError> {
+        self.probe.write_block(port, addr, values)
+    }
+}
+
 impl AsMut<(dyn DebugProbe + 'static)> for FakeArmInterface {
     fn as_mut(&mut self) -> &mut (dyn DebugProbe + 'static) {
         self.probe.as_mut()
