@@ -1,0 +1,858 @@
+---
+name: STM32F2 Series
+manufacturer: ~
+variants:
+  - name: STM32F205RBTx
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536936448
+          is_boot_memory: false
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f2xx_1024
+      - stm32f2xx_opt
+      - stm32f2xx_otp
+  - name: STM32F205RCTx
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536969216
+          is_boot_memory: false
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f2xx_1024
+      - stm32f2xx_opt
+      - stm32f2xx_otp
+  - name: STM32F205RETx
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f2xx_1024
+      - stm32f2xx_opt
+      - stm32f2xx_otp
+  - name: STM32F205REYx
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f2xx_1024
+      - stm32f2xx_opt
+      - stm32f2xx_otp
+  - name: STM32F205RFTx
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Nvm:
+          range:
+            start: 134217728
+            end: 135004160
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f2xx_1024
+      - stm32f2xx_opt
+      - stm32f2xx_otp
+  - name: STM32F205RGTx
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Nvm:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f2xx_1024
+      - stm32f2xx_opt
+      - stm32f2xx_otp
+  - name: STM32F205RGYx
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Nvm:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f2xx_1024
+      - stm32f2xx_opt
+      - stm32f2xx_otp
+  - name: STM32F205VBTx
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536936448
+          is_boot_memory: false
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f2xx_1024
+      - stm32f2xx_opt
+      - stm32f2xx_otp
+  - name: STM32F205VCTx
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536969216
+          is_boot_memory: false
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f2xx_1024
+      - stm32f2xx_opt
+      - stm32f2xx_otp
+  - name: STM32F205VETx
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f2xx_1024
+      - stm32f2xx_opt
+      - stm32f2xx_otp
+  - name: STM32F205VFTx
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Nvm:
+          range:
+            start: 134217728
+            end: 135004160
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f2xx_1024
+      - stm32f2xx_opt
+      - stm32f2xx_otp
+  - name: STM32F205VGTx
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Nvm:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f2xx_1024
+      - stm32f2xx_opt
+      - stm32f2xx_otp
+  - name: STM32F205ZCTx
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536969216
+          is_boot_memory: false
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f2xx_1024
+      - stm32f2xx_opt
+      - stm32f2xx_otp
+  - name: STM32F205ZETx
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f2xx_1024
+      - stm32f2xx_opt
+      - stm32f2xx_otp
+  - name: STM32F205ZFTx
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Nvm:
+          range:
+            start: 134217728
+            end: 135004160
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f2xx_1024
+      - stm32f2xx_opt
+      - stm32f2xx_otp
+  - name: STM32F205ZGTx
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Nvm:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f2xx_1024
+      - stm32f2xx_opt
+      - stm32f2xx_otp
+  - name: STM32F207ICHx
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f2xx_1024
+      - stm32f2xx_opt
+      - stm32f2xx_otp
+  - name: STM32F207ICTx
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f2xx_1024
+      - stm32f2xx_opt
+      - stm32f2xx_otp
+  - name: STM32F207IEHx
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f2xx_1024
+      - stm32f2xx_opt
+      - stm32f2xx_otp
+  - name: STM32F207IETx
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f2xx_1024
+      - stm32f2xx_opt
+      - stm32f2xx_otp
+  - name: STM32F207IFHx
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Nvm:
+          range:
+            start: 134217728
+            end: 135004160
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f2xx_1024
+      - stm32f2xx_opt
+      - stm32f2xx_otp
+  - name: STM32F207IFTx
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Nvm:
+          range:
+            start: 134217728
+            end: 135004160
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f2xx_1024
+      - stm32f2xx_opt
+      - stm32f2xx_otp
+  - name: STM32F207IGHx
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Nvm:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f2xx_1024
+      - stm32f2xx_opt
+      - stm32f2xx_otp
+  - name: STM32F207IGTx
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Nvm:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f2xx_1024
+      - stm32f2xx_opt
+      - stm32f2xx_otp
+  - name: STM32F207VCTx
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f2xx_1024
+      - stm32f2xx_opt
+      - stm32f2xx_otp
+  - name: STM32F207VETx
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f2xx_1024
+      - stm32f2xx_opt
+      - stm32f2xx_otp
+  - name: STM32F207VFTx
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Nvm:
+          range:
+            start: 134217728
+            end: 135004160
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f2xx_1024
+      - stm32f2xx_opt
+      - stm32f2xx_otp
+  - name: STM32F207VGTx
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Nvm:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f2xx_1024
+      - stm32f2xx_opt
+      - stm32f2xx_otp
+  - name: STM32F207ZCTx
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134479872
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f2xx_1024
+      - stm32f2xx_opt
+      - stm32f2xx_otp
+  - name: STM32F207ZETx
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f2xx_1024
+      - stm32f2xx_opt
+      - stm32f2xx_otp
+  - name: STM32F207ZFTx
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Nvm:
+          range:
+            start: 134217728
+            end: 135004160
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f2xx_1024
+      - stm32f2xx_opt
+      - stm32f2xx_otp
+  - name: STM32F207ZGTx
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Nvm:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f2xx_1024
+      - stm32f2xx_opt
+      - stm32f2xx_otp
+  - name: STM32F215RETx
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f2xx_1024
+      - stm32f2xx_opt
+      - stm32f2xx_otp
+  - name: STM32F215RGTx
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Nvm:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f2xx_1024
+      - stm32f2xx_opt
+      - stm32f2xx_otp
+  - name: STM32F215VETx
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f2xx_1024
+      - stm32f2xx_opt
+      - stm32f2xx_otp
+  - name: STM32F215VGTx
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Nvm:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f2xx_1024
+      - stm32f2xx_opt
+      - stm32f2xx_otp
+  - name: STM32F215ZETx
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f2xx_1024
+      - stm32f2xx_opt
+      - stm32f2xx_otp
+  - name: STM32F215ZGTx
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Nvm:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f2xx_1024
+      - stm32f2xx_opt
+      - stm32f2xx_otp
+  - name: STM32F217IEHx
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f2xx_1024
+      - stm32f2xx_opt
+      - stm32f2xx_otp
+  - name: STM32F217IETx
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f2xx_1024
+      - stm32f2xx_opt
+      - stm32f2xx_otp
+  - name: STM32F217IGHx
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Nvm:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f2xx_1024
+      - stm32f2xx_opt
+      - stm32f2xx_otp
+  - name: STM32F217IGTx
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Nvm:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f2xx_1024
+      - stm32f2xx_opt
+      - stm32f2xx_otp
+  - name: STM32F217VETx
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f2xx_1024
+      - stm32f2xx_opt
+      - stm32f2xx_otp
+  - name: STM32F217VGTx
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Nvm:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f2xx_1024
+      - stm32f2xx_opt
+      - stm32f2xx_otp
+  - name: STM32F217ZETx
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134742016
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f2xx_1024
+      - stm32f2xx_opt
+      - stm32f2xx_otp
+  - name: STM32F217ZGTx
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537001984
+          is_boot_memory: false
+      - Nvm:
+          range:
+            start: 134217728
+            end: 135266304
+          is_boot_memory: true
+    flash_algorithms:
+      - stm32f2xx_1024
+      - stm32f2xx_opt
+      - stm32f2xx_otp
+flash_algorithms:
+  stm32f2xx_1024:
+    name: stm32f2xx_1024
+    description: STM32F2xx Flash
+    default: true
+    instructions: AAMADiAoAtNACQAdcEcQKALTAAnAHHBHgAhwR0JIQUlBYEJJQWAAIQFgwWjwIhFDwWBAaYAGBtQ+SD1JAWAGIUFgPUmBYAAgcEc3SAFpQgURQwFhACBwRxC1M0gBaQQkIUMBYQFpogMRQwFhM0kxSgDgEWDDaNsD+9QBaaFDAWEAIBC9MLX/97v/J0nKaPAjGkPKYAIkDGEKaQAHQA4CQwphCGniAxBDCGEkSCFKAOAQYM1o7QP71AhpoEMIYchoAAYADwPQyGgYQ8hgASAwvXC1FU3JHIkI62iJAPAmM0PrYAAjK2EWSxfgLGkcQyxhFGgEYOxo5AP81CxpZAhkACxh7GgkBiQPBNDoaDBD6GABIHC9AB0SHQkfACnl0QAgcL0AACMBZ0UAPAJAq4nvzVVVAAAAMABA/w8AAKqqAAABAgAAAAAAAA==
+    pc_init: 29
+    pc_uninit: 75
+    pc_program_page: 209
+    pc_erase_sector: 133
+    pc_erase_all: 89
+    data_section_offset: 324
+    flash_properties:
+      address_range:
+        start: 134217728
+        end: 135266304
+      page_size: 1024
+      erased_byte_value: 255
+      program_page_timeout: 100
+      erase_sector_timeout: 6000
+      sectors:
+        - size: 16384
+          address: 0
+        - size: 65536
+          address: 65536
+        - size: 131072
+          address: 131072
+  stm32f2xx_opt:
+    name: stm32f2xx_opt
+    description: STM32F2xx Flash Options
+    default: false
+    instructions: AAMADiAoAtNACQAdcEcQKALTAAnAHHBHgAhwRylIKEmBYClJgWDBaPAiEUPBYEBpgAYG1CZIJUkBYAYhQWAlSYFgACBwRx9IQWkBIhFDQWEAIHBHG0jCaPAhCkPCYB5KQmFCaQIjGkNCYcJoEgYSDwTQwmgKQ8JgASBwRwAgcEcAIHBHEYkQiAkFCQmACIAAAUMMSMNo8CITQ8NgAiMZQ0FhwWjJA/zUwWgJBgkPBNDBaBFDwWABIHBHACBwRwAAOyoZCAA8AkB/bl1MVVUAAAAwAED/DwAA7Kr/DwAAAAA=
+    pc_init: 29
+    pc_uninit: 71
+    pc_program_page: 133
+    pc_erase_sector: 129
+    pc_erase_all: 85
+    data_section_offset: 220
+    flash_properties:
+      address_range:
+        start: 536854528
+        end: 536854544
+      page_size: 16
+      erased_byte_value: 255
+      program_page_timeout: 3000
+      erase_sector_timeout: 3000
+      sectors:
+        - size: 16
+          address: 0
+  stm32f2xx_otp:
+    name: stm32f2xx_otp
+    description: STM32F2xx Flash OTP
+    default: false
+    instructions: AAMADiAoAtNACQAdcEcQKALTAAnAHHBHgAhwRyVIJElBYCVJQWAAIQFgwWjwIhFDwWBAaYAGBtQhSCBJAWAGIUFgIEmBYAAgcEcaSAFpQgURQwFhACBwRwAgcEdwtRVNyRyJCOtoiQDwJjND62AAIythFUsX4CxpHEMsYRRoBGDsaOQD/NQsaWQIZAAsYexoJAYkDwTQ6GgwQ+hgASBwvQAdEh0JHwAp5dEAIHC9AAAjAWdFADwCQKuJ781VVQAAADAAQP8PAAABAgAAAAAAAA==
+    pc_init: 29
+    pc_uninit: 75
+    pc_program_page: 93
+    pc_erase_sector: 89
+    pc_erase_all: ~
+    data_section_offset: 204
+    flash_properties:
+      address_range:
+        start: 536836096
+        end: 536836624
+      page_size: 528
+      erased_byte_value: 255
+      program_page_timeout: 3000
+      erase_sector_timeout: 3000
+      sectors:
+        - size: 528
+          address: 0
+core: M3
