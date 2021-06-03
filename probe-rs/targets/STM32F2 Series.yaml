@@ -1,16 +1,14 @@
 ---
 name: STM32F2 Series
-manufacturer: ~
 variants:
   - name: STM32F205RBTx
-    part: ~
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536936448
           is_boot_memory: false
-      - Nvm:
+      - Flash:
           range:
             start: 134217728
             end: 134348800
@@ -20,14 +18,13 @@ variants:
       - stm32f2xx_opt
       - stm32f2xx_otp
   - name: STM32F205RCTx
-    part: ~
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536969216
           is_boot_memory: false
-      - Nvm:
+      - Flash:
           range:
             start: 134217728
             end: 134479872
@@ -37,14 +34,13 @@ variants:
       - stm32f2xx_opt
       - stm32f2xx_otp
   - name: STM32F205RETx
-    part: ~
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 537001984
           is_boot_memory: false
-      - Nvm:
+      - Flash:
           range:
             start: 134217728
             end: 134742016
@@ -54,14 +50,13 @@ variants:
       - stm32f2xx_opt
       - stm32f2xx_otp
   - name: STM32F205REYx
-    part: ~
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 537001984
           is_boot_memory: false
-      - Nvm:
+      - Flash:
           range:
             start: 134217728
             end: 134742016
@@ -71,14 +66,13 @@ variants:
       - stm32f2xx_opt
       - stm32f2xx_otp
   - name: STM32F205RFTx
-    part: ~
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 537001984
           is_boot_memory: false
-      - Nvm:
+      - Flash:
           range:
             start: 134217728
             end: 135004160
@@ -88,14 +82,13 @@ variants:
       - stm32f2xx_opt
       - stm32f2xx_otp
   - name: STM32F205RGTx
-    part: ~
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 537001984
           is_boot_memory: false
-      - Nvm:
+      - Flash:
           range:
             start: 134217728
             end: 135266304
@@ -105,14 +98,13 @@ variants:
       - stm32f2xx_opt
       - stm32f2xx_otp
   - name: STM32F205RGYx
-    part: ~
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 537001984
           is_boot_memory: false
-      - Nvm:
+      - Flash:
           range:
             start: 134217728
             end: 135266304
@@ -122,14 +114,13 @@ variants:
       - stm32f2xx_opt
       - stm32f2xx_otp
   - name: STM32F205VBTx
-    part: ~
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536936448
           is_boot_memory: false
-      - Nvm:
+      - Flash:
           range:
             start: 134217728
             end: 134348800
@@ -139,14 +130,13 @@ variants:
       - stm32f2xx_opt
       - stm32f2xx_otp
   - name: STM32F205VCTx
-    part: ~
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536969216
           is_boot_memory: false
-      - Nvm:
+      - Flash:
           range:
             start: 134217728
             end: 134479872
@@ -156,14 +146,13 @@ variants:
       - stm32f2xx_opt
       - stm32f2xx_otp
   - name: STM32F205VETx
-    part: ~
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 537001984
           is_boot_memory: false
-      - Nvm:
+      - Flash:
           range:
             start: 134217728
             end: 134742016
@@ -173,14 +162,13 @@ variants:
       - stm32f2xx_opt
       - stm32f2xx_otp
   - name: STM32F205VFTx
-    part: ~
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 537001984
           is_boot_memory: false
-      - Nvm:
+      - Flash:
           range:
             start: 134217728
             end: 135004160
@@ -190,14 +178,13 @@ variants:
       - stm32f2xx_opt
       - stm32f2xx_otp
   - name: STM32F205VGTx
-    part: ~
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 537001984
           is_boot_memory: false
-      - Nvm:
+      - Flash:
           range:
             start: 134217728
             end: 135266304
@@ -207,14 +194,13 @@ variants:
       - stm32f2xx_opt
       - stm32f2xx_otp
   - name: STM32F205ZCTx
-    part: ~
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536969216
           is_boot_memory: false
-      - Nvm:
+      - Flash:
           range:
             start: 134217728
             end: 134479872
@@ -224,14 +210,13 @@ variants:
       - stm32f2xx_opt
       - stm32f2xx_otp
   - name: STM32F205ZETx
-    part: ~
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 537001984
           is_boot_memory: false
-      - Nvm:
+      - Flash:
           range:
             start: 134217728
             end: 134742016
@@ -241,14 +226,13 @@ variants:
       - stm32f2xx_opt
       - stm32f2xx_otp
   - name: STM32F205ZFTx
-    part: ~
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 537001984
           is_boot_memory: false
-      - Nvm:
+      - Flash:
           range:
             start: 134217728
             end: 135004160
@@ -258,14 +242,13 @@ variants:
       - stm32f2xx_opt
       - stm32f2xx_otp
   - name: STM32F205ZGTx
-    part: ~
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 537001984
           is_boot_memory: false
-      - Nvm:
+      - Flash:
           range:
             start: 134217728
             end: 135266304
@@ -275,14 +258,13 @@ variants:
       - stm32f2xx_opt
       - stm32f2xx_otp
   - name: STM32F207ICHx
-    part: ~
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 537001984
           is_boot_memory: false
-      - Nvm:
+      - Flash:
           range:
             start: 134217728
             end: 134479872
@@ -292,14 +274,13 @@ variants:
       - stm32f2xx_opt
       - stm32f2xx_otp
   - name: STM32F207ICTx
-    part: ~
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 537001984
           is_boot_memory: false
-      - Nvm:
+      - Flash:
           range:
             start: 134217728
             end: 134479872
@@ -309,14 +290,13 @@ variants:
       - stm32f2xx_opt
       - stm32f2xx_otp
   - name: STM32F207IEHx
-    part: ~
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 537001984
           is_boot_memory: false
-      - Nvm:
+      - Flash:
           range:
             start: 134217728
             end: 134742016
@@ -326,14 +306,13 @@ variants:
       - stm32f2xx_opt
       - stm32f2xx_otp
   - name: STM32F207IETx
-    part: ~
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 537001984
           is_boot_memory: false
-      - Nvm:
+      - Flash:
           range:
             start: 134217728
             end: 134742016
@@ -343,14 +322,13 @@ variants:
       - stm32f2xx_opt
       - stm32f2xx_otp
   - name: STM32F207IFHx
-    part: ~
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 537001984
           is_boot_memory: false
-      - Nvm:
+      - Flash:
           range:
             start: 134217728
             end: 135004160
@@ -360,14 +338,13 @@ variants:
       - stm32f2xx_opt
       - stm32f2xx_otp
   - name: STM32F207IFTx
-    part: ~
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 537001984
           is_boot_memory: false
-      - Nvm:
+      - Flash:
           range:
             start: 134217728
             end: 135004160
@@ -377,14 +354,13 @@ variants:
       - stm32f2xx_opt
       - stm32f2xx_otp
   - name: STM32F207IGHx
-    part: ~
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 537001984
           is_boot_memory: false
-      - Nvm:
+      - Flash:
           range:
             start: 134217728
             end: 135266304
@@ -394,14 +370,13 @@ variants:
       - stm32f2xx_opt
       - stm32f2xx_otp
   - name: STM32F207IGTx
-    part: ~
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 537001984
           is_boot_memory: false
-      - Nvm:
+      - Flash:
           range:
             start: 134217728
             end: 135266304
@@ -411,14 +386,13 @@ variants:
       - stm32f2xx_opt
       - stm32f2xx_otp
   - name: STM32F207VCTx
-    part: ~
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 537001984
           is_boot_memory: false
-      - Nvm:
+      - Flash:
           range:
             start: 134217728
             end: 134479872
@@ -428,14 +402,13 @@ variants:
       - stm32f2xx_opt
       - stm32f2xx_otp
   - name: STM32F207VETx
-    part: ~
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 537001984
           is_boot_memory: false
-      - Nvm:
+      - Flash:
           range:
             start: 134217728
             end: 134742016
@@ -445,14 +418,13 @@ variants:
       - stm32f2xx_opt
       - stm32f2xx_otp
   - name: STM32F207VFTx
-    part: ~
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 537001984
           is_boot_memory: false
-      - Nvm:
+      - Flash:
           range:
             start: 134217728
             end: 135004160
@@ -462,14 +434,13 @@ variants:
       - stm32f2xx_opt
       - stm32f2xx_otp
   - name: STM32F207VGTx
-    part: ~
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 537001984
           is_boot_memory: false
-      - Nvm:
+      - Flash:
           range:
             start: 134217728
             end: 135266304
@@ -479,14 +450,13 @@ variants:
       - stm32f2xx_opt
       - stm32f2xx_otp
   - name: STM32F207ZCTx
-    part: ~
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 537001984
           is_boot_memory: false
-      - Nvm:
+      - Flash:
           range:
             start: 134217728
             end: 134479872
@@ -496,14 +466,13 @@ variants:
       - stm32f2xx_opt
       - stm32f2xx_otp
   - name: STM32F207ZETx
-    part: ~
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 537001984
           is_boot_memory: false
-      - Nvm:
+      - Flash:
           range:
             start: 134217728
             end: 134742016
@@ -513,14 +482,13 @@ variants:
       - stm32f2xx_opt
       - stm32f2xx_otp
   - name: STM32F207ZFTx
-    part: ~
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 537001984
           is_boot_memory: false
-      - Nvm:
+      - Flash:
           range:
             start: 134217728
             end: 135004160
@@ -530,14 +498,13 @@ variants:
       - stm32f2xx_opt
       - stm32f2xx_otp
   - name: STM32F207ZGTx
-    part: ~
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 537001984
           is_boot_memory: false
-      - Nvm:
+      - Flash:
           range:
             start: 134217728
             end: 135266304
@@ -547,14 +514,13 @@ variants:
       - stm32f2xx_opt
       - stm32f2xx_otp
   - name: STM32F215RETx
-    part: ~
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 537001984
           is_boot_memory: false
-      - Nvm:
+      - Flash:
           range:
             start: 134217728
             end: 134742016
@@ -564,14 +530,13 @@ variants:
       - stm32f2xx_opt
       - stm32f2xx_otp
   - name: STM32F215RGTx
-    part: ~
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 537001984
           is_boot_memory: false
-      - Nvm:
+      - Flash:
           range:
             start: 134217728
             end: 135266304
@@ -581,14 +546,13 @@ variants:
       - stm32f2xx_opt
       - stm32f2xx_otp
   - name: STM32F215VETx
-    part: ~
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 537001984
           is_boot_memory: false
-      - Nvm:
+      - Flash:
           range:
             start: 134217728
             end: 134742016
@@ -598,14 +562,13 @@ variants:
       - stm32f2xx_opt
       - stm32f2xx_otp
   - name: STM32F215VGTx
-    part: ~
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 537001984
           is_boot_memory: false
-      - Nvm:
+      - Flash:
           range:
             start: 134217728
             end: 135266304
@@ -615,14 +578,13 @@ variants:
       - stm32f2xx_opt
       - stm32f2xx_otp
   - name: STM32F215ZETx
-    part: ~
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 537001984
           is_boot_memory: false
-      - Nvm:
+      - Flash:
           range:
             start: 134217728
             end: 134742016
@@ -632,14 +594,13 @@ variants:
       - stm32f2xx_opt
       - stm32f2xx_otp
   - name: STM32F215ZGTx
-    part: ~
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 537001984
           is_boot_memory: false
-      - Nvm:
+      - Flash:
           range:
             start: 134217728
             end: 135266304
@@ -649,14 +610,13 @@ variants:
       - stm32f2xx_opt
       - stm32f2xx_otp
   - name: STM32F217IEHx
-    part: ~
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 537001984
           is_boot_memory: false
-      - Nvm:
+      - Flash:
           range:
             start: 134217728
             end: 134742016
@@ -666,14 +626,13 @@ variants:
       - stm32f2xx_opt
       - stm32f2xx_otp
   - name: STM32F217IETx
-    part: ~
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 537001984
           is_boot_memory: false
-      - Nvm:
+      - Flash:
           range:
             start: 134217728
             end: 134742016
@@ -683,14 +642,13 @@ variants:
       - stm32f2xx_opt
       - stm32f2xx_otp
   - name: STM32F217IGHx
-    part: ~
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 537001984
           is_boot_memory: false
-      - Nvm:
+      - Flash:
           range:
             start: 134217728
             end: 135266304
@@ -700,14 +658,13 @@ variants:
       - stm32f2xx_opt
       - stm32f2xx_otp
   - name: STM32F217IGTx
-    part: ~
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 537001984
           is_boot_memory: false
-      - Nvm:
+      - Flash:
           range:
             start: 134217728
             end: 135266304
@@ -717,14 +674,13 @@ variants:
       - stm32f2xx_opt
       - stm32f2xx_otp
   - name: STM32F217VETx
-    part: ~
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 537001984
           is_boot_memory: false
-      - Nvm:
+      - Flash:
           range:
             start: 134217728
             end: 134742016
@@ -734,14 +690,13 @@ variants:
       - stm32f2xx_opt
       - stm32f2xx_otp
   - name: STM32F217VGTx
-    part: ~
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 537001984
           is_boot_memory: false
-      - Nvm:
+      - Flash:
           range:
             start: 134217728
             end: 135266304
@@ -751,14 +706,13 @@ variants:
       - stm32f2xx_opt
       - stm32f2xx_otp
   - name: STM32F217ZETx
-    part: ~
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 537001984
           is_boot_memory: false
-      - Nvm:
+      - Flash:
           range:
             start: 134217728
             end: 134742016
@@ -768,14 +722,13 @@ variants:
       - stm32f2xx_opt
       - stm32f2xx_otp
   - name: STM32F217ZGTx
-    part: ~
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 537001984
           is_boot_memory: false
-      - Nvm:
+      - Flash:
           range:
             start: 134217728
             end: 135266304
