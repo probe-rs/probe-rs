@@ -887,6 +887,7 @@ impl Debugger {
                     dry_run: false,
                     skip_erase: false,
                     do_chip_erase: self.debugger_options.full_chip_erase,
+                    verify: false,
                 };
                 match download_file_with_options(
                     &mut session_data.session,

@@ -355,6 +355,26 @@ impl FlashLoader {
             }
         }
 
+        if options.verify {
+            log::debug!("Verifying!");
+            for (&address, data) in &self.builder.data {
+                log::debug!(
+                    "    data: {:08x}-{:08x} ({} bytes)",
+                    address,
+                    address + data.len() as u32,
+                    data.len()
+                );
+
+                let mut written_data = vec![0; data.len()];
+                core.read(address, &mut written_data)
+                    .map_err(FlashError::Core)?;
+
+                if data != &written_data {
+                    return Err(FlashError::Verify);
+                }
+            }
+        }
+
         Ok(())
     }
 

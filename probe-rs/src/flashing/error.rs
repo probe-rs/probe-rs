@@ -55,6 +55,9 @@ pub enum FlashError {
     #[error("Trying to write flash, but no suitable flash loader algorithm is linked to the given target information.")]
     NoFlashLoaderAlgorithmAttached,
 
+    #[error("Verify failed.")]
+    Verify,
+
     // TODO: 1 Add source of target definition
     #[error("No RAM defined for chip.")]
     NoRamDefined { chip: String },
