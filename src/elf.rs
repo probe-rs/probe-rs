@@ -1,5 +1,3 @@
-#![allow(dead_code)] // TODO remove this
-
 use std::{
     collections::{BTreeMap, HashSet},
     convert::TryInto,
@@ -15,45 +13,6 @@ use object::{
 };
 
 use crate::cortexm;
-
-pub(crate) fn notmain() -> anyhow::Result<i32> {
-    // - parse CL arguments
-    // - parse ELF -> grouped into `ProcessedElf` struct
-    //   -> RAM region
-    //   -> location of RTT buffer
-    //   -> vector table
-    // - extra defmt table from ELF
-    // - filter & connect to probe & configure
-    // - flash the chip (optionally)
-    // - write stack overflow canary in RAM
-    // - set breakpoint
-    // - start target program
-    // - when paused, set RTT in blocking mode
-    // - set breakpoint in HardFault handler
-    // - resume target program
-    // while !signal_received {
-    //   - read RTT data
-    //   - decode defmt logs from RTT data
-    //   - print defmt logs
-    //   - if core.is_halted() break
-    // }
-    // - if signal_received, halt the core
-    // - [core is halted at this point]
-    // - stack overflow check = check canary in RAM region
-    // - print backtrace
-    // - reset halt device to put peripherals in known state
-    // - print exit reason
-
-    todo!()
-}
-
-struct BacktraceInput {
-    probe: (),
-    // .debug_frame section
-    debug_frame: (),
-    // used for addr2line in frame symbolication
-    elf: (),
-}
 
 pub(crate) struct Elf<'file> {
     // original ELF (object crate)
@@ -242,10 +201,3 @@ fn extract_symbols(elf: &ObjectFile) -> anyhow::Result<(Option<u32>, /* uses hea
         main.ok_or_else(|| anyhow!("`main` symbol not found"))?,
     ))
 }
-
-// obtained via probe-rs?
-// struct DataFromRunningTarget {}
-
-// fn parse_cl_arguments() -> ClArguments {
-
-// }
