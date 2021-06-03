@@ -6,7 +6,6 @@ use std::{
 };
 
 use anyhow::{anyhow, bail};
-use arrayref::array_ref;
 use defmt_decoder::{Location, Table};
 use object::{
     read::File as ObjectFile, Object, ObjectSection, ObjectSegment, ObjectSymbol, SymbolSection,
@@ -145,7 +144,7 @@ fn extract_vector_table(elf: &ObjectFile) -> anyhow::Result<cortexm::VectorTable
     let bytes = section.data()?;
     let mut words = bytes
         .chunks_exact(4)
-        .map(|chunk| u32::from_le_bytes(*array_ref!(chunk, 0, 4)));
+        .map(|chunk| u32::from_le_bytes(chunk.try_into().unwrap()));
 
     if let (Some(initial_stack_pointer), Some(reset), Some(_third), Some(hard_fault)) =
         (words.next(), words.next(), words.next(), words.next())
