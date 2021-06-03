@@ -1,5 +1,8 @@
+use num_traits::Zero;
+use thousands::Separable;
+
 use super::*;
-use std::convert::TryInto;
+use std::{convert::TryInto, fmt};
 
 /// VariableKind is a tag used to differentiate the nature of a variable. The DAP protocol requires a differentiation between 'Named' and 'Indexed'. We've added 'Referenced', because those require unique handling when decoding the value during runtime.
 #[derive(Debug, Clone, PartialEq)]
@@ -20,7 +23,7 @@ impl Default for VariableKind {
 }
 
 /// Define the role that a variable plays in a Variant relationship. See section '5.7.10 Variant Entries' of the DWARF 5 specification
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum VariantRole {
     /// A (parent) Variable that can have any number of Variant's as it's value
     VariantPart(u64),
@@ -46,6 +49,12 @@ pub struct Variable {
     /// The starting location/address in memory where this Variable's value is stored.
     pub memory_location: u64,
     pub byte_size: u64,
+    /// If  this is a subrange (array, vector, etc.), is the ordinal position of this variable in that range
+    pub(crate) member_index: Option<i64>,
+    /// If this is a subrange (array, vector, etc.), we need to temporarily store the lower bound.
+    pub(crate) range_lower_bound: i64,
+    /// If this is a subrange (array, vector, etc.), we need to temporarily store the the upper bound of the range.
+    pub(crate) range_upper_bound: i64,
     pub kind: VariableKind,
     pub role: VariantRole,
     pub children: Option<Vec<Variable>>,
@@ -80,15 +89,15 @@ impl Variable {
 
     /// Evaluate the variable's result if possible and set self.value, or else set self.value as the error String.
     pub fn extract_value(&mut self, core: &mut Core<'_>) {
-        if self.memory_location == u64::MAX {
-            //the value was set by get_location(), so just leave it as is
-            return;
-        }
-        if !self.value.is_empty() {
-            //the value was set elsewhere in this library - probably because of an error - so just leave it as is
+        if self.memory_location == u64::MAX// the value was set by get_location(), so just leave it as is
+        || !self.value.is_empty()// the value was set elsewhere in this library - probably because of an error - so just leave it as is
+        || self.memory_location.is_zero()
+        // Templates, Phantoms, etc.
+        {
             return;
         }
         let string_value = match self.type_name.as_str() {
+            "()" => "()".to_string(),
             "bool" => bool::get_value(self, core)
                 .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
             "char" => char::get_value(self, core)
@@ -101,46 +110,72 @@ impl Variable {
             }
             "i8" => i8::get_value(self, core)
                 .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
-            "i16" => i16::get_value(self, core)
-                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
-            "i32" => i32::get_value(self, core)
-                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
-            "i64" => i64::get_value(self, core)
-                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
-            "i128" => i128::get_value(self, core)
-                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
-            "isize" => isize::get_value(self, core)
-                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
+            "i16" => i16::get_value(self, core).map_or_else(
+                |err| format!("ERROR: {:?}", err),
+                |value| value.separate_with_underscores(),
+            ),
+            "i32" => i32::get_value(self, core).map_or_else(
+                |err| format!("ERROR: {:?}", err),
+                |value| value.separate_with_underscores(),
+            ),
+            "i64" => i64::get_value(self, core).map_or_else(
+                |err| format!("ERROR: {:?}", err),
+                |value| value.separate_with_underscores(),
+            ),
+            "i128" => i128::get_value(self, core).map_or_else(
+                |err| format!("ERROR: {:?}", err),
+                |value| value.separate_with_underscores(),
+            ),
+            "isize" => isize::get_value(self, core).map_or_else(
+                |err| format!("ERROR: {:?}", err),
+                |value| value.separate_with_underscores(),
+            ),
             "u8" => u8::get_value(self, core)
                 .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
-            "u16" => u16::get_value(self, core)
-                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
-            "u32" => u32::get_value(self, core)
-                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
-            "u64" => u64::get_value(self, core)
-                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
-            "u128" => u128::get_value(self, core)
-                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
-            "usize" => usize::get_value(self, core)
-                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
-            "f32" => f32::get_value(self, core)
-                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
-            "f64" => f64::get_value(self, core)
-                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
+            "u16" => u16::get_value(self, core).map_or_else(
+                |err| format!("ERROR: {:?}", err),
+                |value| value.separate_with_underscores(),
+            ),
+            "u32" => u32::get_value(self, core).map_or_else(
+                |err| format!("ERROR: {:?}", err),
+                |value| value.separate_with_underscores(),
+            ),
+            "u64" => u64::get_value(self, core).map_or_else(
+                |err| format!("ERROR: {:?}", err),
+                |value| value.separate_with_underscores(),
+            ),
+            "u128" => u128::get_value(self, core).map_or_else(
+                |err| format!("ERROR: {:?}", err),
+                |value| value.separate_with_underscores(),
+            ),
+            "usize" => usize::get_value(self, core).map_or_else(
+                |err| format!("ERROR: {:?}", err),
+                |value| value.separate_with_underscores(),
+            ),
+            "f32" => f32::get_value(self, core).map_or_else(
+                |err| format!("ERROR: {:?}", err),
+                |value| value.separate_with_underscores(),
+            ),
+            "f64" => f64::get_value(self, core).map_or_else(
+                |err| format!("ERROR: {:?}", err),
+                |value| value.separate_with_underscores(),
+            ),
+            "None" => "None".to_string(),
             oops => {
-                if oops == "None" {
-                    oops.to_string()
-                } else {
-                    match &self.children {
-                        Some(_children) => {
-                            oops.to_string() //return the type name as the value for non-leaf level variables
+                match &self.children {
+                    Some(_children) => {
+                        if oops.is_empty() {
+                            "ERROR: This is a bug! Attempted to evaluate an empty Type".to_string()
+                        } else {
+                            format!("{}", self) //Use the Display implementation below to create 'at a glance' values for structured types
+                                                //oops.to_string() //return the type name as the value for non-leaf level variables
                         }
-                        None => {
-                            format!(
-                                "UNIMPLEMENTED: Evaluate type {} of ({} bytes) at location 0x{:08x}",
-                                oops, self.byte_size, self.memory_location
-                            )
-                        }
+                    }
+                    None => {
+                        format!(
+                            "UNIMPLEMENTED: Evaluate type {} of ({} bytes) at location 0x{:08x}",
+                            oops, self.byte_size, self.memory_location
+                        )
                     }
                 }
             }
@@ -150,8 +185,8 @@ impl Variable {
     }
 
     /// Instead of just pushing to Variable.children, do some intelligent selection/addition of new Variables.
-    pub fn add_child_variable(&mut self, child_variable: &mut Variable) {
-        //TODO:
+    /// Primarily this is to force late-as-possible(before parent) call of `extract_value()` on child variables
+    pub fn add_child_variable(&mut self, child_variable: &mut Variable, core: &mut Core<'_>) {
         let children: &mut Vec<Variable> = match &mut self.children {
             Some(children) => children,
             None => {
@@ -165,7 +200,52 @@ impl Variable {
         } else {
             self.kind = VariableKind::Named
         }
+        child_variable.extract_value(core);
         children.push(child_variable.clone());
+    }
+}
+
+impl fmt::Display for Variable {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if self.value.is_empty() {
+            //Only do this if we do not already have a value assigned
+            if let Some(children) = self.children.clone() {
+                //Make sure we can safely unwrap() children
+                if self.type_name.starts_with('&') {
+                    //Pointers
+                    write!(f, "{}", children.first().unwrap())
+                } else if self.type_name.starts_with('(') {
+                    //Tuples
+                    write!(f, "(")?;
+                    for child in children {
+                        write!(f, "{}, ", child)?;
+                    }
+                    write!(f, ")")
+                } else if self.type_name.starts_with('[') {
+                    //Arrays
+                    write!(f, "[")?;
+                    for child in children {
+                        write!(f, "{}, ", child)?;
+                    }
+                    write!(f, "]")
+                } else {
+                    //Generic handling of other structured types
+                    if self.kind == VariableKind::Named {
+                        write!(f, "{}:{{", self.name)?;
+                    } else {
+                        write!(f, "{{")?;
+                    }
+                    for child in children {
+                        write!(f, "{}, ", child)?;
+                    }
+                    write!(f, "}}")
+                }
+            } else {
+                write!(f, "{}", self.type_name) //Unknown
+            }
+        } else {
+            write!(f, "{}", self.value) //Use the supplied value
+        }
     }
 }
 /// Traits and Impl's to read from memory and decode the Variable value based on Variable::typ and Variable::location. The MS DAP protocol passes the value as a string, so these are here only to provide the memory read logic before returning it as a string.

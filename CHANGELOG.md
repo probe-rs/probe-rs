@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added a generic `read` function, which can be used for memory access with maximum speed, regardless of access width (#633).
 - Added an option to skip erasing the flash before programming (#628).
 - Added a new debugger for VS Code, using the [Debug Adapter Protocol](https://microsoft.github.io/debug-adapter-protocol/specification). The debugger can be found in the `probe-rs-debugger` crate (#620).
+- Additional datatype support for the debugger, plus easier to read display values (#631)
 - Added support for raw DAP register reads and writes (#669).
 
 
