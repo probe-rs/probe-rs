@@ -21,7 +21,7 @@ pub(crate) fn open(opts: &cli::Opts) -> Result<Probe, anyhow::Error> {
     log::debug!("found {} probes", filtered_probes.len());
 
     if filtered_probes.len() > 1 {
-        let _ = print(filtered_probes);
+        print(filtered_probes);
         bail!("more than one probe found; use --probe to specify which one to use");
     }
 
@@ -50,15 +50,15 @@ pub(crate) fn print(probes: Vec<DebugProbeInfo>) {
 fn filter(probes: &[DebugProbeInfo], selector: &ProbeFilter) -> Vec<DebugProbeInfo> {
     probes
         .iter()
-        .filter(|&p| {
+        .filter(|probe| {
             if let Some((vid, pid)) = selector.vid_pid {
-                if p.vendor_id != vid || p.product_id != pid {
+                if probe.vendor_id != vid || probe.product_id != pid {
                     return false;
                 }
             }
 
             if let Some(serial) = &selector.serial {
-                if p.serial_number.as_deref() != Some(serial) {
+                if probe.serial_number.as_deref() != Some(serial) {
                     return false;
                 }
             }
@@ -79,7 +79,7 @@ impl FromStr for ProbeFilter {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let parts = s.split(':').collect::<Vec<_>>();
-        match &*parts {
+        match *parts {
             [serial] => Ok(Self {
                 vid_pid: None,
                 serial: Some(serial.to_string()),
