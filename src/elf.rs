@@ -7,7 +7,7 @@ use std::{
 
 use anyhow::{anyhow, bail};
 use arrayref::array_ref;
-use defmt_decoder::Table;
+use defmt_decoder::{Location, Table};
 use object::{
     read::File as ObjectFile, Object, ObjectSection, ObjectSegment, ObjectSymbol, SymbolSection,
 };
@@ -15,23 +15,13 @@ use object::{
 use crate::cortexm;
 
 pub(crate) struct Elf<'file> {
-    // original ELF (object crate)
     elf: ObjectFile<'file>,
-    // name of functions in program after linking
-    // extracted from `.text` section
+    symbols: Symbols,
     pub(crate) live_functions: HashSet<&'file str>,
-    // // extracted using `defmt` crate
-    // map(index: usize) -> defmt frame
     pub(crate) defmt_table: Option<Table>,
-    pub(crate) defmt_locations: Option<BTreeMap<u64, defmt_decoder::Location>>,
-    // // extracted from `for` loop over symbols
-    pub(crate) rtt_buffer_address: Option<u32>,
-    pub(crate) target_program_uses_heap: bool,
-    pub(crate) main_function_address: u32,
-
-    // // currently extracted via `for` loop over sections
-    pub(crate) debug_frame: &'file [u8], // gimli one (not bytes)
-    pub(crate) vector_table: cortexm::VectorTable, // processed one (not bytes)
+    pub(crate) defmt_locations: Option<BTreeMap<u64, Location>>,
+    pub(crate) debug_frame: DebugFrame<'file>,
+    pub(crate) vector_table: cortexm::VectorTable,
 }
 
 impl<'file> Elf<'file> {
@@ -46,20 +36,29 @@ impl<'file> Elf<'file> {
 
         let debug_frame = extract_debug_frame(&elf)?;
 
-        let (rtt_buffer_address, target_program_uses_heap, address_of_main_function) =
-            extract_symbols(&elf)?;
+        let symbols = extract_symbols(&elf)?;
 
         Ok(Self {
+            elf,
+            symbols,
             defmt_table,
             defmt_locations,
-            elf,
             live_functions,
             vector_table,
             debug_frame,
-            rtt_buffer_address,
-            target_program_uses_heap,
-            main_function_address: address_of_main_function,
         })
+    }
+
+    pub(crate) fn main_function_address(&self) -> u32 {
+        self.symbols.main_function_address
+    }
+
+    pub(crate) fn target_program_uses_heap(&self) -> bool {
+        self.symbols.target_program_uses_heap
+    }
+
+    pub(crate) fn rtt_buffer_address(&self) -> Option<u32> {
+        self.symbols.rtt_buffer_address
     }
 
     /// Returns the size of the part of the program allocated in Flash
@@ -70,7 +69,6 @@ impl<'file> Elf<'file> {
     }
 }
 
-// TODO remove this when we are done and don't need access to the internal elf anymore
 impl<'elf> Deref for Elf<'elf> {
     type Target = ObjectFile<'elf>;
 
@@ -81,10 +79,7 @@ impl<'elf> Deref for Elf<'elf> {
 
 fn extract_defmt_info(
     elf_bytes: &[u8],
-) -> anyhow::Result<(
-    Option<Table>,
-    Option<BTreeMap<u64, defmt_decoder::Location>>,
-)> {
+) -> anyhow::Result<(Option<Table>, Option<BTreeMap<u64, Location>>)> {
     let defmt_table = match env::var("PROBE_RUN_IGNORE_VERSION").as_deref() {
         Ok("true") | Ok("1") => defmt_decoder::Table::parse_ignore_version(elf_bytes)?,
         _ => defmt_decoder::Table::parse(elf_bytes)?,
@@ -166,17 +161,30 @@ fn extract_vector_table(elf: &ObjectFile) -> anyhow::Result<cortexm::VectorTable
     }
 }
 
-fn extract_debug_frame<'file>(elf: &ObjectFile<'file>) -> anyhow::Result<&'file [u8]> {
-    elf.section_by_name(".debug_frame")
+type DebugFrame<'file> = gimli::DebugFrame<gimli::EndianSlice<'file, cortexm::ENDIANESS>>;
+
+fn extract_debug_frame<'file>(elf: &ObjectFile<'file>) -> anyhow::Result<DebugFrame<'file>> {
+    let bytes = elf
+        .section_by_name(".debug_frame")
         .map(|section| section.data())
         .transpose()?
-        .ok_or_else(|| anyhow!("`.debug_frame` section not found"))
+        .ok_or_else(|| anyhow!("`.debug_frame` section not found"))?;
+
+    let mut debug_frame = gimli::DebugFrame::new(bytes, cortexm::ENDIANESS);
+    debug_frame.set_address_size(cortexm::ADDRESS_SIZE);
+    Ok(debug_frame)
 }
 
-fn extract_symbols(elf: &ObjectFile) -> anyhow::Result<(Option<u32>, /* uses heap: */ bool, u32)> {
-    let mut rtt = None;
-    let mut uses_heap = false;
-    let mut main = None;
+struct Symbols {
+    rtt_buffer_address: Option<u32>,
+    target_program_uses_heap: bool,
+    main_function_address: u32,
+}
+
+fn extract_symbols(elf: &ObjectFile) -> anyhow::Result<Symbols> {
+    let mut rtt_buffer_address = None;
+    let mut target_program_uses_heap = false;
+    let mut main_function_address = None;
 
     for symbol in elf.symbols() {
         let name = match symbol.name() {
@@ -184,20 +192,26 @@ fn extract_symbols(elf: &ObjectFile) -> anyhow::Result<(Option<u32>, /* uses hea
             Err(_) => continue,
         };
 
+        let address = symbol.address().try_into().expect("expected 32-bit ELF");
         match name {
-            "main" => main = Some(cortexm::clear_thumb_bit(symbol.address() as u32)),
-            "_SEGGER_RTT" => rtt = Some(symbol.address() as u32),
-            "__rust_alloc" | "__rg_alloc" | "__rdl_alloc" | "malloc" if !uses_heap => {
+            "main" => main_function_address = Some(cortexm::clear_thumb_bit(address)),
+            "_SEGGER_RTT" => rtt_buffer_address = Some(address),
+            "__rust_alloc" | "__rg_alloc" | "__rdl_alloc" | "malloc"
+                if !target_program_uses_heap =>
+            {
                 log::debug!("symbol `{}` indicates heap is in use", name);
-                uses_heap = true;
+                target_program_uses_heap = true;
             }
             _ => {}
         }
     }
 
-    Ok((
-        rtt,
-        uses_heap,
-        main.ok_or_else(|| anyhow!("`main` symbol not found"))?,
-    ))
+    let main_function_address =
+        main_function_address.ok_or_else(|| anyhow!("`main` symbol not found"))?;
+
+    Ok(Symbols {
+        rtt_buffer_address,
+        target_program_uses_heap,
+        main_function_address,
+    })
 }

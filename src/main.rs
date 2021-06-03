@@ -113,7 +113,7 @@ fn extract_and_print_logs(
     let exit = Arc::new(AtomicBool::new(false));
     let sigid = signal_hook::flag::register(signal::SIGINT, exit.clone())?;
 
-    let mut logging_channel = setup_logging_channel(elf.rtt_buffer_address, sess.clone())?;
+    let mut logging_channel = setup_logging_channel(elf.rtt_buffer_address(), sess.clone())?;
 
     let use_defmt = logging_channel
         .as_ref()

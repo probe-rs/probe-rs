@@ -60,7 +60,7 @@ pub(crate) fn place(
                 .contains(&(elf.vector_table.initial_stack_pointer - 1))
                 && highest_ram_addr_in_use < elf.vector_table.initial_stack_pointer;
             if target_info.highest_ram_addr_in_use.is_some()
-                && !elf.target_program_uses_heap
+                && !elf.target_program_uses_heap()
                 && initial_sp_makes_sense
             {
                 let stack_available =
@@ -91,21 +91,23 @@ pub(crate) fn place(
 
         log::debug!("starting device");
         if core.get_available_breakpoint_units()? == 0 {
-            if elf.rtt_buffer_address.is_some() {
+            if elf.rtt_buffer_address().is_some() {
                 bail!("RTT not supported on device without HW breakpoints");
             } else {
                 log::warn!("device doesn't support HW breakpoints; HardFault will NOT make `probe-run` exit with an error code");
             }
         }
 
-        if let Some(rtt) = elf.rtt_buffer_address {
-            core.set_hw_breakpoint(elf.main_function_address)?;
+        if let Some(rtt) = elf.rtt_buffer_address() {
+            let main = elf.main_function_address();
+            core.set_hw_breakpoint(main)?;
             core.run()?;
             core.wait_for_core_halted(Duration::from_secs(5))?;
+
             const OFFSET: u32 = 44;
             const FLAG: u32 = 2; // BLOCK_IF_FULL
             core.write_word_32(rtt + OFFSET, FLAG)?;
-            core.clear_hw_breakpoint(elf.main_function_address)?;
+            core.clear_hw_breakpoint(main)?;
         }
 
         core.set_hw_breakpoint(cortexm::clear_thumb_bit(elf.vector_table.hard_fault))?;

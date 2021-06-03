@@ -1,9 +1,7 @@
 //! unwind target's program
 
 use anyhow::{anyhow, Context as _};
-use gimli::{
-    BaseAddresses, DebugFrame, LittleEndian, UninitializedUnwindContext, UnwindSection as _,
-};
+use gimli::{BaseAddresses, DebugFrame, UninitializedUnwindContext, UnwindSection as _};
 use probe_rs::{config::RamRegion, Core};
 
 use crate::{
@@ -26,11 +24,7 @@ fn missing_debug_info(pc: u32) -> String {
 ///
 /// This returns as much info as could be collected, even if the collection is interrupted by an error.
 /// If an error occurred during processing, it is stored in `Output::processing_error`.
-pub(crate) fn target(
-    core: &mut Core,
-    elf: &Elf,
-    active_ram_region: &Option<RamRegion>,
-) -> Output {
+pub(crate) fn target(core: &mut Core, elf: &Elf, active_ram_region: &Option<RamRegion>) -> Output {
     let mut output = Output {
         corrupted: true,
         outcome: Outcome::Ok,
@@ -51,9 +45,6 @@ pub(crate) fn target(
         };
     }
 
-    let mut debug_frame = DebugFrame::new(elf.debug_frame, LittleEndian);
-    debug_frame.set_address_size(cortexm::ADDRESS_SIZE);
-
     let mut pc = unwrap_or_return_output!(core.read_core_reg(registers::PC));
     let sp = unwrap_or_return_output!(core.read_core_reg(registers::SP));
     let lr = unwrap_or_return_output!(core.read_core_reg(registers::LR));
@@ -70,7 +61,8 @@ pub(crate) fn target(
 
         output.raw_frames.push(RawFrame::Subroutine { pc });
 
-        let uwt_row = unwrap_or_return_output!(debug_frame
+        let uwt_row = unwrap_or_return_output!(elf
+            .debug_frame
             .unwind_info_for_address(
                 &base_addresses,
                 &mut unwind_context,
