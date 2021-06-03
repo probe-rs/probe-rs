@@ -88,12 +88,15 @@ fn extract_defmt_info(
     let mut defmt_locations = None;
 
     if let Some(table) = defmt_table.as_ref() {
-        let tmp = table.get_locations(elf_bytes)?;
+        let locations = table.get_locations(elf_bytes)?;
 
-        if !table.is_empty() && tmp.is_empty() {
+        if !table.is_empty() && locations.is_empty() {
             log::warn!("insufficient DWARF info; compile your program with `debug = 2` to enable location info");
-        } else if table.indices().all(|idx| tmp.contains_key(&(idx as u64))) {
-            defmt_locations = Some(tmp);
+        } else if table
+            .indices()
+            .all(|idx| locations.contains_key(&(idx as u64)))
+        {
+            defmt_locations = Some(locations);
         } else {
             log::warn!("(BUG) location info is incomplete; it will be omitted from the output");
         }
@@ -115,14 +118,15 @@ fn extract_live_functions<'file>(elf: &ObjectFile<'file>) -> anyhow::Result<Hash
 
     let live_functions = elf
         .symbols()
-        .filter_map(|sym| {
-            if sym.section() == SymbolSection::Section(text) {
-                Some(sym.name())
+        .filter_map(|symbol| {
+            if symbol.section() == SymbolSection::Section(text) {
+                Some(symbol.name())
             } else {
                 None
             }
         })
         .collect::<Result<HashSet<_>, _>>()?;
+
     Ok(live_functions)
 }
 
@@ -135,7 +139,6 @@ fn extract_vector_table(elf: &ObjectFile) -> anyhow::Result<cortexm::VectorTable
     let size = section.size();
 
     if size % 4 != 0 || start % 4 != 0 {
-        // we could support unaligned sections but let's not do that now
         bail!("section `.vector_table` is not 4-byte aligned");
     }
 
