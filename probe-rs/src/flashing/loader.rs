@@ -1,16 +1,18 @@
 use ihex::Record;
+use probe_rs_target::RawFlashAlgorithm;
+use std::collections::HashMap;
 use std::io::{Read, Seek, SeekFrom};
 use std::ops::Range;
 
 use super::builder::FlashBuilder;
 use super::{
-    extract_from_elf, BinOptions, DownloadOptions, FileDownloadError, FlashAlgorithm, FlashError,
-    FlashProgress, Flasher,
+    extract_from_elf, BinOptions, DownloadOptions, FileDownloadError, FlashError, FlashProgress,
+    Flasher,
 };
 use crate::memory::MemoryInterface;
 use crate::session::Session;
 use crate::{
-    config::{MemoryRange, MemoryRegion, NvmRegion, RamRegion, TargetDescriptionSource},
+    config::{MemoryRange, MemoryRegion, NvmRegion, TargetDescriptionSource},
     Target,
 };
 
@@ -63,7 +65,7 @@ impl FlashLoader {
     ///
     /// The chunk can cross flash boundaries as long as one flash region connects to another flash region.
     pub fn add_data(&mut self, address: u32, data: &[u8]) -> Result<(), FlashError> {
-        log::debug!(
+        log::trace!(
             "Adding data at address {:#010x} with size {} bytes",
             address,
             data.len()
@@ -198,13 +200,28 @@ impl FlashLoader {
         session: &mut Session,
         options: DownloadOptions<'_>,
     ) -> Result<(), FlashError> {
-        log::debug!("committing flash!");
+        log::debug!("committing FlashLoader!");
+
+        log::debug!("Contents of builder:");
         for (&address, data) in &self.builder.data {
             log::debug!(
-                "    region: {:08x}-{:08x} ({} bytes)",
+                "    data: {:08x}-{:08x} ({} bytes)",
                 address,
                 address + data.len() as u32,
                 data.len()
+            );
+        }
+
+        log::debug!("Flash algorithms:");
+        for algorithm in &session.target().flash_algorithms {
+            let Range { start, end } = algorithm.flash_properties.address_range;
+
+            log::debug!(
+                "    algo {}: {:08x}-{:08x} ({} bytes)",
+                algorithm.name,
+                start,
+                end,
+                end - start
             );
         }
 
@@ -214,58 +231,142 @@ impl FlashLoader {
             log::warn!("Memory map of flash loader does not match memory map of target!");
         }
 
+        let mut algos: HashMap<String, Vec<NvmRegion>> = HashMap::new();
+
         // Commit NVM first
+
+        // Iterate all NvmRegions and group them by flash algorithm.
+        // This avoids loading the same algorithm twice if it's used for two regions.
+        //
+        // This also ensures correct operation when chip erase is used. We assume doing a chip erase
+        // using a given algorithm erases all regions controlled by it. Therefore, we must do
+        // chip erase once per algorithm, not once per region. Otherwise subsequent chip erases will
+        // erase previous regions' flashed contents.
+        log::debug!("Regions:");
         for region in &self.memory_map {
             if let MemoryRegion::Nvm(region) = region {
-                self.commit_nvm(region, session, &options)?;
+                log::debug!(
+                    "    region: {:08x}-{:08x} ({} bytes)",
+                    region.range.start,
+                    region.range.end,
+                    region.range.end - region.range.start
+                );
+
+                // If we have no data in this region, ignore it.
+                // This avoids uselessly initializing and deinitializing its flash algorithm.
+                if !self.builder.has_data_in_range(&region.range) {
+                    log::debug!("     -- empty, ignoring!");
+                    continue;
+                }
+
+                let algo = Self::get_flash_algorithm_for_region(region, session.target())?;
+
+                let entry = algos.entry(algo.name.clone()).or_default();
+                entry.push(region.clone());
+
+                log::debug!("     -- using algorithm: {}", algo.name);
             }
         }
+
+        if options.dry_run {
+            log::info!("Skipping programming, dry run!");
+            return Ok(());
+        }
+
+        // Iterate all flash algorithms we need to use.
+        for (algo_name, regions) in algos {
+            log::debug!("Flashing ranges for algo: {}", algo_name);
+
+            // This can't fail, algo_name comes from the target.
+            let algo = session
+                .target()
+                .flash_algorithms
+                .iter()
+                .find(|a| a.name == algo_name)
+                .unwrap()
+                .clone();
+
+            let mut flasher = Flasher::new(session, &algo)?;
+
+            let mut do_chip_erase = options.do_chip_erase;
+
+            // If the flash algo doesn't support erase all, disable chip erase.
+            if do_chip_erase && !flasher.is_chip_erase_supported() {
+                do_chip_erase = false;
+                log::warn!("Chip erase was the selected method to erase the sectors but this chip does not support chip erases (yet).");
+                log::warn!("A manual sector erase will be performed.");
+            }
+
+            if do_chip_erase {
+                log::debug!("    Doing chip erase...");
+                flasher.run_erase(|active| active.erase_all())?;
+            }
+
+            for region in regions {
+                log::debug!(
+                    "    programming region: {:08x}-{:08x} ({} bytes)",
+                    region.range.start,
+                    region.range.end,
+                    region.range.end - region.range.start
+                );
+
+                // Program the data.
+                flasher.program(
+                    &region,
+                    &self.builder,
+                    options.keep_unwritten_bytes,
+                    true,
+                    options.skip_erase || do_chip_erase,
+                    options.progress.unwrap_or(&FlashProgress::new(|_| {})),
+                )?;
+            }
+        }
+
+        log::debug!("committing RAM!");
+
+        let mut core = session.core(0).map_err(FlashError::Core)?;
 
         // Commit RAM last, because NVM flashing overwrites RAM
         for region in &self.memory_map {
             if let MemoryRegion::Ram(region) = region {
-                self.commit_ram(region, session)?;
+                log::debug!(
+                    "    region: {:08x}-{:08x} ({} bytes)",
+                    region.range.start,
+                    region.range.end,
+                    region.range.end - region.range.start
+                );
+
+                let mut some = false;
+                for (address, data) in self.builder.data_in_range(&region.range) {
+                    some = true;
+                    log::debug!(
+                        "     -- writing: {:08x}-{:08x} ({} bytes)",
+                        address,
+                        address + data.len() as u32,
+                        data.len()
+                    );
+                    // Write data to memory.
+                    core.write_8(address, data).map_err(FlashError::Core)?;
+                }
+
+                if !some {
+                    log::debug!("     -- empty.")
+                }
             }
         }
 
         Ok(())
     }
 
-    fn commit_ram(&self, region: &RamRegion, session: &mut Session) -> Result<(), FlashError> {
-        // Attach to memory and core.
-        let mut core = session.core(0).map_err(FlashError::Core)?;
-
-        for (address, data) in self.builder.data_in_range(&region.range) {
-            log::info!(
-                "Ram write program data @ {:X} {} bytes",
-                address,
-                data.len()
-            );
-            // Write data to memory.
-            core.write_8(address, data).map_err(FlashError::Core)?;
-        }
-
-        Ok(())
-    }
-
-    fn build_flash_algorithm(
-        &self,
+    /// Try to find a flash algorithm for the given NvmRegion.
+    /// Errors if there's no algo for the region.
+    /// Errors if there's multiple algos for the region and none is marked as default.
+    fn get_flash_algorithm_for_region<'a>(
         region: &NvmRegion,
-        target: &Target,
-    ) -> Result<FlashAlgorithm, FlashError> {
-        // Try to find a flash algorithm for the range of the current builder
-        let algorithms = &target.flash_algorithms;
-
-        for algorithm in algorithms {
-            log::debug!(
-                "Algorithm {} - start: {:#08x} - size: {:#08x}",
-                algorithm.name,
-                algorithm.flash_properties.address_range.start,
-                algorithm.flash_properties.address_range.end
-                    - algorithm.flash_properties.address_range.start
-            );
-        }
-        let algorithms = algorithms
+        target: &'a Target,
+    ) -> Result<&'a RawFlashAlgorithm, FlashError> {
+        let algorithms = &target
+            .flash_algorithms
             .iter()
             .filter(|fa| {
                 fa.flash_properties
@@ -273,8 +374,6 @@ impl FlashLoader {
                     .contains_range(&region.range)
             })
             .collect::<Vec<_>>();
-
-        log::debug!("Algorithms: {:?}", &algorithms);
 
         let raw_flash_algorithm = match algorithms.len() {
             0 => {
@@ -287,57 +386,6 @@ impl FlashLoader {
                 .ok_or(FlashError::NoFlashLoaderAlgorithmAttached)?,
         };
 
-        let mm = &target.memory_map;
-        let ram = mm
-            .iter()
-            .find_map(|mm| match mm {
-                MemoryRegion::Ram(ram) => Some(ram),
-                _ => None,
-            })
-            .ok_or(FlashError::NoRamDefined {
-                chip: target.name.clone(),
-            })?;
-
-        let flash_algorithm = FlashAlgorithm::assemble_from_raw(raw_flash_algorithm, ram, target)?;
-
-        Ok(flash_algorithm)
-    }
-
-    fn commit_nvm(
-        &self,
-        region: &NvmRegion,
-        session: &mut Session,
-        options: &DownloadOptions<'_>,
-    ) -> Result<(), FlashError> {
-        log::debug!(
-            "Using builder for region (0x{:08x}..0x{:08x})",
-            region.range.start,
-            region.range.end
-        );
-
-        let flash_algorithm = self.build_flash_algorithm(region, session.target())?;
-
-        if options.dry_run {
-            log::info!("Skipping programming, dry run!");
-            if let Some(progress) = options.progress {
-                progress.failed_erasing();
-            }
-            return Ok(());
-        }
-
-        // Program the data.
-        let mut flasher = Flasher::new(session, flash_algorithm)?;
-
-        flasher.program(
-            region,
-            &self.builder,
-            options.do_chip_erase,
-            options.keep_unwritten_bytes,
-            true,
-            options.skip_erase,
-            options.progress.unwrap_or(&FlashProgress::new(|_| {})),
-        )?;
-
-        Ok(())
+        Ok(raw_flash_algorithm)
     }
 }
