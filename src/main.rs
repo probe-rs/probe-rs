@@ -10,7 +10,7 @@ mod stacked;
 mod target_info;
 
 use std::{
-    fs,
+    env, fs,
     io::{self, Write as _},
     path::Path,
     process,
@@ -37,7 +37,7 @@ fn main() -> anyhow::Result<()> {
     cli::handle_arguments().map(|code| process::exit(code))
 }
 
-fn run_target_program(elf_path: &Path, chip: &str, opts: &cli::Opts) -> anyhow::Result<i32> {
+fn run_target_program(elf_path: &Path, chip_name: &str, opts: &cli::Opts) -> anyhow::Result<i32> {
     if !elf_path.exists() {
         return Err(anyhow!(
             "can't find ELF file at `{}`; are you sure you got the right path?",
@@ -48,15 +48,15 @@ fn run_target_program(elf_path: &Path, chip: &str, opts: &cli::Opts) -> anyhow::
     let elf_bytes = fs::read(elf_path)?;
     let mut elf = Elf::parse(&elf_bytes)?;
 
-    let target_info = TargetInfo::new(chip, &elf)?;
+    let target_info = TargetInfo::new(chip_name, &elf)?;
 
     let probe = probe::open(opts)?;
 
-    let target = target_info.target.clone();
+    let probe_target = target_info.probe_target.clone();
     let mut sess = if opts.connect_under_reset {
-        probe.attach_under_reset(target)?
+        probe.attach_under_reset(probe_target)?
     } else {
-        probe.attach(target)?
+        probe.attach(probe_target)?
     };
     log::debug!("started session");
 
@@ -72,9 +72,9 @@ fn run_target_program(elf_path: &Path, chip: &str, opts: &cli::Opts) -> anyhow::
 
     let canary = canary::place(&mut sess, &target_info, &elf)?;
     let sess = Arc::new(Mutex::new(sess));
-    let current_dir = std::env::current_dir()?;
+    let current_dir = &env::current_dir()?;
 
-    let halted_due_to_signal = extract_and_print_logs(&mut elf, &sess, opts, &current_dir)?;
+    let halted_due_to_signal = extract_and_print_logs(&mut elf, &sess, opts, current_dir)?;
 
     let mut sess = sess.lock().unwrap();
     let mut core = sess.core(0)?;
@@ -83,7 +83,7 @@ fn run_target_program(elf_path: &Path, chip: &str, opts: &cli::Opts) -> anyhow::
 
     let canary_touched = canary::touched(canary, &mut core, &elf)?;
     let backtrace_settings = backtrace::Settings {
-        current_dir: &current_dir,
+        current_dir,
         max_backtrace_len: opts.max_backtrace_len,
         // TODO any other cases in which we should force a backtrace?
         force_backtrace: opts.force_backtrace || canary_touched || halted_due_to_signal,
@@ -100,6 +100,7 @@ fn run_target_program(elf_path: &Path, chip: &str, opts: &cli::Opts) -> anyhow::
     core.reset_and_halt(TIMEOUT)?;
 
     outcome.log();
+
     Ok(outcome.into())
 }
 

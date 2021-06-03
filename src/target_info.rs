@@ -5,7 +5,7 @@ use std::convert::TryInto;
 use crate::elf::Elf;
 
 pub(crate) struct TargetInfo {
-    pub(crate) target: probe_rs::Target,
+    pub(crate) probe_target: probe_rs::Target,
     pub(crate) active_ram_region: Option<RamRegion>,
     pub(crate) highest_ram_addr_in_use: Option<u32>, // todo maybe merge
 }
@@ -16,26 +16,30 @@ impl TargetInfo {
         let active_ram_region =
             extract_active_ram_region(&target, elf.vector_table.initial_stack_pointer);
         let highest_ram_addr_in_use =
-            extract_highest_ram_addr_in_use(elf, active_ram_region.as_ref())?;
+            extract_highest_ram_addr_in_use(elf, active_ram_region.as_ref());
+
         Ok(Self {
-            target,
+            probe_target: target,
             active_ram_region,
             highest_ram_addr_in_use,
         })
     }
 }
 
-fn extract_active_ram_region(target: &probe_rs::Target, initial_sp: u32) -> Option<RamRegion> {
+fn extract_active_ram_region(
+    target: &probe_rs::Target,
+    initial_stack_pointer: u32,
+) -> Option<RamRegion> {
     target
         .memory_map
         .iter()
         .filter_map(|region| match region {
-            MemoryRegion::Ram(region) => {
+            MemoryRegion::Ram(ram_region) => {
                 // NOTE stack is full descending; meaning the stack pointer can be
                 // `ORIGIN(RAM) + LENGTH(RAM)`
-                let range = region.range.start..=region.range.end;
-                if range.contains(&initial_sp) {
-                    Some(region)
+                let inclusive_range = ram_region.range.start..=ram_region.range.end;
+                if inclusive_range.contains(&initial_stack_pointer) {
+                    Some(ram_region)
                 } else {
                     None
                 }
@@ -49,26 +53,33 @@ fn extract_active_ram_region(target: &probe_rs::Target, initial_sp: u32) -> Opti
 fn extract_highest_ram_addr_in_use(
     elf: &object::read::File,
     active_ram_region: Option<&RamRegion>,
-) -> anyhow::Result<Option<u32>> {
-    let mut highest_ram_addr_in_use = None;
-    for sect in elf.sections() {
-        // If this section resides in RAM, track the highest RAM address in use.
-        if let Some(ram) = active_ram_region {
-            if sect.size() != 0 {
-                let last_addr = sect.address() + sect.size() - 1;
-                let last_addr = last_addr.try_into()?;
-                if ram.range.contains(&last_addr) {
-                    log::debug!(
-                        "section `{}` is in RAM at 0x{:08X}-0x{:08X}",
-                        sect.name().unwrap_or("<unknown>"),
-                        sect.address(),
-                        last_addr,
-                    );
-                    highest_ram_addr_in_use = highest_ram_addr_in_use.max(Some(last_addr));
-                }
-            }
-        }
-    }
+) -> Option<u32> {
+    let active_ram_region = active_ram_region?;
 
-    Ok(highest_ram_addr_in_use)
+    elf.sections()
+        .filter_map(|section| {
+            let size = section.size();
+            if size == 0 {
+                return None;
+            }
+
+            let lowest_address = section.address();
+            let highest_address = (lowest_address + size - 1)
+                .try_into()
+                .expect("expected 32-bit ELF");
+
+            if active_ram_region.range.contains(&highest_address) {
+                log::debug!(
+                    "section `{}` is in RAM at {:#010X} ..= {:#010X}",
+                    section.name().unwrap_or("<unknown>"),
+                    lowest_address,
+                    highest_address,
+                );
+
+                Some(highest_address)
+            } else {
+                None
+            }
+        })
+        .max()
 }
