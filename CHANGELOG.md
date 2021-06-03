@@ -46,6 +46,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added a RAM benchmark script (#514).
 - Initial support for batched commands for J-Link (#515).
 
+- Added support for the STM32F2 family.
+
 ### Changed
 
 - Renamed `MemoryRegion::Flash` to `MemoryRegion::Nvm` (#482).
