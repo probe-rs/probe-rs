@@ -79,9 +79,9 @@ impl Outcome {
 }
 
 /// convert outomce into an exit code
-impl Into<i32> for Outcome {
-    fn into(self) -> i32 {
-        match self {
+impl From<Outcome> for i32 {
+    fn from(outcome: Outcome) -> i32 {
+        match outcome {
             Outcome::HardFault | Outcome::StackOverflow => crate::SIGABRT,
             Outcome::Ok => 0,
         }

@@ -12,8 +12,8 @@ pub(crate) const EXC_RETURN_MARKER: u32 = 0xFF00_0000;
 
 pub(crate) const EXC_RETURN_FTYPE_MASK: u32 = 1 << 4;
 
-pub(crate) const ENDIANESS: LittleEndian = LittleEndian;
-pub(crate) type ENDIANESS = LittleEndian;
+pub(crate) const ENDIANNESS: LittleEndian = LittleEndian;
+pub(crate) type Endianness = LittleEndian;
 
 const THUMB_BIT: u32 = 1;
 // According to the ARM Cortex-M Reference Manual RAM memory must be located in this address range

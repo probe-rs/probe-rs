@@ -18,7 +18,7 @@ pub(crate) struct Elf<'file> {
     symbols: Symbols,
     pub(crate) live_functions: HashSet<&'file str>,
     pub(crate) defmt_table: Option<Table>,
-    pub(crate) defmt_locations: Option<BTreeMap<u64, Location>>,
+    pub(crate) defmt_locations: Option<Locations>,
     pub(crate) debug_frame: DebugFrame<'file>,
     pub(crate) vector_table: cortexm::VectorTable,
 }
@@ -40,11 +40,11 @@ impl<'file> Elf<'file> {
         Ok(Self {
             elf,
             symbols,
+            live_functions,
             defmt_table,
             defmt_locations,
-            live_functions,
-            vector_table,
             debug_frame,
+            vector_table,
         })
     }
 
@@ -76,34 +76,6 @@ impl<'elf> Deref for Elf<'elf> {
     }
 }
 
-fn extract_defmt_info(
-    elf_bytes: &[u8],
-) -> anyhow::Result<(Option<Table>, Option<BTreeMap<u64, Location>>)> {
-    let defmt_table = match env::var("PROBE_RUN_IGNORE_VERSION").as_deref() {
-        Ok("true") | Ok("1") => defmt_decoder::Table::parse_ignore_version(elf_bytes)?,
-        _ => defmt_decoder::Table::parse(elf_bytes)?,
-    };
-
-    let mut defmt_locations = None;
-
-    if let Some(table) = defmt_table.as_ref() {
-        let locations = table.get_locations(elf_bytes)?;
-
-        if !table.is_empty() && locations.is_empty() {
-            log::warn!("insufficient DWARF info; compile your program with `debug = 2` to enable location info");
-        } else if table
-            .indices()
-            .all(|idx| locations.contains_key(&(idx as u64)))
-        {
-            defmt_locations = Some(locations);
-        } else {
-            log::warn!("(BUG) location info is incomplete; it will be omitted from the output");
-        }
-    }
-
-    Ok((defmt_table, defmt_locations))
-}
-
 fn extract_live_functions<'file>(elf: &ObjectFile<'file>) -> anyhow::Result<HashSet<&'file str>> {
     let text = elf
         .section_by_name(".text")
@@ -127,6 +99,34 @@ fn extract_live_functions<'file>(elf: &ObjectFile<'file>) -> anyhow::Result<Hash
         .collect::<Result<HashSet<_>, _>>()?;
 
     Ok(live_functions)
+}
+
+type Locations = BTreeMap<u64, Location>;
+
+fn extract_defmt_info(elf_bytes: &[u8]) -> anyhow::Result<(Option<Table>, Option<Locations>)> {
+    let defmt_table = match env::var("PROBE_RUN_IGNORE_VERSION").as_deref() {
+        Ok("true") | Ok("1") => defmt_decoder::Table::parse_ignore_version(elf_bytes)?,
+        _ => defmt_decoder::Table::parse(elf_bytes)?,
+    };
+
+    let mut defmt_locations = None;
+
+    if let Some(table) = defmt_table.as_ref() {
+        let locations = table.get_locations(elf_bytes)?;
+
+        if !table.is_empty() && locations.is_empty() {
+            log::warn!("insufficient DWARF info; compile your program with `debug = 2` to enable location info");
+        } else if table
+            .indices()
+            .all(|idx| locations.contains_key(&(idx as u64)))
+        {
+            defmt_locations = Some(locations);
+        } else {
+            log::warn!("(BUG) location info is incomplete; it will be omitted from the output");
+        }
+    }
+
+    Ok((defmt_table, defmt_locations))
 }
 
 fn extract_vector_table(elf: &ObjectFile) -> anyhow::Result<cortexm::VectorTable> {
@@ -163,7 +163,7 @@ fn extract_vector_table(elf: &ObjectFile) -> anyhow::Result<cortexm::VectorTable
     }
 }
 
-type DebugFrame<'file> = gimli::DebugFrame<gimli::EndianSlice<'file, cortexm::ENDIANESS>>;
+type DebugFrame<'file> = gimli::DebugFrame<gimli::EndianSlice<'file, cortexm::Endianness>>;
 
 fn extract_debug_frame<'file>(elf: &ObjectFile<'file>) -> anyhow::Result<DebugFrame<'file>> {
     let bytes = elf
@@ -172,7 +172,7 @@ fn extract_debug_frame<'file>(elf: &ObjectFile<'file>) -> anyhow::Result<DebugFr
         .transpose()?
         .ok_or_else(|| anyhow!("`.debug_frame` section not found"))?;
 
-    let mut debug_frame = gimli::DebugFrame::new(bytes, cortexm::ENDIANESS);
+    let mut debug_frame = gimli::DebugFrame::new(bytes, cortexm::ENDIANNESS);
     debug_frame.set_address_size(cortexm::ADDRESS_SIZE);
     Ok(debug_frame)
 }
