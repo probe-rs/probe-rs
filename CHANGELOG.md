@@ -46,8 +46,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated target description for NRF91 (#619).
 - Added a RAM benchmark script (#514).
 - Initial support for batched commands for J-Link (#515).
-
-- Added support for the STM32F2 family.
+- Added support for the STM32F2 family (#675).
 
 ### Changed
 
