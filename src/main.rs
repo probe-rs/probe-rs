@@ -46,9 +46,9 @@ fn run_target_program(elf_path: &Path, chip_name: &str, opts: &cli::Opts) -> any
     }
 
     let elf_bytes = fs::read(elf_path)?;
-    let mut elf = Elf::parse(&elf_bytes)?;
+    let elf = &Elf::parse(&elf_bytes)?;
 
-    let target_info = TargetInfo::new(chip_name, &elf)?;
+    let target_info = TargetInfo::new(chip_name, elf)?;
 
     let probe = probe::open(opts)?;
 
@@ -70,21 +70,21 @@ fn run_target_program(elf_path: &Path, chip_name: &str, opts: &cli::Opts) -> any
         log::info!("success!");
     }
 
-    let canary = Canary::install(&mut sess, &target_info, &elf)?;
-    start_program(&mut sess, &elf)?;
+    let canary = Canary::install(&mut sess, &target_info, elf)?;
+    start_program(&mut sess, elf)?;
 
     let sess = Arc::new(Mutex::new(sess));
     let current_dir = &env::current_dir()?;
 
-    let halted_due_to_signal = extract_and_print_logs(&mut elf, &sess, opts, current_dir)?;
+    let halted_due_to_signal = extract_and_print_logs(elf, &sess, opts, current_dir)?;
+
+    print_separator();
 
     let mut sess = sess.lock().unwrap();
     let mut core = sess.core(0)?;
 
-    print_separator();
-
     let canary_touched = canary
-        .map(|canary| canary.touched(&mut core, &elf))
+        .map(|canary| canary.touched(&mut core, elf))
         .transpose()?
         .unwrap_or(false);
     let backtrace_settings = backtrace::Settings {
@@ -119,6 +119,7 @@ fn start_program(sess: &mut Session, elf: &Elf) -> Result<(), anyhow::Error> {
             log::warn!("device doesn't support HW breakpoints; HardFault will NOT make `probe-run` exit with an error code");
         }
     }
+
     if let Some(rtt) = elf.rtt_buffer_address() {
         let main = elf.main_function_address();
         core.set_hw_breakpoint(main)?;
@@ -130,25 +131,27 @@ fn start_program(sess: &mut Session, elf: &Elf) -> Result<(), anyhow::Error> {
         core.write_word_32(rtt + OFFSET, FLAG)?;
         core.clear_hw_breakpoint(main)?;
     }
+
     core.set_hw_breakpoint(cortexm::clear_thumb_bit(elf.vector_table.hard_fault))?;
     core.run()?;
+
     Ok(())
 }
 
 fn extract_and_print_logs(
-    elf: &mut Elf,
+    elf: &Elf,
     sess: &Arc<Mutex<Session>>,
     opts: &cli::Opts,
     current_dir: &Path,
 ) -> Result<bool, anyhow::Error> {
     let exit = Arc::new(AtomicBool::new(false));
-    let sigid = signal_hook::flag::register(signal::SIGINT, exit.clone())?;
+    let sig_id = signal_hook::flag::register(signal::SIGINT, exit.clone())?;
 
     let mut logging_channel = setup_logging_channel(elf.rtt_buffer_address(), sess.clone())?;
 
     let use_defmt = logging_channel
         .as_ref()
-        .map_or(false, |ch| ch.name() == Some("defmt"));
+        .map_or(false, |channel| channel.name() == Some("defmt"));
 
     if use_defmt && opts.no_flash {
         bail!(
@@ -156,10 +159,6 @@ fn extract_and_print_logs(
         );
     } else if use_defmt && elf.defmt_table.is_none() {
         bail!("\"defmt\" RTT channel is in use, but the firmware binary contains no defmt data");
-    }
-
-    if !use_defmt {
-        elf.defmt_table = None;
     }
 
     print_separator();
@@ -180,21 +179,23 @@ fn extract_and_print_logs(
             };
 
             if num_bytes_read != 0 {
-                if let Some(table) = elf.defmt_table.as_ref() {
-                    defmt_buffer.extend_from_slice(&read_buf[..num_bytes_read]);
+                match &elf.defmt_table {
+                    Some(table) if use_defmt => {
+                        defmt_buffer.extend_from_slice(&read_buf[..num_bytes_read]);
 
-                    if let Some(value) = decode_and_print_defmt_logs(
-                        &mut defmt_buffer,
-                        table,
-                        elf,
-                        current_dir,
-                        opts,
-                    ) {
-                        return value;
+                        decode_and_print_defmt_logs(
+                            &mut defmt_buffer,
+                            table,
+                            elf,
+                            current_dir,
+                            opts,
+                        )?;
                     }
-                } else {
-                    stdout.write_all(&read_buf[..num_bytes_read])?;
-                    stdout.flush()?;
+
+                    _ => {
+                        stdout.write_all(&read_buf[..num_bytes_read])?;
+                        stdout.flush()?;
+                    }
                 }
             }
         }
@@ -211,7 +212,7 @@ fn extract_and_print_logs(
 
     drop(stdout);
 
-    signal_hook::low_level::unregister(sigid);
+    signal_hook::low_level::unregister(sig_id);
     signal_hook::flag::register_conditional_default(signal::SIGINT, exit.clone())?;
 
     // Ctrl-C was pressed; stop the microcontroller.
@@ -233,51 +234,57 @@ fn decode_and_print_defmt_logs(
     elf: &Elf,
     current_dir: &Path,
     opts: &cli::Opts,
-) -> Option<Result<bool, anyhow::Error>> {
+) -> Result<(), anyhow::Error> {
     loop {
         match table.decode(&defmt_buffer) {
             Ok((frame, consumed)) => {
-                // NOTE(`[]` indexing) all indices in `table` have already been
-                // verified to exist in the `locs` map
-                let loc = elf
+                // NOTE(`[]` indexing) all indices in `table` have already been verified to exist in
+                // the `locations` map
+                let location = elf
                     .defmt_locations
                     .as_ref()
-                    .map(|locs| &locs[&frame.index()]);
+                    .map(|locations| &locations[&frame.index()]);
 
-                let (mut file, mut line, mut mod_path) = (None, None, None);
-                if let Some(loc) = loc {
-                    let path = if let Ok(relpath) = loc.file.strip_prefix(&current_dir) {
-                        relpath.display().to_string()
-                    } else {
-                        let dep_path = dep::Path::from_std_path(&loc.file);
-
-                        if opts.shorten_paths {
-                            dep_path.format_short()
+                let (file, line, mod_path) = location
+                    .map(|location| {
+                        let path = if let Ok(relpath) = location.file.strip_prefix(&current_dir) {
+                            relpath.display().to_string()
                         } else {
-                            dep_path.format_highlight()
-                        }
-                    };
+                            let dep_path = dep::Path::from_std_path(&location.file);
 
-                    file = Some(path);
-                    line = Some(loc.line as u32);
-                    mod_path = Some(loc.module.clone());
-                }
+                            if opts.shorten_paths {
+                                dep_path.format_short()
+                            } else {
+                                dep_path.format_highlight()
+                            }
+                        };
+
+                        (
+                            Some(path),
+                            Some(location.line as u32),
+                            Some(&*location.module),
+                        )
+                    })
+                    .unwrap_or((None, None, None));
 
                 // Forward the defmt frame to our logger.
-                defmt_decoder::log::log_defmt(&frame, file.as_deref(), line, mod_path.as_deref());
+                defmt_decoder::log::log_defmt(&frame, file.as_deref(), line, mod_path);
 
                 let num_frames = defmt_buffer.len();
                 defmt_buffer.rotate_left(consumed);
                 defmt_buffer.truncate(num_frames - consumed);
             }
+
             Err(defmt_decoder::DecodeError::UnexpectedEof) => break,
+
             Err(defmt_decoder::DecodeError::Malformed) => {
                 log::error!("failed to decode defmt data: {:x?}", defmt_buffer);
-                return Some(Err(defmt_decoder::DecodeError::Malformed.into()));
+                return Err(defmt_decoder::DecodeError::Malformed.into());
             }
         }
     }
-    None
+
+    Ok(())
 }
 
 fn setup_logging_channel(
