@@ -3,7 +3,8 @@ use std::{collections::HashSet, convert::TryInto, env, ops::Deref};
 use anyhow::{anyhow, bail};
 use defmt_decoder::{Locations, Table};
 use object::{
-    read::File as ObjectFile, Object, ObjectSection, ObjectSegment, ObjectSymbol, SymbolSection,
+    read::File as ObjectFile, Object as _, ObjectSection as _, ObjectSegment as _,
+    ObjectSymbol as _, SymbolSection,
 };
 
 use crate::cortexm;
@@ -43,12 +44,12 @@ impl<'file> Elf<'file> {
         })
     }
 
-    pub(crate) fn main_function_address(&self) -> u32 {
-        self.symbols.main_function_address
+    pub(crate) fn main_fn_address(&self) -> u32 {
+        self.symbols.main_fn_address
     }
 
-    pub(crate) fn target_program_uses_heap(&self) -> bool {
-        self.symbols.target_program_uses_heap
+    pub(crate) fn program_uses_heap(&self) -> bool {
+        self.symbols.program_uses_heap
     }
 
     pub(crate) fn rtt_buffer_address(&self) -> Option<u32> {
@@ -172,14 +173,14 @@ fn extract_debug_frame<'file>(elf: &ObjectFile<'file>) -> anyhow::Result<DebugFr
 
 struct Symbols {
     rtt_buffer_address: Option<u32>,
-    target_program_uses_heap: bool,
-    main_function_address: u32,
+    program_uses_heap: bool,
+    main_fn_address: u32,
 }
 
 fn extract_symbols(elf: &ObjectFile) -> anyhow::Result<Symbols> {
     let mut rtt_buffer_address = None;
-    let mut target_program_uses_heap = false;
-    let mut main_function_address = None;
+    let mut program_uses_heap = false;
+    let mut main_fn_address = None;
 
     for symbol in elf.symbols() {
         let name = match symbol.name() {
@@ -189,24 +190,22 @@ fn extract_symbols(elf: &ObjectFile) -> anyhow::Result<Symbols> {
 
         let address = symbol.address().try_into().expect("expected 32-bit ELF");
         match name {
-            "main" => main_function_address = Some(cortexm::clear_thumb_bit(address)),
+            "main" => main_fn_address = Some(cortexm::clear_thumb_bit(address)),
             "_SEGGER_RTT" => rtt_buffer_address = Some(address),
-            "__rust_alloc" | "__rg_alloc" | "__rdl_alloc" | "malloc"
-                if !target_program_uses_heap =>
-            {
+            "__rust_alloc" | "__rg_alloc" | "__rdl_alloc" | "malloc" if !program_uses_heap => {
                 log::debug!("symbol `{}` indicates heap is in use", name);
-                target_program_uses_heap = true;
+                program_uses_heap = true;
             }
             _ => {}
         }
     }
 
     let main_function_address =
-        main_function_address.ok_or_else(|| anyhow!("`main` symbol not found"))?;
+        main_fn_address.ok_or_else(|| anyhow!("`main` symbol not found"))?;
 
     Ok(Symbols {
         rtt_buffer_address,
-        target_program_uses_heap,
-        main_function_address,
+        program_uses_heap,
+        main_fn_address: main_function_address,
     })
 }

@@ -57,7 +57,7 @@ impl Canary {
             let standard_memory_layout =
                 highest_static_var_address < elf.vector_table.initial_stack_pointer;
 
-            if !elf.target_program_uses_heap() && standard_memory_layout {
+            if !elf.program_uses_heap() && standard_memory_layout {
                 let stack_available =
                     elf.vector_table.initial_stack_pointer - highest_static_var_address - 1;
 

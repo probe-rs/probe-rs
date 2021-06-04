@@ -122,7 +122,7 @@ fn start_program(sess: &mut Session, elf: &Elf) -> Result<(), anyhow::Error> {
     }
 
     if let Some(rtt) = elf.rtt_buffer_address() {
-        let main = elf.main_function_address();
+        let main = elf.main_fn_address();
         core.set_hw_breakpoint(main)?;
         core.run()?;
         core.wait_for_core_halted(Duration::from_secs(5))?;
