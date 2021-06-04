@@ -7,21 +7,21 @@ use crate::elf::Elf;
 pub(crate) struct TargetInfo {
     pub(crate) probe_target: probe_rs::Target,
     pub(crate) active_ram_region: Option<RamRegion>,
-    pub(crate) highest_ram_addr_in_use: Option<u32>, // todo maybe merge
+    pub(crate) highest_ram_address_in_use: Option<u32>, // todo maybe merge
 }
 
 impl TargetInfo {
     pub(crate) fn new(chip: &str, elf: &Elf) -> anyhow::Result<Self> {
-        let target = probe_rs::config::registry::get_target_by_name(chip)?;
+        let probe_target = probe_rs::config::registry::get_target_by_name(chip)?;
         let active_ram_region =
-            extract_active_ram_region(&target, elf.vector_table.initial_stack_pointer);
-        let highest_ram_addr_in_use =
-            extract_highest_ram_addr_in_use(elf, active_ram_region.as_ref());
+            extract_active_ram_region(&probe_target, elf.vector_table.initial_stack_pointer);
+        let highest_ram_address_in_use =
+            extract_highest_ram_address_in_use(elf, active_ram_region.as_ref());
 
         Ok(Self {
-            probe_target: target,
+            probe_target,
             active_ram_region,
-            highest_ram_addr_in_use,
+            highest_ram_address_in_use,
         })
     }
 }
@@ -50,7 +50,7 @@ fn extract_active_ram_region(
         .cloned()
 }
 
-fn extract_highest_ram_addr_in_use(
+fn extract_highest_ram_address_in_use(
     elf: &object::read::File,
     active_ram_region: Option<&RamRegion>,
 ) -> Option<u32> {

@@ -52,14 +52,14 @@ pub(crate) fn place(
         // Decide if and where to place the stack canary.
         if let (Some(ram), Some(highest_ram_addr_in_use)) = (
             &target_info.active_ram_region,
-            target_info.highest_ram_addr_in_use,
+            target_info.highest_ram_address_in_use,
         ) {
             // Initial SP must be past canary location.
             let initial_sp_makes_sense = ram
                 .range
                 .contains(&(elf.vector_table.initial_stack_pointer - 1))
                 && highest_ram_addr_in_use < elf.vector_table.initial_stack_pointer;
-            if target_info.highest_ram_addr_in_use.is_some()
+            if target_info.highest_ram_address_in_use.is_some()
                 && !elf.target_program_uses_heap()
                 && initial_sp_makes_sense
             {
