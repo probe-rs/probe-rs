@@ -30,12 +30,12 @@ const CANARY_VALUE: u8 = 0xAA;
 /// The whole canary is initialized to `CANARY_VALUE` before the target program is started.
 /// The canary size is 10% of the available stack space or 1 KiB, whichever is smallest.
 ///
-/// When the programs ends (due to panic or breakpoint) the integrity canary is checked. If it was
+/// When the programs ends (due to panic or breakpoint) the integrity of the canary is checked. If it was
 /// "touched" (any of its bytes != `CANARY_VALUE`) then that is considered to be a *potential* stack
-/// overflow
+/// overflow.
 ///
 /// The canary is not installed if the program memory layout is "inverted" (stack is *below* the
-/// static variables)
+/// static variables).
 #[derive(Clone, Copy)]
 pub(crate) struct Canary {
     address: u32,

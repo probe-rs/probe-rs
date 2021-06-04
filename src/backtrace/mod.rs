@@ -78,7 +78,7 @@ impl Outcome {
     }
 }
 
-/// convert outomce into an exit code
+/// Converts `Outcome` to an exit code.
 impl From<Outcome> for i32 {
     fn from(outcome: Outcome) -> i32 {
         match outcome {
