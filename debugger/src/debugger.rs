@@ -881,14 +881,11 @@ impl Debugger {
                     "FLASHING: Starting write of {:?} to device memory",
                     &path_to_elf
                 ));
-                let download_options = DownloadOptions {
-                    progress: None,
-                    keep_unwritten_bytes: self.debugger_options.restore_unwritten_bytes,
-                    dry_run: false,
-                    skip_erase: false,
-                    do_chip_erase: self.debugger_options.full_chip_erase,
-                    verify: false,
-                };
+
+                let download_options = DownloadOptions::new()
+                    .keep_unwritten_bytes(self.debugger_options.restore_unwritten_bytes)
+                    .do_chip_erase(self.debugger_options.full_chip_erase);
+
                 match download_file_with_options(
                     &mut session_data.session,
                     path_to_elf,
