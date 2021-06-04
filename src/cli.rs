@@ -98,7 +98,7 @@ pub(crate) fn handle_arguments() -> anyhow::Result<i32> {
         print_version();
         Ok(EXIT_SUCCESS)
     } else if opts.list_probes {
-        probe::print(Probe::list_all());
+        probe::print(&Probe::list_all());
         Ok(EXIT_SUCCESS)
     } else if opts.list_chips {
         print_chips();

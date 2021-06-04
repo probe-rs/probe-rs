@@ -1,4 +1,4 @@
-use object::{Object, ObjectSection};
+use object::{Object, ObjectSection as _};
 use probe_rs::config::{MemoryRegion, RamRegion};
 use std::convert::TryInto;
 

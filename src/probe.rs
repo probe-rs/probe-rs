@@ -21,7 +21,7 @@ pub(crate) fn open(opts: &cli::Opts) -> Result<Probe, anyhow::Error> {
     log::debug!("found {} probes", filtered_probes.len());
 
     if filtered_probes.len() > 1 {
-        print(filtered_probes);
+        print(&filtered_probes);
         bail!("more than one probe found; use --probe to specify which one to use");
     }
 
@@ -35,7 +35,7 @@ pub(crate) fn open(opts: &cli::Opts) -> Result<Probe, anyhow::Error> {
     Ok(probe)
 }
 
-pub(crate) fn print(probes: Vec<DebugProbeInfo>) {
+pub(crate) fn print(probes: &[DebugProbeInfo]) {
     if !probes.is_empty() {
         println!("The following devices were found:");
         probes
