@@ -1,12 +1,7 @@
-use std::{
-    collections::{BTreeMap, HashSet},
-    convert::TryInto,
-    env,
-    ops::Deref,
-};
+use std::{collections::HashSet, convert::TryInto, env, ops::Deref};
 
 use anyhow::{anyhow, bail};
-use defmt_decoder::{Location, Table};
+use defmt_decoder::{Locations, Table};
 use object::{
     read::File as ObjectFile, Object, ObjectSection, ObjectSegment, ObjectSymbol, SymbolSection,
 };
@@ -100,8 +95,6 @@ fn extract_live_functions<'file>(elf: &ObjectFile<'file>) -> anyhow::Result<Hash
 
     Ok(live_functions)
 }
-
-type Locations = BTreeMap<u64, Location>;
 
 fn extract_defmt_info(elf_bytes: &[u8]) -> anyhow::Result<(Option<Table>, Option<Locations>)> {
     let defmt_table = match env::var("PROBE_RUN_IGNORE_VERSION").as_deref() {

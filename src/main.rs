@@ -21,6 +21,7 @@ use std::{
 
 use anyhow::{anyhow, bail};
 use colored::Colorize as _;
+use defmt_decoder::Locations;
 use probe_rs::{
     flashing::{self, Format},
     MemoryInterface as _, Session,
@@ -147,7 +148,12 @@ fn extract_and_print_logs(
     let exit = Arc::new(AtomicBool::new(false));
     let sig_id = signal_hook::flag::register(signal::SIGINT, exit.clone())?;
 
-    let mut logging_channel = setup_logging_channel(elf.rtt_buffer_address(), sess.clone())?;
+    let mut logging_channel = if let Some(address) = elf.rtt_buffer_address() {
+        Some(setup_logging_channel(address, sess.clone())?)
+    } else {
+        eprintln!("RTT logs not available; blocking until the device halts..");
+        None
+    };
 
     let use_defmt = logging_channel
         .as_ref()
@@ -186,7 +192,7 @@ fn extract_and_print_logs(
                         decode_and_print_defmt_logs(
                             &mut defmt_buffer,
                             table,
-                            elf,
+                            elf.defmt_locations.as_ref(),
                             current_dir,
                             opts,
                         )?;
@@ -229,23 +235,19 @@ fn extract_and_print_logs(
 }
 
 fn decode_and_print_defmt_logs(
-    defmt_buffer: &mut Vec<u8>,
+    buffer: &mut Vec<u8>,
     table: &defmt_decoder::Table,
-    elf: &Elf,
+    locations: Option<&Locations>,
     current_dir: &Path,
     opts: &cli::Opts,
 ) -> Result<(), anyhow::Error> {
     loop {
-        match table.decode(&defmt_buffer) {
+        match table.decode(&buffer) {
             Ok((frame, consumed)) => {
                 // NOTE(`[]` indexing) all indices in `table` have already been verified to exist in
                 // the `locations` map
-                let location = elf
-                    .defmt_locations
-                    .as_ref()
-                    .map(|locations| &locations[&frame.index()]);
-
-                let (file, line, mod_path) = location
+                let (file, line, mod_path) = locations
+                    .map(|locations| &locations[&frame.index()])
                     .map(|location| {
                         let path = if let Ok(relpath) = location.file.strip_prefix(&current_dir) {
                             relpath.display().to_string()
@@ -270,15 +272,15 @@ fn decode_and_print_defmt_logs(
                 // Forward the defmt frame to our logger.
                 defmt_decoder::log::log_defmt(&frame, file.as_deref(), line, mod_path);
 
-                let num_frames = defmt_buffer.len();
-                defmt_buffer.rotate_left(consumed);
-                defmt_buffer.truncate(num_frames - consumed);
+                let num_bytes = buffer.len();
+                buffer.rotate_left(consumed);
+                buffer.truncate(num_bytes - consumed);
             }
 
             Err(defmt_decoder::DecodeError::UnexpectedEof) => break,
 
             Err(defmt_decoder::DecodeError::Malformed) => {
-                log::error!("failed to decode defmt data: {:x?}", defmt_buffer);
+                log::error!("failed to decode defmt data: {:x?}", buffer);
                 return Err(defmt_decoder::DecodeError::Malformed.into());
             }
         }
@@ -288,45 +290,37 @@ fn decode_and_print_defmt_logs(
 }
 
 fn setup_logging_channel(
-    rtt_buffer_address: Option<u32>,
+    rtt_buffer_address: u32,
     sess: Arc<Mutex<Session>>,
-) -> anyhow::Result<Option<UpChannel>> {
-    if let Some(rtt_buffer_address) = rtt_buffer_address {
-        const NUM_RETRIES: usize = 10; // picked at random, increase if necessary
-        let mut rtt_res: Result<Rtt, probe_rs_rtt::Error> =
-            Err(probe_rs_rtt::Error::ControlBlockNotFound);
+) -> anyhow::Result<UpChannel> {
+    const NUM_RETRIES: usize = 10; // picked at random, increase if necessary
 
-        for try_index in 0..=NUM_RETRIES {
-            rtt_res = Rtt::attach_region(sess.clone(), &ScanRegion::Exact(rtt_buffer_address));
-            match rtt_res {
-                Ok(_) => {
-                    log::debug!("Successfully attached RTT");
-                    break;
-                }
-                Err(probe_rs_rtt::Error::ControlBlockNotFound) => {
-                    if try_index < NUM_RETRIES {
-                        log::trace!("Could not attach because the target's RTT control block isn't initialized (yet). retrying");
-                    } else {
-                        log::error!("Max number of RTT attach retries exceeded.");
-                        return Err(anyhow!(probe_rs_rtt::Error::ControlBlockNotFound));
-                    }
-                }
-                Err(e) => {
-                    return Err(anyhow!(e));
-                }
+    let scan_region = ScanRegion::Exact(rtt_buffer_address);
+    for _ in 0..NUM_RETRIES {
+        match Rtt::attach_region(sess.clone(), &scan_region) {
+            Ok(mut rtt) => {
+                log::debug!("Successfully attached RTT");
+
+                let channel = rtt
+                    .up_channels()
+                    .take(0)
+                    .ok_or_else(|| anyhow!("RTT up channel 0 not found"))?;
+
+                return Ok(channel);
+            }
+
+            Err(probe_rs_rtt::Error::ControlBlockNotFound) => {
+                log::trace!("Could not attach because the target's RTT control block isn't initialized (yet). retrying");
+            }
+
+            Err(e) => {
+                return Err(anyhow!(e));
             }
         }
-
-        let channel = rtt_res
-            .expect("unreachable") // this block is only executed when rtt was successfully attached before
-            .up_channels()
-            .take(0)
-            .ok_or_else(|| anyhow!("RTT up channel 0 not found"))?;
-        Ok(Some(channel))
-    } else {
-        eprintln!("RTT logs not available; blocking until the device halts..");
-        Ok(None)
     }
+
+    log::error!("Max number of RTT attach retries exceeded.");
+    Err(anyhow!(probe_rs_rtt::Error::ControlBlockNotFound))
 }
 
 /// Print a line to separate different execution stages.
