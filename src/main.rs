@@ -23,12 +23,12 @@ use anyhow::{anyhow, bail};
 use colored::Colorize as _;
 use probe_rs::{
     flashing::{self, Format},
-    Session,
+    MemoryInterface as _, Session,
 };
 use probe_rs_rtt::{Rtt, ScanRegion, UpChannel};
 use signal_hook::consts::signal;
 
-use crate::{elf::Elf, target_info::TargetInfo};
+use crate::{canary::Canary, elf::Elf, target_info::TargetInfo};
 
 const SIGABRT: i32 = 134;
 const TIMEOUT: Duration = Duration::from_secs(1);
@@ -70,7 +70,9 @@ fn run_target_program(elf_path: &Path, chip_name: &str, opts: &cli::Opts) -> any
         log::info!("success!");
     }
 
-    let canary = canary::place(&mut sess, &target_info, &elf)?;
+    let canary = Canary::install(&mut sess, &target_info, &elf)?;
+    start_program(&mut sess, &elf)?;
+
     let sess = Arc::new(Mutex::new(sess));
     let current_dir = &env::current_dir()?;
 
@@ -81,11 +83,13 @@ fn run_target_program(elf_path: &Path, chip_name: &str, opts: &cli::Opts) -> any
 
     print_separator();
 
-    let canary_touched = canary::touched(canary, &mut core, &elf)?;
+    let canary_touched = canary
+        .map(|canary| canary.touched(&mut core, &elf))
+        .transpose()?
+        .unwrap_or(false);
     let backtrace_settings = backtrace::Settings {
         current_dir,
         max_backtrace_len: opts.max_backtrace_len,
-        // TODO any other cases in which we should force a backtrace?
         force_backtrace: opts.force_backtrace || canary_touched || halted_due_to_signal,
         shorten_paths: opts.shorten_paths,
     };
@@ -102,6 +106,33 @@ fn run_target_program(elf_path: &Path, chip_name: &str, opts: &cli::Opts) -> any
     outcome.log();
 
     Ok(outcome.into())
+}
+
+fn start_program(sess: &mut Session, elf: &Elf) -> Result<(), anyhow::Error> {
+    let mut core = sess.core(0)?;
+
+    log::debug!("starting device");
+    if core.get_available_breakpoint_units()? == 0 {
+        if elf.rtt_buffer_address().is_some() {
+            bail!("RTT not supported on device without HW breakpoints");
+        } else {
+            log::warn!("device doesn't support HW breakpoints; HardFault will NOT make `probe-run` exit with an error code");
+        }
+    }
+    if let Some(rtt) = elf.rtt_buffer_address() {
+        let main = elf.main_function_address();
+        core.set_hw_breakpoint(main)?;
+        core.run()?;
+        core.wait_for_core_halted(Duration::from_secs(5))?;
+
+        const OFFSET: u32 = 44;
+        const FLAG: u32 = 2; // BLOCK_IF_FULL
+        core.write_word_32(rtt + OFFSET, FLAG)?;
+        core.clear_hw_breakpoint(main)?;
+    }
+    core.set_hw_breakpoint(cortexm::clear_thumb_bit(elf.vector_table.hard_fault))?;
+    core.run()?;
+    Ok(())
 }
 
 fn extract_and_print_logs(

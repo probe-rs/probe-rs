@@ -6,8 +6,10 @@ use crate::elf::Elf;
 
 pub(crate) struct TargetInfo {
     pub(crate) probe_target: probe_rs::Target,
+    /// RAM region that contains the call stack
     pub(crate) active_ram_region: Option<RamRegion>,
-    pub(crate) highest_ram_address_in_use: Option<u32>, // todo maybe merge
+    /// Only `Some` if static variables are located in the `active_ram_region`
+    pub(crate) highest_static_var_address: Option<u32>,
 }
 
 impl TargetInfo {
@@ -15,13 +17,13 @@ impl TargetInfo {
         let probe_target = probe_rs::config::registry::get_target_by_name(chip)?;
         let active_ram_region =
             extract_active_ram_region(&probe_target, elf.vector_table.initial_stack_pointer);
-        let highest_ram_address_in_use =
-            extract_highest_ram_address_in_use(elf, active_ram_region.as_ref());
+        let highest_static_var_address =
+            extract_highest_static_var_address(elf, active_ram_region.as_ref());
 
         Ok(Self {
             probe_target,
             active_ram_region,
-            highest_ram_address_in_use,
+            highest_static_var_address,
         })
     }
 }
@@ -33,7 +35,7 @@ fn extract_active_ram_region(
     target
         .memory_map
         .iter()
-        .filter_map(|region| match region {
+        .find_map(|region| match region {
             MemoryRegion::Ram(ram_region) => {
                 // NOTE stack is full descending; meaning the stack pointer can be
                 // `ORIGIN(RAM) + LENGTH(RAM)`
@@ -46,11 +48,10 @@ fn extract_active_ram_region(
             }
             _ => None,
         })
-        .next()
         .cloned()
 }
 
-fn extract_highest_ram_address_in_use(
+fn extract_highest_static_var_address(
     elf: &object::read::File,
     active_ram_region: Option<&RamRegion>,
 ) -> Option<u32> {
