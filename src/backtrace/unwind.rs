@@ -1,16 +1,15 @@
 //! unwind target's program
 
 use anyhow::{anyhow, Context as _};
-use gimli::{
-    BaseAddresses, DebugFrame, LittleEndian, UninitializedUnwindContext, UnwindSection as _,
-};
+use gimli::{BaseAddresses, DebugFrame, UninitializedUnwindContext, UnwindSection as _};
 use probe_rs::{config::RamRegion, Core};
 
 use crate::{
+    backtrace::Outcome,
     cortexm,
+    elf::Elf,
     registers::{self, Registers},
     stacked::Stacked,
-    Outcome, VectorTable,
 };
 
 fn missing_debug_info(pc: u32) -> String {
@@ -25,12 +24,7 @@ fn missing_debug_info(pc: u32) -> String {
 ///
 /// This returns as much info as could be collected, even if the collection is interrupted by an error.
 /// If an error occurred during processing, it is stored in `Output::processing_error`.
-pub(crate) fn target(
-    core: &mut Core,
-    debug_frame: &[u8],
-    vector_table: &VectorTable,
-    sp_ram_region: &Option<RamRegion>,
-) -> Output {
+pub(crate) fn target(core: &mut Core, elf: &Elf, active_ram_region: &Option<RamRegion>) -> Output {
     let mut output = Output {
         corrupted: true,
         outcome: Outcome::Ok,
@@ -51,9 +45,6 @@ pub(crate) fn target(
         };
     }
 
-    let mut debug_frame = DebugFrame::new(debug_frame, LittleEndian);
-    debug_frame.set_address_size(cortexm::ADDRESS_SIZE);
-
     let mut pc = unwrap_or_return_output!(core.read_core_reg(registers::PC));
     let sp = unwrap_or_return_output!(core.read_core_reg(registers::SP));
     let lr = unwrap_or_return_output!(core.read_core_reg(registers::LR));
@@ -62,13 +53,16 @@ pub(crate) fn target(
     let mut registers = Registers::new(lr, sp, core);
 
     loop {
-        if let Some(outcome) = check_hard_fault(pc, vector_table, &mut output, sp, sp_ram_region) {
+        if let Some(outcome) =
+            check_hard_fault(pc, &elf.vector_table, &mut output, sp, active_ram_region)
+        {
             output.outcome = outcome;
         }
 
         output.raw_frames.push(RawFrame::Subroutine { pc });
 
-        let uwt_row = unwrap_or_return_output!(debug_frame
+        let uwt_row = unwrap_or_return_output!(elf
+            .debug_frame
             .unwind_info_for_address(
                 &base_addresses,
                 &mut unwind_context,
@@ -112,7 +106,7 @@ pub(crate) fn target(
             let fpu = lr & cortexm::EXC_RETURN_FTYPE_MASK == 0;
 
             let sp = unwrap_or_return_output!(registers.get(registers::SP));
-            let ram_bounds = sp_ram_region
+            let ram_bounds = active_ram_region
                 .as_ref()
                 .map(|ram_region| ram_region.range.clone())
                 .unwrap_or(cortexm::VALID_RAM_ADDRESS);
@@ -148,7 +142,7 @@ pub(crate) fn target(
 
 fn check_hard_fault(
     pc: u32,
-    vector_table: &VectorTable,
+    vector_table: &cortexm::VectorTable,
     output: &mut Output,
     sp: u32,
     sp_ram_region: &Option<RamRegion>,
@@ -192,11 +186,11 @@ impl RawFrame {
     }
 }
 
-fn overflowed_stack(sp: u32, sp_ram_region: &Option<RamRegion>) -> bool {
-    if let Some(sp_ram_region) = sp_ram_region {
+fn overflowed_stack(sp: u32, active_ram_region: &Option<RamRegion>) -> bool {
+    if let Some(active_ram_region) = active_ram_region {
         // NOTE stack is full descending; meaning the stack pointer can be
         // `ORIGIN(RAM) + LENGTH(RAM)`
-        let range = sp_ram_region.range.start..=sp_ram_region.range.end;
+        let range = active_ram_region.range.start..=active_ram_region.range.end;
         !range.contains(&sp)
     } else {
         log::warn!("no RAM region appears to contain the stack; cannot determine if this was a stack overflow");

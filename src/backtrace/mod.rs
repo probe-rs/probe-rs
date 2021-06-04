@@ -1,9 +1,8 @@
-use std::{collections::HashSet, path::Path};
+use std::path::Path;
 
-use object::read::File as ElfFile;
 use probe_rs::{config::RamRegion, Core};
 
-use crate::{Outcome, VectorTable};
+use crate::elf::Elf;
 
 mod pp;
 mod symbolicate;
@@ -19,21 +18,13 @@ pub(crate) struct Settings<'p> {
 /// (virtually) unwinds the target's program and prints its backtrace
 pub(crate) fn print(
     core: &mut Core,
-    debug_frame: &[u8],
-    elf: &ElfFile,
-    vector_table: &VectorTable,
-    sp_ram_region: &Option<RamRegion>,
-    live_functions: &HashSet<&str>,
+    elf: &Elf,
+    active_ram_region: &Option<RamRegion>,
     settings: &Settings,
 ) -> anyhow::Result<Outcome> {
-    let unwind = unwind::target(core, debug_frame, vector_table, sp_ram_region);
+    let unwind = unwind::target(core, elf, active_ram_region);
 
-    let frames = symbolicate::frames(
-        &unwind.raw_frames,
-        live_functions,
-        settings.current_dir,
-        elf,
-    );
+    let frames = symbolicate::frames(&unwind.raw_frames, settings.current_dir, elf);
 
     let contains_exception = unwind
         .raw_frames
@@ -61,4 +52,38 @@ pub(crate) fn print(
     }
 
     Ok(unwind.outcome)
+}
+
+/// Target program outcome
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) enum Outcome {
+    HardFault,
+    Ok,
+    StackOverflow,
+}
+
+impl Outcome {
+    pub(crate) fn log(&self) {
+        match self {
+            Outcome::StackOverflow => {
+                log::error!("the program has overflowed its stack");
+            }
+            Outcome::HardFault => {
+                log::error!("the program panicked");
+            }
+            Outcome::Ok => {
+                log::info!("device halted without error");
+            }
+        }
+    }
+}
+
+/// Converts `Outcome` to an exit code.
+impl From<Outcome> for i32 {
+    fn from(outcome: Outcome) -> i32 {
+        match outcome {
+            Outcome::HardFault | Outcome::StackOverflow => crate::SIGABRT,
+            Outcome::Ok => 0,
+        }
+    }
 }

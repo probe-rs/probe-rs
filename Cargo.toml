@@ -14,7 +14,6 @@ version = "0.2.3"
 addr2line = "0.14.1"
 ansi_term = "0.12.1"
 anyhow = "1.0.40"
-arrayref = "0.3.6"
 colored = "2.0.0"
 defmt-decoder = { version = "=0.2.1", features = ['unstable'] }
 difference = "2.0.0"
