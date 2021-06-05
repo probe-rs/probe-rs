@@ -155,7 +155,7 @@ impl<'progress> DownloadOptions<'progress> {
         self
     }
 
-    /// If the chip was pre-erased with external erasers, this flag can set to true to skip erasing
+    /// If the chip was pre-erased with external erasers, this flag can be set to true to skip erasing
     /// It may be useful for mass production.
     pub fn skip_erase(mut self, skip_erase: bool) -> Self {
         self.skip_erase = skip_erase;
