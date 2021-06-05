@@ -154,6 +154,13 @@ impl<'progress> DownloadOptions<'progress> {
         self.do_chip_erase = do_chip_erase;
         self
     }
+
+    /// If the chip was pre-erased with external erasers, this flag can be set to true to skip erasing
+    /// It may be useful for mass production.
+    pub fn skip_erase(mut self, skip_erase: bool) -> Self {
+        self.skip_erase = skip_erase;
+        self
+    }
 }
 
 /// Downloads a file of given `format` at `path` to the flash of the target given in `session`.
