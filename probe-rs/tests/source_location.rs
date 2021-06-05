@@ -80,7 +80,7 @@ fn source_location() {
             Some(SourceLocation {
                 line: Some(*line),
                 column: Some(*col),
-                directory: Some(PathBuf::from("examples")),
+                directory: Some(PathBuf::from("/home/dominik/Coding/microbit/examples")),
                 file: Some(file.to_owned()),
             }),
             di.get_source_location(*addr)

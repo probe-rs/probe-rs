@@ -25,7 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Additional datatype support for the debugger, plus easier to read display values (#631)
 - Added support for raw DAP register reads and writes (#669).
 - Added support for verify after flashing. (#671).
-
+- Handle inlined functions when getting a stack trace (#678).
 
 ### Target Support
 

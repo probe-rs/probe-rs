@@ -5,7 +5,10 @@ use crate::DebuggerError;
 use anyhow::{anyhow, Result};
 use dap_types::*;
 use parse_int::parse;
-use probe_rs::{debug::VariableKind, CoreStatus, HaltReason, MemoryInterface};
+use probe_rs::{
+    debug::{ColumnType, VariableKind},
+    CoreStatus, HaltReason, MemoryInterface,
+};
 use rustyline::Editor;
 use serde::{de::DeserializeOwned, Serialize};
 use serde_json::json;
@@ -629,41 +632,49 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                     self.send_response(&request, Ok(Some(body)))
                 }
                 DebugAdapterType::DapClient => {
-                    let frame_list: Vec<StackFrame> = current_stackframes
+                    let mut frame_list: Vec<StackFrame> = current_stackframes
                         .map(|frame| {
-                            use probe_rs::debug::ColumnType::*;
                             let column = frame
                                 .source_location
                                 .as_ref()
-                                .and_then(|sl| {
-                                    sl.column.map(|col| match col {
-                                        LeftEdge => 0,
-                                        Column(c) => c,
-                                    })
+                                .and_then(|sl| sl.column)
+                                .map(|col| match col {
+                                    ColumnType::LeftEdge => 0,
+                                    ColumnType::Column(c) => c,
                                 })
                                 .unwrap_or(0);
 
-                            let sl = frame.source_location.as_ref().unwrap();
+                            let source = if let Some(source_location) = &frame.source_location {
+                                let path: Option<PathBuf> =
+                                    source_location.directory.as_ref().map(|path| {
+                                        let mut path = if path.is_relative() {
+                                            std::env::current_dir().unwrap().join(path)
+                                        } else {
+                                            path.to_owned()
+                                        };
 
-                            let mut path: PathBuf = sl.directory.as_ref().unwrap().into();
+                                        if let Some(file) = &source_location.file {
+                                            path.push(file);
+                                        }
 
-                            if path.is_relative() {
-                                path = std::env::current_dir().unwrap().join(path);
-                            }
+                                        path
+                                    });
 
-                            path.push(sl.file.as_ref().unwrap());
-
-                            //TODO: Consider implementing RTIC's expanded source access. Might also do a general macro expansion if that makes sense.
-                            let source = Some(Source {
-                                name: Some(sl.file.clone().unwrap()),
-                                path: path.to_str().map(|s| s.to_owned()),
-                                source_reference: None,
-                                presentation_hint: None,
-                                origin: None,
-                                sources: None,
-                                adapter_data: None,
-                                checksums: None,
-                            });
+                                //TODO: Consider implementing RTIC's expanded source access. Might also do a general macro expansion if that makes sense.
+                                Some(Source {
+                                    name: source_location.file.clone(),
+                                    path: path.map(|p| p.to_string_lossy().to_string()),
+                                    source_reference: None,
+                                    presentation_hint: None,
+                                    origin: None,
+                                    sources: None,
+                                    adapter_data: None,
+                                    checksums: None,
+                                })
+                            } else {
+                                log::debug!("No source location present for frame!");
+                                None
+                            };
 
                             let line = frame
                                 .source_location
@@ -739,8 +750,8 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                                 line: Some(line),
                                 column: frame.source_location.as_ref().and_then(|l| {
                                     l.column.map(|c| match c {
-                                        LeftEdge => 0,
-                                        Column(c) => c as i64,
+                                        ColumnType::LeftEdge => 0,
+                                        ColumnType::Column(c) => c as i64,
                                     })
                                 }),
                                 end_column: None,
@@ -773,6 +784,25 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                             }
                         })
                         .collect();
+
+                    // If we get an empty stack frame list,
+                    // add a frame so that something is visible in the
+                    // debugger.
+                    if frame_list.is_empty() {
+                        frame_list.push(StackFrame {
+                            can_restart: None,
+                            column: 0,
+                            end_column: None,
+                            end_line: None,
+                            id: pc as i64,
+                            instruction_pointer_reference: None,
+                            line: 0,
+                            module_id: None,
+                            name: format!("<unknown function @ {:#010x}>", pc),
+                            presentation_hint: None,
+                            source: None,
+                        })
+                    }
 
                     let frame_len = frame_list.len();
 
