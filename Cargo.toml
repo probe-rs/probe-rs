@@ -19,6 +19,7 @@ defmt-decoder = { version = "=0.2.1", features = ['unstable'] }
 difference = "2.0.0"
 either = "1.6.1"
 gimli = "0.23.0"
+git-version = "0.3.4"
 hidapi = "1.2.6"
 log = "0.4.14"
 # an addr2line trait is implement for a type in this particular version
