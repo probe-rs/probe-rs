@@ -432,19 +432,13 @@ fn main_try() -> Result<()> {
                 multi_progress.join().unwrap();
             });
 
-            download_file_with_options(
-                &mut session,
-                &path,
-                Format::Elf,
-                DownloadOptions {
-                    progress: Some(&progress),
-                    keep_unwritten_bytes: config.flashing.restore_unwritten_bytes,
-                    do_chip_erase: config.flashing.do_chip_erase,
-                    dry_run: false,
-                    skip_erase: false,
-                },
-            )
-            .with_context(|| format!("failed to flash {}", path.display()))?;
+            let options = DownloadOptions::new()
+                .with_progress_report(&progress)
+                .keep_unwritten_bytes(config.flashing.restore_unwritten_bytes)
+                .do_chip_erase(config.flashing.do_chip_erase);
+
+            download_file_with_options(&mut session, &path, Format::Elf, options)
+                .with_context(|| format!("failed to flash {}", path.display()))?;
 
             // We don't care if we cannot join this thread.
             let _ = progress_thread_handle.join();
@@ -457,13 +451,9 @@ fn main_try() -> Result<()> {
                 &mut session,
                 &path,
                 Format::Elf,
-                DownloadOptions {
-                    progress: None,
-                    keep_unwritten_bytes: config.flashing.restore_unwritten_bytes,
-                    do_chip_erase: config.flashing.do_chip_erase,
-                    dry_run: false,
-                    skip_erase: false,
-                },
+                DownloadOptions::new()
+                    .do_chip_erase(config.flashing.do_chip_erase)
+                    .keep_unwritten_bytes(config.flashing.restore_unwritten_bytes),
             )
             .with_context(|| format!("failed to flash {}", path.display()))?;
         }
