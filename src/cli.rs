@@ -3,10 +3,8 @@ use std::path::PathBuf;
 use defmt_decoder::DEFMT_VERSION;
 use git_version::git_version;
 use log::Level;
-use probe_rs::config::registry;
-use probe_rs::Probe;
-use structopt::clap::AppSettings;
-use structopt::StructOpt;
+use probe_rs::{config::registry, Probe};
+use structopt::{clap::AppSettings, StructOpt};
 
 use crate::probe;
 
