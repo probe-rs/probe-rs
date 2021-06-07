@@ -41,6 +41,11 @@ fn extract_active_ram_region(
                 // `ORIGIN(RAM) + LENGTH(RAM)`
                 let inclusive_range = ram_region.range.start..=ram_region.range.end;
                 if inclusive_range.contains(&initial_stack_pointer) {
+                    log::debug!(
+                        "RAM region: 0x{:08X}-0x{:08X}",
+                        ram_region.range.start,
+                        ram_region.range.end - 1
+                    );
                     Some(ram_region)
                 } else {
                     None
