@@ -166,7 +166,7 @@ mod tests {
 
     #[test]
     fn should_extract_empty_from_fallback() {
-        let hash = extract_git_hash("---");
+        let hash = extract_git_hash("--");
         assert_eq!(hash, "")
     }
 }
