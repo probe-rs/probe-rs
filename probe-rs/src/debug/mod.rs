@@ -1245,7 +1245,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                 gimli::DW_AT_decl_line => {
                     child_variable.line = extract_line(&self.debug_info, attr.value()).unwrap_or(0);
                 }
-                gimli::DW_AT_decl_column => {} //Unused
+                gimli::DW_AT_decl_column => {}     //Unused
                 gimli::DW_AT_containing_type => {} //TODO: Resolve Traits
                 gimli::DW_AT_type => {
                     match attr.value() {
