@@ -26,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added support for raw DAP register reads and writes (#669).
 - Added support for verify after flashing. (#671).
 - Handle inlined functions when getting a stack trace (#678).
+- Added 'Statics' (static variables) to the stackframe scopes. These are now visible in VSCode between 'Locals' and 'Registers'. This includes some additional datatypes and DWARF expression evaluation capabilities.
 
 ### Target Support
 
@@ -102,6 +103,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fix crash on unknown AP class. (#662).
 - Fix too many chip erases in chips with multiple NvmRegions. (#670).
 - Added missing `skip_erase` setter function introduced in #677 (#679).
+- Fixed incorrect subrange `upper_bound` because of signed vs. unsigned data read
 
 
 ## [0.10.1]

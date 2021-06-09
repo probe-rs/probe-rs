@@ -229,10 +229,10 @@ impl Variable {
             self.inclusion = VariableInclusion::Include;
             if child_variable.inclusion == VariableInclusion::Include {
                 //Check to see if this child already exists - We need to do this, because cargo's `codegen-units` sometimes spread and/or repeat namespace children between them
-                if let Some(existing_child) = children
-                    .iter_mut()
-                    .find(|current_child| current_child.name == child_variable.name)
-                {
+                if let Some(existing_child) = children.iter_mut().find(|current_child| {
+                    current_child.name == child_variable.name
+                        && current_child.type_name == child_variable.type_name
+                }) {
                     //Just add the children (if there are any) from the new child to the existing child
                     if let Some(new_children) = child_variable.children.clone() {
                         for mut new_child in new_children {
