@@ -4,7 +4,7 @@ use thousands::Separable;
 use super::*;
 use std::{convert::TryInto, fmt};
 
-/// VariableKind is a tag used to differentiate the nature of a variable. The DAP protocol requires a differentiation between 'Named' and 'Indexed'. We've added 'Referenced', because those require unique handling when decoding the value during runtime.
+/// VariableKind is a tag used to differentiate the nature of a variable. The DAP protocol requires a differentiation between 'Named' and 'Indexed'. We've added some flags to control when variables require unique handling or decoding the value during runtimeprocessing.
 #[derive(Debug, Clone, PartialEq)]
 pub enum VariableKind {
     /// An Indexed variable (bound to an ordinal position), such as the sequenced members of an Array or Vector
@@ -13,12 +13,28 @@ pub enum VariableKind {
     Named,
     /// A variable that is the target of a pointer variable
     Referenced,
-    /// This should never be the final value for a Variable
-    Undefined,
+    /// As the default, his should never be the final value for a Variable
+    Undetermined,
 }
 impl Default for VariableKind {
     fn default() -> Self {
-        VariableKind::Undefined
+        VariableKind::Undetermined
+    }
+}
+
+/// VariableInclusion is a tag used to control when a variable should be included in the final result tree, or if it is simply an artifact of decoding the DWARF structure
+#[derive(Debug, Clone, PartialEq)]
+pub enum VariableInclusion {
+    /// Exclude nodes that are encountered as 'structural' during the evaluation of other variables. e.g. DW_AT_artificial
+    Exclude,
+    /// When a variable is set to Include, all parents in the tree will be included also
+    Include,
+    /// As the default, this should never be the final value for a Variable
+    Undetermined,
+}
+impl Default for VariableInclusion {
+    fn default() -> Self {
+        VariableInclusion::Undetermined
     }
 }
 
@@ -57,6 +73,7 @@ pub struct Variable {
     pub(crate) range_upper_bound: i64,
     pub kind: VariableKind,
     pub role: VariantRole,
+    pub(crate) inclusion: VariableInclusion,
     pub children: Option<Vec<Variable>>,
 }
 
@@ -89,6 +106,13 @@ impl Variable {
 
     /// Evaluate the variable's result if possible and set self.value, or else set self.value as the error String.
     pub fn extract_value(&mut self, core: &mut Core<'_>) {
+        //Since extract_value is called very late in the decoding process, we can defer setting of the VariableKind until this point
+        if self.name.len() >= 2 && &self.name[0..2] == "__" {
+            self.kind = VariableKind::Indexed
+        } else {
+            self.kind = VariableKind::Named
+        }
+        //Quick exit if we don't really need to do much more
         if self.memory_location == u64::MAX// the value was set by get_location(), so just leave it as is
         || !self.value.is_empty()// the value was set elsewhere in this library - probably because of an error - so just leave it as is
         || self.memory_location.is_zero()
@@ -96,7 +120,9 @@ impl Variable {
         {
             return;
         }
+        //This is the primary logic for decoding a variable's value, once we know the type and memory_location
         let string_value = match self.type_name.as_str() {
+            "!" => "<Never returns>".to_string(),
             "()" => "()".to_string(),
             "bool" => bool::get_value(self, core)
                 .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
@@ -185,23 +211,39 @@ impl Variable {
     }
 
     /// Instead of just pushing to Variable.children, do some intelligent selection/addition of new Variables.
-    /// Primarily this is to force late-as-possible(before parent) call of `extract_value()` on child variables
+    /// Primarily this is to force late-as-possible(before parent) call of `extract_value()` on child variables, and to determine which of the processed DWARF nodes are included in the final variable tree
     pub fn add_child_variable(&mut self, child_variable: &mut Variable, core: &mut Core<'_>) {
-        let children: &mut Vec<Variable> = match &mut self.children {
-            Some(children) => children,
-            None => {
-                //Just-in-Time creation of Vec for children
-                self.children = Some(vec![]);
-                self.children.as_mut().unwrap()
+        if !(child_variable.inclusion == VariableInclusion::Undetermined
+            || child_variable.inclusion == VariableInclusion::Exclude)
+        {
+            //Just-in-Time creation of Vec to store the children
+            let children: &mut Vec<Variable> = match &mut self.children {
+                Some(children) => children,
+                None => {
+                    self.children = Some(vec![]);
+                    self.children.as_mut().unwrap()
+                }
+            };
+            child_variable.extract_value(core); //Warning, child_variable's VariableInclusion might have changed after this line
+                                                //Ensure parent inclusion setting honours the child inclusion
+            self.inclusion = VariableInclusion::Include;
+            if child_variable.inclusion == VariableInclusion::Include {
+                //Check to see if this child already exists - We need to do this, because cargo's `codegen-units` sometimes spread and/or repeat namespace children between them
+                if let Some(existing_child) = children
+                    .iter_mut()
+                    .find(|current_child| current_child.name == child_variable.name)
+                {
+                    //Just add the children (if there are any) from the new child to the existing child
+                    if let Some(new_children) = child_variable.children.clone() {
+                        for mut new_child in new_children {
+                            existing_child.add_child_variable(&mut new_child, core);
+                        }
+                    }
+                } else {
+                    children.push(child_variable.clone());
+                }
             }
-        };
-        if self.name.len() >= 2 && &self.name[0..2] == "__" {
-            self.kind = VariableKind::Indexed
-        } else {
-            self.kind = VariableKind::Named
         }
-        child_variable.extract_value(core);
-        children.push(child_variable.clone());
     }
 }
 
@@ -230,6 +272,7 @@ impl fmt::Display for Variable {
                     write!(f, "]")
                 } else {
                     //Generic handling of other structured types
+                    //TODO: This is 'ok' for most, but could benefit from some custom formatting, e.g. Unions
                     if self.kind == VariableKind::Named {
                         write!(f, "{}:{{", self.name)?;
                     } else {
@@ -288,16 +331,28 @@ impl Value for String {
                     .find(|child_variable| child_variable.name == *"data_ptr")
                 {
                     Some(location_value) => {
-                        location_value.children.unwrap_or_default()[0].memory_location as u32
+                        if let Some(child_variables) = location_value.children {
+                            if let Some(first_child) = child_variables.first() {
+                                first_child.memory_location as u32
+                            } else {
+                                0_u32
+                            }
+                        } else {
+                            0_u32
+                        }
                     }
                     None => 0_u32,
                 };
-                let mut buff = vec![0u8; string_length];
-                core.read_8(string_location as u32, &mut buff)?;
-                str_value = core::str::from_utf8(&buff)?.to_owned();
+                if string_location.is_zero() {
+                    str_value = "ERROR: Failed to determine &str memory location".to_string();
+                } else {
+                    let mut buff = vec![0u8; string_length];
+                    core.read_8(string_location as u32, &mut buff)?;
+                    str_value = core::str::from_utf8(&buff)?.to_owned();
+                }
             }
             None => {
-                str_value = "ERROR: Failed to evaluate &str value".to_owned();
+                str_value = "ERROR: Failed to evaluate &str value".to_string();
             }
         };
         Ok(str_value)
