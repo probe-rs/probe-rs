@@ -1,10 +1,10 @@
 use std::path::PathBuf;
 
+use defmt_decoder::DEFMT_VERSION;
+use git_version::git_version;
 use log::Level;
-use probe_rs::config::registry;
-use probe_rs::Probe;
-use structopt::clap::AppSettings;
-use structopt::StructOpt;
+use probe_rs::{config::registry, Probe};
+use structopt::{clap::AppSettings, StructOpt};
 
 use crate::probe;
 
@@ -122,12 +122,51 @@ fn print_chips() {
 
 /// The string reported by the `--version` flag
 fn print_version() {
-    const VERSION: &str = env!("CARGO_PKG_VERSION"); // version from Cargo.toml e.g. "0.1.4"
-    const HASH: &str = include_str!(concat!(env!("OUT_DIR"), "/git-info.txt")); // "" OR git hash e.g. "34019f8" -- this is generated in build.rs
+    /// Version from `Cargo.toml` e.g. `"0.1.4"`
+    const VERSION: &str = env!("CARGO_PKG_VERSION");
+
+    /// `""` OR git hash e.g. `"34019f8"`
+    ///
+    /// `git describe`-docs:
+    /// > The command finds the most recent tag that is reachable from a commit. (...)
+    /// It suffixes the tag name with the number of additional commits on top of the tagged object
+    /// and the abbreviated object name of the most recent commit.
+    //
+    // The `fallback` is `"--"`, cause this will result in "" after `fn extract_git_hash`.
+    const GIT_DESCRIBE: &str = git_version!(fallback = "--", args = ["--long"]);
+    // Extract the "abbreviated object name"
+    let hash = extract_git_hash(GIT_DESCRIBE);
+
     println!(
-        "{}{}\nsupported defmt version: {}",
-        VERSION,
-        HASH,
-        defmt_decoder::DEFMT_VERSION
+        "{} {}\nsupported defmt version: {}",
+        VERSION, hash, DEFMT_VERSION
     );
+}
+
+/// Extract git hash from a `git describe` statement
+fn extract_git_hash(git_describe: &str) -> &str {
+    git_describe.split("-").nth(2).unwrap()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn should_extract_hash_from_description() {
+        let hash = extract_git_hash("v0.2.3-12-g25c50d2");
+        assert_eq!(hash, "g25c50d2")
+    }
+
+    #[test]
+    fn should_extract_hash_from_modified_description() {
+        let hash = extract_git_hash("v0.2.3-12-g25c50d2-modified");
+        assert_eq!(hash, "g25c50d2")
+    }
+
+    #[test]
+    fn should_extract_empty_from_fallback() {
+        let hash = extract_git_hash("--");
+        assert_eq!(hash, "")
+    }
 }
