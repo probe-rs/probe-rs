@@ -103,7 +103,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fix crash on unknown AP class. (#662).
 - Fix too many chip erases in chips with multiple NvmRegions. (#670).
 - Added missing `skip_erase` setter function introduced in #677 (#679).
-- Fixed incorrect subrange `upper_bound` because of signed vs. unsigned data read  (#683)
+- Fixed incorrect array size calculation  (#683)
 
 
 ## [0.10.1]

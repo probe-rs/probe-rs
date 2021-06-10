@@ -107,7 +107,7 @@ impl Variable {
     /// Evaluate the variable's result if possible and set self.value, or else set self.value as the error String.
     pub fn extract_value(&mut self, core: &mut Core<'_>) {
         //Since extract_value is called very late in the decoding process, we can defer setting of the VariableKind until this point
-        if self.name.len() >= 2 && &self.name[0..2] == "__" {
+        if self.name.starts_with("__") {
             self.kind = VariableKind::Indexed
         } else {
             self.kind = VariableKind::Named
