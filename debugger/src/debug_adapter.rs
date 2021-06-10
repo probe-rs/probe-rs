@@ -619,12 +619,25 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
         };
 
         if let Some(debug_info) = core_data.debug_info.as_ref() {
-            let current_stackframes =
-                debug_info.try_unwind(&mut core_data.target_core, u64::from(pc));
+            //Evaluate the static scoped variables.
+            let static_variables = match debug_info.get_stack_statics(
+                &mut core_data.target_core,
+                u64::from(pc)) {
+                Ok(static_variables) => static_variables,
+                Err(err) => {
+                    let mut error_variable = probe_rs::debug::Variable::new();
+                    error_variable.name = "ERROR".to_string();
+                    error_variable.set_value(format!("Failed to retrieve static variables: {:?}", err));
+                    vec![error_variable]
+                }
+            };
 
             //Store the static variables for later calls to `variables()` to retrieve
             let (static_scope_reference, named_static_variables_cnt, indexed_static_variables_cnt) =
-                self.create_variable_map(&current_stackframes.get_static_variables());
+                self.create_variable_map(&static_variables);
+
+            let current_stackframes =
+                debug_info.try_unwind(&mut core_data.target_core, u64::from(pc));
 
             match self.adapter_type {
                 DebugAdapterType::CommandLine => {
@@ -1058,7 +1071,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
         self.variable_map_key_seq
     }
 
-    /// recurse through each variable and add children with parent reference to sef.variables_map
+    /// recurse through each variable and add children with parent reference to self.variables_map
     /// returns a tuple containing the parent's  (variables_map_key, named_child_variables_cnt, indexed_child_variables_cnt)
     fn create_variable_map(&mut self, variables: &[probe_rs::debug::Variable]) -> (i64, i64, i64) {
         let mut named_child_variables_cnt = 0;

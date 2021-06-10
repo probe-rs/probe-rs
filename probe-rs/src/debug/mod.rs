@@ -211,7 +211,6 @@ pub struct StackFrameIterator<'debuginfo, 'probe, 'core> {
     pc: Option<u64>,
     registers: Registers,
     inlining_state: InlineFunctionState,
-    static_variables: Vec<Variable>,
 }
 
 impl<'debuginfo, 'probe, 'core> StackFrameIterator<'debuginfo, 'probe, 'core> {
@@ -222,16 +221,6 @@ impl<'debuginfo, 'probe, 'core> StackFrameIterator<'debuginfo, 'probe, 'core> {
     ) -> Self {
         let registers = Registers::from_core(core);
         let pc = address;
-        //Evaluate the static scoped variables.
-        let static_variables = match debug_info.get_stack_statics(core, pc) {
-            Ok(static_variables) => static_variables,
-            Err(err) => {
-                let mut error_variable = Variable::new();
-                error_variable.name = "ERROR".to_string();
-                error_variable.set_value(format!("Failed to retrieve static variables: {:?}", err));
-                vec![error_variable]
-            }
-        };
         Self {
             debug_info,
             core,
@@ -239,11 +228,7 @@ impl<'debuginfo, 'probe, 'core> StackFrameIterator<'debuginfo, 'probe, 'core> {
             pc: Some(pc),
             registers,
             inlining_state: InlineFunctionState::NoInlining,
-            static_variables,
         }
-    }
-    pub fn get_static_variables(&self) -> Vec<Variable> {
-        self.static_variables.clone()
     }
 }
 
@@ -704,24 +689,6 @@ impl DebugInfo {
                     0,
                     program_counter,
                 )?;
-
-                // let mut unit_child_nodes = unit_node.children();
-                // while let Some(mut namespace_node) = unit_child_nodes.next()? {
-                //     if namespace_node.entry().tag() == gimli::DW_TAG_namespace {
-                //         let namespace_name = if let Ok(Some(attr)) = namespace_node.entry().attr(gimli::DW_AT_name) {
-                //             extract_name(self, attr.value())
-                //         } else {"<unknown namespace>".to_string()};
-                //         let mut namespace_children_nodes = namespace_node.children();
-                //         while let Some(mut namespace_child_node) = namespace_children_nodes.next()? {
-                //             if namespace_child_node.entry().tag() == gimli::DW_TAG_variable {
-                //                 if let Ok(Some(attr)) = namespace_child_node.entry().attr(gimli::DW_AT_name) {
-                //                     let variable_name = extract_name(self, attr.value());
-                //                     println!("{}::{}", namespace_name, variable_name);
-                //                 }
-                //             }
-                //         }
-                //     }
-                // }
             }
         }
         match static_root_variable.children {
