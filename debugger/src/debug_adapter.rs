@@ -620,17 +620,17 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
 
         if let Some(debug_info) = core_data.debug_info.as_ref() {
             //Evaluate the static scoped variables.
-            let static_variables = match debug_info.get_stack_statics(
-                &mut core_data.target_core,
-                u64::from(pc)) {
-                Ok(static_variables) => static_variables,
-                Err(err) => {
-                    let mut error_variable = probe_rs::debug::Variable::new();
-                    error_variable.name = "ERROR".to_string();
-                    error_variable.set_value(format!("Failed to retrieve static variables: {:?}", err));
-                    vec![error_variable]
-                }
-            };
+            let static_variables =
+                match debug_info.get_stack_statics(&mut core_data.target_core, u64::from(pc)) {
+                    Ok(static_variables) => static_variables,
+                    Err(err) => {
+                        let mut error_variable = probe_rs::debug::Variable::new();
+                        error_variable.name = "ERROR".to_string();
+                        error_variable
+                            .set_value(format!("Failed to retrieve static variables: {:?}", err));
+                        vec![error_variable]
+                    }
+                };
 
             //Store the static variables for later calls to `variables()` to retrieve
             let (static_scope_reference, named_static_variables_cnt, indexed_static_variables_cnt) =
