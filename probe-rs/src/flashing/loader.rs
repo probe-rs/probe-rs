@@ -278,13 +278,8 @@ impl FlashLoader {
             log::debug!("Flashing ranges for algo: {}", algo_name);
 
             // This can't fail, algo_name comes from the target.
-            let algo = session
-                .target()
-                .flash_algorithms
-                .iter()
-                .find(|a| a.name == algo_name)
-                .unwrap()
-                .clone();
+            let algo = session.target().flash_algorithm_by_name(&algo_name);
+            let algo = algo.unwrap().clone();
 
             let mut flasher = Flasher::new(session, &algo)?;
 
@@ -381,7 +376,7 @@ impl FlashLoader {
     /// Try to find a flash algorithm for the given NvmRegion.
     /// Errors if there's no algo for the region.
     /// Errors if there's multiple algos for the region and none is marked as default.
-    fn get_flash_algorithm_for_region<'a>(
+    pub(crate) fn get_flash_algorithm_for_region<'a>(
         region: &NvmRegion,
         target: &'a Target,
     ) -> Result<&'a RawFlashAlgorithm, FlashError> {
