@@ -7,7 +7,7 @@ use debugger::CliState;
 
 use probe_rs::{
     debug::DebugInfo,
-    flashing::{download_file, Format},
+    flashing::{download_file, erase_all, Format},
     MemoryInterface, Probe, Session, WireProtocol,
 };
 
@@ -107,6 +107,12 @@ enum Cli {
         /// The path to the file to be downloaded to the flash
         path: String,
     },
+    /// Erase all nonvolatile memory of attached target
+    #[structopt(name = "erase")]
+    Erase {
+        #[structopt(flatten)]
+        shared: SharedOptions,
+    },
     #[structopt(name = "trace")]
     Trace {
         #[structopt(flatten)]
@@ -158,6 +164,7 @@ fn main() -> Result<()> {
             format,
             path,
         } => download_program_fast(&shared, format.into(), &path),
+        Cli::Erase { shared } => erase(&shared),
         Cli::Trace { shared, loc } => trace_u32_on_target(&shared, loc),
     }
 }
@@ -211,6 +218,14 @@ fn dump_memory(shared_options: &SharedOptions, loc: u32, words: u32) -> Result<(
 fn download_program_fast(shared_options: &SharedOptions, format: Format, path: &str) -> Result<()> {
     with_device(shared_options, |mut session| {
         download_file(&mut session, &path, format)?;
+
+        Ok(())
+    })
+}
+
+fn erase(shared_options: &SharedOptions) -> Result<()> {
+    with_device(shared_options, |mut session| {
+        erase_all(&mut session)?;
 
         Ok(())
     })

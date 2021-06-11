@@ -26,6 +26,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added support for raw DAP register reads and writes (#669).
 - Added support for verify after flashing. (#671).
 - Handle inlined functions when getting a stack trace (#678).
+- Added a function to mass erase all memory. (#672).
+
 
 ### Target Support
 
