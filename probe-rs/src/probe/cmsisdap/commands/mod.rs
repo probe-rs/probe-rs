@@ -11,9 +11,8 @@ use std::time::Duration;
 
 use anyhow::{anyhow, Context, Result};
 use log::log_enabled;
-use thiserror::Error;
 
-#[derive(Debug, Error)]
+#[derive(Debug, thiserror::Error)]
 pub enum CmsisDapError {
     #[error("Unexpected answer to command")]
     UnexpectedAnswer,

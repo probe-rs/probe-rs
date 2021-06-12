@@ -21,7 +21,6 @@ use crate::{
 use constants::{commands, JTagFrequencyToDivider, Mode, Status, SwdFrequencyToDelayCount};
 use scroll::{Pread, Pwrite, BE, LE};
 use std::{cmp::Ordering, convert::TryInto, time::Duration};
-use thiserror::Error;
 use usb_interface::TIMEOUT;
 
 /// Maximum length of 32 bit reads in bytes.
@@ -1087,7 +1086,7 @@ impl<D: StLinkUsb> SwoAccess for StLink<D> {
     }
 }
 
-#[derive(Error, Debug)]
+#[derive(thiserror::Error, Debug)]
 pub(crate) enum StlinkError {
     #[error("Invalid voltage values returned by probe.")]
     VoltageDivisionByZero,

@@ -5,11 +5,9 @@ use probe_rs::{
     DebugProbeError, Error, Probe, Session,
 };
 
-use thiserror::Error;
-
 use anyhow::Result;
 
-#[derive(Debug, Error)]
+#[derive(Debug, thiserror::Error)]
 pub enum CliError {
     #[error(transparent)]
     DebugProbe(#[from] DebugProbeError),

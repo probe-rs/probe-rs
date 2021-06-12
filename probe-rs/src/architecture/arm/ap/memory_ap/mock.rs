@@ -6,7 +6,6 @@ use crate::{
 };
 use std::collections::HashMap;
 use std::convert::TryInto;
-use thiserror::Error;
 
 #[derive(Debug)]
 pub struct MockMemoryAp {
@@ -14,7 +13,7 @@ pub struct MockMemoryAp {
     store: HashMap<(u8, u8), u32>,
 }
 
-#[derive(Debug, Error)]
+#[derive(Debug, thiserror::Error)]
 pub enum MockMemoryError {
     #[error("Unknown register width")]
     UnknownWidth,

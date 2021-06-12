@@ -14,9 +14,8 @@ use probe_rs::flashing::FileDownloadError;
 use probe_rs::{DebugProbeError, Error};
 use structopt::clap::{crate_authors, crate_description, crate_name, crate_version};
 use structopt::StructOpt;
-use thiserror::Error;
 
-#[derive(Debug, Error)]
+#[derive(Debug, thiserror::Error)]
 pub enum DebuggerError {
     #[error(transparent)]
     AccessPort(#[from] AccessPortError),
