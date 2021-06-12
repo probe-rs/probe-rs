@@ -47,6 +47,7 @@
 
 mod builder;
 mod download;
+mod erase;
 mod error;
 mod flash_algorithm;
 mod flasher;
@@ -58,6 +59,7 @@ use builder::*;
 use flasher::*;
 
 pub use download::*;
+pub use erase::*;
 pub use error::*;
 pub use flash_algorithm::*;
 pub use loader::*;

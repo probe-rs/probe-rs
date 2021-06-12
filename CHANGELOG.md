@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added support for verify after flashing. (#671).
 - Handle inlined functions when getting a stack trace (#678).
 - Added 'Statics' (static variables) to the stackframe scopes. These are now visible in VSCode between 'Locals' and 'Registers'. This includes some additional datatypes and DWARF expression evaluation capabilities. (#683)
+- Added a function to mass erase all memory. (#672).
 
 ### Target Support
 

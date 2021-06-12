@@ -73,6 +73,11 @@ impl Target {
     pub fn flash_loader(&self) -> FlashLoader {
         FlashLoader::new(self.memory_map.clone(), self.source.clone())
     }
+
+    /// Gets a [RawFlashAlgorithm] by name.
+    pub(crate) fn flash_algorithm_by_name(&self, name: &str) -> Option<&RawFlashAlgorithm> {
+        self.flash_algorithms.iter().find(|a| &a.name == name)
+    }
 }
 
 /// Selector for the debug target.

@@ -1,0 +1,75 @@
+use std::collections::HashMap;
+
+use probe_rs_target::{MemoryRange, MemoryRegion, NvmRegion};
+
+use crate::flashing::{flasher::Flasher, FlashError, FlashLoader};
+use crate::Session;
+
+/// Mass-erase all nonvolatile memory.
+pub fn erase_all(session: &mut Session) -> Result<(), FlashError> {
+    log::debug!("Erasing all...");
+
+    let mut algos: HashMap<String, Vec<NvmRegion>> = HashMap::new();
+    log::debug!("Regions:");
+    for region in &session.target().memory_map {
+        if let MemoryRegion::Nvm(region) = region {
+            log::debug!(
+                "    region: {:08x}-{:08x} ({} bytes)",
+                region.range.start,
+                region.range.end,
+                region.range.end - region.range.start
+            );
+
+            let algo = FlashLoader::get_flash_algorithm_for_region(region, session.target())?;
+
+            let entry = algos.entry(algo.name.clone()).or_default();
+            entry.push(region.clone());
+
+            log::debug!("     -- using algorithm: {}", algo.name);
+        }
+    }
+
+    for (algo_name, regions) in algos {
+        log::debug!("Erasing with algorithm: {}", algo_name);
+
+        // This can't fail, algo_name comes from the target.
+        let algo = session.target().flash_algorithm_by_name(&algo_name);
+        let algo = algo.unwrap().clone();
+
+        let mut flasher = Flasher::new(session, &algo)?;
+
+        if flasher.is_chip_erase_supported() {
+            log::debug!("     -- chip erase supported, doing it.");
+            flasher.run_erase(|active| active.erase_all())?;
+        } else {
+            log::debug!("     -- chip erase not supported, erasing by sector.");
+
+            // loop over all sectors erasing them individually instead.
+
+            let sectors = flasher
+                .flash_algorithm()
+                .iter_sectors()
+                .filter(|info| {
+                    let range = info.base_address..info.base_address + info.size;
+                    regions.iter().any(|r| r.range.contains_range(&range))
+                })
+                .collect::<Vec<_>>();
+
+            flasher.run_erase(|active| {
+                for info in sectors {
+                    log::debug!(
+                        "    sector: {:08x}-{:08x} ({} bytes)",
+                        info.base_address,
+                        info.base_address + info.size,
+                        info.size
+                    );
+
+                    active.erase_sector(info.base_address)?;
+                }
+                Ok(())
+            })?;
+        }
+    }
+
+    Ok(())
+}
