@@ -11,9 +11,7 @@ pub use dwt::Dwt;
 pub use itm::Itm;
 pub use tpiu::Tpiu;
 
-use thiserror::Error;
-
-#[derive(Error, Debug)]
+#[derive(thiserror::Error, Debug)]
 pub enum ComponentError {
     #[error("Nordic does not support TPIU CLK value of {0}")]
     NordicUnsupportedTPUICLKValue(u32),

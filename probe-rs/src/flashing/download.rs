@@ -8,8 +8,6 @@ use std::{fs::File, path::Path, str::FromStr};
 use super::*;
 use crate::{config::MemoryRange, session::Session};
 
-use thiserror::Error;
-
 /// Extended options for flashing a binary file.
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct BinOptions {
@@ -52,7 +50,7 @@ impl FromStr for Format {
 ///
 /// This includes corrupt file issues,
 /// OS permission issues as well as chip connectivity and memory boundary issues.
-#[derive(Debug, Error)]
+#[derive(Debug, thiserror::Error)]
 pub enum FileDownloadError {
     /// An error with the actual flashing procedure has occured.
     ///

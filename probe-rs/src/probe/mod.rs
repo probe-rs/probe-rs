@@ -25,7 +25,6 @@ use crate::{
 };
 use jlink::list_jlink_devices;
 use std::{convert::TryFrom, fmt};
-use thiserror::Error;
 
 /// Used to log warnings when the measured target voltage is
 /// lower than 1.4V, if at all measureable.
@@ -84,7 +83,7 @@ impl fmt::Display for BatchCommand {
     }
 }
 
-#[derive(Error, Debug)]
+#[derive(thiserror::Error, Debug)]
 pub enum DebugProbeError {
     #[error("USB Communication Error")]
     Usb(#[source] Option<Box<dyn std::error::Error + Send + Sync>>),
@@ -127,7 +126,7 @@ pub enum DebugProbeError {
     Other(#[from] anyhow::Error),
 }
 
-#[derive(Error, Debug)]
+#[derive(thiserror::Error, Debug)]
 pub enum ProbeCreationError {
     #[error("Probe was not found.")]
     NotFound,
@@ -582,7 +581,7 @@ impl DebugProbeInfo {
     }
 }
 
-#[derive(Error, Debug)]
+#[derive(thiserror::Error, Debug)]
 pub enum DebugProbeSelectorParseError {
     #[error("The VID or PID could not be parsed: {0}")]
     ParseInt(#[from] std::num::ParseIntError),

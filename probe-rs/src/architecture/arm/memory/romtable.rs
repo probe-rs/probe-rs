@@ -2,10 +2,9 @@ use super::AccessPortError;
 use crate::{Core, Error, Memory, MemoryInterface};
 use enum_primitive_derive::Primitive;
 use num_traits::cast::FromPrimitive;
-use thiserror::Error;
 
 /// An error to report any errors that are romtable discovery specific.
-#[derive(Error, Debug)]
+#[derive(thiserror::Error, Debug)]
 pub enum RomTableError {
     #[error("Component is not a valid romtable")]
     NotARomtable,

@@ -19,9 +19,8 @@ use std::{
     collections::HashMap,
     time::{Duration, Instant},
 };
-use thiserror::Error;
 
-#[derive(Error, Debug)]
+#[derive(thiserror::Error, Debug)]
 pub enum RiscvError {
     #[error("Error during read/write to the DMI register: {0:?}")]
     DmiTransfer(DmiOperationStatus),

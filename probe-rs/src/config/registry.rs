@@ -2,20 +2,17 @@
 
 use super::{Chip, ChipFamily, ChipInfo, Target, TargetDescriptionSource};
 use crate::config::CoreType;
-use lazy_static::lazy_static;
+use once_cell::sync::Lazy;
 use std::fs::File;
 use std::path::Path;
 use std::sync::{Arc, Mutex, TryLockError};
-use thiserror::Error;
 
-lazy_static! {
-    static ref REGISTRY: Arc<Mutex<Registry>> =
-        Arc::new(Mutex::new(Registry::from_builtin_families()));
-}
+static REGISTRY: Lazy<Arc<Mutex<Registry>>> =
+    Lazy::new(|| Arc::new(Mutex::new(Registry::from_builtin_families())));
 
 /// Error type for all errors which occur when working
 /// with the internal registry of targets.
-#[derive(Debug, Error)]
+#[derive(Debug, thiserror::Error)]
 pub enum RegistryError {
     /// The requested chip was not found in the registry.
     #[error("The requested chip '{0}' was not found in the list of known targets.")]

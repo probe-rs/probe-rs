@@ -76,7 +76,7 @@ impl Target {
 
     /// Gets a [RawFlashAlgorithm] by name.
     pub(crate) fn flash_algorithm_by_name(&self, name: &str) -> Option<&RawFlashAlgorithm> {
-        self.flash_algorithms.iter().find(|a| &a.name == name)
+        self.flash_algorithms.iter().find(|a| a.name == name)
     }
 }
 

@@ -2,13 +2,11 @@
 
 use std::ops::Range;
 
-use thiserror::Error;
-
 use crate::config::{NvmRegion, TargetDescriptionSource};
 use crate::error;
 
 /// Describes any error that happened during the or in preparation for the flashing procedure.
-#[derive(Error, Debug)]
+#[derive(thiserror::Error, Debug)]
 pub enum FlashError {
     #[error(
         "No flash memory contains the entire requested memory range {start:#010x}..{end:#10x}."

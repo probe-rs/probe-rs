@@ -7,9 +7,8 @@ use jep106::JEP106Code;
 
 use crate::DebugProbeError;
 use std::fmt::Display;
-use thiserror::Error;
 
-#[derive(Error, Debug)]
+#[derive(thiserror::Error, Debug)]
 pub enum DebugPortError {
     #[error("Register {register} not supported by debug port version {version}")]
     UnsupportedRegister {

@@ -8,7 +8,6 @@ use std::io::{self, ErrorKind, Read, Write};
 
 use std::ffi::CStr;
 use std::{mem, ptr};
-use thiserror::Error;
 
 /// The target interface
 pub enum Interface {
@@ -294,7 +293,7 @@ impl Write for Device {
 }
 
 #[non_exhaustive]
-#[derive(Debug, Error)]
+#[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("failed to enumerate devices to open the correct one")]
     EnumerationFailed,
@@ -338,7 +337,7 @@ impl From<io::Error> for Error {
 
 pub type Result<T> = std::result::Result<T, Error>;
 
-#[derive(Debug, Error)]
+#[derive(Debug, thiserror::Error)]
 #[error("libftdi: {message}")]
 pub struct LibFtdiError {
     message: &'static str,
