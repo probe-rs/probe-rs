@@ -24,8 +24,8 @@ use gimli::{
 };
 use log::{debug, error, info, warn};
 use object::read::{Object, ObjectSection};
-use thiserror::Error;
-#[derive(Debug, Error)]
+
+#[derive(Debug, thiserror::Error)]
 pub enum DebugError {
     #[error("IO Error while accessing debug data")]
     Io(#[from] io::Error),
@@ -890,7 +890,7 @@ impl DebugInfo {
                 .map(PathBuf::from);
 
             if let Some(comp_dir) = comp_dir {
-                combined_path = comp_dir.to_owned().join(&combined_path);
+                combined_path = comp_dir.join(&combined_path);
             }
         }
 
@@ -1007,44 +1007,41 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
         let mut entries_cursor = self.unit.entries();
 
         while let Ok(Some((_depth, current))) = entries_cursor.next_dfs() {
-            match current.tag() {
-                gimli::DW_TAG_subprogram => {
-                    let mut ranges = self
-                        .debug_info
-                        .dwarf
-                        .die_ranges(&self.unit, &current)
-                        .unwrap();
+            if current.tag() == gimli::DW_TAG_subprogram {
+                let mut ranges = self
+                    .debug_info
+                    .dwarf
+                    .die_ranges(&self.unit, &current)
+                    .unwrap();
 
-                    while let Ok(Some(ranges)) = ranges.next() {
-                        if (ranges.begin <= address) && (address < ranges.end) {
-                            // Check if we are actually in an inlined function
+                while let Ok(Some(ranges)) = ranges.next() {
+                    if (ranges.begin <= address) && (address < ranges.end) {
+                        // Check if we are actually in an inlined function
 
-                            if find_inlined {
-                                let die = FunctionDie::new(current.clone());
+                        if find_inlined {
+                            let die = FunctionDie::new(current.clone());
 
-                                log::debug!(
-                                    "Found DIE, now checking for inlined functions: name={:?}",
-                                    die.function_name(&self)
-                                );
+                            log::debug!(
+                                "Found DIE, now checking for inlined functions: name={:?}",
+                                die.function_name(&self)
+                            );
 
-                                return self
-                                    .find_inlined_function(address, current.offset())
-                                    .or_else(|| {
-                                        log::debug!("No inlined function found!");
-                                        Some(FunctionDie::new(current.clone()))
-                                    });
-                            } else {
-                                let die = FunctionDie::new(current.clone());
+                            return self
+                                .find_inlined_function(address, current.offset())
+                                .or_else(|| {
+                                    log::debug!("No inlined function found!");
+                                    Some(FunctionDie::new(current.clone()))
+                                });
+                        } else {
+                            let die = FunctionDie::new(current.clone());
 
-                                log::debug!("Found DIE: name={:?}", die.function_name(&self));
+                            log::debug!("Found DIE: name={:?}", die.function_name(&self));
 
-                                return Some(die);
-                            }
+                            return Some(die);
                         }
                     }
                 }
-                _ => (),
-            };
+            }
         }
         None
     }
@@ -1063,41 +1060,37 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                 break;
             }
 
-            match current.tag() {
-                gimli::DW_TAG_inlined_subroutine => {
-                    let mut ranges = self
-                        .debug_info
-                        .dwarf
-                        .die_ranges(&self.unit, &current)
-                        .unwrap();
+            if current.tag() == gimli::DW_TAG_inlined_subroutine {
+                let mut ranges = self
+                    .debug_info
+                    .dwarf
+                    .die_ranges(&self.unit, &current)
+                    .unwrap();
 
-                    while let Ok(Some(ranges)) = ranges.next() {
-                        if (ranges.begin <= address) && (address < ranges.end) {
-                            // Check if we are actually in an inlined function
+                while let Ok(Some(ranges)) = ranges.next() {
+                    if (ranges.begin <= address) && (address < ranges.end) {
+                        // Check if we are actually in an inlined function
 
-                            // Find the abstract definition
+                        // Find the abstract definition
 
-                            if let Some(abstract_origin) =
-                                current.attr(DW_AT_abstract_origin).unwrap()
-                            {
-                                match abstract_origin.value() {
-                                    gimli::AttributeValue::UnitRef(unit_ref) => {
-                                        let abstract_die = self.unit.entry(unit_ref).unwrap();
+                        if let Some(abstract_origin) = current.attr(DW_AT_abstract_origin).unwrap()
+                        {
+                            match abstract_origin.value() {
+                                gimli::AttributeValue::UnitRef(unit_ref) => {
+                                    let abstract_die = self.unit.entry(unit_ref).unwrap();
 
-                                        return Some(FunctionDie::new_inlined(
-                                            current.clone(),
-                                            abstract_die.clone(),
-                                        ));
-                                    }
-                                    other_value => panic!("Unsupported value: {:?}", other_value),
+                                    return Some(FunctionDie::new_inlined(
+                                        current.clone(),
+                                        abstract_die.clone(),
+                                    ));
                                 }
-                            } else {
-                                return None;
+                                other_value => panic!("Unsupported value: {:?}", other_value),
                             }
+                        } else {
+                            return None;
                         }
                     }
                 }
-                _ => (),
             }
         }
 

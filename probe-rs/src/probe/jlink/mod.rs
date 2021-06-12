@@ -1,7 +1,6 @@
 //! Support for J-Link Debug probes
 
 use jaylink::{Capability, Interface, JayLink, SpeedConfig, SwoMode};
-use thiserror::Error;
 
 use std::convert::{TryFrom, TryInto};
 use std::iter;
@@ -797,7 +796,7 @@ impl From<jaylink::Error> for DebugProbeError {
     }
 }
 
-#[derive(Debug, Error)]
+#[derive(Debug, thiserror::Error)]
 pub enum JlinkError {
     #[error("Unknown interface reported by J-Link: {0:?}")]
     UnknownInterface(jaylink::Interface),

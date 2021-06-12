@@ -15,9 +15,8 @@ use crate::{
 };
 use anyhow::anyhow;
 use jep106::JEP106Code;
-use thiserror::Error;
 
-#[derive(Debug, Error, Clone, PartialEq)]
+#[derive(Debug, thiserror::Error, Clone, PartialEq)]
 pub enum DapError {
     #[error("An error occured in the SWD communication between probe and device.")]
     SwdProtocol,

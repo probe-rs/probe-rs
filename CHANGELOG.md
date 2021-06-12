@@ -78,6 +78,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Print ST-Link version in name (#516).
 - Improve argument parsing in debugger, add speed option to probe-rs-cli (#523).
 - `probe_rs::flashing::DownloadOptions` is now marked `non_exhaustive`, to make it easier to add additional flags in the future.
+- Replace `lazy_static` with `once_cell::sync::Lazy` (#685).
   
 ### Fixed
 

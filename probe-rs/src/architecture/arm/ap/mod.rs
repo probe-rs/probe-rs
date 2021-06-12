@@ -12,9 +12,8 @@ pub use memory_ap::{
 };
 
 use super::Register;
-use thiserror::Error;
 
-#[derive(Debug, Error)]
+#[derive(Debug, thiserror::Error)]
 pub enum AccessPortError {
     #[error("Failed to access address 0x{address:08x} as it is not aligned to the requirement of {alignment} bytes.")]
     MemoryNotAligned { address: u32, alignment: usize },
