@@ -31,7 +31,7 @@ funty = "=1.1.0" # Temporary fix for https://github.com/bitvecto-rs/bitvec/issue
 gimli = { version = "0.24.0", default-features = false, features = ["endian-reader", "read", "std"] }
 hidapi = "1.2.0"
 ihex = "3.0.0"
-itm-decode = { version = "0.2.1", default-features = false }
+itm-decode = { version = "0.3.2", default-features = false }
 jaylink = "0.2.0"
 jep106 = "0.2.4"
 once_cell = "1.7.2"
