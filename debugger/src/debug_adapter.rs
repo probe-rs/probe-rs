@@ -619,13 +619,30 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
         };
 
         if let Some(debug_info) = core_data.debug_info.as_ref() {
+            //Evaluate the static scoped variables.
+            let static_variables =
+                match debug_info.get_stack_statics(&mut core_data.target_core, u64::from(pc)) {
+                    Ok(static_variables) => static_variables,
+                    Err(err) => {
+                        let mut error_variable = probe_rs::debug::Variable::new();
+                        error_variable.name = "ERROR".to_string();
+                        error_variable
+                            .set_value(format!("Failed to retrieve static variables: {:?}", err));
+                        vec![error_variable]
+                    }
+                };
+
+            //Store the static variables for later calls to `variables()` to retrieve
+            let (static_scope_reference, named_static_variables_cnt, indexed_static_variables_cnt) =
+                self.create_variable_map(&static_variables);
+
             let current_stackframes =
                 debug_info.try_unwind(&mut core_data.target_core, u64::from(pc));
 
             match self.adapter_type {
                 DebugAdapterType::CommandLine => {
                     let mut body = "".to_string();
-
+                    //TODO: Update the code to include static variables
                     for frame in current_stackframes {
                         body.push_str(format!("{}\n", frame).as_str());
                     }
@@ -686,7 +703,52 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                             // We build & extract all the info during this stack_trace() method, and re-use it when MS DAP requests come in
                             let mut scopes = vec![];
 
-                            //First build the registers scope and add it's variables
+                            //Build the locals scope
+                            //Extract all the variables from the StackFrame for later MS DAP calls to retrieve
+                            let (variables_reference, named_variables_cnt, indexed_variables_cnt) =
+                                self.create_variable_map(&frame.variables);
+                            scopes.push(Scope {
+                                line: Some(line),
+                                column: frame.source_location.as_ref().and_then(|l| {
+                                    l.column.map(|c| match c {
+                                        ColumnType::LeftEdge => 0,
+                                        ColumnType::Column(c) => c as i64,
+                                    })
+                                }),
+                                end_column: None,
+                                end_line: None,
+                                expensive: false,
+                                indexed_variables: Some(indexed_variables_cnt),
+                                name: "Locals".to_string(),
+                                presentation_hint: Some("locals".to_string()),
+                                named_variables: Some(named_variables_cnt),
+                                source: source.clone(),
+                                variables_reference,
+                            });
+
+                            //The static variables are mapped and stored before iterating the frames. Store a reference to them here.
+                            scopes.push(Scope {
+                                line: None,
+                                column: None,
+                                end_column: None,
+                                end_line: None,
+                                expensive: true, //VSCode won't open this tree by default.
+                                indexed_variables: Some(indexed_static_variables_cnt),
+                                name: "Static".to_string(),
+                                presentation_hint: Some("statics".to_string()),
+                                named_variables: Some(named_static_variables_cnt),
+                                source: None,
+                                variables_reference: if indexed_static_variables_cnt
+                                    + named_variables_cnt
+                                    == 0
+                                {
+                                    0
+                                } else {
+                                    static_scope_reference
+                                },
+                            });
+
+                            //Build the registers scope and add it's variables
                             //TODO: Consider expanding beyond core register to add other architectue registers
                             let register_scope_reference = self.new_variable_map_key();
                             let mut register_count: i64 = 0;
@@ -740,29 +802,6 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                                 } else {
                                     0
                                 },
-                            });
-
-                            //Now that we've done the register scope, we can do the locals scope
-                            //Extract all the variables from the StackFrame for later MS DAP calls to retrieve
-                            let (variables_reference, named_variables_cnt, indexed_variables_cnt) =
-                                self.create_variable_map(&frame.variables);
-                            scopes.push(Scope {
-                                line: Some(line),
-                                column: frame.source_location.as_ref().and_then(|l| {
-                                    l.column.map(|c| match c {
-                                        ColumnType::LeftEdge => 0,
-                                        ColumnType::Column(c) => c as i64,
-                                    })
-                                }),
-                                end_column: None,
-                                end_line: None,
-                                expensive: false,
-                                indexed_variables: Some(indexed_variables_cnt),
-                                name: "Locals".to_string(),
-                                presentation_hint: Some("locals".to_string()),
-                                named_variables: Some(named_variables_cnt),
-                                source: source.clone(),
-                                variables_reference,
                             });
 
                             //Finally, store the scopes for this frame
@@ -821,10 +860,10 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
             )
         }
     }
-    /// scopes uses the following references for variables_map in a frame.
-    /// - local scope   : Use the frame.id (the actual frame address in memory)
-    /// - registers     : Manufactured references in the range 0..0x400
-    /// - global scope  : Manufactured refernces in the range 0x400..0x800 (unimplemented)
+    /// Retrieve available scopes  
+    /// - local scope   : Variables defined between start of current frame, and the current pc (program counter)
+    /// - static scope  : Variables with `static` modifier
+    /// - registers     : Currently supports core registers 0-15
     pub(crate) fn scopes(&mut self, _core_data: &mut CoreData, request: &Request) -> bool {
         let arguments: ScopesArguments = match get_arguments(&request) {
             Ok(arguments) => arguments,
@@ -1032,7 +1071,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
         self.variable_map_key_seq
     }
 
-    /// recurse through each variable and add children with parent reference to sef.variables_map
+    /// recurse through each variable and add children with parent reference to self.variables_map
     /// returns a tuple containing the parent's  (variables_map_key, named_child_variables_cnt, indexed_child_variables_cnt)
     fn create_variable_map(&mut self, variables: &[probe_rs::debug::Variable]) -> (i64, i64, i64) {
         let mut named_child_variables_cnt = 0;
