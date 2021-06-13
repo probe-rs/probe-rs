@@ -28,7 +28,7 @@
                 // "--probe",
                 // "PID:VID",
                 "--program-binary",
-                "debug_example/target/thumbv7em-none-eabihf/debug/debugging_variables",
+                "../../vscode/debug_example/target/thumbv7em-none-eabihf/debug/debugging_variables", //if you have the probe-rs/vscode repo cloned next to probe-rs
                 "--protocol",
                 "swd",
                 "--connect-under-reset",
