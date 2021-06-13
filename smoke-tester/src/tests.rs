@@ -145,10 +145,7 @@ pub fn test_flashing(session: &mut Session, test_binary: &Path) -> Result<()> {
         eprint!(".");
     });
 
-    let options = DownloadOptions {
-        progress: Some(&progress),
-        ..Default::default()
-    };
+    let options = DownloadOptions::new().with_progress_report(&progress);
 
     println!("Starting flashing test");
     println!("Binary: {}", test_binary.display());
