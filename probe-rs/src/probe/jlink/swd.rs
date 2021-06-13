@@ -175,15 +175,15 @@ fn perform_transfers<P: RawSwdIo>(
             // Check if we need an additional instruction to avoid loosing buffered writes.
 
             let abort_write = transfer.port == PortType::DebugPort
-                && transfer.address == Abort::ADDRESS as u16
+                && transfer.address == Abort::ADDRESS
                 && transfer.direction == TransferDirection::Write;
 
             let dpidr_read = transfer.port == PortType::DebugPort
-                && transfer.address == DPIDR::ADDRESS as u16
+                && transfer.address == DPIDR::ADDRESS
                 && transfer.direction == TransferDirection::Read;
 
             let ctrl_stat_read = transfer.port == PortType::DebugPort
-                && transfer.address == Ctrl::ADDRESS as u16
+                && transfer.address == Ctrl::ADDRESS
                 && transfer.direction == TransferDirection::Read;
 
             if abort_write || dpidr_read || ctrl_stat_read {
@@ -225,7 +225,7 @@ fn perform_transfers<P: RawSwdIo>(
         // we know if the write succeeded.
         write_response_pending = transfer.is_write()
             && !(matches!(transfer.port, PortType::DebugPort)
-                && transfer.address == Abort::ADDRESS as u16);
+                && transfer.address == Abort::ADDRESS);
 
         // If the response is returned in the next transfer, we push the correct index
         // if need_ap_read || write_response_pending {
@@ -346,13 +346,13 @@ fn perform_transfers<P: RawSwdIo>(
 struct SwdTransfer {
     port: PortType,
     direction: TransferDirection,
-    address: u16,
+    address: u8,
     value: u32,
     status: TransferStatus,
 }
 
 impl SwdTransfer {
-    fn read(port: PortType, address: u16) -> SwdTransfer {
+    fn read(port: PortType, address: u8) -> SwdTransfer {
         Self {
             port,
             address,
@@ -362,7 +362,7 @@ impl SwdTransfer {
         }
     }
 
-    fn write(port: PortType, address: u16, value: u32) -> SwdTransfer {
+    fn write(port: PortType, address: u8, value: u32) -> SwdTransfer {
         Self {
             port,
             address,
@@ -395,7 +395,7 @@ impl SwdTransfer {
 }
 
 fn rdbuff_read() -> IoSequence {
-    SwdTransfer::read(PortType::DebugPort, RdBuff::ADDRESS as u16).io_sequence()
+    SwdTransfer::read(PortType::DebugPort, RdBuff::ADDRESS).io_sequence()
 }
 
 #[derive(Debug, PartialEq, Copy, Clone)]
@@ -471,7 +471,7 @@ enum TransferType {
     Write(u32),
 }
 
-fn build_swd_transfer(port: PortType, direction: TransferType, address: u16) -> IoSequence {
+fn build_swd_transfer(port: PortType, direction: TransferType, address: u8) -> IoSequence {
     // JLink operates on raw SWD bit sequences.
     // So we need to manually assemble the read and write bitsequences.
     // The following code with the comments hopefully explains well enough how it works.
@@ -718,7 +718,7 @@ impl RawSwdIo for JLink {
 }
 
 impl<Probe: RawSwdIo + 'static> DapAccess for Probe {
-    fn read_register(&mut self, port: PortType, address: u16) -> Result<u32, DebugProbeError> {
+    fn read_register(&mut self, port: PortType, address: u8) -> Result<u32, DebugProbeError> {
         let dap_wait_retries = self.swd_settings().num_retries_after_wait;
         let mut idle_cycles = std::cmp::max(1, self.swd_settings().num_idle_cycles_between_writes);
 
@@ -751,7 +751,7 @@ impl<Probe: RawSwdIo + 'static> DapAccess for Probe {
                     DapAccess::write_register(
                         self,
                         PortType::DebugPort,
-                        Abort::ADDRESS as u16,
+                        Abort::ADDRESS,
                         abort.into(),
                     )?;
 
@@ -772,7 +772,7 @@ impl<Probe: RawSwdIo + 'static> DapAccess for Probe {
                     // To get a clue about the actual fault we read the ctrl register,
                     // which will have the fault status flags set.
                     let response =
-                        DapAccess::read_register(self, PortType::DebugPort, Ctrl::ADDRESS as u16)?;
+                        DapAccess::read_register(self, PortType::DebugPort, Ctrl::ADDRESS)?;
                     let ctrl = Ctrl::from(response);
                     log::debug!(
                         "Reading DAP register failed. Ctrl/Stat register value is: {:#?}",
@@ -794,7 +794,7 @@ impl<Probe: RawSwdIo + 'static> DapAccess for Probe {
                         DapAccess::write_register(
                             self,
                             PortType::DebugPort,
-                            Abort::ADDRESS as u16,
+                            Abort::ADDRESS,
                             abort.into(),
                         )?;
                     }
@@ -825,7 +825,7 @@ impl<Probe: RawSwdIo + 'static> DapAccess for Probe {
     fn read_block(
         &mut self,
         port: PortType,
-        address: u16,
+        address: u8,
         values: &mut [u32],
     ) -> Result<(), DebugProbeError> {
         let mut succesful_transfers = 0;
@@ -869,7 +869,7 @@ impl<Probe: RawSwdIo + 'static> DapAccess for Probe {
                             DapAccess::write_register(
                                 self,
                                 PortType::DebugPort,
-                                Abort::ADDRESS as u16,
+                                Abort::ADDRESS,
                                 abort.into(),
                             )?;
 
@@ -898,7 +898,7 @@ impl<Probe: RawSwdIo + 'static> DapAccess for Probe {
     fn write_register(
         &mut self,
         port: PortType,
-        address: u16,
+        address: u8,
         value: u32,
     ) -> Result<(), DebugProbeError> {
         let dap_wait_retries = self.swd_settings().num_retries_after_wait;
@@ -933,7 +933,7 @@ impl<Probe: RawSwdIo + 'static> DapAccess for Probe {
                     DapAccess::write_register(
                         self,
                         PortType::DebugPort,
-                        Abort::ADDRESS as u16,
+                        Abort::ADDRESS,
                         abort.into(),
                     )?;
 
@@ -954,7 +954,7 @@ impl<Probe: RawSwdIo + 'static> DapAccess for Probe {
                     // which will have the fault status flags set.
 
                     let response =
-                        DapAccess::read_register(self, PortType::DebugPort, Ctrl::ADDRESS as u16)?;
+                        DapAccess::read_register(self, PortType::DebugPort, Ctrl::ADDRESS)?;
 
                     let ctrl = Ctrl::from(response);
                     log::trace!(
@@ -977,7 +977,7 @@ impl<Probe: RawSwdIo + 'static> DapAccess for Probe {
                         DapAccess::write_register(
                             self,
                             PortType::DebugPort,
-                            Abort::ADDRESS as u16,
+                            Abort::ADDRESS,
                             abort.into(),
                         )?;
                     }
@@ -1008,7 +1008,7 @@ impl<Probe: RawSwdIo + 'static> DapAccess for Probe {
     fn write_block(
         &mut self,
         port: PortType,
-        address: u16,
+        address: u8,
         values: &[u32],
     ) -> Result<(), DebugProbeError> {
         let mut succesful_transfers = 0;
@@ -1054,7 +1054,7 @@ impl<Probe: RawSwdIo + 'static> DapAccess for Probe {
                             DapAccess::write_register(
                                 self,
                                 PortType::DebugPort,
-                                Abort::ADDRESS as u16,
+                                Abort::ADDRESS,
                                 abort.into(),
                             )?;
 

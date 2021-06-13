@@ -17,13 +17,12 @@ define_ap!(MemoryAp);
 impl MemoryAp {
     pub fn base_address<A>(&self, interface: &mut A) -> Result<u64, DebugProbeError>
     where
-        A: ApAccess<MemoryAp, BASE, Error = DebugProbeError>
-            + ApAccess<MemoryAp, BASE2, Error = DebugProbeError>,
+        A: ApAccess<Error = DebugProbeError>,
     {
-        let base_register = interface.read_ap_register(self.port_number(), BASE::default())?;
+        let base_register: BASE = interface.read_ap_register(self.port_number())?;
 
         let mut base_address = if BaseaddrFormat::ADIv5 == base_register.Format {
-            let base2 = interface.read_ap_register(self.port_number(), BASE2::default())?;
+            let base2: BASE2 = interface.read_ap_register(self.port_number())?;
 
             u64::from(base2.BASEADDR) << 32
         } else {

@@ -65,87 +65,152 @@ impl AccessPortError {
     }
 }
 
-pub trait ApRegister<PORT: AccessPort>: Register + Sized {
-    const APBANKSEL: u8;
-}
+pub trait ApRegister<PORT: AccessPort>: Register + Sized {}
 
 pub trait AccessPort {
     fn port_number(&self) -> u8;
 }
 
-pub trait ApAccess<PORT, R>
-where
-    PORT: AccessPort,
-    R: ApRegister<PORT>,
-{
+/// Direct access to AP registers.
+pub trait RawApAccess {
     type Error: std::error::Error + Send + Sync + 'static;
-    fn read_ap_register(&mut self, port: impl Into<PORT>, register: R) -> Result<R, Self::Error>;
+
+    /// Read a AP register.
+    fn read_raw_ap_register(&mut self, port_number: u8, address: u8) -> Result<u32, Self::Error>;
 
     /// Read a register using a block transfer. This can be used
     /// to read multiple values from the same register.
-    fn read_ap_register_repeated(
+    fn read_raw_ap_register_repeated(
         &mut self,
-        port: impl Into<PORT> + Clone,
-        register: R,
+        port: u8,
+        address: u8,
         values: &mut [u32],
     ) -> Result<(), Self::Error>;
 
-    fn write_ap_register(&mut self, port: impl Into<PORT>, register: R) -> Result<(), Self::Error>;
+    /// Write a AP register.
+    fn write_raw_ap_register(
+        &mut self,
+        port: u8,
+        address: u8,
+        value: u32,
+    ) -> Result<(), Self::Error>;
 
     /// Write a register using a block transfer. This can be used
     /// to write multiple values to the same register.
-    fn write_ap_register_repeated(
+    fn write_raw_ap_register_repeated(
         &mut self,
-        port: impl Into<PORT> + Clone,
-        register: R,
+        port: u8,
+        address: u8,
         values: &[u32],
     ) -> Result<(), Self::Error>;
 }
 
-impl<T, PORT, R> ApAccess<PORT, R> for &mut T
-where
-    T: ApAccess<PORT, R>,
-    PORT: AccessPort,
-    R: ApRegister<PORT>,
-{
-    type Error = T::Error;
+pub trait ApAccess {
+    type Error: std::error::Error + Send + Sync + 'static;
+    fn read_ap_register<PORT, R>(&mut self, port: impl Into<PORT>) -> Result<R, Self::Error>
+    where
+        PORT: AccessPort,
+        R: ApRegister<PORT>;
 
-    fn read_ap_register(&mut self, port: impl Into<PORT>, register: R) -> Result<R, Self::Error> {
-        (*self).read_ap_register(port, register)
-    }
-
-    fn write_ap_register(&mut self, port: impl Into<PORT>, register: R) -> Result<(), Self::Error> {
-        (*self).write_ap_register(port, register)
-    }
-
-    fn write_ap_register_repeated(
-        &mut self,
-        port: impl Into<PORT> + Clone,
-        register: R,
-        values: &[u32],
-    ) -> Result<(), Self::Error> {
-        (*self).write_ap_register_repeated(port, register, values)
-    }
-    fn read_ap_register_repeated(
+    /// Read a register using a block transfer. This can be used
+    /// to read multiple values from the same register.
+    fn read_ap_register_repeated<PORT, R>(
         &mut self,
         port: impl Into<PORT> + Clone,
         register: R,
         values: &mut [u32],
-    ) -> Result<(), Self::Error> {
+    ) -> Result<(), Self::Error>
+    where
+        PORT: AccessPort,
+        R: ApRegister<PORT>;
+
+    fn write_ap_register<PORT, R>(
+        &mut self,
+        port: impl Into<PORT>,
+        register: R,
+    ) -> Result<(), Self::Error>
+    where
+        PORT: AccessPort,
+        R: ApRegister<PORT>;
+
+    /// Write a register using a block transfer. This can be used
+    /// to write multiple values to the same register.
+    fn write_ap_register_repeated<PORT, R>(
+        &mut self,
+        port: impl Into<PORT> + Clone,
+        register: R,
+        values: &[u32],
+    ) -> Result<(), Self::Error>
+    where
+        PORT: AccessPort,
+        R: ApRegister<PORT>;
+}
+
+/*
+impl<T> ApAccess for &mut T
+where
+    T: ApAccess,
+{
+    type Error = T::Error;
+
+    fn read_ap_register<PORT, R>(&mut self, port: impl Into<PORT>) -> Result<R, Self::Error>
+    where
+        PORT: AccessPort,
+        R: ApRegister<PORT>,
+    {
+        (*self).read_ap_register(port)
+    }
+
+    fn write_ap_register<PORT, R>(
+        &mut self,
+        port: impl Into<PORT>,
+        register: R,
+    ) -> Result<(), Self::Error>
+    where
+        PORT: AccessPort,
+        R: ApRegister<PORT>,
+    {
+        (*self).write_ap_register(port, register)
+    }
+
+    fn write_ap_register_repeated<PORT, R>(
+        &mut self,
+        port: impl Into<PORT> + Clone,
+        register: R,
+        values: &[u32],
+    ) -> Result<(), Self::Error>
+    where
+        PORT: AccessPort,
+        R: ApRegister<PORT>,
+    {
+        (*self).write_ap_register_repeated(port, register, values)
+    }
+    fn read_ap_register_repeated<PORT, R>(
+        &mut self,
+        port: impl Into<PORT> + Clone,
+        register: R,
+        values: &mut [u32],
+    ) -> Result<(), Self::Error>
+    where
+        PORT: AccessPort,
+        R: ApRegister<PORT>,
+    {
         (*self).read_ap_register_repeated(port, register, values)
     }
 }
+*/
 
 /// Determine if an AP exists with the given AP number.
 /// Can fail silently under the hood testing an ap that doesnt exist and would require cleanup.
 pub fn access_port_is_valid<AP>(debug_port: &mut AP, access_port: GenericAp) -> bool
 where
-    AP: ApAccess<GenericAp, IDR>,
+    AP: ApAccess,
 {
-    if let Ok(idr) = debug_port.read_ap_register(access_port, IDR::default()) {
-        u32::from(idr) != 0
-    } else {
-        false
+    let idr_result: Result<IDR, AP::Error> = debug_port.read_ap_register(access_port);
+
+    match idr_result {
+        Ok(idr) => u32::from(idr) != 0,
+        Err(_e) => false,
     }
 }
 
@@ -153,7 +218,7 @@ where
 /// Can fail silently under the hood testing an ap that doesnt exist and would require cleanup.
 pub(crate) fn valid_access_ports<AP>(debug_port: &mut AP) -> Vec<GenericAp>
 where
-    AP: ApAccess<GenericAp, IDR>,
+    AP: ApAccess,
 {
     (0..=255)
         .map(GenericAp::new)
@@ -164,11 +229,11 @@ where
 /// Tries to find the first AP with the given idr value, returns `None` if there isn't any
 pub fn get_ap_by_idr<AP, P>(debug_port: &mut AP, f: P) -> Option<GenericAp>
 where
-    AP: ApAccess<GenericAp, IDR>,
+    AP: ApAccess,
     P: Fn(IDR) -> bool,
 {
     (0..=255).map(GenericAp::new).find(|ap| {
-        if let Ok(idr) = debug_port.read_ap_register(*ap, IDR::default()) {
+        if let Ok(idr) = debug_port.read_ap_register(*ap) {
             f(idr)
         } else {
             false

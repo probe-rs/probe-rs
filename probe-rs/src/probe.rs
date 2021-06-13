@@ -4,6 +4,7 @@ pub(crate) mod ftdi;
 pub(crate) mod jlink;
 pub(crate) mod stlink;
 
+use crate::architecture::arm::ap::RawApAccess;
 use crate::{architecture::arm::ap::AccessPort, Session};
 use crate::{
     architecture::arm::memory::adi_v5_memory_interface::ADIMemoryInterface,
@@ -759,7 +760,7 @@ impl DebugProbe for FakeProbe {
 
 impl DapAccess for FakeProbe {
     /// Reads the DAP register on the specified port and address
-    fn read_register(&mut self, _port: PortType, _addr: u16) -> Result<u32, DebugProbeError> {
+    fn read_register(&mut self, _port: PortType, _addr: u8) -> Result<u32, DebugProbeError> {
         Err(DebugProbeError::CommandNotSupportedByProbe)
     }
 
@@ -767,7 +768,7 @@ impl DapAccess for FakeProbe {
     fn write_register(
         &mut self,
         _port: PortType,
-        _addr: u16,
+        _addr: u8,
         _value: u32,
     ) -> Result<(), DebugProbeError> {
         Err(DebugProbeError::CommandNotSupportedByProbe)
@@ -828,45 +829,38 @@ impl ArmProbeInterface for FakeArmInterface {
     }
 }
 
-impl DapAccess for FakeArmInterface {
-    fn read_register(&mut self, port: PortType, addr: u16) -> Result<u32, DebugProbeError> {
-        self.probe.read_register(port, addr)
-    }
-    fn write_register(
-        &mut self,
-        port: PortType,
-        addr: u16,
-        value: u32,
-    ) -> Result<(), DebugProbeError> {
-        self.probe.write_register(port, addr, value)
-    }
-    fn read_block(
-        &mut self,
-        port: PortType,
-        addr: u16,
-        values: &mut [u32],
-    ) -> Result<(), DebugProbeError> {
-        self.probe.read_block(port, addr, values)
-    }
-    fn write_block(
-        &mut self,
-        port: PortType,
-        addr: u16,
-        values: &[u32],
-    ) -> Result<(), DebugProbeError> {
-        self.probe.write_block(port, addr, values)
-    }
-}
+impl RawApAccess for FakeArmInterface {
+    type Error = DebugProbeError;
 
-impl AsMut<(dyn DebugProbe + 'static)> for FakeArmInterface {
-    fn as_mut(&mut self) -> &mut (dyn DebugProbe + 'static) {
-        self.probe.as_mut()
+    fn read_raw_ap_register(&mut self, _port_number: u8, _address: u8) -> Result<u32, Self::Error> {
+        todo!()
     }
-}
 
-impl AsRef<(dyn DebugProbe + 'static)> for FakeArmInterface {
-    fn as_ref(&self) -> &(dyn DebugProbe + 'static) {
-        self.probe.as_ref()
+    fn read_raw_ap_register_repeated(
+        &mut self,
+        _port: u8,
+        _address: u8,
+        _values: &mut [u32],
+    ) -> Result<(), Self::Error> {
+        todo!()
+    }
+
+    fn write_raw_ap_register(
+        &mut self,
+        _port: u8,
+        _address: u8,
+        _value: u32,
+    ) -> Result<(), Self::Error> {
+        todo!()
+    }
+
+    fn write_raw_ap_register_repeated(
+        &mut self,
+        _port: u8,
+        _address: u8,
+        _values: &[u32],
+    ) -> Result<(), Self::Error> {
+        todo!()
     }
 }
 
