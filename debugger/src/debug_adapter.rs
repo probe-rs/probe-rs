@@ -1539,6 +1539,24 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
             true
         }
     }
+
+    pub fn to_rtt<S: Into<String>>(&mut self, msg: S) -> bool {
+        if self.adapter_type == DebugAdapterType::DapClient {
+            let event_body = match serde_json::to_value(RttEventBody {
+                output: format!("{}\n", msg.into()),
+            }) {
+                Ok(event_body) => event_body,
+                Err(_) => {
+                    return false;
+                }
+            };
+            self.send_event("probe-rs-rtt", Some(event_body))
+        } else {
+            //DebugCAdapterType::CommandLine
+            println!("{}", msg.into());
+            true
+        }
+    }
 }
 
 // SECTION: Some helper functions

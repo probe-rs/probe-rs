@@ -13,16 +13,7 @@ use probe_rs::{
     WireProtocol,
 };
 use serde::Deserialize;
-use std::{
-    env::{current_dir, set_current_dir},
-    io,
-    io::{Read, Write},
-    net::{Ipv4Addr, TcpListener, ToSocketAddrs},
-    path::PathBuf,
-    str::FromStr,
-    thread,
-    time::{Duration, Instant},
-};
+use std::{env::{current_dir, set_current_dir}, io, io::{Read, Write}, net::{Ipv4Addr, TcpListener, ToSocketAddrs}, path::PathBuf, str::FromStr, sync::{Arc, Mutex}, thread, time::{Duration, Instant}};
 use structopt::StructOpt;
 
 fn parse_protocol(src: &str) -> Result<WireProtocol, String> {
@@ -199,15 +190,17 @@ pub struct Debugger {
 }
 
 pub struct SessionData {
-    pub(crate) session: Session,
+    pub(crate) session: Arc<Mutex<Session>>,
     #[allow(dead_code)]
     pub(crate) capstone: Capstone,
 }
+
 pub struct CoreData<'p> {
     pub(crate) target_core: Core<'p>,
     pub(crate) target_name: String,
     pub(crate) debug_info: Option<DebugInfo>,
 }
+
 /// Definition of commands that have been implemented in Debugger.
 #[derive(Clone, Copy)]
 pub struct DebugCommand {
@@ -306,13 +299,13 @@ pub fn start_session(debugger_options: &DebuggerOptions) -> Result<SessionData, 
 
     //Populate the return SessionData
     Ok(SessionData {
-        session: target_session,
+        session: Arc::new(Mutex::new(target_session)),
         capstone,
     })
 }
 
 pub fn attach_core<'p>(
-    session_data: &'p mut SessionData,
+    session: &'p mut Session,
     debugger_options: &DebuggerOptions,
 ) -> Result<CoreData<'p>, DebuggerError> {
     //Configure the DebugInfo
@@ -320,18 +313,19 @@ pub fn attach_core<'p>(
         .program_binary
         .as_ref()
         .and_then(|path| DebugInfo::from_file(path).ok());
-    let target_name = session_data.session.target().name.clone();
-    //Do no-op attach to the core and return it
-    match session_data.session.core(debugger_options.core_index) {
-        Ok(target_core) => Ok(CoreData {
-            target_core,
-            target_name: format!("{}-{}", debugger_options.core_index, target_name),
-            debug_info,
-        }),
-        Err(_) => Err(DebuggerError::UnableToOpenProbe(Some(
-            "No core at the specified index.",
-        ))),
-    }
+        // TODO: Change this expect laer on maybe.
+        let target_name = session.target().name.clone();
+        //Do no-op attach to the core and return it
+        match session.core(debugger_options.core_index) {
+            Ok(target_core) => Ok(CoreData {
+                target_core,
+                target_name: format!("{}-{}", debugger_options.core_index, target_name),
+                debug_info,
+            }),
+            Err(_) => Err(DebuggerError::UnableToOpenProbe(Some(
+                "No core at the specified index.",
+            ))),
+        }
 }
 
 impl Debugger {
@@ -493,7 +487,8 @@ impl Debugger {
                 match last_known_status {
                     CoreStatus::Unknown => true,
                     _other => {
-                        let mut core_data = match attach_core(session_data, &self.debugger_options)
+                        let mut session = session_data.session.lock().expect("The other thread accessing the session crashed.");
+                        let mut core_data = match attach_core(&mut session, &self.debugger_options)
                         {
                             Ok(core_data) => core_data,
                             Err(error) => {
@@ -537,7 +532,7 @@ impl Debugger {
                                 });
                                 debug_adapter.send_event("stopped", event_body);
                             }
-                            //TODO: Need to implement LockedUp in probe-rs/src/debug
+                            // TODO: Need to implement LockedUp in probe-rs/src/debug
                             // CoreStatus::LockedUp => {
                             //     debug_adapter.send_response::<()>(
                             //         &request,
@@ -563,7 +558,7 @@ impl Debugger {
                 }
             }
             "error" | "quit" => {
-                //The listen_for_request would have reported this, so we just have to exit.
+                // The listen_for_request would have reported this, so we just have to exit.
                 false
             }
             "help" => {
@@ -580,8 +575,9 @@ impl Debugger {
                     .find(|c| c.dap_cmd == command_lookup || c.cli_cmd == command_lookup);
                 match valid_command {
                     Some(valid_command) => {
-                        //First, attach to the core
-                        let mut core_data = match attach_core(session_data, &self.debugger_options)
+                        // First, attach to the core.
+                        let mut session = session_data.session.lock().expect("The other thread accessing the session crashed.");
+                        let mut core_data = match attach_core(&mut session, &self.debugger_options)
                         {
                             Ok(core_data) => core_data,
                             Err(error) => {
@@ -887,7 +883,7 @@ impl Debugger {
                     .do_chip_erase(self.debugger_options.full_chip_erase);
 
                 match download_file_with_options(
-                    &mut session_data.session,
+                    &mut session_data.session.lock().expect("The other thread accessing the session crashed."),
                     path_to_elf,
                     Format::Elf,
                     download_options,
@@ -909,10 +905,14 @@ impl Debugger {
             }
         }
 
+        //Open any RTT windows on the debug client, before the core can start running
+        debug_adapter.to_rtt("probe-rs-rtt");
+
         //This is the first attach to the requested core. If this one works, all subsequent ones will be no-op requests for a Core reference. Do NOT hold onto this reference for the duration of the session ... that is why this code is in a block of its own.
         {
             //First, attach to the core
-            let mut core_data = match attach_core(&mut session_data, &self.debugger_options) {
+            let mut session = session_data.session.lock().expect("The other thread accessing the session crashed.");
+            let mut core_data = match attach_core(&mut session, &self.debugger_options) {
                 Ok(core_data) => core_data,
                 Err(error) => {
                     debug_adapter.send_response::<()>(&custom_request, Err(error));
@@ -977,8 +977,9 @@ pub fn reset_target_of_device(
     debugger_options: DebuggerOptions,
     _assert: Option<bool>,
 ) -> Result<()> {
-    let mut session_data = start_session(&debugger_options)?;
-    attach_core(&mut session_data, &debugger_options)
+    let session_data = start_session(&debugger_options)?;
+    let mut session = session_data.session.lock().expect("The other thread accessing the session crashed.");
+    attach_core(&mut session, &debugger_options)
         .unwrap()
         .target_core
         .reset()?;
@@ -986,8 +987,9 @@ pub fn reset_target_of_device(
 }
 
 pub fn dump_memory(debugger_options: DebuggerOptions, loc: u32, words: u32) -> Result<()> {
-    let mut session_data = start_session(&debugger_options)?;
-    let mut target_core = attach_core(&mut session_data, &debugger_options)
+    let session_data = start_session(&debugger_options)?;
+    let mut session = session_data.session.lock().expect("The other thread accessing the session crashed.");
+    let mut target_core = attach_core(&mut session, &debugger_options)
         .unwrap()
         .target_core;
 
@@ -1016,9 +1018,10 @@ pub fn dump_memory(debugger_options: DebuggerOptions, loc: u32, words: u32) -> R
 }
 
 pub fn download_program_fast(debugger_options: DebuggerOptions, path: &str) -> Result<()> {
-    let mut session_data = start_session(&debugger_options)?;
+    let session_data = start_session(&debugger_options)?;
+    let mut session = session_data.session.lock().expect("The other thread accessing the session crashed.");
 
-    download_file(&mut session_data.session, &path, Format::Elf)?;
+    download_file(&mut session, &path, Format::Elf)?;
     Ok(())
 }
 
@@ -1032,8 +1035,9 @@ pub fn trace_u32_on_target(debugger_options: DebuggerOptions, loc: u32) -> Resul
 
     let start = Instant::now();
 
-    let mut session_data = start_session(&debugger_options)?;
-    let mut target_core = attach_core(&mut session_data, &debugger_options)
+    let session_data = start_session(&debugger_options)?;
+    let mut session = session_data.session.lock().expect("The other thread accessing the session crashed.");
+    let mut target_core = attach_core(&mut session, &debugger_options)
         .unwrap()
         .target_core;
 
