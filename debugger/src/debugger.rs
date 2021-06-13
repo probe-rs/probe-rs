@@ -1,6 +1,9 @@
-use crate::{dap_types::*, rtt::channel::{ChannelConfig, DataFormat}};
 use crate::debug_adapter::DapStatus;
 use crate::debug_adapter::*;
+use crate::{
+    dap_types::*,
+    rtt::channel::{ChannelConfig, DataFormat},
+};
 
 use crate::DebuggerError;
 use anyhow::{anyhow, Result};
@@ -12,9 +15,20 @@ use probe_rs::{
     Core, CoreStatus, DebugProbeError, DebugProbeSelector, MemoryInterface, Probe, Session,
     WireProtocol,
 };
-use probe_rs_rtt::ScanRegion;
+use probe_rs_rtt::{Rtt, ScanRegion};
 use serde::Deserialize;
-use std::{env::{current_dir, set_current_dir}, fs::{self, File}, io, io::{Read, Write}, net::{Ipv4Addr, TcpListener, ToSocketAddrs}, path::PathBuf, str::FromStr, sync::{Arc, Mutex}, thread, time::{Duration, Instant}};
+use std::{
+    env::{current_dir, set_current_dir},
+    fs::{self, File},
+    io,
+    io::{Read, Write},
+    net::{Ipv4Addr, TcpListener, ToSocketAddrs},
+    path::PathBuf,
+    str::FromStr,
+    sync::{Arc, Mutex},
+    thread,
+    time::{Duration, Instant},
+};
 use structopt::StructOpt;
 
 fn parse_protocol(src: &str) -> Result<WireProtocol, String> {
@@ -153,7 +167,6 @@ pub struct DebuggerOptions {
     #[structopt(flatten)]
     pub(crate) rtt: RttConfig,
 }
-
 
 impl DebuggerOptions {
     /// Validate the new cwd, or else set it from the environment.
@@ -351,19 +364,19 @@ pub fn attach_core<'p>(
         .program_binary
         .as_ref()
         .and_then(|path| DebugInfo::from_file(path).ok());
-        // TODO: Change this expect laer on maybe.
-        let target_name = session.target().name.clone();
-        //Do no-op attach to the core and return it
-        match session.core(debugger_options.core_index) {
-            Ok(target_core) => Ok(CoreData {
-                target_core,
-                target_name: format!("{}-{}", debugger_options.core_index, target_name),
-                debug_info,
-            }),
-            Err(_) => Err(DebuggerError::UnableToOpenProbe(Some(
-                "No core at the specified index.",
-            ))),
-        }
+    // TODO: Change this expect laer on maybe.
+    let target_name = session.target().name.clone();
+    //Do no-op attach to the core and return it
+    match session.core(debugger_options.core_index) {
+        Ok(target_core) => Ok(CoreData {
+            target_core,
+            target_name: format!("{}-{}", debugger_options.core_index, target_name),
+            debug_info,
+        }),
+        Err(_) => Err(DebuggerError::UnableToOpenProbe(Some(
+            "No core at the specified index.",
+        ))),
+    }
 }
 
 impl Debugger {
@@ -525,7 +538,10 @@ impl Debugger {
                 match last_known_status {
                     CoreStatus::Unknown => true,
                     _other => {
-                        let mut session = session_data.session.lock().expect("The other thread accessing the session crashed.");
+                        let mut session = session_data
+                            .session
+                            .lock()
+                            .expect("The other thread accessing the session crashed.");
                         let mut core_data = match attach_core(&mut session, &self.debugger_options)
                         {
                             Ok(core_data) => core_data,
@@ -614,7 +630,10 @@ impl Debugger {
                 match valid_command {
                     Some(valid_command) => {
                         // First, attach to the core.
-                        let mut session = session_data.session.lock().expect("The other thread accessing the session crashed.");
+                        let mut session = session_data
+                            .session
+                            .lock()
+                            .expect("The other thread accessing the session crashed.");
                         let mut core_data = match attach_core(&mut session, &self.debugger_options)
                         {
                             Ok(core_data) => core_data,
@@ -921,7 +940,10 @@ impl Debugger {
                     .do_chip_erase(self.debugger_options.full_chip_erase);
 
                 match download_file_with_options(
-                    &mut session_data.session.lock().expect("The other thread accessing the session crashed."),
+                    &mut session_data
+                        .session
+                        .lock()
+                        .expect("The other thread accessing the session crashed."),
                     path_to_elf,
                     Format::Elf,
                     download_options,
@@ -946,14 +968,19 @@ impl Debugger {
         //Open any RTT windows on the debug client, before the core can start running
         debug_adapter.to_rtt("probe-rs-rtt");
 
-        if self.debugger_options.rtt.enabled {
-            attach_to_rtt(&self.debugger_options);
-        }
+        let mut app = if self.debugger_options.rtt.enabled {
+            attach_to_rtt(session_data.session.clone(), &self.debugger_options).ok()
+        } else {
+            None
+        };
 
         //This is the first attach to the requested core. If this one works, all subsequent ones will be no-op requests for a Core reference. Do NOT hold onto this reference for the duration of the session ... that is why this code is in a block of its own.
         {
             //First, attach to the core
-            let mut session = session_data.session.lock().expect("The other thread accessing the session crashed.");
+            let mut session = session_data
+                .session
+                .lock()
+                .expect("The other thread accessing the session crashed.");
             let mut core_data = match attach_core(&mut session, &self.debugger_options) {
                 Ok(core_data) => core_data,
                 Err(error) => {
@@ -984,6 +1011,7 @@ impl Debugger {
         }
         //Loop through remaining (user generated) requests and send to the [processs_request] method until either the client or some unexpected behaviour termintates the process.
         loop {
+            let t = std::time::Instant::now();
             if !self.process_next_request(&mut session_data, &mut debug_adapter) {
                 //DapClient STEP FINAL: Let the client know that we are done and exiting
                 if debug_adapter.adapter_type == DebugAdapterType::DapClient {
@@ -992,6 +1020,12 @@ impl Debugger {
                 }
                 break;
             }
+            if let Some(ref mut app) = app {
+                app.poll_rtt();
+            }
+            // app.render(&defmt_state);
+            let sleep = (10 - t.elapsed().as_millis()).min(0);
+            std::thread::sleep(Duration::from_millis(sleep as u64));
         }
         //Exiting this function means we the debug_session is complete and we are done. End of process.
         //TODO: Add functionality to keep the server alive, respond to DAP Client sessions that end, and accept new session requests.
@@ -999,8 +1033,12 @@ impl Debugger {
 }
 // SECTION: Functions for CLI struct matches from main.rs
 
-pub fn attach_to_rtt(options: &DebuggerOptions) -> Result<(), anyhow::Error> {
-    let defmt_enable = options.rtt
+pub fn attach_to_rtt(
+    session: Arc<Mutex<Session>>,
+    options: &DebuggerOptions,
+) -> Result<crate::rtt::app::App, anyhow::Error> {
+    let defmt_enable = options
+        .rtt
         .channels
         .iter()
         .any(|elem| elem.format == DataFormat::Defmt);
@@ -1037,48 +1075,26 @@ pub fn attach_to_rtt(options: &DebuggerOptions) -> Result<(), anyhow::Error> {
         log::info!("Initializing RTT (attempt {})...", i);
         i += 1;
 
-        let rtt_header_address = if let Ok(mut file) = File::open(path.as_path()) {
-            if let Some(address) = rttui::app::App::get_rtt_symbol(&mut file) {
-                ScanRegion::Exact(address as u32)
+        let rtt_header_address =
+            if let Ok(mut file) = File::open(options.program_binary.unwrap().as_path()) {
+                if let Some(address) = crate::rtt::app::App::get_rtt_symbol(&mut file) {
+                    ScanRegion::Exact(address as u32)
+                } else {
+                    ScanRegion::Ram
+                }
             } else {
                 ScanRegion::Ram
-            }
-        } else {
-            ScanRegion::Ram
-        };
+            };
 
         match Rtt::attach_region(session.clone(), &rtt_header_address) {
             Ok(rtt) => {
                 log::info!("RTT initialized.");
 
-                // `App` puts the terminal into a special state, as required
-                // by the text-based UI. If a panic happens while the
-                // terminal is in that state, this will completely mess up
-                // the user's terminal (misformatted panic message, newlines
-                // being ignored, input characters not being echoed, ...).
-                //
-                // The following panic hook cleans up the terminal, while
-                // otherwise preserving the behavior of the default panic
-                // hook (or whichever custom hook might have been registered
-                // before).
-                let previous_panic_hook = panic::take_hook();
-                panic::set_hook(Box::new(move |panic_info| {
-                    rttui::app::clean_up_terminal();
-                    previous_panic_hook(panic_info);
-                }));
-
-                let chip_name = config.general.chip.as_deref().unwrap_or_default();
-                let logname = format!("{}_{}_{}", name, chip_name, Local::now().to_rfc3339());
-                let mut app = rttui::app::App::new(rtt, &config, logname)?;
-                loop {
-                    app.poll_rtt();
-                    app.render(&defmt_state);
-                    if app.handle_event() {
-                        logging::println("Shutting down.");
-                        return Ok(());
-                    };
-                    std::thread::sleep(Duration::from_millis(10));
-                }
+                let chip_name = options.chip.as_deref().unwrap_or_default();
+                // let logname = format!("{}_{}_{}", name, chip_name, Local::now().to_rfc3339());
+                let logname = String::new();
+                let app = crate::rtt::app::App::new(rtt, &options.rtt, logname)?;
+                return Ok(app);
             }
             Err(err) => {
                 error = Some(anyhow!("Error attaching to RTT: {}", err));
@@ -1090,6 +1106,7 @@ pub fn attach_to_rtt(options: &DebuggerOptions) -> Result<(), anyhow::Error> {
     if let Some(error) = error {
         return Err(error);
     }
+    Err(anyhow!("Rtt initialization failed."))
 }
 
 pub fn list_connected_devices() -> Result<()> {
@@ -1113,7 +1130,10 @@ pub fn reset_target_of_device(
     _assert: Option<bool>,
 ) -> Result<()> {
     let session_data = start_session(&debugger_options)?;
-    let mut session = session_data.session.lock().expect("The other thread accessing the session crashed.");
+    let mut session = session_data
+        .session
+        .lock()
+        .expect("The other thread accessing the session crashed.");
     attach_core(&mut session, &debugger_options)
         .unwrap()
         .target_core
@@ -1123,7 +1143,10 @@ pub fn reset_target_of_device(
 
 pub fn dump_memory(debugger_options: DebuggerOptions, loc: u32, words: u32) -> Result<()> {
     let session_data = start_session(&debugger_options)?;
-    let mut session = session_data.session.lock().expect("The other thread accessing the session crashed.");
+    let mut session = session_data
+        .session
+        .lock()
+        .expect("The other thread accessing the session crashed.");
     let mut target_core = attach_core(&mut session, &debugger_options)
         .unwrap()
         .target_core;
@@ -1154,7 +1177,10 @@ pub fn dump_memory(debugger_options: DebuggerOptions, loc: u32, words: u32) -> R
 
 pub fn download_program_fast(debugger_options: DebuggerOptions, path: &str) -> Result<()> {
     let session_data = start_session(&debugger_options)?;
-    let mut session = session_data.session.lock().expect("The other thread accessing the session crashed.");
+    let mut session = session_data
+        .session
+        .lock()
+        .expect("The other thread accessing the session crashed.");
 
     download_file(&mut session, &path, Format::Elf)?;
     Ok(())
@@ -1171,7 +1197,10 @@ pub fn trace_u32_on_target(debugger_options: DebuggerOptions, loc: u32) -> Resul
     let start = Instant::now();
 
     let session_data = start_session(&debugger_options)?;
-    let mut session = session_data.session.lock().expect("The other thread accessing the session crashed.");
+    let mut session = session_data
+        .session
+        .lock()
+        .expect("The other thread accessing the session crashed.");
     let mut target_core = attach_core(&mut session, &debugger_options)
         .unwrap()
         .target_core;
