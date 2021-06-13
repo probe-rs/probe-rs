@@ -41,13 +41,9 @@ pub(crate) fn open_probe(index: Option<usize>) -> Result<Probe, CliError> {
         None => {
             // open the default probe, if only one probe was found
             match available_probes.len() {
-                0 => {
-                    return Err(CliError::UnableToOpenProbe(Some("No probe detected.")));
-                }
+                0 => return Err(CliError::UnableToOpenProbe(Some("No probe detected."))),
                 1 => &available_probes[0],
-                _ =>  {
-                    return Err(CliError::UnableToOpenProbe(Some("Multiple probes found. Please specify which probe to use using the -n parameter.")));
-                }
+                _ => return Err(CliError::UnableToOpenProbe(Some("Multiple probes found. Please specify which probe to use using the -n parameter."))),
             }
         }
     };

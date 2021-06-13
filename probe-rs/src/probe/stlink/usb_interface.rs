@@ -172,25 +172,21 @@ impl StLinkUsbDevice {
         }
 
         if !endpoint_out {
-            return Err(StlinkError::EndpointNotFound.into());
+            Err(StlinkError::EndpointNotFound.into())
+        } else if !endpoint_in {
+            Err(StlinkError::EndpointNotFound.into())
+        } else if !endpoint_swo {
+            Err(StlinkError::EndpointNotFound.into())
+        } else {
+            let usb_stlink = Self {
+                device_handle,
+                info,
+            };
+
+            log::debug!("Succesfully attached to STLink.");
+
+            Ok(usb_stlink)
         }
-
-        if !endpoint_in {
-            return Err(StlinkError::EndpointNotFound.into());
-        }
-
-        if !endpoint_swo {
-            return Err(StlinkError::EndpointNotFound.into());
-        }
-
-        let usb_stlink = Self {
-            device_handle,
-            info,
-        };
-
-        log::debug!("Succesfully attached to STLink.");
-
-        Ok(usb_stlink)
     }
 
     /// Closes the USB interface gracefully.
@@ -304,11 +300,9 @@ impl StLinkUsb for StLinkUsbDevice {
         if read_data.is_empty() {
             Ok(0)
         } else {
-            let read_bytes = self
-                .device_handle
+            self.device_handle
                 .read_bulk(ep_swo, read_data, timeout)
-                .map_err(|e| DebugProbeError::Usb(Some(Box::new(e))))?;
-            Ok(read_bytes)
+                .map_err(|e| DebugProbeError::Usb(Some(Box::new(e))))
         }
     }
 
