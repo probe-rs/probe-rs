@@ -474,9 +474,9 @@ impl<D: StLinkUsb> StLink<D> {
         // Make sure everything is okay with the firmware we use.
         if self.jtag_version == 0 {
             Err(StlinkError::JTAGNotSupportedOnProbe.into())
-        } else if self.hw_version < 3 && self.jtag_version < Self::MIN_JTAG_VERSION {
-            Err(DebugProbeError::ProbeFirmwareOutdated)
-        } else if self.hw_version == 3 && self.jtag_version < Self::MIN_JTAG_VERSION_V3 {
+        } else if (self.hw_version < 3 && self.jtag_version < Self::MIN_JTAG_VERSION)
+            || (self.hw_version == 3 && self.jtag_version < Self::MIN_JTAG_VERSION_V3)
+        {
             Err(DebugProbeError::ProbeFirmwareOutdated)
         } else {
             Ok((self.hw_version, self.jtag_version))
