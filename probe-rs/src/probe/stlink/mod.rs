@@ -622,12 +622,10 @@ impl<D: StLinkUsb> StLink<D> {
             if ap != 0 {
                 return Err(DebugProbeError::ProbeFirmwareOutdated);
             }
-        } else {
-            if !self.opened_aps.contains(&ap) {
-                log::debug!("Opening AP {}", ap);
-                self.open_ap(ap)?;
-                self.opened_aps.push(ap)
-            }
+        } else if !self.opened_aps.contains(&ap) {
+            log::debug!("Opening AP {}", ap);
+            self.open_ap(ap)?;
+            self.opened_aps.push(ap);
         }
 
         Ok(())

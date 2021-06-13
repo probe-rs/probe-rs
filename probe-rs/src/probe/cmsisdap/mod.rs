@@ -33,14 +33,18 @@ use commands::{
         Ack, InnerTransferRequest, TransferBlockRequest, TransferBlockResponse, TransferRequest,
         TransferResponse, RW,
     },
-    CmsisDapDevice, Status,
+    CmsisDapDevice, SendError, Status,
 };
 
 use log::debug;
 
 use std::time::Duration;
 
-use anyhow::anyhow;
+impl From<SendError> for DebugProbeError {
+    fn from(e: SendError) -> Self {
+        Self::from(CmsisDapError::from(e))
+    }
+}
 
 pub struct CmsisDap {
     pub device: CmsisDapDevice,
@@ -106,20 +110,20 @@ impl CmsisDap {
             &mut self.device,
             SWJClockRequest(clock_hz),
         )
+        .map_err(CmsisDapError::from)
         .and_then(|v| match v {
             SWJClockResponse(Status::DAPOk) => Ok(()),
-            SWJClockResponse(Status::DAPError) => Err(anyhow!(CmsisDapError::ErrorResponse)),
-        })?;
-        Ok(())
+            SWJClockResponse(Status::DAPError) => Err(CmsisDapError::ErrorResponse),
+        })
     }
 
     fn transfer_configure(&mut self, request: ConfigureRequest) -> Result<(), CmsisDapError> {
         commands::send_command::<ConfigureRequest, ConfigureResponse>(&mut self.device, request)
+            .map_err(CmsisDapError::from)
             .and_then(|v| match v {
                 ConfigureResponse(Status::DAPOk) => Ok(()),
-                ConfigureResponse(Status::DAPError) => Err(anyhow!(CmsisDapError::ErrorResponse)),
-            })?;
-        Ok(())
+                ConfigureResponse(Status::DAPError) => Err(CmsisDapError::ErrorResponse),
+            })
     }
 
     fn configure_swd(
@@ -130,11 +134,11 @@ impl CmsisDap {
             &mut self.device,
             request
         )
+        .map_err(CmsisDapError::from)
         .and_then(|v| match v {
             swd::configure::ConfigureResponse(Status::DAPOk) => Ok(()),
-            swd::configure::ConfigureResponse(Status::DAPError) => Err(anyhow!(CmsisDapError::ErrorResponse)),
-        })?;
-        Ok(())
+            swd::configure::ConfigureResponse(Status::DAPError) => Err(CmsisDapError::ErrorResponse),
+        })
     }
 
     fn send_swj_sequences(&mut self, request: SequenceRequest) -> Result<(), CmsisDapError> {
@@ -144,11 +148,11 @@ impl CmsisDap {
         //let sequence_1 = SequenceRequest::new(&[0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF]);
 
         commands::send_command::<SequenceRequest, SequenceResponse>(&mut self.device, request)
+            .map_err(CmsisDapError::from)
             .and_then(|v| match v {
                 SequenceResponse(Status::DAPOk) => Ok(()),
-                SequenceResponse(Status::DAPError) => Err(anyhow!(CmsisDapError::ErrorResponse)),
-            })?;
-        Ok(())
+                SequenceResponse(Status::DAPError) => Err(CmsisDapError::ErrorResponse),
+            })
     }
 
     /// Immediately send whatever is in our batch if it is not empty.
@@ -182,7 +186,8 @@ impl CmsisDap {
             let response = commands::send_command::<TransferRequest, TransferResponse>(
                 &mut self.device,
                 TransferRequest::new(&transfers),
-            )?;
+            )
+            .map_err(CmsisDapError::from)?;
 
             let count = response.transfer_count as usize;
 
@@ -275,7 +280,7 @@ impl CmsisDap {
         let response = commands::send_command(&mut self.device, transport)?;
         match response {
             swo::TransportResponse(Status::DAPOk) => Ok(()),
-            swo::TransportResponse(Status::DAPError) => Err(CmsisDapError::UnexpectedAnswer.into()),
+            swo::TransportResponse(Status::DAPError) => Err(SendError::UnexpectedAnswer.into()),
         }
     }
 
@@ -286,7 +291,7 @@ impl CmsisDap {
         let response = commands::send_command(&mut self.device, mode)?;
         match response {
             swo::ModeResponse(Status::DAPOk) => Ok(()),
-            swo::ModeResponse(Status::DAPError) => Err(CmsisDapError::UnexpectedAnswer.into()),
+            swo::ModeResponse(Status::DAPError) => Err(SendError::UnexpectedAnswer.into()),
         }
     }
 
@@ -311,7 +316,7 @@ impl CmsisDap {
         let response = commands::send_command(&mut self.device, swo::ControlRequest::Start)?;
         match response {
             swo::ControlResponse(Status::DAPOk) => Ok(()),
-            swo::ControlResponse(Status::DAPError) => Err(CmsisDapError::UnexpectedAnswer.into()),
+            swo::ControlResponse(Status::DAPError) => Err(SendError::UnexpectedAnswer.into()),
         }
     }
 
@@ -320,7 +325,7 @@ impl CmsisDap {
         let response = commands::send_command(&mut self.device, swo::ControlRequest::Stop)?;
         match response {
             swo::ControlResponse(Status::DAPOk) => Ok(()),
-            swo::ControlResponse(Status::DAPError) => Err(CmsisDapError::UnexpectedAnswer.into()),
+            swo::ControlResponse(Status::DAPError) => Err(SendError::UnexpectedAnswer.into()),
         }
     }
 
@@ -474,11 +479,13 @@ impl DebugProbe for CmsisDap {
             ConnectRequest::UseDefaultPort
         };
 
-        let _result = commands::send_command(&mut self.device, protocol).and_then(|v| match v {
-            ConnectResponse::SuccessfulInitForSWD => Ok(WireProtocol::Swd),
-            ConnectResponse::SuccessfulInitForJTAG => Ok(WireProtocol::Jtag),
-            ConnectResponse::InitFailed => Err(anyhow!(CmsisDapError::ErrorResponse)),
-        })?;
+        let _result = commands::send_command(&mut self.device, protocol)
+            .map_err(CmsisDapError::from)
+            .and_then(|v| match v {
+                ConnectResponse::SuccessfulInitForSWD => Ok(WireProtocol::Swd),
+                ConnectResponse::SuccessfulInitForJTAG => Ok(WireProtocol::Jtag),
+                ConnectResponse::InitFailed => Err(CmsisDapError::ErrorResponse),
+            })?;
 
         // Set speed after connecting as it can be reset during protocol selection
         self.set_speed(self.speed_khz)?;
@@ -538,7 +545,7 @@ impl DebugProbe for CmsisDap {
 
         match response {
             DisconnectResponse(Status::DAPOk) => Ok(()),
-            DisconnectResponse(Status::DAPError) => Err(CmsisDapError::UnexpectedAnswer.into()),
+            DisconnectResponse(Status::DAPError) => Err(SendError::UnexpectedAnswer.into()),
         }
     }
 
@@ -790,7 +797,10 @@ impl SwoAccess for CmsisDap {
     fn read_swo_timeout(&mut self, timeout: Duration) -> Result<Vec<u8>, ProbeRsError> {
         if self.swo_active {
             if self.swo_streaming {
-                let buffer = self.device.read_swo_stream(timeout)?;
+                let buffer = self
+                    .device
+                    .read_swo_stream(timeout)
+                    .map_err(anyhow::Error::from)?;
                 log::trace!("SWO streaming buffer: {:?}", buffer);
                 Ok(buffer)
             } else {

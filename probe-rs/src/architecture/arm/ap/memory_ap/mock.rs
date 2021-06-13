@@ -174,18 +174,15 @@ where
                     }
                     _ => Err(MockMemoryError::UnknownWidth),
                 }
-                .map(|offset| {
-                    match csw.AddrInc {
-                        AddressIncrement::Single => {
-                            self.store
-                                .insert((TAR::ADDRESS, TAR::APBANKSEL), address + offset);
-                        }
-                        AddressIncrement::Off => (),
-                        AddressIncrement::Packed => {
-                            unimplemented!();
-                        }
+                .map(|offset| match csw.AddrInc {
+                    AddressIncrement::Single => {
+                        self.store
+                            .insert((TAR::ADDRESS, TAR::APBANKSEL), address + offset);
                     }
-                    ()
+                    AddressIncrement::Off => (),
+                    AddressIncrement::Packed => {
+                        unimplemented!();
+                    }
                 })
             }
             (CSW::ADDRESS, CSW::APBANKSEL) => {

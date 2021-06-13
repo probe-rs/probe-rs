@@ -1,6 +1,5 @@
-use super::super::{Category, CmsisDapError, Request, Response, Result};
+use super::super::{Category, Request, Response, SendError};
 
-use anyhow::anyhow;
 use scroll::{Pread, LE};
 
 #[allow(unused)]
@@ -22,7 +21,7 @@ pub enum Command {
 impl Request for Command {
     const CATEGORY: Category = Category(0x00);
 
-    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize> {
+    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize, SendError> {
         buffer[offset] = *self as u8;
         Ok(1)
     }
@@ -32,7 +31,7 @@ impl Request for Command {
 pub struct VendorID(pub(crate) String);
 
 impl Response for VendorID {
-    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self> {
+    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self, SendError> {
         string_from_bytes(buffer, offset, &VendorID)
     }
 }
@@ -41,7 +40,7 @@ impl Response for VendorID {
 pub struct ProductID(pub(crate) String);
 
 impl Response for ProductID {
-    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self> {
+    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self, SendError> {
         string_from_bytes(buffer, offset, &ProductID)
     }
 }
@@ -50,7 +49,7 @@ impl Response for ProductID {
 pub struct SerialNumber(pub(crate) String);
 
 impl Response for SerialNumber {
-    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self> {
+    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self, SendError> {
         string_from_bytes(buffer, offset, &SerialNumber)
     }
 }
@@ -59,7 +58,7 @@ impl Response for SerialNumber {
 pub struct FirmwareVersion(pub(crate) String);
 
 impl Response for FirmwareVersion {
-    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self> {
+    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self, SendError> {
         string_from_bytes(buffer, offset, &FirmwareVersion)
     }
 }
@@ -68,7 +67,7 @@ impl Response for FirmwareVersion {
 pub struct TargetDeviceVendor(pub(crate) String);
 
 impl Response for TargetDeviceVendor {
-    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self> {
+    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self, SendError> {
         string_from_bytes(buffer, offset, &TargetDeviceVendor)
     }
 }
@@ -77,7 +76,7 @@ impl Response for TargetDeviceVendor {
 pub struct TargetDeviceName(pub(crate) String);
 
 impl Response for TargetDeviceName {
-    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self> {
+    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self, SendError> {
         string_from_bytes(buffer, offset, &TargetDeviceName)
     }
 }
@@ -94,7 +93,7 @@ pub struct Capabilities {
 }
 
 impl Response for Capabilities {
-    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self> {
+    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self, SendError> {
         // This response can contain two info bytes.
         // In the docs only the first byte is described, so for now we always will only parse that specific byte.
         if buffer[offset] > 0 {
@@ -108,7 +107,7 @@ impl Response for Capabilities {
                 swo_streaming_trace_implemented: buffer[offset + 1] & 0x40 > 0,
             })
         } else {
-            Err(anyhow!(CmsisDapError::UnexpectedAnswer))
+            Err(SendError::UnexpectedAnswer)
         }
     }
 }
@@ -117,14 +116,14 @@ impl Response for Capabilities {
 pub struct TestDomainTime(pub(crate) u32);
 
 impl Response for TestDomainTime {
-    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self> {
+    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self, SendError> {
         if buffer[offset] == 0x08 {
             let res = buffer
                 .pread_with::<u32>(offset + 1, LE)
-                .map_err(|_| anyhow!("This is a bug. Please report it."))?;
+                .map_err(|_| SendError::Bug)?;
             Ok(TestDomainTime(res))
         } else {
-            Err(anyhow!(CmsisDapError::UnexpectedAnswer))
+            Err(SendError::UnexpectedAnswer)
         }
     }
 }
@@ -133,14 +132,14 @@ impl Response for TestDomainTime {
 pub struct SWOTraceBufferSize(pub(crate) u32);
 
 impl Response for SWOTraceBufferSize {
-    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self> {
+    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self, SendError> {
         if buffer[offset] == 0x04 {
             let res = buffer
                 .pread_with::<u32>(offset + 1, LE)
-                .map_err(|_| anyhow!("This is a bug. Please report it."))?;
+                .map_err(|_| SendError::Bug)?;
             Ok(SWOTraceBufferSize(res))
         } else {
-            Err(anyhow!(CmsisDapError::UnexpectedAnswer))
+            Err(SendError::UnexpectedAnswer)
         }
     }
 }
@@ -149,14 +148,14 @@ impl Response for SWOTraceBufferSize {
 pub struct PacketCount(pub(crate) u8);
 
 impl Response for PacketCount {
-    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self> {
+    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self, SendError> {
         if buffer[offset] == 0x01 {
             let res = buffer
                 .pread_with::<u8>(offset + 1, LE)
-                .map_err(|_| anyhow!("This is a bug. Please report it."))?;
+                .map_err(|_| SendError::Bug)?;
             Ok(PacketCount(res))
         } else {
-            Err(anyhow!(CmsisDapError::UnexpectedAnswer))
+            Err(SendError::UnexpectedAnswer)
         }
     }
 }
@@ -165,14 +164,14 @@ impl Response for PacketCount {
 pub struct PacketSize(pub(crate) u16);
 
 impl Response for PacketSize {
-    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self> {
+    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self, SendError> {
         if buffer[offset] == 0x02 {
             let res = buffer
                 .pread_with::<u16>(offset + 1, LE)
-                .map_err(|_| anyhow!("This is a bug. Please report it."))?;
+                .map_err(|_| SendError::Bug)?;
             Ok(PacketSize(res))
         } else {
-            Err(anyhow!(CmsisDapError::UnexpectedAnswer))
+            Err(SendError::UnexpectedAnswer)
         }
     }
 }
@@ -185,13 +184,12 @@ fn string_from_bytes<R, F: Fn(String) -> R>(
     buffer: &[u8],
     offset: usize,
     constructor: &F,
-) -> Result<R> {
+) -> Result<R, SendError> {
     let string_len = buffer[dbg!(offset)] as usize; // including the zero terminator
 
     let string_start = offset + 1;
     let string_end = string_start + string_len;
 
-    let res = std::str::from_utf8(&buffer[string_start..string_end])
-        .map_err(|_| anyhow!("This is a bug. Please report it."))?;
+    let res = std::str::from_utf8(&buffer[string_start..string_end]).map_err(|_| SendError::Bug)?;
     Ok(constructor(res.to_owned()))
 }

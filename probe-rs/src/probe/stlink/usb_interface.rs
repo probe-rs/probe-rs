@@ -172,21 +172,25 @@ impl StLinkUsbDevice {
         }
 
         if !endpoint_out {
-            Err(StlinkError::EndpointNotFound.into())
-        } else if !endpoint_in {
-            Err(StlinkError::EndpointNotFound.into())
-        } else if !endpoint_swo {
-            Err(StlinkError::EndpointNotFound.into())
-        } else {
-            let usb_stlink = Self {
-                device_handle,
-                info,
-            };
-
-            log::debug!("Succesfully attached to STLink.");
-
-            Ok(usb_stlink)
+            return Err(StlinkError::EndpointNotFound.into());
         }
+
+        if !endpoint_in {
+            return Err(StlinkError::EndpointNotFound.into());
+        }
+
+        if !endpoint_swo {
+            return Err(StlinkError::EndpointNotFound.into());
+        }
+
+        let usb_stlink = Self {
+            device_handle,
+            info,
+        };
+
+        log::debug!("Succesfully attached to STLink.");
+
+        Ok(usb_stlink)
     }
 
     /// Closes the USB interface gracefully.
