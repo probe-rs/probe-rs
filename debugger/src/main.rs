@@ -2,6 +2,7 @@ mod dap_types; //Uses Schemafy to generate DAP types from Json
 mod debug_adapter;
 mod debugger; //The probe-rs debugger.
 mod info;
+mod rtt;
 
 use anyhow::Result;
 use debugger::{

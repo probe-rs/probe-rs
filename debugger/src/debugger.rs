@@ -1,4 +1,4 @@
-use crate::dap_types::*;
+use crate::{dap_types::*, rtt::channel::{ChannelConfig, DataFormat}};
 use crate::debug_adapter::DapStatus;
 use crate::debug_adapter::*;
 
@@ -12,22 +12,35 @@ use probe_rs::{
     Core, CoreStatus, DebugProbeError, DebugProbeSelector, MemoryInterface, Probe, Session,
     WireProtocol,
 };
+use probe_rs_rtt::ScanRegion;
 use serde::Deserialize;
-use std::{env::{current_dir, set_current_dir}, io, io::{Read, Write}, net::{Ipv4Addr, TcpListener, ToSocketAddrs}, path::PathBuf, str::FromStr, sync::{Arc, Mutex}, thread, time::{Duration, Instant}};
+use std::{env::{current_dir, set_current_dir}, fs::{self, File}, io, io::{Read, Write}, net::{Ipv4Addr, TcpListener, ToSocketAddrs}, path::PathBuf, str::FromStr, sync::{Arc, Mutex}, thread, time::{Duration, Instant}};
 use structopt::StructOpt;
 
 fn parse_protocol(src: &str) -> Result<WireProtocol, String> {
     WireProtocol::from_str(src)
 }
+
 fn default_wire_protocol() -> Option<WireProtocol> {
     Some(WireProtocol::Swd)
 }
+
 fn default_console_log() -> Option<ConsoleLog> {
     Some(ConsoleLog::Error)
 }
+
 fn parse_console_log(src: &str) -> Result<ConsoleLog, String> {
     ConsoleLog::from_str(src)
 }
+
+fn parse_channel_configs(_src: &str) -> Result<ChannelConfig, String> {
+    unimplemented!()
+}
+
+fn default_channel_configs() -> Vec<ChannelConfig> {
+    vec![]
+}
+
 fn parse_probe_selector(src: &str) -> Result<DebugProbeSelector, String> {
     match DebugProbeSelector::from_str(src) {
         Ok(probe_selector) => Ok(probe_selector),
@@ -42,6 +55,7 @@ pub enum ConsoleLog {
     Info,
     Debug,
 } //TODO: It would be nice instead to tap into log write once the DebugAdapter has been initialized, and intercept RUST like log info
+
 impl std::str::FromStr for ConsoleLog {
     type Err = String;
 
@@ -135,7 +149,11 @@ pub struct DebuggerOptions {
     #[structopt(long, parse(try_from_str = parse_console_log))]
     #[serde(default = "default_console_log")]
     pub(crate) console_log_level: Option<ConsoleLog>,
+
+    #[structopt(flatten)]
+    pub(crate) rtt: RttConfig,
 }
+
 
 impl DebuggerOptions {
     /// Validate the new cwd, or else set it from the environment.
@@ -171,6 +189,26 @@ impl DebuggerOptions {
             None => None,
         };
     }
+}
+
+#[derive(StructOpt, Debug, Clone, Deserialize, Default)]
+#[serde(deny_unknown_fields)]
+pub struct RttConfig {
+    #[structopt(long, short)]
+    pub enabled: bool,
+    #[structopt(long, parse(try_from_str = parse_channel_configs))]
+    #[serde(default = "default_channel_configs")]
+    pub channels: Vec<ChannelConfig>,
+    /// Connection timeout in ms.
+    pub timeout: usize,
+    /// Whether to show timestamps in RTTUI
+    #[structopt(long, short)]
+    pub show_timestamps: bool,
+    /// Whether to save rtt history buffer on exit to file named history.txt
+    #[structopt(long, short)]
+    pub log_enabled: bool,
+    /// Where to save rtt history buffer relative to manifest path.
+    pub log_path: PathBuf,
 }
 
 /// #Debugger Overview
@@ -908,6 +946,10 @@ impl Debugger {
         //Open any RTT windows on the debug client, before the core can start running
         debug_adapter.to_rtt("probe-rs-rtt");
 
+        if self.debugger_options.rtt.enabled {
+            attach_to_rtt(&self.debugger_options);
+        }
+
         //This is the first attach to the requested core. If this one works, all subsequent ones will be no-op requests for a Core reference. Do NOT hold onto this reference for the duration of the session ... that is why this code is in a block of its own.
         {
             //First, attach to the core
@@ -956,6 +998,99 @@ impl Debugger {
     }
 }
 // SECTION: Functions for CLI struct matches from main.rs
+
+pub fn attach_to_rtt(options: &DebuggerOptions) -> Result<(), anyhow::Error> {
+    let defmt_enable = options.rtt
+        .channels
+        .iter()
+        .any(|elem| elem.format == DataFormat::Defmt);
+    let defmt_state = if defmt_enable {
+        // TODO: Clean the unwraps.
+        let elf = fs::read(options.program_binary.unwrap().clone()).unwrap();
+        let table = defmt_decoder::Table::parse(&elf)?;
+
+        let locs = {
+            let table = table.as_ref().unwrap();
+            let locs = table.get_locations(&elf)?;
+
+            if !table.is_empty() && locs.is_empty() {
+                log::warn!("Insufficient DWARF info; compile your program with `debug = 2` to enable location info.");
+                None
+            } else if table.indices().all(|idx| locs.contains_key(&(idx as u64))) {
+                Some(locs)
+            } else {
+                log::warn!("Location info is incomplete; it will be omitted from the output.");
+                None
+            }
+        };
+        Some((table.unwrap(), locs))
+    } else {
+        None
+    };
+
+    let t = std::time::Instant::now();
+    let mut error = None;
+
+    let mut i = 1;
+
+    while (t.elapsed().as_millis() as usize) < options.rtt.timeout {
+        log::info!("Initializing RTT (attempt {})...", i);
+        i += 1;
+
+        let rtt_header_address = if let Ok(mut file) = File::open(path.as_path()) {
+            if let Some(address) = rttui::app::App::get_rtt_symbol(&mut file) {
+                ScanRegion::Exact(address as u32)
+            } else {
+                ScanRegion::Ram
+            }
+        } else {
+            ScanRegion::Ram
+        };
+
+        match Rtt::attach_region(session.clone(), &rtt_header_address) {
+            Ok(rtt) => {
+                log::info!("RTT initialized.");
+
+                // `App` puts the terminal into a special state, as required
+                // by the text-based UI. If a panic happens while the
+                // terminal is in that state, this will completely mess up
+                // the user's terminal (misformatted panic message, newlines
+                // being ignored, input characters not being echoed, ...).
+                //
+                // The following panic hook cleans up the terminal, while
+                // otherwise preserving the behavior of the default panic
+                // hook (or whichever custom hook might have been registered
+                // before).
+                let previous_panic_hook = panic::take_hook();
+                panic::set_hook(Box::new(move |panic_info| {
+                    rttui::app::clean_up_terminal();
+                    previous_panic_hook(panic_info);
+                }));
+
+                let chip_name = config.general.chip.as_deref().unwrap_or_default();
+                let logname = format!("{}_{}_{}", name, chip_name, Local::now().to_rfc3339());
+                let mut app = rttui::app::App::new(rtt, &config, logname)?;
+                loop {
+                    app.poll_rtt();
+                    app.render(&defmt_state);
+                    if app.handle_event() {
+                        logging::println("Shutting down.");
+                        return Ok(());
+                    };
+                    std::thread::sleep(Duration::from_millis(10));
+                }
+            }
+            Err(err) => {
+                error = Some(anyhow!("Error attaching to RTT: {}", err));
+            }
+        };
+
+        log::debug!("Failed to initialize RTT. Retrying until timeout.");
+    }
+    if let Some(error) = error {
+        return Err(error);
+    }
+}
 
 pub fn list_connected_devices() -> Result<()> {
     let connected_devices = Probe::list_all();
