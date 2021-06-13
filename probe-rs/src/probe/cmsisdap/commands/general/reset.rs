@@ -1,5 +1,4 @@
-use super::super::{Category, CmsisDapError, Request, Response, Result, Status};
-use anyhow::anyhow;
+use super::super::{Category, Request, Response, SendError, Status};
 
 #[derive(Debug)]
 pub struct ResetRequest;
@@ -7,7 +6,7 @@ pub struct ResetRequest;
 impl Request for ResetRequest {
     const CATEGORY: Category = Category(0x0A);
 
-    fn to_bytes(&self, _buffer: &mut [u8], _offset: usize) -> Result<usize> {
+    fn to_bytes(&self, _buffer: &mut [u8], _offset: usize) -> Result<usize, SendError> {
         Ok(0)
     }
 }
@@ -20,11 +19,11 @@ pub enum Execute {
 }
 
 impl Execute {
-    pub(crate) fn from_byte(byte: u8) -> Result<Self> {
+    pub(crate) fn from_byte(byte: u8) -> Result<Self, SendError> {
         match byte {
             0 => Ok(Execute::NoDeviceSpecificResetSequenceImplemented),
             1 => Ok(Execute::DeviceSpecificResetSequenceImplemented),
-            _ => Err(anyhow!(CmsisDapError::UnexpectedAnswer)),
+            _ => Err(SendError::UnexpectedAnswer),
         }
     }
 }
@@ -36,7 +35,7 @@ pub(crate) struct ResetResponse {
 }
 
 impl Response for ResetResponse {
-    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self> {
+    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self, SendError> {
         Ok(ResetResponse {
             status: Status::from_byte(buffer[offset])?,
             execute: Execute::from_byte(buffer[offset + 1])?,

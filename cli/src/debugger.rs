@@ -18,10 +18,7 @@ pub struct DebugCli {
 /// Parse the argument at the given index.
 fn get_int_argument<T: Num>(args: &[&str], index: usize) -> Result<T, CliError>
 where
-    <T as Num>::FromStrRadixErr: std::error::Error,
-    <T as Num>::FromStrRadixErr: Send,
-    <T as Num>::FromStrRadixErr: Sync,
-    <T as Num>::FromStrRadixErr: 'static,
+    <T as Num>::FromStrRadixErr: std::error::Error + Send + Sync + 'static,
 {
     let arg_str = args.get(index).ok_or(CliError::MissingArgument)?;
 
@@ -307,33 +304,31 @@ impl DebugCli {
     pub fn handle_line(&self, line: &str, cli_data: &mut CliData) -> Result<CliState, CliError> {
         let mut command_parts = line.split_whitespace();
 
-        if let Some(command) = command_parts.next() {
-            // Special case for inbuilt help
-
-            if command == "help" {
+        match command_parts.next() {
+            Some(command) if command == "help" => {
                 println!("The following commands are available:");
 
                 for cmd in &self.commands {
                     println!(" - {}", cmd.name);
                 }
 
-                return Ok(CliState::Continue);
-            }
-
-            let cmd = self.commands.iter().find(|c| c.name == command);
-
-            if let Some(cmd) = cmd {
-                let remaining_args: Vec<&str> = command_parts.collect();
-
-                Self::execute_command(cli_data, cmd, &remaining_args)
-            } else {
-                println!("Unknown command '{}'", command);
-                println!("Enter 'help' for a list of commands");
-
                 Ok(CliState::Continue)
             }
-        } else {
-            Ok(CliState::Continue)
+            Some(command) => {
+                let cmd = self.commands.iter().find(|c| c.name == command);
+
+                if let Some(cmd) = cmd {
+                    let remaining_args: Vec<&str> = command_parts.collect();
+
+                    Self::execute_command(cli_data, cmd, &remaining_args)
+                } else {
+                    println!("Unknown command '{}'", command);
+                    println!("Enter 'help' for a list of commands");
+
+                    Ok(CliState::Continue)
+                }
+            }
+            _ => Ok(CliState::Continue),
         }
     }
 
@@ -344,17 +339,16 @@ impl DebugCli {
     ) -> Result<CliState, CliError> {
         match (command.function)(cli_data, &args) {
             Err(CliError::MissingArgument) => {
-                println!("Error: Missing argument");
-                println!();
-                println!("{}", command.help_text);
+                println!("Error: Missing argument\n\n{}", command.help_text);
                 Ok(CliState::Continue)
             }
             Err(CliError::ArgumentParseError {
                 argument, source, ..
             }) => {
-                println!("Error parsing argument '{}': {}", argument, source);
-                println!();
-                println!("{}", command.help_text);
+                println!(
+                    "Error parsing argument '{}': {}\n\n{}",
+                    argument, source, command.help_text
+                );
                 Ok(CliState::Continue)
             }
             other => other,

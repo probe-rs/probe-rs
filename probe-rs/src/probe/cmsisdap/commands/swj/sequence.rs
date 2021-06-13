@@ -1,7 +1,6 @@
 /// Implementation of the DAP_SWJ_SEQUENCE command
 ///
-use super::super::{Category, CmsisDapError, Request, Response, Result, Status};
-use anyhow::anyhow;
+use super::super::{Category, CmsisDapError, Request, Response, SendError, Status};
 
 #[derive(Clone, Copy, Debug)]
 pub struct SequenceRequest {
@@ -12,7 +11,7 @@ pub struct SequenceRequest {
 impl Request for SequenceRequest {
     const CATEGORY: Category = Category(0x12);
 
-    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize> {
+    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize, SendError> {
         buffer[offset] = self.bit_count;
 
         // calculate transfer len in bytes
@@ -36,9 +35,9 @@ impl Request for SequenceRequest {
 }
 
 impl SequenceRequest {
-    pub(crate) fn new(data: &[u8]) -> Result<SequenceRequest> {
+    pub(crate) fn new(data: &[u8]) -> Result<SequenceRequest, CmsisDapError> {
         if data.len() > 32 {
-            return Err(anyhow!(CmsisDapError::TooMuchData));
+            return Err(CmsisDapError::TooMuchData);
         }
 
         let bit_count = match data.len() {
@@ -61,7 +60,7 @@ impl SequenceRequest {
 pub struct SequenceResponse(pub(crate) Status);
 
 impl Response for SequenceResponse {
-    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self> {
+    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self, SendError> {
         Ok(SequenceResponse(Status::from_byte(buffer[offset])?))
     }
 }

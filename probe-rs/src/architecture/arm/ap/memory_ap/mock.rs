@@ -68,7 +68,7 @@ where
                 let offset = address as usize;
                 let csw = CSW::from(csw);
 
-                let new_drw = match csw.SIZE {
+                let (new_drw, offset) = match csw.SIZE {
                     DataSize::U32 => {
                         let bytes: [u8; 4] = self
                             .memory
@@ -76,7 +76,7 @@ where
                             .map(|v| v.try_into().unwrap())
                             .unwrap_or([0u8; 4]);
 
-                        u32::from_le_bytes(bytes)
+                        (u32::from_le_bytes(bytes), 4)
                     }
                     DataSize::U16 => {
                         let bytes = self
@@ -85,11 +85,17 @@ where
                             .map(|v| v.try_into().unwrap())
                             .unwrap_or([0u8; 2]);
                         let value = u16::from_le_bytes(bytes);
-                        drw & !(0xffff << bit_offset) | (u32::from(value) << bit_offset)
+                        (
+                            drw & !(0xffff << bit_offset) | (u32::from(value) << bit_offset),
+                            2,
+                        )
                     }
                     DataSize::U8 => {
                         let value = *self.memory.get(offset).unwrap_or(&0u8);
-                        drw & !(0xff << bit_offset) | (u32::from(value) << bit_offset)
+                        (
+                            drw & !(0xff << bit_offset) | (u32::from(value) << bit_offset),
+                            1,
+                        )
                     }
                     _ => return Err(MockMemoryError::UnknownWidth),
                 };
@@ -98,15 +104,8 @@ where
 
                 match csw.AddrInc {
                     AddressIncrement::Single => {
-                        let new_address = match csw.SIZE {
-                            DataSize::U32 => address + 4,
-                            DataSize::U16 => address + 2,
-                            DataSize::U8 => address + 1,
-                            _ => unimplemented!(),
-                        };
-
                         self.store
-                            .insert((TAR::ADDRESS, TAR::APBANKSEL), new_address);
+                            .insert((TAR::ADDRESS, TAR::APBANKSEL), address + offset);
                     }
                     AddressIncrement::Off => (),
                     AddressIncrement::Packed => {
@@ -132,7 +131,7 @@ where
     ) -> Result<(), Self::Error> {
         log::debug!("Mock: Write to register {:x?}", &register);
 
-        let value = register.into();
+        let value: u32 = register.into();
         self.store.insert((R::ADDRESS, R::APBANKSEL), value);
         let csw = self.store[&(CSW::ADDRESS, CSW::APBANKSEL)];
         let address = self.store[&(TAR::ADDRESS, TAR::APBANKSEL)];
@@ -156,48 +155,35 @@ where
                 }
 
                 let bit_offset = (address % 4) * 8;
-                let result = match csw.SIZE {
+                match csw.SIZE {
                     DataSize::U32 => {
-                        self.memory[address as usize] = value as u8;
-                        self.memory[address as usize + 1] = (value >> 8) as u8;
-                        self.memory[address as usize + 2] = (value >> 16) as u8;
-                        self.memory[address as usize + 3] = (value >> 24) as u8;
-                        Ok(())
+                        self.memory[address as usize..address as usize + 4]
+                            .copy_from_slice(&value.to_le_bytes());
+                        Ok(4)
                     }
                     DataSize::U16 => {
                         let value = value >> bit_offset;
                         self.memory[address as usize] = value as u8;
                         self.memory[address as usize + 1] = (value >> 8) as u8;
-                        Ok(())
+                        Ok(2)
                     }
                     DataSize::U8 => {
                         let value = value >> bit_offset;
                         self.memory[address as usize] = value as u8;
-                        Ok(())
+                        Ok(1)
                     }
                     _ => Err(MockMemoryError::UnknownWidth),
-                };
-
-                if result.is_ok() {
-                    match csw.AddrInc {
-                        AddressIncrement::Single => {
-                            let new_address = match csw.SIZE {
-                                DataSize::U32 => address + 4,
-                                DataSize::U16 => address + 2,
-                                DataSize::U8 => address + 1,
-                                _ => unimplemented!(),
-                            };
-                            self.store
-                                .insert((TAR::ADDRESS, TAR::APBANKSEL), new_address);
-                        }
-                        AddressIncrement::Off => (),
-                        AddressIncrement::Packed => {
-                            unimplemented!();
-                        }
-                    }
                 }
-
-                result
+                .map(|offset| match csw.AddrInc {
+                    AddressIncrement::Single => {
+                        self.store
+                            .insert((TAR::ADDRESS, TAR::APBANKSEL), address + offset);
+                    }
+                    AddressIncrement::Off => (),
+                    AddressIncrement::Packed => {
+                        unimplemented!();
+                    }
+                })
             }
             (CSW::ADDRESS, CSW::APBANKSEL) => {
                 self.store.insert((CSW::ADDRESS, CSW::APBANKSEL), value);

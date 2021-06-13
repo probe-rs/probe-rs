@@ -9,33 +9,46 @@ use crate::DebugProbeError;
 use core::ops::Deref;
 use std::time::Duration;
 
-use anyhow::{anyhow, Context, Result};
 use log::log_enabled;
 
 #[derive(Debug, thiserror::Error)]
 pub enum CmsisDapError {
-    #[error("Unexpected answer to command")]
-    UnexpectedAnswer,
+    #[error(transparent)]
+    Send(#[from] SendError),
     #[error("CMSIS-DAP responded with an error")]
     ErrorResponse,
     #[error("Too much data provided for SWJ Sequence command")]
     TooMuchData,
-    #[error("Not enough data in response from probe")]
-    NotEnoughData,
     #[error("Requested SWO baud rate could not be configured")]
     SwoBaudrateNotConfigured,
     #[error("Probe reported an error while streaming SWO")]
     SwoTraceStreamError,
     #[error("Requested SWO mode is not available on this probe")]
     SwoModeNotAvailable,
+    #[error("An error with the DAP communication occured")]
+    Dap(#[from] DapError),
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum SendError {
     #[error("Error in the USB HID access")]
     HidApi(#[from] hidapi::HidError),
     #[error("Error in the USB access")]
     UsbError(#[from] rusb::Error),
-    #[error("An error with the DAP communication occured")]
-    Dap(#[from] DapError),
-    #[error(transparent)]
-    Other(#[from] anyhow::Error),
+    #[error("Not enough data in response from probe")]
+    NotEnoughData,
+    #[error("Status can only be 0x00 or 0xFF")]
+    NonZeroOrFF,
+    #[error("Connecting to target failed, received: {0:x}")]
+    ConnectResponseError(u8),
+    #[error("Received invalid data for {0:?}")]
+    InvalidDataFor(u8),
+    #[error("Unexpected answer to command")]
+    UnexpectedAnswer,
+    #[error("Failed to write word at data_offset {0}. This is a bug. Please report it.")]
+    WriteToOffsetBug(usize),
+    #[error("This is a bug. Please report it.")]
+    Bug,
 }
 
 impl From<CmsisDapError> for DebugProbeError {
@@ -66,7 +79,7 @@ pub enum CmsisDapDevice {
 
 impl CmsisDapDevice {
     /// Read from the probe into `buf`, returning the number of bytes read on success.
-    fn read(&self, buf: &mut [u8]) -> Result<usize> {
+    fn read(&self, buf: &mut [u8]) -> Result<usize, SendError> {
         match self {
             CmsisDapDevice::V1 { handle, .. } => Ok(handle.read_timeout(buf, 100)?),
             CmsisDapDevice::V2 { handle, in_ep, .. } => {
@@ -77,7 +90,7 @@ impl CmsisDapDevice {
     }
 
     /// Write `buf` to the probe, returning the number of bytes written on success.
-    fn write(&self, buf: &[u8]) -> Result<usize> {
+    fn write(&self, buf: &[u8]) -> Result<usize, SendError> {
         match self {
             CmsisDapDevice::V1 { handle, .. } => Ok(handle.write(buf)?),
             CmsisDapDevice::V2 { handle, out_ep, .. } => {
@@ -135,9 +148,9 @@ impl CmsisDapDevice {
     /// Returns SWOModeNotAvailable if this device does not support SWO streaming.
     ///
     /// On timeout, returns a zero-length buffer.
-    pub(super) fn read_swo_stream(&self, timeout: Duration) -> Result<Vec<u8>> {
+    pub(super) fn read_swo_stream(&self, timeout: Duration) -> Result<Vec<u8>, CmsisDapError> {
         match self {
-            CmsisDapDevice::V1 { .. } => Err(CmsisDapError::SwoModeNotAvailable.into()),
+            CmsisDapDevice::V1 { .. } => Err(CmsisDapError::SwoModeNotAvailable),
             CmsisDapDevice::V2 { handle, swo_ep, .. } => match swo_ep {
                 Some((ep, len)) => {
                     let mut buf = vec![0u8; *len];
@@ -150,10 +163,10 @@ impl CmsisDapDevice {
                             buf.truncate(0);
                             Ok(buf)
                         }
-                        Err(e) => Err(e.into()),
+                        Err(e) => Err(SendError::from(e).into()),
                     }
                 }
-                None => Err(CmsisDapError::SwoModeNotAvailable.into()),
+                None => Err(CmsisDapError::SwoModeNotAvailable),
             },
         }
     }
@@ -166,11 +179,11 @@ pub(crate) enum Status {
 }
 
 impl Status {
-    pub fn from_byte(value: u8) -> Result<Self> {
+    pub fn from_byte(value: u8) -> Result<Self, SendError> {
         match value {
             0x00 => Ok(Status::DAPOk),
             0xFF => Ok(Status::DAPError),
-            _ => Err(CmsisDapError::UnexpectedAnswer).context("Status can only be 0x00 or 0xFF"),
+            _ => Err(SendError::NonZeroOrFF),
         }
     }
 }
@@ -190,17 +203,17 @@ pub(crate) trait Request {
 
     /// Convert the request to bytes, which can be sent to the probe.
     /// Returns the amount of bytes written to the buffer.
-    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize>;
+    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize, SendError>;
 }
 
 pub(crate) trait Response: Sized {
-    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self>;
+    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self, SendError>;
 }
 
 pub(crate) fn send_command<Req: Request, Res: Response>(
     device: &mut CmsisDapDevice,
     request: Req,
-) -> Result<Res> {
+) -> Result<Res, SendError> {
     // Size the buffer for the maximum packet size.
     // On v1, we always send this full-sized report, while
     // on v2 we can truncate to just the required data.
@@ -236,8 +249,7 @@ pub(crate) fn send_command<Req: Request, Res: Response>(
     if buffer[0] == *Req::CATEGORY {
         Res::from_bytes(&buffer, 1)
     } else {
-        Err(anyhow!(CmsisDapError::UnexpectedAnswer))
-            .with_context(|| format!("Received invalid data for {:?}", *Req::CATEGORY))
+        Err(SendError::InvalidDataFor(*Req::CATEGORY))
     }
 }
 

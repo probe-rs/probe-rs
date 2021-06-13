@@ -276,23 +276,19 @@ impl DebugProbe for StLink<StLinkUsbDevice> {
 
     fn get_target_voltage(&mut self) -> Result<Option<f32>, DebugProbeError> {
         let mut buf = [0; 8];
-        match self
-            .device
+        self.device
             .write(&[commands::GET_TARGET_VOLTAGE], &[], &mut buf, TIMEOUT)
-        {
-            Ok(_) => {
+            .and_then(|_| {
                 // The next two unwraps are safe!
-                let a0 = (&buf[0..4]).pread_with::<u32>(0, LE).unwrap() as f32;
-                let a1 = (&buf[4..8]).pread_with::<u32>(0, LE).unwrap() as f32;
-                if a0 != 0.0 {
-                    Ok(Some((2.0 * a1 * 1.2 / a0) as f32))
+                let a0 = (&buf[0..4]).pread_with::<u32>(0, LE).unwrap();
+                let a1 = (&buf[4..8]).pread_with::<u32>(0, LE).unwrap();
+                if a0 != 0 {
+                    Ok(Some(2. * (a1 as f32) * 1.2 / (a0 as f32)))
                 } else {
                     // Should never happen
                     Err(StlinkError::VoltageDivisionByZero.into())
                 }
-            }
-            Err(e) => Err(e),
-        }
+            })
     }
 }
 
@@ -304,15 +300,16 @@ impl DapAccess for StLink<StLinkUsbDevice> {
                 self.select_ap(port_number as u8)?;
             }
 
-            let port: u16 = port.into();
+            let port = u16::from(port).to_le_bytes();
+            let addr = addr.to_le_bytes();
 
             let cmd = &[
                 commands::JTAG_COMMAND,
                 commands::JTAG_READ_DAP_REG,
-                (port & 0xFF) as u8,
-                ((port >> 8) & 0xFF) as u8,
-                (addr & 0xFF) as u8,
-                ((addr >> 8) & 0xFF) as u8,
+                port[0],
+                port[1],
+                addr[0],
+                addr[1],
             ];
             let mut buf = [0; 8];
             self.send_jtag_command(cmd, &[], &mut buf, TIMEOUT)?;
@@ -335,23 +332,24 @@ impl DapAccess for StLink<StLinkUsbDevice> {
                 self.select_ap(port_number as u8)?;
             }
 
-            let port: u16 = port.into();
+            let port = u16::from(port).to_le_bytes();
+            let addr = addr.to_le_bytes();
+            let bytes = value.to_le_bytes();
 
             let cmd = &[
                 commands::JTAG_COMMAND,
                 commands::JTAG_WRITE_DAP_REG,
-                (port & 0xFF) as u8,
-                ((port >> 8) & 0xFF) as u8,
-                (addr & 0xFF) as u8,
-                ((addr >> 8) & 0xFF) as u8,
-                (value & 0xFF) as u8,
-                ((value >> 8) & 0xFF) as u8,
-                ((value >> 16) & 0xFF) as u8,
-                ((value >> 24) & 0xFF) as u8,
+                port[0],
+                port[1],
+                addr[0],
+                addr[1],
+                bytes[0],
+                bytes[1],
+                bytes[2],
+                bytes[3],
             ];
             let mut buf = [0; 2];
-            self.send_jtag_command(cmd, &[], &mut buf, TIMEOUT)?;
-            Ok(())
+            self.send_jtag_command(cmd, &[], &mut buf, TIMEOUT)
         } else {
             Err(StlinkError::BlanksNotAllowedOnDPRegister.into())
         }
@@ -445,17 +443,13 @@ impl<D: StLinkUsb> StLink<D> {
         //   Byte 2-3: ST_VID
         //   Byte 4-5: STLINK_PID
         let mut buf = [0; 6];
-        match self
-            .device
+        self.device
             .write(&[commands::GET_VERSION], &[], &mut buf, TIMEOUT)
-        {
-            Ok(_) => {
+            .map(|_| {
                 let version: u16 = (&buf[0..2]).pread_with(0, BE).unwrap();
                 self.hw_version = (version >> HW_VERSION_SHIFT) as u8 & HW_VERSION_MASK;
                 self.jtag_version = (version >> JTAG_VERSION_SHIFT) as u8 & JTAG_VERSION_MASK;
-            }
-            Err(e) => return Err(e),
-        }
+            })?;
 
         // For the STLinkV3 we must use the extended get version command.
         if self.hw_version >= 3 {
@@ -469,30 +463,24 @@ impl<D: StLinkUsb> StLink<D> {
             //  8-9: ST_VID
             //  10-11: STLINK_PID
             let mut buf = [0; 12];
-            match self
-                .device
+            self.device
                 .write(&[commands::GET_VERSION_EXT], &[], &mut buf, TIMEOUT)
-            {
-                Ok(_) => {
+                .map(|_| {
                     let version: u8 = (&buf[2..3]).pread_with(0, LE).unwrap();
                     self.jtag_version = version;
-                }
-                Err(e) => return Err(e),
-            }
+                })?;
         }
 
         // Make sure everything is okay with the firmware we use.
         if self.jtag_version == 0 {
-            return Err(StlinkError::JTAGNotSupportedOnProbe.into());
+            Err(StlinkError::JTAGNotSupportedOnProbe.into())
+        } else if (self.hw_version < 3 && self.jtag_version < Self::MIN_JTAG_VERSION)
+            || (self.hw_version == 3 && self.jtag_version < Self::MIN_JTAG_VERSION_V3)
+        {
+            Err(DebugProbeError::ProbeFirmwareOutdated)
+        } else {
+            Ok((self.hw_version, self.jtag_version))
         }
-        if self.hw_version < 3 && self.jtag_version < Self::MIN_JTAG_VERSION {
-            return Err(DebugProbeError::ProbeFirmwareOutdated);
-        }
-        if self.hw_version == 3 && self.jtag_version < Self::MIN_JTAG_VERSION_V3 {
-            return Err(DebugProbeError::ProbeFirmwareOutdated);
-        }
-
-        Ok((self.hw_version, self.jtag_version))
     }
 
     /// Opens the ST-Link USB device and tries to identify the ST-Links version and its target voltage.
@@ -631,17 +619,13 @@ impl<D: StLinkUsb> StLink<D> {
         // Check if we can use APs other an AP 0.
         // Older versions of the ST-Link software don't support this.
         if self.hw_version < 3 && self.jtag_version < Self::MIN_JTAG_VERSION_MULTI_AP {
-            if ap == 0 {
-                return Ok(());
-            } else {
+            if ap != 0 {
                 return Err(DebugProbeError::ProbeFirmwareOutdated);
             }
-        }
-
-        if !self.opened_aps.contains(&ap) {
+        } else if !self.opened_aps.contains(&ap) {
             log::debug!("Opening AP {}", ap);
             self.open_ap(ap)?;
-            self.opened_aps.push(ap)
+            self.opened_aps.push(ap);
         }
 
         Ok(())
@@ -707,7 +691,7 @@ impl<D: StLinkUsb> StLink<D> {
                 }
                 status => {
                     log::warn!("send_jtag_command {} failed: {:?}", cmd[0], status);
-                    return Err(From::from(StlinkError::CommandFailed(status)));
+                    return Err(StlinkError::CommandFailed(status).into());
                 }
             }
 
@@ -719,7 +703,7 @@ impl<D: StLinkUsb> StLink<D> {
 
         // Return the last error (will be SwdDpWait or SwdApWait)
         let status = Status::from(read_data[0]);
-        Err(From::from(StlinkError::CommandFailed(status)))
+        Err(StlinkError::CommandFailed(status).into())
     }
 
     pub fn start_trace_reception(&mut self, config: &SwoConfig) -> Result<(), DebugProbeError> {
@@ -815,18 +799,19 @@ impl<D: StLinkUsb> StLink<D> {
             return Err(StlinkError::UnalignedAddress).map_err(DebugProbeError::from);
         }
 
-        let data_length = data.len();
+        let data_length = data.len().to_le_bytes();
 
+        let addbytes = address.to_le_bytes();
         self.device.write(
             &[
                 commands::JTAG_COMMAND,
                 commands::JTAG_READMEM_32BIT,
-                address as u8,
-                (address >> 8) as u8,
-                (address >> 16) as u8,
-                (address >> 24) as u8,
-                data_length as u8,
-                (data_length >> 8) as u8,
+                addbytes[0],
+                addbytes[1],
+                addbytes[2],
+                addbytes[3],
+                data_length[0],
+                data_length[1],
                 apsel,
             ],
             &[],
@@ -834,9 +819,7 @@ impl<D: StLinkUsb> StLink<D> {
             TIMEOUT,
         )?;
 
-        self.get_last_rw_status()?;
-
-        Ok(())
+        self.get_last_rw_status()
     }
 
     fn read_mem_8bit(
@@ -871,16 +854,18 @@ impl<D: StLinkUsb> StLink<D> {
 
         log::debug!("Read mem 8 bit, address={:08x}, length={}", address, length);
 
+        let addbytes = address.to_le_bytes();
+        let lenbytes = length.to_le_bytes();
         self.device.write(
             &[
                 commands::JTAG_COMMAND,
                 commands::JTAG_READMEM_8BIT,
-                address as u8,
-                (address >> 8) as u8,
-                (address >> 16) as u8,
-                (address >> 24) as u8,
-                length as u8,
-                (length >> 8) as u8,
+                addbytes[0],
+                addbytes[1],
+                addbytes[2],
+                addbytes[3],
+                lenbytes[0],
+                lenbytes[1],
                 apsel,
             ],
             &[],
@@ -922,16 +907,18 @@ impl<D: StLinkUsb> StLink<D> {
             return Err(StlinkError::UnalignedAddress).map_err(DebugProbeError::from);
         }
 
+        let addbytes = address.to_le_bytes();
+        let lenbytes = length.to_le_bytes();
         self.device.write(
             &[
                 commands::JTAG_COMMAND,
                 commands::JTAG_WRITEMEM_32BIT,
-                address as u8,
-                (address >> 8) as u8,
-                (address >> 16) as u8,
-                (address >> 24) as u8,
-                length as u8,
-                (length >> 8) as u8,
+                addbytes[0],
+                addbytes[1],
+                addbytes[2],
+                addbytes[3],
+                lenbytes[0],
+                lenbytes[1],
                 apsel,
             ],
             &data,
@@ -939,9 +926,7 @@ impl<D: StLinkUsb> StLink<D> {
             TIMEOUT,
         )?;
 
-        self.get_last_rw_status()?;
-
-        Ok(())
+        self.get_last_rw_status()
     }
 
     fn write_mem_8bit(
@@ -965,16 +950,18 @@ impl<D: StLinkUsb> StLink<D> {
             );
         }
 
+        let addbytes = address.to_le_bytes();
+        let lenbytes = byte_length.to_le_bytes();
         self.device.write(
             &[
                 commands::JTAG_COMMAND,
                 commands::JTAG_WRITEMEM_8BIT,
-                address as u8,
-                (address >> 8) as u8,
-                (address >> 16) as u8,
-                (address >> 24) as u8,
-                byte_length as u8,
-                (byte_length >> 8) as u8,
+                addbytes[0],
+                addbytes[1],
+                addbytes[2],
+                addbytes[3],
+                lenbytes[0],
+                lenbytes[1],
                 apsel,
             ],
             data,
@@ -982,32 +969,29 @@ impl<D: StLinkUsb> StLink<D> {
             TIMEOUT,
         )?;
 
-        self.get_last_rw_status()?;
-
-        Ok(())
+        self.get_last_rw_status()
     }
 
     fn _read_debug_reg(&mut self, address: u32) -> Result<u32, DebugProbeError> {
         log::trace!("Read debug reg {:08x}", address);
         let mut buff = [0u8; 8];
 
+        let addbytes = address.to_le_bytes();
         self.send_jtag_command(
             &[
                 commands::JTAG_COMMAND,
                 commands::JTAG_READ_DEBUG_REG,
-                address as u8,
-                (address >> 8) as u8,
-                (address >> 16) as u8,
-                (address >> 24) as u8,
+                addbytes[0],
+                addbytes[1],
+                addbytes[2],
+                addbytes[3],
             ],
             &[],
             &mut buff,
             TIMEOUT,
         )?;
 
-        let response_val: u32 = buff.pread(4).unwrap();
-
-        Ok(response_val)
+        Ok(buff.pread(4).unwrap())
     }
 
     fn _write_debug_reg(&mut self, address: u32, value: u32) -> Result<(), DebugProbeError> {
@@ -1038,9 +1022,7 @@ impl<D: StLinkUsb> StLink<D> {
 
         self.send_jtag_command(&cmd, &[], &mut buff, TIMEOUT)?;
 
-        let response = buff.pread_with(4, LE).unwrap();
-
-        Ok(response)
+        Ok(buff.pread_with(4, LE).unwrap())
     }
 
     fn write_core_reg(&mut self, index: u32, value: u32) -> Result<(), DebugProbeError> {
@@ -1162,7 +1144,7 @@ impl StlinkArmDebug {
     ) -> Result<ApInformation, DebugProbeError> {
         let idr = self.read_ap_register(access_port, IDR::default())?;
 
-        if idr.CLASS == ApClass::MemAp {
+        Ok(if idr.CLASS == ApClass::MemAp {
             let access_port: MemoryAp = access_port.into();
 
             let base_register = self.read_ap_register(access_port, BASE::default())?;
@@ -1194,49 +1176,44 @@ impl StlinkArmDebug {
 
             // TODO: Check if HNONSEC is supported
 
-            Ok(ApInformation::MemoryAp(MemoryApInformation {
+            ApInformation::MemoryAp(MemoryApInformation {
                 port_number: access_port.port_number(),
                 only_32bit_data_size,
                 debug_base_address: base_address,
                 supports_hnonsec: false,
-            }))
-        } else {
-            Ok(ApInformation::Other {
-                port_number: access_port.port_number(),
             })
-        }
+        } else {
+            ApInformation::Other {
+                port_number: access_port.port_number(),
+            }
+        })
     }
 
     fn select_dp_bank(&mut self, dp_bank: DpBankSel) -> Result<(), DebugPortError> {
-        match dp_bank {
-            DpBankSel::Bank(new_bank) => {
-                if new_bank != self.state.current_dpbanksel {
-                    self.state.current_dpbanksel = new_bank;
+        if let DpBankSel::Bank(new_bank) = dp_bank {
+            if new_bank != self.state.current_dpbanksel {
+                self.state.current_dpbanksel = new_bank;
 
-                    let mut select = Select(0);
+                let mut select = Select(0);
 
-                    log::debug!("Changing DP_BANK_SEL to {}", self.state.current_dpbanksel);
+                log::debug!("Changing DP_BANK_SEL to {}", self.state.current_dpbanksel);
 
-                    select.set_ap_sel(self.state.current_apsel);
-                    select.set_ap_bank_sel(self.state.current_apbanksel);
-                    select.set_dp_bank_sel(self.state.current_dpbanksel);
+                select.set_ap_sel(self.state.current_apsel);
+                select.set_ap_bank_sel(self.state.current_apbanksel);
+                select.set_dp_bank_sel(self.state.current_dpbanksel);
 
-                    self.write_dp_register(select)?;
-                }
+                self.write_dp_register(select)?;
             }
-            DpBankSel::DontCare => (),
         }
 
         Ok(())
     }
 
     fn select_ap_and_ap_bank(&mut self, port: u8, ap_bank: u8) -> Result<(), DebugProbeError> {
-        let mut cache_changed = if self.state.current_apsel != port {
+        let mut cache_changed = self.state.current_apsel != port;
+        if cache_changed {
             self.state.current_apsel = port;
-            true
-        } else {
-            false
-        };
+        }
 
         if self.state.current_apbanksel != ap_bank {
             self.state.current_apbanksel = ap_bank;
@@ -1264,9 +1241,7 @@ impl StlinkArmDebug {
 
     fn select_ap(&mut self, port: impl AccessPort) -> Result<(), DebugProbeError> {
         // Change AP, leave ap_bank_sel the same.
-        self.probe.select_ap(port.port_number())?;
-
-        Ok(())
+        self.probe.select_ap(port.port_number())
     }
 }
 
@@ -1447,10 +1422,8 @@ where
             PortType::AccessPort(u16::from(self.state.current_apsel)),
             u16::from(R::ADDRESS),
             register_value,
-        )?;
-
+        )
         // Read from AP register
-        Ok(())
     }
 
     // TODO: Fix this ugly: _register: R, values: &[u32]
@@ -1475,8 +1448,7 @@ where
             PortType::AccessPort(u16::from(self.state.current_apsel)),
             u16::from(R::ADDRESS),
             values,
-        )?;
-        Ok(())
+        )
     }
 
     // TODO: fix types, see above!
@@ -1501,8 +1473,7 @@ where
             PortType::AccessPort(u16::from(self.state.current_apsel)),
             u16::from(R::ADDRESS),
             values,
-        )?;
-        Ok(())
+        )
     }
 }
 
@@ -1694,9 +1665,7 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
     ) -> Result<u32, ProbeRsError> {
         // Unclear how this works with multiple APs
 
-        let value = self.probe.probe.read_core_reg(addr.0 as u32)?;
-
-        Ok(value)
+        Ok(self.probe.probe.read_core_reg(addr.0 as u32)?)
     }
 
     fn write_core_reg(

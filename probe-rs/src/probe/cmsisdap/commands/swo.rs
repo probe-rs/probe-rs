@@ -1,5 +1,4 @@
-use super::{Category, CmsisDapError, Request, Response, Result, Status};
-use anyhow::anyhow;
+use super::{Category, Request, Response, SendError, Status};
 use std::convert::TryInto;
 
 #[repr(u8)]
@@ -14,7 +13,7 @@ pub enum TransportRequest {
 impl Request for TransportRequest {
     const CATEGORY: Category = Category(0x17);
 
-    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize> {
+    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize, SendError> {
         buffer[offset] = *self as u8;
         Ok(1)
     }
@@ -24,7 +23,7 @@ impl Request for TransportRequest {
 pub struct TransportResponse(pub(crate) Status);
 
 impl Response for TransportResponse {
-    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self> {
+    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self, SendError> {
         Ok(TransportResponse(Status::from_byte(buffer[offset])?))
     }
 }
@@ -41,7 +40,7 @@ pub enum ModeRequest {
 impl Request for ModeRequest {
     const CATEGORY: Category = Category(0x18);
 
-    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize> {
+    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize, SendError> {
         buffer[offset] = *self as u8;
         Ok(1)
     }
@@ -51,7 +50,7 @@ impl Request for ModeRequest {
 pub struct ModeResponse(pub(crate) Status);
 
 impl Response for ModeResponse {
-    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self> {
+    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self, SendError> {
         Ok(ModeResponse(Status::from_byte(buffer[offset])?))
     }
 }
@@ -62,7 +61,7 @@ pub struct BaudrateRequest(pub(crate) u32);
 impl Request for BaudrateRequest {
     const CATEGORY: Category = Category(0x19);
 
-    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize> {
+    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize, SendError> {
         assert!(
             buffer.len() >= offset + 4,
             "This is a bug. Please report it."
@@ -76,9 +75,9 @@ impl Request for BaudrateRequest {
 pub struct BaudrateResponse(pub(crate) u32);
 
 impl Response for BaudrateResponse {
-    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self> {
+    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self, SendError> {
         if buffer.len() - offset < 4 {
-            return Err(anyhow!(CmsisDapError::NotEnoughData));
+            return Err(SendError::NotEnoughData);
         }
 
         let baud = u32::from_le_bytes(
@@ -101,7 +100,7 @@ pub enum ControlRequest {
 impl Request for ControlRequest {
     const CATEGORY: Category = Category(0x1a);
 
-    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize> {
+    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize, SendError> {
         buffer[offset] = *self as u8;
         Ok(1)
     }
@@ -111,7 +110,7 @@ impl Request for ControlRequest {
 pub struct ControlResponse(pub(crate) Status);
 
 impl Response for ControlResponse {
-    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self> {
+    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self, SendError> {
         Ok(ControlResponse(Status::from_byte(buffer[offset])?))
     }
 }
@@ -122,7 +121,7 @@ pub struct StatusRequest;
 impl Request for StatusRequest {
     const CATEGORY: Category = Category(0x1b);
 
-    fn to_bytes(&self, _buffer: &mut [u8], _offset: usize) -> Result<usize> {
+    fn to_bytes(&self, _buffer: &mut [u8], _offset: usize) -> Result<usize, SendError> {
         Ok(0)
     }
 }
@@ -151,12 +150,12 @@ pub struct StatusResponse {
 }
 
 impl Response for StatusResponse {
-    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self> {
+    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self, SendError> {
         let status = TraceStatus::from(buffer[offset]);
         let count = u32::from_le_bytes(
             buffer[offset + 1..offset + 5]
                 .try_into()
-                .expect("This is a bug. Please report it."),
+                .map_err(|_| SendError::Bug)?,
         );
         Ok(StatusResponse { status, count })
     }
@@ -172,7 +171,7 @@ pub struct ExtendedStatusRequest {
 impl Request for ExtendedStatusRequest {
     const CATEGORY: Category = Category(0x1e);
 
-    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize> {
+    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize, SendError> {
         let control = (self.request_status as u8)
             | ((self.request_count as u8) << 1)
             | ((self.request_index_timestamp as u8) << 2);
@@ -190,9 +189,9 @@ pub struct ExtendedStatusResponse {
 }
 
 impl Response for ExtendedStatusResponse {
-    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self> {
+    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self, SendError> {
         if buffer.len() - offset < 13 {
-            return Err(anyhow!(CmsisDapError::NotEnoughData));
+            return Err(SendError::NotEnoughData);
         }
 
         let status = TraceStatus::from(buffer[offset]);
@@ -228,7 +227,7 @@ pub struct DataRequest {
 impl Request for DataRequest {
     const CATEGORY: Category = Category(0x1c);
 
-    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize> {
+    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize, SendError> {
         assert!(
             buffer.len() >= offset + 2,
             "This is a bug. Please report it."
@@ -245,7 +244,7 @@ pub struct DataResponse {
 }
 
 impl Response for DataResponse {
-    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self> {
+    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self, SendError> {
         let status = TraceStatus::from(buffer[offset]);
         let count = u16::from_le_bytes(
             buffer[offset + 1..offset + 3]
@@ -255,7 +254,7 @@ impl Response for DataResponse {
         let start = offset + 3;
         let end = start + count as usize;
         if end > buffer.len() {
-            return Err(anyhow!(CmsisDapError::NotEnoughData));
+            return Err(SendError::NotEnoughData);
         }
 
         Ok(DataResponse {
