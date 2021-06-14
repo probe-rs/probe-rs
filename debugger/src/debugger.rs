@@ -1044,7 +1044,7 @@ pub fn attach_to_rtt(
         .any(|elem| elem.format == DataFormat::Defmt);
     let defmt_state = if defmt_enable {
         // TODO: Clean the unwraps.
-        let elf = fs::read(options.program_binary.unwrap().clone()).unwrap();
+        let elf = fs::read(options.program_binary.clone().unwrap()).unwrap();
         let table = defmt_decoder::Table::parse(&elf)?;
 
         let locs = {
@@ -1076,7 +1076,7 @@ pub fn attach_to_rtt(
         i += 1;
 
         let rtt_header_address =
-            if let Ok(mut file) = File::open(options.program_binary.unwrap().as_path()) {
+            if let Ok(mut file) = File::open(options.program_binary.clone().unwrap().as_path()) {
                 if let Some(address) = crate::rtt::app::App::get_rtt_symbol(&mut file) {
                     ScanRegion::Exact(address as u32)
                 } else {
