@@ -33,11 +33,7 @@ pub trait ArmProbe {
 /// A struct to give access to a targets memory using a certain DAP.
 pub(crate) struct ADIMemoryInterface<'interface, AP>
 where
-    AP: CommunicationInterface
-        + ApAccess<MemoryAp, CSW>
-        + ApAccess<MemoryAp, TAR>
-        + ApAccess<MemoryAp, DRW>
-        + DpAccess,
+    AP: CommunicationInterface + ApAccess + DpAccess,
 {
     interface: &'interface mut AP,
     only_32bit_data_size: bool,
@@ -57,11 +53,7 @@ where
 
 impl<'interface, AP> ADIMemoryInterface<'interface, AP>
 where
-    AP: CommunicationInterface
-        + ApAccess<MemoryAp, CSW>
-        + ApAccess<MemoryAp, TAR>
-        + ApAccess<MemoryAp, DRW>
-        + DpAccess,
+    AP: CommunicationInterface + ApAccess + DpAccess,
 {
     /// Creates a new MemoryInterface for given AccessPort.
     pub fn new(
@@ -79,11 +71,7 @@ where
 
 impl<AP> ADIMemoryInterface<'_, AP>
 where
-    AP: CommunicationInterface
-        + ApAccess<MemoryAp, CSW>
-        + ApAccess<MemoryAp, TAR>
-        + ApAccess<MemoryAp, DRW>
-        + DpAccess,
+    AP: CommunicationInterface + ApAccess + DpAccess,
 {
     /// Build the correct CSW register for a memory access
     ///
@@ -154,17 +142,13 @@ where
     }
 
     /// Read a 32 bit register on the given AP.
-    fn read_ap_register<R>(
-        &mut self,
-        access_port: MemoryAp,
-        register: R,
-    ) -> Result<R, AccessPortError>
+    fn read_ap_register<R>(&mut self, access_port: MemoryAp) -> Result<R, AccessPortError>
     where
         R: ApRegister<MemoryAp>,
-        AP: ApAccess<MemoryAp, R>,
+        AP: ApAccess,
     {
         self.interface
-            .read_ap_register(access_port, register)
+            .read_ap_register(access_port)
             .map_err(AccessPortError::register_read_error::<R, _>)
     }
 
@@ -178,7 +162,7 @@ where
     ) -> Result<(), AccessPortError>
     where
         R: ApRegister<MemoryAp>,
-        AP: ApAccess<MemoryAp, R>,
+        AP: ApAccess,
     {
         self.interface
             .read_ap_register_repeated(access_port, register, values)
@@ -193,7 +177,7 @@ where
     ) -> Result<(), AccessPortError>
     where
         R: ApRegister<MemoryAp>,
-        AP: ApAccess<MemoryAp, R>,
+        AP: ApAccess,
     {
         self.interface
             .write_ap_register(access_port, register)
@@ -210,7 +194,7 @@ where
     ) -> Result<(), AccessPortError>
     where
         R: ApRegister<MemoryAp>,
-        AP: ApAccess<MemoryAp, R>,
+        AP: ApAccess,
     {
         self.interface
             .write_ap_register_repeated(access_port, register, values)
@@ -236,7 +220,7 @@ where
 
         self.write_csw_register(access_port, csw)?;
         self.write_ap_register(access_port, tar)?;
-        let result = self.read_ap_register(access_port, DRW::default())?;
+        let result: DRW = self.read_ap_register(access_port)?;
 
         Ok(result.data)
     }
@@ -260,7 +244,7 @@ where
             let tar = TAR { address };
             self.write_csw_register(access_port, csw)?;
             self.write_ap_register(access_port, tar)?;
-            let result = self.read_ap_register(access_port, DRW::default())?;
+            let result: DRW = self.read_ap_register(access_port)?;
 
             // Extract the correct byte
             // See "Arm Debug Interface Architecture Specification ADIv5.0 to ADIv5.2", C2.2.6
@@ -602,11 +586,7 @@ where
 
 impl<AP> ArmProbe for ADIMemoryInterface<'_, AP>
 where
-    AP: CommunicationInterface
-        + ApAccess<MemoryAp, CSW>
-        + ApAccess<MemoryAp, TAR>
-        + ApAccess<MemoryAp, DRW>
-        + DpAccess,
+    AP: CommunicationInterface + ApAccess + DpAccess,
 {
     fn read_core_reg(&mut self, ap: MemoryAp, addr: CoreRegisterAddress) -> Result<u32, Error> {
         // Write the DCRSR value to select the register we want to read.

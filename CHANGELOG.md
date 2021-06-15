@@ -23,7 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added an option to skip erasing the flash before programming (#628).
 - Added a new debugger for VS Code, using the [Debug Adapter Protocol](https://microsoft.github.io/debug-adapter-protocol/specification). The debugger can be found in the `probe-rs-debugger` crate (#620).
 - Additional datatype support for the debugger, plus easier to read display values (#631)
-- Added support for raw DAP register reads and writes (#669).
+- Added support for raw DAP register reads and writes, using the `RawApAccess` trait (#669, #689).
 - Added support for verify after flashing. (#671).
 - Handle inlined functions when getting a stack trace (#678).
 - Added 'Statics' (static variables) to the stackframe scopes. These are now visible in VSCode between 'Locals' and 'Registers'. This includes some additional datatypes and DWARF expression evaluation capabilities. (#683)

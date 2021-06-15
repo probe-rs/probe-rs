@@ -5,12 +5,8 @@ mod usb_interface;
 use self::usb_interface::{StLinkUsb, StLinkUsbDevice};
 use super::{DapAccess, DebugProbe, DebugProbeError, PortType, ProbeCreationError, WireProtocol};
 use crate::{
-    architecture::arm::communication_interface::MemoryApInformation,
     architecture::arm::{
-        ap::{
-            valid_access_ports, AccessPort, ApAccess, ApClass, ApRegister, BaseaddrFormat,
-            GenericAp, MemoryAp, BASE, BASE2, CSW, IDR,
-        },
+        ap::{valid_access_ports, AccessPort, ApAccess, ApClass, MemoryAp, RawApAccess, IDR},
         communication_interface::{ArmCommunicationInterfaceState, ArmProbeInterface},
         dp::{DebugPortError, DpAccess, DpBankSel, DpRegister, Select},
         memory::{adi_v5_memory_interface::ArmProbe, Component},
@@ -294,22 +290,21 @@ impl DebugProbe for StLink<StLinkUsbDevice> {
 
 impl DapAccess for StLink<StLinkUsbDevice> {
     /// Reads the DAP register on the specified port and address.
-    fn read_register(&mut self, port: PortType, addr: u16) -> Result<u32, DebugProbeError> {
+    fn read_register(&mut self, port: PortType, addr: u8) -> Result<u32, DebugProbeError> {
         if (addr & 0xf0) == 0 || port != PortType::DebugPort {
             if let PortType::AccessPort(port_number) = port {
                 self.select_ap(port_number as u8)?;
             }
 
             let port = u16::from(port).to_le_bytes();
-            let addr = addr.to_le_bytes();
 
             let cmd = &[
                 commands::JTAG_COMMAND,
                 commands::JTAG_READ_DAP_REG,
                 port[0],
                 port[1],
-                addr[0],
-                addr[1],
+                addr,
+                0, // Maximum address for DAP registers is 0xFC
             ];
             let mut buf = [0; 8];
             self.send_jtag_command(cmd, &[], &mut buf, TIMEOUT)?;
@@ -324,7 +319,7 @@ impl DapAccess for StLink<StLinkUsbDevice> {
     fn write_register(
         &mut self,
         port: PortType,
-        addr: u16,
+        addr: u8,
         value: u32,
     ) -> Result<(), DebugProbeError> {
         if (addr & 0xf0) == 0 || port != PortType::DebugPort {
@@ -333,7 +328,6 @@ impl DapAccess for StLink<StLinkUsbDevice> {
             }
 
             let port = u16::from(port).to_le_bytes();
-            let addr = addr.to_le_bytes();
             let bytes = value.to_le_bytes();
 
             let cmd = &[
@@ -341,8 +335,8 @@ impl DapAccess for StLink<StLinkUsbDevice> {
                 commands::JTAG_WRITE_DAP_REG,
                 port[0],
                 port[1],
-                addr[0],
-                addr[1],
+                addr,
+                0, // Maximum address for DAP registers is 0xFC
                 bytes[0],
                 bytes[1],
                 bytes[2],
@@ -1119,7 +1113,7 @@ impl StlinkArmDebug {
         let mut interface = Self { probe, state };
 
         for ap in valid_access_ports(&mut interface) {
-            let ap_state = match interface.read_ap_information(ap) {
+            let ap_state = match ApInformation::read_from_target(&mut interface, ap) {
                 Ok(state) => state,
                 Err(e) => return Err((interface.probe, e)),
             };
@@ -1130,63 +1124,6 @@ impl StlinkArmDebug {
         }
 
         Ok(interface)
-    }
-
-    /// Read information about an AP from its registers.
-    ///
-    /// This reads the IDR register of the AP, and parses
-    /// further AP specific information based on its class.
-    ///
-    /// Currently, AP specific information is read for Memory APs.
-    fn read_ap_information(
-        &mut self,
-        access_port: GenericAp,
-    ) -> Result<ApInformation, DebugProbeError> {
-        let idr = self.read_ap_register(access_port, IDR::default())?;
-
-        Ok(if idr.CLASS == ApClass::MemAp {
-            let access_port: MemoryAp = access_port.into();
-
-            let base_register = self.read_ap_register(access_port, BASE::default())?;
-
-            let mut base_address = if BaseaddrFormat::ADIv5 == base_register.Format {
-                let base2 = self.read_ap_register(access_port, BASE2::default())?;
-
-                u64::from(base2.BASEADDR) << 32
-            } else {
-                0
-            };
-            base_address |= u64::from(base_register.BASEADDR << 12);
-
-            log::debug!(
-                "AP {} - BaseAddress: {:#08x}",
-                access_port.port_number(),
-                base_address
-            );
-
-            // Ensure that we can access this AP.
-            let status = self.read_ap_register(access_port, CSW::default())?;
-
-            log::debug!("AP {} - {:?}", access_port.port_number(), status);
-
-            // TODO: Figure out how to handle this for STM32,
-            //       it is not clear how the memory accesses work
-            //       with the dedicated API
-            let only_32bit_data_size = false;
-
-            // TODO: Check if HNONSEC is supported
-
-            ApInformation::MemoryAp(MemoryApInformation {
-                port_number: access_port.port_number(),
-                only_32bit_data_size,
-                debug_base_address: base_address,
-                supports_hnonsec: false,
-            })
-        } else {
-            ApInformation::Other {
-                port_number: access_port.port_number(),
-            }
-        })
     }
 
     fn select_dp_bank(&mut self, dp_bank: DpBankSel) -> Result<(), DebugPortError> {
@@ -1209,7 +1146,12 @@ impl StlinkArmDebug {
         Ok(())
     }
 
-    fn select_ap_and_ap_bank(&mut self, port: u8, ap_bank: u8) -> Result<(), DebugProbeError> {
+    fn select_ap_and_ap_bank(
+        &mut self,
+        port: u8,
+        ap_register_address: u8,
+    ) -> Result<(), DebugProbeError> {
+        let ap_bank = ap_register_address >> 4;
         let mut cache_changed = self.state.current_apsel != port;
         if cache_changed {
             self.state.current_apsel = port;
@@ -1257,9 +1199,7 @@ impl DpAccess for StlinkArmDebug {
         self.select_dp_bank(R::DP_BANK)?;
 
         log::debug!("Reading DP register {}", R::NAME);
-        let result = self
-            .probe
-            .read_register(PortType::DebugPort, u16::from(R::ADDRESS))?;
+        let result = self.probe.read_register(PortType::DebugPort, R::ADDRESS)?;
 
         log::debug!("Read    DP register {}, value=0x{:08x}", R::NAME, result);
 
@@ -1280,7 +1220,7 @@ impl DpAccess for StlinkArmDebug {
 
         log::debug!("Writing DP register {}, value=0x{:08x}", R::NAME, value);
         self.probe
-            .write_register(PortType::DebugPort, R::ADDRESS as u16, value)?;
+            .write_register(PortType::DebugPort, R::ADDRESS, value)?;
 
         Ok(())
     }
@@ -1306,8 +1246,8 @@ impl<'probe> ArmProbeInterface for StlinkArmDebug {
         &mut self,
     ) -> Result<Option<crate::architecture::arm::ArmChipInfo>, ProbeRsError> {
         for access_port in valid_access_ports(self) {
-            let idr = self
-                .read_ap_register(access_port, IDR::default())
+            let idr: IDR = self
+                .read_ap_register(access_port)
                 .map_err(ProbeRsError::Probe)?;
             log::debug!("{:#x?}", idr);
 
@@ -1353,13 +1293,13 @@ impl<'probe> ArmProbeInterface for StlinkArmDebug {
 }
 
 impl DapAccess for StlinkArmDebug {
-    fn read_register(&mut self, port: PortType, addr: u16) -> Result<u32, DebugProbeError> {
+    fn read_register(&mut self, port: PortType, addr: u8) -> Result<u32, DebugProbeError> {
         self.probe.read_register(port, addr)
     }
     fn write_register(
         &mut self,
         port: PortType,
-        addr: u16,
+        addr: u8,
         value: u32,
     ) -> Result<(), DebugProbeError> {
         self.probe.write_register(port, addr, value)
@@ -1367,7 +1307,7 @@ impl DapAccess for StlinkArmDebug {
     fn read_block(
         &mut self,
         port: PortType,
-        addr: u16,
+        addr: u8,
         values: &mut [u32],
     ) -> Result<(), DebugProbeError> {
         self.probe.read_block(port, addr, values)
@@ -1375,103 +1315,66 @@ impl DapAccess for StlinkArmDebug {
     fn write_block(
         &mut self,
         port: PortType,
-        addr: u16,
+        addr: u8,
         values: &[u32],
     ) -> Result<(), DebugProbeError> {
         self.probe.write_block(port, addr, values)
     }
 }
 
-impl<AP, R> ApAccess<AP, R> for StlinkArmDebug
-where
-    R: ApRegister<AP> + Clone,
-    AP: AccessPort,
-{
+impl RawApAccess for StlinkArmDebug {
     type Error = DebugProbeError;
 
-    /// Read the given register `R` of the given `AP`, where the read register value is wrapped in
-    /// the given `register` parameter.
-    fn read_ap_register(&mut self, port: impl Into<AP>, _register: R) -> Result<R, Self::Error> {
-        log::debug!("Reading register {}", R::NAME);
-        self.select_ap_and_ap_bank(port.into().port_number(), R::APBANKSEL)?;
+    fn read_raw_ap_register(&mut self, port: u8, address: u8) -> Result<u32, Self::Error> {
+        self.select_ap_and_ap_bank(port, address)?;
 
-        let result = self.probe.read_register(
+        self.probe.read_register(
             PortType::AccessPort(u16::from(self.state.current_apsel)),
-            u16::from(R::ADDRESS),
-        )?;
-
-        log::debug!("Read register    {}, value=0x{:08x}", R::NAME, result);
-
-        Ok(result.into())
+            address,
+        )
     }
 
-    /// Write the given register `R` of the given `AP`, where the to be written register value
-    /// is wrapped in the given `register` parameter.
-    fn write_ap_register(&mut self, port: impl Into<AP>, register: R) -> Result<(), Self::Error> {
-        let register_value = register.into();
-
-        log::debug!(
-            "Writing register {}, value=0x{:08X}",
-            R::NAME,
-            register_value
-        );
-
-        self.select_ap_and_ap_bank(port.into().port_number(), R::APBANKSEL)?;
+    fn write_raw_ap_register(
+        &mut self,
+        port: u8,
+        address: u8,
+        value: u32,
+    ) -> Result<(), Self::Error> {
+        self.select_ap_and_ap_bank(port, address)?;
 
         self.probe.write_register(
             PortType::AccessPort(u16::from(self.state.current_apsel)),
-            u16::from(R::ADDRESS),
-            register_value,
+            address,
+            value,
         )
-        // Read from AP register
     }
 
-    // TODO: Fix this ugly: _register: R, values: &[u32]
-    /// Write the given register `R` of the given `AP` repeatedly, where the to be written register
-    /// values are stored in the `values` array. The values are written in the exact order they are
-    /// stored in the array.
-    fn write_ap_register_repeated(
+    fn write_raw_ap_register_repeated(
         &mut self,
-        port: impl Into<AP> + Clone,
-        _register: R,
+        port: u8,
+        address: u8,
         values: &[u32],
     ) -> Result<(), Self::Error> {
-        log::debug!(
-            "Writing register {}, block with len={} words",
-            R::NAME,
-            values.len(),
-        );
-
-        self.select_ap_and_ap_bank(port.into().port_number(), R::APBANKSEL)?;
+        self.select_ap_and_ap_bank(port, address)?;
 
         self.probe.write_block(
             PortType::AccessPort(u16::from(self.state.current_apsel)),
-            u16::from(R::ADDRESS),
+            address,
             values,
         )
     }
 
-    // TODO: fix types, see above!
-    /// Read the given register `R` of the given `AP` repeatedly, where the read register values
-    /// are stored in the `values` array. The values are read in the exact order they are stored in
-    /// the array.
-    fn read_ap_register_repeated(
+    fn read_raw_ap_register_repeated(
         &mut self,
-        port: impl Into<AP> + Clone,
-        _register: R,
+        port: u8,
+        address: u8,
         values: &mut [u32],
     ) -> Result<(), Self::Error> {
-        log::debug!(
-            "Reading register {}, block with len={} words",
-            R::NAME,
-            values.len(),
-        );
-
-        self.select_ap_and_ap_bank(port.into().port_number(), R::APBANKSEL)?;
+        self.select_ap_and_ap_bank(port, address)?;
 
         self.probe.read_block(
             PortType::AccessPort(u16::from(self.state.current_apsel)),
-            u16::from(R::ADDRESS),
+            address,
             values,
         )
     }

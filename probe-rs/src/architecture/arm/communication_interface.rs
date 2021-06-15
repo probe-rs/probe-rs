@@ -1,7 +1,7 @@
 use super::{
     ap::{
-        valid_access_ports, AccessPort, ApAccess, ApClass, ApRegister, BaseaddrFormat, DataSize,
-        GenericAp, MemoryAp, BASE, BASE2, CSW, IDR,
+        valid_access_ports, AccessPort, ApAccess, ApClass, ApRegister, BaseaddrFormat, GenericAp,
+        MemoryAp, RawApAccess, BASE, BASE2, CSW, IDR,
     },
     dp::{
         Abort, Ctrl, DebugPortError, DebugPortId, DebugPortVersion, DpAccess, DpBankSel,
@@ -11,7 +11,8 @@ use super::{
     SwoAccess, SwoConfig,
 };
 use crate::{
-    CommunicationInterface, DebugProbe, DebugProbeError, Error as ProbeRsError, Memory, Probe,
+    architecture::arm::ap::DataSize, CommunicationInterface, DebugProbe, DebugProbeError,
+    Error as ProbeRsError, Memory, Probe,
 };
 use anyhow::anyhow;
 use jep106::JEP106Code;
@@ -71,7 +72,7 @@ pub trait Register: Clone + From<u32> + Into<u32> + Sized + Debug {
 
 pub trait DapAccess {
     /// Reads the DAP register on the specified port and address
-    fn read_register(&mut self, port: PortType, addr: u16) -> Result<u32, DebugProbeError>;
+    fn read_register(&mut self, port: PortType, addr: u8) -> Result<u32, DebugProbeError>;
 
     /// Read multiple values from the same DAP register.
     ///
@@ -80,7 +81,7 @@ pub trait DapAccess {
     fn read_block(
         &mut self,
         port: PortType,
-        addr: u16,
+        addr: u8,
         values: &mut [u32],
     ) -> Result<(), DebugProbeError> {
         for val in values {
@@ -94,7 +95,7 @@ pub trait DapAccess {
     fn write_register(
         &mut self,
         port: PortType,
-        addr: u16,
+        addr: u8,
         value: u32,
     ) -> Result<(), DebugProbeError>;
 
@@ -105,7 +106,7 @@ pub trait DapAccess {
     fn write_block(
         &mut self,
         port: PortType,
-        addr: u16,
+        addr: u8,
         values: &[u32],
     ) -> Result<(), DebugProbeError> {
         for val in values {
@@ -124,7 +125,9 @@ pub trait DapAccess {
     }
 }
 
-pub trait ArmProbeInterface: DapAccess + SwoAccess + Debug + Send {
+pub trait ArmProbeInterface:
+    RawApAccess<Error = DebugProbeError> + SwoAccess + Debug + Send
+{
     fn memory_interface(&mut self, access_port: MemoryAp) -> Result<Memory<'_>, ProbeRsError>;
 
     fn ap_information(&self, access_port: GenericAp) -> Option<&ApInformation>;
@@ -181,6 +184,68 @@ impl ArmCommunicationInterfaceState {
             current_apsel: 0,
             current_apbanksel: 0,
             ap_information: Vec::new(),
+        }
+    }
+}
+
+impl ApInformation {
+    /// Read information about an AP from its registers.
+    ///
+    /// This reads the IDR register of the AP, and parses
+    /// further AP specific information based on its class.
+    ///
+    /// Currently, AP specific information is read for Memory APs.
+    pub(crate) fn read_from_target<P>(
+        probe: &mut P,
+        access_port: GenericAp,
+    ) -> Result<Self, DebugProbeError>
+    where
+        P: ApAccess<Error = DebugProbeError>,
+    {
+        let idr: IDR = probe.read_ap_register(access_port)?;
+
+        if idr.CLASS == ApClass::MemAp {
+            let access_port: MemoryAp = access_port.into();
+
+            let base_register: BASE = probe.read_ap_register(access_port)?;
+
+            let mut base_address = if BaseaddrFormat::ADIv5 == base_register.Format {
+                let base2: BASE2 = probe.read_ap_register(access_port)?;
+
+                u64::from(base2.BASEADDR) << 32
+            } else {
+                0
+            };
+            base_address |= u64::from(base_register.BASEADDR << 12);
+
+            // Save old CSW value. STLink firmare caches it, which breaks things
+            // if we change it behind its back.
+            let old_csw: CSW = probe.read_ap_register(access_port)?;
+
+            // Read information about HNONSEC support and supported access widths
+            let csw = CSW::new(DataSize::U8);
+
+            probe.write_ap_register(access_port, csw)?;
+            let csw: CSW = probe.read_ap_register(access_port)?;
+
+            probe.write_ap_register(access_port, old_csw)?;
+
+            let only_32bit_data_size = csw.SIZE != DataSize::U8;
+
+            let supports_hnonsec = csw.HNONSEC == 1;
+
+            log::debug!("HNONSEC supported: {}", supports_hnonsec);
+
+            Ok(ApInformation::MemoryAp(MemoryApInformation {
+                port_number: access_port.port_number(),
+                only_32bit_data_size,
+                debug_base_address: base_address,
+                supports_hnonsec: false,
+            }))
+        } else {
+            Ok(ApInformation::Other {
+                port_number: access_port.port_number(),
+            })
         }
     }
 }
@@ -248,36 +313,6 @@ impl ArmProbeInterface for ArmCommunicationInterface {
     }
 }
 
-impl DapAccess for ArmCommunicationInterface {
-    fn read_register(&mut self, port: PortType, addr: u16) -> Result<u32, DebugProbeError> {
-        self.probe.read_register(port, addr)
-    }
-    fn write_register(
-        &mut self,
-        port: PortType,
-        addr: u16,
-        value: u32,
-    ) -> Result<(), DebugProbeError> {
-        self.probe.write_register(port, addr, value)
-    }
-    fn read_block(
-        &mut self,
-        port: PortType,
-        addr: u16,
-        values: &mut [u32],
-    ) -> Result<(), DebugProbeError> {
-        self.probe.read_block(port, addr, values)
-    }
-    fn write_block(
-        &mut self,
-        port: PortType,
-        addr: u16,
-        values: &[u32],
-    ) -> Result<(), DebugProbeError> {
-        self.probe.write_block(port, addr, values)
-    }
-}
-
 impl<'interface> ArmCommunicationInterface {
     pub(crate) fn new(
         probe: Box<dyn DapProbe>,
@@ -295,7 +330,7 @@ impl<'interface> ArmCommunicationInterface {
         log::trace!("Searching valid APs");
 
         for ap in valid_access_ports(&mut interface) {
-            let ap_state = match interface.read_ap_information(ap) {
+            let ap_state = match ApInformation::read_from_target(&mut interface, ap) {
                 Ok(state) => state,
                 Err(e) => return Err((interface.probe, e)),
             };
@@ -383,7 +418,13 @@ impl<'interface> ArmCommunicationInterface {
         Ok(())
     }
 
-    fn select_ap_and_ap_bank(&mut self, port: u8, ap_bank: u8) -> Result<(), DebugProbeError> {
+    fn select_ap_and_ap_bank(
+        &mut self,
+        port: u8,
+        ap_register_address: u8,
+    ) -> Result<(), DebugProbeError> {
+        let ap_bank = ap_register_address >> 4;
+
         let mut cache_changed = if self.state.current_apsel != port {
             self.state.current_apsel = port;
             true
@@ -438,174 +479,11 @@ impl<'interface> ArmCommunicationInterface {
         Ok(())
     }
 
-    /// Write the given register `R` of the given `AP`, where the to be written register value
-    /// is wrapped in the given `register` parameter.
-    pub fn write_ap_register<AP, R>(
-        &mut self,
-        port: impl Into<AP>,
-        register: R,
-    ) -> Result<(), DebugProbeError>
-    where
-        AP: AccessPort,
-        R: ApRegister<AP>,
-    {
-        log::debug!("Writing register {}, value={:x?}", R::NAME, register);
-
-        let register_value = register.into();
-
-        self.select_ap_and_ap_bank(port.into().port_number(), R::APBANKSEL)?;
-
-        self.probe.write_register(
-            PortType::AccessPort(u16::from(self.state.current_apsel)),
-            u16::from(R::ADDRESS),
-            register_value,
-        )?;
-        Ok(())
-    }
-
-    // TODO: Fix this ugly: _register: R, values: &[u32]
-    /// Write the given register `R` of the given `AP` repeatedly, where the to be written register
-    /// values are stored in the `values` array. The values are written in the exact order they are
-    /// stored in the array.
-    pub fn write_ap_register_repeated<AP, R>(
-        &mut self,
-        port: impl Into<AP>,
-        _register: R,
-        values: &[u32],
-    ) -> Result<(), DebugProbeError>
-    where
-        AP: AccessPort,
-        R: ApRegister<AP>,
-    {
-        log::debug!(
-            "Writing register {}, block with len={} words",
-            R::NAME,
-            values.len(),
-        );
-
-        self.select_ap_and_ap_bank(port.into().port_number(), R::APBANKSEL)?;
-
-        self.probe.write_block(
-            PortType::AccessPort(u16::from(self.state.current_apsel)),
-            u16::from(R::ADDRESS),
-            values,
-        )?;
-        Ok(())
-    }
-
-    /// Read the given register `R` of the given `AP`, where the read register value is wrapped in
-    /// the given `register` parameter.
-    pub fn read_ap_register<AP, R>(
-        &mut self,
-        port: impl Into<AP>,
-        _register: R,
-    ) -> Result<R, DebugProbeError>
-    where
-        AP: AccessPort,
-        R: ApRegister<AP>,
-    {
-        log::debug!("Reading register {}", R::NAME);
-        self.select_ap_and_ap_bank(port.into().port_number(), R::APBANKSEL)?;
-
-        let result: R = self
-            .probe
-            .read_register(
-                PortType::AccessPort(u16::from(self.state.current_apsel)),
-                u16::from(R::ADDRESS),
-            )?
-            .into();
-
-        log::debug!("Read register    {}, value=0x{:x?}", R::NAME, result);
-
-        Ok(result)
-    }
-
-    // TODO: fix types, see above!
-    /// Read the given register `R` of the given `AP` repeatedly, where the read register values
-    /// are stored in the `values` array. The values are read in the exact order they are stored in
-    /// the array.
-    pub fn read_ap_register_repeated<AP, R>(
-        &mut self,
-        port: impl Into<AP>,
-        _register: R,
-        values: &mut [u32],
-    ) -> Result<(), DebugProbeError>
-    where
-        AP: AccessPort,
-        R: ApRegister<AP>,
-    {
-        log::debug!(
-            "Reading register {}, block with len={} words",
-            R::NAME,
-            values.len(),
-        );
-
-        self.select_ap_and_ap_bank(port.into().port_number(), R::APBANKSEL)?;
-
-        self.probe.read_block(
-            PortType::AccessPort(u16::from(self.state.current_apsel)),
-            u16::from(R::ADDRESS),
-            values,
-        )?;
-        Ok(())
-    }
-
     /// Determine the type and additional information about a AP
     pub(crate) fn ap_information(&self, access_port: impl AccessPort) -> Option<&ApInformation> {
         self.state
             .ap_information
             .get(access_port.port_number() as usize)
-    }
-
-    /// Read information about an AP from its registers.
-    ///
-    /// This reads the IDR register of the AP, and parses
-    /// further AP specific information based on its class.
-    ///
-    /// Currently, AP specific information is read for Memory APs.
-    fn read_ap_information(
-        &mut self,
-        access_port: GenericAp,
-    ) -> Result<ApInformation, DebugProbeError> {
-        let idr = self.read_ap_register(access_port, IDR::default())?;
-
-        if idr.CLASS == ApClass::MemAp {
-            let access_port: MemoryAp = access_port.into();
-
-            let base_register = self.read_ap_register(access_port, BASE::default())?;
-
-            let mut base_address = if BaseaddrFormat::ADIv5 == base_register.Format {
-                let base2 = self.read_ap_register(access_port, BASE2::default())?;
-
-                u64::from(base2.BASEADDR) << 32
-            } else {
-                0
-            };
-            base_address |= u64::from(base_register.BASEADDR << 12);
-
-            // Read information about HNONSEC support and supported access widths
-            let csw = CSW::new(DataSize::U8);
-
-            self.write_ap_register(access_port, csw)?;
-            let csw = self.read_ap_register(access_port, CSW::default())?;
-
-            let only_32bit_data_size = csw.SIZE != DataSize::U8;
-
-            let supports_hnonsec = csw.HNONSEC == 1;
-
-            log::debug!("HNONSEC supported: {}", supports_hnonsec);
-
-            Ok(ApInformation::MemoryAp(MemoryApInformation {
-                port_number: access_port.port_number(),
-                only_32bit_data_size,
-                debug_base_address: base_address,
-                supports_hnonsec,
-            }))
-        } else {
-            Ok(ApInformation::Other {
-                port_number: access_port.port_number(),
-            })
-        }
     }
 
     fn get_debug_port_version(&mut self) -> Result<DebugPortVersion, DebugProbeError> {
@@ -635,7 +513,7 @@ impl DpAccess for ArmCommunicationInterface {
         log::debug!("Reading DP register {}", R::NAME);
         let result = self
             .probe
-            .read_register(PortType::DebugPort, u16::from(R::ADDRESS))?
+            .read_register(PortType::DebugPort, R::ADDRESS)?
             .into();
 
         log::debug!("Read    DP register {}, value=0x{:x?}", R::NAME, result);
@@ -655,7 +533,7 @@ impl DpAccess for ArmCommunicationInterface {
 
         log::debug!("Writing DP register {}, value=0x{:x?}", R::NAME, register);
         self.probe
-            .write_register(PortType::DebugPort, R::ADDRESS as u16, register.into())?;
+            .write_register(PortType::DebugPort, R::ADDRESS, register.into())?;
 
         Ok(())
     }
@@ -684,85 +562,133 @@ impl SwoAccess for ArmCommunicationInterface {
     }
 }
 
-impl<R> ApAccess<MemoryAp, R> for ArmCommunicationInterface
-where
-    R: ApRegister<MemoryAp>,
-{
+impl RawApAccess for ArmCommunicationInterface {
     type Error = DebugProbeError;
 
-    fn read_ap_register(
-        &mut self,
-        port: impl Into<MemoryAp>,
-        register: R,
-    ) -> Result<R, Self::Error> {
-        self.read_ap_register(port, register)
+    fn read_raw_ap_register(&mut self, port_number: u8, address: u8) -> Result<u32, Self::Error> {
+        self.select_ap_and_ap_bank(port_number, address)?;
+
+        let result = self.probe.read_register(
+            PortType::AccessPort(u16::from(self.state.current_apsel)),
+            address,
+        )?;
+
+        Ok(result)
     }
 
-    fn write_ap_register(
+    fn read_raw_ap_register_repeated(
         &mut self,
-        port: impl Into<MemoryAp>,
-        register: R,
-    ) -> Result<(), Self::Error> {
-        self.write_ap_register(port, register)
-    }
-
-    fn write_ap_register_repeated(
-        &mut self,
-        port: impl Into<MemoryAp>,
-        register: R,
-        values: &[u32],
-    ) -> Result<(), Self::Error> {
-        self.write_ap_register_repeated(port, register, values)
-    }
-
-    fn read_ap_register_repeated(
-        &mut self,
-        port: impl Into<MemoryAp>,
-        register: R,
+        port: u8,
+        address: u8,
         values: &mut [u32],
     ) -> Result<(), Self::Error> {
-        self.read_ap_register_repeated(port, register, values)
+        self.select_ap_and_ap_bank(port, address)?;
+
+        self.probe.read_block(
+            PortType::AccessPort(u16::from(self.state.current_apsel)),
+            address,
+            values,
+        )?;
+        Ok(())
+    }
+
+    fn write_raw_ap_register(
+        &mut self,
+        port: u8,
+        address: u8,
+        value: u32,
+    ) -> Result<(), Self::Error> {
+        self.select_ap_and_ap_bank(port, address)?;
+
+        self.probe.write_register(
+            PortType::AccessPort(u16::from(self.state.current_apsel)),
+            address,
+            value,
+        )
+    }
+
+    fn write_raw_ap_register_repeated(
+        &mut self,
+        port: u8,
+        address: u8,
+        values: &[u32],
+    ) -> Result<(), Self::Error> {
+        self.select_ap_and_ap_bank(port, address)?;
+
+        self.probe.write_block(
+            PortType::AccessPort(u16::from(self.state.current_apsel)),
+            address,
+            values,
+        )?;
+        Ok(())
     }
 }
 
-impl<R> ApAccess<GenericAp, R> for ArmCommunicationInterface
-where
-    R: ApRegister<GenericAp>,
-{
-    type Error = DebugProbeError;
+impl<T: RawApAccess> ApAccess for T {
+    type Error = T::Error;
 
-    fn read_ap_register(
-        &mut self,
-        port: impl Into<GenericAp>,
-        register: R,
-    ) -> Result<R, Self::Error> {
-        self.read_ap_register(port, register)
+    fn read_ap_register<PORT, R>(&mut self, port: impl Into<PORT>) -> Result<R, Self::Error>
+    where
+        PORT: AccessPort,
+        R: ApRegister<PORT>,
+    {
+        log::debug!("Reading register {}", R::NAME);
+        let raw_value =
+            RawApAccess::read_raw_ap_register(self, port.into().port_number(), R::ADDRESS)?;
+
+        log::debug!("Read register    {}, value=0x{:x?}", R::NAME, raw_value);
+
+        Ok(raw_value.into())
     }
 
-    fn write_ap_register(
+    fn write_ap_register<PORT, R>(
         &mut self,
-        port: impl Into<GenericAp>,
+        port: impl Into<PORT>,
         register: R,
-    ) -> Result<(), Self::Error> {
-        self.write_ap_register(port, register)
+    ) -> Result<(), Self::Error>
+    where
+        PORT: AccessPort,
+        R: ApRegister<PORT>,
+    {
+        log::debug!("Writing register {}, value={:x?}", R::NAME, register);
+        self.write_raw_ap_register(port.into().port_number(), R::ADDRESS, register.into())
     }
 
-    fn write_ap_register_repeated(
+    fn write_ap_register_repeated<PORT, R>(
         &mut self,
-        port: impl Into<GenericAp>,
-        register: R,
+        port: impl Into<PORT>,
+        _register: R,
         values: &[u32],
-    ) -> Result<(), Self::Error> {
-        self.write_ap_register_repeated(port, register, values)
+    ) -> Result<(), Self::Error>
+    where
+        PORT: AccessPort,
+        R: ApRegister<PORT>,
+    {
+        log::debug!(
+            "Writing register {}, block with len={} words",
+            R::NAME,
+            values.len(),
+        );
+        self.write_raw_ap_register_repeated(port.into().port_number(), R::ADDRESS, values)
     }
 
-    fn read_ap_register_repeated(
+    fn read_ap_register_repeated<PORT, R>(
         &mut self,
-        port: impl Into<GenericAp>,
-        register: R,
+        port: impl Into<PORT>,
+        _register: R,
         values: &mut [u32],
-    ) -> Result<(), Self::Error> {
-        self.read_ap_register_repeated(port, register, values)
+    ) -> Result<(), Self::Error>
+    where
+        PORT: AccessPort,
+        R: ApRegister<PORT>,
+    {
+        log::debug!(
+            "Reading register {}, block with len={} words",
+            R::NAME,
+            values.len(),
+        );
+
+        self.read_raw_ap_register_repeated(port.into().port_number(), R::ADDRESS, values)
     }
 }
 
@@ -790,8 +716,8 @@ impl ArmCommunicationInterface {
                 .map_err(ProbeRsError::architecture_specific)?;
         }
         for access_port in aps {
-            let idr = self
-                .read_ap_register(access_port, IDR::default())
+            let idr: IDR = self
+                .read_ap_register(access_port)
                 .map_err(ProbeRsError::Probe)?;
             log::debug!("{:#x?}", idr);
 

@@ -41,8 +41,6 @@ macro_rules! define_ap_register {
         }
 
         impl ApRegister<$port_type> for $name {
-            // APBANKSEL is always the upper 4 bits of the register address.
-            const APBANKSEL: u8 = $address >> 4;
         }
     }
 }

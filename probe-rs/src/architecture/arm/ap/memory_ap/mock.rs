@@ -1,5 +1,6 @@
 use super::super::{ApAccess, Register};
-use super::{AddressIncrement, ApRegister, DataSize, MemoryAp, CSW, DRW, TAR};
+use super::{AddressIncrement, ApRegister, DataSize, CSW, DRW, TAR};
+use crate::architecture::arm::ap::AccessPort;
 use crate::{
     architecture::arm::dp::{DebugPortError, DpAccess, DpRegister},
     CommunicationInterface, DebugProbeError,
@@ -10,7 +11,7 @@ use std::convert::TryInto;
 #[derive(Debug)]
 pub struct MockMemoryAp {
     pub memory: Vec<u8>,
-    store: HashMap<(u8, u8), u32>,
+    store: HashMap<u8, u32>,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -28,9 +29,9 @@ impl MockMemoryAp {
     /// printed out for debugging.
     pub fn with_pattern() -> Self {
         let mut store = HashMap::new();
-        store.insert((CSW::ADDRESS, CSW::APBANKSEL), 0);
-        store.insert((TAR::ADDRESS, TAR::APBANKSEL), 0);
-        store.insert((DRW::ADDRESS, DRW::APBANKSEL), 0);
+        store.insert(CSW::ADDRESS, 0);
+        store.insert(TAR::ADDRESS, 0);
+        store.insert(DRW::ADDRESS, 0);
         Self {
             memory: (1..=16).collect(),
             store,
@@ -44,26 +45,23 @@ impl CommunicationInterface for MockMemoryAp {
     }
 }
 
-impl<R> ApAccess<MemoryAp, R> for MockMemoryAp
-where
-    R: ApRegister<MemoryAp>,
-{
+impl ApAccess for MockMemoryAp {
     type Error = MockMemoryError;
 
     /// Mocks the read_register method of a AP.
     ///
     /// Returns an Error if any bad instructions or values are chosen.
-    fn read_ap_register(
-        &mut self,
-        _port: impl Into<MemoryAp>,
-        _register: R,
-    ) -> Result<R, Self::Error> {
-        let csw = self.store[&(CSW::ADDRESS, CSW::APBANKSEL)];
-        let address = self.store[&(TAR::ADDRESS, TAR::APBANKSEL)];
+    fn read_ap_register<PORT, R>(&mut self, _port: impl Into<PORT>) -> Result<R, Self::Error>
+    where
+        PORT: AccessPort,
+        R: ApRegister<PORT>,
+    {
+        let csw = self.store[&CSW::ADDRESS];
+        let address = self.store[&TAR::ADDRESS];
 
-        match (R::ADDRESS, R::APBANKSEL) {
-            (DRW::ADDRESS, DRW::APBANKSEL) => {
-                let drw = self.store[&(DRW::ADDRESS, DRW::APBANKSEL)];
+        match R::ADDRESS {
+            DRW::ADDRESS => {
+                let drw = self.store[&DRW::ADDRESS];
                 let bit_offset = (address % 4) * 8;
                 let offset = address as usize;
                 let csw = CSW::from(csw);
@@ -100,12 +98,11 @@ where
                     _ => return Err(MockMemoryError::UnknownWidth),
                 };
 
-                self.store.insert((DRW::ADDRESS, DRW::APBANKSEL), new_drw);
+                self.store.insert(DRW::ADDRESS, new_drw);
 
                 match csw.AddrInc {
                     AddressIncrement::Single => {
-                        self.store
-                            .insert((TAR::ADDRESS, TAR::APBANKSEL), address + offset);
+                        self.store.insert(TAR::ADDRESS, address + offset);
                     }
                     AddressIncrement::Off => (),
                     AddressIncrement::Packed => {
@@ -115,8 +112,8 @@ where
 
                 Ok(R::from(new_drw))
             }
-            (CSW::ADDRESS, CSW::APBANKSEL) => Ok(R::from(self.store[&(R::ADDRESS, R::APBANKSEL)])),
-            (TAR::ADDRESS, TAR::APBANKSEL) => Ok(R::from(self.store[&(R::ADDRESS, R::APBANKSEL)])),
+            CSW::ADDRESS => Ok(R::from(self.store[&R::ADDRESS])),
+            TAR::ADDRESS => Ok(R::from(self.store[&R::ADDRESS])),
             _ => Err(MockMemoryError::UnknownRegister),
         }
     }
@@ -124,20 +121,24 @@ where
     /// Mocks the write_register method of a AP.
     ///
     /// Returns an Error if any bad instructions or values are chosen.
-    fn write_ap_register(
+    fn write_ap_register<PORT, R>(
         &mut self,
-        _port: impl Into<MemoryAp>,
+        _port: impl Into<PORT>,
         register: R,
-    ) -> Result<(), Self::Error> {
+    ) -> Result<(), Self::Error>
+    where
+        PORT: AccessPort,
+        R: ApRegister<PORT>,
+    {
         log::debug!("Mock: Write to register {:x?}", &register);
 
         let value: u32 = register.into();
-        self.store.insert((R::ADDRESS, R::APBANKSEL), value);
-        let csw = self.store[&(CSW::ADDRESS, CSW::APBANKSEL)];
-        let address = self.store[&(TAR::ADDRESS, TAR::APBANKSEL)];
+        self.store.insert(R::ADDRESS, value);
+        let csw = self.store[&CSW::ADDRESS];
+        let address = self.store[&TAR::ADDRESS];
 
-        match (R::ADDRESS, R::APBANKSEL) {
-            (DRW::ADDRESS, DRW::APBANKSEL) => {
+        match R::ADDRESS {
+            DRW::ADDRESS => {
                 let csw = CSW::from(csw);
 
                 let access_width = match csw.SIZE {
@@ -176,8 +177,7 @@ where
                 }
                 .map(|offset| match csw.AddrInc {
                     AddressIncrement::Single => {
-                        self.store
-                            .insert((TAR::ADDRESS, TAR::APBANKSEL), address + offset);
+                        self.store.insert(TAR::ADDRESS, address + offset);
                     }
                     AddressIncrement::Off => (),
                     AddressIncrement::Packed => {
@@ -185,40 +185,48 @@ where
                     }
                 })
             }
-            (CSW::ADDRESS, CSW::APBANKSEL) => {
-                self.store.insert((CSW::ADDRESS, CSW::APBANKSEL), value);
+            CSW::ADDRESS => {
+                self.store.insert(CSW::ADDRESS, value);
                 Ok(())
             }
-            (TAR::ADDRESS, TAR::APBANKSEL) => {
-                self.store.insert((TAR::ADDRESS, TAR::APBANKSEL), value);
+            TAR::ADDRESS => {
+                self.store.insert(TAR::ADDRESS, value);
                 Ok(())
             }
             _ => Err(MockMemoryError::UnknownRegister),
         }
     }
 
-    fn write_ap_register_repeated(
+    fn write_ap_register_repeated<PORT, R>(
         &mut self,
-        port: impl Into<MemoryAp> + Clone,
+        port: impl Into<PORT> + Clone,
         _register: R,
         values: &[u32],
-    ) -> Result<(), Self::Error> {
+    ) -> Result<(), Self::Error>
+    where
+        PORT: AccessPort,
+        R: ApRegister<PORT>,
+    {
         for value in values {
             self.write_ap_register(port.clone(), R::from(*value))?
         }
 
         Ok(())
     }
-    fn read_ap_register_repeated(
+
+    fn read_ap_register_repeated<PORT, R>(
         &mut self,
-        port: impl Into<MemoryAp> + Clone,
-        register: R,
+        port: impl Into<PORT> + Clone,
+        _register: R,
         values: &mut [u32],
-    ) -> Result<(), Self::Error> {
+    ) -> Result<(), Self::Error>
+    where
+        PORT: AccessPort,
+        R: ApRegister<PORT>,
+    {
         for value in values {
-            *value = self
-                .read_ap_register(port.clone(), register.clone())?
-                .into()
+            let register_value: R = self.read_ap_register(port.clone())?;
+            *value = register_value.into()
         }
 
         Ok(())

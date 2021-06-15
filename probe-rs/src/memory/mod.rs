@@ -199,18 +199,3 @@ impl<'probe> Memory<'probe> {
         self.inner.write_core_reg(self.ap_sel, addr, value)
     }
 }
-
-pub struct MemoryList<'probe>(Vec<Memory<'probe>>);
-
-impl<'probe> MemoryList<'probe> {
-    pub fn new(memories: Vec<Memory<'probe>>) -> Self {
-        Self(memories)
-    }
-}
-
-impl<'probe> std::ops::Deref for MemoryList<'probe> {
-    type Target = Vec<Memory<'probe>>;
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}

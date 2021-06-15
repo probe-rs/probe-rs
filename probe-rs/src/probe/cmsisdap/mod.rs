@@ -210,11 +210,8 @@ impl CmsisDap {
                         log::trace!("Transfer status: FAULT");
 
                         // Check the reason for the fault
-                        let response = DapAccess::read_register(
-                            self,
-                            PortType::DebugPort,
-                            Ctrl::ADDRESS as u16,
-                        )?;
+                        let response =
+                            DapAccess::read_register(self, PortType::DebugPort, Ctrl::ADDRESS)?;
                         let ctrl = Ctrl::from(response);
                         log::trace!("Ctrl/Stat register value is: {:?}", ctrl);
 
@@ -227,7 +224,7 @@ impl CmsisDap {
                             DapAccess::write_register(
                                 self,
                                 PortType::DebugPort,
-                                Abort::ADDRESS as u16,
+                                Abort::ADDRESS,
                                 abort.into(),
                             )?;
                         }
@@ -380,7 +377,7 @@ impl CmsisDap {
 impl DpAccess for CmsisDap {
     fn read_dp_register<R: DpRegister>(&mut self) -> Result<R, DebugPortError> {
         debug!("Reading DP register {}", R::NAME);
-        let result = self.read_register(PortType::DebugPort, u16::from(R::ADDRESS))?;
+        let result = self.read_register(PortType::DebugPort, R::ADDRESS)?;
 
         debug!("Read    DP register {}, value=0x{:08x}", R::NAME, result);
 
@@ -391,7 +388,7 @@ impl DpAccess for CmsisDap {
         let value = register.into();
 
         debug!("Writing DP register {}, value=0x{:08x}", R::NAME, value);
-        self.write_register(PortType::DebugPort, u16::from(R::ADDRESS), value)?;
+        self.write_register(PortType::DebugPort, R::ADDRESS, value)?;
 
         Ok(())
     }
@@ -618,25 +615,25 @@ impl DebugProbe for CmsisDap {
 
 impl DapAccess for CmsisDap {
     /// Reads the DAP register on the specified port and address.
-    fn read_register(&mut self, port: PortType, addr: u16) -> Result<u32, DebugProbeError> {
-        self.batch_add(BatchCommand::Read(port, addr))
+    fn read_register(&mut self, port: PortType, addr: u8) -> Result<u32, DebugProbeError> {
+        self.batch_add(BatchCommand::Read(port, addr as u16))
     }
 
     /// Writes a value to the DAP register on the specified port and address.
     fn write_register(
         &mut self,
         port: PortType,
-        addr: u16,
+        addr: u8,
         value: u32,
     ) -> Result<(), DebugProbeError> {
-        self.batch_add(BatchCommand::Write(port, addr, value))
+        self.batch_add(BatchCommand::Write(port, addr as u16, value))
             .map(|_| ())
     }
 
     fn write_block(
         &mut self,
         port: PortType,
-        register_address: u16,
+        register_address: u8,
         values: &[u32],
     ) -> Result<(), DebugProbeError> {
         self.process_batch()?;
@@ -678,7 +675,7 @@ impl DapAccess for CmsisDap {
     fn read_block(
         &mut self,
         port: PortType,
-        register_address: u16,
+        register_address: u8,
         values: &mut [u32],
     ) -> Result<(), DebugProbeError> {
         self.process_batch()?;
