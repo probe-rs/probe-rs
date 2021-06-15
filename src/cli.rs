@@ -145,7 +145,7 @@ fn print_version() {
 
 /// Extract git hash from a `git describe` statement
 fn extract_git_hash(git_describe: &str) -> &str {
-    git_describe.split("-").nth(2).unwrap()
+    git_describe.split('-').nth(2).unwrap()
 }
 
 #[cfg(test)]
