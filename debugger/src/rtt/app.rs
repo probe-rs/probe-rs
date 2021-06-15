@@ -1,13 +1,10 @@
 use anyhow::{anyhow, Result};
 use probe_rs_rtt::RttChannel;
-use std::{path::PathBuf};
-use std::{
-    io::{Read, Seek},
-};
+use std::collections::HashMap;
+use std::io::{Read, Seek};
+use std::path::PathBuf;
 
-use super::{
-    channel::{ChannelState, DataFormat},
-};
+use super::channel::{ChannelState, DataFormat, Packet};
 
 /// App holds the state of the application
 pub struct App {
@@ -126,121 +123,121 @@ impl App {
         &mut self,
         defmt_state: &Option<(defmt_decoder::Table, Option<defmt_decoder::Locations>)>,
     ) {
-            // binle_or_defmt => {
-            //     self.terminal
-            //         .draw(|f| {
-            //             let constraints = if has_down_channel {
-            //                 &[
-            //                     Constraint::Length(1),
-            //                     Constraint::Min(1),
-            //                     Constraint::Length(1),
-            //                 ][..]
-            //             } else {
-            //                 &[Constraint::Length(1), Constraint::Min(1)][..]
-            //             };
-            //             let chunks = Layout::default()
-            //                 .direction(Direction::Vertical)
-            //                 .margin(0)
-            //                 .constraints(constraints)
-            //                 .split(f.size());
+        // binle_or_defmt => {
+        //     self.terminal
+        //         .draw(|f| {
+        //             let constraints = if has_down_channel {
+        //                 &[
+        //                     Constraint::Length(1),
+        //                     Constraint::Min(1),
+        //                     Constraint::Length(1),
+        //                 ][..]
+        //             } else {
+        //                 &[Constraint::Length(1), Constraint::Min(1)][..]
+        //             };
+        //             let chunks = Layout::default()
+        //                 .direction(Direction::Vertical)
+        //                 .margin(0)
+        //                 .constraints(constraints)
+        //                 .split(f.size());
 
-            //             let tab_names = tabs
-            //                 .iter()
-            //                 .map(|t| Spans::from(t.name()))
-            //                 .collect::<Vec<_>>();
-            //             let tabs = Tabs::new(tab_names)
-            //                 .select(current_tab)
-            //                 .style(Style::default().fg(Color::Black).bg(Color::Yellow))
-            //                 .highlight_style(
-            //                     Style::default()
-            //                         .fg(Color::Green)
-            //                         .bg(Color::Yellow)
-            //                         .add_modifier(Modifier::BOLD),
-            //                 );
-            //             f.render_widget(tabs, chunks[0]);
+        //             let tab_names = tabs
+        //                 .iter()
+        //                 .map(|t| Spans::from(t.name()))
+        //                 .collect::<Vec<_>>();
+        //             let tabs = Tabs::new(tab_names)
+        //                 .select(current_tab)
+        //                 .style(Style::default().fg(Color::Black).bg(Color::Yellow))
+        //                 .highlight_style(
+        //                     Style::default()
+        //                         .fg(Color::Green)
+        //                         .bg(Color::Yellow)
+        //                         .add_modifier(Modifier::BOLD),
+        //                 );
+        //             f.render_widget(tabs, chunks[0]);
 
-            //             height = chunks[1].height as usize;
+        //             height = chunks[1].height as usize;
 
-            //             // probably pretty bad
-            //             match binle_or_defmt {
-            //                 DataFormat::BinaryLE => {
-            //                     messages_wrapped.push(data.iter().fold(
-            //                         String::new(),
-            //                         |mut output, byte| {
-            //                             let _ = write(&mut output, format_args!("{:#04x}, ", byte));
-            //                             output
-            //                         },
-            //                     ));
-            //                 }
-            //                 DataFormat::Defmt => {
-            //                     let (table, locs) = defmt_state.as_ref().expect(
-            //                     "Running rtt in defmt mode but table or locations could not be loaded.",
-            //                 );
-            //                     let mut frames = vec![];
+        //             // probably pretty bad
+        //             match binle_or_defmt {
+        //                 DataFormat::BinaryLE => {
+        //                     messages_wrapped.push(data.iter().fold(
+        //                         String::new(),
+        //                         |mut output, byte| {
+        //                             let _ = write(&mut output, format_args!("{:#04x}, ", byte));
+        //                             output
+        //                         },
+        //                     ));
+        //                 }
+        //                 DataFormat::Defmt => {
+        //                     let (table, locs) = defmt_state.as_ref().expect(
+        //                     "Running rtt in defmt mode but table or locations could not be loaded.",
+        //                 );
+        //                     let mut frames = vec![];
 
-            //                     frames.extend_from_slice(&data);
+        //                     frames.extend_from_slice(&data);
 
-            //                     while let Ok((frame, consumed)) =
-            //                         table.decode(&frames)
-            //                     {
-            //                         // NOTE(`[]` indexing) all indices in `table` have already been
-            //                         // verified to exist in the `locs` map.
-            //                         let loc = locs.as_ref().map(|locs| &locs[&frame.index()]);
+        //                     while let Ok((frame, consumed)) =
+        //                         table.decode(&frames)
+        //                     {
+        //                         // NOTE(`[]` indexing) all indices in `table` have already been
+        //                         // verified to exist in the `locs` map.
+        //                         let loc = locs.as_ref().map(|locs| &locs[&frame.index()]);
 
-            //                         messages_wrapped.push(format!("{}", frame.display(false)));
-            //                         if let Some(loc) = loc {
-            //                             let relpath = if let Ok(relpath) =
-            //                                 loc.file.strip_prefix(&std::env::current_dir().unwrap())
-            //                             {
-            //                                 relpath
-            //                             } else {
-            //                                 // not relative; use full path
-            //                                 &loc.file
-            //                             };
+        //                         messages_wrapped.push(format!("{}", frame.display(false)));
+        //                         if let Some(loc) = loc {
+        //                             let relpath = if let Ok(relpath) =
+        //                                 loc.file.strip_prefix(&std::env::current_dir().unwrap())
+        //                             {
+        //                                 relpath
+        //                             } else {
+        //                                 // not relative; use full path
+        //                                 &loc.file
+        //                             };
 
-            //                             messages_wrapped.push(format!(
-            //                                 "└─ {}:{}",
-            //                                 relpath.display(),
-            //                                 loc.line
-            //                             ));
-            //                         }
+        //                             messages_wrapped.push(format!(
+        //                                 "└─ {}:{}",
+        //                                 relpath.display(),
+        //                                 loc.line
+        //                             ));
+        //                         }
 
-            //                         let num_frames = frames.len();
-            //                         frames.rotate_left(consumed);
-            //                         frames.truncate(num_frames - consumed);
-            //                     }
-            //                 }
-            //                 DataFormat::String => unreachable!("You encountered a bug. Please open an issue on Github."),
-            //             }
+        //                         let num_frames = frames.len();
+        //                         frames.rotate_left(consumed);
+        //                         frames.truncate(num_frames - consumed);
+        //                     }
+        //                 }
+        //                 DataFormat::String => unreachable!("You encountered a bug. Please open an issue on Github."),
+        //             }
 
-            //             let message_num = messages_wrapped.len();
+        //             let message_num = messages_wrapped.len();
 
-            //             let messages: Vec<ListItem> = messages_wrapped
-            //                 .iter()
-            //                 .skip(message_num - (height + scroll_offset).min(message_num))
-            //                 .take(height)
-            //                 .map(|s| ListItem::new(vec![Spans::from(Span::raw(s))]))
-            //                 .collect();
+        //             let messages: Vec<ListItem> = messages_wrapped
+        //                 .iter()
+        //                 .skip(message_num - (height + scroll_offset).min(message_num))
+        //                 .take(height)
+        //                 .map(|s| ListItem::new(vec![Spans::from(Span::raw(s))]))
+        //                 .collect();
 
-            //             let messages = List::new(messages.as_slice())
-            //                 .block(Block::default().borders(Borders::NONE));
-            //             f.render_widget(messages, chunks[1]);
+        //             let messages = List::new(messages.as_slice())
+        //                 .block(Block::default().borders(Borders::NONE));
+        //             f.render_widget(messages, chunks[1]);
 
-            //             if has_down_channel {
-            //                 let input = Paragraph::new(Spans::from(vec![Span::raw(input.clone())]))
-            //                     .style(Style::default().fg(Color::Yellow).bg(Color::Blue));
-            //                 f.render_widget(input, chunks[2]);
-            //             }
-            //         })
-            //         .unwrap();
+        //             if has_down_channel {
+        //                 let input = Paragraph::new(Spans::from(vec![Span::raw(input.clone())]))
+        //                     .style(Style::default().fg(Color::Yellow).bg(Color::Blue));
+        //                 f.render_widget(input, chunks[2]);
+        //             }
+        //         })
+        //         .unwrap();
 
-            //     let message_num = messages_wrapped.len();
-            //     let scroll_offset = self.tabs[self.current_tab].scroll_offset();
-            //     if message_num < height + scroll_offset {
-            //         self.current_tab_mut()
-            //             .set_scroll_offset(message_num - height.min(message_num));
-            //     }
-            // }
+        //     let message_num = messages_wrapped.len();
+        //     let scroll_offset = self.tabs[self.current_tab].scroll_offset();
+        //     if message_num < height + scroll_offset {
+        //         self.current_tab_mut()
+        //             .set_scroll_offset(message_num - height.min(message_num));
+        //     }
+        // }
     }
 
     pub fn current_tab(&self) -> &ChannelState {
@@ -252,10 +249,14 @@ impl App {
     }
 
     /// Polls the RTT target for new data on all channels.
-    pub fn poll_rtt(&mut self) {
-        for channel in self.tabs.iter_mut() {
-            channel.poll_rtt();
-        }
+    pub fn poll_rtt(&mut self) -> HashMap<String, Packet> {
+        self.tabs
+            .iter_mut()
+            .filter_map(|tab| {
+                tab.poll_rtt()
+                    .map(|packet| (tab.name().to_string(), packet))
+            })
+            .collect::<HashMap<_, _>>()
     }
 
     pub fn push_rtt(&mut self) {

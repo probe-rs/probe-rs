@@ -1,17 +1,23 @@
-
 // [a, b, c, d, e, f, g, \n]
-// 
+//
 // t1: [a, b, c, d]
 // t2: [e, f, g, \n]
 // abcdefg
 
 use std::{fmt, str::FromStr};
 
-use chrono::Local;
+use chrono::{DateTime, Local};
 use probe_rs_rtt::{DownChannel, UpChannel};
 use structopt::StructOpt;
 
-#[derive(Debug, Copy, Clone, PartialEq, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct Packet {
+    data_format: DataFormat,
+    bytes: Vec<u8>,
+    timestamp: DateTime<Local>,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum DataFormat {
     String,
     BinaryLE,
@@ -27,7 +33,7 @@ impl FromStr for DataFormat {
             "string" => Ok(Self::String),
             "binaryle" => Ok(Self::BinaryLE),
             "defmt" => Ok(Self::Defmt),
-            _ => Err(format!("{} is not a valid format", src))
+            _ => Err(format!("{} is not a valid format", src)),
         }
     }
 }
@@ -145,14 +151,14 @@ impl ChannelState {
     /// Polls the RTT target for new data on the specified channel.
     ///
     /// Processes all the new data and adds it to the linebuffer of the respective channel.
-    pub fn poll_rtt(&mut self) {
+    pub fn poll_rtt(&mut self) -> Option<Packet> {
         // TODO: Proper error handling.
         let count = if let Some(channel) = self.up_channel.as_mut() {
             match channel.read(self.rtt_buffer.0.as_mut()) {
                 Ok(count) => count,
                 Err(err) => {
                     log::error!("\nError reading from RTT: {}", err);
-                    return;
+                    return None;
                 }
             }
         } else {
@@ -160,48 +166,18 @@ impl ChannelState {
         };
 
         if count == 0 {
-            return;
+            return None;
         }
 
         match self.format {
-            DataFormat::String => {
-                let now = Local::now();
-
-                // First, convert the incoming bytes to UTF8.
-                let mut incoming = String::from_utf8_lossy(&self.rtt_buffer.0[..count]).to_string();
-
-                // Then pop the last stored line from our line buffer if possible and append our new line.
-                let last_line_done = self.last_line_done;
-                if !last_line_done {
-                    if let Some(last_line) = self.messages.pop() {
-                        incoming = last_line + &incoming;
-                    }
-                }
-                self.last_line_done = incoming.ends_with('\n');
-
-                // Then split the incoming buffer discarding newlines and if necessary
-                // add a timestamp at start of each.
-                // Note: this means if you print a newline in the middle of your debug
-                // you get a timestamp there too..
-                // Note: we timestamp at receipt of newline, not first char received if that
-                // matters.
-                for (i, line) in incoming.split_terminator('\n').enumerate() {
-                    if self.show_timestamps && (last_line_done || i > 0) {
-                        let ts = now.format("%H:%M:%S%.3f");
-                        self.messages.push(format!("{} {}", ts, line));
-                    } else {
-                        self.messages.push(line.to_string());
-                    }
-                    if self.scroll_offset != 0 {
-                        self.scroll_offset += 1;
-                    }
-                }
-            }
+            DataFormat::String => Some(Packet {
+                data_format: self.format,
+                bytes: self.rtt_buffer.0[..count].to_vec(),
+                timestamp: Local::now(),
+            }),
             // defmt output is later formatted into strings in [App::render].
-            DataFormat::BinaryLE | DataFormat::Defmt => {
-                self.data.extend_from_slice(&self.rtt_buffer.0[..count]);
-            }
-        };
+            DataFormat::BinaryLE | DataFormat::Defmt => None,
+        }
     }
 
     pub fn push_rtt(&mut self) {

@@ -3,6 +3,7 @@ members = [
     "probe-rs",
     "probe-rs-target",
     "probe-rs-cli-util",
+    "probe-rs-rtt",
     "cli",
     "debugger",
     "gdb-server",

@@ -969,8 +969,10 @@ impl Debugger {
         debug_adapter.to_rtt("probe-rs-rtt");
 
         let mut app = if self.debugger_options.rtt.enabled {
+            debug_adapter.log_to_console("Initializing RTT.");
             attach_to_rtt(session_data.session.clone(), &self.debugger_options).ok()
         } else {
+            debug_adapter.log_to_console("No RTT configured.");
             None
         };
 
@@ -1021,7 +1023,8 @@ impl Debugger {
                 break;
             }
             if let Some(ref mut app) = app {
-                app.poll_rtt();
+                let data = app.poll_rtt();
+                debug_adapter.log_to_console(serde_json::to_string_pretty(&data).unwrap());
             }
             // app.render(&defmt_state);
             let sleep = (10 - t.elapsed().as_millis()).min(0);

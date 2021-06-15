@@ -1,0 +1,16 @@
+[package]
+name = "probe-rs-rtt"
+description = "Host side implementation of the RTT (Real-Time Transfer) I/O protocol over probe-rs"
+version = "0.10.1"
+edition = "2018"
+readme = "../README.md"
+keywords = ["embedded", "debugging", "rtt"]
+license = "MIT"
+authors = ["Matti Virkkunen <mvirkkunen@gmail.com>"]
+repository = "https://github.com/probe-rs/probe-rs-rtt"
+
+[dependencies]
+log = "0.4.8"
+probe-rs = { path = "../probe-rs" }
+scroll = "0.10.1"
+thiserror = "1.0.11"
