@@ -218,11 +218,17 @@ impl ApInformation {
             };
             base_address |= u64::from(base_register.BASEADDR << 12);
 
+            // Save old CSW value. STLink firmare caches it, which breaks things
+            // if we change it behind its back.
+            let old_csw: CSW = probe.read_ap_register(access_port)?;
+
             // Read information about HNONSEC support and supported access widths
             let csw = CSW::new(DataSize::U8);
 
             probe.write_ap_register(access_port, csw)?;
             let csw: CSW = probe.read_ap_register(access_port)?;
+
+            probe.write_ap_register(access_port, old_csw)?;
 
             let only_32bit_data_size = csw.SIZE != DataSize::U8;
 
