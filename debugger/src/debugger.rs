@@ -536,6 +536,17 @@ impl Debugger {
                 match last_known_status {
                     CoreStatus::Unknown => true,
                     _other => {
+                        // Use every opportunity to poll the RTT channels for data
+                        let mut received_rtt_data = false;
+                        if let Some(ref mut rtt_app) = self.rtt_app {
+                            let data = rtt_app.poll_rtt();
+                            if data.len() > 0 { 
+                                received_rtt_data = true; 
+                                debug_adapter.log_to_console(serde_json::to_string_pretty(&data).unwrap());
+                            }
+                        }
+                        
+                        //Check and update the core status.
                         let mut session = session_data
                             .session
                             .lock()
@@ -559,17 +570,7 @@ impl Debugger {
                             }
                         };
 
-                        // Use every opportunity to poll the RTT channels for data
-                        let mut received_rtt_data = false;
-                        if let Some(ref mut rtt_app) = self.rtt_app {
-                            let data = rtt_app.poll_rtt();
-                            if data.len() > 0 { 
-                                received_rtt_data = true; 
-                            }
-                            debug_adapter.log_to_console(serde_json::to_string_pretty(&data).unwrap());
-                        }
-                        
-                        // Only sleep (nap for a short duration) IF the probe's status hasn't changed AND there was no RTT data in the last poll. Otherwise loop again to keep things flowing as fast as possible ...
+                        // Only sleep (nap for a short duration) IF the probe's status hasn't changed AND there was no RTT data in the last poll. Otherwise loop again to keep things flowing as fast as possible. The justification is that any client side CPU used to keep polling is a small price to pay for maximum throughput of debug requests and RTT from the probe.
                         if new_status == last_known_status && !received_rtt_data {
                             thread::sleep(Duration::from_millis(50)); //small delay to reduce fast looping costs
                             return true;

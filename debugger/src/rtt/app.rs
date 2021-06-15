@@ -69,6 +69,7 @@ impl App {
         // Code farther down relies on tabs being configured and might panic
         // otherwise.
         if tabs.is_empty() {
+            // TODO: Update to reflect move away RTT UI 
             return Err(anyhow!(
                 "Failed to initialize RTT UI: No RTT channels configured"
             ));
