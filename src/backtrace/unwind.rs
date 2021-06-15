@@ -124,16 +124,14 @@ pub(crate) fn target(core: &mut Core, elf: &Elf, active_ram_region: &Option<RamR
             registers.insert(registers::SP, sp + stacked.size());
 
             pc = stacked.pc;
+        } else if cortexm::is_thumb_bit_set(lr) {
+            pc = cortexm::clear_thumb_bit(lr);
         } else {
-            if cortexm::is_thumb_bit_set(lr) {
-                pc = cortexm::clear_thumb_bit(lr);
-            } else {
-                output.processing_error = Some(anyhow!(
-                    "bug? LR ({:#010x}) didn't have the Thumb bit set",
-                    lr
-                ));
-                return output;
-            }
+            output.processing_error = Some(anyhow!(
+                "bug? LR ({:#010x}) didn't have the Thumb bit set",
+                lr
+            ));
+            return output;
         }
     }
 

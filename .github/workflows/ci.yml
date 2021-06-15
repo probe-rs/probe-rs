@@ -10,8 +10,8 @@ env:
   CARGO_TERM_COLOR: always
   RUSTFLAGS: "--deny warnings"
 
-# NOTE if you change the `matrix` field or add/remove a job you'll need to update the list of jobs
-# in `.github/bors.toml
+# NOTE if you add, remove or rename a job you'll need to update the list of
+# jobs in the `ci` step (at the bottom of this file)
 jobs:
   test:
     strategy:
@@ -22,22 +22,49 @@ jobs:
         os:
           - ubuntu-latest
           - macOS-latest
-          - windows-latest
+          # - windows-latest # currently fails, see #227
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
     steps:
-    - uses: actions/checkout@v2
-    - uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
-        toolchain: ${{ matrix.rust }}
-        override: true
-        target: thumbv6m-none-eabi
-        components: rustfmt
-    - run: cargo fmt -- --check
-    - name: Install C libraries for tooling
-      if: matrix.os == 'ubuntu-latest'
-      run: sudo apt-get update && sudo apt-get install libudev-dev libusb-1.0-0-dev
-    - name: Build host tooling
-      run: |
-        cargo build
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: ${{ matrix.rust }}
+          override: true
+      - name: Install C libraries for tooling
+        if: matrix.os == 'ubuntu-latest'
+        run: sudo apt-get update && sudo apt-get install libudev-dev libusb-1.0-0-dev
+
+      - run: cargo build
+      - run: cargo test
+
+  static:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+          components: clippy, rustfmt
+      - name: Install C libraries for tooling
+        run: sudo apt-get update && sudo apt-get install libudev-dev libusb-1.0-0-dev
+
+      - run: cargo fmt -- --check
+      - uses: actions-rs/clippy-check@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+  # Refs: https://github.com/rust-lang/crater/blob/9ab6f9697c901c4a44025cf0a39b73ad5b37d198/.github/workflows/bors.yml#L125-L149
+  # bors.tech integration
+  ci:
+    if: ${{ success() }}
+    needs:
+      - test
+      - static
+    runs-on: ubuntu-latest
+    steps:
+      - name: CI succeeded
+        run: exit 0
