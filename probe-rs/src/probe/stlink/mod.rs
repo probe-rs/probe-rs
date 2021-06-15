@@ -771,6 +771,8 @@ impl<D: StLinkUsb> StLink<D> {
         data: &mut [u8],
         apsel: u8,
     ) -> Result<(), DebugProbeError> {
+        self.select_ap(apsel)?;
+
         log::debug!(
             "Read mem 32 bit, address={:08x}, length={}",
             address,
@@ -822,6 +824,8 @@ impl<D: StLinkUsb> StLink<D> {
         length: u16,
         apsel: u8,
     ) -> Result<Vec<u8>, DebugProbeError> {
+        self.select_ap(apsel)?;
+
         log::trace!("read_mem_8bit");
 
         if self.hw_version < 3 {
@@ -882,6 +886,8 @@ impl<D: StLinkUsb> StLink<D> {
         data: &[u8],
         apsel: u8,
     ) -> Result<(), DebugProbeError> {
+        self.select_ap(apsel)?;
+
         log::trace!("write_mem_32bit");
         let length = data.len();
 
@@ -929,6 +935,8 @@ impl<D: StLinkUsb> StLink<D> {
         data: &[u8],
         apsel: u8,
     ) -> Result<(), DebugProbeError> {
+        self.select_ap(apsel)?;
+
         log::trace!("write_mem_8bit");
         let byte_length = data.len();
 
@@ -1125,66 +1133,6 @@ impl StlinkArmDebug {
 
         Ok(interface)
     }
-
-    fn select_dp_bank(&mut self, dp_bank: DpBankSel) -> Result<(), DebugPortError> {
-        if let DpBankSel::Bank(new_bank) = dp_bank {
-            if new_bank != self.state.current_dpbanksel {
-                self.state.current_dpbanksel = new_bank;
-
-                let mut select = Select(0);
-
-                log::debug!("Changing DP_BANK_SEL to {}", self.state.current_dpbanksel);
-
-                select.set_ap_sel(self.state.current_apsel);
-                select.set_ap_bank_sel(self.state.current_apbanksel);
-                select.set_dp_bank_sel(self.state.current_dpbanksel);
-
-                self.write_dp_register(select)?;
-            }
-        }
-
-        Ok(())
-    }
-
-    fn select_ap_and_ap_bank(
-        &mut self,
-        port: u8,
-        ap_register_address: u8,
-    ) -> Result<(), DebugProbeError> {
-        let ap_bank = ap_register_address >> 4;
-        let mut cache_changed = self.state.current_apsel != port;
-        if cache_changed {
-            self.state.current_apsel = port;
-        }
-
-        if self.state.current_apbanksel != ap_bank {
-            self.state.current_apbanksel = ap_bank;
-            cache_changed = true;
-        }
-
-        if cache_changed {
-            let mut select = Select(0);
-
-            log::debug!(
-                "Changing AP to {}, AP_BANK_SEL to {}",
-                self.state.current_apsel,
-                self.state.current_apbanksel
-            );
-
-            select.set_ap_sel(self.state.current_apsel);
-            select.set_ap_bank_sel(self.state.current_apbanksel);
-            select.set_dp_bank_sel(self.state.current_dpbanksel);
-
-            self.write_dp_register(select)?;
-        }
-
-        Ok(())
-    }
-
-    fn select_ap(&mut self, port: impl AccessPort) -> Result<(), DebugProbeError> {
-        // Change AP, leave ap_bank_sel the same.
-        self.probe.select_ap(port.port_number())
-    }
 }
 
 impl DpAccess for StlinkArmDebug {
@@ -1195,8 +1143,6 @@ impl DpAccess for StlinkArmDebug {
                 version: self.state.debug_port_version,
             });
         }
-
-        self.select_dp_bank(R::DP_BANK)?;
 
         log::debug!("Reading DP register {}", R::NAME);
         let result = self.probe.read_register(PortType::DebugPort, R::ADDRESS)?;
@@ -1213,8 +1159,6 @@ impl DpAccess for StlinkArmDebug {
                 version: self.state.debug_port_version,
             });
         }
-
-        self.select_dp_bank(R::DP_BANK)?;
 
         let value = register.into();
 
@@ -1326,12 +1270,8 @@ impl RawApAccess for StlinkArmDebug {
     type Error = DebugProbeError;
 
     fn read_raw_ap_register(&mut self, port: u8, address: u8) -> Result<u32, Self::Error> {
-        self.select_ap_and_ap_bank(port, address)?;
-
-        self.probe.read_register(
-            PortType::AccessPort(u16::from(self.state.current_apsel)),
-            address,
-        )
+        self.probe
+            .read_register(PortType::AccessPort(port as u16), address)
     }
 
     fn write_raw_ap_register(
@@ -1340,13 +1280,8 @@ impl RawApAccess for StlinkArmDebug {
         address: u8,
         value: u32,
     ) -> Result<(), Self::Error> {
-        self.select_ap_and_ap_bank(port, address)?;
-
-        self.probe.write_register(
-            PortType::AccessPort(u16::from(self.state.current_apsel)),
-            address,
-            value,
-        )
+        self.probe
+            .write_register(PortType::AccessPort(port as u16), address, value)
     }
 
     fn write_raw_ap_register_repeated(
@@ -1355,13 +1290,8 @@ impl RawApAccess for StlinkArmDebug {
         address: u8,
         values: &[u32],
     ) -> Result<(), Self::Error> {
-        self.select_ap_and_ap_bank(port, address)?;
-
-        self.probe.write_block(
-            PortType::AccessPort(u16::from(self.state.current_apsel)),
-            address,
-            values,
-        )
+        self.probe
+            .write_block(PortType::AccessPort(port as u16), address, values)
     }
 
     fn read_raw_ap_register_repeated(
@@ -1370,13 +1300,8 @@ impl RawApAccess for StlinkArmDebug {
         address: u8,
         values: &mut [u32],
     ) -> Result<(), Self::Error> {
-        self.select_ap_and_ap_bank(port, address)?;
-
-        self.probe.read_block(
-            PortType::AccessPort(u16::from(self.state.current_apsel)),
-            address,
-            values,
-        )
+        self.probe
+            .read_block(PortType::AccessPort(port as u16), address, values)
     }
 }
 
@@ -1406,8 +1331,6 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
         address: u32,
         data: &mut [u32],
     ) -> Result<(), ProbeRsError> {
-        self.probe.select_ap(ap)?;
-
         // Read needs to be chunked into chunks with appropiate max length (see STLINK_MAX_READ_LEN).
         for (index, chunk) in data.chunks_mut(STLINK_MAX_READ_LEN / 4).enumerate() {
             let mut buff = vec![0u8; 4 * chunk.len()];
@@ -1427,8 +1350,6 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
     }
 
     fn read_8(&mut self, ap: MemoryAp, address: u32, data: &mut [u8]) -> Result<(), ProbeRsError> {
-        self.probe.select_ap(ap)?;
-
         // Read needs to be chunked into chunks of appropriate max length of the probe
         let chunk_size = if self.probe.probe.hw_version < 3 {
             64
@@ -1452,8 +1373,6 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
     }
 
     fn write_32(&mut self, ap: MemoryAp, address: u32, data: &[u32]) -> Result<(), ProbeRsError> {
-        self.probe.select_ap(ap)?;
-
         let mut tx_buffer = vec![0u8; data.len() * 4];
 
         let mut offset = 0;
@@ -1476,8 +1395,6 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
     }
 
     fn write_8(&mut self, ap: MemoryAp, address: u32, data: &[u8]) -> Result<(), ProbeRsError> {
-        self.probe.select_ap(ap)?;
-
         // The underlying STLink command is limited to a single USB frame at a time
         // so we must manually chunk it into multiple command if it exceeds
         // that size.
