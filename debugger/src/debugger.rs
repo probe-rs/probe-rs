@@ -1,4 +1,4 @@
-use crate::debug_adapter::DapStatus;
+use crate::{debug_adapter::DapStatus, rtt::app::App};
 use crate::debug_adapter::*;
 use crate::{
     dap_types::*,
@@ -45,10 +45,6 @@ fn default_console_log() -> Option<ConsoleLog> {
 
 fn parse_console_log(src: &str) -> Result<ConsoleLog, String> {
     ConsoleLog::from_str(src)
-}
-
-fn parse_channel_configs(_src: &str) -> Result<ChannelConfig, String> {
-    unimplemented!()
 }
 
 fn default_channel_configs() -> Vec<ChannelConfig> {
@@ -135,7 +131,7 @@ pub struct DebuggerOptions {
     pub(crate) port: Option<u16>,
 
     /// Flash the target before debugging
-    #[structopt(long, hidden = true)]
+    #[structopt(long)]
     #[serde(default)]
     pub(crate) flashing_enabled: bool,
 
@@ -165,6 +161,7 @@ pub struct DebuggerOptions {
     pub(crate) console_log_level: Option<ConsoleLog>,
 
     #[structopt(flatten)]
+    #[serde(flatten)]
     pub(crate) rtt: RttConfig,
 }
 
@@ -205,23 +202,21 @@ impl DebuggerOptions {
 }
 
 #[derive(StructOpt, Debug, Clone, Deserialize, Default)]
-#[serde(deny_unknown_fields)]
 pub struct RttConfig {
-    #[structopt(long, short)]
+    #[structopt(skip)]
+    #[serde(rename = "rtt_enabled")]
     pub enabled: bool,
-    #[structopt(long, parse(try_from_str = parse_channel_configs))]
-    #[serde(default = "default_channel_configs")]
+    #[structopt(skip)]
+    #[serde(default = "default_channel_configs", rename = "rtt_channels")]
     pub channels: Vec<ChannelConfig>,
     /// Connection timeout in ms.
+    #[structopt(skip)]
+    #[serde(rename = "rtt_timeout")]
     pub timeout: usize,
     /// Whether to show timestamps in RTTUI
-    #[structopt(long, short)]
+    #[structopt(skip)]
+    #[serde(rename = "rtt_show_timestamps")]
     pub show_timestamps: bool,
-    /// Whether to save rtt history buffer on exit to file named history.txt
-    #[structopt(long, short)]
-    pub log_enabled: bool,
-    /// Where to save rtt history buffer relative to manifest path.
-    pub log_path: PathBuf,
 }
 
 /// #Debugger Overview
@@ -238,6 +233,8 @@ pub struct Debugger {
     debugger_options: DebuggerOptions,
     all_commands: Vec<DebugCommand>,
     pub supported_commands: Vec<DebugCommand>,
+    /// The optional RTT instance
+    rtt_app: Option<App>,
 }
 
 pub struct SessionData {
@@ -512,6 +509,7 @@ impl Debugger {
                 },
             ],
             supported_commands: vec![],
+            rtt_app: None,
         }
     }
 
@@ -561,7 +559,18 @@ impl Debugger {
                             }
                         };
 
-                        if new_status == last_known_status {
+                        // Use every opportunity to poll the RTT channels for data
+                        let mut received_rtt_data = false;
+                        if let Some(ref mut rtt_app) = self.rtt_app {
+                            let data = rtt_app.poll_rtt();
+                            if data.len() > 0 { 
+                                received_rtt_data = true; 
+                            }
+                            debug_adapter.log_to_console(serde_json::to_string_pretty(&data).unwrap());
+                        }
+                        
+                        // Only sleep (nap for a short duration) IF the probe's status hasn't changed AND there was no RTT data in the last poll. Otherwise loop again to keep things flowing as fast as possible ...
+                        if new_status == last_known_status && !received_rtt_data {
                             thread::sleep(Duration::from_millis(50)); //small delay to reduce fast looping costs
                             return true;
                         };
@@ -965,20 +974,20 @@ impl Debugger {
             }
         }
 
-        //Open any RTT windows on the debug client, before the core can start running
-        debug_adapter.to_rtt("probe-rs-rtt");
 
-        let mut app = if self.debugger_options.rtt.enabled {
-            debug_adapter.log_to_console("Initializing RTT.");
+        self.rtt_app = if self.debugger_options.rtt.enabled {
+            // Open required RTT windows on the debug client, before the core can start running
+            debug_adapter.to_rtt("probe-rs-rtt");
+            // Attach to RTT on the probe
             attach_to_rtt(session_data.session.clone(), &self.debugger_options).ok()
         } else {
             debug_adapter.log_to_console("No RTT configured.");
             None
         };
 
-        //This is the first attach to the requested core. If this one works, all subsequent ones will be no-op requests for a Core reference. Do NOT hold onto this reference for the duration of the session ... that is why this code is in a block of its own.
+        // This is the first attach to the requested core. If this one works, all subsequent ones will be no-op requests for a Core reference. Do NOT hold onto this reference for the duration of the session ... that is why this code is in a block of its own.
         {
-            //First, attach to the core
+            // First, attach to the core
             let mut session = session_data
                 .session
                 .lock()
@@ -1013,7 +1022,6 @@ impl Debugger {
         }
         //Loop through remaining (user generated) requests and send to the [processs_request] method until either the client or some unexpected behaviour termintates the process.
         loop {
-            let t = std::time::Instant::now();
             if !self.process_next_request(&mut session_data, &mut debug_adapter) {
                 //DapClient STEP FINAL: Let the client know that we are done and exiting
                 if debug_adapter.adapter_type == DebugAdapterType::DapClient {
@@ -1022,13 +1030,6 @@ impl Debugger {
                 }
                 break;
             }
-            if let Some(ref mut app) = app {
-                let data = app.poll_rtt();
-                debug_adapter.log_to_console(serde_json::to_string_pretty(&data).unwrap());
-            }
-            // app.render(&defmt_state);
-            let sleep = (10 - t.elapsed().as_millis()).min(0);
-            std::thread::sleep(Duration::from_millis(sleep as u64));
         }
         //Exiting this function means we the debug_session is complete and we are done. End of process.
         //TODO: Add functionality to keep the server alive, respond to DAP Client sessions that end, and accept new session requests.
@@ -1038,16 +1039,16 @@ impl Debugger {
 
 pub fn attach_to_rtt(
     session: Arc<Mutex<Session>>,
-    options: &DebuggerOptions,
+    debugger_options: &DebuggerOptions,
 ) -> Result<crate::rtt::app::App, anyhow::Error> {
-    let defmt_enable = options
+    let defmt_enable = debugger_options
         .rtt
         .channels
         .iter()
         .any(|elem| elem.format == DataFormat::Defmt);
     let defmt_state = if defmt_enable {
         // TODO: Clean the unwraps.
-        let elf = fs::read(options.program_binary.clone().unwrap()).unwrap();
+        let elf = fs::read(debugger_options.program_binary.clone().unwrap()).unwrap();
         let table = defmt_decoder::Table::parse(&elf)?;
 
         let locs = {
@@ -1074,12 +1075,12 @@ pub fn attach_to_rtt(
 
     let mut i = 1;
 
-    while (t.elapsed().as_millis() as usize) < options.rtt.timeout {
+    while (t.elapsed().as_millis() as usize) < debugger_options.rtt.timeout {
         log::info!("Initializing RTT (attempt {})...", i);
         i += 1;
 
         let rtt_header_address =
-            if let Ok(mut file) = File::open(options.program_binary.clone().unwrap().as_path()) {
+            if let Ok(mut file) = File::open(debugger_options.program_binary.clone().unwrap().as_path()) {
                 if let Some(address) = crate::rtt::app::App::get_rtt_symbol(&mut file) {
                     ScanRegion::Exact(address as u32)
                 } else {
@@ -1093,10 +1094,8 @@ pub fn attach_to_rtt(
             Ok(rtt) => {
                 log::info!("RTT initialized.");
 
-                let chip_name = options.chip.as_deref().unwrap_or_default();
-                // let logname = format!("{}_{}_{}", name, chip_name, Local::now().to_rfc3339());
-                let logname = String::new();
-                let app = crate::rtt::app::App::new(rtt, &options.rtt, logname)?;
+                let chip_name = debugger_options.chip.as_deref().unwrap_or_default();
+                let app = crate::rtt::app::App::new(rtt, &debugger_options.rtt)?;
                 return Ok(app);
             }
             Err(err) => {

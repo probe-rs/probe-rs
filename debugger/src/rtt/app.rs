@@ -10,8 +10,6 @@ use super::channel::{ChannelState, DataFormat, Packet};
 pub struct App {
     tabs: Vec<ChannelState>,
     current_tab: usize,
-    history_path: Option<PathBuf>,
-    logname: String,
 }
 
 fn pull_channel<C: RttChannel>(channels: &mut Vec<C>, n: usize) -> Option<C> {
@@ -27,7 +25,6 @@ impl App {
     pub fn new(
         mut rtt: probe_rs_rtt::Rtt,
         config: &crate::debugger::RttConfig,
-        logname: String,
     ) -> Result<Self> {
         let mut tabs = Vec::new();
         if !config.channels.is_empty() {
@@ -77,27 +74,9 @@ impl App {
             ));
         }
 
-        let history_path = {
-            if !config.log_enabled {
-                None
-            } else {
-                //when is the right time if ever to fail if the directory or file cant be created?
-                //should we create the path on startup or when we write
-                match std::fs::create_dir_all(&config.log_path) {
-                    Ok(_) => Some(config.log_path.clone()),
-                    Err(_) => {
-                        log::warn!("Could not create log directory");
-                        None
-                    }
-                }
-            }
-        };
-
         Ok(Self {
             tabs,
             current_tab: 0,
-            history_path,
-            logname,
         })
     }
 
