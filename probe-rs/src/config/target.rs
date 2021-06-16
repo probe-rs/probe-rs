@@ -1,4 +1,4 @@
-use super::{Chip, CoreType, MemoryRegion, RawFlashAlgorithm, TargetDescriptionSource};
+use super::{Chip, Core, CoreType, MemoryRegion, RawFlashAlgorithm, TargetDescriptionSource};
 use crate::{core::Architecture, flashing::FlashLoader};
 
 /// This describes a complete target with a fixed chip model and variant.
@@ -6,10 +6,10 @@ use crate::{core::Architecture, flashing::FlashLoader};
 pub struct Target {
     /// The name of the target.
     pub name: String,
+    /// The cores of the target.
+    pub cores: Vec<Core>,
     /// The name of the flash algorithm.
     pub flash_algorithms: Vec<RawFlashAlgorithm>,
-    /// The core type.
-    pub core_type: CoreType,
     /// The memory map of the target.
     pub memory_map: Vec<MemoryRegion>,
 
@@ -38,14 +38,14 @@ impl Target {
     /// Create a new target
     pub fn new(
         chip: &Chip,
+        cores: Vec<Core>,
         flash_algorithms: Vec<RawFlashAlgorithm>,
-        core_type: CoreType,
         source: TargetDescriptionSource,
     ) -> Target {
         Target {
             name: chip.name.clone(),
+            cores,
             flash_algorithms,
-            core_type,
             memory_map: chip.memory_map.clone(),
             source,
         }
@@ -53,7 +53,8 @@ impl Target {
 
     /// Get the architectre of the target
     pub fn architecture(&self) -> Architecture {
-        match &self.core_type {
+        // TODO: what if they're different?
+        match &self.cores[0].core_type {
             CoreType::M0 => Architecture::Arm,
             CoreType::M3 => Architecture::Arm,
             CoreType::M33 => Architecture::Arm,

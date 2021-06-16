@@ -1,6 +1,6 @@
 //! Internal target registry
 
-use super::{Chip, ChipFamily, ChipInfo, Target, TargetDescriptionSource};
+use super::{Chip, ChipFamily, ChipInfo, Core, Target, TargetDescriptionSource};
 use crate::config::CoreType;
 use once_cell::sync::Lazy;
 use std::fs::File;
@@ -50,11 +50,15 @@ fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
             variants: vec![Chip {
                 name: "cortex-m0".to_owned(),
                 part: None,
+                cores: vec![Core {
+                    name: "core".to_owned(),
+                    core_type: CoreType::M0,
+                    arm_ap: 0,
+                }],
                 memory_map: vec![],
                 flash_algorithms: vec![],
             }],
             flash_algorithms: vec![],
-            core: CoreType::M0,
             source: TargetDescriptionSource::Generic,
         },
         ChipFamily {
@@ -63,11 +67,15 @@ fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
             variants: vec![Chip {
                 name: "cortex-m4".to_owned(),
                 part: None,
+                cores: vec![Core {
+                    name: "core".to_owned(),
+                    core_type: CoreType::M4,
+                    arm_ap: 0,
+                }],
                 memory_map: vec![],
                 flash_algorithms: vec![],
             }],
             flash_algorithms: vec![],
-            core: CoreType::M4,
             source: TargetDescriptionSource::Generic,
         },
         ChipFamily {
@@ -76,11 +84,15 @@ fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
             variants: vec![Chip {
                 name: "cortex-m3".to_owned(),
                 part: None,
+                cores: vec![Core {
+                    name: "core".to_owned(),
+                    core_type: CoreType::M3,
+                    arm_ap: 0,
+                }],
                 memory_map: vec![],
                 flash_algorithms: vec![],
             }],
             flash_algorithms: vec![],
-            core: CoreType::M3,
             source: TargetDescriptionSource::Generic,
         },
         ChipFamily {
@@ -89,11 +101,15 @@ fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
             variants: vec![Chip {
                 name: "cortex-m33".to_owned(),
                 part: None,
+                cores: vec![Core {
+                    name: "core".to_owned(),
+                    core_type: CoreType::M33,
+                    arm_ap: 0,
+                }],
                 memory_map: vec![],
                 flash_algorithms: vec![],
             }],
             flash_algorithms: vec![],
-            core: CoreType::M33,
             source: TargetDescriptionSource::Generic,
         },
         ChipFamily {
@@ -102,11 +118,15 @@ fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
             variants: vec![Chip {
                 name: "cortex-m7".to_owned(),
                 part: None,
+                cores: vec![Core {
+                    name: "core".to_owned(),
+                    core_type: CoreType::M7,
+                    arm_ap: 0,
+                }],
                 memory_map: vec![],
                 flash_algorithms: vec![],
             }],
             flash_algorithms: vec![],
-            core: CoreType::M7,
             source: TargetDescriptionSource::Generic,
         },
         ChipFamily {
@@ -115,11 +135,15 @@ fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
             variants: vec![Chip {
                 name: "riscv".to_owned(),
                 part: None,
+                cores: vec![Core {
+                    name: "core".to_owned(),
+                    core_type: CoreType::Riscv,
+                    arm_ap: 0,
+                }],
                 memory_map: vec![],
                 flash_algorithms: vec![],
             }],
             flash_algorithms: vec![],
-            core: CoreType::Riscv,
             source: TargetDescriptionSource::Generic,
         },
     ]);
@@ -263,8 +287,8 @@ impl Registry {
 
         Ok(Target::new(
             chip,
+            chip.cores.clone(),
             chip_algorithms,
-            family.core,
             family.source.clone(),
         ))
     }

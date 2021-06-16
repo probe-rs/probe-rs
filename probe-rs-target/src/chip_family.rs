@@ -60,9 +60,6 @@ pub struct ChipFamily {
     #[serde(deserialize_with = "deserialize")]
     #[serde(serialize_with = "serialize")]
     pub flash_algorithms: Vec<RawFlashAlgorithm>,
-    /// The name of the core type.
-    /// E.g. `M0` or `M4`.
-    pub core: CoreType,
 
     #[serde(skip, default = "default_source")]
     /// Source of the target description, used for diagnostics

@@ -34,6 +34,8 @@ pub struct RawFlashAlgorithm {
     pub data_section_offset: u32,
     /// The properties of the flash on the device.
     pub flash_properties: FlashProperties,
+    /// List of cores that can use this algorithm
+    pub cores: Vec<String>,
 }
 
 pub fn serialize<S>(bytes: &[u8], serializer: S) -> Result<S::Ok, S::Error>

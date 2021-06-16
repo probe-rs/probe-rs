@@ -12,7 +12,9 @@ use crate::architecture::{
     },
     riscv::communication_interface::RiscvCommunicationInterface,
 };
-use crate::config::{ChipInfo, MemoryRegion, RegistryError, Target, TargetSelector};
+use crate::config::{
+    ChipInfo, Core as CoreConfig, MemoryRegion, RegistryError, Target, TargetSelector,
+};
 use crate::core::{Architecture, CoreState, SpecificCoreState};
 use crate::{AttachMethod, Core, CoreType, Error, Probe};
 use anyhow::anyhow;
@@ -64,10 +66,11 @@ impl ArchitectureInterface {
         &'probe mut self,
         core: &'probe mut SpecificCoreState,
         core_state: &'probe mut CoreState,
+        config: &'probe CoreConfig,
     ) -> Result<Core<'probe>, Error> {
         match self {
             ArchitectureInterface::Arm(state) => {
-                let memory = state.memory_interface(0.into())?;
+                let memory = state.memory_interface(config.arm_ap.into())?;
 
                 core.attach_arm(core_state, memory)
             }
@@ -105,6 +108,18 @@ impl Session {
     ) -> Result<Self, Error> {
         let (probe, target) = get_target_from_selector(target, probe)?;
 
+        let cores = target
+            .cores
+            .iter()
+            .enumerate()
+            .map(|(id, core)| {
+                (
+                    SpecificCoreState::from_core_type(core.core_type),
+                    Core::create_state(id),
+                )
+            })
+            .collect();
+
         let mut session = match target.architecture() {
             Architecture::Arm => {
                 if !probe.has_arm_interface() {
@@ -114,17 +129,12 @@ impl Session {
                     .into());
                 }
 
-                let core = (
-                    SpecificCoreState::from_core_type(target.core_type),
-                    Core::create_state(0),
-                );
-
                 let interface = probe.try_into_arm_interface().map_err(|(_, err)| err)?;
 
                 let mut session = Session {
                     target,
                     interface: ArchitectureInterface::Arm(interface),
-                    cores: vec![core],
+                    cores,
                 };
 
                 // Enable debug mode
@@ -150,11 +160,6 @@ impl Session {
             Architecture::Riscv => {
                 // TODO: Handle attach under reset
 
-                let core = (
-                    SpecificCoreState::from_core_type(target.core_type),
-                    Core::create_state(0),
-                );
-
                 let interface = probe
                     .try_into_riscv_interface()
                     .map_err(|(_probe, err)| err)?;
@@ -162,7 +167,7 @@ impl Session {
                 let mut session = Session {
                     target,
                     interface: ArchitectureInterface::Riscv(Box::new(interface)),
-                    cores: vec![core],
+                    cores,
                 };
 
                 {
@@ -221,8 +226,8 @@ impl Session {
     ///
     pub fn core(&mut self, n: usize) -> Result<Core<'_>, Error> {
         let (core, core_state) = self.cores.get_mut(n).ok_or(Error::CoreNotFound(n))?;
-
-        self.interface.attach(core, core_state)
+        let config = self.target.cores.get(n).ok_or(Error::CoreNotFound(n))?;
+        self.interface.attach(core, core_state, config)
     }
 
     /// Read available data from the SWO interface without waiting.

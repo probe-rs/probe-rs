@@ -141,7 +141,8 @@ impl GdbTargetExt for probe_rs::Target {
         // - armv8-m.main -> Core-M33
         // - riscv:rv32   -> RISCV
 
-        let architecture = match self.core_type {
+        // TODO: what if they're not all equal?
+        let architecture = match self.cores[0].core_type {
             CoreType::M0 => "armv6-m",
             CoreType::M3 => "armv7-m",
             CoreType::M4 | CoreType::M7 => "armv7e-m",
