@@ -29,7 +29,7 @@ impl FromStr for DataFormat {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let src = s.to_ascii_lowercase();
-        match src.as_str() {
+        match &src.to_ascii_lowercase()[..] { // A forgiving/case-insensitive match
             "string" => Ok(Self::String),
             "binaryle" => Ok(Self::BinaryLE),
             "defmt" => Ok(Self::Defmt),
@@ -170,13 +170,13 @@ impl ChannelState {
         }
 
         match self.format {
-            DataFormat::String => Some(Packet {
+            DataFormat::String | DataFormat::BinaryLE => Some(Packet {
                 data_format: self.format,
                 bytes: self.rtt_buffer.0[..count].to_vec(),
                 timestamp: Local::now(),
             }),
             // defmt output is later formatted into strings in [App::render].
-            DataFormat::BinaryLE | DataFormat::Defmt => None,
+            DataFormat::Defmt => None,
         }
     }
 
