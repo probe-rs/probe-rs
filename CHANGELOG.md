@@ -107,7 +107,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fix too many chip erases in chips with multiple NvmRegions. (#670).
 - Added missing `skip_erase` setter function introduced in #677 (#679).
 - Fixed incorrect array size calculation  (#683)
-
+- STLink: Removed unnecessary SELECT bank switching  (#692)
 
 ## [0.10.1]
 ### Fixed
