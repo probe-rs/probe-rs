@@ -150,23 +150,16 @@ fn extract_git_hash(git_describe: &str) -> &str {
 
 #[cfg(test)]
 mod tests {
+    use rstest::rstest;
+
     use super::*;
 
-    #[test]
-    fn should_extract_hash_from_description() {
-        let hash = extract_git_hash("v0.2.3-12-g25c50d2");
-        assert_eq!(hash, "g25c50d2")
-    }
-
-    #[test]
-    fn should_extract_hash_from_modified_description() {
-        let hash = extract_git_hash("v0.2.3-12-g25c50d2-modified");
-        assert_eq!(hash, "g25c50d2")
-    }
-
-    #[test]
-    fn should_extract_empty_from_fallback() {
-        let hash = extract_git_hash("--");
-        assert_eq!(hash, "")
+    #[rstest]
+    #[case::normal("v0.2.3-12-g25c50d2", "g25c50d2")]
+    #[case::modified("v0.2.3-12-g25c50d2-modified", "g25c50d2")]
+    #[case::fallback("--", "")]
+    fn should_extract_hash_from_description(#[case] description: &str, #[case] expected: &str) {
+        let hash = extract_git_hash(description);
+        assert_eq!(hash, expected)
     }
 }
