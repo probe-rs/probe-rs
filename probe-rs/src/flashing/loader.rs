@@ -288,7 +288,8 @@ impl FlashLoader {
             let algo = session.target().flash_algorithm_by_name(&algo_name);
             let algo = algo.unwrap().clone();
 
-            let mut flasher = Flasher::new(session, &algo)?;
+            let core = 0; // TODO
+            let mut flasher = Flasher::new(session, core, &algo)?;
 
             let mut do_chip_erase = options.do_chip_erase;
 
@@ -326,6 +327,8 @@ impl FlashLoader {
 
         log::debug!("committing RAM!");
 
+        // Attach to memory and core.
+        // todo: use the right core for the ram region
         let mut core = session.core(0).map_err(FlashError::Core)?;
 
         // Commit RAM last, because NVM flashing overwrites RAM

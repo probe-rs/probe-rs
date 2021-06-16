@@ -36,7 +36,8 @@ pub fn erase_all(session: &mut Session) -> Result<(), FlashError> {
         let algo = session.target().flash_algorithm_by_name(&algo_name);
         let algo = algo.unwrap().clone();
 
-        let mut flasher = Flasher::new(session, &algo)?;
+        let core = 0; // TODO
+        let mut flasher = Flasher::new(session, core, &algo)?;
 
         if flasher.is_chip_erase_supported() {
             log::debug!("     -- chip erase supported, doing it.");

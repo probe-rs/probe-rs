@@ -53,31 +53,42 @@ impl Operation for Verify {
 /// Once constructed it can be used to program date to the flash.
 pub(super) struct Flasher<'session> {
     session: &'session mut Session,
+    core_index: usize,
     flash_algorithm: FlashAlgorithm,
 }
 
 impl<'session> Flasher<'session> {
     pub(super) fn new(
         session: &'session mut Session,
+        core_index: usize,
         raw_flash_algorithm: &RawFlashAlgorithm,
     ) -> Result<Self, FlashError> {
         let target = session.target();
 
+        // Find a RAM region from which we can run the algo.
         let mm = &target.memory_map;
+        let core_name = &target.cores[core_index].name;
         let ram = mm
             .iter()
-            .find_map(|mm| match mm {
+            .filter_map(|mm| match mm {
                 MemoryRegion::Ram(ram) => Some(ram),
                 _ => None,
             })
+            .find(|ram| {
+                // The RAM must be accessible from the core we're going to run the algo on.
+                ram.cores.contains(&core_name)
+            })
             .ok_or(FlashError::NoRamDefined {
-                chip: target.name.clone(),
+                chip: session.target().name.clone(),
             })?;
+
+        log::info!("chosen RAM to run the algo: {:x?}", ram);
 
         let flash_algorithm = FlashAlgorithm::assemble_from_raw(raw_flash_algorithm, ram, target)?;
 
         let mut this = Self {
             session,
+            core_index,
             flash_algorithm,
         };
 
@@ -99,7 +110,10 @@ impl<'session> Flasher<'session> {
         let algo = &mut self.flash_algorithm;
 
         // Attach to memory and core.
-        let mut core = self.session.core(0).map_err(FlashError::Core)?;
+        let mut core = self
+            .session
+            .core(self.core_index)
+            .map_err(FlashError::Core)?;
 
         // TODO: Halt & reset target.
         log::debug!("Halting core.");
