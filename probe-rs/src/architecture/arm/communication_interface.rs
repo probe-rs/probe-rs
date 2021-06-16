@@ -240,7 +240,7 @@ impl ApInformation {
                 port_number: access_port.port_number(),
                 only_32bit_data_size,
                 debug_base_address: base_address,
-                supports_hnonsec: false,
+                supports_hnonsec,
             }))
         } else {
             Ok(ApInformation::Other {
