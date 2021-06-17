@@ -539,10 +539,15 @@ impl Debugger {
                         // Use every opportunity to poll the RTT channels for data
                         let mut received_rtt_data = false;
                         if let Some(ref mut rtt_app) = self.rtt_app {
-                            let data = rtt_app.poll_rtt();
-                            if data.len() > 0 { 
-                                received_rtt_data = true; 
-                                debug_adapter.log_to_console(serde_json::to_string_pretty(&data).unwrap());
+                            let data_packet = rtt_app.poll_rtt();
+                            if data_packet.len() > 0 { 
+                                received_rtt_data = true;                                 
+                                for (rtt_channel, rtt_data) in data_packet {
+                                    debug_adapter.rtt_output(
+                                        rtt_channel.parse::<usize>().unwrap_or(0),
+                                        rtt_data
+                                     );
+                                }
                             }
                         }
                         
@@ -977,8 +982,6 @@ impl Debugger {
 
 
         self.rtt_app = if self.debugger_options.rtt.enabled {
-            // Open required RTT windows on the debug client, before the core can start running
-            debug_adapter.to_rtt("probe-rs-rtt");
             // Attach to RTT on the probe
             attach_to_rtt(session_data.session.clone(), &self.debugger_options).ok()
         } else {

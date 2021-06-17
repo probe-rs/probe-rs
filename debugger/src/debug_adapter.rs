@@ -2,6 +2,7 @@ use crate::dap_types;
 use crate::debugger::ConsoleLog;
 use crate::debugger::CoreData;
 use crate::DebuggerError;
+use crate::rtt::channel::{DataFormat, Packet};
 use anyhow::{anyhow, Result};
 use dap_types::*;
 use parse_int::parse;
@@ -1540,10 +1541,17 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
         }
     }
 
-    pub fn to_rtt<S: Into<String>>(&mut self, msg: S) -> bool {
+    /// Send a custom event to the MS DAP Client
+    pub fn rtt_output(&mut self, channel: usize, data_packet: Packet) -> bool {
         if self.adapter_type == DebugAdapterType::DapClient {
             let event_body = match serde_json::to_value(RttEventBody {
-                output: format!("{}\n", msg.into()),
+                channel,
+                format: data_packet.data_format,
+                data: match data_packet.data_format { // TODO: This needs work. Not even sure if this is the right place to do the formatting
+                    DataFormat::String => format!("{}: {:?}\n", data_packet.timestamp, str::from_utf8(&data_packet.bytes).expect("ERROR: Could not convert incoming data to a string value").to_owned()),
+                    DataFormat::BinaryLE => format!("{}: {:?}\n", data_packet.timestamp, data_packet.bytes),
+                    DataFormat::Defmt => format!("{}: {:?}", data_packet.timestamp, data_packet.bytes),
+                }
             }) {
                 Ok(event_body) => event_body,
                 Err(_) => {
@@ -1552,8 +1560,8 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
             };
             self.send_event("probe-rs-rtt", Some(event_body))
         } else {
-            //DebugCAdapterType::CommandLine
-            println!("{}", msg.into());
+            //DebugAdapterType::CommandLine
+            println!("{}: RTT Channel {}: {:?}", data_packet.timestamp, channel, data_packet.bytes);
             true
         }
     }

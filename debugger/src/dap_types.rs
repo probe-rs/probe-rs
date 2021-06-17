@@ -9,7 +9,10 @@ use std::convert::TryFrom;
 schemafy!(root: debugserver_types "src/debugProtocol.json");
 
 #[derive(Clone,PartialEq,Debug,Deserialize,Serialize)]pub struct RttEventBody {
-  #[doc = " RTT output"]pub output:String,
+  pub channel: usize,
+  pub format: crate::rtt::channel::DataFormat,
+  #[doc = " RTT output"]
+  pub data:String,
 }
 
 impl TryFrom<&serde_json::Value> for ReadMemoryArguments {

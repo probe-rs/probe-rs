@@ -12,9 +12,9 @@ use structopt::StructOpt;
 
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Packet {
-    data_format: DataFormat,
-    bytes: Vec<u8>,
-    timestamp: DateTime<Local>,
+    pub(crate) data_format: DataFormat,
+    pub(crate) bytes: Vec<u8>,
+    pub(crate) timestamp: DateTime<Local>,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
@@ -100,6 +100,11 @@ impl ChannelState {
             show_timestamps,
             data: Vec::new(),
         }
+    }
+
+    /// Returns the number of the UpChannel
+    pub fn number(&self) -> Option<usize> {
+        self.up_channel.as_ref().and_then(|uc|Some(uc.number()))
     }
 
     pub fn has_down_channel(&self) -> bool {

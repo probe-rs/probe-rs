@@ -234,7 +234,7 @@ impl App {
             .iter_mut()
             .filter_map(|tab| {
                 tab.poll_rtt()
-                    .map(|packet| (tab.name().to_string(), packet))
+                    .map(|packet| (tab.number().unwrap_or(0).to_string(), packet)) // If the Channel doesn't have a number, then send the output to channel 0
             })
             .collect::<HashMap<_, _>>()
     }
