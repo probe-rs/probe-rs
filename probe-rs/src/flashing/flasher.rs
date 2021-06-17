@@ -116,7 +116,7 @@ impl<'session> Flasher<'session> {
             .map_err(FlashError::Core)?;
 
         // TODO: Halt & reset target.
-        log::debug!("Halting core.");
+        log::debug!("Halting core {}", self.core_index);
         let cpu_info = core
             .halt(Duration::from_millis(100))
             .map_err(FlashError::Core)?;
@@ -167,7 +167,10 @@ impl<'session> Flasher<'session> {
         clock: Option<u32>,
     ) -> Result<ActiveFlasher<'_, O>, FlashError> {
         // Attach to memory and core.
-        let core = self.session.core(0).map_err(FlashError::Core)?;
+        let core = self
+            .session
+            .core(self.core_index)
+            .map_err(FlashError::Core)?;
 
         log::debug!("Preparing Flasher for operation {}", O::operation_name());
         let mut flasher = ActiveFlasher::<O> {

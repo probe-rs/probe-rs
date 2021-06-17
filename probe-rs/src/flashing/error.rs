@@ -1,9 +1,8 @@
 #![allow(missing_docs)]
 
-use std::ops::Range;
-
-use crate::config::{NvmRegion, TargetDescriptionSource};
+use crate::config::{NvmRegion, RamRegion, TargetDescriptionSource};
 use crate::error;
+use std::ops::Range;
 
 /// Describes any error that happened during the or in preparation for the flashing procedure.
 #[derive(thiserror::Error, Debug)]
@@ -71,4 +70,8 @@ pub enum FlashError {
         added_addresses: Range<u32>,
         existing_addresses: Range<u32>,
     },
+    #[error("No core can access the NVM region {0:?}.")]
+    NoNvmCoreAccess(NvmRegion),
+    #[error("No core can access the ram region {0:?}.")]
+    NoRamCoreAccess(RamRegion),
 }

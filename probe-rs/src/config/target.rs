@@ -79,6 +79,21 @@ impl Target {
     pub(crate) fn flash_algorithm_by_name(&self, name: &str) -> Option<&RawFlashAlgorithm> {
         self.flash_algorithms.iter().find(|a| a.name == name)
     }
+
+    /// Gets the core index from the core name
+    pub(crate) fn core_index_by_name(&self, name: &str) -> Option<usize> {
+        self.cores.iter().position(|c| c.name == name)
+    }
+
+    /// Gets the first found [MemoryRegion] that contains the given address
+    pub(crate) fn get_memory_region_by_address(&self, address: u32) -> Option<&MemoryRegion> {
+        self.memory_map.iter().find(|region| match region {
+            MemoryRegion::Ram(rr) if rr.range.contains(&address) => true,
+            MemoryRegion::Generic(gr) if gr.range.contains(&address) => true,
+            MemoryRegion::Nvm(nr) if nr.range.contains(&address) => true,
+            _ => false,
+        })
+    }
 }
 
 /// Selector for the debug target.
