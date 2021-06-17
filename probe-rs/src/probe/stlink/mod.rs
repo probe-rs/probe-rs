@@ -1446,11 +1446,16 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
                 current_address,
             );
 
-            self.probe.probe.write_mem_32bit(
-                current_address,
-                &data[bytes_beginning..(bytes_beginning + aligned_len)],
-                ap.port_number(),
-            )?;
+            for (index, chunk) in data[bytes_beginning..(bytes_beginning + aligned_len)]
+                .chunks(STLINK_MAX_WRITE_LEN)
+                .enumerate()
+            {
+                self.probe.probe.write_mem_32bit(
+                    current_address + (index * STLINK_MAX_WRITE_LEN) as u32,
+                    chunk,
+                    ap.port_number(),
+                )?;
+            }
 
             current_address += aligned_len as u32;
 

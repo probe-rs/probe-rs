@@ -108,6 +108,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added missing `skip_erase` setter function introduced in #677 (#679).
 - Fixed incorrect array size calculation  (#683)
 - STLink: Removed unnecessary SELECT bank switching  (#692)
+- STLink: chunk writes in `write_8` to avoid hitting limit (#697)
 
 ## [0.10.1]
 ### Fixed
