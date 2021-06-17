@@ -8,7 +8,7 @@ use crate::{
     architecture::arm::{
         ap::{valid_access_ports, AccessPort, ApAccess, ApClass, MemoryAp, RawApAccess, IDR},
         communication_interface::{ArmCommunicationInterfaceState, ArmProbeInterface},
-        dp::{DebugPortError, DpAccess, DpBankSel, DpRegister, Select},
+        dp::{DebugPortError, DpAccess, DpRegister},
         memory::{adi_v5_memory_interface::ArmProbe, Component},
         ApInformation, ArmChipInfo, SwoAccess, SwoConfig, SwoMode,
     },
