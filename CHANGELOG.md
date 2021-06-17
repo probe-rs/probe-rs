@@ -8,6 +8,30 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 
 (no changes)
 
+## [v0.2.4] - 2021-06-17
+
+[#212] make `unwind::target()` infallible
+[#216] Fix `EXC_RETURN` detection on thumbv8
+[#218] add first, user-triggered snapshot tests
+[#219] add more explicit hint if elf path doesn't lead to an existing file
+[#221] Obtain git-version from macro, instead of custom build-script
+[#222] refactor the huge "main" function into smaller functions + modules
+[#224] target_info: print ram region again
+[#225] `cli::tests`: rstest-ify tests for `fn extract_git_hash`
+[#226] `CI`: Run tests and clippy
+[#228] Remove unused file `utils.rs`
+
+[#212]: https://github.com/knurling-rs/probe-run/pull/212
+[#216]: https://github.com/knurling-rs/probe-run/pull/216
+[#218]: https://github.com/knurling-rs/probe-run/pull/218
+[#219]: https://github.com/knurling-rs/probe-run/pull/219
+[#221]: https://github.com/knurling-rs/probe-run/pull/221
+[#222]: https://github.com/knurling-rs/probe-run/pull/222
+[#224]: https://github.com/knurling-rs/probe-run/pull/224
+[#225]: https://github.com/knurling-rs/probe-run/pull/225
+[#226]: https://github.com/knurling-rs/probe-run/pull/226
+[#228]: https://github.com/knurling-rs/probe-run/pull/228
+
 ## [v0.2.3] - 2021-05-21
 
 ### Improvements
@@ -265,7 +289,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 
 Initial release
 
-[Unreleased]: https://github.com/knurling-rs/probe-run/compare/v0.2.3...main
+[Unreleased]: https://github.com/knurling-rs/probe-run/compare/v0.2.4...main
+[v0.2.3]: https://github.com/knurling-rs/probe-run/compare/v0.2.3...v0.2.4
 [v0.2.3]: https://github.com/knurling-rs/probe-run/compare/v0.2.2...v0.2.3
 [v0.2.2]: https://github.com/knurling-rs/probe-run/compare/v0.2.1...v0.2.2
 [v0.2.1]: https://github.com/knurling-rs/probe-run/compare/v0.2.0...v0.2.1
