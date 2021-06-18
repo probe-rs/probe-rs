@@ -3,7 +3,7 @@ pub mod tools;
 mod usb_interface;
 
 use self::usb_interface::{StLinkUsb, StLinkUsbDevice};
-use super::{DapAccess, DebugProbe, DebugProbeError, PortType, ProbeCreationError, WireProtocol};
+use super::{DebugProbe, DebugProbeError, PortType, ProbeCreationError, WireProtocol};
 use crate::{
     architecture::arm::{
         ap::{valid_access_ports, AccessPort, ApAccess, ApClass, MemoryAp, RawApAccess, IDR},
@@ -285,68 +285,6 @@ impl DebugProbe for StLink<StLinkUsbDevice> {
                     Err(StlinkError::VoltageDivisionByZero.into())
                 }
             })
-    }
-}
-
-impl DapAccess for StLink<StLinkUsbDevice> {
-    /// Reads the DAP register on the specified port and address.
-    fn read_register(&mut self, port: PortType, addr: u8) -> Result<u32, DebugProbeError> {
-        if (addr & 0xf0) == 0 || port != PortType::DebugPort {
-            if let PortType::AccessPort(port_number) = port {
-                self.select_ap(port_number as u8)?;
-            }
-
-            let port = u16::from(port).to_le_bytes();
-
-            let cmd = &[
-                commands::JTAG_COMMAND,
-                commands::JTAG_READ_DAP_REG,
-                port[0],
-                port[1],
-                addr,
-                0, // Maximum address for DAP registers is 0xFC
-            ];
-            let mut buf = [0; 8];
-            self.send_jtag_command(cmd, &[], &mut buf, TIMEOUT)?;
-            // Unwrap is ok!
-            Ok((&buf[4..8]).pread_with(0, LE).unwrap())
-        } else {
-            Err(StlinkError::BlanksNotAllowedOnDPRegister.into())
-        }
-    }
-
-    /// Writes a value to the DAP register on the specified port and address.
-    fn write_register(
-        &mut self,
-        port: PortType,
-        addr: u8,
-        value: u32,
-    ) -> Result<(), DebugProbeError> {
-        if (addr & 0xf0) == 0 || port != PortType::DebugPort {
-            if let PortType::AccessPort(port_number) = port {
-                self.select_ap(port_number as u8)?;
-            }
-
-            let port = u16::from(port).to_le_bytes();
-            let bytes = value.to_le_bytes();
-
-            let cmd = &[
-                commands::JTAG_COMMAND,
-                commands::JTAG_WRITE_DAP_REG,
-                port[0],
-                port[1],
-                addr,
-                0, // Maximum address for DAP registers is 0xFC
-                bytes[0],
-                bytes[1],
-                bytes[2],
-                bytes[3],
-            ];
-            let mut buf = [0; 2];
-            self.send_jtag_command(cmd, &[], &mut buf, TIMEOUT)
-        } else {
-            Err(StlinkError::BlanksNotAllowedOnDPRegister.into())
-        }
     }
 }
 
@@ -763,6 +701,66 @@ impl<D: StLinkUsb> StLink<D> {
             &mut receive_buffer,
             TIMEOUT,
         )
+    }
+
+    /// Reads the DAP register on the specified port and address.
+    fn read_register(&mut self, port: PortType, addr: u8) -> Result<u32, DebugProbeError> {
+        if (addr & 0xf0) == 0 || port != PortType::DebugPort {
+            if let PortType::AccessPort(port_number) = port {
+                self.select_ap(port_number as u8)?;
+            }
+
+            let port = u16::from(port).to_le_bytes();
+
+            let cmd = &[
+                commands::JTAG_COMMAND,
+                commands::JTAG_READ_DAP_REG,
+                port[0],
+                port[1],
+                addr,
+                0, // Maximum address for DAP registers is 0xFC
+            ];
+            let mut buf = [0; 8];
+            self.send_jtag_command(cmd, &[], &mut buf, TIMEOUT)?;
+            // Unwrap is ok!
+            Ok((&buf[4..8]).pread_with(0, LE).unwrap())
+        } else {
+            Err(StlinkError::BlanksNotAllowedOnDPRegister.into())
+        }
+    }
+
+    /// Writes a value to the DAP register on the specified port and address.
+    fn write_register(
+        &mut self,
+        port: PortType,
+        addr: u8,
+        value: u32,
+    ) -> Result<(), DebugProbeError> {
+        if (addr & 0xf0) == 0 || port != PortType::DebugPort {
+            if let PortType::AccessPort(port_number) = port {
+                self.select_ap(port_number as u8)?;
+            }
+
+            let port = u16::from(port).to_le_bytes();
+            let bytes = value.to_le_bytes();
+
+            let cmd = &[
+                commands::JTAG_COMMAND,
+                commands::JTAG_WRITE_DAP_REG,
+                port[0],
+                port[1],
+                addr,
+                0, // Maximum address for DAP registers is 0xFC
+                bytes[0],
+                bytes[1],
+                bytes[2],
+                bytes[3],
+            ];
+            let mut buf = [0; 2];
+            self.send_jtag_command(cmd, &[], &mut buf, TIMEOUT)
+        } else {
+            Err(StlinkError::BlanksNotAllowedOnDPRegister.into())
+        }
     }
 
     fn read_mem_32bit(
@@ -1236,36 +1234,6 @@ impl<'probe> ArmProbeInterface for StlinkArmDebug {
     }
 }
 
-impl DapAccess for StlinkArmDebug {
-    fn read_register(&mut self, port: PortType, addr: u8) -> Result<u32, DebugProbeError> {
-        self.probe.read_register(port, addr)
-    }
-    fn write_register(
-        &mut self,
-        port: PortType,
-        addr: u8,
-        value: u32,
-    ) -> Result<(), DebugProbeError> {
-        self.probe.write_register(port, addr, value)
-    }
-    fn read_block(
-        &mut self,
-        port: PortType,
-        addr: u8,
-        values: &mut [u32],
-    ) -> Result<(), DebugProbeError> {
-        self.probe.read_block(port, addr, values)
-    }
-    fn write_block(
-        &mut self,
-        port: PortType,
-        addr: u8,
-        values: &[u32],
-    ) -> Result<(), DebugProbeError> {
-        self.probe.write_block(port, addr, values)
-    }
-}
-
 impl RawApAccess for StlinkArmDebug {
     type Error = DebugProbeError;
 
@@ -1282,26 +1250,6 @@ impl RawApAccess for StlinkArmDebug {
     ) -> Result<(), Self::Error> {
         self.probe
             .write_register(PortType::AccessPort(port as u16), address, value)
-    }
-
-    fn write_raw_ap_register_repeated(
-        &mut self,
-        port: u8,
-        address: u8,
-        values: &[u32],
-    ) -> Result<(), Self::Error> {
-        self.probe
-            .write_block(PortType::AccessPort(port as u16), address, values)
-    }
-
-    fn read_raw_ap_register_repeated(
-        &mut self,
-        port: u8,
-        address: u8,
-        values: &mut [u32],
-    ) -> Result<(), Self::Error> {
-        self.probe
-            .read_block(PortType::AccessPort(port as u16), address, values)
     }
 }
 
@@ -1478,8 +1426,6 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
     }
 
     fn flush(&mut self) -> Result<(), ProbeRsError> {
-        self.probe.probe.flush()?;
-
         Ok(())
     }
 

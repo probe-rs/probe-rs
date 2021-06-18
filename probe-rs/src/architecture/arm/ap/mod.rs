@@ -85,7 +85,12 @@ pub trait RawApAccess {
         port: u8,
         address: u8,
         values: &mut [u32],
-    ) -> Result<(), Self::Error>;
+    ) -> Result<(), Self::Error> {
+        for val in values {
+            *val = self.read_raw_ap_register(port, address)?;
+        }
+        Ok(())
+    }
 
     /// Write a AP register.
     fn write_raw_ap_register(
@@ -102,7 +107,12 @@ pub trait RawApAccess {
         port: u8,
         address: u8,
         values: &[u32],
-    ) -> Result<(), Self::Error>;
+    ) -> Result<(), Self::Error> {
+        for val in values {
+            self.write_raw_ap_register(port, address, *val)?;
+        }
+        Ok(())
+    }
 }
 
 pub trait ApAccess {
