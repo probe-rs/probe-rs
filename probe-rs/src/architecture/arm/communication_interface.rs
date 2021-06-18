@@ -5,7 +5,7 @@ use super::{
     },
     dp::{
         Abort, Ctrl, DebugPortError, DebugPortId, DebugPortVersion, DpAccess, DpBankSel,
-        DpRegister, Select, DPIDR,
+        RawDpAccess, Select, DPIDR,
     },
     memory::{adi_v5_memory_interface::ADIMemoryInterface, Component},
     SwoAccess, SwoConfig,
@@ -499,43 +499,31 @@ impl CommunicationInterface for ArmCommunicationInterface {
     }
 }
 
-impl DpAccess for ArmCommunicationInterface {
-    fn read_dp_register<R: DpRegister>(&mut self) -> Result<R, DebugPortError> {
-        if R::VERSION > self.state.debug_port_version {
-            return Err(DebugPortError::UnsupportedRegister {
-                register: R::NAME,
-                version: self.state.debug_port_version,
-            });
-        }
-
-        self.select_dp_bank(R::DP_BANK)?;
-
-        log::debug!("Reading DP register {}", R::NAME);
-        let result = self
-            .probe
-            .read_register(PortType::DebugPort, R::ADDRESS)?
-            .into();
-
-        log::debug!("Read    DP register {}, value=0x{:x?}", R::NAME, result);
-
+impl RawDpAccess for ArmCommunicationInterface {
+    fn read_raw_dp_register(
+        &mut self,
+        bank: DpBankSel,
+        address: u8,
+    ) -> Result<u32, DebugPortError> {
+        self.select_dp_bank(bank)?;
+        let result = self.probe.read_register(PortType::DebugPort, address)?;
         Ok(result)
     }
 
-    fn write_dp_register<R: DpRegister>(&mut self, register: R) -> Result<(), DebugPortError> {
-        if R::VERSION > self.state.debug_port_version {
-            return Err(DebugPortError::UnsupportedRegister {
-                register: R::NAME,
-                version: self.state.debug_port_version,
-            });
-        }
-
-        self.select_dp_bank(R::DP_BANK)?;
-
-        log::debug!("Writing DP register {}, value=0x{:x?}", R::NAME, register);
+    fn write_raw_dp_register(
+        &mut self,
+        bank: DpBankSel,
+        address: u8,
+        value: u32,
+    ) -> Result<(), DebugPortError> {
+        self.select_dp_bank(bank)?;
         self.probe
-            .write_register(PortType::DebugPort, R::ADDRESS, register.into())?;
-
+            .write_register(PortType::DebugPort, address, value)?;
         Ok(())
+    }
+
+    fn debug_port_version(&self) -> DebugPortVersion {
+        self.state.debug_port_version
     }
 }
 
