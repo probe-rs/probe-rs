@@ -4,7 +4,7 @@ pub mod tools;
 use crate::{
     architecture::arm::{
         communication_interface::{ArmProbeInterface, DapProbe},
-        dp::{Abort, Ctrl, DebugPortError, DpAccess, DpRegister},
+        dp::{Abort, Ctrl},
         swo::poll_interval_from_buf_size,
         ArmCommunicationInterface, DapAccess, DapError, PortType, Register, SwoAccess, SwoConfig,
         SwoMode,
@@ -371,26 +371,6 @@ impl CmsisDap {
             }
             None => Ok(Vec::new()),
         }
-    }
-}
-
-impl DpAccess for CmsisDap {
-    fn read_dp_register<R: DpRegister>(&mut self) -> Result<R, DebugPortError> {
-        debug!("Reading DP register {}", R::NAME);
-        let result = self.read_register(PortType::DebugPort, R::ADDRESS)?;
-
-        debug!("Read    DP register {}, value=0x{:08x}", R::NAME, result);
-
-        Ok(result.into())
-    }
-
-    fn write_dp_register<R: DpRegister>(&mut self, register: R) -> Result<(), DebugPortError> {
-        let value = register.into();
-
-        debug!("Writing DP register {}, value=0x{:08x}", R::NAME, value);
-        self.write_register(PortType::DebugPort, R::ADDRESS, value)?;
-
-        Ok(())
     }
 }
 
