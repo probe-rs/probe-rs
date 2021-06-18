@@ -137,6 +137,7 @@ impl Session {
                     cores,
                 };
 
+                // Todo: Add multicore support. How to deal with any cores that are not active and won't respond?
                 // Enable debug mode
                 debug_core_start(&mut session.core(0)?)?;
 
@@ -171,6 +172,7 @@ impl Session {
                 };
 
                 {
+                    // Todo: Add multicore support. How to deal with any cores that are not active and won't respond?
                     let mut core = session.core(0)?;
 
                     core.halt(Duration::from_millis(100))?;
@@ -311,7 +313,7 @@ impl Session {
     }
 
     /// Configure the target and probe for serial wire view (SWV) tracing.
-    pub fn setup_swv(&mut self, config: &SwoConfig) -> Result<(), Error> {
+    pub fn setup_swv(&mut self, core_index: usize, config: &SwoConfig) -> Result<(), Error> {
         // Configure SWO on the probe
         {
             let interface = self.get_arm_interface()?;
@@ -320,25 +322,25 @@ impl Session {
 
         // Enable tracing on the target
         {
-            let mut core = self.core(0)?;
+            let mut core = self.core(core_index)?;
             crate::architecture::arm::component::enable_tracing(&mut core)?;
         }
 
         // Configure SWV on the target
         let components = self.get_arm_components()?;
-        let mut core = self.core(0)?;
+        let mut core = self.core(core_index)?;
         crate::architecture::arm::component::setup_swv(&mut core, &components, config)
     }
 
     /// Configure the target to stop emitting SWV trace data.
-    pub fn disable_swv(&mut self) -> Result<(), Error> {
-        crate::architecture::arm::component::disable_swv(&mut self.core(0)?)
+    pub fn disable_swv(&mut self, core_index: usize) -> Result<(), Error> {
+        crate::architecture::arm::component::disable_swv(&mut self.core(core_index)?)
     }
 
     /// Begin tracing a memory address over SWV.
-    pub fn add_swv_data_trace(&mut self, unit: usize, address: u32) -> Result<(), Error> {
+    pub fn add_swv_data_trace(&mut self, core_index: usize, unit: usize, address: u32) -> Result<(), Error> {
         let components = self.get_arm_components()?;
-        let mut core = self.core(0)?;
+        let mut core = self.core(core_index)?;
         crate::architecture::arm::component::add_swv_data_trace(
             &mut core,
             &components,
@@ -348,9 +350,9 @@ impl Session {
     }
 
     /// Stop tracing from a given SWV unit
-    pub fn remove_swv_data_trace(&mut self, unit: usize) -> Result<(), Error> {
+    pub fn remove_swv_data_trace(&mut self, core_index: usize, unit: usize) -> Result<(), Error> {
         let components = self.get_arm_components()?;
-        let mut core = self.core(0)?;
+        let mut core = self.core(core_index)?;
         crate::architecture::arm::component::remove_swv_data_trace(&mut core, &components, unit)
     }
 
