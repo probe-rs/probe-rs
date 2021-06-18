@@ -9,7 +9,7 @@ use crate::Session;
 pub fn erase_all(session: &mut Session) -> Result<(), FlashError> {
     log::debug!("Erasing all...");
 
-    let mut algos: HashMap<String, Vec<NvmRegion>> = HashMap::new();
+    let mut algos: HashMap<(String, String), Vec<NvmRegion>> = HashMap::new();
     log::debug!("Regions:");
     for region in &session.target().memory_map {
         if let MemoryRegion::Nvm(region) = region {
@@ -22,22 +22,30 @@ pub fn erase_all(session: &mut Session) -> Result<(), FlashError> {
 
             let algo = FlashLoader::get_flash_algorithm_for_region(region, session.target())?;
 
-            let entry = algos.entry(algo.name.clone()).or_default();
+            // Get the first core that can access the region
+            let core_name = region
+                .cores
+                .first()
+                .ok_or(FlashError::NoNvmCoreAccess(region.clone()))?;
+
+            let entry = algos
+                .entry((algo.name.clone(), core_name.clone()))
+                .or_default();
             entry.push(region.clone());
 
             log::debug!("     -- using algorithm: {}", algo.name);
         }
     }
 
-    for (algo_name, regions) in algos {
+    for ((algo_name, core_name), regions) in algos {
         log::debug!("Erasing with algorithm: {}", algo_name);
 
         // This can't fail, algo_name comes from the target.
         let algo = session.target().flash_algorithm_by_name(&algo_name);
         let algo = algo.unwrap().clone();
 
-        let core = 0; // TODO
-        let mut flasher = Flasher::new(session, core, &algo)?;
+        let core_index = session.target().core_index_by_name(&core_name).unwrap();
+        let mut flasher = Flasher::new(session, core_index, &algo)?;
 
         if flasher.is_chip_erase_supported() {
             log::debug!("     -- chip erase supported, doing it.");

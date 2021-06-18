@@ -1,6 +1,5 @@
-use crate::CoreType;
-
 use super::memory::MemoryRegion;
+use crate::CoreType;
 use serde::{Deserialize, Serialize};
 
 /// A single chip variant.

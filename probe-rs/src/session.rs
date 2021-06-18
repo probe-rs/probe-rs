@@ -338,7 +338,12 @@ impl Session {
     }
 
     /// Begin tracing a memory address over SWV.
-    pub fn add_swv_data_trace(&mut self, core_index: usize, unit: usize, address: u32) -> Result<(), Error> {
+    pub fn add_swv_data_trace(
+        &mut self,
+        core_index: usize,
+        unit: usize,
+        address: u32,
+    ) -> Result<(), Error> {
         let components = self.get_arm_components()?;
         let mut core = self.core(core_index)?;
         crate::architecture::arm::component::add_swv_data_trace(
