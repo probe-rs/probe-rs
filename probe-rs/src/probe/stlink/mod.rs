@@ -8,7 +8,7 @@ use crate::{
     architecture::arm::{
         ap::{valid_access_ports, AccessPort, ApAccess, ApClass, MemoryAp, RawApAccess, IDR},
         communication_interface::{ArmCommunicationInterfaceState, ArmProbeInterface},
-        dp::{DebugPortError, DpAccess, DpRegister},
+        dp::{DebugPortError, DebugPortVersion, DpBankSel, RawDpAccess},
         memory::{adi_v5_memory_interface::ArmProbe, Component},
         ApInformation, ArmChipInfo, SwoAccess, SwoConfig, SwoMode,
     },
@@ -1133,38 +1133,29 @@ impl StlinkArmDebug {
     }
 }
 
-impl DpAccess for StlinkArmDebug {
-    fn read_dp_register<R: DpRegister>(&mut self) -> Result<R, DebugPortError> {
-        if R::VERSION > self.state.debug_port_version {
-            return Err(DebugPortError::UnsupportedRegister {
-                register: R::NAME,
-                version: self.state.debug_port_version,
-            });
-        }
-
-        log::debug!("Reading DP register {}", R::NAME);
-        let result = self.probe.read_register(PortType::DebugPort, R::ADDRESS)?;
-
-        log::debug!("Read    DP register {}, value=0x{:08x}", R::NAME, result);
-
-        Ok(result.into())
+impl RawDpAccess for StlinkArmDebug {
+    fn read_raw_dp_register(
+        &mut self,
+        _bank: DpBankSel,
+        address: u8,
+    ) -> Result<u32, DebugPortError> {
+        let result = self.probe.read_register(PortType::DebugPort, address)?;
+        Ok(result)
     }
 
-    fn write_dp_register<R: DpRegister>(&mut self, register: R) -> Result<(), DebugPortError> {
-        if R::VERSION > self.state.debug_port_version {
-            return Err(DebugPortError::UnsupportedRegister {
-                register: R::NAME,
-                version: self.state.debug_port_version,
-            });
-        }
-
-        let value = register.into();
-
-        log::debug!("Writing DP register {}, value=0x{:08x}", R::NAME, value);
+    fn write_raw_dp_register(
+        &mut self,
+        _bank: DpBankSel,
+        address: u8,
+        value: u32,
+    ) -> Result<(), DebugPortError> {
         self.probe
-            .write_register(PortType::DebugPort, R::ADDRESS, value)?;
-
+            .write_register(PortType::DebugPort, address, value)?;
         Ok(())
+    }
+
+    fn debug_port_version(&self) -> DebugPortVersion {
+        self.state.debug_port_version
     }
 }
 
