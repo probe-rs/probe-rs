@@ -239,59 +239,6 @@ impl Probe {
         ))
     }
 
-    // /// Tries to mass erase a locked nRF52 chip, this process may timeout, if it does, the chip
-    // /// might be unlocked or not, it is advised to try again if flashing fails
-    // pub fn nrf_recover(&mut self) -> Result<(), DebugProbeError> {
-    //     let ctrl_port = match get_ap_by_idr(self, |idr| idr == CTRL_AP_IDR) {
-    //         Some(port) => CtrlAP::from(port),
-    //         None => {
-    //             return Err(DebugProbeError::AccessPortError(
-    //                 AccessPortError::CtrlAPNotFound,
-    //             ));
-    //         }
-    //     };
-    //     log::info!("Starting mass erase...");
-    //     let mut erase_reg = ERASEALL::from(1);
-    //     let status_reg = ERASEALLSTATUS::from(0);
-    //     let mut reset_reg = RESET::from(1);
-
-    //     // Reset first
-    //     self.write_ap_register(ctrl_port, reset_reg)?;
-    //     reset_reg.RESET = false;
-    //     self.write_ap_register(ctrl_port, reset_reg)?;
-
-    //     self.write_ap_register(ctrl_port, erase_reg)?;
-
-    //     // Prepare timeout
-    //     let now = Instant::now();
-    //     let status = self.read_ap_register(ctrl_port, status_reg)?;
-    //     log::info!("Erase status: {:?}", status.ERASEALLSTATUS);
-    //     let timeout = loop {
-    //         let status = self.read_ap_register(ctrl_port, status_reg)?;
-    //         if !status.ERASEALLSTATUS {
-    //             break false;
-    //         }
-    //         if now.elapsed().as_secs() >= UNLOCK_TIMEOUT {
-    //             break true;
-    //         }
-    //     };
-    //     reset_reg.RESET = true;
-    //     self.write_ap_register(ctrl_port, reset_reg)?;
-    //     reset_reg.RESET = false;
-    //     self.write_ap_register(ctrl_port, reset_reg)?;
-    //     erase_reg.ERASEALL = false;
-    //     self.write_ap_register(ctrl_port, erase_reg)?;
-    //     if timeout {
-    //         log::error!(
-    //             "    {} Mass erase process timeout, the chip might still be locked.",
-    //             "Error".red().bold()
-    //         );
-    //     } else {
-    //         log::info!("Mass erase completed, chip unlocked");
-    //     }
-    //     Ok(())
-    // }
-
     /// Get human readable name for the probe
     pub fn get_name(&self) -> String {
         self.inner.get_name().to_string()

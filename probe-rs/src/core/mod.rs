@@ -280,22 +280,31 @@ impl SpecificCoreState {
         memory: Memory<'probe>,
         target: &'target Target,
     ) -> Result<Core<'probe>, Error> {
+        let debug_sequence = match &target.debug_sequence {
+            crate::config::DebugSequence::Arm(sequence) => sequence.clone(),
+            crate::config::DebugSequence::Riscv => {
+                return Err(Error::UnableToOpenProbe(
+                    "Core architecture and Probe mismatch.",
+                ))
+            }
+        };
+
         Ok(match self {
             // TODO: Change this once the new archtecture structure for ARM hits.
             // Cortex-M3, M4 and M7 use the Armv7[E]-M architecture and are
             // identical for our purposes.
             SpecificCoreState::M3(s) | SpecificCoreState::M4(s) | SpecificCoreState::M7(s) => {
                 Core::new(
-                    crate::architecture::arm::m4::M4::new(memory, s, target)?,
+                    crate::architecture::arm::m4::M4::new(memory, s, debug_sequence)?,
                     state,
                 )
             }
             SpecificCoreState::M33(s) => Core::new(
-                crate::architecture::arm::m33::M33::new(memory, s, target)?,
+                crate::architecture::arm::m33::M33::new(memory, s, debug_sequence)?,
                 state,
             ),
             SpecificCoreState::M0(s) => Core::new(
-                crate::architecture::arm::m0::M0::new(memory, s, target)?,
+                crate::architecture::arm::m0::M0::new(memory, s, debug_sequence)?,
                 state,
             ),
             _ => {

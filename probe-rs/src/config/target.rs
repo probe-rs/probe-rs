@@ -21,7 +21,7 @@ pub struct Target {
 
     /// Source of the target description. Used for diagnostics.
     pub(crate) source: TargetDescriptionSource,
-    pub debug_sequence: Arc<DebugSequence>,
+    pub debug_sequence: DebugSequence,
 }
 
 impl std::fmt::Debug for Target {
@@ -64,7 +64,7 @@ impl Target {
     ) -> Target {
         // TODO: Figure out how to handle this if cores can have different architectures.
         let debug_sequence = match cores[0].core_type.architecture() {
-            Architecture::Arm => DebugSequence::Arm(Box::new(DefaultArmSequence {})),
+            Architecture::Arm => DebugSequence::Arm(Arc::new(DefaultArmSequence {})),
             Architecture::Riscv => DebugSequence::Riscv,
         };
 
@@ -74,7 +74,7 @@ impl Target {
             flash_algorithms,
             source,
             memory_map: chip.memory_map.clone(),
-            debug_sequence: Arc::new(debug_sequence),
+            debug_sequence,
         }
     }
 
@@ -170,7 +170,8 @@ impl From<Target> for TargetSelector {
     }
 }
 
+#[derive(Clone)]
 pub enum DebugSequence {
-    Arm(Box<dyn ArmDebugSequence>),
+    Arm(Arc<dyn ArmDebugSequence>),
     Riscv,
 }

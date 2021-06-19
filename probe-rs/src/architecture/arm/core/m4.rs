@@ -1,11 +1,11 @@
-use crate::config::DebugSequence;
+use crate::architecture::arm::sequences::ArmDebugSequence;
 use crate::error::Error;
 use crate::memory::Memory;
+use crate::DebugProbeError;
 use crate::{
     architecture::arm::communication_interface::Initialized,
     core::{CoreInformation, CoreInterface, CoreRegister, CoreRegisterAddress, RegisterFile},
 };
-use crate::{DebugProbeError, Target};
 
 use super::{register, CortexState, Dfsr, ARM_REGISTER_FILE};
 use crate::{
@@ -15,8 +15,8 @@ use crate::{
 use anyhow::{anyhow, Result};
 
 use bitfield::bitfield;
-use std::borrow::Borrow;
 use std::mem::size_of;
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 bitfield! {
@@ -327,19 +327,19 @@ impl FpRev2CompX {
 pub const MSP: CoreRegisterAddress = CoreRegisterAddress(0b000_1001);
 pub const PSP: CoreRegisterAddress = CoreRegisterAddress(0b000_1010);
 
-pub struct M4<'probe, 'target> {
+pub struct M4<'probe> {
     memory: Memory<'probe>,
 
     state: &'probe mut CortexState,
 
-    target: &'target Target,
+    sequence: Arc<dyn ArmDebugSequence>,
 }
 
-impl<'probe, 'target> M4<'probe, 'target> {
+impl<'probe> M4<'probe> {
     pub(crate) fn new(
         mut memory: Memory<'probe>,
         state: &'probe mut CortexState,
-        target: &'target Target,
+        sequence: Arc<dyn ArmDebugSequence>,
     ) -> Result<Self, Error> {
         if !state.initialized() {
             // determine current state
@@ -372,12 +372,12 @@ impl<'probe, 'target> M4<'probe, 'target> {
         Ok(Self {
             memory,
             state,
-            target,
+            sequence,
         })
     }
 }
 
-impl<'probe, 'target> CoreInterface for M4<'probe, 'target> {
+impl<'probe> CoreInterface for M4<'probe> {
     fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), Error> {
         // Wait until halted state is active again.
         let start = Instant::now();
@@ -556,27 +556,15 @@ impl<'probe, 'target> CoreInterface for M4<'probe, 'target> {
     }
 
     fn reset(&mut self) -> Result<(), Error> {
-        let sequence = self.target.debug_sequence.borrow();
-
-        match sequence {
-            DebugSequence::Arm(sequence) => sequence.reset_system(&mut self.memory),
-            DebugSequence::Riscv => panic!("This should not happen."),
-        }
+        self.sequence.reset_system(&mut self.memory)
     }
 
     fn reset_and_halt(&mut self, _timeout: Duration) -> Result<CoreInformation, Error> {
         // Set the vc_corereset bit in the DEMCR register.
         // This will halt the core after reset.
 
-        let sequence = self.target.debug_sequence.borrow();
-
-        match sequence {
-            DebugSequence::Arm(sequence) => {
-                sequence.reset_catch_set(&mut self.memory)?;
-                sequence.reset_system(&mut self.memory)?;
-            }
-            DebugSequence::Riscv => panic!("This should not happen."),
-        }
+        self.sequence.reset_catch_set(&mut self.memory)?;
+        self.sequence.reset_system(&mut self.memory)?;
 
         // Update core status
         let _ = self.status()?;
@@ -587,12 +575,7 @@ impl<'probe, 'target> CoreInterface for M4<'probe, 'target> {
             self.write_core_reg(register::XPSR.address, xpsr_value | XPSR_THUMB)?;
         }
 
-        match sequence {
-            DebugSequence::Arm(sequence) => {
-                sequence.reset_catch_clear(&mut self.memory)?;
-            }
-            DebugSequence::Riscv => panic!("This should not happen."),
-        }
+        self.sequence.reset_catch_clear(&mut self.memory)?;
 
         // try to read the program counter
         let pc_value = self.read_core_reg(register::PC.address)?;
@@ -714,7 +697,7 @@ impl<'probe, 'target> CoreInterface for M4<'probe, 'target> {
     }
 }
 
-impl<'probe, 'target> MemoryInterface for M4<'probe, 'target> {
+impl<'probe> MemoryInterface for M4<'probe> {
     fn read_word_32(&mut self, address: u32) -> Result<u32, Error> {
         self.memory.read_word_32(address)
     }

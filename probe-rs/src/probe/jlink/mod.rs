@@ -519,40 +519,7 @@ impl DebugProbe for JLink {
                 log::info!("JTAG IDCODE: {:#010x}", idcode);
             }
             WireProtocol::Swd => {
-                // The following sequence is the DebugPortSetup sequence from the ARM debug sequences
-
-                /*
-
-                // Construct the JTAG to SWD sequence.
-                let jtag_to_swd_sequence = [
-                    false, true, true, true, true, false, false, true, true, true, true, false,
-                    false, true, true, true,
-                ];
-
-                // Construct the entire init sequence.
-                let swd_io_sequence =
-                    // Send the reset sequence (> 50 0-bits).
-                    iter::repeat(true).take(64)
-                    // Send the JTAG to SWD sequence.
-                    .chain(jtag_to_swd_sequence.iter().copied());
-
-                // Construct the direction sequence for reset sequence.
-                let direction =
-                    // Send the reset sequence (> 50 0-bits).
-                    iter::repeat(true).take(64)
-                    // Send the JTAG to SWD sequence.
-                    .chain(iter::repeat(true).take(16));
-
-                // Send the init sequence.
-                // We don't actually care about the response here.
-                // A read on the DPIDR will finalize the init procedure and tell us if it worked.
-                self.handle.swd_io(direction, swd_io_sequence)?;
-
-                // Perform a line reset
-                self.swd_line_reset()?;
-                log::debug!("Sucessfully switched to SWD");
-
-                */
+                // Attaching is handled in sequence
 
                 // We are ready to debug.
             }

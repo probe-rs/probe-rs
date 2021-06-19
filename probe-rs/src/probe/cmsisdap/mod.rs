@@ -481,35 +481,6 @@ impl DebugProbe for CmsisDap {
 
         self.configure_swd(swd::configure::ConfigureRequest {})?;
 
-        // The following sequence is the DebugPortSetup sequence from the ARM debug sequences
-
-        /*
-
-        // SWJ-DP defaults to JTAG operation on powerup reset
-        // Switching from JTAG to SWD operation
-
-        // ~50 SWCLKTCK
-        self.send_swj_sequences(SequenceRequest::new(&[
-            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-        ])?)?;
-
-        // 16-bit JTAG-to-SWD select sequence
-        self.send_swj_sequences(SequenceRequest::new(&[0x9e, 0xe7])?)?;
-
-        // ~50 SWCLKTCK
-        self.send_swj_sequences(SequenceRequest::new(&[
-            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-        ])?)?;
-
-        // returning to low state? 2 idle cycles?
-        self.send_swj_sequences(SequenceRequest::new(&[0x00])?)?;
-
-        // On selecting SWD operation, the SWD interface returns to its reset state.
-
-        debug!("Successfully changed to SWD.");
-
-        */
-
         // Tell the probe we are connected so it can turn on an LED.
         let _: Result<HostStatusResponse, _> =
             commands::send_command(&mut self.device, HostStatusRequest::connected(true));

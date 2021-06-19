@@ -1,6 +1,6 @@
 use crate::{
     core::{CoreRegister, CoreRegisterAddress, RegisterDescription, RegisterFile, RegisterKind},
-    CoreStatus, Error, HaltReason, MemoryInterface,
+    CoreStatus, HaltReason,
 };
 
 use bitfield::bitfield;
