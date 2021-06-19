@@ -250,10 +250,9 @@ impl Probe {
     ///
     /// If this doesn't work, you might want to try `attach_under_reset`
     pub fn attach(mut self, target: impl Into<TargetSelector>) -> Result<Session, Error> {
-        self.inner.attach()?;
         self.attached = true;
 
-        Session::new(self, target, AttachMethod::Normal)
+        Session::new(self, target.into(), AttachMethod::Normal)
     }
 
     pub fn attach_to_unspecified(&mut self) -> Result<(), Error> {
@@ -271,15 +270,14 @@ impl Probe {
         mut self,
         target: impl Into<TargetSelector>,
     ) -> Result<Session, Error> {
-        log::debug!("Asserting reset");
-        self.inner.target_reset_assert()?;
-
-        self.inner.attach()?;
-
         self.attached = true;
 
         // The session will de-assert reset after connecting to the debug interface.
-        Session::new(self, target, AttachMethod::UnderReset)
+        Session::new(self, target.into(), AttachMethod::UnderReset)
+    }
+
+    pub(crate) fn inner_attach(&mut self) -> Result<(), DebugProbeError> {
+        self.inner.attach()
     }
 
     /// Selects the transport protocol to be used by the debug probe.
@@ -301,6 +299,11 @@ impl Probe {
     /// Resets the target device.
     pub fn target_reset(&mut self) -> Result<(), DebugProbeError> {
         self.inner.target_reset()
+    }
+
+    pub(crate) fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
+        log::debug!("Asserting target reset");
+        self.inner.target_reset_assert()
     }
 
     pub fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {

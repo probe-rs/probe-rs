@@ -94,10 +94,18 @@ impl ArchitectureInterface {
 impl Session {
     /// Open a new session with a given debug target.
     pub(crate) fn new(
-        probe: Probe,
-        target: impl Into<TargetSelector>,
+        mut probe: Probe,
+        target: TargetSelector,
         attach_method: AttachMethod,
     ) -> Result<Self, Error> {
+        if AttachMethod::UnderReset == attach_method {
+            // TODO: Use sequence
+            log::debug!("Asserting reset");
+            probe.target_reset_assert()?;
+        }
+
+        probe.inner_attach()?;
+
         let (probe, target) = get_target_from_selector(target, probe)?;
 
         let cores = target
@@ -449,12 +457,12 @@ impl Drop for Session {
 /// If it its [TargetSelector::Auto], probe-rs will try to determine the target automatically, based on
 /// information read from the chip.
 fn get_target_from_selector(
-    target: impl Into<TargetSelector>,
+    target: TargetSelector,
     probe: Probe,
 ) -> Result<(Probe, Target), Error> {
     let mut probe = probe;
 
-    let target = match target.into() {
+    let target = match target {
         TargetSelector::Unspecified(name) => crate::config::get_target_by_name(name)?,
         TargetSelector::Specified(target) => target,
         TargetSelector::Auto => {
