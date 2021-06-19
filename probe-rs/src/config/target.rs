@@ -21,6 +21,8 @@ pub struct Target {
 
     /// Source of the target description. Used for diagnostics.
     pub(crate) source: TargetDescriptionSource,
+
+    /// Debug sequences for the given target.
     pub debug_sequence: DebugSequence,
 }
 

@@ -116,12 +116,14 @@ impl Session {
             Architecture::Arm => {
                 let mut interface = probe.try_into_arm_interface().map_err(|(_, err)| err)?;
 
-                let sequence_handle = target.debug_sequence.clone();
+                let sequence_handle = match &target.debug_sequence {
+                    DebugSequence::Arm(sequence) => sequence.clone(),
+                    DebugSequence::Riscv => {
+                        panic!("Mismatch between architecture and sequence type!")
+                    }
+                };
 
-                match sequence_handle.borrow() {
-                    DebugSequence::Arm(sequence) => sequence.debug_port_setup(&mut interface)?,
-                    DebugSequence::Riscv => panic!("Should not happen...."),
-                }
+                sequence_handle.debug_port_setup(&mut interface)?;
 
                 let mut interface = interface.initialize()?;
 
@@ -129,32 +131,15 @@ impl Session {
                     let mut memory_interface = interface.memory_interface(MemoryAp::from(0))?;
 
                     // Enable debug mode
-                    match sequence_handle.borrow() {
-                        DebugSequence::Arm(sequence) => {
-                            sequence.debug_core_start(&mut memory_interface)?
-                        }
-                        DebugSequence::Riscv => panic!("Should not happen...."),
-                    }
+                    sequence_handle.debug_core_start(&mut memory_interface)?
                 }
 
                 let session = if attach_method == AttachMethod::UnderReset {
                     {
                         let mut memory_interface = interface.memory_interface(MemoryAp::from(0))?;
                         // we need to halt the chip here
-                        match target.debug_sequence.borrow() {
-                            DebugSequence::Arm(sequence) => {
-                                sequence.reset_catch_set(&mut memory_interface)?
-                            }
-                            DebugSequence::Riscv => panic!("Should not happen...."),
-                        }
-
-                        // Deassert the reset pin
-                        match sequence_handle.borrow() {
-                            DebugSequence::Arm(sequence) => {
-                                sequence.reset_hardware_deassert(&mut memory_interface)?
-                            }
-                            DebugSequence::Riscv => panic!("Should not happen...."),
-                        }
+                        sequence_handle.reset_catch_set(&mut memory_interface)?;
+                        sequence_handle.reset_hardware_deassert(&mut memory_interface)?;
                     }
 
                     let (mut interface, target, core) = {
@@ -194,12 +179,7 @@ impl Session {
                     {
                         let mut memory_interface = interface.memory_interface(MemoryAp::from(0))?;
                         // we need to halt the chip here
-                        match sequence_handle.borrow() {
-                            DebugSequence::Arm(sequence) => {
-                                sequence.reset_catch_clear(&mut memory_interface)?
-                            }
-                            DebugSequence::Riscv => panic!("Should not happen...."),
-                        }
+                        sequence_handle.reset_catch_clear(&mut memory_interface)?;
                     }
                     let session = Session {
                         target,
