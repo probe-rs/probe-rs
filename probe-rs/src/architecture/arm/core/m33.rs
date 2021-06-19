@@ -15,7 +15,7 @@ use anyhow::Result;
 
 use bitfield::bitfield;
 
-use super::{reset_catch_set, reset_system, CortexState, Dfsr, ARM_REGISTER_FILE};
+use super::{CortexState, Dfsr, ARM_REGISTER_FILE};
 use std::borrow::Borrow;
 use std::{
     mem::size_of,
@@ -139,15 +139,27 @@ impl<'probe> CoreInterface for M33<'probe> {
     }
 
     fn reset(&mut self) -> Result<(), Error> {
-        reset_system(self)
+        let sequence = self.target.debug_sequence.borrow();
+
+        match sequence {
+            DebugSequence::Arm(sequence) => sequence.reset_system(&mut self.memory),
+            DebugSequence::Riscv => panic!("This should not happen."),
+        }
     }
 
-    fn reset_and_halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
+    fn reset_and_halt(&mut self, _timeout: Duration) -> Result<CoreInformation, Error> {
         // Set the vc_corereset bit in the DEMCR register.
         // This will halt the core after reset.
-        reset_catch_set(self)?;
 
-        reset_system(self)?;
+        let sequence = self.target.debug_sequence.borrow();
+
+        match sequence {
+            DebugSequence::Arm(sequence) => {
+                sequence.reset_catch_set(&mut self.memory)?;
+                sequence.reset_system(&mut self.memory)?;
+            }
+            DebugSequence::Riscv => panic!("This should not happen."),
+        }
 
         // Update core status
         let _ = self.status()?;

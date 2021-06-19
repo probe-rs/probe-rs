@@ -805,8 +805,6 @@ fn aligned_range(address: u32, len: usize) -> Result<Range<u32>, AccessPortError
 
 #[cfg(test)]
 mod tests {
-    use crate::architecture::arm::MemoryApInformation;
-
     use super::super::super::ap::memory_ap::mock::MockMemoryAp;
     use super::ADIMemoryInterface;
 
@@ -815,16 +813,12 @@ mod tests {
         fn new_mock(
             mock: &'interface mut MockMemoryAp,
         ) -> ADIMemoryInterface<'interface, MockMemoryAp> {
-            let ap_information = MemoryApInformation {
-                port_number: 0,
+            Self {
+                interface: mock,
                 only_32bit_data_size: false,
-                debug_base_address: 0xf000_0000,
                 supports_hnonsec: false,
-            };
-
-            todo!();
-
-            //Self::new(mock, &ap_information).unwrap()
+                cached_csw_value: None,
+            }
         }
 
         fn mock_memory(&self) -> &[u8] {

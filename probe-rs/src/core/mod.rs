@@ -6,7 +6,6 @@ use probe_rs_target::CoreType;
 use crate::architecture::{
     arm::core::CortexState, riscv::communication_interface::RiscvCommunicationInterface,
 };
-use crate::DebugProbeError;
 use crate::Target;
 use crate::{architecture::arm::communication_interface::Initialized, error};
 use crate::{Error, Memory, MemoryInterface};
@@ -286,7 +285,10 @@ impl SpecificCoreState {
             // Cortex-M3, M4 and M7 use the Armv7[E]-M architecture and are
             // identical for our purposes.
             SpecificCoreState::M3(s) | SpecificCoreState::M4(s) | SpecificCoreState::M7(s) => {
-                Core::new(crate::architecture::arm::m4::M4::new(memory, s)?, state)
+                Core::new(
+                    crate::architecture::arm::m4::M4::new(memory, s, target)?,
+                    state,
+                )
             }
             SpecificCoreState::M33(s) => Core::new(
                 crate::architecture::arm::m33::M33::new(memory, s, target)?,

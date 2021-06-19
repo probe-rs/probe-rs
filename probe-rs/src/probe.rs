@@ -866,10 +866,6 @@ impl ArmProbeInterface for FakeArmInterface {
     fn close(self: Box<Self>) -> Probe {
         Probe::from_attached_probe(self.probe)
     }
-
-    fn target_reset_deassert(&mut self) -> Result<(), Error> {
-        todo!()
-    }
 }
 
 impl SwdSequence for FakeArmInterface {

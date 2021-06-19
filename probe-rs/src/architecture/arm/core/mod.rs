@@ -1,8 +1,6 @@
-use std::time::{Duration, Instant};
-
 use crate::{
     core::{CoreRegister, CoreRegisterAddress, RegisterDescription, RegisterFile, RegisterKind},
-    CoreStatus, DebugProbeError, Error, HaltReason, MemoryInterface,
+    CoreStatus, Error, HaltReason, MemoryInterface,
 };
 
 use bitfield::bitfield;
@@ -10,65 +8,6 @@ use bitfield::bitfield;
 pub mod m0;
 pub mod m33;
 pub mod m4;
-
-/// Setup the core to stop after reset. After this, the core will halt when it comes
-/// out of reset. This is based on the `ResetCatchSet` function from
-/// the [ARM SVD Debug Description].
-///
-/// [ARM SVD Debug Description]: http://www.keil.com/pack/doc/cmsis/Pack/html/debug_description.html#resetCatchSet
-pub(crate) fn reset_catch_set(core: &mut impl MemoryInterface) -> Result<(), Error> {
-    use crate::architecture::arm::core::m4::{Demcr, Dhcsr};
-
-    // Request halt after reset
-    let mut demcr = Demcr(core.read_word_32(Demcr::ADDRESS)?);
-    demcr.set_vc_corereset(true);
-
-    core.write_word_32(Demcr::ADDRESS, demcr.into())?;
-
-    // Clear the status bits by reading from DHCSR
-    let _ = core.read_word_32(Dhcsr::ADDRESS)?;
-
-    Ok(())
-}
-
-/// Undo the settings of the `reset_catch_set` function.
-/// This is based on the `ResetCatchSet` function from
-/// the [ARM SVD Debug Description].
-///
-/// [ARM SVD Debug Description]: http://www.keil.com/pack/doc/cmsis/Pack/html/debug_description.html#resetCatchClear
-pub(crate) fn reset_catch_clear(core: &mut impl MemoryInterface) -> Result<(), Error> {
-    use crate::architecture::arm::core::m4::Demcr;
-
-    // Clear reset catch bit
-    let mut demcr = Demcr(core.read_word_32(Demcr::ADDRESS)?);
-    demcr.set_vc_corereset(false);
-
-    core.write_word_32(Demcr::ADDRESS, demcr.into())?;
-    Ok(())
-}
-
-pub(crate) fn reset_system(core: &mut impl MemoryInterface) -> Result<(), Error> {
-    use crate::architecture::arm::core::m4::{Aircr, Dhcsr};
-
-    let mut aircr = Aircr(0);
-    aircr.vectkey();
-    aircr.set_sysresetreq(true);
-
-    core.write_word_32(Aircr::ADDRESS, aircr.into())?;
-
-    let start = Instant::now();
-
-    while start.elapsed() < Duration::from_micros(50_0000) {
-        let dhcsr = Dhcsr(core.read_word_32(Dhcsr::ADDRESS)?);
-
-        // Wait until the S_RESET_ST bit is cleared on a read
-        if !dhcsr.s_reset_st() {
-            return Ok(());
-        }
-    }
-
-    Err(Error::Probe(DebugProbeError::Timeout))
-}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CortexDump {

@@ -5,7 +5,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use crate::{config::ArmDebugSequence, core::CoreRegister, DebugProbeError, Memory};
+use crate::{core::CoreRegister, DebugProbeError, Memory};
 
 use super::{
     communication_interface::{SwdSequence, UninitializedArmProbe},
@@ -14,7 +14,9 @@ use super::{
 
 pub struct DefaultArmSequence;
 
-impl ArmDebugSequence for DefaultArmSequence {
+impl ArmDebugSequence for DefaultArmSequence {}
+
+pub trait ArmDebugSequence: Send + Sync {
     fn reset_hardware_assert(&self, memory: &mut Memory) -> Result<(), crate::Error> {
         let interface = memory.get_arm_interface()?;
 
@@ -230,5 +232,15 @@ impl ArmDebugSequence for DefaultArmSequence {
         }
 
         Err(crate::Error::Probe(DebugProbeError::Timeout))
+    }
+
+    fn debug_device_unlock(&self, _interface: &mut crate::Memory) -> Result<(), crate::Error> {
+        // Empty by default
+        Ok(())
+    }
+
+    fn recover_support_start(&self, _interface: &mut crate::Memory) -> Result<(), crate::Error> {
+        // Empty by default
+        Ok(())
     }
 }

@@ -1,4 +1,4 @@
-use super::{reset_catch_set, reset_system, CortexState, Dfsr, ARM_REGISTER_FILE};
+use super::{CortexState, Dfsr, ARM_REGISTER_FILE};
 use crate::architecture::arm::communication_interface::Initialized;
 use crate::config::DebugSequence;
 use crate::core::{RegisterDescription, RegisterFile, RegisterKind};
@@ -431,13 +431,24 @@ impl<'probe, 'target> CoreInterface for M0<'probe, 'target> {
     }
 
     fn reset(&mut self) -> Result<(), Error> {
-        reset_system(self)
+        let sequence = self.target.debug_sequence.borrow();
+
+        match sequence {
+            DebugSequence::Arm(sequence) => sequence.reset_system(&mut self.memory),
+            DebugSequence::Riscv => panic!("This should not happen."),
+        }
     }
 
     fn reset_and_halt(&mut self, _timeout: Duration) -> Result<CoreInformation, Error> {
-        reset_catch_set(self)?;
+        let sequence = self.target.debug_sequence.borrow();
 
-        reset_system(self)?;
+        match sequence {
+            DebugSequence::Arm(sequence) => {
+                sequence.reset_catch_set(&mut self.memory)?;
+                sequence.reset_system(&mut self.memory)?;
+            }
+            DebugSequence::Riscv => panic!("This should not happen."),
+        };
 
         // Update core status
         let _ = self.status()?;

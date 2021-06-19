@@ -1,6 +1,5 @@
 #![warn(missing_docs)]
 
-use crate::architecture::arm::core::{reset_catch_clear, reset_catch_set};
 use crate::config::{
     ChipInfo, Core as CoreConfig, MemoryRegion, RegistryError, Target, TargetSelector,
 };
@@ -90,26 +89,6 @@ impl ArchitectureInterface {
             ArchitectureInterface::Riscv(state) => core.attach_riscv(core_state, state),
         }
     }
-
-    /// Deassert the target reset line
-    ///
-    /// When connecting under reset,
-    /// initial configuration is done with the reset line
-    /// asserted. After initial configuration is done, the
-    /// reset line can be deasserted using this method.
-    ///
-    /// See also [`Probe::target_reset_deassert`].
-    fn target_reset_deassert(&mut self) -> Result<(), Error> {
-        match self {
-            ArchitectureInterface::Arm(arm_interface) => arm_interface.target_reset_deassert()?,
-
-            ArchitectureInterface::Riscv(riscv_interface) => {
-                riscv_interface.target_reset_deassert()?
-            }
-        }
-
-        Ok(())
-    }
 }
 
 impl Session {
@@ -137,7 +116,9 @@ impl Session {
             Architecture::Arm => {
                 let mut interface = probe.try_into_arm_interface().map_err(|(_, err)| err)?;
 
-                match target.debug_sequence.borrow() {
+                let sequence_handle = target.debug_sequence.clone();
+
+                match sequence_handle.borrow() {
                     DebugSequence::Arm(sequence) => sequence.debug_port_setup(&mut interface)?,
                     DebugSequence::Riscv => panic!("Should not happen...."),
                 }
@@ -148,7 +129,7 @@ impl Session {
                     let mut memory_interface = interface.memory_interface(MemoryAp::from(0))?;
 
                     // Enable debug mode
-                    match target.debug_sequence.borrow() {
+                    match sequence_handle.borrow() {
                         DebugSequence::Arm(sequence) => {
                             sequence.debug_core_start(&mut memory_interface)?
                         }
@@ -156,26 +137,84 @@ impl Session {
                     }
                 }
 
-                let mut session = Session {
-                    target,
-                    interface: ArchitectureInterface::Arm(interface),
-                    cores,
+                let session = if attach_method == AttachMethod::UnderReset {
+                    {
+                        let mut memory_interface = interface.memory_interface(MemoryAp::from(0))?;
+                        // we need to halt the chip here
+                        match target.debug_sequence.borrow() {
+                            DebugSequence::Arm(sequence) => {
+                                sequence.reset_catch_set(&mut memory_interface)?
+                            }
+                            DebugSequence::Riscv => panic!("Should not happen...."),
+                        }
+
+                        // Deassert the reset pin
+                        match sequence_handle.borrow() {
+                            DebugSequence::Arm(sequence) => {
+                                sequence.reset_hardware_deassert(&mut memory_interface)?
+                            }
+                            DebugSequence::Riscv => panic!("Should not happen...."),
+                        }
+                    }
+
+                    let (mut interface, target, core) = {
+                        let cores = target
+                            .cores
+                            .iter()
+                            .enumerate()
+                            .map(|(id, core)| {
+                                (
+                                    SpecificCoreState::from_core_type(core.core_type),
+                                    Core::create_state(id),
+                                )
+                            })
+                            .collect();
+
+                        let mut session = Session {
+                            target,
+                            interface: ArchitectureInterface::Arm(interface),
+                            cores,
+                        };
+
+                        {
+                            // Wait for the core to be halted
+                            let mut core = session.core(0)?;
+
+                            core.wait_for_core_halted(Duration::from_millis(100))?;
+                        }
+
+                        match session.interface {
+                            ArchitectureInterface::Arm(interface) => {
+                                (interface, session.target, session.cores.remove(0))
+                            }
+                            ArchitectureInterface::Riscv(_) => unreachable!(),
+                        }
+                    };
+
+                    {
+                        let mut memory_interface = interface.memory_interface(MemoryAp::from(0))?;
+                        // we need to halt the chip here
+                        match sequence_handle.borrow() {
+                            DebugSequence::Arm(sequence) => {
+                                sequence.reset_catch_clear(&mut memory_interface)?
+                            }
+                            DebugSequence::Riscv => panic!("Should not happen...."),
+                        }
+                    }
+                    let session = Session {
+                        target,
+                        interface: ArchitectureInterface::Arm(interface),
+                        cores,
+                    };
+
+                    session
+                } else {
+                    Session {
+                        target,
+                        interface: ArchitectureInterface::Arm(interface),
+                        cores,
+                    }
                 };
-
-                if attach_method == AttachMethod::UnderReset {
-                    // we need to halt the chip here
-                    reset_catch_set(&mut session.core(0)?)?;
-
-                    // Deassert the reset pin
-                    session.interface.target_reset_deassert()?;
-
-                    // Wait for the core to be halted
-                    let mut core = session.core(0)?;
-
-                    core.wait_for_core_halted(Duration::from_millis(100))?;
-
-                    reset_catch_clear(&mut core)?;
-                }
 
                 session
             }
@@ -408,6 +447,8 @@ impl Session {
 // This test ensures that [Session] is fully [Send] + [Sync].
 static_assertions::assert_impl_all!(Session: Send);
 
+/*
+ // TODO tiwalun: Enable again, after rework of Session::new is done.
 impl Drop for Session {
     fn drop(&mut self) {
         let result = { 0..self.cores.len() }.try_for_each(|i| {
@@ -420,6 +461,8 @@ impl Drop for Session {
         }
     }
 }
+*/
+
 /// Determine the [Target] from a [TargetSelector].
 ///
 /// If the selector is [TargetSelector::Unspecified], the target will be looked up in the registry.

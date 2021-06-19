@@ -1261,12 +1261,6 @@ impl<'probe> ArmProbeInterface for StlinkArmDebug {
         self.state.ap_information.len()
     }
 
-    fn target_reset_deassert(&mut self) -> Result<(), ProbeRsError> {
-        self.probe.target_reset_deassert()?;
-
-        Ok(())
-    }
-
     fn close(self: Box<Self>) -> Probe {
         Probe::from_attached_probe(self.probe)
     }

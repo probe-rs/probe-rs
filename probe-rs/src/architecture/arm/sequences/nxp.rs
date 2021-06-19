@@ -7,33 +7,18 @@ use crate::{
     architecture::arm::{
         ap::ApAccess,
         ap::IDR,
-        communication_interface::UninitializedArmProbe,
-        communication_interface::{read_ap, write_ap},
         dp::{Abort, Ctrl, DpAccess, Select, DPIDR},
+        DapAccess,
     },
-    config::ArmDebugSequence,
     core::CoreRegister,
     DebugProbeError,
 };
 
+use super::ArmDebugSequence;
+
 struct LPC55S69 {}
 
 impl ArmDebugSequence for LPC55S69 {
-    fn reset_hardware_assert(&self, _interface: &mut crate::Memory) -> Result<(), crate::Error> {
-        todo!()
-    }
-
-    fn reset_hardware_deassert(&self, _interface: &mut crate::Memory) -> Result<(), crate::Error> {
-        todo!()
-    }
-
-    fn debug_port_setup(
-        &self,
-        interface: &mut Box<dyn UninitializedArmProbe>,
-    ) -> Result<(), crate::Error> {
-        todo!()
-    }
-
     fn debug_port_start(&self, memory: &mut crate::Memory) -> Result<(), crate::Error> {
         let interface = memory.get_arm_interface()?;
 
@@ -110,10 +95,6 @@ impl ArmDebugSequence for LPC55S69 {
         }
 
         Ok(())
-    }
-
-    fn debug_core_start(&self, interface: &mut crate::Memory) -> Result<(), crate::Error> {
-        todo!()
     }
 
     fn reset_catch_set(&self, interface: &mut crate::Memory) -> Result<(), crate::Error> {
@@ -220,16 +201,6 @@ impl ArmDebugSequence for LPC55S69 {
 
         wait_for_stop_after_reset(interface)
     }
-
-    fn debug_device_unlock(&self, interface: &mut crate::Memory) -> Result<(), crate::Error> {
-        // Empty by default
-        Ok(())
-    }
-
-    fn recover_support_start(&self, _interface: &mut crate::Memory) -> Result<(), crate::Error> {
-        // Empty by default
-        Ok(())
-    }
 }
 
 fn wait_for_stop_after_reset(memory: &mut crate::Memory) -> Result<(), crate::Error> {
@@ -237,8 +208,6 @@ fn wait_for_stop_after_reset(memory: &mut crate::Memory) -> Result<(), crate::Er
     log::info!("Wait for stop after reset");
 
     thread::sleep(Duration::from_millis(10));
-
-    // TODO: Hack for lpc55s69 recovery
 
     enable_debug_mailbox(memory)?;
 
@@ -293,20 +262,20 @@ pub fn enable_debug_mailbox(memory: &mut crate::Memory) -> Result<(), crate::Err
     log::info!("DPIDR: 0x{:08X}", status);
 
     // Active DebugMailbox
-    write_ap(interface, 2, 0x0, 0x0000_0021)?;
+    interface.write_raw_ap_register(2, 0x0, 0x0000_0021)?;
 
     // DAP_Delay(30000)
     thread::sleep(Duration::from_micros(30000));
 
-    let _ = read_ap(interface, 2, 0)?;
+    let _ = interface.read_raw_ap_register(2, 0)?;
 
     // Enter Debug session
-    write_ap(interface, 2, 0x4, 0x0000_0007)?;
+    interface.write_raw_ap_register(2, 0x4, 0x0000_0007)?;
 
     // DAP_Delay(30000)
     thread::sleep(Duration::from_micros(30000));
 
-    let _ = read_ap(interface, 2, 8)?;
+    let _ = interface.read_raw_ap_register(2, 8)?;
 
     log::info!("LPC55xx connect srcipt end");
     Ok(())

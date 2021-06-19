@@ -1,5 +1,6 @@
 use super::{Chip, Core, CoreType, MemoryRegion, RawFlashAlgorithm, TargetDescriptionSource};
 use crate::architecture::arm::communication_interface::UninitializedArmProbe;
+use crate::architecture::arm::sequences::ArmDebugSequence;
 use crate::{core::Architecture, flashing::FlashLoader};
 use std::sync::Arc;
 
@@ -172,32 +173,4 @@ impl From<Target> for TargetSelector {
 pub enum DebugSequence {
     Arm(Box<dyn ArmDebugSequence>),
     Riscv,
-}
-
-pub trait ArmDebugSequence: Send + Sync {
-    fn reset_hardware_assert(&self, interface: &mut Memory) -> Result<(), Error>;
-    fn reset_hardware_deassert(&self, interface: &mut Memory) -> Result<(), Error>;
-
-    fn debug_port_setup(&self, interface: &mut Box<dyn UninitializedArmProbe>)
-        -> Result<(), Error>;
-
-    fn debug_port_start(&self, interface: &mut Memory) -> Result<(), Error>;
-
-    fn debug_device_unlock(&self, interface: &mut Memory) -> Result<(), Error> {
-        // Empty by default
-        Ok(())
-    }
-
-    fn debug_core_start(&self, interface: &mut Memory) -> Result<(), Error>;
-
-    fn recover_support_start(&self, _interface: &mut Memory) -> Result<(), Error> {
-        // Empty by default
-        Ok(())
-    }
-
-    fn reset_catch_set(&self, interface: &mut Memory) -> Result<(), Error>;
-
-    fn reset_catch_clear(&self, interface: &mut Memory) -> Result<(), Error>;
-
-    fn reset_system(&self, interface: &mut Memory) -> Result<(), Error>;
 }
