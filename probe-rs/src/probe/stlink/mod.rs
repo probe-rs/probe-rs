@@ -1117,6 +1117,16 @@ impl UninitializedArmProbe for UninitializedStLink {
 
         Ok(Box::new(interface))
     }
+
+    // TODO: Is this possible with an uninitialized ST Link?
+    fn read_dpidr(&mut self) -> Result<u32, ProbeRsError> {
+        let result = self
+            .probe
+            .read_register(DP_PORT, DPIDR::ADDRESS)
+            .map_err(|e| ProbeRsError::Other(e.into()))?;
+
+        Ok(result.into())
+    }
 }
 
 impl SwdSequence for UninitializedStLink {
@@ -1133,16 +1143,6 @@ impl SwdSequence for UninitializedStLink {
     ) -> Result<u32, ProbeRsError> {
         // This is not supported for ST-Links, unfortunately.
         Err(DebugProbeError::CommandNotSupportedByProbe.into())
-    }
-
-    // Todo: Is this possible with an uninitialized ST Link?
-    fn read_dpidr(&mut self) -> Result<u32, ProbeRsError> {
-        let result = self
-            .probe
-            .read_register(DP_PORT, DPIDR::ADDRESS)
-            .map_err(|e| ProbeRsError::Other(e.into()))?;
-
-        Ok(result.into())
     }
 }
 
@@ -1286,14 +1286,6 @@ impl SwdSequence for StlinkArmDebug {
     ) -> Result<u32, ProbeRsError> {
         // This is not supported for ST-Links, unfortunately.
         Err(DebugProbeError::CommandNotSupportedByProbe.into())
-    }
-
-    fn read_dpidr(&mut self) -> Result<u32, ProbeRsError> {
-        let result = self
-            .read_dp_register::<DPIDR>()
-            .map_err(|e| ProbeRsError::Other(e.into()))?;
-
-        Ok(result.into())
     }
 }
 

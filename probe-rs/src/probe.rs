@@ -880,10 +880,6 @@ impl SwdSequence for FakeArmInterface {
     fn swj_pins(&mut self, _pin_out: u32, _pin_select: u32, _pin_wait: u32) -> Result<u32, Error> {
         todo!()
     }
-
-    fn read_dpidr(&mut self) -> Result<u32, Error> {
-        todo!()
-    }
 }
 
 impl DapAccess for FakeArmInterface {

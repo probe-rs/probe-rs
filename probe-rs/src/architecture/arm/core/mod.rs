@@ -200,16 +200,6 @@ static ARM_REGISTER_FILE: RegisterFile = RegisterFile {
             kind: RegisterKind::General,
             address: CoreRegisterAddress(15),
         },
-        RegisterDescription {
-            name: "XPSR",
-            kind: RegisterKind::General,
-            address: CoreRegisterAddress(0b10000),
-        },
-        RegisterDescription {
-            name: "state (todo)",
-            kind: RegisterKind::General,
-            address: CoreRegisterAddress(0b10100),
-        },
     ],
 
     program_counter: &register::PC,

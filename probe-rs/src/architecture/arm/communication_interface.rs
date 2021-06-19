@@ -81,13 +81,13 @@ pub trait SwdSequence {
         pin_select: u32,
         pin_wait: u32,
     ) -> Result<u32, ProbeRsError>;
-
-    /// Read DPDIR Register
-    fn read_dpidr(&mut self) -> Result<u32, ProbeRsError>;
 }
 
 pub trait UninitializedArmProbe: SwdSequence {
     fn initialize(self: Box<Self>) -> Result<Box<dyn ArmProbeInterface>, ProbeRsError>;
+
+    /// Read DPDIR Register
+    fn read_dpidr(&mut self) -> Result<u32, ProbeRsError>;
 }
 
 pub trait ArmDebugState {}
@@ -295,10 +295,6 @@ impl<S: ArmDebugState> SwdSequence for ArmCommunicationInterface<S> {
 
         Ok(value)
     }
-
-    fn read_dpidr(&mut self) -> Result<u32, ProbeRsError> {
-        todo!()
-    }
 }
 
 impl<'interface> ArmCommunicationInterface<Uninitialized> {
@@ -330,6 +326,12 @@ impl UninitializedArmProbe for ArmCommunicationInterface<Uninitialized> {
         let interface = self.into_initialized().map_err(|(_s, err)| err)?;
 
         Ok(Box::new(interface))
+    }
+
+    fn read_dpidr(&mut self) -> Result<u32, ProbeRsError> {
+        let result = self.probe.raw_read_register(PortType::DebugPort, 0)?;
+
+        Ok(result)
     }
 }
 
