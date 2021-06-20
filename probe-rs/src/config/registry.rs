@@ -3,6 +3,7 @@
 use super::{Chip, ChipFamily, ChipInfo, Core, Target, TargetDescriptionSource};
 use crate::config::CoreType;
 use once_cell::sync::Lazy;
+use probe_rs_target::{ArmCoreAccessOptions, CoreAccessOptions, RiscvCoreAccessOptions};
 use std::fs::File;
 use std::path::Path;
 use std::sync::{Arc, Mutex, TryLockError};
@@ -53,7 +54,10 @@ fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
                 cores: vec![Core {
                     name: "core".to_owned(),
                     core_type: CoreType::M0,
-                    arm_ap: Some(0),
+                    core_access_options: CoreAccessOptions::Arm(ArmCoreAccessOptions {
+                        ap: 0,
+                        psel: 0,
+                    }),
                 }],
                 memory_map: vec![],
                 flash_algorithms: vec![],
@@ -70,7 +74,10 @@ fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
                 cores: vec![Core {
                     name: "core".to_owned(),
                     core_type: CoreType::M4,
-                    arm_ap: Some(0),
+                    core_access_options: CoreAccessOptions::Arm(ArmCoreAccessOptions {
+                        ap: 0,
+                        psel: 0,
+                    }),
                 }],
                 memory_map: vec![],
                 flash_algorithms: vec![],
@@ -87,7 +94,10 @@ fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
                 cores: vec![Core {
                     name: "core".to_owned(),
                     core_type: CoreType::M3,
-                    arm_ap: Some(0),
+                    core_access_options: CoreAccessOptions::Arm(ArmCoreAccessOptions {
+                        ap: 0,
+                        psel: 0,
+                    }),
                 }],
                 memory_map: vec![],
                 flash_algorithms: vec![],
@@ -104,7 +114,10 @@ fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
                 cores: vec![Core {
                     name: "core".to_owned(),
                     core_type: CoreType::M33,
-                    arm_ap: Some(0),
+                    core_access_options: CoreAccessOptions::Arm(ArmCoreAccessOptions {
+                        ap: 0,
+                        psel: 0,
+                    }),
                 }],
                 memory_map: vec![],
                 flash_algorithms: vec![],
@@ -121,7 +134,10 @@ fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
                 cores: vec![Core {
                     name: "core".to_owned(),
                     core_type: CoreType::M7,
-                    arm_ap: Some(0),
+                    core_access_options: CoreAccessOptions::Arm(ArmCoreAccessOptions {
+                        ap: 0,
+                        psel: 0,
+                    }),
                 }],
                 memory_map: vec![],
                 flash_algorithms: vec![],
@@ -138,7 +154,7 @@ fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
                 cores: vec![Core {
                     name: "core".to_owned(),
                     core_type: CoreType::Riscv,
-                    arm_ap: None,
+                    core_access_options: CoreAccessOptions::Riscv(RiscvCoreAccessOptions {}),
                 }],
                 memory_map: vec![],
                 flash_algorithms: vec![],

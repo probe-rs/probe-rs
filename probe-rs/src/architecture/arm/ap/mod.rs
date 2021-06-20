@@ -38,8 +38,8 @@ pub enum AccessPortError {
     DebugPort(#[from] DebugPortError),
     #[error("Failed to flush batched writes")]
     FlushError(#[from] DebugProbeError),
-    #[error("The target for this core has not AP number configured: {0:?}")]
-    TargetApConfigMissing(Core),
+    #[error("The target for this core has defined invalid core access options. This is a bug, please file an issue. {0:?}")]
+    InvalidCoreAccessOption(Core),
 }
 
 impl AccessPortError {

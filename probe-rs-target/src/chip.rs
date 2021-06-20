@@ -44,5 +44,27 @@ pub struct Core {
     pub core_type: CoreType,
 
     /// The AP number to access the core
-    pub arm_ap: Option<u8>,
+    pub core_access_options: CoreAccessOptions,
 }
+
+/// The data required to access a core
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum CoreAccessOptions {
+    /// Arm specific options
+    Arm(ArmCoreAccessOptions),
+    /// Riscv specific options
+    Riscv(RiscvCoreAccessOptions),
+}
+
+/// The data required to access an ARM core
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ArmCoreAccessOptions {
+    /// The access port number to access the core
+    pub ap: u8,
+    /// The port select number to access the core
+    pub psel: u8,
+}
+
+/// The data required to access a Risc-V core
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RiscvCoreAccessOptions {}
