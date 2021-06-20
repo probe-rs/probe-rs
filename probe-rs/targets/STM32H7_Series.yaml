@@ -1,0 +1,2977 @@
+---
+name: STM32H7 Series
+variants:
+  - name: STM32H742AGIx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24060000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08100000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7x_2048
+  - name: STM32H742AIIx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24060000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08200000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7x_2048
+  - name: STM32H742BGTx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24060000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08100000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7x_2048
+  - name: STM32H742BITx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24060000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08200000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7x_2048
+  - name: STM32H742IGKx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24060000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08100000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7x_2048
+  - name: STM32H742IGTx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24060000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08100000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7x_2048
+  - name: STM32H742IIKx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24060000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08200000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7x_2048
+  - name: STM32H742IITx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24060000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08200000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7x_2048
+  - name: STM32H742VGHx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24060000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08100000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7x_2048
+  - name: STM32H742VGTx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24060000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08100000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7x_2048
+  - name: STM32H742VIHx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24060000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08200000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7x_2048
+  - name: STM32H742VITx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24060000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08200000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7x_2048
+  - name: STM32H742XGHx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24060000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08100000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7x_2048
+  - name: STM32H742XIHx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24060000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08200000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7x_2048
+  - name: STM32H742ZGTx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24060000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08100000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7x_2048
+  - name: STM32H742ZITx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24060000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08200000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7x_2048
+  - name: STM32H743AGIx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24080000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08100000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7x_2048
+  - name: STM32H743AIIx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24080000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08200000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7x_2048
+  - name: STM32H743BGTx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24080000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08100000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7x_2048
+  - name: STM32H743BITx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24080000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08200000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7x_2048
+  - name: STM32H743IGKx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24080000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08100000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7x_2048
+  - name: STM32H743IGTx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24080000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08100000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7x_2048
+  - name: STM32H743IIKx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24080000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08200000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7x_2048
+  - name: STM32H743IITx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24080000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08200000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7x_2048
+  - name: STM32H743VGHx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24080000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08100000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7x_2048
+  - name: STM32H743VGTx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24080000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08100000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7x_2048
+  - name: STM32H743VIHx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24080000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08200000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7x_2048
+  - name: STM32H743VITx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24080000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08200000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7x_2048
+  - name: STM32H743XGHx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24080000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08100000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7x_2048
+  - name: STM32H743XIHx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24080000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08200000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7x_2048
+  - name: STM32H743ZGTx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24080000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08100000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7x_2048
+  - name: STM32H743ZITx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24080000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08200000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7x_2048
+  - name: STM32H745BGTx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24080000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08100000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7x_2048
+      - stm32h7x_2048
+  - name: STM32H745BITx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24080000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08200000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7x_2048
+      - stm32h7x_2048
+  - name: STM32H745IGKx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24080000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08100000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7x_2048
+      - stm32h7x_2048
+  - name: STM32H745IGTx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24080000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08100000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7x_2048
+      - stm32h7x_2048
+  - name: STM32H745IIKx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24080000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08200000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7x_2048
+      - stm32h7x_2048
+  - name: STM32H745IITx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24080000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08200000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7x_2048
+      - stm32h7x_2048
+  - name: STM32H745XGHx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24080000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08100000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7x_2048
+      - stm32h7x_2048
+  - name: STM32H745XIHx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24080000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08200000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7x_2048
+      - stm32h7x_2048
+  - name: STM32H745ZGTx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24080000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08100000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7x_2048
+      - stm32h7x_2048
+  - name: STM32H745ZITx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24080000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08200000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7x_2048
+      - stm32h7x_2048
+  - name: STM32H747AGIx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24080000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08100000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7x_2048
+      - stm32h7x_2048
+  - name: STM32H747AIIx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24080000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08200000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7x_2048
+      - stm32h7x_2048
+  - name: STM32H747BGTx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24080000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08100000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7x_2048
+      - stm32h7x_2048
+  - name: STM32H747BITx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24080000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08200000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7x_2048
+      - stm32h7x_2048
+  - name: STM32H747IGTx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24080000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08100000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7x_2048
+      - stm32h7x_2048
+  - name: STM32H747IITx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24080000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08200000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7x_2048
+      - stm32h7x_2048
+  - name: STM32H747XGHx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24080000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08100000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7x_2048
+      - stm32h7x_2048
+  - name: STM32H747XIHx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24080000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08200000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7x_2048
+      - stm32h7x_2048
+  - name: STM32H747ZIYx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24080000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08200000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7x_2048
+      - stm32h7x_2048
+  - name: STM32H750IBKx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24080000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08020000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7x_128k
+  - name: STM32H750IBTx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24080000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08020000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7x_128k
+  - name: STM32H750VBTx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24080000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08020000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7x_128k
+  - name: STM32H750XBHx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24080000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08020000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7x_128k
+  - name: STM32H750ZBTx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24080000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08020000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7x_128k
+  - name: STM32H753AIIx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24080000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08200000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7x_2048
+  - name: STM32H753BITx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24080000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08200000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7x_2048
+  - name: STM32H753IIKx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24080000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08200000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7x_2048
+  - name: STM32H753IITx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24080000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08200000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7x_2048
+  - name: STM32H753VIHx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24080000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08200000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7x_2048
+  - name: STM32H753VITx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24080000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08200000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7x_2048
+  - name: STM32H753XIHx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24080000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08200000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7x_2048
+  - name: STM32H753ZITx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24080000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08200000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7x_2048
+  - name: STM32H755BITx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24080000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08200000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7x_2048
+      - stm32h7x_2048
+  - name: STM32H755IIKx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24080000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08200000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7x_2048
+      - stm32h7x_2048
+  - name: STM32H755IITx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24080000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08200000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7x_2048
+      - stm32h7x_2048
+  - name: STM32H755XIHx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24080000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08200000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7x_2048
+      - stm32h7x_2048
+  - name: STM32H755ZITx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24080000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08200000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7x_2048
+      - stm32h7x_2048
+  - name: STM32H757AIIx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24080000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08200000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7x_2048
+      - stm32h7x_2048
+  - name: STM32H757BITx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24080000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08200000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7x_2048
+      - stm32h7x_2048
+  - name: STM32H757IITx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24080000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08200000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7x_2048
+      - stm32h7x_2048
+  - name: STM32H757XIHx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24080000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08200000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7x_2048
+      - stm32h7x_2048
+  - name: STM32H757ZIYx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24080000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08200000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7x_2048
+      - stm32h7x_2048
+  - name: STM32H7A3AGIxQ
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24100000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08100000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7a-b3_flash_2m
+  - name: STM32H7A3AIIxQ
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24100000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08200000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7a-b3_flash_2m
+  - name: STM32H7A3IGKx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24100000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08100000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7a-b3_flash_2m
+  - name: STM32H7A3IGKxQ
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24100000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08100000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7a-b3_flash_2m
+  - name: STM32H7A3IGTx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24100000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08100000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7a-b3_flash_2m
+  - name: STM32H7A3IGTxQ
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24100000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08100000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7a-b3_flash_2m
+  - name: STM32H7A3IIKx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24100000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08200000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7a-b3_flash_2m
+  - name: STM32H7A3IIKxQ
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24100000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08200000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7a-b3_flash_2m
+  - name: STM32H7A3IITx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24100000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08200000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7a-b3_flash_2m
+  - name: STM32H7A3IITxQ
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24100000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08200000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7a-b3_flash_2m
+  - name: STM32H7A3LGHxQ
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24100000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08100000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7a-b3_flash_2m
+  - name: STM32H7A3LIHxQ
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24100000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08200000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7a-b3_flash_2m
+  - name: STM32H7A3NGHx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24100000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08100000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7a-b3_flash_2m
+  - name: STM32H7A3NIHx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24100000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08200000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7a-b3_flash_2m
+  - name: STM32H7A3QIYxQ
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24100000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08200000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7a-b3_flash_2m
+  - name: STM32H7A3RGTx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24100000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08100000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7a-b3_flash_2m
+  - name: STM32H7A3RITx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24100000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08200000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7a-b3_flash_2m
+  - name: STM32H7A3VGHx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24100000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08100000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7a-b3_flash_2m
+  - name: STM32H7A3VGHxQ
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24100000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08100000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7a-b3_flash_2m
+  - name: STM32H7A3VGTx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24100000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08100000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7a-b3_flash_2m
+  - name: STM32H7A3VGTxQ
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24100000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08100000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7a-b3_flash_2m
+  - name: STM32H7A3VIHx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24100000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08200000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7a-b3_flash_2m
+  - name: STM32H7A3VIHxQ
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24100000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08200000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7a-b3_flash_2m
+  - name: STM32H7A3VITx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24100000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08200000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7a-b3_flash_2m
+  - name: STM32H7A3VITxQ
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24100000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08200000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7a-b3_flash_2m
+  - name: STM32H7A3ZGTx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24100000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08100000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7a-b3_flash_2m
+  - name: STM32H7A3ZGTxQ
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24100000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08100000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7a-b3_flash_2m
+  - name: STM32H7A3ZITx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24100000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08200000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7a-b3_flash_2m
+  - name: STM32H7A3ZITxQ
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24100000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08200000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7a-b3_flash_2m
+  - name: STM32H7B0ABIxQ
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24100000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08020000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7b0_flash
+  - name: STM32H7B0IBKxQ
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24100000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08020000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7b0_flash
+  - name: STM32H7B0IBTx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24100000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08020000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7b0_flash
+  - name: STM32H7B0RBTx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24100000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08020000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7b0_flash
+  - name: STM32H7B0VBTx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24100000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08020000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7b0_flash
+  - name: STM32H7B0ZBTx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24100000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08020000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7b0_flash
+  - name: STM32H7B3AIIxQ
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24100000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08200000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7a-b3_flash_2m
+  - name: STM32H7B3IIKx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24100000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08200000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7a-b3_flash_2m
+  - name: STM32H7B3IIKxQ
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24100000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08200000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7a-b3_flash_2m
+  - name: STM32H7B3IITx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24100000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08200000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7a-b3_flash_2m
+  - name: STM32H7B3IITxQ
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24100000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08200000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7a-b3_flash_2m
+  - name: STM32H7B3LIHxQ
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24100000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08200000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7a-b3_flash_2m
+  - name: STM32H7B3NIHx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24100000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08200000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7a-b3_flash_2m
+  - name: STM32H7B3QIYxQ
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24100000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08200000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7a-b3_flash_2m
+  - name: STM32H7B3RITx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24100000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08200000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7a-b3_flash_2m
+  - name: STM32H7B3VIHx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24100000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08200000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7a-b3_flash_2m
+  - name: STM32H7B3VIHxQ
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24100000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08200000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7a-b3_flash_2m
+  - name: STM32H7B3VITx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24100000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08200000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7a-b3_flash_2m
+  - name: STM32H7B3VITxQ
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24100000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08200000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7a-b3_flash_2m
+  - name: STM32H7B3ZITx
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24100000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08200000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7a-b3_flash_2m
+  - name: STM32H7B3ZITxQ
+    cores:
+      - name: main
+        type: M7
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x24000000
+            end: 0x24100000
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0x08000000
+            end: 0x08200000
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32h7a-b3_flash_2m
+flash_algorithms:
+  stm32h7x_128k:
+    name: stm32h7x_128k
+    description: STM32H750xx
+    cores: [main]
+    default: true
+    instructions: v/NPj3BHELUDRk/0gHDtTCBg7UgAaEDwBwDrTCBg60hgYQC/6EgAaQDwBAAAKPnR50jlTGBg50hgYORI5kwgYAC/5UgAHwBoAPAEAAAo+NHfSOFMEDwgYN5I20zE+AQBACAQvQFG2EjAaEDwAQDWStBg2UgIOABoQPABAML4DAEAIHBH0UjQSUhhAL/OSABpAPAEAAAo+dHMSM9JCGAAv81IAB8AaADwBAAAKPjRAL/FSABpAPAEAAAo+dHCSMBoIPAwAMBJyGAIRsBoQPAIAMhgCEbAaEDwgADIYAC/ukgAaQDwBAAAKPnRt0jAaCDwCAC1SchgAL+3SAAfAGgA8AQAACj40bRICDgAaCDwMACtScH4DAEIRtD4DAFA8AgAwfgMAQhG0PgMAUDwgADB+AwBAL+oSAAfAGgA8AQAACj40aVICDgAaCDwCACeScH4DAEAIHBHELUBRsHzQ0Kx8QBvN9Ox8QFvNNKXSEBpl0sYQ5VLWGEAv5NIAGkA8AQAACj50ZBIwGhH9jBzmEOOS9hgGEbAaAQjQ+oCIxhDikvYYBhGwGhA8IAA2GAAv4ZIAGkA8AQAACj50YNIwGgg8AQAgUvYYBhGAGkA8AEA6LMBIBC9gEgAaHxLGEN6S8P4FAEAv3xIAB8AaADwBAAAKPjReUgIOABoR/Ywc5hDckvD+AwBdEgIOABoovEIAwQkROoDIxhDbEvD+AwBGEbQ+AwBQPCAAMP4DAEAv2pIAB8AaADwBAAAKPjRZ0gIOABoIPAEAGBLw/gMAQDgB+BiSAAfAGgA8AEACLEBILnnACC35/C1A0YMRhZGGUY1RgAis/EAbw3Ts/EBbwrSAL9SSABpAPAEAAAo+dFQSE5PeGEK4AC/UEgAHwBoAPAEAAAo+NFKSExPOGCH4LPxAG8M07PxAW8J0kRIwGhH9jB3uENBT/hgAiD4YAzgQ0gIOABoR/Ywd7hDPE/H+AwBAiA+Twg/OGAgLAzTACIG4C9oaGgPYEhgCDUIMVIcBCr22yA8E+AAIgTgFfgBCwH4AQtSHKJC+NMAIgPg/yAB+AELUhzE8SAAkEL32AAk//dp/rPxAG8K07PxAW8H0gC/IkgAaQDwBAAAKPnRB+AAvyJIAB8AaADwBAAAKPjRG0gAaQAgsLGz8QBvCdOz8QFvBtIWSMBoIPACABRP+GAH4BZICDgAaCDwAgAQT8f4DAEBIPC9s/EAbwnTs/EBbwbSCkjAaCDwAgAIT/hgB+ALSAg4AGgg8AIABE/H+AwBACx/9HWvACDk55RFAlgAIABSAADvDyMBZ0Wrie/NFCEAUgAAAAA=
+    pc_init: 7
+    pc_uninit: 101
+    pc_program_page: 611
+    pc_erase_sector: 343
+    pc_erase_all: 133
+    data_section_offset: 988
+    flash_properties:
+      address_range:
+        start: 0x08000000
+        end: 0x08020000
+      page_size: 1024
+      erased_byte_value: 255
+      program_page_timeout: 100
+      erase_sector_timeout: 6000
+      sectors:
+        - size: 131072
+          address: 0
+  stm32h7x_2048:
+    name: stm32h7x_2048
+    description: STM32H7x_2048
+    cores: [main]
+    default: true
+    instructions: v/NPj3BHELUDRk/0gHDtTCBg7UgAaEDwBwDrTCBg60hgYQC/6EgAaQDwBAAAKPnR50jlTGBg50hgYORI5kwgYAC/5UgAHwBoAPAEAAAo+NHfSOFMEDwgYN5I20zE+AQBACAQvQFG2EjAaEDwAQDWStBg2UgIOABoQPABAML4DAEAIHBH0UjQSUhhAL/OSABpAPAEAAAo+dHMSM9JCGAAv81IAB8AaADwBAAAKPjRAL/FSABpAPAEAAAo+dHCSMBoIPAwAMBJyGAIRsBoQPAIAMhgCEbAaEDwgADIYAC/ukgAaQDwBAAAKPnRt0jAaCDwCAC1SchgAL+3SAAfAGgA8AQAACj40bRICDgAaCDwMACtScH4DAEIRtD4DAFA8AgAwfgMAQhG0PgMAUDwgADB+AwBAL+oSAAfAGgA8AQAACj40aVICDgAaCDwCACeScH4DAEAIHBHELUBRsHzQ0Kx8QBvN9Ox8QFvNNKXSEBpl0sYQ5VLWGEAv5NIAGkA8AQAACj50ZBIwGhH9jBzmEOOS9hgGEbAaAQjQ+oCIxhDikvYYBhGwGhA8IAA2GAAv4ZIAGkA8AQAACj50YNIwGgg8AQAgUvYYBhGAGkA8AEA6LMBIBC9gEgAaHxLGEN6S8P4FAEAv3xIAB8AaADwBAAAKPjReUgIOABoR/Ywc5hDckvD+AwBdEgIOABoovEIAwQkROoDIxhDbEvD+AwBGEbQ+AwBQPCAAMP4DAEAv2pIAB8AaADwBAAAKPjRZ0gIOABoIPAEAGBLw/gMAQDgB+BiSAAfAGgA8AEACLEBILnnACC35/C1A0YMRhZGGUY1RgAis/EAbw3Ts/EBbwrSAL9SSABpAPAEAAAo+dFQSE5PeGEK4AC/UEgAHwBoAPAEAAAo+NFKSExPOGCH4LPxAG8M07PxAW8J0kRIwGhH9jB3uENBT/hgAiD4YAzgQ0gIOABoR/Ywd7hDPE/H+AwBAiA+Twg/OGAgLAzTACIG4C9oaGgPYEhgCDUIMVIcBCr22yA8E+AAIgTgFfgBCwH4AQtSHKJC+NMAIgPg/yAB+AELUhzE8SAAkEL32AAk//dp/rPxAG8K07PxAW8H0gC/IkgAaQDwBAAAKPnRB+AAvyJIAB8AaADwBAAAKPjRG0gAaQAgsLGz8QBvCdOz8QFvBtIWSMBoIPACABRP+GAH4BZICDgAaCDwAgAQT8f4DAEBIPC9s/EAbwnTs/EBbwbSCkjAaCDwAgAIT/hgB+ALSAg4AGgg8AIABE/H+AwBACx/9HWvACDk55RFAlgAIABSAADvDyMBZ0Wrie/NFCEAUgAAAAA=
+    pc_init: 7
+    pc_uninit: 101
+    pc_program_page: 611
+    pc_erase_sector: 343
+    pc_erase_all: 133
+    data_section_offset: 988
+    flash_properties:
+      address_range:
+        start: 0x08000000
+        end: 0x08200000
+      page_size: 1024
+      erased_byte_value: 255
+      program_page_timeout: 100
+      erase_sector_timeout: 6000
+      sectors:
+        - size: 131072
+          address: 0
+  stm32h7b0_flash:
+    name: stm32h7b0_flash
+    description: STM32H7B0_Flash_128k
+    cores: [main]
+    default: true
+    instructions: v/NPj3BHELUDRupI6kxgYQC/6UgAaQDwAQAAKPnR50jlTGBg5khgYOJI5kwgYAC/5EgAHwBoAPABAAAo+NHfSOBMEDwgYN5I20zE+AQBIEbAaQAgEL0BRtdIwGhA8AEA1UrQYNdICDgAaEDwAQDC+AwBACBwRwC/z0gAaQDwAQAAKPnRy0jMSUhhCEbAaCDwAQDIYAhGwGhA8AgAyGAIRsBoQPAgAMhgAL/DSABpAPABAAAo+dHASMBoIPAIAL5JyGAAv79IAB8AaADwAQAAKPjRuEi7SQhgt0jQ+AwBIPABALVJwfgMAQhG0PgMAUDwCADB+AwBCEbQ+AwBQPAgALBJCDkIYAC/rkgAHwBoAPABAAAo+NGrSAg4AGgg8AgApUnB+AwBACBwRxC1AUbB80cysfEAbzbTsfEBbzPSnkhAaaFLGEOcS1hhAL+aSABpAPAEAAAo+dGXSMBoIPT+UJVL2GAYRsBoBCND6oITGEORS9hgGEbAaEDwIADYYAC/jUgAaQDwBAAAKPnRikjAaCDwBACIS9hgGEYAaQDwAQDwswEgEL2HSABoh0sYQ4JLw/gUAQC/g0gAHwBoAPAEAAAo+NF/SAg4AGgg9P5QekvD+AwBe0gIOABoovGAAwQkROqDExhDdEvD+AwBGEbQ+AwBQPAgAMP4DAEAv3FIAB8AaADwBAAAKPjRbkgIOABoIPAEAGhLw/gMAWpIAB8A4AXgAGgA8AEACLEBILrn//fn/gAgtufwtQNGFkYaRjVGACQAv1xIAGkA8AEAACj50VhIWU94YQC/WkgAHwBoAPABAAAo+NFTSFZPOGCc4FJIwGgg8AEAUE/4YDhGwGhA8AIA+GBPSAg4AGgg8AEAx/gMAThG0PgMAUDwAgDH+AwBECkM0wAkBuAvaGhoF2BQYAg1CDJkHAIs9tsQOSjgACQE4BX4AQsC+AELZByMQvjTACQD4P8gAvgBC2QcwfEQAKBC99iz8QBvCdOz8QFvBtIxSMBoQPBAAC9P+GAH4DFICDgAaEDwQAArT8f4DAEAIf/3dv6z8QBvCtOz8QFvB9IAvyVIAGkA8AEAACj50QfgAL8kSAAfAGgA8AEAACj40R1IAGkAIB9PPx8/aABDsLGz8QBvCdOz8QFvBtIWSMBoIPACABRP+GAH4BZICDgAaCDwAgAQT8f4DAEBIPC9s/EAbwnTs/EBbwbSC0jAaCDwAgAJT/hgB+AKSAg4AGgg8AIABU/H+AwBACl/9GCvACDk5wAAAACvDwAgAFIjAWdFq4nvzRQhAFIAAO8PAAAAAA==
+    pc_init: 7
+    pc_uninit: 87
+    pc_program_page: 567
+    pc_erase_sector: 299
+    pc_erase_all: 119
+    data_section_offset: 972
+    flash_properties:
+      address_range:
+        start: 0x08000000
+        end: 0x08020000
+      page_size: 32768
+      erased_byte_value: 255
+      program_page_timeout: 100
+      erase_sector_timeout: 6000
+      sectors:
+        - size: 8192
+          address: 0
+  stm32h7a-b3_flash_2m:
+    name: stm32h7a-b3_flash_2m
+    description: STM32H7A-B3_Flash_2M
+    cores: [main]
+    default: true
+    instructions: v/NPj3BHELUDRupI6kxgYQC/6UgAaQDwAQAAKPnR50jlTGBg5khgYOJI5kwgYAC/5EgAHwBoAPABAAAo+NHfSOBMEDwgYN5I20zE+AQBIEbAaQAgEL0BRtdIwGhA8AEA1UrQYNdICDgAaEDwAQDC+AwBACBwRwC/z0gAaQDwAQAAKPnRy0jMSUhhCEbAaCDwAQDIYAhGwGhA8AgAyGAIRsBoQPAgAMhgAL/DSABpAPABAAAo+dHASMBoIPAIAL5JyGAAv79IAB8AaADwAQAAKPjRuEi7SQhgt0jQ+AwBIPABALVJwfgMAQhG0PgMAUDwCADB+AwBCEbQ+AwBQPAgALBJCDkIYAC/rkgAHwBoAPABAAAo+NGrSAg4AGgg8AgApUnB+AwBACBwRxC1AUbB80cysfEAbzbTsfEBbzPSnkhAaaFLGEOcS1hhAL+aSABpAPAEAAAo+dGXSMBoIPT+UJVL2GAYRsBoBCND6oITGEORS9hgGEbAaEDwIADYYAC/jUgAaQDwBAAAKPnRikjAaCDwBACIS9hgGEYAaQDwAQDwswEgEL2HSABoh0sYQ4JLw/gUAQC/g0gAHwBoAPAEAAAo+NF/SAg4AGgg9P5QekvD+AwBe0gIOABoovGAAwQkROqDExhDdEvD+AwBGEbQ+AwBQPAgAMP4DAEAv3FIAB8AaADwBAAAKPjRbkgIOABoIPAEAGhLw/gMAWpIAB8A4AXgAGgA8AEACLEBILrn//fn/gAgtufwtQNGFkYaRjVGACQAv1xIAGkA8AEAACj50VhIWU94YQC/WkgAHwBoAPABAAAo+NFTSFZPOGCc4FJIwGgg8AEAUE/4YDhGwGhA8AIA+GBPSAg4AGgg8AEAx/gMAThG0PgMAUDwAgDH+AwBECkM0wAkBuAvaGhoF2BQYAg1CDJkHAIs9tsQOSjgACQE4BX4AQsC+AELZByMQvjTACQD4P8gAvgBC2QcwfEQAKBC99iz8QBvCdOz8QFvBtIxSMBoQPBAAC9P+GAH4DFICDgAaEDwQAArT8f4DAEAIf/3dv6z8QBvCtOz8QFvB9IAvyVIAGkA8AEAACj50QfgAL8kSAAfAGgA8AEAACj40R1IAGkAIB9PPx8/aABDsLGz8QBvCdOz8QFvBtIWSMBoIPACABRP+GAH4BZICDgAaCDwAgAQT8f4DAEBIPC9s/EAbwnTs/EBbwbSC0jAaCDwAgAJT/hgB+AKSAg4AGgg8AIABU/H+AwBACl/9GCvACDk5wAAAACvDwAgAFIjAWdFq4nvzRQhAFIAAO8PAAAAAA==
+    pc_init: 7
+    pc_uninit: 87
+    pc_program_page: 567
+    pc_erase_sector: 299
+    pc_erase_all: 119
+    data_section_offset: 972
+    flash_properties:
+      address_range:
+        start: 0x08000000
+        end: 0x08200000
+      page_size: 32768
+      erased_byte_value: 255
+      program_page_timeout: 100
+      erase_sector_timeout: 6000
+      sectors:
+        - size: 8192
+          address: 0

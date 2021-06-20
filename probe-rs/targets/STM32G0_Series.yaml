@@ -1,0 +1,2190 @@
+---
+name: STM32G0 Series
+variants:
+  - name: STM32G030C6Tx
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32g0xx_32
+      - stm32g0xx_otp
+      - stm32g0x0_opt
+  - name: STM32G030C8Tx
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32g0xx_64
+      - stm32g0xx_otp
+      - stm32g0x0_opt
+  - name: STM32G030F6Px
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32g0xx_32
+      - stm32g0xx_otp
+      - stm32g0x0_opt
+  - name: STM32G030J6Mx
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32g0xx_32
+      - stm32g0xx_otp
+      - stm32g0x0_opt
+  - name: STM32G030K6Tx
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32g0xx_32
+      - stm32g0xx_otp
+      - stm32g0x0_opt
+  - name: STM32G030K8Tx
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32g0xx_64
+      - stm32g0xx_otp
+      - stm32g0x0_opt
+  - name: STM32G031C4Tx
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134234112
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32g0xx_16
+      - stm32g0xx_otp
+      - stm32g0x1_opt
+  - name: STM32G031C4Ux
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134234112
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32g0xx_16
+      - stm32g0xx_otp
+      - stm32g0x1_opt
+  - name: STM32G031C6Tx
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32g0xx_32
+      - stm32g0xx_otp
+      - stm32g0x1_opt
+  - name: STM32G031C6Ux
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32g0xx_32
+      - stm32g0xx_otp
+      - stm32g0x1_opt
+  - name: STM32G031C8Tx
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32g0xx_64
+      - stm32g0xx_otp
+      - stm32g0x1_opt
+  - name: STM32G031C8Ux
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32g0xx_64
+      - stm32g0xx_otp
+      - stm32g0x1_opt
+  - name: STM32G031F4Px
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134234112
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32g0xx_16
+      - stm32g0xx_otp
+      - stm32g0x1_opt
+  - name: STM32G031F6Px
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32g0xx_32
+      - stm32g0xx_otp
+      - stm32g0x1_opt
+  - name: STM32G031F8Px
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32g0xx_64
+      - stm32g0xx_otp
+      - stm32g0x1_opt
+  - name: STM32G031G4Ux
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134234112
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32g0xx_16
+      - stm32g0xx_otp
+      - stm32g0x1_opt
+  - name: STM32G031G6Ux
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32g0xx_32
+      - stm32g0xx_otp
+      - stm32g0x1_opt
+  - name: STM32G031G8Ux
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32g0xx_64
+      - stm32g0xx_otp
+      - stm32g0x1_opt
+  - name: STM32G031J4Mx
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134234112
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32g0xx_16
+      - stm32g0xx_otp
+      - stm32g0x1_opt
+  - name: STM32G031J6Mx
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32g0xx_32
+      - stm32g0xx_otp
+      - stm32g0x1_opt
+  - name: STM32G031K4Tx
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134234112
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32g0xx_16
+      - stm32g0xx_otp
+      - stm32g0x1_opt
+  - name: STM32G031K4Ux
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134234112
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32g0xx_16
+      - stm32g0xx_otp
+      - stm32g0x1_opt
+  - name: STM32G031K6Tx
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32g0xx_32
+      - stm32g0xx_otp
+      - stm32g0x1_opt
+  - name: STM32G031K6Ux
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32g0xx_32
+      - stm32g0xx_otp
+      - stm32g0x1_opt
+  - name: STM32G031K8Tx
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32g0xx_64
+      - stm32g0xx_otp
+      - stm32g0x1_opt
+  - name: STM32G031K8Ux
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32g0xx_64
+      - stm32g0xx_otp
+      - stm32g0x1_opt
+  - name: STM32G031Y8Yx
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32g0xx_64
+      - stm32g0xx_otp
+      - stm32g0x1_opt
+  - name: STM32G041C6Tx
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32g0xx_32
+      - stm32g0xx_otp
+      - stm32g0x1_opt
+  - name: STM32G041C6Ux
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32g0xx_32
+      - stm32g0xx_otp
+      - stm32g0x1_opt
+  - name: STM32G041C8Tx
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32g0xx_64
+      - stm32g0xx_otp
+      - stm32g0x1_opt
+  - name: STM32G041C8Ux
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32g0xx_64
+      - stm32g0xx_otp
+      - stm32g0x1_opt
+  - name: STM32G041F6Px
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32g0xx_32
+      - stm32g0xx_otp
+      - stm32g0x1_opt
+  - name: STM32G041F8Px
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32g0xx_64
+      - stm32g0xx_otp
+      - stm32g0x1_opt
+  - name: STM32G041G6Ux
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32g0xx_32
+      - stm32g0xx_otp
+      - stm32g0x1_opt
+  - name: STM32G041G8Ux
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32g0xx_64
+      - stm32g0xx_otp
+      - stm32g0x1_opt
+  - name: STM32G041J6Mx
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32g0xx_32
+      - stm32g0xx_otp
+      - stm32g0x1_opt
+  - name: STM32G041K6Tx
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32g0xx_32
+      - stm32g0xx_otp
+      - stm32g0x1_opt
+  - name: STM32G041K6Ux
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32g0xx_32
+      - stm32g0xx_otp
+      - stm32g0x1_opt
+  - name: STM32G041K8Tx
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32g0xx_64
+      - stm32g0xx_otp
+      - stm32g0x1_opt
+  - name: STM32G041K8Ux
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32g0xx_64
+      - stm32g0xx_otp
+      - stm32g0x1_opt
+  - name: STM32G041Y8Yx
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32g0xx_64
+      - stm32g0xx_otp
+      - stm32g0x1_opt
+  - name: STM32G070CBTx
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536907776
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32g0xx_128
+      - stm32g0xx_otp
+      - stm32g0x0_opt
+  - name: STM32G070KBTx
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536907776
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32g0xx_128
+      - stm32g0xx_otp
+      - stm32g0x0_opt
+  - name: STM32G070RBTx
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536907776
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32g0xx_128
+      - stm32g0xx_otp
+      - stm32g0x0_opt
+  - name: STM32G071C6Tx
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536907776
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32g0xx_32
+      - stm32g0xx_otp
+      - stm32g0x1_opt
+  - name: STM32G071C6Ux
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536907776
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32g0xx_32
+      - stm32g0xx_otp
+      - stm32g0x1_opt
+  - name: STM32G071C8Tx
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536907776
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32g0xx_64
+      - stm32g0xx_otp
+      - stm32g0x1_opt
+  - name: STM32G071C8Ux
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536907776
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32g0xx_64
+      - stm32g0xx_otp
+      - stm32g0x1_opt
+  - name: STM32G071CBTx
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536907776
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32g0xx_128
+      - stm32g0xx_otp
+      - stm32g0x1_opt
+  - name: STM32G071CBUx
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536907776
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32g0xx_128
+      - stm32g0xx_otp
+      - stm32g0x1_opt
+  - name: STM32G071EBYx
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536907776
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32g0xx_128
+      - stm32g0xx_otp
+      - stm32g0x1_opt
+  - name: STM32G071G6Ux
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536907776
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32g0xx_32
+      - stm32g0xx_otp
+      - stm32g0x1_opt
+  - name: STM32G071G8Ux
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536907776
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32g0xx_64
+      - stm32g0xx_otp
+      - stm32g0x1_opt
+  - name: STM32G071G8UxN
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536907776
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32g0xx_64
+      - stm32g0xx_otp
+      - stm32g0x1_opt
+  - name: STM32G071GBUx
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536907776
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32g0xx_128
+      - stm32g0xx_otp
+      - stm32g0x1_opt
+  - name: STM32G071GBUxN
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536907776
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32g0xx_128
+      - stm32g0xx_otp
+      - stm32g0x1_opt
+  - name: STM32G071K6Tx
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536907776
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32g0xx_32
+      - stm32g0xx_otp
+      - stm32g0x1_opt
+  - name: STM32G071K6Ux
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536907776
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32g0xx_32
+      - stm32g0xx_otp
+      - stm32g0x1_opt
+  - name: STM32G071K8Tx
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536907776
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32g0xx_64
+      - stm32g0xx_otp
+      - stm32g0x1_opt
+  - name: STM32G071K8TxN
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536907776
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32g0xx_64
+      - stm32g0xx_otp
+      - stm32g0x1_opt
+  - name: STM32G071K8Ux
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536907776
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32g0xx_64
+      - stm32g0xx_otp
+      - stm32g0x1_opt
+  - name: STM32G071K8UxN
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536907776
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32g0xx_64
+      - stm32g0xx_otp
+      - stm32g0x1_opt
+  - name: STM32G071KBTx
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536907776
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32g0xx_128
+      - stm32g0xx_otp
+      - stm32g0x1_opt
+  - name: STM32G071KBTxN
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536907776
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32g0xx_128
+      - stm32g0xx_otp
+      - stm32g0x1_opt
+  - name: STM32G071KBUx
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536907776
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32g0xx_128
+      - stm32g0xx_otp
+      - stm32g0x1_opt
+  - name: STM32G071KBUxN
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536907776
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32g0xx_128
+      - stm32g0xx_otp
+      - stm32g0x1_opt
+  - name: STM32G071R6Tx
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536907776
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134250496
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32g0xx_32
+      - stm32g0xx_otp
+      - stm32g0x1_opt
+  - name: STM32G071R8Tx
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536907776
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134283264
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32g0xx_64
+      - stm32g0xx_otp
+      - stm32g0x1_opt
+  - name: STM32G071RBIx
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536907776
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32g0xx_128
+      - stm32g0xx_otp
+      - stm32g0x1_opt
+  - name: STM32G071RBTx
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536907776
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32g0xx_128
+      - stm32g0xx_otp
+      - stm32g0x1_opt
+  - name: STM32G081CBTx
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536907776
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32g0xx_128
+      - stm32g0xx_otp
+      - stm32g0x1_opt
+  - name: STM32G081CBUx
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536907776
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32g0xx_128
+      - stm32g0xx_otp
+      - stm32g0x1_opt
+  - name: STM32G081EBYx
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536907776
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32g0xx_128
+      - stm32g0xx_otp
+      - stm32g0x1_opt
+  - name: STM32G081GBUx
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536907776
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32g0xx_128
+      - stm32g0xx_otp
+      - stm32g0x1_opt
+  - name: STM32G081GBUxN
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536907776
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32g0xx_128
+      - stm32g0xx_otp
+      - stm32g0x1_opt
+  - name: STM32G081KBTx
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536907776
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32g0xx_128
+      - stm32g0xx_otp
+      - stm32g0x1_opt
+  - name: STM32G081KBTxN
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536907776
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32g0xx_128
+      - stm32g0xx_otp
+      - stm32g0x1_opt
+  - name: STM32G081KBUx
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536907776
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32g0xx_128
+      - stm32g0xx_otp
+      - stm32g0x1_opt
+  - name: STM32G081KBUxN
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536907776
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32g0xx_128
+      - stm32g0xx_otp
+      - stm32g0x1_opt
+  - name: STM32G081RBIx
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536907776
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32g0xx_128
+      - stm32g0xx_otp
+      - stm32g0x1_opt
+  - name: STM32G081RBTx
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536907776
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 134217728
+            end: 134348800
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - stm32g0xx_128
+      - stm32g0xx_otp
+      - stm32g0x1_opt
+flash_algorithms:
+  stm32g0xx_otp:
+    name: stm32g0xx_otp
+    description: STM32G0xx Flash OTP
+    cores: [main]
+    default: false
+    instructions: v/NPj3BHG0gZSYFgGkmBYBpJAWEAIHBHASAWScAHSGEAIHBHASBwRwAgcEfwtckdEEzJCBFNyQAlYQEmACcT4GZhE2gDYFNoQ2C/80+PI2nbA/zUZ2EjaStCAtAlYQEg8L0IMAg5CDIAKenRACDwvSMBZ0UAIAJAq4nvzfrDAAAAAAAA
+    pc_init: 7
+    pc_uninit: 25
+    pc_program_page: 45
+    pc_erase_sector: 41
+    pc_erase_all: ~
+    data_section_offset: 128
+    flash_properties:
+      address_range:
+        start: 536834048
+        end: 536835072
+      page_size: 1024
+      erased_byte_value: 255
+      program_page_timeout: 3000
+      erase_sector_timeout: 3000
+      sectors:
+        - size: 1024
+          address: 0
+  stm32g0xx_16:
+    name: stm32g0xx_16
+    description: STM32G0xx 16 KB Flash
+    cores: [main]
+    default: true
+    instructions: v/NPj3BHwAOADnBHNUg0SYFgNUmBYDVJAWEAIHBHASAwScAHSGEAIHBHASBwRy1ILkoCYQQhQWFBaQEjGwQZQ0Fhv/NPjwFpyQP81AAhQWEBaRFCBNABaRFDAWEBIHBHACBwR8ADgQ4eSCBKAmHJAIkcQWFBaQEjGwQZQ0Fhv/NPjwFpyQP81AAhQWEBaRFCAtACYQEgcEcAIHBH8LXJHRBMyQgRTckAJWEBJgAnE+BmYRNoA2BTaENgv/NPjyNp2wP81GdhI2krQgLQJWEBIPC9CDAIOQgyACnp0QAg8L0jAWdFACACQKuJ7836wwAAAAAAAA==
+    pc_init: 13
+    pc_uninit: 31
+    pc_program_page: 157
+    pc_erase_sector: 101
+    pc_erase_all: 47
+    data_section_offset: 240
+    flash_properties:
+      address_range:
+        start: 134217728
+        end: 134234112
+      page_size: 1024
+      erased_byte_value: 255
+      program_page_timeout: 400
+      erase_sector_timeout: 400
+      sectors:
+        - size: 2048
+          address: 0
+  stm32g0x1_opt:
+    name: stm32g0x1_opt
+    description: STM32G0x1 Flash Options
+    cores: [main]
+    default: false
+    instructions: v/NPj3BHPEg6SYFgO0mBYDtJwWA7ScFgO0kBYQAgcEcBITVIyQdBYUEEQWEAIHBHASBwRzBINEsDYTRJAWI/IcFiAWP/IUFiACKCYkFjgmMpSYAxCmABIUkEQWG/80+PAWnJA/zUQmEBaRlCBNABaRlDAWEBIHBHACBwRwAgcEfwtRd7Fn28Rhd+FWi+RlRok2gRaRhI0mkbTwdhHE89QAViHE0sQMRiK0ADY2dG+7JDYhlLGUCBYvGyQWN3RvmygWMWSQpADEmAMQpgmQtBYb/zT48BackD/NQCaQpJCkIE0AJpCkMCYQEg8L0AIPC9QBhwRyMBZ0UAIAJAq4nvzTsqGQh/bl1M+sMAAKr+Tzj//08/PwA/AP8AAID/AAEAAAAAAA==
+    pc_init: 7
+    pc_uninit: 33
+    pc_program_page: 129
+    pc_erase_sector: 125
+    pc_erase_all: 53
+    data_section_offset: 288
+    flash_properties:
+      address_range:
+        start: 536836096
+        end: 536836128
+      page_size: 32
+      erased_byte_value: 255
+      program_page_timeout: 3000
+      erase_sector_timeout: 3000
+      sectors:
+        - size: 32
+          address: 0
+  stm32g0xx_64:
+    name: stm32g0xx_64
+    description: STM32G0xx 64 KB Flash
+    cores: [main]
+    default: true
+    instructions: v/NPj3BHwAOADnBHNUg0SYFgNUmBYDVJAWEAIHBHASAwScAHSGEAIHBHASBwRy1ILkoCYQQhQWFBaQEjGwQZQ0Fhv/NPjwFpyQP81AAhQWEBaRFCBNABaRFDAWEBIHBHACBwR8ADgQ4eSCBKAmHJAIkcQWFBaQEjGwQZQ0Fhv/NPjwFpyQP81AAhQWEBaRFCAtACYQEgcEcAIHBH8LXJHRBMyQgRTckAJWEBJgAnE+BmYRNoA2BTaENgv/NPjyNp2wP81GdhI2krQgLQJWEBIPC9CDAIOQgyACnp0QAg8L0jAWdFACACQKuJ7836wwAAAAAAAA==
+    pc_init: 13
+    pc_uninit: 31
+    pc_program_page: 157
+    pc_erase_sector: 101
+    pc_erase_all: 47
+    data_section_offset: 240
+    flash_properties:
+      address_range:
+        start: 134217728
+        end: 134283264
+      page_size: 1024
+      erased_byte_value: 255
+      program_page_timeout: 400
+      erase_sector_timeout: 400
+      sectors:
+        - size: 2048
+          address: 0
+  stm32g0xx_128:
+    name: stm32g0xx_128
+    description: STM32G0xx 128 KB Flash
+    cores: [main]
+    default: true
+    instructions: v/NPj3BHwAOADnBHNUg0SYFgNUmBYDVJAWEAIHBHASAwScAHSGEAIHBHASBwRy1ILkoCYQQhQWFBaQEjGwQZQ0Fhv/NPjwFpyQP81AAhQWEBaRFCBNABaRFDAWEBIHBHACBwR8ADgQ4eSCBKAmHJAIkcQWFBaQEjGwQZQ0Fhv/NPjwFpyQP81AAhQWEBaRFCAtACYQEgcEcAIHBH8LXJHRBMyQgRTckAJWEBJgAnE+BmYRNoA2BTaENgv/NPjyNp2wP81GdhI2krQgLQJWEBIPC9CDAIOQgyACnp0QAg8L0jAWdFACACQKuJ7836wwAAAAAAAA==
+    pc_init: 13
+    pc_uninit: 31
+    pc_program_page: 157
+    pc_erase_sector: 101
+    pc_erase_all: 47
+    data_section_offset: 240
+    flash_properties:
+      address_range:
+        start: 134217728
+        end: 134348800
+      page_size: 1024
+      erased_byte_value: 255
+      program_page_timeout: 400
+      erase_sector_timeout: 400
+      sectors:
+        - size: 2048
+          address: 0
+  stm32g0x0_opt:
+    name: stm32g0x0_opt
+    description: STM32G0x0 Flash Options
+    cores: [main]
+    default: false
+    instructions: v/NPj3BHLUgrSYFgLEmBYCxJwWAsScFgLEkBYQAgcEcBISZIyQdBYUEEQWEAIHBHASBwRyFIJUoCYSVJAWI/IcFiAWMBIUkEQWG/80+PAWnJA/zUACFBYQFpEUIE0AFpEUMBYQEgcEcAIHBHACBwRzC1lGgTaFFoEEgUSgJhFU0rQANiFEsZQMFiHEAEYwEhSQRBYb/zT48BackD/NQBaRFCBNABaRFDAWEBIDC9ACAwvUAYcEcAACMBZ0UAIAJAq4nvzTsqGQh/bl1M+sMAAKr+Tzj//08/PwA/AAAAAAA=
+    pc_init: 7
+    pc_uninit: 33
+    pc_program_page: 113
+    pc_erase_sector: 109
+    pc_erase_all: 53
+    data_section_offset: 220
+    flash_properties:
+      address_range:
+        start: 536836096
+        end: 536836108
+      page_size: 12
+      erased_byte_value: 255
+      program_page_timeout: 3000
+      erase_sector_timeout: 3000
+      sectors:
+        - size: 12
+          address: 0
+  stm32g0xx_32:
+    name: stm32g0xx_32
+    description: STM32G0xx 32 KB Flash
+    cores: [main]
+    default: true
+    instructions: v/NPj3BHwAOADnBHNUg0SYFgNUmBYDVJAWEAIHBHASAwScAHSGEAIHBHASBwRy1ILkoCYQQhQWFBaQEjGwQZQ0Fhv/NPjwFpyQP81AAhQWEBaRFCBNABaRFDAWEBIHBHACBwR8ADgQ4eSCBKAmHJAIkcQWFBaQEjGwQZQ0Fhv/NPjwFpyQP81AAhQWEBaRFCAtACYQEgcEcAIHBH8LXJHRBMyQgRTckAJWEBJgAnE+BmYRNoA2BTaENgv/NPjyNp2wP81GdhI2krQgLQJWEBIPC9CDAIOQgyACnp0QAg8L0jAWdFACACQKuJ7836wwAAAAAAAA==
+    pc_init: 13
+    pc_uninit: 31
+    pc_program_page: 157
+    pc_erase_sector: 101
+    pc_erase_all: 47
+    data_section_offset: 240
+    flash_properties:
+      address_range:
+        start: 134217728
+        end: 134250496
+      page_size: 1024
+      erased_byte_value: 255
+      program_page_timeout: 400
+      erase_sector_timeout: 400
+      sectors:
+        - size: 2048
+          address: 0
