@@ -53,7 +53,7 @@ fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
                 cores: vec![Core {
                     name: "core".to_owned(),
                     core_type: CoreType::M0,
-                    arm_ap: 0,
+                    arm_ap: Some(0),
                 }],
                 memory_map: vec![],
                 flash_algorithms: vec![],
@@ -70,7 +70,7 @@ fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
                 cores: vec![Core {
                     name: "core".to_owned(),
                     core_type: CoreType::M4,
-                    arm_ap: 0,
+                    arm_ap: Some(0),
                 }],
                 memory_map: vec![],
                 flash_algorithms: vec![],
@@ -87,7 +87,7 @@ fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
                 cores: vec![Core {
                     name: "core".to_owned(),
                     core_type: CoreType::M3,
-                    arm_ap: 0,
+                    arm_ap: Some(0),
                 }],
                 memory_map: vec![],
                 flash_algorithms: vec![],
@@ -104,7 +104,7 @@ fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
                 cores: vec![Core {
                     name: "core".to_owned(),
                     core_type: CoreType::M33,
-                    arm_ap: 0,
+                    arm_ap: Some(0),
                 }],
                 memory_map: vec![],
                 flash_algorithms: vec![],
@@ -121,7 +121,7 @@ fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
                 cores: vec![Core {
                     name: "core".to_owned(),
                     core_type: CoreType::M7,
-                    arm_ap: 0,
+                    arm_ap: Some(0),
                 }],
                 memory_map: vec![],
                 flash_algorithms: vec![],
@@ -138,7 +138,7 @@ fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
                 cores: vec![Core {
                     name: "core".to_owned(),
                     core_type: CoreType::Riscv,
-                    arm_ap: 0,
+                    arm_ap: None,
                 }],
                 memory_map: vec![],
                 flash_algorithms: vec![],

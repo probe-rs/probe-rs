@@ -44,5 +44,5 @@ pub struct Core {
     pub core_type: CoreType,
 
     /// The AP number to access the core
-    pub arm_ap: u8,
+    pub arm_ap: Option<u8>,
 }

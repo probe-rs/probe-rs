@@ -2,6 +2,7 @@
 
 use crate::architecture::{
     arm::{
+        ap::AccessPortError,
         communication_interface::{
             ApInformation::{MemoryAp, Other},
             ArmProbeInterface, MemoryApInformation,
@@ -70,7 +71,14 @@ impl ArchitectureInterface {
     ) -> Result<Core<'probe>, Error> {
         match self {
             ArchitectureInterface::Arm(state) => {
-                let memory = state.memory_interface(config.arm_ap.into())?;
+                let memory = state.memory_interface(
+                    config
+                        .arm_ap
+                        .ok_or(Error::ArchitectureSpecific(
+                            AccessPortError::TargetApConfigMissing(config.clone()).into(),
+                        ))?
+                        .into(),
+                )?;
 
                 core.attach_arm(core_state, memory)
             }
