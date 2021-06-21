@@ -79,13 +79,13 @@ pub enum FileDownloadError {
 /// Options for downloading a file onto a target chip.
 ///
 ///
-/// This struct should be created using the `new` function, and can be configured either by setting
-/// the fields directly, or using the convenience methods:
+/// This struct should be created using the [`DownloadOptions::default()`] function, and can be configured by setting
+/// the fields directly:
 ///
 /// ```
 /// use probe_rs::flashing::DownloadOptions;
 ///
-/// let mut options = DownloadOptions::new().keep_unwritten_bytes(true);
+/// let mut options = DownloadOptions::default();
 ///
 /// options.verify = true;
 /// ```
@@ -118,46 +118,6 @@ impl<'progress> DownloadOptions<'progress> {
     /// DownloadOptions with default values.
     pub fn new() -> Self {
         Self::default()
-    }
-
-    /// Specify a callback for progress reports.
-    pub fn with_progress_report(mut self, progress: &'progress FlashProgress) -> Self {
-        self.progress = Some(progress);
-        self
-    }
-
-    /// Prepare everything for flashing, but do not perform any actual erase or program operations.
-    pub fn dry_run(mut self, dry_run: bool) -> Self {
-        self.dry_run = dry_run;
-        self
-    }
-
-    /// Restore erased sections of the flash, which do not get overweritten with new data, to their existing values.
-    /// See [`Self::keep_unwritten_bytes`].
-    pub fn keep_unwritten_bytes(mut self, keep_unwritten_bytes: bool) -> Self {
-        self.keep_unwritten_bytes = keep_unwritten_bytes;
-        self
-    }
-
-    /// Verify data after flashing.
-    pub fn verify(mut self, verify: bool) -> Self {
-        self.verify = verify;
-        self
-    }
-
-    /// Perform a full erase of the chip.
-    /// This is often faster than erasing a lot of single sectors.
-    /// So if you do not need the old contents of the flash, this is a good option.
-    pub fn do_chip_erase(mut self, do_chip_erase: bool) -> Self {
-        self.do_chip_erase = do_chip_erase;
-        self
-    }
-
-    /// If the chip was pre-erased with external erasers, this flag can be set to true to skip erasing
-    /// It may be useful for mass production.
-    pub fn skip_erase(mut self, skip_erase: bool) -> Self {
-        self.skip_erase = skip_erase;
-        self
     }
 }
 

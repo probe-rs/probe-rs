@@ -882,9 +882,12 @@ impl Debugger {
                     &path_to_elf
                 ));
 
-                let download_options = DownloadOptions::new()
-                    .keep_unwritten_bytes(self.debugger_options.restore_unwritten_bytes)
-                    .do_chip_erase(self.debugger_options.full_chip_erase);
+                let mut download_options = DownloadOptions::default();
+
+                download_options.keep_unwritten_bytes =
+                    self.debugger_options.restore_unwritten_bytes;
+
+                download_options.do_chip_erase = self.debugger_options.full_chip_erase;
 
                 match download_file_with_options(
                     &mut session_data.session,
