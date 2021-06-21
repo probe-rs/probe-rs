@@ -531,6 +531,7 @@ pub enum Architecture {
 pub enum CoreStatus {
     Running,
     Halted(HaltReason),
+    /// This is a Cortex-M specific status, and will not be set or handled by RISCV code. 
     LockedUp,
     Sleeping,
     Unknown,
