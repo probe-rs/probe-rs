@@ -170,7 +170,8 @@ impl DutDefinition {
                 } else {
                     // For relative paths, join the path with the location of the source file to create an absolute path.
 
-                    let source_file_directory = source_file.parent().unwrap_or(Path::new("."));
+                    let source_file_directory =
+                        source_file.parent().unwrap_or_else(|| Path::new("."));
 
                     let flash_binary_location = source_file_directory.join(path);
 

@@ -27,7 +27,7 @@ pub enum RW {
 
 /// Contains information about requested access from host debugger.
 #[allow(non_snake_case)]
-#[derive(Copy, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub struct InnerTransferRequest {
     /// 0 = Debug PortType (DP), 1 = Access PortType (AP).
     pub APnDP: PortType,

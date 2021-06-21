@@ -331,11 +331,10 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
                             self.inlining_state
                         );
                         in_inlined_function = true;
-                        break;
                     } else {
                         // No inlined function
-                        break;
                     }
+                    break;
                 }
             }
         } else {
@@ -1018,9 +1017,9 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     if (ranges.begin <= address) && (address < ranges.end) {
                         // Check if we are actually in an inlined function
 
-                        if find_inlined {
-                            let die = FunctionDie::new(current.clone());
+                        let die = FunctionDie::new(current.clone());
 
+                        if find_inlined {
                             log::debug!(
                                 "Found DIE, now checking for inlined functions: name={:?}",
                                 die.function_name(&self)
@@ -1033,8 +1032,6 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                     Some(FunctionDie::new(current.clone()))
                                 });
                         } else {
-                            let die = FunctionDie::new(current.clone());
-
                             log::debug!("Found DIE: name={:?}", die.function_name(&self));
 
                             return Some(die);

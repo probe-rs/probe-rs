@@ -186,7 +186,7 @@ impl SwdFrequencyToDelayCount {
     }
 
     /// Get the SWD frequency in kHz
-    pub(crate) fn to_khz(&self) -> u32 {
+    pub(crate) fn to_khz(self) -> u32 {
         use SwdFrequencyToDelayCount::*;
 
         match self {
@@ -243,7 +243,7 @@ impl JTagFrequencyToDivider {
     }
 
     /// Return the frequency in kHz
-    pub(crate) fn to_khz(&self) -> u32 {
+    pub(crate) fn to_khz(self) -> u32 {
         use JTagFrequencyToDivider::*;
 
         match self {
