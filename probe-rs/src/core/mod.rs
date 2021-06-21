@@ -531,6 +531,7 @@ pub enum Architecture {
 pub enum CoreStatus {
     Running,
     Halted(HaltReason),
+    LockedUp,
     Sleeping,
     Unknown,
 }
