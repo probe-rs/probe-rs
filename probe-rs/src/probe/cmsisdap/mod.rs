@@ -164,7 +164,7 @@ impl CmsisDap {
             return Ok(0);
         }
 
-        let mut batch = std::mem::replace(&mut self.batch, Vec::new());
+        let mut batch = std::mem::take(&mut self.batch);
 
         debug!("{} items in batch", batch.len());
 
