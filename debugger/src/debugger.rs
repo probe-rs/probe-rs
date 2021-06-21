@@ -548,12 +548,6 @@ impl Debugger {
                                     hit_breakpoint_ids: None,
                                 });
                                 debug_adapter.send_event("stopped", event_body);
-                                debug_adapter.send_response::<()>(
-                                    &request,
-                                    Err(DebuggerError::Other(anyhow!(
-                                        "The processor is in LOCKED status, as a result of an unrecoverable exception"
-                                    ))),
-                                );
                                 return false;
                             }
                             CoreStatus::Unknown => {
