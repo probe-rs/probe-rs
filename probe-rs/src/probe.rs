@@ -751,6 +751,10 @@ impl DebugProbe for FakeProbe {
         self
     }
 
+    fn has_arm_interface(&self) -> bool {
+        true
+    }
+
     fn try_get_arm_interface<'probe>(
         self: Box<Self>,
     ) -> Result<Box<dyn ArmProbeInterface + 'probe>, (Box<dyn DebugProbe>, DebugProbeError)> {
