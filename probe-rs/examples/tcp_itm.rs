@@ -1,5 +1,8 @@
-use probe_rs::architecture::arm::swo::{Decoder, SwoConfig, TracePacket};
+use probe_rs::architecture::arm::swo::SwoConfig;
 use probe_rs::Error;
+
+use itm_decode::{Decoder, TracePacket};
+
 use serde::{Deserialize, Serialize};
 use std::net::{SocketAddr, TcpListener, TcpStream};
 use std::sync::mpsc::{channel, Receiver, Sender};
@@ -38,7 +41,7 @@ fn main() -> Result<(), Error> {
     loop {
         let bytes = session.read_swo()?;
 
-        decoder.feed(bytes);
+        decoder.push(bytes);
         while let Ok(Some(packet)) = decoder.pull() {
             match packet {
                 TracePacket::LocalTimestamp1 { ts, data_relation } => {
