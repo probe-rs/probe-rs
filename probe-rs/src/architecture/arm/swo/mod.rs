@@ -1,5 +1,3 @@
-pub use itm_decode::*;
-
 use crate::Error;
 
 #[derive(Debug, Copy, Clone)]

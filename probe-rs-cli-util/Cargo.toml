@@ -13,7 +13,7 @@ keywords = ["embedded"]
 license = "MIT OR Apache-2.0"
 
 [features]
-default = ["sentry", "anyhow"]
+default = ["anyhow"]
 
 [dependencies]
 thiserror = "1.0"
