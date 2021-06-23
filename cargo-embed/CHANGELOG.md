@@ -7,12 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- RTT and GDB server can now run concurrently (#159).
-
 ### Changed
-
-- Update to probe-rs 0.11.0.
-- Improved handling of config files. Unknown keys in the config file now cause an error, and trying to use unknown profiles as well (#205).
 
 ### Fixed
 
