@@ -7,11 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- RTT and GDB server can now run concurrently (#159).
+
 ### Changed
 
+- Update to probe-rs 0.11.0.
 - Improved handling of config files. Unknown keys in the config file now cause an error, and trying to use unknown profiles as well (#205).
 
 ### Fixed
+
+## [0.11.0]
+
+### Added
+
+- RTT and GDB server can now run concurrently (#159).
+
+### Changed
+
+- Update to probe-rs 0.11.0.
+- Improved handling of config files. Unknown keys in the config file now cause an error, and trying to use unknown profiles as well (#205).
 
 ## [0.10.1]
 
@@ -155,7 +169,8 @@ An example is this config:
 ## [0.6.0]
 - Initial release
 
-[Unreleased]: https://github.com/probe-rs/cargo-embed/compare/v0.10.1..master
+[Unreleased]: https://github.com/probe-rs/cargo-embed/compare/v0.11.0..master
+[0.11.0]: https://github.com/probe-rs/cargo-embed/releases/tag/v0.10.1..v0.11.0
 [0.10.1]: https://github.com/probe-rs/cargo-embed/releases/tag/v0.10.0..v0.10.1
 [0.10.0]: https://github.com/probe-rs/cargo-embed/releases/tag/v0.9.0..v0.10.0
 [0.9.1]: https://github.com/probe-rs/cargo-embed/releases/tag/v0.9.0..v0.9.1

@@ -432,10 +432,11 @@ fn main_try() -> Result<()> {
                 multi_progress.join().unwrap();
             });
 
-            let options = DownloadOptions::new()
-                .with_progress_report(&progress)
-                .keep_unwritten_bytes(config.flashing.restore_unwritten_bytes)
-                .do_chip_erase(config.flashing.do_chip_erase);
+            let mut options = DownloadOptions::new();
+
+            options.progress = Some(&progress);
+            options.keep_unwritten_bytes = config.flashing.restore_unwritten_bytes;
+            options.do_chip_erase = config.flashing.do_chip_erase;
 
             download_file_with_options(&mut session, &path, Format::Elf, options)
                 .with_context(|| format!("failed to flash {}", path.display()))?;
@@ -447,15 +448,12 @@ fn main_try() -> Result<()> {
             // messages, so they'll never be printed anywhere.
             logging::clear_progress_bar();
         } else {
-            download_file_with_options(
-                &mut session,
-                &path,
-                Format::Elf,
-                DownloadOptions::new()
-                    .do_chip_erase(config.flashing.do_chip_erase)
-                    .keep_unwritten_bytes(config.flashing.restore_unwritten_bytes),
-            )
-            .with_context(|| format!("failed to flash {}", path.display()))?;
+            let mut options = DownloadOptions::new();
+            options.keep_unwritten_bytes = config.flashing.restore_unwritten_bytes;
+            options.do_chip_erase = config.flashing.do_chip_erase;
+
+            download_file_with_options(&mut session, &path, Format::Elf, options)
+                .with_context(|| format!("failed to flash {}", path.display()))?;
         }
 
         // Stop timer.
