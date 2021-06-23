@@ -4,7 +4,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
 ### Added
+
+### Target Support
+
+### Changed
+
+### Fixed
+
+## [0.11.0]
+
+### Added
+
 - Support for the `HNONSEC` bit in memory access. This now allows secure access on chips which support TrustZone (#465).
 - Support for RISCV chips which use the System Bus Access method for memory access when debugging (#527).
 - Support for double buffering in the flash loader, which increased flashing speed (#107).
@@ -112,6 +124,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - STLink: chunk writes in `write_8` to avoid hitting limit (#697)
 
 ## [0.10.1]
+
 ### Fixed
 
 - Replace calls to `unwrap()` in adi_v5_memory_interface.rs with proper error types (#440).
@@ -389,7 +402,8 @@ Initial release on crates.io
 - Working basic flash downloader with nRF51.
 - Introduce cargo-flash which can automatically build & flash the target elf file.
 
-[Unreleased]: https://github.com/probe-rs/probe-rs/compare/0.11.0-alpha.1...master
+[Unreleased]: https://github.com/probe-rs/probe-rs/compare/0.11.0...master
+[0.11.0]: https://github.com/probe-rs/probe-rs/compare/v0.10.1...0.11.0
 [0.11.0-alpha.1]: https://github.com/probe-rs/probe-rs/compare/v0.10.1...0.11.0-alpha.1
 [0.10.1]: https://github.com/probe-rs/probe-rs/compare/v0.10.0...v0.10.1
 [0.10.0]: https://github.com/probe-rs/probe-rs/compare/v0.9.0...v0.10.0
