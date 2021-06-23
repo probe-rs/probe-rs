@@ -2,14 +2,11 @@ use anyhow::{anyhow, Result};
 use probe_rs_rtt::RttChannel;
 use std::collections::HashMap;
 use std::io::{Read, Seek};
-use std::path::PathBuf;
-
 use super::channel::{ChannelState, DataFormat, Packet};
 
 /// App holds the state of the application
 pub struct App {
     tabs: Vec<ChannelState>,
-    current_tab: usize,
 }
 
 fn pull_channel<C: RttChannel>(channels: &mut Vec<C>, n: usize) -> Option<C> {
@@ -75,10 +72,7 @@ impl App {
             ));
         }
 
-        Ok(Self {
-            tabs,
-            current_tab: 0,
-        })
+        Ok(Self {tabs})
     }
 
     pub fn get_rtt_symbol<T: Read + Seek>(file: &mut T) -> Option<u64> {
@@ -99,10 +93,10 @@ impl App {
         None
     }
 
-    pub fn render(
-        &mut self,
-        defmt_state: &Option<(defmt_decoder::Table, Option<defmt_decoder::Locations>)>,
-    ) {
+    // pub fn render(
+    //     &mut self,
+    //     defmt_state: &Option<(defmt_decoder::Table, Option<defmt_decoder::Locations>)>,
+    // ) {
         // binle_or_defmt => {
         //     self.terminal
         //         .draw(|f| {
@@ -218,15 +212,7 @@ impl App {
         //             .set_scroll_offset(message_num - height.min(message_num));
         //     }
         // }
-    }
-
-    pub fn current_tab(&self) -> &ChannelState {
-        &self.tabs[self.current_tab]
-    }
-
-    pub fn current_tab_mut(&mut self) -> &mut ChannelState {
-        &mut self.tabs[self.current_tab]
-    }
+    //}
 
     /// Polls the RTT target for new data on all channels.
     pub fn poll_rtt(&mut self) -> HashMap<String, Packet> {
@@ -239,7 +225,7 @@ impl App {
             .collect::<HashMap<_, _>>()
     }
 
-    pub fn push_rtt(&mut self) {
-        self.tabs[self.current_tab].push_rtt();
-    }
+    // pub fn push_rtt(&mut self) {
+    //     self.tabs[self.current_tab].push_rtt();
+    // }
 }

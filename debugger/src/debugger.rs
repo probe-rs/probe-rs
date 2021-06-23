@@ -1097,8 +1097,6 @@ pub fn attach_to_rtt(
         match Rtt::attach_region(session.clone(), &rtt_header_address) {
             Ok(rtt) => {
                 log::info!("RTT initialized.");
-
-                let chip_name = debugger_options.chip.as_deref().unwrap_or_default();
                 let app = crate::rtt::app::App::new(rtt, &debugger_options.rtt)?;
                 return Ok(app);
             }

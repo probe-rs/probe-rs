@@ -14,7 +14,34 @@ use structopt::StructOpt;
 pub struct Packet {
     pub(crate) data_format: DataFormat,
     pub(crate) bytes: Vec<u8>,
-    pub(crate) timestamp: DateTime<Local>,
+    /// The packet will only contain a timestamp if the channel configuration selected it.
+    pub(crate) timestamp: Option<DateTime<Local>>,
+}
+
+impl fmt::Display for Packet {
+    /// This will write a formatted string for display to the RTT client. 
+    /// The timestamp is ONLY included if it is selected as an option AND when `Packet::data_format` is `DataFormat::String` 
+    /// TODO: The current implementation assumes that every packet is a self contained user message, even though RTT doesn't work that way.
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // First write the optional timestamp to the Formatter
+        match self.data_format { 
+            DataFormat::String => {
+                if let Some(timestamp) = self.timestamp {
+                    write!(f, "{} :", timestamp)?;
+                }
+                write!(f, "{}", String::from_utf8_lossy(&self.bytes).to_string())
+            }
+            DataFormat::BinaryLE => {
+                for element in self.bytes.clone() {
+                    write!(f, "{:#06x}", element)?; //Width of 6 allows 0xFFFF to be printed.
+                }
+                write!(f, "")
+            }
+            DataFormat::Defmt => {
+                write!(f, "{:?}", self.bytes)
+            }
+        }
+    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
@@ -58,14 +85,7 @@ pub struct ChannelState {
     down_channel: Option<DownChannel>,
     name: String,
     format: DataFormat,
-    /// Contains the strings when [ChannelState::format] is [DataFormat::String].
-    messages: Vec<String>,
-    /// When [ChannelState::format] is not [DataFormat::String] this
-    /// contains RTT binary data or binary data in defmt format.
-    data: Vec<u8>,
-    last_line_done: bool,
     input: String,
-    scroll_offset: usize,
     rtt_buffer: RttBuffer,
     show_timestamps: bool,
 }
@@ -92,13 +112,9 @@ impl ChannelState {
             down_channel,
             name,
             format,
-            messages: Vec::new(),
-            last_line_done: true,
             input: String::new(),
-            scroll_offset: 0,
             rtt_buffer: RttBuffer([0u8; 1024]),
             show_timestamps,
-            data: Vec::new(),
         }
     }
 
@@ -111,30 +127,12 @@ impl ChannelState {
         self.down_channel.is_some()
     }
 
-    pub fn messages(&self) -> &Vec<String> {
-        &self.messages
-    }
-
     pub fn input(&self) -> &str {
         &self.input
     }
 
     pub fn input_mut(&mut self) -> &mut String {
         &mut self.input
-    }
-
-    pub fn scroll_offset(&self) -> usize {
-        self.scroll_offset
-    }
-
-    pub fn scroll_up(&mut self) {
-        self.scroll_offset += 1;
-    }
-
-    pub fn scroll_down(&mut self) {
-        if self.scroll_offset > 0 {
-            self.scroll_offset -= 1;
-        }
     }
 
     pub fn name(&self) -> &str {
@@ -145,17 +143,8 @@ impl ChannelState {
         self.format
     }
 
-    pub fn set_scroll_offset(&mut self, value: usize) {
-        self.scroll_offset = value;
-    }
-
-    pub fn data(&self) -> &Vec<u8> {
-        &self.data
-    }
-
     /// Polls the RTT target for new data on the specified channel.
-    ///
-    /// Processes all the new data and adds it to the linebuffer of the respective channel.
+    /// Processes all the new data and returns a `channel::Packet` with the appropriate data.
     pub fn poll_rtt(&mut self) -> Option<Packet> {
         // TODO: Proper error handling.
         let count = if let Some(channel) = self.up_channel.as_mut() {
@@ -173,16 +162,14 @@ impl ChannelState {
         if count == 0 {
             return None;
         }
-
-        match self.format {
-            DataFormat::String | DataFormat::BinaryLE => Some(Packet {
-                data_format: self.format,
-                bytes: self.rtt_buffer.0[..count].to_vec(),
-                timestamp: Local::now(),
-            }),
-            // defmt output is later formatted into strings in [App::render].
-            DataFormat::Defmt => None,
-        }
+        
+        Some(Packet {
+            data_format: self.format,
+            bytes: self.rtt_buffer.0[..count].to_vec(),
+            timestamp: if self.show_timestamps {
+                Some(Local::now())
+            } else { None},
+        })
     }
 
     pub fn push_rtt(&mut self) {
@@ -194,7 +181,7 @@ impl ChannelState {
     }
 }
 
-struct RttBuffer([u8; 1024]);
+struct RttBuffer([u8; 1024]); // TODO: RttBuffer is hardcoded at 1024. 
 
 impl fmt::Debug for RttBuffer {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

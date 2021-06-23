@@ -2,7 +2,7 @@ use crate::dap_types;
 use crate::debugger::ConsoleLog;
 use crate::debugger::CoreData;
 use crate::DebuggerError;
-use crate::rtt::channel::{DataFormat, Packet};
+use crate::rtt::channel::{Packet};
 use anyhow::{anyhow, Result};
 use dap_types::*;
 use parse_int::parse;
@@ -526,12 +526,15 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                                 Some(format!("Breakpoint at memory address: 0x{:08x}", location)),
                             ),
                             Err(err) => {
+                                let message = format!(
+                                    "WARNING: Could not set breakpoint at memory address: 0x{:08x}: {}",
+                                    location, 
+                                    err
+                                ).to_string();
                                 //In addition to sending the error to the 'Hover' message, also write it to the Debug Console Log
-                                self.log_to_console(format!(
-                                "ERROR: Could not set breakpoint at memory address: 0x{:08x}: {}",
-                                location, err
-                            ));
-                                (false, Some(err.to_string()))
+                                self.log_to_console(format!("WARNING: {}", message));
+                                self.show_message("warning".to_string(), message.clone());
+                                (false, Some(message))
                             }
                         };
 
@@ -548,15 +551,17 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                         verified,
                     });
                 } else {
+                    let message = "No source location for breakpoint. Try reducing `opt-level` in `Cargo.toml` ".to_string();
+                    //In addition to sending the error to the 'Hover' message, also write it to the Debug Console Log
+                    self.log_to_console(format!("WARNING: {}", message));
+                    self.show_message("warning".to_string(), message.clone());
                     created_breakpoints.push(Breakpoint {
                         column: bp.column,
                         end_column: None,
                         end_line: None,
                         id: None,
                         line: Some(bp.line),
-                        message: Some(
-                            "No source location for breakpoint. Try reducing `opt-level` in `Cargo.toml` ".to_string(),
-                        ),
+                        message: Some(message),
                         source: None,
                         instruction_reference: None,
                         offset: None,
@@ -1391,7 +1396,8 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
             };
             self.send_data(&encoded_resp);
             if !resp.success {
-                self.log_to_console(&resp.message.unwrap());
+                self.log_to_console(&resp.clone().message.unwrap());
+                self.show_message("error".to_string(), &resp.message.unwrap());
             } else {
                 match self.console_log_level {
                     ConsoleLog::Error => {}
@@ -1516,10 +1522,10 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
         true
     }
 
-    pub fn log_to_console<S: Into<String>>(&mut self, msg: S) -> bool {
+    pub fn log_to_console<S: Into<String>>(&mut self, message: S) -> bool {
         if self.adapter_type == DebugAdapterType::DapClient {
             let event_body = match serde_json::to_value(OutputEventBody {
-                output: format!("{}\n", msg.into()),
+                output: format!("{}\n", message.into()),
                 category: Some("console".to_owned()),
                 variables_reference: None,
                 source: None,
@@ -1536,22 +1542,39 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
             self.send_event("output", Some(event_body))
         } else {
             //DebugCAdapterType::CommandLine
-            println!("{}", msg.into());
+            println!("{}", message.into());
             true
         }
     }
 
-    /// Send a custom event to the MS DAP Client
+    /// Send a custom "probe-rs-show-message" event to the MS DAP Client
+    /// The `severity` field can be one of "information", "warning", or "error"
+    pub fn show_message<S: Into<String>>(&mut self, severity: String, message: S) -> bool {
+        if self.adapter_type == DebugAdapterType::DapClient {
+            let event_body = match serde_json::to_value(ShowMessageEventBody {
+                severity,
+                message: format!("{}\n", message.into()),
+            }) {
+                Ok(event_body) => event_body,
+                Err(_) => {
+                    return false;
+                }
+            };
+            self.send_event("probe-rs-show-message", Some(event_body))
+        } else {
+            //DebugAdapterType::CommandLine
+            println!("{}: {}", severity.to_uppercase(), message.into());
+            true
+        }
+    }
+
+    /// Send a custom "probe-rs-rtt" event to the MS DAP Client
     pub fn rtt_output(&mut self, channel: usize, data_packet: Packet) -> bool {
         if self.adapter_type == DebugAdapterType::DapClient {
             let event_body = match serde_json::to_value(RttEventBody {
                 channel,
                 format: data_packet.data_format,
-                data: match data_packet.data_format { // TODO: This needs work. Not even sure if this is the right place to do the formatting
-                    DataFormat::String => format!("{}: {:?}\n", data_packet.timestamp, str::from_utf8(&data_packet.bytes).expect("ERROR: Could not convert incoming data to a string value").to_owned()),
-                    DataFormat::BinaryLE => format!("{}: {:?}\n", data_packet.timestamp, data_packet.bytes),
-                    DataFormat::Defmt => format!("{}: {:?}", data_packet.timestamp, data_packet.bytes),
-                }
+                data: format!("{}", data_packet), 
             }) {
                 Ok(event_body) => event_body,
                 Err(_) => {
@@ -1561,7 +1584,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
             self.send_event("probe-rs-rtt", Some(event_body))
         } else {
             //DebugAdapterType::CommandLine
-            println!("{}: RTT Channel {}: {:?}", data_packet.timestamp, channel, data_packet.bytes);
+            println!("RTT Channel {}: {}", channel, data_packet);
             true
         }
     }
