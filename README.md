@@ -36,36 +36,43 @@ $ sudo dnf install -y libusbx-devel systemd-devel
 ### 1. Set the Cargo runner
 
 The recommend way to use `probe-run` is to set as the Cargo runner of your application.
-Add this line to your Cargo configuration file (.cargo/config) and adjust ${PROBE_RUN_CHIP} for the particular `--chip` value:
 
+Add these two lines to your Cargo configuration file (`.cargo/config.toml`) and set the particular `--chip` value for your target. In this case it is `nRF52840_xxAA` for the [nRF52840]:
 
 ``` toml
 [target.'cfg(all(target_arch = "arm", target_os = "none"))']
-runner = "probe-run --chip ${PROBE_RUN_CHIP}"
+runner = "probe-run --chip nRF52840_xxAA"
+#                          ^^^^^^^^^^^^^
 ```
 
-For example, one would use `nRF52840_xxAA` for the nRF52840 microcontroller.
 To list all supported chips run `probe-run --list-chips`.
 
-To support multiple devices, or permit overriding default behavior, you may prefer to set the
-`${PROBE_RUN_CHIP}` environment variable, and set `runner` (or
-`CARGO_TARGET_${TARGET_ARCH}_RUNNER`) to `probe-run`.
+#### **1.1 Env variable**
+
+To support multiple devices, or permit overriding default behavior, you may prefer to:
+1. set the `${PROBE_RUN_CHIP}` environment variable, and
+2. set `runner` (or `CARGO_TARGET_${TARGET_ARCH}_RUNNER`) to `probe-run`:
 
 ``` toml
 [target.'cfg(all(target_arch = "arm", target_os = "none"))']
 runner = "probe-run"
 ```
 
-If you have several probes connected, you can specify which one to use by adding
-the --probe option to the `runner` or setting the `${PROBE_RUN_PROBE}` environment
-variable with a value containing either `${VID}:${PID}` or `${VID}:${PID}:${SERIAL}`:
+#### **1.2 Multiple probes**
+
+If you have several probes connected, you can specify which one to use by adding the `--probe` option to the `runner` or setting the `${PROBE_RUN_PROBE}` environment variable with a value containing either `${VID}:${PID}` or `${VID}:${PID}:${SERIAL}`:
 
 ```console
+// --probe
 $ probe-run --probe '0483:3748' --chip ${PROBE_RUN_CHIP}
-PROBE_RUN_PROBE='1366:0101:123456' cargo run
+
+// PROBE_RUN_PROBE
+$ PROBE_RUN_PROBE='1366:0101:123456' cargo run
 ```
 
 To list all connected probes, run `probe-run --list-probes`.
+
+[nRF52840]: https://www.nordicsemi.com/Products/Low-power-short-range-wireless/nRF52840
 
 ### 2. Enable debug info
 
@@ -74,12 +81,16 @@ If you are using the `cortex-m-quickstart` template then this is already the cas
 If not check or add these lines to `Cargo.toml`.
 
 ``` toml
+[dependencies]
+...
+panic-probe = { version = "0.2", features = ["print-rtt"] }
+
 # Cargo.toml
 [profile.dev]
 debug = 1 # default is `true`; not needed if not already overridden
 
 [profile.release]
-debug = 1 # default is `false`; using `true` is also OK
+debug = 1 # default is `false`; using `true` is also OK as symbols reside on the host, not the target
 ```
 
 ### 3. Look out for old dependencies
@@ -98,11 +109,12 @@ For example,
 ``` rust
 use cortex_m::asm;
 use cortex_m_rt::entry;
+use panic_probe as _;
 use rtt_target::rprintln;
 
 #[entry]
 fn main() -> ! {
-    // omitted: rtt initialization
+    rtt_init_print!(); // You may prefer to initialize another way    
     rprintln!("Hello, world!");
     loop { asm::bkpt() }
 }
