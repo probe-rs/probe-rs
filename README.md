@@ -36,9 +36,6 @@ $ sudo dnf install -y libusbx-devel systemd-devel
 ### 1. Set the Cargo runner
 
 The recommend way to use `probe-run` is to set as the Cargo runner of your application.
-### 1. Set the Cargo runner
-
-The recommend way to use `probe-run` is to set as the Cargo runner of your application.
 
 Add these two lines to your Cargo configuration file (`.cargo/config.toml`) and set the particular `--chip` value for your target. In this case it is `nRF52840_xxAA` for the [nRF52840]:
 
