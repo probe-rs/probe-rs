@@ -545,11 +545,9 @@ fn run_flash_download(
         None => build_flashloader(session.target(), path)?,
     };
 
-    let mut download_option = DownloadOptions {
-        keep_unwritten_bytes: opt.restore_unwritten,
-        dry_run: opt.dry_run,
-        ..Default::default()
-    };
+    let mut download_option = DownloadOptions::default();
+    download_option.keep_unwritten_bytes = opt.restore_unwritten;
+    download_option.dry_run = opt.dry_run;
 
     if !opt.disable_progressbars {
         // Create progress bars.
