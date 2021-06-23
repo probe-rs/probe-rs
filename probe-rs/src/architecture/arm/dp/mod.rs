@@ -25,10 +25,59 @@ impl From<DebugPortError> for DebugProbeError {
     }
 }
 
+/// An interface to write arbitrary Debug Port registers freely in a type-unsafe manner identifying them by bank number and register address.
+/// For a type-safe interface see the [DpAccess] trait.
+pub trait RawDpAccess {
+    /// Reads a Debug Port register on the Chip.
+    fn read_raw_dp_register(&mut self, bank: DpBankSel, address: u8)
+        -> Result<u32, DebugPortError>;
+
+    /// Writes a Debug Port register on the Chip.
+    fn write_raw_dp_register(
+        &mut self,
+        bank: DpBankSel,
+        address: u8,
+        value: u32,
+    ) -> Result<(), DebugPortError>;
+
+    /// Returns the version of the Debug Port implementation.
+    fn debug_port_version(&self) -> DebugPortVersion;
+}
+
 pub trait DpAccess {
     fn read_dp_register<R: DpRegister>(&mut self) -> Result<R, DebugPortError>;
 
     fn write_dp_register<R: DpRegister>(&mut self, register: R) -> Result<(), DebugPortError>;
+}
+
+impl<T: RawDpAccess> DpAccess for T {
+    fn read_dp_register<R: DpRegister>(&mut self) -> Result<R, DebugPortError> {
+        if R::VERSION > self.debug_port_version() {
+            return Err(DebugPortError::UnsupportedRegister {
+                register: R::NAME,
+                version: self.debug_port_version(),
+            });
+        }
+
+        log::debug!("Reading DP register {}", R::NAME);
+        let result = self.read_raw_dp_register(R::DP_BANK, R::ADDRESS)?;
+        log::debug!("Read    DP register {}, value=0x{:08x}", R::NAME, result);
+        Ok(result.into())
+    }
+
+    fn write_dp_register<R: DpRegister>(&mut self, register: R) -> Result<(), DebugPortError> {
+        if R::VERSION > self.debug_port_version() {
+            return Err(DebugPortError::UnsupportedRegister {
+                register: R::NAME,
+                version: self.debug_port_version(),
+            });
+        }
+
+        let value = register.into();
+        log::debug!("Writing DP register {}, value=0x{:08x}", R::NAME, value);
+        self.write_raw_dp_register(R::DP_BANK, R::ADDRESS, value)?;
+        Ok(())
+    }
 }
 
 #[derive(Debug, PartialEq, Copy, Clone)]

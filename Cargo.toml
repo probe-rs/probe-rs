@@ -8,6 +8,7 @@ members = [
     "debugger",
     "gdb-server",
     "xtask",
+    "smoke-tester",
 ]
 
 [profile.release]

@@ -1,8 +1,7 @@
 pub mod configure;
 
-use super::{Category, Request, Response, Result};
+use super::{Category, Request, Response, SendError};
 use crate::architecture::arm::PortType as ArmPortType;
-use anyhow::anyhow;
 use scroll::{Pread, Pwrite, LE};
 
 #[derive(Copy, Clone, Debug)]
@@ -28,7 +27,7 @@ pub enum RW {
 
 /// Contains information about requested access from host debugger.
 #[allow(non_snake_case)]
-#[derive(Copy, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub struct InnerTransferRequest {
     /// 0 = Debug PortType (DP), 1 = Access PortType (AP).
     pub APnDP: PortType,
@@ -74,7 +73,7 @@ fn creating_inner_transfer_request() {
 }
 
 impl InnerTransferRequest {
-    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize> {
+    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize, SendError> {
         buffer[offset] = (self.APnDP as u8)
             | (self.RnW as u8) << 1
             | (if self.A2 { 1 } else { 0 }) << 2
@@ -122,7 +121,7 @@ impl TransferRequest {
 impl Request for TransferRequest {
     const CATEGORY: Category = Category(0x05);
 
-    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize> {
+    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize, SendError> {
         let mut size = 0;
 
         buffer[offset] = self.dap_index;
@@ -171,7 +170,7 @@ pub struct TransferResponse {
 }
 
 impl Response for TransferResponse {
-    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self> {
+    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self, SendError> {
         Ok(TransferResponse {
             transfer_count: buffer[offset],
             transfer_response: InnerTransferResponse {
@@ -189,7 +188,7 @@ impl Response for TransferResponse {
             td_timestamp: 0, // scroll::pread_with(buffer[offset + 2..offset + 2 + 4], LE),
             transfer_data: buffer
                 .pread_with(offset + 2, LE)
-                .map_err(|_| anyhow!("This is a bug. Please report it."))?,
+                .map_err(|_| SendError::Bug)?,
         })
     }
 }
@@ -212,14 +211,14 @@ pub(crate) struct TransferBlockRequest {
 impl Request for TransferBlockRequest {
     const CATEGORY: Category = Category(0x06);
 
-    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize> {
+    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize, SendError> {
         let mut size = 0;
         buffer[offset] = self.dap_index;
         size += 1;
 
         buffer
             .pwrite_with(self.transfer_count, offset + 1, LE)
-            .map_err(|_| anyhow!("This is a bug. Please report it."))?;
+            .map_err(|_| SendError::Bug)?;
         size += 2;
 
         size += self.transfer_request.to_bytes(buffer, offset + 3)?;
@@ -227,12 +226,9 @@ impl Request for TransferBlockRequest {
         let mut data_offset = offset + 4;
 
         for word in &self.transfer_data {
-            buffer.pwrite_with(word, data_offset, LE).map_err(|_| {
-                anyhow!(
-                    "Failed to write word at data_offset {}. This is a bug. Please report it.",
-                    data_offset
-                )
-            })?;
+            buffer
+                .pwrite_with(word, data_offset, LE)
+                .map_err(|_| SendError::WriteToOffsetBug(data_offset))?;
             data_offset += 4;
             size += 4;
         }
@@ -284,7 +280,7 @@ struct InnerTransferBlockRequest {
 }
 
 impl InnerTransferBlockRequest {
-    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize> {
+    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize, SendError> {
         buffer[offset] = (self.ap_n_dp as u8)
             | (self.r_n_w as u8) << 1
             | (if self.a2 { 1 } else { 0 }) << 2
@@ -301,7 +297,7 @@ pub(crate) struct TransferBlockResponse {
 }
 
 impl Response for TransferBlockResponse {
-    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self> {
+    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self, SendError> {
         let transfer_count = buffer
             .pread_with(offset, LE)
             .expect("Failed to read transfer count");
@@ -315,7 +311,7 @@ impl Response for TransferBlockResponse {
             data.push(
                 buffer
                     .pread_with(offset + 3 + data_offset * 4, LE)
-                    .map_err(|_| anyhow!("Failed to read value.."))?,
+                    .map_err(|_| SendError::Bug)?,
             );
         }
 

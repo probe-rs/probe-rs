@@ -1630,11 +1630,10 @@ impl DapStatus for CoreStatus {
         match self {
             CoreStatus::Running => ("continued", "Core is running"),
             CoreStatus::Sleeping => ("sleeping", "Core is in SLEEP mode"),
-            //TODO: Need to implement LockedUp in probe-rs/src/debug
-            // CoreStatus::LockedUp => (
-            //     "lockedup",
-            //     "Core is in LOCKUP status - encountered an unrecoverable error",
-            // ),
+            CoreStatus::LockedUp => (
+                "lockedup",
+                "Core is in LOCKUP status - encountered an unrecoverable exception",
+            ),
             CoreStatus::Halted(halt_reason) => match halt_reason {
                 HaltReason::Breakpoint => (
                     "breakpoint",

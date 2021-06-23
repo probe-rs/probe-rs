@@ -270,6 +270,13 @@ impl FlashLoader {
 
         if options.dry_run {
             log::info!("Skipping programming, dry run!");
+
+            if let Some(progress) = options.progress {
+                progress.failed_filling();
+                progress.failed_erasing();
+                progress.failed_programming();
+            }
+
             return Ok(());
         }
 

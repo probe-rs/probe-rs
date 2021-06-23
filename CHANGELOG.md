@@ -4,7 +4,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
 ### Added
+
+### Target Support
+
+### Changed
+
+### Fixed
+
+## [0.11.0]
+
+### Added
+
 - Support for the `HNONSEC` bit in memory access. This now allows secure access on chips which support TrustZone (#465).
 - Support for RISCV chips which use the System Bus Access method for memory access when debugging (#527).
 - Support for double buffering in the flash loader, which increased flashing speed (#107).
@@ -23,11 +35,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added an option to skip erasing the flash before programming (#628).
 - Added a new debugger for VS Code, using the [Debug Adapter Protocol](https://microsoft.github.io/debug-adapter-protocol/specification). The debugger can be found in the `probe-rs-debugger` crate (#620).
 - Additional datatype support for the debugger, plus easier to read display values (#631)
-- Added support for raw DAP register reads and writes (#669).
+- Added support for raw DAP register reads and writes, using `RawDpAccess`, `RawApAccess` trait (#669, #689, #700).
 - Added support for verify after flashing. (#671).
 - Handle inlined functions when getting a stack trace (#678).
 - Added 'Statics' (static variables) to the stackframe scopes. These are now visible in VSCode between 'Locals' and 'Registers'. This includes some additional datatypes and DWARF expression evaluation capabilities. (#683)
 - Added a function to mass erase all memory. (#672).
+- Handle Cortex `LOCKUP` status during debugging (#707)
 
 ### Target Support
 
@@ -79,6 +92,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improve argument parsing in debugger, add speed option to probe-rs-cli (#523).
 - `probe_rs::flashing::DownloadOptions` is now marked `non_exhaustive`, to make it easier to add additional flags in the future.
 - Replace `lazy_static` with `once_cell::sync::Lazy` (#685).
+- Use new `SendError` instead of `anyhow::Error` in `cmsisdap` module (#687).
   
 ### Fixed
 
@@ -106,9 +120,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fix too many chip erases in chips with multiple NvmRegions. (#670).
 - Added missing `skip_erase` setter function introduced in #677 (#679).
 - Fixed incorrect array size calculation  (#683)
-
+- STLink: Removed unnecessary SELECT bank switching  (#692)
+- STLink: chunk writes in `write_8` to avoid hitting limit (#697)
 
 ## [0.10.1]
+
 ### Fixed
 
 - Replace calls to `unwrap()` in adi_v5_memory_interface.rs with proper error types (#440).
@@ -386,7 +402,8 @@ Initial release on crates.io
 - Working basic flash downloader with nRF51.
 - Introduce cargo-flash which can automatically build & flash the target elf file.
 
-[Unreleased]: https://github.com/probe-rs/probe-rs/compare/0.11.0-alpha.1...master
+[Unreleased]: https://github.com/probe-rs/probe-rs/compare/0.11.0...master
+[0.11.0]: https://github.com/probe-rs/probe-rs/compare/v0.10.1...0.11.0
 [0.11.0-alpha.1]: https://github.com/probe-rs/probe-rs/compare/v0.10.1...0.11.0-alpha.1
 [0.10.1]: https://github.com/probe-rs/probe-rs/compare/v0.10.0...v0.10.1
 [0.10.0]: https://github.com/probe-rs/probe-rs/compare/v0.9.0...v0.10.0

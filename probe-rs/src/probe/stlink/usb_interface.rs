@@ -304,11 +304,9 @@ impl StLinkUsb for StLinkUsbDevice {
         if read_data.is_empty() {
             Ok(0)
         } else {
-            let read_bytes = self
-                .device_handle
+            self.device_handle
                 .read_bulk(ep_swo, read_data, timeout)
-                .map_err(|e| DebugProbeError::Usb(Some(Box::new(e))))?;
-            Ok(read_bytes)
+                .map_err(|e| DebugProbeError::Usb(Some(Box::new(e))))
         }
     }
 

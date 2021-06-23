@@ -18,8 +18,9 @@ pub(super) fn is_stlink_device<T: UsbContext>(device: &Device<T>) -> bool {
 }
 
 pub fn list_stlink_devices() -> Vec<DebugProbeInfo> {
-    if let Ok(context) = rusb::Context::new() {
-        if let Ok(devices) = context.devices() {
+    rusb::Context::new()
+        .and_then(|context| context.devices())
+        .map_or(vec![], |devices| {
             devices
                 .iter()
                 .filter(is_stlink_device)
@@ -55,12 +56,7 @@ pub fn list_stlink_devices() -> Vec<DebugProbeInfo> {
                     ))
                 })
                 .collect::<Vec<_>>()
-        } else {
-            vec![]
-        }
-    } else {
-        vec![]
-    }
+        })
 }
 
 /// Try to read the serial number of a USB device.
