@@ -60,7 +60,7 @@ fn get_component_normal(component: Component) -> Option<&OsStr> {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, unix))]
 mod tests {
     use super::*;
 

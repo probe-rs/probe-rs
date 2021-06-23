@@ -80,7 +80,7 @@ impl<'p> Path<'p> {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, unix))]
 mod tests {
     use std::path::Path as StdPath;
 

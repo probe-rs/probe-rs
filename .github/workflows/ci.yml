@@ -22,7 +22,7 @@ jobs:
         os:
           - ubuntu-latest
           - macOS-latest
-          # - windows-latest # currently fails, see #227
+          - windows-latest
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
     steps:
