@@ -399,6 +399,14 @@ impl<'probe> CoreInterface for M4<'probe> {
     fn status(&mut self) -> Result<CoreStatus, Error> {
         let dhcsr = Dhcsr(self.memory.read_word_32(Dhcsr::ADDRESS)?);
 
+        if dhcsr.s_lockup() {
+            log::warn!("The core is in locked up status as a result of an unrecoverable exception");
+
+            self.state.current_state = CoreStatus::LockedUp;
+
+            return Ok(CoreStatus::LockedUp);
+        }
+
         if dhcsr.s_sleep() {
             // Check if we assumed the core to be halted
             if self.state.current_state.is_halted() {
@@ -409,8 +417,6 @@ impl<'probe> CoreInterface for M4<'probe> {
 
             return Ok(CoreStatus::Sleeping);
         }
-
-        // TODO: Handle lockup
 
         if dhcsr.s_halt() {
             let dfsr = Dfsr(self.memory.read_word_32(Dfsr::ADDRESS)?);

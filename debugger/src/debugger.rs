@@ -537,16 +537,19 @@ impl Debugger {
                                 });
                                 debug_adapter.send_event("stopped", event_body);
                             }
-                            //TODO: Need to implement LockedUp in probe-rs/src/debug
-                            // CoreStatus::LockedUp => {
-                            //     debug_adapter.send_response::<()>(
-                            //         &request,
-                            //         Err(DebuggerError::Other(anyhow!(
-                            //             "The processor is in LOCKED status, as a result of an unrecoverable error"
-                            //         ))),
-                            //     );
-                            //     return false;
-                            // }
+                            CoreStatus::LockedUp => {
+                                let event_body = Some(StoppedEventBody {
+                                    reason: new_status.short_long_status().0.to_owned(),
+                                    description: Some(new_status.short_long_status().1.to_owned()),
+                                    thread_id: Some(core_data.target_core.id() as i64),
+                                    preserve_focus_hint: Some(false),
+                                    text: None,
+                                    all_threads_stopped: Some(true),
+                                    hit_breakpoint_ids: None,
+                                });
+                                debug_adapter.send_event("stopped", event_body);
+                                return false;
+                            }
                             CoreStatus::Unknown => {
                                 debug_adapter.send_response::<()>(
                                     &request,
