@@ -11,6 +11,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+## [0.11.0]
+
+### Added
+
+- Improved erroring a lot with additional hints for the user on how to fix a certain problem.
+
+### Changed
+
+- Updated probe-rs to 0.11.0.
+
 ## [0.10.2]
 
 ### Changed
