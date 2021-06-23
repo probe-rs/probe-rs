@@ -70,7 +70,7 @@ fn release(version: &str) -> Result<(), DynError> {
         version
     );
     let title = format!("Release v{}", version);
-    cmd!("gh pr create --label 'release' --title {title} --repo 'probe-rs/probe-rs' --body {message}").run()?;
+    cmd!("gh pr create --label 'release' --title {title} --repo 'probe-rs/probe-rs' --body {message} --draft").run()?;
 
     Ok(())
 }
