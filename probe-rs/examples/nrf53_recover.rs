@@ -21,13 +21,8 @@ fn main() -> Result<()> {
     const APP_CTRL: u8 = 2;
     const NET_CTRL: u8 = 3;
 
-    const RESET: u8 = 0x00;
     const ERASEALL: u8 = 0x04;
     const ERASEALLSTATUS: u8 = 0x08;
-    const APPROTECT_DISABLE: u8 = 0x10;
-    const SECUREAPPROTECT_DISABLE: u8 = 0x14;
-    const ERASEPROTECT_STATUS: u8 = 0x18;
-    const ERASEPROTECT_DISABLE: u8 = 0x1C;
     const IDR: u8 = 0xFC;
 
     for &ap in &[APP_MEM, NET_MEM, APP_CTRL, NET_CTRL] {
