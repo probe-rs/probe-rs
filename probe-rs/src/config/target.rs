@@ -51,17 +51,30 @@ impl Target {
         }
     }
 
-    /// Get the architectre of the target
+    /// Get the architecture of the target
     pub fn architecture(&self) -> Architecture {
-        // TODO: what if they're different?
-        match &self.cores[0].core_type {
-            CoreType::M0 => Architecture::Arm,
-            CoreType::M3 => Architecture::Arm,
-            CoreType::M33 => Architecture::Arm,
-            CoreType::M4 => Architecture::Arm,
-            CoreType::M7 => Architecture::Arm,
-            CoreType::Riscv => Architecture::Riscv,
+        fn get_architecture_from_core(core_type: CoreType) -> Architecture {
+            match core_type {
+                CoreType::M0 => Architecture::Arm,
+                CoreType::M3 => Architecture::Arm,
+                CoreType::M33 => Architecture::Arm,
+                CoreType::M4 => Architecture::Arm,
+                CoreType::M7 => Architecture::Arm,
+                CoreType::Riscv => Architecture::Riscv,
+            }
         }
+
+        let target_arch = get_architecture_from_core(self.cores[0].core_type);
+
+        assert!(
+            self.cores
+                .iter()
+                .map(|core| get_architecture_from_core(core.core_type))
+                .all(|core_arch| core_arch == target_arch),
+            "Not all cores of the target are of the same architecture. Probe-rs doesn't support this (yet). If you see this, it is a bug. Please file an issue."
+        );
+
+        target_arch
     }
 
     /// Source description of this target.
