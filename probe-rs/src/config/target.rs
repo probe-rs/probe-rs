@@ -1,5 +1,6 @@
 use super::{Chip, Core, CoreType, MemoryRegion, RawFlashAlgorithm, TargetDescriptionSource};
 use crate::architecture::arm::communication_interface::UninitializedArmProbe;
+use crate::architecture::arm::sequences::nxp::LPC55S69;
 use crate::architecture::arm::sequences::ArmDebugSequence;
 use crate::{core::Architecture, flashing::FlashLoader};
 use std::sync::Arc;
@@ -65,10 +66,14 @@ impl Target {
         source: TargetDescriptionSource,
     ) -> Target {
         // TODO: Figure out how to handle this if cores can have different architectures.
-        let debug_sequence = match cores[0].core_type.architecture() {
+        let mut debug_sequence = match cores[0].core_type.architecture() {
             Architecture::Arm => DebugSequence::Arm(Arc::new(DefaultArmSequence {})),
             Architecture::Riscv => DebugSequence::Riscv,
         };
+
+        if chip.name.starts_with("LPC55S69") {
+            debug_sequence = DebugSequence::Arm(Arc::new(LPC55S69 {}));
+        }
 
         Target {
             name: chip.name.clone(),

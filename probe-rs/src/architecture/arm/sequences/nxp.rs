@@ -16,7 +16,7 @@ use crate::{
 
 use super::ArmDebugSequence;
 
-struct LPC55S69 {}
+pub struct LPC55S69 {}
 
 impl ArmDebugSequence for LPC55S69 {
     fn debug_port_start(&self, memory: &mut crate::Memory) -> Result<(), crate::Error> {
