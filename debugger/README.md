@@ -5,7 +5,7 @@ A debugger that uses the [probe-rs](https://github.com/probe-rs/probe-rs) librar
 ## Installation
 
 ```
-cargo install --git https://github.com/probe-rs/probe-rs --branch dap probe-rs-debugger
+cargo install --git https://github.com/probe-rs/probe-rs probe-rs-debugger
 ```
 
 ## Usage
