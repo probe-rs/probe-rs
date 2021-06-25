@@ -139,7 +139,10 @@ impl Session {
                     let mut memory_interface = interface.memory_interface(MemoryAp::from(0))?;
 
                     // Enable debug mode
-                    sequence_handle.debug_core_start(&mut memory_interface)?
+                    sequence_handle.debug_device_unlock(&mut memory_interface)?;
+
+                    // Enable debug mode
+                    sequence_handle.debug_core_start(&mut memory_interface)?;
                 }
 
                 let session = if attach_method == AttachMethod::UnderReset {

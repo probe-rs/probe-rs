@@ -17,6 +17,8 @@ pub struct DefaultArmSequence;
 impl ArmDebugSequence for DefaultArmSequence {}
 
 pub trait ArmDebugSequence: Send + Sync {
+    /// Implementation of the debug sequence `ResetHardwareAssert` from the ARM debug sequences.
+    #[doc(alias = "ResetHardwareAssert")]
     fn reset_hardware_assert(&self, memory: &mut Memory) -> Result<(), crate::Error> {
         let interface = memory.get_arm_interface()?;
 
@@ -50,6 +52,8 @@ pub trait ArmDebugSequence: Send + Sync {
         }
     }
 
+    /// Implementation of the debug sequence *DebugPortSetup* from CMSIS Pack debug sequences.
+    #[doc(alias = "DebugPortSetup")]
     fn debug_port_setup(
         &self,
         interface: &mut Box<dyn UninitializedArmProbe>,

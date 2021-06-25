@@ -72,6 +72,7 @@ impl Target {
         };
 
         if chip.name.starts_with("LPC55S69") {
+            log::warn!("Using custom sequence for LPC55S69");
             debug_sequence = DebugSequence::Arm(Arc::new(LPC55S69 {}));
         }
 
