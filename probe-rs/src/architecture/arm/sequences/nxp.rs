@@ -11,7 +11,7 @@ use crate::{
         DapAccess,
     },
     core::CoreRegister,
-    DebugProbeError,
+    CommunicationInterface, DebugProbeError,
 };
 
 use super::ArmDebugSequence;
@@ -215,6 +215,8 @@ fn wait_for_stop_after_reset(memory: &mut crate::Memory) -> Result<(), crate::Er
 
     let start = Instant::now();
 
+    log::info!("Polling for reset");
+
     while start.elapsed() < Duration::from_micros(50_0000) {
         let dhcsr = Dhcsr(memory.read_word_32(Dhcsr::ADDRESS)?);
 
@@ -263,6 +265,7 @@ pub fn enable_debug_mailbox(memory: &mut crate::Memory) -> Result<(), crate::Err
 
     // Active DebugMailbox
     interface.write_raw_ap_register(2, 0x0, 0x0000_0021)?;
+    interface.flush()?;
 
     // DAP_Delay(30000)
     thread::sleep(Duration::from_micros(30000));
