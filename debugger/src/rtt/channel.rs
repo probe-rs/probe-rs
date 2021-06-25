@@ -33,7 +33,7 @@ impl fmt::Display for Packet {
             }
             DataFormat::BinaryLE => {
                 for element in self.bytes.clone() {
-                    write!(f, "{:#06x}", element)?; //Width of 6 allows 0xFFFF to be printed.
+                    write!(f, "{:#04x}", element)?; //Width of 4 allows 0xFF to be printed.
                 }
                 write!(f, "")
             }
