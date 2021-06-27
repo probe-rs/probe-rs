@@ -165,7 +165,7 @@ pub struct DebuggerOptions {
     pub(crate) rtt: RttConfig,
 }
 
-impl DebuggerOptions {
+impl DebuggerOptions { 
     /// Validate the new cwd, or else set it from the environment.
     pub(crate) fn validate_and_update_cwd(&mut self, new_cwd: Option<PathBuf>) {
         self.cwd = match new_cwd {
@@ -186,7 +186,7 @@ impl DebuggerOptions {
     pub(crate) fn qualify_and_update_program_binary(
         &mut self,
         new_program_binary: Option<PathBuf>,
-    ) {
+    ) { probe_rs_rtt::Channel::from
         self.program_binary = match new_program_binary {
             Some(temp_path) => {
                 let mut new_path = PathBuf::new();
@@ -201,6 +201,7 @@ impl DebuggerOptions {
     }
 }
 
+//TODO: Implement an option to detect channels and use them as defaults. To simplify the case where developers want to get started with all the RTT channels configured in their app. 
 #[derive(StructOpt, Debug, Clone, Deserialize, Default)]
 pub struct RttConfig {
     #[structopt(skip)]
@@ -581,6 +582,7 @@ impl Debugger {
                             return true;
                         };
 
+                        // TODO: Remove ... println!("process_next_request: last_known_status={:?}\tnew_status={:?}\treceived_rtt_data{:?}", last_known_status, new_status, received_rtt_data);
                         match new_status {
                             CoreStatus::Running | CoreStatus::Sleeping => {
                                 let event_body = Some(ContinuedEventBody {
