@@ -62,7 +62,7 @@ pub struct ArmCoreAccessOptions {
     /// The access port number to access the core
     pub ap: u8,
     /// The port select number to access the core
-    pub psel: u8,
+    pub psel: u32,
 }
 
 /// The data required to access a Risc-V core
