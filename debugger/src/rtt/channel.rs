@@ -19,12 +19,12 @@ pub struct Packet {
 }
 
 impl fmt::Display for Packet {
-    /// This will write a formatted string for display to the RTT client. 
-    /// The timestamp is ONLY included if it is selected as an option AND when `Packet::data_format` is `DataFormat::String` 
+    /// This will write a formatted string for display to the RTT client.
+    /// The timestamp is ONLY included if it is selected as an option AND when `Packet::data_format` is `DataFormat::String`
     /// TODO: The current implementation assumes that every packet is a self contained user message, even though RTT doesn't work that way.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // First write the optional timestamp to the Formatter
-        match self.data_format { 
+        match self.data_format {
             DataFormat::String => {
                 if let Some(timestamp) = self.timestamp {
                     write!(f, "{} :", timestamp)?;
@@ -56,7 +56,8 @@ impl FromStr for DataFormat {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let src = s.to_ascii_lowercase();
-        match &src.to_ascii_lowercase()[..] { // A forgiving/case-insensitive match
+        match &src.to_ascii_lowercase()[..] {
+            // A forgiving/case-insensitive match
             "string" => Ok(Self::String),
             "binaryle" => Ok(Self::BinaryLE),
             "defmt" => Ok(Self::Defmt),
@@ -120,7 +121,7 @@ impl ChannelState {
 
     /// Returns the number of the UpChannel
     pub fn number(&self) -> Option<usize> {
-        self.up_channel.as_ref().and_then(|uc|Some(uc.number()))
+        self.up_channel.as_ref().and_then(|uc| Some(uc.number()))
     }
 
     pub fn has_down_channel(&self) -> bool {
@@ -162,13 +163,15 @@ impl ChannelState {
         if count == 0 {
             return None;
         }
-        
+
         Some(Packet {
             data_format: self.format,
             bytes: self.rtt_buffer.0[..count].to_vec(),
             timestamp: if self.show_timestamps {
                 Some(Local::now())
-            } else { None},
+            } else {
+                None
+            },
         })
     }
 
@@ -181,7 +184,7 @@ impl ChannelState {
     }
 }
 
-struct RttBuffer([u8; 1024]); // TODO: RttBuffer is hardcoded at 1024. 
+struct RttBuffer([u8; 1024]); // TODO: RttBuffer is hardcoded at 1024.
 
 impl fmt::Debug for RttBuffer {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

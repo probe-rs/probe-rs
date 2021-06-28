@@ -1,9 +1,9 @@
-use crate::{debug_adapter::DapStatus, rtt::app::App};
 use crate::debug_adapter::*;
 use crate::{
     dap_types::*,
     rtt::channel::{ChannelConfig, DataFormat},
 };
+use crate::{debug_adapter::DapStatus, rtt::app::App};
 
 use crate::DebuggerError;
 use anyhow::{anyhow, Result};
@@ -165,7 +165,7 @@ pub struct DebuggerOptions {
     pub(crate) rtt: RttConfig,
 }
 
-impl DebuggerOptions { 
+impl DebuggerOptions {
     /// Validate the new cwd, or else set it from the environment.
     pub(crate) fn validate_and_update_cwd(&mut self, new_cwd: Option<PathBuf>) {
         self.cwd = match new_cwd {
@@ -186,7 +186,7 @@ impl DebuggerOptions {
     pub(crate) fn qualify_and_update_program_binary(
         &mut self,
         new_program_binary: Option<PathBuf>,
-    ) { probe_rs_rtt::Channel::from
+    ) {
         self.program_binary = match new_program_binary {
             Some(temp_path) => {
                 let mut new_path = PathBuf::new();
@@ -201,7 +201,7 @@ impl DebuggerOptions {
     }
 }
 
-//TODO: Implement an option to detect channels and use them as defaults. To simplify the case where developers want to get started with all the RTT channels configured in their app. 
+//TODO: Implement an option to detect channels and use them as defaults. To simplify the case where developers want to get started with all the RTT channels configured in their app.
 #[derive(StructOpt, Debug, Clone, Deserialize, Default)]
 pub struct RttConfig {
     #[structopt(skip)]
@@ -541,17 +541,17 @@ impl Debugger {
                         let mut received_rtt_data = false;
                         if let Some(ref mut rtt_app) = self.rtt_app {
                             let data_packet = rtt_app.poll_rtt();
-                            if data_packet.len() > 0 { 
-                                received_rtt_data = true;                                 
+                            if data_packet.len() > 0 {
+                                received_rtt_data = true;
                                 for (rtt_channel, rtt_data) in data_packet {
                                     debug_adapter.rtt_output(
                                         rtt_channel.parse::<usize>().unwrap_or(0),
-                                        rtt_data
-                                     );
+                                        rtt_data,
+                                    );
                                 }
                             }
                         }
-                        
+
                         //Check and update the core status.
                         let mut session = session_data
                             .session
@@ -988,7 +988,6 @@ impl Debugger {
             }
         }
 
-
         self.rtt_app = if self.debugger_options.rtt.enabled {
             // Attach to RTT on the probe
             attach_to_rtt(session_data.session.clone(), &self.debugger_options).ok()
@@ -1091,16 +1090,17 @@ pub fn attach_to_rtt(
         log::info!("Initializing RTT (attempt {})...", i);
         i += 1;
 
-        let rtt_header_address =
-            if let Ok(mut file) = File::open(debugger_options.program_binary.clone().unwrap().as_path()) {
-                if let Some(address) = crate::rtt::app::App::get_rtt_symbol(&mut file) {
-                    ScanRegion::Exact(address as u32)
-                } else {
-                    ScanRegion::Ram
-                }
+        let rtt_header_address = if let Ok(mut file) =
+            File::open(debugger_options.program_binary.clone().unwrap().as_path())
+        {
+            if let Some(address) = crate::rtt::app::App::get_rtt_symbol(&mut file) {
+                ScanRegion::Exact(address as u32)
             } else {
                 ScanRegion::Ram
-            };
+            }
+        } else {
+            ScanRegion::Ram
+        };
 
         match Rtt::attach_region(session.clone(), &rtt_header_address) {
             Ok(rtt) => {

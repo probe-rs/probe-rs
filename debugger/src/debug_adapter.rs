@@ -1,8 +1,8 @@
 use crate::dap_types;
 use crate::debugger::ConsoleLog;
 use crate::debugger::CoreData;
+use crate::rtt::channel::Packet;
 use crate::DebuggerError;
-use crate::rtt::channel::{Packet};
 use anyhow::{anyhow, Result};
 use dap_types::*;
 use parse_int::parse;
@@ -527,10 +527,10 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                             ),
                             Err(err) => {
                                 let message = format!(
-                                    "WARNING: Could not set breakpoint at memory address: 0x{:08x}: {}",
-                                    location, 
-                                    err
-                                ).to_string();
+                                "WARNING: Could not set breakpoint at memory address: 0x{:08x}: {}",
+                                location, err
+                            )
+                                .to_string();
                                 //In addition to sending the error to the 'Hover' message, also write it to the Debug Console Log
                                 self.log_to_console(format!("WARNING: {}", message));
                                 self.show_message("warning".to_string(), message.clone());
@@ -1574,7 +1574,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
             let event_body = match serde_json::to_value(RttEventBody {
                 channel,
                 format: data_packet.data_format,
-                data: format!("{}", data_packet), 
+                data: format!("{}", data_packet),
             }) {
                 Ok(event_body) => event_body,
                 Err(_) => {
