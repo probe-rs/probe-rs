@@ -121,6 +121,7 @@ impl ArmDebugSequence for LPC55S69 {
 
         interface.write_word_32(0x40034FE8, 0x0000000F)?; // Clear FLASH Controller Status (INT_CLR_STATUS)
         interface.write_word_32(0x40034000, 0x00000003)?; // Read single Flash Word (CMD_READ_SINGLE_WORD)
+        interface.flush()?;
 
         let start = Instant::now();
 
@@ -190,7 +191,11 @@ impl ArmDebugSequence for LPC55S69 {
         aircr.vectkey();
         aircr.set_sysresetreq(true);
 
-        let result = interface.write_word_32(Aircr::ADDRESS, aircr.into());
+        let mut result = interface.write_word_32(Aircr::ADDRESS, aircr.into());
+
+        if result.is_ok() {
+            result = interface.flush();
+        }
 
         if let Err(e) = result {
             log::debug!("Error requesting reset: {:?}", e);
@@ -274,6 +279,7 @@ pub fn enable_debug_mailbox(memory: &mut crate::Memory) -> Result<(), crate::Err
 
     // Enter Debug session
     interface.write_raw_ap_register(2, 0x4, 0x0000_0007)?;
+    interface.flush()?;
 
     // DAP_Delay(30000)
     thread::sleep(Duration::from_micros(30000));
