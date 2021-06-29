@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use defmt_decoder::DEFMT_VERSION;
 use git_version::git_version;
 use log::Level;
-use probe_rs::{config::registry, Probe};
+use probe_rs::Probe;
 use structopt::{clap::AppSettings, StructOpt};
 
 use crate::probe;
@@ -111,7 +111,7 @@ pub(crate) fn handle_arguments() -> anyhow::Result<i32> {
 }
 
 fn print_chips() {
-    let registry = registry::families().expect("Could not retrieve chip family registry");
+    let registry = probe_rs::config::families().expect("Could not retrieve chip family registry");
     for chip_family in registry {
         println!("{}\n    Variants:", chip_family.name);
         for variant in chip_family.variants.iter() {

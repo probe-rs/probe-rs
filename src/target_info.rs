@@ -14,7 +14,7 @@ pub(crate) struct TargetInfo {
 
 impl TargetInfo {
     pub(crate) fn new(chip: &str, elf: &Elf) -> anyhow::Result<Self> {
-        let probe_target = probe_rs::config::registry::get_target_by_name(chip)?;
+        let probe_target = probe_rs::config::get_target_by_name(chip)?;
         let active_ram_region =
             extract_active_ram_region(&probe_target, elf.vector_table.initial_stack_pointer);
         let highest_static_var_address =
