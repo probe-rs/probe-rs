@@ -121,6 +121,9 @@ fn handle_dut(definition: &DutDefinition) -> Result<()> {
     for (core_index, core_type) in cores {
         println!("Core {}: {:?}", core_index, core_type);
 
+        let target = session.target();
+        let core_name = target.cores[core_index].name.clone();
+
         let mut core = session.core(core_index)?;
 
         println!("Halting core..");
@@ -129,7 +132,7 @@ fn handle_dut(definition: &DutDefinition) -> Result<()> {
 
         test_register_access(&mut core)?;
 
-        test_memory_access(&mut core, &memory_regions)?;
+        test_memory_access(&mut core, &core_name, &memory_regions)?;
 
         test_hw_breakpoints(&mut core, &memory_regions)?;
 

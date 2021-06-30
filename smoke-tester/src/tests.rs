@@ -41,11 +41,15 @@ pub fn test_register_access(core: &mut Core) -> Result<()> {
     Ok(())
 }
 
-pub fn test_memory_access(core: &mut Core, memory_regions: &[MemoryRegion]) -> Result<()> {
+pub fn test_memory_access(
+    core: &mut Core,
+    core_name: &String,
+    memory_regions: &[MemoryRegion],
+) -> Result<()> {
     // Try to write all memory regions
     for region in memory_regions {
         match region {
-            probe_rs::config::MemoryRegion::Ram(ram) => {
+            probe_rs::config::MemoryRegion::Ram(ram) if ram.cores.contains(core_name) => {
                 let ram_start = ram.range.start;
                 let ram_size = ram.range.end - ram.range.start;
 
