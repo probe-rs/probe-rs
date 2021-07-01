@@ -29,16 +29,10 @@ impl From<DebugPortError> for DebugProbeError {
 /// For a type-safe interface see the [DpAccess] trait.
 pub trait RawDpAccess {
     /// Reads a Debug Port register on the Chip.
-    fn read_raw_dp_register(&mut self, bank: DpBankSel, address: u8)
-        -> Result<u32, DebugPortError>;
+    fn read_raw_dp_register(&mut self, address: u8) -> Result<u32, DebugPortError>;
 
     /// Writes a Debug Port register on the Chip.
-    fn write_raw_dp_register(
-        &mut self,
-        bank: DpBankSel,
-        address: u8,
-        value: u32,
-    ) -> Result<(), DebugPortError>;
+    fn write_raw_dp_register(&mut self, address: u8, value: u32) -> Result<(), DebugPortError>;
 
     /// Returns the version of the Debug Port implementation.
     fn debug_port_version(&self) -> DebugPortVersion;
@@ -60,7 +54,7 @@ impl<T: RawDpAccess> DpAccess for T {
         }
 
         log::debug!("Reading DP register {}", R::NAME);
-        let result = self.read_raw_dp_register(R::DP_BANK, R::ADDRESS)?;
+        let result = self.read_raw_dp_register(R::ADDRESS)?;
         log::debug!("Read    DP register {}, value=0x{:08x}", R::NAME, result);
         Ok(result.into())
     }
@@ -75,19 +69,12 @@ impl<T: RawDpAccess> DpAccess for T {
 
         let value = register.into();
         log::debug!("Writing DP register {}, value=0x{:08x}", R::NAME, value);
-        self.write_raw_dp_register(R::DP_BANK, R::ADDRESS, value)?;
+        self.write_raw_dp_register(R::ADDRESS, value)?;
         Ok(())
     }
 }
 
-#[derive(Debug, PartialEq, Copy, Clone)]
-pub enum DpBankSel {
-    DontCare,
-    Bank(u8),
-}
-
 pub trait DpRegister: Register {
-    const DP_BANK: DpBankSel;
     const VERSION: DebugPortVersion;
 }
 
@@ -121,7 +108,6 @@ impl From<Abort> for u32 {
 }
 
 impl DpRegister for Abort {
-    const DP_BANK: DpBankSel = DpBankSel::DontCare;
     const VERSION: DebugPortVersion = DebugPortVersion::DPv1;
 }
 
@@ -170,12 +156,11 @@ impl From<Ctrl> for u32 {
 }
 
 impl DpRegister for Ctrl {
-    const DP_BANK: DpBankSel = DpBankSel::Bank(0);
     const VERSION: DebugPortVersion = DebugPortVersion::DPv1;
 }
 
 impl Register for Ctrl {
-    const ADDRESS: u8 = 0x4;
+    const ADDRESS: u8 = 0x04;
     const NAME: &'static str = "CTRL/STAT";
 }
 
@@ -201,7 +186,6 @@ impl From<Select> for u32 {
 }
 
 impl DpRegister for Select {
-    const DP_BANK: DpBankSel = DpBankSel::DontCare;
     const VERSION: DebugPortVersion = DebugPortVersion::DPv1;
 }
 
@@ -236,7 +220,6 @@ impl From<DPIDR> for u32 {
 }
 
 impl DpRegister for DPIDR {
-    const DP_BANK: DpBankSel = DpBankSel::DontCare;
     const VERSION: DebugPortVersion = DebugPortVersion::DPv1;
 }
 
@@ -267,12 +250,11 @@ impl From<TARGETID> for u32 {
 }
 
 impl DpRegister for TARGETID {
-    const DP_BANK: DpBankSel = DpBankSel::Bank(2);
     const VERSION: DebugPortVersion = DebugPortVersion::DPv2;
 }
 
 impl Register for TARGETID {
-    const ADDRESS: u8 = 0x4;
+    const ADDRESS: u8 = 0x24;
     const NAME: &'static str = "TARGETID";
 }
 
@@ -319,7 +301,6 @@ impl From<RdBuff> for u32 {
 }
 
 impl DpRegister for RdBuff {
-    const DP_BANK: DpBankSel = DpBankSel::DontCare;
     const VERSION: DebugPortVersion = DebugPortVersion::DPv1;
 }
 

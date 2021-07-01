@@ -4,8 +4,8 @@ use super::{
         MemoryAp, RawApAccess, BASE, BASE2, CSW, IDR,
     },
     dp::{
-        Abort, Ctrl, DebugPortError, DebugPortId, DebugPortVersion, DpAccess, DpBankSel,
-        RawDpAccess, Select, DPIDR,
+        Abort, Ctrl, DebugPortError, DebugPortId, DebugPortVersion, DpAccess, RawDpAccess, Select,
+        DPIDR,
     },
     memory::{adi_v5_memory_interface::ADIMemoryInterface, Component},
     SwoAccess, SwoConfig,
@@ -456,24 +456,30 @@ impl<'interface> ArmCommunicationInterface {
         Ok(())
     }
 
-    fn select_dp_bank(&mut self, dp_bank: DpBankSel) -> Result<(), DebugPortError> {
-        match dp_bank {
-            DpBankSel::Bank(new_bank) => {
-                if new_bank != self.state.current_dpbanksel {
-                    self.state.current_dpbanksel = new_bank;
+    fn select_dp_bank(&mut self, dp_register_address: u8) -> Result<(), DebugPortError> {
+        // DP register addresses are 4 bank bits, 4 address bits. Lowest 2 address bits are
+        // always 0, so this leaves only 4 possible addresses: 0x0, 0x4, 0x8, 0xC.
+        // Only address 0x4 is banked, the rest are don't care.
 
-                    let mut select = Select(0);
+        let bank = dp_register_address >> 4;
+        let addr = dp_register_address & 0xF;
 
-                    log::debug!("Changing DP_BANK_SEL to {}", self.state.current_dpbanksel);
+        if addr != 4 {
+            return Ok(());
+        }
 
-                    select.set_ap_sel(self.state.current_apsel);
-                    select.set_ap_bank_sel(self.state.current_apbanksel);
-                    select.set_dp_bank_sel(self.state.current_dpbanksel);
+        if bank != self.state.current_dpbanksel {
+            self.state.current_dpbanksel = bank;
 
-                    self.write_dp_register(select)?;
-                }
-            }
-            DpBankSel::DontCare => (),
+            let mut select = Select(0);
+
+            log::debug!("Changing DP_BANK_SEL to {}", self.state.current_dpbanksel);
+
+            select.set_ap_sel(self.state.current_apsel);
+            select.set_ap_bank_sel(self.state.current_apbanksel);
+            select.set_dp_bank_sel(self.state.current_dpbanksel);
+
+            self.write_dp_register(select)?;
         }
 
         Ok(())
@@ -500,23 +506,14 @@ impl CommunicationInterface for ArmCommunicationInterface {
 }
 
 impl RawDpAccess for ArmCommunicationInterface {
-    fn read_raw_dp_register(
-        &mut self,
-        bank: DpBankSel,
-        address: u8,
-    ) -> Result<u32, DebugPortError> {
-        self.select_dp_bank(bank)?;
+    fn read_raw_dp_register(&mut self, address: u8) -> Result<u32, DebugPortError> {
+        self.select_dp_bank(address)?;
         let result = self.probe.read_register(PortType::DebugPort, address)?;
         Ok(result)
     }
 
-    fn write_raw_dp_register(
-        &mut self,
-        bank: DpBankSel,
-        address: u8,
-        value: u32,
-    ) -> Result<(), DebugPortError> {
-        self.select_dp_bank(bank)?;
+    fn write_raw_dp_register(&mut self, address: u8, value: u32) -> Result<(), DebugPortError> {
+        self.select_dp_bank(address)?;
         self.probe
             .write_register(PortType::DebugPort, address, value)?;
         Ok(())

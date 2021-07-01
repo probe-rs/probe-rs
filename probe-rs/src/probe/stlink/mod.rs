@@ -8,7 +8,7 @@ use crate::{
     architecture::arm::{
         ap::{valid_access_ports, AccessPort, ApAccess, ApClass, MemoryAp, RawApAccess, IDR},
         communication_interface::{ArmCommunicationInterfaceState, ArmProbeInterface},
-        dp::{DebugPortError, DebugPortVersion, DpBankSel, RawDpAccess},
+        dp::{DebugPortError, DebugPortVersion, RawDpAccess},
         memory::{adi_v5_memory_interface::ArmProbe, Component},
         ApInformation, ArmChipInfo, SwoAccess, SwoConfig, SwoMode,
     },
@@ -1134,21 +1134,12 @@ impl StlinkArmDebug {
 }
 
 impl RawDpAccess for StlinkArmDebug {
-    fn read_raw_dp_register(
-        &mut self,
-        _bank: DpBankSel,
-        address: u8,
-    ) -> Result<u32, DebugPortError> {
+    fn read_raw_dp_register(&mut self, address: u8) -> Result<u32, DebugPortError> {
         let result = self.probe.read_register(PortType::DebugPort, address)?;
         Ok(result)
     }
 
-    fn write_raw_dp_register(
-        &mut self,
-        _bank: DpBankSel,
-        address: u8,
-        value: u32,
-    ) -> Result<(), DebugPortError> {
+    fn write_raw_dp_register(&mut self, address: u8, value: u32) -> Result<(), DebugPortError> {
         self.probe
             .write_register(PortType::DebugPort, address, value)?;
         Ok(())
