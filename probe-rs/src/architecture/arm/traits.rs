@@ -89,53 +89,49 @@ pub trait DapAccess {
 
     /// Read a Debug Port register.
     ///
-    /// Highest 4 bits of `address` are interpreted as the bank number, implementations
+    /// Highest 4 bits of `addr` are interpreted as the bank number, implementations
     /// will do bank switching if necessary.
-    fn read_raw_dp_register(&mut self, address: u8) -> Result<u32, DebugProbeError>;
+    fn read_raw_dp_register(&mut self, addr: u8) -> Result<u32, DebugProbeError>;
 
     /// Write a Debug Port register.
     ///
-    /// Highest 4 bits of `address` are interpreted as the bank number, implementations
+    /// Highest 4 bits of `addr` are interpreted as the bank number, implementations
     /// will do bank switching if necessary.
-    fn write_raw_dp_register(&mut self, address: u8, value: u32) -> Result<(), DebugProbeError>;
+    fn write_raw_dp_register(&mut self, addr: u8, value: u32) -> Result<(), DebugProbeError>;
 
     /// Read an Access Port register.
     ///
-    /// Highest 4 bits of `address` are interpreted as the bank number, implementations
+    /// Highest 4 bits of `addr` are interpreted as the bank number, implementations
     /// will do bank switching if necessary.
-    fn read_raw_ap_register(
-        &mut self,
-        port_number: u8,
-        address: u8,
-    ) -> Result<u32, DebugProbeError>;
+    fn read_raw_ap_register(&mut self, port: u8, addr: u8) -> Result<u32, DebugProbeError>;
 
     /// Read multiple values from the same Access Port register.
     ///
     /// If possible, this uses optimized read functions, otherwise it
     /// falls back to the `read_raw_ap_register` function.
     ///
-    /// Highest 4 bits of `address` are interpreted as the bank number, implementations
+    /// Highest 4 bits of `addr` are interpreted as the bank number, implementations
     /// will do bank switching if necessary.
     fn read_raw_ap_register_repeated(
         &mut self,
         port: u8,
-        address: u8,
+        addr: u8,
         values: &mut [u32],
     ) -> Result<(), DebugProbeError> {
         for val in values {
-            *val = self.read_raw_ap_register(port, address)?;
+            *val = self.read_raw_ap_register(port, addr)?;
         }
         Ok(())
     }
 
     /// Write an AP register.
     ///
-    /// Highest 4 bits of `address` are interpreted as the bank number, implementations
+    /// Highest 4 bits of `addr` are interpreted as the bank number, implementations
     /// will do bank switching if necessary.
     fn write_raw_ap_register(
         &mut self,
         port: u8,
-        address: u8,
+        addr: u8,
         value: u32,
     ) -> Result<(), DebugProbeError>;
 
@@ -144,16 +140,16 @@ pub trait DapAccess {
     /// If possible, this uses optimized write functions, otherwise it
     /// falls back to the `write_raw_ap_register` function.
     ///
-    /// Highest 4 bits of `address` are interpreted as the bank number, implementations
+    /// Highest 4 bits of `addr` are interpreted as the bank number, implementations
     /// will do bank switching if necessary.
     fn write_raw_ap_register_repeated(
         &mut self,
         port: u8,
-        address: u8,
+        addr: u8,
         values: &[u32],
     ) -> Result<(), DebugProbeError> {
         for val in values {
-            self.write_raw_ap_register(port, address, *val)?;
+            self.write_raw_ap_register(port, addr, *val)?;
         }
         Ok(())
     }
