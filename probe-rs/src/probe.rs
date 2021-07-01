@@ -836,9 +836,11 @@ impl ArmProbeInterface for FakeArmInterface {
 }
 
 impl RawApAccess for FakeArmInterface {
-    type Error = DebugProbeError;
-
-    fn read_raw_ap_register(&mut self, _port_number: u8, _address: u8) -> Result<u32, Self::Error> {
+    fn read_raw_ap_register(
+        &mut self,
+        _port_number: u8,
+        _address: u8,
+    ) -> Result<u32, DebugProbeError> {
         todo!()
     }
 
@@ -847,7 +849,7 @@ impl RawApAccess for FakeArmInterface {
         _port: u8,
         _address: u8,
         _values: &mut [u32],
-    ) -> Result<(), Self::Error> {
+    ) -> Result<(), DebugProbeError> {
         todo!()
     }
 
@@ -856,7 +858,7 @@ impl RawApAccess for FakeArmInterface {
         _port: u8,
         _address: u8,
         _value: u32,
-    ) -> Result<(), Self::Error> {
+    ) -> Result<(), DebugProbeError> {
         todo!()
     }
 
@@ -865,7 +867,7 @@ impl RawApAccess for FakeArmInterface {
         _port: u8,
         _address: u8,
         _values: &[u32],
-    ) -> Result<(), Self::Error> {
+    ) -> Result<(), DebugProbeError> {
         todo!()
     }
 }

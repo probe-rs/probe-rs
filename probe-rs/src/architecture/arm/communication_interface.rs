@@ -43,9 +43,7 @@ pub trait Register: Clone + From<u32> + Into<u32> + Sized + Debug {
     const NAME: &'static str;
 }
 
-pub trait ArmProbeInterface:
-    RawApAccess<Error = DebugProbeError> + SwoAccess + Debug + Send
-{
+pub trait ArmProbeInterface: RawApAccess + SwoAccess + Debug + Send {
     fn memory_interface(&mut self, access_port: MemoryAp) -> Result<Memory<'_>, ProbeRsError>;
 
     fn ap_information(&self, access_port: GenericAp) -> Option<&ApInformation>;
@@ -118,7 +116,7 @@ impl ApInformation {
         access_port: GenericAp,
     ) -> Result<Self, DebugProbeError>
     where
-        P: ApAccess<Error = DebugProbeError>,
+        P: ApAccess,
     {
         let idr: IDR = probe.read_ap_register(access_port)?;
 
@@ -424,13 +422,13 @@ impl CommunicationInterface for ArmCommunicationInterface {
 }
 
 impl RawDpAccess for ArmCommunicationInterface {
-    fn read_raw_dp_register(&mut self, address: u8) -> Result<u32, DebugPortError> {
+    fn read_raw_dp_register(&mut self, address: u8) -> Result<u32, DebugProbeError> {
         self.select_dp_bank(address)?;
         let result = self.probe.raw_read_register(PortType::DebugPort, address)?;
         Ok(result)
     }
 
-    fn write_raw_dp_register(&mut self, address: u8, value: u32) -> Result<(), DebugPortError> {
+    fn write_raw_dp_register(&mut self, address: u8, value: u32) -> Result<(), DebugProbeError> {
         self.select_dp_bank(address)?;
         self.probe
             .raw_write_register(PortType::DebugPort, address, value)?;
@@ -466,9 +464,11 @@ impl SwoAccess for ArmCommunicationInterface {
 }
 
 impl RawApAccess for ArmCommunicationInterface {
-    type Error = DebugProbeError;
-
-    fn read_raw_ap_register(&mut self, port_number: u8, address: u8) -> Result<u32, Self::Error> {
+    fn read_raw_ap_register(
+        &mut self,
+        port_number: u8,
+        address: u8,
+    ) -> Result<u32, DebugProbeError> {
         self.select_ap_and_ap_bank(port_number, address)?;
 
         let result = self
@@ -483,7 +483,7 @@ impl RawApAccess for ArmCommunicationInterface {
         port: u8,
         address: u8,
         values: &mut [u32],
-    ) -> Result<(), Self::Error> {
+    ) -> Result<(), DebugProbeError> {
         self.select_ap_and_ap_bank(port, address)?;
 
         self.probe
@@ -496,7 +496,7 @@ impl RawApAccess for ArmCommunicationInterface {
         port: u8,
         address: u8,
         value: u32,
-    ) -> Result<(), Self::Error> {
+    ) -> Result<(), DebugProbeError> {
         self.select_ap_and_ap_bank(port, address)?;
 
         self.probe
@@ -508,7 +508,7 @@ impl RawApAccess for ArmCommunicationInterface {
         port: u8,
         address: u8,
         values: &[u32],
-    ) -> Result<(), Self::Error> {
+    ) -> Result<(), DebugProbeError> {
         self.select_ap_and_ap_bank(port, address)?;
 
         self.probe

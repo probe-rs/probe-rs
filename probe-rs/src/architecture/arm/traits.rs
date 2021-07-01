@@ -1,6 +1,6 @@
 use crate::DebugProbeError;
 
-use super::dp::{DebugPortError, DebugPortVersion};
+use super::dp::DebugPortVersion;
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum PortType {
@@ -67,10 +67,10 @@ pub trait RawDapAccess {
 /// For a type-safe interface see the [DpAccess] trait.
 pub trait RawDpAccess {
     /// Reads a Debug Port register on the Chip.
-    fn read_raw_dp_register(&mut self, address: u8) -> Result<u32, DebugPortError>;
+    fn read_raw_dp_register(&mut self, address: u8) -> Result<u32, DebugProbeError>;
 
     /// Writes a Debug Port register on the Chip.
-    fn write_raw_dp_register(&mut self, address: u8, value: u32) -> Result<(), DebugPortError>;
+    fn write_raw_dp_register(&mut self, address: u8, value: u32) -> Result<(), DebugProbeError>;
 
     /// Returns the version of the Debug Port implementation.
     fn debug_port_version(&self) -> DebugPortVersion;
@@ -78,10 +78,12 @@ pub trait RawDpAccess {
 
 /// Direct access to AP registers.
 pub trait RawApAccess {
-    type Error: std::error::Error + Send + Sync + 'static;
-
     /// Read a AP register.
-    fn read_raw_ap_register(&mut self, port_number: u8, address: u8) -> Result<u32, Self::Error>;
+    fn read_raw_ap_register(
+        &mut self,
+        port_number: u8,
+        address: u8,
+    ) -> Result<u32, DebugProbeError>;
 
     /// Read a register using a block transfer. This can be used
     /// to read multiple values from the same register.
@@ -90,7 +92,7 @@ pub trait RawApAccess {
         port: u8,
         address: u8,
         values: &mut [u32],
-    ) -> Result<(), Self::Error> {
+    ) -> Result<(), DebugProbeError> {
         for val in values {
             *val = self.read_raw_ap_register(port, address)?;
         }
@@ -103,7 +105,7 @@ pub trait RawApAccess {
         port: u8,
         address: u8,
         value: u32,
-    ) -> Result<(), Self::Error>;
+    ) -> Result<(), DebugProbeError>;
 
     /// Write a register using a block transfer. This can be used
     /// to write multiple values to the same register.
@@ -112,7 +114,7 @@ pub trait RawApAccess {
         port: u8,
         address: u8,
         values: &[u32],
-    ) -> Result<(), Self::Error> {
+    ) -> Result<(), DebugProbeError> {
         for val in values {
             self.write_raw_ap_register(port, address, *val)?;
         }

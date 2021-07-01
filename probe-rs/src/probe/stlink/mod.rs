@@ -8,7 +8,7 @@ use crate::{
     architecture::arm::{
         ap::{valid_access_ports, AccessPort, ApAccess, ApClass, MemoryAp, IDR},
         communication_interface::{ArmCommunicationInterfaceState, ArmProbeInterface},
-        dp::{DebugPortError, DebugPortVersion},
+        dp::DebugPortVersion,
         memory::{adi_v5_memory_interface::ArmProbe, Component},
         ApInformation, ArmChipInfo, RawApAccess, RawDpAccess, SwoAccess, SwoConfig, SwoMode,
     },
@@ -1131,12 +1131,12 @@ impl StlinkArmDebug {
 }
 
 impl RawDpAccess for StlinkArmDebug {
-    fn read_raw_dp_register(&mut self, address: u8) -> Result<u32, DebugPortError> {
+    fn read_raw_dp_register(&mut self, address: u8) -> Result<u32, DebugProbeError> {
         let result = self.probe.read_register(DP_PORT, address)?;
         Ok(result)
     }
 
-    fn write_raw_dp_register(&mut self, address: u8, value: u32) -> Result<(), DebugPortError> {
+    fn write_raw_dp_register(&mut self, address: u8, value: u32) -> Result<(), DebugProbeError> {
         self.probe.write_register(DP_PORT, address, value)?;
         Ok(())
     }
@@ -1213,9 +1213,7 @@ impl<'probe> ArmProbeInterface for StlinkArmDebug {
 }
 
 impl RawApAccess for StlinkArmDebug {
-    type Error = DebugProbeError;
-
-    fn read_raw_ap_register(&mut self, port: u8, address: u8) -> Result<u32, Self::Error> {
+    fn read_raw_ap_register(&mut self, port: u8, address: u8) -> Result<u32, DebugProbeError> {
         self.probe.read_register(port as u16, address)
     }
 
@@ -1224,7 +1222,7 @@ impl RawApAccess for StlinkArmDebug {
         port: u8,
         address: u8,
         value: u32,
-    ) -> Result<(), Self::Error> {
+    ) -> Result<(), DebugProbeError> {
         self.probe.write_register(port as u16, address, value)
     }
 }

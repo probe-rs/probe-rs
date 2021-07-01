@@ -75,8 +75,7 @@ pub trait AccessPort {
 }
 
 pub trait ApAccess {
-    type Error: std::error::Error + Send + Sync + 'static;
-    fn read_ap_register<PORT, R>(&mut self, port: impl Into<PORT>) -> Result<R, Self::Error>
+    fn read_ap_register<PORT, R>(&mut self, port: impl Into<PORT>) -> Result<R, DebugProbeError>
     where
         PORT: AccessPort,
         R: ApRegister<PORT>;
@@ -88,7 +87,7 @@ pub trait ApAccess {
         port: impl Into<PORT> + Clone,
         register: R,
         values: &mut [u32],
-    ) -> Result<(), Self::Error>
+    ) -> Result<(), DebugProbeError>
     where
         PORT: AccessPort,
         R: ApRegister<PORT>;
@@ -97,7 +96,7 @@ pub trait ApAccess {
         &mut self,
         port: impl Into<PORT>,
         register: R,
-    ) -> Result<(), Self::Error>
+    ) -> Result<(), DebugProbeError>
     where
         PORT: AccessPort,
         R: ApRegister<PORT>;
@@ -109,16 +108,14 @@ pub trait ApAccess {
         port: impl Into<PORT> + Clone,
         register: R,
         values: &[u32],
-    ) -> Result<(), Self::Error>
+    ) -> Result<(), DebugProbeError>
     where
         PORT: AccessPort,
         R: ApRegister<PORT>;
 }
 
 impl<T: RawApAccess> ApAccess for T {
-    type Error = T::Error;
-
-    fn read_ap_register<PORT, R>(&mut self, port: impl Into<PORT>) -> Result<R, Self::Error>
+    fn read_ap_register<PORT, R>(&mut self, port: impl Into<PORT>) -> Result<R, DebugProbeError>
     where
         PORT: AccessPort,
         R: ApRegister<PORT>,
@@ -136,7 +133,7 @@ impl<T: RawApAccess> ApAccess for T {
         &mut self,
         port: impl Into<PORT>,
         register: R,
-    ) -> Result<(), Self::Error>
+    ) -> Result<(), DebugProbeError>
     where
         PORT: AccessPort,
         R: ApRegister<PORT>,
@@ -150,7 +147,7 @@ impl<T: RawApAccess> ApAccess for T {
         port: impl Into<PORT>,
         _register: R,
         values: &[u32],
-    ) -> Result<(), Self::Error>
+    ) -> Result<(), DebugProbeError>
     where
         PORT: AccessPort,
         R: ApRegister<PORT>,
@@ -168,7 +165,7 @@ impl<T: RawApAccess> ApAccess for T {
         port: impl Into<PORT>,
         _register: R,
         values: &mut [u32],
-    ) -> Result<(), Self::Error>
+    ) -> Result<(), DebugProbeError>
     where
         PORT: AccessPort,
         R: ApRegister<PORT>,
@@ -189,7 +186,7 @@ pub fn access_port_is_valid<AP>(debug_port: &mut AP, access_port: GenericAp) -> 
 where
     AP: ApAccess,
 {
-    let idr_result: Result<IDR, AP::Error> = debug_port.read_ap_register(access_port);
+    let idr_result: Result<IDR, DebugProbeError> = debug_port.read_ap_register(access_port);
 
     match idr_result {
         Ok(idr) => u32::from(idr) != 0,
