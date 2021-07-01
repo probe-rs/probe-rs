@@ -2,227 +2,362 @@
 name: HT32F17xx Series
 variants:
   - name: HT32F1755
+    cores:
+      - name: main
+        type: M3
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536903680
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 0
             end: 130048
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - ht32f
       - ht32f_opt
   - name: HT32F1755_100LQFP
+    cores:
+      - name: main
+        type: M3
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536903680
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 0
             end: 130048
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - ht32f
       - ht32f_opt
   - name: HT32F1755_48LQFP
+    cores:
+      - name: main
+        type: M3
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536903680
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 0
             end: 130048
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - ht32f
       - ht32f_opt
   - name: HT32F1755_48QFN
+    cores:
+      - name: main
+        type: M3
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536903680
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 0
             end: 130048
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - ht32f
       - ht32f_opt
   - name: HT32F1755_64LQFP
+    cores:
+      - name: main
+        type: M3
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536903680
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 0
             end: 130048
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - ht32f
       - ht32f_opt
   - name: HT32F1765
+    cores:
+      - name: main
+        type: M3
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536936448
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 0
             end: 130048
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - ht32f
       - ht32f_opt
   - name: HT32F1765_100LQFP
+    cores:
+      - name: main
+        type: M3
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536936448
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 0
             end: 130048
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - ht32f
       - ht32f_opt
   - name: HT32F1765_48LQFP
+    cores:
+      - name: main
+        type: M3
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536936448
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 0
             end: 130048
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - ht32f
       - ht32f_opt
   - name: HT32F1765_48QFN
+    cores:
+      - name: main
+        type: M3
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536936448
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 0
             end: 130048
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - ht32f
       - ht32f_opt
   - name: HT32F1765_64LQFP
+    cores:
+      - name: main
+        type: M3
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536936448
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 0
             end: 130048
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - ht32f
       - ht32f_opt
   - name: HT32F2755
+    cores:
+      - name: main
+        type: M3
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536936448
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 0
             end: 130048
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - ht32f
       - ht32f_opt
   - name: HT32F2755_100LQFP
+    cores:
+      - name: main
+        type: M3
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536936448
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 0
             end: 130048
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - ht32f
       - ht32f_opt
   - name: HT32F2755_48LQFP
+    cores:
+      - name: main
+        type: M3
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536936448
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 0
             end: 130048
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - ht32f
       - ht32f_opt
   - name: HT32F2755_48QFN
+    cores:
+      - name: main
+        type: M3
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536936448
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 0
             end: 130048
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - ht32f
       - ht32f_opt
   - name: HT32F2755_64LQFP
+    cores:
+      - name: main
+        type: M3
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536936448
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 0
             end: 130048
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - ht32f
       - ht32f_opt
@@ -230,6 +365,7 @@ flash_algorithms:
   ht32f_opt:
     name: ht32f_opt
     description: HT32 Series Flash Options
+    cores: [main]
     default: true
     instructions: RUkBIAhgRUkDIAhgREgeIUFhgWFESUNISUTIYD9IgDCAaEhgCGAAIHBHPUgMIQFhACHBYAhGcEc7SEhEwWg4SAFgCiHBYBQhAWEA4AC/AWnJBgkPDin50YFpNEoRQgPQHiGBYQEgcEcAIHBHLkpKRFFoSR6IQ5FoiEIB0QAgcEcTaNFoyRiBQgHYASBwRyRJCGAII8tgFCMLYZBgAOAAvwhpwAYADw4o+dGIaR9KEEDs0B4giGHo53C1G0vJHEtEiQiACN1oiQCAABtoRBjrGCQfnEIB0wEgcL0RSwQk3GAUJRJOE+AYYBRoXGAdYQDgAL8caeQGJA8OLPnRnGk0QgLQHiCYYebnAB0JHxIdACnp0QAgcL0AAACDCEAAAQhAAAAIQAAA8B8IAAAAHgACAAAAAAAAAAAAAAAAAAAAAAD/////AAAAAA==
     pc_init: 1
@@ -252,6 +388,7 @@ flash_algorithms:
   ht32f:
     name: ht32f
     description: HT32 Series Flash
+    cores: [main]
     default: true
     instructions: SUkBIAhgSUkDIAhgHiDJAkhhiGFFSYAxCGhFSoMYRUoAIEpE0GCIaAArUGBJaADRSR5BQwAgEWBwRz9IDCEBYQAhwWAIRnBHOkhIRMFoOkgBYAohwWAUIQFhAOAAvwFpyQYJDw4p+dGBaTRKEUID0B4hgWEBIHBHACBwRy1KSkRRaEkeiEORaIhCAdEAIHBHE2jRaMkYgUIB2AEgcEcmSQhgCCPLYBQjC2GQYADgAL8IacAGAA8OKPnRiGkfShBA7NAeIIhh6OdwtRpLyRxLRIkIgAjdaIkAgAAbaEQY6xgkH5xCAdMBIHC9E0sEJNxgFCUSThPgGGAUaFxgHWEA4AC/HGnkBiQPDiz50ZxpNEIC0B4gmGHm5wAdCR8SHQAp6dEAIHC9AAAAgwhAAAEIQK7qifwIAAAAAAAIQB4AAgAAAAAAAAAAAAAAAAAAAAAA/////wAAAAA=
     pc_init: 1
@@ -271,4 +408,3 @@ flash_algorithms:
       sectors:
         - size: 512
           address: 0
-core: M3

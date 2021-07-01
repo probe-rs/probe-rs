@@ -2,65 +2,102 @@
 name: SAMD11
 variants:
   - name: ATSAMD11C14A
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536875008
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 0
             end: 16384
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - atsamd11_16
   - name: ATSAMD11D14AM
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536875008
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 0
             end: 16384
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - atsamd11_16
   - name: ATSAMD11D14AS
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536875008
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 0
             end: 16384
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - atsamd11_16
   - name: ATSAMD11D14AU
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536875008
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 0
             end: 16384
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - atsamd11_16
 flash_algorithms:
   atsamd11_16:
     name: atsamd11_16
     description: ATSAMD11 16kB Flash
+    cores: [main]
     default: true
     instructions: QSEJBgpoUgcB1QQiCmAoSiZJUWAnSUlECGAAIHBHACBwRw8hiQIBQEIIDyBAAgJAELUfSMJhIEoCgAJ90gf80B1MASI/PJICixgM4EoIwmEEgAJ90gf80AJ9kgcB1QEgEL3/MQExmULw0wAgEL0QtRFMD0vkHByAHH3kB/zQyRyJCIkAAuAQygkfEMAAKfrRCUg9OBiAGH3AB/zQGH2ABwHVASAQvQAgEL0AAJ4ABAAAQABBBAAAAEGlAAAAAAAAAAAAAA==
     pc_init: 1
@@ -80,4 +117,3 @@ flash_algorithms:
       sectors:
         - size: 1024
           address: 0
-core: M0

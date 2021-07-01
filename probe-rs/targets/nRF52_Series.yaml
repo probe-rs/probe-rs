@@ -5,161 +5,242 @@ manufacturer:
   id: 0x44
 variants:
   - name: nRF52805_xxAA
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 0x20000000
             end: 0x20006000
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 0
             end: 0x30000
           is_boot_memory: true
+          cores: [main]
       - Nvm:
           range:
             start: 0x10001000
             end: 0x10002000
           is_boot_memory: false
+          cores: [main]
     flash_algorithms:
       - nrf52
   - name: nRF52810_xxAA
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 0x20000000
             end: 0x20006000
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 0
             end: 0x30000
           is_boot_memory: true
+          cores: [main]
       - Nvm:
           range:
             start: 0x10001000
             end: 0x10002000
           is_boot_memory: false
+          cores: [main]
     flash_algorithms:
       - nrf52
   - name: nRF52811_xxAA
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 0x20000000
             end: 0x20006000
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 0
             end: 0x30000
           is_boot_memory: true
+          cores: [main]
       - Nvm:
           range:
             start: 0x10001000
             end: 0x10002000
           is_boot_memory: false
+          cores: [main]
     flash_algorithms:
       - nrf52
   - name: nRF52820_xxAA
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 0x20000000
             end: 0x20008000
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 0
             end: 0x40000
           is_boot_memory: true
+          cores: [main]
       - Nvm:
           range:
             start: 0x10001000
             end: 0x10002000
           is_boot_memory: false
+          cores: [main]
     flash_algorithms:
       - nrf52
   - name: nRF52832_xxAA
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 0x20000000
             end: 0x20010000
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 0
             end: 0x80000
           is_boot_memory: true
+          cores: [main]
       - Nvm:
           range:
             start: 0x10001000
             end: 0x10002000
           is_boot_memory: false
+          cores: [main]
     flash_algorithms:
       - nrf52
   - name: nRF52832_xxAB
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 0x20000000
             end: 0x20008000
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 0
             end: 0x100000
           is_boot_memory: true
+          cores: [main]
       - Nvm:
           range:
             start: 0x10001000
             end: 0x10002000
           is_boot_memory: false
+          cores: [main]
     flash_algorithms:
       - nrf52
   - name: nRF52833_xxAA
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 0x20000000
             end: 0x20020000
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 0
             end: 0x80000
           is_boot_memory: true
+          cores: [main]
       - Nvm:
           range:
             start: 0x10001000
             end: 0x10002000
           is_boot_memory: false
+          cores: [main]
     flash_algorithms:
       - nrf52
   - name: nRF52840_xxAA
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 0x20000000
             end: 0x20040000
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 0
             end: 0x100000
           is_boot_memory: true
+          cores: [main]
       - Nvm:
           range:
             start: 0x10001000
             end: 0x10002000
           is_boot_memory: false
+          cores: [main]
     flash_algorithms:
       - nrf52
 flash_algorithms:
   nrf52:
     name: nrf52
     description: nrf52
+    cores: [main]
     default: true
     instructions: AL4K4A14LQZoQAgkQAAA01hAZB760UkcUh4AKvLRcEcAIHBHACBwR3C1JkwCIGBgASDgYCRNKGjABwLQACBgYHC9APAs+PbncLUeTAIhYWAeSYhCAtMBIGBhAOCgYBpNAPAd+ChowAf60AAgYGBwvfi1BUaOCBNIASEURkFgEk8BzAHFOGjABwbQdh740Q1IACFBYAhG+L0A8AH48ucMSEBoAAYADgvQCklJaAApB9AJSQpKwwcA0ApgCR1ACPnRcEcAAADlAUAA5AFAABAAEAAEAUAABQFAAAYBQDVGUm4AAAAA
     pc_init: 0x21
@@ -179,4 +260,3 @@ flash_algorithms:
       sectors:
         - size: 0x1000
           address: 0
-core: M4

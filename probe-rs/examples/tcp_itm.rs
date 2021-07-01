@@ -28,7 +28,7 @@ fn main() -> Result<(), Error> {
         .set_baud(2_000_000)
         .set_continuous_formatting(false);
 
-    session.setup_swv(&cfg)?;
+    session.setup_swv(0, &cfg)?;
 
     let mut timestamp: f64 = 0.0;
 

@@ -10,6 +10,7 @@ pub use generic_ap::{ApClass, ApType, GenericAp, IDR};
 pub use memory_ap::{
     AddressIncrement, BaseaddrFormat, DataSize, MemoryAp, BASE, BASE2, CSW, DRW, TAR,
 };
+use probe_rs_target::Core;
 
 use super::Register;
 
@@ -37,6 +38,8 @@ pub enum AccessPortError {
     DebugPort(#[from] DebugPortError),
     #[error("Failed to flush batched writes")]
     FlushError(#[from] DebugProbeError),
+    #[error("The target for this core has defined invalid core access options. This is a bug, please file an issue. {0:?}")]
+    InvalidCoreAccessOption(Core),
 }
 
 impl AccessPortError {

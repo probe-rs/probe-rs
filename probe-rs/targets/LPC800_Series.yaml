@@ -2,415 +2,677 @@
 name: LPC800 Series
 variants:
   - name: LPC802M001JDH16
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 268435456
             end: 268437504
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 0
             end: 16384
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - lpc80x_16
   - name: LPC802M001JDH20
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 268435456
             end: 268437504
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 0
             end: 16384
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - lpc80x_16
   - name: LPC802M001JHI33
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 268435456
             end: 268437504
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 0
             end: 16384
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - lpc80x_16
   - name: LPC802M011JDH20
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 268435456
             end: 268437504
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 0
             end: 16384
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - lpc80x_16
   - name: LPC804M101JDH20
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 268435456
             end: 268439552
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 0
             end: 32768
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - lpc80x_32
   - name: LPC804M101JDH24
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 268435456
             end: 268439552
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 0
             end: 32768
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - lpc80x_32
   - name: LPC804M101JHI33
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 268435456
             end: 268439552
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 0
             end: 32768
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - lpc80x_32
   - name: LPC804M111JDH24
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 268435456
             end: 268439552
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 0
             end: 32768
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - lpc80x_32
   - name: LPC810M021FN8
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 268435456
             end: 268436480
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 0
             end: 4096
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - lpc8xx_4
   - name: LPC811M001JDH16
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 268435456
             end: 268437504
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 0
             end: 8192
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - lpc8xx_8
   - name: LPC812M101JD20
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 268435456
             end: 268439552
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 0
             end: 16384
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - lpc8xx_16
   - name: LPC812M101JDH16
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 268435456
             end: 268439552
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 0
             end: 16384
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - lpc8xx_16
   - name: LPC812M101JDH20
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 268435456
             end: 268439552
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 0
             end: 16384
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - lpc8xx_16
   - name: LPC812M101JTB16
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 268435456
             end: 268439552
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 0
             end: 16384
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - lpc8xx_16
   - name: LPC822M101JDH20
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 268435456
             end: 268439552
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 0
             end: 16384
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - lpc8xx_16
   - name: LPC822M101JHI33
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 268435456
             end: 268439552
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 0
             end: 16384
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - lpc8xx_16
   - name: LPC824M201JDH20
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 268435456
             end: 268443648
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 0
             end: 32768
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - lpc8xx_32
   - name: LPC824M201JHI33
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 268435456
             end: 268443648
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 0
             end: 32768
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - lpc8xx_32
   - name: LPC832M101FDH20
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 268435456
             end: 268439552
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 0
             end: 16384
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - lpc8xx_16
   - name: LPC834M101FHI33
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 268435456
             end: 268439552
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 0
             end: 32768
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - lpc8xx_32
   - name: LPC844M201JBD48
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 268435456
             end: 268443648
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 0
             end: 65536
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - lpc84x_64
   - name: LPC844M201JBD64
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 268435456
             end: 268443648
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 0
             end: 65536
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - lpc84x_64
   - name: LPC844M201JHI33
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 268435456
             end: 268443648
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 0
             end: 65536
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - lpc84x_64
   - name: LPC844M201JHI48
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 268435456
             end: 268443648
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 0
             end: 65536
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - lpc84x_64
   - name: LPC845M301JBD48
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 268435456
             end: 268451840
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 0
             end: 65536
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - lpc84x_64
   - name: LPC845M301JBD64
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 268435456
             end: 268451840
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 0
             end: 65536
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - lpc84x_64
   - name: LPC845M301JHI33
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 268435456
             end: 268451840
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 0
             end: 65536
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - lpc84x_64
   - name: LPC845M301JHI48
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 268435456
             end: 268451840
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 0
             end: 65536
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - lpc84x_64
   - name: LPC8N04FHI24
+    cores:
+      - name: main
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 268435456
             end: 268443648
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 0
             end: 30720
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - lpc8n04_30
 flash_algorithms:
   lpc80x_16:
     name: lpc80x_16
     description: LPC80x IAP 16kB Flash
+    cores: [main]
     default: true
     instructions: gApwR0hJR0hJRAhgR0gAIgJhASFBYUJhQWGBYUNJAiBAOQhwEEZwRwAgcEf4tUBMMiBMRCFGACUPJmHEFDE8SDxPSEQMPACRuEdgaQAoDdE0IGHENEhIRABoIGA0SAw8SEQAmbhHYGkAKADQASD4vfi1L02ECjIgTUQRxSlGDDErSCxOLGAPRkhECD2wR2hpACgO0TQgEcUjSCxgSEQAaGhgI0g5RkhECD2wR2hpACgA0AEg+L34tRRGBgAO0QPMYmhAGCFoiRhAGKFoQBjhaEAYIWlAGEBCYGEIPBRNsApNRDIhaGApYKhgKUYUMRFPKEYAkbhHaGkAKBHRMyCsYEHF/yABMGhgB0hIRABoqGAHSAg9SEQAmbhHaGkAKADQASD4veAuAAAEAAAAQIAEQAgAAADxHwAPAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==
     pc_init: 5
@@ -433,6 +695,7 @@ flash_algorithms:
   lpc80x_32:
     name: lpc80x_32
     description: LPC80x IAP 32kB Flash
+    cores: [main]
     default: true
     instructions: gApwR0hJR0hJRAhgR0gAIgJhASFBYUJhQWGBYUNJAiBAOQhwEEZwRwAgcEf4tUBMMiBMRCFGACUfJmHEFDE8SDxPSEQMPACRuEdgaQAoDdE0IGHENEhIRABoIGA0SAw8SEQAmbhHYGkAKADQASD4vfi1L02ECjIgTUQRxSlGDDErSCxOLGAPRkhECD2wR2hpACgO0TQgEcUjSCxgSEQAaGhgI0g5RkhECD2wR2hpACgA0AEg+L34tRRGBgAO0QPMYmhAGCFoiRhAGKFoQBjhaEAYIWlAGEBCYGEIPBRNsApNRDIhaGApYKhgKUYUMRFPKEYAkbhHaGkAKBHRMyCsYEHF/yABMGhgB0hIRABoqGAHSAg9SEQAmbhHaGkAKADQASD4veAuAAAEAAAAQIAEQAgAAADxHwAPAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
     pc_init: 5
@@ -455,6 +718,7 @@ flash_algorithms:
   lpc8xx_4:
     name: lpc8xx_4
     description: LPC8xx IAP 4kB Flash
+    cores: [main]
     default: true
     instructions: gApwR0ZJRUhJRAhgRUgAIgJjASFBY0JjQWOBY0FJAiBAOQhwEEZwRwAgcEf4tT5MMiBMRAAlAyYiRmHCIUYUMTpPIEYAkbhHYGkAKAzRNCAhRmHBMkhIRABo4GAgRgCZuEdgaQAoANABIPi9+LUuTYQKTUQyIGxgKUasYBQxKGAqTg9GKEawR2hpACgN0WxgNCCsYChgIkg5RkhEAGjoYChGsEdoaQAoANABIPi9+LUURgYADtFhaCBo4mhAGKFoiRhAGCFpQBhhaUAYoWlAGEBC4GEUTbAKTUQyIWhgKWCoYClGFDERTyhGAJG4R2hpACgQ0W5gMyCsYChg/yABMOhgB0hIRABoKGEoRgCZuEdoaQAoANABIPi9AADgLgAABAAAAECABEAIAAAA8R//HwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
     pc_init: 5
@@ -477,6 +741,7 @@ flash_algorithms:
   lpc8xx_16:
     name: lpc8xx_16
     description: LPC8xx IAP 16kB Flash
+    cores: [main]
     default: true
     instructions: gApwR0ZJRUhJRAhgRUgAIgJjASFBY0JjQWOBY0FJAiBAOQhwEEZwRwAgcEf4tT5MMiBMRAAlDyYiRmHCIUYUMTpPIEYAkbhHYGkAKAzRNCAhRmHBMkhIRABo4GAgRgCZuEdgaQAoANABIPi9+LUuTYQKTUQyIGxgKUasYBQxKGAqTg9GKEawR2hpACgN0WxgNCCsYChgIkg5RkhEAGjoYChGsEdoaQAoANABIPi9+LUURgYADtFhaCBo4mhAGKFoiRhAGCFpQBhhaUAYoWlAGEBC4GEUTbAKTUQyIWhgKWCoYClGFDERTyhGAJG4R2hpACgQ0W5gMyCsYChg/yABMOhgB0hIRABoKGEoRgCZuEdoaQAoANABIPi9AADgLgAABAAAAECABEAIAAAA8R//HwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
     pc_init: 5
@@ -499,6 +764,7 @@ flash_algorithms:
   lpc8xx_32:
     name: lpc8xx_32
     description: LPC8xx IAP 32kB Flash
+    cores: [main]
     default: true
     instructions: gApwR0hJR0hJRAhgR0gAIgJjASFBY0JjQWOBY0NJAiBAOQhwEEZwRwAgcEf4tUBMMiBMRCFGACUfJmHEFDE8SDxPSEQMPACRuEdgaQAoDdE0IGHENEhIRABoIGA0SAw8SEQAmbhHYGkAKADQASD4vfi1L02ECjIgTUQRxSlGDDErSCxOLGAPRkhECD2wR2hpACgO0TQgEcUjSCxgSEQAaGhgI0g5RkhECD2wR2hpACgA0AEg+L34tRRGBgAO0QPMYmhAGCFoiRhAGKFoQBjhaEAYIWlAGEBCYGEIPBRNsApNRDIhaGApYKhgKUYUMRFPKEYAkbhHaGkAKBHRMyCsYEHF/yABMGhgB0hIRABoqGAHSAg9SEQAmbhHaGkAKADQASD4veAuAAAEAAAAQIAEQAgAAADxH/8fAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==
     pc_init: 5
@@ -521,6 +787,7 @@ flash_algorithms:
   lpc84x_64:
     name: lpc84x_64
     description: LPC84x IAP 64kB Flash
+    cores: [main]
     default: true
     instructions: gApwR0hJR0hJRAhgR0gAIgJhASFBYUJhQWGBYUNJAiBAOQhwEEZwRwAgcEf4tUBMMiBMRCFGACU/JmHEFDE8SDxPSEQMPACRuEdgaQAoDdE0IGHENEhIRABoIGA0SAw8SEQAmbhHYGkAKADQASD4vfi1L02ECjIgTUQRxSlGDDErSCxOLGAPRkhECD2wR2hpACgO0TQgEcUjSCxgSEQAaGhgI0g5RkhECD2wR2hpACgA0AEg+L34tRRGBgAO0QPMYmhAGCFoiRhAGKFoQBjhaEAYIWlAGEBCYGEIPBRNsApNRDIhaGApYKhgKUYUMRFPKEYAkbhHaGkAKBHRMyCsYEHF/yABMGhgB0hIRABoqGAHSAg9SEQAmbhHaGkAKADQASD4veAuAAAEAAAAQIAEQAgAAADxHwAPAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==
     pc_init: 5
@@ -543,6 +810,7 @@ flash_algorithms:
   lpc8n04_30:
     name: lpc8n04_30
     description: LPC8N04 IAP 30kB Flash
+    cores: [main]
     default: true
     instructions: gApwR0FJfSCAAUlECGBASAFoASKSBJFDAWA+SAFqCQwJBAFiACFBYgEhQWIAIHBHACBwR/i1OEwyIExEIUYAJR0mYcQUMTRINE9IRAw8AJG4R2BpACgN0TQgYcQrSEhEAGggYCxIDDxIRACZuEdgaQAoANABIPi9+LUnTYQKMiBNRBHFKUYMMSNIJE4sYA9GSEQIPbBHaGkAKA7RNCARxRpILGBIRABoaGAbSDlGSEQIPbBHaGkAKADQASD4vfi1FUwFRoAKTEQyIWBgIWCgYCFGFDERThdGIEYAkbBHYGkAKBDRMyChxP8gATAgYAdISEQAaGBgCEgMPEhEAJmwR2BpACgA0AEg+L0AAAQAAAAAwANAAIAEQAgAAADxH/8fAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
     pc_init: 5
@@ -565,6 +833,7 @@ flash_algorithms:
   lpc8xx_8:
     name: lpc8xx_8
     description: LPC8xx IAP 8kB Flash
+    cores: [main]
     default: true
     instructions: gApwR0ZJRUhJRAhgRUgAIgJjASFBY0JjQWOBY0FJAiBAOQhwEEZwRwAgcEf4tT5MMiBMRAAlByYiRmHCIUYUMTpPIEYAkbhHYGkAKAzRNCAhRmHBMkhIRABo4GAgRgCZuEdgaQAoANABIPi9+LUuTYQKTUQyIGxgKUasYBQxKGAqTg9GKEawR2hpACgN0WxgNCCsYChgIkg5RkhEAGjoYChGsEdoaQAoANABIPi9+LUURgYADtFhaCBo4mhAGKFoiRhAGCFpQBhhaUAYoWlAGEBC4GEUTbAKTUQyIWhgKWCoYClGFDERTyhGAJG4R2hpACgQ0W5gMyCsYChg/yABMOhgB0hIRABoKGEoRgCZuEdoaQAoANABIPi9AADgLgAABAAAAECABEAIAAAA8R//HwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
     pc_init: 5
@@ -584,4 +853,3 @@ flash_algorithms:
       sectors:
         - size: 1024
           address: 0
-core: M0

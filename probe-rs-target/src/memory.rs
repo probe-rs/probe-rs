@@ -8,6 +8,8 @@ pub struct NvmRegion {
     pub range: Range<u32>,
     /// True if the chip boots from this memory
     pub is_boot_memory: bool,
+    /// List of cores that can access this region
+    pub cores: Vec<String>,
 }
 
 impl NvmRegion {
@@ -26,6 +28,8 @@ pub struct RamRegion {
     pub range: Range<u32>,
     /// True if the chip boots from this memory
     pub is_boot_memory: bool,
+    /// List of cores that can access this region
+    pub cores: Vec<String>,
 }
 
 /// Represents a generic region.
@@ -33,6 +37,8 @@ pub struct RamRegion {
 pub struct GenericRegion {
     /// Address range of the region
     pub range: Range<u32>,
+    /// List of cores that can access this region
+    pub cores: Vec<String>,
 }
 
 /// Holds information about a specific, individual flash

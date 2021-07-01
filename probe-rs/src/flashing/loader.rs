@@ -231,7 +231,7 @@ impl FlashLoader {
             log::warn!("Memory map of flash loader does not match memory map of target!");
         }
 
-        let mut algos: HashMap<String, Vec<NvmRegion>> = HashMap::new();
+        let mut algos: HashMap<(String, String), Vec<NvmRegion>> = HashMap::new();
 
         // Commit NVM first
 
@@ -261,7 +261,16 @@ impl FlashLoader {
 
                 let algo = Self::get_flash_algorithm_for_region(region, session.target())?;
 
-                let entry = algos.entry(algo.name.clone()).or_default();
+                let entry = algos
+                    .entry((
+                        algo.name.clone(),
+                        region
+                            .cores
+                            .first()
+                            .ok_or(FlashError::NoNvmCoreAccess(region.clone()))?
+                            .clone(),
+                    ))
+                    .or_default();
                 entry.push(region.clone());
 
                 log::debug!("     -- using algorithm: {}", algo.name);
@@ -281,14 +290,20 @@ impl FlashLoader {
         }
 
         // Iterate all flash algorithms we need to use.
-        for (algo_name, regions) in algos {
+        for ((algo_name, core_name), regions) in algos {
             log::debug!("Flashing ranges for algo: {}", algo_name);
 
             // This can't fail, algo_name comes from the target.
             let algo = session.target().flash_algorithm_by_name(&algo_name);
             let algo = algo.unwrap().clone();
 
-            let mut flasher = Flasher::new(session, &algo)?;
+            let core = session
+                .target()
+                .cores
+                .iter()
+                .position(|c| c.name == core_name)
+                .unwrap();
+            let mut flasher = Flasher::new(session, core, &algo)?;
 
             let mut do_chip_erase = options.do_chip_erase;
 
@@ -326,8 +341,6 @@ impl FlashLoader {
 
         log::debug!("committing RAM!");
 
-        let mut core = session.core(0).map_err(FlashError::Core)?;
-
         // Commit RAM last, because NVM flashing overwrites RAM
         for region in &self.memory_map {
             if let MemoryRegion::Ram(region) = region {
@@ -337,6 +350,18 @@ impl FlashLoader {
                     region.range.end,
                     region.range.end - region.range.start
                 );
+
+                let region_core_index = session
+                    .target()
+                    .core_index_by_name(
+                        region
+                            .cores
+                            .first()
+                            .ok_or(FlashError::NoRamCoreAccess(region.clone()))?,
+                    )
+                    .unwrap();
+                // Attach to memory and core.
+                let mut core = session.core(region_core_index).map_err(FlashError::Core)?;
 
                 let mut some = false;
                 for (address, data) in self.builder.data_in_range(&region.range) {
@@ -366,6 +391,20 @@ impl FlashLoader {
                     address + data.len() as u32,
                     data.len()
                 );
+
+                let associated_region = session
+                    .target()
+                    .get_memory_region_by_address(address)
+                    .unwrap();
+                let core_name = match associated_region {
+                    MemoryRegion::Ram(r) => &r.cores,
+                    MemoryRegion::Generic(r) => &r.cores,
+                    MemoryRegion::Nvm(r) => &r.cores,
+                }
+                .first()
+                .unwrap();
+                let core_index = session.target().core_index_by_name(core_name).unwrap();
+                let mut core = session.core(core_index).map_err(FlashError::Core)?;
 
                 let mut written_data = vec![0; data.len()];
                 core.read(address, &mut written_data)

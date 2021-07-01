@@ -2,17 +2,23 @@
 name: GD32VF1 Series
 variants:
   - name: GD32VF103CBT6
+    cores:
+      - name: main
+        type: Riscv
+        core_access_options:
+          Riscv: {}
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536969216
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134348800
           is_boot_memory: true
+          cores: [main]
     flash_algorithms: []
 flash_algorithms: {}
-core: Riscv

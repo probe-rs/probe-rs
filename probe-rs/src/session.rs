@@ -2,6 +2,7 @@
 
 use crate::architecture::{
     arm::{
+        ap::AccessPortError,
         communication_interface::{
             ApInformation::{MemoryAp, Other},
             ArmProbeInterface, MemoryApInformation,
@@ -12,7 +13,9 @@ use crate::architecture::{
     },
     riscv::communication_interface::RiscvCommunicationInterface,
 };
-use crate::config::{ChipInfo, MemoryRegion, RegistryError, Target, TargetSelector};
+use crate::config::{
+    ChipInfo, Core as CoreConfig, MemoryRegion, RegistryError, Target, TargetSelector,
+};
 use crate::core::{Architecture, CoreState, SpecificCoreState};
 use crate::{AttachMethod, Core, CoreType, Error, Probe};
 use anyhow::anyhow;
@@ -64,10 +67,18 @@ impl ArchitectureInterface {
         &'probe mut self,
         core: &'probe mut SpecificCoreState,
         core_state: &'probe mut CoreState,
+        config: &'probe CoreConfig,
     ) -> Result<Core<'probe>, Error> {
         match self {
             ArchitectureInterface::Arm(state) => {
-                let memory = state.memory_interface(0.into())?;
+                let arm_core_access_options = match &config.core_access_options {
+                    probe_rs_target::CoreAccessOptions::Arm(opt) => Ok(opt),
+                    probe_rs_target::CoreAccessOptions::Riscv(_) => {
+                        Err(AccessPortError::InvalidCoreAccessOption(config.clone()))
+                    }
+                }?;
+
+                let memory = state.memory_interface(arm_core_access_options.ap.into())?;
 
                 core.attach_arm(core_state, memory)
             }
@@ -105,6 +116,18 @@ impl Session {
     ) -> Result<Self, Error> {
         let (probe, target) = get_target_from_selector(target, probe)?;
 
+        let cores = target
+            .cores
+            .iter()
+            .enumerate()
+            .map(|(id, core)| {
+                (
+                    SpecificCoreState::from_core_type(core.core_type),
+                    Core::create_state(id),
+                )
+            })
+            .collect();
+
         let mut session = match target.architecture() {
             Architecture::Arm => {
                 if !probe.has_arm_interface() {
@@ -114,19 +137,15 @@ impl Session {
                     .into());
                 }
 
-                let core = (
-                    SpecificCoreState::from_core_type(target.core_type),
-                    Core::create_state(0),
-                );
-
                 let interface = probe.try_into_arm_interface().map_err(|(_, err)| err)?;
 
                 let mut session = Session {
                     target,
                     interface: ArchitectureInterface::Arm(interface),
-                    cores: vec![core],
+                    cores,
                 };
 
+                // Todo: Add multicore support. How to deal with any cores that are not active and won't respond?
                 // Enable debug mode
                 debug_core_start(&mut session.core(0)?)?;
 
@@ -150,11 +169,6 @@ impl Session {
             Architecture::Riscv => {
                 // TODO: Handle attach under reset
 
-                let core = (
-                    SpecificCoreState::from_core_type(target.core_type),
-                    Core::create_state(0),
-                );
-
                 let interface = probe
                     .try_into_riscv_interface()
                     .map_err(|(_probe, err)| err)?;
@@ -162,10 +176,11 @@ impl Session {
                 let mut session = Session {
                     target,
                     interface: ArchitectureInterface::Riscv(Box::new(interface)),
-                    cores: vec![core],
+                    cores,
                 };
 
                 {
+                    // Todo: Add multicore support. How to deal with any cores that are not active and won't respond?
                     let mut core = session.core(0)?;
 
                     core.halt(Duration::from_millis(100))?;
@@ -221,8 +236,8 @@ impl Session {
     ///
     pub fn core(&mut self, n: usize) -> Result<Core<'_>, Error> {
         let (core, core_state) = self.cores.get_mut(n).ok_or(Error::CoreNotFound(n))?;
-
-        self.interface.attach(core, core_state)
+        let config = self.target.cores.get(n).ok_or(Error::CoreNotFound(n))?;
+        self.interface.attach(core, core_state, config)
     }
 
     /// Read available data from the SWO interface without waiting.
@@ -306,7 +321,7 @@ impl Session {
     }
 
     /// Configure the target and probe for serial wire view (SWV) tracing.
-    pub fn setup_swv(&mut self, config: &SwoConfig) -> Result<(), Error> {
+    pub fn setup_swv(&mut self, core_index: usize, config: &SwoConfig) -> Result<(), Error> {
         // Configure SWO on the probe
         {
             let interface = self.get_arm_interface()?;
@@ -315,25 +330,30 @@ impl Session {
 
         // Enable tracing on the target
         {
-            let mut core = self.core(0)?;
+            let mut core = self.core(core_index)?;
             crate::architecture::arm::component::enable_tracing(&mut core)?;
         }
 
         // Configure SWV on the target
         let components = self.get_arm_components()?;
-        let mut core = self.core(0)?;
+        let mut core = self.core(core_index)?;
         crate::architecture::arm::component::setup_swv(&mut core, &components, config)
     }
 
     /// Configure the target to stop emitting SWV trace data.
-    pub fn disable_swv(&mut self) -> Result<(), Error> {
-        crate::architecture::arm::component::disable_swv(&mut self.core(0)?)
+    pub fn disable_swv(&mut self, core_index: usize) -> Result<(), Error> {
+        crate::architecture::arm::component::disable_swv(&mut self.core(core_index)?)
     }
 
     /// Begin tracing a memory address over SWV.
-    pub fn add_swv_data_trace(&mut self, unit: usize, address: u32) -> Result<(), Error> {
+    pub fn add_swv_data_trace(
+        &mut self,
+        core_index: usize,
+        unit: usize,
+        address: u32,
+    ) -> Result<(), Error> {
         let components = self.get_arm_components()?;
-        let mut core = self.core(0)?;
+        let mut core = self.core(core_index)?;
         crate::architecture::arm::component::add_swv_data_trace(
             &mut core,
             &components,
@@ -343,9 +363,9 @@ impl Session {
     }
 
     /// Stop tracing from a given SWV unit
-    pub fn remove_swv_data_trace(&mut self, unit: usize) -> Result<(), Error> {
+    pub fn remove_swv_data_trace(&mut self, core_index: usize, unit: usize) -> Result<(), Error> {
         let components = self.get_arm_components()?;
-        let mut core = self.core(0)?;
+        let mut core = self.core(core_index)?;
         crate::architecture::arm::component::remove_swv_data_trace(&mut core, &components, unit)
     }
 

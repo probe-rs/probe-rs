@@ -387,6 +387,7 @@ mod tests {
         let region = NvmRegion {
             is_boot_memory: true,
             range: 0..1 << 16,
+            cores: vec!["main".into()],
         };
 
         (region, flash_algorithm)
@@ -411,6 +412,7 @@ mod tests {
         let region = NvmRegion {
             is_boot_memory: true,
             range: 0..1 << 16,
+            cores: vec!["main".into()],
         };
 
         (region, flash_algorithm)

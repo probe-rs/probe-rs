@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Added initial multicore support. (#565)
+
 ### Target Support
 
 ### Changed
