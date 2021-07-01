@@ -1,7 +1,7 @@
 #[macro_use]
 mod register_generation;
 
-use super::Register;
+use super::{RawDpAccess, Register};
 use bitfield::bitfield;
 use jep106::JEP106Code;
 
@@ -23,19 +23,6 @@ impl From<DebugPortError> for DebugProbeError {
     fn from(error: DebugPortError) -> Self {
         DebugProbeError::ArchitectureSpecific(Box::new(error))
     }
-}
-
-/// An interface to write arbitrary Debug Port registers freely in a type-unsafe manner identifying them by bank number and register address.
-/// For a type-safe interface see the [DpAccess] trait.
-pub trait RawDpAccess {
-    /// Reads a Debug Port register on the Chip.
-    fn read_raw_dp_register(&mut self, address: u8) -> Result<u32, DebugPortError>;
-
-    /// Writes a Debug Port register on the Chip.
-    fn write_raw_dp_register(&mut self, address: u8, value: u32) -> Result<(), DebugPortError>;
-
-    /// Returns the version of the Debug Port implementation.
-    fn debug_port_version(&self) -> DebugPortVersion;
 }
 
 pub trait DpAccess {

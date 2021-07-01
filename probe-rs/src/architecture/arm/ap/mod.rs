@@ -12,7 +12,7 @@ pub use memory_ap::{
 };
 use probe_rs_target::Core;
 
-use super::Register;
+use super::{RawApAccess, Register};
 
 #[derive(Debug, thiserror::Error)]
 pub enum AccessPortError {
@@ -74,50 +74,6 @@ pub trait AccessPort {
     fn port_number(&self) -> u8;
 }
 
-/// Direct access to AP registers.
-pub trait RawApAccess {
-    type Error: std::error::Error + Send + Sync + 'static;
-
-    /// Read a AP register.
-    fn read_raw_ap_register(&mut self, port_number: u8, address: u8) -> Result<u32, Self::Error>;
-
-    /// Read a register using a block transfer. This can be used
-    /// to read multiple values from the same register.
-    fn read_raw_ap_register_repeated(
-        &mut self,
-        port: u8,
-        address: u8,
-        values: &mut [u32],
-    ) -> Result<(), Self::Error> {
-        for val in values {
-            *val = self.read_raw_ap_register(port, address)?;
-        }
-        Ok(())
-    }
-
-    /// Write a AP register.
-    fn write_raw_ap_register(
-        &mut self,
-        port: u8,
-        address: u8,
-        value: u32,
-    ) -> Result<(), Self::Error>;
-
-    /// Write a register using a block transfer. This can be used
-    /// to write multiple values to the same register.
-    fn write_raw_ap_register_repeated(
-        &mut self,
-        port: u8,
-        address: u8,
-        values: &[u32],
-    ) -> Result<(), Self::Error> {
-        for val in values {
-            self.write_raw_ap_register(port, address, *val)?;
-        }
-        Ok(())
-    }
-}
-
 pub trait ApAccess {
     type Error: std::error::Error + Send + Sync + 'static;
     fn read_ap_register<PORT, R>(&mut self, port: impl Into<PORT>) -> Result<R, Self::Error>
@@ -159,11 +115,7 @@ pub trait ApAccess {
         R: ApRegister<PORT>;
 }
 
-/*
-impl<T> ApAccess for &mut T
-where
-    T: ApAccess,
-{
+impl<T: RawApAccess> ApAccess for T {
     type Error = T::Error;
 
     fn read_ap_register<PORT, R>(&mut self, port: impl Into<PORT>) -> Result<R, Self::Error>
@@ -171,7 +123,13 @@ where
         PORT: AccessPort,
         R: ApRegister<PORT>,
     {
-        (*self).read_ap_register(port)
+        log::debug!("Reading register {}", R::NAME);
+        let raw_value =
+            RawApAccess::read_raw_ap_register(self, port.into().port_number(), R::ADDRESS)?;
+
+        log::debug!("Read register    {}, value=0x{:x?}", R::NAME, raw_value);
+
+        Ok(raw_value.into())
     }
 
     fn write_ap_register<PORT, R>(
@@ -183,35 +141,47 @@ where
         PORT: AccessPort,
         R: ApRegister<PORT>,
     {
-        (*self).write_ap_register(port, register)
+        log::debug!("Writing register {}, value={:x?}", R::NAME, register);
+        self.write_raw_ap_register(port.into().port_number(), R::ADDRESS, register.into())
     }
 
     fn write_ap_register_repeated<PORT, R>(
         &mut self,
-        port: impl Into<PORT> + Clone,
-        register: R,
+        port: impl Into<PORT>,
+        _register: R,
         values: &[u32],
     ) -> Result<(), Self::Error>
     where
         PORT: AccessPort,
         R: ApRegister<PORT>,
     {
-        (*self).write_ap_register_repeated(port, register, values)
+        log::debug!(
+            "Writing register {}, block with len={} words",
+            R::NAME,
+            values.len(),
+        );
+        self.write_raw_ap_register_repeated(port.into().port_number(), R::ADDRESS, values)
     }
+
     fn read_ap_register_repeated<PORT, R>(
         &mut self,
-        port: impl Into<PORT> + Clone,
-        register: R,
+        port: impl Into<PORT>,
+        _register: R,
         values: &mut [u32],
     ) -> Result<(), Self::Error>
     where
         PORT: AccessPort,
         R: ApRegister<PORT>,
     {
-        (*self).read_ap_register_repeated(port, register, values)
+        log::debug!(
+            "Reading register {}, block with len={} words",
+            R::NAME,
+            values.len(),
+        );
+
+        self.read_raw_ap_register_repeated(port.into().port_number(), R::ADDRESS, values)
     }
 }
-*/
 
 /// Determine if an AP exists with the given AP number.
 /// Can fail silently under the hood testing an ap that doesnt exist and would require cleanup.

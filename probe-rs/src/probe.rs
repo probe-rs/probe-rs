@@ -4,11 +4,13 @@ pub(crate) mod ftdi;
 pub(crate) mod jlink;
 pub(crate) mod stlink;
 
-use crate::architecture::arm::ap::RawApAccess;
-use crate::{architecture::arm::ap::AccessPort, Session};
 use crate::{
     architecture::arm::memory::adi_v5_memory_interface::ADIMemoryInterface,
     config::{RegistryError, TargetSelector},
+};
+use crate::{
+    architecture::arm::{ap::AccessPort, RawApAccess},
+    Session,
 };
 use crate::{
     architecture::arm::{ap::MemoryAp, MemoryApInformation},

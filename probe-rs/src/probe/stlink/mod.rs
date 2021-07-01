@@ -6,11 +6,11 @@ use self::usb_interface::{StLinkUsb, StLinkUsbDevice};
 use super::{DebugProbe, DebugProbeError, ProbeCreationError, WireProtocol};
 use crate::{
     architecture::arm::{
-        ap::{valid_access_ports, AccessPort, ApAccess, ApClass, MemoryAp, RawApAccess, IDR},
+        ap::{valid_access_ports, AccessPort, ApAccess, ApClass, MemoryAp, IDR},
         communication_interface::{ArmCommunicationInterfaceState, ArmProbeInterface},
-        dp::{DebugPortError, DebugPortVersion, RawDpAccess},
+        dp::{DebugPortError, DebugPortVersion},
         memory::{adi_v5_memory_interface::ArmProbe, Component},
-        ApInformation, ArmChipInfo, SwoAccess, SwoConfig, SwoMode,
+        ApInformation, ArmChipInfo, RawApAccess, RawDpAccess, SwoAccess, SwoConfig, SwoMode,
     },
     DebugProbeSelector, Error as ProbeRsError, Memory, Probe,
 };

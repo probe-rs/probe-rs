@@ -1,14 +1,11 @@
 use super::{
     ap::{
-        valid_access_ports, AccessPort, ApAccess, ApClass, ApRegister, BaseaddrFormat, GenericAp,
-        MemoryAp, RawApAccess, BASE, BASE2, CSW, IDR,
+        valid_access_ports, AccessPort, ApAccess, ApClass, BaseaddrFormat, GenericAp, MemoryAp,
+        BASE, BASE2, CSW, IDR,
     },
-    dp::{
-        Abort, Ctrl, DebugPortError, DebugPortId, DebugPortVersion, DpAccess, RawDpAccess, Select,
-        DPIDR,
-    },
+    dp::{Abort, Ctrl, DebugPortError, DebugPortId, DebugPortVersion, DpAccess, Select, DPIDR},
     memory::{adi_v5_memory_interface::ADIMemoryInterface, Component},
-    SwoAccess, SwoConfig,
+    PortType, RawApAccess, RawDapAccess, RawDpAccess, SwoAccess, SwoConfig,
 };
 use crate::{
     architecture::arm::ap::DataSize, CommunicationInterface, DebugProbe, DebugProbeError,
@@ -39,72 +36,11 @@ impl From<DapError> for DebugProbeError {
     }
 }
 
-#[derive(Debug, PartialEq, Clone, Copy)]
-pub enum PortType {
-    DebugPort,
-    AccessPort,
-}
-
 use std::{fmt::Debug, time::Duration};
 
 pub trait Register: Clone + From<u32> + Into<u32> + Sized + Debug {
     const ADDRESS: u8;
     const NAME: &'static str;
-}
-
-pub trait RawDapAccess {
-    /// Reads the DAP register on the specified port and address
-    fn raw_read_register(&mut self, port: PortType, addr: u8) -> Result<u32, DebugProbeError>;
-
-    /// Read multiple values from the same DAP register.
-    ///
-    /// If possible, this uses optimized read functions, otherwise it
-    /// falls back to the `read_register` function.
-    fn raw_read_block(
-        &mut self,
-        port: PortType,
-        addr: u8,
-        values: &mut [u32],
-    ) -> Result<(), DebugProbeError> {
-        for val in values {
-            *val = self.raw_read_register(port, addr)?;
-        }
-
-        Ok(())
-    }
-
-    /// Writes a value to the DAP register on the specified port and address
-    fn raw_write_register(
-        &mut self,
-        port: PortType,
-        addr: u8,
-        value: u32,
-    ) -> Result<(), DebugProbeError>;
-
-    /// Write multiple values to the same DAP register.
-    ///
-    /// If possible, this uses optimized write functions, otherwise it
-    /// falls back to the `write_register` function.
-    fn raw_write_block(
-        &mut self,
-        port: PortType,
-        addr: u8,
-        values: &[u32],
-    ) -> Result<(), DebugProbeError> {
-        for val in values {
-            self.raw_write_register(port, addr, *val)?;
-        }
-
-        Ok(())
-    }
-
-    /// Flush any outstanding writes.
-    ///
-    /// By default, this does nothing -- but in probes that implement write
-    /// batching, this needs to flush any pending writes.
-    fn raw_flush(&mut self) -> Result<(), DebugProbeError> {
-        Ok(())
-    }
 }
 
 pub trait ArmProbeInterface:
@@ -578,74 +514,6 @@ impl RawApAccess for ArmCommunicationInterface {
         self.probe
             .raw_write_block(PortType::AccessPort, address, values)?;
         Ok(())
-    }
-}
-
-impl<T: RawApAccess> ApAccess for T {
-    type Error = T::Error;
-
-    fn read_ap_register<PORT, R>(&mut self, port: impl Into<PORT>) -> Result<R, Self::Error>
-    where
-        PORT: AccessPort,
-        R: ApRegister<PORT>,
-    {
-        log::debug!("Reading register {}", R::NAME);
-        let raw_value =
-            RawApAccess::read_raw_ap_register(self, port.into().port_number(), R::ADDRESS)?;
-
-        log::debug!("Read register    {}, value=0x{:x?}", R::NAME, raw_value);
-
-        Ok(raw_value.into())
-    }
-
-    fn write_ap_register<PORT, R>(
-        &mut self,
-        port: impl Into<PORT>,
-        register: R,
-    ) -> Result<(), Self::Error>
-    where
-        PORT: AccessPort,
-        R: ApRegister<PORT>,
-    {
-        log::debug!("Writing register {}, value={:x?}", R::NAME, register);
-        self.write_raw_ap_register(port.into().port_number(), R::ADDRESS, register.into())
-    }
-
-    fn write_ap_register_repeated<PORT, R>(
-        &mut self,
-        port: impl Into<PORT>,
-        _register: R,
-        values: &[u32],
-    ) -> Result<(), Self::Error>
-    where
-        PORT: AccessPort,
-        R: ApRegister<PORT>,
-    {
-        log::debug!(
-            "Writing register {}, block with len={} words",
-            R::NAME,
-            values.len(),
-        );
-        self.write_raw_ap_register_repeated(port.into().port_number(), R::ADDRESS, values)
-    }
-
-    fn read_ap_register_repeated<PORT, R>(
-        &mut self,
-        port: impl Into<PORT>,
-        _register: R,
-        values: &mut [u32],
-    ) -> Result<(), Self::Error>
-    where
-        PORT: AccessPort,
-        R: ApRegister<PORT>,
-    {
-        log::debug!(
-            "Reading register {}, block with len={} words",
-            R::NAME,
-            values.len(),
-        );
-
-        self.read_raw_ap_register_repeated(port.into().port_number(), R::ADDRESS, values)
     }
 }
 
