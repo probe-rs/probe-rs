@@ -8,14 +8,25 @@ pub enum PortType {
     AccessPort,
 }
 
+/// Low-level DAP register access.
+///
+/// Operations on this trait closely match the transactions on the wire. Implementors
+/// only do basic error handling, such as retrying WAIT errors.
+///
+/// Almost everything is the responsibility of the caller. For example, the caller must
+/// handle bank switching and AP selection.
 pub trait RawDapAccess {
-    /// Reads the DAP register on the specified port and address
+    /// Read a DAP register.
+    ///
+    /// Only the lowest 4 bits of `addr` are used. Bank switching is the caller's responsibility.
     fn raw_read_register(&mut self, port: PortType, addr: u8) -> Result<u32, DebugProbeError>;
 
     /// Read multiple values from the same DAP register.
     ///
     /// If possible, this uses optimized read functions, otherwise it
     /// falls back to the `read_register` function.
+    ///
+    /// Only the lowest 4 bits of `addr` are used. Bank switching is the caller's responsibility.
     fn raw_read_block(
         &mut self,
         port: PortType,
@@ -29,7 +40,9 @@ pub trait RawDapAccess {
         Ok(())
     }
 
-    /// Writes a value to the DAP register on the specified port and address
+    /// Write a value to a DAP register.
+    ///
+    /// Only the lowest 4 bits of `addr` are used. Bank switching is the caller's responsibility.
     fn raw_write_register(
         &mut self,
         port: PortType,
@@ -41,6 +54,8 @@ pub trait RawDapAccess {
     ///
     /// If possible, this uses optimized write functions, otherwise it
     /// falls back to the `write_register` function.
+    ///
+    /// Only the lowest 4 bits of `addr` are used. Bank switching is the caller's responsibility.
     fn raw_write_block(
         &mut self,
         port: PortType,
@@ -63,27 +78,44 @@ pub trait RawDapAccess {
     }
 }
 
-/// An interface to write arbitrary Debug Port registers freely in a type-unsafe manner identifying them by bank number and register address.
-/// For a type-safe interface see the [DpAccess] trait.
+/// High-level DAP register access.
+///
+/// Operations on this trait perform logical register reads/writes. Implementations
+/// are responsible for bank switching and AP selection, so one method call can result
+/// in multiple transactions on the wire, if necessary.
 pub trait DapAccess {
-    /// Returns the version of the Debug Port implementation.
+    /// Version of the Debug Port implementation.
     fn debug_port_version(&self) -> DebugPortVersion;
 
-    /// Reads a Debug Port register on the Chip.
+    /// Read a Debug Port register.
+    ///
+    /// Highest 4 bits of `address` are interpreted as the bank number, implementations
+    /// will do bank switching if necessary.
     fn read_raw_dp_register(&mut self, address: u8) -> Result<u32, DebugProbeError>;
 
-    /// Writes a Debug Port register on the Chip.
+    /// Write a Debug Port register.
+    ///
+    /// Highest 4 bits of `address` are interpreted as the bank number, implementations
+    /// will do bank switching if necessary.
     fn write_raw_dp_register(&mut self, address: u8, value: u32) -> Result<(), DebugProbeError>;
 
-    /// Read a AP register.
+    /// Read an Access Port register.
+    ///
+    /// Highest 4 bits of `address` are interpreted as the bank number, implementations
+    /// will do bank switching if necessary.
     fn read_raw_ap_register(
         &mut self,
         port_number: u8,
         address: u8,
     ) -> Result<u32, DebugProbeError>;
 
-    /// Read a register using a block transfer. This can be used
-    /// to read multiple values from the same register.
+    /// Read multiple values from the same Access Port register.
+    ///
+    /// If possible, this uses optimized read functions, otherwise it
+    /// falls back to the `read_raw_ap_register` function.
+    ///
+    /// Highest 4 bits of `address` are interpreted as the bank number, implementations
+    /// will do bank switching if necessary.
     fn read_raw_ap_register_repeated(
         &mut self,
         port: u8,
@@ -96,7 +128,10 @@ pub trait DapAccess {
         Ok(())
     }
 
-    /// Write a AP register.
+    /// Write an AP register.
+    ///
+    /// Highest 4 bits of `address` are interpreted as the bank number, implementations
+    /// will do bank switching if necessary.
     fn write_raw_ap_register(
         &mut self,
         port: u8,
@@ -104,8 +139,13 @@ pub trait DapAccess {
         value: u32,
     ) -> Result<(), DebugProbeError>;
 
-    /// Write a register using a block transfer. This can be used
-    /// to write multiple values to the same register.
+    /// Write multiple values to the same Access Port register.
+    ///
+    /// If possible, this uses optimized write functions, otherwise it
+    /// falls back to the `write_raw_ap_register` function.
+    ///
+    /// Highest 4 bits of `address` are interpreted as the bank number, implementations
+    /// will do bank switching if necessary.
     fn write_raw_ap_register_repeated(
         &mut self,
         port: u8,
