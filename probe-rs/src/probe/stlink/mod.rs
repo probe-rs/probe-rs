@@ -3,7 +3,7 @@ pub mod tools;
 mod usb_interface;
 
 use self::usb_interface::{StLinkUsb, StLinkUsbDevice};
-use super::{DebugProbe, DebugProbeError, PortType, ProbeCreationError, WireProtocol};
+use super::{DebugProbe, DebugProbeError, ProbeCreationError, WireProtocol};
 use crate::{
     architecture::arm::{
         ap::{valid_access_ports, AccessPort, ApAccess, ApClass, MemoryAp, RawApAccess, IDR},
@@ -29,6 +29,8 @@ const STLINK_MAX_READ_LEN: usize = 6144;
 /// The length is limited to the largest 16-bit value which
 /// is also a multiple of 4.
 const STLINK_MAX_WRITE_LEN: usize = 0xFFFC;
+
+const DP_PORT: u16 = 0xFFFF;
 
 #[derive(Debug)]
 pub struct StLink<D: StLinkUsb> {
@@ -704,63 +706,58 @@ impl<D: StLinkUsb> StLink<D> {
     }
 
     /// Reads the DAP register on the specified port and address.
-    fn read_register(&mut self, port: PortType, addr: u8) -> Result<u32, DebugProbeError> {
-        if (addr & 0xf0) == 0 || port != PortType::DebugPort {
-            if let PortType::AccessPort(port_number) = port {
-                self.select_ap(port_number as u8)?;
-            }
-
-            let port = u16::from(port).to_le_bytes();
-
-            let cmd = &[
-                commands::JTAG_COMMAND,
-                commands::JTAG_READ_DAP_REG,
-                port[0],
-                port[1],
-                addr,
-                0, // Maximum address for DAP registers is 0xFC
-            ];
-            let mut buf = [0; 8];
-            self.send_jtag_command(cmd, &[], &mut buf, TIMEOUT)?;
-            // Unwrap is ok!
-            Ok((&buf[4..8]).pread_with(0, LE).unwrap())
-        } else {
-            Err(StlinkError::BlanksNotAllowedOnDPRegister.into())
+    fn read_register(&mut self, port: u16, addr: u8) -> Result<u32, DebugProbeError> {
+        if port == DP_PORT && addr & 0xf0 != 0 {
+            return Err(StlinkError::BanksNotAllowedOnDPRegister.into());
         }
+
+        if port != DP_PORT {
+            self.select_ap(port as u8)?;
+        }
+
+        let port = u16::from(port).to_le_bytes();
+
+        let cmd = &[
+            commands::JTAG_COMMAND,
+            commands::JTAG_READ_DAP_REG,
+            port[0],
+            port[1],
+            addr,
+            0, // Maximum address for DAP registers is 0xFC
+        ];
+        let mut buf = [0; 8];
+        self.send_jtag_command(cmd, &[], &mut buf, TIMEOUT)?;
+        // Unwrap is ok!
+        Ok((&buf[4..8]).pread_with(0, LE).unwrap())
     }
 
     /// Writes a value to the DAP register on the specified port and address.
-    fn write_register(
-        &mut self,
-        port: PortType,
-        addr: u8,
-        value: u32,
-    ) -> Result<(), DebugProbeError> {
-        if (addr & 0xf0) == 0 || port != PortType::DebugPort {
-            if let PortType::AccessPort(port_number) = port {
-                self.select_ap(port_number as u8)?;
-            }
-
-            let port = u16::from(port).to_le_bytes();
-            let bytes = value.to_le_bytes();
-
-            let cmd = &[
-                commands::JTAG_COMMAND,
-                commands::JTAG_WRITE_DAP_REG,
-                port[0],
-                port[1],
-                addr,
-                0, // Maximum address for DAP registers is 0xFC
-                bytes[0],
-                bytes[1],
-                bytes[2],
-                bytes[3],
-            ];
-            let mut buf = [0; 2];
-            self.send_jtag_command(cmd, &[], &mut buf, TIMEOUT)
-        } else {
-            Err(StlinkError::BlanksNotAllowedOnDPRegister.into())
+    fn write_register(&mut self, port: u16, addr: u8, value: u32) -> Result<(), DebugProbeError> {
+        if port == DP_PORT && addr & 0xf0 != 0 {
+            return Err(StlinkError::BanksNotAllowedOnDPRegister.into());
         }
+
+        if port != DP_PORT {
+            self.select_ap(port as u8)?;
+        }
+
+        let port = u16::from(port).to_le_bytes();
+        let bytes = value.to_le_bytes();
+
+        let cmd = &[
+            commands::JTAG_COMMAND,
+            commands::JTAG_WRITE_DAP_REG,
+            port[0],
+            port[1],
+            addr,
+            0, // Maximum address for DAP registers is 0xFC
+            bytes[0],
+            bytes[1],
+            bytes[2],
+            bytes[3],
+        ];
+        let mut buf = [0; 2];
+        self.send_jtag_command(cmd, &[], &mut buf, TIMEOUT)
     }
 
     fn read_mem_32bit(
@@ -1074,8 +1071,8 @@ pub(crate) enum StlinkError {
     VoltageDivisionByZero,
     #[error("Probe is an unknown mode.")]
     UnknownMode,
-    #[error("Blank values are not allowed on DebugPort writes.")]
-    BlanksNotAllowedOnDPRegister,
+    #[error("STLink does not support accessing banked DP registers.")]
+    BanksNotAllowedOnDPRegister,
     #[error("Not enough bytes written.")]
     NotEnoughBytesWritten { is: usize, should: usize },
     #[error("Usb endpoint not found.")]
@@ -1135,13 +1132,12 @@ impl StlinkArmDebug {
 
 impl RawDpAccess for StlinkArmDebug {
     fn read_raw_dp_register(&mut self, address: u8) -> Result<u32, DebugPortError> {
-        let result = self.probe.read_register(PortType::DebugPort, address)?;
+        let result = self.probe.read_register(DP_PORT, address)?;
         Ok(result)
     }
 
     fn write_raw_dp_register(&mut self, address: u8, value: u32) -> Result<(), DebugPortError> {
-        self.probe
-            .write_register(PortType::DebugPort, address, value)?;
+        self.probe.write_register(DP_PORT, address, value)?;
         Ok(())
     }
 
@@ -1220,8 +1216,7 @@ impl RawApAccess for StlinkArmDebug {
     type Error = DebugProbeError;
 
     fn read_raw_ap_register(&mut self, port: u8, address: u8) -> Result<u32, Self::Error> {
-        self.probe
-            .read_register(PortType::AccessPort(port as u16), address)
+        self.probe.read_register(port as u16, address)
     }
 
     fn write_raw_ap_register(
@@ -1230,8 +1225,7 @@ impl RawApAccess for StlinkArmDebug {
         address: u8,
         value: u32,
     ) -> Result<(), Self::Error> {
-        self.probe
-            .write_register(PortType::AccessPort(port as u16), address, value)
+        self.probe.write_register(port as u16, address, value)
     }
 }
 
