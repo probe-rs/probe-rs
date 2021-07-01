@@ -18,7 +18,7 @@ use crate::{
     architecture::{
         arm::{
             ap::memory_ap::mock::MockMemoryAp, communication_interface::ArmProbeInterface,
-            DapAccess, PortType, SwoAccess,
+            PortType, RawDapAccess, SwoAccess,
         },
         riscv::communication_interface::RiscvCommunicationInterface,
     },
@@ -762,14 +762,14 @@ impl DebugProbe for FakeProbe {
     }
 }
 
-impl DapAccess for FakeProbe {
+impl RawDapAccess for FakeProbe {
     /// Reads the DAP register on the specified port and address
-    fn read_register(&mut self, _port: PortType, _addr: u8) -> Result<u32, DebugProbeError> {
+    fn raw_read_register(&mut self, _port: PortType, _addr: u8) -> Result<u32, DebugProbeError> {
         Err(DebugProbeError::CommandNotSupportedByProbe)
     }
 
     /// Writes a value to the DAP register on the specified port and address
-    fn write_register(
+    fn raw_write_register(
         &mut self,
         _port: PortType,
         _addr: u8,

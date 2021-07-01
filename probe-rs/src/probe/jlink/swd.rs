@@ -3,7 +3,7 @@ use std::iter;
 use crate::{
     architecture::arm::{
         dp::{Abort, Ctrl, RdBuff, DPIDR},
-        DapAccess, DapError, PortType, Register,
+        DapError, PortType, RawDapAccess, Register,
     },
     DebugProbeError,
 };
@@ -717,8 +717,8 @@ impl RawSwdIo for JLink {
     }
 }
 
-impl<Probe: RawSwdIo + 'static> DapAccess for Probe {
-    fn read_register(&mut self, port: PortType, address: u8) -> Result<u32, DebugProbeError> {
+impl<Probe: RawSwdIo + 'static> RawDapAccess for Probe {
+    fn raw_read_register(&mut self, port: PortType, address: u8) -> Result<u32, DebugProbeError> {
         let dap_wait_retries = self.swd_settings().num_retries_after_wait;
         let mut idle_cycles = std::cmp::max(1, self.swd_settings().num_idle_cycles_between_writes);
 
@@ -748,7 +748,7 @@ impl<Probe: RawSwdIo + 'static> DapAccess for Probe {
 
                     abort.set_orunerrclr(true);
 
-                    DapAccess::write_register(
+                    RawDapAccess::raw_write_register(
                         self,
                         PortType::DebugPort,
                         Abort::ADDRESS,
@@ -772,7 +772,7 @@ impl<Probe: RawSwdIo + 'static> DapAccess for Probe {
                     // To get a clue about the actual fault we read the ctrl register,
                     // which will have the fault status flags set.
                     let response =
-                        DapAccess::read_register(self, PortType::DebugPort, Ctrl::ADDRESS)?;
+                        RawDapAccess::raw_read_register(self, PortType::DebugPort, Ctrl::ADDRESS)?;
                     let ctrl = Ctrl::from(response);
                     log::debug!(
                         "Reading DAP register failed. Ctrl/Stat register value is: {:#?}",
@@ -791,7 +791,7 @@ impl<Probe: RawSwdIo + 'static> DapAccess for Probe {
                         abort.set_orunerrclr(ctrl.sticky_orun());
                         abort.set_stkerrclr(ctrl.sticky_err());
 
-                        DapAccess::write_register(
+                        RawDapAccess::raw_write_register(
                             self,
                             PortType::DebugPort,
                             Abort::ADDRESS,
@@ -822,7 +822,7 @@ impl<Probe: RawSwdIo + 'static> DapAccess for Probe {
         Err(DebugProbeError::Timeout)
     }
 
-    fn read_block(
+    fn raw_read_block(
         &mut self,
         port: PortType,
         address: u8,
@@ -866,7 +866,7 @@ impl<Probe: RawSwdIo + 'static> DapAccess for Probe {
 
                             abort.set_orunerrclr(true);
 
-                            DapAccess::write_register(
+                            RawDapAccess::raw_write_register(
                                 self,
                                 PortType::DebugPort,
                                 Abort::ADDRESS,
@@ -895,7 +895,7 @@ impl<Probe: RawSwdIo + 'static> DapAccess for Probe {
         Ok(())
     }
 
-    fn write_register(
+    fn raw_write_register(
         &mut self,
         port: PortType,
         address: u8,
@@ -930,7 +930,7 @@ impl<Probe: RawSwdIo + 'static> DapAccess for Probe {
                     abort.set_orunerrclr(true);
 
                     // Because we use overrun detection, we now have to clear the overrun error
-                    DapAccess::write_register(
+                    RawDapAccess::raw_write_register(
                         self,
                         PortType::DebugPort,
                         Abort::ADDRESS,
@@ -954,7 +954,7 @@ impl<Probe: RawSwdIo + 'static> DapAccess for Probe {
                     // which will have the fault status flags set.
 
                     let response =
-                        DapAccess::read_register(self, PortType::DebugPort, Ctrl::ADDRESS)?;
+                        RawDapAccess::raw_read_register(self, PortType::DebugPort, Ctrl::ADDRESS)?;
 
                     let ctrl = Ctrl::from(response);
                     log::trace!(
@@ -974,7 +974,7 @@ impl<Probe: RawSwdIo + 'static> DapAccess for Probe {
                         abort.set_orunerrclr(ctrl.sticky_orun());
                         abort.set_stkerrclr(ctrl.sticky_err());
 
-                        DapAccess::write_register(
+                        RawDapAccess::raw_write_register(
                             self,
                             PortType::DebugPort,
                             Abort::ADDRESS,
@@ -1005,7 +1005,7 @@ impl<Probe: RawSwdIo + 'static> DapAccess for Probe {
         Err(DebugProbeError::Timeout)
     }
 
-    fn write_block(
+    fn raw_write_block(
         &mut self,
         port: PortType,
         address: u8,
@@ -1051,7 +1051,7 @@ impl<Probe: RawSwdIo + 'static> DapAccess for Probe {
 
                             abort.set_orunerrclr(true);
 
-                            DapAccess::write_register(
+                            RawDapAccess::raw_write_register(
                                 self,
                                 PortType::DebugPort,
                                 Abort::ADDRESS,
@@ -1089,7 +1089,7 @@ mod test {
 
     use std::iter;
 
-    use crate::architecture::arm::{DapAccess, PortType};
+    use crate::architecture::arm::{PortType, RawDapAccess};
 
     use super::{RawSwdIo, SwdSettings, SwdStatistics};
 
@@ -1277,7 +1277,7 @@ mod test {
         mock.add_read_response(DapAcknowledge::Ok, read_value);
         mock.add_idle_cycles(mock.swd_settings.idle_cycles_after_transfer);
 
-        let result = mock.read_register(PortType::AccessPort, 4).unwrap();
+        let result = mock.raw_read_register(PortType::AccessPort, 4).unwrap();
 
         assert_eq!(result, read_value);
     }
@@ -1305,7 +1305,7 @@ mod test {
         mock.add_read_response(DapAcknowledge::Ok, read_value);
         mock.add_idle_cycles(mock.swd_settings.idle_cycles_after_transfer);
 
-        let result = mock.read_register(PortType::AccessPort, 4).unwrap();
+        let result = mock.raw_read_register(PortType::AccessPort, 4).unwrap();
 
         assert_eq!(result, read_value);
     }
@@ -1321,7 +1321,7 @@ mod test {
         mock.add_read_response(DapAcknowledge::Ok, 0);
         mock.add_idle_cycles(mock.swd_settings.idle_cycles_after_transfer);
 
-        mock.write_register(PortType::AccessPort, 4, 0x123)
+        mock.raw_write_register(PortType::AccessPort, 4, 0x123)
             .expect("Failed to write register");
     }
 
@@ -1347,7 +1347,7 @@ mod test {
         mock.add_read_response(DapAcknowledge::Ok, 0);
         mock.add_idle_cycles(mock.swd_settings.idle_cycles_after_transfer);
 
-        mock.write_register(PortType::AccessPort, 4, 0x123)
+        mock.raw_write_register(PortType::AccessPort, 4, 0x123)
             .expect("Failed to write register");
     }
 

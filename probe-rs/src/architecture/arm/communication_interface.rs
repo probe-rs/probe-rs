@@ -52,29 +52,29 @@ pub trait Register: Clone + From<u32> + Into<u32> + Sized + Debug {
     const NAME: &'static str;
 }
 
-pub trait DapAccess {
+pub trait RawDapAccess {
     /// Reads the DAP register on the specified port and address
-    fn read_register(&mut self, port: PortType, addr: u8) -> Result<u32, DebugProbeError>;
+    fn raw_read_register(&mut self, port: PortType, addr: u8) -> Result<u32, DebugProbeError>;
 
     /// Read multiple values from the same DAP register.
     ///
     /// If possible, this uses optimized read functions, otherwise it
     /// falls back to the `read_register` function.
-    fn read_block(
+    fn raw_read_block(
         &mut self,
         port: PortType,
         addr: u8,
         values: &mut [u32],
     ) -> Result<(), DebugProbeError> {
         for val in values {
-            *val = self.read_register(port, addr)?;
+            *val = self.raw_read_register(port, addr)?;
         }
 
         Ok(())
     }
 
     /// Writes a value to the DAP register on the specified port and address
-    fn write_register(
+    fn raw_write_register(
         &mut self,
         port: PortType,
         addr: u8,
@@ -85,14 +85,14 @@ pub trait DapAccess {
     ///
     /// If possible, this uses optimized write functions, otherwise it
     /// falls back to the `write_register` function.
-    fn write_block(
+    fn raw_write_block(
         &mut self,
         port: PortType,
         addr: u8,
         values: &[u32],
     ) -> Result<(), DebugProbeError> {
         for val in values {
-            self.write_register(port, addr, *val)?;
+            self.raw_write_register(port, addr, *val)?;
         }
 
         Ok(())
@@ -102,7 +102,7 @@ pub trait DapAccess {
     ///
     /// By default, this does nothing -- but in probes that implement write
     /// batching, this needs to flush any pending writes.
-    fn flush(&mut self) -> Result<(), DebugProbeError> {
+    fn raw_flush(&mut self) -> Result<(), DebugProbeError> {
         Ok(())
     }
 }
@@ -265,7 +265,7 @@ pub struct ArmCommunicationInterface {
 ///
 /// This is used to combine the traits, because it cannot be done in the ArmCommunicationInterface
 /// struct itself.
-pub trait DapProbe: DapAccess + DebugProbe {}
+pub trait DapProbe: RawDapAccess + DebugProbe {}
 
 impl ArmProbeInterface for ArmCommunicationInterface {
     fn memory_interface(&mut self, access_port: MemoryAp) -> Result<Memory<'_>, ProbeRsError> {
@@ -475,7 +475,7 @@ impl<'interface> ArmCommunicationInterface {
     }
 
     fn get_debug_port_version(&mut self) -> Result<DebugPortVersion, DebugProbeError> {
-        let dpidr = DPIDR(self.probe.read_register(PortType::DebugPort, 0)?);
+        let dpidr = DPIDR(self.probe.raw_read_register(PortType::DebugPort, 0)?);
 
         Ok(DebugPortVersion::from(dpidr.version()))
     }
@@ -483,21 +483,21 @@ impl<'interface> ArmCommunicationInterface {
 
 impl CommunicationInterface for ArmCommunicationInterface {
     fn flush(&mut self) -> Result<(), DebugProbeError> {
-        self.probe.flush()
+        self.probe.raw_flush()
     }
 }
 
 impl RawDpAccess for ArmCommunicationInterface {
     fn read_raw_dp_register(&mut self, address: u8) -> Result<u32, DebugPortError> {
         self.select_dp_bank(address)?;
-        let result = self.probe.read_register(PortType::DebugPort, address)?;
+        let result = self.probe.raw_read_register(PortType::DebugPort, address)?;
         Ok(result)
     }
 
     fn write_raw_dp_register(&mut self, address: u8, value: u32) -> Result<(), DebugPortError> {
         self.select_dp_bank(address)?;
         self.probe
-            .write_register(PortType::DebugPort, address, value)?;
+            .raw_write_register(PortType::DebugPort, address, value)?;
         Ok(())
     }
 
@@ -535,7 +535,9 @@ impl RawApAccess for ArmCommunicationInterface {
     fn read_raw_ap_register(&mut self, port_number: u8, address: u8) -> Result<u32, Self::Error> {
         self.select_ap_and_ap_bank(port_number, address)?;
 
-        let result = self.probe.read_register(PortType::AccessPort, address)?;
+        let result = self
+            .probe
+            .raw_read_register(PortType::AccessPort, address)?;
 
         Ok(result)
     }
@@ -549,7 +551,7 @@ impl RawApAccess for ArmCommunicationInterface {
         self.select_ap_and_ap_bank(port, address)?;
 
         self.probe
-            .read_block(PortType::AccessPort, address, values)?;
+            .raw_read_block(PortType::AccessPort, address, values)?;
         Ok(())
     }
 
@@ -562,7 +564,7 @@ impl RawApAccess for ArmCommunicationInterface {
         self.select_ap_and_ap_bank(port, address)?;
 
         self.probe
-            .write_register(PortType::AccessPort, address, value)
+            .raw_write_register(PortType::AccessPort, address, value)
     }
 
     fn write_raw_ap_register_repeated(
@@ -574,7 +576,7 @@ impl RawApAccess for ArmCommunicationInterface {
         self.select_ap_and_ap_bank(port, address)?;
 
         self.probe
-            .write_block(PortType::AccessPort, address, values)?;
+            .raw_write_block(PortType::AccessPort, address, values)?;
         Ok(())
     }
 }
