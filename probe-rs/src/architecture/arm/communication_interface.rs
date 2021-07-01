@@ -42,27 +42,9 @@ impl From<DapError> for DebugProbeError {
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum PortType {
     DebugPort,
-    AccessPort(u16),
+    AccessPort,
 }
 
-impl From<u16> for PortType {
-    fn from(value: u16) -> PortType {
-        if value == 0xFFFF {
-            PortType::DebugPort
-        } else {
-            PortType::AccessPort(value)
-        }
-    }
-}
-
-impl From<PortType> for u16 {
-    fn from(value: PortType) -> u16 {
-        match value {
-            PortType::DebugPort => 0xFFFF,
-            PortType::AccessPort(value) => value,
-        }
-    }
-}
 use std::{fmt::Debug, time::Duration};
 
 pub trait Register: Clone + From<u32> + Into<u32> + Sized + Debug {
@@ -553,10 +535,7 @@ impl RawApAccess for ArmCommunicationInterface {
     fn read_raw_ap_register(&mut self, port_number: u8, address: u8) -> Result<u32, Self::Error> {
         self.select_ap_and_ap_bank(port_number, address)?;
 
-        let result = self.probe.read_register(
-            PortType::AccessPort(u16::from(self.state.current_apsel)),
-            address,
-        )?;
+        let result = self.probe.read_register(PortType::AccessPort, address)?;
 
         Ok(result)
     }
@@ -569,11 +548,8 @@ impl RawApAccess for ArmCommunicationInterface {
     ) -> Result<(), Self::Error> {
         self.select_ap_and_ap_bank(port, address)?;
 
-        self.probe.read_block(
-            PortType::AccessPort(u16::from(self.state.current_apsel)),
-            address,
-            values,
-        )?;
+        self.probe
+            .read_block(PortType::AccessPort, address, values)?;
         Ok(())
     }
 
@@ -585,11 +561,8 @@ impl RawApAccess for ArmCommunicationInterface {
     ) -> Result<(), Self::Error> {
         self.select_ap_and_ap_bank(port, address)?;
 
-        self.probe.write_register(
-            PortType::AccessPort(u16::from(self.state.current_apsel)),
-            address,
-            value,
-        )
+        self.probe
+            .write_register(PortType::AccessPort, address, value)
     }
 
     fn write_raw_ap_register_repeated(
@@ -600,11 +573,8 @@ impl RawApAccess for ArmCommunicationInterface {
     ) -> Result<(), Self::Error> {
         self.select_ap_and_ap_bank(port, address)?;
 
-        self.probe.write_block(
-            PortType::AccessPort(u16::from(self.state.current_apsel)),
-            address,
-            values,
-        )?;
+        self.probe
+            .write_block(PortType::AccessPort, address, values)?;
         Ok(())
     }
 }

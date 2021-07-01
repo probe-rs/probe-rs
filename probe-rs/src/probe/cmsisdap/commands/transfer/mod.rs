@@ -1,23 +1,8 @@
 pub mod configure;
 
 use super::{Category, Request, Response, SendError};
-use crate::architecture::arm::PortType as ArmPortType;
+use crate::architecture::arm::PortType;
 use scroll::{Pread, Pwrite, LE};
-
-#[derive(Copy, Clone, Debug)]
-pub enum PortType {
-    AP = 1,
-    DP = 0,
-}
-
-impl From<ArmPortType> for PortType {
-    fn from(typ: ArmPortType) -> PortType {
-        match typ {
-            ArmPortType::DebugPort => PortType::DP,
-            ArmPortType::AccessPort(_) => PortType::AP,
-        }
-    }
-}
 
 #[derive(Copy, Clone, Debug)]
 pub enum RW {
@@ -66,7 +51,7 @@ impl InnerTransferRequest {
 
 #[test]
 fn creating_inner_transfer_request() {
-    let req = InnerTransferRequest::new(PortType::DP, RW::W, 0x8, None);
+    let req = InnerTransferRequest::new(PortType::DebugPort, RW::W, 0x8, None);
 
     assert_eq!(true, req.A3);
     assert_eq!(false, req.A2);
