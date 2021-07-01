@@ -1,14 +1,11 @@
 use super::{
     ap::{
-        valid_access_ports, AccessPort, ApAccess, ApClass, ApRegister, BaseaddrFormat, GenericAp,
-        MemoryAp, RawApAccess, BASE, BASE2, CSW, IDR,
+        valid_access_ports, AccessPort, ApAccess, ApClass, BaseaddrFormat, GenericAp, MemoryAp,
+        BASE, BASE2, CSW, IDR,
     },
-    dp::{
-        Abort, Ctrl, DebugPortError, DebugPortId, DebugPortVersion, DpAccess, DpBankSel,
-        RawDpAccess, Select, DPIDR,
-    },
+    dp::{Abort, Ctrl, DebugPortError, DebugPortId, DebugPortVersion, DpAccess, Select, DPIDR},
     memory::{adi_v5_memory_interface::ADIMemoryInterface, Component},
-    SwoAccess, SwoConfig,
+    DapAccess, PortType, RawDapAccess, SwoAccess, SwoConfig,
 };
 use crate::{
     architecture::arm::ap::DataSize, CommunicationInterface, DebugProbe, DebugProbeError,
@@ -39,30 +36,6 @@ impl From<DapError> for DebugProbeError {
     }
 }
 
-#[derive(Debug, PartialEq, Clone, Copy)]
-pub enum PortType {
-    DebugPort,
-    AccessPort(u16),
-}
-
-impl From<u16> for PortType {
-    fn from(value: u16) -> PortType {
-        if value == 0xFFFF {
-            PortType::DebugPort
-        } else {
-            PortType::AccessPort(value)
-        }
-    }
-}
-
-impl From<PortType> for u16 {
-    fn from(value: PortType) -> u16 {
-        match value {
-            PortType::DebugPort => 0xFFFF,
-            PortType::AccessPort(value) => value,
-        }
-    }
-}
 use std::{fmt::Debug, time::Duration};
 
 pub trait Register: Clone + From<u32> + Into<u32> + Sized + Debug {
@@ -70,64 +43,7 @@ pub trait Register: Clone + From<u32> + Into<u32> + Sized + Debug {
     const NAME: &'static str;
 }
 
-pub trait DapAccess {
-    /// Reads the DAP register on the specified port and address
-    fn read_register(&mut self, port: PortType, addr: u8) -> Result<u32, DebugProbeError>;
-
-    /// Read multiple values from the same DAP register.
-    ///
-    /// If possible, this uses optimized read functions, otherwise it
-    /// falls back to the `read_register` function.
-    fn read_block(
-        &mut self,
-        port: PortType,
-        addr: u8,
-        values: &mut [u32],
-    ) -> Result<(), DebugProbeError> {
-        for val in values {
-            *val = self.read_register(port, addr)?;
-        }
-
-        Ok(())
-    }
-
-    /// Writes a value to the DAP register on the specified port and address
-    fn write_register(
-        &mut self,
-        port: PortType,
-        addr: u8,
-        value: u32,
-    ) -> Result<(), DebugProbeError>;
-
-    /// Write multiple values to the same DAP register.
-    ///
-    /// If possible, this uses optimized write functions, otherwise it
-    /// falls back to the `write_register` function.
-    fn write_block(
-        &mut self,
-        port: PortType,
-        addr: u8,
-        values: &[u32],
-    ) -> Result<(), DebugProbeError> {
-        for val in values {
-            self.write_register(port, addr, *val)?;
-        }
-
-        Ok(())
-    }
-
-    /// Flush any outstanding writes.
-    ///
-    /// By default, this does nothing -- but in probes that implement write
-    /// batching, this needs to flush any pending writes.
-    fn flush(&mut self) -> Result<(), DebugProbeError> {
-        Ok(())
-    }
-}
-
-pub trait ArmProbeInterface:
-    RawApAccess<Error = DebugProbeError> + SwoAccess + Debug + Send
-{
+pub trait ArmProbeInterface: DapAccess + SwoAccess + Debug + Send {
     fn memory_interface(&mut self, access_port: MemoryAp) -> Result<Memory<'_>, ProbeRsError>;
 
     fn ap_information(&self, access_port: GenericAp) -> Option<&ApInformation>;
@@ -200,7 +116,7 @@ impl ApInformation {
         access_port: GenericAp,
     ) -> Result<Self, DebugProbeError>
     where
-        P: ApAccess<Error = DebugProbeError>,
+        P: ApAccess,
     {
         let idr: IDR = probe.read_ap_register(access_port)?;
 
@@ -283,7 +199,7 @@ pub struct ArmCommunicationInterface {
 ///
 /// This is used to combine the traits, because it cannot be done in the ArmCommunicationInterface
 /// struct itself.
-pub trait DapProbe: DapAccess + DebugProbe {}
+pub trait DapProbe: RawDapAccess + DebugProbe {}
 
 impl ArmProbeInterface for ArmCommunicationInterface {
     fn memory_interface(&mut self, access_port: MemoryAp) -> Result<Memory<'_>, ProbeRsError> {
@@ -456,24 +372,30 @@ impl<'interface> ArmCommunicationInterface {
         Ok(())
     }
 
-    fn select_dp_bank(&mut self, dp_bank: DpBankSel) -> Result<(), DebugPortError> {
-        match dp_bank {
-            DpBankSel::Bank(new_bank) => {
-                if new_bank != self.state.current_dpbanksel {
-                    self.state.current_dpbanksel = new_bank;
+    fn select_dp_bank(&mut self, dp_register_address: u8) -> Result<(), DebugPortError> {
+        // DP register addresses are 4 bank bits, 4 address bits. Lowest 2 address bits are
+        // always 0, so this leaves only 4 possible addresses: 0x0, 0x4, 0x8, 0xC.
+        // Only address 0x4 is banked, the rest are don't care.
 
-                    let mut select = Select(0);
+        let bank = dp_register_address >> 4;
+        let addr = dp_register_address & 0xF;
 
-                    log::debug!("Changing DP_BANK_SEL to {}", self.state.current_dpbanksel);
+        if addr != 4 {
+            return Ok(());
+        }
 
-                    select.set_ap_sel(self.state.current_apsel);
-                    select.set_ap_bank_sel(self.state.current_apbanksel);
-                    select.set_dp_bank_sel(self.state.current_dpbanksel);
+        if bank != self.state.current_dpbanksel {
+            self.state.current_dpbanksel = bank;
 
-                    self.write_dp_register(select)?;
-                }
-            }
-            DpBankSel::DontCare => (),
+            let mut select = Select(0);
+
+            log::debug!("Changing DP_BANK_SEL to {}", self.state.current_dpbanksel);
+
+            select.set_ap_sel(self.state.current_apsel);
+            select.set_ap_bank_sel(self.state.current_apbanksel);
+            select.set_dp_bank_sel(self.state.current_dpbanksel);
+
+            self.write_dp_register(select)?;
         }
 
         Ok(())
@@ -487,7 +409,7 @@ impl<'interface> ArmCommunicationInterface {
     }
 
     fn get_debug_port_version(&mut self) -> Result<DebugPortVersion, DebugProbeError> {
-        let dpidr = DPIDR(self.probe.read_register(PortType::DebugPort, 0)?);
+        let dpidr = DPIDR(self.probe.raw_read_register(PortType::DebugPort, 0)?);
 
         Ok(DebugPortVersion::from(dpidr.version()))
     }
@@ -495,35 +417,7 @@ impl<'interface> ArmCommunicationInterface {
 
 impl CommunicationInterface for ArmCommunicationInterface {
     fn flush(&mut self) -> Result<(), DebugProbeError> {
-        self.probe.flush()
-    }
-}
-
-impl RawDpAccess for ArmCommunicationInterface {
-    fn read_raw_dp_register(
-        &mut self,
-        bank: DpBankSel,
-        address: u8,
-    ) -> Result<u32, DebugPortError> {
-        self.select_dp_bank(bank)?;
-        let result = self.probe.read_register(PortType::DebugPort, address)?;
-        Ok(result)
-    }
-
-    fn write_raw_dp_register(
-        &mut self,
-        bank: DpBankSel,
-        address: u8,
-        value: u32,
-    ) -> Result<(), DebugPortError> {
-        self.select_dp_bank(bank)?;
-        self.probe
-            .write_register(PortType::DebugPort, address, value)?;
-        Ok(())
-    }
-
-    fn debug_port_version(&self) -> DebugPortVersion {
-        self.state.debug_port_version
+        self.probe.raw_flush()
     }
 }
 
@@ -550,16 +444,34 @@ impl SwoAccess for ArmCommunicationInterface {
     }
 }
 
-impl RawApAccess for ArmCommunicationInterface {
-    type Error = DebugProbeError;
+impl DapAccess for ArmCommunicationInterface {
+    fn read_raw_dp_register(&mut self, address: u8) -> Result<u32, DebugProbeError> {
+        self.select_dp_bank(address)?;
+        let result = self.probe.raw_read_register(PortType::DebugPort, address)?;
+        Ok(result)
+    }
 
-    fn read_raw_ap_register(&mut self, port_number: u8, address: u8) -> Result<u32, Self::Error> {
+    fn write_raw_dp_register(&mut self, address: u8, value: u32) -> Result<(), DebugProbeError> {
+        self.select_dp_bank(address)?;
+        self.probe
+            .raw_write_register(PortType::DebugPort, address, value)?;
+        Ok(())
+    }
+
+    fn debug_port_version(&self) -> DebugPortVersion {
+        self.state.debug_port_version
+    }
+
+    fn read_raw_ap_register(
+        &mut self,
+        port_number: u8,
+        address: u8,
+    ) -> Result<u32, DebugProbeError> {
         self.select_ap_and_ap_bank(port_number, address)?;
 
-        let result = self.probe.read_register(
-            PortType::AccessPort(u16::from(self.state.current_apsel)),
-            address,
-        )?;
+        let result = self
+            .probe
+            .raw_read_register(PortType::AccessPort, address)?;
 
         Ok(result)
     }
@@ -569,14 +481,11 @@ impl RawApAccess for ArmCommunicationInterface {
         port: u8,
         address: u8,
         values: &mut [u32],
-    ) -> Result<(), Self::Error> {
+    ) -> Result<(), DebugProbeError> {
         self.select_ap_and_ap_bank(port, address)?;
 
-        self.probe.read_block(
-            PortType::AccessPort(u16::from(self.state.current_apsel)),
-            address,
-            values,
-        )?;
+        self.probe
+            .raw_read_block(PortType::AccessPort, address, values)?;
         Ok(())
     }
 
@@ -585,14 +494,11 @@ impl RawApAccess for ArmCommunicationInterface {
         port: u8,
         address: u8,
         value: u32,
-    ) -> Result<(), Self::Error> {
+    ) -> Result<(), DebugProbeError> {
         self.select_ap_and_ap_bank(port, address)?;
 
-        self.probe.write_register(
-            PortType::AccessPort(u16::from(self.state.current_apsel)),
-            address,
-            value,
-        )
+        self.probe
+            .raw_write_register(PortType::AccessPort, address, value)
     }
 
     fn write_raw_ap_register_repeated(
@@ -600,83 +506,12 @@ impl RawApAccess for ArmCommunicationInterface {
         port: u8,
         address: u8,
         values: &[u32],
-    ) -> Result<(), Self::Error> {
+    ) -> Result<(), DebugProbeError> {
         self.select_ap_and_ap_bank(port, address)?;
 
-        self.probe.write_block(
-            PortType::AccessPort(u16::from(self.state.current_apsel)),
-            address,
-            values,
-        )?;
+        self.probe
+            .raw_write_block(PortType::AccessPort, address, values)?;
         Ok(())
-    }
-}
-
-impl<T: RawApAccess> ApAccess for T {
-    type Error = T::Error;
-
-    fn read_ap_register<PORT, R>(&mut self, port: impl Into<PORT>) -> Result<R, Self::Error>
-    where
-        PORT: AccessPort,
-        R: ApRegister<PORT>,
-    {
-        log::debug!("Reading register {}", R::NAME);
-        let raw_value =
-            RawApAccess::read_raw_ap_register(self, port.into().port_number(), R::ADDRESS)?;
-
-        log::debug!("Read register    {}, value=0x{:x?}", R::NAME, raw_value);
-
-        Ok(raw_value.into())
-    }
-
-    fn write_ap_register<PORT, R>(
-        &mut self,
-        port: impl Into<PORT>,
-        register: R,
-    ) -> Result<(), Self::Error>
-    where
-        PORT: AccessPort,
-        R: ApRegister<PORT>,
-    {
-        log::debug!("Writing register {}, value={:x?}", R::NAME, register);
-        self.write_raw_ap_register(port.into().port_number(), R::ADDRESS, register.into())
-    }
-
-    fn write_ap_register_repeated<PORT, R>(
-        &mut self,
-        port: impl Into<PORT>,
-        _register: R,
-        values: &[u32],
-    ) -> Result<(), Self::Error>
-    where
-        PORT: AccessPort,
-        R: ApRegister<PORT>,
-    {
-        log::debug!(
-            "Writing register {}, block with len={} words",
-            R::NAME,
-            values.len(),
-        );
-        self.write_raw_ap_register_repeated(port.into().port_number(), R::ADDRESS, values)
-    }
-
-    fn read_ap_register_repeated<PORT, R>(
-        &mut self,
-        port: impl Into<PORT>,
-        _register: R,
-        values: &mut [u32],
-    ) -> Result<(), Self::Error>
-    where
-        PORT: AccessPort,
-        R: ApRegister<PORT>,
-    {
-        log::debug!(
-            "Reading register {}, block with len={} words",
-            R::NAME,
-            values.len(),
-        );
-
-        self.read_raw_ap_register_repeated(port.into().port_number(), R::ADDRESS, values)
     }
 }
 

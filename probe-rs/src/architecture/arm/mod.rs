@@ -5,12 +5,13 @@ pub(crate) mod core;
 pub mod dp;
 pub mod memory;
 pub mod swo;
+mod traits;
 
 pub use communication_interface::{
-    ApInformation, ArmChipInfo, ArmCommunicationInterface, DapAccess, DapError, MemoryApInformation,
+    ApInformation, ArmChipInfo, ArmCommunicationInterface, DapError, MemoryApInformation, Register,
 };
-pub use communication_interface::{PortType, Register};
 pub use swo::{SwoAccess, SwoConfig, SwoMode};
+pub use traits::*;
 
 pub use self::core::m0;
 pub use self::core::m33;

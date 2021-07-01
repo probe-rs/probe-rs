@@ -6,8 +6,8 @@ use crate::{
         communication_interface::{ArmProbeInterface, DapProbe},
         dp::{Abort, Ctrl},
         swo::poll_interval_from_buf_size,
-        ArmCommunicationInterface, DapAccess, DapError, PortType, Register, SwoAccess, SwoConfig,
-        SwoMode,
+        ArmCommunicationInterface, DapError, PortType, RawDapAccess, Register, SwoAccess,
+        SwoConfig, SwoMode,
     },
     probe::{cmsisdap::commands::CmsisDapError, BatchCommand},
     DebugProbe, DebugProbeError, DebugProbeSelector, Error as ProbeRsError, WireProtocol,
@@ -210,8 +210,11 @@ impl CmsisDap {
                         log::trace!("Transfer status: FAULT");
 
                         // Check the reason for the fault
-                        let response =
-                            DapAccess::read_register(self, PortType::DebugPort, Ctrl::ADDRESS)?;
+                        let response = RawDapAccess::raw_read_register(
+                            self,
+                            PortType::DebugPort,
+                            Ctrl::ADDRESS,
+                        )?;
                         let ctrl = Ctrl::from(response);
                         log::trace!("Ctrl/Stat register value is: {:?}", ctrl);
 
@@ -221,7 +224,7 @@ impl CmsisDap {
                             // Clear sticky error flags
                             abort.set_stkerrclr(ctrl.sticky_err());
 
-                            DapAccess::write_register(
+                            RawDapAccess::raw_write_register(
                                 self,
                                 PortType::DebugPort,
                                 Abort::ADDRESS,
@@ -593,14 +596,14 @@ impl DebugProbe for CmsisDap {
     }
 }
 
-impl DapAccess for CmsisDap {
+impl RawDapAccess for CmsisDap {
     /// Reads the DAP register on the specified port and address.
-    fn read_register(&mut self, port: PortType, addr: u8) -> Result<u32, DebugProbeError> {
+    fn raw_read_register(&mut self, port: PortType, addr: u8) -> Result<u32, DebugProbeError> {
         self.batch_add(BatchCommand::Read(port, addr as u16))
     }
 
     /// Writes a value to the DAP register on the specified port and address.
-    fn write_register(
+    fn raw_write_register(
         &mut self,
         port: PortType,
         addr: u8,
@@ -610,7 +613,7 @@ impl DapAccess for CmsisDap {
             .map(|_| ())
     }
 
-    fn write_block(
+    fn raw_write_block(
         &mut self,
         port: PortType,
         register_address: u8,
@@ -652,7 +655,7 @@ impl DapAccess for CmsisDap {
         Ok(())
     }
 
-    fn read_block(
+    fn raw_read_block(
         &mut self,
         port: PortType,
         register_address: u8,
@@ -696,7 +699,7 @@ impl DapAccess for CmsisDap {
         Ok(())
     }
 
-    fn flush(&mut self) -> Result<(), DebugProbeError> {
+    fn raw_flush(&mut self) -> Result<(), DebugProbeError> {
         self.process_batch()?;
         Ok(())
     }

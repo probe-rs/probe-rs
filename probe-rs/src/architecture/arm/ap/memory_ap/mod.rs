@@ -17,7 +17,7 @@ define_ap!(MemoryAp);
 impl MemoryAp {
     pub fn base_address<A>(&self, interface: &mut A) -> Result<u64, DebugProbeError>
     where
-        A: ApAccess<Error = DebugProbeError>,
+        A: ApAccess,
     {
         let base_register: BASE = interface.read_ap_register(self.port_number())?;
 
