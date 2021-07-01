@@ -65,19 +65,16 @@ pub trait RawDapAccess {
 
 /// An interface to write arbitrary Debug Port registers freely in a type-unsafe manner identifying them by bank number and register address.
 /// For a type-safe interface see the [DpAccess] trait.
-pub trait RawDpAccess {
+pub trait DapAccess {
+    /// Returns the version of the Debug Port implementation.
+    fn debug_port_version(&self) -> DebugPortVersion;
+
     /// Reads a Debug Port register on the Chip.
     fn read_raw_dp_register(&mut self, address: u8) -> Result<u32, DebugProbeError>;
 
     /// Writes a Debug Port register on the Chip.
     fn write_raw_dp_register(&mut self, address: u8, value: u32) -> Result<(), DebugProbeError>;
 
-    /// Returns the version of the Debug Port implementation.
-    fn debug_port_version(&self) -> DebugPortVersion;
-}
-
-/// Direct access to AP registers.
-pub trait RawApAccess {
     /// Read a AP register.
     fn read_raw_ap_register(
         &mut self,

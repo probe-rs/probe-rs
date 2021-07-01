@@ -1,7 +1,7 @@
 #[macro_use]
 mod register_generation;
 
-use super::{RawDpAccess, Register};
+use super::{DapAccess, Register};
 use bitfield::bitfield;
 use jep106::JEP106Code;
 
@@ -31,7 +31,7 @@ pub trait DpAccess {
     fn write_dp_register<R: DpRegister>(&mut self, register: R) -> Result<(), DebugPortError>;
 }
 
-impl<T: RawDpAccess> DpAccess for T {
+impl<T: DapAccess> DpAccess for T {
     fn read_dp_register<R: DpRegister>(&mut self) -> Result<R, DebugPortError> {
         if R::VERSION > self.debug_port_version() {
             return Err(DebugPortError::UnsupportedRegister {

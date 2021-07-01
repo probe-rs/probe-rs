@@ -5,16 +5,18 @@ pub(crate) mod jlink;
 pub(crate) mod stlink;
 
 use crate::{
-    architecture::arm::memory::adi_v5_memory_interface::ADIMemoryInterface,
-    config::{RegistryError, TargetSelector},
-};
-use crate::{
-    architecture::arm::{ap::AccessPort, RawApAccess},
+    architecture::arm::{ap::AccessPort, DapAccess},
     Session,
 };
 use crate::{
     architecture::arm::{ap::MemoryAp, MemoryApInformation},
     error::Error,
+};
+use crate::{
+    architecture::arm::{
+        dp::DebugPortVersion, memory::adi_v5_memory_interface::ADIMemoryInterface,
+    },
+    config::{RegistryError, TargetSelector},
 };
 use crate::{
     architecture::{
@@ -835,7 +837,19 @@ impl ArmProbeInterface for FakeArmInterface {
     }
 }
 
-impl RawApAccess for FakeArmInterface {
+impl DapAccess for FakeArmInterface {
+    fn debug_port_version(&self) -> DebugPortVersion {
+        DebugPortVersion::DPv2
+    }
+
+    fn read_raw_dp_register(&mut self, _address: u8) -> Result<u32, DebugProbeError> {
+        todo!()
+    }
+
+    fn write_raw_dp_register(&mut self, _address: u8, _value: u32) -> Result<(), DebugProbeError> {
+        todo!()
+    }
+
     fn read_raw_ap_register(
         &mut self,
         _port_number: u8,

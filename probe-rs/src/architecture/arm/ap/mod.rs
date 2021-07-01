@@ -12,7 +12,7 @@ pub use memory_ap::{
 };
 use probe_rs_target::Core;
 
-use super::{RawApAccess, Register};
+use super::{DapAccess, Register};
 
 #[derive(Debug, thiserror::Error)]
 pub enum AccessPortError {
@@ -114,15 +114,14 @@ pub trait ApAccess {
         R: ApRegister<PORT>;
 }
 
-impl<T: RawApAccess> ApAccess for T {
+impl<T: DapAccess> ApAccess for T {
     fn read_ap_register<PORT, R>(&mut self, port: impl Into<PORT>) -> Result<R, DebugProbeError>
     where
         PORT: AccessPort,
         R: ApRegister<PORT>,
     {
         log::debug!("Reading register {}", R::NAME);
-        let raw_value =
-            RawApAccess::read_raw_ap_register(self, port.into().port_number(), R::ADDRESS)?;
+        let raw_value = self.read_raw_ap_register(port.into().port_number(), R::ADDRESS)?;
 
         log::debug!("Read register    {}, value=0x{:x?}", R::NAME, raw_value);
 

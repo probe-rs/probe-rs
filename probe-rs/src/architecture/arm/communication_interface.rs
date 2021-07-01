@@ -5,7 +5,7 @@ use super::{
     },
     dp::{Abort, Ctrl, DebugPortError, DebugPortId, DebugPortVersion, DpAccess, Select, DPIDR},
     memory::{adi_v5_memory_interface::ADIMemoryInterface, Component},
-    PortType, RawApAccess, RawDapAccess, RawDpAccess, SwoAccess, SwoConfig,
+    DapAccess, PortType, RawDapAccess, SwoAccess, SwoConfig,
 };
 use crate::{
     architecture::arm::ap::DataSize, CommunicationInterface, DebugProbe, DebugProbeError,
@@ -43,7 +43,7 @@ pub trait Register: Clone + From<u32> + Into<u32> + Sized + Debug {
     const NAME: &'static str;
 }
 
-pub trait ArmProbeInterface: RawApAccess + SwoAccess + Debug + Send {
+pub trait ArmProbeInterface: DapAccess + SwoAccess + Debug + Send {
     fn memory_interface(&mut self, access_port: MemoryAp) -> Result<Memory<'_>, ProbeRsError>;
 
     fn ap_information(&self, access_port: GenericAp) -> Option<&ApInformation>;
@@ -421,25 +421,6 @@ impl CommunicationInterface for ArmCommunicationInterface {
     }
 }
 
-impl RawDpAccess for ArmCommunicationInterface {
-    fn read_raw_dp_register(&mut self, address: u8) -> Result<u32, DebugProbeError> {
-        self.select_dp_bank(address)?;
-        let result = self.probe.raw_read_register(PortType::DebugPort, address)?;
-        Ok(result)
-    }
-
-    fn write_raw_dp_register(&mut self, address: u8, value: u32) -> Result<(), DebugProbeError> {
-        self.select_dp_bank(address)?;
-        self.probe
-            .raw_write_register(PortType::DebugPort, address, value)?;
-        Ok(())
-    }
-
-    fn debug_port_version(&self) -> DebugPortVersion {
-        self.state.debug_port_version
-    }
-}
-
 impl SwoAccess for ArmCommunicationInterface {
     fn enable_swo(&mut self, config: &SwoConfig) -> Result<(), ProbeRsError> {
         match self.probe.get_swo_interface_mut() {
@@ -463,7 +444,24 @@ impl SwoAccess for ArmCommunicationInterface {
     }
 }
 
-impl RawApAccess for ArmCommunicationInterface {
+impl DapAccess for ArmCommunicationInterface {
+    fn read_raw_dp_register(&mut self, address: u8) -> Result<u32, DebugProbeError> {
+        self.select_dp_bank(address)?;
+        let result = self.probe.raw_read_register(PortType::DebugPort, address)?;
+        Ok(result)
+    }
+
+    fn write_raw_dp_register(&mut self, address: u8, value: u32) -> Result<(), DebugProbeError> {
+        self.select_dp_bank(address)?;
+        self.probe
+            .raw_write_register(PortType::DebugPort, address, value)?;
+        Ok(())
+    }
+
+    fn debug_port_version(&self) -> DebugPortVersion {
+        self.state.debug_port_version
+    }
+
     fn read_raw_ap_register(
         &mut self,
         port_number: u8,
