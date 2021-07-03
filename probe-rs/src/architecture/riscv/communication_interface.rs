@@ -1465,12 +1465,6 @@ impl MemoryInterface for RiscvCommunicationInterface {
     fn flush(&mut self) -> Result<(), crate::Error> {
         Ok(())
     }
-
-    fn get_arm_interface(
-        &mut self,
-    ) -> Result<&mut crate::architecture::arm::ArmCommunicationInterface<Initialized>, Error> {
-        todo!()
-    }
 }
 
 /// Access width for bus access.

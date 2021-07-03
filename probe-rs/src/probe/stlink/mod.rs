@@ -13,6 +13,7 @@ use crate::{
         },
         dp::{DebugPortVersion, DpAccess, DPIDR},
         memory::{adi_v5_memory_interface::ArmProbe, Component},
+        sequences::ArmDebugSequence,
         ApInformation, ArmChipInfo, DapAccess, PortType, RawDapAccess, SwoAccess, SwoConfig,
         SwoMode,
     },
@@ -1112,13 +1113,7 @@ struct UninitializedStLink {
 }
 
 impl UninitializedArmProbe for UninitializedStLink {
-    fn initialize(self: Box<Self>) -> Result<Box<dyn ArmProbeInterface>, ProbeRsError> {
-        let interface = StlinkArmDebug::new(self.probe).map_err(|(_s, e)| ProbeRsError::from(e))?;
-
-        Ok(Box::new(interface))
-    }
-
-    // TODO: Is this possible with an uninitialized ST Link?
+    // Todo: Is this possible with an uninitialized ST Link?
     fn read_dpidr(&mut self) -> Result<u32, ProbeRsError> {
         let result = self
             .probe
@@ -1126,6 +1121,15 @@ impl UninitializedArmProbe for UninitializedStLink {
             .map_err(|e| ProbeRsError::Other(e.into()))?;
 
         Ok(result.into())
+    }
+
+    fn initialize(
+        self: Box<Self>,
+        sequence: &dyn ArmDebugSequence,
+    ) -> Result<Box<dyn ArmProbeInterface>, ProbeRsError> {
+        let interface = StlinkArmDebug::new(self.probe).map_err(|(_s, e)| ProbeRsError::from(e))?;
+
+        Ok(Box::new(interface))
     }
 }
 

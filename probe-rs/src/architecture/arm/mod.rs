@@ -4,7 +4,7 @@ pub mod component;
 pub(crate) mod core;
 pub mod dp;
 pub mod memory;
-pub(crate) mod sequences;
+pub mod sequences;
 pub mod swo;
 mod traits;
 

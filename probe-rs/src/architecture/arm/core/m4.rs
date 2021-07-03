@@ -725,12 +725,6 @@ impl<'probe> MemoryInterface for M4<'probe> {
     fn flush(&mut self) -> Result<(), Error> {
         self.memory.flush()
     }
-
-    fn get_arm_interface(
-        &mut self,
-    ) -> Result<&mut crate::architecture::arm::ArmCommunicationInterface<Initialized>, Error> {
-        todo!()
-    }
 }
 
 #[test]

@@ -553,12 +553,6 @@ impl<'probe> MemoryInterface for Riscv32<'probe> {
     fn flush(&mut self) -> Result<(), Error> {
         self.interface.flush()
     }
-
-    fn get_arm_interface(
-        &mut self,
-    ) -> Result<&mut super::arm::ArmCommunicationInterface<Initialized>, Error> {
-        todo!()
-    }
 }
 
 bitfield! {

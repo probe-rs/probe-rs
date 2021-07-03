@@ -1,5 +1,6 @@
 #![warn(missing_docs)]
 
+use crate::architecture::arm::sequences::DefaultArmSequence;
 use crate::config::{
     ChipInfo, Core as CoreConfig, MemoryRegion, RegistryError, Target, TargetSelector,
 };
@@ -131,9 +132,7 @@ impl Session {
                     }
                 };
 
-                sequence_handle.debug_port_setup(&mut interface)?;
-
-                let mut interface = interface.initialize()?;
+                let mut interface = interface.initialize(sequence_handle.as_ref())?;
 
                 {
                     let mut memory_interface = interface.memory_interface(MemoryAp::from(0))?;
@@ -474,7 +473,7 @@ fn get_target_from_selector(
             if probe.has_arm_interface() {
                 match probe.try_into_arm_interface() {
                     Ok(interface) => {
-                        let mut interface = interface.initialize()?;
+                        let mut interface = interface.initialize(&DefaultArmSequence {})?;
 
                         //let chip_result = try_arm_autodetect(interface);
                         log::debug!("Autodetect: Trying DAP interface...");

@@ -101,7 +101,7 @@ impl DebugCli {
 
                     // TODO: Proper address
                     let xpsr = cli_data.core.read_core_reg(
-                        cli_data.core.registers().get_platform_register(16).unwrap(),
+                        16,
                     )?;
 
                     println!("XPSR: {:#010x}", xpsr);

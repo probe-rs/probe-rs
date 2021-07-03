@@ -146,5 +146,15 @@ fn handle_dut(definition: &DutDefinition) -> Result<()> {
         test_flashing(&mut session, flash_binary)?;
     }
 
+    drop(session);
+
+    // Try attaching with hard reset
+
+    if definition.reset_connected {
+        let probe = definition.open_probe()?;
+
+        let _session = probe.attach_under_reset(definition.chip.clone())?;
+    }
+
     Ok(())
 }

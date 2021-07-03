@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use crate::{DebuggerError, DebuggerOptions};
 
 use probe_rs::{
@@ -6,6 +8,7 @@ use probe_rs::{
             ap::{GenericAp, MemoryAp},
             m0::Demcr,
             memory::Component,
+            sequences::DefaultArmSequence,
             ApInformation, ArmProbeInterface, MemoryApInformation,
         },
         riscv::communication_interface::RiscvCommunicationInterface,
@@ -86,7 +89,7 @@ fn try_show_info(mut probe: Probe, protocol: WireProtocol) -> (Probe, Result<()>
         match probe.try_into_arm_interface() {
             Ok(interface) => {
                 let mut interface = interface
-                    .initialize()
+                    .initialize(&DefaultArmSequence {})
                     .expect("This should not be an unwrap");
 
                 if let Err(e) = show_arm_info(&mut interface) {

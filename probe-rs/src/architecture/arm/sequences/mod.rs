@@ -8,8 +8,9 @@ use std::{
 use crate::{core::CoreRegister, DebugProbeError, Memory};
 
 use super::{
-    communication_interface::{SwdSequence, UninitializedArmProbe},
-    dp::{Abort, Ctrl, DpAccess, Select},
+    communication_interface::{DapProbe, SwdSequence},
+    dp::{Abort, Ctrl, DpAccess, Select, DPIDR},
+    PortType, Register,
 };
 
 pub struct DefaultArmSequence;
@@ -19,9 +20,7 @@ impl ArmDebugSequence for DefaultArmSequence {}
 pub trait ArmDebugSequence: Send + Sync {
     /// Implementation of the debug sequence `ResetHardwareAssert` from the ARM debug sequences.
     #[doc(alias = "ResetHardwareAssert")]
-    fn reset_hardware_assert(&self, memory: &mut Memory) -> Result<(), crate::Error> {
-        let interface = memory.get_arm_interface()?;
-
+    fn reset_hardware_assert(&self, interface: &mut dyn DapProbe) -> Result<(), crate::Error> {
         let n_reset = 0x80;
 
         let _ = interface.swj_pins(0, n_reset, 0)?;
@@ -54,10 +53,7 @@ pub trait ArmDebugSequence: Send + Sync {
 
     /// Implementation of the debug sequence *DebugPortSetup* from CMSIS Pack debug sequences.
     #[doc(alias = "DebugPortSetup")]
-    fn debug_port_setup(
-        &self,
-        interface: &mut Box<dyn UninitializedArmProbe>,
-    ) -> Result<(), crate::Error> {
+    fn debug_port_setup(&self, interface: &mut Box<dyn DapProbe>) -> Result<(), crate::Error> {
         // TODO: Handle this differently for ST-Link?
 
         // TODO: Use atomic block
@@ -75,7 +71,9 @@ pub trait ArmDebugSequence: Send + Sync {
         // End of atomic block
 
         // Read DPIDR to enable SWD interface
-        interface.read_dpidr()?;
+        let _ = interface.raw_read_register(PortType::DebugPort, DPIDR::ADDRESS)?;
+
+        //interface.read_dpidr()?;
 
         Ok(())
     }

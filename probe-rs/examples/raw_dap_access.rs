@@ -1,5 +1,7 @@
+use std::sync::Arc;
+
 use anyhow::Result;
-use probe_rs::Probe;
+use probe_rs::{architecture::arm::sequences::DefaultArmSequence, Probe};
 
 fn main() -> Result<()> {
     pretty_env_logger::init();
@@ -13,7 +15,7 @@ fn main() -> Result<()> {
     probe.attach_to_unspecified()?;
     let iface = probe.try_into_arm_interface().unwrap();
 
-    let mut iface = iface.initialize()?;
+    let mut iface = iface.initialize(&DefaultArmSequence)?;
 
     // This is an example on how to do a "recover" operation (erase+unlock a locked chip)
     // on an nRF52840 target.

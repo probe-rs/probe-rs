@@ -5,6 +5,7 @@ use super::{
     },
     dp::{Abort, Ctrl, DebugPortError, DebugPortId, DebugPortVersion, DpAccess, Select, DPIDR},
     memory::{adi_v5_memory_interface::ADIMemoryInterface, Component},
+    sequences::{ArmDebugSequence, DefaultArmSequence},
     DapAccess, PortType, RawDapAccess, SwoAccess, SwoConfig,
 };
 use crate::{
@@ -70,7 +71,16 @@ pub trait SwdSequence {
 }
 
 pub trait UninitializedArmProbe: SwdSequence {
-    fn initialize(self: Box<Self>) -> Result<Box<dyn ArmProbeInterface>, ProbeRsError>;
+    fn initialize(
+        self: Box<Self>,
+        sequence: &dyn ArmDebugSequence,
+    ) -> Result<Box<dyn ArmProbeInterface>, ProbeRsError>;
+
+    fn initialize_unspecified(
+        mut self: Box<Self>,
+    ) -> Result<Box<dyn ArmProbeInterface>, ProbeRsError> {
+        self.initialize(&DefaultArmSequence {})
+    }
 
     /// Read DPDIR Register
     fn read_dpidr(&mut self) -> Result<u32, ProbeRsError>;
@@ -294,16 +304,21 @@ impl<'interface> ArmCommunicationInterface<Uninitialized> {
 }
 
 impl UninitializedArmProbe for ArmCommunicationInterface<Uninitialized> {
-    fn initialize(self: Box<Self>) -> Result<Box<dyn ArmProbeInterface>, ProbeRsError> {
-        let interface = self.into_initialized().map_err(|(_s, err)| err)?;
-
-        Ok(Box::new(interface))
-    }
-
     fn read_dpidr(&mut self) -> Result<u32, ProbeRsError> {
         let result = self.probe.raw_read_register(PortType::DebugPort, 0)?;
 
         Ok(result)
+    }
+
+    fn initialize(
+        mut self: Box<Self>,
+        sequence: &dyn ArmDebugSequence,
+    ) -> Result<Box<dyn ArmProbeInterface>, ProbeRsError> {
+        sequence.debug_port_setup(&mut self.probe)?;
+
+        let interface = self.into_initialized().map_err(|(_s, err)| err)?;
+
+        Ok(Box::new(interface))
     }
 }
 

@@ -92,10 +92,6 @@ pub trait MemoryInterface {
     /// can be called.  Takes no arguments, but may return failure if a batched
     /// operation fails.
     fn flush(&mut self) -> Result<(), error::Error>;
-
-    fn get_arm_interface(
-        &mut self,
-    ) -> Result<&mut ArmCommunicationInterface<Initialized>, error::Error>;
 }
 
 impl<T> MemoryInterface for &mut T
@@ -136,12 +132,6 @@ where
 
     fn flush(&mut self) -> Result<(), error::Error> {
         (*self).flush()
-    }
-
-    fn get_arm_interface(
-        &mut self,
-    ) -> Result<&mut ArmCommunicationInterface<Initialized>, crate::Error> {
-        todo!()
     }
 }
 
