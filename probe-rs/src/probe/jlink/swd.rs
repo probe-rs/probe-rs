@@ -3,7 +3,7 @@ use std::iter;
 use crate::{
     architecture::arm::{
         dp::{Abort, Ctrl, RdBuff, DPIDR},
-        DapError, PortType, RawDapAccess, Register,
+        DapError, DpAddress, PortType, RawDapAccess, Register,
     },
     DebugProbeError,
 };
@@ -718,6 +718,15 @@ impl RawSwdIo for JLink {
 }
 
 impl<Probe: RawSwdIo + 'static> RawDapAccess for Probe {
+    fn select_dp(&mut self, dp: DpAddress) -> Result<(), DebugProbeError> {
+        match dp {
+            DpAddress::Default => Ok(()), // nop
+            DpAddress::Multidrop(_) => Err(DebugProbeError::ProbeSpecific(
+                anyhow::anyhow!("JLink doesn't support multidrop SWD yet").into(),
+            )),
+        }
+    }
+
     fn raw_read_register(&mut self, port: PortType, address: u8) -> Result<u32, DebugProbeError> {
         let dap_wait_retries = self.swd_settings().num_retries_after_wait;
         let mut idle_cycles = std::cmp::max(1, self.swd_settings().num_idle_cycles_between_writes);

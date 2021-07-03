@@ -6,8 +6,8 @@ use crate::{
         communication_interface::{ArmProbeInterface, DapProbe},
         dp::{Abort, Ctrl},
         swo::poll_interval_from_buf_size,
-        ArmCommunicationInterface, DapError, PortType, RawDapAccess, Register, SwoAccess,
-        SwoConfig, SwoMode,
+        ArmCommunicationInterface, DapError, DpAddress, PortType, RawDapAccess, Register,
+        SwoAccess, SwoConfig, SwoMode,
     },
     probe::{cmsisdap::commands::CmsisDapError, BatchCommand},
     DebugProbe, DebugProbeError, DebugProbeSelector, Error as ProbeRsError, WireProtocol,
@@ -597,6 +597,15 @@ impl DebugProbe for CmsisDap {
 }
 
 impl RawDapAccess for CmsisDap {
+    fn select_dp(&mut self, dp: DpAddress) -> Result<(), DebugProbeError> {
+        match dp {
+            DpAddress::Default => Ok(()), // nop
+            DpAddress::Multidrop(_) => Err(DebugProbeError::ProbeSpecific(
+                anyhow::anyhow!("CMSIS-DAP doesn't support multidrop SWD yet").into(),
+            )),
+        }
+    }
+
     /// Reads the DAP register on the specified port and address.
     fn raw_read_register(&mut self, port: PortType, addr: u8) -> Result<u32, DebugProbeError> {
         self.batch_add(BatchCommand::Read(port, addr as u16))
