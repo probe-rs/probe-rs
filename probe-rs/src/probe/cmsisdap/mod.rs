@@ -18,7 +18,7 @@ use commands::{
         connect::{ConnectRequest, ConnectResponse},
         disconnect::{DisconnectRequest, DisconnectResponse},
         host_status::{HostStatusRequest, HostStatusResponse},
-        info::{Capabilities, Command, PacketCount, PacketSize, SWOTraceBufferSize},
+        info::{Capabilities, Command, PacketCount, SWOTraceBufferSize},
         reset::{ResetRequest, ResetResponse},
     },
     swd,
@@ -81,25 +81,41 @@ impl std::fmt::Debug for CmsisDap {
 }
 
 impl CmsisDap {
-    pub fn new_from_device(device: CmsisDapDevice) -> Self {
+    pub fn new_from_device(mut device: CmsisDapDevice) -> Result<Self, DebugProbeError> {
         // Discard anything left in buffer, as otherwise
         // we'll get out of sync between requests and responses.
         device.drain();
 
-        Self {
+        // Determine and set the report size. This method attempts
+        // multiple HID report sizes to work around platform issues.
+        let packet_size = device.set_packet_size()? as u16;
+
+        // Read remaining probe information.
+        let PacketCount(packet_count) = commands::send_command(&mut device, Command::PacketCount)?;
+        let caps: Capabilities = commands::send_command(&mut device, Command::Capabilities)?;
+        debug!("Detected probe capabilities: {:?}", caps);
+        let mut swo_buffer_size = None;
+        if caps.swo_uart_implemented || caps.swo_manchester_implemented {
+            let swo_size: SWOTraceBufferSize =
+                commands::send_command(&mut device, Command::SWOTraceBufferSize)?;
+            swo_buffer_size = Some(swo_size.0 as usize);
+            debug!("Probe SWO buffer size: {}", swo_size.0);
+        }
+
+        Ok(Self {
             device,
             _hw_version: 0,
             _jtag_version: 0,
             protocol: None,
-            packet_count: None,
-            packet_size: None,
-            capabilities: None,
-            swo_buffer_size: None,
+            packet_count: Some(packet_count),
+            packet_size: Some(packet_size),
+            capabilities: Some(caps),
+            swo_buffer_size,
             swo_active: false,
             swo_streaming: false,
             speed_khz: 1_000,
             batch: Vec::new(),
-        }
+        })
     }
 
     /// Set maximum JTAG/SWD clock frequency to use, in Hz.
@@ -386,7 +402,7 @@ impl DebugProbe for CmsisDap {
     {
         Ok(Box::new(Self::new_from_device(
             tools::open_device_from_selector(selector)?,
-        )))
+        )?))
     }
 
     fn get_name(&self) -> &str {
@@ -412,42 +428,6 @@ impl DebugProbe for CmsisDap {
 
     /// Enters debug mode.
     fn attach(&mut self) -> Result<(), DebugProbeError> {
-        // get information about the probe
-        let PacketCount(packet_count) =
-            commands::send_command(&mut self.device, Command::PacketCount)?;
-        let PacketSize(packet_size) =
-            commands::send_command(&mut self.device, Command::PacketSize)?;
-
-        self.packet_count = Some(packet_count);
-        self.packet_size = Some(packet_size);
-
-        // On V1 devices, set the HID report size to the CMSIS-DAP reported packet size.
-        // We don't change it on V2 devices since we can use the endpoint maximum length.
-        if let CmsisDapDevice::V1 {
-            ref mut report_size,
-            ..
-        } = self.device
-        {
-            if packet_size > 0 && packet_size as usize != *report_size {
-                debug!(
-                    "Setting HID report size to packet size of {} bytes",
-                    packet_size
-                );
-                *report_size = packet_size as usize;
-            }
-        }
-
-        let caps = commands::send_command(&mut self.device, Command::Capabilities)?;
-        self.capabilities = Some(caps);
-        debug!("Detected probe capabilities: {:?}", caps);
-
-        if caps.swo_uart_implemented || caps.swo_manchester_implemented {
-            let swo_size: SWOTraceBufferSize =
-                commands::send_command(&mut self.device, Command::SWOTraceBufferSize)?;
-            self.swo_buffer_size = Some(swo_size.0 as usize);
-            debug!("Probe SWO buffer size: {}", swo_size.0);
-        }
-
         debug!("Attaching to target system (clock = {}kHz)", self.speed_khz);
 
         let protocol = if let Some(protocol) = self.protocol {

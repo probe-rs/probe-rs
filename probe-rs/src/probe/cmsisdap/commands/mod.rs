@@ -7,6 +7,7 @@ pub mod transfer;
 use crate::architecture::arm::DapError;
 use crate::DebugProbeError;
 use core::ops::Deref;
+use general::info::{Command, PacketSize};
 use std::time::Duration;
 
 use log::log_enabled;
@@ -25,6 +26,8 @@ pub enum CmsisDapError {
     SwoTraceStreamError,
     #[error("Requested SWO mode is not available on this probe")]
     SwoModeNotAvailable,
+    #[error("Could not determine a suitable report size for this probe")]
+    NoReportSize,
     #[error("An error with the DAP communication occured")]
     Dap(#[from] DapError),
 }
@@ -116,6 +119,9 @@ impl CmsisDapDevice {
         }
     }
 
+    /// Drain any pending data from the probe, ensuring future responses are
+    /// synchronised to requests. Swallows any errors, which are expected if
+    /// there is no pending data to read.
     pub(super) fn drain(&self) {
         log::debug!("Draining probe of any pending data.");
 
@@ -148,6 +154,61 @@ impl CmsisDapDevice {
                 }
             }
         }
+    }
+
+    /// Determine the correct packet size for this device.
+    ///
+    /// The resulting size is set in the device (either max_packet_size for V2 devices,
+    /// or report_size for V1 devices) and returned.
+    pub(super) fn set_packet_size(&mut self) -> Result<usize, CmsisDapError> {
+        // For V2 devices, we can always immediately send a packet asing what
+        // its maximum packet size is. For V1 devices on Linux and Windows,
+        // we can send a small 64-byte HID report to ask, and then later
+        // use a larger HID report if appropriate. For V1 devices on MacOS,
+        // we must always use the correct HID report size, but there's no
+        // way to find out what it is, so we attempt all known sizes.
+        for candidate in &[64, 512, 1024] {
+            if let CmsisDapDevice::V1 {
+                ref mut report_size,
+                ..
+            } = self
+            {
+                log::trace!("Attempting HID report size of {} bytes", candidate);
+                *report_size = *candidate;
+            }
+
+            match send_command(self, Command::PacketSize) {
+                Ok(PacketSize(packet_size)) => {
+                    log::debug!("Configuring probe to use packet size {}", packet_size);
+                    match self {
+                        CmsisDapDevice::V1 {
+                            ref mut report_size,
+                            ..
+                        } => {
+                            *report_size = packet_size as usize;
+                        }
+                        CmsisDapDevice::V2 {
+                            ref mut max_packet_size,
+                            ..
+                        } => {
+                            *max_packet_size = packet_size as usize;
+                        }
+                    }
+                    return Ok(packet_size as usize);
+                }
+
+                Err(e) => match self {
+                    // Ignore errors on V1, because we expect them while
+                    // trying various report sizes.
+                    CmsisDapDevice::V1 { .. } => (),
+
+                    // Escalate errors on V2 which is expected to work.
+                    CmsisDapDevice::V2 { .. } => return Err(e.into()),
+                },
+            }
+        }
+
+        Err(CmsisDapError::NoReportSize)
     }
 
     /// Check if SWO streaming is supported by this device.
