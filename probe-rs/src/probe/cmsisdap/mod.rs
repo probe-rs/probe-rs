@@ -18,7 +18,7 @@ use commands::{
         connect::{ConnectRequest, ConnectResponse},
         disconnect::{DisconnectRequest, DisconnectResponse},
         host_status::{HostStatusRequest, HostStatusResponse},
-        info::{Capabilities, Command, PacketCount, SWOTraceBufferSize},
+        info::{Capabilities, Command, PacketCount, PacketSize, SWOTraceBufferSize},
         reset::{ResetRequest, ResetResponse},
     },
     swd,
@@ -86,9 +86,12 @@ impl CmsisDap {
         // we'll get out of sync between requests and responses.
         device.drain();
 
-        // Determine and set the report size. This method attempts
-        // multiple HID report sizes to work around platform issues.
-        let packet_size = device.set_packet_size()? as u16;
+        // Determine and set the report size. We do this as soon as possible after
+        // opening the probe to ensure all future communication uses the correct size.
+        let PacketSize(packet_size) = commands::send_command(&mut device, Command::PacketSize)?;
+        if packet_size > 0 {
+            device.set_packet_size(packet_size as usize);
+        }
 
         // Read remaining probe information.
         let PacketCount(packet_count) = commands::send_command(&mut device, Command::PacketCount)?;
