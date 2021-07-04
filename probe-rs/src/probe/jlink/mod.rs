@@ -783,6 +783,7 @@ pub(crate) fn list_jlink_devices() -> Vec<DebugProbeInfo> {
                     pid,
                     serial,
                     DebugProbeType::JLink,
+                    None,
                 )
             })
             .collect(),
