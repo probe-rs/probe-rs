@@ -3,8 +3,10 @@ use std::fmt::Debug;
 use crate::{
     architecture::arm::{
         ap::{memory_ap::mock::MockMemoryAp, AccessPort, MemoryAp},
+        communication_interface::{SwdSequence, UninitializedArmProbe},
+        dp::DebugPortVersion,
         memory::adi_v5_memory_interface::ADIMemoryInterface,
-        ArmProbeInterface, DapAccess, MemoryApInformation, PortType, SwoAccess,
+        ArmProbeInterface, DapAccess, MemoryApInformation, PortType, RawDapAccess, SwoAccess,
     },
     DebugProbe, DebugProbeError, DebugProbeSelector, Error, Memory, Probe, WireProtocol,
 };
@@ -14,10 +16,10 @@ pub struct FakeProbe {
     speed: u32,
 
     dap_register_read_handler:
-        Option<Box<dyn Fn(PortType, u16) -> Result<u32, DebugProbeError> + Send>>,
+        Option<Box<dyn Fn(PortType, u8) -> Result<u32, DebugProbeError> + Send>>,
 
     dap_register_write_handler:
-        Option<Box<dyn Fn(PortType, u16, u32) -> Result<(), DebugProbeError> + Send>>,
+        Option<Box<dyn Fn(PortType, u8, u32) -> Result<(), DebugProbeError> + Send>>,
 }
 
 impl Debug for FakeProbe {
@@ -42,14 +44,14 @@ impl FakeProbe {
 
     pub fn handle_dap_register_read(
         &mut self,
-        handler: Box<dyn Fn(PortType, u16) -> Result<u32, DebugProbeError> + Send>,
+        handler: Box<dyn Fn(PortType, u8) -> Result<u32, DebugProbeError> + Send>,
     ) {
         self.dap_register_read_handler = Some(handler);
     }
 
     pub fn handle_dap_register_write(
         &mut self,
-        handler: Box<dyn Fn(PortType, u16, u32) -> Result<(), DebugProbeError> + Send>,
+        handler: Box<dyn Fn(PortType, u8, u32) -> Result<(), DebugProbeError> + Send>,
     ) {
         self.dap_register_write_handler = Some(handler);
     }
@@ -124,8 +126,10 @@ impl DebugProbe for FakeProbe {
 
     fn try_get_arm_interface<'probe>(
         self: Box<Self>,
-    ) -> Result<Box<dyn ArmProbeInterface + 'probe>, (Box<dyn DebugProbe>, DebugProbeError)> {
-        Ok(Box::new(FakeArmInterface::new(self)))
+    ) -> Result<Box<dyn UninitializedArmProbe + 'probe>, (Box<dyn DebugProbe>, DebugProbeError)>
+    {
+        // Ok(Box::new(FakeArmInterface::new(self)))
+        todo!();
     }
 
     fn has_arm_interface(&self) -> bool {
@@ -133,9 +137,9 @@ impl DebugProbe for FakeProbe {
     }
 }
 
-impl DapAccess for FakeProbe {
+impl RawDapAccess for FakeProbe {
     /// Reads the DAP register on the specified port and address
-    fn read_register(&mut self, port: PortType, addr: u16) -> Result<u32, DebugProbeError> {
+    fn raw_read_register(&mut self, port: PortType, addr: u8) -> Result<u32, DebugProbeError> {
         if let Some(handler) = &self.dap_register_read_handler {
             handler(port, addr)
         } else {
@@ -144,10 +148,10 @@ impl DapAccess for FakeProbe {
     }
 
     /// Writes a value to the DAP register on the specified port and address
-    fn write_register(
+    fn raw_write_register(
         &mut self,
         port: PortType,
-        addr: u16,
+        addr: u8,
         value: u32,
     ) -> Result<(), DebugProbeError> {
         if let Some(handler) = &self.dap_register_write_handler {
@@ -155,6 +159,23 @@ impl DapAccess for FakeProbe {
         } else {
             Err(DebugProbeError::CommandNotSupportedByProbe)
         }
+    }
+
+    fn swj_sequence(&mut self, bit_len: u8, bits: u64) -> Result<(), DebugProbeError> {
+        todo!()
+    }
+
+    fn swj_pins(
+        &mut self,
+        pin_out: u32,
+        pin_select: u32,
+        pin_wait: u32,
+    ) -> Result<u32, DebugProbeError> {
+        todo!()
+    }
+
+    fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
+        todo!()
     }
 }
 
@@ -181,9 +202,11 @@ impl ArmProbeInterface for FakeArmInterface {
             supports_hnonsec: false,
         };
 
-        let memory = ADIMemoryInterface::new(&mut self.memory_ap, &ap_information)?;
+        todo!("Fix this!");
 
-        Ok(Memory::new(memory, access_port))
+        // let memory = ADIMemoryInterface::new(&mut self.memory_ap, &ap_information)?;
+
+        // Ok(Memory::new(memory, access_port))
     }
 
     fn ap_information(
@@ -206,10 +229,6 @@ impl ArmProbeInterface for FakeArmInterface {
     fn close(self: Box<Self>) -> Probe {
         Probe::from_attached_probe(self.probe)
     }
-
-    fn target_reset_deassert(&mut self) -> Result<(), Error> {
-        todo!()
-    }
 }
 
 impl SwoAccess for FakeArmInterface {
@@ -223,6 +242,58 @@ impl SwoAccess for FakeArmInterface {
 
     fn read_swo_timeout(&mut self, _timeout: std::time::Duration) -> Result<Vec<u8>, Error> {
         unimplemented!()
+    }
+}
+
+impl SwdSequence for FakeArmInterface {
+    fn swj_sequence(&mut self, _bit_len: u8, _bits: u64) -> Result<(), Error> {
+        todo!()
+    }
+    fn swj_pins(&mut self, _pin_out: u32, _pin_select: u32, _pin_wait: u32) -> Result<u32, Error> {
+        todo!()
+    }
+}
+
+impl DapAccess for FakeArmInterface {
+    fn debug_port_version(&self) -> DebugPortVersion {
+        DebugPortVersion::DPv2
+    }
+    fn read_raw_dp_register(&mut self, _address: u8) -> Result<u32, DebugProbeError> {
+        todo!()
+    }
+    fn write_raw_dp_register(&mut self, _address: u8, _value: u32) -> Result<(), DebugProbeError> {
+        todo!()
+    }
+    fn read_raw_ap_register(
+        &mut self,
+        _port_number: u8,
+        _address: u8,
+    ) -> Result<u32, DebugProbeError> {
+        todo!()
+    }
+    fn read_raw_ap_register_repeated(
+        &mut self,
+        _port: u8,
+        _address: u8,
+        _values: &mut [u32],
+    ) -> Result<(), DebugProbeError> {
+        todo!()
+    }
+    fn write_raw_ap_register(
+        &mut self,
+        _port: u8,
+        _address: u8,
+        _value: u32,
+    ) -> Result<(), DebugProbeError> {
+        todo!()
+    }
+    fn write_raw_ap_register_repeated(
+        &mut self,
+        _port: u8,
+        _address: u8,
+        _values: &[u32],
+    ) -> Result<(), DebugProbeError> {
+        todo!()
     }
 }
 

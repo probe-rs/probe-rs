@@ -90,4 +90,4 @@ pub use crate::probe::{
 pub use crate::session::Session;
 
 // TODO: Hide behind feature
-pub use crate::probe::FakeProbe;
+pub use crate::probe::fake_probe::FakeProbe;
