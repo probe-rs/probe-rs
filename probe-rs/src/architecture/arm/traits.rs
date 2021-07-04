@@ -8,6 +8,19 @@ pub enum PortType {
     AccessPort,
 }
 
+bitfield::bitfield! {
+    /// A struct to describe the default CMSIS-DAP pins that one can toggle from the host.
+    #[derive(Copy, Clone)]
+    pub struct Pins(u8);
+    impl Debug;
+    pub nreset, set_nreset: 7;
+    pub ntrst, set_ntrst: 5;
+    pub tdo, set_tdo: 3;
+    pub tdi, set_tdi: 2;
+    pub swdio_tms, set_swdio_tms: 1;
+    pub swclk_tck, set_swclk_tck: 0;
+}
+
 /// Low-level DAP register access.
 ///
 /// Operations on this trait closely match the transactions on the wire. Implementors

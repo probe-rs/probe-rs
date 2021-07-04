@@ -7,7 +7,7 @@ use crate::{
         communication_interface::UninitializedArmProbe,
         dp::{Abort, Ctrl},
         swo::poll_interval_from_buf_size,
-        ArmCommunicationInterface, DapError, PortType, RawDapAccess, Register, SwoAccess,
+        ArmCommunicationInterface, DapError, Pins, PortType, RawDapAccess, Register, SwoAccess,
         SwoConfig, SwoMode,
     },
     probe::{cmsisdap::commands::CmsisDapError, BatchCommand},
@@ -25,7 +25,7 @@ use commands::{
     swd,
     swj::{
         clock::{SWJClockRequest, SWJClockResponse},
-        pins::{Pins, SWJPinsRequest, SWJPinsRequestBuilder, SWJPinsResponse},
+        pins::{SWJPinsRequest, SWJPinsRequestBuilder, SWJPinsResponse},
         sequence::{SequenceRequest, SequenceResponse},
     },
     swo,

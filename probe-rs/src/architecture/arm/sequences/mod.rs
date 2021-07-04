@@ -10,7 +10,7 @@ use crate::{core::CoreRegister, DebugProbeError, Memory};
 use super::{
     communication_interface::{DapProbe, SwdSequence},
     dp::{Abort, Ctrl, DpAccess, Select, DPIDR},
-    PortType, Register,
+    Pins, PortType, Register,
 };
 
 pub struct DefaultArmSequence;
@@ -21,9 +21,10 @@ pub trait ArmDebugSequence: Send + Sync {
     /// Implementation of the debug sequence `ResetHardwareAssert` from the ARM debug sequences.
     #[doc(alias = "ResetHardwareAssert")]
     fn reset_hardware_assert(&self, interface: &mut dyn DapProbe) -> Result<(), crate::Error> {
-        let n_reset = 0x80;
+        let mut n_reset = Pins(0);
+        n_reset.set_nreset(true);
 
-        let _ = interface.swj_pins(0, n_reset, 0)?;
+        let _ = interface.swj_pins(0, n_reset.0 as u32, 0)?;
 
         Ok(())
     }
@@ -31,7 +32,9 @@ pub trait ArmDebugSequence: Send + Sync {
     fn reset_hardware_deassert(&self, memory: &mut Memory) -> Result<(), crate::Error> {
         let interface = memory.get_arm_interface()?;
 
-        let n_reset = 0x80;
+        let mut n_reset = Pins(0);
+        n_reset.set_nreset(true);
+        let n_reset = n_reset.0 as u32;
 
         let can_read_pins = interface.swj_pins(n_reset, n_reset, 0)? != 0xffff_ffff;
 
@@ -39,7 +42,7 @@ pub trait ArmDebugSequence: Send + Sync {
             let start = Instant::now();
 
             while start.elapsed() < Duration::from_secs(1) {
-                if interface.swj_pins(n_reset, n_reset, 0)? & n_reset != 0 {
+                if Pins(interface.swj_pins(n_reset, n_reset, 0)? as u8).nreset() {
                     return Ok(());
                 }
             }

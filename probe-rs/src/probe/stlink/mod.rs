@@ -14,7 +14,7 @@ use crate::{
         dp::{DebugPortVersion, DPIDR},
         memory::{adi_v5_memory_interface::ArmProbe, Component},
         sequences::ArmDebugSequence,
-        ApInformation, ArmChipInfo, DapAccess, SwoAccess, SwoConfig, SwoMode,
+        ApInformation, ArmChipInfo, DapAccess, Pins, SwoAccess, SwoConfig, SwoMode,
     },
     DebugProbeSelector, Error as ProbeRsError, Memory, Probe,
 };
@@ -305,6 +305,40 @@ impl<D: StLinkUsb> Drop for StLink<D> {
             let _ = self.disable_swo();
         }
         let _ = self.enter_idle();
+    }
+}
+
+impl StLink<StLinkUsbDevice> {
+    fn swj_pins(
+        &mut self,
+        pin_out: u32,
+        pin_select: u32,
+        pin_wait: u32,
+    ) -> Result<u32, ProbeRsError> {
+        let mut nreset = Pins(0);
+        nreset.set_nreset(true);
+        let nreset_mask = !(nreset.0 as u32);
+
+        // If only the reset pin is selected we perform the reset.
+        // If something else is selected return an error as this is not supported on ST-Links.
+        if pin_select & nreset_mask != 0 {
+            if Pins(pin_out as u8).nreset() {
+                self.target_reset_assert()?;
+            } else {
+                self.target_reset_deassert()?;
+            }
+
+            // Normally this would be the timeout we pass to the probe to settle the pins.
+            // The J-Link is not capable of this, so we just wait for this time on the host
+            // and assume it has settled until then.
+            std::thread::sleep(Duration::from_micros(pin_wait as u64));
+
+            // We signal that we cannot read the pin state.
+            Ok(0xFFFF_FFFF)
+        } else {
+            // This is not supported for ST-Links, unfortunately.
+            Err(DebugProbeError::CommandNotSupportedByProbe.into())
+        }
     }
 }
 
@@ -1140,12 +1174,11 @@ impl SwdSequence for UninitializedStLink {
 
     fn swj_pins(
         &mut self,
-        _pin_out: u32,
-        _pin_select: u32,
-        _pin_wait: u32,
+        pin_out: u32,
+        pin_select: u32,
+        pin_wait: u32,
     ) -> Result<u32, ProbeRsError> {
-        // This is not supported for ST-Links, unfortunately.
-        Err(DebugProbeError::CommandNotSupportedByProbe.into())
+        self.probe.swj_pins(pin_out, pin_select, pin_wait)
     }
 }
 
@@ -1277,12 +1310,11 @@ impl SwdSequence for StlinkArmDebug {
 
     fn swj_pins(
         &mut self,
-        _pin_out: u32,
-        _pin_select: u32,
-        _pin_wait: u32,
+        pin_out: u32,
+        pin_select: u32,
+        pin_wait: u32,
     ) -> Result<u32, ProbeRsError> {
-        // This is not supported for ST-Links, unfortunately.
-        Err(DebugProbeError::CommandNotSupportedByProbe.into())
+        self.probe.swj_pins(pin_out, pin_select, pin_wait)
     }
 }
 

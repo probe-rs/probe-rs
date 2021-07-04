@@ -279,9 +279,7 @@ impl<S: ArmDebugState> SwdSequence for ArmCommunicationInterface<S> {
         pin_select: u32,
         pin_wait: u32,
     ) -> Result<u32, ProbeRsError> {
-        let value = self.probe.swj_pins(pin_out, pin_select, pin_wait)?;
-
-        Ok(value)
+        Ok(self.probe.swj_pins(pin_out, pin_select, pin_wait)?)
     }
 }
 
